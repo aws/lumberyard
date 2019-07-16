@@ -19,7 +19,8 @@ def build(bld):
         vs_filter               = 'AZ Framework/TestSuites',
         file_list               = 'azphysicstests.waf_files',
         platforms               = ['win'],
-        configurations          = ['test_all'],
+        configurations          = ['all'],
+        test_only               = True,
         use                     = ['AzTest', 'AzToolsFramework'],
         msvc_cxxflags           = ['/W4'],
         

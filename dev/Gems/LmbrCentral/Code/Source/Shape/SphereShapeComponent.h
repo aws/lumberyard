@@ -9,6 +9,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
+
 #pragma once
 
 #include <AzCore/Component/Component.h>
@@ -17,13 +18,13 @@
 
 namespace LmbrCentral
 {
+    /// Provide a Component interface for SphereShape functionality.
     class SphereShapeComponent
         : public AZ::Component
     {
     public:
-        friend class EditorSphereShapeComponent;
-
         AZ_COMPONENT(SphereShapeComponent, SphereShapeComponentTypeId);
+        static void Reflect(AZ::ReflectContext* context);
 
         // AZ::Component
         void Activate() override;
@@ -31,43 +32,24 @@ namespace LmbrCentral
         bool ReadInConfig(const AZ::ComponentConfig* baseConfig) override;
         bool WriteOutConfig(AZ::ComponentConfig* outBaseConfig) const override;
 
-    protected:
-        static void GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided)
-        {
-            provided.push_back(AZ_CRC("ShapeService", 0xe86aa5fe));
-            provided.push_back(AZ_CRC("SphereShapeService", 0x90c8dc80));
-        }
-
-        static void GetIncompatibleServices(AZ::ComponentDescriptor::DependencyArrayType& incompatible)
-        {
-            incompatible.push_back(AZ_CRC("ShapeService", 0xe86aa5fe));
-            incompatible.push_back(AZ_CRC("SphereShapeService", 0x90c8dc80));
-        }
-
-        static void GetRequiredServices(AZ::ComponentDescriptor::DependencyArrayType& required)
-        {
-            required.push_back(AZ_CRC("TransformService", 0x8ee22c50));
-        }
-
-        static void Reflect(AZ::ReflectContext* context);
-
     private:
+        static void GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided);
+        static void GetIncompatibleServices(AZ::ComponentDescriptor::DependencyArrayType& incompatible);
+        static void GetRequiredServices(AZ::ComponentDescriptor::DependencyArrayType& required);
+
         SphereShape m_sphereShape; ///< Stores underlying sphere type for this component.
     };
 
-    /**
-     * Concrete EntityDebugDisplay implementation for SphereShape.
-     */
+    /// Concrete EntityDebugDisplay implementation for SphereShape.
     class SphereShapeDebugDisplayComponent
         : public EntityDebugDisplayComponent
         , public ShapeComponentNotificationsBus::Handler
     {
     public:
         AZ_COMPONENT(SphereShapeDebugDisplayComponent, "{C3E8DEF0-3786-4765-8B19-BDCB5E966980}", EntityDebugDisplayComponent)
+        static void Reflect(AZ::ReflectContext* context);
 
         SphereShapeDebugDisplayComponent() = default;
-
-        static void Reflect(AZ::ReflectContext* context);
 
         // AZ::Component
         void Activate() override;
@@ -76,13 +58,13 @@ namespace LmbrCentral
         bool WriteOutConfig(AZ::ComponentConfig* outBaseConfig) const override;
 
         // EntityDebugDisplayComponent
-        void Draw(AzFramework::EntityDebugDisplayRequests* displayContext) override;
-
-        // ShapeComponentNotificationsBus
-        void OnShapeChanged(ShapeChangeReasons changeReason) override;
+        void Draw(AzFramework::DebugDisplayRequests& debugDisplay) override;
 
     private:
         AZ_DISABLE_COPY_MOVE(SphereShapeDebugDisplayComponent)
+
+        // ShapeComponentNotificationsBus
+        void OnShapeChanged(ShapeChangeReasons changeReason) override;
 
         SphereShapeConfig m_sphereShapeConfig; ///< Stores configuration data for sphere shape.
     };

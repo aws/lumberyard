@@ -187,7 +187,17 @@ namespace
                     if (ret)
                     {
                         // now that our parent is created, try to create again
-                        return CreateDirectory(dirPath, nullptr) != 0;
+                        if (CreateDirectory(dirPath, nullptr))
+                        {
+                            return true;
+                        }
+                        DWORD creationError = GetLastError();
+                        if (creationError == ERROR_ALREADY_EXISTS)
+                        {
+                            DWORD attributes = GetFileAttributes(dirPath);
+                            return (attributes & FILE_ATTRIBUTE_DIRECTORY) != 0;
+                        }
+                        return false;
                     }
                     return false;
                 }
@@ -1765,7 +1775,7 @@ SystemFile::DeleteDir(const char* dirName)
         return RemoveDirectory(dirName) != 0;
 #   endif
 #elif defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_ANDROID) || defined(AZ_PLATFORM_APPLE)
-        return rmdir(dirName) != 0;
+        return rmdir(dirName) == 0;
 #else
         AZ_Assert(false, "CreateDir not implemented on this platform!");
 #endif

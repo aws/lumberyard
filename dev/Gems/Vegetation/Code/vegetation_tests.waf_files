@@ -1,0 +1,13 @@
+{
+    "auto": {
+      "Tests": [
+        "Tests/VegetationMocks.h",
+        "Tests/VegetationComponentOperationTests.cpp",
+        "Tests/VegetationComponentModifierTests.cpp",
+        "Tests/VegetationComponentDescriptorTests.cpp",
+        "Tests/VegetationComponentFilterTests.cpp",
+        "Tests/VegetationTest.cpp",
+        "Tests/VegetationTest.h"
+      ]
+    }
+}

@@ -466,9 +466,6 @@ namespace ImageProcessing
     StringOutcome TextureSettings::GetPlatformSpecificTextureSetting(const PlatformName& platformName, const TextureSettings& baseTextureSettings, 
         TextureSettings& textureSettingsOut, AZ::SerializeContext* serializeContext)
     {
-        // Start with a copy of common settings.
-        TextureSettings platformSpecificTextureSettings = baseTextureSettings;
-
         // Obtain the DataPatch (if platform exists)
         auto overrideIter = baseTextureSettings.m_platfromOverrides.find(platformName);
         if (overrideIter == baseTextureSettings.m_platfromOverrides.end())
@@ -482,15 +479,19 @@ namespace ImageProcessing
         if (platformOverride.IsData())
         {
             // Apply the AZ::DataPatch to obtain a platform-overridden version of the TextureSettings.
-            platformSpecificTextureSettings = *platformOverride.Apply(&baseTextureSettings, serializeContext);
-            AZ_Assert(platformSpecificTextureSettings.m_mipAlphaAdjust.size() == s_MaxMipMaps, "Unexpected m_mipAlphaAdjust size.");
+            AZStd::unique_ptr<TextureSettings> platformSpecificTextureSettings(platformOverride.Apply(&baseTextureSettings, serializeContext));
+            AZ_Assert(platformSpecificTextureSettings->m_mipAlphaAdjust.size() == s_MaxMipMaps, "Unexpected m_mipAlphaAdjust size.");
 
             // Adjust overrides data to imply 'platformSpecificTextureSettings' *IS* the override.
-            platformSpecificTextureSettings.m_platfromOverrides.clear();
-            platformSpecificTextureSettings.m_overridingPlatform = platformName;
+            platformSpecificTextureSettings->m_platfromOverrides.clear();
+            platformSpecificTextureSettings->m_overridingPlatform = platformName;
+            textureSettingsOut = *platformSpecificTextureSettings;
         }
-
-        textureSettingsOut = platformSpecificTextureSettings;
+        else
+        {
+            textureSettingsOut = baseTextureSettings;
+        }
+        
         return STRING_OUTCOME_SUCCESS;
     }
 

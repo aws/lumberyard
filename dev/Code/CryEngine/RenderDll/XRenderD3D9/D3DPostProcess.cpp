@@ -407,14 +407,14 @@ void SD3DPostEffectsUtils::DownsampleDepth(CTexture* pSrc, CTexture* pDst, bool 
 
     rd->FX_PushRenderTarget(0, pDst, NULL);
 
-    // CONFETTI BEGIN: David Srour
     // Metal Load/Store Actions
     rd->FX_SetColorDontCareActions(0, true, false);
     rd->FX_SetDepthDontCareActions(0, true, true);
     rd->FX_SetStencilDontCareActions(0, true, true);
-    // CONFETTI END
 
-    rd->RT_SetViewport(0, 0, pDst->GetWidth(), pDst->GetHeight());
+    int dstWidth  = pDst->GetWidth();
+    int dstHeight = pDst->GetHeight();
+    rd->RT_SetViewport(0, 0, dstWidth, dstHeight);
 
     if (bUseDeviceDepth)
     {
@@ -443,12 +443,10 @@ void SD3DPostEffectsUtils::DownsampleDepth(CTexture* pSrc, CTexture* pDst, bool 
         SetTexture(pSrc, 0, FILTER_POINT, 1);
     }
 
-    //  Confetti BEGIN: Igor Lobanchikov
 #if defined(CRY_USE_METAL) || defined(ANDROID)
     const Vec2& vDownscaleFactor = gcpRendD3D->m_RP.m_CurDownscaleFactor;
     gRenDev->RT_SetScissor(true, 0, 0, pDst->GetWidth() * vDownscaleFactor.x + 0.5f, pDst->GetHeight() * vDownscaleFactor.y + 0.5f);
 #endif
-    //  Confetti End: Igor Lobanchikov
 
     if (GetShaderLanguage() == eSL_GLES3_0)
     {
@@ -459,15 +457,15 @@ void SD3DPostEffectsUtils::DownsampleDepth(CTexture* pSrc, CTexture* pDst, bool 
         CShaderMan::s_shPostEffects->FXSetPSFloat(texSizeParam, &texSize, 1);
     }
 
-    // Handle uneven source size by dropping last row/column
     RECT source = { 0, 0, pDst->GetWidth(), pDst->GetHeight() };
-    DrawFullScreenTri((srcWidth + 1) / 2, (srcHeight + 1) / 2, 0.f, &source);
+    //Round up to even to handle uneven dimensions
+    dstWidth = (dstWidth + 1) & ~1;
+    dstHeight = (dstHeight + 1) & ~1;
+    DrawFullScreenTri(dstWidth, dstHeight, 0.f, &source);
 
-    //  Confetti BEGIN: Igor Lobanchikov
 #if defined(CRY_USE_METAL) || defined(ANDROID)
     gRenDev->RT_SetScissor(false, 0, 0, 0, 0);
 #endif
-    //  Confetti End: Igor Lobanchikov
 
     ShEndPass();
 

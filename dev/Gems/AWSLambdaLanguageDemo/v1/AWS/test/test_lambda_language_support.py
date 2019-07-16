@@ -21,7 +21,7 @@ class IntegrationTest_AWSLambdaLanguageSupport_EndToEnd(base_stack_test.BaseStac
         self.prepare_test_environment("lambda_language_support")
         self.register_for_shared_resources()
         self.enable_shared_gem(self.gem_name, 'v1')
-        self.client = boto3.client('lambda')
+        self.client = self.session.client('lambda')
 
     def test_end_to_end(self):
         self.run_all_tests()

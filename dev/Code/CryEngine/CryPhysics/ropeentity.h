@@ -18,7 +18,7 @@
 
 struct rope_vtx
 {
-    Vec3 pt, pt0;
+    Vec3 pt, pt0; // pt0: current joint position
     Vec3 vel;
     Vec3 dir;
     Vec3 ncontact;
@@ -145,6 +145,10 @@ public:
     virtual float GetExtent(EGeomForm eForm) const;
     virtual void GetRandomPos(PosNorm& ran, EGeomForm eForm) const;
 
+    virtual float GetSegmentThickness(int segment = -1);
+    virtual float GetSegmentStiffness(int segment = -1);
+    virtual float GetSegmentDamping(int segment = -1);
+
     Vec3 m_gravity, m_gravity0;
     float m_damping;
     float m_maxAllowedStep;
@@ -190,6 +194,11 @@ public:
     float m_minSegLen;
     float m_unprojLimit;
     float m_noCollDist;
+
+    ///Per bone UDP for stiffness, damping and thickness for touch bending vegetation
+    float* m_pDamping;
+    float* m_pStiffness;
+    float* m_pCollDist;
 
     CPhysicalEntity* m_pTiedTo[2];
     Vec3 m_ptTiedLoc[2];

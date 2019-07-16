@@ -1,0 +1,57 @@
+<ObjectStream version="1">
+	<Class name="ComponentApplication::Descriptor" type="{70277A3E-2AF5-4309-9BBF-6161AFBDE792}">
+		<Class name="bool" field="useExistingAllocator" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+		<Class name="bool" field="grabAllMemory" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+		<Class name="bool" field="allocationRecords" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+		<Class name="bool" field="autoIntegrityCheck" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+		<Class name="bool" field="markUnallocatedMemory" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+		<Class name="bool" field="doNotUsePools" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+		<Class name="unsigned int" field="pageSize" value="65536" type="{43DA906B-7DEF-4CA8-9790-854106D3F983}"/>
+		<Class name="unsigned int" field="poolPageSize" value="4096" type="{43DA906B-7DEF-4CA8-9790-854106D3F983}"/>
+		<Class name="unsigned int" field="blockAlignment" value="65536" type="{43DA906B-7DEF-4CA8-9790-854106D3F983}"/>
+		<Class name="AZ::u64" field="blockSize" value="0" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+		<Class name="AZ::u64" field="reservedOS" value="0" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+		<Class name="AZ::u64" field="reservedDebug" value="0" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+		<Class name="char" field="recordsMode" value="2" type="{3AB0037F-AF8D-48CE-BCA0-A170D18B2C03}"/>
+		<Class name="unsigned char" field="stackRecordLevels" value="5" type="{72B9409A-7D1A-4831-9CFE-FCB3FADD3426}"/>
+		<Class name="bool" field="enableDrilling" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+		<Class name="AZStd::vector" field="modules" type="{2BADE35A-6F1B-4698-B2BC-3373D010020C}">
+			<Class name="ModuleDescriptor" field="element" type="{D2932FA3-9942-4FD2-A703-2E750F57C003}">
+				<Class name="AZStd::string" field="dynamicLibraryPath" value="LyzardGems" type="{EF8FF807-DDEE-4EB0-B678-4CA3A2C490A4}"/>
+			</Class>
+			<Class name="ModuleDescriptor" field="element" type="{D2932FA3-9942-4FD2-A703-2E750F57C003}">
+				<Class name="AZStd::string" field="dynamicLibraryPath" value="LyzardProjects" type="{EF8FF807-DDEE-4EB0-B678-4CA3A2C490A4}"/>
+			</Class>
+			<Class name="ModuleDescriptor" field="element" type="{D2932FA3-9942-4FD2-A703-2E750F57C003}">
+				<Class name="AZStd::string" field="dynamicLibraryPath" value="LyzardApplicationDescriptors" type="{EF8FF807-DDEE-4EB0-B678-4CA3A2C490A4}"/>
+			</Class>
+			<Class name="ModuleDescriptor" field="element" type="{D2932FA3-9942-4FD2-A703-2E750F57C003}">
+				<Class name="AZStd::string" field="dynamicLibraryPath" value="LyzardCapabilities" type="{EF8FF807-DDEE-4EB0-B678-4CA3A2C490A4}"/>
+			</Class>
+			<Class name="ModuleDescriptor" field="element" type="{D2932FA3-9942-4FD2-A703-2E750F57C003}">
+				<Class name="AZStd::string" field="dynamicLibraryPath" value="LyzardTemplates" type="{EF8FF807-DDEE-4EB0-B678-4CA3A2C490A4}"/>
+			</Class>
+      <Class name="ModuleDescriptor" field="element" type="{D2932FA3-9942-4FD2-A703-2E750F57C003}">
+        <Class name="AZStd::string" field="dynamicLibraryPath" value="LyzardEngines" type="{EF8FF807-DDEE-4EB0-B678-4CA3A2C490A4}"/>
+      </Class>
+      <Class name="ModuleDescriptor" field="element" type="{D2932FA3-9942-4FD2-A703-2E750F57C003}">
+        <Class name="AZStd::string" field="dynamicLibraryPath" value="LyzardThirdPartySDKs" type="{EF8FF807-DDEE-4EB0-B678-4CA3A2C490A4}"/>
+      </Class>
+      <Class name="ModuleDescriptor" field="element" type="{D2932FA3-9942-4FD2-A703-2E750F57C003}">
+        <Class name="AZStd::string" field="dynamicLibraryPath" value="LyzardPackages" type="{EF8FF807-DDEE-4EB0-B678-4CA3A2C490A4}"/>
+      </Class>
+      <Class name="ModuleDescriptor" field="element" type="{D2932FA3-9942-4FD2-A703-2E750F57C003}">
+        <Class name="AZStd::string" field="dynamicLibraryPath" value="LyzardSetup" type="{EF8FF807-DDEE-4EB0-B678-4CA3A2C490A4}"/>
+      </Class>
+    </Class>
+    <Class name="bool" field="x360PhysicalMemory" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+  </Class>
+  <Class name="AZ::Entity" version="2" type="{75651658-8663-478D-9090-2432DFCAFA44}">
+    <Class name="EntityId" field="Id" version="1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+      <Class name="AZ::u64" field="id" value="0" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+    </Class>
+    <Class name="AZStd::string" field="Name" value="SystemEntity" type="{EF8FF807-DDEE-4EB0-B678-4CA3A2C490A4}"/>
+    <Class name="bool" field="IsDependencyReady" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+    <Class name="AZStd::vector" field="Components" type="{2BADE35A-6F1B-4698-B2BC-3373D010020C}"/>
+  </Class>
+</ObjectStream>

@@ -10,8 +10,6 @@
 *
 */
 
-#include <precompiled.h>
-
 #include <ScriptCanvas/Data/PropertyTraits.h>
 #include <ScriptCanvas/Data/DataRegistry.h>
 

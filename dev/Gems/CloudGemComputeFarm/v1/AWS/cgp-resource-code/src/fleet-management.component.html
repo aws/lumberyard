@@ -31,6 +31,12 @@
                         <label class="l-checkbox" [attr.for]="'automatically-take-down'"></label>
                     </div>
                 </div>
+                <div class="form-group row">
+                    <label class="col-3 col-form-label affix">Inactivity Shutdown</label>
+                    <div class="col-6">
+                        <input type="number" class="form-control" name="inactivity-shutdown" [(ngModel)]="currentFleet.inactivityShutdown" min="0" >
+                    </div>
+                </div>
             </form>
         </div>
     </div>
@@ -108,6 +114,12 @@
                 <div class="col-6">
                     <input type="checkbox" class="form-control" id="new-fleet-automatically-take-down" name="new-fleet-automatically-take-down" [(ngModel)]="newFleet.automaticallyTakeDown">
                     <label class="l-checkbox" [attr.for]="'new-fleet-automatically-take-down'"></label>
+                </div>
+            </div>
+            <div class="form-group row">
+                <label class="col-3 col-form-label affix">Inactivity Shutdown</label>
+                <div class="col-6">
+                    <input type="number" class="form-control" name="inactivity-shutdown" [(ngModel)]="newFleet.inactivityShutdown" min="0" >
                 </div>
             </div>
         </div>

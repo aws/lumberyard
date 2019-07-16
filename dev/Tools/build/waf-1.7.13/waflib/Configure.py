@@ -12,7 +12,7 @@ A :py:class:`waflib.Configure.ConfigurationContext` instance is created when ``w
 * hold configuration routines such as ``find_program``, etc
 """
 
-import os, shlex, sys, time
+import os, shlex, sys, time, inspect
 from waflib import ConfigSet, Utils, Options, Logs, Context, Build, Errors
 
 try:
@@ -38,6 +38,36 @@ conf_template = '''# project %(app)s configured on %(now)s by
 # waf %(wafver)s (abi %(abi)s, python %(pyver)x on %(systype)s)
 # using %(args)s
 #'''
+
+pre_conf_method_events = Utils.defaultdict(list)
+"""List of events per conf functions that will be fired before the conf call"""
+
+post_conf_method_events = Utils.defaultdict(list)
+"""List of events per conf functions that will be fired after the conf call"""
+
+conf_event_not_before_restrictions = Utils.defaultdict(set)
+"""Table that tracks the ordering rules for order-restricted after-conf-method events"""
+
+
+DEPRECATED_FUNCTIONS = set()
+
+def deprecated(reason=None):
+	"""
+	Special deprecated decorator to tag functions that are marked as deprecated. These functions will be outputted to the debug log
+	:param reason:	Optional reason/message to display in the debug log
+	:return: deprecated decorator
+	"""
+	def deprecated_decorator(func):
+		callstack = inspect.stack()
+		func_module = callstack[1][1]
+		func_name = '{}:{}'.format(func_module,func.__name__)
+		deprecated_message = "[WARN] Function '{}' is deprecated".format(func_name)
+		if reason:
+			deprecated_message += ": {}".format(reason)
+		Logs.debug(deprecated_message)
+		global DEPRECATED_FUNCTIONS
+		DEPRECATED_FUNCTIONS.add(func.__name__)
+	return deprecated_decorator
 
 def download_check(node):
 	"""
@@ -239,7 +269,7 @@ class ConfigurationContext(Context.Context):
 		env.lock_dir = Context.lock_dir
 
 		# Add lmbr_waf.bat or lmbr_waf for dependency tracking
-        ###############################################################################
+		###############################################################################
 		waf_command = os.path.basename(sys.executable)
 		if waf_command.lower().startswith('python'):
 			waf_executable = self.engine_node.make_node('./Tools/build/waf-1.7.13/lmbr_waf')
@@ -356,12 +386,11 @@ class ConfigurationContext(Context.Context):
 		self.hash = hash((self.hash, node.read('rb')))
 		self.files.append(node.abspath())
 		
-		if hasattr(self, 'addional_files_to_track'):			
-			for file_node in self.addional_files_to_track:
-				#print 'found addional_files_to_track ', file_node
+		if hasattr(self, 'additional_files_to_track'):
+			for file_node in self.additional_files_to_track:
 				self.hash = hash((self.hash, file_node.read('rb')))
 				self.files.append(file_node.abspath())
-			self.addional_files_to_track = []
+			self.additional_files_to_track = []
 			
 	def eval_rules(self, rules):
 		"""
@@ -397,6 +426,8 @@ class ConfigurationContext(Context.Context):
 		"""
 		pass
 
+REGISTERED_CONF_FUNCTIONS = {}
+
 def conf(f):
 	"""
 	Decorator: attach new configuration functions to :py:class:`waflib.Build.BuildContext` and
@@ -416,15 +447,49 @@ def conf(f):
 			del kw['mandatory']
 
 		try:
-			return f(*k, **kw)
+			global DEPRECATED_FUNCTIONS
+			if f.__name__ in DEPRECATED_FUNCTIONS:
+				print 'Calling deprecated function {}'.format(f.__name__)
+
+			if f.__name__ in pre_conf_method_events:
+				for pre_conf_event in pre_conf_method_events[f.__name__]:
+					pre_conf_event(*k, **kw)
+
+			result = f(*k, **kw)
+
+			if f.__name__ in post_conf_method_events:
+				for post_conf_event in post_conf_method_events[f.__name__]:
+					post_conf_event(*k, **kw)
+
+			return result
+
+
 		except Errors.ConfigurationError:
 			if mandatory:
 				raise
 
+	callstack = inspect.stack()
+	func_location = '{}:{}'.format(callstack[1][1],callstack[1][2])
+
+	if f.__name__ in REGISTERED_CONF_FUNCTIONS:
+		raise Errors.WafError("function '{}' at {} already registered in {}.".format(f.__name__, func_location, REGISTERED_CONF_FUNCTIONS[f.__name__]))
+
 	setattr(Options.OptionsContext, f.__name__, fun)
 	setattr(ConfigurationContext, f.__name__, fun)
 	setattr(Build.BuildContext, f.__name__, fun)
+
+	REGISTERED_CONF_FUNCTIONS[f.__name__] = func_location
+
 	return f
+
+def set_noop_function_to_context(func_name):
+    def no_op(*k, **kw):
+        pass
+
+    setattr(Options.OptionsContext, func_name, no_op)
+    setattr(ConfigurationContext, func_name, fun)
+    setattr(Build.BuildContext, func_name, fun)
+
 
 @conf
 def add_os_flags(self, var, dest=None):
@@ -597,4 +662,81 @@ def find_perl_program(self, filename, path_list=[], var=None, environ=None, exts
 		if var:
 			self.env[var] = Utils.to_list(self.env['PERL']) + [app]
 	self.msg('Checking for %r' % filename, app)
+
+
+def conf_event(*k, **kw):
+	"""
+	Decorator: register an event call to occur after a conf call.  The events that are registered can be triggered from
+	any Context (Build, Configuration, etc), so its up to the events to handle any context and/or platform restrictions
+
+	keywords:
+		before_methods      : list of conf decorated methods where this event will be triggered before execution
+		before_methods      : list of conf decorated methods where this event will be triggered after execution
+		after_events        : list of @conf_event event methods that this conf event will execute after (not before)
+
+	from waflib.Configure import before_conf
+	@before_conf_event('run_bootstrap')
+	def validate_settings(self):
+		print('Validate the settings from bootstrap!')
+
+	:param kw: keywords that specify the event criteria
+	:type kw: list of keywords
+	"""
+	def deco(func):
+
+		def _add_method_event(name, method_event_map):
+			# Check if the event has been registered in the after_conf_method_event_not_before_restrictions yet
+			if func.__name__ in conf_event_not_before_restrictions and \
+							len(method_event_map[name]) > 0:
+				pass
+			else:
+				method_event_map[name].append(func)
+
+		def _reorder_events(conf_method_table, order_restriction_table):
+
+			for conf_method, conf_events in conf_method_table.items():
+
+				# Check any remove existing func
+				if func in conf_events:
+					conf_events.remove(func)
+
+					# Re-add in the correct order based on the restrictions
+					insert_index = -1
+					current_index = 0
+					for current_event in conf_events:
+						if current_event.__name__ in order_restriction_table[func.__name__]:
+							insert_index = current_index
+						current_index += 1
+					conf_events.insert(insert_index + 1, func)
+
+		# Either 'before_methods' or 'after_methods' keywords is required
+		if 'before_methods' not in kw and 'after_methods' not in kw:
+			raise Errors.WafError("'before_method' or 'after_method' keyword missing @conf_event for function {}".format(func.__name__))
+
+		# Add the before_methods to the pre conf method events
+		if 'before_methods' in kw:
+			for conf_name in kw['before_methods']:
+				_add_method_event(conf_name, pre_conf_method_events)
+
+		# Add the after_methods to the post conf method events
+		if 'after_methods' in kw:
+			for conf_name in kw['after_methods']:
+				_add_method_event(conf_name, post_conf_method_events)
+
+		# If there are any event ordering restrictions, process those
+		if 'after_events' in kw:
+			for conf_event in kw['after_events']:
+				conf_event_not_before_restrictions[func.__name__].add(conf_event)
+
+				# Check for cyclic dependencies
+				if conf_event in conf_event_not_before_restrictions and \
+						func.__name__ in conf_event_not_before_restrictions[conf_event]:
+					raise Errors.WafError("Cyclic 'conf_event_not_before' dependency detected for {} and {}".format(func.__name__, conf_event))
+
+				_reorder_events(pre_conf_method_events, conf_event_not_before_restrictions)
+				_reorder_events(post_conf_method_events, conf_event_not_before_restrictions)
+
+		return func
+
+	return deco
 

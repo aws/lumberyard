@@ -163,9 +163,9 @@ namespace EMotionFX
 
 
 
-    uint32 BlendTreeSmoothingNode::GetVisualColor() const
+    AZ::Color BlendTreeSmoothingNode::GetVisualColor() const
     {
-        return MCore::RGBA(255, 0, 0);
+        return AZ::Color(1.0f, 0.0f, 0.0f, 1.0f);
     }
 
 

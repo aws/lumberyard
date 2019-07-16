@@ -3,7 +3,7 @@
     {
         "Tests":
         [
-            "Tests/LightningArcTest.cpp"
+            "tests/LightningArcTest.cpp"
         ]
     }
 }

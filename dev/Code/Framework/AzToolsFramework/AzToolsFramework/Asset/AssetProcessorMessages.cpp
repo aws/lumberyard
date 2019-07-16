@@ -432,5 +432,73 @@ namespace AzToolsFramework
         {
             return AssetProcessorPendingPlatformAssetsRequest::MessageType();
         }
+
+
+        unsigned int WantAssetBrowserShowRequest::MessageType()
+        {
+            static unsigned int messageTypeAssetStatus = AZ_CRC("AssetSystem::WantAssetBrowserShowRequest", 0xa861bc09);
+            return messageTypeAssetStatus;
+        }
+
+        unsigned int WantAssetBrowserShowRequest::GetMessageType() const
+        {
+            return WantAssetBrowserShowRequest::MessageType();
+        }
+
+        void WantAssetBrowserShowRequest::Reflect(AZ::ReflectContext* context)
+        {
+            auto serialize = azrtti_cast<AZ::SerializeContext*>(context);
+            if (serialize)
+            {
+                serialize->Class<WantAssetBrowserShowRequest, BaseAssetProcessorMessage>()
+                    ->Version(1);
+            }
+        }
+
+
+        unsigned int WantAssetBrowserShowResponse::MessageType()
+        {
+            static unsigned int messageTypeAssetStatus = AZ_CRC("AssetSystem::WantAssetBrowserShowResponse", 0x2784cbb9);
+            return messageTypeAssetStatus;
+        }
+
+        unsigned int WantAssetBrowserShowResponse::GetMessageType() const
+        {
+            return WantAssetBrowserShowResponse::MessageType();
+        }
+
+        void WantAssetBrowserShowResponse::Reflect(AZ::ReflectContext* context)
+        {
+            auto serialize = azrtti_cast<AZ::SerializeContext*>(context);
+            if (serialize)
+            {
+                serialize->Class<WantAssetBrowserShowResponse, BaseAssetProcessorMessage>()
+                    ->Version(1)
+                    ->Field("ProcessId", &WantAssetBrowserShowResponse::m_processId);
+            }
+        }
+
+
+        unsigned int AssetBrowserShowRequest::MessageType()
+        {
+            static unsigned int messageTypeAssetStatus = AZ_CRC("AssetSystem::AssetBrowserShowRequest", 0xb2768047);
+            return messageTypeAssetStatus;
+        }
+
+        unsigned int AssetBrowserShowRequest::GetMessageType() const
+        {
+            return AssetBrowserShowRequest::MessageType();
+        }
+
+        void AssetBrowserShowRequest::Reflect(AZ::ReflectContext* context)
+        {
+            auto serialize = azrtti_cast<AZ::SerializeContext*>(context);
+            if (serialize)
+            {
+                serialize->Class<AssetBrowserShowRequest, BaseAssetProcessorMessage>()
+                    ->Version(1)
+                    ->Field("FilePath", &AssetBrowserShowRequest::m_filePath);
+            }
+        }
     } // namespace AssetSystem
 } // namespace AzToolsFramework

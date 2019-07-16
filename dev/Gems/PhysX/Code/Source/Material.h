@@ -146,6 +146,12 @@ namespace PhysX
         /// Releases ownership of all materials created before.
         void ReleaseAllMaterials() override;
 
+        /// Connect to any necessary buses
+        void Connect();
+
+        /// Disconnect from any necessary buses
+        void Disconnect();
+
     private:
         AZStd::unordered_map<AZ::Uuid, AZStd::shared_ptr<Material>> m_materialsFromAssets;
         AZStd::shared_ptr<Material> m_defaultMaterial;

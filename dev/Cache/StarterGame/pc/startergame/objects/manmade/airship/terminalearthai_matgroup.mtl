@@ -1,0 +1,26 @@
+<Material MtlFlags="524544" vertModifType="0">
+ <SubMaterials>
+  <Material Name="TerminalMAT" MtlFlags="524416" Shader="Illum" GenMask="10000020040003" StringGenMask="%ALLOW_SILHOUETTE_POM%ALLOW_SPECULAR_ANTIALIASING%EMITTANCE_MAP%NORMAL_MAP%SUBSURFACE_SCATTERING" SurfaceType="mat_metal" Diffuse="1,1,1,1" Specular="0.043735035,0.043735035,0.043735035,1" Emittance="0.65837497,0,0.021219011,0.0099999998" Opacity="1" Shininess="255" vertModifType="0" LayerAct="1">
+   <Textures>
+    <Texture Map="Diffuse" File="objects/manmade/airship/airship_terminal_01_diff.dds"/>
+    <Texture Map="Bumpmap" File="objects/manmade/airship/airship_terminal_01_ddna.dds"/>
+    <Texture Map="Emittance" File="objects/manmade/airship/airship_terminal_01_emis.dds"/>
+   </Textures>
+   <PublicParams EmittanceMapGamma="1" SSSIndex="0" IndirectColor="0.25,0.25,0.25"/>
+  </Material>
+  <Material Name="Collision2" MtlFlags="525440" Shader="Nodraw" GenMask="0" StringGenMask="" SurfaceType="mat_metal" Diffuse="1,0,0,1" Specular="0,0,0,1" Opacity="1" Shininess="10" vertModifType="0" LayerAct="1">
+   <Textures />
+  </Material>
+  <Material Name="TerminalOverlayMAT" MtlFlags="524420" Shader="Illum" GenMask="10000000040003" StringGenMask="%ALLOW_SILHOUETTE_POM%ALLOW_SPECULAR_ANTIALIASING%EMITTANCE_MAP%SUBSURFACE_SCATTERING" SurfaceType="mat_metal" Diffuse="0.16513222,0,0.0080231931,1" Specular="0,0,0,1" Emittance="1,0.080219828,0.080219828,0.0099999998" vertModifType="0" LayerAct="1">
+   <Textures>
+    <Texture Map="Diffuse" File="objects/manmade/airship/airship_terminaloverlay_01.dds"/>
+    <Texture Map="Decal" File="objects/effects/fx_gradientfade_02.dds">
+     <TexMod TexMod_RotateType="0" TexMod_TexGenType="0" TexMod_bTexGenProjected="0" TileU="0.0078130001" TexMod_UOscillatorType="2" TexMod_UOscillatorRate="32" TexMod_UOscillatorAmplitude="1"/>
+    </Texture>
+    <Texture Map="Emittance" File="objects/manmade/airship/airship_terminaloverlay_01.dds"/>
+   </Textures>
+   <PublicParams EmittanceMapGamma="1" SSSIndex="0" IndirectColor="0.25,0.25,0.25"/>
+  </Material>
+ </SubMaterials>
+ <PublicParams EmittanceMapGamma="1" SSSIndex="0" IndirectColor="0.25,0.25,0.25"/>
+</Material>

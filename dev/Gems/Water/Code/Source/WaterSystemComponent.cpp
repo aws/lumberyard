@@ -82,10 +82,20 @@ namespace Water
     void WaterSystemComponent::Activate()
     {
         s_oceanFeatureToggle.Activate();
+        SurfaceData::SurfaceDataTagProviderRequestBus::Handler::BusConnect();
     }
 
     void WaterSystemComponent::Deactivate()
     {
+        SurfaceData::SurfaceDataTagProviderRequestBus::Handler::BusDisconnect();
         s_oceanFeatureToggle.Deactivate();
+    }
+
+    void WaterSystemComponent::GetRegisteredSurfaceTagNames(SurfaceData::SurfaceTagNameSet& names) const
+    {
+        names.insert(Constants::s_waterVolumeTagName);
+        names.insert(Constants::s_waterTagName);
+        names.insert(Constants::s_underWaterTagName);
+        names.insert(Constants::s_oceanTagName);
     }
 }

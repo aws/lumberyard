@@ -7,8 +7,8 @@
     <META HTTP-EQUIV="Expires" CONTENT="-1">
     <base href="/">
 
-    <link rel="icon" type="image/png" href="https://m.media-amazon.com/images/G/01/cloudcanvas/favicon/favicon-32x32._V510683448_.png" sizes="32x32" />
-    <link rel="icon" type="image/png" href="https://m.media-amazon.com/images/G/01/cloudcanvas/favicon/favicon-16x16._V510683448_.png" sizes="16x16" />
+    <link id="favicon" rel="icon" type="image/png" href="https://m.media-amazon.com/images/G/01/cloudcanvas/favicon/favicon-32x32._V510683448_.png" sizes="32x32" />
+    <link id="favicon" rel="icon" type="image/png" href="https://m.media-amazon.com/images/G/01/cloudcanvas/favicon/favicon-16x16._V510683448_.png" sizes="16x16" />
     <link rel="stylesheet" href="https://images-na.ssl-images-amazon.com/images/G/01/cloudcanvas/fontawesome/css/font-awesome.min._V522234553_.css">
     <link href="https://m.media-amazon.com/images/G/01/cloudcanvas/ng2-toastr/ng2-toastr.min._V504635404_.css" rel="stylesheet" />
 
@@ -33,7 +33,7 @@
         var origin = window.location.origin;
         document.domain = domain
         
-        if(parts.length >= 2){
+        if(parts.length >= 2){ 
             fragment = parts[1]
             var f_parts = fragment.split("&")
             if(f_parts.length >= 2){

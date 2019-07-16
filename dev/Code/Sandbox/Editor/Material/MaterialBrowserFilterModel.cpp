@@ -527,7 +527,7 @@ void MaterialBrowserFilterModel::ShowOnlyLevelMaterials(bool levelOnly, bool inv
 
 void MaterialBrowserFilterModel::SearchFilterUpdated()
 {
-    m_subMaterialSearchFilter->SetFilterString(m_searchWidget->GetFilterString());
+    m_subMaterialSearchFilter->SetFilterString(m_searchWidget->textFilter());
     filterUpdatedSlot();
 }
 

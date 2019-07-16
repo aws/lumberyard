@@ -248,7 +248,8 @@
             "Qt5Gui/includes": [
                 "msvc2013_64/include",
                 "msvc2013_64/include/QtGui",
-                "msvc2013_64/include/QtGui/5.6.2"
+                "msvc2013_64/include/QtGui/5.6.2",
+                "msvc2013_64/include/QtGui/5.6.2/QtGui"
             ],
             "Qt5Gui/import_release": [
                 "Qt5Gui.lib"
@@ -1017,7 +1018,8 @@
             "Qt5Gui/includes": [
                 "msvc2015_64/include",
                 "msvc2015_64/include/QtGui",
-                "msvc2015_64/include/QtGui/5.6.2"
+                "msvc2015_64/include/QtGui/5.6.2",
+                "msvc2015_64/include/QtGui/5.6.2/QtGui"
             ],
             "Qt5Gui/import_release": [
                 "Qt5Gui.lib"
@@ -1994,7 +1996,8 @@
             "Qt5Gui/includes": [
                 "gcc_64/include",
                 "gcc_64/include/QtGui",
-                "gcc_64/include/QtGui/5.6.2"
+                "gcc_64/include/QtGui/5.6.2",
+                "gcc_64/include/QtGui/5.6.2/QtGui"
             ],
             "Qt5Gui/shared": [
                 "libQt5Gui.so"

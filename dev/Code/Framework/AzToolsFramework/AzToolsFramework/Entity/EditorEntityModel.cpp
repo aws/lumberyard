@@ -607,6 +607,13 @@ namespace AzToolsFramework
         m_gotInstantiateSliceDetails = true;
     }
 
+    void EditorEntityModel::ClearEntityInstantiationPosition()
+    {
+        m_postInstantiateBeforeEntity.SetInvalid();
+        m_postInstantiateSliceParent.SetInvalid();
+        m_gotInstantiateSliceDetails = false;
+    }
+
     void EditorEntityModel::EntityParentChanged(AZ::EntityId entityId, AZ::EntityId newParentId, AZ::EntityId oldParentId)
     {
         AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
@@ -1629,6 +1636,26 @@ namespace AzToolsFramework
         ModifyParentsOverriddenChildren(m_entityId, lastFlags, m_sliceFlags & SliceFlag_EntityHasOverrides);
     }
 
+    bool EditorEntityModel::EditorEntityModelEntry::IsComponentExpanded(AZ::ComponentId id) const
+    {
+        auto expandedItr = m_componentExpansionStateMap.find(id);
+        return (expandedItr == m_componentExpansionStateMap.end() || expandedItr->second);
+    }
+
+    void EditorEntityModel::EditorEntityModelEntry::SetComponentExpanded(AZ::ComponentId id, bool expanded)
+    {
+        if (expanded)
+        {
+            // We can simply erase the element if it is expanded since not present equates to expanded.
+            // This should keep our data stored to a minimum
+            m_componentExpansionStateMap.erase(id);
+        }
+        else
+        {
+            m_componentExpansionStateMap[id] = expanded;
+        }
+    }
+    
     void EditorEntityModel::EditorEntityModelEntry::ModifyParentsOverriddenChildren(AZ::EntityId childEntityId, AZ::u8 lastFlags, bool childHasOverrides)
     {
         if (((lastFlags & SliceFlag_EntityHasOverrides) == 0) != ((m_sliceFlags & SliceFlag_EntityHasOverrides) == 0))

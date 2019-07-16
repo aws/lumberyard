@@ -64,7 +64,7 @@
 #include "ObjectCreateTool.h"
 #include "TerrainModifyTool.h"
 #include "RotateTool.h"
-#include "ManipulatorShim.h"
+#include "NullEditTool.h"
 #include "VegetationMap.h"
 #include "VegetationTool.h"
 #include "TerrainTexturePainter.h"
@@ -267,9 +267,12 @@ CEditorImpl::CEditorImpl()
     SetMasterCDFolder();
     gSettings.Load();
 
-    // Retrieve this after the settings have been loaded
-    // This will end up being overriden if the CryEntityRemoval gem is present
-    m_isLegacyUIEnabled = gSettings.enableLegacyUI;
+    // retrieve this after the settings have been loaded
+    // this will end up being overridden if the CryEntityRemoval gem is present
+    // if the new viewport interaction model is enabled we must also disable the legacy ui
+    // it is not compatible with any of the legacy system (e.g. CryDesigner)
+    m_isLegacyUIEnabled = gSettings.enableLegacyUI && !gSettings.newViewportInteractionModel;
+    m_isNewViewportInteractionModelEnabled = gSettings.newViewportInteractionModel;
 
     m_pErrorReport = new CErrorReport;
     m_pFileNameResolver = new CMissingAssetResolver;
@@ -444,8 +447,11 @@ void CEditorImpl::LoadPlugins()
     EBUS_EVENT_RESULT(engineRoot, AzToolsFramework::ToolsApplicationRequestBus, GetEngineRootPath);
     if (engineRoot != nullptr)
     {
+        AZStd::string_view binFolderName;
+        AZ::ComponentApplicationBus::BroadcastResult(binFolderName, &AZ::ComponentApplicationRequests::GetBinFolder);
+
         QDir testDir;
-        testDir.setPath(QString("%1/" BINFOLDER_NAME).arg(engineRoot));
+        testDir.setPath(QString("%1/%2").arg(engineRoot, binFolderName.data()));
         if (testDir.exists() && testDir.cd(QString(editor_plugins_folder)))
         {
             editorPluginPathStr = testDir.absolutePath();
@@ -569,9 +575,12 @@ void CEditorImpl::SetMasterCDFolder()
     QString szFolder = qApp->applicationDirPath();
 
     // Remove Bin32/Bin64 folder/
+    AZStd::string_view binFolderName;
+    AZ::ComponentApplicationBus::BroadcastResult(binFolderName, &AZ::ComponentApplicationRequests::GetBinFolder);
+
     szFolder.remove(QRegularExpression(R"((\\|/)Bin32.*)"));
 
-    szFolder.remove(QRegularExpression(QStringLiteral("(\\\\|/)%1.*").arg(QRegularExpression::escape(BINFOLDER_NAME))));
+    szFolder.remove(QRegularExpression(QStringLiteral("(\\\\|/)%1.*").arg(QRegularExpression::escape(binFolderName.data()))));
 
 
     m_masterCDFolder = QDir::toNativeSeparators(szFolder);
@@ -625,7 +634,7 @@ void CEditorImpl::RegisterTools()
     CModellingModeTool::RegisterTool(rc);
     CVertexSnappingModeTool::RegisterTool(rc);
     CRotateTool::RegisterTool(rc);
-    ManipulatorShim::RegisterTool(rc);
+    NullEditTool::RegisterTool(rc);
 }
 
 void CEditorImpl::ExecuteCommand(const char* sCommand, ...)
@@ -1141,6 +1150,11 @@ void CEditorImpl::SetEditTool(const QString& sEditToolName, bool bStopCurrentToo
 
 CEditTool* CEditorImpl::GetEditTool()
 {
+    if (m_isNewViewportInteractionModelEnabled)
+    {
+        return nullptr;
+    }
+    
     return m_pEditTool;
 }
 
@@ -2532,6 +2546,11 @@ bool CEditorImpl::IsLegacyUIEnabled()
 void CEditorImpl::SetLegacyUIEnabled(bool enabled)
 {
     m_isLegacyUIEnabled = enabled;
+}
+
+bool CEditorImpl::IsNewViewportInteractionModelEnabled() const
+{
+    return m_isNewViewportInteractionModelEnabled;
 }
 
 void CEditorImpl::OnStartPlayInEditor()

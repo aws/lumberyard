@@ -244,7 +244,7 @@ namespace UnitTest
     {
     public:
         SliceTest()
-            : AllocatorsFixture(150)
+            : AllocatorsFixture()
         {
         }
 
@@ -286,6 +286,7 @@ namespace UnitTest
         void TearDown() override
         {
             m_catalog->DisableCatalog();
+            m_catalog.reset();
             Data::AssetManager::Destroy();
             delete m_sliceDescriptor;
             delete m_serializeContext;
@@ -721,6 +722,7 @@ namespace UnitTest
         BehaviorContext*  GetBehaviorContext() override { return nullptr; }
         const char* GetExecutableFolder() const override { return nullptr; }
         const char* GetAppRoot() override { return nullptr; }
+        const char* GetBinFolder() const override { return nullptr; }
         Debug::DrillerManager* GetDrillerManager() override { return nullptr; }
         void EnumerateEntities(const EntityCallback& /*callback*/) override {}
         //////////////////////////////////////////////////////////////////////////
@@ -732,7 +734,7 @@ namespace UnitTest
         AZStd::unique_ptr<ComponentDescriptor> m_sliceDescriptor;
 
         SliceTest_RecursionDetection()
-            : AllocatorsFixture(150)
+            : AllocatorsFixture()
         {
         }
 
@@ -949,13 +951,11 @@ namespace UnitTest
     }
 
     class DataFlags_CleanupTest
-        : public AllocatorsFixture
+        : public ScopedAllocatorSetupFixture
     {
     protected:
         void SetUp() override
         {
-            AllocatorsFixture::SetUp();
-
             auto allEntitiesValidFunction = [](EntityId) { return true; };
             m_dataFlags = AZStd::make_unique<SliceComponent::DataFlagsPerEntity>(allEntitiesValidFunction);
             m_addressOfSetFlag.push_back(AZ_CRC("Components"));
@@ -975,8 +975,6 @@ namespace UnitTest
         {
             m_remainingEntity.reset();
             m_dataFlags.reset();
-
-            AllocatorsFixture::TearDown();
         }
 
         AZStd::unique_ptr<SliceComponent::DataFlagsPerEntity> m_dataFlags;

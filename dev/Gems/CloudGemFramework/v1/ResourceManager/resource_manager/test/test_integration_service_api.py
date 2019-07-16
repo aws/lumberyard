@@ -278,8 +278,10 @@ class IntegrationTest_CloudGemFramework_ServiceApi(base_stack_test.BaseStackTest
         body = {'test': 'data'}
         param = 'test'
         result = client.navigate('parent', 'child').POST(body, param = param)
-        self.assertEquals(result, {'body': body, 'param': param})
-
+        expected = {'body': body, 'param': param}
+        for k in expected.keys():  # result is now wrapped in a Data object and contains CloudCanvas_request_id
+            self.assertEquals(expected[k], result.DATA[k])
+        self.assertTrue('CloudCanvas_request_id' in result.DATA)
 
     def __501_call_interface_directly_with_player_credential(self):
         client = self.get_service_client(assumed_role='Player', stack_id=self.get_resource_group_stack_arn(self.TEST_DEPLOYMENT_NAME, self.TEST_RESOURCE_GROUP_NAME))
@@ -318,7 +320,10 @@ class IntegrationTest_CloudGemFramework_ServiceApi(base_stack_test.BaseStackTest
         self.assertEquals(response['StatusCode'], 200)
 
         payload = response['Payload'].read()
-        self.assertEquals(json.loads(payload.decode()), input)
+        decoded_payload = json.loads(payload.decode())
+        self.assertTrue('CloudCanvas_request_id' in decoded_payload)
+        del decoded_payload['CloudCanvas_request_id']
+        self.assertEquals(decoded_payload, input)
 
 
     def __800_run_cpp_tests(self):
@@ -521,7 +526,9 @@ class IntegrationTest_CloudGemFramework_ServiceApi(base_stack_test.BaseStackTest
         try:
             result = client.navigate('test', 'complex', param_type, str(path_param)).POST(body, **params)
             self.assertTrue(expected_status_code, 200)
-            self.assertEquals(expected, result)
+            for k in expected.keys(): # result is now wrapped in a Data object and contains CloudCanvas_request_id
+                self.assertEquals(expected[k], result.DATA[k])
+            self.assertTrue('CloudCanvas_request_id' in result.DATA)
         except cgf_service_client.HttpError as e:
             self.assertTrue(expected_status_code, e.code)
 
@@ -677,7 +684,9 @@ def post(request, pathparam, queryparam, bodyparam):
         try:
             result = client.navigate('test', 'optional', self.__with_defaults_postfix(with_defaults)).POST(body, **params)
             self.assertEquals(expected_status_code, 200)
-            self.assertEquals(expected, result)
+            for k in expected.keys():  # result is now wrapped in a Data object and contains CloudCanvas_request_id
+                self.assertEquals(expected[k], result.DATA[k])
+            self.assertTrue('CloudCanvas_request_id' in result.DATA)
         except cgf_service_client.HttpError as e:
             self.assertEquals(e.code, expected_status_code)
 

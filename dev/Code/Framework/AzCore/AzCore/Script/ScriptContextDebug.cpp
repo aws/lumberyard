@@ -397,28 +397,31 @@ void ScriptContextDebug::EnumRegisteredEBuses(EnumEBus enumEBus, EnumEBusSender 
         {
             AZ::BehaviorEBusHandler* handler = nullptr;
             ebus->m_createHandler->InvokeResult(handler);
-            const auto& notifications = handler->GetEvents();
-            for (const auto& notification : notifications)
+            if (handler)
             {
-                AZStd::string scriptArgs;
-                const size_t paramCount = notification.m_parameters.size();
-                for (size_t i = 0; i < notification.m_parameters.size(); ++i)
+                const auto& notifications = handler->GetEvents();
+                for (const auto& notification : notifications)
                 {
-                    AZStd::string argName = notification.m_parameters[i].m_name;
-                    StripQualifiers(argName);
-                    scriptArgs += argName;
-                    if (i != paramCount - 1)
+                    AZStd::string scriptArgs;
+                    const size_t paramCount = notification.m_parameters.size();
+                    for (size_t i = 0; i < notification.m_parameters.size(); ++i)
                     {
-                        scriptArgs += ", ";
+                        AZStd::string argName = notification.m_parameters[i].m_name;
+                        StripQualifiers(argName);
+                        scriptArgs += argName;
+                        if (i != paramCount - 1)
+                        {
+                            scriptArgs += ", ";
+                        }
                     }
+
+                    AZStd::string funcName = notification.m_name;
+                    StripQualifiers(funcName);
+
+                    enumEBusSender(ebus->m_name, funcName, scriptArgs, "Notification", userData);
                 }
-
-                AZStd::string funcName = notification.m_name;
-                StripQualifiers(funcName);
-
-                enumEBusSender(ebus->m_name, funcName, scriptArgs, "Notification", userData);
+                ebus->m_destroyHandler->Invoke(handler);
             }
-            ebus->m_destroyHandler->Invoke(handler);
         }
     }
 }

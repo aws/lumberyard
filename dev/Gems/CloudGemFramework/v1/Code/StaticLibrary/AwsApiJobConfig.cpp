@@ -12,9 +12,10 @@
 #include "CloudGemFramework_precompiled.h"
 
 #include <CloudGemFramework/AwsApiJobConfig.h>
-#include <CloudGemFramework/CloudGemFrameworkBus.h>
 #include <CloudCanvas/CloudCanvasIdentityBus.h>
 #include <aws/core/client/ClientConfiguration.h>
+
+#include <CloudCanvasCommon/CloudCanvasCommonBus.h>
 
 namespace CloudGemFramework
 {
@@ -32,7 +33,7 @@ namespace CloudGemFramework
 
         if(!m_jobContext)
         {
-            EBUS_EVENT_RESULT(m_jobContext, CloudGemFrameworkRequestBus, GetDefaultJobContext);
+            EBUS_EVENT_RESULT(m_jobContext, CloudCanvasCommon::CloudCanvasCommonRequestBus, GetDefaultJobContext);
         }
 
         if(!credentialsProvider)

@@ -1300,7 +1300,9 @@ struct pe_params_rope
     pe_params_rope()
     {
         type = type_id;
-        MARK_UNUSED length, mass, collDist, surface_idx, friction, nSegments, pPoints.data, pVelocities.data;
+        //START: Per bone UDP for stiffness, damping and thickness for touch bending vegetation
+        MARK_UNUSED length, mass, collDist, surface_idx, friction, nSegments, pPoints.data, pVelocities.data, pDamping, pStiffness, pThickness;
+        //END: Per bone UDP for stiffness, damping and thickness for touch bending vegetation
         MARK_UNUSED pEntTiedTo[0], ptTiedTo[0], idPartTiedTo[0], pEntTiedTo[1], ptTiedTo[1], idPartTiedTo[1], stiffnessAnim, maxForce,
                     flagsCollider, nMaxSubVtx, stiffnessDecayAnim, dampingAnim, bTargetPoseActive, wind, windVariance, airResistance, waterResistance, density, collTypes,
                     jointLimit, jointLimitDecay, sensorRadius, frictionPull, stiffness, collisionBBox[0], penaltyScale, maxIters, attachmentZone, minSegLen, unprojLimit, noCollDist, hingeAxis;
@@ -1349,6 +1351,11 @@ struct pe_params_rope
     int bLocalPtTied;   // ptTiedTo is in tied part's local coordinates
     Vec3 ptTiedTo[2];
     int idPartTiedTo[2];
+    //START: Per bone UDP for stiffness, damping and thickness for touch bending vegetation
+    float* pDamping;
+    float* pStiffness;
+    float* pThickness;
+    //END: Per bone UDP for stiffness, damping and thickness for touch bending vegetation
 };
 
 ////////// soft entity params

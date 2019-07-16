@@ -339,6 +339,7 @@ private: // member functions
 
     // Code shared by all positional input events
     bool HandlePrimaryPress(AZ::Vector2 point);
+    bool HandlePrimaryUpdate(AZ::Vector2 point);
     bool HandlePrimaryRelease(AZ::Vector2 point);
     bool HandleMultiTouchPress(AZ::Vector2 point, int multiTouchIndex);
     bool HandleMultiTouchRelease(AZ::Vector2 point, int multiTouchIndex);

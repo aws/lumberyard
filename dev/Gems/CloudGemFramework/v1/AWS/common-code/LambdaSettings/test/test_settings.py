@@ -44,16 +44,6 @@ class UnitTest_CloudGemFramework_LambdaSettings(unittest.TestCase):
         self.assertEquals(cgf_lambda_settings.get_setting('Test'), 'Settings')
         self.assertEquals(CloudCanvas.get_setting('Test'), 'Settings')
 
-
-    @mock.patch('os.path.isfile', return_value = False)
-    def test_load_settings_raises_if_no_settings_file(self, mock_isfile):
-        import cgf_lambda_settings
-        expected_path = os.path.abspath(os.path.join(__file__, '..', '..', 'cgf_lambda_settings', 'settings.json'))
-        with self.assertRaisesRegexp(RuntimeError, 'settings.json'):
-            cgf_lambda_settings._LambdaSettingsModule__load_settings()
-        mock_isfile.assert_called_once_with(expected_path)
-
-
     @mock.patch('os.path.isfile', return_value = True)
     @mock.patch('json.load', return_value = { 'Test': 'Setting' })
     def test_load_settings_loads_settings_file(self, mock_json_load, mock_isfile):

@@ -30,7 +30,7 @@ namespace UnitTest
 {
     template<typename Set>
     class ConcurrentUnorderedSetTestBase
-        : public AllocatorsFixture
+        : public ScopedAllocatorSetupFixture
     {
     public:
         void run()
@@ -164,15 +164,14 @@ namespace UnitTest
         run();
     }
 
-    //TODO: these are disabled until we have a thread-safe static pool allocator to use
-    /*TEST_F(ConcurrentFixedUnorderedSetTest, Test)
+    TEST_F(ConcurrentFixedUnorderedSetTest, Test)
     {
         run();
-    }*/
+    }
 
     template<typename Set>
     class ConcurrentUnorderedMultiSetTestBase
-        : public AllocatorsFixture
+        : public ScopedAllocatorSetupFixture
     {
     public:
         void run()
@@ -312,15 +311,14 @@ namespace UnitTest
         run();
     }
 
-    //TODO: these are disabled until we have a thread-safe static pool allocator to use
-    /*TEST_F(ConcurrentFixedUnorderedMultiSetTest, Test)
+    TEST_F(ConcurrentFixedUnorderedMultiSetTest, Test)
     {
         run();
-    }*/
+    }
 
     template<typename Map>
     class ConcurrentUnorderedMapTestBase
-        : public AllocatorsFixture
+        : public ScopedAllocatorSetupFixture
     {
     public:
         void run()
@@ -462,15 +460,14 @@ namespace UnitTest
         run();
     }
 
-    //TODO: these are disabled until we have a thread-safe static pool allocator to use
-    /*TEST_F(ConcurrentFixedUnorderedMapTest, Test)
+    TEST_F(ConcurrentFixedUnorderedMapTest, Test)
     {
         run();
-    }*/
+    }
 
     template<typename Map>
     class ConcurrentUnorderedMultiMapTestBase
-        : public AllocatorsFixture
+        : public ScopedAllocatorSetupFixture
     {
     public:
         void run()
@@ -618,32 +615,16 @@ namespace UnitTest
     {
         run();
     }
-    //TODO: these are disabled until we have a thread-safe static pool allocator to use
-    /*TEST_F(ConcurrentFixedUnorderedMultiMapTest, Test)
+    
+    TEST_F(ConcurrentFixedUnorderedMultiMapTest, Test)
     {
         run();
-    }*/
+    }
 
     class ConcurrentVectorTest
-        : public AllocatorsFixture
+        : public ScopedAllocatorSetupFixture
     {
     public:
-        ConcurrentVectorTest()
-            : AllocatorsFixture(50)
-        {}
-
-        void SetUp() override
-        {
-            AllocatorsFixture::SetUp();
-            m_vector.reset(new concurrent_vector<int>());
-        }
-
-        void TearDown() override
-        {
-            m_vector.reset();
-            AllocatorsFixture::TearDown();
-        }
-
         void run()
         {
             //
@@ -685,15 +666,15 @@ namespace UnitTest
                 thread3.join();
 
                 //verify vector contains the right values in the expected order
-                AZ_TEST_ASSERT(m_vector->size() == 4 * NUM_ITERATIONS);
+                AZ_TEST_ASSERT(m_vector.size() == 4 * NUM_ITERATIONS);
                 int nextValue[4];
                 for (int i = 0; i < 4; ++i)
                 {
                     nextValue[i] = i * NUM_ITERATIONS;
                 }
-                for (unsigned int vecIndex = 0; vecIndex < m_vector->size(); ++vecIndex)
+                for (unsigned int vecIndex = 0; vecIndex < m_vector.size(); ++vecIndex)
                 {
-                    int value = (*m_vector)[vecIndex];
+                    int value = m_vector[vecIndex];
 
                     bool isFound = false;
                     for (int i = 0; i < 4; ++i)
@@ -721,11 +702,11 @@ namespace UnitTest
         {
             for (int i = 0; i < NUM_ITERATIONS; ++i)
             {
-                m_vector->push_back(threadIndex * NUM_ITERATIONS + i);
+                m_vector.push_back(threadIndex * NUM_ITERATIONS + i);
             }
         }
 
-        AZStd::unique_ptr<concurrent_vector<int>> m_vector;
+        concurrent_vector<int> m_vector;
     };
 
     TEST_F(ConcurrentVectorTest, Test)

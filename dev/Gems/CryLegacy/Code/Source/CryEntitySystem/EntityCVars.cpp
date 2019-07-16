@@ -268,7 +268,7 @@ void CVar::Init(struct IConsole* pConsole)
         "Timeout for faraway physics forceful deactivation");
 
     pMotionBlur = gEnv->pConsole->GetCVar("r_MotionBlur");
-    pSysSpecLight = gEnv->pConsole->GetCVar("sys_spec_light");
+    pSysSpecLight = gEnv->pConsole->GetCVar("e_LightQuality");
     if (pSysSpecLight && gEnv->IsEditor())
     {
         pSysSpecLight->SetOnChangeCallback(OnSysSpecLightChange);

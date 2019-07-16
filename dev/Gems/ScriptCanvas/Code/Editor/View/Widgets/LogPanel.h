@@ -78,9 +78,6 @@ namespace ScriptCanvasEditor
             LogTab(QWidget* pParent, const AZ::EntityId& runtimeGraphId, const AzToolsFramework::LogPanel::TabSettings& in_settings);
             ~LogTab() override;
 
-            void OnNodeInputChanged(const AZStd::string& sourceNodeName, const AZStd::string& objectName, const AZStd::string& slotName) override;
-            void OnNodeSignalOutput(const AZStd::string& sourceNodeName, const AZStd::string& targetNodeName, const AZStd::string& slotName) override;
-            void OnNodeSignalInput(const AZ::Uuid& nodeId, const AZStd::string& name, const AZStd::string& slotName) override;
             void LogMessage(const AZStd::string& message) override;
 
         private:

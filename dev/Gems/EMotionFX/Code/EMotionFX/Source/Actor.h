@@ -18,6 +18,7 @@
 #include <AzCore/std/smart_ptr/shared_ptr.h>
 #include <AzCore/std/string/string.h>
 #include <AzCore/Math/Vector3.h>
+#include <AzCore/Math/Color.h>
 
 // include MCore related files
 #include <MCore/Source/Vector.h>
@@ -781,8 +782,6 @@ namespace EMotionFX
          * adjust the skinning influences so that the vertices of the fingers are linked to the hand bone instead.
          */
         void MakeGeomLODsCompatibleWithSkeletalLODs();
-
-        void RenderSkeleton(const Transform* worldSpaceTransforms, uint32 color);
 
         void ReinitializeMeshDeformers();
         void PostCreateInit(bool makeGeomLodsCompatibleWithSkeletalLODs = true, bool generateOBBs = true, bool convertUnitType = true);

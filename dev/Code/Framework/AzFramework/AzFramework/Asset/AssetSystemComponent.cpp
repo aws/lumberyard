@@ -165,6 +165,7 @@ namespace AzFramework
             RegisterSourceAssetRequest::Reflect(context);
             UnregisterSourceAssetRequest::Reflect(context);
             ShowAssetProcessorRequest::Reflect(context);
+            ShowAssetInAssetProcessorRequest::Reflect(context);
             FileOpenRequest::Reflect(context);
             FileCloseRequest::Reflect(context);
             FileReadRequest::Reflect(context);

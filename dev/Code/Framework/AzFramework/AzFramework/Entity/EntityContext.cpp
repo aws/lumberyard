@@ -172,46 +172,43 @@ namespace AzFramework
     //=========================================================================
     void EntityContext::ResetContext()
     {
-        if (m_rootAsset)
+        if (!m_rootAsset)
         {
-            PrepareForContextReset();
-            while (!m_queuedSliceInstantiations.empty())
-            {
-                // clear out the remaining instantiations in a conservative manner, assuming that callbacks such as OnSliceInstantiationFailed
-                // will call back into us and potentially mutate this list.
-                const InstantiatingSliceInfo& instantiating = m_queuedSliceInstantiations.back(); 
-
-                // 'instantiating' is deleted during this loop, so capture the asset Id and Ticket before we continue and destroy it.
-                AZ::Data::AssetId idToNotify = instantiating.m_asset.GetId();
-                AzFramework::SliceInstantiationTicket ticket = instantiating.m_ticket;
-
-                // this will decrement the refcount of the asset, which could mean its invalid by the next line.
-                // the above line also ensures that our list no longer contains this particular instantiation.
-                // its important to do that, before calling any callbacks, because some listeners on the following functions
-                // may call additional functions on this context, and we could get into a situation
-                // where we end up iterating over this list again (before returning from the below bus calls).
-                m_queuedSliceInstantiations.pop_back(); 
-
-                AZ::Data::AssetBus::MultiHandler::BusDisconnect(idToNotify);
-                EntityContextEventBus::Event(m_eventBusPtr, &EntityContextEventBus::Events::OnSliceInstantiationFailed, idToNotify);
-                DispatchOnSliceInstantiationFailed(ticket, idToNotify, true);
-            }
-
-            EntityIdList entityIds = GetRootSliceEntityIds();
-
-            for (AZ::EntityId entityId : entityIds)
-            {
-                DestroyEntityById(entityId);
-            }
-
-            // Re-create fresh root slice asset.
-            CreateRootSlice();
-
-            OnContextReset();
-
-            // Notify listeners.
-            EntityContextEventBus::Event(m_contextId, &EntityContextEventBus::Events::OnEntityContextReset);
+            return;
         }
+
+        PrepareForContextReset();
+        while (!m_queuedSliceInstantiations.empty())
+        {
+            // clear out the remaining instantiations in a conservative manner, assuming that callbacks such as OnSliceInstantiationFailed
+            // will call back into us and potentially mutate this list.
+            const InstantiatingSliceInfo& instantiating = m_queuedSliceInstantiations.back();
+
+            // 'instantiating' is deleted during this loop, so capture the asset Id and Ticket before we continue and destroy it.
+            AZ::Data::AssetId idToNotify = instantiating.m_asset.GetId();
+            AzFramework::SliceInstantiationTicket ticket = instantiating.m_ticket;
+
+            // this will decrement the refcount of the asset, which could mean its invalid by the next line.
+            // the above line also ensures that our list no longer contains this particular instantiation.
+            // its important to do that, before calling any callbacks, because some listeners on the following functions
+            // may call additional functions on this context, and we could get into a situation
+            // where we end up iterating over this list again (before returning from the below bus calls).
+            m_queuedSliceInstantiations.pop_back();
+
+            AZ::Data::AssetBus::MultiHandler::BusDisconnect(idToNotify);
+            EntityContextEventBus::Event(m_eventBusPtr, &EntityContextEventBus::Events::OnSliceInstantiationFailed, idToNotify);
+            DispatchOnSliceInstantiationFailed(ticket, idToNotify, true);
+        }
+
+        DestroyRootSliceEntities();
+
+        // Re-create fresh root slice asset.
+        CreateRootSlice();
+
+        OnContextReset();
+
+        // Notify listeners.
+        EntityContextEventBus::Event(m_contextId, &EntityContextEventBus::Events::OnEntityContextReset);
     }
 
     //=========================================================================
@@ -220,6 +217,18 @@ namespace AzFramework
     const AZ::SliceComponent::EntityIdToEntityIdMap& EntityContext::GetLoadedEntityIdMap()
     {
         return m_loadedEntityIdMap;
+    }
+
+    AZ::EntityId EntityContext::FindLoadedEntityIdMapping(const AZ::EntityId& staticId) const
+    {
+        auto idIter = m_loadedEntityIdMap.find(staticId);
+
+        if (idIter == m_loadedEntityIdMap.end())
+        {
+            return AZ::EntityId();
+        }
+
+        return idIter->second;
     }
 
     //=========================================================================
@@ -393,11 +402,10 @@ namespace AzFramework
 
         AZ::SliceAsset* rootSlice = m_rootAsset.Get();
 
-        EntityContextId owningContextId = EntityContextId::CreateNull();
-        EntityIdContextQueryBus::EventResult(owningContextId, entity->GetId(), &EntityIdContextQueryBus::Events::GetOwningContextId);
-        AZ_Assert(owningContextId == m_contextId, "Entity does not belong to this context, and therefore can not be safely destroyed by this context.");
+        bool isOwnedByThisContext = IsOwnedByThisContext(entity->GetId());
+        AZ_Assert(isOwnedByThisContext, "Entity does not belong to this context, and therefore can not be safely destroyed by this context.");
 
-        if (owningContextId == m_contextId)
+        if (isOwnedByThisContext)
         {
             HandleEntityRemoved(entity->GetId());
 
@@ -422,6 +430,26 @@ namespace AzFramework
         }
 
         return false;
+    }
+
+    //=========================================================================
+    // DestroyRootSliceEntities
+    //=========================================================================
+    void EntityContext::DestroyRootSliceEntities()
+    {
+        AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzFramework);
+
+        AZ_Assert(m_rootAsset, "The context has not been initialized.");
+        EntityIdList entityIds = GetRootSliceEntityIds();
+
+        for (auto entityId : entityIds)
+        {
+            AZ_Assert(IsOwnedByThisContext(entityId), "Entity does not belong to this context, and therefore can not be safely destroyed by this context.");
+            HandleEntityRemoved(entityId);
+        }
+
+        AZ::SliceAsset* rootSlice = m_rootAsset.Get();
+        rootSlice->GetComponent()->RemoveAllEntities();
     }
 
     //=========================================================================

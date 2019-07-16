@@ -23,3 +23,4 @@ AssetProcessor_tmp.exe
 Builders_Temp
 Bin64vc*
 $tmp*
+_WAF_/_cache_

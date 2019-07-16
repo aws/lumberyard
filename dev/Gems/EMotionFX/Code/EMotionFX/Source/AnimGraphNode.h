@@ -26,6 +26,7 @@
 
 #include <AzCore/std/functional.h>
 #include <AzCore/Math/PackedVector3.h>
+#include <AzCore/Math/Color.h>
 
 namespace EMotionFX
 {
@@ -168,8 +169,8 @@ namespace EMotionFX
         virtual bool GetCanBeInsideStateMachineOnly() const     { return false; }
         virtual bool GetCanBeInsideChildStateMachineOnly() const{ return false; }
         virtual bool GetNeedsNetTimeSync() const                { return false; }
-        virtual uint32 GetVisualColor() const                   { return MCore::RGBA(72, 63, 238); }
-        virtual uint32 GetHasChildIndicatorColor() const        { return MCore::RGBA(255, 255, 0); }
+        virtual AZ::Color GetVisualColor() const                { return AZ::Color(0.28f, 0.24f, 0.93, 1.0f); }
+        virtual AZ::Color GetHasChildIndicatorColor() const     { return AZ::Color(1.0f, 1.0f, 0, 1.0f); }
 
         void InitInternalAttributes(AnimGraphInstance* animGraphInstance) override;
         void RemoveInternalAttributesForAllInstances() override;
@@ -250,7 +251,7 @@ namespace EMotionFX
          */
         void CollectChildNodesOfType(const AZ::TypeId& nodeType, AZStd::vector<AnimGraphNode*>& outNodes) const;
 
-        void RecursiveCollectNodesOfType(const AZ::TypeId& nodeType, MCore::Array<AnimGraphNode*>* outNodes) const; // note: outNodes is NOT cleared internally, nodes are added to the array
+        void RecursiveCollectNodesOfType(const AZ::TypeId& nodeType, AZStd::vector<AnimGraphNode*>* outNodes) const; // note: outNodes is NOT cleared internally, nodes are added to the array
         void RecursiveCollectTransitionConditionsOfType(const AZ::TypeId& conditionType, MCore::Array<AnimGraphTransitionCondition*>* outConditions) const; // note: outNodes is NOT cleared internally, nodes are added to the array
 
         virtual void RecursiveCollectObjectsOfType(const AZ::TypeId& objectType, AZStd::vector<AnimGraphObject*>& outObjects) const;
@@ -307,6 +308,8 @@ namespace EMotionFX
         void RemoveConnection(AnimGraphNode* sourceNode, uint16 sourcePort, uint16 targetPort);
         bool RemoveConnectionById(AnimGraphConnectionId connectionId, bool delFromMem = true);
         void RemoveAllConnections();
+
+        static bool VersionConverter(AZ::SerializeContext& context, AZ::SerializeContext::DataElementNode& classElement);
 
         TriggerActionSetup& GetTriggerActionSetup() { return m_actionSetup; }
         const TriggerActionSetup& GetTriggerActionSetup() const { return m_actionSetup; }
@@ -730,6 +733,7 @@ namespace EMotionFX
         }
 
         void SetupInputPortAsNumber(const char* name, uint32 inputPortNr, uint32 portID);
+        void SetupInputPortAsBool(const char* name, uint32 inputPortNr, uint32 portID);
         void SetupInputPort(const char* name, uint32 inputPortNr, uint32 attributeTypeID, uint32 portID);
 
         void SetupInputPortAsVector3(const char* name, uint32 inputPortNr, uint32 portID);
@@ -874,8 +878,8 @@ namespace EMotionFX
         void SetIsEnabled(bool enabled);
         bool GetIsCollapsed() const;
         void SetIsCollapsed(bool collapsed);
-        void SetVisualizeColor(uint32 color);
-        uint32 GetVisualizeColor() const;
+        void SetVisualizeColor(const AZ::Color& color);
+        const AZ::Color& GetVisualizeColor() const;
         void SetVisualPos(int32 x, int32 y);
         int32 GetVisualPosX() const;
         int32 GetVisualPosY() const;
@@ -913,25 +917,23 @@ namespace EMotionFX
         static void Reflect(AZ::ReflectContext* context);
 
     protected:
-        AZStd::string                               m_name;
-        AZ::u64                                     m_id;
         uint32                                      mNodeIndex;
-        AnimGraphNode*                              mParentNode;
+        AZ::u64                                     m_id;
         AZStd::vector<BlendTreeConnection*>         mConnections;
         AZStd::vector<Port>                         mInputPorts;
         AZStd::vector<Port>                         mOutputPorts;
         AZStd::vector<AnimGraphNode*>               mChildNodes;
-        AZStd::string                               mNodeInfo;
+        TriggerActionSetup                          m_actionSetup;
+        AnimGraphNode*                              mParentNode;
         void*                                       mCustomData;
+        AZ::Color                                   mVisualizeColor;
+        AZStd::string                               m_name;
+        AZStd::string                               mNodeInfo;
         int32                                       mPosX;
         int32                                       mPosY;
-        uint32                                      mVisualizeColor;
+        bool                                        mDisabled;
         bool                                        mVisEnabled;
         bool                                        mIsCollapsed;
-        bool                                        mDisabled;
-
-        TriggerActionSetup                          m_actionSetup;
-
 
         virtual void Output(AnimGraphInstance* animGraphInstance);
         virtual void TopDownUpdate(AnimGraphInstance* animGraphInstance, float timePassedInSeconds);

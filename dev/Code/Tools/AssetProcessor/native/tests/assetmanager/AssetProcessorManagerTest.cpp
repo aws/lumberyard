@@ -1222,7 +1222,6 @@ TEST_F(AssetProcessorManagerTest, AssessDeletedFile_OnJobInFlight_IsIgnored)
     // we should have gotten at least one request to actually process that job:
     ASSERT_STREQ(capturedDetails.m_jobEntry.GetAbsoluteSourcePath().toUtf8().constData(), absPath.toUtf8().constData());
     ASSERT_FALSE(capturedDetails.m_autoFail);
-    ASSERT_FALSE(capturedDetails.m_autoSucceed);
     ASSERT_FALSE(capturedDetails.m_destinationPath.isEmpty());
     // ----------------------------- TEST BEGINS HERE -----------------------------
     // simulte a very slow computer processing the file one output at a time and feeding file change notifies:

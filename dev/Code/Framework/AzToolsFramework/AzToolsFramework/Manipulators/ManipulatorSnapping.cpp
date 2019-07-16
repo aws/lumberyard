@@ -18,52 +18,18 @@
 
 namespace AzToolsFramework
 {
-    /**
-     * For a distance, return the offset to closest edge from center
-     * of size. Mod distance with size, if result is > half size, snap
-     * forward, otherwise closer to beginning, snap back.
-     */
-    static float CalculateClosestSnapOffset(const float distance, float size)
-    {
-        // reduce floating point precision error by rounding to 3 most significant digits
-        // (this reduces snapping errors when snapping at large values)
-        size = Round3(size);
-
-        // mod distance with size to see how far
-        // along size increment distance lies.
-        float range;
-        if (distance < 0.0f)
-        {
-            // special handling for negative case
-            range = size - fmodf(fabsf(distance), size);
-        }
-        else
-        {
-            range = fmodf(distance, size);
-        }
-
-        // see if range is closer to beginning or end of step size
-        const float center = size * 0.5f;
-        if (range < center)
-        {
-            // distance to snap back
-            return -range;
-        }
-
-        // distance to snap forward
-        return size - range;
-    }
-
     AZ::Vector3 CalculateSnappedOffset(
         const AZ::Vector3& unsnappedPosition, const AZ::Vector3& axis, const float size)
     {
         // calculate total distance along axis
         const float axisDistance = axis.Dot(unsnappedPosition);
+        // round to nearest step size
+        const float snappedAxisDistance = floorf((axisDistance / size) + 0.5f) * size;
         // return offset along axis to snap to step size
-        return axis * CalculateClosestSnapOffset(axisDistance, size);
+        return axis * (snappedAxisDistance - axisDistance);
     }
 
-    AZ::Vector3 CalculateSnappedSurfacePosition(
+    AZ::Vector3 CalculateSnappedTerrainPosition(
         const AZ::Vector3& worldSurfacePosition, const AZ::Transform& worldFromLocal,
         const int viewportId, const float gridSize)
     {
@@ -77,9 +43,9 @@ namespace AzToolsFramework
 
         // find terrain height at xy snapped location
         float terrainHeight = 0.0f;
-        ViewportInteractionRequestBus::EventResult(
+        ViewportInteraction::MainEditorViewportInteractionRequestBus::EventResult(
             terrainHeight, viewportId,
-            &ViewportInteractionRequestBus::Events::TerrainHeight,
+            &ViewportInteraction::MainEditorViewportInteractionRequestBus::Events::TerrainHeight,
             Vector3ToVector2(worldFromLocal * localSnappedSurfacePosition));
 
         // set snapped z value to terrain height
@@ -92,36 +58,36 @@ namespace AzToolsFramework
     bool GridSnapping(const int viewportId)
     {
         bool snapping = false;
-        ViewportInteractionRequestBus::EventResult(
+        ViewportInteraction::ViewportInteractionRequestBus::EventResult(
             snapping, viewportId,
-            &ViewportInteractionRequestBus::Events::GridSnappingEnabled);
+            &ViewportInteraction::ViewportInteractionRequestBus::Events::GridSnappingEnabled);
         return snapping;
     }
 
     float GridSize(const int viewportId)
     {
         float gridSize = 0.0f;
-        ViewportInteractionRequestBus::EventResult(
+        ViewportInteraction::ViewportInteractionRequestBus::EventResult(
             gridSize, viewportId,
-            &ViewportInteractionRequestBus::Events::GridSize);
+            &ViewportInteraction::ViewportInteractionRequestBus::Events::GridSize);
         return gridSize;
     }
 
     bool AngleSnapping(const int viewportId)
     {
         bool snapping = false;
-        ViewportInteractionRequestBus::EventResult(
+        ViewportInteraction::ViewportInteractionRequestBus::EventResult(
             snapping, viewportId,
-            &ViewportInteractionRequestBus::Events::AngleSnappingEnabled);
+            &ViewportInteraction::ViewportInteractionRequestBus::Events::AngleSnappingEnabled);
         return snapping;
     }
 
     float AngleStep(const int viewportId)
     {
         float angle = 0.0f;
-        ViewportInteractionRequestBus::EventResult(
+        ViewportInteraction::ViewportInteractionRequestBus::EventResult(
             angle, viewportId,
-            &ViewportInteractionRequestBus::Events::AngleStep);
+            &ViewportInteraction::ViewportInteractionRequestBus::Events::AngleStep);
         return angle;
     }
 }

@@ -130,6 +130,18 @@
 @end // MetalViewController Implementation
 
 ////////////////////////////////////////////////////////////////////////////////
+bool UIDeviceIsTablet()
+{
+#if defined(AZ_PLATFORM_APPLE_IOS)
+    if([UIDevice currentDevice].userInterfaceIdiom == UIUserInterfaceIdiomPad)
+    {
+        return true;
+    }
+#endif
+    return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 bool UIKitGetPrimaryPhysicalDisplayDimensions(int& o_widthPixels, int& o_heightPixels)
 {
 

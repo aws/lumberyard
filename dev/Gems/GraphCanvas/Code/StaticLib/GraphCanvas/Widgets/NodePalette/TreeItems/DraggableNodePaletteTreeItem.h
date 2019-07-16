@@ -24,7 +24,7 @@ namespace GraphCanvas
         AZ_CLASS_ALLOCATOR(DraggableNodePaletteTreeItem, AZ::SystemAllocator, 0);
         AZ_RTTI(DraggableNodePaletteTreeItem, "{40D29F3E-17F5-42B5-B771-FFAD7DB3CB96}", IconDecoratedNodePaletteTreeItem);
 
-        DraggableNodePaletteTreeItem(const QString& name, EditorId editorId);
+        DraggableNodePaletteTreeItem(AZStd::string_view name, EditorId editorId);
         ~DraggableNodePaletteTreeItem() override = default;
             
     protected:

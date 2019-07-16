@@ -31,7 +31,7 @@ namespace GraphCanvas
         {
         }
         
-        bool CanConnectWith(const AZ::EntityId& slotId, Connectability& connectability) const override
+        bool CanConnectWith(const Endpoint& endpoint) const override
         {
             AZ::EntityId sceneId;
             SceneMemberRequestBus::EventResult(sceneId, GetEntityId(), &SceneMemberRequests::GetScene);            
@@ -46,23 +46,21 @@ namespace GraphCanvas
             // Since this runs on the target of the connections.
             // We need to look at this from the perspective of the thing asking us for the connection.
             ConnectionType connectionType = CT_None;
-            SlotRequestBus::EventResult(connectionType, slotId, &SlotRequests::GetConnectionType);
+            SlotRequestBus::EventResult(connectionType, endpoint.GetSlotId(), &SlotRequests::GetConnectionType);
 
             if (connectionType == CT_Input)
             {
                 sourceEndpoint.m_slotId = GetEntityId();
                 SlotRequestBus::EventResult(sourceEndpoint.m_nodeId, GetEntityId(), &SlotRequests::GetNode);
                 
-                targetEndpoint.m_slotId = slotId;
-                SlotRequestBus::EventResult(targetEndpoint.m_nodeId, slotId, &SlotRequests::GetNode);
+                targetEndpoint = endpoint;
             }
             else if (connectionType == CT_Output)
             {
+                sourceEndpoint = endpoint;
+
                 targetEndpoint.m_slotId = GetEntityId();
                 SlotRequestBus::EventResult(targetEndpoint.m_nodeId, GetEntityId(), &SlotRequests::GetNode);
-
-                sourceEndpoint.m_slotId = slotId;
-                SlotRequestBus::EventResult(sourceEndpoint.m_nodeId, slotId, &SlotRequests::GetNode);
             }
             else
             {
@@ -103,24 +101,23 @@ namespace GraphCanvas
                 {
                     acceptConnection = true;
                 }
-
-                if (acceptConnection)
+            }
+            else if (sourceType == DataSlotType::Container)
+            {
+                if (targetType == DataSlotType::Container)
                 {
-                    GraphModelRequestBus::EventResult(acceptConnection, sceneId, &GraphModelRequests::IsValidConnection, sourceEndpoint, targetEndpoint);
+                    acceptConnection = true;
                 }
+
+                // A target type of value may represent a context sensitive slot that will mutate according to the container
+                if (targetType == DataSlotType::Value)
+                {
+                    acceptConnection = true;
+                }
+
             }
 
-            if (!acceptConnection)
-            {
-                connectability.status = Connectability::NotConnectable;
-                connectability.details = AZStd::string::format("Invalid Data Connection for Slot %s.", slotId.ToString().c_str());
-            }
-            else
-            {
-                connectability.status = Connectability::Connectable;
-            }
-
-            return acceptConnection;
+            return acceptConnection; // HACK, not to submit
         }
     };
 }

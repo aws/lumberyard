@@ -1,0 +1,86 @@
+{
+    "platform"      : "ios",
+    "display_name"  : "iOS",
+    "hosts"         : "darwin",
+    "aliases"       : "clang",
+    "has_server"    : false,
+    "is_monolithic" : true,
+    "enabled"       : true,
+    "needs_java"    : false,
+
+    "modules": [
+        "platforms/compile_settings_cryengine",
+        "platforms/compile_settings_clang",
+        "platforms/platform_settings_ios"
+    ],
+
+    "includes": [
+        "common.json",
+        "common.clang.json"
+    ],
+
+    "attributes"    : {
+        "is_apple"               : true,
+        "link_aws_sdk_statically":  true,
+        "default_folder_name"    : "BinIos",
+        "lib_prefix"             : "lib",
+        "default_launcher_name"  : "IOSLauncher"
+    },
+
+    "settings": {
+        "iOS Options" :
+        [
+            {
+                "long_form"         : "--ios-paks",
+                "attribute"         : "ios_paks",
+                "default_value"     : "False",
+                "description"       : "Forces paks to be built in non-release builds"
+            }
+        ],
+        "iOS Project Generator" :
+        [
+            {
+                "long_form"         : "--generate-ios-projects-automatically",
+                "attribute"         : "generate_ios_projects_automatically",
+                "default_value"     : "True",
+                "description"       : "Automatically generate iOS Projects"
+            },
+            {
+                "long_form"         : "--ios-project-name",
+                "attribute"         : "ios_project_name",
+                "default_value"     : "LumberyardiOSSDK",
+                "description"       : "Name of the generated project"
+            },
+            {
+                "long_form"         : "--ios-project-folder",
+                "attribute"         : "ios_project_folder",
+                "default_value"     : "Solutions",
+                "description"       : "Name of the folder in which the generated ios projects should be stored"
+            }
+        ]
+    },
+    "env": {
+        "DEFINES": [
+            "APPLE",
+            "IOS",
+            "MOBILE",
+            "APPLE_BUNDLE"
+        ],
+        "FRAMEWORK": [
+            "Foundation",
+            "UIKit",
+            "QuartzCore",
+            "GameController",
+            "CoreMotion"
+        ],
+        "CFLAGS,CXXFLAGS": [
+            "-Wno-shorten-64-to-32"
+        ],
+        "LINKFLAGS": [
+            "-Wl,-dead_strip"
+        ],
+        "LIB": [
+            "pthread"
+        ]
+    }
+}

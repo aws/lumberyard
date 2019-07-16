@@ -9,8 +9,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>417</width>
-    <height>188</height>
+    <width>610</width>
+    <height>230</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -19,29 +19,44 @@
   <property name="modal">
    <bool>true</bool>
   </property>
-  <layout class="QGridLayout" name="gridLayout">
+  <layout class="QGridLayout" name="gridLayout" columnminimumwidth="0,0,0,80">
+   <property name="leftMargin">
+    <number>40</number>
+   </property>
+   <property name="topMargin">
+    <number>10</number>
+   </property>
+   <property name="rightMargin">
+    <number>40</number>
+   </property>
+   <property name="bottomMargin">
+    <number>10</number>
+   </property>
    <item row="0" column="0">
     <widget class="QLabel" name="nameLabel">
      <property name="text">
-      <string>New Tab Name:</string>
+      <string>Filter name</string>
      </property>
     </widget>
    </item>
-   <item row="0" column="2">
+   <item row="0" column="1" colspan="2">
     <widget class="QLineEdit" name="tabNameEdit">
      <property name="toolTip">
       <string>Required!</string>
      </property>
-    </widget>
-   </item>
-   <item row="1" column="0">
-    <widget class="QLabel" name="typeLabel_2">
-     <property name="text">
-      <string>Category Filter (Optional)</string>
+     <property name="placeholderText">
+      <string>Hint text</string>
      </property>
     </widget>
    </item>
-   <item row="1" column="2">
+   <item row="1" column="0">
+    <widget class="QLabel" name="windowNameBoxLabel">
+     <property name="text">
+      <string>Category filter (optional)</string>
+     </property>
+    </widget>
+   </item>
+   <item row="1" column="1" colspan="2">
     <widget class="QComboBox" name="windowNameBox">
      <property name="toolTip">
       <string>Comma-Seperated List&lt;br&gt;Leave empty for all messages</string>
@@ -51,50 +66,51 @@
      </property>
     </widget>
    </item>
-   <item row="2" column="0" colspan="2">
+   <item row="2" column="0">
     <widget class="QLabel" name="filterLabel">
      <property name="text">
-      <string>Text filter (Optional)</string>
+      <string>Text filter (optional)</string>
      </property>
     </widget>
    </item>
-   <item row="2" column="2">
-    <widget class="QLineEdit" name="filterEdit"/>
+   <item row="2" column="1" colspan="2">
+    <widget class="QLineEdit" name="filterEdit">
+     <property name="placeholderText">
+      <string>Hint text</string>
+     </property>
+    </widget>
    </item>
    <item row="3" column="0">
+    <widget class="QLabel" name="moreOptionsLabel">
+     <property name="text">
+      <string>More options</string>
+     </property>
+    </widget>
+   </item>
+   <item row="3" column="1" colspan="2">
     <widget class="QCheckBox" name="checkNormal">
      <property name="text">
-      <string>Show Messages</string>
+      <string>Show messages</string>
      </property>
      <property name="checked">
       <bool>true</bool>
      </property>
     </widget>
    </item>
-   <item row="4" column="0">
+   <item row="4" column="1" colspan="2">
     <widget class="QCheckBox" name="checkWarning">
      <property name="text">
-      <string>Show Warnings</string>
+      <string>Show warnings</string>
      </property>
      <property name="checked">
       <bool>true</bool>
      </property>
     </widget>
    </item>
-   <item row="5" column="0">
+   <item row="5" column="1" colspan="2">
     <widget class="QCheckBox" name="checkError">
      <property name="text">
-      <string>Show Errors</string>
-     </property>
-     <property name="checked">
-      <bool>true</bool>
-     </property>
-    </widget>
-   </item>
-   <item row="6" column="0">
-    <widget class="QCheckBox" name="checkDebug">
-     <property name="text">
-      <string>Show Debug</string>
+      <string>Show errors</string>
      </property>
      <property name="checked">
       <bool>true</bool>
@@ -102,12 +118,22 @@
     </widget>
    </item>
    <item row="6" column="1" colspan="2">
+    <widget class="QCheckBox" name="checkDebug">
+     <property name="text">
+      <string>Show debug</string>
+     </property>
+     <property name="checked">
+      <bool>true</bool>
+     </property>
+    </widget>
+   </item>
+   <item row="7" column="2" colspan="2">
     <widget class="QDialogButtonBox" name="buttonBox">
      <property name="orientation">
       <enum>Qt::Horizontal</enum>
      </property>
      <property name="standardButtons">
-      <set>QDialogButtonBox::Cancel|QDialogButtonBox::Ok</set>
+      <set>QDialogButtonBox::Ok|QDialogButtonBox::Cancel</set>
      </property>
     </widget>
    </item>

@@ -319,6 +319,28 @@ namespace Audio
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
+    void CAudioProxy::SetMultiplePositions(const MultiPositionParams& params)
+    {
+        if ((m_nFlags & eAPF_WAITING_FOR_ID) == 0)
+        {
+            SAudioRequest request;
+            SAudioObjectRequestData<eAORT_SET_MULTI_POSITIONS> requestData(params);
+            request.nAudioObjectID = m_nAudioObjectID;
+            request.nFlags = eARF_PRIORITY_NORMAL;
+            request.pData = &requestData;
+            request.pOwner = this;
+
+            AudioSystemRequestBus::Broadcast(&AudioSystemRequestBus::Events::PushRequest, request);
+        }
+        else
+        {
+            SQueuedAudioCommand oQueuedCommand = SQueuedAudioCommand(eQACT_SET_MULTI_POSITIONS);
+            oQueuedCommand.oMultiPosParams= params;
+            TryAddQueuedCommand(oQueuedCommand);
+        }
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////////
     void CAudioProxy::SetEnvironmentAmount(const TAudioEnvironmentID nEnvironmentID, const float fValue)
     {
         if ((m_nFlags & eAPF_WAITING_FOR_ID) == 0)
@@ -560,11 +582,6 @@ namespace Audio
                         StopTrigger(refCommand.nTriggerID);
                         break;
                     }
-                    case eQACT_STOP_ALL_TRIGGERS:
-                    {
-                        StopAllTriggers();
-                        break;
-                    }
                     case eQACT_SET_SWITCH_STATE:
                     {
                         SetSwitchState(refCommand.nSwitchID, refCommand.nStateID);
@@ -573,6 +590,11 @@ namespace Audio
                     case eQACT_SET_RTPC_VALUE:
                     {
                         SetRtpcValue(refCommand.nRtpcID, refCommand.fValue);
+                        break;
+                    }
+                    case eQACT_SET_POSITION:
+                    {
+                        SetPosition(refCommand.oPosition);
                         break;
                     }
                     case eQACT_SET_ENVIRONMENT_AMOUNT:
@@ -595,11 +617,6 @@ namespace Audio
                         ResetRtpcValues();
                         break;
                     }
-                    case eQACT_SET_POSITION:
-                    {
-                        SetPosition(refCommand.oPosition);
-                        break;
-                    }
                     case eQACT_RESET:
                     {
                         Reset();
@@ -613,6 +630,16 @@ namespace Audio
                     case eQACT_INITIALIZE:
                     {
                         Initialize(refCommand.sValue.c_str(), true);
+                        break;
+                    }
+                    case eQACT_STOP_ALL_TRIGGERS:
+                    {
+                        StopAllTriggers();
+                        break;
+                    }
+                    case eQACT_SET_MULTI_POSITIONS:
+                    {
+                        SetMultiplePositions(refCommand.oMultiPosParams);
                         break;
                     }
                     default:
@@ -671,15 +698,6 @@ namespace Audio
                 // These type of commands get always pushed back!
                 break;
             }
-            case eQACT_STOP_ALL_TRIGGERS:
-            {
-                if (!m_aQueuedAudioCommands.empty())
-                {
-                    // only add if the last request is different...
-                    bAdd = (AZStd::find_if(m_aQueuedAudioCommands.end() - 1, m_aQueuedAudioCommands.end(), SFindCommand(refCommand.eType)) == m_aQueuedAudioCommands.end());
-                }
-                break;
-            }
             case eQACT_SET_SWITCH_STATE:
             {
                 if (!m_aQueuedAudioCommands.empty())
@@ -726,13 +744,8 @@ namespace Audio
             }
             case eQACT_RESET:
             {
-                TQueuedAudioCommands::const_iterator Iter(m_aQueuedAudioCommands.begin());
-                TQueuedAudioCommands::const_iterator const IterEnd(m_aQueuedAudioCommands.end());
-
-                for (; Iter != IterEnd; ++Iter)
+                for (const SQueuedAudioCommand& rLocalCommand : m_aQueuedAudioCommands)
                 {
-                    const SQueuedAudioCommand& rLocalCommand = (*Iter);
-
                     if (rLocalCommand.eType == eQACT_RELEASE)
                     {
                         // If eQACT_RELEASE is already queued up then there is no need for adding a eQACT_RESET command.
@@ -757,6 +770,25 @@ namespace Audio
                 m_aQueuedAudioCommands.push_back(SQueuedAudioCommand(eQACT_RESET));
                 break;
             }
+            case eQACT_STOP_ALL_TRIGGERS:
+            {
+                if (!m_aQueuedAudioCommands.empty())
+                {
+                    // only add if the last request is different...
+                    bAdd = (AZStd::find_if(m_aQueuedAudioCommands.end() - 1, m_aQueuedAudioCommands.end(), SFindCommand(refCommand.eType)) == m_aQueuedAudioCommands.end());
+                }
+                break;
+            }
+            case eQACT_SET_MULTI_POSITIONS:
+            {
+                if (!m_aQueuedAudioCommands.empty())
+                {
+                    // Find+Update or Add.
+                    // Can morph a SetPosition command into a Multi-Position command.
+                    bAdd = (AZStd::find_if(m_aQueuedAudioCommands.begin(), m_aQueuedAudioCommands.end(), SFindSetMultiplePositions(refCommand.oMultiPosParams)) == m_aQueuedAudioCommands.end());
+                }
+                break;
+            }
             default:
             {
                 g_audioLogger.Log(eALT_ERROR, "Unknown queued command type [%d] in CAudioProxy::TryAddQueuedCommand!", refCommand.eType);
@@ -767,14 +799,14 @@ namespace Audio
 
         if (bAdd)
         {
-            if (refCommand.eType != eQACT_SET_POSITION)
-            {
-                m_aQueuedAudioCommands.push_back(refCommand);
-            }
-            else
+            if (refCommand.eType == eQACT_SET_POSITION || refCommand.eType == eQACT_SET_MULTI_POSITIONS)
             {
                 // Make sure we set position first!
                 m_aQueuedAudioCommands.push_front(refCommand);
+            }
+            else
+            {
+                m_aQueuedAudioCommands.push_back(refCommand);
             }
         }
     }

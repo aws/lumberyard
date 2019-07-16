@@ -23,6 +23,7 @@ from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import padding
 from botocore.signers import CloudFrontSigner
+from botocore.client import Config
 
 ## CloudFront
 CDN_FOLDER = "CDN"
@@ -42,7 +43,7 @@ def _get_cdn_data():
         return result.group(1)
 
     if not hasattr(_get_cdn_data,'key_data'):
-        bucket = boto3.resource('s3').Bucket(cdn_data_bucket)
+        bucket = boto3.resource('s3', config=Config(signature_version='s3v4')).Bucket(cdn_data_bucket)
         cdn_prefix = '{}/{}'.format(CDN_FOLDER, CDN_KEY_PREFIX)
         result_list = bucket.objects.filter(Prefix=cdn_prefix)
         found_key = None
@@ -53,7 +54,7 @@ def _get_cdn_data():
         if not found_key:
             raise RuntimeError('No key data found at {}:{}'.format(cdn_data_bucket,cdn_prefix))
         else:
-            s3_client = boto3.client('s3')
+            s3_client = boto3.client('s3', config=Config(signature_version='s3v4'))
             print 'Attempting to get {}'.format(found_key)
             cdn_data = s3_client.get_object(Bucket = cdn_data_bucket, Key=found_key)
             _get_cdn_data.key_data = key_id_from_name(found_key), cdn_data['Body'].read()

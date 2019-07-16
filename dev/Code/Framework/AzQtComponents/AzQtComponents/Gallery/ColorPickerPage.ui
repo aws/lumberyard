@@ -43,26 +43,30 @@
       </spacer>
      </item>
      <item>
-      <widget class="QPushButton" name="colorPickConfigurationAButton">
+      <widget class="QPushButton" name="colorPickRGBAButton">
        <property name="text">
-        <string>Pick Color
-(Configuration A)</string>
+        <string>Pick RGBA</string>
        </property>
       </widget>
      </item>
      <item>
-      <widget class="QPushButton" name="colorPickConfigurationBButton">
+      <widget class="QPushButton" name="colorPickRGBARulerButton">
        <property name="text">
-        <string>Pick Color
-(Configuration B)</string>
+        <string>Pick RGBA (Ruler Context)</string>
        </property>
       </widget>
      </item>
      <item>
-      <widget class="QPushButton" name="colorPickConfigurationCButton">
+      <widget class="QPushButton" name="colorPickRGBButton">
        <property name="text">
-        <string>Pick Color
-(Configuration C)</string>
+        <string>Pick RGB</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="colorPickHueSaturationButton">
+       <property name="text">
+        <string>Pick Hue/Saturation</string>
        </property>
       </widget>
      </item>

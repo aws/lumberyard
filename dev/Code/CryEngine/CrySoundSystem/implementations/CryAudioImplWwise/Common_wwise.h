@@ -36,7 +36,7 @@ namespace Audio
 {
     // wwise-specific helper functions
     ///////////////////////////////////////////////////////////////////////////////////////////////////
-    inline AkVector EngineVec3ToAkVector(const Vec3& vec3)
+    inline AkVector LYVec3ToAkVector(const Vec3& vec3)
     {
         // swizzle Y <--> Z
         AkVector akVec;
@@ -47,12 +47,32 @@ namespace Audio
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
-    inline void ATLTransformToAKTransform(const SATLWorldPosition& atlTransform, AkTransform& akTransform)
+    inline AkVector AZVec3ToAkVector(const AZ::Vector3& vec3)
+    {
+        // swizzle Y <--> Z
+        AkVector akVec;
+        akVec.X = vec3.GetX();
+        akVec.Y = vec3.GetZ();
+        akVec.Z = vec3.GetY();
+        return akVec;
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////////
+    inline AkTransform AZVec3ToAkTransform(const AZ::Vector3& position)
+    {
+        AkTransform akTransform;
+        akTransform.SetOrientation(0.0, 0.0, 1.0, 0.0, 1.0, 0.0);   // May add orientation support later.
+        akTransform.SetPosition(AZVec3ToAkVector(position));
+        return akTransform;
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////////
+    inline void ATLTransformToAkTransform(const SATLWorldPosition& atlTransform, AkTransform& akTransform)
     {
         akTransform.Set(
-            EngineVec3ToAkVector(atlTransform.mPosition.GetColumn3()),
-            EngineVec3ToAkVector(atlTransform.mPosition.GetColumn1().GetNormalized()),  // Wwise SDK requires that the Orientation vectors
-            EngineVec3ToAkVector(atlTransform.mPosition.GetColumn2().GetNormalized())   // are normalized prior to sending to the apis.
+            LYVec3ToAkVector(atlTransform.mPosition.GetColumn3()),
+            LYVec3ToAkVector(atlTransform.mPosition.GetColumn1().GetNormalized()),  // Wwise SDK requires that the Orientation vectors
+            LYVec3ToAkVector(atlTransform.mPosition.GetColumn2().GetNormalized())   // are normalized prior to sending to the apis.
             );
     }
 

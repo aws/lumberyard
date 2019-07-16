@@ -1,4 +1,4 @@
-/*
+﻿/*
 * All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
 * its licensors.
 *
@@ -14,11 +14,15 @@
 
 #include <AzCore/Component/EntityId.h>
 #include <AzCore/EBus/EBus.h>
+#include <ScriptCanvas/Core/ExecutionNotificationsBus.h>
 
 namespace ScriptCanvas
 {
     class Node;
     struct SlotId;
+    
+    GraphInfo CreateGraphInfo(AZ::EntityId uniqueExecutionId, const GraphIdentifier& graphIdentifier);
+    DatumValue CreateDatumValue(AZ::EntityId uniqueExecutionId, const VariableDatumBase& variable);
 
     //! Execution Request Bus that triggers graph Execution and supports adding nodes
     //! to the execution stack
@@ -35,6 +39,7 @@ namespace ScriptCanvas
         virtual void AddToExecutionStack(Node& node, const SlotId& slotId) = 0;
         // Starts or resumes execution of the graph
         virtual void Execute() = 0;
+        virtual void ExecuteUntilNodeIsTopOfStack(Node&) = 0;
         virtual bool IsExecuting() const = 0;
     };
 

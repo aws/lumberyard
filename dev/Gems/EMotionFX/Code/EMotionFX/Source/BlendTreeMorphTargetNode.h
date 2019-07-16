@@ -67,7 +67,7 @@ namespace EMotionFX
         bool GetHasOutputPose() const override              { return true; }
         bool GetSupportsVisualization() const override      { return true; }
         bool GetSupportsDisable() const override            { return true; }
-        uint32 GetVisualColor() const override              { return MCore::RGBA(159, 81, 255); }
+        AZ::Color GetVisualColor() const override           { return AZ::Color(0.62f, 0.31f, 1.0f, 1.0f); }
         const char* GetPaletteName() const override;
         AnimGraphObject::ECategory GetPaletteCategory() const override;
         AnimGraphPose* GetMainOutputPose(AnimGraphInstance* animGraphInstance) const override     { return GetOutputPose(animGraphInstance, OUTPUTPORT_POSE)->GetValue(); }

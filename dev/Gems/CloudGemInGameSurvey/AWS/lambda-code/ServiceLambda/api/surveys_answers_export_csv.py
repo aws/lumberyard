@@ -19,13 +19,14 @@ import json
 import time
 import boto3
 import CloudCanvas
+from botocore.client import Config
 
 @service.api
 def get(request, survey_id, request_id):
     bucket_name = survey_utils.get_answer_submissions_export_s3_bucket_name()
     status_file_key = get_status_file_key(request_id)
 
-    s3 = boto3.client('s3')
+    s3 = boto3.client('s3', config=Config(signature_version='s3v4'))
     response = s3.get_object(Bucket=bucket_name, Key=status_file_key)
     status = json.loads(response["Body"].read())
 
@@ -51,7 +52,7 @@ def post(request, survey_id):
 
     # initiate multipart upload
     export_file_key = get_export_file_key(request_id)
-    s3 = boto3.client('s3')
+    s3 = boto3.client('s3', config=Config(signature_version='s3v4'))
     bucket_name = survey_utils.get_answer_submissions_export_s3_bucket_name()
     upload = s3.create_multipart_upload(Bucket=bucket_name, Key=export_file_key)
 

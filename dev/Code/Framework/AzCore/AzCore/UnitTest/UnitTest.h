@@ -22,6 +22,8 @@
 #define UNITTEST_H_SECTION_2 2
 #define UNITTEST_H_SECTION_3 3
 #define UNITTEST_H_SECTION_4 4
+#define UNITTEST_H_SECTION_5 5
+#define UNITTEST_H_SECTION_6 6
 #endif
 
 #include <AzTest/AzTest.h>
@@ -47,6 +49,22 @@
         #include "Provo/UnitTest_h_provo.inl"
     #endif
 #endif
+
+ // FW declare some GTest internal symbol so we can add to the gtest output
+namespace testing
+{
+    namespace internal
+    {
+        enum GTestColor {
+            COLOR_DEFAULT,
+            COLOR_RED,
+            COLOR_GREEN,
+            COLOR_YELLOW
+        };
+
+        extern void ColoredPrintf(GTestColor color, const char* fmt, ...);
+    }
+}
 
 //////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////
@@ -171,7 +189,9 @@ namespace UnitTest
         int  StopAssertTests()
         {
             m_isAssertTest = false;
-            return m_numAssertsFailed;
+            const int numAssertsFailed = m_numAssertsFailed;
+            m_numAssertsFailed = 0;
+            return numAssertsFailed;
         }
 
         bool m_isAssertTest;
@@ -258,12 +278,12 @@ namespace UnitTest
         }
     };
 
-    // a utility class that you can derive from or contain, which redirects asserts 
+    // utility classes that you can derive from or contain, which redirects asserts 
     // and errors to the below macros (processAssert, etc)
-    // If TraceDrillerHook or TraceBusRedirector have been started in your unit tests, 
+    // If TraceBusHook or TraceBusRedirector have been started in your unit tests, 
     //  use AZ_TEST_START_ASSERTTEST and AZ_TEST_STOP_ASSERTTEST(numExpectedAsserts) macros to perform assert and error checking
     class TraceBusRedirector
-        :public AZ::Debug::TraceMessageBus::Handler
+        : public AZ::Debug::TraceMessageBus::Handler
     {
         bool OnPreAssert(const char* file, int line, const char* /* func */, const char* message) override
         {
@@ -316,7 +336,54 @@ namespace UnitTest
             return true;
         }
 
+        bool OnPrintf(const char* window, const char* message) override
+        {
+            if (AZStd::string_view(window) == "Memory") // We want to print out the memory leak's stack traces
+            {
+                testing::internal::ColoredPrintf(testing::internal::COLOR_RED, "[  MEMORY  ] %s", message); 
+            }
+            return true; 
+        }
     };
+
+    class TraceBusHook
+        : public AZ::Test::ITestEnvironment
+        , public TraceBusRedirector
+    {
+    public:
+        void SetupEnvironment() override
+        {
+            AZ::AllocatorInstance<AZ::OSAllocator>::Create(); // used by the bus
+
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION UNITTEST_H_SECTION_5
+#if defined(AZ_PLATFORM_XENIA)
+#include "Xenia/Main_cpp_xenia.inl"
+#elif defined(AZ_PLATFORM_PROVO)
+#include "Provo/Main_cpp_provo.inl"
+#endif
+#endif
+
+            BusConnect();
+        }
+
+        void TeardownEnvironment() override
+        {
+            BusDisconnect();
+
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION UNITTEST_H_SECTION_6
+#if defined(AZ_PLATFORM_XENIA)
+#include "Xenia/Main_cpp_xenia.inl"
+#elif defined(AZ_PLATFORM_PROVO)
+#include "Provo/Main_cpp_provo.inl"
+#endif
+#endif
+
+            AZ::AllocatorInstance<AZ::OSAllocator>::Destroy(); // used by the bus
+        }
+    };
+
 }
 
 

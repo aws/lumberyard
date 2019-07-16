@@ -103,41 +103,38 @@ namespace LmbrCentral
             : m_configuration.m_direction;
     }
 
-    void EditorWindVolumeComponent::DisplayEntity(bool& handled)
+    void EditorWindVolumeComponent::DisplayEntityViewport(
+        const AzFramework::ViewportInfo& viewportInfo,
+        AzFramework::DebugDisplayRequests& debugDisplay)
     {
         if (!IsSelected() && !m_visibleInEditor)
         {
             return;
         }
 
-        handled = true;
-
-        AzFramework::EntityDebugDisplayRequests* displayContext = AzFramework::EntityDebugDisplayRequestBus::FindFirstHandler();
-        AZ_Assert(displayContext, "Invalid display context.");
-
-        displayContext->PushMatrix(GetWorldTM());
-        displayContext->SetColor(AZ::Vector4(1.f, 0.f, 0.f, 0.7f));
+        debugDisplay.PushMatrix(GetWorldTM());
+        debugDisplay.SetColor(AZ::Vector4(1.f, 0.f, 0.f, 0.7f));
 
         if (m_isSphere)
         {
-            DrawSphere(displayContext);
+            DrawSphere(debugDisplay);
         }
         else
         {
-            DrawBox(displayContext);
+            DrawBox(debugDisplay);
         }
 
-        displayContext->PopMatrix();
+        debugDisplay.PopMatrix();
     }
 
-    void EditorWindVolumeComponent::DrawArrow(AzFramework::EntityDebugDisplayRequests* displayContext, const AZ::Vector3& point)
+    void EditorWindVolumeComponent::DrawArrow(AzFramework::DebugDisplayRequests& debugDisplay, const AZ::Vector3& point)
     {
         AZ::Vector3 windDir = GetLocalWindDirection(point);
         windDir.SetLength(0.8f);
-        displayContext->DrawArrow(point - windDir, point + windDir, 1.2f);
+        debugDisplay.DrawArrow(point - windDir, point + windDir, 1.2f);
     }
 
-    void EditorWindVolumeComponent::DrawBox(AzFramework::EntityDebugDisplayRequests* displayContext)
+    void EditorWindVolumeComponent::DrawBox(AzFramework::DebugDisplayRequests& debugDisplay)
     {
         const auto minSamples = 2; // Always have a minimum of 2 points in each dimension - 2x2x2 (each corner of a cube)
         const auto maxSamples = 8; // Max out at 8x8x8 samples otherwise the editor will start slowing down.
@@ -172,29 +169,29 @@ namespace LmbrCentral
                         min.GetZ() + k * sampleDelta[2]
                     );
 
-                    DrawArrow(displayContext, point);
+                    DrawArrow(debugDisplay, point);
                 }
             }
         }
     }
 
-    void EditorWindVolumeComponent::DrawSphere(AzFramework::EntityDebugDisplayRequests* displayContext)
+    void EditorWindVolumeComponent::DrawSphere(AzFramework::DebugDisplayRequests& debugDisplay)
     {
-        float radius = m_size.GetX();
+        const float radius = m_size.GetX();
         int nSamples = radius * 5;
         nSamples = AZ::GetClamp(nSamples, 5, 512);
 
         // Draw arrows using Fibonacci sphere
-        float offset = 2.f / nSamples;
-        float increment = AZ::Constants::Pi * (3.f - sqrt(5.f));
-        for(int i = 0; i < nSamples; ++i)
+        const float offset = 2.0f / nSamples;
+        const float increment = AZ::Constants::Pi * (3.0f - sqrt(5.0f));
+        for (int i = 0; i < nSamples; ++i)
         {
             float phi = ((i + 1) % nSamples) * increment;
-            float y = ((i * offset) - 1) + (offset / 2.f);
+            float y = ((i * offset) - 1) + (offset / 2.0f);
             float r = sqrt(1 - pow(y, 2));
             float x = cos(phi) * r;
             float z = sin(phi) * r;
-            DrawArrow(displayContext, AZ::Vector3(x * radius, y * radius, z * radius));
+            DrawArrow(debugDisplay, AZ::Vector3(x * radius, y * radius, z * radius));
         }
     }
 } // namespace LmbrCentral

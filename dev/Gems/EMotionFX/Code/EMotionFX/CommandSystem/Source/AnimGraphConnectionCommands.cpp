@@ -909,9 +909,9 @@ namespace CommandSystem
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    void DeleteNodeConnection(MCore::CommandGroup* commandGroup, EMotionFX::AnimGraphNode* node, EMotionFX::BlendTreeConnection* connection)
+    void DeleteNodeConnection(MCore::CommandGroup* commandGroup, const EMotionFX::AnimGraphNode* node, const EMotionFX::BlendTreeConnection* connection)
     {
-        const AZStd::string commandString = AZStd::string::format("AnimGraphRemoveConnection -animGraphID %i -targetNode \"%s\" -targetPort %d -sourceNode \"%s\" -sourcePort %d",
+        const AZStd::string commandString = AZStd::string::format("AnimGraphRemoveConnection -animGraphID %d -targetNode \"%s\" -targetPort %d -sourceNode \"%s\" -sourcePort %d",
             node->GetAnimGraph()->GetID(),
             node->GetName(),
             connection->GetTargetPort(),

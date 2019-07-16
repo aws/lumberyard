@@ -46,7 +46,7 @@ namespace UnitTest
     {
     public:
         InterestManagerComponentFixture()
-            : AllocatorsFixture(15, false)
+            : AllocatorsFixture()
         {
             
         }

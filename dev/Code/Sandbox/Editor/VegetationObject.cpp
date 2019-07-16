@@ -25,6 +25,8 @@
 
 #include "Util/BoostPythonHelpers.h"
 
+#include <AzCore/Math/Uuid.h>
+
 //////////////////////////////////////////////////////////////////////
 // Construction/Destruction
 //////////////////////////////////////////////////////////////////////
@@ -84,7 +86,7 @@ CVegetationObject::CVegetationObject(int id)
     mv_allowIndoor = false;
     mv_autoMerged = false;
 
-    m_guid = QUuid::createUuid();
+    m_guid = AZ::Uuid::CreateRandom();
 
     mv_hideable.AddEnumItem("None", 0);
     mv_hideable.AddEnumItem("Hideable", 1);
@@ -124,8 +126,6 @@ CVegetationObject::CVegetationObject(int id)
     AddVariable(mv_useTerrainColor, "UseTerrainColor", functor(*this, &CVegetationObject::OnVarChange));
     AddVariable(mv_allowIndoor, "AllowIndoor", functor(*this, &CVegetationObject::OnVarChange));
     AddVariable(mv_bending, "Bending", functor(*this, &CVegetationObject::OnVarChange));
-    AddVariable(mv_hideable, "Hideable", "AI Occluder", functor(*this, &CVegetationObject::OnVarChange));
-    AddVariable(mv_playerHideable, "PlayerHideable", "Player Occluder", functor(*this, &CVegetationObject::OnVarChange));
 
     AddVariable(mv_affectedByBrushes, "GrowOnBrushes", functor(*this, &CVegetationObject::OnVarChange));
     AddVariable(mv_affectedByTerrain, "GrowOnTerrain", functor(*this, &CVegetationObject::OnVarChange));
@@ -135,26 +135,15 @@ CVegetationObject::CVegetationObject(int id)
     AddVariable(mv_damping, "Damping", functor(*this, &CVegetationObject::OnVarChange));
     AddVariable(mv_variance, "Variance", functor(*this, &CVegetationObject::OnVarChange));
     AddVariable(mv_airResistance, "AirResistance", functor(*this, &CVegetationObject::OnVarChange));
-    AddVariable(mv_aiRadius, "AIRadius", functor(*this, &CVegetationObject::OnVarChange));
-    AddVariable(mv_brightness, "Brightness", functor(*this, &CVegetationObject::OnVarChange));
     AddVariable(mv_density, "Density", "Density (m)", functor(*this, &CVegetationObject::OnVarChange));
     AddVariable(mv_hmin, VEGETATION_ELEVATION_MIN, "Altitude Min (m)", functor(*this, &CVegetationObject::OnVarChange));
     AddVariable(mv_hmax, VEGETATION_ELEVATION_MAX, "Altitude Max (m)", functor(*this, &CVegetationObject::OnVarChange));
     AddVariable(mv_slope_min, VEGETATION_SLOPE_MIN, functor(*this, &CVegetationObject::OnVarChange));
     AddVariable(mv_slope_max, VEGETATION_SLOPE_MAX, functor(*this, &CVegetationObject::OnVarChange));
-    AddVariable(mv_castShadows, "CastShadow", functor(*this, &CVegetationObject::OnVarChange));
-    AddVariable(mv_castShadowMinSpec, "CastShadowMinSpec", functor(*this, &CVegetationObject::OnVarChange));
-    AddVariable(mv_recvShadows, "RecvShadow", functor(*this, &CVegetationObject::OnVarChange));
-    AddVariable(mv_alphaBlend, "AlphaBlend", functor(*this, &CVegetationObject::OnVarChange));
-    AddVariable(mv_SpriteDistRatio, "SpriteDistRatio", "Sprite Distance", functor(*this, &CVegetationObject::OnVarChange));
     AddVariable(mv_LodDistRatio, "LodDistRatio", "LOD Distance", functor(*this, &CVegetationObject::OnVarChange));
     AddVariable(mv_MaxViewDistRatio, "MaxViewDistRatio", functor(*this, &CVegetationObject::OnVarChange));
     AddVariable(mv_material, "Material", functor(*this, &CVegetationObject::OnMaterialChange), IVariable::DT_MATERIAL);
-    AddVariable(mv_UseSprites, "UseSprites", functor(*this, &CVegetationObject::OnVarChange));
     AddVariable(mv_minSpec, "MinSpec", functor(*this, &CVegetationObject::OnVarChange));
-
-    AddVariable(mv_layerFrozen, "Frozen", functor(*this, &CVegetationObject::OnVarChange));
-    AddVariable(mv_layerWet, "Layer_Wet", "Wet", functor(*this, &CVegetationObject::OnVarChange));
 
     AddVariable(mv_fileName, "Object", "Object", functor(*this, &CVegetationObject::OnFileNameChange), IVariable::DT_OBJECT);
 }
@@ -250,6 +239,13 @@ void CVegetationObject::SetHidden(bool bHidden)
     }
     */
     SetEngineParams();
+
+    // Fully refresh our vegetation instances every time we toggle visibility.
+    // When becoming visible, the instances need to handle any other changes 
+    // that occurred while invisible, such as toggling the AutoMerged flag.
+    // When becoming invisible, the vegetation instances need to be given the
+    // chance to clean themselves up correctly.
+    GetIEditor()->GetVegetationMap()->RepositionObject(this);
 }
 
 //////////////////////////////////////////////////////////////////////////

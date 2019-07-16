@@ -1,8 +1,0 @@
-<Material MtlFlags="524288" Shader="Illum" GenMask="81000001" StringGenMask="%ALLOW_SILHOUETTE_POM%NORMAL_MAP%SUBSURFACE_SCATTERING" SurfaceType="" Diffuse="1,1,1" Specular="0.021219011,0.021219011,0.021219011" Emittance="0.014443845,0.051269464,0.52711523,5000" Opacity="1" Shininess="180" CloakAmount="0" vertModifType="0" LayerAct="1">
- <Textures>
-  <Texture Map="Diffuse" File="objects/manmade/buildings/buildings_panels_02_diff.dds"/>
-  <Texture Map="Bumpmap" File="objects/manmade/buildings/buildings_panels_02_ddna.dds"/>
-  <Texture Map="Emittance" File="objects/manmade/buildings/buildings_panels_02_emis.dds"/>
- </Textures>
- <PublicParams EmittanceMapGamma="1" SSSIndex="0" IndirectColor="0.25,0.25,0.25"/>
-</Material>

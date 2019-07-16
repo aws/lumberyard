@@ -26,7 +26,7 @@ namespace AzToolsFramework
         {
         public:
 
-            enum class ComponentEntityAccentType
+            enum class ComponentEntityAccentType : AZ::u8
             {
                 None,
                 Hover,

@@ -60,6 +60,13 @@ namespace LmbrCentral
         }
     }
 
+    void EditorSphereShapeComponent::Init()
+    {
+        EditorBaseShapeComponent::Init();
+
+        SetShapeComponentConfig(&m_sphereShape.ModifyShapeComponent());
+    }
+
     void EditorSphereShapeComponent::Activate()
     {
         EditorBaseShapeComponent::Activate();
@@ -74,15 +81,17 @@ namespace LmbrCentral
         EditorBaseShapeComponent::Deactivate();
     }
 
-    void EditorSphereShapeComponent::DisplayEntity(bool& handled)
+    void EditorSphereShapeComponent::DisplayEntityViewport(
+        const AzFramework::ViewportInfo& viewportInfo,
+        AzFramework::DebugDisplayRequests& debugDisplay)
     {
-        DisplayShape(handled,
-            [this]() { return CanDraw(); },
-            [this](AzFramework::EntityDebugDisplayRequests* displayContext)
+        DisplayShape(
+            debugDisplay, [this]() { return CanDraw(); },
+            [this](AzFramework::DebugDisplayRequests& debugDisplay)
             {
                 DrawSphereShape(
                     { m_shapeColor, m_shapeWireColor, m_displayFilled },
-                    m_sphereShape.GetSphereConfiguration(), *displayContext);
+                    m_sphereShape.GetSphereConfiguration(), debugDisplay);
             },
             m_sphereShape.GetCurrentTransform());
     }

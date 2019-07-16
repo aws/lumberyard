@@ -17,7 +17,7 @@
 #include "Core/Polygon.h"
 #include "ElementManager.h"
 
-#include <QUuid>
+#include <AzCore/Math/Uuid.h>
 
 void EdgeSharpnessManager::Serialize(XmlNodeRef& xmlNode, bool bLoading, bool bUndo, CD::Model* pModel)
 {
@@ -121,7 +121,7 @@ bool EdgeSharpnessManager::AddEdges(const char* name, const std::vector<BrushEdg
     edgeSharpness.name = name;
     edgeSharpness.edges = edges;
     edgeSharpness.sharpness = sharpness;
-    edgeSharpness.guid = QUuid::createUuid();
+    edgeSharpness.guid = AZ::Uuid::CreateRandom();
     m_EdgeSharpnessList.push_back(edgeSharpness);
 
     return true;

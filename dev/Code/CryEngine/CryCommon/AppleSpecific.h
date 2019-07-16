@@ -26,7 +26,7 @@
 #define RC_EXECUTABLE "rc"
 
 //////////////////////////////////////////////////////////////////////////
-// Standart includes.
+// Standard includes.
 //////////////////////////////////////////////////////////////////////////
 #include <stdlib.h>
 #include <stdint.h>
@@ -42,7 +42,7 @@
 #include <errno.h>
 #include <malloc/malloc.h>
 #include <Availability.h>
-// Atomict operations , guaranteed to work across all apple platforms
+// Atomic operations , guaranteed to work across all apple platforms
 #include <libkern/OSAtomic.h>
 #include <sys/socket.h>
 #include <netinet/in.h>

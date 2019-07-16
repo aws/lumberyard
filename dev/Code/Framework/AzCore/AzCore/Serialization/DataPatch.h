@@ -116,11 +116,23 @@ namespace AZ
          * \param targetFlagsMap (optional) flags for target data. These may affect how the patch is created (ex: force patches at specific addresses) 
          * \param context if null we will grab the default serialize context.
          */
-        bool Create(const void* source, const Uuid& souceClassId, const void* target, const Uuid& targetClassId, const FlagsMap& sourceFlagsMap = FlagsMap(), const FlagsMap& targetFlagsMap = FlagsMap(), SerializeContext* context = nullptr);
+        bool Create(
+            const void* source, 
+            const Uuid& souceClassId, 
+            const void* target, 
+            const Uuid& targetClassId, 
+            const FlagsMap& sourceFlagsMap = FlagsMap(), 
+            const FlagsMap& targetFlagsMap = FlagsMap(), 
+            SerializeContext* context = nullptr);
 
         /// T and U should either be the same type a common base class
         template<class T, class U>
-        bool Create(const T* source, const U* target, const FlagsMap& sourceFlagsMap = FlagsMap(), const FlagsMap& targetFlagsMap = FlagsMap(), SerializeContext* context = nullptr)
+        bool Create(
+            const T* source, 
+            const U* target, 
+            const FlagsMap& sourceFlagsMap = FlagsMap(), 
+            const FlagsMap& targetFlagsMap = FlagsMap(), 
+            SerializeContext* context = nullptr)
         {
             const void* sourceClassPtr = SerializeTypeInfo<T>::RttiCast(source, SerializeTypeInfo<T>::GetRttiTypeId(source));
             const Uuid& sourceClassId = SerializeTypeInfo<T>::GetUuid(source);
@@ -141,11 +153,22 @@ namespace AZ
          * \param sourceFlagsMap flags for source data. These may affect how a patch is applied (ex: prevent patching of specific addresses)
          * \param targetFlagsMap flags for target data. These may affect how a patch is applied.
          */
-        void* Apply(const void* source, const Uuid& sourceClassId, SerializeContext* context = nullptr, const AZ::ObjectStream::FilterDescriptor& filterDesc = AZ::ObjectStream::FilterDescriptor(), const FlagsMap& sourceFlagsMap = FlagsMap(), const FlagsMap& targetFlagsMap = FlagsMap()) const;
+        void* Apply(
+            const void* source, 
+            const Uuid& sourceClassId, 
+            SerializeContext* context = nullptr, 
+            const AZ::ObjectStream::FilterDescriptor& filterDesc = AZ::ObjectStream::FilterDescriptor(), 
+            const FlagsMap& sourceFlagsMap = FlagsMap(), 
+            const FlagsMap& targetFlagsMap = FlagsMap()) const;
 
         // Apply specialization when the source and return type are the same.
         template<class T>
-        T* Apply(const T* source, SerializeContext* context = nullptr, const AZ::ObjectStream::FilterDescriptor& filterDesc = AZ::ObjectStream::FilterDescriptor(), const FlagsMap& sourceFlagsMap = FlagsMap(), const FlagsMap& targetFlagsMap = FlagsMap()) const
+        T* Apply(
+            const T* source, 
+            SerializeContext* context = nullptr, 
+            const AZ::ObjectStream::FilterDescriptor& filterDesc = AZ::ObjectStream::FilterDescriptor(), 
+            const FlagsMap& sourceFlagsMap = FlagsMap(), 
+            const FlagsMap& targetFlagsMap = FlagsMap()) const
         {
             const void* classPtr = SerializeTypeInfo<T>::RttiCast(source, SerializeTypeInfo<T>::GetRttiTypeId(source));
             const Uuid& classId = SerializeTypeInfo<T>::GetUuid(source);
@@ -160,7 +183,12 @@ namespace AZ
         }
 
         template<class U, class T>
-        U* Apply(const T* source, SerializeContext* context = nullptr, const AZ::ObjectStream::FilterDescriptor& filterDesc = AZ::ObjectStream::FilterDescriptor(), const FlagsMap& sourceFlagsMap = FlagsMap(), const FlagsMap& targetFlagsMap = FlagsMap()) const
+        U* Apply(
+            const T* source, 
+            SerializeContext* context = nullptr, 
+            const AZ::ObjectStream::FilterDescriptor& filterDesc = AZ::ObjectStream::FilterDescriptor(), 
+            const FlagsMap& sourceFlagsMap = FlagsMap(), 
+            const FlagsMap& targetFlagsMap = FlagsMap()) const
         {
             // \note find class Data and check if we can do that cast ie. U* is a base class of m_targetClassID
             if (SerializeTypeInfo<U>::GetUuid() == m_targetClassId)

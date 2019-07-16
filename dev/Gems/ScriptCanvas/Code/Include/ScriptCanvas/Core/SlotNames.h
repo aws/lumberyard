@@ -18,4 +18,6 @@ namespace ScriptCanvas
 {
     AZ_INLINE AZStd::string_view GetInputSlotName() { return "In"; }
     AZ_INLINE AZStd::string_view GetOutputSlotName() { return "Out"; }
+
+    AZ_INLINE AZStd::string_view GetSourceSlotName() { return "Source"; }
 }

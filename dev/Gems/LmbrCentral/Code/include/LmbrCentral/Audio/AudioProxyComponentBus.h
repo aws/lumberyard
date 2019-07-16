@@ -58,6 +58,9 @@ namespace LmbrCentral
 
         //! Set the position of the audio proxy directly.
         virtual void SetPosition(const Audio::SATLWorldPosition& position) = 0;
+
+        //! Set multiple positions of the audio proxy.
+        virtual void SetMultiplePositions(const Audio::MultiPositionParams& params) = 0;
     };
 
     using AudioProxyComponentRequestBus = AZ::EBus<AudioProxyComponentRequests>;

@@ -29,7 +29,6 @@
 
 #include <AzCore/Debug/FrameProfilerBus.h>
 #include <AzCore/Debug/FrameProfilerComponent.h>
-#include <AzCore/Debug/TraceMessageBus.h>
 #include <AzCore/Memory/AllocationRecords.h>
 
 #include <AzCore/std/parallel/containers/concurrent_unordered_set.h>
@@ -134,7 +133,7 @@ namespace UnitTest
     {
     public:
         Components()
-            : AllocatorsFixture(128, false)
+            : AllocatorsFixture()
         {}
     };
 
@@ -232,6 +231,7 @@ namespace UnitTest
         ComponentApplication componentApp;
         ComponentApplication::Descriptor desc;
         desc.m_useExistingAllocator = true;
+        desc.m_enableDrilling = false; // we already created a memory driller for the test (AllocatorsFixture)
         ComponentApplication::StartupParameters startupParams;
         startupParams.m_allocator = &AZ::AllocatorInstance<AZ::SystemAllocator>::Get();
         Entity* systemEntity = componentApp.Create(desc, startupParams);
@@ -687,6 +687,7 @@ namespace UnitTest
 
             ComponentApplication::Descriptor desc;
             desc.m_useExistingAllocator = true;
+            desc.m_enableDrilling = false; // we already created a memory driller for the test (AllocatorsFixture in Components)
 
             ComponentApplication::StartupParameters startupParams;
             startupParams.m_allocator = &AZ::AllocatorInstance<AZ::SystemAllocator>::Get();
@@ -1257,7 +1258,7 @@ namespace UnitTest
     {
     public:
         FrameProfilerComponentTest()
-            : AllocatorsFixture(15, false)
+            : AllocatorsFixture()
         {
         }
 
@@ -1345,6 +1346,7 @@ namespace UnitTest
             ComponentApplication app;
             ComponentApplication::Descriptor desc;
             desc.m_useExistingAllocator = true;
+            desc.m_enableDrilling = false;  // we already created a memory driller for the test (AllocatorsFixture)
             ComponentApplication::StartupParameters startupParams;
             startupParams.m_allocator = &AZ::AllocatorInstance<AZ::SystemAllocator>::Get();
             Entity* systemEntity = app.Create(desc, startupParams);

@@ -44,6 +44,7 @@ namespace AzToolsFramework
 
         connect(m_pSlider, SIGNAL(valueChanged(int)), this, SLOT(onChildSliderValueChange(int)));
         connect(m_pSpinBox, SIGNAL(valueChanged(int)), this, SLOT(onChildSpinboxValueChange(int)));
+        connect(m_pSlider, &QSlider::sliderReleased, this, &DHPropertyIntSlider::sliderReleased);
     }
 
     DHPropertyIntSlider::~DHPropertyIntSlider()
@@ -371,6 +372,10 @@ namespace AzToolsFramework
         {
             EBUS_EVENT(PropertyEditorGUIMessages::Bus, RequestWrite, newCtrl);
         });
+        connect(newCtrl, &DHPropertyIntSlider::sliderReleased, this, [newCtrl]()
+        {
+            AzToolsFramework::PropertyEditorGUIMessages::Bus::Broadcast(&PropertyEditorGUIMessages::Bus::Handler::OnEditingFinished, newCtrl);
+        });
         // note:  Qt automatically disconnects objects from each other when either end is destroyed, no need to worry about delete.
 
         // set defaults:
@@ -386,6 +391,10 @@ namespace AzToolsFramework
         connect(newCtrl, &DHPropertyIntSlider::valueChanged, this, [newCtrl]()
         {
             EBUS_EVENT(PropertyEditorGUIMessages::Bus, RequestWrite, newCtrl);
+        });
+        connect(newCtrl, &DHPropertyIntSlider::sliderReleased, this, [newCtrl]()
+        {
+            AzToolsFramework::PropertyEditorGUIMessages::Bus::Broadcast(&PropertyEditorGUIMessages::Bus::Handler::OnEditingFinished, newCtrl);
         });
         // note:  Qt automatically disconnects objects from each other when either end is destroyed, no need to worry about delete.
 
@@ -403,6 +412,10 @@ namespace AzToolsFramework
             {
                 EBUS_EVENT(PropertyEditorGUIMessages::Bus, RequestWrite, newCtrl);
             });
+        connect(newCtrl, &DHPropertyIntSlider::sliderReleased, this, [newCtrl]()
+        {
+            AzToolsFramework::PropertyEditorGUIMessages::Bus::Broadcast(&PropertyEditorGUIMessages::Bus::Handler::OnEditingFinished, newCtrl);
+        });
         // note:  Qt automatically disconnects objects from each other when either end is destroyed, no need to worry about delete.
 
         // set defaults:
@@ -419,6 +432,10 @@ namespace AzToolsFramework
             {
                 EBUS_EVENT(PropertyEditorGUIMessages::Bus, RequestWrite, newCtrl);
             });
+        connect(newCtrl, &DHPropertyIntSlider::sliderReleased, this, [newCtrl]()
+        {
+            AzToolsFramework::PropertyEditorGUIMessages::Bus::Broadcast(&PropertyEditorGUIMessages::Bus::Handler::OnEditingFinished, newCtrl);
+        });
         // note:  Qt automatically disconnects objects from each other when either end is destroyed, no need to worry about delete.
 
         // set defaults:
@@ -434,6 +451,10 @@ namespace AzToolsFramework
         connect(newCtrl, &DHPropertyIntSlider::valueChanged, this, [newCtrl]()
         {
             EBUS_EVENT(PropertyEditorGUIMessages::Bus, RequestWrite, newCtrl);
+        });
+        connect(newCtrl, &DHPropertyIntSlider::sliderReleased, this, [newCtrl]()
+        {
+            AzToolsFramework::PropertyEditorGUIMessages::Bus::Broadcast(&PropertyEditorGUIMessages::Bus::Handler::OnEditingFinished, newCtrl);
         });
         // note:  Qt automatically disconnects objects from each other when either end is destroyed, no need to worry about delete.
 
@@ -451,6 +472,10 @@ namespace AzToolsFramework
             {
                 EBUS_EVENT(PropertyEditorGUIMessages::Bus, RequestWrite, newCtrl);
             });
+        connect(newCtrl, &DHPropertyIntSlider::sliderReleased, this, [newCtrl]()
+        {
+            AzToolsFramework::PropertyEditorGUIMessages::Bus::Broadcast(&PropertyEditorGUIMessages::Bus::Handler::OnEditingFinished, newCtrl);
+        });
         // note:  Qt automatically disconnects objects from each other when either end is destroyed, no need to worry about delete.
 
         // set defaults:
@@ -466,11 +491,11 @@ namespace AzToolsFramework
         ConsumeAttributeCommon(GUI, attrib, attrValue, debugName);
 
         const auto c_intMin = std::numeric_limits<AZ::s16>::min();
-        const auto c_intMax = std::numeric_limits<AZ::s16>::min();
+        const auto c_intMax = std::numeric_limits<AZ::s16>::max();
 
         if ((GUI->maximum() > c_intMax) || (GUI->maximum() < c_intMin) || (GUI->minimum() > c_intMax) || (GUI->minimum() < c_intMin))
         {
-            AZ_WarningOnce("AzToolsFramework", false, "Property '%s' : 0x%08x  in s32 Slider Box exceeds Min/Max values", debugName, attrib);
+            AZ_WarningOnce("AzToolsFramework", false, "Property '%s' : 0x%08x  in s16 Slider has an invalid min (%lld) or max (%lld) value set", debugName, attrib, GUI->minimum(), GUI->maximum());
         }
     }
 
@@ -479,11 +504,11 @@ namespace AzToolsFramework
         ConsumeAttributeCommon(GUI, attrib, attrValue, debugName);
 
         const auto c_uintMin = std::numeric_limits<AZ::u16>::min();
-        const auto c_uintMax = std::numeric_limits<AZ::u16>::min();
+        const auto c_uintMax = std::numeric_limits<AZ::u16>::max();
 
         if ((GUI->maximum() > c_uintMax) || (GUI->maximum() < c_uintMin) || (GUI->minimum() > c_uintMax) || (GUI->minimum() < c_uintMin))
         {
-            AZ_WarningOnce("AzToolsFramework", false, "Property '%s' : 0x%08x  in u32 Slider Box exceeds Min/Max values", debugName, attrib);
+            AZ_WarningOnce("AzToolsFramework", false, "Property '%s' : 0x%08x  in u16 Slider has an invalid min (%lld) or max (%lld) value set", debugName, attrib, GUI->minimum(), GUI->maximum());
         }
     }
 
@@ -492,11 +517,11 @@ namespace AzToolsFramework
         ConsumeAttributeCommon(GUI, attrib, attrValue, debugName);
 
         const auto c_intMin = std::numeric_limits<AZ::s32>::min();
-        const auto c_intMax = std::numeric_limits<AZ::s32>::min();
+        const auto c_intMax = std::numeric_limits<AZ::s32>::max();
 
         if ((GUI->maximum() > c_intMax) || (GUI->maximum() < c_intMin) || (GUI->minimum() > c_intMax) || (GUI->minimum() < c_intMin))
         {
-            AZ_WarningOnce("AzToolsFramework", false, "Property '%s' : 0x%08x  in s32 Slider Box exceeds Min/Max values", debugName, attrib);
+            AZ_WarningOnce("AzToolsFramework", false, "Property '%s' : 0x%08x  in s32 Slider has an invalid min (%lld) or max (%lld) value set", debugName, attrib, GUI->minimum(), GUI->maximum());
         }
     }
 
@@ -505,11 +530,11 @@ namespace AzToolsFramework
         ConsumeAttributeCommon(GUI, attrib, attrValue, debugName);
 
         const auto c_uintMin = std::numeric_limits<AZ::u32>::min();
-        const auto c_uintMax = std::numeric_limits<AZ::u32>::min();
+        const auto c_uintMax = std::numeric_limits<AZ::u32>::max();
 
         if ((GUI->maximum() > c_uintMax) || (GUI->maximum() < c_uintMin) || (GUI->minimum() > c_uintMax) || (GUI->minimum() < c_uintMin))
         {
-            AZ_WarningOnce("AzToolsFramework", false, "Property '%s' : 0x%08x  in u32 Slider Box exceeds Min/Max values", debugName, attrib);
+            AZ_WarningOnce("AzToolsFramework", false, "Property '%s' : 0x%08x  in u32 Slider has an invalid min (%lld) or max (%lld) value set", debugName, attrib, GUI->minimum(), GUI->maximum());
         }
     }
 

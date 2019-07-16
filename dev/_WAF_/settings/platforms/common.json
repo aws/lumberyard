@@ -1,0 +1,32 @@
+{
+    "env": {
+    },
+    "env/debug": {
+        "DEFINES": [
+            "_DEBUG",
+            "AZ_DEBUG_BUILD"
+        ]
+    },
+    "env/profile": {
+        "DEFINES": [
+            "_PROFILE",
+            "PROFILE",
+            "NDEBUG",
+            "AZ_ENABLE_TRACING",
+            "AZ_ENABLE_DEBUG_TOOLS"
+        ]
+    },
+    "env/performance": {
+        "DEFINES": [
+            "_RELEASE",
+            "PERFORMANCE_BUILD",
+            "NDEBUG"
+        ]
+    },
+    "env/release": {
+        "DEFINES": [
+            "_RELEASE",
+            "NDEBUG"
+        ]
+    }
+}

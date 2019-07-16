@@ -120,7 +120,7 @@ namespace AzFramework
         StringFunc::Find("Well Hello", "Hello", false, true) == 5
         */
         size_t Find(const char* in, char c, size_t pos = 0, bool bReverse = false, bool bCaseSensitive = false);
-        size_t Find(const char* in, const char* str, size_t pos = 0, bool bReverse = false, bool bCaseSensitive = false);
+        size_t Find(AZStd::string_view in, AZStd::string_view str, size_t pos = 0, bool bReverse = false, bool bCaseSensitive = false);
 
         // Inlined ease of use / increased readability / increased error checking for AZStd::strings.
 

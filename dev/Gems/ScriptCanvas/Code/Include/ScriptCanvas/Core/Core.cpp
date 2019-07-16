@@ -10,7 +10,7 @@
 *
 */
 
-#include "precompiled.h"
+
 #include "Core.h"
 #include "Attributes.h"
 #include <AzCore/RTTI/ReflectContext.h>

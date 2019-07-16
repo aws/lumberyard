@@ -9,13 +9,11 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
+
 #pragma once
 
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
 #include <AzToolsFramework/ToolsComponents/EditorComponentBase.h>
-
-#include <AzFramework/Entity/EntityDebugDisplayBus.h>
-
 #include <LmbrCentral/Rendering/MeshComponentBus.h>
 
 #include "SimpleAnimationComponent.h"
@@ -30,7 +28,6 @@ namespace LmbrCentral
         , private MeshComponentNotificationBus::Handler
         , private AnimationInformationBus::Handler
         , private IAnimationSetListener
-        , private AzFramework::EntityDebugDisplayEventBus::Handler
     {
     public:
 
@@ -49,11 +46,6 @@ namespace LmbrCentral
         void OnMeshCreated(const AZ::Data::Asset<AZ::Data::AssetData>& asset) override;
 
         void OnMeshDestroyed() override;
-        //////////////////////////////////////////////////////////////////////////
-
-        //////////////////////////////////////////////////////////////////////////
-        // AzFramework::EntityDebugDisplayEventBus interface implementation
-        void DisplayEntity(bool& handled) override;
         //////////////////////////////////////////////////////////////////////////
 
         //////////////////////////////////////////////////////////////////////////

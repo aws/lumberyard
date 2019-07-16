@@ -64,6 +64,8 @@ namespace GraphCanvas
             void OnCommentChanged();
             void UpdateStyleOverrides();
 
+            AZStd::string GetLabel() const;
+
             AZStd::string m_comment;
             FontConfiguration m_fontConfiguration;
 
@@ -76,6 +78,7 @@ namespace GraphCanvas
         static void Reflect(AZ::ReflectContext*);
 
         CommentNodeTextComponent();
+        CommentNodeTextComponent(AZStd::string_view initialText);
         ~CommentNodeTextComponent() = default;
 
         // AZ::Component
@@ -116,6 +119,8 @@ namespace GraphCanvas
         void SetCommentMode(CommentMode commentMode) override;
         ////
 
+        CommentMode GetCommentMode() const;
+
         // CommentLayoutRequestBus
         QGraphicsLayoutItem* GetGraphicsLayoutItem() override;
         ////
@@ -133,6 +138,7 @@ namespace GraphCanvas
     private:
         CommentNodeTextComponent(const CommentNodeTextComponent&) = delete;
 
+        CommentMode                      m_commentMode;
         CommentNodeTextComponentSaveData m_saveData;
 
         CommentTextGraphicsWidget* m_commentTextWidget;

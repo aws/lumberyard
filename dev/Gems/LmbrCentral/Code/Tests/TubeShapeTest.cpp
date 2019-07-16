@@ -346,4 +346,78 @@ namespace UnitTest
 
         EXPECT_NEAR(distance, 1.0f, 1e-2f);
     }
+
+    TEST_F(TubeShapeTest, RadiiCannotBeNegativeFromVariableChange)
+    {
+        Entity entity;
+        const float baseRadius = 1.0f;
+        CreateTube(
+            Transform::CreateTranslation(Vector3::CreateZero()), baseRadius, entity);
+
+        // setting variable radius
+        TubeShapeComponentRequestsBus::Event(
+            entity.GetId(), &TubeShapeComponentRequestsBus::Events::SetVariableRadius, 0, -2.0f);
+
+        float totalRadius = 0.0f;
+        TubeShapeComponentRequestsBus::EventResult(
+            totalRadius, entity.GetId(), &TubeShapeComponentRequestsBus::Events::GetTotalRadius,
+            AZ::SplineAddress());
+
+        float variableRadius = 0.0f;
+        TubeShapeComponentRequestsBus::EventResult(
+            variableRadius, entity.GetId(), &TubeShapeComponentRequestsBus::Events::GetVariableRadius,
+            0);
+
+        using ::testing::FloatEq;
+
+        EXPECT_THAT(totalRadius, FloatEq(0.0f));
+        EXPECT_THAT(variableRadius, FloatEq(-1.0f));
+    }
+
+    TEST_F(TubeShapeTest, RadiiCannotBeNegativeFromBaseChange)
+    {
+        Entity entity;
+        const float baseRadius = 5.0f;
+        CreateTube(
+            Transform::CreateTranslation(Vector3::CreateZero()), baseRadius, entity);
+
+        // setting variable radii
+        TubeShapeComponentRequestsBus::Event(
+            entity.GetId(), &TubeShapeComponentRequestsBus::Events::SetVariableRadius, 0, -2.0f);
+        TubeShapeComponentRequestsBus::Event(
+            entity.GetId(), &TubeShapeComponentRequestsBus::Events::SetVariableRadius, 1, -3.0f);
+        TubeShapeComponentRequestsBus::Event(
+            entity.GetId(), &TubeShapeComponentRequestsBus::Events::SetVariableRadius, 2, -4.0f);
+        TubeShapeComponentRequestsBus::Event(
+            entity.GetId(), &TubeShapeComponentRequestsBus::Events::SetVariableRadius, 3, -0.5f);
+
+        // set base radius
+        TubeShapeComponentRequestsBus::Event(
+            entity.GetId(), &TubeShapeComponentRequestsBus::Events::SetRadius, 1.0f);
+
+        // expected (clamped) values
+        AZStd::pair<float, float> totalAndVariableRadii[] = {
+            { 0.0f, -1.0f }, { 0.0f, -1.0f }, { 0.0f, -1.0f }, { 0.5f, -0.5f } };
+
+        using ::testing::FloatEq;
+
+        // verify all expected values for each vertex
+        for (size_t vertIndex = 0; vertIndex < 4; ++vertIndex)
+        {
+            const auto radiis = totalAndVariableRadii[vertIndex];
+
+            float totalRadius = 0.0f;
+            TubeShapeComponentRequestsBus::EventResult(
+                totalRadius, entity.GetId(), &TubeShapeComponentRequestsBus::Events::GetTotalRadius,
+                AZ::SplineAddress(vertIndex));
+
+            float variableRadius = 0.0f;
+            TubeShapeComponentRequestsBus::EventResult(
+                variableRadius, entity.GetId(), &TubeShapeComponentRequestsBus::Events::GetVariableRadius,
+                vertIndex);
+
+            EXPECT_THAT(totalRadius, FloatEq(radiis.first));
+            EXPECT_THAT(variableRadius, FloatEq(radiis.second));
+        }
+    }
 }

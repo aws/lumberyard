@@ -99,8 +99,11 @@ namespace EMStudio
 
         // get rid of the game controller
     #ifdef HAS_GAME_CONTROLLER
-        mGameController->Shutdown();
-        delete mGameController;
+        if (mGameController)
+        {
+            mGameController->Shutdown();
+            delete mGameController;
+        }
     #endif
     }
 
@@ -210,11 +213,15 @@ namespace EMStudio
     void GameControllerWindow::InitGameController()
     {
     #ifdef HAS_GAME_CONTROLLER
-        // create the game controller object
-        if (mGameController == nullptr)
+        if (mGameController)
         {
-            mGameController = new GameController();
+            mGameController->Shutdown();
+            delete mGameController;
+            mGameController = nullptr;
         }
+
+        // create the game controller object
+        mGameController = new GameController();
 
         // Call mainWindow->window() to make sure you get the top level window which the mainWindow might not in fact be.
         //IEditor* editor = nullptr;
@@ -259,7 +266,7 @@ namespace EMStudio
         ReInit();
 
         // update the parameter window
-        mPlugin->GetParameterWindow()->Reinit();
+        mPlugin->GetParameterWindow()->Reinit(/*forceReinit*/true);
     }
 
 
@@ -987,7 +994,7 @@ namespace EMStudio
         }
 
         // update the parameter window
-        mPlugin->GetParameterWindow()->Reinit();
+        mPlugin->GetParameterWindow()->Reinit(/*forceReinit*/true);
     }
 
 
@@ -1039,7 +1046,7 @@ namespace EMStudio
         ReInitButtonInterface(buttonInfo->mButtonIndex);
 
         // update the parameter window
-        mPlugin->GetParameterWindow()->Reinit();
+        mPlugin->GetParameterWindow()->Reinit(/*forceReinit*/true);
     }
 
 
@@ -1220,7 +1227,7 @@ namespace EMStudio
         UpdateParameterInterface(paramInfo);
 
         // update the parameter window
-        mPlugin->GetParameterWindow()->Reinit();
+        mPlugin->GetParameterWindow()->Reinit(/*forceReinit*/true);
     }
 
 
@@ -1276,7 +1283,7 @@ namespace EMStudio
         UpdateGameControllerComboBox();
         AutoSelectGameController();
         ReInit();
-        mPlugin->GetParameterWindow()->Reinit();
+        mPlugin->GetParameterWindow()->Reinit(/*forceReinit*/true);
     }
 
 

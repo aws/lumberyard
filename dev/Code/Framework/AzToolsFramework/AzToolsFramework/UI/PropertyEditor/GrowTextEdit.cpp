@@ -41,8 +41,11 @@ namespace AzToolsFramework
 
     void GrowTextEdit::SetText(const AZStd::string& text)
     {
+        int cursorPos = textCursor().position();
         setPlainText(text.c_str());
-        document()->adjustSize();
+        QTextCursor cursor = textCursor();
+        cursor.movePosition(QTextCursor::MoveOperation::Right, QTextCursor::MoveMode::MoveAnchor, cursorPos);
+        setTextCursor(cursor);
         updateGeometry();
     }
 

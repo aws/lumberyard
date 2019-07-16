@@ -10,8 +10,6 @@
 *
 */
 
-#include "precompiled.h"
-
 #include "RuntimeAsset.h"
 
 #include <AzCore/Component/Entity.h>

@@ -27,7 +27,7 @@ def build(bld):
                         bld.Path('Code/CryEngine/CryAction'),
                         bld.Path('Code/CryEngine/CryCommon')],
         uselib      = ['AWS_CPP_SDK_ALL'],
-        use         = ['CloudGemFrameworkStaticLibrary'],
+        use         = ['CloudGemFramework.StaticLibrary', 'CloudGemFramework', 'CryAction_AutoFlowNode'],
         file_list   = file_list,
 
         # warning added in clang 6.0 / ndk r17, the issue stems from an object in AWS that has virtual functions

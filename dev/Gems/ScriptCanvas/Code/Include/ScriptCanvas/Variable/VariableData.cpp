@@ -10,8 +10,6 @@
 *
 */
 
-#include "precompiled.h"
-
 #include <AzCore/Serialization/Utils.h>
 
 #include <ScriptCanvas/Variable/VariableData.h>
@@ -86,14 +84,14 @@ namespace ScriptCanvas
             return AZ::Success(insertIt.first->first);
         }
 
-        return AZ::Failure(AZStd::string::format("Variable with id %s already exist in variable map. The Variable name is %s", insertIt.first->first, insertIt.first->second.m_varName.data()));
+        return AZ::Failure(AZStd::string::format("Variable with id %s already exist in variable map. The Variable name is %s", insertIt.first->first, insertIt.first->second.GetVariableName().data()));
     }
 
     VariableDatum* VariableData::FindVariable(AZStd::string_view variableName)
     {
         auto foundIt = AZStd::find_if(m_variableMap.begin(), m_variableMap.end(), [&variableName](const AZStd::pair<VariableId, VariableNameValuePair>& varPair)
         {
-            return variableName == varPair.second.m_varName;
+            return variableName == varPair.second.GetVariableName();
         });
 
         return foundIt != m_variableMap.end() ? &foundIt->second.m_varDatum : nullptr;
@@ -116,7 +114,7 @@ namespace ScriptCanvas
         size_t removedVars = 0U;
         for (auto varIt = m_variableMap.begin(); varIt != m_variableMap.end();)
         {
-            if (varIt->second.m_varName == variableName)
+            if (varIt->second.GetVariableName() == variableName)
             {
                 ++removedVars;
                 varIt = m_variableMap.erase(varIt);
@@ -139,7 +137,7 @@ namespace ScriptCanvas
         auto foundIt = m_variableMap.find(variableId);
         if (foundIt != m_variableMap.end())
         {
-            foundIt->second.m_varName = newVarName;
+            foundIt->second.SetVariableName(newVarName);
             return true;
         }
 
@@ -217,7 +215,7 @@ namespace ScriptCanvas
     {
         auto foundIt = AZStd::find_if(m_variables.begin(), m_variables.end(), [&variableName](const EditableVariableConfiguration& variablePair)
         {
-            return variableName == variablePair.m_varNameValuePair.m_varName;
+            return variableName == variablePair.m_varNameValuePair.GetVariableName();
         });
 
         return foundIt != m_variables.end() ? &*foundIt : nullptr;
@@ -244,7 +242,7 @@ namespace ScriptCanvas
         auto removeIt = m_variables.begin();
         while (removeIt != m_variables.end())
         {
-            if (removeIt->m_varNameValuePair.m_varName == variableName)
+            if (removeIt->m_varNameValuePair.GetVariableName() == variableName)
             {
                 ++removedCount;
                 removeIt = m_variables.erase(removeIt);

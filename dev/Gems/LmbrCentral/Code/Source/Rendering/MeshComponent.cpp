@@ -77,6 +77,7 @@ namespace LmbrCentral
                 ->VirtualProperty("Visibility", "GetVisibility", "SetVisibility");
 
             behaviorContext->EBus<RenderBoundsRequestBus>("RenderBoundsRequestBus")
+                ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
                 ->Event("GetWorldBounds", &RenderBoundsRequestBus::Events::GetWorldBounds)
                 ->Event("GetLocalBounds", &RenderBoundsRequestBus::Events::GetLocalBounds);
 

@@ -10,7 +10,7 @@
 *
 */
 
-#include "precompiled.h"
+
 #include "Datum.h"
 
 #include <AzCore/RTTI/AttributeReader.h>
@@ -58,17 +58,17 @@ namespace
     {
         if (targetType.GetType() == Data::Traits<t_Value>::s_type)
         {
-            AZ_Assert(sourceType.GetType() == Data::eType::BehaviorContextObject, "Conversion to %s requires one type to be a BehaviorContextObject", Data::Traits<t_Value>::GetName());
+            AZ_Assert(sourceType.GetType() == Data::eType::BehaviorContextObject, "Conversion to %s requires one type to be a BehaviorContextObject", Data::Traits<t_Value>::GetName().c_str());
             t_Value& targetValue = AZStd::any_cast<t_Value&>(target);
-            AZ_Assert(sourceType.GetAZType() == azrtti_typeid<t_Value>(), "Value type not valid for ScriptCanvas conversion to %s", Data::Traits<t_Value>::GetName());
+            AZ_Assert(sourceType.GetAZType() == azrtti_typeid<t_Value>(), "Value type not valid for ScriptCanvas conversion to %s", Data::Traits<t_Value>::GetName().c_str());
             targetValue = *reinterpret_cast<const t_Value*>(source);
         }
         else
         {
-            AZ_Assert(targetType.GetType() == Data::eType::BehaviorContextObject, "Conversion to %s requires one type to be a BehaviorContextObject", Data::Traits<t_Value>::GetName());
+            AZ_Assert(targetType.GetType() == Data::eType::BehaviorContextObject, "Conversion to %s requires one type to be a BehaviorContextObject", Data::Traits<t_Value>::GetName().c_str());
             AZ_Assert(targetClass, "Target class unknown, no conversion possible");
             const AZ::BehaviorClass& behaviorClass = *targetClass;
-            AZ_Assert(behaviorClass.m_typeId == azrtti_typeid<t_Value>(), "Value type not valid for ScriptCanvas conversion to %s", Data::Traits<t_Value>::GetName());
+            AZ_Assert(behaviorClass.m_typeId == azrtti_typeid<t_Value>(), "Value type not valid for ScriptCanvas conversion to %s", Data::Traits<t_Value>::GetName().c_str());
             const t_Value& sourceValue = *reinterpret_cast<const t_Value*>(source);
             target = BehaviorContextObject::Create<t_Value>(sourceValue, behaviorClass);
         }
@@ -647,46 +647,46 @@ namespace
             return IsDataLess<Data::BooleanType>(lhs, rhs);
 
         case Data::eType::AABB:
-            AZ_Error("ScriptCanvas", false, "No Less operator exists for type: %s", Data::Traits<Data::AABBType>::GetName());
+            AZ_Error("ScriptCanvas", false, "No Less operator exists for type: %s", Data::Traits<Data::AABBType>::GetName().c_str());
             return false;
 
         case Data::eType::OBB:
-            AZ_Error("ScriptCanvas", false, "No Less operator exists for type: %s", Data::Traits<Data::OBBType>::GetName());
+            AZ_Error("ScriptCanvas", false, "No Less operator exists for type: %s", Data::Traits<Data::OBBType>::GetName().c_str());
             return false;
 
         case Data::eType::Plane:
-            AZ_Error("ScriptCanvas", false, "No Less operator exists for type: %s", Data::Traits<Data::PlaneType>::GetName());
+            AZ_Error("ScriptCanvas", false, "No Less operator exists for type: %s", Data::Traits<Data::PlaneType>::GetName().c_str());
             return false;
 
         case Data::eType::Quaternion:
-            AZ_Error("ScriptCanvas", false, "No Less operator exists for type: %s", Data::Traits<Data::QuaternionType>::GetName());
+            AZ_Error("ScriptCanvas", false, "No Less operator exists for type: %s", Data::Traits<Data::QuaternionType>::GetName().c_str());
             return false;
 
         case Data::eType::String:
             return IsDataLess<Data::StringType>(lhs, rhs);
 
         case Data::eType::Transform:
-            AZ_Error("ScriptCanvas", false, "No Less operator exists for type: %s", Data::Traits<Data::TransformType>::GetName());
+            AZ_Error("ScriptCanvas", false, "No Less operator exists for type: %s", Data::Traits<Data::TransformType>::GetName().c_str());
             return false;
 
         case Data::eType::Color:
-            AZ_Error("ScriptCanvas", false, "No Less operator exists for type: %s", Data::Traits<Data::ColorType>::GetName());
+            AZ_Error("ScriptCanvas", false, "No Less operator exists for type: %s", Data::Traits<Data::ColorType>::GetName().c_str());
             return false;
 
         case Data::eType::CRC:
-            AZ_Error("ScriptCanvas", false, "No Less operator exists for type: %s", Data::Traits<Data::CRCType>::GetName());
+            AZ_Error("ScriptCanvas", false, "No Less operator exists for type: %s", Data::Traits<Data::CRCType>::GetName().c_str());
             return false;
 
         case Data::eType::EntityID:
-            AZ_Error("ScriptCanvas", false, "No Less operator exists for type: %s", Data::Traits<Data::EntityIDType>::GetName());
+            AZ_Error("ScriptCanvas", false, "No Less operator exists for type: %s", Data::Traits<Data::EntityIDType>::GetName().c_str());
             return false;
 
         case Data::eType::Matrix3x3:
-            AZ_Error("ScriptCanvas", false, "No Less operator exists for type: %s", Data::Traits<Data::Matrix3x3Type>::GetName());
+            AZ_Error("ScriptCanvas", false, "No Less operator exists for type: %s", Data::Traits<Data::Matrix3x3Type>::GetName().c_str());
             return false;
 
         case Data::eType::Matrix4x4:
-            AZ_Error("ScriptCanvas", false, "No Less operator exists for type: %s", Data::Traits<Data::Matrix4x4Type>::GetName());
+            AZ_Error("ScriptCanvas", false, "No Less operator exists for type: %s", Data::Traits<Data::Matrix4x4Type>::GetName().c_str());
             return false;
 
         case Data::eType::Invalid:
@@ -728,46 +728,46 @@ namespace
             return IsDataLessEqual<Data::BooleanType>(lhs, rhs);
 
         case Data::eType::AABB:
-            AZ_Error("ScriptCanvas", false, "No LessEqual operator exists for type: %s", Data::Traits<Data::AABBType>::GetName());
+            AZ_Error("ScriptCanvas", false, "No LessEqual operator exists for type: %s", Data::Traits<Data::AABBType>::GetName().c_str());
             return false;
 
         case Data::eType::OBB:
-            AZ_Error("ScriptCanvas", false, "No LessEqual operator exists for type: %s", Data::Traits<Data::OBBType>::GetName());
+            AZ_Error("ScriptCanvas", false, "No LessEqual operator exists for type: %s", Data::Traits<Data::OBBType>::GetName().c_str());
             return false;
 
         case Data::eType::Plane:
-            AZ_Error("ScriptCanvas", false, "No LessEqual operator exists for type: %s", Data::Traits<Data::PlaneType>::GetName());
+            AZ_Error("ScriptCanvas", false, "No LessEqual operator exists for type: %s", Data::Traits<Data::PlaneType>::GetName().c_str());
             return false;
 
         case Data::eType::Quaternion:
-            AZ_Error("ScriptCanvas", false, "No LessEqual operator exists for type: %s", Data::Traits<Data::QuaternionType>::GetName());
+            AZ_Error("ScriptCanvas", false, "No LessEqual operator exists for type: %s", Data::Traits<Data::QuaternionType>::GetName().c_str());
             return false;
 
         case Data::eType::String:
             return IsDataLessEqual<Data::StringType>(lhs, rhs);
 
         case Data::eType::Transform:
-            AZ_Error("ScriptCanvas", false, "No LessEqual operator exists for type: %s", Data::Traits<Data::TransformType>::GetName());
+            AZ_Error("ScriptCanvas", false, "No LessEqual operator exists for type: %s", Data::Traits<Data::TransformType>::GetName().c_str());
             return false;
 
         case Data::eType::Color:
-            AZ_Error("ScriptCanvas", false, "No LessEqual operator exists for type: %s", Data::Traits<Data::ColorType>::GetName());
+            AZ_Error("ScriptCanvas", false, "No LessEqual operator exists for type: %s", Data::Traits<Data::ColorType>::GetName().c_str());
             return false;
 
         case Data::eType::CRC:
-            AZ_Error("ScriptCanvas", false, "No LessEqual operator exists for type: %s", Data::Traits<Data::CRCType>::GetName());
+            AZ_Error("ScriptCanvas", false, "No LessEqual operator exists for type: %s", Data::Traits<Data::CRCType>::GetName().c_str());
             return false;
 
         case Data::eType::EntityID:
-            AZ_Error("ScriptCanvas", false, "No LessEqual operator exists for type: %s", Data::Traits<Data::EntityIDType>::GetName());
+            AZ_Error("ScriptCanvas", false, "No LessEqual operator exists for type: %s", Data::Traits<Data::EntityIDType>::GetName().c_str());
             return false;
 
         case Data::eType::Matrix3x3:
-            AZ_Error("ScriptCanvas", false, "No LessEqual operator exists for type: %s", Data::Traits<Data::Matrix3x3Type>::GetName());
+            AZ_Error("ScriptCanvas", false, "No LessEqual operator exists for type: %s", Data::Traits<Data::Matrix3x3Type>::GetName().c_str());
             return false;
 
         case Data::eType::Matrix4x4:
-            AZ_Error("ScriptCanvas", false, "No LessEqual operator exists for type: %s", Data::Traits<Data::Matrix4x4Type>::GetName());
+            AZ_Error("ScriptCanvas", false, "No LessEqual operator exists for type: %s", Data::Traits<Data::Matrix4x4Type>::GetName().c_str());
             return false;
 
         case Data::eType::Invalid:
@@ -809,46 +809,46 @@ namespace
             return IsDataGreater<Data::BooleanType>(lhs, rhs);
 
         case Data::eType::AABB:
-            AZ_Error("ScriptCanvas", false, "No Greater operator exists for type: %s", Data::Traits<Data::AABBType>::GetName());
+            AZ_Error("ScriptCanvas", false, "No Greater operator exists for type: %s", Data::Traits<Data::AABBType>::GetName().c_str());
             return false;
 
         case Data::eType::OBB:
-            AZ_Error("ScriptCanvas", false, "No Greater operator exists for type: %s", Data::Traits<Data::OBBType>::GetName());
+            AZ_Error("ScriptCanvas", false, "No Greater operator exists for type: %s", Data::Traits<Data::OBBType>::GetName().c_str());
             return false;
 
         case Data::eType::Plane:
-            AZ_Error("ScriptCanvas", false, "No Greater operator exists for type: %s", Data::Traits<Data::PlaneType>::GetName());
+            AZ_Error("ScriptCanvas", false, "No Greater operator exists for type: %s", Data::Traits<Data::PlaneType>::GetName().c_str());
             return false;
 
         case Data::eType::Quaternion:
-            AZ_Error("ScriptCanvas", false, "No Greater operator exists for type: %s", Data::Traits<Data::QuaternionType>::GetName());
+            AZ_Error("ScriptCanvas", false, "No Greater operator exists for type: %s", Data::Traits<Data::QuaternionType>::GetName().c_str());
             return false;
 
         case Data::eType::String:
             return IsDataGreater<Data::StringType>(lhs, rhs);
 
         case Data::eType::Transform:
-            AZ_Error("ScriptCanvas", false, "No Greater operator exists for type: %s", Data::Traits<Data::TransformType>::GetName());
+            AZ_Error("ScriptCanvas", false, "No Greater operator exists for type: %s", Data::Traits<Data::TransformType>::GetName().c_str());
             return false;
 
         case Data::eType::Color:
-            AZ_Error("ScriptCanvas", false, "No Greater operator exists for type: %s", Data::Traits<Data::ColorType>::GetName());
+            AZ_Error("ScriptCanvas", false, "No Greater operator exists for type: %s", Data::Traits<Data::ColorType>::GetName().c_str());
             return false;
 
         case Data::eType::CRC:
-            AZ_Error("ScriptCanvas", false, "No Greater operator exists for type: %s", Data::Traits<Data::CRCType>::GetName());
+            AZ_Error("ScriptCanvas", false, "No Greater operator exists for type: %s", Data::Traits<Data::CRCType>::GetName().c_str());
             return false;
 
         case Data::eType::EntityID:
-            AZ_Error("ScriptCanvas", false, "No Greater operator exists for type: %s", Data::Traits<Data::EntityIDType>::GetName());
+            AZ_Error("ScriptCanvas", false, "No Greater operator exists for type: %s", Data::Traits<Data::EntityIDType>::GetName().c_str());
             return false;
 
         case Data::eType::Matrix3x3:
-            AZ_Error("ScriptCanvas", false, "No Greater operator exists for type: %s", Data::Traits<Data::Matrix3x3Type>::GetName());
+            AZ_Error("ScriptCanvas", false, "No Greater operator exists for type: %s", Data::Traits<Data::Matrix3x3Type>::GetName().c_str());
             return false;
 
         case Data::eType::Matrix4x4:
-            AZ_Error("ScriptCanvas", false, "No Greater operator exists for type: %s", Data::Traits<Data::Matrix4x4Type>::GetName());
+            AZ_Error("ScriptCanvas", false, "No Greater operator exists for type: %s", Data::Traits<Data::Matrix4x4Type>::GetName().c_str());
             return false;
 
         case Data::eType::Invalid:
@@ -864,80 +864,6 @@ namespace
     AZ_INLINE bool IsDataGreaterEqual(const void* lhs, const void* rhs)
     {
         return *reinterpret_cast<const t_Value*>(lhs) >= *reinterpret_cast<const t_Value*>(rhs);
-    }
-
-    AZ_INLINE bool IsDataGreaterEqual(const Data::Type& type, const void* lhs, const void* rhs)
-    {
-        switch (type.GetType())
-        {
-            AZ_Error("ScriptCanvas", false, "BehaviorContextObject passed into IsDataGreater, which is invalid, an attempt must be made to call the behavior method");
-            return false;
-
-        case Data::eType::Number:
-            return IsDataGreaterEqual<Data::NumberType>(lhs, rhs);
-
-        case Data::eType::Vector2:
-            return reinterpret_cast<const Data::Vector2Type*>(lhs)->IsGreaterEqualThan(*reinterpret_cast<const Data::Vector2Type*>(rhs));
-
-        case Data::eType::Vector3:
-            return reinterpret_cast<const Data::Vector3Type*>(lhs)->IsGreaterEqualThan(*reinterpret_cast<const Data::Vector3Type*>(rhs));
-
-        case Data::eType::Vector4:
-            return reinterpret_cast<const Data::Vector4Type*>(lhs)->IsGreaterEqualThan(*reinterpret_cast<const Data::Vector4Type*>(rhs));
-
-        case Data::eType::Boolean:
-            return IsDataGreaterEqual<Data::BooleanType>(lhs, rhs);
-
-        case Data::eType::AABB:
-            AZ_Error("ScriptCanvas", false, "No GreaterEqual operator exists for type: %s", Data::Traits<Data::AABBType>::GetName());
-            return false;
-
-        case Data::eType::OBB:
-            AZ_Error("ScriptCanvas", false, "No GreaterEqual operator exists for type: %s", Data::Traits<Data::OBBType>::GetName());
-            return false;
-
-        case Data::eType::Plane:
-            AZ_Error("ScriptCanvas", false, "No GreaterEqual operator exists for type: %s", Data::Traits<Data::PlaneType>::GetName());
-            return false;
-
-        case Data::eType::Quaternion:
-            AZ_Error("ScriptCanvas", false, "No GreaterEqual operator exists for type: %s", Data::Traits<Data::QuaternionType>::GetName());
-            return false;
-
-        case Data::eType::String:
-            return IsDataGreaterEqual<Data::StringType>(lhs, rhs);
-
-        case Data::eType::Transform:
-            AZ_Error("ScriptCanvas", false, "No GreaterEqual operator exists for type: %s", Data::Traits<Data::TransformType>::GetName());
-            return false;
-
-        case Data::eType::Color:
-            AZ_Error("ScriptCanvas", false, "No GreaterEqual operator exists for type: %s", Data::Traits<Data::ColorType>::GetName());
-            return false;
-
-        case Data::eType::CRC:
-            AZ_Error("ScriptCanvas", false, "No GreaterEqual operator exists for type: %s", Data::Traits<Data::CRCType>::GetName());
-            return false;
-
-        case Data::eType::EntityID:
-            AZ_Error("ScriptCanvas", false, "No GreaterEqual operator exists for type: %s", Data::Traits<Data::EntityIDType>::GetName());
-            return false;
-
-        case Data::eType::Matrix3x3:
-            AZ_Error("ScriptCanvas", false, "No GreaterEqual operator exists for type: %s", Data::Traits<Data::Matrix3x3Type>::GetName());
-            return false;
-
-        case Data::eType::Matrix4x4:
-            AZ_Error("ScriptCanvas", false, "No GreaterEqual operator exists for type: %s", Data::Traits<Data::Matrix4x4Type>::GetName());
-            return false;
-
-        case Data::eType::Invalid:
-            return false;
-
-        default:
-            AZ_Assert(false, "unsupported type found in IsDataGreaterEqual");
-            return false;
-        }
     }
 
     template<typename t_Value>
@@ -1192,10 +1118,30 @@ namespace
     {
         return ToBehaviorContext<ScriptCanvas::Data::QuaternionType>(valueOut, typeIDOut, valueIn);
     }
-
-    AZ_INLINE bool ToBehaviorContextString(void* valueOut, const AZ::Uuid& typeIDOut, const void* valueIn)
+    
+    AZ_INLINE bool ToBehaviorContextString(AZ::BehaviorValueParameter& destination, const void* valueIn)
     {
-        return ToBehaviorContext<ScriptCanvas::Data::StringType>(valueOut, typeIDOut, valueIn);
+        if (Data::IsString(destination.m_typeId))
+        {
+            return ToBehaviorContext<AZStd::string>(destination.GetValueAddress(), destination.m_typeId, valueIn);
+        }
+        else
+        {
+            auto stringValue = reinterpret_cast<const AZStd::string*>(valueIn);
+            if (destination.m_typeId == azrtti_typeid<char>() && (destination.m_traits & (AZ::BehaviorParameter::TR_POINTER | AZ::BehaviorParameter::TR_CONST)))
+            {
+                *reinterpret_cast<const char**>(destination.m_value) = stringValue->c_str();
+                return true;
+            }
+            else if (destination.m_typeId == azrtti_typeid<AZStd::string_view>())
+            {
+                AZStd::string_view stringView(*stringValue);
+                *reinterpret_cast<AZStd::string_view*>(destination.GetValueAddress()) = stringView;
+                return true;
+            }
+        }
+
+        return false;
     }
 
     AZ_INLINE bool ToBehaviorContextTransform(void* valueOut, const AZ::Uuid& typeIDOut, const void* valueIn)
@@ -1276,8 +1222,11 @@ namespace
         return false;
     }
 
-    bool ToBehaviorContext(const ScriptCanvas::Data::Type& typeIn, const void* valueIn, const AZ::Uuid& typeIDOut, void* valueOut, AZ::BehaviorClass* behaviorClassOut)
+    bool ToBehaviorContext(const ScriptCanvas::Data::Type& typeIn, const void* valueIn, AZ::BehaviorValueParameter& destination, AZ::BehaviorClass* behaviorClassOut)
     {
+        const AZ::Uuid& typeIDOut = destination.m_typeId;
+        void* valueOut = destination.GetValueAddress();
+        
         if (valueIn)
         {
             switch (typeIn.GetType())
@@ -1319,7 +1268,7 @@ namespace
                 return ToBehaviorContextQuaternion(valueOut, typeIDOut, valueIn);
 
             case ScriptCanvas::Data::eType::String:
-                return ToBehaviorContextString(valueOut, typeIDOut, valueIn);
+                return ToBehaviorContextString(destination, valueIn);
 
             case ScriptCanvas::Data::eType::Transform:
                 return ToBehaviorContextTransform(valueOut, typeIDOut, valueIn);
@@ -1339,14 +1288,13 @@ namespace
         return false;
     }
 
-    AZ::BehaviorValueParameter ConvertibleToBehaviorValueParameter(const AZ::BehaviorParameter& description, const AZ::Uuid& azType, AZ::BehaviorClass* behaviorClass, void* value, void*& pointer, AZ::IRttiHelper* azRtti = nullptr)
+    AZ::BehaviorValueParameter ConvertibleToBehaviorValueParameter(const AZ::BehaviorParameter& description, const AZ::Uuid& azType, AZStd::string_view name, void* value, void*& pointer)
     {
         AZ_Assert(value, "value must be valid");
         AZ::BehaviorValueParameter parameter;
         parameter.m_typeId = description.m_typeId;
-        parameter.m_name = behaviorClass ? behaviorClass->m_name.c_str() : Data::GetBehaviorContextName(azType);
-        parameter.m_azRtti = behaviorClass ? behaviorClass->m_azRtti : azRtti;
-
+        parameter.m_name = name.data();
+        
         if (description.m_traits & AZ::BehaviorParameter::TR_POINTER)
         {
             pointer = value;
@@ -1369,7 +1317,7 @@ namespace
             return AZ::Success(AZStd::string());
         }
 
-        if (parameterDesc.m_typeId == azrtti_typeid<char>() && (parameterDesc.m_traits | (AZ::BehaviorParameter::TR_POINTER & AZ::BehaviorParameter::TR_CONST)))
+        if (parameterDesc.m_typeId == azrtti_typeid<char>() && (parameterDesc.m_traits & (AZ::BehaviorParameter::TR_POINTER | AZ::BehaviorParameter::TR_CONST)))
         {
             AZStd::string_view parameterString = *reinterpret_cast<const char* const *>(source);
             return AZ::Success(AZStd::string(parameterString));
@@ -1665,6 +1613,9 @@ namespace ScriptCanvas
         case ScriptCanvas::Data::eType::EntityID:
             return InitializeEntityID(source);
 
+        case ScriptCanvas::Data::eType::NamedEntityID:
+            return InitializeNamedEntityID(source);
+
         case ScriptCanvas::Data::eType::Matrix3x3:
             return InitializeMatrix3x3(source);
 
@@ -1802,6 +1753,12 @@ namespace ScriptCanvas
     bool Datum::InitializeEntityID(const void* source)
     {
         m_storage = source ? *reinterpret_cast<const Data::EntityIDType*>(source) : Data::Traits<Data::EntityIDType>::GetDefault();
+        return true;
+    }
+
+    bool Datum::InitializeNamedEntityID(const void* source)
+    {
+        m_storage = source ? *reinterpret_cast<const Data::NamedEntityIDType*>(source) : Data::Traits<Data::NamedEntityIDType>::GetDefault();
         return true;
     }
 
@@ -1947,7 +1904,7 @@ namespace ScriptCanvas
             }
             else
             {
-                AZ_Error("Script Canvas", false, "Script Canvas data is type safe!");
+                AZ_Error("Script Canvas", false, "Failed to convert from %s to %s", GetName(source.GetType()).c_str(), GetName(m_type).c_str());
             }
 
             m_notificationId = source.m_notificationId;
@@ -1980,7 +1937,7 @@ namespace ScriptCanvas
             }
             else
             {
-                AZ_Error("Script Canvas", false, "Script Canvas data is type safe!");
+                AZ_Error("Script Canvas", false, "Failed to convert from %s to %s", GetName(source.GetType()).c_str(), GetName(m_type).c_str());
             }
 
             m_notificationId = source.m_notificationId;
@@ -2197,7 +2154,7 @@ namespace ScriptCanvas
         }, serializeContext, false);
     }
     
-    void Datum::SetDefaultValue()
+    void Datum::SetToDefaultValueOfType()
     {
         if (m_isOverloadedStorage)
         {
@@ -2216,6 +2173,8 @@ namespace ScriptCanvas
                 AZ_Error("Script Canvas", false, "Unsupported ScriptCanvas Data type");
             }
         }
+
+        OnDatumChanged();
     }
 
     void Datum::SetLabel(AZStd::string_view name)
@@ -2266,10 +2225,11 @@ namespace ScriptCanvas
         const auto targetType = Data::FromAZType(destination.m_typeId);
         
         const bool success = 
-            (IS_A(targetType) || IsConvertibleTo(targetType))
-            && ::ToBehaviorContext(m_type, GetValueAddress(), destination.m_typeId, destination.GetValueAddress(), destinationBehaviorClass);
+            ( (IS_A(targetType) || IsConvertibleTo(targetType)) || (IS_A(Data::Type::String()) && AZ::BehaviorContextHelper::IsStringParameter(destination)) )
+            && ::ToBehaviorContext(m_type, GetValueAddress(), destination, destinationBehaviorClass);
 
-        AZ_Error("Script Canvas", success, "invalid datum going from Script Canvas!");
+        AZ_Error("Script Canvas", success, "Cannot push Datum with type %s into BehaviorValueParameter expecting type %s", GetName(m_type).c_str(), GetName(targetType).c_str());
+
         return success;
     }
 
@@ -2280,7 +2240,7 @@ namespace ScriptCanvas
 
     AZ::Outcome<AZ::BehaviorValueParameter, AZStd::string> Datum::ToBehaviorValueParameter(const AZ::BehaviorParameter& description) const
     {
-        AZ_Assert(m_isOverloadedStorage || IS_A(Data::FromAZType(description.m_typeId)) || IsConvertibleTo(description), "Mismatched type going to behavior value parameter");
+        AZ_Assert(m_isOverloadedStorage || IS_A(Data::FromAZType(description.m_typeId)) || IsConvertibleTo(description), "Mismatched type going to behavior value parameter: %s", description.m_name);
         
         const_cast<Datum*>(this)->InitializeOverloadedStorage(Data::FromAZType(description.m_typeId), eOriginality::Copy);
         
@@ -2301,7 +2261,7 @@ namespace ScriptCanvas
         {
             AZ::BehaviorValueParameter parameter;
             parameter.m_typeId = description.m_typeId; /// \todo verify there is no polymorphic danger here
-            parameter.m_name = m_class ? m_class->m_name.c_str() : Data::GetName(m_type);
+            parameter.m_name = m_class ? m_class->m_name.c_str() : Data::GetBehaviorContextName(m_type);
             parameter.m_azRtti = m_class ? m_class->m_azRtti : nullptr;
 
             if (description.m_traits & AZ::BehaviorParameter::TR_POINTER)
@@ -2326,7 +2286,7 @@ namespace ScriptCanvas
     
     AZ::Outcome<AZ::BehaviorValueParameter, AZStd::string> Datum::ToBehaviorValueParameterResult(const AZ::BehaviorParameter& description)
     {
-        AZ_Assert(m_isOverloadedStorage || IS_A(Data::FromAZType(description.m_typeId)) || IsConvertibleTo(description), "Mismatched type going to behavior value parameter");
+        AZ_Assert(m_isOverloadedStorage || IS_A(Data::FromAZType(description.m_typeId)) || IsConvertibleTo(description), "Mismatched type going to behavior value parameter: %s", description.m_name);
 
         InitializeOverloadedStorage(Data::FromAZType(description.m_typeId), eOriginality::Copy);
 
@@ -2344,7 +2304,7 @@ namespace ScriptCanvas
         if (IsValueType(m_type))
         {
             parameter.m_typeId = description.m_typeId; /// \todo verify there is no polymorphic danger here
-            parameter.m_name = m_class ? m_class->m_name.c_str() : Data::GetName(m_type);
+            parameter.m_name = m_class ? m_class->m_name.c_str() : Data::GetBehaviorContextName(m_type);
             parameter.m_azRtti = m_class ? m_class->m_azRtti : nullptr;
 
             if (description.m_traits & AZ::BehaviorParameter::TR_POINTER)
@@ -2374,7 +2334,7 @@ namespace ScriptCanvas
         else
         {
             parameter.m_typeId = description.m_typeId; /// \todo verify there is no polymorphic danger here
-            parameter.m_name = m_class ? m_class->m_name.c_str() : Data::GetName(m_type);
+            parameter.m_name = m_class ? m_class->m_name.c_str() : Data::GetBehaviorContextName(m_type);
             parameter.m_azRtti = m_class ? m_class->m_azRtti : nullptr;
             
             if (description.m_traits & (AZ::BehaviorParameter::TR_POINTER | AZ::BehaviorParameter::TR_REFERENCE))
@@ -2402,7 +2362,7 @@ namespace ScriptCanvas
         // m_conversion isn't a number yet
         // make it a number by initializing it to the proper type
         ::ToBehaviorContextNumber(m_conversionStorage, description.m_typeId, GetValueAddress());
-        return ConvertibleToBehaviorValueParameter(description, description.m_typeId, nullptr, reinterpret_cast<void*>(&m_conversionStorage), m_pointer);
+        return ConvertibleToBehaviorValueParameter(description, description.m_typeId, "number", reinterpret_cast<void*>(&m_conversionStorage), m_pointer);
     }
 
     AZ::Outcome<AZ::BehaviorValueParameter, AZStd::string> Datum::ToBehaviorValueParameterString(const AZ::BehaviorParameter& description)
@@ -2420,19 +2380,19 @@ namespace ScriptCanvas
 
         if (Data::IsString(description.m_typeId))
         {
-            return AZ::Success(ConvertibleToBehaviorValueParameter(description, description.m_typeId, nullptr, ModValueAddress(), m_pointer, description.m_azRtti));
+            return AZ::Success(ConvertibleToBehaviorValueParameter(description, description.m_typeId, "AZStd::string", ModValueAddress(), m_pointer));
         }
         else
         {
             auto stringValue = GetAs<Data::StringType>();
-            if (description.m_typeId == azrtti_typeid<char>() && (description.m_traits | (AZ::BehaviorParameter::TR_POINTER & AZ::BehaviorParameter::TR_CONST)))
+            if (description.m_typeId == azrtti_typeid<char>() && (description.m_traits & (AZ::BehaviorParameter::TR_POINTER | AZ::BehaviorParameter::TR_CONST)))
             {
-                return AZ::Success(ConvertibleToBehaviorValueParameter(description, description.m_typeId, nullptr, const_cast<char*>(stringValue->data()), m_pointer, description.m_azRtti));
+                return AZ::Success(ConvertibleToBehaviorValueParameter(description, description.m_typeId, "const char*", const_cast<char*>(stringValue->data()), m_pointer));
             }
             else if (description.m_typeId == azrtti_typeid<AZStd::string_view>())
             {
                 m_conversionStorage = AZStd::make_any<AZStd::string_view>(*stringValue);
-                return AZ::Success(ConvertibleToBehaviorValueParameter(description, description.m_typeId, nullptr, AZStd::any_cast<void>(&m_conversionStorage), m_pointer, description.m_azRtti));
+                return AZ::Success(ConvertibleToBehaviorValueParameter(description, description.m_typeId, "AZStd::string_view", AZStd::any_cast<void>(&m_conversionStorage), m_pointer));
             }
         }
 
@@ -2465,6 +2425,10 @@ namespace ScriptCanvas
 
         case Data::eType::EntityID:
             result = GetAs<AZ::EntityId>()->ToString();
+            return true;
+
+        case Data::eType::NamedEntityID:
+            result = GetAs<AZ::NamedEntityId>()->ToString();
             return true;
 
         case Data::eType::Invalid:
@@ -2520,7 +2484,7 @@ namespace ScriptCanvas
             break;
         }
 
-        result = AZStd::string::format("<Datum.ToString() failed for this type: %s >", Data::GetName(m_type));
+        result = AZStd::string::format("<Datum.ToString() failed for this type: %s >", Data::GetName(m_type).data());
         return false;
     }
     
@@ -2662,4 +2626,47 @@ namespace ScriptCanvas
             , static_cast<float>(source.GetZ())
             , static_cast<float>(source.GetW()));
     }
+
+    AZ::Outcome<void, AZStd::string> Datum::CallBehaviorContextMethod(AZ::BehaviorMethod* method, AZ::BehaviorValueParameter* params, unsigned int numExpectedArgs)
+    {
+        AZ_Assert(method, "AZ::BehaviorMethod* method == nullptr in Datum");
+        if (method->Call(params, numExpectedArgs))
+        {
+            return AZ::Success();
+        }
+        else
+        {
+            return AZ::Failure(AZStd::string::format("Script Canvas call of %s failed", method->m_name.c_str()));
+        }
+    }
+
+    AZ::Outcome<Datum, AZStd::string> Datum::CallBehaviorContextMethodResult(AZ::BehaviorMethod* method, const AZ::BehaviorParameter* resultType, AZ::BehaviorValueParameter* params, unsigned int numExpectedArgs)
+    {
+        AZ_Assert(resultType, "const AZ::BehaviorParameter* resultType == nullptr in Datum");
+        AZ_Assert(method, "AZ::BehaviorMethod* method == nullptr in Datum");
+        // create storage for the destination of the results in the function call...
+        Datum resultDatum(s_behaviorContextResultTag, *resultType);
+        //...and initialize a AZ::BehaviorValueParameter to wrap the storage...
+        AZ::Outcome<AZ::BehaviorValueParameter, AZStd::string> parameter = resultDatum.ToBehaviorValueParameterResult(*resultType);
+        if (parameter.IsSuccess())
+        {
+            // ...the result of Call here will write back to it...
+            if (method->Call(params, numExpectedArgs, &parameter.GetValue()))
+            {
+                // ...convert the storage, in case the function call result was one of many AZ:::RTTI types mapped to one SC::Type
+                resultDatum.ConvertBehaviorContextMethodResult(*resultType);
+                return AZ::Success(resultDatum);
+            }
+            else
+            {
+                return AZ::Failure(AZStd::string::format("Script Canvas call of %s failed", method->m_name.c_str()));
+            }
+        }
+        else
+        {
+            // parameter conversion failed
+            return AZ::Failure(parameter.GetError());
+        }
+    }
+
 } // namespace ScriptCanvas

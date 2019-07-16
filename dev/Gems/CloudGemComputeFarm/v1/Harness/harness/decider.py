@@ -1,7 +1,18 @@
+#
+# All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
+# its licensors.
+#
+# For complete copyright and license terms please see the LICENSE at the root of this
+# distribution (the "License"). All use of this software is governed by the License,
+# or, if provided, by the license below or the license accompanying this file. Do not
+# remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#
+
 import copy
 import enum
 import json
-
+from botocore.exceptions import ClientError
 
 _failed_task_types = {
     'ActivityTaskTimedOut': "activityTaskTimedOutEventAttributes",
@@ -42,12 +53,16 @@ class Task(object):
 
 def run_decider(config):
     while True:
-        response = config.swf_client.poll_for_decision_task(
-            domain=config.domain,
-            taskList={'name': config.task_list_name},
-            maximumPageSize=1000,
-            identity=config.identity
-        )
+        response = {}
+        try:
+            response = config.swf_client.poll_for_decision_task(
+                domain=config.domain,
+                taskList={'name': config.task_list_name},
+                maximumPageSize=1000,
+                identity=config.identity
+            )
+        except ClientError as e:
+            print('An Error occurred calling poll_for_decision_task : {}'.format(e))
 
         if 'taskToken' not in response:
             continue
@@ -73,6 +88,9 @@ def run_decider(config):
                     attrs = event['activityTaskScheduledEventAttributes']
                     activity_id = attrs['activityId']
                     activity_id_lookup[event_id] = activity_id
+                    if activity_id not in all_tasks:
+                        print('Error - unknown activity_id {} Scheduled'.format(activity_id))
+                        continue
                     task = all_tasks[activity_id]
                     task.state = TaskState.RUNNING
                     if task.task_type == config.merge_task:
@@ -88,6 +106,9 @@ def run_decider(config):
                     # Based on the type of task and the output, we may need to spawn new tasks.
                     scheduled_event_id = event['activityTaskCompletedEventAttributes']['scheduledEventId']
                     activity_id = activity_id_lookup[scheduled_event_id]
+                    if activity_id not in all_tasks:
+                        print('Error - unknown activity_id {} Completed'.format(activity_id))
+                        continue
                     task = all_tasks[activity_id]
                     task.state = TaskState.COMPLETED
                     data = json.loads(event['activityTaskCompletedEventAttributes']['result'])
@@ -150,10 +171,24 @@ def run_decider(config):
                 else:
                     failed_attribute_key = _failed_task_types.get(event_type, None)
 
+                    activity_id = None
                     if failed_attribute_key:
+                        print('Error - Worker task failed - {}'.format(event))
                         # A failed or timed-out task needs to be rescheduled.
                         scheduled_event_id = event[failed_attribute_key]['scheduledEventId']
                         activity_id = activity_id_lookup[scheduled_event_id]
+                        open_task_count -= 1
+                    elif event_type == 'ScheduleActivityTaskFailed':
+                        print('Error - ScheduleActivityTaskFailed - {}'.format(event))
+                        failure_attributes = event['scheduleActivityTaskFailedEventAttributes']
+                        failure_cause = failure_attributes['cause']
+                        if failure_cause in ['OPEN_ACTIVITIES_LIMIT_EXCEEDED', 'ACTIVITY_CREATION_RATE_EXCEEDED']:
+                            activity_id = failure_attributes['activityId']
+
+                    if activity_id:
+                        if not activity_id in all_tasks:
+                            print('Error - unknown activity_id {} Failed'.format(activity_id))
+                            continue
                         task = all_tasks[activity_id]
                         task.state = TaskState.INITIAL
                         failed_tasks.append([activity_id, event['eventTimestamp'].isoformat(timespec="seconds")])
@@ -229,7 +264,9 @@ def run_decider(config):
                 attrs['activityType'] = task.task_type.as_dict
                 attrs['activityId'] = task_id
                 attrs['input'] = json.dumps({'main': task.task_input, 'path': task.task_path, 'merge': task.child_input})
+                attrs['startToCloseTimeout'] = task.task_input.get('task_timeout', 'NONE')
                 decisions.append(decision)
+
         elif open_task_count == 0:
             # If no more tasks are running, then we're done the workflow.
             decision = {
@@ -273,8 +310,12 @@ def run_decider(config):
         })
 
         # Respond to SWF with the decisions
-        config.swf_client.respond_decision_task_completed(
-            taskToken=response['taskToken'],
-            decisions=decisions,
-            executionContext=execution_context
-        )
+        try:
+            config.swf_client.respond_decision_task_completed(
+                taskToken=response['taskToken'],
+                decisions=decisions,
+                executionContext=execution_context
+            )
+        except Exception as e:
+            print('An Error occurred calling respond_decision_task_completed : {}'.format(e))
+

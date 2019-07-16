@@ -1,0 +1,20 @@
+{
+    "attributes"    : {
+        "is_windows"            : true,
+        "qt_supported"          : true
+    },
+    "env" : {
+        "DEFINES": [
+            "_WIN32",
+            "_WIN64",
+            "NOMINMAX"
+        ],
+        "LINKFLAGS": [
+            "/MACHINE:X64"
+        ],
+        "ARFLAGS": [
+            "/MACHINE:X64"
+        ]
+    }
+}
+

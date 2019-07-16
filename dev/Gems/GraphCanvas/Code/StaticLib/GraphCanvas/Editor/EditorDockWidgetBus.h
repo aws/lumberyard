@@ -19,6 +19,8 @@
 
 namespace GraphCanvas
 {
+    class EditorDockWidget;
+
     // Busses made specifically for the Editor Dock Widgets
 
     // This bus is keyed off of the individual dock widgets Id's
@@ -34,8 +36,9 @@ namespace GraphCanvas
         static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::ById;
         using BusIdType = DockWidgetId;
 
-        virtual void SetAssetId(const AZ::EntityId& entityId) = 0;
-        virtual AZ::EntityId GetAssetId() const = 0;
+        virtual AZ::EntityId GetViewId() const = 0;
+        virtual GraphId GetGraphId() const = 0;
+        virtual EditorDockWidget* AsEditorDockWidget() = 0;
     };
 
     using EditorDockWidgetRequestBus = AZ::EBus<EditorDockWidgetRequests>;
@@ -49,6 +52,7 @@ namespace GraphCanvas
         static const AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::Single;
         using BusIdType = EditorId;
 
+        virtual void ReleaseBus() = 0;
         virtual DockWidgetId GetDockWidgetId() const = 0;
     };
 

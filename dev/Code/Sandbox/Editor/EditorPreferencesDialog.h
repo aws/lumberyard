@@ -16,7 +16,8 @@
 #include <QPixmap>
 #include <AzToolsFramework/UI/PropertyEditor/PropertyEditorAPI.h>
 
-namespace Ui {
+namespace Ui
+{
     class EditorPreferencesDialog;
 }
 
@@ -30,16 +31,16 @@ public:
     EditorPreferencesDialog(QWidget* pParent = nullptr);
     ~EditorPreferencesDialog();
 
-    //IPropertyEditorNotify Interface
-    virtual void BeforePropertyModified(AzToolsFramework::InstanceDataNode* pNode) {}
-    virtual void AfterPropertyModified(AzToolsFramework::InstanceDataNode* pNode) {}
-    virtual void SetPropertyEditingActive(AzToolsFramework::InstanceDataNode* pNode) {}
-    virtual void SetPropertyEditingComplete(AzToolsFramework::InstanceDataNode* pNode) {}
-    virtual void SealUndoStack() {}
+    // IPropertyEditorNotify
+    void BeforePropertyModified(AzToolsFramework::InstanceDataNode* node) override {}
+    void AfterPropertyModified(AzToolsFramework::InstanceDataNode* node) override;
+    void SetPropertyEditingActive(AzToolsFramework::InstanceDataNode* node) override {}
+    void SetPropertyEditingComplete(AzToolsFramework::InstanceDataNode* node) override {}
+    void SealUndoStack() override {}
 
 protected:
     void showEvent(QShowEvent* event) override;
-    
+
 private:
     void CreateImages();
     void CreatePages();
@@ -73,4 +74,3 @@ private:
     EditorPreferencesTreeWidgetItem* m_currentPageItem;
     QString m_filter;
 };
-

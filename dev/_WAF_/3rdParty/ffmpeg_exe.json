@@ -1,0 +1,15 @@
+{
+    "name": "FFMPEG_EXE",
+    "source": "@ROOT@/Tools/Redistributables/FFMpeg",
+    "description": "FFMpeg executable only",
+    "lib_required": "False",
+    "platform": {
+        "win_x64_vs2013": {
+            "copy_extra": [
+                "win32/ffmpeg.exe:."
+            ]
+        },
+        "win_x64_vs2015": "@win_x64_vs2013",
+        "win_x64_vs2017": "@win_x64_vs2013"
+    }
+}

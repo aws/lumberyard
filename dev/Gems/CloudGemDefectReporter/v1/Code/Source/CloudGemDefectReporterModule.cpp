@@ -23,19 +23,19 @@
 #include "FPSDropReportingComponent.h"
 #include "ImageLoaderSystemComponent.h"
 
-#include <IGem.h>
+#include <AzCore/Module/Module.h>
 
 namespace CloudGemDefectReporter
 {
     class CloudGemDefectReporterModule
-        : public CryHooksModule
+        : public AZ::Module
     {
     public:
-        AZ_RTTI(CloudGemDefectReporterModule, "{D61D8D5F-1664-400E-8D87-42F5484491A9}", CryHooksModule);
+        AZ_RTTI(CloudGemDefectReporterModule, "{D61D8D5F-1664-400E-8D87-42F5484491A9}", AZ::Module);
         AZ_CLASS_ALLOCATOR(CloudGemDefectReporterModule, AZ::SystemAllocator, 0);
 
         CloudGemDefectReporterModule()
-            : CryHooksModule()
+            : AZ::Module()
         {
             // Push results of [MyComponent]::CreateDescriptor() into m_descriptors here.
             m_descriptors.insert(m_descriptors.end(), {

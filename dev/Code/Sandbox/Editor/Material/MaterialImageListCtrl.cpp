@@ -531,6 +531,7 @@ void CMaterialImageListCtrl::updateGeometries()
     }
 
     m_updatingGeometries = false;
+    update();
 }
 
 //////////////////////////////////////////////////////////////////////////

@@ -24,6 +24,7 @@
 #include <EMotionFX/Source/TransformData.h>
 #include <EMotionFX/Source/ActorInstance.h>
 #include <EMotionFX/Source/ConstraintTransformRotationAngles.h>
+#include <EMotionFX/Source/DebugDraw.h>
 
 
 namespace EMotionFX
@@ -264,7 +265,7 @@ namespace EMotionFX
             {
                 MCore::Matrix offset = (postRotation.Inversed() * bindRotationLocal * constraintRotation * parentRotationGlobal).ToMatrix();
                 offset.SetTranslation(globalTransform.mPosition);
-                constraint.DebugDraw(offset, GetVisualizeColor(), 0.5f);
+                constraint.DebugDraw(actorInstance, offset, GetVisualizeColor(), 0.5f);
             }
 
             // convert back into world space
@@ -320,15 +321,15 @@ namespace EMotionFX
         {
             const float s = animGraphInstance->GetVisualizeScale() * actorInstance->GetVisualizeScale();
 
-            const uint32 color = mVisualizeColor;
-            GetEventManager().OnDrawLine(goal - AZ::Vector3(s, 0, 0), goal + AZ::Vector3(s, 0, 0), color);
-            GetEventManager().OnDrawLine(goal - AZ::Vector3(0, s, 0), goal + AZ::Vector3(0, s, 0), color);
-            GetEventManager().OnDrawLine(goal - AZ::Vector3(0, 0, s), goal + AZ::Vector3(0, 0, s), color);
-
-            const AZ::Vector3& pos = globalTransform.mPosition;
-            GetEventManager().OnDrawLine(pos, goal, mVisualizeColor);
-
-            GetEventManager().OnDrawLine(globalTransform.mPosition, globalTransform.mPosition + globalTransform.mRotation.CalcUpAxis() * s * 50.0f, MCore::RGBA(0, 0, 255));
+            DebugDraw& debugDraw = GetDebugDraw();
+            DebugDraw::ActorInstanceData* drawData = debugDraw.GetActorInstanceData(animGraphInstance->GetActorInstance());
+            drawData->Lock();
+            drawData->AddLine(goal - AZ::Vector3(s, 0, 0), goal + AZ::Vector3(s, 0, 0), mVisualizeColor);
+            drawData->AddLine(goal - AZ::Vector3(0, s, 0), goal + AZ::Vector3(0, s, 0), mVisualizeColor);
+            drawData->AddLine(goal - AZ::Vector3(0, 0, s), goal + AZ::Vector3(0, 0, s), mVisualizeColor);
+            drawData->AddLine(globalTransform.mPosition, goal, mVisualizeColor);
+            drawData->AddLine(globalTransform.mPosition, globalTransform.mPosition + globalTransform.mRotation.CalcUpAxis() * s * 50.0f, AZ::Color(0.0f, 0.0f, 1.0f, 1.0f));
+            drawData->Unlock();
         }
     }
 

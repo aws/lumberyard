@@ -17,6 +17,9 @@
 
 #include <AzToolsFramework/Commands/PreemptiveUndoCache.h>
 #include <AzToolsFramework/Entity/EditorEntitySortComponent.h>
+#include <AzToolsFramework/ToolsComponents/EditorDisabledCompositionComponent.h>
+#include <AzToolsFramework/ToolsComponents/EditorInspectorComponent.h>
+#include <AzToolsFramework/ToolsComponents/EditorPendingCompositionComponent.h>
 
 #include "SliceMetadataEntityContextComponent.h"
 
@@ -30,7 +33,10 @@ namespace AzToolsFramework
         , m_requiredSliceMetadataComponentTypes
         // These are the components that will be force added to every slice metadata entity
         ({
-            azrtti_typeid<Components::EditorEntitySortComponent>()
+            azrtti_typeid<Components::EditorEntitySortComponent>(),
+            azrtti_typeid<AzToolsFramework::Components::EditorPendingCompositionComponent>(),
+            azrtti_typeid<AzToolsFramework::Components::EditorDisabledCompositionComponent>(),
+            azrtti_typeid<AzToolsFramework::Components::EditorInspectorComponent>()
         })
     {
     }

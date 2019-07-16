@@ -16,6 +16,7 @@
 #pragma once
 
 #include <list>
+#include <type_traits>
 
 #include "VehicleDialogComponent.h"
 #include "VehiclePaintsPanel.h"
@@ -66,7 +67,7 @@ public:
     template<typename T>
     void GetObjectsByClass(std::vector<CBaseObject*>& objects)
     {
-        typedef typename QtPrivate::remove_cv<typename QtPrivate::remove_pointer<T>::type>::type ObjType;
+        typedef typename std::remove_cv<typename std::remove_pointer<T>::type>::type ObjType;
         GetObjectsByClass(&ObjType::staticMetaObject, objects);
     }
     void GetObjectsByClass(const QMetaObject* pClass, std::vector<CBaseObject*>& objects);

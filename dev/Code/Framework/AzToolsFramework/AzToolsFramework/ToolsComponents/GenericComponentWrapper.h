@@ -9,8 +9,8 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#ifndef AZTOOLSFRAMEWORK_GENERIC_COMPONENT_WRAPPER_H
-#define AZTOOLSFRAMEWORK_GENERIC_COMPONENT_WRAPPER_H
+
+#pragma once
 
 #include <AzCore/Slice/SliceBus.h>
 #include <AzCore/Serialization/SerializeContext.h>
@@ -51,23 +51,22 @@ namespace AzToolsFramework
             const char* GetDisplayName() const;
             const char* GetDisplayDescription() const;
 
-            //////////////////////////////////////////////////////////////////////////
             // AZ::Component
             void Init() override;
             void Activate() override;
             void Deactivate() override;
             const AZ::TypeId& GetUnderlyingComponentType() const override;
-            //////////////////////////////////////////////////////////////////////////
 
-            //////////////////////////////////////////////////////////////////////////
-            // AzFramework::EntityDebugDisplayRequestBus::Handler
-            void DisplayEntity(bool& handled) override;
-            //////////////////////////////////////////////////////////////////////////
+            // AzFramework::DebugDisplayRequestBus
+            void DisplayEntityViewport(
+                const AzFramework::ViewportInfo& viewportInfo,
+                AzFramework::DebugDisplayRequests& debugDisplay) override;
 
             void BuildGameEntity(AZ::Entity* gameEntity) override;
             void SetPrimaryAsset(const AZ::Data::AssetId& assetId) override;
 
-            AZ::ComponentValidationResult ValidateComponentRequirements(const AZ::ImmutableEntityVector& /*sliceEntities*/) const override;
+            AZ::ComponentValidationResult ValidateComponentRequirements(
+                const AZ::ImmutableEntityVector& sliceEntities) const override;
 
             AZ::Component* GetTemplate() const { return m_template; }
 
@@ -121,7 +120,3 @@ namespace AzToolsFramework
         return nullptr;
     }
 } // namespace AzToolsFramework
-
-#endif
-
-#pragma once

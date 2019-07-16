@@ -10,20 +10,24 @@
             "Include/RoadsAndRivers/RoadsAndRiversBus.h"
         ],
         "Source": [
-            "Source/RoadRiverCommon.cpp",
-            "Source/RoadRiverCommon.h",
-            "Source/RoadsAndRiversModule.cpp",
-            "Source/RoadsAndRiversModule.h",
-            "Source/RoadComponent.h",
-            "Source/RoadComponent.cpp",
-            "Source/RiverComponent.h",
-            "Source/RiverComponent.cpp",
-            "Source/SplineGeometry.h",
-            "Source/SplineGeometry.cpp",
-            "Source/River.h",
-            "Source/River.cpp",
-            "Source/Road.h",
-            "Source/Road.cpp"
-        ]
+          "Source/RoadRiverCommon.cpp",
+          "Source/RoadRiverCommon.h",
+          "Source/RoadsAndRiversModule.cpp",
+          "Source/RoadsAndRiversModule.h",
+          "Source/RoadComponent.h",
+          "Source/RoadComponent.cpp",
+          "Source/RiverComponent.h",
+          "Source/RiverComponent.cpp",
+          "Source/SplineGeometry.h",
+          "Source/SplineGeometry.cpp",
+          "Source/River.h",
+          "Source/River.cpp",
+          "Source/Road.h",
+          "Source/Road.cpp",
+          "Source/RoadSurfaceDataComponent.cpp",
+          "Source/RoadSurfaceDataComponent.h",
+          "Source/RiverSurfaceDataComponent.cpp",
+          "Source/RiverSurfaceDataComponent.h"
+      ]
     }
 }

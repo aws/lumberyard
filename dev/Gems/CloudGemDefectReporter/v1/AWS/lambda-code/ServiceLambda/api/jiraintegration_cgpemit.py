@@ -16,6 +16,11 @@ import boto3
 import CloudCanvas
 import json
 
+#
+#   Manual single defect submissions from the Cloud Gem Portal Cloud Gem Defect Reporter.
+#   Defect reports should have all mappings completed in the CGP and this is a direct submission to Jira at this point.
+#   Reports passed here are already prepared.    
+#
 @service.api
-def post(request, reports):
-    return {'status': jira_integration.create_Jira_tickets(reports, True)}
+def post(request, reports):    
+    return {'status': jira_integration.create_Jira_tickets(reports)}

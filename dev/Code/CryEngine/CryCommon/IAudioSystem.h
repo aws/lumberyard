@@ -106,6 +106,7 @@ namespace Audio
         eAORT_RESET_RTPCS               = BIT(11),
         eAORT_RELEASE_OBJECT            = BIT(12),
         eAORT_EXECUTE_SOURCE_TRIGGER    = BIT(13),  ///< Execute a trigger associated with an Audio Source (External file or Input stream)
+        eAORT_SET_MULTI_POSITIONS       = BIT(14),
     };
 
     enum EAudioObjectObstructionCalcType : TATLEnumFlagsType
@@ -777,6 +778,25 @@ namespace Audio
         TAudioSourceId m_sourceId;
     };
 
+    ///////////////////////////////////////////////////////////////////////////////////////////////////
+    template <>
+    struct SAudioObjectRequestData<eAORT_SET_MULTI_POSITIONS>
+        : public SAudioObjectRequestDataBase
+    {
+        SAudioObjectRequestData()
+            : SAudioObjectRequestDataBase(eAORT_SET_MULTI_POSITIONS)
+        {}
+
+        SAudioObjectRequestData(const MultiPositionParams& params)
+            : SAudioObjectRequestDataBase(eAORT_SET_MULTI_POSITIONS)
+            , m_params(params)
+        {}
+
+        ~SAudioObjectRequestData<eAORT_SET_MULTI_POSITIONS>() override {}
+
+        MultiPositionParams m_params;
+    };
+
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
     // Audio Listener Requests
@@ -862,6 +882,7 @@ namespace Audio
         virtual void SetObstructionCalcType(const EAudioObjectObstructionCalcType eObstructionType) = 0;
         virtual void SetPosition(const SATLWorldPosition& rPosition) = 0;
         virtual void SetPosition(const Vec3& rPosition) = 0;
+        virtual void SetMultiplePositions(const MultiPositionParams& params) = 0;
         virtual void SetEnvironmentAmount(const TAudioEnvironmentID nEnvironmentID, const float fAmount) = 0;
         virtual void SetCurrentEnvironments(const EntityId nEntityToIgnore = 0) = 0;
         virtual void SetLipSyncProvider(ILipSyncProvider* const pILipSyncProvider) = 0;

@@ -99,6 +99,10 @@ namespace GraphCanvas
         GeneralNodeFrameGraphicsWidget(const AZ::EntityId& nodeVisual);
         ~GeneralNodeFrameGraphicsWidget() override = default;
 
+        // SceneMemberUIRequestBus
+        QPainterPath GetOutline() const override;
+        ////
+
         // QGraphicsWidget
         void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget = nullptr) override;
         ////

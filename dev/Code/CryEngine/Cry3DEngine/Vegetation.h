@@ -29,16 +29,22 @@ public:
     AABB m_aabbBox;
 };
 
+namespace Physics
+{
+    struct TouchBendingTriggerHandle;
+}
+
 // Warning: Average outdoor level has about 200.000 objects of this class allocated - so keep it small
 class CVegetation
     : public IVegetation
     , public Cry3DEngineBase
 {
 public:
-    Vec3 m_vPos;
     IPhysicalEntity* m_pPhysEnt;
     CDeformableNode* m_pDeformable;
     PodArrayAABB<CRenderObject::SInstanceData>* m_pInstancingInfo;
+    Physics::TouchBendingTriggerHandle* m_touchBendingTriggerProxy;
+    Vec3 m_vPos;
     int  m_nObjectTypeIndex;
     byte  m_ucAngle;
     byte  m_ucSunDotTerrain;
@@ -52,7 +58,7 @@ public:
     static float g_scBoxDecomprTable[256] _ALIGN(128);
 
     CVegetation();
-    virtual ~CVegetation();
+    ~CVegetation() override;
     void SetStatObjGroupIndex(int nVegetationGroupIndex);
 
     void CheckCreateDeformable();
@@ -60,12 +66,13 @@ public:
     int GetStatObjGroupId() const { return m_nObjectTypeIndex; }
     const char* GetEntityClassName(void) const { return "Vegetation"; }
     Vec3 GetPos(bool bWorldOnly = true) const;
-    virtual float GetScale(void) const { return (1.f / VEGETATION_CONV_FACTOR) * m_ucScale; }
+    float GetScale(void) const override { return (1.f / VEGETATION_CONV_FACTOR) * m_ucScale; }
     void SetScale(float fScale) { m_ucScale = (uint8)SATURATEB(fScale * VEGETATION_CONV_FACTOR); }
-    virtual const char* GetName() const override;
-    virtual CLodValue ComputeLod(int wantedLod, const SRenderingPassInfo& passInfo) override;
+    void SetUniformScale(float fScale) override { SetScale(fScale); }
+    const char* GetName() const override;
+    CLodValue ComputeLod(int wantedLod, const SRenderingPassInfo& passInfo) override;
     bool CanExecuteRenderAsJob() override;
-    virtual void Render(const SRendParams& RendParams, const SRenderingPassInfo& passInfo){ assert(0); }
+    void Render(const SRendParams& RendParams, const SRenderingPassInfo& passInfo) override { assert(0); }
     void Render(const SRenderingPassInfo& passInfo, const CLodValue& lodValue, SSectorTextureSet* pTerrainTexInfo, const SRendItemSorter& rendItemSorter) const;
     IPhysicalEntity* GetPhysics(void) const { return m_pPhysEnt; }
     IRenderMesh*       GetRenderMesh(int nLod);
@@ -74,34 +81,40 @@ public:
     _smart_ptr<IMaterial> GetMaterial(Vec3* pHitPos = NULL);
     _smart_ptr<IMaterial> GetMaterialOverride();
     void SetMatrix(const Matrix34& mat);
-    virtual void Physicalize(bool bInstant = false);
+    void Physicalize(bool bInstant = false) override;
     bool PhysicalizeFoliage(bool bPhysicalize = true, int iSource = 0, int nSlot = 0);
-    virtual IRenderNode* Clone() const;
+    IRenderNode* Clone() const override;
     IPhysicalEntity* GetBranchPhys(int idx, int nSlot = 0);
     IFoliage* GetFoliage(int nSlot = 0);
     bool IsBreakable() { pe_params_part pp; pp.ipart = 0; return m_pPhysEnt && m_pPhysEnt->GetParams(&pp) && pp.idmatBreakable >= 0; }
     void AddBending(Vec3 const& v);
-    virtual float GetMaxViewDist();
+    float GetMaxViewDist() override;
     IStatObj* GetEntityStatObj(unsigned int nPartId = 0, unsigned int nSubPartId = 0, Matrix34A* pMatrix = NULL, bool bReturnOnlyVisible = false);
-    virtual EERType GetRenderNodeType();
-    virtual void Dephysicalize(bool bKeepIfReferenced = false);
+    EERType GetRenderNodeType() override;
+    void Dephysicalize(bool bKeepIfReferenced = false) override;
     void Dematerialize();
-    virtual void GetMemoryUsage(ICrySizer* pSizer) const;
-    virtual const AABB GetBBox() const;
-    virtual void FillBBox(AABB& aabb);
-    virtual void SetBBox(const AABB& WSBBox);
-    virtual void OffsetPosition(const Vec3& delta);
+    void GetMemoryUsage(ICrySizer* pSizer) const override;
+    const AABB GetBBox() const override;
+    void FillBBox(AABB& aabb) override;
+    void SetBBox(const AABB& WSBBox) override;
+    void OffsetPosition(const Vec3& delta) override;
     const float GetRadius() const;
     void UpdateRndFlags();
     int GetStatObjGroupSize() const;
     StatInstGroup& GetStatObjGroup() const;
+    void SetPosition(const Vec3& pos) override { m_vPos = pos; }
+    void PrepareBBox() override;
 
     IStatObj* GetStatObj();
 
+    void SetRotation(const Ang3& rotation) override;
+    float GetXAngle() const;
+    float GetYAngle() const;
     float GetZAngle() const;
+
     AABB CalcBBox();
     void CalcMatrix(Matrix34A& tm, int* pTransFags = NULL);
-    virtual uint8 GetMaterialLayers() const;
+    uint8 GetMaterialLayers() const override;
     //  float GetLodForDistance(float fDistance);
     void UpdateSunDotTerrain();
     void Init();

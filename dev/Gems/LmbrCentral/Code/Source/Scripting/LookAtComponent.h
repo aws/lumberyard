@@ -20,6 +20,35 @@
 
 namespace LmbrCentral
 {
+
+    class LookAtComponentRequests
+        : public AZ::ComponentBus
+    {
+    public:
+        
+        //! Set the target entity to look at
+        virtual void SetTarget(AZ::EntityId targetEntity) {}
+
+        //! Set the target position to look at
+        virtual void SetTargetPosition(const AZ::Vector3& position) {}
+
+        //! Set the reference forward axis
+        virtual void SetAxis(AZ::Transform::Axis axis = AZ::Transform::Axis::ZPositive) {}
+    };
+
+    using LookAtComponentRequestBus = AZ::EBus<LookAtComponentRequests>;
+
+    class LookAtComponentNotifications
+        : public AZ::ComponentBus
+    {
+    public:
+
+        //! Notifies you that the target has changed
+        virtual void OnTargetChanged(AZ::EntityId) { }
+    };
+
+    using LookAtComponentNotificationBus = AZ::EBus<LookAtComponentNotifications>;
+
     //=========================================================================
     // LookAtComponent
     //=========================================================================
@@ -28,6 +57,7 @@ namespace LmbrCentral
         , private AZ::TransformNotificationBus::MultiHandler
         , private AZ::TickBus::Handler
         , private AZ::EntityBus::Handler
+        , private LookAtComponentRequestBus::Handler
     {
     public:
         friend class EditorLookAtComponent;
@@ -56,6 +86,13 @@ namespace LmbrCentral
         void OnEntityDeactivated(const AZ::EntityId& entityId) override;
         //=====================================================================
 
+        //=====================================================================
+        // LookAtComponentRequestBus
+        void SetTarget(AZ::EntityId targetEntity) override;
+        void SetTargetPosition(const AZ::Vector3& targetPosition) override;
+        void SetAxis(AZ::Transform::Axis axis) override;
+        //=====================================================================
+
     protected:
         static void Reflect(AZ::ReflectContext* context);
 
@@ -79,6 +116,8 @@ namespace LmbrCentral
 
         // Serialized data
         AZ::EntityId m_targetId;
+        AZ::Vector3  m_targetPosition;
+
         AZ::Transform::Axis m_forwardAxis;
     };
 

@@ -16,6 +16,7 @@
 #include <EMotionFX/Source/Pose.h>
 
 #include <AzCore/Math/Vector3.h>
+#include <AzCore/Math/Color.h>
 #include <AzCore/std/containers/vector.h>
 #include <AzCore/std/functional.h>
 
@@ -114,7 +115,7 @@ namespace EMotionFX
         void Clear();
         void SetActorInstance(ActorInstance* actorInstance);
         void Update(Pose& pose, float timePassedInSeconds, float weight);
-        void DebugRender(AZ::u32 color);
+        void DebugRender(const AZ::Color& color);
         void Scale(float scaleFactor);
         void Log();
 

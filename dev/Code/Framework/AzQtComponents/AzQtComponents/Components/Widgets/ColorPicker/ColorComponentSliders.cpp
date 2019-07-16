@@ -12,6 +12,9 @@
 
 #include <AzQtComponents/Components/Widgets/ColorPicker/ColorComponentSliders.h>
 #include <AzQtComponents/Components/Widgets/SpinBox.h>
+#include <AzQtComponents/Components/Widgets/ColorPicker/ColorController.h>
+#include <AzQtComponents/Utilities/Conversions.h>
+#include <AzCore/Math/MathUtils.h>
 
 #include <QIntValidator>
 #include <QLabel>
@@ -47,6 +50,20 @@ namespace AzQtComponents
 
             return widest;
         }
+
+        template <typename SliderType>
+        QString createToolTipText(QString prefix, qreal position, SliderType* slider, bool includeRGB = true)
+        {
+            if (includeRGB)
+            {
+                QColor rgb = slider->colorAt(position);
+                return QStringLiteral("%0: %1\nRGB: %2, %3, %4").arg(prefix).arg(qRound(position * slider->maximum())).arg(rgb.red()).arg(rgb.green()).arg(rgb.blue());
+            }
+            else
+            {
+                return QStringLiteral("%0: %1").arg(prefix).arg(qRound(position * slider->maximum()));
+            }
+        }
     }
 
 ColorComponentEdit::ColorComponentEdit(const QString& labelText, int softMaximum, int hardMaximum, QWidget* parent)
@@ -65,8 +82,6 @@ ColorComponentEdit::ColorComponentEdit(const QString& labelText, int softMaximum
     label->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
     layout->addWidget(label);
 
-    layout->addSpacing(2);
-
     m_spinBox->setRange(0, hardMaximum);
     m_spinBox->setFixedWidth(32);
     m_spinBox->setAlignment(Qt::AlignHCenter);
@@ -75,7 +90,7 @@ ColorComponentEdit::ColorComponentEdit(const QString& labelText, int softMaximum
     connect(m_spinBox, &SpinBox::valueChangeEnded, this, &ColorComponentEdit::valueChangeEnded);
     layout->addWidget(m_spinBox);
 
-    layout->addSpacing(4);
+    layout->addSpacing(2);
 
     m_slider->setMinimum(0);
     m_slider->setMaximum(softMaximum);
@@ -83,6 +98,8 @@ ColorComponentEdit::ColorComponentEdit(const QString& labelText, int softMaximum
     connect(m_slider, &QSlider::sliderPressed, this, &ColorComponentEdit::valueChangeBegan);
     connect(m_slider, &QSlider::sliderReleased, this, &ColorComponentEdit::valueChangeEnded);
     layout->addWidget(m_slider);
+
+    m_slider->setFocusPolicy(Qt::ClickFocus);
 }
 
 ColorComponentEdit::~ColorComponentEdit()
@@ -92,6 +109,11 @@ ColorComponentEdit::~ColorComponentEdit()
 void ColorComponentEdit::setColorFunction(GradientSlider::ColorFunction colorFunction)
 {
     m_slider->setColorFunction(colorFunction);
+}
+
+void ColorComponentEdit::setToolTipFunction(GradientSlider::ToolTipFunction toolTipFunction)
+{
+    m_slider->setToolTipFunction(toolTipFunction);
 }
 
 qreal ColorComponentEdit::value() const
@@ -116,6 +138,11 @@ void ColorComponentEdit::setValue(qreal value)
     m_spinBox->setValue (sliderValue);
 
     emit valueChanged(m_value);
+}
+
+QColor ColorComponentEdit::colorAt(qreal position) const
+{
+    return m_slider->colorAt(position);
 }
 
 void ColorComponentEdit::updateGradient()
@@ -146,6 +173,7 @@ void ColorComponentEdit::sliderValueChanged(int value)
 HSLSliders::HSLSliders(QWidget* widget)
     : QWidget(widget)
     , m_mode(Mode::Hsl)
+    , m_defaultLForHsMode(0.85)
 {
     auto layout = new QVBoxLayout(this);
 
@@ -159,15 +187,30 @@ HSLSliders::HSLSliders(QWidget* widget)
     layout->addWidget(m_lightnessSlider);
 
     m_hueSlider->setColorFunction([this](qreal position) {
-        return QColor::fromHslF(position, m_saturationSlider->value(), m_lightnessSlider->value());
+        using namespace AzQtComponents::Internal;
+
+        return toQColor(ColorController::fromHsl(position, m_saturationSlider->value(), m_lightnessSlider->value()));
+    });
+    m_hueSlider->setToolTipFunction([this](qreal position) {
+        return createToolTipText("Hue", position, m_hueSlider);
     });
 
     m_saturationSlider->setColorFunction([this](qreal position) {
-        return QColor::fromHslF(m_hueSlider->value(), position, m_lightnessSlider->value());
+        using namespace AzQtComponents::Internal;
+
+        return toQColor(ColorController::fromHsl(m_hueSlider->value(), position, m_lightnessSlider->value()));
+    });
+    m_saturationSlider->setToolTipFunction([this](qreal position) {
+        return createToolTipText("Saturation", position, m_saturationSlider);
     });
 
     m_lightnessSlider->setColorFunction([this](qreal position) {
-        return QColor::fromHslF(m_hueSlider->value(), m_saturationSlider->value(), position);
+        using namespace AzQtComponents::Internal;
+
+        return toQColor(ColorController::fromHsl(m_hueSlider->value(), m_saturationSlider->value(), position));
+    });
+    m_lightnessSlider->setToolTipFunction([this](qreal position) {
+        return createToolTipText("Lightness", position, m_lightnessSlider);
     });
 
     connect(m_hueSlider, &ColorComponentEdit::valueChanged, this, &HSLSliders::hueChanged);
@@ -210,6 +253,11 @@ qreal HSLSliders::lightness() const
     return m_lightnessSlider->value();
 }
 
+qreal HSLSliders::defaultLForHsMode() const
+{
+    return m_defaultLForHsMode;
+}
+
 void HSLSliders::setMode(Mode mode)
 {
     if (mode == m_mode)
@@ -222,7 +270,7 @@ void HSLSliders::setMode(Mode mode)
     m_lightnessSlider->setVisible(m_mode == Mode::Hsl);
     if (m_mode == Mode::Hs)
     {
-        setLightness(1.0);
+        setLightness(m_defaultLForHsMode);
     }
 
     emit modeChanged(mode);
@@ -252,8 +300,14 @@ void HSLSliders::setLightness(qreal lightness)
     m_saturationSlider->updateGradient();
 }
 
+void HSLSliders::setDefaultLForHsMode(qreal value)
+{
+    m_defaultLForHsMode = value;
+}
+
 HSVSliders::HSVSliders(QWidget* widget)
     : QWidget(widget)
+    , m_defaultVForHsMode(0.85)
 {
     auto layout = new QVBoxLayout(this);
 
@@ -267,15 +321,30 @@ HSVSliders::HSVSliders(QWidget* widget)
     layout->addWidget(m_valueSlider);
 
     m_hueSlider->setColorFunction([this](qreal position) {
-        return QColor::fromHsvF(position, m_saturationSlider->value(), m_valueSlider->value());
+        using namespace AzQtComponents::Internal;
+
+        return toQColor(ColorController::fromHsv(position, m_saturationSlider->value(), m_valueSlider->value()));
+    });
+    m_hueSlider->setToolTipFunction([this](qreal position) {
+        return createToolTipText("Hue", position, m_hueSlider);
     });
 
     m_saturationSlider->setColorFunction([this](qreal position) {
-        return QColor::fromHsvF(m_hueSlider->value(), position, m_valueSlider->value());
+        using namespace AzQtComponents::Internal;
+
+        return toQColor(ColorController::fromHsv(m_hueSlider->value(), position, m_valueSlider->value()));
+    });
+    m_saturationSlider->setToolTipFunction([this](qreal position) {
+        return createToolTipText("Saturation", position, m_saturationSlider);
     });
 
     m_valueSlider->setColorFunction([this](qreal position) {
-        return QColor::fromHsvF(m_hueSlider->value(), m_saturationSlider->value(), position);
+        using namespace AzQtComponents::Internal;
+
+        return toQColor(ColorController::fromHsv(m_hueSlider->value(), m_saturationSlider->value(), position));
+    });
+    m_valueSlider->setToolTipFunction([this](qreal position) {
+        return createToolTipText("Value", position, m_valueSlider);
     });
 
     connect(m_hueSlider, &ColorComponentEdit::valueChanged, this, &HSVSliders::hueChanged);
@@ -297,6 +366,11 @@ HSVSliders::HSVSliders(QWidget* widget)
     connect(m_valueSlider, &ColorComponentEdit::valueChangeEnded, this, &HSVSliders::valueChangeEnded);
 }
 
+HSVSliders::Mode HSVSliders::mode() const
+{
+    return m_mode;
+}
+
 qreal HSVSliders::hue() const
 {
     return m_hueSlider->value();
@@ -310,6 +384,29 @@ qreal HSVSliders::saturation() const
 qreal HSVSliders::value() const
 {
     return m_valueSlider->value();
+}
+
+qreal HSVSliders::defaultVForHsMode() const
+{
+    return m_defaultVForHsMode;
+}
+
+void HSVSliders::setMode(Mode mode)
+{
+    if (mode == m_mode)
+    {
+        return;
+    }
+
+    m_mode = mode;
+
+    m_valueSlider->setVisible(m_mode == Mode::Hsv);
+    if (m_mode == Mode::Hs)
+    {
+        setValue(m_defaultVForHsMode);
+    }
+
+    emit modeChanged(mode);
 }
 
 void HSVSliders::setHue(qreal hue)
@@ -336,6 +433,11 @@ void HSVSliders::setValue(qreal value)
     m_saturationSlider->updateGradient();
 }
 
+void HSVSliders::setDefaultVForHsMode(qreal value)
+{
+    m_defaultVForHsMode = value;
+}
+
 RGBSliders::RGBSliders(QWidget* widget)
     : QWidget(widget)
 {
@@ -351,15 +453,24 @@ RGBSliders::RGBSliders(QWidget* widget)
     layout->addWidget(m_blueSlider);
 
     m_redSlider->setColorFunction([this](qreal position) {
-        return QColor::fromRgbF(position, m_greenSlider->value(), m_blueSlider->value());
+        return toQColor(position, m_greenSlider->value(), m_blueSlider->value());
+    });
+    m_redSlider->setToolTipFunction([this](qreal position) {
+        return createToolTipText("Red", position, m_redSlider, /*includeRGB=*/false);
     });
 
     m_greenSlider->setColorFunction([this](qreal position) {
-        return QColor::fromRgbF(m_redSlider->value(), position, m_blueSlider->value());
+        return toQColor(m_redSlider->value(), position, m_blueSlider->value());
+    });
+    m_greenSlider->setToolTipFunction([this](qreal position) {
+        return createToolTipText("Green", position, m_greenSlider, /*includeRGB=*/false);
     });
 
     m_blueSlider->setColorFunction([this](qreal position) {
-        return QColor::fromRgbF(m_redSlider->value(), m_greenSlider->value(), position);
+        return toQColor(m_redSlider->value(), m_greenSlider->value(), position);
+    });
+    m_blueSlider->setToolTipFunction([this](qreal position) {
+        return createToolTipText("Blue", position, m_blueSlider, /*includeRGB=*/false);
     });
 
     connect(m_redSlider, &ColorComponentEdit::valueChanged, this, &RGBSliders::redChanged);

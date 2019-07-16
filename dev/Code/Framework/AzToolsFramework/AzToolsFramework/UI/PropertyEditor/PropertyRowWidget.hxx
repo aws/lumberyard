@@ -50,6 +50,7 @@ namespace AzToolsFramework
         virtual AZ::u32 GetIdentifier() const; // retrieve a stable identifier that identifies this node (note: Does not include heirarchy).  Use only for attempts to restore state.
 
         bool IsForbidExpansion() const; 
+        bool ForceAutoExpand() const;
         bool AutoExpand() const { return m_autoExpand; }
         bool IsContainer() const { return m_isContainer; }
         bool IsContainerEditable() const { return m_isContainer && m_containerEditable; }
@@ -76,7 +77,7 @@ namespace AzToolsFramework
         bool HasChildRows() const;
 
         // check if theres a notification function.
-        PropertyModificationRefreshLevel DoPropertyNotify();
+        PropertyModificationRefreshLevel DoPropertyNotify(size_t optionalIndex = 0);
         void DoEditingCompleteNotify();
 
         // validate a change if there are validation functions specified
@@ -175,6 +176,7 @@ namespace AzToolsFramework
         QWidget* m_childWidget = nullptr;
 
         bool m_forbidExpansion = false;
+        bool m_forceAutoExpand = false;
         bool m_autoExpand = false;
         bool m_expanded = false;
         bool m_containerEditable = false;

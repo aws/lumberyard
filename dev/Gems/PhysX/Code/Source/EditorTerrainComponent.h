@@ -18,7 +18,7 @@
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
 #include <TerrainComponent.h>
 #include <PhysX/ComponentTypeIds.h>
-#include <PhysX/EditorTerrainComponentBus.h>
+#include <AzToolsFramework/Physics/EditorTerrainComponentBus.h>
 #include <PhysX/ConfigurationBus.h>
 #include <IEditor.h>
 
@@ -33,9 +33,10 @@ namespace PhysX
         , private IEditorNotifyListener
         , private AZ::Data::AssetBus::Handler
         , public Physics::EditorTerrainMaterialRequestsBus::Handler
-        , private PhysX::EditorTerrainComponentRequestsBus::Handler
+        , private Physics::EditorTerrainComponentRequestsBus::Handler
         , protected AzToolsFramework::EntitySelectionEvents::Bus::Handler
         , private PhysX::ConfigurationNotificationBus::Handler
+        , private AzToolsFramework::ToolsApplicationNotificationBus::Handler
     {
     public:
         AZ_EDITOR_COMPONENT(EditorTerrainComponent, EditorTerrainComponentTypeId, AzToolsFramework::Components::EditorComponentBase);
@@ -54,6 +55,7 @@ namespace PhysX
         static void GetIncompatibleServices(AZ::ComponentDescriptor::DependencyArrayType& incompatible)
         {
             incompatible.push_back(AZ_CRC("TerrainService", 0x28ee7719));
+            incompatible.push_back(AZ_CRC("LegacyCryPhysicsService", 0xbb370351));
         }
         static void GetRequiredServices(AZ::ComponentDescriptor::DependencyArrayType& required)
         {
@@ -66,8 +68,11 @@ namespace PhysX
         void Activate() override;
         void Deactivate() override;
 
-        // PhysX::EditorTerrainComponentRequestsBus
+        // Physics::EditorTerrainComponentRequestsBus
         void GetTrianglesForHeightField(AZStd::vector<AZ::Vector3>& verts, AZStd::vector<AZ::u32>& indices, AZStd::vector<Physics::MaterialId>& materialIds) const;
+        void UpdateHeightFieldAsset() override;
+        void SaveHeightFieldAsset() override;
+        void LoadHeightFieldAsset() override;
 
         // AzToolsFramework::EntitySelectionEvents
         void OnSelected() override;
@@ -77,16 +82,18 @@ namespace PhysX
         virtual void OnConfigurationRefreshed(const PhysX::Configuration& configuration) override;
 
     private:
+        // ToolsApplicationNotificationBus
+        void AfterUndoRedo() override;
+        void OnEndUndo(const char* label, bool changed) override;
+
         void RegisterForEditorEvents();
         void UnregisterForEditorEvents();
         void OnEditorNotifyEvent(EEditorNotifyEvent event) override;
         void CreateEditorTerrain();
 
-        void ExportTerrain();
         AZStd::string GetExportPath();
-        AZ::Data::Asset<Pipeline::HeightFieldAsset> ExportHeightFieldAsset(const AZStd::string& path);
 
-        void UpdateHeightFieldAsset();
+        AZ::Data::Asset<Pipeline::HeightFieldAsset> CreateHeightFieldAsset();
 
         // Physics::TerrainMaterialRequestsBus
         void SetMaterialSelectionForSurfaceId(int surfaceId, const Physics::MaterialSelection& selection) override;
@@ -95,12 +102,13 @@ namespace PhysX
         // AZ::Data::AssetBus::Handler
         void OnAssetReady(AZ::Data::Asset<AZ::Data::AssetData> asset) override;
         void OnAssetReloaded(AZ::Data::Asset<AZ::Data::AssetData> asset) override;
+        void OnAssetError(AZ::Data::Asset<AZ::Data::AssetData> asset) override;
 
-        TerrainConfiguration m_configuration; ///< Relative path to current level folder
-        AZStd::string m_exportAssetPath = "terrain/terrain.pxheightfield"; ///< Relative path to current level folder
-        bool m_exportOnSave = true; ///< Export terrain when saving the level
-        bool m_createTerrainInEditor = true; ///< Create terrain in the editor
-        AZStd::unique_ptr<Physics::RigidBodyStatic> m_editorTerrain; ///< Terrain object in the editor
+        TerrainConfiguration m_configuration; ///< Configuration used for creating terrain.
+        AZStd::string m_exportAssetPath = "terrain/terrain.pxheightfield"; ///< Relative path to current level folder.
+        bool m_heightFieldDirty = false; ///< Height field asset should be serialised next time the level is saved.
+        bool m_createTerrainInEditor = true; ///< Create terrain in the editor.
+        AZStd::unique_ptr<Physics::RigidBodyStatic> m_editorTerrain; ///< Terrain object in the editor.
 
         AZ_DISABLE_COPY_MOVE(EditorTerrainComponent)
     };

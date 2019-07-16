@@ -31,6 +31,9 @@
 #include <IConsole.h>
 #include <StringUtils.h>
 
+//#include "E:\novanet_dev_physx\dev\Gems\ImGui\External\ImGui\v1.53\imgui\imgui_internal.h"
+//#include "E:\physx\PhysX-3.4-master\PhysX-3.4-master\PhysX_3.4\Include\common\PxCoreUtilityTypes.h"
+
 namespace PhysXDebug
 {
     const float SystemComponent::m_maxCullingBoxSize = 150.0f;
@@ -167,6 +170,21 @@ namespace PhysXDebug
         InitPhysXColorMappings();
         RegisterCommands();
         ConfigurePhysXVisualizationParameters();
+
+        m_windowParams.padding = 10;
+        m_windowParams.height = 300;
+
+        // this should probably be at the higher level -- this is for the axis //////
+        m_windowParams.graphParams.maxPoint = ImVec2(1.1, 1.1);
+        m_windowParams.graphParams.minPoint = ImVec2(-0.1, -0.1);
+
+
+        // these should be at a higher level too..
+        m_maxPoints = 8;
+        m_windowParams.graphParams.maximumPoints = m_maxPoints;
+        m_windowParams.graphParams.valueMax = 1.0f;
+        m_windowParams.graphParams.valueMin = 0.0f;
+        //////////////////////////////////////////////////////
     }
 
     void SystemComponent::Reflect(AZ::ReflectContext* context)

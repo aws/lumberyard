@@ -14,9 +14,10 @@
 import os
 
 from waflib.Build import BuildContext
-from waflib import TaskGen
+from waflib import TaskGen, Options
 from waflib.TaskGen import extension
 from waflib.Task import Task,RUN_ME
+from waflib.Configure import conf, conf_event, ConfigurationContext
 from collections import OrderedDict, defaultdict
 
 UBER_HEADER_COMMENT = '// UBER SOURCE'
@@ -25,7 +26,7 @@ class uber_file_generator(BuildContext):
     ''' Util class to generate Uber Files after configure '''
     cmd = 'generate_uber_files'
     fun = 'build'
-                    
+
 @TaskGen.taskgen_method
 @extension('.xpm')
 @extension('.def')
@@ -73,8 +74,6 @@ class uber_file_generator(BuildContext):
 @extension('.natjmc')
 def header_dummy(tgen,node):
     pass
-
-from waflib.Configure import conf
 
 # Finds all files that are expected to be auto-ubered, sorts them and builds a manifest of uber
 # files based on size, then returns a re-mapped file list for use by the rest of the spec system
@@ -229,4 +228,16 @@ class gen_uber_file(Task):
             return -2 # SKIP_ME
             
         return RUN_ME   # Always execute Uber file Generation
-                        
+
+
+@conf_event(after_methods=['update_valid_configurations_file'])
+def inject_generate_uber_command(conf):
+    """
+    Make sure generate_uber_files command is injected into the configure pipeline
+    """
+    if not isinstance(conf, ConfigurationContext):
+        return
+
+    # Insert the generate_uber_files command, it has the highest priority
+    Options.commands.append('generate_uber_files')
+

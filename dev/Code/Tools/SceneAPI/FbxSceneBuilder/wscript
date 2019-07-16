@@ -19,7 +19,8 @@ def build(bld):
         file_list               = 'fbxscenebuilder.waf_files',
 
         platforms               = ['win', 'darwin'],
-        configurations          = ['debug', 'debug_test', 'profile', 'profile_test'],
+        exclude_monolithic      = True,
+        client_only             = True,
         disable_pch             = True,
         includes                = [bld.Path('Code/Tools')],
         export_includes         = [bld.Path('Code/Tools')],
@@ -33,9 +34,8 @@ def build(bld):
         defines                 = ['FBX_SCENE_BUILDER_EXPORTS',
                                    '_HAS_EXCEPTIONS=0'],
         output_sub_folder_copy  = ['rc'],
-		features				= ['link_running_program'],
-
-        win_x64_clang_cxxflags          = ['-Wno-null-dereference'],
+        features				= ['link_running_program'],
+        win_x64_clang_cxxflags  = ['-Wno-null-dereference'],
 
         #platform specific
         darwin_file_list        = 'fbxscenebuilder_darwin.waf_files',

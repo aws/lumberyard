@@ -31,6 +31,9 @@
 #include "DecalRenderNode.h"
 #include <cctype>
 
+#include <StatObjBus.h>
+#include <Vegetation/StaticVegetationBus.h>
+
 #include <LoadScreenBus.h>
 
 #define BRUSH_LIST_FILE "brushlist.txt"
@@ -71,6 +74,7 @@ void CObjManager::UnloadVegetationModels(bool bDeleteAll)
 
             rGroup.pStatObj = NULL;
             rGroup.pMaterial = NULL;
+            ReleaseStatInstGroupId(nGroupId);
         }
 
         if (bDeleteAll)
@@ -78,6 +82,7 @@ void CObjManager::UnloadVegetationModels(bool bDeleteAll)
             rGroupTable.Free();
         }
     }
+    Vegetation::StaticVegetationNotificationBus::Broadcast(&Vegetation::StaticVegetationNotificationBus::Events::VegetationCleared);
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -740,6 +745,8 @@ CObjManager::CObjManager()
     // init queue for check occlusion
     m_CheckOcclusionQueue.Init(GetCVars()->e_CheckOcclusionQueueSize);
     m_CheckOcclusionOutputQueue.Init(GetCVars()->e_CheckOcclusionOutputQueueSize);
+
+    StatInstGroupEventBus::Handler::BusConnect();
 }
 
 // make unit box for occlusion test
@@ -804,6 +811,8 @@ void CObjManager::MakeUnitCube()
 
 CObjManager::~CObjManager()
 {
+    StatInstGroupEventBus::Handler::BusDisconnect();
+
     // free default object
     m_pDefaultCGF = 0;
 
@@ -831,7 +840,7 @@ float CObjManager::GetXYRadius(int type, int nSID)
 
     if ((m_lstStaticTypes[nSID].Count() <= type || !m_lstStaticTypes[nSID][type].pStatObj))
     {
-        return 0;
+        return 0.0f;
     }
 
     Vec3 vSize = m_lstStaticTypes[nSID][type].pStatObj->GetBoxMax() - m_lstStaticTypes[nSID][type].pStatObj->GetBoxMin();
@@ -848,7 +857,7 @@ bool CObjManager::GetStaticObjectBBox(int nType, Vec3& vBoxMin, Vec3& vBoxMax, i
 
     if ((m_lstStaticTypes[nSID].Count() <= nType || !m_lstStaticTypes[nSID][nType].pStatObj))
     {
-        return 0;
+        return false;
     }
 
     vBoxMin = m_lstStaticTypes[nSID][nType].pStatObj->GetBoxMin();
@@ -1237,52 +1246,61 @@ void CObjManager::ClearStatObjGarbage()
     // Additionally, we need to hold one of these locks for the entire duration of this function to prevent the loading thread from using an object that is about to be deleted
     AZStd::lock_guard<AZStd::recursive_mutex> loadLock(m_loadMutex);
 
+    // We might need to perform the entire garbage collection logic more than once because the call to
+    // pStatObj->Shutdown() has the potential to add separate LOD models back onto the m_checkForGarbage list.
+    // If we only run the logic once, we might exit the ClearStatObjGarbage() function with garbage that hasn't been
+    // fully cleared.
+    while (!m_checkForGarbage.empty())
     {
-        AZStd::unique_lock<AZStd::recursive_mutex> garbageLock(m_garbageMutex);
-
-        // Make sure all stat objects inside this array are unique.
-        // Only check explicitly added objects.
-        IStatObj* pStatObj;
-
-        while (!m_checkForGarbage.empty())
         {
-            pStatObj = m_checkForGarbage.back();
-            m_checkForGarbage.pop_back();
+            AZStd::unique_lock<AZStd::recursive_mutex> garbageLock(m_garbageMutex);
 
-            if (pStatObj->CheckGarbage())
+            // Make sure all stat objects inside this array are unique.
+            // Only check explicitly added objects.
+            IStatObj* pStatObj;
+
+            while (!m_checkForGarbage.empty())
             {
-                // Check if it must be released.
-                int nChildRefs = pStatObj->CountChildReferences();
+                pStatObj = m_checkForGarbage.back();
+                m_checkForGarbage.pop_back();
 
-                if (pStatObj->GetUserCount() <= 0 && nChildRefs <= 0)
+                if (pStatObj->CheckGarbage())
                 {
-                    garbage.push_back(pStatObj);
-                }
-                else
-                {
-                    pStatObj->SetCheckGarbage(false);
+                    // Check if it must be released.
+                    int nChildRefs = pStatObj->CountChildReferences();
+
+                    if (pStatObj->GetUserCount() <= 0 && nChildRefs <= 0)
+                    {
+                        garbage.push_back(pStatObj);
+                    }
+                    else
+                    {
+                        pStatObj->SetCheckGarbage(false);
+                    }
                 }
             }
         }
-    }
 
-    // First ShutDown object clearing all pointers.
-    for (int i = 0, num = (int)garbage.size(); i < num; i++)
-    {
-        IStatObj* pStatObj = garbage[i];
-
-        if (!m_bLockCGFResources && !IsResourceLocked(pStatObj->GetFileName()))
+        // First ShutDown object clearing all pointers.
+        for (int i = 0, num = (int)garbage.size(); i < num; i++)
         {
-            // only shutdown object if it can be deleted by InternalDeleteObject()
-            pStatObj->ShutDown();
-        }
-    }
+            IStatObj* pStatObj = garbage[i];
 
-    // Then delete all garbage objects.
-    for (int i = 0, num = (int)garbage.size(); i < num; i++)
-    {
-        IStatObj* pStatObj = garbage[i];
-        InternalDeleteObject(pStatObj);
+            if (!m_bLockCGFResources && !IsResourceLocked(pStatObj->GetFileName()))
+            {
+                // only shutdown object if it can be deleted by InternalDeleteObject()
+                pStatObj->ShutDown();
+            }
+        }
+
+        // Then delete all garbage objects.
+        for (int i = 0, num = (int)garbage.size(); i < num; i++)
+        {
+            IStatObj* pStatObj = garbage[i];
+            InternalDeleteObject(pStatObj);
+        }
+
+        garbage.clear();
     }
 }
 
@@ -1364,3 +1382,53 @@ void CObjManager::MakeDepthCubemapRenderItemList(CVisArea* pReceiverArea, const 
         }
     }
 }
+
+//////////////////////////////////////////////////////////////////////////
+// StatInstGroupEventBus
+//////////////////////////////////////////////////////////////////////////
+StatInstGroupId CObjManager::GenerateStatInstGroupId()
+{
+    // generate new id
+    StatInstGroupId id = StatInstGroupEvents::s_InvalidStatInstGroupId;
+    for (StatInstGroupId i = 0; i < std::numeric_limits<StatInstGroupId>::max(); ++i)
+    {
+        if (m_usedIds.find(i) == m_usedIds.end())
+        {
+            id = i;
+            break;
+        }
+    }
+
+    if (id == StatInstGroupEvents::s_InvalidStatInstGroupId)
+    {
+        return id;
+    }
+
+    // Mark id as used
+    m_usedIds.insert(id);
+    return id;
+}
+
+void CObjManager::ReleaseStatInstGroupId(StatInstGroupId statInstGroupId)
+{
+    // Free id for this object
+    m_usedIds.erase(statInstGroupId);
+}
+
+void CObjManager::ReleaseStatInstGroupIdSet(const AZStd::unordered_set<StatInstGroupId>& statInstGroupIdSet)
+{
+    for (auto groupId : statInstGroupIdSet)
+    {
+        m_usedIds.erase(groupId);
+    }
+}
+
+void CObjManager::ReserveStatInstGroupIdRange(StatInstGroupId from, StatInstGroupId to)
+{
+    for (StatInstGroupId id = from; id < to; ++id)
+    {
+        m_usedIds.insert(id);
+    }
+}
+
+

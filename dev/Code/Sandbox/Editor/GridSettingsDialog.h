@@ -17,6 +17,7 @@
 #pragma once
 
 #include <QDialog>
+#include <AzCore/EBus/EBus.h>
 
 // CGridSettingsDialog dialog
 
@@ -29,6 +30,18 @@ class CGridSettingsDialog
 {
     Q_OBJECT
 public:
+
+    class Notifications
+        : public AZ::EBusTraits
+    {
+    public:
+        static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::Single;
+
+        virtual void OnGridValuesUpdated() {}
+    };
+
+    using NotificationBus = AZ::EBus<Notifications>;
+
     CGridSettingsDialog(QWidget* pParent = nullptr);   // standard constructor
     virtual ~CGridSettingsDialog();
 

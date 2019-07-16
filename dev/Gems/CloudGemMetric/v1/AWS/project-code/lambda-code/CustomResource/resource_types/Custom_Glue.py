@@ -85,6 +85,8 @@ def table_schema():
         schema_fields.append(field.id, )
 
 def cli(context, args):
+    util.set_logger(args.verbose)
+
     from resource_manager_common import constant
     credentials = context.aws.load_credentials()
 

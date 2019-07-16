@@ -43,4 +43,24 @@ namespace PhysX
     {
         return scene ? static_cast<Physics::World*>(scene->userData) : nullptr;
     }
+
+    inline void Utils::SetLayer(const Physics::CollisionLayer& layer, physx::PxFilterData& filterData)
+    {
+        filterData.word0 = (physx::PxU32)(layer.GetMask() >> 32);
+        filterData.word1 = (physx::PxU32)(layer.GetMask());
+    }
+
+    inline void Utils::SetGroup(const Physics::CollisionGroup& group, physx::PxFilterData& filterData)
+    {
+        filterData.word2 = (physx::PxU32)(group.GetMask() >> 32);
+        filterData.word3 = (physx::PxU32)(group.GetMask());
+    }
+
+    inline void Utils::SetCollisionLayerAndGroup(physx::PxShape* shape, const Physics::CollisionLayer& layer, const Physics::CollisionGroup&  group)
+    {
+        physx::PxFilterData filterData;
+        SetLayer(layer, filterData);
+        SetGroup(group, filterData);
+        shape->setSimulationFilterData(filterData);
+    }
 }

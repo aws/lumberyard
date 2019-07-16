@@ -15,9 +15,12 @@
 #include <AzQtComponents/Components/StyledDialog.h>
 #include <AzQtComponents/Components/Widgets/ColorPicker/ColorGrid.h>
 #include <AzQtComponents/Components/Widgets/ColorPicker/Palette.h>
+#include <AzQtComponents/Components/Widgets/LogicalTabOrderingWidget.h>
 #include <QColor>
 #include <QSharedPointer>
 #include <QHash>
+#include <QVector>
+#include <QScopedPointer>
 
 class QAction;
 class QActionGroup;
@@ -45,14 +48,19 @@ namespace AzQtComponents
     class PaletteModel;
     class PaletteView;
     class PaletteCardCollection;
-    class GammaEdit;
     class Eyedropper;
     class Style;
     class PaletteCard;
+    class QuickPaletteCard;
+    class ColorValidator;
 
     namespace Internal
     {
         class ColorController;
+        struct ColorLibrarySettings
+        {
+            bool expanded;
+        };
     }
 
     /**
@@ -62,7 +70,7 @@ namespace AzQtComponents
      *
      */
     class AZ_QT_COMPONENTS_API ColorPicker
-        : public StyledDialog
+        : public LogicalTabOrderingWidget<StyledDialog>
     {
         Q_OBJECT //AUTOMOC
 
@@ -72,15 +80,19 @@ namespace AzQtComponents
     public:
         enum class Configuration
         {
-            // will definitely come up with smarter names for this before we go live with this...
-            A,
-            B,
-            C
+            RGBA,
+            RGB,
+            HueSaturation // Simplified mode for picking lighting related values
         };
 
         struct ColorGridConfig
         {
             QSize minimumSize;
+        };
+
+        struct DialogButtonsConfig
+        {
+            int topPadding;
         };
 
         struct Config
@@ -89,6 +101,7 @@ namespace AzQtComponents
             int spacing;
             int maximumContentHeight;
             ColorGridConfig colorGrid;
+            DialogButtonsConfig dialogButtons;
         };
 
         /*!
@@ -101,7 +114,7 @@ namespace AzQtComponents
          */
         static Config defaultConfig();
 
-        explicit ColorPicker(Configuration configuration, QWidget* parent = nullptr);
+        explicit ColorPicker(Configuration configuration, const QString& context = QString(), QWidget* parent = nullptr);
         ~ColorPicker() override;
 
         AZ::Color currentColor() const;
@@ -109,7 +122,7 @@ namespace AzQtComponents
 
         void importPalettesFromFolder(const QString& path);
 
-        static AZ::Color getColor(Configuration configuration, const AZ::Color& initial, const QString& title, const QStringList& palettePaths = QStringList(), QWidget* parent = nullptr);
+        static AZ::Color getColor(Configuration configuration, const AZ::Color& initial, const QString& title, const QString& context = QString(), const QStringList& palettePaths = QStringList(), QWidget* parent = nullptr);
 
     Q_SIGNALS:
         void selectedColorChanged(const AZ::Color& color);
@@ -123,11 +136,12 @@ namespace AzQtComponents
         void importPalette();
         void newPalette();
         void removePaletteCardRequested(QSharedPointer<PaletteCard> card);
-        void savePalette(QSharedPointer<PaletteCard> palette);
 
     protected:
-        void closeEvent(QCloseEvent* e) override;
         bool eventFilter(QObject* o, QEvent* e) override;
+        void done(int result) override;
+
+        void contextMenuEvent(QContextMenuEvent* e) override;
 
     private:
         struct ColorLibrary
@@ -147,10 +161,12 @@ namespace AzQtComponents
 
         static bool polish(Style* style, QWidget* widget, const Config& config);
 
+        void warnColorAdjusted(const QString& message);
+
         void setConfiguration(Configuration configuration);
-        void applyConfigurationA(); 
-        void applyConfigurationB();
-        void applyConfigurationC();
+        void applyConfigurationRGBA(); 
+        void applyConfigurationRGB();
+        void applyConfigurationHueSaturation();
         void polish(const Config& config);
 
         void setColorGridMode(ColorGrid::Mode mode);
@@ -159,70 +175,94 @@ namespace AzQtComponents
         void readSettings();
         void writeSettings() const;
 
-        bool importPaletteFromFile(const QString& fileName);
+        void savePalette(QSharedPointer<PaletteCard> palette, bool queryFileName);
+        bool saveColorLibrary(ColorLibrary& colorLibrary, bool queryFileName);
+
+        bool importPaletteFromFile(const QString& fileName, const Internal::ColorLibrarySettings& settings);
         int colorLibraryIndex(const Palette* palette) const;
 
-        void addPalette(QSharedPointer<Palette> palette, const QString& fileName, const QString& title);
+        void addPalette(QSharedPointer<Palette> palette, const QString& fileName, const QString& title, const Internal::ColorLibrarySettings& settings);
         void addPaletteCard(QSharedPointer<PaletteCard> card, ColorLibrary colorLibrary);
         void removePaletteCard(QSharedPointer<PaletteCard> card);
+        bool saveChangedPalettes();
 
         void beginDynamicColorChange();
         void endDynamicColorChange();
 
+        void initializeValidation(ColorValidator* validator);
+        void showPreviewContextMenu(const QPoint& p, const AZ::Color& selectedColor);
+
+        void swatchSizeActionToggled(bool checked, int newSize);
+        void setQuickPaletteVisibility(bool show);
+
+        void paletteContextMenuRequested(QSharedPointer<PaletteCard> paletteCard, const QPoint& point);
+        void quickPaletteContextMenuRequested(const QPoint& point);
+
+        QWidget* makeSeparator(QWidget* parent);
+        QWidget* makePaddedSeparator(QWidget* parent);
+
         Configuration m_configuration;
+        QString m_context;
         Config m_config;
-        Internal::ColorController* m_currentColorController;
+        Internal::ColorController* m_currentColorController = nullptr;
         AZ::Color m_selectedColor;
 
-        Palette m_quickPalette;
+        QSharedPointer<Palette> m_quickPalette;
+        QuickPaletteCard* m_quickPaletteCard;
 
         QHash<QSharedPointer<PaletteCard>, ColorLibrary> m_colorLibraries;
 
-        QUndoStack* m_undoStack;
+        QUndoStack* m_undoStack = nullptr;
 
-        QScrollArea* m_scrollArea;
-        QWidget* m_containerWidget;
+        QScrollArea* m_scrollArea = nullptr;
+        QWidget* m_containerWidget = nullptr;
         
-        QGridLayout* m_hsvPickerLayout;
-        QHBoxLayout* m_rgbHexLayout;
-        QHBoxLayout* m_quickPaletteLayout;
+        QGridLayout* m_hsvPickerLayout = nullptr;
+        QHBoxLayout* m_rgbHexLayout = nullptr;
+        QHBoxLayout* m_quickPaletteLayout = nullptr;
 
-        GradientSlider* m_alphaSlider;
-        ColorGrid* m_colorGrid;
-        GradientSlider* m_hueSlider;
-        GradientSlider* m_valueSlider;
-        QToolButton* m_eyedropperButton;
-        QToolButton* m_toggleHueGridButton;
-        ColorPreview* m_preview;
-        ColorWarning* m_warning;
-        ColorRGBAEdit* m_rgbaEdit;
-        ColorHexEdit* m_hexEdit;
-        QFrame* m_slidersSeparator;
-        HSLSliders* m_hslSliders;
-        HSVSliders* m_hsvSliders;
-        RGBSliders* m_rgbSliders;
-        QFrame* m_quickPaletteSeparator;
-        PaletteModel* m_paletteModel;
-        PaletteView* m_paletteView;
-        QFrame* m_paletteCardSeparator;
-        PaletteCardCollection* m_paletteCardCollection;
-        QFrame* m_gammaEditSeparator;
-        GammaEdit* m_gammaEdit;
-        QMenu* m_menu;
-        Eyedropper* m_eyedropper;
-        QAction* m_showLinearValuesAction;
-        QAction* m_showHexValueAction;
-        QAction* m_showHSLSlidersAction;
-        QAction* m_showHSVSlidersAction;
-        QAction* m_showRGBSlidersAction;
-        QActionGroup* m_swatchSizeGroup;
-        QAction* m_showGammaAction;
+        GradientSlider* m_alphaSlider = nullptr;
+        ColorGrid* m_colorGrid = nullptr;
+        GradientSlider* m_hueSlider = nullptr;
+        GradientSlider* m_valueSlider = nullptr;
+        QToolButton* m_eyedropperButton = nullptr;
+        QToolButton* m_toggleHueGridButton = nullptr;
+        ColorPreview* m_preview = nullptr;
+        ColorWarning* m_warning = nullptr;
+        ColorRGBAEdit* m_rgbaEdit = nullptr;
+        ColorHexEdit* m_hexEdit = nullptr;
+        QWidget* m_hslSlidersSeparator = nullptr;
+        HSLSliders* m_hslSliders = nullptr;
+        QWidget* m_hsvSlidersSeparator = nullptr;
+        HSVSliders* m_hsvSliders = nullptr;
+        QWidget* m_rgbSlidersSeparator = nullptr;
+        RGBSliders* m_rgbSliders = nullptr;
+        QWidget* m_quickPaletteSeparator = nullptr;
+        QWidget* m_paletteCardSeparator = nullptr;
+        PaletteCardCollection* m_paletteCardCollection = nullptr;
+        QMenu* m_menu = nullptr;
+        Eyedropper* m_eyedropper = nullptr;
+        QAction* m_showLinearValuesAction = nullptr;
+        QAction* m_showHexValueAction = nullptr;
+        QAction* m_showHSLSlidersAction = nullptr;
+        QAction* m_showHSVSlidersAction = nullptr;
+        QAction* m_showRGBSlidersAction = nullptr;
+        QActionGroup* m_swatchSizeGroup = nullptr;
 
         bool m_dynamicColorChange = false;
         AZ::Color m_previousColor;
-        QAction* m_undoAction;
-        QAction* m_redoAction;
+        QAction* m_undoAction = nullptr;
+        QAction* m_redoAction = nullptr;
 
-        QDialogButtonBox* m_dialogButtonBox;
+        QAction* m_importPaletteAction = nullptr;
+        QAction* m_newPaletteAction = nullptr;
+        QAction* m_toggleQuickPaletteAction = nullptr;
+
+        QDialogButtonBox* m_dialogButtonBox = nullptr;
+        qreal m_defaultVForHsMode = 0.0f;
+        qreal m_defaultLForHsMode = 0.0f;
+
+        QString m_lastSaveDirectory;
+        QVector<QWidget*> m_separators;
     };
 } // namespace AzQtComponents

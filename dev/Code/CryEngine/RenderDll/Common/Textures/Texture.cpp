@@ -2920,7 +2920,18 @@ void CTexture::LoadDefaultSystemTextures()
         #include "Provo/Texture_cpp_provo.inl"
     #endif
 #endif
+            
+#if defined(AZ_PLATFORM_APPLE_IOS)
+            int nRTSceneDiffuseFlags =  nRTFlags;
+            static ICVar* pVar = gEnv->pConsole->GetCVar("e_ShadowsClearShowMaskAtLoad");
+            if (pVar && !pVar->GetIVal())
+            {
+                nRTSceneDiffuseFlags |= FT_USAGE_MEMORYLESS;
+            }
+            s_ptexSceneDiffuseAccMap = CTexture::CreateTextureObject("$SceneDiffuseAcc", 0, 0, 1, eTT_2D, nRTSceneDiffuseFlags, eTF_R8G8B8A8, TO_SCENE_DIFFUSE_ACC);
+#else
             s_ptexSceneDiffuseAccMap = CTexture::CreateTextureObject("$SceneDiffuseAcc", 0, 0, 1, eTT_2D, nRTFlags, eTF_R8G8B8A8, TO_SCENE_DIFFUSE_ACC);
+#endif
             s_ptexSceneSpecularAccMap = CTexture::CreateTextureObject("$SceneSpecularAcc", 0, 0, 1, eTT_2D, nRTFlags, eTF_R8G8B8A8, TO_SCENE_SPECULAR_ACC);
             s_ptexAmbientLookup = CTexture::CreateTextureObject("$AmbientLookup", 0, 0, 1, eTT_2D, nRTFlags, eTF_R8G8B8A8);
             s_ptexShadowMask = CTexture::CreateTextureObject("$ShadowMask", 0, 0, 1, eTT_2D, nRTFlags, eTF_R8G8B8A8, TO_SHADOWMASK);

@@ -16,7 +16,6 @@
 #include <AzCore/Debug/FrameProfilerComponent.h>
 #include <AzCore/IO/StreamerComponent.h>
 #include <AzCore/Jobs/JobManagerComponent.h>
-#include <AzCore/RTTI/AzStdReflectionComponent.h>
 #include <AzCore/Memory/MemoryComponent.h>
 #include <AzCore/Script/ScriptSystemComponent.h>
 #include <AzCore/Serialization/ObjectStreamComponent.h>
@@ -31,7 +30,6 @@ namespace AZ
         : AZ::Module()
     {
         m_descriptors.insert(m_descriptors.end(), {
-            AzStdReflectionComponent::CreateDescriptor(),
             MemoryComponent::CreateDescriptor(),
             StreamerComponent::CreateDescriptor(),
             JobManagerComponent::CreateDescriptor(),

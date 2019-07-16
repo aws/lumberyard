@@ -18,6 +18,7 @@
 
 #include <AzFramework/Asset/AssetCatalogBus.h>
 
+#include <GraphCanvas/Components/LayerBus.h>
 #include <GraphCanvas/Components/StyleBus.h>
 #include <GraphCanvas/Styling/definitions.h>
 #include <GraphCanvas/Styling/Selector.h>
@@ -64,14 +65,30 @@ namespace GraphCanvas
     {
         class Parser;
     }
+
+    class TintableIcon
+    {
+    public:
+        virtual ~TintableIcon() = default;
+
+        virtual AZ::Crc32 GetIconId() const = 0;
+
+        QPixmap* CreatePixmap(const AZStd::vector< QColor >& colors) const;
+        QPixmap* CreatePixmap(const AZStd::vector< QBrush >& brushes) const;
+        QPixmap* CreatePixmap(const AZStd::vector< Styling::StyleHelper* >& palettes) const;
+
+    protected:
+
+        AZStd::vector< QColor > m_paletteSwatches;
+        QPixmap* m_sourcePixmap;
+    };
     
     class StyleManager
         : protected StyleManagerRequestBus::Handler
         , private AzFramework::AssetCatalogEventBus::Handler
     {
     private:
-        typedef AZStd::pair<QColor, QPixmap*> IconDescriptor;
-        typedef AZStd::unordered_map< AZStd::string, IconDescriptor> PaletteToIconDescriptorMap;
+        typedef AZStd::unordered_map< AZ::Crc32, QPixmap*> PalettesToIconDescriptorMap;
 
     public:
         // Takes in the Id used to identify this StyleSheet and a relative path to the style sheet json file.
@@ -85,7 +102,7 @@ namespace GraphCanvas
         void OnCatalogAssetChanged(const AZ::Data::AssetId& asset) override;
         ////
 
-        // StyleSheetRequestBus::Handler
+        // StyleManagerRequestBus::Handler
         AZ::EntityId ResolveStyles(const AZ::EntityId& object) const override;
 
         void RegisterDataPaletteStyle(const AZ::Uuid& dataType, const AZStd::string& palette) override;
@@ -94,17 +111,27 @@ namespace GraphCanvas
         const Styling::StyleHelper* FindDataColorPalette(const AZ::Uuid& uuid) override;
         QColor GetDataTypeColor(const AZ::Uuid& dataType) override;
         const QPixmap* GetDataTypeIcon(const AZ::Uuid& dataType) override;
+        const QPixmap* GetMultiDataTypeIcon(const AZStd::vector<AZ::Uuid>& dataTypes) override;
 
         const Styling::StyleHelper* FindColorPalette(const AZStd::string& paletteString) override;
         QColor GetPaletteColor(const AZStd::string& palette) override;
         const QPixmap* GetPaletteIcon(const AZStd::string& iconStyle, const AZStd::string& palette) override;
+        const QPixmap* GetConfiguredPaletteIcon(const PaletteIconConfiguration& paletteConfiguration) override;
+        const Styling::StyleHelper* FindPaletteIconStyleHelper(const PaletteIconConfiguration& paletteConfiguration) override;
 
         QPixmap* CreateIcon(const QColor& colorType, const AZStd::string& iconStyle) override;
+        QPixmap* CreateIconFromConfiguration(const PaletteIconConfiguration& paletteConfiguration) override;
+        QPixmap* CreateMultiColoredIcon(const AZStd::vector<QColor>& colorType, float transitionPercent, const AZStd::string& iconStyle) override;
+
+        QPixmap* CreateColoredPatternPixmap(const AZStd::vector<QColor>& colorTypes, const AZStd::string& patternName) override;
+        const QPixmap* CreatePatternPixmap(const AZStd::vector<AZStd::string>& palettes, const AZStd::string& patternName) override;
 
         AZStd::vector<AZStd::string> GetColorPaletteStyles() const override;
 
         QPixmap* FindPixmap(const AZ::Crc32& keyName) override;
         void CachePixmap(const AZ::Crc32& keyName, QPixmap* pixmap) override;
+
+        int FindLayerZValue(AZStd::string_view layer) override;
         ////
 
     protected:
@@ -112,18 +139,28 @@ namespace GraphCanvas
 
     private:
 
+        QPixmap* CreateIcon(QBrush& brush, const AZStd::string& iconStyle);
+        QPixmap* CreateIcon(const Styling::StyleHelper& styleHelper, const AZStd::string& iconStyle);
+
         void LoadStyleSheet();
 
         void ClearStyles();
 
+        void ClearCache();
         void RefreshColorPalettes();
 
         void PopulateDataPaletteMapping();
 
+        const TintableIcon* FindPatternIcon(AZ::Crc32 patternIcon) const;
+        void AddPatternIcon(TintableIcon* icon);
+
         Styling::StyleHelper* FindCreateStyleHelper(const AZStd::string& paletteString);
 
-        const QPixmap* CreateAndCacheIcon(const QColor& color, const AZStd::string& iconStyle, const AZStd::string& palette);
-        bool FindIconDescriptor(const AZStd::string& iconStyle, const AZStd::string& palette, IconDescriptor& iconDescriptor);
+        const QPixmap* CreateAndCacheIcon(const PaletteIconConfiguration& configuration);
+        const QPixmap* FindCachedIcon(const PaletteIconConfiguration& configuration);
+
+        const QPixmap* FindPatternCache(const AZ::Crc32& patternCache) const;
+        void AddPatternCache(const AZ::Crc32& patternCache, QPixmap* pixmap);
 
         EditorId m_editorId;
         Styling::StyleVector m_styles;
@@ -134,9 +171,12 @@ namespace GraphCanvas
         AZStd::unordered_map<AZStd::string, Styling::StyleHelper*> m_styleTypeHelpers;
 
         AZStd::unordered_map<AZ::Uuid, AZStd::string > m_dataPaletteMapping;
-        AZStd::unordered_map<AZStd::string, PaletteToIconDescriptorMap> m_iconMapping;
+        AZStd::unordered_map<AZStd::string, PalettesToIconDescriptorMap> m_iconMapping;
 
         AZStd::unordered_map< AZ::Crc32, QPixmap* > m_pixmapCache;
+
+        AZStd::unordered_map< AZ::Crc32, TintableIcon* > m_patternIcons;
+        AZStd::unordered_map< AZ::Crc32, QPixmap* > m_patternCache;
 
         friend class Styling::Parser;
     };

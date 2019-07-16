@@ -18,6 +18,7 @@
 // InfoBar.h : header file
 //
 
+#include <AzToolsFramework/ComponentMode/EditorComponentModeBus.h>
 #include <IAudioSystem.h>
 #include <HMDBus.h>
 
@@ -32,6 +33,7 @@ class CInfoBar
     : public QWidget
     , public IEditorNotifyListener
     , public AZ::VR::VREventBus::Handler
+    , private AzToolsFramework::ComponentModeFramework::EditorComponentModeNotificationBus::Handler
 {
     Q_OBJECT
 
@@ -100,6 +102,10 @@ protected:
     void OnHMDInitialized() override;
     void OnHMDShutdown() override;
     //////////////////////////////////////////////////////////////////////////
+
+    // EditorComponentModeNotificationBus
+    void EnteredComponentMode(const AZStd::vector<AZ::Uuid>& componentModeTypes) override;
+    void LeftComponentMode(const AZStd::vector<AZ::Uuid>& componentModeTypes) override;
 
     bool m_enabledVector;
 

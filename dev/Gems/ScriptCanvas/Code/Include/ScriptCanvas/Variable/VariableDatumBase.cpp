@@ -10,8 +10,6 @@
 *
 */
 
-#include "precompiled.h"
-
 #include <ScriptCanvas/Variable/VariableDatum.h>
 #include <ScriptCanvas/Variable/VariableBus.h>
 
@@ -43,14 +41,17 @@ namespace ScriptCanvas
     VariableDatumBase::VariableDatumBase(const Datum& datum)
         : m_data(datum)
         , m_id(VariableId::MakeVariableId())
-    {
-    }
+    {}
 
+    VariableDatumBase::VariableDatumBase(const Datum& value, VariableId id)
+        : m_data(value)
+        , m_id(id)
+    {}
+    
     VariableDatumBase::VariableDatumBase(Datum&& datum)
         : m_data(AZStd::move(datum))
         , m_id(VariableId::MakeVariableId())
-    {
-    }
+    {}
 
     bool VariableDatumBase::operator==(const VariableDatumBase& rhs) const
     {

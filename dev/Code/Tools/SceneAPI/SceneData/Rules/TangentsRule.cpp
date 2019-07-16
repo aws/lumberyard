@@ -50,7 +50,7 @@ namespace AZ
             }
 
 
-            size_t TangentsRule::GetUVSetIndex() const
+            AZ::u64 TangentsRule::GetUVSetIndex() const
             {
                 return m_uvSetIndex;
             }
@@ -63,11 +63,11 @@ namespace AZ
 
 
             // Find UV data.
-            AZ::SceneAPI::DataTypes::IMeshVertexUVData* TangentsRule::FindUVData(AZ::SceneAPI::Containers::SceneGraph& graph, const AZ::SceneAPI::Containers::SceneGraph::NodeIndex& nodeIndex, size_t uvSet)
+            AZ::SceneAPI::DataTypes::IMeshVertexUVData* TangentsRule::FindUVData(AZ::SceneAPI::Containers::SceneGraph& graph, const AZ::SceneAPI::Containers::SceneGraph::NodeIndex& nodeIndex, AZ::u64 uvSet)
             {
                 const auto nameContentView = AZ::SceneAPI::Containers::Views::MakePairView(graph.GetNameStorage(), graph.GetContentStorage());
 
-                size_t uvSetIndex = 0;
+                AZ::u64 uvSetIndex = 0;
                 auto meshChildView = AZ::SceneAPI::Containers::Views::MakeSceneGraphChildView<AZ::SceneAPI::Containers::Views::AcceptEndPointsOnly>(graph, nodeIndex, nameContentView.begin(), true);
                 for (auto child = meshChildView.begin(); child != meshChildView.end(); ++child)
                 {
@@ -87,7 +87,7 @@ namespace AZ
 
 
             // Find tangent data.
-            AZ::SceneAPI::DataTypes::IMeshVertexTangentData* TangentsRule::FindTangentData(AZ::SceneAPI::Containers::SceneGraph& graph, const AZ::SceneAPI::Containers::SceneGraph::NodeIndex& nodeIndex, size_t setIndex, AZ::SceneAPI::DataTypes::TangentSpace tangentSpace)
+            AZ::SceneAPI::DataTypes::IMeshVertexTangentData* TangentsRule::FindTangentData(AZ::SceneAPI::Containers::SceneGraph& graph, const AZ::SceneAPI::Containers::SceneGraph::NodeIndex& nodeIndex, AZ::u64 setIndex, AZ::SceneAPI::DataTypes::TangentSpace tangentSpace)
             {
                 const auto nameContentView = AZ::SceneAPI::Containers::Views::MakePairView(graph.GetNameStorage(), graph.GetContentStorage());
 
@@ -109,7 +109,7 @@ namespace AZ
 
 
             // Find bitangent data.
-            AZ::SceneAPI::DataTypes::IMeshVertexBitangentData* TangentsRule::FindBitangentData(AZ::SceneAPI::Containers::SceneGraph& graph, const AZ::SceneAPI::Containers::SceneGraph::NodeIndex& nodeIndex, size_t setIndex, AZ::SceneAPI::DataTypes::TangentSpace tangentSpace)
+            AZ::SceneAPI::DataTypes::IMeshVertexBitangentData* TangentsRule::FindBitangentData(AZ::SceneAPI::Containers::SceneGraph& graph, const AZ::SceneAPI::Containers::SceneGraph::NodeIndex& nodeIndex, AZ::u64 setIndex, AZ::SceneAPI::DataTypes::TangentSpace tangentSpace)
             {
                 const auto nameContentView = AZ::SceneAPI::Containers::Views::MakePairView(graph.GetNameStorage(), graph.GetContentStorage());
 

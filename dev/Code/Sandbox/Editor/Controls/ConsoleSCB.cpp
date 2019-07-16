@@ -27,6 +27,7 @@
 #include <QtUtil.h>
 #include <QtUtilWin.h>
 
+#include <QHeaderView>
 #include <QLabel>
 #include <QSortFilterProxyModel>
 #include <QtCore/QStringList>
@@ -40,9 +41,56 @@
 #include <QtWidgets/QScrollBar>
 #include <QtWidgets/QVBoxLayout>
 #include <QtWidgets/QTableView>
+#include <QtGui/QSyntaxHighlighter>
 
 #include <vector>
 #include <iostream>
+
+class CConsoleSCB::SearchHighlighter : public QSyntaxHighlighter
+{
+public:
+    SearchHighlighter(QObject *parent)
+        : QSyntaxHighlighter(parent)
+    {
+
+    }
+
+    SearchHighlighter(QTextDocument *parent)
+        : QSyntaxHighlighter(parent)
+    {
+
+    }
+
+    void setSearchTerm(const QString &term)
+    {
+        m_searchTerm = term;
+        rehighlight();
+    }
+
+protected:
+    void highlightBlock(const QString &text)
+    {
+        auto pos = -1;
+        QTextCharFormat myClassFormat;
+        myClassFormat.setFontWeight(QFont::Bold);
+        myClassFormat.setBackground(Qt::yellow);
+
+        while (1)
+        {
+            pos = text.indexOf(m_searchTerm, pos+1, Qt::CaseInsensitive);
+
+            if (pos == -1)
+            {
+                break;
+            }
+
+            setFormat(pos, m_searchTerm.length(), myClassFormat);
+        }
+    }
+
+private:
+    QString m_searchTerm;
+};
 
 static CConsoleSCB* s_consoleSCB = nullptr;
 // Constant for the modified console variable color
@@ -96,16 +144,6 @@ ConsoleLineEdit::ConsoleLineEdit(QWidget* parent)
     , m_historyIndex(0)
     , m_bReusedHistory(false)
 {
-}
-
-void ConsoleLineEdit::mousePressEvent(QMouseEvent* ev)
-{
-    if (ev->type() == QEvent::MouseButtonPress && ev->button() & Qt::RightButton)
-    {
-        Q_EMIT variableEditorRequested();
-    }
-
-    QLineEdit::mousePressEvent(ev);
 }
 
 void ConsoleLineEdit::mouseDoubleClickEvent(QMouseEvent* ev)
@@ -273,7 +311,12 @@ CConsoleSCB::CConsoleSCB(QWidget* parent)
     s_pendingLines.clear();
     s_consoleSCB = this;
     ui->setupUi(this);
+    m_highlighter = new SearchHighlighter(ui->textEdit);
+    m_highlighter->setDocument(ui->textEdit->document());
+
     setMinimumHeight(120);
+
+    ui->findBar->setVisible(false);
     
     // Setup the color table for the default (light) theme
     m_colorTable << QColor(0, 0, 0)
@@ -288,7 +331,39 @@ CConsoleSCB::CConsoleSCB(QWidget* parent)
         << QColor(0x008f8f8f);
     OnStyleSettingsChanged();
 
+    auto findNextAction = new QAction(this);
+    findNextAction->setShortcut(QKeySequence::FindNext);
+    connect(findNextAction, &QAction::triggered, this, &CConsoleSCB::findNext);
+    ui->findNextButton->addAction(findNextAction);
+
+    auto findPreviousAction = new QAction(this);
+    findPreviousAction->setShortcut(QKeySequence::FindPrevious);
+    connect(findPreviousAction, &QAction::triggered, this, &CConsoleSCB::findPrevious);
+    ui->findPrevButton->addAction(findPreviousAction);
+
     connect(ui->button, &QPushButton::clicked, this, &CConsoleSCB::showVariableEditor);
+    connect(ui->findButton, &QPushButton::clicked, this, &CConsoleSCB::toggleConsoleSearch);
+    connect(ui->textEdit, &ConsoleTextEdit::searchBarRequested, this, [this]
+    {
+        this->ui->findBar->setVisible(true);
+        this->ui->lineEditFind->setFocus();
+    });
+
+    connect(ui->lineEditFind, &QLineEdit::returnPressed, this, &CConsoleSCB::findNext);
+
+    connect(ui->closeButton, &QPushButton::clicked, [=]
+    {
+        ui->findBar->setVisible(false);
+    });
+
+    connect(ui->findPrevButton, &QPushButton::clicked, this, &CConsoleSCB::findPrevious);
+    connect(ui->findNextButton, &QPushButton::clicked, this, &CConsoleSCB::findNext);
+
+    connect(ui->lineEditFind, &QLineEdit::textChanged, [=](auto text)
+    {
+        m_highlighter->setSearchTerm(text);
+    });
+
     connect(ui->lineEdit, &ConsoleLineEdit::variableEditorRequested, this, &CConsoleSCB::showVariableEditor);
     connect(Editor::EditorQtApplication::instance(), &Editor::EditorQtApplication::skinChanged, this, &CConsoleSCB::OnStyleSettingsChanged);
 
@@ -322,6 +397,8 @@ void CConsoleSCB::RegisterViewClass()
 void CConsoleSCB::OnStyleSettingsChanged()
 {
     ui->button->setIcon(QIcon(QString(":/controls/img/cvar_dark.bmp")));
+    ui->findButton->setIcon(QIcon(QString(":/stylesheet/img/search.png")));
+    ui->closeButton->setIcon(QIcon(QString(":/stylesheet/img/lineedit-clear.png")));
 
     // Set the debug/warning text colors appropriately for the background theme
     // (e.g. not have black text on black background)
@@ -598,6 +675,13 @@ ConsoleTextEdit::ConsoleTextEdit(QWidget* parent)
     clearAction->setEnabled(false);
     connect(clearAction, &QAction::triggered, this, &QPlainTextEdit::clear);
     addAction(clearAction);
+
+    QAction* findAction = m_contextMenu->addAction(tr("Find"));
+    findAction->setShortcutContext(Qt::WidgetWithChildrenShortcut);
+    findAction->setShortcut(QKeySequence::Find);
+    findAction->setEnabled(true);
+    connect(findAction, &QAction::triggered, this, &ConsoleTextEdit::searchBarRequested);
+    addAction(findAction);
 
     connect(this, &QPlainTextEdit::copyAvailable, copyAction, &QAction::setEnabled);
     connect(this, &QPlainTextEdit::copyAvailable, deleteAction, &QAction::setEnabled);
@@ -1201,6 +1285,55 @@ void CConsoleSCB::showVariableEditor()
 {
     // Open the console variables pane
     QtViewPaneManager::instance()->OpenPane(LyViewPane::ConsoleVariables);
+}
+
+void CConsoleSCB::toggleConsoleSearch()
+{
+    if (!ui->findBar->isVisible())
+    {
+        ui->findBar->setVisible(true);
+        ui->lineEditFind->setFocus();
+    }
+    else
+    {
+        ui->findBar->setVisible(false);
+    }
+}
+
+void CConsoleSCB::findPrevious()
+{
+    const auto text = ui->lineEditFind->text();
+    auto found = ui->textEdit->find(text, QTextDocument::FindBackward);
+
+    if (!found)
+    {
+        auto prevCursor = ui->textEdit->textCursor();
+        ui->textEdit->moveCursor(QTextCursor::End);
+        found = ui->textEdit->find(text, QTextDocument::FindBackward);
+
+        if (!found)
+        {
+            ui->textEdit->setTextCursor(prevCursor);
+        }
+    }
+}
+
+void CConsoleSCB::findNext()
+{
+    const auto text = ui->lineEditFind->text();
+    auto found = ui->textEdit->find(text);
+
+    if (!found)
+    {
+        auto prevCursor = ui->textEdit->textCursor();
+        ui->textEdit->moveCursor(QTextCursor::Start);
+        found = ui->textEdit->find(text);
+
+        if (!found)
+        {
+            ui->textEdit->setTextCursor(prevCursor);
+        }
+    }
 }
 
 CConsoleSCB* CConsoleSCB::GetCreatedInstance()

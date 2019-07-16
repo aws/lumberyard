@@ -18,7 +18,6 @@ using System.Net.Http;
 using Newtonsoft.Json;
 using System.Collections.Generic;
 
-namespace CloudCanvas {
 namespace {{json_object.namespace}} {
     {% for item in json_object.otherClasses %}
     {% if item.isArray %}
@@ -67,6 +66,22 @@ namespace {{json_object.namespace}} {
                     {% endif %}
                     Add(nextObject);
                 }
+                {% if item.elements in ["string", "int", "bool", "double"] %}
+                    {% if item.elements == "int" %}
+                    else if (jsonReader.TokenType == JsonToken.Integer)
+                    {% elif item.elements == "bool" %}
+                    else if (jsonReader.TokenType == JsonToken.Boolean)                    
+                    {% elif item.elements == "string"  %}
+                    else if (jsonReader.TokenType == JsonToken.String)
+                    {% elif item.elements == "double" %}
+                    else if (jsonReader.Value is double || jsonReader.Value is int)                    
+                    {% endif %}
+                {
+                    {{ item.elements }} nextObject;
+                    nextObject = ({{ item.elements }})jsonReader.Value;
+                    Add(nextObject);
+                }
+                {% endif %}
             }
             return true;
         }
@@ -81,6 +96,15 @@ namespace {{json_object.namespace}} {
         public {{ prop.type }} _{{prop.name}}{{prop.init}};
         {% endif %}
         {% endfor %}
+        public {{ item.name }}()
+        {
+            {% for prop in item.props %}
+            {% if prop.type not in ["string", "double", "int", "bool"] %}
+            _{{ prop.name }} = new {{ prop.type }}();
+            {% endif %}
+            {% endfor %}
+        }
+        
         public void AddRequestBody(JsonWriter jsonWriter)
         {
             jsonWriter.WriteStartObject();
@@ -176,7 +200,7 @@ namespace {{json_object.namespace}} {
         {% endif %}
         public override string GetLogicalServiceName()
         {
-            return "{{json_object.namespace}}.ServiceApi";
+            return "{{json_object.resourceGroup}}.ServiceApi";
         }
         {% if path.responseType %}
         public override bool ParseResponse(JsonTextReader jsonReader)
@@ -187,5 +211,5 @@ namespace {{json_object.namespace}} {
         {% endif %}
     }
     {% endfor %}
-}
-} // {{ json_object.namespace }}
+}  // {{ json_object.namespace }}
+

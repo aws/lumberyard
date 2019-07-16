@@ -53,28 +53,33 @@ namespace LmbrCentral
     {
         AZ_Assert(!m_audioProxy, "AudioProxyCompnent::Activate - Audio Proxy has been set already!");
         Audio::AudioSystemRequestBus::BroadcastResult(m_audioProxy, &Audio::AudioSystemRequestBus::Events::GetFreeAudioProxy);
-        AZ_Assert(m_audioProxy, "AudioProxyComponent::Activate - Failed to create an Audio Proxy!");
 
-        AZStd::string proxyName = AZStd::string::format("%s_audioproxy", GetEntity()->GetName().c_str());
-        m_audioProxy->Initialize(proxyName.c_str());
-        m_audioProxy->SetObstructionCalcType(Audio::eAOOCT_IGNORE);
+        if (m_audioProxy)
+        {
+            AZStd::string proxyName = AZStd::string::format("%s_audioproxy", GetEntity()->GetName().c_str());
+            m_audioProxy->Initialize(proxyName.c_str());
+            m_audioProxy->SetObstructionCalcType(Audio::eAOOCT_IGNORE);
 
-        // don't need to set position on the proxy now, but initialize the transform from the entity.
-        AZ::TransformBus::EventResult(m_transform, GetEntityId(), &AZ::TransformBus::Events::GetWorldTM);
+            // don't need to set position on the proxy now, but initialize the transform from the entity.
+            AZ::TransformBus::EventResult(m_transform, GetEntityId(), &AZ::TransformBus::Events::GetWorldTM);
 
-        AudioProxyComponentRequestBus::Handler::BusConnect(GetEntityId());
-        AZ::TransformNotificationBus::Handler::BusConnect(GetEntityId());
+            AudioProxyComponentRequestBus::Handler::BusConnect(GetEntityId());
+            AZ::TransformNotificationBus::Handler::BusConnect(GetEntityId());
+        }
     }
 
     //=========================================================================
     void AudioProxyComponent::Deactivate()
     {
-        AudioProxyComponentRequestBus::Handler::BusDisconnect(GetEntityId());
-        AZ::TransformNotificationBus::Handler::BusDisconnect(GetEntityId());
+        if (m_audioProxy)
+        {
+            AZ::TransformNotificationBus::Handler::BusDisconnect(GetEntityId());
+            AudioProxyComponentRequestBus::Handler::BusDisconnect(GetEntityId());
 
-        m_audioProxy->StopAllTriggers();
-        m_audioProxy->Release();
-        m_audioProxy = nullptr;
+            m_audioProxy->StopAllTriggers();
+            m_audioProxy->Release();
+            m_audioProxy = nullptr;
+        }
     }
 
     //=========================================================================
@@ -160,6 +165,12 @@ namespace LmbrCentral
     void AudioProxyComponent::SetPosition(const Audio::SATLWorldPosition& position)
     {
         m_audioProxy->SetPosition(position);
+    }
+
+    //=========================================================================
+    void AudioProxyComponent::SetMultiplePositions(const Audio::MultiPositionParams& params)
+    {
+        m_audioProxy->SetMultiplePositions(params);
     }
 
 } // namespace LmbrCentral

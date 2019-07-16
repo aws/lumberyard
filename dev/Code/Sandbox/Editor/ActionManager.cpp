@@ -9,6 +9,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
+
 #include "StdAfx.h"
 #include "ActionManager.h"
 #include "ShortcutDispatcher.h"
@@ -32,6 +33,12 @@
 
 #include <AzToolsFramework/Metrics/LyEditorMetricsBus.h>
 
+static const char* const s_reserved = "Reserved"; ///< "Reserved" property used for actions that cannot be overridden.
+                                                  ///< (e.g. KeySequences such as Ctrl+S and Ctrl+Z for Save/Undo etc.)
+
+static const char* const s_menuIdProperty = "MenuId"; ///< "MenuId" property used when adding top level menus to the
+                                                      ///<  menu bar so they can be uniquely identified with FindMenu()
+
 static const int s_invalidGuardActionId = -1;
 
 ActionManagerExecutionGuard::ActionManagerExecutionGuard(ActionManager* actionManager, QAction* action)
@@ -39,8 +46,8 @@ ActionManagerExecutionGuard::ActionManagerExecutionGuard(ActionManager* actionMa
     , m_actionId(s_invalidGuardActionId)
     , m_canExecute(true)
 {
-    // both actionManager and action can be nullptr, and this is totally valid. The lambas using this might be out of scope and
-    // their QPointers may have been cleared
+    // both actionManager and action can be nullptr, and this is totally valid.
+    // the lambdas using this might be out of scope and their QPointers may have been cleared
     if (actionManager && action)
     {
         m_actionId = action->data().toInt();
@@ -53,7 +60,7 @@ ActionManagerExecutionGuard::ActionManagerExecutionGuard(ActionManager* actionMa
     , m_actionId(actionId)
     , m_canExecute(true)
 {
-    // both actionManager and action can be nullptr, and this is totally valid. The lambas using this might be out of scope and
+    // both actionManager and action can be nullptr, and this is totally valid. The lambdas using this might be out of scope and
     // their QPointers may have been cleared
     if (actionManager)
     {
@@ -82,7 +89,7 @@ PatchedAction::PatchedAction(const QString& name, QObject* parent)
 
 bool PatchedAction::event(QEvent* ev)
 {
-    // *Really* honour Qt::WindowShortcut. Floating dock widgets are a separate window (Qt::Window flag is set) even though they have a parent.
+    // *Really* honor Qt::WindowShortcut. Floating dock widgets are a separate window (Qt::Window flag is set) even though they have a parent.
 
     if (ev->type() == QEvent::Shortcut && shortcutContext() == Qt::WindowShortcut)
     {
@@ -184,6 +191,12 @@ ActionManager::ActionWrapper& ActionManager::ActionWrapper::SetApplyHoverEffect(
     return *this;
 }
 
+ActionManager::ActionWrapper& ActionManager::ActionWrapper::SetReserved()
+{
+    m_action->setProperty("Reserved", true);
+    return *this;
+}
+
 /////////////////////////////////////////////////////////////////////////////
 // DynamicMenu
 /////////////////////////////////////////////////////////////////////////////
@@ -243,7 +256,7 @@ ActionManager::ActionWrapper DynamicMenu::AddAction(int id, const QString& name)
 
 void DynamicMenu::UpdateAllActions()
 {
-    foreach(auto action, m_menu->actions())
+    for (auto action : m_menu->actions())
     {
         int id = action->data().toInt();
         OnMenuUpdate(id, action);
@@ -265,16 +278,17 @@ void DynamicMenu::TriggerAction(int id)
     UpdateAllActions();
 }
 
-
 #include <QTimer>
 
 /////////////////////////////////////////////////////////////////////////////
 // ActionManager
 /////////////////////////////////////////////////////////////////////////////
-ActionManager::ActionManager(MainWindow* parent, QtViewPaneManager* const qtViewPaneManager)
+ActionManager::ActionManager(
+    MainWindow* parent, QtViewPaneManager* const qtViewPaneManager, ShortcutDispatcher* shortcutDispatcher)
     : QObject(parent)
     , m_mainWindow(parent)
     , m_qtViewPaneManager(qtViewPaneManager)
+    , m_shortcutDispatcher(shortcutDispatcher)
 {
     m_actionMapper = new QSignalMapper(this);
     connect(m_actionMapper, SIGNAL(mapped(int)), this, SLOT(ActionTriggered(int)));
@@ -289,10 +303,14 @@ ActionManager::ActionManager(MainWindow* parent, QtViewPaneManager* const qtView
     timer->setInterval(250);
     connect(timer, &QTimer::timeout, this, &ActionManager::UpdateActions);
     timer->start();
+
+    // connect to the Action Request Bus and notify other listeners this has happened
+    AzToolsFramework::EditorActionRequestBus::Handler::BusConnect();
 }
 
 ActionManager::~ActionManager()
 {
+    AzToolsFramework::EditorActionRequestBus::Handler::BusDisconnect();
 }
 
 void ActionManager::AddMenu(QMenu* menu)
@@ -301,56 +319,53 @@ void ActionManager::AddMenu(QMenu* menu)
     connect(menu, &QMenu::aboutToShow, this, &ActionManager::UpdateMenu);
 }
 
-ActionManager::MenuWrapper ActionManager::AddMenu(const QString& title)
+ActionManager::MenuWrapper ActionManager::AddMenu(const QString& title, const QString& menuId)
 {
-    auto menu = new QMenu(title);
+    const auto menu = new QMenu(title);
+
+    // set a unique identifier for this menu item so it
+    // can be looked up later using FindMenu()
+    if (!menuId.isEmpty())
+    {
+        menu->setProperty(s_menuIdProperty, menuId);
+    }
+
     AddMenu(menu);
+
+    return MenuWrapper(menu, this);
+}
+
+ActionManager::MenuWrapper ActionManager::FindMenu(const QString& menuId)
+{
+    // attempt to find menu by menuId
+    auto menuIt = AZStd::find_if(m_menus.begin(), m_menus.end(), [&menuId](const QMenu* menu)
+    {
+        if (!menu->property(s_menuIdProperty).isNull())
+        {
+            return menu->property(s_menuIdProperty).toString() == menuId;
+        }
+
+        return false;
+    });
+
+    // return the menu with the matching name, if not found return nullptr
+    QMenu* menu = [this, menuIt, &menuId]() -> QMenu*
+    {
+        if (menuIt != m_menus.end())
+        {
+            return *menuIt;
+        }
+
+        AZ_Warning("ActionManager", "Did not find menu with menuId %s", menuId.toUtf8().data());
+        return nullptr;
+    }();
+
     return MenuWrapper(menu, this);
 }
 
 void ActionManager::AddToolBar(QToolBar* toolBar)
 {
     m_toolBars.push_back(toolBar);
-}
-
-ActionManager::MenuWrapper ActionManager::CreateMenuPath(const QStringList& menuPath)
-{
-    MenuWrapper parentMenu(GetMenu(menuPath.value(0)), this);
-    if (parentMenu.isNull())
-    {
-        // This doesn't happen, the root menu must always exist, we don't support creating arbitrary top-level menus
-        Q_ASSERT(false);
-        return {};
-    }
-
-    const int numMenus = menuPath.size();
-    for (int i = 1; i < numMenus; ++i)
-    {
-        QList<QAction*> actions = parentMenu->actions();
-        QMenu* subMenu = GetMenu(menuPath[i], actions);
-        if (subMenu)
-        {
-            parentMenu = MenuWrapper(subMenu, this);
-        }
-        else
-        {
-            parentMenu = parentMenu.AddMenu(menuPath.at(i));
-        }
-    }
-
-    return parentMenu;
-}
-
-QMenu* ActionManager::GetMenu(const QString& name) const
-{
-    auto it = std::find_if(m_menus.cbegin(), m_menus.cend(), [&name](QMenu* m) { return m->title() == name; });
-    return it == m_menus.cend() ? nullptr : *it;
-}
-
-QMenu* ActionManager::GetMenu(const QString& name, const QList<QAction*>& actions) const
-{
-    auto it = std::find_if(actions.cbegin(), actions.cend(), [&name](QAction* a) { return a->menu() && a->menu()->title() == name; });
-    return it == actions.cend() ? nullptr : (*it)->menu();
 }
 
 ActionManager::ToolBarWrapper ActionManager::AddToolBar(int id)
@@ -432,6 +447,23 @@ void ActionManager::AddAction(QAction* action)
     action->setIconVisibleInMenu(false);
 }
 
+void ActionManager::RemoveAction(QAction* action)
+{
+    auto storedAction = m_actions.find(action->data().toInt());
+    if (storedAction != m_actions.end())
+    {
+        m_actions.remove(action->data().toInt());
+    }
+
+    action->removeEventFilter(this);
+    m_actionMapper->removeMappings(action);
+
+    if (auto widget = qobject_cast<QWidget*>(parent()))
+    {
+        widget->removeAction(action);
+    }
+}
+
 ActionManager::ActionWrapper ActionManager::AddAction(int id, const QString& name)
 {
     QAction* action = ActionIsWidget(id) ? new WidgetAction(id, m_mainWindow, name, this)
@@ -495,8 +527,10 @@ void ActionManager::RebuildRegisteredViewPaneIds()
 
 void ActionManager::SendMetricsEvent(int id)
 {
-    QByteArray viewPaneName = this->HasAction(id) ? this->GetAction(id)->text().toUtf8() : QString("Missing text (id: %0)").arg(id).toUtf8();
-    
+    const QByteArray viewPaneName = this->HasAction(id)
+        ? this->GetAction(id)->text().toUtf8()
+        : QString("Missing text (id: %0)").arg(id).toUtf8();
+
     // only do this once for performance issue
     if (m_editorToolbarIds.empty())
     {
@@ -507,7 +541,7 @@ void ActionManager::SendMetricsEvent(int id)
             m_editorToolbarIds.insert(currentId);
         }
     }
-    
+
     // Send metrics signal
     if (m_editorToolbarIds.contains(id))
     {
@@ -533,25 +567,87 @@ void ActionManager::SendMetricsEvent(int id)
     m_isShortcutEvent = false;
 }
 
+// is this action suspended (allowed to respond or not)
+static bool ActionSuspended(const bool defaultActionsSuspended, const QAction* const action)
+{
+    // if default actions are suspended and this is not a reserved action, do not update
+    return defaultActionsSuspended && !action->property(s_reserved).toBool();
+}
+
+// for the menu that is about to be opened, visit each action (menu item) and
+// update callbacks for unsuspended actions.
+// recurse one level deep if the action is itself a menu, if all actions
+// in that menu are suspended, gray out the menu so it cannot be selected.
+static void UpdateMenus(
+    QMenu* menu, const bool defaultActionsSuspended,
+    QHash<int, std::function<void()>>& updateCallbacks,
+    QList<QAction*> topLevelMenuActions, int depth)
+{
+    const auto actions = menu->actions();
+    const int actionCount = actions.size();
+    int suspendedActionCounter =  0;
+
+    for (auto action : actions)
+    {
+        // if an action is itself a menu, we want to check its
+        // own menu actions (children), but only one level down
+        if (action->menu() && depth == 0)
+        {
+            UpdateMenus(
+                action->menu(), defaultActionsSuspended,
+                updateCallbacks, topLevelMenuActions, depth + 1);
+        }
+
+        if (ActionSuspended(defaultActionsSuspended, action))
+        {
+            suspendedActionCounter++;
+            continue;
+        }
+
+        // call all update callbacks for the given menu
+        // only do this at the level of the menu we clicked/hovered
+        const auto id = action->data().toInt();
+        if (updateCallbacks.contains(id) && depth == 0)
+        {
+            updateCallbacks.value(id)();
+        }
+    }
+
+    // check if we are a top level menu action
+    if (AZStd::find(
+        topLevelMenuActions.begin(), topLevelMenuActions.end(),
+        menu->menuAction()) == topLevelMenuActions.end())
+    {
+        // if we're not a top level menu action, we want to disable
+        // the sub menu if none of the child actions are active, otherwise
+        // ensure the menu is returned to an enabled state
+        menu->menuAction()->setEnabled(
+            defaultActionsSuspended
+                ? suspendedActionCounter != actionCount
+                : true);
+    }
+}
+
 void ActionManager::UpdateMenu()
 {
     auto menu = qobject_cast<QMenu*>(sender());
+    AZ_Assert(menu, "sender() was not convertible to a QMenu*");
 
-    // Call all update callbacks for the given menu
-    foreach (auto action, menu->actions())
-    {
-        int id = action->data().toInt();
-        if (m_updateCallbacks.contains(id))
-        {
-            m_updateCallbacks.value(id)();
-        }
-    }
+    int depth = 0;
+    UpdateMenus(
+        menu, m_defaultActionsSuspended, m_updateCallbacks,
+        m_mainWindow->menuBar()->actions(), depth);
 }
 
 void ActionManager::UpdateActions()
 {
     for (auto it = m_updateCallbacks.constBegin(); it != m_updateCallbacks.constEnd(); ++it)
     {
+        if (ActionSuspended(m_defaultActionsSuspended, GetAction(it.key())))
+        {
+            continue;
+        }
+
         it.value()();
     }
 }
@@ -564,6 +660,53 @@ QList<QAction*> ActionManager::GetActions() const
 bool ActionManager::ActionIsWidget(int id) const
 {
     return id >= ID_TOOLBAR_WIDGET_FIRST && id <= ID_TOOLBAR_WIDGET_LAST;
+}
+
+// either enable or disable all registered actions
+void SetDefaultActionsEnabled(
+    const QList<QAction*>& actions, const bool enabled)
+{
+    AZStd::for_each(
+        actions.begin(), actions.end(),
+        [enabled](QAction* action)
+    {
+        if (!action->property(s_reserved).toBool())
+        {
+            action->setEnabled(enabled);
+        }
+    });
+}
+
+void ActionManager::AddActionViaBus(int id, QAction* action)
+{
+    AddAction(id, action);
+}
+
+void ActionManager::RemoveActionViaBus(QAction* action)
+{
+    RemoveAction(action);
+}
+
+void ActionManager::EnableDefaultActions()
+{
+     SetDefaultActionsEnabled(GetActions(), true);
+     m_defaultActionsSuspended = false;
+}
+
+void ActionManager::DisableDefaultActions()
+{
+    SetDefaultActionsEnabled(GetActions(), false);
+    m_defaultActionsSuspended = true;
+}
+
+void ActionManager::AttachOverride(QWidget* object)
+{
+    m_shortcutDispatcher->AttachOverride(object);
+}
+
+void ActionManager::DetachOverride()
+{
+    m_shortcutDispatcher->DetachOverride();
 }
 
 WidgetAction::WidgetAction(int actionId, MainWindow* mainWindow, const QString& name, QObject* parent)

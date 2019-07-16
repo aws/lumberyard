@@ -20,7 +20,7 @@ def build(bld):
         file_list               = 'aztoolsframeworktests.waf_files',
         platforms               = ['win', 'darwin'],
         configurations          = ['profile_test', 'debug_test'],
-        use                     = ['AzTest', 'AzCore', 'AzToolsFramework'],
+        use                     = ['AzTest', 'AzCore', 'AzToolsFramework', 'AzQtComponents'],
         uselib                  = ['QT5CORE',
                                    'QT5GUI',
                                    'QT5NETWORK',
@@ -32,5 +32,3 @@ def build(bld):
                                    'QT5CONCURRENT',
                                    'QT5XML']
     )
-
-

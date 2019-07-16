@@ -13,13 +13,14 @@
 #ifndef AZTOOLSFRAMEWORK_SELECTIONCOMMAND_H
 #define AZTOOLSFRAMEWORK_SELECTIONCOMMAND_H
 
+#pragma once
+
 #include <AzCore/base.h>
+#include <AzCore/Component/ComponentBus.h>
 #include <AzCore/Memory/SystemAllocator.h>
 #include <AzCore/RTTI/RTTI.h>
-#include <AzCore/Component/ComponentBus.h>
+#include <AzToolsFramework/API/ToolsApplicationAPI.h>
 #include <AzToolsFramework/Undo/UndoSystem.h>
-
-#pragma once
 
 namespace AzToolsFramework
 {
@@ -47,8 +48,8 @@ namespace AzToolsFramework
         const AZStd::vector<AZ::EntityId>& GetInitialSelectionList() const;
 
     protected:
-        AZStd::vector<AZ::EntityId> m_previousSelectionList;
-        AZStd::vector<AZ::EntityId> m_proposedSelectionList;
+        EntityIdList m_previousSelectionList;
+        EntityIdList m_proposedSelectionList;
     };
 } // namespace AzToolsFramework
 

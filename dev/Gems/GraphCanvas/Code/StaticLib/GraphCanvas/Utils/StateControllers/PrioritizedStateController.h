@@ -77,7 +77,10 @@ namespace GraphCanvas
             
             if (valueIter != m_valueMapping.end())
             {
-                m_valueSet.erase(valueIter->second);
+                // Just delete an arbitrary instance of the value from our set.
+                auto setIterPair = m_valueSet.equal_range(valueIter->second);
+                m_valueSet.erase(setIterPair.first);
+
                 m_valueMapping.erase(valueIter);
                 
                 releasedValue = true;

@@ -226,8 +226,6 @@ namespace AssetProcessor
         // if you set a job to "auto fail" it will check the m_jobParam map for a AZ_CRC(AutoFailReasonKey) and use that, if present, for fail information
         bool m_autoFail = false;
 
-        // indicates a succeeded createJob and clears out any autoFail failures
-        bool m_autoSucceed = false;
         AZStd::string ToString() const
         {
             return QString("%1 %2 %3").arg(m_jobEntry.m_databaseSourceName, m_jobEntry.m_platformInfo.m_identifier.c_str(), m_jobEntry.m_jobKey).toUtf8().data();

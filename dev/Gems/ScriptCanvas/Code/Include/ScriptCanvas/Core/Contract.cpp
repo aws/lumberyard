@@ -9,7 +9,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#include "precompiled.h"
+
 #include "Contract.h"
 #include "ContractBus.h"
 #include "Slot.h"

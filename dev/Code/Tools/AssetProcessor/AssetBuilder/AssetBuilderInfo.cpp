@@ -95,21 +95,8 @@ namespace AssetBuilder
         m_uninitializeModuleFunction();
     }
 
-    void ExternalModuleAssetBuilderInfo::Load()
+    bool ExternalModuleAssetBuilderInfo::IsAssetBuilder()
     {
-        if (IsLoaded())
-        {
-            AZ_Warning("AssetBuilder", false, "External module %s already.", m_builderName.toUtf8().data());
-            return;
-        }
-
-        m_library.setFileName(m_modulePath);
-        if (!m_library.load())
-        {
-            AZ_TracePrintf("AssetBuilder", "Unable to load builder : %s\n", GetName().toUtf8().data());
-            return;
-        }
-
         QStringList missingFunctionsList;
         QFunctionPointer isAssetBuilderAddress = ResolveModuleFunction<QFunctionPointer>("IsAssetBuilder", missingFunctionsList);
         InitializeModuleFunction initializeModuleAddress = ResolveModuleFunction<InitializeModuleFunction>("InitializeModule", missingFunctionsList);
@@ -117,19 +104,46 @@ namespace AssetBuilder
         ModuleAddComponentsFunction moduleAddComponentsAddress = ResolveModuleFunction<ModuleAddComponentsFunction>("ModuleAddComponents", missingFunctionsList);
         UninitializeModuleFunction uninitializeModuleAddress = ResolveModuleFunction<UninitializeModuleFunction>("UninitializeModule", missingFunctionsList);
 
-        if (!missingFunctionsList.empty())
+        if (missingFunctionsList.size() == 0)
         {
-            // Not a valid builder module
-            QString errorMessage = QString("Builder library %1 is missing one or more exported functions: %2").arg(QString(GetName())).arg(missingFunctionsList.join(','));
+            // a valid builder
+            m_initializeModuleFunction = initializeModuleAddress;
+            m_moduleRegisterDescriptorsFunction = moduleRegisterDescriptorsAddress;
+            m_moduleAddComponentsFunction = moduleAddComponentsAddress;
+            m_uninitializeModuleFunction = uninitializeModuleAddress;
+            return true;
+        }
+        else if (missingFunctionsList.size() > 0 && missingFunctionsList.contains("IsAssetBuilder"))
+        {
+            // This DLL is not a builder and should be ignored.
+            return false;
+        }
+        else
+        {
+            // This is supposed to be a builder but is invalid
+            QString errorMessage = QString("Builder library %1 is missing one or more exported functions: %2").arg(QString(GetName()), missingFunctionsList.join(','));
             AZ_TracePrintf(AssetBuilderSDK::ErrorWindow, "One or more builder functions is missing in the library: %s\n", errorMessage.toUtf8().data());
-            Unload();
-            return;
+            return true;
+        }
+    }
+
+
+    bool ExternalModuleAssetBuilderInfo::Load()
+    {
+        if (IsLoaded())
+        {
+            AZ_Warning("AssetBuilder", false, "External module %s already.", m_builderName.toUtf8().data());
+            return false;
         }
 
-        m_initializeModuleFunction = initializeModuleAddress;
-        m_moduleRegisterDescriptorsFunction = moduleRegisterDescriptorsAddress;
-        m_moduleAddComponentsFunction = moduleAddComponentsAddress;
-        m_uninitializeModuleFunction = uninitializeModuleAddress;
+        m_library.setFileName(m_modulePath);
+        if (!m_library.load())
+        {
+            AZ_TracePrintf("AssetBuilder", "Unable to load builder : %s\n", GetName().toUtf8().data());
+            return false;
+        }
+
+        return IsAssetBuilder();
     }
 
     void ExternalModuleAssetBuilderInfo::Unload()

@@ -25,11 +25,11 @@ from string import Template, translate
 from android import SUPPORTED_APIS
 from utils import write_auto_gen_header
 
-from branch_spec import get_supported_configurations
+from build_configurations import PLATFORM_MAP
 from waf_branch_spec import BINTEMP_FOLDER
 
-from waflib import Build, Errors, Logs, Node, TaskGen, Utils
-
+from waflib import Build, Errors, Logs, TaskGen, Utils
+from build_configurations import ALIAS_TO_PLATFORMS_MAP
 ################################################################
 #                     Defaults                                 #
 MIN_API_VERSION_NUMBER = sorted(SUPPORTED_APIS)[0].split('-')[1]
@@ -1162,19 +1162,24 @@ def options(opt):
     group = opt.add_option_group('android-studio config')
 
     # disables the apk packaging process so android studio can do it
-    group.add_option('--from-android-studio', dest = 'from_android_studio', action = 'store_true', default = False, help = 'INTERNAL USE ONLY for Experimental Andorid Studio support')
+    group.add_option('--from-android-studio', dest = 'from_android_studio', action = 'store_true', default = False, help = 'INTERNAL USE ONLY for Android Studio support')
 
 
 ################################################################
 class android_studio(Build.BuildContext):
     cmd = 'android_studio'
+    is_android_studio = True
 
     def get_target_platforms(self):
         """
         Used in cryengine_modules get_platform_list during project generation
         """
-        android_targets = [ target for target in self.get_supported_platforms() if 'android' in target ]
-        return [ 'android' ] + android_targets
+        all_android_platforms = list(ALIAS_TO_PLATFORMS_MAP.get('android',set()))
+        enabled_android_targets = []
+        for android_platform in all_android_platforms:
+            if self.is_target_platform_enabled(android_platform):
+                enabled_android_targets.append(android_platform)
+        return enabled_android_targets
 
     def collect_task_gen_attrib(self, task_generator, attribute, *modifiers):
         """
@@ -1208,11 +1213,10 @@ class android_studio(Build.BuildContext):
             Logs.warn('[WARN] The Distribution build environment is not currently supported in Android Studio, falling back to the Development build environment.')
 
         # get the core build settings
-        android_platforms = self.get_platform_alias('android')
-
+        android_platforms = self.get_platforms_for_alias('android')
         android_config_sets = []
         for platform in android_platforms:
-            android_config_sets.append(set(get_supported_configurations(platform)))
+            android_config_sets.append(set(PLATFORM_MAP[platform].get_configuration_names()))
         android_configs = list(set.intersection(*android_config_sets))
 
         all_defines = []
@@ -1259,7 +1263,7 @@ class android_studio(Build.BuildContext):
 
         project_spec = self.options.project_spec or 'all'
         modules = self.spec_modules(project_spec)[:]
-        modules.append('native_activity_glue') # hack :(
+        modules.append('NativeActivityGlue') # hack :(
 
         for project_name in self.get_enabled_game_project_list():
             modules.extend(self.project_and_platform_modules(project_name, acceptable_platforms))
@@ -1272,12 +1276,15 @@ class android_studio(Build.BuildContext):
                     continue
 
                 target_name = task_generator.target or task_generator.name
-                task_platforms = self.get_module_platforms(target_name)
-
+                try:
+                    task_platforms = self.get_module_platforms(target_name)
+                except:
+                    continue
+                    
                 is_in_spec = (target_name in modules)
-                is_android_enabled = any(set.intersection(task_platforms, acceptable_platforms))
-
-                game_project = getattr(task_generator, 'project_name', target_name)
+                is_android_enabled = any(set.intersection(set(task_platforms), set(acceptable_platforms)))
+                
+                game_project = getattr(task_generator,'project_name', target_name)
                 is_game_project = (game_project in self.get_enabled_game_project_list())
                 if is_android_enabled and is_game_project:
                     is_android_enabled = self.get_android_settings(game_project)
@@ -1424,8 +1431,13 @@ class android_studio(Build.BuildContext):
                         setattr(self, name, attr)
 
             # Generate all the targets for the Android libraries
-            java_libs_json = self.root.make_node(getattr(task_generator, 'android_java_libs', []))
-            json_data = self.parse_json_file(java_libs_json)
+            android_java_libs = getattr(task_generator, 'android_java_libs', [])
+            if android_java_libs:
+                java_libs_json = self.root.make_node(android_java_libs)
+                json_data = self.parse_json_file(java_libs_json)
+            else:
+                json_data = None
+                
             if json_data:
                 module_deps = []
                 for lib_name, value in json_data.iteritems():

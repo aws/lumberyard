@@ -33,12 +33,16 @@ namespace ScriptCanvas
                     {
                         serializeContext->Class<Subtract, ArithmeticExpression>()
                             ->Version(0)
+                            ->Attribute(AZ::Script::Attributes::Deprecated, true)
                             ;
 
                         if (AZ::EditContext* editContext = serializeContext->GetEditContext())
                         {
                             editContext->Class<Subtract>("Subtract", "Subtract")
-                                ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
+                                ->ClassElement(AZ::Edit::ClassElements::EditorData, "This node is deprecated use the Subtract (-) node instead, it provides contextual type and slot configurations.")
+                                    ->Attribute(ScriptCanvas::Attributes::Node::TitlePaletteOverride, "DeprecatedNodeTitlePalette")
+                                    ->Attribute(AZ::Script::Attributes::Deprecated, true)
+                                    ->Attribute(AZ::Edit::Attributes::Category, "Math/Number/Deprecated")
                                     ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/ScriptCanvas/Placeholder.png")
                                     ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
                                 ;

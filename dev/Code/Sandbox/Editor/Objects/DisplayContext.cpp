@@ -876,8 +876,15 @@ const Matrix34& DisplayContext::GetMatrix()
 //////////////////////////////////////////////////////////////////////////
 void DisplayContext::DrawBall(const Vec3& pos, float radius)
 {
+    // get the max scaled radius in case the transform on the stack is scaled non-uniformly
+    const float transformedRadiusX = ToWorldSpaceVector(Vec3(radius, 0.0f, 0.0f)).GetLength();
+    const float transformedRadiusY = ToWorldSpaceVector(Vec3(0.0f, radius, 0.0f)).GetLength();
+    const float transformedRadiusZ = ToWorldSpaceVector(Vec3(0.0f, 0.0f, radius)).GetLength();
+    const float maxTransformedRadius =
+        AZ::GetMax(transformedRadiusX, AZ::GetMax(transformedRadiusY, transformedRadiusZ));
+
     pRenderAuxGeom->DrawSphere(
-        ToWorldSpacePosition(pos), ToWorldSpaceVector(Vec3(radius, 0.0f, 0.0f)).GetLength(), m_color4b);
+        ToWorldSpacePosition(pos), maxTransformedRadius, m_color4b);
 }
 
 //////////////////////////////////////////////////////////////////////////

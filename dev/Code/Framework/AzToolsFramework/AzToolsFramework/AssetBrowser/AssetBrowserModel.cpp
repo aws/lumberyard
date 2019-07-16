@@ -19,6 +19,7 @@
 #include <AzToolsFramework/AssetBrowser/Entries/AssetBrowserEntryCache.h>
 
 #include <QMimeData>
+#include <QRegularExpression>
 
 namespace AzToolsFramework
 {
@@ -41,6 +42,65 @@ namespace AzToolsFramework
         {
             AssetBrowserModelRequestBus::Handler::BusDisconnect();
             AZ::TickBus::Handler::BusDisconnect();
+        }
+
+        QModelIndex AssetBrowserModel::findIndex(const QString& absoluteAssetPath) const
+        {
+            // Split the path based on either platform's slash
+            QRegularExpression regex(QStringLiteral("[\\/]"));
+
+            QStringList assetPathComponents = absoluteAssetPath.split(regex);
+
+            AssetBrowserEntry* cursor = m_rootEntry.get();
+
+            if (cursor && absoluteAssetPath.contains(cursor->GetFullPath().c_str()))
+            {
+                while (true)
+                {
+                    // find the child entry that contains more
+                    bool foundChild = false;
+                    for (int i = 0; i < cursor->GetChildCount(); i++)
+                    {
+                        AssetBrowserEntry* child = cursor->GetChild(i);
+                        if (child)
+                        {
+                            QString newPath = child->GetFullPath().c_str();
+                            if (absoluteAssetPath.startsWith(newPath))
+                            {
+                                if (absoluteAssetPath == newPath)
+                                {
+                                    QModelIndex index;
+                                    if (GetEntryIndex(child, index))
+                                    {
+                                        return index;
+                                    }
+                                }
+
+                                // Confirm that this is a real match as opposed to a partial match.
+                                // For instance, an asset absolute path C:/somepath/someotherpath/blah.tga will partial match with c:/somepath/some 
+                                // and get us here.
+
+                                QStringList possibleMatchComponents = newPath.split(regex);
+                                QString possibleMatchDirectory = possibleMatchComponents.last();
+                                Q_ASSERT(assetPathComponents.count() >= possibleMatchComponents.count());
+                                if (possibleMatchDirectory == assetPathComponents[possibleMatchComponents.count() - 1])
+                                {
+                                    cursor = child;
+                                    foundChild = true;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+
+                    if (!foundChild)
+                    {
+                        break;
+                    }
+                }
+            }
+
+            return QModelIndex();
         }
 
         QModelIndex AssetBrowserModel::index(int row, int column, const QModelIndex& parent) const

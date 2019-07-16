@@ -86,22 +86,18 @@ namespace AzToolsFramework
 
         void AssetBrowserEntry::RemoveChild(AssetBrowserEntry* child)
         {
-            if (!child)
+            if (!child || child->m_row >= m_children.size() || child != m_children[child->m_row])
             {
                 return;
             }
 
-            if (child->m_row >= m_children.size())
+            AZStd::unique_ptr<AssetBrowserEntry> childToRemove(m_children[child->m_row]);
+            if (!childToRemove)
             {
                 return;
             }
 
-            if (child != m_children[child->m_row])
-            {
-                return;
-            }
-
-            AssetBrowserModelRequestBus::Broadcast(&AssetBrowserModelRequests::BeginRemoveEntry, child);
+            AssetBrowserModelRequestBus::Broadcast(&AssetBrowserModelRequests::BeginRemoveEntry, childToRemove.get());
             auto it = m_children.erase(m_children.begin() + child->m_row);
 
             // decrement the row of all children after the removed child
@@ -112,9 +108,7 @@ namespace AzToolsFramework
 
             child->m_parentAssetEntry = nullptr;
             AssetBrowserModelRequestBus::Broadcast(&AssetBrowserModelRequests::EndRemoveEntry);
-            AssetBrowserModelNotificationBus::Broadcast(&AssetBrowserModelNotifications::EntryRemoved, child);
-
-            delete child;
+            AssetBrowserModelNotificationBus::Broadcast(&AssetBrowserModelNotifications::EntryRemoved, childToRemove.get());
         }
 
         void AssetBrowserEntry::RemoveChildren()
@@ -226,11 +220,20 @@ namespace AzToolsFramework
 
         const AssetBrowserEntry* AssetBrowserEntry::GetChild(int index) const
         {
-            if (m_children.size() < index)
+            if (index < m_children.size())
             {
-                return nullptr;
+                return m_children[index];
             }
-            return m_children[index];
+            return nullptr;
+        }
+
+        AssetBrowserEntry* AssetBrowserEntry::GetChild(int index)
+        {
+            if (index < m_children.size())
+            {
+                return m_children[index];
+            }
+            return nullptr;
         }
 
         int AssetBrowserEntry::GetChildCount() const

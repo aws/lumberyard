@@ -1887,13 +1887,6 @@ namespace AZStd
         }
     };
 
-    // Implements the extension method of AZStd::basic_string_view::to_string
-    template<class Element, class Traits>
-    template<class Allocator>
-    basic_string<Element, Traits, Allocator> basic_string_view<Element, Traits>::to_string(Allocator alloc) const
-    {
-        return basic_string<Element, Traits, Allocator>(*this, alloc);
-    }
 } // namespace AZStd
 
 #endif // AZSTD_STRING_H

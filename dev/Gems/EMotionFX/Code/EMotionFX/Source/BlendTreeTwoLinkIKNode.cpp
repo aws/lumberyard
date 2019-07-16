@@ -13,6 +13,7 @@
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/Serialization/EditContext.h>
 #include <EMotionFX/Source/AnimGraph.h>
+#include <EMotionFX/Source/DebugDraw.h>
 #include "BlendTreeTwoLinkIKNode.h"
 #include "EventManager.h"
 #include "AnimGraphManager.h"
@@ -471,26 +472,19 @@ namespace EMotionFX
                 realGoal = goal;
             }
 
-            uint32 color = mVisualizeColor;
-            GetEventManager().OnDrawLine(realGoal - AZ::Vector3(s, 0, 0), realGoal + AZ::Vector3(s, 0, 0), color);
-            GetEventManager().OnDrawLine(realGoal - AZ::Vector3(0, s, 0), realGoal + AZ::Vector3(0, s, 0), color);
-            GetEventManager().OnDrawLine(realGoal - AZ::Vector3(0, 0, s), realGoal + AZ::Vector3(0, 0, s), color);
+            DebugDraw& debugDraw = GetDebugDraw();
+            DebugDraw::ActorInstanceData* drawData = debugDraw.GetActorInstanceData(animGraphInstance->GetActorInstance());
+            drawData->Lock();
+            drawData->AddLine(realGoal - AZ::Vector3(s, 0, 0), realGoal + AZ::Vector3(s, 0, 0), mVisualizeColor);
+            drawData->AddLine(realGoal - AZ::Vector3(0, s, 0), realGoal + AZ::Vector3(0, s, 0), mVisualizeColor);
+            drawData->AddLine(realGoal - AZ::Vector3(0, 0, s), realGoal + AZ::Vector3(0, 0, s), mVisualizeColor);
 
-            color = MCore::RGBA(0, 255, 255);
-            GetEventManager().OnDrawLine(globalTransformA.mPosition, globalTransformA.mPosition + bendDir * s * 2.5f, color);
-            GetEventManager().OnDrawLine(globalTransformA.mPosition - AZ::Vector3(s, 0, 0), globalTransformA.mPosition + AZ::Vector3(s, 0, 0), color);
-            GetEventManager().OnDrawLine(globalTransformA.mPosition - AZ::Vector3(0, s, 0), globalTransformA.mPosition + AZ::Vector3(0, s, 0), color);
-            GetEventManager().OnDrawLine(globalTransformA.mPosition - AZ::Vector3(0, 0, s), globalTransformA.mPosition + AZ::Vector3(0, 0, s), color);
-
-            //color = MCore::RGBA(0, 255, 0);
-            //GetEventManager().OnDrawLine( endEffectorNodePos-Vector3(s,0,0), endEffectorNodePos+Vector3(s,0,0), color);
-            //GetEventManager().OnDrawLine( endEffectorNodePos-Vector3(0,s,0), endEffectorNodePos+Vector3(0,s,0), color);
-            //GetEventManager().OnDrawLine( endEffectorNodePos-Vector3(0,0,s), endEffectorNodePos+Vector3(0,0,s), color);
-
-            //color = MCore::RGBA(255, 255, 0);
-            //GetEventManager().OnDrawLine( posA, posB, color);
-            //GetEventManager().OnDrawLine( posB, posC, color);
-            //GetEventManager().OnDrawLine( posC, endEffectorNodePos, color);
+            const AZ::Color color(0.0f, 1.0f, 1.0f, 1.0f);
+            drawData->AddLine(globalTransformA.mPosition, globalTransformA.mPosition + bendDir * s * 2.5f, color);
+            drawData->AddLine(globalTransformA.mPosition - AZ::Vector3(s, 0, 0), globalTransformA.mPosition + AZ::Vector3(s, 0, 0), color);
+            drawData->AddLine(globalTransformA.mPosition - AZ::Vector3(0, s, 0), globalTransformA.mPosition + AZ::Vector3(0, s, 0), color);
+            drawData->AddLine(globalTransformA.mPosition - AZ::Vector3(0, 0, s), globalTransformA.mPosition + AZ::Vector3(0, 0, s), color);
+            drawData->Unlock();
         }
 
         // perform IK, try to find a solution by calculating the new middle node position
@@ -593,9 +587,12 @@ namespace EMotionFX
         // render some debug lines
         if (GetEMotionFX().GetIsInEditorMode() && GetCanVisualize(animGraphInstance))
         {
-            const uint32 color = mVisualizeColor;
-            GetEventManager().OnDrawLine(outTransformPose.GetWorldSpaceTransform(nodeIndexA).mPosition, outTransformPose.GetWorldSpaceTransform(nodeIndexB).mPosition, color);
-            GetEventManager().OnDrawLine(outTransformPose.GetWorldSpaceTransform(nodeIndexB).mPosition, outTransformPose.GetWorldSpaceTransform(nodeIndexC).mPosition, color);
+            DebugDraw& debugDraw = GetDebugDraw();
+            DebugDraw::ActorInstanceData* drawData = debugDraw.GetActorInstanceData(animGraphInstance->GetActorInstance());
+            drawData->Lock();
+            drawData->AddLine(outTransformPose.GetWorldSpaceTransform(nodeIndexA).mPosition, outTransformPose.GetWorldSpaceTransform(nodeIndexB).mPosition, mVisualizeColor);
+            drawData->AddLine(outTransformPose.GetWorldSpaceTransform(nodeIndexB).mPosition, outTransformPose.GetWorldSpaceTransform(nodeIndexC).mPosition, mVisualizeColor);
+            drawData->Unlock();
         }
     }
 

@@ -8,16 +8,7 @@
     "auto": {
         "Include/GraphCanvas":
         [
-            "Include/GraphCanvas/GraphCanvasBus.h",
             "Include/GraphCanvas/tools.h"
-        ],
-        "Include/GraphCanvas/Components":
-        [
-            "Include/GraphCanvas/Components/EntitySaveDataBus.h",
-            "Include/GraphCanvas/Components/GeometryBus.h",
-            "Include/GraphCanvas/Components/GraphCanvasPropertyBus.h",
-            "Include/GraphCanvas/Components/GridBus.h",
-            "Include/GraphCanvas/Components/MimeDataHandlerBus.h"
         ],
         "Include/GraphCanvas/Components/Connections/ConnectionFilters":
         [
@@ -25,55 +16,8 @@
             "Include/GraphCanvas/Components/Connections/ConnectionFilters/ConnectionFilters.h",
             "Include/GraphCanvas/Components/Connections/ConnectionFilters/DataConnectionFilters.h"
         ],
-        "Include/GraphCanvas/Components/NodePropertyDisplay":
-        [
-            "Include/GraphCanvas/Components/NodePropertyDisplay/BooleanDataInterface.h",
-            "Include/GraphCanvas/Components/NodePropertyDisplay/DataInterface.h",       
-            "Include/GraphCanvas/Components/NodePropertyDisplay/DoubleDataInterface.h",
-            "Include/GraphCanvas/Components/NodePropertyDisplay/EntityIdDataInterface.h",
-            "Include/GraphCanvas/Components/NodePropertyDisplay/ItemModelDataInterface.h",
-            "Include/GraphCanvas/Components/NodePropertyDisplay/NodePropertyDisplay.h",
-            "Include/GraphCanvas/Components/NodePropertyDisplay/NumericDataInterface.h",
-            "Include/GraphCanvas/Components/NodePropertyDisplay/ReadOnlyDataInterface.h",
-            "Include/GraphCanvas/Components/NodePropertyDisplay/StringDataInterface.h",
-            "Include/GraphCanvas/Components/NodePropertyDisplay/VectorDataInterface.h"
-        ],
-        "Include/GraphCanvas/Components/Nodes":
-        [
-            "Include/GraphCanvas/Components/Nodes/NodeBus.h",
-            "Include/GraphCanvas/Components/Nodes/NodeConfiguration.h",
-            "Include/GraphCanvas/Components/Nodes/NodeLayoutBus.h",
-            "Include/GraphCanvas/Components/Nodes/NodeTitleBus.h",
-            "Include/GraphCanvas/Components/Nodes/NodeUIBus.h"
-        ],
-        "Include/GraphCanvas/Components/Nodes/Comment":
-        [
-            "Include/GraphCanvas/Components/Nodes/Comment/CommentBus.h"
-        ],
-        "Include/GraphCanvas/Components/Nodes/Wrapper":
-        [
-            "Include/GraphCanvas/Components/Nodes/Wrapper/WrapperNodeBus.h"
-        ],
-        "Include/GraphCanvas/Components/Slots":
-        [
-            "Include/GraphCanvas/Components/Slots/SlotBus.h"
-        ],
-        "Include/GraphCanvas/Components/Slots/Data":
-        [
-            "Include/GraphCanvas/Components/Slots/Data/DataSlotBus.h"
-        ],
-        "Include/GraphCanvas/Components/Slots/Property":
-        [
-            "Include/GraphCanvas/Components/Slots/Property/PropertySlotBus.h"
-        ],
-        "Include/GraphCanvas/Types":
-        [            
-            "Include/GraphCanvas/Types/EntitySaveData.h",
-            "Include/GraphCanvas/Types/TranslationTypes.h"
-        ],
         "Include/GraphCanvas/Widgets":
-        [
-            "Include/GraphCanvas/Widgets/NodePropertyBus.h",
+        [            
             "Include/GraphCanvas/Widgets/RootGraphicsItem.h"
         ],
         "Source":
@@ -94,8 +38,12 @@
             "Source/Components/GridComponent.h",
             "Source/Components/GridVisualComponent.cpp",
             "Source/Components/GridVisualComponent.h",
+            "Source/Components/LayerControllerComponent.cpp",
+            "Source/Components/LayerControllerComponent.h",
+            "Source/Components/PersistentIdComponent.cpp",
+            "Source/Components/PersistentIdComponent.h",
             "Source/Components/SceneComponent.cpp",
-            "Source/Components/SceneComponent.h",
+            "Source/Components/SceneComponent.h",            
             "Source/Components/SceneMemberComponent.cpp",
             "Source/Components/SceneMemberComponent.h",
             "Source/Components/StylingComponent.cpp",
@@ -105,6 +53,7 @@
         [
             "Source/Components/BookmarkAnchor/BookmarkAnchorComponent.cpp",
             "Source/Components/BookmarkAnchor/BookmarkAnchorComponent.h",
+            "Source/Components/BookmarkAnchor/BookmarkAnchorLayerControllerComponent.h",
             "Source/Components/BookmarkAnchor/BookmarkAnchorVisualComponent.cpp",
             "Source/Components/BookmarkAnchor/BookmarkAnchorVisualComponent.h"
         ],
@@ -112,6 +61,8 @@
         [
             "Source/Components/Connections/ConnectionComponent.cpp",
             "Source/Components/Connections/ConnectionComponent.h",
+            "Source/Components/Connections/ConnectionLayerControllerComponent.cpp",
+            "Source/Components/Connections/ConnectionLayerControllerComponent.h",
             "Source/Components/Connections/ConnectionVisualComponent.cpp",
             "Source/Components/Connections/ConnectionVisualComponent.h"
         ],
@@ -148,14 +99,12 @@
             "Source/Components/Nodes/NodeComponent.h",
             "Source/Components/Nodes/NodeFrameGraphicsWidget.cpp",
             "Source/Components/Nodes/NodeFrameGraphicsWidget.h",
+            "Source/Components/Nodes/NodeLayerControllerComponent.h",
             "Source/Components/Nodes/NodeLayoutComponent.h"
         ],
         "Source/Components/Nodes/Comment":
         [
-            "Source/Components/Nodes/Comment/BlockCommentNodeFrameComponent.cpp",
-            "Source/Components/Nodes/Comment/BlockCommentNodeFrameComponent.h",
-            "Source/Components/Nodes/Comment/BlockCommentNodeLayoutComponent.cpp",
-            "Source/Components/Nodes/Comment/BlockCommentNodeLayoutComponent.h",
+            "Source/Components/Nodes/Comment/CommentLayerControllerComponent.h",
             "Source/Components/Nodes/Comment/CommentNodeFrameComponent.cpp",
             "Source/Components/Nodes/Comment/CommentNodeFrameComponent.h",
             "Source/Components/Nodes/Comment/CommentNodeLayoutComponent.cpp",
@@ -175,6 +124,16 @@
             "Source/Components/Nodes/General/GeneralNodeTitleComponent.h",
             "Source/Components/Nodes/General/GeneralSlotLayoutComponent.cpp",
             "Source/Components/Nodes/General/GeneralSlotLayoutComponent.h"
+        ],
+        "Source/Components/Nodes/Group":
+        [
+            "Source/Components/Nodes/Group/CollapsedNodeGroupComponent.cpp",
+            "Source/Components/Nodes/Group/CollapsedNodeGroupComponent.h",
+            "Source/Components/Nodes/Group/NodeGroupFrameComponent.cpp",
+            "Source/Components/Nodes/Group/NodeGroupFrameComponent.h",
+            "Source/Components/Nodes/Group/NodeGroupLayerControllerComponent.h",
+            "Source/Components/Nodes/Group/NodeGroupLayoutComponent.cpp",
+            "Source/Components/Nodes/Group/NodeGroupLayoutComponent.h"
         ],
         "Source/Components/Nodes/Wrapper":
         [

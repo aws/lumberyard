@@ -17,6 +17,8 @@
 
 namespace Physics
 {
+    class WorldBody;
+
     namespace ReflectionUtils
     {
         void ReflectPhysicsApi(AZ::ReflectContext* context);
@@ -37,5 +39,11 @@ namespace Physics
         void MakeUniqueString(const AZStd::unordered_set<AZStd::string>& stringSet
             , AZStd::string& stringInOut
             , AZ::u64 maxStringLength);
+
+        /// Defers the deletion of the body until after the next world update.
+        /// The body is first removed from the world, and then deleted.
+        /// This ensures trigger exit events are raised correctly on deleted
+        /// objects.
+        void DeferDelete(AZStd::unique_ptr<Physics::WorldBody> body);
     }
 }

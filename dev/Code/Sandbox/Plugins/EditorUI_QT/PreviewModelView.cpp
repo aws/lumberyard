@@ -43,7 +43,7 @@
 
 
 CPreviewModelView::CPreviewModelView(QWidget* parent)
-    : QViewport(parent)
+    : QViewport(parent, QViewport::StartupMode_Manual) // Manual since we need to set WA_DontCreateNativeAncestors before QViewport::Startup() creates the internal native window and propagates
     , m_Flags(0)
     , m_GridColor(150, 150, 150, 40)
     , m_BackgroundColor(0.5f, 0.5f, 0.5f)
@@ -54,6 +54,12 @@ CPreviewModelView::CPreviewModelView(QWidget* parent)
     , m_PostUpdateCallback(nullptr)
     , m_ContextMenuCallback(nullptr)
 {
+#ifdef Q_OS_MACOS
+    // Don't propagate the nativeness up, as dockwidgets on macOS don't like it
+    setAttribute(Qt::WA_DontCreateNativeAncestors);
+#endif
+    Startup();
+
     //////////////////////////////////////////////////////////
     //QViewport
     AddConsumer(this);

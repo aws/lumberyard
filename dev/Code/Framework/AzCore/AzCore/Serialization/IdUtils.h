@@ -44,6 +44,11 @@ namespace AZ
             * The supplied idGenerator function can be empty, so an empty function check should be performed before invoking
             */
             using IdMapper = AZStd::function<IdType(const IdType& originalId, bool replaceId, const IdGenerator& idGenerator)>;
+            /**
+            * Signature of function that is invoked by RemapIds to return an existing id
+            * \param originalId - the original Id being remapped
+            */
+            using IdReplacer = AZStd::function<IdType(const IdType& originalId)>;
 
             /**
             * Enumerates all elements in the object's hierarchy invoking the IdMapper function on any element that matches @IdType
@@ -101,6 +106,28 @@ namespace AZ
             static unsigned int ReplaceIdsAndIdRefs(T* classPtr, const IdMapper& mapper, AZ::SerializeContext* context = nullptr)
             {
                 return ReplaceIdsAndIdRefs(classPtr, AZ::SerializeTypeInfo<T>::GetUuid(classPtr), mapper, context);
+            }
+
+            /**
+            * Convenience function for remapping ids in a single pass. Requires that there will be no new id generation, only mapping
+            * \param classPtr - the object instance to enumerate
+            * \param classUuid - the object's type id
+            * \param mapper - function object which is invoked to retrieve an id mapped from the originalId
+            * \param context - The serialize context for enumerating the @classPtr elements
+            */
+            static unsigned int RemapIdsAndIdRefs(void* classPtr, const AZ::Uuid& classUuid, const IdReplacer& mapper, AZ::SerializeContext* context = nullptr);
+
+            /**
+            * Template version of RemapIdsAndIdRefs which retrieves the type uuid from the supplied object and forwards to the non-template method
+            * Convenience function for remapping ids in a single pass. Requires that there will be no new id generation, only mapping
+            * \param classPtr - the object instance to enumerate
+            * \param mapper - function object which is invoked to retrieve an id mapped from the originalId
+            * \param context - The serialize context for enumerating the @classPtr elements
+            */
+            template<typename T>
+            static unsigned int RemapIdsAndIdRefs(T* classPtr, const IdReplacer& mapper, AZ::SerializeContext* context = nullptr)
+            {
+                return RemapIdsAndIdRefs(classPtr, AZ::SerializeTypeInfo<T>::GetUuid(classPtr), mapper, context);
             }
 
             /**
@@ -175,6 +202,9 @@ namespace AZ
                 return clonedObject;
             }
         };
+
+        template<typename IdType>
+        using IdMappingCB = typename Remapper<IdType>::IdMapper;
     } // namespace IdUtils
 } // namespace AZ
 

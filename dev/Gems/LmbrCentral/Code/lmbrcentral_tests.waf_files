@@ -4,6 +4,7 @@
         "Tests":
         [
             "Tests/AnimationMotionExtraction.cpp",
+            "Tests/AudioComponentTests.cpp",
             "Tests/BoxShapeTest.cpp",
             "Tests/SphereShapeTest.cpp",
             "Tests/CylinderShapeTest.cpp",

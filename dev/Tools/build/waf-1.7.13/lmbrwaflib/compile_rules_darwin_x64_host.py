@@ -37,6 +37,7 @@ def load_darwin_x64_host_settings(conf):
                                         conf.ThirdPartyPath('jinja2', 'x64')]
     v['CODE_GENERATOR_PYTHON_DEBUG_PATHS'] = [conf.ThirdPartyPath('markupsafe', 'x64'),
                                               conf.ThirdPartyPath('jinja2', 'x64')]
+
     v['CODE_GENERATOR_PYTHON_HOME'] = '/System/Library/Frameworks/Python.framework/Versions/2.7'
     v['CODE_GENERATOR_PYTHON_HOME_DEBUG'] = '/System/Library/Frameworks/Python.framework/Versions/2.7'
     v['CODE_GENERATOR_INCLUDE_PATHS'] = []

@@ -703,7 +703,14 @@ namespace EMotionFX
                     return;
                 }
 
-                uint32 curIndex = uniqueData->mActiveMotionIndex;
+                AZ::u32 curIndex = uniqueData->mActiveMotionIndex;
+
+                // Make sure we're in a valid range.
+                if (curIndex >= numMotions)
+                {
+                    curIndex = static_cast<AZ::u32>(numMotions - 1);
+                }
+
                 // Removing the cumulative probability range for the element that we do not want to choose
                 const float previousIndexCumulativeWeight = curIndex > 0 ? m_motionRandomSelectionCumulativeWeights[curIndex - 1].second : 0;
                 const float currentIndexCumulativeWeight = m_motionRandomSelectionCumulativeWeights[curIndex].second;
@@ -1050,6 +1057,7 @@ namespace EMotionFX
             ->Attribute(AZ::Edit::Attributes::ChangeNotify, &AnimGraphMotionNode::OnMotionIdsChanged)
             ->Attribute(AZ::Edit::Attributes::ContainerCanBeModified, false)
             ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::HideChildren)
+            ->Attribute(AZ::Edit::Attributes::ChangeNotify, AZ::Edit::PropertyRefreshLevels::EntireTree)
             ->DataElement(AZ::Edit::UIHandlers::Default, &AnimGraphMotionNode::m_loop, "Loop", "Loop the motion?")
             ->Attribute(AZ::Edit::Attributes::ChangeNotify, AZ::Edit::PropertyRefreshLevels::EntireTree)
             ->Attribute(AZ::Edit::Attributes::ChangeNotify, &AnimGraphMotionNode::UpdateUniqueDatas)

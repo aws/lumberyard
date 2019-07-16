@@ -18,15 +18,13 @@ from runpy import run_path
 
 def build(bld):
 
-    #==============================
-    # Common
-    #==============================
     includes    = [ '.',
                     bld.Path('Code/Tools'),
                     bld.Path('Code/Tools/RC/ResourceCompiler'),
                     bld.Path('Code/Tools/CryCommonTools'),
                     bld.Path('Code/CryEngine/CryCommon'),
                     bld.ThirdPartyPath('squish')]
+
     defines     = [ 'RESOURCECOMPILERIMAGE_EXPORTS',
                     'RESOURCE_COMPILER_IMAGE']
     win_lib     = [ 'Gdi32' ]
@@ -53,7 +51,8 @@ def build(bld):
         copyright_org               = 'Amazon-CryTek',
         file_list                   = ['resourcecompilerimage.waf_files'],
         platforms                   = ['win', 'darwin'],
-        configurations              = ['debug', 'debug_test', 'profile', 'profile_test'],
+        exclude_monolithic          = True,
+        client_only                 = True,
         use                         = ['AzToolsFramework'],
         uselib                      = ['QT5CORE',
                                         'QT5GUI',

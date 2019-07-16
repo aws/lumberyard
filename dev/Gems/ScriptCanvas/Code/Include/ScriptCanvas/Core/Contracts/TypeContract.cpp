@@ -9,7 +9,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#include "precompiled.h"
+
 #include "TypeContract.h"
 #include <ScriptCanvas/Core/ContractBus.h>
 #include <ScriptCanvas/Core/NodeBus.h>
@@ -17,15 +17,26 @@
 
 namespace ScriptCanvas
 {
-    AZ::Outcome<void, AZStd::string> TypeContract::OnEvaluate(const Slot& sourceSlot, const Slot& targetSlot) const
+    void RestrictedTypeContract::Reflect(AZ::ReflectContext* reflection)
     {
-        bool valid{};
-        Data::Type targetType{};
+        AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(reflection);
+        if (serializeContext)
+        {
+            serializeContext->Class<RestrictedTypeContract, Contract>()
+                ->Version(1)
+                ->Field("flags", &RestrictedTypeContract::m_flags)
+                ->Field("types", &RestrictedTypeContract::m_types)
+                ;
+        }
+    }
+
+    AZ::Outcome<void, AZStd::string> RestrictedTypeContract::OnEvaluate(const Slot& sourceSlot, const Slot& targetSlot) const
+    {
+        bool valid = false;
 
         if (m_types.empty())
         {
-            NodeRequestBus::EventResult(targetType, targetSlot.GetNodeId(), &NodeRequests::GetSlotDataType, targetSlot.GetId());
-            NodeRequestBus::EventResult(valid, sourceSlot.GetNodeId(), &NodeRequests::SlotAcceptsType, sourceSlot.GetId(), targetType);
+            valid = m_flags != Exclusive;
         }
         else
         {
@@ -33,14 +44,11 @@ namespace ScriptCanvas
             {
                 for (const auto& type : m_types)
                 {
-                    bool acceptsType{};
-                    NodeRequestBus::EventResult(acceptsType, targetSlot.GetNodeId(), &NodeRequests::SlotAcceptsType, targetSlot.GetId(), type);
-                    if (acceptsType)
+                    if (targetSlot.IsTypeMatchFor(type))
                     {
                         valid = true;
                         break;
                     }
-                    
                 }
             }
             else
@@ -48,12 +56,18 @@ namespace ScriptCanvas
                 valid = true;
                 for (const auto& type : m_types)
                 {
-                    bool acceptsType{};
-                    NodeRequestBus::EventResult(acceptsType, targetSlot.GetNodeId(), &NodeRequests::SlotAcceptsType, targetSlot.GetId(), type);
-                    if (acceptsType)
+                    if (targetSlot.IsTypeMatchFor(type))
                     {
-                        valid = false;
-                        break;
+                        if (!targetSlot.IsDynamicSlot())
+                        {
+                            valid = false;
+                            break;
+                        }
+                        else if (targetSlot.HasDisplayType())
+                        {
+                            valid = false;
+                            break;
+                        }
                     }
                 }
             }
@@ -69,39 +83,18 @@ namespace ScriptCanvas
             , targetSlot.GetName().data()
             , RTTI_GetTypeName());
 
-        if (targetType.IsValid())
+        for (const auto& type : m_types)
         {
-            errorMessage.append(Data::GetName(targetType));
-        }
-        else
-        {
-            for (const auto& type : m_types)
+            if (Data::IsValueType(type))
             {
-                if (Data::IsValueType(type))
-                {
-                    errorMessage.append(AZStd::string::format("%s\n\r", Data::GetName(type)));
-                }
-                else
-                {
-                    errorMessage.append(Data::GetBehaviorContextName(type.GetAZType()));
-                }
+                errorMessage.append(AZStd::string::format("%s\n", Data::GetName(type).data()));
+            }
+            else
+            {
+                errorMessage.append(Data::GetBehaviorClassName(type.GetAZType()));
             }
         }
 
         return AZ::Failure(errorMessage);
-
-    }
-
-    void TypeContract::Reflect(AZ::ReflectContext* reflection)
-    {
-        AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(reflection);
-        if (serializeContext)
-        {
-            serializeContext->Class<TypeContract, Contract>()
-                ->Version(1)
-                ->Field("flags", &TypeContract::m_flags)
-                ->Field("types", &TypeContract::m_types)
-                ;
-        }
     }
 }

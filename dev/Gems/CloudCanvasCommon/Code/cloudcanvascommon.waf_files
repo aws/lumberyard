@@ -9,11 +9,15 @@
     },
     "auto": {
         "Include": [
-            "Include/CloudCanvasCommon/CloudCanvasCommonBus.h"
+            "Include/CloudCanvasCommon/CloudCanvasCommonBus.h",
+            "Include/PresignedURL/PresignedURLBus.h",
+            "Include/FileTransferSupport/FileTransferSupport.h"
         ],
         "Source": [
             "Source/CloudCanvasCommonSystemComponent.cpp",
-            "Source/CloudCanvasCommonSystemComponent.h"
+            "Source/CloudCanvasCommonSystemComponent.h",
+            "Source/PresignedURL/PresignedURL.h",
+            "Source/PresignedURL/PresignedURL.cpp"
         ]
     }
 }

@@ -12,6 +12,7 @@
 #include "Maestro_precompiled.h"
 
 #include <AzTest/AzTest.h>
+#include <AzCore/UnitTest/UnitTest.h>
 #include <Mocks/ITimerMock.h>
 #include <Mocks/ICryPakMock.h>
 #include <Mocks/IConsoleMock.h>
@@ -41,6 +42,7 @@ TEST_F(MaestroTest, ExampleTest)
 
 class MaestroTestEnvironment
     : public AZ::Test::ITestEnvironment
+    , public UnitTest::TraceBusRedirector
 {
 public:
     AZ_TEST_CLASS_ALLOCATOR(MaestroTestEnvironment);
@@ -76,10 +78,13 @@ protected:
         m_stubEnv.pCryPak = &m_mocks->pak;
         m_stubEnv.pConsole = &m_mocks->console;
         gEnv = &m_stubEnv;
+
+        BusConnect();
     }
 
     void TeardownEnvironment() override
     {
+        BusDisconnect();
         // Destroy mocks before AZ allocators
         delete m_mocks;
 

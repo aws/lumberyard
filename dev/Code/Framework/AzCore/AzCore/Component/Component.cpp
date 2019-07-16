@@ -57,6 +57,17 @@ namespace AZ
         return EntityId();
     }
 
+    NamedEntityId Component::GetNamedEntityId() const
+    {
+        if (m_entity)
+        {
+            return NamedEntityId(m_entity->GetId(), m_entity->GetName());
+        }
+
+        AZ_Warning("System", false, "Can't get component %p entity ID as it is not attached to an entity yet!", this);
+        return NamedEntityId();
+    }
+
     //=========================================================================
     // SetConfiguration
     //=========================================================================

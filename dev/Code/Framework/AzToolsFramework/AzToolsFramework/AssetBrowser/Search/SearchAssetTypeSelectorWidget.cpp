@@ -29,52 +29,6 @@ namespace AzToolsFramework
 {
     namespace AssetBrowser
     {
-        namespace
-        {
-            template<class T>
-            struct EBusAggregateUniqueResults
-            {
-                AZStd::vector<T> values;
-                AZ_FORCE_INLINE void operator=(const T& rhs)
-                {
-                    if (AZStd::find(values.begin(), values.end(), rhs) == values.end())
-                    {
-                        values.push_back(rhs);
-                    }
-                }
-            };
-
-            struct EBusAggregateAssetTypesIfBelongsToGroup
-            {
-                EBusAggregateAssetTypesIfBelongsToGroup(const QString& group)
-                    : m_group(group)
-                {
-                }
-
-                EBusAggregateAssetTypesIfBelongsToGroup& operator=(const EBusAggregateAssetTypesIfBelongsToGroup&) = delete;
-
-                AZStd::vector<AZ::Data::AssetType> values;
-
-                AZ_FORCE_INLINE void operator=(const AZ::Data::AssetType& assetType)
-                {
-                    if (BelongsToGroup(assetType))
-                    {
-                        values.push_back(assetType);
-                    }
-                }
-
-            private:
-                const QString& m_group;
-
-                bool BelongsToGroup(const AZ::Data::AssetType& assetType)
-                {
-                    QString group;
-                    AZ::AssetTypeInfoBus::EventResult(group, assetType, &AZ::AssetTypeInfo::GetGroup);
-                    return group.compare(m_group, Qt::CaseInsensitive);
-                }
-            };
-        }
-
         SearchAssetTypeSelectorWidget::SearchAssetTypeSelectorWidget(QWidget* parent)
             : QWidget(parent)
             , m_ui(new Ui::SearchAssetTypeSelectorWidgetClass())

@@ -520,7 +520,11 @@ namespace AZ
     EditContext::ClassBuilder::UIElement(Crc32 uiIdCrc, const char* description)
     {
         auto* classBuilder = ClassElement(AZ::Edit::ClassElements::UIElement, description)->Attribute(AZ::Edit::UIHandlers::Handler, uiIdCrc);
-        classBuilder->m_editElement->m_name = classBuilder->m_editElement->m_description;
+
+        if (IsValid())
+        {
+            classBuilder->m_editElement->m_name = classBuilder->m_editElement->m_description;
+        }
 
         return classBuilder;
     }
@@ -532,7 +536,11 @@ namespace AZ
         EditContext::ClassBuilder::UIElement(Crc32 uiIdCrc, const char* name, const char* description)
     {
         auto* classBuilder = ClassElement(AZ::Edit::ClassElements::UIElement, description)->Attribute(AZ::Edit::UIHandlers::Handler, uiIdCrc);
-        classBuilder->m_editElement->m_name = name;
+
+        if (IsValid())
+        {
+            classBuilder->m_editElement->m_name = name;
+        }
 
         return classBuilder;
     }
@@ -793,12 +801,42 @@ namespace AZ
         {
             return this;
         }
-        AZ_Assert(Internal::AttributeValueTypeClassChecker<T>::Check(m_classData->m_typeId, m_classData->m_azRtti), "ElementAttribute (0x%08u) doesn't belong to '%s' class! You can't reference other classes!", idCrc, m_classData->m_name);
+
+        const SerializeContext::ClassData* templatedClassData = nullptr;
+        AZStd::string idString = "{Unknown Type Id}";
+
+        bool belongsToContainerType = Internal::AttributeValueTypeClassChecker<T>::Check(m_classData->m_typeId, m_classData->m_azRtti);
+        bool belongsToTemplatedType = false;
+
+        if (!belongsToContainerType)
+        {
+            if (m_classData->m_elements.back().m_genericClassInfo)
+            {
+                for (size_t argumentIndex = 0; argumentIndex < m_classData->m_elements.back().m_genericClassInfo->GetNumTemplatedArguments(); argumentIndex++)
+                {
+                    AZ::Uuid templatedTypeId = m_classData->m_elements.back().m_genericClassInfo->GetTemplatedTypeId(argumentIndex);
+                    templatedClassData = m_context->m_serializeContext.FindClassData(templatedTypeId);
+
+                    AZ_Assert(templatedClassData, "ElementAttribute (0x%08u) potentially references class with Uuid '%s' that hasn't been reflected yet!", idCrc, idString.c_str());
+
+                    if (Internal::AttributeValueTypeClassChecker<T>::Check(templatedClassData->m_typeId, templatedClassData->m_azRtti))
+                    {
+                        belongsToTemplatedType = true;
+                        templatedTypeId.ToString(idString);
+                    }
+                }
+            }
+        }
+
+        AZ_Assert(belongsToContainerType || belongsToTemplatedType, "ElementAttribute (0x%08u) doesn't belong to '%s' or any contained templated classes! You can't reference other classes!", idCrc, m_classData->m_name);
+
         typedef typename AZStd::Utils::if_c<AZStd::is_member_pointer<T>::value,
             typename AZStd::Utils::if_c<AZStd::is_member_function_pointer<T>::value, Edit::AttributeMemberFunction<T>, Edit::AttributeMemberData<T> >::type,
             typename AZStd::Utils::if_c<AZStd::is_function<typename AZStd::remove_pointer<T>::type>::value, Edit::AttributeFunction<typename AZStd::remove_pointer<T>::type>, Edit::AttributeData<T> >::type
         >::type ContainerType;
+
         AZ_Assert(m_editElement, "You can attach ElementAttributes only to UiElements!");
+        
         if (m_editElement)
         {
             // Detect adding an EnumValue attribute to an enum which is reflected globally
@@ -808,6 +846,7 @@ namespace AZ
             {
                 Edit::AttributePair attribute(idCrc, aznew ContainerType(value));
                 attribute.second->m_describesChildren = true;
+                attribute.second->m_childClassOwned = belongsToTemplatedType;
                 m_editElement->m_attributes.push_back(attribute);
             }
         }

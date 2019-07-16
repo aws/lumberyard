@@ -948,9 +948,6 @@ typedef int socklen_t;
 	#define MESSAGE(msg)
 #endif
 
-#if !defined(BINFOLDER_NAME)
-#error ("BINFOLDER_NAME not defined in the project preprocessor settings")
-#endif
 
 template <class T>
 class StaticInstanceSpecialization

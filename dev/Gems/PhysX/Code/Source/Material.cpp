@@ -198,10 +198,18 @@ namespace PhysX
 
     MaterialsManager::MaterialsManager()
     {
-        MaterialManagerRequestsBus::Handler::BusConnect();
     }
 
     MaterialsManager::~MaterialsManager()
+    {
+    }
+
+    void MaterialsManager::Connect()
+    {
+        MaterialManagerRequestsBus::Handler::BusConnect();
+    }
+
+    void MaterialsManager::Disconnect()
     {
         MaterialManagerRequestsBus::Handler::BusDisconnect();
     }

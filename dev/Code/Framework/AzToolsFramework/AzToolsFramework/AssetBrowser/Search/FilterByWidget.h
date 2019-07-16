@@ -11,6 +11,10 @@
 */
 #pragma once
 
+/*********************************************************************************************
+ * FilterByWidget has been deprecated, use AzQtComponents::FilteredSearchWidget instead.
+ *********************************************************************************************/
+
 #include <QWidget>
 #include <QScopedPointer>
 

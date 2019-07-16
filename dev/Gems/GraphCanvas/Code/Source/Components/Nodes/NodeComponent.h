@@ -66,13 +66,14 @@ namespace GraphCanvas
             required.push_back(AZ_CRC("GraphCanvas_GeometryService", 0x80981600));
             required.push_back(StyledGraphicItemServiceCrc);
         }
-		
-		void Init() override;
+
+        void Init() override;
         void Activate() override;
         void Deactivate() override;
-        ////    
+        ////
 
         // AZ::EntityBus
+        void OnEntityExists(const AZ::EntityId&) override;
         void OnEntityActivated(const AZ::EntityId&) override;
         ////
 
@@ -107,6 +108,10 @@ namespace GraphCanvas
         void RemoveSlot(const AZ::EntityId& slotId) override;
 
         AZStd::vector<AZ::EntityId> GetSlotIds() const override;
+        AZStd::vector<SlotId> GetVisibleSlotIds() const override;
+        AZStd::vector<SlotId> FindVisibleSlotIdsByType(const ConnectionType& connectionType, const SlotType& slotType) const override;
+
+        bool HasConnections() const override;
 
         AZStd::any* GetUserData() override;
 

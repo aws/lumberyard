@@ -20,6 +20,7 @@
 #include <CryCrc32.h>
 #include "Timer.h"
 #include <AzFramework/Components/ConsoleBus.h>
+#include <AzFramework/CommandLine/CommandRegistrationBus.h>
 
 #include <AzFramework/Input/Buses/Requests/InputSystemCursorRequestBus.h>
 #include <AzFramework/Input/Events/InputChannelEventListener.h>
@@ -132,6 +133,7 @@ class CXConsole
     , public AzFramework::InputTextEventListener
     , public IRemoteConsoleListener
     , public AzFramework::ConsoleRequestBus::Handler
+    , public AzFramework::CommandRegistrationBus::Handler
 {
 public:
     typedef std::deque<string> ConsoleBuffer;
@@ -237,6 +239,11 @@ public:
     virtual bool OnBeforeVarChange(ICVar* pVar, const char* sNewValue);
     virtual void OnAfterVarChange(ICVar* pVar);
 
+    // interface CommandRegistration --------------------------------------------------------------------
+    bool RegisterCommand(AZStd::string_view identifier, AZStd::string_view helpText, AZ::u32 commandFlags, AzFramework::CommandFunction callback) override;
+    bool UnregisterCommand(AZStd::string_view identifier) override;
+    void ExecuteRegisteredCommand(IConsoleCmdArgs* pArg);
+
     //////////////////////////////////////////////////////////////////////////
 
     // Returns
@@ -263,6 +270,15 @@ protected: // ------------------------------------------------------------------
     void ExecuteCommand(CConsoleCommand& cmd, string& params, bool bIgnoreDevMode = false);
 
     void ScrollConsole();
+
+    // CommandRegistration usage
+    struct CommandRegistrationEntry
+    {
+        AzFramework::CommandFunction m_callback;
+        AZStd::string m_id;
+        AZStd::string m_helpText;
+    };
+    AZStd::unordered_map<AZStd::string, CommandRegistrationEntry> m_commandRegistrationMap;
 
 #if ALLOW_AUDIT_CVARS
     void AuditCVars(IConsoleCmdArgs* pArg);

@@ -14,6 +14,7 @@
 
 #include "EMotionFXConfig.h"
 #include <AzCore/Math/Uuid.h>
+#include <AzCore/Math/Color.h>
 #include "BaseObject.h"
 #include <MCore/Source/Attribute.h>
 #include "MCore/Source/Color.h"
@@ -107,19 +108,24 @@ namespace EMotionFX
             uint32          mTrackIndex;
             AnimGraphNodeId mEmitterNodeId;
             uint32          mAnimGraphID;
-            uint32          mColor;
+            AZ::Color       mColor;
             float           mStartTime;
             float           mEndTime;
             bool            mIsTickEvent;
 
             EventHistoryItem()
             {
-                //mEventCategoryID  = MCORE_INVALIDINDEX32; // currently unused
                 mEventIndex         = MCORE_INVALIDINDEX32;
                 mTrackIndex         = MCORE_INVALIDINDEX32;
                 mEmitterNodeId      = AnimGraphNodeId();
                 mAnimGraphID        = MCORE_INVALIDINDEX32;
-                mColor              = MCore::GenerateColor();
+
+                const AZ::u32 col = MCore::GenerateColor();
+                mColor = AZ::Color(
+                    MCore::ExtractRed(col)/255.0f,
+                    MCore::ExtractGreen(col)/255.0f,
+                    MCore::ExtractBlue(col)/255.0f,
+                    1.0f);
             }
         };
 
@@ -137,8 +143,8 @@ namespace EMotionFX
             uint32                  mCachedKey;             // a cached key
             AnimGraphNodeId         mNodeId;                // animgraph node Id
             AnimGraphInstance*      mAnimGraphInstance;     // the anim graph instance this node was recorded from
-            uint32                  mColor;                 // the node viz color
-            uint32                  mTypeColor;             // the node type color
+            AZ::Color               mColor;                 // the node viz color
+            AZ::Color               mTypeColor;             // the node type color
             uint32                  mAnimGraphID;           // the animgraph ID
             AZ::TypeId              mNodeType;              // the node type (Uuid)
             uint32                  mCategoryID;            // the category ID
@@ -156,11 +162,11 @@ namespace EMotionFX
                 mAnimGraphID    = MCORE_INVALIDINDEX32;
                 mNodeType       = AZ::TypeId::CreateNull();
                 mCategoryID     = MCORE_INVALIDINDEX32;
-                mColor          = 0xff0000ff;
+                mColor.Set(1.0f, 0.0f, 0.0f, 1.0f);
+                mTypeColor.Set(1.0f, 0.0f, 0.0f, 1.0f);
                 mIsFinalized    = false;
             }
         };
-
 
         enum EValueType
         {

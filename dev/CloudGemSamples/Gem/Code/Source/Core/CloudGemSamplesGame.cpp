@@ -70,7 +70,6 @@ bool CloudGemSamplesGame::Init(IGameFramework* framework)
     // Listen to system events, so we know when levels load/unload, etc.
     gEnv->pSystem->GetISystemEventDispatcher()->RegisterListener(this);
     m_gameFramework->GetILevelSystem()->AddListener(this);
-    gEnv->pSystem->GetIInput()->AddEventListener(this);
 
     // Listen for game framework events (level loaded/unloaded, etc.).
     m_gameFramework->RegisterListener(this, "Game", FRAMEWORKLISTENERPRIORITY_GAME);

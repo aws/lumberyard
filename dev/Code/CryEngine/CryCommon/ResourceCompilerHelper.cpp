@@ -33,7 +33,8 @@
 
 #include <AzCore/std/parallel/semaphore.h>
 #include <AzCore/std/smart_ptr/shared_ptr.h>
-
+#include <AzCore/std/string/string_view.h>
+#include <AzCore/Component/ComponentApplicationBus.h>
 #if defined(AZ_PLATFORM_WINDOWS)
 #include <windows.h>
 #include <shellapi.h> // ShellExecuteW()
@@ -337,9 +338,12 @@ namespace
 
 bool GetRCFolder(wchar_t* pathBuffer, const wchar_t* binFolderFromRegistry, wchar_t* rcFolderBuffer, size_t rcFolderBufferSize)
 {
+    AZStd::string_view binFolderName;
+    AZ::ComponentApplicationBus::BroadcastResult(binFolderName, &AZ::ComponentApplicationRequests::GetBinFolder);
+
     // Convert the BINFOLDER_NAME from the compile settings into a wide character
     wchar_t szBinFolderFromSettings[0x40];
-    swprintf(szBinFolderFromSettings, 0x40, L"%hs/rc", BINFOLDER_NAME);
+    swprintf(szBinFolderFromSettings, 0x40, L"%hs/rc", binFolderName.data());
 
     wchar_t szBinFolderFromRegistry[0x40];
     swprintf(szBinFolderFromRegistry, 0x40, L"%ls/rc", binFolderFromRegistry);

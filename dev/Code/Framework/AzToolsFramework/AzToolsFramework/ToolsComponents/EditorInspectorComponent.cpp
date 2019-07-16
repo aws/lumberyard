@@ -185,6 +185,8 @@ namespace AzToolsFramework
 
             m_componentOrderArray = componentOrderArray;
 
+            SetDirty();
+
             // mark the order as dirty before sending the OnComponentOrderChanged event in order for PrepareSave to be properly handled in the case 
             // one of the event listeners needs to build the InstanceDataHierarchy
             m_componentOrderIsDirty = true;

@@ -548,7 +548,7 @@
                         "Runtime"
                     ]
                 },
-                "Timeout": 300,
+                "Timeout": 600,
                 "MemorySize": 3008,
                 "Environment": {
                     "Variables": {
@@ -622,7 +622,7 @@
                         "Runtime"
                     ]
                 },
-                "Timeout": 300,
+                "Timeout": 600,
                 "MemorySize": 3008,
                 "Environment": {
                     "Variables": {
@@ -708,7 +708,7 @@
                         "Runtime"
                     ]
                 },
-                "Timeout": 300,
+                "Timeout": 600,
                 "MemorySize": 3008,
                 "Environment": {
                     "Variables": {
@@ -757,7 +757,7 @@
                 }
             },
             "Properties": {
-                "Description": "The Lambda used for starting a amoeba generator lamdas.  One amoeba generator per source/buildid/year/month/day/hour",
+                "Description": "The Lambda used for starting the amoeba generator.  The amoeba generator will compact the S3 data files.",
                 "Code": {
                     "S3Bucket": {
                         "Fn::GetAtt": [
@@ -1158,6 +1158,22 @@
                 }
             },
             "DependsOn": [ "ServiceLambda", "AmoebaConfiguration", "GlueCrawlerLauncher" ]
+        },
+        "MetricStorageHandler": {
+            "Properties": {
+                "ServiceToken": {
+                    "Ref": "ProjectResourceHandler"
+                },
+                "Buckets": [
+                    {
+                        "Ref": "MetricStorage"
+                    }
+                ]
+            },
+            "DependsOn": [
+                "MetricStorage"
+            ],
+            "Type": "Custom::S3DeleteObjects"
         },
         "GlueCrawlerRole": {
             "Type": "AWS::IAM::Role",

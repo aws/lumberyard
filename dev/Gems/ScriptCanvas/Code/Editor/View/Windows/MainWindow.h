@@ -14,13 +14,20 @@
 #include <QMainWindow>
 #include <QLabel>
 #include <QVBoxLayout>
+#include <QTimer>
 #include <QTranslator>
 #include <QMimeData>
+#include <QToolButton>
+#include <QWidget>
 
 #include <AzCore/Component/ComponentApplicationBus.h>
 #include <AzCore/Component/EntityId.h>
 #include <AzCore/Asset/AssetCommon.h>
 #include <AzCore/Asset/AssetManagerBus.h>
+
+#include <AzFramework/Asset/AssetCatalogBus.h>
+
+#include <AzToolsFramework/AssetBrowser/AssetBrowserFilterModel.h>
 
 #include <GraphCanvas/Components/Connections/ConnectionBus.h>
 #include <GraphCanvas/Components/SceneBus.h>
@@ -35,10 +42,16 @@
 #include <ScriptCanvas/Bus/EditorScriptCanvasBus.h>
 #include <ScriptCanvas/Bus/DocumentContextBus.h>
 #include <ScriptCanvas/Core/ScriptCanvasBus.h>
+#include <ScriptCanvas/Debugger/ClientTransceiver.h>
 
 #include <Editor/Assets/ScriptCanvasAssetHolder.h>
 #include <Editor/Undo/ScriptCanvasGraphCommand.h>
 #include <Editor/Utilities/RecentFiles.h>
+#include <Editor/View/Dialogs/Settings.h>
+#include <Editor/View/Widgets/NodePalette/NodePaletteModel.h>
+
+#include <Editor/View/Widgets/AssetGraphSceneDataBus.h>
+#include <Editor/View/Widgets/AssetGraphSceneData.h>
 
 #if SCRIPTCANVAS_EDITOR
 #include <Include/EditorCoreAPI.h>
@@ -46,9 +59,15 @@
 
 namespace GraphCanvas
 {
+    class AssetEditorToolbar;
     class GraphCanvasMimeEvent;
-    class GraphCanvasEditorCentralWidget;
+    class GraphCanvasEditorEmptyDockWidget;
     class MiniMapDockWidget;
+
+    namespace Styling
+    {
+        class StyleSheet;
+    }
 }
 
 namespace Ui
@@ -67,7 +86,6 @@ namespace ScriptCanvasEditor
     {
         class BusSenderTree;
         class CommandLine;
-        class Debugging;
         class GraphTabBar;
         class NodePaletteDockWidget;
         class NodeProperties;
@@ -76,11 +94,19 @@ namespace ScriptCanvasEditor
         class LogPanelWidget;
     }
 
-    class CreateNodeContextMenu;
     class EBusHandlerActionMenu;
     class UndoManager;
-    class VariableDockWidget; 
+    class VariableDockWidget;
+    class UnitTestDockWidget;
     class ScriptCanvasBatchConverter;
+    class LoggingWindow;
+    class GraphValidationDockWidget;
+    class MainWindowStatusWidget;
+    class StatisticsDialog;
+
+    // Custom Context Menus
+    class SceneContextMenu;
+    class ConnectionContextMenu;
 
     class MainWindow
         : public QMainWindow
@@ -94,10 +120,13 @@ namespace ScriptCanvasEditor
         , private GraphCanvas::AssetEditorRequestBus::Handler
         , private VariablePaletteRequestBus::Handler
         , private ScriptCanvas::BatchOperationNotificationBus::Handler
+        , private AssetGraphSceneBus::Handler
 #if SCRIPTCANVAS_EDITOR
         //, public IEditorNotifyListener
 #endif
         , private AutomationRequestBus::Handler
+        , private GraphCanvas::ViewNotificationBus::Handler
+        , public AZ::SystemTickBus::Handler
     {
         Q_OBJECT
     private:
@@ -110,7 +139,7 @@ namespace ScriptCanvasEditor
 
     private:
         // UIRequestBus
-        QWidget* GetMainWindow() override { return this; }
+        QWidget* GetMainWindow() override { return qobject_cast<QWidget*>(this); }
 
         // Undo Handlers
         void PostUndoPoint(AZ::EntityId sceneId) override;
@@ -120,27 +149,44 @@ namespace ScriptCanvasEditor
         void PopPreventUndoStateUpdate() override;
         void ClearPreventUndoStateUpdate() override;
         void CreateUndoManager();
-        void TriggerUndo();
-        void TriggerRedo();
+        void TriggerUndo() override;
+        void TriggerRedo() override;
 
         // VariablePaletteRequestBus
         void RegisterVariableType(const ScriptCanvas::Data::Type& variableType) override;
         ////
 
         // GraphCanvas::AssetEditorRequestBus
+        void OnSelectionManipulationBegin() override;
+        void OnSelectionManipulationEnd() override;
+
         AZ::EntityId CreateNewGraph() override;
+
+        void CustomizeConnectionEntity(AZ::Entity* connectionEntity);
+
+        GraphCanvas::ContextMenuAction::SceneReaction ShowSceneContextMenu(const QPoint& screenPoint, const QPointF& scenePoint) override;
+
+        GraphCanvas::ContextMenuAction::SceneReaction ShowNodeContextMenu(const AZ::EntityId& nodeId, const QPoint& screenPoint, const QPointF& scenePoint) override;
+
+        GraphCanvas::ContextMenuAction::SceneReaction ShowNodeGroupContextMenu(const AZ::EntityId& groupId, const QPoint& screenPoint, const QPointF& scenePoint) override;
+        GraphCanvas::ContextMenuAction::SceneReaction ShowCollapsedNodeGroupContextMenu(const AZ::EntityId& nodeId, const QPoint& screenPoint, const QPointF& scenePoint) override;
+
+        GraphCanvas::ContextMenuAction::SceneReaction ShowBookmarkContextMenu(const AZ::EntityId& bookmarkId, const QPoint& screenPoint, const QPointF& scenePoint) override;
+
+        GraphCanvas::ContextMenuAction::SceneReaction ShowConnectionContextMenu(const AZ::EntityId& connectionId, const QPoint& screenPoint, const QPointF& scenePoint) override;
+
+        GraphCanvas::ContextMenuAction::SceneReaction ShowSlotContextMenu(const AZ::EntityId& slotId, const QPoint& screenPoint, const QPointF& scenePoint) override;
+        ////
+
+        // SystemTickBus
+        void OnSystemTick() override;
         ////
 
         //! ScriptCanvas::BatchOperationsNotificationBus
         void OnCommandStarted(AZ::Crc32 commandTag);
         void OnCommandFinished(AZ::Crc32 commandTag);
 
-        // UI Handlers
-        void OnConnectionContextMenuEvent(const AZ::EntityId& connectionId, QGraphicsSceneContextMenuEvent* event) override;
-        void OnNodeContextMenuEvent(const AZ::EntityId& nodeId, QGraphicsSceneContextMenuEvent* event) override;
-        void OnSceneContextMenuEvent(const AZ::EntityId& sceneId, QGraphicsSceneContextMenuEvent* event) override;
-        void OnSlotContextMenuEvent(const AZ::EntityId& slotId, QGraphicsSceneContextMenuEvent* event) override;
-        void OnSceneDoubleClickEvent(const AZ::EntityId& sceneId, QGraphicsSceneMouseEvent* event) override;
+        // UI Handlers        
         GraphCanvas::Endpoint CreateNodeForProposal(const AZ::EntityId& connectionId, const GraphCanvas::Endpoint& endpoint, const QPointF& scenePoint, const QPoint& screenPoint) override;
         void OnWrapperNodeActionWidgetClicked(const AZ::EntityId& wrapperNode, const QRect& actionWidgetBoundingRect, const QPointF& scenePoint, const QPoint& screenPoint) override;
 
@@ -162,6 +208,9 @@ namespace ScriptCanvasEditor
         void OnEditPaste();
         void OnEditDuplicate();
         void OnEditDelete();
+        void OnRemoveUnusedVariables();
+        void OnRemoveUnusedNodes();
+        void OnRemoveUnusedElements();
 
         // View menu
         void OnViewNodePalette();
@@ -172,7 +221,12 @@ namespace ScriptCanvasEditor
         void OnViewLog();
         void OnBookmarks();
         void OnVariableManager();
+        void OnUnitTestManager();
         void OnViewMiniMap();
+        void OnViewLogWindow();
+        void OnViewGraphValidation();
+        void OnViewDebuggingWindow();
+        void OnViewStatisticsPanel();
         void OnRestoreDefaultLayout();
 
         void UpdateViewMenu();
@@ -183,6 +237,10 @@ namespace ScriptCanvasEditor
 
         void OnNodePositionChanged(const AZ::EntityId& nodeId, const AZ::Vector2& position) override;
         /////////////////////////////////////////////////////////////////////////////////////////////
+        
+        void OnVariableSelectionChanged(const AZStd::vector<AZ::EntityId>& variablePropertyIds);
+        void QueuePropertyGridUpdate();
+        void DequeuePropertyGridUpdate();
 
         void SetDefaultLayout();
 
@@ -198,8 +256,14 @@ namespace ScriptCanvasEditor
         QVariant GetTabData(const AZ::Data::AssetId& assetId);
 
         //! GeneralRequestBus
-        AZ::Outcome<int, AZStd::string> OpenScriptCanvasAsset(const AZ::Data::Asset<ScriptCanvasAsset>& scriptCanvasAsset, int tabIndex = -1, AZ::EntityId hostId = AZ::EntityId()) override;
+        AZ::Outcome<int, AZStd::string> OpenScriptCanvasAssetId(const AZ::Data::AssetId& assetId);
+        AZ::Outcome<int, AZStd::string> OpenScriptCanvasAsset(const AZ::Data::Asset<ScriptCanvasAsset>& scriptCanvasAsset, int tabIndex = -1) override;
         int CloseScriptCanvasAsset(const AZ::Data::AssetId& assetId) override;
+
+        bool IsScriptCanvasAssetOpen(const AZ::Data::AssetId& assetId) const override;
+
+        const CategoryInformation* FindNodePaletteCategoryInformation(AZStd::string_view categoryPath) const override;
+        const NodePaletteModelInformation* FindNodePaletteModelInformation(const ScriptCanvas::NodeTypeIdentifier& nodeType) const override;
         ////
         AZ::Outcome<int, AZStd::string> CreateScriptCanvasAsset(AZStd::string_view assetPath, int tabIndex = -1);
         AZ::Outcome<int, AZStd::string> UpdateScriptCanvasAsset(const AZ::Data::Asset<ScriptCanvasAsset>& scriptCanvasAsset);
@@ -216,9 +280,13 @@ namespace ScriptCanvasEditor
         AZ::EntityId GetActiveScriptCanvasGraphId() const override;
 
         bool IsInUndoRedo(const AZ::EntityId& graphCanvasGraphId) const override;
+        bool IsActiveInUndoRedo() const override;
 
         GraphCanvas::GraphId GetGraphCanvasGraphId(const AZ::EntityId& scriptCanvasGraphId) const override;
         AZ::EntityId GetScriptCanvasGraphId(const GraphCanvas::GraphId& graphCanvasCanvasGraphId) const override;
+
+        AZ::EntityId FindGraphCanvasGraphIdByAssetId(const AZ::Data::AssetId& assetId) const override;
+        AZ::EntityId FindScriptCanvasGraphIdByAssetId(const AZ::Data::AssetId& assetId) const override;
         ////////////////////////////
 
         // GraphCanvasSettingsRequestBus
@@ -234,22 +302,44 @@ namespace ScriptCanvasEditor
 
         bool IsDropConnectionSpliceEnabled() const override;
         AZStd::chrono::milliseconds GetDropConnectionSpliceTime() const override;
-		////
+
+        bool IsSplicedNodeNudgingEnabled() const override;
+
+        bool IsShakeToDespliceEnabled() const override;
+        int GetShakesToDesplice() const override;
+        float GetMinimumShakePercent() const override;
+        float GetShakeDeadZonePercent() const override;
+        float GetShakeStraightnessPercent() const override;
+        AZStd::chrono::milliseconds GetMaximumShakeDuration() const override;
+
+        AZStd::chrono::milliseconds GetAlignmentTime() const override;
+
+        float GetEdgePanningPercentage() const override;
+        float GetEdgePanningScrollSpeed() const override;
+        ////
 
         // AutomationRequestBus
         NodeIdPair ProcessCreateNodeMimeEvent(GraphCanvas::GraphCanvasMimeEvent* mimeEvent, const AZ::EntityId& graphCanvasGraphId, AZ::Vector2 nodeCreationPos) override;
         const GraphCanvas::GraphCanvasTreeItem* GetNodePaletteRoot() const override;
+
+        void SignalAutomationBegin() override;
+        void SignalAutomationEnd() override;
         ////
 
+        AZ::EntityId FindEditorNodeIdByAssetNodeId(const AZ::Data::AssetId& assetId, AZ::EntityId assetNodeId) const override;
+        AZ::EntityId FindAssetNodeIdByEditorNodeId(const AZ::Data::AssetId& assetId, AZ::EntityId editorNodeId) const override;
+        
     private:
         void DeleteNodes(const AZ::EntityId& sceneId, const AZStd::vector<AZ::EntityId>& nodes) override;
         void DeleteConnections(const AZ::EntityId& sceneId, const AZStd::vector<AZ::EntityId>& connections) override;
         void DisconnectEndpoints(const AZ::EntityId& sceneId, const AZStd::vector<GraphCanvas::Endpoint>& endpoints) override;
-        /////////////////////////////////////////////////////////////////////////////////////////////
+        /////////////////////////////////////////////////////////////////////////////////////////////        
 
         //! DocumentContextNotificationBus
         void OnScriptCanvasAssetReady(const AZ::Data::Asset<ScriptCanvasAsset>& scriptCanvasAsset) override;
         ////
+
+        GraphCanvas::Endpoint HandleProposedConnection(const GraphCanvas::GraphId& graphId, const GraphCanvas::ConnectionId& connectionId, const GraphCanvas::Endpoint& endpoint, const GraphCanvas::NodeId& proposedNode, const QPoint& screenPoint);
 
         void SourceFileChanged(const AZ::Data::AssetId& saveAssetId, AZStd::string relPath, AZStd::string scanFolder, const AZ::Data::AssetId& assetId);
 
@@ -260,6 +350,10 @@ namespace ScriptCanvasEditor
         void OnCanUndoChanged(bool canUndo) override;
         void OnCanRedoChanged(bool canRedo) override;
         ////
+
+        GraphCanvas::ContextMenuAction::SceneReaction HandleContextMenu(GraphCanvas::EditorContextMenu& editorContextMenu, const AZ::EntityId& memberId, const QPoint& screenPoint, const QPointF& scenePoint) const;
+
+        void OnAutoSave();
 
         //! Helper function which serializes a file to disk
         //! \param filename name of file to serialize the Entity
@@ -286,8 +380,15 @@ namespace ScriptCanvasEditor
         void RestoreWindowState();
 
         void RunBatchConversion();
-        void BatchConvertDirectory(QDir directory);
-        void BatchConvertFile(const QString& fileName);
+
+        void OnShowValidationErrors();
+        void OnShowValidationWarnings();
+        void OnValidateCurrentGraph();
+
+        // ViewNotificationBus
+        void OnViewParamsChanged(const GraphCanvas::ViewParams& viewParams) override;
+        void OnZoomChanged(qreal zoomLevel) override;
+        ////
 
     public slots:
         void UpdateRecentMenu();
@@ -295,28 +396,8 @@ namespace ScriptCanvasEditor
 
     private:
 
-        QWidget* m_host = nullptr;
-
-        Widget::GraphTabBar*                m_tabBar = nullptr;
-        Widget::NodeOutliner*               m_nodeOutliner = nullptr;
-        VariableDockWidget*                 m_variableDockWidget = nullptr;
-        Widget::NodePaletteDockWidget*      m_nodePalette = nullptr;
-        Widget::Debugging*                  m_debugging = nullptr;
-        Widget::LogPanelWidget*             m_logPanel = nullptr;
-        Widget::PropertyGrid*               m_propertyGrid = nullptr;
-        Widget::CommandLine*                m_commandLine = nullptr;
-        GraphCanvas::BookmarkDockWidget*    m_bookmarkDockWidget = nullptr;
-        GraphCanvas::MiniMapDockWidget*     m_minimap = nullptr;
-
-        // Reusable context menu for creating nodes.
-        CreateNodeContextMenu* m_createNodeContextMenu;
-        AZ::EntityId m_entityMimeDelegateId;
-
-        // Reusable context menu for adding/removing ebus events from a wrapper node
-        EBusHandlerActionMenu* m_ebusHandlerActionMenu;
-
-        GraphCanvas::GraphCanvasEditorCentralWidget* m_emptyCanvas; // Displayed when there is no open graph
-        QVBoxLayout* m_layout;
+        int CreateAssetTab(const AZ::Data::AssetId& assetId, int tabIndex = -1);
+        void OpenAssetHelper(AZ::Data::Asset<ScriptCanvasAsset>& asset, int tabIndex);
 
         //! \param asset The AssetId of the ScriptCanvas Asset.
         void SetActiveAsset(const AZ::Data::AssetId& assetId);
@@ -324,69 +405,83 @@ namespace ScriptCanvasEditor
 
         void SignalConversionComplete();
 
-        AZ::Data::AssetId m_activeAssetId;
-
-        struct AssetGraphSceneId
-        {
-            AZ::Data::AssetId m_assetId;
-            AZ::EntityId m_graphId;
-            AZ::EntityId m_sceneId;
-        };
-
-    public:
-        struct AssetGraphSceneData
-        {
-            AZ_CLASS_ALLOCATOR(AssetGraphSceneData, AZ::SystemAllocator, 0);
-            AssetGraphSceneData(const AZ::Data::Asset<ScriptCanvasAsset>& scriptCanvasAsset);
-            AssetGraphSceneData(const AssetGraphSceneData&) = delete;
-            AssetGraphSceneData& operator=(const AssetGraphSceneData&) = delete;
-            void Set(const AZ::Data::Asset<ScriptCanvasAsset>& scriptCanvasAsset);
-
-            AssetGraphSceneId m_tupleId;
-            AZ::Data::Asset<ScriptCanvasAsset> m_asset; //< Maintains a reference to ScriptCanvasAsset that is open within the editor
-                                                   //< While a reference is maintained in the MainWindow, the ScriptCanvas Graph will remain open
-                                                   //< Even if the underlying asset is removed from disk
-        };
-
-    private:
-
         void PrepareActiveAssetForSave();
 
-        /*! AssetGraphSceneMapper
-        The AssetGraphSceneMapper is a structure for allowing quick lookups of open ScriptCanvas
-        graphs assetIds, GraphCanvas Scene EntityIds, ScriptCanvas Graphs Unique EntityIds and the ScriptCanvasAsset object
-        */
-        struct AssetGraphSceneMapper
-        {
-            AZ::Outcome<void, AZStd::string> Add(AZ::Data::Asset<ScriptCanvasAsset> scriptCanvasAsset);
-            void Remove(const AZ::Data::AssetId& assetId);
-            void Clear();
+        void RestartAutoTimerSave(bool forceTimer = false);
 
-            AssetGraphSceneData* GetByAssetId(const AZ::Data::AssetId& assetId) const;
-            AssetGraphSceneData* GetByGraphId(AZ::EntityId graphId) const;
-            AssetGraphSceneData* GetBySceneId(AZ::EntityId entityId) const;
+        QWidget* m_host = nullptr;
 
-            AZStd::unordered_map<AZ::Data::AssetId, AZStd::unique_ptr<AssetGraphSceneData>> m_assetIdToDataMap;
-        };
+        AzToolsFramework::AssetBrowser::AssetBrowserFilterModel* m_scriptEventsAssetModel;
+        AzToolsFramework::AssetBrowser::AssetBrowserFilterModel* m_scriptCanvasAssetModel;
+
+        Widget::GraphTabBar*                m_tabBar = nullptr;
+        GraphCanvas::AssetEditorToolbar*    m_editorToolbar = nullptr;
+        QToolButton*                        m_validateGraphToolButton = nullptr;
+        Widget::NodeOutliner*               m_nodeOutliner = nullptr;
+        VariableDockWidget*                 m_variableDockWidget = nullptr;
+        GraphValidationDockWidget*          m_validationDockWidget = nullptr;
+        UnitTestDockWidget*                 m_unitTestDockWidget = nullptr;
+        StatisticsDialog*                   m_statisticsDialog = nullptr;
+        Widget::NodePaletteDockWidget*      m_nodePalette = nullptr;
+        Widget::LogPanelWidget*             m_logPanel = nullptr;
+        Widget::PropertyGrid*               m_propertyGrid = nullptr;
+        Widget::CommandLine*                m_commandLine = nullptr;
+        GraphCanvas::BookmarkDockWidget*    m_bookmarkDockWidget = nullptr;
+        GraphCanvas::MiniMapDockWidget*     m_minimap = nullptr;
+        LoggingWindow*                      m_loggingWindow = nullptr;
+
+        MainWindowStatusWidget*             m_statusWidget = nullptr;
+
+        NodePaletteModel                    m_nodePaletteModel;
+
+        void CreateUnitTestWidget();
+
+        // Reusable context menu for the context menu's that have a node palette.
+        SceneContextMenu* m_sceneContextMenu;
+        ConnectionContextMenu* m_connectionContextMenu;
+
+        AZ::EntityId m_entityMimeDelegateId;
+
+        // Reusable context menu for adding/removing ebus events from a wrapper node
+        EBusHandlerActionMenu* m_ebusHandlerActionMenu;
+
+        GraphCanvas::GraphCanvasEditorEmptyDockWidget* m_emptyCanvas; // Displayed when there is no open graph
+        QVBoxLayout* m_layout;
+
+        AZ::Data::AssetId m_activeAssetId;
+
         AssetGraphSceneMapper m_assetGraphSceneMapper;
 
+        bool                  m_loadingNewlySavedFile;
+        AZStd::string         m_newlySavedFile;
+
         bool m_enterState;
-        bool m_ignoreSelection;
+        bool m_ignoreSelection;        
         AZ::s32 m_preventUndoStateUpdateCount;
 
         Ui::MainWindow* ui;
         AZStd::array<AZStd::pair<QAction*, QMetaObject::Connection>, c_scriptCanvasEditorSettingsRecentFilesCountMax> m_recentActions;
         QHBoxLayout *m_horizontalTabBarLayout;
         QSpacerItem* m_plusButtonSpacer;
+
         AZStd::unique_ptr<UndoManager> m_undoManager;
+        AZStd::intrusive_ptr<EditorSettings::ScriptCanvasEditorSettings> m_userSettings;
+
+        bool m_isInAutomation;
+
+        bool m_allowAutoSave;
+        QTimer m_autoSaveTimer;
 
         QByteArray m_defaultLayout;
         QTranslator m_translator;
 
+        AZStd::vector<AZ::EntityId> m_selectedVariableIds;
+
+        AZStd::unordered_set< AZ::Data::AssetId > m_loadingAssets;
         AZStd::unordered_set< AZ::Uuid > m_variablePaletteTypes;
 
         ScriptCanvasBatchConverter* m_converter;
-
+        ScriptCanvas::Debugger::ClientTransceiver m_clientTRX;
         GraphCanvas::StyleManager m_styleManager;
     };
 }

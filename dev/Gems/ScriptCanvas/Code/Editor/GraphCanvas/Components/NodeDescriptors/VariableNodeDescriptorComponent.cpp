@@ -47,11 +47,15 @@ namespace ScriptCanvasEditor
     void VariableNodeDescriptorComponent::Activate()
     {
         GraphCanvas::NodeNotificationBus::Handler::BusConnect(GetEntityId());
+        GraphCanvas::SceneMemberNotificationBus::Handler::BusConnect(GetEntityId());
     }
 
     void VariableNodeDescriptorComponent::Deactivate()
     {
         ScriptCanvas::VariableNodeNotificationBus::Handler::BusDisconnect();
+
+        GraphCanvas::SceneMemberNotificationBus::Handler::BusDisconnect();
+        GraphCanvas::NodeNotificationBus::Handler::BusDisconnect();
     }
 
     void VariableNodeDescriptorComponent::OnVariableRenamed(AZStd::string_view variableName)
@@ -82,7 +86,7 @@ namespace ScriptCanvasEditor
         ScriptCanvas::Data::Type scriptCanvasType;
         ScriptCanvas::VariableRequestBus::EventResult(scriptCanvasType, newVariableId, &ScriptCanvas::VariableRequests::GetType);
 
-        AZStd::string_view typeName = TranslationHelper::GetSafeTypeName(scriptCanvasType);
+        const AZStd::string typeName = TranslationHelper::GetSafeTypeName(scriptCanvasType);
         GraphCanvas::NodeTitleRequestBus::Event(GetEntityId(), &GraphCanvas::NodeTitleRequests::SetSubTitle, typeName);
 
         AZ::Uuid dataType = ScriptCanvas::Data::ToAZType(scriptCanvasType);
@@ -109,7 +113,7 @@ namespace ScriptCanvasEditor
         }
     }
 
-    void VariableNodeDescriptorComponent::OnNodeAboutToSerialize(GraphCanvas::GraphSerialization& graphSerialization)
+    void VariableNodeDescriptorComponent::OnSceneMemberAboutToSerialize(GraphCanvas::GraphSerialization& graphSerialization)
     {
         auto& userDataMapRef = graphSerialization.GetUserDataMapRef();
         
@@ -148,7 +152,7 @@ namespace ScriptCanvasEditor
         }
     }
 
-    void VariableNodeDescriptorComponent::OnNodeDeserialized(const AZ::EntityId& graphCanvasGraphId, const GraphCanvas::GraphSerialization& graphSerialization)
+    void VariableNodeDescriptorComponent::OnSceneMemberDeserialized(const AZ::EntityId& graphCanvasGraphId, const GraphCanvas::GraphSerialization& graphSerialization)
     {
         ScriptCanvas::VariableNameValuePair* variableData = nullptr;
         ScriptCanvas::GraphVariableManagerRequestBus::EventResult(variableData, graphCanvasGraphId, &ScriptCanvas::GraphVariableManagerRequests::FindVariableById, GetVariableId());

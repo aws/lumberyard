@@ -28,13 +28,13 @@ namespace PhysXCharacters
         static void Reflect(AZ::ReflectContext* context);
 
         RagdollNode() = default;
-        RagdollNode(AZStd::shared_ptr<Physics::RigidBody> rigidBody);
+        RagdollNode(AZStd::unique_ptr<Physics::RigidBody> rigidBody);
         ~RagdollNode() = default;
 
         void SetJoint(const AZStd::shared_ptr<Physics::Joint>& joint);
 
         // Physics::RagdollNode
-        AZStd::shared_ptr<Physics::RigidBody>& GetRigidBody() override;
+        Physics::RigidBody& GetRigidBody() override;
         const AZStd::shared_ptr<Physics::Joint>& GetJoint() const override;
 
         // Physics::WorldBody
@@ -52,9 +52,12 @@ namespace PhysXCharacters
 
         AZ::Crc32 GetNativeType() const override;
         void* GetNativePointer() const override;
+
+        void AddToWorld(Physics::World&) override;
+        void RemoveFromWorld(Physics::World&) override;
     private:
         AZStd::shared_ptr<Physics::Joint> m_joint;
-        AZStd::shared_ptr<Physics::RigidBody> m_rigidBody;
+        AZStd::unique_ptr<Physics::RigidBody> m_rigidBody;
         PhysX::ActorData m_actorUserData;
     };
 } // namespace PhysXCharacters

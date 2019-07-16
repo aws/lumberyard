@@ -688,14 +688,13 @@ namespace CommandSystem
             }
 
             // collect all motion nodes inside that anim graph
-            MCore::Array<EMotionFX::AnimGraphNode*> motionNodes;
+            AZStd::vector<EMotionFX::AnimGraphNode*> motionNodes;
             animGraph->RecursiveCollectNodesOfType(azrtti_typeid<EMotionFX::AnimGraphMotionNode>(), &motionNodes);
 
             // iterate through all motion nodes and update their id as well
-            const uint32 numMotionNodes = motionNodes.GetLength();
-            for (uint32 j = 0; j < numMotionNodes; ++j)
+            for (EMotionFX::AnimGraphNode* node : motionNodes)
             {
-                EMotionFX::AnimGraphMotionNode* motionNode = static_cast<EMotionFX::AnimGraphMotionNode*>(motionNodes[j]);
+                EMotionFX::AnimGraphMotionNode* motionNode = static_cast<EMotionFX::AnimGraphMotionNode*>(node);
                 motionNode->ReplaceMotionId(oldID, newID);
             }
         }
@@ -754,15 +753,14 @@ namespace CommandSystem
                 EMotionFX::AnimGraph* animGraph = animGraphInstance->GetAnimGraph();
 
                 // Recursively get all motion nodes inside the anim graph.
-                MCore::Array<EMotionFX::AnimGraphNode*> motionNodes;
+                AZStd::vector<EMotionFX::AnimGraphNode*> motionNodes;
                 animGraph->RecursiveCollectNodesOfType(azrtti_typeid<EMotionFX::AnimGraphMotionNode>(), &motionNodes);
 
                 // Get the number of motion nodes in the anim graph and iterate through them.
-                const uint32 numMotionNodes = motionNodes.GetLength();
-                for (uint32 m = 0; m < numMotionNodes; ++m)
+                for (EMotionFX::AnimGraphNode* node : motionNodes)
                 {
                     // Type cast the node to a motion node and reset its unique data so that the motion instance gets recreated.
-                    EMotionFX::AnimGraphMotionNode* motionNode = static_cast<EMotionFX::AnimGraphMotionNode*>(motionNodes[m]);
+                    EMotionFX::AnimGraphMotionNode* motionNode = static_cast<EMotionFX::AnimGraphMotionNode*>(node);
                     motionNode->ResetUniqueData(animGraphInstance);
                 }
             }

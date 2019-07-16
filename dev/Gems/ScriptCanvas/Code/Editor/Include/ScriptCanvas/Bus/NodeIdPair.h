@@ -20,5 +20,10 @@ namespace ScriptCanvasEditor
     {
         AZ::EntityId m_graphCanvasId;
         AZ::EntityId m_scriptCanvasId;
+
+        NodeIdPair()
+            : m_graphCanvasId(AZ::EntityId::InvalidEntityId)
+            , m_scriptCanvasId(AZ::EntityId::InvalidEntityId)
+        {}
     };
 }

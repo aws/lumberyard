@@ -36,6 +36,7 @@
 #include "ActorEntity.h"
 #include "SimpleEntity.h"
 #include "MiscEntities.h"
+#include "NullEditTool.h"
 #include "Vehicles/VehiclePrototype.h"
 #include "Vehicles/VehicleHelperObject.h"
 #include "Vehicles/VehiclePart.h"
@@ -97,6 +98,9 @@
 #include "Util/GuidUtil.h"
 
 #include <AzCore/Debug/Profiler.h>
+#include <AzCore/Math/Uuid.h>
+
+#include <AzFramework/Entity/EntityDebugDisplayBus.h>
 
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
 #include <AzToolsFramework/API/ComponentEntityObjectBus.h>
@@ -105,6 +109,7 @@
 
 #include <AzToolsFramework/Metrics/LyEditorMetricsBus.h>
 #include <LegacyEntityConversion/LegacyEntityConversion.h>
+#include <Plugins/ComponentEntityEditorPlugin/Objects/ComponentEntityObject.h>
 
 #include "ObjectManagerLegacyUndo.h"
 
@@ -146,6 +151,16 @@ public:
     virtual int GameCreationOrder() { return superType->GameCreationOrder(); };
 };
 
+void CBaseObjectsCache::AddObject(CBaseObject* object)
+{
+    m_objects.push_back(object);
+    if (object->GetType() == OBJTYPE_AZENTITY)
+    {
+        auto componentEntityObject = static_cast<CComponentEntityObject*>(object);
+        m_entityIds.push_back(componentEntityObject->GetAssociatedEntityId());
+    }
+}
+
 
 //////////////////////////////////////////////////////////////////////////
 // CObjectManager implementation.
@@ -184,11 +199,16 @@ CObjectManager::CObjectManager()
     m_objectsByName.reserve(1024);
     m_converter.reset(aznew AZ::LegacyConversion::Converter());
     LoadRegistry();
+
+    AzToolsFramework::ComponentModeFramework::EditorComponentModeNotificationBus::Handler::BusConnect(
+        AzToolsFramework::GetEntityContextId());
 }
 
 //////////////////////////////////////////////////////////////////////////
 CObjectManager::~CObjectManager()
 {
+    AzToolsFramework::ComponentModeFramework::EditorComponentModeNotificationBus::Handler::BusDisconnect();
+
     m_converter.reset();
     m_bExiting = true;
     SaveRegistry();
@@ -300,7 +320,7 @@ CBaseObject* CObjectManager::NewObject(CObjectClassDesc* cls, CBaseObject* prev,
         CObjectLayer* destLayer = obj->SupportsLayers() ? m_pLayerManager->GetCurrentLayer() : m_pLayerManager->FindLayerByName("Main");
         obj->SetLayer(destLayer);
         obj->InitVariables();
-        obj->m_guid = QUuid::createUuid();    // generate uniq GUID for this object.
+        obj->m_guid = AZ::Uuid::CreateRandom();    // generate uniq GUID for this object.
 
         GetIEditor()->GetErrorReport()->SetCurrentValidatorObject(obj);
         if (obj->Init(GetIEditor(), prev, file))
@@ -377,7 +397,7 @@ CBaseObject* CObjectManager::NewObject(CObjectArchive& ar, CBaseObject* pUndoObj
     if (!objNode->getAttr("Id", id))
     {
         // Make new ID for object that doesn't have if.
-        id = QUuid::createUuid();
+        id = AZ::Uuid::CreateRandom();
     }
 
     idInPrefab = id;
@@ -385,7 +405,7 @@ CBaseObject* CObjectManager::NewObject(CObjectArchive& ar, CBaseObject* pUndoObj
     if (bMakeNewId)
     {
         // Make new guid for this object.
-        GUID newId = QUuid::createUuid();
+        GUID newId = AZ::Uuid::CreateRandom();
         ar.RemapID(id, newId);  // Mark this id remapped.
         id = newId;
     }
@@ -1103,7 +1123,10 @@ void CObjectManager::Update()
 
     m_pPhysicsManager->Update();
 
-    UpdateAttachedEntities();
+    if (!GetIEditor()->IsNewViewportInteractionModelEnabled())
+    {
+        UpdateAttachedEntities();
+    }
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -1207,9 +1230,20 @@ bool CObjectManager::SelectObject(CBaseObject* obj, bool bUseMask)
     AzToolsFramework::EditorMetricsEventBusSelectionChangeHelper selectionChangeMetricsHelper;
 
     m_currSelection->AddObject(obj);
-    SetObjectSelected(obj, true);
 
-    GetIEditor()->Notify(eNotify_OnSelectionChange);
+    // while in ComponentMode we never explicitly change selection (the entity will always be selected).
+    // this check is to handle the case where an undo or redo action has occurred and
+    // the entity has been destroyed and recreated as part of the deserialization step.
+    // we want the internal state to stay consistent but do not want to notify other systems of the change.
+    if (AzToolsFramework::ComponentModeFramework::InComponentMode())
+    {
+        obj->SetSelected(true);
+    }
+    else
+    {
+        SetObjectSelected(obj, true);
+        GetIEditor()->Notify(eNotify_OnSelectionChange);
+    }
 
     return true;
 }
@@ -1228,7 +1262,19 @@ void CObjectManager::UnselectObject(CBaseObject* obj)
 {
     AzToolsFramework::EditorMetricsEventBusSelectionChangeHelper selectionChangeMetricsHelper;
 
-    SetObjectSelected(obj, false);
+    // while in ComponentMode we never explicitly change selection (the entity will always be selected).
+    // this check is to handle the case where an undo or redo action has occurred and
+    // the entity has been destroyed and recreated as part of the deserialization step.
+    // we want the internal state to stay consistent but do not want to notify other systems of the change.
+    if (AzToolsFramework::ComponentModeFramework::InComponentMode())
+    {
+        obj->SetSelected(false);
+    }
+    else
+    {
+        SetObjectSelected(obj, false);
+    }
+    
     m_currSelection->RemoveObject(obj);
 }
 
@@ -1567,7 +1613,7 @@ void CObjectManager::SelectCurrent()
 void CObjectManager::UnselectCurrent()
 {
     AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::Editor);
-    
+
     // Make sure to unlock selection.
     GetIEditor()->LockSelection(false);
 
@@ -1607,7 +1653,7 @@ void CObjectManager::Display(DisplayContext& dc)
         m_lastComputedVisibility = m_visibilitySerialNumber;
         UpdateVisibilityList();
     }
-    
+
     bool viewIsDirty = dc.settings->IsDisplayHelpers(); // displaying helpers require computing all the bound boxes and things anyway.
 
     if (!viewIsDirty)
@@ -1622,10 +1668,13 @@ void CObjectManager::Display(DisplayContext& dc)
             }
         }
     }
-    
+
     if (viewIsDirty)
     {
         FindDisplayableObjects(dc, true);  // this also actually draws the helpers.
+
+        // Also broadcast for anyone else that needs to draw global debug to do so now
+        AzFramework::DebugDisplayEventBus::Broadcast(&AzFramework::DebugDisplayEvents::DrawGlobalDebugInfo);
     }
 
     if (m_gizmoManager)
@@ -1661,6 +1710,8 @@ void CObjectManager::FindDisplayableObjects(DisplayContext& dc, bool bDisplay)
 
     CEditTool* pEditTool = GetIEditor()->GetEditTool();
 
+    const bool newViewportInteractionModelEnabled = GetIEditor()->IsNewViewportInteractionModelEnabled();
+
     if (dc.flags & DISPLAY_2D)
     {
         int numVis = m_visibleObjects.size();
@@ -1675,7 +1726,11 @@ void CObjectManager::FindDisplayableObjects(DisplayContext& dc, bool bDisplay)
 
                 if (bDisplay && dc.settings->IsDisplayHelpers() && (gSettings.viewports.nShowFrozenHelpers || !obj->IsFrozen()))
                 {
-                    obj->Display(dc);
+                    if (!newViewportInteractionModelEnabled)
+                    {
+                        obj->Display(dc);
+                    }
+
                     if (pEditTool)
                     {
                         pEditTool->DrawObjectHelpers(obj, dc);
@@ -1733,7 +1788,11 @@ void CObjectManager::FindDisplayableObjects(DisplayContext& dc, bool bDisplay)
 
                     if (bDisplay && dc.settings->IsDisplayHelpers() && (gSettings.viewports.nShowFrozenHelpers || !obj->IsFrozen()) && !obj->CheckFlags(OBJFLAG_HIDE_HELPERS))
                     {
-                        obj->Display(dc);
+                        if (!newViewportInteractionModelEnabled)
+                        {
+                            obj->Display(dc);
+                        }
+
                         if (pEditTool)
                         {
                             pEditTool->DrawObjectHelpers(obj, dc);
@@ -1987,6 +2046,8 @@ void CObjectManager::DeleteSelection()
 //////////////////////////////////////////////////////////////////////////
 bool CObjectManager::HitTestObject(CBaseObject* obj, HitContext& hc)
 {
+    AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::Editor);
+
     if (obj->IsFrozen())
     {
         return false;
@@ -2058,7 +2119,7 @@ bool CObjectManager::HitTestObject(CBaseObject* obj, HitContext& hc)
 //////////////////////////////////////////////////////////////////////////
 bool CObjectManager::HitTest(HitContext& hitInfo)
 {
-    FUNCTION_PROFILER(GetIEditor()->GetSystem(), PROFILE_EDITOR);
+    AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::Editor);
 
     hitInfo.object = nullptr;
     hitInfo.dist = FLT_MAX;
@@ -2159,9 +2220,9 @@ bool CObjectManager::HitTest(HitContext& hitInfo)
                 name = hc.name;
                 selected = obj;
             }
-            
-            // Clear the object pointer if an object was hit, not just if the collision 
-            // was closer than any previous. Not all paths from HitTestObject set the object pointer and so you could get 
+
+            // Clear the object pointer if an object was hit, not just if the collision
+            // was closer than any previous. Not all paths from HitTestObject set the object pointer and so you could get
             // an object from a previous (rejected) result but with collision information about a closer hit.
             hc.object = nullptr;
             hc.iconHit = false;
@@ -2505,7 +2566,7 @@ void CObjectManager::RegisterClassTemplate(const XmlNodeRef& templ)
     classDesc->type = typeName;
     classDesc->category = category;
     classDesc->fileSpec = fileSpec;
-    classDesc->guid = QUuid::createUuid();
+    classDesc->guid = AZ::Uuid::CreateRandom();
     //classDesc->properties = templ->findChild( "Properties" );
 
     CClassFactory::Instance()->RegisterClass(classDesc);
@@ -2781,9 +2842,13 @@ void CObjectManager::UpdateVisibilityList()
         // entities not isolated in Isolation Mode will be invisible
         bool isObjectIsolated = obj->IsIsolated();
         visible = visible && (!isInIsolationMode || isObjectIsolated);
-
         obj->UpdateVisibility(visible);
-        if (visible)
+
+        // when the new viewport interaction model is enabled we always want to add objects
+        // in the view (frustum) to the visible objects list so we can draw feedback for
+        // entities being hidden in the viewport when selected in the  entity outliner
+        // (EditorVisibleEntityDataCache must be populated even if entities are 'hidden')
+        if (visible || GetIEditor()->IsNewViewportInteractionModelEnabled())
         {
             // Prefabs are not added into visible list.
             if (!obj->CheckFlags(OBJFLAG_PREFAB))
@@ -3837,6 +3902,36 @@ void CObjectManager::SelectObjectInRect(CBaseObject* pObj, CViewport* view, HitC
         else
         {
             UnselectObject(pObj);
+        }
+    }
+}
+
+void CObjectManager::EnteredComponentMode(const AZStd::vector<AZ::Uuid>& /*componentModeTypes*/)
+{
+    // provide an EditTool that does nothing.
+    // note: will hide rotation gizmo when active (CRotateTool)
+    GetIEditor()->SetEditTool(new NullEditTool());
+
+    // hide current gizmo for entity (translate/rotate/scale)
+    IGizmoManager* gizmoManager = GetGizmoManager();
+    const size_t gizmoCount = static_cast<size_t>(gizmoManager->GetGizmoCount());
+    for (size_t i = 0; i < gizmoCount; ++i)
+    {
+        gizmoManager->RemoveGizmo(gizmoManager->GetGizmoByIndex(i));
+    }
+}
+
+void CObjectManager::LeftComponentMode(const AZStd::vector<AZ::Uuid>& /*componentModeTypes*/)
+{
+    // return to default EditTool (in whatever transform mode is set)
+    GetIEditor()->SetEditTool(nullptr);
+
+    // show translate/rotate/scale gizmo again
+    if (IGizmoManager* gizmoManager = GetGizmoManager())
+    {
+        if (CBaseObject* selectedObject = GetIEditor()->GetSelectedObject())
+        {
+            gizmoManager->AddGizmo(new CAxisGizmo(selectedObject));
         }
     }
 }

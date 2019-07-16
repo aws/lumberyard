@@ -230,6 +230,7 @@ namespace AzToolsFramework
             [newCtrl] ()
             {
                 EBUS_EVENT(AzToolsFramework::PropertyEditorGUIMessages::Bus, RequestWrite, newCtrl);
+                AzToolsFramework::PropertyEditorGUIMessages::Bus::Broadcast(&PropertyEditorGUIMessages::Bus::Handler::OnEditingFinished, newCtrl);
             }
         );
         return newCtrl;

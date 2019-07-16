@@ -3,7 +3,7 @@
 
     "Metadata": {
         "CloudCanvas": {
-            "Id": "$Revision: #1 $"
+            "Id": "$Revision: #4 $"
         }
     },
 
@@ -459,17 +459,16 @@
                     "Version": "2012-10-17",
                     "Statement": [
                         {
-                            "Effect": "Allow",
-                            "Action": "sts:AssumeRoleWithWebIdentity",
-                            "Principal": {
-                                "Federated": "cognito-identity.amazonaws.com"
-                            }
-                        },
-                        {
                             "Sid": "AccountUserAssumeRole",
                             "Effect": "Allow",
                             "Action": "sts:AssumeRole",
                             "Principal": { "AWS": {"Ref": "AWS::AccountId"} }
+                        },
+                        {
+                            "Sid": "EC2AssumeRole",
+                            "Effect": "Allow",
+                            "Principal": {"Service": "ec2.amazonaws.com"},
+                            "Action": "sts:AssumeRole"
                         }
                     ]
                 }

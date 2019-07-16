@@ -147,7 +147,7 @@ namespace AZStd
 
     /**
      *  Declares a static buffer of Node[NumNodes], and them pools them. This
-     *  is perfect allocator for polling list or hash table nodes.
+     *  is perfect allocator for pooling list or hash table nodes.
      *  Internally the buffer is allocated using aligned_storage.
      *  \note This is not thread safe allocator.
      *  \note be careful if you use this on the stack, since many platforms
@@ -158,7 +158,7 @@ namespace AZStd
     {
         typedef static_pool_allocator<Node, NumNodes> this_type;
 
-        typedef int                 index_type;
+        typedef int32_t             index_type;
 
         union  pool_node
         {
@@ -265,11 +265,11 @@ namespace AZStd
 #endif
         }
 
-        AZ_FORCE_INLINE void*       data() const        { return &m_data; }
-        AZ_FORCE_INLINE size_type   data_size() const   { return sizeof(Node) * NumNodes; }
+        AZ_FORCE_INLINE void*                 data()      const { return &m_data; }
+        AZ_FORCE_INLINE constexpr size_type   data_size() const { return sizeof(Node) * NumNodes; }
 
     private:
-        typename aligned_storage<sizeof(pool_node)* NumNodes, AZStd::alignment_of<Node>::value>::type m_data;
+        typename aligned_storage<sizeof(Node) * NumNodes, AZStd::alignment_of<Node>::value>::type m_data;
         const char*    m_name;
         index_type      m_firstFreeNode;
         size_type       m_numOfAllocatedNodes;
@@ -278,21 +278,13 @@ namespace AZStd
     template< class Node, AZStd::size_t NumNodes >
     AZ_FORCE_INLINE bool operator==(const static_pool_allocator<Node, NumNodes>& a, const static_pool_allocator<Node, NumNodes>& b)
     {
-        if (&a == &b)
-        {
-            return true;
-        }
-        return false;
+        return &a == &b;
     }
 
     template< class Node, AZStd::size_t NumNodes >
     AZ_FORCE_INLINE bool operator!=(const static_pool_allocator<Node, NumNodes>& a, const static_pool_allocator<Node, NumNodes>& b)
     {
-        if (&a != &b)
-        {
-            return true;
-        }
-        return false;
+        return &a != &b;
     }
 }
 

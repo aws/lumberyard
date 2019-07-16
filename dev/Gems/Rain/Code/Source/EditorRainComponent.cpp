@@ -141,19 +141,12 @@ namespace Rain
         }
     }
 
-    void EditorRainComponent::DisplayEntity(bool& handled)
+    void EditorRainComponent::DisplayEntityViewport(
+        const AzFramework::ViewportInfo& viewportInfo,
+        AzFramework::DebugDisplayRequests& debugDisplay)
     {
-        auto dc = AzFramework::EntityDebugDisplayRequestBus::FindFirstHandler();
-        if (dc == nullptr)
-        {
-            handled = false;
-            return;
-        }
-
-        dc->SetColor(AZ::Vector4(1.0f, 1.0f, 1.0f, 1.0f));
-        dc->DrawWireSphere(m_currentWorldPos, m_rainOptions.m_radius);
-
-        handled = true;
+        debugDisplay.SetColor(AZ::Vector4(1.0f, 1.0f, 1.0f, 1.0f));
+        debugDisplay.DrawWireSphere(m_currentWorldPos, m_rainOptions.m_radius);
     }
 
     AZ::LegacyConversion::LegacyConversionResult RainConverter::ConvertEntity(CBaseObject* pEntityToConvert)

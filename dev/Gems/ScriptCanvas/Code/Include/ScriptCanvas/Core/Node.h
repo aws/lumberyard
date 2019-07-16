@@ -23,12 +23,12 @@
 #include <ScriptCanvas/Core/Core.h>
 #include <ScriptCanvas/Core/DatumBus.h>
 #include <ScriptCanvas/Core/Endpoint.h>
+#include <ScriptCanvas/Core/ExecutionNotificationsBus.h>
 #include <ScriptCanvas/Core/NodeBus.h>
 #include <ScriptCanvas/Core/SignalBus.h>
 #include <ScriptCanvas/Core/Slot.h>
-#include <ScriptCanvas/Grammar/NodeVisitor.h>
+#include <ScriptCanvas/Core/NodeVisitor.h>
 #include <ScriptCanvas/Variable/VariableDatumBase.h>
-
 
 #define SCRIPT_CANVAS_CALL_ON_INDEX_SEQUENCE(lambdaInterior)\
     int dummy[]{ 0, ( lambdaInterior , 0)... };\
@@ -87,7 +87,7 @@ namespace ScriptCanvas
         : public AZ::Component
         , public DatumNotificationBus::Handler
         , private SignalBus::Handler
-        , private NodeRequestBus::Handler
+        , public NodeRequestBus::Handler
         , private EditorNodeRequestBus::Handler
     {
         friend class Graph;
@@ -131,6 +131,9 @@ namespace ScriptCanvas
         static void Reflect(AZ::ReflectContext* reflection);
 
         Graph* GetGraph() const;
+        AZ::EntityId GetGraphEntityId() const override;
+        AZ::Data::AssetId GetGraphAssetId() const;
+        GraphIdentifier GetGraphIdentifier() const;
 
         virtual bool IsEntryPoint() const
         {
@@ -160,13 +163,24 @@ namespace ScriptCanvas
             AZ::SerializeContext* serializeContext = nullptr;
             AZ::ComponentApplicationBus::BroadcastResult(serializeContext, &AZ::ComponentApplicationRequests::GetSerializeContext);
 
-            const AZ::SerializeContext::ClassData* classData = serializeContext->FindClassData(RTTI_GetType());
-            if (classData && classData->m_editData)
+            if (serializeContext)
             {
-                return classData->m_editData->m_name;
+                const AZ::SerializeContext::ClassData* classData = serializeContext->FindClassData(RTTI_GetType());
+
+                if (classData)
+                {
+                    if (classData->m_editData)
+                    {
+                        return classData->m_editData->m_name;
+                    }
+                    else
+                    {
+                        return classData->m_name;
+                    }
+                }
             }
 
-            return classData->m_name;
+            return "<unknown>";
         }
 
         AZStd::string GetSlotName(const SlotId& slotId) const;
@@ -179,6 +193,7 @@ namespace ScriptCanvas
         AZStd::vector<AZStd::pair<const Node*, SlotId>> GetConnectedNodesAndSlotsByType(SlotType slotType) const;
 
         bool IsConnected(const Slot& slot) const;
+        bool IsConnected(const SlotId& slotId) const;
 
         bool IsPureData() const;
 
@@ -187,6 +202,7 @@ namespace ScriptCanvas
         //////////////////////////////////////////////////////////////////////////
         // NodeRequestBus::Handler
         Slot* GetSlot(const SlotId& slotId) const override;
+        size_t GetSlotIndex(const SlotId& slotId) const override;
         AZStd::vector<const Slot*> GetAllSlots() const override;
         SlotId GetSlotId(AZStd::string_view slotName) const override;
         SlotId GetSlotIdByType(AZStd::string_view slotName, SlotType slotType) const override;
@@ -210,17 +226,45 @@ namespace ScriptCanvas
         
         virtual void MarkDefaultableInput();
         
+        AZStd::string CreateInputMapString(const SlotDataMap& map) const;
+
+        bool IsNodeType(const NodeTypeIdentifier& nodeIdentifier) const;
+        NodeTypeIdentifier GetNodeType() const;
+
+        // Mainly here for EBus handlers which contain multiple 'events' which are differentiated by
+        // Endpoint.
+        virtual NodeTypeIdentifier GetOutputNodeType(const SlotId& slotId) const;
+        virtual NodeTypeIdentifier GetInputNodeType(const SlotId& slotId) const;
+
     protected:
         static const Datum* GetInput(const Node& node, const SlotId slotID);
         static Datum* ModInput(Node& node, const SlotId slotID);
         static void OnInputChanged(Node& node, const Datum& input, const SlotId& slotID);
         static void SetInput(Node& node, const SlotId& id, const Datum& input);
         static void SetInput(Node& node, const SlotId& id, Datum&& input);
-
-        AZ::EntityId m_executionUniqueId;
         
+        // \todo make fast query to the system debugger
+        AZ_INLINE static bool IsNodeObserved(const Node& node)
+        {
+            bool isObserved{};
+            ExecutionNotificationsBus::BroadcastResult(isObserved, &ExecutionNotifications::IsNodeObserved, node);
+            return isObserved;
+        }
+
+        AZ_INLINE static bool IsVariableObserved(const Node& node, VariableId variableId)
+        {
+            bool isObserved{};
+            ExecutionNotificationsBus::BroadcastResult(isObserved, &ExecutionNotifications::IsVariableObserved, node, variableId);
+            return isObserved;
+        }
+        
+        AZ::EntityId m_executionUniqueId;
+        NodeTypeIdentifier m_nodeType;
+
         SlotList m_slots;
         VariableList m_varDatums;
+
+        AZStd::unordered_set< SlotId > m_removingSlots;
 
         AZStd::unordered_map<SlotId, VariableInfo> m_slotIdVarInfoMap;
 
@@ -229,25 +273,6 @@ namespace ScriptCanvas
 
         AZStd::unordered_map<VariableId, VariableIterator> m_varIdMap;
         AZStd::unordered_set<SlotId> m_possiblyStaleInput;
-
-        // add a typed input slot, and (generic) storage for the input
-        struct SlotConfiguration
-        {
-            AZ_CLASS_ALLOCATOR(SlotConfiguration, AZ::SystemAllocator, 0);
-            SlotConfiguration(AZStd::string_view name, AZStd::string_view toolTip, SlotType type, const AZStd::vector<ContractDescriptor>& contractDescs = AZStd::vector<ContractDescriptor>{}, bool addUniqueSlotByNameAndType = true)
-                : m_name(name)
-                , m_toolTip(toolTip)
-                , m_type(type)
-                , m_contractDescs(contractDescs)
-                , m_addUniqueSlotByNameAndType(addUniqueSlotByNameAndType)
-            {}
-
-            AZStd::string_view m_name;
-            AZStd::string_view m_toolTip;
-            SlotType m_type = SlotType::None;
-            const AZStd::vector<ContractDescriptor>& m_contractDescs;
-            bool m_addUniqueSlotByNameAndType = true; // Only adds a new slot if a slot with the supplied name and SlotType does not exist on the node
-        };
 
     protected:
         SlotId GetSlotId(const VariableId& varId) const;
@@ -258,7 +283,6 @@ namespace ScriptCanvas
         // EditorNodeRequestsBus::Handler
         Datum* ModInput(const SlotId& slotID) override;
         const Datum* GetInput(const SlotId& slotId) const override;
-        AZ::EntityId GetGraphEntityId() const override;
         ////
 
         Datum* ModDatumByIndex(size_t index);
@@ -266,21 +290,26 @@ namespace ScriptCanvas
         const Slot* GetSlotByIndex(size_t index) const;
 
         // Inserts a data input slot before the element found at @index. If the index < 0 or >= slots.size(), the slot will be will be added at the end
-        SlotId InsertInputDatumSlot(AZ::s64 index, const SlotConfiguration& slotConfig, Datum&& initialDatum);
+        SlotId InsertInputDatumSlot(AZ::s64 index, const DataSlotConfiguration& slotConfig, Datum&& initialDatum);
 
         // Always adds if the SlotConfiguration addUniqueSlotByName field is false.
         // If the addUniqueSlotByName is true, it will only add the slot if it doesn't exist in the SlotList.
         // If the slot does exist in the SlotList the slot id of that slot is returned 
-        SlotId AddInputDatumSlot(const SlotConfiguration& slotConfig, Datum&& initialDatum);
+        SlotId AddInputDatumSlot(const DataSlotConfiguration& slotConfig, Datum&& initialDatum);
+        SlotId AddInputDatumSlot(const DataSlotConfiguration& slotConfig);
 
         SlotId AddInputDatumSlot(AZStd::string_view name, AZStd::string_view toolTip, const Data::Type& type, Datum::eOriginality originality, bool addUniqueSlotByNameAndType = true);
         SlotId AddInputDatumSlot(AZStd::string_view name, AZStd::string_view toolTip, const Data::Type& type, const void* source, Datum::eOriginality originality, bool addUniqueSlotByNameAndType = true);
         SlotId AddInputDatumSlot(AZStd::string_view name, AZStd::string_view toolTip, const AZ::BehaviorParameter& typeDesc, Datum::eOriginality originality, bool addUniqueSlotByNameAndType = true);
+
         template<typename DatumType>
         SlotId AddInputDatumSlot(AZStd::string_view name, AZStd::string_view toolTip, Datum::eOriginality originality, DatumType&& defaultValue, bool addUniqueSlotByNameAndType = true);
         
         // add an input slot, with a type determined by the first connection
         SlotId AddInputDatumDynamicTypedSlot(AZStd::string_view name, AZStd::string_view toolTip = {}, bool addUniqueSlotByNameAndType = true);
+
+        // add an container input slot, with a type determined by the first connection
+        SlotId AddInputDatumDynamicContainerTypedSlot(AZStd::string_view name, AZStd::string_view toolTip = {}, const AZStd::vector<ContractDescriptor>& contractsIn = AZStd::vector<ContractDescriptor>{}, bool addUniqueSlotByNameAndType = true);
         
         // add an untyped input slot (for input overloaded methods on all types, like print)
         SlotId AddInputDatumOverloadedSlot(AZStd::string_view name, AZStd::string_view toolTip = {}, const AZStd::vector<ContractDescriptor>& contracts = AZStd::vector<ContractDescriptor>{}, bool addUniqueSlotByNameAndType = true);
@@ -290,6 +319,8 @@ namespace ScriptCanvas
         // add a typed input slot, but do not add storage for the input
         SlotId AddInputTypeSlot(AZStd::string_view name, AZStd::string_view toolTip, const Data::Type& type, InputTypeContract contractType, bool addUniqueSlotByNameAndType = true);
         SlotId AddInputTypeSlot(AZStd::string_view name, AZStd::string_view toolTip, const AZ::BehaviorParameter& typeDesc, InputTypeContract contractType, bool addUniqueSlotByNameAndType = true);
+
+        SlotId AddInputTypeSlot(const SlotConfiguration& slotConfiguration);
         
         // add a typed output slot
         SlotId AddOutputTypeSlot(AZStd::string_view name, AZStd::string_view toolTip, const Data::Type& type, OutputStorage outputStorage, bool addUniqueSlotByNameAndType = true);
@@ -302,37 +333,61 @@ namespace ScriptCanvas
         // If the addUniqueSlotByName is true, it will only add the slot if it doesn't exist in the SlotList.
         // If the slot does exist in the SlotList the slot id of that slot is returned 
         SlotId AddSlot(const SlotConfiguration&);
+        SlotId AddDataSlot(const DataSlotConfiguration& dataSlotConfiguration);
         
         // Adds or finds a slot with the corresponding name, type, contracts. This operation is idempotent only if addUniqueSlotByNameAndType is true
         ///< \deprecated use AddSlot(const SlotConfiguration&) instead
         SlotId AddSlot(AZStd::string_view name, AZStd::string_view toolTip, SlotType type, const AZStd::vector<ContractDescriptor>& contractDescs = AZStd::vector<ContractDescriptor>{}, bool addUniqueSlotByNameAndType = true)
         {
-            return AddSlot({ name, toolTip, type, contractDescs, addUniqueSlotByNameAndType });
+            SlotConfiguration slotConfiguration;
+
+            slotConfiguration.m_name = name;
+            slotConfiguration.m_toolTip = toolTip;
+            slotConfiguration.m_slotType = type;
+            slotConfiguration.m_contractDescs = contractDescs;
+            slotConfiguration.m_addUniqueSlotByNameAndType = addUniqueSlotByNameAndType;
+
+            return AddSlot(slotConfiguration);
         }
         
     private:
         // insert or find an input slot with a initialized using a datum and returns Success if a new slot was inserted.
         // The SlotIterator& parameter is populated with an iterator to the inserted or found Slot within the slot list 
         // The VariableIterator& parameter is populated with an iterator to the inserted VariableDatum with the variable datum list
-        AZ::Outcome<void, AZStd::string> InsertInputDatumSlotInternal(AZ::s64 index, const SlotConfiguration& slotConfig, Datum&& datum, SlotIterator& slotIterOut, VariableIterator& varIterOut);
+        AZ::Outcome<void, AZStd::string> InsertInputDatumSlotInternal(AZ::s64 index, const DataSlotConfiguration& slotConfig, Datum&& datum, SlotIterator& slotIterOut, VariableIterator& varIterOut);
         
         // insert a slot within the in the slot list and set the slot data type to be the supplied data type
         // The SlotIterator& parameter is populated with an iterator to the inserted or found Slot within the slot list 
-        AZ::Outcome<void, AZStd::string> InsertDataTypeSlotInternal(AZ::s64 index, const SlotConfiguration& slotConfig, const Data::Type& dataType, SlotIterator& slotIterOut);
+        AZ::Outcome<void, AZStd::string> InsertDataTypeSlotInternal(AZ::s64 index, const DataSlotConfiguration& slotConfig, SlotIterator& slotIterOut);
 
         // insert or find a slot in the slot list and returns Success if a new slot was inserted.
         // The SlotIterator& parameter is populated with an iterator to the inserted or found slot within the slot list 
         AZ::Outcome<void, AZStd::string> InsertSlotInternal(AZ::s64 index, const SlotConfiguration& slotConfig, SlotIterator& iterOut);
 
         // This function is only called once, when the node is added to a graph, as opposed to Init(), which will be called 
-        // soon after construction, or after deseriazation. So the functionality in configure does not need to be idempotent.
+        // soon after construction, or after deserialization. So the functionality in configure does not need to be idempotent.
         void Configure();
 
     protected:
+        SlotDataMap CreateInputMap() const;
+        SlotDataMap CreateOutputMap() const;
+
+        NamedEndpoint CreateNamedEndpoint(AZ::EntityId editorNodeId, SlotId slotId) const;
+
+        Signal CreateNodeInputSignal(const SlotId& slotId) const;
+        Signal CreateNodeOutputSignal(const SlotId& slotId) const;
+        OutputDataSignal CreateNodeOutputDataSignal(const SlotId& slotId, const Datum& datum) const;
+        
+        NodeStateChange CreateNodeStateUpdate() const;
+        VariableChange CreateVariableChange(const VariableDatumBase& variable) const;
+        
         // restored inputs to graph defaults, if necessary and possible
         void RefreshInput();
+
         // Removes the slot on this node that matches the supplied slotId
-        bool RemoveSlot(const SlotId& slotId);
+        bool RemoveSlot(const SlotId& slotId, bool removeConnections = true);
+        void RemoveConnectionsForSlot(const SlotId& slotId);
+        void SignalSlotRemoved(const SlotId& slotId);
 
         // some slots change based on the input connected to them
         enum class DynamicTypeArity { Single, Multiple };
@@ -351,22 +406,17 @@ namespace ScriptCanvas
         // perform your derived nodes work in OnInputSignal(const SlotId&)
         virtual void OnInputSignal(const SlotId& slot) {}
 
-        template<typename t_Callable>
-        void ForEachConnectedNode(const Slot& slot, t_Callable&& callable) const
-        {
-            auto connectedNodes = ModConnectedNodes(slot);
-            for (auto& nodeSlotPair : connectedNodes)
-            {
-                if (nodeSlotPair.first)
-                {
-                    callable(*nodeSlotPair.first, nodeSlotPair.second);
-                }
-            }
-        }
+        //! Signal sent once the UniqueExecutionId is set.
+        virtual void OnGraphSet() {};
+
+        void ForEachConnectedNode(const Slot& slot, AZStd::function<void(Node&, const SlotId&)> callable) const;
 
         AZStd::vector<Endpoint> GetEndpointsByType(SlotType slotType) const;
         AZStd::vector<AZStd::pair<const Node*, const SlotId>> GetConnectedNodes(const Slot& slot) const;
         AZStd::vector<AZStd::pair<Node*, const SlotId>> ModConnectedNodes(const Slot& slot) const;
+        void ModConnectedNodes(const Slot& slot, AZStd::vector<AZStd::pair<Node*, const SlotId>>&) const;
+
+        bool HasConnectedNodes(const Slot& slot) const;
 
         AZStd::vector<const Slot*> GetSlotsByType(SlotType slotType) const;
 
@@ -386,7 +436,7 @@ namespace ScriptCanvas
         // perform your derived nodes work in OnInputSignal(const SlotId&)
         void SignalInput(const SlotId& slot) override final;
         //! This must be called manually to send execution out of a specific slot
-        void SignalOutput(const SlotId& slot) override final;
+        void SignalOutput(const SlotId& slot, ExecuteMode mode = ExecuteMode::Normal) override final;
 
         bool SlotExists(AZStd::string_view name, SlotType type) const;
         bool SlotExists(AZStd::string_view name, SlotType type, SlotId& out) const;
@@ -397,8 +447,10 @@ namespace ScriptCanvas
         bool IsInEventHandlingScope(const ID& eventHandler, const AZStd::vector<SlotId>& eventSlots, const SlotId& connectionSlot, AZStd::unordered_set<ID>& path) const;
         bool IsOnPureDataThreadHelper(AZStd::unordered_set<ID>& path) const;
 
+        void PopulateNodeType();
+
     private:
-        void SetDefault(const SlotId& slotID);
+        void SetToDefaultValueOfType(const SlotId& slotID);
         void RebuildSlotAndVariableIterators();
 
         // Looks up a slot iterator using the supplied slot Id
@@ -419,7 +471,7 @@ namespace ScriptCanvas
         //////////////////////////////////////////////////////////////////////////
         /// VM 0.1 begin
     public:
-        virtual void Visit(NodeVisitor& visitor) const { AZ_Assert(false, "This class isn't abstract (yet), but this function must be overridden in your node: %s", GetDebugName()); }
+        virtual void Visit(NodeVisitor& visitor) const { AZ_Assert(false, "This class isn't abstract (yet), but this function must be overridden in your node: %s", GetDebugName().c_str()); }
         const Node* GetNextExecutableNode() const;
         /// VM 0.1 end
         //////////////////////////////////////////////////////////////////////////
@@ -507,7 +559,14 @@ namespace ScriptCanvas
     template<typename DatumType>
     SlotId Node::AddInputDatumSlot(AZStd::string_view name, AZStd::string_view toolTip, Datum::eOriginality originality, DatumType&& defaultValue, bool addUniqueSlotByNameAndType)
     {
-        return AddInputDatumSlot({ name, toolTip, SlotType::DataIn, AZStd::vector<ContractDescriptor>{}, addUniqueSlotByNameAndType }, Datum(AZStd::forward<DatumType>(defaultValue)));
+        DataSlotConfiguration slotConfiguration;
+
+        slotConfiguration.m_name = name;
+        slotConfiguration.m_toolTip = toolTip;
+        slotConfiguration.m_slotType = SlotType::DataIn;
+        slotConfiguration.m_addUniqueSlotByNameAndType = addUniqueSlotByNameAndType;
+
+        return AddInputDatumSlot(slotConfiguration, Datum(AZStd::forward<DatumType>(defaultValue)));
     }
 
     namespace Internal
@@ -539,7 +598,7 @@ namespace ScriptCanvas
             template<AZStd::size_t... Is>
             static void AddOutputSlot(Node& node, AZStd::index_sequence<Is...>)
             {
-                node.AddOutputTypeSlot(AZStd::string::format("%s: %s", t_Traits::GetResultName(0), Data::GetName(Data::FromAZType<AZStd::decay_t<ResultType>>())),
+                node.AddOutputTypeSlot(AZStd::string::format("%s: %s", t_Traits::GetResultName(0), Data::GetName(Data::FromAZType<AZStd::decay_t<ResultType>>()).data()),
                     AZStd::string_view(), Data::FromAZType<AZStd::decay_t<ResultType>>(), Node::OutputStorage::Optional);
             }
         };
@@ -557,7 +616,7 @@ namespace ScriptCanvas
             static void AddOutputSlot(Node& node, AZStd::index_sequence<Is...>)
             {
                 SCRIPT_CANVAS_CALL_ON_INDEX_SEQUENCE(
-                    node.AddOutputTypeSlot(AZStd::string::format("%s: %s", t_Traits::GetResultName(Is), Data::GetName(Data::FromAZType<AZStd::decay_t<AZStd::tuple_element_t<Is, ResultType>>>())),
+                    node.AddOutputTypeSlot(AZStd::string::format("%s: %s", t_Traits::GetResultName(Is), Data::GetName(Data::FromAZType<AZStd::decay_t<AZStd::tuple_element_t<Is, ResultType>>>()).data()),
                         AZStd::string_view(), Data::FromAZType<AZStd::decay_t<AZStd::tuple_element_t<Is, ResultType>>>(), Node::OutputStorage::Optional));
             }
         };

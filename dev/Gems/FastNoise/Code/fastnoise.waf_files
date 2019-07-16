@@ -1,0 +1,26 @@
+{
+    "none": {
+        "Source": [
+            "Source/FastNoise_precompiled.cpp",
+            "Source/FastNoise_precompiled.h"
+        ]
+    },
+    "auto": {
+        "Include/Ebuses": [
+            "Include/FastNoise/Ebuses/FastNoiseBus.h",
+            "Include/FastNoise/Ebuses/FastNoiseGradientRequestBus.h"
+        ],
+        "Source": [
+            "Source/FastNoiseModule.h",
+            "Source/FastNoiseModule.cpp",
+            "Source/FastNoiseSystemComponent.cpp",
+            "Source/FastNoiseSystemComponent.h",
+            "Source/FastNoiseGradientComponent.cpp",
+            "Source/FastNoiseGradientComponent.h"
+        ],
+        "External": [
+            "External/FastNoise/FastNoise.h",
+            "External/FastNoise/FastNoise.cpp"
+        ]
+    }
+}

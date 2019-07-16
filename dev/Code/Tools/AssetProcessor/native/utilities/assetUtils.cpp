@@ -1004,13 +1004,13 @@ namespace AssetUtilities
         return AZStd::string::format("%s-%s_createJobs.log", createJobsRequest.m_sourceFile.c_str(), createJobsRequest.m_builderid.ToString<AZStd::string>(false).c_str());
     }
 
-    void ReadJobLog(AzToolsFramework::AssetSystem::JobInfo& jobInfo, AzToolsFramework::AssetSystem::AssetJobLogResponse& response)
+    ReadJobLogResult ReadJobLog(AzToolsFramework::AssetSystem::JobInfo& jobInfo, AzToolsFramework::AssetSystem::AssetJobLogResponse& response)
     {
         AZStd::string logFile = AssetUtilities::ComputeJobLogFolder() + "/" + AssetUtilities::ComputeJobLogFileName(jobInfo);
-        ReadJobLog(logFile.c_str(), response);
+        return ReadJobLog(logFile.c_str(), response);
     }
 
-    void ReadJobLog(const char* absolutePath, AzToolsFramework::AssetSystem::AssetJobLogResponse& response)
+    ReadJobLogResult ReadJobLog(const char* absolutePath, AzToolsFramework::AssetSystem::AssetJobLogResponse& response)
     {
         response.m_isSuccess = false;
         AZ::IO::HandleType handle = AZ::IO::InvalidHandle;
@@ -1020,7 +1020,7 @@ namespace AssetUtilities
             AZ_TracePrintf("AssetProcessorManager", "Error: AssetProcessorManager: FileIO is unavailable\n", absolutePath);
             response.m_jobLog = "FileIO is unavailable";
             response.m_isSuccess = false;
-            return;
+            return ReadJobLogResult::MissingFileIO;
         }
 
         if (!fileIO->Open(absolutePath, AZ::IO::OpenMode::ModeRead | AZ::IO::OpenMode::ModeBinary, handle))
@@ -1030,7 +1030,7 @@ namespace AssetUtilities
             response.m_jobLog.append(AZStd::string::format("Error: No log file found for the given log (%s)", absolutePath).c_str());
             response.m_isSuccess = false;
 
-            return;
+            return ReadJobLogResult::MissingLogFile;
         }
 
         AZ::u64 actualSize = 0;
@@ -1042,15 +1042,16 @@ namespace AssetUtilities
             response.m_jobLog.append(AZStd::string::format("Error: Log is empty (%s)", absolutePath).c_str());
             response.m_isSuccess = false;
             fileIO->Close(handle);
-            return;
+            return ReadJobLogResult::EmptyLogFile;
         }
 
         size_t currentResponseSize = response.m_jobLog.size();
-        response.m_jobLog.resize(currentResponseSize + actualSize + 1);
+        response.m_jobLog.resize(currentResponseSize + actualSize);
 
         fileIO->Read(handle, response.m_jobLog.data() + currentResponseSize, actualSize);
         fileIO->Close(handle);
         response.m_isSuccess = true;
+        return ReadJobLogResult::Success;
     }
 
     unsigned int GenerateFingerprint(const AssetProcessor::JobDetails& jobDetail)
@@ -1092,6 +1093,12 @@ namespace AssetUtilities
             }
         }
         s_largestFingerprintCapacitySoFar = AZStd::GetMax(fingerprintString.capacity(), s_largestFingerprintCapacitySoFar);
+
+        if (fingerprintString.empty())
+        {
+            AZ_Assert(false, "GenerateFingerprint was called but no input files were requested for fingerprinting.");
+            return 0;
+        }
 
         AZ::Sha1 sha;
         sha.ProcessBytes(fingerprintString.data(), fingerprintString.size());

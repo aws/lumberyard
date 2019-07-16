@@ -26,6 +26,9 @@ enum CryFileType
     CRY_FILE_TYPE_ANM = 0x0010,
     CRY_FILE_TYPE_SKIN = 0x0020,
     CRY_FILE_TYPE_INTERMEDIATE_CAF = 0x0040,
+    //START: Add Skinned Geometry (.CGF) export type (for touch bending vegetation)
+    CRY_FILE_TYPE_SKIN_CGF = 0x0080,
+    //END: Add Skinned Geometry (.CGF) export type (for touch bending vegetation)
 };
 
 namespace ExportFileTypeHelpers

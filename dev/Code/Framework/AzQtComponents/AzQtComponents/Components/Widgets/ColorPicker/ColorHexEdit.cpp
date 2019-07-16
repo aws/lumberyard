@@ -17,24 +17,61 @@
 #include <QLineEdit>
 #include <QLabel>
 #include <QEvent>
+#include <QMenu>
+#include <QApplication>
+#include <QClipboard>
 
 #include <functional>
 
 namespace AzQtComponents
 {
 
+ColorHexEdit::ParsedColor ColorHexEdit::convertTextToColorValues(const QString& text, bool editAlpha, qreal fallbackAlpha)
+{
+    const uint rgb = text.toUInt(nullptr, 16);
+
+    int redShift = 16;
+    int greenShift = 8;
+    int blueShift = 0;
+
+    if (text.size() > 6 && editAlpha)
+    {
+        int offset = text.size() > 7 ? 8 : 4;
+        redShift += offset;
+        greenShift += offset;
+        blueShift += offset;
+    }
+
+    auto pullChannel = [&rgb](int shiftAmount, int mask = 0xff) {
+        const int intValue = (rgb >> shiftAmount) & mask;
+        return static_cast<qreal>(intValue) / 255.0;
+    };
+
+    ParsedColor ret{ pullChannel(redShift), pullChannel(greenShift), pullChannel(blueShift), fallbackAlpha };
+
+    if (text.size() > 6 && editAlpha)
+    {
+        // if there was only 7 characters, then the mask will only be the last hex character
+        uint mask = (text.size() > 7) ? 0xff : 0xf;
+        ret.alpha = pullChannel(0, mask);
+    }
+
+    return ret;
+}
+
 ColorHexEdit::ColorHexEdit(QWidget* parent)
     : QWidget(parent)
     , m_red(0)
     , m_green(0)
     , m_blue(0)
+    , m_alpha(0)
 {
     auto layout = new QGridLayout(this);
     layout->setMargin(0);
 
     m_edit = new QLineEdit(QStringLiteral("000000"), this);
     m_edit->setValidator(new QRegExpValidator(QRegExp(QStringLiteral("^[0-9A-Fa-f]{0,6}$")), this));
-    m_edit->setFixedWidth(50);
+    m_edit->setFixedWidth(52);
     m_edit->setAlignment(Qt::AlignHCenter);
     connect(m_edit, &QLineEdit::textChanged, this, &ColorHexEdit::textChanged);
     connect(m_edit, &QLineEdit::editingFinished, this, [this]() {
@@ -43,6 +80,9 @@ ColorHexEdit::ColorHexEdit(QWidget* parent)
     });
     m_edit->installEventFilter(this);
     layout->addWidget(m_edit, 0, 0);
+
+    m_edit->setContextMenuPolicy(Qt::CustomContextMenu);
+    connect(m_edit, &QWidget::customContextMenuRequested, this, &ColorHexEdit::showContextMenu);
 
     auto hexLabel = new QLabel(tr("#"), this);
     hexLabel->setAlignment(Qt::AlignHCenter);
@@ -68,6 +108,11 @@ qreal ColorHexEdit::green() const
 qreal ColorHexEdit::blue() const
 {
     return m_blue;
+}
+
+qreal ColorHexEdit::alpha() const
+{
+    return m_alpha;
 }
 
 void ColorHexEdit::setRed(qreal red)
@@ -100,6 +145,20 @@ void ColorHexEdit::setBlue(qreal blue)
     initEditValue();
 }
 
+void ColorHexEdit::setAlpha(qreal alpha)
+{
+    if (qFuzzyCompare(alpha, m_alpha))
+    {
+        return;
+    }
+    m_alpha = alpha;
+
+    if (m_editAlpha)
+    {
+        initEditValue();
+    }
+}
+
 bool ColorHexEdit::eventFilter(QObject* watched, QEvent* event)
 {
     if (watched == m_edit)
@@ -127,34 +186,23 @@ void ColorHexEdit::textChanged(const QString& text)
         emit valueChangeBegan();
     }
 
-    const auto rgb = text.toUInt(nullptr, 16);
+    ParsedColor parsedColor = convertTextToColorValues(text, m_editAlpha, m_alpha);
 
-    const int red = (rgb >> 16) & 0xff;
-    const qreal redF = static_cast<qreal>(red)/255.0;
-    bool signalRedChanged = false;
-    if (!qFuzzyCompare(m_red, redF))
+    auto setIfChanged = [](qreal parsedValue, qreal& member) -> bool
     {
-        m_red = redF;
-        signalRedChanged = true;
-    }
+        if (!qFuzzyCompare(member, parsedValue))
+        {
+            member = parsedValue;
+            return true;
+        }
 
-    const int green = (rgb >> 8) & 0xff;
-    const qreal greenF = static_cast<qreal>(green)/255.0;
-    bool signalGreenChanged = false;
-    if (!qFuzzyCompare(m_green, greenF))
-    {
-        m_green = greenF;
-        signalGreenChanged = true;
-    }
+        return false;
+    };
 
-    const int blue = rgb & 0xff;
-    const qreal blueF = static_cast<qreal>(blue)/255.0;
-    bool signalBlueChanged = false;
-    if (!qFuzzyCompare(m_blue, blueF))
-    {
-        m_blue = blueF;
-        signalBlueChanged = true;
-    }
+    bool signalRedChanged = setIfChanged(parsedColor.red, m_red);
+    bool signalGreenChanged = setIfChanged(parsedColor.green, m_green);
+    bool signalBlueChanged = setIfChanged(parsedColor.blue, m_blue);
+    bool signalAlphaChanged = setIfChanged(parsedColor.alpha, m_alpha);
 
     // need to emit after we're done updating all components
     // or we'll get signalled before we're done
@@ -173,20 +221,73 @@ void ColorHexEdit::textChanged(const QString& text)
     {
         emit blueChanged(m_blue);
     }
+
+    if (signalAlphaChanged)
+    {
+        emit alphaChanged(m_alpha);
+    }
+}
+
+unsigned int convertToSingleValue(qreal realRed, qreal realGreen, qreal realBlue, qreal realAlpha, bool includeAlpha)
+{
+    const int red = qRound(realRed * 255.0);
+    const int green = qRound(realGreen * 255.0);
+    const int blue = qRound(realBlue * 255.0);
+
+    if (includeAlpha)
+    {
+        const int alpha = qRound(realAlpha * 255.0);
+        unsigned int rgba = alpha | (blue << 8) | (green << 16) | (red << 24);
+        return rgba;
+    }
+    else
+    {
+        unsigned int rgb = blue | (green << 8) | (red << 16);
+        return rgb;
+    }
 }
 
 void ColorHexEdit::initEditValue()
 {
-    const int red = qRound(m_red*255.0);
-    const int green = qRound(m_green*255.0);
-    const int blue = qRound(m_blue*255.0);
-    const unsigned rgb = blue | (green << 8) | (red << 16);
+    unsigned int rgb = convertToSingleValue(m_red, m_green, m_blue, m_alpha, m_editAlpha);
 
     if (rgb != m_edit->text().toUInt(nullptr, 16))
     {
         const auto value = QStringLiteral("%1").arg(rgb, 6, 16, QLatin1Char('0'));
         const QSignalBlocker b(m_edit);
         m_edit->setText(value.toUpper());
+    }
+}
+
+void ColorHexEdit::showContextMenu(const QPoint& pos)
+{
+    if (QMenu* menu = m_edit->createStandardContextMenu())
+    {
+        QClipboard* clipboard = QApplication::clipboard();
+
+        if (clipboard)
+        {
+            QAction* firstAction = menu->actions().size() > 0 ? menu->actions()[0] : nullptr;
+
+            QAction* action = new QAction(tr("Copy Value (With Alpha)"), menu);
+            connect(action, &QAction::triggered, this, [this, clipboard]() {
+                unsigned int rgba = convertToSingleValue(m_red, m_green, m_blue, m_alpha, true);
+                const QString value = QStringLiteral("%1").arg(rgba, 8, 16, QLatin1Char('0'));
+                clipboard->setText(value);
+            });
+            menu->insertAction(firstAction, action);
+
+            action = new QAction(tr("Copy Value"), menu);
+            connect(action, &QAction::triggered, this, [this, clipboard]() {
+                clipboard->setText(m_edit->text());
+            });
+            menu->insertAction(firstAction, action);
+
+            menu->insertSeparator(firstAction);
+        }
+
+        menu->setAttribute(Qt::WA_DeleteOnClose);
+        menu->popup(m_edit->mapToGlobal(pos));
     }
 }
 

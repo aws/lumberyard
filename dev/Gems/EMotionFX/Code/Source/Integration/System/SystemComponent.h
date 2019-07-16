@@ -104,6 +104,8 @@ namespace EMotionFX
 
             ////////////////////////////////////////////////////////////////////////
             // RaycastRequestBus
+            void EnableRayRequests() override;
+            void DisableRayRequests() override;
             RaycastRequests::RaycastResult Raycast(AZ::EntityId entityId, const RaycastRequests::RaycastRequest& rayRequest) override;
             ////////////////////////////////////////////////////////////////////////
             

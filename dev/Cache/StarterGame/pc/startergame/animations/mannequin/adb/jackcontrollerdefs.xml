@@ -1,0 +1,44 @@
+<ControllerDef>
+ <Tags filename="Animations/Mannequin/ADB/jacktags.xml"/>
+ <Fragments filename="Animations/Mannequin/ADB/jackFragmentIdstags.xml"/>
+ <FragmentDefs>
+  <Idle scopes="FullBody" flags="AutoReinstall"/>
+  <Moving scopes="FullBody" flags="AutoReinstall"/>
+  <Aiming scopes="Aiming"/>
+  <IdleTurn scopes="FullBody" flags="AutoReinstall"/>
+  <Idle2Move scopes="FullBody" flags="AutoReinstall"/>
+  <Move2Idle scopes="FullBody" flags="AutoReinstall"/>
+  <MovingTurnLeft scopes="FullBody" flags="AutoReinstall"/>
+  <MovingTurnRight scopes="FullBody" flags="AutoReinstall"/>
+  <JumpIdle scopes="FullBody" flags="AutoReinstall"/>
+  <JumpRunning scopes="FullBody" flags="AutoReinstall"/>
+  <JumpRunningDouble scopes="FullBody" flags="AutoReinstall"/>
+  <Falling scopes="FullBody" flags="AutoReinstall"/>
+  <LandingSoft scopes="FullBody" flags="AutoReinstall"/>
+  <LandingMedium scopes="FullBody" flags="AutoReinstall"/>
+  <LandingHard scopes="FullBody" flags="AutoReinstall"/>
+  <Shoot scopes="Shoot" flags="AutoReinstall"/>
+  <Hit scopes="Hit"/>
+  <Dead scopes="FullBody" flags="AutoReinstall"/>
+  <InteractStart scopes="FullBody" flags="AutoReinstall"/>
+  <InteractIdle scopes="FullBody" flags="AutoReinstall"/>
+  <InteractEnd scopes="FullBody" flags="AutoReinstall"/>
+  <IdleAmbient01 scopes="FullBody" flags="AutoReinstall"/>
+  <IdleAmbient02 scopes="FullBody" flags="AutoReinstall"/>
+  <IdleAmbientCheckGun scopes="FullBody" flags="AutoReinstall"/>
+  <IdleAmbientLookLeft scopes="FullBody" flags="AutoReinstall"/>
+  <IdleAmbientLookRight scopes="FullBody" flags="AutoReinstall"/>
+  <IdleAmbientLookRightLeft scopes="FullBody" flags="AutoReinstall"/>
+  <IdleAmbientLookSuspicious scopes="FullBody" flags="AutoReinstall"/>
+  <Strafe scopes="FullBody"/>
+ </FragmentDefs>
+ <ScopeContextDefs>
+  <MainCharacter />
+ </ScopeContextDefs>
+ <ScopeDefs>
+  <FullBody layer="0" numLayers="3" context="MainCharacter"/>
+  <Aiming layer="3" numLayers="3" context="MainCharacter"/>
+  <Shoot layer="6" numLayers="1" context="MainCharacter"/>
+  <Hit layer="7" numLayers="1" context="MainCharacter"/>
+ </ScopeDefs>
+</ControllerDef>

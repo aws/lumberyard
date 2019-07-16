@@ -302,9 +302,10 @@ namespace AzToolsFramework
         * Populates a QMenu with a sub-menu to reassign a slices root ancestor to a new base, this operation directly affects the slice asset file
         * \param outerMenu The menu used as the parent for the go to slice menu.
         * \param selectedEntities The entities selected and used to populate the menu
+        * \param selectedTransformHierarchyEntities The selected entities and all of their children
         * \param headerText Optional header text
         */
-        void PopulateDetachMenu(QMenu& outerMenu, const AzToolsFramework::EntityIdList& selectedEntities, const AZStd::string& headerText = "Detach");
+        void PopulateDetachMenu(QMenu& outerMenu, const AzToolsFramework::EntityIdList& selectedEntities, const AzToolsFramework::EntityIdSet& selectedTransformHierarchyEntities, const AZStd::string& headerText = "Detach");
 
         /**
         * Populates a (provided) QMenu with a list of slices that are antecedents of the current entity, allowing the user to select them.
@@ -523,6 +524,24 @@ namespace AzToolsFramework
             AZStd::vector<AZ::Data::AssetId>& sliceDisplayOrder,
             AZStd::unordered_map<AZ::Data::AssetId, AZStd::vector<EntityAncestorPair>>& assetEntityAncestorMap,
             EntityIdSet& unpushableEntityIds);
+
+        /**
+        * Returns the file extension (including .) used for slices.
+        */
+        AZStd::string GetSliceFileExtension();
+
+        /**
+        * Creates the right click context menu for slices in the asset browser.
+        * \param menu The menu to parent this to.
+        * \param fullFilePath The full file path of the slice.
+        */
+        void CreateSliceAssetContextMenu(QMenu* menu, const AZStd::string& fullFilePath);
+
+        /**
+        * Retrieves the desired save format for slices.
+        * \return The slice save format.
+        */
+        AZ::DataStream::StreamType GetSliceStreamFormat();
 
         static const char* splitterColor = "black";
         static const char* detachMenuItemHoverColor = "#4285F4";

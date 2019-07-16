@@ -1,0 +1,91 @@
+{
+    "platform"      : "win_x64_vs2017",
+    "display_name"  : "x64 vs2017",
+    "hosts"         : "win32",
+    "aliases"       : "msvc,win",
+    "has_server"    : true,
+    "has_tests"     : true,
+    "enabled"       : true,
+    "needs_java"    : false,
+
+    "modules"       : [
+        "platforms/compile_settings_cryengine",
+        "platforms/compile_settings_msvc",
+        "platforms/compile_settings_windows",
+        "platforms/platform_settings_win_x64_vs2017"
+    ],
+
+    "includes": [
+        "common.json",
+        "common.msvc.json",
+        "common.windows.json",
+        "common.win_msvc.json"
+    ],
+
+    "attributes"    : {
+        "is_windows"            : true,
+        "default_folder_name"   : "Bin64vc141",
+        "legacy_platform_name"  : "win64_vs2017",
+        "compiler"              : "vc141",
+        "msvs": {
+            "msvs_ver"          : "15",
+            "prefix"            : "win",
+            "compat_toolsets"   : ["v141"],
+            "toolset_name"      : "x64"
+        },
+        "sa_capability": {
+            "key"               : "vc141",
+            "description"       : "Visual Studio 2017"
+        },
+        "qt_supported"          : true,
+        "qt_platform_dir"       : "msvc2015_64",
+        "qtga_subfolders"       : [
+            "win32/vc140/qtga.dll",
+            "win32/vc140/qtgad.dll",
+            "win32/vc140/qtgad.pdb"
+        ]
+    },
+
+    "settings"      : {
+        "Windows Options" :
+        [
+            {
+                "long_form"         : "--win-vs2017-vswhere-args",
+                "attribute"         : "win_vs2017_vswhere_args",
+                "default_value"     : "-version [15.7.27703.2035,15.9.28307.665]",
+                "description"       : "The arguments to pass to vswhere when locating vs2017 executables. The default maximum is the last version that Lumberyard was tested against before release. The default minimum is the last known ABI incompatiblity for Lumberyard builds."
+            },
+            {
+                "long_form"         : "--win-vs2017-winkit",
+                "attribute"         : "win_vs2017_winkit",
+                "default_value"     : "",
+                "description"       : "The windows kit that vs2017 builds windows targets against"
+            },
+            {
+                "long_form"         : "--win-vs2017-vcvarsall-args",
+                "attribute"         : "win_vs2017_vcvarsall_args",
+                "default_value"     : "",
+                "description"       : "Additional arguments to pass to vcvarsall.bat"
+            }
+        ]
+    },
+    "env"           : {
+        "DEFINES": [
+            "_SILENCE_TR1_NAMESPACE_DEPRECATION_WARNING",
+            "_ENABLE_EXTENDED_ALIGNED_STORAGE"
+        ],
+        "CFLAGS,CXXFLAGS": [
+            "/FS"       # Fix for issue writing to pdb files
+        ]
+    },
+    "env/performance": {
+        "?enable_link_time_optimization?:ARFLAGS": [
+            "/LTCG"
+        ]
+    },
+    "env/release": {
+        "?enable_link_time_optimization?:ARFLAGS": [
+            "/LTCG"
+        ]
+    }
+}

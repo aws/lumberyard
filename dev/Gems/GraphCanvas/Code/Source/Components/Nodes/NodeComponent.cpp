@@ -22,6 +22,7 @@
 #include <Components/Nodes/NodeComponent.h>
 
 #include <Components/GeometryComponent.h>
+#include <Components/PersistentIdComponent.h>
 #include <GraphCanvas/Components/Nodes/NodeUIBus.h>
 #include <GraphCanvas/Components/Slots/SlotBus.h>
 
@@ -67,6 +68,7 @@ namespace GraphCanvas
 
         entity->CreateComponent<NodeComponent>(config);
         entity->CreateComponent<GeometryComponent>();
+        entity->CreateComponent<PersistentIdComponent>();
 
         return entity;
     }
@@ -91,6 +93,7 @@ namespace GraphCanvas
 	void NodeComponent::Init()
     {
         GraphCanvasPropertyComponent::Init();
+        AZ::EntityBus::Handler::BusConnect(GetEntityId());
 
         for (auto entityRef : m_slots)
         {
@@ -107,7 +110,6 @@ namespace GraphCanvas
 
     void NodeComponent::Activate()
     {
-        AZ::EntityBus::Handler::BusConnect(GetEntityId());
     }
 
     void NodeComponent::Deactivate()
@@ -125,6 +127,20 @@ namespace GraphCanvas
                 {
                     slotEntity->Deactivate();
                 }
+            }
+        }
+    }
+
+    void NodeComponent::OnEntityExists(const AZ::EntityId& entityId)
+    {
+        // Temporary version conversion added in 1.xx to add a PersistentId onto the SceneMembers.
+        // Remove after a few revisions with warnings about resaving graphs.
+        if (AZ::EntityUtils::FindFirstDerivedComponent<PersistentIdComponent>(GetEntityId()) == nullptr)
+        {
+            AZ::Entity* selfEntity = GetEntity();
+            if (selfEntity)
+            {
+                selfEntity->CreateComponent<PersistentIdComponent>();
             }
         }
     }
@@ -159,7 +175,7 @@ namespace GraphCanvas
     {
         if (SceneNotificationBus::Handler::BusIsConnected())
         {
-            NodeNotificationBus::Event(GetEntityId(), &NodeNotifications::OnRemovedFromScene, m_sceneId);
+            SceneMemberNotificationBus::Event(GetEntityId(), &SceneMemberNotifications::OnRemovedFromScene, m_sceneId);
             SceneNotificationBus::Handler::BusDisconnect(m_sceneId);
         }
 
@@ -196,8 +212,8 @@ namespace GraphCanvas
         {
             return;
         }
-        
-        SceneMemberNotificationBus::Event(GetEntityId(), &SceneMemberNotifications::OnSceneCleared, m_sceneId);
+
+        SceneMemberNotificationBus::Event(GetEntityId(), &SceneMemberNotifications::OnRemovedFromScene, m_sceneId);
         m_sceneId.SetInvalid();
     }
 
@@ -213,7 +229,9 @@ namespace GraphCanvas
 
     bool NodeComponent::LockForExternalMovement(const AZ::EntityId& sceneMemberId)
     {
-        if (!m_lockingSceneMember.IsValid())
+        // If we are wrapped, this means we should not be moving independently
+        // So we never want to let someone else lock us for external movement.
+        if (!m_wrappingNode.IsValid() && !m_lockingSceneMember.IsValid())
         {
             m_lockingSceneMember = sceneMemberId;
         }
@@ -266,7 +284,7 @@ namespace GraphCanvas
             {
                 m_slots.emplace_back(slotEntity);
                 SlotRequestBus::Event(slotId, &SlotRequests::SetNode, GetEntityId());
-                NodeNotificationBus::Event(GetEntityId(), &NodeNotifications::OnSlotAdded, slotId);
+                NodeNotificationBus::Event(GetEntityId(), &NodeNotifications::OnSlotAddedToNode, slotId);
             }
         }
         else
@@ -286,7 +304,7 @@ namespace GraphCanvas
         {
             m_slots.erase(entry);
 
-            NodeNotificationBus::Event(GetEntityId(), &NodeNotifications::OnSlotRemoved, slotId);
+            NodeNotificationBus::Event(GetEntityId(), &NodeNotifications::OnSlotRemovedFromNode, slotId);
             SlotRequestBus::Event(slotId, &SlotRequests::ClearConnections);
             SlotRequestBus::Event(slotId, &SlotRequests::SetNode, AZ::EntityId());
 
@@ -296,17 +314,108 @@ namespace GraphCanvas
             delete item;
 
             AZ::ComponentApplicationBus::Broadcast(&AZ::ComponentApplicationRequests::DeleteEntity, slotId);
+            NodeUIRequestBus::Event(GetEntityId(), &NodeUIRequests::AdjustSize);
         }
     }
 
     AZStd::vector<AZ::EntityId> NodeComponent::GetSlotIds() const
     {
         AZStd::vector<AZ::EntityId> result;
+        result.reserve(m_slots.size());
+
         for (auto slot : m_slots)
         {
-            result.push_back(slot->GetId());
+            result.emplace_back(slot->GetId());
         }
+
         return result;
+    }
+
+    AZStd::vector<SlotId> NodeComponent::GetVisibleSlotIds() const
+    {
+        AZStd::vector< SlotId > result;
+        result.reserve(m_slots.size());
+
+        for (auto slot : m_slots)
+        {
+            SlotId slotId = slot->GetId();
+
+            bool isVisible = false;
+            SlotGroup slotGroup = SlotGroups::Invalid;
+
+            SlotRequestBus::EventResult(slotGroup, slotId, &SlotRequests::GetSlotGroup);
+            SlotLayoutRequestBus::EventResult(isVisible, GetEntityId(), &SlotLayoutRequests::IsSlotGroupVisible, slotGroup);
+
+            if (!isVisible)
+            {
+                continue;
+            }
+
+            result.emplace_back(slotId);
+        }
+
+        return result;
+    }
+
+    AZStd::vector<SlotId> NodeComponent::FindVisibleSlotIdsByType(const ConnectionType& connectionType, const SlotType& slotType) const
+    {
+        AZStd::vector<SlotId> result;
+        result.reserve(m_slots.size());
+
+        for (auto slot : m_slots)
+        {
+            SlotId slotId = slot->GetId();
+
+            bool isVisible = false;
+            SlotGroup slotGroup = SlotGroups::Invalid;
+
+            SlotRequestBus::EventResult(slotGroup, slotId, &SlotRequests::GetSlotGroup);
+            SlotLayoutRequestBus::EventResult(isVisible, GetEntityId(), &SlotLayoutRequests::IsSlotGroupVisible, slotGroup);
+
+            if (!isVisible)
+            {
+                continue;
+            }
+
+            ConnectionType testConnectionType = ConnectionType::CT_Invalid;
+            SlotRequestBus::EventResult(testConnectionType, slotId, &SlotRequests::GetConnectionType);
+
+            if (testConnectionType == ConnectionType::CT_Invalid || testConnectionType != connectionType)
+            {
+                continue;
+            }
+
+            SlotType testSlotType = SlotTypes::Invalid;
+            SlotRequestBus::EventResult(testSlotType, slotId, &SlotRequests::GetSlotType);
+
+            if (testSlotType == SlotTypes::Invalid || testSlotType != slotType)
+            {
+                continue;
+            }
+
+            result.emplace_back(slotId);
+        }
+
+        return result;
+    }
+
+    bool NodeComponent::HasConnections() const
+    {
+        bool hasConnections = false;
+
+        for (auto slot : m_slots)
+        {
+            SlotId slotId = slot->GetId();
+
+            SlotRequestBus::EventResult(hasConnections, slotId, &SlotRequests::HasConnections);
+
+            if (hasConnections)
+            {
+                break;
+            }
+        }
+
+        return hasConnections;
     }
 
     AZStd::any* NodeComponent::GetUserData() 

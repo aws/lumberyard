@@ -1,4 +1,4 @@
-/*
+﻿/*
 * All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
 * its licensors.
 *
@@ -9,8 +9,6 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-
-#include "precompiled.h"
 
 #include <ScriptCanvas/Variable/VariableDatum.h>
 #include <ScriptCanvas/Variable/VariableBus.h>
@@ -65,7 +63,7 @@ namespace ScriptCanvas
 
             rootElementNode.RemoveElementByName(AZ_CRC("m_data", 0x335cc942));
 
-            VariableDatum preConvertedVarDatum;
+            VariableDatum preConvertedVarDatum(datumValue);
             if (!rootElementNode.GetData(preConvertedVarDatum))
             {
                 AZ_Error("Script Canvas", false, "Unable to retrieved unconverted Variable Datum for version %u. Conversion failed.", rootElementNode.GetVersion());
@@ -91,8 +89,9 @@ namespace ScriptCanvas
         {
             serializeContext->Class<VariableDatum, VariableDatumBase>()
                 ->Version(4, &VariableDatumVersionConverter)
-                ->Field("m_exposeAsInput", &VariableDatum::m_exposeAsInput)
+                ->Field("m_exposeAsInput", &VariableDatum::m_exposeAsInput)                
                 ->Field("m_inputControlVisibility", &VariableDatum::m_inputControlVisibility)
+                ->Field("m_exposureCategory", &VariableDatum::m_exposureCategory)
                 ;
 
             if (auto editContext = serializeContext->GetEditContext())
@@ -102,8 +101,11 @@ namespace ScriptCanvas
                         ->Attribute(AZ::Edit::Attributes::Visibility, &VariableDatum::GetVisibility)
                     ->DataElement(AZ::Edit::UIHandlers::CheckBox, &VariableDatum::m_exposeAsInput, "Expose On Component", "Controls whether or not this value is configurable from a Script Canvas Component")
                         ->Attribute(AZ::Edit::Attributes::Visibility, &VariableDatum::GetInputControlVisibility)
-                        ->Attribute(AZ::Edit::Attributes::ChangeNotify, &VariableDatum::OnExposureChanged);
-                ;
+                        ->Attribute(AZ::Edit::Attributes::ChangeNotify, &VariableDatum::OnExposureChanged)
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &VariableDatum::m_exposureCategory, "Property Grouping", "Controls which group the specified variable will be exposed into.")
+                        ->Attribute(AZ::Edit::Attributes::Visibility, &VariableDatum::GetInputControlVisibility)
+                        ->Attribute(AZ::Edit::Attributes::ChangeNotify, &VariableDatum::OnExposureGroupChanged)
+                    ;
             }
         }
     }
@@ -134,6 +136,11 @@ namespace ScriptCanvas
     void VariableDatum::OnExposureChanged()
     {
         VariableNotificationBus::Event(m_id, &VariableNotifications::OnVariableExposureChanged);
+    }
+
+    void VariableDatum::OnExposureGroupChanged()
+    {
+        VariableNotificationBus::Event(m_id, &VariableNotifications::OnVariableExposureGroupChanged);
     }
 
     bool VariableDatum::operator==(const VariableDatum& rhs) const
@@ -185,14 +192,34 @@ namespace ScriptCanvas
                 editContext->Class<VariableNameValuePair>("Variable Element", "Represents a mapping of name to value")
                     ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
                         ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
-                        ->Attribute(AZ::Edit::Attributes::ChildNameLabelOverride, &VariableNameValuePair::m_varName)
-                        ->Attribute(AZ::Edit::Attributes::NameLabelOverride, &VariableNameValuePair::m_varName)
+                        ->Attribute(AZ::Edit::Attributes::ChildNameLabelOverride, &VariableNameValuePair::GetVariableName)
+                        ->Attribute(AZ::Edit::Attributes::NameLabelOverride, &VariableNameValuePair::GetVariableName)
                         ->Attribute(AZ::Edit::Attributes::DescriptionTextOverride, &VariableNameValuePair::GetDescriptionOverride)
                     ->DataElement(AZ::Edit::UIHandlers::Default, &VariableNameValuePair::m_varDatum, "value", "Variable value")
                         ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
                     ;
             }
         }
+    }
+
+    VariableNameValuePair::VariableNameValuePair(AZStd::string_view variableName, const VariableDatum& variableDatum)
+        : m_varDatum(variableDatum)        
+    {
+        SetVariableName(variableName);
+    }
+
+    void VariableNameValuePair::SetVariableName(AZStd::string_view displayName)
+    {
+        // Keeping both here for now.
+        //
+        // Var name is essentially unused, despite the fact it should be providing the name.        
+        m_varName = displayName;        
+        m_varDatum.GetData().SetLabel(displayName);
+    }
+
+    AZStd::string_view VariableNameValuePair::GetVariableName() const
+    {
+        return m_varName;
     }
 
     AZStd::string VariableNameValuePair::GetDescriptionOverride()

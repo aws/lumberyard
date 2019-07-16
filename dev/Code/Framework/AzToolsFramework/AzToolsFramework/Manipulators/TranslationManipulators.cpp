@@ -17,29 +17,38 @@
 
 namespace AzToolsFramework
 {
+    static const float s_surfaceManipulatorTransparency = 0.75f;
+    static const float s_axisLength = 2.0f;
+    static const float s_surfaceManipulatorRadius = 0.1f;
+
+    static const AZ::Color s_xAxisColor = AZ::Color(1.0f, 0.0f, 0.0f, 1.0f);
+    static const AZ::Color s_yAxisColor = AZ::Color(0.0f, 1.0f, 0.0f, 1.0f);
+    static const AZ::Color s_zAxisColor = AZ::Color(0.0f, 0.0f, 1.0f, 1.0f);
+    static const AZ::Color s_surfaceManipulatorColor = AZ::Color(1.0f, 1.0f, 0.0f, 0.5f);
+
     TranslationManipulators::TranslationManipulators(
-        const AZ::EntityId entityId, const Dimensions dimensions, const AZ::Transform& worldFromLocal)
+        const Dimensions dimensions, const AZ::Transform& worldFromLocal)
         : m_dimensions(dimensions)
     {
         switch (dimensions)
         {
         case Dimensions::Two:
             m_linearManipulators.reserve(2);
-            for (size_t i = 0; i < 2; ++i)
+            for (size_t manipulatorIndex = 0; manipulatorIndex < 2; ++manipulatorIndex)
             {
-                m_linearManipulators.emplace_back(AZStd::make_shared<LinearManipulator>(entityId, worldFromLocal));
+                m_linearManipulators.emplace_back(LinearManipulator::MakeShared(worldFromLocal));
             }
-            m_planarManipulators.emplace_back(AZStd::make_shared<PlanarManipulator>(entityId, worldFromLocal));
+            m_planarManipulators.emplace_back(PlanarManipulator::MakeShared(worldFromLocal));
             break;
         case Dimensions::Three:
             m_linearManipulators.reserve(3);
             m_planarManipulators.reserve(3);
-            for (size_t i = 0; i < 3; ++i)
+            for (size_t manipulatorIndex = 0; manipulatorIndex < 3; ++manipulatorIndex)
             {
-                m_linearManipulators.emplace_back(AZStd::make_shared<LinearManipulator>(entityId, worldFromLocal));
-                m_planarManipulators.emplace_back(AZStd::make_shared<PlanarManipulator>(entityId, worldFromLocal));
+                m_linearManipulators.emplace_back(LinearManipulator::MakeShared(worldFromLocal));
+                m_planarManipulators.emplace_back(PlanarManipulator::MakeShared(worldFromLocal));
             }
-            m_surfaceManipulator = AZStd::make_shared<SurfaceManipulator>(entityId, worldFromLocal);
+            m_surfaceManipulator = SurfaceManipulator::MakeShared(worldFromLocal);
             break;
         default:
             AZ_Assert(false, "Invalid dimensions provided");
@@ -145,7 +154,43 @@ namespace AzToolsFramework
             m_surfaceManipulator->SetPosition(localTransform.GetTranslation());
         }
 
-        m_position = localTransform.GetTranslation();
+        m_localTransform = localTransform;
+    }
+
+    void TranslationManipulators::SetLocalPosition(const AZ::Vector3& localPosition)
+    {
+        for (AZStd::shared_ptr<LinearManipulator>& manipulator : m_linearManipulators)
+        {
+            manipulator->SetLocalPosition(localPosition);
+        }
+
+        for (AZStd::shared_ptr<PlanarManipulator>& manipulator : m_planarManipulators)
+        {
+            manipulator->SetLocalPosition(localPosition);
+        }
+
+        if (m_surfaceManipulator)
+        {
+            m_surfaceManipulator->SetPosition(localPosition);
+        }
+
+        m_localTransform.SetPosition(localPosition);
+    }
+
+    void TranslationManipulators::SetLocalOrientation(const AZ::Quaternion& localOrientation)
+    {
+        for (AZStd::shared_ptr<LinearManipulator>& manipulator : m_linearManipulators)
+        {
+            manipulator->SetLocalOrientation(localOrientation);
+        }
+
+        for (AZStd::shared_ptr<PlanarManipulator>& manipulator : m_planarManipulators)
+        {
+            manipulator->SetLocalOrientation(localOrientation);
+        }
+
+        m_localTransform = AZ::Transform::CreateFromQuaternionAndTranslation(
+            localOrientation, m_localTransform.GetTranslation());
     }
 
     void TranslationManipulators::SetSpace(const AZ::Transform& worldFromLocal)
@@ -171,14 +216,14 @@ namespace AzToolsFramework
     {
         AZ::Vector3 axes[] = { axis1, axis2, axis3 };
 
-        for (size_t i = 0; i < m_linearManipulators.size(); ++i)
+        for (size_t manipulatorIndex = 0; manipulatorIndex < m_linearManipulators.size(); ++manipulatorIndex)
         {
-            m_linearManipulators[i]->SetAxis(axes[i]);
+            m_linearManipulators[manipulatorIndex]->SetAxis(axes[manipulatorIndex]);
         }
 
-        for (size_t i = 0; i < m_planarManipulators.size(); ++i)
+        for (size_t manipulatorIndex = 0; manipulatorIndex < m_planarManipulators.size(); ++manipulatorIndex)
         {
-            m_planarManipulators[i]->SetAxes(axes[i], axes[(i + 1) % 3]);
+            m_planarManipulators[manipulatorIndex]->SetAxes(axes[manipulatorIndex], axes[(manipulatorIndex + 1) % 3]);
         }
     }
 
@@ -204,9 +249,9 @@ namespace AzToolsFramework
             linearManipulator->SetViews(AZStd::move(views));
         };
 
-        for (size_t i = 0; i < m_linearManipulators.size(); ++i)
+        for (size_t manipulatorIndex = 0; manipulatorIndex < m_linearManipulators.size(); ++manipulatorIndex)
         {
-            configureLinearView(m_linearManipulators[i].get(), axesColor[i]);
+            configureLinearView(m_linearManipulators[manipulatorIndex].get(), axesColor[manipulatorIndex]);
         }
     }
 
@@ -217,12 +262,12 @@ namespace AzToolsFramework
         const float planeSize = 0.6f;
         const AZ::Color planesColor[] = { plane1Color, plane2Color, plane3Color };
 
-        for (size_t i = 0; i < m_planarManipulators.size(); ++i)
+        for (size_t manipulatorIndex = 0; manipulatorIndex < m_planarManipulators.size(); ++manipulatorIndex)
         {
-            m_planarManipulators[i]->SetView(
+            m_planarManipulators[manipulatorIndex]->SetView(
                 CreateManipulatorViewQuad(
-                    *m_planarManipulators[i],planesColor[i],
-                    planesColor[(i + 1) % 3],
+                    *m_planarManipulators[manipulatorIndex],planesColor[manipulatorIndex],
+                    planesColor[(manipulatorIndex + 1) % 3],
                     planeSize)
             );
         }
@@ -239,7 +284,9 @@ namespace AzToolsFramework
             {
                 const AZ::Color color[2] =
                 {
-                    defaultColor, Vector3ToVector4(BaseManipulator::s_defaultMouseOverColor.GetAsVector3(), 0.75f)
+                    defaultColor,
+                    Vector3ToVector4(
+                        BaseManipulator::s_defaultMouseOverColor.GetAsVector3(), s_surfaceManipulatorTransparency)
                 };
 
                 return color[mouseOver];
@@ -263,5 +310,30 @@ namespace AzToolsFramework
         {
             manipulatorFn(m_surfaceManipulator.get());
         }
+    }
+
+    void ConfigureTranslationManipulatorAppearance3d(
+        TranslationManipulators* translationManipulators)
+    {
+        translationManipulators->SetAxes(
+            AZ::Vector3::CreateAxisX(),
+            AZ::Vector3::CreateAxisY(),
+            AZ::Vector3::CreateAxisZ());
+        translationManipulators->ConfigurePlanarView(
+            s_xAxisColor, s_yAxisColor, s_zAxisColor);
+        translationManipulators->ConfigureLinearView(
+            s_axisLength, s_xAxisColor, s_yAxisColor, s_zAxisColor);
+        translationManipulators->ConfigureSurfaceView(
+            s_surfaceManipulatorRadius, s_surfaceManipulatorColor);
+    }
+
+    void ConfigureTranslationManipulatorAppearance2d(
+        TranslationManipulators* translationManipulators)
+    {
+        translationManipulators->SetAxes(
+            AZ::Vector3::CreateAxisX(),
+            AZ::Vector3::CreateAxisY());
+        translationManipulators->ConfigurePlanarView(s_xAxisColor);
+        translationManipulators->ConfigureLinearView(s_axisLength, s_xAxisColor, s_yAxisColor);
     }
 } // namespace AzToolsFramework

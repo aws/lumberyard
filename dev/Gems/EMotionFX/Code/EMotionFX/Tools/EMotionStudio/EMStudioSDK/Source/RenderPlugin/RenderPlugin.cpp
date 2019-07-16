@@ -1004,7 +1004,6 @@ namespace EMStudio
         }
 
         // update EMotion FX, but don't render
-        EMotionFX::GetAnimGraphManager().SetAnimGraphVisualizationEnabled(false);
         UpdateActorInstances(timePassedInSeconds);
 
         const uint32 numViewWidgets = mViewWidgets.GetLength();

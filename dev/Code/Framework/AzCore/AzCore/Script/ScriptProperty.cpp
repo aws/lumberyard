@@ -164,7 +164,7 @@ namespace AZ
 
         if (serializeContext)
         {
-            serializeContext->Class<AZ::ScriptPropertyNil>()
+            serializeContext->Class<AZ::ScriptPropertyNil, AZ::ScriptProperty>()
                 ->Version(1)
                 ->SerializeWithNoData();
         }

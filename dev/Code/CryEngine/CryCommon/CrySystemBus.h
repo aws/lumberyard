@@ -37,6 +37,12 @@ public:
     //! In-Editor systems have been created and initialized.
     virtual void OnCryEditorInitialized() {}
 
+    //! Editor has started a level export
+    virtual void OnCryEditorBeginLevelExport() {}
+
+    //! Editor has finished a level export
+    virtual void OnCryEditorEndLevelExport(bool /*success*/) {}
+
     //! ISystem is about to begin shutting down
     virtual void OnCrySystemShutdown(ISystem&) {}
 

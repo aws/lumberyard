@@ -64,7 +64,11 @@ public:
 
     void drawDisplay(QPainter* painter, const QStyleOptionViewItem& option, const QRect& rect, const QString& text) const override
     {
+#if (QT_VERSION < QT_VERSION_CHECK(5, 11, 0))
         QStyleOptionViewItemV4 opt(option);
+#else
+        QStyleOptionViewItem opt(option);
+#endif
         opt.font.setBold(opt.state & QStyle::State_MouseOver);
         QItemDelegate::drawDisplay(painter, opt, rect, text);
     }

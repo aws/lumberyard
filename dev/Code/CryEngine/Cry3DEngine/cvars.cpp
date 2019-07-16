@@ -417,6 +417,10 @@ void CVars::Init()
         "Shadows slope bias for shadowgen");
     REGISTER_CVAR(e_ShadowsConstBiasHQ, 0.05f, VF_NULL,
         "Shadows slope bias for shadowgen (high quality mode)");
+    REGISTER_CVAR(e_ShadowsClearShowMaskAtLoad, 1, VF_NULL,
+                  "Clears the shadow mask at level load to remove any bad shadow data from previous level.\n"
+                  "0 = Better perf. It does not clear the shadow which will help set shadowmask texture to be memoryless. This will help reduce gpu bandwidth)\n"
+                  "1 = This will disable the memoryless optimization as it would clear the shadow at level load. Only use this if you see residual shadows from previous level showing up in current level.\n");
 
     DefineConstIntCVar(e_ShadowsMasksLimit, 0, VF_NULL,
         "Maximum amount of allocated shadow mask textures\n"
@@ -1005,6 +1009,12 @@ void CVars::Init()
 
     REGISTER_CVAR(e_ObjQuality, 0, VF_NULL,
         "Object detail quality");
+    REGISTER_CVAR(e_LightQuality, 0, VF_NULL,
+        "Light detail quality. Controls whether lights are created or casts shadows based on the minimum spec level set in the light configuration."
+        "1: Creates or casts shadows from lights that have the minimum spec level set to low."
+        "2: Creates or casts shadows from lights that have the minimum spec level set to low or medium."
+        "3: Creates or casts shadows from lights that have the minimum spec level set to low, medium or high."
+        "4: Creates or casts shadows from lights that have the minimum spec level set to low, medium, high or very high.");
     REGISTER_CVAR(e_ParticlesQuality, 0, VF_NULL,
         "Particles detail quality");
     REGISTER_CVAR(e_ObjShadowCastSpec, 0, VF_NULL,
@@ -1160,7 +1170,7 @@ void CVars::Init()
     REGISTER_CVAR(e_MergedMeshesPool, 2750, VF_NULL,    "amount of mainmeory (in kb) that merged meshes are allowed to sustain");
     REGISTER_CVAR(e_MergedMeshesPoolSpines, 32, VF_NULL,  "percentage of the pool for spines");
     REGISTER_CVAR(e_MergedMeshesTesselationSupport, 0, VF_NULL, "Enable or disable support for tessellation on mergedmeshes");
-    REGISTER_CVAR(e_MergedMeshesViewDistRatio, 30.f, VF_NULL, "merged meshes view dist ratio");
+    REGISTER_CVAR(e_MergedMeshesViewDistRatio, 100.f, VF_NULL, "merged meshes view dist ratio");
     REGISTER_CVAR(e_MergedMeshesLodRatio, 3.f, VF_NULL, "merged meshes lod ratio");
     REGISTER_CVAR(e_MergedMeshesDeformViewDistMod, 0.45f, VF_NULL, "distance modifier applied to view dist ratios after which deformables stop updating");
     REGISTER_CVAR(e_MergedMeshesInstanceDist, 4.5f, VF_NULL, "Distance fudge factor at which merged meshes turn off animation");
@@ -1171,6 +1181,14 @@ void CVars::Init()
     REGISTER_CVAR(e_MergedMeshesBulletScale, 35.f, VF_NULL, "MergedMesh Bullet approximations size scale");
     REGISTER_CVAR(e_MergedMeshesBulletLifetime, 0.15f, VF_NULL, "MergedMesh Bullet approximations lifetime");
     REGISTER_CVAR(e_MergedMeshesOutdoorOnly, 0, VF_NULL, "MergedMeshes will receive ERF_OUTDOORONLY by default");
+    REGISTER_CVAR(e_MergedMeshesForceSSE2, 0, VF_NULL, "Forces Merged meshes to use SSE2 instructions regardless of whether F16C instructions are available or not.");
+    REGISTER_CVAR(e_MergedMeshesUpdateRateLOD0,  3, VF_NULL, "Sets the update rate of static merged meshes for LOD 0.");
+    REGISTER_CVAR(e_MergedMeshesUpdateRateLOD1,  5, VF_NULL, "Sets the update rate of static merged meshes for LOD 1.");
+    REGISTER_CVAR(e_MergedMeshesUpdateRateLOD2,  7, VF_NULL, "Sets the update rate of static merged meshes for LOD 2.");
+    REGISTER_CVAR(e_MergedMeshesUpdateRateLOD3, 11, VF_NULL, "Sets the update rate of static merged meshes for LOD 3.");
+    REGISTER_CVAR(e_MergedMeshesUpdateRateLOD4, 17, VF_NULL, "Sets the update rate of static merged meshes for LOD 4.");
+    REGISTER_CVAR(e_MergedMeshesUpdateRateLOD5, 25, VF_NULL, "Sets the update rate of static merged meshes for LOD 5.");
+
     REGISTER_CVAR(e_CheckOctreeObjectsBoxSize, 1, VF_NULL, "CryWarning for crazy sized COctreeNode m_objectsBoxes");
     REGISTER_CVAR(e_DebugGeomPrep, 0, VF_NULL,  "enable logging of Geom preparation");
     DefineConstIntCVar(e_GeomCaches, 1, VF_NULL, "Activates drawing of geometry caches");

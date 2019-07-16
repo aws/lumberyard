@@ -6,7 +6,7 @@
 
 
 <div *ngIf="idx == 0 || !idx">
-    <view-header #header [index]="indexView" [workflowConfig]="workflowConfig"></view-header>
+    <view-header #header [index]="indexView" [context]="context" [workflowConfig]="workflowConfig"></view-header>
     <h2>Progress Visualization</h2>
     <select class="form-control" name="view-option" [(ngModel)]="viewOption">
         <option value="0">Activity View</option>

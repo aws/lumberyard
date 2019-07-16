@@ -13,14 +13,13 @@
 #pragma once
 
 #include <AzCore/Memory/SystemAllocator.h>
-#include <AzCore/std/smart_ptr/unique_ptr.h>
 #include <AzToolsFramework/Manipulators/AngularManipulator.h>
+#include <AzToolsFramework/API/EditorCameraBus.h>
 
 namespace AzToolsFramework
 {
-    /**
-     * RotationManipulators is an aggregation of 3 angular manipulators who share the same origin.
-     */
+    /// RotationManipulators is an aggregation of 3 angular manipulators who share the same origin
+    /// in addition to a view aligned angular manipulator (facing the camera).
     class RotationManipulators
         : public Manipulators
     {
@@ -28,27 +27,34 @@ namespace AzToolsFramework
         AZ_RTTI(RotationManipulators, "{5D1F1D47-1D5B-4E42-B47E-23F108F8BF7D}")
         AZ_CLASS_ALLOCATOR(RotationManipulators, AZ::SystemAllocator, 0)
 
-        RotationManipulators(AZ::EntityId entityId, const AZ::Transform& worldFromLocal);
+        explicit RotationManipulators(const AZ::Transform& worldFromLocal);
+        ~RotationManipulators() = default;
 
         void InstallLeftMouseDownCallback(const AngularManipulator::MouseActionCallback& onMouseDownCallback);
         void InstallLeftMouseUpCallback(const AngularManipulator::MouseActionCallback& onMouseUpCallback);
         void InstallMouseMoveCallback(const AngularManipulator::MouseActionCallback& onMouseMoveCallback);
 
-        void SetSpace(const AZ::Transform& worldFromLocal);
-        void SetLocalTransform(const AZ::Transform& localTransform);
+        void SetSpace(const AZ::Transform& worldFromLocal) override;
+        void SetLocalTransform(const AZ::Transform& localTransform) override;
+        void SetLocalPosition(const AZ::Vector3& localPosition) override;
+        void SetLocalOrientation(const AZ::Quaternion& localOrientation) override;
+        void RefreshView(const AZ::Vector3& worldViewPosition) override;
 
-        void SetAxes(
+        void SetLocalAxes(
             const AZ::Vector3& axis1, const AZ::Vector3& axis2, const AZ::Vector3& axis3);
+        void SetViewAxis(const AZ::Vector3& axis);
 
         void ConfigureView(
             float radius, const AZ::Color& axis1Color, const AZ::Color& axis2Color, const AZ::Color& axis3Color);
 
+        bool PerformingActionViewAxis() const;
+
     private:
         AZ_DISABLE_COPY_MOVE(RotationManipulators)
 
-        // Manipulators
         void ProcessManipulators(const AZStd::function<void(BaseManipulator*)>&) override;
 
-        AZStd::vector<AZStd::unique_ptr<AngularManipulator>> m_angularManipulators;
+        AZStd::array<AZStd::shared_ptr<AngularManipulator>, 3> m_localAngularManipulators;
+        AZStd::shared_ptr<AngularManipulator> m_viewAngularManipulator;
     };
 } // namespace AzToolsFramework

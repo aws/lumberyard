@@ -19,19 +19,23 @@
 #include <AzToolsFramework/API/EntityCompositionRequestBus.h>
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
 #include <AzToolsFramework/Entity/EditorEntityHelpers.h>
+#include <AzToolsFramework/Entity/EditorEntityInfoBus.h>
 #include <AzToolsFramework/ToolsComponents/GenericComponentWrapper.h>
 #include <AzToolsFramework/UI/PropertyEditor/ReflectedPropertyEditor.hxx>
 #include <AzFramework/Entity/EntityContextBus.h>
 
 #include <AzQtComponents/Components/Widgets/CardHeader.h>
 #include <AzQtComponents/Components/Widgets/CardNotification.h>
+#include <AzQtComponents/Utilities/QtViewPaneEffects.h>
 
 #include "EntityIdQLabel.hxx"
 #include <QDesktopWidget>
 #include <QMenu>
 #include <QPushButton>
 #include <QVBoxLayout>
+#include <QGraphicsEffect>
 #include <QContextMenuEvent>
+#include <AzToolsFramework/Viewport/ViewportMessages.h>
 
 namespace AzToolsFramework
 {
@@ -159,6 +163,10 @@ namespace AzToolsFramework
         SetSelected(false);
         SetDragged(false);
         SetDropTarget(false);
+    }
+
+    ComponentEditor::~ComponentEditor()
+    {
     }
 
     void ComponentEditor::AddInstance(AZ::Component* componentInstance, AZ::Component* aggregateInstance, AZ::Component* compareInstance)
@@ -471,6 +479,16 @@ namespace AzToolsFramework
         m_propertyEditor->QueueInvalidation(refreshLevel);
     }
 
+    void ComponentEditor::CancelQueuedRefresh()
+    {
+        m_propertyEditor->CancelQueuedRefresh();
+    }
+
+    void ComponentEditor::PreventRefresh(bool shouldPrevent)
+    {
+        m_propertyEditor->PreventRefresh(shouldPrevent);
+    }
+
     void ComponentEditor::SetComponentOverridden(const bool overridden)
     {
         auto entityId = m_components[0]->GetEntityId();
@@ -528,6 +546,10 @@ namespace AzToolsFramework
         AZStd::string iconPath;
         EBUS_EVENT_RESULT(iconPath, AzToolsFramework::EditorRequests::Bus, GetComponentEditorIcon, componentType, const_cast<AZ::Component*>(&componentInstance));
         GetHeader()->SetIcon(QIcon(iconPath.c_str()));
+
+        bool isExpanded = true;
+        AzToolsFramework::EditorEntityInfoRequestBus::EventResult(isExpanded, componentInstance.GetEntityId(), &AzToolsFramework::EditorEntityInfoRequestBus::Events::IsComponentExpanded, componentInstance.GetId());
+        GetHeader()->SetExpanded(isExpanded);
     }
 
     void ComponentEditor::InvalidateComponentType()
@@ -628,7 +650,10 @@ namespace AzToolsFramework
 
     void ComponentEditor::OnExpanderChanged(bool expanded)
     {
-        Q_UNUSED(expanded);
+        for (auto component : m_components)
+        {
+            EditorEntityInfoRequestBus::Event(component->GetEntityId(), &EditorEntityInfoRequestBus::Events::SetComponentExpanded, component->GetId(), expanded);
+        }
 
         emit OnExpansionContractionDone();
     }
@@ -665,7 +690,7 @@ namespace AzToolsFramework
     bool ComponentEditor::IsExpandable() const
     {
         //if there are any notifications, expansion must be allowed
-        if (!m_notifications.empty())
+        if (getNotificationCount())
         {
             return true;
         }
@@ -735,6 +760,13 @@ namespace AzToolsFramework
 
     void ComponentEditor::SetSelected(bool selected)
     {
+        // do not allow cards to be selected when they are disabled
+        // (show the yellow outline)
+        if (!isEnabled())
+        {
+            return;
+        }
+
         AzQtComponents::Card::setSelected(selected);
     }
 
@@ -794,6 +826,44 @@ namespace AzToolsFramework
         }
 
         return false;
+    }
+
+    void ComponentEditor::EnteredComponentMode(const AZStd::vector<AZ::Uuid>& componentModeTypes)
+    {
+        // disable all component cards not matching the ComponentMode type
+        if (AZStd::find(
+            componentModeTypes.begin(),
+            componentModeTypes.end(), m_componentType) == componentModeTypes.end())
+        {
+            SetWidgetInteractEnabled(this, false);
+        }
+        else
+        {
+            if (!componentModeTypes.empty())
+            {
+                // only set the first item to be selected/highlighted
+                SetSelected(componentModeTypes.front() == m_componentType);
+            }
+        }
+    }
+
+    void ComponentEditor::LeftComponentMode(const AZStd::vector<AZ::Uuid>& componentModeTypes)
+    {
+        // restore all component cards to normal when leaving ComponentMode
+        if (AZStd::find(
+            componentModeTypes.begin(),
+            componentModeTypes.end(), m_componentType) == componentModeTypes.end())
+        {
+            SetWidgetInteractEnabled(this, true);
+        }
+
+        SetSelected(false);
+    }
+
+    void ComponentEditor::ActiveComponentModeChanged(const AZ::Uuid& componentType)
+    {
+        // refresh which Component Editor/Card looks selected in the Entity Outliner
+        SetSelected(componentType == m_componentType);
     }
 }
 

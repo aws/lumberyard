@@ -1,0 +1,57 @@
+{
+    "platform"      : "android_armv8_clang",
+    "display_name"  : "Android ARM v8",
+    "hosts"         : "darwin,win32",
+    "aliases"       : "clang,android",
+    "has_server"    : false,
+    "enabled"       : true,
+    "needs_java"    : true,
+
+    "modules": [
+        "platforms/compile_settings_cryengine",
+        "platforms/compile_settings_android",
+        "platforms/compile_settings_clang",
+        "platforms/compile_settings_android_clang",
+        "lmbrwaflib/android",
+        "lmbrwaflib/android_library",
+        "lmbrwaflib/android_studio",
+        "platforms/platform_settings_android_armv8_clang"
+    ],
+
+    "includes": [
+        "common.android.json",
+        "common.json",
+        "common.clang.json",
+        "common.android.clang.json"
+    ],
+
+    "attributes": {
+        "default_folder_name"       : "BinAndroidArmv8Clang",
+        "msvs": {
+            "msvs_ver"          : "14",
+            "prefix"            : "android",
+            "compat_toolsets"   : ["v120", "v140"],
+            "toolset_name"      : "ARM"
+        }
+    },
+
+    "settings": {
+    },
+
+    "env": {
+        "DEFINES": [
+            "LINUX64",
+            "__ARM_NEON__"
+        ]
+    },
+    "env/debug": {
+        "EXT_LIBS": [
+            "@EXT_LIB_ANDROID_ARM64_GDBSERVER_PATH@" #, Note: gdbserver is only required for debuggable builds
+        ]
+    },
+    "env/profile": {
+        "EXT_LIBS": [
+            "@EXT_LIB_ANDROID_ARM64_GDBSERVER_PATH@" #, Note: gdbserver is only required for debuggable builds
+        ]
+    }
+}

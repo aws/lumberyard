@@ -332,6 +332,10 @@ unsigned long GetCPUFeatureSet()
         {
             features |= CFI_SSE3;
         }
+        if (CPUInfo[2] & (1 << 29))
+        {
+            features |= CFI_F16C;
+        }
     }
 
     if (nExIds > 0x80000000)
@@ -1607,6 +1611,10 @@ void CCpuFeatures::Detect(void)
     if (has3DNow())
     {
         g_CpuFlags |= CPUF_3DNOW;
+    }
+    if (hasF16C())
+    {
+        g_CpuFlags |= CPUF_F16C;
     }
 }
 

@@ -9,7 +9,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#include "precompiled.h"
+
 #include "IsReferenceTypeContract.h"
 
 #include <ScriptCanvas/Core/ContractBus.h>
@@ -31,7 +31,7 @@ namespace ScriptCanvas
         AZStd::string errorMessage = AZStd::string::format("Connection cannot be created between source slot \"%s\" and target slot \"%s\", slot type must be a reference type, but is: %s."
             , sourceSlot.GetName().data()
             , targetSlot.GetName().data()
-            , Data::GetName(targetType)
+            , Data::GetName(targetType).c_str()
         );
 
         return AZ::Failure(errorMessage);

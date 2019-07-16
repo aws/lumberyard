@@ -112,7 +112,9 @@ def invoke_lambda(context, directory, files):
         import amoeba_generator        
         amoeba_generator.ingest(payload, dict({}))    
 
-def cli(context, args):
+def cli(context, args):    
+    util.set_logger(args.verbose)
+
     from resource_manager_common import constant
     credentials = context.aws.load_credentials()
 

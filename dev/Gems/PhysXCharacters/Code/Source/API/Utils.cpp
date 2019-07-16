@@ -152,7 +152,7 @@ namespace PhysXCharacters
             return controller;
         }
 
-        AZStd::shared_ptr<Ragdoll> CreateRagdoll(const Physics::RagdollConfiguration& configuration,
+        AZStd::unique_ptr<Ragdoll> CreateRagdoll(const Physics::RagdollConfiguration& configuration,
             const Physics::RagdollState& initialState, const ParentIndices& parentIndices)
         {
             const size_t numNodes = configuration.m_nodes.size();
@@ -163,7 +163,7 @@ namespace PhysXCharacters
                 return nullptr;
             }
 
-            AZStd::shared_ptr<Ragdoll> ragdoll = AZStd::make_shared<Ragdoll>();
+            AZStd::unique_ptr<Ragdoll> ragdoll = AZStd::make_unique<Ragdoll>();
             ragdoll->SetParentIndices(parentIndices);
 
             // Set up rigid bodies
@@ -173,7 +173,7 @@ namespace PhysXCharacters
                 const Physics::RagdollNodeState& nodeState = initialState[nodeIndex];
                 physx::PxTransform transform(PxMathConvert(nodeState.m_position), PxMathConvert(nodeState.m_orientation));
 
-                AZStd::shared_ptr<Physics::RigidBody> rigidBody;
+                AZStd::unique_ptr<Physics::RigidBody> rigidBody;
                 Physics::SystemRequestBus::BroadcastResult(rigidBody, &Physics::SystemRequests::CreateRigidBody, nodeConfig);
 
                 physx::PxRigidDynamic* pxRigidDynamic = static_cast<physx::PxRigidDynamic*>(rigidBody->GetNativePointer());
@@ -198,8 +198,8 @@ namespace PhysXCharacters
                     }
                 }
 
-                AZStd::shared_ptr<RagdollNode> node = AZStd::make_shared<RagdollNode>(rigidBody);
-                ragdoll->AddNode(node);
+                AZStd::unique_ptr<RagdollNode> node = AZStd::make_unique<RagdollNode>(AZStd::move(rigidBody));
+                ragdoll->AddNode(AZStd::move(node));
             }
 
             // Set up joints.  Needs a second pass because child nodes in the ragdoll config aren't guaranteed to have
@@ -234,11 +234,11 @@ namespace PhysXCharacters
                         AZStd::shared_ptr<Physics::Joint> joint;
                         Physics::SystemRequestBus::BroadcastResult(joint, &Physics::SystemRequests::CreateJoint,
                             jointLimitConfig,
-                            ragdoll->GetNode(parentIndex)->GetRigidBody(),
-                            ragdoll->GetNode(nodeIndex)->GetRigidBody());
+                            &ragdoll->GetNode(parentIndex)->GetRigidBody(),
+                            &ragdoll->GetNode(nodeIndex)->GetRigidBody());
 
-                        AZStd::shared_ptr<Physics::RagdollNode> childNode = ragdoll->GetNode(nodeIndex);
-                        static_cast<RagdollNode*>(childNode.get())->SetJoint(joint);
+                        Physics::RagdollNode* childNode = ragdoll->GetNode(nodeIndex);
+                        static_cast<RagdollNode*>(childNode)->SetJoint(joint);
                     }
                     else
                     {

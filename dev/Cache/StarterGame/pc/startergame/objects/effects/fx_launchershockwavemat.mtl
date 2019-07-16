@@ -1,0 +1,6 @@
+<Material MtlFlags="524322" Shader="Particleimposter" GenMask="2" StringGenMask="" SurfaceType="" Diffuse="1,1,1" Specular="0,0,0" Opacity="1" vertModifType="0" LayerAct="1">
+ <Textures>
+  <Texture Map="Diffuse" File="objects/effects/fx_launchershockwave_01.dds"/>
+ </Textures>
+ <PublicParams SoftIntersectionFactor="0.52999997" AnimSpeed="0" BumpTilling="0" DiffuseRange="1" BumpAnimSpeed="0" AnimAmplitude="0" AnimOffset="0" BumpScale="0"/>
+</Material>

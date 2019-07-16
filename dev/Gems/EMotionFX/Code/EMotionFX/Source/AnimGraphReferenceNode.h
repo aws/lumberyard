@@ -107,7 +107,7 @@ namespace EMotionFX
 
         bool RecursiveDetectCycles(AZStd::unordered_set<const AnimGraphNode*>& nodes) const override;
 
-        uint32 GetVisualColor() const override                      { return MCore::RGBA(163, 106, 149); }
+        AZ::Color GetVisualColor() const override                   { return AZ::Color(0.64f, 0.42f, 0.58f, 1.0f); }
         bool GetCanActAsState() const override                      { return true; }
         bool GetSupportsVisualization() const override              { return true; }
         bool GetHasOutputPose() const override                      { return true; }

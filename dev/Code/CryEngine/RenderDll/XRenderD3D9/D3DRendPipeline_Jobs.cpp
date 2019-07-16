@@ -315,9 +315,9 @@ void CD3D9Renderer::InvokeShadowMapRenderJobs(ShadowMapFrustum* pCurFrustum, con
 {
     AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::Renderer);
 
-    for (int i = 0; i < pCurFrustum->pJobExecutedCastersList->Count(); i++)
+    for (int i = 0; i < pCurFrustum->m_jobExecutedCastersList.Count(); ++i)
     {
-        IShadowCaster* pEnt  = (*pCurFrustum->pJobExecutedCastersList)[i];
+        IShadowCaster* pEnt  = pCurFrustum->m_jobExecutedCastersList[i];
 
         //TOFIX reactivate OmniDirectionalShadow
         if (pCurFrustum->bOmniDirectionalShadow)
@@ -338,7 +338,7 @@ void CD3D9Renderer::InvokeShadowMapRenderJobs(ShadowMapFrustum* pCurFrustum, con
         }
 
         // all not yet to jobs ported types need to be processed by mainthread
-        gEnv->p3DEngine->RenderRenderNode_ShadowPass(pEnt, passInfo, &m_generateShadowRendItemJobExecutor);
+        gEnv->p3DEngine->RenderRenderNode_ShadowPass(pEnt, passInfo, gRenDev->GetGenerateShadowRendItemJobExecutor());
     }
 }
 
@@ -346,7 +346,7 @@ void CD3D9Renderer::InvokeShadowMapRenderJobs(ShadowMapFrustum* pCurFrustum, con
 void CD3D9Renderer::StartInvokeShadowMapRenderJobs(ShadowMapFrustum* pCurFrustum, const SRenderingPassInfo& passInfo)
 {
     // legacy job priority: JobManager::eLowPriority
-    m_generateShadowRendItemJobExecutor.StartJob(
+    gRenDev->GetGenerateShadowRendItemJobExecutor()->StartJob(
         [this, pCurFrustum, passInfo]
         {
             this->InvokeShadowMapRenderJobs(pCurFrustum, passInfo);

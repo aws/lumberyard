@@ -142,19 +142,19 @@ namespace AZ
         void AssetData::Release()
         {
             AZ_Assert(m_useCount > 0, "Usecount is already 0!");
+
+            AssetId assetId = m_assetId;
+            int creationToken = m_creationToken;
+            AssetType assetType = GetType();
+            bool removeFromHash = IsRegisterReadonlyAndShareable(); 
+            // default creation token implies that the asset was not created by the asset manager and therefore it cannot be in the asset map. 
+            removeFromHash = creationToken == s_defaultCreationToken ? false : removeFromHash;
+
+
             if (m_useCount.fetch_sub(1) == 1)
             {
-                RemoveFromDB();
+                AssetManager::Instance().ReleaseAsset(this, assetId, assetType, removeFromHash, creationToken);
             }
-        }
-
-        //=========================================================================
-        // RemoveFromDB
-        // [6/19/2012]
-        //=========================================================================
-        void AssetData::RemoveFromDB()
-        {
-            AssetManager::Instance().ReleaseAsset(this);
         }
 
         //=========================================================================

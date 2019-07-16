@@ -74,7 +74,7 @@ namespace EMotionFX
         void Reinit() override;
         bool InitAfterLoading(AnimGraph* animGraph) override;
 
-        uint32 GetVisualColor() const override                          { return MCore::RGBA(206, 175, 148); }
+        AZ::Color GetVisualColor() const override                       { return AZ::Color(0.81f, 0.69f, 0.58f, 1.0f); }
         const char* GetPaletteName() const override                     { return "Ragdoll Strength Modifier"; }
         AnimGraphObject::ECategory GetPaletteCategory() const override  { return AnimGraphObject::CATEGORY_PHYSICS; }
 

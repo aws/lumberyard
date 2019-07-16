@@ -74,7 +74,7 @@ namespace Physics
                 forbiddenSurfaceTypeNames.insert("Default");
                 editContext->Class<MaterialConfiguration>("", "")
                     ->ClassElement(AZ::Edit::ClassElements::EditorData, "Physics Material")
-                        ->Attribute(AZ::Edit::Attributes::AutoExpand, "")
+                        ->Attribute(AZ::Edit::Attributes::ForceAutoExpand, true)
                     ->DataElement(MaterialConfiguration::s_configLineEdit, &MaterialConfiguration::m_surfaceType, "Surface type", "Game surface type") // Uses ConfigStringLineEditCtrl in PhysX gem.
                         ->Attribute(AZ::Edit::Attributes::MaxLength, 64)
                         ->Attribute(MaterialConfiguration::s_stringGroup, AZ_CRC("LineEditGroupSurfaceType", 0x6670659e))
@@ -110,6 +110,7 @@ namespace Physics
         {
             serializeContext->Class<MaterialLibraryAsset, AZ::Data::AssetData>()
                 ->Version(2, &ClassConverters::MaterialLibraryAssetConverter)
+                ->Attribute(AZ::Edit::Attributes::EnableForAssetEditor, true)
                 ->EventHandler<MaterialLibraryAssetEventHandler>()
                 ->Field("Properties", &MaterialLibraryAsset::m_materialLibrary)
                 ;
@@ -119,7 +120,7 @@ namespace Physics
             {
                 editContext->Class<MaterialLibraryAsset>("", "")
                     ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
-                    ->Attribute(AZ::Edit::Attributes::AutoExpand, "")
+                    ->Attribute(AZ::Edit::Attributes::ForceAutoExpand, true)
                     ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
                     ->DataElement(AZ::Edit::UIHandlers::Default, &MaterialLibraryAsset::m_materialLibrary, "Materials", "List of physics materials")
                     ;
@@ -144,7 +145,7 @@ namespace Physics
             {
                 editContext->Class<MaterialFromAssetConfiguration>("", "")
                     ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
-                    ->Attribute(AZ::Edit::Attributes::AutoExpand, "")
+                    ->Attribute(AZ::Edit::Attributes::ForceAutoExpand, true)
                     ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
                     ->DataElement(AZ::Edit::UIHandlers::Default, &MaterialFromAssetConfiguration::m_configuration, "Material", "Material properties")
                     ;

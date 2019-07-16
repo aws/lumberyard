@@ -176,7 +176,7 @@ bool CREBreakableGlass::InitialiseRenderElement(const SBreakableGlassInitParams&
 #endif
 
     // Copy data
-    memcpy(&m_glassParams, &params, sizeof(SBreakableGlassInitParams));
+    m_glassParams = params;
 
     // Assert minimum size data
     const float minGlassSize = 0.05f;

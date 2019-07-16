@@ -40,28 +40,28 @@ def build(bld):
         if os.path.exists(platform_wscript):
             restricted_scripts[p3] = run_path(platform_wscript)
 
-    configurations_dx11 = ['debug', 'debug_test', 'profile', 'profile_test']
-    configurations_dx12 = ['debug', 'debug_test', 'profile', 'profile_test']
-    monolithic_configs = ['performance', 'release']
+    exclude_monolithic_dx11 = True
+    exclude_monolithic_dx12 = True
     extended = False
     if bld.env['PLATFORM'] == 'project_generator':
-        configurations_dx11.extend(monolithic_configs)
-        configurations_dx12.extend(monolithic_configs)
+    	exclude_monolithic_dx11 = False
+    	exclude_monolithic_dx12 = False
         extended = True
     elif 'win' in bld.variant and bld.options.win_build_renderer == 'DX12':
         extended = True
         if not getattr(bld, 'has_dx12', None) or not bld.has_dx12():
             Logs.warn('win_build_renderer == DX12 but machine cant compile for DX12, reverting to DX11')
-            configurations_dx11.extend(monolithic_configs)
+            exclude_monolithic_dx11 = False
         else:
-            configurations_dx12.extend(monolithic_configs)
+            exclude_monolithic_dx12 = False
     else:
         for p in restricted_scripts:
             if 'restricted_dx12_configuration' in restricted_scripts[p]:
-                if restricted_scripts[p]['restricted_dx12_configuration'](bld, configurations_dx12):
+                if restricted_scripts[p]['restricted_dx12_configuration'](bld):
+                    exclude_monolithic_dx12 = False
                     extended = True
     if not extended:
-        configurations_dx11.extend(monolithic_configs)
+        exclude_monolithic_dx11 = False
 
     kw = dict(
         #==============================
@@ -73,7 +73,9 @@ def build(bld):
         file_list           = [ 'core_renderer.waf_files',
                                 'd3d11.waf_files'],
         platforms           = ['win'],
-        configurations      = configurations_dx11,
+        configurations      = ['all'],
+        exclude_monolithic  = exclude_monolithic_dx11,
+        client_only         = True,
         pch                 = '../StdAfx.cpp',
         use                 = ['AzFramework'],
         uselib              = ['LZMA',
@@ -129,9 +131,10 @@ def build(bld):
         platforms           = ['win_x64_vs2017',
                                'win_x64_vs2015',
 	                          ],
-        configurations      = configurations_dx12,
+        configurations      = ['all'],
+        exclude_monolithic  = exclude_monolithic_dx12,
+        client_only         = True,
         pch                 = '../StdAfx.cpp',
-        build_in_dedicated  = False, # do not build this module if making dedicated server.
         use                 = ['AzFramework'],
         uselib              = ['LZMA',
                                'LZSS',

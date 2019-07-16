@@ -19,6 +19,10 @@
                 View Previous Builds
             </button>
 
+            <button *ngIf="canDownload" class="btn btn-outline-primary" (click)="downloadResult()">
+                Download Result
+            </button>
+
             <span *ngIf="invalidWorkflowInput" class="error-message">
                 Assign valid options in the Build Configuration tab to run and view workflows.
             </span>

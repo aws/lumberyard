@@ -95,8 +95,8 @@ namespace EMotionFX
             AZ::Data::Asset<AnimGraphAsset>             m_animGraphAsset;       ///< Selected anim graph.
             AZ::Data::Asset<MotionSetAsset>             m_motionSetAsset;       ///< Selected motion set asset.
             AZStd::string                               m_activeMotionSetName;  ///< Selected motion set.
-
-            AnimGraphComponent::ParameterDefaults      m_parameterDefaults;    ///< AnimGraph parameter defaults.
+            bool                                        m_visualize = false;    ///< Enable debug visualisation?
+            AnimGraphComponent::ParameterDefaults       m_parameterDefaults;    ///< AnimGraph parameter defaults.
         };
 
     } // namespace Integration

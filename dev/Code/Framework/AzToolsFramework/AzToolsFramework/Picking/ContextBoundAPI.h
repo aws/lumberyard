@@ -20,17 +20,13 @@
 #include <AzCore/Memory/SystemAllocator.h>
 #include <AzCore/RTTI/RTTI.h>
 #include <AzCore/std/smart_ptr/make_shared.h>
+#include <AzToolsFramework/Picking/BoundInterface.h>
 #include <AzToolsFramework/Picking/Manipulators/ManipulatorBounds.h>
-
-#include "BoundInterface.h"
 
 namespace AzToolsFramework
 {
     namespace Picking
     {
-        typedef AZ::u64 RegisteredBoundId;
-        static const RegisteredBoundId InvalidBoundId = 0;
-
         /**
          * An interface concrete shape types can implement to create specific BoundShapeInterfaces.
          */
@@ -57,7 +53,7 @@ namespace AzToolsFramework
                 box->SetShapeData(*this);
                 return box;
             }
-            
+
             AZ::Vector3 m_center;
             AZ::Quaternion m_orientation;
             AZ::Vector3 m_halfExtents;
@@ -79,22 +75,6 @@ namespace AzToolsFramework
             AZ::Vector3 m_center;
             float m_radius;
         };
-
-        // No Bound Shape Interface Provided for this yet
-        //class BoundShapeCapsule : public BoundRequestShapeBase
-        //{
-        //public:
-        //    AZ_RTTI(BoundShapeCapsule, "{76825889-EAE6-497B-996E-A1E08537B42B}", BoundRequestShapeBase);
-        //    AZ_CLASS_ALLOCATOR(BoundShapeCapsule, AZ::SystemAllocator, 0);
-
-        //    AZStd::shared_ptr<BoundShapeInterface> MakeShapeInterface(RegisteredBoundId id) const override
-        //    {
-        //    }
-
-        //    float m_height;
-        //    float m_radius;
-        //    AZ::Transform m_transform;
-        //};
 
         class BoundShapeCylinder : public BoundRequestShapeBase
         {
@@ -135,8 +115,8 @@ namespace AzToolsFramework
         };
 
         /**
-         * The quad shape consists of 4 points in 3D space. Please set them from \ref m_corner1 to \ref m_corner4 
-         * in either clock-wise winding or counter clock-wise winding. In another word, \ref m_corner1 and 
+         * The quad shape consists of 4 points in 3D space. Please set them from \ref m_corner1 to \ref m_corner4
+         * in either clock-wise winding or counter clock-wise winding. In another word, \ref m_corner1 and
          * \ref corner_2 cannot be diagonal corners.
          */
         class BoundShapeQuad : public BoundRequestShapeBase
@@ -181,7 +161,7 @@ namespace AzToolsFramework
 
         /**
          * The torus shape is approximated by a cylinder whose radius is the sum of the torus's major radius
-         * and minor radius and height is twice the torus's minor radius. 
+         * and minor radius and height is twice the torus's minor radius.
          */
         class BoundShapeTorus : public BoundRequestShapeBase
         {
@@ -224,47 +204,16 @@ namespace AzToolsFramework
             float m_width;
         };
 
+        /**
+         * Ray query for intersection against bounds.
+         */
         struct RaySelectInfo
         {
-            AZ::Vector3 m_origin;
-            AZ::Vector3 m_direction; ///< Make sure m_direction is unit length.
-            AZStd::vector<AZStd::pair<RegisteredBoundId, float>> m_boundIdsHit; ///< Store the id of the intersected bound and the parameter of the corresponding intersecting point.
+            AZ::Vector3 m_origin; ///< Start of ray.
+            AZ::Vector3 m_direction; ///< Direction of ray - make sure m_direction is unit length.
+            AZStd::vector<AZStd::pair<RegisteredBoundId, float>> m_boundIdsHit; ///< Store the id of the intersected bound
+                                                                                ///< and the parameter of the corresponding
+                                                                                ///< intersecting point.
         };
-
-        /** 
-         * EBus interface used to send requests to Bound Managers.
-         */
-        class ContextBoundManagerRequests
-            : public AZ::EBusTraits
-        {
-        public:
-            // Bus configuration
-            static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::ById;
-            static const AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::Single;
-            typedef AZ::u32 BusIdType;
-
-            virtual ~ContextBoundManagerRequests() = default;
-
-            /**
-             * Create and register a bound if the \ref id doesn't already exist, otherwise update the existing bound using data from \ref shapeData.
-             * To request a new bound pass in argument \ref id as InvalidBoundId.
-             * @param shapeData The new data used to create or update the bound.
-             * @param id The id of a bound to update. If \ref id doesn't already exist, a new bound will be created.
-             * @param userContext Viewport context identifier.
-             * @return If the passed \ref id already exists, return the same one. Otherwise return the id of the new one just created.
-             */
-            virtual RegisteredBoundId UpdateOrRegisterBound(const BoundRequestShapeBase& shapeData, RegisteredBoundId id, AZ::u64 userContext = 0) = 0;
-
-            virtual void UnregisterBound(RegisteredBoundId boundId) = 0;
-
-            /**
-             * Select all bounds that have intersections with the ray passed in.
-             * The returned bounds are sorted based on the distance between the intersection point and the 
-             * ray origin. Bounds with shorter distance are placed in front.
-             * @param[in,out] rayInfo It contains the ray to test intersection with, as well as a list storing the result bounds.
-             */
-            virtual void RaySelect(RaySelectInfo &rayInfo) = 0;
-        };
-        using ContextBoundManagerRequestBus = AZ::EBus<ContextBoundManagerRequests>;
     } // namespace Picking
 } // namespace AzToolsFramework

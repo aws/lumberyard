@@ -174,7 +174,7 @@ bool ShortcutDispatcher::IsAContainerForB(QWidget* a, QWidget* b)
 
 // Returns the list of QActions which have this specific key shortcut
 // Only QActions under scopeRoot are considered.
-QList<QAction*> ShortcutDispatcher::FindCandidateActions(QWidget* scopeRoot, const QKeySequence& sequence, QSet<QWidget*>& previouslyVisited, bool checkVisibility)
+QList<QAction*> ShortcutDispatcher::FindCandidateActions(QObject* scopeRoot, const QKeySequence& sequence, QSet<QObject*>& previouslyVisited, bool checkVisibility)
 {
     QList<QAction*> actions;
     if (!scopeRoot)
@@ -188,7 +188,8 @@ QList<QAction*> ShortcutDispatcher::FindCandidateActions(QWidget* scopeRoot, con
     }
     previouslyVisited.insert(scopeRoot);
 
-    if ((checkVisibility && !scopeRoot->isVisible()) || !scopeRoot->isEnabled())
+    QWidget* scopeRootWidget = qobject_cast<QWidget*>(scopeRoot);
+    if (scopeRootWidget && ((checkVisibility && !scopeRootWidget->isVisible()) || !scopeRootWidget->isEnabled()))
     {
         return actions;
     }
@@ -216,18 +217,21 @@ QList<QAction*> ShortcutDispatcher::FindCandidateActions(QWidget* scopeRoot, con
 
     // also have to check the actions on the object directly, without looking at children
     // specifically for the master MainWindow
-    for (QAction* action : scopeRoot->actions())
+    if (scopeRootWidget)
     {
+        for (QAction* action : scopeRootWidget->actions())
+        {
 #ifdef SHOW_ACTION_INFO_IN_DEBUGGER
-        QString actionName = action->text();
-        (void)actionName; // avoid an unused variable warning; want this for debugging
-        QString shortcut = action->shortcut().toString();
-        (void)shortcut; // avoid an unused variable warning; want this for debugging
+            QString actionName = action->text();
+            (void)actionName; // avoid an unused variable warning; want this for debugging
+            QString shortcut = action->shortcut().toString();
+            (void)shortcut; // avoid an unused variable warning; want this for debugging
 #endif
 
-        if (action->shortcut() == sequence)
-        {
-            actions << action;
+            if (action->shortcut() == sequence)
+            {
+                actions << action;
+            }
         }
     }
 
@@ -282,7 +286,7 @@ QList<QAction*> ShortcutDispatcher::FindCandidateActions(QWidget* scopeRoot, con
     return actions;
 }
 
-bool ShortcutDispatcher::FindCandidateActionAndFire(QWidget* focusWidget, QShortcutEvent* shortcutEvent, QList<QAction*>& candidates, QSet<QWidget*>& previouslyVisited)
+bool ShortcutDispatcher::FindCandidateActionAndFire(QObject* focusWidget, QShortcutEvent* shortcutEvent, QList<QAction*>& candidates, QSet<QObject*>& previouslyVisited)
 {
     candidates = FindCandidateActions(focusWidget, shortcutEvent->key(), previouslyVisited);
     QSet<QAction*> candidateSet = QSet<QAction*>::fromList(candidates);
@@ -388,6 +392,39 @@ bool ShortcutDispatcher::shortcutFilter(QObject* obj, QShortcutEvent* shortcutEv
 
     QScopedValueRollback<bool> recursiveCheck(m_currentlyHandlingShortcut, true);
 
+    // prioritize m_actionOverrideObject if active
+    if (m_actionOverrideObject != nullptr)
+    {
+        QList<QAction*> childActions =
+            m_actionOverrideObject->findChildren<QAction*>(QString(), Qt::FindDirectChildrenOnly);
+
+        // attempt to find shortcut in override
+        const auto childActionIt = AZStd::find_if(
+            childActions.begin(), childActions.end(), [shortcutEvent](QAction* child)
+        {
+            return child->shortcut() == shortcutEvent->key();
+        });
+
+        // trigger shortcut
+        if (childActionIt != childActions.end())
+        {
+            // navigation triggered - shortcut in general
+            AzToolsFramework::EditorMetricsEventsBusAction editorMetricsEventsBusActionWrapper(
+                AzToolsFramework::EditorMetricsEventsBusTraits::NavigationTrigger::Shortcut);
+
+            // has to be send, not post, or the dispatcher will get the event again
+            // and won't know that it was the one that queued it
+            const bool isAmbiguous = false;
+            QShortcutEvent newEvent(shortcutEvent->key(), isAmbiguous);
+
+            QAction* action = *childActionIt;
+            QApplication::sendEvent(action, &newEvent);
+
+            shortcutEvent->accept();
+            return true;
+        }
+    }
+
     QWidget* currentFocusWidget = focusWidget(); // check the widget we tracked last
     if (!currentFocusWidget)
     {
@@ -398,7 +435,7 @@ bool ShortcutDispatcher::shortcutFilter(QObject* obj, QShortcutEvent* shortcutEv
     // Shortcut is ambiguous, lets resolve ambiguity and give preference to QActions in the most inner scope
 
     // Try below the focusWidget first:
-    QSet<QWidget*> previouslyVisited;
+    QSet<QObject*> previouslyVisited;
     QList<QAction*> candidates;
     if (FindCandidateActionAndFire(currentFocusWidget, shortcutEvent, candidates, previouslyVisited))    {
         return true;
@@ -500,5 +537,14 @@ bool ShortcutDispatcher::IsShortcutSearchBreak(QWidget* widget)
     return widget->property(SHORTCUT_DISPATCHER_CONTEXT_BREAK_PROPERTY).toBool();
 }
 
+void ShortcutDispatcher::AttachOverride(QWidget* object)
+{
+    m_actionOverrideObject = object;
+}
+
+void ShortcutDispatcher::DetachOverride()
+{
+    m_actionOverrideObject = nullptr;
+}
 
 #include <ShortcutDispatcher.moc>

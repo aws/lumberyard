@@ -34,12 +34,14 @@
 #include <AzToolsFramework/SourceControl/SourceControlAPI.h>
 #include <AzToolsFramework/Entity/EditorEntityContextBus.h>
 #include <AzToolsFramework/ToolsComponents/EditorComponentBase.h>
+#include <AzToolsFramework/ToolsComponents/EditorLayerComponent.h>
 #include <AzToolsFramework/ToolsComponents/GenericComponentWrapper.h>
 #include <AzToolsFramework/ToolsComponents/TransformComponent.h>
 #include <AzToolsFramework/Commands/EntityStateCommand.h>
 #include <AzToolsFramework/AssetBrowser/AssetBrowserBus.h>
 #include <AzToolsFramework/AssetBrowser/AssetBrowserEntry.h>
 #include <AzToolsFramework/AssetBrowser/EBusFindAssetTypeByName.h>
+#include <AzToolsFramework/Slice/SliceUtilities.h>
 #include <AzToolsFramework/UI/Slice/SliceRelationshipBus.h>
 
 #include <AzToolsFramework/Metrics/LyEditorMetricsBus.h>
@@ -345,55 +347,29 @@ void AzAssetBrowserRequestHandler::AddContextMenuActions(QWidget* caller, QMenu*
         entry->GetChildrenRecursively<ProductAssetBrowserEntry>(products);
 
         // slice source files need to react by adding additional menu items, regardless of status of compile or presence of products.
-        if (AzFramework::StringFunc::Equal(extension.c_str(), ".slice", false))
+        if (AzFramework::StringFunc::Equal(extension.c_str(), AzToolsFramework::SliceUtilities::GetSliceFileExtension().c_str(), false))
         {
-            // For slices, we provide the option to toggle the dynamic flag.
-            QString sliceOptions[] = { QObject::tr("Set Dynamic Slice"), QObject::tr("Unset Dynamic Slice") };
-            AZ::Entity* sliceEntity = AZ::Utils::LoadObjectFromFile<AZ::Entity>(fullFilePath, nullptr,
-                AZ::ObjectStream::FilterDescriptor(&AZ::Data::AssetFilterNoAssetLoading));
-            AZ::SliceComponent* sliceAsset = sliceEntity ? sliceEntity->FindComponent<AZ::SliceComponent>() : nullptr;
-            if (sliceAsset)
-            {
-                if (sliceAsset->IsDynamic())
-                {
-                    menu->addAction(sliceOptions[1], [sliceEntity, fullFilePath]()
-                    {
-                        /*Unset dynamic slice*/
-                        AZ::SliceComponent* sliceAsset = sliceEntity->FindComponent<AZ::SliceComponent>();
-                        AZ_Assert(sliceAsset, "SliceComponent no longer present on component.");
-                        sliceAsset->SetIsDynamic(false);
-                        ResaveSlice(sliceEntity, fullFilePath);
-                    });
-                }
-                else
-                {
-                    menu->addAction(sliceOptions[0], [sliceEntity, fullFilePath]()
-                    {
-                        /*Set dynamic slice*/
-                        AZ::SliceComponent* sliceAsset = sliceEntity->FindComponent<AZ::SliceComponent>();
-                        AZ_Assert(sliceAsset, "SliceComponent no longer present on component.");
-                        sliceAsset->SetIsDynamic(true);
-                        ResaveSlice(sliceEntity, fullFilePath);
-                    });
-                }
+            AzToolsFramework::SliceUtilities::CreateSliceAssetContextMenu(menu, fullFilePath);
 
-                if(!products.empty())
-                {
-                    const ProductAssetBrowserEntry* productEntry = products[0];
-                    menu->addAction("Open in Slice Relationship View", [productEntry]()
-                    {
-                        QtViewPaneManager::instance()->OpenPane(LyViewPane::SliceRelationships);
-
-                        const ProductAssetBrowserEntry* product = azrtti_cast<const ProductAssetBrowserEntry*>(productEntry);
-                    
-                        AzToolsFramework::SliceRelationshipRequestBus::Broadcast(&AzToolsFramework::SliceRelationshipRequests::OnSliceRelationshipViewRequested, product->GetAssetId());
-                    });
-                }
-            }
-            else
+            const AzToolsFramework::AssetBrowser::ProductAssetBrowserEntry* productEntry = products[0];
+            // SliceUtilities is in AZToolsFramework and can't open viewports, so add the relationship view open command here.
+            if (!products.empty())
             {
-                delete sliceEntity;
+                const ProductAssetBrowserEntry* productEntry = products[0];
+                menu->addAction("Open in Slice Relationship View", [productEntry]()
+                {
+                    QtViewPaneManager::instance()->OpenPane(LyViewPane::SliceRelationships);
+
+                    const ProductAssetBrowserEntry* product = azrtti_cast<const ProductAssetBrowserEntry*>(productEntry);
+
+                    AzToolsFramework::SliceRelationshipRequestBus::Broadcast(&AzToolsFramework::SliceRelationshipRequests::OnSliceRelationshipViewRequested, product->GetAssetId());
+                });
             }
+        }
+        else if (AzFramework::StringFunc::Equal(extension.c_str(), AzToolsFramework::Layers::EditorLayerComponent::GetLayerExtensionWithDot().c_str(), false))
+        {
+            QString levelPath = Path::GetPath(GetIEditor()->GetDocument()->GetActivePathName());
+            AzToolsFramework::Layers::EditorLayerComponent::CreateLayerAssetContextMenu(menu, fullFilePath, levelPath);
         }
 
         if (products.empty())
@@ -420,53 +396,6 @@ void AzAssetBrowserRequestHandler::AddContextMenuActions(QWidget* caller, QMenu*
     }
 }
 
-void AzAssetBrowserRequestHandler::ResaveSlice(AZ::Entity* sliceEntity, const AZStd::string& fullFilePath)
-{
-    AZStd::string tmpFileName;
-    bool tmpFilesaved = false;
-    // here we are saving the slice to a temp file instead of the original file and then copying the temp file to the original file.
-    // This ensures that AP will not a get a file change notification on an incomplete slice file causing it to fail processing. Temp files are ignored by AP.
-    if (AZ::IO::CreateTempFileName(fullFilePath.c_str(), tmpFileName))
-    {
-        AZ::IO::FileIOStream fileStream(tmpFileName.c_str(), AZ::IO::OpenMode::ModeWrite | AZ::IO::OpenMode::ModeBinary);
-
-        if (fileStream.IsOpen())
-        {
-            tmpFilesaved = AZ::Utils::SaveObjectToStream<AZ::Entity>(fileStream, AZ::DataStream::ST_XML, sliceEntity);
-        }
-
-        using SCCommandBus = AzToolsFramework::SourceControlCommandBus;
-        SCCommandBus::Broadcast(&SCCommandBus::Events::RequestEdit, fullFilePath.c_str(), true,
-            [sliceEntity, fullFilePath, tmpFileName, tmpFilesaved](bool success, const AzToolsFramework::SourceControlFileInfo& info)
-        {
-            if (!info.IsReadOnly())
-            {
-                if (tmpFilesaved && AZ::IO::SmartMove(tmpFileName.c_str(), fullFilePath.c_str()))
-                {
-                    // Bump the slice asset up in the asset processor's queue.
-                    AzFramework::AssetSystemRequestBus::Broadcast(&AzFramework::AssetSystem::AssetSystemRequests::GetAssetStatus_FlushIO, fullFilePath);
-                }
-            }
-            else
-            {
-                QWidget* mainWindow = nullptr;
-                AzToolsFramework::EditorRequests::Bus::BroadcastResult(mainWindow, &AzToolsFramework::EditorRequests::GetMainWindow);
-                QMessageBox::warning(mainWindow, QObject::tr("Unable to Modify Slice"),
-                    QObject::tr("File is not writable."), QMessageBox::Ok, QMessageBox::Ok);
-            }
-
-            delete sliceEntity;
-        });
-    }
-    else
-    {
-        QWidget* mainWindow = nullptr;
-        AzToolsFramework::EditorRequests::Bus::BroadcastResult(mainWindow, &AzToolsFramework::EditorRequests::GetMainWindow);
-        QMessageBox::warning(mainWindow, QObject::tr("Unable to Modify Slice"),
-            QObject::tr("Unable to Modify Slice (%1). Cannot create a temporary file for writing data in the same folder.").arg(fullFilePath.c_str()),
-            QMessageBox::Ok, QMessageBox::Ok);
-    }
-}
 bool AzAssetBrowserRequestHandler::CanAcceptDragAndDropEvent(QDropEvent* event, AzQtComponents::DragAndDropContextBase& context) const
 {
     using namespace AzQtComponents;

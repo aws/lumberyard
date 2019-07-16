@@ -28,6 +28,7 @@
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
 #include <AzToolsFramework/Entity/EditorEntityContextBus.h>
 #include <AzToolsFramework/Slice/SliceTransaction.h>
+#include <AzToolsFramework/Slice/SliceUtilities.h>
 #include <AzToolsFramework/UI/UICore/ProgressShield.hxx>
 #include <AzToolsFramework/SourceControl/SourceControlAPI.h>
 #include <AzToolsFramework/API/EditorAssetSystemAPI.h>
@@ -81,7 +82,7 @@ namespace AzToolsFramework
                         AZ::SliceAsset* sliceBefore = before.Get();
                         AZ::Entity* sliceEntityBefore = sliceBefore->GetEntity();
                         AZ::IO::ByteContainerStream<ByteBuffer> beforeStream(&m_sliceAssetBeforeBuffer);
-                        AZ::Utils::SaveObjectToStream(beforeStream, AZ::DataStream::ST_XML, sliceEntityBefore, serializeContext);
+                        AZ::Utils::SaveObjectToStream(beforeStream, GetSliceStreamFormat(), sliceEntityBefore, serializeContext);
                     }
 
                     {
@@ -89,7 +90,7 @@ namespace AzToolsFramework
                         AZ::SliceAsset* sliceAfter = after.Get();
                         AZ::Entity* sliceEntityAfter = sliceAfter->GetEntity();
                         AZ::IO::ByteContainerStream<ByteBuffer> afterStream(&m_sliceAssetAfterBuffer);
-                        AZ::Utils::SaveObjectToStream(afterStream, AZ::DataStream::ST_XML, sliceEntityAfter, serializeContext);
+                        AZ::Utils::SaveObjectToStream(afterStream, GetSliceStreamFormat(), sliceEntityAfter, serializeContext);
                     }
                 }
 
@@ -621,7 +622,7 @@ namespace AzToolsFramework
                         {
                             // Element exists in the source, but not the target. We want to add it to the target.
                             elementAddress = entityToPush.m_fieldNodeAddress;
-							
+
                             // Recurse up trying to find the first matching source/target node
                             // This is necessary anytime we're trying to push a node that requires more than just a leaf node be added
                             while (sourceNode && !targetNode)
@@ -678,7 +679,7 @@ namespace AzToolsFramework
             {
                 AZStd::vector<AZ::u8> sliceBuffer;
                 AZ::IO::ByteContainerStream<AZStd::vector<AZ::u8> > sliceStream(&sliceBuffer);
-                AZ::Utils::SaveObjectToStream(sliceStream, AZ::DataStream::ST_XML, finalAsset.Get()->GetEntity());
+                AZ::Utils::SaveObjectToStream(sliceStream, GetSliceStreamFormat(), finalAsset.Get()->GetEntity());
                 result = Internal::SaveSliceToDisk(fullPath, sliceBuffer, m_serializeContext);
             }
             else

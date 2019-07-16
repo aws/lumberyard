@@ -9,73 +9,78 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
+
 #pragma once
 
 #include <AzCore/Component/ComponentBus.h>
 #include <AzCore/Math/PolygonPrism.h>
-#include "AzCore/Math/VertexContainerInterface.h"
+#include <AzCore/Math/VertexContainerInterface.h>
+#include <LmbrCentral/Shape/ShapeComponentBus.h>
 
 namespace LmbrCentral
 {
     /**
-     * Services provided by the Polygon Prism Shape Component.
-     */
+    * Type ID for the EditorPolygonPrismShapeComponent
+    */
+    static const AZ::Uuid EditorPolygonPrismShapeComponentTypeId = "{5368F204-FE6D-45C0-9A4F-0F933D90A785}";
+
+    /// Services provided by the Polygon Prism Shape Component.
     class PolygonPrismShapeComponentRequests
-        : public AZ::ComponentBus
-        , public AZ::VertexContainerInterface<AZ::Vector2>
+        : public AZ::VariableVertices<AZ::Vector2>
     {
     public:
-        virtual ~PolygonPrismShapeComponentRequests() {}
-
-        /**
-         * Returns a reference to the underlying polygon prism.
-         */
+        /// Returns a reference to the underlying polygon prism.
         virtual AZ::PolygonPrismPtr GetPolygonPrism() = 0;
 
-        /**
-         * Sets height of polygon shape.
-         * @param height The height of the polygon shape.
-         */
+        /// Sets height of polygon shape.
+        /// @param height The height of the polygon shape.
         virtual void SetHeight(float height) = 0;
+
+    protected:
+        ~PolygonPrismShapeComponentRequests() = default;
     };
 
-    /**
-     * Bus to service the Polygon Prism Shape component event group.
-     */
-    using PolygonPrismShapeComponentRequestBus = AZ::EBus<PolygonPrismShapeComponentRequests>;
+    /// Bus to service the Polygon Prism Shape component event group.
+    using PolygonPrismShapeComponentRequestBus = AZ::EBus<PolygonPrismShapeComponentRequests, AZ::ComponentBus>;
 
-    /**
-     *  Services provided by the Editor Component of Polygon Prism Shape.
-     */
-    class EditorPolygonPrismShapeComponentRequests
-        : public AZ::ComponentBus
-    {
-    public:
-        /**
-         * Generates the vertices for displaying the shape in the editor
-         */
-        virtual void GenerateVertices() = 0;
-    };
-
-    using EditorPolygonPrismShapeComponentRequestsBus = AZ::EBus<EditorPolygonPrismShapeComponentRequests>;
-
-    /**
-     * Listener for polygon prism changes.
-     */
+    /// Listener for polygon prism changes.
     class PolygonPrismShapeComponentNotification
         : public AZ::ComponentBus
+        , public AZ::VertexContainerNotificationInterface<AZ::Vector2>
     {
     public:
-        virtual ~PolygonPrismShapeComponentNotification() {}
+        /// Called when a new vertex is added to polygon prism.
+        void OnVertexAdded(size_t /*index*/) override {}
 
-        /**
-         * Called when the polyon prism shape has changed.
-         */
-        virtual void OnPolygonPrismShapeChanged() {}
+        /// Called when a vertex is removed from polygon prism.
+        void OnVertexRemoved(size_t /*index*/) override {}
+
+        /// Called when a vertex is updated.
+        void OnVertexUpdated(size_t /*index*/) override {}
+
+        /// Called when all vertices on the polygon prism are set.
+        void OnVerticesSet(const AZStd::vector<AZ::Vector2>& /*vertices*/) override {}
+
+        /// Called when all vertices from the polygon prism are removed.
+        void OnVerticesCleared() override {}
+
+    protected:
+        ~PolygonPrismShapeComponentNotification() = default;
     };
 
-    /**
-     * Bus to service the polygon prism shape component notification group.
-     */
+    /// Bus to service the polygon prism shape component notification group.
     using PolygonPrismShapeComponentNotificationBus = AZ::EBus<PolygonPrismShapeComponentNotification>;
+
+    class PolygonPrismShapeConfig
+        : public ShapeComponentConfig
+    {
+    public:
+        AZ_CLASS_ALLOCATOR(PolygonPrismShapeConfig, AZ::SystemAllocator, 0)
+        AZ_RTTI(PolygonPrismShapeConfig, "{84CAA5E4-45EB-4CFF-BC41-EE0FDC0F095C}", ShapeComponentConfig)
+
+        static void Reflect(AZ::ReflectContext* context);
+
+        PolygonPrismShapeConfig() = default;
+    };
+
 } // namespace LmbrCentral

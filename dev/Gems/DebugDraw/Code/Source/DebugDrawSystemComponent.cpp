@@ -64,6 +64,7 @@ namespace DebugDraw
         if (AZ::BehaviorContext* behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context))
         {
             behaviorContext->EBus<DebugDrawRequestBus>("DebugDrawRequestBus")
+                ->Attribute(AZ::Script::Attributes::Category, "Debug")
                 ->Event("DrawAabb", &DebugDrawRequestBus::Events::DrawAabb)
                 ->Event("DrawAabbOnEntity", &DebugDrawRequestBus::Events::DrawAabbOnEntity)
                 ->Event("DrawLineLocationToLocation", &DebugDrawRequestBus::Events::DrawLineLocationToLocation)

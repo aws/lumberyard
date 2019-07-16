@@ -20,6 +20,7 @@
 
 #include <AzQtComponents/Components/Widgets/Eyedropper.h>
 #include <AzQtComponents/Components/Style.h>
+#include <AzQtComponents/Components/ConfigHelpers.h>
 #include <AzQtComponents/Utilities/QtWindowUtilities.h>
 #include <AzQtComponents/Utilities/MouseHider.h>
 #include <AzQtComponents/Utilities/ScreenGrabber.h>
@@ -31,8 +32,8 @@ namespace AzQtComponents
     {
         Config config = defaultConfig();
 
-        config.contextSizeInPixels = settings.value("ContextSizeInPixels", config.contextSizeInPixels).toInt();
-        config.zoomFactor = settings.value("ZoomFactor", config.zoomFactor).toInt();
+        ConfigHelpers::read<int>(settings, QStringLiteral("ContextSizeInPixels"), config.contextSizeInPixels);
+        ConfigHelpers::read<int>(settings, QStringLiteral("ZoomFactor"), config.zoomFactor);
 
         return config;
     }

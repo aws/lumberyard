@@ -123,14 +123,21 @@ public:
         widget->setProperty(SHORTCUT_DISPATCHER_CONTEXT_BREAK_PROPERTY, true);
     }
 
+    /// Assign the widget responsible for getting first attempt
+    /// at every shortcut routed through the ShortcutDispatcher.
+    void AttachOverride(QWidget* object);
+    /// Detach the widget responsible for intercepting Actions
+    /// routed through the ShortcutDispatcher.
+    void DetachOverride();
+
 private:
     bool shortcutFilter(QObject* obj, QShortcutEvent* ev);
     void setNewFocus(QObject* obj);
 
     QWidget* FindParentScopeRoot(QWidget* w);
     bool IsAContainerForB(QWidget* a, QWidget* b);
-    QList<QAction*> FindCandidateActions(QWidget* scopeRoot, const QKeySequence& sequence, QSet<QWidget*>& previouslyVisited, bool checkVisibility = true);
-    bool FindCandidateActionAndFire(QWidget* focusWidget, QShortcutEvent* shortcutEvent, QList<QAction*>& candidates, QSet<QWidget*>& previouslyVisited);
+    QList<QAction*> FindCandidateActions(QObject* scopeRoot, const QKeySequence& sequence, QSet<QObject*>& previouslyVisited, bool checkVisibility = true);
+    bool FindCandidateActionAndFire(QObject* focusWidget, QShortcutEvent* shortcutEvent, QList<QAction*>& candidates, QSet<QObject*>& previouslyVisited);
 
     void sendFocusMetricsData(QObject* obj);
 
@@ -139,6 +146,9 @@ private:
     bool m_currentlyHandlingShortcut;
 
     QString m_previousWidgetName;
+
+    QWidget* m_actionOverrideObject = nullptr; /**< (if set/not null) The widget responsible for getting first attempt
+                                                 *   at every shortcut routed through the ShortcutDispatcher. */
 };
 
 #endif

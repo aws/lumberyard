@@ -15,6 +15,7 @@
 #include <AzCore/Serialization/SerializeContext.h>
 
 #include <Components/SceneMemberComponent.h>
+#include <Components/PersistentIdComponent.h>
 
 namespace GraphCanvas
 {
@@ -40,7 +41,8 @@ namespace GraphCanvas
     }
 
     void SceneMemberComponent::Init()
-    {        
+    {
+        AZ::EntityBus::Handler::BusConnect(GetEntityId());
     }
 
     void SceneMemberComponent::Activate()
@@ -51,6 +53,7 @@ namespace GraphCanvas
     void SceneMemberComponent::Deactivate()
     {
         SceneMemberRequestBus::Handler::BusDisconnect();
+        AZ::EntityBus::Handler::BusDisconnect();
     }
 
     void SceneMemberComponent::SetScene(const AZ::EntityId& sceneId)
@@ -75,8 +78,8 @@ namespace GraphCanvas
 
         if (m_sceneId == sceneId)
         {
+            SceneMemberNotificationBus::Event(GetEntityId(), &SceneMemberNotifications::OnRemovedFromScene, sceneId);
             m_sceneId.SetInvalid();
-            SceneMemberNotificationBus::Event(GetEntityId(), &SceneMemberNotifications::OnSceneCleared, sceneId);
         }
     }
 
@@ -107,6 +110,22 @@ namespace GraphCanvas
         if (m_lockedSceneMember == sceneMemberId)
         {
             m_lockedSceneMember.SetInvalid();
+        }
+    }
+
+    void SceneMemberComponent::OnEntityExists(const AZ::EntityId& entityId)
+    {
+        AZ::EntityBus::Handler::BusDisconnect();
+
+        // Temporary version conversion added in 1.xx to add a PersistentId onto the SceneMembers.
+        // Remove after a few revisions with warnings about resaving graphs.
+        if (AZ::EntityUtils::FindFirstDerivedComponent<PersistentIdComponent>(GetEntityId()) == nullptr)
+        {
+            AZ::Entity* selfEntity = GetEntity();
+            if (selfEntity)
+            {
+                selfEntity->CreateComponent<PersistentIdComponent>();
+            }
         }
     }
 }

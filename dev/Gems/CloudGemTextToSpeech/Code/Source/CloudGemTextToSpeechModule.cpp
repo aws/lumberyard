@@ -15,18 +15,18 @@
 
 #include "CloudGemTextToSpeechSystemComponent.h"
 
-#include <IGem.h>
+#include <AzCore/Module/Module.h>
 
 namespace CloudGemTextToSpeech
 {
     class CloudGemTextToSpeechModule
-        : public CryHooksModule
+        : public AZ::Module
     {
     public:
-        AZ_RTTI(CloudGemTextToSpeechModule, "{10FC2C0F-EA9E-4518-A5F0-AC9191B89520}", CryHooksModule);
+        AZ_RTTI(CloudGemTextToSpeechModule, "{10FC2C0F-EA9E-4518-A5F0-AC9191B89520}", AZ::Module);
 
         CloudGemTextToSpeechModule()
-            : CryHooksModule()
+            : AZ::Module()
         {
             // Push results of [MyComponent]::CreateDescriptor() into m_descriptors here.
             m_descriptors.insert(m_descriptors.end(), {

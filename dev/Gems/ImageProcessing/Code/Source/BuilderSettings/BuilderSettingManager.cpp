@@ -1,12 +1,12 @@
 /*
-* All or portions of this file Copyright(c) Amazon.com, Inc.or its affiliates or
+* All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
 * its licensors.
 *
 * For complete copyright and license terms please see the LICENSE at the root of this
-* distribution(the "License").All use of this software is governed by the License,
-*or, if provided, by the license below or the license accompanying this file.Do not
-* remove or modify any license notices.This file is distributed on an "AS IS" BASIS,
-*WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+* distribution (the "License"). All use of this software is governed by the License,
+* or, if provided, by the license below or the license accompanying this file. Do not
+* remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
 
@@ -556,6 +556,7 @@ AZ_TOOLS_EXPAND_FOR_RESTRICTED_PLATFORMS
         AZ_Assert(s_globalInstance, "Invalid call to DestroyInstance - no instance exists.");
         AZ_Assert(s_globalInstance.Get(), "You can only call DestroyInstance if you have called CreateInstance.");
 
+        delete s_globalInstance.Get();
         s_globalInstance.Reset();
     }
     

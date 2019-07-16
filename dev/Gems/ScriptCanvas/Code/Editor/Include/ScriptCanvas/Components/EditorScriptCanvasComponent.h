@@ -40,6 +40,7 @@ namespace ScriptCanvasEditor
         , private EditorContextMenuRequestBus::Handler
         , private AzFramework::AssetCatalogEventBus::Handler
         , private EditorScriptCanvasAssetNotificationBus::Handler
+        , private EditorScriptCanvasComponentLoggingBus::Handler
     {
     public:
         AZ_COMPONENT(EditorScriptCanvasComponent, "{C28E2D29-0746-451D-A639-7F113ECF5D72}", AzToolsFramework::Components::EditorComponentBase);
@@ -60,13 +61,20 @@ namespace ScriptCanvasEditor
         void BuildGameEntity(AZ::Entity* gameEntity) override;
         void SetPrimaryAsset(const AZ::Data::AssetId&) override;
         //=====================================================================
-        AZ::Data::Asset<ScriptCanvasAsset> GetAsset() const override;
+
+        //=====================================================================
+        // EditorScriptCanvasComponentLoggingBus
+        AZ::NamedEntityId FindNamedEntityId() const override { return GetNamedEntityId(); }
+        ScriptCanvas::GraphIdentifier GetGraphIdentifier() const override;
+        //=====================================================================
 
         //=====================================================================
         // EditorScriptCanvasRequestBus
         void SetName(const AZStd::string& name) override { m_name = name; }
         const AZStd::string& GetName() const { return m_name; };
         AZ::EntityId GetEditorEntityId() const { return GetEntity() ? GetEntityId() : AZ::EntityId(); }
+        AZ::NamedEntityId GetNamedEditorEntityId() const override { return GetEntity() ? GetNamedEntityId() : AZ::NamedEntityId(); }
+        AZ::Data::Asset<ScriptCanvasAsset> GetAsset() const override;        
         //=====================================================================
 
         //=====================================================================
@@ -122,6 +130,8 @@ namespace ScriptCanvasEditor
         void ClearVariables();
 
     private:
+        AZ::Data::AssetId m_previousAssetId;
+
         AZStd::string m_name;
         ScriptCanvasAssetHolder m_scriptCanvasAssetHolder;
         

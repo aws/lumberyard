@@ -16,66 +16,133 @@
 
 namespace AzToolsFramework
 {
-    RotationManipulators::RotationManipulators(AZ::EntityId entityId, const AZ::Transform& worldFromLocal)
+    static void RefreshRotationManipulatorViewAxis(
+        RotationManipulators& rotationManipulator, const AZ::Vector3& worldViewPosition)
     {
-        m_angularManipulators.reserve(3);
-        for (size_t i = 0; i < 3; ++i)
+        if (!rotationManipulator.PerformingActionViewAxis())
         {
-            m_angularManipulators.emplace_back(AZStd::make_unique<AngularManipulator>(entityId, worldFromLocal));
+            AZ::Vector3 lookDirection =
+                (rotationManipulator.GetPosition() - worldViewPosition).GetNormalizedExact();
+
+            lookDirection = TransformDirectionNoScaling(
+                rotationManipulator.GetLocalTransform().GetInverseFast(), lookDirection);
+
+            rotationManipulator.SetViewAxis(lookDirection);
         }
+    }
+
+    RotationManipulators::RotationManipulators(const AZ::Transform& worldFromLocal)
+    {
+        for (size_t manipulatorIndex = 0; manipulatorIndex < m_localAngularManipulators.size(); ++manipulatorIndex)
+        {
+            m_localAngularManipulators[manipulatorIndex] = AngularManipulator::MakeShared(worldFromLocal);
+        }
+
+        m_viewAngularManipulator = AngularManipulator::MakeShared(worldFromLocal);
     }
 
     void RotationManipulators::InstallLeftMouseDownCallback(
         const AngularManipulator::MouseActionCallback& onMouseDownCallback)
     {
-        for (AZStd::unique_ptr<AngularManipulator>& manipulator : m_angularManipulators)
+        for (AZStd::shared_ptr<AngularManipulator>& manipulator : m_localAngularManipulators)
         {
             manipulator->InstallLeftMouseDownCallback(onMouseDownCallback);
         }
+
+        m_viewAngularManipulator->InstallLeftMouseDownCallback(onMouseDownCallback);
     }
 
     void RotationManipulators::InstallMouseMoveCallback(
         const AngularManipulator::MouseActionCallback& onMouseMoveCallback)
     {
-        for (AZStd::unique_ptr<AngularManipulator>& manipulator : m_angularManipulators)
+        for (AZStd::shared_ptr<AngularManipulator>& manipulator : m_localAngularManipulators)
         {
             manipulator->InstallMouseMoveCallback(onMouseMoveCallback);
         }
+
+        m_viewAngularManipulator->InstallMouseMoveCallback(onMouseMoveCallback);
     }
 
     void RotationManipulators::InstallLeftMouseUpCallback(
         const AngularManipulator::MouseActionCallback& onMouseUpCallback)
     {
-        for (AZStd::unique_ptr<AngularManipulator>& manipulator : m_angularManipulators)
+        for (AZStd::shared_ptr<AngularManipulator>& manipulator : m_localAngularManipulators)
         {
             manipulator->InstallLeftMouseUpCallback(onMouseUpCallback);
         }
+
+        m_viewAngularManipulator->InstallLeftMouseUpCallback(onMouseUpCallback);
     }
 
     void RotationManipulators::SetLocalTransform(const AZ::Transform& localTransform)
     {
-        for (AZStd::unique_ptr<AngularManipulator>& manipulator : m_angularManipulators)
+        for (AZStd::shared_ptr<AngularManipulator>& manipulator : m_localAngularManipulators)
         {
             manipulator->SetLocalTransform(localTransform);
         }
+
+        m_viewAngularManipulator->SetLocalTransform(localTransform);
+
+        m_localTransform = localTransform;
+    }
+
+    void RotationManipulators::SetLocalPosition(const AZ::Vector3& localPosition)
+    {
+        for (AZStd::shared_ptr<AngularManipulator>& manipulator : m_localAngularManipulators)
+        {
+            manipulator->SetLocalPosition(localPosition);
+        }
+
+        m_viewAngularManipulator->SetLocalPosition(localPosition);
+
+        m_localTransform.SetTranslation(localPosition);
+    }
+
+    void RotationManipulators::SetLocalOrientation(const AZ::Quaternion& localOrientation)
+    {
+        for (AZStd::shared_ptr<AngularManipulator>& manipulator : m_localAngularManipulators)
+        {
+            manipulator->SetLocalOrientation(localOrientation);
+        }
+
+        m_localTransform = AZ::Transform::CreateFromQuaternionAndTranslation(
+            localOrientation, m_localTransform.GetTranslation());
+    }
+
+    void RotationManipulators::RefreshView(const AZ::Vector3& worldViewPosition)
+    {
+        RefreshRotationManipulatorViewAxis(*this, worldViewPosition);
     }
 
     void RotationManipulators::SetSpace(const AZ::Transform& worldFromLocal)
     {
-        for (AZStd::unique_ptr<AngularManipulator>& manipulator : m_angularManipulators)
+        for (AZStd::shared_ptr<AngularManipulator>& manipulator : m_localAngularManipulators)
         {
             manipulator->SetSpace(worldFromLocal);
         }
+
+        m_viewAngularManipulator->SetSpace(worldFromLocal);
     }
 
-    void RotationManipulators::SetAxes(
+    void RotationManipulators::SetLocalAxes(
         const AZ::Vector3& axis1, const AZ::Vector3& axis2, const AZ::Vector3& axis3)
     {
-         AZ::Vector3 axes[] = { axis1, axis2, axis3 };
+        const AZ::Vector3 axes[] = { axis1, axis2, axis3 };
 
-        for (size_t i = 0; i < m_angularManipulators.size(); ++i)
+        for (size_t manipulatorIndex = 0; manipulatorIndex < m_localAngularManipulators.size(); ++manipulatorIndex)
         {
-           m_angularManipulators[i]->SetAxis(axes[i]);
+           m_localAngularManipulators[manipulatorIndex]->SetAxis(axes[manipulatorIndex]);
+        }
+    }
+
+    void RotationManipulators::SetViewAxis(const AZ::Vector3& axis)
+    {
+        m_viewAngularManipulator->SetAxis(axis);
+
+        if (auto circleView = azrtti_cast<ManipulatorViewCircle*>(
+            m_viewAngularManipulator->GetView()))
+        {
+            circleView->m_axis = axis;
         }
     }
 
@@ -87,20 +154,33 @@ namespace AzToolsFramework
             axis1Color, axis2Color, axis3Color
         };
 
-        for (size_t i = 0; i < m_angularManipulators.size(); ++i)
+        for (size_t manipulatorIndex = 0; manipulatorIndex < m_localAngularManipulators.size(); ++manipulatorIndex)
         {
-            m_angularManipulators[i]->SetView(
+            m_localAngularManipulators[manipulatorIndex]->SetView(
                 CreateManipulatorViewCircle(
-                    *m_angularManipulators[i], colors[i],
-                    radius, 0.05f));
+                    *m_localAngularManipulators[manipulatorIndex], colors[manipulatorIndex],
+                    radius, 0.05f, DrawHalfDottedCircle));
         }
+
+        m_viewAngularManipulator->SetView(
+            CreateManipulatorViewCircle(
+                *m_viewAngularManipulator,
+                AZ::Color(1.0f, 1.0f, 1.0f, 1.0f),
+                radius + (radius * 0.12f), 0.05f, DrawFullCircle));
+    }
+
+    bool RotationManipulators::PerformingActionViewAxis() const
+    {
+        return m_viewAngularManipulator->PerformingAction();
     }
 
     void RotationManipulators::ProcessManipulators(const AZStd::function<void(BaseManipulator*)>& manipulatorFn)
     {
-        for (AZStd::unique_ptr<AngularManipulator>& manipulator : m_angularManipulators)
+        for (AZStd::shared_ptr<AngularManipulator>& manipulator : m_localAngularManipulators)
         {
             manipulatorFn(manipulator.get());
         }
+
+        manipulatorFn(m_viewAngularManipulator.get());
     }
-}
+} // namespace AzToolsFramework

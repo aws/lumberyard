@@ -48,7 +48,7 @@ int main(int argc, char* argv[])
     // If "--unittest" is present on the command line, run unit testing
     // and return immediately. Otherwise, continue as normal.
     AZ::Test::addTestEnvironment(new BaseAssetProcessorTestEnvironment());
-    INVOKE_AZ_UNIT_TEST_MAIN();
+    INVOKE_AZ_UNIT_TEST_MAIN(nullptr);  // nullptr turns off default test environment used to catch stray asserts
 #endif
 
 #if defined(BATCH_MODE)

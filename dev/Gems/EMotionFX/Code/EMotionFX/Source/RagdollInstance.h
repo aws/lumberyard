@@ -30,7 +30,7 @@ namespace EMotionFX
         AZ_CLASS_ALLOCATOR_DECL
 
         RagdollInstance();
-        RagdollInstance(const AZStd::shared_ptr<Physics::Ragdoll>& ragdoll, ActorInstance* actorInstance);
+        RagdollInstance(Physics::Ragdoll* ragdoll, ActorInstance* actorInstance);
         virtual ~RagdollInstance() = default;
 
         /**
@@ -101,7 +101,7 @@ namespace EMotionFX
         AZStd::vector<AZ::u32>                      m_jointIndicesByRagdollNodeIndices; /**< Stores the animation skeleton joint indices for each ragdoll node. [0, Physics::Ragdoll::GetNumNodes()-1] */
         ActorInstance*                              m_actorInstance;
         Node*                                       m_ragdollRootJoint;
-        AZStd::shared_ptr<Physics::Ragdoll>         m_ragdoll;
+        Physics::Ragdoll*                           m_ragdoll;
         Physics::RagdollConfiguration*              m_ragdollConfig;
         AZStd::unique_ptr<RagdollVelocityEvaluator> m_velocityEvaluator;
 

@@ -63,6 +63,7 @@ extern CMTSafeHeap* g_pPakHeap;
 #include <AzCore/Android/Utils.h>
 #elif defined(AZ_PLATFORM_APPLE_IOS) || defined(AZ_PLATFORM_APPLE_TV)
 extern bool UIKitGetPrimaryPhysicalDisplayDimensions(int& o_widthPixels, int& o_heightPixels);
+extern bool UIDeviceIsTablet();
 #endif
 
 extern int CryMemoryGetAllocatedSize();
@@ -89,6 +90,16 @@ bool CSystem::GetPrimaryPhysicalDisplayDimensions(int& o_widthPixels, int& o_hei
     return AZ::Android::Utils::GetWindowSize(o_widthPixels, o_heightPixels);
 #elif defined(AZ_PLATFORM_APPLE_IOS) || defined(AZ_PLATFORM_APPLE_TV)
     return UIKitGetPrimaryPhysicalDisplayDimensions(o_widthPixels, o_heightPixels);
+#else
+    return false;
+#endif
+}
+
+bool CSystem::IsTablet()
+{
+//TODO: Add support for Android tablets
+#if defined(AZ_PLATFORM_APPLE_IOS) || defined(AZ_PLATFORM_APPLE_TV)
+    return UIDeviceIsTablet();
 #else
     return false;
 #endif
@@ -125,6 +136,9 @@ void CSystem::CreateRendererVars(const SSystemInitParams& startupParams)
     m_rWidthAndHeightAsFractionOfScreenSize = REGISTER_FLOAT("r_WidthAndHeightAsFractionOfScreenSize", 1.0f, VF_DUMPTODISK,
             "(iOS/Android only) Sets the display width and height as a fraction of the physical screen size. Default is 1.0.\n"
             "Usage: rWidthAndHeightAsFractionOfScreenSize [0.1 - 1.0]");
+    m_rTabletWidthAndHeightAsFractionOfScreenSize = REGISTER_FLOAT("r_TabletWidthAndHeightAsFractionOfScreenSize", 1.0f, VF_DUMPTODISK,
+            "(iOS only) NOTE: TABLETS ONLY Sets the display width and height as a fraction of the physical screen size. Default is 1.0.\n"
+            "Usage: rTabletWidthAndHeightAsFractionOfScreenSize [0.1 - 1.0]");
     m_rMaxWidth = REGISTER_INT("r_MaxWidth", 0, VF_DUMPTODISK,
             "(iOS/Android only) Sets the maximum display width while maintaining the device aspect ratio.\n"
             "Usage: r_MaxWidth [1024/1920/..] (0 for no max), combined with r_WidthAndHeightAsFractionOfScreenSize [0.1 - 1.0]");

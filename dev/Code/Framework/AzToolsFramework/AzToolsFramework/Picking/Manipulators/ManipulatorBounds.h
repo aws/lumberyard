@@ -12,11 +12,16 @@
 
 #pragma once
 
-#include <AzCore/Math/Spline.h>
+#include <AzCore/Math/Transform.h>
 #include <AzCore/Memory/Memory.h>
 #include <AzCore/Memory/SystemAllocator.h>
 #include <AzCore/RTTI/RTTI.h>
 #include <AzToolsFramework/Picking/BoundInterface.h>
+
+namespace AZ
+{
+    class Spline;
+}
 
 namespace AzToolsFramework
 {
@@ -32,7 +37,8 @@ namespace AzToolsFramework
             explicit ManipulatorBoundSphere(RegisteredBoundId boundId)
                 : BoundShapeInterface(boundId) {}
 
-            bool IntersectRay(const AZ::Vector3 &rayOrigin, const AZ::Vector3 &rayDir, float &t) override;
+            bool IntersectRay(
+                const AZ::Vector3& rayOrigin, const AZ::Vector3& rayDir, float& rayIntersectionDistance) override;
             void SetShapeData(const BoundRequestShapeBase& shapeData) override;
 
             AZ::Vector3 m_center = AZ::Vector3::CreateZero();
@@ -49,7 +55,8 @@ namespace AzToolsFramework
             explicit ManipulatorBoundBox(RegisteredBoundId boundId)
                 : BoundShapeInterface(boundId) {}
 
-            bool IntersectRay(const AZ::Vector3 &rayOrigin, const AZ::Vector3 &rayDir, float &t) override;
+            bool IntersectRay(
+                const AZ::Vector3& rayOrigin, const AZ::Vector3& rayDir, float& rayIntersectionDistance) override;
             void SetShapeData(const BoundRequestShapeBase& shapeData) override;
 
             AZ::Vector3 m_center = AZ::Vector3::CreateZero();
@@ -69,7 +76,8 @@ namespace AzToolsFramework
             explicit ManipulatorBoundCylinder(RegisteredBoundId boundId)
                 : BoundShapeInterface(boundId) {}
 
-            bool IntersectRay(const AZ::Vector3 &rayOrigin, const AZ::Vector3 &rayDir, float &t) override;
+            bool IntersectRay(
+                const AZ::Vector3& rayOrigin, const AZ::Vector3& rayDir, float& rayIntersectionDistance) override;
             void SetShapeData(const BoundRequestShapeBase& shapeData) override;
 
             AZ::Vector3 m_base = AZ::Vector3::CreateZero(); ///< The center of the circle at the base of the cylinder.
@@ -88,7 +96,8 @@ namespace AzToolsFramework
             explicit ManipulatorBoundCone(RegisteredBoundId boundId)
                 : BoundShapeInterface(boundId) {}
 
-            bool IntersectRay(const AZ::Vector3 &rayOrigin, const AZ::Vector3 &rayDir, float &t) override;
+            bool IntersectRay(
+                const AZ::Vector3& rayOrigin, const AZ::Vector3& rayDir, float& rayIntersectionDistance) override;
             void SetShapeData(const BoundRequestShapeBase& shapeData) override;
 
             AZ::Vector3 m_apexPosition = AZ::Vector3::CreateZero();
@@ -112,7 +121,8 @@ namespace AzToolsFramework
             explicit ManipulatorBoundQuad(RegisteredBoundId boundId)
                 : BoundShapeInterface(boundId) {}
 
-            bool IntersectRay(const AZ::Vector3 &rayOrigin, const AZ::Vector3 &rayDir, float &t) override;
+            bool IntersectRay(
+                const AZ::Vector3& rayOrigin, const AZ::Vector3& rayDir, float& rayIntersectionDistance) override;
             void SetShapeData(const BoundRequestShapeBase& shapeData) override;
 
             AZ::Vector3 m_corner1 = AZ::Vector3::CreateZero();
@@ -131,11 +141,12 @@ namespace AzToolsFramework
             explicit ManipulatorBoundTorus(RegisteredBoundId boundId)
                 : BoundShapeInterface(boundId) {}
 
-            bool IntersectRay(const AZ::Vector3 &rayOrigin, const AZ::Vector3 &rayDir, float &t) override;
+            bool IntersectRay(
+                const AZ::Vector3& rayOrigin, const AZ::Vector3& rayDir, float& rayIntersectionDistance) override;
             void SetShapeData(const BoundRequestShapeBase& shapeData) override;
 
-            // Approximate a torus as a thin cylinder. A ray intersects a torus when the ray and the torus's
-            // approximating cylinder have an intersecting point that is at certain distance away from the 
+            // Approximate a torus as a thin cylinder. A ray intersects a torus when the ray and the torus'
+            // approximating cylinder have an intersecting point that is at certain distance away from the
             // center of the torus.
             AZ::Vector3 m_center = AZ::Vector3::CreateZero();
             AZ::Vector3 m_axis = AZ::Vector3::CreateZero();
@@ -153,7 +164,8 @@ namespace AzToolsFramework
             explicit ManipulatorBoundLineSegment(RegisteredBoundId boundId)
                 : BoundShapeInterface(boundId) {}
 
-            bool IntersectRay(const AZ::Vector3 &rayOrigin, const AZ::Vector3 &rayDir, float &t) override;
+            bool IntersectRay(
+                const AZ::Vector3& rayOrigin, const AZ::Vector3& rayDir, float& rayIntersectionDistance) override;
             void SetShapeData(const BoundRequestShapeBase& shapeData) override;
 
             AZ::Vector3 m_worldStart = AZ::Vector3::CreateZero();
@@ -171,12 +183,21 @@ namespace AzToolsFramework
             explicit ManipulatorBoundSpline(RegisteredBoundId boundId)
                 : BoundShapeInterface(boundId) {}
 
-            bool IntersectRay(const AZ::Vector3 &rayOrigin, const AZ::Vector3 &rayDir, float &t) override;
+            bool IntersectRay(
+                const AZ::Vector3& rayOrigin, const AZ::Vector3& rayDir, float& rayIntersectionDistance) override;
             void SetShapeData(const BoundRequestShapeBase& shapeData) override;
 
             AZStd::weak_ptr<const AZ::Spline> m_spline;
             AZ::Transform m_transform;
             float m_width = 0.0f;
         };
+
+        /// Approximate intersection with a torus-like shape.
+        bool IntersectHollowCylinder(
+            const AZ::Vector3& rayOrigin, const AZ::Vector3& rayDirection,
+            const AZ::Vector3& center, const AZ::Vector3& axis,
+            AZ::VectorFloat minorRadius, AZ::VectorFloat majorRadius,
+            float& rayIntersectionDistance);
+
     } // namespace Picking
 } // namespace AzToolsFramework

@@ -74,16 +74,18 @@ void AssetBuilderApplication::RegisterCoreComponents()
 
 void AssetBuilderApplication::StartCommon(AZ::Entity* systemEntity)
 {
+    InstallCtrlHandler();
+
     AzToolsFramework::ToolsApplication::StartCommon(systemEntity);
 
     AZStd::string configFilePath;
     AZStd::string gameRoot;
-    
+
     if (m_commandLine.GetNumSwitchValues("gameRoot") > 0)
     {
         gameRoot = m_commandLine.GetSwitchValue("gameRoot", 0);
     }
-    
+
     if (gameRoot.empty())
     {
         if (IsInDebugMode())
@@ -101,7 +103,7 @@ void AssetBuilderApplication::StartCommon(AZ::Entity* systemEntity)
             AZ_Printf(AssetBuilderSDK::InfoWindow, "gameRoot is best specified as the full path to the game's asset folder.");
         }
     }
-    
+
     AZ::IO::FileIOBase* fileIO = AZ::IO::FileIOBase::GetInstance();
     if (fileIO)
     {

@@ -29,6 +29,8 @@
 #include "DecalRenderNode.h"
 #include "WaterVolumeRenderNode.h"
 #include "IEntitySystem.h"
+#include <MathConversion.h>
+#include <Vegetation/StaticVegetationBus.h>
 
 
 #define RAD2BYTE(x) ((x)* 255.0f / float(g_PI2))
@@ -51,6 +53,7 @@ IRenderNode* CTerrain::AddVegetationInstance(int nStaticGroupID, const Vec3& vPo
         return 0;
     }
 
+    AZ::Aabb aabb;
     StatInstGroup& group = GetObjManager()->GetListStaticTypes()[DEFAULT_SID][nStaticGroupID];
     if (!group.GetStatObj())
     {
@@ -66,7 +69,7 @@ IRenderNode* CTerrain::AddVegetationInstance(int nStaticGroupID, const Vec3& vPo
         pEnt->m_ucAngle = angle;
         pEnt->m_ucAngleX = angleX;
         pEnt->m_ucAngleY = angleY;
-        pEnt->CalcBBox();
+        aabb = LyAABBToAZAabb(pEnt->CalcBBox());
 
         float fEntLengthSquared = pEnt->GetBBox().GetSize().GetLengthSquared();
         if (fEntLengthSquared > MAX_VALID_OBJECT_VOLUME || !_finite(fEntLengthSquared) || fEntLengthSquared <= 0)
@@ -99,7 +102,15 @@ IRenderNode* CTerrain::AddVegetationInstance(int nStaticGroupID, const Vec3& vPo
         }
         sample.q.NormalizeSafe();
         renderNode = m_pMergedMeshesManager->AddInstance(sample);
+
+        AZ::Transform transform = LYTransformToAZTransform(mr) * AZ::Transform::CreateScale(AZ::Vector3(fScale));
+        transform.SetTranslation(LYVec3ToAZVec3(sample.pos));
+
+        aabb = LyAABBToAZAabb(group.GetStatObj()->GetAABB());
+        aabb.ApplyTransform(transform);
     }
+
+    Vegetation::StaticVegetationNotificationBus::Broadcast(&Vegetation::StaticVegetationNotificationBus::Events::InstanceAdded, renderNode, aabb);
 
     return renderNode;
 }
@@ -130,6 +141,8 @@ void CTerrain::RemoveAllStaticObjects()
             break;
         }
     }
+
+    Vegetation::StaticVegetationNotificationBus::Broadcast(&Vegetation::StaticVegetationNotificationBus::Events::VegetationCleared);
 }
 
 #define GET_Z_VAL(_x, _y) heightmap[(_x) * nTerrainSize + (_y)]
@@ -409,6 +422,12 @@ void CTerrain::ResetTerrainVertBuffers()
     }
 }
 
+// defined in CryEngine\Cry3DEngine\3dEngine.cpp
+namespace OceanGlobals
+{
+    extern float g_oceanStep;
+}
+
 void CTerrain::SetOceanWaterLevel(float fOceanWaterLevel)
 {
     SetWaterLevel(fOceanWaterLevel);
@@ -418,6 +437,5 @@ void CTerrain::SetOceanWaterLevel(float fOceanWaterLevel)
     {
         gEnv->pPhysicalWorld->AddGlobalArea()->SetParams(&pb);
     }
-    extern float g_oceanStep;
-    g_oceanStep = -1; // if e_PhysOceanCell is used, make it re-apply the params on Update
+    OceanGlobals::g_oceanStep = -1; // if e_PhysOceanCell is used, make it re-apply the params on Update
 }

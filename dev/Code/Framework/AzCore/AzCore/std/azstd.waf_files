@@ -80,6 +80,7 @@
         ],
         "std/parallel":
         [
+            "parallel/allocator_concurrent_static.h",
             "parallel/atomic.h",
             "parallel/binary_semaphore.h",
             "parallel/combinable.h",

@@ -151,8 +151,8 @@ namespace EMotionFX
             ActorSettings actorSettings;
             ExtractActorSettings(context.m_group, actorSettings);
 
-            NodeIndexSet selectedMeshNodeIndices;
-            GetNodeIndicesOfSelectedMeshes(context, selectedMeshNodeIndices);
+            NodeIndexSet selectedBaseMeshNodeIndices;
+            GetNodeIndicesOfSelectedBaseMeshes(context, selectedBaseMeshNodeIndices);
 
             const SceneContainers::SceneGraph& graph = context.m_scene.GetGraph();
 
@@ -192,7 +192,7 @@ namespace EMotionFX
             // Collect the node indices that emfx cares about and construct the boneNameEmfxIndex map for quick search.
             AZStd::vector<SceneContainers::SceneGraph::NodeIndex> nodeIndices;
             BoneNameEmfxIndexMap boneNameEmfxIndexMap;
-            BuildPreExportStructure(context, rootBoneNodeIndex, selectedMeshNodeIndices, nodeIndices, boneNameEmfxIndexMap);
+            BuildPreExportStructure(context, rootBoneNodeIndex, selectedBaseMeshNodeIndices, nodeIndices, boneNameEmfxIndexMap);
 
             EMotionFX::Actor* actor = context.m_actor;
             EMotionFX::Skeleton* actorSkeleton = actor->GetSkeleton();
@@ -317,7 +317,7 @@ namespace EMotionFX
                 }
 
                 // Process meshes
-                for (auto& nodeIndex : selectedMeshNodeIndices)
+                for (auto& nodeIndex : selectedBaseMeshNodeIndices)
                 {
                     AZStd::shared_ptr<const SceneDataTypes::IMeshData> nodeMesh = azrtti_cast<const SceneDataTypes::IMeshData*>(graph.GetNodeContent(nodeIndex));
                     AZ_Assert(nodeMesh, "Node is expected to be a mesh, but isn't.");
@@ -330,8 +330,8 @@ namespace EMotionFX
                             continue;
                         }
                         EMotionFX::Node* emfxNode = actorSkeletonLookup[nodeIndex.AsNumber()];
-                        AZStd::string_view nodeName = RemoveLODSuffix(emfxNode->GetName());
-                        emfxNode->SetName(nodeName.to_string().c_str());
+                        const AZStd::string_view nodeNameView = RemoveLODSuffix(emfxNode->GetName());
+                        emfxNode->SetName(AZStd::string(nodeNameView).c_str());
                         BuildMesh(context, emfxNode, nodeMesh, nodeIndex, boneNameEmfxIndexMap, actorSettings, coordSysConverter, 0);
                     }
                 }
@@ -352,11 +352,11 @@ namespace EMotionFX
                             if (meshData)
                             {
                                 // Find the Lod mesh node in emfx
-                                AZStd::string_view nodeName = RemoveLODSuffix(graph.GetNodeName(nodeIndex).GetName());
-                                EMotionFX::Node* emfxNode = actorSkeleton->FindNodeByName(nodeName.to_string().c_str());
+                                const AZStd::string_view nodeName = RemoveLODSuffix(graph.GetNodeName(nodeIndex).GetName());
+                                EMotionFX::Node* emfxNode = actorSkeleton->FindNodeByName(nodeName);
                                 if (!emfxNode)
                                 {
-                                    AZ_Assert(false, "Tried to find the lod mesh %s in the actor hierarchy but didn't find any match.", nodeName.to_string().c_str());
+                                    AZ_Assert(false, "Tried to find the lod mesh %.*s in the actor hierarchy but didn't find any match.", static_cast<int>(nodeName.size()), nodeName.data());
                                     continue;
                                 }
                                 BuildMesh(context, emfxNode, meshData, nodeIndex, boneNameEmfxIndexMap, actorSettings, coordSysConverter, ruleIndex + 1);
@@ -368,7 +368,7 @@ namespace EMotionFX
                 // Process Morph Targets
                 {
                     AZStd::vector< AZ::u32>  meshIndices;
-                    for (auto& nodeIndex : selectedMeshNodeIndices)
+                    for (auto& nodeIndex : selectedBaseMeshNodeIndices)
                     {
                         meshIndices.push_back(nodeIndex.AsNumber());
                     }
@@ -402,7 +402,7 @@ namespace EMotionFX
             return AZ::SceneAPI::Events::ProcessingResult::Failure;
         }
 
-        void ActorBuilder::BuildPreExportStructure(ActorBuilderContext& context, const SceneContainers::SceneGraph::NodeIndex& rootBoneNodeIndex, const NodeIndexSet& selectedMeshNodeIndices,
+        void ActorBuilder::BuildPreExportStructure(ActorBuilderContext& context, const SceneContainers::SceneGraph::NodeIndex& rootBoneNodeIndex, const NodeIndexSet& selectedBaseMeshNodeIndices,
             AZStd::vector<SceneContainers::SceneGraph::NodeIndex>& outNodeIndices, BoneNameEmfxIndexMap& outBoneNameEmfxIndexMap)
         {
             const SceneContainers::SceneGraph& graph = context.m_scene.GetGraph();
@@ -457,14 +457,13 @@ namespace EMotionFX
 
 
             // We then search from the graph root to find all the meshes that we selected.
-            auto current = graph.ConvertToStorageIterator(rootBoneNodeIndex);
-            auto meshView = SceneContainers::Views::MakeFilterView(current, graph.GetContentStorage().end(), AZ::SceneAPI::Containers::DerivedTypeFilter<AZ::SceneAPI::DataTypes::IMeshData>());
+            auto meshView = SceneContainers::Views::MakeFilterView(graph.GetContentStorage().begin(), graph.GetContentStorage().end(), AZ::SceneAPI::Containers::DerivedTypeFilter<AZ::SceneAPI::DataTypes::IMeshData>());
             for (auto it = meshView.begin(); it != meshView.end(); ++it)
             {
                 // If the node is a mesh and it is one of the selected ones, add it.
                 auto mesh = azrtti_cast<const SceneDataTypes::IMeshData*>(*it);
                 const SceneContainers::SceneGraph::NodeIndex& nodeIndex = graph.ConvertToNodeIndex(it.GetBaseIterator());
-                if (mesh && (selectedMeshNodeIndices.find(nodeIndex) != selectedMeshNodeIndices.end()))
+                if (mesh && (selectedBaseMeshNodeIndices.find(nodeIndex) != selectedBaseMeshNodeIndices.end()))
                 {
                     outNodeIndices.push_back(nodeIndex);
                 }
@@ -934,7 +933,7 @@ namespace EMotionFX
         }
 
 
-        void ActorBuilder::GetNodeIndicesOfSelectedMeshes(ActorBuilderContext& context, NodeIndexSet& meshNodeIndexSet) const
+        void ActorBuilder::GetNodeIndicesOfSelectedBaseMeshes(ActorBuilderContext& context, NodeIndexSet& meshNodeIndexSet) const
         {
             meshNodeIndexSet.clear();
 
@@ -960,13 +959,12 @@ namespace EMotionFX
 
         AZStd::string_view ActorBuilder::RemoveLODSuffix(const AZStd::string_view& lodName)
         {
-            AZStd::string_view result = lodName;
-            const size_t pos = AzFramework::StringFunc::Find(result.to_string().c_str(), "_lod");
-            if (pos != AZStd::string::npos)
+            const size_t pos = AzFramework::StringFunc::Find(lodName, "_lod", 0, true /*reverse*/);
+            if (pos != AZStd::string_view::npos)
             {
-                result.remove_suffix(result.length() - pos);
+                return lodName.substr(0, pos);
             }
-            return result;
+            return lodName;
         }
     } // namespace Pipeline
 } // namespace EMotionFX

@@ -12,6 +12,7 @@
 #include <AzCore/std/functional_basic.h>
 
 #include <GraphCanvas/Widgets/GraphCanvasTreeItem.h>
+#include <GraphCanvas/Widgets/GraphCanvasTreeModel.h>
 
 namespace GraphCanvas
 {
@@ -22,6 +23,7 @@ namespace GraphCanvas
         : m_abstractItemModel(nullptr)
         , m_allowSignals(true)
         , m_deleteRemoveChildren(false)
+        , m_allowPruneOnEmpty(true)
         , m_parent(nullptr)
     {
     }
@@ -43,18 +45,49 @@ namespace GraphCanvas
         m_childItems.clear();
     }
 
+    void GraphCanvasTreeItem::SetAllowPruneOnEmpty(bool allowsEmpty)
+    {
+        m_allowPruneOnEmpty = allowsEmpty;
+    }
+
+    bool GraphCanvasTreeItem::AllowPruneOnEmpty() const
+    {
+        return m_allowPruneOnEmpty;
+    }
+
     void GraphCanvasTreeItem::DetachItem()
     {
         if (m_parent)
         {
             const bool deleteObject = false;
             m_parent->RemoveChild(this, deleteObject);
+            ClearModel();
         }
     }
     
     int GraphCanvasTreeItem::GetChildCount() const
     {
         return static_cast<int>(m_childItems.size());
+    }
+
+    void GraphCanvasTreeItem::ClearChildren()
+    {
+        if (m_abstractItemModel)
+        {
+            m_deleteRemoveChildren = true;
+            m_abstractItemModel->removeRows(0, GetChildCount(), m_abstractItemModel->CreateIndex(this));
+            m_deleteRemoveChildren = false;
+        }
+        else
+        {
+            while (!m_childItems.empty())
+            {
+                GraphCanvasTreeItem* item = m_childItems.back();
+                m_childItems.pop_back();
+
+                delete item;
+            }
+        }
     }
 
     GraphCanvasTreeItem* GraphCanvasTreeItem::FindChildByRow(int row) const
@@ -86,24 +119,17 @@ namespace GraphCanvas
         return m_parent;
     }
 
-    void GraphCanvasTreeItem::RegisterModel(QAbstractItemModel* itemModel, QModelIndex modelIndex)
+    void GraphCanvasTreeItem::RegisterModel(GraphCanvasTreeModel* itemModel)
     {
         AZ_Assert(m_abstractItemModel == nullptr || m_abstractItemModel == itemModel, "GraphCanvasTreeItem being registered to two models at the same time.");
+
         if (m_abstractItemModel == nullptr)
         {
             m_abstractItemModel = itemModel;
-        }
 
-        if (m_abstractItemModel == itemModel)
-        {
-            if (!m_startModelIndex.isValid() || m_startModelIndex.column() > modelIndex.column())
+            for (auto treeItem : m_childItems)
             {
-                m_startModelIndex = modelIndex;
-            }
-
-            if (!m_endModelIndex.isValid() || m_endModelIndex.column() < modelIndex.column())
-            {
-                m_endModelIndex = modelIndex;
+                treeItem->RegisterModel(itemModel);
             }
         }
     }
@@ -132,10 +158,11 @@ namespace GraphCanvas
         if (m_parent == item)
         {
             m_parent = nullptr;
+            ClearModel();
         }
     }	
 
-    void GraphCanvasTreeItem::AddChild(GraphCanvasTreeItem* item)
+    void GraphCanvasTreeItem::AddChild(GraphCanvasTreeItem* item, bool signalAdd)
     {
         static const Comparator k_insertionComparator = {};
 
@@ -149,14 +176,33 @@ namespace GraphCanvas
             item->m_parent->RemoveChild(item);
         }
 
+        if (m_abstractItemModel)
+        {
+            item->RegisterModel(m_abstractItemModel);
+        }
+
         PreOnChildAdded(item);
-        SignalLayoutAboutToBeChanged();
 
         AZStd::vector< GraphCanvasTreeItem* >::iterator insertPoint = AZStd::lower_bound(m_childItems.begin(), m_childItems.end(), item, k_insertionComparator);
+
+        int rowNumber = AZStd::distance(m_childItems.begin(), insertPoint);
+
+        if (m_abstractItemModel && signalAdd)
+        {
+            // Optimization TODO: Provide some method to batch all of these adds
+            m_abstractItemModel->ChildAboutToBeAdded(this, rowNumber);
+        }
+
         m_childItems.insert(insertPoint, item);
 
         item->m_parent = this;
-        SignalLayoutChanged();
+
+        OnChildAdded(item);
+
+        if (m_abstractItemModel && signalAdd)
+        {
+            m_abstractItemModel->OnChildAdded();
+        }
     }
 
     void GraphCanvasTreeItem::RemoveChild(GraphCanvasTreeItem* item, bool deleteObject)
@@ -174,7 +220,7 @@ namespace GraphCanvas
                 {
                     if (m_abstractItemModel)
                     {
-                        m_abstractItemModel->removeRows(i, 1, m_startModelIndex);
+                        m_abstractItemModel->removeRows(i, 1, m_abstractItemModel->CreateIndex(this));
                     }
                     else
                     {
@@ -186,42 +232,14 @@ namespace GraphCanvas
                             delete treeItem;
                         }
                     }
+
+                    
                     break;
                 }
             }
         }
 
         m_deleteRemoveChildren = false;
-    }
-
-    void GraphCanvasTreeItem::ClearChildren()
-    {
-        if (m_abstractItemModel)
-        {
-            m_deleteRemoveChildren = true;
-            m_abstractItemModel->removeRows(0, GetChildCount(), m_startModelIndex);
-            m_deleteRemoveChildren = false;
-        }
-        else
-        {
-            while (!m_childItems.empty())
-            {
-                GraphCanvasTreeItem* item = m_childItems.back();
-                m_childItems.pop_back();
-
-                delete item;
-            }
-        }
-    }
-
-    void GraphCanvasTreeItem::BlockSignals()
-    {
-        m_allowSignals = false;
-    }
-
-    void GraphCanvasTreeItem::UnblockSignals()
-    {
-        m_allowSignals = true;
     }
 
     void GraphCanvasTreeItem::SignalLayoutAboutToBeChanged()
@@ -242,9 +260,14 @@ namespace GraphCanvas
 
     void GraphCanvasTreeItem::SignalDataChanged()
     {
-        if (m_abstractItemModel && m_allowSignals)
+        if (m_abstractItemModel)
         {
-            m_abstractItemModel->dataChanged(m_startModelIndex, m_endModelIndex);
+            m_abstractItemModel->dataChanged(m_abstractItemModel->CreateIndex(this), m_abstractItemModel->CreateIndex(this, GetColumnCount() - 1));
+
+            if (m_parent)
+            {
+                m_parent->OnChildDataChanged(this);
+            }
         }
     }
     
@@ -255,6 +278,26 @@ namespace GraphCanvas
 
     void GraphCanvasTreeItem::PreOnChildAdded(GraphCanvasTreeItem* item)
     {
-        (void)item;
+        AZ_UNUSED(item);
     }
-}
+
+    void GraphCanvasTreeItem::OnChildAdded(GraphCanvasTreeItem* treeItem)
+    {
+        AZ_UNUSED(treeItem);
+    }
+
+    void GraphCanvasTreeItem::OnChildDataChanged(GraphCanvasTreeItem* item)
+    {
+        AZ_UNUSED(item);
+    }
+
+    void GraphCanvasTreeItem::ClearModel()
+    {
+        m_abstractItemModel = nullptr;
+
+        for (GraphCanvasTreeItem* item : m_childItems)
+        {
+            item->ClearModel();
+        }
+    }
+};

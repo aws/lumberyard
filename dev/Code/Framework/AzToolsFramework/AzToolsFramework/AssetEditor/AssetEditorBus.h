@@ -15,6 +15,8 @@
 
 namespace AzToolsFramework
 {
+    class InstanceDataNode;
+
     namespace AssetEditor
     {
         // External interaction with Asset Editor
@@ -24,10 +26,31 @@ namespace AzToolsFramework
         public:
             static const AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::Single;
 
+            virtual void CreateNewAsset(const AZ::Data::AssetType& assetType) = 0;
+
+            virtual AZ::Outcome<bool, AZStd::string> IsAssetDataValid() { return AZ::Success(true); }
+
             // Open Asset Editor and load asset
             virtual void OpenAssetEditor(const AZ::Data::Asset<AZ::Data::AssetData>& asset) = 0;
         };
         using AssetEditorRequestsBus = AZ::EBus<AssetEditorRequests>;
+
+        class AssetEditorValidationRequests
+            : public AZ::EBusTraits
+        {
+        public:
+
+            using BusIdType = AZ::Data::AssetId;
+            static const AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::Multiple;
+            static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::ById;
+
+            virtual void BeforePropertyEdit(AzToolsFramework::InstanceDataNode* node, AZ::Data::Asset<AZ::Data::AssetData> asset) { AZ_UNUSED(node); AZ_UNUSED(asset); }
+
+            virtual void PreAssetSave(AZ::Data::Asset<AZ::Data::AssetData> asset) { AZ_UNUSED(asset); }
+
+            virtual AZ::Outcome<bool, AZStd::string> IsAssetDataValid(const AZ::Data::Asset<AZ::Data::AssetData>& asset) { AZ_UNUSED(asset); return AZ::Success(true); }
+        };
+        using AssetEditorValidationRequestBus = AZ::EBus<AssetEditorValidationRequests>;
 
         // Internal interaction with existing Asset Editor widget
         class AssetEditorWidgetRequests
@@ -36,8 +59,8 @@ namespace AzToolsFramework
         public:
             static const AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::Single;
 
-            // Set asset within existing Asset Editor window
-            virtual void SetAsset(const AZ::Data::Asset<AZ::Data::AssetData>& asset) const = 0;
+            virtual void CreateAsset(const AZ::Data::AssetType& assetType) = 0;
+            virtual void OpenAsset(const AZ::Data::Asset<AZ::Data::AssetData>& asset) = 0;
         };
         using AssetEditorWidgetRequestsBus = AZ::EBus<AssetEditorWidgetRequests>;
     } // namespace AssetEditor

@@ -43,8 +43,9 @@
             "Common/AnimationExporter.h",
             "Common/AnimationExporter.cpp",
             "Common/BlendShapeExporter.h",
-            "Common/BlendShapeExporter.cpp"
-
+            "Common/BlendShapeExporter.cpp",
+            "Common/TouchBendingExporter.h",
+            "Common/TouchBendingExporter.cpp"
         ],
         "Cgf":
         [

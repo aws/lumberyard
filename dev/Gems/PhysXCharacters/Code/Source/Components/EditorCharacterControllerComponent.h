@@ -62,6 +62,7 @@ namespace PhysXCharacters
         static void GetIncompatibleServices(AZ::ComponentDescriptor::DependencyArrayType& incompatible)
         {
             incompatible.push_back(AZ_CRC("PhysXCharacterControllerService", 0x428de4fa));
+            incompatible.push_back(AZ_CRC("LegacyCryPhysicsService", 0xbb370351));
         }
 
         static void GetRequiredServices(AZ::ComponentDescriptor::DependencyArrayType& required)
@@ -96,7 +97,9 @@ namespace PhysXCharacters
         void OnDeselected() override;
 
         // AzFramework::EntityDebugDisplayEventBus
-        void DisplayEntity(bool& handled) override;
+        void DisplayEntityViewport(
+            const AzFramework::ViewportInfo& viewportInfo,
+            AzFramework::DebugDisplayRequests& debugDisplay) override;
 
         // PhysX::ConfigurationNotificationBus
         virtual void OnConfigurationRefreshed(const PhysX::Configuration& configuration) override;

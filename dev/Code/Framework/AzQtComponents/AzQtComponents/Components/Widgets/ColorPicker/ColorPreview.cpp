@@ -37,7 +37,12 @@ ColorPreview::ColorPreview(QWidget* parent)
     , m_draggedSwatch(new Swatch(this))
 {
     setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
-    setContextMenuPolicy(Qt::PreventContextMenu);
+    setContextMenuPolicy(Qt::CustomContextMenu);
+    setFocusPolicy(Qt::ClickFocus);
+
+    connect(this, &QWidget::customContextMenuRequested, this, [this](const QPoint& pos) {
+        emit colorContextMenuRequested(pos, colorUnderPoint(pos));
+    });
 
     int size = static_cast<double>(DRAGGED_SWATCH_SIZE) * devicePixelRatioF();
 
@@ -158,7 +163,11 @@ void ColorPreview::mousePressEvent(QMouseEvent* event)
 void ColorPreview::mouseReleaseEvent(QMouseEvent* event)
 {
     QFrame::mouseReleaseEvent(event);
-    emit colorSelected((event->pos().x() < contentsRect().width() / 2) ? selectedColor() : currentColor());
+
+    if (event->button() == Qt::LeftButton)
+    {
+        emit colorSelected(colorUnderPoint(event->pos()));
+    }
 }
 
 void ColorPreview::mouseMoveEvent(QMouseEvent* event)
@@ -193,6 +202,11 @@ void ColorPreview::mouseMoveEvent(QMouseEvent* event)
     drag->setPixmap(pixmap);
 
     drag->exec(Qt::CopyAction);
+}
+
+AZ::Color ColorPreview::colorUnderPoint(const QPoint& p)
+{
+    return (p.x() < contentsRect().width() / 2) ? selectedColor() : currentColor();
 }
 
 } // namespace AzQtComponents

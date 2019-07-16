@@ -1,0 +1,40 @@
+{
+  "project_name": "StarterGame",
+  "project_id":  "{EFEEAD38-1D7A-5BA5-B0D5-3577272F7282}",
+    "product_name": "Starter Game",
+    "executable_name": "StarterGameLauncher",
+    "code_folder": "Code/StarterGame",
+    "modules" : ["StarterGame"],
+
+    "durango_settings" : {
+        "app_id"            : "StarterGame.app",
+        "package_name"      : "StarterGame",
+        "display_name"      : "Lumberyard StarterGame",
+        "publisher"         : "Amazon, Inc",
+        "description"       : "LUMBERYARD",
+        "foreground_text"   : "light",
+        "background_color"  : "#6495ED",
+        "version"           : "1.0.0.0",
+        "titleid"           : "06BFF3BF",
+        "scid"              : "84d70100-5e91-4cf0-bcc9-7b2f06bff3bf",
+        "appxmanifest"      : "../Resources/AppxManifest.xml",
+        "logo"              : "../Resources/DurangoLogo.png",
+        "small_logo"        : "../Resources/DurangoSmallLogo.png",
+        "splash_screen"     : "../Resources/DurangoSplashScreen.png",
+        "store_logo"        : "../Resources/DurangoStoreLogo.png"
+    },
+
+    "android_settings" : {
+        "package_name" : "com.amazon.lumberyard.startergame",
+        "version_number" : 1,
+        "version_name" : "1.0.0.0",
+        "orientation" : "landscape"
+    },
+
+    "orbis_settings": {
+        "data_folder": "StarterGame",
+        "nptitle_dat": "",
+        "param_sfo": "../Resources/param.sfo",
+        "trophy_trp": "../Resources/trophies.trp"
+    }
+}

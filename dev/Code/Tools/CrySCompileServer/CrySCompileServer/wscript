@@ -41,7 +41,8 @@ def build(bld):
         copyright_org   = 'Amazon-CryTek',
         file_list       = 'cryscompileserver.waf_files',
         platforms       = ['win', 'darwin_x64'],
-        configurations  = ['debug', 'debug_dedicated', 'profile', 'profile_dedicated'],
+        configurations  = ['all'],
+        exclude_monolithic = True,
         disable_pch     = True,
 
         includes        = [bld.Path('Code/Tools/CrySCompileServer/CrySCompileServer')],

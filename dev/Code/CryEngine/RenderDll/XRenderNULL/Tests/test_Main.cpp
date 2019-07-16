@@ -13,7 +13,6 @@
 #include <AzTest/AzTest.h>
 
 AZ_UNIT_TEST_HOOK();
-AZ_INTEG_TEST_HOOK();
 
 TEST(CryRenderNULLSanityTest, Sanity)
 {

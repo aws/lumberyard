@@ -1,0 +1,6 @@
+<download name="GSG_03_Components" type="Map">
+ <index src="filelist.xml" dest="filelist.xml"/>
+ <files>
+  <file src="level.pak" dest="level.pak" size="403935" md5="8c5994d44a6cab504ae6c3155b4921d9"/>
+ </files>
+</download>

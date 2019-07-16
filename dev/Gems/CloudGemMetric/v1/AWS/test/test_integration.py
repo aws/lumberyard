@@ -107,15 +107,17 @@ class IntegrationTest_CloudGemMetric(base_stack_test.BaseStackTestCase):
         self.lmbr_aws('metric', 'consume')   
         #No this is not by accident.  We call it a second time to ensure the amoeba generator has two files to work with.
         self.lmbr_aws('metric', 'send-test-metrics', '--events-per-iteration', '10', '--iterations-per-thread', '20', '--threads', '16', '--event-type', 'bug')
-        self.lmbr_aws('metric', 'consume')   
-        self.lmbr_aws('metric', 'combine-s3-files', '--verbose')
+        self.lmbr_aws('metric', 'consume')           
         
-        self.assertIn("Ingesting files", self.lmbr_aws_stdout)
+        #The amoeba only processes files that are older than five minutes.
+        time.sleep(320)    
+        self.lmbr_aws('metric', 'combine-s3-files', '--verbose')
+        self.assertIn("Ingesting the files", self.lmbr_aws_stdout)
         self.assertIn("Getting main file for", self.lmbr_aws_stdout)
         self.assertIn("Processing file", self.lmbr_aws_stdout)
         self.assertIn("Size on S3:", self.lmbr_aws_stdout)
         self.assertIn("Time remaining:", self.lmbr_aws_stdout)                
-        self.assertIn("Saving the ingested file to", self.lmbr_aws_stdout)         
+        self.assertIn("Saving ingested file to", self.lmbr_aws_stdout)         
         self.assertIn("I've consumed everything I can in bucket ", self.lmbr_aws_stdout)
 
 

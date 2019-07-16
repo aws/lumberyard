@@ -60,6 +60,7 @@ namespace AzToolsFramework
             if (componentToAdd && AZStd::find(m_pendingComponents.begin(), m_pendingComponents.end(), componentToAdd) == m_pendingComponents.end())
             {
                 m_pendingComponents.push_back(componentToAdd);
+                SetDirty();
             }
         }
 
@@ -69,6 +70,7 @@ namespace AzToolsFramework
             if (componentToRemove)
             {
                 m_pendingComponents.erase(AZStd::remove(m_pendingComponents.begin(), m_pendingComponents.end(), componentToRemove), m_pendingComponents.end());
+                SetDirty();
             }
         };
 

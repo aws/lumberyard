@@ -13,6 +13,8 @@
 #include <native/resourcecompiler/RCJobSortFilterProxyModel.h>
 #include <native/resourcecompiler/JobsModel.h> //for jobsModel column enum
 
+#include <AzQtComponents/Components/FilteredSearchWidget.h>
+
 namespace AssetProcessor
 {
     JobSortFilterProxyModel::JobSortFilterProxyModel(QObject* parent)
@@ -24,25 +26,33 @@ namespace AssetProcessor
 
     bool JobSortFilterProxyModel::filterAcceptsRow(int sourceRow, const QModelIndex& sourceParent) const
     {
-        QModelIndex jobStateIndex = sourceModel()->index(sourceRow, AssetProcessor::JobsModel::Column::ColumnStatus, sourceParent);
-        QString jobState = sourceModel()->data(jobStateIndex).toString();
-        if (m_filterRegexExpEmpty)
-        {
-            if (jobState.compare(tr("Pending"), Qt::CaseSensitive) != 0 && jobState.compare(tr("Completed"), Qt::CaseSensitive) != 0)
-            {
-                return QSortFilterProxyModel::filterAcceptsRow(sourceRow, sourceParent);
-            }
+        using namespace AzToolsFramework::AssetSystem;
 
+        const QModelIndex jobStateIndex = sourceModel()->index(sourceRow,
+            AssetProcessor::JobsModel::Column::ColumnStatus, sourceParent);
+
+        JobStatus jobStatus = sourceModel()->data(jobStateIndex, AssetProcessor::JobsModel::statusRole)
+            .value<JobStatus>();
+        if (jobStatus == JobStatus::Failed_InvalidSourceNameExceedsMaxLimit)
+            jobStatus = JobStatus::Failed;
+
+        if (!m_activeTypeFilters.isEmpty() && !m_activeTypeFilters.contains(jobStatus))
+        {
             return false;
         }
 
         return QSortFilterProxyModel::filterAcceptsRow(sourceRow, sourceParent);
     }
 
-    void JobSortFilterProxyModel::OnFilterRegexExpChanged(QRegExp regExp, bool isFilterRegexExpEmpty)
+    void JobSortFilterProxyModel::OnJobStatusFilterChanged(const AzQtComponents::SearchTypeFilterList& activeTypeFilters)
     {
-        m_filterRegexExpEmpty = isFilterRegexExpEmpty;
-        setFilterRegExp(regExp);
+        m_activeTypeFilters.clear();
+        for (const auto filter : activeTypeFilters)
+        {
+            m_activeTypeFilters << filter.metadata.value<AzToolsFramework::AssetSystem::JobStatus>();
+        }
+
+        invalidateFilter();
     }
 } //namespace AssetProcessor
 

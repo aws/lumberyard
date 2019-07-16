@@ -50,7 +50,5 @@ protected:
     void DragLeave(QDragLeaveEvent* event) override;
     void Drop(QDropEvent* event, AzQtComponents::DragAndDropContextBase& context) override;
 
-    static void ResaveSlice(AZ::Entity* sliceEntity, const AZStd::string& fullFilePath);
-
     bool CanAcceptDragAndDropEvent(QDropEvent* event, AzQtComponents::DragAndDropContextBase& context) const;
 };

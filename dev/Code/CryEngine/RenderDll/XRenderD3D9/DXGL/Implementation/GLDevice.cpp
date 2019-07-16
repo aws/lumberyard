@@ -15,13 +15,12 @@
 //               initialize OpenGL contexts and detect hardware
 //               capabilities
 
-
 #include <StdAfx.h>
+
 #include "GLDevice.hpp"
 #include "GLResource.hpp"
 #include <Common/RenderCapabilities.h>
 #include <SFunctor.h>
-
 
 #include <AzCore/std/smart_ptr/make_shared.h>
 #include <AzCore/Module/DynamicModuleHandle.h>
@@ -49,13 +48,6 @@
 // This is the minimum number of uniform buffers required by the engine in order to run.
 // Used when checking the capabilities of an adapter.
 static const int MIN_UNIFORM_BUFFERS_REQUIRED = 8;
-
-#if defined(DXGLES_LOAD_EXTENSIONS)
-// Declare the function pointers for the gles extensions.
-#undef EXTENSION_FUNC
-#define EXTENSION_FUNC(func, ...) FunctPtr ## func DXGL_EXT_FUNCPTR(func) = nullptr;
-#include "GLExtensionFunctions.inl"
-#endif
 
 namespace NCryOpenGL
 {
@@ -2128,109 +2120,53 @@ namespace NCryOpenGL
     }
 
 #if DXGL_EXTENSION_LOADER
-#if defined(DXGLES_LOAD_EXTENSIONS)
-    void LoadDXGLESExtensionEntryPoints()
+    bool LoadEarlyGLEntryPoints()
     {
-        // Assign the function pointer to the correct function.
-        #undef EXTENSION_FUNC
-        #define EXTENSION_FUNC(func, ...) DXGL_EXT_FUNCPTR(func) = DXGL_GL_LOADER_FUNCTION_PTR(func) ? \
-                                                                            DXGL_GL_LOADER_FUNCTION_PTR(func) : \
-                                                                            DXGL_GL_LOADER_FUNCTION_PTR(func ## EXT);
-        #include "GLExtensionFunctions.inl"
-    }
-#endif // defined(DXGLES_LOAD_EXTENSIONS)
-
-#if defined(OPENGL_ES) && defined(DXGL_USE_LOADER_GLAD)
-    namespace FunctionLoaderHelper
-    {
-        AZStd::unique_ptr<AZ::DynamicModuleHandle> s_moduleHandle;
-
-        bool LoadModule()
+#if defined(DXGL_USE_LOADER_GLAD)
+#   if defined(DXGL_USE_EGL)
+        if (gladLoaderLoadEGL(NULL) == 0)
         {
-            s_moduleHandle = AZ::DynamicModuleHandle::Create("libGLESv2");
-            return s_moduleHandle->Load(false);
-        }
-        
-        bool UnloadModule()
-        {
-            if (s_moduleHandle)
-            {
-                return s_moduleHandle->Unload();
-            }
-
+            DXGL_ERROR("Failed to retrieve EGL entry points");
             return false;
         }
-
-        void* GetGLProcAddress(const char* funcName)
-        {
-             AZStd::function<void*(const char*)> libLoader;
- #if defined(DXGL_USE_WGL)
-             libLoader = wglGetProcAddress;
- #elif defined(DXGL_USE_EGL)
-             typedef void* (*funcLoader)(const char *name);
-             libLoader = reinterpret_cast<funcLoader>(eglGetProcAddress);
- #endif
-             // First try to load the function address using the library function
-             if (libLoader)
-             {
-                 void* function = libLoader(funcName);
-                 if (function)
-                 {
-                     return function;
-                 }
-             }
-
-            // Now try to load the function symbol directly from the library.
-            // This is needed because some implementations only load extensions and not core functions.
-            if (!s_moduleHandle)
-            {
-                if (!LoadModule())
-                {
-                    AZ_Assert(false, "Failed to load module");
-                    return nullptr;
-                }
-            }
-
-            return s_moduleHandle->GetFunction<void*>(funcName);
-        }
-    };
-#endif //defined(OPENGL_ES) && defined(DXGL_USE_LOADER_GLAD)
+#   endif
+#else
+#error "Not implemented on this platform"
+#endif
+        return true;
+    }
 
     bool LoadGLEntryPoints(SDummyContext& kDummyContext)
     {
 #if defined(DXGL_USE_LOADER_GLAD)
+#   if defined(DXGL_USE_GLX)
+        if (gladLoaderLoadGLX(NULL, 0) == 0)
+        {
+            DXGL_ERROR("Failed to retrieve GLX entry points");
+            return false;
+        }
+#   endif
+
 #if defined(OPENGL_ES)
-        int ret = gladLoadGLES2Loader(FunctionLoaderHelper::GetGLProcAddress);
-        // Unload library if needed
-        FunctionLoaderHelper::UnloadModule();
+        int ret = gladLoaderLoadGLES2();
 #else
-        int ret = gladLoadGL();
+        int ret = gladLoaderLoadGL();
 #endif //defined(OPENGL_ES)
-        if (ret != 1)
+        
+        if (ret == 0)
         {
             DXGL_ERROR("Failed to retrieve GL entry points");
             return false;
         }
 
 #   if defined(DXGL_USE_WGL)
-        if (gladLoadWGL(kDummyContext.m_kDummyWindow.m_kNativeDisplay) != 1)
+        if (gladLoaderLoadWGL(kDummyContext.m_kDummyWindow.m_kNativeDisplay) == 0)
         {
             DXGL_ERROR("Failed to retrieve WGL entry points");
             return false;
         }
-#   elif defined(DXGL_USE_EGL)
-        if (gladLoadEGL() != 1)
-        {
-            DXGL_ERROR("Failed to retrieve EGL entry points");
-            return false;
-        }
-#   elif defined(DXGL_USE_GLX)
-        if (gladLoadGLX(NULL, 0) != 1)
-        {
-            DXGL_ERROR("Failed to retrieve GLX entry points");
-            return false;
-        }
-#   endif
+#   endif 
+
 #elif defined(DXGL_USE_LOADER_GLEW)
         GLenum err = glewInit();
         if (GLEW_OK != err)
@@ -2256,13 +2192,8 @@ namespace NCryOpenGL
 #else
 #error "Not implemented on this platform"
 #endif
-
-#if defined(DXGLES_LOAD_EXTENSIONS)
-        LoadDXGLESExtensionEntryPoints();
-#endif // defined(DXGLES_LOAD_EXTENSIONS)
         return true;
     }
-
 #endif //DXGL_EXTENSION_LOADER
 
     bool GetGLVersion(SAdapterPtr& pAdapter)
@@ -2313,6 +2244,13 @@ namespace NCryOpenGL
 
     bool DetectAdapters(std::vector<SAdapterPtr>& kAdapters)
     {
+#if DXGL_EXTENSION_LOADER
+        if (!LoadEarlyGLEntryPoints())
+        {
+            return false;
+        }
+#endif // DXGL_EXTENSION_LOADER
+
         SDummyContext kDummyContext;
         if (!kDummyContext.Initialize())
         {

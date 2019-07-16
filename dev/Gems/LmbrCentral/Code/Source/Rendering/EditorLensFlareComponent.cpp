@@ -347,7 +347,9 @@ namespace LmbrCentral
         }
     }
 
-    void EditorLensFlareComponent::DisplayEntity(bool& handled)
+    void EditorLensFlareComponent::DisplayEntityViewport(
+        const AzFramework::ViewportInfo& viewportInfo,
+        AzFramework::DebugDisplayRequests& debugDisplay)
     {
         // Don't draw extra visualization unless selected.
         if (!IsSelected())
@@ -355,21 +357,18 @@ namespace LmbrCentral
             return;
         }
 
-        handled = true;
-
-        auto* dc = AzFramework::EntityDebugDisplayRequestBus::FindFirstHandler();
-        AZ_Assert(dc, "Invalid display context.");
-
         AZ::Transform transform = AZ::Transform::CreateIdentity();
         EBUS_EVENT_ID_RESULT(transform, GetEntityId(), AZ::TransformBus, GetWorldTM);
 
-        dc->PushMatrix(transform);
+        debugDisplay.PushMatrix(transform);
+
         {
             const AZ::Vector3& color = m_configuration.m_tint;
-            dc->SetColor(AZ::Vector4(color.GetX(), color.GetY(), color.GetZ(), 1.f));
-            dc->DrawWireSphere(AZ::Vector3::CreateZero(), 1.0f);
+            debugDisplay.SetColor(AZ::Vector4(color.GetX(), color.GetY(), color.GetZ(), 1.f));
+            debugDisplay.DrawWireSphere(AZ::Vector3::CreateZero(), 1.0f);
         }
-        dc->PopMatrix();
+
+        debugDisplay.PopMatrix();
     }
 
     AZ::u32 EditorLensFlareComponent::OnLensFlareSelected()

@@ -74,6 +74,7 @@ namespace ScriptedEntityTweener
             behaviorContext->EBus<ScriptedEntityTweenerBus>("ScriptedEntityTweenerBus")
                 ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
                 ->Event("AnimateEntity", &ScriptedEntityTweenerBus::Events::AnimateEntityScript)
+                    ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::List)
                 ->Event("SetOptionalParams", &ScriptedEntityTweenerBus::Events::SetOptionalParams)
                 ->Event("Stop", &ScriptedEntityTweenerBus::Events::Stop)
                 ->Event("Pause", &ScriptedEntityTweenerBus::Events::Pause)
@@ -81,6 +82,7 @@ namespace ScriptedEntityTweener
                 ->Event("SetPlayDirectionReversed", &ScriptedEntityTweenerBus::Events::SetPlayDirectionReversed)
                 ->Event("SetSpeed", &ScriptedEntityTweenerBus::Events::SetSpeed)
                 ->Event("SetInitialValue", &ScriptedEntityTweenerBus::Events::SetInitialValue)
+                    ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::List)
                 ->Event("GetVirtualPropertyValue", &ScriptedEntityTweenerBus::Events::GetVirtualPropertyValue);
 
             behaviorContext->EBus<ScriptedEntityTweenerNotificationsBus>("ScriptedEntityTweenerNotificationBus")

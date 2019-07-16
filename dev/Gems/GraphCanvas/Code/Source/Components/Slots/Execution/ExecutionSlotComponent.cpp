@@ -93,6 +93,15 @@ namespace GraphCanvas
     {
     }
 
+    SlotConfiguration* ExecutionSlotComponent::CloneSlotConfiguration() const
+    {
+        ExecutionSlotConfiguration* executionConfiguration = aznew ExecutionSlotConfiguration();
+
+        PopulateSlotConfiguration((*executionConfiguration));
+
+        return executionConfiguration;
+    }
+
     AZ::Entity* ExecutionSlotComponent::ConstructConnectionEntity(const Endpoint& sourceEndpoint, const Endpoint& targetEndpoint, bool createModelConnection) const
     {    
         const AZStd::string k_connectionSubStyle = ".logicFlow";

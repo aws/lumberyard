@@ -106,6 +106,18 @@ namespace AZ
             CMesh& m_mesh;
         };
 
+        struct TouchBendableMeshNodeExportContext
+            : public MeshNodeExportContext
+        {
+            AZ_RTTI(TouchBendableMeshNodeExportContext, "{A3370E01-EF04-4F5A-95F3-5B9ADFEFD2F0}", MeshNodeExportContext);
+
+            TouchBendableMeshNodeExportContext(const MeshNodeExportContext& copyContext, AZStd::string& rootBoneName, Phase phase);
+            TouchBendableMeshNodeExportContext(const TouchBendableMeshNodeExportContext& copyContext) = delete;
+            ~TouchBendableMeshNodeExportContext() override = default;
+
+            TouchBendableMeshNodeExportContext& operator=(const TouchBendableMeshNodeExportContext& other) = delete;
+        };
+
         // Finds a root bone of the skeleton that is referenced by the given node.
         struct ResolveRootBoneFromNodeContext
             : public SceneAPI::Events::ICallContext

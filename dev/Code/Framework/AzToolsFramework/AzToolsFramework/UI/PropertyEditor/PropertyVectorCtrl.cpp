@@ -37,6 +37,7 @@ namespace AzToolsFramework
         using OnValueChanged = void(QDoubleSpinBox::*)(double);
         auto valueChanged = static_cast<OnValueChanged>(&QDoubleSpinBox::valueChanged);
         connect(m_spinBox, valueChanged, this, &VectorElement::onValueChanged);
+        connect(m_spinBox, &QDoubleSpinBox::editingFinished, this, &VectorElement::editingFinished);
     }
 
     void VectorElement::SetLabel(const char* label)
@@ -117,6 +118,7 @@ namespace AzToolsFramework
                         {
                             OnValueChangedInElement(value, elementIndex);
                         });
+                    connect(m_elements[elementIndex]->GetSpinBox(), &QDoubleSpinBox::editingFinished, this, &PropertyVectorCtrl::editingFinished);
 
                     numberOfElementsRemaining--;
                 }
@@ -255,6 +257,10 @@ namespace AzToolsFramework
             {
                 EBUS_EVENT(PropertyEditorGUIMessages::Bus, RequestWrite, newCtrl);
             });
+        newCtrl->connect(newCtrl, &PropertyVectorCtrl::editingFinished, [newCtrl]()
+        {
+            PropertyEditorGUIMessages::Bus::Broadcast(&PropertyEditorGUIMessages::Bus::Handler::OnEditingFinished, newCtrl);
+        });
 
         newCtrl->setMinimum(-std::numeric_limits<float>::max());
         newCtrl->setMaximum(std::numeric_limits<float>::max());

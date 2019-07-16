@@ -159,5 +159,98 @@ namespace AZ
             replaced += RemapIds(classPtr, classUuid, mapper, context, false);
             return replaced;
         }
+
+        template<typename IdType>
+        unsigned int Remapper<IdType>::RemapIdsAndIdRefs(void* classPtr, const AZ::Uuid& classUuid, const typename Remapper<IdType>::IdReplacer& mapper, AZ::SerializeContext* context)
+        {
+            if (!context)
+            {
+                AZ::ComponentApplicationBus::BroadcastResult(context, &AZ::ComponentApplicationBus::Events::GetSerializeContext);
+                if (!context)
+                {
+                    AZ_Error("Serialization", false, "No serialize context provided! Failed to get component application default serialize context! ComponentApp is not started or input serialize context should not be null!");
+                    return 0;
+                }
+            }
+
+            unsigned int replaced = 0;
+            AZStd::vector<StackDataType> parentStack;
+            parentStack.reserve(30);
+            auto beginCB = [&](void* ptr, const AZ::SerializeContext::ClassData* classData, const AZ::SerializeContext::ClassElement* elementData) -> bool
+            {
+                if (classData->m_typeId == AZ::SerializeTypeInfo<IdType>::GetUuid())
+                {
+                    auto originalIdPtr = reinterpret_cast<IdType*>(ptr);
+                    if (elementData->m_flags & AZ::SerializeContext::ClassElement::FLG_POINTER)
+                    {
+                        originalIdPtr = *reinterpret_cast<IdType**>(ptr);
+                    }
+
+                    if (mapper)
+                    {
+                        IdType newId;
+                        newId = mapper(*originalIdPtr);
+
+                        if (newId != *originalIdPtr)
+                        {
+                            if (parentStack.size() >= 1)
+                            {
+                                StackDataType& parentInfo = parentStack.back();
+                                GenericClassInfo* genericClassInfo = context->FindGenericClassInfo(parentInfo.m_classData->m_typeId);
+                                if (genericClassInfo && genericClassInfo->GetGenericTypeId() == IdUtils::s_GenericClassPairID)
+                                {
+                                    if (parentStack.size() >= 2) // check if the pair is part of a container
+                                    {
+                                        StackDataType& pairContainerInfo = parentStack[parentStack.size() - 2];
+                                        if (pairContainerInfo.m_classData->m_container)
+                                        {
+                                            // make sure the ID is the first element in the pair, as this is what associative containers care about, the rest is a payload
+                                            // we can skip this check, but it helps avoiding extra work on a high level)
+                                            if (parentInfo.m_elementData->m_genericClassInfo->GetTemplatedTypeId(0) == classData->m_typeId)
+                                            {
+                                                pairContainerInfo.m_isModifiedContainer = true; // we will modify the container
+                                            }
+                                        }
+                                    }
+                                }
+                                else if (parentInfo.m_classData->m_container)
+                                {
+                                    parentInfo.m_isModifiedContainer = true; // we will modify this container
+                                }
+                            }
+
+                            *originalIdPtr = newId;
+                            replaced++;
+                        }
+                    }
+                }
+
+                parentStack.push_back({ classData, elementData, ptr, false });
+                return true;
+            };
+
+            auto endCB = [&]() -> bool
+            {
+                if (parentStack.back().m_isModifiedContainer)
+                {
+                    parentStack.back().m_classData->m_container->ElementsUpdated(parentStack.back().m_dataPtr);
+                }
+                parentStack.pop_back();
+                return true;
+            };
+
+            context->EnumerateInstance(
+                classPtr,
+                classUuid,
+                beginCB,
+                endCB,
+                AZ::SerializeContext::ENUM_ACCESS_FOR_WRITE,
+                nullptr,
+                nullptr,
+                nullptr
+            );
+
+            return replaced;
+        }
     } // namespace IdUtils
 } // namespace AZ

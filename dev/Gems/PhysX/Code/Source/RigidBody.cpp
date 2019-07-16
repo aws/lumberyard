@@ -23,6 +23,7 @@
 #include <Source/Shape.h>
 #include <extensions/PxRigidBodyExt.h>
 #include <PxPhysicsAPI.h>
+#include <AzFramework/Physics/World.h>
 
 namespace PhysX
 {
@@ -545,12 +546,46 @@ namespace PhysX
         }
     }
 
-    void RigidBody::AddedToWorld()
+    void RigidBody::AddToWorld(Physics::World& world)
     {
+        physx::PxScene* scene = static_cast<physx::PxScene*>(world.GetNativePointer());
+
+        if (!scene)
+        {
+            AZ_Error("RigidBody", false, "Tried to add body to invalid world.");
+            return;
+        }
+
+        if (!m_pxRigidActor)
+        {
+            AZ_Error("RigidBody", false, "Tried to add invalid PhysX body to world.");
+            return;
+        }
+
+        scene->addActor(*m_pxRigidActor);
+
         if (m_startAsleep)
         {
             m_pxRigidActor->putToSleep();
         }
+    }
+
+    void RigidBody::RemoveFromWorld(Physics::World& world)
+    {
+        physx::PxScene* scene = static_cast<physx::PxScene*>(world.GetNativePointer());
+        if (!scene)
+        {
+            AZ_Error("PhysX World", false, "Tried to remove body from invalid world.");
+            return;
+        }
+
+        if (!m_pxRigidActor)
+        {
+            AZ_Error("PhysX World", false, "Tried to remove invalid PhysX body from world.");
+            return;
+        }
+
+        scene->removeActor(*m_pxRigidActor);
     }
 
     void RigidBody::SetName(const AZStd::string& entityName)

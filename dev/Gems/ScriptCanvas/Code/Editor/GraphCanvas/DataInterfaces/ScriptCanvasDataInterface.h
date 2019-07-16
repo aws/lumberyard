@@ -41,6 +41,21 @@ namespace ScriptCanvasEditor
     public:
         virtual ~ScriptCanvasDataInterface() = default;
 
+        const AZ::EntityId GetScriptCanvasGraphEntityId() const
+        {
+            AZ::EntityId sceneId;
+            ScriptCanvas::EditorNodeRequestBus::EventResult(sceneId, GetNodeId(), &ScriptCanvas::EditorNodeRequests::GetGraphEntityId);
+
+            return sceneId;
+        }
+
+        const GraphCanvas::GraphId GetGraphCanvasGraphId() const
+        {
+            GraphCanvas::GraphId graphCanvasGraphId;
+            GeneralRequestBus::BroadcastResult(graphCanvasGraphId, &GeneralRequests::GetGraphCanvasGraphId, GetScriptCanvasGraphEntityId());
+            return graphCanvasGraphId;
+        }
+
         const AZ::EntityId& GetNodeId() const
         {
             return m_nodeId;
@@ -78,9 +93,7 @@ namespace ScriptCanvasEditor
 
         void PostUndoPoint()
         {
-            AZ::EntityId sceneId;
-            ScriptCanvas::EditorNodeRequestBus::EventResult(sceneId, GetNodeId(), &ScriptCanvas::EditorNodeRequests::GetGraphEntityId);
-            GeneralRequestBus::Broadcast(&GeneralRequests::PostUndoPoint, sceneId);
+            GeneralRequestBus::Broadcast(&GeneralRequests::PostUndoPoint, GetScriptCanvasGraphEntityId());
         }
         ////
         

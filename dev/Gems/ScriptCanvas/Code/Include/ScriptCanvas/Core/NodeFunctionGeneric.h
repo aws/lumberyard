@@ -19,6 +19,12 @@
 #include <Libraries/Libraries.h>
 #include <AzCore/std/tuple.h>
 #include "Node.h"
+#include "Attributes.h"
+
+#pragma warning( push )
+#pragma warning( disable : 5046) // 'function' : Symbol involving type with internal linkage not defined
+
+
 
 /**
  * NodeFunctionGeneric.h
@@ -71,7 +77,7 @@ namespace ScriptCanvas
     }
 }
 
-#define SCRIPT_CANVAS_GENERIC_FUNCTION_MULTI_RESULTS_NODE_WITH_DEFAULTS(NODE_NAME, DEFAULT_FUNC, CATEGORY, UUID, DESCRIPTION, ...)\
+#define SCRIPT_CANVAS_GENERIC_FUNCTION_MULTI_RESULTS_NODE_WITH_DEFAULTS(NODE_NAME, DEFAULT_FUNC, CATEGORY, UUID, ISDEPRECATED, DESCRIPTION, ...)\
     struct NODE_NAME##Traits\
     {\
         AZ_TYPE_INFO(NODE_NAME##Traits, UUID);\
@@ -94,9 +100,10 @@ namespace ScriptCanvas
             return !result.empty() ? result.data() : "Result";\
         }\
         \
-        static const char* GetCategory() { return CATEGORY; };\
+        static const char* GetCategory() { if (ISDEPRECATED) return AZ_STRINGIZE(CATEGORY /Deprecated); else return CATEGORY; };\
         static const char* GetDescription() { return DESCRIPTION; };\
         static const char* GetNodeName() { return #NODE_NAME; };\
+        static bool IsDeprecated() { return ISDEPRECATED; };\
         \
     private:\
         static AZStd::string_view GetName(size_t i)\
@@ -111,13 +118,22 @@ namespace ScriptCanvas
     using NODE_NAME##Node = ScriptCanvas::NodeFunctionGenericMultiReturn<AZStd::add_pointer_t<decltype(NODE_NAME)>, NODE_NAME##Traits, &NODE_NAME, AZStd::add_pointer_t<decltype(DEFAULT_FUNC)>, &DEFAULT_FUNC>;
 
 #define SCRIPT_CANVAS_GENERIC_FUNCTION_MULTI_RESULTS_NODE(NODE_NAME, CATEGORY, UUID, DESCRIPTION, ...)\
-    SCRIPT_CANVAS_GENERIC_FUNCTION_MULTI_RESULTS_NODE_WITH_DEFAULTS(NODE_NAME, ScriptCanvas::NoDefaultArguments, CATEGORY, UUID, DESCRIPTION, __VA_ARGS__)
+    SCRIPT_CANVAS_GENERIC_FUNCTION_MULTI_RESULTS_NODE_WITH_DEFAULTS(NODE_NAME, ScriptCanvas::NoDefaultArguments, CATEGORY, UUID, false, DESCRIPTION, __VA_ARGS__)
+
+#define SCRIPT_CANVAS_GENERIC_FUNCTION_MULTI_RESULTS_NODE_DEPRECATED(NODE_NAME, CATEGORY, UUID, DESCRIPTION, ...)\
+    SCRIPT_CANVAS_GENERIC_FUNCTION_MULTI_RESULTS_NODE_WITH_DEFAULTS(NODE_NAME, ScriptCanvas::NoDefaultArguments, CATEGORY, UUID, true, DESCRIPTION, __VA_ARGS__)
 
 #define SCRIPT_CANVAS_GENERIC_FUNCTION_NODE_WITH_DEFAULTS(NODE_NAME, DEFAULT_FUNC, CATEGORY, UUID, DESCRIPTION, ...)\
-    SCRIPT_CANVAS_GENERIC_FUNCTION_MULTI_RESULTS_NODE_WITH_DEFAULTS(NODE_NAME, DEFAULT_FUNC, CATEGORY, UUID, DESCRIPTION, __VA_ARGS__)
+    SCRIPT_CANVAS_GENERIC_FUNCTION_MULTI_RESULTS_NODE_WITH_DEFAULTS(NODE_NAME, DEFAULT_FUNC, CATEGORY, UUID, false, DESCRIPTION, __VA_ARGS__)
+
+#define SCRIPT_CANVAS_GENERIC_FUNCTION_NODE_WITH_DEFAULTS_DEPRECATED(NODE_NAME, DEFAULT_FUNC, CATEGORY, UUID, DESCRIPTION, ...)\
+    SCRIPT_CANVAS_GENERIC_FUNCTION_MULTI_RESULTS_NODE_WITH_DEFAULTS(NODE_NAME, DEFAULT_FUNC, CATEGORY, UUID, true, DESCRIPTION, __VA_ARGS__)
 
 #define SCRIPT_CANVAS_GENERIC_FUNCTION_NODE(NODE_NAME, CATEGORY, UUID, DESCRIPTION, ...)\
-    SCRIPT_CANVAS_GENERIC_FUNCTION_MULTI_RESULTS_NODE_WITH_DEFAULTS(NODE_NAME, ScriptCanvas::NoDefaultArguments, CATEGORY, UUID, DESCRIPTION, __VA_ARGS__)
+    SCRIPT_CANVAS_GENERIC_FUNCTION_MULTI_RESULTS_NODE_WITH_DEFAULTS(NODE_NAME, ScriptCanvas::NoDefaultArguments, CATEGORY, UUID, false, DESCRIPTION, __VA_ARGS__)
+
+#define SCRIPT_CANVAS_GENERIC_FUNCTION_NODE_DEPRECATED(NODE_NAME, CATEGORY, UUID, DESCRIPTION, ...)\
+    SCRIPT_CANVAS_GENERIC_FUNCTION_MULTI_RESULTS_NODE_WITH_DEFAULTS(NODE_NAME, ScriptCanvas::NoDefaultArguments, CATEGORY, UUID, true, DESCRIPTION, __VA_ARGS__)
 
 namespace ScriptCanvas
 {
@@ -152,12 +168,15 @@ namespace ScriptCanvas
             {
                 serializeContext->Class<NodeFunctionGenericMultiReturn, Node>()
                     ->Version(0)
+                    ->Attribute(AZ::Script::Attributes::Deprecated, t_Traits::IsDeprecated())
                     ;
 
                 if (AZ::EditContext* editContext = serializeContext->GetEditContext())
                 {
                     editContext->Class<NodeFunctionGenericMultiReturn>(t_Traits::GetNodeName(), t_Traits::GetDescription())
-                        ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
+                        ->ClassElement(AZ::Edit::ClassElements::EditorData, t_Traits::GetDescription())
+                        ->Attribute(AZ::Script::Attributes::Deprecated, t_Traits::IsDeprecated())
+                        ->Attribute(ScriptCanvas::Attributes::Node::TitlePaletteOverride, t_Traits::IsDeprecated() ? "DeprecatedNodeTitlePalette" : "")
                         ->Attribute(AZ::Edit::Attributes::Category, t_Traits::GetCategory())
                         ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
                         ;
@@ -181,7 +200,7 @@ namespace ScriptCanvas
         {
             static_assert(sizeof...(t_Args) == sizeof...(Is), "Argument size mismatch in NodeFunctionGenericMultiReturn");
             static_assert(sizeof...(t_Args) == t_Traits::s_numArgs, "Number of arguments does not match number of argument names in NodeFunctionGenericMultiReturn");
-            SCRIPT_CANVAS_CALL_ON_INDEX_SEQUENCE(AddInputDatumSlot(AZStd::string::format("%s: %s", Data::Traits<t_Args>::GetName(), t_Traits::GetArgName(Is)).c_str(), "", Data::FromAZType(Data::Traits<t_Args>::GetAZType()), Datum::eOriginality::Copy));
+            SCRIPT_CANVAS_CALL_ON_INDEX_SEQUENCE(AddInputDatumSlot(AZStd::string::format("%s: %s", Data::Traits<t_Args>::GetName().data(), t_Traits::GetArgName(Is)).c_str(), "", Data::FromAZType(Data::Traits<t_Args>::GetAZType()), Datum::eOriginality::Copy));
         } 
 
         void ConfigureSlots() override
@@ -249,3 +268,5 @@ namespace ScriptCanvas
     }
 
 }
+
+#pragma warning( pop )

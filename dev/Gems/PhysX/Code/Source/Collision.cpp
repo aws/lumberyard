@@ -28,8 +28,12 @@ namespace PhysX
             physx::PxFilterObjectAttributes attributes1, physx::PxFilterData filterData1,
             physx::PxPairFlags& pairFlags, const void* constantBlock, physx::PxU32 constantBlockSize)
         {
-            // Ignore filtered collisions
-            if (!ShouldCollide(filterData0, filterData1))
+            const AZ::u64 layer0 = Combine(filterData0.word0, filterData0.word1);
+            const AZ::u64 layer1 = Combine(filterData1.word0, filterData1.word1);
+            const AZ::u64 group0 = Combine(filterData0.word2, filterData0.word3);
+            const AZ::u64 group1 = Combine(filterData1.word2, filterData1.word3);
+            const bool shouldCollide = ((layer0 & group1) && (layer1 & group0));
+            if (!shouldCollide)
             {
                 return physx::PxFilterFlag::eSUPPRESS;
             }
@@ -41,8 +45,18 @@ namespace PhysX
                 return physx::PxFilterFlag::eDEFAULT;
             }
 
+            //If any of the actors is in the TouchBend layer then we are not interested
+            //in contact data, nor interested in eNOTIFY_* callbacks.
+            const AZ::u64 touchBendLayerMask = Physics::CollisionLayer::TouchBend.GetMask();
+            if (layer0 == touchBendLayerMask || layer1 == touchBendLayerMask)
+            {
+                pairFlags = physx::PxPairFlag::eSOLVE_CONTACT |
+                    physx::PxPairFlag::eDETECT_DISCRETE_CONTACT;
+                return physx::PxFilterFlag::eDEFAULT;
+            }
+
             // generate contacts for all that were not filtered above
-            pairFlags = 
+            pairFlags =
                 physx::PxPairFlag::eCONTACT_DEFAULT |
                 physx::PxPairFlag::eNOTIFY_TOUCH_FOUND |
                 physx::PxPairFlag::eNOTIFY_TOUCH_PERSISTS |
@@ -56,6 +70,7 @@ namespace PhysX
             }
 
             return physx::PxFilterFlag::eDEFAULT;
+
         }
 
         physx::PxFilterFlags DefaultFilterShaderCCD(
@@ -63,8 +78,12 @@ namespace PhysX
             physx::PxFilterObjectAttributes attributes1, physx::PxFilterData filterData1,
             physx::PxPairFlags& pairFlags, const void* constantBlock, physx::PxU32 constantBlockSize)
         {
-            // Ignore filtered collisions
-            if (!ShouldCollide(filterData0, filterData1))
+            const AZ::u64 layer0 = Combine(filterData0.word0, filterData0.word1);
+            const AZ::u64 layer1 = Combine(filterData1.word0, filterData1.word1);
+            const AZ::u64 group0 = Combine(filterData0.word2, filterData0.word3);
+            const AZ::u64 group1 = Combine(filterData1.word2, filterData1.word3);
+            const bool shouldCollide = ((layer0 & group1) && (layer1 & group0));
+            if (!shouldCollide)
             {
                 return physx::PxFilterFlag::eSUPPRESS;
             }
@@ -77,6 +96,17 @@ namespace PhysX
                 return physx::PxFilterFlag::eDEFAULT;
             }
 
+            //If any of the actors is in the TouchBend layer then we are not interested
+            //in contact data, nor interested in eNOTIFY_* callbacks.
+            const AZ::u64 touchBendLayerMask = Physics::CollisionLayer::TouchBend.GetMask();
+            if (layer0 == touchBendLayerMask || layer1 == touchBendLayerMask)
+            {
+                pairFlags = physx::PxPairFlag::eSOLVE_CONTACT |
+                    physx::PxPairFlag::eDETECT_DISCRETE_CONTACT |
+                    physx::PxPairFlag::eDETECT_CCD_CONTACT;
+                return physx::PxFilterFlag::eDEFAULT;
+            }
+
             // generate contacts for all that were not filtered above
             pairFlags =
                 physx::PxPairFlag::eCONTACT_DEFAULT |
@@ -85,7 +115,8 @@ namespace PhysX
                 physx::PxPairFlag::eNOTIFY_TOUCH_LOST |
                 physx::PxPairFlag::eNOTIFY_TOUCH_CCD |
                 physx::PxPairFlag::eNOTIFY_CONTACT_POINTS |
-                physx::PxPairFlag::eDETECT_CCD_CONTACT;
+                physx::PxPairFlag::eDETECT_CCD_CONTACT |
+                physx::PxPairFlag::eNOTIFY_CONTACT_POINTS;
 
             // generate callbacks for collisions between kinematic and dynamic objects
             if (physx::PxFilterObjectIsKinematic(attributes0) != physx::PxFilterObjectIsKinematic(attributes1))

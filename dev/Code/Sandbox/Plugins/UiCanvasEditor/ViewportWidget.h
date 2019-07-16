@@ -21,7 +21,7 @@ class RulerWidget;
 
 class ViewportWidget
     : public QViewport
-    , private AzToolsFramework::EditorPickModeRequests::Bus::Handler
+    , private AzToolsFramework::EditorPickModeNotificationBus::Handler
     , private FontNotificationBus::Handler
 {
     Q_OBJECT
@@ -126,11 +126,9 @@ protected:
     void focusOutEvent(QFocusEvent* ev) override;
 
 private: // member functions
-
-    // EditorPickModeRequests
-    void StartObjectPickMode() override;
-    void StopObjectPickMode() override;
-    // ~EditorPickModeRequests
+    // EditorPickModeNotificationBus
+    void OnEntityPickModeStarted() override;
+    void OnEntityPickModeStopped() override;
 
     // FontNotifications
     void OnFontsReloaded() override;

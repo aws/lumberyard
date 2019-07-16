@@ -15,13 +15,16 @@
 
 #include "ImageLoaderSystemComponent.h"
 
-#include <ITexture.h>
-#include <IRenderer.h>
 #include <AzCore/IO/FileIO.h>
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/Serialization/EditContext.h>
 #include <AzCore/RTTI/BehaviorContext.h>
 #include <AzFramework/API/ApplicationAPI.h>
+
+#include <platform.h>
+#include <ISystem.h>
+#include <ITexture.h>
+#include <IRenderer.h>
 
 #include "jpgd.h"
 
@@ -92,7 +95,8 @@ namespace CloudGemDefectReporter
         ImageLoaderRequestBus::Handler::BusDisconnect();
         if (m_currentTextureID != -1)
         {
-            gEnv->pRenderer->RemoveTexture(m_currentTextureID);
+            SSystemGlobalEnvironment* pEnv = GetISystem()->GetGlobalEnvironment();
+            pEnv->pRenderer->RemoveTexture(m_currentTextureID);
         }
     }
 
@@ -106,23 +110,20 @@ namespace CloudGemDefectReporter
         auto fileBase = FileIOBase::GetDirectInstance();
         if (!fileBase)
         {
-            gEnv->pSystem->Warning(VALIDATOR_MODULE_SHINE, VALIDATOR_WARNING, VALIDATOR_FLAG_FILE | VALIDATOR_FLAG_TEXTURE,
-                filePath.c_str(), "ImageLoaderSystemComponent:File system not active when attempting to load JPEG %s", filePath.c_str());
+            AZ_Warning("ImageLoaderSystemComponent", false, "ImageLoaderSystemComponent:File system not active when attempting to load JPEG %s", filePath.c_str());
             return false;
         }
 
         AZStd::string extension(PathUtil::GetExt(filePath.c_str()));
         if (extension != "jpg" && extension != "jpeg")
         {
-            gEnv->pSystem->Warning(VALIDATOR_MODULE_SHINE, VALIDATOR_WARNING, VALIDATOR_FLAG_FILE | VALIDATOR_FLAG_TEXTURE,
-                filePath.c_str(), "ImageLoaderSystemComponent:Attempt to load non-JPEG for image file: %s", filePath.c_str());
+            AZ_Warning("ImageLoaderSystemComponent", false, "ImageLoaderSystemComponent:Attempt to load non-JPEG for image file: %s", filePath.c_str());
             return false;
         }
 
         if (!fileBase->Exists(filePath.c_str()))
         {
-            gEnv->pSystem->Warning(VALIDATOR_MODULE_SHINE, VALIDATOR_WARNING, VALIDATOR_FLAG_FILE | VALIDATOR_FLAG_TEXTURE,
-                filePath.c_str(), "ImageLoaderSystemComponent:JPEG file not found for image file: %s", filePath.c_str());
+            AZ_Warning("ImageLoaderSystemComponent", false, "ImageLoaderSystemComponent:JPEG file not found for image file: %s", filePath.c_str());
             return false;
         }
 
@@ -142,8 +143,7 @@ namespace CloudGemDefectReporter
             AZ::u8* imgData = decompress_jpeg_image_from_stream(&jpgStream, &width, &height, &comps, comps);
             if (!imgData)
             {
-                gEnv->pSystem->Warning(VALIDATOR_MODULE_SHINE, VALIDATOR_WARNING, VALIDATOR_FLAG_FILE | VALIDATOR_FLAG_TEXTURE,
-                    filePath.c_str(), "ImageLoaderSystemComponent:Unable to decode JPEG file for image file: %s", filePath.c_str());
+                AZ_Warning("ImageLoaderSystemComponent", false, "ImageLoaderSystemComponent:Unable to decode JPEG file for image file: %s", filePath.c_str());
                 delete[] readBuffer;
                 return false;
             }
@@ -159,13 +159,14 @@ namespace CloudGemDefectReporter
                 data[i * 4 + 3] = 255;
             }
 
+            SSystemGlobalEnvironment* pEnv = GetISystem()->GetGlobalEnvironment();
             // destroy previous texture (of potentially same name) before trying to create new texture
             if (m_currentTextureID != -1)
             {
-                gEnv->pRenderer->RemoveTexture(m_currentTextureID);
+                pEnv->pRenderer->RemoveTexture(m_currentTextureID);
             }
 
-            int textureID = gEnv->pRenderer->DownLoadToVideoMemory(data,
+            int textureID = pEnv->pRenderer->DownLoadToVideoMemory(data,
                 width,
                 height,
                 eTF_R8G8B8A8,
@@ -179,11 +180,10 @@ namespace CloudGemDefectReporter
             delete[] readBuffer;
             delete[] data;
 
-            ITexture* texture = gEnv->pRenderer->EF_GetTextureByID(textureID);
+            ITexture* texture = pEnv->pRenderer->EF_GetTextureByID(textureID);
             if (!texture || !texture->IsTextureLoaded())
             {
-                gEnv->pSystem->Warning(VALIDATOR_MODULE_SHINE, VALIDATOR_WARNING, VALIDATOR_FLAG_FILE | VALIDATOR_FLAG_TEXTURE,
-                    filePath.c_str(), "ImageLoaderSystemComponent:No JPEG texture created for image file: %s", filePath.c_str());
+                AZ_Warning("ImageLoaderSystemComponent", false, "ImageLoaderSystemComponent:No JPEG texture created for image file: %s", filePath.c_str());
                 return false;
             }
             m_currentTextureID = textureID;

@@ -13,6 +13,8 @@
 #include <AzQtComponents/Components/Widgets/Slider.h>
 #include <AzQtComponents/Components/Widgets/GradientSlider.h>
 #include <AzQtComponents/Components/Style.h>
+#include <AzQtComponents/Components/ConfigHelpers.h>
+#include <AzQtComponents/Utilities/Conversions.h>
 
 #include <QStyleFactory>
 
@@ -29,22 +31,25 @@
 namespace AzQtComponents
 {
 
+static QString g_horizontalSliderClass = QStringLiteral("HorizontalSlider");
+static QString g_verticalSliderClass = QStringLiteral("VerticalSlider");
+
 static void ReadBorder(QSettings& settings, const QString& name, Slider::Border& border)
 {
     settings.beginGroup(name);
-    border.thickness = settings.value("Thickness", border.thickness).toInt();
-    border.color = settings.value("Color", border.color).value<QColor>();
-    border.radius = settings.value("Radius", border.radius).toReal();
+    ConfigHelpers::read<int>(settings, QStringLiteral("Thickness"), border.thickness);
+    ConfigHelpers::read<QColor>(settings, QStringLiteral("Color"), border.color);
+    ConfigHelpers::read<qreal>(settings, QStringLiteral("Radius"), border.radius);
     settings.endGroup();
 }
 
 static void ReadGradientSlider(QSettings& settings, const QString& name, Slider::GradientSliderConfig& gradientSlider)
 {
     settings.beginGroup(name);
-    gradientSlider.thickness = settings.value("Thickness", gradientSlider.thickness).toInt();
-    gradientSlider.length = settings.value("Length", gradientSlider.length).toInt();
-    ReadBorder(settings, "GrooveBorder", gradientSlider.grooveBorder);
-    ReadBorder(settings, "HandleBorder", gradientSlider.handleBorder);
+    ConfigHelpers::read<int>(settings, QStringLiteral("Thickness"), gradientSlider.thickness);
+    ConfigHelpers::read<int>(settings, QStringLiteral("Length"), gradientSlider.length);
+    ReadBorder(settings, QStringLiteral("GrooveBorder"), gradientSlider.grooveBorder);
+    ReadBorder(settings, QStringLiteral("HandleBorder"), gradientSlider.handleBorder);
     settings.endGroup();
 }
 
@@ -52,10 +57,10 @@ static void ReadGroove(QSettings& settings, const QString& name, Slider::SliderC
 {
     settings.beginGroup(name);
 
-    groove.color = settings.value("Color", groove.color).value<QColor>();
-    groove.colorHovered = settings.value("ColorHovered", groove.colorHovered).value<QColor>();
-    groove.width = settings.value("Width", groove.width).toInt();
-    groove.midMarkerHeight = settings.value("MidMarkerHeight", groove.midMarkerHeight).toInt();
+    ConfigHelpers::read<QColor>(settings, QStringLiteral("Color"), groove.color);
+    ConfigHelpers::read<QColor>(settings, QStringLiteral("ColorHovered"), groove.colorHovered);
+    ConfigHelpers::read<int>(settings, QStringLiteral("Width"), groove.width);
+    ConfigHelpers::read<int>(settings, QStringLiteral("MidMarkerHeight"), groove.midMarkerHeight);
 
     settings.endGroup();
 }
@@ -64,10 +69,10 @@ static void ReadHandle(QSettings& settings, const QString& name, Slider::SliderC
 {
     settings.beginGroup(name);
 
-    handle.color = settings.value("Color", handle.color).value<QColor>();
-    handle.colorDisabled = settings.value("DisabledColor", handle.colorDisabled).value<QColor>();
-    handle.size = settings.value("Size", handle.size).toInt();
-    handle.disabledMargin = settings.value("DisabledMargin", handle.disabledMargin).toInt();
+    ConfigHelpers::read<QColor>(settings, QStringLiteral("Color"), handle.color);
+    ConfigHelpers::read<QColor>(settings, QStringLiteral("DisabledColor"), handle.colorDisabled);
+    ConfigHelpers::read<int>(settings, QStringLiteral("Size"), handle.size);
+    ConfigHelpers::read<int>(settings, QStringLiteral("DisabledMargin"), handle.disabledMargin);
 
     settings.endGroup();
 }
@@ -76,17 +81,8 @@ static void ReadSlider(QSettings& settings, const QString& name, Slider::SliderC
 {
     settings.beginGroup(name);
 
-    ReadHandle(settings, "Handle", slider.handle);
-    ReadGroove(settings, "Groove", slider.grove);
-
-    settings.endGroup();
-}
-
-static void ReadToolTipOffset(QSettings& settings, const QString& name, QPoint& offset)
-{
-    settings.beginGroup(name);
-
-    offset = QPoint(settings.value("X", offset.x()).toInt(), settings.value("Y", offset.y()).toInt());
+    ReadHandle(settings, QStringLiteral("Handle"), slider.handle);
+    ReadGroove(settings, QStringLiteral("Groove"), slider.grove);
 
     settings.endGroup();
 }
@@ -163,14 +159,12 @@ void Slider::setToolTipFormatting(QString prefix, QString postFix)
 
 Slider::Config Slider::loadConfig(QSettings& settings)
 {
-    Q_UNUSED(settings);
-
     Config config = defaultConfig();
 
     ReadGradientSlider(settings, "GradientSlider", config.gradientSlider);
     ReadSlider(settings, "Slider", config.slider);
-    ReadToolTipOffset(settings, "HorizontalToolTipOffset", config.horizontalToolTipOffset);
-    ReadToolTipOffset(settings, "VerticalToolTipOffset", config.verticalToolTipOffset);
+    ConfigHelpers::read<QPoint>(settings, QStringLiteral("HorizontalToolTipOffset"), config.horizontalToolTipOffset);
+    ConfigHelpers::read<QPoint>(settings, QStringLiteral("VerticalToolTipOffset"), config.verticalToolTipOffset);
 
     return config;
 }
@@ -206,16 +200,43 @@ Slider::Config Slider::defaultConfig()
     return config;
 }
 
-int Slider::valueFromPos(const QPoint &pos) const
+int Slider::valueFromPosition(QSlider* slider, const QPoint& pos, int width, int height, int bottom)
 {
-    if (orientation() == Qt::Horizontal)
+    if (slider->orientation() == Qt::Horizontal)
     {
-        return QStyle::sliderValueFromPosition(m_slider->minimum(), m_slider->maximum(), pos.x(), width());
+        return QStyle::sliderValueFromPosition(slider->minimum(), slider->maximum(), pos.x(), width);
     }
     else
     {
-        return QStyle::sliderValueFromPosition(m_slider->minimum(), m_slider->maximum(), rect().bottom() - pos.y(), height());
+        return QStyle::sliderValueFromPosition(slider->minimum(), slider->maximum(), bottom - pos.y(), height);
     }
+}
+
+int Slider::valueFromPos(const QPoint& pos) const
+{
+    return valueFromPosition(m_slider, pos, width(), height(), rect().bottom());
+}
+
+void Slider::showHoverToolTip(QString toolTipText, const QPoint& globalPosition, QSlider* slider, QWidget* toolTipParentWidget, int width, int height, const QPoint& toolTipOffset)
+{
+    QPoint toolTipPosition;
+
+    // QToolTip::showText puts the tooltip (2, 16) pixels down from the specified point - it's hardcoded.
+    // We want the tooltip to always appear above the slider, so we offset it according to our settings (which
+    // are solely there to put the tooltip in a readable spot - somewhere tracking the mouse x position directly
+    // above a horizontal slider, and tracking the mouse y position directly to the right of vertical sliders).
+    if (slider->orientation() == Qt::Horizontal)
+    {
+        toolTipPosition = QPoint(QCursor::pos().x() + toolTipOffset.x(), globalPosition.y() - height + toolTipOffset.y());
+    }
+    else
+    {
+        toolTipPosition = QPoint(globalPosition.x() + width + toolTipOffset.x(), QCursor::pos().y() + toolTipOffset.y());
+    }
+
+    QToolTip::showText(toolTipPosition, toolTipText, toolTipParentWidget);
+
+    slider->update();
 }
 
 bool Slider::eventFilter(QObject* watched, QEvent* event)
@@ -231,25 +252,8 @@ bool Slider::eventFilter(QObject* watched, QEvent* event)
 
                 const QString toolTipText = QStringLiteral("%1%2%3").arg(m_toolTipPrefix, hoverValueText(valueFromPos(m_mousePos)), m_toolTipPostfix);
 
-                QPoint toolTipPosition;
                 QPoint globalPosition = parentWidget()->mapToGlobal(pos());
-
-                // QToolTip::showText puts the tooltip (2, 16) pixels down from the specified point - it's hardcoded.
-                // We want the tooltip to always appear above the slider, so we offset it according to our settings (which
-                // are solely there to put the tooltip in a readable spot - somewhere tracking the mouse x position directly
-                // above a horizontal slider, and tracking the mouse y position directly to the right of vertical sliders).
-                if (orientation() == Qt::Horizontal)
-                {
-                    toolTipPosition = QPoint(QCursor::pos().x() + m_horizontalToolTipOffset.x(), globalPosition.y() - height() + m_horizontalToolTipOffset.y());
-                }
-                else
-                {
-                    toolTipPosition = QPoint(globalPosition.x() + width() + m_verticalToolTipOffset.x(), QCursor::pos().y() + m_verticalToolTipOffset.y());
-                }
-
-                QToolTip::showText(toolTipPosition, toolTipText, this);
-
-                m_slider->update();
+                showHoverToolTip(toolTipText, globalPosition, m_slider, this, width(), height(), m_toolTipOffset);
             }
             break;
 
@@ -359,20 +363,34 @@ QRect Slider::sliderGrooveRect(const Style* style, const QStyleOptionSlider* opt
 
 bool Slider::polish(Style* style, QWidget* widget, const Slider::Config& config)
 {
-    Q_UNUSED(style);
-    Q_UNUSED(widget);
     Q_UNUSED(config);
 
-    if (auto sliderWidget = qobject_cast<Slider*>(widget->parentWidget()))
+    auto polishSlider = [style](auto slider)
     {
-        sliderWidget->m_horizontalToolTipOffset = config.horizontalToolTipOffset;
-        sliderWidget->m_verticalToolTipOffset = config.verticalToolTipOffset;
+        // Qt's stylesheet parsing doesn't set custom properties on things specified via
+        // pseudo-states, such as horizontal/vertical, so we implement our own
+        if (slider->orientation() == Qt::Horizontal)
+        {
+            Style::removeClass(slider, g_verticalSliderClass);
+            Style::addClass(slider, g_horizontalSliderClass);
+        }
+        else
+        {
+            Style::removeClass(slider, g_horizontalSliderClass);
+            Style::addClass(slider, g_verticalSliderClass);
+        }
+    };
 
-        // when the settings file reloads, we want to repolish this so it updates the tooltips
-        style->repolishOnSettingsChange(widget);
+    // Apply the right styles to our QSlider objects, so that css rules can be properly applied
+    if (auto slider = qobject_cast<Slider*>(widget))
+    {
+        polishSlider(slider);
+    }
 
-        const bool widgetPolished = true;
-        return widgetPolished;
+    // Also apply the right styles to our AzQtComponents::Slider container
+    if (auto slider = qobject_cast<QSlider*>(widget))
+    {
+        polishSlider(slider);
     }
 
     return false;
@@ -384,7 +402,7 @@ bool Slider::drawSlider(const Style* style, const QStyleOption* option, QPainter
    const QSlider* slider = qobject_cast<const QSlider*>(widget);
    if (slider != nullptr)
     {
-       if (style->hasClass(widget, GradientSlider::s_gradientSliderClass))
+        if (style->hasClass(widget, GradientSlider::s_gradientSliderClass))
         {
             Q_ASSERT(widget);
             return GradientSlider::drawSlider(style, static_cast<const QStyleOptionSlider*>(option), painter, widget, config);
@@ -609,8 +627,11 @@ SliderDouble::SliderDouble(QWidget* parent)
 {
 }
 
+static const int g_sliderDecimalPrecisonDefault = 7;
+
 SliderDouble::SliderDouble(Qt::Orientation orientation, QWidget* parent)
     : Slider(orientation, parent)
+    , m_decimals(g_sliderDecimalPrecisonDefault)
 {
     setRange(m_minimum, m_maximum, m_numSteps);
 
@@ -682,7 +703,8 @@ void SliderDouble::setRange(double min, double max, int numSteps)
 QString SliderDouble::hoverValueText(int sliderValue) const
 {
     // maybe format this, max number of digits?
-    return QStringLiteral("%1").arg(calculateRealSliderValue(this, sliderValue));
+    QString valueText = toString(calculateRealSliderValue(this, sliderValue), m_decimals, locale());
+    return QStringLiteral("%1").arg(valueText);
 }
 
 } // namespace AzQtComponents

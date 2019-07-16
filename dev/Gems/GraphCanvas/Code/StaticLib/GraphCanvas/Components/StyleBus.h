@@ -19,6 +19,7 @@
 #include <AzCore/Math/Uuid.h>
 #include <AzCore/std/containers/vector.h>
 #include <AzCore/std/string/string.h>
+#include <AzCore/std/string/string_view.h>
 
 #include <GraphCanvas/Editor/EditorTypes.h>
 #include <GraphCanvas/Styling/Selector.h>
@@ -60,6 +61,22 @@ namespace GraphCanvas
         virtual AZStd::string GetElement() const = 0;
         //! Get the "style class" that the entity has. This should start with a '.' and contain [A-Za-z_-].
         virtual AZStd::string GetClass() const = 0;
+
+        //! Returns <element>.<class>
+        virtual AZStd::string GetFullStyleElement() const
+        {
+            AZStd::string element = GetElement();
+            AZStd::string subStyle = GetClass();
+
+            if (subStyle.empty())
+            {
+                return element;
+            }
+            else
+            {
+                return AZStd::string::format("%s.%s", element.c_str(), subStyle.c_str());
+            }
+        }
     };
 
     using StyledEntityRequestBus = AZ::EBus<StyledEntityRequests>;
@@ -68,8 +85,53 @@ namespace GraphCanvas
     ///////////////////////////////////////////////////////////////////////////////////
     // StyleManager
     // Requests
-    class StyleManagerRequests : public AZ::EBusTraits
+    class PaletteIconConfiguration
     {
+    public:
+        AZStd::string m_iconPalette;
+
+        float m_transitionPercent = 0.1f;
+
+        void ClearPalettes()
+        {
+            m_colorPalettes.clear();
+            m_paletteCrc = AZ::Crc32();
+        }
+
+        void ReservePalettes(size_t size)
+        {
+            m_colorPalettes.reserve(size);
+        }
+
+        void SetColorPalette(AZStd::string_view paletteString)
+        {
+            ClearPalettes();
+            AddColorPalette(paletteString);
+        }
+
+        void AddColorPalette(AZStd::string_view paletteString)
+        {
+            m_colorPalettes.push_back(paletteString);
+            m_paletteCrc.Add(paletteString.data());
+        }
+
+        const AZStd::vector< AZStd::string >& GetColorPalettes() const
+        {
+            return m_colorPalettes;
+        }
+
+        AZ::Crc32 GetPaletteCrc() const
+        {
+            return m_paletteCrc;
+        }
+
+    private:
+        AZ::Crc32 m_paletteCrc;
+        AZStd::vector< AZStd::string > m_colorPalettes;
+    };
+
+    class StyleManagerRequests : public AZ::EBusTraits
+    {    
     public:
         static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::ById;
         using BusIdType = EditorId;
@@ -82,19 +144,30 @@ namespace GraphCanvas
         virtual AZStd::string GetDataPaletteStyle(const AZ::Uuid& dataType) const = 0;
         virtual const Styling::StyleHelper* FindDataColorPalette(const AZ::Uuid& uuid) = 0;
         virtual QColor GetDataTypeColor(const AZ::Uuid& dataType) = 0;
-        virtual const QPixmap* GetDataTypeIcon(const AZ::Uuid& dataType) = 0;        
+        virtual const QPixmap* GetDataTypeIcon(const AZ::Uuid& dataType) = 0;
+        virtual const QPixmap* GetMultiDataTypeIcon(const AZStd::vector<AZ::Uuid>& dataTypes) = 0;
 
         virtual const Styling::StyleHelper* FindColorPalette(const AZStd::string& paletteString) = 0;
         virtual QColor GetPaletteColor(const AZStd::string& palette) = 0;
         virtual const QPixmap* GetPaletteIcon(const AZStd::string& iconStyle, const AZStd::string& palette) = 0;
+        virtual const QPixmap* GetConfiguredPaletteIcon(const PaletteIconConfiguration& paletteConfiguration) = 0;
+        virtual const Styling::StyleHelper* FindPaletteIconStyleHelper(const PaletteIconConfiguration& paletteConfiguration) = 0;
 
         virtual QPixmap* CreateIcon(const QColor& colorType, const AZStd::string& iconStyle) = 0;
+        virtual QPixmap* CreateIconFromConfiguration(const PaletteIconConfiguration& paletteConfiguration) = 0;
+        virtual QPixmap* CreateMultiColoredIcon(const AZStd::vector<QColor>& colorType, float transitionPercent, const AZStd::string& iconStyle) = 0;
+
+        virtual QPixmap* CreateColoredPatternPixmap(const AZStd::vector< QColor >& colorTypes, const AZStd::string& patternKey) = 0;
+        virtual const QPixmap* CreatePatternPixmap(const AZStd::vector< AZStd::string >& palettes, const AZStd::string& patternKey) = 0;
 
         virtual AZStd::vector<AZStd::string> GetColorPaletteStyles() const = 0;
 
         // Pixmap Caching Mechanism
         virtual QPixmap* FindPixmap(const AZ::Crc32& keyName) = 0;
         virtual void CachePixmap(const AZ::Crc32& keyName, QPixmap* pixmap) = 0;
+
+        // Layering
+        virtual int FindLayerZValue(AZStd::string_view layer) = 0;
     };
 
     using StyleManagerRequestBus = AZ::EBus<StyleManagerRequests>;

@@ -368,6 +368,7 @@ CXConsole::CXConsole()
     CNotificationNetworkConsole::Initialize();
 
     AzFramework::ConsoleRequestBus::Handler::BusConnect();
+    AzFramework::CommandRegistrationBus::Handler::BusConnect();
 
     AddCommand("resetcvars", (ConsoleCommandFunc)ResetCVars, 0, "Resets all cvars to their initial values");
 }
@@ -377,6 +378,7 @@ CXConsole::CXConsole()
 CXConsole::~CXConsole()
 {
     AzFramework::ConsoleRequestBus::Handler::BusDisconnect();
+    AzFramework::CommandRegistrationBus::Handler::BusDisconnect();
 
     if (gEnv->pSystem)
     {
@@ -2332,6 +2334,8 @@ void CXConsole::SplitCommands(const char* line, std::list<string>& split)
 //////////////////////////////////////////////////////////////////////////
 void CXConsole::ExecuteStringInternal(const char* command, const bool bFromConsole, const bool bSilentMode)
 {
+    AzFramework::ConsoleNotificationBus::Broadcast(&AzFramework::ConsoleNotificationBus::Events::OnConsoleCommandExecuted, command);
+
     assert(command);
     assert(command[0] != '\\');           // caller should remove leading "\\"
 
@@ -4027,6 +4031,108 @@ void CXConsole::OnAfterVarChange(ICVar* pVar)
             (*it)->OnAfterVarChange(pVar);
         }
     }
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CXConsole_ExecuteCommandTrampoline(IConsoleCmdArgs* args)
+{
+    if (gEnv && gEnv->pSystem && gEnv->pSystem->GetIConsole())
+    {
+        CXConsole* pConsole = static_cast<CXConsole*>(gEnv->pSystem->GetIConsole());
+        pConsole->ExecuteRegisteredCommand(args);
+    }
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CXConsole::ExecuteRegisteredCommand(IConsoleCmdArgs* args)
+{
+    if (args->GetArgCount() == 0)
+    {
+        AZ_Error("console", false, "Invalid number of args sent");
+        return;
+    }
+
+    const char* commandIdentifier = args->GetArg(0);
+    auto itCommandEntry = m_commandRegistrationMap.find(commandIdentifier);
+    if (itCommandEntry == m_commandRegistrationMap.end())
+    {
+        AZ_Error("console", false, "Command %s not found in the command registry", commandIdentifier);
+        return;
+    }
+    
+    AZStd::vector<AZStd::string_view> input;
+    input.reserve(args->GetArgCount());
+    for (int i = 0; i < args->GetArgCount(); ++i)
+    {
+        input.push_back(args->GetArg(i));
+    }
+
+    CommandRegistrationEntry& entry = itCommandEntry->second;
+    const AzFramework::CommandResult output = entry.m_callback(input);
+    if (output != AzFramework::CommandResult::Success)
+    {
+        if (output == AzFramework::CommandResult::ErrorWrongNumberOfArguements)
+        {
+            AZ_Warning("console", false, "Command does not have the right number of arguments (send = %d)", input.size());
+        }
+        else
+        {
+            AZ_Warning("console", false, "Command returned a generic error");
+        }
+    }
+}
+
+//////////////////////////////////////////////////////////////////////////
+bool CXConsole::RegisterCommand(AZStd::string_view identifier, AZStd::string_view helpText, AZ::u32 commandFlags, AzFramework::CommandFunction callback)
+{
+    if (identifier.empty())
+    {
+        AZ_Error("console", false, "RegisterCommand() requires a valid identifier");
+        return false;
+    }
+
+    if (!callback)
+    {
+        AZ_Error("console", false, "RegisterCommand() requires a valid callback");
+        return false;
+    }
+
+    if (m_commandRegistrationMap.find(identifier) != m_commandRegistrationMap.end())
+    {
+        AZ_Warning("console", false, "Command '%.*s' already found in the command registry.", static_cast<int>(identifier.size()), identifier.data());
+        return false;
+    }
+
+    // command flags should match "enum EVarFlags" values
+    const int flags = static_cast<int>(commandFlags);
+
+    CommandRegistrationEntry entry;
+    entry.m_callback = callback;
+    entry.m_id = identifier;
+    if (!helpText.empty())
+    {
+        entry.m_helpText = helpText;
+    }
+
+    if (!AddCommand(entry.m_id.c_str(), CXConsole_ExecuteCommandTrampoline, flags, entry.m_helpText.empty() ? nullptr : entry.m_helpText.c_str()))
+    {
+        AZ_Warning("console", false, "Command %s already found in the command registry.", entry.m_id.c_str());
+        return false;
+    }
+
+    m_commandRegistrationMap.insert(AZStd::make_pair(entry.m_id, entry));
+    return true;
+}
+
+//////////////////////////////////////////////////////////////////////////
+bool CXConsole::UnregisterCommand(AZStd::string_view identifier)
+{
+    if (m_commandRegistrationMap.erase(identifier) == 1)
+    {
+        RemoveCommand(identifier.data());
+        return true;
+    }
+    return false;
 }
 
 //////////////////////////////////////////////////////////////////////////

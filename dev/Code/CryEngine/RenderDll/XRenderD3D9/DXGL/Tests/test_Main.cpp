@@ -11,11 +11,35 @@
 */
 #include "StdAfx.h"
 #include <AzTest/AzTest.h>
+#include <AzCore/UnitTest/UnitTest.h>
+#include <AzCore/Memory/SystemAllocator.h>
+#include <AzCore/Memory/OSAllocator.h>
+#include <AzCore/Memory/AllocatorManager.h>
+namespace
+{
+    class RenderDllTestEnvironment final
+        : public AZ::Test::ITestEnvironment
+        , UnitTest::TraceBusRedirector // provide AZ_TEST_START_ASSERTTEST
+    {
+    public:
+        AZ_TEST_CLASS_ALLOCATOR(RenderDllTestEnvironment);
 
-AZ_UNIT_TEST_HOOK();
-AZ_INTEG_TEST_HOOK();
+    protected:
+        void SetupEnvironment() override
+        {
+             AZ::Debug::TraceMessageBus::Handler::BusConnect();
+        }
 
-TEST(CryRenderGLSanityTest, Sanity)
+        void TeardownEnvironment() override
+        {           
+             AZ::Debug::TraceMessageBus::Handler::BusDisconnect();
+        }
+    private:
+    };
+}
+AZ_UNIT_TEST_HOOK(new RenderDllTestEnvironment);
+
+TEST(CryRenderGL, Sanity)
 {
     EXPECT_EQ(1, 1);
 }

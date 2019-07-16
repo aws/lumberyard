@@ -7,7 +7,7 @@
             "Editor/ImGuiEditorWindowSystemComponent.h",
             "Editor/ImGuiMainWindow.h",
             "Editor/ImGuiMainWindow.cpp",
-            "Editor/ImGuiMainWindow.ui",
+            "Editor/ImGuiMainwindow.ui",
             "Editor/ImGuiViewport.h",
             "Editor/ImGuiViewport.cpp"
         ]

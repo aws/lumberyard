@@ -51,7 +51,7 @@
        <property name="styleSheet">
         <string notr="true">selection-background-color: rgb(233, 99, 0);
 background: #6e7071;
-background-image: url(:/stylesheet/img/search.png);
+background-image: url(:/stylesheet/img/search.svg);
 background-repeat: no-repeat;
 background-position: left;
 padding: 2 2 2 24;
@@ -121,8 +121,5 @@ color: rgb(255, 255, 255);</string>
    <container>1</container>
   </customwidget>
  </customwidgets>
- <resources>
-  <include location="search.qrc"/>
- </resources>
  <connections/>
 </ui>

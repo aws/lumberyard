@@ -15,10 +15,11 @@ import CloudCanvas
 import json
 
 from botocore.exceptions import ClientError
+from botocore.client import Config
 
 def __get_bucket():
     if not hasattr(__get_bucket,'client_configuration'):
-        __get_bucket.client_configuration = boto3.resource('s3').Bucket(CloudCanvas.get_setting("ClientConfiguration"))
+        __get_bucket.client_configuration = boto3.resource('s3', config=Config(signature_version='s3v4')).Bucket(CloudCanvas.get_setting("ClientConfiguration"))
     return __get_bucket.client_configuration
 
 def update_client_configuration(client_configuration):
@@ -26,7 +27,7 @@ def update_client_configuration(client_configuration):
     return 'SUCCEED'
 
 def get_client_configuration():
-    client = boto3.client('s3')
+    client = boto3.client('s3', config=Config(signature_version='s3v4'))
     client_configuration = []
     try:
         response = client.get_object(Bucket=CloudCanvas.get_setting("ClientConfiguration"), Key="client_configuration.json")

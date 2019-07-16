@@ -361,7 +361,10 @@ class TaskBase(evil):
 		# Format msg to be better read-able
 		output = ''
 		for i in msg:
-			output += i + ' '
+			if not isinstance(i, str):
+				output += str(i) + ' '
+			else:
+				output += i + ' '
 		msg = output[:len(output)-1]
 		name = self.__class__.__name__.replace('_task', '') + ' (' + self.env['PLATFORM'] + '|' + self.env['CONFIGURATION'] + ')'
 		if getattr(self, "err_msg", None):

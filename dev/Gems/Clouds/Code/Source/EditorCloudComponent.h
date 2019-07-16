@@ -60,10 +60,10 @@ namespace CloudsGem
         IRenderNode* GetRenderNode() override { return &m_renderNode; }
         float GetRenderNodeRequestBusOrder() const override { return 100.f; }
 
-        /////////////////////////////////////////////////////////
-        // AzFramework::EntityDebugDisplayEventBus interface implementation
-        /////////////////////////////////////////////////////////
-        void DisplayEntity(bool& handled) override;
+        // AzFramework::EntityDebugDisplayEventBus
+        void DisplayEntityViewport(
+            const AzFramework::ViewportInfo& viewportInfo,
+            AzFramework::DebugDisplayRequests& debugDisplay) override;
 
         /////////////////////////////////////////////////////////
         // EditorComponentBase

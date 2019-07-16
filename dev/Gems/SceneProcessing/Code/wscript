@@ -23,7 +23,7 @@ def build(bld):
                                'AssetBuilderSDK'],
             disable_pch     = True,
             features        = ['crcfix', 'qt5'],
-            autod_uselib    = ['QT5CORE', 'QT5GUI', 'QT5WIDGETS', 'MIKKT'],
+            uselib          = ['QT5CORE', 'QT5GUI', 'QT5WIDGETS', 'MIKKT'],
             defines         = ['SCENE_PROCESSING_EDITOR']
             )
     )

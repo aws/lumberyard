@@ -10,7 +10,6 @@
 *
 */
 
-#include "precompiled.h"
 #include "BinaryOperator.h"
 
 namespace ScriptCanvas
@@ -58,6 +57,7 @@ namespace ScriptCanvas
             {
                 serializeContext->Class<ArithmeticExpression, BinaryOperator>()
                     ->Version(0)
+                    ->Attribute(AZ::Script::Attributes::Deprecated, true)
                     ;
 
                 if (AZ::EditContext* editContext = serializeContext->GetEditContext())
@@ -96,6 +96,7 @@ namespace ScriptCanvas
             {
                 serializeContext->Class<BinaryOperator, Node>()
                     ->Version(0)
+                    ->Attribute(AZ::Script::Attributes::Deprecated, true)
                     ;
 
                 if (AZ::EditContext* editContext = serializeContext->GetEditContext())
@@ -152,6 +153,7 @@ namespace ScriptCanvas
             if (AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(reflection))
             {
                 serializeContext->Class<BooleanExpression, BinaryOperator>()
+                    ->Attribute(AZ::Script::Attributes::Deprecated, true)
                     ->Version(0)
                     ;
 
@@ -226,8 +228,76 @@ namespace ScriptCanvas
         
         void EqualityExpression::InitializeBooleanExpression()
         {
-            AddInputDatumOverloadedSlot(k_lhsName);
-            AddInputDatumOverloadedSlot(k_rhsName);
+            m_firstSlotId = AddInputDatumOverloadedSlot(k_lhsName);
+            m_secondSlotId = AddInputDatumOverloadedSlot(k_rhsName);
+
+            EndpointNotificationBus::MultiHandler::BusConnect({ GetEntityId(), m_firstSlotId });
+            EndpointNotificationBus::MultiHandler::BusConnect({ GetEntityId(), m_secondSlotId });
+
+            // DYNAMIC_SLOT_VERSION_CONVERTER
+            Slot* firstSlot = GetSlot(m_firstSlotId);
+
+            if (firstSlot && !firstSlot->IsDynamicSlot())
+            {
+                firstSlot->SetDynamicDataType(DynamicDataType::Any);
+            }
+
+            Slot* secondSlot = GetSlot(m_secondSlotId);
+
+            if (secondSlot && !secondSlot->IsDynamicSlot())
+            {
+                secondSlot->SetDynamicDataType(DynamicDataType::Any);
+            }
+            ////
+        }
+
+        void EqualityExpression::OnEndpointConnected(const Endpoint& endpoint)
+        {
+            // Don't need to do anything if we have a valid display type.
+            if (m_displayType.IsValid())
+            {
+                return;
+            }
+
+            ScriptCanvas::Data::Type dataType = ScriptCanvas::Data::Type::Invalid();
+            ScriptCanvas::NodeRequestBus::EventResult(dataType, endpoint.GetNodeId(), &ScriptCanvas::NodeRequestBus::Events::GetSlotDataType, endpoint.GetSlotId());
+
+            SetDisplayType(dataType);
+        }
+
+        void EqualityExpression::OnEndpointDisconnected(const Endpoint& endpoint)
+        {
+            const Endpoint* currentEndpoint = EndpointNotificationBus::GetCurrentBusId();
+
+            if (currentEndpoint == nullptr)
+            {
+                return;
+            }
+
+            bool hasConnections = IsConnected(m_firstSlotId) || IsConnected(m_secondSlotId);
+
+            if (!hasConnections)
+            {
+                SetDisplayType(ScriptCanvas::Data::Type::Invalid());
+            }
+        }
+
+        void EqualityExpression::SetDisplayType(ScriptCanvas::Data::Type dataType)
+        {
+            if (dataType != m_displayType)
+            {
+                m_displayType = dataType;
+
+                for (auto slotId : { m_firstSlotId, m_secondSlotId })
+                {
+                    Slot* sourceSlot = GetSlot(slotId);
+
+                    if (sourceSlot)
+                    {
+                        sourceSlot->SetDisplayType(m_displayType);
+                    }
+                }
+            }
         }
 
         void EqualityExpression::Reflect(AZ::ReflectContext* reflection)
@@ -236,6 +306,8 @@ namespace ScriptCanvas
             {
                 serializeContext->Class<EqualityExpression, BooleanExpression>()
                     ->Version(0)
+                    ->Attribute("DisplayType", &EqualityExpression::m_displayType)
+                    ->Attribute(AZ::Script::Attributes::Deprecated, true)
                     ;
 
                 if (AZ::EditContext* editContext = serializeContext->GetEditContext())

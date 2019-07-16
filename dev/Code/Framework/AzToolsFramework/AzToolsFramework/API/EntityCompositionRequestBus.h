@@ -58,7 +58,7 @@ namespace AzToolsFramework
         using AddComponentsOutcome = AZ::Outcome<EntityToAddedComponentsMap, AZStd::string>;
 
         /*!
-        *	Outcome will be true if successful and return one instance of the above AddComponentsResults structure (since only one entity is involved)
+        * Outcome will be true if successful and return one instance of the above AddComponentsResults structure (since only one entity is involved)
         */
         using AddExistingComponentsOutcome = AZ::Outcome<AddComponentsResults, AZStd::string>;
 
@@ -228,9 +228,18 @@ namespace AzToolsFramework
                     {
                         PropertyAttributeReader reader(nullptr, attribPair.second);
                         AZ::Crc32 classEntityType = 0;
+                        AZStd::vector<AZ::Crc32> classEntityTypes;
+
                         if (reader.Read<AZ::Crc32>(classEntityType))
                         {
                             if (static_cast<AZ::u32>(entityType) == classEntityType)
+                            {
+                                return true;
+                            }
+                        }
+                        else if (reader.Read<AZStd::vector<AZ::Crc32>>(classEntityTypes))
+                        {
+                            if (AZStd::find(classEntityTypes.begin(), classEntityTypes.end(), entityType) != classEntityTypes.end())
                             {
                                 return true;
                             }
@@ -257,9 +266,17 @@ namespace AzToolsFramework
                     {
                         PropertyAttributeReader reader(nullptr, attribPair.second);
                         AZ::Crc32 classEntityType;
+                        AZStd::vector<AZ::Crc32> classEntityTypes;
                         if (reader.Read<AZ::Crc32>(classEntityType))
                         {
                             if (classEntityType == AZ_CRC("Game", 0x232b318c))
+                            {
+                                return true;
+                            }
+                        }
+                        else if (reader.Read<AZStd::vector<AZ::Crc32>>(classEntityTypes))
+                        {
+                            if (AZStd::find(classEntityTypes.begin(), classEntityTypes.end(), AZ_CRC("Game", 0x232b318c)) != classEntityTypes.end())
                             {
                                 return true;
                             }
@@ -287,5 +304,15 @@ namespace AzToolsFramework
     inline bool AppearsInLayerComponentMenu(const AZ::SerializeContext::ClassData& classData)
     {
         return AppearsInAddComponentMenu(classData, AZ_CRC("Layer", 0xe4db211a));
+    }
+
+    inline bool AppearsInLevelComponentMenu(const AZ::SerializeContext::ClassData& classData)
+    {
+        return AppearsInAddComponentMenu(classData, AZ_CRC("Level", 0x9aeacc13));
+    }
+
+    inline bool AppearsInAnyComponentMenu(const AZ::SerializeContext::ClassData& classData)
+    {
+        return (AppearsInGameComponentMenu(classData) || AppearsInSystemComponentMenu(classData) || AppearsInLayerComponentMenu(classData) || AppearsInLevelComponentMenu(classData));
     }
 }

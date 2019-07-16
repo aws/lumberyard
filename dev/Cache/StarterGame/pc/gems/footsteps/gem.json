@@ -1,0 +1,20 @@
+{
+    "Dependencies": [
+        {
+            "Uuid": "ff06785f7145416b9d46fde39098cb0c",
+            "VersionConstraints": [
+                "~>0.1"
+            ],
+            "_comment": "LmbrCentral"
+        }
+    ],
+    "GemFormatVersion": 3,
+    "Uuid": "257393f09006498ab706cc4d4c8d4721",
+    "Name": "Footsteps",
+    "DisplayName": "Footsteps",
+    "Version": "0.1.0",
+    "LinkType": "Dynamic",
+    "Summary": "Provides Footsteps from animation events sent to the material effects system.",
+    "Tags": ["Animation","Material Effects"],
+    "IconPath": "preview.png"
+}

@@ -87,7 +87,7 @@ namespace EMotionFX
         bool GetSupportsDisable() const override                        { return true; }
         bool GetSupportsVisualization() const override                  { return true; }
         bool GetHasOutputPose() const override                          { return true; }
-        uint32 GetHasChildIndicatorColor() const override               { return MCore::RGBA(64, 98, 247); }
+        AZ::Color GetHasChildIndicatorColor() const override            { return AZ::Color(0.25f, 0.38f, 0.97f, 1.0f); }
 
         AnimGraphPose* GetMainOutputPose(AnimGraphInstance* animGraphInstance) const override             { return GetOutputPose(animGraphInstance, OUTPUTPORT_POSE)->GetValue(); }
 

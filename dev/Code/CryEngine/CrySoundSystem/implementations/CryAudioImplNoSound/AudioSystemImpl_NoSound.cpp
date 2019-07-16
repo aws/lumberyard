@@ -378,6 +378,23 @@ namespace Audio
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
+    EAudioRequestStatus CAudioSystemImpl_NoSound::SetMultiplePositions(IATLAudioObjectData* const pAudioObjectData, const MultiPositionParams& multiPositions)
+    {
+        if (!pAudioObjectData)
+        {
+            g_audioImplLogger_nosound.Log(eALT_WARNING, "Called SetPosition with nullptr audio data!");
+            return eARS_FAILURE;
+        }
+
+        if (m_registeredAudioObjects.find(pAudioObjectData) == m_registeredAudioObjects.end())
+        {
+            g_audioImplLogger_nosound.Log(eALT_WARNING, "Called SetPosition on an audio data that has not been registered!");
+        }
+
+        return eARS_SUCCESS;
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////////
     EAudioRequestStatus CAudioSystemImpl_NoSound::SetEnvironment(IATLAudioObjectData* const pAudioObject, const IATLEnvironmentImplData* const pEnvironmentImpl, const float fValue)
     {
         if (!pAudioObject)
@@ -587,7 +604,7 @@ namespace Audio
         // ly-todo: localized and regular sound bank folders
         //if (pFileEntryInfo)
         //{
-        //	sResult = pFileEntryInfo->bLocalized ? m_sLocalizedSoundBankFolder.c_str() : m_sRegularSoundBankFolder.c_str();
+        //  sResult = pFileEntryInfo->bLocalized ? m_sLocalizedSoundBankFolder.c_str() : m_sRegularSoundBankFolder.c_str();
         //}
 
         return sResult;

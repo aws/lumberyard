@@ -15,7 +15,7 @@
 #include <AzCore/Asset/AssetCommon.h>
 #include <AzToolsFramework/UI/PropertyEditor/PropertyEditorAPI.h>
 #include <AzFramework/Physics/Collision.h>
-#include <QCombobox>
+#include <Editor/ComboBoxEditButtonPair.h>
 
 namespace PhysX
 {
@@ -23,7 +23,7 @@ namespace PhysX
     {
         class CollisionLayerWidget
             : public QObject
-            , public AzToolsFramework::PropertyHandler<Physics::CollisionLayer, QComboBox>
+            , public AzToolsFramework::PropertyHandler<Physics::CollisionLayer, ComboBoxEditButtonPair>
         {
             Q_OBJECT
 
@@ -42,10 +42,10 @@ namespace PhysX
             bool ReadValuesIntoGUI(size_t index, widget_t* GUI, const property_t& instance, AzToolsFramework::InstanceDataNode* node) override;
 
         private:
+            void OnEditButtonClicked();
             Physics::CollisionLayer GetLayerFromName(const AZStd::string& layerName);
             AZStd::string GetNameFromLayer(const Physics::CollisionLayer& layerIndex);
             AZStd::vector<AZStd::string> GetLayerNames();
-            bool eventFilter(QObject *object, QEvent *event) override;
         };
     }
     

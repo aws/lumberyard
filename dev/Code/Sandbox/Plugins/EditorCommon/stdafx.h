@@ -21,8 +21,6 @@
 // Sandbox gizmos drawing and hit-testing code =(
 #pragma warning(disable: 4266)
 
-#include "platform.h"
-
 #include "ISystem.h"
 #include "Include/EditorCoreAPI.h"
 #include "Util/EditorUtils.h"

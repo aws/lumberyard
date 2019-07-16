@@ -114,6 +114,9 @@ namespace AZ
         /// Check if an OnDemandReflection type's typeid is already reflected
         bool IsOnDemandTypeReflected(AZ::Uuid typeId);
 
+        // Derived classes should override this if they want users to be able to query whether something has already been reflected or not
+        virtual bool IsTypeReflected(AZ::Uuid /*typeId*/) const { return false; }
+
         /// Execute all queued OnDemandReflection calls
         void ExecuteQueuedOnDemandReflections();
 
@@ -159,6 +162,7 @@ namespace AZ
         }
 
         bool m_describesChildren = false;
+        bool m_childClassOwned = false;
 
     private:
         AZStd::unique_ptr<void, ContextDeleter> m_contextData; ///< a generic value you can use to store extra data associated with the attribute

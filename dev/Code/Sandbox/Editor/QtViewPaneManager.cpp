@@ -15,12 +15,14 @@
 #include "Controls/RollupBar.h"
 #include <AzQtComponents/Components/FancyDocking.h>
 #include <AzQtComponents/Components/Titlebar.h>
+#include <AzQtComponents/Components/Widgets/Card.h>
 
 #include <QDockWidget>
 #include <QMainWindow>
 #include <QDataStream>
 #include <QDebug>
 #include <QCloseEvent>
+#include <QLayout>
 #include <QApplication>
 #include <QRect>
 #include <QDesktopWidget>
@@ -29,6 +31,7 @@
 #include <QCursor>
 #include <QTimer>
 #include <QStackedWidget>
+#include <QGraphicsOpacityEffect>
 #include "MainWindow.h"
 
 #include <algorithm>
@@ -39,6 +42,10 @@
 #include <AzAssetBrowser/AzAssetBrowserWindow.h>
 #include <AzToolsFramework/UI/UICore/WidgetHelpers.h>
 #include <AzQtComponents/Utilities/AutoSettingsGroup.h>
+#include <AzToolsFramework/UI/PropertyEditor/ComponentEditor.hxx>
+#include <AzToolsFramework/UI/PropertyEditor/EntityPropertyEditor.hxx>
+#include <AzToolsFramework/Viewport/ViewportMessages.h>
+#include <AzQtComponents/Utilities/QtViewPaneEffects.h>
 
 #include "ShortcutDispatcher.h"
 
@@ -71,8 +78,6 @@ static QDataStream& operator>>(QDataStream& in, ViewLayoutState& myObj)
 
     return in;
 }
-
-
 
 // All settings keys for stored layouts are in the form "layouts/<name>"
 // When starting up, "layouts/last" is loaded
@@ -154,7 +159,7 @@ bool QtViewPane::Close(QtViewPane::CloseModes closeModes)
     return CloseInstance(m_dockWidget, closeModes);
 }
 
-bool QtViewPane::CloseInstance(QDockWidget* dockWidget, CloseModes closeModes) 
+bool QtViewPane::CloseInstance(QDockWidget* dockWidget, CloseModes closeModes)
 {
     if (!dockWidget)
     {
@@ -282,7 +287,7 @@ bool DockWidget::event(QEvent* qtEvent)
         reparentToMainWindowFix();
     }
 
-    return QDockWidget::event(qtEvent);
+    return AzQtComponents::StyledDockWidget::event(qtEvent);
 }
 
 void DockWidget::reparentToMainWindowFix()
@@ -486,6 +491,33 @@ QString DockWidget::settingsKey(const QString& paneName)
     return QStringLiteral("ViewPane-") + paneName;
 }
 
+// run generic function on all widgets considered for greying out/disabling
+template<typename Fn>
+void SetDefaultActionsEnabled(
+    const bool enabled, QtViewPanes& registeredPanes, const Fn& fn)
+{
+    for (QtViewPane& p : registeredPanes)
+    {
+        if (!p.m_dockWidgetInstances.empty())
+        {
+            for (auto& dockWidget : p.m_dockWidgetInstances)
+            {
+                const auto& paneName = dockWidget->PaneName();
+                // disable/fade all widgets other than those in the EntityInspector, EntityOutliner and Console
+                // note: The Console is not greyed out and the EntityInspector and EntityOutliner handle their
+                // own fading when entering/leaving ComponentMode
+                if (paneName != LyViewPane::EntityInspector &&
+                    paneName != LyViewPane::EntityInspectorPinned &&
+                    paneName != LyViewPane::Console &&
+                    paneName != LyViewPane::EntityOutliner)
+                {
+                    fn(dockWidget->widget(), enabled);
+                }
+            }
+        }
+    }
+}
+
 QtViewPaneManager::QtViewPaneManager(QObject* parent)
     : QObject(parent)
     , m_mainWindow(nullptr)
@@ -495,10 +527,34 @@ QtViewPaneManager::QtViewPaneManager(QObject* parent)
 {
     qRegisterMetaTypeStreamOperators<ViewLayoutState>("ViewLayoutState");
     qRegisterMetaTypeStreamOperators<QVector<QString> >("QVector<QString>");
+
+    // view pane manager is interested when we enter/exit ComponentMode
+    m_componentModeNotifications.BusConnect(AzToolsFramework::GetEntityContextId());
+
+    m_componentModeNotifications.SetEnteredComponentModeFunc(
+        [this](const AZStd::vector<AZ::Uuid>& /*componentModeTypes*/)
+    {
+        // gray out panels when entering ComponentMode
+        SetDefaultActionsEnabled(false, m_registeredPanes, [](QWidget* widget, bool on)
+        {
+            AzQtComponents::SetWidgetInteractEnabled(widget, on);
+        });
+    });
+
+    m_componentModeNotifications.SetLeftComponentModeFunc(
+        [this](const AZStd::vector<AZ::Uuid>& /*componentModeTypes*/)
+    {
+        // enable panels again when leaving ComponentMode
+        SetDefaultActionsEnabled(true, m_registeredPanes, [](QWidget* widget, bool on)
+        {
+            AzQtComponents::SetWidgetInteractEnabled(widget, on);
+        });
+    });
 }
 
 QtViewPaneManager::~QtViewPaneManager()
 {
+    m_componentModeNotifications.BusDisconnect();
 }
 
 static bool lessThan(const QtViewPane& v1, const QtViewPane& v2)
@@ -599,7 +655,7 @@ const QtViewPane* QtViewPaneManager::OpenPane(const QString& name, QtViewPane::O
         if (!pane->IsConstructed() || isMultiPane)
         {
             QWidget* w = pane->m_factoryFunc();
-            w->setProperty("restored", (modes & QtViewPane::OpenMode::RestoreLayout) != 0); 
+            w->setProperty("restored", (modes & QtViewPane::OpenMode::RestoreLayout) != 0);
             newDockWidget = new DockWidget(w, pane, m_settings, m_mainWindow, m_advancedDockManager);
 
             // track every new dock widget instance that we created
@@ -992,11 +1048,11 @@ void QtViewPaneManager::RestoreDefaultLayout(bool resetSettings)
         m_mainWindow->addDockWidget(Qt::BottomDockWidgetArea, consoleViewPane->m_dockWidget);
         consoleViewPane->m_dockWidget->setFloating(false);
 
-		if (m_enableLegacyCryEntities)
-		{
-        	m_mainWindow->addDockWidget(Qt::RightDockWidgetArea, rollupBarViewPane->m_dockWidget);
-        	rollupBarViewPane->m_dockWidget->setFloating(false);
-		}
+        if (m_enableLegacyCryEntities)
+        {
+            m_mainWindow->addDockWidget(Qt::RightDockWidgetArea, rollupBarViewPane->m_dockWidget);
+            rollupBarViewPane->m_dockWidget->setFloating(false);
+        }
 
         if (entityInspectorViewPane)
         {
@@ -1006,8 +1062,8 @@ void QtViewPaneManager::RestoreDefaultLayout(bool resetSettings)
             static const float tabWidgetWidthPercentage = 0.2f;
             int newWidth = (float)screenWidth * tabWidgetWidthPercentage;
 
-			if (m_enableLegacyCryEntities)
-       		{
+            if (m_enableLegacyCryEntities)
+            {
                 // Tab the entity inspector with the rollupbar so that when they are
                 // tabbed they will be given the rollupbar's default width which
                 // is more appropriate, and move the entity inspector to be the
@@ -1021,16 +1077,16 @@ void QtViewPaneManager::RestoreDefaultLayout(bool resetSettings)
                     // Resize our tabbed entity inspector and rollup bar dock widget
                     // so that it takes up an appropriate amount of space (with the
                     // minimum sizes removed, it was being shrunk too small by default)
-                    
+
                     QDockWidget* tabWidgetParent = qobject_cast<QDockWidget*>(tabWidget->parentWidget());
                     m_mainWindow->resizeDocks({ tabWidgetParent }, { newWidth }, Qt::Horizontal);
                 }
-        	}
+            }
             else
             {
                 m_mainWindow->resizeDocks({ entityInspectorViewPane->m_dockWidget }, { newWidth }, Qt::Horizontal);
             }
-		}
+        }
 
         if (assetBrowserViewPane && entityOutlinerViewPane)
         {

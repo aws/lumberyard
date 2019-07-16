@@ -8,31 +8,91 @@ This module provides utility functions that are used within Requests
 that are also useful for external consumption.
 """
 
-import cgi
 import codecs
-import collections
+import contextlib
 import io
 import os
 import re
 import socket
 import struct
+import sys
+import tempfile
 import warnings
+import zipfile
 
-from . import __version__
+from .__version__ import __version__
 from . import certs
+# to_native_string is unused here, but imported here for backwards compatibility
+from ._internal_utils import to_native_string
 from .compat import parse_http_list as _parse_list_header
-from .compat import (quote, urlparse, bytes, str, OrderedDict, unquote, is_py2,
-                     builtin_str, getproxies, proxy_bypass, urlunparse,
-                     basestring)
-from .cookies import RequestsCookieJar, cookiejar_from_dict
+from .compat import (
+    quote, urlparse, bytes, str, OrderedDict, unquote, getproxies,
+    proxy_bypass, urlunparse, basestring, integer_types, is_py3,
+    proxy_bypass_environment, getproxies_environment, Mapping)
+from .cookies import cookiejar_from_dict
 from .structures import CaseInsensitiveDict
-from .exceptions import InvalidURL, InvalidHeader, FileModeWarning
-
-_hush_pyflakes = (RequestsCookieJar,)
+from .exceptions import (
+    InvalidURL, InvalidHeader, FileModeWarning, UnrewindableBodyError)
 
 NETRC_FILES = ('.netrc', '_netrc')
 
 DEFAULT_CA_BUNDLE_PATH = certs.where()
+
+DEFAULT_PORTS = {'http': 80, 'https': 443}
+
+
+if sys.platform == 'win32':
+    # provide a proxy_bypass version on Windows without DNS lookups
+
+    def proxy_bypass_registry(host):
+        try:
+            if is_py3:
+                import winreg
+            else:
+                import _winreg as winreg
+        except ImportError:
+            return False
+
+        try:
+            internetSettings = winreg.OpenKey(winreg.HKEY_CURRENT_USER,
+                r'Software\Microsoft\Windows\CurrentVersion\Internet Settings')
+            # ProxyEnable could be REG_SZ or REG_DWORD, normalizing it
+            proxyEnable = int(winreg.QueryValueEx(internetSettings,
+                                              'ProxyEnable')[0])
+            # ProxyOverride is almost always a string
+            proxyOverride = winreg.QueryValueEx(internetSettings,
+                                                'ProxyOverride')[0]
+        except OSError:
+            return False
+        if not proxyEnable or not proxyOverride:
+            return False
+
+        # make a check value list from the registry entry: replace the
+        # '<local>' string by the localhost entry and the corresponding
+        # canonical entry.
+        proxyOverride = proxyOverride.split(';')
+        # now check if we match one of the registry values.
+        for test in proxyOverride:
+            if test == '<local>':
+                if '.' not in host:
+                    return True
+            test = test.replace(".", r"\.")     # mask dots
+            test = test.replace("*", r".*")     # change glob sequence
+            test = test.replace("?", r".")      # change glob char
+            if re.match(test, host, re.I):
+                return True
+        return False
+
+    def proxy_bypass(host):  # noqa
+        """Return True, if the host should be bypassed.
+
+        Checks proxy settings gathered from the environment, if specified,
+        or the registry.
+        """
+        if getproxies_environment():
+            return proxy_bypass_environment(host)
+        else:
+            return proxy_bypass_registry(host)
 
 
 def dict_to_sequence(d):
@@ -45,7 +105,7 @@ def dict_to_sequence(d):
 
 
 def super_len(o):
-    total_length = 0
+    total_length = None
     current_position = 0
 
     if hasattr(o, '__len__'):
@@ -53,10 +113,6 @@ def super_len(o):
 
     elif hasattr(o, 'len'):
         total_length = o.len
-
-    elif hasattr(o, 'getvalue'):
-        # e.g. BytesIO, cStringIO.StringIO
-        total_length = len(o.getvalue())
 
     elif hasattr(o, 'fileno'):
         try:
@@ -87,7 +143,24 @@ def super_len(o):
             # is actually a special file descriptor like stdin. In this
             # instance, we don't know what the length is, so set it to zero and
             # let requests chunk it instead.
-            current_position = total_length
+            if total_length is not None:
+                current_position = total_length
+        else:
+            if hasattr(o, 'seek') and total_length is None:
+                # StringIO and BytesIO have seek but no useable fileno
+                try:
+                    # seek to end of file
+                    o.seek(0, 2)
+                    total_length = o.tell()
+
+                    # seek back to current position to support
+                    # partially read file-like objects
+                    o.seek(current_position or 0)
+                except (OSError, IOError):
+                    total_length = 0
+
+    if total_length is None:
+        total_length = 0
 
     return max(0, total_length - current_position)
 
@@ -102,11 +175,11 @@ def get_netrc_auth(url, raise_errors=False):
 
         for f in NETRC_FILES:
             try:
-                loc = os.path.expanduser('~/{0}'.format(f))
+                loc = os.path.expanduser('~/{}'.format(f))
             except KeyError:
                 # os.path.expanduser can fail when $HOME is undefined and
-                # getpwuid fails. See http://bugs.python.org/issue20164 &
-                # https://github.com/kennethreitz/requests/issues/1846
+                # getpwuid fails. See https://bugs.python.org/issue20164 &
+                # https://github.com/requests/requests/issues/1846
                 return
 
             if os.path.exists(loc):
@@ -151,6 +224,38 @@ def guess_filename(obj):
         return os.path.basename(name)
 
 
+def extract_zipped_paths(path):
+    """Replace nonexistent paths that look like they refer to a member of a zip
+    archive with the location of an extracted copy of the target, or else
+    just return the provided path unchanged.
+    """
+    if os.path.exists(path):
+        # this is already a valid path, no need to do anything further
+        return path
+
+    # find the first valid part of the provided path and treat that as a zip archive
+    # assume the rest of the path is the name of a member in the archive
+    archive, member = os.path.split(path)
+    while archive and not os.path.exists(archive):
+        archive, prefix = os.path.split(archive)
+        member = '/'.join([prefix, member])
+
+    if not zipfile.is_zipfile(archive):
+        return path
+
+    zip_file = zipfile.ZipFile(archive)
+    if member not in zip_file.namelist():
+        return path
+
+    # we have a valid zip archive and a valid member of that archive
+    tmp = tempfile.gettempdir()
+    extracted_path = os.path.join(tmp, *member.split('/'))
+    if not os.path.exists(extracted_path):
+        extracted_path = zip_file.extract(member, path=tmp)
+
+    return extracted_path
+
+
 def from_key_val_list(value):
     """Take an object and test to see if it can be represented as a
     dictionary. Unless it can not be represented as such, return an
@@ -161,7 +266,7 @@ def from_key_val_list(value):
         >>> from_key_val_list([('key', 'val')])
         OrderedDict([('key', 'val')])
         >>> from_key_val_list('string')
-        ValueError: need more than 1 value to unpack
+        ValueError: cannot encode objects that are not 2-tuples
         >>> from_key_val_list({'key': 'val'})
         OrderedDict([('key', 'val')])
 
@@ -197,7 +302,7 @@ def to_key_val_list(value):
     if isinstance(value, (str, bytes, bool, int)):
         raise ValueError('cannot encode objects that are not 2-tuples')
 
-    if isinstance(value, collections.Mapping):
+    if isinstance(value, Mapping):
         value = value.items()
 
     return list(value)
@@ -319,9 +424,7 @@ def add_dict_to_cookiejar(cj, cookie_dict):
     :rtype: CookieJar
     """
 
-    cj2 = cookiejar_from_dict(cookie_dict)
-    cj.update(cj2)
-    return cj
+    return cookiejar_from_dict(cookie_dict, cj)
 
 
 def get_encodings_from_content(content):
@@ -344,6 +447,31 @@ def get_encodings_from_content(content):
             xml_re.findall(content))
 
 
+def _parse_content_type_header(header):
+    """Returns content type and parameters from given header
+
+    :param header: string
+    :return: tuple containing content type and dictionary of
+         parameters
+    """
+
+    tokens = header.split(';')
+    content_type, params = tokens[0].strip(), tokens[1:]
+    params_dict = {}
+    items_to_strip = "\"' "
+
+    for param in params:
+        param = param.strip()
+        if param:
+            key, value = param, True
+            index_of_equals = param.find("=")
+            if index_of_equals != -1:
+                key = param[:index_of_equals].strip(items_to_strip)
+                value = param[index_of_equals + 1:].strip(items_to_strip)
+            params_dict[key.lower()] = value
+    return content_type, params_dict
+
+
 def get_encoding_from_headers(headers):
     """Returns encodings from given HTTP Header Dict.
 
@@ -356,7 +484,7 @@ def get_encoding_from_headers(headers):
     if not content_type:
         return None
 
-    content_type, params = cgi.parse_header(content_type)
+    content_type, params = _parse_content_type_header(content_type)
 
     if 'charset' in params:
         return params['charset'].strip("'\"")
@@ -431,8 +559,7 @@ def get_unicode_from_response(r):
 
 # The unreserved URI characters (RFC 3986)
 UNRESERVED_SET = frozenset(
-    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
-    + "0123456789-._~")
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz" + "0123456789-._~")
 
 
 def unquote_unreserved(uri):
@@ -482,7 +609,7 @@ def requote_uri(uri):
 
 
 def address_in_network(ip, net):
-    """This function allows you to check if on IP belongs to a network subnet
+    """This function allows you to check if an IP belongs to a network subnet
 
     Example: returns True if ip = 192.168.1.1 and net = 192.168.1.0/24
              returns False if ip = 192.168.1.1 and net = 192.168.100.0/24
@@ -542,53 +669,82 @@ def is_valid_cidr(string_network):
     return True
 
 
-def should_bypass_proxies(url):
+@contextlib.contextmanager
+def set_environ(env_name, value):
+    """Set the environment variable 'env_name' to 'value'
+
+    Save previous value, yield, and then restore the previous value stored in
+    the environment variable 'env_name'.
+
+    If 'value' is None, do nothing"""
+    value_changed = value is not None
+    if value_changed:
+        old_value = os.environ.get(env_name)
+        os.environ[env_name] = value
+    try:
+        yield
+    finally:
+        if value_changed:
+            if old_value is None:
+                del os.environ[env_name]
+            else:
+                os.environ[env_name] = old_value
+
+
+def should_bypass_proxies(url, no_proxy):
     """
     Returns whether we should bypass proxies or not.
 
     :rtype: bool
     """
+    # Prioritize lowercase environment variables over uppercase
+    # to keep a consistent behaviour with other http projects (curl, wget).
     get_proxy = lambda k: os.environ.get(k) or os.environ.get(k.upper())
 
     # First check whether no_proxy is defined. If it is, check that the URL
     # we're getting isn't in the no_proxy list.
-    no_proxy = get_proxy('no_proxy')
-    netloc = urlparse(url).netloc
+    no_proxy_arg = no_proxy
+    if no_proxy is None:
+        no_proxy = get_proxy('no_proxy')
+    parsed = urlparse(url)
+
+    if parsed.hostname is None:
+        # URLs don't always have hostnames, e.g. file:/// urls.
+        return True
 
     if no_proxy:
         # We need to check whether we match here. We need to see if we match
-        # the end of the netloc, both with and without the port.
+        # the end of the hostname, both with and without the port.
         no_proxy = (
             host for host in no_proxy.replace(' ', '').split(',') if host
         )
 
-        ip = netloc.split(':')[0]
-        if is_ipv4_address(ip):
+        if is_ipv4_address(parsed.hostname):
             for proxy_ip in no_proxy:
                 if is_valid_cidr(proxy_ip):
-                    if address_in_network(ip, proxy_ip):
+                    if address_in_network(parsed.hostname, proxy_ip):
                         return True
-                elif ip == proxy_ip:
+                elif parsed.hostname == proxy_ip:
                     # If no_proxy ip was defined in plain IP notation instead of cidr notation &
                     # matches the IP of the index
                     return True
         else:
+            host_with_port = parsed.hostname
+            if parsed.port:
+                host_with_port += ':{}'.format(parsed.port)
+
             for host in no_proxy:
-                if netloc.endswith(host) or netloc.split(':')[0].endswith(host):
+                if parsed.hostname.endswith(host) or host_with_port.endswith(host):
                     # The URL does match something in no_proxy, so we don't want
                     # to apply the proxies on this URL.
                     return True
 
-    # If the system proxy settings indicate that this URL should be bypassed,
-    # don't proxy.
-    # The proxy_bypass function is incredibly buggy on macOS in early versions
-    # of Python 2.6, so allow this call to fail. Only catch the specific
-    # exceptions we've seen, though: this call failing in other ways can reveal
-    # legitimate problems.
-    try:
-        bypass = proxy_bypass(netloc)
-    except (TypeError, socket.gaierror):
-        bypass = False
+    with set_environ('no_proxy', no_proxy_arg):
+        # parsed.hostname can be `None` in cases such as a file URI.
+        try:
+            bypass = proxy_bypass(parsed.hostname)
+        except (TypeError, socket.gaierror):
+            bypass = False
 
     if bypass:
         return True
@@ -596,13 +752,13 @@ def should_bypass_proxies(url):
     return False
 
 
-def get_environ_proxies(url):
+def get_environ_proxies(url, no_proxy=None):
     """
     Return a dict of environment proxies.
 
     :rtype: dict
     """
-    if should_bypass_proxies(url):
+    if should_bypass_proxies(url, no_proxy=no_proxy):
         return {}
     else:
         return getproxies()
@@ -617,13 +773,13 @@ def select_proxy(url, proxies):
     proxies = proxies or {}
     urlparts = urlparse(url)
     if urlparts.hostname is None:
-        return proxies.get('all', proxies.get(urlparts.scheme))
+        return proxies.get(urlparts.scheme, proxies.get('all'))
 
     proxy_keys = [
-        'all://' + urlparts.hostname,
-        'all',
         urlparts.scheme + '://' + urlparts.hostname,
         urlparts.scheme,
+        'all://' + urlparts.hostname,
+        'all',
     ]
     proxy = None
     for proxy_key in proxy_keys:
@@ -656,7 +812,7 @@ def default_headers():
 
 
 def parse_header_links(value):
-    """Return a dict of parsed link headers proxies.
+    """Return a list of parsed link headers proxies.
 
     i.e. Link: <http:/.../front.jpeg>; rel=front; type="image/jpeg",<http://.../back.jpeg>; rel=back;type="image/jpeg"
 
@@ -666,6 +822,10 @@ def parse_header_links(value):
     links = []
 
     replace_chars = ' \'"'
+
+    value = value.strip(replace_chars)
+    if not value:
+        return links
 
     for val in re.split(', *<', value):
         try:
@@ -702,7 +862,7 @@ def guess_json_utf(data):
     # easy as counting the nulls and from their location and count
     # determine the encoding. Also detect a BOM, if present.
     sample = data[:4]
-    if sample in (codecs.BOM_UTF32_LE, codecs.BOM32_BE):
+    if sample in (codecs.BOM_UTF32_LE, codecs.BOM_UTF32_BE):
         return 'utf-32'     # BOM included
     if sample[:3] == codecs.BOM_UTF8:
         return 'utf-8-sig'  # BOM included, MS style (discouraged)
@@ -759,25 +919,10 @@ def get_auth_from_url(url):
     return auth
 
 
-def to_native_string(string, encoding='ascii'):
-    """Given a string object, regardless of type, returns a representation of
-    that string in the native string type, encoding and decoding where
-    necessary. This assumes ASCII unless told otherwise.
-    """
-    if isinstance(string, builtin_str):
-        out = string
-    else:
-        if is_py2:
-            out = string.encode(encoding)
-        else:
-            out = string.decode(encoding)
-
-    return out
-
-
 # Moved outside of function to avoid recompile every call
 _CLEAN_HEADER_REGEX_BYTE = re.compile(b'^\\S[^\\r\\n]*$|^$')
 _CLEAN_HEADER_REGEX_STR = re.compile(r'^\S[^\r\n]*$|^$')
+
 
 def check_header_validity(header):
     """Verifies that header value is a string which doesn't contain
@@ -796,8 +941,8 @@ def check_header_validity(header):
         if not pat.match(value):
             raise InvalidHeader("Invalid return character or leading space in header: %s" % name)
     except TypeError:
-        raise InvalidHeader("Header value %s must be of type str or bytes, "
-                            "not %s" % (value, type(value)))
+        raise InvalidHeader("Value for header {%s: %s} must be of type str or "
+                            "bytes, not %s" % (name, value, type(value)))
 
 
 def urldefragauth(url):
@@ -815,3 +960,18 @@ def urldefragauth(url):
     netloc = netloc.rsplit('@', 1)[-1]
 
     return urlunparse((scheme, netloc, path, params, query, ''))
+
+
+def rewind_body(prepared_request):
+    """Move file pointer back to its recorded starting position
+    so it can be read again on redirect.
+    """
+    body_seek = getattr(prepared_request.body, 'seek', None)
+    if body_seek is not None and isinstance(prepared_request._body_position, integer_types):
+        try:
+            body_seek(prepared_request._body_position)
+        except (IOError, OSError):
+            raise UnrewindableBodyError("An error occurred when rewinding request "
+                                        "body for redirect.")
+    else:
+        raise UnrewindableBodyError("Unable to rewind request body for redirect.")

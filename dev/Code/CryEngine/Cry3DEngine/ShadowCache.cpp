@@ -187,8 +187,8 @@ void ShadowCache::InitCachedFrustum(ShadowMapFrustum*& pFr, ShadowMapFrustum::Sh
         bExcludeDynamicDistanceShadows ? ERF_DYNAMIC_DISTANCESHADOWS : 0, maxNodesPerFrame, passInfo);
     AddTerrainCastersToFrustum(pFr, passInfo);
 
-    pFr->pShadowCacheData->mProcessedCasters.insert(pFr->pCastersList->begin(), pFr->pCastersList->end());
-    pFr->pShadowCacheData->mProcessedCasters.insert(pFr->pJobExecutedCastersList->begin(), pFr->pJobExecutedCastersList->end());
+    pFr->pShadowCacheData->mProcessedCasters.insert(pFr->m_castersList.begin(), pFr->m_castersList.end());
+    pFr->pShadowCacheData->mProcessedCasters.insert(pFr->m_jobExecutedCastersList.begin(), pFr->m_jobExecutedCastersList.end());
     pFr->RequestUpdate();
     pFr->bIncrementalUpdate = nUpdateStrategy == ShadowMapFrustum::ShadowCacheData::eIncrementalUpdate && !pFr->pShadowCacheData->mProcessedCasters.empty();
 }
@@ -355,10 +355,10 @@ void ShadowCache::AddTerrainCastersToFrustum(ShadowMapFrustum* pFr, const SRende
             }
 
             pFr->pShadowCacheData->mProcessedTerrainCasters.insert(nodeHash);
-            pFr->pCastersList->Add(pNode);
+            pFr->m_castersList.Add(pNode);
         }
 
-        if (!pFr->pCastersList->IsEmpty())
+        if (!pFr->m_castersList.IsEmpty())
         {
             pFr->RequestUpdate();
         }

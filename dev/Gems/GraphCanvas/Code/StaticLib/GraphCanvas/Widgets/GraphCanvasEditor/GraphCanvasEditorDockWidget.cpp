@@ -21,6 +21,8 @@ namespace GraphCanvas
     /////////////////////
     // EditorDockWidget
     /////////////////////
+
+    static int counter = 0;
     
     EditorDockWidget::EditorDockWidget(const EditorId& editorId, QWidget* parent)
         : QDockWidget(parent)
@@ -28,34 +30,75 @@ namespace GraphCanvas
         , m_ui(new Ui::GraphCanvasEditorDockWidget())        
     {
         m_ui->setupUi(this);
-        
+        m_ui->graphicsView->SetEditorId(editorId);
+
+        setAllowedAreas(Qt::DockWidgetArea::TopDockWidgetArea);
+       
         m_dockWidgetId = AZ::Entity::MakeId();
 
-        SetAssetId(AZ::EntityId(1234));
+        EditorDockWidgetRequestBus::Handler::BusConnect(m_dockWidgetId);
+
+        setWindowTitle(QString("Window %1").arg(counter));
+        windowId = counter;
+        ++counter;
     }
     
     EditorDockWidget::~EditorDockWidget()
     {
     }
     
-    const DockWidgetId& EditorDockWidget::GetDockWidgetId() const
+    DockWidgetId EditorDockWidget::GetDockWidgetId() const
     {
         return m_dockWidgetId;
     }
+
+    void EditorDockWidget::ReleaseBus()
+    {
+        ActiveEditorDockWidgetRequestBus::Handler::BusDisconnect(GetEditorId());
+    }
     
-    const AZ::Crc32& EditorDockWidget::GetEditorId() const
+    const EditorId& EditorDockWidget::GetEditorId() const
     {
         return m_editorId;
     }
-    
-    AZ::EntityId EditorDockWidget::GetAssetId() const
+
+    AZ::EntityId EditorDockWidget::GetViewId() const
     {
-        return m_assetId;
-    }   
-    
-    void EditorDockWidget::SetAssetId(const AZ::EntityId& assetId)
+        return m_ui->graphicsView->GetViewId();
+    }
+
+    GraphId EditorDockWidget::GetGraphId() const
     {
-        m_assetId = assetId;
+        GraphId graphId;
+        ViewRequestBus::EventResult(graphId, GetViewId(), &ViewRequests::GetScene);
+
+        return graphId;
+    }
+
+    EditorDockWidget* EditorDockWidget::AsEditorDockWidget()
+    {
+        return this;
+    }
+
+    GraphCanvasGraphicsView* EditorDockWidget::GetGraphicsView() const
+    {
+        return m_ui->graphicsView;
+    }
+
+    void EditorDockWidget::closeEvent(QCloseEvent* closeEvent)
+    {
+        emit OnEditorClosed(this);
+
+        QDockWidget::closeEvent(closeEvent);        
+    }
+
+    void EditorDockWidget::SignalActiveEditor()
+    {
+        if (!ActiveEditorDockWidgetRequestBus::Handler::BusIsConnected())
+        {
+            ActiveEditorDockWidgetRequestBus::Event(GetEditorId(), &ActiveEditorDockWidgetRequests::ReleaseBus);
+            ActiveEditorDockWidgetRequestBus::Handler::BusConnect(GetEditorId());
+        }
     }
 
 #include <StaticLib/GraphCanvas/Widgets/GraphCanvasEditor/GraphCanvasEditorDockWidget.moc>

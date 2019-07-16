@@ -11,8 +11,6 @@
 */
 #pragma once
 
-#include "precompiled.h"
-
 #include <AzCore/std/typetraits/remove_reference.h>
 #include <AzCore/std/typetraits/remove_cv.h>
 #include <AzCore/std/typetraits/function_traits.h>
@@ -96,6 +94,7 @@ namespace ScriptCanvas
         // accepts any type, checks for type equality, and then value equality or pointer equality
         class EqualityExpression
             : public BooleanExpression
+            , public EndpointNotificationBus::MultiHandler
         {
         public:
             AZ_COMPONENT(EqualityExpression, "{78D20EB6-BA07-4071-B646-7C2D68A0A4A6}", BooleanExpression);
@@ -106,6 +105,18 @@ namespace ScriptCanvas
             // adds any required input types
             void InitializeBooleanExpression() override;
             void Visit(NodeVisitor& visitor) const override { visitor.Visit(*this); }
+
+            void OnEndpointConnected(const Endpoint& endpoint) override;
+            void OnEndpointDisconnected(const Endpoint& endpoint) override;
+
+        private:
+
+            void SetDisplayType(ScriptCanvas::Data::Type dataType);
+
+            SlotId                   m_firstSlotId;
+            SlotId                   m_secondSlotId;
+
+            ScriptCanvas::Data::Type m_displayType;
         };
 
         // accepts numbers only

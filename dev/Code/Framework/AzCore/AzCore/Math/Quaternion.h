@@ -56,11 +56,22 @@ namespace AZ
         static const Quaternion CreateRotationZ(float angle);
         /*@}*/
 
-        /**
-         * Creates a quaternion using the rotation part of a Transform matrix
-         * \note If the transform has a scale other than (1,1,1) be sure to extract the scale first with AZ::Transform::ExtractScale or ::ExtractScaleExact.
-         */
+        /// Creates a quaternion using the rotation part of a Transform matrix.
+        /// \note If the transform has a scale other than (1,1,1) be sure to extract the scale first
+        /// with AZ::Transform::ExtractScale or ::ExtractScaleExact. If you simply want a rotation/orientation
+        /// from a Transform, prefer the CreateRotationFrom**** versions.
         static const Quaternion CreateFromTransform(const class Transform& t);
+
+        /// Creates a rotation in quaternion form using the rotation part of a Transform matrix.
+        /// \note Transform is passed by value intentionally as ExtractScale is called internally to remove any
+        /// scale from the transform. CreateRotationFromScaledTransform is useful to call if you cannot guarantee
+        /// the incoming transform will have unit scale (e.g. Entity transforms often may contains scale).
+        static const Quaternion CreateRotationFromScaledTransform(Transform t);
+
+        /// Creates a rotation in quaternion form using the rotation part of a Transform matrix.
+        /// \note The incoming Transform must have unit scale when calling this function. If the caller knows
+        /// for certain the transform has no scale applied, this is safe to call, otherwise prefer CreateRotationFromScaledTransform.
+        static const Quaternion CreateRotationFromUnscaledTransform(const Transform& t);
 
         ///Creates a quaternion from a Matrix3x3
         static const Quaternion CreateFromMatrix3x3(const class Matrix3x3& m);
@@ -69,6 +80,8 @@ namespace AZ
         static const Quaternion CreateFromMatrix4x4(const class Matrix4x4& m);
 
         static const Quaternion CreateFromAxisAngle(const Vector3& axis, const VectorFloat& angle);
+
+        static const Quaternion CreateFromAxisAngleExact(const Vector3& axis, const VectorFloat& angle);
 
         static const Quaternion CreateShortestArc(const Vector3& v1, const Vector3& v2);
 

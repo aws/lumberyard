@@ -592,4 +592,21 @@ namespace UnitTest
         EXPECT_TRUE(aabb.GetMin().IsClose(AZ::Vector3(-1.0f, 9.0f, 40.0f)));
         EXPECT_TRUE(aabb.GetMax().IsClose(AZ::Vector3(11.0f, 21.0f, 44.5f)));
     }
+
+    TEST_F(PolygonPrismShapeTest, CopyingPolygonPrismDoesNotAssertInEbusSystem)
+    {
+        AZ::EntityId testEntityId{ 42 };
+        PolygonPrismShape sourceShape;
+        sourceShape.Activate(testEntityId);
+        // The assignment shouldn't assert in the EBusEventHandler::BusConnect call 
+        PolygonPrismShape targetShape;
+        AZ_TEST_START_ASSERTTEST;
+        targetShape = sourceShape;
+        AZ_TEST_STOP_ASSERTTEST(0);
+        // The copy constructor also should assert
+        AZ_TEST_START_ASSERTTEST;
+        PolygonPrismShape copyShape(sourceShape);
+        AZ_TEST_STOP_ASSERTTEST(0);
+        sourceShape.Deactivate();
+    }
 }

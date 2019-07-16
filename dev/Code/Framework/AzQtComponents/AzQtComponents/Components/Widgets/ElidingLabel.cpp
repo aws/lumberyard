@@ -20,8 +20,8 @@ namespace AzQtComponents
 {
     ElidingLabel::ElidingLabel(QWidget* parent /* = nullptr */)
         : QWidget(parent)
-        , m_label(new QLabel(this))
         , m_elideMode(Qt::ElideRight)
+        , m_label(new QLabel(this))
     {
         auto layout = new QHBoxLayout(this);
         layout->setMargin(0);

@@ -58,7 +58,7 @@ namespace AzFramework
             behaviorContext->EBus<NetBindingHandlerBus>("NetBindingHandlerBus")
                 ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::Preview)
                 ->Event("IsEntityBoundToNetwork", &NetBindingHandlerBus::Events::IsEntityBoundToNetwork)
-                ->Event("IsEntityAuthoritative", &NetBindingHandlerBus::Events::IsEntityBoundToNetwork)
+                ->Event("IsEntityAuthoritative", &NetBindingHandlerBus::Events::IsEntityAuthoritative)
 
                 // Desired, but currently unsupported events.
                 // Seems to be an unsupported type(AZ::u16)

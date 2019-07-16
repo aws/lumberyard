@@ -320,6 +320,15 @@ def after_this_resource_group_updated(hook, deployment_name, **kwargs):
                 "PutRequest":        
                 {   
                     "Item": {
+                        "key": { "S": c.KEY_WRITE_DETAILED_CLOUDWATCH_EVENTS },
+                        "value": { "BOOL": False }
+                    }
+                }    
+            },
+            {
+                "PutRequest":        
+                {   
+                    "Item": {
                         "key": { "S": c.KEY_PARTITIONS },
                         "value":  { "L": [
                                 {"M":{

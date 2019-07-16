@@ -165,7 +165,7 @@ struct QViewport::SPrivate
     CDLight m_sun;
 };
 
-QViewport::QViewport(QWidget* parent)
+QViewport::QViewport(QWidget* parent, StartupMode startupMode)
     : QWidget(parent)
     , m_renderContextCreated(false)
     , m_updating(false)
@@ -188,7 +188,8 @@ QViewport::QViewport(QWidget* parent)
     , m_private(new SPrivate())
     , m_cameraControlMode(CameraControlMode::NONE)
 {
-    Startup();
+    if (startupMode & StartupMode_Immediate)
+        Startup();
 }
 
 void QViewport::Startup()

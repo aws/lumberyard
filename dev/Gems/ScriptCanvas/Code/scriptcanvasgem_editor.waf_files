@@ -35,7 +35,7 @@
             "Editor/Include/ScriptCanvas/Assets/ScriptCanvasDocumentContext.h",
             "Editor/Assets/ScriptCanvasDocumentContext.cpp"
         ],
-        "Editor/Bus": [            
+        "Editor/Bus": [
             "Editor/Include/ScriptCanvas/Bus/RequestBus.h",
             "Editor/Include/ScriptCanvas/Bus/NodeIdPair.h",
             "Editor/Include/ScriptCanvas/Bus/EditorScriptCanvasBus.h",
@@ -44,11 +44,15 @@
             "Editor/Include/ScriptCanvas/Bus/DocumentContextBus.h",
             "Editor/Include/ScriptCanvas/Bus/GraphBus.h",
             "Editor/Include/ScriptCanvas/Bus/UndoBus.h",
-            "Editor/Include/ScriptCanvas/Bus/EditorSceneVariableManagerBus.h"
+            "Editor/Include/ScriptCanvas/Bus/EditorSceneVariableManagerBus.h",
+            "Editor/Include/ScriptCanvas/Bus/ScriptCanvasExecutionBus.h",
+            "Editor/Include/ScriptCanvas/Bus/UnitTestVerificationBus.h"
         ],
         "Editor/Components": [
             "Editor/Include/ScriptCanvas/Components/EditorGraph.h",
+            "Editor/Include/ScriptCanvas/Components/EditorUtils.h",
             "Editor/Components/EditorGraph.cpp",
+            "Editor/Components/EditorUtils.cpp",
             "Editor/Include/ScriptCanvas/Components/EditorGraphVariableManagerComponent.h",
             "Editor/Components/EditorGraphVariableManagerComponent.cpp",
             "Editor/Include/ScriptCanvas/Components/EditorScriptCanvasComponent.h",
@@ -57,16 +61,18 @@
             "Editor/Components/IconComponent.cpp"
         ],
         "Editor/GraphCanvas": [
+            "Editor/Include/ScriptCanvas/GraphCanvas/DynamicSlotBus.h",
             "Editor/Include/ScriptCanvas/GraphCanvas/NodeDescriptorBus.h",
-            "Editor/Include/ScriptCanvas/GraphCanvas/SlotMappingBus.h",
+            "Editor/Include/ScriptCanvas/GraphCanvas/MappingBus.h",   
+            "Editor/Include/ScriptCanvas/GraphCanvas/VersionControlledNodeBus.h",
             "Editor/GraphCanvas/GraphCanvasEditorNotificationBusId.h",
             "Editor/GraphCanvas/PropertySlotIds.h"
         ],
         "Editor/GraphCanvas/Components": [
             "Editor/GraphCanvas/Components/DynamicSlotComponent.cpp",
             "Editor/GraphCanvas/Components/DynamicSlotComponent.h",
-            "Editor/GraphCanvas/Components/SlotMappingComponent.cpp",
-            "Editor/GraphCanvas/Components/SlotMappingComponent.h"
+            "Editor/GraphCanvas/Components/MappingComponent.cpp",
+            "Editor/GraphCanvas/Components/MappingComponent.h"
         ],
         "Editor/GraphCanvas/Components/NodeDescriptors": [
             "Editor/GraphCanvas/Components/NodeDescriptors/ClassMethodNodeDescriptorComponent.cpp",
@@ -89,13 +95,20 @@
             "Editor/GraphCanvas/Components/NodeDescriptors/UserDefinedNodeDescriptorComponent.cpp",
             "Editor/GraphCanvas/Components/NodeDescriptors/UserDefinedNodeDescriptorComponent.h",
             "Editor/GraphCanvas/Components/NodeDescriptors/VariableNodeDescriptorComponent.cpp",
-            "Editor/GraphCanvas/Components/NodeDescriptors/VariableNodeDescriptorComponent.h"
+            "Editor/GraphCanvas/Components/NodeDescriptors/VariableNodeDescriptorComponent.h",
+            "Editor/GraphCanvas/Components/NodeDescriptors/ScriptEventReceiverEventNodeDescriptorComponent.cpp",
+            "Editor/GraphCanvas/Components/NodeDescriptors/ScriptEventReceiverEventNodeDescriptorComponent.h",
+            "Editor/GraphCanvas/Components/NodeDescriptors/ScriptEventReceiverNodeDescriptorComponent.cpp",
+            "Editor/GraphCanvas/Components/NodeDescriptors/ScriptEventReceiverNodeDescriptorComponent.h",
+            "Editor/GraphCanvas/Components/NodeDescriptors/ScriptEventSenderNodeDescriptorComponent.cpp",
+            "Editor/GraphCanvas/Components/NodeDescriptors/ScriptEventSenderNodeDescriptorComponent.h"
         ],
         "Editor/GraphCanvas/DataInterfaces": [
             "Editor/GraphCanvas/DataInterfaces/ScriptCanvasBoolDataInterface.h",
             "Editor/GraphCanvas/DataInterfaces/ScriptCanvasEntityIdDataInterface.h",
             "Editor/GraphCanvas/DataInterfaces/ScriptCanvasDataInterface.h",            
             "Editor/GraphCanvas/DataInterfaces/ScriptCanvasColorDataInterface.h",
+            "Editor/GraphCanvas/DataInterfaces/ScriptCanvasCRCDataInterface.h",
             "Editor/GraphCanvas/DataInterfaces/ScriptCanvasNumericDataInterface.h",
             "Editor/GraphCanvas/DataInterfaces/ScriptCanvasReadOnlyDataInterface.h",
             "Editor/GraphCanvas/DataInterfaces/ScriptCanvasStringDataInterface.h",
@@ -110,6 +123,10 @@
         "Editor/Model/DataModels": [
             "Editor/Model/LibraryDataModel.h",
             "Editor/Model/LibraryDataModel.cpp"
+        ],
+        "Editor/Model/UnitTestBrowser": [
+            "Editor/Model/UnitTestBrowserFilterModel.h",
+            "Editor/Model/UnitTestBrowserFilterModel.cpp"
         ],
         "Editor/Nodes": [
             "Editor/Nodes/EditorLibrary.h",
@@ -153,13 +170,21 @@
             "Editor/View/Dialogs/UnsavedChangesDialog.cpp",
             "Editor/View/Dialogs/UnsavedChangesDialog.ui"
         ],
+        "Editor/View/Dialogs/ContainerWizard": [
+            "Editor/View/Dialogs/ContainerWizard/ContainerTypeLineEdit.h",
+            "Editor/View/Dialogs/ContainerWizard/ContainerTypeLineEdit.cpp",
+            "Editor/View/Dialogs/ContainerWizard/ContainerTypeLineEdit.ui",
+            "Editor/View/Dialogs/ContainerWizard/ContainerWizard.h",
+            "Editor/View/Dialogs/ContainerWizard/ContainerWizard.cpp",
+            "Editor/View/Dialogs/ContainerWizard/ContainerWizard.ui"
+        ],
         "Editor/View/Widgets": [
+            "Editor/View/Widgets/AssetGraphSceneData.cpp",
+            "Editor/View/Widgets/AssetGraphSceneData.h",
+            "Editor/View/Widgets/AssetGraphSceneDataBus.h",
             "Editor/View/Widgets/CanvasWidget.ui",
             "Editor/View/Widgets/CanvasWidget.h",
             "Editor/View/Widgets/CanvasWidget.cpp",
-            "Editor/View/Widgets/Debugging.ui",
-            "Editor/View/Widgets/Debugging.h",
-            "Editor/View/Widgets/Debugging.cpp",
             "Editor/View/Widgets/GraphTabBar.h",
             "Editor/View/Widgets/GraphTabBar.cpp",
             "Editor/View/Widgets/PropertyGrid.h",
@@ -172,7 +197,10 @@
             "Editor/View/Widgets/CommandLine.ui",
             "Editor/View/Widgets/LogPanel.h",
             "Editor/View/Widgets/LogPanel.cpp",
-            "Editor/View/Widgets/LogPanel.ui",
+            "Editor/View/Widgets/LogPanel.ui",            
+            "Editor/View/Widgets/MainWindowStatusWidget.h",
+            "Editor/View/Widgets/MainWindowStatusWidget.cpp",
+            "Editor/View/Widgets/MainWindowStatusWidget.ui",
             "Editor/View/Widgets/NodeFavorites.h",
             "Editor/View/Widgets/NodeFavorites.cpp",
             "Editor/View/Widgets/NodeOutliner.h",
@@ -182,19 +210,80 @@
             "Editor/View/Widgets/NodeTableView.cpp",
             "Editor/View/Widgets/ScriptCanvasNodePaletteDockWidget.h",
             "Editor/View/Widgets/ScriptCanvasNodePaletteDockWidget.cpp",
+            "Editor/View/Widgets/ScriptCanvasNodePaletteToolbar.ui",
             "Editor/View/Widgets/WidgetBus.h"
+        ],
+        "Editor/View/Widgets/DataTypePalette": [
+            "Editor/View/Widgets/DataTypePalette/DataTypePaletteModel.cpp",
+            "Editor/View/Widgets/DataTypePalette/DataTypePaletteModel.h"
         ],
         "Editor/View/Widgets/NodePalette": [
             "Editor/View/Widgets/NodePalette/CreateNodeMimeEvent.cpp",
             "Editor/View/Widgets/NodePalette/CreateNodeMimeEvent.h",
+            "Editor/View/Widgets/NodePalette/ScriptEventsNodePaletteTreeItemTypes.cpp",
+            "Editor/View/Widgets/NodePalette/ScriptEventsNodePaletteTreeItemTypes.h",
             "Editor/View/Widgets/NodePalette/EBusNodePaletteTreeItemTypes.cpp",
             "Editor/View/Widgets/NodePalette/EBusNodePaletteTreeItemTypes.h",
             "Editor/View/Widgets/NodePalette/GeneralNodePaletteTreeItemTypes.cpp",
             "Editor/View/Widgets/NodePalette/GeneralNodePaletteTreeItemTypes.h",
+            "Editor/View/Widgets/NodePalette/NodePaletteModel.cpp",
+            "Editor/View/Widgets/NodePalette/NodePaletteModel.h",
             "Editor/View/Widgets/NodePalette/SpecializedNodePaletteTreeItemTypes.cpp",
             "Editor/View/Widgets/NodePalette/SpecializedNodePaletteTreeItemTypes.h",
             "Editor/View/Widgets/NodePalette/VariableNodePaletteTreeItemTypes.cpp",
             "Editor/View/Widgets/NodePalette/VariableNodePaletteTreeItemTypes.h"
+        ],
+        "Editor/View/Widgets/LoggingPanel": [
+            "Editor/View/Widgets/LoggingPanel/LoggingDataAggregator.cpp",
+            "Editor/View/Widgets/LoggingPanel/LoggingDataAggregator.h",            
+            "Editor/View/Widgets/LoggingPanel/LoggingTypes.cpp",
+            "Editor/View/Widgets/LoggingPanel/LoggingTypes.h",
+            "Editor/View/Widgets/LoggingPanel/LoggingWindow.cpp",
+            "Editor/View/Widgets/LoggingPanel/LoggingWindow.h",
+            "Editor/View/Widgets/LoggingPanel/LoggingWindow.ui",
+            "Editor/View/Widgets/LoggingPanel/LoggingWindowSession.cpp",
+            "Editor/View/Widgets/LoggingPanel/LoggingWindowSession.h",
+            "Editor/View/Widgets/LoggingPanel/LoggingWindowSession.ui",
+            "Editor/View/Widgets/LoggingPanel/LoggingWindowTreeItems.cpp",
+            "Editor/View/Widgets/LoggingPanel/LoggingWindowTreeItems.h"
+        ],
+        "Editor/View/Widgets/LoggingPanel/LiveWindowSession": [
+            "Editor/View/Widgets/LoggingPanel/LiveWindowSession/LiveLoggingDataAggregator.cpp",
+            "Editor/View/Widgets/LoggingPanel/LiveWindowSession/LiveLoggingDataAggregator.h",
+            "Editor/View/Widgets/LoggingPanel/LiveWindowSession/LiveLoggingWindowSession.cpp",
+            "Editor/View/Widgets/LoggingPanel/LiveWindowSession/LiveLoggingWindowSession.h"
+        ],
+        "Editor/View/Widgets/LoggingPanel/AssetWindowSession": [
+            "Editor/View/Widgets/LoggingPanel/AssetWindowSession/LoggingAssetDataAggregator.cpp",
+            "Editor/View/Widgets/LoggingPanel/AssetWindowSession/LoggingAssetDataAggregator.h",
+            "Editor/View/Widgets/LoggingPanel/AssetWindowSession/LoggingAssetWindowSession.cpp",
+            "Editor/View/Widgets/LoggingPanel/AssetWindowSession/LoggingAssetWindowSession.h"
+        ],
+        "Editor/View/Widgets/LoggingPanel/PivotTree": [
+            "Editor/View/Widgets/LoggingPanel/PivotTree/PivotTreeWidget.cpp",
+            "Editor/View/Widgets/LoggingPanel/PivotTree/PivotTreeWidget.h",
+            "Editor/View/Widgets/LoggingPanel/PivotTree/PivotTreeWidget.ui"
+        ],
+        "Editor/View/Widgets/LoggingPanel/PivotTree/EntityPivotTree": [
+            "Editor/View/Widgets/LoggingPanel/PivotTree/EntityPivotTree/EntityPivotTree.cpp",
+            "Editor/View/Widgets/LoggingPanel/PivotTree/EntityPivotTree/EntityPivotTree.h"
+        ],
+        "Editor/View/Widgets/LoggingPanel/PivotTree/GraphPivotTree": [
+            "Editor/View/Widgets/LoggingPanel/PivotTree/GraphPivotTree/GraphPivotTree.cpp",
+            "Editor/View/Widgets/LoggingPanel/PivotTree/GraphPivotTree/GraphPivotTree.h"
+        ],
+        "Editor/View/Widgets/ValidationPanel":[
+            "Editor/View/Widgets/ValidationPanel/GraphValidationDockWidget.cpp",
+            "Editor/View/Widgets/ValidationPanel/GraphValidationDockWidget.h",
+            "Editor/View/Widgets/ValidationPanel/GraphValidationDockWidgetBus.h",
+            "Editor/View/Widgets/ValidationPanel/GraphValidationPanel.ui"            
+        ],
+        "Editor/View/Widgets/StatisticsDialog":[
+            "Editor/View/Widgets/StatisticsDialog/ScriptCanvasStatisticsDialog.cpp",
+            "Editor/View/Widgets/StatisticsDialog/ScriptCanvasStatisticsDialog.h",
+            "Editor/View/Widgets/StatisticsDialog/ScriptCanvasStatisticsDialog.ui",
+            "Editor/View/Widgets/StatisticsDialog/NodeUsageTreeItem.cpp",
+            "Editor/View/Widgets/StatisticsDialog/NodeUsageTreeItem.h"
         ],
         "Editor/View/Widgets/VariablePanel": [
             "Editor/View/Widgets/VariablePanel/GraphVariablesTableView.cpp",
@@ -204,27 +293,32 @@
             "Editor/View/Widgets/VariablePanel/VariableDockWidget.ui",
             "Editor/View/Widgets/VariablePanel/VariablePaletteTableView.cpp",
             "Editor/View/Widgets/VariablePanel/VariablePaletteTableView.h"
-            
         ],
+        "Editor/View/Widgets/UnitTestPanel": [
+            "Editor/View/Widgets/UnitTestPanel/UnitTestDockWidget.cpp",
+            "Editor/View/Widgets/UnitTestPanel/UnitTestDockWidget.h",
+            "Editor/View/Widgets/UnitTestPanel/UnitTestDockWidget.ui",
+            "Editor/View/Widgets/UnitTestPanel/UnitTestTreeView.cpp",
+            "Editor/View/Widgets/UnitTestPanel/UnitTestTreeView.h"
+		],
         "Editor/View/Windows": [
-            "Editor/View/Windows/CreateNodeContextMenu.cpp",
-            "Editor/View/Windows/CreateNodeContextMenu.h",
-            "Editor/View/Windows/ConnectionContextMenu.cpp",
-            "Editor/View/Windows/ConnectionContextMenu.h",
             "Editor/View/Windows/EBusHandlerActionMenu.cpp",
             "Editor/View/Windows/EBusHandlerActionMenu.h",
             "Editor/View/Windows/ebushandleractionlistwidget.ui",
             "Editor/View/Windows/MainWindow.cpp",
             "Editor/View/Windows/MainWindow.h",
             "Editor/View/Windows/mainwindow.ui",
-            "Editor/View/Windows/MainWindowBus.h",
-            "Editor/View/Windows/NodeContextMenu.cpp",
-            "Editor/View/Windows/NodeContextMenu.h",
-            "Editor/View/Windows/SceneContextMenu.cpp",
-            "Editor/View/Windows/SceneContextMenu.h",
-            "Editor/View/Windows/ScriptCanvasEditorResources.qrc",
-            "Editor/View/Windows/SlotContextMenu.cpp",
-            "Editor/View/Windows/SlotContextMenu.h"
+            "Editor/View/Windows/MainWindowBus.h",            
+            "Editor/View/Windows/ScriptCanvasContextMenus.cpp",
+            "Editor/View/Windows/ScriptCanvasContextMenus.h",
+            "Editor/View/Windows/ScriptCanvasEditorResources.qrc"
+        ],
+    	"Editor/Framework": [
+      		"Editor/Framework/ScriptCanvasGraphUtilities.inl",
+      		"Editor/Framework/ScriptCanvasGraphUtilities.h",
+      		"Editor/Framework/ScriptCanvasTraceUtilities.h",
+      		"Editor/Framework/ScriptCanvasReporter.inl",
+      		"Editor/Framework/ScriptCanvasReporter.h"
         ]
     }
 }

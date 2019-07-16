@@ -66,6 +66,12 @@ namespace AzToolsFramework
         /// \return a new entity
         virtual AZ::Entity* CreateEditorEntity(const char* name) = 0;
 
+        /// Creates an entity in the editor context.
+        /// \param name The name to give the newly created entity.
+        /// \param entityId The entity ID to create the new entity with.
+        /// \return a new entity
+        virtual AZ::Entity* CreateEditorEntityWithId(const char* name, const AZ::EntityId& entityId) = 0;
+
         /// Registers an existing entity with the editor context.
         virtual void AddEditorEntity(AZ::Entity* entity) = 0;
 
@@ -224,7 +230,7 @@ namespace AzToolsFramework
         virtual void OnContextReset() {}
 
         /// Fired when a slice has been successfully instantiated.
-        virtual void OnSliceInstantiated(const AZ::Data::AssetId& /*sliceAssetId*/, const AZ::SliceComponent::SliceInstanceAddress& /*sliceAddress*/, const AzFramework::SliceInstantiationTicket& /*ticket*/) {}
+        virtual void OnSliceInstantiated(const AZ::Data::AssetId& /*sliceAssetId*/, AZ::SliceComponent::SliceInstanceAddress& /*sliceAddress*/, const AzFramework::SliceInstantiationTicket& /*ticket*/) {}
 
         /// Fired when a slice has failed to instantiate.
         virtual void OnSliceInstantiationFailed(const AZ::Data::AssetId& /*sliceAssetId*/, const AzFramework::SliceInstantiationTicket& /*ticket*/) {}

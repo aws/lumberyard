@@ -19,45 +19,36 @@ def build(bld):
 
     bld.CryResourceCompiler(
         # Settings
+        output_file_name= 'rc',
         target          = 'ResourceCompiler',
         vs_filter       = 'RC',
         copyright_org   = 'Amazon-CryTek',
         file_list       = 'resourcecompiler.waf_files',
         platforms       = ['win', 'darwin'],
-        configurations  = ['debug', 'debug_test', 'profile', 'profile_test'],
+        client_only     = True,
+        exclude_monolithic = True,
         features        = ['qt5'],
         use             = ['AzToolsFramework',
                            'AzFramework'],
         uselib          = ['QT5CORE',
                            'QT5GUI',
                            'QT5WIDGETS',
-                           'ZLIB'],
+                           'ZLIB',
+                           'DBG_HELP',
+                           'D3D_COMPILER_47',
+                           'PVR_TEX_TOOL',
+                           'OPENGL32'],
         defines         = defines,
         includes        = ['.',
                            bld.Path('Code/Tools/CryCommonTools'),
                            bld.Path('Code/Tools/CryXML'),
                            bld.Path('Code/CryEngine/CrySystem/XML')],
         libpath         = [bld.Path('Code/Tools/CryCommonTools')],
-        win_lib         = ['psapi'],
+        win_lib         = ['psapi', 'dbghelp'],
 
-        # Dependent files/folders from Bin64 to copy to any other target folder
-        win_copy_dependent_files =[ 'Bin64/opengl32sw.dll',
-                                'Bin64/d3dcompiler_47.dll',
-                                'Bin64/rc/rc.ini',
-                                'Bin64/rc/RCJob_*.xml',
-                                'Bin64/rc/xg.dll',
-                                'Bin64/rc/xmlfilter.txt',
-                                'Bin64/rc/PVRTexLib.dll',
-                                'Bin64/rc/PVRTexLib_License.txt'],
-
-        darwin_copy_dependent_files =[
-                                'Bin64/rc/rc.ini',
-                                'Bin64/rc/RCJob_*.xml',
-                                'Bin64/rc/xmlfilter.txt',
-                                'Bin64/rc/PVRTexLib_License.txt',
-                                'BinMac64/rc/libfbxsdk.dylib',
-                                'BinMac64/rc/libPVRTexLib.dylib'
-                                ],
+        copy_dependent_files =['Code/Tools/RC/Config/rc/RCJob*.xml',
+                               'Code/Tools/RC/Config/rc/rc.ini',
+                               'Code/Tools/RC/Config/rc/xmlfilter.txt'],
 
         darwin_rpath    = [ "@executable_path", "@executable_path/..", "@executable_path/../qtlibs/lib", "@executable_path/../../Frameworks" ],
 

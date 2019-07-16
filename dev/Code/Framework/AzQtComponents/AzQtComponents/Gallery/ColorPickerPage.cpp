@@ -25,12 +25,12 @@ namespace
     {
         switch (configuration)
         {
-            case AzQtComponents::ColorPicker::Configuration::A:
-                return QStringLiteral("Configuration A");
-            case AzQtComponents::ColorPicker::Configuration::B:
-                return QStringLiteral("Configuration B");
-            case AzQtComponents::ColorPicker::Configuration::C:
-                return QStringLiteral("Configuration C");
+            case AzQtComponents::ColorPicker::Configuration::RGBA:
+                return QStringLiteral("RGBA");
+            case AzQtComponents::ColorPicker::Configuration::RGB:
+                return QStringLiteral("RGB");
+            case AzQtComponents::ColorPicker::Configuration::HueSaturation:
+                return QStringLiteral("Lighting");
         }
         Q_UNREACHABLE();
     }
@@ -64,9 +64,10 @@ QColor newColor = AzQtComponents::ColorPicker::getColor(AzQtComponents::ColorPic
 
     ui->exampleText->setHtml(exampleText);
 
-    connect(ui->colorPickConfigurationAButton, &QPushButton::released, this, [this] { pickColor(AzQtComponents::ColorPicker::Configuration::A); });
-    connect(ui->colorPickConfigurationBButton, &QPushButton::released, this, [this] { pickColor(AzQtComponents::ColorPicker::Configuration::B); });
-    connect(ui->colorPickConfigurationCButton, &QPushButton::released, this, [this] { pickColor(AzQtComponents::ColorPicker::Configuration::C); });
+    connect(ui->colorPickRGBAButton, &QPushButton::released, this, [this] { pickColor(AzQtComponents::ColorPicker::Configuration::RGBA); });
+    connect(ui->colorPickRGBButton, &QPushButton::released, this, [this] { pickColor(AzQtComponents::ColorPicker::Configuration::RGB); });
+    connect(ui->colorPickHueSaturationButton, &QPushButton::released, this, [this] { pickColor(AzQtComponents::ColorPicker::Configuration::HueSaturation); });
+    connect(ui->colorPickRGBARulerButton, &QPushButton::released, this, [this] { pickColor(AzQtComponents::ColorPicker::Configuration::RGBA, QStringLiteral("Ruler")); });
     connect(ui->colorPickWithPalettesButton, &QPushButton::clicked, this, &ColorPickerPage::onColorPickWithPalettesButtonClicked);
 }
 
@@ -74,9 +75,9 @@ ColorPickerPage::~ColorPickerPage()
 {
 }
 
-void ColorPickerPage::pickColor(AzQtComponents::ColorPicker::Configuration configuration)
+void ColorPickerPage::pickColor(AzQtComponents::ColorPicker::Configuration configuration, const QString& context)
 {
-    m_lastColor = AzQtComponents::ColorPicker::getColor(configuration, m_lastColor, QStringLiteral("Color Picker (%1)").arg(getConfigurationName(configuration)), QStringList(), this);
+    m_lastColor = AzQtComponents::ColorPicker::getColor(configuration, m_lastColor, QStringLiteral("Color Picker (%1)").arg(getConfigurationName(configuration)), context, QStringList(), this);
 }
 
 void ColorPickerPage::onColorPickWithPalettesButtonClicked()
@@ -84,5 +85,5 @@ void ColorPickerPage::onColorPickWithPalettesButtonClicked()
     QString dir = QFileDialog::getExistingDirectory(this, tr("Select a Directory with palettes"),
         QDir::currentPath(), QFileDialog::ShowDirsOnly | QFileDialog::DontResolveSymlinks);
 
-    m_lastColor = AzQtComponents::ColorPicker::getColor(AzQtComponents::ColorPicker::Configuration::A, m_lastColor, tr("Color Picker With Palettes"), QStringList() << dir, this);
+    m_lastColor = AzQtComponents::ColorPicker::getColor(AzQtComponents::ColorPicker::Configuration::RGBA, m_lastColor, tr("Color Picker With Palettes"), QString(), QStringList() << dir, this);
 }

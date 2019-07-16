@@ -22,25 +22,27 @@
 #include "MergedMeshGeometry.h"
 #include "VisAreas.h"
 #include "Brush.h"
+#include <Vegetation/StaticVegetationBus.h>
+#include <MathConversion.h>
 
 #pragma pack(push,4)
 
 // common node data
 struct SRenderNodeChunk
 {
-    SRenderNodeChunk() { m_nObjectTypeIndex = 0; m_nLayerId = 0; m_ucDummy = 0; m_pad8 = 0; m_pad16 = 0; }
-    AABB          m_WSBBox;
-    uint16        m_nLayerId;
-    int8          m_cShadowLodBias;
-    uint8         m_ucDummy;
-    uint32        m_dwRndFlags;
-    uint16        m_nObjectTypeIndex;
-    float         m_fViewDistanceMultiplier;
-    uint8         m_ucLodRatio;
+    AABB          m_WSBBox = AABB();
+    uint16        m_nLayerId = 0;
+    int8          m_cShadowLodBias = 0;
+    uint8         m_ucDummy = 0;
+    uint32        m_dwRndFlags = 0;
+    uint16        m_nObjectTypeIndex = 0;
+    uint16        m_pad16 = 0;
+    float         m_fViewDistanceMultiplier = 0.0f;
+    uint8         m_ucLodRatio = 0;
     // Can't guarantee alignment for derived structs across different compilers
     // http://stackoverflow.com/questions/22404423/c-pod-struct-inheritance-are-there-any-guarantees-about-the-memory-layout-of
-    uint8         m_pad8;
-    uint16        m_pad16;
+    uint8         m_pad8 = 0;
+    uint16        m_pad16B = 0;
 
     AUTO_STRUCT_INFO_LOCAL
 };
@@ -59,12 +61,12 @@ struct SVegetationChunkOld
 struct SVegetationChunk
     : public SRenderNodeChunk
 {
-    Vec3  m_vPos;
-    float m_fScale;
-    uint8 m_ucBright;
-    uint8 m_ucAngle;
-    uint8 m_ucAngleX;
-    uint8 m_ucAngleY;
+    Vec3  m_vPos = Vec3(0.0f);
+    float m_fScale = 0.0f;
+    uint8 m_ucBright = 0;          // Note: Brightness is unused, it's a deprecated field.
+    uint8 m_ucAngle = 0;
+    uint8 m_ucAngleX = 0;
+    uint8 m_ucAngleY = 0;
 
     AUTO_STRUCT_INFO_LOCAL
 };
@@ -73,27 +75,26 @@ struct SVegetationChunk
 struct SMergedMeshChunk
     : public SRenderNodeChunk
 {
-    uint32 m_nGroups;
-    AABB m_Extents;
+    uint32 m_nGroups = 0;
+    AABB m_Extents = AABB();
     AUTO_STRUCT_INFO_LOCAL
 };
 
 struct SMergedMeshGroupChunk
 {
-    uint32 m_StatInstGroupID;
-    uint32 m_nSamples;
+    uint32 m_StatInstGroupID = 0;
+    uint32 m_nSamples = 0;
     AUTO_STRUCT_INFO_LOCAL
 };
 
 struct SBrushChunk
     : public SRenderNodeChunk
 {
-    SBrushChunk() { m_flags = 0; }
-    Matrix34  m_Matrix;
-    int16     m_collisionClassIdx;
-    uint16    m_flags;
-    int32     m_nMaterialId;
-    int32     m_nMaterialLayers;
+    Matrix34  m_Matrix = Matrix34();
+    int16     m_collisionClassIdx = 0;
+    uint16    m_flags = 0;
+    int32     m_nMaterialId = 0;
+    int32     m_nMaterialLayers = 0;
 
     AUTO_STRUCT_INFO_LOCAL
 };
@@ -104,12 +105,12 @@ struct SBrushChunk
 struct SRoadChunk
     : public SRenderNodeChunk
 {
-    int32   m_nVertsNum;
-    int16   m_nSortPriority;
-    int16   m_nFlags;
-    int32   m_nMaterialId;
-    float   m_arrTexCoors[2];
-    float   m_arrTexCoorsGlobal[2];
+    int32   m_nVertsNum = 0;
+    int16   m_nSortPriority = 0;
+    int16   m_nFlags = 0;
+    int32   m_nMaterialId = 0;
+    float   m_arrTexCoors[2] = { 0.0f, 0.0f };
+    float   m_arrTexCoorsGlobal[2] = { 0.0f, 0.0f };
 
     AUTO_STRUCT_INFO_LOCAL
 };
@@ -117,15 +118,16 @@ struct SRoadChunk
 struct SDecalChunk
     : public SRenderNodeChunk
 {
-    int16     m_projectionType;
-    uint8     m_deferred;
-    f32       m_depth;
-    Vec3      m_pos;
-    Vec3      m_normal;
-    Matrix33  m_explicitRightUpFront;
-    f32       m_radius;
-    int32     m_nMaterialId;
-    int32     m_nSortPriority;
+    int16     m_projectionType = 0;
+    uint8     m_deferred = 0;
+    uint8     m_pad8 = 0;
+    f32       m_depth = 0.0f;
+    Vec3      m_pos = Vec3(0.0f);
+    Vec3      m_normal = Vec3(0.0f);
+    Matrix33  m_explicitRightUpFront = Matrix33();
+    f32       m_radius = 0.0f;
+    int32     m_nMaterialId = 0;
+    int32     m_nSortPriority = 0;
 
     AUTO_STRUCT_INFO_LOCAL
 };
@@ -134,35 +136,37 @@ struct SWaterVolumeChunk
     : public SRenderNodeChunk
 {
     // volume type and id
-    int32 m_volumeTypeAndMiscBits;
-    uint64 m_volumeID;
+    int32 m_volumeTypeAndMiscBits = 0;
+    uint64 m_volumeID = 0;
 
     // material
-    int32 m_materialID;
+    int32 m_materialID = 0;
 
     // fog properties
-    f32 m_fogDensity;
-    Vec3 m_fogColor;
-    Plane m_fogPlane;
-    f32 m_fogShadowing;
+    f32 m_fogDensity = 0.0f;
+    Vec3 m_fogColor = Vec3(0.0f);
+    Plane m_fogPlane = Plane();
+    f32 m_fogShadowing = 0.0f;
 
     // caustic propeties
-    uint8 m_caustics;
-    f32 m_causticIntensity;
-    f32 m_causticTiling;
-    f32 m_causticHeight;
+    uint8 m_caustics = 0;
+    uint8 m_pad8 = 0;
+    uint16 m_pad16 = 0;
+    f32 m_causticIntensity = 0.0f;
+    f32 m_causticTiling = 0.0f;
+    f32 m_causticHeight = 0.0f;
 
     // render geometry
-    f32 m_uTexCoordBegin;
-    f32 m_uTexCoordEnd;
-    f32 m_surfUScale;
-    f32 m_surfVScale;
-    uint32 m_numVertices;
+    f32 m_uTexCoordBegin = 0.0f;
+    f32 m_uTexCoordEnd = 0.0f;
+    f32 m_surfUScale = 0.0f;
+    f32 m_surfVScale = 0.0f;
+    uint32 m_numVertices = 0;
 
     // physics properties
-    f32 m_volumeDepth;
-    f32 m_streamSpeed;
-    uint32 m_numVerticesPhysAreaContour;
+    f32 m_volumeDepth = 0.0f;
+    f32 m_streamSpeed = 0.0f;
+    uint32 m_numVerticesPhysAreaContour = 0;
 
     AUTO_STRUCT_INFO_LOCAL
 };
@@ -177,11 +181,11 @@ struct SWaterVolumeVertex
 struct SDistanceCloudChunk
     : public SRenderNodeChunk
 {
-    Vec3 m_pos;
-    f32 m_sizeX;
-    f32 m_sizeY;
-    f32 m_rotationZ;
-    int32 m_materialID;
+    Vec3 m_pos = Vec3(0.0f);
+    f32 m_sizeX = 0.0f;
+    f32 m_sizeY = 0.0f;
+    f32 m_rotationZ = 0.0f;
+    int32 m_materialID = 0;
 
     AUTO_STRUCT_INFO_LOCAL
 };
@@ -462,7 +466,7 @@ void COctreeNode::SaveSingleObject(byte*& pPtr, int& nDatanSize, IRenderNode* pE
             AddToPtr(pPtr, nDatanSize, eType, eEndian);
             CopyCommonData(&chunk, pObj);
             chunk.m_nGroups = pObj->NumGroups();
-            chunk.m_Extents = pObj->GetExtents();
+            chunk.m_Extents = pObj->GetInternalBBox();
             AddToPtr(pPtr, nDatanSize, chunk, eEndian);
 
             for (size_t i = 0; i < pObj->NumGroups(); ++i)
@@ -772,6 +776,8 @@ void COctreeNode::LoadSingleObject(byte*& pPtr, std::vector<IStatObj*>* pStatObj
         pObj->Physicalize();
         Get3DEngine()->RegisterEntity(pObj, nSID, nSID);
         pObj->CheckCreateDeformable();
+
+        Vegetation::StaticVegetationNotificationBus::Broadcast(&Vegetation::StaticVegetationNotificationBus::Events::InstanceAdded, pObj, LyAABBToAZAabb(pObj->CalcBBox()));
 
         assert(!(pObj->GetRndFlags() & ERF_PROCEDURAL));
     }

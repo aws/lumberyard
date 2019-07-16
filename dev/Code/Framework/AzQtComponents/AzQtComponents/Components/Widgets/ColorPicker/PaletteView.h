@@ -18,7 +18,6 @@
 #include <QSize>
 
 class QPainter;
-class QToolButton;
 class QSettings;
 class QUndoStack;
 
@@ -32,6 +31,26 @@ namespace AzQtComponents
     namespace Internal
     {
         class ColorController;
+
+        class AddSwatch : public QFrame
+        {
+            Q_OBJECT
+
+        public:
+            explicit AddSwatch(QWidget* parent = nullptr);
+
+        signals:
+            void clicked();
+
+        protected:
+            void paintEvent(QPaintEvent* event) override;
+            void mouseReleaseEvent(QMouseEvent* event) override;
+            void keyReleaseEvent(QKeyEvent* event) override;
+
+        private:
+            QSize m_iconSize = { 16, 16 };
+            QIcon m_icon;
+        };
     }
 
     class Style;
@@ -57,6 +76,9 @@ namespace AzQtComponents
         struct Config
         {
             DropIndicator dropIndicator;
+            QSize marginSize;
+            int horizontalSpacing;
+            int verticalSpacing;
         };
 
         /*!
@@ -92,6 +114,12 @@ namespace AzQtComponents
 
         void setMarginSize(const QSize& size);
         void setItemSize(const QSize& size);
+        void setItemHorizontalSpacing(int spacing);
+        void setItemVerticalSpacing(int spacing);
+
+        bool contains(const AZ::Color& color) const;
+        
+        QMenu* contextMenu() const { return m_context; }
 
     public Q_SLOTS:
         void setGammaEnabled(bool enabled);
@@ -103,6 +131,7 @@ namespace AzQtComponents
 
     Q_SIGNALS:
         void selectedColorsChanged(const QVector<AZ::Color>& selectedColors);
+        void unselectedContextMenuRequested(const QPoint& position);
 
     protected:
         QSize sizeHint() const override;
@@ -124,7 +153,7 @@ namespace AzQtComponents
         void mouseReleaseEvent(QMouseEvent* event) override;
         void contextMenuEvent(QContextMenuEvent* event) override;
 
-        void startDrag(Qt::DropActions supportedActions);
+        void startDrag(Qt::DropActions supportedActions) override;
 
         void dragEnterEvent(QDragEnterEvent* event) override;
         void dragMoveEvent(QDragMoveEvent* event) override;
@@ -146,6 +175,8 @@ namespace AzQtComponents
         QRect getDropIndicatorRect(QModelIndex index, int row) const;
         int getRootRow(const QPoint point, const QModelIndex index) const;
 
+        void onColorChanged(const AZ::Color& c);
+
         PaletteModel* m_paletteModel;
         PaletteItemDelegate* m_delegate;
         Internal::ColorController* m_controller;
@@ -158,12 +189,13 @@ namespace AzQtComponents
         int m_itemColumns;
         QSize m_preferredSize;
         QSize m_itemSize;
-        QSize m_marginSize;
+        int m_itemHSpacing;
+        int m_itemVSpacing;
 
         bool m_droppingOn;
         QRect m_dropIndicatorRect;
 
-        QToolButton* m_addColorButton;
+        Internal::AddSwatch* m_addColorButton;
 
         QMenu* m_context;
         QAction* m_cut;

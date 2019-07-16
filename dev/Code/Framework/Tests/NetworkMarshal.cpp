@@ -279,6 +279,7 @@ namespace UnitTest
         AZ::BehaviorContext*  GetBehaviorContext() override { AZ_Assert(false,"Unsupported method in Unit Test"); return nullptr; }
         const char* GetAppRoot() override { AZ_Assert(false,"Unsupported method in Unit Test"); return nullptr; }
         const char* GetExecutableFolder() override { AZ_Assert(false,"Unsupported method in Unit Test"); return nullptr; }
+        const char* GetBinFolder() const override { AZ_Assert(false,"Unsupported method in Unit Test"); return nullptr; }
         AZ::Debug::DrillerManager* GetDrillerManager() override { AZ_Assert(false,"Unsupported method in Unit Test"); return nullptr; }
         void ReloadModule(const char* moduleFullPath) override { (void)moduleFullPath; AZ_Assert(false,"Unsupported method in Unit Test"); }
         

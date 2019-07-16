@@ -22,3 +22,4 @@ Q_DECLARE_METATYPE(Qt::AlignmentFlag);
 Q_DECLARE_METATYPE(Qt::PenCapStyle);
 Q_DECLARE_METATYPE(Qt::PenStyle);
 Q_DECLARE_METATYPE(GraphCanvas::Styling::Curves);
+Q_DECLARE_METATYPE(GraphCanvas::Styling::PaletteStyle);

@@ -85,9 +85,9 @@ namespace Serialization {
         StringListStatic names_;
         StringListStatic labels_;
 
-        typedef AZStd::unordered_map<const char*, int, AZStd::hash<const char*>, AZStd::equal_to<const char*>, AZ::StdLegacyAllocator> NameToValue;
+        typedef AZStd::unordered_map<AZStd::string_view, int, AZStd::hash<AZStd::string_view>, AZStd::equal_to<AZStd::string_view>, AZ::StdLegacyAllocator> NameToValue;
         NameToValue nameToValue_;
-        typedef AZStd::unordered_map<const char*, int, AZStd::hash<const char*>, AZStd::equal_to<const char*>, AZ::StdLegacyAllocator> LabelToValue;
+        typedef AZStd::unordered_map<AZStd::string_view, int, AZStd::hash<AZStd::string_view>, AZStd::equal_to<AZStd::string_view>, AZ::StdLegacyAllocator> LabelToValue;
         LabelToValue labelToValue_;
         typedef AZStd::unordered_map<int, int, AZStd::hash<int>, AZStd::equal_to<int>, AZ::StdLegacyAllocator> ValueToIndex;
         ValueToIndex valueToIndex_;

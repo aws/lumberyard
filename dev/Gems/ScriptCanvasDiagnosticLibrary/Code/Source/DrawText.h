@@ -12,6 +12,8 @@
 
 #pragma once
 
+#include <AzCore/Component/TickBus.h>
+
 #include <ScriptCanvas/CodeGen/CodeGen.h>
 #include <ScriptCanvas/Core/Node.h>
 
@@ -33,6 +35,7 @@ namespace ScriptCanvas
             class DrawTextNode
                 : public Node
                 , ScriptCanvasDiagnostics::DebugDrawBus::Handler
+                , AZ::TickBus::Handler
             {
             public:
                 ScriptCanvas_Node(DrawTextNode,
@@ -41,8 +44,6 @@ namespace ScriptCanvas
                     ScriptCanvas_Node::Icon("Editor/Icons/ScriptCanvas/DrawText.png")
                     ScriptCanvas_Node::Category("Utilities/Debug")
                     ScriptCanvas_Node::Version(1));
-
-                //void Visit(NodeVisitor& visitor) const override { visitor.Visit(*this); }
 
                 // DebugDrawBus
                 void OnDebugDraw(IRenderer*) override;
@@ -72,6 +73,11 @@ namespace ScriptCanvas
                     ScriptCanvas_Property::Input
                 );
 
+                ScriptCanvas_PropertyWithDefaults(float, 0.f,
+                    ScriptCanvas_Property::Name("Duration", "If greater than zero, the text will disappear after this duration (in seconds).")
+                    ScriptCanvas_Property::Input
+                );
+
                 ScriptCanvas_PropertyWithDefaults(float, 1.f,
                     ScriptCanvas_Property::Name("Scale", "Scales the font size of the text.")
                     ScriptCanvas_Property::Input
@@ -82,9 +88,22 @@ namespace ScriptCanvas
                     ScriptCanvas_Property::Input
                 );
 
+                ScriptCanvas_PropertyWithDefaults(bool, false,
+                    ScriptCanvas_Property::Name("Editor Only", "Only displays this text if the game is being run in-editor, not on launchers.")
+                    ScriptCanvas_Property::Input
+                );
+
             protected:
 
                 void OnInputSignal(const SlotId& slotId) override;
+                void OnInputChanged(const Datum& input, const SlotId& slotID) override;
+
+                void OnTick(float deltaTime, AZ::ScriptTimePoint) override;
+
+            private:
+
+                AZStd::string m_text;
+                float m_duration;
 
             };
         }

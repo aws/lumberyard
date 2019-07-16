@@ -20,8 +20,11 @@
 namespace Physics
 {
     const CollisionLayer CollisionLayer::Default = 0;
+    const CollisionLayer CollisionLayer::TouchBend = 1;
+
     const CollisionGroup CollisionGroup::None = 0x0000000000000000ULL;
     const CollisionGroup CollisionGroup::All = 0xFFFFFFFFFFFFFFFFULL;
+    const CollisionGroup CollisionGroup::All_NoTouchBend = CollisionGroup::All.GetMask() & ~CollisionLayer::TouchBend.GetMask();
 
     void CollisionLayer::Reflect(AZ::ReflectContext* context)
     {

@@ -105,10 +105,10 @@ namespace LmbrCentral
         void OnEntityVisibilityChanged(bool visibility) override;
         //////////////////////////////////////////////////////////////////////////
 
-        //////////////////////////////////////////////////////////////////////////
-        // AzFramework::EntityDebugDisplayEventBus interface implementation
-        void DisplayEntity(bool& handled) override;
-        //////////////////////////////////////////////////////////////////////////
+        // AzFramework::EntityDebugDisplayEventBus
+        void DisplayEntityViewport(
+            const AzFramework::ViewportInfo& viewportInfo,
+            AzFramework::DebugDisplayRequests& debugDisplay) override;
 
         //////////////////////////////////////////////////////////////////////////
         // LightComponentEditorRequestBus::Handler interface implementation
@@ -382,8 +382,8 @@ namespace LmbrCentral
         
         const char* GetCubemapAssetName() const;
 
-        void DrawProjectionGizmo(AzFramework::EntityDebugDisplayRequests* dc, const float radius) const;
-        void DrawPlaneGizmo(AzFramework::EntityDebugDisplayRequests* dc, const float depth) const;
+        void DrawProjectionGizmo(AzFramework::DebugDisplayRequests& dc, const float radius) const;
+        void DrawPlaneGizmo(AzFramework::DebugDisplayRequests& dc, const float depth) const;
 
         EditorLightConfiguration m_configuration;
         bool m_viewCubemap;

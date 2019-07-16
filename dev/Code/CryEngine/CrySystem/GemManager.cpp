@@ -18,6 +18,7 @@
 
 #include <AzCore/std/utils.h>
 #include <AzCore/std/containers/vector.h>
+#include <AzCore/std/string/string_view.h>
 #include <AzCore/std/string/regex.h>
 
 #include <AzCore/Component/ComponentApplicationBus.h>
@@ -233,6 +234,9 @@ bool GemManager::LoadGems(const SSystemInitParams& initParams)
         return true;
     });
 
+    AZStd::string_view binFolderName;
+    AZ::ComponentApplicationBus::BroadcastResult(binFolderName, &AZ::ComponentApplicationRequests::GetBinFolder);
+
     for (const auto& missingModule : missingModules)
     {
         AZ_Error("Gems", false,
@@ -240,7 +244,7 @@ bool GemManager::LoadGems(const SSystemInitParams& initParams)
             "App descriptors for all projects can be updated by running lmbr from your dev/ root with the following arguments: \"lmbr projects populate-appdescriptors\".\n"
             "The lmbr executable can be found in '%s'.",
             missingModule.c_str(),
-            BINFOLDER_NAME);
+            binFolderName.data());
         return false;
     }
 #endif // AZ_MONOLITHIC_BUILD

@@ -21,8 +21,6 @@
 #if defined(AZ_RESTRICTED_PLATFORM)
 #undef AZ_RESTRICTED_SECTION
 #define MAIN_CPP_SECTION_1 1
-#define MAIN_CPP_SECTION_2 2
-#define MAIN_CPP_SECTION_3 3
 #endif
 
 #if defined(AZ_TESTS_ENABLED)
@@ -67,46 +65,7 @@ namespace AZ
 
 using namespace AZ;
 
-// Handle asserts
-class TraceDrillerHook
-    : public AZ::Test::ITestEnvironment
-    , public UnitTest::TraceBusRedirector
-{
-public:
-    void SetupEnvironment() override
-    {
-        AllocatorInstance<OSAllocator>::Create(); // used by the bus
-
-#if defined(AZ_RESTRICTED_PLATFORM)
-#define AZ_RESTRICTED_SECTION MAIN_CPP_SECTION_2
-    #if defined(AZ_PLATFORM_XENIA)
-        #include "Xenia/Main_cpp_xenia.inl"
-    #elif defined(AZ_PLATFORM_PROVO)
-        #include "Provo/Main_cpp_provo.inl"
-    #endif
-#endif
-
-        BusConnect();
-    }
-
-    void TeardownEnvironment() override
-    {
-        BusDisconnect();
-
-#if defined(AZ_RESTRICTED_PLATFORM)
-#define AZ_RESTRICTED_SECTION MAIN_CPP_SECTION_3
-    #if defined(AZ_PLATFORM_XENIA)
-        #include "Xenia/Main_cpp_xenia.inl"
-    #elif defined(AZ_PLATFORM_PROVO)
-        #include "Provo/Main_cpp_provo.inl"
-    #endif
-#endif
-
-        AllocatorInstance<OSAllocator>::Destroy(); // used by the bus
-    }
-};
-
-AZ_UNIT_TEST_HOOK(new TraceDrillerHook());
+AZ_UNIT_TEST_HOOK(new UnitTest::TraceBusHook());
 
 #if defined(HAVE_BENCHMARK)
 AZTEST_EXPORT size_t AzRunBenchmarks(int argc, char** argv)

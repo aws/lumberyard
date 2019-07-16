@@ -25,8 +25,8 @@
 #include <AzCore/std/sort.h>
 
 extern "C" {
-#	include	<Lua/lualib.h>
-#	include	<Lua/lauxlib.h>
+#include<Lua/lualib.h>
+#include<Lua/lauxlib.h>
 }
 
 namespace AZ
@@ -44,7 +44,7 @@ namespace AZ
                 : m_value(value) {}
             virtual ~AttributeDynamicScriptValue() 
             { 
-                m_value.DestroyData();			
+                m_value.DestroyData();
             }
 
             template<class T>
@@ -63,9 +63,9 @@ namespace AZ
             }
 
             template<class T>
-            void GetValue(T& value, AZStd::false_type /*AZStd::is_pointer<T>::type()*/)		{ value = *reinterpret_cast<T*>(m_value.m_data); }
+            void GetValue(T& value, AZStd::false_type /*AZStd::is_pointer<T>::type()*/) { value = *reinterpret_cast<T*>(m_value.m_data); }
             template<class T>
-            void GetValue(T& value, AZStd::true_type /*AZStd::is_pointer<T>::type()*/)		{ value = reinterpret_cast<T>(m_value.m_data); }
+            void GetValue(T& value, AZStd::true_type /*AZStd::is_pointer<T>::type()*/) { value = reinterpret_cast<T>(m_value.m_data); }
 
             DynamicSerializableField m_value;
         };
@@ -107,7 +107,7 @@ namespace AzToolsFramework
 
         //=========================================================================
         // Activate
-        //=========================================================================	
+        //=========================================================================
         void ScriptEditorComponent::Activate()
         {
             // Setup the context
@@ -130,7 +130,7 @@ namespace AzToolsFramework
 
         //=========================================================================
         // Deactivate
-        //=========================================================================	
+        //=========================================================================
         void ScriptEditorComponent::Deactivate()
         {
             AZ::Data::AssetBus::Handler::BusDisconnect();
@@ -139,7 +139,7 @@ namespace AzToolsFramework
 
         //=========================================================================
         // CacheString
-        //=========================================================================	
+        //=========================================================================
         const char* ScriptEditorComponent::CacheString(const char* str)
         {
             if (str == nullptr)
@@ -152,7 +152,7 @@ namespace AzToolsFramework
 
         //=========================================================================
         // LoadDefaultAsset
-        //=========================================================================	
+        //=========================================================================
         bool ScriptEditorComponent::LoadDefaultAsset(AZ::ScriptDataContext& sdc, int valueIndex, const char* name, AzFramework::ScriptPropertyGroup& group, ElementInfo& elementInfo)
         {
             LSV_BEGIN(sdc.GetNativeContext(), 0);
@@ -191,7 +191,7 @@ namespace AzToolsFramework
 
         //=========================================================================
         // LoadDefaultEntityRef
-        //=========================================================================	
+        //=========================================================================
         bool ScriptEditorComponent::LoadDefaultEntityRef(AZ::ScriptDataContext& sdc, int valueIndex, const char* name, AzFramework::ScriptPropertyGroup& group, ElementInfo& elementInfo)
         {
             LSV_BEGIN(sdc.GetNativeContext(), 0);
@@ -254,7 +254,7 @@ namespace AzToolsFramework
 
         //=========================================================================
         // LoadAttribute
-        //=========================================================================	
+        //=========================================================================
         bool ScriptEditorComponent::LoadAttribute(AZ::ScriptDataContext& sdc, int valueIndex, const char* name, AZ::Edit::ElementData& ed, AZ::ScriptProperty* prop)
         {
             LSV_BEGIN(sdc.GetNativeContext(), 0);
@@ -325,7 +325,7 @@ namespace AzToolsFramework
 
         //=========================================================================
         // LoadAttribute
-        //=========================================================================	
+        //=========================================================================
         bool ScriptEditorComponent::LoadEnumValuesDouble(AZ::ScriptDataContext& sdc, int valueIndex, AZ::Edit::ElementData& ed)
         {
             LSV_BEGIN(sdc.GetNativeContext(), 0);
@@ -394,7 +394,7 @@ namespace AzToolsFramework
 
         //=========================================================================
         // LoadAttribute
-        //=========================================================================	
+        //=========================================================================
         bool ScriptEditorComponent::LoadEnumValuesString(AZ::ScriptDataContext& sdc, int valueIndex, AZ::Edit::ElementData& ed)
         {
             LSV_BEGIN(sdc.GetNativeContext(), 0);
@@ -843,6 +843,16 @@ namespace AzToolsFramework
             }
 
             m_dataElements.clear();
+
+            // The display tree might still be holding onto pointers to our attributes that we just cleared above, so force a refresh to remove them.
+            // However, only force the refresh if we have a valid entity.  If we don't have an entity, this component isn't currently being shown or
+            // edited, so a refresh is at best superfluous, and at worst could cause a feedback loop of infinite refreshes.
+            if (GetEntity())
+            {
+                AzToolsFramework::ToolsApplicationEvents::Bus::Broadcast(
+                    &AzToolsFramework::ToolsApplicationEvents::InvalidatePropertyDisplay, 
+                    AzToolsFramework::Refresh_EntireTree);
+            }
         }
 
         const AZ::Edit::ElementData* ScriptEditorComponent::GetDataElement(const void* element, const AZ::Uuid& typeUuid) const

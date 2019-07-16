@@ -17,6 +17,7 @@
 #include <EMotionFX/Source/TransformData.h>
 #include <EMotionFX/Source/EventManager.h>
 #include <EMotionFX/Source/Pose.h>
+#include <EMotionFX/Source/DebugDraw.h>
 
 #include <MCore/Source/AzCoreConversions.h>
 
@@ -118,22 +119,25 @@ namespace EMotionFX
     }
 
 
-    void SpringSolver::DebugRender(AZ::u32 color)
+    void SpringSolver::DebugRender(const AZ::Color& color)
     {
         const float s = 0.02f;
-        const AZ::u32 jointLocationColor = MCore::RGBA(0, 255, 0);
+        const AZ::Color jointLocationColor(0.0f, 1.0f, 0.0f, 1.0f);
 
-        EventManager& eventManager = GetEventManager();
+        DebugDraw& debugDraw = GetDebugDraw();
+        DebugDraw::ActorInstanceData* drawData = debugDraw.GetActorInstanceData(m_actorInstance);
+        drawData->Lock();
         for (Spring& spring : m_springs)
         {
             const Particle& particleA = m_particles[spring.m_particleA];
             const Particle& particleB = m_particles[spring.m_particleB];
-            eventManager.OnDrawLine(particleA.m_pos, particleB.m_pos, color);
 
-            eventManager.OnDrawLine(particleB.m_pos + AZ::Vector3(0.0f, 0.0f, -s), particleB.m_pos + AZ::Vector3(0.0f, 0.0f, s), jointLocationColor);
-            eventManager.OnDrawLine(particleB.m_pos + AZ::Vector3(0.0f, -s, 0.0f), particleB.m_pos + AZ::Vector3(0.0f, s, 0.0f), jointLocationColor);
-            eventManager.OnDrawLine(particleB.m_pos + AZ::Vector3(-s, 0.0f, 0.0f), particleB.m_pos + AZ::Vector3(s, 0.0f, 0.0f), jointLocationColor);
+            drawData->AddLine(particleA.m_pos, particleB.m_pos, color);
+            drawData->AddLine(particleB.m_pos + AZ::Vector3(0.0f, 0.0f, -s), particleB.m_pos + AZ::Vector3(0.0f, 0.0f, s), jointLocationColor);
+            drawData->AddLine(particleB.m_pos + AZ::Vector3(0.0f, -s, 0.0f), particleB.m_pos + AZ::Vector3(0.0f, s, 0.0f), jointLocationColor);
+            drawData->AddLine(particleB.m_pos + AZ::Vector3(-s, 0.0f, 0.0f), particleB.m_pos + AZ::Vector3(s, 0.0f, 0.0f), jointLocationColor);
         }
+        drawData->Unlock();
     }
 
 

@@ -24,8 +24,6 @@ namespace GraphCanvas
     public:
         static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::ById;
         using BusIdType = AZ::EntityId;
-        
-        virtual AnimatedPulse* GetPulse() = 0;        
     };
     
     using PulseRequestBus = AZ::EBus<PulseRequests>;

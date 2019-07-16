@@ -188,8 +188,7 @@ SystemAllocator::Destroy()
 #ifdef AZCORE_ENABLE_MEMORY_TRACKING
     if (m_records)
     {
-        // print what allocation we have.
-        m_records->EnumerateAllocations(Debug::PrintAllocationsCB(true, true));
+        // m_records is created and destroyed by the MemoryDriller. AllocationRecords' destructor will print non-freed allocations
         EBUS_EVENT(Debug::MemoryDrillerBus, UnregisterAllocator, this);
     }
 #endif

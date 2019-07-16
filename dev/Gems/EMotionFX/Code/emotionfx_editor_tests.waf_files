@@ -1,15 +1,25 @@
 {
-    "auto": {
-        "Tests": [
+    "auto": 
+    {
+        "Tests": 
+        [
             "Tests/EMotionFXEditorTest.cpp",
             "Tests/InitSceneAPIFixture.h",
             "Tests/MetaDataRuleTests.cpp",
             "Tests/MorphTargetPipelineTests.cpp",
             "Tests/SystemComponentFixture.h",
+            "Tests/Bugs/CanDeleteMotionSetWhenSameMotionInTwoMotionSets.cpp",
+            "Tests/UI/CommandRunnerFixture.cpp",
             "Tests/UI/CommandRunnerFixture.h",
             "Tests/UI/UIFixture.cpp",
             "Tests/UI/UIFixture.h",
-            "Tests/UI/LY-92269.cpp"
+            "Tests/UI/LY-92269.cpp",
+            "Tests/UI/LY-92748.cpp",
+            "Tests/UI/LY-93621.cpp"
+        ],
+        "Tests/Bugs": 
+        [
+            "Tests/Bugs/LY-92860.cpp"
         ]
     }
 }

@@ -63,6 +63,8 @@ def sum_delete_duration(request):
     return cw.sum_delete_duration(util.get_cloudwatch_namespace(os.environ[c.ENV_DEPLOYMENT_STACK_ARN]))
 
 def cli(context, args):
+    util.set_logger(args.verbose)
+
     from resource_manager_common import constant
     credentials = context.aws.load_credentials()
 

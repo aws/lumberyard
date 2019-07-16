@@ -12,34 +12,33 @@
 
 #pragma once
 
-#include <AzCore/Math/Color.h>
+namespace AZ
+{
+    class Color;
+}
 
 namespace AzFramework
 {
-    /**
-     * Various colors used by the editor and shared between objects
-     */
+    /// Various colors used by the editor and shared between objects
     namespace ViewportColors
     {
-        /**
-         * Color to use for a deselected object
-         */
-        static const AZ::Color DeselectedColor( 1.0f, 1.0f, 0.78f, 0.4f );
+        /// Color to use for a deselected object
+        extern const AZ::Color DeselectedColor;
 
-        /**
-         * Color to use for a selected object
-         */
-        static const AZ::Color SelectedColor( 1.0, 1.0f, 0.0f, 0.9f );
+        /// Color to use for a selected object
+        extern const AZ::Color SelectedColor;
 
-        /** 
-         * Color to use when hovering
-         */
-        static const AZ::Color HoverColor( 1.0f, 1.0f, 0.0f, 0.9f );
+        /// Color to use when hovering
+        extern const AZ::Color HoverColor;
 
-        /**
-        * Color to use for wireframe
-        */
-        static const AZ::Color WireColor( 1.0f, 1.0f, 0.78f, 0.5f );
-    }
-} // namespace AzToolsFramework
+        /// Color to use for wireframe
+        extern const AZ::Color WireColor;
 
+        /// Color to use for locked
+        extern const AZ::Color LockColor;
+
+        /// Color to use for hidden
+        extern const AZ::Color HiddenColor;
+
+    } // namespace ViewportColors
+} // namespace AzFramework

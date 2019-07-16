@@ -13,6 +13,20 @@
 
 #include <QSortFilterProxyModel>
 
+namespace AzQtComponents
+{
+    struct SearchTypeFilter;
+    using SearchTypeFilterList = QVector<SearchTypeFilter>;
+}
+
+namespace AzToolsFramework
+{
+    namespace AssetSystem
+    {
+        enum class JobStatus;
+    }
+}
+
 namespace AssetProcessor
 {
     class JobSortFilterProxyModel
@@ -22,13 +36,12 @@ namespace AssetProcessor
 
     public:
         explicit JobSortFilterProxyModel(QObject* parent = nullptr);
-        void OnFilterRegexExpChanged(QRegExp regExp, bool isFilterRegexExpEmpty);
-
+        void OnJobStatusFilterChanged(const AzQtComponents::SearchTypeFilterList& activeTypeFilters);
 
     protected:
         bool filterAcceptsRow(int sourceRow, const QModelIndex& sourceParent) const override;
     private:
-        bool m_filterRegexExpEmpty = true;
+        QList<AzToolsFramework::AssetSystem::JobStatus> m_activeTypeFilters = {};
     };
 } // namespace AssetProcessor
 

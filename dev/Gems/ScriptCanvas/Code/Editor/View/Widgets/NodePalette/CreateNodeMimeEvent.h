@@ -36,7 +36,7 @@ namespace ScriptCanvasEditor
 
         bool ExecuteEvent(const AZ::Vector2& mouseDropPosition, AZ::Vector2& dropPosition, const AZ::EntityId& graphCanvasGraphId) override final;
         AZ::EntityId CreateSplicingNode(const AZ::EntityId& graphCanvasGraphId) override;
-
+        
     protected:
         virtual ScriptCanvasEditor::NodeIdPair CreateNode(const AZ::EntityId& scriptCanvasGraphId) const = 0;
 
@@ -55,6 +55,24 @@ namespace ScriptCanvasEditor
 
         static void Reflect(AZ::ReflectContext* reflectContext);
 
+        SpecializedCreateNodeMimeEvent() = default;
+        ~SpecializedCreateNodeMimeEvent() = default;
+
         virtual NodeIdPair ConstructNode(const AZ::EntityId& scriptCanvasGraphId, const AZ::Vector2& scenePosition) = 0;
+    };
+
+    // Special case specialization here for some automation procedures.
+    // Want to be able to generate all of the possible events from a MultiCreationNode and handle
+    // them all in an automated way
+    class MultiCreateNodeMimeEvent
+        : public SpecializedCreateNodeMimeEvent
+    {
+    public:
+        AZ_RTTI(MultiCreateNodeMimeEvent, "{44A3F43F-E6D3-4EC7-8E80-82981661603E}", SpecializedCreateNodeMimeEvent);
+        AZ_CLASS_ALLOCATOR(MultiCreateNodeMimeEvent, AZ::SystemAllocator, 0);
+
+        static void Reflect(AZ::ReflectContext* reflectContext);
+
+        virtual AZStd::vector< GraphCanvas::GraphCanvasMimeEvent* > CreateMimeEvents() const = 0;
     };
 }

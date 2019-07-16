@@ -299,7 +299,7 @@ AZ::Transform Transform::CreateLookAt(const AZ::Vector3& from, const AZ::Vector3
     // If 'look-at' vector is zero, error and return Identity transform.
     if (targetForward.IsZero())
     {
-        AZ_Assert(!targetForward.IsZero(), "Can't create look-at transform when 'to' and 'from' positions are equal!");
+        AZ_Error("Transform", !targetForward.IsZero(), "Can't create look-at transform when 'to' and 'from' positions are equal!");
         return transform;
     }
 

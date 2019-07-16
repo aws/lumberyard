@@ -38,6 +38,7 @@ namespace Audio
         void SetObstructionCalcType(const EAudioObjectObstructionCalcType eObstructionType) override;
         void SetPosition(const SATLWorldPosition& refPosition) override;
         void SetPosition(const Vec3& refPosition) override;
+        void SetMultiplePositions(const MultiPositionParams& params) override;
         void SetEnvironmentAmount(const TAudioEnvironmentID nEnvironmentID, const float fValue) override;
         void SetCurrentEnvironments(const EntityId nEntityToIgnore) override;
         void SetLipSyncProvider(ILipSyncProvider* const pILipSyncProvider) override;
@@ -83,6 +84,7 @@ namespace Audio
             eQACT_RELEASE,
             eQACT_INITIALIZE,
             eQACT_STOP_ALL_TRIGGERS,
+            eQACT_SET_MULTI_POSITIONS,
         };
 
         ///////////////////////////////////////////////////////////////////////////////////////////////
@@ -107,7 +109,7 @@ namespace Audio
 
             SQueuedAudioCommand& operator=(const SQueuedAudioCommand& refOther)
             {
-                const_cast<EQueuedAudioCommandType&>(eType) = refOther.eType;
+                eType = refOther.eType;
                 nTriggerID = refOther.nTriggerID;
                 nSwitchID = refOther.nSwitchID;
                 nStateID = refOther.nStateID;
@@ -122,11 +124,12 @@ namespace Audio
                 nRequestFlags = refOther.nRequestFlags;
                 sValue = refOther.sValue;
                 oPosition = refOther.oPosition;
+                oMultiPosParams = refOther.oMultiPosParams;
                 nSourceID = refOther.nSourceID;
                 return *this;
             }
 
-            const EQueuedAudioCommandType eType;
+            EQueuedAudioCommandType eType;
             TAudioControlID nTriggerID;
             TAudioControlID nSwitchID;
             TAudioSwitchStateID nStateID;
@@ -139,8 +142,9 @@ namespace Audio
             void* pUserData;
             void* pUserDataOwner;
             TATLEnumFlagsType nRequestFlags;
-            string sValue;
+            AZStd::string sValue;
             SATLWorldPosition oPosition;
+            MultiPositionParams oMultiPosParams;
             TAudioSourceId nSourceID;
         };
 
@@ -223,9 +227,11 @@ namespace Audio
             {
                 bool bFound = false;
 
+                // Single Position cannot be added into queue when a Multi-Position is already present.
+
                 if (refCommand.eType == eQACT_SET_POSITION)
                 {
-                    // Command exists already, just update the position.
+                    // Single Position exists already, update the position.
                     refCommand.oPosition = refPosition;
                     bFound = true;
                 }
@@ -236,6 +242,38 @@ namespace Audio
         private:
 
             const SATLWorldPosition& refPosition;
+        };
+
+        //////////////////////////////////////////////////////////////////////////
+        struct SFindSetMultiplePositions
+        {
+            SFindSetMultiplePositions(const MultiPositionParams& refPassedParams)
+                : refParams(refPassedParams)
+            {}
+
+            bool operator()(SQueuedAudioCommand& refCommand)
+            {
+                bool found = false;
+
+                if (refCommand.eType == eQACT_SET_POSITION)
+                {
+                    // Multi-Position command replaces an existing Single Position.
+                    refCommand.eType = eQACT_SET_MULTI_POSITIONS;
+                }
+
+                if (refCommand.eType == eQACT_SET_MULTI_POSITIONS)
+                {
+                    // Multi-Position exists already, update with the newer position list.
+                    refCommand.oMultiPosParams.m_positions.assign(refParams.m_positions.begin(), refParams.m_positions.end());
+                    refCommand.oMultiPosParams.m_type = refParams.m_type;
+                    found = true;
+                }
+
+                return found;
+            }
+
+        private:
+            const MultiPositionParams& refParams;
         };
 
         //////////////////////////////////////////////////////////////////////////

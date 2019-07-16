@@ -46,7 +46,7 @@ namespace AzToolsFramework
             }
             else if (!nameOverride.empty())
             {
-                setText(nameOverride.to_string().c_str());
+                setText(nameOverride.data());
             }
             else
             {

@@ -99,7 +99,28 @@ namespace GraphCanvas
     GeneralNodeFrameGraphicsWidget::GeneralNodeFrameGraphicsWidget(const AZ::EntityId& entityKey)
         : NodeFrameGraphicsWidget(entityKey)
     {
-        setZValue(m_style.GetAttribute(Styling::Attribute::ZValue, 0));
+    }
+
+    QPainterPath GeneralNodeFrameGraphicsWidget::GetOutline() const
+    {
+        QPainterPath path;
+
+        QPen border = m_style.GetBorder();
+        qreal cornerRadius = GetCornerRadius();
+
+        qreal halfBorder = border.widthF() / 2.;
+        QRectF adjusted = sceneBoundingRect().marginsRemoved(QMarginsF(halfBorder, halfBorder, halfBorder, halfBorder));
+
+        if (cornerRadius >= 1.0)
+        {
+            path.addRoundedRect(adjusted, cornerRadius, cornerRadius);
+        }
+        else
+        {
+            path.addRect(adjusted);
+        }
+
+        return path;
     }
 
     void GeneralNodeFrameGraphicsWidget::paint(QPainter* painter, const QStyleOptionGraphicsItem* option, QWidget* widget)

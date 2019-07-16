@@ -13,9 +13,11 @@
 
 #include <AzQtComponents/AzQtComponentsAPI.h>
 #include <QWidget>
+#include <QSet>
 
 class QUndoStack;
 class QVBoxLayout;
+class QMargins;
 
 namespace AzQtComponents
 {
@@ -43,18 +45,30 @@ namespace AzQtComponents
         void setSwatchSize(const QSize& size);
 
         int count() const;
+        QSharedPointer<PaletteCard> paletteCard(int index) const;
+        int indexOf(const QSharedPointer<PaletteCard>& card) const;
 
-    public Q_SLOTS:
+        void moveUp(QSharedPointer<PaletteCard>& card);
+        bool canMoveUp(QSharedPointer<PaletteCard>& card);
+
+        void moveDown(QSharedPointer<PaletteCard>& card);
+        bool canMoveDown(QSharedPointer<PaletteCard>& card);
+
+        void setCardContentMargins(const QMargins& margins);
+
+        public Q_SLOTS:
         void setGammaEnabled(bool enabled);
         void setGamma(qreal gamma);
 
     Q_SIGNALS:
         void removePaletteClicked(QSharedPointer<PaletteCard> card);
         void savePaletteClicked(QSharedPointer<PaletteCard> card);
+        void savePaletteAsClicked(QSharedPointer<PaletteCard> card);
         void paletteCountChanged();
 
     private:
         QString uniquePaletteName(QSharedPointer<PaletteCard> card, const QString& name) const;
+        void paletteCardDestroyed(QObject* obj);
 
         Internal::ColorController* m_colorController;
         QUndoStack* m_undoStack;
@@ -64,5 +78,7 @@ namespace AzQtComponents
         QSize m_swatchSize;
         bool m_gammaEnabled = false;
         qreal m_gamma = 1.0;
+
+        QSet<QObject*> m_registeredPaletteCards;
     };
 } // namespace AzQtComponents

@@ -6,6 +6,7 @@ import pandas as pd
 import re
 import struct
 import warnings
+from six import integer_types
 
 import numba
 
@@ -212,7 +213,7 @@ def infer_object_encoding(data):
         return "utf8"
     elif PY2 and all(isinstance(i, unicode) for i in head):
         return "utf8"
-    elif all(isinstance(i, STR_TYPE) for i in head) and PY2:
+    elif all(isinstance(i, (str, bytes)) for i in head) and PY2:
         return "bytes"
     elif all(isinstance(i, bytes) for i in head):
         return 'bytes'
@@ -220,7 +221,7 @@ def infer_object_encoding(data):
         return 'json'
     elif all(isinstance(i, bool) for i in head):
         return 'bool'
-    elif all(isinstance(i, int) for i in head):
+    elif all(isinstance(i, integer_types) for i in head):
         return 'int'
     elif all(isinstance(i, float) or isinstance(i, np.floating)
              for i in head):

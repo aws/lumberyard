@@ -31,6 +31,7 @@
 #include <AzCore/Jobs/Job.h>
 #include <AzFramework/API/ApplicationAPI.h>
 #include <EMotionFX/Source/Allocators.h>
+#include <EMotionFX/Source/DebugDraw.h>
 
 
 namespace EMotionFX
@@ -78,6 +79,7 @@ namespace EMotionFX
         gEMFX.Get()->GetAnimGraphManager()->Init();
         gEMFX.Get()->SetRecorder              (Recorder::Create());
         gEMFX.Get()->SetMotionInstancePool    (MotionInstancePool::Create());
+        gEMFX.Get()->SetDebugDraw             (aznew DebugDraw());
         gEMFX.Get()->SetGlobalSimulationSpeed (1.0f);
 
         // set the number of threads
@@ -124,6 +126,7 @@ namespace EMotionFX
         mWaveletCache           = nullptr;
         mRecorder               = nullptr;
         mMotionInstancePool     = nullptr;
+        mDebugDraw              = nullptr;
         mUnitType               = MCore::Distance::UNITTYPE_METERS;
         mGlobalSimulationSpeed  = 1.0f;
         m_isInEditorMode        = false;
@@ -150,6 +153,7 @@ namespace EMotionFX
         mSoftSkinManager->Destroy();
         mWaveletCache->Destroy();
         mRecorder->Destroy();
+        delete mDebugDraw;
 
         // delete the thread datas
         for (uint32 i = 0; i < mThreadDatas.GetLength(); ++i)
@@ -172,19 +176,11 @@ namespace EMotionFX
     {
         AZ_PROFILE_SCOPE(AZ::Debug::ProfileCategory::Animation, "EMotionFXManager::Update");
 
-        // update the wavelet cache
+        mDebugDraw->Clear();
         mWaveletCache->Update(timePassedInSeconds);
-
-        // update the recorder in playback mode
         mRecorder->UpdatePlayMode(timePassedInSeconds);
-
-        // update all actor instances (the main thing)
         mActorManager->UpdateActorInstances(timePassedInSeconds);
-
-        // update physics
         mEventManager->OnSimulatePhysics(timePassedInSeconds);
-
-        // update the recorder
         mRecorder->Update(timePassedInSeconds);
 
         // sample and apply all anim graphs we recorded
@@ -301,6 +297,10 @@ namespace EMotionFX
         mRecorder = recorder;
     }
 
+    void EMotionFXManager::SetDebugDraw(DebugDraw* draw)
+    {
+        mDebugDraw = draw;
+    }
 
     // set the motion instance pool
     void EMotionFXManager::SetMotionInstancePool(MotionInstancePool* pool)

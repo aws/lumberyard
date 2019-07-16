@@ -11,21 +11,18 @@
 */
 
 #include "precompiled.h"
-
-#include <LyViewPaneNames.h>
-
 #include <Asset/EditorAssetSystemComponent.h>
+
 #include <AzCore/Asset/AssetManager.h>
 #include <AzCore/IO/FileIO.h>
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/std/string/wildcard.h>
-
 #include <AzFramework/StringFunc/StringFunc.h>
-
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
 #include <AzToolsFramework/AssetBrowser/AssetBrowserEntry.h>
 #include <AzToolsFramework/ToolsComponents/ToolsAssetCatalogBus.h>
-
+#include <Builder/ScriptCanvasBuilderWorker.h>
+#include <LyViewPaneNames.h>
 #include <ScriptCanvas/Asset/RuntimeAsset.h>
 #include <ScriptCanvas/Assets/ScriptCanvasAsset.h>
 #include <ScriptCanvas/Assets/ScriptCanvasAssetHandler.h>
@@ -68,10 +65,12 @@ namespace ScriptCanvasEditor
     {
         m_editorAssetRegistry.Register();
         AzToolsFramework::AssetBrowser::AssetBrowserInteractionNotificationBus::Handler::BusConnect();
+        EditorAssetConversionBus::Handler::BusConnect();
     }
 
     void EditorAssetSystemComponent::Deactivate()
     {
+        EditorAssetConversionBus::Handler::BusDisconnect();
         AzToolsFramework::AssetBrowser::AssetBrowserInteractionNotificationBus::Handler::BusDisconnect();
         m_editorAssetRegistry.Unregister();
     }
@@ -91,6 +90,11 @@ namespace ScriptCanvasEditor
         }
 
         return false;
+    }
+
+    AZ::Outcome<AZ::Data::Asset<ScriptCanvas::RuntimeAsset>, AZStd::string> EditorAssetSystemComponent::CreateRuntimeAsset(AZStd::string_view graphPath) 
+    {
+        return ScriptCanvasBuilder::Worker::CreateRuntimeAsset(graphPath);
     }
 
     void EditorAssetSystemComponent::AddSourceFileOpeners(const char* fullSourceFileName, const AZ::Uuid& sourceUuid, AzToolsFramework::AssetBrowser::SourceFileOpenerList& openers)
@@ -119,7 +123,7 @@ namespace ScriptCanvasEditor
             auto& assetManager = AZ::Data::AssetManager::Instance();
             AZ::Data::Asset<ScriptCanvasAsset> scriptCanvasAsset = assetManager.GetAsset(sourceAssetId, azrtti_typeid<ScriptCanvasAsset>());
             AZ::Outcome<int, AZStd::string> openOutcome = AZ::Failure(AZStd::string());
-            GeneralRequestBus::BroadcastResult(openOutcome, &GeneralRequests::OpenScriptCanvasAsset, scriptCanvasAsset, -1, AZ::EntityId());
+            GeneralRequestBus::BroadcastResult(openOutcome, &GeneralRequests::OpenScriptCanvasAsset, scriptCanvasAsset, -1);
             if (!openOutcome)
             {
                 AZ_Warning("Script Canvas", openOutcome, "%s", openOutcome.GetError().data());

@@ -15,6 +15,7 @@ import CloudCanvas
 import errors
 import base64
 from cgf_utils import custom_resource_utils
+from botocore.client import Config
 
 def get_survey_table():
     if not hasattr(get_survey_table, 'survey_table'):
@@ -108,7 +109,7 @@ def get_submission_by_id(survey_id, submission_id, attributes=None, raise_except
 def get_answer_submissions_export_s3_bucket():
     if not hasattr(get_answer_submissions_export_s3_bucket, 'answer_submissions_export_s3_bucket'):
         answer_submissions_export_s3_bucket_name = get_answer_submissions_export_s3_bucket_name()
-        get_answer_submissions_export_s3_bucket.answer_submissions_export_s3_bucket = boto3.resource('s3').Bucket(answer_submissions_export_s3_bucket_name)
+        get_answer_submissions_export_s3_bucket.answer_submissions_export_s3_bucket = boto3.resource('s3', config=Config(signature_version='s3v4')).Bucket(answer_submissions_export_s3_bucket_name)
         if get_answer_submissions_export_s3_bucket.answer_submissions_export_s3_bucket is None:
             raise RuntimeError('No Answer Submission Export S3 Bucket')
     return get_answer_submissions_export_s3_bucket.answer_submissions_export_s3_bucket

@@ -19,13 +19,12 @@ def build(bld):
     tsk = bld.CryDedicatedServer(
         target                = 'LinuxLauncher',
         platforms             = ['linux_x64'],
-        configurations        = ['debug_dedicated', 'profile_dedicated', 'performance_dedicated', 'release_dedicated'],
+        exclude_test          = True,
+        server_only           = True,
         file_list             = 'linuxlauncher.waf_files',
-
         includes              = [bld.Path('Code/CryEngine/CrySystem'),
                                  bld.Path('Code/Launcher')],
         lib                   = ['uuid'],
         create_linux_launcher = True,
-
         use                   = ['AzGameFramework'],
     )

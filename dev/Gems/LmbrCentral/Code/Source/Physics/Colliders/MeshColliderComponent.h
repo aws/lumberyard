@@ -34,13 +34,14 @@ namespace LmbrCentral
         static void GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided)
         {
             provided.push_back(AZ_CRC("ColliderService", 0x902d4e93));
+            provided.push_back(AZ_CRC("LegacyCryPhysicsService", 0xbb370351));
         }
 
         static void GetIncompatibleServices(AZ::ComponentDescriptor::DependencyArrayType& incompatible)
         {
             incompatible.push_back(AZ_CRC("ColliderService", 0x902d4e93));
         }
-        
+
         static void GetRequiredServices(AZ::ComponentDescriptor::DependencyArrayType& required)
         {
             required.push_back(AZ_CRC("LegacyMeshService", 0xb462a299));

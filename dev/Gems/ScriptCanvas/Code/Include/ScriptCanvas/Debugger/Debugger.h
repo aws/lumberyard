@@ -15,42 +15,51 @@
 #include "Bus.h"
 
 #include <AzCore/Component/Component.h>
-#include <AzFramework/TargetManagement/TargetManagementAPI.h>
 #include <AzCore/Component/TickBus.h>
+
+#include <AzFramework/TargetManagement/TargetManagementAPI.h>
+#include <AzFramework/Entity/EntityContextBus.h>
+
+#include <ScriptCanvas/Core/NodeBus.h>
+
+#include "Messages/Request.h"
+#include "Messages/Notify.h"
+#include "APIArguments.h"
 
 namespace ScriptCanvas
 {
     namespace Debugger
     {
+
+
         //! The ScriptCanvas debugger component, this is the runtime debugger code that directly controls the execution
         //! and provides insight into a running ScriptCanvas graph.
-        class Component 
+        class ServiceComponent 
             : public AZ::Component
-            , RequestBus::Handler
-            , ConnectionRequestBus::Handler
-            , public AzFramework::TargetManagerClient::Bus::Handler
+            , public Message::RequestVisitor
             , public AzFramework::TmMsgBus::Handler
-            , AZ::SystemTickBus::Handler
+            , public ExecutionNotificationsBus::Handler
+            , public AzFramework::TargetManagerClient::Bus::Handler
         {
-        public:
-            AZ_COMPONENT(Component, "{794B1BA5-DE13-46C7-9149-74FFB02CB51B}");
+           using Lock = AZStd::lock_guard<AZStd::recursive_mutex>;
 
-            Component();
-            ~Component() override;
+        public:
+            AZ_COMPONENT(ServiceComponent, "{794B1BA5-DE13-46C7-9149-74FFB02CB51B}");
+
+            static void GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided);
+            static void GetIncompatibleServices(AZ::ComponentDescriptor::DependencyArrayType& incompatible);
+            static void GetDependentServices(AZ::ComponentDescriptor::DependencyArrayType& dependent);
+            static void Reflect(AZ::ReflectContext* reflection);
+
+            ServiceComponent() = default;
+            ServiceComponent(const ServiceComponent&) = delete;
+            ~ServiceComponent() = default;
 
             //////////////////////////////////////////////////////////////////////////
-            // AZ::Component
+            // AZ::ServiceComponent
             void Init() override;
             void Activate() override;
             void Deactivate() override;
-            //////////////////////////////////////////////////////////////////////////
-
-            //////////////////////////////////////////////////////////////////////////
-            // TargetManagerClient
-            void DesiredTargetConnected(bool connected) override;
-            void TargetJoinedNetwork(AzFramework::TargetInfo info) override;
-            void TargetLeftNetwork(AzFramework::TargetInfo info) override;
-            void DesiredTargetChanged(AZ::u32 newTargetID, AZ::u32 oldTargetID) override;
             //////////////////////////////////////////////////////////////////////////
 
             //////////////////////////////////////////////////////////////////////////
@@ -58,64 +67,123 @@ namespace ScriptCanvas
             void OnReceivedMsg(AzFramework::TmMsgPtr msg) override;
             //////////////////////////////////////////////////////////////////////////
 
-            static void GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided);
-            static void GetIncompatibleServices(AZ::ComponentDescriptor::DependencyArrayType& incompatible);
-            static void GetDependentServices(AZ::ComponentDescriptor::DependencyArrayType& dependent);
-
-            bool GetDesiredTarget(AzFramework::TargetInfo& targetInfo);
-
-            static void Reflect(AZ::ReflectContext* reflection);
-
-            void Attach(const AzFramework::TargetInfo& ti, const AZ::EntityId& graphId);
-            void Detach();
-            void Process();
-
-            void OnSystemTick();
-
             //////////////////////////////////////////////////////////////////////////
-            // Debugger::ConnectionRequestBus
-            void Attach(const AZ::EntityId&) override;
-            void Detach(const AZ::EntityId&) override;
-            void DetachAll() override;
+            // TargetManagerClient::Bus::Handler
+            void TargetLeftNetwork(AzFramework::TargetInfo info) override;
             //////////////////////////////////////////////////////////////////////////
 
             //////////////////////////////////////////////////////////////////////////
-            // Debugger::RequestBus
-            void SetBreakpoint(const AZ::EntityId& graphId, const AZ::EntityId& nodeId, const SlotId& slot) override;
-            void RemoveBreakpoint(const AZ::EntityId& graphId, const AZ::EntityId& nodeId, const SlotId& slot) override;
-
-            void StepOver() override;
-            void StepIn() override;
-            void StepOut() override;
-            void Stop() override;
-            void Continue() override;
-
-            void NodeStateUpdate(Node* node, const AZ::EntityId& graphId) override;
+            // ExecutionNotifications
+            void GraphActivated(const GraphActivation&) override;
+            void GraphDeactivated(const GraphActivation&) override;
+            bool IsNodeObserved(const Node&) override;
+            bool IsVariableObserved(const Node&, VariableId variableId) override;
+            void NodeSignaledOutput(const OutputSignal&) override;
+            void NodeSignaledInput(const InputSignal&) override;
+            void NodeSignaledDataOuput(const OutputDataSignal&) override;
+            void NodeStateUpdated(const NodeStateChange&) override;
+            void VariableChanged(const VariableChange&) override;
+            void AnnotateNode(const AnnotateNodeSignal&) override;
             //////////////////////////////////////////////////////////////////////////
 
+            bool IsGraphObserved(const AZ::EntityId& entityId, const GraphIdentifier& graphIdentifier) const;
+            bool IsAssetObserved(const AZ::Data::AssetId& assetId) const;
+            
+            //////////////////////////////////////////////////////////////////////////
+            // Message processing
+            void Visit(Message::AddBreakpointRequest& request) override;
+            void Visit(Message::BreakRequest& request) override;
+            void Visit(Message::ContinueRequest& request) override;
+            void Visit(Message::AddTargetsRequest& request) override;
+            void Visit(Message::RemoveTargetsRequest& request) override;
+            void Visit(Message::StartLoggingRequest& request) override;
+            void Visit(Message::StopLoggingRequest& request) override;
+            void Visit(Message::GetAvailableScriptTargets& request) override;
+            void Visit(Message::GetActiveEntitiesRequest& request) override;
+            void Visit(Message::GetActiveGraphsRequest& request) override;
+            void Visit(Message::RemoveBreakpointRequest& request) override;
+            void Visit(Message::StepOverRequest& request) override;
+            //////////////////////////////////////////////////////////////////////////
+
+        protected:
+            template<typename t_SignalType, typename t_MessageType>
+            void NodeSignalled(const t_SignalType& nodeSignal)
+            {
+                if (m_state == SCDebugState_Interactive)
+                {
+                    SCRIPT_CANVAS_DEBUGGER_TRACE_SERVER("Interactive: %s", nodeSignal.ToString().data());
+                    AzFramework::TargetManager::Bus::Broadcast(&AzFramework::TargetManager::SendTmMessage, m_client.m_info, t_MessageType(nodeSignal));
+                    Interact();
+                }
+                else if (m_state == SCDebugState_InteractOnNext)
+                {
+                    SCRIPT_CANVAS_DEBUGGER_TRACE_SERVER("IterateOnNext: %s", nodeSignal.ToString().data());
+                    AzFramework::TargetManager::Bus::Broadcast(&AzFramework::TargetManager::SendTmMessage, m_client.m_info, t_MessageType(nodeSignal));
+                    m_state = SCDebugState_Interactive;
+                    Interact();
+                }
+                else if (m_state == SCDebugState_Attached)
+                {
+                    const Signal& asSignal(nodeSignal);
+                    Breakpoint breakpoint(asSignal);
+
+                    if (m_breakpoints.find(breakpoint) != m_breakpoints.end())
+                    {
+                        SCRIPT_CANVAS_DEBUGGER_TRACE_SERVER("Hit breakpoint: %s", nodeSignal.ToString().data());
+                        AzFramework::TargetManager::Bus::Broadcast(&AzFramework::TargetManager::SendTmMessage, m_client.m_info, Message::BreakpointHit(nodeSignal));
+                        m_state = SCDebugState_Interactive;
+                        Interact();
+                    }
+                    else if (m_client.m_script.m_logExecution)
+                    {
+                        SCRIPT_CANVAS_DEBUGGER_TRACE_SERVER("Logging Requested: %s", nodeSignal.ToString().data());
+                        AzFramework::TargetManager::Bus::Broadcast(&AzFramework::TargetManager::SendTmMessage, m_client.m_info, t_MessageType(nodeSignal));
+                    }
+                }
+                else
+                {
+                    // \todo performance error/warning on receiving this callback
+                }
+            }
+
+            void Connect(Target& target);
+            Message::Request* FilterMessage(AzFramework::TmMsgPtr& msg);
+            void Interact();
+            bool IsAttached() const;
+            void ProcessMessages();
+            
         private:
-            Component(const Component&) = delete;
-            AzFramework::TargetInfo m_debugger;
+            enum eSCDebugState
+            {
+                SCDebugState_Detached = 0,
+                SCDebugState_Attached,
+                SCDebugState_Interactive,
+                SCDebugState_InteractOnNext,
+                SCDebugState_Detaching
+            };
+
+            void DisconnectFromClient();
+
+            void RefreshActiveEntityStatus();
+            void RefreshActiveGraphStatus();
+
+            AZStd::recursive_mutex m_mutex;
+            Target m_self;
+            Target m_client;
+
+            AzFramework::EntityContextId m_contextId;
+
+            AZStd::atomic_uint m_state;
+            AZStd::unordered_set<Breakpoint> m_breakpoints;
+
+            bool                    m_activeGraphStatusDirty;
+            ActiveGraphStatusMap    m_activeGraphs;
+
+            bool                    m_activeEntityStatusDirty;
+            ActiveEntityStatusMap   m_activeEntities;
+
+            AZStd::recursive_mutex m_msgMutex;
             AzFramework::TmMsgQueue m_msgQueue;
-            AZStd::mutex m_msgMutex;
-
-            enum DebuggerState
-            {
-                Detached,
-                Running,
-                Paused,
-                Detaching
-            };
-
-            struct Target
-            {
-                AzFramework::TargetInfo m_info;
-                DebuggerState m_state;
-            };
-
-            AZStd::unordered_map<AZ::EntityId, Target> m_debugTargets;
-
-            AZStd::atomic_uint      m_debuggerState;
         };
-    }
+    } // namespace Debugger
 }

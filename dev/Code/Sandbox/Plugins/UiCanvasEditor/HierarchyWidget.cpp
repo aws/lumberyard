@@ -113,7 +113,7 @@ HierarchyWidget::HierarchyWidget(EditorWindow* editorWindow)
 
 HierarchyWidget::~HierarchyWidget()
 {
-    EditorPickModeRequests::Bus::Handler::BusDisconnect();
+    AzToolsFramework::EditorPickModeNotificationBus::Handler::BusDisconnect();
     EntityHighlightMessages::Bus::Handler::BusDisconnect();
 }
 
@@ -141,15 +141,15 @@ void HierarchyWidget::EntityContextChanged()
 {
     if (m_inObjectPickMode)
     {
-        StopObjectPickMode();
+        OnEntityPickModeStopped();
     }
 
     // Disconnect from the PickModeRequests bus and reconnect with the new entity context
-    EditorPickModeRequests::Bus::Handler::BusDisconnect();
+    AzToolsFramework::EditorPickModeNotificationBus::Handler::BusDisconnect();
     UiEditorEntityContext* context = m_editorWindow->GetEntityContext();
     if (context)
     {
-        EditorPickModeRequests::Bus::Handler::BusConnect(context->GetContextId());
+        AzToolsFramework::EditorPickModeNotificationBus::Handler::BusConnect(context->GetContextId());
     }
 }
 
@@ -158,7 +158,7 @@ void HierarchyWidget::CreateItems(const LyShine::EntityArray& elements)
     std::list<AZ::Entity*> elementList(elements.begin(), elements.end());
 
     // Build the rest of the list.
-    // Note: This is a breadth-first traversal thru all child elements.
+    // Note: This is a breadth-first traversal through all child elements.
     for (auto& e : elementList)
     {
         LyShine::EntityArray childElements;
@@ -779,7 +779,7 @@ void HierarchyWidget::DeleteSelectedItems()
     DeleteSelectedItems(selectedItems());
 }
 
-void HierarchyWidget::StartObjectPickMode()
+void HierarchyWidget::OnEntityPickModeStarted()
 {
     setDragEnabled(false);
     m_currentItemBeforePickMode = currentIndex();
@@ -791,7 +791,7 @@ void HierarchyWidget::StartObjectPickMode()
     m_inObjectPickMode = true;
 }
 
-void HierarchyWidget::StopObjectPickMode()
+void HierarchyWidget::OnEntityPickModeStopped()
 {
     if (m_inObjectPickMode)
     {
@@ -835,9 +835,11 @@ void HierarchyWidget::PickItem(HierarchyItem* item)
     const AZ::EntityId entityId = item->GetEntityId();
     if (entityId.IsValid())
     {
-        EBUS_EVENT(AzToolsFramework::EditorPickModeRequests::Bus, OnPickModeSelect, entityId);
-        
-        EBUS_EVENT(AzToolsFramework::EditorPickModeRequests::Bus, StopObjectPickMode);
+        AzToolsFramework::EditorPickModeRequestBus::Broadcast(
+            &AzToolsFramework::EditorPickModeRequests::PickModeSelectEntity, entityId);
+
+        AzToolsFramework::EditorPickModeRequestBus::Broadcast(
+            &AzToolsFramework::EditorPickModeRequests::StopEntityPickMode);
     }
 }
 
@@ -864,7 +866,7 @@ void HierarchyWidget::ToggleVisibility(HierarchyItem* hierarchyItem)
     AZ::EntityId itemEntityId = hierarchyItem->GetEntityId();
     EBUS_EVENT_ID_RESULT(isItemVisible, itemEntityId, UiEditorBus, GetIsVisible);
 
-    // There is one exception to toggling the visiblity. If the clicked item has invisible ancestors,
+    // There is one exception to toggling the visibility. If the clicked item has invisible ancestors,
     // then we make that item and all its ancestors visible regardless of the item's visibility
 
     // Make a list of items to modify
@@ -984,7 +986,8 @@ void HierarchyWidget::AddElement(const QTreeWidgetItemRawPtrQList& selectedItems
 void HierarchyWidget::SetUniqueSelectionHighlight(QTreeWidgetItem* item)
 {
     // Stop object pick mode when an action explicitly wants to set the hierarchy's selected items
-    EBUS_EVENT(AzToolsFramework::EditorPickModeRequests::Bus, StopObjectPickMode);
+    AzToolsFramework::EditorPickModeRequestBus::Broadcast(
+        &AzToolsFramework::EditorPickModeRequests::StopEntityPickMode);
 
     clearSelection();
 

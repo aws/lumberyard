@@ -37,10 +37,15 @@
         ],
         "CommandLine": [
             "CommandLine/CommandLine.cpp",
-            "CommandLine/CommandLine.h"
+            "CommandLine/CommandLine.h",
+            "CommandLine/CommandRegistrationBus.h"
         ],
         "Viewport": [
-            "Viewport/ViewportColors.h"
+            "Viewport/ViewportColors.h",
+            "Viewport/ViewportColors.cpp",
+            "Viewport/CameraState.h",
+            "Viewport/CameraState.cpp",
+            "Viewport/DisplayContextRequestBus.h"
         ],
         "Entity": [
             "Entity/BehaviorEntity.cpp",
@@ -280,7 +285,10 @@
             "Physics/CollisionNotificationBus.h",
             "Physics/TerrainBus.h",
             "Physics/ClassConverters.cpp",
-            "Physics/ClassConverters.h"
+            "Physics/ClassConverters.h",
+            "Physics/MaterialBus.h",
+            "Physics/TouchBendingBus.h",
+            "Physics/WorldEventHandler.h"
         ]
     },
     "AzFramework_Uber_misc0.cpp": {

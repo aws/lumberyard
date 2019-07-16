@@ -324,6 +324,40 @@ namespace UnitTest
         EXPECT_TRUE(aabb.GetMax().IsClose(AZ::Vector3(3.18f, 6.0f, 3.18f)));
     }
 
+    TEST_F(BoxShapeTest, GetTransformAndLocalBounds1)
+    {
+        // not rotated - AABB input
+        Entity entity;
+        CreateBox(Transform::CreateIdentity(), Vector3(1.5f, 3.5f, 5.5f), entity);
+
+        Transform transformOut;
+        Aabb aabb;
+        ShapeComponentRequestsBus::Event(entity.GetId(), &ShapeComponentRequests::GetTransformAndLocalBounds, transformOut, aabb);
+
+        EXPECT_TRUE(transformOut.IsClose(AZ::Transform::CreateIdentity()));
+        EXPECT_TRUE(aabb.GetMin().IsClose(AZ::Vector3(-0.75f, -1.75f, -2.75f)));
+        EXPECT_TRUE(aabb.GetMax().IsClose(AZ::Vector3(0.75f, 1.75f, 2.75f)));
+    }
+
+    TEST_F(BoxShapeTest, GetTransformAndLocalBounds2)
+    {
+        // not rotated - AABB input
+        Entity entity;
+        Transform transformIn = Transform::CreateFromQuaternionAndTranslation(
+            Quaternion::CreateFromAxisAngle(Vector3::CreateAxisX(), Constants::QuarterPi) * Quaternion::CreateFromAxisAngle(Vector3::CreateAxisY(), Constants::QuarterPi),
+            Vector3(9.0f, 11.0f, 13.0f));
+        transformIn.MultiplyByScale(Vector3(3.0f));
+        CreateBox(transformIn, Vector3(1.5f, 3.5f, 5.5f), entity);
+
+        Transform transformOut;
+        Aabb aabb;
+        ShapeComponentRequestsBus::Event(entity.GetId(), &ShapeComponentRequests::GetTransformAndLocalBounds, transformOut, aabb);
+
+        EXPECT_TRUE(transformOut.IsClose(transformIn));
+        EXPECT_TRUE(aabb.GetMin().IsClose(AZ::Vector3(-0.75f, -1.75f, -2.75f)));
+        EXPECT_TRUE(aabb.GetMax().IsClose(AZ::Vector3(0.75f, 1.75f, 2.75f)));
+    }
+
     // point inside scaled
     TEST_F(BoxShapeTest, IsPointInsideSuccess1)
     {

@@ -107,11 +107,14 @@ class ComponentJsonBuilder:
     def get_symbol_initializer(self, swagger_type, default_type):
         return self._swagger_initializer_map.get(swagger_type, default_type)
 
+    def get_namespace(self):
+        return self._resource_group_name
+        
     def generate_component_json(self):
         self.add_def_to_struct_type_conversions()
-        self._component_json["namespace"] = self._resource_group_name
+        self._component_json["namespace"] = self.get_namespace()
         self._component_json["componentClass"] = "{}ClientComponent".format(self._resource_group_name)
-
+        self._component_json["resourceGroup"] = self._resource_group_name
         self._component_json["redefinitions"] = []
         self._component_json["otherClasses"] = []
         self._component_json["functions"] = []
@@ -445,3 +448,5 @@ class CSJsonBuilder(ComponentJsonBuilder):
         self._swagger_type_map = SWAGGER_TO_CS_TYPE
         self._swagger_initializer_map = SWAGGER_TO_CS_INITIALIZERS
 
+    def get_namespace(self):
+        return self._resource_group_name.replace('CloudGem','CloudCanvas.')

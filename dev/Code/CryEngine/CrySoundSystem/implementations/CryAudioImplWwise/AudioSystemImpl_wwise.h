@@ -85,6 +85,9 @@ namespace Audio
         EAudioRequestStatus SetPosition(
             IATLAudioObjectData* const pAudioObjectData,
             const SATLWorldPosition& sWorldPosition) override;
+        EAudioRequestStatus SetMultiplePositions(
+            IATLAudioObjectData* const pAudioObjectData,
+            const MultiPositionParams& multiPositionParams) override;
         EAudioRequestStatus SetEnvironment(
             IATLAudioObjectData* const pAudioObjectData,
             const IATLEnvironmentImplData* const pEnvironmentImplData,

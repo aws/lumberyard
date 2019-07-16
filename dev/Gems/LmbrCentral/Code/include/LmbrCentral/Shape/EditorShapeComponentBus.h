@@ -22,29 +22,21 @@ namespace AZ
 
 namespace LmbrCentral
 {
-    /**
-     * Services provided by the Editor Shape Component
-     */
+    /// Services provided by the Editor Shape Component
     class EditorShapeComponentRequests
         : public AZ::ComponentBus
     {
     public:
-        /**
-         * @brief Sets the shape color
-         * @param solidColor the color to be used for drawing solid shapes
-         */
+        /// @brief Sets the shape color
+        /// @param solidColor the color to be used for drawing solid shapes
         virtual void SetShapeColor(const AZ::Color& solidColor) = 0;
 
-        /**
-         * @brief Sets the wireframe shape color
-         * @param wireColor the color to be used for drawing shapes in wireframe
-         */
+        /// @brief Sets the wireframe shape color
+        /// @param wireColor the color to be used for drawing shapes in wireframe
         virtual void SetShapeWireframeColor(const AZ::Color& wireColor)  = 0;
 
-        /**
-         * @brief Sets if the shape should be visible in the editor when the object is deselected
-         * @param visible true if the shape should be visible when deselected
-         */
+        /// @brief Sets if the shape should be visible in the editor when the object is deselected
+        /// @param visible true if the shape should be visible when deselected
         virtual void SetVisibleInEditor(bool visible) = 0;
     };
 

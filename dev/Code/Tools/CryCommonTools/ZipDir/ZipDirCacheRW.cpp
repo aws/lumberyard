@@ -29,8 +29,6 @@
 #include <AzCore/std/parallel/mutex.h>
 #include <AzFramework/IO/LocalFileIO.h>
 
-using namespace ZipFile;
-
 enum PackFileStatus
 {
     PACKFILE_COMPRESSED,
@@ -324,7 +322,7 @@ static size_t CalculateAlignedHeaderOffset(const char* fileName, size_t currentO
     }
 
     // Local header is followed by filename
-    const size_t totalHeaderSize = sizeof(LocalFileHeader) + strlen(fileName);
+    const size_t totalHeaderSize = sizeof(ZipFile::LocalFileHeader) + strlen(fileName);
 
     // Align end of the header
     const size_t dataOffset = AlignTo(currentOffset + totalHeaderSize, alignment);
@@ -465,8 +463,8 @@ static void PackFileFromMemory(PackFileJob* job)
 
     switch (job->batch->compressionMethod)
     {
-    case METHOD_DEFLATE_AND_ENCRYPT:
-    case METHOD_DEFLATE:
+    case ZipFile::METHOD_DEFLATE_AND_ENCRYPT:
+    case ZipFile::METHOD_DEFLATE:
     {
         // allocate memory for compression. Min is nSize * 1.001 + 12
         if (job->uncompressedSize > 0)
@@ -495,7 +493,7 @@ static void PackFileFromMemory(PackFileJob* job)
         }
         break;
     }
-    case METHOD_STORE:
+    case ZipFile::METHOD_STORE:
         job->compressedData = job->uncompressedData;
         job->compressedSize = job->uncompressedSize;
         job->status = PACKFILE_COMPRESSED;
@@ -693,7 +691,7 @@ void ZipDir::CacheRW::StorePackedFile(PackFileJob* job)
         return;
     }
 
-    const bool encrypt = pFileEntry->nMethod == METHOD_DEFLATE_AND_ENCRYPT;
+    const bool encrypt = pFileEntry->nMethod == ZipFile::METHOD_DEFLATE_AND_ENCRYPT;
 
     if (!WriteCompressedData((char*)job->compressedData, job->compressedSize, encrypt, m_pFile))
     {
@@ -856,14 +854,14 @@ bool ZipDir::CacheRW::UpdateMultipleFiles(const char** realFilenames, const char
     int compressionLevel, bool encryptContent, size_t zipMaxSize, int sourceMinSize, int sourceMaxSize,
     unsigned numExtraThreads, ZipDir::IReporter* reporter, ZipDir::ISplitter* splitter)
 {
-    int compressionMethod = METHOD_DEFLATE;
+    int compressionMethod = ZipFile::METHOD_DEFLATE;
     if (encryptContent)
     {
-        compressionMethod = METHOD_DEFLATE_AND_ENCRYPT;
+        compressionMethod = ZipFile::METHOD_DEFLATE_AND_ENCRYPT;
     }
     else if (compressionLevel == 0)
     {
-        compressionMethod = METHOD_STORE;
+        compressionMethod = ZipFile::METHOD_STORE;
     }
 
     uint64 totalSize = 0;
@@ -1053,7 +1051,7 @@ ZipDir::ErrorEnum ZipDir::CacheRW::StartContinuousFileUpdate(const char* szRelat
         return ZD_ERROR_INVALID_PATH;
     }
 
-    pFileEntry->OnNewFileData (NULL, nSize, nSize, METHOD_STORE, false);
+    pFileEntry->OnNewFileData (NULL, nSize, nSize, ZipFile::METHOD_STORE, false);
     // since we changed the time, we'll have to update CDR
     m_nFlags |= FLAGS_CDR_DIRTY;
 
@@ -1145,7 +1143,7 @@ ZipDir::ErrorEnum ZipDir::CacheRW::UpdateFileContinuousSegment (const char* szRe
         return ZD_ERROR_INVALID_PATH;
     }
 
-    pFileEntry->OnNewFileData (pUncompressed, nSegmentSize, nSegmentSize, METHOD_STORE, true);
+    pFileEntry->OnNewFileData (pUncompressed, nSegmentSize, nSegmentSize, ZipFile::METHOD_STORE, true);
     // since we changed the time, we'll have to update CDR
     m_nFlags |= FLAGS_CDR_DIRTY;
 
@@ -1388,7 +1386,7 @@ ZipDir::ErrorEnum ZipDir::CacheRW::ReadFile (FileEntry* pFileEntry, void* pCompr
         return ZD_ERROR_IO_FAILED;
     }
 
-    if (pFileEntry->nMethod == METHOD_DEFLATE_AND_ENCRYPT)
+    if (pFileEntry->nMethod == ZipFile::METHOD_DEFLATE_AND_ENCRYPT)
     {
         ZipDir::Decrypt((char*)pBuffer, pFileEntry->desc.lSizeCompressed, m_encryptionKey);
     }
@@ -1634,7 +1632,7 @@ bool ZipDir::CacheRW::RelinkZip(FILE* fTmp)
             return false;
         }
 
-        if (entry->nMethod == METHOD_DEFLATE_AND_ENCRYPT)
+        if (entry->nMethod == ZipFile::METHOD_DEFLATE_AND_ENCRYPT)
         {
             ZipDir::Decrypt((char*)pFile->GetData(), entry->desc.lSizeCompressed, m_encryptionKey);
         }
@@ -1699,7 +1697,7 @@ bool ZipDir::CacheRW::WriteZipFiles(std::vector<FileDataRecordPtr>& queFiles, FI
         ;
 
         // write the compressed file data
-        const bool encrypt = (*it)->pFileEntry->nMethod == METHOD_DEFLATE_AND_ENCRYPT;
+        const bool encrypt = (*it)->pFileEntry->nMethod == ZipFile::METHOD_DEFLATE_AND_ENCRYPT;
         if (!WriteCompressedData((char*)(*it)->GetData(), (*it)->pFileEntry->desc.lSizeCompressed, encrypt, fTmp))
         {
             return false;
@@ -1782,24 +1780,24 @@ bool ZipDir::CacheRW::EncryptArchive(EncryptionChange change, IEncryptPredicate*
         ZipFile::ushort newMethod = oldMethod;
         if (change == ENCRYPT)
         {
-            if (entry->nMethod == METHOD_DEFLATE)
+            if (entry->nMethod == ZipFile::METHOD_DEFLATE)
             {
-                newMethod = METHOD_DEFLATE_AND_ENCRYPT;
+                newMethod = ZipFile::METHOD_DEFLATE_AND_ENCRYPT;
             }
         }
         else
         {
-            if (entry->nMethod == METHOD_DEFLATE_AND_ENCRYPT)
+            if (entry->nMethod == ZipFile::METHOD_DEFLATE_AND_ENCRYPT)
             {
-                newMethod = METHOD_DEFLATE;
+                newMethod = ZipFile::METHOD_DEFLATE;
             }
         }
 
         // allow encryption only for matching files
-        if (newMethod == METHOD_DEFLATE_AND_ENCRYPT &&
+        if (newMethod == ZipFile::METHOD_DEFLATE_AND_ENCRYPT &&
             (!encryptContentPredicate || !encryptContentPredicate->Match(it->strPath.c_str())))
         {
-            newMethod = METHOD_DEFLATE;
+            newMethod = ZipFile::METHOD_DEFLATE;
         }
 
         entry->nMethod = newMethod;
@@ -1844,7 +1842,7 @@ bool ZipDir::CacheRW::EncryptArchive(EncryptionChange change, IEncryptPredicate*
             return false;
         }
 
-        if (oldMethod == METHOD_DEFLATE_AND_ENCRYPT)
+        if (oldMethod == ZipFile::METHOD_DEFLATE_AND_ENCRYPT)
         {
             ZipDir::Decrypt((char*)pFile->GetData(), entry->desc.lSizeCompressed, m_encryptionKey);
         }
@@ -1858,7 +1856,7 @@ bool ZipDir::CacheRW::EncryptArchive(EncryptionChange change, IEncryptPredicate*
             return false;
         }
 
-        const bool encryptContent = newMethod == METHOD_DEFLATE_AND_ENCRYPT;
+        const bool encryptContent = newMethod == ZipFile::METHOD_DEFLATE_AND_ENCRYPT;
         if (!WriteCompressedData((const char*)pFile->GetData(), entry->desc.lSizeCompressed, encryptContent, m_pFile))
         {
             return false;

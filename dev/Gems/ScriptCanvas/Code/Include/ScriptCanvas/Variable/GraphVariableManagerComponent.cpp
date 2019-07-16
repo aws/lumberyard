@@ -10,8 +10,6 @@
 *
 */
 
-#include "precompiled.h"
-
 #include <ScriptCanvas/Variable/GraphVariableManagerComponent.h>
 #include <ScriptCanvas/Core/Graph.h>
 
@@ -121,7 +119,7 @@ namespace ScriptCanvas
             variableNameValuePair = m_variableData.FindVariable(*variableId);
         }
 
-        return variableNameValuePair ? AZStd::string_view(variableNameValuePair->m_varName) : "";
+        return variableNameValuePair ? AZStd::string_view(variableNameValuePair->GetVariableName()) : "";
     }
 
     AZ::Outcome<void, AZStd::string> GraphVariableManagerComponent::RenameVariable(AZStd::string_view newVarName)
@@ -133,6 +131,45 @@ namespace ScriptCanvas
         }
 
         return AZ::Failure(AZStd::string::format("No variable id was found, cannot rename variable to %s", newVarName.data()));
+    }
+
+    AZ::Outcome<VariableId, AZStd::string> GraphVariableManagerComponent::CloneVariable(const VariableNameValuePair& variableConfiguration)
+    {
+        VariableNameValuePair copyConfiguration = variableConfiguration;
+        copyConfiguration.m_varDatum.GenerateNewId();
+
+        if (FindVariable(copyConfiguration.GetVariableName()))
+        {
+            AZStd::string varName = copyConfiguration.GetVariableName();
+            varName.append(" Copy");
+            copyConfiguration.SetVariableName(varName);
+
+            if (FindVariable(copyConfiguration.GetVariableName()))
+            {
+                AZStd::string originalName = copyConfiguration.GetVariableName();
+
+                int counter = 0;
+
+                do
+                {
+                    ++counter;
+                    copyConfiguration.SetVariableName(AZStd::string::format("%s (%i)", originalName.c_str(), counter));
+                } while (FindVariable(copyConfiguration.GetVariableName()));
+            }
+        }
+
+        auto addOutcome = m_variableData.AddVariable(copyConfiguration.GetVariableName(), copyConfiguration.m_varDatum);
+
+        if (!addOutcome)
+        {
+            return addOutcome;
+        }
+
+        const VariableId& newId = addOutcome.GetValue();
+        VariableRequestBus::MultiHandler::BusConnect(newId);
+        GraphVariableManagerNotificationBus::Event(GetEntityId(), &GraphVariableManagerNotifications::OnVariableAddedToGraph, newId, copyConfiguration.GetVariableName());
+
+        return AZ::Success(newId);
     }
 
     AZ::Outcome<VariableId, AZStd::string> GraphVariableManagerComponent::RemapVariable(const VariableNameValuePair& variableConfiguration)
@@ -149,38 +186,20 @@ namespace ScriptCanvas
             return AZ::Success(remappedId);
         }
 
-        VariableNameValuePair copyConfiguration = variableConfiguration;
-        copyConfiguration.m_varDatum.GenerateNewId();
+        auto cloneOutcome = CloneVariable(variableConfiguration);        
 
-        if (FindVariable(copyConfiguration.m_varName))
+        if (!cloneOutcome)
         {
-            copyConfiguration.m_varName.append(" Copy");
-
-            if (FindVariable(copyConfiguration.m_varName))
-            {
-                AZStd::string originalName = copyConfiguration.m_varName;
-
-                int counter = 0;
-
-                do
-                {
-                    ++counter;
-                    copyConfiguration.m_varName = AZStd::string::format("%s (%i)", originalName.c_str(), counter);
-                } while (FindVariable(copyConfiguration.m_varName));
-            }
+            return cloneOutcome;
         }
 
-        auto variableOutcome = m_variableData.AddVariable(copyConfiguration.m_varName, copyConfiguration.m_varDatum);
-        if (!variableOutcome)
+        const VariableId& newId = cloneOutcome.GetValue();        
+
+        // Only register a copied variable if it had a valid datum previously.
+        if (variableConfiguration.m_varDatum.GetId().IsValid())
         {
-            return variableOutcome;
+            RegisterCopiedVariableRemapping(variableConfiguration.m_varDatum.GetId(), newId);
         }
-
-        const VariableId& newId = variableOutcome.GetValue();
-        VariableRequestBus::MultiHandler::BusConnect(newId);
-        GraphVariableManagerNotificationBus::Event(GetEntityId(), &GraphVariableManagerNotifications::OnVariableAddedToGraph, newId, copyConfiguration.m_varName);
-
-        RegisterCopiedVariableRemapping(variableConfiguration.m_varDatum.GetId(), newId);
 
         return AZ::Success(newId);
     }
@@ -210,6 +229,11 @@ namespace ScriptCanvas
         return AddVariable(keyValuePair.first, keyValuePair.second);
     }
 
+    bool GraphVariableManagerComponent::IsNameAvailable(AZStd::string_view varName)
+    {
+        return FindVariable(varName) == nullptr;
+    }
+
     bool GraphVariableManagerComponent::RemoveVariable(const VariableId& variableId)
     {
         auto varNamePair = m_variableData.FindVariable(variableId);
@@ -218,7 +242,7 @@ namespace ScriptCanvas
         {
             VariableRequestBus::MultiHandler::BusDisconnect(variableId);
             VariableNotificationBus::Event(variableId, &VariableNotifications::OnVariableRemoved);
-            GraphVariableManagerNotificationBus::Event(GetEntityId(), &GraphVariableManagerNotifications::OnVariableRemovedFromGraph, variableId, varNamePair->m_varName);
+            GraphVariableManagerNotificationBus::Event(GetEntityId(), &GraphVariableManagerNotifications::OnVariableRemovedFromGraph, variableId, varNamePair->GetVariableName());
 
             // Bookkeeping for the copied Variable remapping
             UnregisterUncopiedVariableRemapping(variableId);
@@ -234,7 +258,7 @@ namespace ScriptCanvas
         AZStd::size_t removedVars = 0U;
         for (auto varIt = m_variableData.GetVariables().begin(); varIt != m_variableData.GetVariables().end();)
         {
-            if (varIt->second.m_varName == varName)
+            if (varIt->second.GetVariableName() == varName)
             {
                 ScriptCanvas::VariableId variableId = varIt->first;
 
@@ -287,7 +311,7 @@ namespace ScriptCanvas
     {
         auto foundIt = m_variableData.GetVariables().find(variableId);
 
-        return foundIt != m_variableData.GetVariables().end() ? AZStd::string_view(foundIt->second.m_varName) : AZStd::string_view();
+        return foundIt != m_variableData.GetVariables().end() ? AZStd::string_view(foundIt->second.GetVariableName()) : AZStd::string_view();
     }
 
     AZ::Outcome<void, AZStd::string> GraphVariableManagerComponent::RenameVariable(const VariableId& variableId, AZStd::string_view newVarName)
@@ -329,7 +353,7 @@ namespace ScriptCanvas
             VariableRequestBus::MultiHandler::BusConnect(varPair.first);
             if (GetEntity())
             {
-                GraphVariableManagerNotificationBus::Event(GetEntityId(), &GraphVariableManagerNotifications::OnVariableAddedToGraph, varPair.first, varPair.second.m_varName);
+                GraphVariableManagerNotificationBus::Event(GetEntityId(), &GraphVariableManagerNotifications::OnVariableAddedToGraph, varPair.first, varPair.second.GetVariableName());
             }
         }
 

@@ -125,10 +125,12 @@
 #define ID_CONVERTSELECTION_TODESIGNEROBJECT       32958
 #define ID_TERRAIN_COLLISION                       32960
 #define ID_MEASUREMENT_SYSTEM_TOOL                 32970
-#define ID_TOOL_FIRST                   32972
-#define ID_TOOL_LAST                    33173
-#define ID_TOOL_SHELVE_FIRST            33174
-#define ID_TOOL_SHELVE_LAST             33375
+#define ID_TOOL_FIRST                              32972
+#define ID_EDIT_UNFREEZE                           32973
+#define ID_EDIT_UNHIDE                             32974
+#define ID_TOOL_LAST                               33173
+#define ID_TOOL_SHELVE_FIRST                       33174
+#define ID_TOOL_SHELVE_LAST                        33375
 #define ID_EDIT_SELECTALL                          33376
 #define ID_EDIT_SELECTNONE                         33377
 #define ID_OBJECTMODIFY_VERTEXSNAPPING             33384
@@ -369,6 +371,7 @@
 #define ID_TOOLS_BATCH_RENDER           34151
 #define ID_TOOLS_SCRIPTHELP             34152
 #define ID_TV_MODE_OPENCURVEEDITOR      34153
+#define ID_TOOLS_LUA_EDITOR             34154
 #define ID_OPEN_QUICK_ACCESS_BAR                   34177
 #define ID_TRACKVIEW_TOGGLE_DISABLE                34178
 #define ID_TRACKVIEW_TOGGLE_MUTE                   34179
@@ -488,20 +491,25 @@
 #define ID_IMPORT_ASSET                              36069
 #define ID_CGP_CONSOLE                               36200
 #define ID_CONVERT_LEGACY_ENTITIES                   36202
+#define ID_EDIT_PIVOT                                36203
+#define ID_EDIT_RESET                                36204
+#define ID_EDIT_RESET_LOCAL                          36205
+#define ID_EDIT_RESET_WORLD                          36206
+#define ID_EDIT_RESET_MANIPULATOR                    36207
 #define ID_GAME_XBONE_ENABLELOWSPEC                 34600 // ACCEPTED_USE
 #define ID_GAME_XBONE_ENABLEMEDIUMSPEC              34601 // ACCEPTED_USE
 #define ID_GAME_XBONE_ENABLEHIGHSPEC                34602 // ACCEPTED_USE
 #define ID_GAME_PS4_ENABLELOWSPEC                   34603 // ACCEPTED_USE
 #define ID_GAME_PS4_ENABLEMEDIUMSPEC                34604 // ACCEPTED_USE
 #define ID_GAME_PS4_ENABLEHIGHSPEC                  34605 // ACCEPTED_USE
-#define ID_GAME_OSXMETAL_ENABLELOWSPEC               36206
-#define ID_GAME_OSXMETAL_ENABLEMEDIUMSPEC            36207
-#define ID_GAME_OSXMETAL_ENABLEHIGHSPEC              36208
-#define ID_GAME_OSXMETAL_ENABLEVERYHIGHSPEC          36209
-#define ID_FILE_RESAVESLICES                         36210
-#define FIRST_QT_ACTION                 50000
-#define ID_VIEW_ROLLUPBAR               50000
-#define ID_VIEW_CONSOLEWINDOW           50001
+#define ID_GAME_OSXMETAL_ENABLELOWSPEC              34606
+#define ID_GAME_OSXMETAL_ENABLEMEDIUMSPEC           34607
+#define ID_GAME_OSXMETAL_ENABLEHIGHSPEC             34608
+#define ID_GAME_OSXMETAL_ENABLEVERYHIGHSPEC         34609
+#define ID_FILE_RESAVESLICES                        36210
+#define FIRST_QT_ACTION                      50000
+#define ID_VIEW_ROLLUPBAR                    50000
+#define ID_VIEW_CONSOLEWINDOW                50001
 #define ID_TOOLBAR_SEPARATOR                 50002
 #define ID_TOOLBAR_WIDGET_FIRST              50003
 #define ID_TOOLBAR_WIDGET_UNDO               50003

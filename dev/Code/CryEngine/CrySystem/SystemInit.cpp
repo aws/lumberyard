@@ -48,6 +48,7 @@
 #include <IEngineModule.h>
 #include <CryExtension/CryCreateClassInstance.h>
 #include <AzCore/IO/SystemFile.h> // for AZ_MAX_PATH_LEN
+#include <AzCore/Component/ComponentApplicationBus.h>
 #include <AzFramework/StringFunc/StringFunc.h>
 #include <AzFramework/Asset/AssetProcessorMessages.h>
 #include <AzFramework/Asset/AssetSystemBus.h>
@@ -1541,10 +1542,20 @@ bool CSystem::InitRenderer(WIN_HINSTANCE hinst, WIN_HWND hwnd, const SSystemInit
         {
             // Ideally we would probably want to clamp this at the source,
             // but I don't believe cvars support specifying a valid range.
-            const float scaleFactor = AZ::GetClamp(m_rWidthAndHeightAsFractionOfScreenSize->GetFVal(), 0.1f, 1.0f);
+            float scaleFactor = 1.0f;
+
+            if(IsTablet())
+            {
+                scaleFactor = AZ::GetClamp(m_rTabletWidthAndHeightAsFractionOfScreenSize->GetFVal(), 0.1f, 1.0f);
+            }
+            else
+            {
+                scaleFactor = AZ::GetClamp(m_rWidthAndHeightAsFractionOfScreenSize->GetFVal(), 0.1f, 1.0f);
+            }
+
             displayWidth *= scaleFactor;
             displayHeight *= scaleFactor;
-
+            
             const int maxWidth = m_rMaxWidth->GetIVal();
             if (maxWidth > 0 && maxWidth < displayWidth)
             {
@@ -2211,7 +2222,10 @@ bool CSystem::LaunchAssetProcessor()
     AzFramework::ApplicationRequests::Bus::BroadcastResult(appRoot, &AzFramework::ApplicationRequests::GetAppRoot);
     if (appRoot != nullptr)
     {
-        AZStd::string engineBinFolder = AZStd::string::format("%s%s", appRoot, BINFOLDER_NAME);
+        AZStd::string_view binFolderName;
+        AZ::ComponentApplicationBus::BroadcastResult(binFolderName, &AZ::ComponentApplicationRequests::GetBinFolder);
+
+        AZStd::string engineBinFolder = AZStd::string::format("%s%s", appRoot, binFolderName.data());
         azstrncpy(workingDir, AZ_ARRAY_SIZE(workingDir), engineBinFolder.c_str(), engineBinFolder.length());
 
         AZStd::string engineAssetProcessorPath = AZStd::string::format("%s%s%s%s",
@@ -2592,9 +2606,16 @@ bool CSystem::InitFileSystem(const SSystemInitParams& initParams)
     bool allowedRemoteIO = allowedEngineConnection && initParams.remoteFileIO && !m_env.IsEditor();
     bool connInitialized = false;
 
+    auto GetConnectionIdentifier = [](auto& env)
+    {
+        using namespace AzFramework::AssetSystem::ConnectionIdentifiers;
+
+        return env.IsEditor() ? Editor : Game;
+    };
+
     AZStd::string branch = initParams.branchToken;
     AZStd::string platform = m_env.pSystem->GetAssetsPlatform();
-    AZStd::string identifier = m_env.IsEditor() ? "EDITOR" : "GAME";
+    AZStd::string identifier = GetConnectionIdentifier(m_env);
     EBUS_EVENT_RESULT(connInitialized, AzFramework::AssetSystemRequestBus, ConfigureSocketConnection, branch, platform, identifier);
 
     AzFramework::AssetSystem::AssetProcessorConnection* engineConnection = static_cast<AzFramework::AssetSystem::AssetProcessorConnection*>(AzFramework::SocketConnection::GetInstance());
@@ -2726,8 +2747,10 @@ bool CSystem::InitFileSystem(const SSystemInitParams& initParams)
         }
 
 #if defined(AZ_PLATFORM_WINDOWS)
-        // on windows, we might be running editor and game and multiple games and so on (consoles cant do this)
-        // pick a non-locked cache, since shaders actually require separate caches:
+        // Search for a non-locked cache directory because shaders require separate caches for each running instance.
+        // We only need to do this check for Windows, because consoles can't have multiple instances running simultaneously.
+        // Ex: running editor and game, running multiple games, or multiple non-interactive editor instances 
+        // for parallel level exports.  
 
         string originalPath = finalCachePath;
 #if defined(REMOTE_ASSET_PROCESSOR)
@@ -2735,7 +2758,14 @@ bool CSystem::InitFileSystem(const SSystemInitParams& initParams)
 #endif
         {
             int attemptNumber = 0;
-            const int maxAttempts = 16;
+
+            // The number of max attempts ultimately dictates the number of Lumberyard instances that can run
+            // simultaneously.  This should be a reasonably high number so that it doesn't artificially limit
+            // the number of instances (ex: parallel level exports via multiple Editor runs).  It also shouldn't 
+            // be set *infinitely* high - each cache folder is GBs in size, and finding a free directory is a 
+            // linear search, so the more instances we allow, the longer the search will take.  
+            // 128 seems like a reasonable compromise.
+            constexpr int maxAttempts = 128;
 
             char workBuffer[AZ_MAX_PATH_LEN] = { 0 };
             while (attemptNumber < maxAttempts)
@@ -6104,27 +6134,27 @@ void CSystem::CreateSystemVars()
     m_sys_profile = REGISTER_INT("profile", 0, 0, "Allows CPU profiling\n"
             "Usage: profile #\n"
             "Where # sets the profiling to:\n"
-            "	0: Profiling off\n"
-            "	1: Self Time\n"
-            "	2: Hierarchical Time\n"
-            "	3: Extended Self Time\n"
-            "	4: Extended Hierarchical Time\n"
-            "	5: Peaks Time\n"
-            "	6: Subsystem Info\n"
-            "	7: Calls Numbers\n"
-            "	8: Standard Deviation\n"
-            "	9: Memory Allocation\n"
-            "	10: Memory Allocation (Bytes)\n"
-            "	11: Stalls\n"
-            "	-1: Profiling enabled, but not displayed\n"
+            "\t0: Profiling off\n"
+            "\t1: Self Time\n"
+            "\t2: Hierarchical Time\n"
+            "\t3: Extended Self Time\n"
+            "\t4: Extended Hierarchical Time\n"
+            "\t5: Peaks Time\n"
+            "\t6: Subsystem Info\n"
+            "\t7: Calls Numbers\n"
+            "\t8: Standard Deviation\n"
+            "\t9: Memory Allocation\n"
+            "\t10: Memory Allocation (Bytes)\n"
+            "\t11: Stalls\n"
+            "\t-1: Profiling enabled, but not displayed\n"
             "Default is 0 (off)");
 
 
     m_sys_profile_additionalsub = REGISTER_INT("profile_additionalsub", 0, 0, "Enable displaying additional sub-system profiling.\n"
             "Usage: profile_additionalsub #\n"
             "Where where # may be:\n"
-            "	0: no additional subsystem information\n"
-            "	1: display additional subsystem information\n"
+            "\t0: no additional subsystem information\n"
+            "\t1: display additional subsystem information\n"
             "Default is 0 (off)");
 
     m_sys_profile_filter = REGISTER_STRING("profile_filter", "", 0,

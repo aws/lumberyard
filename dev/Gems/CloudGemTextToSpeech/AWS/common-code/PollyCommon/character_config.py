@@ -16,14 +16,14 @@ import json
 import os
 
 from errors import ClientError
-
+from botocore.client import Config
 
 CHAR_BUCKET = None
 
 def __get_bucket():
     global CHAR_BUCKET
     if CHAR_BUCKET == None:
-        CHAR_BUCKET = boto3.resource('s3').Bucket(CloudCanvas.get_setting("characterdefs"))
+        CHAR_BUCKET = boto3.resource('s3', config=Config(signature_version='s3v4')).Bucket(CloudCanvas.get_setting("characterdefs"))
     return CHAR_BUCKET
 
 def get_all_characters():

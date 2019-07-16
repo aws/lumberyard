@@ -1,0 +1,5 @@
+<ProcDefs>
+<Idle2MoveBlend anim="false">
+  <Params exampleParam="0"/>
+</Idle2MoveBlend>
+</ProcDefs>

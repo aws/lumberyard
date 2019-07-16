@@ -12,6 +12,7 @@
 
 #include <native/tests/AssetProcessorTest.h>
 #include <QTemporaryDir>
+#include <QCoreApplication>
 #include <native/utilities/PlatformConfiguration.h>
 #include <QSet>
 #include <QString>

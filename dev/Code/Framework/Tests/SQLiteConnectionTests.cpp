@@ -31,7 +31,7 @@ namespace UnitTest
     {
     public:
         SQLiteTest()
-            : AllocatorsFixture(15, true)
+            : AllocatorsFixture()
         {
         }
 

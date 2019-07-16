@@ -61,7 +61,6 @@ namespace EMStudio
         // initializeOpenGLFunctions() and mParentRenderPlugin->InitializeGraphicsManager must be called first to ensure
         // all OpenGL functions have been resolved before doing anything that could make GL calls (e.g. resizing)
         initializeOpenGLFunctions();
-
         mParentRenderPlugin->InitializeGraphicsManager();
         if (mParentRenderPlugin->GetGraphicsManager())
         {

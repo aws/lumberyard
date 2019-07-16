@@ -94,7 +94,9 @@ namespace LmbrCentral
 
     void RandomTimedSpawnerComponent::Activate()
     {
-        m_currentTime = 0.0;
+        AZStd::chrono::system_clock::time_point now = AZStd::chrono::system_clock::now();
+        m_currentTime = AZ::ScriptTimePoint(now).GetSeconds();
+
         CalculateNextSpawnTime();
 
         if (m_config.m_enabled)

@@ -81,7 +81,7 @@ namespace GraphicsReflectContext
         }
         ILevel* currentLevel = gEnv->pSystem->GetILevelSystem()->GetCurrentLevel();
         AZStd::string path = currentLevel ? currentLevel->GetLevelInfo()->GetPath() : "";
-        pathAndfileName = AZStd::string::format("%s/%s", path.c_str(), fileName.to_string().c_str());
+        pathAndfileName = AZStd::string::format("%s/%s", path.c_str(), fileName.data());
 
         // try to load it
         XmlNodeRef root = GetISystem()->LoadXmlFromFile(pathAndfileName.c_str());

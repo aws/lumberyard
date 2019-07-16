@@ -466,3 +466,7 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
 
     return nRes;
 }
+
+#if defined(AZ_MONOLITHIC_BUILD)
+#include <StaticModules.inl>
+#endif

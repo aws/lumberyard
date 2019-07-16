@@ -42,12 +42,12 @@ namespace AzToolsFramework
         ProductDragged
     };
 
-    // Bus that can have messages sent when metrics related events occur (user triggered), and can be connected to in order to collect said metrics
-    // Note that this bus should be called from the main, UI thread only
+    /// Bus that can have messages sent when metrics related events occur (user triggered), and can be connected to in order to collect said metrics
+    /// Note that this bus should be called from the main, UI thread only
     class EditorMetricsEventsBusTraits
         : public AZ::EBusTraits
     {
-    public: 
+    public:
         enum NavigationTrigger
         {
             RightClickMenu,
@@ -65,76 +65,89 @@ namespace AzToolsFramework
 
         virtual ~EditorMetricsEventsBusTraits() {}
 
-        // Send this in the high level UI code, to wrap lower level, system level events and actions
-        // so that the lower level code doesn't have to know about how the events were triggered.
-        // Or use 
+        /// Send this in the high level UI code, to wrap lower level, system level events and actions
+        /// so that the lower level code doesn't have to know about how the events were triggered.
+        /// Or use
         virtual void BeginUserAction(NavigationTrigger /*behaviour*/) {}
 
-        // Send this in the high level UI code when all of the actions triggered by the user
-        // are finished.
+        /// Send this in the high level UI code when all of the actions triggered by the user
+        /// are finished.
         virtual void EndUserAction() {}
 
-        // Triggered when a user instantiates a slice manually
-        // Not triggered on level load
+        /// Triggered when a user instantiates a slice manually
+        /// Not triggered on level load
         virtual void SliceInstantiated(const AZ::Crc32& /*sliceIdentifier*/) {}
 
-        // Triggered when a user creates an entity manually 
-        // (via right click mouse, via menu, via drag and drop, etc). 
-        // Not triggered on level load or slice instantiation.
+        /// Triggered when a user creates an entity manually
+        /// (via right click mouse, via menu, via drag and drop, etc).
+        /// Not triggered on level load or slice instantiation.
         virtual void EntityCreated(const AZ::EntityId& /*entityId*/) {}
 
-        // Triggered when a user deletes an entity manually 
-        // (via right click mouse, via menu, via drag and drop, etc).
-        // Not triggered on level unload or slice release.
+        /// Triggered when a user deletes an entity manually
+        /// (via right click mouse, via menu, via drag and drop, etc).
+        /// Not triggered on level unload or slice release.
         virtual void EntityDeleted(const AZ::EntityId& /*entityId*/) {}
 
-        // Triggered when a user adds a component manually to an entity
-        // (via button click in Entity Inspector, drag+drop from Component Palette to Entity Inspector, Drag+Drop from File Browser to Entity Inspector)
-        // Not triggered on level load/unload or slice instantiation/release.
+        /// Triggered when a user adds a component manually to an entity
+        /// (via button click in Entity Inspector, drag+drop from Component Palette to Entity Inspector, Drag+Drop from File Browser to Entity Inspector)
+        /// Not triggered on level load/unload or slice instantiation/release.
         virtual void ComponentAdded(const AZ::EntityId& /*entityId*/, const AZ::Uuid& /* componentTypeId */) {}
 
-        // Triggered when a user removes a component manually from an entity (via right click mouse)
-        // Not triggered on level load/unload or slice instantiation/release.
+        /// Triggered when a user removes a component manually from an entity (via right click mouse)
+        /// Not triggered on level load/unload or slice instantiation/release.
         virtual void ComponentRemoved(const AZ::EntityId& /*entityId*/, const AZ::Uuid& /* componentTypeId */) {}
 
-        // Triggered when the user changes the parent of an entity
+        /// Triggered when the user changes the parent of an entity
         virtual void UpdateTransformParentEntity(const AZ::EntityId& /*entityId*/, const AZ::EntityId&  /*newParentId*/, const AZ::EntityId&  /*oldParentId*/) {}
 
-        // Triggered when a legacy (Cry) entity is created by the user
+        /// Triggered when a legacy (Cry) entity is created by the user
         virtual void LegacyEntityCreated(const char* /* entityType */, const char* /* scriptEntityType */) {}
 
-        // Triggered when the user triggers an undo of a ComponentEntity object(s)
+        /// Triggered when the user triggers an undo of a ComponentEntity object(s)
         virtual void Undo() {}
 
-        // Triggered when the user triggers a redo of a ComponentEntity object(s)
+        /// Triggered when the user triggers a redo of a ComponentEntity object(s)
         virtual void Redo() {}
 
-        // Triggered when the user triggers a clone of ComponentEntity object(s), before operation begins
+        /// Triggered when the user triggers a clone of ComponentEntity object(s), before operation begins
         virtual void EntitiesAboutToBeCloned() {}
 
-        // Triggered when the user triggers a clone of ComponentEntity object(s)), after operation completes
+        /// Triggered when the user triggers a clone of ComponentEntity object(s)), after operation completes
         virtual void EntitiesCloned() {}
 
-        // Called when a menu is triggered
+        /// Called when a menu is triggered
         virtual void MenuTriggered(const char* /*menuIdentifier*/, AzToolsFramework::MetricsActionTriggerType /* triggerType */ = AzToolsFramework::MetricsActionTriggerType::Unknown) {}
 
-        // Action is performed in Asset Browser
+        /// Action is performed in Asset Browser
         virtual void AssetBrowserAction(AssetBrowserActionType /*actionType*/, const AZ::Uuid& /*sourceUuid*/, const char* /*extension*/, int /*numberOfProducts*/) {}
 
         virtual void RegisterAction(QAction* /*action*/, const QString& /*metricsText*/) {}
         virtual void UnregisterAction(QAction* /*action*/) {}
 
-        // Work-around methods because ToolsApplicationEvents::BeforeEntitySelectionChanged and AfterEntitySelectionChanged are not called consistently
-        // Note that BeginSelectionChange can be called multiple times before EndSelectionChange is called, but the number of calls
-        // should always match.
+        /// Work-around methods because ToolsApplicationEvents::BeforeEntitySelectionChanged and AfterEntitySelectionChanged are not called consistently
+        /// Note that BeginSelectionChange can be called multiple times before EndSelectionChange is called, but the number of calls
+        /// should always match.
         virtual void BeginSelectionChange() {}
         virtual void EndSelectionChange() {}
+
+        /// Triggered when a user enters ComponentMode.
+        virtual void EnteredComponentMode(
+            const AZStd::vector<AZ::EntityId>& /*entityIds*/, const AZStd::vector<AZ::Uuid>& /*componentTypeIds*/) {}
+
+        /// Triggered when a user leaves ComponentMode.
+        virtual void LeftComponentMode(
+            const AZStd::vector<AZ::EntityId>& /*entityIds*/, const AZStd::vector<AZ::Uuid>& /*componentTypeIds*/) {}
+
+        /// Triggered when the user enables the new viewport interaction model functionality.
+        virtual void EnabledNewViewportInteractionModel() {}
+        
+        /// Triggered when the user disables the new viewport interaction model functionality.
+        virtual void DisabledNewViewportInteractionModel() {}
     };
 
     using EditorMetricsEventsBus = AZ::EBus<EditorMetricsEventsBusTraits>;
 
-
-    // Wrapper class, to automatically handle calling BeginUserAction and EndUserAction on the EditorMetricsEventsBus
+    /// Wrapper class, to automatically handle calling BeginUserAction and EndUserAction on the EditorMetricsEventsBus
     class EditorMetricsEventsBusAction
     {
     public:
@@ -149,6 +162,8 @@ namespace AzToolsFramework
         }
     };
 
+    /// Helper with RAII (Resource Acquisition Is Initialization, or RRID, Resource Release Is Destruction)
+    /// semantics to wrap events for beginning and ending a selection.
     class EditorMetricsEventBusSelectionChangeHelper
     {
     public:

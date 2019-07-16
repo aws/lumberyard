@@ -14,6 +14,8 @@ def build(bld):
     import lumberyard_sdks
 
     file_list = []
+    static_list = ['cloudcanvas_static.waf_files']
+
     if bld.env['PLATFORM'] == 'project_generator':
         file_list.append('cloudcanvascommon.waf_files')
         file_list.append('lmbraws_unsupported.waf_files')
@@ -27,5 +29,13 @@ def build(bld):
         platforms = ['all'],
         file_list = file_list,
         uselib = ['AWS_CPP_SDK_CORE'],
-        use = ['AWSNativeSDKInit']
+        use = ['AWSNativeSDKInit', 'CloudCanvasCommon.StaticLibrary'],
+
+        StaticLibrary = dict(
+            file_list = static_list,
+            use = ['AzCore', 'AzFramework'],
+            vs_filter = 'Gems',
+            disable_pch = True
+        )
+            
     )

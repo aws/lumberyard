@@ -1,3 +1,15 @@
+/*
+* All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
+* its licensors.
+*
+* For complete copyright and license terms please see the LICENSE at the root of this
+* distribution (the "License"). All use of this software is governed by the License,
+* or, if provided, by the license below or the license accompanying this file. Do not
+* remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+*
+*/
+
 namespace Physics
 {
     TEST_F(PhysicsComponentBusTest, SetLinearDamping_DynamicSphere_MoreDampedBodyFallsSlower)
@@ -529,30 +541,42 @@ namespace Physics
         auto sphere = AddSphereEntity(AZ::Vector3(0.0f, 0.0f, 0.0f), 0.5f);
         Physics::RigidBodyRequestBus::Event(sphere->GetId(), &Physics::RigidBodyRequests::SetLinearDamping, 0.0f);
 
+        AZ::Vector3 velocity;
+        float previousSpeed = 0.0f;
         for (int timestep = 0; timestep < 30; timestep++)
         {
             UpdateDefaultWorld(1.0f / 60.0f, 1);
+            Physics::RigidBodyRequestBus::EventResult(velocity, sphere->GetId(), &Physics::RigidBodyRequests::GetLinearVelocity);
+            previousSpeed = velocity.GetLength();
         }
 
+        // Disable physics
         Physics::RigidBodyRequestBus::Event(sphere->GetId(), &Physics::RigidBodyRequests::DisablePhysics);
 
-        AZ::Vector3 velocity;
-        Physics::RigidBodyRequestBus::EventResult(velocity, sphere->GetId(), &Physics::RigidBodyRequests::GetLinearVelocity);
-        float speed = velocity.GetLength();
-        EXPECT_FLOAT_EQ(speed, 0.0f);
-
-        bool physicsEnabled = true;
-        Physics::RigidBodyRequestBus::EventResult(physicsEnabled, sphere->GetId(), &Physics::RigidBodyRequests::IsPhysicsEnabled);
-        EXPECT_FALSE(physicsEnabled);
-
-        Physics::RigidBodyRequestBus::Event(sphere->GetId(), &Physics::RigidBodyRequests::EnablePhysics);
-
-        float previousSpeed = 0.0f;
+        // Check speed is not changing
         for (int timestep = 0; timestep < 60; timestep++)
         {
             UpdateDefaultWorld(1.0f / 60.0f, 1);
             Physics::RigidBodyRequestBus::EventResult(velocity, sphere->GetId(), &Physics::RigidBodyRequests::GetLinearVelocity);
-            speed = velocity.GetLength();
+            float speed = velocity.GetLength();
+            EXPECT_FLOAT_EQ(speed, previousSpeed);
+            previousSpeed = speed;
+        }
+
+        // Check physics is disabled
+        bool physicsEnabled = true;
+        Physics::RigidBodyRequestBus::EventResult(physicsEnabled, sphere->GetId(), &Physics::RigidBodyRequests::IsPhysicsEnabled);
+        EXPECT_FALSE(physicsEnabled);
+
+        // Enable physics
+        Physics::RigidBodyRequestBus::Event(sphere->GetId(), &Physics::RigidBodyRequests::EnablePhysics);
+
+        // Check speed is increasing
+        for (int timestep = 0; timestep < 60; timestep++)
+        {
+            UpdateDefaultWorld(1.0f / 60.0f, 1);
+            Physics::RigidBodyRequestBus::EventResult(velocity, sphere->GetId(), &Physics::RigidBodyRequests::GetLinearVelocity);
+            float speed = velocity.GetLength();
             EXPECT_GT(speed, previousSpeed);
             previousSpeed = speed;
         }

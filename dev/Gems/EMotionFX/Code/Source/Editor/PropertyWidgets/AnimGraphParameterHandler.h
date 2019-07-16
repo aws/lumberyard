@@ -28,7 +28,7 @@ namespace EMotionFX
     class AnimGraphParameterPicker
         : public QWidget
     {
-        Q_OBJECT
+        Q_OBJECT // AUTOMOC
     public:
         AZ_CLASS_ALLOCATOR_DECL
         
@@ -73,7 +73,7 @@ namespace EMotionFX
         : public QObject
         , public AzToolsFramework::PropertyHandler<AZStd::string, AnimGraphParameterPicker>
     {
-        Q_OBJECT
+        Q_OBJECT // AUTOMOC
 
     public:
         AZ_CLASS_ALLOCATOR_DECL
@@ -97,7 +97,7 @@ namespace EMotionFX
         : public QObject
         , public AzToolsFramework::PropertyHandler<AZStd::vector<AZStd::string>, AnimGraphParameterPicker>
     {
-        Q_OBJECT
+        Q_OBJECT // AUTOMOC
 
     public:
         AZ_CLASS_ALLOCATOR_DECL
@@ -115,5 +115,4 @@ namespace EMotionFX
     protected:
         AnimGraph* m_animGraph;
     };
-
 } // namespace EMotionFX

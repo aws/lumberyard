@@ -58,6 +58,7 @@ namespace Editor
         : public QApplication
         , public QAbstractNativeEventFilter
         , public IEditorNotifyListener
+        , public AZ::UserSettingsOwnerRequestBus::Handler
     {
         Q_OBJECT
         Q_PROPERTY(QSet<int> pressedKeys READ pressedKeys)
@@ -71,7 +72,11 @@ namespace Editor
         void Initialize();
 
         void LoadSettings();
-        void SaveSettings();
+        void UnloadSettings();
+
+        // AZ::UserSettingsOwnerRequestBus::Handler
+        void SaveSettings() override;
+        ////
 
         static EditorQtApplication* instance();
 

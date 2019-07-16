@@ -12,23 +12,30 @@
                     {{defect.universal_unique_identifier.value}}
                 </div>
             </div>
-            <div class="form-group row">
+            <div class="form-group row valign no-gutters">
                 <label class="col-3">
                     Project Key*
                 </label>
-                <div class="col-9 jira-integration-settings">
-                    {{project}}
+                <div class="col-9">
+                    <select class="form-control" [(ngModel)]="jiraFieldMappings['project']" name="projectName" (ngModelChange)="jiraFieldMappings['fields'] = []; jiraFieldMappings['issuetype']=''; getIssueTypes(jiraFieldMappings['project'])">
+                        <option *ngFor="let projectKey of projectKeys" [ngValue]="projectKey">{{projectKey}}</option>
+                    </select>
                 </div>
+            </div>            
+            <div *ngIf="isLoadingIssueTypes">
+                <loading-spinner></loading-spinner>
             </div>
-            <div class="form-group row">
+            <div *ngIf="!isLoadingIssueTypes" class="form-group row valign no-gutters">
                 <label class="col-3">
-                    Issue Type*
+                    Issue Key*
                 </label>
-                <div class="col-9 jira-integration-settings">
-                    {{issueType}}
+                <div class="col-9">
+                    <select class="form-control" [(ngModel)]="jiraFieldMappings['issuetype']" name="issuetype" (ngModelChange)="jiraFieldMappings['fields'] = []; isLoadingJiraFieldMappings = true; this.getJiraFieldMappings(jiraFieldMappings['project'], this.jiraFieldMappings['issuetype']);">
+                        <option *ngFor="let issue of issueTypes" [ngValue]="issue">{{issue}}</option>
+                    </select>
                 </div>
             </div>
-            <div *ngFor="let item of jiraFieldMappings">
+            <div *ngFor="let item of jiraFieldMappings['fields']">
                 <div *ngIf="item.mapping !== '' && defect[item.mapping]" class="form-group row" [class.has-danger]="!defect[item.mapping].valid && item.required">
                     <label class="col-3">
                         {{item.name}}

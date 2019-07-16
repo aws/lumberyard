@@ -22,5 +22,25 @@ namespace AzQtComponents
     {
     }
 
+    void StyledDialog::enableSaveRestoreGeometry(const QString& key)
+    {
+        auto windowDecorator = qobject_cast<WindowDecorationWrapper*>(parent());
+        if (windowDecorator != nullptr)
+        {
+            windowDecorator->enableSaveRestoreGeometry(key);
+        }
+    }
+
+    bool StyledDialog::restoreGeometryFromSettings()
+    {
+        auto windowDecorator = qobject_cast<WindowDecorationWrapper*>(parent());
+        if (windowDecorator != nullptr)
+        {
+            return windowDecorator->restoreGeometryFromSettings();
+        }
+
+        return false;
+    }
+
 #include <Components/StyledDialog.moc>
 } // namespace AzQtComponents

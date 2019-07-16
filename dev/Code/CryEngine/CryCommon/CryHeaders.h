@@ -1438,6 +1438,9 @@ struct EXPORT_FLAGS_CHUNK_DESC
         USE_CUSTOM_NORMALS       = 0x0004,
         WANT_F32_VERTICES        = 0x0008,
         EIGHT_WEIGHTS_PER_VERTEX = 0x0010,
+        //START: Prevent reprocessing skinning data for skinned CGF
+        SKINNED_CGF              = 0x0020,
+        //END: Prevent reprocessing skinning data for skinned CGF
     };
     enum ESrcFlags
     {
@@ -1477,7 +1480,10 @@ struct FOLIAGE_INFO_CHUNK_DESC
 {
     enum
     {
-        VERSION = 0x0001
+        //START: Add Skinned Geometry (.CGF) export type (for touch bending vegetation)
+        VERSION = 0x0001,
+        VERSION2 = 0x0002
+        //END: Add Skinned Geometry (.CGF) export type (for touch bending vegetation)
     };
 
     int nSpines;

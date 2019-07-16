@@ -40,27 +40,15 @@ namespace Ui
 namespace GraphCanvas
 {    
     class GraphCanvasMimeEvent;
-    class NodePaletteSortFilterProxyModel;
-
-    class NodePaletteTreeDelegate : public GraphCanvas::IconDecoratedNameDelegate
-    {
-    public:
-        AZ_CLASS_ALLOCATOR(NodePaletteTreeDelegate, AZ::SystemAllocator, 0);
-
-        NodePaletteTreeDelegate(QWidget* parent = nullptr);
-        void paint(QPainter* painter, const QStyleOptionViewItem& option, const QModelIndex& index) const override;
-    };
+    class NodePaletteTreeDelegate;
+    class NodePaletteWidget;
 
     class NodePaletteDockWidget
         : public AzQtComponents::StyledDockWidget
-        , public GraphCanvas::AssetEditorNotificationBus::Handler
-        , public GraphCanvas::GraphCanvasTreeModelRequestBus::Handler
     {
         Q_OBJECT
     public:
-        static const char* GetMimeType() { return "scriptcanvas/node-palette-mime-event"; }
-
-        NodePaletteDockWidget(GraphCanvasTreeItem* treeItem, const EditorId& editorId, const QString& windowLabel, QWidget* parent, bool inContextMenu);
+        NodePaletteDockWidget(GraphCanvasTreeItem* treeItem, const EditorId& editorId, const QString& windowLabel, QWidget* parent, const char* mimeType, bool inContextMenu, AZStd::string_view identifier);
         ~NodePaletteDockWidget();
 
         void FocusOnSearchFilter();
@@ -68,55 +56,40 @@ namespace GraphCanvas
         void ResetModel();
         void ResetDisplay();
 
-        GraphCanvas::GraphCanvasMimeEvent* GetContextMenuEvent() const;
+        GraphCanvasMimeEvent* GetContextMenuEvent() const;
 
         void ResetSourceSlotFilter();
         void FilterForSourceSlot(const AZ::EntityId& sceneId, const AZ::EntityId& sourceSlotId);
 
-        // GraphCanvas::AssetEditorNotificationBus
-        void PreOnActiveGraphChanged() override;
-        void PostOnActiveGraphChanged() override;
-        ////
+        void SetItemDelegate(NodePaletteTreeDelegate* itemDelegate);
 
-        // GraphCanvas::GraphCanvasTreeModelRequestBus::Handler
-        void ClearSelection() override;
-        ////
+        void AddHeaderWidget(QWidget* widget);
+        void ConfigureHeaderMargins(const QMargins& margins, int elementSpacing);
 
-        // NodeTreeView
+        void AddFooterWidget(QWidget* widget);
+        void ConfigureFooterMargins(const QMargins& margins, int elementSpacing);
+
+        void AddSearchCustomizationWidget(QWidget* widget);
+        void ConfigureSearchCustomizationMargins(const QMargins& margins, int elementSpacing);
+
         const GraphCanvasTreeItem* GetTreeRoot() const;
-        ////
 
     protected:
+
+        QTreeView* GetTreeView() const;
+        NodePaletteWidget* GetNodePaletteWidget() const;
 
         // This method here is to help facilitate resetting the model. This will not be called during
         // the initial construction(because yay virtual functions).
         virtual GraphCanvasTreeItem* CreatePaletteRoot() const;
 
-    public slots:
-        void OnSelectionChanged(const QItemSelection& selected, const QItemSelection& deselected);
-        void OnScrollChanged(int scrollPosition);
-
     signals:
         void OnContextMenuSelection();
+        void OnTreeItemDoubleClicked(GraphCanvasTreeItem* treeItem);
 
     private:
 
-        void RefreshFloatingHeader();
-        void OnQuickFilterChanged();
-        void UpdateFilter();
-        void ClearFilter();
-
-        // Will try and spawn the item specified by the QCompleter
-        void TrySpawnItem();
-
-        void HandleSelectedItem(const GraphCanvas::GraphCanvasTreeItem* treeItem);
-
         AZStd::unique_ptr<Ui::NodePaletteDockWidget> m_ui;
-            
         EditorId m_editorId;
-        GraphCanvas::GraphCanvasMimeEvent* m_contextMenuCreateEvent;
-
-        QTimer        m_filterTimer;;
-        NodePaletteSortFilterProxyModel* m_model;
     };
 }

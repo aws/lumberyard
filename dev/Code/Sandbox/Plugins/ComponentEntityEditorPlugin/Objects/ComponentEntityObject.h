@@ -85,6 +85,8 @@ public:
     void DrawDefault(DisplayContext& dc, const QColor& labelColor = QColor(255, 255, 255)) override;
     IStatObj* GetIStatObj() override;
     bool IsIsolated() const override;
+    bool IsSelected() const override;
+    bool IsSelectable() const override;
 
     void SetWorldPos(const Vec3& pos, int flags = 0) override;
 
@@ -202,33 +204,6 @@ protected:
 
     void ValidateMeshStatObject();
 
-    //! Whether we have have a valid icon path in \ref m_icon
-    bool m_hasIcon;
-
-    //! Path to component entity icon for this object
-    AZStd::string m_icon;
-    ITexture* m_iconTexture;
-
-    //! Whether this component entity icon is visible
-    bool m_entityIconVisible;
-
-    //! Whether to only use this object's icon for hit tests. When enabled, we ignore hit tests
-    //! against the geometry of the object
-    bool m_iconOnlyHitTest;
-
-    //! Whether to draw accents for this object (accents include selection wireframe bounding boxes)
-    bool m_drawAccents;
-
-    //! Indicate if an entity is isolated when the editor is in Isolation Mode.
-    bool m_isIsolated;
-
-    //! Displays viewport icon for this entity.
-    //! \returns whether an icon is being displayed
-    bool DisplayEntityIcon(DisplayContext& dc);
-
-    //! EntityId that this editor object represents/is tied to
-    AZ::EntityId m_entityId;
-
     class EditorActionGuard
     {
     public:
@@ -277,6 +252,34 @@ protected:
     EditorActionGuard m_parentingReentryGuard;
 
     AzToolsFramework::EntityAccentType m_accentType;
+
+    //! Whether we have have a valid icon path in \ref m_icon
+    bool m_hasIcon;
+
+    //! Whether this component entity icon is visible
+    bool m_entityIconVisible;
+
+    //! Whether to only use this object's icon for hit tests. When enabled, we ignore hit tests
+    //! against the geometry of the object
+    bool m_iconOnlyHitTest;
+
+    //! Whether to draw accents for this object (accents include selection wireframe bounding boxes)
+    bool m_drawAccents;
+
+    //! Indicate if an entity is isolated when the editor is in Isolation Mode.
+    bool m_isIsolated;
+
+    //! EntityId that this editor object represents/is tied to
+    AZ::EntityId m_entityId;
+
+    //! Path to component entity icon for this object
+    AZStd::string m_icon;
+    ITexture* m_iconTexture;
+
+    //! Displays viewport icon for this entity.
+    //! \returns whether an icon is being displayed
+    bool DisplayEntityIcon(
+        DisplayContext& dc, AzFramework::DebugDisplayRequests& debugDisplay);
 };
 
 #endif // CRYINCLUDE_COMPONENTENTITYEDITORPLUGIN_COMPONENTENTITYOBJECT_H

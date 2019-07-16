@@ -113,6 +113,7 @@ namespace AzToolsFramework
         connect(newCtrl, &PropertyBoolRadioButtonsCtrl::valueChanged, this, [newCtrl]()
             {
                 PropertyEditorGUIMessages::Bus::Broadcast(&PropertyEditorGUIMessages::RequestWrite, newCtrl);
+                PropertyEditorGUIMessages::Bus::Broadcast(&PropertyEditorGUIMessages::Bus::Handler::OnEditingFinished, newCtrl);
             });
         return newCtrl;
     }

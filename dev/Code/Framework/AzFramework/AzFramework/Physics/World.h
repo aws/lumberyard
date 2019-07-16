@@ -31,6 +31,7 @@ namespace Physics
     class RigidBody;
     class WorldBody;
     class WorldEventHandler;
+    class ITriggerEventCallback;
 
     /// Default world configuration.
     class WorldConfiguration
@@ -47,12 +48,14 @@ namespace Physics
         float m_fixedTimeStep = 1 / 60.f;
         AZ::Vector3 m_gravity = AZ::Vector3(0.f, 0.f, -9.81f);
         void* m_customUserData = nullptr;
-        size_t m_raycastBufferSize = 32; ///< Maximum number of hits that will be returned from a raycast
-        size_t m_sweepBufferSize = 32; ///< Maximum number of hits that can be returned from a shapecast
-        size_t m_overlapBufferSize = 32; ///< Maximum number of overlaps that can be returned from an overlap query
+        AZ::u64 m_raycastBufferSize = 32; ///< Maximum number of hits that will be returned from a raycast
+        AZ::u64 m_sweepBufferSize = 32; ///< Maximum number of hits that can be returned from a shapecast
+        AZ::u64 m_overlapBufferSize = 32; ///< Maximum number of overlaps that can be returned from an overlap query
         bool m_enableCcd = false; ///< Enables continuous collision detection in the world
         bool m_enableActiveActors = false; ///< Enables pxScene::getActiveActors method
         bool m_enablePcm = true; ///< Enables the persistent contact manifold algorithm to be used as the narrow phase algorithm
+        bool m_kinematicFiltering = true; ///< Enables filtering between kinematic/kinematic  objects.
+        bool m_kinematicStaticFiltering = true; ///< Enables filtering between kinematic/static objects.
 
     private:
         static bool VersionConverter(AZ::SerializeContext& context,
@@ -142,13 +145,13 @@ namespace Physics
         AZStd::vector<OverlapHit> OverlapCapsule(float height, float radius, const AZ::Transform& pose, CustomFilterCallback customFilterCallback = nullptr);
 
         /// Registers a pair of world bodies for which collisions should be suppressed.
-        virtual void RegisterSuppressedCollision(const AZStd::shared_ptr<WorldBody>& body0, const AZStd::shared_ptr<WorldBody>& body1) = 0;
+        virtual void RegisterSuppressedCollision(const WorldBody& body0, const WorldBody& body1) = 0;
 
         /// Unregisters a pair of world bodies for which collisions should be suppressed.
-        virtual void UnregisterSuppressedCollision(const AZStd::shared_ptr<WorldBody>& body0, const AZStd::shared_ptr<WorldBody>& body1) = 0;
+        virtual void UnregisterSuppressedCollision(const WorldBody& body0, const WorldBody& body1) = 0;
 
         virtual void AddBody(WorldBody& body) = 0;
-        virtual void RemoveBody(const WorldBody& body) = 0;
+        virtual void RemoveBody(WorldBody& body) = 0;
 
         virtual AZ::Crc32 GetNativeType() const { return AZ::Crc32(); }
         virtual void* GetNativePointer() const { return nullptr; }
@@ -159,6 +162,22 @@ namespace Physics
 
         virtual AZ::Vector3 GetGravity() = 0;
         virtual void SetGravity(const AZ::Vector3& gravity) = 0;
+
+        virtual void DeferDelete(AZStd::unique_ptr<WorldBody> worldBody) = 0;
+
+        /*! @brief Similar to SetEventHandler, relevant for Touch Bending
+         *
+         *  SetEventHandler is useful to catch onTrigger events when the bodies
+         *  involved were created with the standard physics Components attached to
+         *  entities. On the other hand, this method was added since Touch Bending, and it is useful
+         *  for the touch bending simulator to catch onTrigger events of Actors that
+         *  don't have valid AZ:EntityId.
+         *
+         *  @param triggerCallback Pointer to the callback object that will get the On
+         *  @returns Nothing.
+         *
+         */
+        virtual void SetTriggerEventCallback(ITriggerEventCallback* triggerCallback) = 0;
     };
 
     typedef AZ::EBus<World> WorldRequestBus;

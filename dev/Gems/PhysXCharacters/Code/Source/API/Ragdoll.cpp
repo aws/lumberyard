@@ -33,9 +33,9 @@ namespace PhysXCharacters
         }
     }
 
-    void Ragdoll::AddNode(const AZStd::shared_ptr<RagdollNode>& node)
+    void Ragdoll::AddNode(AZStd::unique_ptr<RagdollNode> node)
     {
-        m_nodes.push_back(node);
+        m_nodes.push_back(AZStd::move(node));
     }
 
     void Ragdoll::SetParentIndices(const ParentIndices& parentIndices)
@@ -52,8 +52,8 @@ namespace PhysXCharacters
     {
         if (nodeIndex < m_nodes.size())
         {
-            AZStd::shared_ptr<Physics::RigidBody>& rigidBody = m_nodes[nodeIndex]->GetRigidBody();
-            return rigidBody ? static_cast<physx::PxRigidDynamic*>(rigidBody->GetNativePointer()) : nullptr;
+            Physics::RigidBody& rigidBody = m_nodes[nodeIndex]->GetRigidBody();
+            return static_cast<physx::PxRigidDynamic*>(rigidBody.GetNativePointer());
         }
 
         AZ_Error("PhysX Ragdoll", false, "Invalid node index (%i) in ragdoll with %i nodes.", nodeIndex, m_nodes.size());
@@ -266,11 +266,11 @@ namespace PhysXCharacters
         }
     }
 
-    AZStd::shared_ptr<Physics::RagdollNode> Ragdoll::GetNode(size_t nodeIndex) const
+    Physics::RagdollNode* Ragdoll::GetNode(size_t nodeIndex) const
     {
         if (nodeIndex < m_nodes.size())
         {
-            return m_nodes[nodeIndex];
+            return m_nodes[nodeIndex].get();
         }
 
         AZ_Error("PhysX Ragdoll", false, "Invalid node index %i in ragdoll with %i nodes.", nodeIndex, m_nodes.size());
@@ -335,5 +335,21 @@ namespace PhysXCharacters
     {
         AZ_WarningOnce("PhysX Ragdoll", false, "Not yet supported.");
         return nullptr;
+    }
+
+    void Ragdoll::AddToWorld(Physics::World& world)
+    {
+        for (auto& node : m_nodes)
+        {
+            node->GetRigidBody().AddToWorld(world);
+        }
+    }
+
+    void Ragdoll::RemoveFromWorld(Physics::World& world)
+    {
+        for (auto& node : m_nodes)
+        {
+            node->GetRigidBody().RemoveFromWorld(world);
+        }
     }
 } // namespace PhysXCharacters

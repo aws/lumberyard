@@ -9,18 +9,17 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
+
 #include "LmbrCentral_precompiled.h"
-#include "EditorBoxShapeComponent.h"
 
 #include <AzCore/Math/Transform.h>
 #include <AzCore/RTTI/ReflectContext.h>
 #include <AzCore/Serialization/EditContext.h>
-#include <AzToolsFramework/Manipulators/LinearManipulator.h>
-#include <AzToolsFramework/Manipulators/ManipulatorBus.h>
-#include <AzToolsFramework/Manipulators/ManipulatorView.h>
-#include <AzToolsFramework/Manipulators/ManipulatorSnapping.h>
+#include <AzToolsFramework/ComponentModes/BoxComponentMode.h>
+#include <AzToolsFramework/Maths/TransformUtils.h>
 
 #include "BoxShapeComponent.h"
+#include "EditorBoxShapeComponent.h"
 #include "EditorShapeComponentConverters.h"
 #include "ShapeDisplay.h"
 
@@ -40,6 +39,7 @@ namespace LmbrCentral
             serializeContext->Class<EditorBoxShapeComponent, EditorBaseShapeComponent>()
                 ->Version(3, &ClassConverters::UpgradeEditorBoxShapeComponent)
                 ->Field("BoxShape", &EditorBoxShapeComponent::m_boxShape)
+                ->Field("ComponentMode", &EditorBoxShapeComponent::m_componentModeDelegate)
                 ;
 
             if (auto editContext = serializeContext->GetEditContext())
@@ -54,42 +54,57 @@ namespace LmbrCentral
                         ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
                         ->Attribute(AZ::Edit::Attributes::HelpPageURL, "https://docs.aws.amazon.com/lumberyard/latest/userguide/component-shapes.html")
                     ->DataElement(AZ::Edit::UIHandlers::Default, &EditorBoxShapeComponent::m_boxShape, "Box Shape", "Box Shape Configuration")
+                        // ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)  // disabled - prevents ChangeNotify attribute firing correctly
                         ->Attribute(AZ::Edit::Attributes::ChangeNotify, &EditorBoxShapeComponent::ConfigurationChanged)
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &EditorBoxShapeComponent::m_componentModeDelegate, "Component Mode", "Box Shape Component Mode")
                         ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
                         ;
             }
         }
     }
 
+    void EditorBoxShapeComponent::Init()
+    {
+        EditorBaseShapeComponent::Init();
+
+        SetShapeComponentConfig(&m_boxShape.ModifyConfiguration());
+    }
+
     void EditorBoxShapeComponent::Activate()
     {
         EditorBaseShapeComponent::Activate();
-
-        m_boxManipulator.SetHandler(this);
         m_boxShape.Activate(GetEntityId());
-        EntitySelectionEvents::Bus::Handler::BusConnect(GetEntityId());
         AzFramework::EntityDebugDisplayEventBus::Handler::BusConnect(GetEntityId());
+        AzToolsFramework::BoxManipulatorRequestBus::Handler::BusConnect(
+            AZ::EntityComponentIdPair(GetEntityId(), GetId()));
+
+        // ComponentMode
+        m_componentModeDelegate.ConnectWithSingleComponentMode<
+            EditorBoxShapeComponent, AzToolsFramework::BoxComponentMode>(
+                AZ::EntityComponentIdPair(GetEntityId(), GetId()), this);
     }
 
     void EditorBoxShapeComponent::Deactivate()
     {
+        m_componentModeDelegate.Disconnect();
+
+        AzToolsFramework::BoxManipulatorRequestBus::Handler::BusDisconnect();
         AzFramework::EntityDebugDisplayEventBus::Handler::BusDisconnect();
-        EntitySelectionEvents::Bus::Handler::BusDisconnect();
         m_boxShape.Deactivate();
-        m_boxManipulator.SetHandler(nullptr);
-        m_boxManipulator.OnDeselect();
         EditorBaseShapeComponent::Deactivate();
     }
 
-    void EditorBoxShapeComponent::DisplayEntity(bool& handled)
+    void EditorBoxShapeComponent::DisplayEntityViewport(
+        const AzFramework::ViewportInfo& viewportInfo,
+        AzFramework::DebugDisplayRequests& debugDisplay)
     {
-        DisplayShape(handled,
-            [this]() { return CanDraw(); },
-            [this](AzFramework::EntityDebugDisplayRequests* displayContext)
+        DisplayShape(
+            debugDisplay, [this]() { return CanDraw(); },
+            [this](AzFramework::DebugDisplayRequests& debugDisplay)
             {
                 DrawBoxShape(
-                    { m_shapeColor, m_shapeWireColor, m_displayFilled },
-                    m_boxShape.GetBoxConfiguration(), *displayContext);
+                    { m_boxShape.GetBoxConfiguration().GetDrawColor(), m_shapeWireColor, m_boxShape.GetBoxConfiguration().IsFilled() },
+                    m_boxShape.GetBoxConfiguration(), debugDisplay);
             },
             m_boxShape.GetCurrentTransform());
     }
@@ -97,10 +112,14 @@ namespace LmbrCentral
     void EditorBoxShapeComponent::ConfigurationChanged()
     {
         m_boxShape.InvalidateCache(InvalidateShapeCacheReason::ShapeChange);
+
         ShapeComponentNotificationsBus::Event(GetEntityId(),
             &ShapeComponentNotificationsBus::Events::OnShapeChanged,
             ShapeComponentNotifications::ShapeChangeReasons::ShapeChanged);
-        m_boxManipulator.RefreshManipulators();
+
+        AzToolsFramework::ComponentModeFramework::ComponentModeSystemRequestBus::Broadcast(
+            &AzToolsFramework::ComponentModeFramework::ComponentModeSystemRequests::Refresh,
+            AZ::EntityComponentIdPair(GetEntityId(), GetId()));
     }
 
     void EditorBoxShapeComponent::BuildGameEntity(AZ::Entity* gameEntity)
@@ -119,14 +138,12 @@ namespace LmbrCentral
         }
     }
 
-    void EditorBoxShapeComponent::OnSelected()
+    void EditorBoxShapeComponent::OnTransformChanged(
+        const AZ::Transform& /*local*/, const AZ::Transform& /*world*/)
     {
-        m_boxManipulator.OnSelect(GetEntityId());
-    }
-
-    void EditorBoxShapeComponent::OnDeselected()
-    {
-        m_boxManipulator.OnDeselect();
+        AzToolsFramework::ComponentModeFramework::ComponentModeSystemRequestBus::Broadcast(
+            &AzToolsFramework::ComponentModeFramework::ComponentModeSystemRequests::Refresh,
+            AZ::EntityComponentIdPair(GetEntityId(), GetId()));
     }
 
     AZ::Vector3 EditorBoxShapeComponent::GetDimensions()
@@ -136,16 +153,16 @@ namespace LmbrCentral
 
     void EditorBoxShapeComponent::SetDimensions(const AZ::Vector3& dimensions)
     {
-        m_boxShape.SetBoxDimensions(dimensions);
+        return m_boxShape.SetBoxDimensions(dimensions);
     }
 
     AZ::Transform EditorBoxShapeComponent::GetCurrentTransform()
     {
-        return m_boxShape.GetCurrentTransform();
+        return AzToolsFramework::TransformNormalizedScale(m_boxShape.GetCurrentTransform());
     }
 
-    void EditorBoxShapeComponent::OnTransformChanged(const AZ::Transform& /*local*/, const AZ::Transform& /*world*/)
+    AZ::Vector3 EditorBoxShapeComponent::GetBoxScale()
     {
-        m_boxManipulator.RefreshManipulators();
+        return AZ::Vector3(m_boxShape.GetCurrentTransform().RetrieveScale().GetMaxElement());
     }
 } // namespace LmbrCentral

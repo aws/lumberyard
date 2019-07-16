@@ -12,15 +12,16 @@
 
 import os, shutil
 
+from waflib import Configure, Utils
 from waflib.Build import BuildContext
 
 def build(bld):
 
-    # we have to skip both of these module definitions if android isn't support, otherwise this will cause unnecessary failures
-    if any(platform for platform in bld.get_supported_platforms() if 'android' in platform):
+    if not bld.is_target_platform_enabled('android'):
+        return
 
-        # the default file permissions after copies are made.  511 => 'chmod 777 <file>'
-        FILE_PERMISSIONS = 511
+    # only copy the native app glue source during the configure context
+    if isinstance(bld, Configure.ConfigurationContext):
 
         # copy over the native activity glue files
         dest_directory = bld.path.make_node('NativeActivityGlue')
@@ -34,20 +35,30 @@ def build(bld):
             dest_file = dest_directory.make_node(src)
 
             if os.path.exists(dest_file.abspath()):
-                dest_file.chmod(FILE_PERMISSIONS) 
+                dest_file.chmod(Utils.O755)
 
             shutil.copy2(source_file, dest_file.abspath())
-            dest_file.chmod(FILE_PERMISSIONS) 
+            dest_file.chmod(Utils.O755)
 
-        bld.CryEngineStaticLibrary(
-            target              = 'NativeActivityGlue',
-            vs_filter           = 'Android',
-            platforms           = [ 'android' ],
-            configurations      = [ 'debug', 'profile', 'performance', 'release' ],
-            file_list           = [ 'native_activity_glue.waf_files' ],
-            export_includes     = [ 'NativeActivityGlue' ],
-            android_cflags      = [ '-fvisibility=default' ],
-        )
+    # launchers are considered exempt modules with the system that determines which modules, and their 
+    # dependencies, should be included in the build.  because of this, launcher only dependencies 
+    # will be skipped unless we force them in the build by either adding them into a spec file
+    # or manually like below
+    if bld.is_android_platform(bld.env['PLATFORM']) and bld.options.project_spec:
+        bld.get_all_module_uses(bld.options.project_spec).add('NativeActivityGlue')
+
+    bld.CryEngineStaticLibrary(
+        target              = 'NativeActivityGlue',
+        vs_filter           = 'Android',
+        platforms           = ['android'],
+        exclude_test        = True,
+        client_only         = True,
+        file_list           = 'empty.waf_files',
+
+        android_file_list           = 'native_activity_glue.waf_files',
+        android_export_includes     = ['NativeActivityGlue'],
+        android_cflags              = ['-fvisibility=default'],
+    )
 
     if isinstance(bld, BuildContext):
         bld.read_aar(
@@ -56,24 +67,42 @@ def build(bld):
         )
 
     bld.CryLauncher(
-        # Settings
         target              = 'AndroidLauncher',
-        platforms           = ['android' ],
-        configurations      = ['debug', 'profile', 'performance', 'release'],
-        file_list           = 'android_launcher.waf_files',
+        platforms           = ['android'],
+        exclude_test        = True,
+        client_only         = True,
+        file_list           = 'empty.waf_files',
 
-        # Platform Specific
+        android_file_list       = 'android_launcher.waf_files',
         android_use             = ['AzGameFramework', 'NativeActivityGlue'],
-        android_includes        = [bld.Path('Code/CryEngine/CryAction'),
-                                   bld.Path('Code/CryEngine/CrySystem'),
-                                   bld.Path('Code/Launcher')],
+        android_includes        = [bld.Path('Code/Launcher')],
 
-        # Force the native app glue entry point to be defined.  This is an alternative method to 
-        # calling app_dummy in android_main that works with newer NDKs which have deprecated 
+        # Force the native app glue entry point to be defined.  This is an alternative method to
+        # calling app_dummy in android_main that works with newer NDKs which have deprecated
         # app_dummy (but still seem to strip this function)
-        android_linkflags       = [ '-u', 'ANativeActivity_onCreate' ],
+        android_linkflags           = ['-u', 'ANativeActivity_onCreate'],
 
-        android_java_src_path   = [bld.Path('Code/Launcher/AndroidLauncher/java') ],
+        android_debug_linkflags     = ['-shared'],
+        android_profile_linkflags   = ['-shared'],
+
+        android_java_src_path   = [bld.Path('Code/Launcher/AndroidLauncher/java')],
         android_java_libs       = bld.Path('Code/Launcher/AndroidLauncher/ProjectBuilder/android_libraries.json'),
     )
 
+
+def package(ctx):
+    ctx.package_game_legacy(
+        target          = 'AndroidLauncher',
+        platforms       = ['android'],
+        exclude_test    = True,
+        client_only     = True,
+    )
+
+
+def deploy(ctx):
+    ctx.deploy_game_legacy(
+        target          = 'AndroidLauncher',
+        platforms       = ['android'],
+        exclude_test    = True,
+        client_only     = True,
+    )

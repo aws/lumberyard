@@ -34,7 +34,10 @@ AzAssetBrowserDialog::AzAssetBrowserDialog(AssetSelectionModel& selection, QWidg
     , m_ui(new Ui::AzAssetBrowserDialogClass())
     , m_filterModel(new AssetBrowserFilterModel(parent))
     , m_selection(selection)
+    , m_hasFilter(false)
 {
+    m_filterStateSaver = AzToolsFramework::TreeViewState::CreateTreeViewState();
+
     m_ui->setupUi(this);
     m_ui->m_searchWidget->Setup(true, false);
 
@@ -93,6 +96,37 @@ void AzAssetBrowserDialog::RestoreState()
     {
         auto widget = parentWidget() ? parentWidget() : this;
         m_persistentState->RestoreGeometry(widget);
+    }
+}
+
+void AzAssetBrowserDialog::OnFilterUpdated()
+{
+    if (!m_hasFilter)
+    {
+        m_filterStateSaver->CaptureSnapshot(m_ui->m_assetBrowserTreeViewWidget);
+    }
+
+    m_filterModel->filterUpdatedSlot();   
+
+    bool hasFilter = m_ui->m_searchWidget->hasStringFilter();
+
+    if (hasFilter)
+    {
+        // The update slot queues the update, so we need to react after that update.
+        QTimer::singleShot(0, this, [this]()
+        {
+            m_ui->m_assetBrowserTreeViewWidget->expandAll();
+        });
+    }
+
+    if (m_hasFilter && !hasFilter)
+    {
+        m_filterStateSaver->ApplySnapshot(m_ui->m_assetBrowserTreeViewWidget);
+        m_hasFilter = false;
+    }
+    else if (!m_hasFilter && hasFilter)
+    {
+        m_hasFilter = true;
     }
 }
 

@@ -90,7 +90,7 @@ namespace
     //
     // Calls the object's destructor and returns a void pointer to the storage
     template<typename T>
-    void Destruct(T* obj, void(* pDestructFnc)(void*))
+    void Destruct(T* obj, void(*pDestructFnc)(void*))
     {
         obj->~T();
         pDestructFnc(reinterpret_cast<void*>(obj));
@@ -344,9 +344,9 @@ bool CLoaderCGF::LoadChunks(bool bJustGeometry)
                     }
                     break;
 
-                //---------------------------------------------------------
-                //---       chunks for compiled characters             ----
-                //---------------------------------------------------------
+                    //---------------------------------------------------------
+                    //---       chunks for compiled characters             ----
+                    //---------------------------------------------------------
 
                 case ChunkType_CompiledBones:
                     if (!ReadCompiledBones(pChunkDesc))
@@ -409,9 +409,9 @@ bool CLoaderCGF::LoadChunks(bool bJustGeometry)
 
             switch (pChunkDesc->chunkType)
             {
-            //---------------------------------------------------------
-            //---       chunks for CGA-objects  -----------------------
-            //---------------------------------------------------------
+                //---------------------------------------------------------
+                //---       chunks for CGA-objects  -----------------------
+                //---------------------------------------------------------
 
             case ChunkType_ExportFlags:
                 if (!LoadExportFlagsChunk(pChunkDesc))
@@ -1013,13 +1013,13 @@ bool CLoaderCGF::ReadBoneMesh(IChunkFile::ChunkDesc* pChunkDesc)
     // Bone meshes may contain many vertices sharing positions, so we
     // call CompactBoneVertices() to get vertices with unique positions only
     if (!CompactBoneVertices(
-            pbm.m_arrPoints,
-            pbm.m_arrMaterials,
-            pbm.m_arrIndices,
-            pMeshChunk->nVerts,
-            pSrcVertices,
-            pMeshChunk->nFaces,
-            pSrcFaces))
+        pbm.m_arrPoints,
+        pbm.m_arrMaterials,
+        pbm.m_arrIndices,
+        pMeshChunk->nVerts,
+        pSrcVertices,
+        pMeshChunk->nFaces,
+        pSrcFaces))
     {
         m_LastError.Format("CLoaderCGF::ReadBoneMesh: Bad geometry (indices are out range or too many vertices in mesh)");
         return false;
@@ -2478,6 +2478,14 @@ bool CLoaderCGF::LoadExportFlagsChunk(IChunkFile::ChunkDesc* pChunkDesc)
     {
         pExportInfo->b8WeightsPerVertex = false;
     }
+    if (chunk.flags & EXPORT_FLAGS_CHUNK_DESC::SKINNED_CGF)
+    {
+        pExportInfo->bSkinnedCGF = true;
+    }
+    else
+    {
+        pExportInfo->bSkinnedCGF = false;
+    }
 
     return true;
 }
@@ -2546,9 +2554,9 @@ bool CLoaderCGF::LoadNodeChunk(IChunkFile::ChunkDesc* pChunkDesc, bool bJustGeom
         const float* const pMat = &nodeChunk->tm[0][0];
 
         pNodeCGF->localTM.SetFromVectors(
-            Vec3(pMat[ 0], pMat[ 1], pMat[ 2]),
-            Vec3(pMat[ 4], pMat[ 5], pMat[ 6]),
-            Vec3(pMat[ 8], pMat[ 9], pMat[10]),
+            Vec3(pMat[0], pMat[1], pMat[2]),
+            Vec3(pMat[4], pMat[5], pMat[6]),
+            Vec3(pMat[8], pMat[9], pMat[10]),
             Vec3(pMat[12] * VERTEX_SCALE, pMat[13] * VERTEX_SCALE, pMat[14] * VERTEX_SCALE));
     }
 
@@ -2999,20 +3007,20 @@ bool CLoaderCGF::LoadGeomChunk(CNodeCGF* pNode, IChunkFile::ChunkDesc* pChunkDes
             {
                 pMesh->ReallocStream(CMesh::COLORS, 0, nVertsNew);
             }
-			
+
             for (uint32 uvSet = 0; uvSet < mesh.m_texCoords.size(); ++uvSet)
             {
                 if (!mesh.m_texCoords[uvSet].empty())
                 {
                     SMeshTexCoord* texCoords = pMesh->GetStreamPtr<SMeshTexCoord>(CMesh::TEXCOORDS, uvSet);
-                    for(int i = 0; i < nVertsNew; ++i)
+                    for (int i = 0; i < nVertsNew; ++i)
                     {
                         const int origVertex = mesh.m_vertexNewToOld[i];
                         texCoords[i] = SMeshTexCoord(mesh.m_texCoords[uvSet][origVertex].x, mesh.m_texCoords[uvSet][origVertex].y);
                     }
                 }
             }
-			
+
             for (int i = 0; i < nVertsNew; ++i)
             {
                 const int origVertex = mesh.m_vertexNewToOld[i];
@@ -3358,7 +3366,7 @@ bool CLoaderCGF::LoadBoneMappingStreamChunk(CMesh& mesh, const MESH_CHUNK_DESC& 
                                 pMeshElements[vIdx + extra].boneIds[k] = 0;
                             }
                             else if (pMeshElements[vIdx + extra].weights[k] != 0 ||
-                                     pMeshElements[vIdx + extra].boneIds[k] != 0)
+                                pMeshElements[vIdx + extra].boneIds[k] != 0)
                             {
                                 m_LastError.Format("Conflicting vertex-bone references.");
                                 return false;
@@ -3383,7 +3391,7 @@ bool CLoaderCGF::LoadBoneMappingStreamChunk(CMesh& mesh, const MESH_CHUNK_DESC& 
                             pMeshElements[vIdx + extra].boneIds[k] = globalBoneIdx;
                         }
                         else if (pMeshElements[vIdx + extra].weights[k] != weight ||
-                                 pMeshElements[vIdx + extra].boneIds[k] != globalBoneIdx)
+                            pMeshElements[vIdx + extra].boneIds[k] != globalBoneIdx)
                         {
                             m_LastError.Format("Conflicting vertex-bone references.");
                             return false;
@@ -3515,7 +3523,7 @@ bool CLoaderCGF::LoadIndexStreamChunk(CMesh& mesh, const MESH_CHUNK_DESC& chunk)
         return false;
     }
 
-    if(!vcache::VertexCacheOptimizer::ReorderIndicesInPlace(pStreamData, nElemCount, nStreamElemSize))
+    if (!vcache::VertexCacheOptimizer::ReorderIndicesInPlace(pStreamData, nElemCount, nStreamElemSize))
     {
         m_LastError.Format("Failed to reorder / optimize index stream %d", (int)MStream);
         return false;
@@ -4008,7 +4016,8 @@ bool CLoaderCGF::LoadPhysicsDataChunk(CNodeCGF* pNode, int nPhysGeomType, int nC
 //////////////////////////////////////////////////////////////////////////
 bool CLoaderCGF::LoadFoliageInfoChunk(IChunkFile::ChunkDesc* pChunkDesc)
 {
-    if (pChunkDesc->chunkVersion != FOLIAGE_INFO_CHUNK_DESC::VERSION)
+    if (pChunkDesc->chunkVersion != FOLIAGE_INFO_CHUNK_DESC::VERSION &&
+        pChunkDesc->chunkVersion != FOLIAGE_INFO_CHUNK_DESC::VERSION2)
     {
         m_LastError.Format("Unknown version of FoliageInfo chunk");
         return false;
@@ -4020,6 +4029,7 @@ bool CLoaderCGF::LoadFoliageInfoChunk(IChunkFile::ChunkDesc* pChunkDesc)
     pChunkDesc->bSwapEndian = false;
 
     SFoliageInfoCGF& fi = *m_pCGF->GetFoliageInfo();
+    bool isSkinned = m_pCGF->GetExportInfo()->bSkinnedCGF;
     if (fi.nSpines = chunk.nSpines)
     {
         fi.nSkinnedVtx = chunk.nSkinnedVtx;
@@ -4027,30 +4037,99 @@ bool CLoaderCGF::LoadFoliageInfoChunk(IChunkFile::ChunkDesc* pChunkDesc)
         FOLIAGE_SPINE_SUB_CHUNK* const pSpineSrc = (FOLIAGE_SPINE_SUB_CHUNK*)(&chunk + 1);
         Vec3* const pSpineVtxSrc = (Vec3*)(&pSpineSrc[chunk.nSpines]);
         Vec4* const pSpineSegDimSrc = (Vec4*)(&pSpineVtxSrc[chunk.nSpineVtx]);
-        SMeshBoneMapping_uint8* const pBoneMappingSrc = (SMeshBoneMapping_uint8*)(&pSpineSegDimSrc[chunk.nSpineVtx]);
-        uint16* const pBoneIdsSrc = (uint16*)(&pBoneMappingSrc[chunk.nSkinnedVtx]);
+        //START: Per bone UDP for stiffness, damping and thickness for touch bending vegetation
+        float* pStiffness = new float[chunk.nSpineVtx];
+        float* pDamping = new float[chunk.nSpineVtx];
+        float* pThickness = new float[chunk.nSpineVtx];
+        SMeshBoneMapping_uint8* pBoneMappingSrc = nullptr;
+
+        if (pChunkDesc->chunkVersion == FOLIAGE_INFO_CHUNK_DESC::VERSION)
+        {
+            for (int i = 0; i < chunk.nSpineVtx; i++)
+            {
+                pStiffness[i] = SSpineRC::GetDefaultStiffness();
+                pDamping[i] = SSpineRC::GetDefaultDamping();
+                pThickness[i] = SSpineRC::GetDefaultThickness();
+            }
+            pBoneMappingSrc = (SMeshBoneMapping_uint8*)&pSpineSegDimSrc[chunk.nSpineVtx];
+        }
+        else
+        {
+            float* pStiffnessSrc = (float*)(&pSpineSegDimSrc[chunk.nSpineVtx]);
+            float* pDampingSrc = (float*)(&pStiffnessSrc[chunk.nSpineVtx]);
+            float* pThicknessSrc = (float*)(&pDampingSrc[chunk.nSpineVtx]);
+
+            if (bSwapEndianness)
+            {
+                SwapEndian(pStiffnessSrc, chunk.nSpineVtx, true);
+                SwapEndian(pDampingSrc, chunk.nSpineVtx, true);
+                SwapEndian(pThicknessSrc, chunk.nSpineVtx, true);
+            }
+
+            memcpy(pStiffness, pStiffnessSrc, sizeof(pStiffness[0]) * chunk.nSpineVtx);
+            memcpy(pDamping, pDampingSrc, sizeof(pStiffness[0]) * chunk.nSpineVtx);
+            memcpy(pThickness, pThicknessSrc, sizeof(pStiffness[0]) * chunk.nSpineVtx);
+
+            pBoneMappingSrc = (SMeshBoneMapping_uint8*)&pThicknessSrc[chunk.nSpineVtx];
+        }
+
+        //Add LOD support for touch bending vegetation
+        //Load bone mapping. Skinned CGF doesn't have chunkBoneIds because it doesn't need bone index remapping to mesh bone id.
+        if (isSkinned && chunk.nBoneIds == 0)
+        {
+            const char* pStart = (const char*)pBoneMappingSrc;
+            {
+                int numBoneMapping = *pStart;
+                pStart += sizeof(int);
+                int vertexCount = 0;
+
+                for (int i = 0; i < numBoneMapping; i++)
+                {
+                    const char* pCGFNodeName = pStart;
+                    pStart += CGF_NODE_NAME_LENGTH;
+                    memcpy(&vertexCount, pStart, sizeof(int));
+                    SMeshBoneMappingInfo_uint8* pBoneMappingEntry = new SMeshBoneMappingInfo_uint8(vertexCount);
+                    pStart += sizeof(int);
+                    memcpy(pBoneMappingEntry->pBoneMapping, pStart, sizeof(SMeshBoneMapping_uint8)*vertexCount);
+                    pStart += sizeof(SMeshBoneMapping_uint8)*vertexCount;
+
+                    if (bSwapEndianness)
+                    {
+                        SwapEndian(&pBoneMappingEntry->nVertexCount, 1, true);
+                        SwapEndian(pBoneMappingEntry->pBoneMapping, pBoneMappingEntry->nVertexCount, true);
+                    }
+                    fi.boneMappings[pCGFNodeName] = pBoneMappingEntry;
+                }
+            }
+        }
+        else
+        {
+            uint16* const pBoneIdsSrc = (uint16*)(&pBoneMappingSrc[chunk.nSkinnedVtx]);
+            if (bSwapEndianness)
+            {
+                SwapEndian(pBoneMappingSrc, chunk.nSkinnedVtx, true);
+                SwapEndian(pBoneIdsSrc, chunk.nBoneIds, true);
+            }
+            fi.pBoneMapping = new SMeshBoneMapping_uint8[chunk.nSkinnedVtx];
+            memcpy(fi.pBoneMapping, pBoneMappingSrc, sizeof(pBoneMappingSrc[0]) * chunk.nSkinnedVtx);
+            fi.chunkBoneIds.resize(chunk.nBoneIds);
+            memcpy(&fi.chunkBoneIds[0], pBoneIdsSrc, sizeof(fi.chunkBoneIds[0]) * chunk.nBoneIds);
+            COMPILE_TIME_ASSERT(sizeof(fi.chunkBoneIds[0]) == sizeof(pBoneIdsSrc[0]));
+        }
 
         if (bSwapEndianness)
         {
             SwapEndian(pSpineSrc, chunk.nSpines, true);
             SwapEndian(pSpineVtxSrc, chunk.nSpineVtx, true);
             SwapEndian(pSpineSegDimSrc, chunk.nSpineVtx, true);
-            SwapEndian(pBoneMappingSrc, chunk.nSkinnedVtx, true);
-            SwapEndian(pBoneIdsSrc, chunk.nBoneIds, true);
         }
 
         Vec3* const pSpineVtx = new Vec3[chunk.nSpineVtx];
         Vec4* const pSpineSegDim = new Vec4[chunk.nSpineVtx];
-        fi.pBoneMapping = new SMeshBoneMapping_uint8[chunk.nSkinnedVtx];
-        fi.chunkBoneIds.resize(chunk.nBoneIds);
-        fi.pSpines = new SSpineRC[chunk.nSpines];
-
         memcpy(pSpineVtx, pSpineVtxSrc, sizeof(pSpineVtx[0]) * chunk.nSpineVtx);
         memcpy(pSpineSegDim, pSpineSegDimSrc, sizeof(pSpineSegDim[0]) * chunk.nSpineVtx);
-        memcpy(fi.pBoneMapping, pBoneMappingSrc, sizeof(pBoneMappingSrc[0]) * chunk.nSkinnedVtx);
-        COMPILE_TIME_ASSERT(sizeof(fi.chunkBoneIds[0]) == sizeof(pBoneIdsSrc[0]));
-        memcpy(&fi.chunkBoneIds[0], pBoneIdsSrc, sizeof(fi.chunkBoneIds[0]) * chunk.nBoneIds);
 
+        fi.pSpines = new SSpineRC[chunk.nSpines];
         int i, j;
         for (i = j = 0; i < chunk.nSpines; j += fi.pSpines[i++].nVtx)
         {
@@ -4061,6 +4140,11 @@ bool CLoaderCGF::LoadFoliageInfoChunk(IChunkFile::ChunkDesc* pChunkDesc)
             fi.pSpines[i].iAttachSeg = pSpineSrc[i].iAttachSeg - 1;
             fi.pSpines[i].pVtx = pSpineVtx + j;
             fi.pSpines[i].pSegDim = pSpineSegDim + j;
+
+            // Per bone data for stiffness, damping and thickness for touch bending vegetation
+            fi.pSpines[i].pStiffness = pStiffness + j;
+            fi.pSpines[i].pDamping = pDamping + j;
+            fi.pSpines[i].pThickness = pThickness + j;
         }
     }
 
@@ -4246,7 +4330,7 @@ CMaterialCGF* CLoaderCGF::LoadMaterialNameChunk(IChunkFile::ChunkDesc* pChunkDes
 
         if (pMtlCGF->nPhysicalizeType != PHYS_GEOM_TYPE_NONE &&
             (pMtlCGF->nPhysicalizeType < PHYS_GEOM_TYPE_DEFAULT ||
-             pMtlCGF->nPhysicalizeType > PHYS_GEOM_TYPE_DEFAULT_PROXY))
+                pMtlCGF->nPhysicalizeType > PHYS_GEOM_TYPE_DEFAULT_PROXY))
         {
             m_LastError.Format("Invalid physicalize type in material name chunk (0x%08x) in %s, %s", pMtlCGF->nPhysicalizeType, pMtlCGF->name, m_filename);
             return NULL;

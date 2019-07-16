@@ -12,10 +12,12 @@
 
 #include "Visibility_precompiled.h"
 #include "EditorVisAreaComponent.h"
+#include "EditorVisAreaComponentMode.h"
 
 #include <AzCore/Math/Crc.h>
+#include <AzCore/Math/IntersectSegment.h>
 #include <AzCore/RTTI/BehaviorContext.h>
-#include <AzCore/std/smart_ptr/shared_ptr.h>
+#include <AzToolsFramework/Viewport/VertexContainerDisplay.h>
 #include <Editor/Objects/BaseObject.h>
 #include <Editor/Objects/VisAreaShapeObject.h>
 
@@ -29,18 +31,28 @@ namespace Visibility
 {
     /*static*/ AZ::Color EditorVisAreaComponent::s_visAreaColor = AZ::Color(1.0f, 0.5f, 0.0f, 1.0f);
 
-    void EditorVisAreaComponent::GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provides)
+    void EditorVisAreaComponent::GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided)
     {
-        provides.push_back(AZ_CRC("VisAreaService"));
+        provided.push_back(AZ_CRC("EditorVisAreaService", 0x4507d2ae));
+        provided.push_back(AZ_CRC("VisAreaService", 0x0c063fb9));
+        provided.push_back(AZ_CRC("VariableVertexContainerService", 0x70c58740));
+        provided.push_back(AZ_CRC("FixedVertexContainerService", 0x83f1bbf2));
     }
+
     void EditorVisAreaComponent::GetRequiredServices(AZ::ComponentDescriptor::DependencyArrayType& requires)
     {
         requires.push_back(AZ_CRC("TransformService", 0x8ee22c50));
     }
 
+    void EditorVisAreaComponent::GetIncompatibleServices(AZ::ComponentDescriptor::DependencyArrayType& incompatible)
+    {
+        incompatible.push_back(AZ_CRC("VariableVertexContainerService", 0x70c58740));
+        incompatible.push_back(AZ_CRC("FixedVertexContainerService", 0x83f1bbf2));
+    }
+
     void EditorVisAreaConfiguration::Reflect(AZ::ReflectContext* context)
     {
-        if (AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
+        if (auto serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
         {
             serializeContext->Class<EditorVisAreaConfiguration, VisAreaConfiguration>()
                 ->Version(1);
@@ -49,74 +61,87 @@ namespace Visibility
             {
                 editContext->Class<EditorVisAreaConfiguration>("VisArea Configuration", "")
                     ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
-                    ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
-                    ->Attribute(AZ::Edit::Attributes::AutoExpand, true);
+                        ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
+                        ->Attribute(AZ::Edit::Attributes::AutoExpand, true);
 
                 editContext->Class<VisAreaConfiguration>("VisArea Configuration", "")
                     ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
-                    ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
-                    ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
-
-                    ->DataElement(
-                        AZ::Edit::UIHandlers::Default, &VisAreaConfiguration::m_Height, "Height", "How tall the VisArea is.")
-                    ->Attribute(AZ::Edit::Attributes::Max, 100.0f)
-                    ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
-                    ->Attribute(AZ::Edit::Attributes::ChangeNotify, &VisAreaConfiguration::ChangeHeight)
-
-                    ->DataElement(
-                        AZ::Edit::UIHandlers::Default, &VisAreaConfiguration::m_DisplayFilled, "DisplayFilled", "Display the VisArea as a filled volume.")
-                    ->Attribute(AZ::Edit::Attributes::ChangeNotify, &VisAreaConfiguration::ChangeDisplayFilled)
-
-                    ->DataElement(
-                        AZ::Edit::UIHandlers::Default, &VisAreaConfiguration::m_AffectedBySun, "AffectedBySun", "Allows sunlight to affect objects inside the VisArea.")
-                    ->Attribute(AZ::Edit::Attributes::ChangeNotify, &VisAreaConfiguration::ChangeAffectedBySun)
-
-                    ->DataElement(
-                        AZ::Edit::UIHandlers::Default, &VisAreaConfiguration::m_ViewDistRatio, "ViewDistRatio", "Specifies how far the VisArea is rendered.")
-                    ->Attribute(AZ::Edit::Attributes::Max, 100.0f)
-                    ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
-                    ->Attribute(AZ::Edit::Attributes::ChangeNotify, &VisAreaConfiguration::ChangeViewDistRatio)
-
-                    ->DataElement(
-                        AZ::Edit::UIHandlers::Default, &VisAreaConfiguration::m_OceanIsVisible, "OceanIsVisible", "Ocean will be visible when looking outside the VisArea.")
-                    ->Attribute(AZ::Edit::Attributes::ChangeNotify, &VisAreaConfiguration::ChangeOceanIsVisible)
-
-                    //Note: This will not work as expected. See Activate where we set the callbacks on the vertex container directly
-                    ->DataElement(
-                        AZ::Edit::UIHandlers::Default, &VisAreaConfiguration::m_vertexContainer, "Vertices", "Points that make up the floor of the VisArea.")
-                    ->Attribute(AZ::Edit::Attributes::ChangeNotify, &VisAreaConfiguration::ChangeVertexContainer)
-                    ;
+                        ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
+                        ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &VisAreaConfiguration::m_height, "Height", "How tall the VisArea is.")
+                        ->Attribute(AZ::Edit::Attributes::Max, 100.0f)
+                        ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
+                        ->Attribute(AZ::Edit::Attributes::ChangeNotify, &VisAreaConfiguration::ChangeHeight)
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &VisAreaConfiguration::m_displayFilled, "DisplayFilled", "Display the VisArea as a filled volume.")
+                        ->Attribute(AZ::Edit::Attributes::ChangeNotify, &VisAreaConfiguration::ChangeDisplayFilled)
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &VisAreaConfiguration::m_affectedBySun, "AffectedBySun", "Allows sunlight to affect objects inside the VisArea.")
+                        ->Attribute(AZ::Edit::Attributes::ChangeNotify, &VisAreaConfiguration::ChangeAffectedBySun)
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &VisAreaConfiguration::m_viewDistRatio, "ViewDistRatio", "Specifies how far the VisArea is rendered.")
+                        ->Attribute(AZ::Edit::Attributes::Max, 100.0f)
+                        ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
+                        ->Attribute(AZ::Edit::Attributes::ChangeNotify, &VisAreaConfiguration::ChangeViewDistRatio)
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &VisAreaConfiguration::m_oceanIsVisible, "OceanIsVisible", "Ocean will be visible when looking outside the VisArea.")
+                        ->Attribute(AZ::Edit::Attributes::ChangeNotify, &VisAreaConfiguration::ChangeOceanIsVisible)
+                    // note: This will not work as expected. See Activate where we set the callbacks on the vertex container directly
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &VisAreaConfiguration::m_vertexContainer, "Vertices", "Points that make up the floor of the VisArea.")
+                        ->Attribute(AZ::Edit::Attributes::ChangeNotify, &VisAreaConfiguration::ChangeVertexContainer)
+                        ;
             }
         }
     }
 
     void EditorVisAreaComponent::Reflect(AZ::ReflectContext* context)
     {
-        if (AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
+        if (auto serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
         {
             serializeContext->Class<EditorVisAreaComponent, AzToolsFramework::Components::EditorComponentBase>()
-                ->Version(1)
+                ->Version(2)
                 ->Field("m_config", &EditorVisAreaComponent::m_config)
+                ->Field("ComponentMode", &EditorVisAreaComponent::m_componentModeDelegate)
                 ;
 
             if (AZ::EditContext* editContext = serializeContext->GetEditContext())
             {
                 editContext->Class<EditorVisAreaComponent>("VisArea", "An area where only objects inside the area will be visible.")
                     ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
-                    ->Attribute(AZ::Edit::Attributes::Category, "Rendering")
-                    ->Attribute(AZ::Edit::Attributes::ViewportIcon, "Editor/Icons/Components/Viewport/VisArea.png")
-                    ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
-                    ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/VisArea.png")
-                    ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("Game", 0x232b318c))
-                    ->Attribute(AZ::Edit::Attributes::HelpPageURL, "http://docs.aws.amazon.com/console/lumberyard/userguide/vis-area-component")
+                        ->Attribute(AZ::Edit::Attributes::Category, "Rendering")
+                        ->Attribute(AZ::Edit::Attributes::ViewportIcon, "Editor/Icons/Components/Viewport/VisArea.png")
+                        ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
+                        ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/VisArea.png")
+                        ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("Game", 0x232b318c))
+                        ->Attribute(AZ::Edit::Attributes::HelpPageURL, "http://docs.aws.amazon.com/console/lumberyard/userguide/vis-area-component")
                     ->DataElement(AZ::Edit::UIHandlers::Default, &EditorVisAreaComponent::m_config, "m_config", "No Description")
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &EditorVisAreaComponent::m_componentModeDelegate, "Component Mode", "VisArea Component Mode")
+                        ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
                     ;
             }
         }
 
-        if (AZ::BehaviorContext* behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context))
+        if (auto behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context))
         {
-            behaviorContext->Class<EditorVisAreaComponent>()->RequestBus("VisAreaComponentRequestBus");
+            behaviorContext->EBus<EditorVisAreaComponentRequestBus>("EditorVisAreaComponentRequestBus")
+                ->Event("SetHeight", &EditorVisAreaComponentRequestBus::Events::SetHeight)
+                ->Event("GetHeight", &EditorVisAreaComponentRequestBus::Events::GetHeight)
+                ->VirtualProperty("Height", "GetHeight", "SetHeight")
+
+                ->Event("SetDisplayFilled", &EditorVisAreaComponentRequestBus::Events::SetDisplayFilled)
+                ->Event("GetDisplayFilled", &EditorVisAreaComponentRequestBus::Events::GetDisplayFilled)
+                ->VirtualProperty("DisplayFilled", "GetDisplayFilled", "SetDisplayFilled")
+
+                ->Event("SetAffectedBySun", &EditorVisAreaComponentRequestBus::Events::SetAffectedBySun)
+                ->Event("GetAffectedBySun", &EditorVisAreaComponentRequestBus::Events::GetAffectedBySun)
+                ->VirtualProperty("AffectedBySun", "GetAffectedBySun", "SetAffectedBySun")
+
+                ->Event("SetViewDistRatio", &EditorVisAreaComponentRequestBus::Events::SetViewDistRatio)
+                ->Event("GetViewDistRatio", &EditorVisAreaComponentRequestBus::Events::GetViewDistRatio)
+                ->VirtualProperty("ViewDistRatio", "GetViewDistRatio", "SetViewDistRatio")
+
+                ->Event("SetOceanIsVisible", &EditorVisAreaComponentRequestBus::Events::SetOceanIsVisible)
+                ->Event("GetOceanIsVisible", &EditorVisAreaComponentRequestBus::Events::GetOceanIsVisible)
+                ->VirtualProperty("OceanIsVisible", "GetOceanIsVisible", "SetOceanIsVisible")
+                ;
+
+            behaviorContext->Class<EditorVisAreaComponent>()->RequestBus("EditorVisAreaComponentRequestBus");
         }
 
         EditorVisAreaConfiguration::Reflect(context);
@@ -124,44 +149,47 @@ namespace Visibility
 
     void EditorVisAreaConfiguration::ChangeHeight()
     {
-        m_component->UpdateVisArea();
+        EditorVisAreaComponentRequestBus::Event(
+            m_entityId, &EditorVisAreaComponentRequests::UpdateVisAreaObject);
     }
 
     void EditorVisAreaConfiguration::ChangeDisplayFilled()
     {
-        m_component->UpdateVisArea();
+        EditorVisAreaComponentRequestBus::Event(
+            m_entityId, &EditorVisAreaComponentRequests::UpdateVisAreaObject);
     }
 
     void EditorVisAreaConfiguration::ChangeAffectedBySun()
     {
-        m_component->UpdateVisArea();
+        EditorVisAreaComponentRequestBus::Event(
+            m_entityId, &EditorVisAreaComponentRequests::UpdateVisAreaObject);
     }
 
     void EditorVisAreaConfiguration::ChangeViewDistRatio()
     {
-        m_component->UpdateVisArea();
+        EditorVisAreaComponentRequestBus::Event(
+            m_entityId, &EditorVisAreaComponentRequests::UpdateVisAreaObject);
     }
 
     void EditorVisAreaConfiguration::ChangeOceanIsVisible()
     {
-        m_component->UpdateVisArea();
+        EditorVisAreaComponentRequestBus::Event(
+            m_entityId, &EditorVisAreaComponentRequests::UpdateVisAreaObject);
     }
 
     void EditorVisAreaConfiguration::ChangeVertexContainer()
     {
-        m_component->UpdateVisArea();
+        EditorVisAreaComponentRequestBus::Event(
+            m_entityId, &EditorVisAreaComponentRequests::UpdateVisAreaObject);
     }
 
-    EditorVisAreaComponent::EditorVisAreaComponent()
-        : m_area(nullptr)
+    void EditorVisAreaConfiguration::SetEntityId(const AZ::EntityId entityId)
     {
-        m_config.m_component = this;
+        m_entityId = entityId;
     }
 
     EditorVisAreaComponent::~EditorVisAreaComponent()
     {
-        m_vertexSelection.Destroy();
-
         if (m_area)
         {
             // Reset the listener vis area in the unlucky case that we are deleting the
@@ -173,14 +201,25 @@ namespace Visibility
 
     void EditorVisAreaComponent::Activate()
     {
-        // NOTE: We create the visarea here at activated, but destroy it in the destructor.
-        // We have to do this, otherwise the visarea is not saved into the level.
-        // Unfortunately, at this time we cannot create the visareas at game runtime.
-        // This means that dynamic slices cannot effectively contain vis areas until we fix the core rendering system to allow that.
-        const AZ::u64 visGUID = AZ::u64(GetEntityId());
-        m_area = GetIEditor()->Get3DEngine()->CreateVisArea(visGUID);
+        Base::Activate();
 
-        //Give default values to the vertices if needed
+        const AZ::EntityId entityId = GetEntityId();
+
+#ifndef AZ_TESTS_ENABLED
+        // NOTE: We create the vis-area here at activated, but destroy it in the destructor.
+        // We have to do this, otherwise the vis-area is not saved into the level.
+        // Unfortunately, at this time we cannot create the vis-areas at game runtime.
+        // This means that dynamic slices cannot effectively contain vis areas until we fix the core rendering system to allow that.
+
+        const auto visGUID = AZ::u64(entityId);
+        m_area = GetIEditor()->Get3DEngine()->CreateVisArea(visGUID);
+#endif
+
+        m_componentModeDelegate.ConnectWithSingleComponentMode<
+            EditorVisAreaComponent, EditorVisAreaComponentMode>(
+                AZ::EntityComponentIdPair(entityId, GetId()), this);
+
+        // give default values to the vertices if needed
         if (m_config.m_vertexContainer.Size() == 0)
         {
             m_config.m_vertexContainer.AddVertex(AZ::Vector3(-1.0f, -1.0f, 0.0f));
@@ -189,86 +228,89 @@ namespace Visibility
             m_config.m_vertexContainer.AddVertex(AZ::Vector3(-1.0f, +1.0f, 0.0f));
         }
 
-        Base::Activate();
-
-        VisAreaComponentRequestBus::Handler::BusConnect(GetEntityId());
-        AZ::TransformNotificationBus::Handler::BusConnect(GetEntityId());
-        AzFramework::EntityDebugDisplayEventBus::Handler::BusConnect(GetEntityId());
-        AzToolsFramework::EditorEntityInfoNotificationBus::Handler::BusConnect();
-        EntitySelectionEvents::Bus::Handler::BusConnect(GetEntityId());
-
-        //Apply callbacks to VertexContainer directly
-        const auto containerChanged = [this]()
+        const auto vertexAdded = [this](size_t vertIndex)
         {
-            UpdateVisArea();
+            EditorVisAreaComponentNotificationBus::Event(
+                GetEntityId(), &EditorVisAreaComponentNotifications::OnVertexAdded, vertIndex);
 
-            bool selected = false;
-            AzToolsFramework::EditorEntityInfoRequestBus::EventResult(
-                selected, GetEntityId(), &AzToolsFramework::EditorEntityInfoRequestBus::Events::IsSelected);
-
-            if (selected)
-            {
-                m_vertexSelection.Destroy();
-                CreateManipulators();
-            }
+            UpdateVisAreaObject();
         };
 
-        const auto vertexAdded = [this, containerChanged](size_t index)
+        const auto vertexRemoved = [this](size_t vertIndex)
         {
-            bool selected = false;
-            AzToolsFramework::EditorEntityInfoRequestBus::EventResult(
-                selected, GetEntityId(), &AzToolsFramework::EditorEntityInfoRequestBus::Events::IsSelected);
+            EditorVisAreaComponentNotificationBus::Event(
+                GetEntityId(), &EditorVisAreaComponentNotifications::OnVertexRemoved, vertIndex);
 
-            if (selected)
-            {
-                containerChanged();
-
-                m_vertexSelection.CreateTranslationManipulator(GetEntityId(), AzToolsFramework::ManipulatorManagerId(1),
-                    AzToolsFramework::TranslationManipulators::Dimensions::Three,
-                    m_config.m_vertexContainer.GetVertices()[index], index,
-                    AzToolsFramework::ConfigureTranslationManipulatorAppearance3d);
-            }
+            UpdateVisAreaObject();
         };
 
-        const auto vertexChanged = [this]()
+        const auto vertexChanged = [this](size_t vertIndex)
         {
-            UpdateVisArea();
-            m_vertexSelection.RefreshLocal();
+            EditorVisAreaComponentNotificationBus::Event(
+                GetEntityId(), &EditorVisAreaComponentNotifications::OnVertexUpdated, vertIndex);
+
+            UpdateVisAreaObject();
+        };
+
+        const auto verticesSet = [this]()
+        {
+            EditorVisAreaComponentNotificationBus::Event(
+                GetEntityId(), &EditorVisAreaComponentNotifications::OnVerticesSet,
+                m_config.m_vertexContainer.GetVertices());
+
+            UpdateVisAreaObject();
+        };
+
+        const auto verticesCleared = [this]()
+        {
+            EditorVisAreaComponentNotificationBus::Event(
+                GetEntityId(), &EditorVisAreaComponentNotifications::OnVerticesCleared);
+
+            UpdateVisAreaObject();
         };
 
         m_config.m_vertexContainer.SetCallbacks(
-            vertexAdded, [containerChanged](size_t) { containerChanged(); },
-            vertexChanged, containerChanged, containerChanged);
+            vertexAdded, vertexRemoved, vertexChanged,
+            verticesSet, verticesCleared);
 
-        //We can rely on the transform component so nab the most up to date
-        //transform here
-        AZ::TransformBus::EventResult(m_currentWorldTransform, GetEntityId(), &AZ::TransformBus::Events::GetWorldTM);
+        AZ::TransformBus::EventResult(
+            m_currentWorldTransform, GetEntityId(), &AZ::TransformBus::Events::GetWorldTM);
 
-        //Make the initial vis area with the data we just parsed
-        UpdateVisArea();
+        // make the initial vis area with the data we just parsed
+        UpdateVisAreaObject();
+
+        EditorVisAreaComponentRequestBus::Handler::BusConnect(entityId);
+        AZ::VariableVerticesRequestBus<AZ::Vector3>::Handler::BusConnect(entityId);
+        AZ::FixedVerticesRequestBus<AZ::Vector3>::Handler::BusConnect(entityId);
+        AZ::TransformNotificationBus::Handler::BusConnect(entityId);
+        AzFramework::EntityDebugDisplayEventBus::Handler::BusConnect(entityId);
+        AzToolsFramework::EditorEntityInfoNotificationBus::Handler::BusConnect();
+        AzToolsFramework::EditorComponentSelectionRequestsBus::Handler::BusConnect(GetEntityId());
     }
 
     void EditorVisAreaComponent::Deactivate()
     {
-        m_vertexSelection.Destroy();
+        m_componentModeDelegate.Disconnect();
 
-        EntitySelectionEvents::Bus::Handler::BusDisconnect(GetEntityId());
+        AzToolsFramework::EditorComponentSelectionRequestsBus::Handler::BusDisconnect();
         AzFramework::EntityDebugDisplayEventBus::Handler::BusDisconnect();
         AzToolsFramework::EditorEntityInfoNotificationBus::Handler::BusDisconnect();
-        AZ::TransformNotificationBus::Handler::BusDisconnect(GetEntityId());
-        VisAreaComponentRequestBus::Handler::BusDisconnect(GetEntityId());
+        AZ::TransformNotificationBus::Handler::BusDisconnect();
+        AZ::FixedVerticesRequestBus<AZ::Vector3>::Handler::BusDisconnect();
+        AZ::VariableVerticesRequestBus<AZ::Vector3>::Handler::BusDisconnect();
+        EditorVisAreaComponentRequestBus::Handler::BusDisconnect();
 
         Base::Deactivate();
     }
 
     void EditorVisAreaComponent::OnTransformChanged(const AZ::Transform& /*local*/, const AZ::Transform& world)
     {
-        m_vertexSelection.RefreshSpace(world);
         m_currentWorldTransform = world;
-        UpdateVisArea();
+        UpdateVisAreaObject();
     }
 
-    void EditorVisAreaComponent::UpdateVisArea()
+    /// Apply the component's settings to the underlying vis area
+    void EditorVisAreaComponent::UpdateVisAreaObject()
     {
         if (m_area)
         {
@@ -288,9 +330,9 @@ namespace Visibility
 
                 SVisAreaInfo info;
                 info.fHeight = GetHeight();
-                info.bAffectedByOutLights = m_config.m_AffectedBySun;
-                info.fViewDistRatio = m_config.m_ViewDistRatio;
-                info.bOceanIsVisible = m_config.m_OceanIsVisible;
+                info.bAffectedByOutLights = m_config.m_affectedBySun;
+                info.fViewDistRatio = m_config.m_viewDistRatio;
+                info.bOceanIsVisible = m_config.m_oceanIsVisible;
 
                 //Unconfigurable; these values are used by other area types
                 //We set them just so that debugging later it's clear that these
@@ -300,14 +342,137 @@ namespace Visibility
                 info.bUseDeepness = false;
                 info.bUseInIndoors = false;
 
-                const AZStd::string name = AZStd::string("visarea_") + GetEntity()->GetName();
+                const AZStd::string name = AZStd::string("vis-area_") + GetEntity()->GetName();
 
                 GetIEditor()->Get3DEngine()->UpdateVisArea(m_area, &points[0], points.size(), name.c_str(), info, true);
             }
         }
     }
 
-    void EditorVisAreaComponent::DisplayEntity(bool& handled)
+    void EditorVisAreaComponent::SetHeight(const float value)
+    {
+        m_config.m_height = value;
+        UpdateVisAreaObject();
+    }
+
+    float EditorVisAreaComponent::GetHeight()
+    {
+        return m_config.m_height;
+    }
+
+    void EditorVisAreaComponent::SetDisplayFilled(const bool value)
+    {
+        m_config.m_displayFilled = value;
+        UpdateVisAreaObject();
+    }
+
+    bool EditorVisAreaComponent::GetDisplayFilled()
+    {
+        return m_config.m_displayFilled;
+    }
+
+    void EditorVisAreaComponent::SetAffectedBySun(const bool value)
+    {
+        m_config.m_affectedBySun = value;
+        UpdateVisAreaObject();
+    }
+
+    bool EditorVisAreaComponent::GetAffectedBySun()
+    {
+        return m_config.m_affectedBySun;
+    }
+
+    void EditorVisAreaComponent::SetViewDistRatio(const float value)
+    {
+        m_config.m_viewDistRatio = value;
+        UpdateVisAreaObject();
+    }
+
+    float EditorVisAreaComponent::GetViewDistRatio()
+    {
+        return m_config.m_viewDistRatio;
+    }
+
+    void EditorVisAreaComponent::SetOceanIsVisible(const bool value)
+    {
+        m_config.m_oceanIsVisible = value;
+        UpdateVisAreaObject();
+    }
+
+    bool EditorVisAreaComponent::GetOceanIsVisible()
+    {
+        return m_config.m_oceanIsVisible;
+    }
+
+    bool EditorVisAreaComponent::GetVertex(size_t index, AZ::Vector3& vertex) const
+    {
+        return m_config.m_vertexContainer.GetVertex(index, vertex);
+    }
+
+    void EditorVisAreaComponent::AddVertex(const AZ::Vector3& vertex)
+    {
+        m_config.m_vertexContainer.AddVertex(vertex);
+        UpdateVisAreaObject();
+    }
+
+    bool EditorVisAreaComponent::UpdateVertex(size_t index, const AZ::Vector3& vertex)
+    {
+        if (m_config.m_vertexContainer.UpdateVertex(index, vertex))
+        {
+            UpdateVisAreaObject();
+            return true;
+        }
+
+        return false;
+    }
+
+    bool EditorVisAreaComponent::InsertVertex(size_t index, const AZ::Vector3& vertex)
+    {
+        if (m_config.m_vertexContainer.InsertVertex(index, vertex))
+        {
+            UpdateVisAreaObject();
+            return true;
+        }
+
+        return false;
+    }
+
+    bool EditorVisAreaComponent::RemoveVertex(size_t index)
+    {
+        if (m_config.m_vertexContainer.RemoveVertex(index))
+        {
+            UpdateVisAreaObject();
+            return true;
+        }
+
+        return false;
+    }
+
+    void EditorVisAreaComponent::SetVertices(const AZStd::vector<AZ::Vector3>& vertices)
+    {
+        m_config.m_vertexContainer.SetVertices(vertices);
+        UpdateVisAreaObject();
+    }
+
+    void EditorVisAreaComponent::ClearVertices()
+    {
+        m_config.m_vertexContainer.Clear();
+        UpdateVisAreaObject();
+    }
+
+    size_t EditorVisAreaComponent::Size() const
+    {
+        return m_config.m_vertexContainer.Size();
+    }
+
+    bool EditorVisAreaComponent::Empty() const
+    {
+        return m_config.m_vertexContainer.Empty();
+    }
+
+    void EditorVisAreaComponent::DisplayEntityViewport(
+        const AzFramework::ViewportInfo& viewportInfo,
+        AzFramework::DebugDisplayRequests& debugDisplay)
     {
         /*
             The VisArea and Portal share a common strangeness with how they are displayed.
@@ -323,124 +488,128 @@ namespace Visibility
             time and could potentially slow down the editor more than we want if there are a lot
             of volumes.
         */
-        auto* dc = AzFramework::EntityDebugDisplayRequestBus::FindFirstHandler();
-        if (dc != nullptr)
+
+        const AZStd::vector<AZ::Vector3>& vertices = m_config.m_vertexContainer.GetVertices();
+        const size_t vertexCount = vertices.size();
+
+        //We do not want to push a transform with scale or rotation as the
+        //vis area is always snapped to the XY plane with a height.
+        //Scale will be applied during flattening
+        AZ::Transform translation = AZ::Transform::CreateIdentity();
+        translation.SetTranslation(m_currentWorldTransform.GetTranslation());
+
+        debugDisplay.PushMatrix(translation);
+        debugDisplay.SetColor(s_visAreaColor.GetAsVector4());
+
+        AZStd::vector<AZ::Vector3> transformedPoints;
+        transformedPoints.resize(vertexCount);
+
+        //Min and max Z value (in local space)
+        float minZ = FLT_MAX;
+        float maxZ = FLT_MIN;
+
+        //Apply rotation and scale before removing translation.
+        //We want translation to apply with the matrix to make things easier
+        //but we need to calculate a difference in Z after rotation and scaling.
+        //During the next loop we'll flatten all these points down to a common XY plane
+        for (size_t i = 0; i < vertexCount; ++i)
         {
-            const AZStd::vector<AZ::Vector3>& vertices = m_config.m_vertexContainer.GetVertices();
-            const size_t vertexCount = vertices.size();
+            AZ::Vector3 transformedPoint = m_currentWorldTransform * vertices[i];
 
-            //We do not want to push a transform with scale or rotation as the
-            //vis area is always snapped to the XY plane with a height.
-            //Scale will be applied during flattening
-            AZ::Transform translation = AZ::Transform::CreateIdentity();
-            translation.SetTranslation(m_currentWorldTransform.GetTranslation());
+            //Back into local space
+            transformedPoints[i] = transformedPoint - m_currentWorldTransform.GetTranslation();
 
-            dc->PushMatrix(translation);
-            dc->SetColor(s_visAreaColor.GetAsVector4());
+            const float transformedZ = transformedPoints[i].GetZ();
 
-            AZStd::vector<AZ::Vector3> transformedPoints;
-            transformedPoints.resize(vertexCount);
-
-            //Min and max Z value (in local space)
-            float minZ = FLT_MAX;
-            float maxZ = FLT_MIN;
-
-            //Apply rotation and scale before removing translation.
-            //We want translation to apply with the matrix to make things easier
-            //but we need to calculate a difference in Z after rotation and scaling.
-            //During the next loop we'll flatten all these points down to a common XY plane
-            for (size_t i = 0; i < vertexCount; ++i)
-            {
-                AZ::Vector3 transformedPoint = m_currentWorldTransform * vertices[i];
-
-                //Back into local space
-                transformedPoints[i] = transformedPoint - m_currentWorldTransform.GetTranslation();
-
-                const float transformedZ = transformedPoints[i].GetZ();
-
-                minZ = AZ::GetMin(transformedZ, minZ);
-                maxZ = AZ::GetMax(transformedZ, maxZ);
-            }
-
-            //The height of the vis area + the max local height
-            const float actualHeight = m_config.m_Height + maxZ;
-
-            //Draw walls for every line segment
-            size_t transformedPointCount = transformedPoints.size();
-            for (size_t i = 0; i < transformedPointCount; ++i)
-            {
-                AZ::Vector3 lowerLeft   = AZ::Vector3();
-                AZ::Vector3 lowerRight  = AZ::Vector3();
-                AZ::Vector3 upperRight  = AZ::Vector3();
-                AZ::Vector3 upperLeft   = AZ::Vector3();
-
-                lowerLeft = transformedPoints[i];
-                lowerRight = transformedPoints[(i + 1) % transformedPointCount];
-                //The mod with transformedPointCount ensures that for the last vert it will connect back with vert 0
-                //If vert count is 10, the last vert will be i = 9 and we want that to create a surface with vert 0
-
-                //Make all lower points planar
-                lowerLeft.SetZ(minZ);
-                lowerRight.SetZ(minZ);
-
-                upperRight = AZ::Vector3(lowerRight.GetX(), lowerRight.GetY(), actualHeight);
-                upperLeft = AZ::Vector3(lowerLeft.GetX(), lowerLeft.GetY(), actualHeight);
-
-                if (m_config.m_DisplayFilled)
-                {
-                    dc->SetAlpha(0.3f);
-                    //Draw filled quad with two winding orders to make it double sided
-                    dc->DrawQuad(lowerLeft, lowerRight, upperRight, upperLeft);
-                    dc->DrawQuad(lowerLeft, upperLeft, upperRight, lowerRight);
-                }
-
-                dc->SetAlpha(1.0f);
-                dc->DrawLine(lowerLeft, lowerRight);
-                dc->DrawLine(lowerRight, upperRight);
-                dc->DrawLine(upperRight, upperLeft);
-                dc->DrawLine(upperLeft, lowerLeft);
-            }
-
-            AzToolsFramework::EditorVertexSelectionUtil::DisplayVertexContainerIndices(*dc, m_vertexSelection, GetWorldTM(), IsSelected());
-            dc->PopMatrix();
-
-            handled = true;
+            minZ = AZ::GetMin(transformedZ, minZ);
+            maxZ = AZ::GetMax(transformedZ, maxZ);
         }
+
+        //The height of the vis area + the max local height
+        const float actualHeight = m_config.m_height + maxZ;
+
+        //Draw walls for every line segment
+        size_t transformedPointCount = transformedPoints.size();
+        for (size_t i = 0; i < transformedPointCount; ++i)
+        {
+            AZ::Vector3 lowerLeft   = AZ::Vector3();
+            AZ::Vector3 lowerRight  = AZ::Vector3();
+            AZ::Vector3 upperRight  = AZ::Vector3();
+            AZ::Vector3 upperLeft   = AZ::Vector3();
+
+            lowerLeft = transformedPoints[i];
+            lowerRight = transformedPoints[(i + 1) % transformedPointCount];
+            //The mod with transformedPointCount ensures that for the last vert it will connect back with vert 0
+            //If vert count is 10, the last vert will be i = 9 and we want that to create a surface with vert 0
+
+            //Make all lower points planar
+            lowerLeft.SetZ(minZ);
+            lowerRight.SetZ(minZ);
+
+            upperRight = AZ::Vector3(lowerRight.GetX(), lowerRight.GetY(), actualHeight);
+            upperLeft = AZ::Vector3(lowerLeft.GetX(), lowerLeft.GetY(), actualHeight);
+
+            if (m_config.m_displayFilled)
+            {
+                debugDisplay.SetAlpha(0.3f);
+                //Draw filled quad with two winding orders to make it double sided
+                debugDisplay.DrawQuad(lowerLeft, lowerRight, upperRight, upperLeft);
+                debugDisplay.DrawQuad(lowerLeft, upperLeft, upperRight, lowerRight);
+            }
+
+            debugDisplay.SetAlpha(1.0f);
+            debugDisplay.DrawLine(lowerLeft, lowerRight);
+            debugDisplay.DrawLine(lowerRight, upperRight);
+            debugDisplay.DrawLine(upperRight, upperLeft);
+            debugDisplay.DrawLine(upperLeft, lowerLeft);
+        }
+
+        if (m_componentModeDelegate.AddedToComponentMode())
+        {
+            AzToolsFramework::VertexContainerDisplay::DisplayVertexContainerIndices(
+                debugDisplay, AzToolsFramework::VariableVerticesVertexContainer<AZ::Vector3>(m_config.m_vertexContainer),
+                GetWorldTM(), IsSelected());
+        }
+
+        debugDisplay.PopMatrix();
     }
 
     void EditorVisAreaComponent::BuildGameEntity(AZ::Entity* gameEntity)
     {
-        gameEntity->CreateComponent<VisAreaComponent>(&m_config);
+        gameEntity->CreateComponent<VisAreaComponent>(m_config);
     }
 
-    void EditorVisAreaComponent::OnSelected()
+    AZ::Aabb EditorVisAreaComponent::GetEditorSelectionBoundsViewport(
+        const AzFramework::ViewportInfo& /*viewportInfo*/)
     {
-        m_vertexSelection.Destroy();
-        CreateManipulators();
+        AZ::Aabb bbox = AZ::Aabb::CreateNull();
+        for (const auto& vertex : m_config.m_vertexContainer.GetVertices())
+        {
+            bbox.AddPoint(vertex);
+        }
+        bbox.AddPoint(bbox.GetMax() + AZ::Vector3::CreateAxisZ(m_config.m_height));
+        bbox.ApplyTransform(GetWorldTM());
+        return bbox;
     }
 
-    void EditorVisAreaComponent::OnDeselected()
+    bool EditorVisAreaComponent::EditorSelectionIntersectRayViewport(
+        const AzFramework::ViewportInfo& viewportInfo, const AZ::Vector3& src,
+        const AZ::Vector3& dir, AZ::VectorFloat& distance)
     {
-        m_vertexSelection.Destroy();
-    }
+        AZ::Aabb bbox = GetEditorSelectionBoundsViewport(viewportInfo);
+        AZ::VectorFloat end;
+        AZ::VectorFloat t;
 
-    void EditorVisAreaComponent::CreateManipulators()
-    {
-        AZStd::unique_ptr<AzToolsFramework::LineSegmentHoverSelection<AZ::Vector3>> visAreaHoverSelection =
-            AZStd::make_unique<AzToolsFramework::LineSegmentHoverSelection<AZ::Vector3>>();
+        const bool intersection = AZ::Intersect::IntersectRayAABB2(
+            src, dir.GetReciprocal(),
+            bbox, t, end) > 0;
 
-        // create interface wrapping internal vertex container for use by vertex selection
-        visAreaHoverSelection->m_vertices = AZStd::make_unique<AzToolsFramework::VariableVerticesVertexContainer<AZ::Vector3>>(
-            m_config.m_vertexContainer);
-        m_vertexSelection.m_hoverSelection = AZStd::move(visAreaHoverSelection);
+        if (intersection)
+        {
+            distance = AZ::VectorFloat(t);
+        }
 
-        m_vertexSelection.m_vertices =
-            AZStd::make_unique<AzToolsFramework::VariableVerticesVertexContainer<AZ::Vector3>>(
-                m_config.m_vertexContainer);
-
-        m_vertexSelection.Create(GetEntityId(), AzToolsFramework::ManipulatorManagerId(1),
-            AzToolsFramework::TranslationManipulators::Dimensions::Three,
-            AzToolsFramework::ConfigureTranslationManipulatorAppearance3d);
+        return intersection;
     }
 
     AZ::LegacyConversion::LegacyConversionResult VisAreaConverter::ConvertEntity(CBaseObject* entityToConvert)
@@ -470,9 +639,9 @@ namespace Visibility
         AZ::Entity *entity = result.GetValue();
 
         //The original vis area entity that we want to convert
-        CVisAreaShapeObject* visAreaEntity = static_cast<CVisAreaShapeObject*>(entityToConvert);
+        const auto visAreaEntity = static_cast<CVisAreaShapeObject*>(entityToConvert);
 
-        const size_t pointCount = static_cast<size_t>(visAreaEntity->GetPointCount());
+        const auto pointCount = static_cast<size_t>(visAreaEntity->GetPointCount());
         if (pointCount < 3)
         {
             //No legacy vis area should exist with less than 3 points
@@ -482,7 +651,7 @@ namespace Visibility
         float minZ = FLT_MAX;
         float maxZ = FLT_MIN;
 
-        //The first point of the visarea is where the entity's transform is
+        //The first point of the vis-area is where the entity's transform is
         bool firstPointIsLowest = false;
         float firstPointHeight = 0.0f;
 
@@ -520,6 +689,7 @@ namespace Visibility
                     firstPointIsLowest = false;
                 }
             }
+
             if (pointZ > maxZ)
             {
                 maxZ = pointZ;
@@ -550,11 +720,11 @@ namespace Visibility
 
             conversionSuccess = true;
 
-            conversionSuccess &= ConvertVarBus<VisAreaComponentRequestBus, float>("Height", varBlock, &VisAreaComponentRequestBus::Events::SetHeight, newEntityId);
-            conversionSuccess &= ConvertVarBus<VisAreaComponentRequestBus, bool>("DisplayFilled", varBlock, &VisAreaComponentRequestBus::Events::SetDisplayFilled, newEntityId);
-            conversionSuccess &= ConvertVarBus<VisAreaComponentRequestBus, bool>("AffectedBySun", varBlock, &VisAreaComponentRequestBus::Events::SetAffectedBySun, newEntityId);
-            conversionSuccess &= ConvertVarBus<VisAreaComponentRequestBus, float>("ViewDistRatio", varBlock, &VisAreaComponentRequestBus::Events::SetViewDistRatio, newEntityId);
-            conversionSuccess &= ConvertVarBus<VisAreaComponentRequestBus, bool>("OceanIsVisible", varBlock, &VisAreaComponentRequestBus::Events::SetOceanIsVisible, newEntityId);
+            conversionSuccess &= ConvertVarBus<EditorVisAreaComponentRequestBus, float>("Height", varBlock, &EditorVisAreaComponentRequestBus::Events::SetHeight, newEntityId);
+            conversionSuccess &= ConvertVarBus<EditorVisAreaComponentRequestBus, bool>("DisplayFilled", varBlock, &EditorVisAreaComponentRequestBus::Events::SetDisplayFilled, newEntityId);
+            conversionSuccess &= ConvertVarBus<EditorVisAreaComponentRequestBus, bool>("AffectedBySun", varBlock, &EditorVisAreaComponentRequestBus::Events::SetAffectedBySun, newEntityId);
+            conversionSuccess &= ConvertVarBus<EditorVisAreaComponentRequestBus, float>("ViewDistRatio", varBlock, &EditorVisAreaComponentRequestBus::Events::SetViewDistRatio, newEntityId);
+            conversionSuccess &= ConvertVarBus<EditorVisAreaComponentRequestBus, bool>("OceanIsVisible", varBlock, &EditorVisAreaComponentRequestBus::Events::SetOceanIsVisible, newEntityId);
         }
 
         if (!conversionSuccess)
@@ -564,12 +734,12 @@ namespace Visibility
 
         //Apply the height mod to the vis area height
         float height = 0.0f;
-        VisAreaComponentRequestBus::EventResult(height, newEntityId, &VisAreaComponentRequestBus::Events::GetHeight);
+        EditorVisAreaComponentRequestBus::EventResult(height, newEntityId, &EditorVisAreaComponentRequestBus::Events::GetHeight);
         height += heightMod;
-        VisAreaComponentRequestBus::Event(newEntityId, &VisAreaComponentRequestBus::Events::SetHeight, height);
+        EditorVisAreaComponentRequestBus::Event(newEntityId, &EditorVisAreaComponentRequestBus::Events::SetHeight, height);
 
         //Set the points on the component
-        VisAreaComponentRequestBus::Event(newEntityId, &VisAreaComponentRequestBus::Events::SetVertices, visAreaPoints);
+        EditorVisAreaComponentRequestBus::Event(newEntityId, &EditorVisAreaComponentRequestBus::Events::SetVertices, visAreaPoints);
 
         //Offset the transform to make sure that the entity's transform is brought down to the lowest point
         //Only need to do this if the first point is not the lowest

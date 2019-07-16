@@ -528,6 +528,9 @@ protected:
     //! Id of spawned entity.
     int m_entityId;
 
+    // Used for light entities
+    float m_projectorFOV;
+
     //  IEntityClass *m_pEntityClass;
     IEntity* m_pEntity;
     IStatObj* m_visualObject;
@@ -549,7 +552,6 @@ protected:
     CVariable<bool> mv_renderNearest;
     CVariable<bool> mv_noDecals;
     CVariable<bool> mv_createdThroughPool;
-
     CVariable<float> mv_obstructionMultiplier;
 
     //////////////////////////////////////////////////////////////////////////
@@ -563,8 +565,6 @@ protected:
     float m_boxSizeX;
     float m_boxSizeY;
     float m_boxSizeZ;
-    // Used for light entities
-    float m_projectorFOV;
     // Used for area lights
     float m_fAreaWidth;
     float m_fAreaHeight;
@@ -607,13 +607,14 @@ protected:
     static class CEntityPanel* m_panel;
     static float m_helperScale;
 
-    // Override IsScalable value from script file.
-    bool m_bForceScale;
     CStatObjValidator m_statObjValidator;
 
+    EAttachmentType m_attachmentType;
+
+    // Override IsScalable value from script file.
+    bool m_bForceScale;
     bool m_bEnableReload;
 
-    EAttachmentType m_attachmentType;
     QString m_attachmentTarget;
 
     static CPanelTreeBrowser* ms_pTreePanel;

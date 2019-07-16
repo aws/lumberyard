@@ -17,45 +17,11 @@
 #include <AzCore/std/containers/map.h>
 #include <AzCore/RTTI/AttributeReader.h>
 #include <AzCore/Math/Random.h>
+#include <Libraries/Math/MathNodeUtilities.h>
 #include <random>
 
 namespace ScriptCanvas
 {
-    namespace Nodes
-    {
-        namespace Math
-        {
-            Data::NumberType GetRandom(Data::NumberType lhs, Data::NumberType rhs);
-        }
-    }
-
-    namespace MathRandom
-    {
-        std::mt19937& GetRandomEngine();
-
-        void DeleteRandomDetails();
-
-        template<typename NumberType>
-        NumberType GetRandomIntegral(NumberType leftNumber, NumberType rightNumber)
-        {
-            if (leftNumber == rightNumber)
-            {
-                return leftNumber;
-            }
-            NumberType min = AZ::GetMin(leftNumber, rightNumber);
-            NumberType max = AZ::GetMax(leftNumber, rightNumber);
-            std::uniform_int_distribution<NumberType> dis(min, max);
-            return static_cast<NumberType>(dis(GetRandomEngine()));
-        }
-
-        template<> AZ::s8 GetRandomIntegral<AZ::s8>(AZ::s8 leftNumber, AZ::s8 rightNumber);
-        template<> AZ::u8 GetRandomIntegral<AZ::u8>(AZ::u8 leftNumber, AZ::u8 rightNumber);
-        template<> char GetRandomIntegral<char>(char leftNumber, char rightNumber);
-
-        template<typename NumberType>
-        NumberType GetRandomReal(NumberType leftNumber, NumberType rightNumber);
-    }
-
 #if defined(EXPRESSION_TEMPLATES_ENABLED)
 
     namespace Nodes
@@ -67,7 +33,7 @@ namespace ScriptCanvas
             template<typename NumberType, typename = AZStd::enable_if_t<AZStd::is_integral<NumberType>::value>>
             inline static NumberType PerformArithmeticRandom(NumberType leftNumber, NumberType rightNumber)
             {
-                return MathRandom::GetRandomIntegral(leftNumber, rightNumber);
+                return MathNodeUtilities::GetRandomIntegral(leftNumber, rightNumber);
             }
 
             // Performs arithmetic random math on two real numbers as ranges
@@ -75,7 +41,7 @@ namespace ScriptCanvas
             template<typename NumberType, typename = AZStd::enable_if_t<AZStd::is_floating_point<NumberType>::value>>
             inline static NumberType PerformArithmeticRandomReal(NumberType leftNumber, NumberType rightNumber)
             {
-                return MathRandom::GetRandomReal(leftNumber, rightNumber);
+                return MathNodeUtilities::GetRandomReal(leftNumber, rightNumber);
             }
 
             enum class OperatorType : AZ::u32

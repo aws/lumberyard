@@ -52,8 +52,6 @@ def build(bld):
     check_project_configurator_wscript = bld.Path('Code/Tools/ProjectConfigurator/wscript')
     if os.path.exists(check_project_configurator_wscript):
         bld.recurse(['ProjectConfigurator'])
-    else:
-        bld.mark_module_exempt('ProjectConfigurator')
 
     if not bld.is_building_dedicated_server():
 
@@ -62,10 +60,6 @@ def build(bld):
 
         if os.path.exists(bld.Path('Code/Tools/LyMetrics/wscript')):
             bld.recurse(['LyMetrics'])
-        else:
-            bld.mark_module_exempt('LyMetricsProducer_python')
-            bld.mark_module_exempt('LyMetricsConsumer')
-            bld.mark_module_exempt('LyInstallerMetrics')
 
         if hasattr(bld,'register_internal_telemetry'):
             bld.register_internal_telemetry()

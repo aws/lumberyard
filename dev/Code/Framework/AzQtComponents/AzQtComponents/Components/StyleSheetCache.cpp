@@ -13,11 +13,9 @@
 #include <AzQtComponents/Components/StyleSheetCache.h>
 #include <AzQtComponents/Utilities/QtPluginPaths.h>
 #include <QProxyStyle>
-#include <QApplication>
 #include <QWidget>
 #include <QDir>
 #include <QFile>
-#include <QSet>
 #include <QFileSystemWatcher>
 #include <QStringList>
 #include <QRegExp>
@@ -26,26 +24,11 @@
 namespace AzQtComponents
 {
 
-const QString g_styleSheetRelativePath = QStringLiteral("Code/Framework/AzQtComponents/AzQtComponents/Components/Widgets");
-const QString g_styleSheetResourcePath = QStringLiteral(":AzQtComponents/Widgets");
-const QString g_globalStyleSheetName = QStringLiteral("BaseStyleSheet.qss");
-const QString g_styleSheetExtension = QStringLiteral(".qss");
-const QString g_searchPathPrefix = QStringLiteral("AzQtComponentWidgets");
-
-StyleSheetCache::StyleSheetCache(QApplication* application, QObject* parent)
+StyleSheetCache::StyleSheetCache(QObject* parent)
 : QObject(parent)
-, m_application(application)
-, m_rootDir(FindEngineRootDir(application))
 , m_fileWatcher(new QFileSystemWatcher(this))
 , m_importExpression(new QRegExp("^\\s*@import\\s+\"?([^\"]+)\"?\\s*;(.*)$"))
 {
-    QDir rootDir(m_rootDir);
-    QString pathOnDisk = rootDir.absoluteFilePath(g_styleSheetRelativePath);
-
-    // set the search paths such so that the disk is searched first, and if a file isn't found there,
-    // it will fall back to search in the resources loaded from the qrc files
-    QDir::setSearchPaths(g_searchPathPrefix, QStringList() << pathOnDisk << g_styleSheetResourcePath);
-
     connect(m_fileWatcher, &QFileSystemWatcher::fileChanged, this, &StyleSheetCache::fileOnDiskChanged);
 }
 
@@ -53,26 +36,48 @@ StyleSheetCache::~StyleSheetCache()
 {
 }
 
-bool StyleSheetCache::isUI10() const
+const QString& StyleSheetCache::styleSheetExtension()
 {
-    return m_isUI10;
+    static const QString extension{QStringLiteral(".qss")};
+    return extension;
 }
 
-void StyleSheetCache::setIsUI10(bool isUI10)
+void StyleSheetCache::addSearchPaths(const QString& searchPrefix, const QString& pathOnDisk, const QString& qrcPrefix)
 {
-    if (isUI10 != m_isUI10)
+    // Specifying the path to the file on disk and the qrc prefix of the file in this order means
+    // that the style will be loaded from disk if it exists, otherwise the style in the Qt Resource
+    // file will be used. Styles loaded from disk will be automatically watched and re-applied if
+    // changes are detected, allowing much faster style iteration.
+    m_prefixes.insert(searchPrefix);
+    QDir::addSearchPath(searchPrefix, pathOnDisk);
+    QDir::addSearchPath(searchPrefix, qrcPrefix);
+}
+
+void StyleSheetCache::setFallbackSearchPaths(const QString& fallbackPrefix, const QString& pathOnDisk, const QString& qrcPrefix)
+{
+    if (m_fallbackPrefix == fallbackPrefix)
     {
-        m_isUI10 = isUI10;
-
-        reloadStyleSheets();
+        return;
     }
+
+    if (!m_fallbackPrefix.isEmpty())
+    {
+        QDir::setSearchPaths(m_fallbackPrefix, {});
+    }
+
+    m_fallbackPrefix = fallbackPrefix;
+
+    if (m_fallbackPrefix.isEmpty())
+    {
+        return;
+    }
+
+    QDir::setSearchPaths(m_fallbackPrefix, {pathOnDisk, qrcPrefix});
 }
 
-void StyleSheetCache::reloadStyleSheets()
+void StyleSheetCache::clearCache()
 {
     m_styleSheetCache.clear();
-
-    applyGlobalStyleSheet();
 }
 
 void StyleSheetCache::fileOnDiskChanged(const QString& filePath)
@@ -83,15 +88,16 @@ void StyleSheetCache::fileOnDiskChanged(const QString& filePath)
     // which ones are affected by this file.
     // If we were to worry about just one file, we'd need to keep track of dependency
     // info when preprocessing @import's
-    reloadStyleSheets();
+    clearCache();
+    emit styleSheetsChanged();
 }
 
 QString StyleSheetCache::loadStyleSheet(QString styleFileName)
 {
     // include the file extension here; it'll make life easier when comparing file paths
-    if (!styleFileName.endsWith(g_styleSheetExtension))
+    if (!styleFileName.endsWith(styleSheetExtension()))
     {
-        styleFileName.append(g_styleSheetExtension);
+        styleFileName.append(styleSheetExtension());
     }
 
     // check the cache
@@ -291,15 +297,70 @@ QString StyleSheetCache::preprocess(QString styleFileName, QString loadedStyleSh
     return result;
 }
 
-QString StyleSheetCache::findStyleSheetPath(QString styleFileName)
+QString StyleSheetCache::findStyleSheetPath(const QString& styleFileName)
 {
-    return QString("%1:%2").arg(g_searchPathPrefix, styleFileName);
-}
+    if (styleFileName.contains(':'))
+    {
+        // The file name is in a resource file (":/style.qss")
+        // or already has a prefix ("prefix:style.qss")
+        // or an absolute path on Windows
+        return styleFileName;
+    }
 
-void StyleSheetCache::applyGlobalStyleSheet()
-{
-    QString globalStyleSheet = loadStyleSheet(g_globalStyleSheetName);
-    m_application->setStyleSheet(globalStyleSheet);
+    if (QFile::exists(styleFileName))
+    {
+        return styleFileName;
+    }
+
+    const auto stackSize = m_processingStack.size();
+    if (stackSize > 0)
+    {
+        // Resursively search ancestors of the file currently being processed
+        const auto ancestorStyleFileName = m_processingStack.pop();
+        const auto ancestorFilePath = findStyleSheetPath(ancestorStyleFileName);
+        m_processingStack.push(ancestorStyleFileName);
+
+        if (QFile::exists(ancestorFilePath))
+        {
+            auto prefix = ancestorFilePath.mid(0, ancestorFilePath.indexOf(':'));
+            if (ancestorFilePath.contains(':') && prefix.length() != 1)
+            {
+                // QDir::isAbsolutePath returns true for paths with a valid search prefix. The
+                // only way to distinguish between a prefix and absolute path on Windows is the
+                // length of the prefix. Prefix length must be at least two to avoid conflicting
+                // with Windows drive letters. However, files in Qt Resources files have a prefix
+                // length of zero.
+                const auto result = QString("%1:%2").arg(prefix, styleFileName);
+                if (QFile::exists(result))
+                {
+                    return result;
+                }
+            }
+            else
+            {
+                // Assume the styleFileName is relative to the ancestorFilePath
+                const QFileInfo ancestorFileInfo(ancestorFilePath);
+                const auto result = ancestorFileInfo.absoluteDir().absoluteFilePath(styleFileName);
+                if (QFile::exists(result))
+                {
+                    return result;
+                }
+            }
+        }
+    }
+
+    // If we didn't find it in the processing stack, search all known prefixes
+    for (const auto prefix : m_prefixes)
+    {
+        const auto result = QString("%1:%2").arg(prefix, styleFileName);
+        if (QFile::exists(result))
+        {
+            return result;
+        }
+    }
+
+    // Finally, fall back to m_fallbackPrefix
+    return m_fallbackPrefix.isEmpty() ? QString() : QString("%1:%2").arg(m_fallbackPrefix, styleFileName);
 }
 
 } // namespace AzQtComponents

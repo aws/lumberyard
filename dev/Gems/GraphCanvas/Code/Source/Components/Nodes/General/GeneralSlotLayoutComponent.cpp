@@ -199,16 +199,22 @@ namespace GraphCanvas
 
         if (layoutItem)
         {
+            int layoutOrder = 0;
+
             if (connectionType == CT_Input)
             {
-                m_inputs->insertItem(m_inputs->count() - 1, layoutItem);
+                layoutOrder = m_inputs->count();
+
+                m_inputs->insertItem(layoutOrder - 1, layoutItem);
                 m_inputs->setAlignment(layoutItem, Qt::AlignTop);
 
                 m_inputSlots.emplace_back(slotId);
             }
             else if (connectionType == CT_Output)
             {
-                m_outputs->insertItem(m_outputs->count() - 1, layoutItem);
+                layoutOrder = m_outputs->count();
+
+                m_outputs->insertItem(layoutOrder - 1, layoutItem);
                 m_outputs->setAlignment(layoutItem, Qt::AlignBottom);
 
                 m_outputSlots.emplace_back(slotId);
@@ -217,6 +223,8 @@ namespace GraphCanvas
             {
                 AZ_Warning("GraphCanvas", false, "Invalid Connection Type for slot. Cannot add to Node Layout");
             }
+
+            SlotRequestBus::Event(slotId, &SlotRequests::SetDisplayOrdering, layoutOrder);
         }
     }
 
@@ -377,7 +385,7 @@ namespace GraphCanvas
         SlotLayoutRequestBus::Handler::BusDisconnect();
     }
 
-    void GeneralSlotLayoutGraphicsWidget::OnSlotAdded(const AZ::EntityId& slotId)
+    void GeneralSlotLayoutGraphicsWidget::OnSlotAddedToNode(const AZ::EntityId& slotId)
     {
         bool needsUpate = DisplaySlot(slotId);
 
@@ -387,7 +395,7 @@ namespace GraphCanvas
         }
     }
 
-    void GeneralSlotLayoutGraphicsWidget::OnSlotRemoved(const AZ::EntityId& slotId)
+    void GeneralSlotLayoutGraphicsWidget::OnSlotRemovedFromNode(const AZ::EntityId& slotId)
     {
         bool needsUpdate = RemoveSlot(slotId);
 
@@ -421,6 +429,37 @@ namespace GraphCanvas
             m_nodeSlots.m_slotGroupConfigurations[group] = configuration;
             UpdateLayout();
         }
+    }
+
+    int GeneralSlotLayoutGraphicsWidget::GetSlotGroupDisplayOrder(SlotGroup group) const
+    {        
+        AZStd::set<SlotGroup, SlotGroupConfigurationComparator> slotOrdering(SlotGroupConfigurationComparator(&m_nodeSlots.m_slotGroupConfigurations));
+
+        for (auto& mapPair : m_slotGroups)
+        {
+            if (!mapPair.second->IsEmpty())
+            {
+                const SlotGroupConfiguration& configuration = m_nodeSlots.m_slotGroupConfigurations[mapPair.first];
+
+                if (configuration.m_visible)
+                {
+                    slotOrdering.insert(mapPair.first);
+                }
+            }
+        }
+
+        int counter = 1;
+        for (const SlotGroup& slotGroup : slotOrdering)
+        {
+            if (slotGroup == group)
+            {
+                return counter;
+            }
+
+            ++counter;
+        }
+
+        return -1;
     }
 
     bool GeneralSlotLayoutGraphicsWidget::IsSlotGroupVisible(SlotGroup group) const
@@ -476,12 +515,7 @@ namespace GraphCanvas
 
     void GeneralSlotLayoutGraphicsWidget::OnStyleChanged()
     {
-        prepareGeometryChange();
-
         UpdateStyles();
-        RefreshDisplay();
-
-        updateGeometry();
         update();
     }
 
@@ -620,7 +654,6 @@ namespace GraphCanvas
             }
         }
         
-        updateGeometry();
         RefreshDisplay();
 
         NodeUIRequestBus::Event(GetEntityId(), &NodeUIRequests::AdjustSize);
@@ -646,7 +679,6 @@ namespace GraphCanvas
             mapPair.second->UpdateStyle(m_styleHelper);
         }
 
-        updateGeometry();
         RefreshDisplay();
     }
 
@@ -673,10 +705,14 @@ namespace GraphCanvas
             else
             {
                 auto configurationIter = m_nodeSlots.m_slotGroupConfigurations.find(slotType);
-                AZ_Warning("GraphCanvas", configurationIter != m_nodeSlots.m_slotGroupConfigurations.end(), "Trying to create a Slot Group for an unconfigured Slot Type.");
+
                 if (configurationIter == m_nodeSlots.m_slotGroupConfigurations.end())
                 {
-                    m_nodeSlots.m_slotGroupConfigurations[slotType] = SlotGroupConfiguration();
+                    SlotGroupConfiguration groupConfiguration;
+
+                    groupConfiguration.m_layoutOrder = static_cast<int>(m_nodeSlots.m_slotGroupConfigurations.size());
+
+                    m_nodeSlots.m_slotGroupConfigurations[slotType] = groupConfiguration;
                 }
 
                 retVal = aznew LinearSlotGroupWidget(this);

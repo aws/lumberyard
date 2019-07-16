@@ -248,7 +248,7 @@ namespace AZ
             void NotifyAssetReloaded(Asset<AssetData> asset);
             void NotifyAssetReloadError(Asset<AssetData> asset);
             void NotifyAssetError(Asset<AssetData> asset);
-            void ReleaseAsset(AssetData* asset);
+            void ReleaseAsset(AssetData* asset, AssetId assetId, AssetType assetType, bool removeAssetFromHash, int creationToken);
 
             void AddJob(AssetDatabaseJob* job);
             void RemoveJob(AssetDatabaseJob* job);
@@ -266,6 +266,8 @@ namespace AZ
             AZStd::recursive_mutex  m_catalogMutex;     // lock when accessing the catalog map
             AssetMap                m_assets;
             AZStd::recursive_mutex  m_assetMutex;       // lock when accessing the asset map
+
+            int m_creationTokenGenerator = 0; // this is used to generate unique identifiers for assets
 
             typedef AZStd::unordered_map<AssetId, Asset<AssetData> > ReloadMap;
             ReloadMap               m_reloads;          // book-keeping and reference-holding for asset reloads

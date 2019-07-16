@@ -43,6 +43,7 @@ namespace LmbrCentral
         {
             EditorPhysicsComponent::GetProvidedServices(provided);
             provided.push_back(AZ_CRC("RigidPhysicsService", 0xc03b426c));
+            provided.push_back(AZ_CRC("LegacyCryPhysicsService", 0xbb370351));
         }
 
         EditorRigidPhysicsComponent() = default;
@@ -59,5 +60,4 @@ namespace LmbrCentral
 
         EditorRigidPhysicsConfig m_configuration;
     };
-
 } // namespace LmbrCentral

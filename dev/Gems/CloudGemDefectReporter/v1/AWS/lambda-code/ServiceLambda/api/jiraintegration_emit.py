@@ -11,14 +11,18 @@
 
 import service
 import jira_integration
-import jiraintegration_group
 import additonal_report_Info
 import boto3
 import CloudCanvas
 import json
-import re
-import copy
+import defect_reporter_s3 as s3_client
+from botocore.client import Config
 
+#
+#   Emitted defect events from the Cloud Gem Metrics pipeline are received here.
+#   If the Cloud Gem Defect Reporter is configured for automatic submission mode than the ticket is submitted.
+#   If the Cloud Gem Defect Reporter is configured for manual mode the function exits.   
+#
 @service.api
 def post(request, context):
     try:
@@ -27,34 +31,17 @@ def post(request, context):
     except:
         return {'status': 'FAILURE'}
     submit_mode = jira_integration_settings.get('submitMode', 'manual')
+    
+    if submit_mode != 'auto':
+        return {'status': 'SUCCESS'}
+    
     events_context = context['emitted']
     bucket = events_context['bucket']
     key = events_context['key']
-    s3 = boto3.client('s3')
-    
+    s3 = s3_client.get_client()
     res = s3.get_object(Bucket = bucket, Key = key)
-    reports = json.loads(res['Body'].read())
+    reports = json.loads(res['Body'].read())  
+    prepared_reports = jira_integration.prepare_jira_tickets(reports, jira_integration_settings)
     
-    field_mappings = get_field_mappings(jira_integration_settings)
+    return {'status': jira_integration.create_Jira_tickets(prepared_reports)}
     
-    mapped_reports = []
-    for report in reports:
-        mapped_report = copy.deepcopy(field_mappings)        
-        jiraintegration_group.map_embedded_to_actual(mapped_report, report)
-        mapped_report['attachment_id'] = json.loads(report['attachment_id'])
-        mapped_report['universal_unique_identifier'] = report['universal_unique_identifier']
-        mapped_reports.append(mapped_report)
-    
-    status = 'SUCCESS'
-    if submit_mode == 'auto':
-        status = jira_integration.create_Jira_tickets(mapped_reports)
-    return {'status': status}
-
-def get_field_mappings(jira_integration_settings):
-    field_mappings = jira_integration.get_field_mappings(jira_integration_settings['project'], jira_integration_settings['issuetype'])
-    result = {}
-    for entry in field_mappings:
-        if entry['mapping']:
-            result[entry['id']] = entry['mapping']
-
-    return result

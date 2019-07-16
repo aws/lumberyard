@@ -22,6 +22,7 @@ enum DisplayMode {
 })
 
 export class ViewHeaderComponent {
+    @Input() context: any;
     @Input() index: CloudGemComputeFarmIndexComponent;
     @Input() workflowConfig: WorkflowConfig;
 
@@ -43,6 +44,7 @@ export class ViewHeaderComponent {
     progressRows: any = [];
     startTime: string = "--";
     endTime: string = "--";
+    canDownload = false;
 
     private buildIdManager: BuildIdManager = null;
     private selectedBuildIndex = 0;
@@ -77,6 +79,7 @@ export class ViewHeaderComponent {
 
                 this.invalidWorkflowInput = false;
                 this.canStartWorkflow = false;
+                this.canDownload = false;
             }
             else {
                 let closeStatus = this.runner.execInfo['closeStatus'];
@@ -86,6 +89,7 @@ export class ViewHeaderComponent {
                 this.invalidWorkflowInput = !this.workflowConfig.isValid();
                 this.canStartWorkflow = !this.invalidWorkflowInput;
                 this.canCancelWorkflow = false;
+                this.canDownload = (closeStatus === "COMPLETED");
             }
 
             this.startTime = this.getDateString(this.runner.execInfo['startTimestamp']);
@@ -99,6 +103,7 @@ export class ViewHeaderComponent {
             this.statusDecoration = "";
             this.startTime = "--";
             this.endTime = "--";
+            this.canDownload = false;
         }
 
         if (this.runner.executionContext && this.runner.executionContext['progress'] !== undefined) {
@@ -110,6 +115,23 @@ export class ViewHeaderComponent {
         else {
             this.progressRows = [];
         }
+    }
+
+    /**
+     * Download the build results
+	**/
+    private downloadResult(): void {
+        let merge_key = this.workflowConfig.s3_dir.length ? (this.workflowConfig.s3_dir + "/") : "";
+
+        merge_key += this.workflowConfig.s3_zip.substring(0, this.workflowConfig.s3_zip.indexOf(".zip"));
+        merge_key += "/merge/merge_final.zip";
+
+        var params = {
+            Bucket: this.context.ComputeFarmBucketName,
+            Key: merge_key
+        };
+        var url = this.aws.context.s3.getSignedUrl('getObject', params);
+        window.open(url);
     }
 
     private getDateString(dateField: any): string {
@@ -135,6 +157,7 @@ export class ViewHeaderComponent {
             this.canCancelWorkflow = false;
             this.runner.setRunId("");
             this.runner.ignoreNextStatusUpdate();
+            this.canDownload = false;
 
             this._apiHandler.run(this.executionName, JSON.stringify(this.workflowConfig)).subscribe(() => {
                 this.toastr.success("The workflow started successfully");

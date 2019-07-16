@@ -18,4 +18,6 @@
 namespace AzQtComponents
 {
     AZ_QT_COMPONENTS_API void ShowFileOnDesktop(const QString& path);
+
+    AZ_QT_COMPONENTS_API QString fileBrowserActionName();
 };

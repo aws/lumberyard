@@ -23,9 +23,11 @@
 #include <QWheelEvent>
 
 #include <AzCore/Memory/SystemAllocator.h>
+#include <AzCore/Component/TickBus.h>
 
 #include <GraphCanvas/Components/SceneBus.h>
 #include <GraphCanvas/Components/ViewBus.h>
+#include <GraphCanvas/Editor/AssetEditorBus.h>
 
 namespace GraphCanvas
 {
@@ -36,17 +38,29 @@ namespace GraphCanvas
         : public QGraphicsView
         , protected ViewRequestBus::Handler
         , protected SceneNotificationBus::Handler
+        , protected AZ::TickBus::Handler
+        , protected AssetEditorSettingsNotificationBus::Handler
     {
     private:
-        const qreal ZOOM_MIN = 0.1;
-        const qreal ZOOM_MAX = 2.0;
         const int KEYBOARD_MOVE = 50;
         const int WHEEL_ZOOM = 120;
+
+        struct FocusQueue
+        {
+            enum class FocusType
+            {
+                DisplayArea,
+                CenterOnArea
+            };
+
+            FocusType m_focusType;
+            QRectF m_focusRect;
+        };
 
     public:
         AZ_CLASS_ALLOCATOR(GraphCanvasGraphicsView, AZ::SystemAllocator, 0);
 
-        GraphCanvasGraphicsView();
+        GraphCanvasGraphicsView(QWidget* parent = nullptr);
         ~GraphCanvasGraphicsView();
 
         const ViewId& GetViewId() const;
@@ -75,9 +89,25 @@ namespace GraphCanvas
         QRectF GetViewableAreaInSceneCoordinates() override;
 
         GraphCanvasGraphicsView* AsGraphicsView() override;
+
+        QImage* CreateImageOfGraph() override;
+        QImage* CreateImageOfGraphArea(QRectF area) override;
+
+        qreal GetZoomLevel() const override;
+
+        void PanSceneBy(QPointF repositioning, AZStd::chrono::milliseconds duration) override;
+
+        void PanSceneTo(QPointF scenePoint, AZStd::chrono::milliseconds duration) override;
+        ////
+
+        // TickBus
+        void OnTick(float tick, AZ::ScriptTimePoint timePoint) override;
         ////
 
         QRectF GetSelectedArea();
+        void SelectAll();        
+        void SelectAllRelative(ConnectionType input);
+        void SelectConnectedNodes();
 
         // SceneNotificationBus::Handler
         void OnStylesChanged() override;
@@ -101,13 +131,17 @@ namespace GraphCanvas
         void resizeEvent(QResizeEvent* event) override;
         void scrollContentsBy(int dx, int dy) override;
         ////
+        
+        // AssetEditorSettingsNotificationBus
+        void OnSettingsChanged() override;
+        ////
 
         bool GetIsEditing(){ return m_isEditing; }
 
     protected:
 
         void CreateBookmark(int bookmarkShortcut);
-        void JumpToBookmark(int bookmarkShortcut);        
+        void JumpToBookmark(int bookmarkShortcut);
 
     private:
 
@@ -120,17 +154,26 @@ namespace GraphCanvas
 
         void OnRubberBandChanged(QRect rubberBandRect, QPointF fromScenePoint, QPointF toScenePoint);
 
-        GraphCanvasGraphicsView(const GraphCanvasGraphicsView&) = delete;        
+        AZStd::pair<float, float> CalculateEdgePanning(const QPointF& globalPoint) const;
+        void CalculateInternalRectangle();
+
+        void ManageTickState();
+
+        GraphCanvasGraphicsView(const GraphCanvasGraphicsView&) = delete;
 
         ViewId       m_viewId;
         AZ::EntityId m_sceneId;
         EditorId     m_editorId;
-
+        
         bool m_isDragSelecting;
+
+        bool   m_checkForEdges;
+        float  m_scrollSpeed;
+        AZStd::pair<float, float> m_edgePanning;
 
         bool   m_checkForDrag;
         QPoint m_initialClick;
-
+        
         bool m_ignoreValueChange;
         bool m_reapplyViewParams;
 
@@ -139,6 +182,16 @@ namespace GraphCanvas
         QTimer m_timer;
         QTimer m_styleTimer;
 
+        float   m_panCountdown;
+        QPointF m_panVelocity;
+
+        QPointF m_panningAggregator;
+
+        AZStd::unique_ptr<FocusQueue> m_queuedFocus;
+
         bool m_isEditing;
+
+        QPointF m_offsets;
+        QRectF m_internalRectangle;
     };
 }

@@ -14,6 +14,8 @@
 #include <GraphCanvas/Widgets/NodePalette/TreeItems/DraggableNodePaletteTreeItem.h>
 #include "CreateNodeMimeEvent.h"
 
+#include <ScriptCanvas/GraphCanvas/NodeDescriptorBus.h>
+
 namespace ScriptCanvasEditor
 {
     // <EbusSender>
@@ -26,7 +28,7 @@ namespace ScriptCanvasEditor
         static void Reflect(AZ::ReflectContext* reflectContext);
 
         CreateEBusSenderMimeEvent() = default;
-        CreateEBusSenderMimeEvent(const QString& busName, const QString& eventName);
+        CreateEBusSenderMimeEvent(AZStd::string_view busName, AZStd::string_view eventName);
         ~CreateEBusSenderMimeEvent() = default;
 
     protected:
@@ -46,16 +48,26 @@ namespace ScriptCanvasEditor
         
     public:
         AZ_CLASS_ALLOCATOR(EBusSendEventPaletteTreeItem, AZ::SystemAllocator, 0);
+        AZ_RTTI(EBusSendEventPaletteTreeItem, "{26258B0A-8E2C-434D-ACAD-3DE85E64A4F8}", GraphCanvas::DraggableNodePaletteTreeItem);
 
-        EBusSendEventPaletteTreeItem(const QString& busName, const QString& eventName);
+        EBusSendEventPaletteTreeItem(AZStd::string_view busName, AZStd::string_view eventName, const ScriptCanvas::EBusBusId& busId, const ScriptCanvas::EBusEventId& eventIdentifier);
         ~EBusSendEventPaletteTreeItem() = default;
         
         GraphCanvas::GraphCanvasMimeEvent* CreateMimeEvent() const override;
+
+        AZStd::string GetBusName() const;
+        AZStd::string GetEventName() const;
+
+        ScriptCanvas::EBusBusId GetBusId() const;
+        ScriptCanvas::EBusEventId GetEventId() const;
 
     private:
     
         QString m_busName;
         QString m_eventName;
+
+        ScriptCanvas::EBusBusId   m_busId;
+        ScriptCanvas::EBusEventId m_eventId;
     };
     
     // </EbusSender>
@@ -70,8 +82,7 @@ namespace ScriptCanvasEditor
         static void Reflect(AZ::ReflectContext* reflectContext);
 
         CreateEBusHandlerMimeEvent() = default;
-        CreateEBusHandlerMimeEvent(const AZStd::string& busName);
-        CreateEBusHandlerMimeEvent(const QString& busName);
+        CreateEBusHandlerMimeEvent(AZStd::string_view busName);
         ~CreateEBusHandlerMimeEvent() = default;
 
     protected:
@@ -93,12 +104,12 @@ namespace ScriptCanvasEditor
         static void Reflect(AZ::ReflectContext* reflectContext);
         
         CreateEBusHandlerEventMimeEvent() = default;
-        CreateEBusHandlerEventMimeEvent(const AZStd::string& busName, const AZStd::string& methodName);
-        CreateEBusHandlerEventMimeEvent(const QString& busName, const QString& methodName);
+        CreateEBusHandlerEventMimeEvent(AZStd::string_view busName, AZStd::string_view methodName, const ScriptCanvas::EBusEventId& eventId);
         ~CreateEBusHandlerEventMimeEvent() = default;
 
-        const AZStd::string& GetBusName() { return m_busName; }
-        const AZStd::string& GetEventName() { return m_eventName; }
+        AZStd::string_view GetBusName() { return m_busName; }
+        AZStd::string_view GetEventName() { return m_eventName; }
+        ScriptCanvas::EBusEventId GetEventId() { return m_eventId; }
 
         NodeIdPair ConstructNode(const AZ::EntityId& graphCanvasGraphId, const AZ::Vector2& scenePosition) override;
         bool ExecuteEvent(const AZ::Vector2& mousePosition, AZ::Vector2& sceneDropPosition, const AZ::EntityId& graphCanvasGraphId) override;
@@ -108,6 +119,8 @@ namespace ScriptCanvasEditor
     private:
         AZStd::string m_busName;
         AZStd::string m_eventName;
+
+        ScriptCanvas::EBusEventId m_eventId;
     };
     
     // These nodes will create a purely visual representation of the data. They do not have a corresponding ScriptCanvas node, but instead
@@ -121,15 +134,25 @@ namespace ScriptCanvasEditor
         
     public:
         AZ_CLASS_ALLOCATOR(EBusHandleEventPaletteTreeItem, AZ::SystemAllocator, 0);
+        AZ_RTTI(EBusHandleEventPaletteTreeItem, "{99A95EC0-1DF8-45B8-8229-D6D12E32CBED}", GraphCanvas::DraggableNodePaletteTreeItem);
 
-        EBusHandleEventPaletteTreeItem(const QString& busName, const QString& eventName);
+        EBusHandleEventPaletteTreeItem(AZStd::string_view busName, AZStd::string_view eventName, const ScriptCanvas::EBusBusId& busId, const ScriptCanvas::EBusEventId& eventId);
         ~EBusHandleEventPaletteTreeItem() = default;
         
         GraphCanvas::GraphCanvasMimeEvent* CreateMimeEvent() const override;
 
+        AZStd::string GetBusName() const;
+        AZStd::string GetEventName() const;
+
+        ScriptCanvas::EBusBusId GetBusId() const;
+        ScriptCanvas::EBusEventId GetEventId() const;
+
     private:
-        QString m_busName;
-        QString m_eventName;
+        AZStd::string m_busName;
+        AZStd::string m_eventName;
+
+        ScriptCanvas::EBusBusId   m_busId;
+        ScriptCanvas::EBusEventId m_eventId;
     };
     
     // </EbusHandlerEvent>

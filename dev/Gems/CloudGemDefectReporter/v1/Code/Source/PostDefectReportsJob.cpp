@@ -30,6 +30,8 @@
 #include <CloudGemMetric/MetricsEventParameter.h>
 #include <CloudGemMetric/CloudGemMetricBus.h>
 
+#include <CloudCanvasCommon/CloudCanvasCommonBus.h>
+
 namespace CloudGemDefectReporter
 {
     PostDefectReportsJob::PostDefectReportsJob(AZ::JobContext* jobContext, AZStd::vector<ReportWrapper> reports) :
@@ -175,7 +177,7 @@ namespace CloudGemDefectReporter
 
             
             AZ::JobContext* jobContext{ nullptr };
-            EBUS_EVENT_RESULT(jobContext, CloudGemFramework::CloudGemFrameworkRequestBus, GetDefaultJobContext);
+            EBUS_EVENT_RESULT(jobContext, CloudCanvasCommon::CloudCanvasCommonRequestBus, GetDefaultJobContext);
 
             AZ::Job* job{ nullptr };
 

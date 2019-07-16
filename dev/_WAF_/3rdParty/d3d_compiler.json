@@ -1,0 +1,59 @@
+{
+    "name": [
+        "D3D_COMPILER",
+        "D3D_COMPILER_43",
+        "D3D_COMPILER_46",
+        "D3D_COMPILER_47"
+    ],
+    "source": "@ROOT@/Tools/Redistributables/D3DCompiler",
+    "description": "D3D Compiler shared libraries",
+    "aliases": {
+        "D3D_COMPILER": [
+            "D3DCompiler_43",
+            "d3dcompiler_46",
+            "d3dcompiler_47",
+            "d3dcsx_46",
+            "d3dcsx_47",
+            "d3dx11_43",
+            "xinput1_3"
+        ],
+        "D3D_COMPILER_43": [
+            "D3DCompiler_43",
+            "d3dx11_43",
+            "xinput1_3"
+        ],
+        "D3D_COMPILER_46": [
+            "d3dcompiler_46",
+            "d3dcsx_46",
+            "d3dx11_43",
+            "xinput1_3"
+        ],
+        "D3D_COMPILER_47": [
+            "d3dcompiler_47",
+            "d3dcsx_47",
+            "d3dx11_43",
+            "xinput1_3"
+        ]
+    },
+    "platform": {
+        "win_x64_vs2013": {
+            "sharedlibpath": [
+                "win32"
+            ],
+            "D3D_COMPILER/shared": [
+                "${D3D_COMPILER}.dll"
+            ],
+            "D3D_COMPILER_43/shared": [
+                "${D3D_COMPILER_43}.dll"
+            ],
+            "D3D_COMPILER_46/shared": [
+                "${D3D_COMPILER_46}.dll"
+            ],
+            "D3D_COMPILER_47/shared": [
+                "${D3D_COMPILER_47}.dll"
+            ]
+        },
+       "win_x64_vs2015": "@win_x64_vs2013",
+       "win_x64_vs2017": "@win_x64_vs2013"
+    }
+}

@@ -605,11 +605,15 @@ public:
         }
         if (m_pCpu->hasSSE2())
         {
-            Flags |= CPUF_SSE;
+            Flags |= CPUF_SSE2;
         }
         if (m_pCpu->has3DNow())
         {
             Flags |= CPUF_3DNOW;
+        }
+        if (m_pCpu->hasF16C())
+        {
+            Flags |= CPUF_F16C;
         }
 
         return Flags;
@@ -886,6 +890,7 @@ public:
     // Gets the dimensions (in pixels) of the primary physical display.
     // Returns true if this info is available, returns false otherwise.
     bool GetPrimaryPhysicalDisplayDimensions(int& o_widthPixels, int& o_heightPixels);
+    bool IsTablet();
 
 private: // ------------------------------------------------------
 
@@ -1021,6 +1026,7 @@ private: // ------------------------------------------------------
     ICVar* m_rWidth;
     ICVar* m_rHeight;
     ICVar* m_rWidthAndHeightAsFractionOfScreenSize;
+    ICVar* m_rTabletWidthAndHeightAsFractionOfScreenSize;
     ICVar* m_rHDRDolby;
     ICVar* m_rMaxWidth;
     ICVar* m_rMaxHeight;

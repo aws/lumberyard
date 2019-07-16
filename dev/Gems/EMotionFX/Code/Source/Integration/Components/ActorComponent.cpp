@@ -27,6 +27,7 @@
 
 #include <EMotionFX/Source/Transform.h>
 #include <EMotionFX/Source/RagdollInstance.h>
+#include <EMotionFX/Source/DebugDraw.h>
 
 #include <MathConversion.h>
 #include <IRenderAuxGeom.h>
@@ -425,6 +426,25 @@ namespace EMotionFX
                 LmbrCentral::MaterialOwnerNotificationBus::Event(GetEntityId(), &LmbrCentral::MaterialOwnerNotifications::OnMaterialOwnerReady);
                 m_materialReadyEventSent = true;
             }
+
+            RenderDebugDraw();
+        }
+
+        void ActorComponent::RenderDebugDraw()
+        {
+            IRenderAuxGeom* geomRenderer = gEnv->pRenderer->GetIRenderAuxGeom();
+            EMotionFX::DebugDraw& debugDraw = EMotionFX::GetDebugDraw();
+            debugDraw.Lock();
+            DebugDraw::ActorInstanceData* actorInstanceData = debugDraw.GetActorInstanceData(m_actorInstance.get());
+            actorInstanceData->Lock();
+            for (const DebugDraw::Line& line : actorInstanceData->GetLines())
+            {
+                const ColorF startColor(line.m_startColor.GetR(), line.m_startColor.GetG(), line.m_startColor.GetB(), line.m_startColor.GetA());
+                const ColorF endColor(line.m_endColor.GetR(), line.m_endColor.GetG(), line.m_endColor.GetB(), line.m_endColor.GetA());
+                geomRenderer->DrawLine(Vec3(line.m_start), startColor, Vec3(line.m_end), endColor, 1.0f);
+            }
+            actorInstanceData->Unlock();
+            debugDraw.Unlock();
         }
 
         int ActorComponent::GetTickOrder()
@@ -600,7 +620,7 @@ namespace EMotionFX
 
         void ActorComponent::OnRagdollActivated()
         {
-            AZStd::shared_ptr<Physics::Ragdoll> ragdoll;
+            Physics::Ragdoll* ragdoll;
             AzFramework::RagdollPhysicsRequestBus::EventResult(ragdoll, m_entity->GetId(), &AzFramework::RagdollPhysicsRequestBus::Events::GetRagdoll);
             if (ragdoll && m_actorInstance)
             {

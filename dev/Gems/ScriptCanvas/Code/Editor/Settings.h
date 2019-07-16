@@ -51,12 +51,120 @@ namespace ScriptCanvasEditor
 
         };
 
+        // Structure used for Toggleable Configurations
+        // i.e. something that has a configuration time and the ability to turn it on/off
+        class ToggleableConfiguration
+        {
+        public:
+            AZ_RTTI(ToggleableConfiguration, "{24E8CAE7-0B5E-4B5E-94CC-08B9148B4AB5}");
+            AZ_CLASS_ALLOCATOR(ToggleableConfiguration, AZ::SystemAllocator, 0);
+
+            ToggleableConfiguration()
+                : ToggleableConfiguration(false, 1000)
+            {
+
+            }
+
+            ToggleableConfiguration(bool enabled, int timeMS)
+                : m_enabled(enabled)
+                , m_timeMS(timeMS)
+            {
+
+            }
+
+            virtual ~ToggleableConfiguration() = default;
+
+            bool m_enabled;
+            int m_timeMS;
+        };
+
+        class ShakeToDespliceSettings
+        {
+            friend class ScriptCanvasEditorSettings;
+        public:
+            AZ_RTTI(ShakeToDespliceSettings, "{6401FA20-7A17-407E-81E3-D1389C9C70B7}");
+            AZ_CLASS_ALLOCATOR(ShakeToDespliceSettings, AZ::SystemAllocator, 0);
+
+            ShakeToDespliceSettings()
+                : m_enabled(true)
+                , m_shakeCount(3)
+                , m_maximumShakeTimeMS(1000)
+                , m_minimumShakeLengthPercent(3)
+                , m_deadZonePercent(1)
+                , m_straightnessPercent(65)
+            {
+            }
+
+            virtual ~ShakeToDespliceSettings() = default;
+
+            float GetStraightnessPercent() const
+            {
+                return m_straightnessPercent * 0.01f;
+            }
+
+            float GetMinimumShakeLengthPercent() const
+            {
+                return m_minimumShakeLengthPercent * 0.01f;
+            }
+
+            float GetDeadZonePercent() const
+            {
+                return m_deadZonePercent * 0.01f;
+            }
+
+            bool m_enabled;
+
+            int m_shakeCount;
+            int m_maximumShakeTimeMS;
+
+        private:
+
+            float m_minimumShakeLengthPercent;
+            float m_deadZonePercent;
+            
+            float m_straightnessPercent;
+        };
+
+        class EdgePanningSettings
+        {
+            friend class ScriptCanvasEditorSettings;
+        public:
+            AZ_RTTI(EdgePanningSettings, "{38399A9B-8D4B-4198-AAA2-D1E8761F5563}");
+            AZ_CLASS_ALLOCATOR(EdgePanningSettings, AZ::SystemAllocator, 0);
+
+            EdgePanningSettings()
+                : m_edgeScrollPercent(5.0f)
+                , m_edgeScrollSpeed(75.0f)
+            {
+            }
+
+            virtual ~EdgePanningSettings() = default;
+
+            float GetEdgeScrollPercent() const
+            {
+                return m_edgeScrollPercent * 0.01f;
+            }
+
+            float GetEdgeScrollSpeed() const
+            {
+                return m_edgeScrollSpeed;
+            }
+
+        private:
+
+            float m_edgeScrollPercent;
+            float m_edgeScrollSpeed;
+        };
+
         class ScriptCanvasEditorSettings
             : public AZ::UserSettings
         {
         public:
             AZ_RTTI(ScriptCanvasEditorSettings, "{D8D5453C-BFB8-4C71-BBAF-0F10FDD69B3F}", AZ::UserSettings);
             AZ_CLASS_ALLOCATOR(ScriptCanvasEditorSettings, AZ::SystemAllocator, 0);
+
+            static void Reflect(AZ::ReflectContext* context);
+            static bool VersionConverter(AZ::SerializeContext& context, AZ::SerializeContext::DataElementNode& classElement);
 
             ScriptCanvasEditorSettings();
 
@@ -66,77 +174,27 @@ namespace ScriptCanvasEditor
             bool m_showExcludedNodes; //! During preview we're excluding some behavior context nodes that may not work perfectly in Script Canvas.
 
             bool m_allowBookmarkViewpointControl;
+            bool m_allowNodeNudgingOnSplice;
 
-            bool m_enableNodeDragCoupling;
-            int m_dragNodeCouplingTimeMS;
+            ToggleableConfiguration m_dragNodeCouplingConfig;
+            ToggleableConfiguration m_dragNodeSplicingConfig;
 
-            bool m_enableNodeDragConnectionSplicing;
-            int m_dragNodeConnectionSplicingTimeMS;
+            ToggleableConfiguration m_dropNodeSplicingConfig;  
 
-            bool m_enableNodeDropConnectionSplicing;
-            int m_dropNodeConnectionSplicingTimeMS;
+            ToggleableConfiguration m_autoSaveConfig;
+
+            ShakeToDespliceSettings m_shakeDespliceConfig;
+
+            EdgePanningSettings     m_edgePanningSettings;
 
             AZStd::unordered_set<AZ::Uuid> m_pinnedDataTypes;
 
-            static void Reflect(AZ::ReflectContext* context)
-            {
-                AZ::SerializeContext* serialize = azrtti_cast<AZ::SerializeContext*>(context);
-                if (serialize)
-                {
-                    serialize->Class<ScriptCanvasEditorSettings, AZ::UserSettings>()
-                        ->Version(5)
-                        ->Field("m_showPreviewMessage", &ScriptCanvasEditorSettings::m_showPreviewMessage)
-                        ->Field("m_snapDistance", &ScriptCanvasEditorSettings::m_snapDistance)
-                        ->Field("m_showExcludedNodes", &ScriptCanvasEditorSettings::m_showExcludedNodes)
-                        ->Field("m_pinnedDataTypes", &ScriptCanvasEditorSettings::m_pinnedDataTypes)
-                        ->Field("m_allowBookmarkViewpointControl", &ScriptCanvasEditorSettings::m_allowBookmarkViewpointControl)
-                        ->Field("m_enableNodeDragCoupling", &ScriptCanvasEditorSettings::m_enableNodeDragCoupling)
-                        ->Field("m_dragNodeCouplingTime", &ScriptCanvasEditorSettings::m_dragNodeCouplingTimeMS)
-                        ->Field("m_enableNodeDragConnectionSplicing", &ScriptCanvasEditorSettings::m_enableNodeDragConnectionSplicing)
-                        ->Field("m_dragNodeConnectionSplicingTime", &ScriptCanvasEditorSettings::m_dragNodeConnectionSplicingTimeMS)
-                        ->Field("m_enableNodeDropConnectionSplicing", &ScriptCanvasEditorSettings::m_enableNodeDropConnectionSplicing)
-                        ->Field("m_dropNodeConnectionSplicingTime", &ScriptCanvasEditorSettings::m_dropNodeConnectionSplicingTimeMS)
-                        ;
+            int m_variablePanelSorting;
 
-                    AZ::EditContext* editContext = serialize->GetEditContext();
-                    if (editContext)
-                    {
-                        editContext->Class<ScriptCanvasEditorSettings>("Script Canvas Editor Preferences", "Preferences relating to the Script Canvas editor.")
-                            ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
-                            ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
-                            ->Attribute(AZ::Edit::Attributes::Visibility, AZ_CRC("PropertyVisibility_ShowChildrenOnly", 0xef428f20))
-                            ->DataElement(AZ::Edit::UIHandlers::Default, &ScriptCanvasEditorSettings::m_showPreviewMessage, "Show Preview Message", "Show the Script Canvas (PREVIEW) welcome message.")
-                            ->DataElement(AZ::Edit::UIHandlers::Default, &ScriptCanvasEditorSettings::m_snapDistance, "Connection Snap Distance", "The distance from a slot under which connections will snap to it.")
-                                ->Attribute(AZ::Edit::Attributes::Min, 10.0)
-                            ->DataElement(AZ::Edit::UIHandlers::Default, &ScriptCanvasEditorSettings::m_showExcludedNodes, "Show nodes excluded from preview", "Show nodes that have been excluded from preview because they may not work correctly in Script Canvas yet.")
-                            ->DataElement(AZ::Edit::UIHandlers::Default, &ScriptCanvasEditorSettings::m_allowBookmarkViewpointControl, "Allow Bookmarks Viewport Control", "Will cause the bookmarks to force the viewport into the state determined by the bookmark type")
-                            ->DataElement(AZ::Edit::UIHandlers::Default, &ScriptCanvasEditorSettings::m_enableNodeDragCoupling, "Enable Node Coupling On Drag", "Controls whether or not Node's will attempt to create connections between\nthe side dragged over a node after being held for the specified amount of time.")
-                            ->DataElement(AZ::Edit::UIHandlers::Default, &ScriptCanvasEditorSettings::m_dragNodeCouplingTimeMS, "Coupling Time", "The amount of time that must elapsed before nodes will try to couple with each other")
-                            ->DataElement(AZ::Edit::UIHandlers::Default, &ScriptCanvasEditorSettings::m_enableNodeDragConnectionSplicing, "Enable Connection Splicing On Drag", "Controls whether or not a Node will attempt to splice itself\nonto the connection it is dragged onto after being held for the specified amount of time.")
-                            ->DataElement(AZ::Edit::UIHandlers::Default, &ScriptCanvasEditorSettings::m_dragNodeConnectionSplicingTimeMS, "Drag Connection Splice Time", "The amount of time that must elapse before a node will attempt to splice when dragging")
-                            ->DataElement(AZ::Edit::UIHandlers::Default, &ScriptCanvasEditorSettings::m_enableNodeDropConnectionSplicing, "Enable Connection Splicing On Drop", "Controls whether or not a Node will attempt to splice itself\nonto the connection it is dropped onto after being held there for the specified amount of time.")
-                            ->DataElement(AZ::Edit::UIHandlers::Default, &ScriptCanvasEditorSettings::m_dropNodeConnectionSplicingTimeMS, "Drop Connection Splice Time", "The amount of time that must elapse before a node will attempt to splice when dropping")
-                            ;
-                    }
-                }
-            }
-        private:
-            bool CanModifyDragCouplingTime() const
-            {
-                return !m_enableNodeDragCoupling;
-            }
+            bool m_showValidationWarnings;
+            bool m_showValidationErrors;
 
-            bool CanModifyDragSplicingTime() const
-            {
-                return !m_enableNodeDragConnectionSplicing;
-            }
-
-            bool CanModifyDropSplicingTime() const
-            {
-                return !m_enableNodeDropConnectionSplicing;
-            }
+            AZ::u32 m_alignmentTimeMS;
         };
-
-
     }
 }

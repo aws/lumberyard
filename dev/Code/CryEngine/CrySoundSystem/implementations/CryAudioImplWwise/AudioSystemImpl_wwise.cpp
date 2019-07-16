@@ -889,7 +889,7 @@ namespace Audio
         if (pAKObjectData)
         {
             AkSoundPosition sAkSoundPos;
-            ATLTransformToAKTransform(sWorldPosition, sAkSoundPos);
+            ATLTransformToAkTransform(sWorldPosition, sAkSoundPos);
 
             const AKRESULT eAKResult = AK::SoundEngine::SetPosition(pAKObjectData->nAKID, sAkSoundPos);
             if (IS_WWISE_OK(eAKResult))
@@ -904,6 +904,50 @@ namespace Audio
         else
         {
             g_audioImplLogger_wwise.Log(eALT_ERROR, "Invalid AudioObjectData passed to the Wwise implementation of SetPosition.");
+        }
+
+        return eResult;
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////////
+    EAudioRequestStatus CAudioSystemImpl_wwise::SetMultiplePositions(
+        IATLAudioObjectData* const pAudioObjectData,
+        const MultiPositionParams& multiPositionParams)
+    {
+        EAudioRequestStatus eResult = eARS_FAILURE;
+
+        auto const pAKObjectData = static_cast<SATLAudioObjectData_wwise*>(pAudioObjectData);
+
+        if (pAKObjectData)
+        {
+            AZStd::vector<AkSoundPosition> akPositions;
+            AZStd::for_each(multiPositionParams.m_positions.begin(), multiPositionParams.m_positions.end(),
+                [&akPositions](const auto& position)
+                {
+                    akPositions.emplace_back(AZVec3ToAkTransform(position));
+                }
+            );
+
+            AK::SoundEngine::MultiPositionType type = AK::SoundEngine::MultiPositionType_MultiDirections; // default 'Blended'
+
+            if (multiPositionParams.m_type == MultiPositionBehaviorType::Separate)
+            {
+                type = AK::SoundEngine::MultiPositionType_MultiSources;
+            }
+
+            const AKRESULT akResult = AK::SoundEngine::SetMultiplePositions(pAKObjectData->nAKID, akPositions.data(), static_cast<AkUInt16>(akPositions.size()), type);
+            if (IS_WWISE_OK(akResult))
+            {
+                eResult = eARS_SUCCESS;
+            }
+            else
+            {
+                g_audioImplLogger_wwise.Log(eALT_WARNING, "Wwise SetMultiplePositions failed with AKRESULT: %d\n", akResult);
+            }
+        }
+        else
+        {
+            g_audioImplLogger_wwise.Log(eALT_ERROR, "Invalid AudioObjectData passed to the Wwise implementation of SetMultiplePositions.");
         }
 
         return eResult;
@@ -1186,7 +1230,7 @@ namespace Audio
         if (pAKListenerData)
         {
             AkListenerPosition oAKListenerPos;
-            ATLTransformToAKTransform(oNewPosition, oAKListenerPos);
+            ATLTransformToAkTransform(oNewPosition, oAKListenerPos);
 
             const AKRESULT eAKResult = AK::SoundEngine::SetPosition(pAKListenerData->nAKListenerObjectId, oAKListenerPos);
 

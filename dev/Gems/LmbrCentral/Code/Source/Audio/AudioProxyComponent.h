@@ -48,9 +48,9 @@ namespace LmbrCentral
 
 
         /*!
-        * AudioProxyComponentRequestBus::Handler
-        * Required Interface
-        */
+         * AudioProxyComponentRequestBus::Handler
+         * Required Interface
+         */
         bool ExecuteSourceTrigger(
             const Audio::TAudioControlID triggerID,
             const Audio::SAudioCallBackInfos& callbackInfo,
@@ -60,7 +60,8 @@ namespace LmbrCentral
         bool ExecuteTrigger(
             const Audio::TAudioControlID triggerID,
             const Audio::SAudioCallBackInfos& callbackInfo
-            ) override;
+        ) override;
+
         void KillTrigger(const Audio::TAudioControlID triggerID) override;
         void KillAllTriggers() override;
 
@@ -78,6 +79,8 @@ namespace LmbrCentral
         void SetObstructionCalcType(const Audio::EAudioObjectObstructionCalcType type) override;
 
         void SetPosition(const Audio::SATLWorldPosition& position) override;
+
+        void SetMultiplePositions(const Audio::MultiPositionParams& params) override;
 
     protected:
         static void GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided)

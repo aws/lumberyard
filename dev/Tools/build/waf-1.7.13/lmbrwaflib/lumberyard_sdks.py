@@ -14,23 +14,14 @@ from waflib.Configure import conf, Logs
 from waflib.Tools.ccroot import lib_patterns, SYSTEM_LIB_PATHS
 from waflib import Node, Utils, Errors
 from waflib.Build import BuildContext
-from waf_branch_spec import PLATFORMS
 from utils import fast_copy2, should_overwrite_file
 import stat
 import os
 
 
-def is_win_x64_platform(ctx):
-    platform = ctx.env['PLATFORM'].lower()
-    return ('win_x64' in platform) and (platform in PLATFORMS['win32'])
-
-def is_darwin_x64_platform(ctx):
-    platform = ctx.env['PLATFORM'].lower()
-    return ('darwin_x64' in platform) and (platform in PLATFORMS['darwin'])
-
 
 def use_windows_dll_semantics(ctx):
-    if is_win_x64_platform(ctx):
+    if ctx.is_windows_platform():
         return True
     platform = ctx.env['PLATFORM'].lower()
     return False
@@ -45,22 +36,26 @@ def get_shared_suffix():
 
 
 def should_link_aws_native_sdk_statically(bld):
-    platform = bld.env['PLATFORM']
-    configuration = bld.env['CONFIGURATION']
 
-    if ((platform != 'project_generator' and bld.is_variant_monolithic(platform, configuration)) or
-        any(substring in platform for substring in [
-            'ios',
-            'linux',
-            'android',
-        ])):
+    platform, configuration = bld.get_platform_and_configuration()
+    
+    # Only target platforms are eligible for this check
+    if bld.is_target_platform(platform):
+        return False
+    
+    # Monolithic builds must link statically
+    if bld.is_build_monolithic(platform, configuration):
+        return False
+
+    if bld.check_platform_explicit_boolean_attribute(platform, 'link_aws_sdk_statically'):
         return True
+    
     return False
 
 
 def get_dynamic_lib_extension(bld):
     platform = bld.env['PLATFORM']
-    if any(substring in platform for substring in ['darwin', 'ios', 'appletv']):
+    if bld.is_apple_platform(platform):
         return '.dylib'
     elif any(substring in platform for substring in ['linux', 'android']):
         return '.so'
@@ -69,15 +64,9 @@ def get_dynamic_lib_extension(bld):
 
 def get_platform_lib_prefix(bld):
     platform = bld.env['PLATFORM']
-    if any(substring in platform for substring in [
-        'darwin',
-	'ios',
-	'appletv',
-	'linux',
-	'android',
-    ]):
-        return 'lib'
-    return ''
+    platform_details = bld.get_target_platform_detail(platform)
+    lib_prefix = platform_details.attributes.get('lib_prefix','')
+    return lib_prefix
 
 
 def aws_native_sdk_platforms(bld):
@@ -302,11 +291,12 @@ def BuildPlatformLibraryDirectory(bld, forceStaticLinking):
         platformDir = 'windows/intel64'
         compilerDir = None
 
-        if bld.env['MSVC_VERSION'] == 15:
+        msvcVersion = bld.env['MSVC_VERSION']
+        if msvcVersion == 15:
             compilerDir = 'vs2017'
-        elif bld.env['MSVC_VERSION'] == 14:
+        elif msvcVersion == 14:
             compilerDir = 'vs2015'
-        elif bld.env['MSVC_VERSION'] == 12:
+        elif msvcVersion == 12:
             compilerDir = 'vs2013'
 
         if compilerDir != None:

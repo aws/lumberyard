@@ -35,6 +35,19 @@ namespace ScriptCanvas
 
         RuntimeAssetHandler(AZ::SerializeContext* context = nullptr);
         ~RuntimeAssetHandler() override;
+        
+        // AZ::AssetTypeInfoBus
+        AZ::Data::AssetType GetAssetType() const override;
+        const char* GetAssetTypeDisplayName() const override;
+
+        const char* GetGroup() const override;
+        const char* GetBrowserIcon() const override;
+        AZ::Uuid GetComponentTypeId() const override;
+
+        void GetAssetTypeExtensions(AZStd::vector<AZStd::string>& extensions) override;
+
+        bool CanCreateComponent(const AZ::Data::AssetId& /*assetId*/) const override;
+        ////
 
         // Called by the asset database to create a new asset. No loading should during this call
         AZ::Data::AssetPtr CreateAsset(const AZ::Data::AssetId& id, const AZ::Data::AssetType& type) override;
@@ -51,15 +64,6 @@ namespace ScriptCanvas
 
         // Called by asset database on registration.
         void GetHandledAssetTypes(AZStd::vector<AZ::Data::AssetType>& assetTypes) override;
-
-        // Provides editor with information about script canvas graph assets.
-        AZ::Data::AssetType GetAssetType() const override;
-        void GetAssetTypeExtensions(AZStd::vector<AZStd::string>& extensions) override;
-        const char* GetAssetTypeDisplayName() const override;
-
-        const char* GetGroup() const override;
-        const char* GetBrowserIcon() const override;
-        AZ::Uuid GetComponentTypeId() const override;
 
         AZ::SerializeContext* GetSerializeContext() const;
         void SetSerializeContext(AZ::SerializeContext* context);

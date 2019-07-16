@@ -95,7 +95,7 @@ bool CBreakableGlassRenderNode::InitialiseNode(const SBreakableGlassInitParams& 
 {
     // Store param data
     SetMaterial(params.pGlassMaterial);
-    memcpy(&m_glassParams, &params, sizeof(SBreakableGlassInitParams));
+    m_glassParams = params;
 
     // Create glass element
     if (m_pBreakableGlassRE = static_cast<CREBreakableGlass*>(gEnv->pRenderer->EF_CreateRE(eDATA_BreakableGlass)))
@@ -141,7 +141,7 @@ void CBreakableGlassRenderNode::ReleaseNode(bool bImmediate)
     }
 
     // Release glass data
-    SAFE_RELEASE(m_glassParams.pGlassMaterial);
+    m_glassParams.pGlassMaterial = nullptr;
 
     if (m_pBreakableGlassRE)
     {
@@ -800,17 +800,10 @@ void CBreakableGlassRenderNode::SetMaterial(_smart_ptr<IMaterial> pMaterial)
         return;
     }
 
-    if (m_glassParams.pGlassMaterial)
-    {
-        m_glassParams.pGlassMaterial->Release();
-    }
-
     m_glassParams.pGlassMaterial = pMaterial;
 
     if (m_glassParams.pGlassMaterial)
     {
-        m_glassParams.pGlassMaterial->AddRef();
-
         // Extract glass tint colour parameters
         const SShaderItem& shaderItem = pMaterial->GetShaderItem();
         float tintCloudiness = 0.0f;

@@ -56,14 +56,12 @@ namespace LmbrCentral
         }
     }
 
-    /**
-     * Dynamic edit data provider function.  We use this to dynamically override the edit context for each element in the SplineAttribute.
-     * This enables components to set component-specific ranges and UI controls.
-     * handlerPtr: pointer to the object whose edit data registered the handler (i.e. the class instance pointer)
-     * elementPtr: pointer to the sub-member of handlePtr that we are querying edit data for (i.e. the member variable)
-     * elementType: uuid of the specific class type of the elementPtr
-     * The function can either return a pointer to the ElementData to use, or nullptr to use the default one.
-     */
+    /// Dynamic edit data provider function.  We use this to dynamically override the edit context for each element in the SplineAttribute.
+    /// This enables components to set component-specific ranges and UI controls.
+    /// handlerPtr: pointer to the object whose edit data registered the handler (i.e. the class instance pointer)
+    /// elementPtr: pointer to the sub-member of handlePtr that we are querying edit data for (i.e. the member variable)
+    /// elementType: uuid of the specific class type of the elementPtr
+    /// The function can either return a pointer to the ElementData to use, or nullptr to use the default one.
     template<typename AttributeType>
     const AZ::Edit::ElementData* SplineAttribute<AttributeType>::GetElementDynamicEditData(const void* handlerPtr, const void* elementPtr, const AZ::Uuid& elementType)
     {
@@ -129,10 +127,14 @@ namespace LmbrCentral
     template<typename AttributeType>
     AttributeType SplineAttribute<AttributeType>::GetElementInterpolated(size_t index, float fraction, Interpolator interpolator) const
     {
-        if (m_elements.size() > 0 && index < m_elements.size() - 1)
+        if (m_elements.size() > 0)
         {
-            return interpolator(m_elements[index], m_elements[index + 1], fraction);
+            size_t indexWrapped = index % m_elements.size();
+            size_t nextIndexWrapped = (index + 1) % m_elements.size();
+
+            return interpolator(m_elements[indexWrapped], m_elements[nextIndexWrapped], fraction);
         }
+
         return SplineAttributeUtil::CreateElement<AttributeType>();
     }
 
@@ -187,5 +189,4 @@ namespace LmbrCentral
     {
         m_elementEditData = elementData;
     }
-
-}
+} // namespace LmbrCentral

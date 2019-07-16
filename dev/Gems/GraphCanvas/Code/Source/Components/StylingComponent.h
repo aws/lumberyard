@@ -100,7 +100,7 @@ namespace GraphCanvas
 
         // SceneMemberNotificationBus
         void OnSceneSet(const AZ::EntityId& scene) override;
-        void OnSceneCleared(const AZ::EntityId& scene) override;
+        void OnRemovedFromScene(const AZ::EntityId& scene) override;
         ////
 
         // SceneNotificationBus

@@ -21,5 +21,7 @@ def build(bld):
         copyright_org   = 'Amazon-CryTek',
         file_list       = 'editoraudiocontrolseditorcommon.waf_files',
         platforms       = ['win', 'darwin'],
-        configurations  = ['debug', 'profile'],
+        configurations  = ['all'],
+        exclude_monolithic  = True,
+        client_only     = True
     )

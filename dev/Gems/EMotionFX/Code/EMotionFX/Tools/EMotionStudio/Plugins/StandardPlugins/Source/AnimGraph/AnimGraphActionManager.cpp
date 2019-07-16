@@ -43,15 +43,15 @@ namespace EMStudio
 
     void AnimGraphActionManager::ShowNodeColorPicker(EMotionFX::AnimGraphNode* animGraphNode)
     {
-        const uint32 color = animGraphNode->GetVisualizeColor();
-        const uint32 originalColor = color;
-        const QColor initialColor(MCore::ExtractRed(color), MCore::ExtractGreen(color), MCore::ExtractBlue(color));
+        const AZ::Color color = animGraphNode->GetVisualizeColor();
+        const AZ::Color originalColor = color;
+        QColor initialColor;
+        initialColor.setRgbF(color.GetR(), color.GetG(), color.GetB(), color.GetA());
 
         QColorDialog dialog(initialColor);
-
         auto changeNodeColor = [animGraphNode](const QColor& color)
         {
-            const uint32 newColor = MCore::RGBA(color.red(), color.green(), color.blue());
+            const AZ::Color newColor(color.red()/255.0f, color.green()/255.0f, color.blue()/255.0f, 1.0f);
             animGraphNode->SetVisualizeColor(newColor);
         };
 

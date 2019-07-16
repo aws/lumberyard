@@ -22,11 +22,6 @@
 
 #include "ShapeGeometryUtil.h"
 
-namespace AzFramework
-{
-    class EntityDebugDisplayRequests;
-}
-
 namespace LmbrCentral
 {
     class TubeShape
@@ -54,8 +49,9 @@ namespace LmbrCentral
         // TubeShapeComponentRequestsBus
         void SetRadius(float radius) override;
         float GetRadius() const override;
-        float GetVariableRadius(int index) const override;
-        void SetVariableRadius(int index, float radius) override;
+        float GetVariableRadius(int vertIndex) const override;
+        void SetVariableRadius(int vertIndex, float radius) override;
+        void SetAllVariableRadii(float radius) override;
         float GetTotalRadius(const AZ::SplineAddress& address) const override;
         const SplineAttribute<float>& GetRadiusAttribute() const override;
 
@@ -69,6 +65,12 @@ namespace LmbrCentral
         // SplineComponentNotificationBus
         void OnSplineChanged() override;
 
+        // Helpers to ensure that a negative radius cannot be set
+        void BaseRadiusChanged();
+        void VariableRadiusChanged(size_t vertIndex);
+        void ValidateAllVariableRadii();
+        void ValidateVariableRadius(size_t vertIndex);
+
         AZ::SplinePtr m_spline; ///< Spline pointer.
         SplineAttribute<float> m_variableRadius; ///< Variable radius defined at each spline point.
         AZ::Transform m_currentTransform; ///< Caches the current World transform.
@@ -76,17 +78,13 @@ namespace LmbrCentral
         float m_radius = 1.f; ///< Radius of the tube.
     };
 
-    /**
-     * Generates a Tube mesh with filled surface and outlines.
-     */
+    /// Generates a Tube mesh with filled surface and outlines.
     void GenerateTubeMesh(
         const AZ::SplinePtr& spline, const SplineAttribute<float>& variableRadius,
         float radius, AZ::u32 capSegments, AZ::u32 sides, AZStd::vector<AZ::Vector3>& vertexBufferOut,
         AZStd::vector<AZ::u32>& indexBufferOut, AZStd::vector<AZ::Vector3>& lineBufferOut);
 
-    /**
-     * Configuration for how TubeShape debug drawing should appear (tesselation parameters etc).
-     */
+    /// Configuration for how TubeShape debug drawing should appear (tesselation parameters etc).
     struct TubeShapeMeshConfig
     {
         AZ_CLASS_ALLOCATOR(TubeShapeMeshConfig, AZ::SystemAllocator, 0)
@@ -99,5 +97,7 @@ namespace LmbrCentral
 
         AZ::u32 m_endSegments = 9; ///< The number of endcap segments displayed in the editor.
         AZ::u32 m_sides = 32; ///< The number of sides of the tube displayed in the editor.
+
+        ShapeComponentConfig m_shapeComponentConfig;
     };
 } // namespace LmbrCentral

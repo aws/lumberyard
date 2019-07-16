@@ -206,7 +206,10 @@ namespace AzToolsFramework
 
             if (m_isSelected)
             {
-                selectedEntities.push_back(m_entityID);
+                if (AZStd::find(selectedEntities.begin(), selectedEntities.end(), m_entityID) == selectedEntities.end())
+                {
+                    selectedEntities.push_back(m_entityID);
+                }
             }
 
             EntityStateCommandNotificationBus::Event(m_entityID, &EntityStateCommandNotificationBus::Events::PostRestore, entity);

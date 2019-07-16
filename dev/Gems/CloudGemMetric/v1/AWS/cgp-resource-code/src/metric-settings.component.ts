@@ -238,6 +238,15 @@ import { ToastsManager } from 'ng2-toastr/ng2-toastr';
                             <tooltip placement="right" tooltip="Longitude/Latitude is considered personally identifiable information in some countries and is against the law. It is disabled by default."> </tooltip>
                         </div>
                         <div class="form-group row">
+                            <label class="col-lg-3"> Save Detailed Event Information </label>
+                            <div class="slider-container">
+                                <div class="col-2">
+                                    <dropdown [options]="booleanOptions" (dropdownChanged)="updateWriteDetailedCloudWatchEvents($event)" [currentOption]="{text:writeDetailedCloudWatchEvents}" name="dropdown" ></dropdown>
+                                </div>                                
+                            </div>
+                            <tooltip placement="right" tooltip="Set the value to True to have detailed counts of the types of events created in AWS CloudWatch.  Mainly used for creating CloudWatch Alarms."> </tooltip>
+                        </div>
+                        <div class="form-group row">
                             <button class="btn l-primary btn-primary" type="submit">
                                 Update Settings
                             </button>
@@ -304,6 +313,7 @@ export class MetricSettingsComponent implements OnInit {
     private crawlerStatus: string = "initializing"        
     private booleanOptions = [{ text: "False" }, { text: "True" }]
     private writeLongLat = "False"
+    private writeDetailedCloudWatchEvents = "False"
     private _crawlerName: string
     private _statusTimeout : any    
 
@@ -350,11 +360,12 @@ export class MetricSettingsComponent implements OnInit {
                 file_max_metrics_to_send_in_batch_in_mb: [settings.file_max_metrics_to_send_in_batch_in_mb, Validators.required],
                 file_send_metrics_interval_in_seconds: [settings.file_send_metrics_interval_in_seconds, Validators.required],
                 file_max_size_in_mb: [settings.file_max_size_in_mb, Validators.required],
-                file_threshold_to_prioritize_in_perc: [settings.file_threshold_to_prioritize_in_perc, Validators.required],
+                file_threshold_to_prioritize_in_perc: [settings.file_threshold_to_prioritize_in_perc, Validators.required],                
                 frequency_to_check_to_spawn: [settings.frequency_to_check_to_spawn, Validators.required],                 
                 frequency_to_check_sqs_state: [settings.frequency_to_check_sqs_state, Validators.required]
             });
             this.writeLongLat = settings.write_long_lat
+            this.writeDetailedCloudWatchEvents = settings.write_detailed_cloudwatch_event
             this.isLoadingSettings = false;
         })
     }
@@ -364,6 +375,7 @@ export class MetricSettingsComponent implements OnInit {
         let settingsObj = this.settingsForm.value;
         settingsObj.growth_rate_trigger = (settingsObj.growth_rate_trigger_percent / 100).toString();
         settingsObj.write_long_lat = this.writeLongLat
+        settingsObj.write_detailed_cloudwatch_event = this.writeDetailedCloudWatchEvents
         delete settingsObj.growth_rate_trigger_percent;
         this._apiHandler.updateSettings(settingsObj).subscribe(() => {
             this.toastr.success("The settings have been updated successfully.");
@@ -398,5 +410,9 @@ export class MetricSettingsComponent implements OnInit {
 
     updateWriteLongLat = (val) => {        
         this.writeLongLat = val.text        
+    }
+
+    updateWriteDetailedCloudWatchEvents = (val) => {
+        this.writeDetailedCloudWatchEvents = val.text
     }
 }

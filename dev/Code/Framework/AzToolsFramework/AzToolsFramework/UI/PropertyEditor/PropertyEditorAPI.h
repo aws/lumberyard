@@ -155,6 +155,7 @@ namespace AzToolsFramework
     public:
         virtual void WriteGUIValuesIntoProperty(size_t index, WidgetType* GUI, void* value, const AZ::Uuid& propertyType)
         {
+            (void)index;
             (void)GUI;
             (void)value;
             (void)propertyType;
@@ -163,6 +164,7 @@ namespace AzToolsFramework
         virtual bool ReadValueIntoGUI(size_t index, WidgetType* GUI, void* value, const AZ::Uuid& propertyType)
         {
             (void)index;
+            (void)GUI;
             (void)value;
             (void)propertyType;
             return false;
@@ -176,6 +178,7 @@ namespace AzToolsFramework
     protected:
         virtual bool HandlesType(const AZ::Uuid& id) const override
         {
+            (void)id;
             return true;
         }
 
@@ -294,6 +297,22 @@ namespace AzToolsFramework
     };
 
     using PropertyEditorEntityChangeNotificationBus = AZ::EBus<PropertyEditorEntityChangeNotifications>;
+
+    /**
+     * Event bus for notifying property changes on a specific component.
+     */
+    class PropertyEditorChangeNotifications
+        : public AZ::EBusTraits
+    {
+    public:
+        /// Fired when property data is changed on a component.
+        /// The event is only fired once per component change, even with a multiple selection.
+        /// \param componentType - The type of component which was modified.
+        virtual void OnComponentPropertyChanged(AZ::Uuid /*componentType*/) {}
+    };
+
+    /// Type to inherit to implement PropertyEditorChangeNotifications
+    using PropertyEditorChangeNotificationBus = AZ::EBus<PropertyEditorChangeNotifications>;
 
     /**
      * Describes a field/node's visibility with editor UIs, for consistency across tools

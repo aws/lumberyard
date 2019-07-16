@@ -20,8 +20,6 @@ import sys
 from waflib.Configure import conf
 from waflib import Logs
 from cry_utils import compare_config_sets
-from msvs import convert_waf_platform_to_vs_platform, convert_waf_configuration_to_vs_configuration
-from cStringIO import StringIO
 
 ###############################################################################
 def _set_override(override_options_map, node_name, node_value, env, proj_path):
@@ -138,8 +136,11 @@ def get_element_value(line):
 
 ###############################################################################
 # Extract per project overrides from .vcxproj file (apply to all project items)
-def _get_project_overrides(ctx, target):    
-    
+def _get_project_overrides(ctx, target):
+
+    if not getattr(ctx, 'is_build_cmd', False):
+        return {}, {}
+
     if ctx.cmd == 'configure' or ctx.env['PLATFORM'] == 'project_generator':
         return ({}, {})
                 
@@ -166,10 +167,12 @@ def _get_project_overrides(ctx, target):
     
     project_options_overrides = ctx.project_options_overrides[target]
     project_file_options_overrides = ctx.project_file_options_overrides[target]
-        
+
     vs_spec = ctx.convert_waf_spec_to_vs_spec(ctx.options.project_spec)
-    vs_platform = convert_waf_platform_to_vs_platform(ctx.env['PLATFORM'])
-    vs_configuration = convert_waf_configuration_to_vs_configuration(ctx.env['CONFIGURATION'])
+
+    target_platform_details = ctx.get_platform_attribute(ctx.target_platform, 'msvs')
+    vs_platform = target_platform_details['toolset_name']
+    vs_configuration = ctx.target_configuration
     vs_valid_spec_for_build = '[%s] %s|%s' % (vs_spec, vs_configuration, vs_platform)
  
     vcxproj_file =  (ctx.get_project_output_folder(ctx.options.msvs_version).make_node('%s%s'%(target,'.vcxproj'))).abspath()
@@ -380,7 +383,7 @@ def apply_project_compiler_overrides_msvc(self):
 @conf
 def get_solution_overrides(self):
 
-    if self.cmd == 'configure' or self.env['PLATFORM'] == 'project_generator':
+    if not getattr(self, 'is_build_cmd', False):
         return {}
 
     # Only perform on VS executed builds
@@ -403,11 +406,14 @@ def get_solution_overrides(self):
         return {}
         
     ret_vs_project_override = {}
+
     vs_spec = self.convert_waf_spec_to_vs_spec(self.options.project_spec)
-    vs_platform = convert_waf_platform_to_vs_platform(self.env['PLATFORM'])
-    vs_configuration = convert_waf_configuration_to_vs_configuration(self.env['CONFIGURATION'])
+
+    target_platform_details = self.get_platform_attribute(self.target_platform, 'msvs')
+    vs_platform = target_platform_details['toolset_name']
+    vs_configuration = self.target_configuration
     
-    vs_build_configuration = '[%s] %s|%s' % (vs_spec, vs_configuration, vs_platform) # Example: [MyProject] Debug|x64    
+    vs_build_configuration = '[%s] %s|%s' % (vs_spec, vs_configuration, vs_platform.split()[0]) # Example: [MyProject] Debug|x64
     vs_project_identifier = 'Project("{8BC9CEB8' # full project id ... Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}")
     
     # Iterate over all basic project  information
@@ -475,9 +481,8 @@ def get_solution_overrides(self):
             # Get WAF configuration from VS project configuration e.g. [MyProject] Debug|x64 -> debug
             vs_project_configuration_end = vs_project_override_configuation.rfind('|')
             vs_project_configuration_start = vs_project_override_configuation.rfind(']', 0, vs_project_configuration_end) + 2
-            vs_project_configuration = vs_project_override_configuation[vs_project_configuration_start : vs_project_configuration_end]
-            waf_configuration = self.convert_vs_configuration_to_waf_configuration(vs_project_configuration)
-            
+            waf_configuration = vs_project_override_configuation[vs_project_configuration_start : vs_project_configuration_end]
+
             # Store override
             ret_vs_project_override[project_name] = waf_configuration
             Logs.info("MSVS: User has selected %s for %s in visual studio.  Overriding for this build." % (waf_configuration, project_name))

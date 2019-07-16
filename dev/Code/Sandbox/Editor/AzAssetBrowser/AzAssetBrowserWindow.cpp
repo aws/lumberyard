@@ -22,7 +22,39 @@
 #include <AzToolsFramework/AssetBrowser/AssetBrowserModel.h>
 #include <AzToolsFramework/AssetBrowser/AssetBrowserBus.h>
 #include <AzToolsFramework/AssetBrowser/AssetBrowserEntry.h>
-#include <AzToolsFramework/AssetBrowser/Search/SearchParametersWidget.h>
+
+#include <AzToolsFramework/API/ToolsApplicationAPI.h>
+#include <AzQtComponents/Utilities/QtWindowUtilities.h>
+
+class ListenerForShowAssetEditorEvent
+    : public QObject
+    , private AzToolsFramework::EditorEvents::Bus::Handler
+{
+public:
+    ListenerForShowAssetEditorEvent(QObject* parent = nullptr)
+        : QObject(parent)
+    {
+        AzToolsFramework::EditorEvents::Bus::Handler::BusConnect();
+    }
+
+    ~ListenerForShowAssetEditorEvent()
+    {
+        AzToolsFramework::EditorEvents::Bus::Handler::BusDisconnect();
+    }
+
+    void SelectAsset(const QString& assetPath) override
+    {
+        AzToolsFramework::OpenViewPane(LyViewPane::AssetBrowser);
+
+        AzAssetBrowserWindow* assetBrowser = AzToolsFramework::GetViewPaneWidget<AzAssetBrowserWindow>(LyViewPane::AssetBrowser);
+        if (assetBrowser)
+        {
+            AzQtComponents::bringWindowToTop(assetBrowser);
+
+            assetBrowser->SelectAsset(assetPath);
+        }
+    }
+};
 
 AzAssetBrowserWindow::AzAssetBrowserWindow(QWidget* parent)
     : QWidget(parent)
@@ -41,18 +73,6 @@ AzAssetBrowserWindow::AzAssetBrowserWindow(QWidget* parent)
     m_ui->m_assetBrowserTreeViewWidget->setModel(m_filterModel.data());
     m_ui->m_assetBrowserTreeViewWidget->SetThumbnailContext("AssetBrowser");
 
-    // set up search parameters widget
-    auto& filters = m_ui->m_searchWidget->GetFilter()->GetSubFilters();
-    auto it = AZStd::find_if(filters.begin(), filters.end(),
-            [](FilterConstType filter)
-            {
-                return filter->GetTag() == "AssetTypes";
-            });
-    if (it != filters.end())
-    {
-        m_ui->m_searchParametersWidget->SetFilter(*it);
-    }
-
     connect(m_ui->m_searchWidget->GetFilter().data(), &AssetBrowserEntryFilter::updatedSignal,
         m_filterModel.data(), &AssetBrowserFilterModel::filterUpdatedSlot);
     connect(m_filterModel.data(), &AssetBrowserFilterModel::filterChanged, this, [this]()
@@ -63,8 +83,6 @@ AzAssetBrowserWindow::AzAssetBrowserWindow(QWidget* parent)
     });
     connect(m_ui->m_assetBrowserTreeViewWidget, &AssetBrowserTreeView::selectionChangedSignal,
         this, &AzAssetBrowserWindow::SelectionChangedSlot);
-    connect(m_ui->m_searchParametersWidget, &SearchParametersWidget::ClearAllSignal, this,
-        [=]() { m_ui->m_searchWidget->ClearAssetTypeFilter(); });
     connect(m_ui->m_assetBrowserTreeViewWidget, &QAbstractItemView::doubleClicked, this, &AzAssetBrowserWindow::DoubleClickedItem);
 
     connect(m_ui->m_assetBrowserTreeViewWidget, &AssetBrowserTreeView::ClearStringFilter, m_ui->m_searchWidget, &SearchWidget::ClearStringFilter);
@@ -84,6 +102,14 @@ void AzAssetBrowserWindow::RegisterViewClass()
     AzToolsFramework::RegisterViewPane<AzAssetBrowserWindow>(LyViewPane::AssetBrowser, LyViewPane::CategoryTools, options);
 }
 
+QObject* AzAssetBrowserWindow::createListenerForShowAssetEditorEvent(QObject* parent)
+{
+    auto* listener = new ListenerForShowAssetEditorEvent(parent);
+
+    // the listener is attached to the parent and will get cleaned up then
+    return listener;
+}
+
 void AzAssetBrowserWindow::UpdatePreview() const
 {
     auto selectedAssets = m_ui->m_assetBrowserTreeViewWidget->GetSelectedAssets();
@@ -93,6 +119,55 @@ void AzAssetBrowserWindow::UpdatePreview() const
         return;
     }
     m_ui->m_previewWidget->Display(selectedAssets.front());
+}
+
+static void ExpandTreeToIndex(QTreeView* treeView, const QModelIndex& index)
+{
+    treeView->collapseAll();
+
+    // Note that we deliberately don't expand the index passed in
+
+    // collapseAll above will close all but the top level nodes.
+    // treeView->expand(index) marks a node as expanded, but if it's parent isn't expanded,
+    // there won't be any paint updates because it doesn't expand parent nodes.
+    // So, to minimize paint updates, we expand everything in reverse order (leaf up to root), so that
+    // painting will only actually occur once the top level parent is expanded.
+    QModelIndex parentIndex = index.parent();
+    while (parentIndex.isValid())
+    {
+        treeView->expand(parentIndex);
+        parentIndex = parentIndex.parent();
+    }
+}
+
+void AzAssetBrowserWindow::SelectAsset(const QString& assetPath)
+{
+    using namespace AzToolsFramework::AssetBrowser;
+
+    QModelIndex index = m_assetBrowserModel->findIndex(assetPath);
+    if (index.isValid())
+    {
+        m_ui->m_searchWidget->ClearTextFilter();
+        m_ui->m_searchWidget->ClearTypeFilter();
+
+        // Queue the expand and select stuff, so that it doesn't get processed the same
+        // update as the search widget clearing - something with the search widget clearing
+        // interferes with the update from the select and expand, and if you don't
+        // queue it, the tree doesn't expand reliably.
+
+        QTimer::singleShot(0, this, [this, filteredIndex = index] {
+            // the treeview has a filter model so we have to backwards go from that
+            QModelIndex index = m_filterModel->mapFromSource(filteredIndex);
+
+            QTreeView* treeView = m_ui->m_assetBrowserTreeViewWidget;
+            ExpandTreeToIndex(treeView, index);
+
+            treeView->scrollTo(index);
+            treeView->setCurrentIndex(index);
+
+            treeView->selectionModel()->select(index, QItemSelectionModel::ClearAndSelect);
+        });
+    }
 }
 
 void AzAssetBrowserWindow::SelectionChangedSlot(const QItemSelection& /*selected*/, const QItemSelection& /*deselected*/) const

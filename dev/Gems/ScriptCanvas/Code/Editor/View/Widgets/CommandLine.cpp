@@ -93,9 +93,9 @@ namespace
             const AZ::SerializeContext::ClassData* classData = serializeContext->FindClassData(type);
             AZ_Assert(classData, "Failed to find ClassData for ID: %s", type.ToString<AZStd::string>().data());
 
-            Nodes::StyleConfiguration styleConfiguration;
+            ScriptCanvasEditor::Nodes::StyleConfiguration styleConfiguration;
 
-            NodeIdPair nodePair = Nodes::CreateNode(type, scriptCanvasGraphId, styleConfiguration);
+            NodeIdPair nodePair = ScriptCanvasEditor::Nodes::CreateNode(type, scriptCanvasGraphId, styleConfiguration);
             GraphCanvas::SceneRequestBus::Event(graphCanvasGraphId, &GraphCanvas::SceneRequests::AddNode, nodePair.m_graphCanvasId, pos);
 
             // The next position to create a node at.

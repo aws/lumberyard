@@ -15,8 +15,11 @@
 
 #include <GraphCanvas/Components/Nodes/NodeBus.h>
 
+#include <ScriptCanvas/GraphCanvas/NodeDescriptorBus.h>
+
 #include <Editor/GraphCanvas/Components/DynamicSlotComponent.h>
 #include <Editor/Nodes/NodeUtils.h>
+#include <Editor/Include/ScriptCanvas/GraphCanvas/MappingBus.h>
 
 namespace ScriptCanvasEditor
 {
@@ -39,11 +42,13 @@ namespace ScriptCanvasEditor
 
     DynamicSlotComponent::DynamicSlotComponent()
         : m_slotGroup(GraphCanvas::SlotGroups::Invalid)
+        , m_queueUpdates(false)
     {
     }
 
     DynamicSlotComponent::DynamicSlotComponent(GraphCanvas::SlotGroup slotGroup)
         : m_slotGroup(slotGroup)
+        , m_queueUpdates(false)
     {
     }
 
@@ -54,6 +59,7 @@ namespace ScriptCanvasEditor
     void DynamicSlotComponent::Activate()
     {
         GraphCanvas::SceneMemberNotificationBus::Handler::BusConnect(GetEntityId());
+        DynamicSlotRequestBus::Handler::BusConnect(GetEntityId());
     }
 
     void DynamicSlotComponent::Deactivate()
@@ -63,34 +69,47 @@ namespace ScriptCanvasEditor
 
     void DynamicSlotComponent::OnSceneSet(const AZ::EntityId&)
     {
-        AZStd::any* userData = nullptr;
-        GraphCanvas::NodeRequestBus::EventResult(userData, GetEntityId(), &GraphCanvas::NodeRequests::GetUserData);
-
-        if (userData)
-        {
-            AZ::EntityId* entityId = AZStd::any_cast<AZ::EntityId>(userData);
-
-            if (entityId)
-            {
-                ScriptCanvas::NodeNotificationsBus::Handler::BusConnect((*entityId));
-            }
-        }
-
+        OnUserDataChanged();
         GraphCanvas::SceneMemberNotificationBus::Handler::BusDisconnect();
     }
 
     void DynamicSlotComponent::OnSlotAdded(const ScriptCanvas::SlotId& slotId)
     {
+        // For EBuses we need to be a little tricky. Since we are going to be pointing at a single node from
+        // multiple graph canvas nodes. So we want to convert the script canvas id into a graph canvas id
+        //
+        // Then check to see if we are the correct node for that particular event.
         const AZ::EntityId* scriptCanvasNodeId = ScriptCanvas::NodeNotificationsBus::GetCurrentBusId();
 
-        const ScriptCanvas::Slot* slot = nullptr;
-        ScriptCanvas::NodeRequestBus::EventResult(slot, (*scriptCanvasNodeId), &ScriptCanvas::NodeRequests::GetSlot, slotId);
+        if (scriptCanvasNodeId == nullptr)
+        {
+            return;
+        }
 
-        Nodes::DisplayScriptCanvasSlot(GetEntityId(), (*slot), m_slotGroup);
+        ScriptCanvas::Endpoint endpoint((*scriptCanvasNodeId), slotId);
+
+        if (m_queueUpdates)
+        {
+            m_queuedEndpoints.insert(endpoint);
+            return;
+        }
+
+        HandleSlotAdded(endpoint);
     }
 
     void DynamicSlotComponent::OnSlotRemoved(const ScriptCanvas::SlotId& slotId)
     {
+        if (m_queueUpdates)
+        {
+            const AZ::EntityId* scriptCanvasNodeId = ScriptCanvas::NodeNotificationsBus::GetCurrentBusId();
+
+            if (scriptCanvasNodeId)
+            {
+                ScriptCanvas::Endpoint endpoint((*scriptCanvasNodeId), slotId);
+                m_queuedEndpoints.erase(endpoint);
+            }
+        }
+
         AZStd::vector< AZ::EntityId > slotIds;
         GraphCanvas::NodeRequestBus::EventResult(slotIds, GetEntityId(), &GraphCanvas::NodeRequests::GetSlotIds);
 
@@ -108,6 +127,76 @@ namespace ScriptCanvasEditor
                     GraphCanvas::NodeRequestBus::Event(GetEntityId(), &GraphCanvas::NodeRequests::RemoveSlot, entityId);
                 }
             }
+        }
+    }
+
+    void DynamicSlotComponent::OnUserDataChanged()
+    {
+        AZStd::any* userData = nullptr;
+        GraphCanvas::NodeRequestBus::EventResult(userData, GetEntityId(), &GraphCanvas::NodeRequests::GetUserData);
+
+        if (userData)
+        {
+            AZ::EntityId* entityId = AZStd::any_cast<AZ::EntityId>(userData);
+
+            if (entityId)
+            {
+                ScriptCanvas::NodeNotificationsBus::Handler::BusDisconnect();
+                ScriptCanvas::NodeNotificationsBus::Handler::BusConnect((*entityId));
+            }
+        }
+    }
+
+    void DynamicSlotComponent::StartQueueSlotUpdates()
+    {
+        if (!m_queueUpdates)
+        {
+            m_queueUpdates = true;
+
+            m_queuedEndpoints.clear();
+        }
+    }
+
+    void DynamicSlotComponent::StopQueueSlotUpdates()
+    {
+        if (m_queueUpdates)
+        {
+            m_queueUpdates = false;
+
+            for (auto endpoint : m_queuedEndpoints)
+            {
+                HandleSlotAdded(endpoint);
+            }
+
+            m_queuedEndpoints.clear();
+        }
+    }
+
+    void DynamicSlotComponent::HandleSlotAdded(const ScriptCanvas::Endpoint& endpoint)
+    {
+        AZ::EntityId graphCanvasNodeId;
+        SceneMemberMappingRequestBus::EventResult(graphCanvasNodeId, endpoint.GetNodeId(), &SceneMemberMappingRequests::GetGraphCanvasEntityId);
+
+        bool isEBusNode = false;
+        NodeDescriptorRequestBus::EventResult(isEBusNode, graphCanvasNodeId, &NodeDescriptorRequests::IsType, NodeDescriptorType::EBusHandler);
+
+        if (isEBusNode)
+        {
+            AZ::EntityId targetEventReceiverNode;
+            EBusHandlerNodeDescriptorRequestBus::EventResult(targetEventReceiverNode, graphCanvasNodeId, &EBusHandlerNodeDescriptorRequests::FindGraphCanvasNodeIdForSlot, endpoint.GetSlotId());
+
+            if (targetEventReceiverNode != GetEntityId())
+            {
+                return;
+            }
+        }
+
+        const ScriptCanvas::Slot* slot = nullptr;
+        ScriptCanvas::NodeRequestBus::EventResult(slot, endpoint.GetNodeId(), &ScriptCanvas::NodeRequests::GetSlot, endpoint.GetSlotId());
+
+        if (slot != nullptr)
+        {
+            Nodes::DisplayScriptCanvasSlot(GetEntityId(), (*slot), m_slotGroup);
         }
     }
 }

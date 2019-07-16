@@ -15,6 +15,7 @@ from cgf_utils import custom_resource_response
 
 
 from botocore.exceptions import ClientError
+from botocore.client import Config
 
 def handler(event, context):
     properties = event["ResourceProperties"]

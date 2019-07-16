@@ -85,8 +85,10 @@ namespace Camera
 
 
         //////////////////////////////////////////////////////////////////////////
-        // AzFramework::EntityDebugDisplayRequestBus::Handler
-        void DisplayEntity(bool& handled) override;
+        // AzFramework::DebugDisplayRequestBus::Handler
+        void DisplayEntityViewport(
+            const AzFramework::ViewportInfo& viewportInfo,
+            AzFramework::DebugDisplayRequests& debugDisplay) override;
         //////////////////////////////////////////////////////////////////////////
 
         //////////////////////////////////////////////////////////////////////////
@@ -106,7 +108,7 @@ namespace Camera
         //////////////////////////////////////////////////////////////////////////
     protected:
         void UpdateCamera();
-        void EditorDisplay(AzFramework::EntityDebugDisplayRequests& displayInterface, const AZ::Transform& world, bool& handled);
+        void EditorDisplay(AzFramework::DebugDisplayRequests& displayInterface, const AZ::Transform& world);
         AZ::Crc32 OnPossessCameraButtonClicked();
         AZStd::string GetCameraViewButtonText() const;
 

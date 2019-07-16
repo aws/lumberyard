@@ -329,13 +329,13 @@ public:
     bool IsHiddenBySpec() const;
     //! Returns true if object frozen.
     virtual bool IsFrozen() const;
-    //! Returns true if object is selected.
-    bool IsSelected() const { return CheckFlags(OBJFLAG_SELECTED); }
     //! Returns true if object is shared between missions.
     bool IsShared() const { return CheckFlags(OBJFLAG_SHARED); }
 
-    // Check if object potentially can be selected.
-    bool IsSelectable() const;
+    //! Returns true if object is selected.
+    virtual bool IsSelected() const { return CheckFlags(OBJFLAG_SELECTED); }
+    //! Returns true if object can be selected.
+    virtual bool IsSelectable() const;
 
     // Return texture icon.
     bool HaveTextureIcon() const { return m_nTextureIcon != 0; };
@@ -949,6 +949,9 @@ private:
     //! Number of reference to this object.
     //! When reference count reach zero, object will delete itself.
     int m_numRefs;
+
+    int m_nIconFlags;
+
     //////////////////////////////////////////////////////////////////////////
     //! Child animation nodes.
     Childs m_childs;
@@ -959,7 +962,6 @@ private:
     CMaterial* m_pMaterial;
 
     AABB m_worldBounds;
-    bool m_bInSelectionBox;
 
     // The transform delegate
     ITransformDelegate* m_pTransformDelegate;
@@ -974,11 +976,12 @@ private:
     mutable uint32 m_bMatrixInWorldSpace : 1;
     mutable uint32 m_bMatrixValid : 1;
     mutable uint32 m_bWorldBoxValid : 1;
+    uint32 m_bInSelectionBox : 1;
     uint32 m_nMaterialLayersMask : 8;
     uint32 m_nMinSpec : 8;
 
     Vec3 m_vDrawIconPos;
-    int m_nIconFlags;
+
     uint64 m_hideOrder;
 };
 

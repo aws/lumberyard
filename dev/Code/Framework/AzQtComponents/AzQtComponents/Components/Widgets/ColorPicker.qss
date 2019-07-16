@@ -31,6 +31,20 @@ AzQtComponents--ColorPicker QDoubleSpinBox
     padding-bottom: -2px;
 }
 
+AzQtComponents--ColorPicker QLineEdit,
+AzQtComponents--ColorPicker QSpinBox,
+AzQtComponents--ColorPicker QDoubleSpinBox
+{
+    border-width: 1px;
+    border-style: solid;
+    margin: 1px;
+}
+
+AzQtComponents--ColorPicker QLineEdit
+{
+    padding-left: 2px;
+}
+
 AzQtComponents--ColorPicker QToolButton
 {
     border: none;
@@ -61,12 +75,12 @@ AzQtComponents--ColorPicker QLabel
     margin: 0px;
 }
 
-AzQtComponents--PaletteCard AzQtComponents--CardHeader
+AzQtComponents--PaletteCardBase AzQtComponents--CardHeader
 {
     background-color: transparent;
 }
 
-AzQtComponents--PaletteCard AzQtComponents--CardHeader #Title
+AzQtComponents--PaletteCardBase AzQtComponents--CardHeader #Title
 {
     font-weight: normal;
 }
@@ -76,12 +90,12 @@ AzQtComponents--PaletteCard[modified="true"] AzQtComponents--CardHeader #Title
     color: #ffa500;
 }
 
-AzQtComponents--PaletteCard AzQtComponents--CardHeader #Expander:enabled:checked
+AzQtComponents--PaletteCardBase AzQtComponents--CardHeader #Expander:enabled:checked
 {
     image: url(:/ColorPickerDialog/PaletteCard/open.png);
 }
 
-AzQtComponents--PaletteCard AzQtComponents--CardHeader #Expander:enabled:!checked
+AzQtComponents--PaletteCardBase AzQtComponents--CardHeader #Expander:enabled:!checked
 {
     image: url(:/ColorPickerDialog/PaletteCard/closed.png);
 }
@@ -110,6 +124,11 @@ AzQtComponents--ColorPicker .HorizontalSeparator
     background: #222222;
 }
 
+AzQtComponents--ColorPicker .HorizontalSeparatorContainer
+{
+    background-color: transparent;
+}
+
 AzQtComponents--ColorPicker AzQtComponents--PaletteView
 {
     border: none;
@@ -117,7 +136,8 @@ AzQtComponents--ColorPicker AzQtComponents--PaletteView
 
 AzQtComponents--ColorGrid,
 AzQtComponents--ColorPreview,
-AzQtComponents--Swatch
+AzQtComponents--Swatch,
+AzQtComponents--ColorPicker #addColorButton
 {
     /* Note: Swatches will ignore any 'background*' property set here */
     border: 1px solid #333333;
@@ -128,4 +148,23 @@ AzQtComponents--Swatch:selected
 {
     /* Note: Swatches will ignore any 'background*' property set here */
     border: 2px solid #C8ABFF;
+}
+
+AzQtComponents--GradientSlider.HorizontalSlider
+{
+    qproperty-toolTipOffsetX: 0;
+    qproperty-toolTipOffsetY: -24;
+}
+
+AzQtComponents--HSLSliders AzQtComponents--GradientSlider.HorizontalSlider,
+AzQtComponents--HSVSliders AzQtComponents--GradientSlider.HorizontalSlider
+{
+    qproperty-toolTipOffsetX: 0;
+    qproperty-toolTipOffsetY: -40;
+}
+
+AzQtComponents--GradientSlider.VerticalSlider
+{
+    qproperty-toolTipOffsetX: 8;
+    qproperty-toolTipOffsetY: -24;
 }

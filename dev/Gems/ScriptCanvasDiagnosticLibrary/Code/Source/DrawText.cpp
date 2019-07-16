@@ -16,13 +16,11 @@
 #include <AzFramework/Entity/EntityDebugDisplayBus.h>
 #include <ScriptCanvas/Core/GraphBus.h>
 
-#if defined(SCRIPTCANVASDIAGNOSTICSLIBRARY_EDITOR)
 #include <CryCommon/platform.h>
 #include <CryCommon/Cry_Math.h>
 #include <CryCommon/Cry_Color.h>
 
 #include <CryCommon/IRenderer.h>
-#endif
 
 namespace ScriptCanvas
 {
@@ -35,9 +33,16 @@ namespace ScriptCanvas
                 if (slotId == GetSlotId("Show"))
                 {
                     ScriptCanvasDiagnostics::DebugDrawBus::Handler::BusConnect(GetEntityId());
+
+                    m_duration = DrawTextNodeProperty::GetDuration(this);
+                    if (m_duration > 0.f && !AZ::TickBus::Handler::BusIsConnected())
+                    {
+                        AZ::TickBus::Handler::BusConnect();
+                    }
                 }
                 else if (slotId == GetSlotId("Hide"))
                 {
+                    AZ::TickBus::Handler::BusDisconnect();
                     ScriptCanvasDiagnostics::DebugDrawBus::Handler::BusDisconnect();
                 }
 
@@ -45,11 +50,48 @@ namespace ScriptCanvas
 
             }
 
+            void DrawTextNode::OnInputChanged(const Datum&, const SlotId& slotId)
+            {
+                ScriptCanvas::SlotId textSlotId = DrawTextNodeProperty::GetTextSlotId(this);
+                if (slotId == textSlotId)
+                {
+                    m_text = DrawTextNodeProperty::GetText(this);
+                }
+            }
+
+            void DrawTextNode::OnTick(float deltaTime, AZ::ScriptTimePoint)
+            {
+                m_duration -= deltaTime;
+                if (m_duration <= 0.f)
+                {
+                    ScriptCanvasDiagnostics::DebugDrawBus::Handler::BusDisconnect();
+                    AZ::TickBus::Handler::BusDisconnect();
+                }
+            }
+
             void DrawTextNode::OnDebugDraw(IRenderer* renderer)
             {
-#if defined(SCRIPTCANVASDIAGNOSTICSLIBRARY_EDITOR)
-
                 if (!renderer)
+                {
+                    return;
+                }
+
+                if (m_text.empty())
+                {
+                    m_text = DrawTextNodeProperty::GetText(this);
+                }
+
+                if (m_text.empty())
+                {
+                    return;
+                }
+
+                bool editorOnly = DrawTextNodeProperty::GetEditorOnly(this);
+
+                bool isEditor = false;
+                ScriptCanvasDiagnostics::SystemRequestBus::BroadcastResult(isEditor, &ScriptCanvasDiagnostics::SystemRequests::IsEditor);
+
+                if (editorOnly && !isEditor)
                 {
                     return;
                 }
@@ -86,20 +128,7 @@ namespace ScriptCanvas
 
                 ti.flags |= DrawTextNodeProperty::GetCentered(this) ? eDrawText_Center | eDrawText_CenterV : 0;
 
-                ScriptCanvas::SlotId textSlotId = DrawTextNodeProperty::GetTextSlotId(this);
-                const Datum* input = GetInput(textSlotId);
-
-                AZStd::string text;
-                if (input && !input->Empty())
-                {
-                    input->ToString(text);
-                }
-
-                if (!text.empty())
-                {
-                    renderer->DrawTextQueued(Vec3(x, y, 0.5f), ti, text.c_str());
-                }
-#endif
+                renderer->DrawTextQueued(Vec3(x, y, 0.5f), ti, m_text.c_str());
             }
         }
     }

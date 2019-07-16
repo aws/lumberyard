@@ -46,6 +46,7 @@ namespace AzToolsFramework
         setFocusPolicy(m_pSpinBox->focusPolicy());
 
         connect(m_pSpinBox, SIGNAL(valueChanged(double)), this, SLOT(onChildSpinboxValueChange(double)));
+        connect(m_pSpinBox, &QDoubleSpinBox::editingFinished, this, &PropertyDoubleSpinCtrl::editingFinished);
     }
 
     QWidget* PropertyDoubleSpinCtrl::GetFirstInTabOrder()
@@ -306,6 +307,10 @@ namespace AzToolsFramework
             {
                 EBUS_EVENT(PropertyEditorGUIMessages::Bus, RequestWrite, newCtrl);
             });
+        connect(newCtrl, &PropertyDoubleSpinCtrl::editingFinished, this, [newCtrl]()
+        {
+            AzToolsFramework::PropertyEditorGUIMessages::Bus::Broadcast(&PropertyEditorGUIMessages::Bus::Handler::OnEditingFinished, newCtrl);
+        });
         // note:  Qt automatically disconnects objects from each other when either end is destroyed, no need to worry about delete.
 
         // set defaults:
@@ -322,6 +327,10 @@ namespace AzToolsFramework
             {
                 EBUS_EVENT(PropertyEditorGUIMessages::Bus, RequestWrite, newCtrl);
             });
+        connect(newCtrl, &PropertyDoubleSpinCtrl::editingFinished, this, [newCtrl]()
+        {
+            AzToolsFramework::PropertyEditorGUIMessages::Bus::Broadcast(&PropertyEditorGUIMessages::Bus::Handler::OnEditingFinished, newCtrl);
+        });
         // note:  Qt automatically disconnects objects from each other when either end is destroyed, no need to worry about delete.
 
         // set defaults:

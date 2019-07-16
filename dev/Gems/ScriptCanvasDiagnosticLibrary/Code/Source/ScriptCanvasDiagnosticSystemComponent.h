@@ -12,9 +12,49 @@
 
 #pragma once
 
-#if defined(SCRIPTCANVAS_DIAGNOSTICS_CORE_EDITOR)
-#include "ScriptCanvasDiagnosticSystemComponentEditor.h"
-#else
-#include "ScriptCanvasDiagnosticSystemComponentGame.h"
-#endif
+#include <AzCore/Component/Component.h>
 
+#include <CryCommon/IRenderer.h>
+#include <CrySystemBus.h>
+
+#include <ScriptCanvasDiagnosticLibrary/DebugDrawBus.h>
+
+
+struct ISystem;
+
+namespace ScriptCanvasDiagnostics
+{
+    class SystemComponent
+        : public AZ::Component
+        , public IRenderDebugListener
+        , private CrySystemEventBus::Handler
+        , private SystemRequestBus::Handler
+    {
+    public:
+        AZ_COMPONENT(SystemComponent, "{6A90B0E7-EB47-48B5-910D-4881E429AC9D}");
+
+        static void Reflect(AZ::ReflectContext* context);
+
+        SystemComponent() = default;
+        ~SystemComponent() override;
+        void Init() override;
+
+        void Activate() override;
+        void Deactivate() override;
+
+        // IRenderDebugListener
+        void OnDebugDraw() override;
+
+        // SystemRequestBus
+        bool IsEditor() override;
+
+    private:
+
+        ISystem * m_system;
+
+        // CrySystemEventBus
+        void OnCrySystemInitialized(ISystem& system, const SSystemInitParams& systemInitParams) override;
+        void OnCrySystemShutdown(ISystem& system) override;
+
+    };
+}

@@ -193,19 +193,12 @@ namespace Snow
         }
     }
 
-    void EditorSnowComponent::DisplayEntity(bool& handled)
+    void EditorSnowComponent::DisplayEntityViewport(
+        const AzFramework::ViewportInfo& viewportInfo,
+        AzFramework::DebugDisplayRequests& debugDisplay)
     {
-        auto dc = AzFramework::EntityDebugDisplayRequestBus::FindFirstHandler();
-        if (dc == nullptr)
-        {
-            handled = false;
-            return;
-        }
-
-        dc->SetColor(AZ::Vector4(1.0f, 1.0f, 1.0f, 1.0f));
-        dc->DrawWireSphere(m_currentWorldTransform.GetPosition(), m_snowOptions.m_radius);
-
-        handled = true;
+        debugDisplay.SetColor(AZ::Vector4(1.0f, 1.0f, 1.0f, 1.0f));
+        debugDisplay.DrawWireSphere(m_currentWorldTransform.GetPosition(), m_snowOptions.m_radius);
     }
 
     void EditorSnowComponent::OnTick(float deltaTime, AZ::ScriptTimePoint time)

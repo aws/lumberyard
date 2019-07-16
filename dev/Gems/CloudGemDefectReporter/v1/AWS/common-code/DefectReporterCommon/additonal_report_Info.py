@@ -36,7 +36,7 @@ def query_report_headers():
     return response
 
 def update_report_header(report):
-    if not report['universal_unique_identifier']:
+    if 'universal_unique_identifier' not in report:
         raise ClientError("Could not find the uuid of this report")
 
     key = { 'universal_unique_identifier': report.get('universal_unique_identifier', ''), 'section': 'header' }

@@ -24,5 +24,6 @@ namespace PhysX
         bool UpgradeEditorColliderComponent(AZ::SerializeContext& context, AZ::SerializeContext::DataElementNode& classElement);
         bool EditorProxyShapeConfigVersionConverter(AZ::SerializeContext& context, AZ::SerializeContext::DataElementNode& classElement);
         bool EditorRigidBodyConfigVersionConverter(AZ::SerializeContext& context, AZ::SerializeContext::DataElementNode& classElement);
+        bool EditorTerrainComponentConverter(AZ::SerializeContext& context, AZ::SerializeContext::DataElementNode& classElement);
     } // namespace ClassConverters
 } // namespace PhysX

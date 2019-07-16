@@ -43,7 +43,7 @@ export class CloudGemDefectReproterDefectDatatableComponent {
     private columns: any[];
     private allColumns: any[];
     private filteredRows = [];
-    private readStatusOption: string = "";
+    private readStatusOption: string = "";    
 
     private group: boolean;
     private selectedRows: Object[] = [];
@@ -51,15 +51,19 @@ export class CloudGemDefectReproterDefectDatatableComponent {
     private currentReport: Object = {};
     private currentGroupMapping: Object = {};
     private selectedReportIndex = 0;
-    private fillingError = null;
+    private fillingError = {};
     public reportFields = [];
 
     @ViewChild(ModalComponent) modalRef: ModalComponent;
     @ViewChild('CreateJiraIssueWindow') createJiraIssueWindow;
     @ViewChild('BulkActionsButton') bulkActionsButton;
 
-    constructor(private toastr: ToastsManager) {
+    get numberOfDefectsInGroup() {
+        return Object.keys(this.currentGroupMapping).length;
     }
+
+    constructor(private toastr: ToastsManager) {
+    }    
 
     ngOnInit() {
         this.metricQueryBuilder = new MetricQuery(this.aws, "defect");
@@ -132,7 +136,7 @@ export class CloudGemDefectReproterDefectDatatableComponent {
 
         let isInputEmpty = !input;
 
-        let partialWhereClause = isInputEmpty ? `WHERE p_event_name='defect'` : `WHERE p_event_name='defect' and`;
+        let partialWhereClause = isInputEmpty ? `WHERE p_event_name='defect' and p_server_timestamp_strftime >= date_format((current_timestamp - interval '7' day), '%Y%m%d%H0000')` : `WHERE p_event_name='defect' and`;
         let inputWhereClause = isInputEmpty ? "" : input;
 
         let orderByClause = !orderBy ? "" : `ORDER BY ` + orderBy;
@@ -534,8 +538,10 @@ export class CloudGemDefectReproterDefectDatatableComponent {
     * Define CreateJiraTickets modal
     **/
     public createJiraTicketsModal = () => {
-        this.group = this.selectedRows.length <= 1 ? false : true;
-        this.fillingError = null;
+        this.group = this.selectedRows.length <= 1 ? false : true;     
+        setTimeout(() => {
+            this.fillingError['message'] = null;
+        }); 
         this.reportsToSubmit = [];
         let i = 0;
         while (i < this.selectedRows.length) {
@@ -572,21 +578,26 @@ export class CloudGemDefectReproterDefectDatatableComponent {
     **/
     public dismissModal = () => {
         this.mode = DefectDatabaseMode.Show;
+        this.currentGroupMapping = {}
     }
 
     /**
     * Create new Jira ticket(s) based on the selected defect reports and grouping option
     **/
-    private submitCreationRequest(): void {
-        this.fillingError = null;
-        if (!this.createJiraIssueWindow.validateJiraFields()) {
-            this.fillingError = "There is an error in one of the required fields.";
+    private submitCreationRequest(): void {     
+        setTimeout(() => {
+            this.fillingError['message'] = null;
+        });   
+        if (!this.createJiraIssueWindow.validateJiraFields()) {            
+            setTimeout(() => {
+                this.fillingError['message'] = "There is an error in one of the required fields.";
+            });
             return;
         }
         let reports = []
 
-        for (let report of this.reportsToSubmit) {
-            reports.push(this.createJiraIssueWindow.retriveReportData(report));
+        for (let i = 0; i < this.selectedRows.length; ++i) {        
+            reports.push(this.createJiraIssueWindow.retriveReportData(this.reportsToSubmit[i], this.selectedRows[i]));
         }
 
         let group_map = {}
@@ -607,8 +618,10 @@ export class CloudGemDefectReproterDefectDatatableComponent {
             this.toastr.success("New Jira tickets were created successfully.");
         }, err => {
             this.createJiraIssueWindow.isLoadingJiraFieldMappings = false;
-            let msg = "Failed to create new Jira tickets. " + err.message;
-            this.fillingError = msg;
+            let msg = "Failed to create new Jira tickets. " + err.message;       
+            setTimeout(() => {
+                this.fillingError['message'] = "There is an error in one of the required fields.\n" + msg;
+            });
             this.toastr.error(msg);
         });
     }
@@ -645,7 +658,10 @@ export class CloudGemDefectReproterDefectDatatableComponent {
         this.dismissModal();
     }
 
-    private updateReportsToSubmitList(defect): void {
+    private updateReportsToSubmitList(defect): void {        
+        setTimeout(() => {
+            this.fillingError['message'] = null;
+        });   
         if (this.group) {
             this.currentGroupMapping = defect;
         } else {

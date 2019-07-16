@@ -38,17 +38,32 @@ namespace ScriptCanvas
         //! this is not an "EntityId" in the sense that it uniquely identifies an entity.
         using BusIdType = AZ::EntityId;
 
-        //! Returns the entity id of the execution component
-        virtual AZ::EntityId GetRuntimeEntityId() const = 0;
+        virtual VariableId FindAssetVariableIdByRuntimeVariableId(VariableId runtimeId) const = 0;
+        
+        virtual VariableId FindRuntimeVariableIdByAssetVariableId(VariableId assetId) const = 0;
 
+        virtual AZ::EntityId FindAssetNodeIdByRuntimeNodeId(AZ::EntityId editorNode) const = 0;
+
+        virtual AZ::Data::AssetId GetAssetId() const = 0;
+        virtual GraphIdentifier GetGraphIdentifier() const = 0;
+        virtual AZStd::string GetAssetName() const = 0;
+        
         //! Looks up the nodeId within the bus handler
         virtual Node* FindNode(AZ::EntityId nodeId) const = 0;
+        
+        virtual AZ::EntityId FindRuntimeNodeIdByAssetNodeId(AZ::EntityId runtimeNode) const = 0;        
+        
+        //! Returns the entity id of the execution component
+        virtual AZ::EntityId GetRuntimeEntityId() const = 0;
+                
         //! Returns a container of nodes
         virtual AZStd::vector<AZ::EntityId> GetNodes() const = 0;
         //! Returns a container of connections
         virtual AZStd::vector<AZ::EntityId> GetConnections() const = 0;
         //! Returns a container of all endpoints to which the supplied endpoint is connected point
         virtual AZStd::vector<Endpoint> GetConnectedEndpoints(const Endpoint& endpoint) const = 0;
+        //! Returns whether the given endpoint has any connections
+        virtual bool IsEndpointConnected(const Endpoint& endpoint) const = 0;
 
         //! Retrieves GraphData structure which manages the nodes and connections of an executing graph
         virtual GraphData* GetGraphData() = 0;

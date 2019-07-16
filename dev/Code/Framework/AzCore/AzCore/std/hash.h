@@ -12,7 +12,9 @@
 #ifndef AZSTD_HASH_H
 #define AZSTD_HASH_H 1
 
+#include <limits>
 #include <AzCore/std/utils.h>
+#include "typetraits/has_member_function.h"
 
 namespace AZStd
 {
@@ -29,6 +31,29 @@ namespace AZStd
         typedef T               argument_type;
         typedef AZStd::size_t   result_type;
         inline result_type operator()(const argument_type& value) const { return static_cast<result_type>(value); }
+        static bool OnlyUnspecializedTypesShouldHaveThis() { return true; }
+    };
+
+    /// define your own struct AZStd::hash<T> and HasSpecializedHasher<T>::type will be AZStd::true_type
+    AZ_HAS_STATIC_MEMBER(DefaultHash, OnlyUnspecializedTypesShouldHaveThis, bool, ());
+
+    template<class T, bool isConstructible = AZStd::is_constructible<T>::value && !AZStd::is_abstract<T>::value>
+    struct IsNumber
+    {
+        static const bool value = false;
+    };
+
+    template <typename T>
+    struct IsNumber<T, true>
+    {
+        static const bool value = std::numeric_limits<T>::is_specialized;
+    };
+
+    template <typename T>
+    struct HasSpecializedHasher
+    {
+        static const bool value = !HasDefaultHash<AZStd::hash<T>>::value || IsNumber<T>::value;
+        using type = typename AZStd::Utils::if_c<value, AZStd::true_type, AZStd::false_type>::type;
     };
 
     template< class T >
@@ -62,6 +87,13 @@ namespace AZStd
     {
         hash<T> hasher;
         seed ^= hasher(v) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+    }
+
+    template <class T1, class T2, class... RestTypes>
+    void hash_combine(AZStd::size_t& seed, const T1& firstElement, const T2& secondElement, const RestTypes&... restElements)
+    {
+        hash_combine(seed, firstElement);
+        hash_combine(seed, secondElement, restElements...);
     }
 
     template <class It>

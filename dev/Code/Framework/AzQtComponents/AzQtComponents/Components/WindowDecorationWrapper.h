@@ -13,18 +13,19 @@
 
 #include <AzQtComponents/AzQtComponentsAPI.h>
 
-#include <QWidget>
+#include <QFrame>
 #include <QPointer>
 #include <QChildEvent>
 
 class QSettings;
+class QStyleOption;
 
 namespace AzQtComponents
 {
     class TitleBar;
 
     class AZ_QT_COMPONENTS_API WindowDecorationWrapper
-        : public QWidget
+        : public QFrame
     {
         Q_OBJECT
 
@@ -67,15 +68,18 @@ namespace AzQtComponents
 
         /**
          * Enables restoring/saving geometry on creation/destruction.
+         * If autoRestoreOnShow is set to true, the first time the window is shown, it will automatically restore the geometry.
          */
         void enableSaveRestoreGeometry(const QString& organization,
             const QString& app,
-            const QString& key);
+            const QString& key,
+            bool autoRestoreOnShow = false);
 
         /**
-        * Enables restoring/saving geometry on creation/destruction, using the default settings values for organization and application.
-        */
-        void enableSaveRestoreGeometry(const QString& key);
+         * Enables restoring/saving geometry on creation/destruction, using the default settings values for organization and application.
+         * If autoRestoreOnShow is set to true, the first time the window is shown, it will automatically restore the geometry.
+         */
+        void enableSaveRestoreGeometry(const QString& key, bool autoRestoreOnShow = false);
 
         /**
          * Returns true if restoring/saving geometry on creation/destruction is enabled.
@@ -84,20 +88,28 @@ namespace AzQtComponents
         bool saveRestoreGeometryEnabled() const;
 
         /**
-        * Restores geometry and shows window
-        */
+         * Restores geometry and shows window.
+         * Only shows window if there were saved settings, otherwise returns false.
+         */
         bool restoreGeometryFromSettings();
+
+        /**
+         * Restores geometry if there are saved settings, and shows window (always).
+         */
+        void showFromSettings();
 
         QMargins margins() const;
 
     protected:
         bool event(QEvent* ev) override;
-        void paintEvent(QPaintEvent*) override;
         bool eventFilter(QObject* watched, QEvent* event) override;
         void resizeEvent(QResizeEvent* ev) override;
         void childEvent(QChildEvent* ev) override;
         void closeEvent(QCloseEvent* ev) override;
+        void showEvent(QShowEvent* ev) override;
+        void hideEvent(QHideEvent* ev) override;
         bool nativeEvent(const QByteArray& eventType, void* message, long* result) override;
+        void changeEvent(QEvent* ev) override;
 
     private:
         friend class StyledDockWidget;
@@ -105,6 +117,7 @@ namespace AzQtComponents
         static bool handleNativeEvent(const QByteArray& eventType, void* message, long* result, const QWidget* widget);
         static QMargins win10TitlebarHeight(QWindow *w);
         static Qt::WindowFlags specialFlagsForOS();
+        static void drawFrame(const QStyleOption *option, QPainter *painter, const QWidget *widget);
         QWidget* topLevelParent();
         void centerInParent();
         bool autoAttachEnabled() const;
@@ -122,6 +135,8 @@ namespace AzQtComponents
         void adjustSizeGripGeometry();
         void adjustWidgetGeometry();
         void updateConstraints();
+        void enableSaveRestoreGeometry(QSettings* settings, const QString& key, bool autoRestoreOnShow);
+
         bool m_initialized = false;
         Options m_options = OptionNone;
         TitleBar* const m_titleBar;
@@ -130,6 +145,8 @@ namespace AzQtComponents
         QString m_settingsKey;
         bool m_shouldCenterInParent = false;
         bool m_restoringGeometry = false;
+        bool m_autoRestoreOnShow = false;
+        bool m_blockForRestoreOnShow = false;
     };
 } // namespace AzQtComponents
 

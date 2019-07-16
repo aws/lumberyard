@@ -83,6 +83,8 @@ namespace RoadsAndRivers
         void SetRenderProperties();
         void UpdateRenderNodeWithAssetMaterial();
 
+        void IgnoreTerrainHolesModified();
+
         void GeneralPropertyModified() override;
         void WidthPropertyModified() override;
         void RenderingPropertyModified() override;

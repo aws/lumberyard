@@ -12,14 +12,19 @@
 #pragma once
 
 #include <QWidget>
+#include <QMainWindow>
+#include <qdockwidget.h>
 #include <qmimedata.h>
 
 #include <AzCore/Component/EntityId.h>
 #include <AzCore/Memory/SystemAllocator.h>
 #include <AzCore/std/smart_ptr/unique_ptr.h>
+#include <AzCore/std/string/string_view.h>
 
 #include <GraphCanvas/Editor/EditorTypes.h>
 #include <GraphCanvas/Editor/AssetEditorBus.h>
+
+#include <GraphCanvas/Styling/StyleManager.h>
 
 namespace Ui
 {
@@ -30,14 +35,14 @@ namespace GraphCanvas
 {
     class EditorDockWidget;
 
-    class GraphCanvasEditorCentralWidget
-        : public QWidget        
+    class GraphCanvasEditorEmptyDockWidget
+        : public QDockWidget
     {
         Q_OBJECT
     public:
-        AZ_CLASS_ALLOCATOR(GraphCanvasEditorCentralWidget, AZ::SystemAllocator,0);
-        GraphCanvasEditorCentralWidget(QWidget* parent);
-        ~GraphCanvasEditorCentralWidget();
+        AZ_CLASS_ALLOCATOR(GraphCanvasEditorEmptyDockWidget, AZ::SystemAllocator,0);
+        GraphCanvasEditorEmptyDockWidget(QWidget* parent);
+        ~GraphCanvasEditorEmptyDockWidget();
         
         void SetDragTargetText(const AZStd::string& dragTargetString);
 
@@ -46,31 +51,54 @@ namespace GraphCanvas
         void SetEditorId(const EditorId& editorId);
         const EditorId& GetEditorId() const;
         
-        GraphCanvas::DockWidgetId CreateNewEditor();
-        
         // QWidget
-        void childEvent(QChildEvent* event) override;
-
         void dragEnterEvent(QDragEnterEvent* enterEvent) override;
         void dragMoveEvent(QDragMoveEvent* moveEvent) override;
         void dropEvent(QDropEvent* dropEvent) override;
         ////
         
-    protected:
-    
-        virtual EditorDockWidget* CreateEditorDockWidget(const EditorId& editorId);
-        
+    protected:        
     private:
 
         bool AcceptsMimeData(const QMimeData* mimeData) const;
 
         QMimeData   m_initialDropMimeData;
-        int m_emptyChildrenCount;
     
         EditorId m_editorId;
         AZStd::unique_ptr<Ui::GraphCanvasEditorCentralWidget> m_ui;
 
         bool m_allowDrop;
         AZStd::vector< QString > m_mimeTypes;
+    };
+
+    class AssetEditorCentralDockWindow
+        : public QMainWindow
+    {
+        Q_OBJECT
+    public:
+        AZ_CLASS_ALLOCATOR(AssetEditorCentralDockWindow, AZ::SystemAllocator, 0);
+
+        AssetEditorCentralDockWindow(const EditorId& editorId);
+        ~AssetEditorCentralDockWindow();
+
+        GraphCanvasEditorEmptyDockWidget* GetEmptyDockWidget() const;
+
+        void OnEditorOpened(EditorDockWidget* dockWidget);
+        void OnEditorClosed(EditorDockWidget* dockWidget);
+
+        void OnEditorDockChanged(bool isDocked);
+
+        void OnFocusChanged(QWidget* oldWidget, QWidget* nowFocus);
+
+    protected:
+
+        void UpdateCentralWidget();
+
+    private:
+
+        EditorId m_editorId;
+
+        GraphCanvasEditorEmptyDockWidget*    m_emptyDockWidget;
+        AZStd::unordered_set< QDockWidget* > m_editorDockWidgets;
     };
 }

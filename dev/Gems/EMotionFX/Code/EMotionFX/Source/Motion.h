@@ -230,12 +230,6 @@ namespace EMotionFX
         void* GetCustomData() const;
 
         /**
-         * Allocate memory for the default playback info. After creating the default playback info using this function you can retrieve a
-         * pointer to it by calling the GetDefaultPlayBackInfo() function.
-         */
-        void CreateDefaultPlayBackInfo();
-
-        /**
          * Set the default playback info to the given playback info. In case the default playback info hasn't been created yet this function will automatically take care of that.
          * @param playBackInfo The new playback info which will be copied over to this motion's default playback info.
          */
@@ -243,10 +237,9 @@ namespace EMotionFX
 
         /**
          * Get the default playback info of this motion.
-         * @return A pointer to the default playback info, nullptr in case it hasn't been allocated yet. You can call CreateDefaultPlayBackInfo() to allocate memory for
-         *         the default playback info. This case only happens when the loaded motion file didn't contain a default playback info in the file already.
          */
-        PlayBackInfo* GetDefaultPlayBackInfo() const;
+        PlayBackInfo* GetDefaultPlayBackInfo();
+        const PlayBackInfo* GetDefaultPlayBackInfo() const;
 
         /**
          * Get the motion extraction flags.
@@ -328,7 +321,7 @@ namespace EMotionFX
 
     protected:
         AZStd::string               mFileName;              /**< The filename of the motion. */
-        PlayBackInfo*               mDefaultPlayBackInfo;   /**< The default/fallback motion playback info which will be used when no playback info is passed to the Play() function. */
+        PlayBackInfo                m_defaultPlayBackInfo;   /**< The default/fallback motion playback info which will be used when no playback info is passed to the Play() function. */
         MotionEventTable*           mEventTable;            /**< The event table, which contains all events, and will make sure events get executed. */
         MCore::Distance::EUnitType  mUnitType;              /**< The type of units used. */
         MCore::Distance::EUnitType  mFileUnitType;          /**< The type of units used, inside the file that got loaded. */

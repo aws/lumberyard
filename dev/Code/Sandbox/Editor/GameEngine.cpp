@@ -566,7 +566,7 @@ AZ::Outcome<void, AZStd::string> CGameEngine::Init(
     if (sInCmdLine)
     {
         azstrncpy(sip.szSystemCmdLine, AZ_COMMAND_LINE_LEN, sInCmdLine, AZ_COMMAND_LINE_LEN);
-        if (strstr(sInCmdLine, "-export"))
+        if (strstr(sInCmdLine, "-export") || strstr(sInCmdLine, "/export"))
         {
             sip.bUnattendedMode = true;
         }

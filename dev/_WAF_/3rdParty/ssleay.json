@@ -1,0 +1,19 @@
+{
+    "name": "SSLEAY",
+    "source": "@ROOT@/Tools/Redistributables/SSLEAY",
+    "description": "SSL EAY Binary redistributable shared libraries",
+    "lib_required": "True",
+    "platform": {
+        "win_x64_vs2013": {
+            "sharedlibpath": [
+                "win32"
+            ],
+            "shared": [
+                "libeay32.dll",
+                "ssleay32.dll"
+            ]
+        },
+        "win_x64_vs2015": "@win_x64_vs2013",
+        "win_x64_vs2017": "@win_x64_vs2013"
+    }
+}

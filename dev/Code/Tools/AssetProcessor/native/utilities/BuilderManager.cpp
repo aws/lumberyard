@@ -13,6 +13,8 @@
 #include "BuilderManager.h"
 #include <AzCore/std/parallel/binary_semaphore.h>
 #include <AzCore/std/smart_ptr/make_shared.h>
+#include <AzCore/Utils/Utils.h>
+
 #include <AzFramework/API/ApplicationAPI.h>
 #include <AzFramework/StringFunc/StringFunc.h>
 #include <AzToolsFramework/Process/ProcessCommunicator.h>
@@ -151,16 +153,15 @@ namespace AssetProcessor
         AZStd::string appRootString;
         AzFramework::ApplicationRequests::Bus::BroadcastResult(appRootString, &AzFramework::ApplicationRequests::GetAppRoot);
 
-        // Construct the projects's binary folder (BinXXX) path
-        AZStd::string projectBinFolder;
-        AzFramework::StringFunc::Path::Join(appRootString.c_str(), BINFOLDER_NAME, projectBinFolder);
+        // Get the current BinXXX folder based on the current running AP
+        QString projectBinFolder = QCoreApplication::instance()->applicationDirPath();
 
         // Construct the Builders subfolder path
         AZStd::string buildersFolder;
-        AzFramework::StringFunc::Path::Join(projectBinFolder.c_str(), s_buildersFolderName, buildersFolder);
+        AzFramework::StringFunc::Path::Join(projectBinFolder.toUtf8().constData(), s_buildersFolderName, buildersFolder);
 
         // Construct the full exe for the builder.exe
-        const AZStd::string fullExePathString = QDir(QCoreApplication::applicationDirPath()).absoluteFilePath(AssetProcessor::s_assetBuilderRelativePath).toUtf8().constData();
+        const AZStd::string fullExePathString = QDir(projectBinFolder).absoluteFilePath(AssetProcessor::s_assetBuilderRelativePath).toUtf8().constData();
 
         if (m_quitListener.WasQuitRequested())
         {

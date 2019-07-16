@@ -106,10 +106,6 @@
 #   error CRYPLATFORM_INTERLOCKEDSLIST_ELEMENT_ALIGNMENT not defined for current platform
 #endif
 
-#if !defined(__DETAIL__LINK_THIRD_PARTY_LIBRARY)
-#   error __DETAIL__LINK_THIRD_PARTY_LIBRARY not defined for current platform
-#endif
-
 #if !defined(__DETAIL__LINK_SYSTEM_PARTY_LIBRARY)
 #   error __DETAIL__LINK_SYSTEM_PARTY_LIBRARY not defined for current platform
 #endif
@@ -167,13 +163,6 @@ inline CryMT::SInterlockedSListElement* CryMT::InterlockedSListPop(CryMT::SInter
 {
     return CryMT::detail::InterlockedSListPop(pHeader);
 }
-
-////////////////////////////////////////////////////////////////////////////
-// Include a third party library. The path has to be specificed
-// relative to the Code/ folder. In addition the path has to be specified
-// as a liternal, not as a string, and forward slashes have to be used eg:
-// LINK_THIRD_PARTY_LIBRARY(SDK/MyLib/lib/MyLib.a)
-#define LINK_THIRD_PARTY_LIBRARY(name) __DETAIL__LINK_THIRD_PARTY_LIBRARY(name)
 
 ////////////////////////////////////////////////////////////////////////////
 // Include a platform library.

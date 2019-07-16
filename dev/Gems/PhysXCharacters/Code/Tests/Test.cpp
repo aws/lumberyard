@@ -28,6 +28,9 @@
 #include <Physics/PhysicsTests.inl>
 #include <Tests/TestTypes.h>
 #include <PhysXCharacters/SystemBus.h>
+#include <PhysX/SystemComponentBus.h>
+#include <Source/Components/CharacterControllerComponent.h>
+#include <AzFramework/Physics/WorldEventhandler.h>
 
 #ifdef AZ_TESTS_ENABLED
 
@@ -135,15 +138,35 @@ namespace PhysXCharacters
 
     class PhysXCharactersTest
         : public ::testing::Test
+        , public Physics::WorldEventHandler
     {
     protected:
         void SetUp() override
         {
+            GetDefaultWorld()->SetEventHandler(this);
         }
 
         void TearDown() override
         {
+            GetDefaultWorld()->SetEventHandler(nullptr);
         }
+
+        AZStd::shared_ptr<Physics::World> GetDefaultWorld()
+        {
+            AZStd::shared_ptr<Physics::World> world;
+            Physics::DefaultWorldBus::BroadcastResult(world, &Physics::DefaultWorldRequests::GetDefaultWorld);
+            return world;
+        }
+
+        // WorldEventHandler
+        void OnTriggerEnter(const Physics::TriggerEvent& triggerEvent) override { m_triggerEnterEvents.push_back(triggerEvent); }
+        void OnTriggerExit(const Physics::TriggerEvent& triggerEvent) override { m_triggerExitEvents.push_back(triggerEvent); }
+        void OnCollisionBegin(const Physics::CollisionEvent& collisionEvent) override {}
+        void OnCollisionPersist(const Physics::CollisionEvent& collisionEvent) override {}
+        void OnCollisionEnd(const Physics::CollisionEvent& collisionEvent) override {}
+
+        AZStd::vector<Physics::TriggerEvent> m_triggerEnterEvents;
+        AZStd::vector<Physics::TriggerEvent> m_triggerExitEvents;
     };
 
     // transform for a floor centred at x = 0, y = 0, with top at level z = 0
@@ -400,6 +423,46 @@ namespace PhysXCharacters
         Physics::WorldRequestBus::BroadcastResult(hit, &Physics::WorldRequests::RayCast, request);
 
         EXPECT_TRUE(hit);
+    }
+
+    TEST_F(PhysXCharactersTest, CharacterController_DeleteCharacterInsideTrigger_RaisesExitEvent)
+    {
+        // Create trigger
+        Physics::ColliderConfiguration triggerConfig;
+        triggerConfig.m_isTrigger = true;
+        Physics::BoxShapeConfiguration boxConfig;
+        boxConfig.m_dimensions = AZ::Vector3(10.0f, 10.0f, 10.0f);
+
+        auto triggerEntity = AZStd::make_unique<AZ::Entity>("TriggerEntity");
+        triggerEntity->CreateComponent<AzFramework::TransformComponent>()->SetWorldTM(AZ::Transform::Identity());
+        PhysX::SystemRequestsBus::Broadcast(&PhysX::SystemRequests::AddColliderComponentToEntity, triggerEntity.get(), triggerConfig, boxConfig, false);
+        triggerEntity->Init();
+        triggerEntity->Activate();
+
+        // Create character
+        auto characterConfiguration = AZStd::make_unique<Physics::CharacterConfiguration>();
+        auto characterShapeConfiguration = AZStd::make_unique<Physics::CapsuleShapeConfiguration>();
+        characterShapeConfiguration->m_height = 5.0f;
+        characterShapeConfiguration->m_radius = 1.0f;
+
+        auto characterEntity = AZStd::make_unique<AZ::Entity>("CharacterEntity");
+        characterEntity->CreateComponent<AzFramework::TransformComponent>()->SetWorldTM(AZ::Transform::Identity());
+        characterEntity->CreateComponent<PhysXCharacters::CharacterControllerComponent>(AZStd::move(characterConfiguration), AZStd::move(characterShapeConfiguration));
+        characterEntity->Init();
+        characterEntity->Activate();
+
+        // Update the world a bit to trigger Enter events
+        for (int i = 0; i < 10; ++i)
+        {
+            GetDefaultWorld()->Update(0.1f);
+        }
+
+        // Delete the entity, and update the world to receive exit events
+        characterEntity.reset();
+        GetDefaultWorld()->Update(0.1f);
+
+        EXPECT_TRUE(m_triggerEnterEvents.size() == 1);
+        EXPECT_TRUE(m_triggerExitEvents.size() == 1);
     }
 
     AZ_UNIT_TEST_HOOK(new PhysXCharactersTestEnvironment);

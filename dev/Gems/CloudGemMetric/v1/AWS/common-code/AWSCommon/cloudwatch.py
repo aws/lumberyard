@@ -41,11 +41,11 @@ class CloudWatch(object):
         return result
 
     def put_metric_data(self, namespace, metric_data):
-        #print metric_data        
-        return self.__client.put_metric_data(
-            Namespace=namespace,
-            MetricData=metric_data
-        )
+        params = {       
+            'Namespace': namespace,
+            'MetricData': metric_data
+        }                
+        return retry.try_with_backoff(self.__context, self.__client.put_metric_data, **params)             
         
     def avg_save_duration(self, stack_id):
         if self.__avg_save_duration != None: 

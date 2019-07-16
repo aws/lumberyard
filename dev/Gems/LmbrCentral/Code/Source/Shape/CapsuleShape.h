@@ -16,11 +16,6 @@
 #include <LmbrCentral/Shape/ShapeComponentBus.h>
 #include <LmbrCentral/Shape/CapsuleShapeComponentBus.h>
 
-namespace AzFramework
-{
-    class EntityDebugDisplayRequests;
-}
-
 namespace LmbrCentral
 {
     extern const AZ::u32 g_capsuleDebugShapeSides;
@@ -44,6 +39,7 @@ namespace LmbrCentral
         // ShapeComponentRequestsBus::Handler
         AZ::Crc32 GetShapeType() override { return AZ_CRC("Capsule", 0xc268a183); }
         AZ::Aabb GetEncompassingAabb() override;
+        void GetTransformAndLocalBounds(AZ::Transform& transform, AZ::Aabb& bounds) override;
         bool IsPointInside(const AZ::Vector3& point) override;
         float DistanceSquaredFromPoint(const AZ::Vector3& point) override;
         bool IntersectRay(const AZ::Vector3& src, const AZ::Vector3& dir, AZ::VectorFloat& distance) override;
@@ -62,10 +58,13 @@ namespace LmbrCentral
         void SetCapsuleConfiguration(const CapsuleShapeConfig& capsuleShapeConfig) { m_capsuleShapeConfig = capsuleShapeConfig; }
         const AZ::Transform& GetCurrentTransform() const { return m_currentTransform; }
 
+    protected:
+
+        friend class EditorCapsuleShapeComponent;
+        CapsuleShapeConfig& ModifyCapsuleConfiguration() { return m_capsuleShapeConfig; }
+
     private:
-        /**
-         * Runtime data - cache potentially expensive operations.
-         */
+        /// Runtime data - cache potentially expensive operations.
         class CapsuleIntersectionDataCache : public IntersectionTestDataCache<CapsuleShapeConfig>
         {
             void UpdateIntersectionParamsImpl(

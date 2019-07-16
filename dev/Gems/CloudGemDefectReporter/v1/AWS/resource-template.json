@@ -618,6 +618,15 @@
                 }
             },
             "DependsOn": [ "ServiceLambda" ]
+        },
+        "GlobalPermissions": {           
+            "Type": "Custom::GlobalPermissions",
+            "Properties": {
+                "ServiceToken": {
+                    "Ref": "ProjectResourceHandler"
+                }
+            },
+            "DependsOn": [ "ServiceLambda" ]
         }
     }
 }

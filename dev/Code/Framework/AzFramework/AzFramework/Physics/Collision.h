@@ -29,6 +29,7 @@ namespace Physics
         static void Reflect(AZ::ReflectContext* context);
 
         static const CollisionLayer Default; ///< Default collision layer
+        static const CollisionLayer TouchBend; ///< Touch Bendable Vegetation collision layer
 
         CollisionLayer(AZ::u8 index = Default.GetIndex());
         CollisionLayer(const AZStd::string& layerName);
@@ -54,6 +55,7 @@ namespace Physics
 
         static const CollisionGroup None; ///< Collide with nothing
         static const CollisionGroup All; ///< Collide with everything
+        static const CollisionGroup All_NoTouchBend; ///< Collide with everything, except Touch Bendable Vegetation.
 
         CollisionGroup(AZ::u64 mask = All.GetMask());
         CollisionGroup(const AZStd::string& groupName);

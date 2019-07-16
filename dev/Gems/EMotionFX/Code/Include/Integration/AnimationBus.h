@@ -209,6 +209,8 @@ namespace EMotionFX
              * @result The resulting intersection, if there is any. If there is none the m_intersected member of the RaycastResult object returned will be set to false.
              */
             virtual RaycastResult Raycast(AZ::EntityId entityId, const RaycastRequest& rayRequest) = 0;
+            virtual void EnableRayRequests() {}
+            virtual void DisableRayRequests() {}
         }; 
         using RaycastRequestBus = AZ::EBus<RaycastRequests>;
 

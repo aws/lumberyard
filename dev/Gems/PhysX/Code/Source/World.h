@@ -18,6 +18,8 @@
 
 namespace PhysX
 {
+    class IPhysxTriggerEventCallback;
+
     /// PhysX specific implementation of generic physics API World class.
     class World
         : public Physics::WorldRequestBus::Handler
@@ -41,12 +43,12 @@ namespace PhysX
         AZStd::vector<Physics::RayCastHit> RayCastMultiple(const Physics::RayCastRequest& request);
         AZStd::vector<Physics::RayCastHit> ShapeCastMultiple(const Physics::ShapeCastRequest& request) override;
         AZStd::vector<Physics::OverlapHit> Overlap(const Physics::OverlapRequest& request) override;
-        void RegisterSuppressedCollision(const AZStd::shared_ptr<Physics::WorldBody>& body0,
-            const AZStd::shared_ptr<Physics::WorldBody>& body1) override;
-        void UnregisterSuppressedCollision(const AZStd::shared_ptr<Physics::WorldBody>& body0,
-            const AZStd::shared_ptr<Physics::WorldBody>& body1) override;
+        void RegisterSuppressedCollision(const Physics::WorldBody& body0,
+            const Physics::WorldBody& body1) override;
+        void UnregisterSuppressedCollision(const Physics::WorldBody& body0,
+            const Physics::WorldBody& body1) override;
         void AddBody(Physics::WorldBody& body) override;
-        void RemoveBody(const Physics::WorldBody& body) override;
+        void RemoveBody(Physics::WorldBody& body) override;
         void Update(float deltaTime) override;
         AZ::Crc32 GetNativeType() const override;
         void* GetNativePointer() const override;
@@ -70,11 +72,12 @@ namespace PhysX
         void onAdvance(const physx::PxRigidBody*const* bodyBuffer, const physx::PxTransform* poseBuffer, const physx::PxU32 count) override;
 
         void SetSimFunc(std::function<void(void*)> func) override;
-
-        void AddBody(physx::PxActor* body);
+        void SetTriggerEventCallback(Physics::ITriggerEventCallback* callback) override;
 
         AZ::Vector3 GetGravity() override;
         void SetGravity(const AZ::Vector3& gravity) override;
+
+        void DeferDelete(AZStd::unique_ptr<Physics::WorldBody> worldBody) override;
 
     private:
         using ActorPair = AZStd::pair<const physx::PxActor*, const physx::PxActor*>;
@@ -96,5 +99,9 @@ namespace PhysX
         //function pointer for simulating
         std::function<void(void *)> m_simFunc = nullptr;
         Physics::WorldEventHandler* m_eventHandler = nullptr;
+
+        PhysX::IPhysxTriggerEventCallback* m_triggerCallback = nullptr;
+
+        AZStd::vector<AZStd::unique_ptr<Physics::WorldBody>> m_deferredDeletions;
     };
 } // namespace PhysX

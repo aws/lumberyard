@@ -18,6 +18,7 @@
 #include <qscrollbar.h>
 
 #include <AzCore/Component/ComponentApplicationBus.h>
+#include <AzCore/Serialization/Utils.h>
 #include <AzCore/UserSettings/UserSettings.h>
 
 #include <AzToolsFramework/ToolsComponents/EditorComponentBase.h>
@@ -28,6 +29,9 @@
 
 #include <Editor/GraphCanvas/GraphCanvasEditorNotificationBusId.h>
 #include <Editor/View/Widgets/VariablePanel/VariablePaletteTableView.h>
+#include <Editor/View/Widgets/DataTypePalette/DataTypePaletteModel.h>
+
+#include <Editor/View/Dialogs/ContainerWizard/ContainerWizard.h>
 
 #include <Editor/Settings.h>
 #include <Editor/Translation/TranslationHelper.h>
@@ -36,287 +40,7 @@
 #include <ScriptCanvas/Data/DataRegistry.h>
 
 namespace ScriptCanvasEditor
-{
-    /////////////////////////
-    // VariablePaletteModel
-    /////////////////////////
-    VariablePaletteModel::VariablePaletteModel(QObject* parent)
-        : QAbstractTableModel(parent)
-        , m_pinIcon(":/ScriptCanvasEditorResources/Resources/pin.png")
-    {
-    }
-
-    int VariablePaletteModel::columnCount(const QModelIndex&) const
-    {
-        return ColumnIndex::Count;
-    }
-
-    int VariablePaletteModel::rowCount(const QModelIndex& parent) const
-    {
-        return aznumeric_cast<int>(m_variableTypes.size());
-    }
-
-    QVariant VariablePaletteModel::data(const QModelIndex &index, int role /*= Qt::DisplayRole*/) const
-    {
-        ScriptCanvas::Data::Type varType;
-
-        if (index.row() < m_variableTypes.size())
-        {
-            varType = m_variableTypes[index.row()];
-        }
-
-        switch (role)
-        {
-        case VarTypeRole:
-            return QVariant::fromValue<ScriptCanvas::Data::Type>(varType);
-
-        case Qt::DisplayRole:
-        {
-            if (index.column() == ColumnIndex::Type)
-            {
-                AZStd::string typeString = TranslationHelper::GetSafeTypeName(varType);
-                return QString(typeString.c_str());
-            }
-        }
-        break;
-
-        case Qt::DecorationRole:
-        {
-            if (index.column() == ColumnIndex::Type)
-            {
-                const QPixmap* icon = nullptr;
-                GraphCanvas::StyleManagerRequestBus::EventResult(icon, ScriptCanvasEditor::AssetEditorId, &GraphCanvas::StyleManagerRequests::GetDataTypeIcon, ScriptCanvas::Data::ToAZType(varType));
-
-                if (icon)
-                {
-                    return *icon;
-                }
-            }
-            else if (index.column() == ColumnIndex::Pinned)
-            {
-                AZStd::intrusive_ptr<EditorSettings::ScriptCanvasEditorSettings> settings = AZ::UserSettings::CreateFind<EditorSettings::ScriptCanvasEditorSettings>(AZ_CRC("ScriptCanvasPreviewSettings", 0x1c5a2965), AZ::UserSettings::CT_LOCAL);
-
-                bool showPin = settings->m_pinnedDataTypes.find(ScriptCanvas::Data::ToAZType(varType)) != settings->m_pinnedDataTypes.end();
-
-                if (m_pinningChanges.find(ScriptCanvas::Data::ToAZType(varType)) != m_pinningChanges.end())
-                {
-                    showPin = !showPin;
-                }
-
-                if (showPin)
-                {
-                    return m_pinIcon;
-                }
-            }
-        }
-        break;
-
-        case Qt::EditRole:
-        {
-            if (index.column() == ColumnIndex::Type)
-            {
-                AZStd::string typeString = TranslationHelper::GetSafeTypeName(varType);
-                return QString(typeString.c_str());
-            }
-        }
-        break;
-
-        default:
-            break;
-        }
-
-        return QVariant();
-    }
-
-    Qt::ItemFlags VariablePaletteModel::flags(const QModelIndex&) const
-    {
-        return Qt::ItemFlags(
-            Qt::ItemIsEnabled |
-            Qt::ItemIsSelectable);
-    }
-
-    QItemSelectionRange VariablePaletteModel::GetSelectionRangeForRow(int row)
-    {
-        return QItemSelectionRange(createIndex(row, 0, nullptr), createIndex(row, columnCount(), nullptr));
-    }
-
-    void VariablePaletteModel::PopulateVariablePalette(const AZStd::unordered_set< AZ::Uuid >& objectTypes)
-    {
-        layoutAboutToBeChanged();
-
-        m_variableTypes.clear();
-        m_typeNameMapping.clear();
-
-        auto dataRegistry = ScriptCanvas::GetDataRegistry();
-
-        m_variableTypes.reserve((dataRegistry->m_typeIdTraitMap.size() - 1) + objectTypes.size());
-
-        for (const auto& dataTraitsPair : dataRegistry->m_typeIdTraitMap)
-        {
-            if (dataTraitsPair.first == ScriptCanvas::Data::eType::BehaviorContextObject)
-            {
-                // Skip EntityID to avoid a duplicate
-                // Skip BehaviorContextObject as it isn't a valid creatable type on its own
-                continue;
-            }
-
-            ScriptCanvas::Data::Type type = dataTraitsPair.second.m_dataTraits.GetSCType();
-
-            if (type.IsValid())
-            {
-                m_variableTypes.emplace_back(type);
-
-                AZStd::string typeString = TranslationHelper::GetSafeTypeName(type);
-                m_typeNameMapping[typeString] = type;
-            }
-        }
-
-        for (const AZ::Uuid& objectId : objectTypes)
-        {
-            ScriptCanvas::Data::Type type = dataRegistry->m_typeIdTraitMap[ScriptCanvas::Data::eType::BehaviorContextObject].m_dataTraits.GetSCType(objectId);
-            m_variableTypes.emplace_back(type);
-
-            AZStd::string typeString = TranslationHelper::GetSafeTypeName(type);
-            m_typeNameMapping[typeString] = type;
-        }
-
-        layoutChanged();
-    }
-
-    ScriptCanvas::Data::Type VariablePaletteModel::FindDataForIndex(const QModelIndex& index)
-    {
-        ScriptCanvas::Data::Type retVal;
-
-        if (index.row() >= 0 && index.row() < m_variableTypes.size())
-        {
-            retVal = m_variableTypes[index.row()];
-        }
-
-        return retVal;
-    }
-
-    ScriptCanvas::Data::Type VariablePaletteModel::FindDataForTypeName(const AZStd::string& typeName)
-    {
-        ScriptCanvas::Data::Type retVal;
-
-        auto mapIter = m_typeNameMapping.find(typeName);
-        if (mapIter != m_typeNameMapping.end())
-        {
-            retVal = mapIter->second;
-        }
-
-        return retVal;
-    }
-
-    void VariablePaletteModel::TogglePendingPinChange(const AZ::Uuid& azVarType)
-    {
-        auto pinningIter = m_pinningChanges.find(azVarType);
-
-        if (pinningIter != m_pinningChanges.end())
-        {
-            m_pinningChanges.erase(pinningIter);
-        }
-        else
-        {
-            m_pinningChanges.insert(azVarType);
-        }
-    }
-
-    const AZStd::unordered_set< AZ::Uuid >& VariablePaletteModel::GetPendingPinChanges() const
-    {
-        return m_pinningChanges;
-    }
-
-    void VariablePaletteModel::SubmitPendingPinChanges()
-    {
-        AZStd::intrusive_ptr<EditorSettings::ScriptCanvasEditorSettings> settings = AZ::UserSettings::CreateFind<EditorSettings::ScriptCanvasEditorSettings>(AZ_CRC("ScriptCanvasPreviewSettings", 0x1c5a2965), AZ::UserSettings::CT_LOCAL);
-
-        if (settings)
-        {
-            for (const AZ::Uuid& azVarType : m_pinningChanges)
-            {
-                size_t result = settings->m_pinnedDataTypes.erase(azVarType);
-
-                if (result == 0)
-                {
-                    settings->m_pinnedDataTypes.insert(azVarType);
-                }
-            }
-
-            m_pinningChanges.clear();
-        }
-    }
-
-    ////////////////////////////////////////
-    // VariablePaletteSortFilterProxyModel
-    ////////////////////////////////////////
-
-    VariablePaletteSortFilterProxyModel::VariablePaletteSortFilterProxyModel(QObject* parent)
-        : QSortFilterProxyModel(parent)
-    {
-    }
-
-    bool VariablePaletteSortFilterProxyModel::filterAcceptsRow(int sourceRow, const QModelIndex& sourceParent) const
-    {
-        if (m_filter.isEmpty())
-        {
-            return true;
-        }
-        
-        VariablePaletteModel* model = qobject_cast<VariablePaletteModel*>(sourceModel());
-        if (!model)
-        {
-            return false;
-        }
-        
-        QModelIndex index = model->index(sourceRow, VariablePaletteModel::ColumnIndex::Type, sourceParent);
-        QString test = model->data(index, Qt::DisplayRole).toString();
-        return (test.lastIndexOf(m_testRegex) >= 0);
-    }
-
-    bool VariablePaletteSortFilterProxyModel::lessThan(const QModelIndex& left, const QModelIndex& right) const
-    {
-        VariablePaletteModel* model = qobject_cast<VariablePaletteModel*>(sourceModel());
-        if (!model)
-        {
-            return false;
-        }
-
-        bool pinnedLeft = false;
-        ScriptCanvas::Data::Type leftDataType = model->FindDataForIndex(left);
-
-        bool pinnedRight = false;
-        ScriptCanvas::Data::Type rightDataType = model->FindDataForIndex(right);
-
-        AZStd::intrusive_ptr<EditorSettings::ScriptCanvasEditorSettings> settings = AZ::UserSettings::CreateFind<EditorSettings::ScriptCanvasEditorSettings>(AZ_CRC("ScriptCanvasPreviewSettings", 0x1c5a2965), AZ::UserSettings::CT_LOCAL);
-
-        if (settings)
-        {
-            pinnedLeft = settings->m_pinnedDataTypes.find(ScriptCanvas::Data::ToAZType(leftDataType)) != settings->m_pinnedDataTypes.end();
-            pinnedRight = settings->m_pinnedDataTypes.find(ScriptCanvas::Data::ToAZType(rightDataType)) != settings->m_pinnedDataTypes.end();
-        }
-
-        if (pinnedRight == pinnedLeft)
-        {
-            return QSortFilterProxyModel::lessThan(left, right);
-        }
-        else if (pinnedRight)
-        {
-            return false;
-        }
-        else
-        {
-            return true;
-        }
-    }
-    
-    void VariablePaletteSortFilterProxyModel::SetFilter(const QString& filter)
-    {
-        m_filter = filter;
-        m_testRegex = QRegExp(m_filter, Qt::CaseInsensitive);
-        invalidateFilter();
-    }
-    
+{    
     /////////////////////////////
     // VariablePaletteTableView
     /////////////////////////////
@@ -324,26 +48,31 @@ namespace ScriptCanvasEditor
     VariablePaletteTableView::VariablePaletteTableView(QWidget* parent)
         : QTableView(parent)
     {
-        m_model = aznew VariablePaletteModel(parent);
-        m_proxyModel = aznew VariablePaletteSortFilterProxyModel(parent);
+        m_containerWizard = aznew ContainerWizard(parent);
+
+        m_model = aznew DataTypePaletteModel(parent);
+        m_proxyModel = aznew DataTypePaletteSortFilterProxyModel(parent);
         
         m_proxyModel->setSourceModel(m_model);
-        m_proxyModel->sort(VariablePaletteModel::ColumnIndex::Type);
+        m_proxyModel->sort(DataTypePaletteModel::ColumnIndex::Type);
 
         setModel(m_proxyModel);
 
-        setItemDelegateForColumn(VariablePaletteModel::Type, aznew GraphCanvas::IconDecoratedNameDelegate(this));
+        setItemDelegateForColumn(DataTypePaletteModel::Type, aznew GraphCanvas::IconDecoratedNameDelegate(this));
 
         viewport()->installEventFilter(this);
-        horizontalHeader()->setSectionResizeMode(VariablePaletteModel::ColumnIndex::Pinned, QHeaderView::ResizeMode::ResizeToContents);
-        horizontalHeader()->setSectionResizeMode(VariablePaletteModel::ColumnIndex::Type, QHeaderView::ResizeMode::Stretch);
+        horizontalHeader()->setSectionResizeMode(DataTypePaletteModel::ColumnIndex::Pinned, QHeaderView::ResizeMode::ResizeToContents);
+        horizontalHeader()->setSectionResizeMode(DataTypePaletteModel::ColumnIndex::Type, QHeaderView::ResizeMode::Stretch);
 
         QObject::connect(this, &QAbstractItemView::clicked, this, &VariablePaletteTableView::OnClicked);
+
+        QObject::connect(m_containerWizard, &ContainerWizard::CreateContainerVariable, this, &VariablePaletteTableView::OnCreateContainerVariable);
+        QObject::connect(m_containerWizard, &ContainerWizard::ContainerPinned, this, &VariablePaletteTableView::OnContainerPinned);
 
         m_completer = new QCompleter();
 
         m_completer->setModel(m_model);
-        m_completer->setCompletionColumn(VariablePaletteModel::ColumnIndex::Type);
+        m_completer->setCompletionColumn(DataTypePaletteModel::ColumnIndex::Type);
         m_completer->setCompletionMode(QCompleter::CompletionMode::InlineCompletion);
         m_completer->setCaseSensitivity(Qt::CaseSensitivity::CaseInsensitive);
 
@@ -355,10 +84,70 @@ namespace ScriptCanvasEditor
         m_model->SubmitPendingPinChanges();
     }
 
+    void VariablePaletteTableView::SetActiveScene(const AZ::EntityId& scriptCanvasGraphId)
+    {
+        m_containerWizard->SetActiveGraph(scriptCanvasGraphId);
+    }
+
     void VariablePaletteTableView::PopulateVariablePalette(const AZStd::unordered_set< AZ::Uuid >& objectTypes)
     {
         clearSelection();
-        m_model->PopulateVariablePalette(objectTypes);
+        m_model->ClearTypes();
+
+        AZStd::unordered_set<AZ::Uuid> variableTypes;
+
+        auto dataRegistry = ScriptCanvas::GetDataRegistry();        
+
+        for (const auto& dataTraitsPair : dataRegistry->m_typeIdTraitMap)
+        {
+            // Object type isn't valid on it's own. Need to skip that in order. Passed in types will all be
+            // processed as an object type.
+            if (dataTraitsPair.first == ScriptCanvas::Data::eType::BehaviorContextObject)
+            {
+                continue;
+            }
+
+            AZ::Uuid typeId = dataTraitsPair.second.m_dataTraits.GetAZType();
+
+            if (typeId.IsNull() || typeId == azrtti_typeid<void>())
+            {
+                continue;
+            }
+
+            m_containerWizard->RegisterType(typeId);
+            variableTypes.insert(typeId);
+        }
+
+        AZStd::intrusive_ptr<EditorSettings::ScriptCanvasEditorSettings> settings = AZ::UserSettings::CreateFind<EditorSettings::ScriptCanvasEditorSettings>(AZ_CRC("ScriptCanvasPreviewSettings", 0x1c5a2965), AZ::UserSettings::CT_LOCAL);
+
+        for (const AZ::Uuid& objectId : objectTypes)        
+        {
+            // For now, we need to register all of the objectId's with the container wizard
+            // in order to properly populate the list of valid container configurations.
+            m_containerWizard->RegisterType(objectId);
+
+            // Sanitize containers so we only put in information about the generic container type
+            if (AZ::Utils::IsContainerType(objectId))
+            {
+                variableTypes.insert(AZ::Utils::GetGenericContainerType(objectId));
+            }
+            else
+            {
+                variableTypes.insert(objectId);
+            }
+        }
+
+        // Since we gated containers to make them genrealized buckets, we now need to go through
+        // and register in the custom defined types for each of the container types that we created.
+        for (const AZ::Uuid& pinnedTypeId : settings->m_pinnedDataTypes)
+        {
+            if (variableTypes.find(pinnedTypeId) == variableTypes.end())
+            {
+                variableTypes.insert(pinnedTypeId);
+            }
+        }
+
+        m_model->PopulateVariablePalette(variableTypes);
     }
 
     void VariablePaletteTableView::SetFilter(const QString& filter)
@@ -375,12 +164,17 @@ namespace ScriptCanvasEditor
     }
 
     void VariablePaletteTableView::TryCreateVariableByTypeName(const AZStd::string& typeName)
-    {
-        ScriptCanvas::Data::Type dataType = m_model->FindDataForTypeName(typeName);
+    {        
+        AZ::TypeId typeId = m_model->FindTypeIdForTypeName(typeName);
 
-        if (dataType.IsValid())
+        // Only want to go into the wizard, if we have a generic type.
+        if (AZ::Utils::IsGenericContainerType(typeId))
         {
-            emit CreateVariable(dataType);
+            m_containerWizard->ShowWizard(typeId);
+        }
+        else if (!typeId.IsNull() && typeId != azrtti_typeid<void>())
+        {
+            emit CreateVariable(ScriptCanvas::Data::FromAZType(typeId));
         }
     }
 
@@ -404,28 +198,42 @@ namespace ScriptCanvasEditor
 
     void VariablePaletteTableView::OnClicked(const QModelIndex& index)
     {
-        ScriptCanvas::Data::Type varType = ScriptCanvas::Data::Type::Invalid();
+        AZ::TypeId typeId;
 
         QModelIndex sourceIndex = m_proxyModel->mapToSource(index);
 
         if (sourceIndex.isValid())
         {
-            varType = m_model->FindDataForIndex(sourceIndex);
+            typeId = m_model->FindTypeIdForIndex(sourceIndex);
         }
 
-        if (varType.IsValid())
+        if (!typeId.IsNull() && typeId != azrtti_typeid<void>())
         {
-            if (index.column() == VariablePaletteModel::ColumnIndex::Pinned)
-            {
-                AZ::Uuid azVarType = ScriptCanvas::Data::ToAZType(varType);
-                m_model->TogglePendingPinChange(azVarType);
+            if (index.column() == DataTypePaletteModel::ColumnIndex::Pinned)
+            {                
+                m_model->TogglePendingPinChange(typeId);
                 m_model->dataChanged(sourceIndex, sourceIndex);
+            }
+            else if (AZ::Utils::IsGenericContainerType(typeId))
+            {
+                m_containerWizard->ShowWizard(typeId);
             }
             else
             {
-                emit CreateVariable(varType);
+                emit CreateVariable(ScriptCanvas::Data::FromAZType(typeId));
             }
         }
+    }
+
+    void VariablePaletteTableView::OnContainerPinned(const AZ::TypeId& typeId)
+    {
+        m_model->AddDataType(typeId);
+    }
+
+    void VariablePaletteTableView::OnCreateContainerVariable(const AZStd::string& variableName, const AZ::TypeId& typeId)
+    {
+        ScriptCanvas::Data::Type dataType = ScriptCanvas::Data::FromAZType(typeId);
+        emit CreateNamedVariable(variableName, dataType);
     }
 
 #include <Editor/View/Widgets/VariablePanel/VariablePaletteTableView.moc>

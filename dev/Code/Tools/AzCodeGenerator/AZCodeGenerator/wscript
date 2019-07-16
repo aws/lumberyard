@@ -54,7 +54,8 @@ def build(bld):
 
         target              = 'AzCodeGenerator',
         platforms           = ['win', 'darwin_x64', 'linux_x64'],
-        configurations      = ['debug', 'profile'],
+        configurations      = ['all'],
+        exclude_monolithic  = True,
         vs_filter           = 'Tools',
         file_list           = 'azcodegenerator.waf_files',
         pch                 = 'precompiled.cpp',

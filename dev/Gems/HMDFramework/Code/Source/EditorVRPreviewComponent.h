@@ -44,7 +44,7 @@ namespace AZ
 
             //////////////////////////////////////////////////////////////////////////
             // AzToolsFramework::EditorEntityContextNotificationBus interface implementation
-            void OnSliceInstantiated(const Data::AssetId& sliceAssetId, const SliceComponent::SliceInstanceAddress& sliceAddress, const AzFramework::SliceInstantiationTicket& ticket) override;
+            void OnSliceInstantiated(const Data::AssetId& sliceAssetId, SliceComponent::SliceInstanceAddress& sliceAddress, const AzFramework::SliceInstantiationTicket& ticket) override;
             //////////////////////////////////////////////////////////////////////////
 
             /// Helper to generate the Editor navigation area

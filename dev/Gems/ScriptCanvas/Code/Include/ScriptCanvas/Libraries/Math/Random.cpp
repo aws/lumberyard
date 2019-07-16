@@ -10,9 +10,8 @@
 *
 */
 
-#include "precompiled.h"
-
 #include "Random.h"
+#include <Libraries/Math/MathNodeUtilities.h>
 
 namespace ScriptCanvas
 {
@@ -32,7 +31,7 @@ namespace ScriptCanvas
                         float minValue = RandomProperty::GetMin(this);
                         float maxValue = RandomProperty::GetMax(this);
 
-                        auto randVal = Math::GetRandom(minValue, maxValue);
+                        auto randVal = MathNodeUtilities::GetRandom(minValue, maxValue);
 
                         Datum o(Data::Type::Number(), Datum::eOriginality::Copy);
                         o.Set(randVal);

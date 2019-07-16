@@ -15,6 +15,8 @@
 #include <AzQtComponents/Components/Style.h>
 #include <cmath>
 #include <QPainter>
+#include <AzCore/Math/MathUtils.h>
+#include <assert.h>
 
 namespace AzQtComponents
 {
@@ -25,7 +27,7 @@ namespace AzQtComponents
         const auto g = std::pow(rgb.greenF(), 1.0 / gamma);
         const auto b = std::pow(rgb.blueF(), 1.0 / gamma);
         const auto a = rgb.alphaF();
-        return QColor::fromRgbF(r, g, b, a);
+        return toQColor(r, g, b, a);
     }
 
     AZ::Color AdjustGamma(const AZ::Color& color, float gamma)
@@ -55,7 +57,10 @@ namespace AzQtComponents
 
     bool AreClose(const AZ::Color& left, const AZ::Color& right)
     {
-        return qFuzzyCompare(left.GetR(), right.GetR()) && qFuzzyCompare(left.GetG(), right.GetG()) && qFuzzyCompare(left.GetB(), right.GetB()) && qFuzzyCompare(left.GetA(), right.GetA());
+        // the two values can't be off more than a single 8 bit rounded unit
+        const float tolerance = 1.0f / 255.0f;
+
+        return left.IsClose(right, tolerance);
     }
 
 } // namespace AzQtComponents

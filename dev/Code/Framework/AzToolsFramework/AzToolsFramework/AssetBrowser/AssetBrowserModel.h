@@ -47,6 +47,8 @@ namespace AzToolsFramework
             explicit AssetBrowserModel(QObject* parent = nullptr);
             ~AssetBrowserModel();
 
+            QModelIndex findIndex(const QString& absoluteAssetPath) const;
+
             //////////////////////////////////////////////////////////////////////////
             // QAbstractTableModel
             //////////////////////////////////////////////////////////////////////////

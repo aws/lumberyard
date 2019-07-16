@@ -1,0 +1,71 @@
+{
+    "env": {
+        "CFLAGS,CXXFLAGS" : [
+            # Enable all warnings and treat them as errors
+            # but don"t warn about unkown warnings in order
+            # to maintain backwards compatibility with older
+            # toolchain versions.
+            "-Wall",
+            "-Werror",
+            "-Wno-unknown-warning-option",
+
+            # Disabled warnings (please do not disable any others without first consulting ly-warnings)
+            "-Wno-##pragma-messages",
+            "-Wno-absolute-value",
+            "-Wno-dynamic-class-memaccess",
+            "-Wno-format-security",
+            "-Wno-inconsistent-missing-override",
+            "-Wno-invalid-offsetof",
+            "-Wno-multichar",
+            "-Wno-parentheses",
+            "-Wno-reorder",
+            "-Wno-self-assign",
+            "-Wno-switch",
+            "-Wno-tautological-compare",
+            "-Wno-undefined-var-template",
+            "-Wno-unknown-pragmas",
+            "-Wno-unused-function",
+            "-Wno-unused-private-field",
+            "-Wno-unused-value",
+            "-Wno-unused-variable",
+            "-Wno-non-pod-varargs",
+            "-Wno-unused-lambda-capture",
+
+            # Workaround for compiler seeing file case differently from what OS show in console.
+            "-Wno-nonportable-include-path",
+
+            # Other
+            "-ffast-math",
+            "-fvisibility=hidden",
+            "-fvisibility-inlines-hidden"
+        ],
+        "CXXFLAGS": [
+            "-std=c++1y",           # C++14
+            "-fno-rtti",            # Disable RTTI
+            "-fno-exceptions"       # Disable Exceptions
+        ]
+    },
+    "env/debug": {
+        "CFLAGS,CXXFLAGS": [
+            "-O0",              # No optimization
+            "-g",               # debug symbols
+            "-fno-inline",      # dont inline functions
+            "-fstack-protector" # Add additional checks to catch stack corruption issues
+        ]
+    },
+    "env/profile": {
+        "CFLAGS,CXXFLAGS": [
+            "-O2"
+        ]
+    },
+    "env/performance": {
+        "CFLAGS,CXXFLAGS": [
+            "-O2"
+        ]
+    },
+    "env/release": {
+        "CFLAGS,CXXFLAGS": [
+            "-O2"
+        ]
+    }
+}

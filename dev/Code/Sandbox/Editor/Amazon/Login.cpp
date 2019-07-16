@@ -36,7 +36,7 @@ namespace Amazon {
     const int WEBVIEW_HEIGHT = 561;
     const char* SETTINGS_PATH = "Identity";
     const char* SETTINGS_ACCESS_TOKEN = "AccessToken2";
-    const char* TOKEN_QUERY_STRING_KEY = "aToken";
+    const char* VALID_IDENTITY_STRING_KEY = "www.amazon.com";
     const char* DIRECTED_ID_QUERY_STRING_KEY = "openid.identity";
     const char* AUTHPORTAL_URL = "https://www.amazon.com/ap/signin?openid.ns=http://specs.openid.net/auth/2.0&openid.claimed_id=http://specs.openid.net/auth/2.0/identifier_select&openid.identity=http://specs.openid.net/auth/2.0/identifier_select&openid.mode=checkid_setup&openid.oa2.scope=device_auth_access&openid.ns.oa2=http://www.amazon.com/ap/ext/oauth/2&openid.oa2.response_type=token&language=en-US&marketPlaceId=ATVPDKIKX0DER&openid.return_to=https://www.amazon.com/ap/maplanding&openid.pape.max_auth_age=0&forceMobileLayout=true&openid.assoc_handle=amzn_lumberyard_desktop_us&pageId=amzn_lumberyard_desktop";
     const char* FORGOT_PASSWORD_URL = "https://www.amazon.com/ap/forgotpassword";
@@ -225,13 +225,16 @@ namespace Amazon {
     void LoginDialog::urlChanged(const QUrl& newUrl)
     {
         QUrlQuery queryString(newUrl);
-        if (queryString.hasQueryItem(TOKEN_QUERY_STRING_KEY))
+        if (queryString.hasQueryItem(DIRECTED_ID_QUERY_STRING_KEY))
         {
-            m_oauthToken = queryString.queryItemValue(DIRECTED_ID_QUERY_STRING_KEY);
+            QString oauthToken = queryString.queryItemValue(DIRECTED_ID_QUERY_STRING_KEY);
+            if (oauthToken.contains(VALID_IDENTITY_STRING_KEY))
+            {
+                m_oauthToken = oauthToken;
+                sendUserEvent(EDITOR_LOGIN_EVENT_NAME, m_oauthToken.toStdString().c_str());
 
-			sendUserEvent(EDITOR_LOGIN_EVENT_NAME, m_oauthToken.toStdString().c_str());
-
-            accept();
+                accept();
+            }
         }
     }
 
@@ -299,7 +302,7 @@ namespace Amazon {
             sendUserEvent(EDITOR_OPENED_EVENT_NAME, aToken.c_str());
             s_EditorOpenedEventSent = true;
         }
-		
+
         return m_identity;
     }
 

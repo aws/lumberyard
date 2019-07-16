@@ -9,6 +9,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
+
 #pragma once
 
 #include <AzCore/Memory/SystemAllocator.h>
@@ -20,7 +21,8 @@
 
 namespace AzFramework
 {
-    class EntityDebugDisplayRequests;
+    struct CameraState;
+    class DebugDisplayRequests;
 }
 
 namespace AzToolsFramework
@@ -32,26 +34,21 @@ namespace AzToolsFramework
 
     namespace ViewportInteraction
     {
-        struct CameraState;
         struct MouseInteraction;
     }
 
     class BaseManipulator;
     class LinearManipulator;
 
-    /**
-     * State of overall manipulator manager.
-     */
+    /// State of overall manipulator manager.
     struct ManipulatorManagerState
     {
         bool m_interacting;
     };
 
-    /**
-     * This class serves to manage all relevant mouse events and coordinate all registered manipulators to function properly.
-     * ManipulatorManager does not manage the life cycle of specific manipulators. The users of manipulators are responsible
-     * for creating and deleting them at right time, as well as registering and unregistering accordingly.
-     */
+    /// This class serves to manage all relevant mouse events and coordinate all registered manipulators to function properly.
+    /// ManipulatorManager does not manage the life cycle of specific manipulators. The users of manipulators are responsible
+    /// for creating and deleting them at right time, as well as registering and unregistering accordingly.
     class ManipulatorManager final
         : private ManipulatorManagerRequestBus::Handler
         , private EditorEntityInfoNotificationBus::Handler
@@ -62,10 +59,18 @@ namespace AzToolsFramework
         explicit ManipulatorManager(ManipulatorManagerId managerId);
         ~ManipulatorManager();
 
+        /// The result of consuming a mouse move.
+        enum class ConsumeMouseMoveResult
+        {
+            None,
+            Hovering,
+            Interacting,
+        };
+
         // NOTE: These are NOT EBus messages. They are called by the owner of the manipulator manager and they will return TRUE
         // if they have gobbled up the interaction. If this is the case you should not process it yourself.
         bool ConsumeViewportMousePress(const ViewportInteraction::MouseInteraction&);
-        bool ConsumeViewportMouseMove(const ViewportInteraction::MouseInteraction&);
+        ConsumeMouseMoveResult ConsumeViewportMouseMove(const ViewportInteraction::MouseInteraction&);
         bool ConsumeViewportMouseRelease(const ViewportInteraction::MouseInteraction&);
         bool ConsumeViewportMouseWheel(const ViewportInteraction::MouseInteraction&);
 
@@ -74,21 +79,16 @@ namespace AzToolsFramework
         void UnregisterManipulator(BaseManipulator* manipulator) override;
         void DeleteManipulatorBound(Picking::RegisteredBoundId boundId) override;
         void SetBoundDirty(Picking::RegisteredBoundId boundId) override;
-        void SetAllBoundsDirty() override;
         Picking::RegisteredBoundId UpdateBound(ManipulatorId manipulatorId,
             Picking::RegisteredBoundId boundId, const Picking::BoundRequestShapeBase& boundShapeData) override;
-        void SetManipulatorSpace(ManipulatorSpace manipulatorSpace) override;
-        ManipulatorSpace GetManipulatorSpace() override;
 
         void DrawManipulators(
-            AzFramework::EntityDebugDisplayRequests& display,
-            const ViewportInteraction::CameraState& cameraState,
+            AzFramework::DebugDisplayRequests& debugDisplay,
+            const AzFramework::CameraState& cameraState,
             const ViewportInteraction::MouseInteraction& mouseInteraction);
 
-        /**
-         * Check if the modifier key state has changed - if so we may need to refresh
-         * certain manipulator bounds.
-         */
+        /// Check if the modifier key state has changed - if so we may need to refresh
+        /// certain manipulator bounds.
         void CheckModifierKeysChanged(
             ViewportInteraction::KeyboardModifiers keyboardModifiers,
             const ViewportInteraction::MousePick& mousePick);
@@ -96,12 +96,10 @@ namespace AzToolsFramework
         bool Interacting() const { return m_activeManipulator != nullptr; }
 
     private:
-        /**
-         * @param rayOrigin The origin of the ray to test intersection with.
-         * @param rayDirection The direction of the ray to test intersection with.
-         * @param[out] rayIntersectionDistance The result intersecting point equals "rayOrigin + rayIntersectionDistance * rayDirection".
-         * @return A pointer to a manipulator that the ray intersects. Null pointer if no intersection is detected.
-         */
+        /// @param rayOrigin The origin of the ray to test intersection with.
+        /// @param rayDirection The direction of the ray to test intersection with.
+        /// @param[out] rayIntersectionDistance The result intersecting point equals "rayOrigin + rayIntersectionDistance * rayDirection".
+        /// @return A pointer to a manipulator that the ray intersects. Null pointer if no intersection is detected.
         AZStd::shared_ptr<BaseManipulator> PerformRaycast(
             const AZ::Vector3& rayOrigin, const AZ::Vector3& rayDirection, float& rayIntersectionDistance);
 
@@ -114,11 +112,14 @@ namespace AzToolsFramework
         AZStd::unordered_map<ManipulatorId, AZStd::shared_ptr<BaseManipulator>> m_manipulatorIdToPtrMap; ///< Mapping from a manipulatorId to the corresponding manipulator.
         AZStd::unordered_map<Picking::RegisteredBoundId, ManipulatorId> m_boundIdToManipulatorIdMap; ///< Mapping from a boundId to the corresponding manipulatorId.
 
-        AZStd::shared_ptr<BaseManipulator> m_activeManipulator = nullptr; ///< The manipulator we are currently interacting with.
+        AZStd::shared_ptr<BaseManipulator> m_activeManipulator; ///< The manipulator we are currently interacting with.
         Picking::ManipulatorBoundManager m_boundManager; ///< All active manipulator bounds that could be interacted with.
 
         ViewportInteraction::KeyboardModifiers m_keyboardModifiers; ///< Our recorded state of the modifier keys.
-
-        ManipulatorSpace m_manipulatorSpace = ManipulatorSpace::Local; ///< Will manipulator movements happen in World or Local space.
     };
+
+    // The main/default ManipulatorManagerId to be used for
+    // registering manipulators used by components in the level
+    extern const ManipulatorManagerId g_mainManipulatorManagerId;
+
 } // namespace AzToolsFramework

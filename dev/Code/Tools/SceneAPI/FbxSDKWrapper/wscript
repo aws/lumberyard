@@ -20,11 +20,12 @@ def build(bld):
         vs_filter                   = 'Tools/SceneAPI',
         file_list                   = 'fbxsdkwrapper.waf_files',
         platforms                   = ['win', 'darwin'],
-        configurations              = ['debug', 'debug_test', 'profile', 'profile_test'],
+        configurations              = ['all'],
+        exclude_monolithic          = True,
+        client_only                 = True,
         includes                    = [bld.Path('Code/Tools')],
         disable_pch                 = True,
         use                         = ['AzCore', 'AzFramework', 'AzToolsFramework', 'SceneCore', 'FBXSDK'],
-
         win_x64_clang_cxxflags      = ['-Wno-null-dereference'],
-	darwin_cxxflags 	    = ['-Wno-pragmas'],
+        darwin_cxxflags             = ['-Wno-pragmas']
     )

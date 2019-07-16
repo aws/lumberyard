@@ -44,30 +44,23 @@ namespace ScriptCanvasEditor
     {
     }
 
+    bool GraphItemCommand::Changed() const
+    {
+        return true;
+    }
+
     void GraphItemCommand::RestoreItem(const AZStd::vector<AZ::u8>&)
     {
     }
 
     void GraphItemChangeCommand::DeleteOldGraphData(const UndoData& oldData)
     {
-        GraphCanvas::SceneRequestBus::Event(m_graphCanvasGraphId, &GraphCanvas::SceneRequests::DeleteGraphData, oldData.m_graphCanvasGraphData);
+        EditorGraphRequestBus::Event(m_scriptCanvasGraphId, &EditorGraphRequests::ClearGraphCanvasScene);
         ScriptCanvas::GraphVariableManagerRequestBus::Event(m_scriptCanvasGraphId, &ScriptCanvas::GraphVariableManagerRequests::DeleteVariableData, oldData.m_variableData);
     }
 
     void GraphItemChangeCommand::ActivateRestoredGraphData(const UndoData& restoredData)
     {
-        // Activate Graph Canvas Scene Data
-        AZStd::unordered_set<AZ::Entity*> entities;
-        restoredData.m_graphCanvasGraphData.CollectEntities(entities);
-
-        for (AZ::Entity* entity : entities)
-        {
-            if (entity->GetState() == AZ::Entity::ES_CONSTRUCTED)
-            {
-                entity->Init();
-            }
-        }
-
         // Reset VariableData on the GraphVariableManager before re-init node entities, as the GetVariableNode/SetVariable Node
         // queries the VariableRequestBus
         ScriptCanvas::GraphVariableManagerRequestBus::Event(m_scriptCanvasGraphId, &ScriptCanvas::GraphVariableManagerRequests::SetVariableData, restoredData.m_variableData);
@@ -96,7 +89,8 @@ namespace ScriptCanvasEditor
         }
 
         ScriptCanvas::GraphRequestBus::Event(m_scriptCanvasGraphId, &ScriptCanvas::GraphRequests::AddGraphData, restoredData.m_graphData);
-        GraphCanvas::SceneRequestBus::Event(m_graphCanvasGraphId, &GraphCanvas::SceneRequests::AddGraphData, restoredData.m_graphCanvasGraphData);
+
+        EditorGraphRequestBus::Event(m_scriptCanvasGraphId, &EditorGraphRequests::UpdateGraphCanvasSaveData, restoredData.m_visualSaveData);
     }
 
     //// Graph Item Change Command
@@ -192,7 +186,7 @@ namespace ScriptCanvasEditor
         DeleteOldGraphData(oldData);
 
         UndoData restoreData;
-        bool restoreSuccess = AZ::Utils::LoadObjectFromStreamInPlace(byteStream, restoreData, serializeContext, AZ::ObjectStream::FilterDescriptor(AZ::Data::AssetFilterNoAssetLoading));
+        bool restoreSuccess = AZ::Utils::LoadObjectFromStreamInPlace(byteStream, restoreData, serializeContext, AZ::ObjectStream::FilterDescriptor(AZ::ObjectStream::AssetFilterNoAssetLoading));
         if (restoreSuccess)
         {
             ActivateRestoredGraphData(restoreData);

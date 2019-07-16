@@ -35,7 +35,7 @@ namespace ScriptCanvas
                     ScriptCanvas_Node::Name("StringFormatted", "Base class for any nodes that use string formatting capabilities.")
                     ScriptCanvas_Node::Uuid("{0B1577E0-339D-4573-93D1-6C311AD12A13}")
                     ScriptCanvas_Node::Category("Internal")
-                    ScriptCanvas_Node::Version(0)
+                    ScriptCanvas_Node::Version(1)
                 );
 
             protected:
@@ -50,6 +50,10 @@ namespace ScriptCanvas
                     EditProperty::Name("String", "The format string; any word within {} will create a data pin on the node.")
                     EditProperty::EditAttributes(AZ::Edit::Attributes::ChangeNotify(&StringFormatted::OnFormatChanged)
                     )
+                );
+
+                ScriptCanvas_EditPropertyWithDefaults(int, m_numericPrecision, 4,
+                    EditProperty::Name("Precision", "The precision with which to print any numeric values.")
                 );
 
                 // This is a map that binds the index into m_unresolvedString to the SlotId that needs to be checked for a valid datum.

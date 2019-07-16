@@ -166,8 +166,8 @@ namespace UnitTest
         SSystemGlobalEnvironment* m_oldEnv;
 
     public:
-        MultiplayerAllocatorsFixture(unsigned int heapSizeMB = 15, bool isMemoryDriller = false)
-            : AllocatorsTestFixture(heapSizeMB, isMemoryDriller)
+        MultiplayerAllocatorsFixture()
+            : AllocatorsTestFixture()
             , m_gridMate(nullptr)
             , m_oldEnv(gEnv)
         {
@@ -483,6 +483,8 @@ namespace UnitTest
         AZ::ComponentApplication::Descriptor appDesc;
         appDesc.m_memoryBlocksByteSize = 20 * 1024 * 1024;
         appDesc.m_stackRecordLevels = 10;
+        appDesc.m_enableDrilling = false; // we already created a memory driller for the test (AllocatorsFixture)
+
         AZ::Entity* systemEntity = app.Create(appDesc);
 
         systemEntity->CreateComponent<AZ::MemoryComponent>();
@@ -625,17 +627,17 @@ local testlua =
 }
 
 function testlua:OnActivate()
-	local desc = SessionDesc();
-	desc.gamePort = 3333;
-	desc.mapName = "foo";
-	desc.serverName = "bar";
-	desc.maxPlayerSlots = 4;
-	desc.serviceType = GridServiceType.LAN;
-	desc.enableDisconnectDetection = true;
-	desc.connectionTimeoutMS = 499;
-	desc.threadUpdateTimeMS = 51;
+    local desc = SessionDesc();
+    desc.gamePort = 3333;
+    desc.mapName = "foo";
+    desc.serverName = "bar";
+    desc.maxPlayerSlots = 4;
+    desc.serviceType = GridServiceType.LAN;
+    desc.enableDisconnectDetection = true;
+    desc.connectionTimeoutMS = 499;
+    desc.threadUpdateTimeMS = 51;
 
-	self.sessionManager = SessionManagerBus.Connect(self, self.entityId);
+    self.sessionManager = SessionManagerBus.Connect(self, self.entityId);
     SessionManagerBus.Event.StartHost(self.entityId, desc);
 end
 
@@ -648,6 +650,7 @@ return testlua;
 )";
         AZ::ComponentApplication app;
         AZ::ComponentApplication::Descriptor appDesc;
+        appDesc.m_enableDrilling = false; // we already created a memory driller for the test (AllocatorsFixture)
         appDesc.m_memoryBlocksByteSize = 20 * 1024 * 1024;
         appDesc.m_stackRecordLevels = 10;
         AZ::Entity* systemEntity = app.Create(appDesc);
@@ -692,7 +695,6 @@ return testlua;
         scriptAsset.Release();
         scriptAsset = nullptr;
 
-        TearDown();
         app.Destroy();
     }
 
@@ -710,17 +712,17 @@ return testlua;
                             }
 
                             function testlua:OnActivate()
-	                            local desc = SessionDesc();
-	                            desc.gamePort = 3333;
-	                            desc.mapName = "foo";
-	                            desc.serverName = "bar";
-	                            desc.maxPlayerSlots = 4;
-	                            desc.serviceType = GridServiceType.LAN;
-	                            desc.enableDisconnectDetection = true;
-	                            desc.connectionTimeoutMS = 499;
-	                            desc.threadUpdateTimeMS = 51;
+                                local desc = SessionDesc();
+                                desc.gamePort = 3333;
+                                desc.mapName = "foo";
+                                desc.serverName = "bar";
+                                desc.maxPlayerSlots = 4;
+                                desc.serviceType = GridServiceType.LAN;
+                                desc.enableDisconnectDetection = true;
+                                desc.connectionTimeoutMS = 499;
+                                desc.threadUpdateTimeMS = 51;
 
-	                            self.searchManager = GridSearchBusHandler.Connect(self, self.entityId);
+                                self.searchManager = GridSearchBusHandler.Connect(self, self.entityId);
                                 self.ticket = GridSearchBusHandler.Event.StartSearch(self.entityId, desc);
                             end
 
@@ -741,7 +743,6 @@ return testlua;
 
         auto teardown = [&]()
         {
-            TearDown();
         };
 
         RunLuaScript(3, setup, update, teardown);
@@ -760,11 +761,11 @@ local testlua =
 }
 
 function testlua:OnActivate()
-	local desc = SessionDesc();
-	desc.gamePort = 8080;
-	desc.serviceType = GridServiceType.LAN;
+    local desc = SessionDesc();
+    desc.gamePort = 8080;
+    desc.serviceType = GridServiceType.LAN;
 
-	self.searchManager = GridSearchBusHandler.Connect(self, self.entityId);
+    self.searchManager = GridSearchBusHandler.Connect(self, self.entityId);
     self.ticket = GridSearchBusHandler.Event.StartSearch(self.entityId, desc);
 end
 
@@ -816,7 +817,6 @@ return testlua;
         auto teardown = [&]()
         {
             gmLANService.StopSessionService(GetGridMate());
-            TearDown();
         };
 
         // it can take an average of 2000ms to actually register as session, so we give it up to 500x10ms here.
@@ -893,12 +893,12 @@ local testlua =
 }
 
 function testlua:OnActivate()
-	local desc = SessionDesc();
-	desc.gamePort = 8080;
-	desc.serviceType = GridServiceType.LAN;
+    local desc = SessionDesc();
+    desc.gamePort = 8080;
+    desc.serviceType = GridServiceType.LAN;
 
     self.testingBus = LuaNetworkTestingBus.Connect(self, self.entityId);
-	self.searchManager = GridSearchBusHandler.Connect(self, self.entityId);
+    self.searchManager = GridSearchBusHandler.Connect(self, self.entityId);
     self.ticket = GridSearchBusHandler.Event.StartSearch(self.entityId, desc);
 end
 
@@ -962,7 +962,6 @@ return testlua;
         {
             clientProcessor.Reset();
             testGridMateSessionEventBusHandler.Stop();
-            TearDown();
         };
 
         RunLuaScript(200, setup, update, teardown);

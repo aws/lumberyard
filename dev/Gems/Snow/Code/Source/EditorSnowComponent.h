@@ -62,7 +62,9 @@ namespace Snow
         void BuildGameEntity(AZ::Entity* gameEntity) override;
 
         // EntityDebugDisplayEventBus
-        void DisplayEntity(bool& handled) override;
+        void DisplayEntityViewport(
+            const AzFramework::ViewportInfo& viewportInfo,
+            AzFramework::DebugDisplayRequests& debugDisplay) override;
 
         // TickBus
         void OnTick(float deltaTime, AZ::ScriptTimePoint time) override;

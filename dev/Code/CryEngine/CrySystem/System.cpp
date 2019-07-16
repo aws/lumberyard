@@ -2935,12 +2935,15 @@ bool CSystem::SteamInit()
         return true;
     }
 
+    AZStd::string_view binFolderName;
+    AzFramework::ApplicationRequests::Bus::BroadcastResult(binFolderName, &AzFramework::ApplicationRequests::GetBinSubfolder);
+
     ////////////////////////////////////////////////////////////////////////////
     // ** DEVELOPMENT ONLY ** - creates the appropriate steam_appid.txt file needed to call SteamAPI_Init()
 #if !defined(RELEASE)
 #if defined(WIN64)
-    FILE* pSteamAppID = nullptr;
-    azfopen(&pSteamAppID, BINFOLDER_NAME "/steam_appid.txt", "wt");
+    AZStd::string appidPath = AZStd::string::format("%s/steam_appid.txt", binFolderName.data());
+    azfopen(&pSteamAppID, appidPath.c_str(), "wt");
 #else
 #if defined(WIN32)
     FILE* pSteamAppID = nullptr;
@@ -2963,7 +2966,7 @@ bool CSystem::SteamInit()
     // ** DEVELOPMENT ONLY ** - deletes the appropriate steam_appid.txt file as it's no longer needed
 #if !defined(RELEASE)
 #if defined(WIN64)
-    remove(BINFOLDER_NAME "/steam_appid.txt");
+    remove(appidPath.c_str());
 #else
 #if defined(WIN32)
     remove("Bin32/steam_appid.txt");

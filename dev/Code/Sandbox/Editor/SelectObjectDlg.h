@@ -96,7 +96,7 @@ private:
     void UpdateButtonsEnabledState();
 
     QScopedPointer<Ui::SELECT_OBJECT> ui;
-    ObjectSelectorModel* m_model;
+    QScopedPointer<ObjectSelectorModel> m_model;
     bool m_bIgnoreCallbacks = false;
     bool m_bAutoselect = false;
     bool m_picking = false;

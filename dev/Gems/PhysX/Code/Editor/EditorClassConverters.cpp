@@ -276,5 +276,17 @@ namespace PhysX
             }
             return true;
         }
+
+        bool EditorTerrainComponentConverter(AZ::SerializeContext& context, AZ::SerializeContext::DataElementNode& classElement)
+        {
+            // Version 1 had a field 'ExportOnSave'.
+            // This field was made redundant by the in-memory terrain asset introduced in version 2.
+            if (classElement.GetVersion() <= 1)
+            {
+                classElement.RemoveElementByName(AZ_CRC("ExportOnSave", 0xa7865698));
+            }
+
+            return true;
+        }
     } // namespace ClassConverters
 } // namespace PhysX

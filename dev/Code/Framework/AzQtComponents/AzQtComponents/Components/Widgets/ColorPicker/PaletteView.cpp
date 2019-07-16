@@ -14,6 +14,7 @@
 #include <AzQtComponents/Components/Widgets/ColorPicker/Palette.h>
 #include <AzQtComponents/Components/Widgets/ColorPicker/ColorController.h>
 #include <AzQtComponents/Components/Widgets/ColorPicker/Swatch.h>
+#include <AzQtComponents/Components/ConfigHelpers.h>
 #include <AzQtComponents/Components/Style.h>
 #include <AzQtComponents/Utilities/ColorUtilities.h>
 #include <AzQtComponents/Utilities/Conversions.h>
@@ -354,11 +355,6 @@ bool PaletteModel::tryAppend(const QVector<AZ::Color>& colors)
 
 bool PaletteModel::tryInsert(int row, QVector<AZ::Color>::const_iterator first, QVector<AZ::Color>::const_iterator last, bool isUndoRedo)
 {
-    if (m_palette->containsAnyColor(first, last))
-    {
-        return false;
-    }
-
     insertIgnoringDuplicates(row, first, last, isUndoRedo);
     return true;
 }
@@ -388,7 +384,7 @@ Qt::DropActions PaletteModel::supportedDropActions() const
     return Qt::CopyAction | Qt::MoveAction;
 }
 
-Qt::ItemFlags PaletteModel::flags(const QModelIndex &index) const
+Qt::ItemFlags PaletteModel::flags(const QModelIndex& index) const
 {
     Qt::ItemFlags defaultFlags = QAbstractListModel::flags(index);
 
@@ -469,20 +465,23 @@ bool PaletteModel::dropMimeData(const QMimeData* data, Qt::DropAction action, in
 
 bool PaletteModel::trySet(int row, const AZ::Color& color, bool isUndoRedo)
 {
-    AZ::Color previous = m_palette->colors()[row];
-
-    bool result = m_palette->trySetColor(row, color);
-    if (result)
+    if (m_palette->containsColor(color))
     {
-        if (!isUndoRedo)
-        {
-            auto set = new UndoRedo::PaletteModelSetColorCommand(*this, row, previous);
-            m_undoStack->push(set);
-        }
+        return false;
+    }
 
+    if (!isUndoRedo)
+    {
+        auto set = new UndoRedo::PaletteModelSetColorCommand(*this, row, color);
+        m_undoStack->push(set);
+    }
+    else
+    {
+        m_palette->trySetColor(row, color);
         emit dataChanged(index(row), index(row), { Qt::DisplayRole, Qt::DecorationRole, ColorRole });
     }
-    return result;
+
+    return true;
 }
 
 bool PaletteModel::tryRemove(int row, int count, bool isUndoRedo)
@@ -546,6 +545,61 @@ void PaletteItemDelegate::polish(const PaletteView::Config& configuration)
     m_configuration = configuration;
 }
 
+Internal::AddSwatch::AddSwatch(QWidget* parent)
+    : QFrame(parent)
+{
+    // Avoid forced background painting
+    setAttribute(Qt::WA_NoSystemBackground);
+
+    // If we try to do this in the stylesheet, via 'icon-size' and 'icon' then the icon is set, but
+    // icon-size is ignored and the icon is scaled to fill m_itemSize, even if we try to keep the
+    // icon size restriction here
+    m_icon.addPixmap(QPixmap(":/ColorPickerDialog/Palette/add-normal.png"), QIcon::Normal);
+}
+
+void Internal::AddSwatch::paintEvent(QPaintEvent* event)
+{
+    Q_UNUSED(event);
+
+    QPainter painter(this);
+    QStyleOptionFrame option;
+    option.initFrom(this);
+
+    style()->drawPrimitive(QStyle::PE_Frame, &option, &painter, this);
+
+    if (!m_icon.isNull())
+    {
+        const QIcon::Mode mode = isEnabled() ? QIcon::Normal : QIcon::Disabled;
+        const QIcon::State state = QIcon::On;
+        QRect iconRect(QPoint(), m_iconSize);
+        iconRect.moveCenter(rect().center());
+        m_icon.paint(&painter, iconRect, Qt::AlignCenter, mode, state);
+    }
+}
+
+void Internal::AddSwatch::mouseReleaseEvent(QMouseEvent* event)
+{
+    QFrame::mouseReleaseEvent(event);
+    emit clicked();
+}
+
+void Internal::AddSwatch::keyReleaseEvent(QKeyEvent* event)
+{
+    switch (event->key())
+    {
+        case Qt::Key_Select:
+        case Qt::Key_Space:
+            if (!event->isAutoRepeat())
+            {
+                emit clicked();
+            }
+            break;
+        default:
+            event->ignore();
+            break;
+    }
+}
+
 PaletteView::PaletteView(Palette* palette, Internal::ColorController* controller, QUndoStack* undoStack, QWidget* parent)
     : QAbstractItemView(parent)
     , m_paletteModel(new PaletteModel(palette, undoStack, this))
@@ -555,14 +609,15 @@ PaletteView::PaletteView(Palette* palette, Internal::ColorController* controller
     , m_itemRows(0)
     , m_itemColumns(0)
     , m_itemSize(QSize(16, 16))
-    , m_marginSize(QSize(4, 4))
-    , m_addColorButton(new QToolButton(viewport()))
+    , m_itemHSpacing(4)
+    , m_itemVSpacing(4)
+    , m_addColorButton(new Internal::AddSwatch(viewport()))
 {
     setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
     setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
 
-    setFocusPolicy(Qt::StrongFocus);
+    setFocusPolicy(Qt::ClickFocus);
 
     setSelectionMode(QAbstractItemView::ExtendedSelection);
     setDragEnabled(true);
@@ -570,25 +625,22 @@ PaletteView::PaletteView(Palette* palette, Internal::ColorController* controller
     setDropIndicatorShown(true);
     setDefaultDropAction(Qt::MoveAction);
 
+    viewport()->setContentsMargins(QMargins(0, 0, 0, 0));
+
     setModel(m_paletteModel);
     setItemDelegate(m_delegate);
 
-    // If we try to do this in the stylesheet, via 'icon-size' and 'icon' then the icon is set, but
-    // icon-size is ignored and the icon is scaled to fill m_itemSize, even if we try to keep the
-    // icon size restriction here
-    QIcon addColorIcon;
-    addColorIcon.addPixmap(QPixmap(":/ColorPickerDialog/Palette/add-normal.png"), QIcon::Normal);
-    m_addColorButton->setIcon(addColorIcon);
-    m_addColorButton->setIconSize({16, 16});
-
     m_addColorButton->setObjectName(QLatin1String("addColorButton"));
     m_addColorButton->setFixedSize(m_itemSize);
-    auto addColorButtonEnabler = [this](const AZ::Color& c) { m_addColorButton->setEnabled(!m_paletteModel->contains(c)); };
-    connect(m_controller, &Internal::ColorController::colorChanged, this, addColorButtonEnabler);
-    connect(m_addColorButton, &QAbstractButton::clicked, this, [this]() {
+    connect(m_controller, &Internal::ColorController::colorChanged, this, &PaletteView::onColorChanged);
+    connect(m_addColorButton, &Internal::AddSwatch::clicked, this, [this]() {
         m_paletteModel->tryAppend(m_controller->color());
+
+        // make sure the state of the add color button is updated after we add a new color
+        // to our palette
+        onColorChanged(m_controller->color());
     });
-    addColorButtonEnabler(m_controller->color());
+    onColorChanged(m_controller->color());
 
     m_context = new QMenu(this);
     m_cut = m_context->addAction(tr("Cut"), this, &PaletteView::cut, QKeySequence::Cut);
@@ -621,8 +673,8 @@ PaletteView::PaletteView(Palette* palette, Internal::ColorController* controller
     auto updateEnabler = [this]() {
         m_update->setEnabled(selectionModel()->selectedIndexes().size() == 1 && !m_paletteModel->contains(m_controller->color()));
     };
-    connect(m_controller, &Internal::ColorController::colorChanged, this, updateEnabler);
-    connect(selectionModel(), &QItemSelectionModel::selectionChanged, this, updateEnabler);
+    connect(m_controller, &Internal::ColorController::colorChanged, m_update, updateEnabler);
+    connect(selectionModel(), &QItemSelectionModel::selectionChanged, m_update, updateEnabler);
     connect(m_paletteModel, &QAbstractItemModel::rowsInserted, this, updateEnabler);
     connect(m_paletteModel, &QAbstractItemModel::rowsRemoved, this, updateEnabler);
     connect(m_paletteModel, &QAbstractItemModel::dataChanged, this, updateEnabler);
@@ -924,11 +976,11 @@ void PaletteView::updateGeometries()
 
 QPoint PaletteView::itemPosition(int index) const
 {
-    const int r = index/m_itemColumns;
-    const int c = index%m_itemColumns;
+    const int r = index / m_itemColumns;
+    const int c = index % m_itemColumns;
 
-    const int x = m_marginSize.width() + c*(m_itemSize.width() + m_marginSize.width());
-    const int y = m_marginSize.height() + r*(m_itemSize.height() + m_marginSize.height());
+    const int x = viewport()->contentsRect().left() + (c * (m_itemSize.width() + m_itemHSpacing));
+    const int y = viewport()->contentsRect().top() + (r * (m_itemSize.height() + m_itemVSpacing));
 
     return { x, y };
 }
@@ -1007,14 +1059,45 @@ void PaletteView::setItemSize(const QSize& size)
     updateItemLayout();
 }
 
-void PaletteView::setMarginSize(const QSize& size)
+void PaletteView::setItemHorizontalSpacing(int spacing)
 {
-    if (size == m_marginSize)
+    if (m_itemHSpacing == spacing)
     {
         return;
     }
 
-    m_marginSize = size;
+    m_itemHSpacing = spacing;
+
+    updateItemLayout();
+}
+
+void PaletteView::setItemVerticalSpacing(int spacing)
+{
+    if (m_itemVSpacing == spacing)
+    {
+        return;
+    }
+
+    m_itemVSpacing = spacing;
+
+    updateItemLayout();
+}
+
+bool PaletteView::contains(const AZ::Color& color) const
+{
+    return m_paletteModel->contains(color);
+}
+
+void PaletteView::setMarginSize(const QSize& size)
+{
+    const QMargins margins(size.width(), size.height(), size.width(), size.height());
+
+    if (viewport()->contentsMargins() == margins)
+    {
+        return;
+    }
+
+    viewport()->setContentsMargins(margins);
     updateItemLayout();
 }
 
@@ -1066,7 +1149,15 @@ void PaletteView::mouseReleaseEvent(QMouseEvent* event)
 
 void PaletteView::contextMenuEvent(QContextMenuEvent* event)
 {
-    m_context->exec(event->globalPos());
+    if (indexAt(event->pos()).isValid())
+    {
+        m_context->exec(event->globalPos());
+    }
+    else
+    {
+        Q_EMIT unselectedContextMenuRequested(event->globalPos());
+    }
+
     m_aboutToShowContextMenu = false;
 }
 
@@ -1078,15 +1169,21 @@ void PaletteView::updateItemLayout()
     }
 
     const int itemCount = model()->rowCount() + 1; // model items plus add button
-    const int usableWidth = viewport()->width() - (m_marginSize.width() * 2);
+    const int usableWidth = viewport()->contentsRect().width();
 
-    m_itemColumns = qMax(usableWidth/(m_itemSize.width() + m_marginSize.width()), 1);
-    m_itemRows = (itemCount + m_itemColumns - 1)/m_itemColumns;
+    m_itemColumns = qMax((usableWidth + m_itemHSpacing) / (m_itemSize.width() + m_itemHSpacing), 1);
+    m_itemRows = (itemCount + m_itemColumns - 1) / m_itemColumns;
 
-    const int width = m_itemColumns*(m_itemSize.width() + m_marginSize.width()) + m_marginSize.width();
-    const int height = m_itemRows*(m_itemSize.height() + m_marginSize.height()) + m_marginSize.height();
+    const int width = viewport()->contentsMargins().left()
+            + m_itemColumns * (m_itemSize.width() + m_itemHSpacing)
+            - (m_itemColumns == 0 ? 0 : m_itemHSpacing)
+            + viewport()->contentsMargins().right();
+    const int height = viewport()->contentsMargins().top()
+            + m_itemRows * (m_itemSize.height() + m_itemVSpacing)
+            - (m_itemRows == 0 ? 0 : m_itemVSpacing)
+            + viewport()->contentsMargins().bottom();
 
-    QSize size{ width + 2*frameWidth(), height + 2*frameWidth() };
+    QSize size{ width + (2 * frameWidth()), height + (2 * frameWidth()) };
     if (size != m_preferredSize)
     {
         m_preferredSize = size;
@@ -1184,6 +1281,7 @@ void PaletteView::paste()
         while (target != selection.cend())
         {
             m_paletteModel->tryRemove(target->row());
+            ++target;
         }
     }
 
@@ -1202,6 +1300,9 @@ PaletteView::Config PaletteView::loadConfig(QSettings& settings)
 {
     Config config = defaultConfig();
     ReadDropIndicator(settings, QStringLiteral("DropIndicator"), config.dropIndicator);
+    ConfigHelpers::read<QSize>(settings, QStringLiteral("MarginSize"), config.marginSize);
+    ConfigHelpers::read<int>(settings, QStringLiteral("HorizontalSpacing"), config.horizontalSpacing);
+    ConfigHelpers::read<int>(settings, QStringLiteral("VerticalSpacing"), config.verticalSpacing);
     return config;
 }
 
@@ -1211,7 +1312,10 @@ PaletteView::Config PaletteView::defaultConfig()
         DropIndicator{
             1,
             QColor{Qt::white} // Color
-        }
+        },
+        QSize(0, 0),
+        4,
+        4
     };
 }
 
@@ -1224,6 +1328,9 @@ bool PaletteView::polish(Style* style, QWidget* widget, const PaletteView::Confi
     }
 
     paletteView->m_delegate->polish(config);
+    paletteView->setMarginSize(config.marginSize);
+    paletteView->setItemHorizontalSpacing(config.horizontalSpacing);
+    paletteView->setItemVerticalSpacing(config.verticalSpacing);
     style->repolishOnSettingsChange(paletteView);
 
     return true;
@@ -1374,7 +1481,7 @@ QRect PaletteView::getDropIndicatorRect(QModelIndex index, int row) const
     }
 
     QRect geometry = itemGeometry(row);
-    QPoint marginAdjust = QPoint{ m_marginSize.width(), 0 };
+    QPoint marginAdjust = QPoint{ m_itemHSpacing, 0 };
     return { geometry.topLeft() - marginAdjust, geometry.bottomLeft() };
 }
 
@@ -1385,8 +1492,8 @@ int PaletteView::getRootRow(const QPoint point, const QModelIndex index) const
         const int itemCount = model()->rowCount();
         for (int i = 0; i < itemCount; ++i)
         {
-            int w = m_marginSize.width();
-            int h = m_marginSize.height();
+            int w = m_itemHSpacing;
+            int h = m_itemVSpacing;
             QRect margin = itemGeometry(i).adjusted(-w, -h, 0, h);
             if (margin.contains(point)) {
                 return i;
@@ -1397,6 +1504,11 @@ int PaletteView::getRootRow(const QPoint point, const QModelIndex index) const
     }
 
     return -1;
+}
+
+void PaletteView::onColorChanged(const AZ::Color& c)
+{
+    m_addColorButton->setEnabled(!m_paletteModel->contains(c));
 }
 
 } // namespace AzQtComponents

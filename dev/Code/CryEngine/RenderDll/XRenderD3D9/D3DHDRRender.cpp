@@ -745,7 +745,7 @@ void CHDRPostProcess::MeasureLuminance()
     CD3D9Renderer* rd = gcpRendD3D;
 
     uint64 nFlagsShader_RT = gRenDev->m_RP.m_FlagsShader_RT;
-    gRenDev->m_RP.m_FlagsShader_RT &= ~(g_HWSR_MaskBit[HWSR_SAMPLE0] | g_HWSR_MaskBit[HWSR_SAMPLE1] | g_HWSR_MaskBit[HWSR_SAMPLE2] | g_HWSR_MaskBit[HWSR_SAMPLE5]);
+    gRenDev->m_RP.m_FlagsShader_RT &= ~(g_HWSR_MaskBit[HWSR_SAMPLE0] | g_HWSR_MaskBit[HWSR_SAMPLE1] | g_HWSR_MaskBit[HWSR_SAMPLE2] | g_HWSR_MaskBit[HWSR_SAMPLE4] | g_HWSR_MaskBit[HWSR_SAMPLE5]);
 
     int32 dwCurTexture = NUM_HDR_TONEMAP_TEXTURES - 1;
     static CCryNameR Param1Name("SampleOffsets");
@@ -771,25 +771,33 @@ void CHDRPostProcess::MeasureLuminance()
 
     rd->FX_PushRenderTarget(0, CTexture::s_ptexHDRToneMaps[dwCurTexture], NULL);
 
-    // CONFETTI BEGIN: David Srour
-    // Metal Load/Store Actions
     rd->FX_SetColorDontCareActions(0, true, false);
     rd->FX_SetDepthDontCareActions(0, true, true);
     rd->FX_SetStencilDontCareActions(0, true, true);
-    // CONFETTI END
+
 
     rd->FX_SetActiveRenderTargets();
     rd->RT_SetViewport(0, 0, CTexture::s_ptexHDRToneMaps[dwCurTexture]->GetWidth(), CTexture::s_ptexHDRToneMaps[dwCurTexture]->GetHeight());
 
+    if (CRenderer::CV_r_HDREyeAdaptationMode == 2)
+    {
+        gRenDev->m_RP.m_FlagsShader_RT |= g_HWSR_MaskBit[HWSR_SAMPLE4];
+    }
+    else
+    {
+        CTexture::s_ptexSceneNormalsMap->Apply(1, nTexStateLinear);
+        CTexture::s_ptexSceneDiffuse->Apply(2, nTexStateLinear);
+        CTexture::s_ptexSceneSpecular->Apply(3, nTexStateLinear);
+    }
+    
     static CCryNameTSCRC TechName("HDRSampleLumInitial");
     m_shHDR->FXSetTechnique(TechName);
     m_shHDR->FXBegin(&nPasses, FEF_DONTSETTEXTURES | FEF_DONTSETSTATES);
     m_shHDR->FXBeginPass(0);
 
     CTexture::s_ptexHDRTargetScaled[1]->Apply(0, nTexStateLinear);
-    CTexture::s_ptexSceneNormalsMap->Apply(1, nTexStateLinear);
-    CTexture::s_ptexSceneDiffuse->Apply(2, nTexStateLinear);
-    CTexture::s_ptexSceneSpecular->Apply(3, nTexStateLinear);
+    
+    
 
     float s1 = 1.0f / static_cast<float>(CTexture::s_ptexHDRTargetScaled[1]->GetWidth());
     float t1 = 1.0f / static_cast<float>(CTexture::s_ptexHDRTargetScaled[1]->GetHeight());
@@ -1317,11 +1325,24 @@ void CHDRPostProcess::ToneMapping()
     
     rd->FX_SetColorDontCareActions(0, true, false);
     rd->FX_SetStencilDontCareActions(0, true, true);
-    rd->FX_SetDepthDontCareActions(0, true, true);
     rd->FX_SetColorDontCareActions(1, true, false);
     rd->FX_SetStencilDontCareActions(1, true, true);
-    rd->FX_SetDepthDontCareActions(1, true, true);
+    
 
+    bool bEmpty = SRendItem::IsListEmpty(EFSLIST_AFTER_POSTPROCESS, rd->m_RP.m_nProcessThreadID, rd->m_RP.m_pRLD);
+    
+    //We may need to preserve the depth buffer in case there is something to render in the EFSLIST_AFTER_POSTPROCESS bucket.
+    //It could be UI in the 3d world. If the bucket is empty ignore the depth buffer as it is not needed.
+    if (bEmpty)
+    {
+        rd->FX_SetDepthDontCareActions(0, true, true);
+        rd->FX_SetDepthDontCareActions(1, true, true);
+    }
+    else
+    {
+        rd->FX_SetDepthDontCareActions(0, false, false);
+        rd->FX_SetDepthDontCareActions(1, false, false);
+    }
 
     // Final bloom RT
 
@@ -2104,8 +2125,19 @@ void CHDRPostProcess::Render()
 
     gcpRendD3D->SetCurDownscaleFactor(gcpRendD3D->m_CurViewportScale);
 
-    gcpRendD3D->FX_PushRenderTarget(0, SPostEffectsUtils::AcquireFinalCompositeTarget(bDolbyHDRMode), &gcpRendD3D->m_DepthBufferOrigMSAA);
-
+    bool postAAWillApplyAA = (CRenderer::CV_r_AntialiasingMode == eAT_SMAA1TX) || (CRenderer::CV_r_AntialiasingMode == eAT_FXAA);
+    bool shouldRenderToBackbufferNow = CRenderer::CV_r_SkipNativeUpscale && CRenderer::CV_r_SkipRenderComposites && !postAAWillApplyAA;
+    if (shouldRenderToBackbufferNow)
+    {
+        gcpRendD3D->RT_SetViewport(0, 0, gcpRendD3D->GetNativeWidth(), gcpRendD3D->GetNativeHeight());
+        gcpRendD3D->FX_SetRenderTarget(0, gcpRendD3D->GetBackBuffer(), nullptr);
+        gcpRendD3D->FX_SetActiveRenderTargets();
+    }
+    else
+    {
+        gcpRendD3D->FX_PushRenderTarget(0, SPostEffectsUtils::AcquireFinalCompositeTarget(bDolbyHDRMode), &gcpRendD3D->m_DepthBufferOrigMSAA);
+    }
+    
     // Render final scene to the back buffer
     if (CRenderer::CV_r_HDRDebug != 1 && CRenderer::CV_r_HDRDebug != 2)
     {

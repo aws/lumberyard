@@ -15,14 +15,20 @@
 
 #include <QObject>
 #include <QColor>
+#include <QHash>
+#include <QPointer>
 
 class QApplication;
+class QStyle;
+class QWidget;
+class QStyleSheetStyle;
 
 namespace AzQtComponents
 {
     class StyleSheetCache;
     class StylesheetPreprocessor;
     class TitleBarOverdrawHandler;
+    class AutoCustomWindowDecorations;
 
     /**
      * Wrapper around classes dealing with Lumberyard style.
@@ -34,7 +40,8 @@ namespace AzQtComponents
      *           QApplication app(argv, argc);
      *
      *           AzQtComponents::StyleManager styleManager(&app);
-     *           styleManager.Initialize(&app);
+     *           const bool useUI10 = false;
+     *           styleManager.Initialize(&app, useUI10);
      *           .
      *           .
      *           .
@@ -46,25 +53,40 @@ namespace AzQtComponents
     {
         Q_OBJECT
 
+        static StyleManager* s_instance;
+
     public:
+        static void addSearchPaths(const QString& searchPrefix, const QString& pathOnDisk, const QString& qrcPrefix);
+
+        static bool setStyleSheet(QWidget* widget, QString styleFileName);
+
+        static QStyleSheetStyle* styleSheetStyle(const QWidget* widget);
+        static QStyle* baseStyle(const QWidget* widget);
+
         explicit StyleManager(QObject* parent);
         ~StyleManager() override;
 
         /*!
         * Call to initialize the StyleManager, allowing it to hook into the application and apply the global style
         */
-        void Initialize(QApplication* application, bool useUI10 = true);
+        void initialize(QApplication* application, bool useUI10 = true);
+        // deprecated; introduced before the new camelCase Qt based method names were adopted.
+        void Initialize(QApplication* application, bool useUI10 = true) { initialize(application, useUI10); }
 
         /*!
         * Switches the UI between 2.0 to 1.0
         */
-        void SwitchUI(QApplication* application, bool useUI10);
+        void switchUI(QApplication* application, bool useUI10);
+        // deprecated; introduced before the new camelCase Qt based method names were adopted.
+        void SwitchUI(QApplication* application, bool useUI10) { switchUI(application, useUI10); }
 
         /*!
         * Call this to force a refresh of the global stylesheet and a reload of any settings files.
         * Note that you should never need to do this manually.
         */
-        void Refresh(QApplication* application);
+        void refresh(QApplication* application);
+        // deprecated; introduced before the new camelCase Qt based method names were adopted.
+        void Refresh(QApplication* application) { refresh(application); }
 
         /*!
         * Used to get a global color value by name.
@@ -75,15 +97,39 @@ namespace AzQtComponents
         * embed the color into a stylesheet instead of using
         * GetColorByName.
         */
-        const QColor& GetColorByName(const QString& name);
+        const QColor& getColorByName(const QString& name);
+        // deprecated; introduced before the new camelCase Qt based method names were adopted.
+        const QColor& GetColorByName(const QString& name) { return getColorByName(name); }
+
+    private Q_SLOTS:
+        void cleanupStyles();
+        void stopTrackingWidget(QObject* object);
 
     private:
-        void InitializeFonts();
-        void InitializeSearchPaths(QApplication* application);
+        void initializeFonts();
+        void initializeSearchPaths(QApplication* application);
+
+        void switchUIInternal(QApplication* application, bool useUI10);
+        void resetWidgetSheets();
 
         StylesheetPreprocessor* m_stylesheetPreprocessor = nullptr;
         StyleSheetCache* m_stylesheetCache = nullptr;
         TitleBarOverdrawHandler* m_titleBarOverdrawHandler = nullptr;
+
+        bool m_useUI10 = true;
+
+        using WidgetToStyleSheetMap = QHash<QWidget*, QString>;
+        WidgetToStyleSheetMap m_widgetToStyleSheetMap;
+        QStyleSheetStyle* m_styleSheetStyle10 = nullptr;
+        QStyleSheetStyle* m_styleSheetStyle20 = nullptr;
+
+        // Track the 1.0 style as a QPointer, as the QApplication will delete it if it still has a pointer to it
+        QPointer<QStyle> m_style10;
+
+        // Track the 2.0 style as a QPointer, as the QApplication will delete it if it still has a pointer to it
+        QPointer<QStyle> m_style20;
+
+        AutoCustomWindowDecorations* m_autoCustomWindowDecorations = nullptr;
     };
 } // namespace AzQtComponents
 

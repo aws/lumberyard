@@ -5,7 +5,7 @@
     "DisplayName": "PhysX [PREVIEW]",
     "Version": "0.1.0",
     "LinkType": "Dynamic",
-    "Summary": "Enabling NVIDIA PhysX (3.4.0) for physics simulation (requires the NVIDIA PhysX SDK)",
+    "Summary": "The PhysX Gem enables the NVIDIA PhysX SDK (3.4.0) to provide physics simulation for Lumberyard. The PhysX system is not compatible with the legacy physics system. You cannot use components interchangeably between each system.",
     "Tags": ["Physics"],
     "IconPath": "preview.png",
     "EditorModule": true

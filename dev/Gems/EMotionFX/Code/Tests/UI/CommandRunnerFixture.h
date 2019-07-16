@@ -15,31 +15,27 @@
 #include <Tests/UI/UIFixture.h>
 #include <EMotionFX/CommandSystem/Source/CommandManager.h>
 
+#include <AzCore/std/containers/vector.h>
+#include <AzCore/std/string/string.h>
+
 namespace EMotionFX
 {
-    class CommandRunnerFixture
+    class CommandRunnerFixtureBase
         : public UIFixture
+    {
+    public:
+        void TearDown() override;
+
+        void ExecuteCommands(std::vector<std::string> commands);
+
+        const AZStd::vector<AZStd::string>& GetResults();
+    private:
+        AZStd::vector<AZStd::string> m_results;
+    };
+
+    class CommandRunnerFixture
+        : public CommandRunnerFixtureBase
         , public ::testing::WithParamInterface<std::vector<std::string>>
     {
     };
-
-    TEST_P(CommandRunnerFixture, RunCommands)
-    {
-        AZStd::string result;
-        for (const auto& commandStr : GetParam())
-        {
-            if (commandStr == "UNDO")
-            {
-                EXPECT_TRUE(CommandSystem::GetCommandManager()->Undo(result)) << "Undo: " << result.c_str();
-            }
-            else if (commandStr == "REDO")
-            {
-                EXPECT_TRUE(CommandSystem::GetCommandManager()->Redo(result)) << "Redo: " << result.c_str();
-            }
-            else
-            {
-                EXPECT_TRUE(CommandSystem::GetCommandManager()->ExecuteCommand(commandStr.c_str(), result)) << commandStr.c_str() << ": " << result.c_str();
-            }
-        }
-    }
 } // end namespace EMotionFX

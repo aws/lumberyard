@@ -126,6 +126,8 @@ namespace EMotionFX
             /// \param value
             virtual void SetNamedParameterRotation(const char* parameterName, const AZ::Quaternion& value) = 0;
 
+            /// Enable or disable debug draw visualization inside the anim graph instance.
+            virtual void SetVisualizeEnabled(bool enabled) = 0;
 
             /// Retrieves a anim graph property as a float value.
             /// \param parameterIndex - index of parameter to set
@@ -181,7 +183,10 @@ namespace EMotionFX
 
             /// Retrieves a anim graph property as a quaternion value.
             /// \param parameterName - name of parameter to get
-            virtual AZ::Quaternion GetNamedParameterRotation(const char* parameterName) = 0;
+            virtual AZ::Quaternion GetNamedParameterRotation(const char* parameterName) = 0;            
+
+            /// Check whether debug visualization is enabled or not.
+            virtual bool GetVisualizeEnabled() = 0;
 
             /// Making a request to sync the anim graph with another animg graph
             /// \param masterEntityId - the entity id of another anim graph.

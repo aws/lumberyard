@@ -245,63 +245,63 @@ namespace CloudsGem
         }
     }
 
-    void EditorCloudComponent::DisplayEntity(bool& handled)
+    void EditorCloudComponent::DisplayEntityViewport(
+        const AzFramework::ViewportInfo& viewportInfo,
+        AzFramework::DebugDisplayRequests& debugDisplay)
     {
         if (IsSelected())
         {
             CloudParticleData& cloudData = m_renderNode.GetCloudParticleData();
-            auto* dc = AzFramework::EntityDebugDisplayRequestBus::FindFirstHandler();
-            if (dc)
+
+            debugDisplay.PushMatrix(
+                LYTransformToAZTransform(Matrix34::CreateTranslationMat(m_renderNode.GetPos())));
+            debugDisplay.DepthTestOff();
+
+            if (m_renderNode.IsDisplaySpheresEnabled())
             {
-                dc->PushMatrix(LYTransformToAZTransform(Matrix34::CreateTranslationMat(m_renderNode.GetPos())));
-                dc->DepthTestOff();
-
-                if (m_renderNode.IsDisplaySpheresEnabled())
+                if (cloudData.HasParticles())
                 {
-                    if (cloudData.HasParticles())
+                    Vec3 offset = cloudData.GetOffset();
+                    for (auto& particle : cloudData.GetParticles())
                     {
-                        Vec3 offset = cloudData.GetOffset();
-                        for (auto& particle : cloudData.GetParticles())
-                        {
-                            dc->SetColor(0.3f, 0.3f, 0.8f, 0.05f);
-                            dc->DrawBall(LYVec3ToAZVec3(particle.GetPosition() - offset), particle.GetRadius());
-                        }
+                        debugDisplay.SetColor(0.3f, 0.3f, 0.8f, 0.05f);
+                        debugDisplay.DrawBall(LYVec3ToAZVec3(particle.GetPosition() - offset), particle.GetRadius());
                     }
                 }
-
-                if (m_renderNode.IsDisplayBoundsEnabled())
-                {
-                    AABB bounds = cloudData.GetBounds();
-                    dc->SetColor(0.4f, 0.6f, 0.8f, 0.3f);
-                    dc->DrawSolidBox(LYVec3ToAZVec3(bounds.min), LYVec3ToAZVec3(bounds.max));
-                }
-
-                if (m_renderNode.IsDisplayVolumesEnabled())
-                {
-                    AZStd::vector<AZ::EntityId> children;
-                    EBUS_EVENT_ID_RESULT(children, GetEntityId(), AZ::TransformBus, GetChildren);
-                    for (uint32 i = 0; i < children.size(); ++i)
-                    {
-                        // Get translation from child
-                        AZ::Vector3 translation{ 0.0f, 0.0f, 0.0f };
-                        EBUS_EVENT_ID_RESULT(translation, children[i], AZ::TransformBus, GetLocalTranslation);
-
-                        // Get dimensions of box
-                        LmbrCentral::BoxShapeConfiguration boxShapeConfiguration;
-                        boxShapeConfiguration.m_dimensions = AZ::Vector3::CreateZero();
-                        EBUS_EVENT_ID_RESULT(boxShapeConfiguration, children[i], LmbrCentral::BoxShapeComponentRequestsBus, GetBoxConfiguration);
-
-                        const AZ::Vector3 dimensions = boxShapeConfiguration.m_dimensions * 0.5f;
-
-                        dc->SetColor(1.0f, 1.0f, 0.8f, 0.2f);
-                        dc->DrawSolidBox(translation - dimensions, translation + dimensions);
-                    }
-                }
-                dc->DepthTestOn();
-                dc->PopMatrix();
             }
+
+            if (m_renderNode.IsDisplayBoundsEnabled())
+            {
+                AABB bounds = cloudData.GetBounds();
+                debugDisplay.SetColor(0.4f, 0.6f, 0.8f, 0.3f);
+                debugDisplay.DrawSolidBox(LYVec3ToAZVec3(bounds.min), LYVec3ToAZVec3(bounds.max));
+            }
+
+            if (m_renderNode.IsDisplayVolumesEnabled())
+            {
+                AZStd::vector<AZ::EntityId> children;
+                EBUS_EVENT_ID_RESULT(children, GetEntityId(), AZ::TransformBus, GetChildren);
+                for (uint32 i = 0; i < children.size(); ++i)
+                {
+                    // Get translation from child
+                    AZ::Vector3 translation{ 0.0f, 0.0f, 0.0f };
+                    EBUS_EVENT_ID_RESULT(translation, children[i], AZ::TransformBus, GetLocalTranslation);
+
+                    // Get dimensions of box
+                    LmbrCentral::BoxShapeConfiguration boxShapeConfiguration;
+                    boxShapeConfiguration.m_dimensions = AZ::Vector3::CreateZero();
+                    EBUS_EVENT_ID_RESULT(boxShapeConfiguration, children[i], LmbrCentral::BoxShapeComponentRequestsBus, GetBoxConfiguration);
+
+                    const AZ::Vector3 dimensions = boxShapeConfiguration.m_dimensions * 0.5f;
+
+                    debugDisplay.SetColor(1.0f, 1.0f, 0.8f, 0.2f);
+                    debugDisplay.DrawSolidBox(translation - dimensions, translation + dimensions);
+                }
+            }
+
+            debugDisplay.DepthTestOn();
+            debugDisplay.PopMatrix();
         }
-        handled = true;
     }
 
     void EditorCloudComponent::BuildGameEntity(AZ::Entity* gameEntity)

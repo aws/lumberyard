@@ -10,8 +10,6 @@
 *
 */
 
-#include "precompiled.h"
-
 namespace ScriptCanvas
 {
     namespace Profiler

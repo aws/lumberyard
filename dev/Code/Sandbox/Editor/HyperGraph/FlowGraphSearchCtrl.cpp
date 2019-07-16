@@ -32,6 +32,7 @@
 #include <QAbstractItemModel>
 #include <QSortFilterProxyModel>
 #include <QLineEdit>
+#include <QHeaderView>
 #include <HyperGraph/ui_FlowGraphSearchCtrl.h>
 
 #undef GetClassName

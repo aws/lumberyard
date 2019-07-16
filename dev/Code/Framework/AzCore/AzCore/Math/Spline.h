@@ -211,16 +211,17 @@ namespace AZ
          * Override callbacks to be used when spline changes/is modified (general).
          */
         void SetCallbacks(
-            const AZStd::function<void()>& OnChangeElement, const AZStd::function<void()>& OnChangeContainer);
+            const VoidFunction& onChangeElement, const VoidFunction& onChangeContainer,
+            const BoolFunction& onOpenClose);
 
         /**
          * Override callbacks to be used when spline changes/is modified (specific).
          * (use if you need more fine grained control over modifications to the container)
          */
         void SetCallbacks(
-            const AZStd::function<void(size_t)>& OnAddVertex, const AZStd::function<void(size_t)>& OnRemoveVertex,
-            const AZStd::function<void()>& OnUpdateVertex, const AZStd::function<void()>& OnSetVertices,
-            const AZStd::function<void()>& OnClearVertices);
+            const IndexFunction& onAddVertex, const IndexFunction& onRemoveVertex,
+            const IndexFunction& onUpdateVertex, const VoidFunction& onSetVertices,
+            const VoidFunction& onClearVertices, const BoolFunction& onOpenClose);
 
         VertexContainer<Vector3> m_vertexContainer; ///< Vertices representing the spline.
 
@@ -240,6 +241,14 @@ namespace AZ
         virtual void OnVerticesCleared(); ///< Internal function to be overridden by derived spline to handle custom logic when spline is reset (vertices are cleared).
 
         bool m_closed = false; ///< Is the spline closed - default is not.
+
+    private:
+        /**
+         * Called when the 'Closed' property on the SplineComponent is checked/unchecked.
+         */
+        void OnOpenCloseChanged();
+        
+        BoolFunction m_onOpenCloseCallback = nullptr; ///< Callback for when the open/closed property of the Spline changes.
     };
 
     using SplinePtr = AZStd::shared_ptr<Spline>;
@@ -435,7 +444,7 @@ namespace AZ
         const Vector3 scale = worldFromLocalNormalized.ExtractScale();
         const Transform localFromWorldNormalized = worldFromLocalNormalized.GetInverseFast();
 
-        const Vector3 localRayOrigin = localFromWorldNormalized * src * scale.GetReciprocal();
+        const Vector3 localRayOrigin = localFromWorldNormalized * src * scale.GetReciprocalExact();
         const Vector3 localRayDirection = localFromWorldNormalized.Multiply3x3(dir);
         return spline.GetNearestAddressRay(localRayOrigin, localRayDirection);
     }

@@ -40,14 +40,21 @@ namespace EMStudio
     {
     }
 
+
+    QColor AnimGraphVisualNode::AzColorToQColor(const AZ::Color& col) const
+    {
+        return QColor::fromRgbF(col.GetR(), col.GetG(), col.GetB(), col.GetA());
+    }
+
+
     void AnimGraphVisualNode::Sync()
     {
         SetName(mEMFXNode->GetName());
         SetNodeInfo(mEMFXNode->GetNodeInfo());
         
         SetDeletable(mEMFXNode->GetIsDeletable());
-        SetBaseColor(mEMFXNode->GetVisualColor());
-        SetHasChildIndicatorColor(mEMFXNode->GetHasChildIndicatorColor());
+        SetBaseColor(AzColorToQColor(mEMFXNode->GetVisualColor()));
+        SetHasChildIndicatorColor(AzColorToQColor(mEMFXNode->GetHasChildIndicatorColor()));
         SetIsCollapsed(mEMFXNode->GetIsCollapsed());
 
         // Update position
@@ -57,7 +64,7 @@ namespace EMStudio
         SetIsVisualized(mEMFXNode->GetIsVisualizationEnabled());
         SetCanVisualize(mEMFXNode->GetSupportsVisualization());
         SetIsEnabled(mEMFXNode->GetIsEnabled());
-        SetVisualizeColor(mEMFXNode->GetVisualizeColor());
+        SetVisualizeColor(AzColorToQColor(mEMFXNode->GetVisualizeColor()));
         SetHasVisualOutputPorts(mEMFXNode->GetHasVisualOutputPorts());
         mHasVisualGraph = mEMFXNode->GetHasVisualGraph();
 

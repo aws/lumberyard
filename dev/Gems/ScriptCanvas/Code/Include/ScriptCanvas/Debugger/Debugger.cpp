@@ -10,358 +10,752 @@
 *
 */
 
-#include "precompiled.h"
+#include <AzFramework/Entity/GameEntityContextBus.h>
 
 #include "Debugger.h"
-#include "Reflection.h"
-
-#include "Messages/Acknowledge.h"
+#include "Messages/Notify.h"
 #include "Messages/Request.h"
-
-#include "Bus.h"
 
 namespace ScriptCanvas
 {
     namespace Debugger
     {
-
-        void Component::OnSystemTick()
+        void ServiceComponent::Connect(Target& target)
         {
-            // If we are detached, we call process to know when we need to enable the debugger.
-            // Once the debugger is enabled, processing will happen in the attached context.
-            //if (m_debuggerState == DebuggerState::Detached)
+            // \todo disconnect previous or reject or something
+            m_client = target;
+
+            if (m_state == SCDebugState_Detached)
             {
-                Process();
+                m_state = SCDebugState_Attached;
+                SCRIPT_CANVAS_DEBUGGER_TRACE_SERVER("Debugger attached to new connection");
             }
-        }
-
-        void Component::Process()
-        {
-            while (!m_msgQueue.empty())
+            else if (m_state == SCDebugState_Interactive)
             {
-                m_msgMutex.lock();
-                AzFramework::TmMsgPtr msg = *m_msgQueue.begin();
-                m_msgQueue.pop_front();
-                m_msgMutex.unlock();
-                AZ_Assert(msg, "We received a NULL message in the script debug agent's message queue!");
-                AzFramework::TargetInfo sender;
-                EBUS_EVENT_RESULT(sender, AzFramework::TargetManager::Bus, GetTargetInfo, msg->GetSenderTargetId());
-
-                // The only message we accept without a target match is AttachDebugger
-                if (m_debugger.IsValid() && m_debugger.GetNetworkId() != sender.GetNetworkId())
-                {
-                    AzFramework::TmMsg* request = azdynamic_cast<AzFramework::TmMsg*>(msg.get());
-                    if (!request || (request->GetId() != AZ_CRC("ScriptCanvasDebugRequest", 0xa4c45706)))
-                    {
-                        AZ_TracePrintf("Script Canvas Debug", "Rejecting msg 0x%x (%s is not the attached debugger)\n", request->GetId(), sender.GetDisplayName());
-                       // AzFramework::TargetManager::Bus::Broadcast(&AzFramework::TargetManager::SendTmMessage, sender, Message::Acknowledge(0, AZ_CRC("AccessDenied", 0xde72ce21)));
-                        continue;
-                    }
-                }
-
-                if (azrtti_istypeof<Message::Request*>(msg.get()))
-                {
-                    Message::Request* request = azdynamic_cast<Message::Request*>(msg.get());
-                    if (request)
-                    {
-                        if (request->m_request == AZ_CRC("ScriptCanvas_OnEntry", 0x07ee76d4))
-                        {
-                            Message::NodeState* nodeState = azdynamic_cast<Message::NodeState*>(msg.get());
-
-                            AZ_TracePrintf("Script Canvas Debugger", "On Entry: %s\n", request->m_graphId.ToString().c_str());
-                        }
-                        else if (request->m_request == AZ_CRC("ScriptCanvas_AttachDebugger", 0xaf64de1f))
-                        {
-                            Attach(request->m_graphId);
-                            return;
-                        }
-                        else if (request->m_request == AZ_CRC("ScriptCanvas_DetachDebugger", 0x4256cf2d))
-                        {
-                            Detach(request->m_graphId);
-                            return;
-                        }
-                        else
-                        {
-                            AZ_TracePrintf("Script Canvas Debugger", "Received invalid command 0x%x.\n", request->m_request);
-                            AzFramework::TargetManager::Bus::Broadcast(&AzFramework::TargetManager::SendTmMessage, sender, Message::Acknowledge(request->m_request, AZ_CRC("InvalidCommand", 0x2114fa46)));
-                        }
-                    }
-                }
-            }
-        }
-
-        void Component::OnReceivedMsg(AzFramework::TmMsgPtr msg)
-        {
-            AZStd::lock_guard<AZStd::mutex> l(m_msgMutex);
-            m_msgQueue.push_back(msg);
-        }
-
-        void Component::Attach(const AzFramework::TargetInfo& targetInfo, const AZ::EntityId& graphId)
-        {
-
-            // Notify debugger that it has successfully connected
-            if (graphId.IsValid())
-            {
-                auto debugTarget = m_debugTargets.find(graphId);
-                if (debugTarget != m_debugTargets.end())
-                {
-                    if (debugTarget->second.m_state == DebuggerState::Running)
-                    {
-                        AZ_TracePrintf("Script Canvas Debugger", "Already debugging graph %s.\n", debugTarget->second.m_info.GetDisplayName());
-                    }
-                    else
-                    {
-                        debugTarget->second.m_state = DebuggerState::Running;
-                    }
-                }
-                else
-                {
-                    m_debugTargets[graphId] = { targetInfo, DebuggerState::Running };
-
-                    AzFramework::TargetManager::Bus::Broadcast(&AzFramework::TargetManager::SendTmMessage, targetInfo, Message::Request(AZ_CRC("ScriptCanvas_AttachDebugger", 0xaf64de1f), graphId));
-                    AZ_TracePrintf("Script Canvas Debugger", "Remote debugger %s has attached.\n", targetInfo.GetDisplayName());
-
-                    if (m_debuggerState != DebuggerState::Running)
-                    {
-                        m_debuggerState = DebuggerState::Running;
-                    }
-                }
-            }
-        }
-
-        void Component::Attach(const AZ::EntityId& graphId)
-        {
-            if (!graphId.IsValid())
-            {
-                AZ_TracePrintf("Script Canvas Debugger", "Not a valid graph to debug\n"/*, scriptContextName*/);
-                return;
-            }
-
-            RequestBus::Handler::BusConnect(graphId);
-
-            AzFramework::TargetInfo targetInfo;
-            if (GetDesiredTarget(targetInfo))
-            {
-                Attach(targetInfo, graphId);
-                NotificationBus::Broadcast(&Notifications::OnAttach, graphId);
-                
-                AZ_TracePrintf("Script Canvas Debugger", "Debugger::Component::Attach: %s: %s\n", targetInfo.GetDisplayName(), graphId.ToString().c_str());
-            }
-        }
-
-        void Component::Detach(const AZ::EntityId& graphId)
-        {
-            if (!graphId.IsValid())
-            {
-                AZ_TracePrintf("Script Canvas Debugger", "Not currently debugging\n");
-                return;
-            }
-
-            auto debugTarget = m_debugTargets.find(graphId);
-            if (debugTarget == m_debugTargets.end())
-            {
-                AZ_TracePrintf("Script Canvas Debugger", "Not attached to graph trying to detach %s.\n", graphId.ToString().data());
+                Lock guard(m_msgMutex);
+                m_msgQueue.push_back(AzFramework::TmMsgPtr(aznew Message::ContinueRequest()));
+                SCRIPT_CANVAS_DEBUGGER_TRACE_SERVER("Debugger attached to new connection, continuing");
             }
             else
             {
-                debugTarget->second.m_state = DebuggerState::Detaching;
-                AZ_TracePrintf("Script Canvas Debugger", "Debugger::Component::Detach: %s: %s\n", debugTarget->second.m_info.GetDisplayName(), graphId.ToString().c_str());
-                NotificationBus::Broadcast(&Notifications::OnDetach, graphId);
+                AZ_Warning("ScriptCanvas Debugger", false, "Something has gone terribly wrong with the debugger");
+                return;
             }
 
-            RequestBus::Handler::BusDisconnect();
+            m_self.CopyScript(m_client);
 
+            m_activeEntityStatusDirty = true;
+            m_activeGraphStatusDirty = true;
+
+            AzFramework::TargetManager::Bus::Broadcast(&AzFramework::TargetManager::SendTmMessage, m_client.m_info, Message::Connected(m_self));
         }
 
-
-        void Component::DetachAll()
+        Message::Request* ServiceComponent::FilterMessage(AzFramework::TmMsgPtr& msg)
         {
-            AZStd::for_each(m_debugTargets.begin(), m_debugTargets.end(), [](AZStd::pair<AZ::EntityId, Target>& targetIterator) { targetIterator.second.m_state = Detached; });
+            AzFramework::TargetInfo client;
+            AzFramework::TargetManager::Bus::BroadcastResult(client, &AzFramework::TargetManager::GetTargetInfo, msg->GetSenderTargetId());
 
-            AzFramework::TargetManager::Bus::Broadcast(&AzFramework::TargetManager::SendTmMessage, m_debugger, Message::Acknowledge(AZ_CRC("ScriptCanvas_DetachDebugger", 0x4256cf2d), AZ_CRC("ScriptCanvas_Acknowledge", 0x208b98da)));
-            m_debugger = AzFramework::TargetInfo();
-            m_debuggerState = DebuggerState::Detached;
-        }
-
-        Component::Component()
-            : AZ::Component()
-        {}
-
-        Component::~Component()
-        {}
-
-        void Component::Init()
-        {}
-
-        void Component::Activate()
-        {
-            m_debuggerState = DebuggerState::Detached;
-
-            AzFramework::TargetManagerClient::Bus::Handler::BusConnect();
-            AzFramework::TmMsgBus::Handler::BusConnect(AZ_CRC("ScriptCanvasDebugger", 0x9d223ef5));
-            AZ::SystemTickBus::Handler::BusConnect();
-
-            ConnectionRequestBus::Handler::BusConnect();
-        }
-
-        void Component::Deactivate()
-        {
-            AZ::SystemTickBus::Handler::BusDisconnect();
-            RequestBus::Handler::BusDisconnect();
-            AzFramework::TargetManagerClient::Bus::Handler::BusDisconnect();
-            AzFramework::TmMsgBus::Handler::BusDisconnect(AZ_CRC("ScriptCanvasDebugger", 0x9d223ef5));
-
-            if (m_debuggerState != DebuggerState::Detached)
+            // cull messages without a target match
+            if (m_client.m_info.GetNetworkId() != client.GetNetworkId())
             {
-                DetachAll();
+                if (auto connection = azrtti_cast<Message::ConnectRequest*>(msg.get()))
+                {
+                    // connection messages are handled separately
+                    Target connectionTarget;
+                    connectionTarget.m_info = client;
+                    connectionTarget.m_script = connection->m_target;
+                    Connect(connectionTarget);
+                    return nullptr;
+                }
+
+                // \todo send a connection denied message
+                // AzFramework::TargetManager::Bus::Broadcast(&AzFramework::TargetManager::SendTmMessage, sender, Message::Denied());
+                return nullptr;
+            }
+            else if (auto disconnection = azrtti_cast<Message::DisconnectRequest*>(msg.get()))
+            {
+                DisconnectFromClient();
             }
 
-            ConnectionRequestBus::Handler::BusDisconnect();
-
-            AZStd::lock_guard<AZStd::mutex> l(m_msgMutex);
-            m_msgQueue.clear();
+            return azrtti_cast<Message::Request*>(msg.get());
         }
 
-        void Component::DesiredTargetConnected(bool connected)
+        void ServiceComponent::Interact()
         {
-            (void)connected;
+            if (m_state == SCDebugState_Interactive)
+            {
+                SCRIPT_CANVAS_DEBUGGER_TRACE_SERVER("The debugger is going into interactive mode");
+
+                while (true)
+                {
+                    // the events aren't getting dispatched from another thread, so force them out here
+                    AzFramework::TargetManager::Bus::Broadcast(&AzFramework::TargetManager::DispatchMessages, k_clientRequestsMsgSlotId);
+
+                    // process any new ones
+                    ProcessMessages();
+
+                    // check if we're still in interactive mode
+                    if (m_state != SCDebugState_Interactive)
+                    {
+                        return;
+                    }
+
+                    // give other threads a chance
+                    AZStd::this_thread::yield();
+                }
+            }
         }
 
-        //-------------------------------------------------------------------------
-        void Component::GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided)
+        bool ServiceComponent::IsAttached() const
+        {
+            return m_state != SCDebugState_Detached && m_state != SCDebugState_Detaching;
+        }
+
+        void ServiceComponent::ProcessMessages()
+        {
+            AzFramework::TmMsgQueue messages;
+
+            while (true)
+            {
+                {
+                    Lock lock(m_msgMutex);
+
+                    if (m_msgQueue.empty())
+                    {
+                        return;
+                    }
+
+                    AZStd::swap(messages, m_msgQueue);
+                }
+
+                while (!messages.empty())
+                {
+                    AzFramework::TmMsgPtr msg = *messages.begin();
+                    messages.pop_front();
+
+                    if (Message::Request* request = FilterMessage(msg))
+                    {
+                        request->Visit(*this);
+                    }
+                }
+            }
+        }
+
+        void ServiceComponent::OnReceivedMsg(AzFramework::TmMsgPtr msg)
+        {
+            if (!msg)
+            {
+                AZ_Error("ScriptCanvas Debugger", false, "We received a NULL message in the service message queue");
+                return;
+            }
+
+            SCRIPT_CANVAS_DEBUGGER_TRACE_SERVER("service component received a message of type: %s", msg->RTTI_GetTypeName());
+
+            if (m_state != SCDebugState_Detaching && azrtti_cast<Message::Request*>(msg.get()))
+            {
+                SCRIPT_CANVAS_DEBUGGER_TRACE_SERVER("service is putting the request in the queue");
+
+                {
+                    Lock lock(m_msgMutex);
+                    m_msgQueue.push_back(msg);
+                }
+
+                if (m_state != SCDebugState_Interactive)
+                {
+                    ProcessMessages();
+                }
+            }
+            else
+            {
+                SCRIPT_CANVAS_DEBUGGER_TRACE_SERVER("service is rejecting the message");
+                // \todo send a connection denied message
+                // AzFramework::TargetManager::Bus::Broadcast(&AzFramework::TargetManager::SendTmMessage, sender, Message::Acknowledge(0, AZ_CRC("AccessDenied", 0xde72ce21)));
+            }
+        }
+
+        void ServiceComponent::TargetLeftNetwork(AzFramework::TargetInfo info)
+        {
+            if (m_client.m_info.IsIdentityEqualTo(info))
+            {
+                DisconnectFromClient();
+            }
+        }
+
+        void ServiceComponent::Init()
+        {}
+
+        void ServiceComponent::Activate()
+        {
+            m_state = SCDebugState_Detached;
+            AzFramework::TmMsgBus::Handler::BusConnect(k_clientRequestsMsgSlotId);
+            AzFramework::TargetManagerClient::Bus::Handler::BusConnect();
+            ExecutionNotificationsBus::Handler::BusConnect();
+
+            AzFramework::TargetContainer targets;
+            AzFramework::TargetManager::Bus::Broadcast(&AzFramework::TargetManager::EnumTargetInfos, targets);
+            for (auto& idAndInfo : targets)
+            {
+                if (idAndInfo.second.GetStatusFlags() & AzFramework::TF_SELF)
+                {
+                    m_self.m_info = idAndInfo.second;
+                    SCRIPT_CANVAS_DEBUGGER_TRACE_SERVER("Self found!");
+                }
+            }
+
+            if (!m_self.m_info.GetDisplayName())
+            {
+                SCRIPT_CANVAS_DEBUGGER_TRACE_SERVER("Self NOT found!");
+            }
+        }
+
+        void ServiceComponent::Deactivate()
+        {
+            if (m_state != SCDebugState_Detached)
+            {
+                //\todo DetachAll();
+            }
+
+            AzFramework::TmMsgBus::Handler::BusDisconnect(k_clientRequestsMsgSlotId);
+            ExecutionNotificationsBus::Handler::BusDisconnect();
+
+            {
+                Lock lock(m_msgMutex);
+                m_msgQueue.clear();
+            }
+        }
+
+        void ServiceComponent::GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided)
         {
             provided.push_back(AZ_CRC("ScriptCanvasDebugService", 0x7ece424b));
         }
-        //-------------------------------------------------------------------------
-        void Component::GetIncompatibleServices(AZ::ComponentDescriptor::DependencyArrayType& incompatible)
+
+        void ServiceComponent::GetIncompatibleServices(AZ::ComponentDescriptor::DependencyArrayType& incompatible)
         {
             incompatible.push_back(AZ_CRC("ScriptCanvasDebugService", 0x7ece424b));
         }
-        //-------------------------------------------------------------------------
-        void Component::GetDependentServices(AZ::ComponentDescriptor::DependencyArrayType& dependent)
+
+        void ServiceComponent::GetDependentServices(AZ::ComponentDescriptor::DependencyArrayType& dependent)
         {
             dependent.push_back(AZ_CRC("ScriptCanvasService", 0x41fd58f3));
         }
-        //-------------------------------------------------------------------------
 
-        void Component::Reflect(AZ::ReflectContext* context)
+        void ServiceComponent::Reflect(AZ::ReflectContext* context)
         {
-            ReflectMessages(context);
+            ReflectExecutionBusArguments(context);
+            ReflectArguments(context);
+            ReflectNotifications(context);
+            ReflectRequests(context);
 
             if (AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
             {
-                serializeContext->Class<Component, AZ::Component>()
+                serializeContext->Class<ServiceComponent, AZ::Component>()
                     ->Version(1)
                     ;
 
                 if (AZ::EditContext* editContext = serializeContext->GetEditContext())
                 {
-                    editContext->Class<Component>(
-                        "Script Canvas Runtime Debugger", "Provides remote debugging services for Script Canvas")
+                    editContext->Class<ServiceComponent>("Script Canvas Runtime Debugger", "Provides remote debugging services for Script Canvas")
                         ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
-                            ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
-                            ->Attribute(AZ::Edit::Attributes::Category, "Scripting")
-                            ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("System", 0xc94d118b))
+                        ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
+                        ->Attribute(AZ::Edit::Attributes::Category, "Scripting")
+                        ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("System", 0xc94d118b))
                         ;
                 }
             }
-
-            //static bool registeredComponentUuidWithMetricsAlready = false;
-            //if (!registeredComponentUuidWithMetricsAlready)
-            //{
-            //    // have to let the metrics system know that it's ok to send back the name of the ScriptDebugAgent component to Amazon as plain text, without hashing
-            //    EBUS_EVENT(AzFramework::MetricsPlainTextNameRegistrationBus, RegisterForNameSending, AZStd::vector<AZ::Uuid>{ azrtti_typeid<ScriptDebugAgent>() });
-
-            //    // only ever do this once
-            //    registeredComponentUuidWithMetricsAlready = true;
-            //}
         }
 
-
-        // Returns true if a valid target was found, in which case the info is returned in targetInfo.
-        bool Component::GetDesiredTarget(AzFramework::TargetInfo& targetInfo)
+        void ServiceComponent::GraphActivated(const GraphActivation& graphInfo)
         {
-            AzFramework::TargetContainer targets;
-            AzFramework::TargetManager::Bus::Broadcast(&AzFramework::TargetManager::EnumTargetInfos, targets);
+            SCRIPT_CANVAS_DEBUGGER_TRACE_SERVER("GraphActivation: %s", graphInfo.ToString().data());
 
-            // discover what target the user is currently connected to, if any?
-            AzFramework::TargetInfo info;
-            AzFramework::TargetManager::Bus::BroadcastResult(info, &AzFramework::TargetManager::GetDesiredTarget);
-            if (!info.GetPersistentId())
+            Lock lock(m_mutex);
+
+            ActiveGraphStatus* activeGraphStatus = nullptr;
+
+            auto graphIter = m_activeGraphs.find(graphInfo.m_graphIdentifier.m_assetId);
+
+            if (graphIter == m_activeGraphs.end())
             {
-                AZ_TracePrintf("Script Canvas Debug", "The user has not chosen a target to connect to.\n");
+                activeGraphStatus = &(m_activeGraphs[graphInfo.m_graphIdentifier.m_assetId]);
+
+                if (IsAssetObserved(graphInfo.m_graphIdentifier.m_assetId))
+                {
+                    activeGraphStatus->m_isObserved = true;
+                }
+            }
+            else
+            {
+                activeGraphStatus = &(graphIter->second);
+            }
+
+            if (activeGraphStatus)
+            {
+                activeGraphStatus->m_instanceCounter++;
+            }
+
+            const AZ::NamedEntityId& namedEntityId = graphInfo.m_runtimeEntity;
+
+            auto entityIter = m_activeEntities.find(namedEntityId);
+
+            ActiveEntityStatus* entityStatus = nullptr;
+
+            if (entityIter == m_activeEntities.end())
+            {
+                entityStatus = &(m_activeEntities[namedEntityId]);
+                entityStatus->m_namedEntityId = namedEntityId;
+            }
+            else
+            {
+                entityStatus = &(entityIter->second);
+            }
+
+            if (entityStatus)
+            {
+                auto graphCountIter = entityStatus->m_activeGraphs.find(graphInfo.m_graphIdentifier);
+                if (graphCountIter == entityStatus->m_activeGraphs.end())
+                {
+                    ActiveGraphStatus graphStatus;
+                    graphStatus.m_instanceCounter = 1;
+                    graphStatus.m_isObserved = IsGraphObserved(graphInfo.m_runtimeEntity, graphInfo.m_graphIdentifier);
+
+                    entityStatus->m_activeGraphs.insert(AZStd::make_pair(graphInfo.m_graphIdentifier, graphStatus));
+                }
+                else
+                {
+                    // We received a double activation signal for the same graph without a deactivate?
+                    SCRIPT_CANVAS_DEBUGGER_TRACE_SERVER("Accounting error. An activated graph was already found for the entity the active list");
+                }
+            }
+
+            if (!m_client.m_script.m_staticEntities.empty())
+            {
+                auto staticEntityIter = m_client.m_script.m_staticEntities.begin();
+
+                while (staticEntityIter != m_client.m_script.m_staticEntities.end())
+                {
+                    AZ::EntityId runtimeEntityId;
+                    AzFramework::EntityContextRequestBus::EventResult(runtimeEntityId, m_contextId, &AzFramework::EntityContextRequests::FindLoadedEntityIdMapping, (*staticEntityIter).first);
+
+                    if (runtimeEntityId == graphInfo.m_runtimeEntity)
+                    {
+                        AZ::EntityId staticEntity = staticEntityIter->first;
+
+                        // Remap the static entity identifiers and move them into the 'self' script targets
+                        {
+                            auto insertResult = m_self.m_script.m_entities.insert(runtimeEntityId);
+                            insertResult.first->second.insert(staticEntityIter->second.begin(), staticEntityIter->second.end());
+                            m_self.m_script.m_staticEntities.erase(staticEntity);
+                        }
+
+                        // Remap the static entity identifiers and move them into the 'client' script targets
+                        {
+                            auto insertResult = m_client.m_script.m_entities.insert(runtimeEntityId);
+                            insertResult.first->second.insert(staticEntityIter->second.begin(), staticEntityIter->second.end());
+                            staticEntityIter = m_client.m_script.m_staticEntities.erase(staticEntityIter);
+                        }
+                        break;
+                    }
+                    else
+                    {
+                        ++staticEntityIter;
+                    }
+                }
+            }
+
+            GraphActivation payload = graphInfo;
+            payload.m_entityIsObserved = IsGraphObserved(graphInfo.m_runtimeEntity, graphInfo.m_graphIdentifier);
+            AzFramework::TargetManager::Bus::Broadcast(&AzFramework::TargetManager::SendTmMessage, m_client.m_info, Message::GraphActivated(payload));
+        }
+
+        void ServiceComponent::GraphDeactivated(const GraphActivation& graphInfo)
+        {
+            SCRIPT_CANVAS_DEBUGGER_TRACE_SERVER("GraphDeactivated: %s", graphInfo.ToString().data());
+
+            Lock lock(m_mutex);
+
+            auto graphIter = m_activeGraphs.find(graphInfo.m_graphIdentifier.m_assetId);
+            if (graphIter == m_activeGraphs.end())
+            {
+                SCRIPT_CANVAS_DEBUGGER_TRACE_SERVER("Accounting error. A deactivated graph was not found in the active list");
+            }
+            else
+            {
+                --graphIter->second.m_instanceCounter;
+
+                if (graphIter->second.m_instanceCounter == 0)
+                {
+                    m_activeGraphs.erase(graphIter);
+                }
+            }
+
+            auto namedEntity = graphInfo.m_runtimeEntity;
+
+            auto entityIter = m_activeEntities.find(namedEntity);
+            if (entityIter == m_activeEntities.end())
+            {
+                SCRIPT_CANVAS_DEBUGGER_TRACE_SERVER("Accounting error. A deactivated entity was not found in the active list");
+            }
+            else
+            {
+                ActiveEntityStatus& entityStatus = entityIter->second;
+
+                auto graphIterator = entityStatus.m_activeGraphs.find(graphInfo.m_graphIdentifier);
+
+                if (graphIterator == entityStatus.m_activeGraphs.end())
+                {
+                    SCRIPT_CANVAS_DEBUGGER_TRACE_SERVER("Accounting error. A deactivated graph was not found for the entity the active list");
+                }
+                else
+                {
+                    entityStatus.m_activeGraphs.erase(graphIterator);
+                }
+
+                if (entityStatus.m_activeGraphs.empty())
+                {
+                    // At this point entityStatus is bad. So no touchy
+                    m_activeEntities.erase(entityIter);
+                }
+            }
+
+            GraphActivation payload = graphInfo;
+            payload.m_entityIsObserved = IsGraphObserved(graphInfo.m_runtimeEntity, graphInfo.m_graphIdentifier);
+            AzFramework::TargetManager::Bus::Broadcast(&AzFramework::TargetManager::SendTmMessage, m_client.m_info, Message::GraphDeactivated(payload));
+        }
+
+        bool ServiceComponent::IsNodeObserved(const Node& node)
+        {
+            if (!m_client.m_script.m_logExecution)
+            {
                 return false;
             }
 
-            targetInfo = info;
-            if (
-                (!targetInfo.IsValid()) ||
-                ((targetInfo.GetStatusFlags() & AzFramework::TF_SELF) == 0) || // TODO #lsempe: only supporting self for now
-                ((targetInfo.GetStatusFlags() & AzFramework::TF_ONLINE) == 0) ||
-                ((targetInfo.GetStatusFlags() & AzFramework::TF_DEBUGGABLE) == 0)
-                )
-            {
-                AZ_TracePrintf("Script Canvas Debug", "The target is currently not in a state that would allow debugging code (offline or not debuggable)\n");
-                return false;
-            }
+#if defined(SCRIPT_CANVAS_DEBUGGER_IS_ALWAYS_OBSERVING)
             return true;
+#else
+            if (m_state == SCDebugState_Detached || m_state == SCDebugState_Detaching)
+            {
+                return false;
+            }
+
+            return m_client.m_script.IsObserving(node.GetGraphEntityId(), node.GetGraphIdentifier());
+#endif//defined(SCRIPT_CANVAS_DEBUGGER_IS_ALWAYS_OBSERVING)
         }
 
-
-        void Component::SetBreakpoint(const AZ::EntityId& graphId, const AZ::EntityId& nodeId, const SlotId& slot)
+        bool ServiceComponent::IsAssetObserved(const AZ::Data::AssetId& assetId) const
         {
+            if (!m_client.m_script.m_logExecution)
+            {
+                return false;
+            }
 
+#if defined(SCRIPT_CANVAS_DEBUGGER_IS_ALWAYS_OBSERVING)
+            return true;
+#else
+            if (m_state == SCDebugState_Detached || m_state == SCDebugState_Detaching)
+            {
+                return false;
+            }
+
+            return m_client.m_script.IsObservingAsset(assetId);
+#endif //defined(SCRIPT_CANVAS_DEBUGGER_IS_ALWAYS_OBSERVING)
         }
 
-        void Component::RemoveBreakpoint(const AZ::EntityId& graphId, const AZ::EntityId& nodeId, const SlotId& slot)
+        bool ServiceComponent::IsGraphObserved(const AZ::EntityId& entityId, const GraphIdentifier& identifier) const
         {
+            if (!m_client.m_script.m_logExecution)
+            {
+                return false;
+            }
 
+#if defined(SCRIPT_CANVAS_DEBUGGER_IS_ALWAYS_OBSERVING)
+            return true;
+#else
+            if (m_state == SCDebugState_Detached || m_state == SCDebugState_Detaching)
+            {
+                return false;
+            }
+
+            return m_client.m_script.IsObserving(entityId, identifier);
+#endif //defined(SCRIPT_CANVAS_DEBUGGER_IS_ALWAYS_OBSERVING)
         }
 
-        void Component::StepOver()
+        bool ServiceComponent::IsVariableObserved(const Node& /*node*/, VariableId /*variableId*/)
         {
-
+#if defined(SCRIPT_CANVAS_DEBUGGER_IS_ALWAYS_OBSERVING)
+            return true;
+#else
+            // \todo finish me!
+            return true;
+#endif//defined(SCRIPT_CANVAS_DEBUGGER_IS_ALWAYS_OBSERVING)
         }
 
-        void Component::StepIn()
+        void ServiceComponent::NodeSignaledOutput(const OutputSignal& nodeSignal)
         {
-
+            NodeSignalled<OutputSignal, Message::SignaledOutput>(nodeSignal);
         }
 
-        void Component::StepOut()
+        void ServiceComponent::NodeSignaledInput(const InputSignal& nodeSignal)
         {
-
+            NodeSignalled<InputSignal, Message::SignaledInput>(nodeSignal);
         }
 
-        void Component::Stop()
+        void ServiceComponent::NodeSignaledDataOuput(const OutputDataSignal& nodeSignal)
         {
-
+            AzFramework::TargetManager::Bus::Broadcast(&AzFramework::TargetManager::SendTmMessage, m_client.m_info, Message::SignaledDataOutput(nodeSignal));
         }
 
-        void Component::Continue()
+        void ServiceComponent::NodeStateUpdated(const NodeStateChange&)
         {
-
+            // \todo decide whether or not this should break
+//             if (m_state == SCDebugState_Interactive)
+//             {
+//                 Interact();
+//             }
         }
 
-        void Component::NodeStateUpdate(Node* node, const AZ::EntityId& graphId)
+        void ServiceComponent::VariableChanged(const VariableChange& variableChange)
         {
-            AzFramework::TargetManager::Bus::Broadcast(&AzFramework::TargetManager::SendTmMessage, m_debugTargets[graphId].m_info, Message::NodeState(node, graphId));
+            /*
+            if (variableChange breakpoint hit)
+            {}
+            else
+            */
+
+            if (m_client.m_script.m_logExecution || m_state == SCDebugState_Interactive || m_state == SCDebugState_InteractOnNext)
+            {
+                SCRIPT_CANVAS_DEBUGGER_TRACE_SERVER("Interactive: %s", variableChange.ToString().data());
+                AzFramework::TargetManager::Bus::Broadcast(&AzFramework::TargetManager::SendTmMessage, m_client.m_info, Message::VariableChanged(variableChange));
+
+                if (m_state == SCDebugState_Interactive || m_state == SCDebugState_InteractOnNext)
+                {
+                    Interact();
+                }
+            }
         }
 
-        void Component::TargetJoinedNetwork(AzFramework::TargetInfo info)
+        void ServiceComponent::AnnotateNode(const AnnotateNodeSignal& annotateNode)
         {
-            (void)info;
+            AzFramework::TargetManager::Bus::Broadcast(&AzFramework::TargetManager::SendTmMessage, m_client.m_info, Message::AnnotateNode(annotateNode));
         }
 
-        void Component::TargetLeftNetwork(AzFramework::TargetInfo info)
-        {   
-            (void)info;
-        }
-
-        void Component::DesiredTargetChanged(AZ::u32 newTargetID, AZ::u32 oldTargetID)
+        void ServiceComponent::Visit(Message::AddBreakpointRequest& request)
         {
-            (void)newTargetID; (void)oldTargetID;
+            Lock lock(m_mutex);
+            SCRIPT_CANVAS_DEBUGGER_TRACE_SERVER("The debugger has received an add breakpoint request!");
+            // translate to runtime component values
+
+            // !add the graph to the list of graphs being debugged!
+
+
+            /*
+            if (m_breakpoints.find(request.m_breakpoint) == m_breakpoints.end())
+            {
+                m_breakpoints.insert(request.m_breakpoint);
+                AzFramework::TargetManager::Bus::Broadcast(&AzFramework::TargetManager::SendTmMessage, m_client.m_info, Message::BreakpointAdded(request.m_breakpoint));
+            }
+            */
         }
 
-    }
+        void ServiceComponent::Visit(Message::AddTargetsRequest& request)
+        {
+            Lock lock(m_mutex);
+
+            if (m_state == SCDebugState_Attached)
+            {
+                m_activeEntityStatusDirty = true;
+                m_activeGraphStatusDirty = true;
+
+                m_self.m_script.Merge(request.m_addTargets);
+                m_client.m_script.Merge(request.m_addTargets);
+            }
+        }
+
+        void ServiceComponent::Visit(Message::RemoveTargetsRequest& request)
+        {
+            Lock lock(m_mutex);
+
+            if (m_state == SCDebugState_Attached)
+            {
+                m_activeEntityStatusDirty = true;
+                m_activeGraphStatusDirty = true;
+
+                m_self.m_script.Remove(request.m_removeTargets);
+                m_client.m_script.Remove(request.m_removeTargets);
+            }
+        }
+
+        void ServiceComponent::Visit(Message::StartLoggingRequest& request)
+        {
+            Lock lock(m_mutex);
+
+            if (IsAttached())
+            {
+                m_self.m_script = request.m_initialTargets;
+                m_self.m_script.m_logExecution = true;
+
+                m_client.m_script = request.m_initialTargets;
+                m_client.m_script.m_logExecution = true;
+
+                m_contextId = AzFramework::EntityContextId::CreateNull();
+
+                if (!request.m_initialTargets.m_staticEntities.empty())
+                {
+                    AzFramework::GameEntityContextRequestBus::BroadcastResult(m_contextId, &AzFramework::GameEntityContextRequests::GetGameEntityContextId);
+                }
+            }
+        }
+
+        void ServiceComponent::Visit(Message::StopLoggingRequest& request)
+        {
+            Lock lock(m_mutex);
+
+            if (IsAttached())
+            {
+                m_self.m_script.m_logExecution = false;
+                m_client.m_script.m_logExecution = false;
+            }
+        }
+
+        void ServiceComponent::Visit(Message::BreakRequest&)
+        {
+            if (m_state == SCDebugState_Attached)
+            {
+                SCRIPT_CANVAS_DEBUGGER_TRACE_SERVER("The debugger is GOING TO BREAK!");
+                m_state = SCDebugState_Interactive;
+            }
+            else
+            {
+                SCRIPT_CANVAS_DEBUGGER_TRACE_SERVER("The debugger is rejecting break request as it is not attached");
+            }
+        }
+
+        void ServiceComponent::Visit(Message::ContinueRequest&)
+        {
+            if (m_state == SCDebugState_Interactive)
+            {
+                SCRIPT_CANVAS_DEBUGGER_TRACE_SERVER("The debugger is CONTINUING TO RUN!");
+                m_state = SCDebugState_Attached;
+                AzFramework::TargetManager::Bus::Broadcast(&AzFramework::TargetManager::SendTmMessage, m_client.m_info, Message::Continued());
+            }
+            else
+            {
+                SCRIPT_CANVAS_DEBUGGER_TRACE_SERVER("The debugger is rejecting continue request as it is not interactive");
+            }
+        }
+
+        void ServiceComponent::Visit(Message::GetAvailableScriptTargets& request)
+        {
+            SCRIPT_CANVAS_DEBUGGER_TRACE_SERVER("received Message::GetAvailableScriptTargets");
+
+            if (IsAttached())
+            {
+                SCRIPT_CANVAS_DEBUGGER_TRACE_SERVER("sending Message::GetAvailableScriptTargets");
+                RefreshActiveEntityStatus();
+                RefreshActiveGraphStatus();
+
+                AzFramework::TargetManager::Bus::Broadcast(&AzFramework::TargetManager::SendTmMessage, m_client.m_info, Message::AvailableScriptTargetsResult(AZStd::make_pair(m_activeEntities, m_activeGraphs)));
+            }
+        }
+
+        void ServiceComponent::Visit(Message::GetActiveEntitiesRequest& request)
+        {
+            SCRIPT_CANVAS_DEBUGGER_TRACE_SERVER("received Message::GetActiveEntitiesRequest");
+
+            if (IsAttached())
+            {
+                SCRIPT_CANVAS_DEBUGGER_TRACE_SERVER("sending Message::GetActiveEntitiesResult: %d", m_activeEntities.size());
+
+                RefreshActiveEntityStatus();
+                AzFramework::TargetManager::Bus::Broadcast(&AzFramework::TargetManager::SendTmMessage, m_client.m_info, Message::ActiveEntitiesResult(m_activeEntities));
+            }
+        }
+
+        void ServiceComponent::Visit(Message::GetActiveGraphsRequest& request)
+        {
+            SCRIPT_CANVAS_DEBUGGER_TRACE_SERVER("received Message::GetActiveGraphsRequest");
+
+            if (IsAttached())
+            {
+                SCRIPT_CANVAS_DEBUGGER_TRACE_SERVER("sending Message::GetActiveGraphsResult: %d", m_activeGraphs.size());
+
+                RefreshActiveGraphStatus();
+                AzFramework::TargetManager::Bus::Broadcast(&AzFramework::TargetManager::SendTmMessage, m_client.m_info, Message::ActiveGraphsResult(m_activeGraphs));
+            }
+        }
+
+        void ServiceComponent::Visit(Message::RemoveBreakpointRequest& request)
+        {
+            Lock lock(m_mutex);
+            SCRIPT_CANVAS_DEBUGGER_TRACE_SERVER("The debugger has received a remoe breakpoint request!");
+            // translate to runtime component values
+
+            // !remove the graph from the list of graphs being debugged!
+
+
+            /*
+            if (m_breakpoints.find(request.m_breakpoint) == m_breakpoints.end())
+            {
+            m_breakpoints.insert(request.m_breakpoint);
+            AzFramework::TargetManager::Bus::Broadcast(&AzFramework::TargetManager::SendTmMessage, m_client.m_info, Message::BreakpointAdded(request.m_breakpoint));
+            }
+            */
+        }
+
+        void ServiceComponent::Visit(Message::StepOverRequest&)
+        {
+            if (m_state == SCDebugState_Interactive)
+            {
+                SCRIPT_CANVAS_DEBUGGER_TRACE_SERVER("The debugger is going to step over the current instruction!");
+                m_state = SCDebugState_InteractOnNext;
+            }
+            else
+            {
+                SCRIPT_CANVAS_DEBUGGER_TRACE_SERVER("The debugger is rejecting step over request as it is not interactive");
+            }
+        }
+
+        void ServiceComponent::DisconnectFromClient()
+        {
+            m_state = SCDebugState_Detaching;
+
+            AzFramework::TargetInfo targetInfo = m_client.m_info;
+
+            m_client = Target();
+            m_self.m_script = ScriptTarget();
+
+            AzFramework::TargetManager::Bus::Broadcast(&AzFramework::TargetManager::SendTmMessage, targetInfo, Message::Disconnected());
+
+            m_state = SCDebugState_Detached;
+        }
+
+        void ServiceComponent::RefreshActiveEntityStatus()
+        {
+            if (m_activeEntityStatusDirty)
+            {
+                m_activeEntityStatusDirty = false;
+
+                for (auto& entityPair : m_activeEntities)
+                {
+                    for (auto& graphPair : entityPair.second.m_activeGraphs)
+                    {
+                        graphPair.second.m_isObserved = IsGraphObserved(entityPair.first, graphPair.first);
+                    }
+                }
+            }
+        }
+
+        void ServiceComponent::RefreshActiveGraphStatus()
+        {
+            if (m_activeGraphStatusDirty)
+            {
+                m_activeGraphStatusDirty = false;
+
+                for (auto& graphPair : m_activeGraphs)
+                {
+                    graphPair.second.m_isObserved = IsAssetObserved(graphPair.first);
+                }
+            }
+        }
+
+    } // namespace Debugger
 }

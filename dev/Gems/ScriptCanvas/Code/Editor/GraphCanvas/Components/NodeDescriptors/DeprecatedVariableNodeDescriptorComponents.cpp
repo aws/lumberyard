@@ -56,10 +56,12 @@ namespace ScriptCanvasEditor
             VariableNodeDescriptorRequestBus::Handler::BusConnect(GetEntityId());
             GraphCanvas::NodeNotificationBus::Handler::BusConnect(GetEntityId());
             GraphCanvas::Deprecated::VariableRequestBus::Handler::BusConnect(GetEntityId());
+            GraphCanvas::SceneMemberNotificationBus::Handler::BusConnect(GetEntityId());
         }
 
         void VariableNodeDescriptorComponent::Deactivate()
         {
+            GraphCanvas::SceneMemberNotificationBus::Handler::BusDisconnect();
             GraphCanvas::Deprecated::SceneVariableRequestBus::Handler::BusDisconnect();
             GraphCanvas::Deprecated::VariableRequestBus::Handler::BusDisconnect();
             GraphCanvas::NodeNotificationBus::Handler::BusDisconnect();
@@ -138,7 +140,7 @@ namespace ScriptCanvasEditor
             GraphCanvas::Deprecated::SceneVariableRequestBus::Handler::BusDisconnect(sceneId);
         }
 
-        void VariableNodeDescriptorComponent::OnNodeDeserialized(const AZ::EntityId& graphId, const GraphCanvas::GraphSerialization&)
+        void VariableNodeDescriptorComponent::OnSceneMemberDeserialized(const AZ::EntityId& graphId, const GraphCanvas::GraphSerialization&)
         {
             // When we are deserialized(from a paste)
             // We want to clear our display name to generate a new variable name.
@@ -194,12 +196,14 @@ namespace ScriptCanvasEditor
 
             GetVariableNodeDescriptorRequestBus::Handler::BusConnect(GetEntityId());
             GraphCanvas::NodeNotificationBus::Handler::BusConnect(GetEntityId());
+            GraphCanvas::SceneMemberNotificationBus::Handler::BusConnect(GetEntityId());
         }
         
         void GetVariableNodeDescriptorComponent::Deactivate()
         {
             NodeDescriptorComponent::Deactivate();
 
+            GraphCanvas::SceneMemberNotificationBus::Handler::BusDisconnect();
             GraphCanvas::NodeNotificationBus::Handler::BusDisconnect();
             GetVariableNodeDescriptorRequestBus::Handler::BusDisconnect();
         }
@@ -478,7 +482,7 @@ namespace ScriptCanvasEditor
                 if (!connected || connectionEntity == nullptr)
                 {
                     AZ::Outcome<void, AZStd::string> outcome = AZ::Failure(AZStd::string(""));
-                    ScriptCanvas::GraphRequestBus::EventResult(outcome, sceneId, &ScriptCanvas::GraphRequests::CanConnectByEndpoint, m_getEndpoint, writeEndpoint);
+                    ScriptCanvas::GraphRequestBus::EventResult(outcome, sceneId, &ScriptCanvas::GraphRequests::CanCreateConnectionBetween, m_getEndpoint, writeEndpoint);
 
                     if (outcome.IsSuccess())
                     {

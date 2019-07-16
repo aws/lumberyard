@@ -47,7 +47,12 @@ public:
     void UpdateYaw(float amount);
     void UpdatePosition(const Vec3& amount);
     void MovePosition(const Vec3& offset);
+    void MovePositionTo(const Vec3& offset, const Vec3& rotations);
 
+    void OnTogglePathRecording();
+    void OnTogglePathSaving();
+    void OnTogglePathLoading();
+    void OnToggleTakeScreenshot();
 protected:
     int m_mouseMoveMode;
     int m_isYInverted;
@@ -63,6 +68,27 @@ protected:
     Vec3 m_position;
     Matrix33 m_view;
 
+
+    // automation
+#if !defined(_RELEASE) && !defined(DEDICATED_SERVER)
+    void LoadPath();
+    void SavePath();
+    void RecordPath();
+    void RunPath();
+
+    bool m_recordPath;
+    bool m_savePath;
+    bool m_loadRunPath;
+    bool m_takeScreenshot;
+
+    std::vector< Vec3> m_path;
+    Vec3 m_currentPosition;
+    int m_currentIndex;
+
+    bool m_runPath;
+    float m_recordingTimer;
+    float m_angle;
+#endif // #if !defined(_RELEASE) && !defined(DEDICATED_SERVER)
 private:
     ICVar* m_displayInfoCVar;
 };

@@ -21,6 +21,7 @@
 #include <ScriptCanvas/Asset/RuntimeAsset.h>
 #include <ScriptCanvas/Core/Core.h>
 #include <ScriptCanvas/Core/GraphData.h>
+#include <ScriptCanvas/Core/ExecutionNotificationsBus.h>
 #include <ScriptCanvas/Execution/ExecutionContext.h>
 #include <ScriptCanvas/Execution/RuntimeBus.h>
 #include <ScriptCanvas/Variable/VariableBus.h>
@@ -54,6 +55,8 @@ namespace ScriptCanvas
         static void Reflect(AZ::ReflectContext* context);
         static bool VersionConverter(AZ::SerializeContext& context, AZ::SerializeContext::DataElementNode& classElement);
 
+        static AZStd::vector<RuntimeComponent*> FindAllByEditorAssetId(AZ::Data::AssetId editorScriptCanvasAssetId);
+
         RuntimeComponent(AZ::EntityId uniqueId = AZ::Entity::MakeId());
         RuntimeComponent(AZ::Data::Asset<RuntimeAsset> runtimeAsset, AZ::EntityId uniqueId = AZ::Entity::MakeId());
         ~RuntimeComponent() override;
@@ -70,12 +73,23 @@ namespace ScriptCanvas
 
         const AZStd::vector<AZ::EntityId> GetNodesConst() const;
 
+        // RuntimeComponentRequestBus
+        ////
+
         //// RuntimeRequestBus::Handler
-        AZ::EntityId GetRuntimeEntityId() const override { return GetEntity() ? GetEntityId() : AZ::EntityId(); }
+        VariableId FindAssetVariableIdByRuntimeVariableId(VariableId runtimeId) const override;
+        VariableId FindRuntimeVariableIdByAssetVariableId(VariableId runtimeId) const override;
+        AZ::EntityId FindAssetNodeIdByRuntimeNodeId(AZ::EntityId runtimeNode) const override;
+        AZ::Data::AssetId GetAssetId() const override { return m_runtimeAsset.GetId(); }
+        GraphIdentifier GetGraphIdentifier() const override;
+        AZStd::string GetAssetName() const override;
         Node* FindNode(AZ::EntityId nodeId) const override;
+        AZ::EntityId FindRuntimeNodeIdByAssetNodeId(AZ::EntityId editorNode) const override;        
+        AZ::EntityId GetRuntimeEntityId() const override { return GetEntity() ? GetEntityId() : AZ::EntityId(); }
         AZStd::vector<AZ::EntityId> GetNodes() const override;
         AZStd::vector<AZ::EntityId> GetConnections() const override;
         AZStd::vector<Endpoint> GetConnectedEndpoints(const Endpoint& firstEndpoint) const override;
+        bool IsEndpointConnected(const Endpoint& endpoint) const override;
         GraphData* GetGraphData() override;
         const GraphData* GetGraphDataConst() const override { return const_cast<RuntimeComponent*>(this)->GetGraphData(); }
 
@@ -122,6 +136,10 @@ namespace ScriptCanvas
         {
             provided.push_back(AZ_CRC("ScriptCanvasRuntimeService", 0x776e1e3a));
         }
+                
+        ActivationInfo CreateActivationInfo() const;        
+        ActivationInfo CreateDeactivationInfo() const;
+        VariableValues CreateVariableValues() const;
 
         //// Execution
         void ActivateNodes();
@@ -141,11 +159,17 @@ namespace ScriptCanvas
         ExecutionContext m_executionContext;
         
         // Script Canvas VariableId populated when the RuntimeAsset loads
-        VariableIdMap m_editorToRuntimeVariableMap;
+        VariableIdMap m_assetToRuntimeVariableMap;
+        VariableIdMap m_runtimeToAssetVariableMap;
 
         AZStd::unordered_set< Node* > m_entryNodes;
 
         // Script Canvas VariableId map populated by the EditorScriptCanvasComponent in build game Entity
         AZStd::unordered_map<AZ::u64, AZ::EntityId> m_variableEntityIdMap;
+        
+        // used to map runtime graphs back to asset sources, for use in debugging and logging against human written content in the editor
+        AZStd::unordered_map<AZ::EntityId, AZ::EntityId> m_runtimeIdToAssetId;
+        // used to map asset sources to runtime graphs, for use in debugging and logging against human written content in the editor
+        AZStd::unordered_map<AZ::EntityId, AZ::EntityId> m_assetIdToRuntimeId;
     };
 }

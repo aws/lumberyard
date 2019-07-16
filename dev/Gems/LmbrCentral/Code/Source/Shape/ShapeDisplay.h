@@ -16,52 +16,41 @@
 #include <AzFramework/Entity/EntityDebugDisplayBus.h>
 #include <AzFramework/Viewport/ViewportColors.h>
 
+#include <LmbrCentral/Shape/ShapeComponentBus.h>
+
 namespace LmbrCentral
 {
-    /**
-     * Common properties of how shape debug drawing can be rendererd.
-     */
-    struct ShapeDrawParams
-    {
-        AZ::Color m_shapeColor; ///< Color of underlying shape.
-        AZ::Color m_wireColor; ///< Color of wireframe edges of shapes.
-        bool m_filled; ///< Whether the shape should be rendered filled, or wireframe only.
+    const ShapeDrawParams g_defaultShapeDrawParams = {
+        AzFramework::ViewportColors::DeselectedColor,
+        AzFramework::ViewportColors::WireColor,
+        true
     };
 
-    const ShapeDrawParams g_defaultShapeDrawParams = { 
-        AzFramework::ViewportColors::DeselectedColor, 
-        AzFramework::ViewportColors::WireColor, 
-        true 
-    };
-
-    /**
-     * @brief Helper function to be used when drawing debug shapes - called from DisplayEntity on 
-     * the EntityDebugDisplayEventBus.
-     * @param handled Did we display anything.
-     * @param canDraw Functor to decide should the shape be drawn or not.
-     * @param drawShape Functor to draw a specific shape (box/capsule/sphere etc).
-     * @param worldFromLocal Transform of object in world space, push to matrix stack and render shape in local space.
-     */
+    /// @brief Helper function to be used when drawing debug shapes - called from DisplayEntity on 
+    /// the EntityDebugDisplayEventBus.
+    /// @param handled Did we display anything.
+    /// @param canDraw Functor to decide should the shape be drawn or not.
+    /// @param drawShape Functor to draw a specific shape (box/capsule/sphere etc).
+    /// @param worldFromLocal Transform of object in world space, push to matrix stack and render shape in local space.
     template<typename CanDraw, typename DrawShape>
-    void DisplayShape(bool& handled, CanDraw&& canDraw, DrawShape&& drawShape, const AZ::Transform& worldFromLocal)
+    void DisplayShape(
+        AzFramework::DebugDisplayRequests& debugDisplay,
+        CanDraw&& canDraw, DrawShape&& drawShape, const AZ::Transform& worldFromLocal)
     {
         if (!canDraw())
         {
             return;
         }
 
-        handled = true;
-
-        AzFramework::EntityDebugDisplayRequests* displayContext = AzFramework::EntityDebugDisplayRequestBus::FindFirstHandler();
-        AZ_Assert(displayContext, "Invalid display context.");
-
         // only uniform scale is supported in physics so the debug visuals reflect this fact
         AZ::Transform worldFromLocalWithUniformScale = worldFromLocal;
         const AZ::Vector3 scale = worldFromLocalWithUniformScale.ExtractScale();
         worldFromLocalWithUniformScale.MultiplyByScale(AZ::Vector3(scale.GetMaxElement()));
-        
-        displayContext->PushMatrix(worldFromLocalWithUniformScale);
-        drawShape(displayContext);
-        displayContext->PopMatrix();
+
+        debugDisplay.PushMatrix(worldFromLocalWithUniformScale);
+
+        drawShape(debugDisplay);
+
+        debugDisplay.PopMatrix();
     }
-}
+} // namespace LmbrCentral

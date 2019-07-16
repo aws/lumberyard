@@ -208,12 +208,20 @@ private:
     {
         ExternalProcessMonitor()
             : m_memberId(0)
+    #ifdef AZ_PLATFORM_WINDOWS
             , m_localProcess(INVALID_HANDLE_VALUE)
+    #else
+            , m_localProcess(0)
+    #endif
         {
         }
 
         GridMate::MemberIDCompact	m_memberId;			///< Pointer to member ID in the session.
+#ifdef AZ_PLATFORM_WINDOWS
         HANDLE						m_localProcess;		///< Local process ID used to monitor local applocations.
+#else
+        pid_t                                           m_localProcess;
+#endif
 
     };
 

@@ -12,6 +12,7 @@
 
 #include <AzQtComponents/Components/Widgets/ComboBox.h>
 #include <AzQtComponents/Components/Style.h>
+#include <AzQtComponents/Components/ConfigHelpers.h>
 
 #include <QComboBox>
 #include <QStyledItemDelegate>
@@ -39,7 +40,7 @@ namespace AzQtComponents
 
             // The default usage of combobox only allow one selection,
             // then we have to tweak it a bit so it show a check mark in this case.
-            if (m_combo && m_combo->view()->selectionMode() == QAbstractItemView::SingleSelection)
+            if (option && m_combo && m_combo->view()->selectionMode() == QAbstractItemView::SingleSelection)
             {
                 option->features |= QStyleOptionViewItem::HasCheckIndicator;
                 option->checkState = m_combo->currentIndex() == index.row() ? Qt::Checked : Qt::Unchecked;
@@ -52,30 +53,14 @@ namespace AzQtComponents
 
     ComboBox::Config ComboBox::loadConfig(QSettings& settings)
     {
-        auto ReadInteger = [](QSettings& settings, const QString& name, int& value)
-        {
-            // only overwrite the value if it's set; otherwise, it'll stay the default
-            if (settings.contains(name))
-            {
-                value = settings.value(name).toInt();
-            }
-        };
-        auto ReadColor = [](QSettings& settings, const QString& name, QColor& color)
-        {
-            // only overwrite the value if it's set; otherwise, it'll stay the default
-            if (settings.contains(name))
-            {
-                color = QColor(settings.value(name).toString());
-            }
-        };
-
         Config config = defaultConfig();
 
-        ReadInteger(settings, "BoxShadowXOffset", config.boxShadowXOffset);
-        ReadInteger(settings, "BoxShadowYOffset", config.boxShadowYOffset);
-        ReadInteger(settings, "BoxShadowBlurRadius", config.boxShadowBlurRadius);
-        ReadColor(settings, "BoxShadowColor", config.boxShadowColor);
-        ReadColor(settings, "PlaceHolderTextColor", config.placeHolderTextColor);
+        ConfigHelpers::read<int>(settings, QStringLiteral("BoxShadowXOffset"), config.boxShadowXOffset);
+        ConfigHelpers::read<int>(settings, QStringLiteral("BoxShadowYOffset"), config.boxShadowYOffset);
+        ConfigHelpers::read<int>(settings, QStringLiteral("BoxShadowBlurRadius"), config.boxShadowBlurRadius);
+        ConfigHelpers::read<QColor>(settings, QStringLiteral("BoxShadowColor"), config.boxShadowColor);
+        ConfigHelpers::read<QColor>(settings, QStringLiteral("PlaceHolderTextColor"), config.placeHolderTextColor);
+        ConfigHelpers::read<QColor>(settings, QStringLiteral("FramelessTextColor"), config.framelessTextColor);
 
         return config;
     }
@@ -92,6 +77,7 @@ namespace AzQtComponents
         config.boxShadowBlurRadius = 4;
         config.boxShadowColor = QColor("#7F000000");
         config.placeHolderTextColor = QColor("#999999");
+        config.framelessTextColor = QColor(Qt::white);
 
         return config;
     }
@@ -111,7 +97,6 @@ namespace AzQtComponents
                 pal.setColor(QPalette::PlaceholderText, config.placeHolderTextColor);
                 le->setPalette(pal);
             }
-
             // Allow the popup to have round radius as it's a top level window.
             QWidget* frame = comboBox->view()->parentWidget();
             frame->setWindowFlags(frame->windowFlags() | Qt::FramelessWindowHint | Qt::NoDropShadowWindowHint);
@@ -186,6 +171,70 @@ namespace AzQtComponents
         }
 
         return comboBox;
+    }
+
+    QSize ComboBox::sizeFromContents(const Style* style, QStyle::ContentsType type, const QStyleOption* option, const QSize& size, const QWidget* widget, const ComboBox::Config& config)
+    {
+        Q_UNUSED(config);
+
+        QSize comboBoxSize = style->QProxyStyle::sizeFromContents(type, option, size, widget);
+
+        auto opt = qstyleoption_cast<const QStyleOptionComboBox*>(option);
+        if (opt && opt->frame)
+        {
+            return comboBoxSize;
+        }
+
+        const int indicatorWidth = style->proxy()->pixelMetric(QStyle::PM_IndicatorWidth, option, widget);
+        const int margin = style->proxy()->pixelMetric(QStyle::PM_FocusFrameHMargin, option, widget) + 2;
+        comboBoxSize.setWidth(comboBoxSize.width() + indicatorWidth + 3 * margin);
+        return comboBoxSize;
+    }
+
+    bool ComboBox::drawComboBox(const Style* style, const QStyleOptionComplex* option, QPainter* painter, const QWidget* widget, const Config& config)
+    {
+        Q_UNUSED(config);
+
+        auto opt = qstyleoption_cast<const QStyleOptionComboBox*>(option);
+        if (!opt || opt->frame)
+        {
+            return false;
+        }
+
+        // flat combo box
+        style->drawPrimitive(QStyle::PE_IndicatorArrowDown, option, painter, widget);
+        return true;
+    }
+
+    bool ComboBox::drawComboBoxLabel(const Style* style, const QStyleOption* option, QPainter* painter, const QWidget* widget, const Config& config)
+    {
+        auto opt = qstyleoption_cast<const QStyleOptionComboBox*>(option);
+        if (!opt || opt->frame)
+        {
+            return false;
+        }
+
+        QStyleOptionComboBox cb(*opt);
+        cb.palette.setColor(QPalette::Text, config.framelessTextColor);
+        const QRect editRect = style->proxy()->subControlRect(QStyle::CC_ComboBox, &cb, QStyle::SC_ComboBoxEditField, widget);
+        style->proxy()->drawItemText(painter, editRect.adjusted(1, 0, -1, 0), Qt::AlignLeft | Qt::AlignVCenter, cb.palette, cb.state & QStyle::State_Enabled, cb.currentText, QPalette::Text);
+        return true;
+    }
+
+    bool ComboBox::drawIndicatorArrow(const Style* style, const QStyleOption* option, QPainter* painter, const QWidget* widget, const Config& config)
+    {
+        auto opt = qstyleoption_cast<const QStyleOptionComboBox*>(option);
+        if (!opt || opt->frame)
+        {
+            return false;
+        }
+
+        QStyleOptionComboBox cb(*opt);
+        const QRect downArrowRect = style->proxy()->subControlRect(QStyle::CC_ComboBox, &cb, QStyle::SC_ComboBoxArrow, widget);
+        cb.rect = downArrowRect;
+        cb.palette.setColor(QPalette::ButtonText, config.framelessTextColor);
+        style->QCommonStyle::drawPrimitive(QStyle::PE_IndicatorArrowDown, &cb, painter, widget);
+        return true;
     }
 
 } // namespace AzQtComponents

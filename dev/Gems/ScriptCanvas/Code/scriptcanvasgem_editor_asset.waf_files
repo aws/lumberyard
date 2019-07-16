@@ -4,7 +4,8 @@
             "Asset/EditorAssetRegistry.cpp",
             "Asset/EditorAssetRegistry.h",
             "Asset/EditorAssetSystemComponent.cpp",
-            "Asset/EditorAssetSystemComponent.h"
+            "Asset/EditorAssetSystemComponent.h",
+            "Asset/EditorAssetConversionBus.h"
         ]
     }
 }

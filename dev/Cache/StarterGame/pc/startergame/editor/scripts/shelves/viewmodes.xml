@@ -1,0 +1,80 @@
+<toolboxmacros shelfName="viewModesToolbar" prettyName="View Modes" showByDefault="false">
+ <macro title="Fullshading" shortcut="" icon="icons\full_shading.png" tooltip="Full shading (default) mode">
+  <command type="1" text="general.run_file_parameters('viewmodes.py','Fullshading')" bVariableToggle="0"/>
+ </macro>
+ <macro title="Normals" shortcut="" icon="icons\normals.png" tooltip="Normals visualization">
+  <command type="1" text="general.run_file_parameters('viewmodes.py','Normals')" bVariableToggle="0"/>
+ </macro>
+ <macro title="Smoothness" shortcut="" icon="icons\lighting_only.png" tooltip="Smoothness">
+  <command type="1" text="general.run_file_parameters('viewmodes.py','Smoothness')" bVariableToggle="0"/>
+ </macro>
+ <macro title="Reflectance" shortcut="" icon="icons\lighting_only.png" tooltip="Reflectance">
+  <command type="1" text="general.run_file_parameters('viewmodes.py','Reflectance')" bVariableToggle="0"/>
+ </macro>
+ <macro title="Albedo" shortcut="" icon="icons\lighting_only.png" tooltip="Albedo">
+  <command type="1" text="general.run_file_parameters('viewmodes.py','Albedo')" bVariableToggle="0"/>
+ </macro>
+ <macro title="Lighting_Model" shortcut="" icon="icons\lighting_only.png" tooltip="Lighting model">
+  <command type="1" text="general.run_file_parameters('viewmodes.py','Lighting_Model')" bVariableToggle="0"/>
+ </macro>
+ <macro title="Translucency" shortcut="" icon="icons\lighting_only.png" tooltip="Translucency">
+  <command type="1" text="general.run_file_parameters('viewmodes.py','Translucency')" bVariableToggle="0"/>
+ </macro>
+ <macro title="Sun_self_shadowing" shortcut="" icon="icons\lighting_only.png" tooltip="Sun self-shadowing">
+  <command type="1" text="general.run_file_parameters('viewmodes.py','Sun_self_shadowing')" bVariableToggle="0"/>
+ </macro>
+ <macro title="Subsurface_scattering" shortcut="" icon="icons\lighting_only.png" tooltip="Subsurface scattering">
+  <command type="1" text="general.run_file_parameters('viewmodes.py','Subsurface_scattering')" bVariableToggle="0"/>
+ </macro>
+ <macro title="Specular_validation_overlay" shortcut="" icon="icons\lighting_only.png" tooltip="Specular validation overlay">
+  <command type="1" text="general.run_file_parameters('viewmodes.py','Specular_validation_overlay')" bVariableToggle="0"/>
+ </macro>
+ <macro title="" shortcut="" icon="icons\blanker.png" tooltip="">
+  <command type="0" text="" bVariableToggle="0"/>
+ </macro>
+ <macro title="Default_Material" shortcut="" icon="icons\default_material.png" tooltip="Sets default material on all objects (flat grey)">
+  <command type="1" text="general.run_file_parameters('viewmodes.py','default_material')" bVariableToggle="0"/>
+ </macro> 
+ <macro title="Default_Material_with_normals" shortcut="" icon="icons\default_material_with_normals.png" tooltip="Sets grey material with normalmaps on all objects">
+  <command type="1" text="general.run_file_parameters('viewmodes.py','default_material_normals')" bVariableToggle="0"/>
+ </macro> 
+ <macro title="ShowCollisions" shortcut="" icon="icons\collisions.png" tooltip="Shows the collision shapes (proxy)">
+  <command type="1" text="general.run_file_parameters('viewmodes.py','collisionshapes')" bVariableToggle="0"/>
+ </macro>
+ <macro title="ShadedWireframe" shortcut="" icon="icons\showlines.png" tooltip="Shaded wireframe mode">
+  <command type="1" text="general.run_file_parameters('viewmodes.py','shaded_wireframe')" bVariableToggle="0"/>
+ </macro>
+ <macro title="EmptyWireframe" shortcut="" icon="icons\wireframe.png" tooltip="Unshaded wireframe mode (standard)">
+  <command type="1" text="general.run_file_parameters('viewmodes.py','wireframe')" bVariableToggle="0"/>
+ </macro>
+ <macro title="Show_Vertex_Normals" shortcut="" icon="icons\vertex_normals.png" tooltip="Show vertex normals">
+  <command type="1" text="general.run_file_parameters('viewmodes.py','Vnormals')" bVariableToggle="0"/>
+ </macro>
+ <macro title="ShowTangents" shortcut="" icon="icons\tangents.png" tooltip="Show tangents">
+  <command type="1" text="general.run_file_parameters('viewmodes.py','Tangents')" bVariableToggle="0"/>
+ </macro>
+ <macro title="" shortcut="" icon="icons\blanker.png" tooltip="">
+  <command type="0" text="" bVariableToggle="0"/>
+ </macro>
+ <macro title="ShowTexelsPerMeter256" shortcut="" icon="icons\texel_per_meter_256.png" tooltip="Texels per meter 256 visualization">
+  <command type="1" text="general.run_file_parameters('viewmodes.py','texelspermeter360')" bVariableToggle="0"/>
+ </macro>
+ <macro title="ShowTexelsPerMeter512" shortcut="" icon="icons\texel_per_meter_512.png" tooltip="Texels per meter 512 visualization">
+  <command type="1" text="general.run_file_parameters('viewmodes.py','texelspermeterpc')" bVariableToggle="0"/>
+ </macro>
+ <macro title="ShowTexelsPerMeter1024" shortcut="" icon="icons\texel_per_meter_1024.png" tooltip="Texels per meter 1024 visualization">
+  <command type="1" text="general.run_file_parameters('viewmodes.py','texelspermeterpc2')" bVariableToggle="0"/>
+ </macro>
+ <macro title="" shortcut="" icon="icons\blanker.png" tooltip="">
+  <command type="0" text="" bVariableToggle="0"/>
+ </macro>
+ <macro title="Show_Lods" shortcut="" icon="icons\lods.png" tooltip="Shows the LODs visualization - off, on with text, on without text">
+  <command type="1" text="general.run_file_parameters('viewmodes.py','lods')" bVariableToggle="0"/>
+ </macro>
+ <macro title="Cycle_Lods" shortcut="" icon="icons\lods.png" tooltip="Cycle through the available LODs">
+  <command type="1" text="general.run_file_parameters('viewmodes.py','lods_level')" bVariableToggle="0"/>
+ </macro>
+ <macro title="" shortcut="" icon="icons\placeholder.png" tooltip="Reset the view to default configuration">
+  <command type="1" text="general.run_file_parameters('viewmodes.py','default_view')" bVariableToggle="0"/>
+ </macro>
+</toolboxmacros>

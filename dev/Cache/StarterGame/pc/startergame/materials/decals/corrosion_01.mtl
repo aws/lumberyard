@@ -1,0 +1,8 @@
+<Material MtlFlags="524288" DccMaterialHash="0" Shader="Illum" GenMask="200A00000000803" StringGenMask="%ALLOW_SILHOUETTE_POM%ALLOW_SPECULAR_ANTIALIASING%DECAL%NORMAL_MAP%SPECULAR_MAP%SUBSURFACE_SCATTERING" SurfaceType="mat_default" Diffuse="0.50888133,0.35640016,0.3185468,1" Specular="0.021219011,0.021219011,0.021219011,1" Opacity="1" Shininess="5" vertModifType="0" LayerAct="1">
+ <Textures>
+  <Texture Map="Diffuse" File="materials/decals/grime/bottomdirt_01_diff.dds"/>
+  <Texture Map="Bumpmap" File="materials/decals/grime/bottomdirt_01_ddna.dds"/>
+  <Texture Map="Specular" File="materials/decals/grime/bottomdirt_01_dnn.dds"/>
+ </Textures>
+ <PublicParams EmittanceMapGamma="1" DecalDiffuseOpacity="1" DecalFalloff="1.4" DecalAlphaMult="1.2" IndirectColor="0.25,0.25,0.25"/>
+</Material>

@@ -10,8 +10,6 @@
 *
 */
 
-#include "precompiled.h"
-
 #include "Indexer.h"
 
 #include <Include/ScriptCanvas/Libraries/Logic/Indexer.generated.cpp>

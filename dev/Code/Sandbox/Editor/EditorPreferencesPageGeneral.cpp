@@ -19,6 +19,7 @@
 #include <Core/QtEditorApplication.h>
 
 #include <AzToolsFramework/Entity/EditorEntityHelpers.h>
+#include <AzToolsFramework/Metrics/LyEditorMetricsBus.h>
 #include <AzToolsFramework/UI/UICore/WidgetHelpers.h>
 
 #define EDITORPREFS_EVENTNAME "EPGEvent"
@@ -47,8 +48,9 @@ void CEditorPreferencesPage_General::Reflect(AZ::SerializeContext& serialize)
         ->Field("ShowFlowgraphNotification", &GeneralSettings::m_showFlowGraphNotification)
         ->Field("EnableUI20", &GeneralSettings::m_enableUI2)
         ->Field("EnableSceneInspector", &GeneralSettings::m_enableSceneInspector)
-		->Field("RestoreViewportCamera", &GeneralSettings::m_restoreViewportCamera)
-        ->Field("EnableLegacyUI", &GeneralSettings::m_enableLegacyUI);
+        ->Field("RestoreViewportCamera", &GeneralSettings::m_restoreViewportCamera)
+        ->Field("EnableLegacyUI", &GeneralSettings::m_enableLegacyUI)
+        ->Field("NewViewportInteractionModel", &GeneralSettings::m_enableNewViewportInteractionModel);
 
     serialize.Class<Messaging>()
         ->Version(2)
@@ -131,7 +133,10 @@ void CEditorPreferencesPage_General::Reflect(AZ::SerializeContext& serialize)
             ->DataElement(AZ::Edit::UIHandlers::CheckBox, &GeneralSettings::m_enableUI2, "Enable UI 2.0 (EXPERIMENTAL)", "Enable this to switch the UI to the UI 2.0 styling")
             ->DataElement(AZ::Edit::UIHandlers::CheckBox, &GeneralSettings::m_enableSceneInspector, "Enable Scene Inspector (EXPERIMENTAL)", "Enable the option to inspect the internal data loaded from scene files like .fbx. This is an experimental feature. Restart the Scene Settings if the option is not visible under the Help menu.")
             ->DataElement(AZ::Edit::UIHandlers::CheckBox, &GeneralSettings::m_enableLegacyUI, "Enable Legacy UI (DEPRECATED)", "Enable the deprecated legacy UI")
-                ->Attribute(AZ::Edit::Attributes::Visibility, !isCryEntityRemovalGemPresent);
+                ->Attribute(AZ::Edit::Attributes::Visibility, !isCryEntityRemovalGemPresent)
+                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &GeneralSettings::SynchronizeLegacyUi)
+            ->DataElement(AZ::Edit::UIHandlers::CheckBox, &GeneralSettings::m_enableNewViewportInteractionModel, "Enable New Viewport Interaction Model (EXPERIMENTAL)", "Enable this option to preview an early version of Lumberyard's updated viewport, which makes modifying entities easier")
+                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &GeneralSettings::SynchronizeNewViewportInteractionModel);
 
         editContext->Class<Messaging>("Messaging", "")
             ->DataElement(AZ::Edit::UIHandlers::CheckBox, &Messaging::m_showDashboard, "Show Welcome to Lumberyard at startup", "Show Welcome to Lumberyard at startup")
@@ -174,6 +179,24 @@ void CEditorPreferencesPage_General::Reflect(AZ::SerializeContext& serialize)
     }
 }
 
+void CEditorPreferencesPage_General::GeneralSettings::SynchronizeNewViewportInteractionModel()
+{
+    if (m_enableNewViewportInteractionModel)
+    {
+        // we must disable the legacy UI if the new viewport interaction model is enabled
+        m_enableLegacyUI = false;
+    }
+}
+
+void CEditorPreferencesPage_General::GeneralSettings::SynchronizeLegacyUi()
+{
+    if (m_enableLegacyUI)
+    {
+        // we must disable the new viewport interaction model if the legacy ui is enabled
+        m_enableNewViewportInteractionModel = false;
+    }
+}
+
 CEditorPreferencesPage_General::CEditorPreferencesPage_General()
 {
     InitializeSettings();
@@ -200,6 +223,7 @@ void CEditorPreferencesPage_General::OnApply()
     gSettings.showFlowgraphNotification = m_generalSettings.m_showFlowGraphNotification;
     gSettings.enableSceneInspector = m_generalSettings.m_enableSceneInspector;
     gSettings.enableLegacyUI = m_generalSettings.m_enableLegacyUI;
+    gSettings.newViewportInteractionModel = m_generalSettings.m_enableNewViewportInteractionModel;
 
     gSettings.bEnableUI2 = m_generalSettings.m_enableUI2;
     Editor::EditorQtApplication::instance()->EnableUI2(gSettings.bEnableUI2);
@@ -248,7 +272,22 @@ void CEditorPreferencesPage_General::OnApply()
     // the Editor in order for the change to take effect
     if (gSettings.enableLegacyUI != m_generalSettings.m_enableLegacyUIInitialValue)
     {
-        QMessageBox::warning(AzToolsFramework::GetActiveWindow(), QObject::tr("Restart required"), QObject::tr("You must restart the Editor in order for your Legacy UI change to take effect."));
+        QMessageBox::warning(
+            AzToolsFramework::GetActiveWindow(), QObject::tr("Restart required"),
+            QObject::tr("You must restart the Editor in order for your Legacy UI change to take effect."));
+    }
+
+    // if the user enabled/disabled the new viewport interaction model - notify them that a restart
+    // is required in order to see the effect of the change
+    if (gSettings.newViewportInteractionModel != m_generalSettings.m_enableNewViewportInteractionModelInitialValue)
+    {
+        QMessageBox::warning(
+            AzToolsFramework::GetActiveWindow(), QObject::tr("Restart required"),
+            QObject::tr("You must restart the Editor in order for the Viewport Interaction Model changes to take effect."));
+
+        AzToolsFramework::EditorMetricsEventsBus::Broadcast(gSettings.newViewportInteractionModel
+            ? &AzToolsFramework::EditorMetricsEventsBusTraits::EnabledNewViewportInteractionModel
+            : &AzToolsFramework::EditorMetricsEventsBusTraits::DisabledNewViewportInteractionModel);
     }
 }
 
@@ -273,6 +312,8 @@ void CEditorPreferencesPage_General::InitializeSettings()
     m_generalSettings.m_enableSceneInspector = gSettings.enableSceneInspector;
     m_generalSettings.m_enableLegacyUI = gSettings.enableLegacyUI;
     m_generalSettings.m_enableLegacyUIInitialValue = gSettings.enableLegacyUI;
+    m_generalSettings.m_enableNewViewportInteractionModel = gSettings.newViewportInteractionModel;
+    m_generalSettings.m_enableNewViewportInteractionModelInitialValue = gSettings.newViewportInteractionModel;
 
     m_generalSettings.m_toolbarIconSize = gSettings.gui.nToolbarIconSize;
 

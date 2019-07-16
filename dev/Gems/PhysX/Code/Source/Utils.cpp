@@ -392,6 +392,23 @@ namespace PhysX
 
             return terrainTile;
         }
+
+        void WarnEntityNames(const AZStd::vector<AZ::EntityId>& entityIds, const char* category, const char* message)
+        {
+            AZStd::string messageOutput = message;
+            messageOutput += "\n";
+            for (const auto& entityId : entityIds)
+            {
+                AZ::Entity* entity = nullptr;
+                AZ::ComponentApplicationBus::BroadcastResult(entity, &AZ::ComponentApplicationRequests::FindEntity, entityId);
+                if (entity)
+                {
+                    messageOutput += entity->GetName() + "\n";
+                }
+            }
+
+            AZ_Warning(category, false, messageOutput.c_str());
+        }
     }
 
     namespace PxActorFactories

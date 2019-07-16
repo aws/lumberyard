@@ -258,7 +258,7 @@ ImageObject* CImageCompiler::LoadImageFromFile(const char* lpszPathName, const c
 
     if (ImageQImage::IsExtensionSupported(lpszExtension))
     {
-        return ImageQImage::LoadByUsingQImageLoader(lpszPathName, GetSettingsFile(lpszPathName).c_str(), &m_Props, res_specialInstructions);
+        return ImageQImage::LoadByUsingQImageLoader(lpszPathName, lpszExtension, GetSettingsFile(lpszPathName).c_str(), &m_Props, res_specialInstructions);
     }
 
     RCLogError("%s: Unsupported extension:'%s'", __FUNCTION__, lpszExtension);
@@ -797,20 +797,12 @@ bool CImageCompiler::ProcessImplementation()
 
 bool CImageCompiler::ProcessWithAzFramework()
 {
-    AZ::IO::FileIOBase* prevIO = AZ::IO::FileIOBase::GetInstance();
-    AZ::IO::FileIOBase::SetInstance(nullptr);
-    AZ::IO::FileIOBase* fileIO = m_CC.pRC->GetSystemEnvironment()->pFileIO;
-    AZ::IO::FileIOBase::SetInstance(fileIO);
-
     RCImageCompilerApplication app;
     app.Start(AZ::ComponentApplication::Descriptor());
 
     bool success = ProcessImplementation();
 
     app.Stop();
-
-    AZ::IO::FileIOBase::SetInstance(nullptr);
-    AZ::IO::FileIOBase::SetInstance(prevIO);
 
     return success;
 }

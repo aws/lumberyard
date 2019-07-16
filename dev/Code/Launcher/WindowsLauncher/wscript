@@ -18,7 +18,7 @@ def build(bld):
     bld.CryLauncher(
         target                      = 'WindowsLauncher',
         platforms                   = ['win'],
-        configurations              = ['debug', 'debug_test', 'profile', 'profile_test', 'performance', 'release'],
+        client_only                 = True,
         file_list                   = 'launcher.waf_files',
         includes                    = [bld.Path('Code/Launcher')],
 
@@ -26,6 +26,7 @@ def build(bld):
         additional_manifests        = 'DPIAware.xml',
 
         use                         = ['AzGameFramework'],
+        uselib                      = ['DBG_HELP',
+                                       'D3D_COMPILER_47'],
 
-        copy_dependent_files        = ['Bin64/d3dcompiler_47.dll']
     )

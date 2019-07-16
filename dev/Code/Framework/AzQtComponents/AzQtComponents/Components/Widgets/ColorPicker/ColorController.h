@@ -14,9 +14,12 @@
 #include <QObject>
 #include <AzCore/Math/Color.h>
 #include <QColor>
+#include <AzCore/std/functional.h>
 
 namespace AzQtComponents
 {
+    class ColorValidator;
+
     namespace Internal
     {
         /**
@@ -27,10 +30,13 @@ namespace AzQtComponents
         {
             Q_OBJECT
             Q_PROPERTY(AZ::Color color READ color WRITE setColor NOTIFY colorChanged)
+            Q_PROPERTY(ColorValidator* validator READ validator WRITE setValidator)
 
         public:
             explicit ColorController(QObject* parent = nullptr);
             ~ColorController() override;
+
+            ColorValidator* validator() const;
 
             const AZ::Color color() const;
 
@@ -47,6 +53,9 @@ namespace AzQtComponents
             float value() const;
 
             float alpha() const;
+
+            static AZ::Color fromHsl(qreal h, qreal s, qreal l);
+            static AZ::Color fromHsv(qreal h, qreal s, qreal v);
 
         Q_SIGNALS:
             void colorChanged(const AZ::Color& color);
@@ -66,6 +75,8 @@ namespace AzQtComponents
             void alphaChanged(float alpha);
 
         public Q_SLOTS:
+            void setValidator(ColorValidator* validator);
+
             void setColor(const AZ::Color& color);
 
             void setRed(float red);
@@ -87,6 +98,8 @@ namespace AzQtComponents
             void emitRgbaChangedSignals(const ColorState& previousColor);
             void emitHslChangedSignals(const ColorState& previousColor);
             void emitHsvChangedSignals(const ColorState& previousColor);
+
+            void validate();
 
             QScopedPointer<ColorState> m_state;
         };

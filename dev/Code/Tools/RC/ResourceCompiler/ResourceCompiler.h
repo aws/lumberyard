@@ -231,8 +231,6 @@ private:
     // to log multiple lines (\n separated) with padding before
     void LogMultiLine(const char* szText);
 
-    virtual SSystemGlobalEnvironment* GetSystemEnvironment() override;
-
     // -----------------------------------------------------------------------
 public:
     static const char* const m_filenameRcExe;
@@ -312,8 +310,6 @@ private:
     int                     m_numErrors;
 
     std::vector<FnRunUnitTests> m_unitTestFunctions;
-    std::unique_ptr<ISystem> m_pSystem;
-    void* m_systemDll;
 
     std::vector<HMODULE> m_loadedPlugins;
 };

@@ -1,0 +1,57 @@
+{
+    "platform"      : "win_x64_vs2013",
+    "display_name"  : "x64 vs2013",
+    "hosts"         : "win32",
+    "aliases"       : "msvc,win",
+    "has_server"    : true,
+    "has_tests"     : true,
+    "enabled"       : false,
+
+    "modules" : [
+        "platforms/compile_settings_cryengine",
+        "platforms/compile_settings_msvc",
+        "platforms/compile_settings_windows",
+        "platforms/platform_settings_win_x64_vs2013"
+    ],
+
+    "includes": [
+        "common.json",
+        "common.msvc.json",
+        "common.windows.json",
+        "common.win_msvc.json"
+    ],
+
+    "attributes"    : {
+        "default_folder_name"   : "Bin64vc120",
+        "legacy_platform_name"  : "win64_vs2013",
+        "compiler"              : "vc120",
+        "msvs": {
+            "msvs_ver"          : "12",
+            "prefix"            : "win",
+            "compat_toolsets"   : ["v120"],
+            "toolset_name"      : "x64"
+        },
+        "sa_capability": {
+            "key"               : "vc120",
+            "description"       : "Visual Studio 2013"
+        },
+        "qt_platform_dir"       : "msvc2013_64",
+        "qtga_subfolders"       : [
+            "win32/vc120/qtga.dll",
+            "win32/vc120/qtgad.dll",
+            "win32/vc120/qtgad.pdb"
+        ]
+    },
+    "settings"      : {
+
+    },
+    "env" : {
+        "CFLAGS,CXXFLAGS": [
+            "/FS",           # Fix for issue writing to pdb files
+            "/Zo"            # Enhanced optimized debugging (increases pdb size but has no effect on code size and improves debugging) - this is enabled by default for vs2015.
+        ]
+    }
+}
+
+
+

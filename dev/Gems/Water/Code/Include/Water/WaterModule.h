@@ -18,9 +18,6 @@
 
 namespace Water
 {
-#ifdef WATER_GEM_EDITOR
-    class WaterConverter;
-#endif // WATER_GEM_EDITOR
 
     class WaterModule
         : public CryHooksModule
@@ -29,12 +26,8 @@ namespace Water
         AZ_RTTI(WaterModule, "{8158C32F-6459-463E-8400-C052384BC9A1}", CryHooksModule);
 
         WaterModule();
-        virtual ~WaterModule();
 
         AZ::ComponentTypeList GetRequiredSystemComponents() const override;
 
-#ifdef WATER_GEM_EDITOR
-        AZStd::unique_ptr<WaterConverter> m_waterConverter;
-#endif //VISIBILITY_EIDTOR
     };
 } // namespace Water

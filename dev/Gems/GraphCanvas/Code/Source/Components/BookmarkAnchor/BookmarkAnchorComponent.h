@@ -85,9 +85,9 @@ namespace GraphCanvas
 
         // SceneMemberNotificationBus
         void OnSceneSet(const AZ::EntityId& sceneId) override;
-        void OnSceneCleared(const AZ::EntityId& sceneId) override;
+        void OnRemovedFromScene(const AZ::EntityId& sceneId) override;
 
-        void OnSceneMemberDeserializedForGraph(const AZ::EntityId& graphId) override;
+        void OnSceneMemberDeserialized(const AZ::EntityId& graphId, const GraphSerialization& serializationTarget) override;
         ////
 
         // SceneBookmarkRequests

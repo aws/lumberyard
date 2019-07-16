@@ -1,0 +1,56 @@
+<ObjectStream version="1">
+	<Class name="ComponentApplication::Descriptor" version="2" type="{70277A3E-2AF5-4309-9BBF-6161AFBDE792}">
+		<Class name="bool" field="useExistingAllocator" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+		<Class name="bool" field="grabAllMemory" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+		<Class name="bool" field="allocationRecords" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+		<Class name="int" field="recordingMode" value="2" type="{72039442-EB38-4D42-A1AD-CB68F7E0EEF6}"/>
+		<Class name="AZ::u64" field="stackRecordLevels" value="5" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+		<Class name="bool" field="autoIntegrityCheck" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+		<Class name="bool" field="markUnallocatedMemory" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+		<Class name="bool" field="doNotUsePools" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+		<Class name="bool" field="enableScriptReflection" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+		<Class name="unsigned int" field="pageSize" value="65536" type="{43DA906B-7DEF-4CA8-9790-854106D3F983}"/>
+		<Class name="unsigned int" field="poolPageSize" value="4096" type="{43DA906B-7DEF-4CA8-9790-854106D3F983}"/>
+		<Class name="unsigned int" field="blockAlignment" value="65536" type="{43DA906B-7DEF-4CA8-9790-854106D3F983}"/>
+		<Class name="AZ::u64" field="blockSize" value="0" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+		<Class name="AZ::u64" field="reservedOS" value="0" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+		<Class name="AZ::u64" field="reservedDebug" value="0" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+		<Class name="bool" field="enableDrilling" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+		<Class name="AZStd::vector" field="modules" type="{2BADE35A-6F1B-4698-B2BC-3373D010020C}">
+			<Class name="DynamicModuleDescriptor" field="element" type="{D2932FA3-9942-4FD2-A703-2E750F57C003}">
+				<Class name="AZStd::string" field="dynamicLibraryPath" value="Gem.AudioAnimationEvents.0549200795a94b7f902727db81d5d6d8.v0.1.0" type="{EF8FF807-DDEE-4EB0-B678-4CA3A2C490A4}"/>
+			</Class>
+			<Class name="DynamicModuleDescriptor" field="element" type="{D2932FA3-9942-4FD2-A703-2E750F57C003}">
+				<Class name="AZStd::string" field="dynamicLibraryPath" value="Gem.StartingPointInput.09f4bedeee614358bc36788e77f97e51.v0.1.0" type="{EF8FF807-DDEE-4EB0-B678-4CA3A2C490A4}"/>
+			</Class>
+			<Class name="DynamicModuleDescriptor" field="element" type="{D2932FA3-9942-4FD2-A703-2E750F57C003}">
+				<Class name="AZStd::string" field="dynamicLibraryPath" value="Gem.Footsteps.257393f09006498ab706cc4d4c8d4721.v0.1.0" type="{EF8FF807-DDEE-4EB0-B678-4CA3A2C490A4}"/>
+			</Class>
+			<Class name="DynamicModuleDescriptor" field="element" type="{D2932FA3-9942-4FD2-A703-2E750F57C003}">
+				<Class name="AZStd::string" field="dynamicLibraryPath" value="Gem.InputManagementFramework.59b1b2acc1974aae9f18faddcaddac5b.v0.1.0" type="{EF8FF807-DDEE-4EB0-B678-4CA3A2C490A4}"/>
+			</Class>
+			<Class name="DynamicModuleDescriptor" field="element" type="{D2932FA3-9942-4FD2-A703-2E750F57C003}">
+				<Class name="AZStd::string" field="dynamicLibraryPath" value="Gem.StarterGameGem.5c539192ddda40aaa2e92eb71f8e3170.v0.1.0" type="{EF8FF807-DDEE-4EB0-B678-4CA3A2C490A4}"/>
+			</Class>
+			<Class name="DynamicModuleDescriptor" field="element" type="{D2932FA3-9942-4FD2-A703-2E750F57C003}">
+				<Class name="AZStd::string" field="dynamicLibraryPath" value="Gem.UserLoginDefault.c9c25313197f489a8e9e8e6037fc62eb.v0.1.0" type="{EF8FF807-DDEE-4EB0-B678-4CA3A2C490A4}"/>
+			</Class>
+			<Class name="DynamicModuleDescriptor" field="element" type="{D2932FA3-9942-4FD2-A703-2E750F57C003}">
+				<Class name="AZStd::string" field="dynamicLibraryPath" value="Gem.Camera.Editor.f910686b6725452fbfc4671f95f733c6.v0.1.0" type="{EF8FF807-DDEE-4EB0-B678-4CA3A2C490A4}"/>
+			</Class>
+			<Class name="DynamicModuleDescriptor" field="element" type="{D2932FA3-9942-4FD2-A703-2E750F57C003}">
+				<Class name="AZStd::string" field="dynamicLibraryPath" value="Gem.LmbrCentral.Editor.ff06785f7145416b9d46fde39098cb0c.v0.1.0" type="{EF8FF807-DDEE-4EB0-B678-4CA3A2C490A4}"/>
+			</Class>
+		</Class>
+		<Class name="bool" field="x360PhysicalMemory" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+	</Class>
+	<Class name="AZ::Entity" version="2" type="{75651658-8663-478D-9090-2432DFCAFA44}">
+		<Class name="EntityId" field="Id" version="1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+			<Class name="AZ::u64" field="id" value="0" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+		</Class>
+		<Class name="AZStd::string" field="Name" value="SystemEntity" type="{EF8FF807-DDEE-4EB0-B678-4CA3A2C490A4}"/>
+		<Class name="bool" field="IsDependencyReady" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+		<Class name="AZStd::vector" field="Components" type="{2BADE35A-6F1B-4698-B2BC-3373D010020C}"/>
+	</Class>
+</ObjectStream>
+

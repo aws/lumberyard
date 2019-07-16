@@ -1,0 +1,11 @@
+{
+    "GemFormatVersion": 3,
+    "Uuid": "59b1b2acc1974aae9f18faddcaddac5b",
+    "Name": "InputManagementFramework",
+    "Version": "0.1.0",
+    "LinkType": "Dynamic",
+    "DisplayName": "Input Management Framework",
+    "Tags": ["Input", "Framework"],
+    "Summary": "The Input Management Framework Gem includes the input component which converts input to user defined gameplay events. This Gem works closely with the Starting Point Input Gem which supplies processed raw input.",
+    "IconPath": "preview.png"
+}

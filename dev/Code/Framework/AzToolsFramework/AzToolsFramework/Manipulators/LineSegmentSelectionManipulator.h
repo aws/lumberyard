@@ -12,31 +12,37 @@
 
 #pragma once
 
-#include "BaseManipulator.h"
-
 #include <AzCore/Memory/SystemAllocator.h>
-#include <AzToolsFramework/Viewport/ViewportMessages.h>
+#include <AzToolsFramework/Manipulators/BaseManipulator.h>
+#include <AzToolsFramework/Viewport/ViewportTypes.h>
 
 namespace AzToolsFramework
 {
     class ManipulatorView;
 
-    /**
-     * A manpipulator to expose where on a line a user is moving their mouse.
-     */
+    /// A manipulator to expose where on a line a user is moving their mouse.
     class LineSegmentSelectionManipulator
         : public BaseManipulator
     {
+        /// Private constructor.
+        LineSegmentSelectionManipulator();
+
     public:
         AZ_RTTI(LineSegmentSelectionManipulator, "{8BA5A9E4-72B4-4B48-BD54-D9DB58EDDA72}", BaseManipulator);
         AZ_CLASS_ALLOCATOR(LineSegmentSelectionManipulator, AZ::SystemAllocator, 0);
 
-        explicit LineSegmentSelectionManipulator(AZ::EntityId entityId);
+        LineSegmentSelectionManipulator(const LineSegmentSelectionManipulator&) = delete;
+        LineSegmentSelectionManipulator& operator=(const LineSegmentSelectionManipulator&) = delete;
+
         ~LineSegmentSelectionManipulator();
 
-        /**
-         * Mouse action data used by MouseActionCallback.
-         */
+        /// A Manipulator must only be created and managed through a shared_ptr.
+        static AZStd::shared_ptr<LineSegmentSelectionManipulator> MakeShared()
+        {
+            return AZStd::shared_ptr<LineSegmentSelectionManipulator>(aznew LineSegmentSelectionManipulator());
+        }
+
+        /// Mouse action data used by MouseActionCallback.
         struct Action
         {
             AZ::Vector3 m_localLineHitPosition;
@@ -49,10 +55,11 @@ namespace AzToolsFramework
 
         void Draw(
             const ManipulatorManagerState& managerState,
-            AzFramework::EntityDebugDisplayRequests& display,
-            const ViewportInteraction::CameraState& cameraState,
+            AzFramework::DebugDisplayRequests& debugDisplay,
+            const AzFramework::CameraState& cameraState,
             const ViewportInteraction::MouseInteraction& mouseInteraction) override;
 
+        void SetSpace(const AZ::Transform& worldFromLocal) { m_worldFromLocal = worldFromLocal; }
         void SetStart(const AZ::Vector3& startLocal) { m_localStart = startLocal; }
         void SetEnd(const AZ::Vector3& endLocal) { m_localEnd = endLocal; }
         const AZ::Vector3& GetStart() const { return m_localStart; }
@@ -69,6 +76,7 @@ namespace AzToolsFramework
         void InvalidateImpl() override;
         void SetBoundsDirtyImpl() override;
 
+        AZ::Transform m_worldFromLocal = AZ::Transform::CreateIdentity(); ///< Space the manipulator is in (identity is world space).
         AZ::Vector3 m_localStart = AZ::Vector3::CreateZero();
         AZ::Vector3 m_localEnd = AZ::Vector3::CreateZero();
 
@@ -82,5 +90,5 @@ namespace AzToolsFramework
 
     LineSegmentSelectionManipulator::Action CalculateManipulationDataAction(
         const AZ::Transform& worldFromLocal, const AZ::Vector3& rayOrigin, const AZ::Vector3& rayDirection,
-        const float rayLength, const AZ::Vector3& localStart, const AZ::Vector3& localEnd);
-}
+        float rayLength, const AZ::Vector3& localStart, const AZ::Vector3& localEnd);
+} // namespace AzToolsFramework

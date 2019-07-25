@@ -23,7 +23,7 @@
 #include "SystemConfigContainer.h"
 
 
-using StringOutcome = AZ::Outcome<void, AZStd::string>;
+using StringOutcome = AZ::Outcome<AZStd::string, AZStd::string>;
 using DeviceMap = QHash<QString, QString>; // <device id, display name>
 
 
@@ -42,7 +42,14 @@ public:
     StringOutcome ApplyConfiguration(const DeploymentConfig& deployConfig);
 
     void Run();
+    bool IsRunning();
 
+    bool DeviceIsConnected(const char* deviceId);
+
+    static AZStd::string GetPlatformSpecficDefaultSettingsFilename(PlatformOptions platformOption, const char* devRoot = ".");
+    static StringOutcome GetPlatformSpecficDefaultAttributeValue(const char* name, PlatformOptions platformOption, const char* devRoot = ".");
+    static StringOutcome GetPlatformSpecficDefaultSettingsValue(const char* groupName, const char* keyName, PlatformOptions platformOption, const char* devRoot = ".");
+    static StringOutcome GetCommonBuildConfigurationsDefaultSettingsValue(const char* buildConfiguration, const char* name, const char* devRoot = ".");
 
 protected:
     virtual AZStd::string GetWafBuildArgs() const = 0;
@@ -58,8 +65,8 @@ protected:
     void StartWafCommand(const char* commandType, const AZStd::string& commandArgs);
     bool RunBlockingCommand(const AZStd::string& command, QString* output = nullptr) const;
 
-    StringOutcome LoadJsonData(const AZStd::string& file, rapidjson::Document& jsonData) const;
-
+    static StringOutcome LoadJsonData(const AZStd::string& file, rapidjson::Document& jsonData);
+    static StringOutcome GetUserSettingsValue(const char* groupName, const char* keyName, PlatformOptions platformOption);
 
     DeploymentConfig m_deploymentConfig;
     SystemConfigContainer m_systemConfig;
@@ -67,6 +74,7 @@ protected:
     QProcess* m_wafProcess;
     QMetaObject::Connection m_finishedConnection;
 
+    bool m_isRunning = false;
 
 private:
     AZ_DISABLE_COPY_MOVE(DeployWorkerBase);

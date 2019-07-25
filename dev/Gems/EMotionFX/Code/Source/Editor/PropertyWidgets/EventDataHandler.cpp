@@ -10,17 +10,11 @@
 *
 */
 
+#include <Editor/QtMetaTypes.h>
 #include <Editor/PropertyWidgets/EventDataHandler.h>
 #include <QAbstractListModel>
 #include <QVBoxLayout>
-#include <QMetaType>
 
-#include <AzToolsFramework/UI/PropertyEditor/PropertyEditorAPI.h>
-#include <AzCore/Component/ComponentApplication.h>
-
-#include <EMotionFX/Source/EventData.h>
-
-Q_DECLARE_METATYPE(AZ::Uuid);
 
 namespace EMotionFX
 {
@@ -31,7 +25,8 @@ namespace EMotionFX
         : public QAbstractListModel
     {
     public:
-        enum {
+        enum
+        {
             UuidRole = Qt::UserRole
         };
 
@@ -47,7 +42,7 @@ namespace EMotionFX
 
     private:
         static AZStd::weak_ptr<EventDataTypesModel> dataTypesModel;
-        AZStd::vector<AZStd::pair<QString, AZ::Uuid>> m_eventDataClassNames;
+        AZStd::vector<AZStd::pair<QString, AZ::Uuid> > m_eventDataClassNames;
     };
     AZStd::weak_ptr<EventDataTypeSelectionWidget::EventDataTypesModel> EventDataTypeSelectionWidget::EventDataTypesModel::dataTypesModel;
 
@@ -80,7 +75,7 @@ namespace EMotionFX
                         const AZ::AttributeContainerType<bool>* typedAttribute = static_cast<const AZ::AttributeContainerType<bool>*>(attribute);
                         // instance is nullptr because this is a class-level
                         // attribute and not one on a specific instance
-                        if (typedAttribute->Get(/*instance =*/nullptr))
+                        if (typedAttribute->Get(/*instance =*/ nullptr))
                         {
                             m_eventDataClassNames.emplace_back(editData->m_name, classData->m_typeId);
                             break;
@@ -89,7 +84,7 @@ namespace EMotionFX
                 }
                 return true;
             }
-        );
+            );
     }
 
     AZStd::shared_ptr<EventDataTypeSelectionWidget::EventDataTypesModel> EventDataTypeSelectionWidget::EventDataTypesModel::Get()
@@ -148,7 +143,7 @@ namespace EMotionFX
         connect(
             m_comboBox, static_cast<void(QComboBox::*)(int)>(&QComboBox::currentIndexChanged),
             this, &EventDataTypeSelectionWidget::currentIndexChanged
-        );
+            );
     }
 
     const AZ::Uuid EventDataTypeSelectionWidget::GetSelectedClass() const
@@ -159,10 +154,10 @@ namespace EMotionFX
     void EventDataTypeSelectionWidget::SetSelectedClass(const AZ::Uuid& classId)
     {
         const int newRow = m_comboBox->findData(
-            QVariant::fromValue(classId),
-            EventDataTypesModel::UuidRole,
-            Qt::MatchExactly
-        );
+                QVariant::fromValue(classId),
+                EventDataTypesModel::UuidRole,
+                Qt::MatchExactly
+                );
         m_comboBox->setCurrentIndex(newRow);
     }
 
@@ -175,9 +170,9 @@ namespace EMotionFX
     {
         EventDataTypeSelectionWidget* widget = aznew EventDataTypeSelectionWidget(parent);
         connect(widget, &EventDataTypeSelectionWidget::currentIndexChanged, this, [widget]()
-        {
-            AzToolsFramework::PropertyEditorGUIMessages::Bus::Broadcast(&AzToolsFramework::PropertyEditorGUIMessages::Bus::Events::RequestWrite, widget);
-        });
+            {
+                AzToolsFramework::PropertyEditorGUIMessages::Bus::Broadcast(&AzToolsFramework::PropertyEditorGUIMessages::Bus::Events::RequestWrite, widget);
+            });
         return widget;
     }
 
@@ -197,7 +192,8 @@ namespace EMotionFX
         {
             instance = nullptr;
         }
-        else {
+        else
+        {
             AZ::SerializeContext* context;
             AZ::ComponentApplicationBus::BroadcastResult(context, &AZ::ComponentApplicationBus::Events::GetSerializeContext);
             const AZ::SerializeContext::ClassData* classData = context->FindClassData(newTypeId);
@@ -219,6 +215,5 @@ namespace EMotionFX
 
         return true;
     }
-
 } // namespace EMotionFX
 #include <Source/Editor/PropertyWidgets/EventDataHandler.moc>

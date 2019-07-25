@@ -243,38 +243,42 @@ namespace AZStd
          * Constant reverse iterator implementation. Intrusive list
          * uses bidirectional iterators as any double linked list.
          */
-        class const_reverse_iterator_impl
+        template<typename Iter>
+        class reverse_iterator_impl
         {
-            enum
-            {
-                ITERATOR_VERSION = 1
-            };
-
             friend class intrusive_list;
-            typedef const_reverse_iterator_impl this_type;
+            typedef reverse_iterator_impl this_type;
         public:
-            typedef T                           value_type;
-            typedef AZStd::ptrdiff_t            difference_type;
-            typedef const T*                    pointer;
-            typedef const T&                    reference;
-            typedef bidirectional_iterator_tag  iterator_category;
+            using value_type = typename AZStd::iterator_traits<Iter>::value_type;
+            using difference_type = typename AZStd::iterator_traits<Iter>::difference_type;
+            using pointer = typename AZStd::iterator_traits<Iter>::pointer;
+            using reference = typename AZStd::iterator_traits<Iter>::reference;
+            using iterator_category = typename AZStd::iterator_traits<Iter>::iterator_category;
+            using iterator_type = Iter;
 
-            AZ_FORCE_INLINE const_reverse_iterator_impl()
-                : m_node(0) {}
-            AZ_FORCE_INLINE const_reverse_iterator_impl(node_ptr_type node)
+            AZ_FORCE_INLINE reverse_iterator_impl()
+                : m_node(nullptr) {}
+            AZ_FORCE_INLINE reverse_iterator_impl(node_ptr_type node)
                 : m_node(node) {}
-            AZ_FORCE_INLINE const_reference operator*() const { return *m_node; }
+
+            iterator_type base() const
+            {
+                AZSTD_CONTAINER_ASSERT(m_node != nullptr, "AZStd::intrusive_list::reverse_iterator_impl base invoked on invalid node!");
+                return iterator_type(Hook::to_node_ptr(m_node)->m_next);
+            }
+            AZ_FORCE_INLINE reference operator*() const { return *m_node; }
             AZ_FORCE_INLINE pointer operator->() const { return m_node; }
+
             AZ_FORCE_INLINE this_type& operator++()
             {
-                AZSTD_CONTAINER_ASSERT(m_node != 0, "AZSTD::intrusive_list::const_reverse_iterator_impl invalid node!");
+                AZSTD_CONTAINER_ASSERT(m_node != nullptr, "AZStd::intrusive_list::reverse_iterator_impl invalid node!");
                 m_node = Hook::to_node_ptr(m_node)->m_prev;
                 return *this;
             }
 
             AZ_FORCE_INLINE this_type operator++(int)
             {
-                AZSTD_CONTAINER_ASSERT(m_node != 0, "AZSTD::intrusive_list::const_reverse_iterator_impl invalid node!");
+                AZSTD_CONTAINER_ASSERT(m_node != nullptr, "AZStd::intrusive_list::reverse_iterator_impl invalid node!");
                 this_type temp = *this;
                 m_node = Hook::to_node_ptr(m_node)->m_prev;
                 return temp;
@@ -282,14 +286,14 @@ namespace AZStd
 
             AZ_FORCE_INLINE this_type& operator--()
             {
-                AZSTD_CONTAINER_ASSERT(m_node != 0, "AZSTD::intrusive_list::const_reverse_iterator_impl invalid node!");
+                AZSTD_CONTAINER_ASSERT(m_node != nullptr, "AZStd::intrusive_list::reverse_iterator_impl invalid node!");
                 m_node = Hook::to_node_ptr(m_node)->m_next;
                 return *this;
             }
 
             AZ_FORCE_INLINE this_type operator--(int)
             {
-                AZSTD_CONTAINER_ASSERT(m_node != 0, "AZSTD::intrusive_list::const_reverse_iterator_impl invalid node!");
+                AZSTD_CONTAINER_ASSERT(m_node != nullptr, "AZStd::intrusive_list::reverse_iterator_impl invalid node!");
                 this_type temp = *this;
                 m_node = Hook::to_node_ptr(m_node)->m_next;
                 return temp;
@@ -308,64 +312,16 @@ namespace AZStd
             node_ptr_type   m_node;
         };
 
-        /**
-         * Reverse iterator implementation.
-         */
-        class reverse_iterator_impl
-            : public const_reverse_iterator_impl
-        {
-            typedef reverse_iterator_impl       this_type;
-            typedef const_reverse_iterator_impl base_type;
-        public:
-            typedef T*                              pointer;
-            typedef T&                              reference;
-
-            AZ_FORCE_INLINE reverse_iterator_impl() {}
-            AZ_FORCE_INLINE reverse_iterator_impl(node_ptr_type node)
-                : const_reverse_iterator_impl(node) {}
-            AZ_FORCE_INLINE reference operator*() const { return *base_type::m_node; }
-            AZ_FORCE_INLINE pointer operator->() const { return base_type::m_node; }
-            AZ_FORCE_INLINE this_type& operator++()
-            {
-                AZSTD_CONTAINER_ASSERT(base_type::m_node != 0, "AZSTD::intrusive_list::reverse_iterator_impl invalid node!");
-                base_type::m_node = Hook::to_node_ptr(base_type::m_node)->m_prev;
-                return *this;
-            }
-
-            AZ_FORCE_INLINE this_type operator++(int)
-            {
-                AZSTD_CONTAINER_ASSERT(base_type::m_node != 0, "AZSTD::intrusive_list::reverse_iterator_impl invalid node!");
-                this_type temp = *this;
-                base_type::m_node = Hook::to_node_ptr(base_type::m_node)->m_prev;
-                return temp;
-            }
-
-            AZ_FORCE_INLINE this_type& operator--()
-            {
-                AZSTD_CONTAINER_ASSERT(base_type::m_node != 0, "AZSTD::intrusive_list::reverse_iterator_impl invalid node!");
-                base_type::m_node = Hook::to_node_ptr(base_type::m_node)->m_next;
-                return *this;
-            }
-
-            AZ_FORCE_INLINE this_type operator--(int)
-            {
-                AZSTD_CONTAINER_ASSERT(base_type::m_node != 0, "AZSTD::intrusive_list::reverse_iterator_impl invalid node!");
-                this_type temp = *this;
-                base_type::m_node = Hook::to_node_ptr(base_type::m_node)->m_next;
-                return temp;
-            }
-        };
-
 #ifdef AZSTD_HAS_CHECKED_ITERATORS
         typedef Debug::checked_bidirectional_iterator<iterator_impl, this_type>                 iterator;
         typedef Debug::checked_bidirectional_iterator<const_iterator_impl, this_type>           const_iterator;
-        typedef Debug::checked_bidirectional_iterator<reverse_iterator_impl, this_type>         reverse_iterator;
-        typedef Debug::checked_bidirectional_iterator<const_reverse_iterator_impl, this_type>   const_reverse_iterator;
+        typedef Debug::checked_bidirectional_iterator<reverse_iterator_impl<iterator>, this_type>         reverse_iterator;
+        typedef Debug::checked_bidirectional_iterator<reverse_iterator_impl<const_iterator>, this_type>   const_reverse_iterator;
 #else
         typedef iterator_impl                           iterator;
         typedef const_iterator_impl                     const_iterator;
-        typedef reverse_iterator_impl                   reverse_iterator;
-        typedef const_reverse_iterator_impl             const_reverse_iterator;
+        typedef reverse_iterator_impl<iterator>         reverse_iterator;
+        typedef reverse_iterator_impl<const_iterator>   const_reverse_iterator;
 #endif
 
         AZ_FORCE_INLINE explicit intrusive_list()
@@ -492,21 +448,30 @@ namespace AZStd
         AZ_FORCE_INLINE reverse_iterator rbegin()
         { 
             hook_node_ptr_type headHook = Hook::to_node_ptr(get_head());
-            return reverse_iterator(AZSTD_CHECKED_ITERATOR(reverse_iterator_impl, headHook->m_prev));
+            return reverse_iterator(AZSTD_CHECKED_ITERATOR(reverse_iterator<iterator>, headHook->m_prev));
         }
         AZ_FORCE_INLINE const_reverse_iterator rbegin() const
         { 
             const hook_node_type* headHook = Hook::to_node_ptr(const_cast<this_type&>(*this).get_head());
-            return const_reverse_iterator(AZSTD_CHECKED_ITERATOR(const_reverse_iterator_impl, headHook->m_prev));
+            return const_reverse_iterator(AZSTD_CHECKED_ITERATOR(reverse_iterator<const_iterator>, headHook->m_prev));
+        }
+        const_reverse_iterator crbegin() const
+        {
+            const hook_node_type* headHook = Hook::to_node_ptr(const_cast<this_type&>(*this).get_head());
+            return const_reverse_iterator(AZSTD_CHECKED_ITERATOR(reverse_iterator<const_iterator>, headHook->m_prev));
         }
         AZ_FORCE_INLINE reverse_iterator rend()
         { 
             node_ptr_type head = get_head();
-            return reverse_iterator(AZSTD_CHECKED_ITERATOR(reverse_iterator_impl, head));
+            return reverse_iterator(AZSTD_CHECKED_ITERATOR(reverse_iterator<iterator>, head));
         }
         AZ_FORCE_INLINE const_reverse_iterator rend() const
         { 
-            return const_reverse_iterator(AZSTD_CHECKED_ITERATOR(const_reverse_iterator_impl, const_cast<this_type&>(*this).get_head()));
+            return const_reverse_iterator(AZSTD_CHECKED_ITERATOR(reverse_iterator<const_iterator>, const_cast<this_type&>(*this).get_head()));
+        }
+        const_reverse_iterator crend() const
+        {
+            return const_reverse_iterator(AZSTD_CHECKED_ITERATOR(reverse_iterator<const_iterator>, const_cast<this_type&>(*this).get_head()));
         }
 
         AZ_FORCE_INLINE reference front()                       { return (*begin()); }

@@ -21,10 +21,12 @@
 #include <AzCore/UserSettings/UserSettingsComponent.h>
 #include <AzCore/Script/ScriptSystemComponent.h>
 #include <AzCore/Asset/AssetManager.h>
+#include <AzCore/std/parallel/binary_semaphore.h>
 #include <AzCore/std/string/conversions.h>
 #include <AzCore/Serialization/DataPatch.h>
 #include <AzCore/Serialization/ObjectStreamComponent.h>
 #include <AzCore/Debug/FrameProfilerComponent.h>
+#include <AzCore/NativeUI/NativeUISystemComponent.h>
 #include <AzCore/PlatformIncl.h>
 #include <AzCore/Module/ModuleManagerBus.h>
 
@@ -467,6 +469,7 @@ namespace AzFramework
             azrtti_typeid<AZ::ObjectStreamComponent>(),
             azrtti_typeid<AZ::UserSettingsComponent>(),
             azrtti_typeid<AZ::Debug::FrameProfilerComponent>(),
+            azrtti_typeid<AZ::NativeUI::NativeUISystemComponent>(),
             azrtti_typeid<AZ::SliceComponent>(),
             azrtti_typeid<AZ::SliceSystemComponent>(),
 
@@ -521,6 +524,7 @@ namespace AzFramework
             azrtti_typeid<AZ::UserSettingsComponent>(),
             azrtti_typeid<AZ::ScriptSystemComponent>(),
             azrtti_typeid<AZ::JobManagerComponent>(),
+            azrtti_typeid<AZ::NativeUI::NativeUISystemComponent>(),
             azrtti_typeid<AZ::SliceSystemComponent>(),
 
             azrtti_typeid<AzFramework::BootstrapReaderComponent>(),
@@ -566,28 +570,22 @@ namespace AzFramework
 
     void Application::CalculateAppRoot(const char* appRootOverride) // = nullptr
     {
+    #if defined(AZ_PLATFORM_APPLE_IOS) || defined(AZ_PLATFORM_APPLE_TV)
+        AZ_Assert(appRootOverride != nullptr, "App root must be set explicitly for apple platforms.");
+    #endif // defined(AZ_PLATFORM_APPLE_IOS) || defined(AZ_PLATFORM_APPLE_TV)
+
+        const char* platformSpecificAppRootPath = Implementation::GetAppRootPath();
         if (appRootOverride)
         {
             SetRootPath(RootPathType::AppRoot, appRootOverride);
         }
-        else
+        else if (platformSpecificAppRootPath)
         {
             CalculateExecutablePath();
-#if defined(AZ_RESTRICTED_PLATFORM)
-    #if defined(AZ_PLATFORM_XENIA)
-        #include "Xenia/Application_cpp_xenia.inl"
-    #elif defined(AZ_PLATFORM_PROVO)
-        #include "Provo/Application_cpp_provo.inl"
-    #endif
-#endif
-#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
-#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
-#elif defined(AZ_PLATFORM_ANDROID)
-            // On Android, all file reads should be relative.
-            SetRootPath(RootPathType::AppRoot, "");
-#elif defined(AZ_PLATFORM_APPLE_IOS) || defined(AZ_PLATFORM_APPLE_TV)
-            AZ_Assert(appRootOverride != nullptr, "App root must be set explicitly for apple platforms.");
-#else
+            SetRootPath(RootPathType::AppRoot, platformSpecificAppRootPath);
+        }
+        else
+        {
             // We need to reliably calculate the root path here prior to global engine init.
             // The system allocator is not yet initialized, so it's important we don't try
             // to allocate from the heap or use AZStd::string in here.
@@ -655,7 +653,6 @@ namespace AzFramework
                 azstrncat(currentDirectory, AZ_ARRAY_SIZE(currentDirectory), "/", 1);
             }
             SetRootPath(RootPathType::AppRoot, currentDirectory);
-#endif
         }
 
         // Asset root defaults to application root. The SetAssetRoot Ebus message can be used
@@ -743,6 +740,8 @@ namespace AzFramework
     ////////////////////////////////////////////////////////////////////////////
     void Application::MakePathAssetRootRelative(AZStd::string& fullPath)
     {
+        // relative file paths wrt AssetRoot are always lowercase
+        AZStd::to_lower(fullPath.begin(), fullPath.end());
         MakePathRelative(fullPath, m_assetRoot);
     }
 
@@ -751,12 +750,12 @@ namespace AzFramework
     {
         AZ_Assert(rootPath, "Provided root path is null.");
 
-        NormalizePath(fullPath);
-
-        if (strstr(fullPath.c_str(), rootPath) == fullPath.c_str())
+        NormalizePathKeepCase(fullPath);
+        AZStd::string root(rootPath);
+        NormalizePathKeepCase(root);
+        if (!azstrnicmp(fullPath.c_str(), root.c_str(), root.length()))
         {
-            const size_t len = strlen(rootPath);
-            fullPath = fullPath.substr(len);
+            fullPath = fullPath.substr(root.length());
         }
 
         while (!fullPath.empty() && fullPath[0] == '/')
@@ -796,12 +795,58 @@ namespace AzFramework
     }
 
     ////////////////////////////////////////////////////////////////////////////
+    void Application::PumpSystemEventLoopWhileDoingWorkInNewThread(const AZStd::chrono::milliseconds& eventPumpFrequency,
+                                                                   const AZStd::function<void()>& workForNewThread,
+                                                                   const char* newThreadName)
+    {
+        AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzFramework);
+
+        AZStd::thread_desc newThreadDesc;
+        newThreadDesc.m_cpuId = AFFINITY_MASK_USERTHREADS;
+        newThreadDesc.m_name = newThreadName;
+        AZStd::binary_semaphore binarySemaphore;
+        AZStd::thread newThread([&workForNewThread, &binarySemaphore, &newThreadName]
+        {
+            AZ_PROFILE_SCOPE_DYNAMIC(AZ::Debug::ProfileCategory::AzFramework,
+                                     "Application::PumpSystemEventLoopWhileDoingWorkInNewThread:ThreadWorker %s", newThreadName);
+
+            workForNewThread();
+            binarySemaphore.release();
+        }, &newThreadDesc);
+        while (!binarySemaphore.try_acquire_for(eventPumpFrequency))
+        {
+            PumpSystemEventLoopUntilEmpty();
+        }
+        {
+            AZ_PROFILE_SCOPE_STALL_DYNAMIC(AZ::Debug::ProfileCategory::AzFramework,
+                                           "Application::PumpSystemEventLoopWhileDoingWorkInNewThread:WaitOnThread %s", newThreadName);
+            newThread.join();
+        }
+
+        // Pump once at the end so we're back at 0 instead of potentially eventPumpFrequency - 1 ms since the last event pump
+        PumpSystemEventLoopUntilEmpty();
+    }
+
+    ////////////////////////////////////////////////////////////////////////////
     void Application::RunMainLoop()
     {
         while (!m_exitMainLoopRequested)
         {
             PumpSystemEventLoopUntilEmpty();
             Tick();
+        }
+    }
+
+    ////////////////////////////////////////////////////////////////////////////
+    void Application::TerminateOnError(int errorCode)
+    {
+        if (m_pimpl)
+        {
+            m_pimpl->TerminateOnError(errorCode);
+        }
+        else
+        {
+            exit(errorCode);
         }
     }
 

@@ -124,7 +124,7 @@ def build(bld):
         release_dedicated_defines   = list(shipping_defines),
         test_all_defines            = list(development_defines),
 
-        win_x64_clang_debug_test_enable_rtti = True,
+        win_x64_clang_test_all_enable_rtti = True,
 
         # Editor module - Includes pulls in EmotionFX tools code, and has a dependencies on AzToolsFramework and the EMotionFXStaticLib gem shared library.
         editor = dict(
@@ -173,7 +173,7 @@ def build(bld):
             debug_defines   = list(editor_defines) + list(debug_defines),
             debug_test_defines = list(editor_defines) + list(debug_defines),
             profile_defines = list(editor_defines),
-            profile_test_defines = list(editor_defines) + list(debug_defines),
+            profile_test_defines = list(editor_defines),
 
             win_lib         = ['opengl32', 'dxguid', 'dinput8'],
             #msvc_cxxflags   = msvc_cxx_flags,

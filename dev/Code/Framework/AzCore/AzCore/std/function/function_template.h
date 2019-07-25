@@ -517,9 +517,9 @@ namespace AZStd
                 assign_to(const reference_wrapper<FunctionObj>& f,
                     function_buffer& functor, function_obj_ref_tag)
                 {
-                    if (!AZStd::Internal::function_util::has_empty_target(f.get_pointer()))
+                    if (!AZStd::Internal::function_util::has_empty_target(&f.get()))
                     {
-                        functor.obj_ref.obj_ptr = (void*)f.get_pointer();
+                        functor.obj_ref.obj_ptr = (void*)&f.get();
                         functor.obj_ref.is_const_qualified = is_const<FunctionObj>::value;
                         functor.obj_ref.is_volatile_qualified = is_volatile<FunctionObj>::value;
                         return true;

@@ -102,7 +102,7 @@ namespace CloudCanvasCommon
         void InitAwsApi();
         void ShutdownAwsApi();
         AZStd::string m_resolvedCertPath;
-        AZStd::atomic<bool> m_resolvedCert;
+        AZStd::atomic<bool> m_resolvedCert{ false };
         AZStd::mutex m_certPathMutex;
         mutable AZStd::mutex m_resolveUserPathMutex;
         AZStd::mutex m_certCopyMutex;

@@ -26,6 +26,7 @@
 #include <QJsonObject>
 #include <QFile>
 #include <QJsonValue>
+#include <QDirIterator>
 
 #include <QSettings>
 #include <QStringList>
@@ -809,6 +810,37 @@ namespace AssetProcessor
         return QString();
     }
 
+    QStringList PlatformConfiguration::FindWildcardMatches(const QString& sourceFolder, QString relativeName) const
+    {
+        if (relativeName.isEmpty())
+        {
+            return QStringList();
+        }
+
+        const int pathLen = sourceFolder.length() + 1;
+
+        relativeName.replace('\\', '/');
+
+        QStringList returnList;
+        QRegExp nameMatch{ relativeName, Qt::CaseInsensitive, QRegExp::Wildcard };
+        QDirIterator diretoryIterator(sourceFolder, QDir::AllEntries | QDir::NoSymLinks | QDir::NoDotAndDotDot, QDirIterator::Subdirectories);
+        QStringList files;
+        while (diretoryIterator.hasNext())
+        {
+            diretoryIterator.next();
+            if (!diretoryIterator.fileInfo().isFile())
+            {
+                continue;
+            }
+            QString pathMatch{ diretoryIterator.filePath().mid(pathLen) };
+            if (nameMatch.exactMatch(pathMatch))
+            {
+                returnList.append(AssetUtilities::NormalizeFilePath(diretoryIterator.filePath()));
+            }
+        }
+        return returnList;
+    }
+
     const AssetProcessor::ScanFolderInfo* PlatformConfiguration::GetScanFolderForFile(const QString& fullFileName) const
     {
         QString normalized = AssetUtilities::NormalizeFilePath(fullFileName);
@@ -1004,6 +1036,7 @@ namespace AssetProcessor
         target.m_version = loader.value("version", QString()).toString();
         target.m_testLockSource = loader.value("lockSource", false).toBool();
         target.m_isCritical = loader.value("critical", false).toBool();
+        target.m_checkServer = loader.value("checkServer", false).toBool();
         target.m_supportsCreateJobs = loader.value("supportsCreateJobs", false).toBool();
         target.m_priority = loader.value("priority", 0).toInt();
         QString assetTypeString = loader.value("productAssetType", QString()).toString();

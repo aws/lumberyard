@@ -2,7 +2,8 @@
     "auto": {
         "Tests": [
             "Tests/PhysXGenericTest.cpp",
-            "Tests/PhysXSpecificTest.cpp"
+            "Tests/PhysXSpecificTest.cpp",
+            "Tests/PhysXForceRegionTest.cpp"
         ]
     }
 }

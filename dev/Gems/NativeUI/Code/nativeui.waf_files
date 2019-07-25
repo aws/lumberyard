@@ -1,15 +1,13 @@
 {
     "none": {
         "Source": [
-            "Source/NativeUI_precompiled.cpp",
-            "Source/NativeUI_precompiled.h"
         ]
     },
     "auto": {
         "Source": [
-            "Source/NativeUIModule.cpp",
-            "Source/NativeUISystemComponent.cpp",
-            "Source/NativeUISystemComponent.h"
+      "Source/NativeUISystemComponent.h",
+      "Source/NativeUISystemComponent.cpp",
+      "Source/NativeUIModule.cpp"
         ]
     }
 }

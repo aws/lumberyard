@@ -22,6 +22,11 @@
 
 namespace Input
 {
+    InputConfigurationComponent::~InputConfigurationComponent()
+    {
+        m_inputEventBindings.Cleanup();
+    }
+
     void InputConfigurationComponent::GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided)
     {
         provided.push_back(AZ_CRC("InputConfigurationService"));
@@ -39,7 +44,9 @@ namespace Input
             serializeContext->Class<InputConfigurationComponent, AZ::Component>()
                 ->Version(2)
                 ->Field("Input Event Bindings", &InputConfigurationComponent::m_inputEventBindingsAsset)
-                ->Field("Input Contexts", &InputConfigurationComponent::m_inputContexts);
+                ->Field("Input Contexts", &InputConfigurationComponent::m_inputContexts)
+                ->Field("Local User Id", &InputConfigurationComponent::m_localUserId)
+            ;
 
             AZ::EditContext* editContext = serializeContext->GetEditContext();
             if (editContext)
@@ -66,6 +73,12 @@ namespace Input
                     ->DataElement(AZ::Edit::UIHandlers::Default, &InputConfigurationComponent::m_inputContexts, "Input contexts", "These are the contexts valid for this input binding.  The default context is empty string")
                         ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
                         ->Attribute(AZ::Edit::Attributes::ContainerCanBeModified, true)
+                    ->DataElement(AZ::Edit::UIHandlers::SpinBox, &InputConfigurationComponent::m_localUserId, "Local player index",
+                            "The player index that this component will receive input from (0 based, -1 means all controllers).\n"
+                            "Will only work on platforms such as PC where the local user id corresponds to the local player index.\n"
+                            "For other platforms, SetLocalUserId must be called at runtime with the id of a logged in user.")
+                        ->Attribute(AZ::Edit::Attributes::Min, -1)
+                        ->Attribute(AZ::Edit::Attributes::Max, 3)
                     ;
             }
         }
@@ -77,14 +90,9 @@ namespace Input
 
     void InputConfigurationComponent::Activate()
     {
-        const char* profileName = nullptr;
-        AZ::PlayerProfileRequestBus::BroadcastResult(profileName, &AZ::PlayerProfileRequests::GetCurrentProfileForCurrentUser);
-        if (profileName)
-        {
-            m_associatedProfileName = profileName;
-        }
 
         AZ::PlayerProfileNotificationBus::Handler::BusConnect();
+        AZ::InputComponentRequestBus::Handler::BusConnect(GetEntityId());
         AZ::Data::AssetBus::Handler::BusConnect(m_inputEventBindingsAsset.GetId());
 
         // connect to all of our input contexts or "" if none are specified
@@ -105,10 +113,37 @@ namespace Input
     {
         AZ::InputContextNotificationBus::MultiHandler::BusDisconnect();
         AZ::PlayerProfileNotificationBus::Handler::BusDisconnect();
+        AZ::InputComponentRequestBus::Handler::BusDisconnect();
         AZ::Data::AssetBus::Handler::BusDisconnect();
-        m_inputEventBindings.Deactivate(Input::ProfileId(m_associatedProfileName.c_str()));
+        if (m_localUserId != AzFramework::LocalUserIdNone)
+        {
+            m_inputEventBindings.Deactivate(m_localUserId);
+        }
     }
 
+    void InputConfigurationComponent::SetLocalUserId(AzFramework::LocalUserId localUserId)
+    {
+        if (m_localUserId != localUserId)
+        {
+            if (m_localUserId != AzFramework::LocalUserIdNone)
+            {
+                m_inputEventBindings.Deactivate(m_localUserId);
+            }
+            m_localUserId = localUserId;
+            if (m_localUserId != AzFramework::LocalUserIdNone)
+            {
+                m_inputEventBindings.Activate(m_localUserId);
+            }
+        }
+    }
+
+    // ToDo: Even with the old behavior I don't think this actually works,
+    // as all active InputConfigurationComponents will get saved with the
+    // same profile using the same asset id so they'll just override each
+    // other? If we want to save a custom binding data patch we should do
+    // it using something other than the CPlayerProfileManager, or allow
+    // PlayerProfileRequests to be called using the id of the profile to
+    // associate it with.
     void InputConfigurationComponent::OnProfileSaving()
     {
         if (m_inputEventBindingsAsset.IsReady())
@@ -132,7 +167,10 @@ namespace Input
         {
             // before we reload and reapply, disable any existing old ones, or else they'd double up
             // and you'd end up with both being active.
-            m_inputEventBindings.Deactivate(Input::ProfileId(m_associatedProfileName.c_str()));
+            if (m_localUserId != AzFramework::LocalUserIdNone)
+            {
+                m_inputEventBindings.Deactivate(m_localUserId);
+            }
 
             m_inputEventBindingsAsset = asset;
             if (asset.IsReady())
@@ -157,6 +195,7 @@ namespace Input
                 // we swap with a fresh empty one here just to make sure that if this happens repeatedly, we don't have anything left over.
                 InputEventBindings freshBindings;
                 serializeContext->CloneObjectInplace<InputEventBindings>(freshBindings, &inputAsset->m_bindings);
+                m_inputEventBindings.Cleanup();
                 m_inputEventBindings.Swap(&freshBindings);
             }
 
@@ -188,8 +227,10 @@ namespace Input
     {
         if ((m_isContextActive) && (m_isAssetPrepared))
         {
-            AZ::InputRequestBus::Broadcast(&AZ::InputRequests::RequestDeviceIndexMapping, AZ::Crc32(m_associatedProfileName.c_str()));
-            m_inputEventBindings.Activate(Input::ProfileId(m_associatedProfileName.c_str()));
+            if (m_localUserId != AzFramework::LocalUserIdNone)
+            {
+                m_inputEventBindings.Activate(m_localUserId);
+            }
         }
     }
 
@@ -202,7 +243,11 @@ namespace Input
     void InputConfigurationComponent::OnInputContextDeactivated()
     {
         m_isContextActive = false;
-        m_inputEventBindings.Deactivate(Input::ProfileId(m_associatedProfileName.c_str()));
+
+        if (m_localUserId != AzFramework::LocalUserIdNone)
+        {
+            m_inputEventBindings.Deactivate(m_localUserId);
+        }
     }
 
     void InputConfigurationComponent::EditorSetPrimaryAsset(const AZ::Data::AssetId& assetId)

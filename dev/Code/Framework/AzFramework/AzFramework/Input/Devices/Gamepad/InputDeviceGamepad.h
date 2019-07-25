@@ -13,6 +13,7 @@
 #pragma once
 
 #include <AzFramework/Input/Buses/Requests/InputHapticFeedbackRequestBus.h>
+#include <AzFramework/Input/Buses/Requests/InputLightBarRequestBus.h>
 #include <AzFramework/Input/Channels/InputChannelAnalog.h>
 #include <AzFramework/Input/Channels/InputChannelAxis1D.h>
 #include <AzFramework/Input/Channels/InputChannelAxis2D.h>
@@ -30,6 +31,7 @@ namespace AzFramework
     //! the 'null' implementation (primarily so that the editor can use them to setup input mappings).
     class InputDeviceGamepad : public InputDevice
                              , public InputHapticFeedbackRequestBus::Handler
+                             , public InputLightBarRequestBus::Handler
     {
     public:
         ////////////////////////////////////////////////////////////////////////////////////////////
@@ -51,6 +53,11 @@ namespace AzFramework
         //! \param[in] inputDeviceId The input device id to check
         //! \return True if the input device id identifies a gamepad, false otherwise
         static bool IsGamepadDevice(const InputDeviceId& inputDeviceId);
+
+        ////////////////////////////////////////////////////////////////////////////////////////////
+        //! Get the maximum number of gamepads that are supported on the current platform
+        //! \return The maximum number of gamepads that are supported on the current platform
+        static AZ::u32 GetMaxSupportedGamepads();
 
         ////////////////////////////////////////////////////////////////////////////////////////////
         //! All the input channel ids that identify game-pad digital button input
@@ -160,8 +167,12 @@ namespace AzFramework
         ~InputDeviceGamepad() override;
 
         ////////////////////////////////////////////////////////////////////////////////////////////
-        //! \ref AzFramework::InputDevice::GetAssignedLocalPlayerId
-        const GridMate::PlayerId* GetAssignedLocalPlayerId() const override;
+        //! \ref AzFramework::InputDevice::GetAssignedLocalUserId
+        LocalUserId GetAssignedLocalUserId() const override;
+
+        ////////////////////////////////////////////////////////////////////////////////////////////
+        //! \ref AzFramework::InputDevice::PromptLocalUserSignIn
+        void PromptLocalUserSignIn() const override;
 
         ////////////////////////////////////////////////////////////////////////////////////////////
         //! \ref AzFramework::InputDevice::GetInputChannelsById
@@ -176,12 +187,25 @@ namespace AzFramework
         bool IsConnected() const override;
 
         ////////////////////////////////////////////////////////////////////////////////////////////
+        //! \ref AzFramework::InputDeviceRequests::GetPhysicalKeyOrButtonText
+        void GetPhysicalKeyOrButtonText(const InputChannelId& inputChannelId,
+                                        AZStd::string& o_keyOrButtonText) const override;
+
+        ////////////////////////////////////////////////////////////////////////////////////////////
         //! \ref AzFramework::InputDeviceRequests::TickInputDevice
         void TickInputDevice() override;
 
         ////////////////////////////////////////////////////////////////////////////////////////////
         //! \ref AzFramework::InputHapticFeedbackRequests::SetVibration
         void SetVibration(float leftMotorSpeedNormalized, float rightMotorSpeedNormalized) override;
+
+        ////////////////////////////////////////////////////////////////////////////////////////////
+        //! \ref AzFramework::InputLightBarRequests::SetLightBarColor
+        void SetLightBarColor(const AZ::Color& color) override;
+
+        ////////////////////////////////////////////////////////////////////////////////////////////
+        //! \ref AzFramework::InputLightBarRequests::ResetLightBarColor
+        void ResetLightBarColor() override;
 
     protected:
         ////////////////////////////////////////////////////////////////////////////////////////////
@@ -232,9 +256,13 @@ namespace AzFramework
             virtual ~Implementation();
 
             ////////////////////////////////////////////////////////////////////////////////////////
-            //! Access to the input device's currently assigned local player id (if any)
-            //! \return Id of the local player assigned to the input device (nullptr if none)
-            virtual const GridMate::PlayerId* GetAssignedLocalPlayerId() const;
+            //! Access to the input device's currently assigned local user id
+            //! \return Id of the local user currently assigned to the input device
+            virtual LocalUserId GetAssignedLocalUserId() const;
+
+            ////////////////////////////////////////////////////////////////////////////////////////
+            //! Prompt a local user sign-in request from this input device
+            virtual void PromptLocalUserSignIn() const {}
 
             ////////////////////////////////////////////////////////////////////////////////////////
             //! Query the connected state of the input device
@@ -247,6 +275,23 @@ namespace AzFramework
             //! \param[in] rightMotorSpeedNormalized Speed of the right (small/high frequency) motor
             virtual void SetVibration(float leftMotorSpeedNormalized,
                                       float rightMotorSpeedNormalized) = 0;
+
+            ////////////////////////////////////////////////////////////////////////////////////////
+            //! Set the current light bar color of the gamepad (if one exists)
+            //! \param[in] color The color to set the gamepad's light bar
+            virtual void SetLightBarColor(const AZ::Color& color) { AZ_UNUSED(color); }
+
+            ////////////////////////////////////////////////////////////////////////////////////////
+            //! Reset the light bar color of the gamepad (if one exists) to it's default
+            virtual void ResetLightBarColor() {}
+
+            ////////////////////////////////////////////////////////////////////////////////////////
+            //! Get the text displayed on the physical key/button associated with an input channel.
+            //! \param[in] inputChannelId The input channel id whose key or button text to return
+            //! \param[out] o_keyOrButtonText The text displayed on the physical key/button if found
+            //! \return True if o_keyOrButtonText was set, false otherwise
+            virtual bool GetPhysicalKeyOrButtonText(const InputChannelId& /*inputChannelId*/,
+                                                    AZStd::string& /*o_keyOrButtonText*/) const { return false; }
 
             ////////////////////////////////////////////////////////////////////////////////////////
             //! Tick/update the input device to broadcast all input events since the last frame
@@ -305,6 +350,16 @@ namespace AzFramework
                 //! Get the right thumb-stick values adjusted for the dead zone and normalized
                 //! \return The right thumb-stick values adjusted for the dead zone and normalized
                 AZ::Vector2 GetRightThumbStickAdjustedForDeadZoneAndNormalized() const;
+
+                ////////////////////////////////////////////////////////////////////////////////////
+                //! Get the left thumb-stick values normalized with no dead zone applied
+                //! \return The left thumb-stick values normalized with no dead zone applied
+                AZ::Vector2 GetLeftThumbStickNormalizedValues() const;
+
+                ////////////////////////////////////////////////////////////////////////////////////
+                //! Get the right thumb-stick values normalized with no dead zone applied
+                //! \return The right thumb-stick values normalized with no dead zone applied
+                AZ::Vector2 GetRightThumbStickNormalizedValues() const;
 
                 ////////////////////////////////////////////////////////////////////////////////////
                 //! The map of digital button ids by bitmask

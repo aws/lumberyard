@@ -1,7 +1,0 @@
-{
-    "auto": {
-        "Source": [
-            "Source/iOS/NativeUISystemComponent_iOS.mm"
-        ]
-    }
-}

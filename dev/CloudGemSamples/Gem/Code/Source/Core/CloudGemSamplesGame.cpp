@@ -16,7 +16,6 @@
 #include "IGameFramework.h"
 #include "IGameRulesSystem.h"
 #include "CloudGemSamplesGameRules.h"
-#include "IPlatformOS.h"
 #include <functional>
 
 using namespace LYGame;
@@ -81,8 +80,6 @@ bool CloudGemSamplesGame::Init(IGameFramework* framework)
     REGISTER_FACTORY(framework, "CloudGemSamplesGameRules", CloudGemSamplesGameRules, false);
     IGameRulesSystem* pGameRulesSystem = g_Game->GetIGameFramework()->GetIGameRulesSystem();
     pGameRulesSystem->RegisterGameRules("DummyRules", "CloudGemSamplesGameRules");
-
-    GetISystem()->GetPlatformOS()->UserDoSignIn(0);
 
     return true;
 }

@@ -23,24 +23,22 @@ namespace AZ
     public:
         AZ_TYPE_INFO(InputEventNotificationId, "{9E0F0801-348B-4FF9-AF9B-858D59404968}");
         InputEventNotificationId() = default;
-        InputEventNotificationId(const Input::ProfileId& profileId, Input::ProcessedEventName actionNameCrc)
-            : m_profileIdCrc(profileId)
+        InputEventNotificationId(const AzFramework::LocalUserId& localUserId, const Input::ProcessedEventName& actionNameCrc)
+            : m_localUserId(localUserId)
             , m_actionNameCrc(actionNameCrc)
         { }
-        InputEventNotificationId(const AZ::Crc32&  entityChannel, const char* actionName) : InputEventNotificationId(entityChannel, AZ::Crc32(actionName)) { }
-        InputEventNotificationId(const Input::ProcessedEventName& actionName)
-            : m_actionNameCrc(actionName)
+        InputEventNotificationId(const AzFramework::LocalUserId& localUserId, const char* actionName)
+            : InputEventNotificationId(localUserId, AZ::Crc32(actionName)) { }
+        InputEventNotificationId(const Input::ProcessedEventName& actionNameCrc)
+            : InputEventNotificationId(AzFramework::LocalUserIdAny, actionNameCrc)
         {
-            const char* currentProfileName = nullptr;
-            EBUS_EVENT_RESULT(currentProfileName, AZ::PlayerProfileRequestBus, GetCurrentProfileForCurrentUser);
-            m_profileIdCrc = Input::ProfileId(currentProfileName);
         }
         InputEventNotificationId(const char* actionName) : InputEventNotificationId(AZ::Crc32(actionName)) {}
-        bool operator==(const InputEventNotificationId& rhs) const { return m_profileIdCrc == rhs.m_profileIdCrc && m_actionNameCrc == rhs.m_actionNameCrc; }
+        bool operator==(const InputEventNotificationId& rhs) const { return m_localUserId == rhs.m_localUserId && m_actionNameCrc == rhs.m_actionNameCrc; }
         InputEventNotificationId Clone() const { return *this; }
-        AZStd::string ToString() const { return AZStd::string::format("%lu, %lu", static_cast<AZ::u32>(m_profileIdCrc), static_cast<AZ::u32>(m_actionNameCrc)); }
+        AZStd::string ToString() const { return AZStd::string::format("%lu, %lu", static_cast<AZ::u32>(m_localUserId), static_cast<AZ::u32>(m_actionNameCrc)); }
 
-        Input::ProfileId m_profileIdCrc;
+        AzFramework::LocalUserId m_localUserId;
         Input::ProcessedEventName m_actionNameCrc;
     };
 
@@ -72,7 +70,7 @@ namespace AZStd
     {
         inline size_t operator()(const AZ::InputEventNotificationId& actionId) const
         {
-            size_t retVal = static_cast<size_t>(actionId.m_profileIdCrc);
+            size_t retVal = static_cast<size_t>(actionId.m_localUserId);
             AZStd::hash_combine(retVal, actionId.m_actionNameCrc);
             return retVal;
         }

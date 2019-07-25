@@ -177,13 +177,14 @@ namespace AzToolsFramework
             return message.substr(index);
         }
 
-        LogLine::LogLine(const char* inMessage, const char* inWindow, LogType inType, AZ::u64 inTime, void* data)
+        LogLine::LogLine(const char* inMessage, const char* inWindow, LogType inType, AZ::u64 inTime, void* data, uintptr_t threadId)
             : m_message(inMessage)
             , m_window(inWindow)
             , m_type(inType)
             , m_messageTime(inTime)
             , m_processed(false)
             , m_userData(data)
+            , m_threadId(threadId)
         {
             Process();
         }
@@ -208,6 +209,7 @@ namespace AzToolsFramework
                 m_messageTime = other.m_messageTime;
                 m_isRichText = other.m_isRichText;
                 m_processed = other.m_processed;
+                m_threadId = other.m_threadId;
                 m_userData = other.m_userData;
             }
             return *this;
@@ -223,6 +225,7 @@ namespace AzToolsFramework
                 m_messageTime = other.m_messageTime;
                 m_isRichText = other.m_isRichText;
                 m_processed = other.m_processed;
+                m_threadId = other.m_threadId;
                 m_userData = other.m_userData;
             }
             return *this;
@@ -316,6 +319,11 @@ namespace AzToolsFramework
         AZ::u64 LogLine::GetLogTime() const
         {
             return m_messageTime;
+        }
+
+        uintptr_t LogLine::GetLogThreadId() const
+        {
+            return m_threadId;
         }
 
         void* LogLine::GetUserData() const
@@ -589,7 +597,7 @@ namespace AzToolsFramework
             const int maxFieldSize = 80;
 
             // if everything went okay with parsing:
-            if ((fieldBegins[Idx_Message] != 0) && (fieldSizes[Idx_Time] < maxFieldSize) && (fieldSizes[Idx_Severity] < maxFieldSize) && (fieldSizes[Idx_Window] < maxFieldSize))
+            if ((fieldBegins[Idx_Message] != 0) && (fieldSizes[Idx_Time] < maxFieldSize) && (fieldSizes[Idx_Severity] < maxFieldSize) && (fieldSizes[Idx_Thread] < maxFieldSize) && (fieldSizes[Idx_Window] < maxFieldSize))
             {
                 char tempScratch[maxFieldSize];
                 azstrncpy(tempScratch, AZ_ARRAY_SIZE(tempScratch), line.c_str() + fieldBegins[Idx_Time], fieldSizes[Idx_Time]);
@@ -626,6 +634,15 @@ namespace AzToolsFramework
                         outLine.m_type = Logging::LogLine::TYPE_ERROR;
                         break;
                     }
+                }
+
+                azstrncpy(tempScratch, AZ_ARRAY_SIZE(tempScratch), line.c_str() + fieldBegins[Idx_Thread], fieldSizes[Idx_Thread]);
+                tempScratch[fieldSizes[Idx_Thread]] = 0;
+                convertedOK = false;
+                uintptr_t threadId = static_cast<uintptr_t>(QString(tempScratch).toUInt(&convertedOK, 16));
+                if (convertedOK)
+                {
+                    outLine.m_threadId = threadId;
                 }
 
                 outLine.m_window.assign(line.c_str() + fieldBegins[Idx_Window], fieldSizes[Idx_Window]);

@@ -1989,6 +1989,7 @@ LUA_API const Node* lua_getDummyNode()
                     // we need value to pointer be pointer to a pointer
                     void* valueAddress = tempAllocator.allocate(2 * sizeof(void*), valueClass->m_alignment, 0);
                     void* valueAddressPtr = reinterpret_cast<AZ::u8*>(valueAddress)+sizeof(void*);
+                    ::memset(valueAddress, 0, sizeof(void*));
                     *reinterpret_cast<void**>(valueAddressPtr) = valueAddress;
                     value.m_value = valueAddressPtr;
                 }
@@ -3121,7 +3122,7 @@ LUA_API const Node* lua_getDummyNode()
                         }
 
                         // destroy any value parameters
-                        if (thisPtr->m_resultClass && thisPtr->m_resultClass->m_destructor)
+                        if (thisPtr->m_resultClass && thisPtr->m_resultClass->m_destructor && (result.m_traits & AZ::BehaviorParameter::TR_POINTER) == 0)
                         {
                             void* valueAddress = result.GetValueAddress();
                             if (tempData.inrange(valueAddress))

@@ -723,4 +723,14 @@ namespace RenderGL
         glDisable(GL_TEXTURE_2D);
         return true;
     }
+
+    const char* GraphicsManager::GetDeviceName()
+    {
+        return (const char*)glGetString(GL_VENDOR);
+    }
+
+    const char* GraphicsManager::GetDeviceVendor()
+    {
+        return (const char*)glGetString(GL_RENDERER);
+    }
 }   // namespace RenderGL

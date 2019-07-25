@@ -597,7 +597,7 @@ def get_bootstrap_game_folder(self, default_game='SamplesProject'):
 
 
 @conf
-def get_bootstrap_vfs(self):
+def get_bootstrap_vfs(self, specific_platform=None):
     """
     :param self:
     :return: if vfs is enabled in bootstrap.cfg
@@ -610,15 +610,46 @@ def get_bootstrap_vfs(self):
         vfs = re.search('^\s*remote_filesystem\s*=\s*(\w+)', bootstrap_contents, re.MULTILINE).group(1)
     except:
         pass
+
+    if specific_platform:
+        try:
+            vfs = re.search('^\s*{}_remote_filesystem\s*=\s*(\w+)'.format(specific_platform), bootstrap_contents, re.MULTILINE).group(1)
+        except:
+            pass
+
     return vfs
 
 
-GAME_PLATFORM_MAP = {
-    'android_armv7_clang' : 'android',
-    'android_armv8_clang' : 'android',
-    'darwin_x64' : 'osx',
-}
+@conf
+def get_bootstrap_remote_ip(self):
+    """
+    :param self:
+    :return: remote_ip set in bootstrap.cfg
+    """
+    project_folder_node = getattr(self, 'srcnode', self.path)
+    bootstrap_cfg = project_folder_node.make_node('bootstrap.cfg')
+    bootstrap_contents = bootstrap_cfg.read()
+    remote_ip = '127.0.0.1'
+    try:
+        remote_ip = re.search('^\s*remote_ip\s*=\s*((\d+[.]*)*)', bootstrap_contents, re.MULTILINE).group(1)
+    except:
+        pass
+    return remote_ip
 
+
+@conf
+def get_game_platform(ctx, platform=None):
+    """
+
+    :param ctx:         The current context
+    :param platform:    The build platform to get the game platform
+    :return: The game platform
+    """
+    if platform is None:
+        platform = ctx.env['PLATFORM']
+    platform_detail = ctx.get_target_platform_detail(platform)
+    game_platform = platform_detail.attributes.get('game_platform', platform)
+    return game_platform
 
 @conf
 def get_bootstrap_assets(self, platform=None):
@@ -627,14 +658,13 @@ def get_bootstrap_assets(self, platform=None):
     :param platform: optional, defaults to current build's platform
     :return: Asset type requested for the supplied platform in bootstrap.cfg
     """
-    if platform is None:
-        platform = self.env['PLATFORM']
-
     project_folder_node = getattr(self, 'srcnode', self.path)
     bootstrap_cfg = project_folder_node.make_node('bootstrap.cfg')
     bootstrap_contents = bootstrap_cfg.read()
     assets = 'pc'
-    game_platform = GAME_PLATFORM_MAP.get(platform, platform)
+
+    game_platform = self.get_game_platform(platform)
+
     try:
         assets = re.search('^\s*assets\s*=\s*(\w+)', bootstrap_contents, re.MULTILINE).group(1)
         assets = re.search('^\s*%s_assets\s*=\s*(\w+)' % (game_platform), bootstrap_contents, re.MULTILINE).group(1)

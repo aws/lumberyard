@@ -13,6 +13,7 @@
 
 #include <AzCore/std/smart_ptr/unique_ptr.h>
 #include <AzCore/std/string/osstring.h>
+#include <AzCore/Module/Environment.h>
 
 namespace AZ
 {
@@ -90,8 +91,10 @@ namespace AZ
         /// Store the module name for future loads.
         OSString        m_fileName;
 
-        /// Whether \ref UninitializeDynamicModuleFunction should be called before unloading the module.
-        bool            m_requiresUninitializeFunction;
+        // whoever first creates this variable is the one who called initialize and will 
+        // be the one that calls uninitialize.  Note that we don't actually care what the bool value is
+        // just the refcount and ownership.
+        AZ::EnvironmentVariable<bool> m_initialized;  
     };
 
     /**

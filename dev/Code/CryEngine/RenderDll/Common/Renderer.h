@@ -807,6 +807,7 @@ public:
     virtual int  RT_CurThreadList();
     virtual void RT_BeginFrame() = 0;
     virtual void RT_EndFrame() = 0;
+    virtual void RT_EndFrame(bool isLoading) {};
     virtual void RT_ForceSwapBuffers() = 0;
     virtual void RT_SwitchToNativeResolutionBackbuffer(bool resolveBackBuffer) = 0;
     virtual void RT_Init() = 0;
@@ -851,7 +852,6 @@ public:
 
     virtual void RT_PostLevelLoading();
 
-    void RT_PrepareLevelTexStreaming();
     void RT_DisableTemporalEffects();
 
     virtual bool FlushRTCommands(bool bWait, bool bImmediatelly, bool bForce);
@@ -2030,6 +2030,7 @@ public:
     DeclareStaticConstIntCVar(CV_r_MotionVectorsDebug, 0);
     static float CV_r_MotionVectorsTransparencyAlphaThreshold;
     static int CV_r_MotionBlur;
+    static int CV_r_RenderMotionBlurAfterHDR;
     static int CV_r_MotionBlurScreenShot;
     static int CV_r_MotionBlurQuality;
     static int CV_r_MotionBlurGBufferVelocity;
@@ -2077,9 +2078,6 @@ public:
     static int CV_r_dyntexatlascloudsmaxsize;
     static int CV_r_texminanisotropy;
     static int CV_r_texmaxanisotropy;
-    static int CV_r_texturesstreampooldefragmentation;
-    static int CV_r_texturesstreampooldefragmentationmaxmoves;
-    static int CV_r_texturesstreampooldefragmentationmaxamount;
     static int CV_r_texturesskiplowermips;
     static int CV_r_rendertargetpoolsize;
     static int CV_r_texturesstreamingsync;
@@ -2096,6 +2094,9 @@ public:
     static int CV_r_shadersGLES3;
     static int CV_r_shadersdurango; // ACCEPTED_USE
     static int CV_r_shadersMETAL;
+    
+    static int CV_r_ProvoHardwareMode;
+
     static int CV_r_shadersPlatform;
 #endif
     //  static int CV_r_envcmwrite;
@@ -2162,6 +2163,7 @@ public:
     static float CV_r_profilerTargetFPS;
     DeclareStaticConstIntCVar(CV_r_ShadowPoolMaxFrames, 30);
     static int CV_r_log;
+    static int CV_r_VRAMDebug;
     DeclareStaticConstIntCVar(CV_r_logTexStreaming, 0);
     DeclareStaticConstIntCVar(CV_r_logShaders, 0);
     static int CV_r_logVBuffers;

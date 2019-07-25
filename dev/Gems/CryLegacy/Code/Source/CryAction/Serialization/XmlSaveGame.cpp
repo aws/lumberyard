@@ -15,8 +15,6 @@
 #include "XmlSaveGame.h"
 #include "XmlSerializeHelper.h"
 
-#include <IPlatformOS.h>
-
 static const int XML_SAVEGAME_MAX_CHUNK_SIZE = 32767 / 2;
 
 struct CXmlSaveGame::Impl
@@ -126,15 +124,11 @@ bool CXmlSaveGame::Write(const char* filename, XmlNodeRef data)
 
     // Try opening file for creation first, will also create directory.
     AZ::IO::HandleType fileHandle = AZ::IO::InvalidHandle;
-
-    if (!GetISystem()->GetPlatformOS()->UsePlatformSavingAPI())
+    fileHandle = gEnv->pCryPak->FOpen(filename, "wb");
+    if (fileHandle == AZ::IO::InvalidHandle)
     {
-        fileHandle = gEnv->pCryPak->FOpen(filename, "wb");
-        if (fileHandle == AZ::IO::InvalidHandle)
-        {
-            CryWarning(VALIDATOR_MODULE_GAME, VALIDATOR_WARNING, "Failed to create file %s", filename);
-            return false;
-        }
+        CryWarning(VALIDATOR_MODULE_GAME, VALIDATOR_WARNING, "Failed to create file %s", filename);
+        return false;
     }
 
     const bool bSavedToFile = data->saveToFile(filename, XML_SAVEGAME_MAX_CHUNK_SIZE, fileHandle);

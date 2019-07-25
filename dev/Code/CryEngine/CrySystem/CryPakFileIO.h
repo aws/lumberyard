@@ -36,7 +36,7 @@ namespace AZ
             : public FileIOBase
         {
         public:
-            AZ_RTTI(RemoteFileIO, "{679F8DB8-CC61-4BC8-ADDB-170E3D428B5D}");
+            AZ_RTTI(CryPakFileIO, "{679F8DB8-CC61-4BC8-ADDB-170E3D428B5D}", FileIOBase);
             AZ_CLASS_ALLOCATOR(CryPakFileIO, OSAllocator, 0);
 
             CryPakFileIO();

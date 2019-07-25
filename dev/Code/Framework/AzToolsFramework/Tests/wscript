@@ -30,5 +30,6 @@ def build(bld):
                                    'QT5WIDGETS',
                                    'QT5WINEXTRAS',
                                    'QT5CONCURRENT',
-                                   'QT5XML']
+                                   'QT5XML',
+                                   'QT5TEST']
     )

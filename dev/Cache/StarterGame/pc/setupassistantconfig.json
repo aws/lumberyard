@@ -55,7 +55,7 @@
             "tooltip" : "runeditorToolTip",
             "tags" : ["runeditor"],
             "categories" : ["role"],
-            "hosts" : [ "windows" ],
+            "hosts" : [ "windows", "macOS" ],
             "default" : true
         },
         {
@@ -421,8 +421,8 @@
         {
             "identifier" : "p4api",
             "name" : "p4apiName",
-            "version" : "2015.2",
-            "source": "p4api/2015.2",
+            "version" : "2019.1",
+            "source": "p4api/2019.1",
             "optional" : 0,
             "description" : "p4apiDescriptionSummary",
             "detailedInstructions" : "p4apiDetailedInstructions",
@@ -431,19 +431,19 @@
             "symlinks" :
             [
                 {
-                    "source" : "p4api/2015.2",
+                    "source" : "p4api/2019.1",
                     "destination" : "$CODEFOLDERNAME$/SDKs/p4api",
                     "exampleFile" : "include/p4/p4tags.h"
                 },
                 {
                     "compilers" : ["vc140", "vc141"],
-                    "source" : "p4api/2015.2",
+                    "source" : "p4api/2019.1",
                     "destination" : "$CODEFOLDERNAME$/SDKs/p4api",
                     "exampleFile" : "vs14/debug/libclient.lib"
                 },
                 {
                     "hostOS" : ["macOS"],
-                    "source" : "p4api/2015.2",
+                    "source" : "p4api/2019.1",
                     "destination" : "$CODEFOLDERNAME$/SDKs/p4api",
                     "exampleFile" : "macos/libclient.a"
                 }
@@ -940,61 +940,61 @@
         {
             "identifier": "AWSNativeSDK",
             "name": "AWSNativeSDKName",
-            "version": "1.4.34.1",
-            "source": "AWS/AWSNativeSDK/1.4.34.1",
+            "version": "1.4.34.3",
+            "source": "AWS/AWSNativeSDK/1.4.34.3",
             "optional": 0,
             "description": "AWSNativeSDKDescriptionSummary",
             "detailedInstructions": "AWSNativeSDKDetailedInstructions",
             "roles": [ "compilegame", "compileengine", "compilesandbox", "compileios", "compileandroid", "setuplinux" ],
             "symlinks": [
                 {
-                    "source": "AWS/AWSNativeSDK/1.4.34.1",
+                    "source": "AWS/AWSNativeSDK/1.4.34.3",
                     "destination": "$CODEFOLDERNAME$/Sandbox/SDKs/AWSNativeSDK",
                     "exampleFile": "include/aws/core/Aws.h"
                 },
                 {
-                    "source": "AWS/AWSNativeSDK/1.4.34.1",
+                    "source": "AWS/AWSNativeSDK/1.4.34.3",
                     "destination": "$CODEFOLDERNAME$/SDKs/AWSNativeSDK",
                     "exampleFile": "include/aws/core/Aws.h"
                 },
                 {
-                    "source": "AWS/AWSNativeSDK/1.4.34.1",
+                    "source": "AWS/AWSNativeSDK/1.4.34.3",
                     "destination": "$CODEFOLDERNAME$/Tools/SDKs/AWSNativeSDK",
                     "exampleFile": "include/aws/core/Aws.h"
                 },
                 {
                     "compilers" : ["vc140", "vc141"],
-                    "source": "AWS/AWSNativeSDK/1.4.34.1",
+                    "source": "AWS/AWSNativeSDK/1.4.34.3",
                     "destination": "$CODEFOLDERNAME$/Sandbox/SDKs/AWSNativeSDK",
                     "exampleFile": "bin/windows/intel64/vs2015/Release/aws-cpp-sdk-core.lib"
                 },
                 {
                     "compilers" : ["vc140", "vc141"],
-                    "source": "AWS/AWSNativeSDK/1.4.34.1",
+                    "source": "AWS/AWSNativeSDK/1.4.34.3",
                     "destination": "$CODEFOLDERNAME$/SDKs/AWSNativeSDK",
                     "exampleFile": "bin/windows/intel64/vs2015/Release/aws-cpp-sdk-core.lib"
                 },
                 {
                     "compilers" : ["vc140", "vc141"],
-                    "source": "AWS/AWSNativeSDK/1.4.34.1",
+                    "source": "AWS/AWSNativeSDK/1.4.34.3",
                     "destination": "$CODEFOLDERNAME$/Tools/SDKs/AWSNativeSDK",
                     "exampleFile": "bin/windows/intel64/vs2015/Release/aws-cpp-sdk-core.lib"
                 },
                 {
                     "roles" : ["setuplinux"],
-                    "source": "AWS/AWSNativeSDK/1.4.34.1",
+                    "source": "AWS/AWSNativeSDK/1.4.34.3",
                     "destination": "$CODEFOLDERNAME$/Sandbox/SDKs/AWSNativeSDK",
                     "exampleFile": "lib/linux/intel64/Release/libaws-cpp-sdk-cognito-identity.a"
                 },
                 {
                     "roles" : ["setuplinux"],
-                    "source": "AWS/AWSNativeSDK/1.4.34.1",
+                    "source": "AWS/AWSNativeSDK/1.4.34.3",
                     "destination": "$CODEFOLDERNAME$/SDKs/AWSNativeSDK",
                     "exampleFile": "lib/linux/intel64/Release/libaws-cpp-sdk-cognito-identity.a"
                 },
                 {
                     "roles" : ["setuplinux"],
-                    "source": "AWS/AWSNativeSDK/1.4.34.1",
+                    "source": "AWS/AWSNativeSDK/1.4.34.3",
                     "destination": "$CODEFOLDERNAME$/Tools/SDKs/AWSNativeSDK",
                     "exampleFile": "lib/linux/intel64/Release/libaws-cpp-sdk-cognito-identity.a"
                 }
@@ -1529,33 +1529,33 @@
         {
             "identifier" : "OpenSSL",
             "name" : "OpenSSLname",
-            "version" : "1.0.2k-noasm.2",
-            "source" : "OpenSSL/1.0.2k-noasm.2",
+            "version" : "1.1.1b-noasm",
+            "source" : "OpenSSL/1.1.1b-noasm",
             "description" : "OpenSSLdescription",
             "detailedInstructions" : "OpenSSLdetailedInstructions",
             "roles" : ["compilegame","compileengine", "compileandroid","compilesandbox", "setuplinux"],
             "symlinks" :
             [
                 {
-                    "source" : "OpenSSL/1.0.2k-noasm.2",
+                    "source" : "OpenSSL/1.1.1b-noasm",
                     "destination" : "$CODEFOLDERNAME$/SDKs/OpenSSL",
                     "exampleFile" : "include/openssl/ssl.h"
                 },
                 {
                     "compilers" : ["vc140", "vc141"],
-                    "source" : "OpenSSL/1.0.2k-noasm.2",
+                    "source" : "OpenSSL/1.1.1b-noasm",
                     "destination" : "$CODEFOLDERNAME$/SDKs/OpenSSL",
-                    "exampleFile" : "lib/vc140_x64_release/libeay32.lib"
+                    "exampleFile" : "lib/vc140_x64_release/libssl.lib"
                 },
                 {
                     "hostOS" : ["macOS"],
-                    "source" : "OpenSSL/1.0.2k-noasm.2",
+                    "source" : "OpenSSL/1.1.1b-noasm",
                     "destination" : "$CODEFOLDERNAME$/SDKs/OpenSSL",
                     "exampleFile" : "lib/darwin-x86_64-release/libssl.a"
                 },
                 {
                     "roles" : ["setuplinux"],
-                    "source" : "OpenSSL/1.0.2k-noasm.2",
+                    "source" : "OpenSSL/1.1.1b-noasm",
                     "destination" : "$CODEFOLDERNAME$/SDKs/OpenSSL",
                     "exampleFile" : "lib/linux-x86_64-clang-release/libssl.a"
                 }

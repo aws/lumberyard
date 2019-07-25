@@ -535,8 +535,7 @@ bool CRichSaveGameHelper::GetSaveGames(CPlayerProfileManager::SUserEntry* pEntry
     search.Format("%s/*%s", path.c_str(), LY_SAVEGAME_FILE_EXT);
 
     IPlatformOS* os = GetISystem()->GetPlatformOS();
-    unsigned int userIndex = os->UserGetPlayerIndex(profileName);
-    IPlatformOS::IFileFinderPtr fileFinder = os->GetFileFinder(userIndex);
+    IPlatformOS::IFileFinderPtr fileFinder = os->GetFileFinder(0);
     intptr_t handle = fileFinder->FindFirst(search.c_str(), &fd);
 
     if (handle != -1)

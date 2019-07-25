@@ -112,9 +112,9 @@ namespace AZStd
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
 #undef AZ_RESTRICTED_SECTION_IMPLEMENTED
 #else
-            if (desc && desc->m_cpuId >= 0 && desc->m_cpuId < 32)
+            if (desc && desc->m_cpuId != -1)
             {
-                SetThreadAffinityMask(hThread, DWORD_PTR(1) << desc->m_cpuId);
+                SetThreadAffinityMask(hThread, DWORD_PTR(desc->m_cpuId));
             }
 #endif
 

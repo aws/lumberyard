@@ -405,7 +405,7 @@ bool ZipDir::CZipFile::OpenUnbuffered(const char* filename)
         return false;
     }
 
-    HANDLE unbufferedFile = CreateFileA(filename, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL | FILE_FLAG_NO_BUFFERING, NULL);
+    HANDLE unbufferedFile = CreateFileA(filename, GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL | FILE_FLAG_NO_BUFFERING, NULL);
 
     if (unbufferedFile != INVALID_HANDLE_VALUE)
     {

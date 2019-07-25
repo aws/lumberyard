@@ -100,19 +100,16 @@ namespace LmbrCentral
         }
         else if (dc.GetNumArguments() == 1 && dc.IsString(0))
         {
-
-            const char* currentProfileName = nullptr;
-            EBUS_EVENT_RESULT(currentProfileName, AZ::PlayerProfileRequestBus, GetCurrentProfileForCurrentUser);
-            thisOutPtr->m_profileIdCrc = Input::ProfileId(currentProfileName);
+            thisOutPtr->m_localUserId = AzFramework::LocalUserIdAny;
             const char* actionName = nullptr;
             dc.ReadArg(0, actionName);
             thisOutPtr->m_actionNameCrc = Input::ProcessedEventName(actionName);
         }
         else if (dc.GetNumArguments() == 2 && dc.IsClass<AZ::Crc32>(0) && dc.IsString(1))
         {
-            Input::ProfileId profileId = 0;
-            dc.ReadArg(0, profileId);
-            thisOutPtr->m_profileIdCrc = profileId;
+            AzFramework::LocalUserId localUserId = 0;
+            dc.ReadArg(0, localUserId);
+            thisOutPtr->m_localUserId = localUserId;
             const char* actionName = nullptr;
             dc.ReadArg(1, actionName);
             thisOutPtr->m_actionNameCrc = Input::ProcessedEventName(actionName);
@@ -253,7 +250,7 @@ namespace LmbrCentral
 
             serializeContext->Class<AZ::InputEventNotificationId>()
                 ->Version(1)
-                ->Field("ProfileId", &AZ::InputEventNotificationId::m_profileIdCrc)
+                ->Field("LocalUserId", &AZ::InputEventNotificationId::m_localUserId)
                 ->Field("ActionName", &AZ::InputEventNotificationId::m_actionNameCrc)
             ;
         }
@@ -283,7 +280,7 @@ namespace LmbrCentral
                     ->Attribute(AZ::Script::Attributes::Storage, AZ::Script::Attributes::StorageType::Value)
                     ->Attribute(AZ::Script::Attributes::ConstructorOverride, &InputEventNonIntrusiveConstructor)
                 ->Property("actionNameCrc", BehaviorValueProperty(&AZ::InputEventNotificationId::m_actionNameCrc))
-                ->Property("profileCrc", BehaviorValueProperty(&AZ::InputEventNotificationId::m_profileIdCrc))
+                ->Property("localUserId", BehaviorValueProperty(&AZ::InputEventNotificationId::m_localUserId))
                 ->Method("ToString", &AZ::InputEventNotificationId::ToString)
                     ->Attribute(AZ::Script::Attributes::Operator, AZ::Script::Attributes::OperatorType::ToString)
                 ->Method("Equal", &AZ::InputEventNotificationId::operator==)

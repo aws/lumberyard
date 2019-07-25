@@ -14,7 +14,7 @@
 from waflib.Configure import conf
 from cry_utils import append_kw_entry, prepend_kw_entry, append_to_unique_list
 from waf_branch_spec import LUMBERYARD_COPYRIGHT_YEAR
-
+from waflib import Options
 import os
 
 
@@ -30,7 +30,9 @@ def load_cryengine_common_settings(conf):
     
     # To allow pragma comment (lib, 'SDKs/...) uniformly, pass Code to the libpath
     append_to_unique_list(v['LIBPATH'], conf.CreateRootRelativePath('Code'))
-    
+
+    # Set the product sku define, default is 'default'
+    v['DEFINES'] += ['PRODUCT_SKU_' + Options.options.product_sku]
 
 #############################################################################
 @conf   

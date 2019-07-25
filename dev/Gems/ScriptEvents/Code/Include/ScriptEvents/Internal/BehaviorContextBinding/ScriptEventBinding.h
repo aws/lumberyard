@@ -12,6 +12,7 @@
 
 #pragma once
 
+#include <AzCore/std/containers/set.h>
 #include <ScriptEvents/Internal/BehaviorContextBinding/ScriptEventsBindingBus.h>
 
 namespace ScriptEvents

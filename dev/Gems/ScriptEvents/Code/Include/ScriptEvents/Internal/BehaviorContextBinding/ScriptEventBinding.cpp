@@ -12,7 +12,6 @@
 
 #include "precompiled.h"
 
-#include "ScriptEventBinding.h"
 #include "DefaultEventHandler.h"
 #include <ScriptEvents/ScriptEventTypes.h>
 #include <ScriptEvents/Internal/BehaviorContextBinding/ScriptEventBinding.h>

@@ -810,7 +810,7 @@ class Task(TaskBase):
 		# recompute the signature and return it
 		old_sig_debug_log = self.sig_implicit_debug_log
 
-		bld.task_sigs[(key, 'imp')] = sig = self.compute_sig_implicit_deps()
+		bld.task_sigs[(key, 'imp')] = sig = self.compute_sig_implicit_deps(False)
 
 		# Make the equality check since it's possible we didn't have a prior imp key but had prior nodes
 		# and said nodes didn't change

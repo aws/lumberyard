@@ -1237,7 +1237,7 @@ bool CDeferredShading::DeferredDecalPass(const SDeferredDecal& rDecal, uint32 in
     _smart_ptr<IMaterial> pDecalMaterial = rDecal.pMaterial;
     if (pDecalMaterial == NULL)
     {
-        assert(0);
+        AZ_WarningOnce("CDeferredShading", pDecalMaterial == NULL, "Decal missing material.");
         return false;
     }
 
@@ -1474,7 +1474,7 @@ void CDeferredShading::DeferredDecalEmissivePass(const SDeferredDecal& rDecal, u
     _smart_ptr<IMaterial> pDecalMaterial = rDecal.pMaterial;
     if (pDecalMaterial == NULL)
     {
-        assert(0);
+        AZ_WarningOnce("CDeferredShading", pDecalMaterial == NULL, "Decal missing material.");
         return;
     }
 

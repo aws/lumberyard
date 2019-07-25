@@ -2,10 +2,9 @@
     "GemFormatVersion": 3,
     "Uuid": "c9c25313197f489a8e9e8e6037fc62eb",
     "Name": "UserLoginDefault",
-    "DisplayName": "User Login: Default - Legacy",
-    "Summary": "NOTE: This gem will be deprecated in the next release as it is no longer useful. Release builds used to require end users to log in for configuration settings like action maps. This was a simple implementation of the user login feature to enable quick testing and verification of release builds.",
+    "DisplayName": "User Login: Default - DEPRECATED",
+    "Summary": "DEPRECATED. Release builds used to require end users to log in for configuration settings like action maps. This was a simple implementation of the user login feature to enable quick testing and verification of release builds.",
     "Version": "0.1.0",
     "LinkType": "Dynamic",
-    "Tags": ["Reference", "Implementation"],
     "IconPath": "preview.png"
 }

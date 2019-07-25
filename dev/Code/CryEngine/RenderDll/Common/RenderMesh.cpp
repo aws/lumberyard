@@ -1651,7 +1651,8 @@ IIndexedMesh* CRenderMesh::GetIndexedMesh(IIndexedMesh* pIdxMesh)
 
     CMesh* const pMesh = pIdxMesh->GetMesh();
 
-    uint32 numTexCoords = m_vertexFormat.GetAttributesByUsage(AZ::Vertex::AttributeUsage::TexCoord).size();
+    uint32 numTexCoords = m_vertexFormat.GetAttributeUsageCount(AZ::Vertex::AttributeUsage::TexCoord);
+
     // These functions also re-allocate the streams
     pIdxMesh->SetVertexCount(m_nVerts);
     pIdxMesh->SetTexCoordCount(m_nVerts, numTexCoords);
@@ -2098,57 +2099,54 @@ bool CRenderMesh::CreateCachePos(byte* pSrc, uint32 nStrideSrc, uint nFlags)
 bool CRenderMesh::CreateUVCache(byte* source, uint32 sourceStride, uint flags, uint32 uvSetIndex)
 {
     PROFILE_FRAME(Mesh_CreateUVCache);
-    uint32 offset = 0;
-    bool hasUVSetAtIndex = m_vertexFormat.TryCalculateOffset(offset, AZ::Vertex::AttributeUsage::TexCoord, uvSetIndex);
+
+    AZ::Vertex::AttributeType attributeType = AZ::Vertex::AttributeType::NumTypes;
+    uint offset = 0;
+    bool hasUVSetAtIndex = m_vertexFormat.TryGetAttributeOffsetAndType(AZ::Vertex::AttributeUsage::TexCoord, uvSetIndex, offset, attributeType);
 
     // If the vertex format has a uv set at the given index
-    if (hasUVSetAtIndex)
+    // And the vertex format uses 16 bit floats to represent that uv set
+    if (hasUVSetAtIndex && (attributeType == AZ::Vertex::AttributeType::Float16_2))
     {
-        AZStd::vector<AZ::Vertex::Attribute> texCoordAttributes = m_vertexFormat.GetAttributesByUsage(AZ::Vertex::AttributeUsage::TexCoord);
-        bool uvSetIsAShort = texCoordAttributes[uvSetIndex].GetType() == AZ::Vertex::AttributeType::Float16_2;
-        // And the vertex format uses 16 bit floats to represent that uv set
-        if (uvSetIsAShort)
+        m_nFlagsCacheUVs = (flags & FSL_WRITE) != 0;
+        m_nFrameRequestCacheUVs = gRenDev->m_RP.m_TI[gRenDev->m_RP.m_nFillThreadID].m_nFrameUpdateID;
+        // Increase the size of the cached uvs vector if it is not big enough for the given uv set, and fill any new slots with nullptr
+        if (uvSetIndex >= m_UVCache.size())
         {
-            m_nFlagsCacheUVs = (flags & FSL_WRITE) != 0;
-            m_nFrameRequestCacheUVs = gRenDev->m_RP.m_TI[gRenDev->m_RP.m_nFillThreadID].m_nFrameUpdateID;
-            // Increase the size of the cached uvs vector if it is not big enough for the given uv set, and fill any new slots with nullptr
-            if (uvSetIndex >= m_UVCache.size())
-            {
-                m_UVCache.resize(uvSetIndex + 1, nullptr);
-            }
+            m_UVCache.resize(uvSetIndex + 1, nullptr);
+        }
 
-            // Return true if the uv cache has already been created and does not need to be updated
-            if ((flags & FSL_READ) && m_UVCache[uvSetIndex])
-            {
-                return true;
-            }
-            if ((flags == FSL_SYSTEM_CREATE) && m_UVCache[uvSetIndex])
-            {
-                return true;
-            }
+        // Return true if the uv cache has already been created and does not need to be updated
+        if ((flags & FSL_READ) && m_UVCache[uvSetIndex])
+        {
+            return true;
+        }
+        if ((flags == FSL_SYSTEM_CREATE) && m_UVCache[uvSetIndex])
+        {
+            return true;
+        }
 
-            // If the cache doesn't exist yet, allocate memory for it
-            if (!m_UVCache[uvSetIndex])
-            {
-                m_UVCache[uvSetIndex] = AllocateMeshData<Vec2>(m_nVerts);
-            }
+        // If the cache doesn't exist yet, allocate memory for it
+        if (!m_UVCache[uvSetIndex])
+        {
+            m_UVCache[uvSetIndex] = AllocateMeshData<Vec2>(m_nVerts);
+        }
 
-            if (m_UVCache[uvSetIndex])
+        if (m_UVCache[uvSetIndex])
+        {
+            // If the new or existing cache needs to be updated, fill it with the source data
+            if (flags == FSL_SYSTEM_UPDATE || (flags & FSL_READ))
             {
-                // If the new or existing cache needs to be updated, fill it with the source data
-                if (flags == FSL_SYSTEM_UPDATE || (flags & FSL_READ))
+                source += offset;
+
+                for (uint32 i = 0; i < m_nVerts; i++)
                 {
-                    source += offset;
-
-                    for (uint32 i = 0; i < m_nVerts; i++)
-                    {
-                        Vec2f16* pVSrc = (Vec2f16*)source;
-                        m_UVCache[uvSetIndex][i] = pVSrc->ToVec2();
-                        source += sourceStride;
-                    }
+                    Vec2f16* pVSrc = (Vec2f16*)source;
+                    m_UVCache[uvSetIndex][i] = pVSrc->ToVec2();
+                    source += sourceStride;
                 }
-                return true;
             }
+            return true;
         }
     }
     return false;
@@ -2450,10 +2448,9 @@ void CRenderMesh::BuildAdjacency(const byte* pVerts, const AZ::Vertex::Format& v
     uint stride = vertexFormat.GetStride();
     uint positionOffset = 0;
     vertexFormat.TryCalculateOffset(positionOffset, AZ::Vertex::AttributeUsage::Position);
-    uint positionByteLength = vertexFormat.GetAttributesByUsage(AZ::Vertex::AttributeUsage::Position).front().GetByteLength();
     uint texCoordOffset = 0;
     vertexFormat.TryCalculateOffset(texCoordOffset, AZ::Vertex::AttributeUsage::TexCoord);
-    uint texCoordByteLength = vertexFormat.GetAttributesByUsage(AZ::Vertex::AttributeUsage::TexCoord).front().GetByteLength();
+    uint texCoordByteLength = vertexFormat.GetAttributeByteLength(AZ::Vertex::AttributeUsage::TexCoord);
 
     // compute how many unique vertices are there, also setup links from each vertex to master vertex
     std::vector<int> arrLinkToMaster;

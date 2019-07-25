@@ -29,7 +29,7 @@ def build(bld):
         win_profile_dedicated_uselib = ['AWS_GAMELIFT_SERVER_SHARED'],
         win_performance_dedicated_uselib = ['AWS_GAMELIFT_SERVER_STATIC'],
         win_release_dedicated_uselib = ['AWS_GAMELIFT_SERVER_STATIC'],
-        win_lib          = ['gdi32', 'Winhttp', 'Ws2_32', 'mswsock'],
+        win_lib          = ['gdi32', 'Winhttp', 'Ws2_32', 'mswsock','crypt32'],
         win_defines      = ['NET_SUPPORT_SECURE_SOCKET_DRIVER=1'],
 
         linux_defines    = ['NET_SUPPORT_SECURE_SOCKET_DRIVER=1'],

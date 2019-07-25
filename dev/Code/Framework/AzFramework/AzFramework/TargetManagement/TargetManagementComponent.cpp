@@ -364,6 +364,7 @@ namespace AzFramework
         m_stopRequested = false;
         AZStd::thread_desc td;
         td.m_name = "TargetManager Thread";
+        td.m_cpuId = AFFINITY_MASK_USERTHREADS;
         m_threadHandle = AZStd::thread(AZStd::bind(&TargetManagementComponent::TickThread, this), &td);
     }
 
@@ -401,7 +402,7 @@ namespace AzFramework
                 ->Field("m_flags", &TargetInfo::m_flags)
                 ;
 
-            serializeContext->Class<TargetManagementSettings, AZ::UserSettings>()
+            serializeContext->Class<TargetManagementSettings>()
                 ->Field("Hub", &TargetManagementSettings::m_neighborhoodName)
                 ->Field("HubPort", &TargetManagementSettings::m_targetPort)
                 ->Field("Name", &TargetManagementSettings::m_persistentName)

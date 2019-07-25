@@ -2404,7 +2404,7 @@ namespace AzFramework
                 // 
                 if ((pos = inout.find(parentDirToken)) != AZStd::string::npos)
                 {
-#if defined(AZ_TRAIT_OS_USE_WINDOWS_FILE_PATHS)
+#if AZ_TRAIT_OS_USE_WINDOWS_FILE_PATHS
                     // Attempt to get a drive letter from the path. If this is the root on a win based file system, then 
                     // a drive letter will be returned, and we wont collapse beyond this point. Otherwise, we wont collapse beyond
                     // the beginning of the path.
@@ -2415,7 +2415,7 @@ namespace AzFramework
                     // For posix-based systems, starting with a '/' will represent an absolute path. Also, 
                     size_t startingPos = inout.find_first_not_of(AZ_CORRECT_FILESYSTEM_SEPARATOR);
                     startingPos = (startingPos != AZStd::string::npos && startingPos != 0) ? startingPos - 1 : 0;
-#endif // defined(AZ_TRAIT_OS_USE_WINDOWS_FILE_PATHS)
+#endif // AZ_TRAIT_OS_USE_WINDOWS_FILE_PATHS
 
                     while ((pos != AZStd::string::npos) && (pos >= startingPos))
                     {

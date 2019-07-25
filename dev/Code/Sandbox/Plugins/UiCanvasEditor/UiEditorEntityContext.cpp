@@ -341,6 +341,27 @@ void UiEditorEntityContext::DeleteElements(AzToolsFramework::EntityIdList elemen
         QTreeWidgetItemRawPtrQList selection = hierarchy->selectedItems();
         EntityHelpers::EntityIdList selectedEntities = SelectionHelpers::GetSelectedElementIds(hierarchy, selection, false);
 
+        // Make sure elements still exist. There is a situation related to "Push to Slice" where an
+        // element to be deleted may no longer exist. This occurs if a new child slice instance is
+        // pushed to its parent slice, then "undo" is performed which brings back the child instance
+        // that was deleted during the "Push to Slice" process, and then the recovered child instance
+        // is pushed to its parent slice again
+        elements.erase(
+            AZStd::remove_if(
+                elements.begin(), elements.end(),
+                [](AZ::EntityId entityId)
+                {
+                    AZ::Entity* entity = nullptr;
+                    EBUS_EVENT_RESULT(entity, AZ::ComponentApplicationBus, FindEntity, entityId);
+                    return !entity;
+                }),
+            elements.end());
+
+        if (elements.empty())
+        {
+            return;
+        }
+
         // Use an undoable command to delete the entities
         // The way the command is implemented depends upon selecting the items first
         HierarchyHelpers::SetSelectedItems(hierarchy, &elements);
@@ -475,7 +496,7 @@ void UiEditorEntityContext::OnSlicePreInstantiate(const AZ::Data::AssetId& slice
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void UiEditorEntityContext::OnSliceInstantiated(const AZ::Data::AssetId& sliceAssetId, const AZ::SliceComponent::SliceInstanceAddress& sliceAddress)
 {
-    const AzFramework::SliceInstantiationTicket& ticket = *AzFramework::SliceInstantiationResultBus::GetCurrentBusId();
+    const AzFramework::SliceInstantiationTicket ticket = *AzFramework::SliceInstantiationResultBus::GetCurrentBusId();
 
     // If we got here by creating a new slice then we have extra work to do (deleting the old entities etc)
     AZ::Entity* insertBefore = nullptr;
@@ -620,7 +641,7 @@ void UiEditorEntityContext::OnSliceInstantiated(const AZ::Data::AssetId& sliceAs
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void UiEditorEntityContext::OnSliceInstantiationFailed(const AZ::Data::AssetId& sliceAssetId)
 {
-    const AzFramework::SliceInstantiationTicket& ticket = *AzFramework::SliceInstantiationResultBus::GetCurrentBusId();
+    const AzFramework::SliceInstantiationTicket ticket = *AzFramework::SliceInstantiationResultBus::GetCurrentBusId();
 
     AzFramework::SliceInstantiationResultBus::MultiHandler::BusDisconnect(ticket);
 

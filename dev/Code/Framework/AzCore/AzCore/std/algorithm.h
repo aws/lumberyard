@@ -38,8 +38,93 @@ namespace AZStd
     template<class T>
     T   max AZ_PREVENT_MACRO_SUBSTITUTION (const T& left, const T& right) { return (left > right) ? left : right; }
 
+    template<class T, class Compare>
+    pair<T, T>   minmax AZ_PREVENT_MACRO_SUBSTITUTION (const T& left, const T& right, Compare comp) { return comp(right, left) ? AZStd::make_pair(right, left) : AZStd::make_pair(left, right); }
+
     template<class T>
-    pair<T, T>   minmax AZ_PREVENT_MACRO_SUBSTITUTION (const T& left, const T& right) { return pair<T, T>((left < right) ? left : right, (left > right) ? left : right); }
+    pair<T, T>   minmax AZ_PREVENT_MACRO_SUBSTITUTION (const T& left, const T& right) { return AZStd::minmax(left, right, AZStd::less<T>()); }
+
+    /*
+    Finds the smallest and greatest element in the range of [first, last)
+    returns a pair consisting of an iterator to the smallest element in .first and an iterator to the largest element in .second.
+    If several elements are equivalent to the smallest element it returns the first such element
+    If several elements are equivalent to the greatest element it returns the last such element
+    */
+    template<class ForwardIt, class Compare>
+    pair<ForwardIt, ForwardIt> minmax_element(ForwardIt first, ForwardIt last, Compare comp)
+    {
+        pair<ForwardIt, ForwardIt> result(first, first);
+        // Check for 0 elements in iterator range and return a pair of (first, first)
+        if (first == last)
+        {
+            return result;
+        }
+
+        while (++first != last)
+        {
+            ForwardIt next = first;
+            // 1 element left to iterate
+            if (++next == last)
+            {
+                if (comp(*first, *result.first))
+                {
+                    result.first = first;
+                }
+                else if (!comp(*first, *result.second))
+                {
+                    result.second = first;
+                }
+            }
+            // 2+ elements left to iterate
+            else
+            {
+                if (comp(*next, *first))
+                {
+                    if (comp(*next, *result.first))
+                    {
+                        result.first = next;
+                    }
+                    if (!comp(*first, *result.second))
+                    {
+                        result.second = first;
+                    }
+                }
+                else
+                {
+                    if (comp(*first, *result.first))
+                    {
+                        result.first = first;
+                    }
+                    if (!comp(*next, *result.second))
+                    {
+                        result.second = next;
+                    }
+                    
+                }
+            }
+        }
+
+        return result;
+    }
+
+    template<class ForwardIt>
+    pair<ForwardIt, ForwardIt> minmax_element(ForwardIt first, ForwardIt last)
+    {
+        return AZStd::minmax_element(first, last, AZStd::less<typename iterator_traits<ForwardIt>::value_type>());
+    }
+
+    template<class T, class Compare>
+    pair<T, T> minmax AZ_PREVENT_MACRO_SUBSTITUTION (std::initializer_list<T> ilist, Compare comp)
+    {
+        auto minMaxPair = AZStd::minmax_element(ilist.begin(), ilist.end(), comp);
+        return AZStd::make_pair(*minMaxPair.first, *minMaxPair.second);
+    }
+
+    template<class T>
+    pair<T, T> minmax AZ_PREVENT_MACRO_SUBSTITUTION (std::initializer_list<T> ilist)
+    {
+        return AZStd::minmax(ilist, AZStd::less<T>());
+    }
     
     template<class T>
     T   clamp(const T& val, const T& lower, const T& upper) { return GetMin(upper, GetMax(val, lower)); }

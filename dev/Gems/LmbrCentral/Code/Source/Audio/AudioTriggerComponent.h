@@ -62,6 +62,7 @@ namespace LmbrCentral
 
         static void GetDependentServices(AZ::ComponentDescriptor::DependencyArrayType& dependent)
         {
+            dependent.push_back(AZ_CRC("AudioPreloadService", 0x20c917d8));
         }
 
         static void GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided)

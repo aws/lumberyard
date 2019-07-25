@@ -170,6 +170,7 @@ struct IPlayerProfileManager
     virtual bool GetUserInfo(int index, IPlayerProfileManager::SUserInfo& outInfo) = 0;
     virtual bool LoginUser(const char* userId, bool& bOutFirstTime) = 0;
     virtual bool LogoutUser(const char* userId) = 0;
+    virtual bool IsUserSignedIn(const char* userId, unsigned int& outUserIndex) = 0;
 
     virtual int  GetProfileCount(const char* userId) = 0;
     virtual bool GetProfileInfo(const char* userId, int index, IPlayerProfileManager::SProfileDescription& outInfo) = 0;

@@ -39,8 +39,11 @@ def build(bld):
         includes        = ['.',
                            bld.Path('Code/CryEngine/CrySoundSystem/Common') ],
         libpath         = [bld.Path('Code/Tools/CryCommonTools') ],
+        
         defines         = ['USE_CRY_NEW_AND_DELETE'],
-
+        
+        restricted_script  = 'update_restricted_parameters',
+        
         # Testing
         test_all_file_list = ['audioimplnosound_test.waf_files'],
     )

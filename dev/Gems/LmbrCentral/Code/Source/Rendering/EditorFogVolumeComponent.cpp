@@ -114,7 +114,12 @@ namespace LmbrCentral
 
     void EditorFogVolumeComponent::OnTransformChanged(const AZ::Transform& local, const AZ::Transform& world)
     {
-        RefreshFog();
+        // Entities transform component calls OnTransformChanged before this component is activated
+        // This only happens during undo operations so we guard against that in the Editor component
+        if (m_fogVolume.GetRenderNode())
+        {
+            RefreshFog();
+        }
     }
 
     void EditorFogVolumeComponent::OnShapeChanged(ShapeComponentNotifications::ShapeChangeReasons changeReason)

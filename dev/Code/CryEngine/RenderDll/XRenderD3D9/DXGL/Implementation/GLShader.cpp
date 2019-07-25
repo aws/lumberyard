@@ -1153,6 +1153,7 @@ namespace NCryOpenGL
 
             if (!VerifyProgramStatus(pPipeline->m_uName, GL_LINK_STATUS))
             {
+                CryLogAlways("Shader did not link properly !! ");
                 return false;
             }
         }

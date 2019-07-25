@@ -27,7 +27,7 @@
 #include <AssetBuilderComponent.h>
 #include <AssetBuilderInfo.h>
 #include <AzFramework/API/BootstrapReaderBus.h>
-#include <AZCore/Memory/AllocatorManager.h>
+#include <AzCore/Memory/AllocatorManager.h>
 
 // Command-line parameter options:
 static const char* const s_paramHelp = "help"; // Print help information.
@@ -43,6 +43,7 @@ static const char* const s_paramOutput = "output"; // For non-resident mode, ful
 static const char* const s_paramDebug = "debug"; // Debug mode for the create and process job of the specified file.
 static const char* const s_paramDebugCreate = "debug_create"; // Debug mode for the create job of the specified file.
 static const char* const s_paramDebugProcess = "debug_process"; // Debug mode for the process job of the specified file.
+static const char* const s_paramPlatformTags = "tags"; // Additional list of tags to add platform tag list.
 
 // Task modes:
 static const char* const s_taskResident = "resident"; // stays up and running indefinitely, accepting jobs via network connection
@@ -73,6 +74,7 @@ void AssetBuilderComponent::PrintHelp()
     AZ_TracePrintf("Help", "  Example: -%s Objects\\Tutorials\\shapes.fbx\n", s_paramDebug);
     AZ_TracePrintf("Help", "%s - Debug mode for the create job of the specified file.\n", s_paramDebugCreate);
     AZ_TracePrintf("Help", "%s - Debug mode for the process job of the specified file.\n", s_paramDebugProcess);
+    AZ_TracePrintf("Help", "%s - Additional tags to add to the debug platform for job processing. One tag can be supplied per option\n", s_paramPlatformTags);
 }
 
 bool AssetBuilderComponent::IsInDebugMode(const AzFramework::CommandLine& commandLine)
@@ -392,6 +394,22 @@ bool AssetBuilderComponent::RunDebugTask(AZStd::string&& debugFile, bool runCrea
         AzFramework::StringFunc::Path::Join(binDir.c_str(), "Debug", baseTempDirPath);
         AzFramework::StringFunc::Path::Join(baseTempDirPath.c_str(), fileName.c_str(), baseTempDirPath);
     }
+
+    // Default tags for the debug task are "tools" and "debug"
+    // Additional tags are parsed from command line parameters
+    AZStd::unordered_set<AZStd::string> platformTags{"tools", "debug"};
+    {
+        const AzFramework::CommandLine* commandLine = nullptr;
+        AzFramework::ApplicationRequests::Bus::BroadcastResult(commandLine, &AzFramework::ApplicationRequests::GetCommandLine);
+        if (commandLine)
+        {
+            size_t tagSwitchSize = commandLine->GetNumSwitchValues(s_paramPlatformTags);
+            for (int tagIndex = 0; tagIndex < tagSwitchSize; ++tagIndex)
+            {
+                platformTags.emplace(commandLine->GetSwitchValue(s_paramPlatformTags, tagIndex));
+            }
+        }
+    }
     auto* fileIO = AZ::IO::FileIOBase::GetInstance();
 
     for (auto& it : m_assetBuilderDescMap)
@@ -411,7 +429,7 @@ bool AssetBuilderComponent::RunDebugTask(AZStd::string&& debugFile, bool runCrea
         AZStd::vector<AssetBuilderSDK::PlatformInfo> enabledDebugPlatformInfos =
         {
             {
-                "debug platform", {"tools", "debug"}
+                "debug platform", platformTags
             }
         };
 
@@ -476,6 +494,7 @@ bool AssetBuilderComponent::RunDebugTask(AZStd::string&& debugFile, bool runCrea
             processRequest.m_tempDirPath = processJobTempDirPath;
             processRequest.m_jobId = 0;
             processRequest.m_builderGuid = builder->m_busId;
+            processRequest.m_platformInfo.m_tags = platformTags;
             AZ_TraceContext("Source", debugFile);
 
             if (jobDescriptions.empty())

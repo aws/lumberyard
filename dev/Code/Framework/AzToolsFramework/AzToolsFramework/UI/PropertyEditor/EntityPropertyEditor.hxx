@@ -417,6 +417,9 @@ namespace AzToolsFramework
         bool HandleDropForComponentAssets(QDropEvent* event);
         bool HandleDropForAssetBrowserEntries(QDropEvent* event);
         bool HandleDropForComponentReorder(QDropEvent* event);
+        bool CanDropForComponentTypes(const QMimeData* mimeData) const;
+        bool CanDropForComponentAssets(const QMimeData* mimeData) const;
+        bool CanDropForAssetBrowserEntries(const QMimeData* mimeData) const;
         AZStd::vector<AZ::s32> ExtractComponentEditorIndicesFromMimeData(const QMimeData* mimeData) const;
         ComponentEditorVector GetComponentEditorsFromIndices(const AZStd::vector<AZ::s32>& indices) const;
         ComponentEditor* GetComponentEditorsFromIndex(const AZ::s32 index) const;

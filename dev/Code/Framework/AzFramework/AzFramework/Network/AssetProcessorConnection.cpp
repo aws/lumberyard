@@ -66,7 +66,7 @@ namespace AzFramework
             : m_socket(AZ_SOCKET_INVALID)
             , m_connectionState(EConnectionState::Disconnected)
             , m_port(0)
-            , m_sendEvent("APConn::m_sendEvent")
+            , m_sendEventNotEmpty()
         {
             m_requestSerial = 1;
             m_unitTesting = false;
@@ -580,7 +580,7 @@ namespace AzFramework
 
         void AssetProcessorConnection::JoinSendRecvThreads()
         {
-            JoinThread(m_sendThread, &m_sendEvent);
+            JoinThread(m_sendThread, &m_sendEventNotEmpty);
             JoinThread(m_recvThread);
         }
 
@@ -600,7 +600,7 @@ namespace AzFramework
             thread.m_thread = AZStd::thread(thread.m_main, &thread.m_desc);
         }
 
-        void AssetProcessorConnection::JoinThread(ThreadState& thread, AZStd::semaphore* event /* = nullptr */)
+        void AssetProcessorConnection::JoinThread(ThreadState& thread, AZStd::condition_variable* wakeUpCondition /* = nullptr */)
         {
             AZStd::lock_guard<AZStd::recursive_mutex> locker(thread.m_mutex);
             // If we are in one of the worker threads, we can safely assume that the thread will exit
@@ -609,9 +609,9 @@ namespace AzFramework
             {
                 // Signal the thread that it's join time
                 thread.m_join = true;
-                if (event)
+                if (wakeUpCondition)
                 {
-                    event->release(); // this will wake up the thread and it should exit immediately
+                    wakeUpCondition->notify_all(); // this will wake up the thread and it should exit immediately
                     thread.m_thread.join();
                 }
                 else
@@ -797,41 +797,47 @@ namespace AzFramework
 
         void AssetProcessorConnection::SendThread()
         {
+            auto wakeUpConditionFunc = [&]() -> bool
+            {
+                return m_sendThread.m_join || !m_sendQueue.empty();
+            };
+
             while (!m_sendThread.m_join)
             {
+                decltype(m_sendQueue) localSendQueue;
                 // Block until message in queue or awakened by joining
-                m_sendEvent.acquire();
+                {
+                    AZStd::unique_lock<AZStd::mutex> lock(m_sendQueueMutex);
+                    m_sendEventNotEmpty.wait(lock, wakeUpConditionFunc);
 
-                if (m_sendThread.m_join || m_sendQueue.empty())
+                    localSendQueue.swap(m_sendQueue);
+                }
+
+                if (m_sendThread.m_join)
                 {
                     continue;
                 }
 
-                MessageBuffer outgoingBuffer;
-                // Grab mutex, get first message, unlock to minimize blocking
+                for (const MessageBuffer& outgoingBuffer : localSendQueue)
                 {
-                    AZStd::lock_guard<AZStd::mutex> lock(m_sendQueueMutex);
-                    outgoingBuffer.swap(m_sendQueue.front());
-                    m_sendQueue.pop();
-                }
+                    DebugMessage("AssetProcessorConnection::SendThread: Sending %p", outgoingBuffer.data());
 
-                DebugMessage("AssetProcessorConnection::SendThread: Sending %p", outgoingBuffer.data());
-
-                // Send message
-                AZ::u32 bytesSent = 0;
-                const AZ::u32 bytesToSend = aznumeric_caster(outgoingBuffer.size());
-                do
-                {
-                    int sendResult = AZ::AzSock::Send(m_socket, outgoingBuffer.data() + bytesSent, bytesToSend - bytesSent, 0);
-                    if (AZ::AzSock::SocketErrorOccured(sendResult))
+                    // Send message
+                    AZ::u32 bytesSent = 0;
+                    const AZ::u32 bytesToSend = aznumeric_caster(outgoingBuffer.size());
+                    do
                     {
-                        // Error sending, abort
-                        DebugMessage("AssetProcessorConnection::SendThread - AZ::AzSock::send returned an error %d, skipping this message", sendResult);
-                        StartDisconnecting();
-                        return;
-                    }
-                    bytesSent += sendResult;
-                } while (bytesSent < bytesToSend);
+                        int sendResult = AZ::AzSock::Send(m_socket, outgoingBuffer.data() + bytesSent, bytesToSend - bytesSent, 0);
+                        if (AZ::AzSock::SocketErrorOccured(sendResult))
+                        {
+                            // Error sending, abort
+                            DebugMessage("AssetProcessorConnection::SendThread - AZ::AzSock::send returned an error %d, skipping this message", sendResult);
+                            StartDisconnecting();
+                            return;
+                        }
+                        bytesSent += sendResult;
+                    } while (bytesSent < bytesToSend);
+                }
             }
         }
 
@@ -1029,11 +1035,11 @@ namespace AzFramework
             // Lock mutex and add to queue
             {
                 AZStd::lock_guard<AZStd::mutex> lock(m_sendQueueMutex);
-                m_sendQueue.push(AZStd::move(messageBuffer));
+                m_sendQueue.push_back(AZStd::move(messageBuffer));
             }
 
             // Release thread to do work
-            m_sendEvent.release();
+            m_sendEventNotEmpty.notify_one();
         }
 
         SocketConnection::TMessageCallbackHandle AssetProcessorConnection::AddMessageHandler(AZ::u32 typeId, SocketConnection::TMessageCallback callback)

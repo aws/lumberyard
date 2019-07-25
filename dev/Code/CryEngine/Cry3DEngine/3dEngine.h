@@ -644,6 +644,7 @@ public:
     virtual bool InitLevelForEditor(const char* szFolderName, const char* szMissionName);
     virtual bool LevelLoadingInProgress();
     virtual void DisplayInfo(float& fTextPosX, float& fTextPosY, float& fTextStepY, const bool bEnhanced);
+    virtual void DisplayMemoryStatistics();
     virtual void SetupDistanceFog();
     virtual IStatObj* LoadStatObjUnsafeManualRef(const char* szFileName, const char* szGeomName = NULL, /*[Out]*/ IStatObj::SSubObject** ppSubObject = NULL, bool bUseStreaming = true, unsigned long nLoadingFlags = 0);
     virtual _smart_ptr<IStatObj> LoadStatObjAutoRef(const char* szFileName, const char* szGeomName = NULL, /*[Out]*/ IStatObj::SSubObject** ppSubObject = NULL, bool bUseStreaming = true, unsigned long nLoadingFlags = 0);

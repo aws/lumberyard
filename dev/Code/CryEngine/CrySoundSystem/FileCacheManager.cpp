@@ -1,4 +1,4 @@
-/*
+﻿/*
 * All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
 * its licensors.
 *
@@ -49,7 +49,7 @@ namespace Audio
     ///////////////////////////////////////////////////////////////////////////////////////////////////
     void CFileCacheManager::Update()
     {
-        // Not used for now as we do not queue entries!
+        UpdatePreloadRequestsStatus();
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -134,7 +134,7 @@ namespace Audio
                         // This file entry is upgraded from "manual loading" to "auto loading" but needs a reset to "manual loading" again!
                         exisitingAudioFileEntry->m_flags.AddFlags(eAFF_NEEDS_RESET_TO_MANUAL_LOADING);
                         exisitingAudioFileEntry->m_flags.ClearFlags(eAFF_USE_COUNTED);
-                        g_audioLogger.Log(eALT_ALWAYS, "Upgraded file entry from 'Manual' to 'Auto' loading: %s", exisitingAudioFileEntry->m_filePath.c_str());
+                        g_audioLogger.Log(eALT_COMMENT, "Upgraded file entry from 'Manual' to 'Auto' loading: %s", exisitingAudioFileEntry->m_filePath.c_str());
                     }
 
                     // Entry already exists, free the memory!
@@ -168,7 +168,7 @@ namespace Audio
             {
                 audioFileEntry->m_flags.AddFlags(eAFF_USE_COUNTED);
                 audioFileEntry->m_flags.ClearFlags(eAFF_NEEDS_RESET_TO_MANUAL_LOADING);
-                g_audioLogger.Log(eALT_ALWAYS, "Downgraded file entry from 'Auto' to 'Manual' loading: %s", audioFileEntry->m_filePath.c_str());
+                g_audioLogger.Log(eALT_COMMENT, "Downgraded file entry from 'Auto' to 'Manual' loading: %s", audioFileEntry->m_filePath.c_str());
             }
         }
 
@@ -211,19 +211,28 @@ namespace Audio
         bool fullFailure = true;
         CATLPreloadRequest* const preloadRequest = stl::find_in_map(m_preloadRequests, preloadRequestID, nullptr);
 
-        if (preloadRequest && !preloadRequest->m_cFileEntryIDs.empty() && (!autoLoadOnly || (autoLoadOnly && preloadRequest->m_bAutoLoad)))
+        if (preloadRequest)
         {
-            fullSuccess = true;
-            for (auto fileId : preloadRequest->m_cFileEntryIDs)
+            if (!preloadRequest->m_cFileEntryIDs.empty() && (!autoLoadOnly || (autoLoadOnly && preloadRequest->m_bAutoLoad)))
             {
-                CATLAudioFileEntry* const audioFileEntry = stl::find_in_map(m_audioFileEntries, fileId, nullptr);
-
-                if (audioFileEntry)
+                fullSuccess = true;
+                for (auto fileId : preloadRequest->m_cFileEntryIDs)
                 {
-                    const bool tempResult = TryCacheFileCacheEntryInternal(audioFileEntry, fileId, loadSynchronously);
-                    fullSuccess = (fullSuccess && tempResult);
-                    fullFailure = (fullFailure && !tempResult);
+                    CATLAudioFileEntry* const audioFileEntry = stl::find_in_map(m_audioFileEntries, fileId, nullptr);
+
+                    if (audioFileEntry)
+                    {
+                        const bool tempResult = TryCacheFileCacheEntryInternal(audioFileEntry, fileId, loadSynchronously);
+                        fullSuccess = (fullSuccess && tempResult);
+                        fullFailure = (fullFailure && !tempResult);
+                    }
                 }
+            }
+
+            if (fullSuccess && preloadRequest->m_allLoaded)
+            {
+                // Notify to handlers that the preload is already loaded/cached.
+                AudioPreloadNotificationBus::Event(preloadRequestID, &AudioPreloadNotificationBus::Events::OnAudioPreloadCached);
             }
         }
 
@@ -237,19 +246,28 @@ namespace Audio
         bool fullFailure = true;
         CATLPreloadRequest* const preloadRequest = stl::find_in_map(m_preloadRequests, preloadRequestID, nullptr);
 
-        if (preloadRequest && !preloadRequest->m_cFileEntryIDs.empty())
+        if (preloadRequest)
         {
-            fullSuccess = true;
-            for (auto fileId : preloadRequest->m_cFileEntryIDs)
+            if (!preloadRequest->m_cFileEntryIDs.empty())
             {
-                CATLAudioFileEntry* const audioFileEntry = stl::find_in_map(m_audioFileEntries, fileId, nullptr);
-
-                if (audioFileEntry)
+                fullSuccess = true;
+                for (auto fileId : preloadRequest->m_cFileEntryIDs)
                 {
-                    const bool tempResult = UncacheFileCacheEntryInternal(audioFileEntry, true);
-                    fullSuccess = (fullSuccess && tempResult);
-                    fullFailure = (fullFailure && !tempResult);
+                    CATLAudioFileEntry* const audioFileEntry = stl::find_in_map(m_audioFileEntries, fileId, nullptr);
+
+                    if (audioFileEntry)
+                    {
+                        const bool tempResult = UncacheFileCacheEntryInternal(audioFileEntry, true);
+                        fullSuccess = (fullSuccess && tempResult);
+                        fullFailure = (fullFailure && !tempResult);
+                    }
                 }
+            }
+
+            if (fullSuccess && !preloadRequest->m_allLoaded)
+            {
+                // Notify to handlers the the preload is already unloaded.
+                AudioPreloadNotificationBus::Event(preloadRequestID, &AudioPreloadNotificationBus::Events::OnAudioPreloadUncached);
             }
         }
 
@@ -307,7 +325,7 @@ namespace Audio
             }
             else if (audioFileEntry->m_flags.AreAnyFlagsActive(eAFF_LOADING | eAFF_MEMALLOCFAIL))
             {
-                g_audioLogger.Log(eALT_ALWAYS, "Trying to remove a loading or mem-failed file cache entry '%s'", audioFileEntry->m_filePath.c_str());
+                g_audioLogger.Log(eALT_COMMENT, "Trying to remove a loading or mem-failed file cache entry '%s'", audioFileEntry->m_filePath.c_str());
 
                 // Reset the entry in case it's still loading or was a memory allocation fail.
                 UncacheFile(audioFileEntry);
@@ -380,6 +398,7 @@ namespace Audio
             bool displayGlobals = ((g_audioCVars.m_nFileCacheManagerDebugFilter & eAFCMDF_GLOBALS) != 0);
             bool displayLevels = ((g_audioCVars.m_nFileCacheManagerDebugFilter & eAFCMDF_LEVEL_SPECIFICS) != 0);
             bool displayUseCounted = ((g_audioCVars.m_nFileCacheManagerDebugFilter & eAFCMDF_USE_COUNTED) != 0);
+            bool displayLoaded = ((g_audioCVars.m_nFileCacheManagerDebugFilter & eAFCMDF_LOADED) != 0);
 
             for (auto& audioFileEntryPair : m_audioFileEntries)
             {
@@ -388,8 +407,9 @@ namespace Audio
                 bool isGlobal = (audioFileEntry->m_dataScope == eADS_GLOBAL);
                 bool isLevel = (audioFileEntry->m_dataScope == eADS_LEVEL_SPECIFIC);
                 bool isUseCounted = audioFileEntry->m_flags.AreAnyFlagsActive(eAFF_USE_COUNTED);
+                bool isLoaded = audioFileEntry->m_flags.AreAnyFlagsActive(eAFF_CACHED);
 
-                if (displayAll || (displayGlobals && isGlobal) || (displayLevels && isLevel) || (displayUseCounted && isUseCounted))
+                if (displayAll || (displayGlobals && isGlobal) || (displayLevels && isLevel) || (displayUseCounted && isUseCounted) || (displayLoaded && isLoaded))
                 {
                     if (audioFileEntry->m_flags.AreAnyFlagsActive(eAFF_LOADING))
                     {
@@ -403,7 +423,7 @@ namespace Audio
                     {
                         color = green;
                     }
-                    else if (audioFileEntry->m_flags.AreAnyFlagsActive(eAFF_NOTCACHED))
+                    else if (!audioFileEntry->m_flags.AreAnyFlagsActive(eAFF_CACHED))
                     {
                         color = darkish;
                     }
@@ -439,7 +459,7 @@ namespace Audio
                         kiloBytes = true;
                     }
 
-                    // "NameOfFile.ext (230 KiB) [2]"
+                    // Format: "relative/path/filename.ext (230 KiB) [2]"
                     displayString.Format("%s (%" PRISIZE_T " %s) [%" PRISIZE_T "]",
                         audioFileEntry->m_filePath.c_str(),
                         fileSize,
@@ -530,12 +550,14 @@ namespace Audio
 
                 AudioSystemImplementationRequestBus::Broadcast(&AudioSystemImplementationRequestBus::Events::RegisterInMemoryFile, &fileEntryInfo);
                 success = true;
+
+                g_audioLogger.Log(eALT_COMMENT, "FileCacheManager - File Cached: '%s'\n", fileEntryInfo.sFileName);
             }
             else if (error == ERROR_USER_ABORT)
             {
                 // We abort this stream only during entry Uncache().
                 // Therefore there's no need to call Uncache() during stream abort with error code ERROR_USER_ABORT.
-                g_audioLogger.Log(eALT_ALWAYS, "AFCM: User aborted stream for file '%s' (error: %u)", audioFileEntry->m_filePath.c_str(), error);
+                g_audioLogger.Log(eALT_COMMENT, "AFCM: User aborted stream for file '%s' (error: %u)", audioFileEntry->m_filePath.c_str(), error);
             }
             else
             {
@@ -548,29 +570,70 @@ namespace Audio
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
+    void CFileCacheManager::UpdatePreloadRequestsStatus()
+    {
+        // Run through the list of preload requests and their fileEntryIDs.
+        // Check the fileEntries for the CACHED flags and accumulate the 'allLoaded' and 'anyLoaded' status of each preload request.
+        // If the result is different than what is stored on the preload request, update it and send a notification of
+        // either cached or uncached.
+        for (auto& preloadPair : m_preloadRequests)
+        {
+            CATLPreloadRequest* preloadRequest = preloadPair.second;
+            bool wasLoaded = preloadRequest->m_allLoaded;
+            bool allLoaded = !preloadRequest->m_cFileEntryIDs.empty();
+            bool anyLoaded = false;
+            for (auto fileId : preloadRequest->m_cFileEntryIDs)
+            {
+                bool cached = false;
+                auto iter = m_audioFileEntries.find(fileId);
+                if (iter != m_audioFileEntries.end())
+                {
+                    cached = iter->second->m_flags.AreAnyFlagsActive(eAFF_CACHED);
+                }
+                allLoaded = (allLoaded && cached);
+                anyLoaded = (anyLoaded || cached);
+            }
+
+            if (allLoaded != wasLoaded && allLoaded)
+            {
+                // Loaded now...
+                preloadRequest->m_allLoaded = allLoaded;
+                AudioPreloadNotificationBus::Event(preloadPair.first, &AudioPreloadNotificationBus::Events::OnAudioPreloadCached);
+            }
+
+            if (anyLoaded != wasLoaded && !anyLoaded)
+            {
+                // Unloaded now...
+                preloadRequest->m_allLoaded = anyLoaded;
+                AudioPreloadNotificationBus::Event(preloadPair.first, &AudioPreloadNotificationBus::Events::OnAudioPreloadUncached);
+            }
+        }
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////
     bool CFileCacheManager::AllocateMemoryBlockInternal(CATLAudioFileEntry* const __restrict audioFileEntry)
     {
         // Must not have valid memory yet.
-        AZ_Assert(!audioFileEntry->m_memoryBlock.get(), "FileCacheManager AllocateMemoryBlockInternal - Memory appears to be set already!");
+        AZ_Assert(!audioFileEntry->m_memoryBlock, "FileCacheManager AllocateMemoryBlockInternal - Memory appears to be set already!");
 
-        if (m_memoryHeap.get())
+        if (m_memoryHeap)
         {
             audioFileEntry->m_memoryBlock.reset(m_memoryHeap->AllocateBlock(audioFileEntry->m_fileSize, audioFileEntry->m_filePath.c_str(), audioFileEntry->m_memoryBlockAlignment));
         }
 
-        if (!audioFileEntry->m_memoryBlock.get())
+        if (!audioFileEntry->m_memoryBlock)
         {
             // Memory block is either full or too fragmented, let's try to throw everything out that can be removed and allocate again.
             TryToUncacheFiles();
 
             // And try again!
-            if (m_memoryHeap.get())
+            if (m_memoryHeap)
             {
                 audioFileEntry->m_memoryBlock.reset(m_memoryHeap->AllocateBlock(audioFileEntry->m_fileSize, audioFileEntry->m_filePath.c_str(), audioFileEntry->m_memoryBlockAlignment));
             }
         }
 
-        return audioFileEntry->m_memoryBlock.get() != nullptr;
+        return (audioFileEntry->m_memoryBlock != nullptr);
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -584,7 +647,7 @@ namespace Audio
             audioFileEntry->m_readStream = nullptr;
         }
 
-        if (audioFileEntry->m_memoryBlock.get() && audioFileEntry->m_memoryBlock->GetData())
+        if (audioFileEntry->m_memoryBlock && audioFileEntry->m_memoryBlock->GetData())
         {
             SATLAudioFileEntryInfo fileEntryInfo;
             fileEntryInfo.nMemoryBlockAlignment = audioFileEntry->m_memoryBlockAlignment;
@@ -594,12 +657,13 @@ namespace Audio
             fileEntryInfo.sFileName = PathUtil::GetFile(audioFileEntry->m_filePath.c_str());
 
             AudioSystemImplementationRequestBus::Broadcast(&AudioSystemImplementationRequestBus::Events::UnregisterInMemoryFile, &fileEntryInfo);
+            g_audioLogger.Log(eALT_COMMENT, "FileCacheManager - File Uncached: '%s'\n", fileEntryInfo.sFileName);
         }
 
         audioFileEntry->m_memoryBlock = nullptr;
         audioFileEntry->m_flags.AddFlags(eAFF_NOTCACHED);
         audioFileEntry->m_flags.ClearFlags(eAFF_CACHED | eAFF_REMOVABLE);
-        AZ_Assert(audioFileEntry->m_useCount == 0, "FileCacheManager UncacheFile - Expected use count of file '%s' to be zero!", audioFileEntry->m_filePath.c_str());
+        AZ_Warning("FileCacheManager", audioFileEntry->m_useCount == 0, "Use-count of file '%s' is non-zero while uncaching it! Use Count: %d", audioFileEntry->m_filePath.c_str(), audioFileEntry->m_useCount);
         audioFileEntry->m_useCount = 0;
 
     #if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
@@ -699,7 +763,7 @@ namespace Audio
         else if (audioFileEntry->m_flags.AreAnyFlagsActive(eAFF_CACHED | eAFF_LOADING))
         {
             // The user should be made aware of it.
-            g_audioLogger.Log(eALT_WARNING, "AFCM: Could not cache '%s' as it is either already loaded or currently loading!", audioFileEntry->m_filePath.c_str());
+            g_audioLogger.Log(eALT_COMMENT, "AFCM: Could not cache '%s' as it is either already loaded or currently loading!", audioFileEntry->m_filePath.c_str());
             success = true;
         }
         else if (audioFileEntry->m_flags.AreAnyFlagsActive(eAFF_NOTFOUND))

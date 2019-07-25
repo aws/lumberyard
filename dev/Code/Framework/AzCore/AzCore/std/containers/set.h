@@ -72,6 +72,8 @@ namespace AZStd
 
         AZ_FORCE_INLINE explicit set(const Compare& comp = Compare(), const Allocator& alloc = Allocator())
             : m_tree(comp, alloc) {}
+        explicit set(const Allocator& alloc)
+            : m_tree(alloc) {}
         template <class InputIterator>
         AZ_FORCE_INLINE set(InputIterator first, InputIterator last, const Compare& comp = Compare(), const Allocator& alloc = Allocator())
             : m_tree(comp, alloc)
@@ -269,6 +271,8 @@ namespace AZStd
 
         AZ_FORCE_INLINE explicit multiset(const Compare& comp = Compare(), const Allocator& alloc = Allocator())
             : m_tree(comp, alloc) {}
+        explicit multiset(const Allocator& alloc)
+            : m_tree(alloc) {}
         template <class InputIterator>
         AZ_FORCE_INLINE multiset(InputIterator first, InputIterator last, const Compare& comp = Compare(), const Allocator& alloc = Allocator())
             : m_tree(comp, alloc)

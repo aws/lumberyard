@@ -334,7 +334,7 @@ Q_SIGNALS:
                 AZ::SerializeContext* serialize = azrtti_cast<AZ::SerializeContext*>(context);
                 if (serialize)
                 {
-                    serialize->Class<SavedState, AZ::UserSettings>()
+                    serialize->Class<SavedState>()
                         ->Version(1)
                         ->Field("m_tabSettings", &SavedState::m_tabSettings);
 

@@ -8,6 +8,11 @@
             "parallel/internal/semaphore_win.h",
             "parallel/internal/thread_win.cpp",
             "parallel/internal/thread_win.h"
+        ],
+        "std/natvis":
+        [
+            "debugger tools/smartdebug/azcore.natvis",
+            "debugger tools/smartdebug/azcore.natstepfilter"
         ]
     }
 }

@@ -2448,8 +2448,8 @@ bool CMergedMeshRenderNode::PrepareRenderMesh(RENDERMESH_UPDATE_TYPE type, int n
             }
         }
 
-        // Editor does not stream instances, so we create spines and/or deformation data on demand here
-        if (gEnv->IsDynamicMergedMeshGenerationEnabled() && header && header->instances)
+        // If this node doesn't support streaming (in-Editor, or dynamic veg), we create spines and/or deformation data on demand here
+        if (!SupportsStreaming() && header && header->instances)
         {
             if (header->procGeom->numSpines)
             {
@@ -2655,7 +2655,11 @@ size_t CMergedMeshRenderNode::RemoveInstance(size_t headerIndex, size_t instance
 
     assert (instanceIndex < header->numSamples);
 
-    std::swap(header->instances[instanceIndex], header->instances[header->numSamples - 1]);
+    // If we've exceeded memory pool limits, we might not have *actual* instances for the vegetation.
+    if (header->instances)
+    {
+        std::swap(header->instances[instanceIndex], header->instances[header->numSamples - 1]);
+    }
 
     if (gEnv->IsDynamicMergedMeshGenerationEnabled() && instanceIndex != header->numSamples - 1)
     {
@@ -2665,7 +2669,7 @@ size_t CMergedMeshRenderNode::RemoveInstance(size_t headerIndex, size_t instance
 
     --header->numSamples;
 
-    if (header->numSamplesAlloc - header->numSamples > 0xff)
+    if ((header->numSamplesAlloc > 0) && (header->numSamplesAlloc - header->numSamples > 0xff))
     {
         pool_resize_list(header->instances, header->numSamplesAlloc -= 0xff, 128);
         if (gEnv->IsDynamicMergedMeshGenerationEnabled())
@@ -2758,6 +2762,9 @@ void CMergedMeshRenderNode::CreateRenderMesh(RENDERMESH_UPDATE_TYPE type, const 
     std::vector<SMMRM>& renderMeshes = m_renderMeshes[type];
     const size_t num_rms = renderMeshes.size();
     m_SizeInVRam = 0;
+
+    uint64 maxVertices = Cry3DEngineBase::GetCVars()->e_MergedMeshesMaxVerticesPerSector;
+    uint64 totalVerticesRendered = 0;
 
     // Prime memory
     for (uintptr_t i = (uintptr_t)&m_groups[0]; i < (uintptr_t)&m_groups[m_nGroups]; i += 128u)
@@ -2874,6 +2881,15 @@ void CMergedMeshRenderNode::CreateRenderMesh(RENDERMESH_UPDATE_TYPE type, const 
         {
             continue;
         }
+
+        if ((totalVerticesRendered + mesh->vertices) > maxVertices)
+        {
+            AZ_Error("MergedMesh", false, "Merged mesh sector exceeded e_MergedMeshesMaxVerticesPerSector.  Portions of the sector won't be rendered.")
+            continue;
+        }
+
+        totalVerticesRendered += mesh->vertices;
+
         size_t k = 0, vertices = 0, indices = 0;
         do
         {
@@ -3205,17 +3221,7 @@ void CMergedMeshRenderNode::Render(const struct SRendParams& EntDrawParams, cons
             break;
         }
         m_State = PREPARED;
-        // In Editor mode, we don't stream so prepared == streamed in or the node contains a dynamic instance
-        // instead of m_hasDynamicInstances, we should really be testing whether or not a merged mesh file exists for this sector
-        // we hould be able to safely stream in legacy, serialized instances while adding dynamic vegetation
-        if (gEnv->IsEditor() || m_hasDynamicInstances)
-        {
-            m_State = STREAMED_IN;
-        }
-        else
-        {
-            break;
-        }
+        break;
     case STREAMED_IN:
         for (signed pass = 0; pass < 2; ++pass)
         {
@@ -3730,12 +3736,6 @@ void CMergedMeshRenderNode::PrintState(float& yPos)
 
 void CMergedMeshRenderNode::StreamOnComplete (IReadStream* pStream, unsigned nError)
 {
-    if (m_State != STREAMING)
-    {
-        CryLogAlways("StreamOnComplete state check failed (%d) (THIS SHOULD NEVER HAPPEN)!\n", m_State);
-        return;
-    }
-
     if (!pStream)
     {
         CryLogAlways("StreamOnComplete stream is NULL\n");
@@ -3753,7 +3753,6 @@ void CMergedMeshRenderNode::StreamOnComplete (IReadStream* pStream, unsigned nEr
         m_pReadStream->FreeTemporaryMemory();
         m_pReadStream = NULL;
     }
-    m_State = STREAMED_IN;
 }
 
 
@@ -3767,13 +3766,22 @@ bool CMergedMeshRenderNode::StreamIn()
     switch (m_State)
     {
     case PREPARED:
-        i = (int)floorf(m_initPos.x * fExtentsRec);
-        j = (int)floorf(m_initPos.y * fExtentsRec);
-        k = (int)floorf(m_initPos.z * fExtentsRec);
-        m_State = STREAMING;
+        if (!SupportsStreaming())
+        {
+            // If we don't support streaming, just jump states to say we've finished streaming.
+            // We should already have the correct instance data in place.
+            m_State = STREAMED_IN;
+        }
+        else
+        {
+            i = (int)floorf(m_initPos.x * fExtentsRec);
+            j = (int)floorf(m_initPos.y * fExtentsRec);
+            k = (int)floorf(m_initPos.z * fExtentsRec);
+            m_State = STREAMING;
 
-        sprintf_s(szFileName, "%s%s\\sector_%d_%d_%d.dat", Get3DEngine()->GetLevelFolder(), COMPILED_MERGED_MESHES_BASE_NAME, i, j, k);
-        m_pReadStream = GetSystem()->GetStreamEngine()->StartRead(eStreamTaskTypeMergedMesh, szFileName, this);
+            sprintf_s(szFileName, "%s%s\\sector_%d_%d_%d.dat", Get3DEngine()->GetLevelFolder(), COMPILED_MERGED_MESHES_BASE_NAME, i, j, k);
+            m_pReadStream = GetSystem()->GetStreamEngine()->StartRead(eStreamTaskTypeMergedMesh, szFileName, this);
+        }
         return true;
     default:
         break;
@@ -3783,6 +3791,12 @@ bool CMergedMeshRenderNode::StreamIn()
 
 bool CMergedMeshRenderNode::StreamOut()
 {
+    // If this node doesn't support streaming, don't do anything on StreamOut requests.
+    if (!SupportsStreaming())
+    {
+        return true;
+    }
+
     switch (m_State)
     {
     case STREAMED_IN:
@@ -4945,8 +4959,6 @@ void CMergedMeshesManager::Update(const SRenderingPassInfo& passInfo)
     m_SpineSize = 0;
 # endif
 
-    const bool allowMergedMeshStreaming = !gEnv->IsDedicated();
-    
     // Update registered particles
     {
         CRYPROFILE_SCOPE_PROFILE_MARKER("MMRMGR: update projectiles");
@@ -4972,7 +4984,7 @@ void CMergedMeshesManager::Update(const SRenderingPassInfo& passInfo)
         m_updateCompletionMergedMeshesManager.WaitForCompletion();
     }
 
-    // Stream in instances up until main memory pool limit
+    // Stream in instances up until main memory pool limit.  For non-streamable nodes, just instantiate regardless of memory.
     {
         CRYPROFILE_SCOPE_PROFILE_MARKER("MMRMGR: streaming");
         float yPos = 8.f;
@@ -5021,10 +5033,6 @@ void CMergedMeshesManager::Update(const SRenderingPassInfo& passInfo)
                 || node->m_State == CMergedMeshRenderNode::DIRTY
                 || node->m_State == CMergedMeshRenderNode::PREPARING)
             {
-                if (allowMergedMeshStreaming && node->StreamedIn())
-                {
-                    node->StreamOut();
-                }
                 continue;
             }
 
@@ -5061,27 +5069,41 @@ void CMergedMeshesManager::Update(const SRenderingPassInfo& passInfo)
             uint32 currentSpineSize = node->SpineCount()* sizeof(SMMRMSpineVtxBase);
             uint32 currentDeformSize = node->DeformCount()* sizeof(SMMRMDeformVertex);
 
-            if (activeSize + currentInstSize < mainMemLimit)
+            if (node->StreamedIn())
             {
-                if (allowMergedMeshStreaming && !node->StreamedIn() && streamedInSize < streamInLimit && streamRequests < maxStreamRequests)
+                // If our node is streamed in and we're past the memory limit, try to stream it out.
+                if (node->SupportsStreaming() && ((activeSize + currentInstSize) >= mainMemLimit))
+                {
+                    node->StreamOut();
+                }
+            }
+            else
+            {
+                // By default, try to stream the node in if it isn't streamed in yet.
+                bool shouldStreamIn = true;
+
+                // If it's a node that supports streaming, only stream it in if it falls within memory limits.
+                if (node->SupportsStreaming())
+                {
+                    if (((activeSize + currentInstSize) >= mainMemLimit) || (streamedInSize >= streamInLimit) || (streamRequests >= maxStreamRequests))
+                    {
+                        shouldStreamIn = false;
+                    }
+                }
+
+                if (shouldStreamIn)
                 {
                     if (node->StreamIn())
                     {
                         streamedInSize += currentInstSize;
                         ++streamRequests;
                     }
-                }
-                activeSize += currentInstSize;
+
+                    activeSize += currentInstSize;
 #if !defined(_RELEASE)
-                m_InstanceSize += currentInstSize;
-                m_SpineSize += currentSpineSize;
+                    m_InstanceSize += currentInstSize;
+                    m_SpineSize += currentSpineSize;
 #endif
-            }
-            else
-            {
-                if (allowMergedMeshStreaming && node->StreamedIn())
-                {
-                    node->StreamOut();
                 }
             }
         }
@@ -5097,7 +5119,7 @@ void CMergedMeshesManager::Update(const SRenderingPassInfo& passInfo)
                 || node->m_State == CMergedMeshRenderNode::DIRTY
                 || node->m_State == CMergedMeshRenderNode::PREPARING)
             {
-                if (allowMergedMeshStreaming)
+                if (node->SupportsStreaming())
                 {
                     node->RemoveSpines();
                 }
@@ -5111,7 +5133,7 @@ void CMergedMeshesManager::Update(const SRenderingPassInfo& passInfo)
 
             if (activeSize + currentSpineSize + currentDeformSize < activeSpineLimit)
             {
-                if (allowMergedMeshStreaming)
+                if (node->SupportsStreaming())
                 {
                     node->ActivateSpines();
                 }
@@ -5119,7 +5141,7 @@ void CMergedMeshesManager::Update(const SRenderingPassInfo& passInfo)
             }
             else
             {
-                if (allowMergedMeshStreaming)
+                if (node->SupportsStreaming())
                 {
                     node->RemoveSpines();
                 }

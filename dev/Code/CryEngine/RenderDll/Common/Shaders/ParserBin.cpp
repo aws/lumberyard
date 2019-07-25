@@ -32,7 +32,7 @@
 
 const char* g_KeyTokens[eT_max];
 TArray<bool> sfxIFDef;
-TArray<bool> sfxIFIgnore;
+
 bool CParserBin::m_bEditable;
 uint32 CParserBin::m_nPlatform;
 AZ::PlatformID CParserBin::m_targetPlatform = AZ::PLATFORM_MAX;
@@ -48,11 +48,33 @@ CParserBin::CParserBin(SShaderBin* pBin)
 {
     m_pCurBinShader = pBin;
     m_pCurShader = NULL;
+    GetISystem()->GetISystemEventDispatcher()->RegisterListener(this);
 }
 CParserBin::CParserBin(SShaderBin* pBin, CShader* pSH)
 {
     m_pCurBinShader = pBin;
     m_pCurShader = pSH;
+    GetISystem()->GetISystemEventDispatcher()->RegisterListener(this);
+}
+
+CParserBin::~CParserBin()
+{
+    sfxIFIgnore.clear();
+    sfxIFDef.clear();
+    GetISystem()->GetISystemEventDispatcher()->RemoveListener(this);
+}
+
+void CParserBin::OnSystemEvent(ESystemEvent event, UINT_PTR wparam, UINT_PTR lparam)
+{
+    switch (event)
+    {
+        case ESYSTEM_EVENT_FULL_SHUTDOWN:
+        {
+            sfxIFIgnore.clear();
+            sfxIFDef.clear();
+        }
+        break;
+    }
 }
 
 uint32 CParserBin::GetCRC32(const char* szStr)

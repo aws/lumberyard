@@ -9,21 +9,43 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #
 
+import sys
+sys.path += '.'
+
 from waflib import Utils, Errors, Node
-from utils import parse_json_file
+
+import utils
+
+import os
 
 
 class FakeContext(object):
     
-    def __init__(self, base_path):
+    def __init__(self, base_path, generate_engine_json=True):
         
         if base_path:
-            
-            self.root = Node.Node('', None)
+            # binds the context to the nodes in use to avoid a context singleton
+            class node_class(Node.Node):
+                pass
+            self.node_class = node_class
+            self.node_class.__module__ = "waflib.Node"
+            self.node_class.__name__ = "Nod3"
+            self.node_class.ctx = self
+    
+            self.root = self.node_class('', None)
+
             self.base_node = self.root.make_node(base_path)
             self.srcnode = self.base_node.make_node('dev')
             self.bintemp_node = self.srcnode.make_node('BinTemp')
             self.path = self.srcnode.make_node('Code')
+            self.bldnode = self.bintemp_node
+            if generate_engine_json:
+                default_engine_json = {
+                        "FileVersion": 1,
+                        "LumberyardVersion": "0.0.0.0",
+                        "LumberyardCopyrightYear": 2019
+                }
+                utils.write_json_file(default_engine_json, os.path.join(base_path, 'engine.json'))
         
         self.env = {}
         self.project_overrides = {}
@@ -42,4 +64,4 @@ class FakeContext(object):
         raise Errors.WafError
 
     def parse_json_file(self, node):
-        return parse_json_file(node.abspath())
+        return utils.parse_json_file(node.abspath())

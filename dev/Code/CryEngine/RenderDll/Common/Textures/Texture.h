@@ -47,6 +47,12 @@
 #define TEXTURE_H_SECTION_7 7
 #endif
 
+// Only the editor needs to use a unique mutex per texture.
+// In the editor, multiple worker threads could destroy device resource sets which point to the same texture
+#if defined(AZ_PLATFORM_WINDOWS)
+    #define USE_UNIQUE_MUTEX_PER_TEXTURE
+#endif
+
 class CTexture;
 class CImageFile;
 class CTextureStreamPoolMgr;
@@ -1541,7 +1547,9 @@ private:
 
     typedef AZStd::function<void(uint32)> InvalidateCallbackType;
     AZStd::unordered_multimap<void*, InvalidateCallbackType> m_invalidateCallbacks;
-    AZStd::mutex m_invalidateCallbacksMutex;
+
+    AZStd::mutex* m_invalidateCallbacksMutex = nullptr;
+    static StaticInstance<AZStd::mutex> m_staticInvalidateCallbacksMutex;
 
     bool m_bisTextureMissing = false;
 
@@ -1662,6 +1670,20 @@ public:
         m_pRenderTargetData = (nFlags & FT_USAGE_RENDERTARGET) ? new RenderTargetData : NULL;
 
         COMPILE_TIME_ASSERT(MaxStreamTasks < 32767);
+
+#if defined(USE_UNIQUE_MUTEX_PER_TEXTURE)
+        // Only the editor needs to use a unique mutex per texture.
+        // In the editor, multiple worker threads could destroy device resource sets which point to the same texture
+        if (gEnv->IsEditor())
+        {
+            m_invalidateCallbacksMutex = new AZStd::mutex();
+        }
+#endif
+        // If we do not need a unique mutex per texture, use the StaticInstance
+        if (m_invalidateCallbacksMutex == nullptr)
+        {
+            m_invalidateCallbacksMutex = &m_staticInvalidateCallbacksMutex;
+        }
     }
 
 

@@ -259,18 +259,21 @@ namespace NCryMetal
                 }
                 else if(CTexture::IsDeviceFormatTypeless(pFormat->m_eDXGIFormat))
                 {
-                    //This flag is added because the metal validation complains if you try to open a srgb view on a non srgb texture.
-                    //Apple has confirmed that this is not required and its better for performance to not include this flag
-                    //Since we may enable metal validation layer in debug and profile builds we are only adding this flag in those builds.
-                    //The release builds will ignore this flag as no one should be running release builds with metal validation enabled.
-                    //This change is only tested for ios at the moment
-#if defined(AZ_PLATFORM_APPLE_OSX) || !defined(_RELEASE)
-                    Desc.usage |= MTLTextureUsagePixelFormatView;
+                    //Apple recommendation -> For sRGB variant views, you don’t need the PFV flag when: - running on
+                    //iOS/tvOS 12.0 or newer - running on macOS 10.15 or newer
+                    //However, on older OSs (and in macOS case, older GPUs) you are still required to set the flag.
+#if defined(AZ_COMPILER_CLANG) && AZ_COMPILER_CLANG >= 9    //@available was added in Xcode 9
+                    if (@available(macOS 10.15, iOS 12.0, *))
+                    {
+                        //No need to do anything but if we want to add non sRGB view related flags it would go here.
+                    }
+                    else
+                    {
+                        Desc.usage |= MTLTextureUsagePixelFormatView;
+                    }
 #endif
                 }
-                
-                
-                
+
                 pTexture->m_Texture = [mtlDevice newTextureWithDescriptor:Desc];
 
                 if (!pTexture->m_Texture)
@@ -2706,11 +2709,13 @@ namespace NCryMetal
     template <typename Impl>
     typename Impl::TViewPtr GetTexture1DView(STexture* pTexture, const typename Impl::TViewDesc& kViewDesc, CDevice* pDevice)
     {
+        using ViewDimensionType = decltype(kViewDesc.ViewDimension);
+
         switch (kViewDesc.ViewDimension)
         {
-        case Impl::DIMENSION_TEXTURE1D:
+        case static_cast<ViewDimensionType>(Impl::DIMENSION_TEXTURE1D):
             return Impl::GetViewMip(pTexture,       kViewDesc.Texture1D,      kViewDesc.Format, MTLTextureType1D,       0, 1, pDevice);
-        case Impl::DIMENSION_TEXTURE1DARRAY:
+        case static_cast<ViewDimensionType>(Impl::DIMENSION_TEXTURE1DARRAY):
             return Impl::GetViewMipLayers(pTexture, kViewDesc.Texture1DArray, kViewDesc.Format, MTLTextureType1DArray,       pDevice);
         }
         return NULL;
@@ -2719,14 +2724,16 @@ namespace NCryMetal
     template <typename Impl>
     typename Impl::TViewPtr GetTexture2DView(STexture* pTexture, const typename Impl::TViewDesc& kViewDesc, CDevice* pDevice)
     {
+        using ViewDimensionType = decltype(kViewDesc.ViewDimension);
+
         switch (kViewDesc.ViewDimension)
         {
-        case Impl::DIMENSION_TEXTURE2D:
+        case static_cast<ViewDimensionType>(Impl::DIMENSION_TEXTURE2D):
             return Impl::GetViewMip(pTexture,       kViewDesc.Texture2D,        kViewDesc.Format, MTLTextureType2D,                   0, 1,       pDevice);
-        case Impl::DIMENSION_TEXTURE2DARRAY:
+        case static_cast<ViewDimensionType>(Impl::DIMENSION_TEXTURE2DARRAY):
             return Impl::GetViewMipLayers(pTexture, kViewDesc.Texture2DArray,   kViewDesc.Format, MTLTextureType2DArray,                         pDevice);
 #if DXGL_SUPPORT_MULTISAMPLED_TEXTURES
-        case Impl::DIMENSION_TEXTURE2DMS:
+        case static_cast<ViewDimensionType>(Impl::DIMENSION_TEXTURE2DMS):
             return Impl::GetView(pTexture,                                      kViewDesc.Format, GL_TEXTURE_2D_MULTISAMPLE,       0, 1, 0, 1, pDevice);
 #endif //DXGL_SUPPORT_MULTISAMPLED_TEXTURES
         }
@@ -2736,9 +2743,11 @@ namespace NCryMetal
     template <typename Impl>
     typename Impl::TViewPtr GetTextureCubeView(STexture* pTexture, const typename Impl::TViewDesc& kViewDesc, CDevice* pDevice)
     {
+        using ViewDimensionType = decltype(kViewDesc.ViewDimension);
+
         switch (kViewDesc.ViewDimension)
         {
-        case D3D11_SRV_DIMENSION_TEXTURECUBE:
+        case static_cast<ViewDimensionType>(D3D11_SRV_DIMENSION_TEXTURECUBE):
             DXGL_TODO("Check if 6 is correct");
             return Impl::GetViewMip(pTexture, kViewDesc.TextureCube, kViewDesc.Format, MTLTextureTypeCube, 0, 6, pDevice);
         }

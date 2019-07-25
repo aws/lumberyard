@@ -355,6 +355,7 @@ private:
     threadID                                                                                            m_renderThreadId;
 
     CryFixedStringT<128>                                  m_sLocalizationFolder;
+    CryFixedStringT<128>                                  m_sLocalizationRoot;
 
     //////////////////////////////////////////////////////////////////////////
 
@@ -430,6 +431,7 @@ public: // ---------------------------------------------------------------------
     // Set the localization folder
     virtual void SetLocalizationFolder(const char* sLocalizationFolder);
     virtual const char* GetLocalizationFolder() const { return m_sLocalizationFolder.c_str(); }
+    virtual const char* GetLocalizationRoot() const { return m_sLocalizationRoot.c_str(); }
 
     // Only returns useful results on a dedicated server at present - and only if the pak is already opened
     void GetCachedPakCDROffsetSize(const char* szName, uint32& offset, uint32& size);

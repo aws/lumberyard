@@ -25,6 +25,8 @@ namespace AZStd
 {
     AZSTD_TYPE_TRAIT_BOOL_DEF2(is_same, T, U, false)
     AZSTD_TYPE_TRAIT_BOOL_PARTIAL_SPEC2_1(typename T, is_same, T, T, true)
+    template<typename T, typename U>
+    constexpr bool is_same_v = is_same<T, U>::value;
 }
 #endif  // AZSTD_TYPE_TRAITS_IS_SAME_INCLUDED
 #pragma once

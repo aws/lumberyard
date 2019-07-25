@@ -24,10 +24,9 @@ from waflib.Configure import conf, conf_event, ConfigurationContext, deprecated
 from waflib.Build import BuildContext, CleanContext, Context
 
 from waf_branch_spec import SUBFOLDERS, VERSION_NUMBER_PATTERN, BINTEMP_MODULE_DEF, \
-                            LUMBERYARD_ENGINE_PATH, ADDITIONAL_WAF_MODULES, BINTEMP_FOLDER, \
-                            AVAILABLE_LAUNCHERS
-from cryengine_modules import SANITIZE_INPUTS
-from cry_utils import append_kw_entry, append_to_unique_list
+                            LUMBERYARD_ENGINE_PATH, ADDITIONAL_WAF_MODULES, AVAILABLE_LAUNCHERS
+
+from cry_utils import append_to_unique_list
 from utils import parse_json_file, convert_roles_to_setup_assistant_description, write_json_file
 from third_party import ThirdPartySettings
 
@@ -293,6 +292,7 @@ def add_lmbr_waf_options(opt, az_test_supported):
     opt.add_option('--profile-execution', dest='profile_execution', action='store', default='', help='!INTERNAL ONLY! DONT USE')
     opt.add_option('--profile-output', dest='profile_output', action='store', default='', help='!INTERNAL ONLY! DONT USE')
     opt.add_option('--task-filter', dest='task_filter', action='store', default='', help='!INTERNAL ONLY! DONT USE')
+    opt.add_option('--lad-url', dest='package_storage_url', default='https://df0vy3vd107il.cloudfront.net/lad', action='store', help='!INTERNAL ONLY! DONT USE')
     opt.add_option('--update-settings', dest='update_user_settings', action='store', default='False',
                    help='Option to update the user_settings.options file with any values that are modified from the command line')
     opt.add_option('--copy-3rd-party-pdbs', dest='copy_3rd_party_pdbs', action='store', default='False',
@@ -436,15 +436,15 @@ def check_special_command_timestamps(bld):
     if not isinstance(bld, BuildContext):
         bld.fatal("[Error] Invalid build command: '{}'.  Type in '{} --help' for more information"
                   .format(bld.cmd if hasattr(bld, 'cmd') else str(bld), CURRENT_WAF_EXECUTABLE))
-
-    if not 'generate_uber_files' in Options.commands and bld.cmd != 'generate_uber_files':
-        generate_uber_files_timestamp = bld.get_bintemp_folder_node().make_node('generate_uber_files.timestamp')
-        try:
-            os.stat(generate_uber_files_timestamp.abspath())
-        except OSError:
-            # No generate_uber file timestamp, restart command chain, prefixed with gen uber files cmd
-            Options.commands = ['generate_uber_files'] + [bld.cmd] + Options.commands
-            return False
+    if not bld.cmd.startswith('clean'):
+        if not 'generate_uber_files' in Options.commands and bld.cmd != 'generate_uber_files':
+            generate_uber_files_timestamp = bld.get_bintemp_folder_node().make_node('generate_uber_files.timestamp')
+            try:
+                os.stat(generate_uber_files_timestamp.abspath())
+            except OSError:
+                # No generate_uber file timestamp, restart command chain, prefixed with gen uber files cmd
+                Options.commands = ['generate_uber_files'] + [bld.cmd] + Options.commands
+                return False
 
     return True
 
@@ -498,11 +498,9 @@ def prepare_build_environment(bld):
                     Options.commands.append(package_cmd)
 
             elif bld.cmd.startswith('package'):
-                deploy_option = 'deploy_{}'.format(bld.platform_to_platform_alias(platform))
-                if hasattr(bld.options, deploy_option):
-                    deploy_cmd = 'deploy_{}_{}'.format(platform, configuration)
-                    if bld.is_option_true(deploy_option) and (deploy_cmd not in Options.commands):
-                        Options.commands.append(deploy_cmd)
+                deploy_cmd = 'deploy_{}_{}'.format(platform, configuration)
+                if bld.is_option_true('deploy_projects_automatically') and (deploy_cmd not in Options.commands):
+                    Options.commands.append(deploy_cmd)
 
 
 @conf
@@ -523,7 +521,6 @@ def configure_game_projects(conf):
                     conf.fatal(
                         '[ERROR] Project "%s" is enabled, but failed to execute its wscript at (%s) - consider disabling it in your _WAF_/user_settings.options file.\nException: %s' % (
                             project, legacy_game_code_folder, err))
-
 
 @conf
 def setup_game_projects(bld):
@@ -586,36 +583,11 @@ def calculate_engine_path(ctx):
             engine_node_lst[0] = engine_node_lst[0][0]
         return engine_node_lst
 
-    # Default the engine path, node, and version
-    ctx.engine_node = ctx.path
-    ctx.engine_path = ctx.path.abspath()
-    ctx.engine_root_version = '0.0.0.0'
-    ctx.engine_node_list = _make_engine_node_lst(ctx.engine_node)
+    # Track the project base node. For internal projects, this will be the root of the engine, for external project,
+    # this will be the root of the external project folder
+    ctx.project_base = ctx.path
 
-    engine_json_file_path = ctx.path.make_node('engine.json').abspath()
-    if os.path.exists(engine_json_file_path):
-        engine_json = parse_json_file(engine_json_file_path)
-        ctx.engine_root_version = engine_json.get('LumberyardVersion',ctx.engine_root_version)
-        if 'ExternalEnginePath' in engine_json:
-            external_engine_path = engine_json['ExternalEnginePath']
-            if os.path.isabs(external_engine_path):
-                engine_root_abs = external_engine_path
-            else:
-                engine_root_abs = os.path.normpath(os.path.join(ctx.path.abspath(),external_engine_path))
-            if not os.path.exists(engine_root_abs):
-                ctx.fatal('[ERROR] Invalid external engine path in engine.json : {}'.format(engine_root_abs))
-            if os.path.normcase(engine_root_abs)!=os.path.normcase(ctx.engine_path):
-                ctx.engine_node = ctx.root.make_node(engine_root_abs)
-                ctx.engine_path = engine_root_abs
-                ctx.engine_node_list = _make_engine_node_lst(ctx.engine_node)
-
-    if ctx.engine_path != ctx.path.abspath():
-        last_build_engine_version_node = ctx.get_bintemp_folder_node().make_node(LAST_ENGINE_BUILD_VERSION_TAG_FILE)
-        if os.path.exists(last_build_engine_version_node.abspath()):
-            last_built_version = last_build_engine_version_node.read()
-            if last_built_version!= ctx.engine_root_version:
-                Logs.warn('[WARN] The current engine version ({}) does not match the last version {} that this project was built against'.format(ctx.engine_root_version,last_built_version))
-                last_build_engine_version_node.write(ctx.engine_root_version)
+    ctx.engine_node_list = _make_engine_node_lst(ctx.get_engine_node())
 
     ctx.register_script_env_var("LUMBERYARD_BUILD", ctx.get_lumberyard_build())
 
@@ -1113,13 +1085,22 @@ def update_module_definition(ctx, module_type, build_type, kw):
         'configurations': sorted(configurations),
         'uses': sorted(uses)
     }
-    module_def_folder = os.path.join(ctx.engine_path, BINTEMP_FOLDER, BINTEMP_MODULE_DEF)
+    module_def_folder = ctx.get_module_def_folder_node().abspath()
     if not ctx.cached_does_path_exist(module_def_folder):
         os.makedirs(module_def_folder)
         ctx.cached_does_path_exist(module_def_folder, True)
 
     module_def_file = os.path.join(module_def_folder, _get_module_def_filename(target))
     write_json_file(module_def, module_def_file)
+
+
+@conf
+def get_module_def_folder_node(ctx):
+    try:
+        return ctx.module_def_folder_node
+    except AttributeError:
+        ctx.module_def_folder_node = ctx.get_bintemp_folder_node().make_node(BINTEMP_MODULE_DEF)
+        return ctx.module_def_folder_node
 
 
 def _get_module_def_map(ctx):
@@ -1131,14 +1112,14 @@ def _get_module_def_map(ctx):
 
 
 def _has_module_def(ctx, target):
-    module_def_folder = os.path.join(ctx.engine_path, BINTEMP_FOLDER, BINTEMP_MODULE_DEF)
+    module_def_folder = ctx.get_module_def_folder_node().abspath()
     module_def_file = os.path.join(module_def_folder, _get_module_def_filename(target))
     return os.path.isfile(module_def_file)
 
 
 def _read_module_def_file(ctx, target):
 
-    module_def_folder = os.path.join(ctx.engine_path, BINTEMP_FOLDER, BINTEMP_MODULE_DEF)
+    module_def_folder = ctx.get_module_def_folder_node().abspath()
     module_def_file = os.path.join(module_def_folder, _get_module_def_filename(target))
     if not os.path.exists(module_def_file):
         raise Errors.WafError("Invalid target '{}'. Missing module definition file. Make sure that the target exists".format(target))
@@ -1391,4 +1372,50 @@ def validate_monolithic_specified_targets(bld):
                 if not target in bld.spec_modules():
                     bld.fatal('[ERROR] Module "%s" is not configured to build in spec "%s" in "%s|%s"' % (
                     target, bld.options.project_spec, platform, configuration))
+
+
+@conf
+def get_engine_node(ctx):
+    """
+    Determine the engine root path from SetupAssistantUserPreferences. if it exists
+    """
+    try:
+        return ctx.engine_node
+    except AttributeError:
+        pass
+        
+    # Root context path must have an engine.json file, regardless if this is an internal or external project
+    engine_json_file_path = ctx.path.make_node('engine.json').abspath()
+    try:
+        if not os.path.exists(engine_json_file_path):
+            raise Errors.WafError("Invalid context path '{}'. The base project path must contain a valid engine.json file.".format(engine_json_file_path))
+        engine_json = parse_json_file(engine_json_file_path)
+    except ValueError as e:
+        raise Errors.WafError("Invalid context path '{}'. The base project path must contain a valid engine.json file. ({})".format(engine_json_file_path, e))
+    
+
+    ctx.engine_root_version = engine_json.get('LumberyardVersion', '0.0.0.0')
+    if 'ExternalEnginePath' in engine_json:
+        # An external engine path was specified, get its path and set the engine_node appropriately
+        external_engine_path = engine_json['ExternalEnginePath']
+        if os.path.isabs(external_engine_path):
+            engine_root_abs = external_engine_path
+        else:
+            engine_root_abs = os.path.normpath(os.path.join(ctx.path.abspath(), external_engine_path))
+        if not os.path.exists(engine_root_abs):
+            ctx.fatal('[ERROR] Invalid external engine path in engine.json : {}'.format(engine_root_abs))
+        ctx.engine_node = ctx.root.make_node(engine_root_abs)
+        
+        # Warn if the external engine version is different from the last time this project was built
+        last_build_engine_version_node = ctx.get_bintemp_folder_node().make_node(LAST_ENGINE_BUILD_VERSION_TAG_FILE)
+        if os.path.exists(last_build_engine_version_node.abspath()):
+            last_built_version = last_build_engine_version_node.read()
+            if last_built_version != ctx.engine_root_version:
+                Logs.warn('[WARN] The current engine version ({}) does not match the last version {} that this project was built against'.format(ctx.engine_root_version, last_built_version))
+                last_build_engine_version_node.write(ctx.engine_root_version)
+    else:
+        ctx.engine_node = ctx.path
+    ctx.engine_path = ctx.engine_node.abspath()
+        
+    return ctx.engine_node
 

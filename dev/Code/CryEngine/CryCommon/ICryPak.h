@@ -442,6 +442,7 @@ struct ICryPak
     // Set and Get the localization folder name (Languages, Localization, ...)
     virtual void SetLocalizationFolder(const char* sLocalizationFolder) = 0;
     virtual const char* GetLocalizationFolder() const = 0;
+    virtual const char* GetLocalizationRoot() const = 0;
 
     // Only returns useful results on a dedicated server at present - and only if the pak is already opened
     virtual void GetCachedPakCDROffsetSize(const char* szName, uint32& offset, uint32& size) = 0;

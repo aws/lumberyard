@@ -35,6 +35,8 @@
 #define PLATFORM_IMPL_H_SECTION_CRYLOWLATENCYSLEEP 2
 #define PLATFORM_IMPL_H_SECTION_CRYGETFILEATTRIBUTES 3
 #define PLATFORM_IMPL_H_SECTION_CRYSETFILEATTRIBUTES 4
+#define PLATFORM_IMPL_H_SECTION_CRY_SYSTEM_FUNCTIONS 5
+#define PLATFORM_IMPL_H_SECTION_VIRTUAL_ALLOCATORS 6
 #endif
 
 #if !defined(AZ_MONOLITHIC_BUILD)
@@ -103,7 +105,7 @@ void InitCRTHandlers() {}
 //////////////////////////////////////////////////////////////////////////
 // This is an entry to DLL initialization function that must be called for each loaded module
 //////////////////////////////////////////////////////////////////////////
-extern "C" DLL_EXPORT void ModuleInitISystem(ISystem* pSystem, const char* moduleName)
+extern "C" AZ_DLL_EXPORT void ModuleInitISystem(ISystem* pSystem, const char* moduleName)
 {
     if (gEnv) // Already registered.
     {
@@ -135,13 +137,13 @@ extern "C" DLL_EXPORT void ModuleInitISystem(ISystem* pSystem, const char* modul
     } // if pSystem
 }
 
-extern "C" DLL_EXPORT void ModuleShutdownISystem(ISystem* pSystem)
+extern "C" AZ_DLL_EXPORT void ModuleShutdownISystem(ISystem* pSystem)
 {
     // Unregister with AZ environment.
     AZ::Environment::Detach();
 }
 
-extern "C" DLL_EXPORT void InjectEnvironment(void* env)
+extern "C" AZ_DLL_EXPORT void InjectEnvironment(void* env)
 {
     static bool injected = false;
     if (!injected)
@@ -151,7 +153,7 @@ extern "C" DLL_EXPORT void InjectEnvironment(void* env)
     }
 }
 
-extern "C" DLL_EXPORT void DetachEnvironment()
+extern "C" AZ_DLL_EXPORT void DetachEnvironment()
 {
     AZ::Environment::Detach();
 }
@@ -214,6 +216,15 @@ void __stl_debug_message(const char* format_str, ...)
 
 #if defined(APPLE) || defined(LINUX)
 #include "CryAssert_impl.h"
+#endif
+
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION PLATFORM_IMPL_H_SECTION_CRY_SYSTEM_FUNCTIONS
+#if defined(AZ_PLATFORM_XENIA)
+#include "Xenia/platform_impl_h_xenia.inl"
+#elif defined(AZ_PLATFORM_PROVO)
+#include "Provo/platform_impl_h_provo.inl"
+#endif
 #endif
 
 #if defined (_WIN32)
@@ -379,7 +390,7 @@ LONG  CryInterlockedDecrement(int volatile* lpAddend)
 }
 
 //////////////////////////////////////////////////////////////////////////
-LONG    CryInterlockedExchangeAdd(LONG volatile* lpAddend, LONG Value)
+LONG  CryInterlockedExchangeAdd(LONG volatile* lpAddend, LONG Value)
 {
     return InterlockedExchangeAdd(lpAddend, Value);
 }
@@ -389,17 +400,17 @@ LONG  CryInterlockedOr(LONG volatile* Destination, LONG Value)
     return InterlockedOr(Destination, Value);
 }
 
-LONG    CryInterlockedCompareExchange(LONG volatile* dst, LONG exchange, LONG comperand)
+LONG  CryInterlockedCompareExchange(LONG volatile* dst, LONG exchange, LONG comperand)
 {
     return InterlockedCompareExchange(dst, exchange, comperand);
 }
 
-void*   CryInterlockedCompareExchangePointer(void* volatile* dst, void* exchange, void* comperand)
+void* CryInterlockedCompareExchangePointer(void* volatile* dst, void* exchange, void* comperand)
 {
     return InterlockedCompareExchangePointer(dst, exchange, comperand);
 }
 
-void*   CryInterlockedExchangePointer(void* volatile* dst, void* exchange)
+void* CryInterlockedExchangePointer(void* volatile* dst, void* exchange)
 {
     return InterlockedExchangePointer(dst, exchange);
 }
@@ -514,6 +525,24 @@ threadID CryGetCurrentThreadId()
 }
 
 #endif // _WIN32
+
+#if defined(AZ_RESTRICTED_PLATFORM) && defined(AZ_PLATFORM_PROVO)
+
+//////////////////////////////////////////////////////////////////////////
+uint32 CryGetFileAttributes(const char* lpFileName)
+{
+    assert(0);
+    return -1;
+}
+
+
+//////////////////////////////////////////////////////////////////////////
+bool CrySetFileAttributes(const char* lpFileName, uint32 dwFileAttributes)
+{
+    assert(0);
+    return false;
+}
+#endif // defined(AZ_RESTRICTED_PLATFORM) && defined(AZ_PLATFORM_PROVO)
 
 #endif //AZ_MONOLITHIC_BUILD
 
@@ -631,4 +660,19 @@ _MS_ALIGN(64) uint32  BoxSides[0x40 * 8] = {
     0, 0, 0, 0, 0, 0, 0, 0, //3e
     0, 0, 0, 0, 0, 0, 0, 0, //3f
 };
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION PLATFORM_IMPL_H_SECTION_VIRTUAL_ALLOCATORS
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/platform_impl_h_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/platform_impl_h_provo.inl"
+    #endif
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#endif
+
 #endif // !AZ_MONOLITHIC_BUILD || _LAUNCHER
+

@@ -75,6 +75,8 @@ public:
     static const char* m_GLSL_LLVM_DXC;
     static const char* m_METAL_LLVM_DXC;
 
+    int m_ProvoHardwareTarget = -1;
+
     static void Create();
     static void Destroy();
     static SEnviropment& Instance();

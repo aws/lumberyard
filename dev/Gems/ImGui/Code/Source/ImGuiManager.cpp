@@ -17,6 +17,7 @@
 
 #ifdef IMGUI_ENABLED
 
+#include <AzCore/Component/ComponentApplicationBus.h>
 #include <AzFramework/Input/Devices/Mouse/InputDeviceMouse.h>
 #include <AzFramework/Input/Devices/Keyboard/InputDeviceKeyboard.h>
 #include "IHardwareMouse.h"
@@ -65,7 +66,6 @@ void ImGuiManager::Initialize()
         AZ_Warning("%s %s", __func__, "gEnv Invalid -- Skipping ImGui Initialization.");
         return;
     }
-
     // Register for Game Framework Notifications
     auto framework = gEnv->pGame->GetIGameFramework();
     framework->RegisterListener(this, "ImGuiManager", FRAMEWORKLISTENERPRIORITY_HUD);
@@ -76,6 +76,22 @@ void ImGuiManager::Initialize()
     InputTextEventListener::Connect();
 
     // Configure ImGui
+#if defined(LOAD_IMGUI_LIB_DYNAMICALLY)
+
+    AZ::OSString imgGuiLibPath = "imguilib";
+
+    // Let the application process the path
+    AZ::ComponentApplicationBus::Broadcast(&AZ::ComponentApplicationBus::Events::ResolveModulePath, imgGuiLibPath);
+    m_imgSharedLib = AZ::DynamicModuleHandle::Create(imgGuiLibPath.c_str());
+    if (!m_imgSharedLib->Load(false))
+    {
+        AZ_Warning("%s %s", __func__, "Unable to load " AZ_DYNAMIC_LIBRARY_PREFIX "imguilib" AZ_DYNAMIC_LIBRARY_EXTENSION "-- Skipping ImGui Initialization.");
+        return;
+    }
+
+#endif // defined(LOAD_IMGUI_LIB_DYNAMICALLY)
+
+
     ImGuiIO& io = ImGui::GetIO();
     io.IniFilename = "imgui.ini";
 
@@ -131,6 +147,12 @@ void ImGuiManager::Shutdown()
         AZ_Warning("%s %s", __func__, "gEnv Invalid -- Skipping ImGui Shutdown.");
         return;
     }
+#if defined(LOAD_IMGUI_LIB_DYNAMICALLY)
+    if (m_imgSharedLib->IsLoaded())
+    {
+        m_imgSharedLib->Unload();
+    }
+#endif
 
     // Unregister from Buses/Game Framework
     gEnv->pGame->GetIGameFramework()->UnregisterListener(this);

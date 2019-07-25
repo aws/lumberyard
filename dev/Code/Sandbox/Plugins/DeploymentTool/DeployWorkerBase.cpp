@@ -19,7 +19,7 @@
 
 #include "DeployNotificationsBus.h"
 #include "NetworkUtils.h"
-
+#include "JsonPreProcessor.h"
 
 namespace
 {
@@ -67,7 +67,8 @@ DeployWorkerBase::DeployWorkerBase(const char* systemConfigFile)
     QObject::connect(m_wafProcess, &QProcess::readyReadStandardOutput,
         [this]()
         {
-            DEPLOY_LOG_INFO(m_wafProcess->readAllStandardOutput().data());
+            const QString msg(m_wafProcess->readAllStandardOutput());
+            DEPLOY_LOG_INFO("%s", msg.toUtf8().data());
         });
 }
 
@@ -96,23 +97,16 @@ StringOutcome DeployWorkerBase::ApplyConfiguration(const DeploymentConfig& deplo
 
 void DeployWorkerBase::Run()
 {
-    const char* deviceId = m_deploymentConfig.m_deviceId.c_str();
+    AZ_Assert(!m_isRunning, "Worker is already running.");
 
-    DeviceMap connectedDevices;
-    GetConnectedDevices(connectedDevices);
-
-    if (!connectedDevices.contains(QString(deviceId)))
-    {
-        DEPLOY_LOG_ERROR("[ERROR] Device no longer connected");
-        DeployTool::Notifications::Bus::Broadcast(&DeployTool::Notifications::DeployProcessFinished, false);
-        return;
-    }
+    m_isRunning = true;
 
     StringOutcome outcome = Prepare();
     if (!outcome.IsSuccess())
     {
         DEPLOY_LOG_ERROR("[ERROR] %s", outcome.GetError().c_str());
         DeployTool::Notifications::Bus::Broadcast(&DeployTool::Notifications::DeployProcessFinished, false);
+        m_isRunning = false;
         return;
     }
 
@@ -124,6 +118,21 @@ void DeployWorkerBase::Run()
     {
         StartDeploy();
     }
+
+    m_isRunning = false;
+}
+
+bool DeployWorkerBase::IsRunning() 
+{
+    return m_isRunning;
+}
+
+bool DeployWorkerBase::DeviceIsConnected(const char* deviceId)
+{
+    AZ_Assert(deviceId, "Expected valid deviceId");
+    DeviceMap connectedDevices;
+    GetConnectedDevices(connectedDevices);
+    return connectedDevices.contains(QString(deviceId));
 }
 
 void DeployWorkerBase::StartBuildAndDeploy()
@@ -392,7 +401,7 @@ bool DeployWorkerBase::RunBlockingCommand(const AZStd::string& command, QString*
     return true;
 }
 
-StringOutcome DeployWorkerBase::LoadJsonData(const AZStd::string& file, rapidjson::Document& jsonData) const
+StringOutcome DeployWorkerBase::LoadJsonData(const AZStd::string& file, rapidjson::Document& jsonData)
 {
     AZStd::string fileContents;
     StringOutcome outcome = ReadFile(file.c_str(), fileContents);
@@ -401,9 +410,235 @@ StringOutcome DeployWorkerBase::LoadJsonData(const AZStd::string& file, rapidjso
         return outcome;
     }
 
-    jsonData.Parse(fileContents.c_str());
+    // Use the pre processor to remove comments.
+    DeployTool::JsonPreProcessor jsonPreProcessor(fileContents.c_str());
+    jsonData.Parse(jsonPreProcessor.GetResult().c_str());
 
-    return AZ::Success();
+    return AZ::Success(AZStd::string());
 }
 
+StringOutcome DeployWorkerBase::GetUserSettingsValue(const char* groupName, const char* keyName, PlatformOptions platformOption)
+{
+    AZ_Assert(groupName, "Expected valid groupName");
+    AZ_Assert(keyName, "Expected valid keyName");
 
+    // Look in the user settings first, then fall back to default setting if not found.
+    const char* userSettingsFile = "_WAF_/user_settings.options";
+
+    // Get the platform specific Output Folder key
+    AZStd::string platformOutputFolderKey;
+    if (platformOption == PlatformOptions::Android_ARMv7)
+    {
+        platformOutputFolderKey = "out_folder_android_armv7_clang";
+    }
+    else if (platformOption == PlatformOptions::Android_ARMv8)
+    {
+        platformOutputFolderKey = "out_folder_android_armv8_clang";
+    }
+    else if (platformOption == PlatformOptions::iOS)
+    {
+        platformOutputFolderKey = "out_folder_ios";
+    }
+    else
+    {
+        DEPLOY_LOG_ERROR("[ERROR] Unknown platform detected.");
+        return AZ::Failure<AZStd::string>("Unknown platform detected.");
+    }
+
+    bool foundValue = false;
+    AZStd::string resultValue;
+
+    // Check the user settings file.
+    if (QFile::exists(userSettingsFile))
+    {
+        QSettings userWafSetting(userSettingsFile, QSettings::IniFormat);
+        if (userWafSetting.status() == QSettings::NoError)
+        {
+            const QString keyFormat("%1/%2");
+            QString outputFolderKey = keyFormat.arg(groupName, keyName);
+            if (userWafSetting.contains(outputFolderKey))
+            {
+                resultValue = userWafSetting.value(outputFolderKey).toByteArray().data();
+                foundValue = true;
+            }
+        }
+    }
+
+    // Make sure the setting value was found
+    if (!foundValue)
+    {
+        AZStd::string msg = AZStd::string::format(
+            "Failed to get setting value group: '%s' key: '%s' from user_settings.options.",
+            groupName,
+            keyName);
+
+        return AZ::Failure<AZStd::string>(AZStd::move(msg));
+    }
+
+    return AZ::Success(resultValue);
+}
+
+AZStd::string DeployWorkerBase::GetPlatformSpecficDefaultSettingsFilename(PlatformOptions platformOption, const char* devRoot)
+{
+    AZStd::string defaultSettingsFile;
+    if (platformOption == PlatformOptions::Android_ARMv7)
+    {
+        defaultSettingsFile = AZStd::string::format("%s/_WAF_/settings/platforms/platform.android_armv7_clang.json", devRoot);
+    }
+    else if (platformOption == PlatformOptions::Android_ARMv8)
+    {
+        defaultSettingsFile = AZStd::string::format("%s/_WAF_/settings/platforms/platform.android_armv8_clang.json", devRoot);
+    }
+    else if (platformOption == PlatformOptions::iOS)
+    {
+        defaultSettingsFile = AZStd::string::format("%s/_WAF_/settings/platforms/platform.ios.json", devRoot);
+    }
+    else
+    {
+        AZ_Error("DeploymentTool", false, "[ERROR] Unknown platform detected in GetPlatformSpecficDefaultSettingsFilename.", devRoot);
+    }
+    return defaultSettingsFile;
+}
+
+StringOutcome DeployWorkerBase::GetPlatformSpecficDefaultAttributeValue(const char* name, PlatformOptions platformOption, const char* devRoot)
+{
+    AZ_Assert(name, "Expected valid name of attribute");
+
+    AZStd::string defaultSettingsFile = GetPlatformSpecficDefaultSettingsFilename(platformOption, devRoot);
+
+    AZStd::string resultValue;
+
+    rapidjson::Document defaultWafSettings;
+    StringOutcome outcome = LoadJsonData(defaultSettingsFile, defaultWafSettings);
+    if (!outcome.IsSuccess())
+    {
+        return outcome;
+    }
+
+    // Read the value from "attributes" : { "default_folder_name" : value }
+    const char* attributesMemberName = "attributes";
+    if (defaultWafSettings.HasMember(attributesMemberName))
+    {
+        if (defaultWafSettings[attributesMemberName].HasMember(name))
+        {
+            resultValue = defaultWafSettings[attributesMemberName][name].GetString();
+        }
+        else
+        {
+            AZStd::string msg = AZStd::string::format("Failed to find '%s' in %s section of config file '%s'",
+                name,
+                attributesMemberName,
+                defaultSettingsFile.c_str());
+            return AZ::Failure<AZStd::string>(AZStd::move(msg));
+        }
+    }
+    else    
+    {
+        AZStd::string msg = AZStd::string::format("Failed to find '%s' member in config file '%s'", attributesMemberName, defaultSettingsFile.c_str());
+        return AZ::Failure<AZStd::string>(AZStd::move(msg));
+    }
+
+    return AZ::Success(resultValue);
+}
+
+StringOutcome DeployWorkerBase::GetPlatformSpecficDefaultSettingsValue(const char* groupName, const char* keyName, PlatformOptions platformOption, const char* devRoot)
+{
+    AZ_Assert(groupName, "Expected valid groupName");
+    AZ_Assert(keyName, "Expected valid keyName");
+
+    AZStd::string defaultSettingsFile = GetPlatformSpecficDefaultSettingsFilename(platformOption, devRoot);
+
+    rapidjson::Document defaultWafSettings;
+    StringOutcome outcome = LoadJsonData(defaultSettingsFile, defaultWafSettings);
+    if (!outcome.IsSuccess())
+    {
+        return outcome;
+    }
+
+    const char* settingKey = "settings";
+    const char* defaultValueKey = "default_value";
+    const char* attributeKey = "attribute";
+
+    bool foundValue = false;
+    AZStd::string resultValue;
+
+    if (defaultWafSettings.HasMember(groupName))
+    {
+        for (auto iter = defaultWafSettings[groupName].Begin(); iter != defaultWafSettings[groupName].End(); ++iter)
+        {
+            const auto& entry = *iter;
+
+            if (strcmp(entry[attributeKey].GetString(), keyName) == 0)
+            {
+                resultValue = entry[defaultValueKey].GetString();
+                foundValue = true;
+            }
+        }
+    }
+
+    if (!foundValue)
+    {
+        AZStd::string msg = AZStd::string::format("Failed to find '%s' in %s section of config file '%s'",
+            keyName,
+            groupName,
+            defaultSettingsFile.c_str());
+        return AZ::Failure<AZStd::string>(AZStd::move(msg));
+    }
+
+    return AZ::Success(resultValue);
+}
+
+StringOutcome DeployWorkerBase::GetCommonBuildConfigurationsDefaultSettingsValue(const char* buildConfiguration, const char* name, const char* devRoot)
+{
+    AZ_Assert(buildConfiguration, "Expected valid name of build configuration");
+    AZ_Assert(name, "Expected valid name of setting");
+    AZ_Assert(devRoot, "Expected valid dev root");
+
+    AZStd::string defaultSettingsFile = AZStd::string::format("%s/_WAF_/settings/build_configurations.json", devRoot);
+
+    AZStd::string resultValue;
+
+    rapidjson::Document defaultWafSettings;
+    StringOutcome outcome = LoadJsonData(defaultSettingsFile, defaultWafSettings);
+    if (!outcome.IsSuccess())
+    {
+        return outcome;
+    }
+
+    // Read the value from "configurations" : { buildConfiguration : { "default_output_ext" : value } }
+    const char* configurationsMemberName = "configurations";
+    if (defaultWafSettings.HasMember(configurationsMemberName))
+    {
+        if (defaultWafSettings[configurationsMemberName].HasMember(buildConfiguration))
+        {
+            if (defaultWafSettings[configurationsMemberName][buildConfiguration].HasMember(name))
+            {
+                resultValue = defaultWafSettings[configurationsMemberName][buildConfiguration][name].GetString();
+            }
+            else
+            {
+                AZStd::string msg = AZStd::string::format("Failed to find '%s' in '%s' in '%s' section of config file '%s'",
+                    name,
+                    buildConfiguration,
+                    configurationsMemberName,
+                    defaultSettingsFile.c_str());
+                return AZ::Failure<AZStd::string>(AZStd::move(msg));
+            }
+        }
+        else
+        {
+            AZStd::string msg = AZStd::string::format("Failed to find '%s' in '%s' section of config file '%s'",
+                buildConfiguration,
+                configurationsMemberName,
+                defaultSettingsFile.c_str());
+            return AZ::Failure<AZStd::string>(AZStd::move(msg));
+        }
+    }
+    else
+    {
+        AZStd::string msg = AZStd::string::format("Failed to find '%s' member in config file '%s'", configurationsMemberName, defaultSettingsFile.c_str());
+        return AZ::Failure<AZStd::string>(AZStd::move(msg));
+    }
+
+    return AZ::Success(resultValue);
+}

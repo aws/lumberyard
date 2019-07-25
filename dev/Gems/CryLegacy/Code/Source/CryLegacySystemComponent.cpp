@@ -19,7 +19,6 @@
 #include "CryLegacySystemComponent.h"
 #include <IPlayerProfiles.h>
 #include <CryLibrary.h>
-#include <IPlatformOS.h>
 
 #include "Input/AzToLyInput.h"
 #include "CryAction/CryAction.h"
@@ -204,12 +203,9 @@ namespace CryLegacy
         return LegacyCryAnimation::InitCharacterManager(initParams);
     }
 
-    void CryLegacySystemComponent::ShutdownCharacterManager(ICharacterManager* characterManager)
+    void CryLegacySystemComponent::ShutdownCharacterManager()
     {
-        if (characterManager)
-        {
-            SAFE_RELEASE(characterManager);
-        }
+        LegacyCryAnimation::ShutdownCharacterManager();
     }
 
     IEntitySystem* CryLegacySystemComponent::InitEntitySystem()

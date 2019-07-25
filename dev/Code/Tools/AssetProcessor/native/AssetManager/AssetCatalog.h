@@ -136,6 +136,9 @@ namespace AssetProcessor
         //! Checks in the currently-in-queue assets list for info on an asset (by source name)
         bool GetQueuedAssetInfoByRelativeSourceName(const char* sourceName, AZ::Data::AssetInfo& assetInfo, AZStd::string& watchFolder);
 
+        //! Gets the source info for a source that is not in the DB or APM queue
+        bool GetUncachedSourceInfoFromDatabaseNameAndWatchFolder(const char* sourceDatabasePath, const char* watchFolder, AZ::Data::AssetInfo& assetInfo);
+
         bool ConnectToDatabase();
 
         //! List of AssetTypes that should return info for the source instead of the product

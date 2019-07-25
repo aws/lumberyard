@@ -130,6 +130,38 @@ namespace UnitTest
         AZ_TEST_ASSERT(pi2 > pr1);
     }
 
+    TEST_F(Arrays, PairConstructSucceeds)
+    {
+        struct FirstElement
+        {
+            FirstElement() = default;
+            FirstElement(int32_t value)
+                : m_value(value)
+            {
+            }
+
+            int32_t m_value{};
+        };
+
+        struct SecondElement
+        {
+            SecondElement() = default;
+            SecondElement(double value, bool selected)
+                : m_value{ value }
+                , m_selected{ selected }
+            {
+            }
+
+            double m_value{};
+            bool m_selected{};
+        };
+        
+        AZStd::pair<FirstElement, SecondElement> testPair(AZStd::piecewise_construct_t{}, AZStd::forward_as_tuple(42), AZStd::forward_as_tuple(16.0, true));
+        EXPECT_EQ(42, testPair.first.m_value);
+        EXPECT_DOUBLE_EQ(16.0, testPair.second.m_value);
+        EXPECT_TRUE(testPair.second.m_selected);
+    }
+
     TEST_F(Arrays, Vector)
     {
         // VectorContainerTest-Begin

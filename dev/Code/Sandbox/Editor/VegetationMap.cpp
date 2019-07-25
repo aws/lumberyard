@@ -987,9 +987,8 @@ void CVegetationMap::DeleteObjInstanceNoUndo(CVegetationInstance* obj, SectorInf
     if (obj->pRenderNode)
     {
         GetIEditor()->GetGameEngine()->OnAreaModified(obj->pRenderNode->GetBBox());
+        Vegetation::StaticVegetationNotificationBus::Broadcast(&Vegetation::StaticVegetationNotificationBus::Events::InstanceRemoved, obj->pRenderNode, LyAABBToAZAabb(obj->pRenderNode->GetBBox()));
     }
-
-    Vegetation::StaticVegetationNotificationBus::Broadcast(&Vegetation::StaticVegetationNotificationBus::Events::InstanceRemoved, obj->pRenderNode, LyAABBToAZAabb(obj->pRenderNode->GetBBox()));
 
     SAFE_RELEASE_NODE(obj->pRenderNode);
     SAFE_RELEASE_NODE(obj->pRenderNodeGroundDecal);

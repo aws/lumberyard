@@ -534,7 +534,7 @@ struct SmallTree48BitQuat
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/QuatQuantization_h_provo.inl"
     #endif
-#elif defined(APPLE) || defined(LINUX)
+#elif defined(APPLE) || defined(LINUX) || defined(AZ_COMPILER_CLANG)
 #define QUATQUANTIZATION_H_TRAIT_USE_FL_M128_UNION 1
 #endif
 #if QUATQUANTIZATION_H_TRAIT_USE_FL_M128_UNION

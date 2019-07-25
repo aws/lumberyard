@@ -21,8 +21,6 @@
 
 #include "IXml.h"
 
-#include <IPlatformOS.h>
-
 // track some XML stats. only to find persistent XML nodes in the system
 // slow, so disable by default
 //#define CRY_COLLECT_XML_NODE_STATS
@@ -124,7 +122,7 @@ class CXmlNode
 public:
     //! Constructor.
     CXmlNode();
-    CXmlNode(const char* tag, bool bReuseStrings);
+    CXmlNode(const char* tag, bool bReuseStrings, bool bIsProcessingInstruction = false);
     //! Destructor.
     ~CXmlNode();
 
@@ -270,8 +268,8 @@ private:
     void ReleaseChild(IXmlNode* pChild);
     void removeAllChildsImpl();
 
-    void AddToXmlString(XmlString& xml, int level, AZ::IO::HandleType fileHandle = AZ::IO::InvalidHandle, IPlatformOS::ISaveWriterPtr pSaveWriter = IPlatformOS::ISaveWriterPtr(), size_t chunkSizeBytes = 0) const;
-    char* AddToXmlStringUnsafe(char* xml, int level, char* endPtr, AZ::IO::HandleType fileHandle = AZ::IO::InvalidHandle, IPlatformOS::ISaveWriterPtr pSaveWriter = IPlatformOS::ISaveWriterPtr(), size_t chunkSizeBytes = 0) const;
+    void AddToXmlString(XmlString& xml, int level, AZ::IO::HandleType fileHandle = AZ::IO::InvalidHandle, size_t chunkSizeBytes = 0) const;
+    char* AddToXmlStringUnsafe(char* xml, int level, char* endPtr, AZ::IO::HandleType fileHandle = AZ::IO::InvalidHandle, size_t chunkSizeBytes = 0) const;
     XmlString MakeValidXmlString(const XmlString& xml) const;
     bool IsValidXmlString(const char* str) const;
     XmlAttrConstIter GetAttrConstIterator(const char* key) const
@@ -345,6 +343,7 @@ private:
     //! Line in XML file where this node firstly appeared (useful for debugging).
     int m_line;
 
+    bool m_isProcessingInstruction;
     friend class XmlParserImp;
 };
 

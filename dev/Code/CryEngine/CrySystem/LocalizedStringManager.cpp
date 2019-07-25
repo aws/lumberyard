@@ -14,6 +14,12 @@
 #include "StdAfx.h"
 
 #include "LocalizedStringManager.h"
+
+#if defined(AZ_RESTRICTED_PLATFORM)
+#undef AZ_RESTRICTED_SECTION
+#define LOCALIZEDSTRINGMANAGER_CPP_SECTION_1 1
+#endif
+
 #include <ISystem.h>
 #include "System.h" // to access InitLocalization()
 #include <CryPath.h>
@@ -24,6 +30,8 @@
 
 #include "CryZlib.h"
 
+#include <AzCore/std/string/conversions.h>
+#include <AzFramework/StringFunc/StringFunc.h>
 #if !defined(_RELEASE)
 #include "CrySizerImpl.h"
 #endif //#if !defined(_RELEASE)
@@ -33,7 +41,8 @@
 // CVAR names
 const char c_sys_localization_debug[] = "sys_localization_debug";
 const char c_sys_localization_encode[] = "sys_localization_encode";
-const char c_sys_localization_test[] = "sys_localization_test";
+#define LOC_WINDOW "Localization"
+const char c_sys_localization_format[] = "sys_localization_format";
 
 enum ELocalizedXmlColumns
 {
@@ -105,37 +114,40 @@ static const char* sLocalizedColumnNames[] =
 //Please ensure that this array matches the contents of EPlatformIndependentLanguageID in ILocalizationManager.h
 static const char* PLATFORM_INDEPENDENT_LANGUAGE_NAMES[ ILocalizationManager::ePILID_MAX_OR_INVALID ] =
 {
-    "japanese",
-    "english",
-    "french",
-    "spanish",
-    "german",
-    "italian",
-    "dutch",
-    "portuguese",
-    "russian",
-    "korean",
-    "chineset",     // Traditional Chinese
-    "chineses",     // Simplified Chinese
-    "finnish",
-    "swedish",
-    "danish",
-    "norwegian",
-    "polish",
-    "arabic",
-    "czech",
-    "turkish"
+    "en-US",  // English (USA)
+    "en-GB",  // English (UK)
+    "de-DE",  // German
+    "ru-RU",  // Russian (Russia)
+    "pl-PL",  // Polish
+    "tr-TR",  // Turkish
+    "es-ES",  // Spanish (Spain)
+    "es-MX",  // Spanish (Mexico)
+    "fr-FR",  // French (France)
+    "fr-CA",  // French (Canada)
+    "it-IT",  // Italian
+    "pt-PT",  // Portugese (Portugal)
+    "pt-BR",  // Portugese (Brazil)
+    "ja-JP",  // Japanese
+    "ko-KR",  // Korean
+    "zh-CHT", // Traditional Chinese
+    "zh-CHS", // Simplified Chinese
+    "nl-NL",  // Dutch (The Netherlands)
+    "fi-FI",  // Finnish
+    "sv-SE",  // Swedish
+    "cs-CZ",  // Czech
+    "no-NO",  // Norwegian
+    "ar-SA",   // Arabic (Saudi Arabia)
+    "da-DK"   // Danish (Denmark)
 };
 
 //////////////////////////////////////////////////////////////////////////
 #if !defined(_RELEASE)
 static void ReloadDialogData(IConsoleCmdArgs* pArgs)
 {
-    //gEnv->pSystem->GetLocalizationManager()->FreeData();
+    LocalizationManagerRequestBus::Broadcast(&LocalizationManagerRequestBus::Events::ReloadData);
     //CSystem *pSystem = (CSystem*) gEnv->pSystem;
     //pSystem->InitLocalization();
     //pSystem->OpenBasicPaks();
-    gEnv->pSystem->GetLocalizationManager()->ReloadData();
 }
 #endif //#if !defined(_RELEASE)
 
@@ -146,9 +158,9 @@ static void TestFormatMessage (IConsoleCmdArgs* pArgs)
     string fmt1 ("abc %1 def % gh%2i %");
     string fmt2 ("abc %[action:abc] %2 def % gh%1i %1");
     string out1, out2;
-    gEnv->pSystem->GetLocalizationManager()->FormatStringMessage(out1, fmt1, "first", "second", "third");
+    LocalizationManagerRequestBus::Broadcast(&LocalizationManagerRequestBus::Events::FormatStringMessage, out1, fmt1, "first", "second", "third", nullptr);
     CryLogAlways("%s", out1.c_str());
-    gEnv->pSystem->GetLocalizationManager()->FormatStringMessage(out2, fmt2, "second");
+    LocalizationManagerRequestBus::Broadcast(&LocalizationManagerRequestBus::Events::FormatStringMessage, out2, fmt2, "second", nullptr, nullptr, nullptr);
     CryLogAlways("%s", out2.c_str());
 }
 #endif //#if !defined(_RELEASE)
@@ -208,7 +220,6 @@ void CLocalizedStringsManager::LocalizationDumpLoadedInfo(IConsoleCmdArgs* pArgs
 CLocalizedStringsManager::CLocalizedStringsManager(ISystem* pSystem)
     : m_cvarLocalizationDebug(0)
     , m_cvarLocalizationEncode(1)
-    , m_cvarLocalizationTest(0)
     , m_availableLocalizations(0)
 {
     m_pSystem = pSystem;
@@ -240,82 +251,52 @@ CLocalizedStringsManager::CLocalizedStringsManager(ISystem* pSystem)
         "1: Huffman encode translated text, saves approx 30% with a small runtime performance cost\n"
         "Default is 1.");
 
-    REGISTER_CVAR2(c_sys_localization_test, &m_cvarLocalizationTest, m_cvarLocalizationTest, VF_CHEAT,
-        "Toggles test mode for localization.  Provides mechanism to render localization token instead of text as a way to check which text are localized.\n"
-        "Usage: sys_localization_test [0..2]\n"
-        "0: No test mode, regular token translation\n"
-        "1: Use token name rather than translation\n"
-        "2: Use language name rather than translation\n"
-        "Default is 0 (off).");
 
     REGISTER_COMMAND("LocalizationDumpLoadedInfo", LocalizationDumpLoadedInfo, VF_NULL, "Dump out into about the loaded localization files");
 #endif //#if !defined(_RELEASE)
 
+    REGISTER_CVAR2(c_sys_localization_format, &m_cvarLocalizationFormat, 1, VF_NULL,
+        "Usage: sys_localization_format [0..1]\n"
+        "    0: Crytek Legacy Localization (Excel 2003)\n"
+        "    1: AGS XML\n"
+        "Default is 1 (AGS Xml)");
     //Check that someone hasn't added a language ID without a language name
     assert(PLATFORM_INDEPENDENT_LANGUAGE_NAMES[ ILocalizationManager::ePILID_MAX_OR_INVALID - 1 ] != 0);
 
     // Populate available languages by scanning the localization directory for paks
-    ICryPak* pPak = gEnv->pCryPak;
+    // Default to US English if language is not supported
+    string sPath;
+    const string sLocalizationFolder(PathUtil::GetLocalizationFolder());
     ILocalizationManager::TLocalizationBitfield availableLanguages = 0;
-    if (pPak)
+    
+    AZ::IO::FileIOBase* fileIO = AZ::IO::FileIOBase::GetInstance();
+    // test language name against supported languages
+    for (int i = 0; i < ILocalizationManager::ePILID_MAX_OR_INVALID; i++)
     {
-        const string sLocalizationFolder(PathUtil::GetLocalizationFolder());
-        const string sLocalizationSearch(sLocalizationFolder + "*.pak");
-        const size_t sExtensionLength = 4; // for ".pak"
-        _finddata_t fd;
-        intptr_t handle = pPak->FindFirst(sLocalizationSearch.c_str(), &fd);
-        if (handle > -1)
+        string sCurrentLanguage = LangNameFromPILID((ILocalizationManager::EPlatformIndependentLanguageID)i);  
+        sPath = sLocalizationFolder.c_str() + sCurrentLanguage;
+        sPath.MakeLower();
+        if (fileIO && fileIO->IsDirectory(sPath))
         {
-            const char sLocalizationXmlPostfix[] = "_xml";
-            const size_t sLocalizationXmlPostfixLength = sizeof(sLocalizationXmlPostfix) - 1; // -1 for null-terminator
-            do
+            availableLanguages |= ILocalizationManager::LocalizationBitfieldFromPILID((ILocalizationManager::EPlatformIndependentLanguageID)i);
+            if (m_cvarLocalizationDebug >= 2)
             {
-                // drop files with too short name
-                const string sLanguageName = fd.name;
-                if (sLanguageName.length() <= sLocalizationXmlPostfixLength + sExtensionLength)
-                {
-                    continue;
-                }
-
-                // drop files that don't match the pattern "name_xml.pak"
-                const size_t languageLength = sLanguageName.length() - sLocalizationXmlPostfixLength - sExtensionLength;
-                if (sLanguageName.compareNoCase(languageLength, sLocalizationXmlPostfixLength, sLocalizationXmlPostfix))
-                {
-                    continue;
-                }
-
-                // test language name against supported languages
-                for (int i = 0; i < ILocalizationManager::ePILID_MAX_OR_INVALID; i++)
-                {
-                    const char* const sCurrentLanguage = LangNameFromPILID((ILocalizationManager::EPlatformIndependentLanguageID)i);
-                    if (sLanguageName.compareNoCase(0, languageLength, sCurrentLanguage) == 0)
-                    {
-                        availableLanguages |= ILocalizationManager::LocalizationBitfieldFromPILID((ILocalizationManager::EPlatformIndependentLanguageID)i);
-                        if (m_cvarLocalizationDebug >= 2)
-                        {
-                            CryLogAlways("<Localization> Detected language support for %s (id %d)", sCurrentLanguage, i);
-                        }
-                    }
-                }
+                AZ_TracePrintf("Localization", "Detected language support for %s (id %d)", sCurrentLanguage.c_str(), i);
             }
-            while (pPak->FindNext(handle, &fd) >= 0);
-
-            pPak->FindClose(handle);
         }
     }
 
-    if (availableLanguages == 0 && ProjectUsesLocalization())
-    {
-        CryWarning(VALIDATOR_MODULE_SYSTEM, VALIDATOR_ERROR_DBGBRK, "<Localization> No localization files found!");
-    }
+    AZ_Warning("Localization", !(m_cvarLocalizationFormat == 0 && availableLanguages == 0 && ProjectUsesLocalization()), "No localization files found!");
 
     SetAvailableLocalizationsBitfield(availableLanguages);
+    LocalizationManagerRequestBus::Handler::BusConnect();
 }
 
 //////////////////////////////////////////////////////////////////////
 CLocalizedStringsManager::~CLocalizedStringsManager()
 {
     FreeData();
+    LocalizationManagerRequestBus::Handler::BusDisconnect();
 }
 
 //////////////////////////////////////////////////////////////////////
@@ -339,6 +320,14 @@ void CLocalizedStringsManager::FreeLocalizationData()
 
     for (uint32 i = 0; i < m_languages.size(); i++)
     {
+        if (m_cvarLocalizationEncode == 1)
+        {
+            auto pLanguage = m_languages[i];
+            for (uint8 iEncoder = 0; iEncoder < pLanguage->m_vEncoders.size(); iEncoder++)
+            {
+                SAFE_DELETE(pLanguage->m_vEncoders[iEncoder]);
+            }
+        }
         std::for_each(m_languages[i]->m_vLocalizedStrings.begin(), m_languages[i]->m_vLocalizedStrings.end(), stl::container_object_deleter());
         m_languages[i]->m_keysMap.clear();
         m_languages[i]->m_vLocalizedStrings.clear();
@@ -361,27 +350,56 @@ void CLocalizedStringsManager::FreeData()
     m_pLanguage = 0;
 }
 
+//////////////////////////////////////////////////////////////////////////
 const char* CLocalizedStringsManager::LangNameFromPILID(const ILocalizationManager::EPlatformIndependentLanguageID id)
 {
     assert(id >= 0 && id < ILocalizationManager::ePILID_MAX_OR_INVALID);
     return PLATFORM_INDEPENDENT_LANGUAGE_NAMES[ id ];
 }
 
+//////////////////////////////////////////////////////////////////////////
+ILocalizationManager::EPlatformIndependentLanguageID CLocalizedStringsManager::PILIDFromLangName(AZStd::string langName)
+{
+    for (int i = 0; i < ILocalizationManager::ePILID_MAX_OR_INVALID; i++)
+    {
+        if (!_stricmp(langName.c_str(), PLATFORM_INDEPENDENT_LANGUAGE_NAMES[i]))
+        {
+            return (ILocalizationManager::EPlatformIndependentLanguageID)i;
+        }
+    }
+    return ILocalizationManager::ePILID_MAX_OR_INVALID;
+}
+
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION LOCALIZEDSTRINGMANAGER_CPP_SECTION_1
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/LocalizedStringManager_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/LocalizedStringManager_cpp_provo.inl"
+    #endif
+#else
+//////////////////////////////////////////////////////////////////////////
+ILocalizationManager::EPlatformIndependentLanguageID CLocalizedStringsManager::GetSystemLanguage()
+{
+
+    return ILocalizationManager::EPlatformIndependentLanguageID::ePILID_English_US;
+}
+#endif // defined(AZ_RESTRICTED_PLATFORM)
+
 //Uses bitwise operations to compare the localizations we provide in this SKU and the languages that the platform supports.
 //Returns !0 if we provide more localizations than are available as system languages
 ILocalizationManager::TLocalizationBitfield CLocalizedStringsManager::MaskSystemLanguagesFromSupportedLocalizations(const ILocalizationManager::TLocalizationBitfield systemLanguages)
 {
-    assert(m_availableLocalizations != 0);      //Make sure to set the available localizations!
     return (~systemLanguages) & m_availableLocalizations;
 }
 
 //Returns !0 if the language is supported.
 ILocalizationManager::TLocalizationBitfield CLocalizedStringsManager::IsLanguageSupported(const ILocalizationManager::EPlatformIndependentLanguageID id)
 {
-    assert(m_availableLocalizations != 0);      //Make sure to set the available localizations!
     return m_availableLocalizations & (1 << id);
 }
 
+//////////////////////////////////////////////////////////////////////////
 void CLocalizedStringsManager::SetAvailableLocalizationsBitfield(const ILocalizationManager::TLocalizationBitfield availableLocalizations)
 {
     m_availableLocalizations = availableLocalizations;
@@ -408,7 +426,7 @@ bool CLocalizedStringsManager::SetLanguage(const char* sLanguage)
     // Check if already language loaded.
     for (uint32 i = 0; i < m_languages.size(); i++)
     {
-        if (azstricmp(sLanguage, m_languages[i]->sLanguage) == 0)
+        if (_stricmp(sLanguage, m_languages[i]->sLanguage) == 0)
         {
             InternalSetCurrentLanguage(m_languages[i]);
             return true;
@@ -442,6 +460,39 @@ bool CLocalizedStringsManager::SetLanguage(const char* sLanguage)
     }
 
     return (true);
+}
+
+//////////////////////////////////////////////////////////////////////////
+int CLocalizedStringsManager::GetLocalizationFormat() const
+{
+    return m_cvarLocalizationFormat;
+}
+
+//////////////////////////////////////////////////////////////////////////
+AZStd::string CLocalizedStringsManager::GetLocalizedSubtitleFilePath(const AZStd::string& localVideoPath, const AZStd::string& subtitleFileExtension) const
+{
+    AZStd::string sLocalizationFolder(PathUtil::GetLocalizationFolder().c_str());
+    size_t backSlashIdx = sLocalizationFolder.find_first_of("\\", 0);
+    if (backSlashIdx != AZStd::string::npos)
+    {
+        sLocalizationFolder.replace(backSlashIdx, 2, "/");
+    }
+    AZStd::string filePath(m_pLanguage->sLanguage.c_str());
+    filePath = sLocalizationFolder.c_str() + filePath + "/" + localVideoPath;
+    return filePath.substr(0, filePath.find_last_of('.')).append(subtitleFileExtension);
+}
+
+//////////////////////////////////////////////////////////////////////////
+AZStd::string CLocalizedStringsManager::GetLocalizedLocXMLFilePath(const AZStd::string & localXmlPath) const
+{
+    AZStd::string sLocalizationFolder(PathUtil::GetLocalizationFolder().c_str());
+    size_t backSlashIdx = sLocalizationFolder.find_first_of("\\", 0);
+    if (backSlashIdx != AZStd::string::npos)
+    {
+        sLocalizationFolder.replace(backSlashIdx, 2, "/");
+    }
+    const AZStd::string& filePath = AZStd::string::format("%s%s/%s", sLocalizationFolder.c_str(), m_pLanguage->sLanguage.c_str(), localXmlPath.c_str());
+    return filePath.substr(0, filePath.find_last_of('.')).append(".loc.xml");
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -536,6 +587,7 @@ static void CopyLowercase(char* dst, size_t dstSize, const char* src, size_t src
     }
 }
 
+//////////////////////////////////////////////////////////////////////////
 static void ReplaceEndOfLine(CryFixedStringT<CLocalizedStringsManager::LOADING_FIXED_STRING_LENGTH>& s)
 {
     const string oldSubstr("\\n");
@@ -594,7 +646,6 @@ void CLocalizedStringsManager::OnSystemEvent(
 }
 
 //////////////////////////////////////////////////////////////////////////
-
 bool CLocalizedStringsManager::InitLocalizationData(
     const char* sFileName, bool bReload)
 {
@@ -641,6 +692,7 @@ bool CLocalizedStringsManager::InitLocalizationData(
     return true;
 }
 
+//////////////////////////////////////////////////////////////////////////
 bool CLocalizedStringsManager::RequestLoadLocalizationDataByTag(const char* sTag)
 {
     TTagFileNames::iterator it = m_tagFileNames.find(sTag);
@@ -660,6 +712,7 @@ bool CLocalizedStringsManager::RequestLoadLocalizationDataByTag(const char* sTag
     return true;
 }
 
+//////////////////////////////////////////////////////////////////////////
 bool CLocalizedStringsManager::LoadLocalizationDataByTag(
     const char* sTag, bool bReload)
 {
@@ -673,17 +726,22 @@ bool CLocalizedStringsManager::LoadLocalizationDataByTag(
     if (it->second.loaded)
     {
         CryWarning(VALIDATOR_MODULE_SYSTEM, VALIDATOR_WARNING, "[LocError] LoadLocalizationDataByTag - Already loaded tag '%s'", sTag);
-        return false;
+        return true;
     }
 
     bool bResult = true;
 
     stack_string const sLocalizationFolder(PathUtil::GetLocalizationFolder());
 
+    LoadFunc loadFunction = GetLoadFunction();
     TStringVec& vEntries = it->second.filenames;
     for (TStringVec::iterator it2 = vEntries.begin(); it2 != vEntries.end(); ++it2)
     {
-        bResult &= DoLoadExcelXmlSpreadsheet(sLocalizationFolder.c_str() + *it2, it->second.id, bReload);
+        //Only load files of the correct type for the configured format
+        if ((m_cvarLocalizationFormat == 0 && strstr(*it2, ".xml")) || (m_cvarLocalizationFormat == 1 && strstr(*it2, ".agsxml")))
+        {
+            bResult &= (this->*loadFunction)(*it2, it->second.id, bReload);
+        }
     }
 
     if (m_cvarLocalizationDebug >= 2)
@@ -696,7 +754,7 @@ bool CLocalizedStringsManager::LoadLocalizationDataByTag(
     return bResult;
 }
 
-
+//////////////////////////////////////////////////////////////////////////
 bool CLocalizedStringsManager::ReleaseLocalizationDataByTag(
     const char* sTag)
 {
@@ -821,9 +879,22 @@ bool CLocalizedStringsManager::ReleaseLocalizationDataByTag(
     return true;
 }
 
+//////////////////////////////////////////////////////////////////////////
+bool CLocalizedStringsManager::LoadAllLocalizationData(bool bReload)
+{
+    for (TTagFileNames::iterator it = m_tagFileNames.begin(); it != m_tagFileNames.end(); ++it)
+    {
+        if(!LoadLocalizationDataByTag(it->first, bReload))
+            return false;
+    }
+    return true;
+}
+
+//////////////////////////////////////////////////////////////////////////
 bool CLocalizedStringsManager::LoadExcelXmlSpreadsheet(const char* sFileName, bool bReload)
 {
-    return DoLoadExcelXmlSpreadsheet(sFileName, 0, bReload);
+    LoadFunc loadFunction = GetLoadFunction();
+    return (this->*loadFunction)(sFileName, 0, bReload);
 }
 
 //////////////////////////////////////////////////////////////////////
@@ -855,11 +926,15 @@ bool CLocalizedStringsManager::DoLoadExcelXmlSpreadsheet(const char* sFileName, 
     }
 
     XmlNodeRef root;
+    string sPath;
     {
-        root = m_pSystem->LoadXmlFromFile(sFileName);
+        const string sLocalizationFolder(PathUtil::GetLocalizationRoot());
+        const string& languageFolder = m_pLanguage->sLanguage;
+        sPath = sLocalizationFolder.c_str() + languageFolder + PathUtil::GetSlash() + sFileName;
+        root = m_pSystem->LoadXmlFromFile(sPath);
         if (!root)
         {
-            CryLog("Loading Localization File %s failed!", sFileName);
+            CryLog("Loading Localization File %s failed!", sPath.c_str());
             pXmlTableReader->Release();
             return false;
         }
@@ -903,7 +978,7 @@ bool CLocalizedStringsManager::DoLoadExcelXmlSpreadsheet(const char* sFileName, 
     {
         if (!pXmlTableReader->Begin(root))
         {
-            CryLog("Loading Localization File %s failed! The file is in an unsupported format.", sFileName);
+            CryLog("Loading Localization File %s failed! The file is in an unsupported format.", sPath.c_str());
             pXmlTableReader->Release();
             return false;
         }
@@ -1102,7 +1177,7 @@ bool CLocalizedStringsManager::DoLoadExcelXmlSpreadsheet(const char* sFileName, 
                 break;
             case ELOCALIZED_COLUMN_IS_DIRECT_RADIO:
                 sTmp.assign(cell.ptr, cell.count);
-                if (!azstricmp(sTmp.c_str(), "intercept"))
+                if (!_stricmp(sTmp.c_str(), "intercept"))
                 {
                     bIsIntercepted = true;
                 }
@@ -1276,7 +1351,7 @@ bool CLocalizedStringsManager::DoLoadExcelXmlSpreadsheet(const char* sFileName, 
         keyCRC = CCrc32::Compute(szLowerCaseKey);
         if (m_cvarLocalizationDebug >= 3)
         {
-            CryLogAlways("<localization dupe/clash detection> CRC32: %8X, Key: %s", keyCRC, szLowerCaseKey);
+            CryLogAlways("<Localization dupe/clash detection> CRC32: 0x%8X, Key: %s", keyCRC, szLowerCaseKey);
         }
 
         if (m_pLanguage->m_keysMap.find(keyCRC) != m_pLanguage->m_keysMap.end())
@@ -1286,11 +1361,9 @@ bool CLocalizedStringsManager::DoLoadExcelXmlSpreadsheet(const char* sFileName, 
             continue;
         }
 
-        SLocalizedStringEntry* pEntry;
-        {
-            pEntry = new SLocalizedStringEntry;
-            pEntry->flags = 0;
-        }
+        SLocalizedStringEntry* pEntry = new SLocalizedStringEntry();
+        pEntry->flags = 0;
+
         if (bUseSubtitle == true)
         {
             pEntry->flags |= SLocalizedStringEntry::USE_SUBTITLE;
@@ -1514,15 +1587,202 @@ bool CLocalizedStringsManager::DoLoadExcelXmlSpreadsheet(const char* sFileName, 
     return true;
 }
 
+bool CLocalizedStringsManager::DoLoadAGSXmlDocument(const char* sFileName, uint8 nTagID, bool bReload)
+{
+    if (!sFileName)
+    {
+        return false;
+    }
+    if (!m_pLanguage)
+    {
+        return false;
+    }
+    if (!bReload)
+    {
+        if (m_loadedTables.find(CONST_TEMP_STRING(sFileName)) != m_loadedTables.end())
+        {
+            return true;
+        }
+    }
+    ListAndClearProblemLabels();
+    XmlNodeRef root;
+    string sPath;
+    {
+        const string sLocalizationFolder(PathUtil::GetLocalizationRoot());
+        const string& languageFolder = m_pLanguage->sLanguage;
+        sPath = sLocalizationFolder.c_str() + languageFolder + PathUtil::GetSlash() + sFileName;
+        root = m_pSystem->LoadXmlFromFile(sPath);
+        if (!root)
+        {
+            AZ_TracePrintf(LOC_WINDOW, "Loading Localization File %s failed!", sPath.c_str());
+            return false;
+        }
+    }
+    AZ_TracePrintf(LOC_WINDOW, "Loading Localization File %s", sPath.c_str());
+    HuffmanCoder* pEncoder = nullptr;
+    uint8 iEncoder = 0;
+    size_t startOfStringsToCompress = 0;
+    if (m_cvarLocalizationEncode == 1)
+    {
+        {
+            for (iEncoder = 0; iEncoder < m_pLanguage->m_vEncoders.size(); iEncoder++)
+            {
+                if (m_pLanguage->m_vEncoders[iEncoder] == nullptr)
+                {
+                    pEncoder = new HuffmanCoder();
+                    m_pLanguage->m_vEncoders[iEncoder] = pEncoder;
+                    break;
+                }
+            }
+            if (iEncoder == m_pLanguage->m_vEncoders.size())
+            {
+                pEncoder = new HuffmanCoder();
+                m_pLanguage->m_vEncoders.push_back(pEncoder);
+            }
+            pEncoder->Init();
+        }
+        startOfStringsToCompress = m_pLanguage->m_vLocalizedStrings.size();
+    }
+    int rowCount = 0;
+    {
+        AutoLock lock(m_cs);    // Make sure to lock, as this is a modifying operation
+        rowCount = root->getChildCount();
+        {
+            m_pLanguage->m_vLocalizedStrings.reserve(m_pLanguage->m_vLocalizedStrings.size() + rowCount);
+        }
+        m_pLanguage->m_keysMap.reserve(m_pLanguage->m_keysMap.size() + rowCount);
+    }
+    {
+        pairFileName sNewFile;
+        sNewFile.first = sFileName;
+        sNewFile.second.bDataStripping = false; // this is off for now
+        sNewFile.second.nTagID = nTagID;
+        m_loadedTables.insert(sNewFile);
+    }
+    const char* key = nullptr;
+    AZStd::string keyString;
+    AZStd::string lowerKey;
+    AZStd::string textValue;
+    uint32 keyCRC=0;
+    for (int i = 0; i < rowCount; ++i)
+    {
+        XmlNodeRef childNode = root->getChild(i);
+        if (azstricmp(childNode->getTag(), "string") || !childNode->getAttr("key", &key))
+        {
+            continue;
+        }
+        keyString = key;
+        textValue = childNode->getContent();
+        if (textValue.empty())
+        {
+            continue;
+        }
+        AzFramework::StringFunc::Replace(textValue, "\\n", " \n");      // carried over from helper func ReplaceEndOfLine(CryFixedStringT<>& s)
+        if (keyString[0] == '@')
+        {
+            AzFramework::StringFunc::LChop(keyString, 1);
+        }
+        lowerKey = keyString;
+        AZStd::to_lower(lowerKey.begin(), lowerKey.end());
+        keyCRC = CCrc32::Compute(lowerKey.c_str());
+        if (m_cvarLocalizationDebug >= 3)
+        {
+            CryLogAlways("<Localization dupe/clash detection> CRC32: 0%8X, Key: %s", keyCRC, lowerKey.c_str());
+        }
+        if (m_pLanguage->m_keysMap.find(keyCRC) != m_pLanguage->m_keysMap.end())
+        {
+            AZ_Warning(LOC_WINDOW, false, "Localized String '%s' Already Loaded for Language %s OR there is a CRC hash clash", keyString.c_str(), m_pLanguage->sLanguage.c_str());
+            continue;
+        }
+        SLocalizedStringEntry* pEntry = new SLocalizedStringEntry;
+        pEntry->flags = SLocalizedStringEntry::USE_SUBTITLE;
+        pEntry->nTagID = nTagID;
+        if (gEnv->IsEditor())
+        {
+            pEntry->pEditorExtension = new SLocalizedStringEntryEditorExtension();
+            pEntry->pEditorExtension->sKey = lowerKey.c_str();
+            pEntry->pEditorExtension->nRow = i;
+            {
+                pEntry->pEditorExtension->sUtf8TranslatedActorLine.append(textValue.c_str());
+            }
+            {
+                pEntry->pEditorExtension->sOriginalText.assign(textValue.c_str());
+            }
+        }
+        {
+            const char* textString = textValue.c_str();
+            size_t textLength = textValue.length();
+            if (m_cvarLocalizationEncode == 1)
+            {
+                pEncoder->Update((const uint8*)(textString), textLength);
+                pEntry->TranslatedText.szCompressed = new uint8[textLength + 1];
+                pEntry->flags |= SLocalizedStringEntry::IS_COMPRESSED;
+                memcpy(pEntry->TranslatedText.szCompressed, textString, textLength);
+                pEntry->TranslatedText.szCompressed[textLength] = '\0';  //Null terminate
+            }
+            else
+            {
+                pEntry->TranslatedText.psUtf8Uncompressed = new string(textString, textString + textLength);
+            }
+        }
+        {
+            AddLocalizedString(m_pLanguage, pEntry, keyCRC);
+        }
+    }
+    if (m_cvarLocalizationEncode == 1)
+    {
+        {
+            pEncoder->Finalize();
+        }
+        {
+            uint8 compressionBuffer[COMPRESSION_FIXED_BUFFER_LENGTH] = {};
+            size_t uncompressedTotal = 0, compressedTotal = 0;
+            for (size_t stringToCompress = startOfStringsToCompress; stringToCompress < m_pLanguage->m_vLocalizedStrings.size(); stringToCompress++)
+            {
+                SLocalizedStringEntry* pStringToCompress = m_pLanguage->m_vLocalizedStrings[stringToCompress];
+                if (pStringToCompress->TranslatedText.szCompressed != nullptr)
+                {
+                    size_t compBufSize = COMPRESSION_FIXED_BUFFER_LENGTH;
+                    memset(compressionBuffer, 0, COMPRESSION_FIXED_BUFFER_LENGTH);
+                    size_t inputStringLength = strnlen((const char*)(pStringToCompress->TranslatedText.szCompressed), COMPRESSION_FIXED_BUFFER_LENGTH);
+                    pEncoder->CompressInput(pStringToCompress->TranslatedText.szCompressed, inputStringLength, compressionBuffer, &compBufSize);
+                    compressionBuffer[compBufSize] = 0;
+                    pStringToCompress->huffmanTreeIndex = iEncoder;
+                    pEncoder->AddRef();
+                    uncompressedTotal += inputStringLength;
+                    compressedTotal += compBufSize;
+                    uint8* szCompressedString = new uint8[compBufSize];
+                    SAFE_DELETE_ARRAY(pStringToCompress->TranslatedText.szCompressed);
+                    memcpy(szCompressedString, compressionBuffer, compBufSize);
+                    pStringToCompress->TranslatedText.szCompressed = szCompressedString;
+                }
+            }
+        }
+    }
+    return true;
+}
 //////////////////////////////////////////////////////////////////////////
+CLocalizedStringsManager::LoadFunc CLocalizedStringsManager::GetLoadFunction() const
+{
+    CRY_ASSERT_MESSAGE(gEnv && gEnv->pConsole, "System environment or console missing!");
+    if (gEnv && gEnv->pConsole)
+    {
+        if(m_cvarLocalizationFormat == 1)
+        {
+            return &CLocalizedStringsManager::DoLoadAGSXmlDocument;
+        }
+    }
+    return &CLocalizedStringsManager::DoLoadExcelXmlSpreadsheet;
+}
 void CLocalizedStringsManager::ReloadData()
 {
     tmapFilenames temp = m_loadedTables;
 
+    LoadFunc loadFunction = GetLoadFunction();
     FreeLocalizationData();
     for (tmapFilenames::iterator it = temp.begin(); it != temp.end(); it++)
     {
-        DoLoadExcelXmlSpreadsheet((*it).first, (*it).second.nTagID, true);
+        (this->*loadFunction)((*it).first, (*it).second.nTagID, true);
     }
 }
 
@@ -1540,13 +1800,13 @@ void CLocalizedStringsManager::AddLocalizedString(SLanguage* pLanguage, SLocaliz
 }
 
 //////////////////////////////////////////////////////////////////////////
-bool CLocalizedStringsManager::LocalizeString(const char* sString, string& outLocalizedString, bool bEnglish)
+bool CLocalizedStringsManager::LocalizeString_ch(const char* sString, string& outLocalizedString, bool bEnglish)
 {
     return LocalizeStringInternal(sString, strlen(sString), outLocalizedString, bEnglish);
 }
 
 //////////////////////////////////////////////////////////////////////////
-bool CLocalizedStringsManager::LocalizeString(const string& sString, string& outLocalizedString, bool bEnglish)
+bool CLocalizedStringsManager::LocalizeString_s(const string& sString, string& outLocalizedString, bool bEnglish)
 {
     return LocalizeStringInternal(sString.c_str(), sString.length(), outLocalizedString, bEnglish);
 }
@@ -1585,7 +1845,7 @@ bool CLocalizedStringsManager::LocalizeStringInternal(const char* pStr, size_t l
             out.append(pPos, pLabel);
         }
 
-        // find the end of the label
+        // Search label for first occurence of any label terminating character
         const char* pLabelEnd = strpbrk(pLabel, " !\"#$%&\'()*+,./:;<=>\?[\\]^`{|}~\n\t\r");
         if (!pLabelEnd)
         {
@@ -1611,6 +1871,38 @@ bool CLocalizedStringsManager::LocalizeStringInternal(const char* pStr, size_t l
     return true;
 }
 
+void CLocalizedStringsManager::LocalizeAndSubstituteInternal(AZStd::string& locString, const AZStd::vector<AZStd::string>& keys, const AZStd::vector<AZStd::string>& values)
+{
+    string outString;
+    LocalizeString_ch(locString.c_str(), outString);
+    locString = outString .c_str();
+    if (values.size() != keys.size())
+    {
+        AZ_Warning("game", false, "Localization Error: LocalizeAndSubstitute was given %u keys and %u values to replace. These numbers must be equal.", keys.size(), values.size());
+        return;
+    }
+    size_t startIndex = locString.find('{');
+    size_t endIndex = locString.find('}', startIndex);
+    while (startIndex != AZStd::string::npos && endIndex != AZStd::string::npos)
+    {
+        const size_t subLength = endIndex - startIndex - 1;
+        AZStd::string substituteOut = locString.substr(startIndex + 1, subLength).c_str();
+        int index = 0;
+        if (LocalizationHelpers::IsKeyInList(keys, substituteOut, index))
+        {
+            const char* value = values[index].c_str();
+            locString.replace(startIndex, subLength + 2, value);
+            startIndex += strlen(value);
+        }
+        else
+        {
+            AZ_Warning("game", false, "Localization Error: Localized string '%s' contains a key '%s' that is not mapped to a data element.", locString.c_str(), substituteOut.c_str());
+            startIndex += substituteOut.length();
+        }
+        startIndex = locString.find_first_of('{', startIndex);
+        endIndex = locString.find_first_of('}', startIndex); 
+    }
+}
 #if defined(LOG_DECOMP_TIMES)
 static double g_fSecondsPerTick = 0.0;
 static FILE* pDecompLog = NULL;
@@ -1629,12 +1921,11 @@ static void LogDecompTimer(__int64 nTotalTicks, __int64 nDecompTicks, __int64 nA
         char szFilenameBuffer[MAX_PATH];
         time_t rawTime;
         time(&rawTime);
-        tm timeInfo;
-        localtime_s(&timeInfo, &rawTime);
+        struct tm* pTimeInfo = localtime(&rawTime);
 
         CreateDirectory("TestResults\\", 0);
-        strftime(szFilenameBuffer, sizeof(szFilenameBuffer), "TestResults\\Decomp_%Y_%m_%d-%H_%M_%S.csv", &timeInfo);
-        azfopen(&pDecompLog, szFilenameBuffer, "wb");
+        strftime(szFilenameBuffer, sizeof(szFilenameBuffer), "TestResults\\Decomp_%Y_%m_%d-%H_%M_%S.csv", pTimeInfo);
+        pDecompLog = fopen(szFilenameBuffer, "wb");
         fprintf(pDecompLog, "Total,Decomp,Alloc\n");
     }
     float nTotalMillis = float( g_fSecondsPerTick * 1000.0 * nTotalTicks );
@@ -1755,19 +2046,6 @@ bool CLocalizedStringsManager::LocalizeLabel(const char* sLabel, string& outLoca
 
             if (entry != NULL)
             {
-                switch (m_cvarLocalizationTest)
-                {
-                case 0:  // Ignore the cvar, continue localization as expected
-                    break;
-                case 1:  // Display the label without localizing.  Ex: @ui_hello
-                    outLocalString = sLabel;
-                    return true;
-                case 2: // Change the text to be current language setting.  Ex: @english
-                    outLocalString.Format("@%s", m_pLanguage->sLanguage.c_str());
-                    return true;
-                default:
-                    break;
-                }
                 
                 string translatedText = entry->GetTranslatedText(m_pLanguage);
                 if ((bEnglish || translatedText.empty()) && entry->pEditorExtension != NULL)
@@ -1847,6 +2125,19 @@ bool CLocalizedStringsManager::GetEnglishString(const char* sKey, string& sLocal
     return false;
 }
 
+bool CLocalizedStringsManager::IsLocalizedInfoFound(const char* sKey)
+{
+    if (!m_pLanguage)
+    {
+        return false;
+    }
+    uint32 keyCRC32 = CCrc32::ComputeLowercase(sKey);
+    {
+        AutoLock lock(m_cs);    //Lock here, to prevent strings etc being modified underneath this lookup
+        const SLocalizedStringEntry* entry = stl::find_in_map(m_pLanguage->m_keysMap, keyCRC32, NULL);
+        return (entry != NULL);
+    }
+}
 
 //////////////////////////////////////////////////////////////////////////
 bool CLocalizedStringsManager::GetLocalizedInfoByKey(const char* sKey, SLocalizedInfoGame& outGameInfo)
@@ -2152,7 +2443,7 @@ void InternalFormatStringMessage(StringClass& outString, const StringClass& sStr
 }
 
 //////////////////////////////////////////////////////////////////////////
-void CLocalizedStringsManager::FormatStringMessage(string& outString, const string& sString, const char** sParams, int nParams)
+void CLocalizedStringsManager::FormatStringMessage_List(string& outString, const string& sString, const char** sParams, int nParams)
 {
     InternalFormatStringMessage(outString, sString, sParams, nParams);
 }
@@ -2186,20 +2477,30 @@ namespace
 
     LanguageID languageIDArray[] =
     {
-        { "ChineseT",  0x404 }, // 1028
-        { "Czech",     0x405 }, // 1029
-        { "English",   0x409 }, // 1033
-        { "French",    0x40C }, // 1036
-        { "German",    0x407 }, // 1031
-        { "Hungarian", 0x40E }, // 1038
-        { "Italian",   0x410 }, // 1040
-        { "Japanese",  0x411 }, // 1041
-        { "Korean",    0x412 }, // 1042
-        { "Polish",    0x415 }, // 1045
-        { "Russian",   0x419 }, // 1049
-        { "Spanish",   0x40A }, // 1034
-        { "Thai",      0x41E }, // 1054
-        { "Turkish",   0x41F }, // 1055
+        { "en-US", 0x0409 },  // English (USA)
+        { "en-GB", 0x0809 },  // English (UK)
+        { "de-DE", 0x0407 },  // German
+        { "ru-RU", 0x0419 },  // Russian (Russia)
+        { "pl-PL", 0x0415 },  // Polish
+        { "tr-TR", 0x041f },  // Turkish
+        { "es-ES", 0x0c0a },  // Spanish (Spain)
+        { "es-MX", 0x080a },  // Spanish (Mexico)
+        { "fr-FR", 0x040c },  // French (France)
+        { "fr-CA", 0x0c0c },  // French (Canada)
+        { "it-IT", 0x0410 },  // Italian
+        { "pt-PT", 0x0816 },  // Portugese (Portugal)
+        { "pt-BR", 0x0416 },  // Portugese (Brazil)
+        { "ja-JP", 0x0411 },  // Japanese
+        { "ko-KR", 0x0412 },  // Korean
+        { "zh-CHT", 0x0804 }, // Traditional Chinese
+        { "zh-CHS", 0x0804 }, // Simplified Chinese
+        { "nl-NL", 0x0413 },  // Dutch (The Netherlands)
+        { "fi-FI", 0x040b },  // Finnish
+        { "sv-SE", 0x041d },  // Swedish
+        { "cs-CZ", 0x0405 },  // Czech 
+        { "no-NO", 0x0414 },  // Norwegian (Norway)
+        { "ar-SA", 0x0401 },  // Arabic (Saudi Arabia)
+        { "da-DK", 0x0406 },  // Danish (Denmark)
     };
 
     const size_t numLanguagesIDs = sizeof(languageIDArray) / sizeof(languageIDArray[0]);
@@ -2207,10 +2508,10 @@ namespace
     LanguageID GetLanguageID(const char* language)
     {
         // default is English (US)
-        const LanguageID defaultLanguage = { "English", 0x409 };
+        const LanguageID defaultLanguage = { "en-US", 0x0409 };
         for (int i = 0; i < numLanguagesIDs; ++i)
         {
-            if (azstricmp(language, languageIDArray[i].language) == 0)
+            if (_stricmp(language, languageIDArray[i].language) == 0)
             {
                 return languageIDArray[i];
             }
@@ -2253,6 +2554,11 @@ void CLocalizedStringsManager::InternalSetCurrentLanguage(CLocalizedStringsManag
         setlocale(LC_ALL, "C");
     }
 #endif
+    ReloadData();
+    if (gEnv->pCryFont)
+    {
+        gEnv->pCryFont->OnLanguageChanged();
+    }
 }
 
 void CLocalizedStringsManager::LocalizeDuration(int seconds, string& outDurationString)
@@ -2282,7 +2588,7 @@ void CLocalizedStringsManager::LocalizeDuration(int seconds, string& outDuration
     {
         str.Format("%02d:%02d", m, s);
     }
-    LocalizeString(str, outDurationString);
+    LocalizeString_s(str, outDurationString);
 }
 
 void CLocalizedStringsManager::LocalizeNumber(int number, string& outNumberString)
@@ -2298,7 +2604,7 @@ void CLocalizedStringsManager::LocalizeNumber(int number, string& outNumberStrin
     int n = abs(number);
     string separator;
     CryFixedStringT<64> tmp;
-    LocalizeString("@ui_thousand_separator", separator);
+    LocalizeString_ch("@ui_thousand_separator", separator);
     while (n > 0)
     {
         int a = n / 1000;
@@ -2322,7 +2628,7 @@ void CLocalizedStringsManager::LocalizeNumber(int number, string& outNumberStrin
     outNumberString.assign(tmp.c_str());
 }
 
-void CLocalizedStringsManager::LocalizeNumber(float number, int decimals, string& outNumberString)
+void CLocalizedStringsManager::LocalizeNumber_Decimal(float number, int decimals, string& outNumberString)
 {
     if (number == 0.0f)
     {
@@ -2335,7 +2641,7 @@ void CLocalizedStringsManager::LocalizeNumber(float number, int decimals, string
     outNumberString.assign("");
 
     string commaSeparator;
-    LocalizeString("@ui_decimal_separator", commaSeparator);
+    LocalizeString_ch("@ui_decimal_separator", commaSeparator);
     float f = number > 0.0f ? number : -number;
     int d = (int)f;
 
@@ -2476,7 +2782,7 @@ void CLocalizedStringsManager::LocalizeTime(time_t t, bool bMakeLocalTime, bool 
     struct tm theTime;
     if (bMakeLocalTime)
     {
-#ifdef AZ_COMPILER_MSVC
+#if AZ_TRAIT_USE_SECURE_CRT_FUNCTIONS
         localtime_s(&theTime, &t);
 #else
         theTime = *localtime(&t);
@@ -2484,10 +2790,10 @@ void CLocalizedStringsManager::LocalizeTime(time_t t, bool bMakeLocalTime, bool 
     }
     else
     {
-#ifdef AZ_COMPILER_MSVC
+#if AZ_TRAIT_USE_SECURE_CRT_FUNCTIONS
         gmtime_s(&theTime, &t);
 #else
-        theTime = *localtime(&t);
+        theTime = *gmtime(&t);
 #endif
     }
 
@@ -2503,7 +2809,7 @@ void CLocalizedStringsManager::LocalizeDate(time_t t, bool bMakeLocalTime, bool 
     struct tm theTime;
     if (bMakeLocalTime)
     {
-#ifdef AZ_COMPILER_MSVC
+#if AZ_TRAIT_USE_SECURE_CRT_FUNCTIONS
         localtime_s(&theTime, &t);
 #else
         theTime = *localtime(&t);
@@ -2511,7 +2817,7 @@ void CLocalizedStringsManager::LocalizeDate(time_t t, bool bMakeLocalTime, bool 
     }
     else
     {
-#ifdef AZ_COMPILER_MSVC
+#if AZ_TRAIT_USE_SECURE_CRT_FUNCTIONS
         gmtime_s(&theTime, &t);
 #else
         theTime = *gmtime(&t);

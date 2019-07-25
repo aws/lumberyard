@@ -54,19 +54,27 @@ namespace Input
             }
         }
 
-        void Activate(const Input::ProfileId& profileId)
+        void Activate(const AzFramework::LocalUserId& localUserId)
         {
-            for (InputEventGroup& inputEventHandler : m_inputEventGroups)
+            for (InputEventGroup& inputEventGroup : m_inputEventGroups)
             {
-                inputEventHandler.Activate(profileId);
+                inputEventGroup.Activate(localUserId);
             }
         }
 
-        void Deactivate(const Input::ProfileId& profileId)
+        void Deactivate(const AzFramework::LocalUserId& localUserId)
         {
-            for (InputEventGroup& inputEventHandler : m_inputEventGroups)
+            for (InputEventGroup& inputEventGroup : m_inputEventGroups)
             {
-                inputEventHandler.Deactivate(profileId);
+                inputEventGroup.Deactivate(localUserId);
+            }
+        }
+
+        void Cleanup()
+        {
+            for (InputEventGroup& inputEventGroup : m_inputEventGroups)
+            {
+                inputEventGroup.Cleanup();
             }
         }
 
@@ -86,6 +94,12 @@ namespace Input
         AZ_CLASS_ALLOCATOR(InputEventBindingsAsset, AZ::SystemAllocator, 0);
         AZ_RTTI(InputEventBindingsAsset, "{25971C7A-26E2-4D08-A146-2EFCC1C36B0C}", AZ::Data::AssetData);
         InputEventBindingsAsset() = default;
+
+        virtual ~InputEventBindingsAsset()
+        {
+            m_bindings.Cleanup();
+        }
+
         InputEventBindings m_bindings;
 
         static void Reflect(AZ::ReflectContext* context)

@@ -30,6 +30,6 @@ def build(bld):
 
         # Platform Specific
         win_features        = ['crcfix'],
-        win_lib             = ['Ws2_32', 'Mswsock', 'gdi32'],
+        win_lib             = ['Ws2_32', 'Mswsock', 'gdi32', 'crypt32'],
     )
 

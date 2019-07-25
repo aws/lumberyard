@@ -52,15 +52,6 @@ namespace AssetProcessor
             AZ_Error(AssetProcessor::ConsoleChannel, false, "Failed to compute cache root folder");
         }
         m_normalizedCacheRootPath = AssetUtilities::NormalizeDirectoryPath(cacheRootDir.absolutePath());
-
-        //query all current files from Files table
-        auto filesFunction = [this](AzToolsFramework::AssetDatabase::FileDatabaseEntry& entry)
-            {
-                QString uniqueKey = GenerateUniqueFileKey(entry.m_scanFolderPK, entry.m_fileName.c_str());
-                m_filesInDatabase[uniqueKey] = entry.m_fileID;
-                return true;
-            };
-        m_connection->QueryFilesTable(filesFunction);
     }
 
     FileProcessor::~FileProcessor() = default;
@@ -74,19 +65,19 @@ namespace AssetProcessor
         }
     }
 
-    void FileProcessor::AssessFilesFromScanner(QSet<QString> files)
+    void FileProcessor::AssessFilesFromScanner(QSet<AssetFileInfo> files)
     {
-        for (const QString& fileName : files)
+        for (const AssetFileInfo& file : files)
         {
-            m_filesInAssetScanner.append(fileName);
+            m_filesInAssetScanner.append(file);
         }
     }
 
-    void FileProcessor::AssessFoldersFromScanner(QSet<QString> folders)
+    void FileProcessor::AssessFoldersFromScanner(QSet<AssetFileInfo> folders)
     {
-        for (const QString& folderName : folders)
+        for (const AssetFileInfo& folder : folders)
         {
-            m_filesInAssetScanner.append(folderName);
+            m_filesInAssetScanner.append(folder);
         }
     }
 
@@ -117,6 +108,7 @@ namespace AssetProcessor
         file.m_scanFolderPK = scanFolderInfo->ScanFolderID();
         file.m_fileName = relativeFileName.toUtf8().constData();
         file.m_isFolder = QFileInfo(filePath).isDir();
+
         if (m_connection->InsertFile(file))
         {
             AssetSystem::FileInfosNotificationMessage message;
@@ -177,50 +169,66 @@ namespace AssetProcessor
             return;
         }
 
+        QMap<QString, AZ::s64> filesInDatabase;
+
+        //query all current files from Files table
+        auto filesFunction = [&filesInDatabase](AzToolsFramework::AssetDatabase::FileDatabaseEntry& entry)
+        {
+            QString uniqueKey = GenerateUniqueFileKey(entry.m_scanFolderPK, entry.m_fileName.c_str());
+            filesInDatabase[uniqueKey] = entry.m_fileID;
+            return true;
+        };
+        m_connection->QueryFilesTable(filesFunction);
+
         //first collect all fileIDs in Files table
         QSet<AZ::s64> missingFileIDs;
-        for (AZ::s64 fileID : m_filesInDatabase.values())
+        for (AZ::s64 fileID : filesInDatabase.values())
         {
             missingFileIDs.insert(fileID);
         }
 
-        for (QString fullFileName : m_filesInAssetScanner)
+        AzToolsFramework::AssetDatabase::FileDatabaseEntryContainer filesToInsert;
+
+        for (const AssetFileInfo& fileInfo : m_filesInAssetScanner)
         {
-            bool isDir = QFileInfo(fullFileName).isDir();
+            bool isDir = fileInfo.m_isDirectory;
             QString scanFolderName;
             QString relativeFileName;
 
-            if (!m_platformConfig->ConvertToRelativePath(fullFileName, relativeFileName, scanFolderName))
+            if (!m_platformConfig->ConvertToRelativePath(fileInfo.m_filePath, relativeFileName, scanFolderName))
             {
-                AZ_Error(AssetProcessor::ConsoleChannel, false, "Failed to convert full path to relative for file %s", fullFileName);
+                AZ_Error(AssetProcessor::ConsoleChannel, false, "Failed to convert full path to relative for file %s", fileInfo.m_filePath);
                 continue;
             }
 
-            const ScanFolderInfo* scanFolderInfo = m_platformConfig->GetScanFolderForFile(fullFileName);
+            const ScanFolderInfo* scanFolderInfo = m_platformConfig->GetScanFolderForFile(fileInfo.m_filePath);
             if (!scanFolderInfo)
             {
-                AZ_Error(AssetProcessor::ConsoleChannel, false, "Failed to find the scan folder for file %s", fullFileName);
+                AZ_Error(AssetProcessor::ConsoleChannel, false, "Failed to find the scan folder for file %s", fileInfo.m_filePath);
                 continue;
             }
 
             AssetDatabase::FileDatabaseEntry file;
             file.m_scanFolderPK = scanFolderInfo->ScanFolderID();
-            file.m_fileName = relativeFileName.toUtf8().constData(),
+            file.m_fileName = relativeFileName.toUtf8().constData();
             file.m_isFolder = isDir;
+            file.m_modTime = 0;
 
             //when file is found by AssetScanner, remove it from the "missing" set
             QString uniqueKey = GenerateUniqueFileKey(file.m_scanFolderPK, relativeFileName.toUtf8().constData());
-            if (m_filesInDatabase.contains(uniqueKey))
+            if (filesInDatabase.contains(uniqueKey))
             {
                 // found it, its not missing anymore.  (Its also already in the db)
-                missingFileIDs.remove(m_filesInDatabase[uniqueKey]);
+                missingFileIDs.remove(filesInDatabase[uniqueKey]);
             }
             else
             {
                 // its a new file we were previously unaware of.
-                m_connection->InsertFile(file);
+                filesToInsert.push_back(AZStd::move(file));
             }
         }
+
+        m_connection->InsertFiles(filesToInsert);
 
         // remove remaining files from the database as they no longer exist on hard drive
         for (AZ::s64 fileID : missingFileIDs)
@@ -231,9 +239,9 @@ namespace AssetProcessor
         AssetSystem::FileInfosNotificationMessage message;
         ConnectionBus::Broadcast(&ConnectionBusTraits::Send, 0, message);
         
-        // clear memory, we dont have a use for this map anymore.
-        QMap<QString, AZ::s64> emptyMap;
-        m_filesInDatabase.swap(emptyMap);
+        // It's important to clear this out since rescanning will end up filling this up with duplicates otherwise
+        QList<AssetFileInfo> emptyList;
+        m_filesInAssetScanner.swap(emptyList);
     }
 
     // note that this function normalizes the path and also returns true only if the file is 'relevant'

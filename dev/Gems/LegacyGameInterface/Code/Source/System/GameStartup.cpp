@@ -15,7 +15,7 @@
 #include "Core/EditorGame.h"
 #include <IPlayerProfiles.h>
 #include <CryLibrary.h>
-#include <IPlatformOS.h>
+#include <ITimer.h>
 
 using namespace LegacyGameInterface;
 
@@ -68,8 +68,6 @@ IGameRef GameStartup::Init(SSystemInitParams& startupParams)
             {
                 system->ExecuteCommandLine();
             }
-
-            system->GetPlatformOS()->UserDoSignIn(0);
         }
         else
         {

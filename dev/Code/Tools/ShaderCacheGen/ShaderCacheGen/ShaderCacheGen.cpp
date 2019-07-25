@@ -30,6 +30,11 @@
 #include <CryLibrary.h>
 #include <IConsole.h>
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#undef AZ_RESTRICTED_SECTION
+#define SHADERCACHEGEN_CPP_SECTION_1 1
+#endif
+
 #if defined(AZ_PLATFORM_APPLE_OSX)
 #include <fcntl.h>
 #include <errno.h>
@@ -88,7 +93,7 @@ bool DisplayYesNoMessageBox(const char* title, const char* message)
     {
         return false;
     }
-	
+
 #if defined(AZ_PLATFORM_WINDOWS)
     return MessageBox(0, message, title, MB_YESNO) == IDYES;
 #elif defined(AZ_PLATFORM_APPLE_OSX)
@@ -104,7 +109,7 @@ void DisplayErrorMessageBox(const char* message)
         printf("Error: %s\n", message);
         return;
     }
-	
+
 #if defined(AZ_PLATFORM_WINDOWS)
     MessageBox(0, message, "Error", MB_OK | MB_DEFAULT_DESKTOP_ONLY);
 #elif defined(AZ_PLATFORM_APPLE_OSX)
@@ -115,11 +120,11 @@ void DisplayErrorMessageBox(const char* message)
 void ClearPlatformCVars(ISystem* pISystem)
 {
     pISystem->GetIConsole()->ExecuteString("r_ShadersDX11 = 0");
-    pISystem->GetIConsole()->ExecuteString("r_ShadersOrbis = 0"); // ACCEPTED_USE
-    pISystem->GetIConsole()->ExecuteString("r_ShadersDurango = 0"); // ACCEPTED_USE
     pISystem->GetIConsole()->ExecuteString("r_ShadersMETAL = 0");
     pISystem->GetIConsole()->ExecuteString("r_ShadersGL4 = 0");
     pISystem->GetIConsole()->ExecuteString("r_ShadersGLES3 = 0");
+    pISystem->GetIConsole()->ExecuteString("r_ShadersOrbis = 0");// ACCEPTED_USE
+    pISystem->GetIConsole()->ExecuteString("r_ShadersDurango = 0");// ACCEPTED_USE
 }
 
 bool IsLumberyardRunning()
@@ -236,7 +241,6 @@ int main_wrapped(int argc, char* argv[])
     InitRootDir();
 #endif
 
-
     PFNCREATESYSTEMINTERFACE CreateSystemInterface = reinterpret_cast<PFNCREATESYSTEMINTERFACE>(CryGetProcAddress(s_crySystemDll, "CreateSystemInterface"));
 
     COutputPrintSink printSink;
@@ -289,6 +293,26 @@ int main_wrapped(int argc, char* argv[])
         {                                                                                       \
             shaderTypeCommand = "r_Shaders" #PrivateName " = 1";                                \
             platform = AZ::PLATFORM_##PUBLICNAME;                                               \
+        }                                                                                       \
+        else if (CryStringUtils::stristr(commandLine, "ShadersPlatform=" #CodeName) != 0)       \
+        {                                                                                       \
+            shaderTypeCommand = "r_Shaders" #PrivateName " = 1";                                \
+            platform = AZ::PLATFORM_##PUBLICNAME;                                               \
+        }                                                                                       \
+        else if (CryStringUtils::stristr(commandLine, "ShadersPlatform=" #PublicAuxName1) != 0) \
+        {                                                                                       \
+            shaderTypeCommand = "r_Shaders" #PrivateName " = 1";                                \
+            platform = AZ::PLATFORM_##PUBLICNAME;                                               \
+        }                                                                                       \
+        else if (CryStringUtils::stristr(commandLine, "ShadersPlatform=" #PublicAuxName2) != 0) \
+        {                                                                                       \
+            shaderTypeCommand = "r_Shaders" #PrivateName " = 1";                                \
+            platform = AZ::PLATFORM_##PUBLICNAME;                                               \
+        }                                                                                       \
+        else if (CryStringUtils::stristr(commandLine, "ShadersPlatform=" #PublicAuxName3) != 0) \
+        {                                                                                       \
+            shaderTypeCommand = "r_Shaders" #PrivateName " = 1";                                \
+            platform = AZ::PLATFORM_##PUBLICNAME;                                               \
         }
 #if defined(AZ_EXPAND_FOR_RESTRICTED_PLATFORM)
         AZ_EXPAND_FOR_RESTRICTED_PLATFORM
@@ -332,15 +356,15 @@ int main_wrapped(int argc, char* argv[])
     }
 
     // Search for the platform name using the enum value
-    PlatformMap::const_iterator foundPlatofrm = AZStd::find_if(platforms.begin(), platforms.end(), [&platform](const PlatformMapElement& element) { return element.second == platform; });
-    if (foundPlatofrm == platforms.end())
+    PlatformMap::const_iterator foundPlatform = AZStd::find_if(platforms.begin(), platforms.end(), [&platform](const PlatformMapElement& element) { return element.second == platform; });
+    if (foundPlatform == platforms.end())
     {
         DisplayErrorMessageBox("Invalid target platform");
         return errorCode;
     }
 
     // Overwrite assets platform so it matches the platform for which we are generating the shaders.
-    cfg.m_assetPlatform = foundPlatofrm->first.c_str();
+    cfg.m_assetPlatform = foundPlatform->first.c_str();
     cfg.CopyToStartupParams(sip);
 
     sip.bShaderCacheGen = true;
@@ -362,7 +386,6 @@ int main_wrapped(int argc, char* argv[])
     sip.bSkipFont = true;
 
     ISystem* pISystem = CreateSystemInterface(sip);
-
     if (!pISystem)
     {
         DisplayErrorMessageBox("CreateSystemInterface Failed");
@@ -378,7 +401,13 @@ int main_wrapped(int argc, char* argv[])
     if (!shaderTypeCommand.empty())
     {
         ClearPlatformCVars(pISystem);
+
         pISystem->GetIConsole()->ExecuteString(shaderTypeCommand.c_str());
+
+        #if defined(AZ_RESTRICTED_PLATFORM) && defined(AZ_PLATFORM_PROVO)
+            #define AZ_RESTRICTED_SECTION SHADERCACHEGEN_CPP_SECTION_1
+            #include "Provo/ShaderCacheGen_cpp_provo.inl"
+        #endif
     }
 
     // Set the target platform
@@ -402,6 +431,10 @@ int main_wrapped(int argc, char* argv[])
     else if (CryStringUtils::stristr(commandLine, "BuildLevelCache") != 0)
     {
         pISystem->GetIConsole()->ExecuteString("r_PrecacheShadersLevels");
+    }
+    else if (CryStringUtils::stristr(commandLine, "GetShaderList") != 0)
+    {
+        pISystem->GetIConsole()->ExecuteString("r_GetShaderList");
     }
 
     ////////////////////////////////////
@@ -435,8 +468,7 @@ int main_wrapped(int argc, char* argv[])
     {
         pISystem->Release();
     }
-
-    pISystem = NULL;
+    pISystem = nullptr;
 
     return 0;
 }

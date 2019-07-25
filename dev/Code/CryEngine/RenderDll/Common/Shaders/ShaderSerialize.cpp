@@ -82,6 +82,13 @@ bool CShaderSerialize::_OpenSResource(float fVersion, SSShaderRes* pSR, CShader*
                 }
             }
         }
+
+        // If we failed a version or CRC check, close our resource file since we may try opening it again later
+        if (!bValid)
+        {
+            pRF->mfClose();
+        }
+
         if (bValid && nCache == CACHE_USER)
         {
             pRF->mfClose();
@@ -133,6 +140,11 @@ bool CShaderSerialize::_OpenSResource(float fVersion, SSShaderRes* pSR, CShader*
         SAFE_DELETE(pRF);
     }
 
+    if (pSR->m_pRes[nCache] && (pSR->m_pRes[nCache] != pRF))
+    {
+        SAFE_DELETE(pSR->m_pRes[nCache]);
+    }
+
     pSR->m_pRes[nCache] = pRF;
     pSR->m_Header[nCache] = hd;
     pSR->m_bReadOnly[nCache] = bReadOnly;
@@ -147,7 +159,23 @@ bool CShaderSerialize::_OpenSResource(float fVersion, SSShaderRes* pSR, CShader*
 
 bool CShaderSerialize::OpenSResource(const char* szName,  SSShaderRes* pSR, CShader* pSH, bool bDontUseUserFolder, bool bReadOnly)
 {
-    CResFile* rfRO = new CResFile(szName);
+    stack_string szReadOnly = szName;
+
+    // ShaderCacheGen behavior:
+    // CACHE_READONLY is not really used when exporting the .fxb, so we append the @cache@ alias to the relative shader path
+    // here as well.  We cannot just leave this as the relative Shaders/Cache/Foo.fxb value because then it creates a new
+    // file in the asset cache as @assets@/Shaders/Cache/Foo.fxb, which is illegal (since only AP has the authority to write here)
+    // Game runtime behavior:
+    // We can't simply set both the CACHE_READONLY and CACHE_USER entries to be the same file path because then the shader caching 
+    // system treats these entries the same. CACHE_READONLY acts more as a template while CACHE_USER is the actual file with all 
+    // of the shader permutation entries.  They need different file names (that have the same relative shader path) in order
+    // for the CResFiles to be treated differently by the caching system.
+    if (gRenDev->IsShaderCacheGenMode())
+    {
+        szReadOnly = stack_string(gRenDev->m_cEF.m_szCachePath.c_str()) + stack_string(szName);
+    }
+
+    CResFile* rfRO = new CResFile(szReadOnly);
     float fVersion = FX_CACHE_VER + FX_SER_CACHE_VER;
     bool bValidRO = _OpenSResource(fVersion, pSR, pSH, bDontUseUserFolder ? CACHE_READONLY : CACHE_USER, rfRO, bReadOnly);
 
@@ -289,6 +317,21 @@ void CShaderSerialize::ClearSResourceCache()
     m_SShaderResources.clear();
 }
 
+bool CShaderSerialize::DoesSResourceExist(CShader* pSH)
+{
+    SSShaderRes* pSR = NULL;
+    stack_string shaderName = pSH->GetName();
+    shaderName += "_GLOBAL";
+    CCryNameTSCRC SName = CCryNameTSCRC(shaderName.c_str());
+    FXSShaderResItor itS = m_SShaderResources.find(SName);
+    if (itS != m_SShaderResources.end())
+    {
+        return true;
+    }
+    
+    return false;
+}
+
 bool CShaderSerialize::ExportHWShader(CHWShader* pShader, SShaderSerializeContext& SC)
 {
     if (!pShader)
@@ -307,9 +350,28 @@ CHWShader* CShaderSerialize::ImportHWShader(SShaderSerializeContext& SC, int nOf
     return pRes;
 }
 
+void CShaderSerialize::ExportHWShaderStage(SShaderSerializeContext& SC, CHWShader* shader, uint32& outShaderOffset)
+{
+    if ( shader )
+    {
+        outShaderOffset = SC.Data.Num();
+        if ( !ExportHWShader(shader,SC) )
+        {
+            outShaderOffset = -1;
+            CryFatalError("Shader export failed.");
+        }
+    }
+    else
+    {
+        outShaderOffset = -1;
+    }
+}
+
 bool CShaderSerialize::ExportShader(CShader* pSH, CShaderManBin& binShaderMgr)
 {
+#ifdef SHADER_SERIALIZE_VERBOSE
     CryLogAlways("[CShaderSerialize] ExportShader: %s flags: 0x%llx mdvFlags: 0x%x\n", pSH->GetName(), pSH->m_nMaskGenFX, pSH->m_nMDV);
+#endif
 
     bool bRes = true;
 
@@ -330,7 +392,7 @@ bool CShaderSerialize::ExportShader(CShader* pSH, CShaderManBin& binShaderMgr)
     SC.SSR.m_Flags = pSH->m_Flags;
     SC.SSR.m_Flags2 = pSH->m_Flags2;
     SC.SSR.m_nMDV = pSH->m_nMDV;
-    SC.SSR.m_vertexFormatCRC = pSH->m_vertexFormat.GetCRC();
+    SC.SSR.m_vertexFormatEnum = pSH->m_vertexFormat.GetEnum();
     SC.SSR.m_eCull = pSH->m_eCull;
     //SC.SSR.m_nMaskCB = pSH->m_nMaskCB; //maskCB generated on HW shader activation
     SC.SSR.m_eShaderType = pSH->m_eShaderType;
@@ -349,6 +411,7 @@ bool CShaderSerialize::ExportShader(CShader* pSH, CShaderManBin& binShaderMgr)
         PR.m_Type = P.m_Type;
         PR.m_Value = P.m_Value;
         PR.m_nScriptOffs = SC.AddString(P.m_Script.c_str());
+        PR.m_eSemantic = P.m_eSemantic;
         SC.Params.Add(PR);
     }
 
@@ -361,8 +424,19 @@ bool CShaderSerialize::ExportShader(CShader* pSH, CShaderManBin& binShaderMgr)
     SC.SSR.m_nFXSamplers = params.m_FXSamplers.size();
     for (i = 0; i < SC.SSR.m_nFXSamplers; i++)
     {
-        SSTexSamplerFX texSampler;
         params.m_FXSamplers[i].Export(SC);
+    }
+
+    SC.SSR.m_nFXTextures = params.m_FXTextures.size();
+    for (i = 0; i < SC.SSR.m_nFXTextures; i++)
+    {
+        params.m_FXTextures[i].Export(SC);
+    }
+
+    SC.SSR.m_nFXTexSamplers = params.m_FXSamplersOld.size();
+    for (i = 0; i < SC.SSR.m_nFXTexSamplers; i++)
+    {
+        params.m_FXSamplersOld[i].Export(SC);
     }
 
     SC.SSR.m_nFXTexRTs = SC.FXTexRTs.Num();
@@ -397,33 +471,14 @@ bool CShaderSerialize::ExportShader(CShader* pSH, CShaderManBin& binShaderMgr)
 
             assert(!(SC.Data.Num() & 0x3));
 
-            if (P.m_VShader)
-            {
-                PS.m_nVShaderOffs = SC.Data.Num();
-                if (!ExportHWShader(P.m_VShader, SC))
-                {
-                    PS.m_nVShaderOffs = -1;
-                    CryFatalError("Shader export failed. Set r_shadersExport=0 and inform AndyM");
-                }
-            }
-            else
-            {
-                PS.m_nVShaderOffs = -1;
-            }
+            ExportHWShaderStage( SC, P.m_VShader, PS.m_nVShaderOffs );
+            ExportHWShaderStage( SC, P.m_HShader, PS.m_nHShaderOffs );
+            ExportHWShaderStage( SC, P.m_DShader, PS.m_nDShaderOffs );
+            ExportHWShaderStage( SC, P.m_GShader, PS.m_nGShaderOffs );
+            ExportHWShaderStage( SC, P.m_PShader, PS.m_nPShaderOffs );
+            ExportHWShaderStage( SC, P.m_CShader, PS.m_nCShaderOffs );
 
-            if (P.m_PShader)
-            {
-                PS.m_nPShaderOffs = SC.Data.Num();
-                if (!ExportHWShader(P.m_PShader, SC))
-                {
-                    PS.m_nPShaderOffs = -1;
-                    CryFatalError("Shader export failed. Set r_shadersExport=0 and inform AndyM");
-                }
-            }
-            else
-            {
-                PS.m_nPShaderOffs = -1;
-            }
+
             SC.Passes.Add(PS);
         }
 
@@ -446,6 +501,8 @@ bool CShaderSerialize::ExportShader(CShader* pSH, CShaderManBin& binShaderMgr)
 
     uint32 nPublicParamsOffset;
     uint32 nFXParamsOffset;
+    uint32 nFXSamplersOffset;
+    uint32 nFXTexturesOffset;
     uint32 nFXTexSamplersOffset;
     uint32 nFXTexRTsOffset;
     uint32 nTechOffset;
@@ -457,6 +514,8 @@ bool CShaderSerialize::ExportShader(CShader* pSH, CShaderManBin& binShaderMgr)
     SC.SSR.Export(Data);
     sAddDataArray(Data, SC.Params, nPublicParamsOffset);
     sAddDataArray(Data, SC.FXParams, nFXParamsOffset);
+    sAddDataArray(Data, SC.FXSamplers, nFXSamplersOffset);
+    sAddDataArray(Data, SC.FXTextures, nFXTexturesOffset);
     sAddDataArray(Data, SC.FXTexSamplers, nFXTexSamplersOffset);
     sAddDataArray(Data, SC.FXTexRTs, nFXTexRTsOffset);
     sAddDataArray(Data, SC.Techniques, nTechOffset);
@@ -467,7 +526,9 @@ bool CShaderSerialize::ExportShader(CShader* pSH, CShaderManBin& binShaderMgr)
     SSShader* pSSR = (SSShader*)&Data[0];
     pSSR->m_nPublicParamsOffset = nPublicParamsOffset;
     pSSR->m_nFXParamsOffset = nFXParamsOffset;
-    pSSR->m_nFXSamplersOffset = nFXTexSamplersOffset;
+    pSSR->m_nFXSamplersOffset = nFXSamplersOffset;
+    pSSR->m_nFXTexturesOffset = nFXTexturesOffset;
+    pSSR->m_nFXTexSamplersOffset = nFXTexSamplersOffset;
     pSSR->m_nFXTexRTsOffset = nFXTexRTsOffset;
     pSSR->m_nTechOffset = nTechOffset;
     pSSR->m_nPassOffset = nPassOffset;
@@ -481,6 +542,7 @@ bool CShaderSerialize::ExportShader(CShader* pSH, CShaderManBin& binShaderMgr)
         SwapEndian(pSSR->m_nPublicParamsOffset, eBigEndian);
         SwapEndian(pSSR->m_nFXParamsOffset, eBigEndian);
         SwapEndian(pSSR->m_nFXSamplersOffset, eBigEndian);
+        SwapEndian(pSSR->m_nFXTexturesOffset, eBigEndian);
         SwapEndian(pSSR->m_nFXTexRTsOffset, eBigEndian);
         SwapEndian(pSSR->m_nTechOffset, eBigEndian);
         SwapEndian(pSSR->m_nPassOffset, eBigEndian);
@@ -550,7 +612,7 @@ bool CShaderSerialize::CheckFXBExists(CShader* pSH)
 }
 
 
-bool CShaderSerialize::ImportShader(CShader* pSH, CShaderManBin& binShaderMgr)
+CShaderSerialize::ShaderImportResults CShaderSerialize::ImportShader(CShader* pSH, CShaderManBin& binShaderMgr)
 {
     if (CParserBin::m_bEndians)
     {
@@ -559,7 +621,6 @@ bool CShaderSerialize::ImportShader(CShader* pSH, CShaderManBin& binShaderMgr)
 
     float fTime0 = iTimer->GetAsyncCurTime();
 
-    bool bRes = true;
     SSShaderRes* pSR = NULL;
     uint32 i;
     int j;
@@ -592,16 +653,16 @@ bool CShaderSerialize::ImportShader(CShader* pSH, CShaderManBin& binShaderMgr)
             }
         }
 
-        if (!pDE)
+        if (!pDE && !pSR)
         {
-            gRenDev->LogShaderImportMiss(pSH);
-            return false;
+            // The .cfx has no associated .fxb, so this is a guaranteed failure on import.
+            return SHADER_IMPORT_FAILURE;
         }
-    }
-
-    if (CRenderer::CV_r_shaderssubmitrequestline > 1)
-    {
-        gRenDev->LogShaderImportMiss(pSH);
+        else if (!pDE)
+        {
+            // We have a shader import table but this specific permutation is missing
+            return SHADER_IMPORT_MISSING_ENTRY;
+        }
     }
 
     CShader* pSave = gRenDev->m_RP.m_pShader;
@@ -612,7 +673,8 @@ bool CShaderSerialize::ImportShader(CShader* pSH, CShaderManBin& binShaderMgr)
     byte* pData = (byte*)pRes->mfFileGetBuf(pDE);
     if (!pData)
     {
-        return false;
+        // Malformed fxb
+        return SHADER_IMPORT_FAILURE;
     }
 
     //printf("[CShaderSerialize] Import Shader: %s flags: 0x%llx mdvFlags: 0x%x from %s cache %s\n", pSH->GetName(), pSH->m_nMaskGenFX, pSH->m_nMDV, bLoadedFromLevel ? "LEVEL" : "GLOBAL", pSR->m_pRes[i]->mfGetFileName());
@@ -626,8 +688,10 @@ bool CShaderSerialize::ImportShader(CShader* pSH, CShaderManBin& binShaderMgr)
 
     SShaderSerializeContext SC;
     SC.SSR.Import(pSrc);
-
+    
+#ifdef SHADER_SERIALIZE_VERBOSE
     CryLog("[CShaderSerialize] Import Shader: %s flags: 0x%llx mdvFlags: 0x%x from global cache %s\n", pSH->GetName(), pSH->m_nMaskGenFX, pSH->m_nMDV, pSR->m_pRes[i]->mfGetFileName());
+#endif
 
     if (SC.SSR.m_nPublicParams)
     {
@@ -666,19 +730,44 @@ bool CShaderSerialize::ImportShader(CShader* pSH, CShaderManBin& binShaderMgr)
             }
         }
     }
-
+       
     if (SC.SSR.m_nFXSamplers)
     {
-        SC.FXTexSamplers.ReserveNoClear(SC.SSR.m_nFXSamplers);
+        SC.FXSamplers.ReserveNoClear(SC.SSR.m_nFXSamplers);
 
         if (!CParserBin::m_bEndians)
         {
-            memcpy(&SC.FXTexSamplers[0], &pSrc[SC.SSR.m_nFXSamplersOffset], sizeof(SSTexSamplerFX) * SC.SSR.m_nFXSamplers);
+            memcpy(&SC.FXSamplers[0], &pSrc[SC.SSR.m_nFXSamplersOffset], sizeof(SSFXSampler) * SC.SSR.m_nFXSamplers);
         }
         else
         {
             uint32 offset = SC.SSR.m_nFXSamplersOffset;
             for (i = 0; i < SC.SSR.m_nFXSamplers; i++)
+            {
+                SC.FXSamplers[i].Import(&pSrc[offset]);
+                offset += sizeof(SSTexSamplerFX);
+            }
+        }
+    }
+        
+    if (SC.SSR.m_nFXTextures)
+    {
+        SC.FXTextures.ReserveNoClear(SC.SSR.m_nFXTextures);
+        memcpy(&SC.FXTextures[0], &pSrc[SC.SSR.m_nFXTexturesOffset], sizeof(SSFXTexture) * SC.SSR.m_nFXTextures);
+    }
+
+    if (SC.SSR.m_nFXTexSamplers)
+    {
+        SC.FXTexSamplers.ReserveNoClear(SC.SSR.m_nFXTexSamplers);
+
+        if (!CParserBin::m_bEndians)
+        {
+            memcpy(&SC.FXTexSamplers[0], &pSrc[SC.SSR.m_nFXTexSamplersOffset], sizeof(SSTexSamplerFX) * SC.SSR.m_nFXTexSamplers);
+        }
+        else
+        {
+            uint32 offset = SC.SSR.m_nFXTexSamplersOffset;
+            for (i = 0; i < SC.SSR.m_nFXTexSamplers; i++)
             {
                 SC.FXTexSamplers[i].Import(&pSrc[offset]);
                 offset += sizeof(SSTexSamplerFX);
@@ -767,14 +856,10 @@ bool CShaderSerialize::ImportShader(CShader* pSH, CShaderManBin& binShaderMgr)
     pSH->m_Flags = SC.SSR.m_Flags;
     pSH->m_Flags2 = SC.SSR.m_Flags2;
     pSH->m_nMDV = SC.SSR.m_nMDV;
-    if (gRenDev->m_RP.m_crcVertexFormatLookupTable.count(SC.SSR.m_vertexFormatCRC) != 0)
-    {
-        pSH->m_vertexFormat = gRenDev->m_RP.m_crcVertexFormatLookupTable[SC.SSR.m_vertexFormatCRC];
-    }
-    else
-    {
-        pSH->m_vertexFormat = eVF_Unknown;
-    }
+
+    AZ_Assert(SC.SSR.m_vertexFormatEnum < eVF_Max, "Bad vertex format index. Is the shader cache out of date?");
+    pSH->m_vertexFormat = gRenDev->m_RP.m_vertexFormats[SC.SSR.m_vertexFormatEnum];
+
     pSH->m_eCull = SC.SSR.m_eCull;
     pSH->m_eShaderType = SC.SSR.m_eShaderType;
     pSH->m_nMaskGenFX = SC.SSR.m_nMaskGenFX;
@@ -802,13 +887,31 @@ bool CShaderSerialize::ImportShader(CShader* pSH, CShaderManBin& binShaderMgr)
         fxParams.m_FXParams.push_back(fxParam);
     }
 
+    fxParams.m_FXSamplersOld.reserve(fxParams.m_FXSamplersOld.size() + SC.SSR.m_nFXTexSamplers);
+
+    for (i = 0; i < SC.SSR.m_nFXTexSamplers; i++)
+    {
+        STexSamplerFX fxTexSampler;
+        fxTexSampler.Import(SC, &SC.FXTexSamplers[i]);
+        fxParams.m_FXSamplersOld.push_back(fxTexSampler);
+    }
+
     fxParams.m_FXSamplers.reserve(fxParams.m_FXSamplers.size() + SC.SSR.m_nFXSamplers);
 
     for (i = 0; i < SC.SSR.m_nFXSamplers; i++)
     {
-        STexSamplerFX fxSampler;
-        fxSampler.Import(SC, &SC.FXTexSamplers[i]);
-        fxParams.m_FXSamplersOld.push_back(fxSampler);
+        SFXSampler fxSampler;
+        fxSampler.Import(SC, &SC.FXSamplers[i]);
+        fxParams.m_FXSamplers.push_back(fxSampler);
+    }
+
+    fxParams.m_FXTextures.reserve(fxParams.m_FXTextures.size() + SC.SSR.m_nFXTextures);
+
+    for (i = 0; i < SC.SSR.m_nFXTextures; i++)
+    {
+        SFXTexture fxTexture;
+        fxTexture.Import(SC, &SC.FXTextures[i]);
+        fxParams.m_FXTextures.push_back(fxTexture);
     }
 
     for (i = 0; i < SC.SSR.m_nTechniques; i++)
@@ -891,7 +994,7 @@ bool CShaderSerialize::ImportShader(CShader* pSH, CShaderManBin& binShaderMgr)
 
     g_fTime2 += iTimer->GetAsyncCurTime() - fTime2;
 
-    return bRes;
+    return SHADER_IMPORT_SUCCESS;
 }
 
 #endif

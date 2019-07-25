@@ -17,8 +17,11 @@
 #include <BuilderSettings/TextureSettings.h>
 #include <BuilderSettings/PresetSettings.h>
 #include <BuilderSettings/PixelFormats.h>
+#include <Converters/Cubemap.h>
 #include <Processing/ImageConvert.h>
 #include <AzCore/std/string/conversions.h>
+
+#include <AzFramework/StringFunc/StringFunc.h>
 
 namespace ImageProcessingEditor
 {
@@ -135,33 +138,41 @@ namespace ImageProcessingEditor
 
     EditorTextureSetting::EditorTextureSetting(const AZ::Uuid& sourceTextureId)
     {
-        m_sourceTextureId = sourceTextureId;
-        const AzToolsFramework::AssetBrowser::SourceAssetBrowserEntry* fullDetails = AzToolsFramework::AssetBrowser::SourceAssetBrowserEntry::GetSourceByUuid(m_sourceTextureId);
-        m_textureName = fullDetails->GetName();
-        m_fullPath = fullDetails->GetFullPath();
+        const AzToolsFramework::AssetBrowser::SourceAssetBrowserEntry* fullDetails = AzToolsFramework::AssetBrowser::SourceAssetBrowserEntry::GetSourceByUuid(sourceTextureId);
+        InitFromPath(fullDetails->GetFullPath());
+    }
+
+    EditorTextureSetting::EditorTextureSetting(const AZStd::string& texturePath)
+    {
+        InitFromPath(texturePath);
+    }
+    
+    void EditorTextureSetting::InitFromPath(const AZStd::string& texturePath)
+    {
+        m_fullPath = texturePath;
+        AzFramework::StringFunc::Path::GetFullFileName(texturePath.c_str(), m_textureName);
+
         bool generatedDefaults = false;
         m_settingsMap = TextureSettings::GetMultiplatformTextureSetting(m_fullPath, generatedDefaults);
         m_img = IImageObjectPtr(LoadImageFromFile(m_fullPath));
 
-        //! Editor Sanity Check: We need to make sure the preset id is valid in texture setting
-        //! if not, we need to assign a default one
-        for (auto& settingIter: m_settingsMap)
+        // Get the preset id from one platform. The preset id for each platform should always be same
+        AZ_Assert(m_settingsMap.size() > 0, "There is no platform information");
+        AZ::Uuid presetId = m_settingsMap.begin()->second.m_preset;
+        const PresetSettings* preset = BuilderSettingManager::Instance()->GetPreset(presetId);
+
+        if (!preset)
         {
-            const AZ::Uuid presetId = settingIter.second.m_preset;
-            const PresetSettings* preset = BuilderSettingManager::Instance()->GetPreset(presetId);
-            if (!preset)
+            AZ_Warning("Texture Editor", false, "Cannot find preset %s! Will assign a suggested one for the texture.", presetId.ToString<AZStd::string>().c_str());
+            presetId = BuilderSettingManager::Instance()->GetSuggestedPreset(m_fullPath, m_img);
+
+            for (auto& settingIter : m_settingsMap)
             {
-                settingIter.second.ApplyPreset(BuilderSettingManager::Instance()->GetSuggestedPreset(m_textureName, m_img));
-                AZ_Error("Texture Editor", false, "Cannot find preset %s! Will assign a suggested one for the texture.", presetId.ToString<AZStd::string>().c_str());
+                settingIter.second.ApplyPreset(presetId);
             }
         }
     }
-
-    EditorTextureSetting::~EditorTextureSetting()
-    {
-
-    }
-
+    
     void EditorTextureSetting::SetIsOverrided()
     {
         for (auto& it : m_settingsMap)
@@ -185,30 +196,27 @@ namespace ImageProcessingEditor
         }
     }
 
-    void EditorTextureSetting::SetToPreset(const AZStd::string presetName)
+    void EditorTextureSetting::SetToPreset(const AZStd::string& presetName)
     {
         m_overrideFromPreset = false;
 
-        for (auto& it : m_settingsMap)
+        AZ::Uuid presetId = BuilderSettingManager::Instance()->GetPresetIdFromName(presetName);
+        if (presetId.IsNull())
         {
-            TextureSettings& textureSetting = it.second;
+            AZ_Error("Texture Editor", false, "Texture Preset %s has no associated UUID.", presetName.c_str());
+            return;
+        }
 
-            AZ::Uuid presetId = BuilderSettingManager::Instance()->GetPresetIdFromName(presetName);
-            if (presetId.IsNull())
-            {
-                AZ_Error("Texture Editor", false, "Texture Preset %s has no associated UUID.", presetName.c_str());
-                return;
-            }
-
-            textureSetting.ApplyPreset(presetId);
+        for (auto& settingIter : m_settingsMap)
+        {
+            settingIter.second.ApplyPreset(presetId);
         }
     }
-
-
+    
     //Get the texture setting on certain platform
     TextureSettings& EditorTextureSetting::GetMultiplatformTextureSetting(const AZStd::string& platform)
     {
-        AZ_Assert(m_settingsMap.size() > 0, "Texture Editor", "There is no texture settings for texture %s", m_textureName.c_str());
+        AZ_Assert(m_settingsMap.size() > 0, "Texture Editor", "There is no texture settings for texture %s", m_fullPath.c_str());
         PlatformName platformName = platform;
         if (platform.empty())
         {
@@ -225,10 +233,7 @@ namespace ImageProcessingEditor
         return m_settingsMap.begin()->second;
     }
 
-    //Gets the final resolution/reduce/mip count for a texture on a certain platform
-    //@param wantedReduce indicates the reduce level that's preferred
-    //@return successfully get the value or not
-    bool EditorTextureSetting::GetFinalInfoForTextureOnPlatform(const AZStd::string& platform, AZ::u32& finalWidth, AZ::u32& finalHeight, AZ::u32 wantedReduce, AZ::u32& finalReduce, AZ::u32& finalMipCount)
+    bool EditorTextureSetting::GetFinalInfoForTextureOnPlatform(const AZStd::string& platform, AZ::u32 wantedReduce, ResolutionInfo& outResolutionInfo)
     {
         if (m_settingsMap.find(platform) == m_settingsMap.end())
         {
@@ -236,7 +241,8 @@ namespace ImageProcessingEditor
         }
 
         // Copy current texture setting and set to desired reduce
-        TextureSettings textureSetting = m_settingsMap[platform]; 
+        TextureSettings textureSetting = m_settingsMap[platform];
+        wantedReduce = AZStd::min<int>(AZStd::max<int>(s_MinReduceLevel, wantedReduce), s_MaxReduceLevel);
         textureSetting.m_sizeReduceLevel = wantedReduce;
 
         const PresetSettings* presetSetting = BuilderSettingManager::Instance()->GetPreset(textureSetting.m_preset, platform);
@@ -248,11 +254,24 @@ namespace ImageProcessingEditor
             AZ::u32 inputWidth = m_img->GetWidth(0);
             AZ::u32 inputHeight = m_img->GetHeight(0);
 
-            GetOutputExtent(inputWidth, inputHeight, finalWidth, finalHeight, finalReduce, &textureSetting, presetSetting);
+            // Update input width and height if it's a cubemap
+            if (presetSetting->m_cubemapSetting != nullptr)
+            {
+                CubemapLayout *srcCubemap = CubemapLayout::CreateCubemapLayout(m_img);
+                if (srcCubemap == nullptr)
+                {
+                    return false;
+                }
+                inputWidth = srcCubemap->GetFaceSize();
+                inputHeight = inputWidth;
+                outResolutionInfo.arrayCount = 6;
+                delete srcCubemap;
+            }
 
-            AZ::u32 mipMapCount = pixelFormats.ComputeMaxMipCount(pixelFormat, finalWidth, finalHeight);
-            finalMipCount = presetSetting->m_mipmapSetting != nullptr && textureSetting.m_enableMipmap ? mipMapCount : 1;
-            finalReduce = AZStd::min<int>(AZStd::max<int>(s_MinReduceLevel, finalReduce), s_MaxReduceLevel);
+            GetOutputExtent(inputWidth, inputHeight, outResolutionInfo.width, outResolutionInfo.height, outResolutionInfo.reduce, &textureSetting, presetSetting);
+
+            AZ::u32 mipMapCount = pixelFormats.ComputeMaxMipCount(pixelFormat, outResolutionInfo.width, outResolutionInfo.height);
+            outResolutionInfo.mipCount = presetSetting->m_mipmapSetting != nullptr && textureSetting.m_enableMipmap ? mipMapCount : 1;
 
             return true;
         }
@@ -323,13 +342,18 @@ namespace ImageProcessingEditor
         // Set the min/max reduce to the global value range first
         minReduce = s_MaxReduceLevel;
         maxReduce = s_MinReduceLevel;
-        for (int i = s_MinReduceLevel; i <= s_MaxReduceLevel; i++)
+        for (AZ::u32 i = s_MinReduceLevel; i <= s_MaxReduceLevel; i++)
         {
             ResolutionInfo resolutionInfo;
-            GetFinalInfoForTextureOnPlatform(platform, resolutionInfo.width, resolutionInfo.height, i, resolutionInfo.reduce, resolutionInfo.mipCount);
+            GetFinalInfoForTextureOnPlatform(platform, i, resolutionInfo);
+            // If actual reduce is lower than desired reduce, it reaches the limit and we can stop try lower resolution
+            if (i > resolutionInfo.reduce)
+            {
+                break;
+            }
             // Finds out the final min/max reduce based on range in different platforms
-            minReduce = AZStd::min<unsigned int>(resolutionInfo.reduce, minReduce);
-            maxReduce = AZStd::max<unsigned int>(resolutionInfo.reduce, maxReduce);
+            minReduce = AZStd::min<AZ::u32>(resolutionInfo.reduce, minReduce);
+            maxReduce = AZStd::max<AZ::u32>(resolutionInfo.reduce, maxReduce);
             resolutionInfos.push_back(resolutionInfo);
         }
         return resolutionInfos;
@@ -340,12 +364,15 @@ namespace ImageProcessingEditor
         AZStd::list<ResolutionInfo> resolutionInfos;
         unsigned int baseReduce = m_settingsMap[platform].m_sizeReduceLevel;
         ResolutionInfo baseInfo;
-        GetFinalInfoForTextureOnPlatform(platform, baseInfo.width, baseInfo.height, baseReduce, baseInfo.reduce, baseInfo.mipCount);
+        GetFinalInfoForTextureOnPlatform(platform, baseReduce, baseInfo);
         resolutionInfos.push_back(baseInfo);
-        for (unsigned int i = 1; i < baseInfo.mipCount; i++)
+        for (AZ::u32 i = 1; i < baseInfo.mipCount; i++)
         { 
-            ResolutionInfo resolutionInfo;
-            GetFinalInfoForTextureOnPlatform(platform, resolutionInfo.width, resolutionInfo.height, baseReduce + i, resolutionInfo.reduce, resolutionInfo.mipCount);
+            ResolutionInfo resolutionInfo = baseInfo;
+            resolutionInfo.width = AZStd::max<AZ::u32>(baseInfo.width >> i, 1);
+            resolutionInfo.height = AZStd::max<AZ::u32>(baseInfo.height >> i, 1);
+            resolutionInfo.reduce = baseInfo.reduce + i;
+            resolutionInfo.mipCount = 1;
             resolutionInfos.push_back(resolutionInfo);
         }
         return resolutionInfos;

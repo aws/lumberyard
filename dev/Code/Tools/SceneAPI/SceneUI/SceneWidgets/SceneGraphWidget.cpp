@@ -189,7 +189,7 @@ namespace AZ
                     QStandardItem* treeItem = BuildTreeItem(currentItem, iterator->first, isCheckable, hierarchy->IsEndPoint());
                     if (isCheckable)
                     {
-                        if (IsSelected(iterator->first))
+                        if (IsSelected(iterator->first, false))
                         {
                             treeItem->setCheckState(Qt::CheckState::Checked);
                             m_selectedCount++;
@@ -430,27 +430,38 @@ namespace AZ
                 }
             }
 
-            bool SceneGraphWidget::IsSelected(const Containers::SceneGraph::Name& name) const
+            bool SceneGraphWidget::IsSelected(const Containers::SceneGraph::Name& name, bool updateNodeSelection) const
             {
                 if (!m_targetList)
                 {
                     return false;
                 }
 
-                // Use a temp list to get a valid state of the UI here based on selected/unselected nodes
-                // We use the temp list so that the real list actually keeps track of the user's selection
-                // Since UpdateNodeSelection will modify selected/unselected node lists for us.
-                AZStd::unique_ptr<DataTypes::ISceneNodeSelectionList> tempList(m_targetList->Copy());
-                Utilities::SceneGraphSelector::UpdateNodeSelection(m_scene.GetGraph(), *tempList);
-                size_t count = tempList->GetSelectedNodeCount();
-                for (size_t i = 0; i < count; ++i)
+                if (updateNodeSelection)
                 {
-                    if (tempList->GetSelectedNode(i) == name.GetPath())
+                    // Use a temp list to get a valid state of the UI here based on selected/unselected nodes
+                    // We use the temp list so that the real list actually keeps track of the user's selection
+                    // Since UpdateNodeSelection will modify selected/unselected node lists for us.
+                    AZStd::unique_ptr<DataTypes::ISceneNodeSelectionList> tempList(m_targetList->Copy());
+                    Utilities::SceneGraphSelector::UpdateNodeSelection(m_scene.GetGraph(), *tempList);
+                    return IsSelectedInSelectionList(name, *tempList);
+                }
+                else
+                {
+                    return IsSelectedInSelectionList(name, *m_targetList);
+                }
+            }
+
+            bool SceneGraphWidget::IsSelectedInSelectionList(const Containers::SceneGraph::Name& name, const DataTypes::ISceneNodeSelectionList& targetList) const
+            {
+                size_t count = targetList.GetSelectedNodeCount();
+                for (size_t selectedNodeIndex = 0; selectedNodeIndex < count; ++selectedNodeIndex)
+                {
+                    if (targetList.GetSelectedNode(selectedNodeIndex) == name.GetPath())
                     {
                         return true;
                     }
                 }
-
                 return false;
             }
 

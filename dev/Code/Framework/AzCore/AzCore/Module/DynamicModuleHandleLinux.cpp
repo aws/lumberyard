@@ -106,11 +106,22 @@ namespace AZ
         {
             AZ::Debug::Trace::Printf("Module", "Attempting to load module:%s\n", m_fileName.c_str());
             bool alreadyOpen = false;
-            // Android 19 does not have RTLD_NOLOAD but it should be OK since only the Editor expects to reopen modules
+            
 #ifndef AZ_PLATFORM_ANDROID
-            alreadyOpen = NULL != dlopen(m_fileName.c_str(), RTLD_NOLOAD);
-#endif
+            // note that if it was already open, RTLD_NOLOAD actualy increments
+            // the refcount on the handle.  It only has no effect if the module
+            // was not loaded
+            m_handle = dlopen(m_fileName.c_str(), RTLD_NOLOAD);
+            alreadyOpen = (m_handle != nullptr);
+            if (!alreadyOpen)
+            {
+                m_handle = dlopen (m_fileName.c_str(), RTLD_NOW);
+            }
+#else
+            // Android 19 does not have RTLD_NOLOAD but it should be OK since only the Editor expects to reopen modules
             m_handle = dlopen (m_fileName.c_str(), RTLD_NOW);
+#endif
+           
             if(m_handle)
             {
                 if (alreadyOpen)

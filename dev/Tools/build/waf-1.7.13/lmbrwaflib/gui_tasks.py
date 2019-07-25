@@ -328,7 +328,7 @@ class UiOption_SpinBox(UiOption_Base):
         super(UiOption_SpinBox, self).__init__(waf_ctx, category_name, option_name, value, description, default_value, target_content_area, fn_on_value_changed)
         
     def create_input_widget(self, target_content_area):
-        self.input_widget = tk.Spinbox(target_content_area, textvariable=self.ttk_spinner_value, command=self.on_clicked, from_=0, to=99999, width=6,)
+        self.input_widget = tk.Spinbox(target_content_area, textvariable=self.ttk_spinner_value, command=self.on_clicked, from_=0, to=9999999, width=8,)
         self.input_widget.bind("<KeyRelease>", lambda event: self.on_key_up()) # bind right-click -> default value
         self.input_widget.pack(side=tk.RIGHT)
         

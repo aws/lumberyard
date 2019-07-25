@@ -19,7 +19,6 @@
 #include "CharacterInstance.h"
 #include "CharacterManager.h"
 #include <float.h>
-#include <IPlatformOS.h>
 #include "GameUtils.h"
 
 const f32 fRenderPosBS1 = 7.0f;

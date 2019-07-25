@@ -56,6 +56,10 @@
         [
             "Tests/Utilities/SceneGraphSelectorTests.cpp",
             "Tests/Utilities/PatternMatcherTests.cpp"
+        ],        
+        "Tests/Export":
+        [
+            "Tests/Export/MaterialIOTests.cpp"
         ]
     }
 }

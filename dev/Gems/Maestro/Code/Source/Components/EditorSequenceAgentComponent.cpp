@@ -156,8 +156,10 @@ namespace Maestro
         m_sequenceEntityIds.erase(sequenceEntityId);
 
         // Disconnect from the bus between the SequenceComponent and me
-        EditorSequenceAgentComponentRequestBus::MultiHandler::BusDisconnect(*busIdToDisconnect);
-        SequenceAgentComponentRequestBus::MultiHandler::BusDisconnect(*busIdToDisconnect);
+        // Make a copy because calling BusDisconnect destroy the current bus id
+        const Maestro::SequenceAgentEventBusId busIdToDisconnectCopy = *busIdToDisconnect;
+        EditorSequenceAgentComponentRequestBus::MultiHandler::BusDisconnect(busIdToDisconnectCopy);
+        SequenceAgentComponentRequestBus::MultiHandler::BusDisconnect(busIdToDisconnectCopy);
 
         if (m_sequenceEntityIds.size())
         {

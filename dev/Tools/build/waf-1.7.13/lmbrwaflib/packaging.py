@@ -11,8 +11,11 @@
 
 import os
 import plistlib
+import re
 import shutil
+import socket
 import subprocess
+import time
 
 from gems import Gem
 from lmbr_install_context import LmbrInstallContext
@@ -20,6 +23,7 @@ from lumberyard_sdks import get_dynamic_lib_extension, get_platform_lib_prefix
 from qt5 import QT5_LIBS
 from utils import *
 from build_configurations import PLATFORM_MAP
+from contextlib import closing
 
 from waflib import Build, Errors, Logs, Utils
 from waflib.Scripting import run_command
@@ -28,7 +32,7 @@ from waflib.Task import Task, ASK_LATER, RUN_ME, SKIP_ME
 
 ################################################################
 #                            Globals                           #
-DEFAULT_RC_JOB = 'RCJob_Generic_MakePaks.xml'
+DEFAULT_RC_JOB = os.path.join('Code', 'Tools', 'RC', 'Config', 'rc', 'RCJob_Generic_MakePaks.xml')
 #                                                              #
 ################################################################
 
@@ -44,12 +48,12 @@ def get_python_path(ctx):
 def run_subprocess(command_args, working_dir = None, as_shell = False, fail_on_error = False):
     exe_name = os.path.basename(command_args[0])
     command = ' '.join(command_args)
-    Logs.debug('package: Running command - %s', command)
+    Logs.debug('package: Running command - {}'.format(command))
 
     try:
         cmd = command if as_shell else command_args
         output = subprocess.check_output(cmd, stderr = subprocess.STDOUT, cwd = working_dir, shell = as_shell)
-        Logs.debug('package: Output = %s', output.rstrip())
+        Logs.debug('package: Output = {}'.format(output.rstrip()))
         return True
 
     except subprocess.CalledProcessError as process_err:
@@ -67,7 +71,7 @@ def run_subprocess(command_args, working_dir = None, as_shell = False, fail_on_e
     if fail_on_error:
         raise Errors.WafError(error_message)
     else:
-        Logs.debug('package: %s', error_message)
+        Logs.debug('package: {}'.format(error_message))
 
     return False
 
@@ -110,18 +114,22 @@ def get_resource_compiler_path(ctx):
         ctx.fatal('[ERROR] Failed to find the Resource Compiler in paths: {}'.format(rc_search_paths))
 
 
-def run_rc_job(ctx, game, assets_platform, source_path, target_path, job=None, is_obb=False, zip_max_size=-1):
+def run_rc_job(ctx, game, job, assets_platform, source_path, target_path, is_obb = False, num_threads = 0, zip_split = False, zip_maxsize = 0, verbose = 0):
     rc_path = get_resource_compiler_path(ctx)
 
-    job_file = (job or DEFAULT_RC_JOB)
+    default_rc_job = os.path.join(ctx.get_engine_node().abspath(), DEFAULT_RC_JOB)
+
+    job_file = (job or default_rc_job)
 
     if not os.path.isabs(job_file):
         rc_root = rc_path.parent
         rc_job = rc_root.find_resource(job_file)
         if not rc_job:
             ctx.fatal('[ERROR] Unable to locate the RC job in path - {}/{}'.format(rc_root.abspath(), job_file))
-
         job_file = rc_job.path_from(ctx.launch_node())
+        
+    if not os.path.isfile(job_file):
+        ctx.fatal('[ERROR] Unable to locate the RC job in path - {}'.format(job_file))
 
     rc_cmd = [
         '"{}"'.format(rc_path.abspath()),
@@ -129,33 +137,134 @@ def run_rc_job(ctx, game, assets_platform, source_path, target_path, job=None, i
         '/job="{}"'.format(job_file),
         '/p={}'.format(assets_platform),
         '/src="{}"'.format(source_path),
-        '/trg="{}"'.format(target_path),
-
-         # forcing the job to run single threaded since anything higher than one is effectively ignored on mac
-         # while pc produces a bunch of "thread not join-able" errors
-        '/threads=1',
+        '/trg="{}"'.format(target_path)
     ]
 
-    if zip_max_size > 0:
+    if verbose:
         rc_cmd.extend([
-            '/zip_sizesplit=true',
-            '/zip_maxsize={}'.format(zip_max_size)
+            '/verbose={}'.format(verbose)
+        ])
+
+    if zip_split:
+        rc_cmd.extend([
+            '/zip_sizesplit={}'.format(zip_split)
+        ])
+
+    if zip_maxsize:
+        rc_cmd.extend([
+            '/zip_maxsize={}'.format(zip_maxsize)
+        ])
+
+    if num_threads:
+        rc_cmd.extend([
+            # by default run single threaded since anything higher than one is effectively ingored on mac
+            # while pc produces a bunch of "thread not joinable" errors
+            '/threads={}'.format(num_threads)
         ])
 
     if is_obb:
-        pacakge_name = ctx.get_android_package_name(game)
+        package_name = ctx.get_android_package_name(game)
         app_version_number = ctx.get_android_version_number(game)
 
         rc_cmd.extend([
-            '/obb_pak=main.{}.{}.obb'.format(app_version_number, pacakge_name),
-            '/obb_patch_pak=patch.{}.{}.obb'.format(app_version_number, pacakge_name)
+            '/obb_pak=main.{}.{}.obb'.format(app_version_number, package_name),
+            '/obb_patch_pak=patch.{}.{}.obb'.format(app_version_number, package_name)
         ])
 
     # Invoking RC as non-shell exposes how rigid it's command line parsing is...
     return run_subprocess(rc_cmd, working_dir = ctx.launch_dir, as_shell = True)
 
+
+def get_shader_compiler_ip_and_port(ctx):
+    shader_cache_gen_cfg = ctx.engine_node.find_node('shadercachegen.cfg')
+
+    if shader_cache_gen_cfg:
+        shader_cache_gen_cfg_contents = shader_cache_gen_cfg.read()
+
+        def parse_config(search_string, default):
+            result = ''
+            try:
+                result = re.search(search_string, shader_cache_gen_cfg_contents, re.MULTILINE).group(1).strip()
+            except:
+                pass
+            if not result:
+                return default
+            return result
+        
+        shader_compiler_ip = parse_config('^\s*r_ShaderCompilerServer\s*=\s*((\d+[.]*)*)', '127.0.0.1')
+        shader_compiler_port = parse_config('^\s*r_ShaderCompilerPort\s*=\s*((\d)*)', '61453')
+        asset_processor_shader_compiler = parse_config('^\s*r_AssetProcessorShaderCompiler\s*=\s*(\d+)', '0')
+    else:
+        ctx.fatal('[ERROR] Failed to find shadercachegen.cfg in the engine root directory {}'.format(ctx.engine_node.abspath()))
+
+    # If we're connecting to the shader compiler through the Asset Processor, we need to check if remote_ip is set
+    if asset_processor_shader_compiler == '1':
+        remote_ip = ctx.get_bootstrap_remote_ip()
+        if shader_compiler_ip.find("127.0.0.") != -1:
+            if remote_ip.find("127.0.0.") == -1:
+                Logs.debug('package: Using Asset Processor at {} to route requests to shader compiler'.format(remote_ip))
+                shader_compiler_ip = remote_ip
+
+    return shader_compiler_ip, int(shader_compiler_port)
+
+
+def is_shader_compiler_valid(ctx):
+    shader_compiler_ip, shader_compiler_port = get_shader_compiler_ip_and_port(ctx)
+
+    with closing(socket.socket(socket.AF_INET, socket.SOCK_STREAM)) as sock:
+        for i in range(5):
+            result = sock.connect_ex((shader_compiler_ip, shader_compiler_port))
+            if result == 0:
+                Logs.debug('package: Successfully connected to {}'.format(shader_compiler_ip))
+
+                #send the size of the xml+1 packed as a Q uint_8
+                import struct
+                xml = '<?xml version="1.0" ?><X Identify=1 />'
+                xml_len = len(xml) + 1
+                format = 'Q'
+                request = struct.pack(format, xml_len)
+                sock.sendall(request)
+
+                #send the xml packed as a s i.e. string of xml_len
+                format = str(xml_len) + 's'
+                request = struct.pack(format, xml)
+                sock.sendall(request)
+
+                # make socket non blocking
+                sock.setblocking(0)
+
+                #recv the response, if any
+                response = []
+                data=''
+                begin = time.time()
+                while True:
+                    #5 second timeout after last recv
+                    if time.time() - begin > 5:
+                        break
+
+                    try:
+                        data = sock.recv(4096)
+                        if data:
+                            response.append(data)
+                            begin = time.time()
+                    except:
+                        pass
+
+                if 'ShaderCompilerServer' in str(response):
+                    Logs.debug('package: {} is a shader compiler server'.format(shader_compiler_ip))
+                    return True
+                else:
+                    Logs.error('[ERROR] {} does not identify as a shader compiler server!!!'.format(shader_compiler_ip))
+                    return False
+            else:
+                time.sleep(2)
+
+    Logs.error('[ERROR] Unable to connect to shader compiler at {}'.format(shader_compiler_ip))
+    return False
+
+
 def get_shader_cache_gen_path(ctx):
-    output_folders = [ output.abspath() for output in ctx.get_standard_host_output_folders()]
+    output_folders = [output.abspath() for output in ctx.get_standard_host_output_folders()]
     if not output_folders:
         ctx.fatal('[ERROR] Unable to determine possible binary directories for host {}'.format(Utils.unversioned_sys_platform()))
 
@@ -164,7 +273,57 @@ def get_shader_cache_gen_path(ctx):
     except:
         ctx.fatal('[ERROR] Failed to find the ShaderCacheGen in paths: {}'.format(output_folders))
 
-def generate_shaders_pak(ctx, game, assets_platform, shader_type):
+def generate_game_paks(ctx, game, job, assets_platform, source_path, target_path, is_obb=False, num_threads=0, zip_split=False, zip_maxsize=0, verbose=0):
+    Logs.info('[INFO] Generate game paks...')
+    timer = Utils.Timer()
+    try:
+        ret = run_rc_job(ctx, game, job, assets_platform, source_path, target_path, is_obb, num_threads, zip_split, zip_maxsize, verbose)
+        if ret:
+            Logs.info('[INFO] Finished generating game paks... ({})'.format(timer))
+        else:
+            Logs.error('[ERROR] Generating game paks failed.')
+    except:
+        Logs.error('[ERROR] Generating game paks exception.')
+
+def get_shader_list(ctx, game, assets_platform, shader_type, shader_list_file=None):
+    Logs.info('[INFO] Get the shader list from the shader compiler server...')
+    timer = Utils.Timer()
+
+    if not is_shader_compiler_valid(ctx):
+        ctx.fatal('[ERROR] Unable to connect to the remote shader compiler to get shaders list. Please check shadercachegen.cfg in the engine root directory to ensure r_ShaderCompilerServer is set to the correct IP address')
+
+    shader_cache_gen_path = get_shader_cache_gen_path(ctx)
+    get_shader_list_script = ctx.engine_node.find_resource('Tools/PakShaders/get_shader_list.py')
+    command_args = [
+        get_python_path(ctx),
+        '"{}"'.format(get_shader_list_script.abspath()),
+        '{}'.format(game),
+        '{}'.format(assets_platform),
+        '{}'.format(shader_type),
+        '{}'.format(os.path.basename(os.path.dirname(shader_cache_gen_path))),
+        '-g "{}"'.format(ctx.launch_dir)
+    ]
+
+    if shader_list_file:
+        command_args += ['-s {}'.format(shader_list_file)]
+
+    command = ' '.join(command_args)
+    Logs.info('[INFO] Running command - {}'.format(command))
+    try:
+        subprocess.check_call(command, shell = True)
+        Logs.info('[INFO] Finished getting the shader list from the shader compiler server...({})'.format(timer))
+    except subprocess.CalledProcessError:
+        Logs.error('[ERROR] Failed to get shader list for {}'.format(shader_type))
+
+    return
+
+def generate_shaders_pak(ctx, game, assets_platform, shader_type, shader_list_file=None, shaders_pak_dir=None):
+    Logs.info('[INFO] Generate Shaders...')
+    timer = Utils.Timer()
+
+    if not is_shader_compiler_valid(ctx):
+        ctx.fatal('[ERROR] Unable to connect to the remote shader compiler for generating shaders. Please check shadercachegen.cfg in the engine root directory to ensure r_ShaderCompilerServer is set to the correct IP address')
+
     shader_cache_gen_path = get_shader_cache_gen_path(ctx)
     gen_shaders_script = ctx.engine_node.find_resource('Tools/PakShaders/gen_shaders.py')
     command_args = [
@@ -175,7 +334,7 @@ def generate_shaders_pak(ctx, game, assets_platform, shader_type):
         '{}'.format(shader_type),
         '{}'.format(os.path.basename(os.path.dirname(shader_cache_gen_path))),
         '-g "{}"'.format(ctx.launch_dir),
-        '-e "{}"'.format(ctx.engine_path)
+        '-e "{}"'.format(ctx.engine_node.abspath())
     ]
 
     if not run_subprocess(command_args, as_shell=True):
@@ -183,11 +342,12 @@ def generate_shaders_pak(ctx, game, assets_platform, shader_type):
 
     pak_shaders_script = ctx.engine_node.find_resource('Tools/PakShaders/pak_shaders.py')
 
-    shaders_pak_dir = ctx.launch_node().make_node("build/{}/{}".format(assets_platform, game).lower())
-    shaders_pak_dir.delete()
+    shaders_pak_dir = ctx.launch_node().make_node('build/{}/{}'.format(assets_platform, game).lower())
+    if os.path.isdir(shaders_pak_dir.abspath()):
+        shaders_pak_dir.delete()
     shaders_pak_dir.mkdir()
 
-    shaders_source = ctx.launch_node().make_node("Cache/{}/{}/user/cache/shaders/cache".format(game, assets_platform))
+    shaders_source = ctx.launch_node().make_node('Cache/{}/{}/user/cache/shaders/cache'.format(game, assets_platform))
 
     command_args = [
         get_python_path(ctx),
@@ -198,6 +358,8 @@ def generate_shaders_pak(ctx, game, assets_platform, shader_type):
     ]
     if not run_subprocess(command_args, as_shell=True):
         ctx.fatal('[ERROR] Failed to pack {} shaders'.format(shader_type))
+
+    Logs.info('[INFO] Finished Generate Shaders...({})'.format(timer))
 
     return shaders_pak_dir
 
@@ -219,7 +381,7 @@ def clear_user_cache(assets_node):
         except OSError as e:
             # Any permission issue cannot be mitigated at this point, we have to warn the user that the cache
             # could not be deleted at least
-            Logs.warn("[WARN] Unable to clear the user cache folder '{}': {}".format(user_subpath, e))
+            Logs.warn('[WARN] Unable to clear the user cache folder "{}": {}'.format(user_subpath, e))
 
 
 class package_task(Task):
@@ -306,7 +468,7 @@ class package_task(Task):
         return (dep_nodes, [])
 
     def run(self):
-        Logs.debug("package: packaging {} to destination {}".format(self.source_exe.abspath(), self.root_out.abspath()))
+        Logs.debug('package: packaging {} to destination {}'.format(self.source_exe.abspath(), self.root_out.abspath()))
 
         self.process_dependencies()
         self.process_executable()
@@ -446,7 +608,7 @@ class package_task(Task):
                 os.unlink(dst)
             if os.path.isdir(dst):
                 shutil.rmtree(dst)
-            Logs.info("Copying Qt Framework {} to {}".format(src, dst))
+            Logs.info('Copying Qt Framework {} to {}'.format(src, dst))
             self.bld.create_symlink_or_copy(src_node, dst)
             if not os.path.islink(dst):
                 post_copy_cleanup(frameworks_node.make_node(framework_name))
@@ -462,7 +624,7 @@ class package_task(Task):
             self.process_qt()
 
         for res_dir in self.dir_resources:
-            Logs.debug("package: extra directory to link/copy into the package is: {}".format(res_dir))
+            Logs.debug('package: extra directory to link/copy into the package is: {}'.format(res_dir))
             self.bld.create_symlink_or_copy(self.source_exe.parent.make_node(res_dir), self.binaries_out.make_node(res_dir).abspath(), postpone=False)
 
     def process_assets(self):
@@ -500,16 +662,16 @@ class PackageContext(LmbrInstallContext):
         # Generating the xcode project should only be done on macOS and if we actually have something to package (len(group) > 0)
         group = self.get_group(self.group_name)
         if len(group) > 0 and self.is_option_true('run_xcode_for_packaging') and self.is_apple_platform(self.platform):
-            Logs.debug("package: checking for xcode project... ")
+            Logs.debug('package: checking for xcode project... ')
             platform = self.platform
             if 'darwin' in platform:
-                platform = "mac" 
+                platform = 'mac'
 
             # Check if the Xcode solution exists. We need it to perform bundle
             # stuff (processing Info.plist and icon assets...)
-            project_name_and_location = "/{}/{}.xcodeproj".format(getattr(self.options, platform + "_project_folder", None), getattr(self.options, platform + "_project_name", None))
+            project_name_and_location = '/{}/{}.xcodeproj'.format(getattr(self.options, platform + '_project_folder', None), getattr(self.options, platform + '_project_name', None))
             if not os.path.exists(self.path.abspath() + project_name_and_location):
-                Logs.debug("package: running xcode_{} command to generate the project {}".format(platform, self.path.abspath() + project_name_and_location)) 
+                Logs.debug('package: running xcode_{} command to generate the project {}'.format(platform, self.path.abspath() + project_name_and_location))
                 run_command('xcode_' + platform)
 
     def package_game(self, **kw):
@@ -565,7 +727,7 @@ class PackageContext(LmbrInstallContext):
             self.clear_shader_cache(paks_node)
 
             Logs.info('Generating the core pak files for {}'.format(game))
-            run_rc_job(self, game, assets_platform, assets_node.abspath(), paks_node.abspath())
+            run_rc_job(self, game, job=None, assets_platform=assets_platform, source_path=assets_node.abspath(), target_path=paks_node.abspath())
 
             if self.paks_required:
                 Logs.info('Generating the shader pak files for {}'.format(game))
@@ -618,7 +780,7 @@ class PackageContext(LmbrInstallContext):
         """ Returns if the platform and configuration specified for the package_task match what the package context has been created for"""
         executable_name = kw.get('target', None)
         if not executable_name:
-            Logs.warn("[WARN] Skipping package because no target was specified.")
+            Logs.warn('[WARN] Skipping package because no target was specified.')
             return False
 
         if not self.is_platform_and_config_valid(**kw):
@@ -633,7 +795,7 @@ class PackageContext(LmbrInstallContext):
                 return False
 
         if self.options.targets and executable_name not in self.options.targets.split(','):
-            Logs.debug("package: Skipping packaging {} because it is not part of the specified targets {}".format(executable_name, self.options.targets))
+            Logs.debug('package: Skipping packaging {} because it is not part of the specified targets {}'.format(executable_name, self.options.targets))
             return False
 
         return True
@@ -714,7 +876,7 @@ class PackageContext(LmbrInstallContext):
         """
 
         lib_extension = get_dynamic_lib_extension(self)
-        Logs.debug("package: Copying files with pattern {} from {} to {}".format("*"+lib_extension, source.abspath(), destination))
+        Logs.debug('package: Copying files with pattern {} from {} to {}'.format('*'+lib_extension, source.abspath(), destination))
         lib_files = source.ant_glob("*" + lib_extension)
         for lib in lib_files:
             self.create_symlink_or_copy(lib, destination, postpone=False)
@@ -763,7 +925,7 @@ class PackageContext(LmbrInstallContext):
                     # but the actual library uses '-'. Transform the name and try
                     # the glob again to see if we pick up the dependent library
                     Logs.debug('package: Processing AWS lib so changing name to lib*{}*.dylib'.format(dependency.replace('_','-')))
-                    depend_nodes = source_location.ant_glob("lib*" + dependency.replace('_','-') + "*.dylib", ignorecase=True) 
+                    depend_nodes = source_location.ant_glob('lib*' + dependency.replace('_','-') + '*.dylib', ignorecase=True)
                     if depend_nodes and len(depend_nodes) > 0:
                         source_node = source_location
                         break
@@ -791,18 +953,18 @@ class PackageContext(LmbrInstallContext):
         """
 
         source_path_and_name = source_node.abspath()
-        Logs.debug("package: create_symlink_or_copy called with source: {} destination: {} args: {}".format(source_path_and_name, destination_path, kwargs))
+        Logs.debug('package: create_symlink_or_copy called with source: {} destination: {} args: {}'.format(source_path_and_name, destination_path, kwargs))
         try:
             if os.path.isdir(source_path_and_name):
-                Logs.debug("package: -> path is a directory")
+                Logs.debug('package: -> path is a directory')
 
                 # need to delete everything to make sure the copy is fresh
                 # otherwise can get old artifacts laying around
                 if os.path.islink(destination_path):
-                    Logs.debug("package: -> removing previous link...")
+                    Logs.debug('package: -> removing previous link...')
                     remove_junction(destination_path)
                 elif os.path.isdir(destination_path): 
-                    Logs.debug("package: -> removing previous directory...")
+                    Logs.debug('package: -> removing previous directory...')
                     shutil.rmtree(destination_path)
 
                 if self.copy_over_symlink:
@@ -815,9 +977,9 @@ class PackageContext(LmbrInstallContext):
                     junction_directory(source_path_and_name, destination_path)
 
             else:
-                Logs.debug("package: -> path is a file")
+                Logs.debug('package: -> path is a file')
                 if self.copy_over_symlink:
-                    Logs.debug("package: -> need to copy so calling install_files for the file {} {}".format(destination_path, source_node.abspath()))
+                    Logs.debug('package: -> need to copy so calling install_files for the file {} {}'.format(destination_path, source_node.abspath()))
                     self.install_files(destination_path, [source_node], **kwargs)
                 else:
                     kwargs.pop('chmod', None) # optional chmod arg is only needed when install_files is used
@@ -826,7 +988,7 @@ class PackageContext(LmbrInstallContext):
                     self.symlink_as(dest_path, source_path_and_name, **kwargs)
 
         except Exception as err:
-            Logs.debug("package: -> got an exception {}".format(err))
+            Logs.debug('package:: -> got an exception {}'.format(err))
 
 
 for platform_name, platform in PLATFORM_MAP.items():

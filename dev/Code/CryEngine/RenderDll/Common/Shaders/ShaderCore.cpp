@@ -20,6 +20,12 @@
 #include <Common/RenderCapabilities.h>
 #include <AzCore/std/algorithm.h>
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#undef AZ_RESTRICTED_SECTION
+#define SHADERCORE_CPP_SECTION_1 1
+#define SHADERCORE_CPP_SECTION_2 2
+#endif
+
 CShader* CShaderMan::s_DefaultShader;
 CShader* CShaderMan::s_shPostEffects;
 CShader* CShaderMan::s_shPostDepthOfField;
@@ -1167,11 +1173,6 @@ void CShaderMan::mfInitGlobal (void)
                 g_HWSR_MaskBit[HWSR_NEAREST] = gb->m_Mask;
             }
             else
-            if (gb->m_ParamName == "%_RT_NEAREST")
-            {
-                g_HWSR_MaskBit[HWSR_NEAREST] = gb->m_Mask;
-            }
-            else
             if (gb->m_ParamName == "%_RT_SHADOW_MIXED_MAP_G16R16")
             {
                 g_HWSR_MaskBit[HWSR_SHADOW_MIXED_MAP_G16R16] = gb->m_Mask;
@@ -1589,6 +1590,19 @@ void CShaderMan::mfInit (void)
         m_ShadersCache = CONCAT_PATHS(g_shaderCache, "D3D11");
 #endif
         m_szCachePath = "@cache@/";
+        
+        if (CRenderer::CV_r_shadersImport == 3)
+        {
+#if defined(PERFORMANCE_BUILD) || defined(_RELEASE)
+            // Disable all runtime shader compilation and force use of the shader importing system in Performance and Release builds only
+            // We want to still build shaders in Profile builds so we do not miss generating new permutations
+            CRenderer::CV_r_shadersAllowCompilation = 0;
+#else
+            // Disable shader importing and allow r_shadersAllowCompilation and r_shadersremotecompiler to be used to compile shaders at runtime 
+            CRenderer::CV_r_shadersImport = 0;
+#endif
+        }
+
 #ifndef CONSOLE_CONST_CVAR_MODE
         if (CRenderer::CV_r_shadersediting)
         {
@@ -1613,7 +1627,10 @@ void CShaderMan::mfInit (void)
         if (CRenderer::CV_r_shadersAllowCompilation)
         {
             CRenderer::CV_r_shadersasyncactivation = 0;
-            CRenderer::CV_r_shadersImport = 0; // don't allow shader importing
+            
+            // don't allow shader importing when shader compilation is enabled.
+            AZ_Warning("Rendering", CRenderer::CV_r_shadersImport == 0, "Warning: Shader compilation is enabled, but shader importing was requested.  Disabling r_shadersImport.");
+            CRenderer::CV_r_shadersImport = 0;
         }
 
         // make sure correct paks are open - shaders.pak will be unloaded from memory after init
@@ -1655,19 +1672,28 @@ void CShaderMan::mfInit (void)
 #if !defined(NULL_RENDERER)
         if (!gRenDev->IsEditorMode() && !gRenDev->IsShaderCacheGenMode())
         {
+            const char* shaderPakDir = "@assets@";
+            const char* shaderPakPath = "shaderCache.pak";
+
+            #if defined(AZ_RESTRICTED_PLATFORM) && defined(AZ_PLATFORM_PROVO)
+                #define AZ_RESTRICTED_SECTION SHADERCORE_CPP_SECTION_1
+                #include "Provo/ShaderCore_cpp_provo.inl"
+            #endif
+
             if (CRenderer::CV_r_shaderspreactivate == 3)
             {
-                gEnv->pCryPak->LoadPakToMemory("shaderCache.pak", ICryPak::eInMemoryPakLocale_CPU);
+                gEnv->pCryPak->LoadPakToMemory(shaderPakPath, ICryPak::eInMemoryPakLocale_CPU);
 
-                mfPreactivateShaders2("", "shaders/cache/", true, "@assets@");
+                mfPreactivateShaders2("", "shaders/cache/", true, shaderPakDir);
 
-                gEnv->pCryPak->LoadPakToMemory("shaderCache.pak", ICryPak::eInMemoryPakLocale_Unload);
+                gEnv->pCryPak->LoadPakToMemory(shaderPakPath, ICryPak::eInMemoryPakLocale_Unload);
             }
             else if (CRenderer::CV_r_shaderspreactivate)
             {
-                mfPreactivateShaders2("", "shadercache/", true, "@assets@");
+                mfPreactivateShaders2("", "shadercache/", true, shaderPakDir);
             }
         }
+
 #endif
 
         if (CRenderer::CV_r_shadersAllowCompilation)
@@ -1711,7 +1737,14 @@ void CShaderMan::mfInit (void)
 
 bool CShaderMan::LoadShaderStartupCache()
 {
-    return gEnv->pCryPak->OpenPack("@assets@", "ShaderCacheStartup.pak", ICryPak::FLAGS_PAK_IN_MEMORY | ICryPak::FLAGS_PATH_REAL);
+    const char* shaderPakDir = "@assets@/ShaderCacheStartup.pak";
+
+    #if defined(AZ_RESTRICTED_PLATFORM) && defined(AZ_PLATFORM_PROVO)
+        #define AZ_RESTRICTED_SECTION SHADERCORE_CPP_SECTION_2
+        #include "Provo/ShaderCore_cpp_provo.inl"
+    #endif
+    
+    return gEnv->pCryPak->OpenPack("@assets@", shaderPakDir, ICryPak::FLAGS_PAK_IN_MEMORY | ICryPak::FLAGS_PATH_REAL);
 }
 
 void CShaderMan::UnloadShaderStartupCache()
@@ -3517,7 +3550,7 @@ inline bool sIdenticalRes(CShaderResources* a, CShaderResources* b)
         return false;
     }
 
-	// [Shader System TO DO] - revisit this comparison!!!
+    // [Shader System TO DO] - revisit this comparison!!!
     for (int texSlot = 0; texSlot < EFTT_MAX; texSlot++)
     {
         SEfResTexture*      pTextureA = a->GetTextureResource(texSlot);

@@ -23,6 +23,7 @@
 #include <AssetBuilderSDK/AssetBuilderSDK.h>
 #include <AzCore/std/containers/vector.h>
 #include <AzCore/std/containers/map.h>
+#include <AzCore/std/containers/set.h>
 #include <AzCore/Asset/AssetCommon.h>
 #include <AzFramework/Asset/AssetRegistry.h>
 #include <AzCore/Math/Crc.h>
@@ -214,6 +215,9 @@ namespace AssetProcessor
 
         bool m_critical = false;
         int m_priority = -1;
+        // indicates whether we need to check the server first for the outputs of this job 
+        // before we start processing locally
+        bool m_checkServer = false;
 
         AssetBuilderSDK::AssetBuilderDesc   m_assetBuilderDesc;
         AssetBuilderSDK::JobParameterMap    m_jobParam;

@@ -16,13 +16,11 @@
 #pragma once
 
 #include "Reader/XMLCPB_NodeLiveReader.h"
-#include <IPlatformOS.h>
 
 namespace XMLCPB {
 #ifdef XMLCPB_DEBUGUTILS
 
     class CDebugUtils
-        : public IPlatformOS::IPlatformListener
     {
     public:
 
@@ -43,10 +41,6 @@ namespace XMLCPB {
         static void DumpToXmlFile(CNodeLiveReaderRef BRoot, const char* pXmlFileName);
         static void DumpToLog(CNodeLiveReaderRef BRoot);
         static void SetLastFileNameSaved(const char* pFileName);
-
-        // IPlatformOS::IPlatformListener
-        virtual void OnPlatformEvent(const IPlatformOS::SPlatformEvent& event);
-        // ~IPlatformOS::IPlatformListener
 
     private:
 

@@ -65,6 +65,10 @@ namespace AZ
             m_deviceThreadCpuId = threadDesc.m_cpuId;
             m_deviceThreadPriority = threadDesc.m_priority;
             m_deviceThreadSleepTimeMS = -1;
+
+        #if (AZ_TRAIT_SET_STREAMER_COMPONENT_THREAD_AFFINITY_TO_USERTHREADS)
+            m_deviceThreadCpuId = AFFINITY_MASK_USERTHREADS;
+        #endif
         }
     }
 
@@ -94,7 +98,7 @@ namespace AZ
         streamerDesc.m_numCacheBlocks = m_numCacheBlocks;
 
         AZStd::thread_desc threadDesc;
-        if (m_deviceThreadPriority != threadDesc.m_cpuId)
+        if (m_deviceThreadCpuId != threadDesc.m_cpuId)
         {
             threadDesc.m_cpuId = m_deviceThreadCpuId;
         }
@@ -232,7 +236,7 @@ namespace AZ
             }
 
             // user settings
-            serializeContext->Class<StreamerComponentUserSettings, UserSettings>()
+            serializeContext->Class<StreamerComponentUserSettings>()
                 ->Field("enableDrilling", &StreamerComponentUserSettings::m_enableDrilling)
                 ->Field("drillingTrackStreams", &StreamerComponentUserSettings::m_drillingTrackStreams)
                 ;

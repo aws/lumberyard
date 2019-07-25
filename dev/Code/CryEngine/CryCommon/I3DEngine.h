@@ -1967,7 +1967,11 @@ struct I3DEngine
     virtual void DisplayInfo(float& fTextPosX, float& fTextPosY, float& fTextStepY, const bool bEnhanced) = 0;
 
     // Summary:
-    //     Draws text right aligned at the y pixel precision.
+    //   Displays CPU and GPU memory usage statistics on screen
+    virtual void DisplayMemoryStatistics() = 0;
+
+    // Summary:
+    //   Draws text right aligned at the y pixel precision.
     virtual void DrawTextRightAligned(const float x, const float y, const char* format, ...) PRINTF_PARAMS(4, 5) = 0;
     virtual void DrawTextRightAligned(const float x, const float y, const float scale, const ColorF& color, const char* format, ...) PRINTF_PARAMS(6, 7) = 0;
 

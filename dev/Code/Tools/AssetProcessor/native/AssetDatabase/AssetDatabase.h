@@ -189,7 +189,11 @@ namespace AssetProcessor
         bool GetProductDependenciesByProductID(AZ::s64 productID, AzToolsFramework::AssetDatabase::ProductDependencyDatabaseEntryContainer& container);
         bool GetDirectProductDependencies(AZ::s64 productID, AzToolsFramework::AssetDatabase::ProductDatabaseEntryContainer& container);
         bool GetAllProductDependencies(AZ::s64 productID, AzToolsFramework::AssetDatabase::ProductDatabaseEntryContainer& container);
+        bool GetUnresolvedProductDependencies(AzToolsFramework::AssetDatabase::ProductDependencyDatabaseEntryContainer& container);
         bool SetProductDependency(AzToolsFramework::AssetDatabase::ProductDependencyDatabaseEntry& entry);
+
+        // updates or inserts multiple dependencies in a single transaction.  Unlike SetProductDependencies, this does *not* delete existing dependencies
+        bool UpdateProductDependencies(AzToolsFramework::AssetDatabase::ProductDependencyDatabaseEntryContainer& container);
 
         // bulk inserts are lighter weight and don't change the input data.  Note that this also deletes old dependencies for the products mentioned in the container.
         bool SetProductDependencies(const AzToolsFramework::AssetDatabase::ProductDependencyDatabaseEntryContainer& container);
@@ -205,8 +209,12 @@ namespace AssetProcessor
         bool GetFileByFileNameAndScanFolderId(QString fileName, AZ::s64 scanFolderId, AzToolsFramework::AssetDatabase::FileDatabaseEntry& entry);
         bool GetFilesLikeFileName(QString likeFileName, LikeType likeType, AzToolsFramework::AssetDatabase::FileDatabaseEntryContainer& container);
 
+        bool InsertFiles(AzToolsFramework::AssetDatabase::FileDatabaseEntryContainer& entry);
         bool InsertFile(AzToolsFramework::AssetDatabase::FileDatabaseEntry& entry);
         bool UpdateFile(AzToolsFramework::AssetDatabase::FileDatabaseEntry& entry);
+
+        // updates the modtime for a file if it exists.  Only returns true if the row existed and was successfully updated
+        bool UpdateFileModTimeByFileNameAndScanFolderId(QString fileName, AZ::s64 scanFolderId, AZ::u64 modTime);
         bool RemoveFile(AZ::s64 sourceID);
     protected:
         void SetDatabaseVersion(AzToolsFramework::AssetDatabase::DatabaseVersion ver);

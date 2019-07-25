@@ -17,7 +17,7 @@ from waflib import Logs, Node, Errors
 from waflib.Scripting import _is_option_true
 from waflib.TaskGen import after_method, before_method, feature, extension, taskgen_method
 from waflib.Task import Task, RUN_ME, SKIP_ME
-from waf_branch_spec import BINTEMP_FOLDER, WAF_FILE_GLOB_WARNING_THRESHOLD
+from waf_branch_spec import WAF_FILE_GLOB_WARNING_THRESHOLD
 
 import utils
 import json
@@ -682,7 +682,7 @@ def modules_clean(self, modules):
 def clean_output_targets(self):
 
     to_delete = []
-
+    is_msvc = False
     for base_output_folder_node in self.get_output_folders(self.env['PLATFORM'],self.env['CONFIGURATION']):
 
         # Go through the task generators
@@ -891,101 +891,6 @@ def get_configuration(ctx, target):
         return ctx.env['CONFIG_OVERWRITES'][target]
     return ctx.env['CONFIGURATION']
 
-
-cached_folders = {}
-
-def detect_windows_sdk_folder(fallback_path):
-    """
-    Detect the current installed windows sdk folder from the registry
-    :return: The windows sdk folder from the registry
-    """
-
-    if not winreg_available:
-        raise SystemError('[ERR] Windows registry is not supported on this platform.')
-
-    cache_key = 'windows_sdk_folder'
-    if cache_key in cached_folders:
-        return cached_folders[cache_key]
-
-    microsoft_sdks_folder = fallback_path
-    try:
-        microsoft_sdks_folder_entry = _winreg.OpenKey(_winreg.HKEY_LOCAL_MACHINE, "Software\\Microsoft\\Microsoft SDKs\\Windows", 0, _winreg.KEY_READ)
-        (microsoft_sdks_folder, type) = _winreg.QueryValueEx(microsoft_sdks_folder_entry, 'CurrentInstallFolder')
-        microsoft_sdks_folder = microsoft_sdks_folder.encode('ascii')  # Make asci string (as we get unicode)
-    except:
-        Logs.warn('[WARN] Unable to find windows sdk folder from the registry. Falling back to path {} as a good guess..."'.format(fallback_path))
-
-    if not os.path.exists(microsoft_sdks_folder):
-        raise SystemError('[ERR] Unable to locate the windows sdk folder {})'.format(microsoft_sdks_folder))
-
-    cached_folders[cache_key] = microsoft_sdks_folder
-
-    return microsoft_sdks_folder
-
-
-def detect_visual_studio_vc_path(version, fallback_path):
-    """
-    Attempt to locate the installed visual studio VC path
-    :param version: Visual studio version (12.0, 14.0, etc)
-    :param fallback_path: In case the registry key cannot be found, fall back and see if this path exists
-    :return: The path to use for the visual studio VC folder
-    """
-    if not winreg_available:
-        raise SystemError('[ERR] Windows registry is not supported on this platform.')
-
-    cache_key = 'detect_visual_studio_vc_path_{}'.format(version)
-    if cache_key in cached_folders:
-        return cached_folders[cache_key]
-
-    vs_tools_path = fallback_path
-    try:
-        vs_regkey = "Software\\Microsoft\\VisualStudio\\{}_Config\\Setup\\vs".format(version)
-        vs_tools_reg_key = _winreg.OpenKey(_winreg.HKEY_CURRENT_USER, vs_regkey, 0, _winreg.KEY_READ)
-        (vs_tools_path, reg_type) = _winreg.QueryValueEx(vs_tools_reg_key, 'ProductDir')
-        vs_tools_path = vs_tools_path.encode('ascii')  # Make asci string (as we get unicode)
-        vs_tools_path += 'VC'
-    except:
-        Logs.warn('[WARN] Unable to find visual studio tools path from the registry. Falling back to path {} as a good guess..."'.format(fallback_path))
-
-    if not os.path.exists(vs_tools_path):
-        raise SystemError('[ERR] Unable to locate the visual studio VC folder {} for (vs version {})'.format(vs_tools_path, version))
-
-    cached_folders[cache_key] = vs_tools_path
-
-    return vs_tools_path
-
-
-def detect_windows_kits_include_path(fallback_path):
-    """
-    Attempt to locate the windows sdk include path
-    :param fallback_path:
-    :return:
-    """
-
-    if not winreg_available:
-        raise SystemError('[ERR] Windows registry is not supported on this platform.')
-
-    cache_key = 'windows_sdk_include_path'
-    if cache_key in cached_folders:
-        return cached_folders[cache_key]
-
-    windows_sdk_include_path = fallback_path
-    try:
-        windows_sdk_include_path = _winreg.OpenKey(_winreg.HKEY_LOCAL_MACHINE, "SOFTWARE\\Microsoft\\Windows Kits\\Installed Roots", _winreg.KEY_READ)
-        (windows_sdk_include_path, type) = _winreg.QueryValueEx(windows_sdk_include_path, 'KitsRoot81')
-        windows_sdk_include_path = windows_sdk_include_path.encode('ascii')  # Make asci string (as we get unicode)
-        windows_sdk_include_path += 'Include'
-    except:
-        Logs.warn('[WARN] Unable to find windows sdk include path from the registry. Falling back to path {} as a good guess..."'.format(fallback_path))
-        windows_sdk_include_path = fallback_path
-
-    if not os.path.exists(windows_sdk_include_path):
-        raise SystemError('[ERR] Unable to locate the Windows SDK include folder {}'.format(windows_sdk_include_path))
-
-    cached_folders[cache_key] = windows_sdk_include_path
-
-    return windows_sdk_include_path
-
 def compare_config_sets(left, right, deep_compare = False):
     """
     Helper method to do a basic comparison of different config sets (env)
@@ -1165,3 +1070,22 @@ def cached_does_path_exist(ctx, path, reset=False):
     return path_exists
 
 
+def read_game_name_from_bootstrap(bootstrap_cfg_file_path, game_name_attribute='sys_game_folder'):
+    """
+    Read the game name from bootstrap.cfg
+    
+    :param bootstrap_cfg_file_path: The path to bootstrap.cfg
+    :param game_name_attribute:     The attribute that holds the game name
+    :return: The game name
+    """
+    
+    if not os.path.exists(bootstrap_cfg_file_path):
+        raise Errors.WafError("Unable to locate required bootstrap configuration file: {}".format(bootstrap_cfg_file_path))
+    
+    with open(bootstrap_cfg_file_path, 'r') as bootstrap_file:
+        bootstrap_contents = bootstrap_file.read()
+    try:
+        game_name = re.search('^\s*{}\s*=\s*(\w+)'.format(game_name_attribute), bootstrap_contents, re.MULTILINE).group(1)
+    except Exception as e:
+        raise Errors.WafError("Error searching for 'sys_game_folder' from '{}': {}".format(bootstrap_cfg_file_path, e))
+    return game_name

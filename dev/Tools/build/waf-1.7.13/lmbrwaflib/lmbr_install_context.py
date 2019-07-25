@@ -10,7 +10,7 @@
 #
 import os, sys
 
-from waflib import Build, Context, Errors, Logs, Runner
+from waflib import Build, Context, Errors, Logs, Runner, Utils
 from waflib.Configure import conf
 
 
@@ -23,6 +23,8 @@ class LmbrInstallContext(Build.InstallContext):
         self.platform_alias = self.platform_to_platform_alias(self.platform)
 
         self.assets_platform = self.get_bootstrap_assets(self.platform).lower()
+        self.game_platform = self.get_game_platform(self.platform)
+        
         self.assets_cache_path = os.path.join('Cache', self.project, self.assets_platform)
 
         self.paks_required = any(pak_config for pak_config in ('release', 'performance') if self.config.startswith(pak_config))
@@ -94,6 +96,9 @@ class LmbrInstallContext(Build.InstallContext):
         yield []
 
     def execute_tasks(self):
+        # display the time elapsed in the progress bar
+        self.timer = Utils.Timer()
+
         self.compile()
 
     def use_vfs(self):
@@ -101,7 +106,7 @@ class LmbrInstallContext(Build.InstallContext):
             if self.paks_required:
                 self.cached_use_vfs = False
             else:
-                self.cached_use_vfs = (self.get_bootstrap_vfs() == '1')
+                self.cached_use_vfs = (self.get_bootstrap_vfs(self.game_platform) == '1')
 
         return self.cached_use_vfs
 
@@ -117,6 +122,16 @@ class LmbrInstallContext(Build.InstallContext):
                     self.cached_use_paks = self.is_option_true(paks_option)
 
         return self.cached_use_paks
+    
+    def use_layout_hard_linking(self):
+        if not hasattr(self, 'cached_use_layout_hard_linking'):
+            self.cached_use_layout_hard_linking = self.is_option_true('layout_hard_linking')
+        return self.cached_use_layout_hard_linking
+    
+    def layout_binaries_only(self):
+        if not hasattr(self, 'cached_layout_binaries_only'):
+            self.cached_layout_binaries_only = self.is_option_true('layout_binaries_only')
+        return self.cached_layout_binaries_only
 
     def get_bootstrap_files(self):
         return [
@@ -126,18 +141,16 @@ class LmbrInstallContext(Build.InstallContext):
 
     def get_project_root_node(self):
         if not hasattr(self, '_project_root_node'):
-            self._project_root_node = self.launch_node()
             if self.is_engine_local():
-                self._project_root_node = self._project_root_node.make_node(self.project)
+                self._project_root_node = self.get_engine_node().make_node(self.project)
+            else:
+                self._project_root_node = self.launch_node().make_node(self.project)
         return self._project_root_node
     project_root_node = property(get_project_root_node, None)
 
     def get_assets_cache_node(self):
         if not hasattr(self, '_assets_cache_node'):
-            if self.is_engine_local():
-                self._assets_cache_node = self.launch_node().find_dir(self.assets_cache_path)
-            else:
-                self._assets_cache_node = self.project_root_node.find_dir(self.assets_cache_path)
+            self._assets_cache_node = self.launch_node().find_dir(self.assets_cache_path)
         return self._assets_cache_node
     assets_cache_node = property(get_assets_cache_node, None)
 
@@ -192,22 +205,14 @@ class LmbrInstallContext(Build.InstallContext):
             else:
                 layout_folders.append('full')
 
-            platform_specific_subfolders = getattr(self, '{}_layout_subfolders'.format(self.platform), [])
-            layout_folders.extend(platform_specific_subfolders)
-
             self.layout_node = self.path.make_node(layout_folders)
         return self.layout_node
 
-    def get_layout_vs_node(self):
-        if not hasattr(self, 'vs_layout_node'):
+    def get_base_layout_node(self):
+        if not hasattr(self, 'base_layout_node'):
             layout_folders = self._get_base_layout_folders()
-            layout_folders.append('vs')
-
-            platform_specific_subfolders = getattr(self, '{}_layout_subfolders'.format(self.platform), [])
-            layout_folders.extend(platform_specific_subfolders)
-
-            self.vs_layout_node = self.path.make_node(layout_folders)
-        return self.vs_layout_node
+            self.base_layout_node = self.path.make_node(layout_folders)
+        return self.base_layout_node
 
     def is_platform_and_config_valid(self, **kw):
 

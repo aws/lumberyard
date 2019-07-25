@@ -5431,14 +5431,14 @@ void CEntityObject::InstallStatObjListeners()
 
 void CEntityObject::InstallCharacterBoundsListeners()
 {
-    AZ::CharacterBoundsNotificationBus::Handler::BusDisconnect();
+    AZ::CharacterBoundsNotificationBus::MultiHandler::BusDisconnect();
     if (m_pEntity)
     {
         int count = m_pEntity->GetSlotCount();
         for (int i = 0; i < count; i++)
         {
             ICharacterInstance* character = m_pEntity->GetCharacter(i);
-            AZ::CharacterBoundsNotificationBus::Handler::BusConnect(character);
+            AZ::CharacterBoundsNotificationBus::MultiHandler::BusConnect(character);
         }
     }
 }

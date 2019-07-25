@@ -30,12 +30,12 @@ namespace AzToolsFramework
 
         /// @cond
         explicit EditorDefaultSelection(const EditorVisibleEntityDataCache* entityDataCache);
+        EditorDefaultSelection(const EditorDefaultSelection&) = delete;
+        EditorDefaultSelection& operator=(const EditorDefaultSelection&) = delete;
         virtual ~EditorDefaultSelection();
         /// @endcond
 
     private:
-        AZ_DISABLE_COPY_MOVE(EditorDefaultSelection)
-
         // ViewportInteraction::ViewportSelectionRequests
         bool HandleMouseInteraction(
             const ViewportInteraction::MouseInteractionEvent& mouseInteraction) override;

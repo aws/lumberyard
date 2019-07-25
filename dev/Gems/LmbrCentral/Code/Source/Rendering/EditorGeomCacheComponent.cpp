@@ -226,6 +226,15 @@ namespace LmbrCentral
         m_currentStandinType = StandinType::None;
     }
 
+    void EditorGeometryCacheCommon::SetMaterial(_smart_ptr<IMaterial> material)
+    {
+        GeometryCacheCommon::SetMaterial(material);
+
+        AzToolsFramework::ToolsApplicationEvents::Bus::Broadcast(
+            &AzToolsFramework::ToolsApplicationEvents::InvalidatePropertyDisplay,
+            AzToolsFramework::Refresh_AttributesAndValues);
+    }
+
     void EditorGeometryCacheComponent::GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provides)
     {
         provides.push_back(AZ_CRC("GeomCacheService", 0x3d2bc48c));

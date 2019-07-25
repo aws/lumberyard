@@ -726,20 +726,9 @@ void CStreamEngine::MainThread_FinalizeIOJobs()
             //Check for a certain type of error that we need to handle in a TRC compliant way
             if (pStream->GetError() == ERROR_VERIFICATION_FAIL)
             {
-                //Inform the Platform OS in case any global response is needed and return an error
-                IPlatformOS* pPlatformOS = gEnv->pSystem->GetPlatformOS();
-                if (pPlatformOS != NULL)
-                {
-                    pPlatformOS->HandleArchiveVerificationFailure();
-                }
-                else
-                {
-                    //Notify the POS about the detected corruption so it can handle it
 #if !defined(_RELEASE)
-                    CryWarning(VALIDATOR_MODULE_SYSTEM, VALIDATOR_COMMENT, "Issue detected before PlatformOS has been initialized. Setting a flag so that it can respond when ready.");
+                CryWarning(VALIDATOR_MODULE_SYSTEM, VALIDATOR_COMMENT, "Stream error detected.");
 #endif //!_RELEASE
-                    gEnv->pSystem->AddPlatformOSCreateFlag(( uint8 )IPlatformOS::eCF_EarlyCorruptionDetected);
-                }
             }
 
             pStream->MainThread_Finalize();

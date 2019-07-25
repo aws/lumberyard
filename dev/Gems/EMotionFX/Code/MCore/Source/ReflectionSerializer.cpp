@@ -435,4 +435,15 @@ namespace MCore
         return nullptr;
     }
 
-}   // namespace EMotionFX
+    void ReflectionSerializer::Reflect(AZ::ReflectContext* context)
+    {
+        AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
+        if (serializeContext)
+        {
+            // Needed for SerializeMembersExcept() and the case that the generic type hasn't been
+            // registered by any other system yet (Idempotent operation).
+            using VectorOfPairOfStrings = AZStd::vector<AZStd::pair<AZStd::string, AZStd::string>>;
+            serializeContext->RegisterGenericType<VectorOfPairOfStrings>();
+        }
+    }
+} // namespace EMotionFX

@@ -18,6 +18,9 @@
 
 #include "../ResFile.h"
 
+// Enable this for verbose messages related to r_shadersExport and r_shadersImport
+//#define SHADER_SERIALIZE_VERBOSE
+
 //
 //  console enums taken from d3d9types.h
 //
@@ -117,12 +120,12 @@ void sExport(TArray<byte>& dst, T& data)
     int startNum = dst.Num();
 
     data.Export(dst);
-
+    
     // DEBUG: Check we wrote the data we expected
     // Only works on native export since structures are different sizes on console :(
     if (!CParserBin::m_bEndians)
     {
-        assert(dst.Num() - startNum == sizeof(T));
+        AZ_Assert(dst.Num() - startNum == sizeof(T), "ShaderSerialize export size mismatch");
     }
 }
 
@@ -136,7 +139,7 @@ void sAddDataArray(TArray<byte>& Dst, TArray<T>& Src, uint32& nOffs, uint32 alig
         return;
     }
 
-    if (1) //CParserBin::m_bEndians)
+    if (CParserBin::m_bEndians)
     {
         int startNum = Dst.Num();
 
@@ -148,7 +151,7 @@ void sAddDataArray(TArray<byte>& Dst, TArray<T>& Src, uint32& nOffs, uint32 alig
         // DEBUG - compare src and dest, check export was successful
         if (!CParserBin::m_bEndians)
         {
-            if (memcmp(&Src[0], &Dst[startNum], nSize))
+            if (memcmp(&Src[0], &Dst[startNum], nSize) != 0)
             {
                 CryFatalError("Copy failed");
             }
@@ -223,7 +226,7 @@ struct SSShader
     uint32 m_Flags2;
     uint32 m_nMDV;
 
-    uint32 m_vertexFormatCRC;   // Base vertex format for the shader (see VertexFormats.h)
+    uint32 m_vertexFormatEnum;   // Base vertex format for the shader (see VertexFormats.h)
     ECull m_eCull;                   // Global culling type
 
     EShaderType m_eShaderType;
@@ -233,6 +236,8 @@ struct SSShader
     uint32 m_nPublicParams;
     uint32 m_nFXParams;
     uint32 m_nFXSamplers;
+    uint32 m_nFXTextures;
+    uint32 m_nFXTexSamplers;
     uint32 m_nFXTexRTs;
     uint32 m_nDataSize;
     uint32 m_nStringsSize;
@@ -240,6 +245,8 @@ struct SSShader
     uint32 m_nPublicParamsOffset;
     uint32 m_nFXParamsOffset;
     uint32 m_nFXSamplersOffset;
+    uint32 m_nFXTexturesOffset;
+    uint32 m_nFXTexSamplersOffset;
     uint32 m_nFXTexRTsOffset;
     uint32 m_nTechOffset;
     uint32 m_nPassOffset;
@@ -260,7 +267,7 @@ struct SSShader
         sAddData(dst, m_Flags);
         sAddData(dst, m_Flags2);
         sAddData(dst, m_nMDV);
-        sAddData(dst, m_vertexFormatCRC);
+        sAddData(dst, m_vertexFormatEnum);
         sAddData(dst, (uint32)m_eCull);
         sAddData(dst, (uint32)m_eShaderType);
         sAddData(dst, m_nTechniques);
@@ -268,6 +275,8 @@ struct SSShader
         sAddData(dst, m_nPublicParams);
         sAddData(dst, m_nFXParams);
         sAddData(dst, m_nFXSamplers);
+        sAddData(dst, m_nFXTextures);
+        sAddData(dst, m_nFXTexSamplers);
         sAddData(dst, m_nFXTexRTs);
         sAddData(dst, m_nDataSize);
         sAddData(dst, m_nStringsSize);
@@ -275,6 +284,8 @@ struct SSShader
         sAddData(dst, m_nPublicParamsOffset);
         sAddData(dst, m_nFXParamsOffset);
         sAddData(dst, m_nFXSamplersOffset);
+        sAddData(dst, m_nFXTexturesOffset);
+        sAddData(dst, m_nFXTexSamplersOffset);
         sAddData(dst, m_nFXTexRTsOffset);
         sAddData(dst, m_nTechOffset);
         sAddData(dst, m_nPassOffset);
@@ -283,8 +294,8 @@ struct SSShader
 
         uint32 PAD = 0;
         sAddData(dst, PAD); //pad to 64bit
-
-        assert(dst.Num() - startOffset == sizeof(*this));
+        
+        AZ_Assert(dst.Num() - startOffset == sizeof(*this), "ShaderSerialize export size mismatch");
     }
 
     void Import(const byte* pData)
@@ -300,7 +311,7 @@ struct SSShader
             ;
             SwapEndian(m_Flags2, eBigEndian);
             SwapEndian(m_nMDV, eBigEndian);
-            SwapEndianEnum(m_vertexFormatCRC, eBigEndian);
+            SwapEndianEnum(m_vertexFormatEnum, eBigEndian);
             SwapEndianEnum(m_eCull, eBigEndian);
             SwapEndianEnum(m_eShaderType, eBigEndian);
             SwapEndian(m_nTechniques, eBigEndian);
@@ -308,12 +319,16 @@ struct SSShader
             SwapEndian(m_nPublicParams, eBigEndian);
             SwapEndian(m_nFXParams, eBigEndian);
             SwapEndian(m_nFXSamplers, eBigEndian);
+            SwapEndian(m_nFXTextures, eBigEndian);
+            SwapEndian(m_nFXTexSamplers, eBigEndian);
             SwapEndian(m_nFXTexRTs, eBigEndian);
             SwapEndian(m_nDataSize, eBigEndian);
             SwapEndian(m_nStringsSize, eBigEndian);
             SwapEndian(m_nPublicParamsOffset, eBigEndian);
             SwapEndian(m_nFXParamsOffset, eBigEndian);
             SwapEndian(m_nFXSamplersOffset, eBigEndian);
+            SwapEndian(m_nFXTexturesOffset, eBigEndian);
+            SwapEndian(m_nFXTexSamplersOffset, eBigEndian);
             SwapEndian(m_nFXTexRTsOffset, eBigEndian);
             SwapEndian(m_nTechOffset, eBigEndian);
             SwapEndian(m_nPassOffset, eBigEndian);
@@ -329,6 +344,7 @@ struct SSShaderParam
     EParamType m_Type;
     UParamVal m_Value;
     int m_nScriptOffs;
+    uint8 m_eSemantic;
 
     SSShaderParam()
     {
@@ -337,6 +353,8 @@ struct SSShaderParam
 
     void Export(TArray<byte>& dst)
     {
+        uint32 startOffset = dst.Num();
+
         sAddData(dst, m_nameIdx);
         sAddData(dst, (uint32)m_Type);
 
@@ -407,6 +425,12 @@ struct SSShaderParam
         }
 
         sAddData(dst, m_nScriptOffs);
+        sAddData(dst, m_eSemantic);
+
+        // Align for struct padding
+        sAlignData(dst, 8);
+        
+        AZ_Assert(dst.Num() - startOffset == sizeof(*this), "ShaderSerialize export size mismatch");
     }
 
     void Import(const byte* pData)
@@ -423,6 +447,7 @@ struct SSShaderParam
                 SwapEndian(m_Value.m_Color[i], eBigEndian);
             }
             SwapEndian(m_nScriptOffs, eBigEndian);
+            SwapEndian(m_eSemantic, eBigEndian);
         }
     }
 };
@@ -604,7 +629,7 @@ struct SCHWShader
         //uint32 PAD=0;
         //sAddData(dst, PAD); //pad up to 64bit align due to uint64
 
-        assert(dst.Num() - startOffset == sizeof(*this));
+        AZ_Assert(dst.Num() - startOffset == sizeof(*this), "ShaderSerialize export size mismatch");
     }
 
     void Import(const byte* pData)
@@ -662,6 +687,8 @@ struct SSTexSamplerFX
 
     void Export(TArray<byte>& dst)
     {
+        uint32 startOffset = dst.Num();
+
         sAddData(dst, m_nsName);
         sAddData(dst, m_nsNameTexture);
         sAddData(dst, m_eTexType);
@@ -681,13 +708,17 @@ struct SSTexSamplerFX
         sAddData(dst, ST.padding);
         sAddData(dst, ST.m_dwBorderColor);
 
-        uint32 iPad = 0;
+        sAddData(dst, ST.m_MipBias);
+
+        uint64 iPad = 0;
         sAddData(dst, iPad); //m_pDeviceState
         sAddData(dst, ST.m_bActive);
         sAddData(dst, ST.m_bComparison);
         sAddData(dst, ST.m_bSRGBLookup);
         byte bPad = 0;
         sAddData(dst, bPad);
+
+        AZ_Assert(dst.Num() - startOffset == sizeof(*this), "ShaderSerialize export size mismatch");
     }
 
     void Import(const byte* pData)
@@ -806,8 +837,7 @@ struct SSFXParam
     byte   m_eType;     // EParamType
     int8   m_nCB;
 
-    //TODO, this struct will array will be bigger on PC, to supprt more shader types
-    short  m_nRegister[3]; // VS, PS, GS
+    short  m_nRegister[eHWSC_Num];
 
     SSFXParam()
     {
@@ -816,6 +846,8 @@ struct SSFXParam
 
     void Export(TArray<byte>& dst)
     {
+        uint32 startOffset = dst.Num();
+
         sAddData(dst, m_nsName);
         sAddData(dst, m_nFlags);
         sAddData(dst, m_nParameters);
@@ -826,10 +858,15 @@ struct SSFXParam
         sAddData(dst, m_eType);
         sAddData(dst, m_nCB);
 
-        for (int i = 0; i < 3; i++)
+        for (int i = 0; i < eHWSC_Num; i++)
         {
             sAddData(dst, m_nRegister[i]);
         }
+
+        // Align for struct padding
+        sAlignData(dst, 8);
+
+        AZ_Assert(dst.Num() - startOffset == sizeof(*this), "ShaderSerialize export size mismatch");
     }
 
     void Import(const byte* pData)
@@ -848,7 +885,7 @@ struct SSFXParam
             SwapEndian(m_eType, eBigEndian);
             SwapEndian(m_nCB, eBigEndian);
 
-            for (int i = 0; i < 3; i++)
+            for (int i = 0; i < eHWSC_Num; i++)
             {
                 SwapEndian(m_nRegister[i], eBigEndian);
             }
@@ -866,8 +903,7 @@ struct SSFXSampler
     uint32 m_nsValues;    // Parameter values (after '=')
     byte   m_eType;     // EParamType
 
-    //TODO, this struct will array will be bigger on PC, to supprt more shader types
-    short  m_nRegister[3];// VS, PS, GS
+    short  m_nRegister[eHWSC_Num];
 
     SSFXSampler()
     {
@@ -876,6 +912,8 @@ struct SSFXSampler
 
     void Export(TArray<byte>& dst)
     {
+        uint32 startOffset = dst.Num();
+
         sAddData(dst, m_nsName);
         sAddData(dst, m_nFlags);
         sAddData(dst, m_nArray);
@@ -884,10 +922,15 @@ struct SSFXSampler
         sAddData(dst, m_nsValues);
         sAddData(dst, m_eType);
 
-        for (int i = 0; i < 3; i++)
+        for (int i = 0; i < eHWSC_Num; i++)
         {
             sAddData(dst, m_nRegister[i]);
         }
+        
+        // Align for struct padding
+        sAlignData(dst, 8);
+
+        AZ_Assert(dst.Num() - startOffset == sizeof(*this), "ShaderSerialize export size mismatch");
     }
 
     void Import(const byte* pData)
@@ -904,7 +947,7 @@ struct SSFXSampler
             SwapEndian(m_nsValues, eBigEndian);
             SwapEndian(m_eType, eBigEndian);
 
-            for (int i = 0; i < 3; i++)
+            for (int i = 0; i < eHWSC_Num; i++)
             {
                 SwapEndian(m_nRegister[i], eBigEndian);
             }
@@ -923,8 +966,7 @@ struct SSFXTexture
     bool   m_bSRGBLookup;
     byte   m_eType;     // EParamType
 
-    //TODO, this struct will array will be bigger on PC, to supprt more shader types
-    short  m_nRegister[3];// VS, PS, GS
+    short  m_nRegister[eHWSC_Num];
 
     SSFXTexture()
     {
@@ -933,6 +975,8 @@ struct SSFXTexture
 
     void Export(TArray<byte>& dst)
     {
+        uint32 startOffset = dst.Num();
+
         sAddData(dst, m_nsName);
         sAddData(dst, m_nsNameTexture);
         sAddData(dst, m_nFlags);
@@ -943,10 +987,15 @@ struct SSFXTexture
         sAddData(dst, m_eType);
         sAddData(dst, m_bSRGBLookup);
 
-        for (int i = 0; i < 3; i++)
+        for (int i = 0; i < eHWSC_Num; i++)
         {
             sAddData(dst, m_nRegister[i]);
         }
+        
+        // Align for struct padding
+        sAlignData(dst, 8);
+
+        AZ_Assert(dst.Num() - startOffset == sizeof(*this), "ShaderSerialize export size mismatch");
     }
 
     void Import(const byte* pData)
@@ -965,7 +1014,7 @@ struct SSFXTexture
             SwapEndian(m_eType, eBigEndian);
             SwapEndian(m_bSRGBLookup, eBigEndian);
 
-            for (int i = 0; i < 3; i++)
+            for (int i = 0; i < eHWSC_Num; i++)
             {
                 SwapEndian(m_nRegister[i], eBigEndian);
             }
@@ -1023,6 +1072,13 @@ class CShaderSerialize
     friend class CShaderManBin;
 
 public:
+    enum ShaderImportResults
+    {
+        SHADER_IMPORT_SUCCESS,          // Shader mask exists in the fxb lookup table
+        SHADER_IMPORT_MISSING_ENTRY,    // We have a valid fxb lookup table, but the current permutation is missing
+        SHADER_IMPORT_FAILURE,          // No fxb table exists for this entire shader
+    };
+
     void ClearSResourceCache();
 
 private:
@@ -1030,13 +1086,19 @@ private:
     bool OpenSResource(const char* szName,  SSShaderRes* pSR, CShader* pSH, bool bDontUseUserFolder, bool bReadOnly);
     bool CreateSResource(CShader* pSH, SSShaderRes* pSR, CCryNameTSCRC& SName, bool bDontUseUserFolder, bool bReadOnly);
     SSShaderRes* InitSResource(CShader* pSH, bool bDontUseUserFolder, bool bReadOnly);
+    
+    // Simple query to see if the SResource exists in the hash table
+    bool DoesSResourceExist(CShader* pSH);
+
+    // Helper function to abstract calling ExportHWShader per shader stage  
+    void ExportHWShaderStage(SShaderSerializeContext& SC, CHWShader* shader, uint32& outShaderOffset);
 
     bool ExportHWShader(CHWShader* pShader, struct SShaderSerializeContext& SC);
 
     CHWShader* ImportHWShader(SShaderSerializeContext& SC, int nOffs, uint32 CRC32, CShader* pSH);
 
     bool ExportShader(CShader* pSH, CShaderManBin& binShaderMgr);
-    bool ImportShader(CShader* pSH, CShaderManBin& binShaderMgr);
+    ShaderImportResults ImportShader(CShader* pSH, CShaderManBin& binShaderMgr);
     bool CheckFXBExists(CShader* pSH);
 
     FXSShaderRes m_SShaderResources;

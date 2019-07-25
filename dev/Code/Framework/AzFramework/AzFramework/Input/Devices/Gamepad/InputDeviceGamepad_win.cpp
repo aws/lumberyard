@@ -180,6 +180,11 @@ namespace AzFramework
         void SetVibration(float leftMotorSpeedNormalized, float rightMotorSpeedNormalized) override;
 
         ////////////////////////////////////////////////////////////////////////////////////////////
+        //! \ref AzFramework::InputDeviceGamepad::Implementation::GetPhysicalKeyOrButtonText
+        bool GetPhysicalKeyOrButtonText(const InputChannelId& inputChannelId,
+                                        AZStd::string& o_keyOrButtonText) const override;
+
+        ////////////////////////////////////////////////////////////////////////////////////////////
         //! \ref AzFramework::InputDeviceGamepad::Implementation::TickInputDevice
         void TickInputDevice() override;
 
@@ -194,6 +199,12 @@ namespace AzFramework
         bool                                       m_isConnected;        //!< Is this game-pad currently connected?
         bool                                       m_tryConnect;         //!< Check whether this game-pad just connected?
     };
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    AZ::u32 InputDeviceGamepad::GetMaxSupportedGamepads()
+    {
+        return XUSER_MAX_COUNT;
+    }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
     InputDeviceGamepad::Implementation* InputDeviceGamepad::Implementation::Create(
@@ -221,9 +232,9 @@ namespace AzFramework
         , m_tryConnect(true)
     {
         AZ_Assert(m_xinputModuleHandle, "Creating instance of InputDeviceGamepadWin with a null XInput handle.");
-        AZ_Assert(inputDevice.GetInputDeviceId().GetIndex() < XUSER_MAX_COUNT,
+        AZ_Assert(inputDevice.GetInputDeviceId().GetIndex() < InputDeviceGamepad::GetMaxSupportedGamepads(),
                   "Creating InputDeviceGamepadWin with index %d that is greater than the max supported by xinput: %d",
-                  inputDevice.GetInputDeviceId().GetIndex(), XUSER_MAX_COUNT);
+                  inputDevice.GetInputDeviceId().GetIndex(), InputDeviceGamepad::GetMaxSupportedGamepads());
 
         m_rawGamepadState.m_triggerMaximumValue = AnalogTriggerMaxValue;
         m_rawGamepadState.m_triggerDeadZoneValue = AnalogTriggerDeadZone;
@@ -269,8 +280,27 @@ namespace AzFramework
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
+    bool InputDeviceGamepadWin::GetPhysicalKeyOrButtonText(const InputChannelId& inputChannelId,
+                                                           AZStd::string& o_keyOrButtonText) const
+    {
+        if (inputChannelId == InputDeviceGamepad::Button::Select)
+        {
+            o_keyOrButtonText = "Back";
+            return true;
+        }
+        return false;
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////
     void InputDeviceGamepadWin::TickInputDevice()
     {
+        // Only process gamepad input while this thread's message queue has focus to
+        // keep the behaviour consistent with the mouse and keyboard implementations.
+        if (::GetFocus() == nullptr)
+        {
+            return;
+        }
+
         // Calling XInputGetState every frame for unconnected gamepad devices is extremely slow, but
         // calling XInputGetState every frame for a device that is already connected is much faster.
         // To get around this, unless we're already connected we'll only call XInputGetState once at

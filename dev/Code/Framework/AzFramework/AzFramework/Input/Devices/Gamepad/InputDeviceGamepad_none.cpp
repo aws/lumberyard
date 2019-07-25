@@ -16,6 +16,12 @@
 namespace AzFramework
 {
     ////////////////////////////////////////////////////////////////////////////////////////////////
+    AZ::u32 InputDeviceGamepad::GetMaxSupportedGamepads()
+    {
+        return 0;
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////
     InputDeviceGamepad::Implementation* InputDeviceGamepad::Implementation::Create(InputDeviceGamepad&)
     {
         return nullptr;

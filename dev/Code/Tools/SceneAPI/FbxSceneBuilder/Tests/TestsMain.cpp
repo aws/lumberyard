@@ -66,4 +66,4 @@ private:
 };
 
 AZ_UNIT_TEST_HOOK(new FbxSceneBuilderTestEnvironment);
-AZ_INTEG_TEST_HOOK(new FbxSceneBuilderTestEnvironment);
+

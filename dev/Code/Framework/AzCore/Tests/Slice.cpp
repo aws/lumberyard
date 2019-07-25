@@ -795,12 +795,12 @@ namespace UnitTest
             volatile bool isDone = false;
             volatile bool succeeded = false;
             AssetBusCallbacks callbacks;
-            callbacks.SetCallbacks(nullptr, nullptr, nullptr,
+            callbacks.SetOnAssetSavedCallback(
                 [&isDone, &succeeded](const Asset<AssetData>& /*asset*/, bool isSuccessful, AssetBusCallbacks& /*callbacks*/)
             {
                 isDone = true;
                 succeeded = isSuccessful;
-            }, nullptr, nullptr);
+            });
 
             callbacks.BusConnect(asset.GetId());
             asset.Save();
@@ -900,12 +900,13 @@ namespace UnitTest
                 bool isDone = false;
                 bool succeeded = true;
                 AssetBusCallbacks callbacks;
-                callbacks.SetCallbacks(
+                callbacks.SetOnAssetReadyCallback(
                     [&isDone, &succeeded](const Asset<AssetData>&, AssetBusCallbacks&) // success
                 {
                     isDone = true;
                     succeeded = true;
-                }, nullptr, nullptr, nullptr, nullptr,
+                });
+                callbacks.SetOnAssetErrorCallback(
                     [&isDone, &succeeded](const Asset<AssetData>&, AssetBusCallbacks&) // error
                 {
                     isDone = true;

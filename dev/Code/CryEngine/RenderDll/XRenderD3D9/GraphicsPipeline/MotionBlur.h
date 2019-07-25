@@ -17,6 +17,7 @@
 #include "Common/FullscreenPass.h"
 #include "Common/UtilityPasses.h"
 
+// This class is deprecated as it requires r_graphicsPipeline > 0 to function properly, which is not supported on all platforms.
 class CMotionBlurPass
     : public GraphicsPipelinePass
 {

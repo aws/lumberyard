@@ -19,6 +19,7 @@
 
 // Includes for the event queue.
 #include <AzCore/std/functional.h>
+#include <AzCore/std/function/invoke.h>
 #include <AzCore/std/containers/queue.h>
 #include <AzCore/std/containers/intrusive_set.h>
 
@@ -98,7 +99,7 @@ namespace AZ
     } // namespace Internal
 
     /**
-     * Defines the default connection policy that is used when 
+     * Defines the default connection policy that is used when
      * AZ::EBusTraits::ConnectionPolicy is left unspecified.
      * Use this as a template for custom connection policies.
      * @tparam Bus A class that defines an EBus.
@@ -130,17 +131,8 @@ namespace AZ
         typedef typename Bus::Context Context;
 
         /**
-         * Binds a pointer to an EBus address.
-         * @param ptr[out] A pointer that will be bound to the appropriate 
-         * address on the EBus.
-         * @param context Global data for the EBus.
-         * @param id The ID of the EBus address that the pointer will be bound to.
-         */
-        static void Bind(BusPtr& ptr, Context& context, const BusIdType& id = 0);
-
-        /**
          * Connects a handler to an EBus address.
-         * @param ptr[out] A pointer that will be bound to the EBus address that 
+         * @param ptr[out] A pointer that will be bound to the EBus address that
          * the handler will be connected to.
          * @param context Global data for the EBus.
          * @param handler The handler to connect to the EBus address.
@@ -155,14 +147,6 @@ namespace AZ
          * @param ptr A pointer to a specific address on the EBus.
          */
         static void Disconnect(Context& context, HandlerNode& handler, BusPtr& ptr);
-
-        /**
-         * Disconnects a handler from an EBus address, referencing the address by its ID.
-         * @param context Global data for the EBus.
-         * @param handler The handler to disconnect from the EBus address.
-         * @param id The ID of the EBus address to disconnect the handler from.
-         */
-        static void DisconnectId(Context& context, HandlerNode& handler, const BusIdType& id);
     };
 
     /**
@@ -195,10 +179,10 @@ namespace AZ
             return s_context;
         }
     };
-    
-#if !defined(AZ_PLATFORM_APPLE) // thread_local storage is not supported for Apple platforms, before iOS 9. 
+
+#if !defined(AZ_PLATFORM_APPLE) // thread_local storage is not supported for Apple platforms, before iOS 9.
     /**
-     * A choice of AZ::EBusTraits::StoragePolicy that specifies 
+     * A choice of AZ::EBusTraits::StoragePolicy that specifies
      * that EBus data is stored in a thread_local static variable.
      * With this policy, each thread has its own instance of the EBus.
      * @tparam Context A class that contains EBus data.
@@ -317,38 +301,21 @@ namespace AZ
     // Implementations
     ////////////////////////////////////////////////////////////
     template <class Bus>
-    void EBusConnectionPolicy<Bus>::Bind(BusPtr& ptr, Context& context, const BusIdType& id)
+    void EBusConnectionPolicy<Bus>::Connect(BusPtr&, Context&, HandlerNode&, const BusIdType&)
     {
-        auto iter = context.m_buses.insert(id);
-        ptr = Bus::BusesContainer::toNodePtr(iter);
     }
 
     template <class Bus>
-    void EBusConnectionPolicy<Bus>::Connect(BusPtr& ptr, Context& context, HandlerNode& handler, const BusIdType& id)
+    void EBusConnectionPolicy<Bus>::Disconnect(Context&, HandlerNode&, BusPtr&)
     {
-        auto iter = context.m_buses.insert(id);
-        ptr = Bus::BusesContainer::toNodePtr(iter);
-        ptr->insert(handler);
     }
 
-    template <class Bus>
-    void EBusConnectionPolicy<Bus>::Disconnect(Context& context, HandlerNode& handler, BusPtr& ptr)
-    {
-        (void)context;
-        ptr->erase(handler);
-    }
-
-    template <class Bus>
-    void EBusConnectionPolicy<Bus>::DisconnectId(Context& context, HandlerNode& handler, const BusIdType& id)
-    {
-        (void)context;
-        auto iter = context.m_buses.find(id);
-        if (iter != context.m_buses.end())
-        {
-            BusPtr ptr = Bus::BusesContainer::toNodePtr(iter);
-            ptr->erase(handler);
-        }
-    }
+    /**
+     * This is the default bus event compare operator. If not overridden in your bus traits and you
+     * use ordered handlers (HandlerPolicy = EBusHandlerPolicy::MultipleAndOrdered), you will need
+     * to declare the following function in your interface: 'bool Compare(const Interface* rhs) const'.
+     */
+    struct BusHandlerCompareDefault;
 
     //////////////////////////////////////////////////////////////////////////
     // Router Policy
@@ -383,8 +350,8 @@ namespace AZ
             SkipListenersAndRouters, ///< Skip everybody. Nobody should receive the event after this.
         };
 
-        template <class CallstackHandler, class Function, class... InputArgs>
-        inline bool RouteEvent(const typename Bus::BusIdType* busIdPtr, bool isQueued, bool isReverse, Function func, InputArgs&&... args);
+        template <class Function, class... InputArgs>
+        inline bool RouteEvent(const typename Bus::BusIdType* busIdPtr, bool isQueued, bool isReverse, Function&& func, InputArgs&&... args);
 
         Container m_routers;
     };
@@ -426,14 +393,14 @@ namespace AZ
 
     //////////////////////////////////////////////////////////////////////////
     template <class Bus>
-    template <class CallstackHandler, class Function, class... InputArgs>
-    inline bool EBusRouterPolicy<Bus>::RouteEvent(const typename Bus::BusIdType* busIdPtr, bool isQueued, bool isReverse, Function func, InputArgs&&... args)
+    template <class Function, class... InputArgs>
+    inline bool EBusRouterPolicy<Bus>::RouteEvent(const typename Bus::BusIdType* busIdPtr, bool isQueued, bool isReverse, Function&& func, InputArgs&&... args)
     {
         auto rtLast = m_routers.end();
-        CallstackHandler rtCurrent(m_routers.begin(), busIdPtr, isQueued, isReverse);
+        typename Bus::RouterCallstackEntry rtCurrent(m_routers.begin(), busIdPtr, isQueued, isReverse);
         while (rtCurrent.m_iterator != rtLast)
         {
-            ((*rtCurrent.m_iterator++)->*func)(args...);
+            AZStd::invoke(func, (*rtCurrent.m_iterator++), args...);
 
             if (rtCurrent.m_processingState == EventProcessingState::SkipListenersAndRouters)
             {

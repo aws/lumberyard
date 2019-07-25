@@ -1101,8 +1101,9 @@ void AssetProcessingStateDataUnitTest::DataTest(AssetProcessor::AssetDatabaseCon
     UNIT_TEST_EXPECT_FALSE(stateData->GetDirectProductDependencies(3443, products));
     UNIT_TEST_EXPECT_FALSE(stateData->GetAllProductDependencies(3443, products));
 
+    AZStd::string platform;
     //trying to add a product dependency without a valid product pk should fail
-    productDependency = ProductDependencyDatabaseEntry(234234, validSourceGuid1, 1, 0);
+    productDependency = ProductDependencyDatabaseEntry(234234, validSourceGuid1, 1, 0, platform);
     {
         UnitTestUtils::AssertAbsorber absorber;
         UNIT_TEST_EXPECT_FALSE(stateData->SetProductDependency(productDependency));
@@ -1111,7 +1112,7 @@ void AssetProcessingStateDataUnitTest::DataTest(AssetProcessor::AssetDatabaseCon
 
     //setting a valid product pk should allow it to be added
     //Product -> Product2
-    productDependency = ProductDependencyDatabaseEntry(product.m_productID, validSourceGuid2, 2, 0);
+    productDependency = ProductDependencyDatabaseEntry(product.m_productID, validSourceGuid2, 2, 0, platform);
     UNIT_TEST_EXPECT_TRUE(stateData->SetProductDependency(productDependency));
     if (productDependency.m_productDependencyID == -1)
     {
@@ -1153,19 +1154,19 @@ void AssetProcessingStateDataUnitTest::DataTest(AssetProcessor::AssetDatabaseCon
     // Setup some more dependencies
 
     //Product2 -> Product3
-    productDependency = ProductDependencyDatabaseEntry(product2.m_productID, validSourceGuid3, 3, 0);
+    productDependency = ProductDependencyDatabaseEntry(product2.m_productID, validSourceGuid3, 3, 0, platform);
     UNIT_TEST_EXPECT_TRUE(stateData->SetProductDependency(productDependency));
 
     //Product2 -> Product4
-    productDependency = ProductDependencyDatabaseEntry(product2.m_productID, validSourceGuid4, 4, 0);
+    productDependency = ProductDependencyDatabaseEntry(product2.m_productID, validSourceGuid4, 4, 0, platform);
     UNIT_TEST_EXPECT_TRUE(stateData->SetProductDependency(productDependency));
 
     //Product3 -> Product5
-    productDependency = ProductDependencyDatabaseEntry(product3.m_productID, validSourceGuid5, 5, 0);
+    productDependency = ProductDependencyDatabaseEntry(product3.m_productID, validSourceGuid5, 5, 0, platform);
     UNIT_TEST_EXPECT_TRUE(stateData->SetProductDependency(productDependency));
 
     //Product5 -> Product6
-    productDependency = ProductDependencyDatabaseEntry(product5.m_productID, validSourceGuid6, 6, 0);
+    productDependency = ProductDependencyDatabaseEntry(product5.m_productID, validSourceGuid6, 6, 0, platform);
     UNIT_TEST_EXPECT_TRUE(stateData->SetProductDependency(productDependency));
 
     /* Dependency Tree
@@ -1257,7 +1258,7 @@ void AssetProcessingStateDataUnitTest::DataTest(AssetProcessor::AssetDatabaseCon
     UNIT_TEST_EXPECT_TRUE(products.size() == 0);
 
     //Product6 -> Product (This creates a circular dependency)
-    productDependency = ProductDependencyDatabaseEntry(product6.m_productID, validSourceGuid1, 1, 0);
+    productDependency = ProductDependencyDatabaseEntry(product6.m_productID, validSourceGuid1, 1, 0, platform);
     UNIT_TEST_EXPECT_TRUE(stateData->SetProductDependency(productDependency));
 
     /* Circular Dependency Tree

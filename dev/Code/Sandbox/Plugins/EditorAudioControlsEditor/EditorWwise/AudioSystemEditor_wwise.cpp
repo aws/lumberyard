@@ -1,4 +1,4 @@
-/*
+﻿/*
 * All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
 * its licensors.
 *
@@ -150,6 +150,11 @@ namespace AudioControls
             if (pParent == nullptr)
             {
                 pParent = &m_rootControl;
+            }
+
+            if (controlDefinition.eType == eWCT_WWISE_SOUND_BANK)
+            {
+                pNewControl->SetName(sFullname);
             }
 
             pParent->AddChild(pNewControl.get());

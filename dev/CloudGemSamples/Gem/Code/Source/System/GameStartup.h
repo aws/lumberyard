@@ -14,7 +14,6 @@
 
 #include <IGameFramework.h>
 #include <IWindowMessageHandler.h>
-#include <IPlatformOS.h>
 
 #if defined(APPLE)
 #define GAME_FRAMEWORK_FILENAME  "libCryAction.dylib"
@@ -35,7 +34,6 @@ namespace LYGame
         : public IGameStartup
         , public ISystemEventListener
         , public IWindowMessageHandler
-        , public IPlatformOS::IPlatformListener
     {
     public:
         friend class CloudGemSamplesSystemComponent;
@@ -49,10 +47,6 @@ namespace LYGame
         // ISystemEventListener
         virtual void OnSystemEvent(ESystemEvent event, UINT_PTR wparam, UINT_PTR lparam) override;
         // ~ISystemEventListener
-
-        // IPlatformOS::IPlatformListener
-        void OnPlatformEvent(const IPlatformOS::SPlatformEvent& event);
-        // ~IPlatformOS::IPlatformListener
 
         /*!
          * Re-initializes the Game

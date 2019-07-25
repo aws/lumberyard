@@ -10,8 +10,6 @@
  *
  */
 
-#include "NativeUI_precompiled.h"
-
 #include <AzTest/AzTest.h>
 
 class MobileNativeUITest

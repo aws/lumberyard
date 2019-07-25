@@ -155,7 +155,6 @@
 			"HWScripts/CryFX/Particles.cfi",			
 			"HWScripts/CryFX/ParticlesCustomPass.cfi",			
 			"HWScripts/CryFX/ParticlesShadowPass.cfi",
-			"HWScripts/CryFX/ParticlesThicknessPass.cfi",
 			"HWScripts/CryFX/ParticleVT.cfi"
 		],
 		"CryFX/PostProcess":

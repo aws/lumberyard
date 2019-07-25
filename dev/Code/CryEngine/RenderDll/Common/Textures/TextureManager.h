@@ -39,7 +39,7 @@ struct MaterialTextureSemantic
 
     MaterialTextureSemantic& operator=(MaterialTextureSemantic& srcSemantic)
     {
-        SAFE_DELETE(suffix);
+        SAFE_DELETE_ARRAY(suffix);
 
         slot = srcSemantic.slot;
         priority = srcSemantic.priority;
@@ -61,7 +61,7 @@ struct MaterialTextureSemantic
 
     ~MaterialTextureSemantic()
     {
-        SAFE_DELETE(suffix);
+        SAFE_DELETE_ARRAY(suffix);
     };
 
     EEfResTextures  slot;

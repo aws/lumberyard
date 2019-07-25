@@ -33,25 +33,6 @@ const char* CStringTableReader::GetString(StringID stringId) const
     return pString;
 }
 
-
-//////////////////////////////////////////////////////////////////////////
-
-void CStringTableReader::ReadFromFile(CReader& Reader, IPlatformOS::ISaveReaderPtr pOSSaveReader, const SFileHeader::SStringTable& headerInfo)
-{
-    assert(m_stringAddrs.empty());
-
-    m_stringAddrs.resize(headerInfo.m_numStrings);
-    FlatAddr* pstringAddrsTable = &(m_stringAddrs[0]);
-    Reader.ReadDataFromFile(pOSSaveReader, pstringAddrsTable, sizeof(FlatAddr) * headerInfo.m_numStrings);
-    for (uint32 i = 0; i < m_stringAddrs.size(); ++i)
-    {
-        SwapIntegerValue(m_stringAddrs[i]);
-    }
-
-    m_buffer.ReadFromFile(Reader, pOSSaveReader, headerInfo.m_sizeStringData);
-}
-
-
 //////////////////////////////////////////////////////////////////////////
 
 void CStringTableReader::ReadFromMemory(CReader& Reader, const uint8* pData, uint32 dataSize, const SFileHeader::SStringTable& headerInfo, uint32& outReadLoc)

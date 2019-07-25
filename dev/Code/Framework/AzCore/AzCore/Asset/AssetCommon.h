@@ -469,15 +469,22 @@ namespace AZ
         public:
             AZ_CLASS_ALLOCATOR(AssetBusCallbacks, AZ::SystemAllocator, 0);
 
-            typedef AZStd::function<void (const Asset<AssetData>& /*asset*/, AssetBusCallbacks& /*callbacks*/)> AssetReadyCB;
-            typedef AZStd::function<void (const Asset<AssetData>& /*asset*/, void* /*oldDataPointer*/, AssetBusCallbacks& /*callbacks*/)> AssetMovedCB;
-            typedef AZStd::function<void (const Asset<AssetData>& /*asset*/, AssetBusCallbacks& /*callbacks*/)> AssetReloadedCB;
-            typedef AZStd::function<void (const Asset<AssetData>& /*asset*/, bool /*isSuccessful*/, AssetBusCallbacks& /*callbacks*/)> AssetSavedCB;
+            typedef AZStd::function<void (Asset<AssetData> /*asset*/, AssetBusCallbacks& /*callbacks*/)> AssetReadyCB;
+            typedef AZStd::function<void (Asset<AssetData> /*asset*/, void* /*oldDataPointer*/, AssetBusCallbacks& /*callbacks*/)> AssetMovedCB;
+            typedef AZStd::function<void (Asset<AssetData> /*asset*/, AssetBusCallbacks& /*callbacks*/)> AssetReloadedCB;
+            typedef AZStd::function<void (Asset<AssetData> /*asset*/, bool /*isSuccessful*/, AssetBusCallbacks& /*callbacks*/)> AssetSavedCB;
             typedef AZStd::function<void (const AssetId& /*assetId*/, const AssetType& /*assetType*/, AssetBusCallbacks& /*callbacks*/)> AssetUnloadedCB;
-            typedef AZStd::function<void (const Asset<AssetData>& /*asset*/, AssetBusCallbacks& /*callbacks*/)> AssetErrorCB;
+            typedef AZStd::function<void (Asset<AssetData> /*asset*/, AssetBusCallbacks& /*callbacks*/)> AssetErrorCB;
 
             void SetCallbacks(const AssetReadyCB& readyCB, const AssetMovedCB& movedCB, const AssetReloadedCB& reloadedCB, const AssetSavedCB& savedCB, const AssetUnloadedCB& unloadedCB, const AssetErrorCB& errorCB);
             void ClearCallbacks();
+
+            void SetOnAssetReadyCallback(const AssetReadyCB& readyCB);
+            void SetOnAssetMovedCallback(const AssetMovedCB& movedCB);
+            void SetOnAssetReloadedCallback(const AssetReloadedCB& reloadedCB);
+            void SetOnAssetSavedCallback(const AssetSavedCB& savedCB);
+            void SetOnAssetUnloadedCallback(const AssetUnloadedCB& unloadedCB);
+            void SetOnAssetErrorCallback(const AssetErrorCB& errorCB);
 
             void OnAssetReady(Asset<AssetData> asset) override;
             void OnAssetMoved(Asset<AssetData> asset, void* oldDataPointer) override;

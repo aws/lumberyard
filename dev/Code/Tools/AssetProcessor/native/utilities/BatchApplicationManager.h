@@ -42,6 +42,7 @@ namespace AssetProcessor
     class AssetCatalog;
     class InternalAssetBuilderInfo;
     class AssetRequestHandler;
+    class AssetServerHandler;
     class FileProcessor;
 }
 
@@ -143,6 +144,8 @@ protected:
     void ShutdownBuilderManager();
     bool InitAssetDatabase();
     void ShutDownAssetDatabase();
+    void InitAssetServerHandler();
+    void DestroyAssetServerHandler();
     void InitFileProcessor();
     void ShutDownFileProcessor();
 
@@ -180,6 +183,7 @@ private:
     AssetProcessor::RCController* m_rcController = nullptr;
     AssetProcessor::AssetRequestHandler* m_assetRequestHandler = nullptr;
     AssetProcessor::BuilderManager* m_builderManager = nullptr;
+    AssetProcessor::AssetServerHandler* m_assetServerHandler = nullptr;
 
     AZStd::unique_ptr<AssetProcessor::FileProcessor> m_fileProcessor;
 

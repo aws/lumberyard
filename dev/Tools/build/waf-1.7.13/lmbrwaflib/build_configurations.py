@@ -27,8 +27,8 @@ from waflib.Configure import conf, ConfigurationContext, REGISTERED_CONF_FUNCTIO
 
 from waf_branch_spec import LUMBERYARD_ENGINE_PATH, LMBR_WAF_VERSION_TAG, BINTEMP_CACHE_3RD_PARTY, BINTEMP_CACHE_TOOLS, BINTEMP_MODULE_DEF
 
-from settings_manager import LUMBERYARD_SETTINGS
-from utils import is_value_true
+import settings_manager
+from utils import is_value_true, parse_json_file
 from compile_settings_test import load_test_settings
 from compile_settings_dedicated import load_dedicated_settings
 
@@ -45,8 +45,8 @@ ANDROID_TIMESTAMP_CHECK_FILES = ['_WAF_/android/android_settings.json', '_WAF_/e
 TEST_EXTENSION = '.Test'
 DEDICATED_EXTENSION = '.Dedicated'
 
-ENABLE_TEST_CONFIGURATIONS = is_value_true(LUMBERYARD_SETTINGS.get_settings_value('has_test_configs'))
-ENABLE_SERVER = is_value_true(LUMBERYARD_SETTINGS.get_settings_value('has_server_configs'))
+ENABLE_TEST_CONFIGURATIONS = is_value_true(settings_manager.LUMBERYARD_SETTINGS.get_settings_value('has_test_configs'))
+ENABLE_SERVER = is_value_true(settings_manager.LUMBERYARD_SETTINGS.get_settings_value('has_server_configs'))
 
 REGEX_ENV_VALUE_ALIAS = re.compile('@([!\w]+)@')
 REGEX_CONDITIONAL_ALIAS = re.compile('\\?([!\w]+)\\?')
@@ -59,7 +59,7 @@ class PlatformConfiguration(object):
     specific per platform.
     """
 
-    def __init__(self, platform, settings, platform_output_folder, is_test, is_server):
+    def __init__(self, platform, settings, platform_output_folder, is_test, is_server, is_monolithic):
         """
         Initialize
 
@@ -68,12 +68,14 @@ class PlatformConfiguration(object):
         :param platform_output_folder:  The output folder base name that is used as the base for each of the platform configurations output folder
         :param is_test:                 Flag: Is this a 'test' configuration
         :param is_server:               Flag: Is this a 'server' configuration
+        :param is_monolithic:           Flag: Is this a 'monolithic' configuration
         """
         self.platform = platform
         self.settings = settings
         self.platform_output_folder = platform_output_folder
         self.is_test = is_test
         self.is_server = is_server
+        self.is_monolithic = is_monolithic
 
     def config_name(self):
         """
@@ -81,6 +83,13 @@ class PlatformConfiguration(object):
         :return: the concrete configuration name
         """
         return self.settings.build_config_name(self.is_test, self.is_server)
+    
+    def platform_name(self):
+        """
+        Get the platform name
+        :return: The concrete platform name
+        """
+        return self.platform.platform
 
     def output_folder(self):
         """
@@ -109,26 +118,33 @@ class PlatformDetail(object):
     build variant.
     """
 
-    def __init__(self, platform, enabled, has_server, has_tests, is_monolithic, output_folder, aliases, attributes, needs_java, platform_env_dict):
+    def __init__(self, platform, enabled, has_server, has_tests, is_monolithic_value, output_folder, aliases, attributes, needs_java, platform_env_dict):
         """
         Initialize
 
-        :param platform:        The base name of this platform. (The concrete platform name may be extended with a server suffix if the right options are set)
-        :param enabled:         Flag: Is this platform enabled or not
-        :param has_server:      Flag: Are server platforms/configurations supported at all
-        :param has_tests:       Flag: Does this platform support test configurations?
-        :param is_monolithic:   Flag: Is this platform marked as a pure monolithic platform?
-        :param output_folder:   The output folder base name that is used as the base for each of the platform configurations output folder
-        :param aliases:         Optional aliases to add this platform to
-        :param attributes:      Optional platform/specific attributes needed for custom platform processing
-        :param needs_java:      Flag to indicate if we need java to be loaded (the javaw module)
-        :param platform_env:    Optional env map to apply to the env for this platform during configure
+        :param platform:            The base name of this platform. (The concrete platform name may be extended with a server suffix if the right options are set)
+        :param enabled:             Flag: Is this platform enabled or not
+        :param has_server:          Flag: Are server platforms/configurations supported at all
+        :param has_tests:           Flag: Does this platform support test configurations?
+        :param is_monolithic_value: Flag: Is this a monolithic platform? (or a list of configurations to force monolithic builds on that configuration.)
+        :param output_folder:       The output folder base name that is used as the base for each of the platform configurations output folder
+        :param aliases:             Optional aliases to add this platform to
+        :param attributes:          Optional platform/specific attributes needed for custom platform processing
+        :param needs_java:          Flag to indicate if we need java to be loaded (the javaw module)
+        :param platform_env_dict:    Optional env map to apply to the env for this platform during configure
         """
         self.platform = platform
         self.enabled = enabled
         self.has_server = has_server
         self.has_tests = has_tests
-        self.is_monolithic = is_monolithic
+
+        # Handle the fact that 'is_monolithic' can be represented in multiple ways
+        if not isinstance(is_monolithic_value, bool) and not isinstance(is_monolithic_value, list) and not isinstance(is_monolithic_value, str):
+            raise Errors.WafError("Invalid settings value type for 'is_platform' for platform '{}'. Expected a boolean, string, or list of strings")
+        if isinstance(is_monolithic_value, str):
+            self.is_monolithic = [is_monolithic_value]
+        else:
+            self.is_monolithic = is_monolithic_value
 
         self.output_folder = output_folder
 
@@ -139,14 +155,40 @@ class PlatformDetail(object):
 
         # Initialize all the platform configurations based on the parameters and settings
         self.platform_configs = {}
-        for config_settings in LUMBERYARD_SETTINGS.get_build_configuration_settings():
+        for config_settings in settings_manager.LUMBERYARD_SETTINGS.get_build_configuration_settings():
 
+            # Determine if the configuration is monolithic or not
+            if isinstance(self.is_monolithic, bool):
+                # The 'is_monolithic' flag was set to a boolean value in the platform's configuration file
+                if self.is_monolithic:
+                    # The 'is_monolithic' flag was set to True, then set (override) all configurations to be monolithic
+                    is_config_monolithic = True
+                else:
+                    # The 'is_monolithic' flag was set to False, then use the default configuration specific setting to
+                    # control whether its monolithic or not. We will never override 'performance' or 'release' monolithic
+                    # settings
+                    is_config_monolithic = config_settings.is_monolithic
+            elif isinstance(self.is_monolithic, list):
+                # Special case: If the 'is_monolithic' is a list, then evaluate based on the contents of the list
+                if len(self.is_monolithic) > 0:
+                    # If there is at least one configuration specified in the list, then match the current config to any of the
+                    # configurations to determine if its monolithic or not. This mechanism can only enable configurations
+                    # that by default are non-monolithic. If the default value is monolithic, it cannot be turned off
+                    is_config_monolithic = config_settings.name in self.is_monolithic or config_settings.is_monolithic
+                else:
+                    # If the list is empty, then that implies we do not override any of the default configuration's
+                    # monolithic flag (same behavior as setting 'is_monolithic' to False
+                    is_config_monolithic = config_settings.is_monolithic
+            else:
+                raise Errors.WafError("Invalid type for 'is_monolithic' in platform settings for {}".format(platform))
+            
             # Add the base configuration
             base_config = PlatformConfiguration(platform=self,
                                                 settings=config_settings,
                                                 platform_output_folder=output_folder,
                                                 is_test=False,
-                                                is_server=False)
+                                                is_server=False,
+                                                is_monolithic=is_config_monolithic)
             self.platform_configs[base_config.config_name()] = base_config
 
             if has_server and ENABLE_SERVER:
@@ -155,7 +197,8 @@ class PlatformDetail(object):
                                                                settings=config_settings,
                                                                platform_output_folder=output_folder,
                                                                is_test=False,
-                                                               is_server=True)
+                                                               is_server=True,
+                                                               is_monolithic=is_config_monolithic)
                 self.platform_configs[non_test_server_config.config_name()] = non_test_server_config
 
             if self.has_tests and config_settings.has_test and ENABLE_TEST_CONFIGURATIONS:
@@ -164,7 +207,8 @@ class PlatformDetail(object):
                                                                settings=config_settings,
                                                                platform_output_folder=output_folder,
                                                                is_test=True,
-                                                               is_server=False)
+                                                               is_server=False,
+                                                               is_monolithic=is_config_monolithic)
                 self.platform_configs[test_non_server_config.config_name()] = test_non_server_config
 
                 if has_server and ENABLE_SERVER:
@@ -173,14 +217,15 @@ class PlatformDetail(object):
                                                                settings=config_settings,
                                                                platform_output_folder=output_folder,
                                                                is_test=True,
-                                                               is_server=True)
+                                                               is_server=True,
+                                                               is_monolithic=is_config_monolithic)
                     self.platform_configs[test_server_config.config_name()] = test_server_config
 
         # Check if there is a 3rd party platform alias override, otherwise use the platform name
         config_third_party_platform_alias = self.attributes.get('third_party_alias_platform', None)
         if config_third_party_platform_alias:
             try:
-                LUMBERYARD_SETTINGS.get_platform_settings(config_third_party_platform_alias)
+                settings_manager.LUMBERYARD_SETTINGS.get_platform_settings(config_third_party_platform_alias)
             except Errors.WafError:
                 raise Errors.WafError("Invalid 'third_party_alias_platform' attribute ({}) for platform {}".format(config_third_party_platform_alias, platform))
             self.third_party_platform_key = config_third_party_platform_alias
@@ -414,7 +459,14 @@ def _read_platforms_for_host():
     validated_platforms_for_host = {}
     alias_to_platforms_map = {}
 
-    for platform_setting in LUMBERYARD_SETTINGS.get_all_platform_settings():
+    # Attempt to read the environment json file that is set by setup assistant
+    try:
+        environment_json_path = os.path.join(os.getcwd(), '_WAF_', 'environment.json')
+        environment_json = parse_json_file(environment_json_path)
+    except:
+        environment_json = None
+
+    for platform_setting in settings_manager.LUMBERYARD_SETTINGS.get_all_platform_settings():
 
         # Apply the default aliases if any
         for alias in platform_setting.aliases:
@@ -423,22 +475,41 @@ def _read_platforms_for_host():
         # Extract the base output folder for the platform
         output_folder_key = 'out_folder_{}'.format(platform_setting.platform)
         try:
-            output_folder = LUMBERYARD_SETTINGS.get_settings_value(output_folder_key)
+            output_folder = settings_manager.LUMBERYARD_SETTINGS.get_settings_value(output_folder_key)
         except Errors.WafError:
             raise Errors.WafError("Missing required 'out_folder' in the settings for platform settings {}".format(platform_setting.platform))
 
         # Determine if the platform is monolithic-only
         is_monolithic = platform_setting.is_monolithic
-        # Special case. Mac (Darwin) has a special flag to optionally enable the platform as monolithic. Allow this for now until we can support function references in the platform json files
-        if platform_setting.platform == 'darwin_x64' and is_value_true(LUMBERYARD_SETTINGS.get_settings_value('mac_build_monolithic')):
-            is_monolithic = True
+        
+        # Check if there are any platform-specific monolithic override flag
+        platform_check_list = [platform_setting.platform] + list(platform_setting.aliases)
+        # Special case: for darwin, the original override key was 'mac_monolithic_build', so also check for that
+        if platform_setting.platform == 'darwin_x64':
+            platform_check_list.append('mac')
 
+        for alias in platform_check_list:
+            monolithic_key = '{}_build_monolithic'.format(alias)
+            if not monolithic_key in settings_manager.LUMBERYARD_SETTINGS.settings_map:
+                continue
+            if is_value_true(settings_manager.LUMBERYARD_SETTINGS.settings_map[monolithic_key]):
+                is_monolithic = True
+                break
+
+        # Determine if the platform is enabled and available
+        is_enabled = platform_setting.enabled
+        
+        # Special case. Android also relies on a special environment file
+        if 'android' in platform_setting.aliases:
+            if environment_json:
+                is_enabled = is_value_true(environment_json.get('ENABLE_ANDROID', 'False'))
+    
         # Create the base platform detail object from the platform settings
         base_platform = PlatformDetail(platform=platform_setting.platform,
-                                       enabled=platform_setting.enabled,
+                                       enabled=is_enabled,
                                        has_server=platform_setting.has_server,
                                        has_tests=platform_setting.has_test,
-                                       is_monolithic=is_monolithic,
+                                       is_monolithic_value=is_monolithic,
                                        output_folder=output_folder,
                                        aliases=platform_setting.aliases,
                                        attributes=platform_setting.attributes,
@@ -834,17 +905,13 @@ def is_build_monolithic(ctx, platform=None, configuration=None):
     platform_list = ctx.get_current_platform_list(platform, False)
     for platform in platform_list:
         platform_details = ctx.get_target_platform_detail(platform)
-        if platform_details.is_monolithic:
+        if isinstance(platform_details.is_monolithic, bool) and platform_details.is_monolithic:
             return True
         if configuration:
             # If there are configurations to check, then check those
             for check_configuration in configuration:
-                if platform_details.get_configuration(check_configuration).settings.is_monolithic:
+                if platform_details.get_configuration(check_configuration).is_monolithic:
                     return True
-        else:
-            # If there are no configurations specified, then check if the platform itself is monolithic
-            if platform_details.is_monolithic:
-                return True
 
     return False
 
@@ -891,7 +958,7 @@ def preprocess_target_configuration_list(ctx, target, target_platform, configura
         valid_configuration_names = [config_detail.config_name() for config_detail in platform_detail.platform_configs.values()]
     else:
         # If no platform was specified,
-        valid_configuration_names = LUMBERYARD_SETTINGS.get_configurations_for_alias('all')
+        valid_configuration_names = settings_manager.LUMBERYARD_SETTINGS.get_configurations_for_alias('all')
 
     processed_configurations = set()
     if (auto_populate_empty and len(configurations) == 0) or 'all' in configurations:
@@ -905,8 +972,8 @@ def preprocess_target_configuration_list(ctx, target, target_platform, configura
                 continue
 
             # Matches an alias
-            if LUMBERYARD_SETTINGS.is_valid_configuration_alias(configuration):
-                configurations_for_alias = LUMBERYARD_SETTINGS.get_configurations_for_alias(configuration)
+            if settings_manager.LUMBERYARD_SETTINGS.is_valid_configuration_alias(configuration):
+                configurations_for_alias = settings_manager.LUMBERYARD_SETTINGS.get_configurations_for_alias(configuration)
                 if configurations_for_alias:
                     processed_configurations.update(set(configurations_for_alias))
                     continue
@@ -919,7 +986,7 @@ def preprocess_target_configuration_list(ctx, target, target_platform, configura
                 split_configuration = configuration_parts[1]
                 split_configurations = []
 
-                configurations_for_alias = LUMBERYARD_SETTINGS.get_configurations_for_alias(split_configuration)
+                configurations_for_alias = settings_manager.LUMBERYARD_SETTINGS.get_configurations_for_alias(split_configuration)
                 if configurations_for_alias:
                     split_configurations += configurations_for_alias
                 elif split_configuration in platform_detail.platform_configs:
@@ -1010,7 +1077,7 @@ def is_valid_configuration_request(ctx, debug_tag='lumberyard', **kw):
 
     # If this is meant to be excluded from monolithic builds, check if the configuration is a monolithic one
     exclude_monolithic = kw.get('exclude_monolithic', False)
-    if (platform_details.is_monolithic or platform_configuration.settings.is_monolithic) and exclude_monolithic:
+    if platform_configuration.is_monolithic and exclude_monolithic:
         debug_log('Module %s excluded from this monolithic build (exclude_monolithic=True).', target)
         return False
 
@@ -1542,20 +1609,20 @@ def register_output_folder_settings_reporter(ctx, platform_name):
         if not current_configuration_name or current_configuration_name == 'project_generator':
             return
 
-        current_configuration = LUMBERYARD_SETTINGS.get_root_configuration_name(current_configuration_name)
+        current_configuration = settings_manager.LUMBERYARD_SETTINGS.get_root_configuration_name(current_configuration_name)
         
         # Calculate the folder extensions
         default_folder_parts_list = [default_value]
         current_folder_parts_list = [settings_value]
 
         folder_ext_key = 'output_folder_ext_{}'.format(current_configuration.name)
-        assert folder_ext_key in LUMBERYARD_SETTINGS.default_settings_map, "Missing setting '{}' in default settings".format(folder_ext_key)
-        if LUMBERYARD_SETTINGS.default_settings_map[folder_ext_key]:
-            default_folder_parts_list.append(LUMBERYARD_SETTINGS.default_settings_map[folder_ext_key])
+        assert folder_ext_key in settings_manager.LUMBERYARD_SETTINGS.default_settings_map, "Missing setting '{}' in default settings".format(folder_ext_key)
+        if settings_manager.LUMBERYARD_SETTINGS.default_settings_map[folder_ext_key]:
+            default_folder_parts_list.append(settings_manager.LUMBERYARD_SETTINGS.default_settings_map[folder_ext_key])
     
-        assert folder_ext_key in LUMBERYARD_SETTINGS.settings_map, "Missing setting '{}' in user settings".format(folder_ext_key)
-        if LUMBERYARD_SETTINGS.settings_map[folder_ext_key]:
-            current_folder_parts_list.append(LUMBERYARD_SETTINGS.settings_map[folder_ext_key])
+        assert folder_ext_key in settings_manager.LUMBERYARD_SETTINGS.settings_map, "Missing setting '{}' in user settings".format(folder_ext_key)
+        if settings_manager.LUMBERYARD_SETTINGS.settings_map[folder_ext_key]:
+            current_folder_parts_list.append(settings_manager.LUMBERYARD_SETTINGS.settings_map[folder_ext_key])
         
         # Get the platform configuration details to add any additional suffixes to the reported output
         platform_details = ctx.get_target_platform_detail(current_platform)

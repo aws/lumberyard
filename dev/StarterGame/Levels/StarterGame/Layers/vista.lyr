@@ -1,3 +1,3 @@
 <ObjectLayer>
- <Layer Name="Vista" GUID="{b4bc4952-7c96-4892-81d8-2e4e0f8e895a}" Exportable="1" ExportLayerPak="1" DefaultLoaded="0" HavePhysics="1" IsDefaultColor="1"/>
+ <Layer Name="Vista" GUID="{B4BC4952-7C96-4892-81D8-2E4E0F8E895A}" Exportable="1" ExportLayerPak="1" DefaultLoaded="0" HavePhysics="1" IsDefaultColor="1"/>
 </ObjectLayer>

@@ -15,7 +15,6 @@
 #define CRYINCLUDE_CRYACTION_SERIALIZATION_XMLCPBIN_WRITER_XMLCPB_ZLIBCOMPRESSOR_H
 #pragma once
 
-#include <IPlatformOS.h>
 #include "../XMLCPB_Common.h"
 
 

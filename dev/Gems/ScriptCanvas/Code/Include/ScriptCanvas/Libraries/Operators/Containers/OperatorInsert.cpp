@@ -63,7 +63,7 @@ namespace ScriptCanvas
                     SlotId sourceSlotId = (*slotSets.begin());
 
                     const Datum* containerDatum = GetInput(sourceSlotId);
-                    if (containerDatum != nullptr && IsConnected(sourceSlotId))
+                    if (containerDatum != nullptr && !containerDatum->Empty() && IsConnected(sourceSlotId))
                     {
                         AZ::BehaviorMethod* method = GetOperatorMethod("Insert");
                         AZ_Assert(method, "The contract must have failed because you should not be able to invoke an operator for a type that does not have the method");

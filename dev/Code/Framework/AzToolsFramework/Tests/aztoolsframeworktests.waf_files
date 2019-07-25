@@ -8,6 +8,7 @@
             "EditorTransformComponentSelectionTests.cpp",
             "LogLines.cpp",
             "ManipulatorBoundsTests.cpp",
+            "Slice.cpp",
             "UndoStack.cpp"
         ],
         "Entity": [

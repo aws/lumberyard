@@ -4,6 +4,8 @@
 // Other options (memory allocation overrides, callbacks, etc.) can be set at runtime via the ImGuiIO structure - ImGui::GetIO().
 //-----------------------------------------------------------------------------
 
+// Modifications Copyright Amazon.com, Inc. or its affiliates.
+
 #pragma once
 
 //---- Define assertion handler. Defaults to calling assert().
@@ -11,7 +13,7 @@
 
 //---- Define attributes of all API symbols declarations, e.g. for DLL under Windows.
 // [2018/4/20][zolniery@][NovaNet] Linux
-#ifdef _WIN32
+#if defined(_WIN32) || defined(SUPPORT_WINDOWS_DLL_DECLSPEC)
 #ifdef IMGUI_API_IMPORT
     #define IMGUI_API __declspec( dllimport )
 #else

@@ -247,7 +247,7 @@ CPlayerProfileManager::CPlayerProfileManager(CPlayerProfileManager::IPlatformImp
     m_sharedSaveGameFolder = SHARED_SAVEGAME_FOLDER; // by default, use a shared savegame folder (Games For Windows Requirement)
     m_sharedSaveGameFolder.TrimRight("/\\");
 
-    m_curUserIndex = IPlatformOS::Unknown_User;
+    m_curUserIndex = 0;
     memset(m_onlineOnlyData, 0, sizeof(m_onlineOnlyData));
     m_onlineDataCount = 0;
     m_onlineDataByteCount = 0;
@@ -461,7 +461,7 @@ bool CPlayerProfileManager::LogoutUser(const char* userId)
 
     if (m_curUserIndex == std::distance(m_userVec.begin(), iter))
     {
-        m_curUserIndex = IPlatformOS::Unknown_User;
+        m_curUserIndex = 0;
         m_curUserID.clear();
     }
 
@@ -477,6 +477,12 @@ bool CPlayerProfileManager::LogoutUser(const char* userId)
     delete pEntry;
 
     return true;
+}
+
+//------------------------------------------------------------------------
+bool CPlayerProfileManager::IsUserSignedIn(const char* userId, unsigned int& outUserIndex)
+{
+    return m_pImpl->IsUserSignedIn(userId, outUserIndex);
 }
 
 //------------------------------------------------------------------------

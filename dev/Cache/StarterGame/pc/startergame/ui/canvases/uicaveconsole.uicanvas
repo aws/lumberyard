@@ -26,6 +26,9 @@
 					<Class name="bool" field="IsConsumingAllInput" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
 					<Class name="bool" field="IsMultiTouchSupported" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
 					<Class name="bool" field="IsNavigationSupported" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+					<Class name="float" field="NavigationThreshold" value="0.4000000" type="{EA2C3E90-AFBE-44D4-A90D-FAAF79BAF93D}"/>
+					<Class name="AZ::u64" field="NavigationRepeatDelay" value="300" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+					<Class name="AZ::u64" field="NavigationRepeatPeriod" value="150" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
 					<Class name="EntityId" field="FirstHoverElement" version="1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
 						<Class name="AZ::u64" field="id" value="4294967295" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
 					</Class>
@@ -58,7 +61,7 @@
 			<Class name="AZStd::vector" field="Components" type="{13D58FF9-1088-5C69-9A1F-C2A144B57B78}">
 				<Class name="SliceComponent" field="element" version="3" type="{AFD304E4-1773-47C8-855A-8B622398934F}">
 					<Class name="AZ::Component" field="BaseClass1" type="{EDFCB2CF-F75D-43BE-B26B-F35821B29247}">
-						<Class name="AZ::u64" field="Id" value="16213603761999957869" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+						<Class name="AZ::u64" field="Id" value="4511823128210115806" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
 					</Class>
 					<Class name="AZStd::vector" field="Entities" type="{21786AF0-2606-5B9A-86EB-0892E2820E6C}">
 						<Class name="AZ::Entity" field="element" version="2" type="{75651658-8663-478D-9090-2432DFCAFA44}">
@@ -14933,13 +14936,13 @@
 					<Class name="bool" field="IsDynamic" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
 					<Class name="AZ::Entity" field="MetadataEntity" version="2" type="{75651658-8663-478D-9090-2432DFCAFA44}">
 						<Class name="EntityId" field="Id" version="1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
-							<Class name="AZ::u64" field="id" value="175570810530" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+							<Class name="AZ::u64" field="id" value="123041672090" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
 						</Class>
 						<Class name="AZStd::string" field="Name" value="No Asset Association" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
 						<Class name="AZStd::vector" field="Components" type="{13D58FF9-1088-5C69-9A1F-C2A144B57B78}">
 							<Class name="SliceMetadataInfoComponent" field="element" version="1" type="{25EE4D75-8A17-4449-81F4-E561005BAABD}">
 								<Class name="AZ::Component" field="BaseClass1" type="{EDFCB2CF-F75D-43BE-B26B-F35821B29247}">
-									<Class name="AZ::u64" field="Id" value="2425580394249390622" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+									<Class name="AZ::u64" field="Id" value="2516551502233349379" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
 								</Class>
 								<Class name="AZStd::unordered_set" field="AssociatedIds" type="{6C8F8E52-AB4A-5C1F-8E56-9AC390290B94}">
 									<Class name="EntityId" field="element" version="1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">

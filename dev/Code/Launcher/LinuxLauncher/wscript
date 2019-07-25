@@ -27,4 +27,5 @@ def build(bld):
         lib                   = ['uuid'],
         create_linux_launcher = True,
         use                   = ['AzGameFramework'],
+        rpath                 = [ "$ORIGIN" ],
     )

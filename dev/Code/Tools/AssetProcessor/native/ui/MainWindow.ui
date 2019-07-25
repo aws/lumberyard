@@ -951,7 +951,7 @@
         <widget class="QWidget" name="ToolsPage">
          <layout class="QVBoxLayout" name="verticalLayout_3">
           <item>
-           <widget class="QCheckBox" name="fastAnalysisCheckBox">
+           <widget class="QCheckBox" name="modtimeSkippingCheckBox">
             <property name="styleSheet">
              <string notr="true">font: 12pt;</string>
             </property>
@@ -979,7 +979,7 @@
              </spacer>
             </item>
             <item>
-             <widget class="QLabel" name="fastAnalysisDescription">
+             <widget class="QLabel" name="modtimeSkippingDescription">
               <property name="text">
                <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;This mode completes the startup scan faster by skipping some steps to check if your assets have been modified.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
               </property>

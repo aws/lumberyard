@@ -648,8 +648,8 @@ class CHWShader_D3D
         // CreateInputLayout in D3D11 generates a unique resource depending on the vertex format and the compiled vertex shader.
         // If an associated vertex shader does not reference certain vertexFormat inputs, then CreateInputLayout can return
         // a result that will not work for other vertexFormat + vertex shader combinations that do reference the previously unreferenced input.
-        // On some platforms we must generate a CRC for SOnDemandD3DVertexDeclarationCache that is based both on the vertex shader binary and the vertex format layout.
-        AZ::u32 GenerateVertexDeclarationCacheCRC(const AZ::Vertex::Format& vertexFormat);
+        // On some platforms we must generate a key for SOnDemandD3DVertexDeclarationCache that is based both on the vertex shader binary and the vertex format layout.
+        AZ::u32 GenerateVertexDeclarationCacheKey(const AZ::Vertex::Format& vertexFormat);
     };
 
     typedef std::vector<SHWSInstance*> InstContainer;

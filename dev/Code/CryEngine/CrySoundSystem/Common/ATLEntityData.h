@@ -13,6 +13,9 @@
 
 #pragma once
 
+#include <IAudioInterfacesCommonData.h>
+
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 // Description:
 //          This file defines the data-types used in the IAudioSystemImplementation.h
@@ -100,6 +103,8 @@ namespace Audio
     struct IATLEventData
     {
         virtual ~IATLEventData() {}
+
+        TAudioControlID m_triggerId = INVALID_AUDIO_CONTROL_ID;
     };
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -112,6 +117,28 @@ namespace Audio
     struct IATLAudioFileEntryData
     {
         virtual ~IATLAudioFileEntryData() {}
+    };
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////////
+    // <title SATLSourceData>
+    // Summary:
+    //          An AudioSystemImplementation may use this interface to define a class for storing
+    //          implementation-specific data needed for identifying and using the corresponding ATLSource.
+    //          (e.g. a middleware-specific sourceID, language, collection, and filename of an external
+    //          source for a play event)
+    ///////////////////////////////////////////////////////////////////////////////////////////////////
+    struct SATLSourceData
+    {
+        SAudioSourceInfo m_sourceInfo;
+
+        SATLSourceData()
+        {}
+
+        SATLSourceData(const SAudioSourceInfo& sourceInfo)
+            : m_sourceInfo(sourceInfo)
+        {}
+
+        ~SATLSourceData() {}
     };
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////

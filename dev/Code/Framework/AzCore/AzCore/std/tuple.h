@@ -174,16 +174,19 @@ namespace AZStd
         : first(AZStd::forward<Args1>(AZStd::get<I1>(first_args))...)
         , second(AZStd::forward<Args2>(AZStd::get<I2>(second_args))...)
     {
+        // VS2015 triggers an unreferenced formal parameter warning when a variadic argument expands to zero args
+        (void)first_args;
+        (void)second_args;
         AZ_STATIC_ASSERT((AZStd::is_same<TupleType<Args2...>, tuple<Args2...>>::value), "AZStd::pair tuple constructor can be called with AZStd::tuple instances");
     }
 
     // Pair constructor overloads which take in a tuple is implemented here as tuple is not included at the place where pair declares the constructor
     template<class T1, class T2>
     template<template<class...> class TupleType, class... Args1, class... Args2>
-    pair<T1, T2>::pair(piecewise_construct_t,
+    pair<T1, T2>::pair(piecewise_construct_t piecewise_construct,
         TupleType<Args1...> first_args,
         TupleType<Args2...> second_args)
-        : pair(first_args, second_args, AZStd::make_index_sequence<sizeof...(Args1)>{}, AZStd::make_index_sequence<sizeof...(Args2)>{})
+        : pair(piecewise_construct, first_args, second_args, AZStd::make_index_sequence<sizeof...(Args1)>{}, AZStd::make_index_sequence<sizeof...(Args2)>{})
     {
         AZ_STATIC_ASSERT((AZStd::is_same<TupleType<Args1...>, tuple<Args1...>>::value), "AZStd::pair tuple constructor can be called with AZStd::tuple instances");
     }

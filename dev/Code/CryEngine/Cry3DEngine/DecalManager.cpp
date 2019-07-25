@@ -1326,7 +1326,7 @@ void CDecalManager::FillBigDecalIndices(IRenderMesh* pRM, Vec3 vPos, float fRadi
                             hwvec3 triBBoxMin2 = HWVMin(meshBBoxMin, v2);
 
                             meshBBoxMax = HWVMax(triBBoxMax1, triBBoxMax2);
-                            meshBBoxMax = HWVMin(triBBoxMin1, triBBoxMin2);
+                            meshBBoxMin = HWVMin(triBBoxMin1, triBBoxMin2);
 
                             usedTriangles++;
                         }
@@ -1450,7 +1450,7 @@ void CDecalManager::FillBigDecalIndices(IRenderMesh* pRM, Vec3 vPos, float fRadi
                             hwvec3 triBBoxMin2 = HWVMin(meshBBoxMin, v2);
 
                             meshBBoxMax = HWVMax(triBBoxMax1, triBBoxMax2);
-                            meshBBoxMax = HWVMin(triBBoxMin1, triBBoxMin2);
+                            meshBBoxMin = HWVMin(triBBoxMin1, triBBoxMin2);
 
                             usedTriangles++;
                         }
@@ -1485,7 +1485,7 @@ void CDecalManager::FillBigDecalIndices(IRenderMesh* pRM, Vec3 vPos, float fRadi
                         hwvec3 triBBoxMin2 = HWVMin(meshBBoxMin, v2);
 
                         meshBBoxMax = HWVMax(triBBoxMax1, triBBoxMax2);
-                        meshBBoxMax = HWVMin(triBBoxMin1, triBBoxMin2);
+                        meshBBoxMin = HWVMin(triBBoxMin1, triBBoxMin2);
 
                         //                      triBBoxMax = HWVMax(triBBoxMax, v2);
                         //                      triBBoxMin = HWVMin(triBBoxMin, v2);

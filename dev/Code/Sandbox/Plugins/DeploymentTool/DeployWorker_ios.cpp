@@ -127,74 +127,46 @@ AZStd::string DeployWorkerIos::GetWafDeployArgs() const
 
 StringOutcome DeployWorkerIos::Prepare()
 {
-    // determine the xcode project file path from the waf user settings
-    const char* userSettingsFile = "_WAF_/user_settings.options";
-    const char* defaultSettingsFile = "_WAF_/default_settings.json";
+    // Check to make sure the selected device is still connected
+    if (!DeviceIsConnected(m_deploymentConfig.m_deviceId.c_str()))
+    {
+        return AZ::Failure<AZStd::string>("Device no longer connected");
+    }
 
+    // determine the xcode project file path from the waf user settings
     const char* iosProjectSettingsGroup = "iOS Project Generator";
     const char* iosProjectFolderKey = "ios_project_folder";
     const char* iosProjectNameKey = "ios_project_name";
 
-    if (QFile::exists(userSettingsFile))
+    // Read the folder name setting.
+    StringOutcome folderNameOutcome = GetUserSettingsValue(iosProjectSettingsGroup, iosProjectFolderKey, m_deploymentConfig.m_platformOption);
+    if (!folderNameOutcome.IsSuccess())
     {
-        QSettings userWafSetting(userSettingsFile, QSettings::IniFormat);
-
-        if (userWafSetting.status() == QSettings::NoError)
+        // Check in platform specific settings default settings
+        folderNameOutcome = GetPlatformSpecficDefaultSettingsValue(iosProjectSettingsGroup, iosProjectFolderKey, m_deploymentConfig.m_platformOption);
+        if (!folderNameOutcome.IsSuccess())
         {
-            const QString keyFormat("%1/%2");
-
-            QString folderKey = keyFormat.arg(iosProjectSettingsGroup, iosProjectFolderKey);
-            QString fileKey = keyFormat.arg(iosProjectSettingsGroup, iosProjectNameKey);
-
-            if (userWafSetting.contains(folderKey) && userWafSetting.contains(fileKey))
-            {
-                QByteArray folderName(userWafSetting.value(folderKey).toByteArray());
-                QByteArray projectName(userWafSetting.value(fileKey).toByteArray());
-
-                m_xcodeProject = AZStd::move(AZStd::string::format("%s/%s.xcodeproj", folderName.data(), projectName.data()));
-            }
+            return folderNameOutcome;
         }
     }
+    AZStd::string folderName = folderNameOutcome.GetValue();
 
-    if (m_xcodeProject.empty())
+    // Read the project name setting.
+    StringOutcome projectNameOutcome = GetUserSettingsValue(iosProjectSettingsGroup, iosProjectNameKey, m_deploymentConfig.m_platformOption);
+    if (!projectNameOutcome.IsSuccess())
     {
-        rapidjson::Document defaultWafSettings;
-        StringOutcome outcome = LoadJsonData(defaultSettingsFile, defaultWafSettings);
-        if (!outcome.IsSuccess())
+        // Check in platform specific settings default settings
+        projectNameOutcome = GetPlatformSpecficDefaultSettingsValue(iosProjectSettingsGroup, iosProjectNameKey, m_deploymentConfig.m_platformOption);
+        if (!projectNameOutcome.IsSuccess())
         {
-            return outcome;
+            return projectNameOutcome;
         }
-
-        const char* defaultValueKey = "default_value";
-        const char* attributeKey = "attribute";
-
-        AZStd::string folderName;
-        AZStd::string projectName;
-
-        const auto& iosProjectGroup = defaultWafSettings[iosProjectSettingsGroup];
-        for (auto iter = iosProjectGroup.Begin(); iter != iosProjectGroup.End(); ++iter)
-        {
-            const auto& entry = *iter;
-
-            if (strcmp(entry[attributeKey].GetString(), iosProjectFolderKey) == 0)
-            {
-                folderName = entry[defaultValueKey].GetString();
-            }
-            else if (strcmp(entry[attributeKey].GetString(), iosProjectNameKey) == 0)
-            {
-                projectName = entry[defaultValueKey].GetString();
-            }
-        }
-
-        m_xcodeProject = AZStd::move(AZStd::string::format("%s/%s.xcodeproj", folderName.data(), projectName.data()));
     }
+    AZStd::string projectName = projectNameOutcome.GetValue();
 
-    if (m_xcodeProject.empty())
-    {
-        return AZ::Failure<AZStd::string>("Unable to determine the Xcode project path.");
-    }
+    m_xcodeProject = AZStd::move(AZStd::string::format("%s/%s.xcodeproj", folderName.data(), projectName.data()));
 
-    return AZ::Success();
+    return AZ::Success(AZStd::string());
 }
 
 void DeployWorkerIos::StartDeploy()
@@ -266,5 +238,5 @@ StringOutcome DeployWorkerIos::Launch()
         return AZ::Failure<AZStd::string>("Failed to invoke xcodebuild");
     }
 
-    return AZ::Success();
+    return AZ::Success(AZStd::string());
 }

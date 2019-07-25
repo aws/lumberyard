@@ -255,12 +255,7 @@
             "Statistics/LocalMemoryUsage.cpp"
         ],
         "PlatformOS": [
-            "PlatformOS/SaveReaderWriter_CryPak.cpp",
-            "PlatformOS/SaveReaderWriter_Memory.cpp",
-            "PlatformOS/SaveReaderWriter_CryPak.h",
-            "PlatformOS/SaveReaderWriter_Memory.h",
-            "PlatformOS/PlatformOS_Base.h",
-            "PlatformOS/PlatformOS_Base.cpp"
+            "PlatformOS/PlatformOS_Base.h"
         ],
         "CodeCoverage": [
             "CodeCoverage/CodeCheckpointMgr.cpp",

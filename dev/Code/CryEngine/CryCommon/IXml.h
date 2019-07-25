@@ -17,6 +17,7 @@
 
 #include <platform.h>
 #include <Cry_Math.h>
+#include <BoostHelpers.h>
 #include <AzCore/IO/FileIO.h>
 
 class ICrySizer;
@@ -688,6 +689,7 @@ inline XmlNodeRef&  XmlNodeRef::operator=(const XmlNodeRef& newp)
 
 //XmlNodeRef can be treated as a container. Iterating through it, iterates through its children
 class XmlNodeRefIterator
+    : public boost::iterator_facade<XmlNodeRefIterator, XmlNodeRef, boost::random_access_traversal_tag, IXmlNode*>
 {
 public:
     XmlNodeRefIterator()
@@ -714,6 +716,7 @@ public:
     }
 
 private:
+    friend class boost::iterator_core_access;
     void Update()
     {
         if (m_index >= 0 && m_index < m_parentNode->getChildCount())
@@ -721,6 +724,12 @@ private:
             m_currentChildNode = m_parentNode->getChild(static_cast<int>(m_index));
         }
     }
+    void increment() { ++m_index; Update(); }
+    void decrement() { --m_index; Update(); }
+    void advance(std::size_t distance) { m_index += distance; Update(); }
+    difference_type distance_to(const XmlNodeRefIterator& other) const { return other.m_index - m_index; }
+    bool equal(const XmlNodeRefIterator& other) const { return m_index == other.m_index; }
+    reference dereference() const { return m_currentChildNode; }
 
     XmlNodeRef m_parentNode;
     XmlNodeRef m_currentChildNode;
@@ -820,6 +829,7 @@ struct IXmlTableReader
     // to know absolute cell index (i.e. column).
     // Returns false if no cells left in the row.
     virtual bool ReadCell(int& columnIndex, const char*& pContent, size_t& contentSize) = 0;
+    virtual float GetCurrentRowHeight() = 0;
     // </interfuscator:shuffle>
 };
 #endif

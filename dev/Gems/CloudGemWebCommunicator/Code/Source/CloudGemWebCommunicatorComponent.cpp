@@ -20,7 +20,7 @@
 #include <CloudCanvas/ICloudCanvasEditor.h>
 
 #include "CloudGemWebCommunicatorComponent.h"
-#include <AWS/ServiceAPI/CloudGemWebCommunicatorClientComponent.h>
+#include <AWS/ServiceApi/CloudGemWebCommunicatorClientComponent.h>
 
 #include <CloudCanvas/CloudCanvasIdentityBus.h>
 
@@ -459,7 +459,7 @@ namespace CloudGemWebCommunicator
     bool CloudGemWebCommunicatorComponent::ReadCertificate(const AZStd::string& filePath) 
     {
         AZ::IO::HandleType inputFile;
-        AZ::IO::FileIOBase::GetInstance()->Open(filePath.c_str(), AZ::IO::OpenMode::ModeRead | AZ::IO::OpenMode::ModeBinary, inputFile);
+        AZ::IO::FileIOBase::GetDirectInstance()->Open(filePath.c_str(), AZ::IO::OpenMode::ModeRead | AZ::IO::OpenMode::ModeBinary, inputFile);
         if (!inputFile)
         {
             AZ_TracePrintf("CloudCanvas", "CloudGemWebCommunicatorComponent could not open device certificate %s for reading", filePath.c_str());
@@ -467,12 +467,12 @@ namespace CloudGemWebCommunicator
         }
 
         AZ::u64 fileSize{ 0 };
-        AZ::IO::FileIOBase::GetInstance()->Size(inputFile, fileSize);
+        AZ::IO::FileIOBase::GetDirectInstance()->Size(inputFile, fileSize);
         if (fileSize > 0)
         {
             AZStd::string fileBuf;
             fileBuf.resize(fileSize);
-            size_t read = AZ::IO::FileIOBase::GetInstance()->Read(inputFile, fileBuf.data(), fileSize);
+            size_t read = AZ::IO::FileIOBase::GetDirectInstance()->Read(inputFile, fileBuf.data(), fileSize);
 
             X509* certificate;
             BIO* bio;
@@ -497,7 +497,7 @@ namespace CloudGemWebCommunicator
             X509_free(certificate);
             BIO_free(bio);
         }
-        AZ::IO::FileIOBase::GetInstance()->Close(inputFile);
+        AZ::IO::FileIOBase::GetDirectInstance()->Close(inputFile);
         return true;
     }
     bool CloudGemWebCommunicatorComponent::IsConnected() const

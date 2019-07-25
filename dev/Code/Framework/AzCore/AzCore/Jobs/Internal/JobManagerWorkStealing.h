@@ -80,32 +80,11 @@ namespace AZ
 
             void CollectGarbage() {}
 
-            Job* GetCurrentJob() const
-            {
-                const ThreadInfo* info = m_currentThreadInfo;
-#ifndef AZ_MONOLITHIC_BUILD
-                if (!info)
-                {
-                    //we could be in a different module where m_currentThreadInfo has not been set yet (on a worker or user thread assisting with jobs)
-                    info = FindCurrentThreadInfo();
-                }
-#endif
-                return info ? info->m_currentJob : nullptr;
-            }
+            Job* GetCurrentJob() const;
 
             AZ::u32 GetNumWorkerThreads() const { return static_cast<AZ::u32>(m_workerThreads.size()); }
 
-            AZ::u32 GetWorkerThreadId() const
-            {
-                const ThreadInfo* info = m_currentThreadInfo;
-#ifndef AZ_MONOLITHIC_BUILD
-                if (!info)
-                {
-                    info = CrossModuleFindAndSetWorkerThreadInfo();
-                }
-#endif
-                return info ? info->m_workerId : JobManagerBase::InvalidWorkerThreadId;
-            }
+            AZ::u32 GetWorkerThreadId() const;
 
         private:
 

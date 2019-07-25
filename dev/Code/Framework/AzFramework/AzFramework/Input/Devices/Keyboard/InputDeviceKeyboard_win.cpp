@@ -31,6 +31,7 @@ namespace AzFramework
     class InputDeviceKeyboardWin : public InputDeviceKeyboard::Implementation
                                  , public RawInputNotificationBusWin::Handler
     {
+        ////////////////////////////////////////////////////////////////////////////////////////////
         //! Count of the number instances of this class that have been created
         static int s_instanceCount;
 
@@ -70,6 +71,11 @@ namespace AzFramework
         void TickInputDevice() override;
 
         ////////////////////////////////////////////////////////////////////////////////////////////
+        //! \ref AzFramework::InputDeviceKeyboard::Implementation::GetPhysicalKeyOrButtonText
+        void GetPhysicalKeyOrButtonText(const InputChannelId& inputChannelId,
+                                        AZStd::string& o_keyOrButtonText) const override;
+
+        ////////////////////////////////////////////////////////////////////////////////////////////
         //! \ref AzFramework::RawInputNotificationsWin::OnRawInputEvent
         void OnRawInputEvent(const RAWINPUT& rawInput) override;
 
@@ -82,6 +88,10 @@ namespace AzFramework
         //! sequence (ie. it doesn't correspond directly to a single UTF16 code-point) we must store
         //! the 'lead surrogate' so the subsequent 'trailing surrogate' can be correctly interpreted.
         UTF16ToUTF8Converter m_UTF16ToUTF8Converter;
+
+        ////////////////////////////////////////////////////////////////////////////////////////////
+        //! Cached map of Windows scan codes indexed by their corresponding input channel id
+        AZStd::unordered_map<InputChannelId, AZ::u32> m_scanCodesByInputChannelId;
 
         ////////////////////////////////////////////////////////////////////////////////////////////
         //! Does the window attached to the input (main) thread's message queue have focus?
@@ -106,6 +116,7 @@ namespace AzFramework
     InputDeviceKeyboardWin::InputDeviceKeyboardWin(InputDeviceKeyboard& inputDevice)
         : InputDeviceKeyboard::Implementation(inputDevice)
         , m_UTF16ToUTF8Converter()
+        , m_scanCodesByInputChannelId(ConstructScanCodeByInputChannelIdMap())
         , m_hasFocus(false)
         , m_hasTextEntryStarted(false)
     {
@@ -211,6 +222,28 @@ namespace AzFramework
             // events that are queued, before resetting the state of all associated input channels.
             ProcessRawEventQueues();
             ResetInputChannelStates();
+        }
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    void InputDeviceKeyboardWin::GetPhysicalKeyOrButtonText(const InputChannelId& inputChannelId,
+                                                            AZStd::string& o_keyOrButtonText) const
+    {
+        const auto& it = m_scanCodesByInputChannelId.find(inputChannelId);
+        if (it == m_scanCodesByInputChannelId.end())
+        {
+            return;
+        }
+
+        static const int bufferLength = 64;
+        WCHAR buffer[bufferLength];
+        const AZ::u32 scanCode = it->second;
+        LONG lParam = scanCode << 16;
+        const int stringLength = GetKeyNameTextW(lParam, buffer, bufferLength);
+        if (stringLength != 0)
+        {
+            // Convert UTF-16 to UTF-8
+            AZStd::to_string(o_keyOrButtonText, buffer, stringLength);
         }
     }
 

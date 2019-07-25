@@ -242,7 +242,7 @@ namespace SelectionHelpers
                 HierarchyItem* item = dynamic_cast<HierarchyItem*>(selectedItems[i]);
                 if (item)
                 {
-                    ids.push_back(item->GetElement()->GetId());
+                    ids.push_back(item->GetEntityId());
                 }
                 else
                 {

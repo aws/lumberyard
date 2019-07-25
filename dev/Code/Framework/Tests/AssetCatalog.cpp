@@ -16,6 +16,8 @@
 #include <AzCore/Math/Uuid.h>
 #include <AzFramework/Asset/AssetCatalog.h>
 #include <AzFramework/Asset/AssetProcessorMessages.h>
+#include <AzFramework/Application/Application.h>
+#include <AzFramework/StringFunc/StringFunc.h>
 
 using namespace AZStd;
 using namespace AZ::Data;
@@ -178,5 +180,77 @@ namespace UnitTest
         AssetCatalogRequestBus::Broadcast(&AssetCatalogRequestBus::Events::UnregisterAsset, asset4);
         CheckDirectDependencies(asset2, { asset3 });
         CheckAllDependencies(asset1, { asset2, asset3, asset5 });
+    }
+
+    class AssetCatalogAPITest
+        : public AllocatorsFixture
+    {
+    public:
+        void SetUp() override
+        {
+            using namespace AZ::Data;
+            AllocatorsFixture::SetUp();
+            m_application = new AzFramework::Application();
+            m_assetRoot = "Z:\\Dummy";
+            m_application->NormalizePathKeepCase(m_assetRoot);
+            m_application->SetAssetRoot(m_assetRoot.c_str());
+            m_assetCatalog = aznew AzFramework::AssetCatalog();
+
+            m_firstAssetId = AssetId(AZ::Uuid::CreateRandom(), 0);
+            AssetInfo assetInfo;
+            assetInfo.m_assetId = m_firstAssetId;
+            assetInfo.m_relativePath = "AssetA.txt";
+            assetInfo.m_sizeBytes = 1; //any non zero value
+            m_assetCatalog->RegisterAsset(m_firstAssetId, assetInfo);
+
+            m_secondAssetId = AssetId(AZ::Uuid::CreateRandom(), 0);
+            assetInfo.m_assetId = m_secondAssetId;
+            assetInfo.m_relativePath = "Foo/AssetA.txt";
+            assetInfo.m_sizeBytes = 1; //any non zero value
+            m_assetCatalog->RegisterAsset(m_secondAssetId, assetInfo);
+        }
+
+        void TearDown() override
+        {
+            delete m_assetCatalog;
+            delete m_application;
+            AllocatorsFixture::TearDown();
+        }
+
+        AzFramework::Application* m_application;
+        AzFramework::AssetCatalog* m_assetCatalog;
+        AZ::Data::AssetId m_firstAssetId;
+        AZ::Data::AssetId m_secondAssetId;
+        AZStd::string m_assetRoot;
+    };
+
+
+    TEST_F(AssetCatalogAPITest, GetAssetPathById_AbsolutePath_Valid)
+    {
+        AZStd::string absPath;
+        AzFramework::StringFunc::Path::ConstructFull(m_assetRoot.c_str(), "AssetA.txt", absPath, true);
+        EXPECT_EQ(m_firstAssetId, m_assetCatalog->GetAssetIdByPath(absPath.c_str(), AZ::Data::s_invalidAssetType, false));
+    }
+
+    TEST_F(AssetCatalogAPITest, GetAssetPathById_AbsolutePathWithSubFolder_Valid)
+    {
+        AZStd::string absPath;
+        AzFramework::StringFunc::Path::ConstructFull(m_assetRoot.c_str(), "Foo/AssetA.txt", absPath, true);
+        EXPECT_EQ(m_secondAssetId, m_assetCatalog->GetAssetIdByPath(absPath.c_str(), AZ::Data::s_invalidAssetType, false));
+    }
+
+    TEST_F(AssetCatalogAPITest, GetAssetPathById_RelPath_Valid)
+    {
+        EXPECT_EQ(m_firstAssetId, m_assetCatalog->GetAssetIdByPath("AssetA.txt", AZ::Data::s_invalidAssetType, false));
+    }
+
+    TEST_F(AssetCatalogAPITest, GetAssetPathById_RelPathWithSubFolders_Valid)
+    {
+        EXPECT_EQ(m_secondAssetId, m_assetCatalog->GetAssetIdByPath("Foo/AssetA.txt", AZ::Data::s_invalidAssetType, false));
+    }
+
+    TEST_F(AssetCatalogAPITest, GetAssetPathById_RelPathWithSeparators_Valid)
+    {
+        EXPECT_EQ(m_firstAssetId, m_assetCatalog->GetAssetIdByPath("//AssetA.txt", AZ::Data::s_invalidAssetType, false));
     }
 }

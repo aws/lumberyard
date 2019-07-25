@@ -177,11 +177,11 @@ namespace AZ
     template<typename ContainerType>
     inline Attribute* FindAttribute(AttributeId id, const ContainerType& attrArray)
     {
-        for (const AttributePair& attrPair : attrArray)
+        for (const auto& attrPair : attrArray)
         {
             if (attrPair.first == id)
             {
-                return attrPair.second;
+                return attrPair.second ? &*attrPair.second : nullptr;
             }
         }
         return nullptr;

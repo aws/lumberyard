@@ -27,6 +27,10 @@ namespace CommandSystem
         const AZStd::optional<AZStd::string>& contents = AZStd::nullopt, const AZStd::optional<size_t>& insertAt = AZStd::nullopt,
         MCore::CommandGroup* commandGroup = nullptr, bool executeInsideCommand = false);
 
+    void AddTransitionAction(AZ::u32 animGraphId, const char* transitionIdString, const AZ::TypeId& actionType,
+        const AZStd::optional<AZStd::string>& contents = AZStd::nullopt, const AZStd::optional<size_t>& insertAt = AZStd::nullopt,
+        MCore::CommandGroup* commandGroup = nullptr, bool executeInsideCommand = false);
+
     class CommandAnimGraphAddTransitionAction
         : public MCore::Command
         , public EMotionFX::ParameterMixinAnimGraphId

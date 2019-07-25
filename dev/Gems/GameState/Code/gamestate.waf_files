@@ -1,0 +1,14 @@
+{
+    "auto": {
+        "Include": [
+            "Include/GameState/GameState.h",
+            "Include/GameState/GameStateNotificationBus.h",
+            "Include/GameState/GameStateRequestBus.h"
+        ],
+        "Source": [
+            "Source/GameStateModule.cpp",
+            "Source/GameStateSystemComponent.cpp",
+            "Source/GameStateSystemComponent.h"
+        ]
+    }
+}

@@ -9,47 +9,14 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#ifndef AZSTD_TYPE_TRAITS_IS_CONST_INCLUDED
-#define AZSTD_TYPE_TRAITS_IS_CONST_INCLUDED
+#pragma once
 
-#include <AzCore/std/typetraits/internal/cv_traits_impl.h>
+#include <AzCore/std/typetraits/config.h>
 
 namespace AZStd
 {
     using std::is_const;
+    template<class T>
+    constexpr bool is_const_v = std::is_const<T>::value;
 
-    /**
-     * Check if a member function type is const
-     * Returns false for all non-const member functions
-     *
-     * Synatx: AZStd::is_method_t_const<decltype(&MyClass::MyMemberFunction)>::value
-     */
-    template <typename Function>
-    struct is_method_t_const
-    {
-        static const bool value = false;
-        using type = false_type;
-    };
-
-    template <typename Class, typename ReturnType, typename... Args>
-    struct is_method_t_const<ReturnType(Class::*)(Args...) const>
-    {
-        static const bool value = true;
-        using type = true_type;
-    };
-
-    // Uncomment when C++17 is supported
-#if 0
-    template <auto Function>
-    using is_method_const = is_method_t_const<decltype(Function)>;
-
-    template <auto Function>
-    using is_method_const_t = is_method_t_const<decltype(Function)>::type;
-
-    template <auto Function>
-    constexpr bool is_method_const_v = is_method_t_const<decltype(Function)>::value;
-#endif
 }
-
-#endif // AZSTD_TYPE_TRAITS_IS_CONST_INCLUDED
-#pragma once

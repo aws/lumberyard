@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>640</width>
-    <height>607</height>
+    <width>738</width>
+    <height>895</height>
    </rect>
   </property>
   <property name="minimumSize">
@@ -43,731 +43,1484 @@
      <number>1</number>
     </property>
     <item>
-     <widget class="QWidget" name="deploymentWdiget" native="true">
+     <widget class="QWidget" name="deploymentWidget" native="true">
+      <property name="styleSheet">
+       <string notr="true"/>
+      </property>
       <layout class="QVBoxLayout" name="deployContentLayout">
        <item>
-        <widget class="QSplitter" name="mainContentSplitter">
-         <property name="frameShape">
-          <enum>QFrame::NoFrame</enum>
+        <layout class="QVBoxLayout" name="mainLayout">
+         <property name="leftMargin">
+          <number>9</number>
          </property>
-         <property name="orientation">
-          <enum>Qt::Vertical</enum>
+         <property name="topMargin">
+          <number>9</number>
          </property>
-         <property name="handleWidth">
-          <number>5</number>
+         <property name="rightMargin">
+          <number>9</number>
          </property>
-         <widget class="QWidget" name="deployOptionsWidget" native="true">
-          <property name="sizePolicy">
-           <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
-            <horstretch>0</horstretch>
-            <verstretch>0</verstretch>
-           </sizepolicy>
-          </property>
-          <property name="minimumSize">
-           <size>
-            <width>0</width>
-            <height>0</height>
-           </size>
-          </property>
-          <layout class="QVBoxLayout" name="deployOptionsLayout">
-           <property name="leftMargin">
-            <number>0</number>
+         <property name="bottomMargin">
+          <number>9</number>
+         </property>
+         <item>
+          <widget class="QSplitter" name="mainContentSplitter">
+           <property name="frameShape">
+            <enum>QFrame::NoFrame</enum>
            </property>
-           <property name="topMargin">
-            <number>0</number>
+           <property name="orientation">
+            <enum>Qt::Vertical</enum>
            </property>
-           <property name="rightMargin">
-            <number>0</number>
+           <property name="handleWidth">
+            <number>5</number>
            </property>
-           <property name="bottomMargin">
-            <number>0</number>
-           </property>
-           <item>
-            <widget class="QGroupBox" name="baseOptionsGroup">
-             <property name="title">
-              <string>Base Options</string>
-             </property>
-             <layout class="QGridLayout" name="baseOptionsLayout" columnstretch="0,1" columnminimumwidth="192,0">
-              <item row="0" column="0">
-               <widget class="QLabel" name="platformLabel">
-                <property name="toolTip">
-                 <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;The target hardware platform to deploy to&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-                </property>
-                <property name="frameShape">
-                 <enum>QFrame::NoFrame</enum>
-                </property>
-                <property name="text">
-                 <string>Target Platform</string>
-                </property>
-               </widget>
-              </item>
-              <item row="0" column="1">
-               <widget class="QComboBox" name="platformComboBox">
-                <property name="toolTip">
-                 <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;The target hardware platform to deploy to&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-                </property>
-                <property name="currentIndex">
-                 <number>0</number>
-                </property>
-                <item>
-                 <property name="text">
-                  <string>Android ARMv7</string>
-                 </property>
-                </item>
-                <item>
-                 <property name="text">
-                  <string>Android ARMv8</string>
-                 </property>
-                </item>
-               </widget>
-              </item>
-              <item row="1" column="0">
-               <widget class="QLabel" name="buildConfigLabel">
-                <property name="toolTip">
-                 <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;The type of build to send to the device&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-                </property>
-                <property name="text">
-                 <string>Build Configuration</string>
-                </property>
-               </widget>
-              </item>
-              <item row="1" column="1">
-               <widget class="QComboBox" name="buildConfigComboBox">
-                <property name="toolTip">
-                 <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;The type of build to send to the device&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-                </property>
-                <property name="currentIndex">
-                 <number>0</number>
-                </property>
-                <item>
-                 <property name="text">
-                  <string>Profile</string>
-                 </property>
-                </item>
-                <item>
-                 <property name="text">
-                  <string>Debug</string>
-                 </property>
-                </item>
-                <item>
-                 <property name="text">
-                  <string>Release</string>
-                 </property>
-                </item>
-               </widget>
-              </item>
-              <item row="2" column="0">
-               <widget class="QLabel" name="targetDeviceLabel">
-                <property name="toolTip">
-                 <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Local device to deploy the build to&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-                </property>
-                <property name="text">
-                 <string>Target Device</string>
-                </property>
-               </widget>
-              </item>
-              <item row="2" column="1">
-               <widget class="QComboBox" name="targetDeviceComboBox">
-                <property name="toolTip">
-                 <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Local device to deploy the build to&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-                </property>
-                <item>
-                 <property name="text">
-                  <string>No Devices Connected</string>
-                 </property>
-                </item>
-               </widget>
-              </item>
-              <item row="3" column="0">
-               <widget class="QLabel" name="deviceIpAddressLabel">
-                <property name="toolTip">
-                 <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;The IP address of the target device. &lt;/p&gt;&lt;p&gt;This is used to connect to the device for remote logs and white list the device for connections to the Asset Processor and Shader Compiler.&lt;/p&gt;&lt;p&gt;[Android Only] Setting to localhost will automatically configure port forwarding for the respective connections.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-                </property>
-                <property name="text">
-                 <string>Device IP Address</string>
-                </property>
-               </widget>
-              </item>
-              <item row="3" column="1">
-               <widget class="QLineEdit" name="deviceIpAddressTextField">
-                <property name="toolTip">
-                 <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;The IP address of the target device. &lt;/p&gt;&lt;p&gt;This is used to connect to the device for remote logs and white list the device for connections to the Asset Processor and Shader Compiler.&lt;/p&gt;&lt;p&gt;[Android Only] Setting to localhost will automatically configure port forwarding for the respective connections.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-                </property>
-                <property name="inputMask">
-                 <string>000.000.000.000</string>
-                </property>
-                <property name="text">
-                 <string>127.0.0.1</string>
-                </property>
-               </widget>
-              </item>
-              <item row="4" column="0">
-               <widget class="QLabel" name="buildGameLabel">
-                <property name="toolTip">
-                 <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Generate a new build for the target platform prior to deployment&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-                </property>
-                <property name="text">
-                 <string>Build Game</string>
-                </property>
-               </widget>
-              </item>
-              <item row="4" column="1">
-               <widget class="QCheckBox" name="buildGameCheckBox">
-                <property name="toolTip">
-                 <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Generate a new build for the target platform prior to deployment&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-                </property>
-                <property name="text">
-                 <string/>
-                </property>
-               </widget>
-              </item>
-              <item row="5" column="0">
-               <widget class="QLabel" name="loadCurrentLevelLabel">
-                <property name="toolTip">
-                 <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Should the current level loaded in the editor be loaded on device or run the normal startup.  This option is ignored if no level is loaded.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-                </property>
-                <property name="text">
-                 <string>Load Current Level</string>
-                </property>
-               </widget>
-              </item>
-              <item row="5" column="1">
-               <widget class="QCheckBox" name="loadCurrentLevelCheckBox">
-                <property name="toolTip">
-                 <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Should the current level loaded in the editor be loaded on device or run the normal startup.  This option is ignored if no level is loaded.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-                </property>
-                <property name="text">
-                 <string/>
-                </property>
-                <property name="checked">
-                 <bool>true</bool>
-                </property>
-               </widget>
-              </item>
-             </layout>
-            </widget>
-           </item>
-           <item>
-            <widget class="QGroupBox" name="assetOptionsGroup">
-             <property name="title">
-              <string>Asset Options</string>
-             </property>
-             <layout class="QGridLayout" name="assetOptionsLayout" columnstretch="0,1" columnminimumwidth="192,0">
-              <item row="0" column="0">
-               <widget class="QLabel" name="assetModeLabel">
-                <property name="minimumSize">
-                 <size>
-                  <width>150</width>
-                  <height>0</height>
-                 </size>
-                </property>
-                <property name="toolTip">
-                 <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;How the files should be deployed to the target device:&lt;br/&gt;Loose: all of the individual asset files will be pushed to the target device&lt;br/&gt;Virtual File System: a small sub-set of required startup files will be pushed to the target device and assets will be served through a connection to the Asset Processor&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-                </property>
-                <property name="text">
-                 <string>Mode</string>
-                </property>
-               </widget>
-              </item>
-              <item row="0" column="1">
-               <widget class="QComboBox" name="assetModeComboBox">
-                <property name="toolTip">
-                 <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;How the files should be deployed to the target device:&lt;br/&gt;Loose: all of the individual asset files will be pushed to the target device&lt;br/&gt;Virtual File System: a small sub-set of required startup files will be pushed to the target device and assets will be served through a connection to the Asset Processor&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-                </property>
-                <item>
-                 <property name="text">
-                  <string>Local Files</string>
-                 </property>
-                </item>
-                <item>
-                 <property name="text">
-                  <string>Virtual File System (VFS)</string>
-                 </property>
-                </item>
-               </widget>
-              </item>
-              <item row="1" column="0">
-               <widget class="QLabel" name="assetProcessorIpAddressLabel">
-                <property name="toolTip">
-                 <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;IP address of the Asset Processor. &lt;/p&gt;&lt;p&gt;Used for VFS connections and/or when using the Asset Processor to handle shader compiler requests.&lt;/p&gt;&lt;p&gt;[Android Only] Setting to localhost will automatically configure port forwarding for the respective connections.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-                </property>
-                <property name="text">
-                 <string>Asset Processor IP Address</string>
-                </property>
-               </widget>
-              </item>
-              <item row="1" column="1">
-               <widget class="QComboBox" name="assetProcessorIpAddressComboBox">
-                <property name="enabled">
-                 <bool>true</bool>
-                </property>
-                <property name="toolTip">
-                 <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;IP address of the Asset Processor. &lt;/p&gt;&lt;p&gt;Used for VFS connections and/or when using the Asset Processor to handle shader compiler requests.&lt;/p&gt;&lt;p&gt;[Android Only] Setting to localhost will automatically configure port forwarding for the respective connections.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-                </property>
-                <item>
-                 <property name="text">
-                  <string>127.0.0.1 (localhost)</string>
-                 </property>
-                </item>
-               </widget>
-              </item>
-              <item row="2" column="0">
-               <widget class="QLabel" name="shaderCompilerLabel">
-                <property name="minimumSize">
-                 <size>
-                  <width>0</width>
-                  <height>20</height>
-                 </size>
-                </property>
-                <property name="text">
-                 <string>Shader Compiler</string>
-                </property>
-               </widget>
-              </item>
-              <item row="3" column="0">
-               <widget class="QLabel" name="shaderCompilerUseAPLabel">
-                <property name="toolTip">
-                 <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Connect to the Asset Processor for all shader requests instead of directly to the Shader Compiler&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-                </property>
-                <property name="text">
-                 <string>Connect Using Asset Processor</string>
-                </property>
-               </widget>
-              </item>
-              <item row="3" column="1">
-               <widget class="QCheckBox" name="shaderCompilerUseAPCheckBox">
-                <property name="toolTip">
-                 <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Connect to the Asset Processor for all shader requests instead of directly to the Shader Compiler&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-                </property>
-                <property name="text">
-                 <string/>
-                </property>
-               </widget>
-              </item>
-              <item row="4" column="0">
-               <widget class="QLabel" name="shaderCompilerIpAddressLabel">
-                <property name="enabled">
-                 <bool>true</bool>
-                </property>
-                <property name="toolTip">
-                 <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;IP address of the Shader Compiler.&lt;/p&gt;&lt;p&gt;[Android Only] Setting to localhost will automatically configure port forwarding for the respective connections.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-                </property>
-                <property name="text">
-                 <string>IP Address</string>
-                </property>
-               </widget>
-              </item>
-              <item row="4" column="1">
-               <widget class="QLineEdit" name="shaderCompilerIpAddressTextField">
-                <property name="toolTip">
-                 <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;IP address of the Shader Compiler.&lt;/p&gt;&lt;p&gt;[Android Only] Setting to localhost will automatically configure port forwarding for the respective connections.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-                </property>
-                <property name="inputMask">
-                 <string>000.000.000.000</string>
-                </property>
-                <property name="text">
-                 <string>127.0.0.1</string>
-                </property>
-               </widget>
-              </item>
-             </layout>
-            </widget>
-           </item>
-           <item>
-            <widget class="QGroupBox" name="platformOptionsGroup">
-             <property name="enabled">
-              <bool>true</bool>
-             </property>
-             <property name="title">
-              <string>Platform Options</string>
-             </property>
-             <property name="flat">
-              <bool>false</bool>
-             </property>
-             <layout class="QGridLayout" name="platformOptionsLayout" columnstretch="0,1" columnminimumwidth="192,0">
-              <item row="0" column="0">
-               <widget class="QLabel" name="cleanDeviceLabel">
-                <property name="toolTip">
-                 <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Uninstall the game project from the target device prior to deployment.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-                </property>
-                <property name="text">
-                 <string>Clean Device</string>
-                </property>
-               </widget>
-              </item>
-              <item row="0" column="1">
-               <widget class="QCheckBox" name="cleanDeviceCheckBox">
-                <property name="toolTip">
-                 <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Uninstall the game project from the target device prior to deployment.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-                </property>
-                <property name="text">
-                 <string/>
-                </property>
-               </widget>
-              </item>
-             </layout>
-            </widget>
-           </item>
-           <item>
-            <spacer name="deployOptionsSpacer">
-             <property name="orientation">
-              <enum>Qt::Vertical</enum>
-             </property>
-             <property name="sizeHint" stdset="0">
-              <size>
-               <width>0</width>
-               <height>0</height>
-              </size>
-             </property>
-            </spacer>
-           </item>
-           <item>
-            <widget class="QWidget" name="deployWidget" native="true">
-             <property name="enabled">
-              <bool>true</bool>
-             </property>
-             <property name="minimumSize">
-              <size>
-               <width>0</width>
-               <height>32</height>
-              </size>
-             </property>
-             <property name="maximumSize">
-              <size>
-               <width>16777215</width>
-               <height>32</height>
-              </size>
-             </property>
-             <layout class="QHBoxLayout" name="deployButtonLayout">
-              <property name="topMargin">
-               <number>4</number>
-              </property>
-              <item>
-               <spacer name="deployButtonSpacer">
-                <property name="orientation">
-                 <enum>Qt::Horizontal</enum>
-                </property>
-                <property name="sizeHint" stdset="0">
-                 <size>
-                  <width>269</width>
-                  <height>13</height>
-                 </size>
-                </property>
-               </spacer>
-              </item>
-              <item>
-               <widget class="QLabel" name="deploySpinnerLabel">
-                <property name="minimumSize">
-                 <size>
-                  <width>20</width>
-                  <height>20</height>
-                 </size>
-                </property>
-                <property name="maximumSize">
-                 <size>
-                  <width>20</width>
-                  <height>20</height>
-                 </size>
-                </property>
-                <property name="frameShape">
-                 <enum>QFrame::NoFrame</enum>
-                </property>
-                <property name="text">
-                 <string/>
-                </property>
-               </widget>
-              </item>
-              <item>
-               <widget class="QPushButton" name="deployButton">
-                <property name="minimumSize">
-                 <size>
-                  <width>60</width>
-                  <height>24</height>
-                 </size>
-                </property>
-                <property name="maximumSize">
-                 <size>
-                  <width>16777215</width>
-                  <height>16777215</height>
-                 </size>
-                </property>
-                <property name="toolTip">
-                 <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Start the deploy process to the selected target device.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-                </property>
-                <property name="text">
-                 <string>Deploy</string>
-                </property>
-               </widget>
-              </item>
-             </layout>
-            </widget>
-           </item>
-          </layout>
-         </widget>
-         <widget class="QWidget" name="consoleOutputWidget" native="true">
-          <property name="sizePolicy">
-           <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
-            <horstretch>0</horstretch>
-            <verstretch>1</verstretch>
-           </sizepolicy>
-          </property>
-          <property name="minimumSize">
-           <size>
-            <width>0</width>
-            <height>0</height>
-           </size>
-          </property>
-          <layout class="QVBoxLayout" name="consoleOutputLayout">
-           <property name="leftMargin">
-            <number>0</number>
-           </property>
-           <property name="topMargin">
-            <number>0</number>
-           </property>
-           <property name="rightMargin">
-            <number>0</number>
-           </property>
-           <property name="bottomMargin">
-            <number>0</number>
-           </property>
-           <item>
-            <widget class="QFrame" name="outputConsoleFrame">
-             <property name="minimumSize">
-              <size>
-               <width>395</width>
-               <height>33</height>
-              </size>
-             </property>
-             <property name="maximumSize">
-              <size>
-               <width>16777215</width>
-               <height>33</height>
-              </size>
-             </property>
-             <property name="frameShape">
-              <enum>QFrame::Panel</enum>
-             </property>
-             <property name="frameShadow">
-              <enum>QFrame::Raised</enum>
-             </property>
-             <layout class="QHBoxLayout" name="consoleBannerLayout">
-              <item>
-               <widget class="QLabel" name="outputConsoleLabel">
-                <property name="font">
-                 <font>
-                  <weight>75</weight>
-                  <bold>true</bold>
-                 </font>
-                </property>
-                <property name="frameShape">
-                 <enum>QFrame::NoFrame</enum>
-                </property>
-                <property name="frameShadow">
-                 <enum>QFrame::Raised</enum>
-                </property>
-                <property name="text">
-                 <string>Console</string>
-                </property>
-               </widget>
-              </item>
-             </layout>
-            </widget>
-           </item>
-           <item>
-            <widget class="QTabWidget" name="outputTabWidget">
-             <property name="currentIndex">
+           <widget class="QWidget" name="deployOptionsWidget" native="true">
+            <property name="sizePolicy">
+             <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+              <horstretch>0</horstretch>
+              <verstretch>0</verstretch>
+             </sizepolicy>
+            </property>
+            <property name="minimumSize">
+             <size>
+              <width>0</width>
+              <height>0</height>
+             </size>
+            </property>
+            <layout class="QVBoxLayout" name="deployOptionsLayout">
+             <property name="leftMargin">
               <number>0</number>
              </property>
-             <widget class="QWidget" name="deployOutputTab">
-              <attribute name="title">
-               <string>Deploy Output</string>
-              </attribute>
-              <layout class="QVBoxLayout" name="deployOutputTabLayout">
+             <property name="topMargin">
+              <number>0</number>
+             </property>
+             <property name="rightMargin">
+              <number>0</number>
+             </property>
+             <property name="bottomMargin">
+              <number>0</number>
+             </property>
+             <item>
+              <widget class="QLabel" name="buildOptionsLabel">
+               <property name="font">
+                <font>
+                 <weight>50</weight>
+                 <bold>false</bold>
+                </font>
+               </property>
+               <property name="styleSheet">
+                <string notr="true"/>
+               </property>
+               <property name="text">
+                <string>&lt;b&gt;Build Options&lt;/b&gt;</string>
+               </property>
+               <property name="textFormat">
+                <enum>Qt::RichText</enum>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <layout class="QVBoxLayout" name="buildOptionsLayout">
                <property name="leftMargin">
-                <number>0</number>
+                <number>9</number>
                </property>
                <property name="topMargin">
-                <number>0</number>
+                <number>9</number>
                </property>
                <property name="rightMargin">
-                <number>0</number>
+                <number>9</number>
                </property>
                <property name="bottomMargin">
-                <number>6</number>
+                <number>9</number>
                </property>
                <item>
-                <widget class="QTextEdit" name="deployOutputTextBox">
-                 <property name="sizePolicy">
-                  <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
-                   <horstretch>0</horstretch>
-                   <verstretch>0</verstretch>
-                  </sizepolicy>
-                 </property>
-                 <property name="verticalScrollBarPolicy">
-                  <enum>Qt::ScrollBarAlwaysOn</enum>
-                 </property>
-                 <property name="undoRedoEnabled">
-                  <bool>false</bool>
-                 </property>
-                 <property name="readOnly">
-                  <bool>true</bool>
-                 </property>
-                 <property name="textInteractionFlags">
-                  <set>Qt::TextSelectableByKeyboard|Qt::TextSelectableByMouse</set>
-                 </property>
-                </widget>
-               </item>
-               <item>
-                <layout class="QHBoxLayout" name="deployStatusOutput">
-                 <property name="leftMargin">
-                  <number>6</number>
-                 </property>
-                 <item>
-                  <widget class="QLabel" name="deployStatusLabelPrefix">
-                   <property name="sizePolicy">
-                    <sizepolicy hsizetype="Maximum" vsizetype="Preferred">
-                     <horstretch>0</horstretch>
-                     <verstretch>0</verstretch>
-                    </sizepolicy>
+                <layout class="QGridLayout" name="baseOptionsLayout" columnstretch="0,1" columnminimumwidth="192,0">
+                 <item row="0" column="0">
+                  <widget class="QLabel" name="platformLabel">
+                   <property name="toolTip">
+                    <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;The target hardware platform to deploy to&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
                    </property>
-                   <property name="minimumSize">
-                    <size>
-                     <width>0</width>
-                     <height>16</height>
-                    </size>
+                   <property name="styleSheet">
+                    <string notr="true"/>
                    </property>
-                   <property name="baseSize">
-                    <size>
-                     <width>0</width>
-                     <height>0</height>
-                    </size>
+                   <property name="frameShape">
+                    <enum>QFrame::NoFrame</enum>
                    </property>
                    <property name="text">
-                    <string>Status:</string>
+                    <string>Target platform</string>
                    </property>
                   </widget>
                  </item>
-                 <item>
-                  <widget class="QLabel" name="deployStatusLabel">
-                   <property name="minimumSize">
-                    <size>
-                     <width>0</width>
-                     <height>16</height>
-                    </size>
+                 <item row="0" column="1">
+                  <widget class="QComboBox" name="platformComboBox">
+                   <property name="toolTip">
+                    <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;The target hardware platform to deploy to&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                   </property>
+                   <property name="styleSheet">
+                    <string notr="true"/>
+                   </property>
+                   <property name="currentIndex">
+                    <number>0</number>
+                   </property>
+                   <item>
+                    <property name="text">
+                     <string>Android ARMv7</string>
+                    </property>
+                   </item>
+                   <item>
+                    <property name="text">
+                     <string>Android ARMv8</string>
+                    </property>
+                   </item>
+                  </widget>
+                 </item>
+                 <item row="1" column="0">
+                  <widget class="QLabel" name="buildConfigLabel">
+                   <property name="toolTip">
+                    <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;The type of build to send to the device&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                   </property>
+                   <property name="styleSheet">
+                    <string notr="true"/>
                    </property>
                    <property name="text">
-                    <string>Idle </string>
+                    <string>Build configuration</string>
                    </property>
                   </widget>
                  </item>
-                </layout>
-               </item>
-              </layout>
-             </widget>
-             <widget class="QWidget" name="remoteOutputTab">
-              <attribute name="title">
-               <string>Remote Output</string>
-              </attribute>
-              <layout class="QVBoxLayout" name="remoteOutputTabLayout">
-               <property name="leftMargin">
-                <number>0</number>
-               </property>
-               <property name="topMargin">
-                <number>0</number>
-               </property>
-               <property name="rightMargin">
-                <number>0</number>
-               </property>
-               <property name="bottomMargin">
-                <number>6</number>
-               </property>
-               <item>
-                <widget class="QTextEdit" name="remoteOutputTextBox">
-                 <property name="sizePolicy">
-                  <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
-                   <horstretch>0</horstretch>
-                   <verstretch>0</verstretch>
-                  </sizepolicy>
-                 </property>
-                 <property name="verticalScrollBarPolicy">
-                  <enum>Qt::ScrollBarAlwaysOn</enum>
-                 </property>
-                 <property name="undoRedoEnabled">
-                  <bool>false</bool>
-                 </property>
-                 <property name="readOnly">
-                  <bool>true</bool>
-                 </property>
-                 <property name="textInteractionFlags">
-                  <set>Qt::TextSelectableByKeyboard|Qt::TextSelectableByMouse</set>
-                 </property>
-                </widget>
-               </item>
-               <item>
-                <layout class="QHBoxLayout" name="remoteStatusLayout">
-                 <property name="leftMargin">
-                  <number>6</number>
-                 </property>
-                 <item>
-                  <widget class="QLabel" name="remoteStatusPrefixLabel">
-                   <property name="sizePolicy">
-                    <sizepolicy hsizetype="Maximum" vsizetype="Preferred">
-                     <horstretch>0</horstretch>
-                     <verstretch>0</verstretch>
-                    </sizepolicy>
+                 <item row="1" column="1">
+                  <widget class="QComboBox" name="buildConfigComboBox">
+                   <property name="toolTip">
+                    <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;The type of build to send to the device&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
                    </property>
-                   <property name="minimumSize">
-                    <size>
-                     <width>0</width>
-                     <height>16</height>
-                    </size>
+                   <property name="styleSheet">
+                    <string notr="true"/>
+                   </property>
+                   <property name="currentIndex">
+                    <number>0</number>
+                   </property>
+                   <item>
+                    <property name="text">
+                     <string>Profile</string>
+                    </property>
+                   </item>
+                   <item>
+                    <property name="text">
+                     <string>Debug</string>
+                    </property>
+                   </item>
+                   <item>
+                    <property name="text">
+                     <string>Release</string>
+                    </property>
+                   </item>
+                  </widget>
+                 </item>
+                 <item row="4" column="0">
+                  <widget class="QLabel" name="buildGameLabel">
+                   <property name="toolTip">
+                    <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Generate a new build for the target platform prior to deployment&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                   </property>
+                   <property name="styleSheet">
+                    <string notr="true"/>
                    </property>
                    <property name="text">
-                    <string>Status:</string>
+                    <string>Build game</string>
                    </property>
                   </widget>
                  </item>
-                 <item>
-                  <widget class="QLabel" name="remoteStatusIconLabel">
-                   <property name="minimumSize">
-                    <size>
-                     <width>16</width>
-                     <height>16</height>
-                    </size>
-                   </property>
-                   <property name="maximumSize">
-                    <size>
-                     <width>16</width>
-                     <height>16</height>
-                    </size>
+                 <item row="4" column="1">
+                  <widget class="QCheckBox" name="buildGameCheckBox">
+                   <property name="toolTip">
+                    <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Generate a new build for the target platform prior to deployment&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
                    </property>
                    <property name="text">
                     <string/>
                    </property>
                   </widget>
                  </item>
-                 <item>
-                  <widget class="QLabel" name="remoteStatusLabel">
-                   <property name="minimumSize">
-                    <size>
-                     <width>0</width>
-                     <height>16</height>
-                    </size>
+                 <item row="5" column="0">
+                  <widget class="QLabel" name="loadCurrentLevelLabel">
+                   <property name="toolTip">
+                    <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Should the current level loaded in the editor be loaded on device or run the normal startup.  This option is ignored if no level is loaded.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                   </property>
+                   <property name="styleSheet">
+                    <string notr="true"/>
                    </property>
                    <property name="text">
-                    <string>Not Connected</string>
+                    <string>Load current level</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="5" column="1">
+                  <widget class="QCheckBox" name="loadCurrentLevelCheckBox">
+                   <property name="toolTip">
+                    <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Should the current level loaded in the editor be loaded on device or run the normal startup.  This option is ignored if no level is loaded.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                   </property>
+                   <property name="text">
+                    <string/>
+                   </property>
+                   <property name="checked">
+                    <bool>true</bool>
                    </property>
                   </widget>
                  </item>
                 </layout>
                </item>
               </layout>
-             </widget>
-            </widget>
-           </item>
-          </layout>
-         </widget>
-        </widget>
+             </item>
+             <item>
+              <widget class="QLabel" name="assetOptionsLabel">
+               <property name="font">
+                <font>
+                 <weight>50</weight>
+                 <bold>false</bold>
+                </font>
+               </property>
+               <property name="styleSheet">
+                <string notr="true"/>
+               </property>
+               <property name="text">
+                <string>&lt;b&gt;Asset Options&lt;/b&gt;</string>
+               </property>
+               <property name="textFormat">
+                <enum>Qt::RichText</enum>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <layout class="QVBoxLayout" name="assetOptionsBoxLayout">
+               <property name="leftMargin">
+                <number>9</number>
+               </property>
+               <property name="topMargin">
+                <number>9</number>
+               </property>
+               <property name="rightMargin">
+                <number>9</number>
+               </property>
+               <property name="bottomMargin">
+                <number>9</number>
+               </property>
+               <item>
+                <layout class="QGridLayout" name="assetOptionsLayout" columnstretch="0,1" columnminimumwidth="192,0">
+                 <item row="1" column="0">
+                  <widget class="QLabel" name="shaderCompilerIpAddressLabel">
+                   <property name="enabled">
+                    <bool>true</bool>
+                   </property>
+                   <property name="toolTip">
+                    <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;IP address of the Shader Compiler.&lt;/p&gt;&lt;p&gt;[Android Only] Setting to localhost will automatically configure port forwarding for the respective connections.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                   </property>
+                   <property name="styleSheet">
+                    <string notr="true"/>
+                   </property>
+                   <property name="text">
+                    <string>Shader compiler IP address</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="1" column="1">
+                  <widget class="QLineEdit" name="shaderCompilerIpAddressTextField">
+                   <property name="toolTip">
+                    <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;IP address of the Shader Compiler.&lt;/p&gt;&lt;p&gt;[Android Only] Setting to localhost will automatically configure port forwarding for the respective connections.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                   </property>
+                   <property name="styleSheet">
+                    <string notr="true"/>
+                   </property>
+                   <property name="inputMask">
+                    <string>000.000.000.000</string>
+                   </property>
+                   <property name="text">
+                    <string>127.0.0.1</string>
+                   </property>
+                  </widget>
+                 </item>
+                </layout>
+               </item>
+              </layout>
+             </item>
+             <item>
+              <spacer name="deployOptionsSpacer">
+               <property name="orientation">
+                <enum>Qt::Vertical</enum>
+               </property>
+               <property name="sizeHint" stdset="0">
+                <size>
+                 <width>0</width>
+                 <height>0</height>
+                </size>
+               </property>
+              </spacer>
+             </item>
+             <item>
+              <widget class="QWidget" name="deployTargetsWidget" native="true">
+               <property name="sizePolicy">
+                <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+                 <horstretch>0</horstretch>
+                 <verstretch>1</verstretch>
+                </sizepolicy>
+               </property>
+               <property name="minimumSize">
+                <size>
+                 <width>0</width>
+                 <height>0</height>
+                </size>
+               </property>
+               <layout class="QVBoxLayout" name="deployTargetsLayout">
+                <property name="leftMargin">
+                 <number>0</number>
+                </property>
+                <property name="topMargin">
+                 <number>0</number>
+                </property>
+                <property name="rightMargin">
+                 <number>0</number>
+                </property>
+                <property name="bottomMargin">
+                 <number>0</number>
+                </property>
+                <item>
+                 <widget class="Line" name="line_2">
+                  <property name="orientation">
+                   <enum>Qt::Horizontal</enum>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QLabel" name="deployLabel">
+                  <property name="font">
+                   <font>
+                    <weight>50</weight>
+                    <bold>false</bold>
+                   </font>
+                  </property>
+                  <property name="styleSheet">
+                   <string notr="true"/>
+                  </property>
+                  <property name="text">
+                   <string>&lt;b&gt;Deploy&lt;/b&gt;</string>
+                  </property>
+                  <property name="textFormat">
+                   <enum>Qt::RichText</enum>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QTabWidget" name="deployTargetsTabWidget">
+                  <property name="styleSheet">
+                   <string notr="true"/>
+                  </property>
+                  <property name="currentIndex">
+                   <number>0</number>
+                  </property>
+                  <widget class="QWidget" name="deployTargetsLocalDeviceTab">
+                   <property name="styleSheet">
+                    <string notr="true"/>
+                   </property>
+                   <attribute name="title">
+                    <string>Local Device</string>
+                   </attribute>
+                   <layout class="QVBoxLayout" name="deployTargetsLocalDeviceTabLayout">
+                    <property name="leftMargin">
+                     <number>9</number>
+                    </property>
+                    <property name="topMargin">
+                     <number>9</number>
+                    </property>
+                    <property name="rightMargin">
+                     <number>9</number>
+                    </property>
+                    <property name="bottomMargin">
+                     <number>9</number>
+                    </property>
+                    <item>
+                     <widget class="QLabel" name="localDeviceDeploymentSettingsLabel">
+                      <property name="styleSheet">
+                       <string notr="true"/>
+                      </property>
+                      <property name="text">
+                       <string>&lt;b&gt;Deployment Settings&lt;/b&gt;</string>
+                      </property>
+                      <property name="textFormat">
+                       <enum>Qt::RichText</enum>
+                      </property>
+                     </widget>
+                    </item>
+                    <item>
+                     <layout class="QGridLayout" name="localDeviceOptionsLayout" columnstretch="0,1" columnminimumwidth="192,0">
+                      <property name="leftMargin">
+                       <number>0</number>
+                      </property>
+                      <property name="topMargin">
+                       <number>0</number>
+                      </property>
+                      <property name="rightMargin">
+                       <number>0</number>
+                      </property>
+                      <property name="bottomMargin">
+                       <number>0</number>
+                      </property>
+                      <item row="0" column="0">
+                       <widget class="QLabel" name="targetDeviceLabel">
+                        <property name="toolTip">
+                         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Local device to deploy the build to&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                        </property>
+                        <property name="styleSheet">
+                         <string notr="true"/>
+                        </property>
+                        <property name="text">
+                         <string>Target device</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="0" column="1">
+                       <widget class="QComboBox" name="targetDeviceComboBox">
+                        <property name="toolTip">
+                         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Local device to deploy the build to&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                        </property>
+                        <property name="styleSheet">
+                         <string notr="true"/>
+                        </property>
+                        <item>
+                         <property name="text">
+                          <string>No Devices Connected</string>
+                         </property>
+                        </item>
+                       </widget>
+                      </item>
+                      <item row="1" column="0">
+                       <widget class="QLabel" name="deviceIpAddressLabel">
+                        <property name="toolTip">
+                         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;The IP address of the target device. &lt;/p&gt;&lt;p&gt;This is used to connect to the device for remote logs and white list the device for connections to the Asset Processor and Shader Compiler.&lt;/p&gt;&lt;p&gt;[Android Only] Setting to localhost will automatically configure port forwarding for the respective connections.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                        </property>
+                        <property name="styleSheet">
+                         <string notr="true"/>
+                        </property>
+                        <property name="text">
+                         <string>Device IP address</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="1" column="1">
+                       <widget class="QLineEdit" name="deviceIpAddressTextField">
+                        <property name="toolTip">
+                         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;The IP address of the target device. &lt;/p&gt;&lt;p&gt;This is used to connect to the device for remote logs and white list the device for connections to the Asset Processor and Shader Compiler.&lt;/p&gt;&lt;p&gt;[Android Only] Setting to localhost will automatically configure port forwarding for the respective connections.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                        </property>
+                        <property name="styleSheet">
+                         <string notr="true"/>
+                        </property>
+                        <property name="inputMask">
+                         <string>000.000.000.000</string>
+                        </property>
+                        <property name="text">
+                         <string>127.0.0.1</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="2" column="0">
+                       <widget class="QLabel" name="cleanDeviceLabel">
+                        <property name="toolTip">
+                         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Uninstall the game project from the target device prior to deployment.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                        </property>
+                        <property name="styleSheet">
+                         <string notr="true"/>
+                        </property>
+                        <property name="text">
+                         <string>Clean device</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="2" column="1">
+                       <widget class="QCheckBox" name="cleanDeviceCheckBox">
+                        <property name="toolTip">
+                         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Uninstall the game project from the target device prior to deployment.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                        </property>
+                        <property name="styleSheet">
+                         <string notr="true"/>
+                        </property>
+                        <property name="text">
+                         <string/>
+                        </property>
+                       </widget>
+                      </item>
+                     </layout>
+                    </item>
+                    <item>
+                     <widget class="QLabel" name="localDeviceAssetOptionsLabel">
+                      <property name="font">
+                       <font>
+                        <weight>50</weight>
+                        <bold>false</bold>
+                       </font>
+                      </property>
+                      <property name="styleSheet">
+                       <string notr="true"/>
+                      </property>
+                      <property name="text">
+                       <string>&lt;b&gt;Asset Options&lt;/b&gt;</string>
+                      </property>
+                      <property name="textFormat">
+                       <enum>Qt::RichText</enum>
+                      </property>
+                     </widget>
+                    </item>
+                    <item>
+                     <layout class="QGridLayout" name="localDeviceAssetOptionsLayout" columnstretch="0,1" columnminimumwidth="192,0">
+                      <item row="0" column="1">
+                       <widget class="QComboBox" name="assetModeComboBox">
+                        <property name="toolTip">
+                         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;How the files should be deployed to the target device:&lt;br/&gt;Loose: all of the individual asset files will be pushed to the target device&lt;br/&gt;Virtual File System: a small sub-set of required startup files will be pushed to the target device and assets will be served through a connection to the Asset Processor&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                        </property>
+                        <property name="styleSheet">
+                         <string notr="true"/>
+                        </property>
+                        <item>
+                         <property name="text">
+                          <string>Local Files</string>
+                         </property>
+                        </item>
+                        <item>
+                         <property name="text">
+                          <string>Virtual File System (VFS)</string>
+                         </property>
+                        </item>
+                       </widget>
+                      </item>
+                      <item row="1" column="0">
+                       <widget class="QLabel" name="assetProcessorIpAddressLabel">
+                        <property name="toolTip">
+                         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;IP address of the Asset Processor. &lt;/p&gt;&lt;p&gt;Used for VFS connections and/or when using the Asset Processor to handle shader compiler requests.&lt;/p&gt;&lt;p&gt;[Android Only] Setting to localhost will automatically configure port forwarding for the respective connections.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                        </property>
+                        <property name="styleSheet">
+                         <string notr="true"/>
+                        </property>
+                        <property name="text">
+                         <string>Asset Processor IP address</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="1" column="1">
+                       <widget class="QComboBox" name="assetProcessorIpAddressComboBox">
+                        <property name="enabled">
+                         <bool>true</bool>
+                        </property>
+                        <property name="toolTip">
+                         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;IP address of the Asset Processor. &lt;/p&gt;&lt;p&gt;Used for VFS connections and/or when using the Asset Processor to handle shader compiler requests.&lt;/p&gt;&lt;p&gt;[Android Only] Setting to localhost will automatically configure port forwarding for the respective connections.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                        </property>
+                        <property name="styleSheet">
+                         <string notr="true"/>
+                        </property>
+                        <item>
+                         <property name="text">
+                          <string>127.0.0.1 (localhost)</string>
+                         </property>
+                        </item>
+                       </widget>
+                      </item>
+                      <item row="0" column="0">
+                       <widget class="QLabel" name="assetModeLabel">
+                        <property name="minimumSize">
+                         <size>
+                          <width>150</width>
+                          <height>0</height>
+                         </size>
+                        </property>
+                        <property name="toolTip">
+                         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;How the files should be deployed to the target device:&lt;br/&gt;Loose: all of the individual asset files will be pushed to the target device&lt;br/&gt;Virtual File System: a small sub-set of required startup files will be pushed to the target device and assets will be served through a connection to the Asset Processor&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                        </property>
+                        <property name="styleSheet">
+                         <string notr="true"/>
+                        </property>
+                        <property name="text">
+                         <string>Mode</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="2" column="0">
+                       <widget class="QLabel" name="shaderCompilerUseAPLabel">
+                        <property name="toolTip">
+                         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Connect to the Asset Processor for all shader requests instead of directly to the Shader Compiler&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                        </property>
+                        <property name="styleSheet">
+                         <string notr="true"/>
+                        </property>
+                        <property name="text">
+                         <string>User Asset Processor for shaders</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="2" column="1">
+                       <widget class="QCheckBox" name="shaderCompilerUseAPCheckBox">
+                        <property name="toolTip">
+                         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Connect to the Asset Processor for all shader requests instead of directly to the Shader Compiler&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                        </property>
+                        <property name="text">
+                         <string/>
+                        </property>
+                       </widget>
+                      </item>
+                     </layout>
+                    </item>
+                    <item>
+                     <layout class="QVBoxLayout" name="localDeviceDeployButtonWidgetLayout">
+                      <property name="leftMargin">
+                       <number>0</number>
+                      </property>
+                      <property name="topMargin">
+                       <number>0</number>
+                      </property>
+                      <property name="rightMargin">
+                       <number>0</number>
+                      </property>
+                      <property name="bottomMargin">
+                       <number>0</number>
+                      </property>
+                      <item>
+                       <widget class="QWidget" name="localDeviceDeployWidget" native="true">
+                        <property name="enabled">
+                         <bool>true</bool>
+                        </property>
+                        <property name="minimumSize">
+                         <size>
+                          <width>0</width>
+                          <height>24</height>
+                         </size>
+                        </property>
+                        <property name="maximumSize">
+                         <size>
+                          <width>16777215</width>
+                          <height>24</height>
+                         </size>
+                        </property>
+                        <layout class="QHBoxLayout" name="localDeviceDeployButtonLayout">
+                         <property name="leftMargin">
+                          <number>0</number>
+                         </property>
+                         <property name="topMargin">
+                          <number>0</number>
+                         </property>
+                         <property name="rightMargin">
+                          <number>0</number>
+                         </property>
+                         <property name="bottomMargin">
+                          <number>0</number>
+                         </property>
+                         <item>
+                          <spacer name="localDeviceDeployButtonSpacer">
+                           <property name="orientation">
+                            <enum>Qt::Horizontal</enum>
+                           </property>
+                           <property name="sizeHint" stdset="0">
+                            <size>
+                             <width>269</width>
+                             <height>13</height>
+                            </size>
+                           </property>
+                          </spacer>
+                         </item>
+                         <item>
+                          <widget class="QLabel" name="localDeviceDeploySpinnerLabel">
+                           <property name="minimumSize">
+                            <size>
+                             <width>20</width>
+                             <height>20</height>
+                            </size>
+                           </property>
+                           <property name="maximumSize">
+                            <size>
+                             <width>20</width>
+                             <height>20</height>
+                            </size>
+                           </property>
+                           <property name="frameShape">
+                            <enum>QFrame::NoFrame</enum>
+                           </property>
+                           <property name="text">
+                            <string/>
+                           </property>
+                          </widget>
+                         </item>
+                         <item>
+                          <widget class="QPushButton" name="localDeviceDeployButton">
+                           <property name="minimumSize">
+                            <size>
+                             <width>60</width>
+                             <height>24</height>
+                            </size>
+                           </property>
+                           <property name="maximumSize">
+                            <size>
+                             <width>16777215</width>
+                             <height>16777215</height>
+                            </size>
+                           </property>
+                           <property name="toolTip">
+                            <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Start the deploy process to the selected target device.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                           </property>
+                           <property name="styleSheet">
+                            <string notr="true"/>
+                           </property>
+                           <property name="text">
+                            <string>Deploy to local device</string>
+                           </property>
+                          </widget>
+                         </item>
+                        </layout>
+                       </widget>
+                      </item>
+                     </layout>
+                    </item>
+                    <item>
+                     <widget class="Line" name="line">
+                      <property name="orientation">
+                       <enum>Qt::Horizontal</enum>
+                      </property>
+                     </widget>
+                    </item>
+                    <item>
+                     <widget class="QLabel" name="remoteOutputLabel">
+                      <property name="font">
+                       <font>
+                        <weight>50</weight>
+                        <bold>false</bold>
+                       </font>
+                      </property>
+                      <property name="styleSheet">
+                       <string notr="true"/>
+                      </property>
+                      <property name="text">
+                       <string>&lt;b&gt;Remote Output&lt;/b&gt;</string>
+                      </property>
+                      <property name="textFormat">
+                       <enum>Qt::RichText</enum>
+                      </property>
+                     </widget>
+                    </item>
+                    <item>
+                     <layout class="QVBoxLayout" name="remoteOutputTabLayout">
+                      <property name="leftMargin">
+                       <number>0</number>
+                      </property>
+                      <property name="topMargin">
+                       <number>0</number>
+                      </property>
+                      <property name="rightMargin">
+                       <number>0</number>
+                      </property>
+                      <property name="bottomMargin">
+                       <number>0</number>
+                      </property>
+                      <item>
+                       <widget class="QTextEdit" name="remoteOutputTextBox">
+                        <property name="enabled">
+                         <bool>true</bool>
+                        </property>
+                        <property name="sizePolicy">
+                         <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+                          <horstretch>0</horstretch>
+                          <verstretch>0</verstretch>
+                         </sizepolicy>
+                        </property>
+                        <property name="minimumSize">
+                         <size>
+                          <width>0</width>
+                          <height>20</height>
+                         </size>
+                        </property>
+                        <property name="styleSheet">
+                         <string notr="true"/>
+                        </property>
+                        <property name="verticalScrollBarPolicy">
+                         <enum>Qt::ScrollBarAlwaysOn</enum>
+                        </property>
+                        <property name="undoRedoEnabled">
+                         <bool>false</bool>
+                        </property>
+                        <property name="readOnly">
+                         <bool>true</bool>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::TextSelectableByKeyboard|Qt::TextSelectableByMouse</set>
+                        </property>
+                       </widget>
+                      </item>
+                      <item>
+                       <layout class="QHBoxLayout" name="remoteStatusLayout">
+                        <property name="leftMargin">
+                         <number>6</number>
+                        </property>
+                        <item>
+                         <widget class="QLabel" name="remoteStatusPrefixLabel">
+                          <property name="sizePolicy">
+                           <sizepolicy hsizetype="Maximum" vsizetype="Preferred">
+                            <horstretch>0</horstretch>
+                            <verstretch>0</verstretch>
+                           </sizepolicy>
+                          </property>
+                          <property name="minimumSize">
+                           <size>
+                            <width>0</width>
+                            <height>16</height>
+                           </size>
+                          </property>
+                          <property name="styleSheet">
+                           <string notr="true"/>
+                          </property>
+                          <property name="text">
+                           <string>Status:</string>
+                          </property>
+                         </widget>
+                        </item>
+                        <item>
+                         <widget class="QLabel" name="remoteStatusIconLabel">
+                          <property name="minimumSize">
+                           <size>
+                            <width>16</width>
+                            <height>16</height>
+                           </size>
+                          </property>
+                          <property name="maximumSize">
+                           <size>
+                            <width>16</width>
+                            <height>16</height>
+                           </size>
+                          </property>
+                          <property name="text">
+                           <string/>
+                          </property>
+                         </widget>
+                        </item>
+                        <item>
+                         <widget class="QLabel" name="remoteStatusLabel">
+                          <property name="minimumSize">
+                           <size>
+                            <width>0</width>
+                            <height>16</height>
+                           </size>
+                          </property>
+                          <property name="styleSheet">
+                           <string notr="true"/>
+                          </property>
+                          <property name="text">
+                           <string>Not Connected</string>
+                          </property>
+                         </widget>
+                        </item>
+                       </layout>
+                      </item>
+                     </layout>
+                    </item>
+                   </layout>
+                  </widget>
+                  <widget class="QWidget" name="deployTargetsDeviceFarmTab">
+                   <attribute name="title">
+                    <string>AWS Device Farm</string>
+                   </attribute>
+                   <layout class="QVBoxLayout" name="deployTargetsDeviceFarmTabLayout">
+                    <property name="leftMargin">
+                     <number>9</number>
+                    </property>
+                    <property name="topMargin">
+                     <number>9</number>
+                    </property>
+                    <property name="rightMargin">
+                     <number>9</number>
+                    </property>
+                    <property name="bottomMargin">
+                     <number>9</number>
+                    </property>
+                    <item>
+                     <widget class="QLabel" name="deviceFarmDeploymentSettingsLabel">
+                      <property name="styleSheet">
+                       <string notr="true"/>
+                      </property>
+                      <property name="text">
+                       <string>&lt;b&gt;Deployment Settings&lt;/b&gt;</string>
+                      </property>
+                      <property name="textFormat">
+                       <enum>Qt::RichText</enum>
+                      </property>
+                     </widget>
+                    </item>
+                    <item>
+                     <layout class="QGridLayout" name="deviceFarmOptionsLayout" columnstretch="0,0,0,0" columnminimumwidth="192,0,0,0">
+                      <property name="sizeConstraint">
+                       <enum>QLayout::SetDefaultConstraint</enum>
+                      </property>
+                      <property name="leftMargin">
+                       <number>0</number>
+                      </property>
+                      <property name="topMargin">
+                       <number>0</number>
+                      </property>
+                      <property name="rightMargin">
+                       <number>0</number>
+                      </property>
+                      <property name="bottomMargin">
+                       <number>0</number>
+                      </property>
+                      <item row="0" column="2">
+                       <widget class="QPushButton" name="addDeviceFarmProjectButton">
+                        <property name="minimumSize">
+                         <size>
+                          <width>60</width>
+                          <height>24</height>
+                         </size>
+                        </property>
+                        <property name="maximumSize">
+                         <size>
+                          <width>60</width>
+                          <height>24</height>
+                         </size>
+                        </property>
+                        <property name="toolTip">
+                         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Add a new Device Farm project.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                        </property>
+                        <property name="text">
+                         <string>Add</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="0" column="0">
+                       <widget class="QLabel" name="deviceFarmProjectNameLabel">
+                        <property name="maximumSize">
+                         <size>
+                          <width>150</width>
+                          <height>24</height>
+                         </size>
+                        </property>
+                        <property name="toolTip">
+                         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;The name of the AWS Device Farm project.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                        </property>
+                        <property name="text">
+                         <string>Project name</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="1" column="0">
+                       <widget class="QLabel" name="deviceFarmDevicePoolNameLabel">
+                        <property name="maximumSize">
+                         <size>
+                          <width>150</width>
+                          <height>24</height>
+                         </size>
+                        </property>
+                        <property name="toolTip">
+                         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;The name of the AWS Device Farm Device Pool.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                        </property>
+                        <property name="text">
+                         <string>Device pool name</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="1" column="1">
+                       <widget class="QComboBox" name="deviceFarmDevicePoolNameComboBox">
+                        <property name="enabled">
+                         <bool>true</bool>
+                        </property>
+                        <property name="maximumSize">
+                         <size>
+                          <width>16777215</width>
+                          <height>20</height>
+                         </size>
+                        </property>
+                        <property name="toolTip">
+                         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;The name of the AWS Device Farm Device Pool.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                        </property>
+                        <item>
+                         <property name="text">
+                          <string/>
+                         </property>
+                        </item>
+                       </widget>
+                      </item>
+                      <item row="1" column="3">
+                       <widget class="QPushButton" name="removeDeviceFarmDevicePoolButton">
+                        <property name="minimumSize">
+                         <size>
+                          <width>60</width>
+                          <height>24</height>
+                         </size>
+                        </property>
+                        <property name="maximumSize">
+                         <size>
+                          <width>60</width>
+                          <height>24</height>
+                         </size>
+                        </property>
+                        <property name="toolTip">
+                         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Remove a Device Farm Device Pool.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                        </property>
+                        <property name="text">
+                         <string>Remove</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="0" column="1">
+                       <widget class="QComboBox" name="deviceFarmProjectNameComboBox">
+                        <property name="enabled">
+                         <bool>true</bool>
+                        </property>
+                        <property name="maximumSize">
+                         <size>
+                          <width>16777215</width>
+                          <height>20</height>
+                         </size>
+                        </property>
+                        <property name="toolTip">
+                         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;The name of the AWS Device Farm project.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                        </property>
+                        <item>
+                         <property name="text">
+                          <string/>
+                         </property>
+                        </item>
+                       </widget>
+                      </item>
+                      <item row="1" column="2">
+                       <widget class="QPushButton" name="addDeviceFarmDevicePoolButton">
+                        <property name="minimumSize">
+                         <size>
+                          <width>60</width>
+                          <height>24</height>
+                         </size>
+                        </property>
+                        <property name="maximumSize">
+                         <size>
+                          <width>60</width>
+                          <height>24</height>
+                         </size>
+                        </property>
+                        <property name="toolTip">
+                         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Add a new Device Farm Device Pool.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                        </property>
+                        <property name="text">
+                         <string>Add</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="0" column="3">
+                       <widget class="QPushButton" name="removeDeviceFarmProjectButton">
+                        <property name="minimumSize">
+                         <size>
+                          <width>60</width>
+                          <height>24</height>
+                         </size>
+                        </property>
+                        <property name="maximumSize">
+                         <size>
+                          <width>60</width>
+                          <height>24</height>
+                         </size>
+                        </property>
+                        <property name="toolTip">
+                         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Remove a Device Farm project.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                        </property>
+                        <property name="text">
+                         <string>Remove</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="2" column="0">
+                       <widget class="QLabel" name="deviceFarmExecutionTimeoutLabel">
+                        <property name="maximumSize">
+                         <size>
+                          <width>190</width>
+                          <height>24</height>
+                         </size>
+                        </property>
+                        <property name="toolTip">
+                         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;The Device Farm Run execution timeout in minutes.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                        </property>
+                        <property name="text">
+                         <string>Execution timeout (5 - 150 mins)</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="2" column="1">
+                       <widget class="QSpinBox" name="deviceFarmExecutionTimeoutSpinBox">
+                        <property name="minimum">
+                         <number>5</number>
+                        </property>
+                        <property name="maximum">
+                         <number>150</number>
+                        </property>
+                        <property name="value">
+                         <number>10</number>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="3" column="0">
+                       <widget class="QLabel" name="deviceFarmTypeTypeLabel">
+                        <property name="maximumSize">
+                         <size>
+                          <width>150</width>
+                          <height>24</height>
+                         </size>
+                        </property>
+                        <property name="toolTip">
+                         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;The type of test to run on the AWS Device Farm.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                        </property>
+                        <property name="text">
+                         <string>Test type</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="3" column="1">
+                       <widget class="QComboBox" name="deviceFarmTestTypeComboBox">
+                        <property name="enabled">
+                         <bool>true</bool>
+                        </property>
+                        <property name="maximumSize">
+                         <size>
+                          <width>16777215</width>
+                          <height>20</height>
+                         </size>
+                        </property>
+                        <property name="toolTip">
+                         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;The type of test to run on the AWS Device Farm.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                        </property>
+                        <item>
+                         <property name="text">
+                          <string/>
+                         </property>
+                        </item>
+                       </widget>
+                      </item>
+                     </layout>
+                    </item>
+                    <item>
+                     <layout class="QVBoxLayout" name="deviceFarmDeployButtonWidgetLayout">
+                      <property name="leftMargin">
+                       <number>0</number>
+                      </property>
+                      <property name="topMargin">
+                       <number>0</number>
+                      </property>
+                      <property name="rightMargin">
+                       <number>0</number>
+                      </property>
+                      <property name="bottomMargin">
+                       <number>0</number>
+                      </property>
+                      <item>
+                       <widget class="QWidget" name="deviceFarmDeployWidget" native="true">
+                        <property name="enabled">
+                         <bool>true</bool>
+                        </property>
+                        <property name="minimumSize">
+                         <size>
+                          <width>0</width>
+                          <height>24</height>
+                         </size>
+                        </property>
+                        <property name="maximumSize">
+                         <size>
+                          <width>16777215</width>
+                          <height>24</height>
+                         </size>
+                        </property>
+                        <layout class="QHBoxLayout" name="deviceFarmDeployButtonLayout">
+                         <property name="leftMargin">
+                          <number>0</number>
+                         </property>
+                         <property name="topMargin">
+                          <number>0</number>
+                         </property>
+                         <property name="rightMargin">
+                          <number>0</number>
+                         </property>
+                         <property name="bottomMargin">
+                          <number>0</number>
+                         </property>
+                         <item>
+                          <spacer name="deviceFarmDeployButtonSpacer">
+                           <property name="orientation">
+                            <enum>Qt::Horizontal</enum>
+                           </property>
+                           <property name="sizeHint" stdset="0">
+                            <size>
+                             <width>269</width>
+                             <height>13</height>
+                            </size>
+                           </property>
+                          </spacer>
+                         </item>
+                         <item>
+                          <widget class="QLabel" name="deviceFarmDeploySpinnerLabel">
+                           <property name="minimumSize">
+                            <size>
+                             <width>20</width>
+                             <height>20</height>
+                            </size>
+                           </property>
+                           <property name="maximumSize">
+                            <size>
+                             <width>20</width>
+                             <height>20</height>
+                            </size>
+                           </property>
+                           <property name="frameShape">
+                            <enum>QFrame::NoFrame</enum>
+                           </property>
+                           <property name="text">
+                            <string/>
+                           </property>
+                          </widget>
+                         </item>
+                         <item>
+                          <widget class="QPushButton" name="deviceFarmDeployButton">
+                           <property name="minimumSize">
+                            <size>
+                             <width>60</width>
+                             <height>24</height>
+                            </size>
+                           </property>
+                           <property name="maximumSize">
+                            <size>
+                             <width>16777215</width>
+                             <height>16777215</height>
+                            </size>
+                           </property>
+                           <property name="toolTip">
+                            <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Start the deploy process to the Device Farm.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                           </property>
+                           <property name="styleSheet">
+                            <string notr="true"/>
+                           </property>
+                           <property name="text">
+                            <string>Deploy to Device Farm</string>
+                           </property>
+                          </widget>
+                         </item>
+                        </layout>
+                       </widget>
+                      </item>
+                     </layout>
+                    </item>
+                    <item>
+                     <widget class="Line" name="deviceFarmDeployLine">
+                      <property name="orientation">
+                       <enum>Qt::Horizontal</enum>
+                      </property>
+                     </widget>
+                    </item>
+                    <item>
+                     <widget class="QLabel" name="deviceFarmLogLabel">
+                      <property name="text">
+                       <string>&lt;b&gt;Device Farm Log&lt;/b&gt;</string>
+                      </property>
+                      <property name="textFormat">
+                       <enum>Qt::RichText</enum>
+                      </property>
+                     </widget>
+                    </item>
+                    <item>
+                     <widget class="QTableWidget" name="deviceFarmRunsTable">
+                      <property name="sizePolicy">
+                       <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+                        <horstretch>0</horstretch>
+                        <verstretch>0</verstretch>
+                       </sizepolicy>
+                      </property>
+                      <property name="minimumSize">
+                       <size>
+                        <width>0</width>
+                        <height>20</height>
+                       </size>
+                      </property>
+                      <property name="maximumSize">
+                       <size>
+                        <width>16777215</width>
+                        <height>16777215</height>
+                       </size>
+                      </property>
+                      <property name="editTriggers">
+                       <set>QAbstractItemView::NoEditTriggers</set>
+                      </property>
+                      <property name="columnCount">
+                       <number>3</number>
+                      </property>
+                      <attribute name="horizontalHeaderStretchLastSection">
+                       <bool>false</bool>
+                      </attribute>
+                      <attribute name="verticalHeaderVisible">
+                       <bool>false</bool>
+                      </attribute>
+                      <column/>
+                      <column/>
+                      <column/>
+                     </widget>
+                    </item>
+                    <item>
+                     <layout class="QVBoxLayout" name="deployTargetsDeviceFarmTabVerticalLayout"/>
+                    </item>
+                   </layout>
+                  </widget>
+                 </widget>
+                </item>
+               </layout>
+              </widget>
+             </item>
+            </layout>
+           </widget>
+           <widget class="QWidget" name="consoleOutputWidget" native="true">
+            <property name="sizePolicy">
+             <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+              <horstretch>0</horstretch>
+              <verstretch>0</verstretch>
+             </sizepolicy>
+            </property>
+            <property name="minimumSize">
+             <size>
+              <width>0</width>
+              <height>0</height>
+             </size>
+            </property>
+            <layout class="QVBoxLayout" name="consoleOutputLayout">
+             <property name="leftMargin">
+              <number>0</number>
+             </property>
+             <property name="topMargin">
+              <number>0</number>
+             </property>
+             <property name="rightMargin">
+              <number>0</number>
+             </property>
+             <property name="bottomMargin">
+              <number>0</number>
+             </property>
+             <item>
+              <widget class="QLabel" name="consoleLabel">
+               <property name="font">
+                <font>
+                 <weight>50</weight>
+                 <bold>false</bold>
+                </font>
+               </property>
+               <property name="styleSheet">
+                <string notr="true"/>
+               </property>
+               <property name="text">
+                <string>&lt;b&gt;Console&lt;/b&gt;</string>
+               </property>
+               <property name="textFormat">
+                <enum>Qt::RichText</enum>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QTabWidget" name="outputTabWidget">
+               <property name="currentIndex">
+                <number>0</number>
+               </property>
+               <widget class="QWidget" name="deployOutputTab">
+                <attribute name="title">
+                 <string>Deploy Output</string>
+                </attribute>
+                <layout class="QVBoxLayout" name="deployOutputTabLayout">
+                 <property name="leftMargin">
+                  <number>0</number>
+                 </property>
+                 <property name="topMargin">
+                  <number>0</number>
+                 </property>
+                 <property name="rightMargin">
+                  <number>0</number>
+                 </property>
+                 <property name="bottomMargin">
+                  <number>6</number>
+                 </property>
+                 <item>
+                  <widget class="QTextEdit" name="deployOutputTextBox">
+                   <property name="sizePolicy">
+                    <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+                     <horstretch>0</horstretch>
+                     <verstretch>0</verstretch>
+                    </sizepolicy>
+                   </property>
+                   <property name="minimumSize">
+                    <size>
+                     <width>0</width>
+                     <height>20</height>
+                    </size>
+                   </property>
+                   <property name="styleSheet">
+                    <string notr="true"/>
+                   </property>
+                   <property name="verticalScrollBarPolicy">
+                    <enum>Qt::ScrollBarAlwaysOn</enum>
+                   </property>
+                   <property name="undoRedoEnabled">
+                    <bool>false</bool>
+                   </property>
+                   <property name="readOnly">
+                    <bool>true</bool>
+                   </property>
+                   <property name="textInteractionFlags">
+                    <set>Qt::TextSelectableByKeyboard|Qt::TextSelectableByMouse</set>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <layout class="QHBoxLayout" name="deployStatusOutput">
+                   <property name="leftMargin">
+                    <number>6</number>
+                   </property>
+                   <item>
+                    <widget class="QLabel" name="deployStatusLabelPrefix">
+                     <property name="sizePolicy">
+                      <sizepolicy hsizetype="Maximum" vsizetype="Preferred">
+                       <horstretch>0</horstretch>
+                       <verstretch>0</verstretch>
+                      </sizepolicy>
+                     </property>
+                     <property name="minimumSize">
+                      <size>
+                       <width>0</width>
+                       <height>16</height>
+                      </size>
+                     </property>
+                     <property name="baseSize">
+                      <size>
+                       <width>0</width>
+                       <height>0</height>
+                      </size>
+                     </property>
+                     <property name="styleSheet">
+                      <string notr="true"/>
+                     </property>
+                     <property name="text">
+                      <string>Status:</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QLabel" name="deployStatusLabel">
+                     <property name="minimumSize">
+                      <size>
+                       <width>0</width>
+                       <height>16</height>
+                      </size>
+                     </property>
+                     <property name="styleSheet">
+                      <string notr="true"/>
+                     </property>
+                     <property name="text">
+                      <string>Idle </string>
+                     </property>
+                    </widget>
+                   </item>
+                  </layout>
+                 </item>
+                </layout>
+               </widget>
+              </widget>
+             </item>
+            </layout>
+           </widget>
+          </widget>
+         </item>
+        </layout>
        </item>
       </layout>
      </widget>

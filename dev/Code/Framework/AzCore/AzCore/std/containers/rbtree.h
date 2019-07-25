@@ -352,13 +352,23 @@ namespace AZStd
             m_head.m_left = &m_head;
             m_head.m_right = &m_head;
         }
-        AZ_FORCE_INLINE rbtree(const key_eq& keyEq)
+        explicit rbtree(const key_eq& keyEq)
             : m_numElements(0)
             , m_keyEq(keyEq)
             , m_allocator(allocator_type())
         {
             m_head.set_color(AZSTD_RBTREE_RED); // used to distinguish header from root, in iterator.operator++
-            m_head.set_parent(0);
+            m_head.set_parent(nullptr);
+            m_head.m_left = &m_head;
+            m_head.m_right = &m_head;
+        }
+        explicit rbtree(const allocator_type& allocator)
+            : m_numElements{}
+            , m_keyEq{}
+            , m_allocator{ allocator }
+        {
+            m_head.set_color(AZSTD_RBTREE_RED); // used to distinguish header from root, in iterator.operator++
+            m_head.set_parent(nullptr);
             m_head.m_left = &m_head;
             m_head.m_right = &m_head;
         }
@@ -511,6 +521,22 @@ namespace AZStd
                 isInserted = true;
             }
             return AZStd::pair<iterator, bool>(insertPos, isInserted);
+        }
+
+        iterator insert_unique(const_iterator insertPos, value_type&& value)
+        {
+            // this is not efficient, pass the value for clone on success or just ignore the
+            // insertPos and do a search (which should be fine and insertPos is a hit, but in practice
+            // we expect most people will call with insertPos if the node can't be inserted)
+            node_ptr_type newNode = static_cast<node_ptr_type>(create_node(AZStd::move(value)));
+            iterator result = insert_unique_node(insertPos, newNode);
+            if (result == insertPos)
+            {
+                pointer toDestroy = &newNode->m_value;
+                Internal::destroy<pointer>::single(toDestroy);
+                deallocate_node(newNode, allocator::allow_memory_leaks());
+            }
+            return result;
         }
 
         iterator insert_equal(value_type&& value)

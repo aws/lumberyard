@@ -31,18 +31,10 @@ CDebugUtils* CDebugUtils::s_pThis = NULL;
 
 CDebugUtils::CDebugUtils()
 {
-    if (GetISystem() && GetISystem()->GetPlatformOS())
-    {
-        GetISystem()->GetPlatformOS()->AddListener(this, "XMLCPB_DebugUtils");
-    }
 }
 
 CDebugUtils::~CDebugUtils()
 {
-    if (GetISystem() && GetISystem()->GetPlatformOS())
-    {
-        GetISystem()->GetPlatformOS()->RemoveListener(this);
-    }
 }
 
 
@@ -333,36 +325,5 @@ void CDebugUtils::SetLastFileNameSaved(const char* pFileName)
 
     s_pThis->m_lastFileNameSaved = pFileName;
 }
-
-
-//////////////////////////////////////////////////////////////////////////
-
-void CDebugUtils::OnPlatformEvent(const IPlatformOS::SPlatformEvent& event)
-{
-    if (CCryActionCVars::Get().g_XMLCPBGenerateXmlDebugFiles == 1)
-    {
-        if (event.m_eEventType == IPlatformOS::SPlatformEvent::eET_FileWrite)
-        {
-            if (event.m_uParams.m_fileWrite.m_type == IPlatformOS::SPlatformEvent::eFWT_SaveEnd)
-            {
-                const char* pFullFileName = m_lastFileNameSaved.c_str();
-                const char* pSlashPosition = strrchr(pFullFileName, '/');
-                stack_string XMLFileName = pSlashPosition ? pSlashPosition + 1 : pFullFileName;
-                uint32 extensionPos = XMLFileName.rfind('.');
-                if (extensionPos != -1)
-                {
-                    XMLFileName.resize(extensionPos);
-                }
-                XMLFileName.append(".xml");
-                stack_string XMLFileNameSizes = XMLFileName;
-                XMLFileNameSizes.insert(extensionPos, "_sizesInfo");
-
-                BinaryFileToXml(pFullFileName)->saveToFile(XMLFileName.c_str());
-                GenerateXmlFileWithSizeInformation(m_lastFileNameSaved.c_str(), XMLFileNameSizes.c_str());
-            }
-        }
-    }
-}
-
 
 #endif // XMLCPB_DEBUGUTILS

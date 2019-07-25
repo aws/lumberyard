@@ -37,6 +37,7 @@ namespace UnitTests
     using AzToolsFramework::AssetDatabase::ProductDependencyDatabaseEntry;
     using AzToolsFramework::AssetDatabase::ProductDependencyDatabaseEntryContainer;
     using AzToolsFramework::AssetDatabase::AssetDatabaseConnection;
+    using AzToolsFramework::AssetDatabase::FileDatabaseEntry;
     
     class MockDatabaseLocationListener : public AzToolsFramework::AssetDatabase::AssetDatabaseRequests::Bus::Handler
     {
@@ -1502,20 +1503,22 @@ namespace UnitTests
 
         ProductDependencyDatabaseEntryContainer productDependencies;
         AZStd::bitset<64> dependencyFlags = 0xFAA0FEEE;
+        AZStd::string pathDep = "unresolved/dependency.txt";
+        AZStd::string platform = "somePlatform";
 
         productDependencies.reserve(200);
 
         // make 100 product dependencies on the first productID
         for (AZ::u32 productIndex = 0; productIndex < 100; ++productIndex)
         {
-            ProductDependencyDatabaseEntry entry(resultProducts[0].m_productID, m_data->m_sourceFile1.m_sourceGuid, productIndex, dependencyFlags);
+            ProductDependencyDatabaseEntry entry(resultProducts[0].m_productID, m_data->m_sourceFile1.m_sourceGuid, productIndex, dependencyFlags, platform, pathDep);
             productDependencies.emplace_back(AZStd::move(entry));
         }
         
         // make 100 product dependencies on the second productID
         for (AZ::u32 productIndex = 0; productIndex < 100; ++productIndex)
         {
-            ProductDependencyDatabaseEntry entry(resultProducts[1].m_productID, m_data->m_sourceFile2.m_sourceGuid, productIndex, dependencyFlags);
+            ProductDependencyDatabaseEntry entry(resultProducts[1].m_productID, m_data->m_sourceFile2.m_sourceGuid, productIndex, dependencyFlags, platform, pathDep);
             productDependencies.emplace_back(AZStd::move(entry));
         }
 
@@ -1536,6 +1539,8 @@ namespace UnitTests
             EXPECT_EQ(productDependencies[productIndex].m_dependencySourceGuid, m_data->m_sourceFile1.m_sourceGuid);
             EXPECT_EQ(productDependencies[productIndex].m_dependencySubID, productIndex);
             EXPECT_EQ(productDependencies[productIndex].m_dependencyFlags, dependencyFlags);
+            EXPECT_EQ(productDependencies[productIndex].m_platform, platform);
+            EXPECT_EQ(productDependencies[productIndex].m_unresolvedPath, pathDep);
         }
 
         productDependencies.clear();
@@ -1551,13 +1556,15 @@ namespace UnitTests
             EXPECT_EQ(productDependencies[productIndex].m_dependencySourceGuid, m_data->m_sourceFile2.m_sourceGuid);
             EXPECT_EQ(productDependencies[productIndex].m_dependencySubID, productIndex);
             EXPECT_EQ(productDependencies[productIndex].m_dependencyFlags, dependencyFlags);
+            EXPECT_EQ(productDependencies[productIndex].m_platform, platform);
+            EXPECT_EQ(productDependencies[productIndex].m_unresolvedPath, pathDep);
         }
 
         // now, we replace the dependencies of the first product with fewer results, with different data:
         productDependencies.clear();
         for (AZ::u32 productIndex = 0; productIndex < 50; ++productIndex)
         {
-            ProductDependencyDatabaseEntry entry(resultProducts[0].m_productID, m_data->m_sourceFile2.m_sourceGuid, productIndex, dependencyFlags);
+            ProductDependencyDatabaseEntry entry(resultProducts[0].m_productID, m_data->m_sourceFile2.m_sourceGuid, productIndex, dependencyFlags, platform);
             productDependencies.emplace_back(AZStd::move(entry));
         }
 
@@ -1575,6 +1582,9 @@ namespace UnitTests
             EXPECT_EQ(productDependencies[productIndex].m_dependencySourceGuid, m_data->m_sourceFile2.m_sourceGuid); // here we verify that the field has changed.
             EXPECT_EQ(productDependencies[productIndex].m_dependencySubID, productIndex);
             EXPECT_EQ(productDependencies[productIndex].m_dependencyFlags, dependencyFlags);
+            EXPECT_EQ(productDependencies[productIndex].m_platform, platform);
+            EXPECT_EQ(productDependencies[productIndex].m_unresolvedPath, ""); // verify that no path is set if it was not specified in the entry
+
         }
 
         EXPECT_EQ(m_errorAbsorber->m_numAssertsAbsorbed, 0); // not allowed to assert on this
@@ -1590,12 +1600,13 @@ namespace UnitTests
 
         ProductDependencyDatabaseEntryContainer productDependencies;
         AZStd::bitset<64> dependencyFlags;
+        AZStd::string platform;
 
         productDependencies.reserve(20000);
 
         for (AZ::u32 productIndex = 0; productIndex < 20000; ++productIndex)
         {
-            ProductDependencyDatabaseEntry entry(resultProducts[0].m_productID, m_data->m_sourceFile1.m_sourceGuid, productIndex, dependencyFlags);
+            ProductDependencyDatabaseEntry entry(resultProducts[0].m_productID, m_data->m_sourceFile1.m_sourceGuid, productIndex, dependencyFlags, platform);
             productDependencies.emplace_back(AZStd::move(entry));
         }
         EXPECT_TRUE(m_data->m_connection.SetProductDependencies(productDependencies));
@@ -1771,5 +1782,28 @@ namespace UnitTests
         m_data->m_connection.RemoveSourceFileDependency(entryIdJob);
         EXPECT_FALSE(m_data->m_connection.GetSourceFileDependencyBySourceDependencyId(entryIdSource, resultValue));
         EXPECT_FALSE(m_data->m_connection.GetSourceFileDependencyBySourceDependencyId(entryIdJob, resultValue));
+    }
+
+    TEST_F(AssetDatabaseTest, UpdateNonExistentFile_Fails)
+    {
+        CreateCoverageTestData();
+
+        ASSERT_FALSE(m_data->m_connection.UpdateFileModTimeByFileNameAndScanFolderId("testfile.txt", m_data->m_scanFolder.m_scanFolderID, 1234));
+
+        EXPECT_EQ(m_errorAbsorber->m_numAssertsAbsorbed, 0); // not allowed to assert on this
+    }
+
+    TEST_F(AssetDatabaseTest, UpdateExistingFile_Succeeds)
+    {
+        CreateCoverageTestData();
+
+        FileDatabaseEntry entry;
+        entry.m_fileName = "testfile.txt";
+        entry.m_scanFolderPK = m_data->m_scanFolder.m_scanFolderID;
+        
+        ASSERT_TRUE(m_data->m_connection.InsertFile(entry));
+        ASSERT_TRUE(m_data->m_connection.UpdateFileModTimeByFileNameAndScanFolderId("testfile.txt", m_data->m_scanFolder.m_scanFolderID, 1234));
+
+        EXPECT_EQ(m_errorAbsorber->m_numAssertsAbsorbed, 0); // not allowed to assert on this
     }
 } // end namespace UnitTests

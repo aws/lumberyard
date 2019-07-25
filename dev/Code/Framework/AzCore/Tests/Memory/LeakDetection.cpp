@@ -100,6 +100,56 @@ namespace UnitTest
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    // Testing Allocator leaks
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    // Create a dummy allocator so unit tests can leak it
+    class TestAllocator
+        : public AZ::AllocatorBase<AZ::ChildAllocatorSchema<AZ::SystemAllocator>>
+    {
+    public:
+        AZ_TYPE_INFO(TestAllocator, "{186B6E32-344D-4322-820A-4C3E4F30650B}");
+
+        using Base = AZ::AllocatorBase<AZ::ChildAllocatorSchema<AZ::SystemAllocator>>;
+        using Schema = Base::Schema;
+        using Descriptor = Base::Descriptor;
+
+        TestAllocator()
+            : TestAllocator(TYPEINFO_Name(), "TestAllocator")
+        {
+        }
+
+        TestAllocator(const char* name, const char* desc)
+            : Base(name, desc)
+        {
+            m_schema = new (&m_schemaStorage) Schema(Descriptor());
+        }
+
+        ~TestAllocator() override = default;
+    };
+
+    class AllocatorsTestFixtureLeakDetectionDeathTest
+        : public ::testing::Test
+    {
+    public:
+        void TestAllocatorLeak()
+        {
+            TraceBusHook traceBusHook;
+            traceBusHook.SetupEnvironment();
+
+            AZ::AllocatorInstance<TestAllocator>::Create();
+
+            traceBusHook.TeardownEnvironment();
+        }
+    };
+   
+    TEST_F(AllocatorsTestFixtureLeakDetectionDeathTest, AllocatorLeak)
+    {
+        // testing that the TraceBusHook will fail on cause the test to die
+        EXPECT_DEATH(TestAllocatorLeak(), "");
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     // Testing ScopedAllocatorSetupFixture. Testing that detects leaks
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     class AllocatorSetupLeakDetectionTest
@@ -234,7 +284,7 @@ namespace UnitTest
         void TearDown() override
         {
             AZ::AllocatorInstance<AllocatorType>::Destroy();
-            if (azrtti_typeid<typename AllocatorType>() != azrtti_typeid<AZ::SystemAllocator>()) // simplifies instead of template specialization
+            if (azrtti_typeid<AllocatorType>() != azrtti_typeid<AZ::SystemAllocator>()) // simplifies instead of template specialization
             {
                 // Other allocators need the SystemAllocator in order to work
                 AZ::AllocatorInstance<AZ::SystemAllocator>::Destroy();
@@ -313,15 +363,15 @@ namespace UnitTest
 
     TYPED_TEST(AllocatorTypeLeakDetectionTest, Leak)
     {
-        SetLeakExpected();
+        TestFixture::SetLeakExpected();
 
-        ThisAllocatorTestClass* leakyObject = aznew ThisAllocatorTestClass();
+        typename TestFixture::ThisAllocatorTestClass* leakyObject = aznew typename TestFixture::ThisAllocatorTestClass();
         AZ_UNUSED(leakyObject);
     }
 
     TYPED_TEST(AllocatorTypeLeakDetectionTest, NoLeak)
     {
-        ThisAllocatorTestClass* leakyObject = aznew ThisAllocatorTestClass();
+        typename TestFixture::ThisAllocatorTestClass* leakyObject = aznew typename TestFixture::ThisAllocatorTestClass();
         delete leakyObject;
     }
 }

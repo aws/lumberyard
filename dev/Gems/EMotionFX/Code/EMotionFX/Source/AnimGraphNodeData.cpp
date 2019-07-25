@@ -10,12 +10,12 @@
 *
 */
 
-// include required headers
-#include "EMotionFXConfig.h"
-#include "AnimGraphNodeData.h"
-#include "AnimGraphInstance.h"
-#include "AnimGraphNode.h"
+#include <EMotionFX/Source/EMotionFXConfig.h>
 #include <EMotionFX/Source/Allocators.h>
+#include <EMotionFX/Source/AnimGraphInstance.h>
+#include <EMotionFX/Source/AnimGraphNode.h>
+#include <EMotionFX/Source/AnimGraphNodeData.h>
+
 
 namespace EMotionFX
 {
@@ -89,5 +89,42 @@ namespace EMotionFX
     {
         delete this;
     }
-}   // namespace EMotionFX
 
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    void NodeDataAutoRefCountMixin::IncreaseDataRefCountForNode(AnimGraphNode* node, AnimGraphInstance* animGraphInstance)
+    {
+        if (AZStd::find(m_dataRefCountIncreasedNodes.begin(), m_dataRefCountIncreasedNodes.end(), node) == m_dataRefCountIncreasedNodes.end())
+        {
+            node->IncreaseRefDataRefCount(animGraphInstance);
+            m_dataRefCountIncreasedNodes.emplace_back(node);
+        }
+    }
+
+    void NodeDataAutoRefCountMixin::DecreaseDataRefCounts(AnimGraphInstance* animGraphInstance)
+    {
+        for (AnimGraphNode* node : m_dataRefCountIncreasedNodes)
+        {
+            node->DecreaseRefDataRef(animGraphInstance);
+        }
+        m_dataRefCountIncreasedNodes.clear();
+    }
+
+    void NodeDataAutoRefCountMixin::IncreasePoseRefCountForNode(AnimGraphNode* node, AnimGraphInstance* animGraphInstance)
+    {
+        if (AZStd::find(m_poseRefCountIncreasedNodes.begin(), m_poseRefCountIncreasedNodes.end(), node) == m_poseRefCountIncreasedNodes.end())
+        {
+            node->IncreasePoseRefCount(animGraphInstance);
+            m_poseRefCountIncreasedNodes.emplace_back(node);
+        }
+    }
+
+    void NodeDataAutoRefCountMixin::DecreasePoseRefCounts(AnimGraphInstance* animGraphInstance)
+    {
+        for (AnimGraphNode* node : m_poseRefCountIncreasedNodes)
+        {
+            node->DecreaseRef(animGraphInstance);
+        }
+        m_poseRefCountIncreasedNodes.clear();
+    }
+} // namespace EMotionFX

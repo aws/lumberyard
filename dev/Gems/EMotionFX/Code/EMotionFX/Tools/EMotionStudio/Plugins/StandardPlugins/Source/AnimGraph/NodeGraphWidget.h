@@ -92,6 +92,15 @@ namespace EMStudio
         virtual void ReplaceTransition(NodeConnection* connection, QPoint oldStartOffset, QPoint oldEndOffset,
             GraphNode* oldSourceNode, GraphNode* oldTargetNode, GraphNode* newSourceNode, GraphNode* newTargetNode);
 
+        void EnableBorderOverwrite(const QColor& borderColor, float borderWidth)
+        {
+            m_borderOverwrite = true;
+            m_borderOverwriteColor = borderColor;
+            m_borderOverwriteWidth = borderWidth;
+        }
+
+        void DisableBorderOverwrite() { m_borderOverwrite = false; }
+
     protected:
         //virtual void paintEvent(QPaintEvent* event);
         void mouseMoveEvent(QMouseEvent* event) override;
@@ -124,7 +133,7 @@ namespace EMStudio
         int                         mCurWidth;
         int                         mCurHeight;
         GraphNode*                  mMoveNode;  // the node we're moving
-        NodeGraph*                  mActiveGraph;
+        NodeGraph*                  mActiveGraph = nullptr;
         GraphWidgetCallback*        mCallback;
         QFont                       mFont;
         QFontMetrics*               mFontMetrics;
@@ -141,5 +150,8 @@ namespace EMStudio
         bool                        mShiftPressed;
         bool                        mControlPressed;
         bool                        mAltPressed;
+        bool                        m_borderOverwrite = false;
+        QColor                      m_borderOverwriteColor;
+        float                       m_borderOverwriteWidth;
     };
 }   // namespace EMStudio

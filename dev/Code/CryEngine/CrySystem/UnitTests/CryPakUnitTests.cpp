@@ -1291,21 +1291,19 @@ namespace CryPakUnitTests
         EXPECT_STREQ(caseSensitiveAliasPath.data(), expectedPath);
     }
 
-    TEST(CryPakUnitTests, BeautifyPath_AbsolutePathMakeLowerTrue_NotToLoweredButSlashesSwitched)
+    TEST(CryPakUnitTests, BeautifyPath_AbsolutePathMakeLowerTrue_LoweredAndSlashesSwitched)
     {
         char nativeSlash = CCryPak::g_cNativeSlash;
 #if defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_APPLE_OSX)
         AZStd::string caseSensitiveAliasPath = "//absolutePath\\someDir\\SomeFile.EXT";
         CCryPak::BeautifyPath(caseSensitiveAliasPath.data(), true);
 
-        char expectedPath[AZ_MAX_PATH_LEN];
-        azsnprintf(expectedPath, AZ_MAX_PATH_LEN, "//absolutePath%csomeDir%cSomeFile.EXT", nativeSlash, nativeSlash);
+        constexpr const char* expectedPath = "/absolutepath" CRY_NATIVE_PATH_SEPSTR "somedir" CRY_NATIVE_PATH_SEPSTR "somefile.ext";
 #else // WINDOWS
-        AZStd::string caseSensitiveAliasPath = "C:/absolutePath/someDir/SomeFile.EXT";
+        AZStd::string caseSensitiveAliasPath = "C://absolutePath///////////////////////////////someDir/SomeFile.EXT";
         CCryPak::BeautifyPath(caseSensitiveAliasPath.data(), true);
 
-        char expectedPath[AZ_MAX_PATH_LEN];
-        azsnprintf(expectedPath, AZ_MAX_PATH_LEN, "C:%cabsolutePath%csomeDir%cSomeFile.EXT", nativeSlash, nativeSlash, nativeSlash);
+        constexpr const char* expectedPath = "c:" CRY_NATIVE_PATH_SEPSTR "absolutepath" CRY_NATIVE_PATH_SEPSTR "somedir" CRY_NATIVE_PATH_SEPSTR "somefile.ext";
 #endif // defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_APPLE_OSX)
 
         EXPECT_STREQ(caseSensitiveAliasPath.data(), expectedPath);

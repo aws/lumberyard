@@ -38,13 +38,13 @@ namespace ImageProcessingEditor
     {
         AZ::u32 width = 0;
         AZ::u32 height = 0;
+        AZ::u32 arrayCount = 1;
         AZ::u32 reduce = 0;
         AZ::u32 mipCount = 0;
     };
 
     struct EditorTextureSetting
     {
-        AZ::Uuid m_sourceTextureId = AZ::Uuid::CreateNull();
         AZStd::string m_textureName = "";
         AZStd::string m_fullPath = "";
         ImageProcessing::MultiplatformTextureSettings m_settingsMap;
@@ -53,12 +53,14 @@ namespace ImageProcessingEditor
         ImageProcessing::IImageObjectPtr m_img;
 
         EditorTextureSetting(const AZ::Uuid& sourceTextureId);
-        ~EditorTextureSetting();
-        void operator delete (void* p){}
+        EditorTextureSetting(const AZStd::string& texturePath);
+        ~EditorTextureSetting() = default;
+
+        void InitFromPath(const AZStd::string& texturePath);
         
         void SetIsOverrided();
         
-        void SetToPreset(const AZStd::string presetName);
+        void SetToPreset(const AZStd::string& presetName);
         
         //Get the texture setting on certain platform
         ImageProcessing::TextureSettings& GetMultiplatformTextureSetting(const AZStd::string& platform = "");
@@ -66,7 +68,7 @@ namespace ImageProcessingEditor
         //Gets the final resolution/reduce/mip count for a texture on a certain platform
         //@param wantedReduce indicates the reduce level that's preferred
         //@return successfully get the value or not
-        bool GetFinalInfoForTextureOnPlatform(const AZStd::string& platform, AZ::u32& finalWidth, AZ::u32& finalHeight, AZ::u32 wantedReduce, AZ::u32& finalReduce, AZ::u32& finalMipCount);
+        bool GetFinalInfoForTextureOnPlatform(const AZStd::string& platform, AZ::u32 wantedReduce, ResolutionInfo& outResolutionInfo);
 
         //Refresh the mip setting when the mip map setting is enabled/disabled.
         //@return whether the mipmap is enabled or not.

@@ -788,8 +788,15 @@ namespace UnitTest
                 {
                     lock_guard<shared_mutex> lock(m_access);
                     // now we have exclusive access
-                    unsigned int currentValue = m_currentValue;                    
-                    m_currentValue = currentValue + 1;
+                    
+                    // m_currentValue must be checked within the mutex as it is possible that
+                    // the other writer thread incremented the m_currentValue to 100 between the check of
+                    // the while loop condition and the acquiring of the shared_mutex exclusive lock
+                    if (m_currentValue < 100)
+                    {
+                        unsigned int currentValue = m_currentValue;
+                        m_currentValue = currentValue + 1;
+                    }
                 }
 
                 this_thread::sleep_for(AZStd::chrono::milliseconds(10));
@@ -850,10 +857,19 @@ namespace UnitTest
 
                 EXPECT_EQ(100, m_currentValue);
                 // Check for the range of the sums as we don't guarantee adding all numbers.
-                EXPECT_TRUE(m_readSum[0] > 1000 && m_readSum[0] <= 5050);
-                EXPECT_TRUE(m_readSum[1] > 1000 && m_readSum[1] <= 5050);
-                EXPECT_TRUE(m_readSum[2] > 1000 && m_readSum[2] <= 5050);
-                EXPECT_TRUE(m_readSum[3] > 1000 && m_readSum[3] <= 5050);
+                // The minimum value the range of sums for each thread is 100.
+                // This occurs in the case where the Reader threads are all starved, while the
+                // writer threads increments the m_currentValue to 100.
+                // Afterwards the reader threads grabs the shared_mutex and reads the value of 100 from m_currentValue
+                // and then finishes the thread execution
+                EXPECT_GE(m_readSum[0], 100U);
+                EXPECT_LE(m_readSum[0], 5050U);
+                EXPECT_GE(m_readSum[1], 100U);
+                EXPECT_LE(m_readSum[1], 5050U);
+                EXPECT_GE(m_readSum[2], 100U);
+                EXPECT_LE(m_readSum[2], 5050U);
+                EXPECT_GE(m_readSum[3], 100U);
+                EXPECT_LE(m_readSum[3], 5050U);
             }
         }
     };

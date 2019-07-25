@@ -1,0 +1,7 @@
+{
+    "auto": {
+        "Source": [
+            "Source/Platform/Apple/SaveDataSystemComponent_apple.mm"
+        ]
+    }
+}

@@ -127,7 +127,7 @@ namespace AzToolsFramework
             AZ::SerializeContext* serialize = azrtti_cast<AZ::SerializeContext*>(context);
             if (serialize)
             {
-                serialize->Class<AssetEditorWidgetUserSettings, AZ::UserSettings>()
+                serialize->Class<AssetEditorWidgetUserSettings>()
                     ->Version(0)
                     ->Field("m_showPreviewMessage", &AssetEditorWidgetUserSettings::m_lastSavePath)
                     ->Field("m_snapDistance", &AssetEditorWidgetUserSettings::m_recentPaths)

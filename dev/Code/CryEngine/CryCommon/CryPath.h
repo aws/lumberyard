@@ -43,6 +43,11 @@ namespace PathUtil
         return gEnv->pCryPak->GetLocalizationFolder();
     }
 
+    inline string GetLocalizationRoot()
+    {
+        return gEnv->pCryPak->GetLocalizationRoot();
+    }
+
     //! Convert a path to the uniform form.
     inline string ToUnixPath(const string& strPath)
     {

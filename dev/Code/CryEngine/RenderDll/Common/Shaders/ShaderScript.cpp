@@ -1095,21 +1095,40 @@ void CShaderMan::RT_ParseShader(CShader* pSH, uint64 nMaskGen, uint32 flags, CSh
         {
             CRYPROFILE_SCOPE_PROFILE_MARKER("ImportShader");
 
-            bSuccess = ImportShader(pSH, m_Bin);
+            ShaderImportResults importResults = ImportShader(pSH, m_Bin);
 
-            if (!bSuccess)
+            if (importResults == SHADER_IMPORT_SUCCESS)
             {
+                bSuccess = true;
+            }
+            else
+            {
+#ifdef SHADER_SERIALIZE_VERBOSE
                 {
                     stack_string flagString;
                     CreateShaderMaskGenString(pSH, flagString);
+                    
                     CryLog("[CShaderSerialize] Failed to import shader %s (0x%p) flags: 0x%llx 0x%x (%s)\n", pSH->GetName(), pSH, pSH->m_nMaskGenFX, pSH->m_nMDV, flagString.empty() ? "0" : flagString.c_str());
                 }
+#endif
 
                 pSH->m_Flags |= EF_FAILED_IMPORT;
 
                 if (CRenderer::CV_r_shadersImport == 2)
                 {
+                    // Do not fallback to the slow path unless we have a valid permutation in our lookup table (most optimal path)
                     return;
+                }
+                else
+                {
+                    // If importResults == SHADER_IMPORT_MISSING_ENTRY, then allow the fallback path if we have a valid .fxb file 
+                    // for this shader, but the current permutation is missing from the lookup table.
+                    // This will fallback to the slow path to parse the .cfx for this shader permutation
+                    if (importResults == SHADER_IMPORT_FAILURE)
+                    {
+                        // No .fxb was exported for this .cfx, so do not fallback.
+                        return;
+                    }
                 }
             }
         }
@@ -1142,7 +1161,7 @@ void CShaderMan::RT_ParseShader(CShader* pSH, uint64 nMaskGen, uint32 flags, CSh
             }
 #endif
             bSuccess = m_Bin.ParseBinFX(pBin, pSH, nMaskGen);
-#if 0 //def SHADERS_SERIALIZING
+#ifdef SHADERS_SERIALIZING
             if (CRenderer::CV_r_shadersExport && gRenDev->IsShaderCacheGenMode())
             {
                 //Shader compilation must be enabled for export, to allow reading the token table from the fxcbs in the USER dir
@@ -1151,14 +1170,27 @@ void CShaderMan::RT_ParseShader(CShader* pSH, uint64 nMaskGen, uint32 flags, CSh
 
                 if (bSuccess)
                 {
-                    if (!CheckFXBExists(pSH))
+                    // CheckFXBExists() used to only be queried here; however, that function will create the SResource under certain
+                    // conditions if it does not exist and can erroneously cause ExportShader to not be called on the first time a shader .fxb
+                    // is created.
+                    if (!DoesSResourceExist(pSH) || !CheckFXBExists(pSH))
                     {
-                        ExportShader(pSH, m_Bin);
+                        bool shaderExported = ExportShader(pSH, m_Bin);
+#ifdef SHADER_SERIALIZE_VERBOSE
+                        if (!shaderExported)
+                        {
+                            CryLog("[CShaderSerialize] ExportShader failed for shader %s\n", pSH->GetName());
+                        }
+#else
+                        AZ_UNUSED(shaderExported);
+#endif
                     }
+#ifdef SHADER_SERIALIZE_VERBOSE
                     else
                     {
-                        printf("Not exporting shader %s, it already exists\n", pSH->GetName());
+                        CryLog("[CShaderSerialize] Not exporting shader %s, it already exists\n", pSH->GetName());
                     }
+#endif
                 }
 
                 CRenderer::CV_r_shadersAllowCompilation = oldAllowCompilation;

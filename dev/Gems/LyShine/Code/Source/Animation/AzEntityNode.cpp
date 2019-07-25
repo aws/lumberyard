@@ -468,7 +468,7 @@ const AZ::SerializeContext::ClassElement* CUiAnimAzEntityNode::ComputeOffsetFrom
             // Allow AZ::Vector2 types to be assigned Vec2 animation data and AZ::Color types
             // to be assiged AZ::Vector3 animation data
             if (((element->m_typeId == AZ::SerializeTypeInfo<AZ::Vector2>::GetUuid()) && (paramData.GetTypeId() == AZ::SerializeTypeInfo<Vec2>::GetUuid()))
-                || (element->m_typeId == AZ::SerializeTypeInfo<AZ::Color>::GetUuid()) && (paramData.GetTypeId() == AZ::SerializeTypeInfo<AZ::Vector3>::GetUuid()))
+                || ((element->m_typeId == AZ::SerializeTypeInfo<AZ::Color>::GetUuid()) && (paramData.GetTypeId() == AZ::SerializeTypeInfo<AZ::Vector3>::GetUuid())))
             {
                 mismatch = false;
             }

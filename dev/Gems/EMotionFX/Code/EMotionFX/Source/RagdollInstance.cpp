@@ -229,19 +229,12 @@ namespace EMotionFX
         if (m_ragdollRootJoint)
         {
             const AZ::Outcome<size_t> result = GetRagdollNodeIndex(m_ragdollRootJoint->GetNodeIndex());
-            if (result.IsSuccess())
-            {
-                AZ_Assert(result.GetValue() == 0, "The first node of the ragdoll is expected to be the root node.");
-                return result;
-            }
-            else
-            {
-                AZ_Assert(false, "The ragdoll node index for the root node '%s' cannot be found.", m_ragdollRootJoint->GetName());
-            }
+            AZ_Error("EMotionFX", result.IsSuccess(), "The ragdoll node index for the root node '%s' cannot be found.", m_ragdollRootJoint->GetName());
+            return result;
         }
         else
         {
-            AZ_Assert(false, "No ragdoll root joint set.");
+            AZ_Error("EMotionFX", false, "No ragdoll root joint set.");
         }
 
         return AZ::Failure();

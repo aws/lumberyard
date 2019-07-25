@@ -1,6 +1,6 @@
 <download name="GSG_09_Polishing" type="Map">
  <index src="filelist.xml" dest="filelist.xml"/>
  <files>
-  <file src="level.pak" dest="level.pak" size="1110816" md5="6ab1e33f8dcaefcd1ea2ba47a6d3c80b"/>
+  <file src="level.pak" dest="level.pak" size="1042642" md5="3e28aff9361a7d0bbc1959cc87a83170"/>
  </files>
 </download>

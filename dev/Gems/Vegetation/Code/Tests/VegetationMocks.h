@@ -28,6 +28,7 @@
 #include <SurfaceData/SurfaceDataSystemRequestBus.h>
 #include <SurfaceData/Utility/SurfaceDataUtility.h>
 #include <AzCore/Component/TransformBus.h>
+#include <AzCore/std/containers/set.h>
 #include <Source/AreaSystemComponent.h>
 #include <Source/InstanceSystemComponent.h>
 

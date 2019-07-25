@@ -248,8 +248,8 @@ struct SShaderFXParams
     std::vector<SFXParam> m_FXParams;
     std::vector<SFXSampler> m_FXSamplers;
     std::vector<SFXTexture> m_FXTextures;
+    std::vector<STexSamplerFX> m_FXSamplersOld; // Equivalent to FXTexSamplers elsewhere
 
-    std::vector<STexSamplerFX> m_FXSamplersOld;
     DynArray<SShaderParam> m_PublicParams;
 
     SShaderFXParams()

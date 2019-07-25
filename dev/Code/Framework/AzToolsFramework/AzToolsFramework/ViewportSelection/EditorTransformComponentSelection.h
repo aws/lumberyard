@@ -42,8 +42,8 @@ namespace AzToolsFramework
             AZ::Transform m_initial; /// Transform of Entity at mouse down on manipulator.
         };
 
-        AZStd::unordered_map<AZ::EntityId, Lookup> m_lookups; /**< Mapping between EntityId and the transform of the
-                                                                *  entity at the point the manipulator started adjusting it. */
+        AZStd::unordered_map<AZ::EntityId, Lookup> m_lookups; ///< Mapping between EntityId and the transform of the
+                                                              ///< entity at the point the manipulator started adjusting it.
         AZStd::unique_ptr<Manipulators> m_manipulators; ///< The manipulator aggregate currently in use.
     };
 
@@ -117,6 +117,8 @@ namespace AzToolsFramework
 
         EditorTransformComponentSelection() = default;
         explicit EditorTransformComponentSelection(const EditorVisibleEntityDataCache* entityDataCache);
+        EditorTransformComponentSelection(const EditorTransformComponentSelection&) = delete;
+        EditorTransformComponentSelection& operator=(const EditorTransformComponentSelection&) = delete;
         virtual ~EditorTransformComponentSelection();
 
         /// Register entity manipulators with the ManipulatorManager.
@@ -143,16 +145,12 @@ namespace AzToolsFramework
         void RemoveEntityFromSelection(AZ::EntityId entityId);
 
     private:
-        AZ_DISABLE_COPY_MOVE(EditorTransformComponentSelection)
-
         void CreateEntityIdManipulators();
         void CreateTranslationManipulators();
         void CreateRotationManipulators();
         void CreateScaleManipulators();
         void RegenerateManipulators();
 
-        void OverrideOrientation(const AZ::Quaternion& orientation);
-        void OverrideTranslation(const AZ::Vector3& translation);
         void ClearManipulatorTranslationOverride();
         void ClearManipulatorOrientationOverride();
         /// Handle an event triggered by the user to clear any manipulator overrides.
@@ -176,7 +174,6 @@ namespace AzToolsFramework
 
         void RefreshSelectedEntityIds();
         void RefreshSelectedEntityIds(const EntityIdList& selectedEntityIds);
-        void RefreshManipulators(RefreshType refreshType);
         void InitializeManipulators(Manipulators& manipulators);
 
         void SetupBoxSelect();
@@ -202,9 +199,13 @@ namespace AzToolsFramework
         // can be returned to its previous state after an undo/redo operation
         void CreateEntityManipulatorDeselectCommand(ScopedUndoBatch& undoBatch);
 
-        // EditorTransformComponentSelectionRequests
+        // EditorTransformComponentSelectionRequestBus
         Mode GetTransformMode() override;
         void SetTransformMode(Mode mode) override;
+        void RefreshManipulators(RefreshType refreshType) override;
+        AZStd::optional<AZ::Transform> GetManipulatorTransform() override;
+        void OverrideManipulatorOrientation(const AZ::Quaternion& orientation) override;
+        void OverrideManipulatorTranslation(const AZ::Vector3& translation) override;
 
         // EditorManipulatorCommandUndoRedoRequestBus
         void UndoRedoEntityManipulatorCommand(

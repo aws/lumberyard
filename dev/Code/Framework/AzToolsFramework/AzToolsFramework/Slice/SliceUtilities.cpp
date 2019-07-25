@@ -303,6 +303,24 @@ namespace AzToolsFramework
             * \param fullFilePath the path to save the slice entity to.
             */
             void ResaveSlice(AZStd::shared_ptr<AZ::Entity> sliceEntity, const AZStd::string& fullFilePath);
+
+            /**
+            * Analyse slice ancestry to check whether given EntityId can be safely pushed.
+            * \param entityId the entity to check push safety for.
+            * \param entitySliceAddress slice that owns this entity.
+            * \param transformAncestorSliceAddress slice that owns ancestor to check push safety against.
+            * \param sliceAncestryToPushTo Entity Instance Ancestry for slice to attempt to push to.
+            * \param unpushableEntityIdsPerAsset list of each entity that can't be pushed to each asset in the ancestry.
+            * \param newChildEntityIdAncestorPairs all new children paired with the ancestor they can be pushed to.
+            * \param rootAncestorPushList all discovered root ancestors, used to block pushes to multiple slices at once which is hard to check for cyclic dependencies.
+            */
+            void AnalyseAncestoryForPushableEntities(const AZ::EntityId& entityId,
+                AZ::SliceComponent::SliceInstanceAddress entitySliceAddress,
+                AZ::SliceComponent::SliceInstanceAddress& transformAncestorSliceAddress,
+                AZ::SliceComponent::EntityAncestorList& sliceAncestryToPushTo,
+                AZStd::unordered_map<AZ::Data::AssetId, EntityIdSet>& unpushableEntityIdsPerAsset,
+                AZStd::vector<AZStd::pair<AZ::EntityId, AZ::SliceComponent::EntityAncestorList>>& newChildEntityIdAncestorPairs,
+                AZStd::vector< AZ::Data::AssetId>& rootAncestorPushList);
         } // namespace Internal
 
         //=========================================================================
@@ -1114,11 +1132,13 @@ namespace AzToolsFramework
 
         AZStd::unordered_set<AZ::EntityId> GetPushableNewChildEntityIds(
             const AzToolsFramework::EntityIdList& entityIdList,
-            EntityIdSet& unpushableNewChildEntityIds,
+            AZStd::unordered_map<AZ::Data::AssetId, EntityIdSet>& unpushableEntityIdsPerAsset,
             AZStd::unordered_map<AZ::EntityId, AZ::SliceComponent::EntityAncestorList>& sliceAncestryMapping,
-            AZStd::vector<AZStd::pair<AZ::EntityId, AZ::SliceComponent::EntityAncestorList>>& newChildEntityIdAncestorPairs)
+            AZStd::vector<AZStd::pair<AZ::EntityId, AZ::SliceComponent::EntityAncestorList>>& newChildEntityIdAncestorPairs,
+            EntityIdSet& newEntityIds)
         {
             AZStd::unordered_set<AZ::EntityId> pushableNewChildEntityIds;
+            AZStd::vector< AZ::Data::AssetId> rootAncestorPushList;
 
             for (const AZ::EntityId& entityId : entityIdList)
             {
@@ -1162,67 +1182,20 @@ namespace AzToolsFramework
                     if (transformAncestorSliceAddress.IsValid() && transformAncestorSliceAddress != entitySliceAddress)
                     {
                         transformAncestorSliceAddress.GetReference()->GetInstanceEntityAncestry(parentId, sliceAncestryToPushTo);
-                        break;
+                        if (newEntityIds.find(entityId) == newEntityIds.end())
+                        {
+                            newEntityIds.insert(entityId);
+                        }
+                        //check each parent in the ancestry, as entity might be pushable to some but not others.
+                        Internal::AnalyseAncestoryForPushableEntities(entityId,
+                            entitySliceAddress,
+                            transformAncestorSliceAddress,
+                            sliceAncestryToPushTo,
+                            unpushableEntityIdsPerAsset,
+                            newChildEntityIdAncestorPairs,
+                            rootAncestorPushList);
                     }
                     AZ::SliceEntityHierarchyRequestBus::EventResult(parentId, parentId, &AZ::SliceEntityHierarchyRequestBus::Events::GetSliceEntityParentId);
-                }
-
-                // No slice ancestry found in any selected transform ancestors, so we don't have any slice to push
-                // this entity to - skip it
-                if (sliceAncestryToPushTo.empty())
-                {
-                    continue;
-                }
-
-                if (entitySliceAddress.IsValid())
-                {
-                    // This is an entity that already belongs to a slice, need to verify it's a valid add
-                    if (entitySliceAddress == transformAncestorSliceAddress)
-                    {
-                        // Entity shares slice instance address with transform ancestor, so it doesn't need to be added - it's already there!
-                        continue;
-                    }
-
-                    if (!SliceUtilities::CheckSliceAdditionCyclicDependencySafe(entitySliceAddress, transformAncestorSliceAddress))
-                    {
-                        // Adding this entity's slice instance to the target slice would create a cyclic asset dependency which is strictly not allowed
-                        unpushableNewChildEntityIds.insert(entityId);
-                    }
-                    else
-                    {
-                        // Otherwise, this is a slice-owned entity that we want to push.
-                        // At this point we have verified that it'd be safe to push to the immediate slice instance,
-                        // but in the PushWidget the user will have the option of pushing to any slice asset
-                        // in the sliceAncestryToPushTo. We need to check each ancestry entry and cull out any
-                        // pushes that would result in cyclic asset dependencies.
-                        // Example: Slice1 contains Slice2. I have a separate instance of Slice2, call it Slice2b. 
-                        // It is valid to push Slice2b to Slice1, since Slice1 would then have two instances of Slice2.
-                        // But it would be invalid to push the addition of Slice2b to Slice2, since then Slice2 would
-                        // reference itself.
-                        for (auto ancestorIt = sliceAncestryToPushTo.begin(); ancestorIt != sliceAncestryToPushTo.end(); ++ancestorIt)
-                        {
-                            const AZ::SliceComponent::SliceInstanceAddress& targetInstanceAddress = ancestorIt->m_sliceAddress;
-                            if (!SliceUtilities::CheckSliceAdditionCyclicDependencySafe(entitySliceAddress, targetInstanceAddress))
-                            {
-                                // Once you find one invalid ancestor, all the rest will be as well
-                                sliceAncestryToPushTo.erase(ancestorIt, sliceAncestryToPushTo.end());
-                                break;
-                            }
-                        }
-                        newChildEntityIdAncestorPairs.emplace_back(entityId, AZStd::move(sliceAncestryToPushTo));
-
-                        // keep track of the entities in slice instances that are being added since we do not want to show
-                        // changes to these entities in the push dialog, any local changes will be pushed to the slice that
-                        // the add is being pushed to
-                        pushableNewChildEntityIds.insert(entityId);
-                    }
-
-                    continue;
-                }
-                else
-                {
-                    // This is an entity that doesn't belong to a slice yet, consider it for addition
-                    newChildEntityIdAncestorPairs.emplace_back(entityId, AZStd::move(sliceAncestryToPushTo));
                 }
             }
 
@@ -2718,11 +2691,13 @@ namespace AzToolsFramework
             AZStd::unordered_set<AZ::EntityId>& entitiesToAdd,
             AZStd::unordered_set<AZ::EntityId>& entitiesToRemove,
             size_t& numRelevantEntitiesInSlices,
-            AZStd::unordered_map<AZ::Data::AssetId, int>& pushableChangesPerAsset,
+            AZStd::unordered_map<AZ::Data::AssetId, int>& numPushableChangesPerAsset,
             AZStd::vector<AZ::Data::AssetId>& sliceDisplayOrder,
             AZStd::unordered_map<AZ::Data::AssetId, AZStd::vector<EntityAncestorPair>>& assetEntityAncestorMap,
-            EntityIdSet& unpushableEntityIds)
+            AZStd::unordered_map<AZ::Data::AssetId, EntityIdSet>& unpushableEntityIdsPerAsset)
         {
+            bool haveNewOrDeletedEntities = false;
+
             AZ::SerializeContext* serializeContext = nullptr;
             AZ::ComponentApplicationBus::BroadcastResult(serializeContext, &AZ::ComponentApplicationBus::Events::GetSerializeContext);
             if (!serializeContext)
@@ -2734,12 +2709,12 @@ namespace AzToolsFramework
             numRelevantEntitiesInSlices = 0;
             AZStd::unordered_map<AZ::EntityId, AZ::SliceComponent::EntityAncestorList> sliceAncestryMapping;
             AZStd::vector<AZStd::pair<AZ::EntityId, AZ::SliceComponent::EntityAncestorList>> newChildEntityIdAncestorPairs;
-            AZStd::unordered_set<AZ::EntityId> pushableNewChildEntityIds = GetPushableNewChildEntityIds(inputEntities, unpushableEntityIds, sliceAncestryMapping, newChildEntityIdAncestorPairs);
 
-            for (const AZStd::pair<AZ::EntityId, AZ::SliceComponent::EntityAncestorList>& newChildEntityIdAncestorPair : newChildEntityIdAncestorPairs)
-            {
-                entitiesToAdd.insert(newChildEntityIdAncestorPair.first);
-            }
+            AZStd::unordered_set<AZ::EntityId> pushableNewChildEntityIds = GetPushableNewChildEntityIds(inputEntities, 
+                unpushableEntityIdsPerAsset, 
+                sliceAncestryMapping, 
+                newChildEntityIdAncestorPairs, 
+                entitiesToAdd);
 
             AZStd::vector<AZ::SliceComponent::SliceInstanceAddress> sliceInstances;
             for (AZ::EntityId entityId : inputEntities)
@@ -2760,6 +2735,8 @@ namespace AzToolsFramework
             IdToInstanceAddressMapping assetEntityIdtoInstanceAddressMapping;
             entitiesToRemove = GetUniqueRemovedEntities(sliceInstances, assetEntityIdtoAssetEntityMapping, assetEntityIdtoInstanceAddressMapping);
 
+            haveNewOrDeletedEntities = !entitiesToRemove.empty() || !entitiesToAdd.empty();
+
             AZ::SliceComponent::EntityAncestorList tempAncestors;
 
             for (AZ::EntityId entityId : inputEntities)
@@ -2770,13 +2747,6 @@ namespace AzToolsFramework
                 if (sliceAddress.IsValid())
                 {
                     if (entitiesToAdd.find(entityId) != entitiesToAdd.end())
-                    {
-                        continue;
-                    }
-
-                    // Any entities that are unpushable don't need any further processing beyond gathering
-                    // their slice instance (used in detecting entity removals)
-                    if (unpushableEntityIds.find(entityId) != unpushableEntityIds.end())
                     {
                         continue;
                     }
@@ -2806,16 +2776,15 @@ namespace AzToolsFramework
                 }
             }
 
-
             bool pushableChangesAvailable = Internal::CalculatePushableChangesPerAsset(
-                pushableChangesPerAsset,
+                numPushableChangesPerAsset,
                 *serializeContext,
                 sliceDisplayOrder,
                 assetEntityAncestorMap,
                 numRelevantEntitiesInSlices,
                 fieldAddress);
 
-            return pushableChangesAvailable;
+            return pushableChangesAvailable || haveNewOrDeletedEntities;
         }
 
         void CreateSliceAssetContextMenu(QMenu* menu, const AZStd::string& fullFilePath)
@@ -3455,17 +3424,18 @@ namespace AzToolsFramework
 
                 AZStd::unordered_map<AZ::Data::AssetId, AZStd::vector<EntityAncestorPair>> assetEntityAncestorMap;
                 AZStd::vector<AZ::Data::AssetId> sliceDisplayOrder;
-                AZStd::unordered_map<AZ::Data::AssetId, int> pushableChangesPerAsset;
-                EntityIdSet unpushableEntityIds;
+                AZStd::unordered_map<AZ::Data::AssetId, int> numPushableChangesPerAsset;
+                AZStd::unordered_map<AZ::Data::AssetId, EntityIdSet> pushableEntityIdsPerAsset;
+                AZStd::unordered_map<AZ::Data::AssetId, EntityIdSet> unpushableEntityIdsPerAsset;
                 bool pushableChangesAvailable = CountPushableChangesToSlice(inputEntities,
                     fieldAddress,
                     entitiesToAdd,
                     entitiesToRemove,
                     numRelevantEntitiesInSlices,
-                    pushableChangesPerAsset,
+                    numPushableChangesPerAsset,
                     sliceDisplayOrder,
                     assetEntityAncestorMap,
-                    unpushableEntityIds);
+                    unpushableEntityIdsPerAsset);
 
                 AZ::Data::AssetManager& assetManager = AZ::Data::AssetManager::Instance();
                 AZStd::string sliceAssetPath, sliceAssetName;
@@ -3476,6 +3446,7 @@ namespace AzToolsFramework
                 // Any asset that acts as a valid target for all selected slice-instance-owned entities can be shown.
                 QMenu* quickPushMenu = quickPushMenu = new QMenu(parent);
 
+                bool setupMenu = false;
                 if (pushableChangesAvailable)
                 {
                     AZ::u32 indentation = 0;
@@ -3525,9 +3496,20 @@ namespace AzToolsFramework
                         // Limit the number of entities for which we're willing to compute differences against target
                         // slices, as doing so with large selections could induce significant context menu lag.
                         // If we exceed the limit, we simply don't show a preview of # of differences.
-                        AZ::u32 totalDifferences = pushableChangesPerAsset[sliceAssetId];;
+                        AZ::u32 totalDifferences = 0;
 
-                        bool hasUnpushableSliceEntityAdditions = unpushableEntityIds.size() > 0;
+                        if (numPushableChangesPerAsset.find(sliceAssetId) != numPushableChangesPerAsset.end())
+                        {
+                            totalDifferences += numPushableChangesPerAsset[sliceAssetId];
+                        }
+                        
+
+                        AZ::u32 numUnpushableSliceEntityAdditions = 0;
+
+                        if (unpushableEntityIdsPerAsset.find(sliceAssetId) != unpushableEntityIdsPerAsset.end())
+                        {
+                            numUnpushableSliceEntityAdditions += static_cast<AZ::u32>(unpushableEntityIdsPerAsset[sliceAssetId].size());
+                        }
 
                         // Each quick push option UI is a collection of up to four separate widgets:
                         // [indentation by depth] [icon] [slice name] [# overrides]
@@ -3590,10 +3572,10 @@ namespace AzToolsFramework
                             overridesText = overridesText != "" ? (overridesText + QString("<font color=\"%1\"> | </font>").arg(splitterColor)) : overridesText;
                             overridesText += QString("<i>%1 updated</i>").arg(totalDifferences);
                         }
-                        if (hasUnpushableSliceEntityAdditions)
+                        if (numUnpushableSliceEntityAdditions > 0)
                         {
                             overridesText = overridesText != "" ? (overridesText + QString("<font color=\"%1\"> | </font>").arg(splitterColor)) : overridesText;
-                            overridesText += QString("<font color=\"%1\"><i>%2 unsavable</i></font>").arg(unsavableChangesTextColor).arg(static_cast<int>(unpushableEntityIds.size()));
+                            overridesText += QString("<font color=\"%1\"><i>%2 unsavable</i></font>").arg(unsavableChangesTextColor).arg(numUnpushableSliceEntityAdditions);
                         }
 
                         if (overridesText != "")
@@ -3625,6 +3607,7 @@ namespace AzToolsFramework
                         }
 
                         quickPushMenu->addAction(widgetAction);
+                        setupMenu = true;
 
                         ++indentation;
 
@@ -3636,21 +3619,40 @@ namespace AzToolsFramework
                                 pushFieldAddress = *fieldAddress;
                             }
 
-                            QObject::connect(widgetAction, &QAction::triggered,
-                                [sliceAsset, entityAncestors, entitiesToAdd, entitiesToRemove, pushFieldAddress, inputEntities, hasUnpushableSliceEntityAdditions]
+                            // prune the entity addition list, removing entities we can't push
+                            EntityIdSet unpushableIds;
+                            if (unpushableEntityIdsPerAsset.find(sliceAsset.GetId()) != unpushableEntityIdsPerAsset.end())
                             {
-                                Internal::QuickPushToSlice(sliceAsset, entityAncestors, entitiesToAdd, entitiesToRemove, pushFieldAddress, inputEntities);
+                                unpushableIds = unpushableEntityIdsPerAsset[sliceAsset.GetId()];
+                            }
+                            AZStd::unordered_set<AZ::EntityId> pushableEntitiesToAdd;
+                            for (AZ::EntityId id : entitiesToAdd)
+                            {
+                                if (unpushableIds.find(id) == unpushableIds.end())
+                                {
+                                    pushableEntitiesToAdd.insert(id);
+                                }
+                            }
+                            
+
+                            QObject::connect(widgetAction, &QAction::triggered,
+                                [sliceAsset, entityAncestors, pushableEntitiesToAdd, entitiesToRemove, pushFieldAddress, inputEntities, numUnpushableSliceEntityAdditions]
+                            {
+                                Internal::QuickPushToSlice(sliceAsset, entityAncestors, pushableEntitiesToAdd, entitiesToRemove, pushFieldAddress, inputEntities);
+
                                 bool showCircularDependencyError = true;
                                 AzToolsFramework::EditorRequests::Bus::BroadcastResult(showCircularDependencyError, &AzToolsFramework::EditorRequests::GetShowCircularDependencyError);
 
-                                if (hasUnpushableSliceEntityAdditions && showCircularDependencyError)
+                                if (numUnpushableSliceEntityAdditions > 0 && showCircularDependencyError)
                                 {
                                     QWidget* mainWindow = nullptr;
                                     EditorRequests::Bus::BroadcastResult(mainWindow, &EditorRequests::Bus::Events::GetMainWindow);
                                     
                                     QMessageBox* messageBox = new QMessageBox(QMessageBox::NoIcon,
-                                    QObject::tr("Circular dependency detected"),
-                                    QObject::tr("A slice cannot contain an instance of itself. Circular dependencies cannot be saved to this slice. All other valid overrides have been saved."),
+                                    QObject::tr("Potential circular dependency detected"),
+                                    QObject::tr("Potential invalid additions detected. These are unsaveable because slices cannot contain instances of themselves. "
+                                        "Saving these additions could potentially create a cyclic asset dependency, causing infinite recursion. Please push "
+                                        "individual additions of slice-owned entities separately. All other valid overrides have been saved."),
                                     QMessageBox::NoButton,
                                     mainWindow);
 
@@ -3669,7 +3671,9 @@ namespace AzToolsFramework
 
                     } // for each unique target asset
                 }
-                else
+                
+
+                if (!setupMenu)
                 {
                     // Add a menu item to let the user know that a quick save is not available.
                     // This is built in the same way as the quick push rows, to make it look similar.
@@ -4061,6 +4065,97 @@ namespace AzToolsFramework
                         QMessageBox::Ok, QMessageBox::Ok);
                 }
             }
+
+            void AnalyseAncestoryForPushableEntities(const AZ::EntityId& entityId,
+                AZ::SliceComponent::SliceInstanceAddress entitySliceAddress,
+                AZ::SliceComponent::SliceInstanceAddress& transformAncestorSliceAddress,
+                AZ::SliceComponent::EntityAncestorList& sliceAncestryToPushTo,
+                AZStd::unordered_map<AZ::Data::AssetId, EntityIdSet>& unpushableEntityIdsPerAsset,
+                AZStd::vector<AZStd::pair<AZ::EntityId, AZ::SliceComponent::EntityAncestorList>>& newChildEntityIdAncestorPairs,
+                AZStd::vector< AZ::Data::AssetId>& rootAncestorPushList)
+            {
+                if (entitySliceAddress.IsValid())
+                {
+                    if (!sliceAncestryToPushTo.empty())
+                    {
+                        // trivial reject, don't allow pushes to multiple slices at once due to complexity in cyclic dependency check.
+                        if (!sliceAncestryToPushTo.empty())
+                        {
+                            AZ::Data::AssetId rootAssetId = sliceAncestryToPushTo.back().m_sliceAddress.GetReference()->GetSliceAsset().GetId();
+
+                            for (AZ::Data::AssetId pushAncestor : rootAncestorPushList)
+                            {
+                                if (pushAncestor != rootAssetId)
+                                {
+                                    // Pushing addition of multiple slice-owned entities is currently disabled due to 
+                                    // the complexity of detecting cycles in slice hierarchy.
+                                    EntityIdSet* unpushableEntityIds = &unpushableEntityIdsPerAsset[rootAssetId];
+                                    if (AZStd::find(unpushableEntityIds->begin(), unpushableEntityIds->end(), entityId) == unpushableEntityIds->end())
+                                    {
+                                        unpushableEntityIds->insert(entityId);
+                                    }
+
+                                    // this entity can't be pushed to this ancestry, no further checking to do
+                                    return;
+                                }
+                            }
+                        }
+                    }
+
+                    // This is an entity that already belongs to a slice, need to verify it's a valid add
+                    if (entitySliceAddress == transformAncestorSliceAddress)
+                    {
+                        // Entity shares slice instance address with transform ancestor, so it doesn't need to be added - it's already there!
+                        return;
+                    }
+
+                    // Otherwise, this is a slice-owned entity that we want to push.
+                    // At this point we have verified that it'd be safe to push to the immediate slice instance,
+                    // but in the PushWidget the user will have the option of pushing to any slice asset
+                    // in the sliceAncestryToPushTo. We need to check each ancestry entry and cull out any
+                    // pushes that would result in cyclic asset dependencies.
+                    // Example: Slice1 contains Slice2. I have a separate instance of Slice2, call it Slice2b. 
+                    // It is valid to push Slice2b to Slice1, since Slice1 would then have two instances of Slice2.
+                    // But it would be invalid to push the addition of Slice2b to Slice2, since then Slice2 would
+                    // reference itself.
+
+                    bool canPush = false;
+                    for (auto ancestorIt = sliceAncestryToPushTo.begin(); ancestorIt != sliceAncestryToPushTo.end(); ++ancestorIt)
+                    {
+                        const AZ::SliceComponent::SliceInstanceAddress& targetInstanceAddress = ancestorIt->m_sliceAddress;
+                        if (SliceUtilities::CheckSliceAdditionCyclicDependencySafe(entitySliceAddress, targetInstanceAddress))
+                        {
+                            canPush = true;
+                            
+                            newChildEntityIdAncestorPairs.emplace_back(entityId, sliceAncestryToPushTo);
+                        }
+                        else
+                        {
+                            //remember that this entity is unpushble to this slice asset
+                            EntityIdSet* unpushableEntityIds = &unpushableEntityIdsPerAsset[targetInstanceAddress.GetReference()->GetSliceAsset().GetId()];
+                            if (AZStd::find(unpushableEntityIds->begin(), unpushableEntityIds->end(), entityId) == unpushableEntityIds->end())
+                            {
+                                unpushableEntityIds->insert(entityId);
+                            }
+                            break;// Once you find one invalid ancestor, all the rest will be as well
+                        }                    
+                    }
+
+                    if (canPush)
+                    {
+                        AZ::Data::AssetId targetSliceAssetId = sliceAncestryToPushTo.at(0).m_sliceAddress.GetReference()->GetSliceAsset().GetId();
+
+                        //remember we're trying to push to this root, so we don't try to push to any others
+                        size_t ancestrySize = sliceAncestryToPushTo.size();
+                        rootAncestorPushList.push_back(sliceAncestryToPushTo[ancestrySize-1].m_sliceAddress.GetReference()->GetSliceAsset().GetId());
+                    }
+                }
+                else
+                {
+                    // This is an entity that doesn't belong to a slice yet, consider it for addition
+                    newChildEntityIdAncestorPairs.emplace_back(entityId, AZStd::move(sliceAncestryToPushTo));
+                }
+            }
         } // namespace Internal
 
         void SliceUserSettings::Reflect(AZ::ReflectContext* context)
@@ -4068,7 +4163,7 @@ namespace AzToolsFramework
             AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
             if (serializeContext)
             {
-                serializeContext->Class<SliceUserSettings, AZ::UserSettings>()
+                serializeContext->Class<SliceUserSettings>()
                     ->Version(1)
                     ->Field("m_saveLocation", &SliceUserSettings::m_saveLocation)
                     ->Field("m_autoNumber", &SliceUserSettings::m_autoNumber);

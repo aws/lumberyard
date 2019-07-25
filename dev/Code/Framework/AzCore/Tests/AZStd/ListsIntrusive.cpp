@@ -437,8 +437,8 @@ namespace UnitTest
 
         // repopulate and remove in reverse order
         myclass_base_list.assign(myclassArray.begin(), myclassArray.end());
-        myclass_base_list_type::const_reverse_iterator rit = myclass_base_list.rbegin();
-        while (rit != myclass_base_list.rend())
+        myclass_base_list_type::const_reverse_iterator rit = myclass_base_list.crbegin();
+        while (rit != myclass_base_list.crend())
         {
             myclass_base_list.erase(*(rit++));
         }
@@ -962,5 +962,43 @@ namespace UnitTest
         myclass_base_list2.clear();
         myclass_member_list.clear();
         myclass_member_list2.clear();
-    }     
+    }
+
+    TEST(IntrusiveListContainers, ReverseIterator)
+    {
+        using myclass_base_list_type = intrusive_list<MyListClass, list_base_hook<MyListClass> >;
+
+        // A static array of MyClass, init with default ctor. Used as source for some of the tests.
+        constexpr size_t arraySize = 20;
+        array<MyListClass, arraySize> myclassArray;
+        myclass_base_list_type      myclass_base_list;
+
+        FillArray(myclassArray);
+
+        myclass_base_list.assign(myclassArray.begin(), myclassArray.end());
+
+        // iterate in reverse order
+        auto myClassReverseBeginIt = myclass_base_list.crbegin();
+        auto myClassReverseEndIt = myclass_base_list.crend();
+        EXPECT_NE(myClassReverseEndIt, myClassReverseBeginIt);
+        // Reverse iterator must be decremented that in order the base() iterator call
+        // to return an iterator to a valid element
+        ++myClassReverseBeginIt;
+        size_t reverseArrayIndex = arraySize - 1;
+        for (; myClassReverseBeginIt != myClassReverseEndIt; ++myClassReverseBeginIt, --reverseArrayIndex)
+        {
+            EXPECT_EQ(reverseArrayIndex * 100 + 101, myClassReverseBeginIt.base()->m_data);
+        }
+        // The crend() element base() call should refer to the first element of the array which
+        // should have a value of 101 + arrayIndex * 100, where arrayIndex is 0.
+        EXPECT_EQ(101, myClassReverseBeginIt.base()->m_data);
+
+        {
+            // Test empty intrusive_list container case
+            myclass_base_list.clear();
+            auto reverseIterBegin = myclass_base_list.rbegin();
+            auto reverseIterEnd = myclass_base_list.rend();
+            EXPECT_EQ(reverseIterEnd, reverseIterEnd);
+        }
+    }
 }

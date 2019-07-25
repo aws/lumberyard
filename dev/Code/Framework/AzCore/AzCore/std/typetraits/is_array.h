@@ -27,6 +27,9 @@ namespace AZStd
     AZSTD_TYPE_TRAIT_BOOL_PARTIAL_SPEC1_1(typename T, is_array, T const[], true)
     AZSTD_TYPE_TRAIT_BOOL_PARTIAL_SPEC1_1(typename T, is_array, T volatile[], true)
     AZSTD_TYPE_TRAIT_BOOL_PARTIAL_SPEC1_1(typename T, is_array, T const volatile[], true)
+
+    template<typename T>
+    constexpr bool is_array_v = is_array<T>::value;
 }
 
 #endif // AZSTD_TYPE_TRAITS_IS_ARRAY_INCLUDED

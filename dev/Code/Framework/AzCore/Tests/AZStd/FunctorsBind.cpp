@@ -969,13 +969,13 @@ namespace UnitTest
 
             int const k = 3;
 
-            AZ_TEST_ASSERT(bind(type<short>(), Y(), ref(i))() == 7);
-            AZ_TEST_ASSERT(bind(type<short>(), Y(), ref(i))() == 8);
-            AZ_TEST_ASSERT(bind(type<int>(), Y(), i, _1)(k) == 38);
-            AZ_TEST_ASSERT(bind(type<long>(), Y(), i, _1, 9)(k) == 938);
+            AZ_TEST_ASSERT(bind<short>(Y(), ref(i))() == 7);
+            AZ_TEST_ASSERT(bind<short>(Y(), ref(i))() == 8);
+            AZ_TEST_ASSERT(bind<int>(Y(), i, _1)(k) == 38);
+            AZ_TEST_ASSERT(bind<long>(Y(), i, _1, 9)(k) == 938);
 
             global_result = 0;
-            bind(type<void>(), Y(), i, _1, 9, 4)(k);
+            bind<void>( Y(), i, _1, 9, 4)(k);
             AZ_TEST_ASSERT(global_result == 4938);
         }
 
@@ -1445,5 +1445,31 @@ namespace UnitTest
         EXPECT_TRUE(AZStd::bind(lambda)());
 
         EXPECT_EQ(5, AZStd::bind([](int shouldBe5) { return shouldBe5; }, 5)());
+    }
+
+    inline double FuncDoubleSelector(double select)
+    {
+        return select * 2.0;
+    }
+
+    inline double FuncWithMultiArgs(int32_t x, int16_t y, double z, AZStd::string&& strValue, AZStd::reference_wrapper<uint64_t>& refTimeStamp)
+    {
+        char* strEnd;
+        int64_t timeStamp{ static_cast<int64_t>(strtoll(strValue.data(), &strEnd, 10)) };
+        double resultTimeStamp = static_cast<double>(timeStamp + x + y + static_cast<int64_t>(z));
+        refTimeStamp.get() = timeStamp;
+        return static_cast<double>(resultTimeStamp);
+    }
+
+    TEST_F(Bind, NestedBind_Success)
+    {
+        auto nestedFunc = AZStd::bind(&FuncWithMultiArgs, AZStd::placeholders::_1, static_cast<int16_t>(16), AZStd::bind(&FuncDoubleSelector, AZStd::placeholders::_3), "512", AZStd::placeholders::_2);
+        uint64_t timeStamp = 128;
+        AZStd::reference_wrapper<uint64_t> refTimeStamp(timeStamp);
+        double result = nestedFunc(32, refTimeStamp, 64.0);
+        EXPECT_EQ(512, timeStamp);
+        
+        constexpr double expectedResult = static_cast<double>(32 + 16 + 128.0 + 512);
+        EXPECT_DOUBLE_EQ(expectedResult, result);
     }
 }

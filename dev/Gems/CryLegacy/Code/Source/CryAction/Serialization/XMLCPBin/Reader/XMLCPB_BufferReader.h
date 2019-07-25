@@ -52,7 +52,6 @@ namespace XMLCPB {
             memcpy(pDst, GetPointer(srcAddr), bytesToCopy);
         }
 
-        void ReadFromFile(CReader& Reader, IPlatformOS::ISaveReaderPtr& pOSSaveReader, uint32 readSize);
         void ReadFromMemory(CReader& Reader, const uint8* pData, uint32 dataSize, uint32 readSize, uint32& outReadLoc);
 
     private:

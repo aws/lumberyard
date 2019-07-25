@@ -589,6 +589,35 @@ namespace AZ
             static bool Check(AZStd::vector<BehaviorParameter>& source);
         };
 
+        
+        template<class FunctionType>
+        struct BehaviorOnDemandReflectHelper;
+        template<class R, class... Args>
+        struct BehaviorOnDemandReflectHelper<R(*)(Args...)>
+        {
+            static void QueueReflect(OnDemandReflectionOwner* onDemandReflection)
+            {
+                if (onDemandReflection)
+                {
+                    static constexpr size_t c_functionParameterAndReturnSize = sizeof...(Args) + 1;
+                    // deal with OnDemand reflection
+                    AZ::Uuid argumentTypes[c_functionParameterAndReturnSize] = { AzTypeInfo<R>::Uuid(), (AzTypeInfo<Args>::Uuid())... };
+                    StaticReflectionFunctionPtr reflectHooks[c_functionParameterAndReturnSize] = { OnDemandReflectHook<AZStd::remove_pointer_t<AZStd::decay_t<R>>>::Get(),
+                        (OnDemandReflectHook<AZStd::remove_pointer_t<AZStd::decay_t<Args>>>::Get())... };
+                    for (size_t i = 0; i < c_functionParameterAndReturnSize; ++i)
+                    {
+                        if (reflectHooks[i])
+                        {
+                            onDemandReflection->AddReflectFunction(argumentTypes[i], reflectHooks[i]);
+                        }
+                    }
+                }
+            }
+        };
+
+        template<class... Functions>
+        void OnDemandReflectFunctions(OnDemandReflectionOwner* onDemandReflection, AZStd::Internal::pack_traits_arg_sequence<Functions...>);
+
         template<class T>
         struct BahaviorDefaultFactory
         {
@@ -889,6 +918,17 @@ namespace AZ
     };
 
     /**
+     * RAII class which keeps track of functions reflected to the BehaviorContext 
+     * when it is supplied as an OnDemandReflectionOwner
+     */
+    class ScopedBehaviorOnDemandReflector
+        : public OnDemandReflectionOwner
+    {
+    public:
+        ScopedBehaviorOnDemandReflector(BehaviorContext& behaviorContext);
+    };
+
+    /**
      * EBus behavior wrapper.
      */
     class BehaviorEBus
@@ -925,6 +965,8 @@ namespace AZ
         AZStd::unordered_map<AZStd::string, BehaviorEBusEventSender> m_events;
         AZStd::unordered_map<AZStd::string, VirtualProperty> m_virtualProperties;
         AttributeArray m_attributes;
+
+        AZStd::unique_ptr<ScopedBehaviorOnDemandReflector> m_ebusHandlerOnDemandReflector; /// Keep track of OnDemandReflections for EBusHandler functions
     };
 
     enum eBehaviorBusForwarderEventIndices
@@ -1419,7 +1461,7 @@ namespace AZ
             * applicable or you have a better pooling schema that our memory allocators already have). For most cases use the function \ref
             * Handler()
             */
-            template<typename HandlerCreator, typename HandlerDestructor >
+            template<typename HandlerType, typename HandlerCreator, typename HandlerDestructor>
             EBusBuilder* Handler(HandlerCreator creator, HandlerDestructor destructor);
 
             /** Set the Handler/Receiver for ebus evens that will be forwarded to BehaviorFunctions. This is a helper implementation where aznew/delete
@@ -1624,6 +1666,7 @@ namespace AZ
     AZ_CLASS_ALLOCATOR(_Handler,_Allocator,0)\
     AZ_RTTI(_Handler,_Uuid,AZ::BehaviorEBusHandler)\
     typedef _Handler ThisType;\
+    using EventFunctionsParameterPack = AZStd::Internal::pack_traits_arg_sequence<AZ_BEHAVIOR_EBUS_EVENT_FUNCTION_UNPACKER(AZ_BEHAVIOR_EBUS_EVENT_FUNCTION_TYPE, __VA_ARGS__)>;\
     enum {\
         AZ_SEQ_FOR_EACH(AZ_BEHAVIOR_EBUS_FUNC_ENUM, AZ_EBUS_SEQ(__VA_ARGS__))\
         FN_MAX\
@@ -1633,7 +1676,7 @@ namespace AZ
         return -1;\
     }\
     void Disconnect() override {\
-        BusDisconnect();\
+        _Handler::BusDisconnect();\
     }\
     _Handler(){\
         m_events.resize(FN_MAX);\
@@ -1653,6 +1696,7 @@ namespace AZ
     AZ_CLASS_ALLOCATOR(_Handler,_Allocator,0)\
     AZ_RTTI(_TemplateUuid, AZ::BehaviorEBusHandler)\
     typedef _Handler ThisType;\
+    using EventFunctionsParameterPack = AZStd::Internal::pack_traits_arg_sequence<AZ_BEHAVIOR_EBUS_EVENT_FUNCTION_UNPACKER(AZ_BEHAVIOR_EBUS_EVENT_FUNCTION_TYPE, __VA_ARGS__)>;\
     enum {\
         AZ_SEQ_FOR_EACH(AZ_BEHAVIOR_EBUS_FUNC_ENUM, AZ_EBUS_SEQ(__VA_ARGS__))\
         FN_MAX\
@@ -1662,7 +1706,7 @@ namespace AZ
         return -1;\
     }\
     void Disconnect() override {\
-        BusDisconnect();\
+        _Handler::BusDisconnect();\
     }\
     _Handler(){\
         m_events.resize(FN_MAX);\
@@ -1718,6 +1762,7 @@ namespace AZ
     AZ_CLASS_ALLOCATOR(_Handler,_Allocator,0)\
     AZ_RTTI(_Handler,_Uuid,AZ::BehaviorEBusHandler)\
     typedef _Handler ThisType;\
+    using EventFunctionsParameterPack = AZStd::Internal::pack_traits_arg_sequence<AZ_BEHAVIOR_EBUS_EVENT_FUNCTION_UNPACKER(AZ_BEHAVIOR_EBUS_EVENT_FUNCTION_TYPE, __VA_ARGS__)>;\
     enum {\
         AZ_BEHAVIOR_EBUS_MACRO_CALLER(AZ_BEHAVIOR_EBUS_FUNC_ENUM, __VA_ARGS__)\
         FN_MAX\
@@ -1795,7 +1840,6 @@ namespace AZ
 #define AZ_BEHAVIOR_EBUS_REG_EVENT(name)             AZ_BEHAVIOR_EBUS_REG_EVENT_I(name);
 #define AZ_BEHAVIOR_EBUS_REG_EVENT_I(name)           SetEvent(&ThisType::name,#name);
 
-
 #define AZ_BEHAVIOR_EBUS_FUNC_ENUM_WITH_DOC(name, args)             AZ_BEHAVIOR_EBUS_FUNC_ENUM_I(name),
 
 #define AZ_BEHAVIOR_EBUS_FUNC_INDEX_WITH_DOC(name, args)             AZ_BEHAVIOR_EBUS_FUNC_INDEX_I(name);
@@ -1804,10 +1848,8 @@ namespace AZ
 #define AZ_BEHAVIOR_EBUS_REG_EVENT_WITH_DOC_1(name, args)           SetEvent(&ThisType::name, #name, {{AZ_BEHAVIOR_REMOVE_PARENTHESIS(args)}});
 
 // Macro Helpers
-#define AZ_BEHAVIOR_EXPAND(...)  __VA_ARGS__ 
-#define AZ_BEHAVIOR_EXTRACT(...) AZ_INTERNAL_EXTRACT __VA_ARGS__
+#define AZ_BEHAVIOR_EXPAND(...)  __VA_ARGS__
 #define AZ_BEHAVIOR_NOTHING_AZ_INTERNAL_EXTRACT
-#define AZ_BEHAVIOR_PASTE(_x, ...)  _x ## __VA_ARGS__
 #define AZ_BEHAVIOR_EVALUATING_PASTE(_x, ...) AZ_INTERNAL_PASTE(_x, __VA_ARGS__)
 #define AZ_BEHAVIOR_REMOVE_PARENTHESIS(_x) AZ_INTERNAL_EVALUATING_PASTE(AZ_INTERNAL_NOTHING_, AZ_INTERNAL_EXTRACT _x)
 
@@ -1828,6 +1870,59 @@ namespace AZ
 #define AZ_BEHAVIOR_EBUS_MACRO_CALLER_20(macro, name, args, ...) AZ_BEHAVIOR_EBUS_MACRO_INVOKE(macro, name, args) AZ_BEHAVIOR_EXPAND(AZ_BEHAVIOR_EBUS_MACRO_CALLER_NEXT(__VA_ARGS__) (macro, __VA_ARGS__))
 
 #define AZ_BEHAVIOR_EBUS_MACRO_CALLER(macro, ...) AZ_BEHAVIOR_EXPAND(AZ_BEHAVIOR_EBUS_MACRO_CALLER_NEXT(__VA_ARGS__) (macro, __VA_ARGS__))
+
+// Supports Handler functions with up to 20 parameters
+#define AZ_BEHAVIOR_EBUS_EVENT_FUNCTION_UNPACKER_0(macro)
+#define AZ_BEHAVIOR_EBUS_EVENT_FUNCTION_UNPACKER_1(macro, name) macro(name)
+#define AZ_BEHAVIOR_EBUS_EVENT_FUNCTION_UNPACKER_2(macro, name, ...) macro(name),  AZ_BEHAVIOR_EXPAND(AZ_BEHAVIOR_EBUS_EVENT_FUNCTION_NEXT(__VA_ARGS__) (macro, __VA_ARGS__))
+#define AZ_BEHAVIOR_EBUS_EVENT_FUNCTION_UNPACKER_3(macro, name, ...) macro(name),  AZ_BEHAVIOR_EXPAND(AZ_BEHAVIOR_EBUS_EVENT_FUNCTION_NEXT(__VA_ARGS__) (macro, __VA_ARGS__))
+#define AZ_BEHAVIOR_EBUS_EVENT_FUNCTION_UNPACKER_4(macro, name, ...) macro(name),  AZ_BEHAVIOR_EXPAND(AZ_BEHAVIOR_EBUS_EVENT_FUNCTION_NEXT(__VA_ARGS__) (macro, __VA_ARGS__))
+#define AZ_BEHAVIOR_EBUS_EVENT_FUNCTION_UNPACKER_5(macro, name, ...) macro(name),  AZ_BEHAVIOR_EXPAND(AZ_BEHAVIOR_EBUS_EVENT_FUNCTION_NEXT(__VA_ARGS__) (macro, __VA_ARGS__))
+#define AZ_BEHAVIOR_EBUS_EVENT_FUNCTION_UNPACKER_6(macro, name, ...) macro(name),  AZ_BEHAVIOR_EXPAND(AZ_BEHAVIOR_EBUS_EVENT_FUNCTION_NEXT(__VA_ARGS__) (macro, __VA_ARGS__))
+#define AZ_BEHAVIOR_EBUS_EVENT_FUNCTION_UNPACKER_7(macro, name, ...) macro(name),  AZ_BEHAVIOR_EXPAND(AZ_BEHAVIOR_EBUS_EVENT_FUNCTION_NEXT(__VA_ARGS__) (macro, __VA_ARGS__))
+#define AZ_BEHAVIOR_EBUS_EVENT_FUNCTION_UNPACKER_8(macro, name, ...) macro(name),  AZ_BEHAVIOR_EXPAND(AZ_BEHAVIOR_EBUS_EVENT_FUNCTION_NEXT(__VA_ARGS__) (macro, __VA_ARGS__))
+#define AZ_BEHAVIOR_EBUS_EVENT_FUNCTION_UNPACKER_9(macro, name, ...) macro(name),  AZ_BEHAVIOR_EXPAND(AZ_BEHAVIOR_EBUS_EVENT_FUNCTION_NEXT(__VA_ARGS__) (macro, __VA_ARGS__))
+#define AZ_BEHAVIOR_EBUS_EVENT_FUNCTION_UNPACKER_10(macro, name, ...) macro(name), AZ_BEHAVIOR_EXPAND(AZ_BEHAVIOR_EBUS_EVENT_FUNCTION_NEXT(__VA_ARGS__) (macro, __VA_ARGS__))
+#define AZ_BEHAVIOR_EBUS_EVENT_FUNCTION_UNPACKER_11(macro, name, ...) macro(name), AZ_BEHAVIOR_EXPAND(AZ_BEHAVIOR_EBUS_EVENT_FUNCTION_NEXT(__VA_ARGS__) (macro, __VA_ARGS__))
+#define AZ_BEHAVIOR_EBUS_EVENT_FUNCTION_UNPACKER_12(macro, name, ...) macro(name),  AZ_BEHAVIOR_EXPAND(AZ_BEHAVIOR_EBUS_EVENT_FUNCTION_NEXT(__VA_ARGS__) (macro, __VA_ARGS__))
+#define AZ_BEHAVIOR_EBUS_EVENT_FUNCTION_UNPACKER_13(macro, name, ...) macro(name),  AZ_BEHAVIOR_EXPAND(AZ_BEHAVIOR_EBUS_EVENT_FUNCTION_NEXT(__VA_ARGS__) (macro, __VA_ARGS__))
+#define AZ_BEHAVIOR_EBUS_EVENT_FUNCTION_UNPACKER_14(macro, name, ...) macro(name),  AZ_BEHAVIOR_EXPAND(AZ_BEHAVIOR_EBUS_EVENT_FUNCTION_NEXT(__VA_ARGS__) (macro, __VA_ARGS__))
+#define AZ_BEHAVIOR_EBUS_EVENT_FUNCTION_UNPACKER_15(macro, name, ...) macro(name),  AZ_BEHAVIOR_EXPAND(AZ_BEHAVIOR_EBUS_EVENT_FUNCTION_NEXT(__VA_ARGS__) (macro, __VA_ARGS__))
+#define AZ_BEHAVIOR_EBUS_EVENT_FUNCTION_UNPACKER_16(macro, name, ...) macro(name),  AZ_BEHAVIOR_EXPAND(AZ_BEHAVIOR_EBUS_EVENT_FUNCTION_NEXT(__VA_ARGS__) (macro, __VA_ARGS__))
+#define AZ_BEHAVIOR_EBUS_EVENT_FUNCTION_UNPACKER_17(macro, name, ...) macro(name),  AZ_BEHAVIOR_EXPAND(AZ_BEHAVIOR_EBUS_EVENT_FUNCTION_NEXT(__VA_ARGS__) (macro, __VA_ARGS__))
+#define AZ_BEHAVIOR_EBUS_EVENT_FUNCTION_UNPACKER_18(macro, name, ...) macro(name),  AZ_BEHAVIOR_EXPAND(AZ_BEHAVIOR_EBUS_EVENT_FUNCTION_NEXT(__VA_ARGS__) (macro, __VA_ARGS__))
+#define AZ_BEHAVIOR_EBUS_EVENT_FUNCTION_UNPACKER_19(macro, name, ...) macro(name),  AZ_BEHAVIOR_EXPAND(AZ_BEHAVIOR_EBUS_EVENT_FUNCTION_NEXT(__VA_ARGS__) (macro, __VA_ARGS__))
+#define AZ_BEHAVIOR_EBUS_EVENT_FUNCTION_UNPACKER_20(macro, name, ...) macro(name), AZ_BEHAVIOR_EXPAND(AZ_BEHAVIOR_EBUS_EVENT_FUNCTION_NEXT(__VA_ARGS__) (macro, __VA_ARGS__))
+#define AZ_BEHAVIOR_EBUS_EVENT_FUNCTION_UNPACKER_21(macro, name, ...) macro(name), AZ_BEHAVIOR_EXPAND(AZ_BEHAVIOR_EBUS_EVENT_FUNCTION_NEXT(__VA_ARGS__) (macro, __VA_ARGS__))
+#define AZ_BEHAVIOR_EBUS_EVENT_FUNCTION_UNPACKER_22(macro, name, ...) macro(name),  AZ_BEHAVIOR_EXPAND(AZ_BEHAVIOR_EBUS_EVENT_FUNCTION_NEXT(__VA_ARGS__) (macro, __VA_ARGS__))
+#define AZ_BEHAVIOR_EBUS_EVENT_FUNCTION_UNPACKER_23(macro, name, ...) macro(name),  AZ_BEHAVIOR_EXPAND(AZ_BEHAVIOR_EBUS_EVENT_FUNCTION_NEXT(__VA_ARGS__) (macro, __VA_ARGS__))
+#define AZ_BEHAVIOR_EBUS_EVENT_FUNCTION_UNPACKER_24(macro, name, ...) macro(name),  AZ_BEHAVIOR_EXPAND(AZ_BEHAVIOR_EBUS_EVENT_FUNCTION_NEXT(__VA_ARGS__) (macro, __VA_ARGS__))
+#define AZ_BEHAVIOR_EBUS_EVENT_FUNCTION_UNPACKER_25(macro, name, ...) macro(name),  AZ_BEHAVIOR_EXPAND(AZ_BEHAVIOR_EBUS_EVENT_FUNCTION_NEXT(__VA_ARGS__) (macro, __VA_ARGS__))
+#define AZ_BEHAVIOR_EBUS_EVENT_FUNCTION_UNPACKER_26(macro, name, ...) macro(name),  AZ_BEHAVIOR_EXPAND(AZ_BEHAVIOR_EBUS_EVENT_FUNCTION_NEXT(__VA_ARGS__) (macro, __VA_ARGS__))
+#define AZ_BEHAVIOR_EBUS_EVENT_FUNCTION_UNPACKER_27(macro, name, ...) macro(name),  AZ_BEHAVIOR_EXPAND(AZ_BEHAVIOR_EBUS_EVENT_FUNCTION_NEXT(__VA_ARGS__) (macro, __VA_ARGS__))
+#define AZ_BEHAVIOR_EBUS_EVENT_FUNCTION_UNPACKER_28(macro, name, ...) macro(name),  AZ_BEHAVIOR_EXPAND(AZ_BEHAVIOR_EBUS_EVENT_FUNCTION_NEXT(__VA_ARGS__) (macro, __VA_ARGS__))
+#define AZ_BEHAVIOR_EBUS_EVENT_FUNCTION_UNPACKER_29(macro, name, ...) macro(name),  AZ_BEHAVIOR_EXPAND(AZ_BEHAVIOR_EBUS_EVENT_FUNCTION_NEXT(__VA_ARGS__) (macro, __VA_ARGS__))
+#define AZ_BEHAVIOR_EBUS_EVENT_FUNCTION_UNPACKER_30(macro, name, ...) macro(name), AZ_BEHAVIOR_EXPAND(AZ_BEHAVIOR_EBUS_EVENT_FUNCTION_NEXT(__VA_ARGS__) (macro, __VA_ARGS__))
+#define AZ_BEHAVIOR_EBUS_EVENT_FUNCTION_UNPACKER_31(macro, name, ...) macro(name), AZ_BEHAVIOR_EXPAND(AZ_BEHAVIOR_EBUS_EVENT_FUNCTION_NEXT(__VA_ARGS__) (macro, __VA_ARGS__))
+#define AZ_BEHAVIOR_EBUS_EVENT_FUNCTION_UNPACKER_32(macro, name, ...) macro(name),  AZ_BEHAVIOR_EXPAND(AZ_BEHAVIOR_EBUS_EVENT_FUNCTION_NEXT(__VA_ARGS__) (macro, __VA_ARGS__))
+#define AZ_BEHAVIOR_EBUS_EVENT_FUNCTION_UNPACKER_33(macro, name, ...) macro(name),  AZ_BEHAVIOR_EXPAND(AZ_BEHAVIOR_EBUS_EVENT_FUNCTION_NEXT(__VA_ARGS__) (macro, __VA_ARGS__))
+#define AZ_BEHAVIOR_EBUS_EVENT_FUNCTION_UNPACKER_34(macro, name, ...) macro(name),  AZ_BEHAVIOR_EXPAND(AZ_BEHAVIOR_EBUS_EVENT_FUNCTION_NEXT(__VA_ARGS__) (macro, __VA_ARGS__))
+#define AZ_BEHAVIOR_EBUS_EVENT_FUNCTION_UNPACKER_35(macro, name, ...) macro(name),  AZ_BEHAVIOR_EXPAND(AZ_BEHAVIOR_EBUS_EVENT_FUNCTION_NEXT(__VA_ARGS__) (macro, __VA_ARGS__))
+#define AZ_BEHAVIOR_EBUS_EVENT_FUNCTION_UNPACKER_36(macro, name, ...) macro(name),  AZ_BEHAVIOR_EXPAND(AZ_BEHAVIOR_EBUS_EVENT_FUNCTION_NEXT(__VA_ARGS__) (macro, __VA_ARGS__))
+#define AZ_BEHAVIOR_EBUS_EVENT_FUNCTION_UNPACKER_37(macro, name, ...) macro(name),  AZ_BEHAVIOR_EXPAND(AZ_BEHAVIOR_EBUS_EVENT_FUNCTION_NEXT(__VA_ARGS__) (macro, __VA_ARGS__))
+#define AZ_BEHAVIOR_EBUS_EVENT_FUNCTION_UNPACKER_38(macro, name, ...) macro(name),  AZ_BEHAVIOR_EXPAND(AZ_BEHAVIOR_EBUS_EVENT_FUNCTION_NEXT(__VA_ARGS__) (macro, __VA_ARGS__))
+#define AZ_BEHAVIOR_EBUS_EVENT_FUNCTION_UNPACKER_39(macro, name, ...) macro(name),  AZ_BEHAVIOR_EXPAND(AZ_BEHAVIOR_EBUS_EVENT_FUNCTION_NEXT(__VA_ARGS__) (macro, __VA_ARGS__))
+#define AZ_BEHAVIOR_EBUS_EVENT_FUNCTION_UNPACKER_40(macro, name, ...) macro(name), AZ_BEHAVIOR_EXPAND(AZ_BEHAVIOR_EBUS_EVENT_FUNCTION_NEXT(__VA_ARGS__) (macro, __VA_ARGS__))
+
+#define AZ_BEHAVIOR_EBUS_EVENT_FUNCTION_NEXT(...) AZ_SEQ_JOIN(AZ_BEHAVIOR_EBUS_EVENT_FUNCTION_UNPACKER_, AZ_VA_NUM_ARGS(__VA_ARGS__))
+#define AZ_BEHAVIOR_EBUS_EVENT_FUNCTION_UNPACKER(macro, ...) AZ_BEHAVIOR_EXPAND(AZ_BEHAVIOR_EBUS_EVENT_FUNCTION_NEXT(__VA_ARGS__) (macro, __VA_ARGS__))
+
+#define AZ_BEHAVIOR_EBUS_EVENT_FUNCTION_TYPE(memberName) AZ_BEHAVIOR_EBUS_EVENT_FUNCTION_TYPE_I(memberName)
+#if defined(AZ_COMPILER_MSVC) && AZ_COMPILER_MSVC <= 1900
+    #define AZ_BEHAVIOR_EBUS_EVENT_FUNCTION_TYPE_I(memberName) decltype(&memberName)
+#else
+    #define AZ_BEHAVIOR_EBUS_EVENT_FUNCTION_TYPE_I(memberName) decltype(&ThisType::memberName)
+#endif
 
     //////////////////////////////////////////////////////////////////////////
     //////////////////////////////////////////////////////////////////////////
@@ -3257,7 +3352,7 @@ namespace AZ
 
     //////////////////////////////////////////////////////////////////////////
     template<class Bus>
-    template<typename HandlerCreator, typename HandlerDestructor >
+    template<typename HandlerType, typename HandlerCreator, typename HandlerDestructor >
     BehaviorContext::EBusBuilder<Bus>* BehaviorContext::EBusBuilder<Bus>::Handler(HandlerCreator creator, HandlerDestructor destructor)
     {
         if (m_ebus)
@@ -3266,6 +3361,9 @@ namespace AZ
 
             BehaviorMethod* createHandler = aznew Internal::BehaviorMethodImpl<typename AZStd::remove_pointer<HandlerCreator>::type>(creator, Base::m_context, m_ebus->m_name + "::CreateHandler");
             BehaviorMethod* destroyHandler = aznew Internal::BehaviorMethodImpl<typename AZStd::remove_pointer<HandlerDestructor>::type>(destructor, Base::m_context, m_ebus->m_name + "::DestroyHandler");
+            // OnDemandReflect the types in all the handler Event functions
+            m_ebus->m_ebusHandlerOnDemandReflector = AZStd::make_unique<ScopedBehaviorOnDemandReflector>(*Base::m_context);
+            Internal::OnDemandReflectFunctions(m_ebus->m_ebusHandlerOnDemandReflector.get(), typename HandlerType::EventFunctionsParameterPack{});
 
             // check than the handler returns the expected type
             if (createHandler->GetResult()->m_typeId != AzTypeInfo<BehaviorEBusHandler>::Uuid() || destroyHandler->GetArgument(0)->m_typeId != AzTypeInfo<BehaviorEBusHandler>::Uuid())
@@ -3292,7 +3390,7 @@ namespace AZ
     template<class H>
     BehaviorContext::EBusBuilder<Bus>* BehaviorContext::EBusBuilder<Bus>::Handler()
     {
-        Handler(&AZ::Internal::BehaviorEBusHandlerFactory<H>::Create, &AZ::Internal::BehaviorEBusHandlerFactory<H>::Destroy);
+        Handler<H>(&AZ::Internal::BehaviorEBusHandlerFactory<H>::Create, &AZ::Internal::BehaviorEBusHandlerFactory<H>::Destroy);
         return this;
     }
 
@@ -3378,12 +3476,19 @@ namespace AZ
             static size_t Get() { return 0; }
         };
 
+        template<class... Functions>
+        inline void OnDemandReflectFunctions(OnDemandReflectionOwner* onDemandReflection, AZStd::Internal::pack_traits_arg_sequence<Functions...>)
+        {
+            using PackExpander = bool[];
+            PackExpander{ true, (BehaviorOnDemandReflectHelper<typename AZStd::function_traits<Functions>::raw_fp_type>::QueueReflect(onDemandReflection), true)... };
+        }
+
         // Assumes parameters array is big enough to store all parameters
         template<class... Args>
         inline void SetParametersStripped(BehaviorParameter* parameters, OnDemandReflectionOwner* onDemandReflection)
         {
             // +1 to avoid zero array size
-            Uuid argumentTypes[sizeof...(Args)+1] = { AzTypeInfo<Args>::Uuid()... };
+            Uuid argumentTypes[sizeof...(Args)+1] = { AzTypeInfo<AZStd::remove_pointer_t<AZStd::remove_cvref_t<Args>>>::Uuid()... };
             const char* argumentNames[sizeof...(Args)+1] = { AzTypeInfo<Args>::Name()... };
             bool argumentIsPointer[sizeof...(Args)+1] = { AZStd::is_pointer<typename AZStd::remove_reference<Args>::type>::value... };
             bool argumentIsConst[sizeof...(Args)+1] = { AZStd::is_const<typename AZStd::remove_pointer<Args>::type>::value... };

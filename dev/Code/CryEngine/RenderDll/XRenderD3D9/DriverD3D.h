@@ -1006,6 +1006,7 @@ public:
     // Multithreading support
     virtual void RT_BeginFrame();
     virtual void RT_EndFrame();
+    virtual void RT_EndFrame(bool isLoading);
     virtual void RT_ForceSwapBuffers();
     virtual void RT_SwitchToNativeResolutionBackbuffer(bool resolveBackBuffer);
     virtual void RT_Init();
@@ -1992,7 +1993,6 @@ public:
 
     void EF_OnDemandVertexDeclaration(SOnDemandD3DVertexDeclaration& out, const int nStreamMask, const AZ::Vertex::Format& vertexformat, const bool bMorph, const bool bInstanced);
 
-    void AddVertexFormatToRenderPipeline(const AZ::Vertex::Format& vertexFormat);
     void EF_InitD3DVertexDeclarations();
     void EF_SetCameraInfo();
     void FX_SetObjectTransform(CRenderObject* obj, CShader* pSH, int nTransFlags);
@@ -2208,11 +2208,12 @@ public:
 #endif
     }
 
-    virtual void LogShaderImportMiss(const CShader* pShader);
-
 #ifdef SUPPORT_HW_MOUSE_CURSOR
     virtual IHWMouseCursor* GetIHWMouseCursor();
 #endif
+
+    virtual void StartLoadtimePlayback(ILoadtimeCallback* pCallback);
+    virtual void StopLoadtimePlayback();
 
 private:
     void OnRendererFreeResources(int flags) override;

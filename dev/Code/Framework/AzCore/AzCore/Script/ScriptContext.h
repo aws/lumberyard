@@ -226,7 +226,7 @@ namespace AZ
         /// Push argument for the script call.
         template<class T>
         void    PushArg(const T& value);
-	    template<class Arg, class... Args>
+        template<class Arg, class... Args>
         void    PushArgs(Arg& value, Args&&... args);
         
         void    PushArgs() {}
@@ -616,7 +616,7 @@ namespace AZ
     // Script data context
 
     template<class T>
-    inline bool	ScriptDataContext::IsClass(int index) const
+    inline bool ScriptDataContext::IsClass(int index) const
     {
         return Internal::LuaIsClass(m_nativeContext, m_startVariableIndex + index, &AzTypeInfo<T>::Uuid());
     }
@@ -867,7 +867,7 @@ namespace AZ
         template<class T>
         void AddReplace(int cacheIndex, const T& value);
 
-        int	CacheGlobal(const char* name);
+        int CacheGlobal(const char* name);
         /// Release any cached resource (global or local)
         void ReleaseCached(int cacheIndex);
         bool Call(const char* functionName, ScriptDataContext& dc);

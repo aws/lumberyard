@@ -32,7 +32,7 @@ IAllocator::IAllocator()
 //=========================================================================
 IAllocator::~IAllocator()
 {
-    if (!AllocatorManager::Instance().m_isAllocatorLeaking)
+    if (AllocatorManager::IsReady() && !AllocatorManager::Instance().m_isAllocatorLeaking)
     {
         AZ_Assert(!m_isReady, "You forgot to destroy an allocator!");
     }
@@ -67,7 +67,7 @@ IAllocator::OnDestroy()
 bool
 IAllocator::OnOutOfMemory(size_type byteSize, size_type alignment, int flags, const char* name, const char* fileName, int lineNum)
 {
-    if (AllocatorManager::Instance().m_outOfMemoryListener)
+    if (AllocatorManager::IsReady() && AllocatorManager::Instance().m_outOfMemoryListener)
     {
         AllocatorManager::Instance().m_outOfMemoryListener(this, byteSize, alignment, flags, name, fileName, lineNum);
         return true;

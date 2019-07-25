@@ -58,7 +58,7 @@
 #include "CryStructPack.cpp"
 #include "IResourceCompilerHelper.cpp"
 
-#if defined(LINUX) || defined(APPLE)
+#if defined(LINUX) || defined(APPLE) || ( defined(AZ_RESTRICTED_PLATFORM) && defined(AZ_PLATFORM_PROVO))
     #include "WinBase.cpp"
 #endif
 

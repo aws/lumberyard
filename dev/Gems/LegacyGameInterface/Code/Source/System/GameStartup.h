@@ -13,7 +13,6 @@
 
 #include <IGameFramework.h>
 #include <IWindowMessageHandler.h>
-#include <IPlatformOS.h>
 
 namespace LegacyGameInterface
 {

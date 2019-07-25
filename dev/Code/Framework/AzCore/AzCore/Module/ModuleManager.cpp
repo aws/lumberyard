@@ -206,7 +206,11 @@ namespace AZ
             moduleHandlesOpen += modulePtr->GetDebugName();
             moduleHandlesOpen += "\n";
         }
-        AZ_Assert(m_notOwnedModules.empty(), "ModuleManager being destroyed, but module handles are still open:\n%s", moduleHandlesOpen.c_str());
+
+        if (!m_notOwnedModules.empty())
+        {
+            AZ_TracePrintf(s_moduleLoggingScope, "ModuleManager being destroyed, but non-owned module handles are still open:\n%s", moduleHandlesOpen.c_str());
+        }
 #endif // AZ_ENABLE_TRACING
 
         // Clear the weak modules list

@@ -25,10 +25,21 @@ namespace CommandSystem
         const AZStd::optional<AZStd::string>& contents, const AZStd::optional<size_t>& insertAt,
         MCore::CommandGroup* commandGroup, bool executeInsideCommand)
     {
+        AddTransitionAction(transition->GetAnimGraph()->GetID(), transition->GetId().ToString().c_str(),
+            actionType, contents, insertAt,
+            commandGroup, executeInsideCommand);
+    }
+
+    void AddTransitionAction(AZ::u32 animGraphId, const char* transitionIdString, const AZ::TypeId& actionType,
+        const AZStd::optional<AZStd::string>& contents, const AZStd::optional<size_t>& insertAt,
+        MCore::CommandGroup* commandGroup, bool executeInsideCommand)
+    {
         AZStd::string command = AZStd::string::format("%s -%s %d -%s %s -actionType \"%s\"",
             CommandAnimGraphAddTransitionAction::s_commandName,
-            EMotionFX::ParameterMixinAnimGraphId::s_parameterName, transition->GetAnimGraph()->GetID(),
-            EMotionFX::ParameterMixinTransitionId::s_parameterName, transition->GetId().ToString().c_str(),
+            EMotionFX::ParameterMixinAnimGraphId::s_parameterName,
+            animGraphId,
+            EMotionFX::ParameterMixinTransitionId::s_parameterName,
+            transitionIdString,
             actionType.ToString<AZStd::string>().c_str());
 
         if (insertAt)
@@ -71,25 +82,18 @@ namespace CommandSystem
 
         EMotionFX::TriggerActionSetup& actionSetup = transition->GetTriggerActionSetup();
 
-        // get the action object
         const AZ::Outcome<AZStd::string> actionTypeString = parameters.GetValueIfExists("actionType", this);
         const AZ::TypeId actionType = actionTypeString.IsSuccess() ? AZ::TypeId::CreateString(actionTypeString.GetValue().c_str()) : AZ::TypeId::CreateNull();
-        EMotionFX::AnimGraphObject* actionObject = nullptr;
-        if (!actionType.IsNull())
+
+        EMotionFX::AnimGraphObject* newActionObject = EMotionFX::AnimGraphObjectFactory::Create(actionType, animGraph);
+        if (!newActionObject)
         {
-            actionObject = EMotionFX::AnimGraphObjectFactory::Create(actionType);
-        }
-        if (!actionObject)
-        {
-            outResult = AZStd::string::format("Action object invalid. The given transition type is either invalid or no object has been registered with type %s.", actionType.ToString<AZStd::string>().c_str());
+            outResult = AZStd::string::format("Action object invalid. The given action type is either invalid or no object has been registered with type %s.", actionType.ToString<AZStd::string>().c_str());
             return false;
         }
 
-        MCORE_ASSERT(azrtti_istypeof<EMotionFX::AnimGraphTriggerAction>(actionObject));
-
-        // clone the action
-        EMotionFX::AnimGraphObject*             newActionObject = EMotionFX::AnimGraphObjectFactory::Create(azrtti_typeid(actionObject), animGraph);
-        EMotionFX::AnimGraphTriggerAction*      newAction = static_cast<EMotionFX::AnimGraphTriggerAction*>(newActionObject);
+        AZ_Assert(azrtti_istypeof<EMotionFX::AnimGraphTriggerAction>(newActionObject), "Action object must be a trigger action.");
+        EMotionFX::AnimGraphTriggerAction* newAction = static_cast<EMotionFX::AnimGraphTriggerAction*>(newActionObject);
 
         // Deserialize the contents directly, else we might be overwriting things in the end.
         if (parameters.CheckIfHasParameter("contents"))
@@ -238,15 +242,15 @@ namespace CommandSystem
         MCORE_ASSERT(actionIndex < actionSetup.GetNumActions());
         EMotionFX::AnimGraphTriggerAction* action = actionSetup.GetAction(actionIndex);
 
-        // remove all unique datas for the action
-        animGraph->RemoveAllObjectData(action, true);
-
         // store information for undo
         m_oldActionType = azrtti_typeid(action);
         m_oldActionIndex = actionIndex;
         m_oldContents = MCore::ReflectionSerializer::Serialize(action).GetValue();
 
-        // remove the transition action
+        // 1. Remove the unique data of the action for all anim graph instances.
+        animGraph->RemoveAllObjectData(action, true);
+
+        // 2. Remove the action object from the anim graph.
         actionSetup.RemoveAction(actionIndex);
 
         // save the current dirty flag and tell the anim graph that something got changed
@@ -360,26 +364,18 @@ namespace CommandSystem
 
         EMotionFX::TriggerActionSetup& actionSetup = node->GetTriggerActionSetup();
 
-        // get the action object
         const AZ::Outcome<AZStd::string> actionTypeString = parameters.GetValueIfExists("actionType", this);
         const AZ::TypeId actionType = actionTypeString.IsSuccess() ? AZ::TypeId::CreateString(actionTypeString.GetValue().c_str()) : AZ::TypeId::CreateNull();
-        EMotionFX::AnimGraphObject* actionObject = nullptr;
-        if (!actionType.IsNull())
-        {
-            actionObject = EMotionFX::AnimGraphObjectFactory::Create(actionType);
-        }
-        if (!actionObject)
+
+        EMotionFX::AnimGraphObject* newActionObject = EMotionFX::AnimGraphObjectFactory::Create(actionType, animGraph);
+        if (!newActionObject)
         {
             outResult = AZStd::string::format("Action object invalid. The given action type is either invalid or no object has been registered with type %s.", actionType.ToString<AZStd::string>().c_str());
             return false;
         }
 
-        
-        AZ_Assert(azrtti_istypeof<EMotionFX::AnimGraphTriggerAction>(actionObject), "Action object must be a trigger action.");
-
-        // clone the action
-        EMotionFX::AnimGraphObject*             newActionObject  = EMotionFX::AnimGraphObjectFactory::Create(azrtti_typeid(actionObject), animGraph);
-        EMotionFX::AnimGraphTriggerAction*      newAction        = static_cast<EMotionFX::AnimGraphTriggerAction*>(newActionObject);
+        AZ_Assert(azrtti_istypeof<EMotionFX::AnimGraphTriggerAction>(newActionObject), "Action object must be a trigger action.");
+        EMotionFX::AnimGraphTriggerAction* newAction = static_cast<EMotionFX::AnimGraphTriggerAction*>(newActionObject);
 
         // Deserialize the contents directly, else we might be overwriting things in the end.
         if (parameters.CheckIfHasParameter("contents"))
@@ -453,9 +449,6 @@ namespace CommandSystem
 
         // get the trigger action
         EMotionFX::AnimGraphTriggerAction* action = node->GetTriggerActionSetup().GetAction(m_oldActionIndex);
-
-        // remove all unique datas for the action
-        animGraph->RemoveAllObjectData(action, true);
 
         // store the attributes string for redo
         m_oldContents = MCore::ReflectionSerializer::Serialize(action).GetValue();
@@ -548,7 +541,10 @@ namespace CommandSystem
         m_oldActionIndex  = actionIndex;
         m_oldContents     = MCore::ReflectionSerializer::Serialize(action).GetValue();
 
-        // remove the state action
+        // 1. Remove the unique data of the action for all anim graph instances.
+        animGraph->RemoveAllObjectData(action, true);
+
+        // 2. Remove the action object from the anim graph.
         actionSetup.RemoveAction(actionIndex);
 
         // save the current dirty flag and tell the anim graph that something got changed

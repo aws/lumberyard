@@ -46,6 +46,7 @@ namespace AzFramework
     class InputDeviceMouseWin : public InputDeviceMouse::Implementation
                               , public RawInputNotificationBusWin::Handler
     {
+        ////////////////////////////////////////////////////////////////////////////////////////////
         //! Count of the number instances of this class that have been created
         static int s_instanceCount;
 

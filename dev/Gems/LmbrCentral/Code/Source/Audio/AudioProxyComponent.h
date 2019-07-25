@@ -54,7 +54,7 @@ namespace LmbrCentral
         bool ExecuteSourceTrigger(
             const Audio::TAudioControlID triggerID,
             const Audio::SAudioCallBackInfos& callbackInfo,
-            const Audio::TAudioControlID& sourceId
+            const Audio::SAudioSourceInfo& sourceInfo
         ) override;
 
         bool ExecuteTrigger(

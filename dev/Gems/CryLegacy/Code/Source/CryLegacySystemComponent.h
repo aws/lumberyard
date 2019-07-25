@@ -18,7 +18,6 @@
 
 #include <IGameFramework.h>
 #include <IWindowMessageHandler.h>
-#include <IPlatformOS.h>
 #include <IInput.h>
 #include <IAISystem.h>
 #include <ICryAnimation.h>
@@ -77,7 +76,7 @@ namespace CryLegacy
         ////////////////////////////////////////////////////////////////////////
         // CryLegacyAnimationRequests interface implementation
         bool InitCharacterManager(const SSystemInitParams& initParams) override;
-        void ShutdownCharacterManager(ICharacterManager* characterManager) override;
+        void ShutdownCharacterManager() override;
         ////////////////////////////////////////////////////////////////////////
 
         ////////////////////////////////////////////////////////////////////////

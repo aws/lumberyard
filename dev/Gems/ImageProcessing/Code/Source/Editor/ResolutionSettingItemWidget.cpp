@@ -70,7 +70,17 @@ namespace ImageProcessingEditor
         it = AZStd::next(it, clampedReduce);
         m_ui->downResSpinBox->setValue(it->reduce);
 
-        QString finalResolution = QString("%1 x %2").arg(QString::number((*it).width), QString::number((*it).height));
+        QString finalResolution;
+
+        if (it->arrayCount > 1)
+        {
+            finalResolution = QString("%1 x %2 x %3").arg(QString::number(it->width), QString::number(it->height), QString::number(it->arrayCount));
+        }
+        else
+        {
+            finalResolution = QString("%1 x %2").arg(QString::number(it->width), QString::number(it->height));
+        }
+
         m_ui->sizeLabel->setText(finalResolution);
 
         QString finalFormat = GetFinalFormat(m_textureSetting->m_preset);

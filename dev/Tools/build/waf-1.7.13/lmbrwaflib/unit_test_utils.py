@@ -10,9 +10,15 @@
 #
 
 
+from waflib import Errors
+
 from utils import calculate_string_hash, is_value_true
 
+import unit_test
 import pytest
+
+import os
+import stat
 
 @pytest.mark.parametrize(
     "input, expected", [
@@ -61,3 +67,43 @@ def test_ConvertStringToBoolean_InvalidInput_Exception(input_value):
     with pytest.raises(ValueError):
         is_value_true(input_value)
 
+
+@pytest.fixture
+def mock_ctx_for_util(tmpdir):
+    ctx = unit_test.FakeContext(str(tmpdir.realpath()), generate_engine_json=False)
+    return ctx
+
+
+def test_NodeDelete_NotFileOrDir_Success(tmpdir, mock_ctx_for_util):
+    
+    test_node = mock_ctx_for_util.srcnode.make_node('to_delete.json')
+    test_node.delete()
+
+
+@pytest.mark.parametrize(
+    "is_dir, is_dir_children, make_read_only", [
+        pytest.param(False, False, False, id="DeleteNormalFile"),
+        pytest.param(False, False, True, id="DeleteReadOnlyNormalFile"),
+        pytest.param(True, False, False, id="DeleteNormalEmptyDir"),
+        pytest.param(True, False, True, id="DeleteReadOnlyEmptyDir"),
+        pytest.param(True, True, False, id="DeleteNormalDir"),
+        pytest.param(True, True, True, id="DeleteReadOnlyDir")
+    ]
+)
+def test_NodeDelete_FileOrDir(tmpdir, mock_ctx_for_util, is_dir, is_dir_children, make_read_only):
+    
+    tmpdir.ensure('dev', dir=True)
+    if is_dir:
+        tmpdir.ensure('dev/to_delete', dir=True)
+        if is_dir_children:
+            tmpdir.join('dev/to_delete/fake.json').write("foo")
+        if make_read_only:
+            os.chmod(str(tmpdir.join('dev/to_delete').realpath()), stat.S_IREAD)
+        test_node = mock_ctx_for_util.srcnode.make_node('to_delete')
+    else:
+        tmpdir.join('dev/to_delete.json').write("foo")
+        if make_read_only:
+            os.chmod(str(tmpdir.join('dev/to_delete.json').realpath()), stat.S_IREAD)
+        test_node = mock_ctx_for_util.srcnode.make_node('to_delete.json')
+        
+    test_node.delete()

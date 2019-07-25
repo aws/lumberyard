@@ -501,12 +501,12 @@ namespace AssetProcessor
 
         // regardless of which way we come into this function we must always use ConvertToRelativePath
         // to convert from whatever the input format is to a database path (which may include output prefix)
-        QString relativeName; 
+        QString databaseName; 
         QString scanFolder;
         if (!AzFramework::StringFunc::Path::IsRelative(sourcePath))
         {
             // absolute paths just get converted directly.
-            m_platformConfig->ConvertToRelativePath(QString::fromUtf8(sourcePath), relativeName, scanFolder);
+            m_platformConfig->ConvertToRelativePath(QString::fromUtf8(sourcePath), databaseName, scanFolder);
         }
         else
         {
@@ -514,11 +514,11 @@ namespace AssetProcessor
             QString absolutePath = m_platformConfig->FindFirstMatchingFile(QString::fromUtf8(sourcePath));
             if (!absolutePath.isEmpty())
             {
-                m_platformConfig->ConvertToRelativePath(absolutePath, relativeName, scanFolder);
+                m_platformConfig->ConvertToRelativePath(absolutePath, databaseName, scanFolder);
             }
         }
 
-        if ((relativeName.isEmpty()) || (scanFolder.isEmpty()))
+        if ((databaseName.isEmpty()) || (scanFolder.isEmpty()))
         {
             assetInfo.m_assetId.SetInvalid();
             return false;
@@ -533,7 +533,7 @@ namespace AssetProcessor
             AZStd::lock_guard<AZStd::mutex> lock(m_databaseMutex);
             AzToolsFramework::AssetDatabase::SourceDatabaseEntryContainer returnedSources;
 
-            if (m_db->GetSourcesBySourceName(relativeName, returnedSources))
+            if (m_db->GetSourcesBySourceName(databaseName, returnedSources))
             {
                 if (!returnedSources.empty())
                 {
@@ -581,7 +581,14 @@ namespace AssetProcessor
         }
 
         // Source file isn't in the database yet, see if its in the job queue
-        return GetQueuedAssetInfoByRelativeSourceName(relativeName.toUtf8().data(), assetInfo, watchFolder);
+        if (GetQueuedAssetInfoByRelativeSourceName(databaseName.toUtf8().data(), assetInfo, watchFolder))
+        {
+            return true;
+        }
+
+        // Source file isn't in the job queue yet, source UUID needs to be created
+        watchFolder = scanFolder.toUtf8().data();
+        return GetUncachedSourceInfoFromDatabaseNameAndWatchFolder(databaseName.toUtf8().data(), watchFolder.c_str(), assetInfo);
     }
 
     bool AssetCatalog::GetSourceInfoBySourceUUID(const AZ::Uuid& sourceUuid, AZ::Data::AssetInfo& assetInfo, AZStd::string& watchFolder)
@@ -1165,6 +1172,58 @@ namespace AssetProcessor
         assetInfo.m_assetId.SetInvalid();
 
         return false;
+    }
+
+    bool AssetCatalog::GetUncachedSourceInfoFromDatabaseNameAndWatchFolder(const char* sourceDatabaseName, const char* watchFolder, AZ::Data::AssetInfo& assetInfo)
+    {
+        AZ::Uuid sourceUUID = AssetUtilities::CreateSafeSourceUUIDFromName(sourceDatabaseName);
+        if (sourceUUID.IsNull())
+        {
+            return false;
+        }
+
+        AZ::Data::AssetId sourceAssetId(sourceUUID, 0);
+        assetInfo.m_assetId = sourceAssetId;
+
+        // If relative path starts with the output prefix then remove it first
+        const ScanFolderInfo* scanFolderInfo = m_platformConfig->GetScanFolderForFile(watchFolder);
+        if (!scanFolderInfo)
+        {
+            return false;
+        }
+        QString databasePath = QString::fromUtf8(sourceDatabaseName);
+        if (!scanFolderInfo->GetOutputPrefix().isEmpty() && databasePath.startsWith(scanFolderInfo->GetOutputPrefix(), Qt::CaseInsensitive))
+        {
+            QString relativePath = databasePath.right(databasePath.length() - scanFolderInfo->GetOutputPrefix().length() - 1); // also eat the slash, hence -1
+            assetInfo.m_relativePath = relativePath.toUtf8().data();
+        }
+        else
+        {
+            assetInfo.m_relativePath = sourceDatabaseName;
+        }
+
+        AZStd::string absolutePath;
+        AzFramework::StringFunc::Path::Join(watchFolder, assetInfo.m_relativePath.c_str(), absolutePath);
+        assetInfo.m_sizeBytes = AZ::IO::SystemFile::Length(absolutePath.c_str());
+        // Make sure the source file exists
+        if (assetInfo.m_sizeBytes == 0 && !AZ::IO::SystemFile::Exists(absolutePath.c_str()))
+        {
+            return false;
+        }
+
+        assetInfo.m_assetType = AZ::Uuid::CreateNull();
+
+        // Go through the list of source assets and see if this asset's file path matches any of the filters
+        for (const auto& pair : m_sourceAssetTypeFilters)
+        {
+            if (AZStd::wildcard_match(pair.first, assetInfo.m_relativePath))
+            {
+                assetInfo.m_assetType = pair.second;
+                break;
+            }
+        }
+
+        return true;
     }
 
     bool AssetCatalog::ConnectToDatabase()

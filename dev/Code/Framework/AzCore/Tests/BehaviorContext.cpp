@@ -48,6 +48,13 @@ namespace UnitTest
         AZ::BehaviorClass* m_typingClass;
     };
 
+    class BehaviorContextTestFixture
+        : public ScopedAllocatorSetupFixture
+    {
+    public:
+        AZ::BehaviorContext m_behaviorContext;
+    };
+
     TEST_F(BehaviorClassTest, BehaviorClass_Typing_ConstCharStar)
     {
         auto findIter = m_typingClass->m_properties.find("stringValue");
@@ -184,22 +191,20 @@ namespace UnitTest
     void MethodAcceptingTemplate(const AZStd::string&)
     { }
 
-    using BehaviorContext = AllocatorsFixture;
-    TEST_F(BehaviorContext, OnDemandReflection_Unreflect_IsRemoved)
-    {
-        AZ::BehaviorContext behaviorContext;
 
+    TEST_F(BehaviorContextTestFixture, OnDemandReflection_Unreflect_IsRemoved)
+    {
         // Test reflecting with OnDemandReflection
-        behaviorContext.Method("TestTemplatedOnDemandReflection", &MethodAcceptingTemplate);
-        EXPECT_TRUE(behaviorContext.IsOnDemandTypeReflected(azrtti_typeid<AZStd::string>()));
-        EXPECT_NE(behaviorContext.m_typeToClassMap.find(azrtti_typeid<AZStd::string>()), behaviorContext.m_typeToClassMap.end());
+        m_behaviorContext.Method("TestTemplatedOnDemandReflection", &MethodAcceptingTemplate);
+        EXPECT_TRUE(m_behaviorContext.IsOnDemandTypeReflected(azrtti_typeid<AZStd::string>()));
+        EXPECT_NE(m_behaviorContext.m_typeToClassMap.find(azrtti_typeid<AZStd::string>()), m_behaviorContext.m_typeToClassMap.end());
 
         // Test unreflecting OnDemandReflection
-        behaviorContext.EnableRemoveReflection();
-        behaviorContext.Method("TestTemplatedOnDemandReflection", &MethodAcceptingTemplate);
-        behaviorContext.DisableRemoveReflection();
-        EXPECT_FALSE(behaviorContext.IsOnDemandTypeReflected(azrtti_typeid<AZStd::string>()));
-        EXPECT_EQ(behaviorContext.m_typeToClassMap.find(azrtti_typeid<AZStd::string>()), behaviorContext.m_typeToClassMap.end());
+        m_behaviorContext.EnableRemoveReflection();
+        m_behaviorContext.Method("TestTemplatedOnDemandReflection", &MethodAcceptingTemplate);
+        m_behaviorContext.DisableRemoveReflection();
+        EXPECT_FALSE(m_behaviorContext.IsOnDemandTypeReflected(azrtti_typeid<AZStd::string>()));
+        EXPECT_EQ(m_behaviorContext.m_typeToClassMap.find(azrtti_typeid<AZStd::string>()), m_behaviorContext.m_typeToClassMap.end());
     }
 
     // Used for on demand reflection to pick up the vector and string types
@@ -208,7 +213,7 @@ namespace UnitTest
         return value[0];
     }
 
-    TEST_F(BehaviorContext, ContainerMethods)
+    TEST_F(BehaviorContextTestFixture, ContainerMethods)
     {
         AZ::BehaviorContext behaviorContext;
 
@@ -367,7 +372,134 @@ namespace UnitTest
             }
 
         }
-
     }
 
+    class EBusWithAZStdVectorEvent
+        : public AZ::EBusTraits
+    {
+    public:
+        virtual AZStd::string MoveContainer(const AZStd::vector<int>&) = 0;
+        virtual AZStd::pair<AZStd::string, AZStd::string> ExtractPair(const AZStd::unordered_map<AZStd::string, AZStd::string>&) = 0;
+    };
+
+    using EBusWithAZStdVectorEventBus = AZ::EBus<EBusWithAZStdVectorEvent>;
+
+    class BehaviorEBusWithAZStdVectorHandler
+        : public EBusWithAZStdVectorEventBus::Handler
+        , public AZ::BehaviorEBusHandler
+    {
+    public:
+        AZ_EBUS_BEHAVIOR_BINDER(BehaviorEBusWithAZStdVectorHandler, "{B372D229-AE1F-411D-882E-0984AA3DC6F7}", AZ::SystemAllocator
+            , MoveContainer
+            , ExtractPair
+        );
+
+        // User code
+        AZStd::string MoveContainer(const AZStd::vector<int>& lvalueContainer) override
+        {
+            // you can get the index yourself or use the FN_xxx enum FN_OnEvent
+            AZStd::string result{};
+            CallResult(result, FN_MoveContainer, lvalueContainer);
+            return result;
+        }
+
+        AZStd::pair<AZStd::string, AZStd::string> ExtractPair(const AZStd::unordered_map<AZStd::string, AZStd::string>& stringMap) override
+        {
+            AZStd::pair<AZStd::string, AZStd::string> result{};
+            CallResult(result, FN_ExtractPair, stringMap);
+            return result;
+        }
+
+    };
+
+    TEST_F(BehaviorContextTestFixture, EBusHandlers_Events_OnDemandReflection_Parameters)
+    {
+        // Test reflecting with EBus handler with an event that accepts an AZStd::vector
+        m_behaviorContext.EBus<EBusWithAZStdVectorEventBus>("EBusWithAZStdVectorEventBus")
+            ->Handler<BehaviorEBusWithAZStdVectorHandler>();
+
+        // Validate that OnDemandReflection for function parameters works
+        const AZ::Uuid vectorIntTypeid = AZ::AzTypeInfo<AZStd::vector<int>>::Uuid();
+        auto vectorIntClassIt = m_behaviorContext.m_typeToClassMap.find(vectorIntTypeid);
+        EXPECT_NE(m_behaviorContext.m_typeToClassMap.end(), vectorIntClassIt);
+        EXPECT_TRUE(m_behaviorContext.IsOnDemandTypeReflected(vectorIntTypeid));
+
+        // Validate that OnDemandReflection for the return value works
+        const AZ::Uuid stringTypeid = AZ::AzTypeInfo<AZStd::string>::Uuid();
+        auto stringClassIt = m_behaviorContext.m_typeToClassMap.find(stringTypeid);
+        EXPECT_NE(m_behaviorContext.m_typeToClassMap.end(), stringClassIt);
+        EXPECT_TRUE(m_behaviorContext.IsOnDemandTypeReflected(stringTypeid));
+
+        // Validate that OnDemandReflection works for all handler member functions
+        const AZ::Uuid stringToStringMapTypeid = AZ::AzTypeInfo<AZStd::unordered_map<AZStd::string, AZStd::string>>::Uuid();
+        auto stringToStringMapClassIt = m_behaviorContext.m_typeToClassMap.find(stringToStringMapTypeid);
+        EXPECT_NE(m_behaviorContext.m_typeToClassMap.end(), stringToStringMapClassIt);
+        EXPECT_TRUE(m_behaviorContext.IsOnDemandTypeReflected(stringToStringMapTypeid));
+
+        const AZ::Uuid pairStringStringTypeid = AZ::AzTypeInfo<AZStd::pair<AZStd::string, AZStd::string>>::Uuid();
+        auto pairStringsTringTypeid = m_behaviorContext.m_typeToClassMap.find(pairStringStringTypeid);
+        EXPECT_NE(m_behaviorContext.m_typeToClassMap.end(), pairStringsTringTypeid);
+        EXPECT_TRUE(m_behaviorContext.IsOnDemandTypeReflected(pairStringStringTypeid));
+    }
+
+    void FuncWithAcceptsVectorWithPointerValueTypeByRef(AZStd::vector<int*>&)
+    {
+    }
+    void FuncWithAcceptsVectorWithPointerValueTypeByConstRef(const AZStd::vector<int*>&)
+    {
+    }
+    void FuncWithAcceptsVectorWithPointerValueTypeByPointer(AZStd::vector<int*>*)
+    {
+    }
+    void FuncWithAcceptsVectorWithPointerValueTypeByConstPointer(const AZStd::vector<int*>*)
+    {
+    }
+    void FuncWithAcceptsVectorWithPointerValueTypeByConst(const AZStd::vector<int*>)
+    {
+    }
+
+    TEST_F(BehaviorContextTestFixture, MethodReflectionWithRefParam_DoesNotCauseAssert_WhenBoundToScriptContext)
+    {
+        m_behaviorContext.Method("MethodWithVectorParam", &FuncWithAcceptsVectorWithPointerValueTypeByRef);
+        AZ::ScriptContext scriptContext;
+        AZ_TEST_START_ASSERTTEST;
+        scriptContext.BindTo(&m_behaviorContext);
+        AZ_TEST_STOP_ASSERTTEST(0);
+    }
+
+    TEST_F(BehaviorContextTestFixture, MethodReflectionWithConstRefParam_DoesNotCauseAssert_WhenBoundToScriptContext)
+    {
+        m_behaviorContext.Method("MethodWithVectorParam", &FuncWithAcceptsVectorWithPointerValueTypeByConstRef);
+        AZ::ScriptContext scriptContext;
+        AZ_TEST_START_ASSERTTEST;
+        scriptContext.BindTo(&m_behaviorContext);
+        AZ_TEST_STOP_ASSERTTEST(0);
+    }
+
+    TEST_F(BehaviorContextTestFixture, MethodReflectionWithPointerParam_DoesNotCauseAssert_WhenBoundToScriptContext)
+    {
+        m_behaviorContext.Method("MethodWithVectorParam", &FuncWithAcceptsVectorWithPointerValueTypeByPointer);
+        AZ::ScriptContext scriptContext;
+        AZ_TEST_START_ASSERTTEST;
+        scriptContext.BindTo(&m_behaviorContext);
+        AZ_TEST_STOP_ASSERTTEST(0);
+    }
+
+    TEST_F(BehaviorContextTestFixture, MethodReflectionWithConstPointerParam_DoesNotCauseAssert_WhenBoundToScriptContext)
+    {
+        m_behaviorContext.Method("MethodWithVectorParam", &FuncWithAcceptsVectorWithPointerValueTypeByConstPointer);
+        AZ::ScriptContext scriptContext;
+        AZ_TEST_START_ASSERTTEST;
+        scriptContext.BindTo(&m_behaviorContext);
+        AZ_TEST_STOP_ASSERTTEST(0);
+    }
+
+    TEST_F(BehaviorContextTestFixture, MethodReflectionWithConstParam_DoesNotCauseAssert_WhenBoundToScriptContext)
+    {
+        m_behaviorContext.Method("MethodWithVectorParam", &FuncWithAcceptsVectorWithPointerValueTypeByConst);
+        AZ::ScriptContext scriptContext;
+        AZ_TEST_START_ASSERTTEST;
+        scriptContext.BindTo(&m_behaviorContext);
+        AZ_TEST_STOP_ASSERTTEST(0);
+    }
 }

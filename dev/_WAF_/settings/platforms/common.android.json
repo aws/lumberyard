@@ -3,6 +3,7 @@
         "deployable"                : true,
         "is_android"                : true,
         "link_aws_sdk_statically"   : true,
+        "game_platform"             : "android",    # The name of platform referenced by cfg files such as bootstrap.cfg
         "lib_prefix"                : "lib",
         "sa_capability": {
             "key"               : "compileandroid",

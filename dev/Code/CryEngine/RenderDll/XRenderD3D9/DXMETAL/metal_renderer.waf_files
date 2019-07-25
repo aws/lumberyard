@@ -171,6 +171,7 @@
             "../PostProcessGame.cpp",
             "../PostProcessMisc.cpp",
             "../PostProcessRain.cpp",
+            "../PostProcessMotionBlur.cpp",
             "../PostProcessSunShafts.cpp",
             "../PostProcessWater.cpp",
             "../PostProcessSnow.cpp"

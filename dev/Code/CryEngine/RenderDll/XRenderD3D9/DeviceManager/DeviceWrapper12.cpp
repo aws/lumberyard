@@ -455,7 +455,7 @@ void CDeviceGraphicsPSODesc::Build()
     HashSimpleType(crc, m_DepthBiasClamp);
     HashSimpleType(crc, m_SlopeScaledDepthBias);
     HashSimpleType(crc, m_pResourceLayout);
-    HashSimpleType(crc, m_VertexFormat.GetCRC());
+    HashSimpleType(crc, m_VertexFormat.GetEnum());
     m_Hash = crc;
 }
 

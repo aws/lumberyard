@@ -38,7 +38,7 @@
         {
             "long_form": "--force-version", 
             "attribute": "version", 
-            "default_value": "1.19.0.0", 
+            "default_value": "1.20.0.0", 
             "description": "Version to embed in final build outputs"
         }, 
         {
@@ -193,10 +193,52 @@
             "description": "Endpoint to submit crash reports to"
         }, 
         {
+            "long_form": "--layout_hard_linking", 
+            "attribute": "layout_hard_linking", 
+            "default_value": "True", 
+            "description": "If set to true, then layouts will be hardlinks and not full copies of files"
+        }, 
+        {
+            "long_form": "--layout-binaries-only", 
+            "attribute": "layout_binaries_only", 
+            "default_value": "False", 
+            "description": "Only update binaries in a current layout. This is to support programmer rapid iteration mode"
+        }, 
+        {
+            "long_form": "--layout-include-pdbs", 
+            "attribute": "layout_include_pdbs", 
+            "default_value": "False", 
+            "description": "When adding the binaries to the layout, include the pdbs"
+        }, 
+        {
+            "long_form": "--enable-link-time-optimization", 
+            "attribute": "enable_link_time_optimization", 
+            "default_value": "False", 
+            "description": "If set to true, then link time optimizations and code generation will be enabled in performance and release configurations"
+        }, 
+        {
+            "long_form": "--enable-whole-program-optimization", 
+            "attribute": "enable_whole_program_optimization", 
+            "default_value": "False", 
+            "description": "If set to true, then whole program optimizations will be enabled for performance and release builds"
+        }, 
+        {
+            "long_form": "--copy-3rd-party-pdbs", 
+            "attribute": "copy_3rd_party_pdbs", 
+            "default_value": "True", 
+            "description": "Option to copy pdbs from 3rd party libraries for debugging.  Warning: This will increase the memory usage of your visual studio development environment"
+        }, 
+        {
             "long_form": "--enable-dynamic-file-globbing", 
             "attribute": "enable_dynamic_file_globbing", 
             "default_value": "False", 
             "description": "Enables globbing of files during all build operations, globbing only once during configure"
+        }, 
+        {
+            "long_form": "--product_sku", 
+            "attribute": "product_sku", 
+            "default_value": "default", 
+            "description": "Enables a project wide define PRODUCT_SKU_<this value>, alters where the paks are built to and read from, and which platform resources are used in the gem\\resources\\  Ex. For a demo version of the game you could set product_sku = demo  then PRODUCT_SKU_demo would be defined, and then you could disable systems based on that."
         }
     ], 
     "Misc Options": [
@@ -249,6 +291,14 @@
             "attribute": "run_xcode_for_packaging", 
             "default_value": "True", 
             "description": "When running the packaging command execute xcode from the command line to generate the app bundle resources for macOS."
+        }
+    ], 
+    "Deployment Options": [
+        {
+            "long_form": "--deploy-projects-automatically", 
+            "attribute": "deploy_projects_automatically", 
+            "default_value": "True", 
+            "description": "Automatically run the deploy command after each build."
         }
     ], 
     "Visual Studio Project Generator": [

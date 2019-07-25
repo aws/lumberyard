@@ -21,6 +21,17 @@
 #include "MaterialUtils.h"
 #include <AzFramework/IO/FileOperations.h>
 
+#if defined(AZ_RESTRICTED_PLATFORM)
+#undef AZ_RESTRICTED_SECTION
+#define RESOURCEMANAGER_CPP_SECTION_1 1
+#define RESOURCEMANAGER_CPP_SECTION_2 2
+#endif
+
+#if defined(AZ_RESTRICTED_PLATFORM) && defined(AZ_PLATFORM_PROVO)
+    #define AZ_RESTRICTED_SECTION RESOURCEMANAGER_CPP_SECTION_1
+    #include "Provo/ResourceManager_cpp_provo.inl"
+#endif
+
 #define LEVEL_PAK_FILENAME "level.pak"
 #define LEVEL_PAK_INMEMORY_MAXSIZE 10 * 1024 * 1024
 
@@ -291,10 +302,18 @@ bool CResourceManager::LoadFastLoadPaks(bool bToMemory)
             nPakPreloadFlags |= ICryPak::FLAGS_PAK_IN_MEMORY;
         }
 
-        gEnv->pCryPak->OpenPacks("@assets@", CryPathString(FAST_LOADING_PAKS_SRC_FOLDER) + "*.pak", nPakPreloadFlags, &m_fastLoadPakPaths);
-        gEnv->pCryPak->OpenPack("@assets@", "ShaderCacheStartup.pak", ICryPak::FLAGS_PAK_IN_MEMORY | ICryArchive::FLAGS_OVERRIDE_PAK);
-        gEnv->pCryPak->OpenPack("@assets@", "Engine.pak", ICryPak::FLAGS_PAK_IN_MEMORY);
+        const char* const assetsDir = "@assets@";
+        const char* shaderPakDir = assetsDir;
+        const char* shaderPakPath = "ShaderCacheStartup.pak";
+        
+        #if defined(AZ_RESTRICTED_PLATFORM) && defined(AZ_PLATFORM_PROVO)
+            #define AZ_RESTRICTED_SECTION RESOURCEMANAGER_CPP_SECTION_2
+            #include "Provo/ResourceManager_cpp_provo.inl"
+        #endif
 
+        gEnv->pCryPak->OpenPacks(assetsDir, CryPathString(FAST_LOADING_PAKS_SRC_FOLDER) + "*.pak", nPakPreloadFlags, &m_fastLoadPakPaths);
+        gEnv->pCryPak->OpenPack(assetsDir, shaderPakPath, ICryPak::FLAGS_PAK_IN_MEMORY | ICryArchive::FLAGS_OVERRIDE_PAK);
+        gEnv->pCryPak->OpenPack(assetsDir, "Engine.pak", ICryPak::FLAGS_PAK_IN_MEMORY);
         return !m_fastLoadPakPaths.empty();
     }
 }

@@ -110,6 +110,7 @@
 #include <boost/variant.hpp>
 #include <boost/mpl/vector.hpp>
 #include <boost/mpl/find.hpp>
+#include <boost/iterator/iterator_facade.hpp>
 #pragma warning(pop)
 #if defined(AZ_PLATFORM_WINDOWS) && defined(AZ_COMPILER_CLANG)
     #undef __FUNCSIG__

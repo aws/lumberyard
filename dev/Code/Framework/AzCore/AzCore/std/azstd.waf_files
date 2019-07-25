@@ -23,6 +23,7 @@
             "iterator.h",
             "optional.h",
             "ratio.h",
+            "reference_wrapper.h",
             "sort.h",
             "time.cpp",
             "time.h",
@@ -31,21 +32,8 @@
         ],
         "std/bind":
         [
-            "bind/apply.h",
-            "bind/arg.h",
             "bind/bind.h",
-            "bind/bind_cc.h",
-            "bind/bind_mf2_cc.h",
-            "bind/bind_mf_cc.h",
-            "bind/bind_template.h",
-            "bind/make_adaptable.h",
-            "bind/mem_fn.h",
-            "bind/mem_fn_cc.h",
-            "bind/mem_fn_template.h",
-            "bind/mem_fn_vw.h",
-            "bind/placeholders.h",
-            "bind/protect.h",
-            "bind/storage.h"
+            "bind/mem_fn.h"
         ],
         "std/chrono":
         [
@@ -57,6 +45,8 @@
         [
             "containers/array.h",
             "containers/bitset.h",
+            "containers/compressed_pair.h",
+            "containers/compressed_pair.inl",
             "containers/deque.h",
             "containers/fixed_forward_list.h",
             "containers/fixed_list.h",
@@ -76,6 +66,9 @@
             "containers/stack.h",
             "containers/unordered_map.h",
             "containers/unordered_set.h",
+            "containers/variant.h",
+            "containers/variant.inl",
+            "containers/variant_impl.h",
             "containers/vector.h"
         ],
         "std/parallel":
@@ -131,6 +124,7 @@
             "function/function_base.h",
             "function/function_fwd.h",
             "function/function_template.h",
+            "function/identity.h",
             "function/invoke.h",
             "function/maybe_include.h"
         ],
@@ -182,6 +176,7 @@
             "typetraits/alignment_of.h",
             "typetraits/bool_trait_def.h",
             "typetraits/config.h",
+            "typetraits/common_type.h",
             "typetraits/conjunction.h",
             "typetraits/disjunction.h",
             "typetraits/extent.h",
@@ -202,6 +197,7 @@
             "typetraits/is_abstract.h",
             "typetraits/is_arithmetic.h",
             "typetraits/is_array.h",
+            "typetraits/is_assignable.h",
             "typetraits/is_base_and_derived.h",
             "typetraits/is_base_of.h",
             "typetraits/is_class.h",
@@ -210,6 +206,7 @@
             "typetraits/is_constructible.h",
             "typetraits/is_const.h",
             "typetraits/is_convertible.h",
+            "typetraits/is_destructible.h",
             "typetraits/is_empty.h",
             "typetraits/is_enum.h",
             "typetraits/is_floating_point.h",
@@ -225,10 +222,12 @@
             "typetraits/is_pointer.h",
             "typetraits/is_polymorphic.h",
             "typetraits/is_reference.h",
+            "typetraits/is_rvalue_reference.h",
             "typetraits/is_same.h",
             "typetraits/is_scalar.h",
             "typetraits/is_signed.h",
             "typetraits/is_stateless.h",
+            "typetraits/is_swappable.h",
             "typetraits/is_union.h",
             "typetraits/is_unsigned.h",
             "typetraits/is_void.h",
@@ -241,6 +240,7 @@
             "typetraits/remove_bounds.h",
             "typetraits/remove_const.h",
             "typetraits/remove_cv.h",
+            "typetraits/remove_cvref.h",
             "typetraits/remove_extent.h",
             "typetraits/remove_pointer.h",
             "typetraits/remove_reference.h",
@@ -251,6 +251,7 @@
             "typetraits/transform_traits.h",
             "typetraits/typetraits.h",
             "typetraits/type_id.h",
+            "typetraits/type_identity.h",
             "typetraits/type_trait_def.h",
             "typetraits/underlying_type.h",
             "typetraits/decay.h",
@@ -260,7 +261,6 @@
         ],
         "std/typetraits/internal":
         [
-            "typetraits/internal/cv_traits_impl.h",
             "typetraits/internal/false_result.h",
             "typetraits/internal/ice_and.h",
             "typetraits/internal/ice_eq.h",

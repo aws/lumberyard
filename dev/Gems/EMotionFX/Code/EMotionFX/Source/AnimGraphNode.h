@@ -202,14 +202,18 @@ namespace EMotionFX
         virtual void SetCurrentPlayTimeNormalized(AnimGraphInstance* animGraphInstance, float normalizedTime);
         virtual void Rewind(AnimGraphInstance* animGraphInstance);
 
-        void AutoSync(AnimGraphInstance* animGraphInstance, AnimGraphNode* masterNode, float weight, ESyncMode syncMode, bool resync, bool modifyMasterSpeed = true);
+        void AutoSync(AnimGraphInstance* animGraphInstance, AnimGraphNode* masterNode, float weight, ESyncMode syncMode, bool resync);
         void SyncFullNode(AnimGraphInstance* animGraphInstance, AnimGraphNode* masterNode, float weight, bool modifyMasterSpeed = true);
         void SyncPlayTime(AnimGraphInstance* animGraphInstance, AnimGraphNode* masterNode);
         void SyncUsingSyncTracks(AnimGraphInstance* animGraphInstance, AnimGraphNode* syncWithNode, const AnimGraphSyncTrack* syncTrackA, const AnimGraphSyncTrack* syncTrackB, float weight, bool resync, bool modifyMasterSpeed = true);
         void SyncPlaySpeeds(AnimGraphInstance* animGraphInstance, AnimGraphNode* masterNode, float weight, bool modifyMasterSpeed = true);
         virtual void HierarchicalSyncInputNode(AnimGraphInstance* animGraphInstance, AnimGraphNode* inputNode, AnimGraphNodeData* uniqueDataOfThisNode);
         void HierarchicalSyncAllInputNodes(AnimGraphInstance* animGraphInstance, AnimGraphNodeData* uniqueDataOfThisNode);
-        static void CalcSyncFactors(AnimGraphInstance* animGraphInstance, AnimGraphNode* masterNode, AnimGraphNode* slaveNode, ESyncMode syncMode, float weight, float* outMasterFactor, float* outSlaveFactor, float* outPlaySpeed);
+
+        static void CalcSyncFactors(const AnimGraphInstance* animGraphInstance, const AnimGraphNode* masterNode, const AnimGraphNode* servantNode, ESyncMode syncMode, float weight, float* outMasterFactor, float* outServantFactor, float* outPlaySpeed);
+        static void CalcSyncFactors(float masterPlaySpeed, const AnimGraphSyncTrack* masterSyncTrack, uint32 masterSyncTrackIndex, float masterDuration,
+            float servantPlaySpeed, const AnimGraphSyncTrack* servantSyncTrack, uint32 servantSyncTrackIndex, float servantDuration,
+            ESyncMode syncMode, float weight, float* outMasterFactor, float* outServantFactor, float* outPlaySpeed);
 
         void RequestPoses(AnimGraphInstance* animGraphInstance);
         void FreeIncomingPoses(AnimGraphInstance* animGraphInstance);
@@ -894,6 +898,7 @@ namespace EMotionFX
         virtual void RecursiveSetUniqueDataFlag(AnimGraphInstance* animGraphInstance, uint32 flag, bool enabled);
 
         void FilterEvents(AnimGraphInstance* animGraphInstance, EEventMode eventMode, AnimGraphNode* nodeA, AnimGraphNode* nodeB, float localWeight, AnimGraphRefCountedData* refData);
+        void FilterEvents(AnimGraphInstance* animGraphInstance, EEventMode eventMode, AnimGraphRefCountedData* refDataNodeA, AnimGraphNode* nodeB, float localWeight, AnimGraphRefCountedData* refData);
 
         bool GetCanVisualize(AnimGraphInstance* animGraphInstance) const;
 
@@ -944,5 +949,4 @@ namespace EMotionFX
         void RecursiveCountChildNodes(uint32& numNodes) const;
         void RecursiveCountNodeConnections(uint32& numConnections) const;
     };
-
-}   // namespace EMotionFX
+} // namespace EMotionFX

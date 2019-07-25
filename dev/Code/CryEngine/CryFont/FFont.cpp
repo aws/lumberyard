@@ -80,7 +80,7 @@ CFFont::~CFFont()
 
     Free();
 
-    SAFE_DELETE(m_pDrawVB);
+    SAFE_DELETE_ARRAY(m_pDrawVB);
 }
 
 int32 CFFont::AddRef()
@@ -276,17 +276,8 @@ void CFFont::RenderCallback(float x, float y, float z, const char* pStr, const b
     int texId = m_texID;
 
     // Local function to share code needed when we render the vertex buffer so far
-    AZStd::function<void(void)> RenderVB = [&pVertex, &vbOffset, &isFontRenderStateSet, &backupSceneMatrices, pRenderer, texId, overrideViewProjMatrices]
+    AZStd::function<void(void)> RenderVB = [&pVertex, &vbOffset, pRenderer]
     {
-        // We don't want to set this state before the call to CreateQuadsForText since that calls Prepare,
-        // which is needed before FontSetTexture
-        if (!isFontRenderStateSet)
-        {
-            pRenderer->FontSetTexture(texId, FILTER_TRILINEAR);
-            pRenderer->FontSetRenderingState(overrideViewProjMatrices, backupSceneMatrices);
-            isFontRenderStateSet = true;
-        }
-
         gEnv->pRenderer->DrawDynVB(pVertex, 0, vbOffset, 0, prtTriangleList);
         vbOffset = 0;
     };
@@ -329,9 +320,19 @@ void CFFont::RenderCallback(float x, float y, float z, const char* pStr, const b
     };
 
     // Local function that is passed into CreateQuadsForText as the BeginPass function
-    BeginPassFunction BeginPass = [&pVertex, &vbOffset, baseState, RenderVB]
+    BeginPassFunction BeginPass = [&pVertex, &vbOffset, &isFontRenderStateSet, &backupSceneMatrices, texId, pRenderer, baseState, RenderVB, overrideViewProjMatrices]
         (const SRenderingPass* pPass)
     {
+        // We don't want to set this state before the call to CreateQuadsForText since that calls Prepare,
+        // which is needed before FontSetTexture
+        if (!isFontRenderStateSet)
+        {
+            pRenderer->FontSetTexture(texId, FILTER_TRILINEAR);
+            pRenderer->FontSetRenderingState(overrideViewProjMatrices, backupSceneMatrices);
+            gEnv->pRenderer->FontSetBlending(pPass->m_blendSrc, pPass->m_blendDest, baseState);
+            isFontRenderStateSet = true;
+        }
+        
         if (vbOffset > 0)
         {
             RenderVB();

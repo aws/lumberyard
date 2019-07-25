@@ -18,6 +18,13 @@ import waflib.Node
 from utils import parse_json_file, write_json_file
 from waf_branch_spec import LMBR_WAF_VERSION_TAG, BINTEMP_CACHE_TOOLS
 
+winreg_available = True
+try:
+    import _winreg
+except ImportError:
+    winreg_available = False
+    pass
+
 # The compiler will issue a warning if some flags are specified more than once.
 # The command is constructed from subsets that may have conflicting flags
 # This list of lists contains all the set of flags that are made unique
@@ -1074,7 +1081,8 @@ def find_msvc(conf):
     version = v['MSVC_VERSION']
 
     compiler_name, linker_name, lib_name = _get_prog_names(conf, compiler)
-    v.MSVC_MANIFEST = (compiler == 'msvc' and version >= 8) or (compiler == 'wsdk' and version >= 6) or (compiler == 'intel' and version >= 11)
+    if v.MSVC_MANIFEST or v.MSVC_MANIFEST == True:
+        v.MSVC_MANIFEST = (compiler == 'msvc' and version >= 8) or (compiler == 'wsdk' and version >= 6) or (compiler == 'intel' and version >= 11)
 
     # compiler
     cxx = None
@@ -1148,3 +1156,128 @@ def find_msvc(conf):
     except Exception as e:
         warn('Resource compiler not found. Compiling resource file is disabled')
 
+
+
+cached_folders = {}
+
+@conf
+def detect_visual_studio_vc_path(ctx, version):
+    """
+    Attempt to locate the installed visual studio VC path
+    :param version: Visual studio version (12.0, 14.0, etc)
+    :param fallback_path: In case the registry key cannot be found, fall back and see if this path exists
+    :return: The path to use for the visual studio VC folder
+    """
+    if not winreg_available:
+        raise SystemError('[ERR] Windows registry is not supported on this platform.')
+
+    cache_key = 'detect_visual_studio_vc_path_{}'.format(version)
+    if cache_key in cached_folders:
+        return cached_folders[cache_key]
+
+    vs_tools_path = os.path.normpath('C:\\Program Files (x86)\\Microsoft Visual Studio ' + version + '\\VC')
+    if not os.path.isdir(vs_tools_path):
+        vs_tools_path = ''
+
+    try:
+        vs_regkey = 'Software\\Microsoft\\VisualStudio\\{}_Config\\Setup\\vs'.format(version)
+        vs_tools_reg_key = _winreg.OpenKey(_winreg.HKEY_CURRENT_USER, vs_regkey, 0, _winreg.KEY_READ)
+        (vs_tools_path, reg_type) = _winreg.QueryValueEx(vs_tools_reg_key, 'ProductDir')
+        vs_tools_path = vs_tools_path.encode('ascii')  # Make ascii string (as we get unicode)
+        vs_tools_path += 'VC'
+    except:
+        Logs.warn('[WARN] Unable to find visual studio tools path from the registry.')
+
+    if vs_tools_path == '':
+        raise SystemError('[ERR] Unable to locate the visual studio VC folder for (vs version {})'.format(version))
+
+    if not os.path.isdir(vs_tools_path):
+        raise SystemError('[ERR] Unable to locate the visual studio VC folder {} for (vs version {})'.format(vs_tools_path, version))
+
+    cached_folders[cache_key] = vs_tools_path
+    return vs_tools_path
+
+@conf
+def detect_windows_kits_include_path(ctx, version_if_available_otherwise_latest):
+    """
+    Attempt to locate the windows sdk include path
+    :param
+    :return:
+    """
+
+    if not winreg_available:
+        raise SystemError('[ERR] Windows registry is not supported on this platform.')
+
+    cache_key = 'windows_sdk_include_path'
+    if cache_key in cached_folders:
+        return cached_folders[cache_key]
+
+    requested_version = version_if_available_otherwise_latest
+
+    #best guess first
+    normal_root = 'C:\\Program Files (x86)\\Windows Kits\\'
+    windows_sdk_include_path = normal_root + requested_version + '\\Include'
+    if not os.path.isdir(windows_sdk_include_path):
+        for ver in ['10', '8.1', 'last']:
+            if ver == 'last':
+                windows_sdk_include_path = ''
+            else:
+                windows_sdk_include_path = normal_root + ver + '\\Include'
+                if os.path.isdir(windows_sdk_include_path):
+                    break
+    try:
+        windows_sdk_installed_roots_key = _winreg.OpenKey(_winreg.HKEY_LOCAL_MACHINE, 'SOFTWARE\\Wow6432node\\Microsoft\\Windows Kits\\Installed Roots', _winreg.KEY_READ)
+    except WindowsError:
+        try:
+            windows_sdk_installed_roots_key = Utils.winreg.OpenKey(Utils.winreg.HKEY_LOCAL_MACHINE, 'SOFTWARE\\Microsoft\\Windows Kits\\Installed Roots')
+        except WindowsError:
+            if windows_sdk_include_path == '':
+                raise SystemError('[ERR] Unable to locate the Windows SDK include folder')
+            Logs.warn('[WARN] Unable to find windows kits include folder keys from the registry. Falling back to path {}'.format(windows_sdk_include_path))
+            return windows_sdk_include_path
+    try:
+        #enumerate all keys below this key, they correspond to the installed versions
+        exact_version = None
+        versions = []
+        index = 0
+        while not exact_version:
+            try:
+                value = _winreg.EnumValue(windows_sdk_installed_roots_key, index)
+                if 'KitsRoot' in value[0]:
+                    if value[0] == 'KitsRoot81':
+                        versions.append((8.1, value[1]))
+                        if requested_version == '8.1':
+                            exact_version = value[1]
+                    if value[0] == 'KitsRoot10':
+                        versions.append((10.0, value[1]))
+                        if requested_version == '10.0':
+                            exact_version = value[1]
+            except EnvironmentError:
+                break
+            else:
+                index += 1
+    except EnvironmentError:
+        pass
+
+    if not versions:
+        if windows_sdk_include_path == '':
+            raise SystemError('[ERR] Unable to locate the Windows SDK include folder')
+        Logs.warn('[WARN] Unable to find windows kits include folder keys from the registry. Falling back to path {}'.format(windows_sdk_include_path))
+        return windows_sdk_include_path
+
+    if exact_version:
+        windows_sdk_include_path = exact_version
+    else:
+        #sort them reversed, so the latest should be first
+        versions.sort(reverse=True)
+        windows_sdk_include_path = versions[0][1]
+    windows_sdk_include_path = windows_sdk_include_path.encode('ascii')  # Make asci string (as we get unicode)
+    windows_sdk_include_path += 'Include'
+
+    if windows_sdk_include_path == '':
+        raise SystemError('[ERR] Unable to locate the Windows SDK include folder')
+    if not os.path.exists(windows_sdk_include_path):
+        raise SystemError('[ERR] Unable to locate the Windows SDK include folder {}'.format(windows_sdk_include_path))
+
+    cached_folders[cache_key] = windows_sdk_include_path
+    return windows_sdk_include_path

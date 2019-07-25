@@ -72,6 +72,8 @@ namespace Audio
         eAMRT_STOP_ALL_SOUNDS           = BIT(19),
         eAMRT_DRAW_DEBUG_INFO           = BIT(20), // Only used internally!
         eAMRT_CHANGE_LANGUAGE           = BIT(21),
+
+        eAMRT_SET_AUDIO_PANNING_MODE    = BIT(23),
     };
 
     enum EAudioCallbackManagerRequestType : TATLEnumFlagsType
@@ -387,6 +389,21 @@ namespace Audio
         {}
 
         ~SAudioManagerRequestData<eAMRT_CHANGE_LANGUAGE>()override {}
+    };
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////////
+    template<>
+    struct SAudioManagerRequestData<eAMRT_SET_AUDIO_PANNING_MODE>
+        : public SAudioManagerRequestDataBase
+    {
+        explicit SAudioManagerRequestData(PanningMode panningMode)
+            : SAudioManagerRequestDataBase(eAMRT_SET_AUDIO_PANNING_MODE)
+            , m_panningMode(panningMode)
+        {}
+
+        ~SAudioManagerRequestData<eAMRT_SET_AUDIO_PANNING_MODE>() override {}
+
+        const PanningMode m_panningMode;
     };
 
 
@@ -766,16 +783,23 @@ namespace Audio
     struct SAudioObjectRequestData<eAORT_EXECUTE_SOURCE_TRIGGER>
         : public SAudioObjectRequestDataBase
     {
-        SAudioObjectRequestData(TAudioControlID triggerId, TAudioSourceId sourceId)
+        SAudioObjectRequestData()
             : SAudioObjectRequestDataBase(eAORT_EXECUTE_SOURCE_TRIGGER)
-            , m_triggerId(triggerId)
-            , m_sourceId(sourceId)
+            , m_triggerId(INVALID_AUDIO_CONTROL_ID)
         {}
 
-        ~SAudioObjectRequestData<eAORT_EXECUTE_SOURCE_TRIGGER>() override {}
+        SAudioObjectRequestData(
+            TAudioControlID triggerId,
+            const SAudioSourceInfo& sourceInfo)
+            : SAudioObjectRequestDataBase(eAORT_EXECUTE_SOURCE_TRIGGER)
+            , m_triggerId(triggerId)
+            , m_sourceInfo(sourceInfo)
+        {}
+
+        ~SAudioObjectRequestData<eAORT_EXECUTE_SOURCE_TRIGGER>()override {}
 
         TAudioControlID m_triggerId;
-        TAudioSourceId m_sourceId;
+        SAudioSourceInfo m_sourceInfo;
     };
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -873,7 +897,8 @@ namespace Audio
         virtual void Initialize(const char* const sObjectName, const bool bInitAsync = true) = 0;
         virtual void Release() = 0;
         virtual void Reset() = 0;
-        virtual void ExecuteSourceTrigger(const TAudioControlID nTriggerID, const Audio::TAudioControlID& sourceId, const SAudioCallBackInfos& rCallbackInfos = SAudioCallBackInfos::GetEmptyObject()) = 0;
+
+        virtual void ExecuteSourceTrigger(TAudioControlID nTriggerID, const SAudioSourceInfo& rSourceInfo, const SAudioCallBackInfos& rCallbackInfos = SAudioCallBackInfos::GetEmptyObject()) = 0;
         virtual void ExecuteTrigger(const TAudioControlID nTriggerID, const ELipSyncMethod eLipSyncMethod, const SAudioCallBackInfos& rCallbackInfos = SAudioCallBackInfos::GetEmptyObject()) = 0;
         virtual void StopAllTriggers() = 0;
         virtual void StopTrigger(const TAudioControlID nTriggerID) = 0;
@@ -890,6 +915,26 @@ namespace Audio
         virtual TAudioObjectID GetAudioObjectID() const = 0;
     };
 
+    ///////////////////////////////////////////////////////////////////////////////////////////////////
+    class AudioPreloadNotifications
+        : public AZ::EBusTraits
+    {
+    public:
+        virtual ~AudioPreloadNotifications() = default;
+
+        ///////////////////////////////////////////////////////////////////////////////////////////////
+        // EBusTraits - PreloadID Address, Multiple Handler
+        static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::ById;
+        static const AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::Multiple;
+        using BusIdType = TAudioPreloadRequestID;
+        using MutexType = AZStd::recursive_mutex;
+        ///////////////////////////////////////////////////////////////////////////////////////////////
+
+        virtual void OnAudioPreloadCached() = 0;
+        virtual void OnAudioPreloadUncached() = 0;
+    };
+
+    using AudioPreloadNotificationBus = AZ::EBus<AudioPreloadNotifications>;
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
     class AudioSystemRequests
@@ -951,6 +996,26 @@ namespace Audio
     using AudioSystemRequestBus = AZ::EBus<AudioSystemRequests>;
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
+    struct AudioTriggerNotifications
+        : public AZ::EBusTraits
+    {
+        virtual ~AudioTriggerNotifications() = default;
+
+        ///////////////////////////////////////////////////////////////////////////////////////////////
+        // EBusTraits - Address by ID, Multiple Handler, Mutex, Queued
+        static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::ById;
+        static const AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::Multiple;
+        static const bool EnableEventQueue = true;
+        using MutexType = AZStd::recursive_mutex;
+        using BusIdType = Audio::TAudioControlID;
+        ///////////////////////////////////////////////////////////////////////////////////////////////
+
+        virtual void ReportDurationInfo(TAudioEventID, float /*duration*/, float /*estimatedDuration*/) = 0;
+    };
+
+    using AudioTriggerNotificationBus = AZ::EBus<AudioTriggerNotifications>;
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////////
     class AudioSystemThreadSafeRequests
         : public AZ::EBusTraits
     {
@@ -978,5 +1043,44 @@ namespace Audio
     {
         ~IAudioSystem() override = default;
     };
+
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////////
+    class AudioStreamingRequests
+        : public AZ::EBusTraits
+    {
+    public:
+        virtual ~AudioStreamingRequests() = default;
+
+        ///////////////////////////////////////////////////////////////////////////////////////////////
+        // EBusTraits overrides - Single Bus, Single Handler
+        static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::ById;
+        static const AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::Single;
+        using BusIdType = TAudioSourceId;
+        using MutexType = AZStd::recursive_mutex;
+        ///////////////////////////////////////////////////////////////////////////////////////////////
+
+        ///////////////////////////////////////////////////////////////////////////////////////////////
+        // <title ReadStreamingInput>
+        // Summary:
+        //		Load streaming input into the ATL-specific audio input
+        // Arguments:
+        //		data - Buffer of data to load into the input device's internal buffer
+        ///////////////////////////////////////////////////////////////////////////////////////////////
+        virtual AZStd::size_t ReadStreamingInput(const AudioStreamData& data) = 0;
+
+        ///////////////////////////////////////////////////////////////////////////////////////////////
+        // <title ReadStreamingMultiTrackInput>
+        // Summary:
+        //		Load streaming multi-track input into the ATL-specific audio input
+        // Arguments:
+        //		data - Buffers of multi-track data to load into the input device's internal buffer
+        // Return value:
+        //		The number of frames loaded into the internal buffer
+        ///////////////////////////////////////////////////////////////////////////////////////////////
+        virtual AZStd::size_t ReadStreamingMultiTrackInput(AudioStreamMultiTrackData& data) = 0;
+    };
+
+    using AudioStreamingRequestBus = AZ::EBus<AudioStreamingRequests>;
 
 } // namespace Audio

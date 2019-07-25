@@ -54,16 +54,15 @@ namespace AZ
         if (numberOfWorkerThreads <= 0)
         {
             numberOfWorkerThreads = AZ::GetMin(static_cast<unsigned int>(desc.m_workerThreads.capacity()), AZStd::thread::hardware_concurrency());
+        #if (AZ_TRAIT_MAX_JOB_MANAGER_WORKER_THREADS)
+            numberOfWorkerThreads = AZ::GetMin(numberOfWorkerThreads, AZ_TRAIT_MAX_JOB_MANAGER_WORKER_THREADS);
+        #endif // (AZ_TRAIT_MAX_JOB_MANAGER_WORKER_THREADS)
         }
 
-        threadDesc.m_cpuId = m_firstThreadCPU;
+        threadDesc.m_cpuId = AFFINITY_MASK_USERTHREADS;
         for (int i = 0; i < numberOfWorkerThreads; ++i)
         {
             desc.m_workerThreads.push_back(threadDesc);
-            if (threadDesc.m_cpuId > -1)
-            {
-                threadDesc.m_cpuId++;
-            }
         }
 
         m_jobManager = aznew JobManager(desc);

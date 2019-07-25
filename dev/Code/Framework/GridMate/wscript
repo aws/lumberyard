@@ -31,6 +31,8 @@ def build(bld):
         use             = ['AzCore'],
         uselib          = ['OPENSSL'],
         export_includes = ['.'],
+        clang_cxxflags  = ['-Wno-deprecated-declarations'],
+
 
         # Compiler Specific
         msvc_cxxflags   = [

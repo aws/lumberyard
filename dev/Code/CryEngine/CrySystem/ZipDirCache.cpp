@@ -22,7 +22,6 @@
 #include "ZipDirCacheFactory.h"
 #include "CryZlib.h"
 #include <IDiskProfiler.h>
-#include <IPlatformOS.h>
 #include "CryPak.h"
 #include "ZipEncrypt.h"
 #include "System.h"
@@ -368,19 +367,6 @@ ZipDir::ErrorEnum ZipDir::Cache::ReadFile (FileEntry* pFileEntry, void* pCompres
 #if !defined(_RELEASE)
                 CryWarning(VALIDATOR_MODULE_SYSTEM, VALIDATOR_ERROR, "ZipDir::Cache::ReadFile mismatch detected for file %s: Generated CRC = 0x%8X, Loaded CRC = 0x%8X", GetFileEntryName(pFileEntry), computedCRC32, pFileEntry->desc.lCRC32);
 #endif //!_RELEASE
-                IPlatformOS* pPlatformOS = gEnv->pSystem->GetPlatformOS();
-                if (pPlatformOS != NULL)
-                {
-                    pPlatformOS->HandleArchiveVerificationFailure();
-                }
-                else
-                {
-                    //Notify the POS about the detected corruption so it can handle it
-#if !defined(_RELEASE)
-                    CryWarning(VALIDATOR_MODULE_SYSTEM, VALIDATOR_COMMENT, "Issue detected before PlatformOS has been initialized. Setting a flag so that it can respond when ready.");
-#endif //!_RELEASE
-                    gEnv->pSystem->AddPlatformOSCreateFlag(( uint8 )IPlatformOS::eCF_EarlyCorruptionDetected);
-                }
                 return ZD_ERROR_CORRUPTED_DATA;
             }
 #if defined(CHECK_CRC_ONLY_ONCE)

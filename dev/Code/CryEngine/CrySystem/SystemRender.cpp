@@ -540,7 +540,6 @@ void CSystem::SynchronousLoadingTick(const char* pFunc, int line)
 
 
 //////////////////////////////////////////////////////////////////////////
-#define CHECK_UPDATE_TIMES
 void CSystem::UpdateLoadingScreen()
 {
     // Do not update the network thread from here - it will cause context corruption - use the NetworkStallTicker thread system
@@ -550,7 +549,6 @@ void CSystem::UpdateLoadingScreen()
         return;
     }
 
-#if defined(CHECK_UPDATE_TIMES)
 #if defined(AZ_RESTRICTED_PLATFORM)
     #if defined(AZ_PLATFORM_XENIA)
         #include "Xenia/SystemRender_cpp_xenia.inl"
@@ -558,7 +556,6 @@ void CSystem::UpdateLoadingScreen()
         #include "Provo/SystemRender_cpp_provo.inl"
     #endif
 #endif
-#endif // CHECK_UPDATE_TIMES
 
 #if AZ_LOADSCREENCOMPONENT_ENABLED
     EBUS_EVENT(LoadScreenBus, UpdateAndRender);
@@ -882,6 +879,9 @@ void CSystem::RenderStats()
         // Draw 3dengine stats and get last text cursor position
         float nTextPosX = 101 - 20, nTextPosY = -2, nTextStepY = 3;
         m_env.p3DEngine->DisplayInfo(nTextPosX, nTextPosY, nTextStepY, iDisplayInfo != 1);
+
+        // Dump Lumberyard CPU and GPU memory statistics to screen
+        m_env.p3DEngine->DisplayMemoryStatistics();
 
     #if defined(ENABLE_LW_PROFILERS)
         if (m_rDisplayInfo->GetIVal() == 2)

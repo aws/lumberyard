@@ -905,6 +905,11 @@ def RunTaskGenerator(ctx, *k, **kw ):
     if build_type in ('program', 'shlib'):
         # Make it so that this kind of module can link even if the program is currently running.
         append_kw_entry(kw, 'features', ['link_running_program'])
+    target = kw['target']
+    if ctx.env['STUB_ST'] and build_type == 'shlib':
+        kw['output_stub_name'] = kw.get('output_file_name', target)
+    if ctx.env['ALT_STUB_ST'] and build_type == 'shlib':
+        kw['alt_output_stub_name'] = kw.get('output_file_name', target)
 
     return getattr(ctx, BUILD_PROCESS_TABLE[build_type][CTX_TYPE_INDEX])(*k, **kw)
 

@@ -32,7 +32,9 @@ def build(bld):
                                        'QT5WIDGETS',
                                        'QT5NETWORK',
                                        'QT5XML',
-                                       'QTMAIN'],
+                                       'QTMAIN',
+                                       'AWS_CPP_SDK_CORE',
+                                       'AWS_CPP_SDK_DEVICEFARM'],
         features                    = ['qt5'],
         defines                     = ['EDITOR_COMMON_IMPORTS'],
 
@@ -43,10 +45,15 @@ def build(bld):
         # because there are implicit dependencies on LyMetrics/LyIdentity
         # and those libraries use AWS. Not including them here results in
         # a failure to build the gem due to missing symbols
-        darwin_uselib   = ['AWS_CPP_SDK_CORE',
-                           'AWS_CPP_SDK_COGNITO_IDENTITY',
+        darwin_uselib   = ['AWS_CPP_SDK_COGNITO_IDENTITY',
                            'AWS_CPP_SDK_MOBILEANALYTICS',
                            'AWS_CPP_SDK_IDENTITY_MANAGEMENT'],
 
         test_all_file_list = ['deploymenttool_tests.waf_files'],
+
+        # Disable rtti to fix linker error on test targets with the aws core lib.
+        # Plugins have rtti forced on after variant processing so, darwin_enable_rtti
+        # will have no effect here. Add the cxx flag to get the result of disabling
+        # rtti for this plugin on mac.
+        darwin_cxxflags = ['-fno-rtti'],
     )

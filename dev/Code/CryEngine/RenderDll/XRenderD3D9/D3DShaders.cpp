@@ -235,7 +235,17 @@ bool CShader::FXBeginPass(uint32 uiPass)
     // Set Vertex-shader
     if (curVS)
     {
-        curVS->mfSet(0);
+        // Allow vertex shaders to bind textures.
+        // Some existing vertex shaders do try to read textures, for example the shader function GetVolumetricFogAnalyticalColor
+        if (rd->m_RP.m_nFlagsShaderBegin & FEF_DONTSETTEXTURES)
+        {
+            bResult &= curVS->mfSet(0);
+        }
+        else
+        {
+            bResult &= curVS->mfSet(HWSF_SETTEXTURES);
+        }
+
         curVS->UpdatePerInstanceConstantBuffer();
     }
 

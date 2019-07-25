@@ -11,13 +11,12 @@
 */
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
-#ifndef CRYINCLUDE_CRYSYSTEM_LOCALIZEDSTRINGMANAGER_H
-#define CRYINCLUDE_CRYSYSTEM_LOCALIZEDSTRINGMANAGER_H
 #pragma once
 
 #include <ILocalizationManager.h>
 #include <StlUtils.h>
 #include <VectorMap.h>
+#include <AzCore/std/containers/map.h>
 
 #include "Huffman.h"
 
@@ -32,55 +31,64 @@ class CLocalizedStringsManager
 public:
     typedef std::vector<string> TLocalizationTagVec;
 
-    const static size_t LOADING_FIXED_STRING_LENGTH = 1024;
-    const static size_t COMPRESSION_FIXED_BUFFER_LENGTH = 3072;
+    constexpr const static size_t LOADING_FIXED_STRING_LENGTH = 2048;
+    constexpr const static size_t COMPRESSION_FIXED_BUFFER_LENGTH = 6144;
 
     CLocalizedStringsManager(ISystem* pSystem);
     virtual ~CLocalizedStringsManager();
 
     // ILocalizationManager
-    virtual const char* LangNameFromPILID(const ILocalizationManager::EPlatformIndependentLanguageID id);
-    virtual ILocalizationManager::TLocalizationBitfield MaskSystemLanguagesFromSupportedLocalizations(const ILocalizationManager::TLocalizationBitfield systemLanguages);
-    virtual ILocalizationManager::TLocalizationBitfield IsLanguageSupported(const ILocalizationManager::EPlatformIndependentLanguageID id);
+    const char* LangNameFromPILID(const ILocalizationManager::EPlatformIndependentLanguageID id);
+    ILocalizationManager::EPlatformIndependentLanguageID PILIDFromLangName(AZStd::string langName) override;
+    ILocalizationManager::EPlatformIndependentLanguageID GetSystemLanguage() override;
+    ILocalizationManager::TLocalizationBitfield MaskSystemLanguagesFromSupportedLocalizations(const ILocalizationManager::TLocalizationBitfield systemLanguages);
+    ILocalizationManager::TLocalizationBitfield IsLanguageSupported(const ILocalizationManager::EPlatformIndependentLanguageID id);
 
-    virtual const char* GetLanguage();
-    virtual bool SetLanguage(const char* sLanguage);
+    const char* GetLanguage() override;
+    bool SetLanguage(const char* sLanguage) override;
 
-    virtual bool InitLocalizationData(const char* sFileName, bool bReload = false);
-    virtual bool RequestLoadLocalizationDataByTag(const char* sTag);
-    virtual bool LoadLocalizationDataByTag(const char* sTag, bool bReload = false);
-    virtual bool ReleaseLocalizationDataByTag(const char* sTag);
+    int GetLocalizationFormat() const override;
+    virtual AZStd::string GetLocalizedSubtitleFilePath(const AZStd::string& localVideoPath, const AZStd::string& subtitleFileExtension) const override;
+    virtual AZStd::string GetLocalizedLocXMLFilePath(const AZStd::string& localXmlPath) const override;
+    bool InitLocalizationData(const char* sFileName, bool bReload = false);
+    bool RequestLoadLocalizationDataByTag(const char* sTag);
+    bool LoadLocalizationDataByTag(const char* sTag, bool bReload = false);
+    bool ReleaseLocalizationDataByTag(const char* sTag);
 
-    virtual bool LoadExcelXmlSpreadsheet(const char* sFileName, bool bReload = false);
-    virtual void ReloadData();
-    virtual void FreeData();
+    bool LoadAllLocalizationData(bool bReload = false) override;
+    bool LoadExcelXmlSpreadsheet(const char* sFileName, bool bReload = false) override;
+    void ReloadData() override;
+    void FreeData();
 
-    virtual bool LocalizeString(const string& sString, string& outLocalizedString, bool bEnglish = false);
-    virtual bool LocalizeString(const char* sString, string& outLocalizedString, bool bEnglish = false);
-    virtual bool LocalizeLabel(const char* sLabel, string& outLocalizedString, bool bEnglish = false);
-    virtual bool GetLocalizedInfoByKey(const char* sKey, SLocalizedInfoGame& outGameInfo);
-    virtual bool GetLocalizedInfoByKey(const char* sKey, SLocalizedSoundInfoGame* pOutSoundInfoGame);
-    virtual int  GetLocalizedStringCount();
-    virtual bool GetLocalizedInfoByIndex(int nIndex, SLocalizedInfoGame& outGameInfo);
-    virtual bool GetLocalizedInfoByIndex(int nIndex, SLocalizedInfoEditor& outEditorInfo);
+    bool LocalizeString_s(const string& sString, string& outLocalizedString, bool bEnglish = false) override;
+    bool LocalizeString_ch(const char* sString, string& outLocalizedString, bool bEnglish = false) override;
 
-    virtual bool GetEnglishString(const char* sKey, string& sLocalizedString);
-    virtual bool GetSubtitle(const char* sKeyOrLabel, string& outSubtitle, bool bForceSubtitle = false);
+    void LocalizeAndSubstituteInternal(AZStd::string& locString, const AZStd::vector<AZStd::string>& keys, const AZStd::vector<AZStd::string>& values) override;
+    bool LocalizeLabel(const char* sLabel, string& outLocalizedString, bool bEnglish = false) override;
+    bool IsLocalizedInfoFound(const char* sKey);
+    bool GetLocalizedInfoByKey(const char* sKey, SLocalizedInfoGame& outGameInfo);
+    bool GetLocalizedInfoByKey(const char* sKey, SLocalizedSoundInfoGame* pOutSoundInfoGame);
+    int  GetLocalizedStringCount();
+    bool GetLocalizedInfoByIndex(int nIndex, SLocalizedInfoGame& outGameInfo);
+    bool GetLocalizedInfoByIndex(int nIndex, SLocalizedInfoEditor& outEditorInfo);
 
-    virtual void FormatStringMessage(string& outString, const string& sString, const char** sParams, int nParams);
-    virtual void FormatStringMessage(string& outString, const string& sString, const char* param1, const char* param2 = 0, const char* param3 = 0, const char* param4 = 0);
+    bool GetEnglishString(const char* sKey, string& sLocalizedString) override;
+    bool GetSubtitle(const char* sKeyOrLabel, string& outSubtitle, bool bForceSubtitle = false) override;
 
-    virtual void LocalizeTime(time_t t, bool bMakeLocalTime, bool bShowSeconds, string& outTimeString);
-    virtual void LocalizeDate(time_t t, bool bMakeLocalTime, bool bShort, bool bIncludeWeekday, string& outDateString);
-    virtual void LocalizeDuration(int seconds, string& outDurationString);
-    virtual void LocalizeNumber(int number, string& outNumberString);
-    virtual void LocalizeNumber(float number, int decimals, string& outNumberString);
+    void FormatStringMessage_List(string& outString, const string& sString, const char** sParams, int nParams) override;
+    void FormatStringMessage(string& outString, const string& sString, const char* param1, const char* param2 = 0, const char* param3 = 0, const char* param4 = 0) override;
 
-    virtual bool ProjectUsesLocalization() const;
+    void LocalizeTime(time_t t, bool bMakeLocalTime, bool bShowSeconds, string& outTimeString) override;
+    void LocalizeDate(time_t t, bool bMakeLocalTime, bool bShort, bool bIncludeWeekday, string& outDateString) override;
+    void LocalizeDuration(int seconds, string& outDurationString) override;
+    void LocalizeNumber(int number, string& outNumberString) override;
+    void LocalizeNumber_Decimal(float number, int decimals, string& outNumberString) override;
+
+    bool ProjectUsesLocalization() const override;
     // ~ILocalizationManager
 
     // ISystemEventManager
-    virtual void OnSystemEvent(ESystemEvent event, UINT_PTR wparam, UINT_PTR lparam);
+    void OnSystemEvent(ESystemEvent event, UINT_PTR wparam, UINT_PTR lparam);
     // ~ISystemEventManager
 
     int GetMemoryUsage(ICrySizer* pSizer);
@@ -98,6 +106,9 @@ private:
     bool LocalizeStringInternal(const char* pStr, size_t len, string& outLocalizedString, bool bEnglish);
 
     bool DoLoadExcelXmlSpreadsheet(const char* sFileName, uint8 tagID, bool bReload);
+    typedef bool(CLocalizedStringsManager::*LoadFunc)(const char*, uint8, bool);
+    bool DoLoadAGSXmlDocument(const char* sFileName, uint8 tagID, bool bReload);
+    LoadFunc GetLoadFunction() const;
 
     struct SLocalizedStringEntryEditorExtension
     {
@@ -301,7 +312,7 @@ private:
     // CVARs
     int m_cvarLocalizationDebug;
     int m_cvarLocalizationEncode;   //Encode/Compress translated text to save memory
-    int m_cvarLocalizationTest;
+    int m_cvarLocalizationFormat;
 
     //The localizations that are available for this SKU. Used for determining what to show on a language select screen or whether to show one at all
     TLocalizationBitfield m_availableLocalizations;
@@ -312,4 +323,3 @@ private:
 };
 
 
-#endif // CRYINCLUDE_CRYSYSTEM_LOCALIZEDSTRINGMANAGER_H

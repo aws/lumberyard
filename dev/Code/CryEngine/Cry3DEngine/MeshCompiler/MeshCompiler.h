@@ -28,7 +28,9 @@ namespace mesh_compiler
 
         // Optimizes a mesh using PowerVR SDK's optimizer.
         // This should only be set with "OptimizedPrimitiveType=1" when compiling mobile assets outside the editor.
-        MESH_COMPILE_PVR_STRIPIFY = BIT(5)
+        MESH_COMPILE_PVR_STRIPIFY = BIT(5),
+
+        MESH_COMPILE_VALIDATE_FAIL_ON_DEGENERATE_FACES = BIT(6),
     };
 
     //////////////////////////////////////////////////////////////////////////
@@ -205,13 +207,15 @@ namespace mesh_compiler
         }
 
     private:
-
         bool CreateIndicesAndDeleteDuplicateVertices(CMesh& mesh);
         bool StripifyMesh_Forsyth(CMesh& mesh);
         bool StripifyMesh_PVRTriStripList(CMesh& mesh);
-        static bool CheckForDegenerateFaces(const CMesh& mesh);
-        static void FindVertexRanges(CMesh& mesh);
 
+    public:
+        static bool CheckForDegenerateFaces(const CMesh& mesh);
+
+    private:
+        static void FindVertexRanges(CMesh& mesh);
 
     private:
         struct SBasisFace

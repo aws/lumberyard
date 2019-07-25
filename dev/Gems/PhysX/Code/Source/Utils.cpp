@@ -12,8 +12,11 @@
 
 #include <PhysX_precompiled.h>
 
+#include <AzCore/EBus/Results.h>
 #include <AzCore/Serialization/Utils.h>
 #include <AzFramework/Physics/ShapeConfiguration.h>
+
+#include <PhysX/ColliderShapeBus.h>
 #include <PhysX/SystemComponentBus.h>
 #include <PhysX/MeshAsset.h>
 #include <PhysX/Utils.h>
@@ -29,7 +32,7 @@ namespace PhysX
 {
     namespace Utils
     {
-        bool CreatePxGeometryFromConfig(const Physics::ShapeConfiguration& shapeConfiguration, physx::PxGeometryHolder& pxGeometry)
+        bool CreatePxGeometryFromConfig(const Physics::ShapeConfiguration& shapeConfiguration, physx::PxGeometryHolder& pxGeometry, bool warnForNullAsset)
         {
             if (!shapeConfiguration.m_scale.IsGreaterThan(AZ::Vector3::CreateZero()))
             {
@@ -96,7 +99,10 @@ namespace PhysX
                 Pipeline::MeshAsset* physXMeshAsset = assetShapeConfig.m_asset.GetAs<Pipeline::MeshAsset>();
                 if (!physXMeshAsset)
                 {
-                    AZ_Error("PhysX Rigid Body", false, "PhysXUtils::CreatePxGeometryFromConfig. Mesh asset is null.");
+                    if (warnForNullAsset)
+                    {
+                        AZ_Error("PhysX Rigid Body", false, "PhysXUtils::CreatePxGeometryFromConfig. Mesh asset is null.");
+                    }
                     return false;
                 }
 
@@ -393,6 +399,16 @@ namespace PhysX
             return terrainTile;
         }
 
+        AZStd::string ReplaceAll(AZStd::string str, const AZStd::string& fromString, const AZStd::string& toString) {
+            size_t positionBegin = 0;
+            while ((positionBegin = str.find(fromString, positionBegin)) != AZStd::string::npos) 
+            {
+                str.replace(positionBegin, fromString.length(), toString);
+                positionBegin += toString.length();
+            }
+            return str;
+        }
+
         void WarnEntityNames(const AZStd::vector<AZ::EntityId>& entityIds, const char* category, const char* message)
         {
             AZStd::string messageOutput = message;
@@ -407,10 +423,104 @@ namespace PhysX
                 }
             }
 
+            AZStd::string percentageSymbol("%");
+            AZStd::string percentageReplace("%%"); //Replacing % with %% serves to escape the % character when printing out the entity names in printf style.
+            messageOutput = ReplaceAll(messageOutput, percentageSymbol, percentageReplace);
+
             AZ_Warning(category, false, messageOutput.c_str());
+        }
+
+        AZ::Transform GetColliderLocalTransform(const AZ::Vector3& colliderRelativePosition
+            , const AZ::Quaternion& colliderRelativeRotation)
+        {
+            return AZ::Transform::CreateFromQuaternionAndTranslation(colliderRelativeRotation, colliderRelativePosition);
+        }
+
+        AZ::Transform GetColliderWorldTransform(const AZ::Transform& worldTransform
+            , const AZ::Vector3& colliderRelativePosition
+            , const AZ::Quaternion& colliderRelativeRotation)
+        {
+            return worldTransform * GetColliderLocalTransform(colliderRelativePosition, colliderRelativeRotation);
+        }
+
+        void ColliderPointsLocalToWorld(AZStd::vector<AZ::Vector3>& pointsInOut
+            , const AZ::Transform& worldTransform
+            , const AZ::Vector3& colliderRelativePosition
+            , const AZ::Quaternion& colliderRelativeRotation)
+        {
+            AZ::Transform transform = GetColliderWorldTransform(worldTransform
+                , colliderRelativePosition
+                , colliderRelativeRotation);
+
+            for (AZ::Vector3& point : pointsInOut)
+            {
+                point = transform * point;
+            }
+        }
+
+        AZ::Aabb GetColliderAabb(const AZ::Transform& worldTransform
+            , const ::Physics::ShapeConfiguration& shapeConfiguration
+            , const ::Physics::ColliderConfiguration& colliderConfiguration)
+        {
+            AZ::Aabb aabb;
+            physx::PxGeometryHolder geometryHolder;
+            if (CreatePxGeometryFromConfig(shapeConfiguration, geometryHolder, false))
+            {
+                physx::PxBounds3 bounds = physx::PxGeometryQuery::getWorldBounds(geometryHolder.any()
+                    , physx::PxTransform(PxMathConvert(PhysX::Utils::GetColliderWorldTransform(worldTransform
+                        , colliderConfiguration.m_position
+                        , colliderConfiguration.m_rotation))));
+                aabb = AZ::Aabb::CreateFromMinMax(AZ::Vector3(PxMathConvert(bounds.minimum))
+                    , AZ::Vector3(PxMathConvert(bounds.maximum)));
+            }
+            else
+            {
+                // AABB of collider is at the least, just a point at the position of the collider.
+                aabb = AZ::Aabb::CreateFromPoint(worldTransform.GetPosition());
+            }
+            return aabb;
+        }
+
+        bool TriggerColliderExists(AZ::EntityId entityId)
+        {
+            AZ::EBusLogicalResult<bool, AZStd::logical_or<bool>> response(false);
+            PhysX::ColliderShapeRequestBus::EventResult(response
+                , entityId
+                , &PhysX::ColliderShapeRequestBus::Events::IsTrigger);
+            return response.value;
         }
     }
 
+    namespace ReflectionUtils
+    {
+        void ReflectPhysXOnlyApi(AZ::ReflectContext* context)
+        {
+            ForceRegionBusBehaviorHandler::Reflect(context);
+        }
+
+        void ForceRegionBusBehaviorHandler::Reflect(AZ::ReflectContext* context)
+        {
+            if (AZ::BehaviorContext* behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context))
+            {
+                behaviorContext->EBus<PhysX::ForceRegionNotificationBus>("ForceRegionNotificationBus")
+                    ->Handler<ForceRegionBusBehaviorHandler>()
+                    ;
+            }
+        }
+
+        void ForceRegionBusBehaviorHandler::OnCalculateNetForce(AZ::EntityId forceRegionEntityId
+            , AZ::EntityId targetEntityId
+            , const AZ::Vector3& netForceDirection
+            , float netForceMagnitude)
+        {
+            Call(FN_OnCalculateNetForce
+                , forceRegionEntityId
+                , targetEntityId
+                , netForceDirection
+                , netForceMagnitude);
+        }
+    }
+    
     namespace PxActorFactories
     {
         physx::PxRigidDynamic* CreatePxRigidBody(const Physics::RigidBodyConfiguration& configuration)

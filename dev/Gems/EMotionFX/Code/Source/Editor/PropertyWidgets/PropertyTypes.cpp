@@ -17,6 +17,7 @@
 #include <Editor/PropertyWidgets/AnimGraphNodeNameHandler.h>
 #include <Editor/PropertyWidgets/AnimGraphParameterHandler.h>
 #include <Editor/PropertyWidgets/AnimGraphTagHandler.h>
+#include <Editor/PropertyWidgets/AnimGraphTransitionHandler.h>
 #include <Editor/PropertyWidgets/AnimGraphParameterHandler.h>
 #include <Editor/PropertyWidgets/AnimGraphParameterMaskHandler.h>
 #include <Editor/PropertyWidgets/BlendSpaceEvaluatorHandler.h>
@@ -35,7 +36,6 @@
 
 namespace EMotionFX
 {
-
     AZStd::vector<AzToolsFramework::PropertyHandlerBase*> RegisterPropertyTypes()
     {
 #if defined(EMOTIONFXANIMATION_EDITOR)
@@ -56,6 +56,7 @@ namespace EMotionFX
             aznew EMotionFX::AnimGraphParameterMaskHandler(),
             aznew EMotionFX::AnimGraphStateIdHandler(),
             aznew EMotionFX::AnimGraphTagHandler(),
+            aznew EMotionFX::AnimGraphMultiTransitionIdHandler(),
             aznew EMotionFX::BlendSpaceEvaluatorHandler(),
             aznew EMotionFX::BlendSpaceMotionContainerHandler(),
             aznew EMotionFX::BlendSpaceMotionHandler(),

@@ -4,6 +4,7 @@
         "aws_cpp_sdk_gamelift", 
         "aws_cpp_sdk_sts", 
         "aws_cpp_sdk_core", 
+        "aws_cpp_sdk_devicefarm", 
         "aws_cpp_sdk_mobileanalytics", 
         "aws_cpp_sdk_identity_management", 
         "aws_cpp_sdk_cognito_identity", 
@@ -42,6 +43,10 @@
             "aws-cpp-sdk-sts"
         ], 
         "aws_cpp_sdk_core": [
+            "aws-cpp-sdk-core"
+        ], 
+        "aws_cpp_sdk_devicefarm": [
+            "aws-cpp-sdk-devicefarm", 
             "aws-cpp-sdk-core"
         ], 
         "aws_cpp_sdk_gamelift": [
@@ -138,6 +143,9 @@
             "aws_cpp_sdk_core/lib": [
                 "${aws_cpp_sdk_core}.lib"
             ], 
+            "aws_cpp_sdk_devicefarm/lib": [
+                "${aws_cpp_sdk_devicefarm}.lib"
+            ], 
             "aws_cpp_sdk_gamelift/defines": [
                 "BUILD_GAMELIFT_CLIENT"
             ], 
@@ -192,6 +200,9 @@
             "aws_cpp_sdk_core/import": [
                 "${aws_cpp_sdk_core}.lib"
             ], 
+            "aws_cpp_sdk_devicefarm/import": [
+                "${aws_cpp_sdk_devicefarm}.lib"
+            ], 
             "aws_cpp_sdk_gamelift/import": [
                 "${aws_cpp_sdk_gamelift}.lib"
             ], 
@@ -243,6 +254,9 @@
             "aws_cpp_sdk_core/shared": [
                 "${aws_cpp_sdk_core}.dll"
             ], 
+            "aws_cpp_sdk_devicefarm/shared": [
+                "${aws_cpp_sdk_devicefarm}.dll"
+            ], 
             "aws_cpp_sdk_gamelift/shared": [
                 "${aws_cpp_sdk_gamelift}.dll"
             ], 
@@ -287,6 +301,9 @@
             ], 
             "aws_cpp_sdk_core/pdb": [
                 "${aws_cpp_sdk_core}.pdb"
+            ], 
+            "aws_cpp_sdk_devicefarm/pdb": [
+                "${aws_cpp_sdk_devicefarm}.pdb"
             ], 
             "aws_cpp_sdk_gamelift/pdb": [
                 "${aws_cpp_sdk_gamelift}.pdb"
@@ -341,6 +358,9 @@
             "aws_cpp_sdk_core/lib": [
                 "${aws_cpp_sdk_core}.lib"
             ], 
+            "aws_cpp_sdk_devicefarm/lib": [
+                "${aws_cpp_sdk_devicefarm}.lib"
+            ], 
             "aws_cpp_sdk_gamelift/defines": [
                 "BUILD_GAMELIFT_CLIENT"
             ], 
@@ -395,6 +415,9 @@
             "aws_cpp_sdk_core/import": [
                 "${aws_cpp_sdk_core}.lib"
             ], 
+            "aws_cpp_sdk_devicefarm/import": [
+                "${aws_cpp_sdk_devicefarm}.lib"
+            ], 
             "aws_cpp_sdk_gamelift/import": [
                 "${aws_cpp_sdk_gamelift}.lib"
             ], 
@@ -446,6 +469,9 @@
             "aws_cpp_sdk_core/shared": [
                 "${aws_cpp_sdk_core}.dll"
             ], 
+            "aws_cpp_sdk_devicefarm/shared": [
+                "${aws_cpp_sdk_devicefarm}.dll"
+            ], 
             "aws_cpp_sdk_gamelift/shared": [
                 "${aws_cpp_sdk_gamelift}.dll"
             ], 
@@ -490,6 +516,9 @@
             ], 
             "aws_cpp_sdk_core/pdb": [
                 "${aws_cpp_sdk_core}.pdb"
+            ], 
+            "aws_cpp_sdk_devicefarm/pdb": [
+                "${aws_cpp_sdk_devicefarm}.pdb"
             ], 
             "aws_cpp_sdk_gamelift/pdb": [
                 "${aws_cpp_sdk_gamelift}.pdb"
@@ -546,6 +575,9 @@
             "aws_cpp_sdk_core/lib": [
                 "lib${aws_cpp_sdk_core}.a"
             ], 
+            "aws_cpp_sdk_devicefarm/lib": [
+                "lib${aws_cpp_sdk_devicefarm}.a"
+            ], 
             "aws_cpp_sdk_gamelift/lib": [
                 "lib${aws_cpp_sdk_gamelift}.a"
             ], 
@@ -590,6 +622,9 @@
             ], 
             "aws_cpp_sdk_core/shared": [
                 "lib${aws_cpp_sdk_core}.dylib"
+            ], 
+            "aws_cpp_sdk_devicefarm/shared": [
+                "lib${aws_cpp_sdk_devicefarm}.dylib"
             ], 
             "aws_cpp_sdk_gamelift/shared": [
                 "lib${aws_cpp_sdk_gamelift}.dylib"
@@ -721,10 +756,10 @@
                 "lib${aws_cpp_sdk_identity_metrics}.a"
             ], 
             "sharedlibpath_debug": [
-                "lib/linux/intel64/Debug"
+                "bin/linux/intel64/Debug"
             ], 
             "sharedlibpath_release": [
-                "lib/linux/intel64/Release"
+                "bin/linux/intel64/Release"
             ], 
             "aws_cpp_sdk_all/shared": [
                 "lib${aws_cpp_sdk_all}.so"
@@ -826,16 +861,16 @@
                 "lib${aws_cpp_sdk_identity_metrics}.a"
             ], 
             "sharedlibpath_debug": [
-                "lib/android/ndk_r12/android-19/armeabi-v7a/clang-3.8/Debug"
+                "bin/android/ndk_r12/android-19/armeabi-v7a/clang-3.8/Debug"
             ], 
             "sharedlibpath_release": [
-                "lib/android/ndk_r12/android-19/armeabi-v7a/clang-3.8/Release"
+                "bin/android/ndk_r12/android-19/armeabi-v7a/clang-3.8/Release"
             ], 
             "sharedlibpath_debug/android-21": [
-                "lib/android/ndk_r12/android-21/armeabi-v7a/clang-3.8/Debug"
+                "bin/android/ndk_r12/android-21/armeabi-v7a/clang-3.8/Debug"
             ], 
             "sharedlibpath_release/android-21": [
-                "lib/android/ndk_r12/android-21/armeabi-v7a/clang-3.8/Release"
+                "bin/android/ndk_r12/android-21/armeabi-v7a/clang-3.8/Release"
             ], 
             "aws_cpp_sdk_all/shared": [
                 "lib${aws_cpp_sdk_all}.so"
@@ -928,10 +963,10 @@
                 "lib${aws_cpp_sdk_identity_metrics}.a"
             ], 
             "sharedlibpath_debug": [
-                "lib/android/ndk_r12/android-21/arm64-v8a/clang-3.8/Debug"
+                "bin/android/ndk_r12/android-21/arm64-v8a/clang-3.8/Debug"
             ], 
             "sharedlibpath_release": [
-                "lib/android/ndk_r12/android-21/arm64-v8a/clang-3.8/Release"
+                "bin/android/ndk_r12/android-21/arm64-v8a/clang-3.8/Release"
             ], 
             "aws_cpp_sdk_all/shared": [
                 "lib${aws_cpp_sdk_all}.so"

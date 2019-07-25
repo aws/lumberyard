@@ -28,7 +28,6 @@
 #include <CryLibrary.h>
 #include <IGame.h>
 #include <IGameFramework.h>
-#include <IPlatformOS.h>
 #include <StringUtils.h>
 #include <AzCore/Debug/StackTracer.h>
 #include <AzCore/IO/SystemFile.h> // for AZ_MAX_PATH_LEN
@@ -396,7 +395,7 @@ void CSystem::CollectMemStats (ICrySizer* pSizer, MemStatsPurposeEnum nPurpose, 
         }
     }
 
-	if (Audio::AudioSystemRequestBus::HasHandlers())
+    if (Audio::AudioSystemRequestBus::HasHandlers())
     {
         SIZER_COMPONENT_NAME(pSizer, "CrySoundSystem");
         {
@@ -513,23 +512,15 @@ void CSystem::CollectMemStats (ICrySizer* pSizer, MemStatsPurposeEnum nPurpose, 
 //////////////////////////////////////////////////////////////////////////
 const char* CSystem::GetUserName()
 {
-#if defined(WIN32)
+#if defined(WIN32) || defined(WIN64)
     static const int iNameBufferSize = 1024;
     static char szNameBuffer[iNameBufferSize];
     memset(szNameBuffer, 0, iNameBufferSize);
 
     DWORD dwSize = iNameBufferSize;
-#if defined(WIN32) || defined(WIN64)
     wchar_t nameW[iNameBufferSize];
     ::GetUserNameW(nameW, &dwSize);
     cry_strcpy(szNameBuffer, CryStringUtils::WStrToUTF8(nameW));
-#else
-    IPlatformOS::TUserName userName;
-    if (GetPlatformOS()->UserGetName(GetPlatformOS()->GetFirstSignedInUser(), userName))
-    {
-        cry_strcpy(szNameBuffer, iNameBufferSize, userName.c_str());
-    }
-#endif
     return szNameBuffer;
 #else
 #if defined(LINUX)

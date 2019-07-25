@@ -44,7 +44,7 @@ def build(bld):
         pch     = '',
         platforms = ['all'],
         disable_pch = True,
-        win_lib    = ['gdi32'],
+        win_lib    = ['gdi32','crypt32','ws2_32'],
 
         use = ['CloudCanvasCommon.StaticLibrary'],
 

@@ -64,7 +64,7 @@ namespace EMStudio
             m_valueTypeCombo->setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::Preferred);
             valueTypeLayout->addWidget(m_valueTypeCombo);
             valueTypeLayout->addItem(new QSpacerItem(2, 0, QSizePolicy::Fixed, QSizePolicy::Fixed));
-        	connect(m_valueTypeCombo, static_cast<void (MysticQt::ComboBox::*)(int)>(&MysticQt::ComboBox::currentIndexChanged), this, &ParameterCreateEditDialog::OnValueTypeChange);
+            connect(m_valueTypeCombo, static_cast<void (MysticQt::ComboBox::*)(int)>(&MysticQt::ComboBox::currentIndexChanged), this, &ParameterCreateEditDialog::OnValueTypeChange);
             mainLayout->addItem(valueTypeLayout);
         }
 
@@ -247,18 +247,29 @@ namespace EMStudio
             return;
         }
 
-        if (m_parameter->GetName().empty())
+        const AZStd::string& parameterName = m_parameter->GetName();
+
+        if (parameterName.empty())
         {
             QMessageBox::warning(this, "Please Provide A Parameter Name", "The parameter name cannot be empty!");
             return;
         }
 
+        // Check if the name has invalid characters.
+        AZStd::string invalidCharacters;
+        if (!EMotionFX::Parameter::IsNameValid(parameterName, &invalidCharacters))
+        {
+            const AZStd::string errorString = AZStd::string::format("The parameter name contains invalid characters %s", invalidCharacters.c_str());
+            QMessageBox::warning(this, "Parameter Name Invalid", errorString.c_str());
+            return;
+        }
+
         // check if the name already exists
-        if ((m_createButton->text() == "Create" && animGraph->FindParameterByName(m_parameter->GetName()))
-            || (m_parameter->GetName() != m_originalName && animGraph->FindParameterByName(m_parameter->GetName())))
+        if ((m_createButton->text() == "Create" && animGraph->FindParameterByName(parameterName))
+            || (parameterName != m_originalName && animGraph->FindParameterByName(parameterName)))
         {
             const AZStd::string errorString = AZStd::string::format("Parameter with name '<b>%s</b>' already exists in anim graph '<b>%s</b>'.<br><br><i>Please use a unique parameter name.</i>",
-                    m_parameter->GetName().c_str(), animGraph->GetFileName());
+                parameterName.c_str(), animGraph->GetFileName());
             QMessageBox::warning(this, "Parameter name is not unique", errorString.c_str());
             return;
         }

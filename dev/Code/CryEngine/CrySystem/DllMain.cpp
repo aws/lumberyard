@@ -41,7 +41,7 @@
 
 HMODULE gDLLHandle = NULL;
 
-#if !defined(AZ_MONOLITHIC_BUILD) && defined(AZ_HAS_DLL_SUPPORT) && !defined(AZ_PLATFORM_LINUX) && !defined(AZ_PLATFORM_APPLE) && !defined(AZ_PLATFORM_ANDROID)
+#if !defined(AZ_MONOLITHIC_BUILD) && defined(AZ_HAS_DLL_SUPPORT) && !defined(AZ_PLATFORM_LINUX) && !defined(AZ_PLATFORM_APPLE) && !defined(AZ_PLATFORM_ANDROID) && !(defined(AZ_RESTRICTED_PLATFORM) && defined(AZ_PLATFORM_PROVO))
 #pragma warning( push )
 #pragma warning( disable : 4447 )
 BOOL APIENTRY DllMain(HANDLE hModule,

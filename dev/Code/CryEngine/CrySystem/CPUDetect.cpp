@@ -1401,6 +1401,13 @@ void CCpuFeatures::Detect(void)
         char buffer[512];
         while (!feof(cpu_info))
         {
+            if (nCpu >= MAX_CPU)
+            {
+                --nCpu; //Decrement so the sets after the while loop matches the number of CPUs examined
+                CryLogAlways("Found a higher than expected number of CPUs, defaulting to %d", MAX_CPU);
+                break;
+            }
+
             fgets(buffer, sizeof(buffer), cpu_info);
 
             if (buffer[0] == '\0' || buffer[0] == '\n')

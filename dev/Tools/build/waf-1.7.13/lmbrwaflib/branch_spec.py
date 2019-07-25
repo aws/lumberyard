@@ -13,7 +13,6 @@
 
 import os
 import subprocess
-import copy
 
 from waflib import Context, Utils, Logs, Errors
 from waflib.Configure import conf, ConfigurationContext
@@ -25,7 +24,6 @@ from waf_branch_spec import AVAILABLE_LAUNCHERS
 from waf_branch_spec import LUMBERYARD_VERSION
 from waf_branch_spec import LUMBERYARD_BUILD
 from waf_branch_spec import ADDITIONAL_COPYRIGHT_TABLE
-
 
 
 # Copyright table lookup by copyright organization ( copyright_org for the wscript keyword. )
@@ -44,13 +42,51 @@ for additional_copyright_org in ADDITIONAL_COPYRIGHT_TABLE:
 
 
 @conf
-def get_bintemp_folder_node(self):
-    return self.root.make_node(Context.launch_dir).make_node(BINTEMP_FOLDER)
+def get_bintemp_folder_node(ctx):
+    """
+    Get the Node for BinTemp. The location of BinTemp relative to the context depends on the context type and if it has a build variant:
+    
+    1. If ctx is a ConfigurationContext (ie lmbr_waf configure), then there is no bldnode set in the context, so we will derive the BinTemp
+       location from the 'path' attribute, which should be the root of the project
+    2. If ctx is a BuildContext, but has no variant (ie it is a 'project_generator' platform like msvs, android_studio, etc), then the 'bldnode'
+       will be the BinTemp folder
+    3. If ctx is a BuildContext and has a build variant, then it is a build_ command. The BinTemp folder should be the parent folder of the
+       variant folder.
+    """
+    try:
+        return ctx.bintemp_node
+    except AttributeError:
+        if hasattr(ctx, 'bldnode'):
+            # If this build context has no variant (ie project generator tasks), then the bldnode will point
+            # directly to BinTemp
+            if str(ctx.bldnode) == BINTEMP_FOLDER:
+                check_bintemp = ctx.bldnode
+            else:
+                check_bintemp = ctx.bldnode.parent
 
-#############################################################################
+            if str(check_bintemp) != BINTEMP_FOLDER:
+                raise Errors.WafError("[ERROR] Expected BinTemp for bldnode but found {}".format(os.path.dirname(ctx.bldnode.abspath())))
+
+            ctx.bintemp_node = check_bintemp
+        else:
+            # If the current context does not have a 'bldnode' setup, that means it is not setup yet. We can still
+            # derive the location based on the 'path' attribute which should the project root
+            ctx.bintemp_node = ctx.path.make_node(BINTEMP_FOLDER)
+        return ctx.bintemp_node
+
+
 @conf
-def get_cache_folder_node(self):
-    return self.root.make_node(Context.launch_dir).make_node(CACHE_FOLDER)
+def get_cache_folder_node(ctx):
+    """
+    Get the Node for the Cache folder
+    """
+    try:
+        return ctx.cache_folder_node
+    except AttributeError:
+        # The cache folder node will always be at the same level as BinTemp
+        bintemp_node = ctx.get_bintemp_folder_node()
+        ctx.cache_folder_node = bintemp_node.parent.make_node(CACHE_FOLDER)
+        return ctx.cache_folder_node
 
 #############################################################################
 @conf
@@ -183,7 +219,7 @@ def check_cpp_platform_tools(toolsetVer, platform_tool_name, vs2017vswhereOption
             if not installation_path:
                 try:
                     version_arg_index = vs2017vswhereOptions.index('-version')
-                    Logs.warn('[WARN] VSWhere could not find an installed version of Visual Studio matching the version requirements provided (-version {}). Attempting to fall back on any available installed version.'.format(vs_where_args[version_arg_index + 1]))
+                    Logs.warn('[WARN] VSWhere could not find an installed version of Visual Studio matching the version requirements provided (-version {}). Attempting to fall back on any available installed version.'.format(vs2017vswhereOptions[version_arg_index + 1]))
                     Logs.warn('[WARN] Lumberyard defaults the version range to the maximum version tested against before each release. You can modify the version range in the WAF user_settings\' option win_vs2017_vswhere_args under [Windows Options].')
                     del vs2017vswhereOptions[version_arg_index : version_arg_index + 2]
                     installation_path = subprocess.check_output([vswhere_exe, '-property', 'installationPath'] + vs2017vswhereOptions)
@@ -263,7 +299,7 @@ def _load_android_settings(ctx):
         return
 
     ctx.android_settings = {}
-    settings_file = ctx.root.make_node(Context.launch_dir).make_node([ '_WAF_', 'android', 'android_settings.json' ])
+    settings_file = ctx.engine_node.make_node(['_WAF_','android','android_settings.json'])
     try:
         ctx.android_settings = ctx.parse_json_file(settings_file)
     except Exception as e:
@@ -283,7 +319,7 @@ def get_android_dev_keystore_alias(conf):
 @conf
 def get_android_dev_keystore_path(conf):
     local_path = _get_android_setting(conf, 'DEV_KEYSTORE')
-    debug_ks_node = conf.root.make_node(Context.launch_dir).make_node(local_path)
+    debug_ks_node = conf.engine_node.make_node(local_path)
     return debug_ks_node.abspath()
 
 @conf
@@ -293,7 +329,7 @@ def get_android_distro_keystore_alias(conf):
 @conf
 def get_android_distro_keystore_path(conf):
     local_path = _get_android_setting(conf, 'DISTRO_KEYSTORE')
-    release_ks_node = conf.root.make_node(Context.launch_dir).make_node(local_path)
+    release_ks_node = conf.engine_node.make_node(local_path)
     return release_ks_node.abspath()
 
 @conf
@@ -392,7 +428,7 @@ def _load_environment_file(ctx):
         return
 
     ctx.local_environment = {}
-    settings_file = ctx.root.make_node(Context.launch_dir).make_node([ '_WAF_', 'environment.json' ])
+    settings_file = ctx.get_engine_node().make_node('_WAF_').make_node('environment.json')
     try:
         ctx.local_environment = ctx.parse_json_file(settings_file)
     except Exception as e:
@@ -409,9 +445,9 @@ def get_env_file_var(conf, env_var, required = False, silent = False):
 
     try:
         return _get_environment_file_var(conf, env_var)
-    except:
+    except Exception as e:
         if not silent:
-            message = 'Failed to find %s in _WAF_/environment.json.' % env_var
+            message = 'Failed to find {} in _WAF_/environment.json: {}'.format(env_var, e)
             if required:
                 Logs.error('[ERROR] %s' % message)
             else:

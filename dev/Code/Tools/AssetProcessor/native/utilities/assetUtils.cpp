@@ -17,6 +17,7 @@
 #include "native/AssetManager/assetScanner.h"
 #include "native/assetprocessor.h"
 #include "native/AssetDatabase/AssetDatabase.h"
+#include "native/resourcecompiler/rcjob.h"
 #include <QByteArray>
 #include <QString>
 #include <QStringList>
@@ -32,6 +33,7 @@
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QTimeZone>
 
 #if !defined(BATCH_MODE)
 #include <QMessageBox>
@@ -57,6 +59,7 @@
 #include <AzFramework/StringFunc/StringFunc.h>
 #include <AzFramework/API/ApplicationAPI.h>
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
+#include <AzToolsFramework/UI/Logging/LogLine.h>
 
 #if defined(AZ_PLATFORM_WINDOWS)
 #   include <windows.h>
@@ -169,6 +172,7 @@ namespace AssetUtilities
     // do not place Qt objects in global scope, they allocate and refcount threaded data.
     char s_gameName[AZ_MAX_PATH_LEN] = { 0 };
     char s_assetRoot[AZ_MAX_PATH_LEN] = { 0 };
+    char s_assetServerAddress[AZ_MAX_PATH_LEN] = { 0 };
     char s_cachedEngineRoot[AZ_MAX_PATH_LEN] = { 0 };
 
     void ResetAssetRoot()
@@ -529,6 +533,84 @@ namespace AssetUtilities
         return QString::fromUtf8(s_gameName);
     }
 
+    bool InServerMode()
+    {
+        static bool s_serverMode = CheckServerMode();
+        return s_serverMode;
+    }
+
+    bool CheckServerMode()
+    {
+        QStringList args = QCoreApplication::arguments();
+        for (const QString& arg : args)
+        {
+            if (arg.contains("/server", Qt::CaseInsensitive) || arg.contains("--server", Qt::CaseInsensitive))
+            {
+                bool isValid = false;
+                AssetProcessor::AssetServerBus::BroadcastResult(isValid, &AssetProcessor::AssetServerBusTraits::IsServerAddressValid);
+                if (isValid)
+                {
+                    AZ_TracePrintf(AssetProcessor::ConsoleChannel, "Asset Processor is running in server mode.\n");
+                    return true;
+                }
+                else
+                {
+                    AZ_Warning(AssetProcessor::ConsoleChannel, false, "Invalid server address, please check the AssetProcessorPlatformConfig.ini file \
+to ensure that the address is correct. Asset Processor won't be running in server mode.");
+                }
+
+                break;
+            }
+        }
+
+        return false;
+    }
+
+
+    QString ServerAddress()
+    {
+        if (s_assetServerAddress[0])
+        {
+            return QString::fromUtf8(s_assetServerAddress);
+        }
+        // QCoreApplication is not created during unit test mode and that can cause QtWarning to get emitted
+        // since we need to retreive arguements from Qt
+        if (QCoreApplication::instance())
+        {
+            // if its been specified on the command line, then ignore AssetProcessorPlatformConfig:
+            QStringList args = QCoreApplication::arguments();
+            for (QString arg : args)
+            {
+                if (arg.contains("/serverAddress=", Qt::CaseInsensitive) || arg.contains("--serverAddress=", Qt::CaseInsensitive))
+                {
+                    QString serverAddress = arg.split("=")[1].trimmed();
+                    if (!serverAddress.isEmpty())
+                    {
+                        azstrcpy(s_assetServerAddress, AZ_MAX_PATH_LEN, serverAddress.toUtf8().constData());
+                        return s_assetServerAddress;
+                    }
+                }
+            }
+        }
+
+        QDir engineRoot;
+        ComputeEngineRoot(engineRoot);
+        QString rootConfigFile = engineRoot.absoluteFilePath("AssetProcessorPlatformConfig.ini");
+
+        if (QFile::exists(rootConfigFile))
+        {
+            QString address;
+            QSettings loader(rootConfigFile, QSettings::IniFormat);
+            loader.beginGroup("Server");
+            address = loader.value("cacheServerAddress", QString()).toString();
+            loader.endGroup();
+            azstrcpy(s_assetServerAddress, AZ_MAX_PATH_LEN, address.toUtf8().constData());
+            return address;
+        }
+
+        return QString();
+    }
+
     QString ReadGameNameFromBootstrap(QString initialFolder /*= QString()*/)
     {
         if (initialFolder.isEmpty())
@@ -627,6 +709,49 @@ namespace AssetUtilities
         return lineValue;
     }
 
+    QString ReadRemoteIpFromBootstrap(QString initialFolder /*= QString()*/)
+    {
+        if (initialFolder.isEmpty())
+        {
+            QDir engineRoot;
+            if (!AssetUtilities::ComputeEngineRoot(engineRoot))
+            {
+                return QString();
+            }
+
+            initialFolder = engineRoot.absolutePath();
+        }
+        // regexp that matches either the beginning of the file, some whitespace, and sys_game_folder, or,
+        // matches a newline, then whitespace, then sys_game_folder
+        // it will not match comments.
+        QRegExp remoteIpPattern("(^|\\n)\\s*remote_ip\\s*=\\s*(.+)", Qt::CaseInsensitive, QRegExp::RegExp);
+        QString lineValue;
+        unsigned tries = 0;
+        do
+        {
+            QString prefix = initialFolder + "/" + QString("../").repeated(tries);
+            QString bootstrapFilename = prefix + "bootstrap.cfg";
+            QFile bootstrap(bootstrapFilename);
+            if (bootstrap.open(QIODevice::ReadOnly))
+            {
+                while (!bootstrap.atEnd())
+                {
+                    QString contents(bootstrap.readLine());
+                    int matchIdx = remoteIpPattern.indexIn(contents);
+                    if (matchIdx != -1)
+                    {
+                        lineValue = remoteIpPattern.cap(2);
+                        break;
+                    }
+                }
+            }
+
+            bootstrap.close();
+        } while (++tries < 3);
+
+        return lineValue;
+    }
+
     bool WriteWhitelistToBootstrap(QStringList newWhiteList)
     {
         QDir assetRoot;
@@ -694,6 +819,82 @@ namespace AssetUtilities
         {
             AZ_Warning(AssetProcessor::ConsoleChannel, false, "Failed to make the bootstrap file writable.")
             return false;
+        }
+        if (!bootstrapFile.open(QIODevice::WriteOnly))
+        {
+            return false;
+        }
+
+        QTextStream output(&bootstrapFile);
+        output << fileContents;
+        bootstrapFile.close();
+        return true;
+    }
+
+    bool WriteRemoteIpToBootstrap(QString newRemoteIp)
+    {
+        QDir assetRoot;
+        ComputeAssetRoot(assetRoot);
+        QString bootstrapFilename = assetRoot.filePath("bootstrap.cfg");
+        QFile bootstrapFile(bootstrapFilename);
+
+        // do not alter the branch file unless we are able to obtain an exclusive lock.  Other apps (such as NPP) may actually write 0 bytes first, then slowly spool out the remainder)
+        if (!CheckCanLock(bootstrapFilename))
+        {
+            return false;
+        }
+
+        if (!bootstrapFile.open(QIODevice::ReadOnly))
+        {
+            return false;
+        }
+
+        // regexp that matches either the beginning of the file, and remote_ip, or,
+        // matches a newline, then whitespace, then remote_ip it will not match comments.
+        QRegExp remoteIpPattern("(^|\\n)\\s*remote_ip\\s*=\\s*(.+)", Qt::CaseInsensitive, QRegExp::RegExp);
+
+        //read the file line by line and try to find the remote_ip line
+        QString readRemoteIp;
+        QString remoteIpline;
+        while (!bootstrapFile.atEnd())
+        {
+            QString contents(bootstrapFile.readLine());
+            int matchIdx = remoteIpPattern.indexIn(contents);
+            if (matchIdx != -1)
+            {
+                remoteIpline = contents;
+                readRemoteIp = remoteIpPattern.cap(2);
+                break;
+            }
+        }
+
+        //read the entire file into so we can do a buffer replacement
+        bootstrapFile.seek(0);
+        QString fileContents;
+        fileContents = bootstrapFile.readAll();
+        bootstrapFile.close();
+
+        //if we didn't find a remote_ip entry then append one
+        if (remoteIpline.isEmpty())
+        {
+            fileContents.append("\nremote_ip = " + newRemoteIp + "\n");
+        }
+        else if (QString::compare(newRemoteIp, readRemoteIp, Qt::CaseInsensitive) == 0)
+        {
+            // no need to update, they match
+            return true;
+        }
+        else
+        {
+            //Replace the found line with a new one
+            fileContents.replace(remoteIpline, "remote_ip = " + newRemoteIp + "\n");
+        }
+
+        // Make the bootstrap file writable
+        if (!MakeFileWritable(bootstrapFilename))
+        {
+            AZ_Warning(AssetProcessor::ConsoleChannel, false, "Failed to make the bootstrap file writable.")
+                return false;
         }
         if (!bootstrapFile.open(QIODevice::WriteOnly))
         {
@@ -1121,6 +1322,12 @@ namespace AssetUtilities
         }
         else
         {
+            if (lastModifiedTime.isDaylightTime())
+            {
+                int offsetTimeinSecs = lastModifiedTime.timeZone().daylightTimeOffset(lastModifiedTime);
+                lastModifiedTime = lastModifiedTime.addSecs(-1 * offsetTimeinSecs);
+            }
+            lastModifiedTime.setTimeSpec(Qt::UTC);
             // its possible that the dependency has moved to a different file with the same modtime
             // so we add the size of it too.
             // its also possible that it moved to a different file with the same modtime AND size,
@@ -1490,4 +1697,44 @@ namespace AssetUtilities
         m_logFile->AppendLog(severity, window, message);
         m_isLogging = false;
     }
+
+    void JobLogTraceListener::AppendLog(AzToolsFramework::Logging::LogLine& logLine)
+    {
+        using namespace AzToolsFramework;
+        using namespace AzFramework;
+
+        if (m_isLogging)
+        {
+            return;
+        }
+
+        m_isLogging = true;
+
+        if (!m_logFile)
+        {
+            m_logFile.reset(new LogFile(m_logFileName.c_str(), m_forceOverwriteLog));
+        }
+
+        LogFile::SeverityLevel severity;
+
+        switch (logLine.GetLogType())
+        {
+        case Logging::LogLine::TYPE_MESSAGE:
+            severity = LogFile::SEV_NORMAL;
+            break;
+        case Logging::LogLine::TYPE_WARNING:
+            severity = LogFile::SEV_WARNING;
+            break;
+        case Logging::LogLine::TYPE_ERROR:
+            severity = LogFile::SEV_ERROR;
+            break;
+        default:
+            severity = LogFile::SEV_DEBUG;
+        }
+
+        m_logFile->AppendLog(severity, logLine.GetLogMessage().c_str(), (int)logLine.GetLogMessage().length(),
+            logLine.GetLogWindow().c_str(), (int)logLine.GetLogWindow().length(), logLine.GetLogThreadId(), logLine.GetLogTime());
+        m_isLogging = false;
+    }
+
 } // namespace AssetUtilities

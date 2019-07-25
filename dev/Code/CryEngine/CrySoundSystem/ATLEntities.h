@@ -433,12 +433,14 @@ namespace Audio
             : CATLEntity<TAudioPreloadRequestID>(nID, eDataScope)
             , m_bAutoLoad(bAutoLoad)
             , m_cFileEntryIDs(cFileEntryIDs)
+            , m_allLoaded(false)
         {}
 
         ~CATLPreloadRequest() override {}
 
         const bool m_bAutoLoad;
         TFileEntryIDs m_cFileEntryIDs;
+        bool m_allLoaded;
     };
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////

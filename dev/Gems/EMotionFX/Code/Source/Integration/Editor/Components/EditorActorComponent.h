@@ -19,11 +19,14 @@
 #include <AzCore/Asset/AssetCommon.h>
 
 #include <AzToolsFramework/ToolsComponents/EditorComponentBase.h>
+#include <AzToolsFramework/API/ComponentEntitySelectionBus.h>
 #include <AzToolsFramework/ToolsComponents/EditorVisibilityBus.h>
 
 #include <Integration/Components/ActorComponent.h>
 
 #include <LmbrCentral/Rendering/RenderBoundsBus.h>
+
+#include <LmbrCentral/Rendering/MaterialOwnerBus.h>
 
 namespace AZ
 {
@@ -44,9 +47,11 @@ namespace EMotionFX
             , private LmbrCentral::MeshComponentRequestBus::Handler
             , private LmbrCentral::RenderNodeRequestBus::Handler
             , private LmbrCentral::RenderBoundsRequestBus::Handler
+            , private LmbrCentral::MaterialOwnerRequestBus::Handler
             , private ActorComponentRequestBus::Handler
             , private EditorActorComponentRequestBus::Handler
             , private LmbrCentral::AttachmentComponentNotificationBus::Handler
+            , private AzToolsFramework::EditorComponentSelectionRequestsBus::Handler
             , private AzToolsFramework::EditorVisibilityNotificationBus::Handler
         {
         public:
@@ -85,7 +90,15 @@ namespace EMotionFX
             void SetMeshAsset(const AZ::Data::AssetId& id) override { (void)id; }
             AZ::Data::Asset<AZ::Data::AssetData> GetMeshAsset() override { return m_actorAsset; }
 
-            // ActorComponentNotificationBus::Handler
+            // EditorComponentSelectionRequestsBus::Handler
+            AZ::Aabb GetEditorSelectionBoundsViewport(
+                const AzFramework::ViewportInfo& viewportInfo) override;
+            bool EditorSelectionIntersectRayViewport(
+                const AzFramework::ViewportInfo& viewportInfo,
+                const AZ::Vector3& src, const AZ::Vector3& dir, AZ::VectorFloat& distance) override;
+            bool SupportsEditorRayIntersect() override { return true; }
+
+            // RenderNodeRequestBus::Handler
             IRenderNode* GetRenderNode() override;
             float GetRenderNodeRequestBusOrder() const override;
             static const float s_renderNodeRequestBusOrder;
@@ -151,6 +164,10 @@ namespace EMotionFX
             // LmbrCentral::AttachmentComponentNotificationBus::Handler
             void OnAttached(AZ::EntityId targetId) override;
             void OnDetached(AZ::EntityId targetId) override;
+
+            // AZ::LmbrCentral::MaterialOwnerRequestBus::Handler
+            void SetMaterial(_smart_ptr<IMaterial>) override;
+            _smart_ptr<IMaterial> GetMaterial() override;
 
             void BuildGameEntity(AZ::Entity* gameEntity) override;
 

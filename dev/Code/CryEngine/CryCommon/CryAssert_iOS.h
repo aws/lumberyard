@@ -20,7 +20,7 @@
 
 #if defined(USE_CRY_ASSERT) && (defined(IOS) || defined(APPLETV))
 
-#include <NativeUIRequests.h>
+#include <AzCore/NativeUI/NativeUIRequests.h>
 
 static char gs_szMessage[MAX_PATH];
 
@@ -78,18 +78,18 @@ bool CryAssert(const char* szCondition, const char* szFile, unsigned int line, b
     {
         printf("!!ASSERT!!\n\tCondition: %s\n\tMessage  : %s\n\tFile     : %s\n\tLine     : %d", szCondition, gs_szMessage, szFile, line);
 
-        NativeUI::AssertAction result;
-        EBUS_EVENT_RESULT(result, NativeUI::NativeUIRequestBus, DisplayAssertDialog, gs_szMessage);
+        AZ::NativeUI::AssertAction result;
+        EBUS_EVENT_RESULT(result, AZ::NativeUI::NativeUIRequestBus, DisplayAssertDialog, gs_szMessage);
         
         switch(result)
         {
-        case NativeUI::AssertAction::IGNORE_ASSERT:
+        case AZ::NativeUI::AssertAction::IGNORE_ASSERT:
             return false;
-        case NativeUI::AssertAction::IGNORE_ALL_ASSERTS:
+        case AZ::NativeUI::AssertAction::IGNORE_ALL_ASSERTS:
             gEnv->bNoAssertDialog = true;
             gEnv->bIgnoreAllAsserts = true;
             return false;
-        case NativeUI::AssertAction::BREAK:
+        case AZ::NativeUI::AssertAction::BREAK:
             return true;
         default:
             break;

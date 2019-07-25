@@ -1,0 +1,17 @@
+Requists for installation is:
+boost
+boost-python
+python 2.5
+Magick++ (>= 6.2)
+
+and for building:
+pkg-config
+libtool
+make
+
+and for generation build scripts is defined in autogen.pl
+
+Building:
+./configure
+make
+make install

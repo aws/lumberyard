@@ -161,16 +161,18 @@ CXmlNode::CXmlNode()
     , m_pChilds(NULL)
     , m_pAttributes(NULL)
     , m_line(0)
+    , m_isProcessingInstruction(false)
 {
     m_nRefCount = 0; //TODO: move initialization to IXmlNode constructor
 }
 
-CXmlNode::CXmlNode(const char* tag, bool bReuseStrings)
+CXmlNode::CXmlNode(const char* tag, bool bReuseStrings, bool bIsProcessingInstruction)
     : m_content("")
     , m_parent(NULL)
     , m_pChilds(NULL)
     , m_pAttributes(NULL)
     , m_line(0)
+    , m_isProcessingInstruction(bIsProcessingInstruction)
 {
     m_nRefCount = 0; //TODO: move initialization to IXmlNode constructor
 
@@ -1025,21 +1027,14 @@ void CXmlNode::removeAllChildsImpl()
 }
 
 //////////////////////////////////////////////////////////////////////////
-void CXmlNode::AddToXmlString(XmlString& xml, int level, AZ::IO::HandleType fileHandle, IPlatformOS::ISaveWriterPtr pSaveWriter, size_t chunkSize) const
+void CXmlNode::AddToXmlString(XmlString& xml, int level, AZ::IO::HandleType fileHandle, size_t chunkSize) const
 {
-    if (((fileHandle != AZ::IO::InvalidHandle) || pSaveWriter) && chunkSize > 0)
+    if (fileHandle != AZ::IO::InvalidHandle && chunkSize > 0)
     {
         size_t len = xml.length();
         if (len >= chunkSize)
         {
-            if (pSaveWriter)
-            {
-                pSaveWriter->AppendBytes(xml.c_str(), len);
-            }
-            else
-            {
-                gEnv->pCryPak->FWrite(xml.c_str(), len, 1, fileHandle);
-            }
+            gEnv->pCryPak->FWrite(xml.c_str(), len, 1, fileHandle);
             xml.assign (""); // should not free memory and does not!
         }
     }
@@ -1052,11 +1047,22 @@ void CXmlNode::AddToXmlString(XmlString& xml, int level, AZ::IO::HandleType file
     if (!m_pAttributes || m_pAttributes->empty())
     {
         xml += "<";
+        if (m_isProcessingInstruction)
+        {
+            xml += "?";
+        }
         xml += m_tag;
         if (*m_content == 0 && !bHasChildren)
         {
+            if (m_isProcessingInstruction)
+            {
+                xml += "?>\n";
+            }
+            else
+            {
             // Compact tag form.
             xml += " />\n";
+            }
             return;
         }
         xml += ">";
@@ -1064,6 +1070,10 @@ void CXmlNode::AddToXmlString(XmlString& xml, int level, AZ::IO::HandleType file
     else
     {
         xml += "<";
+        if (m_isProcessingInstruction)
+        {
+            xml += "?";
+        }
         xml += m_tag;
         xml += " ";
 
@@ -1092,8 +1102,15 @@ void CXmlNode::AddToXmlString(XmlString& xml, int level, AZ::IO::HandleType file
         }
         if (*m_content == 0 && !bHasChildren)
         {
+            if (m_isProcessingInstruction)
+            {
+                xml += "?>\n";
+            }
+            else
+            {
             // Compact tag form.
             xml += "/>\n";
+            }
             return;
         }
         xml += ">";
@@ -1123,7 +1140,7 @@ void CXmlNode::AddToXmlString(XmlString& xml, int level, AZ::IO::HandleType file
     for (XmlNodes::iterator it = m_pChilds->begin(), itEnd = m_pChilds->end(); it != itEnd; ++it)
     {
         IXmlNode* node = *it;
-        ((CXmlNode*)node)->AddToXmlString(xml, level + 1, fileHandle, pSaveWriter, chunkSize);
+        ((CXmlNode*)node)->AddToXmlString(xml, level + 1, fileHandle, chunkSize);
     }
 
     // Add tabs.
@@ -1146,7 +1163,7 @@ ILINE static char* stpcpy(char* dst, const char* src)
 }
 #endif
 
-char* CXmlNode::AddToXmlStringUnsafe(char* xml, int level, char* endPtr, AZ::IO::HandleType fileHandle, IPlatformOS::ISaveWriterPtr pSaveWriter, size_t chunkSize) const
+char* CXmlNode::AddToXmlStringUnsafe(char* xml, int level, char* endPtr, AZ::IO::HandleType fileHandle, size_t chunkSize) const
 {
     const bool bHasChildren = (m_pChilds && !m_pChilds->empty());
 
@@ -1231,7 +1248,7 @@ char* CXmlNode::AddToXmlStringUnsafe(char* xml, int level, char* endPtr, AZ::IO:
     for (XmlNodes::iterator it = m_pChilds->begin(), itEnd = m_pChilds->end(); it != itEnd; ++it)
     {
         IXmlNode* node = *it;
-        xml = ((CXmlNode*)node)->AddToXmlStringUnsafe(xml, level + 1, endPtr, fileHandle, pSaveWriter, chunkSize);
+        xml = ((CXmlNode*)node)->AddToXmlStringUnsafe(xml, level + 1, endPtr, fileHandle, chunkSize);
     }
 
     for (int i = 0; i < level; i++)
@@ -1291,40 +1308,6 @@ bool CXmlNode::saveToFile(const char* fileName)
         return false;
     }
 
-    bool isLogFile = (azstrnicmp(fileName, "@log@", 5) == 0);
-    
-    if ((!isLogFile)&&(pPlatformOS->UsePlatformSavingAPI()))
-    {
-#ifdef WIN32
-        CrySetFileAttributes(fileName, 0x00000080); // FILE_ATTRIBUTE_NORMAL
-#endif //WIN32
-
-        IPlatformOS::ISaveWriterPtr pSaveWriter;
-        pSaveWriter = pPlatformOS->SaveGetWriter(fileName);
-
-        if (!pSaveWriter)
-        {
-            return false;
-        }
-
-        XmlString xml;
-        xml.assign("");
-        xml.reserve(chunkSizeBytes * 2);
-        xml = getXML();
-
-        size_t len = xml.length();
-        if (len > 0)
-        {
-            if (pSaveWriter)
-            {
-                pSaveWriter->AppendBytes(xml.c_str(), len);
-            }
-        }
-        xml.clear();
-
-        return (len > 0);
-    }
-    else
     {
         AZ::IO::HandleType fileHandle = gEnv->pCryPak->FOpen(fileName, "wt");
         if (fileHandle != AZ::IO::InvalidHandle)
@@ -1361,35 +1344,17 @@ bool CXmlNode::saveToFile(const char* fileName, size_t chunkSize, AZ::IO::Handle
     xml.assign ("");
     xml.reserve(chunkSize * 2); // we reserve double memory, as writing in chunks is not really writing in fixed blocks but a bit fuzzy
     ICryPak* pCryPak = gEnv->pCryPak;
-    IPlatformOS::ISaveWriterPtr pSaveWriter;
     if (fileHandle == AZ::IO::InvalidHandle)
-    {
-        pSaveWriter = gEnv->pSystem->GetPlatformOS()->SaveGetWriter(fileName);
-    }
-    if ((fileHandle == AZ::IO::InvalidHandle) && !pSaveWriter)
     {
         return false;
     }
-    AddToXmlString(xml, 0, fileHandle, pSaveWriter, chunkSize);
+    AddToXmlString(xml, 0, fileHandle, chunkSize);
     size_t len = xml.length();
     if (len > 0)
     {
-        if (pSaveWriter)
-        {
-            pSaveWriter->AppendBytes(xml.c_str(), len);
-        }
-        else
-        {
-            pCryPak->FWrite(xml.c_str(), len, 1, fileHandle);
-        }
+        pCryPak->FWrite(xml.c_str(), len, 1, fileHandle);
     }
     xml.clear(); // xml.resize(0) would not reclaim memory
-
-    if (pSaveWriter)
-    {
-        pSaveWriter->Close();
-    }
-
     return true;
 }
 
@@ -1735,43 +1700,6 @@ XmlNodeRef XmlParserImp::ParseFile(const char* filename, XmlString& errorString,
 
     char str[1024];
 
-    // Check the hard link @user@ to use IPlatformOS::ISaveReader
-    static const char USER_ENV[] = "@user@";
-    if (!_strnicmp(filename, USER_ENV, sizeof(USER_ENV) - 1))
-    {
-        IPlatformOS* const pPlatformOS = gEnv->pSystem->GetPlatformOS();
-        if (pPlatformOS)
-        {
-            IPlatformOS::ISaveReaderPtr const pSaveReader = pPlatformOS->SaveGetReader(filename);
-
-            if (pSaveReader)
-            {
-                if ((IPlatformOS::eFOC_Success != pSaveReader->GetNumBytes(fileSize)) || (fileSize <= 0))
-                {
-                    return 0;
-                }
-
-                if (fileSize == ~size_t(0))
-                {
-                    sprintf_s(str, "%sReported file size is -1 (%s)", errorPrefix, filename);
-                    errorString = str;
-                    CryWarning(VALIDATOR_MODULE_SYSTEM, VALIDATOR_WARNING, "%s", str);
-                    return 0;
-                }
-
-                pFileContents = new char[fileSize];
-                if (!pFileContents)
-                {
-                    sprintf_s(str, "%sCan't allocate %u bytes of memory (%s)", errorPrefix, static_cast<unsigned>(fileSize), filename);
-                    errorString = str;
-                    CryWarning(VALIDATOR_MODULE_SYSTEM, VALIDATOR_WARNING, "%s", str);
-                    return 0;
-                }
-
-                pSaveReader->ReadBytes(pFileContents, fileSize);
-            }
-        }
-    }
     CryStackStringT<char, 256> adjustedFilename;
     CryStackStringT<char, 256> pakPath;
     if (fileSize <= 0)

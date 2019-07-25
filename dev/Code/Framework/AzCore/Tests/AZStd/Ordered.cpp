@@ -398,7 +398,17 @@ namespace UnitTest
         AZ_TEST_ASSERT(range.second == set.end());
     }
 
-    
+    TEST_F(Tree_Set, ExplicitAllocatorSucceeds)
+    {
+        AZ::OSAllocator customAllocator;
+        AZStd::set<int, AZStd::less<int>, AZ::AZStdIAllocator> setWithCustomAllocator{ AZ::AZStdIAllocator(&customAllocator) };
+        auto insertIter = setWithCustomAllocator.emplace(1);
+        EXPECT_TRUE(insertIter.second);
+        insertIter = setWithCustomAllocator.emplace(1);
+        EXPECT_FALSE(insertIter.second);
+        EXPECT_EQ(1, setWithCustomAllocator.size());
+    }
+
     class Tree_MultiSet
         : public AllocatorsFixture
     {
@@ -512,7 +522,15 @@ namespace UnitTest
         AZ_TEST_ASSERT(range.second == set.end());
     }
 
-    
+    TEST_F(Tree_MultiSet, ExplicitAllocatorSucceeds)
+    {
+        AZ::OSAllocator customAllocator;
+        AZStd::multiset<int, AZStd::less<int>, AZ::AZStdIAllocator> setWithCustomAllocator{ AZ::AZStdIAllocator(&customAllocator) };
+        setWithCustomAllocator.emplace(1);
+        setWithCustomAllocator.emplace(1);
+        EXPECT_EQ(2, setWithCustomAllocator.size());
+    }
+
     class Tree_Map
         : public AllocatorsFixture
     {
@@ -652,8 +670,27 @@ namespace UnitTest
         AZ_TEST_ASSERT((*prior(map3.end())).second == 6);
 #endif
     }
-    
-    
+
+    TEST_F(Tree_Map, ExplicitAllocatorSucceeds)
+    {
+        AZ::OSAllocator customAllocator;
+        AZStd::map<int, int, AZStd::less<int>, AZ::AZStdIAllocator> mapWithCustomAllocator{ AZ::AZStdIAllocator(&customAllocator) };
+        auto insertIter = mapWithCustomAllocator.emplace(1, 1);
+        EXPECT_TRUE(insertIter.second);
+        insertIter = mapWithCustomAllocator.emplace(1, 2);
+        EXPECT_FALSE(insertIter.second);
+        EXPECT_EQ(1, mapWithCustomAllocator.size());
+    }
+
+    TEST_F(Tree_Map, IndexOperatorCompilesWithMoveOnlyType)
+    {
+        AZStd::map<int, AZStd::unique_ptr<int>> uniquePtrIntMap;
+        uniquePtrIntMap[4] = AZStd::make_unique<int>(74);
+        auto findIter = uniquePtrIntMap.find(4);
+        EXPECT_NE(uniquePtrIntMap.end(), findIter);
+        EXPECT_EQ(74, *findIter->second);
+    }
+
     class Tree_MultiMap
         : public AllocatorsFixture
     {
@@ -789,5 +826,14 @@ namespace UnitTest
         AZ_TEST_ASSERT((++intint_map3.lower_bound(4))->second == 40000 || (++intint_map3.lower_bound(4))->second == 40001);
         AZ_TEST_ASSERT(intint_map3.lower_bound(5)->second == 500000);
 #endif
+    }
+
+    TEST_F(Tree_MultiMap, ExplicitAllocatorSucceeds)
+    {
+        AZ::OSAllocator customAllocator;
+        AZStd::multimap<int, int, AZStd::less<int>, AZ::AZStdIAllocator> mapWithCustomAllocator{ AZ::AZStdIAllocator(&customAllocator) };
+        mapWithCustomAllocator.emplace(1, 1);
+        mapWithCustomAllocator.emplace(1, 2);
+        EXPECT_EQ(2, mapWithCustomAllocator.size());
     }
 }

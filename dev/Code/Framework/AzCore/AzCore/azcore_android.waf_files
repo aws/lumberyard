@@ -38,6 +38,10 @@
         [
             "Module/DynamicModuleHandleLinux.cpp"
         ],
+        "NativeUI":
+        [
+            "NativeUI/Android/NativeUISystemComponent_Android.cpp"
+        ],
         "Utils" : 
         [
             "Utils/generic/Utils_Generic.cpp"

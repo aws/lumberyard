@@ -44,7 +44,7 @@ namespace EMStudio
         virtual ~NodeGraph();
 
         const QModelIndex& GetModelIndex() const { return m_currentModelIndex; }
-        
+
         AZStd::vector<GraphNode*> GetSelectedGraphNodes() const;
         AZStd::vector<EMotionFX::AnimGraphNode*> GetSelectedAnimGraphNodes() const;
         AZStd::vector<NodeConnection*> GetSelectedNodeConnections() const;
@@ -92,12 +92,12 @@ namespace EMStudio
         bool CheckIfHasConnection(GraphNode* sourceNode, uint32 outputPortNr, GraphNode* targetNode, uint32 inputPortNr) const;
         NodeConnection* FindInputConnection(GraphNode* targetNode, uint32 targetPortNr) const;
         NodeConnection* FindConnection(const QPoint& mousePos);
-        
+
         void SelectAllNodes();
         void UnselectAllNodes();
 
         uint32 CalcNumSelectedNodes() const;
-        
+
         GraphNode* FindNode(const QPoint& globalPoint);
         void StartCreateConnection(uint32 portNr, bool isInputPort, GraphNode* portNode, NodePort* port, const QPoint& startOffset);
         void StartRelinkConnection(NodeConnection* connection, uint32 portNr, GraphNode* node);
@@ -116,10 +116,8 @@ namespace EMStudio
         virtual void RenderCreateConnection(QPainter& painter);
         void UpdateNodesAndConnections(int32 width, int32 height, const QPoint& mousePos);
 
-        //void RenderSubGrid(QPainter& painter, int32 startX, int32 startY);
-        //void RenderLinesSubGrid(QPainter& painter, int32 startX, int32 startY);
-        void SelectNodesInRect(const QRect& rect, bool overwriteCurSelection = true, bool select = true, bool toggleMode = false);
-        NodeConnection* SelectConnectionCloseTo(const QPoint& point, bool overwriteCurSelection = true, bool toggle = false);
+        void SelectNodesInRect(const QRect& rect, bool overwriteCurSelection = true, bool toggleMode = false);
+        void SelectConnectionCloseTo(const QPoint& point, bool overwriteCurSelection = true, bool toggle = false);
         QRect CalcRectFromSelection(bool includeConnections = true) const;
         QRect CalcRectFromGraph() const;
         NodePort* FindPort(int32 x, int32 y, GraphNode** outNode, uint32* outPortNr, bool* outIsInputPort, bool includeInputPorts = true);
@@ -138,13 +136,10 @@ namespace EMStudio
         void StopAnimatedScroll();
 
         // helpers
-        //static void DrawSmoothedLine(QPainter& painter, int32 x1, int32 y1, int32 x2, int32 y2, int32 stepSize, const QRect& visibleRect);
         static void DrawSmoothedLineFast(QPainter& painter, int32 x1, int32 y1, int32 x2, int32 y2, int32 stepSize);
         static float DistanceToLine(float x1, float y1, float x2, float y2, float px, float py);
         static bool LinesIntersect(double Ax, double Ay, double Bx, double By,  double Cx, double Cy, double Dx, double Dy, double* X, double* Y);
         static bool LineIntersectsRect(const QRect& b, float x1, float y1, float x2, float y2, double* outX = nullptr, double* outY = nullptr);
-        //static bool PointCloseToSmoothedLine(int32 x1, int32 y1, int32 x2, int32 y2, int32 px, int32 py);
-        //static bool RectIntersectsSmoothedLine(const QRect& rect, int32 x1, int32 y1, int32 x2, int32 y2);
         void DrawOverlay(QPainter& painter);
 
         bool GetUseAnimation() const                       { return mUseAnimation; }
@@ -169,8 +164,12 @@ namespace EMStudio
 
         void RecursiveSetOpacity(EMotionFX::AnimGraphNode* startNode, float opacity);
 
+        const QString& GetTitleBarText() const { return m_titleBarText; }
+        void SetTitleBarText(const QString& text) { m_titleBarText = text; }
+
     protected:
         void RenderNodeGroups(QPainter& painter);
+        void RenderTitlebar(QPainter& painter, const QString& text, int32 width);
         void RenderTitlebar(QPainter& painter, int32 width);
         void SyncTransition(StateConnection* visualStateConnection, const EMotionFX::AnimGraphStateTransition* transition, GraphNode* targetGraphNode);
 
@@ -226,6 +225,7 @@ namespace EMStudio
 
         // Overlay drawing
         QFont                       mFont;
+        QString                     m_titleBarText;
         QString                     mQtTempString;
         QTextOption                 mTextOptions;
         QFontMetrics*               mFontMetrics;

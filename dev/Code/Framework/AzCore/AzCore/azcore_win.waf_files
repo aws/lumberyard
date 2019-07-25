@@ -9,6 +9,10 @@
         [
             "Module/DynamicModuleHandleWindows.cpp"
         ],
+        "NativeUI":
+        [
+            "NativeUI/NativeUISystemComponent_win.cpp"
+        ],
         "Utils" : 
         [
             "Utils/windows/Utils_Windows.cpp"

@@ -33,7 +33,7 @@ namespace Driller
 
             if (serialize)
             {
-                serialize->Class<BaseDetailViewSplitterSavedState, AZ::UserSettings>()
+                serialize->Class<BaseDetailViewSplitterSavedState>()
                     ->Field("m_splitterStorage", &BaseDetailViewSplitterSavedState::m_splitterStorage)
                     ->Version(1);
                 ;
@@ -56,7 +56,7 @@ namespace Driller
 
             if (serialize)
             {
-                serialize->Class<BaseDetailViewTreeSavedState, AZ::UserSettings>()
+                serialize->Class<BaseDetailViewTreeSavedState>()
                     ->Field("m_treeColumnStorage", &BaseDetailViewTreeSavedState::m_treeColumnStorage)
                     ->Version(1);
             }

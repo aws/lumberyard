@@ -44,7 +44,7 @@ namespace LmbrCentral
         void Refresh() override;
         AZStd::vector<AzToolsFramework::ActionOverride> PopulateActionsImpl() override;
         bool HandleMouseInteraction(
-            const AzToolsFramework::ViewportInteraction::MouseInteractionEvent& mouseInteraction);
+            const AzToolsFramework::ViewportInteraction::MouseInteractionEvent& mouseInteraction) override;
 
         // Manipulator handling
         void CreateManipulators();

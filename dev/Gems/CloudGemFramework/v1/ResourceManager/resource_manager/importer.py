@@ -15,6 +15,8 @@ from botocore.exceptions import ClientError
 
 def importer_generator(type, region, context):
     try:
+        typeOriginal = type
+        type = type.lower()
         if type == 'dynamodb':
             resource_importer = DynamoDBImporter(region, context)
         elif type == 's3':
@@ -26,7 +28,7 @@ def importer_generator(type, region, context):
         elif type == 'sns':
             resource_importer = SNSImporter(region, context)
         else:
-            raise HandledError('Type {} is not supported.'.format(type))
+            raise HandledError('Type {} is not supported.'.format(typeOriginal))
     except (EndpointConnectionError, ClientError) as e:
         raise HandledError(e.message)
 

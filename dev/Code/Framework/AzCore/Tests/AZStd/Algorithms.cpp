@@ -451,6 +451,19 @@ namespace UnitTest
         }
     }
 
+    TEST_F(Algorithms, DISABLED_StableSort_AlreadySorted)
+    {
+        AZStd::vector<uint64_t> testVec;
+        for (int i = 0; i < 33; ++i)
+        {
+            testVec.push_back(i);
+        }
+
+        auto expectedResultVec = testVec;
+        AZStd::stable_sort(testVec.begin(), testVec.end(), AZStd::less<uint64_t>(), testVec.get_allocator());
+        EXPECT_EQ(expectedResultVec, testVec);
+    }
+
     TEST_F(Algorithms, PartialSort)
     {
         vector<int> sortTest;
@@ -625,5 +638,97 @@ namespace UnitTest
         EXPECT_EQ(3, dest[0]);
         EXPECT_EQ(2, dest[1]);
         EXPECT_EQ(1, dest[2]);
+    }
+
+    TEST_F(Algorithms, MinMaxElement)
+    {
+        AZStd::initializer_list<uint32_t> emptyData{};
+        AZStd::array<uint32_t, 1> singleElementData{ { 313 } };
+        AZStd::array<uint32_t, 3> unorderedData{ { 5, 3, 2} };
+        AZStd::array<uint32_t, 5> multiMinMaxData{ { 5, 3, 2, 5, 2 } };
+
+        // Empty container test
+        {
+            AZStd::pair<const uint32_t*, const uint32_t*> minMaxPair = AZStd::minmax_element(emptyData.begin(), emptyData.end());
+            EXPECT_EQ(minMaxPair.first, minMaxPair.second);
+            EXPECT_EQ(emptyData.end(), minMaxPair.first);
+        }
+
+        {
+            // Single element container test
+            AZStd::pair<uint32_t*, uint32_t*> minMaxPair = AZStd::minmax_element(singleElementData.begin(), singleElementData.end());
+            EXPECT_EQ(minMaxPair.first, minMaxPair.second);
+            EXPECT_NE(singleElementData.end(), minMaxPair.second);
+            EXPECT_EQ(313, *minMaxPair.first);
+            EXPECT_EQ(313, *minMaxPair.second);
+
+            // Unordered container test
+            minMaxPair = AZStd::minmax_element(unorderedData.begin(), unorderedData.end());
+            EXPECT_NE(unorderedData.end(), minMaxPair.first);
+            EXPECT_NE(unorderedData.end(), minMaxPair.second);
+            EXPECT_EQ(2, *minMaxPair.first);
+            EXPECT_EQ(5, *minMaxPair.second);
+
+            // Multiple min and max elements in same container test
+            minMaxPair = AZStd::minmax_element(multiMinMaxData.begin(), multiMinMaxData.end());
+            EXPECT_NE(multiMinMaxData.end(), minMaxPair.first);
+            EXPECT_NE(multiMinMaxData.end(), minMaxPair.second);
+            // The smallest element should correspond to the first '2' within the multiMinMaxData container
+            EXPECT_EQ(multiMinMaxData.begin() + 2, minMaxPair.first);
+            // The greatest element should correspond to the second '5' within the multiMinMaxData container
+            EXPECT_EQ(multiMinMaxData.begin() + 3, minMaxPair.second);
+            EXPECT_EQ(2, *minMaxPair.first);
+            EXPECT_EQ(5, *minMaxPair.second);
+
+            // Custom comparator test
+            minMaxPair = AZStd::minmax_element(unorderedData.begin(), unorderedData.end(), AZStd::greater<uint32_t>());
+            EXPECT_NE(unorderedData.end(), minMaxPair.first);
+            EXPECT_NE(unorderedData.end(), minMaxPair.second);
+            EXPECT_EQ(5, *minMaxPair.first);
+            EXPECT_EQ(2, *minMaxPair.second);
+        }
+    }
+
+    TEST_F(Algorithms, MinMax)
+    {
+        AZStd::initializer_list<uint32_t> singleElementData{ 908 };
+        AZStd::initializer_list<uint32_t> unorderedData{ 5, 3, 2 };
+        AZStd::initializer_list<uint32_t> multiMinMaxData{ 7, 10, 552, 57234, 224, 57234, 7, 238 };
+
+        // Initializer list test
+        {
+            // Single element container test
+            AZStd::pair<uint32_t, uint32_t> minMaxPair = AZStd::minmax(singleElementData);
+            EXPECT_EQ(908, minMaxPair.first);
+            EXPECT_EQ(908, minMaxPair.second);
+
+            // Unordered container test
+            minMaxPair = AZStd::minmax(unorderedData);
+            EXPECT_EQ(2, minMaxPair.first);
+            EXPECT_EQ(5, minMaxPair.second);
+
+            // Multiple min and max elements in same container test
+            minMaxPair = AZStd::minmax(multiMinMaxData);
+            EXPECT_EQ(7, minMaxPair.first);
+            EXPECT_EQ(57234, minMaxPair.second);
+
+            // Custom comparator test
+            minMaxPair = AZStd::minmax(unorderedData, AZStd::greater<uint32_t>());
+            EXPECT_EQ(5, minMaxPair.first);
+            EXPECT_EQ(2, minMaxPair.second);
+        }
+
+        // Two parameter test
+        {
+            // Sanity test
+            AZStd::pair<uint32_t, uint32_t> minMaxPair = AZStd::minmax(7000, 6999);
+            EXPECT_EQ(6999, minMaxPair.first);
+            EXPECT_EQ(7000, minMaxPair.second);
+
+            // Customer comparator Test
+            minMaxPair = AZStd::minmax(9001, 9000, AZStd::greater<uint32_t>());
+            EXPECT_EQ(9001, minMaxPair.first);
+            EXPECT_EQ(9000, minMaxPair.second);
+        }
     }
 }

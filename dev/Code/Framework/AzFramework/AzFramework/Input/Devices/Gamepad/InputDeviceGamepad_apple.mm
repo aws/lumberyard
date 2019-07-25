@@ -98,6 +98,11 @@ namespace AzFramework
         void SetVibration(float leftMotorSpeedNormalized, float rightMotorSpeedNormalized) override;
 
         ////////////////////////////////////////////////////////////////////////////////////////////
+        //! \ref AzFramework::InputDeviceGamepad::Implementation::GetPhysicalKeyOrButtonText
+        bool GetPhysicalKeyOrButtonText(const InputChannelId& inputChannelId,
+                                        AZStd::string& o_keyOrButtonText) const override;
+
+        ////////////////////////////////////////////////////////////////////////////////////////////
         //! \ref AzFramework::InputDeviceGamepad::Implementation::TickInputDevice
         void TickInputDevice() override;
 
@@ -107,6 +112,12 @@ namespace AzFramework
         GCController*   m_controller;             //!< The currently assigned controller
         bool            m_wasPausedHandlerCalled; //!< Was the controller paused handler called?
     };
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    AZ::u32 InputDeviceGamepad::GetMaxSupportedGamepads()
+    {
+        return GCControllerPlayerIndex4 + 1;
+    }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
     InputDeviceGamepad::Implementation* InputDeviceGamepad::Implementation::Create(
@@ -122,9 +133,9 @@ namespace AzFramework
         , m_controller(nullptr)
         , m_wasPausedHandlerCalled(false)
     {
-        AZ_Assert(inputDevice.GetInputDeviceId().GetIndex() <= GCControllerPlayerIndex4,
+        AZ_Assert(inputDevice.GetInputDeviceId().GetIndex() < InputDeviceGamepad::GetMaxSupportedGamepads(),
                   "Creating InputDeviceGamepadApple with index %d that is greater than the max supported by the game controller framework: %d",
-                  inputDevice.GetInputDeviceId().GetIndex(), GCControllerPlayerIndex4);
+                  inputDevice.GetInputDeviceId().GetIndex(), InputDeviceGamepad::GetMaxSupportedGamepads());
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
@@ -143,6 +154,18 @@ namespace AzFramework
                                                float rightMotorSpeedNormalized)
     {
         // The apple game controller framework does not (yet?) support force-feedback
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    bool InputDeviceGamepadApple::GetPhysicalKeyOrButtonText(const InputChannelId& inputChannelId,
+                                                             AZStd::string& o_keyOrButtonText) const
+    {
+        if (inputChannelId == InputDeviceGamepad::Button::Start)
+        {
+            o_keyOrButtonText = "Pause";
+            return true;
+        }
+        return false;
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////

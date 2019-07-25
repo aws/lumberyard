@@ -262,6 +262,26 @@ namespace EMStudio
         return QVariant();
     }
 
+    QString AnimGraphModel::GetTransitionName(const EMotionFX::AnimGraphStateTransition* transition)
+    {
+        const EMotionFX::AnimGraphNode* sourceNode = transition->GetSourceNode();
+        const EMotionFX::AnimGraphNode* targetNode = transition->GetTargetNode();
+
+        if (targetNode)
+        {
+            if (sourceNode)
+            {
+                return QString("%1 -> %2").arg(sourceNode->GetName(), targetNode->GetName());
+            }
+            else
+            {
+                return QString("-> %2").arg(targetNode->GetName());
+            }
+        }
+
+        return "";
+    }
+
     QVariant AnimGraphModel::data(const QModelIndex& index, int role) const
     {
         if (!index.isValid())
@@ -276,34 +296,69 @@ namespace EMStudio
         {
         case Qt::DisplayRole:
         {
-            AZ_Assert(modelItemData->m_type == ModelItemType::NODE, "Expected a node");
-            EMotionFX::AnimGraphNode* node = modelItemData->m_object.m_node;
-            switch (index.column())
+            switch (modelItemData->m_type)
             {
-            case COLUMN_NAME:
-                if (modelItemData->m_parent)
+            case ModelItemType::NODE:
+            {
+                const EMotionFX::AnimGraphNode* node = modelItemData->m_object.m_node;
+                switch (index.column())
                 {
-                    return node->GetName();
-                }
-                else
+                case COLUMN_NAME:
                 {
-                    // For the case of root nodes, return the name of the anim graph
-                    AZStd::string filename;
-                    AzFramework::StringFunc::Path::GetFileName(node->GetAnimGraph()->GetFileNameString().c_str(), filename);
-                    if (!filename.empty())
+                    if (modelItemData->m_parent)
                     {
-                        return QString(filename.c_str());
+                        return node->GetName();
                     }
                     else
                     {
-                        return "<Unsaved Animgraph>";
+                        // For the case of root nodes, return the name of the anim graph
+                        AZStd::string filename;
+                        AzFramework::StringFunc::Path::GetFileName(node->GetAnimGraph()->GetFileNameString().c_str(), filename);
+                        if (!filename.empty())
+                        {
+                            return QString(filename.c_str());
+                        }
+                        else
+                        {
+                            return "<Unsaved Animgraph>";
+                        }
                     }
                 }
-            case COLUMN_PALETTE_NAME:
-                return node->GetPaletteName();
-            default:
-                break;
+                case COLUMN_PALETTE_NAME:
+                {
+                    return node->GetPaletteName();
+                }
+                default:
+                {
+                    break;
+                }
+                }
             }
+
+            case ModelItemType::TRANSITION:
+            {
+                const EMotionFX::AnimGraphStateTransition* transition = modelItemData->m_object.m_transition;
+                switch (index.column())
+                {
+                case COLUMN_NAME:
+                {
+                    return GetTransitionName(transition);
+                    break;
+                }
+
+                case COLUMN_PALETTE_NAME:
+                {
+                    return transition->GetPaletteName();
+                }
+
+                default:
+                {
+                    break;
+                }
+                }
+            }
+            }
+
             break;
         }
         case Qt::FontRole:
@@ -497,7 +552,7 @@ namespace EMStudio
 
 
     QModelIndex AnimGraphModel::FindModelIndex(EMotionFX::AnimGraphObject* animGraphObject, EMotionFX::AnimGraphInstance* graphInstance)
-    {   
+    {
         AZ_Assert(graphInstance, "Anim graph instance cannot be a nullptr.");
 
         ModelItemData modelItemData(graphInstance, animGraphObject);
@@ -553,10 +608,32 @@ namespace EMStudio
         return m_selectionModel;
     }
 
-    template<class AnimGraphObjectType>
-    AZStd::unordered_map<EMotionFX::AnimGraph*, AZStd::vector<AnimGraphObjectType*>> AnimGraphModel::GetSelectedObjectsOfType() const
+    void AnimGraphModel::AddToItemSelection(QItemSelection& selection, const QModelIndex& modelIndex, bool wasPreviouslySelected, bool isNewlySelected, bool toggleMode, bool clearSelection)
     {
-        AZStd::unordered_map<EMotionFX::AnimGraph*, AZStd::vector<AnimGraphObjectType*>> objectsByAnimGraph;
+        if (isNewlySelected)
+        {
+            if (toggleMode)
+            {
+                if (!wasPreviouslySelected)
+                {
+                    selection.select(modelIndex, modelIndex);
+                }
+            }
+            else
+            {
+                selection.select(modelIndex, modelIndex);
+            }
+        }
+        else if (wasPreviouslySelected && !clearSelection)
+        {
+            selection.select(modelIndex, modelIndex);
+        }
+    }
+
+    template<class AnimGraphObjectType>
+    AZStd::unordered_map<EMotionFX::AnimGraph*, AZStd::vector<AnimGraphObjectType*> > AnimGraphModel::GetSelectedObjectsOfType() const
+    {
+        AZStd::unordered_map<EMotionFX::AnimGraph*, AZStd::vector<AnimGraphObjectType*> > objectsByAnimGraph;
 
         QModelIndexList selectedIndexes = m_selectionModel.selectedRows();
         for (const QModelIndex& modelIndex : selectedIndexes)
@@ -572,9 +649,9 @@ namespace EMStudio
     }
 
     // Explicit instanciation.
-    template AZStd::unordered_map<EMotionFX::AnimGraph*, AZStd::vector<EMotionFX::AnimGraphNode*>> AnimGraphModel::GetSelectedObjectsOfType<EMotionFX::AnimGraphNode>() const;
-    template AZStd::unordered_map<EMotionFX::AnimGraph*, AZStd::vector<EMotionFX::AnimGraphStateTransition*>> AnimGraphModel::GetSelectedObjectsOfType<EMotionFX::AnimGraphStateTransition>() const;
-    template AZStd::unordered_map<EMotionFX::AnimGraph*, AZStd::vector<EMotionFX::BlendTreeConnection*>> AnimGraphModel::GetSelectedObjectsOfType<EMotionFX::BlendTreeConnection>() const;
+    template AZStd::unordered_map<EMotionFX::AnimGraph*, AZStd::vector<EMotionFX::AnimGraphNode*> > AnimGraphModel::GetSelectedObjectsOfType<EMotionFX::AnimGraphNode>() const;
+    template AZStd::unordered_map<EMotionFX::AnimGraph*, AZStd::vector<EMotionFX::AnimGraphStateTransition*> > AnimGraphModel::GetSelectedObjectsOfType<EMotionFX::AnimGraphStateTransition>() const;
+    template AZStd::unordered_map<EMotionFX::AnimGraph*, AZStd::vector<EMotionFX::BlendTreeConnection*> > AnimGraphModel::GetSelectedObjectsOfType<EMotionFX::BlendTreeConnection>() const;
 
     EMotionFX::AnimGraph* AnimGraphModel::GetFocusedAnimGraph() const
     {

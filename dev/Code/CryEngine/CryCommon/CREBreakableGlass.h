@@ -22,7 +22,6 @@
 struct IRenderAuxGeom;
 struct SAuxGeomRenderFlags;
 struct SPipTangents;
-class CCryNameR;
 
 template <class T, uint N>
 class FixedPodArray;
@@ -104,8 +103,6 @@ public:
     }
 
 private:
-    // Internal constants
-    static CCryNameR        s_ImpactDecalParamName;
 
     enum EGlassSurfaceSide
     {

@@ -10,7 +10,7 @@
 *
 */
 
-#include "stdafx.h"
+#include "StdAfx.h"
 
 #if AZ_RENDER_TO_TEXTURE_GEM_ENABLED
 

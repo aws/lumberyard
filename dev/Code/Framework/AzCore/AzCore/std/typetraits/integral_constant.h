@@ -21,6 +21,8 @@ namespace AZStd
     using std::integral_constant;
     using std::true_type;
     using std::false_type;
+    template <bool B>
+    using bool_constant = std::integral_constant<bool, B>;
 }
 
 #endif // AZSTD_TYPE_TRAITS_INTEGRAL_CONSTANT_H

@@ -51,6 +51,7 @@ struct CryPakMock
     MOCK_CONST_METHOD0(GetGameFolder, const char*());
     MOCK_METHOD1(SetLocalizationFolder, void(const char* sLocalizationFolder));
     MOCK_CONST_METHOD0(GetLocalizationFolder, const char*());
+    MOCK_CONST_METHOD0(GetLocalizationRoot, const char*());
     MOCK_METHOD3(GetCachedPakCDROffsetSize, void(const char* szName, uint32 & offset, uint32 & size));
     MOCK_METHOD0(GetPakInfo, ICryPak::PakInfo * ());
     MOCK_METHOD1(FreePakInfo, void(PakInfo*));

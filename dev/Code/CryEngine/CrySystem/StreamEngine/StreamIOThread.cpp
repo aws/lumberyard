@@ -138,11 +138,6 @@ void CStreamingIOThread::Run()
         }
         else
         {
-            if (m_eMediaType == eStreamSourceTypeDisc && gEnv->pSystem->GetPlatformOS())
-            {
-                gEnv->pSystem->GetPlatformOS()->SetOpticalDriveIdle(true);
-            }
-
 #if defined(_RELEASE)
             m_awakeEvent.Wait();
 #elif defined(STREAMENGINE_ENABLE_STATS)
@@ -171,11 +166,6 @@ void CStreamingIOThread::Run()
                 }
             }
 #endif
-
-            if (m_eMediaType == eStreamSourceTypeDisc && gEnv->pSystem->GetPlatformOS())
-            {
-                gEnv->pSystem->GetPlatformOS()->SetOpticalDriveIdle(false);
-            }
         }
 
         if (m_bNeedReset)

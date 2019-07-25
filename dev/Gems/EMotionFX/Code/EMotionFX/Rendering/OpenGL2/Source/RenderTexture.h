@@ -54,7 +54,7 @@ namespace RenderGL
 
         void Render();
 
-        GLuint GetDepthBuffer() const                                   { return mDepthBuffer; }
+        AZ::u32 GetDepthBuffer() const                                  { return mDepthBuffer; }
         int32 GetFormat() const                                         { return mFormat; }
 
         /**
@@ -62,14 +62,14 @@ namespace RenderGL
          *               GL_RGBA16F_ARB
          *               GL_RGBA8
          */
-        bool Init(int32 format, uint32 width, uint32 height, GLuint depthBuffer = 0);
+        bool Init(int32 format, uint32 width, uint32 height, AZ::u32 depthBuffer = 0);
 
     private:
         int32   mFormat;        /*< . */
         uint32  mPrevHeight;    /*< . */
         uint32  mPrevWidth;     /*< . */
-        GLuint  mFrameBuffer;   /*< . */
-        GLuint  mDepthBuffer;   /*< . */
+        AZ::u32 mFrameBuffer;
+        AZ::u32 mDepthBuffer;
     };
 }
 

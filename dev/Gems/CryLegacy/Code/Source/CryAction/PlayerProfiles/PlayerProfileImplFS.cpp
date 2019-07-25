@@ -499,7 +499,7 @@ bool CPlayerProfileImplFSDir::LoginUser(SUserEntry* pEntry)
     string search = path + "/*.*";
 
     IPlatformOS* pOS = GetISystem()->GetPlatformOS();
-    IPlatformOS::IFileFinderPtr fileFinder = pOS->GetFileFinder(IPlatformOS::Unknown_User);
+    IPlatformOS::IFileFinderPtr fileFinder = pOS->GetFileFinder(0);
     intptr_t handle = fileFinder->FindFirst(search.c_str(), &fd);
     if (handle != -1)
     {
@@ -784,7 +784,7 @@ bool CCommonSaveGameHelper::GetSaveGames(CPlayerProfileManager::SUserEntry* pEnt
     search.Format("%s/*%s", path.c_str(), LY_SAVEGAME_FILE_EXT);
 
     IPlatformOS* os = GetISystem()->GetPlatformOS();
-    IPlatformOS::IFileFinderPtr fileFinder = os->GetFileFinder(IPlatformOS::Unknown_User);
+    IPlatformOS::IFileFinderPtr fileFinder = os->GetFileFinder(0);
     _finddata_t fd;
     intptr_t handle = fileFinder->FindFirst(search.c_str(), &fd);
     if (handle != -1)

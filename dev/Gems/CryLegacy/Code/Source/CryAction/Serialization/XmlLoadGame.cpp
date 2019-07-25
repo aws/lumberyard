@@ -15,8 +15,6 @@
 #include "XmlLoadGame.h"
 #include "XmlSerializeHelper.h"
 
-#include <IPlatformOS.h>
-
 #if defined(AZ_RESTRICTED_PLATFORM)
     #if defined(AZ_PLATFORM_XENIA)
         #include "Xenia/XmlLoadGame_cpp_xenia.inl"
@@ -46,36 +44,7 @@ CXmlLoadGame::~CXmlLoadGame()
 
 bool CXmlLoadGame::Init(const char* name)
 {
-    if (GetISystem()->GetPlatformOS()->UsePlatformSavingAPI())
-    {
-        IPlatformOS::ISaveReaderPtr pSaveReader = GetISystem()->GetPlatformOS()->SaveGetReader(name);
-        if (!pSaveReader)
-        {
-            return false;
-        }
-
-        size_t nFileSize;
-
-        if ((pSaveReader->GetNumBytes(nFileSize) == IPlatformOS::eFOC_Failure) || (nFileSize <= 0))
-        {
-            return false;
-        }
-
-        std::vector<char> xmlData;
-        xmlData.resize(nFileSize);
-
-        if (pSaveReader->ReadBytes(&xmlData[0], nFileSize) == IPlatformOS::eFOC_Failure)
-        {
-            return false;
-        }
-
-        m_pImpl->root = GetISystem()->LoadXmlFromBuffer(&xmlData[0], nFileSize);
-    }
-    else
-    {
-        m_pImpl->root = GetISystem()->LoadXmlFromFile(name);
-    }
-
+    m_pImpl->root = GetISystem()->LoadXmlFromFile(name);
     if (!m_pImpl->root)
     {
         return false;

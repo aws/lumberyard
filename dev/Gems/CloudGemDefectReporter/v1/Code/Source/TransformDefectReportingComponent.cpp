@@ -20,8 +20,8 @@
 #include <AzFramework/Math//MathUtils.h>
 #include <AzCore/JSON/rapidjson.h>
 #include <AzCore/JSON/document.h>
-#include <AZCore/JSON/stringbuffer.h>
-#include <AZCore/JSON/writer.h>
+#include <AzCore/JSON/stringbuffer.h>
+#include <AzCore/JSON/writer.h>
 
 namespace CloudGemDefectReporter
 {

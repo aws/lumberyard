@@ -17,6 +17,7 @@
 #include <AzCore/Serialization/EditContext.h>
 #include <AzCore/std/string/string.h>
 #include <AzCore/std/containers/unordered_map.h>
+#include <AzCore/RTTI/ReflectContext.h>
 
 namespace AZ
 {

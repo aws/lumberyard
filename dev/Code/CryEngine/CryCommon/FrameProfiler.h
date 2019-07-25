@@ -411,6 +411,8 @@ public:
 
     bool const m_bAlwaysCollect;
 
+    bool m_addedSelf = false;
+
     CFrameProfiler(ISystem* pSystem, const char* sCollectorName, EProfiledSubsystem subsystem = PROFILE_ANY, bool const bAlwaysCollect = false)
         :   m_pISystem(pSystem)
         ,   m_name(sCollectorName)
@@ -438,6 +440,7 @@ public:
             if (IFrameProfileSystem* const pFrameProfileSystem = m_pISystem->GetIProfileSystem())
             {
                 pFrameProfileSystem->AddFrameProfiler(this);
+                m_addedSelf = true;
             }
         }
     }
@@ -445,7 +448,9 @@ public:
     ~CFrameProfiler()
     {
         // This is needed for when modules get unloaded at runtime.
-        if (m_pISystem != NULL)
+        // this might happen very late (atexit) so it needs to only happen if we actually added ourself
+        // at this point "m_pISystem" might actually be invalid.
+        if (m_addedSelf && m_pISystem)
         {
             if (IFrameProfileSystem* const pFrameProfileSystem = m_pISystem->GetIProfileSystem())
             {

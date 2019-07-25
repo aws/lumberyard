@@ -54,6 +54,7 @@
 #include <AzCore/std/sort.h>
 
 #include <QStorageInfo>
+#include <native/utilities/AssetServerHandler.h>
 
 // in batch mode, we are going to show the log files of up to N failures.
 // in order to not spam the logs, we limit this - its possible that something fundamental is broken and EVERY asset is failing
@@ -179,16 +180,16 @@ void BatchApplicationManager::InitAssetProcessorManager()
     QStringList args = QCoreApplication::arguments();
     for (QString arg : args)
     {
-        if (arg.startsWith("--fastAnalysisMode", Qt::CaseInsensitive))
+        if (arg.startsWith("--zeroAnalysisMode", Qt::CaseInsensitive))
         {
-            m_assetProcessorManager->SetEnableAnalysisSkippingFeature(true);
+            m_assetProcessorManager->SetEnableModtimeSkippingFeature(true);
         }
     }
 }
 
 void BatchApplicationManager::Rescan()
 {
-    m_assetProcessorManager->SetEnableAnalysisSkippingFeature(false);
+    m_assetProcessorManager->SetEnableModtimeSkippingFeature(false);
     GetAssetScanner()->StartScan();
 }
 
@@ -625,6 +626,7 @@ ApplicationManager::BeforeRunStatus BatchApplicationManager::BeforeRun()
     qRegisterMetaType<AssetProcessor::AssetCatalogStatus>("AssetProcessor::AssetCatalogStatus");
 
     qRegisterMetaType<QSet<QString> >("QSet<QString>");
+    qRegisterMetaType<QSet<AssetProcessor::AssetFileInfo>>("QSet<AssetFileInfo>");
 
     AssetBuilderSDK::AssetBuilderBus::Handler::BusConnect();
     AssetProcessor::AssetBuilderRegistrationBus::Handler::BusConnect();
@@ -652,7 +654,7 @@ void BatchApplicationManager::Destroy()
     ShutDownFileProcessor();
 
     DestroyConnectionManager();
-
+    DestroyAssetServerHandler();
     DestroyRCController();
     DestroyAssetScanner();
     DestroyFileMonitor();
@@ -809,6 +811,20 @@ void BatchApplicationManager::ShutDownFileProcessor()
     m_fileProcessor.reset();
 }
 
+void BatchApplicationManager::InitAssetServerHandler()
+{
+    m_assetServerHandler = new AssetProcessor::AssetServerHandler();
+    // This will cache whether AP is running in server mode or not.
+    // It is also important to invoke it here because incase the asset server address is invalid, the error message should get captured in the AP log.
+    AssetUtilities::InServerMode();
+}
+
+void BatchApplicationManager::DestroyAssetServerHandler()
+{
+    delete m_assetServerHandler;
+    m_assetServerHandler = nullptr;
+}
+
 // IMPLEMENTATION OF -------------- AzToolsFramework::AssetDatabase::AssetDatabaseRequests::Bus::Listener
 bool BatchApplicationManager::GetAssetDatabaseLocation(AZStd::string& location)
 {
@@ -885,6 +901,7 @@ bool BatchApplicationManager::Activate()
     InitAssetCatalog();
     InitFileMonitor();
     InitAssetScanner();
+    InitAssetServerHandler();
     InitRCController();
 
     InitConnectionManager();

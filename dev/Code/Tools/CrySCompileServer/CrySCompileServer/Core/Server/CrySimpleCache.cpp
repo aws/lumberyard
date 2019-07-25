@@ -87,12 +87,6 @@ bool CCrySimpleCache::Find(const tdHash& rHash, tdDataVector& rData)
         m_Hit++;
         rData = dataIt->second;
         return true;
-
-        //if (CSTLHelper::Uncompress( it->second,rData ))
-        //return true;
-
-        //      const std::string FileName=CreateFileName(rHash);
-        //      CSTLHelper::FromFile(FileName,rData);
     }
     m_Miss++;
     return false;
@@ -113,7 +107,7 @@ void CCrySimpleCache::Add(const tdHash& rHash, const tdDataVector& rData)
         memcpy(hdr.hash, &rHash, sizeof(hdr.hash));
         const uint8_t* pData    =   &rData[0];
 
-        tdHash DataHash =   CSTLHelper::Hash(rData);
+        tdHash DataHash = CSTLHelper::Hash(rData);
         {
             CCrySimpleMutexAutoLock Lock(m_Mutex);
             m_Entries[rHash]  =   DataHash;
@@ -144,11 +138,9 @@ void CCrySimpleCache::Add(const tdHash& rHash, const tdDataVector& rData)
             {
                 printf("Warning: Too many pending entries not saved to disk!!!");
             }
-            //CSTLHelper::AppendToFile( SEnviropment::Instance().m_CachePath+"Cache.dat",buf );
         }
     }
 }
-
 
 //////////////////////////////////////////////////////////////////////////
 bool CCrySimpleCache::LoadCacheFile(const std::string& filename)
@@ -247,7 +239,7 @@ bool CCrySimpleCache::LoadCacheFile(const std::string& filename)
         }
         else
         {
-            tdHash DataHash =   CSTLHelper::Hash(rData);
+            tdHash DataHash = CSTLHelper::Hash(rData);
             m_Entries[hash] =   DataHash;
             if (m_Data.find(DataHash) == m_Data.end())
             {

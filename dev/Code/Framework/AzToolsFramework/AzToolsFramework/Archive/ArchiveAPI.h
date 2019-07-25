@@ -21,6 +21,9 @@ namespace AzToolsFramework
 {
     // use bind if you need additional context.
     typedef AZStd::function<void(bool success)> ArchiveResponseCallback;
+    //  bool - If the archive command was successful or not.
+    //  AZStd::string - The console output from the command.
+    typedef AZStd::function<void(bool, AZStd::string)> ArchiveResponseOutputCallback;
 
     //! ArchiveCommands
     //! This bus handles messages relating to archive commands
@@ -37,12 +40,29 @@ namespace AzToolsFramework
 
         static const AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::Single;
         static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::Single;
+        typedef AZStd::recursive_mutex MutexType;
+        static const bool LocklessDispatch = true;
         virtual ~ArchiveCommands() {}
 
         //! Start an async task to extract an archive to the target directory
         //! taskHandles are used to cancel a task at some point in the future and are provided by the caller per task.
         //! Multiple tasks can be associated with the same handle
         virtual void ExtractArchive(const AZStd::string& archivePath, const AZStd::string& destinationPath, AZ::Uuid taskHandle, const ArchiveResponseCallback& respCallback) = 0;
+        virtual void ExtractArchiveOutput(const AZStd::string& archivePath, const AZStd::string& destinationPath, AZ::Uuid taskHandle, const ArchiveResponseOutputCallback& respCallback) = 0;
+        // Maintaining backwards API compatibility - ExtractArchiveBlocking below passes in extractWithRoot as an option
+        virtual void ExtractArchiveWithoutRoot(const AZStd::string& archivePath, const AZStd::string& destinationPath, AZ::Uuid taskHandle, const ArchiveResponseOutputCallback& respCallback) = 0;
+
+        //! Start a sync task to extract an archive to the target directory
+        //! If you do not want to extract the root folder then set extractWithRootDirectory to false. 
+        virtual bool ExtractArchiveBlocking(const AZStd::string& archivePath, const AZStd::string& destinationPath, bool extractWithRootDirectory) = 0;
+
+        //! Start an async task to create an archive of the target directory (recursively)
+        //! taskHandles are used to cancel a task at some point in the future and are provided by the caller per task.
+        //! Multiple tasks can be associated with the same handle.
+        virtual void CreateArchive(const AZStd::string& archivePath, const AZStd::string& dirToArchive, AZ::Uuid taskHandle, const ArchiveResponseOutputCallback& respCallback) = 0;
+
+        //! Start a sync task to create an archive of the target directory (recursively)
+        virtual bool CreateArchiveBlocking(const AZStd::string& archivePath, const AZStd::string& dirToArchive) = 0;
     
         //! Cancels tasks associtated with the given handle. Blocks until all tasks are cancelled.
         virtual void CancelTasks(AZ::Uuid taskHandle) = 0;

@@ -152,7 +152,7 @@ namespace ScriptCanvasEditor
 
         if (serializeContext)
         {
-            serializeContext->Class<LiveLoggingUserSettings, AZ::UserSettings>()
+            serializeContext->Class<LiveLoggingUserSettings>()
                 ->Version(1)
                 ->Field("AutoCapturing", &LiveLoggingUserSettings::m_isAutoCaptureEnabled)
                 ->Field("LiveUpdating", &LiveLoggingUserSettings::m_enableLiveUpdates)

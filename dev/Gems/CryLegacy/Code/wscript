@@ -40,7 +40,8 @@ def build(bld):
                                bld.Path('Gems/CryLegacy/Code/Source/CryAISystem'),
                                bld.Path('Gems/CryLegacy/Code/Source/CryAnimation'),
                                bld.Path('Gems/CryLegacy/Code/Source/CryEntitySystem'),
-                               bld.Path('Gems/CryLegacy/Code/Source/CryScriptSystem')],
+                               bld.Path('Gems/CryLegacy/Code/Source/CryScriptSystem'),
+                               bld.Path('Code/CryEngine')],
 
         use                 = ['CryAction_AutoFlowNode','AzFramework'],
 

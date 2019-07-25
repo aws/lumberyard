@@ -27,7 +27,6 @@
 
 #ifdef DEBUG_ALLOCATOR
 #include <AzCore/Debug/StackTracer.h>
-#include <AzCore/Memory/MallocSchema.h>
 #include <AzCore/std/containers/set.h>
 #endif
 
@@ -651,46 +650,17 @@ namespace AZ {
                 , source(_source) {}
         };
 
-        class DebugMapAllocator
-            : public AllocatorBase<MallocSchema>
-        {
-        public:
-            AZ_TYPE_INFO(DebugMapAllocator, "{CFFEAB45-6E7F-405E-851A-72A6B7B35814}");
-
-            using Base = AllocatorBase<MallocSchema>;
-            using Descriptor = Base::Descriptor;
-
-            DebugMapAllocator()
-                : Base("DebugMapAllocator", "Allocator for HPHA debug map")
-            {
-            }
-
-            bool Create(const Descriptor& desc = Descriptor())
-            {
-                m_schema = new (&m_schemaStorage) MallocSchema(desc);
-                return m_schema != nullptr;
-            }
-        };
-
         // record map that keeps all debug records in a set, sorted by memory address of the allocation
         class debug_record_map
-            : public AZStd::set<debug_record, AZStd::less<debug_record>, AZStdAlloc<DebugMapAllocator> >
+            : public AZStd::set<debug_record, AZStd::less<debug_record>, AZStdAlloc<OSAllocator> >
         {
-            typedef AZStd::set<debug_record, AZStd::less<debug_record>, AZStdAlloc<DebugMapAllocator> > base;
+            typedef AZStd::set<debug_record, AZStd::less<debug_record>, AZStdAlloc<OSAllocator> > base;
 
             static void memory_fill(void* ptr, size_t size);
+
         public:
-            
-            debug_record_map()
-            {
-                if (!AZ::AllocatorInstance<DebugMapAllocator>::IsReady())
-                {
-                    AZ::AllocatorInstance<DebugMapAllocator>::Create();
-                }
-            }
-            ~debug_record_map()
-            {
-            }
+            debug_record_map() = default;
+            ~debug_record_map() = default;
 
             typedef base::const_iterator const_iterator;
             typedef base::iterator iterator;

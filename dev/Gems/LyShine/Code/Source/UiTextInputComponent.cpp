@@ -1376,6 +1376,10 @@ void UiTextInputComponent::CheckStartTextInput()
         const AZ::Vector2 bottomRight = rectPoints.GetAxisAlignedBottomRight();
         options.m_normalizedMinY = bottomRight.GetY() / static_cast<float>(gEnv->pRenderer->GetHeight());
 
+        AZ::EntityId canvasEntityId;
+        EBUS_EVENT_ID_RESULT(canvasEntityId, GetEntityId(), UiElementBus, GetCanvasEntityId);
+        EBUS_EVENT_ID_RESULT(options.m_localUserId, canvasEntityId, UiCanvasBus, GetLocalUserIdInputFilter);
+
         AzFramework::InputTextEntryRequestBus::Broadcast(&AzFramework::InputTextEntryRequests::TextEntryStart, options);
 
         m_isTextInputStarted = true;

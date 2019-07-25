@@ -250,6 +250,11 @@ namespace AZ
 
             /// Divulge the filname used to originally open that handle.
             virtual bool GetFilename(HandleType fileHandle, char* filename, AZ::u64 filenameSize) const = 0;
+
+            virtual bool IsRemoteIOEnabled()
+            {
+                return false;
+            }
         };
 
         /**

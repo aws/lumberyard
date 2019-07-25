@@ -17,6 +17,7 @@
 #include <AzCore/RTTI/BehaviorContext.h>
 #include <AzFramework/Entity/EntityContext.h>
 #include <AzFramework/Components/TransformComponent.h>
+#include <AzFramework/API/ApplicationAPI.h>
 
 #include "GameEntityContextComponent.h"
 
@@ -197,11 +198,28 @@ namespace AzFramework
     {
         EntityContext::OnContextEntitiesAdded(entities);
 
+    #if (AZ_TRAIT_PUMP_SYSTEM_EVENTS_WHILE_LOADING)
+        auto timeOfLastEventPump = AZStd::chrono::high_resolution_clock::now();
+        auto PumpSystemEventsIfNeeded = [&timeOfLastEventPump]()
+        {
+            static const AZStd::chrono::milliseconds maxMillisecondsBetweenSystemEventPumps(AZ_TRAIT_PUMP_SYSTEM_EVENTS_WHILE_LOADING_INTERVAL_MS);
+            const auto now = AZStd::chrono::high_resolution_clock::now();
+            if (now - timeOfLastEventPump > maxMillisecondsBetweenSystemEventPumps)
+            {
+                timeOfLastEventPump = now;
+                ApplicationRequests::Bus::Broadcast(&ApplicationRequests::PumpSystemEventLoopUntilEmpty);
+            }
+        };
+    #endif // (AZ_TRAIT_PUMP_SYSTEM_EVENTS_WHILE_LOADING)
+
         for (AZ::Entity* entity : entities)
         {
             if (entity->GetState() == AZ::Entity::ES_CONSTRUCTED)
             {
                 entity->Init();
+            #if (AZ_TRAIT_PUMP_SYSTEM_EVENTS_WHILE_LOADING)
+                PumpSystemEventsIfNeeded();
+            #endif // (AZ_TRAIT_PUMP_SYSTEM_EVENTS_WHILE_LOADING)
             }
         }
 
@@ -212,6 +230,9 @@ namespace AzFramework
                 if (entity->IsRuntimeActiveByDefault())
                 {
                     entity->Activate();
+                #if (AZ_TRAIT_PUMP_SYSTEM_EVENTS_WHILE_LOADING)
+                    PumpSystemEventsIfNeeded();
+                #endif // (AZ_TRAIT_PUMP_SYSTEM_EVENTS_WHILE_LOADING)
                 }
             }
         }
@@ -417,7 +438,7 @@ namespace AzFramework
         return entityName;
     }
 
-	//=========================================================================
+    //=========================================================================
     // GameEntityContextRequestBus::MarkEntityForNoActivation
     //=========================================================================
     void GameEntityContextComponent::MarkEntityForNoActivation(AZ::EntityId entityId)
@@ -440,7 +461,7 @@ namespace AzFramework
     //=========================================================================
     void GameEntityContextComponent::OnSlicePreInstantiate(const AZ::Data::AssetId& /*sliceAssetId*/, const AZ::SliceComponent::SliceInstanceAddress& sliceAddress)
     {
-        const SliceInstantiationTicket& ticket = *SliceInstantiationResultBus::GetCurrentBusId();
+        const SliceInstantiationTicket ticket = *SliceInstantiationResultBus::GetCurrentBusId();
 
         auto instantiatingIter = m_instantiatingDynamicSlices.find(ticket);
         if (instantiatingIter != m_instantiatingDynamicSlices.end())
@@ -493,7 +514,7 @@ namespace AzFramework
     //=========================================================================
     void GameEntityContextComponent::OnSliceInstantiated(const AZ::Data::AssetId& sliceAssetId, const AZ::SliceComponent::SliceInstanceAddress& instance)
     {
-        const SliceInstantiationTicket& ticket = *SliceInstantiationResultBus::GetCurrentBusId();
+        const SliceInstantiationTicket ticket = *SliceInstantiationResultBus::GetCurrentBusId();
 
         if (m_instantiatingDynamicSlices.erase(ticket) > 0)
         {
@@ -508,7 +529,7 @@ namespace AzFramework
     //=========================================================================
     void GameEntityContextComponent::OnSliceInstantiationFailed(const AZ::Data::AssetId& sliceAssetId)
     {
-        const SliceInstantiationTicket& ticket = *SliceInstantiationResultBus::GetCurrentBusId();
+        const SliceInstantiationTicket ticket = *SliceInstantiationResultBus::GetCurrentBusId();
 
         if (m_instantiatingDynamicSlices.erase(ticket) > 0)
         {
@@ -516,6 +537,5 @@ namespace AzFramework
         }
 
         SliceInstantiationResultBus::MultiHandler::BusDisconnect(ticket);
-
     }
 } // namespace AzFramework

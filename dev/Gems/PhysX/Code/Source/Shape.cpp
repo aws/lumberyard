@@ -218,4 +218,13 @@ namespace PhysX
     {
         return m_pxShape.get();
     }
+
+    bool Shape::IsTrigger() const
+    {
+        if (m_pxShape->getFlags() & physx::PxShapeFlag::eTRIGGER_SHAPE)
+        {
+            return true;
+        }
+        return false;
+    }
 }

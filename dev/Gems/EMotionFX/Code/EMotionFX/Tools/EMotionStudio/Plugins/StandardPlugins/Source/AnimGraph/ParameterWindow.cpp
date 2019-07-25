@@ -121,6 +121,14 @@ namespace EMStudio
         }
         else
         {
+            // Check if the name has invalid characters.
+            if (!EMotionFX::Parameter::IsNameValid(convertedNewName, nullptr))
+            {
+                mOKButton->setEnabled(false);
+                GetManager()->SetWidgetAsInvalidInput(mLineEdit);
+                return;
+            }
+
             // Is there a parameter with the given name already?
             if (AZStd::find(mInvalidNames.begin(), mInvalidNames.end(), convertedNewName) != mInvalidNames.end())
             {

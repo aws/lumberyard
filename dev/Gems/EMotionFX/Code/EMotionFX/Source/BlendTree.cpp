@@ -183,7 +183,6 @@ namespace EMotionFX
         AnimGraphNode* finalNode = GetRealFinalNode();
         if (finalNode)
         {
-            finalNode->IncreaseRefDataRefCount(animGraphInstance);
             finalNode->PerformPostUpdate(animGraphInstance, timePassedInSeconds);
 
             RequestRefDatas(animGraphInstance);

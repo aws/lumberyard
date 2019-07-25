@@ -113,25 +113,25 @@ TEST_F(SystemFixture, LocalizeStringInternal_SpecificWhitespaceCharacters_Correc
     manager.SetLanguage("french");
     
     string outString;
-    manager.LocalizeString("@hello\t@world", outString, false);
+    manager.LocalizeString_s("@hello\t@world", outString, false);
     ASSERT_EQ(manager.m_capturedLabels.size(), 2);
     EXPECT_STREQ(manager.m_capturedLabels[0].c_str(), "@hello");
     EXPECT_STREQ(manager.m_capturedLabels[1].c_str(), "@world");
     manager.m_capturedLabels.clear();
     
-    manager.LocalizeString("@hello\n@world", outString, false);
+    manager.LocalizeString_s("@hello\n@world", outString, false);
     ASSERT_EQ(manager.m_capturedLabels.size(), 2);
     EXPECT_STREQ(manager.m_capturedLabels[0].c_str(), "@hello");
     EXPECT_STREQ(manager.m_capturedLabels[1].c_str(), "@world");
     manager.m_capturedLabels.clear();
     
-    manager.LocalizeString("@hello\r@world", outString, false);
+    manager.LocalizeString_s("@hello\r@world", outString, false);
     ASSERT_EQ(manager.m_capturedLabels.size(), 2);
     EXPECT_STREQ(manager.m_capturedLabels[0].c_str(), "@hello");
     EXPECT_STREQ(manager.m_capturedLabels[1].c_str(), "@world");
     manager.m_capturedLabels.clear();
     
-    manager.LocalizeString("@hello @world", outString, false);
+    manager.LocalizeString_s("@hello @world", outString, false);
     ASSERT_EQ(manager.m_capturedLabels.size(), 2);
     EXPECT_STREQ(manager.m_capturedLabels[0].c_str(), "@hello");
     EXPECT_STREQ(manager.m_capturedLabels[1].c_str(), "@world");
@@ -147,7 +147,7 @@ TEST_F(SystemFixture, LocalizeStringInternal_ManyWhitespaceCharacters_CorrectlyT
 
     string outString;
     const char* testString = "@hello\n\r\t    \t\r\n@world\n\r\t    ";
-    manager.LocalizeString(testString, outString, false);
+    manager.LocalizeString_ch(testString, outString, false);
     ASSERT_EQ(manager.m_capturedLabels.size(), 2);
     EXPECT_STREQ(manager.m_capturedLabels[0].c_str(), "@hello");
     EXPECT_STREQ(manager.m_capturedLabels[1].c_str(), "@world");

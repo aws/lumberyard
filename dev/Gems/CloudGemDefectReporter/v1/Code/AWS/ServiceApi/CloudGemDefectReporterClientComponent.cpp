@@ -21,7 +21,7 @@
 
 
 
-#include "AWS/ServiceAPI/CloudGemDefectReporterClientComponent.h"
+#include "AWS/ServiceApi/CloudGemDefectReporterClientComponent.h"
 
 namespace CloudGemDefectReporter {
 namespace ServiceAPI {

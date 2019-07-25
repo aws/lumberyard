@@ -36,7 +36,6 @@ namespace XMLCPB {
 
         uint32          GetNumSets() const { return m_setAddrs.size(); }
 
-        void                ReadFromFile(CReader& Reader, IPlatformOS::ISaveReaderPtr& pOSSaveReader, const SFileHeader& headerInfo);
         void                ReadFromMemory(CReader& Reader, const uint8* pData, uint32 dataSize, const SFileHeader& headerInfo, uint32& outReadLoc);
 
     private:

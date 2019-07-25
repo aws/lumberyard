@@ -13,6 +13,8 @@
 #include "TestTypes.h"
 
 #include <AzCore/EBus/EBus.h>
+#include <AzCore/EBus/Results.h>
+#include <AzCore/std/sort.h>
 #include <AzCore/std/chrono/chrono.h>
 #include <AzCore/std/parallel/mutex.h>
 #include <AzCore/std/parallel/thread.h>
@@ -21,1095 +23,1554 @@
 #include <AzCore/Jobs/JobContext.h>
 #include <AzCore/Jobs/JobCompletion.h>
 #include <AzCore/Jobs/JobFunction.h>
-#include <AzCore/EBus/Results.h>
+#include <AzCore/Math/Random.h>
+
+#include <gtest/gtest.h>
+// For GetTypeName<T>()
+#include <gtest/internal/gtest-type-util.h>
 
 using namespace AZ;
 
+// TestBus implementation details
+namespace BusImplementation
+{
+    // Interface for the benchmark bus
+    class Interface
+    {
+    public:
+        virtual ~Interface() = default;
+
+        virtual int OnEvent() = 0;
+        virtual void OnWait() = 0;
+        virtual void Release() = 0;
+
+        virtual bool Compare(const Interface* other) const = 0;
+    };
+
+    // Traits for the benchmark bus
+    template <AZ::EBusAddressPolicy addressPolicy, AZ::EBusHandlerPolicy handlerPolicy, bool locklessDispatch = false>
+    class Traits
+        : public AZ::EBusTraits
+    {
+    public:
+        static const AZ::EBusAddressPolicy AddressPolicy = addressPolicy;
+        static const AZ::EBusHandlerPolicy HandlerPolicy = handlerPolicy;
+        static const bool LocklessDispatch = locklessDispatch;
+
+        // Allow queuing
+        static const bool EnableEventQueue = true;
+
+        // Force locking
+        using MutexType = AZStd::recursive_mutex;
+
+        // Only specialize BusIdType if not single address
+        using BusIdType = AZStd::conditional_t<AddressPolicy == AZ::EBusAddressPolicy::Single, AZ::NullBusId, int>;
+        // Only specialize BusIdOrderCompare if addresses are multiple and ordered
+        using BusIdOrderCompare = AZStd::conditional_t<AddressPolicy != EBusAddressPolicy::ByIdAndOrdered, AZ::NullBusIdCompare, AZStd::less<int>>;
+    };
+
+    template <typename Bus>
+    class HandlerCommon
+        : public Bus::Handler
+    {
+    public:
+        AZ_CLASS_ALLOCATOR(HandlerCommon, AZ::SystemAllocator, 0);
+
+        unsigned int m_eventCalls = 0;
+        unsigned int m_expectedOrder = 0;
+        unsigned int m_executedOrder = 0;
+
+        HandlerCommon()
+        {
+            AZ::BetterPseudoRandom random;
+            random.GetRandom(m_expectedOrder);
+        }
+
+        HandlerCommon(uint32_t handlerOrder)
+        {
+            m_expectedOrder = handlerOrder;
+        }
+
+        ~HandlerCommon() override
+        {
+            Bus::Handler::BusDisconnect();
+        }
+
+        bool Compare(const Interface* other) const override
+        {
+            return m_expectedOrder < reinterpret_cast<const HandlerCommon*>(other)->m_expectedOrder;
+        }
+
+        int OnEvent() override
+        {
+            ++m_eventCalls;
+            m_executedOrder = s_nextExecution++;
+            return 0;
+        }
+
+        void OnWait() override
+        {
+            AZStd::this_thread::yield();
+        }
+
+        void Release() override
+        {
+            delete this;
+        }
+
+    private:
+        static int s_nextExecution;
+    };
+
+    template <typename Bus>
+    int HandlerCommon<Bus>::s_nextExecution = 0;
+
+    template <typename Bus>
+    class MultiHandlerCommon
+        : public Bus::MultiHandler
+    {
+    public:
+        AZ_CLASS_ALLOCATOR(MultiHandlerCommon, AZ::SystemAllocator, 0);
+
+        MultiHandlerCommon() = default;
+
+        ~MultiHandlerCommon() override
+        {
+            Bus::MultiHandler::BusDisconnect();
+        }
+
+        int OnEvent() override
+        {
+            ++m_eventCalls;
+            return 0;
+        }
+
+        void OnWait() override
+        {
+            AZStd::this_thread::yield();
+        }
+
+        void Release() override
+        {
+            delete this;
+        }
+
+        bool Compare(const Interface* other) const override
+        {
+            return m_expectedOrder < static_cast<const MultiHandlerCommon*>(other)->m_expectedOrder;
+        }
+
+    private:
+        uint32_t m_eventCalls{};
+        uint32_t m_expectedOrder{};
+    };
+
+    class InterfaceWithMutex
+        : public AZ::EBusTraits
+    {
+    public:
+        static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::ById;
+        static const AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::Multiple;
+        using BusIdType = uint32_t;
+
+        // Setting the MutexType to a value other than NullMutex
+        // signals to the EBus system that the Ebus is able to be used in multiple threads
+        // and therefore the EBus must be disconnected prior to the EBus internal handler destructor being invoked
+        using MutexType = AZStd::recursive_mutex;
+
+        virtual void OnEvent() = 0;
+    };
+
+    using InterfaceWithMutexBus = AZ::EBus<InterfaceWithMutex>;
+}
+
+class MutexBusHandler
+    : public BusImplementation::InterfaceWithMutexBus::Handler
+{
+    void OnEvent() override
+    {
+        ++m_eventCalls;
+    }
+private:
+    uint32_t m_eventCalls{};
+};
+
+// Definition of the benchmark bus, depending on supplied policies
+template <AZ::EBusAddressPolicy addressPolicy, AZ::EBusHandlerPolicy handlerPolicy, bool locklessDispatch = false>
+using TestBus = AZ::EBus<BusImplementation::Interface, BusImplementation::Traits<addressPolicy, handlerPolicy, locklessDispatch>>;
+
+#define EBUS_TEST_ALIAS(BusType, AddressPolicy, HandlerPolicy)                                              \
+    using BusType = TestBus<AZ::EBusAddressPolicy::AddressPolicy, AZ::EBusHandlerPolicy::HandlerPolicy>;    \
+    namespace testing { namespace internal { template<> std::string GetTypeName<BusType>() { return #BusType; } } }
+
+// Predefined benchmark bus instantiations
+// Single
+EBUS_TEST_ALIAS(OneToOne, Single, Single)
+EBUS_TEST_ALIAS(OneToMany, Single, Multiple)
+EBUS_TEST_ALIAS(OneToManyOrdered, Single, MultipleAndOrdered)
+// ById
+EBUS_TEST_ALIAS(ManyToOne, ById, Single)
+EBUS_TEST_ALIAS(ManyToMany, ById, Multiple)
+EBUS_TEST_ALIAS(ManyToManyOrdered, ById, MultipleAndOrdered)
+// ByIdAndOrdered
+EBUS_TEST_ALIAS(ManyOrderedToOne, ByIdAndOrdered, Single)
+EBUS_TEST_ALIAS(ManyOrderedToMany, ByIdAndOrdered, Multiple)
+EBUS_TEST_ALIAS(ManyOrderedToManyOrdered, ByIdAndOrdered, MultipleAndOrdered)
+
+// Handler for multi-address buses
+template <typename Bus, AZ::EBusAddressPolicy addressPolicy = Bus::Traits::AddressPolicy>
+class Handler
+    : public BusImplementation::HandlerCommon<Bus>
+{
+public:
+    AZ_CLASS_ALLOCATOR(Handler, AZ::SystemAllocator, 0);
+
+    Handler(int id, bool connectOnConstruct)
+    {
+        m_busId = id;
+
+        if (connectOnConstruct)
+        {
+            EXPECT_FALSE(this->BusIsConnected());
+            Connect();
+            EXPECT_TRUE(this->BusIsConnected());
+        }
+    }
+
+    Handler(int id, int handlerOrder, bool connectOnConstruct)
+        : BusImplementation::HandlerCommon<Bus>(handlerOrder)
+    {
+        m_busId = id;
+
+        if (connectOnConstruct)
+        {
+            EXPECT_FALSE(this->BusIsConnected());
+            Connect();
+            EXPECT_TRUE(this->BusIsConnected());
+        }
+    }
+
+    ~Handler() override = default;
+
+    // Helper function for connecting without specifying an id
+    void Connect()
+    {
+        this->BusConnect(m_busId);
+    }
+
+    void Disconnect()
+    {
+        this->BusDisconnect(m_busId);
+    }
+
+    int OnEvent() override
+    {
+        BusImplementation::HandlerCommon<Bus>::OnEvent();
+        return 1;
+    }
+
+private:
+    int m_busId = 0;
+};
+
+// Special handler for single address buses
+template <typename Bus>
+class Handler<Bus, AZ::EBusAddressPolicy::Single>
+    : public BusImplementation::HandlerCommon<Bus>
+{
+public:
+    AZ_CLASS_ALLOCATOR(Handler, AZ::SystemAllocator, 0);
+
+    Handler(int, bool connectOnConstruct)
+    {
+        if (connectOnConstruct)
+        {
+            EXPECT_FALSE(this->BusIsConnected());
+            Connect();
+            EXPECT_TRUE(this->BusIsConnected());
+        }
+    }
+
+    Handler(int, int handlerOrder, bool connectOnConstruct)
+        : BusImplementation::HandlerCommon<Bus>(handlerOrder)
+    {
+        if (connectOnConstruct)
+        {
+            EXPECT_FALSE(this->BusIsConnected());
+            Connect();
+            EXPECT_TRUE(this->BusIsConnected());
+        }
+    }
+
+    // Helper function for connecting without specifying an id
+    void Connect()
+    {
+        this->BusConnect();
+    }
+
+    void Disconnect()
+    {
+        this->BusDisconnect();
+    }
+
+    int OnEvent() override
+    {
+        BusImplementation::HandlerCommon<Bus>::OnEvent();
+        return 2;
+    }
+};
+
+// Handler for multi-address buses
+template <typename Bus>
+class MultiHandlerById
+    : public BusImplementation::MultiHandlerCommon<Bus>
+{
+public:
+    AZ_CLASS_ALLOCATOR(MultiHandlerById, AZ::SystemAllocator, 0);
+
+    MultiHandlerById(std::initializer_list<int> busIdList)
+    {
+        // We will bind at construction time to the bus. Disconnect is automatic when the object is
+        // destroyed or we can call BusDisconnect()
+        EXPECT_FALSE(this->BusIsConnected());
+        Connect(busIdList);
+        EXPECT_TRUE(this->BusIsConnected());
+    }
+
+    // Helper function for connecting on multiple ids
+    void Connect(std::initializer_list<int> busIdList)
+    {
+        for (int busId : busIdList)
+        {
+            this->BusConnect(busId);
+        }
+    }
+
+    void Disconnect(std::initializer_list<int> busIdList)
+    {
+        for (int busId : busIdList)
+        {
+            this->BusDisconnect(busId);
+        }
+    }
+
+    int OnEvent() override
+    {
+        return BusImplementation::MultiHandlerCommon<Bus>::OnEvent();
+    }
+};
+
+
 namespace UnitTest
 {
-    class EBus
+    using BusTypesId = ::testing::Types<
+        ManyToOne,        ManyToMany,        ManyToManyOrdered,
+        ManyOrderedToOne, ManyOrderedToMany, ManyOrderedToManyOrdered>;
+    using BusTypesAll = ::testing::Types<
+        OneToOne,         OneToMany,         OneToManyOrdered,
+        ManyToOne,        ManyToMany,        ManyToManyOrdered,
+        ManyOrderedToOne, ManyOrderedToMany, ManyOrderedToManyOrdered>;
+
+    template <typename Bus>
+    class EBusTestAll
         : public AllocatorsFixture
     {
     public:
-        EBus()
-            : AllocatorsFixture()
+        using Handler = Handler<Bus>;
+        using MultiHandlerById = MultiHandlerById<Bus>;
+
+        EBusTestAll()
         {
+            Bus::GetOrCreateContext();
         }
+
+
+        void TearDown() override
+        {
+            DestroyHandlers();
+            AllocatorsFixture::TearDown();
+        }
+
+        //////////////////////////////////////////////////////////////////////////
+        // Handler Helpers
+
+        // Create an appropriate number of handlers for testing
+        void CreateHandlers()
+        {
+            int numAddresses = HasMultipleAddresses() ? 3 : 1;
+            int numHandlersPerAddress = HasMultipleHandlersPerAddress() ? 3 : 1;
+            constexpr bool connectOnConstruct{ true };
+
+            for (int address = 0; address < numAddresses; ++address)
+            {
+                for (int handler = 0; handler < numHandlersPerAddress; ++handler)
+                {
+                    m_handlers[address].emplace_back(aznew Handler(address, connectOnConstruct));
+                    ++m_numHandlers;
+                }
+            }
+
+            ValidateCalls(0);
+        }
+
+        // Gets the total number of handlers active
+        int GetNumHandlers()
+        {
+            return m_numHandlers;
+        }
+
+        // Clears the handlers list without deleting them (useful for Release tests)
+        void ClearHandlers()
+        {
+            m_handlers.clear();
+            m_handlers.rehash(0);
+            m_numHandlers = 0;
+        }
+
+        // Destroy all handlers
+        void DestroyHandlers()
+        {
+            for (const auto& handlerPair : m_handlers)
+            {
+                for (Handler* handler : handlerPair.second)
+                {
+                    delete handler;
+                }
+            }
+            ClearHandlers();
+
+            EXPECT_FALSE(Bus::HasHandlers());
+        }
+
+        // Ensure that all active handlers have the expected call count, in the correct order
+        // This should only be called after Broadcast()
+        void ValidateCalls(int expected, bool isForward = true)
+        {
+            for (const auto& handlerPair : m_handlers)
+            {
+                ValidateCalls(expected, handlerPair.first, isForward);
+            }
+
+            // Validate address execution order
+            if (AddressesAreOrdered())
+            {
+                // Collect the first handler from each address
+                using PairType = AZStd::pair<int, Handler*>;
+                AZStd::vector<PairType> sortedHandlers;
+                for (const auto& handlerPair : m_handlers)
+                {
+                    PairType pair(handlerPair.first, handlerPair.second.front());
+
+                    auto insertPos = AZStd::lower_bound(
+                        sortedHandlers.begin(), sortedHandlers.end(),
+                        pair,
+                        [](const PairType& lhs, const PairType& rhs)
+                    {
+                        return lhs.first < rhs.first;
+                    }
+                    );
+
+                    sortedHandlers.emplace(insertPos, pair);
+                }
+
+                // Iterate over the list, and validate that they were called in the correct order
+                unsigned int lastExecuted = 0;
+                for (const PairType& pair : sortedHandlers)
+                {
+                    if (lastExecuted > 0)
+                    {
+                        if (isForward)
+                        {
+                            EXPECT_LT(lastExecuted, pair.second->m_executedOrder);
+                        }
+                        else
+                        {
+                            EXPECT_GT(lastExecuted, pair.second->m_executedOrder);
+                        }
+                    }
+                    lastExecuted = pair.second->m_executedOrder;
+                }
+            }
+        }
+
+        // Ensure that all active handlers have the expected call count, and were called in the correct order
+        void ValidateCalls(int expected, int id, bool isForward = true)
+        {
+            auto& handlers = m_handlers[id];
+
+            for (Handler* handler : handlers)
+            {
+                EXPECT_EQ(expected, handler->m_eventCalls);
+            }
+
+            // Validate handler execution order
+            if (HandlersAreOrdered())
+            {
+                // Sort the handlers the same way we expect the bus to sort them
+                auto sortedHandlers = handlers;
+                AZStd::sort(sortedHandlers.begin(), sortedHandlers.end(), AZStd::bind(&Handler::Compare, AZStd::placeholders::_1, AZStd::placeholders::_2));
+
+                // Iterate over the list, and validate that they were called in the correct order
+                unsigned int lastExecuted = 0;
+                for (const Handler* handler : sortedHandlers)
+                {
+                    if (lastExecuted > 0)
+                    {
+                        if (isForward)
+                        {
+                            EXPECT_LT(lastExecuted, handler->m_executedOrder);
+                        }
+                        else
+                        {
+                            EXPECT_GT(lastExecuted, handler->m_executedOrder);
+                        }
+                    }
+                    lastExecuted = handler->m_executedOrder;
+                }
+            }
+        }
+
+        //////////////////////////////////////////////////////////////////////////
+        // Metadata helpers
+        bool HasMultipleAddresses()
+        {
+            return Bus::HasId;
+        }
+
+        bool AddressesAreOrdered()
+        {
+            return Bus::Traits::AddressPolicy == EBusAddressPolicy::ByIdAndOrdered;
+        }
+
+        bool HasMultipleHandlersPerAddress()
+        {
+            return Bus::Traits::HandlerPolicy != EBusHandlerPolicy::Single;
+        }
+
+        bool HandlersAreOrdered()
+        {
+            return Bus::Traits::HandlerPolicy == EBusHandlerPolicy::MultipleAndOrdered;
+        }
+
+    protected:
+        AZStd::unordered_map<int, AZStd::vector<Handler*>> m_handlers;
+        int m_numHandlers = 0;
     };
-    /**
-    * Test for Single Event group on a single Event bus.
-    * This is the simplest and most memory efficient way to
-    * trigger events. It's technically signal/slot way, while
-    * still allowing for you to group function calls as you wish.
-    */
-    /**
-    * This example will demonstrate how to create
-    * an EvenGroup that will have only one bus and only
-    * one event support.
-    * Technically this is just a regular callback interface.
-    */
-    namespace SingleEventGroupTest
+    TYPED_TEST_CASE(EBusTestAll, BusTypesAll);
+
+    template <typename Bus>
+    class EBusTestId
+        : public EBusTestAll<Bus>
     {
-        class MyEventGroup
-            : public AZ::EBusTraits
-        {
-        public:
-            //////////////////////////////////////////////////////////////////////////
-            // EBusInterface settings
-            static const EBusHandlerPolicy HandlerPolicy = EBusHandlerPolicy::Single;
-            //////////////////////////////////////////////////////////////////////////
+    };
+    TYPED_TEST_CASE(EBusTestId, BusTypesId);
 
-            virtual ~MyEventGroup() {}
-            //////////////////////////////////////////////////////////////////////////
-            // Define the events in this event group!
-            virtual void    OnAction(float x, float y) = 0;
-            virtual float   OnSum(float x, float y) = 0;
-            //////////////////////////////////////////////////////////////////////////
-        };
-
-        typedef AZ::EBus< MyEventGroup > MyEventGroupBus;
-
-        /**
-        * Now let have some
-        */
-        class MyEventHandler
-            : public MyEventGroupBus::Handler                  /* we will listen for MyEventGroupBus */
-        {
-        public:
-            int actionCalls;
-            int sumCalls;
-
-            MyEventHandler()
-                : actionCalls(0)
-                , sumCalls(0)
-            {
-                // We will bind at construction time to the bus. Disconnect is automatic when the object is
-                // destroyed or we can call BusDisconnect()
-                EXPECT_FALSE(BusIsConnected());
-                BusConnect();
-                EXPECT_TRUE(BusIsConnected());
-            }
-            //////////////////////////////////////////////////////////////////////////
-            // Implement some action on the events...
-            virtual void    OnAction(float x, float y)
-            {
-                AZ_Printf("UnitTest", "OnAction1(%.2f,%.2f) called\n", x, y); ++actionCalls;
-            }
-
-            virtual float   OnSum(float x, float y)
-            {
-                float sum = x + y; AZ_Printf("UnitTest", "%.2f OnAction1(%.2f,%.2f) called\n", sum, x, y); ++sumCalls; return sum;
-            }
-            //////////////////////////////////////////////////////////////////////////
-        };
-    }
-
-    TEST_F(EBus, SingleEventGroupTest)
+    using BusTypesIdMultiHandlers = ::testing::Types<
+        ManyToMany, ManyToManyOrdered,
+        ManyOrderedToMany, ManyOrderedToManyOrdered>;
+    template <typename Bus>
+    class EBusTestIdMultiHandlers
+        : public EBusTestAll<Bus>
     {
-        using namespace SingleEventGroupTest;
-        MyEventHandler meh; // We bind on construction
+    };
+    TYPED_TEST_CASE(EBusTestIdMultiHandlers, BusTypesIdMultiHandlers);
 
-        // Signal OnAction event
-        MyEventGroupBus::Broadcast(&MyEventGroupBus::Events::OnAction, 1.0f, 2.0f);
-        EXPECT_EQ(1, meh.actionCalls);
-        EBUS_EVENT(MyEventGroupBus, OnAction, 1.0f, 2.0f);
-        EXPECT_EQ(2, meh.actionCalls);
+    //////////////////////////////////////////////////////////////////////////
+    // Non-event functions
 
-        // Signal OnSum event
-        EBUS_EVENT(MyEventGroupBus, OnSum, 2.0f, 5.0f);
-        EXPECT_EQ(1, meh.sumCalls);
+    TYPED_TEST(EBusTestAll, ConnectDisconnect)
+    {
+        using Bus = TypeParam;
+        using Handler = typename EBusTestAll<Bus>::Handler;
 
-        // How about we want to store the event result?
-        // We can just store the last value (\note many assignments will happen)
-        float lastResult = 0.0f;
-        EBUS_EVENT_RESULT(lastResult, MyEventGroupBus, OnSum, 2.0f, 5.0f);
-        EXPECT_EQ(2, meh.sumCalls);
-        EXPECT_EQ(7.0f, lastResult);
+        constexpr bool connectOnConstruct{ true };
+        Handler meh(0, connectOnConstruct);
+        EXPECT_EQ(0, meh.m_eventCalls);
+
+        EXPECT_TRUE(Bus::HasHandlers());
+
+        Bus::Broadcast(&Bus::Events::OnEvent);
+        EXPECT_EQ(1, meh.m_eventCalls);
 
         EXPECT_TRUE(meh.BusIsConnected());
         meh.BusDisconnect(); // we disconnect from receiving events.
         EXPECT_FALSE(meh.BusIsConnected());
+        EXPECT_FALSE(Bus::HasHandlers());
 
-        EBUS_EVENT(MyEventGroupBus, OnAction, 1.0f, 2.0f);  // this signal will NOT trigger any calls.
-        EXPECT_EQ(2, meh.actionCalls);
-    };
-
-    /**
-    * Test a case when you have single communication bus, but you can have multiple event handlers.
-    */
-    namespace SingleBusMultHand
-    {
-        /**
-        * Single bus multiple event groups is the default setting for the event group.
-        * Unless we want to modify the allocator, we don't need to change anything.
-        */
-        class MyEventGroup
-            : public AZ::EBusTraits
-        {
-        public:
-            virtual ~MyEventGroup() {}
-            //////////////////////////////////////////////////////////////////////////
-            // Define the events in this event group!
-            virtual void    OnAction(float x, float y) = 0;
-            virtual float   OnSum(float x, float y) = 0;
-            virtual void    DestroyMe()
-            {
-                delete this;
-            }
-            //////////////////////////////////////////////////////////////////////////
-        };
-
-        typedef AZ::EBus< MyEventGroup > MyEventGroupBus;
-
-        /**
-        * Now implement our event handler.
-        */
-        class MyEventHandler
-            : public MyEventGroupBus::Handler                  /* we will listen for MyEventGroupBus */
-        {
-        public:
-            int actionCalls;
-            int sumCalls;
-
-            AZ_CLASS_ALLOCATOR(MyEventHandler, AZ::SystemAllocator, 0);
-
-            MyEventHandler()
-                : actionCalls(0)
-                , sumCalls(0)
-            {
-                // We will bind at construction time to the bus. Disconnect is automatic when the object is
-                // destroyed or we can call BusDisconnect()
-                BusConnect();
-            }
-            //////////////////////////////////////////////////////////////////////////
-            // Implement some action on the events...
-            virtual void    OnAction(float x, float y)
-            {
-                AZ_Printf("UnitTest", "OnAction1(%.2f,%.2f) called\n", x, y); ++actionCalls;
-            }
-
-            virtual float   OnSum(float x, float y)
-            {
-                float sum = x + y; AZ_Printf("UnitTest", "%.2f OnAction1(%.2f,%.2f) called\n", sum, x, y); ++sumCalls; return sum;
-            }
-            //////////////////////////////////////////////////////////////////////////
-        };
+        // this signal will NOT trigger any calls.
+        Bus::Broadcast(&Bus::Events::OnEvent);
+        EXPECT_EQ(1, meh.m_eventCalls);
     }
 
-    TEST_F(EBus, SingleBusMultHand)
+    TYPED_TEST(EBusTestIdMultiHandlers, EnumerateHandlers_MultiHandler)
     {
-        using namespace SingleBusMultHand;
+        using Bus = TypeParam;
+        using MultiHandlerById = typename EBusTestAll<Bus>::MultiHandlerById;
+
+        MultiHandlerById sourceMultiHandler{ 0, 1, 2 };
+        MultiHandlerById multiHandlerWithOverlappingIds{ 1, 3, 5 };
+
+        // Test handlers' enumeration functionality
+        Bus::EnumerateHandlers([](typename MultiHandlerById::Interface* interfaceInst) -> bool
         {
-            MyEventHandler meh;
-            MyEventHandler meh1;
+            interfaceInst->OnEvent();
+            return true;
+        });
+    }
 
-            // Signal OnAction event
-            EBUS_EVENT(MyEventGroupBus, OnAction, 1.0f, 2.0f);
-            EXPECT_EQ(1, meh.actionCalls);
-            EXPECT_EQ(1, meh1.actionCalls);
+    TYPED_TEST(EBusTestId, FindFirstHandler)
+    {
+        using Bus = TypeParam;
+        using Handler = typename EBusTestAll<Bus>::Handler;
+        constexpr bool connectOnConstruct{ true };
+        Handler meh0(0, connectOnConstruct);  /// <-- Bind to bus 0
+        Handler meh1(1, connectOnConstruct);  /// <-- Bind to bus 1
 
-            // Signal OnSum event
-            EBUS_EVENT(MyEventGroupBus, OnSum, 2.0f, 5.0f);
-            EXPECT_EQ(1, meh.sumCalls);
-            EXPECT_EQ(1, meh1.sumCalls);
+        // Test handlers' enumeration functionality
+        EXPECT_EQ(&meh0, Bus::FindFirstHandler(0));
+        EXPECT_EQ(&meh1, Bus::FindFirstHandler(1));
+        EXPECT_EQ(nullptr, Bus::FindFirstHandler(3));
+    }
 
-            // How about we want to store the event result?
-            // We can just store the last value (\note many assignments will happen)
-            float lastResult = 0.0f;
-            EBUS_EVENT_RESULT(lastResult, MyEventGroupBus, OnSum, 2.0f, 5.0f);
-            EXPECT_EQ(2, meh.sumCalls);
-            EXPECT_EQ(2, meh1.sumCalls);
-            EXPECT_EQ(7.0f, lastResult);
+    //////////////////////////////////////////////////////////////////////////
+    // Immediate calls
 
-            // How about if we want to store all the results...
-            EBusAggregateResults<float> allResults;
-            EBUS_EVENT_RESULT(allResults, MyEventGroupBus, OnSum, 2.0f, 3.0f);
-            EXPECT_EQ(3, meh.sumCalls);
-            EXPECT_EQ(3, meh1.sumCalls);
-            EXPECT_EQ(2, allResults.values.size()); // we should have 2 results
-            EXPECT_EQ(5.0f, allResults.values[0]);
-            EXPECT_EQ(5.0f, allResults.values[1]);
+    TYPED_TEST(EBusTestAll, Broadcast)
+    {
+        using Bus = TypeParam;
 
-            meh.BusDisconnect(); // we disconnect from receiving events.
+        this->CreateHandlers();
 
-            EBUS_EVENT(MyEventGroupBus, OnAction, 1.0f, 2.0f);  // this signal will NOT trigger any calls.
-            EXPECT_EQ(1, meh.actionCalls);
-            EXPECT_EQ(2, meh1.actionCalls); // not disconnected
+        Bus::Broadcast(&Bus::Events::OnEvent);
+        this->ValidateCalls(1);
+
+        EBUS_EVENT(Bus, OnEvent);
+        this->ValidateCalls(2);
+    }
+
+    TYPED_TEST(EBusTestAll, Broadcast_Release)
+    {
+        using Bus = TypeParam;
+
+        this->CreateHandlers();
+
+        EXPECT_EQ(this->GetNumHandlers(), Bus::GetTotalNumOfEventHandlers());
+        Bus::Broadcast(&Bus::Events::Release);
+        EXPECT_FALSE(Bus::HasHandlers());
+
+        this->ClearHandlers();
+    }
+
+    TYPED_TEST(EBusTestAll, BroadcastReverse)
+    {
+        using Bus = TypeParam;
+
+        this->CreateHandlers();
+
+        Bus::BroadcastReverse(&Bus::Events::OnEvent);
+        this->ValidateCalls(1, false);
+
+        EBUS_EVENT_REVERSE(Bus, OnEvent);
+        this->ValidateCalls(2, false);
+    }
+
+    TYPED_TEST(EBusTestAll, BroadcastReverse_Release)
+    {
+        using Bus = TypeParam;
+
+        this->CreateHandlers();
+
+        EXPECT_EQ(this->GetNumHandlers(), Bus::GetTotalNumOfEventHandlers());
+        Bus::BroadcastReverse(&Bus::Events::Release);
+        EXPECT_FALSE(Bus::HasHandlers());
+
+        this->ClearHandlers();
+    }
+
+    TYPED_TEST(EBusTestAll, BroadcastResult)
+    {
+        using Bus = TypeParam;
+
+        this->CreateHandlers();
+
+        int result = -1;
+        Bus::BroadcastResult(result, &Bus::Events::OnEvent);
+        EXPECT_LT(0, result);
+        this->ValidateCalls(1);
+
+        result = -1;
+        EBUS_EVENT_RESULT(result, Bus, OnEvent);
+        EXPECT_LT(0, result);
+        this->ValidateCalls(2);
+
+        this->DestroyHandlers();
+
+        result = -1;
+        Bus::BroadcastResult(result, &Bus::Events::OnEvent);
+        EXPECT_EQ(-1, result);
+    }
+
+    TYPED_TEST(EBusTestAll, BroadcastResultReverse)
+    {
+        using Bus = TypeParam;
+
+        this->CreateHandlers();
+
+        int result = -1;
+        Bus::BroadcastResultReverse(result, &Bus::Events::OnEvent);
+        EXPECT_LT(0, result);
+        this->ValidateCalls(1, false);
+
+        result = -1;
+        EBUS_EVENT_RESULT_REVERSE(result, Bus, OnEvent);
+        EXPECT_LT(0, result);
+        this->ValidateCalls(2, false);
+
+        this->DestroyHandlers();
+
+        result = -1;
+        Bus::BroadcastResultReverse(result, &Bus::Events::OnEvent);
+        EXPECT_EQ(-1, result);
+    }
+
+    // Test sending events on an address
+    TYPED_TEST(EBusTestId, Event)
+    {
+        using Bus = TypeParam;
+
+        this->CreateHandlers();
+
+        // Signal OnEvent event on bus 1
+        Bus::Event(1, &Bus::Events::OnEvent);
+
+        // Validate bus 1 has 2 calls, all others have 1
+        this->ValidateCalls(1, 1);
+        this->ValidateCalls(0, 2);
+        this->ValidateCalls(0, 3);
+    }
+
+    // Test sending events on an address
+    TYPED_TEST(EBusTestId, Event_Release)
+    {
+        using Bus = TypeParam;
+
+        this->CreateHandlers();
+
+        for (const auto& handlerPair : this->m_handlers)
+        {
+            Bus::Event(handlerPair.first, &Bus::Events::Release);
+        }
+        EXPECT_FALSE(Bus::HasHandlers());
+
+        this->ClearHandlers();
+    }
+
+    // Test sending events on an address
+    TYPED_TEST(EBusTestId, EventReverse)
+    {
+        using Bus = TypeParam;
+
+        this->CreateHandlers();
+
+        // Signal OnEvent event on bus 1
+        Bus::EventReverse(1, &Bus::Events::OnEvent);
+
+        // Validate bus 1 has 2 calls, all others have 1
+        this->ValidateCalls(1, 1, false);
+        this->ValidateCalls(0, 2, false);
+        this->ValidateCalls(0, 3, false);
+    }
+
+    // Test sending events (that delete this) on an address, backwards
+    TYPED_TEST(EBusTestId, EventReverse_Release)
+    {
+        using Bus = TypeParam;
+
+        this->CreateHandlers();
+
+        for (const auto& handlerPair : this->m_handlers)
+        {
+            Bus::EventReverse(handlerPair.first, &Bus::Events::Release);
+        }
+        EXPECT_FALSE(Bus::HasHandlers());
+
+        this->ClearHandlers();
+    }
+
+    // Test sending events with results on an address
+    TYPED_TEST(EBusTestId, EventResult)
+    {
+        using Bus = TypeParam;
+
+        this->CreateHandlers();
+
+        // Signal OnEvent event on bus 1
+        int result = -1;
+        Bus::EventResult(result, 1, &Bus::Events::OnEvent);
+        EXPECT_LT(0, result);
+
+        // Validate bus 1 has 2 calls, all others have 1
+        this->ValidateCalls(1, 1);
+        this->ValidateCalls(0, 2);
+        this->ValidateCalls(0, 3);
+
+        this->DestroyHandlers();
+
+        result = -1;
+        Bus::EventResult(result, 1, &Bus::Events::OnEvent);
+        EXPECT_EQ(-1, result);
+    }
+
+    // Test sending events with results on an address
+    TYPED_TEST(EBusTestId, EventResultReverse)
+    {
+        using Bus = TypeParam;
+
+        this->CreateHandlers();
+
+        // Signal OnEvent event on bus 1
+        int result = -1;
+        Bus::EventResultReverse(result, 1, &Bus::Events::OnEvent);
+        EXPECT_LT(0, result);
+
+        // Validate bus 1 has 2 calls, all others have 1
+        this->ValidateCalls(1, 1, false);
+        this->ValidateCalls(0, 2, false);
+        this->ValidateCalls(0, 3, false);
+
+        this->DestroyHandlers();
+
+        result = -1;
+        Bus::EventResultReverse(result, 1, &Bus::Events::OnEvent);
+        EXPECT_EQ(-1, result);
+    }
+
+    // Test sending events on a bound bus ptr
+    TYPED_TEST(EBusTestId, BindEvent)
+    {
+        using Bus = TypeParam;
+
+        this->CreateHandlers();
+
+        typename Bus::BusPtr ptr;
+        Bus::Bind(ptr, 1);
+        EXPECT_NE(nullptr, ptr);
+
+        // Signal OnEvent event on bus 1
+        Bus::Event(ptr, &Bus::Events::OnEvent);
+
+        // Validate bus 1 has 2 calls, all others have 1
+        this->ValidateCalls(1, 1);
+        this->ValidateCalls(0, 2);
+        this->ValidateCalls(0, 3);
+
+        this->DestroyHandlers();
+
+        // Validate that broadcasting/eventing after binding disconnecting all doesn't crash
+        Bus::Broadcast(&Bus::Events::OnEvent);
+        Bus::Event(ptr, &Bus::Events::OnEvent);
+        Bus::Event(1, &Bus::Events::OnEvent);
+    }
+
+    // Test sending events (that delete this) on a bound bus ptr
+    TYPED_TEST(EBusTestId, BindEvent_Release)
+    {
+        using Bus = TypeParam;
+
+        this->CreateHandlers();
+
+        typename Bus::BusPtr ptr;
+        for (const auto& handlerPair : this->m_handlers)
+        {
+            Bus::Bind(ptr, handlerPair.first);
+            EXPECT_NE(nullptr, ptr);
+            Bus::Event(ptr, &Bus::Events::Release);
+        }
+        EXPECT_FALSE(Bus::HasHandlers());
+
+        this->ClearHandlers();
+    }
+
+    // Test sending events on a bound bus ptr, backwards
+    TYPED_TEST(EBusTestId, BindEventReverse)
+    {
+        using Bus = TypeParam;
+
+        this->CreateHandlers();
+
+        typename Bus::BusPtr ptr;
+        Bus::Bind(ptr, 1);
+        EXPECT_NE(nullptr, ptr);
+
+        // Signal OnEvent event on bus 1
+        Bus::EventReverse(ptr, &Bus::Events::OnEvent);
+
+        // Validate bus 1 has 2 calls, all others have 1
+        this->ValidateCalls(1, 1, false);
+        this->ValidateCalls(0, 2, false);
+        this->ValidateCalls(0, 3, false);
+
+        this->DestroyHandlers();
+
+        // Validate that broadcasting/eventing after binding disconnecting all doesn't crash
+        Bus::BroadcastReverse(&Bus::Events::OnEvent);
+        Bus::EventReverse(ptr, &Bus::Events::OnEvent);
+        Bus::EventReverse(1, &Bus::Events::OnEvent);
+    }
+
+    // Test sending events (that delete this) on a bound bus ptr, backwards
+    TYPED_TEST(EBusTestId, BindEventReverse_Release)
+    {
+        using Bus = TypeParam;
+
+        this->CreateHandlers();
+
+        typename Bus::BusPtr ptr;
+        for (const auto& handlerPair : this->m_handlers)
+        {
+            Bus::Bind(ptr, handlerPair.first);
+            EXPECT_NE(nullptr, ptr);
+            Bus::EventReverse(ptr, &Bus::Events::Release);
+        }
+        EXPECT_FALSE(Bus::HasHandlers());
+
+        this->ClearHandlers();
+    }
+
+    // Test sending events on a bound bus ptr
+    TYPED_TEST(EBusTestId, BindEventResult)
+    {
+        using Bus = TypeParam;
+
+        this->CreateHandlers();
+
+        typename Bus::BusPtr ptr;
+        Bus::Bind(ptr, 1);
+        EXPECT_NE(nullptr, ptr);
+
+        // Signal OnEvent event on bus 1
+        int result = -1;
+        Bus::EventResult(result, ptr, &Bus::Events::OnEvent);
+        EXPECT_LT(0, result);
+
+        // Validate bus 1 has 2 calls, all others have 1
+        this->ValidateCalls(1, 1);
+        this->ValidateCalls(0, 2);
+        this->ValidateCalls(0, 3);
+
+        this->DestroyHandlers();
+
+        // Validate that broadcasting/eventing after binding disconnecting all doesn't crash
+        Bus::Broadcast(&Bus::Events::OnEvent);
+        Bus::Event(ptr, &Bus::Events::OnEvent);
+        Bus::Event(1, &Bus::Events::OnEvent);
+    }
+
+    // Test sending events on a bound bus ptr, backwards
+    TYPED_TEST(EBusTestId, BindEventResultReverse)
+    {
+        using Bus = TypeParam;
+
+        this->CreateHandlers();
+
+        typename Bus::BusPtr ptr;
+        Bus::Bind(ptr, 1);
+        EXPECT_NE(nullptr, ptr);
+
+        // Signal OnEvent event on bus 1
+        int result = -1;
+        Bus::EventResultReverse(result, ptr, &Bus::Events::OnEvent);
+        EXPECT_LT(0, result);
+
+        // Validate bus 1 has 2 calls, all others have 1
+        this->ValidateCalls(1, 1, false);
+        this->ValidateCalls(0, 2, false);
+        this->ValidateCalls(0, 3, false);
+
+        this->DestroyHandlers();
+
+        // Validate that broadcasting/eventing after binding disconnecting all doesn't crash
+        Bus::BroadcastReverse(&Bus::Events::OnEvent);
+        Bus::EventReverse(ptr, &Bus::Events::OnEvent);
+        Bus::EventReverse(1, &Bus::Events::OnEvent);
+    }
+
+    //////////////////////////////////////////////////////////////////////////
+    // Queued calls
+
+    TYPED_TEST(EBusTestAll, QueueBroadcast)
+    {
+        using Bus = TypeParam;
+
+        this->CreateHandlers();
+
+        Bus::QueueBroadcast(&Bus::Events::OnEvent);
+        this->ValidateCalls(0);
+        Bus::ExecuteQueuedEvents();
+        this->ValidateCalls(1);
+
+        EBUS_QUEUE_EVENT(Bus, OnEvent);
+        this->ValidateCalls(1);
+        Bus::ExecuteQueuedEvents();
+        this->ValidateCalls(2);
+    }
+
+    TYPED_TEST(EBusTestAll, QueueBroadcast_Release)
+    {
+        using Bus = TypeParam;
+
+        this->CreateHandlers();
+
+        EXPECT_EQ(this->GetNumHandlers(), Bus::GetTotalNumOfEventHandlers());
+        Bus::QueueBroadcast(&Bus::Events::Release);
+        EXPECT_EQ(this->GetNumHandlers(), Bus::GetTotalNumOfEventHandlers());
+        Bus::ExecuteQueuedEvents();
+        EXPECT_FALSE(Bus::HasHandlers());
+
+        this->ClearHandlers();
+    }
+
+    TYPED_TEST(EBusTestAll, QueueBroadcastReverse)
+    {
+        using Bus = TypeParam;
+
+        this->CreateHandlers();
+
+        Bus::QueueBroadcastReverse(&Bus::Events::OnEvent);
+        this->ValidateCalls(0, false);
+        Bus::ExecuteQueuedEvents();
+        this->ValidateCalls(1, false);
+
+        EBUS_QUEUE_EVENT_REVERSE(Bus, OnEvent);
+        this->ValidateCalls(1, false);
+        Bus::ExecuteQueuedEvents();
+        this->ValidateCalls(2, false);
+    }
+
+    TYPED_TEST(EBusTestAll, QueueBroadcastReverse_Release)
+    {
+        using Bus = TypeParam;
+
+        this->CreateHandlers();
+
+        EXPECT_EQ(this->GetNumHandlers(), Bus::GetTotalNumOfEventHandlers());
+        Bus::QueueBroadcastReverse(&Bus::Events::Release);
+        EXPECT_EQ(this->GetNumHandlers(), Bus::GetTotalNumOfEventHandlers());
+        Bus::ExecuteQueuedEvents();
+        EXPECT_FALSE(Bus::HasHandlers());
+
+        this->ClearHandlers();
+    }
+
+    // Test sending events on an address
+    TYPED_TEST(EBusTestId, QueueEvent)
+    {
+        using Bus = TypeParam;
+
+        this->CreateHandlers();
+
+        // Signal OnEvent event on bus 1
+        Bus::QueueEvent(1, &Bus::Events::OnEvent);
+        this->ValidateCalls(0);
+        Bus::ExecuteQueuedEvents();
+
+        // Validate bus 1 has 1 calls, all others have 0
+        this->ValidateCalls(1, 1);
+        this->ValidateCalls(0, 2);
+        this->ValidateCalls(0, 3);
+    }
+
+    // Test sending events on an address
+    TYPED_TEST(EBusTestId, QueueEvent_Release)
+    {
+        using Bus = TypeParam;
+
+        this->CreateHandlers();
+
+        for (const auto& handlerPair : this->m_handlers)
+        {
+            Bus::QueueEvent(handlerPair.first, &Bus::Events::Release);
+        }
+        EXPECT_EQ(this->GetNumHandlers(), Bus::GetTotalNumOfEventHandlers());
+        Bus::ExecuteQueuedEvents();
+        EXPECT_FALSE(Bus::HasHandlers());
+
+        this->ClearHandlers();
+    }
+
+    // Test sending events on an address
+    TYPED_TEST(EBusTestId, QueueEventReverse)
+    {
+        using Bus = TypeParam;
+
+        this->CreateHandlers();
+
+        // Signal OnEvent event on bus 1
+        Bus::QueueEventReverse(1, &Bus::Events::OnEvent);
+        this->ValidateCalls(0);
+        Bus::ExecuteQueuedEvents();
+
+        // Validate bus 1 has 2 calls, all others have 1
+        this->ValidateCalls(1, 1, false);
+        this->ValidateCalls(0, 2, false);
+        this->ValidateCalls(0, 3, false);
+    }
+
+    // Test sending events (that delete this) on an address, backwards
+    TYPED_TEST(EBusTestId, QueueEventReverse_Release)
+    {
+        using Bus = TypeParam;
+
+        this->CreateHandlers();
+
+        for (const auto& handlerPair : this->m_handlers)
+        {
+            Bus::QueueEventReverse(handlerPair.first, &Bus::Events::Release);
+        }
+        EXPECT_EQ(this->GetNumHandlers(), Bus::GetTotalNumOfEventHandlers());
+        Bus::ExecuteQueuedEvents();
+        EXPECT_FALSE(Bus::HasHandlers());
+
+        this->ClearHandlers();
+    }
+
+    // Test sending events on a bound bus ptr
+    TYPED_TEST(EBusTestId, QueueBindEvent)
+    {
+        using Bus = TypeParam;
+
+        this->CreateHandlers();
+
+        typename Bus::BusPtr ptr;
+        Bus::Bind(ptr, 1);
+        EXPECT_NE(nullptr, ptr);
+
+        // Signal OnEvent event on bus 1
+        Bus::QueueEvent(ptr, &Bus::Events::OnEvent);
+        this->ValidateCalls(0);
+        Bus::ExecuteQueuedEvents();
+
+        // Validate bus 1 has 2 calls, all others have 1
+        this->ValidateCalls(1, 1);
+        this->ValidateCalls(0, 2);
+        this->ValidateCalls(0, 3);
+    }
+
+    // Test sending events (that delete this) on a bound bus ptr
+    TYPED_TEST(EBusTestId, QueueBindEvent_Release)
+    {
+        using Bus = TypeParam;
+
+        this->CreateHandlers();
+
+        typename Bus::BusPtr ptr;
+
+        for (const auto& handlerPair : this->m_handlers)
+        {
+            Bus::Bind(ptr, handlerPair.first);
+            EXPECT_NE(nullptr, ptr);
+            Bus::QueueEvent(ptr, &Bus::Events::Release);
+        }
+        EXPECT_EQ(this->GetNumHandlers(), Bus::GetTotalNumOfEventHandlers());
+        Bus::ExecuteQueuedEvents();
+        EXPECT_FALSE(Bus::HasHandlers());
+
+        this->ClearHandlers();
+    }
+
+    // Test sending events on a bound bus ptr, backwards
+    TYPED_TEST(EBusTestId, QueueBindEventReverse)
+    {
+        using Bus = TypeParam;
+
+        this->CreateHandlers();
+
+        typename Bus::BusPtr ptr;
+        Bus::Bind(ptr, 1);
+        EXPECT_NE(nullptr, ptr);
+
+        // Signal OnEvent event on bus 1
+        Bus::QueueEventReverse(ptr, &Bus::Events::OnEvent);
+        this->ValidateCalls(0);
+        Bus::ExecuteQueuedEvents();
+
+        // Validate bus 1 has 2 calls, all others have 1
+        this->ValidateCalls(1, 1, false);
+        this->ValidateCalls(0, 2, false);
+        this->ValidateCalls(0, 3, false);
+    }
+
+    // Test sending events (that delete this) on a bound bus ptr, backwards
+    TYPED_TEST(EBusTestId, QueueBindEventReverse_Release)
+    {
+        using Bus = TypeParam;
+
+        this->CreateHandlers();
+
+        typename Bus::BusPtr ptr;
+        for (const auto& handlerPair : this->m_handlers)
+        {
+            Bus::Bind(ptr, handlerPair.first);
+            EXPECT_NE(nullptr, ptr);
+            Bus::QueueEventReverse(ptr, &Bus::Events::Release);
+        }
+        EXPECT_EQ(this->GetNumHandlers(), Bus::GetTotalNumOfEventHandlers());
+        Bus::ExecuteQueuedEvents();
+        EXPECT_FALSE(Bus::HasHandlers());
+
+        this->ClearHandlers();
+    }
+
+    //////////////////////////////////////////////////////////////////////////
+    // GetCurrentBusId calls
+    TYPED_TEST(EBusTestId, Event_GetCurrentBusId_ReturnsNonNullptr)
+    {
+        using Bus = TypeParam;
+
+        this->CreateHandlers();
+
+        auto busCallback = [](typename Bus::InterfaceType*)
+        {
+            const int* busId = Bus::GetCurrentBusId();
+            ASSERT_NE(nullptr, busId);
+            EXPECT_EQ(1, *busId);
+        };
+
+        Bus::Event(1, busCallback);
+
+        this->DestroyHandlers();
+    }
+
+    TYPED_TEST(EBusTestId, EventResult_GetCurrentBusId_ReturnsNonNullptr)
+    {
+        using Bus = TypeParam;
+
+        this->CreateHandlers();
+
+        auto busCallback = [](typename Bus::InterfaceType*) -> const char*
+        {
+            const int* busId = Bus::GetCurrentBusId();
+            EXPECT_NE(nullptr, busId);
+            if (busId)
+            {
+                EXPECT_EQ(1, *busId);
+            }
+            return "BusType";
+        };
+
+        const char* result{};
+        Bus::EventResult(result, 1, busCallback);
+        EXPECT_STREQ("BusType", result);
+
+        this->DestroyHandlers();
+    }
+
+    TYPED_TEST(EBusTestId, EventReverse_GetCurrentBusId_ReturnsNonNullptr)
+    {
+        using Bus = TypeParam;
+
+        this->CreateHandlers();
+
+        auto busCallback = [](typename Bus::InterfaceType*)
+        {
+            const int* busId = Bus::GetCurrentBusId();
+            ASSERT_NE(nullptr, busId);
+            EXPECT_EQ(1, *busId);
+        };
+
+        Bus::EventReverse(1, busCallback);
+
+        this->DestroyHandlers();
+    }
+
+    TYPED_TEST(EBusTestId, EventResultReverse_GetCurrentBusId_ReturnsNonNullptr)
+    {
+        using Bus = TypeParam;
+
+        this->CreateHandlers();
+
+        auto busCallback = [](typename Bus::InterfaceType*)
+        {
+            const int* busId = Bus::GetCurrentBusId();
+            EXPECT_NE(nullptr, busId);
+            if (busId)
+            {
+                EXPECT_EQ(1, *busId);
+            }
+            return 7;
+        };
+
+        int32_t result{};
+        Bus::EventResultReverse(result, 1, busCallback);
+        EXPECT_EQ(7, result);
+
+        this->DestroyHandlers();
+    }
+
+    TYPED_TEST(EBusTestId, BindEvent_GetCurrentBusId_ReturnsNonNullptr)
+    {
+        using Bus = TypeParam;
+
+        this->CreateHandlers();
+
+        typename Bus::BusPtr ptr;
+        auto busCallback = [](typename Bus::InterfaceType*)
+        {
+            EXPECT_NE(nullptr, Bus::GetCurrentBusId());
+        };
+
+        for (const auto& handlerPair : this->m_handlers)
+        {
+            Bus::Bind(ptr, handlerPair.first);
+            EXPECT_NE(nullptr, ptr);
+            Bus::Event(ptr, busCallback);
         }
 
-        {
-            // Test removing handlers while in messages - forward iterator
-            MyEventHandler* handler1 = aznew MyEventHandler();
-            MyEventHandler* handler2 = aznew MyEventHandler();
-            (void)handler1; (void)handler2;
-
-            EXPECT_EQ(2, MyEventGroupBus::GetTotalNumOfEventHandlers());
-
-            EBUS_EVENT(MyEventGroupBus, DestroyMe);
-
-            EXPECT_EQ(0, MyEventGroupBus::GetTotalNumOfEventHandlers());
-
-            // Test removing handlers while in messages - reverse iterator
-            handler1 = aznew MyEventHandler();
-            handler2 = aznew MyEventHandler();
-
-            EXPECT_EQ(2, MyEventGroupBus::GetTotalNumOfEventHandlers());
-
-            EBUS_EVENT_REVERSE(MyEventGroupBus, DestroyMe);
-
-            EXPECT_EQ(0, MyEventGroupBus::GetTotalNumOfEventHandlers());
-        }
+        this->DestroyHandlers();
     }
 
-    /**
-    * Test a case when you have single communication bus, but you can have multiple ORDERED event handlers.
-    */
-    namespace SingleBusMultOrdHand
+    TYPED_TEST(EBusTestId, BindEventResult_GetCurrentBusId_ReturnsNonNullptr)
     {
-        /**
-        * Here we will define an EBus interface that will be sorted by a specific order.
-        * This order will be int (stored in the interface - which we go in the user implementation (MyEventGroupBus::Handler)
-        * and implement the Required "bool Compare(const Interface* rhs) const function.
-        */
-        class MyEventGroup
-            : public AZ::EBusTraits
+        using Bus = TypeParam;
+
+        this->CreateHandlers();
+
+        typename Bus::BusPtr ptr;
+        auto busCallback = [](typename Bus::InterfaceType*)
         {
-        protected:
-            int m_order;  ///< Some ordering value.
-        public:
-            //////////////////////////////////////////////////////////////////////////
-            // EBusInterface settings
-            static const EBusHandlerPolicy HandlerPolicy = EBusHandlerPolicy::MultipleAndOrdered;
-            //////////////////////////////////////////////////////////////////////////
-
-            /// Required function because we use EBusHandlerPolicy::MultipleAndOrdered
-            bool Compare(const MyEventGroup* rhs) const { return m_order < rhs->m_order; }
-
-            virtual ~MyEventGroup() {}
-
-            //////////////////////////////////////////////////////////////////////////
-            // Define the events in this event group!
-            virtual void    OnAction(float x, float y) = 0;
-            virtual float   OnSum(float x, float y) = 0;
-            //////////////////////////////////////////////////////////////////////////
+            EXPECT_NE(nullptr, Bus::GetCurrentBusId());
+            return true;
         };
 
-        typedef AZ::EBus< MyEventGroup > MyEventGroupBus;
-
-        /**
-        * Now implement our event handler.
-        */
-        class MyEventHandler
-            : public MyEventGroupBus::Handler
+        for (const auto& handlerPair : this->m_handlers)
         {
-        public:
-            int actionCalls;
-            int sumCalls;
-
-            MyEventHandler(int order)  // we pass the handler order value at construction.
-                : actionCalls(0)
-                , sumCalls(0)
-            {
-                m_order = order; ///< Must be set before we connect, so we are inserted in the right place!
-                // We will bind at construction time to the bus. Disconnect is automatic when the object is
-                // destroyed or we can call BusDisconnect()
-                MyEventGroupBus::Handler::BusConnect();
-            }
-            //////////////////////////////////////////////////////////////////////////
-            // Implement some action on the events...
-            virtual void    OnAction(float x, float y)
-            {
-                AZ_Printf("UnitTest", "OnAction1(%.2f,%.2f) order %d called\n", x, y, m_order); ++actionCalls; s_eventOrder[s_eventOrderIndex++] = this;
-            }
-
-            virtual float   OnSum(float x, float y)
-            {
-                float sum = x + y; AZ_Printf("UnitTest", "%.2f OnAction1(%.2f,%.2f) order %d called\n", sum, x, y, m_order); ++sumCalls; s_eventOrder[s_eventOrderIndex++] = this; return sum;
-            }
-            //////////////////////////////////////////////////////////////////////////
-
-            static MyEventHandler* s_eventOrder[2];
-            static int  s_eventOrderIndex;
-        };
-
-        MyEventHandler* MyEventHandler::s_eventOrder[2];
-        int MyEventHandler::s_eventOrderIndex = 0;
-    }
-
-    TEST_F(EBus, SingleBusMultOrdHand)
-    {
-        using namespace SingleBusMultOrdHand;
-        {
-            MyEventHandler meh(100);      /// <-- Higher order value, it will be called second!
-            MyEventHandler meh1(0);  /// <-- Lower order value, it will be called first!
-
-            // Signal OnAction event
-            MyEventHandler::s_eventOrderIndex = 0; // reset the order check index
-            EBUS_EVENT(MyEventGroupBus, OnAction, 1.0f, 2.0f);
-            EXPECT_EQ(&meh1, MyEventHandler::s_eventOrder[0]);
-            EXPECT_EQ(&meh, MyEventHandler::s_eventOrder[1]);
-            EXPECT_EQ(1, meh.actionCalls);
-            EXPECT_EQ(1, meh1.actionCalls);
-
-            // Signal OnAction event in reverse order
-            MyEventHandler::s_eventOrderIndex = 0; // reset the order check index
-            EBUS_EVENT_REVERSE(MyEventGroupBus, OnAction, 3.0f, 4.0f);
-            EXPECT_EQ(&meh, MyEventHandler::s_eventOrder[0]);
-            EXPECT_EQ(&meh1, MyEventHandler::s_eventOrder[1]);
-            EXPECT_EQ(2, meh.actionCalls);
-            EXPECT_EQ(2, meh1.actionCalls);
-
-            // Signal OnSum event
-            MyEventHandler::s_eventOrderIndex = 0; // reset the order check index
-            EBUS_EVENT(MyEventGroupBus, OnSum, 2.0f, 5.0f);
-            EXPECT_EQ(&meh1, MyEventHandler::s_eventOrder[0]);
-            EXPECT_EQ(&meh, MyEventHandler::s_eventOrder[1]);
-            EXPECT_EQ(1, meh.sumCalls);
-            EXPECT_EQ(1, meh1.sumCalls);
-
-            // Signal OnSum event in reverse order
-            MyEventHandler::s_eventOrderIndex = 0; // reset the order check index
-            EBUS_EVENT_REVERSE(MyEventGroupBus, OnSum, 2.0f, 5.0f);
-            EXPECT_EQ(&meh, MyEventHandler::s_eventOrder[0]);
-            EXPECT_EQ(&meh1, MyEventHandler::s_eventOrder[1]);
-            EXPECT_EQ(2, meh.sumCalls);
-            EXPECT_EQ(2, meh1.sumCalls);
-
-            // How about we want to store the event result? Let's try with the last result.
-            MyEventHandler::s_eventOrderIndex = 0; // reset the order check index
-            float lastResult = 0.0f;
-            EBUS_EVENT_RESULT(lastResult, MyEventGroupBus, OnSum, 2.0f, 5.0f);
-            EXPECT_EQ(&meh1, MyEventHandler::s_eventOrder[0]);
-            EXPECT_EQ(&meh, MyEventHandler::s_eventOrder[1]);
-            EXPECT_EQ(3, meh.sumCalls);
-            EXPECT_EQ(3, meh1.sumCalls);
-            EXPECT_EQ(7.0f, lastResult);
-
-            // How about we want to store the event result? Let's try with the last result. Execute in reverse order
-            MyEventHandler::s_eventOrderIndex = 0; // reset the order check index
-            lastResult = 0.0f;
-            EBUS_EVENT_RESULT_REVERSE(lastResult, MyEventGroupBus, OnSum, 2.0f, 5.0f);
-            EXPECT_EQ(&meh, MyEventHandler::s_eventOrder[0]);
-            EXPECT_EQ(&meh1, MyEventHandler::s_eventOrder[1]);
-            EXPECT_EQ(4, meh.sumCalls);
-            EXPECT_EQ(4, meh1.sumCalls);
-            EXPECT_EQ(7.0f, lastResult);
-
-            // How about if we want to store all the results...
-            MyEventHandler::s_eventOrderIndex = 0; // reset the order check index
-            EBusAggregateResults<float> allResults;
-            EBUS_EVENT_RESULT(allResults, MyEventGroupBus, OnSum, 2.0f, 3.0f);
-            EXPECT_EQ(&meh1, MyEventHandler::s_eventOrder[0]);
-            EXPECT_EQ(&meh, MyEventHandler::s_eventOrder[1]);
-            EXPECT_EQ(5, meh.sumCalls);
-            EXPECT_EQ(5, meh1.sumCalls);
-            EXPECT_EQ(2, allResults.values.size()); // we should have 2 results
-            EXPECT_EQ(5.0f, allResults.values[0]);
-            EXPECT_EQ(5.0f, allResults.values[1]);
-
-            // How about if we want to store all the results... in reverse order
-            MyEventHandler::s_eventOrderIndex = 0; // reset the order check index
-            allResults.values.clear();
-            EBUS_EVENT_RESULT_REVERSE(allResults, MyEventGroupBus, OnSum, 2.0f, 3.0f);
-            EXPECT_EQ(&meh, MyEventHandler::s_eventOrder[0]);
-            EXPECT_EQ(&meh1, MyEventHandler::s_eventOrder[1]);
-            EXPECT_EQ(6, meh.sumCalls);
-            EXPECT_EQ(6, meh1.sumCalls);
-            EXPECT_EQ(2, allResults.values.size()); // we should have 2 results
-            EXPECT_EQ(5.0f, allResults.values[0]);
-            EXPECT_EQ(5.0f, allResults.values[1]);
-
-            meh1.BusDisconnect(); // we disconnect from receiving events.
-
-            MyEventHandler::s_eventOrderIndex = 0; // reset the order check index
-            EBUS_EVENT(MyEventGroupBus, OnAction, 1.0f, 2.0f);  // this signal will NOT trigger any calls.
-            EXPECT_EQ(2, meh1.actionCalls);
-            EXPECT_EQ(3, meh.actionCalls); // not disconnected
-        }
-    }
-
-    /**
-    * Tests multiple communication buses but only
-    * one event handler per bus. A great example where to use this
-    * is if you user game components/entities and you have one for position
-    * lets call it placement component! Normally you can have only position for
-    * one entity in the world. So one bus for each object/entity and one handler per bus.
-    */
-    namespace MultBusSingleHndl
-    {
-        /**
-        * Configure this event group to allow multiple buses but one handler per bus.
-        */
-        class MyEventGroup
-            : public AZ::EBusTraits
-        {
-        public:
-            //////////////////////////////////////////////////////////////////////////
-            // EBus Settings
-            static const EBusAddressPolicy AddressPolicy = EBusAddressPolicy::ById;
-            // #TODO: Without this line, the test is testing the wrong case. With this line, the test crashes.
-            //static const EBusHandlerPolicy HandlerPolicy = EBusHandlerPolicy::Single;
-            typedef unsigned int BusIdType;
-            //////////////////////////////////////////////////////////////////////////
-
-            virtual ~MyEventGroup() {}
-            //////////////////////////////////////////////////////////////////////////
-            // Define the events in this event group!
-            virtual void    OnAction(float x, float y) = 0;
-            virtual float   OnSum(float x, float y) = 0;
-            virtual void DestroyMe()
-            {
-                delete this;
-            }
-            //////////////////////////////////////////////////////////////////////////
-        };
-
-        typedef AZ::EBus< MyEventGroup > MyEventGroupBus;
-
-        /**
-        * Now implement our event handler.
-        */
-        class MyEventHandler
-            : public MyEventGroupBus::Handler
-        {
-        public:
-            AZ_CLASS_ALLOCATOR(MyEventHandler, AZ::SystemAllocator, 0);
-
-            int actionCalls;
-            int sumCalls;
-
-            MyEventHandler(const MyEventGroupBus::BusIdType busId)
-                : actionCalls(0)
-                , sumCalls(0)
-            {
-                BusConnect(busId); // connect to the specific bus
-            }
-            //////////////////////////////////////////////////////////////////////////
-            // Implement some action on the events...
-            virtual void    OnAction(float x, float y)
-            {
-                AZ_Printf("UnitTest", "OnAction1(%.2f,%.2f) on busId: %d called\n", x, y, m_busPtr->m_busId);
-                ++actionCalls;
-            }
-
-            virtual float   OnSum(float x, float y)
-            {
-                float sum = x + y;
-                AZ_Printf("UnitTest", "%.2f OnAction1(%.2f,%.2f) on busId: %d called\n", sum, x, y, m_busPtr->m_busId);
-                ++sumCalls;
-                return sum;
-            }
-            //////////////////////////////////////////////////////////////////////////
-        };
-    }
-    TEST_F(EBus, MultBusSingleHndl)
-    {
-        using namespace MultBusSingleHndl;
-        {
-            MyEventHandler meh0(0);   /// <-- Bind to bus 0
-            MyEventHandler meh1(1);  /// <-- Bind to bus 1
-
-            // Test handlers' enumeration functionality
-            EXPECT_EQ(&meh0, MyEventGroupBus::FindFirstHandler(0));
-            EXPECT_EQ(&meh1, MyEventGroupBus::FindFirstHandler(1));
-            EXPECT_EQ(nullptr, MyEventGroupBus::FindFirstHandler(3));
-            //EXPECT_TRUE(MyEventGroupBus::FindFirstHandler() == &meh0 || MyEventGroupBus::FindFirstHandler() == &meh1);
-
-            // Signal OnAction event on all buses
-            EBUS_EVENT(MyEventGroupBus, OnAction, 1.0f, 2.0f);
-            EXPECT_EQ(1, meh0.actionCalls);
-            EXPECT_EQ(1, meh1.actionCalls);
-
-            // Signal OnSum event
-            EBUS_EVENT(MyEventGroupBus, OnSum, 2.0f, 5.0f);
-            EXPECT_EQ(1, meh0.sumCalls);
-            EXPECT_EQ(1, meh1.sumCalls);
-
-            // Signal OnAction event on bus 0
-            EBUS_EVENT_ID(0, MyEventGroupBus, OnAction, 1.0f, 2.0f);
-            EXPECT_EQ(2, meh0.actionCalls);
-            EXPECT_EQ(1, meh1.actionCalls);
-
-            // Signal OnAction event on bus 1
-            EBUS_EVENT_ID(1, MyEventGroupBus, OnAction, 1.0f, 2.0f);
-            EXPECT_EQ(2, meh0.actionCalls);
-            EXPECT_EQ(2, meh1.actionCalls);
-
-            // When you call event very often... you can cache the the BUS pointer.
-            // This is recommended only for performance critical systems, all you save is
-            // a hash search.
-            MyEventGroupBus::BusPtr busPtr;
-            MyEventGroupBus::Bind(busPtr, 1);
-            // Now signal this event on the specified bus.
-            EBUS_EVENT_PTR(busPtr, MyEventGroupBus, OnAction, 2.0f, 2.0f);
-            EXPECT_EQ(2, meh0.actionCalls);
-            EXPECT_EQ(3, meh1.actionCalls);
-
-            //// How about we want to store the event result? Let's try with the last result.
-            float lastResult = 0.0f;
-            EBUS_EVENT_ID_RESULT(lastResult, 0, MyEventGroupBus, OnSum, 2.0f, 5.0f);
-            EXPECT_EQ(2, meh0.sumCalls);
-            EXPECT_EQ(1, meh1.sumCalls);
-            EXPECT_EQ(7.0f, lastResult);
-
-            EBUS_EVENT_ID_RESULT(lastResult, 1, MyEventGroupBus, OnSum, 6.0f, 5.0f);
-            EXPECT_EQ(2, meh0.sumCalls);
-            EXPECT_EQ(2, meh1.sumCalls);
-            EXPECT_EQ(11.0f, lastResult);
-
-            // How about if we want to store all the results...
-            EBusAggregateResults<float> allResults;
-            EBUS_EVENT_RESULT(allResults, MyEventGroupBus, OnSum, 2.0f, 3.0f);
-            EXPECT_EQ(3, meh0.sumCalls);
-            EXPECT_EQ(3, meh1.sumCalls);
-            EXPECT_EQ(2, allResults.values.size()); // we should have 2 results
-            EXPECT_EQ(5.0f, allResults.values[0]);
-            EXPECT_EQ(5.0f, allResults.values[1]);
-
-            meh0.BusDisconnect(); // we disconnect from receiving events.
-
-            EBUS_EVENT(MyEventGroupBus, OnAction, 1.0f, 2.0f);  // this signal will NOT trigger any calls.
-            EXPECT_EQ(2, meh0.actionCalls);
-            EXPECT_EQ(4, meh1.actionCalls); // not disconnected
+            Bus::Bind(ptr, handlerPair.first);
+            EXPECT_NE(nullptr, ptr);
+            bool result{};
+            Bus::EventResult(result, ptr, busCallback);
+            EXPECT_TRUE(result);
         }
 
-        {
-            // Test removing handlers while in messages - forward iterator
-            MyEventHandler* handler1 = aznew MyEventHandler(0);
-            MyEventHandler* handler2 = aznew MyEventHandler(1);
-            (void)handler1; (void)handler2;
-
-            EXPECT_EQ(2, MyEventGroupBus::GetTotalNumOfEventHandlers());
-
-            EBUS_EVENT(MyEventGroupBus, DestroyMe);
-
-            EXPECT_EQ(0, MyEventGroupBus::GetTotalNumOfEventHandlers());
-
-            // Test removing handlers while in messages - reverse iterator
-            handler1 = aznew MyEventHandler(0);
-            handler2 = aznew MyEventHandler(1);
-
-            EXPECT_EQ(2, MyEventGroupBus::GetTotalNumOfEventHandlers());
-
-            EBUS_EVENT_REVERSE(MyEventGroupBus, DestroyMe);
-
-            EXPECT_EQ(0, MyEventGroupBus::GetTotalNumOfEventHandlers());
-        }
+        this->DestroyHandlers();
     }
 
-    /**
-    * Tests communication buses with multiple event handlers.
-    * This is the default configuration for components/data entities models.
-    */
-    namespace MultBusMultHand
+    TYPED_TEST(EBusTestId, BindEventReverse_GetCurrentBusId_ReturnsNonNullptr)
     {
-        /**
-        * Create event that allows MULTI buses. By default we already allow multiple handlers per bus.
-        */
-        class MyEventGroup
-            : public AZ::EBusTraits
-        {
-        public:
-            //////////////////////////////////////////////////////////////////////////
-            // EBus interface settings
-            static const EBusHandlerPolicy HandlerPolicy = EBusHandlerPolicy::Multiple;
-            static const EBusAddressPolicy AddressPolicy = EBusAddressPolicy::ById;
-            typedef unsigned int BusIdType;
-            //////////////////////////////////////////////////////////////////////////
+        using Bus = TypeParam;
 
-            virtual ~MyEventGroup() {}
-            //////////////////////////////////////////////////////////////////////////
-            // Define the events in this event group!
-            virtual void    OnAction(float x, float y) = 0;
-            virtual float   OnSum(float x, float y) = 0;
-            //////////////////////////////////////////////////////////////////////////
+        this->CreateHandlers();
+
+        typename Bus::BusPtr ptr;
+        auto busCallback = [](typename Bus::InterfaceType*)
+        {
+            EXPECT_NE(nullptr, Bus::GetCurrentBusId());
         };
 
-        typedef AZ::EBus< MyEventGroup > MyEventGroupBus;
-
-        /**
-        * Now implement our event handler.
-        */
-        class MyEventHandler
-            : public MyEventGroupBus::Handler
+        for (const auto& handlerPair : this->m_handlers)
         {
-        public:
-            int actionCalls;
-            int sumCalls;
-
-            MyEventHandler(MyEventGroupBus::BusIdType busId)
-                : actionCalls(0)
-                , sumCalls(0)
-            {
-                BusConnect(busId); // connect to the specific bus
-            }
-            //////////////////////////////////////////////////////////////////////////
-            // Implement some action on the events...
-            virtual void    OnAction(float x, float y)
-            {
-                AZ_Printf("UnitTest", "OnAction1(%.2f,%.2f) on busId: %d called\n", x, y, m_busPtr->m_busId);
-                ++actionCalls;
-            }
-
-            virtual float   OnSum(float x, float y)
-            {
-                float sum = x + y;
-                AZ_Printf("UnitTest", "%.2f OnAction1(%.2f,%.2f) on busId: %d called\n", sum, x, y, m_busPtr->m_busId);
-                ++sumCalls;
-                return sum;
-            }
-            //////////////////////////////////////////////////////////////////////////
-        };
-    }
-    TEST_F(EBus, MultBusMultHand)
-    {
-        using namespace MultBusMultHand;
-        {
-            MyEventHandler meh0(0);   /// <-- Bind to bus 0
-            MyEventHandler meh1(1);  /// <-- Bind to bus 1
-            MyEventHandler meh2(1);  /// <-- Bind to bus 1
-
-            // Signal OnAction event on all buses
-            EBUS_EVENT(MyEventGroupBus, OnAction, 1.0f, 2.0f);
-            EXPECT_EQ(1, meh0.actionCalls);
-            EXPECT_EQ(1, meh1.actionCalls);
-            EXPECT_EQ(1, meh2.actionCalls);
-
-            // Signal OnSum event
-            EBUS_EVENT(MyEventGroupBus, OnSum, 2.0f, 5.0f);
-            EXPECT_EQ(1, meh0.sumCalls);
-            EXPECT_EQ(1, meh1.sumCalls);
-            EXPECT_EQ(1, meh2.sumCalls);
-
-            // Signal OnAction event on bus 0
-            EBUS_EVENT_ID(0, MyEventGroupBus, OnAction, 1.0f, 2.0f);
-            EXPECT_EQ(2, meh0.actionCalls);
-            EXPECT_EQ(1, meh1.actionCalls);
-            EXPECT_EQ(1, meh2.actionCalls);
-
-            // Signal OnAction event on bus 1
-            EBUS_EVENT_ID(1, MyEventGroupBus, OnAction, 1.0f, 2.0f);
-            EXPECT_EQ(2, meh0.actionCalls);
-            EXPECT_EQ(2, meh1.actionCalls);
-            EXPECT_EQ(2, meh2.actionCalls);
-
-            // When you call event very often... you can cache the the BUS pointer.
-            // This is recommended only for performance critical systems, all you save is
-            // a hash search.
-            MyEventGroupBus::BusPtr busPtr;
-            MyEventGroupBus::Bind(busPtr, 1);
-            // Now signal this event on the specified bus.
-            // \note EBusMyEventGroup has decorative role (we know that from the bus pointer, but it make
-            // the code more readable.
-            EBUS_EVENT_PTR(busPtr, MyEventGroupBus, OnAction, 2.0f, 2.0f);
-            EXPECT_EQ(2, meh0.actionCalls);
-            EXPECT_EQ(3, meh1.actionCalls);
-            EXPECT_EQ(3, meh1.actionCalls);
-
-            // How about we want to store the event result? Let's try with the last result.
-            float lastResult = 0.0f;
-            EBUS_EVENT_ID_RESULT(lastResult, 0, MyEventGroupBus, OnSum, 2.0f, 5.0f);
-            EXPECT_EQ(2, meh0.sumCalls);
-            EXPECT_EQ(1, meh1.sumCalls);
-            EXPECT_EQ(1, meh2.sumCalls);
-            EXPECT_EQ(7.0f, lastResult);
-
-            EBUS_EVENT_ID_RESULT(lastResult, 1, MyEventGroupBus, OnSum, 6.0f, 5.0f);
-            EXPECT_EQ(2, meh0.sumCalls);
-            EXPECT_EQ(2, meh1.sumCalls);
-            EXPECT_EQ(2, meh2.sumCalls);
-            EXPECT_EQ(11.0f, lastResult);
-
-            // How about if we want to store all the results...
-            EBusAggregateResults<float> allResults;
-            EBUS_EVENT_RESULT(allResults, MyEventGroupBus, OnSum, 2.0f, 3.0f);
-            EXPECT_EQ(3, meh0.sumCalls);
-            EXPECT_EQ(3, meh1.sumCalls);
-            EXPECT_EQ(3, meh2.sumCalls);
-            EXPECT_EQ(3, allResults.values.size());
-            EXPECT_EQ(5.0f, allResults.values[0]);
-            EXPECT_EQ(5.0f, allResults.values[1]);
-            EXPECT_EQ(5.0f, allResults.values[2]);
-
-            allResults.values.clear();
-
-            EBUS_EVENT_ID_RESULT(allResults, 1, MyEventGroupBus, OnSum, 3.0f, 3.0f);
-            EXPECT_EQ(3, meh0.sumCalls);
-            EXPECT_EQ(4, meh1.sumCalls);
-            EXPECT_EQ(4, meh2.sumCalls);
-            EXPECT_EQ(2, allResults.values.size());
-            EXPECT_EQ(6.0f, allResults.values[0]);
-            EXPECT_EQ(6.0f, allResults.values[1]);
-
-            meh2.BusDisconnect(); // we disconnect from receiving events.
-
-            EBUS_EVENT(MyEventGroupBus, OnAction, 1.0f, 2.0f);  // this signal will NOT trigger any calls.
-            EXPECT_EQ(3, meh0.actionCalls);
-            EXPECT_EQ(4, meh1.actionCalls);
-            EXPECT_EQ(3, meh2.actionCalls);  // not connected
-        }
-    }
-
-    /**
-    * Tests communication with multiple ordered buses with multiple ordered event handlers.
-    * This allows us to fully define the order of event broadcasting even across buses.
-    * Example case for this in a engine tick/update event, when you want to control will object
-    * gets ticked when and within each bus what is the order.
-    */
-    namespace MultBusMultOrdHnd
-    {
-        /**
-        * Create event that allows multiple ordered buses.
-        */
-        class MyEventGroup
-            : public AZ::EBusTraits
-        {
-        protected:
-            int m_order; ///< Some order value.
-        public:
-            //////////////////////////////////////////////////////////////////////////
-            // EBus interface settings
-            static const EBusHandlerPolicy HandlerPolicy = EBusHandlerPolicy::MultipleAndOrdered;
-            static const EBusAddressPolicy AddressPolicy = EBusAddressPolicy::ByIdAndOrdered;
-            typedef int BusIdType;
-            typedef AZStd::greater<BusIdType> BusIdOrderCompare;
-            //////////////////////////////////////////////////////////////////////////
-
-            /// Required function because we use EBusHandlerPolicy::MultipleAndOrdered
-            bool Compare(const MyEventGroup* rhs) const { return m_order < rhs->m_order; }
-
-            virtual ~MyEventGroup() {}
-            //////////////////////////////////////////////////////////////////////////
-            // Define the events in this event group!
-            virtual void    OnAction(float x, float y) = 0;
-            virtual float   OnSum(float x, float y) = 0;
-            virtual void DestroyMe()
-            {
-                delete this;
-            }
-            //////////////////////////////////////////////////////////////////////////
-        };
-
-        // Declare a BUS where we have ordered bus and ordered handlers (this is great example for Update tick... since we want to update in order)...
-        // We sort the handlers using "int m_order" in the interface and sort the Bus using AZStd::greater!
-        typedef AZ::EBus< MyEventGroup > MyEventGroupBus;
-
-        /**
-        * Now implement our event handler.
-        */
-        class MyEventHandler
-            : public MyEventGroupBus::Handler
-        {
-        public:
-            AZ_CLASS_ALLOCATOR(MyEventHandler, AZ::SystemAllocator, 0);
-
-            int actionCalls;
-            int sumCalls;
-
-            MyEventHandler(MyEventGroupBus::BusIdType busId, int order)
-                : actionCalls(0)
-                , sumCalls(0)
-            {
-                m_order = order; ///< Must be set before we connect, so we are inserted in the right place!
-                BusConnect(busId); // connect to the specific bus
-            }
-            //////////////////////////////////////////////////////////////////////////
-            // Implement some action on the events...
-            virtual void    OnAction(float x, float y)
-            {
-                AZ_Printf("UnitTest", "OnAction1(%.2f,%.2f) on busId: %d order %d called\n", x, y, m_busPtr->m_busId, m_order);
-                ++actionCalls;
-                s_eventOrder[s_eventOrderIndex++] = this;
-            }
-
-            virtual float   OnSum(float x, float y)
-            {
-                float sum = x + y;
-                AZ_Printf("UnitTest", "%.2f OnAction1(%.2f,%.2f) on busId: %d order %d called\n", sum, x, y, m_busPtr->m_busId, m_order);
-                ++sumCalls;
-                s_eventOrder[s_eventOrderIndex++] = this;
-                return sum;
-            }
-            //////////////////////////////////////////////////////////////////////////
-
-            static MyEventHandler* s_eventOrder[3];
-            static int  s_eventOrderIndex;
-        };
-
-        MyEventHandler* MyEventHandler::s_eventOrder[3];
-        int MyEventHandler::s_eventOrderIndex = 0;
-
-    }
-    TEST_F(EBus, MultBusMultOrdHnd)
-    {
-        using namespace MultBusMultOrdHnd;
-        {
-            MyEventHandler meh0(0, 0);     /// <-- Bind to bus 0 order 0 - since the bus 0 has lower id than 1 (\ref EBusMyEventGroup::BusIdOrderCompare) this will be called after all bus1 entries!
-            MyEventHandler meh1(1, 100);  /// <-- Bind to bus 1 order 100 (will be called after meh2 with order 10)
-            MyEventHandler meh2(1, 10);  /// <-- Bind to bus 1 order 10 (will be called first on the bus)
-
-            // Signal OnAction event on all buses
-            MyEventHandler::s_eventOrderIndex = 0; // reset the order checker
-            EBUS_EVENT(MyEventGroupBus, OnAction, 1.0f, 2.0f);
-            EXPECT_EQ(&meh2, MyEventHandler::s_eventOrder[0]);
-            EXPECT_EQ(&meh1, MyEventHandler::s_eventOrder[1]);
-            EXPECT_EQ(&meh0, MyEventHandler::s_eventOrder[2]);
-            EXPECT_EQ(1, meh0.actionCalls);
-            EXPECT_EQ(1, meh1.actionCalls);
-            EXPECT_EQ(1, meh2.actionCalls);
-
-            // Signal OnAction event on all buses in reverse order
-            MyEventHandler::s_eventOrderIndex = 0; // reset the order checker
-            EBUS_EVENT_REVERSE(MyEventGroupBus, OnAction, 1.0f, 2.0f);
-            EXPECT_EQ(&meh0, MyEventHandler::s_eventOrder[0]);
-            EXPECT_EQ(&meh1, MyEventHandler::s_eventOrder[1]);
-            EXPECT_EQ(&meh2, MyEventHandler::s_eventOrder[2]);
-            EXPECT_EQ(2, meh0.actionCalls);
-            EXPECT_EQ(2, meh1.actionCalls);
-            EXPECT_EQ(2, meh2.actionCalls);
-
-            // Signal OnSum event
-            MyEventHandler::s_eventOrderIndex = 0; // reset the order checker
-            EBUS_EVENT(MyEventGroupBus, OnSum, 2.0f, 5.0f);
-            EXPECT_EQ(1, meh0.sumCalls);
-            EXPECT_EQ(1, meh1.sumCalls);
-            EXPECT_EQ(1, meh2.sumCalls);
-
-            // Signal OnAction event on bus 0
-            MyEventHandler::s_eventOrderIndex = 0; // reset the order checker
-            EBUS_EVENT_ID(0, MyEventGroupBus, OnAction, 1.0f, 2.0f);
-            EXPECT_EQ(3, meh0.actionCalls);
-            EXPECT_EQ(2, meh1.actionCalls);
-            EXPECT_EQ(2, meh2.actionCalls);
-
-            // Signal OnAction event on bus 1
-            MyEventHandler::s_eventOrderIndex = 0; // reset the order checker
-            EBUS_EVENT_ID(1, MyEventGroupBus, OnAction, 1.0f, 2.0f);
-            EXPECT_EQ(3, meh0.actionCalls);
-            EXPECT_EQ(3, meh1.actionCalls);
-            EXPECT_EQ(3, meh2.actionCalls);
-
-            MyEventHandler::s_eventOrderIndex = 0; // reset the order checker
-            // When you call event very often... you can cache the the BUS pointer.
-            // This is recommended only for performance critical systems, all you save is
-            // a hash search.
-            MyEventGroupBus::BusPtr busPtr;
-            MyEventGroupBus::Bind(busPtr, 1);
-            // Now signal this event on the specified bus.
-            // \note EBusMyEventGroup has decorative role (we know that from the bus pointer, but it make
-            // the code more readable.
-            EBUS_EVENT_PTR(busPtr, MyEventGroupBus, OnAction, 2.0f, 2.0f);
-            EXPECT_EQ(3, meh0.actionCalls);
-            EXPECT_EQ(4, meh1.actionCalls);
-            EXPECT_EQ(4, meh1.actionCalls);
-
-            // How about we want to store the event result? Let's try with the last result.
-            MyEventHandler::s_eventOrderIndex = 0; // reset the order checker
-            float lastResult = 0.0f;
-            EBUS_EVENT_ID_RESULT(lastResult, 0, MyEventGroupBus, OnSum, 2.0f, 5.0f);
-            EXPECT_EQ(2, meh0.sumCalls);
-            EXPECT_EQ(1, meh1.sumCalls);
-            EXPECT_EQ(1, meh2.sumCalls);
-            EXPECT_EQ(7.0f, lastResult);
-
-            EBUS_EVENT_ID_RESULT(lastResult, 1, MyEventGroupBus, OnSum, 6.0f, 5.0f);
-            EXPECT_EQ(2, meh0.sumCalls);
-            EXPECT_EQ(2, meh1.sumCalls);
-            EXPECT_EQ(2, meh2.sumCalls);
-            EXPECT_EQ(11.0f, lastResult);
-
-            // How about if we want to store all the results...
-            MyEventHandler::s_eventOrderIndex = 0; // reset the order checker
-            EBusAggregateResults<float> allResults;
-            EBUS_EVENT_RESULT(allResults, MyEventGroupBus, OnSum, 2.0f, 3.0f);
-            EXPECT_EQ(3, meh0.sumCalls);
-            EXPECT_EQ(3, meh1.sumCalls);
-            EXPECT_EQ(3, meh2.sumCalls);
-            EXPECT_EQ(3, allResults.values.size());
-            EXPECT_EQ(5.0f, allResults.values[0]);
-            EXPECT_EQ(5.0f, allResults.values[1]);
-            EXPECT_EQ(5.0f, allResults.values[2]);
-
-            allResults.values.clear();
-            MyEventHandler::s_eventOrderIndex = 0; // reset the order checker
-
-            EBUS_EVENT_ID_RESULT(allResults, 1, MyEventGroupBus, OnSum, 3.0f, 3.0f);
-            EXPECT_EQ(3, meh0.sumCalls);
-            EXPECT_EQ(4, meh1.sumCalls);
-            EXPECT_EQ(4, meh2.sumCalls);
-            EXPECT_EQ(2, allResults.values.size());
-            EXPECT_EQ(6.0f, allResults.values[0]);
-            EXPECT_EQ(6.0f, allResults.values[1]);
-
-            meh2.BusDisconnect(); // we disconnect from receiving events.
-
-            MyEventHandler::s_eventOrderIndex = 0; // reset the order checker
-            EBUS_EVENT(MyEventGroupBus, OnAction, 1.0f, 2.0f);  // this signal will NOT trigger any calls.
-            EXPECT_EQ(4, meh0.actionCalls);
-            EXPECT_EQ(5, meh1.actionCalls);
-            EXPECT_EQ(4, meh2.actionCalls);  // not connected
+            Bus::Bind(ptr, handlerPair.first);
+            EXPECT_NE(nullptr, ptr);
+            Bus::EventReverse(ptr, busCallback);
         }
 
-        {
-            // Test removing handlers while in messages - forward iterator
-            MyEventHandler* handler1 = aznew MyEventHandler(0, 0);
-            MyEventHandler* handler2 = aznew MyEventHandler(1, 10);
-            (void)handler1; (void)handler2;
-
-            EXPECT_EQ(2, MyEventGroupBus::GetTotalNumOfEventHandlers());
-
-            EBUS_EVENT(MyEventGroupBus, DestroyMe);
-
-            EXPECT_EQ(0, MyEventGroupBus::GetTotalNumOfEventHandlers());
-
-            // Test removing handlers while in messages - reverse iterator
-            handler1 = aznew MyEventHandler(0, 0);
-            handler2 = aznew MyEventHandler(1, 10);
-
-            EXPECT_EQ(2, MyEventGroupBus::GetTotalNumOfEventHandlers());
-
-            EBUS_EVENT_REVERSE(MyEventGroupBus, DestroyMe);
-
-            EXPECT_EQ(0, MyEventGroupBus::GetTotalNumOfEventHandlers());
-        }
+        this->DestroyHandlers();
     }
 
-    /**
-    * Test for default case (single bus, multiple handlers) using queued (delayed) events.
-    */
-    namespace SingleBusMultHandQueued
+    TYPED_TEST(EBusTestId, BindEventResultReverse_GetCurrentBusId_ReturnsNonNullptr)
     {
-        /**
-        * Single bus multiple event groups is the default setting for the event group.
-        * Unless we want to modify the allocator, we don't need to change anything.
-        */
-        class MyEventGroup
-            : public AZ::EBusTraits
+        using Bus = TypeParam;
+
+        this->CreateHandlers();
+
+        typename Bus::BusPtr ptr;
+        auto busCallback = [](typename Bus::InterfaceType*)
         {
-        protected:
-            int m_order;  ///< Some ordering value.
-        public:
-            //////////////////////////////////////////////////////////////////////////
-            // EBusInterface settings
-            static const EBusHandlerPolicy HandlerPolicy = EBusHandlerPolicy::MultipleAndOrdered;
-            static const bool EnableEventQueue = true;
-            struct BusHandlerOrderCompare
-                : public AZStd::binary_function<MyEventGroup*, MyEventGroup*, bool>                           // implement custom Handler/Event ordering function
-            {
-                AZ_FORCE_INLINE bool operator()(const MyEventGroup* left, const MyEventGroup* right) const
-                {
-                    return left->m_order < right->m_order;
-                }
-            };
-            //////////////////////////////////////////////////////////////////////////
-
-            /// Required function because we use EBusHandlerPolicy::MultipleAndOrdered
-            bool Compare(const MyEventGroup* rhs) const { return m_order < rhs->m_order; }
-
-            virtual ~MyEventGroup() {}
-            //////////////////////////////////////////////////////////////////////////
-            // Define the events in this event group!
-            virtual void    OnAction(float x, float y) = 0;
-            virtual float   OnSum(float x, float y) = 0;
-            //////////////////////////////////////////////////////////////////////////
+            EXPECT_NE(nullptr, Bus::GetCurrentBusId());
+            return true;
         };
 
-        typedef AZ::EBus< MyEventGroup > MyEventGroupBus;
-
-        /**
-        * Now implement our event handler.
-        */
-        class MyEventHandler
-            : public MyEventGroupBus::Handler                 /* we will listen for MyEventGroupBus */
+        for (const auto& handlerPair : this->m_handlers)
         {
-        public:
-            int actionCalls;
-            int sumCalls;
-
-            MyEventHandler(int order)
-                : actionCalls(0)
-                , sumCalls(0)
-            {
-                m_order = order; ///< Must be set before we connect, so we are inserted in the right place!
-                // We will bind at construction time to the bus. Disconnect is automatic when the object is
-                // destroyed or we can call BusDisconnect()
-                MyEventGroupBus::Handler::BusConnect();
-            }
-            //////////////////////////////////////////////////////////////////////////
-            // Implement some action on the events...
-            virtual void    OnAction(float x, float y)
-            {
-                AZ_Printf("UnitTest", "OnAction1(%.2f,%.2f) order %d called\n", x, y, m_order); ++actionCalls; s_eventOrder[s_eventOrderIndex++] = this;
-            }
-
-            virtual float   OnSum(float x, float y)
-            {
-                float sum = x + y; AZ_Printf("UnitTest", "%.2f OnAction1(%.2f,%.2f) order %d called\n", sum, x, y, m_order); ++sumCalls; s_eventOrder[s_eventOrderIndex++] = this; return sum;
-            }
-            //////////////////////////////////////////////////////////////////////////
-
-            static MyEventHandler* s_eventOrder[2];
-            static int  s_eventOrderIndex;
-        };
-
-        MyEventHandler* MyEventHandler::s_eventOrder[2];
-        int MyEventHandler::s_eventOrderIndex = 0;
-
-    }
-    TEST_F(EBus, SingleBusMultHandQueued)
-    {
-        using namespace SingleBusMultHandQueued;
-        {
-            MyEventHandler meh(100);
-            MyEventHandler meh1(0);
-
-            // Queue OnAction event
-#ifdef AZ_HAS_VARIADIC_TEMPLATES
-            MyEventGroupBus::QueueBroadcast(&MyEventGroupBus::Events::OnAction, 1.0f, 2.0f);
-#else
-            EBUS_QUEUE_EVENT(MyEventGroupBus, OnAction, 1.0f, 2.0f);
-#endif
-            EXPECT_EQ(0, meh.actionCalls);
-            EXPECT_EQ(0, meh1.actionCalls);
-            MyEventHandler::s_eventOrderIndex = 0; // reset the order check index
-            MyEventGroupBus::ExecuteQueuedEvents();
-            EXPECT_EQ(&meh1, MyEventHandler::s_eventOrder[0]);
-            EXPECT_EQ(&meh, MyEventHandler::s_eventOrder[1]);
-            EXPECT_EQ(1, meh.actionCalls);
-            EXPECT_EQ(1, meh1.actionCalls);
-
-            // Queue OnAction event in reverse order
-            EBUS_QUEUE_EVENT_REVERSE(MyEventGroupBus, OnAction, 1.0f, 2.0f);
-            EXPECT_EQ(1, meh.actionCalls);
-            EXPECT_EQ(1, meh1.actionCalls);
-            MyEventHandler::s_eventOrderIndex = 0; // reset the order check index
-            MyEventGroupBus::ExecuteQueuedEvents();
-            EXPECT_EQ(&meh, MyEventHandler::s_eventOrder[0]);
-            EXPECT_EQ(&meh1, MyEventHandler::s_eventOrder[1]);
-            EXPECT_EQ(2, meh.actionCalls);
-            EXPECT_EQ(2, meh1.actionCalls);
-
-            // Signal OnSum event
-            EBUS_QUEUE_EVENT(MyEventGroupBus, OnSum, 2.0f, 5.0f);
-            EXPECT_EQ(0, meh.sumCalls);
-            EXPECT_EQ(0, meh1.sumCalls);
-            MyEventHandler::s_eventOrderIndex = 0; // reset the order check index
-            MyEventGroupBus::ExecuteQueuedEvents();
-            EXPECT_EQ(&meh1, MyEventHandler::s_eventOrder[0]);
-            EXPECT_EQ(&meh, MyEventHandler::s_eventOrder[1]);
-            EXPECT_EQ(1, meh.sumCalls);
-            EXPECT_EQ(1, meh1.sumCalls);
-
-            meh.BusDisconnect(); // we disconnect from receiving events.
-
-            EBUS_QUEUE_EVENT(MyEventGroupBus, OnAction, 1.0f, 2.0f);
-            EXPECT_EQ(2, meh.actionCalls);
-            EXPECT_EQ(2, meh1.actionCalls);
-            MyEventHandler::s_eventOrderIndex = 0; // reset the order check index
-            MyEventGroupBus::ExecuteQueuedEvents();
-            EXPECT_EQ(2, meh.actionCalls);
-            EXPECT_EQ(3, meh1.actionCalls); // not disconnected
+            Bus::Bind(ptr, handlerPair.first);
+            EXPECT_NE(nullptr, ptr);
+            bool result{};
+            Bus::EventResultReverse(result, ptr, busCallback);
+            EXPECT_TRUE(result);
         }
+
+        this->DestroyHandlers();
+    }
+
+    TYPED_TEST(EBusTestId, Broadcast_GetCurrentBusId_ReturnsNonNullptr)
+    {
+        using Bus = TypeParam;
+
+        this->CreateHandlers();
+
+        auto busCallback = [](typename Bus::InterfaceType*)
+        {
+            const int* busId = Bus::GetCurrentBusId();
+            EXPECT_NE(nullptr, busId);
+        };
+
+        Bus::Broadcast(busCallback);
+
+        this->DestroyHandlers();
+    }
+
+    TYPED_TEST(EBusTestId, BroadcastResult_GetCurrentBusId_ReturnsNonNullptr)
+    {
+        using Bus = TypeParam;
+
+        this->CreateHandlers();
+
+        auto busCallback = [](typename Bus::InterfaceType*)
+        {
+            const int* busId = Bus::GetCurrentBusId();
+            EXPECT_NE(nullptr, busId);
+            return 16.0f;
+        };
+
+        float result{};
+        Bus::BroadcastResult(result, busCallback);
+        EXPECT_FLOAT_EQ(16.0f, result);
+
+        this->DestroyHandlers();
+    }
+
+    TYPED_TEST(EBusTestId, BroadcastReverse_GetCurrentBusId_ReturnsNonNullptr)
+    {
+        using Bus = TypeParam;
+
+        this->CreateHandlers();
+
+        auto busCallback = [](typename Bus::InterfaceType*)
+        {
+            const int* busId = Bus::GetCurrentBusId();
+            EXPECT_NE(nullptr, busId);
+        };
+
+        Bus::BroadcastReverse(busCallback);
+
+        this->DestroyHandlers();
+    }
+
+    TYPED_TEST(EBusTestId, BroadcastResultReverse_GetCurrentBusId_ReturnsNonNullptr)
+    {
+        using Bus = TypeParam;
+
+        this->CreateHandlers();
+
+        auto busCallback = [](typename Bus::InterfaceType*)
+        {
+            const int* busId = Bus::GetCurrentBusId();
+            EXPECT_NE(nullptr, busId);
+            return 8.0;
+        };
+
+        double result{};
+        Bus::BroadcastResultReverse(result, busCallback);
+        EXPECT_DOUBLE_EQ(8.0, result);
+
+        this->DestroyHandlers();
+    }
+
+    TYPED_TEST(EBusTestId, EnumerateHandlers_GetCurrentBusId_ReturnsNonNullptr)
+    {
+        using Bus = TypeParam;
+
+        this->CreateHandlers();
+
+        auto busCallback = [](typename Bus::InterfaceType*)
+        {
+            const int* busId = Bus::GetCurrentBusId();
+            EXPECT_NE(nullptr, busId);
+            return true;
+        };
+
+        Bus::EnumerateHandlers(busCallback);
+
+        this->DestroyHandlers();
+    }
+
+    TYPED_TEST(EBusTestId, EnumerateHandlersId_GetCurrentBusId_ReturnsNonNullptr)
+    {
+        using Bus = TypeParam;
+
+        this->CreateHandlers();
+
+        auto busCallback = [](typename Bus::InterfaceType*)
+        {
+            const int* busId = Bus::GetCurrentBusId();
+            EXPECT_NE(nullptr, busId);
+            if (busId)
+            {
+                EXPECT_EQ(1, *busId);
+            }
+            return true;
+        };
+
+        Bus::EnumerateHandlersId(1, busCallback);
+
+        this->DestroyHandlers();
+    }
+
+    TYPED_TEST(EBusTestId, EnumerateHandlersPtr_GetCurrentBusId_ReturnsNonNullptr)
+    {
+        using Bus = TypeParam;
+
+        this->CreateHandlers();
+
+        auto busCallback = [](typename Bus::InterfaceType*)
+        {
+            const int* busId = Bus::GetCurrentBusId();
+            EXPECT_NE(nullptr, busId);
+            if(busId)
+            {
+                EXPECT_EQ(1, *busId);
+            }
+            return true;
+        };
+
+        typename Bus::BusPtr busPtr;
+        Bus::Bind(busPtr, 1);
+        EXPECT_NE(nullptr, busPtr);
+        Bus::EnumerateHandlersPtr(busPtr, busCallback);
+
+        this->DestroyHandlers();
+    }
+
+    class EBus
+        : public AllocatorsFixture
+    {};
+
+    TEST_F(EBus, DISABLED_CopyConstructorOfEBusHandlerDoesNotAssertInInternalDestructorOfHandler)
+    {
+        AZ_TEST_START_ASSERTTEST;
+        {
+            MutexBusHandler sourceHandler;
+            // Connect source handler to InterfaceWithMutexBus and then copy it over to a new instance
+            // Afterwards disconnect the source handler from the InterfaceWithMutexBus
+            sourceHandler.BusConnect(1);
+            MutexBusHandler targetHandler(sourceHandler);
+            sourceHandler.BusDisconnect();
+        }
+        AZ_TEST_STOP_ASSERTTEST(0);
+    }
+
+    TEST_F(EBus, DISABLED_CopyAssignmentOfEBusHandlerDoesNotAssertInInternalDestructorOfHandler)
+    {
+        AZ_TEST_START_ASSERTTEST;
+        {
+            MutexBusHandler sourceHandler;
+            MutexBusHandler targetHandler;
+            // Connect source handler to InterfaceWithMutexBus and then copy it over to a new instance
+            // Afterwards disconnect the source handler from the InterfaceWithMutexBus
+            sourceHandler.BusConnect(1);
+            targetHandler = sourceHandler;
+            sourceHandler.BusDisconnect();
+        }
+        AZ_TEST_STOP_ASSERTTEST(0);
     }
 
     /**
@@ -1509,6 +1970,141 @@ namespace UnitTest
         EXPECT_EQ(0, ConnectDisconnectIdOrderedBus::GetTotalNumOfEventHandlers());
     }
 
+
+    class DisconnectNextHandlerInterface
+        : public AZ::EBusTraits
+    {
+    public:
+        static constexpr AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::ById;
+        static constexpr AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::MultipleAndOrdered;
+        using BusIdType = int32_t;
+
+        // Comparison function which always sorts to the end
+        struct DisconnectNextHandlerLess
+        {
+            // Intrusive_multiset requires the first_argument_type parameter for it's comparison function, but it is deprecated in C++17
+            // This should be removed when C++17 support is added
+            using first_argument_type = DisconnectNextHandlerInterface*;
+            constexpr bool operator()(const DisconnectNextHandlerInterface*, const DisconnectNextHandlerInterface*) const
+            {
+                return false;
+            }
+        };
+        using BusHandlerOrderCompare = DisconnectNextHandlerLess;
+
+        virtual void DisconnectNextHandler() = 0;
+    };
+
+    using DisconnectNextHandlerBus = AZ::EBus<DisconnectNextHandlerInterface>;
+
+    class DisconnectNextHandlerByIdImpl
+        : public DisconnectNextHandlerBus::MultiHandler
+    {
+    public:
+        void DisconnectNextHandler() override
+        {
+            if (m_nextHandler)
+            {
+                m_nextHandler->BusDisconnect(*DisconnectNextHandlerBus::GetCurrentBusId());
+                ++m_handlerDisconnectCounter;
+            }
+        }
+
+        static constexpr int32_t firstBusAddress = 1;
+        static constexpr int32_t secondBusAddress = 2;
+        DisconnectNextHandlerByIdImpl* m_nextHandler{};
+        int32_t m_handlerDisconnectCounter{};
+    };
+
+    constexpr int32_t DisconnectNextHandlerByIdImpl::firstBusAddress;
+    constexpr int32_t DisconnectNextHandlerByIdImpl::secondBusAddress;
+
+    /**
+    * Tests disconnecting the next handler within a bus during a dispatch
+    */
+    TEST_F(EBus, DisconnectNextHandlerDuringDispatch_DoesNotCrash)
+    {
+        DisconnectNextHandlerByIdImpl multiHandler1;
+        multiHandler1.BusConnect(DisconnectNextHandlerByIdImpl::firstBusAddress);
+        multiHandler1.BusConnect(DisconnectNextHandlerByIdImpl::secondBusAddress);
+
+        DisconnectNextHandlerByIdImpl multiHandler2;
+        multiHandler2.BusConnect(DisconnectNextHandlerByIdImpl::firstBusAddress);
+        multiHandler2.BusConnect(DisconnectNextHandlerByIdImpl::secondBusAddress);
+        
+        // Set the first handler m_nextHandler field to point to the second handler
+        multiHandler1.m_nextHandler = &multiHandler2;
+
+        // Disconnect the next handlers from the second bus address to catch any issues with the address hash_table iterators becoming invalidated
+        DisconnectNextHandlerBus::Event(DisconnectNextHandlerByIdImpl::secondBusAddress, &DisconnectNextHandlerInterface::DisconnectNextHandler);
+        EXPECT_EQ(1, multiHandler1.m_handlerDisconnectCounter);
+        EXPECT_EQ(0, multiHandler2.m_handlerDisconnectCounter);
+
+        DisconnectNextHandlerBus::Event(DisconnectNextHandlerByIdImpl::firstBusAddress, &DisconnectNextHandlerInterface::DisconnectNextHandler);
+        EXPECT_EQ(2, multiHandler1.m_handlerDisconnectCounter);
+        EXPECT_EQ(0, multiHandler2.m_handlerDisconnectCounter);
+    }
+
+    class DisconnectNextAddressInterface
+        : public AZ::EBusTraits
+    {
+    public:
+        static constexpr AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::ByIdAndOrdered;
+        static constexpr AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::Multiple;
+        using BusIdType = int32_t;
+        struct BusIdOrderLess
+        {
+            constexpr bool operator()(BusIdType lhs, BusIdType rhs) const
+            {
+                return lhs < rhs;
+            }
+        };
+        using BusIdOrderCompare = BusIdOrderLess;
+
+        virtual void DisconnectNextAddress() = 0;
+    };
+
+    using DisconnectNextAddressBus = AZ::EBus<DisconnectNextAddressInterface>;
+
+    class DisconnectNextAddressImpl
+        : public DisconnectNextAddressBus::Handler
+    {
+    public:
+        void DisconnectNextAddress() override
+        {
+            if (m_nextAddressHandler)
+            {
+                m_nextAddressHandler->BusDisconnect();
+                ++m_addressDisconnectCounter;
+            }
+        }
+
+        static constexpr int32_t firstBusAddress = 1;
+        static constexpr int32_t nextBusAddress = 2;
+        DisconnectNextAddressImpl* m_nextAddressHandler{};
+        int32_t m_addressDisconnectCounter{};
+    };
+
+    constexpr int32_t DisconnectNextAddressImpl::firstBusAddress;
+    constexpr int32_t DisconnectNextAddressImpl::nextBusAddress;
+    /**
+    * Tests disconnecting the next address within a bus during a dispatch
+    */
+    TEST_F(EBus, DisconnectNextAddressDuringDispatch_DoesNotCrash)
+    {
+        DisconnectNextAddressImpl addressHandler1;
+        addressHandler1.BusConnect(DisconnectNextAddressImpl::firstBusAddress);
+
+        DisconnectNextAddressImpl addressHandler2;
+        addressHandler2.BusConnect(DisconnectNextAddressImpl::nextBusAddress);
+        addressHandler1.m_nextAddressHandler = &addressHandler2;
+
+        // Disconnect the second address handler using the first address handler
+        DisconnectNextAddressBus::Event(DisconnectNextAddressImpl::firstBusAddress, &DisconnectNextAddressInterface::DisconnectNextAddress);
+        EXPECT_EQ(1, addressHandler1.m_addressDisconnectCounter);
+        EXPECT_EQ(0, addressHandler2.m_addressDisconnectCounter);
+    }
+
     /**
      * Test multiple handler.
      */
@@ -1546,7 +2142,7 @@ namespace UnitTest
             void OnAction() override
             {
                 const unsigned int* currentIdPtr = MyEventBus::GetCurrentBusId();
-                EXPECT_NE(nullptr, currentIdPtr);
+                ASSERT_NE(nullptr, currentIdPtr);
                 EXPECT_EQ(*currentIdPtr, m_expectedCurrentId);
                 ++m_numCalls;
             }
@@ -1977,14 +2573,6 @@ namespace UnitTest
 
     }
 
-    TEST_F(EBus, BusPtrExistsButNoHandlers_HasHandlersFalse)
-    {
-        MultBusMultHand::MyEventGroupBus::BusPtr busPtr;
-        MultBusMultHand::MyEventGroupBus::Bind(busPtr, 1);
-        EXPECT_NE(nullptr, busPtr);
-        EXPECT_FALSE(MultBusMultHand::MyEventGroupBus::HasHandlers());
-    }
-
     struct LocklessEvents
         : public AZ::EBusTraits
     {
@@ -2375,6 +2963,7 @@ namespace UnitTest
     {
         ThrashLocklessDispatchNullMutex();
     }
+
     namespace EBusResultsTest
     {
         class ResultClass
@@ -2402,7 +2991,7 @@ namespace UnitTest
                 m_operator_called_rvalue_ref = b.m_operator_called_rvalue_ref;
                 return *this;
             }
-            
+
             ResultClass& operator=(ResultClass&& b)
             {
                 // combine together to prove its not just an assignment
@@ -2461,7 +3050,7 @@ namespace UnitTest
                 m_result.m_value1 = value1;
                 m_result.m_value2 = value2;
             }
-            
+
             ~MyListener()
             {
             }
@@ -2522,7 +3111,7 @@ namespace UnitTest
             EXPECT_EQ(val2.m_result.m_value2, 4);
         }
 
-        
+
         val1.BusDisconnect();
         val2.BusDisconnect();
     }
@@ -2612,7 +3201,7 @@ namespace UnitTest
             MyInterfaceBus::BroadcastResult(resultreducer, &MyInterfaceBus::Events::EventY);
             EXPECT_TRUE(resultreducer.unary.m_operator_called_const);  // EventY is const, so we expect this to have happened again
             EXPECT_FALSE(resultreducer.unary.m_operator_called_rvalue_ref);
-            
+
             // we still expect the actual finalresult to have been populated via RVALUE REF MOVE
             EXPECT_FALSE(finalResult.m_operator_called_const);
             EXPECT_TRUE(finalResult.m_operator_called_rvalue_ref);
@@ -2651,7 +3240,7 @@ namespace UnitTest
             {
                 EXPECT_EQ(resultarray.values[1], val2.m_result);
             }
-            
+
             if (resultarray.values[0] == val2.m_result)
             {
                 EXPECT_EQ(resultarray.values[1], val1.m_result);
@@ -2804,32 +3393,30 @@ namespace UnitTest
         EXPECT_EQ(1, globalListener.m_numEventsX); // If environments are properly separated we should get only the events the global/default Environment!
     }
 
-    class BusWithConnectionPolicy 
-    : public AZ::EBusTraits
+    // Test disconnecting while in ConnectionPolicy
+    class BusWithConnectionPolicy
+        : public AZ::EBusTraits
     {
     public:
-        static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::ById;
-        using BusIdType = AZ::Crc32;
         virtual ~BusWithConnectionPolicy() = default;
 
         virtual void MessageWhichOccursDuringConnect() = 0;
 
         template<class Bus>
-        struct ConnectionPolicy
-            : public AZ::EBusConnectionPolicy<Bus>
+        struct ConnectionPolicy : public AZ::EBusConnectionPolicy<Bus>
         {
-            static void Connect(typename Bus::BusPtr& busPtr, typename Bus::Context& context, typename Bus::HandlerNode& handler, const typename Bus::BusIdType& id = 0)
+            static void Connect(typename Bus::BusPtr&, typename Bus::Context&, typename Bus::HandlerNode& handler, const typename Bus::BusIdType&)
             {
-                AZ::EBusConnectionPolicy<Bus>::Connect(busPtr, context, handler, id);
                 handler->MessageWhichOccursDuringConnect();
             }
         };
     };
     using BusWithConnectionPolicyBus = AZ::EBus<BusWithConnectionPolicy>;
 
-    class HandlerWhichDisconnectsDuringDelivery : public BusWithConnectionPolicyBus::Handler
+    class HandlerWhichDisconnectsDuringDelivery
+        : public BusWithConnectionPolicyBus::Handler
     {
-        void MessageWhichOccursDuringConnect() override 
+        void MessageWhichOccursDuringConnect() override
         {
             BusDisconnect();
         }
@@ -2838,121 +3425,49 @@ namespace UnitTest
     TEST_F(EBus, ConnectionPolicy_DisconnectDuringDelivery)
     {
         HandlerWhichDisconnectsDuringDelivery handlerTest;
-        handlerTest.BusConnect(AZ_CRC("test"));
+        handlerTest.BusConnect();
     }
 
-    struct SimulatedTickBusInterface
+    class IdBusWithConnectionPolicy
         : public AZ::EBusTraits
     {
-        static const EBusAddressPolicy AddressPolicy = EBusAddressPolicy::ById;
-        typedef size_t BusIdType;
-        typedef AZStd::mutex EventQueueMutexType;
-        static const bool EnableEventQueue = true;
+    public:
+        static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::ById;
+        using BusIdType = int64_t;
+        virtual ~IdBusWithConnectionPolicy() = default;
 
-        virtual void OnTick() = 0;
-        virtual void OnPayload(size_t payload) = 0;
+        virtual void MessageWhichOccursDuringConnect() = 0;
+
+        template<class Bus>
+        struct ConnectionPolicy : public AZ::EBusConnectionPolicy<Bus>
+        {
+            static void Connect(typename Bus::BusPtr&, typename Bus::Context&, typename Bus::HandlerNode& handler, const typename Bus::BusIdType&)
+            {
+                handler->MessageWhichOccursDuringConnect();
+            }
+        };
     };
 
-    using SimulatedTickBus = AZ::EBus<SimulatedTickBusInterface>;
+    using IdBusWithConnectionPolicyBus = AZ::EBus<IdBusWithConnectionPolicy>;
 
-    struct SimulatedTickBusHandler
-        : public SimulatedTickBus::Handler
+    class MultiHandlerWhichDisconnectsDuringDelivery
+        : public IdBusWithConnectionPolicyBus::MultiHandler
     {
-        void OnTick() override 
+        void MessageWhichOccursDuringConnect() override
         {
-            // do something non trivial here so that it doesn't optimize out or something...
-            AZStd::this_thread::yield();
-            m_ticks++;
+            auto busIdRef = IdBusWithConnectionPolicyBus::GetCurrentBusId();
+            EXPECT_NE(nullptr, busIdRef);
+            BusDisconnect(*busIdRef);
         }
-        void OnPayload(size_t) override 
-        {
-            m_payloads++;
-        }
-
-        AZStd::atomic<size_t> m_ticks = { 0 };
-        AZStd::atomic<size_t> m_payloads = { 0 };
     };
 
-    TEST_F(EBus, QueueDuringDispatchOnSingleThreadedBus)
+    static constexpr int64_t multiHandlerTestBusId = 42;
+
+    TEST_F(EBus, MultiHandlerConnectionPolicy_DisconnectDuringDelivery)
     {
-        // make sure that its okay to queue events from any thread, on an EBUS with no mutex protecting its dispatch
-        // (only its queue).
-        // the general startegy here will be to start a 'main thread' which will be ticking as fast as it can
-        // (with some thread yielding) and many child threads which are placing many messages into the queue as they can
-        // (with some thread yielding also).
-        // to make it extra likely that we find problems we will make sure the main thread is already ticking before we
-        // create any child threads, and we will also have all the child threads 'line up' to start with, before they start
-        // spamming to maximize the contention.
-        const size_t numLoops = 10000;
-        const int numThreads = 8;
-
-        SimulatedTickBusHandler handler;
-        handler.BusConnect(0);
-
-        AZStd::atomic_int numThreadsWarmedUp = { false };
-        AZStd::atomic_bool mainloopStop = { false };
-        AZStd::atomic_int numFunctionsQueued = { 0 };
-        auto mainLoop = [&mainloopStop, &handler]()
-        {
-            while (mainloopStop.load() == false)
-            {
-                SimulatedTickBus::ExecuteQueuedEvents();
-                SimulatedTickBus::Event(0, &SimulatedTickBus::Events::OnTick);
-            }
-            
-            // empty the queued events after we terminate just in case there are leftover events.
-            SimulatedTickBus::ExecuteQueuedEvents();
-        };
-
-        auto incrementFunctionQueue = [&numFunctionsQueued]()
-        {
-            numFunctionsQueued++;
-        };
-
-        auto workerLoop = [numLoops, &numThreadsWarmedUp, numThreads, incrementFunctionQueue]()
-        {
-            numThreadsWarmedUp++;
-            while (numThreadsWarmedUp.load() != numThreads)
-            {
-                AZStd::this_thread::yield(); // prepare to go!
-            }
-
-            size_t loops = 0;
-            while (loops++ < numLoops)
-            {
-                SimulatedTickBus::QueueEvent(0, &SimulatedTickBus::Events::OnPayload, loops);
-                SimulatedTickBus::QueueFunction(incrementFunctionQueue);
-                AZStd::this_thread::yield();
-            }
-        };
-
-
-        AZStd::thread mainThread(mainLoop);
-        // wait for the main thread to start ticking:
-        while (handler.m_ticks.load() == 0)
-        {
-            AZStd::this_thread::yield();
-        }
-
-        // start the other threads.  They'll actually go all at once:
-        AZStd::vector<AZStd::thread> threadsToJoin;
-        threadsToJoin.reserve(numThreads);
-
-        // simulate a lot of threads spamming the queue rapidly:
-        for (int threadIdx = 0; threadIdx < numThreads; ++threadIdx)
-        {
-            threadsToJoin.emplace_back(AZStd::thread(workerLoop));
-        }
-
-        for (AZStd::thread& thread : threadsToJoin)
-        {
-            thread.join();
-        }
-
-        mainloopStop = true;
-        mainThread.join();
-
-        EXPECT_EQ(handler.m_payloads, ((size_t)numThreads) * numLoops);
+        MultiHandlerWhichDisconnectsDuringDelivery multiHandlerTest;
+        multiHandlerTest.BusConnect(multiHandlerTestBusId);
+        EXPECT_EQ(0U, IdBusWithConnectionPolicyBus::GetTotalNumOfEventHandlers());
     }
 
     struct LastHandlerDisconnectInterface
@@ -3005,149 +3520,6 @@ namespace UnitTest
 //-------------------------------------------------------------------------
 namespace Benchmark
 {
-    // BenchmarkBus implementation details
-    namespace BusImplementation
-    {
-        // Interface for the benchmark bus
-        class Interface
-        {
-        public:
-            virtual int OnEvent() = 0;
-            virtual void OnWait() = 0;
-
-            bool Compare(const Interface* other) const
-            {
-                return this < other;
-            }
-        };
-
-        // Traits for the benchmark bus
-        template <AZ::EBusAddressPolicy addressPolicy, AZ::EBusHandlerPolicy handlerPolicy, bool locklessDispatch = false>
-        class Traits
-            : public AZ::EBusTraits
-        {
-        public:
-            static const AZ::EBusAddressPolicy AddressPolicy = addressPolicy;
-            static const AZ::EBusHandlerPolicy HandlerPolicy = handlerPolicy;
-            static const bool LocklessDispatch = locklessDispatch;
-
-            // Allow queuing
-            static const bool EnableEventQueue = true;
-
-            // Force locking
-            using MutexType = AZStd::recursive_mutex;
-
-            // Only specialize BusIdType if not single address
-            using BusIdType = AZStd::conditional_t<AddressPolicy == AZ::EBusAddressPolicy::Single, AZ::NullBusId, int>;
-            // Only specialize BusIdOrderCompare if addresses are multiple and ordered
-            using BusIdOrderCompare = AZStd::conditional_t<AddressPolicy == EBusAddressPolicy::ByIdAndOrdered, AZStd::less<int>, AZ::NullBusIdCompare>;
-        };
-    }
-
-    // Definition of the benchmark bus, depending on supplied policies
-    template <AZ::EBusAddressPolicy addressPolicy, AZ::EBusHandlerPolicy handlerPolicy, bool locklessDispatch = false>
-    using BenchmarkBus = AZ::EBus<BusImplementation::Interface, BusImplementation::Traits<addressPolicy, handlerPolicy, locklessDispatch>>;
-
-    // Predefined benchmark bus instantiations
-    // Single
-    using OneToOne = BenchmarkBus<AZ::EBusAddressPolicy::Single, AZ::EBusHandlerPolicy::Single>;
-    using OneToMany = BenchmarkBus<AZ::EBusAddressPolicy::Single, AZ::EBusHandlerPolicy::Multiple>;
-    using OneToManyOrdered = BenchmarkBus<AZ::EBusAddressPolicy::Single, AZ::EBusHandlerPolicy::MultipleAndOrdered>;
-    // ById
-    using ManyToOne = BenchmarkBus<AZ::EBusAddressPolicy::ById, AZ::EBusHandlerPolicy::Single>;
-    using ManyToMany = BenchmarkBus<AZ::EBusAddressPolicy::ById, AZ::EBusHandlerPolicy::Multiple>;
-    using ManyToManyOrdered = BenchmarkBus<AZ::EBusAddressPolicy::ById, AZ::EBusHandlerPolicy::MultipleAndOrdered>;
-    // ByIdAndOrdered
-    using ManyOrderedToOne = BenchmarkBus<AZ::EBusAddressPolicy::ByIdAndOrdered, AZ::EBusHandlerPolicy::Single>;
-    using ManyOrderedToMany = BenchmarkBus<AZ::EBusAddressPolicy::ByIdAndOrdered, AZ::EBusHandlerPolicy::Multiple>;
-    using ManyOrderedToManyOrdered = BenchmarkBus<AZ::EBusAddressPolicy::ByIdAndOrdered, AZ::EBusHandlerPolicy::MultipleAndOrdered>;
-
-    // Handler for multi-address buses
-    template <typename Bus, AZ::EBusAddressPolicy addressPolicy = Bus::Traits::AddressPolicy>
-    class Handler
-        : public Bus::Handler
-    {
-    public:
-        AZ_CLASS_ALLOCATOR(Handler, AZ::SystemAllocator, 0);
-
-        Handler(int id)
-        {
-            Bus::Handler::BusConnect(id);
-        }
-
-        ~Handler()
-        {
-            Bus::Handler::BusDisconnect();
-        }
-
-        int OnEvent() override
-        {
-            return 1;
-        }
-
-        void OnWait() override
-        {
-            AZ_Assert(false, "This shouldn't hit, only the single-address bus should receive OnWait.");
-        }
-    };
-
-    // Special handler for single address buses
-    template <typename Bus>
-    class Handler<Bus, AZ::EBusAddressPolicy::Single>
-        : public Bus::Handler
-    {
-    public:
-        AZ_CLASS_ALLOCATOR(Handler, AZ::SystemAllocator, 0);
-
-        Handler(int = 0)
-        {
-            Bus::Handler::BusConnect();
-        }
-
-        ~Handler()
-        {
-            Bus::Handler::BusDisconnect();
-        }
-
-        int OnEvent() override
-        {
-            return 2;
-        }
-
-        void OnWait() override
-        {
-            AZStd::this_thread::yield();
-        }
-    };
-
-    // Fake fixture we use to connect to buses for us
-    template <typename Bus>
-    class Connector
-    {
-    public:
-        AZ_CLASS_ALLOCATOR(Connector, AZ::SystemAllocator, 0);
-
-        using HandlerT = Handler<Bus>;
-
-        // Collection of handlers, will be cleared automagically at the end
-        AZStd::vector<AZStd::unique_ptr<HandlerT>> m_handlers;
-
-        explicit Connector(::benchmark::State& state)
-        {
-            int64_t numAddresses = state.range(0);
-            int64_t numHandlers = state.range(1);
-
-            // Connect handlers
-            for (int64_t  address = 0; address < numAddresses; ++address)
-            {
-                for (int64_t  handler = 0; handler < numHandlers; ++handler)
-                {
-                    m_handlers.emplace_back(AZStd::make_unique<HandlerT>(static_cast<int>(address)));
-                }
-            }
-        }
-    };
-
     namespace BenchmarkSettings
     {
         namespace
@@ -3209,6 +3581,105 @@ namespace Benchmark
         }
     }
 
+    // AZ Benchmark environment used to initialize all EBus Handlers and then shared them with each benchmark test
+    template<typename Bus>
+    class BM_EBusEnvironment
+        : public AZ::Test::BenchmarkEnvironmentBase
+    {
+    public:
+        using BusType = Bus;
+        using HandlerT = Handler<Bus>;
+
+        BM_EBusEnvironment()
+        {
+        }
+
+        void SetUp()
+        {
+            // Create the SystemAllocator if not available
+            if(!AZ::AllocatorInstance<AZ::SystemAllocator>::IsReady())
+            {
+                AZ::AllocatorInstance<AZ::SystemAllocator>::Create();
+                m_ownsSystemAllocator = true;
+            }
+
+            // Created the container for the EBusHandlers
+            m_handlers = std::make_unique<std::vector<HandlerT>>();
+
+            // Connect handlers
+            constexpr bool multiAddress = Bus::Traits::AddressPolicy != AZ::EBusAddressPolicy::Single;
+            constexpr bool multiHandler = Bus::Traits::HandlerPolicy != AZ::EBusHandlerPolicy::Single;
+            constexpr int64_t numAddresses{ multiAddress ? BenchmarkSettings::Many : 1 };
+            constexpr int64_t numHandlers{ multiHandler ? BenchmarkSettings::Many : 1 };
+            constexpr bool connectOnConstruct{ false };
+
+            AZ::BetterPseudoRandom random;
+
+            m_handlers->reserve(numAddresses * numHandlers);
+            for (int64_t address = 0; address < numAddresses; ++address)
+            {
+                for (int64_t handler = 0; handler < numHandlers; ++handler)
+                {
+                    int handlerOrder{};
+                    random.GetRandom(handlerOrder);
+                    m_handlers->emplace_back(HandlerT(static_cast<int>(address), handlerOrder, connectOnConstruct));
+                }
+            }
+        }
+
+        void TearDown()
+        {
+            // Deallocate the memory associated with the EBusHandlers
+            m_handlers.reset();
+
+            // Destroy system allocator only if it was created by this environment
+            if (m_ownsSystemAllocator)
+            {
+                AZ::AllocatorInstance<AZ::SystemAllocator>::Destroy();
+            }
+        }
+
+        void Connect(::benchmark::State& state)
+        {
+            int64_t numAddresses = state.range(0);
+            int64_t numHandlers = state.range(1);
+            const size_t totalHandlers = static_cast<size_t>(numAddresses * numHandlers);
+
+            // Connect handlers
+            for (size_t handlerIndex = 0; handlerIndex < totalHandlers; ++handlerIndex)
+            {
+                if(handlerIndex < m_handlers->size())
+                {
+                    (*m_handlers)[handlerIndex].Connect();
+                }
+            }
+        }
+
+        void Disconnect(::benchmark::State& state)
+        {
+            int64_t numAddresses = state.range(0);
+            int64_t numHandlers = state.range(1);
+            const size_t totalHandlers = static_cast<size_t>(numAddresses * numHandlers);
+
+            // Disconnect handlers
+            for (size_t handlerIndex = 0; handlerIndex < totalHandlers; ++handlerIndex)
+            {
+                if (handlerIndex < m_handlers->size())
+                {
+                    (*m_handlers)[handlerIndex].Disconnect();
+                }
+            }
+        }
+
+    protected:
+        std::unique_ptr<std::vector<HandlerT>> m_handlers;
+        bool m_ownsSystemAllocator{ false };
+    };
+
+    // Using a variable template to initialize the benchmark EBus_Environment on template instantiation
+    template<typename Bus>
+    static BM_EBusEnvironment<Bus>& s_benchmarkEBusEnv = AZ::Test::RegisterBenchmarkEnvironment<BM_EBusEnvironment<Bus>>();
+
 // Internal macro callback for listing all buses requiring ids
 #define BUS_BENCHMARK_PRIVATE_LIST_ID(cb, fn)    \
     cb(fn, ManyToOne, ManyToOne)                 \
@@ -3241,7 +3712,8 @@ namespace Benchmark
     // Baseline benchmark for raw vtable call
     static void BM_EBus_RawCall(::benchmark::State& state)
     {
-        AZStd::unique_ptr<Handler<OneToOne>> handler = AZStd::make_unique<Handler<OneToOne>>();
+        constexpr bool connectOnConstruct{ true };
+        AZStd::unique_ptr<Handler<OneToOne>> handler = AZStd::make_unique<Handler<OneToOne>>(0, connectOnConstruct);
 
         while (state.KeepRunning())
         {
@@ -3250,80 +3722,140 @@ namespace Benchmark
     }
     BENCHMARK(BM_EBus_RawCall)->Apply(&BenchmarkSettings::Common);
 
+#define BUS_BENCHMARK_PRIVATE_REGISTER_CONNECTION(fn, BusDef, _) BENCHMARK_TEMPLATE(fn, BusDef)->Apply(&BenchmarkSettings::Common);
+
+    template <typename Bus>
+    static void BM_EBus_BusConnect(::benchmark::State& state)
+    {
+        constexpr bool connectOnConstruct{ false };
+        Handler<Bus> handler{ 0, connectOnConstruct };
+
+        while (state.KeepRunning())
+        {
+            handler.Connect();
+
+            // Pause timing, and disconnect
+            state.PauseTiming();
+            handler.BusDisconnect();
+            state.ResumeTiming();
+        }
+    }
+    BUS_BENCHMARK_PRIVATE_LIST_ALL(BUS_BENCHMARK_PRIVATE_REGISTER_CONNECTION, BM_EBus_BusConnect);
+
+    template <typename Bus>
+    static void BM_EBus_BusDisconnect(::benchmark::State& state)
+    {
+        constexpr bool connectOnConstruct{ true };
+        Handler<Bus> handler{ 0, connectOnConstruct };
+
+        while (state.KeepRunning())
+        {
+            handler.BusDisconnect();
+
+            // Pause timing, and reconnect
+            state.PauseTiming();
+            handler.Connect();
+            state.ResumeTiming();
+        }
+    }
+    BUS_BENCHMARK_PRIVATE_LIST_ALL(BUS_BENCHMARK_PRIVATE_REGISTER_CONNECTION, BM_EBus_BusDisconnect);
+
+#undef BUS_BENCHMARK_PRIVATE_REGISTER_CONNECTION
+
+    template <typename Bus>
+    static void BM_EBus_EnumerateHandlers(::benchmark::State& state)
+    {
+        auto OnEventVisitor = [](typename Bus::InterfaceType* interfaceInst) -> bool
+        {
+            interfaceInst->OnEvent();
+            return true;
+        };
+
+        s_benchmarkEBusEnv<Bus>.Connect(state);
+        while (state.KeepRunning())
+        {
+            Bus::EnumerateHandlers(OnEventVisitor);
+        }
+
+        s_benchmarkEBusEnv<Bus>.Disconnect(state);
+    }
+    BUS_BENCHMARK_REGISTER_ALL(BM_EBus_EnumerateHandlers);
+
     template <typename Bus>
     static void BM_EBus_Broadcast(::benchmark::State& state)
     {
-        Connector<Bus> f(state);
-
+        s_benchmarkEBusEnv<Bus>.Connect(state);
         while (state.KeepRunning())
         {
             Bus::Broadcast(&Bus::Events::OnEvent);
         }
+        s_benchmarkEBusEnv<Bus>.Disconnect(state);
     }
     BUS_BENCHMARK_REGISTER_ALL(BM_EBus_Broadcast);
 
     template <typename Bus>
     static void BM_EBus_BroadcastResult(::benchmark::State& state)
     {
-        Connector<Bus> f(state);
-
+        s_benchmarkEBusEnv<Bus>.Connect(state);
         while (state.KeepRunning())
         {
             int result = 0;
             Bus::BroadcastResult(result, &Bus::Events::OnEvent);
             ::benchmark::DoNotOptimize(result);
         }
+        s_benchmarkEBusEnv<Bus>.Disconnect(state);
     }
     BUS_BENCHMARK_REGISTER_ALL(BM_EBus_BroadcastResult);
 
     template <typename Bus>
     static void BM_EBus_Event(::benchmark::State& state)
     {
-        Connector<Bus> f(state);
-
+        s_benchmarkEBusEnv<Bus>.Connect(state);
         while (state.KeepRunning())
         {
             Bus::Event(1, &Bus::Events::OnEvent);
         }
+        s_benchmarkEBusEnv<Bus>.Disconnect(state);
     }
     BUS_BENCHMARK_REGISTER_ID(BM_EBus_Event);
 
     template <typename Bus>
     static void BM_EBus_EventResult(::benchmark::State& state)
     {
-        Connector<Bus> f(state);
-
+        s_benchmarkEBusEnv<Bus>.Connect(state);
         while (state.KeepRunning())
         {
             int result = 0;
             Bus::EventResult(result, 1, &Bus::Events::OnEvent);
             ::benchmark::DoNotOptimize(result);
         }
+        s_benchmarkEBusEnv<Bus>.Disconnect(state);
     }
     BUS_BENCHMARK_REGISTER_ID(BM_EBus_EventResult);
 
     template <typename Bus>
     static void BM_EBus_EventCached(::benchmark::State& state)
     {
-        Connector<Bus> f(state);
-
+        s_benchmarkEBusEnv<Bus>.Connect(state);
         typename Bus::BusPtr cachedPtr;
-        Bus::Bind(cachedPtr, 1);
+        constexpr typename Bus::BusIdType firstConnectedAddressId{ 0 };
+        Bus::Bind(cachedPtr, firstConnectedAddressId);
 
         while (state.KeepRunning())
         {
             Bus::Event(cachedPtr, &Bus::Events::OnEvent);
         }
+        s_benchmarkEBusEnv<Bus>.Disconnect(state);
     }
     BUS_BENCHMARK_REGISTER_ID(BM_EBus_EventCached);
 
     template <typename Bus>
     static void BM_EBus_EventCachedResult(::benchmark::State& state)
     {
-        Connector<Bus> f(state);
-
+        s_benchmarkEBusEnv<Bus>.Connect(state);
         typename Bus::BusPtr cachedPtr;
-        Bus::Bind(cachedPtr, 1);
+        constexpr typename Bus::BusIdType firstConnectedAddressId{ 0 };
+        Bus::Bind(cachedPtr, firstConnectedAddressId);
 
         while (state.KeepRunning())
         {
@@ -3331,6 +3863,7 @@ namespace Benchmark
             Bus::EventResult(result, cachedPtr, &Bus::Events::OnEvent);
             ::benchmark::DoNotOptimize(result);
         }
+        s_benchmarkEBusEnv<Bus>.Disconnect(state);
     }
     BUS_BENCHMARK_REGISTER_ID(BM_EBus_EventCachedResult);
 
@@ -3357,8 +3890,7 @@ namespace Benchmark
     template <typename Bus>
     static void BM_EBus_ExecuteBroadcast(::benchmark::State& state)
     {
-        Connector<Bus> f(state);
-
+        s_benchmarkEBusEnv<Bus>.Connect(state);
         while (state.KeepRunning())
         {
             // Push an event to the queue to run
@@ -3368,6 +3900,8 @@ namespace Benchmark
 
             Bus::ExecuteQueuedEvents();
         }
+        s_benchmarkEBusEnv<Bus>.Disconnect(state);
+        
     }
     BUS_BENCHMARK_REGISTER_ALL(BM_EBus_ExecuteBroadcast);
 
@@ -3390,8 +3924,7 @@ namespace Benchmark
     template <typename Bus>
     static void BM_EBus_ExecuteEvent(::benchmark::State& state)
     {
-        Connector<Bus> f(state);
-
+        s_benchmarkEBusEnv<Bus>.Connect(state);
         while (state.KeepRunning())
         {
             // Push an event to the queue to run
@@ -3401,6 +3934,7 @@ namespace Benchmark
 
             Bus::ExecuteQueuedEvents();
         }
+        s_benchmarkEBusEnv<Bus>.Disconnect(state);
     }
     BUS_BENCHMARK_REGISTER_ID(BM_EBus_ExecuteEvent);
 
@@ -3409,7 +3943,8 @@ namespace Benchmark
     static void BM_EBus_QueueEventCached(::benchmark::State& state)
     {
         typename Bus::BusPtr cachedPtr;
-        Bus::Bind(cachedPtr, 1);
+        constexpr typename Bus::BusIdType firstConnectedAddressId{ 0 };
+        Bus::Bind(cachedPtr, firstConnectedAddressId);
 
         while (state.KeepRunning())
         {
@@ -3426,9 +3961,10 @@ namespace Benchmark
     template <typename Bus>
     static void BM_EBus_ExecuteQueueCached(::benchmark::State& state)
     {
-        Connector<Bus> f(state);
+        s_benchmarkEBusEnv<Bus>.Connect(state);
         typename Bus::BusPtr cachedPtr;
-        Bus::Bind(cachedPtr, 1);
+        constexpr typename Bus::BusIdType firstConnectedAddressId{ 0 };
+        Bus::Bind(cachedPtr, firstConnectedAddressId);
 
         while (state.KeepRunning())
         {
@@ -3439,6 +3975,7 @@ namespace Benchmark
 
             Bus::ExecuteQueuedEvents();
         }
+        s_benchmarkEBusEnv<Bus>.Disconnect(state);
     }
     BUS_BENCHMARK_REGISTER_ID(BM_EBus_ExecuteQueueCached);
 
@@ -3448,35 +3985,51 @@ namespace Benchmark
 
     static void BM_EBus_Multithreaded_Locks(::benchmark::State& state)
     {
-        using Bus = BenchmarkBus<AZ::EBusAddressPolicy::Single, AZ::EBusHandlerPolicy::Multiple, false>;
+        using Bus = TestBus<AZ::EBusAddressPolicy::Single, AZ::EBusHandlerPolicy::Multiple, false>;
 
-        AZStd::unique_ptr<Connector<Bus>> job;
+        AZStd::unique_ptr<BM_EBusEnvironment<Bus>> ebusBenchmarkEnv;
         if (state.thread_index == 0)
         {
-            job = AZStd::make_unique<Connector<Bus>>(state);
+            ebusBenchmarkEnv = AZStd::make_unique<BM_EBusEnvironment<Bus>>();
+            ebusBenchmarkEnv->SetUp();
+            ebusBenchmarkEnv->Connect(state);
         }
 
         while (state.KeepRunning())
         {
             Bus::Broadcast(&Bus::Events::OnWait);
         };
+
+        if (state.thread_index == 0)
+        {
+            ebusBenchmarkEnv->Disconnect(state);
+            ebusBenchmarkEnv->TearDown();
+        }
     }
     BENCHMARK(BM_EBus_Multithreaded_Locks)->Apply(&BenchmarkSettings::OneToMany)->Apply(&BenchmarkSettings::Multithreaded);
 
     static void BM_EBus_Multithreaded_Lockless(::benchmark::State& state)
     {
-        using Bus = BenchmarkBus<AZ::EBusAddressPolicy::Single, AZ::EBusHandlerPolicy::Multiple, true>;
+        using Bus = TestBus<AZ::EBusAddressPolicy::Single, AZ::EBusHandlerPolicy::Multiple, true>;
 
-        AZStd::unique_ptr<Connector<Bus>> job;
+        AZStd::unique_ptr<BM_EBusEnvironment<Bus>> ebusBenchmarkEnv;
         if (state.thread_index == 0)
         {
-            job = AZStd::make_unique<Connector<Bus>>(state);
+            ebusBenchmarkEnv = AZStd::make_unique<BM_EBusEnvironment<Bus>>();
+            ebusBenchmarkEnv->SetUp();
+            ebusBenchmarkEnv->Connect(state);
         }
 
         while (state.KeepRunning())
         {
             Bus::Broadcast(&Bus::Events::OnWait);
         };
+
+        if (state.thread_index == 0)
+        {
+            ebusBenchmarkEnv->Disconnect(state);
+            ebusBenchmarkEnv->TearDown();
+        }
     }
     BENCHMARK(BM_EBus_Multithreaded_Lockless)->Apply(&BenchmarkSettings::OneToMany)->Apply(&BenchmarkSettings::Multithreaded);
 }

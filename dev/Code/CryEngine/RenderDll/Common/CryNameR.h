@@ -201,40 +201,50 @@ public:
 
     static bool find(const char* str)
     {
-        return GetNameTable()->FindEntry(str) != 0;
+        if (ms_table)
+        {
+            return ms_table->FindEntry(str) != 0;
+        }
+        return false;
     }
     void GetMemoryUsage(ICrySizer* pSizer) const
     {
         //pSizer->AddObject(m_str);
-        pSizer->AddObject(GetNameTable());
+        pSizer->AddObject(ms_table);
     }
     static int GetMemoryUsage()
     {
-        CNameTableR* pTable = GetNameTable();
-        return pTable->GetMemoryUsage();
+        if (ms_table)
+        {
+            return ms_table->GetMemoryUsage();
+        }
+        return 0;
     }
     static int GetNumberOfEntries()
     {
-        CNameTableR* pTable = GetNameTable();
-        return pTable->GetNumberOfEntries();
+        if (ms_table)
+        {
+            return ms_table->GetNumberOfEntries();
+        }
+        return 0;
+    }
+
+    static void CreateNameTable()
+    {
+        AZ_Assert(!ms_table, "CNameTableR was already created!\n");
+        ms_table = new CNameTableR();
+    }
+
+    static void ReleaseNameTable()
+    {
+        delete ms_table;
+        ms_table = nullptr;
     }
 
 private:
     typedef CNameTableR::SNameEntryR SNameEntry;
 
-    static CNameTableR* GetNameTable()
-    {
-        static CNameTableR* ms_table;
-        // Note: can not use a 'static CNameTable sTable' here, because that
-        // implies a static destruction order dependency - the name table is
-        // accessed from static destructor calls.
-
-        if (ms_table == NULL)
-        {
-            ms_table = new CNameTableR();
-        }
-        return ms_table;
-    }
+    static CNameTableR* ms_table;
 
     SNameEntry* _entry(const char* pBuffer) const
     {
@@ -245,7 +255,14 @@ private:
     {
         if (pBuffer && _entry(pBuffer)->Release() <= 0)
         {
-            GetNameTable()->Release(_entry(pBuffer));
+            if (ms_table)
+            {
+                ms_table->Release(_entry(pBuffer));
+            }
+            else
+            {
+                CryModuleFree(_entry(pBuffer));
+            }
         }
     }
     int _length() const
@@ -276,10 +293,16 @@ inline CCryNameR::CCryNameR(const CCryNameR& n)
 
 inline CCryNameR::CCryNameR(const char* s)
 {
+    if (!ms_table)
+    {
+        m_str = nullptr;
+        return;
+    }
+
     const char* pBuf = 0;
     if (s && *s)
     {
-        pBuf = GetNameTable()->GetEntry(s)->GetStr();
+        pBuf = ms_table->GetEntry(s)->GetStr();
     }
 
     _addref(pBuf);
@@ -301,10 +324,15 @@ inline CCryNameR& CCryNameR::operator=(const CCryNameR& n)
 
 inline CCryNameR& CCryNameR::operator=(const char* s)
 {
+    if (!ms_table)
+    {
+        return *this;
+    }
+
     const char* pBuf = 0;
     if (s && *s)
     {
-        pBuf = GetNameTable()->GetEntry(s)->GetStr();
+        pBuf = ms_table->GetEntry(s)->GetStr();
     }
 
     _addref(pBuf);

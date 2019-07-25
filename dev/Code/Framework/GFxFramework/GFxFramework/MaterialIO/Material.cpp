@@ -192,6 +192,8 @@ namespace AZ
 
                         if (!mapType || !fileName)
                         {
+                            AZ_TracePrintf("Warning", "Detected malformed texture data in MTL file.");
+                            texture = texture->next_sibling(MaterialExport::g_texturesString);
                             continue;
                         }
 
@@ -213,7 +215,7 @@ namespace AZ
                             m_normalMap = AZStd::string(fileName->value());
                         }
 
-                        texture = texture->next_sibling();
+                        texture = texture->next_sibling(MaterialExport::g_textureString);
                     }
                 }
             }
@@ -732,6 +734,7 @@ namespace AZ
                         if (!mapType || !fileName)
                         {
                             AZ_TracePrintf("Warning", "Detected malformed texture data in MTL file.");
+                            textureNode = textureNode->next_sibling(MaterialExport::g_texturesString);
                             continue;
                         }
                         if (azstrnicmp(mapType->value(), currentTexture.exportName.c_str(),
@@ -749,7 +752,7 @@ namespace AZ
                             }
                             break;
                         }
-                        textureNode = textureNode->next_sibling();
+                        textureNode = textureNode->next_sibling(MaterialExport::g_texturesString);
                     }
 
                     //texture not found in list add it. 

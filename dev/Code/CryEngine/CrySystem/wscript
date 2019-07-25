@@ -65,5 +65,8 @@ def build(bld):
         test_all_file_list      = ['crysystem_test.waf_files'],
     )
     for p0, p1, p2, p3 in bld.env['RESTRICTED_PLATFORMS']:
-        kw['{}_file_list'.format(p3)] = ['{0}/platformos_{1}.waf_files'.format(p0, p1)]
+        kw['{}_file_list'.format(p3)] = [
+            '{0}/crysystem_{1}.waf_files'.format(p0, p1),
+            '{0}/platformos_{1}.waf_files'.format(p0, p1)
+        ]
     bld.CryEngineModule(**kw)

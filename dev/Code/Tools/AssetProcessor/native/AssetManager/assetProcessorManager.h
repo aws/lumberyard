@@ -156,7 +156,7 @@ namespace AssetProcessor
             QString m_databasePath; // clarification: this is the database path (ie, includes outputprefix)
             QString m_pathRelativeToScanFolder;
             AZ::Uuid m_uuid;
-            const ScanFolderInfo* m_scanFolder;
+            const ScanFolderInfo* m_scanFolder{ nullptr };
         };
 
     public:
@@ -172,9 +172,9 @@ namespace AssetProcessor
         AZ::u32 GetJobFingerprint(const AssetProcessor::JobIndentifier& jobIndentifier) override;
         //////////////////////////////////////////////////////////////////////////
 
-        //! Controls whether or not we are allowed to skip analysis on a file when the source files have not changed
-        //! and neither have any builders.  Default is to enable this feature.
-        void SetEnableAnalysisSkippingFeature(bool enable);
+        //! Controls whether or not we are allowed to skip analysis on a file when the source files modtimes have not changed
+        //! and neither have any builders.
+        void SetEnableModtimeSkippingFeature(bool enable);
 
         AZStd::shared_ptr<AssetDatabaseConnection> GetDatabaseConnection() const;
 
@@ -218,6 +218,7 @@ Q_SIGNALS:
         void EscalateJobs(AssetProcessor::JobIdEscalationList jobIdEscalationList);
 
         void SourceDeleted(QString relSourceFile);
+        void SourceFolderDeleted(QString folderPath);
         void SourceQueued(AZ::Uuid sourceUuid, AZ::Uuid legacyUuid, QString rootPath, QString relativeFilePath);
         void SourceFinished(AZ::Uuid sourceUuid, AZ::Uuid legacyUuid);
         void JobRemoved(AzToolsFramework::AssetSystem::JobInfo jobInfo);
@@ -229,7 +230,7 @@ Q_SIGNALS:
         void AssetFailed(JobEntry jobEntry);
         void AssetCancelled(JobEntry jobEntry);
 
-        void AssessFilesFromScanner(QSet<QString> filePaths);
+        void AssessFilesFromScanner(QSet<AssetFileInfo> filePaths);
 
         void AssessModifiedFile(QString filePath);
         void AssessAddedFile(QString filePath);
@@ -285,6 +286,18 @@ Q_SIGNALS:
         bool DeleteProducts(const AzToolsFramework::AssetDatabase::ProductDatabaseEntryContainer& products);
         void DispatchFileChange();
         bool InitializeCacheRoot();
+        
+        using ProductInfoList = AZStd::vector<AZStd::pair<AzToolsFramework::AssetDatabase::ProductDatabaseEntry, const AssetBuilderSDK::JobProduct*>>;
+
+        /// This function is responsible for looking up existing, unresolved dependencies that the current asset satisfies.
+        /// These can be dependencies on either the source asset or one of the product assets
+        void RetryDeferredpathDependencies(const AzToolsFramework::AssetDatabase::SourceDatabaseEntry& sourceEntry);
+
+        void WriteProductTableInfo(AZStd::pair<AzToolsFramework::AssetDatabase::ProductDatabaseEntry, const AssetBuilderSDK::JobProduct*>& pair, AZStd::vector<AZ::u32>& subIds, AzToolsFramework::AssetDatabase::ProductDependencyDatabaseEntryContainer& dependencyContainer, const AZStd::string& platform);
+        
+        /// This function is responsible for taking the path dependencies output by the current asset and trying to resolve them to AssetIds
+        /// This does not look for dependencies that the current asset satisfies.
+        void ResolvePathDependencies(AssetBuilderSDK::ProductPathDependencySet& pathDeps, AZStd::vector<AssetBuilderSDK::ProductDependency>& resolvedDeps, const AZStd::string& platform);
 
         //! given a full absolute path to a file, add any metadata files you find that apply.
         void AddMetadataFilesForFingerprinting(QString absolutePathToFileToCheck, SourceFilesForFingerprintingContainer& outFilesToFingerprint);
@@ -303,6 +316,28 @@ Q_SIGNALS:
             QString m_sourceDatabaseName;
         };
 
+        struct SourceInfoWithFingerprints
+        {
+            QString m_watchFolder;
+            QString m_sourceRelativeToWatchFolder;
+            QString m_sourceDatabaseName;
+            QString m_analysisFingerprint;
+        };
+
+        // The two Ids needed for a ProductDependency entry, and platform. Used for saving ProductDependencies that are pending resolution
+        struct DependencyProductIdInfo
+        {
+            AZ::s64 m_productId;
+            AZ::s64 m_productDependencyId;
+            AZStd::string m_platform;
+        };
+
+        /// Updates the database with the now-resolved product dependencies
+        /// dependencyPairs - the list of unresolved dependencies to update
+        /// sourceEntry - database entry for the source file that resolved these dependencies
+        /// products - database entry for the products the source file produced
+        void UpdateUnresolvedPathDependencies(AZStd::vector<DependencyProductIdInfo>& dependencyPairs, const AzToolsFramework::AssetDatabase::SourceDatabaseEntry& sourceEntry, const AzToolsFramework::AssetDatabase::ProductDatabaseEntryContainer& products);
+
         //! Search the database and the the source dependency maps for the the sourceUuid. if found returns the cached info
         bool SearchSourceInfoBySourceUUID(const AZ::Uuid& sourceUuid, AssetProcessorManager::SourceInfo& result);
         
@@ -310,6 +345,9 @@ Q_SIGNALS:
         void AddSourceToDatabase(AzToolsFramework::AssetDatabase::SourceDatabaseEntry& sourceDatabaseEntry, const ScanFolderInfo* scanFolder, QString relativeSourceFilePath);
 
     protected:
+        // Checks whether or not a file can be skipped for processing (ie, file content hasn't changed, builders haven't been added/removed, builders for the file haven't changed)
+        bool CanSkipProcessingFile(const AssetFileInfo &fileInfo);
+
         AZ::s64 GenerateNewJobRunKey();
         // Attempt to erase a log file.  Failing to erase it is not a critical problem, but should be logged.
         // returns true if there is no log file there after this operation completes
@@ -327,7 +365,7 @@ Q_SIGNALS:
         *   If there's a problem that makes it unusable (such as no fields being filled in), the string will be blank
         *     and this function will return false.
         */
-        bool ResolveDependencyPath(const AssetBuilderSDK::SourceFileDependency& sourceDependency, QString& resultDatabaseSourceName);
+        bool ResolveDependencyPath(const AssetBuilderSDK::SourceFileDependency& sourceDependency, QString& resultDatabaseSourceNames, QStringList& resolvedDependencyList, const QString& sourcePath = {});
         //! Updates the database with all the changes related to source dependency / job dependency:
         void UpdateSourceFileDependenciesDatabase(JobToProcessEntry& entry);
 
@@ -336,6 +374,7 @@ Q_SIGNALS:
 
         void UpdateJobDependency(JobDetails& jobDetails);
         void QueueIdleCheck();
+        void UpdateWildcardDependencies(const AssetBuilderSDK::SourceFileDependency& sourceDependency, JobDetails& job, size_t jobDependencySlot, QStringList& resolvedDependencyList);
 
         //! Check whether the job can be analyzed by APM,
         //! A job cannot be analyzed if any of its dependent job hasn't been fingerprinted  
@@ -363,8 +402,10 @@ Q_SIGNALS:
         // it will thus contain only the files that were in the database from last time, but were NOT found during file scan
         // in other words, files that have been deleted from disk since last run.
         // the key to this map is the absolute path of the file from last run, but with the current scan folder setup
-        // and the value is the database sourcename
-        QMap<QString, SourceInfo> m_sourceFilesInDatabase;
+        QMap<QString, SourceInfoWithFingerprints> m_sourceFilesInDatabase;
+
+        // this map contains modtimes of all files AP processed last time it ran
+        AZStd::unordered_map<AZStd::string, AZ::u64> m_fileModTimes;
 
         QSet<QString> m_knownFolders; // a cache of all known folder names, normalized to have forward slashes.
         typedef AZStd::unordered_map<AZ::u64, AzToolsFramework::AssetSystem::JobInfo> JobRunKeyToJobInfoMap;  // for when network requests come in about the jobInfo
@@ -395,6 +436,8 @@ Q_SIGNALS:
         AZStd::unordered_map<AZ::Uuid, qint64> m_sourceFileModTimeMap;
         AZStd::unordered_map<JobIndentifier, AZ::u32> m_jobFingerprintMap; 
         AZStd::unordered_map<JobDesc, AZStd::unordered_set<AZ::Uuid>> m_jobDescToBuilderUuidMap;
+        AZStd::unordered_map< AZStd::string, AZStd::vector<DependencyProductIdInfo>> m_unresolvedSourcePathDependencyIds;
+        AZStd::unordered_map< AZStd::string, AZStd::vector<DependencyProductIdInfo>> m_unresolvedProductPathDependencyIds;
         QSet<QString> m_checkFoldersToRemove; //!< List of folders that needs to be checked for removal later by AP  
         //! List of all scanfolders that are present in the database but not currently watched by AP
         AZStd::unordered_map<AZStd::string, AzToolsFramework::AssetDatabase::ScanFolderDatabaseEntry> m_scanFoldersInDatabase;
@@ -419,8 +462,8 @@ Q_SIGNALS:
         bool m_buildersAddedOrRemoved = true; //< true if any new builders exist.  If this happens we actually need to re-analyze everything.
         bool m_anyBuilderChange = true;
 
-        // This function will return true if the given file is up to date and none of its builders have changed, etc.
-        bool CanEarlyOutSourceFile(QString normalizedPath, QString databaseSourceFileName, const ScanFolderInfo* scanFolder);
+        // Checks whether any of the builders specified have changed their fingerprint
+        bool AreBuildersUnchanged(AZStd::string_view builderEntries, int& numBuildersEmittingSourceDependencies);
 
         /** Utility function:  Given the input database row (from sources table), return an (ordered) set of all dependencies
           * including dependencies-of-dependencies.  These will be absolute paths to the dependency file on disk.
@@ -431,7 +474,7 @@ Q_SIGNALS:
           * full absolute paths.
           */
         void QueryAbsolutePathDependenciesRecursive(QString inputDatabasePath, SourceFilesForFingerprintingContainer& finalDependencyList, AzToolsFramework::AssetDatabase::SourceFileDependencyEntry::TypeOfDependency dependencyType, bool reverseQuery);
-
+        
         // we can't write a job to the database as not needing analysis the next time around,
         // until all jobs related to it are finished.  This is becuase the jobs themselves are not written to the database
         // so until all jobs are finished, we need to re-analyze the source file next time.
@@ -475,8 +518,9 @@ Q_SIGNALS:
         QSet<QString> m_metaFilesWhichActuallyExistOnDisk;
         bool m_cachedMetaFilesExistMap = false;
 
-        // you can turn the entire optimization off by setting this to false:
-        bool m_bAllowAnalysisSkippingFeature = false;
+        // when true, only processes files if their modtime or builder(s) have changed
+        // defaults to true (in the settings) for GUI mode, false for batch mode
+        bool m_allowModtimeSkippingFeature = false;
 
         // a file name to use in dependency lists to indicate a missing dependency.
         QString m_placeHolderFileName = "$missing_dependency$";

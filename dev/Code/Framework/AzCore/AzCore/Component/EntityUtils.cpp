@@ -118,7 +118,7 @@ namespace AZ
         //=========================================================================
         // FindFirstDerivedComponent
         //=========================================================================
-        Component* FindFirstDerivedComponent(Entity* entity, const Uuid& typeId)
+        Component* FindFirstDerivedComponent(const Entity* entity, const Uuid& typeId)
         {
             for (AZ::Component* component : entity->GetComponents())
             {
@@ -140,7 +140,7 @@ namespace AZ
         //=========================================================================
         // FindDerivedComponents
         //=========================================================================
-        Entity::ComponentArrayType FindDerivedComponents(Entity* entity, const Uuid& typeId)
+        Entity::ComponentArrayType FindDerivedComponents(const Entity* entity, const Uuid& typeId)
         {
             Entity::ComponentArrayType result;
             for (AZ::Component* component : entity->GetComponents())

@@ -761,7 +761,7 @@ struct CShaderPublicParams
     {
         for (int32 i = 0; i < m_shaderParams.size(); i++)
         {
-            if (pszName == m_shaderParams[i].m_Name)
+            if (azstricmp(pszName, m_shaderParams[i].m_Name.c_str()) == 0)
             {
                 return &m_shaderParams[i];
             }
@@ -774,7 +774,7 @@ struct CShaderPublicParams
     {
         for (int32 i = 0; i < m_shaderParams.size(); i++)
         {
-            if (pszName == m_shaderParams[i].m_Name)
+            if (azstricmp(pszName, m_shaderParams[i].m_Name.c_str()) == 0)
             {
                 return &m_shaderParams[i];
             }
@@ -827,7 +827,7 @@ struct CShaderPublicParams
     {
         for (int32 i = 0; i < m_shaderParams.size(); i++)
         {
-            if (pszName == m_shaderParams[i].m_Name)
+            if (azstricmp(pszName, m_shaderParams[i].m_Name.c_str()) == 0)
             {
                 m_shaderParams.erase(i);
             }
@@ -851,7 +851,7 @@ struct CShaderPublicParams
 
         for (i = 0; i < m_shaderParams.size(); i++)
         {
-            if (pszName == m_shaderParams[i].m_Name)
+            if (azstricmp(pszName, m_shaderParams[i].m_Name.c_str()) == 0)
             {
                 break;
             }

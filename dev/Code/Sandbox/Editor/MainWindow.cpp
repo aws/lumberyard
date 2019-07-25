@@ -1594,6 +1594,11 @@ void MainWindow::InitActions()
         .SetStatusTip(tr("Switch SP/MP gamerules."))
         .SetMetricsIdentifier("MainEditor", "ToggleSP/MPGameRules")
         .RegisterUpdateCallback(cryEdit, &CCryEditApp::OnToggleMultiplayerUpdate);
+    am->AddAction(ID_VIEW_DEPLOY, tr("Deploy"))
+        .SetStatusTip(tr("Open the Deployment tool"))
+        .SetIcon(EditorProxyStyle::icon("Deploy"))
+        .SetMetricsIdentifier("MainEditor", "Deploy")
+        .SetCheckable(false);
 
     // Physics actions
     am->AddAction(ID_PHYSICS_GETPHYSICSSTATE, tr("Get Physics State"))
@@ -1788,12 +1793,14 @@ void MainWindow::InitActions()
         .SetMetricsIdentifier("MainEditor", "GameLiftTrialWizard");
     am->AddAction(ID_AWS_COGNITO_CONSOLE, tr("Cognito"))
         .SetMetricsIdentifier("MainEditor", "CognitoConsole");
+    am->AddAction(ID_AWS_DEVICEFARM_CONSOLE, tr("Device Farm"))
+        .SetMetricsIdentifier("MainEditor", "DeviceFarmConsole");
     am->AddAction(ID_AWS_DYNAMODB_CONSOLE, tr("DynamoDB"))
         .SetMetricsIdentifier("MainEditor", "DynamoDBConsole");
-    am->AddAction(ID_AWS_S3_CONSOLE, tr("S3"))
-        .SetMetricsIdentifier("MainEditor", "S3Console");
     am->AddAction(ID_AWS_LAMBDA_CONSOLE, tr("Lambda"))
         .SetMetricsIdentifier("MainEditor", "LambdaConsole");
+    am->AddAction(ID_AWS_S3_CONSOLE, tr("S3"))
+        .SetMetricsIdentifier("MainEditor", "S3Console");
     am->AddAction(ID_AWS_ACTIVE_DEPLOYMENT, tr("Select a Deployment"))
         .SetMetricsIdentifier("MainEditor", "AWSSelectADeployment");
     am->AddAction(ID_AWS_CREDENTIAL_MGR, tr("Credentials manager"))

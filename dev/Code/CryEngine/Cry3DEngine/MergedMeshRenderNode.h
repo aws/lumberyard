@@ -513,6 +513,13 @@ public:
 
     bool StreamedIn() const { return m_State == STREAMED_IN; }
 
+    // A MergedMeshRenderNode can be streamed in and out only in the runtime, and only for static instances.
+    // In-editor, nodes for static instances are created through editor data files, not runtime data files, so
+    // the runtime data files might not exist to stream from, or might be out-of-date.  For dynamic instances,
+    // the expectation is that "streaming" is controlled via spawning / despawning of dynamic vegetation areas,
+    // not by controlling it at the merged mesh sector level.
+    bool SupportsStreaming() const { return (!gEnv->IsEditor() && !gEnv->IsDedicated() && (m_hasDynamicInstances == false)); }
+
     // Update streamable components
     bool UpdateStreamableComponents(float fImportance, float fEntDistance, bool bFullUpdate);
 

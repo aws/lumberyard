@@ -171,14 +171,22 @@ namespace ImageProcessingEditor
         if (m_currentMipIndex < m_resolutionInfos.size())
         {
             auto it = AZStd::next(m_resolutionInfos.begin(), m_currentMipIndex);
-            QString finalResolution = QString("Image Size: %1 x %2").arg(QString::number(it->width), QString::number(it->height));
+            QString finalResolution;
+            if (it->arrayCount > 1)
+            {
+                finalResolution = QString("Image Size: %1 x %2 x %3").arg(QString::number(it->width), QString::number(it->height), QString::number(it->arrayCount));
+            }
+            else
+            {
+                finalResolution = QString("Image Size: %1 x %2").arg(QString::number(it->width), QString::number(it->height));
+            }
             m_ui->imageSizeLabel->setText(finalResolution);
             
             CPixelFormats& pixelFormats = CPixelFormats::GetInstance();
             const PresetSettings* preset = BuilderSettingManager::Instance()->GetPreset(m_textureSetting->GetMultiplatformTextureSetting().m_preset);
             if (preset)
             {
-                float size = static_cast<float>(pixelFormats.EvaluateImageDataSize(preset->m_pixelFormat, it->width, it->height));
+                uint32 size = pixelFormats.EvaluateImageDataSize(preset->m_pixelFormat, it->width, it->height) * it->arrayCount;
                 AZStd::string fileSizeString = EditorHelper::GetFileSizeString(size);
                 QString finalFileSize = QString("File Size: %1").arg(fileSizeString.c_str());
                 m_ui->fileSizeLabel->setText(finalFileSize);

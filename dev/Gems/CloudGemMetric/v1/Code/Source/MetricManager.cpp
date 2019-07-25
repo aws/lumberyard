@@ -214,10 +214,13 @@ namespace CloudGemMetric
         auto curMetrics = AZStd::make_shared<MetricsQueue>();
         {
             AZ::u64 fileSize = 0;
-            AZ::IO::Result result = fileIO->Size(GetMetricsFilePath(), fileSize);
-            if (result && fileSize)
+            if (fileIO->Exists(GetMetricsFilePath()))
             {
-                curMetrics->ReadFromJson(GetMetricsFilePath());
+                AZ::IO::Result result = fileIO->Size(GetMetricsFilePath(), fileSize);
+                if (result && fileSize)
+                {
+                    curMetrics->ReadFromJson(GetMetricsFilePath());
+                }
             }
         }
 

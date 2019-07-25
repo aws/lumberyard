@@ -21,6 +21,7 @@
 //#define PRINT_IPADDRESS
 
 #if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_LINUX)
+#include <openssl/ossl_typ.h>
 #include <openssl/ssl.h>
 #include <openssl/err.h>
 #include <openssl/bio.h>
@@ -410,7 +411,7 @@ namespace GridMate
                 switch(bytes[0])
                 {
                 case SSL3_RT_APPLICATION_DATA:  return "AppData";
-                case TLS1_RT_HEARTBEAT:         return "HeartBeat";
+                case DTLS1_RT_HEARTBEAT:        return "HeartBeat";
                 case SSL3_RT_ALERT:             return "Alert";
                 default:                        return "Unknown";
                 }
@@ -614,8 +615,8 @@ namespace GridMate
             AZ_Printf("GridMateSecure", "Certinfo: Issuer:\"%s\" Serial:%s Not Before:%s Not After:%s\n",
                 X509NameToString(X509_get_issuer_name(newCertificate)).c_str(),
                 X509IntegerToString(X509_get_serialNumber(newCertificate)).c_str(),
-                X509DateToString(newCertificate->cert_info->validity->notBefore).c_str(),
-                X509DateToString(newCertificate->cert_info->validity->notAfter).c_str()
+                X509DateToString(X509_get0_notBefore(newCertificate)).c_str(),
+                X509DateToString(X509_get0_notAfter(newCertificate)).c_str()
                 );
 
             certificateChain.push_back(newCertificate);
@@ -730,7 +731,7 @@ namespace GridMate
                 {
                     const auto now = AZStd::chrono::system_clock::now();
                     // If connection is not bound any time after the handshake period, disconnect.
-                    if (aznumeric_cast<AZ::u64>(AZStd::chrono::milliseconds(now - m_creationTime).count()) > m_timeoutMS)
+                    if (AZStd::chrono::milliseconds(now - m_creationTime).count() > static_cast<typename AZStd::chrono::milliseconds::rep>(m_timeoutMS))
                     {
                         AZ_DebugSecureSocketConnection("GridMateSecure", "%lld | [%08x] :%d Connection unbound from %s. DgramsSent=%d, DgramsReceived=%d timeout %llu\n", now.time_since_epoch().count(), this, m_dbgPort, Internal::SafeGetAddress(m_addr->ToString()), m_dbgDgramsSent, m_dbgDgramsReceived, m_timeoutMS);
                         sm.Transition(CS_DISCONNECTED);
@@ -1037,9 +1038,13 @@ namespace GridMate
 
     void SecureSocketDriver::Connection::ForceDTLSTimeout()
     {
-        m_ssl->d1->next_timeout.tv_sec = 0;
-        m_ssl->d1->next_timeout.tv_usec = 1;    //Add just enough to not detect as NULL
-        BIO_ctrl(m_inDTLSBuffer, BIO_CTRL_DGRAM_SET_NEXT_TIMEOUT, 0, &(m_ssl->d1->next_timeout));
+        timeval next_timeout;
+        next_timeout.tv_sec = 0;
+        next_timeout.tv_usec = 1;    //Add just enough to not detect as NULL
+        BIO_ctrl(m_inDTLSBuffer, BIO_CTRL_DGRAM_SET_NEXT_TIMEOUT, 0, &next_timeout);
+
+        // we are unable to set SSLs DTLS next_timeout because the ssl_st structure
+        // is now opaque, so this may fail if there is no active DTLS timer
         DTLSv1_handle_timeout(m_ssl);
     }
 
@@ -1232,7 +1237,7 @@ namespace GridMate
             if (m_sm.GetCurrentState() == CS_ESTABLISHED
                 && IsHandshake(data, dataSize)
                 && now >= m_creationTime
-                && aznumeric_cast<AZ::u64>(milliseconds(now - m_creationTime).count()) <= m_timeoutMS)
+                && milliseconds(now - m_creationTime).count() <= static_cast<typename AZStd::chrono::milliseconds::rep>(m_timeoutMS))
             {
                 //Resend Finished to close handshake
                 Datagram newReceived;

@@ -10,12 +10,13 @@
 *
 */
 
+#include <AzCore/std/containers/array.h>
+#include <AzCore/std/containers/vector.h>
 #include <AzCore/IO/CompressorStream.h>
 #include <AzCore/IO/Compressor.h>
 #include <AzCore/IO/CompressorZLib.h>
 #include <AzCore/IO/FileIO.h>
 #include <AzCore/Memory/Memory.h>
-#include <AzCore/std/containers/array.h>
 
 namespace AZ
 {

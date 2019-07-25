@@ -36,9 +36,13 @@ namespace EMotionFX
         const AZStd::string& GetDescription() const { return m_description; }
         void SetDescription(const AZStd::string& description) { m_description = description; }
 
+        static bool IsNameValid(const AZStd::string& name, AZStd::string* outInvalidCharacters);
+
     protected:
         AZStd::string       m_name;              /**< The name as it will appear in the interface. */
         AZStd::string       m_description;       /**< The description of the attribute. */
+
+        static const char s_invalidCharacters[];
     };
 
     typedef AZStd::vector<Parameter*> ParameterVector;

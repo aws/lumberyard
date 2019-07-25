@@ -13,9 +13,14 @@
 #include "TestTypes.h"
 #include <AzCore/Component/ComponentApplication.h>
 #include <AzCore/Module/Module.h>
+#include <AzCore/PlatformIncl.h>
 #include <AzCore/Module/ModuleManagerBus.h>
 #include <AzCore/Memory/AllocationRecords.h>
 #include "ModuleTestBus.h"
+
+#if defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_APPLE)
+#include <dlfcn.h>
+#endif
 
 using namespace AZ;
 using ::testing::Return;
@@ -234,7 +239,7 @@ namespace UnitTest
             systemEntity->Activate();
 
             {
-
+                // this scope exists to clear memory before app is destroyed.
                 ModuleManagerRequests::LoadModuleOutcome loadResult = AZ::Failure(AZStd::string("Failed to connect to ModuleManagerRequestBus"));
 
                 // Create the module
@@ -304,13 +309,129 @@ namespace UnitTest
         }
     }
 
+
+// the following tests only run on the following platforms which support module loading and unloading
+// as these platforms expand we can always use traits to include the ones that can do so:
+#if defined (AZ_PLATFORM_WINDOWS) || defined (AZ_PLATFORM_LINUX) || defined (AZ_PLATFORM_APPLE_OSX)
+    // this class just attaches to the PrintF stream and watches for a specific message
+    // to appear.
+    class PrintFCollector : public AZ::Debug::TraceMessageBus::Handler
+    {
+    public:
+        PrintFCollector(const char* stringToWatchFor)
+            :m_stringToWatchFor(stringToWatchFor)
+        {
+            BusConnect();
+            
+        }
+        bool OnPrintf(const char* window, const char* message) override
+        {
+            if (
+                ((window)&&(strstr(window, m_stringToWatchFor.c_str()))) ||
+                ((message)&&(strstr(message, m_stringToWatchFor.c_str())))
+                )
+            {
+                m_foundWhatWeWereWatchingFor = true;
+            }
+            return false;
+        }
+
+        ~PrintFCollector()
+        {
+            BusDisconnect();
+        }
+
+        bool m_foundWhatWeWereWatchingFor = false;
+        AZ::OSString m_stringToWatchFor;
+    };
+
+    TEST(ModuleManager, OwnerInitializesAndDeinitializesTest)
+    {
+        // in this test, we make sure that a module is always initialized even if the operating
+        // system previously loaded it (due to static linkage or other reason)
+        // and that when it is initialized in this manner, it is also deinitialized when the owner
+        // unloads it (even if the operating system still has a handle to it).
+        // note that the above test already tests repeated loads and unloads, so there is no
+        // need to test that here.
+        
+        ComponentApplication app;
+
+        // Start up application
+        ComponentApplication::Descriptor appDesc;
+        ComponentApplication::StartupParameters startupParams;
+        Entity* systemEntity = app.Create(appDesc, startupParams);
+
+        ASSERT_NE(nullptr, systemEntity);
+        systemEntity->Init();
+        systemEntity->Activate();
+        
+        // we open a scope here to make sure any heap allocations made by local variables during this test
+        // are destroyed before we try to stop the app.
+        { 
+            // we will use the fact that DynamicModuleHandle resolves paths to operating system specific
+            // paths without actually calling Load(), and capture the final name it uses to load modules so that we
+            // can manually load it ourselves.
+            AZ::OSString finalPath;
+            
+            {
+                auto handle = DynamicModuleHandle::Create("AZCoreTestDLL");
+                finalPath = handle->GetFilename();
+            }
+
+            // now that we know the true name of the module in a way that it could be loaded by the operating system, 
+            // we need to actually load the module using the operating system loader so that its "already loaded" by OS.
+
+            {
+#if defined(AZ_PLATFORM_WINDOWS)
+                // expect the module to not currently be loaded.
+                EXPECT_EQ(nullptr, GetModuleHandleA(finalPath.c_str())); 
+                HMODULE mod = ::LoadLibraryA(finalPath.c_str());
+                ASSERT_NE(nullptr, mod);
+#elif defined (AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_APPLE_OSX)
+                void* pHandle = dlopen(finalPath.c_str(), RTLD_NOW);
+                ASSERT_NE(nullptr, pHandle);
+#endif // platform switch statement (windows, mac, linux)
+
+                // now that the operating system has an open handle to it, we load it using the 
+                // AZ functions, and make sure that the AZ library correctly attaches even though
+                // the OS already has it open:
+                PrintFCollector watchForDestruction("UninitializeDynamicModule called");
+                PrintFCollector watchForCreation("InitializeDynamicModule called");
+                {
+                    auto handle = DynamicModuleHandle::Create("AZCoreTestDLL");
+                    handle->Load(true);
+                    EXPECT_TRUE(watchForCreation.m_foundWhatWeWereWatchingFor); // should not destroy until we leave scope.
+                                                                                // steal the file path (which will be resolved with per-platform extensions like DLL or SO.
+                    EXPECT_FALSE(watchForDestruction.m_foundWhatWeWereWatchingFor); // should not destroy until we leave scope.
+
+                    PrintFCollector watchForCreationSecondTime("InitializeDynamicModule called");
+                    auto handle2 = DynamicModuleHandle::Create("AZCoreTestDLL");
+                    handle2->Load(true);
+                    // this should NOT have initialized it again:
+                    EXPECT_FALSE(watchForCreationSecondTime.m_foundWhatWeWereWatchingFor); // should not destroy until we leave scope.
+                }
+                EXPECT_TRUE(watchForDestruction.m_foundWhatWeWereWatchingFor); // we have left scope, destroy should have occurred.
+
+         // drop the operating systems attachment to the module:
+#if defined(AZ_PLATFORM_WINDOWS)
+                ::FreeLibrary(mod);
+#elif defined (AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_APPLE_OSX)
+                dlclose(pHandle);
+#endif // platform switch statement (windows, mac, linux)
+            }
+        }
+        
+        // shut down application (deletes Modules, unloads DLLs)
+        app.Destroy();
+    }
+
     class TestCalculateBinFolderClass : public ComponentApplication
     {
     public:
         TestCalculateBinFolderClass(const char* testExePath) :
             ComponentApplication()
         {
-            azstrcpy(this->m_exeDirectory, testExePath);
+            azstrcpy(this->m_exeDirectory, AZ_MAX_PATH_LEN, testExePath);
         }
 
         void TestCalculateBinFolder()
@@ -323,10 +444,8 @@ namespace UnitTest
         bool m_bFileExists;
     };
 
-#if defined (AZ_PLATFORM_WINDOWS) || defined (AZ_PLATFORM_LINUX) || defined (AZ_PLATFORM_APPLE_OSX)
 
 #define TEST_BINFOLDER  "bin64vc140"
-
 
     TEST(ModuleManager, TestCalculateBinFolder)
     {

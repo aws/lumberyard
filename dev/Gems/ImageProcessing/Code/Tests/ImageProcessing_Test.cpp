@@ -22,6 +22,7 @@
 
 #include <AzCore/Memory/Memory.h>
 #include <AzCore/Component/ComponentApplication.h>
+#include <AzCore/Component/ComponentApplicationBus.h>
 #include <AzFramework/IO/LocalFileIO.h>
 #include <Processing/PixelFormatInfo.h>
 #include <BuilderSettings/BuilderSettingManager.h>
@@ -29,14 +30,14 @@
 #include <BuilderSettings/CubemapSettings.h>
 #include <BuilderSettings/ImageProcessingDefines.h>
 
-#include <Processing/ImageConvert.h>
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/Serialization/ObjectStream.h>
 #include <AzCore/Serialization/Utils.h>
 #include <AzCore/Serialization/DataPatch.h>
-#include <Processing/ImageToProcess.h>
 #include <Compressors/Compressor.h>
 #include <Converters/Cubemap.h>
+#include <Processing/ImageConvert.h>
+#include <Processing/ImageToProcess.h>
 
 #include <QFileInfo>
 #include <qdir.h>
@@ -64,6 +65,8 @@ namespace UnitTest
 
 class ImageProcessingTest
     : public ScopedAllocatorSetupFixture
+    // Only used to provide the serialize context
+    , public AZ::ComponentApplicationBus::Handler
 {
 protected:
     AZStd::unique_ptr<QCoreApplication> m_coreApplication; // required by engine root and IsExtensionSupported
@@ -84,6 +87,9 @@ protected:
         {
             AZ::IO::FileIOBase::SetInstance(aznew AZ::IO::LocalFileIO());
         }
+        
+        // Adding this handler to allow utility functions access the serialize context
+        AZ::ComponentApplicationBus::Handler::BusConnect();
 
         //load qt plugins for some image file formats support
         int argc = 0;
@@ -107,7 +113,29 @@ protected:
         BuilderSettingManager::DestroyInstance();
         CPixelFormats::DestroyInstance();
 
+        AZ::ComponentApplicationBus::Handler::BusDisconnect();
+
         m_coreApplication.reset();
+    }
+
+    // ComponentApplicationMessages overrides...
+    AZ::ComponentApplication* GetApplication() override { return nullptr; }
+    void RegisterComponentDescriptor(const AZ::ComponentDescriptor*) override { }
+    void UnregisterComponentDescriptor(const AZ::ComponentDescriptor*) override { }
+    bool AddEntity(AZ::Entity*) override { return false; }
+    bool RemoveEntity(AZ::Entity*) override { return false; }
+    bool DeleteEntity(const AZ::EntityId&) override { return false; }
+    AZ::Entity* FindEntity(const AZ::EntityId&) override { return nullptr; }
+    AZ::BehaviorContext* GetBehaviorContext() override { return nullptr; }
+    const char* GetExecutableFolder() const override { return nullptr; }
+    const char* GetBinFolder() const override { return nullptr; }
+    const char* GetAppRoot() override { return nullptr; }
+    AZ::Debug::DrillerManager* GetDrillerManager() override { return nullptr; }
+    void EnumerateEntities(const EntityCallback& /*callback*/) override {}
+    // The only one function we need to implement.
+    AZ::SerializeContext* GetSerializeContext() override
+    {
+        return m_context.get();
     }
     
     //enum names for Images with specific identification
@@ -976,6 +1004,104 @@ TEST_F(ImageProcessingTest, DISABLED_CompareOutputImage)
         f.write("\r\n");
     }
     f.close();
+}
+
+
+TEST_F(ImageProcessingTest, EditorTextureSettingTest)
+{
+    AZStd::string buiderSetting = m_engineRoot + "/Gems/ImageProcessing/Code/Source/ImageBuilderDefaultPresets.settings";
+    auto outcome = BuilderSettingManager::Instance()->LoadBuilderSettings(buiderSetting, m_context.get());
+    
+    auto TestFunc = [](const AZStd::string& textureFilepath, bool isCubemap) {
+
+        ImageProcessingEditor::EditorTextureSetting setting(textureFilepath);
+        const TextureSettings& textSettings = setting.m_settingsMap["pc"];
+        auto& presetId = textSettings.m_preset;
+        const PresetSettings* preset = BuilderSettingManager::Instance()->GetPreset(presetId);
+        AZ::u32 arrayCount = 1;
+        AZ::u32 originalWidth = setting.m_img->GetWidth(0);
+        AZ::u32 originalHeight = setting.m_img->GetHeight(0);
+
+        if (isCubemap)
+        {
+            ASSERT_TRUE(preset->m_cubemapSetting != nullptr);
+            CubemapLayout *srcCubemap = CubemapLayout::CreateCubemapLayout(setting.m_img);
+            ASSERT_TRUE(srcCubemap != nullptr);
+
+            originalWidth = srcCubemap->GetFaceSize();
+            originalHeight = srcCubemap->GetFaceSize();
+            arrayCount = 6;
+
+            delete srcCubemap;
+        }
+
+        // Test GetFinalInfoForTextureOnPlatform function
+        {
+            for (AZ::u32 reduce = 0; reduce < 15; reduce++)
+            {
+                ImageProcessingEditor::ResolutionInfo info;
+                if (setting.GetFinalInfoForTextureOnPlatform("pc", reduce, info))
+                {
+                    ASSERT_TRUE(info.reduce <= reduce);
+                    ASSERT_TRUE(info.arrayCount == arrayCount);
+                    ASSERT_TRUE(info.width == AZStd::max<AZ::u32>(originalWidth >> info.reduce, 1));
+                    ASSERT_TRUE(info.height == AZStd::max<AZ::u32>(originalHeight >> info.reduce, 1));
+                    if (preset->m_maxTextureSize > 0)
+                    {
+                        ASSERT_TRUE(info.width <= preset->m_maxTextureSize);
+                        ASSERT_TRUE(info.height <= preset->m_maxTextureSize);
+                    }
+                    if (preset->m_minTextureSize > 0)
+                    {
+                        ASSERT_TRUE(info.width >= preset->m_minTextureSize);
+                        ASSERT_TRUE(info.height >= preset->m_minTextureSize);
+                    }
+                }
+            }
+        }
+
+        // Test GetResolutionInfo function
+        {
+            AZ::u32 minReduce, maxReduce;
+            auto resolutions = setting.GetResolutionInfo("pc", minReduce, maxReduce);
+            ASSERT_TRUE(resolutions.size() > 0);
+            ASSERT_TRUE(resolutions.size() == maxReduce - minReduce + 1);
+            for (auto& info : resolutions)
+            {
+                ASSERT_TRUE(info.reduce >= minReduce);
+                ASSERT_TRUE(info.reduce <= maxReduce);
+                ASSERT_TRUE(info.arrayCount == arrayCount);
+                ASSERT_TRUE(info.width == AZStd::max<AZ::u32>(originalWidth >> info.reduce, 1));
+                ASSERT_TRUE(info.height == AZStd::max<AZ::u32>(originalHeight >> info.reduce, 1));
+                ASSERT_TRUE(info.width >= 1);
+                ASSERT_TRUE(info.height >= 1);
+            }
+        }
+
+        // Test GetResolutionInfo function
+        {
+            auto resolutions = setting.GetResolutionInfoForMipmap("pc");
+            for (auto& info : resolutions)
+            {
+                ASSERT_TRUE(info.arrayCount == arrayCount);
+                ASSERT_TRUE(info.width == AZStd::max<AZ::u32>(originalWidth >> info.reduce, 1));
+                ASSERT_TRUE(info.height == AZStd::max<AZ::u32>(originalHeight >> info.reduce, 1));
+                ASSERT_TRUE(info.width >= 1);
+                ASSERT_TRUE(info.height >= 1);
+            }
+            setting.m_settingsMap["pc"].m_sizeReduceLevel += 1;
+            auto reducedResolutions = setting.GetResolutionInfoForMipmap("pc");
+            ASSERT_TRUE(resolutions.size() == reducedResolutions.size() + 1);
+        }
+    };
+    
+    // For cubemap texture
+    AZStd::string textureFilePath = m_engineRoot + "/Gems/ImageProcessing/Code/Tests/TestAssets/noon_cm.tif";
+    TestFunc(textureFilePath, true);
+
+    // For albedo texture
+    textureFilePath = m_engineRoot + "/Gems/ImageProcessing/Code/Tests/TestAssets/1024x1024_24bit.tif";
+    TestFunc(textureFilePath, false);
 }
 
 class ImageProcessingSerializationTest

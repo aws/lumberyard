@@ -204,9 +204,9 @@ namespace AZ
                 (void)textVersion;
 
                 float floats[NumFloats];
-                size_t numRead = FloatArrayTextSerializer::TextToData(text, floats, NumFloats, isDataBigEndian);
+                size_t numBytesRead = FloatArrayTextSerializer::TextToData(text, floats, NumFloats, isDataBigEndian);
                 stream.Seek(0, IO::GenericStream::ST_SEEK_BEGIN);
-                return static_cast<size_t>(stream.Write(numRead * sizeof(float), reinterpret_cast<void*>(&floats)));
+                return static_cast<size_t>(stream.Write(numBytesRead, reinterpret_cast<void*>(&floats)));
             }
 
             bool    Load(void* classPtr, IO::GenericStream& stream, unsigned int /*version*/, bool isDataBigEndian = false) override

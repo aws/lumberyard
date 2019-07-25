@@ -96,6 +96,7 @@
             "Input/Buses/Requests/InputChannelRequestBus.h",
             "Input/Buses/Requests/InputDeviceRequestBus.h",
             "Input/Buses/Requests/InputHapticFeedbackRequestBus.h",
+            "Input/Buses/Requests/InputLightBarRequestBus.h",
             "Input/Buses/Requests/InputMotionSensorRequestBus.h",
             "Input/Buses/Requests/InputSystemRequestBus.h",
             "Input/Buses/Requests/InputSystemCursorRequestBus.h",
@@ -175,8 +176,12 @@
             "Input/System/InputSystemComponent.cpp",
             "Input/System/InputSystemComponent.h"
         ],
+        "Input/User": [
+            "Input/User/LocalUserId.h"
+        ],
         "Input/Utils": [
             "Input/Utils/AdjustAnalogInputForDeadZone.h",
+            "Input/Utils/IsAnyKeyOrButton.h",
             "Input/Utils/ProcessRawInputEventQueues.h"
         ],
         "IO": [

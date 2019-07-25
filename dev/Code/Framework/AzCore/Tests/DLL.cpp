@@ -30,18 +30,19 @@ namespace UnitTest
         {
             m_handle = DynamicModuleHandle::Create("AZCoreTestDLL");
             bool isLoaded = m_handle->Load(true);
-            EXPECT_TRUE(isLoaded); // failed to load the DLL, please check the output paths
+            ASSERT_TRUE(isLoaded) << "Could not load required test module: " << m_handle->GetFilename().c_str(); // failed to load the DLL, please check the output paths
 
             auto createModule = m_handle->GetFunction<CreateModuleClassFunction>(CreateModuleClassFunctionName);
-            EXPECT_NE(nullptr, createModule);
+            // if this fails, we cannot continue as we will just nullptr exception
+            ASSERT_NE(nullptr, createModule) << "Unable to find create module function in module: " << CreateModuleClassFunctionName;
             m_module = createModule();
-            EXPECT_NE(nullptr, m_module);
+            ASSERT_NE(nullptr, m_module);
         }
 
         void UnloadModule()
         {
             auto destroyModule = m_handle->GetFunction<DestroyModuleClassFunction>(DestroyModuleClassFunctionName);
-            EXPECT_NE(nullptr, destroyModule);
+            ASSERT_NE(nullptr, destroyModule) << "Could not find the destroy function in the module: " << DestroyModuleClassFunctionName;
             destroyModule(m_module);
 
             m_handle->Unload();

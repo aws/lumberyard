@@ -147,6 +147,14 @@ public: // member functions
     void SetIsMultiTouchSupported(bool isSupported) override;
     bool GetIsNavigationSupported() override;
     void SetIsNavigationSupported(bool isSupported) override;
+    float GetNavigationThreshold() override;
+    void SetNavigationThreshold(float navigationThreshold) override;
+    AZ::u64 GetNavigationRepeatDelay() override;
+    void SetNavigationRepeatDelay(AZ::u64 navigationRepeatDelay) override;
+    AZ::u64 GetNavigationRepeatPeriod() override;
+    void SetNavigationRepeatPeriod(AZ::u64 navigationRepeatPeriod) override;
+    AzFramework::LocalUserId GetLocalUserIdInputFilter() override;
+    void SetLocalUserIdInputFilter(AzFramework::LocalUserId localUserId) override;
 
     bool HandleInputEvent(const AzFramework::InputChannel::Snapshot& inputSnapshot,
         const AZ::Vector2* viewportPos = nullptr,
@@ -446,6 +454,10 @@ private: // data
     bool m_isConsumingAllInputEvents = false;
     bool m_isMultiTouchSupported = true;
     bool m_isNavigationSupported = true;
+    float m_navigationThreshold = 0.4f;
+    AZ::u64 m_navigationRepeatDelay = 300;
+    AZ::u64 m_navigationRepeatPeriod = 150;
+    AzFramework::LocalUserId m_localUserIdInputFilter = AzFramework::LocalUserIdAny;
     AZ::EntityId m_tooltipDisplayElement;
 
     AZ::Matrix4x4 m_canvasToViewportMatrix;
@@ -486,6 +498,16 @@ private: // data
     //! A map of all interactables that have handled a multi-touch (non-primary) pressed
     //! event but that are still waiting to receive the corresponding released event
     AZStd::unordered_map<int, AZ::EntityId> m_multiTouchInteractablesByTouchIndex;
+
+    struct NavigationStatus
+    {
+        AZ::u64 lastNavigationTime;
+        int navigationCount;
+        bool allowNavigation;
+    };
+
+    //! The status of navigation in each direction
+    AZStd::unordered_map<UiNavigationHelpers::Command, NavigationStatus> m_navCommandStatus;
 
     LyShine::CanvasId m_id;
     int m_drawOrder;

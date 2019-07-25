@@ -116,9 +116,9 @@ namespace EMStudio
 
                 AddConditionButton* addConditionButton = new AddConditionButton(mPlugin, m_conditionsWidget);
                 connect(addConditionButton, &AddConditionButton::ObjectTypeChosen, this, [=](AZ::TypeId conditionType)
-                {
-                    AddCondition(conditionType);
-                });
+                    {
+                        AddCondition(conditionType);
+                    });
 
                 conditionsVerticalLayout->addWidget(addConditionButton);
 
@@ -142,17 +142,17 @@ namespace EMStudio
 
                 AddActionButton* addActionButton = new AddActionButton(mPlugin, m_actionsWidget);
                 connect(addActionButton, &AddActionButton::ObjectTypeChosen, this, [=](AZ::TypeId actionType)
-                {
-                    const AnimGraphModel::ModelItemType itemType = m_displayingModelIndex.data(AnimGraphModel::ROLE_MODEL_ITEM_TYPE).value<AnimGraphModel::ModelItemType>();
-                    if (itemType == AnimGraphModel::ModelItemType::TRANSITION)
                     {
-                        AddTransitionAction(actionType);
-                    }
-                    else
-                    {
-                        AddStateAction(actionType);
-                    }
-                });
+                        const AnimGraphModel::ModelItemType itemType = m_displayingModelIndex.data(AnimGraphModel::ROLE_MODEL_ITEM_TYPE).value<AnimGraphModel::ModelItemType>();
+                        if (itemType == AnimGraphModel::ModelItemType::TRANSITION)
+                        {
+                            AddTransitionAction(actionType);
+                        }
+                        else
+                        {
+                            AddStateAction(actionType);
+                        }
+                    });
                 actionVerticalLayout->addWidget(addActionButton);
 
                 verticalLayout->addWidget(m_actionsWidget);
@@ -160,14 +160,18 @@ namespace EMStudio
             }
         }
 
-        connect(&plugin->GetAnimGraphModel().GetSelectionModel(), &QItemSelectionModel::selectionChanged , this, &AttributesWindow::OnSelectionChanged);
+        connect(&plugin->GetAnimGraphModel().GetSelectionModel(), &QItemSelectionModel::selectionChanged, this, &AttributesWindow::OnSelectionChanged);
         connect(&plugin->GetAnimGraphModel(), &AnimGraphModel::dataChanged, this, &AttributesWindow::OnDataChanged);
 
         Init(QModelIndex(), true);
+
+        AttributesWindowRequestBus::Handler::BusConnect();
     }
 
     AttributesWindow::~AttributesWindow()
     {
+        AttributesWindowRequestBus::Handler::BusDisconnect();
+
         if (m_mainReflectedWidget)
         {
             if (mScrollArea->widget() == m_mainReflectedWidget)
@@ -193,6 +197,11 @@ namespace EMStudio
 
     void AttributesWindow::Init(const QModelIndex& modelIndex, bool forceUpdate)
     {
+        if (m_isLocked)
+        {
+            return;
+        }
+
         if (!modelIndex.isValid())
         {
             m_objectEditor->ClearInstances(false);
@@ -214,7 +223,7 @@ namespace EMStudio
         }
 
         EMotionFX::AnimGraphObject* object = modelIndex.data(AnimGraphModel::ROLE_ANIM_GRAPH_OBJECT_PTR).value<EMotionFX::AnimGraphObject*>();
-        
+
         QWidget* attributeWidget = mPlugin->GetGraphNodeFactory()->CreateAttributeWidget(azrtti_typeid(object));
         if (attributeWidget)
         {
@@ -225,7 +234,7 @@ namespace EMStudio
             }
             mScrollArea->setWidget(attributeWidget);
         }
-        else 
+        else
         {
             EMotionFX::AnimGraph* animGraph = nullptr;
             if (object)
@@ -236,7 +245,7 @@ namespace EMStudio
             {
                 animGraph = mPlugin->GetActiveAnimGraph();
             }
-            
+
             m_animGraphEditor->SetAnimGraph(animGraph);
             m_animGraphEditor->setVisible(animGraph);
 
@@ -266,7 +275,7 @@ namespace EMStudio
                 m_conditionsWidget->setVisible(false);
                 m_actionsWidget->setVisible(false);
             }
-            
+
             m_objectCard->setVisible(object);
 
             if (mScrollArea->widget() != m_mainReflectedWidget)
@@ -331,7 +340,6 @@ namespace EMStudio
                     m_conditionsLayout->addWidget(card);
 
                     m_conditionsCachedWidgets.emplace_back(card, conditionEditor);
-
                 } // for all conditions
             }
             else if (numConditionsWidgets > numConditions)
@@ -424,7 +432,6 @@ namespace EMStudio
                     m_actionsLayout->addWidget(card);
 
                     m_actionsCachedWidgets.emplace_back(card, actionEditor);
-
                 } // for all actions
             }
             else if (numActionWidgets > numActions)
@@ -491,7 +498,7 @@ namespace EMStudio
 
         QMenu contextMenu(this);
 
-       
+
         QAction* deleteAction = contextMenu.addAction("Delete action");
         deleteAction->setProperty("actionIndex", actionIndex);
         if (itemType == AnimGraphModel::ModelItemType::TRANSITION)
@@ -502,7 +509,7 @@ namespace EMStudio
         {
             connect(deleteAction, &QAction::triggered, this, &AttributesWindow::OnRemoveStateAction);
         }
-        
+
 
         if (!contextMenu.isEmpty())
         {
@@ -597,7 +604,7 @@ namespace EMStudio
                 }
             }
             else if (conditionType == azrtti_typeid<EMotionFX::AnimGraphStateCondition>() &&
-                sourceNode && azrtti_typeid(sourceNode) == azrtti_typeid<EMotionFX::AnimGraphStateMachine>())
+                     sourceNode && azrtti_typeid(sourceNode) == azrtti_typeid<EMotionFX::AnimGraphStateMachine>())
             {
                 EMotionFX::AnimGraphStateCondition stateCondition;
                 stateCondition.SetStateId(sourceNode->GetId());
@@ -609,7 +616,7 @@ namespace EMStudio
                 }
             }
             else if (conditionType == azrtti_typeid<EMotionFX::AnimGraphPlayTimeCondition>() &&
-                sourceNode)
+                     sourceNode)
             {
                 EMotionFX::AnimGraphPlayTimeCondition playTimeCondition;
                 playTimeCondition.SetNodeId(sourceNode->GetId());
@@ -723,7 +730,7 @@ namespace EMStudio
         MCore::CommandGroup commandGroup;
         for (const CopyPasteConditionObject& copyPasteObject : m_copyPasteClipboard)
         {
-            CommandSystem::AddCondition(transition, copyPasteObject.mConditionType, copyPasteObject.mContents, /*insertAt*/AZStd::nullopt, &commandGroup);
+            CommandSystem::AddCondition(transition, copyPasteObject.mConditionType, copyPasteObject.mContents, /*insertAt*/ AZStd::nullopt, &commandGroup);
         }
 
         AZStd::string result;
@@ -774,7 +781,7 @@ namespace EMStudio
                 continue;
             }
 
-            CommandSystem::AddCondition(transition, m_copyPasteClipboard[i].mConditionType, m_copyPasteClipboard[i].mContents, /*insertAt*/AZStd::nullopt, &commandGroup);
+            CommandSystem::AddCondition(transition, m_copyPasteClipboard[i].mConditionType, m_copyPasteClipboard[i].mContents, /*insertAt*/ AZStd::nullopt, &commandGroup);
 
             numPastedConditions++;
         }

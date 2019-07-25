@@ -33,10 +33,14 @@ namespace AZ
     {
         friend IAllocator;
         friend class Debug::AllocationRecords;
+        friend class AZ::Internal::EnvironmentVariableHolder<AllocatorManager>;
     public:
         typedef AZStd::function<void (IAllocator* allocator, size_t /*byteSize*/, size_t /*alignment*/, int/* flags*/, const char* /*name*/, const char* /*fileName*/, int lineNum /*=0*/)>    OutOfMemoryCBType;
 
-        AZ_FORCE_INLINE static AllocatorManager& Instance()         { return g_allocMgr; }
+        static AllocatorManager& Instance();
+        static bool IsReady();
+        static void Destroy();
+
         AZ_FORCE_INLINE  int            GetNumAllocators() const    { return m_numAllocators; }
         AZ_FORCE_INLINE  IAllocator*    GetAllocator(int index)
         {

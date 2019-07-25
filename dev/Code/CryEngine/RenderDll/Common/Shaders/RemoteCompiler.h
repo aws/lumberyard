@@ -32,6 +32,14 @@ namespace NRemoteCompiler
         ESRecvFailed,
     };
 
+    enum EProvoHardwareModes : int8
+    {
+        PHMInvalidMode  = -1,
+        PHMBaseMode     = 0,
+        PHMCommonMode   = 1,
+        PHMNeoMode      = 2
+    };
+
     enum EShaderCompiler
     {
         eSC_Unknown,
@@ -54,6 +62,8 @@ namespace NRemoteCompiler
         // the main entry into this system
         // on return, rVec contains the response vector, or an error string, if failed
         EServerError Compile(std::vector<uint8>& rVec, const char* pProfile, const char* pProgram, const char* pEntry, const char* pCompileFlags, const char* pIdent) const;
+
+        EServerError GetShaderList(std::vector<uint8>& rVec) const;
 
         bool CommitPLCombinations(std::vector<SCacheCombination>& rVec);
 
@@ -91,7 +101,6 @@ namespace NRemoteCompiler
 
         const char* GetPlatformName() const;
 
-        static uint32 m_LastWorkingServer;
         RemoteProxyState* m_remoteState;
 
         // root path added to each request line to store the data per game (eg. MyGame\)

@@ -424,6 +424,8 @@ namespace AzToolsFramework
 
         childInfo.SetParent(parentId);
 
+        AZ::TransformBus::Event(childId, &AZ::TransformBus::Events::SetParent, parentId);
+
         //creating/pushing slices doesn't always destroy/de-register the original entity before adding the replacement
         if (!parentInfo.HasChild(childId))
         {

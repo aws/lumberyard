@@ -96,7 +96,7 @@ namespace EMotionFX
                     return;
                 }
 
-                serializeContext->Class<LodRule, SceneDataTypes::IRule>()->Version(1)
+                serializeContext->Class<LodRule>()->Version(1)
                     ->Field("nodeSelectionList", &LodRule::m_nodeSelectionLists);
 
                 AZ::EditContext* editContext = serializeContext->GetEditContext();

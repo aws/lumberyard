@@ -22,7 +22,6 @@
 #include "ShaderAllocator.h"
 
 extern TArray<bool> sfxIFDef;
-extern TArray<bool> sfxIFIgnore;
 
 typedef TArray<uint32> ShaderTokensVec;
 
@@ -501,7 +500,7 @@ enum EToken
     eT_TechniqueThickness,
 
     eT_TechniqueMax,
-	//-------------------------------------------------------------------------
+    //-------------------------------------------------------------------------
 
     eT_KeyFrameParams,
     eT_KeyFrameRandColor,
@@ -833,7 +832,14 @@ struct SortByToken
 #define SF_PLATFORM 0xfc000000
 
 class CParserBin
+    : public ISystemEventListener
 {
+    //////////////////////////////////////////////////////////////////////////
+    // ISystemEventListener interface implementation.
+    //////////////////////////////////////////////////////////////////////////
+    virtual void OnSystemEvent(ESystemEvent event, UINT_PTR wparam, UINT_PTR lparam);
+    //////////////////////////////////////////////////////////////////////////
+
     friend class CShaderManBin;
     friend class CHWShader_D3D;
     friend struct SFXParam;
@@ -866,10 +872,12 @@ class CParserBin
 
     static FXMacroBin m_StaticMacros;
 
+    TArray<bool> sfxIFIgnore;
+
 public:
     CParserBin(SShaderBin* pBin);
     CParserBin(SShaderBin* pBin, CShader* pSH);
-
+    ~CParserBin();
     SParserFrame& GetData() {return m_Data; }
     const char* GetString(uint32 nToken, bool bOnlyKey = false);
     string GetString(SParserFrame& Frame);

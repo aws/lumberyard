@@ -129,3 +129,18 @@ TEST_F(MaterialTest, CMatInfo_SetSubMtlCount_SetsMaterialGroupFlag)
     material->SetSubMtlCount(0);
     EXPECT_FALSE(material->IsMaterialGroup());
 }
+
+TEST_F(MaterialTest, CMatInfo_IsDirty_DoesNotCrash)
+{
+    // Create a material group with two sub-materials
+    _smart_ptr<IMaterial> materialGroup = new CMatInfo();
+    materialGroup->SetSubMtlCount(2);
+
+    // Set one sub-material to be null, and the other valid
+    _smart_ptr<IMaterial> subMaterial = new CMatInfo();
+    materialGroup->SetSubMtl(0, nullptr);
+    materialGroup->SetSubMtl(1, subMaterial);
+
+    // Call IsDirty to validate that it does not crash
+    EXPECT_FALSE(materialGroup->IsDirty());
+}

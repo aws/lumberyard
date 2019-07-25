@@ -83,7 +83,7 @@ namespace Driller
             AZ::SerializeContext* serialize = azrtti_cast<AZ::SerializeContext*>(context);
             if (serialize)
             {
-                serialize->Class<ReplicaDataViewSavedState, AZ::UserSettings>()
+                serialize->Class<ReplicaDataViewSavedState>()
                     ->Field("m_displayDataType", &ReplicaDataViewSavedState::m_displayDataType)
                     ->Field("m_displayRange", &ReplicaDataViewSavedState::m_displayRange)
                     ->Field("m_bandwidthUsageDisplayType",&ReplicaDataViewSavedState::m_bandwidthUsageDisplayType)
@@ -112,7 +112,7 @@ namespace Driller
 
             if (serialize)
             {
-                serialize->Class<ReplicaDataViewTableModelSavedState, AZ::UserSettings>()
+                serialize->Class<ReplicaDataViewTableModelSavedState>()
                     ->Field("m_treeColumnStorage", &ReplicaDataViewTableModelSavedState::m_treeColumnStorage)
                     ->Version(1);
             }
@@ -138,7 +138,7 @@ namespace Driller
 
             if (serialize)
             {
-                serialize->Class<ReplicaDataViewSplitterSavedState, AZ::UserSettings>()
+                serialize->Class<ReplicaDataViewSplitterSavedState>()
                     ->Field("m_splitterSavedState", &ReplicaDataViewSplitterSavedState::m_splitterSavedState)
                     ->Version(1)
                 ;

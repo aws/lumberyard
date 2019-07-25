@@ -72,12 +72,12 @@ namespace AzFramework
         const AZ::Crc32& GetNameCrc32() const;
 
         ////////////////////////////////////////////////////////////////////////////////////////////
-        //! Access to the input device's index. Does not correspond to the local player id assigned
-        //! to an input device (see InputDevice::GetAssignedLocalPlayerId). For use differentiating
-        //! between multiple instances of the same device - regardless of whether a local player id
-        //! has been assigned to it. For example, by default the engine supports up to four gamepad
-        //! devices that are created at startup using indicies 0->3. As gamepads connect/disconnect
-        //! at runtime, we automatically assign the appropriate (system dependent) local player id.
+        //! Access to the input device's index. Used for differentiating between multiple instances
+        //! of the same device type, regardless of whether the device has a local user id assigned.
+        //! In some cases the device index and local user are the same, but this cannot be assumed.
+        //! For example, by default the engine supports up to four gamepad devices that are created
+        //! at startup using indicies 0->3. As gamepads connect/disconnect at runtime we assign the
+        //! appropriate (system dependent) local user id (see InputDevice::GetAssignedLocalUserId).
         //! \return Index of the input device
         AZ::u32 GetIndex() const;
 

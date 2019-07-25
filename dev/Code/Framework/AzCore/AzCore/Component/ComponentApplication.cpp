@@ -23,6 +23,7 @@
 
 #include <AzCore/Serialization/EditContext.h>
 #include <AzCore/Serialization/ObjectStream.h>
+#include <AzCore/Serialization/Utils.h>
 
 #include <AzCore/RTTI/AttributeReader.h>
 #include <AzCore/RTTI/BehaviorContext.h>
@@ -309,7 +310,7 @@ namespace AZ
         {
             SerializeContext sc;
             Descriptor::Reflect(&sc, this);
-            ObjectStream::LoadBlocking(&stream, sc, nullptr, ObjectStream::FilterDescriptor(&AZ::Data::AssetFilterNoAssetLoading, ObjectStream::FILTERFLAG_IGNORE_UNKNOWN_CLASSES));
+            AZ::Utils::LoadObjectFromStreamInPlace(stream, m_descriptor, &sc, ObjectStream::FilterDescriptor(&AZ::Data::AssetFilterNoAssetLoading, ObjectStream::FILTERFLAG_IGNORE_UNKNOWN_CLASSES));
         }
 
         // Destroy the temp system allocator
@@ -428,6 +429,10 @@ namespace AZ
         // Setup the modules list
         m_moduleManager = AZStd::make_unique<ModuleManager>();
         m_moduleManager->SetSystemComponentTags(m_startupParameters.m_systemComponentTags);
+
+        // Load static modules
+        ModuleManagerRequestBus::Broadcast(&ModuleManagerRequests::LoadStaticModules, AZStd::bind(&ComponentApplication::CreateStaticModules, this, AZStd::placeholders::_1), ModuleInitializationSteps::RegisterComponentDescriptors);
+
         // Load dynamic modules if appropriate for the platform
         if (m_startupParameters.m_loadDynamicModules)
         {
@@ -441,9 +446,6 @@ namespace AZ
             }
 #endif
         }
-
-        // Load static modules
-        ModuleManagerRequestBus::Broadcast(&ModuleManagerRequests::LoadStaticModules, AZStd::bind(&ComponentApplication::CreateStaticModules, this, AZStd::placeholders::_1), ModuleInitializationSteps::RegisterComponentDescriptors);
     }
 
     //=========================================================================

@@ -201,6 +201,7 @@ public:
     void OnAWSGameliftGetStarted();
     void OnAWSGameliftTrialWizard();
     void OnAWSCognitoConsole();
+    void OnAWSDeviceFarmConsole();
     void OnAWSDynamoDBConsole();
     void OnAWSS3Console();
     void OnAWSLambdaConsole();
@@ -241,6 +242,7 @@ public:
     void OnFileExportToGameNoSurfaceTexture();
     void OnEditInsertObject();
     void OnViewSwitchToGame();
+    void OnViewDeploy();
     void OnEditSelectAll();
     void OnEditSelectNone();
     void OnEditDelete();

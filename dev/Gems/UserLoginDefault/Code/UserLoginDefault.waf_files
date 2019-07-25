@@ -1,13 +1,6 @@
 {
-    "none": {
-        "Source": [
-            "Source/UserLoginDefault_precompiled.cpp",
-            "Source/UserLoginDefault_precompiled.h"
-        ]
-    },
     "auto": {
         "Source": [
-            "Source/UserLoginDefaultGem.h",
             "Source/UserLoginDefaultGem.cpp"
         ]
     }

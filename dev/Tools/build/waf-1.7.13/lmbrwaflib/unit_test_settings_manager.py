@@ -901,6 +901,14 @@ def mock_settings(tmpdir, default_settings, user_settings_options, build_configu
     write_json_sample(build_configurations, tmpdir.join('_WAF_/settings/build_configurations.json'))
     
     write_json_sample(test_platform_content, tmpdir.join('_WAF_/settings/platforms/platform.{}.json'.format(test_platform_name)))
+
+    write_json_sample({
+                        "FileVersion": 1,
+                        "LumberyardVersion": "0.0.0.0",
+                        "LumberyardCopyrightYear": 2019
+                      }, tmpdir.join('engine.json'))
+    
+    
     
     
     def _mock_get_cwd():

@@ -1484,7 +1484,7 @@ struct ISystem
 
     // Summary:
     //   Creates new xml node.
-    virtual XmlNodeRef CreateXmlNode(const char* sNodeName = "", bool bReuseStrings = false) = 0;
+    virtual XmlNodeRef CreateXmlNode(const char* sNodeName = "", bool bReuseStrings = false, bool bIsProcessingInstruction = false) = 0;
     // Summary:
     //   Loads xml from memory buffer, returns 0 if load failed.
     virtual XmlNodeRef LoadXmlFromBuffer(const char* buffer, size_t size, bool bReuseStrings = false, bool bSuppressWarnings = false) = 0;
@@ -1778,10 +1778,6 @@ struct ISystem
     virtual void SetSystemGlobalState(const ESystemGlobalState systemGlobalState) = 0;
 
     // Summary:
-    //      Add a PlatformOS create flag
-    virtual void AddPlatformOSCreateFlag(const uint8 createFlag) = 0;
-
-    // Summary:
     //      Asynchronous memcpy
     // Note sync variable will be incremented (in calling thread) before job starts
     // and decremented when job finishes. Multiple async copies can therefore be
@@ -2018,7 +2014,7 @@ inline ISystemScheduler* GetISystemScheduler(void)
 
 // Description:
 //   This function must be called once by each module at the beginning, to setup global pointers.
-extern "C" DLL_EXPORT void ModuleInitISystem(ISystem* pSystem, const char* moduleName);
+extern "C" AZ_DLL_EXPORT void ModuleInitISystem(ISystem* pSystem, const char* moduleName);
 extern bool g_bProfilerEnabled;
 extern int g_iTraceAllocations;
 

@@ -13,6 +13,9 @@
 
 // Description : Linux/Mac port support for Win32API calls
 
+#include<AzCore/PlatformDef.h>
+
+#if !defined(AZ_COMPILER_MSVC)
 
 #include "platform.h" // Note: This should be first to get consistent debugging definitions
 
@@ -1702,3 +1705,5 @@ __finddata64_t::~__finddata64_t()
     }
 }
 #endif //defined(APPLE) || defined(LINUX)
+
+#endif // !defined(AZ_COMPILER_MSVC)

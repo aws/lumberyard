@@ -41,7 +41,7 @@ namespace AzToolsFramework
         AZ::SerializeContext* serialize = azrtti_cast<AZ::SerializeContext*>(context);
         if (serialize)
         {
-            serialize->Class<QWidgetSavedState, AZ::UserSettings>()
+            serialize->Class<QWidgetSavedState>()
                 ->Version(1)
                 ->Field("m_windowGeometry", &QWidgetSavedState::m_windowGeometry);
         }

@@ -34,7 +34,6 @@ namespace EMotionFX
 {
     AZ_CLASS_ALLOCATOR_IMPL(AnimGraphInstance, AnimGraphInstanceAllocator, 0)
 
-    // constructor
     AnimGraphInstance::AnimGraphInstance(AnimGraph* animGraph, ActorInstance* actorInstance, MotionSet* motionSet, const InitSettings* initSettings)
         : BaseObject()
     {
@@ -50,6 +49,8 @@ namespace EMotionFX
         mEnableVisualization    = true;
         mRetarget               = animGraph->GetRetargetingEnabled();
         mVisualizeScale         = 1.0f;
+        m_autoReleaseAllPoses   = true;
+        m_autoReleaseAllRefDatas= true;
 
 #if defined(EMFX_DEVELOPMENT_BUILD)
         mIsOwnedByRuntime       = false;
@@ -86,8 +87,6 @@ namespace EMotionFX
         GetEventManager().OnCreateAnimGraphInstance(this);
     }
 
-
-    // destructor
     AnimGraphInstance::~AnimGraphInstance()
     {
         for (AnimGraphInstance* childInstance : m_childAnimGraphInstances)
@@ -230,7 +229,7 @@ namespace EMotionFX
 
 
     // output the results into the internal pose object
-    void AnimGraphInstance::Output(Pose* outputPose, bool autoFreeAllPoses)
+    void AnimGraphInstance::Output(Pose* outputPose)
     {
         // reset max used
         const uint32 threadIndex = mActorInstance->GetThreadIndex();
@@ -255,21 +254,10 @@ namespace EMotionFX
         //MCore::LogInfo("------poses   used = %d/%d (max=%d)----------", GetEMotionFX().GetThreadData(0)->GetPosePool().GetNumUsedPoses(), GetEMotionFX().GetThreadData(0)->GetPosePool().GetNumPoses(), GetEMotionFX().GetThreadData(0)->GetPosePool().GetNumMaxUsedPoses());
         //MCore::LogInfo("------refData used = %d/%d (max=%d)----------", GetEMotionFX().GetThreadData(0)->GetRefCountedDataPool().GetNumUsedItems(), GetEMotionFX().GetThreadData(0)->GetRefCountedDataPool().GetNumItems(), GetEMotionFX().GetThreadData(0)->GetRefCountedDataPool().GetNumMaxUsedItems());
         //MCORE_ASSERT(GetEMotionFX().GetThreadData(0).GetPosePool().GetNumUsedPoses() == 0);
-        if (autoFreeAllPoses)
+
+        if (m_autoReleaseAllPoses)
         {
-            // Temp solution: In the AnimGraphStateMachine, there's a possibility that certain nodes get ref count increased, but never got decreased. This would result in some dangling
-            // poses in those node's output ports. If somehow we are accessing them later (this could be another bug as well - in blendNNode e.g, we are freeing all the in comming port
-            // regardless of whether they has gone through the output step), we will release such dangling pointer, which would cause random issue / crash later.
-            // For now, we free all poses and clean all the ports.
-            for (MCore::Attribute* attribute : m_internalAttributes)
-            {
-                if (attribute->GetType() == AttributePose::TYPE_ID)
-                {
-                    AttributePose* attributePose = static_cast<AttributePose*>(attribute);
-                    attributePose->SetValue(nullptr);
-                }
-            }
-            posePool.FreeAllPoses();
+            ReleasePoses();
         }
 
         // Gather active state. Must be done in output function.
@@ -384,11 +372,11 @@ namespace EMotionFX
             return false;
         }
 
-        // get the state machine object
-        AnimGraphStateMachine* machine = static_cast<AnimGraphStateMachine*>(parentNode);
+        AnimGraphStateMachine* stateMachine = static_cast<AnimGraphStateMachine*>(parentNode);
 
+        // TODO: Double check if this still holds true
         // only allow switching to a new state when we are currently not transitioning
-        if (machine->GetIsTransitioning(this))
+        if (stateMachine->IsTransitioning(this))
         {
             return false;
         }
@@ -397,7 +385,7 @@ namespace EMotionFX
         SwitchToState(parentNode->GetName());
 
         // now switch to the new state
-        machine->SwitchToState(this, state);
+        stateMachine->SwitchToState(this, state);
         return true;
     }
 
@@ -425,11 +413,11 @@ namespace EMotionFX
             return false;
         }
 
-        // get the state machine object
         AnimGraphStateMachine* machine = static_cast<AnimGraphStateMachine*>(parentNode);
 
+        // TODO: Double check if this still holds true
         // only allow switching to a new state when we are currently not transitioning
-        if (machine->GetIsTransitioning(this))
+        if (machine->IsTransitioning(this))
         {
             return false;
         }
@@ -903,18 +891,9 @@ namespace EMotionFX
 
         //MCore::LogInfo("------bef refData used = %d/%d (max=%d)----------", GetEMotionFX().GetThreadData(threadIndex)->GetRefCountedDataPool().GetNumUsedItems(), GetEMotionFX().GetThreadData(threadIndex)->GetRefCountedDataPool().GetNumItems(), GetEMotionFX().GetThreadData(threadIndex)->GetRefCountedDataPool().GetNumMaxUsedItems());
 
-        // release any left over ref data
-        AnimGraphRefCountedDataPool& refDataPool = GetEMotionFX().GetThreadData(threadIndex)->GetRefCountedDataPool();
-        const uint32 numNodes = mAnimGraph->GetNumNodes();
-        for (uint32 i = 0; i < numNodes; ++i)
+        if (m_autoReleaseAllRefDatas)
         {
-            AnimGraphNodeData* nodeData = static_cast<AnimGraphNodeData*>(m_uniqueDatas[mAnimGraph->GetNode(i)->GetObjectIndex()]);
-            AnimGraphRefCountedData* refData = nodeData->GetRefCountedData();
-            if (refData)
-            {
-                refDataPool.Free(refData);
-                nodeData->SetRefCountedData(nullptr);
-            }
+            ReleaseRefDatas();
         }
 
         //MCore::LogInfo("------refData used = %d/%d (max=%d)----------", GetEMotionFX().GetThreadData(threadIndex)->GetRefCountedDataPool().GetNumUsedItems(), GetEMotionFX().GetThreadData(threadIndex)->GetRefCountedDataPool().GetNumItems(), GetEMotionFX().GetThreadData(threadIndex)->GetRefCountedDataPool().GetNumMaxUsedItems());
@@ -1226,6 +1205,51 @@ namespace EMotionFX
             return;
         }
         mSnapshot->SetMotionNodePlaytimes(motionNodePlaytimes);
+    }
+
+    void AnimGraphInstance::SetAutoReleaseRefDatas(bool automaticallyFreeRefDatas)
+    {
+        m_autoReleaseAllRefDatas = automaticallyFreeRefDatas;
+    }
+
+    void AnimGraphInstance::SetAutoReleasePoses(bool automaticallyFreePoses)
+    {
+        m_autoReleaseAllPoses = automaticallyFreePoses;
+    }
+
+    void AnimGraphInstance::ReleaseRefDatas()
+    {
+        const uint32 threadIndex = mActorInstance->GetThreadIndex();
+        AnimGraphRefCountedDataPool& refDataPool = GetEMotionFX().GetThreadData(threadIndex)->GetRefCountedDataPool();
+
+        const uint32 numNodes = mAnimGraph->GetNumNodes();
+        for (uint32 i = 0; i < numNodes; ++i)
+        {
+            const AnimGraphNode* node = mAnimGraph->GetNode(i);
+            AnimGraphNodeData* nodeData = static_cast<AnimGraphNodeData*>(m_uniqueDatas[node->GetObjectIndex()]);
+            AnimGraphRefCountedData* refData = nodeData->GetRefCountedData();
+            if (refData)
+            {
+                refDataPool.Free(refData);
+                nodeData->SetRefCountedData(nullptr);
+            }
+        }
+    }
+
+    void AnimGraphInstance::ReleasePoses()
+    {
+        const uint32 threadIndex = mActorInstance->GetThreadIndex();
+        AnimGraphPosePool& posePool = GetEMotionFX().GetThreadData(threadIndex)->GetPosePool();
+
+        for (MCore::Attribute* attribute : m_internalAttributes)
+        {
+            if (attribute->GetType() == AttributePose::TYPE_ID)
+            {
+                AttributePose* attributePose = static_cast<AttributePose*>(attribute);
+                attributePose->SetValue(nullptr);
+            }
+        }
+        posePool.FreeAllPoses();
     }
 
     bool AnimGraphInstance::GetParameterValueAsFloat(uint32 paramIndex, float* outValue)

@@ -31,9 +31,11 @@
 #include <EMotionFX/Tools/EMotionStudio/EMStudioSDK/Source/MainWindow.h>
 #include <EMotionFX/Tools/EMotionStudio/EMStudioSDK/Source/NodeSelectionWindow.h>
 #include <EMotionFX/CommandSystem/Source/SelectionList.h>
+#include <MCore/Source/AzCoreConversions.h>
 
 #include <MathConversion.h>
 #include <IRenderAuxGeom.h>
+#include <Material/Material.h>
 
 
 namespace EMotionFX
@@ -163,7 +165,9 @@ namespace EMotionFX
             EditorActorComponentRequestBus::Handler::BusConnect(GetEntityId());
             LmbrCentral::MeshComponentRequestBus::Handler::BusConnect(GetEntityId());
             LmbrCentral::RenderNodeRequestBus::Handler::BusConnect(GetEntityId());
+            LmbrCentral::MaterialOwnerRequestBus::Handler::BusConnect(GetEntityId());
             LmbrCentral::AttachmentComponentNotificationBus::Handler::BusConnect(GetEntityId());
+            AzToolsFramework::EditorComponentSelectionRequestsBus::Handler::BusConnect(GetEntityId());
             AzToolsFramework::EditorVisibilityNotificationBus::Handler::BusConnect(GetEntityId());
         }
 
@@ -171,9 +175,11 @@ namespace EMotionFX
         void EditorActorComponent::Deactivate()
         {
             AzToolsFramework::EditorVisibilityNotificationBus::Handler::BusDisconnect();
+            AzToolsFramework::EditorComponentSelectionRequestsBus::Handler::BusDisconnect();
+            LmbrCentral::AttachmentComponentNotificationBus::Handler::BusDisconnect();
+            LmbrCentral::MaterialOwnerRequestBus::Handler::BusDisconnect();
             LmbrCentral::RenderNodeRequestBus::Handler::BusDisconnect();
             LmbrCentral::MeshComponentRequestBus::Handler::BusDisconnect();
-            LmbrCentral::AttachmentComponentNotificationBus::Handler::BusDisconnect();
             EditorActorComponentRequestBus::Handler::BusDisconnect();
             ActorComponentRequestBus::Handler::BusDisconnect();
 
@@ -514,7 +520,7 @@ namespace EMotionFX
             AZ::TransformNotificationBus::Handler::BusConnect(GetEntityId());
 
             // Force an update of node transforms so we can get an accurate bounding box.
-            m_actorInstance->UpdateTransformations(0.f, true, false);
+            m_actorInstance->UpdateTransformations(0.0f, true, false);
 
             m_renderNode = AZStd::make_unique<ActorRenderNode>(GetEntityId(), m_actorInstance, m_actorAsset, transform);
             m_renderNode->SetMaterials(m_materialPerLOD);
@@ -568,15 +574,16 @@ namespace EMotionFX
         //////////////////////////////////////////////////////////////////////////
         void EditorActorComponent::OnTransformChanged(const AZ::Transform& local, const AZ::Transform& world)
         {
-            (void)local;
-
-            if (m_actorInstance)
+            AZ_UNUSED(local);
+            if (!m_actorInstance)
             {
-                const AZ::Quaternion entityOrientation = AZ::Quaternion::CreateRotationFromScaledTransform(world);
-                const AZ::Vector3 entityPosition = world.GetTranslation();
-                const AZ::Transform worldTransformNoScale = AZ::Transform::CreateFromQuaternionAndTranslation(entityOrientation, entityPosition);
-                m_actorInstance->SetLocalSpaceTransform(MCore::AzTransformToEmfxTransform(worldTransformNoScale));
+                return;
             }
+
+            const AZ::Quaternion entityOrientation = AZ::Quaternion::CreateRotationFromScaledTransform(world);
+            const AZ::Vector3 entityPosition = world.GetTranslation();
+            const AZ::Transform worldTransformNoScale = AZ::Transform::CreateFromQuaternionAndTranslation(entityOrientation, entityPosition);
+            m_actorInstance->SetLocalSpaceTransform(MCore::AzTransformToEmfxTransform(worldTransformNoScale));
         }
 
         //////////////////////////////////////////////////////////////////////////
@@ -607,6 +614,64 @@ namespace EMotionFX
             {
                 ActorComponent::DrawBounds(m_actorInstance);
             }
+        }
+
+        //////////////////////////////////////////////////////////////////////////
+        void EditorActorComponent::SetMaterial(_smart_ptr<IMaterial> material)
+        {
+            ActorAsset* actor = m_actorAsset.GetAs<ActorAsset>();
+            if (!actor)
+            {
+                return;
+            }
+
+            // Set m_materialPerActor and m_materialPerLOD, which contains the material asset references
+            if (material)
+            {
+                if (material->IsSubMaterial())
+                {
+                    // Attempt to apply the parent material if material is a sub-material
+                    CMaterial* editorMaterial = static_cast<CMaterial*>(material->GetUserData());
+                    if (editorMaterial && editorMaterial->GetParent() && editorMaterial->GetParent()->GetMatInfo())
+                    {
+                        material = editorMaterial->GetParent()->GetMatInfo();
+                        AZ_Warning("EMotionFX", false, "Cannot apply a sub-material directly to an actor. Applying the parent material group '%s' instead.", material->GetName());
+                    }
+                    else
+                    {
+                        AZ_Error("EMotionFX", false, "Cannot apply sub-material '%s' directly to an actor. Try applying the parent material group instead.", material->GetName());
+                        return;
+                    }
+                }
+
+                // Apply the material to the actor
+                m_materialPerLOD.clear();
+                m_materialPerActor.SetAssetPath(material->GetName());
+            }
+            else
+            {
+                // If material is nullptr, re-set m_materialPerLOD to the default for this actor
+                m_materialPerLOD.clear();
+                m_materialPerActor.SetAssetPath("");
+                InitializeMaterial(*m_actorAsset.GetAs<ActorAsset>());
+            }
+
+            // Update the rendernode and the property grid
+            OnMaterialPerActorChanged();
+            AzToolsFramework::ToolsApplicationEvents::Bus::Broadcast(
+                &AzToolsFramework::ToolsApplicationEvents::InvalidatePropertyDisplay,
+                AzToolsFramework::Refresh_AttributesAndValues);
+        }
+
+        //////////////////////////////////////////////////////////////////////////
+        _smart_ptr<IMaterial> EditorActorComponent::GetMaterial()
+        {
+            if (m_renderNode)
+            {
+                return m_renderNode->GetMaterial();
+            }
+
+            return nullptr;
         }
 
         //////////////////////////////////////////////////////////////////////////
@@ -685,6 +750,67 @@ namespace EMotionFX
             return m_attachmentTarget;
         }
 
+
+        AZ::Aabb EditorActorComponent::GetEditorSelectionBoundsViewport(
+            const AzFramework::ViewportInfo& /*viewportInfo*/)
+        {
+            return GetWorldBounds();
+        }
+
+        bool EditorActorComponent::EditorSelectionIntersectRayViewport(
+            const AzFramework::ViewportInfo& /*viewportInfo*/,
+            const AZ::Vector3& src, const AZ::Vector3& dir, AZ::VectorFloat& distance)
+        {
+            if (!m_actorAsset.Get() || !m_actorAsset.Get()->GetActor() || !m_actorInstance || !m_actorInstance->GetTransformData() || !m_renderCharacter)
+            {
+                return false;
+            }
+
+            distance = std::numeric_limits<float>::max();
+            bool isHit = false;
+
+            // Get the MCore::Ray used by EMotionFX::Mesh::Intersects
+            // Convert the input source + direction to make a line segment, since that's the format that is used for an MCore::Ray
+            AZ::Vector3 dest = src + dir;
+            MCore::Ray ray(src, dest);
+
+            // Update the mesh deformers so the intersection test will hit the actor if it is being
+            // animated by a motion component that is previewing the animation in the editor
+            m_actorInstance->UpdateMeshDeformers(0.0f, true);
+
+            // Get the MCore::Matrix used by EmotionFX::Mesh::Intersects
+            const EMotionFX::TransformData* transformData = m_actorInstance->GetTransformData();
+            const Pose* currentPose = transformData->GetCurrentPose();
+
+            // Iterate through the meshes in the actor, looking for the closest hit
+            EMotionFX::Actor* actor = m_actorAsset.Get()->GetActor().get();
+            const uint32 numNodes = actor->GetNumNodes();
+            const uint32 numLods = actor->GetNumLODLevels();
+            for (uint32 lod = 0; lod < numLods; ++lod)
+            {
+                for (uint32 nodeIndex = 0; nodeIndex < numNodes; ++nodeIndex)
+                {
+                    EMotionFX::Mesh* mesh = actor->GetMesh(lod, nodeIndex);
+                    if (!mesh || mesh->GetIsCollisionMesh())
+                    {
+                        continue;
+                    }
+
+                    AZ::Vector3 hitPoint;
+                    if (mesh->Intersects(currentPose->GetWorldSpaceTransform(nodeIndex), ray, &hitPoint))
+                    {
+                        isHit = true;
+                        float hitDistance = (src - hitPoint).GetLength();
+                        if (hitDistance < distance)
+                        {
+                            distance = hitDistance;
+                        }
+                    }
+                }
+            }
+
+            return isHit;
+        }
         //////////////////////////////////////////////////////////////////////////
         // Check if the given attachment is valid.
         bool EditorActorComponent::IsValidAttachment(const AZ::EntityId& attachment, const AZ::EntityId& attachTo) const

@@ -5,7 +5,7 @@
     "DisplayName": "NativeUI",
     "Version": "0.1.0",
     "LinkType": "Dynamic",
-    "Summary": "Provides access to iOS, Android, and MacOS Native UI",
-    "Tags": ["iOS", "Android", "MacOS"],
+    "Summary": "Deprecated. Use AZCore EBUS interface instead (AZ::NativeUI::NativeUIRequestBus). This gem will be removed in a future Lumberyard version.",
+    "Tags": ["Deprecated"],
     "IconPath": "preview.png"
 }

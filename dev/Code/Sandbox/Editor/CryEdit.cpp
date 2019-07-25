@@ -655,6 +655,7 @@ void CCryEditApp::RegisterActionHandlers()
     ON_COMMAND(ID_AWS_GAMELIFT_GETSTARTED, OnAWSGameliftGetStarted)
     ON_COMMAND(ID_AWS_GAMELIFT_TRIALWIZARD, OnAWSGameliftTrialWizard)
     ON_COMMAND(ID_AWS_COGNITO_CONSOLE, OnAWSCognitoConsole)
+    ON_COMMAND(ID_AWS_DEVICEFARM_CONSOLE, OnAWSDeviceFarmConsole)        
     ON_COMMAND(ID_AWS_DYNAMODB_CONSOLE, OnAWSDynamoDBConsole)
     ON_COMMAND(ID_AWS_S3_CONSOLE, OnAWSS3Console)
     ON_COMMAND(ID_AWS_LAMBDA_CONSOLE, OnAWSLambdaConsole)
@@ -682,6 +683,7 @@ void CCryEditApp::RegisterActionHandlers()
     ON_COMMAND(ID_GENERATORS_STATICOBJECTS, OnGeneratorsStaticobjects)
     ON_COMMAND(ID_FILE_EXPORTTOGAMENOSURFACETEXTURE, OnFileExportToGameNoSurfaceTexture)
     ON_COMMAND(ID_VIEW_SWITCHTOGAME, OnViewSwitchToGame)
+    ON_COMMAND(ID_VIEW_DEPLOY, OnViewDeploy)
     ON_COMMAND(ID_EDIT_SELECTALL, OnEditSelectAll)
     ON_COMMAND(ID_EDIT_SELECTNONE, OnEditSelectNone)
     ON_COMMAND(ID_EDIT_DELETE, OnEditDelete)
@@ -3284,6 +3286,13 @@ void CCryEditApp::OnAWSGameliftTrialWizard()
     OnAWSLaunchConsolePage(webLink);
 }
 
+// App command to open Amazon Device Farm Console page
+void CCryEditApp::OnAWSDeviceFarmConsole()
+{
+    QString webLink = tr("https://console.aws.amazon.com/devicefarm/home");
+    OnAWSLaunchConsolePage(webLink);
+}
+
 // App command to open Amazon Cognito Console page
 void CCryEditApp::OnAWSCognitoConsole()
 {
@@ -4716,6 +4725,11 @@ void CCryEditApp::OnViewSwitchToGame()
     // TODO: Add your command handler code here
     bool inGame = !GetIEditor()->IsInGameMode();
     GetIEditor()->SetInGameMode(inGame);
+}
+
+void CCryEditApp::OnViewDeploy()
+{
+    QtViewPaneManager::instance()->OpenPane(LyViewPane::DeploymentTool);
 }
 
 void CCryEditApp::OnSelectAxisX()

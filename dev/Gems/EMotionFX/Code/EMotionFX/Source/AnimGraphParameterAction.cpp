@@ -84,31 +84,34 @@ namespace EMotionFX
 
     void AnimGraphParameterAction::TriggerAction(AnimGraphInstance* animGraphInstance) const
     {
-        MCore::Attribute* attribute = animGraphInstance->GetParameterValue(static_cast<uint32>(m_parameterIndex.GetValue()));
-        if (attribute)
+        if (m_parameterIndex.IsSuccess())
         {
-            switch (attribute->GetType())
+            MCore::Attribute* attribute = animGraphInstance->GetParameterValue(static_cast<uint32>(m_parameterIndex.GetValue()));
+            if (attribute)
             {
-            case MCore::AttributeBool::TYPE_ID:
-            {
-                MCore::AttributeBool* atrBool = static_cast<MCore::AttributeBool*>(attribute);
-                atrBool->SetValue(m_triggerValue != 0.0f);
-                break;
-            }
-            case MCore::AttributeFloat::TYPE_ID:
-            {
-                MCore::AttributeFloat* atrFloat = static_cast<MCore::AttributeFloat*>(attribute);
-                atrFloat->SetValue(m_triggerValue);
-                break;
-            }
-            default:
-            {
-                AZ_Assert(false, "Type %d of attribute %s are not supported", attribute->GetType(), m_parameterName);
-                break;
-            } 
-            }
+                switch (attribute->GetType())
+                {
+                    case MCore::AttributeBool::TYPE_ID:
+                    {
+                        MCore::AttributeBool* atrBool = static_cast<MCore::AttributeBool*>(attribute);
+                        atrBool->SetValue(m_triggerValue != 0.0f);
+                        break;
+                    }
+                    case MCore::AttributeFloat::TYPE_ID:
+                    {
+                        MCore::AttributeFloat* atrFloat = static_cast<MCore::AttributeFloat*>(attribute);
+                        atrFloat->SetValue(m_triggerValue);
+                        break;
+                    }
+                    default:
+                    {
+                        AZ_Assert(false, "Type %d of attribute %s are not supported", attribute->GetType(), m_parameterName);
+                        break;
+                    }
+                }
 
-            AnimGraphNotificationBus::Broadcast(&AnimGraphNotificationBus::Events::OnParameterActionTriggered, m_valueParameter);
+                AnimGraphNotificationBus::Broadcast(&AnimGraphNotificationBus::Events::OnParameterActionTriggered, m_valueParameter);
+            }
         }
     }
 

@@ -572,7 +572,11 @@ void GUIApplicationManager::FileChanged(QString path)
 
         // we only have to quit if the actual project name has changed, not if just the bootstrap has changed.
         QString previousGameName = AssetUtilities::ComputeGameName(); // get the cached version
-        QString newGameName = AssetUtilities::ComputeGameName(QString(), true); // force=true!
+
+        // Get the app root for the starting path to search for bootstrap.cfg
+        AZStd::string appRootString;
+        AzFramework::ApplicationRequests::Bus::BroadcastResult(appRootString, &AzFramework::ApplicationRequests::GetAppRoot);
+        QString newGameName = AssetUtilities::ComputeGameName(QString(appRootString.c_str()), true); // force=true!
         
         if (newGameName != previousGameName)
         {
@@ -682,6 +686,9 @@ void GUIApplicationManager::InitConnectionManager()
     m_connectionManager->RegisterService(FileCopyRequest::MessageType(), std::bind(&FileServer::ProcessCopyRequest, m_fileServer, _1, _2, _3, _4));
     m_connectionManager->RegisterService(FileRenameRequest::MessageType(), std::bind(&FileServer::ProcessRenameRequest, m_fileServer, _1, _2, _3, _4));
     m_connectionManager->RegisterService(FindFilesRequest::MessageType(), std::bind(&FileServer::ProcessFindFileNamesRequest, m_fileServer, _1, _2, _3, _4));
+
+    m_connectionManager->RegisterService(FileTreeRequest::MessageType(), std::bind(&FileServer::ProcessFileTreeRequest, m_fileServer, _1, _2, _3, _4));
+
 
     QObject::connect(m_connectionManager, SIGNAL(connectionAdded(uint, Connection*)), m_fileServer, SLOT(ConnectionAdded(unsigned int, Connection*)));
     QObject::connect(m_connectionManager, SIGNAL(ConnectionDisconnected(unsigned int)), m_fileServer, SLOT(ConnectionRemoved(unsigned int)));

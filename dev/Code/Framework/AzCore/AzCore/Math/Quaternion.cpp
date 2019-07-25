@@ -88,9 +88,9 @@ namespace AZ
     // efficient check to determine if a transform has scale applied or not.
     bool IsUnit(const Transform& t)
     {
-        return IsCloseMag<AZ::VectorFloat>(t.GetBasisX().GetLengthSq(), AZ::VectorFloat::CreateOne())
-            && IsCloseMag<AZ::VectorFloat>(t.GetBasisY().GetLengthSq(), AZ::VectorFloat::CreateOne())
-            && IsCloseMag<AZ::VectorFloat>(t.GetBasisZ().GetLengthSq(), AZ::VectorFloat::CreateOne());
+        return IsCloseMag<AZ::VectorFloat>(t.GetBasisX().GetLengthSq(), AZ::VectorFloat::CreateOne(), AZ::g_simdTolerance)
+            && IsCloseMag<AZ::VectorFloat>(t.GetBasisY().GetLengthSq(), AZ::VectorFloat::CreateOne(), AZ::g_simdTolerance)
+            && IsCloseMag<AZ::VectorFloat>(t.GetBasisZ().GetLengthSq(), AZ::VectorFloat::CreateOne(), AZ::g_simdTolerance);
     }
 
     const Quaternion Quaternion::CreateRotationFromScaledTransform(Transform t)

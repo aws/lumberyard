@@ -124,8 +124,11 @@ def _get_boolean_value(ctx, msg, value):
 
 def _default_settings_node(ctx):
     """ Return a Node object pointing to the defaul_settings.json file """
-    return ctx.root.make_node(Context.launch_dir).make_node('_WAF_/default_settings.json')
+    
+    if not hasattr(ctx, 'engine_node'):
+        ctx.calculate_engine_path()
 
+    return ctx.engine_node.make_node('_WAF_/default_settings.json')
 
 def _get_default_value(ctx, settings, section_name, option_name):
     """ Get and process the default value for a setting """

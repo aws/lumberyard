@@ -93,6 +93,11 @@ namespace AZStd
 
     template<class T>
     class optional;
+
+    struct monostate;
+
+    template<class... Types>
+    class variant;
 }
 
 namespace AZ
@@ -324,7 +329,7 @@ namespace AZ
     AZ_TYPE_INFO_SPECIALIZE(AZ::Uuid, "{E152C105-A133-4d03-BBF8-3D4B2FBA3E2A}");
     AZ_TYPE_INFO_SPECIALIZE(void, "{C0F1AFAD-5CB3-450E-B0F5-ADB5D46B0E22}");
     AZ_TYPE_INFO_SPECIALIZE(Crc32, "{9F4E062E-06A0-46D4-85DF-E0DA96467D3A}");
-    AZ_TYPE_INFO_SPECIALIZE(PlatformID, "{0635D08E-DDD2-48DE-A7AE-73CC563C57C3}")
+    AZ_TYPE_INFO_SPECIALIZE(PlatformID, "{0635D08E-DDD2-48DE-A7AE-73CC563C57C3}");
 
     // specialize for function pointers
     template<class R, class... Args>
@@ -735,6 +740,10 @@ namespace AZ
     AZ_INTERNAL_FIXED_SPECIALIZATION_2(AZStd::array, "{911B2EA8-CCB1-4F0C-A535-540AD00173AE}");
     AZ_INTERNAL_FIXED_SPECIALIZATION_1(AZStd::bitset, "{6BAE9836-EC49-466A-85F2-F4B1B70839FB}");
     AZ_INTERNAL_FUNCTION_VARIATION_SPECIALIZATION(AZStd::function, "AZStd::function", "{C9F9C644-CCC3-4F77-A792-F5B5DBCA746E}");
+
+    AZ_TYPE_INFO_SPECIALIZE(AZStd::monostate, "{B1E9136B-D77A-4643-BE8E-2ABDA246AE0E}");
+    static constexpr const char* s_variantTypeId{ "{1E8BB1E5-410A-4367-8FAA-D43A4DE14D4B}" };
+    AZ_INTERNAL_VARIATION_SPECIALIZATION_TEMPLATE(AZStd::variant, variant, s_variantTypeId);
 }
 
 #define AZ_TYPE_INFO_1(_ClassName) AZ_STATIC_ASSERT(false, "You must provide a ClassName,ClassUUID")

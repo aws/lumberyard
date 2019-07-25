@@ -17,20 +17,19 @@ namespace AzFramework
 {
     const AZ::Crc32 InputChannelEventFilter::AnyChannelNameCrc32("wildcard_any_input_channel_name");
     const AZ::Crc32 InputChannelEventFilter::AnyDeviceNameCrc32("wildcard_any_input_device_name");
-    const AZ::u32 InputChannelEventFilter::AnyDeviceIndex(std::numeric_limits<AZ::u32>::max());
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
     InputChannelEventFilterWhitelist::InputChannelEventFilterWhitelist(
         const AZ::Crc32& channelNameCrc32, // AnyChannelNameCrc32
         const AZ::Crc32& deviceNameCrc32,  // AnyDeviceNameCrc32
-        const AZ::u32& deviceIndex)        // AnyDeviceIndex
+        const LocalUserId& localUserId)    // LocalUserIdAny
     : m_channelNameCrc32Whitelist()
     , m_deviceNameCrc32Whitelist()
-    , m_deviceIndexWhitelist()
+    , m_localUserIdWhitelist()
     {
         WhitelistChannelName(channelNameCrc32);
         WhitelistDeviceName(deviceNameCrc32);
-        WhitelistDeviceIndex(deviceIndex);
+        WhitelistLocalUserId(localUserId);
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
@@ -54,10 +53,10 @@ namespace AzFramework
             }
         }
 
-        if (!m_deviceIndexWhitelist.empty())
+        if (!m_localUserIdWhitelist.empty())
         {
-            const AZ::u32 deviceIndex = inputChannel.GetInputDevice().GetInputDeviceId().GetIndex();
-            if (m_deviceIndexWhitelist.find(deviceIndex) == m_deviceIndexWhitelist.end())
+            const LocalUserId localUserId = inputChannel.GetInputDevice().GetAssignedLocalUserId();
+            if (m_localUserIdWhitelist.find(localUserId) == m_localUserIdWhitelist.end())
             {
                 return false;
             }
@@ -93,15 +92,15 @@ namespace AzFramework
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
-    void InputChannelEventFilterWhitelist::WhitelistDeviceIndex(AZ::u32 deviceIndex)
+    void InputChannelEventFilterWhitelist::WhitelistLocalUserId(LocalUserId localUserId)
     {
-        if (deviceIndex == AnyDeviceIndex)
+        if (localUserId == LocalUserIdAny)
         {
-            m_deviceIndexWhitelist.clear();
+            m_localUserIdWhitelist.clear();
         }
         else
         {
-            m_deviceIndexWhitelist.insert(deviceIndex);
+            m_localUserIdWhitelist.insert(localUserId);
         }
     }
 
@@ -109,7 +108,7 @@ namespace AzFramework
     InputChannelEventFilterBlacklist::InputChannelEventFilterBlacklist()
         : m_channelNameCrc32Blacklist()
         , m_deviceNameCrc32Blacklist()
-        , m_deviceIndexBlacklist()
+        , m_localUserIdBlacklist()
     {
     }
 
@@ -128,8 +127,8 @@ namespace AzFramework
             return false;
         }
 
-        const AZ::u32 deviceIndex = inputChannel.GetInputDevice().GetInputDeviceId().GetIndex();
-        if (m_deviceIndexBlacklist.find(deviceIndex) != m_deviceIndexBlacklist.end())
+        const LocalUserId localUserId = inputChannel.GetInputDevice().GetAssignedLocalUserId();
+        if (m_localUserIdBlacklist.find(localUserId) != m_localUserIdBlacklist.end())
         {
             return false;
         }
@@ -150,8 +149,8 @@ namespace AzFramework
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
-    void InputChannelEventFilterBlacklist::BlacklistDeviceIndex(AZ::u32 deviceIndex)
+    void InputChannelEventFilterBlacklist::BlacklistLocalUserId(LocalUserId localUserId)
     {
-        m_deviceIndexBlacklist.insert(deviceIndex);
+        m_localUserIdBlacklist.insert(localUserId);
     }
 } // namespace AzFramework

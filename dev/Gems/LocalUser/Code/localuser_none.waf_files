@@ -1,0 +1,7 @@
+{
+    "auto": {
+        "Source": [
+            "Source/Platform/None/LocalUserSystemComponent_none.cpp"
+        ]
+    }
+}

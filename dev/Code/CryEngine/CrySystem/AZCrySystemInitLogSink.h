@@ -14,8 +14,6 @@
 
 #include <AzFramework/Logging/StartupLogSinkReporter.h>
 
-#include <IPlatformOS.h>
-
 namespace AZ
 {
     namespace Debug
@@ -44,7 +42,7 @@ namespace AZ
             void DisplayCollectedErrorStrings() const override;
 
         protected:
-            unsigned int m_msgBoxFlags = IPlatformOS::eMsgBox_Normal;
+            bool m_isMessageBoxFatal = false;
         };
     } // namespace Debug
 } // namespace AZ

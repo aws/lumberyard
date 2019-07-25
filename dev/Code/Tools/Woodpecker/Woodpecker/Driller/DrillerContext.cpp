@@ -48,7 +48,7 @@ namespace Driller
             AZ::SerializeContext* serialize = azrtti_cast<AZ::SerializeContext*>(context);
             if (serialize)
             {
-                serialize->Class<DrillerSavedState, AZ::UserSettings>()
+                serialize->Class<DrillerSavedState>()
                     ->Version(1)
                     ->Field("m_MainDrillerWindowIsVisible", &DrillerSavedState::m_MainDrillerWindowIsVisible)
                     ->Field("m_MainDrillerWindowIsOpen", &DrillerSavedState::m_MainDrillerWindowIsOpen);

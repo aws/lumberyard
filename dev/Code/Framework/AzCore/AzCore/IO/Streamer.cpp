@@ -578,7 +578,7 @@ Streamer::Read(VirtualStream* stream, SizeType byteOffset, SizeType byteSize, vo
         request->m_bytesProcessedEnd += byteOffset + byteSize - byteOffsetEndAfterCache;
         request->SetDeadline(deadline);
 
-        device->AddCommand(&DeviceRequest::ReadRequest, request, stream, stream->GetFilename(), nullptr);
+        device->AddCommand(&DeviceRequest::ReadRequest, request, stream, stream->GetFilename(), static_cast<AZStd::semaphore*>(nullptr));
 
         doneCB.Wait();
         if (state)
@@ -610,7 +610,7 @@ Streamer::ReadAsync(VirtualStream* stream, SizeType byteOffset, SizeType byteSiz
         request->m_bytesProcessedEnd += byteOffset + byteSize - byteOffsetEndAfterCache;
         request->SetDeadline(deadline);
 
-        device->AddCommand(&DeviceRequest::ReadRequest, request, stream, stream->GetFilename(), nullptr);
+        device->AddCommand(&DeviceRequest::ReadRequest, request, stream, stream->GetFilename(), static_cast<AZStd::semaphore*>(nullptr));
     }
     return request;
 }
@@ -669,7 +669,7 @@ Streamer::ReadAsync(const char* fileName, SizeType byteOffset, SizeType byteSize
         Request* request = aznew Request(byteOffset, byteSize, dataBuffer, callback, deferCallback, priority, Request::OperationType::OT_READ, debugName);
         request->SetDeadline(deadline);
 
-        device->AddCommand(&DeviceRequest::ReadRequest, request, nullptr, fileName, nullptr);
+        device->AddCommand(&DeviceRequest::ReadRequest, request, static_cast<AZ::IO::VirtualStream*>(nullptr), fileName, static_cast<AZStd::semaphore*>(nullptr));
         return request;
     }
     return InvalidRequestHandle;
@@ -728,7 +728,7 @@ Streamer::WriteAsync(VirtualStream* stream, const void* dataBuffer, SizeType byt
     if (device)
     {
         request = aznew Request(byteOffset, byteSize, const_cast<void*>(dataBuffer), callback, deferCallback, priority, Request::OperationType::OT_WRITE, debugName);
-        device->AddCommand(&DeviceRequest::WriteRequest, request, stream, stream->GetFilename(), nullptr);
+        device->AddCommand(&DeviceRequest::WriteRequest, request, stream, stream->GetFilename(), static_cast<AZStd::semaphore*>(nullptr));
     }
 
     return request;
@@ -789,7 +789,7 @@ Streamer::WriteAsync(const char* fileName, const void* dataBuffer, SizeType byte
         // or cannot modify the buffer when the buffer is passed back to him in the completion callback.
         Request* request = aznew Request(byteOffset, byteSize, const_cast<void*>(dataBuffer), callback, deferCallback, priority, Request::OperationType::OT_WRITE, debugName);
 
-        device->AddCommand(&DeviceRequest::WriteRequest, request, nullptr, fileName, nullptr);
+        device->AddCommand(&DeviceRequest::WriteRequest, request, static_cast<AZ::IO::VirtualStream*>(nullptr), fileName, static_cast<AZStd::semaphore*>(nullptr));
 
         return request;
     }

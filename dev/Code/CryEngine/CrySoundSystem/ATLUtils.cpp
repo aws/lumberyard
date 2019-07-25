@@ -16,12 +16,12 @@
 namespace Audio
 {
 #if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
-    bool AudioDebugDrawFilter(const AZStd::string& objectName, const AZStd::string& filter)
+    bool AudioDebugDrawFilter(const AZStd::string_view objectName, const AZStd::string_view filter)
     {
         bool result = false;
-        result |= filter.empty();
-        result |= (filter.compare("0") == 0);
-        result |= (objectName.find(filter) != AZStd::string::npos);
+        result = result || filter.empty();
+        result = result || (filter.compare("0") == 0);
+        result = result || (objectName.find(filter) != AZStd::string::npos);
         return result;
     }
 #endif //INCLUDE_AUDIO_PRODUCTION_CODE

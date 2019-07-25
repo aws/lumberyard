@@ -14,6 +14,7 @@
 #include <QPoint>
 #include <QRect>
 
+#include <AzCore/std/containers/set.h>
 #include <AzCore/std/containers/unordered_set.h>
 #include <AzCore/std/containers/list.h>
 

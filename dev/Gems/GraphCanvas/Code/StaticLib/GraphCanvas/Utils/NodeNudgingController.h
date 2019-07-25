@@ -15,8 +15,8 @@
 #include <QRect>
 
 #include <AzCore/Component/TickBus.h>
-#include <AZCore/std/containers/unordered_map.h>
-#include <AZCore/std/containers/unordered_set.h>
+#include <AzCore/std/containers/unordered_map.h>
+#include <AzCore/std/containers/unordered_set.h>
 #include <AzCore/Math/Vector2.h>
 
 #include <GraphCanvas/Components/GeometryBus.h>

@@ -83,8 +83,6 @@ bool StarterGameGame::Init(IGameFramework* framework)
     IGameRulesSystem* pGameRulesSystem = g_Game->GetIGameFramework()->GetIGameRulesSystem();
     pGameRulesSystem->RegisterGameRules("DummyRules", "StarterGameGameRules");
 
-    GetISystem()->GetPlatformOS()->UserDoSignIn(0);
-
     // Register procedural clips
     mannequin::RegisterProceduralClipsForModule(gEnv->pGame->GetIGameFramework()->GetMannequinInterface().GetProceduralClipFactory());
     return true;

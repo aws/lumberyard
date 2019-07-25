@@ -20,8 +20,8 @@
 
 #pragma once
 
-#include <AzCore/EBus/BusContainer.h>
-#include <AzCore/EBus/HandlerContainer.h>
+#include <AzCore/EBus/Internal/BusContainer.h>
+#include <AzCore/EBus/Internal/Debug.h>
 #include <AzCore/EBus/Policies.h>
 
 #include <AzCore/std/parallel/scoped_lock.h>
@@ -35,14 +35,14 @@ namespace AZ
 {
     /**
      * A dummy mutex that performs no locking.
-     * EBuses that do not support multithreading use this mutex 
+     * EBuses that do not support multithreading use this mutex
      * as their EBusTraits::MutexType.
      */
     struct NullMutex
     {
-        AZ_FORCE_INLINE void lock() {}
-        AZ_FORCE_INLINE bool try_lock() { return true; }
-        AZ_FORCE_INLINE void unlock() {}
+        void lock() {}
+        bool try_lock() { return true; }
+        void unlock() {}
     };
 
     /**
@@ -51,18 +51,18 @@ namespace AZ
      */
     struct NullBusId
     {
-        AZ_FORCE_INLINE NullBusId() {};
-        AZ_FORCE_INLINE NullBusId(int) {};
+        NullBusId() {};
+        NullBusId(int) {};
     };
 
     /// @cond EXCLUDE_DOCS
-    AZ_FORCE_INLINE bool operator==(const NullBusId&, const NullBusId&) { return true; }
-    AZ_FORCE_INLINE bool operator!=(const NullBusId&, const NullBusId&) { return false; }
+    inline bool operator==(const NullBusId&, const NullBusId&) { return true; }
+    inline bool operator!=(const NullBusId&, const NullBusId&) { return false; }
     /// @endcond
 
     /**
      * Indicates that EBusTraits::BusIdOrderCompare is not set.
-     * EBuses with ordered address IDs must specify a function for 
+     * EBuses with ordered address IDs must specify a function for
      * EBusTraits::BusIdOrderCompare.
      */
     struct NullBusIdCompare;
@@ -84,10 +84,10 @@ namespace AZ
 
         /**
          * Internal class that contains data about EBusTraits.
-         * @tparam Interface A class whose virtual functions define the events that are 
+         * @tparam Interface A class whose virtual functions define the events that are
          *                   dispatched or received by the EBus.
          * @tparam Traits    A class that inherits from EBusTraits and configures the EBus.
-         *                   This parameter is optional if the `Interface` class inherits from 
+         *                   This parameter is optional if the `Interface` class inherits from
          *                   EBusTraits.
          */
         template <class Interface, class BusTraits>
@@ -149,14 +149,9 @@ namespace AZ
             using MutexType = typename Traits::MutexType;
 
             /**
-             * An address on the EBus.
-             */
-            using EBNode = AZ::Internal::HandlerContainer<Interface, Traits>;
-
-            /**
              * Contains all of the addresses on the EBus.
              */
-            using BusesContainer = AZ::Internal::EBusContainer<EBNode, Traits::AddressPolicy>;
+            using BusesContainer = AZ::Internal::EBusContainer<Interface, Traits>;
 
             /**
              * Locking primitive that is used when executing events in the event queue.
@@ -167,12 +162,12 @@ namespace AZ
             /**
              * Pointer to an address on the bus.
              */
-            using BusPtr = typename EBNode::pointer;
+            using BusPtr = typename BusesContainer::BusPtr;
 
             /**
              * Pointer to a handler node.
              */
-            using HandlerNode = typename EBNode::HandlerNode;
+            using HandlerNode = typename BusesContainer::HandlerNode;
 
             /**
              * Specifies whether the EBus supports an event queue.
@@ -216,86 +211,25 @@ namespace AZ
             using BusPtr = typename Traits::BusPtr;
 
             /**
-             * Dispatches an event to handlers at a specific address.
-             * @param id            Address ID. Handlers that are connected to this ID will receive the event.
-             * @param func          Function pointer of the event to dispatch.
-             * @param args          Function arguments that are passed to each handler.
+             * An event handler that can be attached to multiple addresses.
              */
-            template <class Function, class ... InputArgs>
-            static void Event(const BusIdType& id, Function func, InputArgs&& ... args);
+            using MultiHandler = typename Traits::BusesContainer::MultiHandler;
 
             /**
-             * Dispatches an event to handlers at a specific address and receives results.
-             * @param[out] results  Return value from the event.
-             * @param id            Address ID. Handlers that are connected to this ID will receive the event.
-             * @param func          Function pointer of the event to dispatch.
-             * @param args          Function arguments that are passed to each handler.
+             * Acquires a pointer to an EBus address.
+             * @param[out] ptr A pointer that will point to the specified address
+             * on the EBus. An address lookup can be avoided by calling Event() with
+             * this pointer rather than by passing an ID, but that is only recommended
+             * for performance-critical code.
+             * @param id The ID of the EBus address that the pointer will be bound to.
              */
-            template <class Results, class Function, class ... InputArgs>
-            static void EventResult(Results& results, const BusIdType& id, Function func, InputArgs&& ... args);
-
-            /**
-             * Dispatches an event to handlers at a cached address.
-             * @param ptr           Cached address ID. Handlers that are connected to this ID will receive the event.
-             * @param func          Function pointer of the event to dispatch.
-             * @param args          Function arguments that are passed to each handler.
-             */
-            template <class Function, class ... InputArgs>
-            static void Event(const BusPtr& ptr, Function func, InputArgs&& ... args);
-
-            /**
-             * Dispatches an event to handlers at a cached address and receives results.
-             * @param[out] results  Return value from the event.
-             * @param ptr           Cached address ID. Handlers that are connected to this ID will receive the event.
-             * @param func          Function pointer of the event to dispatch.
-             * @param args          Function arguments that are passed to each handler.
-             */
-            template <class Results, class Function, class ... InputArgs>
-            static void EventResult(Results& results, const BusPtr& ptr, Function func, InputArgs&& ... args);
-
-            /**
-             * Dispatches an event to handlers at a specific address in reverse order.
-             * @param id            Address ID. Handlers that are connected to this ID will receive the event.
-             * @param func          Function pointer of the event to dispatch.
-             * @param args          Function arguments that are passed to each handler.
-             */
-            template <class Function, class ... InputArgs>
-            static void EventReverse(const BusIdType& id, Function func, InputArgs&& ... args);
-
-            /**
-             * Dispatches an event to handlers at a specific address in reverse order and receives results.
-             * @param[out] results  Return value from the event.
-             * @param id            Address ID. Handlers that are connected to this ID will receive the event.
-             * @param func          Function pointer of the event to dispatch.
-             * @param args          Function arguments that are passed to each handler.
-             */
-            template <class Results, class Function, class ... InputArgs>
-            static void EventResultReverse(Results& results, const BusIdType& id, Function func, InputArgs&& ... args);
-
-            /**
-             * Dispatches an event to handlers at a cached address in reverse order.
-             * @param ptr           Cached address ID. Handlers that are connected to this ID will receive the event.
-             * @param func          Function pointer of the event to dispatch.
-             * @param args          Function arguments that are passed to each handler.
-             */
-            template <class Function, class ... InputArgs>
-            static void EventReverse(const BusPtr& ptr, Function func, InputArgs&& ... args);
-
-            /**
-             * Dispatches an event to handlers at a cached address in reverse order and receives results.
-             * @param[out] results  Return value from the event.
-             * @param ptr           Cached address ID. Handlers that are connected to this ID will receive the event.
-             * @param func          Function pointer of the event to dispatch.
-             * @param args          Function arguments that are passed to each handler.
-             */
-            template <class Results, class Function, class ... InputArgs>
-            static void EventResultReverse(Results& results, const BusPtr& ptr, Function func, InputArgs&& ... args);
+            static void Bind(BusPtr& ptr, const BusIdType& id);
         };
 
         /**
-         * Provides functionality that requires enumerating over handlers that are connected 
-         * to an EBus. It can enumerate over all handlers or just the handlers that are connected 
-         * to a specific address on an EBus. 
+         * Provides functionality that requires enumerating over handlers that are connected
+         * to an EBus. It can enumerate over all handlers or just the handlers that are connected
+         * to a specific address on an EBus.
          * @tparam Bus       The EBus type.
          * @tparam Traits    A class that inherits from EBusTraits and configures the EBus.
          *                   This parameter may be left unspecified if the `Interface` class
@@ -319,43 +253,14 @@ namespace AZ
             using BusPtr = typename Traits::BusPtr;
 
             /**
-             * Calls a user-defined function on all handlers that are connected to the EBus.
-             * The function signature must be `bool callback(InterfaceType* handler)`.
-             * The function must return true to continue enumerating handlers, or return false to stop.
-             * @param callback  Function to call.
-             */
-            template <class Callback>
-            static void EnumerateHandlers(Callback callback);
-
-            /**
-             * Calls a user-defined function on handlers that are connected to a specific address on the EBus.
-             * The function signature must be `bool callback(InterfaceType* handler)`.
-             * The function must return true to continue enumerating handlers, or return false to stop.
-             * @param id        Address ID. Function will be called on handlers that are connected to this ID.
-             * @param callback  Function to call.
-             */
-            template <class Callback>
-            static void EnumerateHandlersId(const BusIdType& id, Callback callback);
-
-            /**
-             * Calls a user-defined function on handlers at a cached address.
-             * The function signature must be `bool callback(InterfaceType* handler)`.
-             * The function must return true to continue enumerating handlers, or return false to stop.
-             * @param ptr       Cached address ID. Handlers that are connected to this ID will receive the event.
-             * @param callback  Function to call.
-             */
-            template <class Callback>
-            static void EnumerateHandlersPtr(const BusPtr& ptr, Callback callback);
-
-            /**
              * Finds the first handler that is connected to a specific address on the EBus.
-             * This function is only for special cases where you know that a particular 
+             * This function is only for special cases where you know that a particular
              * component's handler is guaranteed to exist.
-             * Even if the returned pointer is valid (not null), it might point to a handler 
-             * that was deleted. Prefer dispatching events using EBusEventer. 
-             * @param id        Address ID. 
-             * @return          A pointer to the first handler on the EBus, even if the handler 
-             *                  was deleted. 
+             * Even if the returned pointer is valid (not null), it might point to a handler
+             * that was deleted. Prefer dispatching events using EBusEventer.
+             * @param id        Address ID.
+             * @return          A pointer to the first handler on the EBus, even if the handler
+             *                  was deleted.
              */
             static typename Traits::InterfaceType* FindFirstHandler(const BusIdType& id);
 
@@ -366,15 +271,15 @@ namespace AZ
              * Even if the returned pointer is valid (not null), it might point to a handler
              * that was deleted. Prefer dispatching events using EBusEventer.
              * @param ptr       Cached address ID.
-             * @return          A pointer to the first handler on the specified EBus address, 
+             * @return          A pointer to the first handler on the specified EBus address,
              *                  even if the handler was deleted.
              */
             static typename Traits::InterfaceType* FindFirstHandler(const BusPtr& ptr);
-            
+
             /**
-             * Returns the total number of event handlers that are connected to a specific 
+             * Returns the total number of event handlers that are connected to a specific
              * address on the EBus.
-             * @param id    Address ID. 
+             * @param id    Address ID.
              * @return      The total number of handlers that are connected to the EBus address.
              */
             static size_t GetNumOfEventHandlers(const BusIdType& id);
@@ -391,43 +296,9 @@ namespace AZ
         struct EBusBroadcaster
         {
             /**
-             * Pointer to an address on the bus.
+             * An event handler that can be attached to only one address at a time.
              */
-            using BusPtr = typename Traits::BusPtr;
-           
-            /**
-             * Dispatches an event to all handlers.
-             * @param func          Function pointer of the event to dispatch.
-             * @param args          Function arguments that are passed to each handler.
-             */
-            template <class Function, class ... InputArgs>
-            static void Broadcast(Function func, InputArgs&& ... args);
-
-            /**
-             * Dispatches an event to all handlers and receives results.
-             * @param[out] results  Return value from the event.
-             * @param func          Function pointer of the event to dispatch.
-             * @param args          Function arguments that are passed to each handler.
-             */
-            template <class Results, class Function, class ... InputArgs>
-            static void BroadcastResult(Results& results, Function func, InputArgs&& ... args);
-
-            /**
-             * Dispatches an event to all handlers in reverse order.
-             * @param func          Function pointer of the event to dispatch.
-             * @param args          Function arguments that are passed to each handler.
-             */
-            template <class Function, class ... InputArgs>
-            static void BroadcastReverse(Function func, InputArgs&& ... args);
-
-            /**
-             * Dispatches an event to all handlers in reverse order and receives results.
-             * @param[out] results  Return value from the event.
-             * @param func          Function pointer of the event to dispatch.
-             * @param args          Function arguments that are passed to each handler.
-             */
-            template <class Results, class Function, class ... InputArgs>
-            static void BroadcastResultReverse(Results& results, Function func, InputArgs&& ... args);
+            using Handler = typename Traits::BusesContainer::Handler;
         };
 
         /**
@@ -438,8 +309,8 @@ namespace AZ
         };
 
         /**
-         * EBus functionality related to the queuing of events and functions. 
-         * This is specifically for queuing events and functions that will 
+         * EBus functionality related to the queuing of events and functions.
+         * This is specifically for queuing events and functions that will
          * be broadcast to all handlers on the EBus.
          * @tparam Bus       The EBus type.
          * @tparam Traits    A class that inherits from EBusTraits and configures the EBus.
@@ -449,11 +320,6 @@ namespace AZ
         template <class Bus, class Traits>
         struct EBusBroadcastQueue
         {
-            /**
-             * Pointer to an address on the bus.
-             */
-            using BusPtr = typename Traits::BusPtr;
-
             /**
              * Executes queued events and functions.
              * Execution will occur on the thread that calls this function.
@@ -517,7 +383,7 @@ namespace AZ
              * @param args          Function arguments that are passed to each handler.
              */
             template <class Function, class ... InputArgs>
-            static void QueueBroadcast(Function func, InputArgs&& ... args);
+            static void QueueBroadcast(Function&& func, InputArgs&& ... args);
 
             /**
              * Enqueues an asynchronous event to dispatch to all handlers in reverse order.
@@ -526,29 +392,29 @@ namespace AZ
              * @param args          Function arguments that are passed to each handler.
              */
             template <class Function, class ... InputArgs>
-            static void QueueBroadcastReverse(Function func, InputArgs&& ... args);
+            static void QueueBroadcastReverse(Function&& func, InputArgs&& ... args);
 
             /**
              * Enqueues an arbitrary callable function to be executed asynchronously.
              * The function is not executed until ExecuteQueuedEvents() is called.
              * The function might be unrelated to this EBus or any handlers.
-             * Examples of callable functions are static functions, lambdas, and 
+             * Examples of callable functions are static functions, lambdas, and
              * bound-member functions.
              *
              * One use case is to determine when a batch of queued events has finished.
-             * When the function is executed, we know that all events that were queued   
+             * When the function is executed, we know that all events that were queued
              * before the function have finished executing.
              *
              * @param func Callable function.
              * @param args Arguments for `func`.
              */
             template <class Function, class ... InputArgs>
-            static void QueueFunction(Function func, InputArgs&& ... args);
+            static void QueueFunction(Function&& func, InputArgs&& ... args);
         };
 
         /**
-         * Enqueues asynchronous events to dispatch to handlers that are connected to 
-         * a specific address on an EBus. 
+         * Enqueues asynchronous events to dispatch to handlers that are connected to
+         * a specific address on an EBus.
          * @tparam Bus       The EBus type.
          * @tparam Traits    A class that inherits from EBusTraits and configures the EBus.
          *                   This parameter may be left unspecified if the `Interface` class
@@ -581,7 +447,7 @@ namespace AZ
              * @param args          Function arguments that are passed to each handler.
              */
             template <class Function, class ... InputArgs>
-            static void QueueEvent(const BusIdType& id, Function func, InputArgs&& ... args);
+            static void QueueEvent(const BusIdType& id, Function&& func, InputArgs&& ... args);
 
             /**
              * Enqueues an asynchronous event to dispatch to handlers at a cached address.
@@ -591,7 +457,7 @@ namespace AZ
              * @param args          Function arguments that are passed to each handler.
              */
             template <class Function, class ... InputArgs>
-            static void QueueEvent(const BusPtr& ptr, Function func, InputArgs&& ... args);
+            static void QueueEvent(const BusPtr& ptr, Function&& func, InputArgs&& ... args);
 
             /**
              * Enqueues an asynchronous event to dispatch to handlers at a specific address in reverse order.
@@ -601,7 +467,7 @@ namespace AZ
              * @param args          Function arguments that are passed to each handler.
              */
             template <class Function, class ... InputArgs>
-            static void QueueEventReverse(const BusIdType& id, Function func, InputArgs&& ... args);
+            static void QueueEventReverse(const BusIdType& id, Function&& func, InputArgs&& ... args);
 
             /**
              * Enqueues an asynchronous event to dispatch to handlers at a cached address in reverse order.
@@ -611,11 +477,11 @@ namespace AZ
              * @param args          Function arguments that are passed to each handler.
              */
             template <class Function, class ... InputArgs>
-            static void QueueEventReverse(const BusPtr& ptr, Function func, InputArgs&& ... args);
+            static void QueueEventReverse(const BusPtr& ptr, Function&& func, InputArgs&& ... args);
         };
 
         /**
-         * Provides functionality that requires enumerating over all handlers that are 
+         * Provides functionality that requires enumerating over all handlers that are
          * connected to an EBus.
          * To enumerate over handlers that are connected to a specific address
          * on the EBus, use a function from EBusEventEnumerator.
@@ -627,15 +493,6 @@ namespace AZ
         template <class Bus, class Traits>
         struct EBusBroadcastEnumerator
         {
-             /**
-              * Calls a user-defined function on all handlers that are connected to the EBus.
-              * The function signature must be `bool callback(InterfaceType* handler)`.
-              * The function must return true to continue enumerating handlers, or return false to stop.
-              * @param callback  Function to call.
-              */
-            template <class Callback>
-            static void EnumerateHandlers(Callback callback);
-
             /**
              * Finds the first handler that is connected to the EBus.
              * This function is only for special cases where you know that a particular
@@ -648,9 +505,13 @@ namespace AZ
             static typename Traits::InterfaceType* FindFirstHandler();
         };
 
+        // This alias is required because you're not allowed to inherit from a nested type.
+        template <typename Bus, typename Traits>
+        using EventDispatcher = typename Traits::BusesContainer::template Dispatcher<Bus>;
+
         /**
          * Base class that provides eventing, queueing, and enumeration functionality
-         * for EBuses that dispatch events to handlers. Supports accessing handlers 
+         * for EBuses that dispatch events to handlers. Supports accessing handlers
          * that are connected to specific addresses.
          * @tparam Bus       The EBus type.
          * @tparam Traits    A class that inherits from EBusTraits and configures the EBus.
@@ -660,7 +521,8 @@ namespace AZ
          */
         template <class Bus, class Traits, class BusIdType>
         struct EBusImpl
-            : public EBusBroadcaster<Bus, Traits>
+            : public EventDispatcher<Bus, Traits>
+            , public EBusBroadcaster<Bus, Traits>
             , public EBusEventer<Bus, Traits>
             , public EBusEventEnumerator<Bus, Traits>
             , public AZStd::Utils::if_c<Traits::EnableEventQueue, EBusEventQueue<Bus, Traits>, EBusNullQueue>::type
@@ -668,8 +530,8 @@ namespace AZ
         };
 
         /**
-         * Base class that provides eventing, queueing, and enumeration functionality 
-         * for EBuses that dispatch events to all of their handlers. 
+         * Base class that provides eventing, queueing, and enumeration functionality
+         * for EBuses that dispatch events to all of their handlers.
          * For a base class that can access handlers at specific addresses, use EBusImpl.
          * @tparam Bus       The EBus type.
          * @tparam Traits    A class that inherits from EBusTraits and configures the EBus.
@@ -678,365 +540,26 @@ namespace AZ
          */
         template <class Bus, class Traits>
         struct EBusImpl<Bus, Traits, NullBusId>
-            : public EBusBroadcaster<Bus, Traits>
+            : public EventDispatcher<Bus, Traits>
+            , public EBusBroadcaster<Bus, Traits>
             , public EBusBroadcastEnumerator<Bus, Traits>
             , public AZStd::Utils::if_c<Traits::EnableEventQueue, EBusBroadcastQueue<Bus, Traits>, EBusNullQueue>::type
         {
         };
 
         template <class Bus, class Traits>
-        template <class Function, class ... InputArgs>
-        inline void EBusEventer<Bus, Traits>::Event(const BusIdType& id, Function func, InputArgs&& ... args)
+        inline void EBusEventer<Bus, Traits>::Bind(BusPtr& ptr, const BusIdType& id)
         {
-            if (auto* context = Bus::GetContext())
-            {
-                if (context->m_routing.m_routers.size())
-                {
-                    // Route the event and skip processing if RouteEvent returns true.
-                    if (context->m_routing.template RouteEvent<typename Bus::RouterCallstackEntry>(&id, false, false, func, args...))
-                    {
-                        return;
-                    }
-                }
-                if (context->m_buses.size())
-                {
-                    typename Bus::Context::DispatchLockGuard lock(context->m_contextMutex);
-                    typename Traits::BusesContainer::iterator ebIter = context->m_buses.find(id);
-                    if (ebIter != context->m_buses.end())
-                    {
-                        auto& ebBus = *Traits::BusesContainer::toNodePtr(ebIter);
-                        if (ebBus.size())
-                        {
-                            typename Bus::CallstackForwardIterator ebCurrentEvent(ebBus, ebBus.begin(), &ebBus.m_busId);
-                            typename Traits::EBNode::iterator ebEnd = ebBus.end();
-                            while (ebCurrentEvent.m_iterator != ebEnd)
-                            {
-                                ((*ebCurrentEvent.m_iterator++)->*func)(args...);
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        template <class Bus, class Traits>
-        template <class Results, class Function, class ... InputArgs>
-        inline void EBusEventer<Bus, Traits>::EventResult(Results& results, const BusIdType& id, Function func, InputArgs&& ... args)
-        {
-            if (auto* context = Bus::GetContext())
-            {
-                if (context->m_routing.m_routers.size())
-                {
-                    // Route the event and skip processing if RouteEvent returns true.
-                    if (context->m_routing.template RouteEvent<typename Bus::RouterCallstackEntry>(&id, false, false, func, args...))
-                    {
-                        return;
-                    }
-                }
-                if (context->m_buses.size())
-                {
-                    typename Bus::Context::DispatchLockGuard lock(context->m_contextMutex);
-                    typename Traits::BusesContainer::iterator ebIter = context->m_buses.find(id);
-                    if (ebIter != context->m_buses.end())
-                    {
-                        auto& ebBus = *Traits::BusesContainer::toNodePtr(ebIter);
-                        if (ebBus.size())
-                        {
-                            typename Bus::CallstackForwardIterator ebCurrentEvent(ebBus, ebBus.begin(), &ebBus.m_busId);
-                            typename Traits::EBNode::iterator ebEnd = ebBus.end();
-                            while (ebCurrentEvent.m_iterator != ebEnd)
-                            {
-                                results = ((*ebCurrentEvent.m_iterator++)->*func)(args...);
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        template <class Bus, class Traits>
-        template <class Function, class ... InputArgs>
-        inline void EBusEventer<Bus, Traits>::Event(const BusPtr& ptr, Function func, InputArgs&& ... args)
-        {
-            if (ptr)
-            {
-                auto& ebBus = *ptr;
-                auto* context = Bus::GetContext();
-                AZ_Assert(context, "Internal error: context deleted with bind ptr outstanding.");
-                if (context->m_routing.m_routers.size())
-                {
-                    // Route the event and skip processing if RouteEvent returns true.
-                    if (context->m_routing.template RouteEvent<typename Bus::RouterCallstackEntry>(&ebBus.m_busId, false, false, func, args...))
-                    {
-                        return;
-                    }
-                }
-                if (ebBus.size())
-                {
-                    typename Bus::Context::DispatchLockGuard lock(context->m_contextMutex);
-                    typename Bus::CallstackForwardIterator ebCurrentEvent(ebBus, ebBus.begin(), &ebBus.m_busId);
-                    typename Traits::EBNode::iterator ebEnd = ebBus.end();
-                    while (ebCurrentEvent.m_iterator != ebEnd)
-                    {
-                        ((*ebCurrentEvent.m_iterator++)->*func)(args...);
-                    }
-                }
-            }
-        }
-
-        template <class Bus, class Traits>
-        template <class Results, class Function, class ... InputArgs>
-        inline void EBusEventer<Bus, Traits>::EventResult(Results& results, const BusPtr& ptr, Function func, InputArgs&& ... args)
-        {
-            if (ptr)
-            {
-                auto& ebBus = *ptr;
-                auto* context = Bus::GetContext();
-                AZ_Assert(context, "Internal error: context deleted with bind ptr outstanding.");
-                if (context->m_routing.m_routers.size())
-                {
-                    // Route the event and skip processing if RouteEvent returns true.
-                    if (context->m_routing.template RouteEvent<typename Bus::RouterCallstackEntry>(&ebBus.m_busId, false, false, func, args...))
-                    {
-                        return;
-                    }
-                }
-                if (ebBus.size())
-                {
-                    typename Bus::Context::DispatchLockGuard lock(context->m_contextMutex);
-                    typename Bus::CallstackForwardIterator ebCurrentEvent(ebBus, ebBus.begin(), &ebBus.m_busId);
-                    typename Traits::EBNode::iterator ebEnd = ebBus.end();
-                    while (ebCurrentEvent.m_iterator != ebEnd)
-                    {
-                        results = ((*ebCurrentEvent.m_iterator++)->*func)(args...);
-                    }
-                }
-            }
-        }
-
-        template <class Bus, class Traits>
-        template <class Function, class ... InputArgs>
-        inline void EBusEventer<Bus, Traits>::EventReverse(const BusIdType& id, Function func, InputArgs&& ... args)
-        {
-            if (auto* context = Bus::GetContext())
-            {
-                if (context->m_routing.m_routers.size())
-                {
-                    // Route the event and skip processing if RouteEvent returns true.
-                    if (context->m_routing.template RouteEvent<typename Bus::RouterCallstackEntry>(&id, false, true, func, args...))
-                    {
-                        return;
-                    }
-                }
-                if (context->m_buses.size())
-                {
-                    typename Bus::Context::DispatchLockGuard lock(context->m_contextMutex);
-                    typename Traits::BusesContainer::iterator ebIter = context->m_buses.find(id);
-                    if (ebIter != context->m_buses.end())
-                    {
-                        auto& ebBus = *Traits::BusesContainer::toNodePtr(ebIter);
-                        if (ebBus.size())
-                        {
-                            typename Bus::CallstackReverseIterator ebCurrentEvent(ebBus, ebBus.rbegin(), &ebBus.m_busId);
-                            while (ebCurrentEvent.m_iterator != ebBus.rend())
-                            {
-                                ((*ebCurrentEvent.m_iterator++)->*func)(args...);
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        template <class Bus, class Traits>
-        template <class Results, class Function, class ... InputArgs>
-        inline void EBusEventer<Bus, Traits>::EventResultReverse(Results& results, const BusIdType& id, Function func, InputArgs&& ... args)
-        {
-            if (auto* context = Bus::GetContext())
-            {
-                if (context->m_routing.m_routers.size())
-                {
-                    // Route the event and skip processing if RouteEvent returns true.
-                    if (context->m_routing.template RouteEvent<typename Bus::RouterCallstackEntry>(&id, false, true, func, args...))
-                    {
-                        return;
-                    }
-                }
-                if (context->m_buses.size())
-                {
-                    typename Bus::Context::DispatchLockGuard lock(context->m_contextMutex);
-                    typename Traits::BusesContainer::iterator ebIter = context->m_buses.find(id);
-                    if (ebIter != context->m_buses.end())
-                    {
-                        auto& ebBus = *Traits::BusesContainer::toNodePtr(ebIter);
-                        if (ebBus.size())
-                        {
-                            typename Bus::CallstackReverseIterator ebCurrentEvent(ebBus, ebBus.rbegin(), &ebBus.m_busId);
-                            while (ebCurrentEvent.m_iterator != ebBus.rend())
-                            {
-                                results = ((*ebCurrentEvent.m_iterator++)->*func)(args...);
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        template <class Bus, class Traits>
-        template <class Function, class ... InputArgs>
-        inline void EBusEventer<Bus, Traits>::EventReverse(const BusPtr& ptr, Function func, InputArgs&& ... args)
-        {
-            if (ptr)
-            {
-                auto& ebBus = *ptr;
-                auto* context = Bus::GetContext();
-                AZ_Assert(context, "Internal error: context deleted with bind ptr outstanding.");
-                if (context->m_routing.m_routers.size())
-                {
-                    // Route the event and skip processing if RouteEvent returns true.
-                    if (context->m_routing.template RouteEvent<typename Bus::RouterCallstackEntry>(&ebBus.m_busId, false, true, func, args...))
-                    {
-                        return;
-                    }
-                }
-                if (ebBus.size())
-                {
-                    typename Bus::Context::DispatchLockGuard lock(context->m_contextMutex);
-                    typename Bus::CallstackReverseIterator ebCurrentEvent(ebBus, ebBus.rbegin(), &ebBus.m_busId);
-                    while (ebCurrentEvent.m_iterator != ebBus.rend())
-                    {
-                        ((*ebCurrentEvent.m_iterator++)->*func)(args...);
-                    }
-                }
-            }
-        }
-
-        template <class Bus, class Traits>
-        template <class Results, class Function, class ... InputArgs>
-        inline void EBusEventer<Bus, Traits>::EventResultReverse(Results& results, const BusPtr& ptr, Function func, InputArgs&& ... args)
-        {
-            if (ptr)
-            {
-                auto& ebBus = *ptr;
-                auto* context = Bus::GetContext();
-                AZ_Assert(context, "Internal error: context deleted with bind ptr outstanding.");
-                if (context->m_routing.m_routers.size())
-                {
-                    // Route the event and skip processing if RouteEvent returns true.
-                    if (context->m_routing.template RouteEvent<typename Bus::RouterCallstackEntry>(&ebBus.m_busId, false, true, func, args...))
-                    {
-                        return;
-                    }
-                }
-                if (ebBus.size())
-                {
-                    typename Bus::Context::DispatchLockGuard lock(context->m_contextMutex);
-                    typename Bus::CallstackReverseIterator ebCurrentEvent(ebBus, ebBus.rbegin(), &ebBus);
-                    while (ebCurrentEvent.m_iterator != ebBus.rend())
-                    {
-                        results = ((*ebCurrentEvent.m_iterator++)->*func)(args...);
-                    }
-                }
-            }
-        }
-
-        template <class Bus, class Traits>
-        template <class Callback>
-        void EBusEventEnumerator<Bus, Traits>::EnumerateHandlers(Callback callback)
-        {
-            auto* context = Bus::GetContext();
-            if (context && context->m_buses.size())
-            {
-                AZStd::scoped_lock<decltype(context->m_contextMutex)> lock(context->m_contextMutex);
-                auto ebFirstBus = context->m_buses.begin();
-                auto ebLastBus = context->m_buses.end();
-                bool isAbortEnum = false;
-                for (; ebFirstBus != ebLastBus && !isAbortEnum; )
-                {
-                    auto& ebBus = *ebFirstBus;
-                    if (ebBus.size())
-                    {
-                        ebBus.add_ref();
-                        typename Bus::CallstackForwardIterator ebCurrentEvent(ebBus, ebBus.begin(), &ebBus.m_busId);
-                        typename Traits::EBNode::iterator ebEnd = ebBus.end();
-
-                        while (ebCurrentEvent.m_iterator != ebEnd)
-                        {
-                            if (!callback(*ebCurrentEvent.m_iterator++))
-                            {
-                                isAbortEnum = true;
-                                break;
-                            }
-                        }
-                        ++ebFirstBus;
-                        ebBus.release();
-                    }
-                    else
-                    {
-                        ++ebFirstBus;
-                    }
-                }
-            }
-        }
-
-        template <class Bus, class Traits>
-        template <class Callback>
-        void EBusEventEnumerator<Bus, Traits>::EnumerateHandlersId(const BusIdType& id, Callback callback)
-        {
-            auto* context = Bus::GetContext();
-            if (context && context->m_buses.size())
-            {
-                AZStd::scoped_lock<decltype(context->m_contextMutex)> lock(context->m_contextMutex);
-                auto ebIter = context->m_buses.find(id);
-                if (ebIter != context->m_buses.end())
-                {
-                    auto& ebBus = *Traits::BusesContainer::toNodePtr(ebIter);
-                    if (ebBus.size())
-                    {
-                        typename Bus::CallstackForwardIterator ebCurrentEvent(ebBus, ebBus.begin(), &ebBus.m_busId);
-                        typename Traits::EBNode::iterator ebEnd = ebBus.end();
-                        while (ebCurrentEvent.m_iterator != ebEnd)
-                        {
-                            if (!callback(*ebCurrentEvent.m_iterator++))
-                            {
-                                break;
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        template <class Bus, class Traits>
-        template <class Callback>
-        void EBusEventEnumerator<Bus, Traits>::EnumerateHandlersPtr(const BusPtr& ptr, Callback callback)
-        {
-            if (ptr)
-            {
-                auto& ebBus = *ptr;
-                if (ebBus.size())
-                {
-                    auto* context = Bus::GetContext();
-                    AZ_Assert(context, "Internal error: context deleted with bind ptr outstanding.");
-                    AZStd::scoped_lock<decltype(context->m_contextMutex)> lock(context->m_contextMutex);
-                    typename Bus::CallstackForwardIterator ebCurrentEvent(ebBus, ebBus.begin(), &ebBus.m_busId);
-                    typename Traits::EBNode::iterator ebEnd = ebBus.end();
-                    while (ebCurrentEvent.m_iterator != ebEnd)
-                    {
-                        if (!callback(*ebCurrentEvent.m_iterator++))
-                        {
-                            break;
-                        }
-                    }
-                }
-            }
+            auto& context = Bus::GetOrCreateContext();
+            AZStd::scoped_lock<decltype(context.m_contextMutex)> lock(context.m_contextMutex);
+            context.m_buses.Bind(ptr, id);
         }
 
         template <class Bus, class Traits>
         typename Traits::InterfaceType * EBusEventEnumerator<Bus, Traits>::FindFirstHandler(const BusIdType& id)
         {
             typename Traits::InterfaceType* result = nullptr;
-            EnumerateHandlersId(id, [&result](typename Traits::InterfaceType* handler)
+            Bus::EnumerateHandlersId(id, [&result](typename Traits::InterfaceType* handler)
             {
                 result = handler;
                 return false;
@@ -1048,7 +571,7 @@ namespace AZ
         typename Traits::InterfaceType * EBusEventEnumerator<Bus, Traits>::FindFirstHandler(const BusPtr& ptr)
         {
             typename Traits::InterfaceType* result = nullptr;
-            EnumerateHandlersPtr(ptr, [&result](typename Traits::InterfaceType* handler)
+            Bus::EnumerateHandlersPtr(ptr, [&result](typename Traits::InterfaceType* handler)
             {
                 result = handler;
                 return false;
@@ -1056,404 +579,16 @@ namespace AZ
             return result;
         }
 
-        template <class Bus, class Traits>
-        template <class Function, class ... InputArgs>
-        inline void EBusEventQueue<Bus, Traits>::QueueEvent(const BusIdType& id, Function func, InputArgs&& ... args)
-        {
-            AZ_STATIC_ASSERT((AZStd::is_same<typename Bus::QueuePolicy::BusMessageCall, typename AZ::Internal::NullBusMessageCall>::value == false),
-                "This EBus doesn't support queued events! Check 'EnableEventQueue'");
-            auto& context = Bus::GetOrCreateContext(false);
-            if (context.m_routing.m_routers.size())
-            {
-                typename Bus::Context::DispatchLockGuard lock(context.m_contextMutex);
-                // Route the event and skip processing if RouteEvent returns true.
-                if (context.m_routing.template RouteEvent<typename Bus::RouterCallstackEntry>(&id, true, false, func, args...))
-                {
-                    return;
-                }
-            }
-
-            Bus::QueueFunction([id, func, args...]()
-            {
-                Bus::Event(id, func, args...);
-            });
-        }
-
-        template <class Bus, class Traits>
-        template <class Function, class ... InputArgs>
-        inline void EBusEventQueue<Bus, Traits>::QueueEvent(const BusPtr& ptr, Function func, InputArgs&& ... args)
-        {
-            AZ_STATIC_ASSERT((AZStd::is_same<typename Bus::QueuePolicy::BusMessageCall, typename AZ::Internal::NullBusMessageCall>::value == false),
-                "This EBus doesn't support queued events! Check 'EnableEventQueue'");
-            auto* context = Bus::GetContext(false);
-            AZ_Assert(context, "Internal error: context deleted with bind ptr outstanding.");
-            if (context->m_routing.m_routers.size())
-            {
-                typename Bus::Context::DispatchLockGuard lock(context->m_contextMutex);
-                // Route the event and skip processing if RouteEvent returns true.
-                if (context->m_routing.template RouteEvent<typename Bus::RouterCallstackEntry>(&(*ptr).m_busId, true, false, func, args...))
-                {
-                    return;
-                }
-            }
-
-            Bus::QueueFunction([ptr, func, args...]()
-            {
-                Bus::Event(ptr, func, args...);
-            });
-        }
-
-        template <class Bus, class Traits>
-        template <class Function, class ... InputArgs>
-        inline void EBusEventQueue<Bus, Traits>::QueueEventReverse(const BusIdType& id, Function func, InputArgs&& ... args)
-        {
-            AZ_STATIC_ASSERT((AZStd::is_same<typename Bus::QueuePolicy::BusMessageCall, typename AZ::Internal::NullBusMessageCall>::value == false),
-                "This EBus dBus::oesn't support queued events! Check 'EnableEventQueue'");
-            auto& context = Bus::GetOrCreateContext(false);
-            if (context.m_routing.m_routers.size())
-            {
-                typename Bus::Context::DispatchLockGuard lock(context.m_contextMutex);
-                // Route the event and skip processing if RouteEvent returns true.
-                if (context.m_routing.template RouteEvent<typename Bus::RouterCallstackEntry>(&id, true, true, func, args...))
-                {
-                    return;
-                }
-            }
-
-            Bus::QueueFunction([id, func, args...]()
-            {
-                Bus::EventReverse(id, func, args...);
-            });
-        }
-
-        template <class Bus, class Traits>
-        template <class Function, class ... InputArgs>
-        inline void EBusEventQueue<Bus, Traits>::QueueEventReverse(const BusPtr& ptr, Function func, InputArgs&& ... args)
-        {
-            AZ_STATIC_ASSERT((AZStd::is_same<typename Bus::QueuePolicy::BusMessageCall, typename AZ::Internal::NullBusMessageCall>::value == false),
-                "This EBus doesn't support queued events! Check 'EnableEventQueue'");
-            auto* context = Bus::GetContext(false);
-            AZ_Assert(context, "Internal error: context deleted with bind ptr outstanding.");
-            if (context->m_routing.m_routers.size())
-            {
-                typename Bus::Context::DispatchLockGuard lock(context->m_contextMutex);
-                // Route the event and skip processing if RouteEvent returns true.
-                if (context->m_routing.template RouteEvent<typename Bus::RouterCallstackEntry>(&(*ptr).m_busId, true, true, func, args...))
-                {
-                    return;
-                }
-            }
-
-            Bus::QueueFunction([ptr, func, args...]()
-            {
-                Bus::EventReverse(ptr, func, args...);
-            });
-        }
-
-        //=========================================================================
-        // GetNumOfEventHandlers
-        //=========================================================================
         template <class Bus, class Traits>
         size_t EBusEventEnumerator<Bus, Traits>::GetNumOfEventHandlers(const BusIdType& id)
         {
             size_t size = 0;
-            if (auto* context = Bus::GetContext())
+            Bus::EnumerateHandlersId(id, [&size](typename Bus::InterfaceType*)
             {
-                AZStd::scoped_lock<decltype(context->m_contextMutex)> lock(context->m_contextMutex);
-                auto iter = context->m_buses.find(id);
-                if (iter != context->m_buses.end())
-                {
-                    size = Traits::BusesContainer::toNodePtr(iter)->size();
-                }
-            }
-            return size;
-        }
-
-        template <class Bus, class Traits>
-        template <class Function, class ... InputArgs>
-        inline void EBusBroadcaster<Bus, Traits>::Broadcast(Function func, InputArgs&& ... args)
-        {
-            if (auto* context = Bus::GetContext())
-            {
-                if (context->m_routing.m_routers.size())
-                {
-                    // Route the event and skip processing if RouteEvent returns true.
-                    if (context->m_routing.template RouteEvent<typename Bus::RouterCallstackEntry>(nullptr, false, false, func, args...))
-                    {
-                        return;
-                    }
-                }
-                if (context->m_buses.size())
-                {
-                    typename Bus::Context::DispatchLockGuard lock(context->m_contextMutex);
-                    auto ebFirstBus = context->m_buses.begin();
-                    auto ebLastBus = context->m_buses.end();
-                    for (; ebFirstBus != ebLastBus; )
-                    {
-                        auto& ebBus = *ebFirstBus;
-                        if (ebBus.size())
-                        {
-                            ebBus.add_ref();
-                            typename Bus::CallstackForwardIterator ebCurrentEvent(ebBus, ebBus.begin(), &ebBus.m_busId);
-                            typename Traits::EBNode::iterator ebEnd = ebBus.end();
-                            while (ebCurrentEvent.m_iterator != ebEnd)
-                            {
-                                ((*ebCurrentEvent.m_iterator++)->*func)(args...);
-                            }
-                            ++ebFirstBus;
-                            ebBus.release();
-                        }
-                        else
-                        {
-                            ++ebFirstBus;
-                        }
-                    }
-                }
-            }
-        }
-
-        template <class Bus, class Traits>
-        template <class Results, class Function, class ... InputArgs>
-        inline void EBusBroadcaster<Bus, Traits>::BroadcastResult(Results& results, Function func, InputArgs&& ... args)
-        {
-            if (auto* context = Bus::GetContext())
-            {
-                if (context->m_routing.m_routers.size())
-                {
-                    // Route the event and skip processing if RouteEvent returns true.
-                    if (context->m_routing.template RouteEvent<typename Bus::RouterCallstackEntry>(nullptr, false, false, func, args...))
-                    {
-                        return;
-                    }
-                }
-                if (context->m_buses.size())
-                {
-                    typename Bus::Context::DispatchLockGuard lock(context->m_contextMutex);
-                    auto ebFirstBus = context->m_buses.begin();
-                    auto ebLastBus = context->m_buses.end();
-                    for (; ebFirstBus != ebLastBus; )
-                    {
-                        auto& ebBus = *ebFirstBus;
-                        if (ebBus.size())
-                        {
-                            ebBus.add_ref();
-                            typename Bus::CallstackForwardIterator ebCurrentEvent(ebBus, ebBus.begin(), &ebBus.m_busId);
-                            typename Traits::EBNode::iterator ebEnd = ebBus.end();
-                            while (ebCurrentEvent.m_iterator != ebEnd)
-                            {
-                                results = ((*ebCurrentEvent.m_iterator++)->*func)(args...);
-                            }
-                            ++ebFirstBus;
-                            ebBus.release();
-                        }
-                        else
-                        {
-                            ++ebFirstBus;
-                        }
-                    }
-                }
-            }
-        }
-
-        template <class Bus, class Traits>
-        template <class Function, class ... InputArgs>
-        inline void EBusBroadcaster<Bus, Traits>::BroadcastReverse(Function func, InputArgs&& ... args)
-        {
-            if (auto* context = Bus::GetContext())
-            {
-                if (context->m_routing.m_routers.size())
-                {
-                    // Route the event and skip processing if RouteEvent returns true.
-                    if (context->m_routing.template RouteEvent<typename Bus::RouterCallstackEntry>(nullptr, false, true, func, args...))
-                    {
-                        return;
-                    }
-                }
-                if (context->m_buses.size())
-                {
-                    typename Bus::Context::DispatchLockGuard lock(context->m_contextMutex);
-                    auto ebCurrentBus = context->m_buses.rbegin();
-                    for (; ebCurrentBus != context->m_buses.rend(); )
-                    {
-                        auto& ebBus = *ebCurrentBus;
-                        if (ebBus.size())
-                        {
-                            typename Traits::EBNode* iteratorLockedBus = nullptr;
-                            if (ebCurrentBus != context->m_buses.rbegin())
-                            {
-                                // The reverse iterator (ebCurrentBus) internally points to the previous element (the next forward iterator).
-                                // It's important to make sure that this iterator stays valid, so we hold a lock on that element until we 
-                                // have moved to the next one. Moving to the next element will happen after processing current bus. While 
-                                // processing, we can change the bus container (add/remove listeners).
-                                iteratorLockedBus = &*AZStd::prior(ebCurrentBus);
-                                iteratorLockedBus->add_ref();
-                            }
-
-                            ebBus.add_ref(); // Hold a reference to the bus we are processing, in case it gets deleted (remove all handlers).
-                            typename Bus::CallstackReverseIterator ebCurrentEvent(ebBus, ebBus.rbegin(), &ebBus.m_busId);
-                            while (ebCurrentEvent.m_iterator != ebBus.rend())
-                            {
-                                ((*ebCurrentEvent.m_iterator++)->*func)(args...);
-                            }
-                            ebBus.release(); // Release the reference to the bus we are processing. It will be deleted if needed.
-
-                            if (iteratorLockedBus == nullptr) // If iteratorLockedBus is null, ebCurrentBus is rbegin. Make sure we update the iterator.
-                            {
-                                ebCurrentBus = context->m_buses.rbegin();
-                            }
-
-                            // Since rend() internally points to begin(), it might have changed during the message (e.g., bus was removed).  
-                            // Make sure that we are not at the end before moving to the next element, which would be an invalid operation.
-                            if (ebCurrentBus != context->m_buses.rend())
-                            {
-                                // During message processing we could have removed/added buses. Since the reverse iterator points
-                                // to the next forward iterator, the elements it points to can change. In this case, we don't need
-                                // to move the reverse iterator.
-                                if (&*ebCurrentBus == &ebBus)
-                                {
-                                    ++ebCurrentBus; // If we did not remove the bus we just processed, move to the next one.
-                                }
-                            }
-
-                            if (iteratorLockedBus)
-                            {
-                                // We are done moving the ebCurrentBus iterator. It's safe to release the lock on the element the iterator was pointing to.
-                                iteratorLockedBus->release();
-                            }
-                        }
-                        else
-                        {
-                            ++ebCurrentBus;
-                        }
-                    }
-                }
-            }
-        }
-
-        template <class Bus, class Traits>
-        template <class Results, class Function, class ... InputArgs>
-        inline void EBusBroadcaster<Bus, Traits>::BroadcastResultReverse(Results& results, Function func, InputArgs&& ... args)
-        {
-            if (auto* context = Bus::GetContext())
-            {
-                if (context->m_routing.m_routers.size())
-                {
-                    // Route the event and skip processing if RouteEvent returns true.
-                    if (context->m_routing.template RouteEvent<typename Bus::RouterCallstackEntry>(nullptr, false, true, func, args...))
-                    {
-                        return;
-                    }
-                }
-                if (context->m_buses.size())
-                {
-                    typename Bus::Context::DispatchLockGuard lock(context->m_contextMutex);
-                    auto ebCurrentBus = context->m_buses.rbegin();
-                    for (; ebCurrentBus != context->m_buses.rend(); )
-                    {
-                        auto& ebBus = *ebCurrentBus;
-                        if (ebBus.size())
-                        {
-                            typename Traits::EBNode* iteratorLockedBus = nullptr;
-                            if (ebCurrentBus != context->m_buses.rbegin())
-                            {
-                                // The reverse iterator (ebCurrentBus) internally points to the previous element (the next forward iterator).
-                                // It's important to make sure that this iterator stays valid, so we hold a lock on that element until we 
-                                // have moved to the next one. Moving to the next element will happen after processing current bus. While 
-                                // processing, we can change the bus container (add/remove listeners).
-                                iteratorLockedBus = &*AZStd::prior(ebCurrentBus);
-                                iteratorLockedBus->add_ref();
-                            }
-
-                            ebBus.add_ref(); // Hold a reference to the bus we are processing, in case it gets deleted (remove all handlers).
-                            typename Bus::CallstackReverseIterator ebCurrentEvent(ebBus, ebBus.rbegin(), &ebBus.m_busId);
-                            while (ebCurrentEvent.m_iterator != ebBus.rend())
-                            {
-                                results = ((*ebCurrentEvent.m_iterator++)->*func)(args...);
-                            }
-                            ebBus.release(); // Release the reference to the bus we are processing. It will be deleted if needed.
-
-                            if (iteratorLockedBus == nullptr) // If iteratorLockedBus is null, ebCurrentBus is rbegin. Make sure we update the iterator.
-                            {
-                                ebCurrentBus = context->m_buses.rbegin();
-                            }
-
-                            // Since rend() internally points to begin(), it might have changed during the message (e.g., bus was removed).  
-                            // Make sure that we are not at the end before moving to the next element, which would be an invalid operation.
-                            if (ebCurrentBus != context->m_buses.rend())
-                            {
-                                // During message processing we could have removed/added buses. Since the reverse iterator points
-                                // to the next forward iterator, the elements it points to can change. In this case, we don't need
-                                // to move the reverse iterator.
-                                if (&*ebCurrentBus == &ebBus)
-                                {
-                                    ++ebCurrentBus; // If we did not remove the bus we just processed, move to the next one.
-                                }
-                            }
-
-                            if (iteratorLockedBus)
-                            {
-                                // We are done moving the ebCurrentBus iterator. It's safe to release the lock on the element the iterator was pointing to.
-                                iteratorLockedBus->release();
-                            }
-                        }
-                        else
-                        {
-                            ++ebCurrentBus;
-                        }
-                    }
-                }
-            }
-        }
-
-        template <class Bus, class Traits>
-        template <class Callback>
-        void EBusBroadcastEnumerator<Bus, Traits>::EnumerateHandlers(Callback callback)
-        {
-            auto* context = Bus::GetContext();
-            if (context && context->m_buses.size())
-            {
-                AZStd::scoped_lock<decltype(context->m_contextMutex)> lock(context->m_contextMutex);
-                auto ebFirstBus = context->m_buses.begin();
-                auto ebLastBus = context->m_buses.end();
-                bool isAbortEnum = false;
-                for (; ebFirstBus != ebLastBus && !isAbortEnum; )
-                {
-                    typename Traits::EBNode& ebBus = *ebFirstBus;
-                    if (ebBus.size())
-                    {
-                        ebBus.add_ref();
-                        typename Bus::CallstackForwardIterator ebCurrentEvent(ebBus, ebBus.begin(), &ebBus.m_busId);
-                        typename Traits::EBNode::iterator ebEnd = ebBus.end();
-
-                        while (ebCurrentEvent.m_iterator != ebEnd)
-                        {
-                            if (!callback(*ebCurrentEvent.m_iterator++))
-                            {
-                                isAbortEnum = true;
-                                break;
-                            }
-                        }
-                        ++ebFirstBus;
-                        ebBus.release();
-                    }
-                    else
-                    {
-                        ++ebFirstBus;
-                    }
-                }
-            }
-        }
-
-        template <class Bus, class Traits>
-        typename Traits::InterfaceType * EBusBroadcastEnumerator<Bus, Traits>::FindFirstHandler()
-        {
-            typename Traits::InterfaceType* result = nullptr;
-            EnumerateHandlers([&result](typename Traits::InterfaceType* handler)
-            {
-                result = handler;
-                return false;
+                ++size;
+                return true;
             });
-            return result;
+            return size;
         }
 
         namespace Internal
@@ -1464,33 +599,37 @@ namespace AZ
                 static void Validate() {}
             };
 
-            template <class Function>
+            template <class Function, bool IsBindExpression = AZStd::is_bind_expression_v<Function>>
             struct ArgumentValidatorHelper
             {
-                static void Validate()
+                constexpr static void Validate()
                 {
                     ValidateHelper(AZStd::make_index_sequence<AZStd::function_traits<Function>::num_args>());
                 }
 
+                template<typename T>
+                using is_non_const_lvalue_reference = AZStd::integral_constant<bool, AZStd::is_lvalue_reference<T>::value && !AZStd::is_const<AZStd::remove_reference_t<T>>::value>;
+
                 template <size_t... ArgIndices>
-                static void ValidateHelper(AZStd::index_sequence<ArgIndices...>)
+                constexpr static void ValidateHelper(AZStd::index_sequence<ArgIndices...>)
                 {
-                    AZ_STATIC_ASSERT(!(AZStd::sequence_or<AZStd::is_reference, AZStd::function_traits_get_arg_t<Function, ArgIndices>...>::value), "It is not safe to queue a function call with ref/const ref arguments");
+                    static_assert(!AZStd::disjunction_v<is_non_const_lvalue_reference<AZStd::function_traits_get_arg_t<Function, ArgIndices>>...>,
+                        "It is not safe to queue a function call with non-const lvalue ref arguments");
                 }
             };
 
-            // bind_t has already copied/bound its arguments, we can't validate them further in any reasonable way
-            template <class R, class F, class L>
-            struct ArgumentValidatorHelper<AZStd::Internal::bind_t<R, F, L>>
+            // bind has already copied/bound its arguments, we can't validate them further in any reasonable way
+            template <class Function>
+            struct ArgumentValidatorHelper<Function, true>
             {
-                static void Validate() {}
+                constexpr static void Validate() {}
             };
 
             template <class Function>
             struct QueueFunctionArgumentValidator<Function, false>
             {
                 using Validator = ArgumentValidatorHelper<Function>;
-                static void Validate()
+                constexpr static void Validate()
                 {
                     Validator::Validate();
                 }
@@ -1499,65 +638,89 @@ namespace AZ
 
         template <class Bus, class Traits>
         template <class Function, class ... InputArgs>
-        inline void EBusBroadcastQueue<Bus, Traits>::QueueBroadcast(Function func, InputArgs&& ... args)
+        inline void EBusEventQueue<Bus, Traits>::QueueEvent(const BusIdType& id, Function&& func, InputArgs&& ... args)
         {
-            AZ_STATIC_ASSERT((AZStd::is_same<typename Bus::QueuePolicy::BusMessageCall, typename AZ::Internal::NullBusMessageCall>::value == false),
-                "This EBus doesn't support queued events! Check 'EnableEventQueue'");
             Internal::QueueFunctionArgumentValidator<Function, Traits::EnableQueuedReferences>::Validate();
-            auto& context = Bus::GetOrCreateContext(false);
-            if (context.m_routing.m_routers.size())
-            {
-                typename Bus::Context::DispatchLockGuard lock(context.m_contextMutex);
-                // Route the event and skip processing if RouteEvent returns true.
-                if (context.m_routing.template RouteEvent<typename Bus::RouterCallstackEntry>(nullptr, true, false, func, args...))
-                {
-                    return;
-                }
-            }
-
-            Bus::QueueFunction([func, args...]()
-            {
-                Bus::Broadcast(func, args...);
-            });
+            using Eventer = void(*)(const BusIdType&, Function&&, InputArgs&&...);
+            Bus::QueueFunction(static_cast<Eventer>(&Bus::Event), id, AZStd::forward<Function>(func), AZStd::forward<InputArgs>(args)...);
         }
 
         template <class Bus, class Traits>
         template <class Function, class ... InputArgs>
-        inline void EBusBroadcastQueue<Bus, Traits>::QueueBroadcastReverse(Function func, InputArgs&& ... args)
+        inline void EBusEventQueue<Bus, Traits>::QueueEvent(const BusPtr& ptr, Function&& func, InputArgs&& ... args)
         {
-            AZ_STATIC_ASSERT((AZStd::is_same<typename Bus::QueuePolicy::BusMessageCall, typename AZ::Internal::NullBusMessageCall>::value == false),
-                "This EBus doesn't support queued events! Check 'EnableEventQueue'");
             Internal::QueueFunctionArgumentValidator<Function, Traits::EnableQueuedReferences>::Validate();
-            auto& context = Bus::GetOrCreateContext(false);
-            if (context.m_routing.m_routers.size())
-            {
-                typename Bus::Context::DispatchLockGuard lock(context.m_contextMutex);
-                // Route the event and skip processing if RouteEvent returns true.
-                if (context.m_routing.template RouteEvent<typename Bus::RouterCallstackEntry>(nullptr, true, true, func, args...))
-                {
-                    return;
-                }
-            }
-
-            Bus::QueueFunction([func, args...]()
-            {
-                Bus::BroadcastReverse(func, args...);
-            });
+            using Eventer = void(*)(const BusPtr&, Function&&, InputArgs&&...);
+            Bus::QueueFunction(static_cast<Eventer>(&Bus::Event), ptr, AZStd::forward<Function>(func), AZStd::forward<InputArgs>(args)...);
         }
 
         template <class Bus, class Traits>
         template <class Function, class ... InputArgs>
-        inline void EBusBroadcastQueue<Bus, Traits>::QueueFunction(Function func, InputArgs&& ... args)
+        inline void EBusEventQueue<Bus, Traits>::QueueEventReverse(const BusIdType& id, Function&& func, InputArgs&& ... args)
+        {
+            Internal::QueueFunctionArgumentValidator<Function, Traits::EnableQueuedReferences>::Validate();
+            using Eventer = void(*)(const BusIdType&, Function&&, InputArgs&&...);
+            Bus::QueueFunction(static_cast<Eventer>(&Bus::EventReverse), id, AZStd::forward<Function>(func), AZStd::forward<InputArgs>(args)...);
+        }
+
+        template <class Bus, class Traits>
+        template <class Function, class ... InputArgs>
+        inline void EBusEventQueue<Bus, Traits>::QueueEventReverse(const BusPtr& ptr, Function&& func, InputArgs&& ... args)
+        {
+            Internal::QueueFunctionArgumentValidator<Function, Traits::EnableQueuedReferences>::Validate();
+            using Eventer = void(*)(const BusPtr&, Function&&, InputArgs&&...);
+            Bus::QueueFunction(static_cast<Eventer>(&Bus::EventReverse), ptr, AZStd::forward<Function>(func), AZStd::forward<InputArgs>(args)...);
+        }
+
+        template <class Bus, class Traits>
+        typename Traits::InterfaceType * EBusBroadcastEnumerator<Bus, Traits>::FindFirstHandler()
+        {
+            typename Traits::InterfaceType* result = nullptr;
+            Bus::EnumerateHandlers([&result](typename Traits::InterfaceType* handler)
+            {
+                result = handler;
+                return false;
+            });
+            return result;
+        }
+
+        template <class Bus, class Traits>
+        template <class Function, class ... InputArgs>
+        inline void EBusBroadcastQueue<Bus, Traits>::QueueBroadcast(Function&& func, InputArgs&& ... args)
+        {
+            Internal::QueueFunctionArgumentValidator<Function, Traits::EnableQueuedReferences>::Validate();
+            using Broadcaster = void(*)(Function&&, InputArgs&&...);
+            Bus::QueueFunction(static_cast<Broadcaster>(&Bus::Broadcast), AZStd::forward<Function>(func), AZStd::forward<InputArgs>(args)...);
+        }
+
+        template <class Bus, class Traits>
+        template <class Function, class ... InputArgs>
+        inline void EBusBroadcastQueue<Bus, Traits>::QueueBroadcastReverse(Function&& func, InputArgs&& ... args)
+        {
+            Internal::QueueFunctionArgumentValidator<Function, Traits::EnableQueuedReferences>::Validate();
+            using Broadcaster = void(*)(Function&&, InputArgs&&...);
+            Bus::QueueFunction(static_cast<Broadcaster>(&Bus::BroadcastReverse), AZStd::forward<Function>(func), AZStd::forward<InputArgs>(args)...);
+        }
+
+#undef EBUS_DO_ROUTING
+
+        template <class Bus, class Traits>
+        template <class Function, class ... InputArgs>
+        inline void EBusBroadcastQueue<Bus, Traits>::QueueFunction(Function&& func, InputArgs&& ... args)
         {
             AZ_STATIC_ASSERT((AZStd::is_same<typename Bus::QueuePolicy::BusMessageCall, typename AZ::Internal::NullBusMessageCall>::value == false),
                 "This EBus doesn't support queued events! Check 'EnableEventQueue'");
-            Internal::QueueFunctionArgumentValidator<Function, Traits::EnableQueuedReferences>::Validate();
+
             auto& context = Bus::GetOrCreateContext(false);
             if (context.m_queue.IsActive())
             {
-                context.m_queue.m_messagesMutex.lock();
-                context.m_queue.m_messages.push(typename Bus::QueuePolicy::BusMessageCall(AZStd::bind(func, args...), typename Traits::AllocatorType()));
-                context.m_queue.m_messagesMutex.unlock();
+                AZStd::scoped_lock<decltype(context.m_queue.m_messagesMutex)> messageLock(context.m_queue.m_messagesMutex);
+                context.m_queue.m_messages.push(typename Bus::QueuePolicy::BusMessageCall(
+                    [func = AZStd::forward<Function>(func), args...]() mutable
+                {
+                    AZStd::invoke(AZStd::forward<Function>(func), AZStd::forward<InputArgs>(args)...);
+                },
+                    typename Traits::AllocatorType()));
             }
         }
     } // namespace BusInternal

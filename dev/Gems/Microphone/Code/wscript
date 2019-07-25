@@ -15,6 +15,8 @@ import os
 def build(bld):
     java_src_root = bld.path.make_node(os.path.join('Source', 'Android', 'java'))
 
+    manifest_src_root = bld.path.make_node(os.path.join('Source', 'Android'))
+
     bld.DefineGem(
         # File lists
         android_file_list   = ['microphone_android.waf_files'],
@@ -30,6 +32,7 @@ def build(bld):
         includes            = [bld.Path('Code/CryEngine/CrySoundSystem/Common')],
 
         android_java_src_path = [ java_src_root.abspath() ],
+        android_manifest_path = [ manifest_src_root.abspath() ],
 
         win_features        = ['crcfix'],
         win_lib             = ['ole32', 'libsamplerate'],

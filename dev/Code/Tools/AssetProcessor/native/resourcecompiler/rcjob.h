@@ -71,12 +71,16 @@ namespace AssetProcessor
     {
         AssetBuilderSDK::ProcessJobRequest m_processJobRequest;
         AssetBuilderSDK::AssetBuilderDesc  m_assetBuilderDesc;
+        QString m_serverKey;
 
         BuilderParams(AssetProcessor::RCJob* job = nullptr)
             : Params(job)
         {}
 
         BuilderParams(const BuilderParams&) = default;
+
+        AZStd::string GetTempJobDirectory() const;
+        QString GetServerKey() const;
     };
 
     //! JobOutputInfo is used to store job related messages.
@@ -184,6 +188,12 @@ namespace AssetProcessor
         static void ExecuteBuilderCommand(BuilderParams builderParams);
         static void AutoFailJob(BuilderParams& builderParams);
         static bool CopyCompiledAssets(BuilderParams& params, AssetBuilderSDK::ProcessJobResponse& response);
+        //! This method will save the processJobResponse and the job log to the temp directory as xml files.
+        //! We will be modifying absolute paths in processJobResponse before saving it to the disk.
+        static bool BeforeStoringJobResult(const BuilderParams& builderParams, AssetBuilderSDK::ProcessJobResponse jobResponse);
+        //! This method will retrieve the processJobResponse and the job log from the temp directory.
+        //! This method is also responsible for emitting the server job logs to the local job log file.
+        static bool AfterRetrievingJobResult(const BuilderParams& builderParams, AssetUtilities::JobLogTraceListener& jobLogTraceListener, AssetBuilderSDK::ProcessJobResponse& jobResponse);
 
         QString GetJobKey() const;
         AZ::Uuid GetBuilderGuid() const;

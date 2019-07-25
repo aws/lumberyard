@@ -73,6 +73,7 @@
 #include <QSettings>
 #include <QThread>
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
+#include <AzCore/Memory/AllocatorManager.h>
 
 #if defined(AZ_PLATFORM_APPLE)
 #include <mach-o/dyld.h>  // Needed for _NSGetExecutablePath
@@ -2348,8 +2349,10 @@ int __cdecl main(int argc, char** argv, char** envp)
 
     AZ::AllocatorInstance<CryStringAllocator>::Destroy();
     AZ::AllocatorInstance<AZ::LegacyAllocator>::Destroy();
-   	AZ::AllocatorInstance<AZ::SystemAllocator>::Destroy();
+    AZ::AllocatorInstance<AZ::SystemAllocator>::Destroy();
 
+    //////////////////////////////////////////////////////////////////////////
+    AZ::AllocatorManager::Destroy();
     return exitCode;
 }
 
@@ -2951,7 +2954,7 @@ void ResourceCompiler::FilterExcludedFiles(std::vector<RcFile>& files)
 {
     const IConfig* const config = &m_multiConfig.getConfig();
 
-    const bool bVerbose = GetVerbosityLevel() > 0;
+    const bool bVerbose = GetVerbosityLevel() > 1;
 
     std::vector<string> excludes;
     {
@@ -3100,7 +3103,7 @@ void ResourceCompiler::CopyFiles(const std::vector<RcFile>& files, bool bNoOverw
             }
         }
 
-        if (GetVerbosityLevel() >= 1)
+        if (GetVerbosityLevel() > 1)
         {
             RCLog("Copying %s to %s", srcFilename.c_str(), trgFilename.c_str());
         }
@@ -3994,7 +3997,12 @@ int ResourceCompiler::EvaluateJobXmlNode(CPropertyVars& properties, XmlNodeRef& 
             std::vector<RcFile> files;
             if (CollectFilesToCompile(fileSpec, files) && !files.empty())
             {
-                CompileFilesBySingleProcess(files);
+                bool result = CompileFilesBySingleProcess(files);
+                if (!result)
+                {
+                    RCLogError("Error: Failed to compile files");
+                    return eRcExitCode_Error;
+                }
             }
         }
         else

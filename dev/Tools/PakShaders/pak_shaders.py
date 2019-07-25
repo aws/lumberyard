@@ -46,14 +46,12 @@ def pak_shaders_in_folder(source_path, output_folder, shader_type, append):
     """
     Creates the shadercache.pak and the shadercachestartup.pak using the shader files located at source_path.
     """
+
     ignore_list = ['shaderlist.txt', 'shadercachemisses.txt']
+
     shaders_cache_startup_filters = ['Common.cfib', 'FXConstantDefs.cfib', 'FXSamplerDefs.cfib', 'FXSetupEnvVars.cfib',
-                                     'FXStreamDefs.cfib', 'fallback.cfxb', 'FixedPipelineEmu.cfxb','Scaleform.cfxb',
-                                     'Stereo.cfxb', 'lookupdata.bin',
-                                     os.path.join('CGPShaders', 'Scaleform@*'),
-                                     os.path.join('CGVShaders', 'Scaleform@*'),
-                                     os.path.join('CGPShaders', 'Scaleform', '*'),
-                                     os.path.join('CGVShaders', 'Scaleform', '*'),
+                                     'FXStreamDefs.cfib', 'fallback.cfxb', 'fallback.fxb', 'FixedPipelineEmu.cfxb',
+                                     'FixedPipelineEmu.fxb', 'Stereo.cfxb', 'Stereo.fxb','lookupdata.bin',
                                      os.path.join('CGPShaders', 'FixedPipelineEmu@*'),
                                      os.path.join('CGVShaders', 'FixedPipelineEmu@*'),
                                      os.path.join('CGPShaders', 'FixedPipelineEmu', '*'),

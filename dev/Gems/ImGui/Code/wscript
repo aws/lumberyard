@@ -41,6 +41,7 @@ def build(bld):
         test_all_file_list=['imgui_test.waf_files'],
         defines=list(config_based_defines),
         linux_rpath = ['$ORIGIN'],
+	restricted_script   = 'update_restricted_parameters',
 
         # Editor Gem configuration
         editor=dict(

@@ -120,4 +120,10 @@ namespace UnitTest
         EXPECT_NE(opt.value(), optMoved.value());
     }
 
+    TEST_F(OptionalFixture, CanAssignFromEmptyOptional)
+    {
+        optional<int> opt1;
+        opt1 = {};
+        EXPECT_FALSE(bool(opt1)) << "Optional should still be empty";
+    }
 } // end namespace UnitTest

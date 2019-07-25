@@ -20,6 +20,8 @@
             "Include/PhysX/Utils.inl",
             "Include/PhysX/MathConversion.h",
             "Include/PhysX/ComponentTypeIds.h",
+            "Include/PhysX/ForceRegionComponentBus.h",
+            "Include/PhysX/ColliderShapeBus.h",
             "Include/PhysX/TriggerEventCallback.h"
         ],
         "Source/Components": [
@@ -38,7 +40,9 @@
             "Source/SphereColliderComponent.h",
             "Source/SphereColliderComponent.cpp",
             "Source/CapsuleColliderComponent.h",
-            "Source/CapsuleColliderComponent.cpp"
+            "Source/CapsuleColliderComponent.cpp",
+            "Source/ForceRegionComponent.cpp",
+            "Source/ForceRegionComponent.h"
         ],
         "Source/Pipeline": [
             "Source/Pipeline/MeshAssetHandler.cpp",
@@ -69,7 +73,11 @@
             "Source/Material.cpp",
             "Source/Material.h",
             "Source/Joint.cpp",
-            "Source/Joint.h"
+            "Source/Joint.h",
+            "Source/ForceRegionForces.cpp",
+            "Source/ForceRegionForces.h",
+            "Source/ForceRegion.cpp",
+            "Source/ForceRegion.h"
         ]
     }
 }

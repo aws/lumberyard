@@ -13,6 +13,7 @@
 */
 
 #include <AzCore/RTTI/RTTI.h>
+#include <AzCore/Serialization/SerializeContext.h>
 
 namespace AZ
 {
@@ -24,11 +25,21 @@ namespace AZ
             {
             public:
                 AZ_RTTI(IManifestObject, "{3B839407-1884-4FF4-ABEA-CA9D347E83F7}");
+                static void Reflect(AZ::ReflectContext* context);
 
                 virtual ~IManifestObject() = 0;
                 virtual void OnUserAdded() {};
                 virtual void OnUserRemoved() const {};
             };
+
+            inline void IManifestObject::Reflect(AZ::ReflectContext* context)
+            {
+                if(AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
+                {
+                    serializeContext->Class<IManifestObject>()
+                        ->Version(0);
+                }
+            }
 
             inline IManifestObject::~IManifestObject()
             {

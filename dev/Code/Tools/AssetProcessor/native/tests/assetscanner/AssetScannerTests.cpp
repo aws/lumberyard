@@ -84,11 +84,11 @@ namespace AssetProcessor
 
         m_assetScanner.reset(new AssetScanner_Test(m_platformConfig.get()));
 
-        QObject::connect(m_assetScanner.get(), &AssetScanner::FilesFound, [this](QSet<QString> fileList)
+        QObject::connect(m_assetScanner.get(), &AssetScanner::FilesFound, [this](QSet<AssetProcessor::AssetFileInfo> fileList)
         {
-            for (QString foundFile : fileList)
+            for (AssetProcessor::AssetFileInfo foundFile : fileList)
             {
-                m_files.insert(foundFile);
+                m_files.insert(foundFile.m_filePath);
             }
         }
         );
@@ -102,11 +102,11 @@ namespace AssetProcessor
         }
         );
 
-        QObject::connect(m_assetScanner.get(), &AssetScanner::FoldersFound, [this](QSet<QString> folderList)
+        QObject::connect(m_assetScanner.get(), &AssetScanner::FoldersFound, [this](QSet<AssetProcessor::AssetFileInfo> folderList)
         {
-            for (QString foundFolder : folderList)
+            for (AssetProcessor::AssetFileInfo foundFolder : folderList)
             {
-                m_folders.insert(foundFolder);
+                m_folders.insert(foundFolder.m_filePath);
             }
         }
         );

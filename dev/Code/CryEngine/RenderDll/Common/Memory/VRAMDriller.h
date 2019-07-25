@@ -53,6 +53,7 @@ namespace Render
             virtual void UnregisterAllCategories();
             virtual void RegisterAllocation(void* address, size_t byteSize, const char* allocationName, VRAMAllocationCategory category, VRAMAllocationSubcategory subcategories);
             virtual void UnregisterAllocation(void* address);
+            virtual void GetCurrentVRAMStats(VRAMAllocationCategory category, VRAMAllocationSubcategory subcategory, AZStd::string& categoryName, AZStd::string& subcategoryName, size_t& numberBytesAllocated, size_t& numberAllocations);
             //////////////////////////////////////////////////////////////////////////
 
             // Subfunctions of RegisterCategory and RegisterAllocation.

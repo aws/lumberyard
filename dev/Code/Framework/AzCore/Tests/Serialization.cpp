@@ -857,19 +857,19 @@ namespace SerializeTestClasses
                         classElement.RemoveElement(i);
                     }
                     else if (elementNode.GetName() == AZ_CRC("emptyInitTextData", 0x17b55a4f)
-                             || elementNode.GetName() == AZ_CRC("listInt", 0x4fbe090a)
-                             || elementNode.GetName() == AZ_CRC("setInt", 0x62eb1299)
-                             || elementNode.GetName() == AZ_CRC("usetInt")
-                             || elementNode.GetName() == AZ_CRC("umultisetInt")
-                             || elementNode.GetName() == AZ_CRC("mapIntFloat", 0xb558ac3f)
-                             || elementNode.GetName() == AZ_CRC("umapIntFloat")
-                             || elementNode.GetName() == AZ_CRC("umultimapIntFloat")
-                             || elementNode.GetName() == AZ_CRC("byteStream", 0xda272a22)
-                             || elementNode.GetName() == AZ_CRC("bitSet", 0x9dd4d1cb)
-                             || elementNode.GetName() == AZ_CRC("sharedPtr", 0x033de7f0)
-                             || elementNode.GetName() == AZ_CRC("intrusivePtr", 0x20733e45)
-                             || elementNode.GetName() == AZ_CRC("uniquePtr", 0xdb6f5bd3)
-                             || elementNode.GetName() == AZ_CRC("forwardListInt", 0xf54c1600)
+                            || elementNode.GetName() == AZ_CRC("listInt", 0x4fbe090a)
+                            || elementNode.GetName() == AZ_CRC("setInt", 0x62eb1299)
+                            || elementNode.GetName() == AZ_CRC("usetInt")
+                            || elementNode.GetName() == AZ_CRC("umultisetInt")
+                            || elementNode.GetName() == AZ_CRC("mapIntFloat", 0xb558ac3f)
+                            || elementNode.GetName() == AZ_CRC("umapIntFloat")
+                            || elementNode.GetName() == AZ_CRC("umultimapIntFloat")
+                            || elementNode.GetName() == AZ_CRC("byteStream", 0xda272a22)
+                            || elementNode.GetName() == AZ_CRC("bitSet", 0x9dd4d1cb)
+                            || elementNode.GetName() == AZ_CRC("sharedPtr", 0x033de7f0)
+                            || elementNode.GetName() == AZ_CRC("intrusivePtr", 0x20733e45)
+                            || elementNode.GetName() == AZ_CRC("uniquePtr", 0xdb6f5bd3)
+                            || elementNode.GetName() == AZ_CRC("forwardListInt", 0xf54c1600)
                             || elementNode.GetName() == AZ_CRC("fixedVectorInt", 0xf7108293)
                             || elementNode.GetName() == AZ_CRC("vectorEnum"))
                     {
@@ -4635,7 +4635,7 @@ namespace UnitTest
                     AZ_TEST_START_ASSERTTEST;
                     success = writer->WriteClass(&badMembers);
                     EXPECT_TRUE(!success);
-                    AZ_TEST_STOP_ASSERTTEST(7); // 1 failure for each member
+                    AZ_TEST_STOP_ASSERTTEST(8); // 1 failure for each member
                 }
                 i++;
             }
@@ -6622,9 +6622,37 @@ namespace UnitTest
             AZStd::string m_rootName;
         };
 
+        struct RootElementMemoryTracker
+        {
+            AZ_TYPE_INFO(RootElementMemoryTracker, "{772D354F-F6EB-467F-8FA7-9086DDD58324}");
+            AZ_CLASS_ALLOCATOR(RootElementMemoryTracker, AZ::SystemAllocator, 0);
+
+            RootElementMemoryTracker()
+            {
+                ++s_allocatedInstance;
+            }
+            ~RootElementMemoryTracker()
+            {
+                --s_allocatedInstance;
+            }
+
+            static void Reflect(ReflectContext* context)
+            {
+                if (auto* serializeContext = azrtti_cast<SerializeContext*>(context))
+                {
+                    //Reflected Template classes must be reflected in one field
+                    serializeContext->Class<RootElementMemoryTracker>();
+                }
+            }
+
+            static int32_t s_allocatedInstance;
+        };
+
     protected:
         AZStd::unique_ptr<AZ::SerializeContext> m_serializeContext;
     };
+
+    int32_t ObjectStreamSerialization::RootElementMemoryTracker::s_allocatedInstance;
 
     TEST_F(ObjectStreamSerialization, NewerVersionThanSupportedTest)
     {
@@ -6943,6 +6971,129 @@ namespace UnitTest
         }
     }
 
+    TEST_F(ObjectStreamSerialization, LoadObjectFromStreamInPlaceFailureDoesNotLeak)
+    {
+        RootElementMemoryTracker::Reflect(m_serializeContext.get());
+
+        AZStd::vector<AZ::u8> byteBuffer;
+        AZ::IO::ByteContainerStream<decltype(byteBuffer)> byteStream(&byteBuffer);
+        {
+            RootElementMemoryTracker saveTracker;
+            EXPECT_TRUE(AZ::Utils::SaveObjectToStream(byteStream, AZ::DataStream::ST_BINARY, &saveTracker, m_serializeContext.get()));
+            byteStream.Seek(0, AZ::IO::GenericStream::SeekMode::ST_SEEK_BEGIN);
+        }
+
+        // Attempt to load a RootElementMemoryTracker into an int64_t
+        int64_t loadTracker;
+        AZ_TEST_START_ASSERTTEST;
+        EXPECT_FALSE(AZ::Utils::LoadObjectFromStreamInPlace(byteStream, loadTracker, m_serializeContext.get()));
+        AZ_TEST_STOP_ASSERTTEST(1);
+        EXPECT_EQ(0U, RootElementMemoryTracker::s_allocatedInstance);
+    }
+
+
+    struct ClassWithObjectStreamCallback
+    {
+        AZ_TYPE_INFO(ClassWithObjectStreamCallback, "{780F96D2-9907-439D-94B2-60B915BC12F6}");
+        AZ_CLASS_ALLOCATOR(ClassWithObjectStreamCallback, AZ::SystemAllocator, 0);
+
+        ClassWithObjectStreamCallback() = default;
+        ClassWithObjectStreamCallback(int32_t value)
+            : m_value{ value }
+        {}
+
+        static void ReflectWithEventHandler(ReflectContext* context, SerializeContext::IEventHandler* eventHandler)
+        {
+            if (auto serializeContext = azrtti_cast<SerializeContext*>(context))
+            {
+                //Reflected Template classes must be reflected in one field
+                serializeContext->Class<ClassWithObjectStreamCallback>()
+                    ->EventHandler(eventHandler)
+                    ->Field("m_value", &ClassWithObjectStreamCallback::m_value)
+                    ;
+            }
+        }
+
+        class ObjectStreamEventHandler
+            : public SerializeContext::IEventHandler
+        {
+        public:
+            MOCK_METHOD1(OnLoadedFromObjectStream, void(void*));
+            MOCK_METHOD1(OnObjectCloned, void(void*));
+        };
+
+        int32_t m_value{};
+    };
+
+    TEST_F(ObjectStreamSerialization, OnLoadedFromObjectStreamIsInvokedForObjectStreamLoading)
+    {
+        ClassWithObjectStreamCallback::ObjectStreamEventHandler mockEventHandler;
+        EXPECT_CALL(mockEventHandler, OnLoadedFromObjectStream(testing::_)).Times(1);
+        ClassWithObjectStreamCallback::ReflectWithEventHandler(m_serializeContext.get(), &mockEventHandler);
+
+        AZStd::vector<AZ::u8> byteBuffer;
+        AZ::IO::ByteContainerStream<decltype(byteBuffer)> byteStream(&byteBuffer);
+        {
+            ClassWithObjectStreamCallback saveObject{ 1234349 };
+            AZ::Utils::SaveObjectToStream(byteStream, AZ::DataStream::ST_BINARY, &saveObject, m_serializeContext.get());
+            byteStream.Seek(0, AZ::IO::GenericStream::SeekMode::ST_SEEK_BEGIN);
+        }
+
+        ClassWithObjectStreamCallback loadObject;
+        AZ::Utils::LoadObjectFromStreamInPlace(byteStream, loadObject, m_serializeContext.get());
+    }
+
+    TEST_F(ObjectStreamSerialization, OnLoadedFromObjectStreamIsNotInvokedForCloneObject)
+    {
+        ClassWithObjectStreamCallback::ObjectStreamEventHandler mockEventHandler;
+        EXPECT_CALL(mockEventHandler, OnLoadedFromObjectStream(testing::_)).Times(0);
+        EXPECT_CALL(mockEventHandler, OnObjectCloned(testing::_)).Times(1);
+        ClassWithObjectStreamCallback::ReflectWithEventHandler(m_serializeContext.get(), &mockEventHandler);
+
+        AZStd::vector<AZ::u8> byteBuffer;
+        AZ::IO::ByteContainerStream<decltype(byteBuffer)> byteStream(&byteBuffer);
+        ClassWithObjectStreamCallback saveObject{ 5 };
+
+        ClassWithObjectStreamCallback cloneObject;
+        m_serializeContext->CloneObjectInplace(cloneObject, &saveObject);
+    }
+
+    TEST_F(ObjectStreamSerialization, OnClonedObjectIsInvokedForCloneObject)
+    {
+        ClassWithObjectStreamCallback::ObjectStreamEventHandler mockEventHandler;
+        EXPECT_CALL(mockEventHandler, OnObjectCloned(testing::_)).Times(2);
+        ClassWithObjectStreamCallback::ReflectWithEventHandler(m_serializeContext.get(), &mockEventHandler);
+
+        AZStd::vector<AZ::u8> byteBuffer;
+        AZ::IO::ByteContainerStream<decltype(byteBuffer)> byteStream(&byteBuffer);
+        ClassWithObjectStreamCallback saveObject{ 5 };
+
+        ClassWithObjectStreamCallback cloneObject;
+        m_serializeContext->CloneObjectInplace(cloneObject, &saveObject);
+        
+        // Cloning the cloned object should increase the newly cloned object m_value by one again
+        ClassWithObjectStreamCallback secondCloneObject;
+        m_serializeContext->CloneObjectInplace(secondCloneObject, &cloneObject);
+    }
+
+    TEST_F(ObjectStreamSerialization, OnClonedObjectIsNotInvokedForObjectStreamLoading)
+    {
+        ClassWithObjectStreamCallback::ObjectStreamEventHandler mockEventHandler;
+        EXPECT_CALL(mockEventHandler, OnObjectCloned(testing::_)).Times(0);
+        EXPECT_CALL(mockEventHandler, OnLoadedFromObjectStream(testing::_)).Times(1);
+        ClassWithObjectStreamCallback::ReflectWithEventHandler(m_serializeContext.get(), &mockEventHandler);
+
+        AZStd::vector<AZ::u8> byteBuffer;
+        AZ::IO::ByteContainerStream<decltype(byteBuffer)> byteStream(&byteBuffer);
+        {
+            ClassWithObjectStreamCallback saveObject{ -396320 };
+            AZ::Utils::SaveObjectToStream(byteStream, AZ::DataStream::ST_BINARY, &saveObject, m_serializeContext.get());
+            byteStream.Seek(0, AZ::IO::GenericStream::SeekMode::ST_SEEK_BEGIN);
+        }
+
+        ClassWithObjectStreamCallback loadObject;
+        AZ::Utils::LoadObjectFromStreamInPlace(byteStream, loadObject, m_serializeContext.get());
+    }
 
     class GenericClassInfoExplicitReflectFixture
         : public AllocatorsFixture
@@ -8051,7 +8202,6 @@ namespace UnitTest
     > TypesThatShouldBeClearedWhenLoadedInPlace;
     INSTANTIATE_TYPED_TEST_CASE_P(Clears, GenericsLoadInPlaceFixture, TypesThatShouldBeClearedWhenLoadedInPlace);
 
-    
     //class AssetSerializationTest : public SerializeTest
     //{
     //public:

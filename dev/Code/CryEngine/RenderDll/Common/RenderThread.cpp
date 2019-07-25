@@ -30,6 +30,7 @@
 #define RENDERTHREAD_CPP_SECTION_5 5
 #define RENDERTHREAD_CPP_SECTION_6 6
 #define RENDERTHREAD_CPP_SECTION_7 7
+#define RENDERTHREAD_CPP_SECTION_8 8
 #endif
 
 #if !defined(NULL_RENDERER)
@@ -1547,20 +1548,6 @@ void SRenderThread::RC_SetCamera()
     }
 }
 
-void SRenderThread::RC_PrepareLevelTexStreaming()
-{
-    AZ_TRACE_METHOD();
-    if (IsRenderThread())
-    {
-        gRenDev->RT_PrepareLevelTexStreaming();
-        return;
-    }
-
-    LOADINGLOCK_COMMANDQUEUE
-    byte* p = AddCommand(eRC_PrepareLevelTexStreaming, 0);
-    EndCommand(p);
-}
-
 void SRenderThread::RC_PostLoadLevel()
 {
     AZ_TRACE_METHOD();
@@ -1854,16 +1841,8 @@ void SRenderThread::RC_ReleaseDeviceTexture(CTexture* pTexture)
 
     if (IsRenderThread())
     {
-        if (m_eVideoThreadMode != eVTM_Disabled)
-        {
-            m_rdldLock.Lock();
-            pTexture->RT_ReleaseDevice();
-            m_rdldLock.Unlock();
-        }
-        else
-        {
-            pTexture->RT_ReleaseDevice();
-        }
+        CryOptionalAutoLock<CryMutex> lock(m_lockRenderLoading, m_eVideoThreadMode != eVTM_Disabled);
+        pTexture->RT_ReleaseDevice();
         return;
     }
 
@@ -2251,7 +2230,7 @@ void SRenderThread::EnqueueRenderCommand(RenderCommandCB command)
 
 #pragma warning(push)
 #pragma warning(disable : 4800)
-void SRenderThread::ProcessCommands()
+void SRenderThread::ProcessCommands(bool loadTimeProcessing)
 {
     AZ_TRACE_METHOD();
     CRYPROFILE_SCOPE_PROFILE_MARKER("SRenderThread::ProcessCommands");
@@ -2708,7 +2687,7 @@ void SRenderThread::ProcessCommands()
             break;
         case eRC_CreateDeviceTexture:
         {
-            m_rdldLock.Lock();
+            CryOptionalAutoLock<CryMutex> lock(m_lockRenderLoading, loadTimeProcessing);
             CTexture* pTex = ReadCommand<CTexture*>(n);
             const byte* pData[6];
             for (int i = 0; i < 6; i++)
@@ -2716,7 +2695,6 @@ void SRenderThread::ProcessCommands()
                 pData[i] = ReadCommand<byte*>(n);
             }
             m_bSuccessful = pTex->RT_CreateDeviceTexture(pData);
-            m_rdldLock.Unlock();
         }
         break;
         case eRC_CopyDataToTexture:
@@ -2893,6 +2871,9 @@ void SRenderThread::ProcessCommands()
         break;
         case eRC_AzFunction:
         {
+            // Lock only when processing on the RenderLoadThread - multiple AzFunctions make calls that cause crashes if invoked concurrently with render
+            CryOptionalAutoLock<CryMutex> lock(m_lockRenderLoading, loadTimeProcessing);
+
             // We "build" the command from the buffer memory (instead of copying it)
             RenderCommandCB* command = alias_cast<RenderCommandCB*>(reinterpret_cast<uint32*>(&m_Commands[threadId][n]));
             (*command)();
@@ -2999,6 +2980,10 @@ void SRenderThread::ProcessCommands()
             CShaderResources* pRes = ReadCommand<CShaderResources*>(n);
             uint64 nMaskGen = ReadCommand<uint64>(n);
             uint32 nFlags = ReadCommand<uint32>(n);
+
+            // Lock only when processing on the RenderLoadThread - RT_ParseShader changes data structures used while rendering
+            CryOptionalAutoLock<CryMutex> lock(m_lockRenderLoading, loadTimeProcessing);
+
             gRenDev->m_cEF.RT_ParseShader(pSH, nMaskGen, nFlags, pRes);
             pSH->Release();
             if (pRes)
@@ -3137,12 +3122,6 @@ void SRenderThread::ProcessCommands()
             {
                 pRE->RT_ReadResult_Try(nDefaultNumSamples);
             }
-        }
-        break;
-
-        case eRC_PrepareLevelTexStreaming:
-        {
-            gRenDev->RT_PrepareLevelTexStreaming();
         }
         break;
 
@@ -3304,7 +3283,19 @@ void SRenderThread::Process()
         // Clear stale SRV bindings before processing graphic commands in case there have been textures deleted in previous frames,
         // because simply clearing them during BeginFrame/EndFrame is not sufficient as the graphic commands can be executed without calling BeginFrame/EndFrame
 #if !defined (NULL_RENDERER)
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION RENDERTHREAD_CPP_SECTION_8
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/RenderThread_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/RenderThread_cpp_provo.inl"
+    #endif
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#else
         if (gcpRendD3D->IsDeviceContextValid())
+#endif
         {
             gcpRendD3D->RT_UnbindTMUs();
             gcpRendD3D->RT_UnbindResources();
@@ -3327,7 +3318,8 @@ void SRenderThread::Process()
             //gRenDev->m_fRTTimeEndFrame = 0;
             gRenDev->m_fRTTimeSceneRender = 0;
             gRenDev->m_fRTTimeMiscRender = 0;
-            ProcessCommands();
+
+            ProcessCommands(false /*loadTimeProcessing*/);
 
             CTimeValue TimeAfterProcess = iTimer->GetAsyncTime();
             fT = TimeAfterProcess.GetDifferenceInSeconds(TimeAfterWait);
@@ -3352,6 +3344,9 @@ void SRenderThread::Process()
             gcpRendD3D->BindContextToThread(CryGetCurrentThreadId());
             gRenDev->m_DevBufMan.Sync(frameId); // make sure no request are flying when switching to render loading thread
 
+            // Guarantee default resources
+            gRenDev->InitSystemResources(0);
+
             // Create another render thread;
             SwitchMode(true);
 
@@ -3368,15 +3363,18 @@ void SRenderThread::Process()
         #include "Provo/RenderThread_cpp_provo.inl"
     #endif
 #endif
-
                     frameId += 1;
                     CTimeValue curTime = gEnv->pTimer->GetAsyncTime();
                     float deltaTime = max((curTime - lastTime).GetSeconds(), 0.0f);
                     lastTime = curTime;
-                    gRenDev->m_DevBufMan.Update(frameId, true);
+                    {
+                        CryAutoLock<CryMutex> lock(m_lockRenderLoading);
+                        gRenDev->m_DevBufMan.Update(frameId, true);
+                    }
 
                     if (m_pLoadtimeCallback)
                     {
+                        CryAutoLock<CryMutex> lock(m_lockRenderLoading);
                         m_pLoadtimeCallback->LoadtimeUpdate(deltaTime);
                     }
 
@@ -3384,28 +3382,28 @@ void SRenderThread::Process()
                         ////////////////////////////////////////////////
                         // wait till all SRendItems for this frame have finished preparing
                         const threadID processThreadID = gRenDev->m_RP.m_nProcessThreadID;
+
                         gRenDev->GetFinalizeRendItemJobExecutor(processThreadID)->WaitForCompletion();
+
                         gRenDev->GetFinalizeShadowRendItemJobExecutor(processThreadID)->WaitForCompletion();
 
-                        m_rdldLock.Lock();
-
-                        gRenDev->RT_SwitchToNativeResolutionBackbuffer(false);
-
-                        if (m_pLoadtimeCallback)
                         {
-                            m_pLoadtimeCallback->LoadtimeRender();
+                            CryAutoLock<CryMutex> lock(m_lockRenderLoading);
+
+                            gRenDev->SetViewport(0, 0, gRenDev->GetOverlayWidth(), gRenDev->GetOverlayHeight());
+                            gRenDev->RT_BeginFrame();
+                            SPostEffectsUtils::AcquireFinalCompositeTarget(false);
+                            if (m_pLoadtimeCallback)
+                            {
+                                m_pLoadtimeCallback->LoadtimeRender();
+                            }
+
+                            gRenDev->RT_EndFrame(true /*isLoading*/);
+
+                            // Tick mesh streaming
+                            CRenderMesh::Tick();
                         }
-
-                        gRenDev->m_DevBufMan.ReleaseEmptyBanks(frameId);
-
-                        gRenDev->RT_PresentFast();
-                        CRenderMesh::Tick();
-                        CTexture::RT_LoadingUpdate();
-                        m_rdldLock.Unlock();
                     }
-
-                    // Make sure we aren't running with thousands of FPS with VSync disabled
-                    gRenDev->LimitFramerate(120, true);
 
 #if defined(SUPPORT_DEVICE_INFO_MSG_PROCESSING)
                     gcpRendD3D->DevInfo().ProcessSystemEventQueue();
@@ -3460,7 +3458,9 @@ void SRenderThread::ProcessLoading()
         {
             m_fTimeIdleDuringLoading += fTimeAfterWait - fTime;
         }
-        ProcessCommands();
+
+        ProcessCommands(true /*loadTimeProcessing*/);
+
         SignalFlushFinishedCond();
         float fTimeAfterProcess = iTimer->GetAsyncCurTime();
         gRenDev->m_fTimeProcessedRT[m_nCurThreadProcess] += fTimeAfterProcess - fTimeAfterWait;
@@ -3492,7 +3492,6 @@ void SRenderThread::FlushAndWait()
         return;
     }
 
-    LOADING_TIME_PROFILE_SECTION(iSystem);
     FUNCTION_PROFILER_LEGACYONLY(GetISystem(), PROFILE_RENDERER);
 
     if (gEnv->pStatoscope)

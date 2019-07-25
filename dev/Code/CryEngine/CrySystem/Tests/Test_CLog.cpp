@@ -14,68 +14,133 @@
 #include <AzTest/AzTest.h>
 #include <Log.h>
 
+#include <Mocks/ISystemMock.h>
+#include <Mocks/IRemoteConsoleMock.h>
+
 #include <AzCore/IO/SystemFile.h> // for max path decl
-#include <AzCore/std/parallel/thread.h>
-#include <AzCore/std/parallel/semaphore.h>
+#include <AzCore/Math/Random.h>
+#include <AzCore/Memory/AllocatorScope.h>
 #include <AzCore/UnitTest/UnitTest.h>
-#include <CryPakFileIO.h>
-#include <AzCore/std/functional.h> // for function<> in the find files callback.
+#include <AzCore/UnitTest/Mocks/MockFileIOBase.h>
 
 namespace CLogUnitTests
 {
-    // for fuzzing test, how much work to do?
-    static int s_numTrialsToPerform = 65535; // as much we can do in about a second.
+    using ::testing::NiceMock;
+    using ::testing::_;
+    using ::testing::Return;
+    
+    // for fuzzing test, how much work to do?  Not much, as this must be fast.
+    const int NumTrialsToPerform = 16000;
 
-    class Integ_CLogUnitTests
+    class CLogUnitTests
         : public ::testing::Test
         , public UnitTest::TraceBusRedirector
     {
+    public:
+
+        using CryPrimitivesAllocatorScope = AZ::AllocatorScope<AZ::LegacyAllocator, CryStringAllocator>;
+
         void SetUp() override
         {
+            m_primitiveAllocators.ActivateAllocators();
+            
+            m_priorEnv = gEnv;
+            m_priorFileIO = AZ::IO::FileIOBase::GetInstance();
+
+            m_data = AZStd::make_unique<DataMembers>();
+            m_data->m_stubEnv.pSystem = &m_data->m_system;
+
+            gEnv = &m_data->m_stubEnv;
+
+            // for FileIO, you must set the instance to null before changing it.
+            // this is a way to tell the singleton system that you mean to replace a singleton and its
+            // not a mistake.
+            AZ::IO::FileIOBase::SetInstance(nullptr);
+            AZ::IO::FileIOBase::SetInstance(&m_data->m_fileIOMock);
+
+            ON_CALL(m_data->m_system, GetIRemoteConsole())
+                .WillByDefault(
+                    Return(&m_data->m_remoteConsoleMock));
+
+            AZ::IO::MockFileIOBase::InstallDefaultReturns(m_data->m_fileIOMock);
+
             BusConnect();
         }
-        
+
         void TearDown() override
         {
             BusDisconnect();
+
+            AZ::IO::FileIOBase::SetInstance(nullptr);
+            AZ::IO::FileIOBase::SetInstance(m_priorFileIO);
+
+            m_data.reset();
+
+            // restore state.
+            gEnv = m_priorEnv;
+            m_primitiveAllocators.DeactivateAllocators();
         }
+
+        struct DataMembers
+        {
+            SSystemGlobalEnvironment m_stubEnv;
+            NiceMock<SystemMock> m_system;
+            NiceMock<AZ::IO::MockFileIOBase> m_fileIOMock;
+            NiceMock<IRemoteConsoleMock> m_remoteConsoleMock;
+        };
+
+        AZStd::unique_ptr<DataMembers> m_data;
+        SSystemGlobalEnvironment* m_priorEnv = nullptr;
+        ISystem* m_priorSystem = nullptr;
+        AZ::IO::FileIOBase* m_priorFileIO = nullptr;
+        CryPrimitivesAllocatorScope m_primitiveAllocators;
     };
 
-    TEST_F(Integ_CLogUnitTests, LogAlways_InvalidString_Asserts)
+    TEST_F(CLogUnitTests, LogAlways_InvalidString_Asserts)
     {
         AZ_TEST_START_ASSERTTEST;
-        CLog testLog(gEnv->pSystem);
+        CLog testLog(&m_data->m_system);
         testLog.LogAlways(nullptr);
         AZ_TEST_STOP_ASSERTTEST(1);
     }
 
-    TEST_F(Integ_CLogUnitTests, LogAlways_EmptyString_IgnoresWithoutCrashing)
+    TEST_F(CLogUnitTests, LogAlways_EmptyString_IgnoresWithoutCrashing)
     {
-        CLog testLog(gEnv->pSystem);
+        CLog testLog(&m_data->m_system);
         testLog.LogAlways("");
     }
 
-    TEST_F(Integ_CLogUnitTests, LogAlways_NormalString_NoFileName_DoesNotCrash)
+    TEST_F(CLogUnitTests, LogAlways_NormalString_NoFileName_DoesNotCrash)
     {
-        CLog testLog(gEnv->pSystem);
+        CLog testLog(&m_data->m_system);
         testLog.LogAlways("test");
     }
 
-    TEST_F(Integ_CLogUnitTests, LogAlways_SetFileName_Empty_DoesNotCrash)
+    TEST_F(CLogUnitTests, LogAlways_SetFileName_Empty_DoesNotCrash)
     {
-        CLog testLog(gEnv->pSystem);
+        CLog testLog(&m_data->m_system);
         testLog.SetFileName("", false);
         testLog.LogAlways("test");
     }
 
-    TEST_F(Integ_CLogUnitTests, LogAlways_FuzzTest)
+    TEST_F(CLogUnitTests, LogAlways_FuzzTest)
     {
-        CLog testLog(gEnv->pSystem);
+        CLog testLog(&m_data->m_system);
         AZStd::string randomJunkName;
 
         randomJunkName.resize(128, '\0');
 
-        for (int trialNumber = 0; trialNumber < s_numTrialsToPerform; ++trialNumber)
+        // expect the mock to repeatedly get called.  If we fail this expectation
+        // it means the code is early-outing somewhere and we are not getting coverage.
+        EXPECT_CALL(m_data->m_fileIOMock, Write(_, _, _, _))
+            .WillRepeatedly(
+                Return(AZ::IO::Result(AZ::IO::ResultCode::Success)));
+
+        // don't rely on randomness in unit tests, they need to be repeatable.
+        // the following random generator is not seeded by the time, but by a constant (default 1234).
+        AZ::SimpleLcgRandom randGen;
+
+        for (int trialNumber = 0; trialNumber < NumTrialsToPerform; ++trialNumber)
         {
             for (int randomChar = 0; randomChar < randomJunkName.size(); ++randomChar)
             {
@@ -90,13 +155,28 @@ namespace CLogUnitTests
                 }
                 else
                 {
-                    randomJunkName[randomChar] = (char)(rand() % 256); // this will trigger invalid UTF8 decoding too
+                    randomJunkName[randomChar] = (char)(randGen.GetRandom() % 256); // this will trigger invalid UTF8 decoding too
                 }
             }
             testLog.LogAlways("%s", randomJunkName.c_str());
         }
     }
 
+    TEST_F(CLogUnitTests, LogAlways_SetFileName_Correct_DoesNotCrash_WritesToFile)
+    {
+        CLog testLog(&m_data->m_system);
+        testLog.SetFileName("logfile.log", false);
+
+        // EXPECT a call to the file system - if we dont get a call here, it means something went wrong.
+        // it also expects exactly one call to write.  One call to log should be one call to write,
+        // or else performance will suffer.
+
+        EXPECT_CALL(m_data->m_fileIOMock, Write(_, _, _, _))
+            .WillOnce(
+                Return(AZ::IO::Result(AZ::IO::ResultCode::Success)));
+
+        testLog.LogAlways("test");
+    }
 } // end namespace CLogUnitTests
 
 

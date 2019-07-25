@@ -75,40 +75,40 @@ namespace UnitTest
         AZ_TEST_ASSERT(AzTypeInfo<ExternalClass>::Uuid() == Uuid("{38380915-084B-4886-8D3D-B8439E9E987C}"));
         AZ_TEST_ASSERT(strcmp(AzTypeInfo<ExternalClass>::Name(), "ExternalClass") == 0);
 
-            // templates
-            {
-                Uuid templateUuid = Uuid("{EBFE7ADF-1FCE-47F0-B417-14FE06BAF02D}") + AZ::Internal::AggregateTypes<MyClass, int>::Uuid();
+        // templates
+        {
+            Uuid templateUuid = Uuid("{EBFE7ADF-1FCE-47F0-B417-14FE06BAF02D}") + AZ::Internal::AggregateTypes<MyClass, int>::Uuid();
 
-                typedef MyClassTemplate<MyClass, int> MyClassTemplateType;
+            typedef MyClassTemplate<MyClass, int> MyClassTemplateType;
 
-                AZ_TEST_ASSERT(AzTypeInfo<MyClassTemplateType>::Uuid() == templateUuid);
-                const char* myClassTemplatename = AzTypeInfo<MyClassTemplateType>::Name();
+            AZ_TEST_ASSERT(AzTypeInfo<MyClassTemplateType>::Uuid() == templateUuid);
+            const char* myClassTemplatename = AzTypeInfo<MyClassTemplateType>::Name();
 
-                AZ_TEST_ASSERT(strstr(myClassTemplatename, "MyClassTemplate"));
-                AZ_TEST_ASSERT(strstr(myClassTemplatename, "MyClass"));
-                AZ_TEST_ASSERT(strstr(myClassTemplatename, "int"));
-            }
+            AZ_TEST_ASSERT(strstr(myClassTemplatename, "MyClassTemplate"));
+            AZ_TEST_ASSERT(strstr(myClassTemplatename, "MyClass"));
+            AZ_TEST_ASSERT(strstr(myClassTemplatename, "int"));
+        }
 
 
-            // variadic templates
-            {
-                Uuid templateUuid = Uuid("{60C1D809-09FA-48EB-A9B7-0BD8DBFF21C8}") + AZ::Internal::AggregateTypes<MyClass, int>::Uuid();
+        // variadic templates
+        {
+            Uuid templateUuid = Uuid("{60C1D809-09FA-48EB-A9B7-0BD8DBFF21C8}") + AZ::Internal::AggregateTypes<MyClass, int>::Uuid();
 
-                typedef MyClassVariadicTemplate<MyClass, int> MyClassVariadicTemplateType;
+            typedef MyClassVariadicTemplate<MyClass, int> MyClassVariadicTemplateType;
 
-                AZ_TEST_ASSERT(AzTypeInfo<MyClassVariadicTemplateType>::Uuid() == templateUuid);
-                const char* myClassTemplatename = AzTypeInfo<MyClassVariadicTemplateType>::Name();
+            AZ_TEST_ASSERT(AzTypeInfo<MyClassVariadicTemplateType>::Uuid() == templateUuid);
+            const char* myClassTemplatename = AzTypeInfo<MyClassVariadicTemplateType>::Name();
 
-                AZ_TEST_ASSERT(strstr(myClassTemplatename, "MyClassVariadicTemplate"));
-                AZ_TEST_ASSERT(strstr(myClassTemplatename, "MyClass"));
-                AZ_TEST_ASSERT(strstr(myClassTemplatename, "int"));
-            }
+            AZ_TEST_ASSERT(strstr(myClassTemplatename, "MyClassVariadicTemplate"));
+            AZ_TEST_ASSERT(strstr(myClassTemplatename, "MyClass"));
+            AZ_TEST_ASSERT(strstr(myClassTemplatename, "int"));
+        }
     }
 
     class MyBase
     {
     public:
-        AZ_TYPE_INFO(MyBase, "{6A0855E5-6899-482B-B470-C3E5C13D13F5}")
+        AZ_TYPE_INFO(MyBase, "{6A0855E5-6899-482B-B470-C3E5C13D13F5}");
         virtual ~MyBase() {}
         int dataMyBase;
     };
@@ -120,7 +120,7 @@ namespace UnitTest
         virtual ~MyBase1() {}
         // Event though MyBase doesn't have RTTI we do allow to be noted as a base class, of course it will NOT be
         // part of the RTTI chain. The goal is to allow AZ_RTTI to declare any base classes without worry if they have RTTI or not
-        AZ_RTTI(MyBase1, "{F3F97A32-15D2-48FF-B741-B89EA2DD2280}", MyBase)
+        AZ_RTTI(MyBase1, "{F3F97A32-15D2-48FF-B741-B89EA2DD2280}", MyBase);
         int data1MyBase1;
         int data2MyBase1;
     };
@@ -130,7 +130,7 @@ namespace UnitTest
     {
     public:
         virtual ~MyDerived() {}
-        AZ_RTTI(MyDerived, "{3BE0590A-F20F-4056-96AF-C2F0565C2EA5}", MyBase1)
+        AZ_RTTI(MyDerived, "{3BE0590A-F20F-4056-96AF-C2F0565C2EA5}", MyBase1);
         int dataMyDerived;
     };
 
@@ -138,7 +138,7 @@ namespace UnitTest
     {
     public:
         virtual ~MyDerived1() {}
-        AZ_RTTI(MyDerived1, "{527B6166-1A4F-4782-8D06-F228860B1102}")
+        AZ_RTTI(MyDerived1, "{527B6166-1A4F-4782-8D06-F228860B1102}");
         int datatypename;
     };
 
@@ -147,7 +147,7 @@ namespace UnitTest
     {
     public:
         virtual ~MyDerived2() {}
-        AZ_RTTI(MyDerived2, "{8902C46B-61C5-4294-82A2-06CB61ACA314}", MyDerived)
+        AZ_RTTI(MyDerived2, "{8902C46B-61C5-4294-82A2-06CB61ACA314}", MyDerived);
         int dataMyDerived2;
     };
 
@@ -157,7 +157,7 @@ namespace UnitTest
     {
     public:
         virtual ~MyClassMix() {}
-        AZ_RTTI(MyClassMix, "{F6CDCF25-3161-46AE-A46C-0F9B8A1027AF}", MyDerived2, MyDerived1)
+        AZ_RTTI(MyClassMix, "{F6CDCF25-3161-46AE-A46C-0F9B8A1027AF}", MyDerived2, MyDerived1);
         int dataMix;
     };
 
@@ -165,7 +165,7 @@ namespace UnitTest
     {
     public:
         virtual ~MyClassA() {}
-        AZ_RTTI(MyClassA, "{F2D44607-1BB6-4A6D-8D8B-4FDE27B488CF}")
+        AZ_RTTI(MyClassA, "{F2D44607-1BB6-4A6D-8D8B-4FDE27B488CF}");
         int dataClassA;
     };
 
@@ -173,7 +173,7 @@ namespace UnitTest
     {
     public:
         virtual ~MyClassB() {}
-        AZ_RTTI(MyClassB, "{E46477C8-4833-4F8C-A57A-02EAFA0C33D8}")
+        AZ_RTTI(MyClassB, "{E46477C8-4833-4F8C-A57A-02EAFA0C33D8}");
         int dataClassB;
     };
 
@@ -181,7 +181,7 @@ namespace UnitTest
     {
     public:
         virtual ~MyClassC() {}
-        AZ_RTTI(MyClassC, "{614F230F-1AD0-419D-8376-18891112F55D}")
+        AZ_RTTI(MyClassC, "{614F230F-1AD0-419D-8376-18891112F55D}");
         int dataClassC;
     };
 
@@ -190,7 +190,7 @@ namespace UnitTest
     {
     public:
         virtual ~MyClassD() {}
-        AZ_RTTI(MyClassD, "{8E047831-1445-4D13-8F6F-DD36C871FD05}", MyClassA)
+        AZ_RTTI(MyClassD, "{8E047831-1445-4D13-8F6F-DD36C871FD05}", MyClassA);
         int dataClassD;
     };
 
@@ -203,7 +203,7 @@ namespace UnitTest
     {
     public:
         virtual ~MyClassMaxMix() {}
-        AZ_RTTI(MyClassMaxMix, "{49A7F45B-D039-44ED-A6BF-E500CB84E867}", MyDerived2, MyDerived1, MyClassB, MyClassC, MyClassD)
+        AZ_RTTI(MyClassMaxMix, "{49A7F45B-D039-44ED-A6BF-E500CB84E867}", MyDerived2, MyDerived1, MyClassB, MyClassC, MyClassD);
         int dataMaxMix;
     };
 
@@ -501,6 +501,360 @@ namespace UnitTest
         for (auto& thread : threads)
         {
             thread.join();
+        }
+    }
+
+    static void ExternalRttiEnumHeirarchyHelper(const AZ::TypeId&, void* userData)
+    {
+        auto totalClassesEnumerated = reinterpret_cast<size_t*>(userData);
+        ++*totalClassesEnumerated;
+    }
+
+    class MyBaseExternal
+    {
+    public:
+        AZ_TYPE_INFO(MyBaseExternal, "{F0F36BB2-14E6-4C44-B3D5-E0CBFD783C99}");
+
+        int32_t m_intValue;
+    };
+
+    class MyDerivedExternal
+        : public MyBaseExternal
+    {
+    public:
+        AZ_TYPE_INFO(MyDerivedExternal, "{FFD1C3B7-7957-4270-BF10-700CE8BE2B53}");
+
+        float m_floatValue;
+    };
+
+    class MyConvertibleExternal
+    {
+    public:
+        AZ_TYPE_INFO(MyConvertibleExternal, "{3962F510-309B-4E32-8CE5-6DEE85F351A9}");
+
+        MyConvertibleExternal() = default;
+        MyConvertibleExternal(const MyBaseExternal& baseExternal)
+            : m_baseExternal(baseExternal)
+        {
+        }
+
+        operator MyBaseExternal() const
+        {
+            return m_baseExternal;
+        }
+
+        MyBaseExternal m_baseExternal;
+    };
+
+    class MyBaseIntrusive
+    {
+    public:
+        AZ_RTTI(MyBaseIntrusive, "{06D41B30-CEDB-46C9-BD98-B8672A04F71F}");
+        virtual ~MyBaseIntrusive() = default;
+        uint64_t m_uintValue;
+    };
+
+    class MyDerivedIntrusive
+        : public MyBaseIntrusive
+    {
+    public:
+        AZ_RTTI(MyDerivedIntrusive, "{6F3FA2A5-CD05-424F-8E37-1DEDA7CE8816}", MyBaseIntrusive);
+        virtual ~MyDerivedIntrusive() = default;
+        double m_doubleValue;
+    };
+
+    class MyExternalDerivedFromExternalAndIntrusive
+        : public MyDerivedExternal
+        , public MyDerivedIntrusive
+    {
+    public:
+        AZ_TYPE_INFO(MyExternalDerivedFromExternalAndIntrusive, "{79DC295D-98C5-4FEB-9DC0-0AC3D5A91855}");
+    };
+}
+
+namespace AZ
+{
+    AZ_EXTERNAL_RTTI_SPECIALIZE(UnitTest::MyBaseExternal);
+    AZ_EXTERNAL_RTTI_SPECIALIZE(UnitTest::MyDerivedExternal, UnitTest::MyBaseExternal);
+    AZ_EXTERNAL_RTTI_SPECIALIZE(UnitTest::MyExternalDerivedFromExternalAndIntrusive, UnitTest::MyDerivedExternal, UnitTest::MyDerivedIntrusive);
+    AZ_EXTERNAL_RTTI_SPECIALIZE(UnitTest::MyConvertibleExternal, UnitTest::MyBaseExternal);
+}
+namespace UnitTest
+{
+    class MyIntrusiveDerivedFromExternalAndIntrusive
+        : public MyDerivedExternal
+        , public MyDerivedIntrusive
+    {
+    public:
+        AZ_RTTI(MyIntrusiveDerivedFromExternalAndIntrusive, "{3822CF8D-6AC7-4B71-B755-5C69B9DF5A3C}", MyDerivedExternal, MyDerivedIntrusive);
+        virtual ~MyIntrusiveDerivedFromExternalAndIntrusive() = default;
+    };
+
+
+    TEST_F(Rtti, ExternalRtti)
+    {
+        MyBaseExternal baseInstance{ 7 };
+        MyDerivedExternal derivedInstance;
+        derivedInstance.m_intValue = 15;
+        derivedInstance.m_floatValue = 0.0f;
+        MyConvertibleExternal convertibleInstance(MyBaseExternal{ 24 });
+
+        MyExternalDerivedFromExternalAndIntrusive externalDerivedFromExternalAndIntrusiveInstance;
+        externalDerivedFromExternalAndIntrusiveInstance.m_intValue = -1;
+        externalDerivedFromExternalAndIntrusiveInstance.m_uintValue = 2;
+        externalDerivedFromExternalAndIntrusiveInstance.m_floatValue = 2.0f;
+        externalDerivedFromExternalAndIntrusiveInstance.m_doubleValue = -32.0;
+
+        MyIntrusiveDerivedFromExternalAndIntrusive intrusiveDerivedFromExternalAndIntrusiveInstance;
+        intrusiveDerivedFromExternalAndIntrusiveInstance.m_intValue = -55;
+        intrusiveDerivedFromExternalAndIntrusiveInstance.m_uintValue = 256;
+        intrusiveDerivedFromExternalAndIntrusiveInstance.m_floatValue = -1023.0f;
+        intrusiveDerivedFromExternalAndIntrusiveInstance.m_doubleValue = .0223;
+
+        AZ::IRttiHelper* baseExternal = AZ::GetRttiHelper<MyBaseExternal>();
+        AZ::IRttiHelper* derivedExternal = AZ::GetRttiHelper<MyDerivedExternal>();
+        AZ::IRttiHelper* convertibleExternal = AZ::GetRttiHelper<MyConvertibleExternal>();
+        AZ::IRttiHelper* externalDerivedFromExternalAndIntrusive = AZ::GetRttiHelper<MyExternalDerivedFromExternalAndIntrusive>();
+        AZ::IRttiHelper* intrusiveDerivedFromExternalAndIntrusive = AZ::GetRttiHelper<MyIntrusiveDerivedFromExternalAndIntrusive>();
+
+        ASSERT_NE(nullptr, baseExternal);
+        ASSERT_NE(nullptr, derivedExternal);
+        ASSERT_NE(nullptr, convertibleExternal);
+        ASSERT_NE(nullptr, externalDerivedFromExternalAndIntrusive);
+        ASSERT_NE(nullptr, intrusiveDerivedFromExternalAndIntrusive);
+
+        // Base Class External RTTI
+        {
+            EXPECT_EQ(AZ::AzTypeInfo<MyBaseExternal>::Uuid(), baseExternal->GetTypeId());
+            EXPECT_TRUE(baseExternal->IsTypeOf(AZ::AzTypeInfo<MyBaseExternal>::Uuid()));
+            size_t enumHierarchyTotalClasses{};
+
+            baseExternal->EnumHierarchy(&ExternalRttiEnumHeirarchyHelper, &enumHierarchyTotalClasses);
+            // MyBaseExternal has no other base classes so this count should be 1
+            EXPECT_EQ(1, enumHierarchyTotalClasses);
+        }
+
+        // Derived Class External RTTI
+        {
+            EXPECT_EQ(AZ::AzTypeInfo<MyDerivedExternal>::Uuid(), derivedExternal->GetTypeId());
+            EXPECT_TRUE(derivedExternal->IsTypeOf(AZ::AzTypeInfo<MyDerivedExternal>::Uuid()));
+            EXPECT_TRUE(derivedExternal->IsTypeOf(AZ::AzTypeInfo<MyBaseExternal>::Uuid()));
+            size_t enumHierarchyTotalClasses{};
+
+            derivedExternal->EnumHierarchy(&ExternalRttiEnumHeirarchyHelper, &enumHierarchyTotalClasses);
+            // MyDerivedExternal has MyBaseExternal as a base classes so this count should be 2
+            EXPECT_EQ(2, enumHierarchyTotalClasses);
+
+            // MyDerivedExternal -> MyDerivedExternal - succeeds
+            EXPECT_NE(nullptr, derivedExternal->Cast(&derivedInstance, AZ::AzTypeInfo<MyDerivedExternal>::Uuid()));
+            // MyDerivedExternal -> MyBaseExternal - succeeds
+            EXPECT_NE(nullptr, derivedExternal->Cast(&derivedInstance, AZ::AzTypeInfo<MyBaseExternal>::Uuid()));
+
+            // MyBaseExternal -> MyDerivedExternal - fails
+            EXPECT_EQ(nullptr, baseExternal->Cast<MyDerivedExternal>(&baseInstance));
+
+            // MyBaseExternal -> MyBaseExternal(using derived class RttiHelper)- succeeds
+            EXPECT_NE(nullptr, derivedExternal->Cast(&baseInstance, AZ::AzTypeInfo<MyBaseExternal>::Uuid()));
+
+            // MyBaseExternal -> MyBaseExternal(using RttiCast function which must lookup RTTI information from the derived instance)- fails
+            // The reason why this fails is because the instance data does not have RTTI on it so it must lookup using
+            // using the supplied template type id
+            EXPECT_NE(nullptr, AZ::RttiCast<MyBaseExternal*>(&derivedInstance));
+        }
+
+        // Convertible Class External RTTI
+        {
+            EXPECT_EQ(AZ::AzTypeInfo<MyConvertibleExternal>::Uuid(), convertibleExternal->GetTypeId());
+            EXPECT_TRUE(convertibleExternal->IsTypeOf(AZ::AzTypeInfo<MyConvertibleExternal>::Uuid()));
+            EXPECT_TRUE(convertibleExternal->IsTypeOf(AZ::AzTypeInfo<MyBaseExternal>::Uuid()));
+            size_t enumHierarchyTotalClasses{};
+
+            convertibleExternal->EnumHierarchy(&ExternalRttiEnumHeirarchyHelper, &enumHierarchyTotalClasses);
+            // MyConvertibleExternal specifies "MyBaseExternal" as a base classes even though it really is not,
+            // but EnumHierarchy should still enumerate for the "MyBaseExternal" typeid. Therefore the count should be 2
+            EXPECT_EQ(2, enumHierarchyTotalClasses);
+
+            // MyConvertibleExternal -> MyConvertibleExternal - succeeds
+            EXPECT_NE(nullptr, convertibleExternal->Cast(&convertibleInstance, AZ::AzTypeInfo<MyConvertibleExternal>::Uuid()));
+            // MyConvertibleExternal -> MyBaseExternal - succeeds
+            EXPECT_NE(nullptr, convertibleExternal->Cast(&convertibleInstance, AZ::AzTypeInfo<MyBaseExternal>::Uuid()));
+
+            // MyBaseExternal -> MyConvertibleExternal - fails
+            EXPECT_EQ(nullptr, baseExternal->Cast<MyConvertibleExternal>(&baseInstance));
+
+            // MyBaseExternal -> MyBaseExternal(using convertible class RttiHelper)- succeeds
+            EXPECT_NE(nullptr, convertibleExternal->Cast(&baseInstance, AZ::AzTypeInfo<MyBaseExternal>::Uuid()));
+
+            // MyBaseExternal -> MyBaseExternal(using RttiCast function which must lookup RTTI information from the derived instance)- succeeds
+            EXPECT_NE(nullptr, AZ::RttiCast<MyBaseExternal*>(&derivedInstance));
+        }
+
+        // Derived class with External RTTI which inherits from a class with external RTTI and intrusive RTTI
+        {
+            EXPECT_EQ(AZ::AzTypeInfo<MyExternalDerivedFromExternalAndIntrusive>::Uuid(), externalDerivedFromExternalAndIntrusive->GetTypeId());
+            EXPECT_TRUE(externalDerivedFromExternalAndIntrusive->IsTypeOf(AZ::AzTypeInfo<MyExternalDerivedFromExternalAndIntrusive>::Uuid()));
+            EXPECT_TRUE(externalDerivedFromExternalAndIntrusive->IsTypeOf(AZ::AzTypeInfo<MyDerivedExternal>::Uuid()));
+            EXPECT_TRUE(externalDerivedFromExternalAndIntrusive->IsTypeOf(AZ::AzTypeInfo<MyDerivedIntrusive>::Uuid()));
+            EXPECT_TRUE(externalDerivedFromExternalAndIntrusive->IsTypeOf(AZ::AzTypeInfo<MyBaseExternal>::Uuid()));
+            EXPECT_TRUE(externalDerivedFromExternalAndIntrusive->IsTypeOf(AZ::AzTypeInfo<MyBaseIntrusive>::Uuid()));
+            size_t enumHierarchyTotalClasses{};
+
+            externalDerivedFromExternalAndIntrusive->EnumHierarchy(&ExternalRttiEnumHeirarchyHelper, &enumHierarchyTotalClasses);
+            // MyDerivedFromExternalAndIntrusive inherits from MyDerivedExternal which has one base class with external RTTI.
+            // This adds 2 to the enumeration count.
+            // MyDerivedFromExternalAndIntrusive also inherits from MyDerivedIntrusive which has one base with intrusive RTTI
+            // This adds 2 more the enumeration count. Combining these counts with the one for this class the count value should be 5
+            EXPECT_EQ(5, enumHierarchyTotalClasses);            
+
+            // MyDerivedFromExternalAndIntrusive -> MyDerivedFromExternalAndIntrusive - succeeds
+            EXPECT_NE(nullptr, externalDerivedFromExternalAndIntrusive->Cast(&externalDerivedFromExternalAndIntrusiveInstance, AZ::AzTypeInfo<MyExternalDerivedFromExternalAndIntrusive>::Uuid()));
+            // MyDerivedFromExternalAndIntrusive -> MyDerivedExternal - succeeds
+            EXPECT_NE(nullptr, externalDerivedFromExternalAndIntrusive->Cast(&externalDerivedFromExternalAndIntrusiveInstance, AZ::AzTypeInfo<MyDerivedExternal>::Uuid()));
+
+            // MyDerivedFromExternalAndIntrusive -> MyBaseExternal - succeeds
+            EXPECT_NE(nullptr, externalDerivedFromExternalAndIntrusive->Cast(&externalDerivedFromExternalAndIntrusiveInstance, AZ::AzTypeInfo<MyBaseExternal>::Uuid()));
+
+            // MyDerivedFromExternalAndIntrusive -> MyDerivedIntrusive- succeeds
+            MyDerivedIntrusive* castedDerivedIntrusiveInstance = externalDerivedFromExternalAndIntrusive->Cast<MyDerivedIntrusive>(&externalDerivedFromExternalAndIntrusiveInstance);
+            ASSERT_NE(nullptr, castedDerivedIntrusiveInstance);
+            EXPECT_DOUBLE_EQ(-32.0, castedDerivedIntrusiveInstance->m_doubleValue);
+            castedDerivedIntrusiveInstance->m_doubleValue = -64.0; // Verify that access doesn't crash due to invalid memory address
+            // MyDerivedFromExternalAndIntrusive -> MyBaseIntrusive- succeeds
+            MyBaseIntrusive* castedBaseIntrusiveInstance = externalDerivedFromExternalAndIntrusive->Cast<MyBaseIntrusive>(&externalDerivedFromExternalAndIntrusiveInstance);
+            ASSERT_NE(nullptr, castedBaseIntrusiveInstance);
+            EXPECT_EQ(2U, castedBaseIntrusiveInstance->m_uintValue);
+            castedDerivedIntrusiveInstance->m_uintValue = 4U;
+
+            // MyDerivedExternal -> MyDerivedFromExternalAndIntrusive - fails
+            EXPECT_EQ(nullptr, derivedExternal->Cast<MyExternalDerivedFromExternalAndIntrusive>(&derivedInstance));
+
+            // MyBaseExternal -> MyDerivedFromExternalAndIntrusive - fails
+            EXPECT_EQ(nullptr, baseExternal->Cast<MyExternalDerivedFromExternalAndIntrusive>(&baseInstance));
+
+            // MyBaseExternal -> MyBaseExternal(using externalDerivedFromExternalAndIntrusive class RttiHelper)- succeeds
+            EXPECT_NE(nullptr, externalDerivedFromExternalAndIntrusive->Cast(&baseInstance, AZ::AzTypeInfo<MyBaseExternal>::Uuid()));
+
+            // MyDerivedExternal -> MyBaseExternal(using externalDerivedFromExternalAndIntrusive class RttiHelper)- succeeds
+            EXPECT_NE(nullptr, externalDerivedFromExternalAndIntrusive->Cast(&derivedInstance, AZ::AzTypeInfo<MyBaseExternal>::Uuid()));
+
+            // MyBaseIntrusive -> MyBaseIntrusive(using externalDerivedFromExternalAndIntrusive class RttiHelper)- succeeds
+            MyBaseIntrusive baseIntrusiveInstance;
+            baseIntrusiveInstance.m_uintValue = 3456893U;
+            EXPECT_NE(nullptr, externalDerivedFromExternalAndIntrusive->Cast(&baseIntrusiveInstance, AZ::AzTypeInfo<MyBaseIntrusive>::Uuid()));
+
+            // MyDerivedIntrusive-> MyBaseIntrusive(using externalDerivedFromExternalAndIntrusive class RttiHelper)- succeeds
+            MyDerivedIntrusive derivedIntrusiveInstance;
+            derivedIntrusiveInstance.m_uintValue = 1700U;
+            derivedIntrusiveInstance.m_doubleValue = 24.0f;
+            EXPECT_NE(nullptr, externalDerivedFromExternalAndIntrusive->Cast(&derivedIntrusiveInstance, AZ::AzTypeInfo<MyBaseIntrusive>::Uuid()));
+
+            // Test Rtti Free functions for External class with external Rtti
+            enumHierarchyTotalClasses = 0;
+            AZ::RttiEnumHierarchy<MyExternalDerivedFromExternalAndIntrusive>(&ExternalRttiEnumHeirarchyHelper, &enumHierarchyTotalClasses);
+            EXPECT_EQ(5, enumHierarchyTotalClasses);
+
+            // This should fail
+            EXPECT_EQ(nullptr, AZ::RttiCast<MyExternalDerivedFromExternalAndIntrusive*>(&derivedIntrusiveInstance));
+
+
+            EXPECT_NE(nullptr, AZ::RttiCast<MyExternalDerivedFromExternalAndIntrusive*>(&externalDerivedFromExternalAndIntrusiveInstance));
+            void* baseIntrusiveAddress = AZ::RttiAddressOf(&externalDerivedFromExternalAndIntrusiveInstance, AZ::AzTypeInfo<MyBaseIntrusive>::Uuid());
+            ASSERT_NE(nullptr, baseIntrusiveAddress);
+            EXPECT_EQ(4U, static_cast<MyBaseIntrusive*>(baseIntrusiveAddress)->m_uintValue);
+
+            EXPECT_FALSE(AZ::RttiIsTypeOf(AZ::AzTypeInfo<MyConvertibleExternal>::Uuid(), externalDerivedFromExternalAndIntrusiveInstance));
+            EXPECT_FALSE(AZ::RttiIsTypeOf<MyConvertibleExternal>(externalDerivedFromExternalAndIntrusiveInstance));
+
+            EXPECT_TRUE(AZ::RttiIsTypeOf(AZ::AzTypeInfo<MyDerivedIntrusive>::Uuid(), externalDerivedFromExternalAndIntrusiveInstance));
+            EXPECT_TRUE(AZ::RttiIsTypeOf<MyDerivedExternal>(externalDerivedFromExternalAndIntrusiveInstance));
+            // Check pointer case template specializations for RttiIsTypeOf
+            EXPECT_TRUE(AZ::RttiIsTypeOf(AZ::AzTypeInfo<MyBaseExternal>::Uuid(), &externalDerivedFromExternalAndIntrusiveInstance));
+            EXPECT_TRUE(AZ::RttiIsTypeOf<MyBaseExternal>(&externalDerivedFromExternalAndIntrusiveInstance));
+
+            EXPECT_EQ(AZ::AzTypeInfo<MyExternalDerivedFromExternalAndIntrusive>::Uuid(), AZ::RttiTypeId(externalDerivedFromExternalAndIntrusiveInstance));
+            // Check pointer case template specializations for RttiTypeId
+            EXPECT_EQ(AZ::AzTypeInfo<MyExternalDerivedFromExternalAndIntrusive>::Uuid(), AZ::RttiTypeId(&externalDerivedFromExternalAndIntrusiveInstance));
+        }
+
+        // Derived class with Intrusive RTTI which inherits from a class with external RTTI and intrusive RTTI
+        {
+            EXPECT_EQ(AZ::AzTypeInfo<MyIntrusiveDerivedFromExternalAndIntrusive>::Uuid(), intrusiveDerivedFromExternalAndIntrusive->GetTypeId());
+            EXPECT_TRUE(intrusiveDerivedFromExternalAndIntrusive->IsTypeOf(AZ::AzTypeInfo<MyIntrusiveDerivedFromExternalAndIntrusive>::Uuid()));
+            EXPECT_TRUE(intrusiveDerivedFromExternalAndIntrusive->IsTypeOf(AZ::AzTypeInfo<MyDerivedExternal>::Uuid()));
+            EXPECT_TRUE(intrusiveDerivedFromExternalAndIntrusive->IsTypeOf(AZ::AzTypeInfo<MyDerivedIntrusive>::Uuid()));
+            EXPECT_TRUE(intrusiveDerivedFromExternalAndIntrusive->IsTypeOf(AZ::AzTypeInfo<MyBaseExternal>::Uuid()));
+            EXPECT_TRUE(intrusiveDerivedFromExternalAndIntrusive->IsTypeOf(AZ::AzTypeInfo<MyBaseIntrusive>::Uuid()));
+            size_t enumHierarchyTotalClasses{};
+
+            intrusiveDerivedFromExternalAndIntrusive->EnumHierarchy(&ExternalRttiEnumHeirarchyHelper, &enumHierarchyTotalClasses);
+            // MyIntrusiveDerivedFromExternalAndIntrusive inherits from MyDerivedExternal which has one base class with intrusive RTTI.
+            // This adds 2 to the enumeration count.
+            // MyIntrusiveDerivedFromExternalAndIntrusive also inherits from MyDerivedIntrusive which has one base with intrusive RTTI
+            // This adds 2 more the enumeration count. Combining these counts with the one for this class the count value should be 5
+            EXPECT_EQ(5, enumHierarchyTotalClasses);
+
+            // MyIntrusiveDerivedFromExternalAndIntrusive -> MyIntrusiveDerivedFromExternalAndIntrusive - succeeds
+            EXPECT_NE(nullptr, intrusiveDerivedFromExternalAndIntrusive->Cast(&intrusiveDerivedFromExternalAndIntrusiveInstance, AZ::AzTypeInfo<MyIntrusiveDerivedFromExternalAndIntrusive>::Uuid()));
+            // MyIntrusiveDerivedFromExternalAndIntrusive -> MyDerivedExternal - succeeds
+            EXPECT_NE(nullptr, intrusiveDerivedFromExternalAndIntrusive->Cast(&intrusiveDerivedFromExternalAndIntrusiveInstance, AZ::AzTypeInfo<MyDerivedExternal>::Uuid()));
+
+            // MyIntrusiveDerivedFromExternalAndIntrusive -> MyBaseExternal - succeeds
+            EXPECT_NE(nullptr, intrusiveDerivedFromExternalAndIntrusive->Cast(&intrusiveDerivedFromExternalAndIntrusiveInstance, AZ::AzTypeInfo<MyBaseExternal>::Uuid()));
+
+            // MyIntrusiveDerivedFromExternalAndIntrusive -> MyDerivedIntrusive- succeeds
+            MyDerivedIntrusive* castedDerivedIntrusiveInstance = intrusiveDerivedFromExternalAndIntrusive->Cast<MyDerivedIntrusive>(&intrusiveDerivedFromExternalAndIntrusiveInstance);
+            ASSERT_NE(nullptr, castedDerivedIntrusiveInstance);
+            EXPECT_DOUBLE_EQ(.0223, castedDerivedIntrusiveInstance->m_doubleValue);
+            castedDerivedIntrusiveInstance->m_doubleValue = -64.0; // Verify that access doesn't crash due to invalid memory address
+            // MyIntrusiveDerivedFromExternalAndIntrusive -> MyBaseIntrusive- succeeds
+            MyBaseIntrusive* castedBaseIntrusiveInstance = intrusiveDerivedFromExternalAndIntrusive->Cast<MyBaseIntrusive>(&intrusiveDerivedFromExternalAndIntrusiveInstance);
+            ASSERT_NE(nullptr, castedBaseIntrusiveInstance);
+            EXPECT_EQ(256U, castedBaseIntrusiveInstance->m_uintValue);
+            castedDerivedIntrusiveInstance->m_uintValue = 71U;
+
+            // MyDerivedExternal -> MyIntrusiveDerivedFromExternalAndIntrusive - fails
+            EXPECT_EQ(nullptr, derivedExternal->Cast<MyIntrusiveDerivedFromExternalAndIntrusive>(&derivedInstance));
+
+            // MyBaseExternal -> MyIntrusiveDerivedFromExternalAndIntrusive - fails
+            EXPECT_EQ(nullptr, baseExternal->Cast<MyIntrusiveDerivedFromExternalAndIntrusive>(&baseInstance));
+
+            // MyBaseIntrusive -> MyBaseIntrusive(using intrusiveDerivedFromExternalAndIntrusive class RttiHelper)- succeeds
+            MyBaseIntrusive baseIntrusiveInstance;
+            baseIntrusiveInstance.m_uintValue = 3456893U;
+            EXPECT_NE(nullptr, intrusiveDerivedFromExternalAndIntrusive->Cast(&baseIntrusiveInstance, AZ::AzTypeInfo<MyBaseIntrusive>::Uuid()));
+
+            // MyDerivedIntrusive-> MyBaseIntrusive(using intrusiveDerivedFromExternalAndIntrusive class RttiHelper)- succeeds
+            MyDerivedIntrusive derivedIntrusiveInstance;
+            derivedIntrusiveInstance.m_uintValue = 1700U;
+            derivedIntrusiveInstance.m_doubleValue = 24.0f;
+            EXPECT_NE(nullptr, intrusiveDerivedFromExternalAndIntrusive->Cast(&derivedIntrusiveInstance, AZ::AzTypeInfo<MyBaseIntrusive>::Uuid()));
+
+            // Test Rtti Free functions for class with intrusive Rtti
+            enumHierarchyTotalClasses = 0;
+            AZ::RttiEnumHierarchy<MyIntrusiveDerivedFromExternalAndIntrusive>(&ExternalRttiEnumHeirarchyHelper, &enumHierarchyTotalClasses);
+            EXPECT_EQ(5, enumHierarchyTotalClasses);
+
+            // This should fail
+            EXPECT_EQ(nullptr, AZ::RttiCast<MyIntrusiveDerivedFromExternalAndIntrusive*>(&derivedIntrusiveInstance));
+
+
+            EXPECT_NE(nullptr, AZ::RttiCast<MyIntrusiveDerivedFromExternalAndIntrusive*>(&intrusiveDerivedFromExternalAndIntrusiveInstance));
+            void* baseIntrusiveAddress = AZ::RttiAddressOf(&intrusiveDerivedFromExternalAndIntrusiveInstance, AZ::AzTypeInfo<MyBaseIntrusive>::Uuid());
+            ASSERT_NE(nullptr, baseIntrusiveAddress);
+            EXPECT_EQ(71U, static_cast<MyBaseIntrusive*>(baseIntrusiveAddress)->m_uintValue);
+
+            EXPECT_FALSE(AZ::RttiIsTypeOf(AZ::AzTypeInfo<MyConvertibleExternal>::Uuid(), intrusiveDerivedFromExternalAndIntrusiveInstance));
+            EXPECT_FALSE(AZ::RttiIsTypeOf<MyConvertibleExternal>(intrusiveDerivedFromExternalAndIntrusiveInstance));
+
+            EXPECT_TRUE(AZ::RttiIsTypeOf(AZ::AzTypeInfo<MyDerivedIntrusive>::Uuid(), intrusiveDerivedFromExternalAndIntrusiveInstance));
+            EXPECT_TRUE(AZ::RttiIsTypeOf<MyDerivedExternal>(intrusiveDerivedFromExternalAndIntrusiveInstance));
+            // Check pointer case template specializations for RttiIsTypeOf
+            EXPECT_TRUE(AZ::RttiIsTypeOf(AZ::AzTypeInfo<MyBaseExternal>::Uuid(), &intrusiveDerivedFromExternalAndIntrusiveInstance));
+            EXPECT_TRUE(AZ::RttiIsTypeOf<MyBaseExternal>(&intrusiveDerivedFromExternalAndIntrusiveInstance));
+
+            EXPECT_EQ(AZ::AzTypeInfo<MyIntrusiveDerivedFromExternalAndIntrusive>::Uuid(), AZ::RttiTypeId(intrusiveDerivedFromExternalAndIntrusiveInstance));
+            // Check pointer case template specializations for RttiTypeId
+            EXPECT_EQ(AZ::AzTypeInfo<MyIntrusiveDerivedFromExternalAndIntrusive>::Uuid(), AZ::RttiTypeId(&intrusiveDerivedFromExternalAndIntrusiveInstance));
         }
     }
 

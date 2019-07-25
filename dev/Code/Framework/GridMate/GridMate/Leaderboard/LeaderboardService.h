@@ -167,7 +167,10 @@ namespace GridMate
 
     public:
         LbRow()
-            : m_playerId(nullptr)   {}
+            : m_playerId(nullptr)
+            , m_rank(0)
+        {
+        }
 
         using GMLB_vector(LbData) ::reserve;
         using GMLB_vector(LbData) ::resize;

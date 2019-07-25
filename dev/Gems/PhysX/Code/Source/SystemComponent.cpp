@@ -79,6 +79,7 @@ namespace PhysX
         Pipeline::MeshAssetCookedData::Reflect(context);
 
         Physics::ReflectionUtils::ReflectPhysicsApi(context);
+        PhysX::ReflectionUtils::ReflectPhysXOnlyApi(context);
 
         if (AZ::SerializeContext* serialize = azrtti_cast<AZ::SerializeContext*>(context))
         {

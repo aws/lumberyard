@@ -1128,6 +1128,7 @@ void CLog::LogStringToFile(const char* szString, ELogType logType, bool bAdd, Me
         tempString += '\n';
     }
 
+    // do not OutputDebugString in release.
 #if !defined(_RELEASE)
     if (queueState == MessageQueueState::NotQueued)
     {
@@ -1136,15 +1137,21 @@ void CLog::LogStringToFile(const char* szString, ELogType logType, bool bAdd, Me
         // Thus, we discard slightly more characters (ie, those inside the current ANSI code-page, but outside ASCII).
         // In exchange, we save double-converting that would have happened otherwise (UTF-8 -> UTF-16 -> ANSI).
         LogStringType asciiString;
-        Unicode::Convert<Unicode::eEncoding_ASCII, Unicode::eEncoding_UTF8>(asciiString, tempString);
+        Unicode::ConvertSafe<Unicode::EErrorRecovery::eErrorRecovery_FallbackLatin1ThenDiscard, Unicode::eEncoding_ASCII, Unicode::eEncoding_UTF8>(asciiString, tempString);
+#if !defined(AZ_TESTS_ENABLED)
+        // in TEST mode, we allow the above calls to be covered, but not the below system call to OutputDebugString.
+        // it is not necessary to "test" the system function OutputDebugString, and it tends to spam the console
+        // obscuring actual test results and issues.
         OutputDebugString(asciiString.c_str());
+#endif // !defined(AZ_TESTS_ENABLED)
     }
 
     if (!bIsMainThread)
     {
         return;
     }
-#endif
+#endif // !defined(_RELEASE)
+
 
     //////////////////////////////////////////////////////////////////////////
     // Call callback function.

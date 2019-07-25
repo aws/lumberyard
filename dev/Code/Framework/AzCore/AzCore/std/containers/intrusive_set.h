@@ -201,7 +201,7 @@ namespace AZStd
             typedef const_iterator_impl         this_type;
             typedef intrusive_multiset<T, Hook> tree_type;
         public:
-            typedef T                           value_type;
+            typedef const T                     value_type;
             typedef AZStd::ptrdiff_t            difference_type;
             typedef const T*                    pointer;
             typedef const T&                    reference;
@@ -292,6 +292,7 @@ namespace AZStd
             typedef iterator_impl       this_type;
             typedef const_iterator_impl base_type;
         public:
+            typedef T                               value_type;
             typedef T*                              pointer;
             typedef T&                              reference;
 
@@ -332,160 +333,122 @@ namespace AZStd
         };
 
         /**
-         * Constant reverse iterator implementation bidirectional iterator.
+         * reverse iterator implementation bidirectional iterator.
          */
-        class const_reverse_iterator_impl
+        template<typename Iter>
+        class reverse_iterator_impl
         {
-            enum
-            {
-                ITERATOR_VERSION = 1
-            };
-
             friend class intrusive_multiset;
-            typedef const_reverse_iterator_impl this_type;
+            typedef reverse_iterator_impl this_type;
             typedef intrusive_multiset<T, Hook> tree_type;
         public:
-            typedef T                           value_type;
-            typedef AZStd::ptrdiff_t            difference_type;
-            typedef const T*                    pointer;
-            typedef const T&                    reference;
-            typedef bidirectional_iterator_tag  iterator_category;
+            using value_type = typename AZStd::iterator_traits<Iter>::value_type;
+            using difference_type = typename AZStd::iterator_traits<Iter>::difference_type;
+            using pointer = typename AZStd::iterator_traits<Iter>::pointer;
+            using reference = typename AZStd::iterator_traits<Iter>::reference;
+            using iterator_category = typename AZStd::iterator_traits<Iter>::iterator_category;
+            using iterator_type = Iter;
 
-
-            AZ_FORCE_INLINE const_reverse_iterator_impl()
+            AZ_FORCE_INLINE reverse_iterator_impl()
                 : m_node(nullptr) {}
-            AZ_FORCE_INLINE const_reverse_iterator_impl(const_node_ptr_type node)
-                : m_node(const_cast<node_ptr_type>(node)) {}
-            AZ_FORCE_INLINE const_reference operator*() const { return *m_node; }
+            AZ_FORCE_INLINE reverse_iterator_impl(pointer node, const value_type* head)
+                : m_node(node)
+                , m_headNode(head)
+            {}
+
+            iterator_type base() const
+            {
+                AZSTD_CONTAINER_ASSERT(m_node != nullptr, "AZStd::intrusive_set::reference_iterator_impl invoked base() on invalid node!");
+                // The intrusive multiset head node is a fake head node that represents a sentinel node
+                // Therefore in the reverse iterator case, when the head node is stored in the iterator the minimum value needs to be returned
+                // otherwise the successor value needs to be returned
+                return m_node == m_headNode
+                    ? MinOrMax(Hook::to_node_ptr(m_node)->m_children[AZSTD_RBTREE_LEFT], AZSTD_RBTREE_LEFT)
+                    : iterator_type(GetPredicateOrSuccessorNode(m_node, AZSTD_RBTREE_RIGHT));
+            }
+            AZ_FORCE_INLINE reference operator*() const { return *m_node; }
             AZ_FORCE_INLINE pointer operator->() const { return m_node; }
             AZ_FORCE_INLINE this_type& operator++()
             {
-                AZSTD_CONTAINER_ASSERT(m_node != 0, "AZSTD::intrusive_list::const_reference_iterator_impl invalid node!");
-                m_node = PredOrSucc(m_node, AZSTD_RBTREE_LEFT);
+                AZSTD_CONTAINER_ASSERT(m_node != nullptr, "AZStd::intrusive_set::reference_iterator_impl invalid node!");
+                m_node = GetPredicateOrSuccessorNode(m_node, AZSTD_RBTREE_LEFT);
                 return *this;
             }
 
             AZ_FORCE_INLINE this_type operator++(int)
             {
-                AZSTD_CONTAINER_ASSERT(m_node != 0, "AZSTD::intrusive_list::const_reverse_iterator_impl invalid node!");
+                AZSTD_CONTAINER_ASSERT(m_node != nullptr, "AZStd::intrusive_set::reference_iterator_impl invalid node!");
                 this_type temp = *this;
-                m_node = PredOrSucc(m_node, AZSTD_RBTREE_LEFT);
+                m_node = GetPredicateOrSuccessorNode(m_node, AZSTD_RBTREE_LEFT);
                 return temp;
             }
 
             AZ_FORCE_INLINE this_type& operator--()
             {
-                AZSTD_CONTAINER_ASSERT(m_node != 0, "AZSTD::intrusive_list::const_reverse_iterator_impl invalid node!");
-                m_node = PredOrSucc(m_node, AZSTD_RBTREE_RIGHT);
+                AZSTD_CONTAINER_ASSERT(m_node != nullptr, "AZStd::intrusive_set::reference_iterator_impl invalid node!");
+                m_node = GetPredicateOrSuccessorNode(m_node, AZSTD_RBTREE_RIGHT);
                 return *this;
             }
 
             AZ_FORCE_INLINE this_type operator--(int)
             {
-                AZSTD_CONTAINER_ASSERT(m_node != 0, "AZSTD::intrusive_list::const_reverse_iterator_impl invalid node!");
+                AZSTD_CONTAINER_ASSERT(m_node != nullptr, "AZStd::intrusive_set::reference_iterator_impl invalid node!");
                 this_type temp = *this;
-                m_node = PredOrSucc(m_node, AZSTD_RBTREE_RIGHT);
+                m_node = GetPredicateOrSuccessorNode(m_node, AZSTD_RBTREE_RIGHT);
                 return temp;
             }
 
             AZ_FORCE_INLINE bool operator==(const this_type& rhs) const { return (m_node == rhs.m_node); }
             AZ_FORCE_INLINE bool operator!=(const this_type& rhs) const { return (m_node != rhs.m_node); }
         protected:
-            AZ_FORCE_INLINE static bool isNil(const_node_ptr_type node) { return node == Hook::to_node_ptr(node)->m_children[AZSTD_RBTREE_RIGHT]; }
 
-            inline static node_ptr_type PredOrSucc(const_node_ptr_type node, SideType side)
+            static bool IsNilLeafNode(const_node_ptr_type node) { return node == Hook::to_node_ptr(node)->m_children[AZSTD_RBTREE_RIGHT]; }
+
+            static node_ptr_type GetPredicateOrSuccessorNode(const_node_ptr_type node, SideType childNodeSide)
             {
-                node_ptr_type cur = Hook::to_node_ptr(node)->m_neighbours[side];
+                node_ptr_type cur = Hook::to_node_ptr(node)->m_neighbours[childNodeSide];
                 hook_node_ptr_type curHook = Hook::to_node_ptr(cur);
                 if (!curHook->getParent())
                 {
                     return cur;
                 }
-                node_ptr_type xessor = curHook->m_children[side];
-                if (!isNil(xessor))
+                node_ptr_type predicateOrSuccessorNode = curHook->m_children[childNodeSide];
+                if (!IsNilLeafNode(predicateOrSuccessorNode))
                 {
-                    SideType o = (SideType)(1 - side);
-                    while (!isNil(Hook::to_node_ptr(xessor)->m_children[o]))
+                    SideType otherChildNodeSide = (SideType)(1 - childNodeSide);
+                    while (!IsNilLeafNode(Hook::to_node_ptr(predicateOrSuccessorNode)->m_children[otherChildNodeSide]))
                     {
-                        xessor = Hook::to_node_ptr(xessor)->m_children[o];
+                        predicateOrSuccessorNode = Hook::to_node_ptr(predicateOrSuccessorNode)->m_children[otherChildNodeSide];
                     }
                 }
                 else
                 {
-                    AZSTD_CONTAINER_ASSERT(!isNil(cur), "This node can't be nil");
-                    xessor = curHook->getParent();
-                    while (!isNil(xessor) && curHook->getParentSide() == side)
+                    AZSTD_CONTAINER_ASSERT(!IsNilLeafNode(cur), "This node can't be nil");
+                    predicateOrSuccessorNode = curHook->getParent();
+                    while (!IsNilLeafNode(predicateOrSuccessorNode) && curHook->getParentSide() == childNodeSide)
                     {
-                        cur = xessor;
+                        cur = predicateOrSuccessorNode;
                         curHook = Hook::to_node_ptr(cur);
-                        xessor = Hook::to_node_ptr(xessor)->getParent();
+                        predicateOrSuccessorNode = Hook::to_node_ptr(predicateOrSuccessorNode)->getParent();
                     }
                 }
-                return xessor;
+                return predicateOrSuccessorNode;
             }
 
-            node_ptr_type   m_node;
+            pointer m_node;
+            const value_type* m_headNode{};
         };
-
-        /**
-         * Reverse iterator implementation.
-         */
-        class reverse_iterator_impl
-            : public const_reverse_iterator_impl
-        {
-            typedef reverse_iterator_impl       this_type;
-            typedef const_reverse_iterator_impl base_type;
-        public:
-            typedef T*                          pointer;
-            typedef T&                          reference;
-
-            AZ_FORCE_INLINE reverse_iterator_impl() {}
-            AZ_FORCE_INLINE reverse_iterator_impl(node_ptr_type node)
-                : const_reverse_iterator_impl(node) {}
-            AZ_FORCE_INLINE reference operator*() const { return *base_type::m_node; }
-            AZ_FORCE_INLINE pointer operator->() const { return base_type::m_node; }
-            AZ_FORCE_INLINE this_type& operator++()
-            {
-                AZSTD_CONTAINER_ASSERT(base_type::m_node != 0, "AZSTD::intrusive_list::reverse_iterator_impl invalid node!");
-                base_type::m_node = base_type::PredOrSucc(base_type::m_node, AZSTD_RBTREE_LEFT);
-                return *this;
-            }
-
-            AZ_FORCE_INLINE this_type operator++(int)
-            {
-                AZSTD_CONTAINER_ASSERT(base_type::m_node != 0, "AZSTD::intrusive_list::reverse_iterator_impl invalid node!");
-                this_type temp = *this;
-                base_type::m_node = base_type::PredOrSucc(base_type::m_node, AZSTD_RBTREE_LEFT);
-                return temp;
-            }
-
-            AZ_FORCE_INLINE this_type& operator--()
-            {
-                AZSTD_CONTAINER_ASSERT(base_type::m_node != 0, "AZSTD::intrusive_list::reverse_iterator_impl invalid node!");
-                base_type::m_node = base_type::PredOrSucc(base_type::m_node, AZSTD_RBTREE_RIGHT);
-                return *this;
-            }
-
-            AZ_FORCE_INLINE this_type operator--(int)
-            {
-                AZSTD_CONTAINER_ASSERT(base_type::m_node != 0, "AZSTD::intrusive_list::reverse_iterator_impl invalid node!");
-                this_type temp = *this;
-                base_type::m_node = base_type::PredOrSucc(base_type::m_node, AZSTD_RBTREE_RIGHT);
-                return temp;
-            }
-        };
-
 
 #ifdef AZSTD_HAS_CHECKED_ITERATORS
         typedef Debug::checked_bidirectional_iterator<iterator_impl, this_type>                 iterator;
         typedef Debug::checked_bidirectional_iterator<const_iterator_impl, this_type>           const_iterator;
-        typedef Debug::checked_bidirectional_iterator<reverse_iterator_impl, this_type>         reverse_iterator;
-        typedef Debug::checked_bidirectional_iterator<const_reverse_iterator_impl, this_type>   const_reverse_iterator;
+        typedef Debug::checked_bidirectional_iterator<reverse_iterator_impl<iterator>, this_type>         reverse_iterator;
+        typedef Debug::checked_bidirectional_iterator<reverse_iterator_impl<const_iterator>, this_type>   const_reverse_iterator;
 #else
         typedef iterator_impl                   iterator;
         typedef const_iterator_impl             const_iterator;
-        typedef reverse_iterator_impl           reverse_iterator;
-        typedef const_reverse_iterator_impl     const_reverse_iterator;
+        typedef reverse_iterator_impl<iterator>           reverse_iterator;
+        typedef reverse_iterator_impl<const_iterator>     const_reverse_iterator;
 #endif
 
         AZ_FORCE_INLINE explicit intrusive_multiset()
@@ -574,10 +537,12 @@ namespace AZStd
         AZ_FORCE_INLINE const_iterator end() const { return const_iterator(get_head()); }
         AZ_FORCE_INLINE iterator end() { return iterator(get_head()); }
 
-        AZ_FORCE_INLINE reverse_iterator rbegin()               { return reverse_iterator(MinOrMax(get_root(), AZSTD_RBTREE_RIGHT)); }
-        AZ_FORCE_INLINE const_reverse_iterator rbegin() const   { return const_reverse_iterator(MinOrMax(get_root(), AZSTD_RBTREE_RIGHT)); }
-        AZ_FORCE_INLINE reverse_iterator rend()                 { return reverse_iterator(get_head()); }
-        AZ_FORCE_INLINE const_reverse_iterator rend() const     { return const_reverse_iterator(get_head()); }
+        AZ_FORCE_INLINE reverse_iterator rbegin()               { return reverse_iterator(MinOrMax(get_root(), AZSTD_RBTREE_RIGHT), get_head()); }
+        AZ_FORCE_INLINE const_reverse_iterator rbegin() const   { return const_reverse_iterator(MinOrMax(get_root(), AZSTD_RBTREE_RIGHT), get_head()); }
+        const_reverse_iterator crbegin() const { return const_reverse_iterator(MinOrMax(get_root(), AZSTD_RBTREE_RIGHT), get_head()); }
+        AZ_FORCE_INLINE reverse_iterator rend()                 { return reverse_iterator(get_head(), get_head()); }
+        AZ_FORCE_INLINE const_reverse_iterator rend() const     { return const_reverse_iterator(get_head(), get_head()); }
+        const_reverse_iterator crend() const { return const_reverse_iterator(get_head(), get_head()); }
 
         AZ_FORCE_INLINE const_iterator root() const { return const_iterator(get_root()); }
         AZ_FORCE_INLINE iterator root() { return iterator(get_root()); }
@@ -969,7 +934,7 @@ namespace AZStd
             hookNode->setParentSide(side);
         }
 
-        inline node_ptr_type MinOrMax(const_node_ptr_type node, SideType side) const
+        inline static node_ptr_type MinOrMax(const_node_ptr_type node, SideType side)
         {
             const_node_ptr_type cur = node;
             const_node_ptr_type minMax = cur;
@@ -1069,14 +1034,14 @@ namespace AZStd
                 }
             }
 
-            Hook::to_node_ptr(Hook::to_node_ptr(get_head())->m_children[AZSTD_RBTREE_LEFT])->setColor(AZSTD_RBTREE_BLACK);
+            Hook::to_node_ptr(get_root())->setColor(AZSTD_RBTREE_BLACK);
         }
 
         void EraseFixup(node_ptr_type node)
         {
             node_ptr_type cur = node;
             hook_node_ptr_type curHook = Hook::to_node_ptr(cur);
-            while (curHook->getColor() != AZSTD_RBTREE_RED && cur != Hook::to_node_ptr(get_head())->m_children[AZSTD_RBTREE_LEFT])
+            while (curHook->getColor() != AZSTD_RBTREE_RED && cur != get_root())
             {
                 node_ptr_type p = curHook->getParent();
                 hook_node_ptr_type parentHook = Hook::to_node_ptr(p);
@@ -1120,7 +1085,7 @@ namespace AZStd
                     parentHook->setColor(AZSTD_RBTREE_BLACK);
                     Hook::to_node_ptr(wHook->m_children[o])->setColor(AZSTD_RBTREE_BLACK);
                     Rotate(p, s);
-                    cur = get_head()->m_children[AZSTD_RBTREE_LEFT];
+                    cur = get_root();
                     curHook = Hook::to_node_ptr(cur);
                 }
             }

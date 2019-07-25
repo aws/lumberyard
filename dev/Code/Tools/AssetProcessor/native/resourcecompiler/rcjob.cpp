@@ -37,6 +37,8 @@
 #include "native/utilities/PlatformConfiguration.h"
 #include "native/utilities/assetUtils.h"
 #include "native/assetprocessor.h"
+#include <AzToolsFramework/Archive/ArchiveAPI.h>
+
 
 namespace
 {
@@ -54,6 +56,9 @@ namespace
     const unsigned int g_graceTimeBeforeLockingAndFingerprintChecking = 300;
 
     const unsigned int g_timeoutInSecsForRetryingCopy = 30;
+
+    const char* const s_tempString = "%TEMP%";
+    const char* const s_jobLogFileName = "jobLog.xml";
 
     bool MoveCopyFile(QString sourceFile, QString productFile, bool isCopyJob = false)
     {
@@ -518,8 +523,58 @@ namespace AssetProcessor
             {
                 if (!JobCancelListener.IsCancelled())
                 {
-                    // sending process job command to the builder
-                    builderParams.m_assetBuilderDesc.m_processJobFunction(builderParams.m_processJobRequest, result);
+                    bool runProcessJob = true;
+                    if (m_jobDetails.m_checkServer)
+                    {
+                        QFileInfo fileInfo(builderParams.m_processJobRequest.m_sourceFile.c_str());
+                        builderParams.m_serverKey = QString("%1_%2_%3_%4").arg(fileInfo.completeBaseName(), builderParams.m_processJobRequest.m_jobDescription.m_jobKey.c_str(), builderParams.m_processJobRequest.m_platformInfo.m_identifier.c_str()).arg(builderParams.m_rcJob->GetOriginalFingerprint());
+                        bool operationResult = false;
+                        if (AssetUtilities::InServerMode())
+                        {
+                            // sending process job command to the builder
+                            builderParams.m_assetBuilderDesc.m_processJobFunction(builderParams.m_processJobRequest, result);
+                            runProcessJob = false;
+                            if (result.m_resultCode == AssetBuilderSDK::ProcessJobResult_Success)
+                            {
+                                if (BeforeStoringJobResult(builderParams, result))
+                                {
+                                    AssetProcessor::AssetServerBus::BroadcastResult(operationResult, &AssetProcessor::AssetServerBusTraits::StoreJobResult, builderParams);
+                                }
+
+                                if (!operationResult)
+                                {
+                                    AZ_TracePrintf(AssetProcessor::DebugChannel, "Unable to save job (%s, %s, %s) with fingerprint (%u) to the server.\n",
+                                        builderParams.m_rcJob->GetJobEntry().m_pathRelativeToWatchFolder.toUtf8().data(), builderParams.m_rcJob->GetJobKey().toUtf8().data(),
+                                        builderParams.m_rcJob->GetPlatformInfo().m_identifier.c_str(), builderParams.m_rcJob->GetOriginalFingerprint());
+                                }
+                            }
+                        }
+                        else
+                        {
+                            // running as client, check with the server whether it has already
+                            // processed this asset, if not or if the operation fails then process locally
+                            AssetProcessor::AssetServerBus::BroadcastResult(operationResult, &AssetProcessor::AssetServerBusTraits::RetrieveJobResult, builderParams);
+
+                            if (operationResult)
+                            {
+                                operationResult = AfterRetrievingJobResult(builderParams, jobLogTraceListener, result);
+                            }
+                            else
+                            {
+                                AZ_TracePrintf(AssetProcessor::DebugChannel, "Unable to get job (%s, %s, %s) with fingerprint (%u) from the server. Processing locally.\n",
+                                    builderParams.m_rcJob->GetJobEntry().m_pathRelativeToWatchFolder.toUtf8().data(), builderParams.m_rcJob->GetJobKey().toUtf8().data(),
+                                    builderParams.m_rcJob->GetPlatformInfo().m_identifier.c_str(), builderParams.m_rcJob->GetOriginalFingerprint());
+                            }
+
+                            runProcessJob = !operationResult;
+                        }
+                    }
+
+                    if(runProcessJob)
+                    {
+                        // sending process job command to the builder
+                        builderParams.m_assetBuilderDesc.m_processJobFunction(builderParams.m_processJobRequest, result);
+                    }
                 }
             }
 
@@ -732,6 +787,93 @@ namespace AssetProcessor
         
         return !anyFileFailed;
     }
+
+    bool RCJob::BeforeStoringJobResult(const BuilderParams& builderParams, AssetBuilderSDK::ProcessJobResponse jobResponse)
+    {
+        AZStd::string normalizedTempFolderPath = builderParams.m_processJobRequest.m_tempDirPath;
+        AzFramework::StringFunc::Path::Normalize(normalizedTempFolderPath);
+
+        //Ensure that ProcessJobResponse do not have any absolute paths 
+        for (AssetBuilderSDK::JobProduct& product : jobResponse.m_outputProducts)
+        {
+            AzFramework::StringFunc::Replace(product.m_productFileName, normalizedTempFolderPath.c_str(), s_tempString);
+        }
+        AZStd::string responseFilePath;
+        AzFramework::StringFunc::Path::ConstructFull(builderParams.m_processJobRequest.m_tempDirPath.c_str(), AssetBuilderSDK::s_processJobResponseFileName, responseFilePath, true);
+        //Save ProcessJobResponse to disk
+        if (!AZ::Utils::SaveObjectToFile(responseFilePath, AZ::DataStream::StreamType::ST_XML, &jobResponse))
+        {
+            return false;
+        }
+        AzToolsFramework::AssetSystem::JobInfo jobInfo;
+        AzToolsFramework::AssetSystem::AssetJobLogResponse jobLogResponse;
+        jobInfo.m_sourceFile = builderParams.m_rcJob->GetJobEntry().m_databaseSourceName.toUtf8().data();
+        jobInfo.m_platform = builderParams.m_rcJob->GetPlatformInfo().m_identifier.c_str();
+        jobInfo.m_jobKey = builderParams.m_rcJob->GetJobKey().toUtf8().data();
+        jobInfo.m_builderGuid = builderParams.m_rcJob->GetBuilderGuid();
+        jobInfo.m_jobRunKey = builderParams.m_rcJob->GetJobEntry().m_jobRunKey;
+        jobInfo.m_watchFolder = builderParams.m_processJobRequest.m_watchFolder;
+        AssetUtilities::ReadJobLog(jobInfo, jobLogResponse);
+
+        //Save joblog to disk
+        AZStd::string jobLogFilePath;
+        AzFramework::StringFunc::Path::ConstructFull(builderParams.m_processJobRequest.m_tempDirPath.c_str(), s_jobLogFileName, jobLogFilePath, true);
+        return AZ::Utils::SaveObjectToFile(jobLogFilePath, AZ::DataStream::StreamType::ST_XML, &jobLogResponse);
+    }
+
+    bool RCJob::AfterRetrievingJobResult(const BuilderParams& builderParams, AssetUtilities::JobLogTraceListener& jobLogTraceListener, AssetBuilderSDK::ProcessJobResponse& jobResponse)
+    {
+        AZStd::string responseFilePath;
+        AzFramework::StringFunc::Path::ConstructFull(builderParams.m_processJobRequest.m_tempDirPath.c_str(), AssetBuilderSDK::s_processJobResponseFileName, responseFilePath, true);
+        if (!AZ::Utils::LoadObjectFromFileInPlace(responseFilePath.c_str(), jobResponse))
+        {
+            return false;
+        }
+
+        //Ensure that ProcessJobResponse have the correct absolute paths 
+        for (AssetBuilderSDK::JobProduct& product : jobResponse.m_outputProducts)
+        {
+            AzFramework::StringFunc::Replace(product.m_productFileName, s_tempString, builderParams.m_processJobRequest.m_tempDirPath.c_str(), s_tempString);
+        }
+
+        AZStd::string jobLogFilePath;
+        AzFramework::StringFunc::Path::ConstructFull(builderParams.m_processJobRequest.m_tempDirPath.c_str(), s_jobLogFileName, jobLogFilePath, true);
+        AzToolsFramework::AssetSystem::AssetJobLogResponse jobLogResponse;
+
+        if (!AZ::Utils::LoadObjectFromFileInPlace(jobLogFilePath.c_str(), jobLogResponse))
+        {
+            return false;
+        }
+
+        if (!jobLogResponse.m_isSuccess)
+        {
+            AZ_TracePrintf(AssetProcessor::DebugChannel, "Job log request was unsuccessful for job (%s, %s, %s) from the server.\n",
+                builderParams.m_rcJob->GetJobEntry().m_pathRelativeToWatchFolder.toUtf8().data(), builderParams.m_rcJob->GetJobKey().toUtf8().data(),
+                builderParams.m_rcJob->GetPlatformInfo().m_identifier.c_str());
+            return false;
+        }
+
+        // writing server logs
+        AZ_TracePrintf(AssetProcessor::DebugChannel, "------------SERVER BEGIN----------\n");
+        AzToolsFramework::Logging::LogLine::ParseLog(jobLogResponse.m_jobLog.c_str(), jobLogResponse.m_jobLog.size(),
+            [&jobLogTraceListener](AzToolsFramework::Logging::LogLine& line)
+        {
+            jobLogTraceListener.AppendLog(line);
+        });
+        AZ_TracePrintf(AssetProcessor::DebugChannel, "------------SERVER END----------\n");
+        return true;
+    }
+
+    AZStd::string BuilderParams::GetTempJobDirectory() const
+    {
+        return m_processJobRequest.m_tempDirPath;
+    }
+
+    QString BuilderParams::GetServerKey() const
+    {
+        return m_serverKey;
+    }
+
 } // namespace AssetProcessor
 
 

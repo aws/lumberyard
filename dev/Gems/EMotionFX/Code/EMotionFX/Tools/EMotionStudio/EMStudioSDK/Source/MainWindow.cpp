@@ -284,7 +284,7 @@ namespace EMStudio
         delete mUnselectCallback;
         delete m_clearSelectionCallback;
         delete mSaveWorkspaceCallback;
-		
+
         EMotionFX::ActorEditorRequestBus::Handler::BusDisconnect();
 
         if (m_undoMenuCallback)

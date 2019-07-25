@@ -29,9 +29,6 @@
     <!-- Required to for IAP -->
     <uses-permission android:name="com.android.vending.BILLING" />
 
-    <!-- Required for Microphone gem -->
-    <uses-permission android:name="android.permission.RECORD_AUDIO" />
-
     <application
         android:icon="@mipmap/app_icon"
         android:label="@string/app_name"

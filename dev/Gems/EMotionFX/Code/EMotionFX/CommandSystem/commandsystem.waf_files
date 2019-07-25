@@ -15,6 +15,8 @@
             "Source/AnimGraphConditionCommands.h",
             "Source/AnimGraphConnectionCommands.cpp",
             "Source/AnimGraphConnectionCommands.h",
+            "Source/AnimGraphCopyPasteData.cpp",
+            "Source/AnimGraphCopyPasteData.h",
             "Source/AnimGraphNodeCommands.cpp",
             "Source/AnimGraphNodeCommands.h",
             "Source/AnimGraphNodeGroupCommands.cpp",

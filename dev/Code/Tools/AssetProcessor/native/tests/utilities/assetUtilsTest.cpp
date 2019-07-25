@@ -454,3 +454,20 @@ TEST_F(AssetUtilitiesTest, GetFileFingerprint_NonExistentFiles)
     EXPECT_STRNE(AssetUtilities::GetFileFingerprint(nonExistentFile1, "").c_str(), AssetUtilities::GetFileFingerprint(nonExistentFile1, "Name").c_str());
     EXPECT_STREQ(AssetUtilities::GetFileFingerprint(nonExistentFile1, "Name").c_str(), AssetUtilities::GetFileFingerprint(nonExistentFile1, "Name").c_str());
 }
+
+TEST_F(AssetUtilitiesTest, GetServerAddress_ReadFromConfig_Valid)
+{
+    QTemporaryDir tempDir;
+    QDir tempPath(tempDir.path());
+    QString assetServerAddress("T:/AssetServerCacheDummyFolder");
+    UnitTestUtils::CreateDummyFile(tempPath.absoluteFilePath("AssetProcessorPlatformConfig.ini"), QString("[Server]\ncacheServerAddress=%1\n").arg(assetServerAddress));
+
+    // we require the bootstrap file to be present for computing the engine root
+    UnitTestUtils::CreateDummyFile(tempPath.absoluteFilePath("bootstrap.cfg"), QString("dummy"));
+
+    AssetUtilities::ResetAssetRoot();
+    QDir newRoot;
+    AssetUtilities::ComputeEngineRoot(newRoot, &tempPath);
+    QString assetServerAddressReturned = AssetUtilities::ServerAddress();
+    EXPECT_STREQ(assetServerAddressReturned.toUtf8().data(), assetServerAddress.toUtf8().data());
+}

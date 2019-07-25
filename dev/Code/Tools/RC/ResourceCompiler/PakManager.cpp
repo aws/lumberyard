@@ -27,6 +27,7 @@
 #include "ZipEncryptor.h"
 #include "ThreadUtils.h"
 #include <AzCore/std/algorithm.h>
+#include <AzCore/IO/SystemFile.h>
 
 
 //////////////////////////////////////////////////////////////////////////
@@ -236,8 +237,13 @@ PakManager::ECallResult PakManager::CreatePakFile(
     const string& requestedPakFilename,
     bool bUpdate)
 {
-    const bool bVerbose = config->GetAsInt("verbose", 0, 1) > 0;
+    const int iVerbose = config->GetAsInt("verbose", 0, 1);
     const bool bSkipMissing = config->GetAsBool("skipmissing", false, true);
+
+    if (iVerbose > 0)
+    {
+        RCLog("CreatingPakFile %s ...", requestedPakFilename.c_str());
+    }
 
     PakHelpers::ESortType eSortType = PakHelpers::eSortType_Alphabetically;
     const string sortType = config->GetAsString("zip_sort", "", "");
@@ -462,11 +468,19 @@ PakManager::ECallResult PakManager::CreatePakFile(
         do
         {
             // Add them to pak file.
-            PakSystemArchive* const pPakFile = GetPakSystem()->OpenArchive(pakFilenameToWrite.c_str(), zipFileAlignment, zipEncrypt, zipEncryptKey.empty() ? 0 : encryptionKey);
+            PakSystemArchive* pPakFile = GetPakSystem()->OpenArchive(pakFilenameToWrite.c_str(), zipFileAlignment, zipEncrypt, zipEncryptKey.empty() ? 0 : encryptionKey);
+
             if (!pPakFile)
             {
-                RCLogError("Failed to create zip file %s", pakFilenameToWrite.c_str());
-                return eCallResult_Failed;
+                // Problem to accss the file? it could have get corrupted so try to delete the file and recreate it
+                AZ::IO::SystemFile::Delete(pakFilenameToWrite.c_str());
+                pPakFile = GetPakSystem()->OpenArchive(pakFilenameToWrite.c_str(), zipFileAlignment, zipEncrypt, zipEncryptKey.empty() ? 0 : encryptionKey);
+
+                if (!pPakFile)
+                {
+                    RCLogError("Error: Failed to create zip file %s", pakFilenameToWrite.c_str());
+                    return eCallResult_Failed;
+                }
             }
 
             // submit files for packing
@@ -586,7 +600,7 @@ PakManager::ECallResult PakManager::CreatePakFile(
                     }
                 };
 
-                ZipErrorReporter errorReporter(*m_pProgress, pakFilenameToWrite.c_str(), numFiles, bVerbose,
+                ZipErrorReporter errorReporter(*m_pProgress, pakFilenameToWrite.c_str(), numFiles, iVerbose>1,
                     numFilesAdded, numFilesUpToDate, numFilesSkipped, numFilesMissing, numFilesFailed);
                 ZipSizeSplitter sizeSplitter(filenameCount, nMaxZipSize ? min(nMaxZipSize, INT_MAX) : INT_MAX);
 

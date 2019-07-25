@@ -78,13 +78,13 @@ namespace AZStd
             set_word();
         }
 
-        inline bitset(unsigned long value)
-        {   // construct from bits in unsigned long
+        inline bitset(unsigned long long value)
+        {   // construct from bits in unsigned long long
             set_word();
             for (int wpos = 0;; )
             {   // store to one or more words
                 m_bits[wpos] = static_cast<word_t>(value);
-                if ((int)(sizeof (unsigned long) / sizeof (word_t)) <= ++wpos || NumWords < wpos)
+                if ((int)(sizeof (unsigned long long) / sizeof (word_t)) <= ++wpos || NumWords < wpos)
                 {
                     break;
                 }

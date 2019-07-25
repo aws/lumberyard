@@ -80,7 +80,14 @@ public:                                                                  \
 
         // save and return number of bytes written, when outputBuffer is nullptr only return num bytes it would write
         virtual uint32 Save(uint8* outputBuffer) const;
+        void SaveChunk(const uint8* chunkData, uint32 chunkSize, uint8** inOutBuffer, uint32& inOutSize) const;
+        template <class T>
+        void SaveVectorOfObjects(const AZStd::vector<T>& objects, uint8** inOutBuffer, uint32& inOutSize) const;
+
         virtual uint32 Load(const uint8* dataBuffer);
+        void LoadChunk(uint8* chunkData, uint32 chunkSize, uint8** inOutBuffer, uint32& inOutSize);
+        template <class T>
+        void LoadVectorOfObjects(AZStd::vector<T>& inOutObjects, uint8** inOutBuffer, uint32& inOutSize);
 
         virtual void Reset() {}
 
@@ -109,4 +116,30 @@ public:                                                                  \
         AnimGraphInstance*  mAnimGraphInstance;    /**< The animgraph instance where this unique data belongs to. */
         uint8               mObjectFlags;
     };
-}   // namespace EMotionFX
+
+    template <class T>
+    void AnimGraphObjectData::SaveVectorOfObjects(const AZStd::vector<T>& objects, uint8** inOutBuffer, uint32& inOutSize) const
+    {
+        const size_t numObjects = objects.size();
+        SaveChunk((uint8*)&numObjects, sizeof(size_t), inOutBuffer, inOutSize);
+        if (numObjects > 0)
+        {
+            const uint32 sizeInBytes = static_cast<uint32>(numObjects * sizeof(T));
+            SaveChunk((uint8*)&objects[0], sizeInBytes, inOutBuffer, inOutSize);
+        }
+    }
+
+    template <class T>
+    void AnimGraphObjectData::LoadVectorOfObjects(AZStd::vector<T>& inOutObjects, uint8** inOutBuffer, uint32& inOutSize)
+    {
+        size_t numObjects;
+        LoadChunk((uint8*)&numObjects, sizeof(size_t), inOutBuffer, inOutSize);
+
+        if (*inOutBuffer && numObjects > 0)
+        {
+            inOutObjects.resize(numObjects);
+            const uint32 sizeInBytes = static_cast<uint32>(numObjects * sizeof(T));
+            LoadChunk((uint8*)&inOutObjects[0], sizeInBytes, inOutBuffer, inOutSize);
+        }
+    }
+} // namespace EMotionFX

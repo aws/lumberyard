@@ -45,10 +45,8 @@ void UiRenderer::BeginUiFrameRender()
     }
 #endif
     
-#if defined(AZ_PLATFORM_APPLE)
-    // Metal drivers expect all texture slots used in the shader to be bound
+    // Various platform drivers expect all texture slots used in the shader to be bound
     BindNullTexture();
-#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////

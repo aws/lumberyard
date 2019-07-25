@@ -13,6 +13,7 @@
 #pragma once
 #include <Editor/Framework/ScriptCanvasTraceUtilities.h>
 #include <Editor/Framework/ScriptCanvasReporter.h>
+#include <Framework/ScriptCanvasTestNodes.h>
 #include <AzTest/AzTest.h>
 
 namespace ScriptCanvasTests

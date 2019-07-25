@@ -1,0 +1,15 @@
+{
+    "auto": {
+        "Include": [
+            "Include/LocalUser/LocalPlayerSlot.h",
+            "Include/LocalUser/LocalUserProfile.h",
+            "Include/LocalUser/LocalUserNotificationBus.h",
+            "Include/LocalUser/LocalUserRequestBus.h"
+        ],
+        "Source": [
+            "Source/LocalUserModule.cpp",
+            "Source/LocalUserSystemComponent.cpp",
+            "Source/LocalUserSystemComponent.h"
+        ]
+    }
+}

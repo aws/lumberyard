@@ -60,7 +60,7 @@ public:
         AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
         if (serializeContext)
         {
-            serializeContext->Class<ComponentPaletteSettings, AZ::UserSettings>()
+            serializeContext->Class<ComponentPaletteSettings>()
                 ->Version(1)
                 ->Field("m_favorites", &ComponentPaletteSettings::m_favorites)
                 ;

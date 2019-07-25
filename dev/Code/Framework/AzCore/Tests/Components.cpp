@@ -1158,7 +1158,7 @@ namespace UnitTest
 
         static void Reflect(AZ::SerializeContext* sc)
         {
-            sc->Class<MyUserSettings, UserSettings>()
+            sc->Class<MyUserSettings>()
                 ->Field("intOption1", &MyUserSettings::m_intOption1);
         }
 

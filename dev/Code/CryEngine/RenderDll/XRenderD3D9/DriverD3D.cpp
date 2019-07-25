@@ -558,6 +558,8 @@ void CD3D9Renderer::Release()
     }
 #endif
 
+    m_2dImages.clear();
+
     CRenderer::Release();
 
     DestroyWindow();
@@ -2442,7 +2444,7 @@ void CD3D9Renderer::DebugDrawStats1()
     Draw2dLabel(nX, nY += nYstep, fFSize, &col.r, false, "Shadow-pass: %d (%d polys)", m_RP.m_PS[m_RP.m_nProcessThreadID].m_nDIPs[EFSLIST_SHADOW_PASS], m_RP.m_PS[m_RP.m_nProcessThreadID].m_nPolygons[EFSLIST_SHADOW_PASS]);
     Draw2dLabel(nX, nY += nYstep, fFSize, &col.r, false, "Water: %d (%d polys, %.3fms)", m_RP.m_PS[m_RP.m_nProcessThreadID].m_nDIPs[EFSLIST_WATER], m_RP.m_PS[m_RP.m_nProcessThreadID].m_nPolygons[EFSLIST_WATER], m_RP.m_PS[m_RP.m_nProcessThreadID].m_fTimeDIPs[EFSLIST_WATER_VOLUMES] * 1000.0f);
     Draw2dLabel(nX, nY += nYstep, fFSize, &col.r, false, "Refractive Surface: %d (%d polys, %.3fms)", m_RP.m_PS[m_RP.m_nProcessThreadID].m_nDIPs[EFSLIST_REFRACTIVE_SURFACE], m_RP.m_PS[m_RP.m_nProcessThreadID].m_nPolygons[EFSLIST_REFRACTIVE_SURFACE], m_RP.m_PS[m_RP.m_nProcessThreadID].m_fTimeDIPs[EFSLIST_REFRACTIVE_SURFACE] * 1000.0f);
-	Draw2dLabel(nX, nY += nYstep, fFSize, &col.r, false, "Imposters: %d (Updates: %d)", m_RP.m_PS[m_RP.m_nProcessThreadID].m_NumCloudImpostersDraw, m_RP.m_PS[m_RP.m_nProcessThreadID].m_NumCloudImpostersUpdates);
+    Draw2dLabel(nX, nY += nYstep, fFSize, &col.r, false, "Imposters: %d (Updates: %d)", m_RP.m_PS[m_RP.m_nProcessThreadID].m_NumCloudImpostersDraw, m_RP.m_PS[m_RP.m_nProcessThreadID].m_NumCloudImpostersUpdates);
     Draw2dLabel(nX, nY += nYstep, fFSize, &col.r, false, "Sprites: %d (%d dips, %d updates, %d altases, %d cells, %d polys)", m_RP.m_PS[m_RP.m_nProcessThreadID].m_NumSprites, m_RP.m_PS[m_RP.m_nProcessThreadID].m_NumSpriteDIPS, m_RP.m_PS[m_RP.m_nProcessThreadID].m_NumSpriteUpdates, m_RP.m_PS[m_RP.m_nProcessThreadID].m_NumSpriteAltasesUsed, m_RP.m_PS[m_RP.m_nProcessThreadID].m_NumSpriteCellsUsed, m_RP.m_PS[m_RP.m_nProcessThreadID].m_NumSpritePolys /*, m_RP.m_PS[m_RP.m_nProcessThreadID].m_fTimeDIPsSprites*1000.0f*/);
 
     Draw2dLabel(nX - 5, nY + 20, 1.4f, &col.r, false, "Total: %d (%d polys)", GetCurrentNumberOfDrawCalls(), GetPolyCount());
@@ -4477,6 +4479,11 @@ static uint32 ComputePresentInterval(bool vsync, uint32 refreshNumerator, uint32
 
 void CD3D9Renderer::RT_EndFrame()
 {
+    RT_EndFrame(false);
+}
+
+void CD3D9Renderer::RT_EndFrame(bool isLoading)
+{
     FUNCTION_PROFILER_FAST(GetISystem(), PROFILE_RENDERER, g_bProfilerEnabled);
 
     if (!m_SceneRecurseCount)
@@ -4495,7 +4502,20 @@ void CD3D9Renderer::RT_EndFrame()
 
     CTimeValue TimeEndF = iTimer->GetAsyncTime();
 
-    CTexture::Update();
+    if (isLoading)
+    {
+        // Call loading-safe texture update which only applies the schedule. The render loading thread will handle the update.
+        CTexture::RT_LoadingUpdate();
+    }
+    else
+    {
+        CTexture::Update();
+    }
+
+    if (CV_r_VRAMDebug == 1)
+    {
+        m_DevMan.DisplayMemoryUsage();
+    }
 
     if (m_CVDisplayInfo && m_CVDisplayInfo->GetIVal() && iSystem && iSystem->IsDevMode())
     {
@@ -7885,14 +7905,6 @@ public:
         case ESYSTEM_EVENT_LEVEL_LOAD_RESUME_GAME:
         case ESYSTEM_EVENT_LEVEL_LOAD_PREPARE:
         {
-            if (gRenDev)
-            {
-                if (gRenDev->m_pRT)
-                {
-                    gRenDev->m_pRT->RC_PrepareLevelTexStreaming();
-                    gRenDev->m_pRT->FlushAndWait();
-                }
-            }
         }
         break;
 

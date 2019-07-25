@@ -140,6 +140,18 @@ namespace LegacyCryAnimation
 
         return true;
     }
+
+    //////////////////////////////////////////////////////////////////////////
+    void ShutdownCharacterManager()
+    {
+        SAFE_DELETE(g_pCharacterManager);
+        gEnv->pCharacterManager = nullptr;
+
+        if (g_controllerHeap->IsInitialised())
+        {
+            g_controllerHeap->~CControllerDefragHeap();
+        }
+    }
 }
 
 // cached interfaces - valid during the whole session, when the character manager is alive; then get erased

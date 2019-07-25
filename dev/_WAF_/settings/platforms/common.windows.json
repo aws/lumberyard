@@ -1,5 +1,6 @@
 {
     "attributes" : {
+        "game_platform"         : "windows",    # The name of platform referenced by cfg files such as bootstrap.cfg
         "default_launcher_name" : "WindowsLauncher"
     },
     "env": {

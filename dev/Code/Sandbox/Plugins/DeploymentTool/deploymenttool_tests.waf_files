@@ -2,8 +2,13 @@
     "none":
     {
         "Tests":
-        [
-            "Tests/DeploymentToolTestsMain.cpp"
+        [        
+            "Tests/DeploymentToolTestsJsonPreProcessor.cpp",
+            "Tests/DeploymentToolTestsDeployWorker.cpp",
+            "Tests/DeploymentToolTestsDeviceFarm.cpp",
+            "Tests/DeploymentToolTestsMain.cpp",
+            "Tests/MockDeviceFarmClient.cpp",
+            "Tests/MockDeviceFarmClient.h"
         ]
     }
 }

@@ -16,7 +16,7 @@
 #include <AzCore/RTTI/TypeInfo.h>
 #include <AzCore/std/typetraits/function_traits.h>
 #include <AzCore/std/typetraits/add_pointer.h>
-#include <Libraries/Libraries.h>
+#include <ScriptCanvas/Libraries/Libraries.h>
 #include <AzCore/std/tuple.h>
 #include "Node.h"
 #include "Attributes.h"

@@ -134,6 +134,39 @@ TEST_F(JobModelUnitTests, Test_RemoveAllJobsBySource)
     }
 }
 
+TEST_F(JobModelUnitTests, Test_RemoveAllJobsBySourceFolder)
+{
+    VerifyModel(); // verify up front for sanity.
+
+    AssetProcessor::CachedJobInfo* jobInfo = new AssetProcessor::CachedJobInfo();
+    jobInfo->m_elementId.SetInputAssetName("sourceFolder1/source.txt");
+    jobInfo->m_elementId.SetPlatform("platform");
+    jobInfo->m_elementId.SetJobDescriptor("jobKey");
+
+    jobInfo->m_jobState = AzToolsFramework::AssetSystem::JobStatus::Completed;
+    m_unitTestJobModel->m_cachedJobs.push_back(jobInfo);
+    m_unitTestJobModel->m_cachedJobsLookup.insert(jobInfo->m_elementId, m_unitTestJobModel->m_cachedJobs.size() - 1);
+
+    AssetProcessor::QueueElementID elementId("sourceFolder1/source.txt", "platform", "jobKey");
+    auto iter = m_unitTestJobModel->m_cachedJobsLookup.find(elementId);
+    ASSERT_NE(iter, m_unitTestJobModel->m_cachedJobsLookup.end());
+    unsigned int jobIndex = iter.value();
+    ASSERT_EQ(jobIndex, 6); //last job
+
+    ASSERT_EQ(m_unitTestJobModel->m_cachedJobs.size(), 7);
+    m_unitTestJobModel->OnFolderRemoved("sourceFolder1");
+
+    ASSERT_EQ(m_unitTestJobModel->m_cachedJobs.size(), 6);
+    VerifyModel();
+
+    // make sure sourceFolder1/source.txt is completely gone.
+    for (int idx = 0; idx < m_unitTestJobModel->m_cachedJobs.size(); idx++)
+    {
+        AssetProcessor::CachedJobInfo* jobInfo = m_unitTestJobModel->m_cachedJobs[idx];
+        ASSERT_NE(jobInfo->m_elementId.GetInputAssetName(), QString::fromUtf8("sourceFolder1/source.txt"));
+    }
+}
+
 void JobModelUnitTests::SetUp()
 {
     m_unitTestJobModel = new UnitTestJobModel();

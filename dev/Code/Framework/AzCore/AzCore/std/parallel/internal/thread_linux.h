@@ -28,9 +28,9 @@ namespace AZStd
     //////////////////////////////////////////////////////////////////////////
     // thread
     template <class F>
-    inline thread::thread(F f, const thread_desc* desc)
+    inline thread::thread(F&& f, const thread_desc* desc)
     {
-        Internal::thread_info* ti = Internal::create_thread_info(f);
+        Internal::thread_info* ti = Internal::create_thread_info(AZStd::forward<F>(f));
 #if defined(AZ_PLATFORM_APPLE)
         ti->m_name = desc ? desc->m_name : nullptr;
 #endif

@@ -107,6 +107,9 @@ namespace UnitTest
 
         MyAssetType()
             : m_data(nullptr) {}
+        explicit MyAssetType(const AZ::Data::AssetId& assetId, const AZ::Data::AssetData::AssetStatus assetStatus = AZ::Data::AssetData::AssetStatus::NotLoaded)
+            : AssetData(assetId, assetStatus)
+            , m_data(nullptr) {}
         ~MyAssetType()
         {
             if (m_data)
@@ -265,6 +268,54 @@ namespace UnitTest
         size_t m_delayMsMax = 0;
 
         //////////////////////////////////////////////////////////////////////////
+    };
+
+    class MyAssetActiveAssetCountHandler
+        : public AssetHandler
+    {
+    public:
+        AZ_CLASS_ALLOCATOR(MyAssetActiveAssetCountHandler, AZ::SystemAllocator, 0);
+
+        //////////////////////////////////////////////////////////////////////////
+        // AssetHandler
+        AssetPtr CreateAsset(const AssetId& id, const AssetType& type) override
+        {
+            (void)id;
+            EXPECT_TRUE(type == AzTypeInfo<MyAssetType>::Uuid());
+
+            return aznew MyAssetType(id);
+        }
+        bool LoadAssetData(const Asset<AssetData>& asset, IO::GenericStream* stream, const AZ::Data::AssetFilterCB& assetLoadFilterCB) override
+        {
+            (void)assetLoadFilterCB;
+            EXPECT_TRUE(asset.GetType() == AzTypeInfo<MyAssetType>::Uuid());
+            EXPECT_TRUE(asset.Get() != nullptr && asset.Get()->GetType() == AzTypeInfo<MyAssetType>::Uuid());
+            size_t assetDataSize = static_cast<size_t>(stream->GetLength());
+            MyAssetType* myAsset = asset.GetAs<MyAssetType>();
+            myAsset->m_data = reinterpret_cast<char*>(azmalloc(assetDataSize + 1));
+            AZStd::string input = AZStd::string::format("Asset<id=%s, type=%s>", asset.GetId().ToString<AZStd::string>().c_str(), asset.GetType().ToString<AZStd::string>().c_str());
+            stream->Read(assetDataSize, myAsset->m_data);
+            myAsset->m_data[assetDataSize] = 0;
+
+            return azstricmp(input.c_str(), myAsset->m_data) == 0;
+        }
+        bool SaveAssetData(const Asset<AssetData>& asset, IO::GenericStream* stream) override
+        {
+            EXPECT_TRUE(asset.GetType() == AzTypeInfo<MyAssetType>::Uuid());
+            AZStd::string output = AZStd::string::format("Asset<id=%s, type=%s>", asset.GetId().ToString<AZStd::string>().c_str(), asset.GetType().ToString<AZStd::string>().c_str());
+            stream->Write(output.size(), output.c_str());
+            return true;
+        }
+        void DestroyAsset(AssetPtr ptr) override
+        {
+            EXPECT_TRUE(ptr->GetType() == AzTypeInfo<MyAssetType>::Uuid());
+            delete ptr;
+        }
+
+        void GetHandledAssetTypes(AZStd::vector<AssetType>& assetTypes) override
+        {
+            assetTypes.push_back(AzTypeInfo<MyAssetType>::Uuid());
+        }
     };
 
     struct MyAssetMsgHandler
@@ -949,12 +1000,12 @@ namespace UnitTest
         // load asset 1
         asset1 = AssetManager::Instance().GetAsset<MyAssetType>(Uuid(MYASSET1_ID));
 
-        assetCB1->SetCallbacks(onAssetReady, nullptr, nullptr, nullptr, nullptr, nullptr);
+        assetCB1->SetOnAssetReadyCallback(onAssetReady);
         assetCB1->BusConnect(asset1.GetId());
 
         // load asset 2
         asset2 = AssetManager::Instance().GetAsset<MyAssetType>(Uuid(MYASSET2_ID));
-        assetCB2->SetCallbacks(onAssetReady, nullptr, nullptr, nullptr, nullptr, nullptr);
+        assetCB2->SetOnAssetReadyCallback(onAssetReady);
         assetCB2->BusConnect(asset2.GetId());
 
         // Wait for assets to load
@@ -968,6 +1019,50 @@ namespace UnitTest
         asset1 = nullptr;
         EXPECT_TRUE(asset2.IsReady());
         asset2 = nullptr;
+    }
+
+    TEST_F(AssetManagerTest, AssetHandlerOnlyTracksAssetsCreatedByAssetManager)
+    {
+        // Unregister fixture handler(MyAssetHandlerAndCatalog) until the end of the test
+        AssetManager::Instance().UnregisterHandler(m_assetHandlerAndCatalog);
+
+        MyAssetActiveAssetCountHandler testHandler;
+        AssetManager::Instance().RegisterHandler(&testHandler, AzTypeInfo<MyAssetType>::Uuid());
+        {
+            // Unmanaged asset created in Scope #1
+            Asset<MyAssetType> nonAssetManagerManagedAsset(aznew MyAssetType());
+            {
+                // Managed asset created in Scope #2
+                Asset<MyAssetType> assetManagerManagedAsset1;
+                assetManagerManagedAsset1.Create(Uuid(MYASSET1_ID));
+                Asset<MyAssetType> assetManagerManagedAsset2 = AssetManager::Instance().GetAsset(Uuid(MYASSET2_ID), azrtti_typeid<MyAssetType>(), false, {}, false, true);
+
+                // There are still two assets handled by the AssetManager so it should error once
+                // An assert will occur if the AssetHandler is unregistered and there are still active assets
+                AZ_TEST_START_ASSERTTEST;
+                AssetManager::Instance().UnregisterHandler(&testHandler);
+                AZ_TEST_STOP_ASSERTTEST(1);
+                // Re-register AssetHandler and let the managed assets ref count hit zero which will remove them from the AssetManager
+                AssetManager::Instance().RegisterHandler(&testHandler, AzTypeInfo<MyAssetType>::Uuid());
+            }
+
+            // Unregistering the AssetHandler now should result in 0 error messages since the m_assetHandlerAndCatalog::m_nActiveAsset count should be 0.
+            AZ_TEST_START_ASSERTTEST;
+            AssetManager::Instance().UnregisterHandler(&testHandler);
+            AZ_TEST_STOP_ASSERTTEST(0);
+            //Re-register AssetHandler and let the block scope end for the non managed asset.
+            AssetManager::Instance().RegisterHandler(&testHandler, AzTypeInfo<MyAssetType>::Uuid());
+        }
+
+        // Unregister the TestAssetHandler one last time. The unmanaged asset has already been destroyed.
+        // The m_assetHandlerAndCatalog::m_nActiveAsset count should still be 0 as the it did not manage the nonAssetManagerManagedAsset object
+        AZ_TEST_START_ASSERTTEST;
+        AssetManager::Instance().UnregisterHandler(&testHandler);
+        AZ_TEST_STOP_ASSERTTEST(0);
+
+        // Re-register the fixture handler so that the UnitTest fixture is able to cleanup the AssetManager without errors
+        AssetManager::Instance().RegisterHandler(m_assetHandlerAndCatalog, AzTypeInfo<MyAssetType>::Uuid());
+        AssetManager::Instance().RegisterHandler(m_assetHandlerAndCatalog, AzTypeInfo<EmptyAssetTypeWithId>::Uuid());
     }
 
     /**
@@ -1455,7 +1550,7 @@ namespace UnitTest
             AZ_RTTI(AssetC, "{283255FE-0FCB-4938-AC25-8FB18EB07158}", Data::AssetData);
             AZ_CLASS_ALLOCATOR(AssetC, SystemAllocator, 0);
             AssetC()
-                : data(Data::AssetLoadBehavior::PreLoad)
+                : data{ Data::AssetLoadBehavior::PreLoad }
             {}
             AssetC(const AssetC&) = delete;
             static void Reflect(SerializeContext& context)

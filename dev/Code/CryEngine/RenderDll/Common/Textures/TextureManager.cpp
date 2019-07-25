@@ -25,7 +25,7 @@ void CTextureManager::ReleaseTextureSemantics()
 {
     for (int slot = 0; slot < EFTT_MAX; slot++)
     {
-        delete m_TexSlotSemantics[slot].suffix;
+        delete[] m_TexSlotSemantics[slot].suffix;
         m_TexSlotSemantics[slot].suffix = nullptr;
         m_TexSlotSemantics[slot].def = nullptr;
         m_TexSlotSemantics[slot].neutral = nullptr;
@@ -187,7 +187,7 @@ void CTextureManager::LoadMaterialTexturesSemantics()
 
     for (int i = 0; i < EFTT_MAX; i++)
     {
-        SAFE_DELETE(m_TexSlotSemantics[i].suffix);      // make sure we are not leaving snail marks
+        SAFE_DELETE_ARRAY(m_TexSlotSemantics[i].suffix);      // make sure we are not leaving snail marks
         m_TexSlotSemantics[i] = texSlotSemantics[i];
     }
 }

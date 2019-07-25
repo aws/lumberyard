@@ -3845,6 +3845,13 @@ namespace AzToolsFramework
             return false;
         }
 
+        // In a majority of cases, only one of these will actually check anything and the others will just return true (default return value for the methods)
+        // Regardless of how many mime types there are, if any mime data would result in an invalid type of component for this inspector type, we will disallow the entire drop.
+        if (!CanDropForComponentTypes(mimeData) || !CanDropForComponentAssets(mimeData) || !CanDropForAssetBrowserEntries(mimeData))
+        {
+            return false;
+        }
+
         if (mimeData->hasFormat(AssetBrowser::AssetBrowserEntry::GetMimeType()))
         {
             bool hasAny = false;
@@ -4140,6 +4147,31 @@ namespace AzToolsFramework
         return false;
     }
 
+    bool EntityPropertyEditor::CanDropForComponentTypes(const QMimeData* mimeData) const
+    {
+        if (m_isLevelEntityEditor)
+        {
+            if (mimeData && mimeData->hasFormat(ComponentTypeMimeData::GetMimeType()))
+            {
+                ComponentTypeMimeData::ClassDataContainer classDataContainer;
+                ComponentTypeMimeData::Get(mimeData, classDataContainer);
+
+                for (auto componentClass : classDataContainer)
+                {
+                    if (componentClass)
+                    {
+                        if (!AppearsInLevelComponentMenu(*componentClass))
+                        {
+                            return false;
+                        }
+                    }
+                }
+            }
+        }
+
+        return true;
+    }
+
     bool EntityPropertyEditor::HandleDropForComponentTypes(QDropEvent* event)
     {
         const QMimeData* mimeData = event->mimeData();
@@ -4163,6 +4195,30 @@ namespace AzToolsFramework
         return false;
     }
 
+    bool EntityPropertyEditor::CanDropForComponentAssets(const QMimeData* mimeData) const
+    {
+        if (m_isLevelEntityEditor)
+        {
+            if (mimeData && mimeData->hasFormat(ComponentAssetMimeDataContainer::GetMimeType()))
+            {
+                ComponentAssetMimeDataContainer mimeContainer;
+                if (mimeContainer.FromMimeData(mimeData))
+                {
+                    for (const auto& asset : mimeContainer.m_assets)
+                    {
+                        auto componentClassData = GetComponentClassDataForType(asset.m_classId);
+                        if (!AppearsInLevelComponentMenu(*componentClassData))
+                        {
+                            return false;
+                        }
+                    }
+                }
+            }
+        }
+
+        return true;
+    }
+
     bool EntityPropertyEditor::HandleDropForComponentAssets(QDropEvent* event)
     {
         const QMimeData* mimeData = event->mimeData();
@@ -4182,6 +4238,29 @@ namespace AzToolsFramework
             return true;
         }
         return false;
+    }
+
+    bool EntityPropertyEditor::CanDropForAssetBrowserEntries(const QMimeData* mimeData) const
+    {
+        bool canDrop = true;
+
+        if (m_isLevelEntityEditor)
+        {
+            if (mimeData && mimeData->hasFormat(AssetBrowser::AssetBrowserEntry::GetMimeType()))
+            {
+                GetCreatableAssetEntriesFromMimeData(mimeData,
+                    [&](const AssetBrowser::ProductAssetBrowserEntry* product)
+                {
+                    AZ::Uuid componentType = AZ::Uuid::CreateNull();
+                    AZ::AssetTypeInfoBus::EventResult(componentType, product->GetAssetType(), &AZ::AssetTypeInfo::GetComponentTypeId);
+                    auto componentClassData = GetComponentClassDataForType(componentType);
+
+                    canDrop &= AppearsInLevelComponentMenu(*componentClassData);
+                });
+            }
+        }
+
+        return canDrop;
     }
 
     bool EntityPropertyEditor::HandleDropForAssetBrowserEntries(QDropEvent* event)

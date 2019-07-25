@@ -123,7 +123,14 @@ namespace EMStudio
                 EMotionFX::AnimGraphNode* node = sourceIndex.data(AnimGraphModel::ROLE_NODE_POINTER).value<EMotionFX::AnimGraphNode*>();
                 AZStd::vector<EMotionFX::AnimGraphNode*> nodes;
                 nodes.push_back(node);
-                m_plugin->GetGraphWidget()->OnContextMenuEvent(m_treeView, point, globalPoint, m_plugin, nodes, false, m_plugin->GetAnimGraphModel().CheckAnySelectedNodeBelongsToReferenceGraph());
+                m_plugin->GetGraphWidget()->OnContextMenuEvent(m_treeView,
+                    point,
+                    globalPoint,
+                    m_plugin,
+                    nodes,
+                    false,
+                    m_plugin->GetAnimGraphModel().CheckAnySelectedNodeBelongsToReferenceGraph(),
+                    m_plugin->GetActionFilter());
             }
         }
     }
@@ -133,10 +140,15 @@ namespace EMStudio
         // delete selected items
         switch (event->key())
         {
-        // when pressing delete, delete the selected items
-        case Qt::Key_Delete:
-            m_plugin->GetActionManager().DeleteSelectedNodes();
-            break;
+            // when pressing delete, delete the selected items
+            case Qt::Key_Delete:
+            {
+                if (m_plugin->GetActionFilter().m_delete)
+                {
+                    m_plugin->GetActionManager().DeleteSelectedNodes();
+                }
+                break;
+            }
         }
     }
 
@@ -147,7 +159,6 @@ namespace EMStudio
         m_filterProxyModel->setFilterWildcard(text);
         m_treeView->expandAll();
     }
-
 }   // namespace EMStudio
 
 #include <EMotionFX/Tools/EMotionStudio/Plugins/StandardPlugins/Source/AnimGraph/NavigateWidget.moc>

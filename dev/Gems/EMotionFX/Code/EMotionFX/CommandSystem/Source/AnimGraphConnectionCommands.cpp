@@ -29,7 +29,7 @@
 #include <EMotionFX/Source/BlendTreeBlendNNode.h>
 #include <EMotionFX/Source/ActorManager.h>
 #include <EMotionFX/CommandSystem/Source/AnimGraphConditionCommands.h>
-
+#include <EMotionFX/CommandSystem/Source/AnimGraphTriggerActionCommands.h>
 
 namespace CommandSystem
 {
@@ -238,7 +238,8 @@ namespace CommandSystem
                 parameters.GetValue("contents", this, &contents);
                 MCore::ReflectionSerializer::Deserialize(transition, contents);
 
-                transition->RemoveAllConditions(true);
+                transition->RemoveAllConditions();
+                transition->GetTriggerActionSetup().RemoveAllActions();
             }
 
             // check if we are dealing with a wildcard transition
@@ -328,9 +329,10 @@ namespace CommandSystem
         EMotionFX::AnimGraphNode* sourceNode = animGraph->RecursiveFindNodeById(mSourceNodeId);
         EMotionFX::AnimGraphNode* targetNode = animGraph->RecursiveFindNodeById(mTargetNodeId);
 
-        if (sourceNode == nullptr || targetNode == nullptr)
+        // NOTE: When source node is a nullptr, we are dealing with a wildcard transition, so there a nullptr is allowed.
+        if (!targetNode)
         {
-            outResult = AZStd::string::format("Source or target node does not exist!");
+            outResult = AZStd::string::format("Target node does not exist!");
             return false;
         }
 
@@ -680,6 +682,7 @@ namespace CommandSystem
         const AZStd::optional<AZStd::string>& sourceNode, const AZStd::optional<AZStd::string>& targetNode,
         const AZStd::optional<AZ::s32>& startOffsetX, const AZStd::optional<AZ::s32>& startOffsetY,
         const AZStd::optional<AZ::s32>& endOffsetX, const AZStd::optional<AZ::s32>& endOffsetY,
+        const AZStd::optional<AZStd::string>& attributesString,
         MCore::CommandGroup* commandGroup, bool executeInsideCommand)
     {
         AZStd::string command = AZStd::string::format("%s -%s %i -%s %s",
@@ -720,6 +723,13 @@ namespace CommandSystem
             command += AZStd::string::format(" -targetNode \"%s\"", targetNode.value().c_str());
         }
 
+        if (attributesString)
+        {
+            command += AZStd::string::format(" -%s {", EMotionFX::ParameterMixinAttributesString::s_parameterName);
+            command += attributesString.value();
+            command += "}";
+        }
+
         CommandSystem::GetCommandManager()->ExecuteCommandOrAddToGroup(command, commandGroup, executeInsideCommand);
     }
 
@@ -745,9 +755,7 @@ namespace CommandSystem
         for (size_t i = 0; i < numAnimGraphInstances; ++i)
         {
             EMotionFX::AnimGraphInstance* animGraphInstance = animGraph->GetAnimGraphInstance(i);
-            EMotionFX::AnimGraphStateTransition* activeTransition = stateMachine->GetActiveTransition(animGraphInstance);
-
-            if (transition == activeTransition)
+            if (stateMachine->IsTransitionActive(transition, animGraphInstance))
             {
                 stateMachine->Rewind(animGraphInstance);
             }
@@ -769,11 +777,12 @@ namespace CommandSystem
             return false;
         }
 
-        mStartOffsetX       = transition->GetVisualStartOffsetX();
-        mStartOffsetY       = transition->GetVisualStartOffsetY();
-        mEndOffsetX         = transition->GetVisualEndOffsetX();
-        mEndOffsetY         = transition->GetVisualEndOffsetY();
-        mOldDisabledFlag    = transition->GetIsDisabled();
+        mStartOffsetX = transition->GetVisualStartOffsetX();
+        mStartOffsetY = transition->GetVisualStartOffsetY();
+        mEndOffsetX = transition->GetVisualEndOffsetX();
+        mEndOffsetY = transition->GetVisualEndOffsetY();
+        mOldDisabledFlag = transition->GetIsDisabled();
+        m_oldCanBeInterruptedByTransitionIds = MCore::ReflectionSerializer::Serialize(&transition->GetCanBeInterruptedByTransitionIds()).GetValue();
 
         EMotionFX::AnimGraphNode* oldSourceNode = transition->GetSourceNode();
         EMotionFX::AnimGraphNode* oldTargetNode = transition->GetTargetNode();
@@ -835,10 +844,10 @@ namespace CommandSystem
             transition->SetIsDisabled(isDisabled);
         }
 
-        if (parameters.CheckIfHasParameter("attributesString"))
+        const AZStd::optional<AZStd::string>& attributesString = ParameterMixinAttributesString::GetAttributesString();
+        if (attributesString)
         {
-            const AZStd::string attributesString = parameters.GetValue("attributesString", this);
-            MCore::ReflectionSerializer::Deserialize(transition, MCore::CommandLine(attributesString));
+            MCore::ReflectionSerializer::Deserialize(transition, MCore::CommandLine(attributesString.value()));
         }
 
         // save the current dirty flag and tell the anim graph that something got changed
@@ -854,6 +863,7 @@ namespace CommandSystem
 
     bool CommandAnimGraphAdjustTransition::Undo(const MCore::CommandLine& parameters, AZStd::string& outResult)
     {
+        AZ_UNUSED(parameters);
         EMotionFX::AnimGraph* animGraph = GetAnimGraph(this, outResult);
         if (!animGraph)
         {
@@ -866,11 +876,14 @@ namespace CommandSystem
             return false;
         }
 
+        const AZStd::string attributesString = AZStd::string::format("-canBeInterruptedByTransitionIds {%s}", m_oldCanBeInterruptedByTransitionIds.c_str());
+
         AdjustTransition(transition,
             mOldDisabledFlag,
             mOldSourceNodeName, mOldTargetNodeName,
             mStartOffsetX, mStartOffsetY,
             mEndOffsetX, mEndOffsetY,
+            attributesString,
             /*commandGroup*/nullptr, /*executeInsideCommand*/true);
 
         animGraph->SetDirtyFlag(mOldDirtyFlag);
@@ -879,11 +892,12 @@ namespace CommandSystem
 
     void CommandAnimGraphAdjustTransition::InitSyntax()
     {
-        GetSyntax().ReserveParameters(10);
+        GetSyntax().ReserveParameters(12);
 
         MCore::CommandSyntax& syntax = GetSyntax();
         ParameterMixinAnimGraphId::InitSyntax(syntax);
         ParameterMixinTransitionId::InitSyntax(syntax);
+        ParameterMixinAttributesString::InitSyntax(syntax, false);
 
         GetSyntax().AddParameter("sourceNode", "The new source node of the transition.", MCore::CommandSyntax::PARAMTYPE_STRING, "");
         GetSyntax().AddParameter("targetNode", "The new target node of the transition.", MCore::CommandSyntax::PARAMTYPE_STRING, "");
@@ -899,6 +913,7 @@ namespace CommandSystem
     {
         ParameterMixinAnimGraphId::SetCommandParameters(parameters);
         ParameterMixinTransitionId::SetCommandParameters(parameters);
+        ParameterMixinAttributesString::SetCommandParameters(parameters);
         return true;
     }
 
@@ -1073,25 +1088,71 @@ namespace CommandSystem
             return;
         }
 
-        EMotionFX::AnimGraphNode* sourceNode = transition->GetSourceNode();
-        EMotionFX::AnimGraphNode* targetNode = transition->GetTargetNode();
-        EMotionFX::AnimGraphNode* parentNode = targetNode->GetParentNode();
+        const EMotionFX::AnimGraphNode* sourceNode = transition->GetSourceNode();
+        const EMotionFX::AnimGraphNode* targetNode = transition->GetTargetNode();
+        const EMotionFX::AnimGraphStateMachine* stateMachine = azdynamic_cast<const EMotionFX::AnimGraphStateMachine*>(targetNode->GetParentNode());
 
         // Safety check, we need to be working with states, not blend tree nodes.
-        if (azrtti_typeid(parentNode) != azrtti_typeid<EMotionFX::AnimGraphStateMachine>())
+        if (!stateMachine)
         {
-            MCore::LogError("Cannot delete state machine transition. The anim graph node named '%s' is not a state.", targetNode->GetName());
+            AZ_Error("EMotionFX", false, "Cannot delete state transition. The anim graph node named '%s' is not a state.", targetNode->GetName());
             return;
         }
 
-        EMotionFX::AnimGraphStateMachine* stateMachine = static_cast<EMotionFX::AnimGraphStateMachine*>(parentNode);
-
-        // Remove transition conditions back to the front.
-        AZStd::string commandString;
-        const int32 numConditions = static_cast<int32>(transition->GetNumConditions());
-        for (int32 i = numConditions - 1; i >= 0; --i)
+        // Remove the transition that is about to be removed from all other transition's can be interrupted by transition id masks.
+        AZStd::string attributesString;
+        const size_t numTransitions = stateMachine->GetNumTransitions();
+        for (size_t i = 0; i < numTransitions; ++i)
         {
-            RemoveCondition(transition, i, commandGroup);
+            EMotionFX::AnimGraphStateTransition* checkTransition = stateMachine->GetTransition(i);
+
+            AZStd::vector<AZ::u64> canBeInterruptedByTransitionIds = checkTransition->GetCanBeInterruptedByTransitionIds();
+            if (checkTransition != transition &&
+                AZStd::find(canBeInterruptedByTransitionIds.begin(), canBeInterruptedByTransitionIds.end(), transition->GetId()) != canBeInterruptedByTransitionIds.end() &&
+                AZStd::find(transitionList.begin(), transitionList.end(), checkTransition) == transitionList.end()) // Skip in case the transition already got added to the command group to be removed.
+            {
+                // Get the can be interrupted by transition ids vector and remove the transition about to be
+                // removed as well as all the already removed transtions within the same command group from it.
+                canBeInterruptedByTransitionIds.erase(AZStd::remove(canBeInterruptedByTransitionIds.begin(),
+                    canBeInterruptedByTransitionIds.end(),
+                    transition->GetId()),
+                    canBeInterruptedByTransitionIds.end());
+
+                for (EMotionFX::AnimGraphStateTransition* alreadyRemovedTranstion : transitionList)
+                {
+                    canBeInterruptedByTransitionIds.erase(AZStd::remove(canBeInterruptedByTransitionIds.begin(),
+                        canBeInterruptedByTransitionIds.end(),
+                        alreadyRemovedTranstion->GetId()),
+                        canBeInterruptedByTransitionIds.end());
+                }
+
+                // Serialize the attribute into a string so we can pass it as a command parameter.
+                attributesString = AZStd::string::format("-canBeInterruptedByTransitionIds {%s}",
+                    MCore::ReflectionSerializer::Serialize(&canBeInterruptedByTransitionIds).GetValue().c_str());
+
+                // Construct the command and let it adjust the can be interrupted by transition id mask.
+                AdjustTransition(checkTransition,
+                    /*isDisabled*/AZStd::nullopt, /*sourceNode*/AZStd::nullopt, /*targetNode*/AZStd::nullopt,
+                    /*startOffsetX*/AZStd::nullopt, /*startOffsetY*/AZStd::nullopt, /*endOffsetX*/AZStd::nullopt, /*endOffsetY*/AZStd::nullopt,
+                    attributesString,
+                    commandGroup);
+            }
+        }
+
+        // Remove transition actions back to front.
+        const size_t numActions = transition->GetTriggerActionSetup().GetNumActions();
+        for (size_t i = 0; i < numActions; ++i)
+        {
+            const size_t actionIndex = numActions - i - 1;
+            RemoveTransitionAction(transition, actionIndex, commandGroup);
+        }
+
+        // Remove transition conditions back to front.
+        const size_t numConditions = transition->GetNumConditions();
+        for (size_t i = 0; i < numConditions; ++i)
+        {
+            const size_t conditionIndex = numConditions - i - 1;
+            RemoveCondition(transition, conditionIndex, commandGroup);
         }
 
         // If we are dealing with a wildcard transition, reset the source node so that we use the empty name for that.
@@ -1107,10 +1168,14 @@ namespace CommandSystem
             sourceNodeName = sourceNode->GetName();
         }
 
-        commandString = AZStd::string::format("AnimGraphRemoveConnection -animGraphID %i -sourceNode \"%s\" -targetNode \"%s\" -targetPort 0 -sourcePort 0 -id %s", targetNode->GetAnimGraph()->GetID(), sourceNodeName.c_str(), targetNode->GetName(), transition->GetId().ToString().c_str());
+        const AZStd::string commandString = AZStd::string::format("AnimGraphRemoveConnection -animGraphID %i -sourceNode \"%s\" -targetNode \"%s\" -targetPort 0 -sourcePort 0 -id %s",
+            targetNode->GetAnimGraph()->GetID(),
+            sourceNodeName.c_str(),
+            targetNode->GetName(),
+            transition->GetId().ToString().c_str());
+        commandGroup->AddCommandString(commandString);
 
         transitionList.push_back(transition);
-        commandGroup->AddCommandString(commandString);
     }
 
 
@@ -1151,15 +1216,15 @@ namespace CommandSystem
 
 
     void CopyStateTransition(MCore::CommandGroup* commandGroup, EMotionFX::AnimGraph* targetAnimGraph, EMotionFX::AnimGraphStateTransition* transition,
-        bool cutMode, AZStd::unordered_map<AZ::u64, AZ::u64>& convertedIds, AZStd::unordered_map<EMotionFX::AnimGraphNode*, AZStd::string>& newNamesByCopiedNodes)
+        bool cutMode, AZStd::unordered_map<AZ::u64, AZ::u64>& convertedIds, AnimGraphCopyPasteData& copyPasteData)
     {
         EMotionFX::AnimGraphNode* sourceNode = transition->GetSourceNode();
         EMotionFX::AnimGraphNode* targetNode = transition->GetTargetNode();
 
         // We only copy transitions that are between nodes that are copied. Otherwise, the transition doesn't have a valid origin/target. If the transition is a wildcard
         // we only need the target.
-        if (newNamesByCopiedNodes.find(targetNode) == newNamesByCopiedNodes.end() ||
-            (!transition->GetIsWildcardTransition() && newNamesByCopiedNodes.find(sourceNode) == newNamesByCopiedNodes.end()))
+        if (copyPasteData.m_newNamesByCopiedNodes.find(targetNode) == copyPasteData.m_newNamesByCopiedNodes.end() ||
+            (!transition->GetIsWildcardTransition() && copyPasteData.m_newNamesByCopiedNodes.find(sourceNode) == copyPasteData.m_newNamesByCopiedNodes.end()))
         {
             return;
         }
@@ -1168,50 +1233,26 @@ namespace CommandSystem
         if (!transition->GetIsWildcardTransition() && sourceNode)
         {
             // In case the source node is going to get copied too get the new name, if not just use name of the source node of the connection.
-            sourceName = sourceNode->GetNameString();
-
-            // Check if it requries renaming
-            if (!cutMode)
-            {
-                auto itSourceRenamed = newNamesByCopiedNodes.find(sourceNode);
-                if (itSourceRenamed != newNamesByCopiedNodes.end())
-                {
-                    sourceName = itSourceRenamed->second;
-                }
-            }
+            sourceName = copyPasteData.GetNewNodeName(sourceNode, cutMode);
         }
 
-        AZStd::string targetName = targetNode->GetNameString();
-        if (!cutMode)
-        {
-            auto itTargetRenamed = newNamesByCopiedNodes.find(targetNode);
-            if (itTargetRenamed != newNamesByCopiedNodes.end())
-            {
-                targetName = itTargetRenamed->second;
-            }
-        }
+        const AZStd::string targetName = copyPasteData.GetNewNodeName(targetNode, cutMode);
+        const EMotionFX::AnimGraphConnectionId newTransitionId = copyPasteData.GetNewConnectionId(transition->GetId(), cutMode);
 
-        AZStd::string commandString;
-        commandString = AZStd::string::format("AnimGraphCreateConnection -animGraphID %d -sourceNode \"%s\" -targetNode \"%s\" -sourcePort %d -targetPort %d -transitionType \"%s\" -contents {%s}",
+        AZStd::string commandString = AZStd::string::format("AnimGraphCreateConnection -animGraphID %d -sourceNode \"%s\" -targetNode \"%s\" -sourcePort %d -targetPort %d -transitionType \"%s\" -id %s -contents {%s}",
                 targetAnimGraph->GetID(),
                 sourceName.c_str(),
                 targetName.c_str(),
                 0, // sourcePort
                 0, // targetPort
                 azrtti_typeid(transition).ToString<AZStd::string>().c_str(),
+                newTransitionId.ToString().c_str(),
                 MCore::ReflectionSerializer::Serialize(transition).GetValue().c_str());
         commandGroup->AddCommandString(commandString);
-        int commandsSinceTransitionCreation = 1;
 
         // Find the name of the state machine
         EMotionFX::AnimGraphStateMachine* stateMachine = static_cast<EMotionFX::AnimGraphStateMachine*>(targetNode->GetParentNode());
-        AZStd::string stateMachineName = stateMachine->GetNameString();
-
-        auto itStateMachineRenamed = newNamesByCopiedNodes.find(stateMachine);
-        if (itStateMachineRenamed != newNamesByCopiedNodes.end())
-        {
-            stateMachineName = itStateMachineRenamed->second;
-        }
+        const AZStd::string stateMachineName = copyPasteData.GetNewNodeName(stateMachine, cutMode);
 
         if (!cutMode)
         {
@@ -1219,12 +1260,11 @@ namespace CommandSystem
             transition->GetAttributeStringForAffectedNodeIds(convertedIds, attributesString);
             if (!attributesString.empty())
             {
-                commandString = AZStd::string::format("%s -%s %d -%s \"%%LASTRESULT%i%%\" -attributesString {%s}",
+                commandString = AZStd::string::format("%s -%s %d -%s %s -attributesString {%s}",
                     CommandAnimGraphAdjustTransition::s_commandName,
                     EMotionFX::ParameterMixinAnimGraphId::s_parameterName, targetAnimGraph->GetID(),
-                    EMotionFX::ParameterMixinTransitionId::s_parameterName, commandsSinceTransitionCreation,
+                    EMotionFX::ParameterMixinTransitionId::s_parameterName, newTransitionId.ToString().c_str(),
                     attributesString.c_str());
-                ++commandsSinceTransitionCreation;
                 commandGroup->AddCommandString(commandString);
             }
         }
@@ -1235,14 +1275,12 @@ namespace CommandSystem
             EMotionFX::AnimGraphTransitionCondition* condition = transition->GetCondition(i);
             const AZ::TypeId conditionType = azrtti_typeid(condition);
 
-            commandString = AZStd::string::format("%s -%s %d -%s \"%%LASTRESULT%i%%\" -conditionType \"%s\" -contents {%s}",
+            commandString = AZStd::string::format("%s -%s %d -%s %s -conditionType \"%s\" -contents {%s}",
                 CommandSystem::CommandAddTransitionCondition::s_commandName,
                 EMotionFX::ParameterMixinAnimGraphId::s_parameterName, targetAnimGraph->GetID(),
-                EMotionFX::ParameterMixinTransitionId::s_parameterName, commandsSinceTransitionCreation,
+                EMotionFX::ParameterMixinTransitionId::s_parameterName, newTransitionId.ToString().c_str(),
                 conditionType.ToString<AZStd::string>().c_str(),
                 MCore::ReflectionSerializer::Serialize(condition).GetValue().c_str());
-
-            ++commandsSinceTransitionCreation;
             commandGroup->AddCommandString(commandString);
 
             if (!cutMode)
@@ -1252,24 +1290,34 @@ namespace CommandSystem
 
                 if (!attributesString.empty())
                 {
-                    commandString = AZStd::string::format("%s -%s %d -%s \"%%LASTRESULT%i%%\" -conditionIndex %i -attributesString {%s}",
+                    commandString = AZStd::string::format("%s -%s %d -%s %s -conditionIndex %i -attributesString {%s}",
                         CommandAdjustTransitionCondition::s_commandName,
                         EMotionFX::ParameterMixinAnimGraphId::s_parameterName, targetAnimGraph->GetID(),
-                        EMotionFX::ParameterMixinTransitionId::s_parameterName, commandsSinceTransitionCreation,
+                        EMotionFX::ParameterMixinTransitionId::s_parameterName, newTransitionId.ToString().c_str(),
                         i,
                         attributesString.c_str());
-
-                    ++commandsSinceTransitionCreation;
                     commandGroup->AddCommandString(commandString);
                 }
             }
+        }
+
+        const AZStd::vector<EMotionFX::AnimGraphTriggerAction*> actions = transition->GetTriggerActionSetup().GetActions();
+        for (const EMotionFX::AnimGraphTriggerAction* action : actions)
+        {
+            CommandSystem::AddTransitionAction(targetAnimGraph->GetID(),
+                newTransitionId.ToString().c_str(),
+                azrtti_typeid(action),
+                MCore::ReflectionSerializer::Serialize(action).GetValue(),
+                /*insertAt=*/AZStd::nullopt,
+                commandGroup);
         }
     }
 
 
     void CopyBlendTreeConnection(MCore::CommandGroup* commandGroup, EMotionFX::AnimGraph* targetAnimGraph, EMotionFX::AnimGraphNode* targetNode, EMotionFX::BlendTreeConnection* connection,
-        bool cutMode, AZStd::unordered_map<AZ::u64, AZ::u64>& convertedIds, AZStd::unordered_map<EMotionFX::AnimGraphNode*, AZStd::string>& newNamesByCopiedNodes)
+        bool cutMode, AZStd::unordered_map<AZ::u64, AZ::u64>& convertedIds, AnimGraphCopyPasteData& copyPasteData)
     {
+        AZ_UNUSED(convertedIds);
         EMotionFX::AnimGraphNode* sourceNode = connection->GetSourceNode();
         if (!sourceNode)
         {
@@ -1277,34 +1325,16 @@ namespace CommandSystem
         }
 
         // Only copy connections that are between nodes that are copied.
-        if (newNamesByCopiedNodes.find(sourceNode) == newNamesByCopiedNodes.end() ||
-            newNamesByCopiedNodes.find(targetNode) == newNamesByCopiedNodes.end())
+        if (copyPasteData.m_newNamesByCopiedNodes.find(sourceNode) == copyPasteData.m_newNamesByCopiedNodes.end() ||
+            copyPasteData.m_newNamesByCopiedNodes.find(targetNode) == copyPasteData.m_newNamesByCopiedNodes.end())
         {
             return;
         }
 
-        AZStd::string sourceNodeName = sourceNode->GetNameString();
-        if (!cutMode)
-        {
-            auto itSourceRenamed = newNamesByCopiedNodes.find(sourceNode);
-            if (itSourceRenamed != newNamesByCopiedNodes.end())
-            {
-                sourceNodeName = itSourceRenamed->second;
-            }
-        }
-
-        AZStd::string targetNodeName = targetNode->GetNameString();
-        if (!cutMode)
-        {
-            auto itTargetRenamed = newNamesByCopiedNodes.find(targetNode);
-            if (itTargetRenamed != newNamesByCopiedNodes.end())
-            {
-                targetNodeName = itTargetRenamed->second;
-            }
-        }
-
-        const uint16 sourcePort  = connection->GetSourcePort();
-        const uint16 targetPort  = connection->GetTargetPort();
+        const AZStd::string sourceNodeName = copyPasteData.GetNewNodeName(sourceNode, cutMode);
+        const AZStd::string targetNodeName = copyPasteData.GetNewNodeName(targetNode, cutMode);
+        const uint16 sourcePort = connection->GetSourcePort();
+        const uint16 targetPort = connection->GetTargetPort();
         
         const AZStd::string commandString = AZStd::string::format("AnimGraphCreateConnection -animGraphID %d -sourceNode \"%s\" -targetNode \"%s\" -sourcePortName \"%s\" -targetPortName \"%s\"",
                 targetAnimGraph->GetID(),

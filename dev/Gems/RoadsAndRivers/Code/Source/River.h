@@ -13,8 +13,8 @@
 
 #include <AzCore/Math/Plane.h>
 #include <AzCore/Component/TransformBus.h>
-#include <AZCore/Math/Color.h>
-#include <AZCore/Math/Vector2.h>
+#include <AzCore/Math/Color.h>
+#include <AzCore/Math/Vector2.h>
 
 #include <LmbrCentral/Rendering/MaterialAsset.h>
 #include <LmbrCentral/Shape/SplineComponentBus.h>

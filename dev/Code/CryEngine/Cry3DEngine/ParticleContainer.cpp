@@ -1055,12 +1055,6 @@ void CParticleContainer::Render(SRendParams const& RenParams, SPartRenderParams 
             job.pRenderObject->m_ObjFlags |= FOB_RENDER_TRANS_AFTER_DOF;
         }
 
-        if (job.pRenderObject->m_ObjFlags & FOB_PARTICLE_SHADOWS)
-        {
-            pOD->m_ShadowCasters = RenParams.m_ShadowMapCasters;
-            job.pRenderObject->m_bHasShadowCasters = pOD->m_ShadowCasters != 0;
-        }
-
         // Ambient color for shader incorporates actual ambient lighting, as well as the constant emissive value.
         job.pRenderObject->m_II.m_Matrix.SetIdentity();
         job.pRenderObject->m_II.m_AmbColor = ColorF(fEmissive) + RenParams.AmbientColor * pParams->fDiffuseLighting * Get3DEngine()->m_fParticlesAmbientMultiplier;

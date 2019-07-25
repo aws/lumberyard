@@ -547,8 +547,6 @@ CSystem::CSystem(SharedEnvironmentInstance* pSharedEnvironment)
 
     g_pPakHeap = new CMTSafeHeap;
 
-    m_PlatformOSCreateFlags = 0;
-
     if (!AZ::AllocatorInstance<AZ::OSAllocator>::IsReady())
     {
         m_initedOSAllocator = true;
@@ -562,8 +560,6 @@ CSystem::CSystem(SharedEnvironmentInstance* pSharedEnvironment)
 
     m_UpdateTimesIdx = 0U;
     m_bNeedDoWorkDuringOcclusionChecks = false;
-
-    m_PlatformOSCreateFlags = 0;
 
     m_eRuntimeState = ESYSTEM_EVENT_LEVEL_UNLOAD;
 
@@ -636,12 +632,15 @@ void CSystem::Release()
 }
 
 //////////////////////////////////////////////////////////////////////////
-void CSystem::FreeLib(WIN_HMODULE hLibModule)
+void CSystem::FreeLib(AZStd::unique_ptr<AZ::DynamicModuleHandle>& hLibModule)
 {
     if (hLibModule)
     {
-        CryFreeLibrary(hLibModule);
-        (hLibModule) = NULL;
+        if (hLibModule->IsLoaded())
+        {
+            hLibModule->Unload();
+        }
+        hLibModule.release();
     }
 }
 
@@ -787,6 +786,8 @@ void CSystem::ShutDown()
         m_env.p3DEngine->UnloadLevel();
     }
     //////////////////////////////////////////////////////////////////////////
+
+    CryLegacyAnimationRequestBus::Broadcast(&CryLegacyAnimationRequestBus::Events::ShutdownCharacterManager);
 
     // Shutdown resource manager.
     m_pResourceManager->Shutdown();
@@ -1524,8 +1525,6 @@ bool CSystem::UpdatePreTickBus(int updateFlags, int nPauseMode)
 #endif //EXCLUDE_UPDATE_ON_CONSOLE
 
     gEnv->pOverloadSceneManager->Update();
-
-    m_pPlatformOS->Tick(m_Time.GetRealFrameTime());
 
 #ifdef WIN32
     // enable/disable SSE fp exceptions (#nan and /0)
@@ -2290,7 +2289,6 @@ bool CSystem::UpdatePostTickBus(int updateFlags, int nPauseMode)
 
 bool CSystem::UpdateLoadtime()
 {
-    m_pPlatformOS->Tick(m_Time.GetRealFrameTime());
     return !m_bQuit;
 }
 
@@ -2363,9 +2361,9 @@ void CSystem::UpdateMovieSystem(const int updateFlags, const float fFrameTime, c
 //////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////
-XmlNodeRef CSystem::CreateXmlNode(const char* sNodeName, bool bReuseStrings)
+XmlNodeRef CSystem::CreateXmlNode(const char* sNodeName, bool bReuseStrings, bool bIsProcessingInstruction)
 {
-    return new CXmlNode(sNodeName, bReuseStrings);
+    return new CXmlNode(sNodeName, bReuseStrings, bIsProcessingInstruction);
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -2548,6 +2546,14 @@ void CSystem::GetLocalizedPath(const char* sLanguage, string& sLocalizedPath)
     // Omit the trailing slash!
     string sLocalizationFolder(string().assign(PathUtil::GetLocalizationFolder(), 0, PathUtil::GetLocalizationFolder().size() - 1));
 
+    int locFormat = 0;
+    LocalizationManagerRequestBus::BroadcastResult(locFormat, &LocalizationManagerRequestBus::Events::GetLocalizationFormat);
+    if(locFormat == 1)
+    {
+        sLocalizedPath = sLocalizationFolder + "/" + sLanguage + ".loc.agsxml";
+    }
+    else
+    {
     if (sLocalizationFolder.compareNoCase("Languages") != 0)
     {
         sLocalizedPath = sLocalizationFolder + "/" + sLanguage + "_xml.pak";
@@ -2555,6 +2561,7 @@ void CSystem::GetLocalizedPath(const char* sLanguage, string& sLocalizedPath)
     else
     {
         sLocalizedPath = string("Localized/") + sLanguage + "_xml.pak";
+        }
     }
 }
 
@@ -2993,10 +3000,18 @@ void CSystem::OnLanguageCVarChanged(ICVar* language)
         {
             const char* lang = language->GetString();
 
-            pSys->CloseLanguagePak(pSys->GetLocalizationManager()->GetLanguage());
+            // Hook up Localization initialization
+            int locFormat = 0;
+            LocalizationManagerRequestBus::BroadcastResult(locFormat, &LocalizationManagerRequestBus::Events::GetLocalizationFormat);
+            if (locFormat == 0)
+            {
+                const char* locLanguage = nullptr;
+                LocalizationManagerRequestBus::BroadcastResult(locLanguage, &LocalizationManagerRequestBus::Events::GetLanguage);
             pSys->OpenLanguagePak(lang);
-            pSys->GetLocalizationManager()->SetLanguage(lang);
-            pSys->GetLocalizationManager()->ReloadData();
+            }
+
+            LocalizationManagerRequestBus::Broadcast(&LocalizationManagerRequestBus::Events::SetLanguage, lang);
+            LocalizationManagerRequestBus::Broadcast(&LocalizationManagerRequestBus::Events::ReloadData);
 
             if (gEnv->pCryFont)
             {

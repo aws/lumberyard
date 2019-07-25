@@ -19,6 +19,7 @@
 #include <GridMate/GridMate.h>
 #include <GridMate/Online/UserServiceTypes.h>
 #include <AzCore/std/parallel/atomic.h>
+#include <AzCore/std/string/conversions.h>
 
 namespace GridMate
 {
@@ -47,6 +48,7 @@ namespace GridMate
         bool        IsInt() const           { return !IsString(); }
         const char* ToString() const        { AZ_Assert(IsString(), "This id is not of string type"); return m_idStr.c_str(); }
         bool        IsString() const        { return !m_idStr.empty(); }
+        ach_string  ToStringDesc() const    { return IsString() ? m_idStr : static_cast<ach_string>(AZStd::to_string(m_id)); }
     };
 
     /*
@@ -117,7 +119,7 @@ namespace GridMate
         virtual int             GetHiddenCount(const ILocalMember* user) const = 0;
 
         // Achievement change functions
-        virtual void    Unlock(const ILocalMember* user, const AchievementId& id) = 0;
+        virtual void    Unlock(const ILocalMember* user, const AchievementId& id, AZ::u32 percentage) = 0;
 
         // Mgr functions
         virtual void    Init(IGridMate* gridMate)           { AZ_Assert(gridMate, "You must provide a valid gridmate"); m_gridMate = gridMate; }

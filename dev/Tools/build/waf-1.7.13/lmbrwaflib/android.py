@@ -28,7 +28,6 @@ from subprocess import call, check_output, STDOUT
 from types import MethodType
 
 from cry_utils import append_to_unique_list, get_command_line_limit
-from packaging import run_rc_job, generate_shaders_pak
 from settings_manager import LUMBERYARD_SETTINGS
 from utils import junction_directory, remove_junction, write_auto_gen_header
 
@@ -40,6 +39,8 @@ from waflib.TaskGen import feature, before, before_method, after_method, taskgen
 
 from waflib.Tools import ccroot
 ccroot.USELIB_VARS['android'] = set([ 'AAPT', 'AAPT_RESOURCES', 'AAPT_INCLUDES', 'AAPT_PACKAGE_FLAGS' ])
+
+import packaging
 
 
 ################################################################
@@ -503,7 +504,8 @@ def add_to_android_cache(conf, path_to_resource, arch_override = None):
     file_name = os.path.basename(path_to_resource)
 
     files_node = dest_node.make_node(file_name)
-    files_node.delete()
+    if os.path.isfile(files_node.abspath()):
+        files_node.delete()
 
     shutil.copy2(path_to_resource, files_node.abspath())
     files_node.chmod(Utils.O755)
@@ -1828,6 +1830,14 @@ def apply_android_java(self):
 
     Logs.debug('android: -> Android use libs added {}'.format(use_libs_added))
 
+    # append manifests from modules(including Gems) to the list
+    module_manifest_paths = collect_source_paths(self, game_project_modules, 'manifest_path')
+    for path in module_manifest_paths:
+        module_manifest = path.find_node('AndroidManifest.xml')
+        if module_manifest:
+            append_to_unique_list(input_manifests, module_manifest)
+            Logs.debug('android: -> AndroidManifest added: {}'.format(module_manifest.abspath()))
+
     # generate the task to merge the manifests
     manifest_nodes.extend(input_manifests)
 
@@ -2421,7 +2431,7 @@ def construct_assets_path_for_game_project(ctx, game_project):
 
 def build_shader_paks(ctx, game, assets_type, layout_node):
 
-    shaders_pak_dir = generate_shaders_pak(ctx, game, assets_type, 'GLES3')
+    shaders_pak_dir = packaging.generate_shaders_pak(ctx, game, assets_type, 'GLES3')
 
     shader_paks = shaders_pak_dir.ant_glob('*.pak')
     if not shader_paks:
@@ -2431,7 +2441,10 @@ def build_shader_paks(ctx, game, assets_type, layout_node):
     shader_pak_dest = layout_node.make_node(game.lower())
     for pak in shader_paks:
         dest_node = shader_pak_dest.make_node(pak.name)
-        dest_node.delete()
+
+        # Make sure there is no existing shader pak first
+        if os.path.isfile(dest_node.abspath()):
+            dest_node.delete()
 
         Logs.debug('android_deploy: Copying {} => {}'.format(pak.relpath(), dest_node.relpath()))
         shutil.copy2(pak.abspath(), dest_node.abspath())
@@ -2707,10 +2720,9 @@ def package_android(tsk_gen):
         assets_dir = bld.assets_cache_path
         output_folders = [ folder.name for folder in bld.get_standard_host_output_folders() ]
 
-        bld.log_error('[ERROR] There is no asset cache to read from at "{}". Please run AssetProcessor or '
-                      'AssetProcessorBatch from {} with "{}" assets enabled in the '
-                      'AssetProcessorPlatformConfig.ini'.format(assets_dir, '|'.join(output_folders), assets_platform))
-        return
+        raise Errors.WafError('[ERROR] There is no asset cache to read from at "{}". Please run AssetProcessor or '
+                              'AssetProcessorBatch from {} with "{}" assets enabled in the '
+                              'AssetProcessorPlatformConfig.ini'.format(assets_dir, '|'.join(output_folders), assets_platform))
 
     assets_cache = bld.get_assets_cache_node()
     layout_node = bld.get_layout_node()
@@ -2741,13 +2753,13 @@ def package_android(tsk_gen):
         rc_job_file = bld.get_android_rc_obb_job(game) if is_obb else bld.get_android_rc_pak_job(game)
 
         bld.user_message('Generating the necessary pak files...')
-        run_rc_job(
-            bld,
-            game,
-            assets_platform,
-            assets_cache.relpath(),
-            layout_node.relpath(),
-            job = rc_job_file, 
+        packaging.run_rc_job(
+            ctx=bld,
+            game=game,
+            job=rc_job_file,
+            assets_platform=assets_platform,
+            source_path=assets_cache.relpath(),
+            target_path=layout_node.relpath(),
             is_obb = is_obb
         )
 

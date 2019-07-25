@@ -11,6 +11,7 @@
 */
 #ifndef AZ_UNITY_BUILD
 
+#include <AzCore/RTTI/AttributeReader.h>
 #include <AzCore/Serialization/ObjectStream.h>
 #include <AzCore/Serialization/DataOverlayInstanceMsgs.h>
 #include <AzCore/Serialization/DataOverlayProviderMsgs.h>
@@ -132,6 +133,50 @@ namespace AZ
             bool WriteElement(const void* elemPtr, const SerializeContext::ClassData* classData, const SerializeContext::ClassElement* classElement);
             bool CloseElement();
 
+            enum class StorageAddressResult
+            {
+                Success,
+                FailedContinueEnumeration,
+                FailedStopEnumeration
+            };
+
+            struct StorageAddressElement
+            {
+                StorageAddressElement(void* dataAddressRef, void* reserveAddressRef, bool& errorResultRef,
+                    SerializeContext::IDataContainer* classContainerRef, size_t& currentContainerElementIndexRef)
+                    : m_dataAddress(dataAddressRef)
+                    , m_reserveAddress(reserveAddressRef)
+                    , m_errorResult(errorResultRef)
+                    , m_classContainer(classContainerRef)
+                    , m_currentContainerElementIndex(currentContainerElementIndexRef)
+                {}
+
+                void* m_dataAddress{};
+                void* m_reserveAddress{};
+                bool& m_errorResult;
+                SerializeContext::IDataContainer* m_classContainer{};
+                size_t& m_currentContainerElementIndex;
+            };
+            /// Retrieves storage address for data element of being loaded
+            /// @param dataAddress output parameter that is populated with the address to store the value of the data type
+            /// @param reserveAddress output parameter which is the memory address that is reserved from a classElement if the parent class is a data container
+            /// If the classElement represents a pointer field this is the address where the pointer is stored at in memory. Otherwise if the classElement
+            /// represents a value type then this matches dataAddress
+            /// @param errorResult inout parameter that is logical anded against if an error occurs while retrieving a storage address
+            /// @param classElement if non-nullptr stores the type information used to retrieve a memory address suitable for storing the value stored in the dataElement
+            /// @param dataElement structure which contains the typeid and stream data of the loaded object loaded
+            /// @param dataElementClassData SerializeContext class data which contains the type data need for serializing in the typeid stored in the @dataElement
+            /// @param classContainer if non-nullptr stores the parent class data IDataContainer instance of the @classElement. This is used to reserve elements of type stored
+            /// in the classElement with in the parent data container
+            /// @param parentClassPtr address of parent class that is used to calculate the @reserveAddress to store the type represented in @classElement
+            /// @param currentContainerElementIndex keeps track of current number of reserved elements within the parent class data container. If the parent class data container
+            /// has a more reserved elements than the currentContainerElementIndex and the container can be accessed by index, then this is used to access that reserved element
+            /// @return Success if @dataAddress has been populated with a memory address to store the @dataElement value;
+            /// FailedContinueEnumeration if an error occurred while attempting to retrieve a memory address of a non root level element;
+            /// FailedStopEnumeration if an error occurred while attempting to retrieve a memory address of a root level 
+            StorageAddressResult GetElementStorageAddress(StorageAddressElement& storageAddressElement, const SerializeContext::ClassElement* classElement, const SerializeContext::DataElement& dataElement,
+                const SerializeContext::ClassData* dataElementClassData, void* parentClassPtr);
+
             /// finalizes the stream after the user is done submitting his writes
             virtual bool Finalize();
 
@@ -183,7 +228,10 @@ namespace AZ
             IO::ByteContainerStream<AZStd::vector<char> > m_outStream;
 
             // other state info
-            bool                                m_isOverlaying;
+            // keep tracks of the number of WriteElements that have
+            // completed successfully to make sure the equivalent amount
+            // of CloseElements are called
+            AZStd::vector<bool>                           m_writeElementResultStack;
         };
 
         //=========================================================================
@@ -491,7 +539,15 @@ namespace AZ
                             // otherwise we need the uuids to be exactly the same.
                             if (classElement->m_flags & SerializeContext::ClassElement::FLG_POINTER)
                             {
-                                if (!m_sc->CanDowncast(element.m_id, classElement->m_typeId, classData->m_azRtti, classElement->m_azRtti))
+                                bool isCastableToClassElement = m_sc->CanDowncast(element.m_id, classElement->m_typeId, classData->m_azRtti, classElement->m_azRtti);
+                                bool isConvertableToClassElement = false;
+                                if (!isCastableToClassElement)
+                                {
+                                    const SerializeContext::ClassData* classElementClassData = m_sc->FindClassData(classElement->m_typeId, parentClassInfo, classElement->m_nameCrc);
+                                    isConvertableToClassElement = classElementClassData && classElementClassData->CanConvertFromType(element.m_id, *m_sc);
+                                }
+
+                                if (!isCastableToClassElement && !isConvertableToClassElement)
                                 {
                                     AZStd::string error = AZStd::string::format("Element of type %s cannot be added to container of pointers to type %s!"
                                         , element.m_id.ToString<AZStd::string>().c_str(), classElement->m_typeId.ToString<AZStd::string>().c_str());
@@ -505,7 +561,15 @@ namespace AZ
                             }
                             else
                             {
-                                if (element.m_id != classElement->m_typeId)
+                                bool isCastableToClassElement = element.m_id != classElement->m_typeId;
+                                bool isConvertableToClassElement = false;
+                                if (!isCastableToClassElement)
+                                {
+                                    const SerializeContext::ClassData* classElementClassData = m_sc->FindClassData(classElement->m_typeId, parentClassInfo);
+                                    isConvertableToClassElement = classElementClassData && classElementClassData->CanConvertFromType(element.m_id, *m_sc);
+                                }
+
+                                if (!isCastableToClassElement && !isConvertableToClassElement)
                                 {
                                     AZStd::string error = AZStd::string::format("Element of type %s cannot be added to container of type %s!"
                                         , element.m_id.ToString<AZStd::string>().c_str(), classElement->m_typeId.ToString<AZStd::string>().c_str());
@@ -543,34 +607,49 @@ namespace AZ
                                 // otherwise we need the uuids to be exactly the same.
                                 if (childElement->m_flags & SerializeContext::ClassElement::FLG_POINTER)
                                 {
-                                    if (m_sc->CanDowncast(element.m_id, childElement->m_typeId, classData->m_azRtti, childElement->m_azRtti))
+                                    bool isCastableToClassElement = m_sc->CanDowncast(element.m_id, childElement->m_typeId, classData->m_azRtti, childElement->m_azRtti);
+                                    bool isConvertableToClassElement = false;
+                                    if(!isCastableToClassElement)
+                                    {
+                                        const SerializeContext::ClassData* classElementClassData = m_sc->FindClassData(childElement->m_typeId, parentClassInfo, childElement->m_nameCrc);
+                                        isConvertableToClassElement = classElementClassData && classElementClassData->CanConvertFromType(element.m_id, *m_sc);
+                                    }
+                                    if (isCastableToClassElement || isConvertableToClassElement)
                                     {
                                         classElement = childElement;
                                     }
                                     else
                                     {
                                         // Name matched but wrong type, this is an error when conversion function is not supplied.
-                                        AZStd::string error = AZStd::string::format("Element '%s'(0x%x) in class '%s' is of type %s and cannot be downcasted to type %s.", 
-                                                element.m_name ? element.m_name : "NULL", element.m_nameCrc, parentClassInfo->m_name,
-                                                element.m_id.ToString<AZStd::string>().c_str(), childElement->m_typeId.ToString<AZStd::string>().c_str());
-                                        
+                                        AZStd::string error = AZStd::string::format("Element '%s'(0x%x) in class '%s' is of type %s and cannot be downcasted to type %s.",
+                                            element.m_name ? element.m_name : "NULL", element.m_nameCrc, parentClassInfo->m_name,
+                                            element.m_id.ToString<AZStd::string>().c_str(), childElement->m_typeId.ToString<AZStd::string>().c_str());
+
                                         result = result && ((m_filterDesc.m_flags & FILTERFLAG_STRICT) == 0);  // in strict mode, this is a complete failure.
                                         m_errorLogger.ReportError(error.c_str());
                                     }
                                 }
                                 else
                                 {
-                                    if (element.m_id == childElement->m_typeId)
+                                    bool isCastableToClassElement = element.m_id == childElement->m_typeId;
+                                    bool isConvertableToClassElement = false;
+                                    if (!isCastableToClassElement)
+                                    {
+                                        const SerializeContext::ClassData* classElementClassData = m_sc->FindClassData(childElement->m_typeId, parentClassInfo, childElement->m_nameCrc);
+                                        isConvertableToClassElement = classElementClassData && classElementClassData->CanConvertFromType(element.m_id, *m_sc);
+                                    }
+
+                                    if (element.m_id == childElement->m_typeId || isConvertableToClassElement)
                                     {
                                         classElement = childElement;
                                     }
                                     else
                                     {
                                         // Name matched but wrong type, this is an error when conversion function is not supplied.
-                                        AZStd::string error = AZStd::string::format("Element '%s'(0x%x) in class '%s' is of type %s but needs to be type %s.", 
-                                                element.m_name ? element.m_name : "NULL", element.m_nameCrc, parentClassInfo->m_name,
-                                                element.m_id.ToString<AZStd::string>().c_str(), childElement->m_typeId.ToString<AZStd::string>().c_str());
-                                        
+                                        AZStd::string error = AZStd::string::format("Element '%s'(0x%x) in class '%s' is of type %s but needs to be type %s.",
+                                            element.m_name ? element.m_name : "NULL", element.m_nameCrc, parentClassInfo->m_name,
+                                            element.m_id.ToString<AZStd::string>().c_str(), childElement->m_typeId.ToString<AZStd::string>().c_str());
+
                                         result = result && ((m_filterDesc.m_flags & FILTERFLAG_STRICT) == 0);  // in strict mode, this is a complete failure.
                                         m_errorLogger.ReportError(error.c_str());
                                     }
@@ -620,9 +699,6 @@ namespace AZ
                     }
                 }
 
-                void* dataAddress = nullptr;
-                void* reserveAddress = nullptr; // Stores the dataAddress from IDataContainer::ReserveElement
-
                 // Handle version conversions for non-custom serialized classes
                 if (element.m_version < classData->m_version && !classData->m_serializer)
                 {
@@ -659,109 +735,16 @@ namespace AZ
                         element.m_version, classData->m_version);
                 }
 
-                if (classElement)
+                StorageAddressElement storageElement{ nullptr, nullptr, result, classContainer, currentContainerElementIndex };
+                
+                if(GetElementStorageAddress(storageElement, classElement, element, classData, parentClassPtr) != StorageAddressResult::Success)
                 {
-                    // ClassData can be influenced by converters. Verify the classData is compatible with the underlying class element.
-                    if (classData->m_typeId != classElement->m_typeId)
-                    {
-                        if (!m_sc->CanDowncast(classData->m_typeId, classElement->m_typeId, classData->m_azRtti, classElement->m_azRtti))
-                        {
-                            AZStd::string error = AZStd::string::format("Converter switched to type %s, which cannot be casted to base type %s.",
-                                classData->m_typeId.ToString<AZStd::string>().c_str(), classElement->m_typeId.ToString<AZStd::string>().c_str());
-                            
-                            result = result && ((m_filterDesc.m_flags & FILTERFLAG_STRICT) == 0);  // in strict mode, this is a complete failure.
-                            m_errorLogger.ReportError(error.c_str());
-
-                            continue; // go to next element
-                        }
-                    }
-
-                    if (classContainer) // container elements
-                    {
-                        // add element to the array
-                        if (classContainer->CanAccessElementsByIndex() && classContainer->Size(parentClassPtr) > currentContainerElementIndex)
-                        {
-                            dataAddress = classContainer->GetElementByIndex(parentClassPtr, classElement, currentContainerElementIndex);
-                        }
-                        else if(parentClassPtr)
-                        {
-                            dataAddress = classContainer->ReserveElement(parentClassPtr, classElement);
-                        }
-
-                        if (dataAddress == nullptr)
-                        {
-                            AZStd::string error = AZStd::string::format("Failed to reserve element in container. The container may be full. Element %u will not be added to container.", static_cast<unsigned int>(currentContainerElementIndex));
-                            
-                            result = result && ((m_filterDesc.m_flags & FILTERFLAG_STRICT) == 0);  // in strict mode, this is a complete failure.
-                            m_errorLogger.ReportError(error.c_str());
-                            continue; // go to next element
-                        }
-
-                        currentContainerElementIndex++;
-                    }
-                    else
-                    {   // normal elements
-                        dataAddress = reinterpret_cast<char*>(parentClassPtr) + classElement->m_offset;
-                    }
-
-                    reserveAddress = dataAddress;
-                    // create a new instance if needed
-                    if (classElement->m_flags & SerializeContext::ClassElement::FLG_POINTER)
-                    {
-                        // create a new instance if we are referencing it by pointer
-                        AZ_Assert(classData->m_factory != nullptr, "We are attempting to create '%s', but no factory is provided! Either provide factory or change data member '%s' to value not pointer!", classData->m_name, classElement->m_name);
-
-                        // If there is a value stored at the data address
-                        // already, destroy it. This prevents leaks where the
-                        // default constructor of object A allocates an object
-                        // B and stores B in a field in A that is also
-                        // serialized.
-                        if (!classContainer && *reinterpret_cast<void**>(dataAddress))
-                        {
-                            classData->m_factory->Destroy(*reinterpret_cast<void**>(dataAddress));
-                        }
-
-                        void* newDataAddress = classData->m_factory->Create(classData->m_name);
-
-                        // we need to account for additional offsets if we have a pointer to
-                        // a base class.
-                        void* basePtr = m_sc->DownCast(newDataAddress, element.m_id, classElement->m_typeId, classData->m_azRtti, classElement->m_azRtti);
-                        AZ_Assert(basePtr != nullptr, classContainer
-                            ? "Can't cast container element %s(0x%x) to %s, make sure classes are registered in the system and not generics!"
-                            : "Can't cast %s(0x%x) to %s, make sure classes are registered in the system and not generics!"
-                            , element.m_name ? element.m_name : "NULL"
-                            , element.m_nameCrc
-                            , classData->m_name);
-
-                        *reinterpret_cast<void**>(dataAddress) = basePtr; // store the pointer in the class
-
-                        // further construction of the members need to be based off the pointer to the
-                        // actual type, not the base type!
-                        dataAddress = newDataAddress;
-                    }
+                    continue;
                 }
-                else
-                {
-                    // If we ended up here then we are a root object
-                    if (m_inplaceLoadInfoCB) // user can provide function for inplace loading.
-                    {
-                        dataAddress = nullptr;
-                        m_inplaceLoadInfoCB(&dataAddress, nullptr, element.m_id, m_sc);
-                    }
 
-                    if (!dataAddress)
-                    {
-                        // Call the supplied creator to allocate the construct the object and push it into the process queue
-                        AZ_Assert(classData->m_factory != nullptr, "We are attempting to create '%s', but no constructor is provided!", classData->m_name);
-                        dataAddress = classData->m_factory->Create(classData->m_name);
-                        if (dataAddress == nullptr)
-                        {
-                            AZ_Assert(false, "Creator for class %s(%s) returned a NULL pointer!", classData->m_name, element.m_id.ToString<AZStd::string>().c_str());
-                        }
-                    }
+                void* dataAddress = storageElement.m_dataAddress;
+                void* reserveAddress = storageElement.m_reserveAddress; // Stores the dataAddress from IDataContainer::ReserveElement
 
-                    reserveAddress = dataAddress;
-                }
 
 #if defined(AZ_ENABLE_TRACING)
                 {
@@ -843,6 +826,7 @@ namespace AZ
                 if (classData->m_eventHandler)
                 {
                     classData->m_eventHandler->OnWriteEnd(dataAddress);
+                    classData->m_eventHandler->OnLoadedFromObjectStream(dataAddress);
                 }
 
 #if defined(AZ_ENABLE_TRACING)
@@ -851,6 +835,148 @@ namespace AZ
             }
 
             return result;
+        }
+
+        ObjectStreamImpl::StorageAddressResult ObjectStreamImpl::GetElementStorageAddress(StorageAddressElement& storageElement, const SerializeContext::ClassElement* classElement, const SerializeContext::DataElement& dataElement,
+            const SerializeContext::ClassData* dataElementClassData, void* parentClassPtr)
+        {
+            if (classElement)
+            {
+                bool isCastableToClassElement{};
+                bool isConvertibleToClassElement{};
+                // ClassData can be influenced by converters. Verify the classData is compatible with the underlying class element.
+                if (dataElementClassData->m_typeId != classElement->m_typeId)
+                {
+                    isCastableToClassElement = m_sc->CanDowncast(dataElementClassData->m_typeId, classElement->m_typeId, dataElementClassData->m_azRtti, classElement->m_azRtti);
+                    if (!isCastableToClassElement)
+                    {
+                        const SerializeContext::ClassData* classElementClassData = m_sc->FindClassData(classElement->m_typeId);
+                        isConvertibleToClassElement = classElementClassData && classElementClassData->CanConvertFromType(dataElementClassData->m_typeId, *m_sc);
+                    }
+                    if (!isCastableToClassElement && !isConvertibleToClassElement)
+                    {
+                        AZStd::string error = AZStd::string::format("Converter switched to type %s, which cannot be casted to base type %s.",
+                            dataElementClassData->m_typeId.ToString<AZStd::string>().c_str(), classElement->m_typeId.ToString<AZStd::string>().c_str());
+
+                        storageElement.m_errorResult = storageElement.m_errorResult && ((m_filterDesc.m_flags & FILTERFLAG_STRICT) == 0);  // in strict mode, this is a complete failure.
+                        m_errorLogger.ReportError(error.c_str());
+                        return StorageAddressResult::FailedContinueEnumeration;
+                    }
+                }
+
+                if (storageElement.m_classContainer) // container elements
+                {
+                    // add element to the array
+                    if (storageElement.m_classContainer->CanAccessElementsByIndex() && storageElement.m_classContainer->Size(parentClassPtr) > storageElement.m_currentContainerElementIndex)
+                    {
+                        storageElement.m_reserveAddress = storageElement.m_classContainer->GetElementByIndex(parentClassPtr, classElement, storageElement.m_currentContainerElementIndex);
+                    }
+                    else if (parentClassPtr)
+                    {
+                        storageElement.m_reserveAddress = storageElement.m_classContainer->ReserveElement(parentClassPtr, classElement);
+                    }
+
+                    if (storageElement.m_reserveAddress == nullptr)
+                    {
+                        AZStd::string error = AZStd::string::format("Failed to reserve element in container. The container may be full. Element %u will not be added to container.", static_cast<unsigned int>(storageElement.m_currentContainerElementIndex));
+
+                        storageElement.m_errorResult = storageElement.m_errorResult && ((m_filterDesc.m_flags & FILTERFLAG_STRICT) == 0);  // in strict mode, this is a complete failure.
+                        m_errorLogger.ReportError(error.c_str());
+                        return StorageAddressResult::FailedContinueEnumeration;
+                    }
+
+                    storageElement.m_currentContainerElementIndex++;
+                }
+                else
+                {   // normal elements
+                    storageElement.m_reserveAddress = reinterpret_cast<char*>(parentClassPtr) + classElement->m_offset;
+                }
+
+                storageElement.m_dataAddress = storageElement.m_reserveAddress;
+
+                // create a new instance if needed
+                if (classElement->m_flags & SerializeContext::ClassElement::FLG_POINTER)
+                {
+                    // If the data element is convertible to the the type stored in the class element, then it is not castable(i.e a derived class)
+                    // to the type stored in the class element. In that case an element of type class element should be allocated directly
+                    const SerializeContext::ClassData* classElementClassData = m_sc->FindClassData(classElement->m_typeId);
+                    SerializeContext::IObjectFactory* classFactory = isCastableToClassElement ? dataElementClassData->m_factory : classElementClassData ? classElementClassData->m_factory : nullptr;
+
+                    // create a new instance if we are referencing it by pointer
+                    AZ_Assert(classFactory != nullptr, "We are attempting to create '%s', but no factory is provided! Either provide factory or change data member '%s' to value not pointer!", dataElementClassData->m_name, classElement->m_name);
+
+                    // If there is a value stored at the data address
+                    // already, destroy it. This prevents leaks where the
+                    // default constructor of object A allocates an object
+                    // B and stores B in a field in A that is also
+                    // serialized.
+                    if (!storageElement.m_classContainer && *reinterpret_cast<void**>(storageElement.m_reserveAddress))
+                    {
+                        classFactory->Destroy(*reinterpret_cast<void**>(storageElement.m_reserveAddress));
+                    }
+
+                    void* newDataAddress = classFactory->Create(dataElementClassData->m_name);
+
+                    // If the data element type is convertible to the class element type invoke the ClassData
+                    // DataConverter to retrieve the address to store the data element value
+                    if (isConvertibleToClassElement)
+                    {
+                        *reinterpret_cast<void**>(storageElement.m_reserveAddress) = newDataAddress;
+                        classElementClassData->ConvertFromType(storageElement.m_dataAddress, dataElement.m_id, newDataAddress, *m_sc);
+                    }
+                    else
+                    {
+                        // we need to account for additional offsets if we have a pointer to
+                        // a base class.
+                        void* basePtr = m_sc->DownCast(newDataAddress, dataElement.m_id, classElement->m_typeId, dataElementClassData->m_azRtti, classElement->m_azRtti);
+                        AZ_Assert(basePtr != nullptr, storageElement.m_classContainer
+                            ? "Can't cast container element %s(0x%x) to %s, make sure classes are registered in the system and not generics!"
+                            : "Can't cast %s(0x%x) to %s, make sure classes are registered in the system and not generics!"
+                            , dataElement.m_name ? dataElement.m_name : "NULL"
+                            , dataElement.m_nameCrc
+                            , dataElementClassData->m_name);
+
+                        *reinterpret_cast<void**>(storageElement.m_reserveAddress) = basePtr; // store the pointer in the class
+                        // further construction of the members need to be based off the pointer to the
+                        // actual type, not the base type!
+                        storageElement.m_dataAddress = newDataAddress;
+                    }
+
+                }
+            }
+            else
+            {
+                // If we ended up here then we are a root object
+                if (m_inplaceLoadInfoCB) // user can provide function for inplace loading.
+                {
+                    storageElement.m_reserveAddress = nullptr;
+                    m_inplaceLoadInfoCB(&storageElement.m_reserveAddress, nullptr, dataElement.m_id, m_sc);
+                }
+
+                if (!storageElement.m_reserveAddress)
+                {
+                    if(!m_readyCB)
+                    {
+                        AZStd::string rootElementError = AZStd::string::format("Root element address is nullptr and a ClassReadyCB was not provided to the LoadBlocking call."
+                            " Loading of the root element of type %s will halt. This is due to being unable to give ownership of the loaded element to the caller."
+                            "This could be caused by the InplaceLoadInfoCB not being able to store the supplied type or there not being ", dataElement.m_id.ToString<AZStd::string>().data());
+                        m_errorLogger.ReportError(rootElementError.c_str());
+                        return StorageAddressResult::FailedStopEnumeration;
+                    }
+
+                    // Call the supplied creator to allocate the construct the object and push it into the process queue
+                    AZ_Assert(dataElementClassData->m_factory != nullptr, "We are attempting to create '%s', but no constructor is provided!", dataElementClassData->m_name);
+                    storageElement.m_reserveAddress = dataElementClassData->m_factory->Create(dataElementClassData->m_name);
+                    if (storageElement.m_reserveAddress == nullptr)
+                    {
+                        AZ_Assert(false, "Creator for class %s(%s) returned a NULL pointer!", dataElementClassData->m_name, dataElement.m_id.ToString<AZStd::string>().c_str());
+                    }
+                }
+
+                storageElement.m_dataAddress = storageElement.m_reserveAddress;
+            }
+
+            return StorageAddressResult::Success;
         }
 
         //=========================================================================
@@ -1373,10 +1499,35 @@ namespace AZ
         bool ObjectStreamImpl::WriteClass(const void* classPtr, const Uuid& classId, const SerializeContext::ClassData* classData)
         {
             m_errorLogger.Reset();
+            // The Write Element Stack reserve size is based on examining a ScriptCanvas object stream that had a depth of up 18 types
+            // 32 should be enough slack to serialize an hierarchy of types without needing to realloc
+            constexpr size_t writeElementStackReserveSize = 32; 
+            m_writeElementResultStack.reserve(writeElementStackReserveSize);
+
+            auto writeElementCB = [this](const void* ptr, const SerializeContext::ClassData* classData, const SerializeContext::ClassElement* classElement)
+            {
+                m_writeElementResultStack.push_back(WriteElement(ptr, classData, classElement));
+                return m_writeElementResultStack.back();
+            };
+
+            auto closeElementCB = [this, classData]()
+            {
+                if (m_writeElementResultStack.empty())
+                {
+                    AZ_Error("Serialize", false, "CloseElement is attempted to be called without a corresponding WriteElement when writing class %s", classData->m_name);
+                    return true;
+                }
+                if (m_writeElementResultStack.back())
+                {
+                    CloseElement();
+                }
+                m_writeElementResultStack.pop_back();
+                return true;
+            };
 
             SerializeContext::EnumerateInstanceCallContext callContext(
-                AZStd::bind(&ObjectStreamImpl::WriteElement, this, AZStd::placeholders::_1, AZStd::placeholders::_2, AZStd::placeholders::_3),
-                AZStd::bind(&ObjectStreamImpl::CloseElement, this),
+                AZStd::move(writeElementCB),
+                AZStd::move(closeElementCB),
                 m_sc,
                 SerializeContext::ENUM_ACCESS_FOR_READ,
                 &m_errorLogger
@@ -1400,7 +1551,6 @@ namespace AZ
         bool ObjectStreamImpl::WriteElement(const void* ptr, const SerializeContext::ClassData* classData, const SerializeContext::ClassElement* classElement)
         {
             AZ_Assert(classData, "We were handed a non-serializable object. This should never happen!");
-            m_isOverlaying = false;
             const void* objectPtr = ptr;
             if (classElement)
             {
@@ -1416,9 +1566,28 @@ namespace AZ
                     overlayElementMetadata.m_flags = 0;
                     overlayElementMetadata.m_typeId = SerializeTypeInfo<DataOverlayInfo>::GetUuid();
 
+                    auto writeElementCB = [this](const void* ptr, const SerializeContext::ClassData* classData, const SerializeContext::ClassElement* classElement)
+                    {
+                        m_writeElementResultStack.push_back(WriteElement(ptr, classData, classElement));
+                        return m_writeElementResultStack.back();
+                    };
+                    auto closeElementCB = [this, classData]()
+                    {
+                        if (m_writeElementResultStack.empty())
+                        {
+                            AZ_Error("Serialize", false, "CloseElement is attempted to be called without a corresponding WriteElement when writing class %s", classData->m_name);
+                            return true;
+                        }
+                        if (m_writeElementResultStack.back())
+                        {
+                            CloseElement();
+                        }
+                        m_writeElementResultStack.pop_back();
+                        return true;
+                    };
                     SerializeContext::EnumerateInstanceCallContext callContext(
-                        AZStd::bind(&ObjectStreamImpl::WriteElement, this, AZStd::placeholders::_1, AZStd::placeholders::_2, AZStd::placeholders::_3), 
-                        AZStd::bind(&ObjectStreamImpl::CloseElement, this), 
+                        AZStd::move(writeElementCB),
+                        AZStd::move(closeElementCB),
                         m_sc,
                         SerializeContext::ENUM_ACCESS_FOR_READ,
                         &m_errorLogger
@@ -1431,7 +1600,6 @@ namespace AZ
                         , overlayClassMetadata
                         , &overlayElementMetadata
                         );
-                    m_isOverlaying = true;
                     return false;
                 }
 
@@ -1457,6 +1625,50 @@ namespace AZ
                 return false;
             }
 
+            // Redirect Object serialization to a custom callback on the ClassData if one exist
+            AZ::AttributeReader objectStreamWriteOverrideCB{ nullptr, classData->FindAttribute(SerializeContextAttributes::ObjectStreamWriteElementOverride) };
+            if (objectStreamWriteOverrideCB.GetAttribute())
+            {
+                auto writeElementCB = [this](const void* ptr, const SerializeContext::ClassData* classData, const SerializeContext::ClassElement* classElement)
+                {
+                    m_writeElementResultStack.push_back(WriteElement(ptr, classData, classElement));
+                    return m_writeElementResultStack.back();
+                };
+                auto closeElementCB = [this, classData]()
+                {
+                    if (m_writeElementResultStack.empty())
+                    {
+                        AZ_Error("Serialize", false, "CloseElement is attempted to be called without a corresponding WriteElement when writing class %s", classData->m_name);
+                        return true;
+                    }
+                    if (m_writeElementResultStack.back())
+                    {
+                        CloseElement();
+                    }
+                    m_writeElementResultStack.pop_back();
+                    return true;
+                };
+                SerializeContext::EnumerateInstanceCallContext callContext(
+                    AZStd::move(writeElementCB),
+                    AZStd::move(closeElementCB),
+                    m_sc,
+                    SerializeContext::ENUM_ACCESS_FOR_READ,
+                    &m_errorLogger
+                );
+                ObjectStreamWriteOverrideCB writeCB;
+                if (objectStreamWriteOverrideCB.Read<ObjectStreamWriteOverrideCB>(writeCB))
+                {
+                    writeCB(callContext, objectPtr, *classData, classElement);
+                    return false;
+                }
+                else
+                {
+                    auto objectStreamError = AZStd::string::format("Unable to invoke ObjectStream Write Element Override for class element %s of class data %s",
+                        classElement->m_name ? classElement->m_name : "", classData->m_name);
+                    m_errorLogger.ReportError(objectStreamError.c_str());
+                }
+            }
+
             SerializeContext::DataElement element;
             if (classElement)
             {
@@ -1467,9 +1679,6 @@ namespace AZ
             element.m_version = classData->m_version;
             element.m_dataSize = 0;
             element.m_stream = &m_inStream;
-            // Make sure we have serializer classes. Containers since they have 0..N child elements or not are not required to provide one.
-            //AZ_Assert(!classData->m_elements.empty() || classData->m_serializer != nullptr || classData->m_container != nullptr,
-            //    "Your leaf class '%s' as element '%s' must have a serialize interface or child elements. If you want to store empty class use 'SerializerForEmptyClass' in your class description !",classData->m_name,classElement ? classElement->m_name : "Root class");
 
             m_inStream.Seek(0, IO::GenericStream::ST_SEEK_BEGIN);
 
@@ -1697,34 +1906,31 @@ namespace AZ
         //=========================================================================
         bool ObjectStreamImpl::CloseElement()
         {
-            if (!m_isOverlaying)
+            if (GetType() == ST_XML)
             {
-                if (GetType() == ST_XML)
-                {
-                    m_xmlNode = m_xmlNode->parent();
-                }
-                else if (GetType() == ST_JSON)
-                {
-                    AZ_Assert(m_jsonWriteValues.back().IsArray(), "This value should be fields array");
-                    rapidjson::Value fieldArray(AZStd::move(m_jsonWriteValues.back()));
-                    m_jsonWriteValues.pop_back();
-                    AZ_Assert(m_jsonWriteValues.back().IsObject(), "This value should be class object!");
-                    rapidjson::Value classObject(AZStd::move(m_jsonWriteValues.back()));
-                    m_jsonWriteValues.pop_back();
-                    if (!fieldArray.Empty())
-                    {
-                        classObject.AddMember("Objects", AZStd::move(fieldArray), m_jsonDoc->GetAllocator());
-                    }
-                    AZ_Assert(m_jsonWriteValues.back().IsArray(), "This value should be the parent fields array!");
-                    m_jsonWriteValues.back().PushBack(AZStd::move(classObject), m_jsonDoc->GetAllocator());
-                }
-                else /*ST_BINARY*/
-                {
-                    u8 endTag = ST_BINARYFLAG_ELEMENT_END;
-                    m_stream->Write(sizeof(u8), &endTag);
-                }
-                m_isOverlaying = false;
+                m_xmlNode = m_xmlNode->parent();
             }
+            else if (GetType() == ST_JSON)
+            {
+                AZ_Assert(m_jsonWriteValues.back().IsArray(), "This value should be fields array");
+                rapidjson::Value fieldArray(AZStd::move(m_jsonWriteValues.back()));
+                m_jsonWriteValues.pop_back();
+                AZ_Assert(m_jsonWriteValues.back().IsObject(), "This value should be class object!");
+                rapidjson::Value classObject(AZStd::move(m_jsonWriteValues.back()));
+                m_jsonWriteValues.pop_back();
+                if (!fieldArray.Empty())
+                {
+                    classObject.AddMember("Objects", AZStd::move(fieldArray), m_jsonDoc->GetAllocator());
+                }
+                AZ_Assert(m_jsonWriteValues.back().IsArray(), "This value should be the parent fields array!");
+                m_jsonWriteValues.back().PushBack(AZStd::move(classObject), m_jsonDoc->GetAllocator());
+            }
+            else /*ST_BINARY*/
+            {
+                u8 endTag = ST_BINARYFLAG_ELEMENT_END;
+                m_stream->Write(sizeof(u8), &endTag);
+            }
+
             return true;
         }
 

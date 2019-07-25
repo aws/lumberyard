@@ -436,14 +436,10 @@ namespace AZ
 #if !(defined AZCORE_JOBS_IMPL_SYNCHRONOUS)
             m_numberOfWorkerThreads = AZ::GetMin(desc.m_maxWorkerThreads, AZStd::thread::hardware_concurrency());
 
-            JobManagerThreadDesc threadDesc(m_firstThreadCPU);
+            JobManagerThreadDesc threadDesc(AFFINITY_MASK_USERTHREADS);
             for (unsigned int i = 0; i < m_numberOfWorkerThreads; ++i)
             {
                 jobDesc.m_workerThreads.push_back(threadDesc);
-                if (threadDesc.m_cpuId > -1)
-                {
-                    threadDesc.m_cpuId++;
-                }
             }
 #else
             m_numberOfWorkerThreads = 0;
@@ -904,10 +900,10 @@ namespace AZ
                     handler->DestroyAsset(asset);
                     if (wasInAssetsHash)
                     {
+                        --handler->m_nActiveAssets;
                         EBUS_QUEUE_EVENT_ID(assetId, AssetBus, OnAssetUnloaded, assetId, assetType);
                     }
                 }
-                --handler->m_nActiveAssets;
             }
         }
 
@@ -979,7 +975,6 @@ namespace AZ
                 if (newAssetData)
                 {
                     newAssetData->m_assetId = currentAssetData->GetId();
-                    ++handler->m_nActiveAssets;
                 }
             }
 
@@ -1026,7 +1021,6 @@ namespace AZ
                     AssetHandlerMap::iterator handlerIt = m_handlers.find(newData->GetType());
                     AZ_Assert(handlerIt != m_handlers.end(), "No handler was registered for this asset [type:0x%x id:%s]!",
                         newData->GetType().ToString<AZ::OSString>().c_str(), newData->GetId().ToString<AZ::OSString>().c_str());
-                    ++handlerIt->second->m_nActiveAssets;
                 }
 
                 AssignAssetData(asset);

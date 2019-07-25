@@ -15,6 +15,7 @@
 #include <AzCore/std/containers/rbtree.h>
 #include <AzCore/std/functional_basic.h>
 #include <AzCore/std/algorithm.h>
+#include <AzCore/std/tuple.h>
 
 namespace AZStd
 {
@@ -83,6 +84,8 @@ namespace AZStd
 
         AZ_FORCE_INLINE explicit map(const Compare& comp = Compare(), const Allocator& alloc = Allocator())
             : m_tree(comp, alloc) {}
+        explicit map(const Allocator& alloc)
+            : m_tree(alloc) {}
         template <class InputIterator>
         AZ_FORCE_INLINE map(InputIterator first, InputIterator last, const Compare& comp = Compare(), const Allocator& alloc = Allocator())
             : m_tree(comp, alloc)
@@ -117,12 +120,21 @@ namespace AZStd
         AZ_FORCE_INLINE bool empty() const                  { return m_tree.empty(); }
         AZ_FORCE_INLINE size_type size() const              { return m_tree.size(); }
         AZ_FORCE_INLINE size_type max_size() const          { return m_tree.max_size(); }
-        AZ_FORCE_INLINE MappedType& operator[](const key_type& key)
+        MappedType& operator[](const key_type& key)
         {
             iterator iter = m_tree.lower_bound(key);
             if (iter == end() || key_comp()(key, (*iter).first))
             {
-                iter = insert(iter, AZStd::move(value_type(key, MappedType())));
+                iter = insert(iter, value_type(AZStd::piece_construct, AZStd::forward_as_tuple(AZStd::move(key)), AZStd::tuple<>{}));
+            }
+            return (*iter).second;
+        }
+        MappedType& operator[](key_type&& key)
+        {
+            iterator iter = m_tree.lower_bound(key);
+            if (iter == end() || key_comp()(key, (*iter).first))
+            {
+                iter = insert(iter, value_type(AZStd::piece_construct, AZStd::forward_as_tuple(AZStd::move(key)), AZStd::tuple<>{}));
             }
             return (*iter).second;
         }
@@ -319,6 +331,8 @@ namespace AZStd
 
         AZ_FORCE_INLINE explicit multimap(const Compare& comp = Compare(), const Allocator& alloc = Allocator())
             : m_tree(comp, alloc) {}
+        explicit multimap(const Allocator& alloc)
+            : m_tree(alloc) {}
         template <class InputIterator>
         AZ_FORCE_INLINE multimap(InputIterator first, InputIterator last, const Compare& comp = Compare(), const Allocator& alloc = Allocator())
             : m_tree(comp, alloc)

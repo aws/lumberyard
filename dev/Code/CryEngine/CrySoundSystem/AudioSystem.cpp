@@ -91,7 +91,6 @@ namespace Audio
         m_apAudioProxiesToBeFreed.reserve(16);
         AudioSystemRequestBus::Handler::BusConnect();
         AudioSystemThreadSafeRequestBus::Handler::BusConnect();
-        AudioSystemThreadSafeInternalRequestBus::Handler::BusConnect();
         AudioSystemInternalRequestBus::Handler::BusConnect();
     }
 
@@ -100,7 +99,6 @@ namespace Audio
     {
         AudioSystemRequestBus::Handler::BusDisconnect();
         AudioSystemThreadSafeRequestBus::Handler::BusDisconnect();
-        AudioSystemThreadSafeInternalRequestBus::Handler::BusDisconnect();
         AudioSystemInternalRequestBus::Handler::BusDisconnect();
     }
 
@@ -113,13 +111,13 @@ namespace Audio
     ///////////////////////////////////////////////////////////////////////////////////////////////////
     void CAudioSystem::Activate()
     {
-    	CryLogAlways("AZ::Component - CAudioSystem::Activate()");
+        CryLogAlways("AZ::Component - CAudioSystem::Activate()");
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
     void CAudioSystem::Deactivate()
     {
-    	CryLogAlways("AZ::Component - CAudioSystem::Deactivate()");
+        CryLogAlways("AZ::Component - CAudioSystem::Deactivate()");
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -157,7 +155,7 @@ namespace Audio
         AZ_Assert(0 != (request.nFlags & eARF_THREAD_SAFE_PUSH), "AudioSystem::PushRequestThreadSafe - called without THREAD_SAFE_PUSH flag!");
         AZ_Assert(0 == (request.nFlags & eARF_EXECUTE_BLOCKING), "AudioSystem::PushRequestThreadSafe - called with flag EXECUTE_BLOCKING!");
 
-        AudioSystemThreadSafeInternalRequestBus::QueueBroadcast(&AudioSystemThreadSafeInternalRequestBus::Events::ProcessRequestThreadSafe, request);
+        AudioSystemThreadSafeRequestBus::QueueFunction(AZStd::bind(&CAudioSystem::ProcessRequestThreadSafe, this, request));
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -205,6 +203,9 @@ namespace Audio
         // Notify callbacks from the "thread safe" queue...
         ExecuteRequestCompletionCallbacks(m_threadSafeCallbacksQueue, m_threadSafeCallbacksMutex, true);
 
+        // Other notifications to be sent out...
+        AudioTriggerNotificationBus::ExecuteQueuedEvents();
+
         // Free any Audio Proxies that are queued up for deletion...
         for (auto audioProxy : m_apAudioProxiesToBeFreed)
         {
@@ -249,7 +250,7 @@ namespace Audio
 
         // Call the ProcessRequestThreadSafe events queued up...
         // Note: in the old code, this would be guarded by a try_lock, so it wasn't guaranteed to process these.
-        AudioSystemThreadSafeInternalRequestBus::ExecuteQueuedEvents();
+        AudioSystemThreadSafeRequestBus::ExecuteQueuedEvents();
 
         if (m_updatePeriod > AZStd::chrono::milliseconds(2))
         {
@@ -298,19 +299,6 @@ namespace Audio
     {
         AZ_Assert(gEnv->mMainThreadId == CryGetCurrentThreadId(), "AudioSystem::Release - called from a non-Main thread!");
 
-        SAudioRequest request;
-        request.nFlags = (eARF_PRIORITY_HIGH | eARF_EXECUTE_BLOCKING);
-
-        // Unload global audio file cache data...
-        SAudioManagerRequestData<eAMRT_UNLOAD_AFCM_DATA_BY_SCOPE> unloadAFCM(eADS_GLOBAL);
-        request.pData = &unloadAFCM;
-        PushRequestBlocking(request);
-
-        // Release the audio implementation...
-        SAudioManagerRequestData<eAMRT_RELEASE_AUDIO_IMPL> releaseImpl;
-        request.pData = &releaseImpl;
-        PushRequestBlocking(request);
-
         for (auto audioProxy : m_apAudioProxies)
         {
             azdestroy(audioProxy, Audio::AudioSystemAllocator);
@@ -321,8 +309,15 @@ namespace Audio
             azdestroy(audioProxy, Audio::AudioSystemAllocator);
         }
 
-        stl::free_container(m_apAudioProxies);
-        stl::free_container(m_apAudioProxiesToBeFreed);
+        m_apAudioProxies.clear();
+        m_apAudioProxiesToBeFreed.clear();
+
+        // Release the audio implementation...
+        SAudioRequest request;
+        SAudioManagerRequestData<eAMRT_RELEASE_AUDIO_IMPL> requestData;
+        request.nFlags = (eARF_PRIORITY_HIGH | eARF_EXECUTE_BLOCKING);
+        request.pData = &requestData;
+        PushRequestBlocking(request);
 
         m_audioSystemThread.Deactivate();
         const bool bSuccess = m_oATL.ShutDown();
@@ -481,6 +476,12 @@ namespace Audio
     {
         AZ_Assert(gEnv->mMainThreadId == CryGetCurrentThreadId(), "AudioSystem::FreeAudioProxy - called from a non-Main thread!");
         auto const audioProxy = static_cast<CAudioProxy*>(audioProxyI);
+
+        if (std::find(m_apAudioProxiesToBeFreed.begin(), m_apAudioProxiesToBeFreed.end(), audioProxy) != m_apAudioProxiesToBeFreed.end() || std::find(m_apAudioProxies.begin(), m_apAudioProxies.end(), audioProxy) != m_apAudioProxies.end())
+        {
+            AZ_Warning("CAudioSystem", false, "Attempting to free an already freed audio proxy");
+            return;
+        }
 
         if (m_apAudioProxies.size() < g_audioCVars.m_nAudioObjectPoolSize)
         {

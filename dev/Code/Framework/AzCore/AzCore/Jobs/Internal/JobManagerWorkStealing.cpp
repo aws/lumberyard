@@ -242,6 +242,34 @@ void JobManagerWorkStealing::PrintStats()
 #endif
 }
 
+
+Job* JobManagerWorkStealing::GetCurrentJob() const
+{
+    const ThreadInfo* info = m_currentThreadInfo;
+#ifndef AZ_MONOLITHIC_BUILD
+    if (!info)
+    {
+        //we could be in a different module where m_currentThreadInfo has not been set yet (on a worker or user thread assisting with jobs)
+        info = FindCurrentThreadInfo();
+    }
+#endif
+    return info ? info->m_currentJob : nullptr;
+}
+
+AZ::u32 JobManagerWorkStealing::GetWorkerThreadId() const
+{
+    const ThreadInfo* info = m_currentThreadInfo;
+#ifndef AZ_MONOLITHIC_BUILD
+    if (!info)
+    {
+        info = CrossModuleFindAndSetWorkerThreadInfo();
+    }
+#endif
+    return info ? info->m_workerId : JobManagerBase::InvalidWorkerThreadId;
+}
+
+
+
 void JobManagerWorkStealing::ProcessJobsWorker(ThreadInfo* info)
 {
     //block until all workers are created, we don't want to steal from a thread that hasn't been created yet

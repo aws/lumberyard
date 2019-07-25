@@ -18,7 +18,7 @@
 namespace AzFramework
 {
     ////////////////////////////////////////////////////////////////////////////////////////////////
-    //! Class that filters input events by channel name, device name, device index (local player) or
+    //! Class that filters input events by channel name, device name, local user id, or
     //! any combination of the three.
     class InputChannelEventFilter
     {
@@ -32,8 +32,7 @@ namespace AzFramework
         static const AZ::Crc32 AnyDeviceNameCrc32;
 
         ////////////////////////////////////////////////////////////////////////////////////////////
-        //! Wildcard representing any input device index
-        static const AZ::u32 AnyDeviceIndex;
+        AZ_DEPRECATED(static const AZ::u32 AnyDeviceIndex, "Deprecated, please use LocalUserIdAny");
 
         ////////////////////////////////////////////////////////////////////////////////////////////
         //! Default constructor
@@ -63,10 +62,10 @@ namespace AzFramework
         //! Constructor. By default the filter will be constructed to whitelist all input events.
         //! \param[in] channelNameCrc32 The input channel name (Crc32) to whitelist (default any)
         //! \param[in] deviceNameCrc32 The input device name (Crc32) to whitelist (default any)
-        //! \param[in] deviceIndex The input device index to whitelist (default any)
+        //! \param[in] localUserId The local user id to whitelist (default any)
         explicit InputChannelEventFilterWhitelist(const AZ::Crc32& channelNameCrc32 = AnyChannelNameCrc32,
                                                   const AZ::Crc32& deviceNameCrc32 = AnyDeviceNameCrc32,
-                                                  const AZ::u32& deviceIndex = AnyDeviceIndex);
+                                                  const LocalUserId& localUserId = LocalUserIdAny);
 
         ////////////////////////////////////////////////////////////////////////////////////////////
         // Default copying
@@ -91,16 +90,16 @@ namespace AzFramework
         void WhitelistDeviceName(const AZ::Crc32& deviceNameCrc32);
 
         ////////////////////////////////////////////////////////////////////////////////////////////
-        //! Add an input device index to the whitelist
-        //! \param[in] deviceIndex The input device index to add to the whitelist
-        void WhitelistDeviceIndex(AZ::u32 deviceIndex);
+        //! Add a local user id to the whitelist
+        //! \param[in] localUserId The local user id to add to the whitelist
+        void WhitelistLocalUserId(LocalUserId localUserId);
 
     private:
         ////////////////////////////////////////////////////////////////////////////////////////////
         // Variables
-        AZStd::unordered_set<AZ::Crc32> m_channelNameCrc32Whitelist; //!< Channel name whitelist
-        AZStd::unordered_set<AZ::Crc32> m_deviceNameCrc32Whitelist;  //!< Device name whitelist
-        AZStd::unordered_set<AZ::u32>   m_deviceIndexWhitelist;      //!< Device index whitelist
+        AZStd::unordered_set<AZ::Crc32>   m_channelNameCrc32Whitelist; //!< Channel name whitelist
+        AZStd::unordered_set<AZ::Crc32>   m_deviceNameCrc32Whitelist;  //!< Device name whitelist
+        AZStd::unordered_set<LocalUserId> m_localUserIdWhitelist;      //!< Local user whitelist
     };
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
@@ -135,15 +134,15 @@ namespace AzFramework
         void BlacklistDeviceName(const AZ::Crc32& deviceNameCrc32);
 
         ////////////////////////////////////////////////////////////////////////////////////////////
-        //! Add an input device index to the blacklist
-        //! \param[in] deviceIndex The input device index to add to the blacklist
-        void BlacklistDeviceIndex(AZ::u32 deviceIndex);
+        //! Add a local user id to the blacklist
+        //! \param[in] localUserId The local user id to to add to the blacklist
+        void BlacklistLocalUserId(LocalUserId localUserId);
 
     private:
         ////////////////////////////////////////////////////////////////////////////////////////////
         // Variables
-        AZStd::unordered_set<AZ::Crc32> m_channelNameCrc32Blacklist; //!< Channel name blacklist
-        AZStd::unordered_set<AZ::Crc32> m_deviceNameCrc32Blacklist;  //!< Device name blacklist
-        AZStd::unordered_set<AZ::u32>   m_deviceIndexBlacklist;      //!< Device index blacklist
+        AZStd::unordered_set<AZ::Crc32>   m_channelNameCrc32Blacklist; //!< Channel name blacklist
+        AZStd::unordered_set<AZ::Crc32>   m_deviceNameCrc32Blacklist;  //!< Device name blacklist
+        AZStd::unordered_set<LocalUserId> m_localUserIdBlacklist;      //!< Local user blacklist
     };
 } // namespace AzFramework

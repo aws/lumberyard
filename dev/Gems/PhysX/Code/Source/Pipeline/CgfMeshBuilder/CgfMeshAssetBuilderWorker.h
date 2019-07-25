@@ -25,7 +25,7 @@ namespace PhysX
             : public AssetBuilderSDK::AssetBuilderCommandBus::Handler
         {
         public:
-            AZ_RTTI(ExampleBuilderWorker, "{434AEC9C-6C98-46A5-9E5E-E5362863A9CB}");
+            AZ_RTTI(CgfMeshAssetBuilderWorker, "{434AEC9C-6C98-46A5-9E5E-E5362863A9CB}");
 
             CgfMeshAssetBuilderWorker() = default;
             ~CgfMeshAssetBuilderWorker() = default;

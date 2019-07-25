@@ -718,14 +718,27 @@ CContentCGF* CharacterCompiler::MakeCompiledCGF(CContentCGF* pCGF)
 
             mesh_compiler::CMeshCompiler meshCompiler;
             // Confetti: Nicholas Baldwin
+            const bool DegenerateFacesAreErrors = m_CC.config->GetAsBool("DegenerateFacesAreErrors", false, false);
             int compileFlags = mesh_compiler::MESH_COMPILE_TANGENTS
                 | ((m_bOptimizePVRStripify) ? mesh_compiler::MESH_COMPILE_PVR_STRIPIFY : mesh_compiler::MESH_COMPILE_OPTIMIZE)
+                | ((DegenerateFacesAreErrors) ? mesh_compiler::MESH_COMPILE_VALIDATE_FAIL_ON_DEGENERATE_FACES : 0)
                 | mesh_compiler::MESH_COMPILE_VALIDATE;
+
             if (!meshCompiler.Compile(*pNodeCGF->pMesh, compileFlags))
             {
                 RCLogError("Failed to compile geometry file %s - %s", pCGF->GetFilename(), meshCompiler.GetLastError());
                 delete pCompiledCGF;
                 return 0;
+            }
+
+            //if we dont pass in MESH_COMPILE_VALIDATE_FAIL_ON_DEGENERATE_FACES during compilation
+            //it will not check for degenerate faces and fail, but we still want to warn on degenerate faces
+            if (!(compileFlags & mesh_compiler::MESH_COMPILE_VALIDATE_FAIL_ON_DEGENERATE_FACES))
+            {
+                if (meshCompiler.CheckForDegenerateFaces(*pNodeCGF->pMesh))
+                {
+                    RCLogWarning("Geometry in node '%s' in file %s contains degenerate faces. This mesh is sub optimal and should be fixed!", pNodeCGF->name, pCGF->GetFilename());
+                }
             }
         }
 

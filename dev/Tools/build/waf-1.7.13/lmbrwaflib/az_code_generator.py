@@ -119,7 +119,7 @@ def create_code_generator_tasks(self):
         Logs.warn('az_code_gen: Unable to find azcg directory. Code Generator tasks will not have the utility/scripts as dependencies')
 
     # this script is a dependency
-    script_node = self.bld.root.make_node(__file__)
+    script_node = self.bld.engine_node.make_node('Tools/build/waf-1.7.13/lmbrwaflib/az_code_generator.py')
     azcg_dep_nodes.append(script_node)
 
     for az_code_gen_pass in getattr(self, 'az_code_gen', []):

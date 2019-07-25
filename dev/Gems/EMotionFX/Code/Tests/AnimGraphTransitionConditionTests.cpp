@@ -165,35 +165,28 @@ namespace EMotionFX
                 // Check the state for the current frame
                 if (activeNodes.count(frameNum))
                 {
-                    std::vector<AnimGraphNode*> expectedActiveNodes;
+                    AZStd::vector<AnimGraphNode*> expectedActiveNodes;
                     for (const char* name : activeNodes.at(frameNum))
                     {
                         expectedActiveNodes.push_back(mAnimGraph->RecursiveFindNodeByName(name));
                     }
 
-                    AnimGraphNode* sourceNode = nullptr;
-                    AnimGraphNode* targetNode = nullptr;
-                    mStateMachine->GetActiveStates(mAnimGraphInstance, &sourceNode, &targetNode);
-
-                    std::vector<AnimGraphNode*> gotActiveNodes;
-                    if (sourceNode)
-                    {
-                        gotActiveNodes.push_back(sourceNode);
-                    }
-                    if (targetNode)
-                    {
-                        gotActiveNodes.push_back(targetNode);
-                    }
-
+                    const AZStd::vector<AnimGraphNode*>& gotActiveNodes = mStateMachine->GetActiveStates(mAnimGraphInstance);
+                    
                     EXPECT_EQ(gotActiveNodes, expectedActiveNodes) << "on frame " << frameNum << ", time " << frameNum * updateInterval;
                 }
             }
             {
                 // Ensure that we reached the target state after 3 seconds
-                AnimGraphNode* sourceNode = nullptr;
-                AnimGraphNode* targetNode = nullptr;
-                mStateMachine->GetActiveStates(mAnimGraphInstance, &sourceNode, &targetNode);
-                EXPECT_EQ(sourceNode, mMotionNode1) << "MotionNode1 is not the single active node";
+                const AZStd::vector<AnimGraphNode*>& activeStates = mStateMachine->GetActiveStates(mAnimGraphInstance);
+                const size_t numActiveStates = activeStates.size();
+
+                EXPECT_EQ(numActiveStates, 1) << numActiveStates << " active state detected. Only one state should be active.";
+
+                if (numActiveStates > 0)
+                {
+                    EXPECT_EQ(activeStates[0], mMotionNode1) << "MotionNode1 is not the single active node";
+                }
             }
         }
     };
@@ -761,11 +754,9 @@ namespace EMotionFX
                 {59, {"testSkeletalMotion0", "ChildStateMachine"}},
                 {60, {"ChildStateMachine"}},
                 {89, {"ChildStateMachine"}},
-                {90, {"ChildStateMachine"}},
-                {91, {"ChildStateMachine", "testSkeletalMotion1"}}, // The end state is captured by an event, but this event will be caught one frame later, so on 91 instead of 90.
+                {90, {"ChildStateMachine", "testSkeletalMotion1"}},
                 {119, {"ChildStateMachine", "testSkeletalMotion1"}},
-                {120, {"ChildStateMachine", "testSkeletalMotion1"}},
-                {121, {"testSkeletalMotion1"}}
+                {120, {"testSkeletalMotion1"}}
             }
         },
         {

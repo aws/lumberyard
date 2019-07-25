@@ -35,19 +35,21 @@ namespace EMotionFX
         for (int i = 0; i < numIterations; ++i)
         {
             GetEMotionFX().Update(updateInterval);
-            AnimGraphNode* sourceNode = nullptr;
-            AnimGraphNode* targetNode = nullptr;
-            mStateMachine->GetActiveStates(mAnimGraphInstance, &sourceNode, &targetNode);
+
+            const AZStd::vector<AnimGraphNode*>& activeStates = mStateMachine->GetActiveStates(mAnimGraphInstance);
 
             float weight = 0.0f;
-            for (int j = 0; j < 2; ++j)
+            for (const AnimGraphNode* activeState : activeStates)
             {
-                AnimGraphMotionNode* motionNode = j == 0 ? mMotionNode0 : mMotionNode1;
-                // Check if the node is active
-                if (motionNode == sourceNode || motionNode == targetNode)
+                for (int j = 0; j < 2; ++j)
                 {
-                    AnimGraphNodeData* uniqueData = motionNode->FindUniqueNodeData(mAnimGraphInstance);
-                    weight += (uniqueData->*(GetParam()))();
+                    AnimGraphMotionNode* motionNode = j == 0 ? mMotionNode0 : mMotionNode1;
+                    // Check if the node is active
+                    if (motionNode == activeState)
+                    {
+                        AnimGraphNodeData* uniqueData = motionNode->FindUniqueNodeData(mAnimGraphInstance);
+                        weight += (uniqueData->*(GetParam()))();
+                    }
                 }
             }
             // The combined weights for the active nodes should be close to 1

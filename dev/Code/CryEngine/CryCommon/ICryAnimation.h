@@ -436,7 +436,7 @@ public:
 
     //////////////////////////////////////////////////////////////////////////
     // Shuts down and destroys a legacy ICharacterManager instance
-    virtual void ShutdownCharacterManager(ICharacterManager* characterManager) = 0;
+    virtual void ShutdownCharacterManager() = 0;
 };
 using CryLegacyAnimationRequestBus = AZ::EBus<CryLegacyAnimationRequests>;
 

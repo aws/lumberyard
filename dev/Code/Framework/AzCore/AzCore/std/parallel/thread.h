@@ -20,6 +20,30 @@
 #undef AZ_RESTRICTED_SECTION
 #define THREAD_H_SECTION_1 1
 #define THREAD_H_SECTION_2 2
+#define THREAD_H_SECTION_3 3
+#endif
+
+#define AFFINITY_MASK_MAINTHREAD           (1 << 0) // Core 0
+#define AFFINITY_MASK_JOBTHREAD_0          (1 << 1) // Core 1
+#define AFFINITY_MASK_RENDERTHREAD         (1 << 2) // Core 2
+#define AFFINITY_MASK_JOBTHREAD_1          (1 << 3) // Core 3
+#define AFFINITY_MASK_PHYSICSTHREAD        (1 << 4) // Core 4
+#define AFFINITY_MASK_JOBTHREAD_2          (1 << 5) // Core 5
+#define AFFINITY_MASK_JOBTHREAD_3          (1 << 6) // Core 6
+
+#if defined(AZ_RESTRICTED_PLATFORM)
+    #define AZ_RESTRICTED_SECTION THREAD_H_SECTION_3
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/thread_h_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/thread_h_provo.inl"
+    #endif
+#endif
+
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+    #undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#else
+    #define AFFINITY_MASK_USERTHREADS   ~(AFFINITY_MASK_MAINTHREAD | AFFINITY_MASK_RENDERTHREAD | AFFINITY_MASK_PHYSICSTHREAD)
 #endif
 
 namespace AZStd
@@ -93,9 +117,9 @@ namespace AZStd
         int             m_priority;
 
         /**
-         *  The CPU id that this thread will be running on, see \ref AZStd::thread_desc::m_cpuId.
+         *  The CPU ids (as a bitfield) that this thread will be running on, see \ref AZStd::thread_desc::m_cpuId.
          *  Windows: This parameter is ignored.
-         *  On other platforms, this maps directly to the core number [0-n], default is 0
+         *  On other platforms, each bit maps directly to the core numbers [0-n], default is 0
          */
         int             m_cpuId;
 
@@ -118,7 +142,7 @@ namespace AZStd
          * \note thread_desc is AZStd extension.
          */
         template <class F>
-        explicit thread(F f, const thread_desc* desc = 0);
+        explicit thread(F&& f, const thread_desc* desc = 0);
 
         ~thread();
 
@@ -211,8 +235,10 @@ namespace AZStd
             : public thread_info
         {
         public:
-            thread_info_impl(F f)
+            thread_info_impl(const F& f)
                 : m_f(f) {}
+            thread_info_impl(F&& f)
+                : m_f(AZStd::move(f)) {}
             thread_info_impl(Internal::thread_move_t<F> f)
                 : m_f(f) {}
             virtual void execute() { m_f(); }
@@ -252,10 +278,11 @@ namespace AZStd
         };
 
         template<typename F>
-        static AZ_INLINE thread_info*           create_thread_info(F f)
+        static AZ_INLINE thread_info*           create_thread_info(F&& f)
         {
+            using FunctorType = AZStd::decay_t<F>;
             AZStd::allocator a;
-            return new (a.allocate(sizeof(thread_info_impl<F>), AZStd::alignment_of< thread_info_impl<F> >::value))thread_info_impl<F>(f);
+            return new (a.allocate(sizeof(thread_info_impl<FunctorType>), AZStd::alignment_of< thread_info_impl<FunctorType> >::value))thread_info_impl<FunctorType>(AZStd::forward<F>(f));
         }
 
         template<typename F>

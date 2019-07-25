@@ -158,31 +158,35 @@ struct StreamCompactor<VSF_GENERAL, Size>
             }
             else
             {
-                AZStd::vector<AZ::Vertex::Attribute> attributes = vertexFormat.GetAttributes();
-                AZStd::vector<int> attributeCounter((int)AZ::Vertex::AttributeUsage::NumTypes, 0);
+                uint32 attributeCount = 0;
+                const uint8* attributes = vertexFormat.GetAttributes(attributeCount);
+                int attributeCounter[(int)AZ::Vertex::AttributeUsage::NumUsages] = { 0 };
                 uint32 attributeOffset = 0;
                 // Iterate over each attribute in the vertex format and interleave that attribute into the staging buffer
-                for (AZ::Vertex::Attribute attribute : attributes)
+
+                for (uint ii = 0; ii < attributeCount; ++ii)
                 {
-                    switch (attribute.GetUsage())
+                    const uint8 attribute = attributes[ii];
+                    const AZ::Vertex::AttributeUsage usage = AZ::Vertex::Attribute::GetUsage(attribute);
+                    switch (usage)
                     {
                     case AZ::Vertex::AttributeUsage::Position:
-                        CompactPositions(stagingBuffer, data, mesh, beg, amount, attributeCounter[(int)AZ::Vertex::AttributeUsage::Position], vertexFormat.GetStride(), attributeOffset, attribute.GetByteLength());
+                        CompactPositions(stagingBuffer, data, mesh, beg, amount, attributeCounter[(int)AZ::Vertex::AttributeUsage::Position], vertexFormat.GetStride(), attributeOffset, AZ::Vertex::Attribute::GetByteLength(attribute));
                         break;
                     case AZ::Vertex::AttributeUsage::Color:
-                        CompactColors(stagingBuffer, data, mesh, beg, amount, attributeCounter[(int)AZ::Vertex::AttributeUsage::Color], vertexFormat.GetStride(), attributeOffset, attribute.GetByteLength());
+                        CompactColors(stagingBuffer, data, mesh, beg, amount, attributeCounter[(int)AZ::Vertex::AttributeUsage::Color], vertexFormat.GetStride(), attributeOffset, AZ::Vertex::Attribute::GetByteLength(attribute));
                         break;
                     case AZ::Vertex::AttributeUsage::TexCoord:
-                        CompactUVs(stagingBuffer, data, mesh, beg, amount, attributeCounter[(int)AZ::Vertex::AttributeUsage::TexCoord], vertexFormat.GetStride(), attributeOffset, attribute.GetByteLength());
+                        CompactUVs(stagingBuffer, data, mesh, beg, amount, attributeCounter[(int)AZ::Vertex::AttributeUsage::TexCoord], vertexFormat.GetStride(), attributeOffset, AZ::Vertex::Attribute::GetByteLength(attribute));
                         break;
                     default:
-                        AZ_Assert(false, "No case to handle per vertex data in the VSF_GENERAL stream for usage %d.", attribute.GetUsage());
+                        AZ_Assert(false, "No case to handle per vertex data in the VSF_GENERAL stream for usage %d.", AZ::Vertex::Attribute::GetUsage(attribute));
                         break;
                     }
                     // Keep track of the offset of the current attribute
-                    attributeOffset += attribute.GetByteLength();
+                    attributeOffset += AZ::Vertex::Attribute::GetByteLength(attribute);
                     // Keep track of the number of attributes with a given usage so we can use that to index into the CMesh's vertex streams for that usage
-                    attributeCounter[(int)attribute.GetUsage()]++;
+                    attributeCounter[static_cast<uint8>(usage)]++;
                 }
             }
             transfer_writecombined(&data.m_pVBuff[beg * vertexFormat.GetStride()], &buffer[dstPad], amount * vertexFormat.GetStride());

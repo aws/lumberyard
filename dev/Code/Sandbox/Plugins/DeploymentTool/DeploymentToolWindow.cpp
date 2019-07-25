@@ -17,9 +17,10 @@
 #include <QtNetwork/qabstractsocket.h>
 #include <QTimer.h>
 
+#include <AzFramework/Asset/AssetSystemBus.h>
 #include <AzFramework/API/ApplicationAPI.h>
-
 #include <AzToolsFramework/API/EditorAssetSystemAPI.h>
+#include <AzToolsFramework/UI/UICore/WidgetHelpers.h>
 
 #include <ILevelSystem.h>
 #include <ISystem.h>
@@ -36,6 +37,11 @@
 #if defined(AZ_PLATFORM_APPLE_OSX)
     #include "DeployWorker_ios.h"
 #endif
+#include "DeployWorker_devicefarm.h"
+#include <aws/core/auth/AWSCredentialsProvider.h>
+#include <CloudCanvas/ICloudCanvasEditor.h>
+#include <aws/core/client/ClientConfiguration.h>
+#include "RealDeviceFarmClient.h"
 
 namespace
 {
@@ -66,17 +72,28 @@ namespace
 
     const int assetProcessorPollFrequencyInMilliseconds = 500;
     const int devicePollFrequencyInMilliseconds = 10 * 1000; // check for devices every 10 seconds
+    // check for device farm run(s) status every 10 seconds
+    // when Device Farm and a project is selected.
+    const int deviceFarmRunsPollFrequencyInMilliseconds = 10 * 1000;
 
     const Range hostRemoteLogPortRange = { 4700, 4750 };
 
     const char* noDevicesConnectedEntry = "No Devices Connected";
+    const char* noProjectsFound = "No Projects Found";
+    const char* noDevicePoolsFound = "No Device Pools Found";
 
-    const char* targetPlatform = "targetPlatform";
+    // Test types
+    const char* deviceFarmTestTypeBuiltInFuzz = "Built-in fuzz";
+
+    const char* targetPlatformKey = "targetPlatform";
     const char* buildConfigKey = "buildConfiguration";
-    const char* assetMode = "assetMode";
+    const char* assetModeKey = "assetMode";
     const char* buildGameKey = "buildGame";
     const char* cleanDeviceKey = "cleanDevice";
-
+    const char* shaderCompilerIpAddressKey = "shaderCompilerIpAddress";
+    const char* shaderCompilerUseAPKey = "shaderCompilerUseAP";
+    const char* deviceFarmExecutionTimeoutKey = "deviceFarmExecutionTimeout";    
+    
     const char* settingsFileName = "DeploymentToolConfig.ini";
 
 
@@ -113,10 +130,16 @@ DeploymentToolWindow::DeploymentToolWindow()
     , m_connectedIcon("://status_connected.png")
     , m_notConnectedIcon("://status_not_connected.png")
 
+    , m_deviceFarmRunErrorIcon("://error.png")
+    , m_deviceFarmRunInProgressIcon("://in_progress.png")
+    , m_deviceFarmRunSuccessIcon("://success.png")
+    , m_deviceFarmRunWarningIcon("://warning.png")
+
     , m_defaultDeployOutputBrush()
     , m_defaultRemoteDeviceOutputBrush()
 
     , m_devicePollTimer(new QTimer(this))
+    , m_deviceFarmRunsPollTimer(new QTimer(this))
     , m_deployWorker(nullptr)
 
     , m_deploySettings(settingsFileName, QSettings::IniFormat)
@@ -139,21 +162,80 @@ DeploymentToolWindow::DeploymentToolWindow()
     connect(m_devicePollTimer.data(), &QTimer::timeout, this, &DeploymentToolWindow::OnDevicePollTimer);
     m_devicePollTimer->start(0);
 
+    connect(m_deviceFarmRunsPollTimer.data(), &QTimer::timeout, this, &DeploymentToolWindow::OnDeviceFarmRunsPollTimer);
+    m_deviceFarmRunsPollTimer->start(0);
+
     // force all connections to be queued to ensure any event that modifies UI will be processed on the correct thread.
     connect(&m_notificationsBridge, &DeployTool::NotificationsQBridge::OnLog, this, &DeploymentToolWindow::LogToWindow, Qt::QueuedConnection);
-    connect(&m_notificationsBridge, &DeployTool::NotificationsQBridge::OnDeployProcessStatusChange, this, &DeploymentToolWindow::OnDeployStatusChange, Qt::QueuedConnection);
+    connect(&m_notificationsBridge, &DeployTool::NotificationsQBridge::OnDeployProcessStatusChange, this, &DeploymentToolWindow::OnDeployStatusChanged, Qt::QueuedConnection);
     connect(&m_notificationsBridge, &DeployTool::NotificationsQBridge::OnDeployProcessFinished, this, &DeploymentToolWindow::OnDeployFinished, Qt::QueuedConnection);
-    connect(&m_notificationsBridge, &DeployTool::NotificationsQBridge::OnRemoteLogConnectionStateChange, this, &DeploymentToolWindow::OnRemoteLogConnectionStateChange, Qt::QueuedConnection);
+    connect(&m_notificationsBridge, &DeployTool::NotificationsQBridge::OnRemoteLogConnectionStateChange, this, &DeploymentToolWindow::OnRemoteLogConnectionStateChanged, Qt::QueuedConnection);
 
     InitializeUi();
+    connect(m_ui->deviceFarmProjectNameComboBox, static_cast<void (QComboBox::*)(int)>(&QComboBox::currentIndexChanged), this, &DeploymentToolWindow::OnDeviceFarmProjectComboBoxValueChanged);    
+    connect(m_ui->addDeviceFarmProjectButton, &QPushButton::clicked, this, &DeploymentToolWindow::OnAddDeviceFarmProjectButtonClick);
+    connect(m_ui->removeDeviceFarmProjectButton, &QPushButton::clicked, this, &DeploymentToolWindow::OnRemoveDeviceFarmProjectButtonClick);
+
+    connect(m_ui->addDeviceFarmDevicePoolButton, &QPushButton::clicked, this, &DeploymentToolWindow::OnAddDeviceFarmDevicePoolButtonClick);
+    connect(m_ui->removeDeviceFarmDevicePoolButton, &QPushButton::clicked, this, &DeploymentToolWindow::OnRemoveDeviceFarmDevicePoolButtonClick);
+
+
+    QStringList headerLabels;
+    headerLabels.append("Status");
+    headerLabels.append("Name");
+    headerLabels.append("Device pool");
+    headerLabels.append("Test type");
+    headerLabels.append("Progress");
+    m_ui->deviceFarmRunsTable->setColumnCount(headerLabels.size());
+    m_ui->deviceFarmRunsTable->setHorizontalHeaderLabels(headerLabels);
+
+    QHeaderView* header = m_ui->deviceFarmRunsTable->horizontalHeader();
+    header->setSectionResizeMode(deviceFarmRunsTableColumnStatus, QHeaderView::ResizeToContents);
+    header->setSectionResizeMode(deviceFarmRunsTableColumnName, QHeaderView::Stretch);
+    header->setSectionResizeMode(deviceFarmRunsTableColumnDevicePool, QHeaderView::ResizeToContents);
+    header->setSectionResizeMode(deviceFarmRunsTableColumnTestType, QHeaderView::ResizeToContents);
+    header->setSectionResizeMode(deviceFarmRunsTableColumnProgress, QHeaderView::ResizeToContents);
+
+    m_ui->deviceFarmRunsTable->verticalHeader()->setVisible(false);
+    m_ui->deviceFarmRunsTable->setAlternatingRowColors(true);
+
+    // Use a custom menu and only show it when a row is clicked.
+    m_ui->deviceFarmRunsTable->setContextMenuPolicy(Qt::CustomContextMenu);
+    connect(m_ui->deviceFarmRunsTable, &QWidget::customContextMenuRequested, this, [this](const QPoint& point)
+    {    
+        int clickedRow = m_ui->deviceFarmRunsTable->rowAt(point.y());
+        if (clickedRow != -1)
+        {
+            // Right click context menu for the Device Farm runs table.
+            QMenu contextMenu(tr("Context menu"), this);
+            QAction* openInAwsConsoleAction = new QAction("View details in AWS Console", m_ui->deviceFarmRunsTable);
+            connect(openInAwsConsoleAction, &QAction::triggered, this, [this, clickedRow]() {OnOpenInAwsConsoleAction(clickedRow); });
+            QAction* deleteRunAction = new QAction("Delete Run", m_ui->deviceFarmRunsTable);
+            connect(deleteRunAction, &QAction::triggered, this, [this, clickedRow]() {OnDeleteRunAction(clickedRow); });
+            QAction* deleteAllRunsAction = new QAction("Delete All Runs", m_ui->deviceFarmRunsTable);
+            connect(deleteAllRunsAction, &QAction::triggered, this, [this]() {OnDeleteAllRunsAction(); });
+            contextMenu.addAction(openInAwsConsoleAction);
+            contextMenu.addAction(deleteRunAction);
+            contextMenu.addAction(deleteAllRunsAction);
+            contextMenu.exec(m_ui->deviceFarmRunsTable->mapToGlobal(point));
+        }
+    });
+
+    connect(m_ui->deployTargetsTabWidget, SIGNAL(currentChanged(int)), this, SLOT(OnDeployTargetsTabChanged()));
 }
 
 DeploymentToolWindow::~DeploymentToolWindow()
 {
+    // Wait for any pending list runs response before shutting down.
+    while (m_waitingForListRunsResponse)
+    {
+        AZStd::this_thread::sleep_for(AZStd::chrono::milliseconds(100));
+    }
+
     SaveUiState();
 }
 
-void DeploymentToolWindow::OnDeployStatusChange(const QString& status)
+void DeploymentToolWindow::OnDeployStatusChanged(const QString& status)
 {
     m_ui->deployStatusLabel->setText(status);
 }
@@ -164,13 +246,17 @@ void DeploymentToolWindow::OnDeployFinished(bool success)
     {
         DEPLOY_LOG_INFO("Deploy Succeeded!");
 
-        m_lastDeployedDevice = m_ui->targetDeviceComboBox->currentText();
+        // If this is a local device, start the remote log and show that tab.
+        if (m_deploymentCfg.m_localDevice)
+        {
+            m_lastDeployedDevice = m_ui->targetDeviceComboBox->currentText();
 
-        bool loadCurrentLevel = IsAnyLevelLoaded() && m_ui->loadCurrentLevelCheckBox->isChecked();
+            const bool loadCurrentLevel = IsAnyLevelLoaded() && m_ui->loadCurrentLevelCheckBox->isChecked();
 
-        // make the remote log tab the active one
-        m_ui->outputTabWidget->setCurrentIndex(1);
-        m_remoteLog.Start(m_deploymentCfg.m_deviceIpAddress, m_deploymentCfg.m_hostRemoteLogPort, loadCurrentLevel);
+            // make the remote log tab the active one
+            m_ui->outputTabWidget->setCurrentIndex(1);
+            m_remoteLog.Start(m_deploymentCfg.m_deviceIpAddress, m_deploymentCfg.m_hostRemoteLogPort, loadCurrentLevel);
+        }
     }
     else
     {
@@ -180,7 +266,7 @@ void DeploymentToolWindow::OnDeployFinished(bool success)
     Reset();
 }
 
-void DeploymentToolWindow::OnRemoteLogConnectionStateChange(bool isConnected)
+void DeploymentToolWindow::OnRemoteLogConnectionStateChanged(bool isConnected)
 {
     const QIcon& statusIcon = (isConnected ? m_connectedIcon : m_notConnectedIcon);
     m_ui->remoteStatusIconLabel->setPixmap(statusIcon.pixmap(QSize(16, 16)));
@@ -221,8 +307,6 @@ void DeploymentToolWindow::OnPlatformChanged(const QString& currentplatform)
 
     if (m_deployWorker)
     {
-        UpdateUiFromSystemConfig(m_deployWorker->GetSystemConfigFileName());
-
         // make sure the assets are enabled for this platform and disable the deploy button if not
         const AZStd::string platformAssets = m_bootstrapConfig.GetAssetsTypeForPlatform(m_deploymentCfg.m_platformOption);
 
@@ -237,10 +321,12 @@ void DeploymentToolWindow::OnPlatformChanged(const QString& currentplatform)
                 currentplatform.toStdString().c_str(), platformAssets.c_str());
         }
 
-        m_ui->deployButton->setEnabled(isPlatformAssetsEnabled);
+        m_ui->localDeviceDeployButton->setEnabled(isPlatformAssetsEnabled);
+        m_ui->deviceFarmDeployButton->setEnabled(isPlatformAssetsEnabled);
     }
 
-    m_ui->platformOptionsGroup->setHidden(hidePlatformOptions);
+    m_ui->cleanDeviceLabel->setHidden(hidePlatformOptions);
+    m_ui->cleanDeviceCheckBox->setHidden(hidePlatformOptions);
 
     // re-evaluate what options should be shown
     OnAssetModeChanged(m_ui->assetModeComboBox->currentText());
@@ -273,7 +359,7 @@ void DeploymentToolWindow::OnDevicePollTimer()
     m_deployWorker->GetConnectedDevices(connectedDevices);
 
     // get the current selection and clear the contents
-    QString currentDevice = m_ui->targetDeviceComboBox->currentData().toString();
+    const QString currentDevice = m_ui->targetDeviceComboBox->currentData().toString();
     m_ui->targetDeviceComboBox->clear();
 
     // re-populate the device list
@@ -302,7 +388,21 @@ void DeploymentToolWindow::OnDevicePollTimer()
     m_devicePollTimer->start(devicePollFrequencyInMilliseconds);
 }
 
-void DeploymentToolWindow::OnDeployClick()
+void DeploymentToolWindow::OnDeviceFarmRunsPollTimer()
+{
+    // If the Device Farm is selected and a project is selected, refresh the list of runs.
+    if (m_deviceFarmDriver.get() && !m_ui->deployTargetsDeviceFarmTab->isHidden())
+    {
+        const QString currentProjectArn = m_ui->deviceFarmProjectNameComboBox->currentData().toString();
+        if (m_ui->deviceFarmProjectNameComboBox->count() > 0 && currentProjectArn != noProjectsFound)
+        {
+            ReloadDeviceFarmRunsList(currentProjectArn.toUtf8().data());
+        }
+    }
+    m_deviceFarmRunsPollTimer->start(deviceFarmRunsPollFrequencyInMilliseconds);
+}
+
+void DeploymentToolWindow::OnLocalDeviceDeployClick()
 {
     if (!m_deployWorker)
     {
@@ -310,24 +410,30 @@ void DeploymentToolWindow::OnDeployClick()
         return;
     }
 
+    if (m_deployWorker->IsRunning())
+    {
+        InternalDeployFailure("A deploy is already running.");
+        return;
+    }
+
     m_remoteLog.Stop();
 
     m_devicePollTimer->stop();
 
-    m_ui->deployButton->setText("Deploying...");
+    m_ui->localDeviceDeployButton->setText("Deploying...");
 
     m_ui->deployOutputTextBox->setPlainText("");
     m_ui->remoteOutputTextBox->setPlainText("");
 
     m_animatedSpinningIcon.start();
-    m_ui->deploySpinnerLabel->setHidden(false);
+    m_ui->localDeviceDeploySpinnerLabel->setHidden(false);
 
     ToggleInteractiveUI(false);
 
     // reset the current tab to the deploy output
     m_ui->outputTabWidget->setCurrentIndex(0);
 
-    if (!PopulateDeploymentConfigFromUi())
+    if (!PopulateDeploymentConfigFromUi(true))
     {
         InternalDeployFailure("Invalid deployment configuration!");
         return;
@@ -341,6 +447,8 @@ void DeploymentToolWindow::OnDeployClick()
         return;
     }
 
+    m_deploymentCfg.m_localDevice = true;
+
     // get project name
     m_deploymentCfg.m_projectName = m_bootstrapConfig.GetGameFolder();
 
@@ -352,8 +460,8 @@ void DeploymentToolWindow::OnDeployClick()
         return;
     }
 
-    if (    (m_deploymentCfg.m_platformOption == PlatformOptions::Android_ARMv7 || m_deploymentCfg.m_platformOption == PlatformOptions::Android_ARMv8)
-        &&  DeployTool::IsLocalhost(m_deploymentCfg.m_deviceIpAddress))
+    if ((m_deploymentCfg.m_platformOption == PlatformOptions::Android_ARMv7 || m_deploymentCfg.m_platformOption == PlatformOptions::Android_ARMv8)
+        && DeployTool::IsLocalhost(m_deploymentCfg.m_deviceIpAddress))
     {
         m_deploymentCfg.m_hostRemoteLogPort = hostRemoteLogPortRange.GetRandValueInRange();
     }
@@ -380,6 +488,387 @@ void DeploymentToolWindow::OnDeployClick()
     Run();
 }
 
+void DeploymentToolWindow::OnDeviceFarmDeployClick()
+{
+    if (!m_deployWorker)
+    {
+        InternalDeployFailure("Invalid platform configuration");
+        return;
+    }
+
+    if (m_deployWorker->IsRunning())
+    {
+        InternalDeployFailure("A deploy is already running.");
+        return;
+    }
+
+    m_ui->deviceFarmDeployButton->setText("Deploying...");
+
+    m_ui->deployOutputTextBox->setPlainText("");
+
+    m_animatedSpinningIcon.start();
+    m_ui->deviceFarmDeploySpinnerLabel->setHidden(false);
+
+    ToggleInteractiveUI(false);
+
+    // reset the current tab to the deploy output
+    m_ui->outputTabWidget->setCurrentIndex(0);
+
+    if (!PopulateDeploymentConfigFromUi(false))
+    {
+        InternalDeployFailure("Invalid deployment configuration!");
+        return;
+    }
+
+    // configure bootstrap.cfg
+    StringOutcome outcome = m_bootstrapConfig.Reload();
+    if (!outcome.IsSuccess())
+    {
+        InternalDeployFailure(outcome.GetError());
+        return;
+    }
+
+    m_deploymentCfg.m_localDevice = false;
+
+    // get project name
+    m_deploymentCfg.m_projectName = m_bootstrapConfig.GetGameFolder();
+
+    // update the bootstrap
+    outcome = m_bootstrapConfig.ApplyConfiguration(m_deploymentCfg);
+    if (!outcome.IsSuccess())
+    {
+        InternalDeployFailure(outcome.GetError());
+        return;
+    }
+
+    // Check to make sure there is a valid project selected.
+    const QString currentProjectArn = m_ui->deviceFarmProjectNameComboBox->currentData().toString();
+    if (m_ui->deviceFarmProjectNameComboBox->count() == 0 ||
+        currentProjectArn == noProjectsFound)
+    {
+        QMessageBox::warning(AzToolsFramework::GetActiveWindow(), QObject::tr("Device Farm Project Error"),
+            QObject::tr("Please select a valid Project."));
+        return;
+    }
+
+    // Check to make sure there is a valid device pool selected.
+    const QString currentDevicePoolArn = m_ui->deviceFarmDevicePoolNameComboBox->currentData().toString();
+    if (m_ui->deviceFarmDevicePoolNameComboBox->count() == 0 ||
+        currentDevicePoolArn == noDevicePoolsFound)
+    {
+        QMessageBox::warning(AzToolsFramework::GetActiveWindow(), QObject::tr("Device Farm Device Pool Error"),
+            QObject::tr("Please select a valid Device Pool."));
+        return;
+    }
+
+    // Make a new deploy worker right now based on the current settings.
+    m_deployWorker.reset(
+        new DeployTool::DeployWorkerDeviceFarm(
+            m_deviceFarmDriver,
+            m_ui->deviceFarmExecutionTimeoutSpinBox->value(),
+            m_ui->deviceFarmProjectNameComboBox->currentData().toString().toUtf8().data(),
+            m_ui->deviceFarmDevicePoolNameComboBox->currentData().toString().toUtf8().data()));
+
+    outcome = m_deployWorker->ApplyConfiguration(m_deploymentCfg);
+    if (!outcome.IsSuccess())
+    {
+        InternalDeployFailure(outcome.GetError());
+        return;
+    }
+
+    // first make sure a level is loaded, otherwise this will fail and cancel the deploy operation
+    if (IsAnyLevelLoaded())
+    {
+        // make sure the level is updated for use in the runtime
+        if (!CCryEditApp::Command_ExportToEngine())
+        {
+            InternalDeployFailure("Failed to export the level for runtime");
+            return;
+        }
+    }
+
+    DEPLOY_LOG_INFO("[INFO] Processing assets...");
+    Run();
+}
+
+void DeploymentToolWindow::OnDeviceFarmProjectComboBoxValueChanged(int index)
+{
+    ReloadDeviceFarmDevicePoolsList(m_ui->deviceFarmProjectNameComboBox->currentData().toString().toUtf8().data());
+    ReloadDeviceFarmRunsList(m_ui->deviceFarmProjectNameComboBox->currentData().toString().toUtf8().data());
+}
+
+void DeploymentToolWindow::OnAddDeviceFarmProjectButtonClick()
+{
+    // Pop open dialog to get a name of the new project
+    const AZStd::string projectName = QInputDialog::getText(this, tr("Project Name:"), QString()).toUtf8().data();
+    if (projectName.empty())
+    {
+        QMessageBox::warning(AzToolsFramework::GetActiveWindow(), QObject::tr("Device Farm Project Error"),
+            QObject::tr("Invalid Project name."));
+        return;
+    }
+
+    // Create a new project
+    m_deviceFarmDriver->CreateProject(
+        projectName,
+        [&](bool success, const AZStd::string& msg, const DeployTool::DeviceFarmDriver::Project& project)
+    {
+        if (success)
+        {
+            // Add the new project to the list and select it.
+            m_ui->deviceFarmProjectNameComboBox->addItem(project.name.c_str(), project.arn.c_str());
+            int index = m_ui->deviceFarmProjectNameComboBox->findData(project.arn.c_str());
+            m_ui->deviceFarmProjectNameComboBox->setCurrentIndex(index);
+
+            // Remove noProjectsFound if it was found
+            index = m_ui->deviceFarmProjectNameComboBox->findData(noProjectsFound);
+            if (index != -1)
+            {
+                m_ui->deviceFarmProjectNameComboBox->removeItem(index);
+            }
+        }
+        else
+        {
+            DEPLOY_LOG_ERROR("[ERROR] Failed to create Project: %s", msg.c_str());
+        }
+    });
+}
+
+void DeploymentToolWindow::OnRemoveDeviceFarmProjectButtonClick()
+{
+    const QString devicePoolName = m_ui->deviceFarmProjectNameComboBox->currentText();
+
+    const int confirmResult = QMessageBox::question(this,
+        tr("Delete Device Project?"),
+        QStringLiteral("Are you sure you want to delete '%1'").arg(devicePoolName),
+        QMessageBox::Yes, QMessageBox::No);
+
+    if (confirmResult == QMessageBox::Yes)
+    {
+        AZStd::string projectArn = m_ui->deviceFarmProjectNameComboBox->currentData().toString().toUtf8().data();
+
+        m_deviceFarmDriver->DeleteProject(
+            projectArn,
+            [&, projectArn](bool success, const AZStd::string& msg)
+        {
+            if (success)
+            {
+                int index = m_ui->deviceFarmProjectNameComboBox->findData(projectArn.c_str());
+                if (index != -1)
+                {
+                    m_ui->deviceFarmProjectNameComboBox->removeItem(index);
+                    if (m_ui->deviceFarmProjectNameComboBox->count() != 0)
+                    {
+                        m_ui->deviceFarmProjectNameComboBox->setCurrentIndex(0);
+                    }
+                    else
+                    {
+                        // If there is no items left, add the noProjectsFound item.
+                        m_ui->deviceFarmProjectNameComboBox->addItem(noProjectsFound, noProjectsFound);
+                    }
+                }
+            }
+            else
+            {
+                DEPLOY_LOG_ERROR("[ERROR] Failed to delete Project: %s", msg.c_str());
+            }
+        });
+    }
+}
+
+void DeploymentToolWindow::OnAddDeviceFarmDevicePoolButtonClick()
+{
+    // Device pools are created inside of a project so a valid project must be selected.
+    const QString currentProjectArn = m_ui->deviceFarmProjectNameComboBox->currentData().toString();
+    if (m_ui->deviceFarmProjectNameComboBox->count() == 0 || currentProjectArn == noProjectsFound)
+    {
+        QMessageBox::warning(AzToolsFramework::GetActiveWindow(), QObject::tr("Device Farm Project Error"),
+            QObject::tr("Please select a valid project."));
+        return;
+    }
+
+    const AZStd::string projectArn = currentProjectArn.toUtf8().data();
+
+    // Filter device list by current platform
+    const AZStd::string platform = m_deploymentCfg.m_platformOption == PlatformOptions::iOS ? "IOS" : "ANDROID";
+
+    // Open the Device Farm Pool Window
+    m_deviceFarmDevicePoolWindow.reset(new DeployTool::DeviceFarmDevicePoolWindow(this, m_deviceFarmDriver, projectArn, platform));
+    if (m_deviceFarmDevicePoolWindow->exec() == QDialog::Accepted)
+    {
+        // New DevicePool was created, add it to the list and set it as the current index.
+        DeployTool::DeviceFarmDriver::DevicePool devicePool = m_deviceFarmDevicePoolWindow->GetDevicePoolResult();
+        m_ui->deviceFarmDevicePoolNameComboBox->addItem(devicePool.name.c_str(), devicePool.arn.c_str());
+        int index = m_ui->deviceFarmDevicePoolNameComboBox->findData(devicePool.arn.c_str());
+        m_ui->deviceFarmDevicePoolNameComboBox->setCurrentIndex(index);
+
+        // Remove noDevicePoolsFound if it was found
+        index = m_ui->deviceFarmDevicePoolNameComboBox->findData(noDevicePoolsFound);
+        if (index != -1)
+        {
+            m_ui->deviceFarmDevicePoolNameComboBox->removeItem(index);
+        }
+    }
+}
+
+void DeploymentToolWindow::OnRemoveDeviceFarmDevicePoolButtonClick()
+{
+    QString devicePoolName = m_ui->deviceFarmDevicePoolNameComboBox->currentText();
+
+    const int confirmResult = QMessageBox::question(this,
+        tr("Delete Device Pool?"),
+        QStringLiteral("Are you sure you want to delete '%1'").arg(devicePoolName),
+        QMessageBox::Yes, QMessageBox::No);
+
+    if (confirmResult == QMessageBox::Yes)
+    {
+        AZStd::string devicePoolArn = m_ui->deviceFarmDevicePoolNameComboBox->currentData().toString().toUtf8().data();
+
+        m_deviceFarmDriver->DeleteDevicePool(
+            devicePoolArn,
+            [&, devicePoolArn](bool success, const AZStd::string& msg)
+        {
+            if (success)
+            {
+                int index = m_ui->deviceFarmDevicePoolNameComboBox->findData(devicePoolArn.c_str());
+                if (index != -1)
+                {
+                    m_ui->deviceFarmDevicePoolNameComboBox->removeItem(index);
+                    if (m_ui->deviceFarmDevicePoolNameComboBox->count() != 0)
+                    {
+                        m_ui->deviceFarmDevicePoolNameComboBox->setCurrentIndex(0);
+                    }
+                    else
+                    {
+                        // If there is no items left, add the noDevicePoolsFound item.
+                        m_ui->deviceFarmDevicePoolNameComboBox->addItem(noProjectsFound, noDevicePoolsFound);
+                    }
+                }
+            }
+            else
+            {
+                DEPLOY_LOG_ERROR("[ERROR] Failed to delete Device Pool: %s", msg.c_str());
+            }
+        });
+    }
+}
+
+void DeploymentToolWindow::OnOpenInAwsConsoleAction(int row)
+{    
+    AZStd::string runArn = m_ui->deviceFarmRunsTable->item(row, deviceFarmRunsTableColumnName)->data(Qt::UserRole).toString().toUtf8().data();
+    AZStd::string url = DeployTool::DeviceFarmDriver::GetAwsConsoleJobUrl(
+        m_ui->deviceFarmProjectNameComboBox->currentData().toString().toUtf8().data(),
+        runArn);
+
+    // Pop open the url
+    QDesktopServices::openUrl(QUrl(url.c_str()));
+}
+
+void DeploymentToolWindow::OnDeleteRunAction(int row)
+{
+    const QString runName = m_ui->deviceFarmRunsTable->item(row, deviceFarmRunsTableColumnName)->text();
+
+    const int confirmResult = QMessageBox::question(this,
+        tr("Delete Run?"),
+        QStringLiteral("Are you sure you want to delete '%1'").arg(runName),
+        QMessageBox::Yes, QMessageBox::No);
+
+    if (confirmResult == QMessageBox::Yes)
+    {
+        const AZStd::string runArn = m_ui->deviceFarmRunsTable->item(row, deviceFarmRunsTableColumnName)->data(Qt::UserRole).toString().toUtf8().data();
+
+        m_deviceFarmDriver->DeleteRun(
+            runArn,
+            [&, runArn](bool success, const AZStd::string& msg)
+        {
+            if (success)
+            {
+                // Refresh the list
+                ReloadDeviceFarmRunsList(m_ui->deviceFarmProjectNameComboBox->currentData().toString().toUtf8().data());
+            }
+            else
+            {
+                DEPLOY_LOG_ERROR("[ERROR] Failed to delete Project: %s", msg.c_str());
+            }
+        });
+    }
+}
+
+void DeploymentToolWindow::OnDeleteAllRunsAction()
+{
+    const int confirmResult = QMessageBox::question(this,
+        tr("Delete All Runs?"),
+        QStringLiteral("Are you sure you want to delete all runs?"),
+        QMessageBox::Yes, QMessageBox::No);
+
+    if (confirmResult == QMessageBox::Yes)
+    {
+        AZStd::vector<AZStd::string> runArns;
+        for (int row = 0; row < m_ui->deviceFarmRunsTable->rowCount(); row++)
+        {
+            runArns.push_back(m_ui->deviceFarmRunsTable->item(row, deviceFarmRunsTableColumnName)->data(Qt::UserRole).toString().toUtf8().data());
+        }
+
+        for (const AZStd::string runArn : runArns)
+        {
+            m_deviceFarmDriver->DeleteRun(
+                runArn,
+                [&, runArn](bool success, const AZStd::string& msg)
+            {
+                if (success)
+                {
+                    // Refresh the list
+                    ReloadDeviceFarmRunsList(m_ui->deviceFarmProjectNameComboBox->currentData().toString().toUtf8().data());
+                }
+                else
+                {
+                    DEPLOY_LOG_ERROR("[ERROR] Failed to delete Project: %s", msg.c_str());
+                }
+            });
+        }
+    }
+}
+
+void DeploymentToolWindow::OnDeployTargetsTabChanged()
+{
+    // The Device Farm tab was selected
+    if (DeviceFarmDeployTargetTabSelected())
+    {
+        // Make sure they've got their default profile setup or have selected a profile
+        CloudCanvas::AWSClientCredentials credsProvider;
+        EBUS_EVENT_RESULT(credsProvider, CloudCanvas::CloudCanvasEditorRequestBus, GetCredentials);
+
+        if (!credsProvider.get() || credsProvider->GetAWSCredentials().GetAWSAccessKeyId().empty())
+        {
+            QMessageBox::warning(AzToolsFramework::GetActiveWindow(), QObject::tr("Credentials Error"),
+                QObject::tr("Your AWS credentials are not configured correctly. Please ensure the Cloud Gem Framework gem is enabled using the ProjectConfigurator and check your AWS credentials using the AWS Credentials manager."));
+
+            m_ui->deployTargetsTabWidget->setCurrentIndex(0);
+        }
+        else
+        {
+            // Device Farm only works in the lovely state of Oregon
+            Aws::Client::ClientConfiguration clientConfiguration = Aws::Client::ClientConfiguration();
+            clientConfiguration.region = Aws::Region::US_WEST_2;
+
+            // Create the Device Farm Interface and the Driver
+            m_deviceFarmClient.reset(new DeployTool::RealDeviceFarmClient(credsProvider->GetAWSCredentials(), clientConfiguration));
+            m_deviceFarmDriver.reset(new DeployTool::DeviceFarmDriver(m_deviceFarmClient));
+
+            ReloadDeviceFarmProjectsList();
+
+            m_loadCurrentLevelCheckBoxLastCheckedState = m_ui->loadCurrentLevelCheckBox->isChecked();
+            m_ui->loadCurrentLevelCheckBox->setChecked(false);
+            m_ui->loadCurrentLevelCheckBox->setEnabled(false);
+        }
+    }
+    else
+    {
+        m_ui->loadCurrentLevelCheckBox->setChecked(m_loadCurrentLevelCheckBoxLastCheckedState);
+        m_ui->loadCurrentLevelCheckBox->setEnabled(m_interactiveUIEnabled);
+    }
+}
+
 void DeploymentToolWindow::ToggleInteractiveUI(bool enabled)
 {
     // base options
@@ -388,7 +877,7 @@ void DeploymentToolWindow::ToggleInteractiveUI(bool enabled)
     m_ui->targetDeviceComboBox->setEnabled(enabled);
     m_ui->deviceIpAddressTextField->setEnabled(enabled);
     m_ui->buildGameCheckBox->setEnabled(enabled);
-    m_ui->loadCurrentLevelCheckBox->setEnabled(enabled);
+    m_ui->loadCurrentLevelCheckBox->setEnabled(enabled && !DeviceFarmDeployTargetTabSelected());
 
     // asset options
     m_ui->assetModeComboBox->setEnabled(enabled);
@@ -400,13 +889,16 @@ void DeploymentToolWindow::ToggleInteractiveUI(bool enabled)
     m_ui->cleanDeviceCheckBox->setEnabled(enabled);
 
     // other
-    m_ui->deployButton->setEnabled(enabled);
+    m_ui->localDeviceDeployButton->setEnabled(enabled);
+    m_ui->deviceFarmDeployButton->setEnabled(enabled);
 
     // re-evaluate the IP options if we are enabling edits again
     if (enabled)
     {
         UpdateIpAddressOptions();
     }
+
+    m_interactiveUIEnabled = enabled;
 }
 
 void DeploymentToolWindow::UpdateIpAddressOptions()
@@ -414,28 +906,7 @@ void DeploymentToolWindow::UpdateIpAddressOptions()
     m_ui->assetProcessorIpAddressComboBox->setEnabled(m_deploymentCfg.m_useVFS || m_deploymentCfg.m_shaderCompilerUseAP);
 }
 
-void DeploymentToolWindow::UpdateUiFromSystemConfig(const char* systemConfigFile)
-{
-    SystemConfigContainer systemConfig(systemConfigFile);
-    StringOutcome outcome = systemConfig.Load();
-    if (outcome.IsSuccess())
-    {
-        AZStd::string shaderCompilerIpAddress = systemConfig.GetShaderCompilerIP();
-        if (!shaderCompilerIpAddress.empty())
-        {
-            m_ui->shaderCompilerIpAddressTextField->setText(shaderCompilerIpAddress.c_str());
-        }
-
-        const bool shaderCompilerUseAssetProcessor = systemConfig.GetUseAssetProcessorShaderCompiler();
-        m_ui->shaderCompilerUseAPCheckBox->setChecked(shaderCompilerUseAssetProcessor);
-    }
-    else
-    {
-        DEPLOY_LOG_ERROR("[ERROR] %s", outcome.GetError().c_str());
-    }
-}
-
-bool DeploymentToolWindow::PopulateDeploymentConfigFromUi()
+bool DeploymentToolWindow::PopulateDeploymentConfigFromUi(bool localDevice)
 {
     // base options
     m_deploymentCfg.m_buildConfiguration = m_ui->buildConfigComboBox->currentText().toLower().toUtf8().data();
@@ -450,17 +921,25 @@ bool DeploymentToolWindow::PopulateDeploymentConfigFromUi()
     m_deploymentCfg.m_assetProcessorIpAddress = m_ui->assetProcessorIpAddressComboBox->currentData().toString().toUtf8().data();
     m_deploymentCfg.m_shaderCompilerIpAddress = m_ui->shaderCompilerIpAddressTextField->text().toUtf8().data();
 
-    if (m_deploymentCfg.m_deviceId.empty())
+    if (!ValidateIPAddress(m_deploymentCfg.m_assetProcessorIpAddress)
+        || !ValidateIPAddress(m_deploymentCfg.m_shaderCompilerIpAddress))
     {
-        DEPLOY_LOG_ERROR("[ERROR] Invalid device selection");
         return false;
     }
 
-    if (    !ValidateIPAddress(m_deploymentCfg.m_deviceIpAddress)
-        ||  !ValidateIPAddress(m_deploymentCfg.m_assetProcessorIpAddress)
-        ||  !ValidateIPAddress(m_deploymentCfg.m_shaderCompilerIpAddress))
+    if (localDevice)
     {
-        return false;
+        if (m_deploymentCfg.m_deviceId.empty())
+        {
+            DEPLOY_LOG_ERROR("[ERROR] Invalid device selection");
+            return false;
+        }
+
+        if (!ValidateIPAddress(m_deploymentCfg.m_deviceIpAddress))
+        {
+            DEPLOY_LOG_ERROR("[ERROR] Invalid device id address");
+            return false;
+        }
     }
 
     return true;
@@ -569,8 +1048,10 @@ void DeploymentToolWindow::LogToWindow(DeployTool::LogStream stream, DeployTool:
 void DeploymentToolWindow::Reset()
 {
     m_animatedSpinningIcon.stop();
-    m_ui->deploySpinnerLabel->setHidden(true);
-    m_ui->deployButton->setText("Deploy");
+    m_ui->localDeviceDeploySpinnerLabel->setHidden(true);
+    m_ui->deviceFarmDeploySpinnerLabel->setHidden(true);
+    m_ui->localDeviceDeployButton->setText("Deploy to local device");
+    m_ui->deviceFarmDeployButton->setText("Deploy to Device Farm");
 
     m_ui->deployStatusLabel->setText("Idle");
     ToggleInteractiveUI(true);
@@ -578,6 +1059,10 @@ void DeploymentToolWindow::Reset()
     m_devicePollTimer->start(0);
 
     m_deploymentCfg.m_hostRemoteLogPort = defaultRemoteConsolePort;
+
+    // Reset the deploy worker based on to the currently selected
+    // platform so local device polling will work.
+    OnPlatformChanged(m_ui->platformComboBox->currentText());
 }
 
 void DeploymentToolWindow::InitializeUi()
@@ -585,12 +1070,16 @@ void DeploymentToolWindow::InitializeUi()
     // setup
     m_ui->setupUi(this);
 
-    m_ui->deployButton->setProperty("class", "Primary");
+    m_ui->localDeviceDeployButton->setProperty("class", "Primary");
+    m_ui->deviceFarmDeployButton->setProperty("class", "Primary");
 
     m_ui->remoteStatusIconLabel->setPixmap(m_notConnectedIcon.pixmap(QSize(16, 16)));
 
-    m_ui->deploySpinnerLabel->setMovie(&m_animatedSpinningIcon);
-    m_ui->deploySpinnerLabel->setHidden(true);
+    m_ui->localDeviceDeploySpinnerLabel->setMovie(&m_animatedSpinningIcon);
+    m_ui->localDeviceDeploySpinnerLabel->setHidden(true);
+
+    m_ui->deviceFarmDeploySpinnerLabel->setMovie(&m_animatedSpinningIcon);
+    m_ui->deviceFarmDeploySpinnerLabel->setHidden(true);
 
     m_animatedSpinningIcon.setScaledSize(QSize(16, 16));
 
@@ -599,7 +1088,8 @@ void DeploymentToolWindow::InitializeUi()
     connect(m_ui->platformComboBox, &QComboBox::currentTextChanged, this, &DeploymentToolWindow::OnPlatformChanged);
     connect(m_ui->assetModeComboBox, &QComboBox::currentTextChanged, this, &DeploymentToolWindow::OnAssetModeChanged);
     connect(m_ui->shaderCompilerUseAPCheckBox, &QCheckBox::stateChanged, this, &DeploymentToolWindow::OnShaderCompilerUseAPToggle);
-    connect(m_ui->deployButton, &QPushButton::clicked, this, &DeploymentToolWindow::OnDeployClick);
+    connect(m_ui->localDeviceDeployButton, &QPushButton::clicked, this, &DeploymentToolWindow::OnLocalDeviceDeployClick);
+    connect(m_ui->deviceFarmDeployButton, &QPushButton::clicked, this, &DeploymentToolWindow::OnDeviceFarmDeployClick);
 
     m_defaultDeployOutputBrush = m_ui->deployOutputTextBox->currentCharFormat().foreground();
     m_defaultRemoteDeviceOutputBrush = m_ui->remoteOutputTextBox->currentCharFormat().foreground();
@@ -614,7 +1104,7 @@ void DeploymentToolWindow::InitializeUi()
     }
 #endif
 
-    QString platform = m_deploySettings.value(targetPlatform).toString();
+    QString platform = m_deploySettings.value(targetPlatformKey).toString();
     if (platform.startsWith("android", Qt::CaseInsensitive))
     {
         if (!platform.endsWith("armv8", Qt::CaseInsensitive))
@@ -629,7 +1119,21 @@ void DeploymentToolWindow::InitializeUi()
     m_ui->buildGameCheckBox->setChecked(m_deploySettings.value(buildGameKey).toBool());
 
     // asset options
-    m_ui->assetModeComboBox->setCurrentText(m_deploySettings.value(assetMode).toString());
+    m_ui->assetModeComboBox->setCurrentText(m_deploySettings.value(assetModeKey).toString());
+    if (m_deploySettings.contains(shaderCompilerIpAddressKey))
+    {
+        m_ui->shaderCompilerIpAddressTextField->setText(m_deploySettings.value(shaderCompilerIpAddressKey).toString());
+    }
+    if (m_deploySettings.contains(shaderCompilerUseAPKey))
+    {
+        m_ui->shaderCompilerUseAPCheckBox->setChecked(m_deploySettings.value(shaderCompilerUseAPKey).toBool());
+    }
+
+    // Device Farm settings (not saved in cloud)
+    if (m_deploySettings.contains(deviceFarmExecutionTimeoutKey))
+    {
+        m_ui->deviceFarmExecutionTimeoutSpinBox->setValue(m_deploySettings.value(deviceFarmExecutionTimeoutKey).toInt());
+    }
 
     // populate the host machine IP addresses for the asset processor
     m_ui->assetProcessorIpAddressComboBox->clear();
@@ -678,6 +1182,10 @@ void DeploymentToolWindow::InitializeUi()
     // platform options
     m_ui->cleanDeviceCheckBox->setChecked(m_deploySettings.value(cleanDeviceKey).toBool());
 
+    m_ui->deviceFarmTestTypeComboBox->clear();
+    m_ui->deviceFarmTestTypeComboBox->addItem(deviceFarmTestTypeBuiltInFuzz, deviceFarmTestTypeBuiltInFuzz);
+    m_ui->deviceFarmTestTypeComboBox->setCurrentIndex(0);
+
     // re-evaluate what options should be shown
     OnPlatformChanged(m_ui->platformComboBox->currentText());
 }
@@ -685,15 +1193,211 @@ void DeploymentToolWindow::InitializeUi()
 void DeploymentToolWindow::SaveUiState()
 {
     // base options
-    m_deploySettings.setValue(targetPlatform, m_ui->platformComboBox->currentText());
+    m_deploySettings.setValue(targetPlatformKey, m_ui->platformComboBox->currentText());
     m_deploySettings.setValue(buildConfigKey, m_ui->buildConfigComboBox->currentText());
     m_deploySettings.setValue(buildGameKey, m_ui->buildGameCheckBox->isChecked());
 
     // asset options
-    m_deploySettings.setValue(assetMode, m_ui->assetModeComboBox->currentText());
+    m_deploySettings.setValue(assetModeKey, m_ui->assetModeComboBox->currentText());
+    m_deploySettings.setValue(shaderCompilerIpAddressKey, m_ui->shaderCompilerIpAddressTextField->text());
+    m_deploySettings.setValue(shaderCompilerUseAPKey, m_ui->shaderCompilerUseAPCheckBox->isChecked());    
+
+    // Device Farm settings (not saved in cloud)
+    m_deploySettings.setValue(deviceFarmExecutionTimeoutKey, m_ui->deviceFarmExecutionTimeoutSpinBox->value());
 
     // platform options
     m_deploySettings.setValue(cleanDeviceKey, m_ui->cleanDeviceCheckBox->isChecked());
+}
+
+void DeploymentToolWindow::ReloadDeviceFarmProjectsList()
+{
+    // Retrieve the projects from the device farm
+    m_deviceFarmDriver->ListProjects([&](bool success, const AZStd::string& msg, AZStd::vector<DeployTool::DeviceFarmDriver::Project>& projects)
+    {
+        if (success)
+        {
+            AZStd::lock_guard<AZStd::mutex> locker(m_deviceFarmProjectsReloadMutex);
+
+            m_ui->deviceFarmProjectNameComboBox->blockSignals(true);
+
+            // get the current selection and clear the contents
+            const QString currentProjectArn = m_ui->deviceFarmProjectNameComboBox->currentData().toString();
+            m_ui->deviceFarmProjectNameComboBox->clear();
+
+            // re-populate the projects list
+            for (auto project : projects)
+            {
+                m_ui->deviceFarmProjectNameComboBox->addItem(project.name.c_str(), project.arn.c_str());
+            }
+
+            if (m_ui->deviceFarmProjectNameComboBox->count() == 0)
+            {
+                m_ui->deviceFarmProjectNameComboBox->addItem(noProjectsFound, noProjectsFound);
+            }
+
+            // attempt to reselect the previous selected device
+            int index = m_ui->deviceFarmProjectNameComboBox->findData(currentProjectArn);
+            if (index == -1)
+            {
+                index = 0;
+            }
+
+            m_ui->deviceFarmProjectNameComboBox->setCurrentIndex(index);
+
+            m_ui->deviceFarmProjectNameComboBox->blockSignals(false);
+
+            OnDeviceFarmProjectComboBoxValueChanged(index);
+        }
+        else
+        {
+            DEPLOY_LOG_ERROR("[ERROR] Failed to get project list, check Aws Credentials. %s", msg.c_str());
+        }
+    });
+}
+
+void DeploymentToolWindow::ReloadDeviceFarmDevicePoolsList(const AZStd::string& projectArn)
+{
+    // Retrieve the projects from the device farm
+    m_deviceFarmDriver->ListDevicePools(projectArn, [&](bool success, const AZStd::string& msg, AZStd::vector<DeployTool::DeviceFarmDriver::DevicePool>& devicePools)
+    {
+        if (success)
+        {
+            AZStd::lock_guard<AZStd::mutex> locker(m_deviceFarmDevicePoolsReloadMutex);
+
+            m_ui->deviceFarmDevicePoolNameComboBox->blockSignals(true);
+
+            // get the current selection and clear the contents
+            QString currentDevicePoolArn = m_ui->deviceFarmDevicePoolNameComboBox->currentData().toString();
+            m_ui->deviceFarmDevicePoolNameComboBox->clear();
+
+            // re-populate the device pool list
+            for (auto devicePool : devicePools)
+            {
+                m_ui->deviceFarmDevicePoolNameComboBox->addItem(devicePool.name.c_str(), devicePool.arn.c_str());
+            }
+
+            if (m_ui->deviceFarmDevicePoolNameComboBox->count() == 0)
+            {
+                m_ui->deviceFarmDevicePoolNameComboBox->addItem(noDevicePoolsFound, noDevicePoolsFound);
+            }
+
+            // attempt to reselect the previous selected device
+            int index = m_ui->deviceFarmDevicePoolNameComboBox->findData(currentDevicePoolArn);
+            if (index == -1)
+            {
+                index = 0;
+            }
+
+            m_ui->deviceFarmDevicePoolNameComboBox->setCurrentIndex(index);
+
+            m_ui->deviceFarmDevicePoolNameComboBox->blockSignals(false);
+        }
+        else
+        {
+            DEPLOY_LOG_ERROR("[ERROR] Failed to get device pool list, check Aws Credentials. %s", msg.c_str());
+        }
+    });
+}
+
+void DeploymentToolWindow::ReloadDeviceFarmRunsList(const AZStd::string& projectArn)
+{
+    // If there is already a reload in flight, wait for it to complete.
+    while (m_waitingForListRunsResponse)
+    {
+        AZStd::this_thread::sleep_for(AZStd::chrono::milliseconds(100));
+    }
+
+    m_waitingForListRunsResponse = true;
+
+    // Retrieve the projects from the device farm
+    m_deviceFarmDriver->ListRuns(projectArn, [&](bool success, const AZStd::string& msg, AZStd::vector<DeployTool::DeviceFarmDriver::Run>& runs)
+    {
+        AZStd::lock_guard<AZStd::mutex> locker(m_deviceFarmRunsReloadMutex);
+
+        m_ui->deviceFarmRunsTable->clearContents();
+        m_ui->deviceFarmRunsTable->setRowCount(runs.size());
+
+        int row = 0;
+        for (auto run : runs)
+        {
+            // Set the status icon
+            QTableWidgetItem* statusItem = new QTableWidgetItem();
+            if (run.result == "FAILED" || run.result == "ERRORED")
+            {
+                statusItem->setIcon(m_deviceFarmRunErrorIcon);
+            }
+            else if (run.result == "PASSED")
+            {
+                statusItem->setIcon(m_deviceFarmRunSuccessIcon);
+            }
+            else if (run.result == "STOPPED")
+            {
+                statusItem->setIcon(m_deviceFarmRunWarningIcon);
+            }
+            else
+            {
+                statusItem->setIcon(m_deviceFarmRunInProgressIcon);
+            }
+            statusItem->setToolTip(QStringLiteral("Current run status is '%1'").arg(run.result.c_str()));
+            m_ui->deviceFarmRunsTable->setItem(row, deviceFarmRunsTableColumnStatus, statusItem);
+
+            // Set the run name
+            QTableWidgetItem* nameItem = new QTableWidgetItem(run.name.c_str());
+            nameItem->setData(Qt::UserRole, QString(run.arn.c_str()));
+            m_ui->deviceFarmRunsTable->setItem(row, deviceFarmRunsTableColumnName, nameItem);
+
+            AZStd::string devicePoolId = DeployTool::DeviceFarmDriver::GetIdFromARN(run.devicePoolArn);
+
+            // The Id needs to be further split down by a / to get the second part
+            AZStd::vector<AZStd::string> tokens;
+            AzFramework::StringFunc::Tokenize(devicePoolId.c_str(), tokens, '/');
+            if (tokens.size() >= 2)
+            {
+                devicePoolId = tokens[1];
+            }
+
+            // try to find the name of the device pool in the list and set the device pool name.
+            QString devicePoolName = "Not found";
+            for (int x = 0; x < m_ui->deviceFarmDevicePoolNameComboBox->count(); x++)
+            {
+                // Just use the Id to compare, the built in Device Pools will have different prefixes
+                // in the run data vs the pool list data.
+                AZStd::string currentDevicePoolId = DeployTool::DeviceFarmDriver::GetIdFromARN(
+                    m_ui->deviceFarmDevicePoolNameComboBox->itemData(x).toString().toUtf8().data()
+                );
+
+                // The Id needs to be further split down by a / to get the second part
+                AZStd::vector<AZStd::string> tokens;
+                AzFramework::StringFunc::Tokenize(currentDevicePoolId.c_str(), tokens, '/');
+                if (tokens.size() >= 2)
+                {
+                    currentDevicePoolId = tokens[1];
+                }
+
+                if (currentDevicePoolId == devicePoolId)
+                {
+                    devicePoolName = m_ui->deviceFarmDevicePoolNameComboBox->itemText(x);
+                }
+            }
+            m_ui->deviceFarmRunsTable->setItem(row, deviceFarmRunsTableColumnDevicePool, new QTableWidgetItem(devicePoolName));
+
+            // Set the Test type
+            QTableWidgetItem* testTypeItem = new QTableWidgetItem(run.testType.c_str());
+            m_ui->deviceFarmRunsTable->setItem(row, deviceFarmRunsTableColumnTestType, testTypeItem);
+
+            QString info = QStringLiteral("%1/%2 done").arg(run.completedJobs).arg(run.totalJobs);
+            m_ui->deviceFarmRunsTable->setItem(row, deviceFarmRunsTableColumnProgress, new QTableWidgetItem(info));
+
+            row++;
+        }
+
+        m_waitingForListRunsResponse = false;
+    });
+}
+
+bool DeploymentToolWindow::DeviceFarmDeployTargetTabSelected()
+{
+    return m_ui->deployTargetsTabWidget->currentIndex() == 1;
 }
 
 #include <DeploymentToolWindow.moc>

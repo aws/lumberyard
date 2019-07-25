@@ -29,19 +29,39 @@
 namespace EMStudio
 {
     // Fill the given menu with anim graph objects that can be created inside the current given object and category.
-    void BlendGraphWidget::RegisterItems(AnimGraphPlugin* plugin, QMenu* menu, EMotionFX::AnimGraphObject* object, EMotionFX::AnimGraphObject::ECategory category)
+    void BlendGraphWidget::AddAnimGraphObjectCategoryMenu(AnimGraphPlugin* plugin, QMenu* parentMenu,
+        EMotionFX::AnimGraphObject::ECategory category, EMotionFX::AnimGraphObject* focusedGraphObject)
     {
+        // Check if any object of the given category can be created in the currently focused and shown graph.
+        bool isEmpty = true;
         const AZStd::vector<EMotionFX::AnimGraphObject*>& objectPrototypes = plugin->GetAnimGraphObjectFactory()->GetUiObjectPrototypes();
         for (EMotionFX::AnimGraphObject* objectPrototype : objectPrototypes)
         {
-            if (mPlugin->CheckIfCanCreateObject(object, objectPrototype, category))
+            if (mPlugin->CheckIfCanCreateObject(focusedGraphObject, objectPrototype, category))
             {
-                // Add the item
-                EMotionFX::AnimGraphNode* curNode = static_cast<EMotionFX::AnimGraphNode*>(objectPrototype);
-                QIcon icon(NodePaletteWidget::GetNodeIconFileName(curNode).c_str());
-                QAction* action = menu->addAction(icon, curNode->GetPaletteName());
-                action->setWhatsThis(azrtti_typeid(curNode).ToString<QString>());
-                action->setData(QVariant(curNode->GetPaletteName()));
+                isEmpty = false;
+                break;
+            }
+        }
+
+        // If the category will be empty, return directly and skip adding a category sub-menu.
+        if (isEmpty)
+        {
+            return;
+        }
+
+        const char* categoryName = EMotionFX::AnimGraphObject::GetCategoryName(category);
+        QMenu* menu = parentMenu->addMenu(categoryName);
+
+        for (const EMotionFX::AnimGraphObject* objectPrototype : objectPrototypes)
+        {
+            if (mPlugin->CheckIfCanCreateObject(focusedGraphObject, objectPrototype, category))
+            {
+                const EMotionFX::AnimGraphNode* nodePrototype = static_cast<const EMotionFX::AnimGraphNode*>(objectPrototype);
+                const QIcon icon(NodePaletteWidget::GetNodeIconFileName(nodePrototype).c_str());
+                QAction* action = menu->addAction(icon, nodePrototype->GetPaletteName());
+                action->setWhatsThis(azrtti_typeid(nodePrototype).ToString<QString>());
+                action->setData(QVariant(nodePrototype->GetPaletteName()));
                 connect(action, &QAction::triggered, plugin->GetGraphWidget(), &BlendGraphWidget::OnContextMenuCreateNode);
             }
         }
@@ -100,7 +120,8 @@ namespace EMStudio
 
 
     void BlendGraphWidget::OnContextMenuEvent(QWidget* parentWidget, QPoint localMousePos, QPoint globalMousePos, AnimGraphPlugin* plugin,
-        const AZStd::vector<EMotionFX::AnimGraphNode*>& selectedNodes, bool graphWidgetOnlyMenusEnabled, bool selectingAnyReferenceNodeFromNavigation)
+        const AZStd::vector<EMotionFX::AnimGraphNode*>& selectedNodes, bool graphWidgetOnlyMenusEnabled, bool selectingAnyReferenceNodeFromNavigation,
+        const AnimGraphActionFilter& actionFilter)
     {
         BlendGraphWidget*       blendGraphWidget = plugin->GetGraphWidget();
         BlendGraphViewWidget*   viewWidget       = plugin->GetViewWidget();
@@ -117,7 +138,7 @@ namespace EMStudio
             {
                 QMenu menu(parentWidget);
 
-                if (actionManager.GetIsReadyForPaste())
+                if (actionFilter.m_copyAndPaste && actionManager.GetIsReadyForPaste())
                 {
                     const QModelIndex modelIndex = nodeGraph->GetModelIndex();
                     if (modelIndex.isValid())
@@ -131,58 +152,28 @@ namespace EMStudio
                     }
                 }
 
-                QMenu createNodeMenu("Create Node", parentWidget);
-                QMenu sourcesMenu("Sources", &menu);
-                QMenu blendingMenu("Blending", &menu);
-                QMenu controllersMenu("Controllers", &menu);
-                QMenu physicsMenu("Physics", &menu);
-                QMenu logicMenu("Logic", &menu);
-                QMenu mathMenu("Math", &menu);
-                QMenu miscMenu("Misc", &menu);
+                if (actionFilter.m_createNodes)
+                {
+                    QMenu* createNodeMenu = menu.addMenu("Create Node");
+                    createNodeMenu->setIcon(MysticQt::GetMysticQt()->FindIcon("Images/Icons/Plus.png"));
 
-                createNodeMenu.setIcon(MysticQt::GetMysticQt()->FindIcon("Images/Icons/Plus.png"));
+                    const AZStd::vector<EMotionFX::AnimGraphNode::ECategory> categories =
+                    {
+                        EMotionFX::AnimGraphNode::CATEGORY_SOURCES,
+                        EMotionFX::AnimGraphNode::CATEGORY_BLENDING,
+                        EMotionFX::AnimGraphNode::CATEGORY_CONTROLLERS,
+                        EMotionFX::AnimGraphNode::CATEGORY_PHYSICS,
+                        EMotionFX::AnimGraphNode::CATEGORY_LOGIC,
+                        EMotionFX::AnimGraphNode::CATEGORY_MATH,
+                        EMotionFX::AnimGraphNode::CATEGORY_MISC
+                    };
 
-                EMotionFX::AnimGraphNode* currentNode = nodeGraph->GetModelIndex().data(AnimGraphModel::ROLE_NODE_POINTER).value<EMotionFX::AnimGraphNode*>();
-
-                RegisterItems(plugin, &sourcesMenu,    currentNode, EMotionFX::AnimGraphNode::CATEGORY_SOURCES);
-                RegisterItems(plugin, &blendingMenu,   currentNode, EMotionFX::AnimGraphNode::CATEGORY_BLENDING);
-                RegisterItems(plugin, &controllersMenu,currentNode, EMotionFX::AnimGraphNode::CATEGORY_CONTROLLERS);
-                RegisterItems(plugin, &physicsMenu,    currentNode, EMotionFX::AnimGraphNode::CATEGORY_PHYSICS);
-                RegisterItems(plugin, &logicMenu,      currentNode, EMotionFX::AnimGraphNode::CATEGORY_LOGIC);
-                RegisterItems(plugin, &mathMenu,       currentNode, EMotionFX::AnimGraphNode::CATEGORY_MATH);
-                RegisterItems(plugin, &miscMenu,       currentNode, EMotionFX::AnimGraphNode::CATEGORY_MISC);
-
-                if (!sourcesMenu.isEmpty())
-                {
-                    createNodeMenu.addMenu(&sourcesMenu);
-                }
-                if (!blendingMenu.isEmpty())
-                {
-                    createNodeMenu.addMenu(&blendingMenu);
-                }
-                if (!controllersMenu.isEmpty())
-                {
-                    createNodeMenu.addMenu(&controllersMenu);
-                }
-                if (!physicsMenu.isEmpty())
-                {
-                    createNodeMenu.addMenu(&physicsMenu);
-                }
-                if (!logicMenu.isEmpty())
-                {
-                    createNodeMenu.addMenu(&logicMenu);
-                }
-                if (!mathMenu.isEmpty())
-                {
-                    createNodeMenu.addMenu(&mathMenu);
-                }
-                if (!miscMenu.isEmpty())
-                {
-                    createNodeMenu.addMenu(&miscMenu);
-                }
-                if (!createNodeMenu.isEmpty())
-                {
-                    menu.addMenu(&createNodeMenu);
+                    // Create sub-menus for each of the categories that are possible to be added to the currently focused graph.
+                    EMotionFX::AnimGraphNode* currentNode = nodeGraph->GetModelIndex().data(AnimGraphModel::ROLE_NODE_POINTER).value<EMotionFX::AnimGraphNode*>();
+                    for (const EMotionFX::AnimGraphNode::ECategory category: categories)
+                    {
+                        AddAnimGraphObjectCategoryMenu(plugin, createNodeMenu, category, currentNode);
+                    }
                 }
 
                 if (!menu.isEmpty())
@@ -206,14 +197,18 @@ namespace EMStudio
                 // if the parent is a state machine
                 if (azrtti_typeid(animGraphNode->GetParentNode()) == azrtti_typeid<EMotionFX::AnimGraphStateMachine>())
                 {
-                    QAction* activateNodeAction = menu.addAction("Activate State");
-                    activateNodeAction->setIcon(MysticQt::GetMysticQt()->FindIcon("Images/AnimGraphPlugin/Run.png"));
-                    connect(activateNodeAction, &QAction::triggered, viewWidget, &BlendGraphViewWidget::OnActivateState);
+                    if (actionFilter.m_activateState)
+                    {
+                        QAction* activateNodeAction = menu.addAction("Activate State");
+                        activateNodeAction->setIcon(MysticQt::GetMysticQt()->FindIcon("Images/AnimGraphPlugin/Run.png"));
+                        connect(activateNodeAction, &QAction::triggered, viewWidget, &BlendGraphViewWidget::OnActivateState);
+                    }
 
                     if (!inReferenceGraph)
                     {
                         EMotionFX::AnimGraphStateMachine* stateMachine = (EMotionFX::AnimGraphStateMachine*)animGraphNode->GetParentNode();
-                        if (stateMachine->GetEntryState() != animGraphNode)
+                        if (actionFilter.m_setEntryNode &&
+                            stateMachine->GetEntryState() != animGraphNode)
                         {
                             QAction* setAsEntryStateAction = menu.addAction("Set As Entry State");
                             setAsEntryStateAction->setIcon(MysticQt::GetMysticQt()->FindIcon("Images/AnimGraphPlugin/EntryState.png"));
@@ -221,14 +216,18 @@ namespace EMStudio
                         }
 
                         // action for adding a wildcard transition
-                        QAction* addWildcardAction = menu.addAction("Add Wildcard Transition");
-                        addWildcardAction->setIcon(MysticQt::GetMysticQt()->FindIcon("Images/Icons/Plus.png"));
-                        connect(addWildcardAction, &QAction::triggered, &actionManager, &AnimGraphActionManager::AddWildCardTransition);
+                        if (actionFilter.m_createConnections)
+                        {
+                            QAction* addWildcardAction = menu.addAction("Add Wildcard Transition");
+                            addWildcardAction->setIcon(MysticQt::GetMysticQt()->FindIcon("Images/Icons/Plus.png"));
+                            connect(addWildcardAction, &QAction::triggered, &actionManager, &AnimGraphActionManager::AddWildCardTransition);
+                        }
                     }
                 } // parent is a state machine
 
                 // if the parent is a state blend tree
-                if (azrtti_typeid(animGraphNode->GetParentNode()) == azrtti_typeid<EMotionFX::BlendTree>())
+                if (actionFilter.m_editNodes &&
+                    azrtti_typeid(animGraphNode->GetParentNode()) == azrtti_typeid<EMotionFX::BlendTree>())
                 {
                     if (animGraphNode->GetSupportsDisable())
                     {
@@ -313,20 +312,24 @@ namespace EMStudio
 
             if (animGraphNode->GetIsDeletable())
             {
-                if (!inReferenceGraph)
+                if (actionFilter.m_copyAndPaste)
                 {
-                    // cut and copy actions
-                    QAction* cutAction = menu.addAction("Cut");
-                    cutAction->setIcon(MysticQt::GetMysticQt()->FindIcon("Images/Icons/Cut.png"));
-                    connect(cutAction, &QAction::triggered, &actionManager, &AnimGraphActionManager::Cut);
+                    if (!inReferenceGraph)
+                    {
+                        // cut and copy actions
+                        QAction* cutAction = menu.addAction("Cut");
+                        cutAction->setIcon(MysticQt::GetMysticQt()->FindIcon("Images/Icons/Cut.png"));
+                        connect(cutAction, &QAction::triggered, &actionManager, &AnimGraphActionManager::Cut);
+                    }
+
+                    QAction* ccopyAction = menu.addAction("Copy");
+                    ccopyAction->setIcon(MysticQt::GetMysticQt()->FindIcon("Images/Icons/Copy.png"));
+                    connect(ccopyAction, &QAction::triggered, &actionManager, &AnimGraphActionManager::Copy);
+                    menu.addSeparator();
                 }
 
-                QAction* ccopyAction = menu.addAction("Copy");
-                ccopyAction->setIcon(MysticQt::GetMysticQt()->FindIcon("Images/Icons/Copy.png"));
-                connect(ccopyAction, &QAction::triggered, &actionManager, &AnimGraphActionManager::Copy);
-                menu.addSeparator();
-
-                if (!inReferenceGraph)
+                if (actionFilter.m_delete &&
+                    !inReferenceGraph)
                 {
                     QAction* removeNodeAction = menu.addAction("Delete Node");
                     removeNodeAction->setIcon(MysticQt::GetMysticQt()->FindIcon("Images/Icons/Remove.png"));
@@ -336,7 +339,8 @@ namespace EMStudio
             }
 
             // add the node group sub menu
-            if (!inReferenceGraph && animGraphNode->GetParentNode())
+            if (actionFilter.m_editNodeGroups &&
+                !inReferenceGraph && animGraphNode->GetParentNode())
             {
                 AddNodeGroupSubmenu(&menu, animGraphNode->GetAnimGraph(), selectedNodes);
             }
@@ -351,10 +355,10 @@ namespace EMStudio
         // check if we are dealing with multiple selected nodes
         if (numSelectedNodes > 1)
         {
-            // create the context menu
             QMenu menu(parentWidget);
 
-            if (!inReferenceGraph)
+            if (actionFilter.m_editNodes &&
+                !inReferenceGraph)
             {
                 QAction* alignLeftAction = menu.addAction("Align Left");
                 QAction* alignRightAction = menu.addAction("Align Right");
@@ -412,7 +416,8 @@ namespace EMStudio
                 }
 
                 // enable all nodes
-                if (oneDisabled && oneSupportsDelete)
+                if (actionFilter.m_editNodes &&
+                    oneDisabled && oneSupportsDelete)
                 {
                     QAction* enableAction = menu.addAction("Enable Nodes");
                     enableAction->setIcon(MysticQt::GetMysticQt()->FindIcon("Images/AnimGraphPlugin/EnableNodes.png"));
@@ -420,7 +425,8 @@ namespace EMStudio
                 }
 
                 // disable all nodes
-                if (oneEnabled && oneSupportsDelete)
+                if (actionFilter.m_editNodes &&
+                    oneEnabled && oneSupportsDelete)
                 {
                     QAction* disableAction = menu.addAction("Disable Nodes");
                     disableAction->setIcon(MysticQt::GetMysticQt()->FindIcon("Images/AnimGraphPlugin/DisableNodes.png"));
@@ -444,22 +450,26 @@ namespace EMStudio
 
             if (canDelete)
             {
-                menu.addSeparator();
-
-                if (!inReferenceGraph)
+                if (actionFilter.m_copyAndPaste)
                 {
-                    QAction* cutAction = menu.addAction("Cut");
-                    cutAction->setIcon(MysticQt::GetMysticQt()->FindIcon("Images/Icons/Cut.png"));
-                    connect(cutAction, &QAction::triggered, &actionManager, &AnimGraphActionManager::Cut);
+                    menu.addSeparator();
+
+                    if (!inReferenceGraph)
+                    {
+                        QAction* cutAction = menu.addAction("Cut");
+                        cutAction->setIcon(MysticQt::GetMysticQt()->FindIcon("Images/Icons/Cut.png"));
+                        connect(cutAction, &QAction::triggered, &actionManager, &AnimGraphActionManager::Cut);
+                    }
+
+                    QAction* ccopyAction = menu.addAction("Copy");
+                    ccopyAction->setIcon(MysticQt::GetMysticQt()->FindIcon("Images/Icons/Copy.png"));
+                    connect(ccopyAction, &QAction::triggered, &actionManager, &AnimGraphActionManager::Copy);
                 }
 
-                QAction* ccopyAction = menu.addAction("Copy");
-                ccopyAction->setIcon(MysticQt::GetMysticQt()->FindIcon("Images/Icons/Copy.png"));
-                connect(ccopyAction, &QAction::triggered, &actionManager, &AnimGraphActionManager::Copy);
-
                 menu.addSeparator();
 
-                if (!inReferenceGraph)
+                if (actionFilter.m_delete &&
+                    !inReferenceGraph)
                 {
                     QAction* removeNodesAction = menu.addAction("Delete Nodes");
                     removeNodesAction->setIcon(MysticQt::GetMysticQt()->FindIcon("Images/Icons/Remove.png"));
@@ -469,7 +479,8 @@ namespace EMStudio
                 }
             }
 
-            if (!inReferenceGraph)
+            if (actionFilter.m_editNodeGroups &&
+                !inReferenceGraph)
             {
                 AddNodeGroupSubmenu(&menu, selectedNodes[0]->GetAnimGraph(), selectedNodes);
             }

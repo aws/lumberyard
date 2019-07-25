@@ -12,7 +12,8 @@
 
 #pragma once
 
-// include the required headers
+#include <AzCore/std/containers/vector.h>
+#include <AzCore/std/string/string.h>
 #include "StandardHeaders.h"
 #include "CommandLine.h"
 

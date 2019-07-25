@@ -34,6 +34,7 @@
 #include "Audio/AudioProxyComponent.h"
 #include "Audio/AudioRtpcComponent.h"
 #include "Audio/AudioSwitchComponent.h"
+#include "Audio/AudioSystemComponent.h"
 #include "Audio/AudioTriggerComponent.h"
 #include "Rendering/DecalComponent.h"
 #include "Rendering/StereoRendererComponent.h"
@@ -248,6 +249,7 @@ namespace LmbrCentral
             AudioProxyComponent::CreateDescriptor(),
             AudioRtpcComponent::CreateDescriptor(),
             AudioSwitchComponent::CreateDescriptor(),
+            AudioSystemComponent::CreateDescriptor(),
             AudioTriggerComponent::CreateDescriptor(),
             BehaviorTreeComponent::CreateDescriptor(),
             ConstraintComponent::CreateDescriptor(),
@@ -331,6 +333,7 @@ namespace LmbrCentral
                    azrtti_typeid<StereoRendererComponent>(),
                    azrtti_typeid<NavigationSystemComponent>(),
                    azrtti_typeid<GeometrySystemComponent>(),
+                   azrtti_typeid<AudioSystemComponent>(),
 #if AZ_LOADSCREENCOMPONENT_ENABLED
                    azrtti_typeid<LoadScreenComponent>(),
 #endif // if AZ_LOADSCREENCOMPONENT_ENABLED

@@ -60,19 +60,25 @@ namespace AzToolsFramework
 
         //////////////////////////////////////////////////////////////////////////
         // ArchiveCommands::Bus::Handler overrides
+        void CreateArchive(const AZStd::string& archivePath, const AZStd::string& dirToArchive, AZ::Uuid taskHandle, const ArchiveResponseOutputCallback& respCallback) override;
+        bool CreateArchiveBlocking(const AZStd::string& archivePath, const AZStd::string& dirToArchive) override;
+        bool ExtractArchiveBlocking(const AZStd::string& archivePath, const AZStd::string& destinationPath, bool extractWithRootDirectory) override;
         void ExtractArchive(const AZStd::string& archivePath, const AZStd::string& destinationPath, AZ::Uuid taskHandle, const ArchiveResponseCallback& respCallback) override;
+        void ExtractArchiveOutput(const AZStd::string& archivePath, const AZStd::string& destinationPath, AZ::Uuid taskHandle, const ArchiveResponseOutputCallback& respCallback) override;
+        void ExtractArchiveWithoutRoot(const AZStd::string& archivePath, const AZStd::string& destinationPath, AZ::Uuid taskHandle, const ArchiveResponseOutputCallback& respCallback) override;
         void CancelTasks(AZ::Uuid taskHandle) override;
         //////////////////////////////////////////////////////////////////////////
 
-        // Lauches the 7za.exe as a background child process in a detached background thread.
-        void Launch7zAsync(const AZStd::string& commandLineArgs, AZ::Uuid taskHandle, const ArchiveResponseCallback& respCallback);
+        // Launches the 7za.exe as a background child process in a detached background thread, if the task handle is not null 
+        // otherwise launches 7za.exe in the calling thread.
+        void Launch7z(const AZStd::string& commandLineArgs, const ArchiveResponseOutputCallback& respCallback, AZ::Uuid taskHandle = AZ::Uuid::CreateNull(), const AZStd::string& workingDir = "", bool captureOutput = false);
         
         AZStd::string m_7zPath; // Path to Dev/Tools/7za.exe
 
         // Struct for tracking background threads/tasks
         struct ThreadInfo
         {
-            bool shouldStop;
+            bool shouldStop = false;
             AZStd::set<AZStd::thread::id> threads;
         };
 

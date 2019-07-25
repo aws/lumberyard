@@ -335,6 +335,7 @@ namespace ImageProcessing
     {
         outWidth = inputWidth;
         outHeight = inputHeight;
+        outReduce = 0;
 
         if (textureSettings == nullptr || presetSettings == nullptr)
         {
@@ -350,7 +351,6 @@ namespace ImageProcessing
         //get suitable size for dest pixel format
         CPixelFormats::GetInstance().GetSuitableImageSize(presetSettings->m_pixelFormat, inputWidth, inputHeight,
             outWidth, outHeight);
-
             
         //desired reduce level. 1 means reduce one level
         uint sizeReduceLevel = textureSettings->m_sizeReduceLevel;

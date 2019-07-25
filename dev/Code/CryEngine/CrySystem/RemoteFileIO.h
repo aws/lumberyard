@@ -22,132 +22,63 @@
 #include <AzCore/std/containers/vector.h>
 #include <AzCore/RTTI/RTTI.h>
 
-//ColinB - There is a bug in caching on VFS, so I'm turning it off until I can fix it
-//#define VFS_CACHING
+////////////////////////////////////////////////////////////////////////////////////
+//NetworkFileIO implements FileIOBase for serving all file system requests via the asset
+//processor connection. The asset processor on the other side of the connection uses LocalFileIO
+//to complete the task and sends the results back.
+//NetworkFileIO uses no caching at all.
+//RemoteFileIO derives from NetworkFileIO and adds caching to speed things up.
 
+//This option defines RemoteFileIO as NetworkFileIO, an easy way to test with no caching at all
+//#define REMOTEFILEIO_IS_NETWORKFILEIO
+
+//REMOTEFILEIO_CACHE_FILETREE is an option that turns on file metadata caching of the cache tree.
+//When on it queries the AP at startup for the state of the cache files and caches it. It also
+//registers itself as a listener for file changes and recaches on changes.
+//#define REMOTEFILEIO_CACHE_FILETREE
+
+//REMOTEFILEIO_CACHE_FILETREE_FALLBACK is an option you can turn on that in the event the instance
+//asks about file meta data that doesnt exist in the cache, we can fallback to NetworkFileIO and
+//see if something changed. For example if someone adds a directory and the code asks
+//if that directory exists, it wont be in the cache so it would normally report no, with the fall
+//it would secondary query NetworkFileIO to get the real state and return it in an effort to be
+//safer in edge cases in dynamic development.
+//#define REMOTEFILEIO_CACHE_FILETREE_FALLBACK
+
+///////////////////////////////////////////////////////////////////////////////////
+//NETWORKFILEIO_LOG is a logging option that must tolerate high speed logging, so
+//no output and no allocations, to not alter the timing of calls. On start it allocs
+//a chunk of memmory and writes into it. It is a super verbose logging every file call.
+//#define NETWORKFILEIO_LOG
+
+//REMOTEFILEIO_SYNC_CHECK is an option to enable sync checks between the readahead cache
+//and where the server currently thinks the file is at. It is very useful when debugging
+//a combination of virtual file actions that result in a slightly different state. For example
+//seek()'ing before the begining or past the end of a file is undefined in the standard, and
+//different platforms handle what happens differently. One may allow it, others may not. When
+//it is allowed sometime it means padding the file to a new size with zeros, sometime it just
+//stops at the bounds... this can be used to figure out what is going on in wierd out of sync
+//cases that arrise from a wierd combination of calls on different platforms.
+//#define REMOTEFILEIO_SYNC_CHECK
+
+
+#ifdef REMOTEFILEIO_CACHE_FILETREE
+#include <AzFramework/Asset/AssetSystemBus.h>
+#endif
+///////////////////////////////////////////////////////////////////////////////////
 namespace AZ
 {
     namespace IO
     {
-
-#ifdef VFS_CACHING
-        struct VFSCacheLine
-        {
-            AZ_CLASS_ALLOCATOR(VFSCacheLine, OSAllocator, 0);
-            AZStd::vector<char, AZ::OSStdAllocator> m_cacheLookaheadBuffer;
-            AZ::u64 m_cacheLookaheadPos = 0;
-            AZ::u64 m_fileSizeSnapshot = 0;
-            AZ::u64 m_fileSizeSnapshotTime = 0;
-
-            // note that m_filePosition caches the actual physical pointer location of the file - not the cache pos.
-            // the actual 'tell position' should be this number minus the number of bytes its ahead by in the cache.
-            AZ::u64 m_filePosition = 0;
-            
-            VFSCacheLine() = default;
-            VFSCacheLine(const VFSCacheLine& other) = default;
-            
-            VFSCacheLine(VFSCacheLine&& other)
-            {
-                *this = AZStd::move(other);
-            }
-            
-            VFSCacheLine& operator=(VFSCacheLine&& other)
-            {
-                if (this != &other)
-                {
-                    m_cacheLookaheadBuffer = AZStd::move(other.m_cacheLookaheadBuffer);
-                    m_cacheLookaheadPos = other.m_cacheLookaheadPos;
-                    m_fileSizeSnapshot = other.m_fileSizeSnapshot;
-                    m_fileSizeSnapshotTime = other.m_fileSizeSnapshotTime;
-                    m_filePosition = other.m_filePosition;
-                }
-                return *this;
-            }
-
-            AZ::u64 Read(void* buffer,  AZ::u64 requestedSize)
-            {
-                AZ::u64 bytesRead = 0;
-                AZ::u64 remainingBytesInCache = RemainingBytes();
-                AZ::u64 remainingBytesToRead = requestedSize;
-                if (remainingBytesInCache > 0)
-                {
-                    AZ::u64 bytesToReadFromCache = AZStd::GetMin(remainingBytesInCache, remainingBytesToRead);
-                    memcpy(buffer, m_cacheLookaheadBuffer.data() + m_cacheLookaheadPos, bytesToReadFromCache);
-                    bytesRead = bytesToReadFromCache;
-                    remainingBytesToRead -= bytesToReadFromCache;
-                    m_cacheLookaheadPos += bytesToReadFromCache;
-                }
-
-                return bytesRead;
-            }
-
-            void Write(void* buffer,  AZ::u64 size)
-            {
-                AZ_Assert(!RemainingBytes(),"RemoteFileIO::WriteToCacheLine: Failed to write to a cache that it not empty!");
-
-                OffsetFilePosition(size);
-                m_cacheLookaheadBuffer.resize(size);
-                memcpy(m_cacheLookaheadBuffer.data(), buffer, size);
-                m_cacheLookaheadPos = 0;
-            }
-
-            inline void Invalidate()
-            {
-                m_cacheLookaheadPos = 0;
-                m_cacheLookaheadBuffer.clear();
-            }
-
-            inline AZ::u64 RemainingBytes()
-            {
-                return m_cacheLookaheadBuffer.size() - m_cacheLookaheadPos;
-            }
-
-            inline AZ::u64 CacheFilePosition()
-            {
-                return m_filePosition - RemainingBytes();
-            }
-
-            inline AZ::u64 CacheStartFilePosition()
-            {
-                return m_filePosition - m_cacheLookaheadBuffer.size();
-            }
-
-            inline AZ::u64 CacheEndFilePosition()
-            {
-                return m_filePosition;
-            }
-
-            inline bool IsFilePositionInCache(AZ::u64 filePosition)
-            {
-                return filePosition >= CacheStartFilePosition() && filePosition < CacheEndFilePosition();
-            }
-
-            inline void SetCachePositionFromFilePosition(AZ::u64 filePosition)
-            {
-                m_cacheLookaheadPos = filePosition - CacheStartFilePosition();
-            }
-
-            inline void SetFilePosition(AZ::u64 filePosition)
-            {
-                m_filePosition = filePosition;
-            }
-
-            inline void OffsetFilePosition(AZ::s64 offset)
-            {
-                m_filePosition += offset;
-            }
-        };
-#endif
-
-        class RemoteFileIO
+        class NetworkFileIO
             : public FileIOBase
         {
         public:
-            AZ_RTTI(RemoteFileIO, "{A863335E-9330-44E2-AD89-B5309F3B8B93}");
-            AZ_CLASS_ALLOCATOR(RemoteFileIO, OSAllocator, 0);
+            AZ_RTTI(NetworkFileIO, "{A863335E-9330-44E2-AD89-B5309F3B8B93}", FileIOBase);
+            AZ_CLASS_ALLOCATOR(NetworkFileIO, OSAllocator, 0);
 
-            RemoteFileIO();
-            ~RemoteFileIO();
+            NetworkFileIO();
+            virtual ~NetworkFileIO();
 
             ////////////////////////////////////////////////////////////////////////////////////////
             //implementation of FileIOBase
@@ -179,23 +110,107 @@ namespace AZ
             const char* GetAlias(const char* alias) override;
             bool ResolvePath(const char* path, char* resolvedPath, AZ::u64 resolvedPathSize) override;
             bool GetFilename(HandleType fileHandle, char* filename, AZ::u64 filenameSize) const override;
+            bool IsRemoteIOEnabled() override;
             ////////////////////////////////////////////////////////////////////////////////////////////
 
-        private:
+        protected:
             mutable AZStd::recursive_mutex m_remoteFilesGuard;
             AZStd::unordered_map<HandleType, AZ::OSString, AZStd::hash<HandleType>, AZStd::equal_to<HandleType>, AZ::OSStdAllocator> m_remoteFiles;
-#ifdef VFS_CACHING
-            AZStd::unordered_map<HandleType, VFSCacheLine, AZStd::hash<HandleType>, AZStd::equal_to<HandleType>, AZ::OSStdAllocator> m_remoteFileCache;
-
-            // (assumes you're inside a remote files guard lock already for creation, which is true since we create one on open)
-            inline VFSCacheLine& GetCacheLine(HandleType handle)
-            {
-                auto found = m_remoteFileCache.find(handle);
-                // check this because it is a serious error since it may be that you're in an unguarded access to a non-existant handle.
-                AZ_Assert(found != m_remoteFileCache.end(), "RemoteFileIO::GetCacheLine() Attempt to Get cache line missed, did something go wrong with open?");
-                return found->second;
-            }
-#endif
         };
+
+#ifdef REMOTEFILEIO_IS_NETWORKFILEIO
+        #define RemoteFileIO NetworkFileIO 
+#else
+        //////////////////////////////////////////////////////////////////////////
+        class RemoteFileCache
+        {
+        public:
+            AZ_CLASS_ALLOCATOR(RemoteFileCache, OSAllocator, 0);
+
+            RemoteFileCache() = default;
+            RemoteFileCache(const RemoteFileCache& other) = default;
+            RemoteFileCache(RemoteFileCache&& other);
+            RemoteFileCache& operator=(RemoteFileCache&& other);
+
+            void Invalidate();
+            AZ::u64 RemainingBytes();
+            AZ::u64 CacheFilePosition();
+            AZ::u64 CacheStartFilePosition();
+            AZ::u64 CacheEndFilePosition();
+            bool IsFilePositionInCache(AZ::u64 filePosition);
+            void SetCachePositionFromFilePosition(AZ::u64 filePosition);
+            void SetFilePosition(AZ::u64 filePosition);
+            void OffsetFilePosition(AZ::s64 offset);
+            bool Eof();
+
+            void SyncCheck();
+
+            AZStd::vector<char, AZ::OSStdAllocator> m_cacheLookaheadBuffer;
+            AZ::u64 m_cacheLookaheadPos = 0;
+
+            AZ::u64 m_fileSize = 0;
+            AZ::u64 m_fileSizeTime = 0;
+
+            // note that m_filePosition caches the actual physical pointer location of the file - not the cache pos.
+            // the actual 'tell position' should be this number minus the number of bytes its ahead by in the cache.
+            // Whenever something happens that will actually move the cursor on the remote host occurs, like
+            // NetworkFileIO read, this should be updated. 
+            AZ::u64 m_filePosition = 0;
+
+            HandleType m_fileHandle = AZ::IO::InvalidHandle;
+
+            OpenMode m_openMode = OpenMode::Invalid;
+        };
+
+
+        //////////////////////////////////////////////////////////////////////////
+
+        class RemoteFileIO
+            : public NetworkFileIO
+#ifdef REMOTEFILEIO_CACHE_FILETREE
+            , private AzFramework::AssetSystemBus::Handler
+#endif
+        {
+        public:
+            AZ_RTTI(RemoteFileIO, "{E2939E15-3B83-402A-A6DA-A436EDAB2ED2}", NetworkFileIO);
+            AZ_CLASS_ALLOCATOR(RemoteFileIO, OSAllocator, 0);
+
+            RemoteFileIO();
+            virtual ~RemoteFileIO();
+            
+            ////////////////////////////////////////////////////////////////////////////////////////
+            //implementation of NetworkFileIO
+
+            Result Open(const char* filePath, OpenMode mode, HandleType& fileHandle) override;
+            Result Close(HandleType fileHandle) override;
+            Result Tell(HandleType fileHandle, AZ::u64& offset) override;
+            Result Seek(HandleType fileHandle, AZ::s64 offset, SeekType type) override;
+            Result Size(HandleType fileHandle, AZ::u64& size) override;
+            Result Read(HandleType fileHandle, void* buffer, AZ::u64 size, bool failOnFewerThanSizeBytesRead = false, AZ::u64* bytesRead = nullptr) override;
+            Result Write(HandleType fileHandle, const void* buffer, AZ::u64 size, AZ::u64* bytesWritten = nullptr) override;
+            bool Eof(HandleType fileHandle) override;
+
+#ifdef REMOTEFILEIO_CACHE_FILETREE
+            bool Exists(const char* filePath) override;
+            bool IsDirectory(const char* filePath) override;
+            Result FindFiles(const char* filePath, const char* filter, FindFilesCallbackType callback) override;
+            
+            Result CacheFileTree();
+            AZStd::vector<AZStd::string> m_remoteFileTreeCache;
+            AZStd::vector<AZStd::string> m_remoteFolderTreeCache;
+            //////////////////////////////////////////////////////////////////////////
+
+            //////////////////////////////////////////////////////////////////////////
+            //implementation of AssetSystemBus
+            void AssetChanged(AzFramework::AssetSystem::AssetNotificationMessage message) override;
+            void AssetRemoved(AzFramework::AssetSystem::AssetNotificationMessage message) override;
+            //////////////////////////////////////////////////////////////////////////
+#endif
+            mutable AZStd::recursive_mutex m_remoteFileCacheGuard;
+            AZStd::unordered_map<HandleType, RemoteFileCache, AZStd::hash<HandleType>, AZStd::equal_to<HandleType>, AZ::OSStdAllocator> m_remoteFileCache;
+            // (assumes you're inside a remote files guard lock already for creation, which is true since we create one on open)
+            RemoteFileCache& GetCache(HandleType fileHandle);
+        };
+#endif
     } // namespace IO
 } // namespace AZ

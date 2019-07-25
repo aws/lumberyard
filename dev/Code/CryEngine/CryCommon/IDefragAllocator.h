@@ -126,6 +126,8 @@ public:
     virtual size_t GetAllocated() const = 0;
     virtual IDefragAllocatorStats GetStats() = 0;
 
+    virtual void DisplayMemoryUsage(const char* title, unsigned int allocatorDisplayOffset = 0) = 0;
+
     virtual size_t DefragmentTick(size_t maxMoves, size_t maxAmount, bool bForce = false) = 0;
 
     virtual UINT_PTR UsableSize(Hdl hdl) = 0;

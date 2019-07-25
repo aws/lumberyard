@@ -123,7 +123,7 @@ namespace Driller
             AZ::SerializeContext* serialize = azrtti_cast<AZ::SerializeContext*>(context);
             if (serialize)
             {
-                serialize->Class<MemoryDataViewSavedState, AZ::UserSettings>()
+                serialize->Class<MemoryDataViewSavedState>()
                     ->Field("m_filterMenuString", &MemoryDataViewSavedState::m_filterMenuString)
                     ->Field("m_filterId", &MemoryDataViewSavedState::m_filterId)
                     ->Field("m_frameRange", &MemoryDataViewSavedState::m_frameRange)

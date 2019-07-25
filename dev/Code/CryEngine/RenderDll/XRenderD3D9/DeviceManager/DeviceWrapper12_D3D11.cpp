@@ -136,8 +136,8 @@ bool CDeviceGraphicsPSO_DX11::Init(const CDeviceGraphicsPSODesc& psoDesc)
 
             const bool bMorph = false;
             const bool bInstanced = (streamMask & VSM_INSTANCED) != 0;
-            AZ::u32 declCacheCRC = pVsInstance->GenerateVertexDeclarationCacheCRC(psoDesc.m_VertexFormat);
-            SOnDemandD3DVertexDeclarationCache& declCache = rd->m_RP.m_D3DVertexDeclarationCache[streamMask >> 1][bMorph || bInstanced][declCacheCRC];
+            AZ::u32 declCacheKey = pVsInstance->GenerateVertexDeclarationCacheKey(psoDesc.m_VertexFormat);
+            SOnDemandD3DVertexDeclarationCache& declCache = rd->m_RP.m_D3DVertexDeclarationCache[streamMask >> 1][bMorph || bInstanced][declCacheKey];
 
             if (!declCache.m_pDeclaration)
             {

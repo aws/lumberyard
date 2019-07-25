@@ -189,6 +189,7 @@ public:
     virtual unsigned int GetExclusiveControllerDeviceIndex() const;
     virtual bool LoginUser(const char* userId, bool& bOutFirstTime);
     virtual bool LogoutUser(const char* userId);
+    virtual bool IsUserSignedIn(const char* userId, unsigned int& outUserIndex);
     virtual int  GetProfileCount(const char* userId);
     virtual bool GetProfileInfo(const char* userId, int index, IPlayerProfileManager::SProfileDescription& outInfo);
     virtual bool CreateProfile(const char* userId, const char* profileName, bool bOverrideIfPresent, IPlayerProfileManager::EProfileOperationResult& result);
@@ -305,6 +306,15 @@ public:
         virtual void Release() = 0; // must delete itself
         virtual bool LoginUser(SUserEntry* pEntry) = 0;
         virtual bool LogoutUser(SUserEntry* pEntry) = 0;
+        virtual bool IsUserSignedIn(const char* userId, unsigned int& outUserIndex)
+        {
+            if (strcmp(userId, "DefaultUser") == 0)
+            {
+                outUserIndex = 0;
+                return true;
+            }
+            return false;
+        }
         virtual bool SaveProfile(SUserEntry* pEntry, CPlayerProfile* pProfile, const char* name, bool initialSave = false, int reason = ePR_All) = 0;
         virtual bool LoadProfile(SUserEntry* pEntry, CPlayerProfile* pProfile, const char* name) = 0;
         virtual bool DeleteProfile(SUserEntry* pEntry, const char* name) = 0;

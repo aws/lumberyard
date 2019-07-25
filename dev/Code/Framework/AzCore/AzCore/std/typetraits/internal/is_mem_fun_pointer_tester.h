@@ -14,6 +14,7 @@
 
 #include <AzCore/std/typetraits/config.h>
 #include <AzCore/std/typetraits/internal/is_function_ptr_tester.h>
+#include <AzCore/std/typetraits/remove_cv.h>
 
 namespace AZStd
 {

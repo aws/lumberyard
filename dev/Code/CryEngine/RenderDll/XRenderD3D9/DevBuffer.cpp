@@ -23,6 +23,7 @@
 #include "DeviceManager/Base.h"
 #include "DeviceManager/PartitionTable.h"
 #include "AzCore/std/parallel/mutex.h"
+#include "Common/Memory/VRAMDrillerBus.h"
 
 
 #if defined(AZ_RESTRICTED_PLATFORM)
@@ -38,6 +39,15 @@
 #if defined(max)
 # undef max
 #endif
+
+void ReleaseD3DBuffer(D3DBuffer*& buffer)
+{
+    if (buffer)
+    {
+        EBUS_EVENT(Render::Debug::VRAMDrillerBus, UnregisterAllocation, static_cast<void*>(buffer));
+        SAFE_RELEASE(buffer);
+    }
+}
 
 #if ENABLE_STATOSCOPE
 struct SStatoscopeData
@@ -236,7 +246,7 @@ namespace
         ~BufferPoolBank()
         {
             UnsetStreamSources(m_buffer);
-            SAFE_RELEASE(m_buffer);
+            ReleaseD3DBuffer(m_buffer);
         }
     };
 
@@ -1036,7 +1046,7 @@ error:
         {
             AZRHI_VERIFY(m_partition == 0);
             UnsetStreamSources(m_buffer);
-            SAFE_RELEASE(m_buffer);
+            ReleaseD3DBuffer(m_buffer);
         }
 
         D3DBuffer* buffer() const { return m_buffer; }
@@ -1494,7 +1504,7 @@ namespace
                     continue;
                 }
                 UnsetStreamSources(bank.m_buffer);
-                SAFE_RELEASE(bank.m_buffer);
+                ReleaseD3DBuffer(bank.m_buffer);
                 bank.m_base_ptr = NULL;
             }
         }
@@ -1550,10 +1560,10 @@ namespace
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
 #undef AZ_RESTRICTED_SECTION_IMPLEMENTED
 #elif defined(APPLE)
-	    // using a C-cast here breaks
+            // using a C-cast here breaks
             item_handle_t handle = reinterpret_cast<TRUNCATE_PTR>(pContext);
 #elif defined(LINUX)
-	    // using a C-cast here breaks
+            // using a C-cast here breaks
             item_handle_t handle = reinterpret_cast<TRUNCATE_PTR>(pContext);
 #else
             item_handle_t handle = static_cast<item_handle_t>(reinterpret_cast<uintptr_t>(pContext));
@@ -1756,7 +1766,7 @@ retry:
 
                 // Extending the allocator failed, so the newly created bank is rolled back
                 UnsetStreamSources(bank->m_buffer);
-                SAFE_RELEASE(bank->m_buffer);
+                ReleaseD3DBuffer(bank->m_buffer);
                 m_bank_table.Free(bank->m_handle);
                 m_banks.erase(m_banks.end() - 1);
                 // Try to allocate a free standing buffer now ... fingers crossed
@@ -1775,7 +1785,7 @@ retry:
             IF ((item->m_bank) == ~0u, 0)
             {
                 UnsetStreamSources(item->m_buffer);
-                SAFE_RELEASE(item->m_buffer);
+                ReleaseD3DBuffer(item->m_buffer);
                 m_item_table.Free(item->m_handle);
                 return;
             }
@@ -2215,7 +2225,7 @@ retry:
         bool FreeResources()
         {
             UnsetStreamSources(m_backing_buffer.m_buffer);
-            SAFE_RELEASE(m_backing_buffer.m_buffer);
+            ReleaseD3DBuffer(m_backing_buffer.m_buffer);
             m_backing_buffer.m_capacity   = 0;
             m_backing_buffer.m_free_space = 0;
             m_backing_buffer.m_handle = ~0u;
@@ -2387,7 +2397,7 @@ retry:
         bool FreeResources()
         {
             UnsetStreamSources(m_backing_buffer.m_buffer);
-            SAFE_RELEASE(m_backing_buffer.m_buffer);
+            ReleaseD3DBuffer(m_backing_buffer.m_buffer);
             m_backing_buffer.m_capacity   = 0;
             m_backing_buffer.m_free_space = 0;
             m_backing_buffer.m_handle = ~0u;
@@ -2640,7 +2650,7 @@ retry:
             memset(m_fences, 0x0, sizeof(m_fences));
             memset(m_buffer_creators, 0x0, sizeof(m_buffer_creators));
 #   if ENABLE_STATOSCOPE
-			memset(&m_sdata, 0, sizeof(m_sdata));
+            memset(&m_sdata, 0, sizeof(m_sdata));
 #   endif
         }
 

@@ -15,6 +15,7 @@
 
 #include <AzCore/Script/ScriptTimePoint.h>
 #include <AzCore/Serialization/EditContext.h>
+#include <AzFramework/Physics/ColliderComponentBus.h>
 #include <AzFramework/Physics/RigidBody.h>
 #include <AzFramework/Physics/SystemBus.h>
 #include <AzFramework/Viewport/ViewportColors.h>
@@ -244,12 +245,12 @@ namespace PhysX
         AZ::TransformNotificationBus::Handler::BusConnect(GetEntityId());
         AzToolsFramework::BoxManipulatorRequestBus::Handler::BusConnect(
             AZ::EntityComponentIdPair(GetEntityId(), GetId()));
+        ColliderShapeRequestBus::Handler::BusConnect(GetEntityId());
 
         // ComponentMode
         m_componentModeDelegate.ConnectWithSingleComponentMode<
             EditorColliderComponent, AzToolsFramework::BoxComponentMode>(
                 AZ::EntityComponentIdPair(GetEntityId(), GetId()), nullptr);
-
         UpdateMeshAsset();
 
         m_warningColor = AZ::Color(1.0f, 0.0f, 0.0f, 1.0f);
@@ -262,10 +263,13 @@ namespace PhysX
         CreateStaticEditorCollider();
 
         PhysX::EditorRigidBodyRequestBus::Event(GetEntityId(), &PhysX::EditorRigidBodyRequests::RefreshEditorRigidBody);
+
+        EBUS_EVENT_ID(GetEntityId(), ColliderComponentEventBus, OnColliderChanged);
     }
 
     void EditorColliderComponent::Deactivate()
     {
+        ColliderShapeRequestBus::Handler::BusDisconnect();
         AzToolsFramework::BoxManipulatorRequestBus::Handler::BusDisconnect();
         AZ::TransformNotificationBus::Handler::BusDisconnect();
         PhysX::MeshColliderComponentRequestsBus::Handler::BusDisconnect();
@@ -301,6 +305,8 @@ namespace PhysX
 
         m_meshDirty = true;
         PhysX::EditorRigidBodyRequestBus::Event(GetEntityId(), &PhysX::EditorRigidBodyRequests::RefreshEditorRigidBody);
+
+        EBUS_EVENT_ID(GetEntityId(), ColliderComponentEventBus, OnColliderChanged);
 
         return AZ::Edit::PropertyRefreshLevels::None;
     }
@@ -941,6 +947,14 @@ namespace PhysX
             AzToolsFramework::PropertyModificationRefreshLevel::Refresh_AttributesAndValues);
     }
 
+    // PhysX::ColliderShapeBus
+    AZ::Aabb EditorColliderComponent::GetColliderShapeAabb()
+    {
+        return PhysX::Utils::GetColliderAabb(GetWorldTM()
+            , m_shapeConfiguration.GetCurrent()
+            , m_configuration);
+    }
+
     void EditorColliderComponent::UpdateShapeConfigurationScale()
     {
         auto& shapeConfiguration = m_shapeConfiguration.GetCurrent();
@@ -958,5 +972,10 @@ namespace PhysX
         {
             return AZ::Edit::PropertyVisibility::Hide;
         }
+    }
+
+    bool EditorColliderComponent::IsTrigger()
+    {
+        return m_configuration.m_isTrigger;
     }
 } // namespace PhysX

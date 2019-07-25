@@ -37,6 +37,7 @@
 #include <AzCore/base.h>
 #include <AzCore/IO/SystemFile.h>
 #include <AzCore/IO/FileIO.h>
+#include <AzCore/NativeUI/NativeUIRequests.h>
 #include <AzCore/std/functional.h>
 #include <AzCore/std/string/conversions.h>
 #include <AzCore/Casting/numeric_cast.h>
@@ -491,12 +492,9 @@ static void fileAccessMessage(int threadIndex, const char* inName)
 
         CryLog("%s", msg.c_str());
 
-        IPlatformOS::EMsgBoxResult result;
-
-        IPlatformOS* pOS = gEnv->pSystem->GetPlatformOS();
-        result = pOS->DebugMessageBox(msg.c_str(), "TRC/TCR Fail: Syncronous File Access");
-
-        if (result == IPlatformOS::eMsgBox_Cancel)
+        AZStd::string result;
+        EBUS_EVENT_RESULT(result, AZ::NativeUI::NativeUIRequestBus, DisplayOkDialog, "TRC/TCR Fail: Syncronous File Access", msg.c_str(), false);
+        if (result == "Cancel")
         {
             DebugBreak();
         }
@@ -874,6 +872,14 @@ const char* CCryPak::GetDirectoryDelimiter() const
 //////////////////////////////////////////////////////////////////////////
 void CCryPak::SetLocalizationFolder(char const* const sLocalizationFolder)
 {
+    if (m_sLocalizationFolder.empty())
+    {
+        m_sLocalizationRoot = sLocalizationFolder;
+        m_sLocalizationRoot += CRY_NATIVE_PATH_SEPSTR;
+        m_sLocalizationFolder = m_sLocalizationRoot;
+        return;
+    }
+
     // Get the localization folder
     m_sLocalizationFolder = sLocalizationFolder;
     m_sLocalizationFolder += CRY_NATIVE_PATH_SEPSTR;
@@ -985,23 +991,41 @@ char* CCryPak::BeautifyPath(char* path, bool bMakeLowercase)
         return path;
     }
     
-    size_t endOfAlias = 0;
 
-    // Finding end of the alias if one is present
-    if (*path == '@')
+    if (bMakeLowercase)
     {
-        endOfAlias = AzFramework::StringFunc::Find(path, '@', 1);
-    }
+        // Finding end of the alias if one is present
+        size_t endOfAlias = AZStd::string::npos;
+        if (*path == '@')
+        {
+            endOfAlias = AzFramework::StringFunc::Find(path, '@', 1);
+        }
 
-    // Cry code expects most paths to be lowercased by this function
-    if (bMakeLowercase && endOfAlias != AZStd::string::npos && AzFramework::StringFunc::Path::IsRelative(path))
-    {
-        AZStd::to_lower(path + endOfAlias + 1, path + len);
+        // If the alias was not found then lowercase the entire path
+        // otherwise lowercase all elements after the final alias @
+        size_t lowercasePos = (endOfAlias == AZStd::string::npos) ? 0 : endOfAlias + 1;
+
+        // Cry code expects most paths to be lowercased by this function
+        AZStd::to_lower(path + lowercasePos, path + len);
     }
 
     AZStd::replace(path, path + len, g_cNonNativeSlash, g_cNativeSlash);
 
-    return path + len;
+    AZStd::string_view pathView(path, path + len);
+    char doubleNativeString[3] = { g_cNativeSlash, g_cNativeSlash, '\0' };
+    AZStd::string_view doubleNativeStringView(doubleNativeString, AZ_ARRAY_SIZE(doubleNativeString) - 1);
+    size_t pos = 0U;
+    while ((pos = pathView.find(doubleNativeString, pos)) != AZStd::string_view::npos)
+    {
+        // Make a sub view from the first non-slash character until the end of the path
+        size_t firstNotSlashIndex = pathView.find_first_not_of(g_cNativeSlash, pos + 2);
+        AZStd::string_view postNativeSlashView = pathView.substr(firstNotSlashIndex);
+        // Skip past the first native slash
+        memmove(path + pos + 1, postNativeSlashView.data(), postNativeSlashView.size());
+        pathView = AZStd::string_view(path, pos + 1 + postNativeSlashView.size());
+    }
+    *(path + pathView.size()) = '\0';
+    return path + pathView.size();
 }
 
 // remove all '%s/..' or '.' parts from the path (needs beautified path - only single native slashes)
@@ -1385,18 +1409,7 @@ bool CCryPak::IsFolder(const char* sPath)
         return false;
     }
 
-    char resolvedPath[AZ_MAX_PATH_LEN] = { 0 };
-    AZ::IO::FileIOBase::GetDirectInstance()->ResolvePath(szFullPathBuf, resolvedPath, AZ_MAX_PATH_LEN);
-
-    DWORD attrs = CryGetFileAttributes(resolvedPath);
-
-    if (attrs == INVALID_FILE_ATTRIBUTES)
-    {
-        // non-existent things are not directories.
-        return false;
-    }
-
-    if ((attrs & FILE_ATTRIBUTE_DIRECTORY) == FILE_ATTRIBUTE_DIRECTORY)
+    if (AZ::IO::FileIOBase::GetDirectInstance()->IsDirectory(szFullPathBuf))
     {
         return true;
     }
@@ -1992,7 +2005,7 @@ size_t CCryPak::FSeek(AZ::IO::HandleType fileHandle, long seek, int mode)
         }
     }
 
-    if (AZ::IO::FileIOBase::GetDirectInstance()->Seek(fileHandle, static_cast<uint64_t>(seek), AZ::IO::GetSeekTypeFromFSeekMode(mode)))
+    if (AZ::IO::FileIOBase::GetDirectInstance()->Seek(fileHandle, static_cast<AZ::s64>(seek), AZ::IO::GetSeekTypeFromFSeekMode(mode)))
     {
         return 0;
     }
@@ -2607,7 +2620,13 @@ bool CCryPak::OpenPackCommon(const char* szBindRoot, const char* szFullPath, uns
         m_pLog->LogWithType(IMiniLog::eComment, "Opening pak file %s to %s", szFullPath, szBindRoot ? szBindRoot : "<NIL>");
         desc.pZip = static_cast<CryArchive*>((ICryArchive*)desc.pArchive)->GetCache();
 
-        //Append the pak to the end but before any override paks
+        // Insert the pak lexically but before any override paks
+        // This allows us to order the paks allowing the later paks
+        // that have priority for same name files. This supports the
+        // patching of the base program underneath the mods/override paks
+        // All we have to do is name the pak appropriately to make
+        // sure later paks added to the current set of paks sort higher
+        // and therefore get used instead of lower sorted paks
         ZipArray::reverse_iterator revItZip = m_arrZips.rbegin();
         if ((nPakFlags& ICryArchive::FLAGS_OVERRIDE_PAK) == 0)
         {
@@ -2615,7 +2634,10 @@ bool CCryPak::OpenPackCommon(const char* szBindRoot, const char* szFullPath, uns
             {
                 if ((revItZip->pArchive->GetFlags() & ICryArchive::FLAGS_OVERRIDE_PAK) == 0)
                 {
-                    break;
+                    if (azstricmp(desc.GetFullPath(), revItZip->GetFullPath()) > 0)
+                    {
+                        break;
+                    }
                 }
             }
         }
@@ -3370,18 +3392,21 @@ void CCryPakFindData::ScanFS(CCryPak* pPak, const char* szDirIn)
             {
                 fd.attrib |= _A_SUBDIR;
             }
-            if (AZ::IO::FileIOBase::GetDirectInstance()->IsReadOnly(filePath))
+            else
             {
-                fd.attrib |= _A_RDONLY;
-            }
-            AZ::u64 fileSize = 0;
-            AZ::IO::FileIOBase::GetDirectInstance()->Size(filePath, fileSize);
-            fd.size = fileSize;
-            fd.time_write = AZ::IO::FileIOBase::GetDirectInstance()->ModificationTime(filePath);
+                if (AZ::IO::FileIOBase::GetDirectInstance()->IsReadOnly(filePath))
+                {
+                    fd.attrib |= _A_RDONLY;
+                }
+                AZ::u64 fileSize = 0;
+                AZ::IO::FileIOBase::GetDirectInstance()->Size(filePath, fileSize);
+                fd.size = fileSize;
+                fd.time_write = AZ::IO::FileIOBase::GetDirectInstance()->ModificationTime(filePath);
 
-            // These times are not supported by our file interface
-            fd.time_access = fd.time_write;
-            fd.time_create = fd.time_write;
+                // These times are not supported by our file interface
+                fd.time_access = fd.time_write;
+                fd.time_create = fd.time_write;
+            }
             m_mapFiles.insert(FileMap::value_type(fd.name, FileDesc(&fd)));
 
             return true;

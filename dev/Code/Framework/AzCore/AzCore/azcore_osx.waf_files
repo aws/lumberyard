@@ -10,6 +10,10 @@
         [
             "Module/DynamicModuleHandleLinux.cpp"
         ],
+        "NativeUI":
+        [
+            "NativeUI/MacOS/NativeUISystemComponent_MacOS.mm"
+        ],
         "Utils" : 
         [
             "Utils/generic/Utils_Generic.cpp"

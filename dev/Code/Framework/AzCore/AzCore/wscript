@@ -37,10 +37,11 @@ def build(bld):
         # Compiler Specific
         msvc_cxxflags       = ['/W4'],
 
+        # Testing
+        test_all_file_list = ['azcore_test.waf_files'],
+
         # Platform Specific
         win_file_list       = ['azcore_win.waf_files', 'std/azstd_win.waf_files'],
-        win_x64_vs2013_file_list = ['azcore_natvis_vs2013.waf_files'],
-        win_x64_vs2015_file_list = ['azcore_natvis_vs2015.waf_files'],
         win_defines         = [
                               '_HAS_EXCEPTIONS=0',  # prevents warning: "C++ exception handler used, but unwind semantics are not enabled"
                               ],

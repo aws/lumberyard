@@ -78,6 +78,10 @@ namespace AZ
         }        
     }
 
+    ScopedBehaviorOnDemandReflector::ScopedBehaviorOnDemandReflector(BehaviorContext& behaviorContext)
+        : OnDemandReflectionOwner(behaviorContext)
+    {}
+
     //=========================================================================
     // BehaviorEBus
     //=========================================================================

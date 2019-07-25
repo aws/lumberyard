@@ -38,8 +38,10 @@ IF DEFINED BUILD_TAG (
     )
 )
 
+SET PARAM=%1
+
 REM call is required here otherwise control won't be returned to lmbr_waf.bat and the rest of the file doesn't execute
-CALL "%PYTHON_EXECUTABLE%" -m pytest
+CALL "%PYTHON_EXECUTABLE%" -m pytest %PARAM%
 
 GOTO end
 

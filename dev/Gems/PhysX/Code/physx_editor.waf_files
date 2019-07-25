@@ -1,6 +1,6 @@
 {
     "auto": {
-       "Include": [
+        "Include": [
             "Include/PhysX/EditorRigidBodyRequestBus.h"
         ],
         "Source/Components": [
@@ -11,7 +11,9 @@
             "Source/EditorTerrainComponent.cpp",
             "Source/EditorTerrainComponent.h",
             "Source/EditorSystemComponent.cpp",
-            "Source/EditorSystemComponent.h"
+            "Source/EditorSystemComponent.h",
+            "Source/EditorForceRegionComponent.cpp",
+            "Source/EditorForceRegionComponent.h"
         ],
         "Source/Pipeline": [
             "Source/Pipeline/MeshExporter.cpp",

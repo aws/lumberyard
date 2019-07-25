@@ -9,7 +9,6 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#include "UserLoginDefault_precompiled.h"
 
 #include <AzTest/AzTest.h>
 

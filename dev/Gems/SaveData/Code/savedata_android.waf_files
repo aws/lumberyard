@@ -1,0 +1,7 @@
+{
+    "auto": {
+        "Source": [
+            "Source/Platform/Android/SaveDataSystemComponent_android.cpp"
+        ]
+    }
+}

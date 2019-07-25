@@ -14,7 +14,7 @@
 
 #include <IAudioSystem.h>
 
-#if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_APPLE_OSX)
+#if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_APPLE_OSX) || defined(SUPPORT_WINDOWS_DLL_DECLSPEC)
     #ifdef CRYSOUND_EXPORTS
         #define CRYSOUND_API AZ_DLL_EXPORT
     #else
@@ -22,6 +22,11 @@
     #endif
 #else
     #define CRYSOUND_API
+#endif
+
+#ifdef AZ_PLATFORM_PROVO
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdllexport-hidden-visibility"
 #endif
 
 namespace Audio
@@ -104,3 +109,6 @@ namespace Audio
 
 } // namespace Audio
 
+#ifdef AZ_PLATFORM_PROVO
+#pragma clang diagnostic pop
+#endif

@@ -21,9 +21,29 @@
 
 using namespace AZ;
 
+static AZ::EnvironmentVariable<AllocatorManager> s_allocManager = nullptr;
+
+//////////////////////////////////////////////////////////////////////////
+bool AllocatorManager::IsReady()
+{
+    return s_allocManager != nullptr;
+}
+//////////////////////////////////////////////////////////////////////////
+void AllocatorManager::Destroy()
+{
+    s_allocManager.Reset();
+}
+
 //////////////////////////////////////////////////////////////////////////
 // The only allocator manager instance.
-AZ::AllocatorManager AZ::AllocatorManager::g_allocMgr;
+AllocatorManager& AllocatorManager::Instance()
+{
+    if (!s_allocManager)
+    {
+        s_allocManager = AZ::Environment::CreateVariable<AllocatorManager>(AZ_CRC("AZ::AllocatorManager::s_allocManager", 0x6bdd908c));
+    }
+    return *s_allocManager;
+}
 //////////////////////////////////////////////////////////////////////////
 
 //=========================================================================

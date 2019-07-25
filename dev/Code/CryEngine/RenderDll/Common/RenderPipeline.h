@@ -908,8 +908,9 @@ struct SRenderPipeline
 
 
     int m_nStreamOffset[3]; // deprecated!
-    AZStd::unordered_map<AZ::u32, AZ::Vertex::Format> m_crcVertexFormatLookupTable;
-    AZStd::unordered_map<AZ::u32, SOnDemandD3DVertexDeclaration> m_D3DVertexDeclarations;
+
+    AZ::Vertex::Format m_vertexFormats[eVF_Max];
+    SOnDemandD3DVertexDeclaration m_D3DVertexDeclarations[eVF_Max];
     AZStd::unordered_map<AZ::u32, SOnDemandD3DVertexDeclarationCache> m_D3DVertexDeclarationCache[1 << VSF_NUM][2]; // [StreamMask][Morph][VertexFormatCRC]
     SOnDemandD3DStreamProperties m_D3DStreamProperties[VSF_NUM];
 

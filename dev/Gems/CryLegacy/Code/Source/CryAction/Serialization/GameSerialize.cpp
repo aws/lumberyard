@@ -34,7 +34,6 @@
 #include "Network/GameContext.h"
 #include "IEntityPoolManager.h"
 
-#include <IPlatformOS.h>
 #include <IDeferredCollisionEvent.h>
 
 #include <set>
@@ -301,7 +300,7 @@ void CGameSerialize::Clean()
 bool CGameSerialize::IsUserSignedIn(CCryAction* pCryAction) const
 {
     unsigned int user;
-    return pCryAction->GetISystem()->GetPlatformOS()->UserIsSignedIn(pCryAction->GetIPlayerProfileManager()->GetCurrentUser(), user);
+    return pCryAction->GetIPlayerProfileManager()->IsUserSignedIn(pCryAction->GetIPlayerProfileManager()->GetCurrentUser(), user);
 }
 
 #ifndef _RELEASE

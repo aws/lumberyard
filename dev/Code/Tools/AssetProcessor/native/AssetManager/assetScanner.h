@@ -42,8 +42,8 @@ namespace AssetProcessor
 
     Q_SIGNALS:
         void AssetScanningStatusChanged(AssetScanningStatus status);
-        void FilesFound(QSet<QString> files);
-        void FoldersFound(QSet<QString> folders);
+        void FilesFound(QSet<AssetFileInfo> files);
+        void FoldersFound(QSet<AssetFileInfo> folders);
 
     private:
 

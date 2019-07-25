@@ -1975,10 +1975,10 @@ namespace AzToolsFramework
                         switch (m_mode)
                         {
                         case Mode::Rotation:
-                            OverrideOrientation(QuaternionFromTransformNoScaling(worldFromLocal));
+                            OverrideManipulatorOrientation(QuaternionFromTransformNoScaling(worldFromLocal));
                             break;
                         case Mode::Translation:
-                            OverrideTranslation(worldFromLocal.GetTranslation());
+                            OverrideManipulatorTranslation(worldFromLocal.GetTranslation());
                             break;
                         case Mode::Scale:
                             // do nothing
@@ -2606,7 +2606,6 @@ namespace AzToolsFramework
             if (!m_entityIdManipulators.m_manipulators->PerformingAction())
             {
                 AZ::Transform transform;
-
                 switch (refreshType)
                 {
                 case RefreshType::All:
@@ -2639,7 +2638,7 @@ namespace AzToolsFramework
         }
     }
 
-    void EditorTransformComponentSelection::OverrideOrientation(const AZ::Quaternion& orientation)
+    void EditorTransformComponentSelection::OverrideManipulatorOrientation(const AZ::Quaternion& orientation)
     {
         AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
 
@@ -2655,7 +2654,7 @@ namespace AzToolsFramework
         }
     }
 
-    void EditorTransformComponentSelection::OverrideTranslation(const AZ::Vector3& translation)
+    void EditorTransformComponentSelection::OverrideManipulatorTranslation(const AZ::Vector3& translation)
     {
         AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
 
@@ -2779,7 +2778,7 @@ namespace AzToolsFramework
             // refresh the transform pivot override if it's set
             if (m_pivotOverrideFrame.m_translationOverride)
             {
-                OverrideTranslation(translation);
+                OverrideManipulatorTranslation(translation);
             }
 
             manipulatorCommand->SetManipulatorAfter(
@@ -2839,7 +2838,7 @@ namespace AzToolsFramework
             // refresh the transform pivot override if it's set
             if (m_pivotOverrideFrame.m_translationOverride)
             {
-                OverrideTranslation(translation);
+                OverrideManipulatorTranslation(translation);
             }
 
             manipulatorCommand->SetManipulatorAfter(
@@ -2963,7 +2962,7 @@ namespace AzToolsFramework
                 }
             }
 
-            OverrideOrientation(orientation);
+            OverrideManipulatorOrientation(orientation);
 
             manipulatorCommand->SetManipulatorAfter(CreateManipulatorCommandStateFromSelf());
 
@@ -3016,7 +3015,7 @@ namespace AzToolsFramework
                 }
             }
 
-            OverrideOrientation(orientation);
+            OverrideManipulatorOrientation(orientation);
 
             manipulatorCommand->SetManipulatorAfter(CreateManipulatorCommandStateFromSelf());
 
@@ -3456,5 +3455,15 @@ namespace AzToolsFramework
             manipulatorCommand->SetParent(undoBatch.GetUndoBatch());
             manipulatorCommand.release();
         }
+    }
+
+    AZStd::optional<AZ::Transform> EditorTransformComponentSelection::GetManipulatorTransform()
+    {
+        if (m_entityIdManipulators.m_manipulators)
+        {
+            return { m_entityIdManipulators.m_manipulators->GetLocalTransform() };
+        }
+
+        return {};
     }
 } // namespace AzToolsFramework

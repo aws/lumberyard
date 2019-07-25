@@ -18,22 +18,17 @@ namespace AZ
 {
     DynamicModuleHandle::DynamicModuleHandle(const char* fileFullName)
         : m_fileName(fileFullName)
-        , m_requiresUninitializeFunction(false)
     {
     }
 
     bool DynamicModuleHandle::Load(bool isInitializeFunctionRequired)
     {
-        Unload();
-
         LoadStatus status = LoadModule();
         switch (status) 
         {
             case LoadStatus::LoadFailure:
-                m_requiresUninitializeFunction = false;
                 return false;
-            case LoadStatus::AlreadyLoaded:
-                return true;
+            case LoadStatus::AlreadyLoaded: // intentional fall-through.  This means its already loaded by the operating system.
             case LoadStatus::LoadSuccess:
                 break;
         }
@@ -42,9 +37,21 @@ namespace AZ
         auto initFunc = GetFunction<InitializeDynamicModuleFunction>(InitializeDynamicModuleFunctionName);
         if (initFunc)
         {
-            m_requiresUninitializeFunction = true;
+            // this module may have already been loaded by the operating system, but we still need to init it ourself if it has not
+            // been initialized in this context.  Has it been initialized in THIS context?
+            // in order not to collide with other environment variable names, we'll pick one that is likely to be unique to this
+            // usage of it by prepending "module_init_token: " to the file name.
+            AZ::OSString variableName = AZ::OSString::format("module_init_token: %s", m_fileName.c_str());
+            m_initialized = AZ::Environment::FindVariable<bool>(variableName.c_str());
 
-            initFunc(AZ::Environment::GetInstance());
+            // note here we are not checking the value of m_initialized, we're checking whether the variable exists or not
+            // the first one to create the variable also owns it, so we only care about its existence.
+            if (!m_initialized) 
+            {
+                // if we get here, it means nobody has initialized this module yet.  We will initialize it and create the variable.
+                m_initialized = AZ::Environment::CreateVariable<bool>(variableName.c_str());
+                initFunc(AZ::Environment::GetInstance());
+            }
         }
         else if (isInitializeFunctionRequired)
         {
@@ -65,17 +72,24 @@ namespace AZ
         }
 
         // Call module's uninitialize function
-        if (m_requiresUninitializeFunction)
-        {
-            m_requiresUninitializeFunction = false;
 
-            auto uninitFunc = GetFunction<UninitializeDynamicModuleFunction>(UninitializeDynamicModuleFunctionName);
-            AZ_Error("Module", uninitFunc, "Unable to locate required entry point '%s' within module '%s'.",
-                UninitializeDynamicModuleFunctionName, m_fileName.c_str());
-            if (uninitFunc)
+        // note that here also we don't care what the actual value of m_initialized is.  We only care whether or not
+        // the environment variable exists.  If it exists, someone initialized this module.
+        if (m_initialized)
+        {
+            // the owner is whoever created the variable, and is also thus the one that initialized it, so it can uninitalize it.
+            if (m_initialized.IsOwner()) 
             {
-                uninitFunc();
+                auto uninitFunc = GetFunction<UninitializeDynamicModuleFunction>(UninitializeDynamicModuleFunctionName);
+                AZ_Error("Module", uninitFunc, "Unable to locate required entry point '%s' within module '%s'.",
+                    UninitializeDynamicModuleFunctionName, m_fileName.c_str());
+                if (uninitFunc)
+                {
+                    uninitFunc();
+                }
             }
+            
+            m_initialized.Reset(); // drop our ref.
         }
 
         if (!UnloadModule())

@@ -23,7 +23,7 @@
 #include <AzCore/std/containers/bitset.h>
 #include <AzFramework/Asset/AssetProcessorMessages.h>
 #include <AzToolsFramework/API/EditorAssetSystemAPI.h>
-#include <AZCore/std/string/string_view.h>
+#include <AzCore/std/string/string_view.h>
 #include "AssetBuilderBusses.h"
 
 /** 
@@ -40,6 +40,62 @@ namespace AZ
     class ComponentDescriptor;
     class Entity;
 }
+
+// This needs to be up here because it needs to be defined before the hash definition, and the hash needs to be defined before the first use (which occurs further down in this file)
+namespace AssetBuilderSDK
+{
+    enum class ProductPathDependencyType : AZ::u32
+    {
+        SourceFile,
+        ProductFile
+    };
+
+    /**
+     * Product dependency information that the builder will send to the assetprocessor
+     * Indicates a product asset that depends on another product based on the path
+     * Should only be used by legacy systems.  Prefer ProductDependencies whenever possible
+     */
+    struct ProductPathDependency
+    {
+        AZ_CLASS_ALLOCATOR(ProductPathDependency, AZ::SystemAllocator, 0);
+        AZ_TYPE_INFO(ProductPathDependency, "{2632bfae-7490-476f-9214-a6d1f02e6085}");
+
+        //! Relative path to the asset dependency
+        AZStd::string m_dependencyPath;
+
+        /**
+         * Indicates if the dependency path points to a source file or a product file
+         * A dependency on a source file will be converted into dependencies on all product files produced from the source
+         * It is preferable to depend on product files whenever possible to avoid introducing unintended dependencies
+         */
+        ProductPathDependencyType m_dependencyType = ProductPathDependencyType::ProductFile;
+
+        ProductPathDependency() = default;
+        ProductPathDependency(AZStd::string_view dependencyPath, ProductPathDependencyType dependencyType);
+
+        bool operator==(const ProductPathDependency& rhs) const;
+
+        static void Reflect(AZ::ReflectContext* context);
+    };
+}
+
+namespace AZStd
+{
+    template<>
+    struct hash<AssetBuilderSDK::ProductPathDependency>
+    {
+        using argument_type = AssetBuilderSDK::ProductPathDependency;
+        using result_type = size_t;
+
+        result_type operator() (const argument_type& dependency) const
+        {
+            size_t h = 0;
+            hash_combine(h, dependency.m_dependencyPath);
+            hash_combine(h, dependency.m_dependencyType);
+            return h;
+        }
+    };
+} // namespace AZStd
 
 namespace AssetBuilderSDK
 {
@@ -236,6 +292,12 @@ namespace AssetBuilderSDK
         AZ_CLASS_ALLOCATOR(SourceFileDependency, AZ::SystemAllocator, 0);
         AZ_TYPE_INFO(SourceFileDependency, "{d3c055d8-b5e8-44ab-a6ce-1ecb0da091ec}");
 
+        // Corresponds to SourceFileDependencyEntry TypeOfDependency Values
+        enum class SourceFileDependencyType : AZ::u32
+        {
+            Absolute, // Corresponds to DEP_SourceToSource
+            Wildcards // DEP_SourceLikeMatch
+        };
         /** Filepath on which the source file depends, it can be either be a relative path from the assets folder, or an absolute path. 
         * if it's relative, the asset processor will check every watched folder in the order specified in the assetprocessor config file until it finds that file. 
         * For example if the builder sends a SourceFileDependency with m_sourceFileDependencyPath = "texture/blah.tif" to the asset processor,
@@ -251,17 +313,21 @@ namespace AssetBuilderSDK
         */
         AZ::Uuid m_sourceFileDependencyUUID = AZ::Uuid::CreateNull();
 
+        SourceFileDependencyType m_sourceDependencyType{ SourceFileDependencyType::Absolute };
+
         SourceFileDependency() = default;
         
-        SourceFileDependency(const AZStd::string& sourceFileDependencyPath, AZ::Uuid sourceFileDependencyUUID)
+        SourceFileDependency(const AZStd::string& sourceFileDependencyPath, AZ::Uuid sourceFileDependencyUUID, SourceFileDependencyType sourceDependencyType = SourceFileDependencyType::Absolute)
             : m_sourceFileDependencyPath(sourceFileDependencyPath)
             , m_sourceFileDependencyUUID(sourceFileDependencyUUID)
+            , m_sourceDependencyType(sourceDependencyType)
         {
         }
 
-        SourceFileDependency(AZStd::string&& sourceFileDependencyPath, AZ::Uuid sourceFileDependencyUUID)
+        SourceFileDependency(AZStd::string&& sourceFileDependencyPath, AZ::Uuid sourceFileDependencyUUID, SourceFileDependencyType sourceDependencyType = SourceFileDependencyType::Absolute)
             : m_sourceFileDependencyPath(AZStd::move(sourceFileDependencyPath))
             , m_sourceFileDependencyUUID(sourceFileDependencyUUID)
+            , m_sourceDependencyType(sourceDependencyType)
         {
         }
 
@@ -337,6 +403,12 @@ namespace AssetBuilderSDK
 
         //! Flag to determine whether we need to check the input file for exclusive lock before we process the job
         bool m_checkExclusiveLock = false;
+
+        //! Flag to determine whether we need to check the server for the outputs of this job 
+        //! before we start processing the job locally.
+        //! If the asset processor is running in server mode then this will be used to determine whether we need 
+        //! to store the outputs of this jobs in the server.
+        bool m_checkServer = false;
 
         //! This is required for jobs that want to declare job dependency on other jobs. 
         AZStd::vector<JobDependency> m_jobDependencyList;
@@ -548,6 +620,8 @@ namespace AssetBuilderSDK
         static void Reflect(AZ::ReflectContext* context);
     };
 
+    using ProductPathDependencySet = AZStd::unordered_set<AssetBuilderSDK::ProductPathDependency>;
+
     //! JobProduct is used by the builder to store job product information
     struct JobProduct
     {
@@ -585,6 +659,10 @@ namespace AssetBuilderSDK
 
         //! Product assets this asset depends on
         AZStd::vector<ProductDependency> m_dependencies;
+
+        /// Dependencies specified by relative path in the resource
+        /// Paths should only be used in legacy systems, put ProductDependency objects in m_dependencies wherever possible.
+        ProductPathDependencySet m_pathDependencies;
 
         JobProduct() = default;
         JobProduct(const AZStd::string& productName, AZ::Data::AssetType productAssetType = AZ::Data::AssetType::CreateNull(), AZ::u32 productSubID = 0);

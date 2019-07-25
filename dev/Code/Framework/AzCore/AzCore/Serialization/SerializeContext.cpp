@@ -20,6 +20,7 @@
 
 /// include AZStd any serializer support
 #include <AzCore/Serialization/AZStdAnyDataContainer.inl>
+#include <AzCore/std/containers/variant.h>
 
 #include <AzCore/std/functional.h>
 #include <AzCore/std/bind/bind.h>
@@ -453,6 +454,9 @@ namespace AZ
             Class<DynamicSerializableField>()->
                 Field("TypeId", &DynamicSerializableField::m_typeId);
                 // Value data is injected into the hierarchy per-instance, since type is dynamic.
+
+            // Reflects variant monostate class for serializing a variant with an empty alternative
+            Class<AZStd::monostate>();
         }
 
         if (createEditContext)
@@ -1775,13 +1779,19 @@ namespace AZ
         if (dataClassInfo == NULL)
         {
     #if defined (AZ_ENABLE_SERIALIZER_DEBUG)
-            // if we are a non-reflected base class, assume that the base class simply didn't need any reflection
-            if (!(classElement && classElement->m_flags & SerializeContext::ClassElement::FLG_BASE_CLASS))
+            AZStd::string error;
+
+            // output an error
+            if (classElement && classElement->m_flags & SerializeContext::ClassElement::FLG_BASE_CLASS)
             {
-                // output an error
-                AZStd::string error = AZStd::string::format("Element with class ID '%s' is not registered with the serializer!", classIdPtr->ToString<AZStd::string>().c_str());
-                callContext->m_errorHandler->ReportError(error.c_str());
+                error = AZStd::string::format("Element with class ID '%s' was declared as a base class of another type but is not registered with the serializer.  Either remove it from the Class<> call or reflect it.", classIdPtr->ToString<AZStd::string>().c_str());
             }
+            else
+            {
+                error = AZStd::string::format("Element with class ID '%s' is not registered with the serializer!", classIdPtr->ToString<AZStd::string>().c_str());
+            }
+
+            callContext->m_errorHandler->ReportError(error.c_str());
 
             callContext->m_errorHandler->Pop();
     #endif // AZ_ENABLE_SERIALIZER_DEBUG
@@ -2156,6 +2166,7 @@ namespace AZ
         if (classData->m_eventHandler)
         {
             classData->m_eventHandler->OnWriteEnd(dataPtr);
+            classData->m_eventHandler->OnObjectCloned(dataPtr);
         }
         
         if (classData->m_serializer)
@@ -2315,10 +2326,6 @@ namespace AZ
     //=========================================================================
     void SerializeContext::ClassData::ClearAttributes()
     {
-        for (auto& attributePair : m_attributes)
-        {
-            delete attributePair.second;
-        }
         m_attributes.clear();
 
         for (ClassElement& classElement : m_elements)
@@ -2362,14 +2369,39 @@ namespace AZ
 
     Attribute* SerializeContext::ClassData::FindAttribute(AttributeId attributeId) const
     {
-        for (const AttributePair& attributePair : m_attributes)
+        for (const AZ::AttributeSharedPair& attributePair : m_attributes)
         {
             if (attributePair.first == attributeId)
             {
-                return attributePair.second;
+                return attributePair.second.get();
             }
         }
         return nullptr;
+    }
+
+    bool SerializeContext::ClassData::CanConvertFromType(const TypeId& convertibleTypeId, AZ::SerializeContext& serializeContext) const
+    {
+        // If the convertible type is exactly the type being stored by the ClassData.
+        // True will always be returned in this case
+        if (convertibleTypeId == m_typeId)
+        {
+            return true;
+        }
+
+        return m_dataConverter ? m_dataConverter->CanConvertFromType(convertibleTypeId, *this, serializeContext) : false;
+    }
+
+    bool SerializeContext::ClassData::ConvertFromType(void*& convertibleTypePtr, const TypeId& convertibleTypeId, void* classPtr, AZ::SerializeContext& serializeContext) const
+    {
+        // If the convertible type is exactly the type being stored by the ClassData.
+        // the result convertTypePtr is equal to the classPtr
+        if (convertibleTypeId == m_typeId)
+        {
+            convertibleTypePtr = classPtr;
+            return true;
+        }
+
+        return m_dataConverter ? m_dataConverter->ConvertFromType(convertibleTypePtr, convertibleTypeId, classPtr, *this, serializeContext) : false;
     }
 
     //=========================================================================
@@ -2397,11 +2429,11 @@ namespace AZ
     // FreeElementPointer
     // [12/7/2012]
     //=========================================================================
-    void SerializeContext::IDataContainer::DeletePointerData(SerializeContext* context, const ClassElement* classElement, void* element)
+    void SerializeContext::IDataContainer::DeletePointerData(SerializeContext* context, const ClassElement* classElement, const void* element)
     {
         AZ_Assert(context != NULL && classElement != NULL && element != NULL, "Invalid input");
         const AZ::Uuid* elemUuid = &classElement->m_typeId;
-        void* dataPtr = *reinterpret_cast<void**>(element);
+        const void* dataPtr = *reinterpret_cast<void* const*>(element);
         // find the class data for the specific element
         const SerializeContext::ClassData* classData = classElement->m_genericClassInfo ? classElement->m_genericClassInfo->GetClassData() : context->FindClassData(*elemUuid, NULL, 0);
         if (classElement->m_flags & SerializeContext::ClassElement::FLG_POINTER)
@@ -2434,7 +2466,7 @@ namespace AZ
         if (classData->m_container)  // if element is container forward the message
         {
             // clear all container data
-            classData->m_container->ClearElements(element, context);
+            classData->m_container->ClearElements(const_cast<void*>(element), context);
         }
         else
         {
@@ -2462,8 +2494,6 @@ namespace AZ
         {
             m_editContext->RemoveClassData(classData);
         }
-
-        classData->ClearAttributes();
     }
 
     void SerializeContext::RemoveGenericClassInfo(GenericClassInfo* genericClassInfo)
@@ -2592,7 +2622,7 @@ namespace AZ
     {
         m_errorHandler = errorHandler ? errorHandler : &m_defaultErrorHandler;
 
-        m_elementCallback = AZStd::bind(&SerializeContext::EnumerateInstance
+        m_elementCallback = AZStd::bind(static_cast<bool (SerializeContext::*)(EnumerateInstanceCallContext*, void*, const Uuid&, const ClassData*, const ClassElement*) const>(&SerializeContext::EnumerateInstance)
             , m_context
             , this
             , AZStd::placeholders::_1
@@ -2640,10 +2670,6 @@ namespace AZ
     //=========================================================================
     void SerializeContext::ClassElement::ClearAttributes()
     {
-        for (auto& attributePair : m_attributes)
-        {
-            delete attributePair.second;
-        }
         m_attributes.clear();
     }
 
@@ -2653,11 +2679,11 @@ namespace AZ
 
     Attribute* SerializeContext::ClassElement::FindAttribute(AttributeId attributeId) const
     {
-        for (const AttributePair& attributePair : m_attributes)
+        for (const AZ::AttributeSharedPair& attributePair : m_attributes)
         {
             if (attributePair.first == attributeId)
             {
-                return attributePair.second;
+                return attributePair.second.get();
             }
         }
         return nullptr;

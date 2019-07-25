@@ -16,21 +16,21 @@
 
 /**
  * @file
- * Header file for structures that aggregate results returned by all 
+ * Header file for structures that aggregate results returned by all
  * handlers of an EBus event.
  */
 
 namespace AZ
 {
     /**
-     * Aggregates results returned by all handlers of an EBus event. 
-     * You can use this structure to add results, apply a logical AND 
+     * Aggregates results returned by all handlers of an EBus event.
+     * You can use this structure to add results, apply a logical AND
      * to results, and so on.
      *
      * @tparam T The output type of the aggregator.
-     * @tparam Aggregator A function object that aggregates results. 
+     * @tparam Aggregator A function object that aggregates results.
      * The return type must match T.
-     * For examples of function objects that you can use as aggregators, 
+     * For examples of function objects that you can use as aggregators,
      * see functional_basic.h.
      *
      * The following example sums the values returned by all handlers.
@@ -40,7 +40,7 @@ namespace AZ
      * AZ_Printf("%d", result.value);
      * @endcode
      *
-     * The following example determines whether all handlers, 
+     * The following example determines whether all handlers,
      * including the latest handler, return true.
      * @code{.cpp}
      * EBusReduceResult<bool, AZStd::logical_and<bool>> result(true);
@@ -64,20 +64,20 @@ namespace AZ
         Aggregator unary;
 
         /**
-         * Creates an instance of the class without setting an initial value or 
+         * Creates an instance of the class without setting an initial value or
          * a function object to use as the aggregator.
          */
-        AZ_FORCE_INLINE EBusReduceResult() {}
+        EBusReduceResult() {}
 
         /**
-         * Creates an instance of the class and sets the initial value and the function 
+         * Creates an instance of the class and sets the initial value and the function
          * object to use as the aggregator.
          * @param initialValue The initial value, which new values will be aggregated with.
-         * @param aggregator A function object to aggregate the values. 
+         * @param aggregator A function object to aggregate the values.
          * For examples of function objects that you can use as aggregators,
          * see functional_basic.h.
          */
-        AZ_FORCE_INLINE EBusReduceResult(const T& initialValue, const Aggregator& aggregator = Aggregator())
+        EBusReduceResult(const T& initialValue, const Aggregator& aggregator = Aggregator())
             : value(initialValue)
             , unary(aggregator)
         { }
@@ -86,14 +86,14 @@ namespace AZ
          * Overloads the assignment operator to aggregate a new value with
          * the existing aggregated value.  Used ONLY when the return value of the function is const, or const&
          */
-        AZ_FORCE_INLINE void operator=(const T& rhs) { value = unary(value, rhs); }
+        void operator=(const T& rhs) { value = unary(value, rhs); }
 
 #if defined(AZ_HAS_RVALUE_REFS)
         /**
          * Overloads the assignment operator to aggregate a new value with
          * the existing aggregated value using rvalue-ref to move
          */
-        AZ_FORCE_INLINE void operator=(T&& rhs) { value = unary(value, AZStd::move(rhs)); }
+        void operator=(T&& rhs) { value = unary(value, AZStd::move(rhs)); }
 #endif // defined(AZ_HAS_RVALUE_REFS)
         /**
          * Disallows copying an EBusReduceResult object by reference.
@@ -101,18 +101,18 @@ namespace AZ
         EBusReduceResult& operator=(const EBusReduceResult&) = delete;
     };
     /**
-     * Aggregates results returned by all handlers of an EBus event. 
-     * Also puts the aggregated value into the input value that is 
-     * passed by reference. You can use this structure to add results, 
+     * Aggregates results returned by all handlers of an EBus event.
+     * Also puts the aggregated value into the input value that is
+     * passed by reference. You can use this structure to add results,
      * apply a logical AND to results, and so on.
      *
      * @tparam T The output type of the aggregator.
      * @tparam Aggregator A function object that aggregates results.
-     * The return type must match T. 
+     * The return type must match T.
      * For examples of function objects that you can use as aggregators,
      * see functional_basic.h.
      *
-     * The following example replaces the value returned by a handler  
+     * The following example replaces the value returned by a handler
      * with the sum of the value and previous handler return values.
      * @code{.cpp}
      * int myExistingInt = 5;
@@ -121,8 +121,8 @@ namespace AZ
      * AZ_Printf("%d", result.value); // or AZ_Printf("%d", myExistingInt);
      * @endcode
      *
-     * The following example determines whether all handlers, 
-     * including the latest handler, return true. Also replaces 
+     * The following example determines whether all handlers,
+     * including the latest handler, return true. Also replaces
      * the latest handler result with the aggregated result.
      * @code{.cpp}
      * bool myExistingBool = true;
@@ -144,17 +144,17 @@ namespace AZ
          * The function object that aggregates a new value with an existing value.
          */
         Aggregator unary;
-        
+
         /**
-         * Creates an instance of the class, sets the reference to the initial value, 
+         * Creates an instance of the class, sets the reference to the initial value,
          * and sets the function object to use as the aggregator.
-         * @param rhs A reference to the initial value, which new values will 
+         * @param rhs A reference to the initial value, which new values will
          * be aggregated with.
          * @param aggregator A function object to aggregate the values.
          * For examples of function objects that you can use as aggregators,
          * see functional_basic.h.
          */
-        AZ_FORCE_INLINE explicit EBusReduceResult(T& rhs, const Aggregator& aggregator = Aggregator())
+        explicit EBusReduceResult(T& rhs, const Aggregator& aggregator = Aggregator())
             : value(rhs)
             , unary(aggregator)
         { }
@@ -164,13 +164,13 @@ namespace AZ
          * Overloads the assignment operator to aggregate a new value with
          * the existing aggregated value using rvalue-ref
          */
-        AZ_FORCE_INLINE void operator=(T&& rhs)          { value = unary(value, AZStd::move(rhs)); }
+        void operator=(T&& rhs)          { value = unary(value, AZStd::move(rhs)); }
 #endif // defined(AZ_HAS_RVALUE_REFS)
         /**
         * Overloads the assignment operator to aggregate a new value with
         * the existing aggregated value.  Used only when the return type is const, or const&
         */
-        AZ_FORCE_INLINE void operator=(const T& rhs) { value = unary(value, rhs); }
+        void operator=(const T& rhs) { value = unary(value, rhs); }
 
 
         /**
@@ -194,12 +194,12 @@ namespace AZ
     /// @endcond
 
     /**
-     * Collects results returned by all handlers of an EBus event. 
+     * Collects results returned by all handlers of an EBus event.
      * The results are collected into an AZStd::vector.
      *
      * @tparam T The return type of the handler.
      *
-     * The following is an example of adding handler results to 
+     * The following is an example of adding handler results to
      * a vector of previous results:
      * @code{.cpp}
      * EBusAggregateResults<int> result;
@@ -220,14 +220,14 @@ namespace AZ
          * of previous results.
          * This const T& version is required to support const& returning functions.
          */
-        AZ_FORCE_INLINE void operator=(const T& rhs) { values.push_back(rhs); }
+        void operator=(const T& rhs) { values.push_back(rhs); }
         
 #if defined(AZ_HAS_RVALUE_REFS)
         /**
          * Overloads the assignment operator to add a new result to a vector 
          * of previous results, using rvalue-reference to move
          */
-        AZ_FORCE_INLINE void operator=(T&& rhs) { values.push_back(AZStd::move(rhs)); }
+        void operator=(T&& rhs) { values.push_back(AZStd::move(rhs)); }
 #endif // defined(AZ_HAS_RVALUE_REFS)
     };
 }

@@ -1147,47 +1147,41 @@ public:
 
     void SetSubmeshVertexFormats(void)
     {
+        EVertexFormat desiredFormat = eVF_Unknown;
         for (int submeshIndex = 0; submeshIndex < m_subsets.size(); ++submeshIndex)
         {
-            AZStd::vector<AZ::Vertex::Attribute> attributes;
+            // Choose float or short based on the precision of the positions
             if (this->Has32BitPositions())
             {
-                attributes.push_back(AZ::Vertex::Attribute(AZ::Vertex::AttributeUsage::Position, AZ::Vertex::AttributeType::Float32_3));
+                // Choose one or two uv sets
+                if (IsUVSetEmptyForSubmesh(submeshIndex, 1))
+                {
+                    desiredFormat = eVF_P3F_C4B_T2F;
+                }
+                else
+                {
+                    desiredFormat = eVF_P3F_C4B_T2F_T2F;
+                }
             }
             else if (this->Has16BitPositions())
             {
-                attributes.push_back(AZ::Vertex::Attribute(AZ::Vertex::AttributeUsage::Position, AZ::Vertex::AttributeType::Float16_4));
+                // Choose one or two uv sets
+                if (IsUVSetEmptyForSubmesh(submeshIndex, 1))
+                {
+                    desiredFormat = eVF_P3S_C4B_T2S;
+                }
+                else
+                {
+                    desiredFormat = eVF_P3S_C4B_T2S_T2S;
+                }
             }
             else
             {
                 AZ_Assert(false, "Submesh does not contain positions");
             }
-
-            // Even if the mesh has no per-vertex colors, the streamcompactor will fill it in with default values
-            attributes.push_back(AZ::Vertex::Attribute(AZ::Vertex::AttributeUsage::Color, AZ::Vertex::AttributeType::Byte_4));
-
-            // Determine if the mesh should have 16 or 32 bit texCoords based on the type of the positions
-            AZ::Vertex::AttributeType texCoordType;
-            if (this->Has32BitPositions())
-            {
-                texCoordType = AZ::Vertex::AttributeType::Float32_2;
-            }
-            else
-            {
-                texCoordType = AZ::Vertex::AttributeType::Float16_2;
-            }
-
-            // Always include one default uv set
-            attributes.push_back(AZ::Vertex::Attribute(AZ::Vertex::AttributeUsage::TexCoord, texCoordType));
-
-            // Optionally add a 2nd uv set
-            if (!IsUVSetEmptyForSubmesh(submeshIndex, 1))
-            {
-                attributes.push_back(AZ::Vertex::Attribute(AZ::Vertex::AttributeUsage::TexCoord, texCoordType));
-            }
-
+			
             // Set the vertex format for the submesh
-            m_subsets[submeshIndex].vertexFormat = AZ::Vertex::Format(attributes);
+            m_subsets[submeshIndex].vertexFormat = AZ::Vertex::Format(desiredFormat);
         }
     }
 

@@ -287,6 +287,7 @@ namespace EMotionFX
 
         void SystemComponent::ReflectEMotionFX(AZ::ReflectContext* context)
         {
+            MCore::ReflectionSerializer::Reflect(context);
             MCore::StringIdPoolIndex::Reflect(context);
             EMotionFX::ConstraintTransformRotationAngles::Reflect(context);
 
@@ -660,34 +661,49 @@ namespace EMotionFX
                     if (entity && actor && actor->GetMotionExtractionNode())
                     {
                         const AZ::EntityId entityId = entity->GetId();
-                        const float deltaTimeInv = (timeDelta > 0.0f) ? (1.0f / timeDelta) : 0.0f;
 
-                        // Get the current entity location and calculated motion extracted location.
+                        // Check if we have any physics character controllers.
+                        bool hasPhysicsController = false;
+                        bool hasCryPhysicsController = false;
+                        Physics::CharacterRequestBus::EventResult(hasPhysicsController, entityId, &Physics::CharacterRequests::IsPresent);
+                        LmbrCentral::CryCharacterPhysicsRequestBus::EventResult(hasCryPhysicsController, entityId, &LmbrCentral::CryCharacterPhysicsRequests::IsCryCharacterControllerPresent);
+
+                        // If we have a physics controller.
                         AZ::TransformInterface* entityTransform = entity->GetTransform();
-                        AZ::Transform currentTransform = entityTransform->GetWorldTM();
-                        const AZ::Vector3 actorInstancePosition = actorInstance->GetWorldSpaceTransform().mPosition;
-
-                        // Calculate the delta position and try to move the character controller.
-                        const AZ::Vector3 currentPos = currentTransform.GetPosition();
-                        const AZ::Vector3 positionDelta = actorInstancePosition - currentPos;
-                        Physics::CharacterRequestBus::Event(entityId, &Physics::CharacterRequests::TryRelativeMove, positionDelta, timeDelta);
-
-                        // Legacy Cry character controller
+                        if (hasPhysicsController || hasCryPhysicsController)
                         {
-                            const AZ::Vector3 scale = currentTransform.ExtractScaleExact();
-                            const AZ::Vector3 velocity = positionDelta * scale * deltaTimeInv;
-                            EBUS_EVENT_ID(entityId, LmbrCentral::CryCharacterPhysicsRequestBus, RequestVelocity, velocity, 0);
+                            const float deltaTimeInv = (timeDelta > 0.0f) ? (1.0f / timeDelta) : 0.0f;
+
+                            AZ::Transform currentTransform = entityTransform->GetWorldTM();
+                            const AZ::Vector3 actorInstancePosition = actorInstance->GetWorldSpaceTransform().mPosition;
+
+                            const AZ::Vector3 currentPos = currentTransform.GetPosition();
+                            const AZ::Vector3 positionDelta = actorInstancePosition - currentPos;
+
+                            if (hasPhysicsController)
+                            {
+                                Physics::CharacterRequestBus::Event(entityId, &Physics::CharacterRequests::TryRelativeMove, positionDelta, timeDelta);
+                            }
+                            else if (hasCryPhysicsController)
+                            {
+                                const AZ::Vector3 scale = currentTransform.ExtractScaleExact();
+                                const AZ::Vector3 velocity = positionDelta * scale * deltaTimeInv;
+                                EBUS_EVENT_ID(entityId, LmbrCentral::CryCharacterPhysicsRequestBus, RequestVelocity, velocity, 0);
+                            }
+
+                            // Calculate the difference in rotation and apply that to the entity transform.
+                            const AZ::Quaternion actorInstanceRotation = MCore::EmfxQuatToAzQuat(actorInstance->GetWorldSpaceTransform().mRotation);
+                            const AZ::Quaternion rotationDelta = AZ::Quaternion::CreateFromTransform(currentTransform).GetInverseFull() * actorInstanceRotation;
+                            if (!rotationDelta.IsIdentity(AZ::g_fltEps))
+                            {
+                                currentTransform = currentTransform * AZ::Transform::CreateFromQuaternion(rotationDelta);
+                                entityTransform->SetWorldTM(currentTransform);
+                            }
                         }
-
-                        // Calculate the difference in rotation and apply that to the entity transform.
-                        const AZ::Quaternion actorInstanceRotation = MCore::EmfxQuatToAzQuat(actorInstance->GetWorldSpaceTransform().mRotation);
-                        const AZ::Quaternion rotationDelta = AZ::Quaternion::CreateFromTransform(currentTransform).GetInverseFull() * actorInstanceRotation;
-
-                        if (!rotationDelta.IsIdentity(AZ::g_fltEps))
-                        {
-                            currentTransform = currentTransform * AZ::Transform::CreateFromQuaternion(rotationDelta);
-                            currentTransform.Orthogonalize();
-                            entityTransform->SetWorldTM(currentTransform);
+                        else // There is no physics controller, just use EMotion FX's actor instance transform directly.
+                        {                            
+                            const AZ::Transform newTransform = MCore::EmfxTransformToAzTransform(actorInstance->GetWorldSpaceTransform());
+                            entityTransform->SetWorldTM(newTransform);
                         }
                     }
                 }

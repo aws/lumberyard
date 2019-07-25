@@ -20,9 +20,9 @@
 #include <AzCore/std/containers/vector.h>
 #include <AzCore/std/functional.h>
 #include <AzCore/std/parallel/atomic.h>
+#include <AzCore/std/parallel/conditional_variable.h>
 #include <AzCore/std/parallel/thread.h>
 #include <AzCore/std/parallel/threadbus.h>
-#include <AzCore/std/parallel/semaphore.h>
 #include <AzCore/Debug/Trace.h>
 #include <AzCore/Socket/AzSocket_fwd.h>
 #include <AzFramework/Network/SocketConnection.h>
@@ -113,7 +113,7 @@ namespace AzFramework
 
             //thread helpers
             void StartThread(ThreadState& thread);
-            void JoinThread(ThreadState& thread, AZStd::semaphore* event = nullptr);
+            void JoinThread(ThreadState& thread, AZStd::condition_variable* wakeUpCondition = nullptr);
             
             //Send/Recv threads
             void StartSendRecvThreads(); //starts up the threads that handle sending and recvieving messages
@@ -175,9 +175,9 @@ namespace AzFramework
 
             // SendThread
             typedef AZStd::vector<char, AZ::OSStdAllocator> MessageBuffer;
-            typedef AZStd::queue<MessageBuffer, AZStd::deque<MessageBuffer, AZ::OSStdAllocator> > SendQueueType;
+            typedef AZStd::deque<MessageBuffer, AZ::OSStdAllocator> SendQueueType;
             SendQueueType m_sendQueue;
-            AZStd::semaphore m_sendEvent;
+            AZStd::condition_variable m_sendEventNotEmpty;
 
             // In general, this class operates by starting a cleanup thread (called the disconnect thread) to begin with.
             // this disconnect thread's job is to stop every other thread and clean all other state variables into some sane initial state, with no other threads active.

@@ -22,7 +22,7 @@
 #include "I3DEngine.h"
 #include "IMovieSystem.h"
 #include "IIndexedMesh.h"
-#include "BitFiddling.h"                                                            // IntegerLog2()
+#include "BitFiddling.h"                                                    // IntegerLog2()
 #include "ImageExtensionHelper.h"                                           // CImageExtensionHelper
 #include "Textures/Image/CImage.h"
 #include "Textures/TextureManager.h"
@@ -157,6 +157,8 @@ CRenderer* gRenDev = nullptr;
 #endif
 
 int g_CpuFlags = 0;
+
+CNameTableR* CCryNameR::ms_table = nullptr;
 
 //////////////////////////////////////////////////////////////////////////
 // Pool allocators.
@@ -319,9 +321,6 @@ float CRenderer::CV_r_texturesstreamingResidencyThrottle;
 AllocateConstIntCVar(CRenderer, CV_r_texturesstreamingmipfading);
 int CRenderer::CV_r_TexturesStreamPoolSize;
 int CRenderer::CV_r_TexturesStreamPoolSecondarySize;
-int CRenderer::CV_r_texturesstreampooldefragmentation;
-int CRenderer::CV_r_texturesstreampooldefragmentationmaxmoves;
-int CRenderer::CV_r_texturesstreampooldefragmentationmaxamount;
 int CRenderer::CV_r_texturesskiplowermips;
 int CRenderer::CV_r_rendertargetpoolsize;
 float CRenderer::CV_r_TexturesStreamingMaxRequestedMB;
@@ -359,6 +358,7 @@ AllocateConstIntCVar(CRenderer, CV_r_texBlockOnLoad);
 AllocateConstIntCVar(CRenderer, CV_r_debugrendermode);
 AllocateConstIntCVar(CRenderer, CV_r_debugrefraction);
 
+int CRenderer::CV_r_VRAMDebug;
 int CRenderer::CV_r_DebugLightLayers;
 
 int CRenderer::CV_r_DeferredShadingTiled;
@@ -506,6 +506,9 @@ int CRenderer::CV_r_shadersdx11;
 int CRenderer::CV_r_shadersGL4;
 int CRenderer::CV_r_shadersGLES3;
 int CRenderer::CV_r_shadersMETAL;
+
+int CRenderer::CV_r_ProvoHardwareMode;
+
 int CRenderer::CV_r_shadersPlatform;
 #endif
 AllocateConstIntCVar(CRenderer, CV_r_shadersignoreincludeschanging);
@@ -571,6 +574,7 @@ AllocateConstIntCVar(CRenderer, CV_r_MotionVectorsTransparency);
 AllocateConstIntCVar(CRenderer, CV_r_MotionVectorsDebug);
 float CRenderer::CV_r_MotionVectorsTransparencyAlphaThreshold;
 int CRenderer::CV_r_MotionBlur;
+int CRenderer::CV_r_RenderMotionBlurAfterHDR;
 int CRenderer::CV_r_MotionBlurScreenShot;
 int CRenderer::CV_r_MotionBlurQuality;
 int CRenderer::CV_r_MotionBlurGBufferVelocity;
@@ -889,6 +893,10 @@ static void ShadersPrecacheList(IConsoleCmdArgs* Cmd)
 static void ShadersStatsList(IConsoleCmdArgs* Cmd)
 {
     gRenDev->m_cEF.mfPrecacheShaders(true);
+}
+static void GetShaderList(IConsoleCmdArgs* Cmd)
+{
+    gRenDev->m_cEF.mfGetShaderList();
 }
 
 template<typename CallableT>
@@ -1539,6 +1547,7 @@ CRenderer::CRenderer()
 #endif // if AZ_RENDER_TO_TEXTURE_GEM_ENABLED && !defined(NULL_RENDERER)
 {
     static_assert(LegacyInternal::JobExecutorPool::NumPools == AZ_ARRAY_SIZE(CRenderer::m_SkinningDataPool), "JobExecutorPool and Skinning data pool size mismatch");
+    CCryNameR::CreateNameTable();
 }
 
 void CRenderer::InitRenderer()
@@ -2117,6 +2126,13 @@ void CRenderer::InitRenderer()
         "2: camera and object motion blur\n"
         "3: debug mode\n", OnChange_CV_r_MotionBlur);
 
+    REGISTER_CVAR3("r_RenderMotionBlurAfterHDR", CV_r_RenderMotionBlurAfterHDR, 0, VF_NULL,
+        "Forces Motion Blur To Render After HDR processing.\n"
+        "Usage: r_MotionBlur [0/1]\n"
+        "Default is 0 (Motion Blur Before HDR).\n"
+        "0: Motion Blur Applied Before HDR Processing (Luminance Measurement, Bloom, Tonemapping)\n"
+        "1: Motion Blur Applied After HDR Processing (Luminance Measurement, Bloom, Tonemapping)\n");
+
     REGISTER_CVAR3("r_MotionBlurScreenShot", CV_r_MotionBlurScreenShot, 0, VF_NULL,
         "Enables motion blur during high res screen captures"
         "Usage: r_MotionBlur [0/1]\n"
@@ -2575,33 +2591,24 @@ void CRenderer::InitRenderer()
         "Disables anisotropic filtering on alpha-tested geometry like vegetation.\n");
     DefineConstIntCVar3("r_TexLog", CV_r_texlog, 0, VF_NULL,
         "Configures texture information logging.\n"
-        "Usage:\tr_TexLog #\n"
+        "Usage: r_TexLog #\n"
         "where # represents:\n"
-        "\t0: Texture logging off\n"
-        "\t1: Texture information logged to screen\n"
-        "\t2: All loaded textures logged to 'UsedTextures.txt'\n"
-        "\t3: Missing textures logged to 'MissingTextures.txt");
+        " 0: Texture logging off\n"
+        " 1: Texture information logged to screen\n"
+        " 2: All loaded textures logged to 'UsedTextures.txt'\n"
+        " 3: Missing textures logged to 'MissingTextures.txt");
     DefineConstIntCVar3("r_TexNoLoad", CV_r_texnoload, 0, VF_NULL,
         "Disables loading of textures.\n"
-        "Usage:\tr_TexNoLoad [0/1]\n"
+        "Usage: r_TexNoLoad [0/1]\n"
         "When 1 texture loading is disabled.");
     DefineConstIntCVar3("r_TexBlockOnLoad", CV_r_texBlockOnLoad, 0, VF_NULL,
         "When loading a texture, block until resource compiler has finished compiling it.\n"
-        "Usage:\tr_TexBlockOnLoad [0/1]\n"
+        "Usage: r_TexBlockOnLoad [0/1]\n"
         "When 1 renderer will block and wait on the resource compiler.");
 
     REGISTER_CVAR3("r_RenderTargetPoolSize", CV_r_rendertargetpoolsize, 0, VF_NULL,
         "Size of pool for render targets in MB.\n"
         "Default is 50(MB).");
-
-    int nDefaultDefragState = 0;
-
-    REGISTER_CVAR3("r_texturesstreampooldefragmentation", CV_r_texturesstreampooldefragmentation, nDefaultDefragState, VF_NULL,
-        "Enabled CPU (1), GPU(2) and disable (0) textures stream pool defragmentation.\n");
-    REGISTER_CVAR3("r_texturesstreampooldefragmentationmaxmoves", CV_r_texturesstreampooldefragmentationmaxmoves, 8, VF_NULL,
-        "Specify the maximum number of blocks to move per defragmentation update");
-    REGISTER_CVAR3("r_texturesstreampooldefragmentationmaxamount", CV_r_texturesstreampooldefragmentationmaxamount, 512 * 1024, VF_NULL,
-        "Specify the limit (in bytes) that defrag update will stop");
 
     REGISTER_CVAR3("r_texturesskiplowermips", CV_r_texturesskiplowermips, 0, VF_NULL,
         "Enabled skipping lower mips for deprecated platform.\n");
@@ -2847,12 +2854,13 @@ void CRenderer::InitRenderer()
         "Default is 0 (off)");
 
 #if !defined(CONSOLE)
-    REGISTER_CVAR3("r_ShadersOrbis", CV_r_shadersorbis, 1, VF_NULL, ""); // ACCEPTED_USE
-    REGISTER_CVAR3("r_ShadersDX11", CV_r_shadersdx11, 1, VF_NULL, "");
-    REGISTER_CVAR3("r_ShadersGL4", CV_r_shadersGL4, 1, VF_NULL, "");
-    REGISTER_CVAR3("r_ShadersGLES3", CV_r_shadersGLES3, 1, VF_NULL, "");
-    REGISTER_CVAR3("r_ShadersDurango", CV_r_shadersdurango, 1, VF_NULL, ""); // ACCEPTED_USE
-    REGISTER_CVAR3("r_ShadersMETAL", CV_r_shadersMETAL, 1, VF_NULL, "");
+    REGISTER_CVAR3("r_ShadersOrbis", CV_r_shadersorbis, 0, VF_NULL, ""); // ACCEPTED_USE
+    REGISTER_CVAR3("r_ShadersDX11", CV_r_shadersdx11, 0, VF_NULL, "");
+    REGISTER_CVAR3("r_ShadersGL4", CV_r_shadersGL4, 0, VF_NULL, "");
+    REGISTER_CVAR3("r_ShadersGLES3", CV_r_shadersGLES3, 0, VF_NULL, "");
+    REGISTER_CVAR3("r_ShadersDurango", CV_r_shadersdurango, 0, VF_NULL, ""); // ACCEPTED_USE
+    REGISTER_CVAR3("r_ShadersMETAL", CV_r_shadersMETAL, 0, VF_NULL, "");
+    REGISTER_CVAR3("r_ProvoHardwareMode", CV_r_ProvoHardwareMode, -1, VF_NULL, "");
     REGISTER_CVAR3("r_ShadersPlatform", CV_r_shadersPlatform, AZ::PLATFORM_MAX, VF_NULL, "");
 #endif
 
@@ -2900,16 +2908,19 @@ void CRenderer::InitRenderer()
     bShaderLogCacheMisses = false;
 #endif
     REGISTER_CVAR3("r_ShadersLogCacheMisses", CV_r_shaderslogcachemisses, bShaderLogCacheMisses ? 2 : 0, VF_NULL,
-        "Log all shader caches misses on HD (both level and global shader cache misses).\n"
+        "Log all shader caches misses on HD (both level and global shader cache misses).\n" 
         "0 = No logging to disk or TTY\n"
         "1 = Logging to disk only\n"
         "2 = Logging to disk and TTY (default)");
 
     REGISTER_CVAR3("r_ShadersImport", CV_r_shadersImport, 0, VF_NULL,
-        "0 off, 1 import and allow fallback to getBinShader, 2 import, no fallback if import fails (optimal).");
+        "0 = Off\n"
+        "1 = Import pre-parsed shader reflection information from .fxb files if they exist for a related .cfx which skips expensive parsing of .cfx files in RT_ParseShader. If a .fxb exists for a shader but an individual permutation is missing, then fallback to the slow .cfx parsing for that permutation."
+        "2 = Import from the .fxb files, but do not fallback if import fails.  Missing shader permutations from .fxb files will be ignored."
+        "3 = Same behavior as 1, but only when running Performance/Release configurations.  Debug/Profile builds will disable this and set it to 0 (for an improved development experience).  This allows us to continue compiling shaders in Debug/Profile configurations and run optimally in Performance/Release");
 
     REGISTER_CVAR3("r_ShadersExport", CV_r_shadersExport, 1, VF_NULL,
-        "0 off, 1 allow shader export during shader cache generation - deprecated platforms only.");
+        "0 off, 1 allow export of .fxb files during shader cache generation.");
 
     REGISTER_CVAR3("r_ShadersCacheUnavailableShaders", CV_r_shadersCacheUnavailableShaders, 0, VF_NULL,
         "0 off (default), 1 cache unavailable shaders to avoid requesting their compilation in future executions.");
@@ -2978,10 +2989,10 @@ void CRenderer::InitRenderer()
         "Sets resolution for 2d target environment texture, in pixels.\n"
         "Usage: r_EnvTexResolution #\n"
         "where # represents:\n"
-        "\t0: 64\n"
-        "\t1: 128\n"
-        "\t2: 256\n"
-        "\t3: 512\n"
+        " 0: 64\n"
+        " 1: 128\n"
+        " 2: 256\n"
+        " 3: 512\n"
         "Default is 3 (512 by 512 pixels).");
 
     REGISTER_CVAR3("r_WaterUpdateDistance", CV_r_waterupdateDistance, 2.0f, VF_NULL, "");
@@ -3287,6 +3298,11 @@ void CRenderer::InitRenderer()
     REGISTER_CVAR3("r_ShowVideoMemoryStats", CV_r_ShowVideoMemoryStats, 0, VF_NULL, "");
     REGISTER_COMMAND("r_ShowRenderTarget", &Cmd_ShowRenderTarget, VF_CHEAT, showRenderTargetHelp);
 
+    REGISTER_CVAR3("r_VRAMDebug", CV_r_VRAMDebug, 0, VF_NULL,
+        "Display debug information for VRAM heaps on platforms where we have direct access to video memory\n"
+        "\t0: Disabled\n"
+        "\t1: VRAM heap statistics and occupancy visualization enabled");
+
     REGISTER_CVAR3("r_BreakOnError", CV_r_BreakOnError, 0, VF_NULL, "calls debugbreak on illegal behaviour");
     REGISTER_CVAR3("r_D3D12SubmissionThread", CV_r_D3D12SubmissionThread, 1, VF_NULL, "run DX12 command queue submission tasks from a dedicated thread");
 
@@ -3417,6 +3433,7 @@ void CRenderer::InitRenderer()
     REGISTER_COMMAND("r_PrecacheShaderList", &ShadersPrecacheList, VF_NULL, "");
     REGISTER_COMMAND("r_StatsShaderList", &ShadersStatsList, VF_NULL, "");
     REGISTER_COMMAND("r_OptimiseShaders", &ShadersOptimise, VF_NULL, "");
+    REGISTER_COMMAND("r_GetShaderList", &GetShaderList, VF_NULL, "");
 #endif
 
     DefineConstIntCVar3("r_TextureCompressor", CV_r_TextureCompressor, 1, VF_DUMPTODISK,
@@ -3757,6 +3774,7 @@ void CRenderer::InitRenderer()
         Render::Debug::VRAMSubCategoryType textureSubcategories;
         textureSubcategories.push_back(Render::Debug::VRAMSubcategory(Render::Debug::VRAM_SUBCATEGORY_TEXTURE_TEXTURE, "Texture Assets"));
         textureSubcategories.push_back(Render::Debug::VRAMSubcategory(Render::Debug::VRAM_SUBCATEGORY_TEXTURE_RENDERTARGET, "Rendertargets"));
+        textureSubcategories.push_back(Render::Debug::VRAMSubcategory(Render::Debug::VRAM_SUBCATEGORY_TEXTURE_DYNAMIC, "Dynamic Textures"));
         EBUS_EVENT(Render::Debug::VRAMDrillerBus, RegisterCategory, Render::Debug::VRAM_CATEGORY_TEXTURE, "Texture", textureSubcategories);
 
         Render::Debug::VRAMSubCategoryType meshSubcategories;
@@ -3930,6 +3948,8 @@ void CRenderer::InitRenderer()
 CRenderer::~CRenderer()
 {
     //Code now moved to Release()
+
+    CCryNameR::ReleaseNameTable();
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -4336,7 +4356,7 @@ void CRenderer::RenderTextMessages(CTextMessages& messages)
             }
 
             ProjectToScreen(vPos.x, vPos.y, vPos.z, &sx, &sy, &sz);
-
+            
             if (!b800x600)
             {
                 // ProjectToScreen() returns virtual screen values in range [0-100], while the Draw2dTextWithDepth() method expects screen coords.
@@ -4695,7 +4715,11 @@ void CRenderer::FreeResources(int nFlags)
 
     CTimeValue tBegin = gEnv->pTimer->GetAsyncTime();
 
+    // Throughout this function, we are queuing up a lot of work to execute on the render thread while also manipulating 
+    // global state on both the render and main threads.  We need to call ForceFlushRTCommands to synchronize the main and
+    // render threads whenever we are manipulating global state on either of these threads.
     ForceFlushRTCommands();
+
     AZ::RenderNotificationsBus::Broadcast(&AZ::RenderNotifications::OnRendererFreeResources, nFlags);
 
 #if !defined(_RELEASE)
@@ -4714,7 +4738,7 @@ void CRenderer::FreeResources(int nFlags)
     {
         for (size_t i = 0; i < MAX_RELEASED_MESH_FRAMES; ++i)
         {
-            m_pRT->RC_ForceMeshGC(true, true);
+            m_pRT->RC_ForceMeshGC(false, false);
         }
         ForceFlushRTCommands();
     }
@@ -4876,14 +4900,8 @@ void CRenderer::FreeResources(int nFlags)
         m_p3DEngineCommon.m_CausticInfo.Release();
 
         m_pRT->RC_UnbindResources();
-        ForceFlushRTCommands();
-
-        m_pRT->RC_ResetGlass();
-        ForceFlushRTCommands();
-
-        m_pRT->RC_ForceMeshGC(true, true);
-        ForceFlushRTCommands();
-
+        m_pRT->RC_ResetGlass();        
+        m_pRT->RC_ForceMeshGC(false, false);
         m_cEF.mfReleaseSystemShaders();
         ForceFlushRTCommands();
 
@@ -4903,10 +4921,9 @@ void CRenderer::FreeResources(int nFlags)
         ForceFlushRTCommands();
 
         m_pRT->RC_UnbindTMUs();
-        ForceFlushRTCommands();
 
+        // This function calls FlushAndWait internally in order to synchronize the main and render threads
         CRendElement::Cleanup();
-        ForceFlushRTCommands();
 
         // sync dev buffer only once per frame, to prevent syncing to the currently rendered frame
         // which would result in a deadlock
@@ -5440,13 +5457,6 @@ void CRenderer::EF_StartEf(const SRenderingPassInfo& passInfo)
     EF_ClearDeferredLightsList();
 }
 
-void CRenderer::RT_PrepareLevelTexStreaming()
-{
-    if (CRenderer::CV_r_texturesstreampooldefragmentation)
-    {
-    }
-}
-
 void CRenderer::RT_PostLevelLoading()
 {
     int nThreadID = m_pRT->GetThreadList();
@@ -5927,7 +5937,7 @@ bool CRenderer::EF_AddDeferredDecal(const SDeferredDecal& rDecal)
         _smart_ptr<IMaterial> pDecalMaterial = rDecalCopy.pMaterial;
         if (pDecalMaterial == NULL)
         {
-            assert(0);
+            AZ_WarningOnce("Renderer", pDecalMaterial == NULL, "Decal missing material.");
             return false;
         }
 

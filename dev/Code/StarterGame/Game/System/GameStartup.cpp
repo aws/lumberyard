@@ -18,9 +18,10 @@
 #include "platform_impl.h"
 #include <IPlayerProfiles.h>
 #include <CryLibrary.h>
-#include <IPlatformOS.h>
+#include <ITimer.h>
 
-#define DLL_INITFUNC_CREATEGAME "CreateGameFramework"
+#include <AzCore/std/string/osstring.h>
+#include <AzCore/Component/ComponentApplicationBus.h>
 
 using namespace LYGame;
 
@@ -29,12 +30,12 @@ using namespace LYGame;
 
 extern "C"
 {
-DLL_EXPORT IGameStartup* CreateGameStartup()
+AZ_DLL_EXPORT IGameStartup* CreateGameStartup()
 {
     return GameStartup::Create();
 }
 
-DLL_EXPORT IEditorGame* CreateEditorGame()
+AZ_DLL_EXPORT IEditorGame* CreateEditorGame()
 {
     return new LYGame::EditorGame();
 }
@@ -49,7 +50,6 @@ IGameFramework* CreateGameFramework();
 GameStartup::GameStartup()
     : m_Framework(nullptr)
     , m_Game(nullptr)
-    , m_FrameworkDll(nullptr)
 {
 }
 
@@ -84,8 +84,6 @@ IGameRef GameStartup::Init(SSystemInitParams& startupParams)
                 static_cast<UINT_PTR>(gEnv->pTimer->GetAsyncTime().GetMicroSecondsAsInt64()),
                 0
                 );
-
-            system->GetPlatformOS()->UserDoSignIn(0);
         }
         else
         {
@@ -124,22 +122,17 @@ void GameStartup::Shutdown()
 bool GameStartup::InitFramework(SSystemInitParams& startupParams)
 {
 #if !defined(AZ_MONOLITHIC_BUILD)
-    m_FrameworkDll = CryLoadLibrary(GAME_FRAMEWORK_FILENAME);
 
-    if (!m_FrameworkDll)
-    {
-        return false;
-    }
+    IGameFramework* gameFramework = nullptr;
+    CryGameFrameworkBus::BroadcastResult(gameFramework, &CryGameFrameworkRequests::CreateFramework);
+    AZ_Assert(gameFramework, "Legacy CreateGameFramework function called, but nothing is subscribed to the CryGameFrameworkRequests.\n"
+        "Please use the Project Configurator to enable the CryLegacy gem for your project.");
 
-    IGameFramework::TEntryFunction CreateGameFramework = reinterpret_cast<IGameFramework::TEntryFunction>(CryGetProcAddress(m_FrameworkDll, DLL_INITFUNC_CREATEGAME));
-
-    if (!CreateGameFramework)
-    {
-        return false;
-    }
+    m_Framework = gameFramework;
+#else
+    m_Framework = CreateGameFramework();
 #endif // !AZ_MONOLITHIC_BUILD
 
-    m_Framework = CreateGameFramework();
 
     if (!m_Framework)
     {
@@ -172,10 +165,6 @@ void GameStartup::ShutdownFramework()
     {
         m_Framework->Shutdown();
         m_Framework = nullptr;
-#ifndef AZ_MONOLITHIC_BUILD
-        CryFreeLibrary(m_FrameworkDll);
-#endif
-        m_FrameworkDll = nullptr;
     }
 }
 

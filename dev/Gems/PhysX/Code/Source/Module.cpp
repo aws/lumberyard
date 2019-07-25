@@ -23,12 +23,14 @@
 #include <Source/BoxColliderComponent.h>
 #include <Source/SphereColliderComponent.h>
 #include <Source/CapsuleColliderComponent.h>
+#include <Source/ForceRegionComponent.h>
 
 #if defined(PHYSX_EDITOR)
 #include <Source/EditorSystemComponent.h>
 #include <Source/EditorTerrainComponent.h>
 #include <Source/EditorRigidBodyComponent.h>
 #include <Source/EditorColliderComponent.h>
+#include <Source/EditorForceRegionComponent.h>
 #include <Source/Pipeline/MeshExporter.h>
 #include <Source/Pipeline/MeshBehavior.h>
 #include <Source/Pipeline/CgfMeshBuilder/CgfMeshAssetBuilderComponent.h>
@@ -60,11 +62,13 @@ namespace PhysX
                     BoxColliderComponent::CreateDescriptor(),
                     SphereColliderComponent::CreateDescriptor(),
                     CapsuleColliderComponent::CreateDescriptor(),
+                    ForceRegionComponent::CreateDescriptor(),
 #if defined(PHYSX_EDITOR)
                     EditorSystemComponent::CreateDescriptor(),
                     EditorTerrainComponent::CreateDescriptor(),
                     EditorRigidBodyComponent::CreateDescriptor(),
                     EditorColliderComponent::CreateDescriptor(),
+                    EditorForceRegionComponent::CreateDescriptor(),
                     Pipeline::MeshExporter::CreateDescriptor(),
                     Pipeline::MeshBehavior::CreateDescriptor(),
                     Pipeline::CgfMeshAssetBuilderComponent::CreateDescriptor()

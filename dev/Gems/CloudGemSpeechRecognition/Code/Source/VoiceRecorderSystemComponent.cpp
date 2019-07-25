@@ -19,7 +19,7 @@
 #include <AzCore/IO/FileIO.h>
 
 #include "VoiceRecorderSystemComponent.h"
-#include <base64.h>
+#include <Base64.h>
 
 #include <AzCore/IO/FileIO.h>
 #include <Microphone/WAVUtil.h>
@@ -136,7 +136,7 @@ namespace CloudGemSpeechRecognition
         // will need a buffer struct with buffer, current pos and size of buffer
         if (m_curFillBufferPos + (FRAME_SIZE * CHANNELS * BYTES_PER_SAMPLE) <= m_fillBuffer + BUFFER_ALLOC_SIZE)
         {
-            AZ::u32 actualSampleFrames = 0;
+            size_t actualSampleFrames = 0;
             MicrophoneRequestBus::BroadcastResult(actualSampleFrames, &MicrophoneRequestBus::Events::GetData,
                 reinterpret_cast<void**>(&m_curFillBufferPos),
                 FRAME_SIZE,
@@ -146,9 +146,9 @@ namespace CloudGemSpeechRecognition
 // The simple downsample used on non-windows plaforms for now yields different results than libsamplerate
 // When libsamplerate is ported to other platforms, the "windows" version should become the standard
 #if defined(AZ_PLATFORM_WINDOWS)
-            AZ::u32 bytesRead = (actualSampleFrames * CHANNELS * BYTES_PER_SAMPLE);
+            AZ::u32 bytesRead = (static_cast<AZ::u32>(actualSampleFrames) * CHANNELS * BYTES_PER_SAMPLE);
 #else
-            AZ::u32 bytesRead = actualSampleFrames;
+            AZ::u32 bytesRead = static_cast<AZ::u32>(actualSampleFrames);
 #endif 
             m_curFillBufferPos += bytesRead;
         }

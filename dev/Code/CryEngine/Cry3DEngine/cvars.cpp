@@ -298,8 +298,6 @@ void CVars::Init()
         "Combine pieces of decals into one render call");
     DefineConstIntCVar(e_DecalsPreCreate, 1, VF_NULL,
         "Pre-create decals at load time");
-    DefineConstIntCVar(e_DecalsScissor, 1, VF_NULL,
-        "Enable decal rendering optimization by using scissor");
     DefineConstIntCVar(e_DecalsClip, 1, VF_NULL,
         "Clip decal geometry by decal bbox");
     DefineConstFloatCVar(e_DecalsRange, VF_NULL,
@@ -1169,6 +1167,7 @@ void CVars::Init()
         "2080: Draw spines with LOD info (red/blue)\n");
     REGISTER_CVAR(e_MergedMeshesPool, 2750, VF_NULL,    "amount of mainmeory (in kb) that merged meshes are allowed to sustain");
     REGISTER_CVAR(e_MergedMeshesPoolSpines, 32, VF_NULL,  "percentage of the pool for spines");
+    REGISTER_CVAR(e_MergedMeshesMaxVerticesPerSector, 1*1024*1024, VF_NULL, "Max number of mesh vertices to render per merged mesh sector");
     REGISTER_CVAR(e_MergedMeshesTesselationSupport, 0, VF_NULL, "Enable or disable support for tessellation on mergedmeshes");
     REGISTER_CVAR(e_MergedMeshesViewDistRatio, 100.f, VF_NULL, "merged meshes view dist ratio");
     REGISTER_CVAR(e_MergedMeshesLodRatio, 3.f, VF_NULL, "merged meshes lod ratio");
@@ -1225,4 +1224,8 @@ void CVars::Init()
     REGISTER_CVAR(e_PermanentRenderObjects, 0, VF_NULL, "Creates permanent render objects for each render node");
     REGISTER_CVAR(e_StaticInstancing, 0, VF_NULL, "Enables instancing of static objects");
     REGISTER_CVAR(e_StaticInstancingMinInstNum, 10, VF_NULL, "Minimum number of common static objects in a tree node before hardware instancing is used.");
+
+#ifndef _RELEASE
+    DefineConstIntCVar(e_MemoryProfiling, 0, VF_DEV_ONLY, "Toggle displaying memory usage statistics");
+#endif
 }

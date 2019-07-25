@@ -13,17 +13,11 @@
 
 #pragma once
 
+
 #include <IGameFramework.h>
 #include <IWindowMessageHandler.h>
-#include <IPlatformOS.h>
 
-#if defined(APPLE)
-#define GAME_FRAMEWORK_FILENAME  "libCryAction.dylib"
-#elif defined(LINUX)
-#define GAME_FRAMEWORK_FILENAME  "libCryAction.so"
-#else
-#define GAME_FRAMEWORK_FILENAME  "CryAction.dll"
-#endif
+#include <AzCore/Module/DynamicModuleHandle.h>
 
 namespace LYGame
 {
@@ -70,9 +64,7 @@ namespace LYGame
 #if defined(WIN32)
         bool HandleMessage(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam, LRESULT* pResult);
 #endif
-
         IGameFramework*         m_Framework;
         IGame*                  m_Game;
-        HMODULE                 m_FrameworkDll;
     };
 } // namespace LYGame

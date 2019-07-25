@@ -21,6 +21,7 @@
     ],
 
     "attributes"    : {
+        "game_platform"         : "osx",    # The name of platform referenced by cfg files such as bootstrap.cfg
         "is_apple"              : true,
         "is_mac"                : true,
         "default_folder_name"   : "BinMac64",

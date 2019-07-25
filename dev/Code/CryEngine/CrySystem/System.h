@@ -16,6 +16,7 @@
 #include <ISystem.h>
 #include <IRenderer.h>
 #include <IPhysics.h>
+#include <IPlatformOS.h>
 #include <IWindowMessageHandler.h>
 
 #include "Timer.h"
@@ -33,6 +34,8 @@
 
 #include <LoadScreenBus.h>
 #include <ThermalInfo.h>
+
+#include <AzCore/Module/DynamicModuleHandle.h>
 
 struct IConsoleCmdArgs;
 class CServerThrottle;
@@ -577,7 +580,7 @@ public:
     virtual void GetUpdateStats(SSystemUpdateStats& stats);
 
     //////////////////////////////////////////////////////////////////////////
-    virtual XmlNodeRef CreateXmlNode(const char* sNodeName = "", bool bReuseStrings = false);
+    virtual XmlNodeRef CreateXmlNode(const char* sNodeName = "", bool bReuseStrings = false, bool bIsProcessingInstruction = false);
     virtual XmlNodeRef LoadXmlFromFile(const char* sFilename, bool bReuseStrings = false);
     virtual XmlNodeRef LoadXmlFromBuffer(const char* buffer, size_t size, bool bReuseStrings = false, bool bSuppressWarnings = false);
     virtual IXmlUtils* GetXmlUtils();
@@ -789,9 +792,12 @@ private:
     void RenderOverscanBorders();
     void RenderMemStats();
     void RenderThreadInfo();
-    WIN_HMODULE LoadDLL(const char* dllName);
+
+    AZStd::unique_ptr<AZ::DynamicModuleHandle> LoadDLL(const char* dllName);
+
+    void FreeLib(AZStd::unique_ptr<AZ::DynamicModuleHandle>& hLibModule);
+
     bool UnloadDLL(const char* dllName);
-    void FreeLib(WIN_HMODULE hLibModule);
     void QueryVersionInfo();
     void LogVersion();
     void LogBuildInfo();
@@ -813,7 +819,7 @@ private:
 
     void AddCVarGroupDirectory(const string& sPath);
 
-    WIN_HMODULE LoadDynamiclibrary(const char* dllName) const;
+    AZStd::unique_ptr<AZ::DynamicModuleHandle> LoadDynamiclibrary(const char* dllName) const;
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION SYSTEM_H_SECTION_3
@@ -933,7 +939,8 @@ private: // ------------------------------------------------------
     bool                                    m_bDrawConsole;              //!< Set to true if OK to draw the console.
     bool                                    m_bDrawUI;                   //!< Set to true if OK to draw UI.
 
-    std::map<CCryNameCRC, WIN_HMODULE> m_moduleDLLHandles;
+
+    std::map<CCryNameCRC, AZStd::unique_ptr<AZ::DynamicModuleHandle> > m_moduleDLLHandles;
 
     //! THe streaming engine
     class CStreamEngine* m_pStreamEngine;
@@ -1155,7 +1162,6 @@ private: // ------------------------------------------------------
 
     // Pause mode.
     bool m_bPaused;
-    uint8 m_PlatformOSCreateFlags;
     bool m_bNoUpdate;
 
     uint64 m_nUpdateCounter;
@@ -1228,8 +1234,6 @@ public:
     {
         m_ErrorMessages.clear();
     }
-
-    virtual void AddPlatformOSCreateFlag(const uint8 createFlag) { m_PlatformOSCreateFlags |= createFlag; }
 
     bool IsLoading()
     {

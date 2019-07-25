@@ -19,8 +19,8 @@
 //-------------------------------------------------------
 /// Cpu class
 //-------------------------------------------------------
-#if defined(WIN64)
-    #define MAX_CPU 64
+#if defined(WIN64) || defined(LINUX)
+    #define MAX_CPU 96
 #else
     #define MAX_CPU 32
 #endif

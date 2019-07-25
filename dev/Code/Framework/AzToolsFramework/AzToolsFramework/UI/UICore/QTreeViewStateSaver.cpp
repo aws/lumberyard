@@ -55,7 +55,7 @@ namespace AzToolsFramework
             AZ::SerializeContext* serialize = azrtti_cast<AZ::SerializeContext*>(context);
             if (serialize)
             {
-                serialize->Class<QTreeViewStateSaverData, AZ::UserSettings>()
+                serialize->Class<QTreeViewStateSaverData>()
                     ->Version(2)
                     ->Field("m_expandedElements", &QTreeViewStateSaverData::m_expandedElements)
                     ->Field("m_collapsedElements", &QTreeViewStateSaverData::m_collapsedElements)

@@ -18,7 +18,7 @@
 #include <unordered_map>
 
 #include <AzCore/Socket/AzSocket.h>
-#include <NativeUIRequests.h>
+#include <AzCore/NativeUI/NativeUIRequests.h>
 #include <AzFramework/Network/SocketConnection.h>
 #include <AzFramework/Asset/AssetSystemTypes.h>
 
@@ -26,6 +26,8 @@
 #undef AZ_RESTRICTED_SECTION
 #define REMOTECOMPILER_CPP_SECTION_1 1
 #define REMOTECOMPILER_CPP_SECTION_2 2
+#define REMOTECOMPILER_CPP_SECTION_3 3
+#define REMOTECOMPILER_CPP_SECTION_4 4
 #endif
 
 #if defined(AZ_TOOLS_EXPAND_FOR_RESTRICTED_PLATFORMS)
@@ -33,10 +35,38 @@
 #define REMOTECOMPILER_CPP_SECTION_2 2
 #endif
 
-//#define SHADERSERVER_EXTRALOG   // For extra logging when debugging
+#if defined(AZ_RESTRICTED_PLATFORM) && defined(AZ_PLATFORM_PROVO)
+    #define AZ_RESTRICTED_SECTION REMOTECOMPILER_CPP_SECTION_3
+    #include "Provo/RemoteCompiler_cpp_provo.inl"
+#endif
 
 namespace NRemoteCompiler
 {
+    //Debugging the network connection problems can be tricky without verbose logging, more verbose
+    //than anyone would like on by default. This is a special situation in which if logging is off by default
+    //we would normally use a define or cvar to turn verbose logging on. However you really can't do
+    //that here because of networking, you can't easily break or open the console and enter the
+    //cvar command to turn verbose logging on fast enough to catch logs around the error condition without
+    //causing different code paths due to breaking. So this is an automatic verbose logging var that is off
+    //by default and turns on for a limited number of log lines after the error is logged then automaticly
+    //turns itself off so we are not spammed for to long so as to not adversely affect the rest of the systems.
+    int s_verboselogging = 0;
+    bool VerboseLogging(bool start = false)
+    {
+        if(start)
+        {
+            s_verboselogging = 100;
+            return true;
+        }
+
+        if(s_verboselogging > 0)
+        {
+            s_verboselogging--;
+            return true;
+        }
+        return false;
+    }
+
     // Note:  Cry's original source uses little endian as their internal communication endianness
     // so this new code will do the same.
 
@@ -81,6 +111,7 @@ namespace NRemoteCompiler
                 if (!engineConnection)
                 {
                     AZ_Error("RemoteCompiler", false, "CShaderSrv::Compile: no engine connection present, but r_AssetProcessorShaderCompiler is set in config!\n");
+                    VerboseLogging(true);
                     return false;
                 }
 
@@ -195,6 +226,7 @@ namespace NRemoteCompiler
                 if (!engineConnection->SendMsg(m_remoteRequestCRC, inout.data(), inout.size()))
                 {
                     AZ_Error("RemoteCompiler", false, "CShaderSrv::SubmitRequestAndBlockForResponse() : unable to send via engine connection, but r_AssetProcessorShaderCompiler is set in config!\n");
+                    VerboseLogging(true);
                     return false;
                 }
             }
@@ -203,10 +235,14 @@ namespace NRemoteCompiler
             {
                 // failure to get response!
                 AZ_Error("RemoteCompiler", false, "CShaderSrv::SubmitRequestAndBlockForResponse() : no response received!\n");
+                VerboseLogging(true);
                 CryAutoLock<CryMutex> protector(m_mapProtector);
                 m_responsesAwaitingCallback.erase(chosenToken);
 
-                EBUS_EVENT(NativeUI::NativeUIRequestBus, DisplayOkDialog, "Remote Shader Compiler", "Unable to connect to Remote Shader Compiler", false);
+                if(!gEnv->IsInToolMode())
+                {
+                    EBUS_EVENT(AZ::NativeUI::NativeUIRequestBus, DisplayOkDialog, "Remote Shader Compiler", "Unable to connect to Remote Shader Compiler", false);
+                }
                 return false;
             }
 
@@ -226,6 +262,7 @@ namespace NRemoteCompiler
             {
                 // indicate error!
                 AZ_Error("RemoteCompiler", false, " CShaderSrv::OnReceiveRemoteREsponse() : truncated message from shader compiler proxy");
+                VerboseLogging(true);
                 return;
             }
 
@@ -242,6 +279,7 @@ namespace NRemoteCompiler
             if (callbackToCall == m_responsesAwaitingCallback.end())
             {
                 AZ_Error("RemoteCompiler", false, "CShaderSrv::OnReceiveRemoteResponse() : Unexpected response from shader compiler proxy.");
+                VerboseLogging(true);
                 return;
             }
             // give only the inner payload back to the callee!
@@ -267,6 +305,7 @@ namespace NRemoteCompiler
         if (AZ::AzSock::SocketErrorOccured(result))
         {
             AZ_Error("RemoteCompiler", false, "CShaderSrv::Init() : Could not init root socket\n");
+            VerboseLogging(true);
             return;
         }
 
@@ -294,6 +333,7 @@ namespace NRemoteCompiler
         if (m_RequestLineRootFolder.empty())
         {
             AZ_Error("RemoteCompiler", false, "CShaderSrv::Init() : Game folder has not been specified\n");
+            VerboseLogging(true);
         }
     }
 
@@ -599,16 +639,6 @@ namespace NRemoteCompiler
         return Tag;
     }
 
-    /*string CShaderSrv::CreateXMLDataNode(const string& rTag,const string& rValue) const
-    {
-        string Tag="<";
-        Tag+=rTag;
-        Tag+="><![CDATA[";
-        Tag+=rValue;
-        Tag+="]]>";
-        return Tag;
-    }*/
-
     string CShaderSrv::TransformToXML(const string& rIn)    const
     {
         string Out;
@@ -671,20 +701,18 @@ namespace NRemoteCompiler
     bool CShaderSrv::CommitPLCombinations(std::vector<SCacheCombination>&   rVec)
     {
         const uint32 STEPSIZE = 32;
-        float T0    =   iTimer->GetAsyncCurTime();
+        float T0 = iTimer->GetAsyncCurTime();
         for (uint32 i = 0; i < rVec.size(); i += STEPSIZE)
         {
             string Line;
             string levelRequest;
 
             levelRequest.Format("<%d>%s", rVec[i].nCount, rVec[i].CacheName.c_str());
-            //printf("CommitPL[%d] '%s'\n", i, levelRequest.c_str());
             Line = levelRequest;
             for (uint32 j = 1; j < STEPSIZE && i + j < rVec.size(); j++)
             {
                 Line += string(";");
                 levelRequest.Format("<%d>%s", rVec[i + j].nCount, rVec[i + j].CacheName.c_str());
-                //printf("CommitPL[%d] '%s'\n", i+j, levelRequest.c_str());
                 Line += levelRequest;
             }
             if (!RequestLine(rVec[i], Line))
@@ -693,56 +721,63 @@ namespace NRemoteCompiler
             }
         }
         float T1    =   iTimer->GetAsyncCurTime();
-        AZ_TracePrintf("RemoteCompiler", "CShaderSrv::CommitPLCombinations() : %3.3f to commit %" PRISIZE_T " Combinations\n", T1 - T0, rVec.size());
-
+        if(VerboseLogging())
+        {
+            AZ_TracePrintf("RemoteCompiler", "CShaderSrv::CommitPLCombinations() : %3.3f to commit %" PRISIZE_T " Combinations\n", T1 - T0, rVec.size());
+        }
 
         return true;
     }
 
     EServerError CShaderSrv::Compile(std::vector<uint8>& rVec,
-        const char*                 pProfile,
-        const char*                 pProgram,
-        const char*                 pEntry,
-        const char*                 pCompileFlags,
-        const char*               pIdent) const
+        const char* pProfile,
+        const char* pProgram,
+        const char* pEntry,
+        const char* pCompileFlags,
+        const char* pIdent) const
     {
-        EServerError errCompile = ESOK;
-
         std::vector<uint8>  CompileData;
         std::vector<std::pair<string, string> > Nodes;
-        Nodes.resize(11);
-        Nodes[0]    =   std::pair<string, string>(string("JobType"), string("Compile"));
-        Nodes[1]    =   std::pair<string, string>(string("Profile"), string(pProfile));
-        Nodes[2]    =   std::pair<string, string>(string("Program"), string(pProgram));
-        Nodes[3]    =   std::pair<string, string>(string("Entry"), string(pEntry));
-        Nodes[4]    =   std::pair<string, string>(string("CompileFlags"), string(pCompileFlags));
-        Nodes[5]    =   std::pair<string, string>(string("HashStop"), string("1"));
-        Nodes[6]    =   std::pair<string, string>(string("ShaderRequest"), string(pIdent));
-        Nodes[7]    =   std::pair<string, string>(string("Project"), m_RequestLineRootFolder);
-        Nodes[8]    =   std::pair<string, string>(string("Platform"), string(GetPlatformName()));
-        Nodes[9]    =   std::pair<string, string>(string("Compiler"), string(GetShaderCompilerName()));
-        Nodes[10]   =   std::pair<string, string>(string("Language"), string(GetShaderLanguageName()));
+
+        Nodes.push_back(std::pair<string, string>(string("JobType"), string("Compile")));
+        Nodes.push_back(std::pair<string, string>(string("Profile"), string(pProfile)));
+        Nodes.push_back(std::pair<string, string>(string("Program"), string(pProgram)));
+        Nodes.push_back(std::pair<string, string>(string("Entry"), string(pEntry)));
+        Nodes.push_back(std::pair<string, string>(string("CompileFlags"), string(pCompileFlags)));
+
+#if defined(AZ_RESTRICTED_PLATFORM) && defined(AZ_PLATFORM_PROVO)
+#define AZ_RESTRICTED_SECTION REMOTECOMPILER_CPP_SECTION_4
+#include "Provo/RemoteCompiler_cpp_provo.inl"
+#endif
+
+        // Any fields coming after "HashStop" will not contribute to the hash calculated on the Remote Shader Compiler Server for its local cache.
+        Nodes.push_back(std::pair<string, string>(string("HashStop"), string("1")));
+        Nodes.push_back(std::pair<string, string>(string("ShaderRequest"), string(pIdent)));
+        Nodes.push_back(std::pair<string, string>(string("Project"), string(m_RequestLineRootFolder.c_str())));
+        Nodes.push_back(std::pair<string, string>(string("Platform"), string(GetPlatformName())));
+        Nodes.push_back(std::pair<string, string>(string("Compiler"), string(GetShaderCompilerName())));
+        Nodes.push_back(std::pair<string, string>(string("Language"), string(GetShaderLanguageName())));
 
         if (gRenDev->CV_r_ShaderEmailTags && gRenDev->CV_r_ShaderEmailTags->GetString() &&
             strlen(gRenDev->CV_r_ShaderEmailTags->GetString()) > 0)
         {
-            Nodes.resize(Nodes.size() + 1);
-            Nodes[Nodes.size() - 1]   =   std::pair<string, string>(string("Tags"), string(gRenDev->CV_r_ShaderEmailTags->GetString()));
+            Nodes.push_back(std::pair<string, string>(string("Tags"), string(gRenDev->CV_r_ShaderEmailTags->GetString())));
         }
 
         if (gRenDev->CV_r_ShaderEmailCCs && gRenDev->CV_r_ShaderEmailCCs->GetString() &&
             strlen(gRenDev->CV_r_ShaderEmailCCs->GetString()) > 0)
         {
-            Nodes.resize(Nodes.size() + 1);
-            Nodes[Nodes.size() - 1]   =   std::pair<string, string>(string("EmailCCs"), string(gRenDev->CV_r_ShaderEmailCCs->GetString()));
+            Nodes.push_back(std::pair<string, string>(string("EmailCCs"), string(gRenDev->CV_r_ShaderEmailCCs->GetString())));
         }
 
         if (gRenDev->CV_r_ShaderCompilerDontCache)
         {
-            Nodes.resize(Nodes.size() + 1);
-            Nodes[Nodes.size() - 1]   =   std::pair<string, string>(string("Caching"), string("0"));
+            Nodes.push_back(std::pair<string, string>(string("Caching"), string("0")));
         }
-        //  Nodes[5]    =   std::pair<string,string>(string("ShaderRequest",string(pShaderRequestLine));
+
+        //Nodes.push_back(std::pair<string,string>(string("ShaderRequest",string(pShaderRequestLine)));
+
+        EServerError errCompile = ESOK;
         int nRetries = 3;
         do
         {
@@ -754,6 +789,7 @@ namespace NRemoteCompiler
             if (!CreateRequest(CompileData, Nodes))
             {
                 AZ_Error("RemoteCompiler", false, "CShaderSrv::Compile() : failed composing Request XML\n");
+                VerboseLogging(true);
                 return ESFailed;
             }
 
@@ -791,9 +827,81 @@ namespace NRemoteCompiler
             if (logError)
             {
                 AZ_Error("RemoteCompiler", false, "CShaderSrv::Compile() : failed to compile %s (%s)", pEntry, why);
+                VerboseLogging(true);
             }
         }
         return errCompile;
+    }
+
+    EServerError CShaderSrv::GetShaderList(std::vector<uint8>& rVec) const
+    {
+        std::vector<uint8>  GetShaderListData;
+        std::vector<std::pair<string, string> > Nodes;
+
+        Nodes.push_back(std::pair<string, string>(string("JobType"), string("GetShaderList")));
+        Nodes.push_back(std::pair<string, string>(string("Project"), string(m_RequestLineRootFolder.c_str())));
+        Nodes.push_back(std::pair<string, string>(string("Platform"), string(GetPlatformName())));
+        Nodes.push_back(std::pair<string, string>(string("Compiler"), string(GetShaderCompilerName())));
+        Nodes.push_back(std::pair<string, string>(string("Language"), string(GetShaderLanguageName())));
+        Nodes.push_back(std::pair<string, string>(string("ShaderList"), string(GetShaderListFilename().c_str())));
+
+        #if defined(AZ_RESTRICTED_PLATFORM)
+            #define AZ_RESTRICTED_SECTION REMOTECOMPILER_CPP_SECTION_4
+            #if defined(AZ_PLATFORM_PROVO)
+                #include "Provo/RemoteCompiler_cpp_provo.inl"
+            #endif
+        #endif
+
+        EServerError errShaderGetList = ESOK;
+        int nRetries = 3;
+        do
+        {
+            if (errShaderGetList != ESOK)
+            {
+                Sleep(5000);
+            }
+
+            if (!CreateRequest(GetShaderListData, Nodes))
+            {
+                AZ_Error("RemoteCompler", false, "ERROR: CShaderSrv::GetShaderList(): failed composing Request XML\n");
+                VerboseLogging(true);
+                return ESFailed;
+            }
+
+            errShaderGetList = Send(GetShaderListData);
+        } while (errShaderGetList == ESRecvFailed && nRetries-- > 0);
+
+        rVec = GetShaderListData;
+
+        if (errShaderGetList != ESOK)
+        {
+            bool logError = true;
+            const char* why = "";
+            switch (errShaderGetList)
+            {
+            case ESNetworkError:
+                why = "Network Error";
+                break;
+            case ESSendFailed:
+                why = "Send Failed";
+                break;
+            case ESRecvFailed:
+                why = "Receive Failed";
+                break;
+            case ESInvalidState:
+                why = "Invalid Return State (compile issue ?!?)";
+                break;
+            case ESFailed:
+                why = "";
+                break;
+            }
+            if (logError)
+            {
+                AZ_Error("RemoteCompiler", false, "ERROR: CShaderSrv::GetShaderList(): failed to get shader list (%s)", why);
+                VerboseLogging(true);
+            }
+        }
+        return errShaderGetList;
     }
 
     bool CShaderSrv::RequestLine(const string& rList, const string& rString) const
@@ -805,17 +913,24 @@ namespace NRemoteCompiler
 
         std::vector<uint8>  CompileData;
         std::vector<std::pair<string, string> > Nodes;
-        Nodes.resize(7);
-        Nodes[0]    =   std::pair<string, string>(string("JobType"), string("RequestLine"));
-        Nodes[1]    =   std::pair<string, string>(string("Project"), m_RequestLineRootFolder);
-        Nodes[2]    =   std::pair<string, string>(string("Platform"), string(GetPlatformName()));
-        Nodes[3]    =   std::pair<string, string>(string("Compiler"), string(GetShaderCompilerName()));
-        Nodes[4]    =   std::pair<string, string>(string("Language"), string(GetShaderLanguageName()));
-        Nodes[5]    =   std::pair<string, string>(string("ShaderList"), rList);
-        Nodes[6]    =   std::pair<string, string>(string("ShaderRequest"), rString);
+
+        #if defined(AZ_RESTRICTED_PLATFORM) && defined(AZ_PLATFORM_PROVO)
+            #define AZ_RESTRICTED_SECTION REMOTECOMPILER_CPP_SECTION_4
+            #include "Provo/RemoteCompiler_cpp_provo.inl"
+        #endif
+
+        Nodes.push_back(std::pair<string, string>(string("JobType"), string("RequestLine")));
+        Nodes.push_back(std::pair<string, string>(string("ShaderRequest"), rString));
+        Nodes.push_back(std::pair<string, string>(string("Project"), m_RequestLineRootFolder));
+        Nodes.push_back(std::pair<string, string>(string("Platform"), string(GetPlatformName())));
+        Nodes.push_back(std::pair<string, string>(string("Compiler"), string(GetShaderCompilerName())));
+        Nodes.push_back(std::pair<string, string>(string("Language"), string(GetShaderLanguageName())));
+        Nodes.push_back(std::pair<string, string>(string("ShaderList"), rList));
+
         if (!CreateRequest(CompileData, Nodes))
         {
             AZ_Error("RemoteCompiler", false, "CShaderSrv::RequestLine() : failed composing Request XML\n");
+            VerboseLogging(true);
             return false;
         }
 
@@ -832,6 +947,7 @@ namespace NRemoteCompiler
             if (AZ::AzSock::SocketErrorOccured(result))
             {
                 AZ_Error("RemoteCompiler", false, "CShaderSrv::Send() : failed (%s)\n", AZ::AzSock::GetStringForError(result));
+                VerboseLogging(true);
                 return false;
             }
             wTotal += (size_t)result;
@@ -842,7 +958,12 @@ namespace NRemoteCompiler
     bool CShaderSrv::Send(AZSOCKET Socket, std::vector<uint8>& rCompileData)   const
     {
         const uint64 Size   =   static_cast<uint32>(rCompileData.size());
-        return Send(Socket, (const char*)&Size, 8) &&
+        if(Size == 0)
+        {
+            return Send(Socket, (const char*) &Size, sizeof(Size));//send 0... if Size is 0 then (const char*)&rCompileData[0] cannot be accessed.
+        }
+
+        return Send(Socket, (const char*)&Size, sizeof(Size)) &&
                Send(Socket, (const char*)&rCompileData[0], static_cast<uint32>(Size));
     }
 
@@ -882,6 +1003,7 @@ namespace NRemoteCompiler
                         if (waitingtime > MAX_TIME_TO_WAIT)
                         {
                             AZ_Error("RemoteCompiler", false, "CShaderSrv::Recv() : Out of time during waiting %d seconds on block, sys_net_errno=%s\n", MAX_TIME_TO_WAIT, AZ::AzSock::GetStringForError(Recived));
+                            VerboseLogging(true);
                             return ESRecvFailed;
                         }
 
@@ -894,6 +1016,7 @@ namespace NRemoteCompiler
                     {
                         // count on retry to fix this after a small sleep
                         AZ_Error("RemoteCompiler", false, "CShaderSrv::Recv() : at offset %lu: sys_net_errno=%s\n", (unsigned long)rCompileData.size(), AZ::AzSock::GetStringForError(Recived));
+                        VerboseLogging(true);
                         return ESRecvFailed;
                     }
                 }
@@ -934,6 +1057,7 @@ namespace NRemoteCompiler
         if (rCompileData.size() < OffsetToPayload)
         {
             AZ_Error("RemoteCompiler", false, "CShaderSrv::ProcessResponse() : data incomplete from server (only %i bytes received)\n", static_cast<int>(rCompileData.size()));
+            VerboseLogging(true);
             rCompileData.clear();
             return ESRecvFailed;
         }
@@ -944,6 +1068,7 @@ namespace NRemoteCompiler
         if (payloadSize + OffsetToPayload != rCompileData.size())
         {
             AZ_Error("RemoteCompiler", false, "CShaderSrv::ProcessResponse() : data incomplete from server - expected %i bytes, got %i bytes\n", static_cast<int>(payloadSize + OffsetToPayload), static_cast<int>(rCompileData.size()));
+            VerboseLogging(true);
             rCompileData.clear();
             return ESRecvFailed;
         }
@@ -1003,6 +1128,7 @@ namespace NRemoteCompiler
             }
 
             AZ_Error("RemoteCompiler", false, "CShaderSrv::ProcessResponse() : data contains invalid return status: state = %d \n", state);
+            VerboseLogging(true);
 
             return ESInvalidState;
         }
@@ -1031,6 +1157,7 @@ namespace NRemoteCompiler
         if (rCompileData.size() > std::numeric_limits<int>::max())
         {
             AZ_Error("RemoteCompiler", false, "CShaderSrv::Send() : compile data too big to send.\n");
+            VerboseLogging(true);
             return ESFailed;
         }
 
@@ -1088,9 +1215,10 @@ namespace NRemoteCompiler
             ServerVec.push_back("localhost");
         }
 
-#ifdef SHADERSERVER_EXTRALOG
-         AZ_TracePrintf("RemoteCompiler", "CShaderSrv::SendRequestViaSocket() : connect to remote shader compiler server: %s...\n", gRenDev->CV_r_ShaderCompilerServer->GetString());
-#endif //SHADERSERVER_EXTRALOG
+        if(VerboseLogging())
+        {
+            AZ_TracePrintf("RemoteCompler", "INFO: CShaderSrv::SendRequestViaSocket(): connect to remote shader compiler server: %s...\n", gRenDev->CV_r_ShaderCompilerServer->GetString());
+        }
 
         //connect
         //try each entry in the list from front to back
@@ -1101,18 +1229,20 @@ namespace NRemoteCompiler
         {
             string Server = ServerVec[nServer];
 
-            //try 5 times each in turn
-            for (uint32 nRetries = 0; nRetries < 5; nRetries++)
+            //try 3 times each in turn
+            for (uint32 nRetries = 0; nRetries < 3; nRetries++)
             {
                 if(nRetries)
                 {
-                    AZ_Warning("RemoteCompiler", false, "CShaderSrv::SendRequestViaSocket() : retry %i to connect to: %s...\n", nRetries, Server.c_str());
+                    AZ_Warning("RemoteCompiler", false, "WARN: CShaderSrv::SendRequestViaSocket(): retry % i to connect to: %s...\n", nRetries, Server.c_str());
+                    VerboseLogging(true);
                 }
                 else
                 {
-#ifdef SHADERSERVER_EXTRALOG
-                    AZ_TracePrintf("RemoteCompiler", "CShaderSrv::SendRequestViaSocket() : connect to: %s...\n", Server.c_str());
-#endif
+                    if(VerboseLogging())
+                    {
+                        AZ_TracePrintf("RemoteCompler", "INFO: CShaderSrv::SendRequestViaSocket(): connect to: %s...\n", Server.c_str());
+                    }
                 }
 
                 //create the socket
@@ -1121,18 +1251,48 @@ namespace NRemoteCompiler
                 //if anything went wrong creating the socket, this was not a valid try, so try again
                 if (!AZ::AzSock::IsAzSocketValid(Socket))
                 {
-                    AZ_Warning("RemoteCompiler", false, "CShaderSrv::SendRequestViaSocket() : can't create client socket: error %s\n", AZ::AzSock::GetStringForError(Socket));
+                    if (nRetries)
+                    {
+                        nRetries--;
+                    }
+                    AZ_Warning("RemoteCompiler", false, "WARN: CShaderSrv::SendRequestViaSocket(): can't create client socket: error %s\n", AZ::AzSock::GetStringForError(Socket));
+                    VerboseLogging(true);
                 }
                 else
                 {
                     //we have a socket, try to connect
                     AZ::AzSock::SetSocketOption(Socket, AZ::AzSock::AzSocketOption::REUSEADDR, true);
                     AZ::AzSock::AzSocketAddress socketAddress;
-                    if (!socketAddress.SetAddress(Server.c_str(), gRenDev->CV_r_ShaderCompilerPort))
+                    socketAddress.SetAddress(Server.c_str(), gRenDev->CV_r_ShaderCompilerPort);
+
+                    Err = AZ::AzSock::Connect(Socket, socketAddress);
+                    if (AZ::AzSock::SocketErrorOccured(Err))
                     {
-                        AZ_Warning("RemoteCompiler", false, "CShaderSrv::SendRequestViaSocket() : SetAddress(%s, %d) has failed, try again in 5 seconds. (retrying %d)\n", Server.c_str(), gRenDev->CV_r_ShaderCompilerPort, nRetries);
-                        //wait 5 seconds before retry
-                        Sleep(5000);
+                        //connect failed, see if it failed because we don't have enough buffer, if so its not a legit fail of this server, retry
+
+                        // if buffer is full try sleeping a bit before retrying
+                        // (if you keep getting this issue then try using same shutdown mechanism as server is doing (see server code))
+                        // (for more info on windows side check : http://www.proxyplus.cz/faq/articles/EN/art10002.htm)
+                        if (Err == static_cast<AZ::s32>(AZ::AzSock::AzSockError::eASE_ENOBUFS))
+                        {
+                            AZ_Warning("RemoteCompiler", false, "WARN: CShaderSrv::SendRequestViaSocket(): ENOBUFS: the buffer is full, try again in 5 seconds. %s (sys_net_errno=%s, retrying %d)\n", Server.c_str(), AZ::AzSock::GetStringForError(Err), nRetries);
+                            VerboseLogging(true);
+                            if (nRetries)
+                            {
+                                nRetries--;
+                            }
+                            //wait 5 seconds before retry
+                            Sleep(5000);
+                        }
+                        else
+                        {
+                            //legit fail to connect, retry
+                            AZ_Warning("RemoteCompiler", false, "WARN: CShaderSrv::SendRequestViaSocket(): could not connect to %s (sys_net_errno=%s, retrying %d)\n", Server.c_str(), AZ::AzSock::GetStringForError(Err), nRetries);
+                            VerboseLogging(true);
+
+                            //wait 1 second before retry
+                            Sleep(1000);
+                        }
 
                         //close the socket for a retry
                         AZ::AzSock::CloseSocket(Socket);
@@ -1140,43 +1300,36 @@ namespace NRemoteCompiler
                     }
                     else
                     {
-                        Err = AZ::AzSock::Connect(Socket, socketAddress);
-                        if (AZ::AzSock::SocketErrorOccured(Err))
+                        if(VerboseLogging())
                         {
-                            //connect failed, see if it failed because we don't have enough buffer, if so its not a legit fail of this server, retry
+                            AZ_TracePrintf("RemoteCompiler", "INFO: CShaderSrv::SendRequestViaSocket(): connected to: %s...\n", Server.c_str());
+                        }
 
-                            // if buffer is full try sleeping a bit before retrying
-                            // (if you keep getting this issue then try using same shutdown mechanism as server is doing (see server code))
-                            // (for more info on windows side check : http://www.proxyplus.cz/faq/articles/EN/art10002.htm)
-                            if (Err == static_cast<AZ::s32>(AZ::AzSock::AzSockError::eASE_ENOBUFS))
-                            {
-                                AZ_Warning("RemoteCompiler", false, "CShaderSrv::SendRequestViaSocket() : ENOBUFS: the buffer is full, try again in 5 seconds. %s (sys_net_errno=%s, retrying %d)\n", Server.c_str(), AZ::AzSock::GetStringForError(Err), nRetries);
-                                Sleep(5000);
-                            }
-                            else
-                            {
-                                //legit fail to connect, retry
-                                AZ_Warning("RemoteCompiler", false, "CShaderSrv::SendRequestViaSocket() : could not connect to %s (sys_net_errno=%s, retrying %d)\n", Server.c_str(), AZ::AzSock::GetStringForError(Err), nRetries);
+                        didconnect = true;
+                        //we connected, send
+                        if (!Send(Socket, rCompileData))
+                        {
+                            //send failed
+                            AZ_Warning("RemoteCompiler", false, "WARN: CShaderSrv::SendRequestViaSocket(): failed to send: sys_net_errno=%s\n", AZ::AzSock::GetStringForError(Err));
+                            VerboseLogging(true);
 
-                                //wait 1 second before retry
-                                Sleep(1000);
-                            }
-
-                            //close the socket for a retry
+                            //wait 1 second before retry
+                            Sleep(1000);
+                            
                             AZ::AzSock::CloseSocket(Socket);
                             Socket = AZ_SOCKET_INVALID;
                         }
                         else
                         {
-#ifdef SHADERSERVER_EXTRALOG
-                            AZ_TracePrintf("RemoteCompiler", "CShaderSrv::SendRequestViaSocket() : connected to: %s...\n", Server.c_str());
-#endif
-                            didconnect = true;
-                            //we connected, send
-                            if (!Send(Socket, rCompileData))
+                            sent = true;
+                            //send succeeded, wait for recv
+                            EServerError Error = Recv(Socket, rCompileData);
+                            if (Error != ESOK)
                             {
-                                //send failed
-                                AZ_Warning("RemoteCompiler", false, "CShaderSrv::SendRequestViaSocket() : failed to send: sys_net_errno=%s\n", AZ::AzSock::GetStringForError(Err));
+                                //recv failed
+                                AZ_Warning("RemoteCompiler", false, "WARN: CShaderSrv::SendRequestViaSocket(): failed to recv: EServerError=%i\n", Error);
+                                VerboseLogging(true);
+
                                 //wait 1 second before retry
                                 Sleep(1000);
 
@@ -1185,41 +1338,27 @@ namespace NRemoteCompiler
                             }
                             else
                             {
-                                sent = true;
-                                //send succeeded, wait for recv
-                                EServerError Error = Recv(Socket, rCompileData);
-                                if (Error != ESOK)
+                                received = true;
+                                //we are done, it succeeded
+                                //shutdown the client side of the socket because we are done listening
+                                if(VerboseLogging())
                                 {
-                                    //recv failed
-                                    AZ_Warning("RemoteCompiler", false, "CShaderSrv::SendRequestViaSocket() : failed to recv: EServerError=%i\n", Error);
-                                    //wait 1 second before retry
-                                    Sleep(1000);
+                                    AZ_TracePrintf("RemoteCompler", "INFO: CShaderSrv::SendRequestViaSocket(): shader request succeeded.\n");
+                                }
 
-                                    AZ::AzSock::CloseSocket(Socket);
-                                    Socket = AZ_SOCKET_INVALID;
+                                Err = AZ::AzSock::Shutdown(Socket, SD_BOTH);
+                                if (Err == SOCKET_ERROR)
+                                {
+                                    AZ_Warning("RemoteCompiler", false, "WARN: CShaderSrv::SendRequestViaSocket(): succeeded but and got error shutting down socket: sys_net_errno=%s\n", AZ::AzSock::GetStringForError(Err));
+                                    VerboseLogging(true);
                                 }
                                 else
                                 {
-                                    received = true;
-                                    //we are done, it succeeded
-                                    //shutdown the client side of the socket because we are done listening
-#ifdef SHADERSERVER_EXTRALOG
-                                    AZ_TracePrintf("RemoteCompiler", "CShaderSrv::SendRequestViaSocket() : shader request succeeded.\n");
-#endif
-
-                                    Err = AZ::AzSock::Shutdown(Socket, SD_BOTH);
-                                    if (Err == SOCKET_ERROR)
-                                    {
-                                        AZ_Warning("RemoteCompiler", false, "CShaderSrv::SendRequestViaSocket() : succeeded but and got error shutting down socket: sys_net_errno=%s\n", AZ::AzSock::GetStringForError(Err));
-                                    }
-                                    else
-                                    {
-                                        //put this in the else because OSX can have a problem calling closesocket on a failed shutdown of a socket
-                                        AZ::AzSock::CloseSocket(Socket);
-                                    }
-                                    Socket = AZ_SOCKET_INVALID;
-                                    return ESOK;
+                                    //put this in the else because OSX can have a problem calling closesocket on a failed shutdown of a socket
+                                    AZ::AzSock::CloseSocket(Socket);
                                 }
+                                Socket = AZ_SOCKET_INVALID;
+                                return ESOK;
                             }
                         }
                     }
@@ -1234,14 +1373,25 @@ namespace NRemoteCompiler
         
         if (didconnect)
         {
-            AZ_Error("RemoteCompiler", false, "CShaderSrv::SendRequestViaSocket() : We connected to the server but failed to compile a shader!\n" );
+            const AZStd::string title = "Remote Shader Compiler";
+            const AZStd::string message = AZStd::string::format("We connected to the server but failed to compile the shader!");
+            AZ_Error("RemoteCompiler", false, "ERROR: CShaderSrv::SendRequestViaSocket(): %s\n", message.c_str());
+            VerboseLogging(true);
+            if(!gEnv->IsInToolMode())
+            {
+                EBUS_EVENT(AZ::NativeUI::NativeUIRequestBus, DisplayOkDialog, title, message, false);
+            }
         }
         else
         {
             const AZStd::string title = "Remote Shader Compiler";
             const AZStd::string message = AZStd::string::format("Unable to connect to Remote Shader Compiler at %s", gRenDev->CV_r_ShaderCompilerServer->GetString());
-            AZ_Error("RemoteCompiler", false, "CShaderSrv::SendRequestViaSocket() : %s\n", message.c_str());
-            EBUS_EVENT(NativeUI::NativeUIRequestBus, DisplayOkDialog, title, message, false);
+            AZ_Error("RemoteCompiler", false, "ERROR: CShaderSrv::SendRequestViaSocket(): %s\n", message.c_str());
+            VerboseLogging(true);
+            if(!gEnv->IsInToolMode())
+            {
+                EBUS_EVENT(AZ::NativeUI::NativeUIRequestBus, DisplayOkDialog, title, message, false);
+            }
         }
         return ESNetworkError;
     }
@@ -1251,6 +1401,7 @@ namespace NRemoteCompiler
         if (rCompileData.empty())
         {
             AZ_Error("RemoteCompiler", false, "CShaderSrv::EncapsulateRequestInEngineConnectionProtocol() : Engine Connection was unable to send the message - zero bytes size.");
+            VerboseLogging(true);
             return false;
         }
 
@@ -1308,17 +1459,21 @@ namespace NRemoteCompiler
         {
             rCompileData.clear();
             AZ_Error("RemoteCompiler", false, "CShaderSrv::SendRequestViaEngineConnection() : Engine Connection was unable to send the message.");
+            VerboseLogging(true);
             return ESNetworkError;
         }
 
         if (rCompileData.empty())
         {
             AZ_Error("RemoteCompiler", false, "CShaderSrv::SendRequestViaEngineConnection() : Recv data empty from server (didn't receive anything)\n");
+            VerboseLogging(true);
 
             const AZStd::string title = "Remote Shader Compiler";
             const AZStd::string message = "Unable to connect to Remote Shader Compiler";
-            EBUS_EVENT(NativeUI::NativeUIRequestBus, DisplayOkDialog, title, message, false);
-
+            if(!gEnv->IsInToolMode())
+            {
+                EBUS_EVENT(AZ::NativeUI::NativeUIRequestBus, DisplayOkDialog, title, message, false);
+            }
             return ESRecvFailed;
         }
 

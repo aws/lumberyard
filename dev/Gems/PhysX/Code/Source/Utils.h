@@ -12,7 +12,15 @@
 
 #pragma once
 
+#include <PhysX/ForceRegionComponentBus.h>
+
+#include <AzCore/Math/Quaternion.h>
+#include <AzCore/Math/Transform.h>
+#include <AzCore/Math/Vector3.h>
+#include <AzCore/RTTI/BehaviorContext.h>
 #include <AzFramework/Physics/Material.h>
+#include <AzFramework/Physics/ShapeConfiguration.h>
+
 #include <PxPhysicsAPI.h>
 
 namespace Physics
@@ -43,7 +51,7 @@ namespace PhysX
 
     namespace Utils
     {
-        bool CreatePxGeometryFromConfig(const Physics::ShapeConfiguration& shapeConfiguration, physx::PxGeometryHolder& pxGeometry);
+        bool CreatePxGeometryFromConfig(const Physics::ShapeConfiguration& shapeConfiguration, physx::PxGeometryHolder& pxGeometry, bool warnForNullAsset = true);
 
         physx::PxShape* CreatePxShapeFromConfig(
             const Physics::ColliderConfiguration& colliderConfiguration, 
@@ -84,6 +92,31 @@ namespace PhysX
         /// Logs a warning message using the names of the entities provided.
         void WarnEntityNames(const AZStd::vector<AZ::EntityId>& entityIds, const char* category, const char* message);
 
+        /// Converts collider position and orientation offsets to a transform.
+        AZ::Transform GetColliderLocalTransform(const AZ::Vector3& colliderRelativePosition
+            , const AZ::Quaternion& colliderRelativeRotation);
+
+        /// Combines collider position and orientation offsets and world transform to a transform.
+        AZ::Transform GetColliderWorldTransform(const AZ::Transform& worldTransform
+            , const AZ::Vector3& colliderRelativePosition
+            , const AZ::Quaternion& colliderRelativeRotation);
+
+        /// Converts points in a collider's local space to world space positions 
+        /// accounting for collider position and orientation offsets.
+        void ColliderPointsLocalToWorld(AZStd::vector<AZ::Vector3>& pointsInOut
+            , const AZ::Transform& worldTransform
+            , const AZ::Vector3& colliderRelativePosition
+            , const AZ::Quaternion& colliderRelativeRotation);
+
+        /// Returns AABB of collider by constructing PxGeometry from collider and shape configuration,
+        /// and invoking physx::PxGeometryQuery::getWorldBounds.
+        /// This function is used only by editor components.
+        AZ::Aabb GetColliderAabb(const AZ::Transform& worldTransform
+            , const ::Physics::ShapeConfiguration& shapeConfiguration
+            , const ::Physics::ColliderConfiguration& colliderConfiguration);
+
+        bool TriggerColliderExists(AZ::EntityId entityId);
+
         /// Logs a warning if there is more than one connected bus of the particular type.
         template<typename BusT>
         void LogWarningIfMultipleComponents(const char* messageCategroy, const char* messageFormat)
@@ -94,6 +127,31 @@ namespace PhysX
                 WarnEntityNames(entityIds, messageCategroy, messageFormat);
             }
         }
+    }
+
+    namespace ReflectionUtils
+    {
+        /// Forwards invokation of CalculateNetForce in a force region to script canvas.
+        class ForceRegionBusBehaviorHandler
+            : public ForceRegionNotificationBus::Handler
+            , public AZ::BehaviorEBusHandler
+        {
+        public:
+            AZ_EBUS_BEHAVIOR_BINDER(ForceRegionBusBehaviorHandler, "{EB6C0F7A-0BDA-4052-84C0-33C05E3FF739}", AZ::SystemAllocator
+                , OnCalculateNetForce
+            );
+
+            static void Reflect(AZ::ReflectContext* context);
+
+            /// Callback invoked when net force exerted on object is computed by a force region.
+            void OnCalculateNetForce(AZ::EntityId forceRegionEntityId
+                , AZ::EntityId targetEntityId
+                , const AZ::Vector3& netForceDirection
+                , float netForceMagnitude) override;
+        };
+
+        /// Reflect API specific to PhysX physics. Generic physics API should be reflected in Physics::ReflectionUtils::ReflectPhysicsApi.
+        void ReflectPhysXOnlyApi(AZ::ReflectContext* context);
     }
 
     namespace PxActorFactories

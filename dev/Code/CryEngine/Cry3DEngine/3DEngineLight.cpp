@@ -384,7 +384,7 @@ uint16 CLightVolumesMgr::RegisterVolume(const Vec3& vPos, f32 fRadius, uint8 nCl
 {
     DynArray<SLightVolInfo*>& lightVolsInfo = m_pLightVolsInfo[passInfo.ThreadID()];
 
-    IF ((m_bUpdateLightVolumes & (lightVolsInfo.size() < LV_MAX_COUNT)) && fRadius < 256.0f, 1)
+    IF ((m_bUpdateLightVolumes && (lightVolsInfo.size() < LV_MAX_COUNT)) && fRadius < 256.0f, 1)
     {
         FUNCTION_PROFILER_3DENGINE;
 
@@ -430,7 +430,7 @@ uint16 CLightVolumesMgr::RegisterVolume(const Vec3& vPos, f32 fRadius, uint8 nCl
 
 void CLightVolumesMgr::RegisterLight(const CDLight& pDL, uint32 nLightID, const SRenderingPassInfo& passInfo)
 {
-    IF ((m_bUpdateLightVolumes & !(pDL.m_Flags & LV_DLF_LIGHTVOLUMES_MASK)), 1)
+    IF ((m_bUpdateLightVolumes && !(pDL.m_Flags & LV_DLF_LIGHTVOLUMES_MASK)), 1)
     {
         FUNCTION_PROFILER_3DENGINE;
 

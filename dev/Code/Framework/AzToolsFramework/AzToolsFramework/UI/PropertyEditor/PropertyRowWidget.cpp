@@ -162,7 +162,7 @@ namespace AzToolsFramework
 
     void PropertyRowWidget::createContainerButtons()
     {
-        static QIcon s_iconClear(":/PropertyEditor/Resources/cross-circle-small.png");
+        static QIcon s_iconClear(":/PropertyEditor/Resources/trash-small.png");
         static QIcon s_iconAdd(":/PropertyEditor/Resources/list-add-small.png");
 
         if (!m_containerClearButton)
@@ -704,14 +704,14 @@ namespace AzToolsFramework
             {
                 for (size_t i = 0; i < attributes.size(); ++i)
                 {
-                    const AZ::Edit::AttributePair& attrPair = attributes[i];
+                    const auto& attrPair = attributes[i];
 
                     if (attrPair.second->m_describesChildren)
                     {
                         continue;
                     }
 
-                    PropertyAttributeReader reader(m_sourceNode->GetParent()->FirstInstance(), attrPair.second);
+                    PropertyAttributeReader reader(m_sourceNode->GetParent()->FirstInstance(), &*attrPair.second);
                     ConsumeAttribute(attrPair.first, reader, initial, &newToolTip, &foundDescription);
                 }
             };

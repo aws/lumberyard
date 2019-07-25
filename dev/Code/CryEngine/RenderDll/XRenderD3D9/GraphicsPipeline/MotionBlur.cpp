@@ -273,7 +273,13 @@ float CMotionBlurPass::ComputeMotionScale()
 
 void CMotionBlurPass::Execute()
 {
-    PROFILE_LABEL_SCOPE("MB");
+    // Added a check to make sure we're only running the new pipeline motion blur while the new pipeline is enabled.
+    if (CRenderer::CV_r_GraphicsPipeline <= 0)
+    {
+        return;
+    }
+
+    PROFILE_LABEL_SCOPE("MOTION_BLUR");
 
     CD3D9Renderer* rd = gcpRendD3D;
     CShader* pShader = CShaderMan::s_shPostMotionBlur;

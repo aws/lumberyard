@@ -115,12 +115,13 @@ namespace AZ
         struct AllocatorDummy{};
     }
 
-    template <class Schema, class DescriptorType=typename Schema::Descriptor>
+    template <class SchemaType, class DescriptorType = typename SchemaType::Descriptor>
     class AllocatorBase
         : public IAllocator
     {
     public:
         using Descriptor = DescriptorType;
+        using Schema = SchemaType;
 
         AllocatorBase(const char* name, const char* desc)
             : m_schema(nullptr)

@@ -471,7 +471,18 @@ def check_cpp_platform_tools(toolsetVer, platform_tool_name, vs2017vswhereOption
             if vswhere_exe == '':
                 return False
             installation_path = subprocess.check_output([vswhere_exe, '-property', 'installationPath'] + vs2017vswhereOptions)
+            if not installation_path:
+                try:
+                    version_arg_index = vs2017vswhereOptions.index('-version')
+                    Logs.warn('[WARN] VSWhere could not find an installed version of Visual Studio matching the version requirements provided (-version {}). Attempting to fall back on any available installed version.'.format(vs2017vswhereOptions[version_arg_index + 1]))
+                    Logs.warn('[WARN] Lumberyard defaults the version range to the maximum version tested against before each release. You can modify the version range in the WAF user_settings\' option win_vs2017_vswhere_args under [Windows Options].')
+                    del vs2017vswhereOptions[version_arg_index : version_arg_index + 2]
+                    installation_path = subprocess.check_output([vswhere_exe, '-property', 'installationPath'] + vs2017vswhereOptions)
+                except ValueError:
+                    pass
+
             installation_path = installation_path[:len(installation_path)-2]
+            Logs.info_once('[INFO] Using Visual Studio version installed at: {}'.format(installation_path))
             build_root = os.path.join(installation_path, 'MSBuild', toolsetVer+'.0')
             props_file = os.path.join(build_root, 'Microsoft.common.props')
             return os.path.exists(props_file)

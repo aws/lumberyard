@@ -28,8 +28,10 @@
 
 #include <AzTest/AzTest.h>
 
+#include <csignal>
 #include <stdio.h>
 
+#include <AzCore/Memory/AllocatorManager.h>
 #include <AzCore/Memory/OSAllocator.h>
 #include <AzCore/base.h>
 #include <AzCore/std/typetraits/alignment_of.h>
@@ -381,6 +383,24 @@ namespace UnitTest
 #endif
 
             AZ::AllocatorInstance<AZ::OSAllocator>::Destroy(); // used by the bus
+
+            // At this point, the AllocatorManager should not have any allocators left. If we happen to have any,
+            // we exit the test with an error code (this way the test process does not return 0 and the test run
+            // is considered a failure).
+            AZ::AllocatorManager& allocatorManager = AZ::AllocatorManager::Instance();
+            const int numAllocators = allocatorManager.GetNumAllocators();
+            if (numAllocators)
+            {
+                // Print the name of the allocators still in the AllocatorManager
+                testing::internal::ColoredPrintf(testing::internal::COLOR_RED, "[     FAIL ] There are still %d registered allocators:\n", numAllocators);
+                for (int i = 0; i < numAllocators; ++i)
+                {
+                    testing::internal::ColoredPrintf(testing::internal::COLOR_RED, "\t\t%s\n", allocatorManager.GetAllocator(i)->GetName());
+                }
+
+                // Force a death test
+                std::raise(SIGTERM);
+            }
         }
     };
 

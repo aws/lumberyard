@@ -29,9 +29,9 @@ namespace AZStd
     //////////////////////////////////////////////////////////////////////////
     // thread
     template <class F>
-    inline thread::thread(F f, const thread_desc* desc)
+    inline thread::thread(F&& f, const thread_desc* desc)
     {
-        Internal::thread_info* ti = Internal::create_thread_info(f);
+        Internal::thread_info* ti = Internal::create_thread_info(AZStd::forward<F>(f));
         m_thread.m_handle = Internal::create_thread(desc, ti, &m_thread.m_id);
     }
     //template <class F,class A1>

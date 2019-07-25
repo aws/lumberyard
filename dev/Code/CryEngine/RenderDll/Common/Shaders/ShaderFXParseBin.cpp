@@ -12,7 +12,7 @@
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
 #include "StdAfx.h"
-#include <IPlatformOS.h>
+#include <AzCore/NativeUI/NativeUIRequests.h>
 #include "UnalignedBlit.h"
 
 #include "DeviceManager/Enums.h"
@@ -641,7 +641,7 @@ void CShaderManBin::mfGeneratePublicFXParams(CShader* pSH, CParserBin& Parser)
             for (j = 0; j < FXP.m_PublicParams.size(); j++)
             {
                 SShaderParam* p = &FXP.m_PublicParams[j];
-                if (p->m_Name == szName)
+                if (azstricmp(p->m_Name.c_str(), szName) == 0)
                 {
                     break;
                 }
@@ -1128,6 +1128,13 @@ void CShaderManBin::InvalidateCache(bool bIncludesOnly)
     m_bBinaryShadersLoaded = false;
 
     g_shaderBucketAllocator.cleanup();
+    
+#if defined(SHADERS_SERIALIZING)
+    // Clear our .fxb cache if we are deleting our shader binary cache.
+    // We end up initializing part of the shader system with D3D11 as the platform
+    // and then switch to the real platform soon after, so make sure this cache is clean.
+    gRenDev->m_cEF.ClearSResourceCache();
+#endif    
 }
 
 #define SEC5_FILETIME 10*1000*1000*5
@@ -1305,22 +1312,16 @@ SShaderBin* CShaderManBin::GetBinShader(const char* szName, bool bInclude, uint3
 
                         if (bShowMessageBox)
                         {
-                            IPlatformOS::EMsgBoxResult result;
-
-                            IPlatformOS* pOS = gEnv->pSystem->GetPlatformOS();
-                            if (pOS)
+                            AZStd::string result;
+                            EBUS_EVENT_RESULT(result, AZ::NativeUI::NativeUIRequestBus, DisplayOkDialog, "Invalid ShaderCache", acTemp, true);
+                            if (result == "Cancel")
                             {
-                                result = pOS->DebugMessageBox(acTemp, "Invalid ShaderCache");
-
-                                if (result == IPlatformOS::eMsgBox_Cancel)
-                                {
-                                    DebugBreak();
-                                }
-                                else
-                                {
-                                    bShowMessageBox = false;
-                                    Sleep(33);
-                                }
+                                DebugBreak();
+                            }
+                            else if (!result.empty())
+                            {
+                                bShowMessageBox = false;
+                                Sleep(33);
                             }
                             else
                             {

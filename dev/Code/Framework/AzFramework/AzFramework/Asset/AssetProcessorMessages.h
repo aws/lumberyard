@@ -894,7 +894,7 @@ namespace AzFramework
         {
         public:
             AZ_CLASS_ALLOCATOR(PathDestroyResponse, AZ::OSAllocator, 0);
-            AZ_RTTI(PathDestroyRequest, "{850AEAB7-E3AD-4BD4-A08E-78A4E3A62D73}", BaseAssetProcessorMessage);
+            AZ_RTTI(PathDestroyResponse, "{850AEAB7-E3AD-4BD4-A08E-78A4E3A62D73}", BaseAssetProcessorMessage);
             static void Reflect(AZ::ReflectContext* context);
 
             PathDestroyResponse() = default;
@@ -925,7 +925,7 @@ namespace AzFramework
         {
         public:
             AZ_CLASS_ALLOCATOR(FileRemoveResponse, AZ::OSAllocator, 0);
-            AZ_RTTI(FileRemoveRequest, "{1B81110E-7004-462A-98EB-12C3D73477BB}", BaseAssetProcessorMessage);
+            AZ_RTTI(FileRemoveResponse, "{1B81110E-7004-462A-98EB-12C3D73477BB}", BaseAssetProcessorMessage);
             static void Reflect(AZ::ReflectContext* context);
 
             FileRemoveResponse() = default;
@@ -1003,8 +1003,8 @@ namespace AzFramework
             : public BaseAssetProcessorMessage
         {
         public:
-            AZ_CLASS_ALLOCATOR(FileRenameRequest, AZ::OSAllocator, 0);
-            AZ_RTTI(FileRenameRequest, "{66355EF6-B91F-4E2E-B50A-F59F6E46712D}", BaseAssetProcessorMessage);
+            AZ_CLASS_ALLOCATOR(FindFilesRequest, AZ::OSAllocator, 0);
+            AZ_RTTI(FindFilesRequest, "{66355EF6-B91F-4E2E-B50A-F59F6E46712D}", BaseAssetProcessorMessage);
             static void Reflect(AZ::ReflectContext* context);
             static unsigned int MessageType();
 
@@ -1022,8 +1022,8 @@ namespace AzFramework
         public:
             typedef AZStd::vector<AZ::OSString, AZ::OSStdAllocator> FileList;
 
-            AZ_CLASS_ALLOCATOR(FileRenameRequest, AZ::OSAllocator, 0);
-            AZ_RTTI(FileRenameRequest, "{422C7AD1-CEA7-4E1C-B098-687B2A68116F}", BaseAssetProcessorMessage);
+            AZ_CLASS_ALLOCATOR(FindFilesResponse, AZ::OSAllocator, 0);
+            AZ_RTTI(FindFilesResponse, "{422C7AD1-CEA7-4E1C-B098-687B2A68116F}", BaseAssetProcessorMessage);
             static void Reflect(AZ::ReflectContext* context);
 
             FindFilesResponse() = default;
@@ -1033,5 +1033,42 @@ namespace AzFramework
             AZ::u32 m_resultCode;
             FileList m_files;
         };
+
+        class FileTreeRequest
+            : public BaseAssetProcessorMessage
+        {
+        public:
+            AZ_CLASS_ALLOCATOR(FileTreeRequest, AZ::OSAllocator, 0);
+            AZ_RTTI(FileTreeRequest, "{6838CC3C-2CF1-443C-BFBF-A530003B6A71}", BaseAssetProcessorMessage);
+            static void Reflect(AZ::ReflectContext* context);
+            static unsigned int MessageType();
+
+            FileTreeRequest() = default;
+            unsigned int GetMessageType() const override;
+        };
+
+        class FileTreeResponse
+            : public BaseAssetProcessorMessage
+        {
+        public:
+            typedef AZStd::vector<AZ::OSString, AZ::OSStdAllocator> FileList;
+            typedef AZStd::vector<AZ::OSString, AZ::OSStdAllocator> FolderList;
+
+            AZ_CLASS_ALLOCATOR(FileTreeResponse, AZ::OSAllocator, 0);
+            AZ_RTTI(FileTreeResponse, "{0F7854DA-63FA-4D59-B298-53D84150DFF9}", BaseAssetProcessorMessage);
+            static void Reflect(AZ::ReflectContext* context);
+
+            FileTreeResponse() = default;
+            FileTreeResponse(AZ::u32 resultCode
+                , const FileList& files = FileList()
+                , const FolderList& folders = FolderList());
+            unsigned int GetMessageType() const override;
+
+            AZ::u32 m_resultCode;
+            FileList m_fileList;
+            FolderList m_folderList;
+        };
+
+
     } // namespace AssetSystem
 } // namespace AzFramework

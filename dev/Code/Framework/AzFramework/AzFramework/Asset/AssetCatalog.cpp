@@ -377,7 +377,18 @@ namespace AzFramework
         if (!bytes.empty())
         {
             AZ::IO::MemoryStream catalogStream(bytes.data(), bytes.size());
+        #if (AZ_TRAIT_PUMP_SYSTEM_EVENTS_WHILE_LOADING)
+            ApplicationRequests::Bus::Broadcast(&ApplicationRequests::PumpSystemEventLoopWhileDoingWorkInNewThread,
+                AZStd::chrono::milliseconds(AZ_TRAIT_PUMP_SYSTEM_EVENTS_WHILE_LOADING_INTERVAL_MS),
+                [this, &catalogStream, &serializeContext]
+                {
+                    AZ::Utils::LoadObjectFromStreamInPlace<AzFramework::AssetRegistry>(catalogStream, *m_registry.get(), serializeContext, AZ::ObjectStream::FilterDescriptor(&AZ::Data::AssetFilterNoAssetLoading));
+                },
+                "Asset Catalog Loading Thread"
+            );
+        #else
             AZ::Utils::LoadObjectFromStreamInPlace<AzFramework::AssetRegistry>(catalogStream, *m_registry.get(), serializeContext, AZ::ObjectStream::FilterDescriptor(&AZ::Data::AssetFilterNoAssetLoading));
+        #endif // (AZ_TRAIT_PUMP_SYSTEM_EVENTS_WHILE_LOADING)
 
             AZ_TracePrintf("AssetCatalog",
                 "\n========================================================\n"

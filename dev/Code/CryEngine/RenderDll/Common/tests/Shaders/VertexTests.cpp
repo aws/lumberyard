@@ -12,33 +12,42 @@
 #include "StdAfx.h"
 #include <AzTest/AzTest.h>
 #include <Tests/TestTypes.h>
+#include <AzCore/UnitTest/UnitTest.h>
 #include "Common/Shaders/Vertex.h"
 #include "DriverD3D.h"
 // General vertex stream stride
 int32 m_cSizeVF[eVF_Max] =
 {
     0,
+    
     sizeof(SVF_P3F_C4B_T2F),
+    sizeof(SVF_P3F_C4B_T2F_T2F),
     sizeof(SVF_P3S_C4B_T2S),
+    sizeof(SVF_P3S_C4B_T2S_T2S),
     sizeof(SVF_P3S_N4B_C4B_T2S),
+
     sizeof(SVF_P3F_C4B_T4B_N3F2),
     sizeof(SVF_TP3F_C4B_T2F),
     sizeof(SVF_TP3F_T2F_T3F),
     sizeof(SVF_P3F_T3F),
     sizeof(SVF_P3F_T2F_T3F),
+
     sizeof(SVF_T2F),
     sizeof(SVF_W4B_I4S),
     sizeof(SVF_C4B_C4B),
     sizeof(SVF_P3F_P3F_I4B),
     sizeof(SVF_P3F),
+
     sizeof(SVF_C4B_T2S),
 
     sizeof(SVF_P2F_T4F_C4F),
-    0, //sizeof(SVF_P2F_T4F_T4F_C4F)
+    sizeof(SVF_P2F_T4F_T4F_C4F),
 
     sizeof(SVF_P2S_N4B_C4B_T1F),
     sizeof(SVF_P3F_C4B_T2S),
-    sizeof(SVF_P2F_C4B_T2F_F4B)
+
+    sizeof(SVF_P2F_C4B_T2F_F4B),    
+    sizeof(SVF_P3F_C4B)
 };
 
 // Legacy table copied from RenderMesh.cpp
@@ -55,11 +64,26 @@ SBufInfoTable m_cBufInfoTable[eVF_Max] =
         OOFS(SVF_P3F_C4B_T2F, color.dcolor),
         -1
     },
+
+    {      //eVF_P3F_C4B_T2F_T2F
+        OOFS(SVF_P3F_C4B_T2F_T2F, st),
+        OOFS(SVF_P3F_C4B_T2F_T2F, color.dcolor),
+        -1
+    },
+
+
     {      //eVF_P3S_C4B_T2S
         OOFS(SVF_P3S_C4B_T2S, st),
         OOFS(SVF_P3S_C4B_T2S, color.dcolor),
         -1
     },
+
+    {      //eVF_P3S_C4B_T2S_T2S
+        OOFS(SVF_P3S_C4B_T2S_T2S, st),
+        OOFS(SVF_P3S_C4B_T2S_T2S, color.dcolor),
+        -1
+    },
+
     {      //eVF_P3S_N4B_C4B_T2S
         OOFS(SVF_P3S_N4B_C4B_T2S, st),
         OOFS(SVF_P3S_N4B_C4B_T2S, color.dcolor),
@@ -114,7 +138,11 @@ SBufInfoTable m_cBufInfoTable[eVF_Max] =
         OOFS(SVF_P2F_T4F_C4F, color),
         -1
     },
-    { -1, -1, -1 }, // eVF_P2F_T4F_T4F_C4F
+    {   // eVF_P2F_T4F_T4F_C4F
+        OOFS(SVF_P2F_T4F_T4F_C4F, st),
+        OOFS(SVF_P2F_T4F_T4F_C4F, color),
+        -1 
+    }, 
     {     // eVF_P2S_N4B_C4B_T1F
         OOFS(SVF_P2S_N4B_C4B_T1F, z),
         OOFS(SVF_P2S_N4B_C4B_T1F, color.dcolor),
@@ -128,6 +156,11 @@ SBufInfoTable m_cBufInfoTable[eVF_Max] =
     {     // SVF_P2F_C4B_T2F_F4B
         OOFS(SVF_P2F_C4B_T2F_F4B, st),
         OOFS(SVF_P2F_C4B_T2F_F4B, color.dcolor),
+        -1
+    },
+	{     // eVF_P3F_C4B
+        -1,
+        OOFS(SVF_P3F_C4B, color.dcolor),
         -1
     },
 };
@@ -318,6 +351,31 @@ bool DeclarationsAreEqual(AZStd::vector<D3D11_INPUT_ELEMENT_DESC>& declarationA,
     return true;
 }
 
+class VertexFormatAssertTest
+    : public ::testing::Test
+    , public UnitTest::AllocatorsBase
+{
+protected:
+    void SetUp() override
+    {
+        UnitTest::AllocatorsBase::SetupAllocator();
+    }
+    void TearDown() override
+    {
+        UnitTest::AllocatorsBase::TeardownAllocator();
+    }
+};
+
+TEST_F(VertexFormatAssertTest, VertexFormatConstructor_AssertsOnInvalidInput)
+{
+    // The vertex format constructor should assert when an invalid vertex format enum is used
+    AZ_TEST_START_ASSERTTEST;
+    AZ::Vertex::Format(static_cast<EVertexFormat>(EVertexFormat::eVF_Max));
+    AZ::Vertex::Format(static_cast<EVertexFormat>(EVertexFormat::eVF_Max + 1));
+    // Expect 2 asserts
+    AZ_TEST_STOP_ASSERTTEST(2);
+}
+
 class VertexFormatTest
     : public ::testing::TestWithParam < int >
     , public UnitTest::AllocatorsBase
@@ -341,7 +399,7 @@ TEST_P(VertexFormatTest, GetStride_MatchesExpected)
     AZ::Vertex::Format format(eVF);
     uint actualSize = format.GetStride();
     uint expectedSize = m_cSizeVF[eVF];
-    ASSERT_EQ(actualSize, expectedSize);
+    EXPECT_EQ(actualSize, expectedSize);
 }
 
 TEST_P(VertexFormatTest, CalculateOffset_MatchesExpected)
@@ -355,12 +413,12 @@ TEST_P(VertexFormatTest, CalculateOffset_MatchesExpected)
     int expectedOffset = m_cBufInfoTable[eVF].OffsTC;
     if (expectedOffset >= 0)
     {
-        ASSERT_TRUE(hasOffset);
-        ASSERT_EQ(actualOffset, expectedOffset);
+        EXPECT_TRUE(hasOffset);
+        EXPECT_EQ(actualOffset, expectedOffset);
     }
     else
     {
-        ASSERT_FALSE(hasOffset);
+        EXPECT_FALSE(hasOffset);
     }
 
     // Color
@@ -368,12 +426,12 @@ TEST_P(VertexFormatTest, CalculateOffset_MatchesExpected)
     expectedOffset = m_cBufInfoTable[eVF].OffsColor;
     if (expectedOffset >= 0)
     {
-        ASSERT_TRUE(hasOffset);
-        ASSERT_EQ(actualOffset, expectedOffset);
+        EXPECT_TRUE(hasOffset);
+        EXPECT_EQ(actualOffset, expectedOffset);
     }
     else
     {
-        ASSERT_FALSE(hasOffset);
+        EXPECT_FALSE(hasOffset);
     }
 
     // Normal
@@ -381,31 +439,31 @@ TEST_P(VertexFormatTest, CalculateOffset_MatchesExpected)
     expectedOffset = m_cBufInfoTable[eVF].OffsNorm;
     if (expectedOffset >= 0)
     {
-        ASSERT_TRUE(hasOffset);
-        ASSERT_EQ(actualOffset, expectedOffset);
+        EXPECT_TRUE(hasOffset);
+        EXPECT_EQ(actualOffset, expectedOffset);
     }
     else
     {
-        ASSERT_FALSE(hasOffset);
+        EXPECT_FALSE(hasOffset);
     }
 }
 
 TEST_F(VertexFormatTest, CalculateOffsetMultipleUVs_MatchesExpected)
 {
-    AZ::Vertex::Format vertexFormat(eVF_P3F_T2F_T3F);
+    AZ::Vertex::Format vertexFormat(eVF_P3F_C4B_T2F_T2F);
     uint offset = 0;
     // The first uv set exists
-    ASSERT_TRUE(vertexFormat.TryCalculateOffset(offset, AZ::Vertex::AttributeUsage::TexCoord, 0));
-    // First Texture coordinate comes after the position, which has 3 32 bit floats
-    ASSERT_EQ(offset, AZ::Vertex::AttributeTypeDataTable[(int)AZ::Vertex::AttributeType::Float32_3].byteSize);
+    EXPECT_TRUE(vertexFormat.TryCalculateOffset(offset, AZ::Vertex::AttributeUsage::TexCoord, 0));
+    // First Texture coordinate comes after the position, which has 3 32 bit floats, and the color, which has 4 bytes
+    EXPECT_EQ(offset, AZ::Vertex::AttributeTypeDataTable[(int)AZ::Vertex::AttributeType::Float32_3].byteSize + AZ::Vertex::AttributeTypeDataTable[(int)AZ::Vertex::AttributeType::Byte_4].byteSize);
 
     // The second uv set exists
-    ASSERT_TRUE(vertexFormat.TryCalculateOffset(offset, AZ::Vertex::AttributeUsage::TexCoord, 1));
-    // Second Texture coordinate comes after the position + the first texture coordinate
-    ASSERT_EQ(offset, AZ::Vertex::AttributeTypeDataTable[(int)AZ::Vertex::AttributeType::Float32_3].byteSize + AZ::Vertex::AttributeTypeDataTable[(int)AZ::Vertex::AttributeType::Float32_2].byteSize);
+    EXPECT_TRUE(vertexFormat.TryCalculateOffset(offset, AZ::Vertex::AttributeUsage::TexCoord, 1));
+    // Second Texture coordinate comes after the position + color + the first texture coordinate
+    EXPECT_EQ(offset, AZ::Vertex::AttributeTypeDataTable[(int)AZ::Vertex::AttributeType::Float32_3].byteSize + AZ::Vertex::AttributeTypeDataTable[(int)AZ::Vertex::AttributeType::Byte_4].byteSize + AZ::Vertex::AttributeTypeDataTable[(int)AZ::Vertex::AttributeType::Float32_2].byteSize);
 
     // The third uv set does not exist
-    ASSERT_FALSE(vertexFormat.TryCalculateOffset(offset, AZ::Vertex::AttributeUsage::TexCoord, 2));
+    EXPECT_FALSE(vertexFormat.TryCalculateOffset(offset, AZ::Vertex::AttributeUsage::TexCoord, 2));
 }
 
 TEST_P(VertexFormatTest, D3DVertexDeclarations_MatchesLegacy)
@@ -420,47 +478,332 @@ TEST_P(VertexFormatTest, D3DVertexDeclarations_MatchesLegacy)
     // eVF_P2F_T4F_T4F_C4F doesn't actually exist in the engine anymore
     // ignore these cases
     // Also ignore eVF_P2S_N4B_C4B_T1F: the T1F attribute has a POSITION semantic name in the legacy declaration, even though both the engine and shader treat it as a TEXCOORD (despite the fact that it is eventually used for a position)
-    if (eVF != eVF_W4B_I4S && eVF != eVF_C4B_C4B && eVF != eVF_P3F_P3F_I4B && eVF != eVF_P2F_T4F_T4F_C4F && eVF != eVF_P2S_N4B_C4B_T1F && eVF != eVF_P2F_C4B_T2F_F4B)
+    // eVF_P3F_C4B_T2F_T2F, eVF_P3S_C4B_T2S_T2S, and eVF_P2F_C4B_T2F_F4B are all new
+    if (eVF != eVF_W4B_I4S && eVF != eVF_C4B_C4B && eVF != eVF_P3F_P3F_I4B && eVF != eVF_P2F_T4F_T4F_C4F && eVF != eVF_P2S_N4B_C4B_T1F && eVF != eVF_P2F_C4B_T2F_F4B && eVF != eVF_P3F_C4B_T2F_T2F && eVF != eVF_P3S_C4B_T2S_T2S)
     {
         AZStd::vector<D3D11_INPUT_ELEMENT_DESC> actual = GetD3D11Declaration(AZ::Vertex::Format(eVF));
         matchesLegacy = DeclarationsAreEqual(actual, expected);
     }
-    ASSERT_TRUE(matchesLegacy);
+    EXPECT_TRUE(matchesLegacy);
+}
+
+TEST_P(VertexFormatTest, GetStride_4ByteAligned)
+{
+    EVertexFormat eVF = (EVertexFormat)GetParam();
+    AZ::Vertex::Format format(eVF);
+    EXPECT_EQ(format.GetStride() % AZ::Vertex::VERTEX_BUFFER_ALIGNMENT, 0);
+}
+
+class VertexFormatComparisonTest
+    : public ::testing::TestWithParam < int >
+    , public UnitTest::AllocatorsBase
+{
+protected:
+    void SetUp() override
+    {
+        UnitTest::AllocatorsBase::SetupAllocator();
+        
+        m_vertexFormatEnum = static_cast<EVertexFormat>(GetParam());
+        m_vertexFormat = AZ::Vertex::Format(m_vertexFormatEnum);
+
+        m_nextVertexFormatEnum = static_cast<EVertexFormat>((m_vertexFormatEnum + 1) % eVF_Max);
+        m_nextVertexFormat = AZ::Vertex::Format(m_nextVertexFormatEnum);
+    }
+    void TearDown() override
+    {
+        UnitTest::AllocatorsBase::TeardownAllocator();
+    }
+
+    EVertexFormat m_vertexFormatEnum;
+    AZ::Vertex::Format m_vertexFormat;
+
+    AZ::Vertex::Format m_nextVertexFormat;
+    EVertexFormat m_nextVertexFormatEnum;
+};
+
+TEST_P(VertexFormatComparisonTest, EqualTo_SameVertexFormat_True)
+{
+    EXPECT_TRUE(m_vertexFormat == m_vertexFormatEnum);
+    EXPECT_TRUE(m_vertexFormat == m_vertexFormat);
+}
+
+TEST_P(VertexFormatComparisonTest, EqualTo_NextVertexFormat_False)
+{
+    EXPECT_FALSE(m_vertexFormat == m_nextVertexFormatEnum);
+    EXPECT_FALSE(m_vertexFormat == m_nextVertexFormat);
+}
+
+TEST_P(VertexFormatComparisonTest, EqualTo_PreviousVertexFormat_False)
+{
+    EXPECT_FALSE(m_nextVertexFormat == m_vertexFormatEnum);
+    EXPECT_FALSE(m_nextVertexFormat == m_vertexFormat);
+}
+
+TEST_P(VertexFormatComparisonTest, NotEqualTo_SameVertexFormat_False)
+{
+    EXPECT_FALSE(m_vertexFormat != m_vertexFormatEnum);
+    EXPECT_FALSE(m_vertexFormat != m_vertexFormat);
+}
+
+TEST_P(VertexFormatComparisonTest, NotEqualTo_NextVertexFormat_True)
+{
+    EXPECT_TRUE(m_vertexFormat != m_nextVertexFormatEnum);
+    EXPECT_TRUE(m_vertexFormat != m_nextVertexFormat);
+}
+
+TEST_P(VertexFormatComparisonTest, NotEqualTo_PreviousVertexFormat_True)
+{
+    EXPECT_TRUE(m_nextVertexFormat != m_vertexFormatEnum);
+    EXPECT_TRUE(m_nextVertexFormat != m_vertexFormat);
+}
+
+TEST_P(VertexFormatComparisonTest, GreaterThan_SameVertexFormat_False)
+{
+    EXPECT_FALSE(m_vertexFormat > m_vertexFormat);
+}
+
+TEST_P(VertexFormatComparisonTest, GreaterThan_NextVertexFormat_False)
+{
+    EXPECT_FALSE(m_vertexFormat > m_nextVertexFormat);
+}
+
+TEST_P(VertexFormatComparisonTest, GreaterThan_PreviousVertexFormat_True)
+{
+    EXPECT_TRUE(m_nextVertexFormat > m_vertexFormat);
+}
+
+TEST_P(VertexFormatComparisonTest, GreaterThanOrEqualTo_SameVertexFormat_True)
+{
+    EXPECT_TRUE(m_vertexFormat >= m_vertexFormat);
+}
+
+TEST_P(VertexFormatComparisonTest, GreaterThanOrEqualTo_NextVertexFormat_False)
+{
+    EXPECT_FALSE(m_vertexFormat >= m_nextVertexFormat);
+}
+
+TEST_P(VertexFormatComparisonTest, GreaterThanOrEqualTo_PreviousVertexFormat_True)
+{
+    EXPECT_TRUE(m_nextVertexFormat >= m_vertexFormat);
+}
+
+TEST_P(VertexFormatComparisonTest, LessThan_SameVertexFormat_False)
+{
+    EXPECT_FALSE(m_vertexFormat < m_vertexFormat);
+}
+
+TEST_P(VertexFormatComparisonTest, LessThan_NextVertexFormat_True)
+{
+    EXPECT_TRUE(m_vertexFormat < m_nextVertexFormat);
+}
+
+TEST_P(VertexFormatComparisonTest, LessThan_PreviousVertexFormat_False)
+{
+    EXPECT_FALSE(m_nextVertexFormat < m_vertexFormat);
+}
+
+TEST_P(VertexFormatComparisonTest, LessThanOrEqualTo_SameVertexFormat_True)
+{
+    EXPECT_TRUE(m_vertexFormat <= m_vertexFormat);
+}
+
+TEST_P(VertexFormatComparisonTest, LessThanOrEqualTo_NextVertexFormat_True)
+{
+    EXPECT_TRUE(m_vertexFormat <= m_nextVertexFormat);
+}
+
+TEST_P(VertexFormatComparisonTest, LessThanOrEqualTo_PreviousVertexFormat_False)
+{
+    EXPECT_FALSE(m_nextVertexFormat <= m_vertexFormat);
+}
+
+TEST_P(VertexFormatTest, GetEnum_MatchesExpected)
+{
+    EVertexFormat eVF = static_cast<EVertexFormat>(GetParam());
+    AZ::Vertex::Format vertexFormat(eVF);
+
+    EXPECT_EQ(vertexFormat.GetEnum(), eVF);
+}
+
+TEST_F(VertexFormatTest, GetAttributeUsageCount_MatchesExpected)
+{
+    AZ::Vertex::Format vertexFormatP3F_C4B_T2F(eVF_P3F_C4B_T2F);
+    // eVF_P3F_C4B_T2F has one position, one color, one uv set, and no normal attribute
+    EXPECT_EQ(vertexFormatP3F_C4B_T2F.GetAttributeUsageCount(AZ::Vertex::AttributeUsage::Position), 1);
+    EXPECT_EQ(vertexFormatP3F_C4B_T2F.GetAttributeUsageCount(AZ::Vertex::AttributeUsage::Color), 1);
+    EXPECT_EQ(vertexFormatP3F_C4B_T2F.GetAttributeUsageCount(AZ::Vertex::AttributeUsage::TexCoord), 1);
+    EXPECT_EQ(vertexFormatP3F_C4B_T2F.GetAttributeUsageCount(AZ::Vertex::AttributeUsage::Normal), 0);
+
+    // eVF_P3S_C4B_T2S and eVF_P3F_C4B_T2F_T2F actually have two uv sets
+    EXPECT_EQ(AZ::Vertex::Format(eVF_P3S_C4B_T2S_T2S).GetAttributeUsageCount(AZ::Vertex::AttributeUsage::TexCoord), 2);
+    EXPECT_EQ(AZ::Vertex::Format(eVF_P3F_C4B_T2F_T2F).GetAttributeUsageCount(AZ::Vertex::AttributeUsage::TexCoord), 2);
+}
+
+TEST_P(VertexFormatTest, IsSupersetOf_EquivalentVertexFormat_True)
+{
+    EVertexFormat eVF = static_cast<EVertexFormat>(GetParam());
+    EXPECT_TRUE(AZ::Vertex::Format(eVF).IsSupersetOf(AZ::Vertex::Format(eVF)));
+}
+
+TEST_F(VertexFormatTest, IsSupersetOf_TargetHasExtraUVs_OnlyTargetIsSuperset)
+{
+    AZ::Vertex::Format vertexFormatP3F_C4B_T2F(eVF_P3F_C4B_T2F);
+    AZ::Vertex::Format vertexFormatP3F_C4B_T2F_T2F(eVF_P3F_C4B_T2F_T2F);
+
+    // eVF_P3F_C4B_T2F_T2F contains everything in eVF_P3F_C4B_T2F plus an extra uv set
+    EXPECT_TRUE(vertexFormatP3F_C4B_T2F_T2F.IsSupersetOf(vertexFormatP3F_C4B_T2F));
+    EXPECT_FALSE(vertexFormatP3F_C4B_T2F.IsSupersetOf(vertexFormatP3F_C4B_T2F_T2F));
+}
+
+TEST_F(VertexFormatTest, TryGetAttributeOffsetAndType_MatchesExpected)
+{
+    uint expectedOffset = 0;
+    uint offset = 0;
+    AZ::Vertex::AttributeType type = AZ::Vertex::AttributeType::NumTypes;
+    AZ::Vertex::Format vertexFormatP3F_C4B_T2F_T2F(eVF_P3F_C4B_T2F_T2F);
+
+    // eVF_P3F_C4B_T2F_T2F has a position at offset 0 that is a Float32_3
+    EXPECT_TRUE(vertexFormatP3F_C4B_T2F_T2F.TryGetAttributeOffsetAndType(AZ::Vertex::AttributeUsage::Position, 0, offset, type));
+    EXPECT_EQ(offset, expectedOffset);
+    EXPECT_EQ(type, AZ::Vertex::AttributeType::Float32_3);
+    expectedOffset += AZ::Vertex::AttributeTypeDataTable[static_cast<uint8>(AZ::Vertex::AttributeType::Float32_3)].byteSize;
+
+    // eVF_P3F_C4B_T2F_T2F does not have a second position
+    EXPECT_FALSE(vertexFormatP3F_C4B_T2F_T2F.TryGetAttributeOffsetAndType(AZ::Vertex::AttributeUsage::Position, 1, offset, type));
+
+    // eVF_P3F_C4B_T2F_T2F has a color, offset by 12 bytes, that is a Byte_4
+    EXPECT_TRUE(vertexFormatP3F_C4B_T2F_T2F.TryGetAttributeOffsetAndType(AZ::Vertex::AttributeUsage::Color, 0, offset, type));
+    EXPECT_EQ(offset, expectedOffset);
+    EXPECT_EQ(type, AZ::Vertex::AttributeType::Byte_4);
+    expectedOffset += AZ::Vertex::AttributeTypeDataTable[static_cast<uint8>(AZ::Vertex::AttributeType::Byte_4)].byteSize;
+
+    // eVF_P3F_C4B_T2F_T2F has a TexCoord, offset by 16 bytes, that is a Float32_2
+    EXPECT_TRUE(vertexFormatP3F_C4B_T2F_T2F.TryGetAttributeOffsetAndType(AZ::Vertex::AttributeUsage::TexCoord, 0, offset, type));
+    EXPECT_EQ(offset, expectedOffset);
+    EXPECT_EQ(type, AZ::Vertex::AttributeType::Float32_2);
+    expectedOffset += AZ::Vertex::AttributeTypeDataTable[static_cast<uint8>(AZ::Vertex::AttributeType::Float32_2)].byteSize;
+
+    // eVF_P3F_C4B_T2F_T2F has a second TexCoord, offset by 24 bytes, that is a Float32_2
+    EXPECT_TRUE(vertexFormatP3F_C4B_T2F_T2F.TryGetAttributeOffsetAndType(AZ::Vertex::AttributeUsage::TexCoord, 1, offset, type));
+    EXPECT_EQ(offset, expectedOffset);
+    EXPECT_EQ(type, AZ::Vertex::AttributeType::Float32_2);
+    expectedOffset += AZ::Vertex::AttributeTypeDataTable[static_cast<uint8>(AZ::Vertex::AttributeType::Float32_2)].byteSize;
+
+    // eVF_P3F_C4B_T2F_T2F does not have a third TexCoord
+    EXPECT_FALSE(vertexFormatP3F_C4B_T2F_T2F.TryGetAttributeOffsetAndType(AZ::Vertex::AttributeUsage::TexCoord, 2, offset, type));
+}
+
+TEST_F(VertexFormatTest, GetAttributeByteLength_MatchesExpected)
+{
+    AZ::Vertex::Format vertexFormatP3F_C4B_T2F(eVF_P3F_C4B_T2F);
+    EXPECT_EQ(vertexFormatP3F_C4B_T2F.GetAttributeByteLength(AZ::Vertex::AttributeUsage::Position), AZ::Vertex::AttributeTypeDataTable[static_cast<uint8>(AZ::Vertex::AttributeType::Float32_3)].byteSize);
+    EXPECT_EQ(vertexFormatP3F_C4B_T2F.GetAttributeByteLength(AZ::Vertex::AttributeUsage::Color), AZ::Vertex::AttributeTypeDataTable[static_cast<uint8>(AZ::Vertex::AttributeType::Byte_4)].byteSize);
+    EXPECT_EQ(vertexFormatP3F_C4B_T2F.GetAttributeByteLength(AZ::Vertex::AttributeUsage::TexCoord), AZ::Vertex::AttributeTypeDataTable[static_cast<uint8>(AZ::Vertex::AttributeType::Float32_2)].byteSize);
+    EXPECT_EQ(vertexFormatP3F_C4B_T2F.GetAttributeByteLength(AZ::Vertex::AttributeUsage::Normal), 0);
+
+    AZ::Vertex::Format vertexFormatP3S_C4B_T2S(eVF_P3S_C4B_T2S);
+    EXPECT_EQ(vertexFormatP3S_C4B_T2S.GetAttributeByteLength(AZ::Vertex::AttributeUsage::Position), AZ::Vertex::AttributeTypeDataTable[static_cast<uint8>(AZ::Vertex::AttributeType::Float16_4)].byteSize);// vec3f16 is backed by a CryHalf4, so 16 bit positions use Float16_4
+    EXPECT_EQ(vertexFormatP3S_C4B_T2S.GetAttributeByteLength(AZ::Vertex::AttributeUsage::Color), AZ::Vertex::AttributeTypeDataTable[static_cast<uint8>(AZ::Vertex::AttributeType::Byte_4)].byteSize);
+    EXPECT_EQ(vertexFormatP3S_C4B_T2S.GetAttributeByteLength(AZ::Vertex::AttributeUsage::TexCoord), AZ::Vertex::AttributeTypeDataTable[static_cast<uint8>(AZ::Vertex::AttributeType::Float16_2)].byteSize);
+    EXPECT_EQ(vertexFormatP3S_C4B_T2S.GetAttributeByteLength(AZ::Vertex::AttributeUsage::Normal), 0);
+}
+
+TEST_F(VertexFormatTest, Has16BitFloatPosition_MatchesExpected)
+{
+    // Vertex formats with 16 bit positions should return true
+    EXPECT_TRUE(AZ::Vertex::Format(eVF_P3S_C4B_T2S).Has16BitFloatPosition());
+    EXPECT_TRUE(AZ::Vertex::Format(eVF_P3S_C4B_T2S_T2S).Has16BitFloatPosition());
+    EXPECT_TRUE(AZ::Vertex::Format(eVF_P3S_N4B_C4B_T2S).Has16BitFloatPosition());
+
+    // Vertex formats with 32 bit positions should return false
+    EXPECT_FALSE(AZ::Vertex::Format(eVF_P3F_C4B_T2F).Has16BitFloatPosition());
+    EXPECT_FALSE(AZ::Vertex::Format(eVF_P3F_C4B_T2F_T2F).Has16BitFloatPosition());
+    EXPECT_FALSE(AZ::Vertex::Format(eVF_P3F_C4B_T4B_N3F2).Has16BitFloatPosition()); 
+    EXPECT_FALSE(AZ::Vertex::Format(eVF_P3F_T3F).Has16BitFloatPosition());
+    EXPECT_FALSE(AZ::Vertex::Format(eVF_P3F_C4B_T2S).Has16BitFloatPosition());
+
+    // Vertex formats with no positions should return false
+    EXPECT_FALSE(AZ::Vertex::Format(eVF_T2F).Has16BitFloatPosition());
+    EXPECT_FALSE(AZ::Vertex::Format(eVF_W4B_I4S).Has16BitFloatPosition());
+}
+
+TEST_F(VertexFormatTest, Has16BitFloatTextureCoordinates_MatchesExpected)
+{
+    // Vertex formats with 16 bit texture coordinates should return true
+    EXPECT_TRUE(AZ::Vertex::Format(eVF_P3S_C4B_T2S).Has16BitFloatTextureCoordinates());
+    EXPECT_TRUE(AZ::Vertex::Format(eVF_P3S_C4B_T2S_T2S).Has16BitFloatTextureCoordinates());
+    EXPECT_TRUE(AZ::Vertex::Format(eVF_P3F_C4B_T2S).Has16BitFloatTextureCoordinates());
+    EXPECT_TRUE(AZ::Vertex::Format(eVF_C4B_T2S).Has16BitFloatTextureCoordinates());
+
+    // Vertex formats with 32 bit texture coordinates should return false
+    EXPECT_FALSE(AZ::Vertex::Format(eVF_P3F_C4B_T2F).Has16BitFloatTextureCoordinates());
+    EXPECT_FALSE(AZ::Vertex::Format(eVF_P3F_C4B_T2F_T2F).Has16BitFloatTextureCoordinates());
+    EXPECT_FALSE(AZ::Vertex::Format(eVF_T2F).Has16BitFloatTextureCoordinates());
+    
+    // Vertex formats with no texture coordinates should return false
+    EXPECT_FALSE(AZ::Vertex::Format(eVF_W4B_I4S).Has16BitFloatTextureCoordinates());
+}
+
+TEST_F(VertexFormatTest, Has32BitFloatTextureCoordinates_MatchesExpected)
+{
+    // Vertex formats with 16 bit texture coordinates should return false
+    EXPECT_FALSE(AZ::Vertex::Format(eVF_P3S_C4B_T2S).Has32BitFloatTextureCoordinates());
+    EXPECT_FALSE(AZ::Vertex::Format(eVF_P3S_C4B_T2S_T2S).Has32BitFloatTextureCoordinates());
+    EXPECT_FALSE(AZ::Vertex::Format(eVF_P3F_C4B_T2S).Has32BitFloatTextureCoordinates());
+    EXPECT_FALSE(AZ::Vertex::Format(eVF_C4B_T2S).Has32BitFloatTextureCoordinates());
+
+    // Vertex formats with 32 bit texture coordinates should return true
+    EXPECT_TRUE(AZ::Vertex::Format(eVF_P3F_C4B_T2F).Has32BitFloatTextureCoordinates());
+    EXPECT_TRUE(AZ::Vertex::Format(eVF_P3F_C4B_T2F_T2F).Has32BitFloatTextureCoordinates());
+    EXPECT_TRUE(AZ::Vertex::Format(eVF_T2F).Has32BitFloatTextureCoordinates());
+
+    // Vertex formats with no texture coordinates should return false
+    EXPECT_FALSE(AZ::Vertex::Format(eVF_W4B_I4S).Has32BitFloatTextureCoordinates());
+}
+
+TEST_F(VertexFormatTest, VertFormatForComponents_StandardWithOneUVSet_eVF_P3S_C4B_T2S)
+{
+    // Standard vertex format
+    bool hasTextureCoordinate = true;
+    bool hasTextureCoordinate2 = false;
+    bool isParticle = false;
+    bool hasNormal = false;
+    EXPECT_EQ(AZ::Vertex::VertFormatForComponents(false, hasTextureCoordinate, hasTextureCoordinate2, isParticle, hasNormal), eVF_P3S_C4B_T2S);
+}
+
+TEST_F(VertexFormatTest, VertFormatForComponents_StandardWithTwoUVSets_eVF_P3F_C4B_T2F_T2F)
+{
+    // Multi-uv set vertex format
+    bool hasTextureCoordinate = true;
+    bool hasTextureCoordinate2 = true;
+    bool isParticle = false;
+    bool hasNormal = false;
+    EXPECT_EQ(AZ::Vertex::VertFormatForComponents(false, hasTextureCoordinate, hasTextureCoordinate2, isParticle, hasNormal), eVF_P3F_C4B_T2F_T2F);
+}
+
+TEST_F(VertexFormatTest, VertFormatForComponents_IsParticle_eVF_P3F_C4B_T4B_N3F2)
+{
+    // Particle vertex format
+    bool hasTextureCoordinate = true;
+    bool hasTextureCoordinate2 = false;
+    bool isParticle = true;
+    bool hasNormal = false;
+    EXPECT_EQ(AZ::Vertex::VertFormatForComponents(false, hasTextureCoordinate, hasTextureCoordinate2, isParticle, hasNormal), eVF_P3F_C4B_T4B_N3F2);
+}
+
+TEST_F(VertexFormatTest, VertFormatForComponents_HasNormal_eVF_P3S_N4B_C4B_T2S)
+{
+    // Vertex format with normals
+    bool hasTextureCoordinate = true;
+    bool hasTextureCoordinate2 = false;
+    bool isParticle = false;
+    bool hasNormal = true;
+    EXPECT_EQ(AZ::Vertex::VertFormatForComponents(false, hasTextureCoordinate, hasTextureCoordinate2, isParticle, hasNormal), eVF_P3S_N4B_C4B_T2S);
 }
 
 // Instantiate tests
 // Start with 1 to skip eVF_Unknown
 INSTANTIATE_TEST_CASE_P(EVertexFormatValues, VertexFormatTest, ::testing::Range<int>(1, eVF_Max));
 
-
-//Tests to check 4 byte alignment padding
-class VertexFormat4ByteAlignedTest
-    : public ::testing::TestWithParam < int >
-    , public UnitTest::AllocatorsBase
-{
-    public:
-        void SetUp() override
-        {
-            UnitTest::AllocatorsBase::SetupAllocator();
-        }
-
-        void TearDown() override
-        {
-            UnitTest::AllocatorsBase::TeardownAllocator();
-        }
-};
-
-TEST_P(VertexFormat4ByteAlignedTest, GetStride_4ByteAligned)
-{
-    const AZ::Vertex::Format g_PaddingTestCaseFormats[] =
-    {
-        { AZ::Vertex::Format({ AZ::Vertex::Attribute(AZ::Vertex::AttributeUsage::Position, AZ::Vertex::AttributeType::Byte_1) }) },
-        { AZ::Vertex::Format({ AZ::Vertex::Attribute(AZ::Vertex::AttributeUsage::Position, AZ::Vertex::AttributeType::Byte_2) }) },
-        { AZ::Vertex::Format({ AZ::Vertex::Attribute(AZ::Vertex::AttributeUsage::Position, AZ::Vertex::AttributeType::Byte_1), AZ::Vertex::Attribute(AZ::Vertex::AttributeUsage::Position, AZ::Vertex::AttributeType::Byte_2) }) }
-    };
-
-    AZ::Vertex::Format format = g_PaddingTestCaseFormats[GetParam()];
-    ASSERT_EQ(format.GetStride() % AZ::Vertex::VERTEX_BUFFER_ALIGNMENT, 0);
-}
-
-INSTANTIATE_TEST_CASE_P(EVertexFormatStride4ByteAligned, VertexFormat4ByteAlignedTest, ::testing::Range<int>(0, 3));
+// Start with 1 to skip eVF_Unknown, up to but not including eVF_Max - 1 so we always know that the current value + 1 is within the range of valid vertex formats
+INSTANTIATE_TEST_CASE_P(EVertexFormatValues, VertexFormatComparisonTest, ::testing::Range<int>(1, eVF_Max - 1));

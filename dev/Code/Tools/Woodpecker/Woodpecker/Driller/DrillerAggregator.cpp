@@ -38,7 +38,7 @@ namespace Driller
             AZ::SerializeContext* serialize = azrtti_cast<AZ::SerializeContext*>(context);
             if (serialize)
             {
-                serialize->Class<AggregatorSavedState, AZ::UserSettings>()
+                serialize->Class<AggregatorSavedState>()
                     ->Version(1)
                     ;
             }

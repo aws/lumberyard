@@ -1,0 +1,215 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>DeviceFarmDevicePoolWindow</class>
+ <widget class="QDialog" name="DeviceFarmDevicePoolWindow">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>627</width>
+    <height>628</height>
+   </rect>
+  </property>
+  <property name="minimumSize">
+   <size>
+    <width>500</width>
+    <height>600</height>
+   </size>
+  </property>
+  <property name="windowTitle">
+   <string>Device Farm Device Pool</string>
+  </property>
+  <layout class="QVBoxLayout" name="verticalLayout">
+   <item>
+    <widget class="QLabel" name="devicePoolDetailsLabel">
+     <property name="font">
+      <font>
+       <weight>50</weight>
+       <bold>false</bold>
+      </font>
+     </property>
+     <property name="styleSheet">
+      <string notr="true"/>
+     </property>
+     <property name="text">
+      <string>&lt;b&gt;Device pool details&lt;/b&gt;</string>
+     </property>
+     <property name="textFormat">
+      <enum>Qt::RichText</enum>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <layout class="QGridLayout" name="gridLayout" columnstretch="0,1" rowminimumheight="0,0" columnminimumwidth="192,0">
+     <property name="leftMargin">
+      <number>9</number>
+     </property>
+     <property name="topMargin">
+      <number>9</number>
+     </property>
+     <property name="rightMargin">
+      <number>9</number>
+     </property>
+     <property name="bottomMargin">
+      <number>9</number>
+     </property>
+     <item row="0" column="1">
+      <widget class="QLineEdit" name="poolNameLineEdit">
+       <property name="toolTip">
+        <string>Device Pool Name</string>
+       </property>
+      </widget>
+     </item>
+     <item row="0" column="0">
+      <widget class="QLabel" name="poolNameLable">
+       <property name="text">
+        <string>Name</string>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="0">
+      <widget class="QLabel" name="poolDescriptionLable">
+       <property name="text">
+        <string>Description</string>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="1">
+      <widget class="QLineEdit" name="poolDescriptionLineEdit">
+       <property name="toolTip">
+        <string>Device Pool Description</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <widget class="QLabel" name="deviceListLabel">
+     <property name="font">
+      <font>
+       <weight>50</weight>
+       <bold>false</bold>
+      </font>
+     </property>
+     <property name="styleSheet">
+      <string notr="true"/>
+     </property>
+     <property name="text">
+      <string>&lt;b&gt;Device list&lt;/b&gt;</string>
+     </property>
+     <property name="textFormat">
+      <enum>Qt::RichText</enum>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <layout class="QGridLayout" name="filterOptionsLayout" columnstretch="0,1,0" columnminimumwidth="192,0,0">
+     <property name="leftMargin">
+      <number>9</number>
+     </property>
+     <property name="topMargin">
+      <number>9</number>
+     </property>
+     <property name="rightMargin">
+      <number>9</number>
+     </property>
+     <property name="bottomMargin">
+      <number>9</number>
+     </property>
+     <item row="0" column="1">
+      <widget class="QComboBox" name="formFactorComboBox">
+       <property name="maximumSize">
+        <size>
+         <width>100</width>
+         <height>16777215</height>
+        </size>
+       </property>
+       <property name="toolTip">
+        <string>Form factor</string>
+       </property>
+      </widget>
+     </item>
+     <item row="0" column="0">
+      <widget class="QLabel" name="formFactorLabel">
+       <property name="text">
+        <string>Form Factor</string>
+       </property>
+      </widget>
+     </item>
+     <item row="0" column="2">
+      <spacer name="horizontalSpacer2">
+       <property name="orientation">
+        <enum>Qt::Horizontal</enum>
+       </property>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>40</width>
+         <height>20</height>
+        </size>
+       </property>
+      </spacer>
+     </item>
+     <item row="1" column="1">
+      <widget class="QComboBox" name="minOSVersionComboBox">
+       <property name="maximumSize">
+        <size>
+         <width>100</width>
+         <height>16777215</height>
+        </size>
+       </property>
+       <property name="toolTip">
+        <string>Form factor</string>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="0">
+      <widget class="QLabel" name="minOSVersionLabel">
+       <property name="text">
+        <string>Minimum OS Version</string>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="2">
+      <spacer name="horizontalSpacer1">
+       <property name="orientation">
+        <enum>Qt::Horizontal</enum>
+       </property>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>40</width>
+         <height>20</height>
+        </size>
+       </property>
+      </spacer>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <layout class="QVBoxLayout" name="verticalLayout_2">
+     <property name="sizeConstraint">
+      <enum>QLayout::SetDefaultConstraint</enum>
+     </property>
+     <item>
+      <widget class="QTableWidget" name="devicesTableWidget">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <widget class="QDialogButtonBox" name="buttonBox">
+     <property name="standardButtons">
+      <set>QDialogButtonBox::Cancel|QDialogButtonBox::Save</set>
+     </property>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

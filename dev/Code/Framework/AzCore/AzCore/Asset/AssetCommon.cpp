@@ -181,6 +181,37 @@ namespace AZ
                 AssetBusCallbacks::AssetErrorCB());
         }
 
+
+        void AssetBusCallbacks::SetOnAssetReadyCallback(const AssetReadyCB& readyCB)
+        {
+            m_onAssetReadyCB = readyCB;
+        }
+
+        void AssetBusCallbacks::SetOnAssetMovedCallback(const AssetMovedCB& movedCB)
+        {
+            m_onAssetMovedCB = movedCB;
+        }
+
+        void AssetBusCallbacks::SetOnAssetReloadedCallback(const AssetReloadedCB& reloadedCB)
+        {
+            m_onAssetReloadedCB = reloadedCB;
+        }
+
+        void AssetBusCallbacks::SetOnAssetSavedCallback(const AssetSavedCB& savedCB)
+        {
+            m_onAssetSavedCB = savedCB;
+        }
+
+        void AssetBusCallbacks::SetOnAssetUnloadedCallback(const AssetUnloadedCB& unloadedCB)
+        {
+            m_onAssetUnloadedCB = unloadedCB;
+        }
+
+        void AssetBusCallbacks::SetOnAssetErrorCallback(const AssetErrorCB& errorCB)
+        {
+            m_onAssetErrorCB = errorCB;
+        }
+
         //=========================================================================
         // AssetBusCallbacks::OnAssetReady
         // [9/19/2012]

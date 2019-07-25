@@ -11,7 +11,9 @@
         ],
         "Tests":
         [
-            "Tests/test_Main.cpp"
+            "Tests/test_Main.cpp",
+            "Tests/test_Integ.cpp",
+            "Tests/test_AudioInput.cpp"
         ]
     }
 }

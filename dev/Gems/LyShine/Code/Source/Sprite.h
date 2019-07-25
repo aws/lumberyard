@@ -38,13 +38,13 @@ public: // member functions
     Borders GetBorders() const override;
     void SetBorders(Borders borders) override;
     void SetCellBorders(int cellIndex, Borders borders) override;
-    ITexture* GetTexture() const override;
+    ITexture* GetTexture() override;
     void Serialize(TSerialize ser) override;
     bool SaveToXml(const string& pathname) override;
     bool AreBordersZeroWidth() const override;
     bool AreCellBordersZeroWidth(int index) const override;
-    AZ::Vector2 GetSize() const override;
-    AZ::Vector2 GetCellSize(int cellIndex) const override;
+    AZ::Vector2 GetSize() override;
+    AZ::Vector2 GetCellSize(int cellIndex) override;
     const SpriteSheetCellContainer& GetSpriteSheetCells() const override;
     virtual void SetSpriteSheetCells(const SpriteSheetCellContainer& cells);
     void ClearSpriteSheetCells() override;
@@ -81,6 +81,7 @@ public: // static member functions
 
 private:
     static bool LoadTexture(const string& texturePathname, const string& pathname, ITexture*& texture);
+    static void ReleaseTexture(ITexture*& texture);
 
 protected: // member functions
 

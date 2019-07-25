@@ -91,8 +91,9 @@ namespace LmbrCentral
             m_audioProxy->SetPosition(AZTransformToLYTransform(m_transform));
         }
     }
+
     //=========================================================================
-    bool AudioProxyComponent::ExecuteSourceTrigger(const Audio::TAudioControlID triggerID, const Audio::SAudioCallBackInfos& callbackInfo, const Audio::TAudioControlID& sourceId)
+    bool AudioProxyComponent::ExecuteSourceTrigger(const Audio::TAudioControlID triggerID, const Audio::SAudioCallBackInfos& callbackInfo, const Audio::SAudioSourceInfo& sourceInfo)
     {
         if (triggerID != INVALID_AUDIO_CONTROL_ID)
         {
@@ -101,7 +102,7 @@ namespace LmbrCentral
             m_audioProxy->SetPosition(AZTransformToLYTransform(m_transform));
 
             // ...and kick it off...
-            m_audioProxy->ExecuteSourceTrigger(triggerID, sourceId, callbackInfo);
+            m_audioProxy->ExecuteSourceTrigger(triggerID, sourceInfo, callbackInfo);
             return true;
         }
 

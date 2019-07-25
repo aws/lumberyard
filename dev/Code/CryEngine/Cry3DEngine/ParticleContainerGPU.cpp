@@ -254,11 +254,6 @@ void CParticleContainerGPU::Render(SRendParams const& rParam, SPartRenderParams 
     CRenderObject* pRenderObject = pObj;
     SRenderObjData* pOD = gEnv->pRenderer->EF_GetObjData(pRenderObject, true, passInfo.ThreadID());
     float fEmissive = pParams->fEmissiveLighting;
-    if (pRenderObject->m_ObjFlags & FOB_PARTICLE_SHADOWS)
-    {
-        pOD->m_ShadowCasters = rParam.m_ShadowMapCasters;
-        pRenderObject->m_bHasShadowCasters = pOD->m_ShadowCasters != 0;
-    }
 
     // Ambient color for shader incorporates actual ambient lighting, as well as the constant emissive value.
     pRenderObject->m_II.m_AmbColor = ColorF(fEmissive) + rParam.AmbientColor * pParams->fDiffuseLighting * Cry3DEngineBase::Get3DEngine()->m_fParticlesAmbientMultiplier;

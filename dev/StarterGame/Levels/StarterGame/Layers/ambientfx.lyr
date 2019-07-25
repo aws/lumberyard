@@ -1,3 +1,3 @@
 <ObjectLayer>
- <Layer Name="AmbientFX" GUID="{8283a863-818f-46dd-9062-801556a41278}" Exportable="1" ExportLayerPak="1" DefaultLoaded="0" HavePhysics="1" IsDefaultColor="1"/>
+ <Layer Name="AmbientFX" GUID="{8283A863-818F-46DD-9062-801556A41278}" Exportable="1" ExportLayerPak="1" DefaultLoaded="0" HavePhysics="1" IsDefaultColor="1"/>
 </ObjectLayer>

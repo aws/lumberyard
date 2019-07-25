@@ -227,7 +227,7 @@ namespace EMotionFX
 
 
     // update the transformation data
-    void ActorInstance::UpdateTransformations(float timePassedInSeconds, bool updateMatrices, bool sampleMotions)
+    void ActorInstance::UpdateTransformations(float timePassedInSeconds, bool updateJointTransforms, bool sampleMotions)
     {
         // Update the LOD level in case a change was requested.
         UpdateLODLevel();
@@ -261,10 +261,8 @@ namespace EMotionFX
             }
 
             // perform forward kinematics etc
-            mTransformData->UpdateNodeFlags();
             UpdateWorldTransform();
             UpdateSkinningMatrices();
-            mTransformData->ResetNodeFlags(); // reset node flags
             UpdateAttachments();            // update the attachment parent matrices
 
             // update the bounds when needed
@@ -292,7 +290,7 @@ namespace EMotionFX
             {
                 mAnimGraphInstance->Update(timePassedInSeconds);
                 UpdateWorldTransform();
-                if (updateMatrices && sampleMotions)
+                if (updateJointTransforms && sampleMotions)
                 {
                     mAnimGraphInstance->Output(mTransformData->GetCurrentPose());
 
@@ -305,7 +303,7 @@ namespace EMotionFX
             else
             if (mMotionSystem)
             {
-                mMotionSystem->Update(timePassedInSeconds, (updateMatrices && sampleMotions));
+                mMotionSystem->Update(timePassedInSeconds, (updateJointTransforms && sampleMotions));
             }
             else
             {
@@ -313,7 +311,7 @@ namespace EMotionFX
             }
 
             // when the actor instance isn't visible, we don't want to do more things
-            if (updateMatrices == false)
+            if (!updateJointTransforms)
             {
                 if (GetBoundsUpdateEnabled() && mBoundsUpdateType == BOUNDS_STATIC_BASED)
                 {
@@ -323,27 +321,21 @@ namespace EMotionFX
                 return;
             }
 
-            // apply the morph setup
             mTransformData->GetCurrentPose()->ApplyMorphWeightsToActorInstance();
             ApplyMorphSetup();
 
-            mTransformData->UpdateNodeFlags();
             UpdateSkinningMatrices();
-
-            // reset the node flags
-            mTransformData->ResetNodeFlags();
-
-            // update the parent matrices
             UpdateAttachments();
         }
         else // we are a skin attachment
         {
+            mLocalTransform.Identity();
             if (mAnimGraphInstance)
             {
                 mAnimGraphInstance->Update(timePassedInSeconds);
                 UpdateWorldTransform();
 
-                if (updateMatrices && sampleMotions)
+                if (updateJointTransforms && sampleMotions)
                 {
                     mAnimGraphInstance->Output(mTransformData->GetCurrentPose());
                 }
@@ -351,7 +343,7 @@ namespace EMotionFX
             else
             if (mMotionSystem)
             {
-                mMotionSystem->Update(timePassedInSeconds, (updateMatrices && sampleMotions));
+                mMotionSystem->Update(timePassedInSeconds, (updateJointTransforms && sampleMotions));
             }
             else
             {
@@ -359,7 +351,7 @@ namespace EMotionFX
             }
 
             // when the actor instance isn't visible, we don't want to do more things
-            if (updateMatrices == false)
+            if (!updateJointTransforms)
             {
                 if (GetBoundsUpdateEnabled() && mBoundsUpdateType == BOUNDS_STATIC_BASED)
                 {
@@ -368,16 +360,12 @@ namespace EMotionFX
                 return;
             }
 
+            mSelfAttachment->UpdateJointTransforms(*mTransformData->GetCurrentPose());
             mTransformData->GetCurrentPose()->ApplyMorphWeightsToActorInstance();
             ApplyMorphSetup();
-            mTransformData->UpdateNodeFlags();
-            mSelfAttachment->UpdateJointTransforms(*mTransformData->GetCurrentPose());
             UpdateSkinningMatrices();
-
-            // reset the node flags
-            mTransformData->ResetNodeFlags();
             UpdateAttachments();
-        }
+       }
 
         // update the bounds when needed
         if (GetBoundsUpdateEnabled() && mBoundsUpdateType != BOUNDS_MESH_BASED)
@@ -406,7 +394,6 @@ namespace EMotionFX
     {
         MCore::Matrix* skinningMatrices = mTransformData->GetSkinningMatrices();
         const Pose* pose = mTransformData->GetCurrentPose();
-        const Pose* bindPose = mTransformData->GetBindPose();
 
         const uint32 numNodes = GetNumEnabledNodes();
         for (uint32 i = 0; i < numNodes; ++i)
@@ -1581,6 +1568,7 @@ namespace EMotionFX
         // Remove the projected rotation and translation from the transform to prevent the double transform.
         inOutMotionExtractionNodeTransform.mRotation = (bindTransformProjected.mRotation.Conjugated() * trajectoryTransform.mRotation).Conjugated() * inOutMotionExtractionNodeTransform.mRotation;
         inOutMotionExtractionNodeTransform.mPosition = inOutMotionExtractionNodeTransform.mPosition - (trajectoryTransform.mPosition - bindTransformProjected.mPosition);
+        inOutMotionExtractionNodeTransform.mRotation.Normalize();
     }
 
 
@@ -1617,6 +1605,7 @@ namespace EMotionFX
         #endif
 
         curTransform.mRotation *= trajectoryDelta.mRotation;
+        curTransform.mRotation.Normalize();
 
         mLocalTransform = curTransform;
     }

@@ -74,6 +74,7 @@ namespace EMotionFX
         bool GetHasOutputPose() const override                          { return true; }
 
         AZStd::vector<AZStd::string>& GetSimulatedJointNames()          { return m_simulatedJointNames; }
+        bool IsActivated(AnimGraphInstance* animGraphInstance) const;
 
         static void Reflect(AZ::ReflectContext* context);
 

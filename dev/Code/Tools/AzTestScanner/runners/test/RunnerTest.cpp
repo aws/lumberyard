@@ -145,3 +145,158 @@ INSTANTIATE_TEST_CASE_P(All, RemoveParametersTest, ::testing::Values(
     ,RemoveParam { { "a", "b", "c" }, -99, 99, { } } // remove all
     ,RemoveParam { { "a", "b", "c" }, 2, 0, {"a", "b", "c"} } // inverted range doesn't remove anything
 ));
+
+
+class AzTestRunnnerGlobalParamsTest
+    : public ::testing::Test
+{
+public:
+    void SetUp() override
+    {
+        ::testing::Test::SetUp();
+        m_priorFilter = ::testing::GTEST_FLAG(filter);
+        ::testing::GTEST_FLAG(filter) = "*"; // emulate no command line filter args
+    }
+
+    void TearDown() override
+    {
+        ::testing::GTEST_FLAG(filter) = m_priorFilter;
+        ::testing::Test::TearDown();
+    }
+
+    std::string m_priorFilter; // std::string to emulate same environment as gtest, not AZ
+};
+
+// saves args into compatible with other platforms format (clang is picky)
+// but also restores GTEST_FLAG(filter) before and after applying changes to them, 
+// allowing us to test the effect params have on GTEST_FLAG(filter)
+class ScopedArgs
+{
+public:
+    ScopedArgs(int argc, const char** const argv)
+    {
+        m_savedParams = ::testing::GTEST_FLAG(filter);
+        m_argc = argc;
+        m_argv = new char*[argc];
+        for (int i = 0; i < m_argc; i++)
+        {
+            m_argv[i] = const_cast<char*>(argv[i]);
+        }
+    }
+    ~ScopedArgs()
+    {
+        delete[] m_argv;
+        ::testing::GTEST_FLAG(filter) = m_savedParams;
+    }
+
+    int m_argc = 0;
+    char **m_argv = nullptr;
+    std::string m_savedParams; // intentional std::string, exists outside of memory alloc area.
+
+private:
+    ScopedArgs() = delete;
+    AZ_DISABLE_COPY_MOVE(ScopedArgs);
+};
+
+TEST_F(AzTestRunnnerGlobalParamsTest, ApplyGlobalParameters_NothingSpecial_RemainsUnchanged)
+{
+    const char* argv[] = { "hello", "--world", "test" };
+    ScopedArgs args(static_cast<int>(AZ_ARRAY_SIZE(argv)), argv );
+
+    AZ::Test::ApplyGlobalParameters(&args.m_argc, args.m_argv);
+    EXPECT_EQ(args.m_argc, 3);
+}
+
+
+TEST_F(AzTestRunnnerGlobalParamsTest, ApplyGlobalParameters_WithSuite_AddsSuiteToFilter)
+{
+    const char* argv[] = {"hello", "--suite", "MySuite", "world"};
+    ScopedArgs args(static_cast<int>(AZ_ARRAY_SIZE(argv)), argv );
+    AZ::Test::ApplyGlobalParameters(&args.m_argc, args.m_argv);
+
+    ASSERT_EQ(args.m_argc, 2);
+    EXPECT_STREQ(args.m_argv[0], "hello");
+    EXPECT_STREQ(args.m_argv[1], "world");
+
+    EXPECT_STREQ(::testing::GTEST_FLAG(filter).c_str(), "Suite_MySuite*");
+}
+
+TEST_F(AzTestRunnnerGlobalParamsTest, ApplyGlobalParameters_NoSuite_AddsExclusion)
+{
+    const  char* argv[] = {"hello", "world"};
+    ScopedArgs args(static_cast<int>(AZ_ARRAY_SIZE(argv)), argv );
+    AZ::Test::ApplyGlobalParameters(&args.m_argc, args.m_argv);
+
+    ASSERT_EQ(args.m_argc, 2);
+    EXPECT_STREQ(args.m_argv[0], "hello");
+    EXPECT_STREQ(args.m_argv[1], "world");
+
+    EXPECT_STREQ(::testing::GTEST_FLAG(filter).c_str(), "-Suite_*");
+}
+
+TEST_F(AzTestRunnnerGlobalParamsTest, ApplyGlobalParameters_PreExistingFilter_WithSuite_AddsSuiteToFilter)
+{
+    const char* argv[] = {"hello", "--suite", "MySuite", "world"};
+    ScopedArgs args(static_cast<int>(AZ_ARRAY_SIZE(argv)), argv );
+    
+    ::testing::GTEST_FLAG(filter) = "*CertainTestsOnly*";
+    AZ::Test::ApplyGlobalParameters(&args.m_argc, args.m_argv);
+
+    ASSERT_EQ(args.m_argc, 2);
+    EXPECT_STREQ(args.m_argv[0], "hello");
+    EXPECT_STREQ(args.m_argv[1], "world");
+
+    EXPECT_STREQ(::testing::GTEST_FLAG(filter).c_str(), "Suite_MySuite*:*CertainTestsOnly*");
+}
+
+TEST_F(AzTestRunnnerGlobalParamsTest, ApplyGlobalParameters_PreExistingFilter_NoSuite_AddsExclusion)
+{
+    const char* argv[] = {"hello", "world"};
+
+    ScopedArgs args(static_cast<int>(AZ_ARRAY_SIZE(argv)), argv );
+
+    ::testing::GTEST_FLAG(filter) = "*CertainTestsOnly*";
+    AZ::Test::ApplyGlobalParameters(&args.m_argc, args.m_argv);
+
+    ASSERT_EQ(args.m_argc, 2);
+    EXPECT_STREQ(args.m_argv[0], "hello");
+    EXPECT_STREQ(args.m_argv[1], "world");
+
+    EXPECT_STREQ(::testing::GTEST_FLAG(filter).c_str(), "*CertainTestsOnly*:-Suite_*");
+}
+
+
+// make sure our built in param parsing works as expected
+TEST_F(AzTestRunnnerGlobalParamsTest, ApplyGlobalParameters_PreExistingExclusionFilter_NoSuite_AddsExclusion)
+{
+    const char* argv[] = {"hello", "world"};
+
+    ScopedArgs args(static_cast<int>(AZ_ARRAY_SIZE(argv)), argv );
+
+    ::testing::GTEST_FLAG(filter) = "-*CertainTestsOnly*";
+
+    AZ::Test::ApplyGlobalParameters(&args.m_argc, args.m_argv);
+
+    ASSERT_EQ(args.m_argc, 2);
+    EXPECT_STREQ(args.m_argv[0], "hello");
+    EXPECT_STREQ(args.m_argv[1], "world");
+
+    EXPECT_STREQ(::testing::GTEST_FLAG(filter).c_str(), "-*CertainTestsOnly*:Suite_*");
+}
+
+
+TEST_F(AzTestRunnnerGlobalParamsTest, ApplyGlobalParameters_PreExistingExclusionFilter_WithSuite_AddsSuite)
+{
+    const char* argv[] = {"hello", "--suite", "MySuite", "world"};
+
+    ScopedArgs args(static_cast<int>(AZ_ARRAY_SIZE(argv)), argv );
+
+    ::testing::GTEST_FLAG(filter) = "-*CertainTestsOnly*";
+    AZ::Test::ApplyGlobalParameters(&args.m_argc, args.m_argv);
+
+    ASSERT_EQ(args.m_argc, 2);
+    EXPECT_STREQ(args.m_argv[0], "hello");
+    EXPECT_STREQ(args.m_argv[1], "world");
+
+    EXPECT_STREQ(::testing::GTEST_FLAG(filter).c_str(), "Suite_MySuite*:-*CertainTestsOnly*");
+}

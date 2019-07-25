@@ -7,22 +7,11 @@
     ],
     "defines": ["OPENSSL_ENABLED"],
     "lib_required": "True",
+    "configuration_settings": {
+        "win_lib": ["crypt32","ws2_32"],
+        "linux_rpath": ["$ORIGIN"]
+    },
     "platform": {
-        "win_x64_vs2013": {
-            "libpath_debug": [
-                "lib/vc120_x64_debug"
-            ],
-            "libpath_release": [
-                "lib/vc120_x64_release"
-            ],
-            "lib": [
-                "ssleay32.lib",
-                "libeay32.lib"
-            ],
-            "linkflags" : [
-                "/ignore:4099"
-            ]
-        },
         "win_x64_vs2015": {
             "libpath_debug": [
                 "lib/vc140_x64_debug"
@@ -31,8 +20,8 @@
                 "lib/vc140_x64_release"
             ],
             "lib": [
-                "ssleay32.lib",
-                "libeay32.lib"
+                "libssl.lib",
+                "libcrypto.lib"
             ],
             "linkflags" : [
                 "/ignore:4099"
@@ -65,16 +54,16 @@
         },
         "android_armv7_clang": {
             "libpath_debug": [
-                "lib/android_ndk_r12/android-19/armeabi-v7a/clang-3.8/debug"
+                "lib/android_ndk_r15c/android-19/armeabi-v7a/clang-3.8/debug"
             ],
             "libpath_release": [
-                "lib/android_ndk_r12/android-19/armeabi-v7a/clang-3.8/release"
+                "lib/android_ndk_r15c/android-19/armeabi-v7a/clang-3.8/release"
             ],
             "libpath_debug/android-21": [
-                "lib/android_ndk_r12/android-21/armeabi-v7a/clang-3.8/debug"
+                "lib/android_ndk_r15c/android-21/armeabi-v7a/clang-3.8/debug"
             ],
             "libpath_release/android-21": [
-                "lib/android_ndk_r12/android-21/armeabi-v7a/clang-3.8/release"
+                "lib/android_ndk_r15c/android-21/armeabi-v7a/clang-3.8/release"
             ],
             "lib": [
                 "libssl.a",
@@ -83,10 +72,10 @@
         },
         "android_armv8_clang": {
             "libpath_debug": [
-                "lib/android_ndk_r12/android-21/arm64-v8a/clang-3.8/debug"
+                "lib/android_ndk_r15c/android-21/arm64-v8a/clang-3.8/debug"
             ],
             "libpath_release": [
-                "lib/android_ndk_r12/android-21/arm64-v8a/clang-3.8/release"
+                "lib/android_ndk_r15c/android-21/arm64-v8a/clang-3.8/release"
             ],
             "lib": [
                 "libssl.a",

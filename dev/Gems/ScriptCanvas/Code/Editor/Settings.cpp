@@ -27,7 +27,7 @@ namespace ScriptCanvasEditor
             AZ::SerializeContext* serialize = azrtti_cast<AZ::SerializeContext*>(context);
             if (serialize)
             {
-                serialize->Class<WindowSavedState, AZ::UserSettings>()
+                serialize->Class<WindowSavedState>()
                     ->Version(1)
                     ->Field("m_storedWindowState", &WindowSavedState::m_storedWindowState)
                     ->Field("m_windowGeometry", &WindowSavedState::m_windowGeometry)
@@ -173,7 +173,7 @@ namespace ScriptCanvasEditor
                     ->Field("ScrollSpeed", &EdgePanningSettings::m_edgeScrollSpeed)
                 ;
 
-                serialize->Class<ScriptCanvasEditorSettings, AZ::UserSettings>()
+                serialize->Class<ScriptCanvasEditorSettings>()
                     ->Version(10, ScriptCanvasEditorSettings::VersionConverter)
                     ->Field("m_showPreviewMessage", &ScriptCanvasEditorSettings::m_showPreviewMessage)
                     ->Field("m_snapDistance", &ScriptCanvasEditorSettings::m_snapDistance)

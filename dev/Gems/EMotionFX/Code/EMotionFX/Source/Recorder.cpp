@@ -10,7 +10,6 @@
 *
 */
 
-// include required headers
 #include "Recorder.h"
 #include "RecorderBus.h"
 #include "ActorInstance.h"
@@ -825,16 +824,19 @@ namespace EMotionFX
     // sample and apply all animgraphs
     void Recorder::SampleAndApplyAnimGraphs(float timeInSeconds) const
     {
-        // for all actor instances
         const uint32 numActorInstances = mActorInstanceDatas.GetLength();
         for (uint32 a = 0; a < numActorInstances; ++a)
         {
-            const ActorInstanceData& actorInstanceData = *mActorInstanceDatas[a];
+            const ActorInstanceData* actorInstanceData = mActorInstanceDatas[a];
 
             // sample and apply the animgraph changes
             //const uint32 numAnimGraphs = actorInstanceData.mAnimGraphDatas.GetLength();
             //for (uint32 i=0; i<numAnimGraphs; ++i)
-            SampleAndApplyAnimGraphStates(timeInSeconds, *actorInstanceData.mAnimGraphData);
+            AnimGraphInstanceData* animGraphData = actorInstanceData->mAnimGraphData;
+            if (animGraphData)
+            {
+                SampleAndApplyAnimGraphStates(timeInSeconds, *animGraphData);
+            }
         }
     }
 

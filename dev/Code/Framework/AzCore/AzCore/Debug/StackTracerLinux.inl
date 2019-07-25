@@ -121,13 +121,13 @@ SymbolStorage::DecodeFrames(const StackFrame* frames, unsigned int numFrames, St
                     nameptr = demangled;
                 }
 
-                std::snprintf(textLine, AZ_ARRAY_SIZE(textLine), "%s (+0x%" UNW_WORD_FORMAT ") [0x%" UNW_WORD_FORMAT "]",
+                ::std::snprintf(textLine, AZ_ARRAY_SIZE(textLine), "%s (+0x%" UNW_WORD_FORMAT ") [0x%" UNW_WORD_FORMAT "]",
                     nameptr, offset, frames[i].m_programCounter);
-                std::free(demangled);
+                ::std::free(demangled);
             }
             else
             {
-                std::snprintf(textLine, AZ_ARRAY_SIZE(textLine), "%s", " -- error: unable to obtain symbol name for this frame");
+                ::std::snprintf(textLine, AZ_ARRAY_SIZE(textLine), "%s", " -- error: unable to obtain symbol name for this frame");
             }
         }
     }
@@ -171,13 +171,13 @@ void StackPrinter::Print(FILE *const ftrace)
                 nameptr = demangled;
             }
 
-            std::fprintf(ftrace, "%s (+0x%" UNW_WORD_FORMAT ") [0x%" UNW_WORD_FORMAT "]", nameptr, offset, pc);
-            std::free(demangled);
+            ::std::fprintf(ftrace, "%s (+0x%" UNW_WORD_FORMAT ") [0x%" UNW_WORD_FORMAT "]", nameptr, offset, pc);
+            ::std::free(demangled);
         }
         else
         {
-            std::fprintf(ftrace, "%s", " -- error: unable to obtain symbol name for this frame");
+            ::std::fprintf(ftrace, "%s", " -- error: unable to obtain symbol name for this frame");
         }
     }
-    std::fflush(ftrace);
+    ::std::fflush(ftrace);
 }

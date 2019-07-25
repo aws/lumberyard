@@ -22,6 +22,8 @@
 #include <MCore/Source/Command.h>
 #include <QtCore/QAbstractItemModel>
 #include <QtCore/QItemSelectionModel>
+#include <Editor/QtMetaTypes.h>
+
 
 namespace EMotionFX
 {
@@ -147,8 +149,11 @@ namespace EMStudio
 
         QItemSelectionModel& GetSelectionModel();
 
+        static void AddToItemSelection(QItemSelection& selection, const QModelIndex& modelIndex, bool wasPreviouslySelected, bool isNewlySelected, bool toggleMode, bool clearSelection);
+        static QString GetTransitionName(const EMotionFX::AnimGraphStateTransition* transition);
+
         template<class AnimGraphObjectType>
-        AZStd::unordered_map<EMotionFX::AnimGraph*, AZStd::vector<AnimGraphObjectType*>> GetSelectedObjectsOfType() const;
+        AZStd::unordered_map<EMotionFX::AnimGraph*, AZStd::vector<AnimGraphObjectType*> > GetSelectedObjectsOfType() const;
 
         QModelIndex GetFocus() const { return m_focus; }
         QModelIndex GetParentFocus() const { return m_parentFocus; }
@@ -194,10 +199,18 @@ namespace EMStudio
 
             union ObjectPtr
             {
-                ObjectPtr(EMotionFX::AnimGraphNode* ptr) : m_node(ptr) {}
-                ObjectPtr(EMotionFX::AnimGraphStateTransition* ptr) : m_transition(ptr) {}
-                ObjectPtr(EMotionFX::BlendTreeConnection* ptr) : m_connection(ptr) {}
-                ObjectPtr(void* ptr) : m_ptr(ptr) {}
+                ObjectPtr(EMotionFX::AnimGraphNode* ptr)
+                    : m_node(ptr) {
+                }
+                ObjectPtr(EMotionFX::AnimGraphStateTransition* ptr)
+                    : m_transition(ptr) {
+                }
+                ObjectPtr(EMotionFX::BlendTreeConnection* ptr)
+                    : m_connection(ptr) {
+                }
+                ObjectPtr(void* ptr)
+                    : m_ptr(ptr) {
+                }
 
                 EMotionFX::AnimGraphNode* m_node;
                 EMotionFX::AnimGraphStateTransition* m_transition;
@@ -282,21 +295,21 @@ namespace EMStudio
         QItemSelectionModel m_selectionModel;
 
         // Callbacks
-#define ANIMGRAPHMODEL_CALLBACK(CLASSNAME)                                                                             \
-    class CLASSNAME                                                                                                    \
-        : public MCore::Command::Callback                                                                              \
-    {                                                                                                                  \
-    public:                                                                                                            \
-        CLASSNAME(AnimGraphModel& animGraphModel, bool executePreUndo = false, bool executePreCommand = false)         \
-            : MCore::Command::Callback(executePreUndo, executePreCommand)                                              \
-            , m_animGraphModel(animGraphModel)                                                                         \
-        {}                                                                                                             \
-        ~CLASSNAME() override {}                                                                                       \
-        bool Execute(MCore::Command * command, const MCore::CommandLine & commandLine) override;                       \
-        bool Undo(MCore::Command * command, const MCore::CommandLine & commandLine) override;                          \
-    private:                                                                                                           \
-        AnimGraphModel& m_animGraphModel;                                                                              \
-    };                                                                                                                 \
+#define ANIMGRAPHMODEL_CALLBACK(CLASSNAME)                                                                      \
+    class CLASSNAME                                                                                             \
+        : public MCore::Command::Callback                                                                       \
+    {                                                                                                           \
+    public:                                                                                                     \
+        CLASSNAME(AnimGraphModel & animGraphModel, bool executePreUndo = false, bool executePreCommand = false) \
+            : MCore::Command::Callback(executePreUndo, executePreCommand)                                       \
+            , m_animGraphModel(animGraphModel)                                                                  \
+        {}                                                                                                      \
+        ~CLASSNAME() override {}                                                                                \
+        bool Execute(MCore::Command * command, const MCore::CommandLine& commandLine) override;                 \
+        bool Undo(MCore::Command* command, const MCore::CommandLine& commandLine) override;                     \
+    private:                                                                                                    \
+        AnimGraphModel& m_animGraphModel;                                                                       \
+    };                                                                                                          \
     friend class CLASSNAME;
 
         ANIMGRAPHMODEL_CALLBACK(CommandDidLoadAnimGraphCallback);
@@ -418,12 +431,4 @@ namespace EMStudio
 }   // namespace EMStudio
 
 // Required to return different types through a QVariant and to make signal/slot connections
-Q_DECLARE_METATYPE(AZ::TypeId);
 Q_DECLARE_METATYPE(EMStudio::AnimGraphModel::ModelItemType);
-Q_DECLARE_METATYPE(EMotionFX::AnimGraphInstance*);
-Q_DECLARE_METATYPE(EMotionFX::AnimGraphNode*);
-Q_DECLARE_METATYPE(EMotionFX::AnimGraphNodeId);
-Q_DECLARE_METATYPE(EMotionFX::AnimGraphObject*);
-Q_DECLARE_METATYPE(EMotionFX::AnimGraphStateTransition*);
-Q_DECLARE_METATYPE(EMotionFX::BlendTreeConnection*);
-Q_DECLARE_METATYPE(QVector<int>);

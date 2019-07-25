@@ -177,7 +177,6 @@ namespace EMStudio
         {
             return azrtti_typeid<EMotionFX::AnimGraph>();
         }
-
     };
 
 
@@ -413,8 +412,21 @@ namespace EMStudio
         return newPlugin;
     }
 
+    void AnimGraphPlugin::SetActionFilter(const AnimGraphActionFilter& actionFilter)
+    {
+        m_actionFilter = actionFilter;
 
-    // try to find the time view plugin
+        if (mViewWidget)
+        {
+            mViewWidget->UpdateSelection();
+        }
+    }
+
+    const AnimGraphActionFilter& AnimGraphPlugin::GetActionFilter() const
+    {
+        return m_actionFilter;
+    }
+
     TimeViewPlugin* AnimGraphPlugin::FindTimeViewPlugin() const
     {
         EMStudioPlugin* timeViewBasePlugin = EMStudio::GetPluginManager()->FindActivePlugin(TimeViewPlugin::CLASS_ID);
@@ -688,6 +700,7 @@ namespace EMStudio
     void AnimGraphPlugin::InitForAnimGraph(EMotionFX::AnimGraph* setup)
     {
         AZ_UNUSED(setup);
+        mAttributesWindow->Unlock();
         mAttributesWindow->Init(QModelIndex(), true); // Force update
         mParameterWindow->Reinit();
         mNodeGroupWindow->Init();
@@ -815,7 +828,7 @@ namespace EMStudio
         // PHASE 1: Remember the incomming connections and build the new ones
         /////////////////////////////////////////////////////////////////////////////////////////////
         AZStd::vector<EMotionFX::BlendTreeConnection*> oldConnections;
-        AZStd::vector<AZStd::unique_ptr<EMotionFX::BlendTreeConnection>> newConnections;
+        AZStd::vector<AZStd::unique_ptr<EMotionFX::BlendTreeConnection> > newConnections;
 
         // get the number of incoming connections and iterate through them
         const uint32 numConnections = node->GetNumConnections();
@@ -885,7 +898,7 @@ namespace EMStudio
         }
 
         // execute the command group
-        AZStd::string commandResult; 
+        AZStd::string commandResult;
         const bool shouldAddToHistory = !GetCommandManager()->IsExecuting();
         if (GetCommandManager()->ExecuteCommandGroup(commandGroup, commandResult, shouldAddToHistory) == false)
         {
@@ -905,8 +918,8 @@ namespace EMStudio
         /////////////////////////////////////////////////////////////////////////////////////////////
         // PHASE 1: Remember the outgoing connections and build the new ones
         /////////////////////////////////////////////////////////////////////////////////////////////
-        AZStd::vector<AZStd::pair<EMotionFX::BlendTreeConnection*, EMotionFX::AnimGraphNode*>> oldConnections;
-        AZStd::vector<AZStd::pair<AZStd::unique_ptr<EMotionFX::BlendTreeConnection>, EMotionFX::AnimGraphNode*>> newConnections; 
+        AZStd::vector<AZStd::pair<EMotionFX::BlendTreeConnection*, EMotionFX::AnimGraphNode*> > oldConnections;
+        AZStd::vector<AZStd::pair<AZStd::unique_ptr<EMotionFX::BlendTreeConnection>, EMotionFX::AnimGraphNode*> > newConnections;
 
         // iterate through all nodes in the parent and check if any of these has a connection from our node
         const uint32 numNodes = parentNode->GetNumChildNodes();
@@ -931,7 +944,7 @@ namespace EMStudio
                     // on the name of the old port
                     const uint16 sourcePort = connection->GetSourcePort();
                     const AZStd::string& sourcePortName = node->GetOutputPort(sourcePort).GetName();
-                    
+
                     // Now search for that port in newOutputPorts and create the new connection
                     bool foundConnection = false;
                     for (size_t newPort = 0; newPort < newOutputPortsCount; ++newPort)
@@ -1096,8 +1109,8 @@ namespace EMStudio
         GetMainWindow()->GetFileManager()->RelocateToAssetSourceFolder(sourceFilename);
 
         // Are we about to overwrite an already opened anim graph?
-        const EMotionFX::AnimGraph* sourceAnimGraph = EMotionFX::GetAnimGraphManager().FindAnimGraphByFileName(sourceFilename.c_str(), /*isTool*/true);
-        const EMotionFX::AnimGraph* cacheAnimGraph = EMotionFX::GetAnimGraphManager().FindAnimGraphByFileName(assetFilename.c_str(), /*isTool*/true);
+        const EMotionFX::AnimGraph* sourceAnimGraph = EMotionFX::GetAnimGraphManager().FindAnimGraphByFileName(sourceFilename.c_str(), /*isTool*/ true);
+        const EMotionFX::AnimGraph* cacheAnimGraph = EMotionFX::GetAnimGraphManager().FindAnimGraphByFileName(assetFilename.c_str(), /*isTool*/ true);
         const EMotionFX::AnimGraph* focusedAnimGraph = m_animGraphModel->GetFocusedAnimGraph();
         if (QFile::exists(sourceFilename.c_str()) &&
             (sourceAnimGraph || cacheAnimGraph) &&

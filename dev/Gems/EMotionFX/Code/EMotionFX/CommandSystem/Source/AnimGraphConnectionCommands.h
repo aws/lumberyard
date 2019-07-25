@@ -21,6 +21,7 @@
 #include "CommandManager.h"
 #include <EMotionFX/Source/AnimGraphNode.h>
 #include <EMotionFX/Source/BlendTreeConnection.h>
+#include <EMotionFX/CommandSystem/Source/AnimGraphCopyPasteData.h>
 #include <EMotionFX/CommandSystem/Source/ParameterMixins.h>
 
 
@@ -95,15 +96,20 @@ namespace CommandSystem
         const AZStd::optional<AZStd::string>& sourceNode = AZStd::nullopt, const AZStd::optional<AZStd::string>& targetNode = AZStd::nullopt,
         const AZStd::optional<AZ::s32>& startOffsetX = AZStd::nullopt, const AZStd::optional<AZ::s32>& startOffsetY = AZStd::nullopt,
         const AZStd::optional<AZ::s32>& endOffsetX = AZStd::nullopt, const AZStd::optional<AZ::s32>& endOffsetY = AZStd::nullopt,
+        const AZStd::optional<AZStd::string>& attributesString = AZStd::nullopt,
         MCore::CommandGroup* commandGroup = nullptr, bool executeInsideCommand = false);
 
     class CommandAnimGraphAdjustTransition
         : public MCore::Command
         , public EMotionFX::ParameterMixinAnimGraphId
         , public EMotionFX::ParameterMixinTransitionId
+        , public EMotionFX::ParameterMixinAttributesString
     {
     public:
-        AZ_RTTI(CommandAnimGraphAdjustTransition, "{B7EA2F2E-8C89-435B-B75A-92840E0A81B1}", MCore::Command, ParameterMixinAnimGraphId, ParameterMixinTransitionId)
+        AZ_RTTI(CommandAnimGraphAdjustTransition, "{B7EA2F2E-8C89-435B-B75A-92840E0A81B1}",
+            MCore::Command, ParameterMixinAnimGraphId,
+            EMotionFX::ParameterMixinTransitionId,
+            EMotionFX::ParameterMixinAttributesString)
         AZ_CLASS_ALLOCATOR_DECL
 
         CommandAnimGraphAdjustTransition(MCore::Command* orgCommand = nullptr);
@@ -129,6 +135,7 @@ namespace CommandSystem
         int32                               mStartOffsetY;
         int32                               mEndOffsetX;
         int32                               mEndOffsetY;
+        AZStd::string                       m_oldCanBeInterruptedByTransitionIds;
         bool                                mOldDisabledFlag;
         bool                                mOldDirtyFlag;
     };
@@ -149,9 +156,9 @@ namespace CommandSystem
     COMMANDSYSTEM_API void DeleteStateTransitions(MCore::CommandGroup* commandGroup, EMotionFX::AnimGraphNode* state, EMotionFX::AnimGraphNode* parentNode, AZStd::vector<EMotionFX::AnimGraphStateTransition*>& transitionList, bool recursive);
 
     COMMANDSYSTEM_API void CopyBlendTreeConnection(MCore::CommandGroup* commandGroup, EMotionFX::AnimGraph* targetAnimGraph, EMotionFX::AnimGraphNode* targetNode, EMotionFX::BlendTreeConnection* connection,
-        bool cutMode, AZStd::unordered_map<AZ::u64, AZ::u64>& convertedIds, AZStd::unordered_map<EMotionFX::AnimGraphNode*, AZStd::string>& newNamesByCopiedNodes);
+        bool cutMode, AZStd::unordered_map<AZ::u64, AZ::u64>& convertedIds, AnimGraphCopyPasteData& copyPasteData);
     COMMANDSYSTEM_API void CopyStateTransition(MCore::CommandGroup* commandGroup, EMotionFX::AnimGraph* targetAnimGraph, EMotionFX::AnimGraphStateTransition* transition,
-        bool cutMode, AZStd::unordered_map<AZ::u64, AZ::u64>& convertedIds, AZStd::unordered_map<EMotionFX::AnimGraphNode*, AZStd::string>& newNamesByCopiedNodes);
+        bool cutMode, AZStd::unordered_map<AZ::u64, AZ::u64>& convertedIds, AnimGraphCopyPasteData& copyPasteData);
 
     COMMANDSYSTEM_API EMotionFX::AnimGraph* CommandsGetAnimGraph(const MCore::CommandLine& parameters, MCore::Command* command, AZStd::string& outResult);
 } // namespace CommandSystem

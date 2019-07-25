@@ -141,33 +141,6 @@ void CPlayerProfile::LoadGamerProfileDefaults()
     {
         gEnv->pSystem->AutoDetectSpec(true);
     }
-
-    IPlatformOS::SUserProfileVariant preference;
-    IPlatformOS::TUserName userName = GetName();
-    unsigned int user;
-    if (gEnv->pSystem->GetPlatformOS()->UserIsSignedIn(userName, user) && user != IPlatformOS::Unknown_User)
-    {
-        if (gEnv->pSystem->GetPlatformOS()->GetUserProfilePreference(user, IPlatformOS::EUPP_CONTROLLER_INVERT_Y, preference))
-        {
-            TFlowInputData value(preference.GetInt());
-            SetAttribute("InvertY", value);
-        }
-        if (gEnv->pSystem->GetPlatformOS()->GetUserProfilePreference(user, IPlatformOS::EUPP_CONTROLLER_SENSITIVITY, preference))
-        {
-            TFlowInputData value(preference.GetFloat());
-            SetAttribute("Sensitivity", value);
-        }
-        if (gEnv->pSystem->GetPlatformOS()->GetUserProfilePreference(user, IPlatformOS::EUPP_GAME_DIFFICULTY, preference))
-        {
-            TFlowInputData value(preference.GetInt());
-            SetAttribute("SP/Difficulty", value);
-        }
-        if (gEnv->pSystem->GetPlatformOS()->GetUserProfilePreference(user, IPlatformOS::EUPP_AIM_ASSIST, preference))
-        {
-            TFlowInputData value(preference.GetInt());
-            SetAttribute("AimAssistance", value);
-        }
-    }
 }
 
 

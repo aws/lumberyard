@@ -32,6 +32,7 @@ namespace Audio
         eAFCMDF_GLOBALS          = BIT(6),// a
         eAFCMDF_LEVEL_SPECIFICS  = BIT(7),// b
         eAFCMDF_USE_COUNTED      = BIT(8),// c
+        eAFCMDF_LOADED           = BIT(9),// d
     };
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -74,6 +75,7 @@ namespace Audio
         void AllocateHeap(const size_t size, const char* const usage);
         bool UncacheFileCacheEntryInternal(CATLAudioFileEntry* const audioFileEntry, const bool now, const bool ignoreUsedCount = false);
         bool DoesRequestFitInternal(const size_t requestSize);
+        void UpdatePreloadRequestsStatus();
         bool FinishStreamInternal(const IReadStreamPtr readStream, const unsigned int error);
         bool AllocateMemoryBlockInternal(CATLAudioFileEntry* const __restrict audioFileEntry);
         void UncacheFile(CATLAudioFileEntry* const audioFileEntry);

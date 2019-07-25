@@ -28,14 +28,12 @@ namespace LmbrCentral
         virtual bool ExecuteSourceTrigger(
             const Audio::TAudioControlID triggerID,
             const Audio::SAudioCallBackInfos& callbackInfo,
-            const Audio::TAudioControlID& sourceId
-        ) = 0;
+            const Audio::SAudioSourceInfo& sourceInfo) = 0;
 
         //! Execute a single ATL trigger on a proxy
         virtual bool ExecuteTrigger(
             const Audio::TAudioControlID triggerID,
-            const Audio::SAudioCallBackInfos& callbackInfo
-            ) = 0;
+            const Audio::SAudioCallBackInfos& callbackInfo) = 0;
 
         //! Kill a single or all ATL triggers on a proxy
         virtual void KillTrigger(const Audio::TAudioControlID triggerID) = 0;

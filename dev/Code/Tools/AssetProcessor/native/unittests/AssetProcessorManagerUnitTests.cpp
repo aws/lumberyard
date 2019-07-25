@@ -2848,6 +2848,7 @@ namespace AssetProcessor
         m_assetBuilderDesc.m_name = "Job Dependency UnitTest";
         m_assetBuilderDesc.m_patterns.push_back(AssetBuilderSDK::AssetBuilderPattern("*.txt", AssetBuilderSDK::AssetBuilderPattern::PatternType::Wildcard));
         m_assetBuilderDesc.m_busId = builderUuid;
+        m_assetBuilderDesc.m_analysisFingerprint = "xyz"; // Normally this would include the same fingerprint info from the job but for the purposes of testing, we just need something here
         m_assetBuilderDesc.m_createJobFunction = [&fileBJobDependentOnFileAJob, &changeJobAFingerprint, &fileCJobDependentOnFileBJob, &sourceFileBUuid]
         (const AssetBuilderSDK::CreateJobsRequest& request, AssetBuilderSDK::CreateJobsResponse& response)
         {

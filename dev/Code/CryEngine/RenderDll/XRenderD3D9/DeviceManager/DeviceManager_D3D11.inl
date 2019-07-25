@@ -346,9 +346,7 @@ HRESULT CDeviceManager::Create2DTexture(const string& textureName, uint32 nWidth
             pDeviceTexture->m_nBaseAllocatedSize = CDeviceTexture::TextureDataSize(nWidth, nHeight, 1, nMips, 1, CTexture::TexFormatFromDeviceFormat(Format));
 
             // Register the VRAM allocation with the driller
-            void* address = static_cast<void*>(pD3DTex);
-            size_t byteSize = pDeviceTexture->m_nBaseAllocatedSize;
-            EBUS_EVENT(Render::Debug::VRAMDrillerBus, RegisterAllocation, address, byteSize, textureName.c_str(), Render::Debug::VRAM_CATEGORY_TEXTURE, Render::Debug::VRAM_SUBCATEGORY_TEXTURE_TEXTURE);
+            pDeviceTexture->TrackTextureMemory(nUsage, textureName.c_str());
         }
 
         if (nUsage & USAGE_STAGE_ACCESS)
@@ -471,9 +469,7 @@ HRESULT CDeviceManager::CreateCubeTexture(const string& textureName, uint32 nSiz
             pDeviceTexture->m_nBaseAllocatedSize = CDeviceTexture::TextureDataSize(nSize, nSize, 1, nMips, 1, CTexture::TexFormatFromDeviceFormat(Format)) * 6;
 
             // Register the VRAM allocation with the driller
-            void* address = static_cast<void*>(pD3DTex);
-            size_t byteSize = pDeviceTexture->m_nBaseAllocatedSize;
-            EBUS_EVENT(Render::Debug::VRAMDrillerBus, RegisterAllocation, address, byteSize, textureName, Render::Debug::VRAM_CATEGORY_TEXTURE, Render::Debug::VRAM_SUBCATEGORY_TEXTURE_TEXTURE);
+            pDeviceTexture->TrackTextureMemory(nUsage, textureName.c_str());
         }
 
         if (nUsage & USAGE_STAGE_ACCESS)
@@ -569,9 +565,7 @@ HRESULT CDeviceManager::CreateVolumeTexture(const string& textureName, uint32 nW
             pDeviceTexture->m_nBaseAllocatedSize = CDeviceTexture::TextureDataSize(nWidth, nHeight, nDepth, nMips, 1, CTexture::TexFormatFromDeviceFormat(Format));
 
             // Register the VRAM allocation with the driller
-            void* address = static_cast<void*>(pD3DTex);
-            size_t byteSize = pDeviceTexture->m_nBaseAllocatedSize;
-            EBUS_EVENT(Render::Debug::VRAMDrillerBus, RegisterAllocation, address, byteSize, textureName, Render::Debug::VRAM_CATEGORY_TEXTURE, Render::Debug::VRAM_SUBCATEGORY_TEXTURE_TEXTURE);
+            pDeviceTexture->TrackTextureMemory(nUsage, textureName.c_str());
         }
 
         if (nUsage & USAGE_STAGE_ACCESS)
@@ -706,6 +700,25 @@ HRESULT CDeviceManager::CreateBuffer(
 
     hr = gcpRendD3D->GetDevice().CreateBuffer(&BufDesc, NULL, ppBuff);
     CHECK_HRESULT(hr);
+
+    Render::Debug::VRAMAllocationSubcategory subcategory = Render::Debug::VRAM_SUBCATEGORY_BUFFER_OTHER_BUFFER;
+    if (BufDesc.Usage & D3D11_BIND_VERTEX_BUFFER)
+    {
+        subcategory = Render::Debug::VRAM_SUBCATEGORY_BUFFER_VERTEX_BUFFER;
+    }
+    else if (BufDesc.Usage & D3D11_BIND_INDEX_BUFFER)
+    {
+        subcategory = Render::Debug::VRAM_SUBCATEGORY_BUFFER_INDEX_BUFFER;
+    }
+    else if (BufDesc.Usage & D3D11_BIND_CONSTANT_BUFFER)
+    {
+        subcategory = Render::Debug::VRAM_SUBCATEGORY_BUFFER_CONSTANT_BUFFER;
+    }
+    
+    void* address = static_cast<void*>(*ppBuff);
+    size_t byteSize = BufDesc.ByteWidth;
+    EBUS_EVENT(Render::Debug::VRAMDrillerBus, RegisterAllocation, address, byteSize, "CDeviceManager::CreateBuffer", Render::Debug::VRAM_CATEGORY_BUFFER, subcategory);
+
     return hr;
 }
 

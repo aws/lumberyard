@@ -762,7 +762,7 @@ namespace AZStd
     {
         if (const Functor* fp = f.template target<Functor>())
         {
-            return fp == g.get_pointer();
+            return fp == &g.get();
         }
         else
         {
@@ -776,7 +776,7 @@ namespace AZStd
     {
         if (const Functor* fp = f.template target<Functor>())
         {
-            return g.get_pointer() == fp;
+            return &g.get() == fp;
         }
         else
         {
@@ -790,7 +790,7 @@ namespace AZStd
     {
         if (const Functor* fp = f.template target<Functor>())
         {
-            return fp != g.get_pointer();
+            return fp != &g.get();
         }
         else
         {
@@ -804,7 +804,7 @@ namespace AZStd
     {
         if (const Functor* fp = f.template target<Functor>())
         {
-            return g.get_pointer() != fp;
+            return &g.get() != fp;
         }
         else
         {

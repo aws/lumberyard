@@ -3058,7 +3058,7 @@ void UiTextComponent::Reflect(AZ::ReflectContext* context)
                 ->Attribute(AZ::Edit::Attributes::ChangeNotify, &UiTextComponent::CheckLayoutFitterAndRefreshEditorTransformProperties);
             editInfo->DataElement(AZ::Edit::UIHandlers::SpinBox, &UiTextComponent::m_fontSize, "Font size", "The size of the font in points")
                 ->Attribute(AZ::Edit::Attributes::ChangeNotify, &UiTextComponent::OnFontSizeChange)
-                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &UiTextComponent::CheckLayoutFitterAndRefreshEditorTransformProperties)				
+                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &UiTextComponent::CheckLayoutFitterAndRefreshEditorTransformProperties)
                 ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
                 ->Attribute(AZ::Edit::Attributes::Step, 1.0f);
             editInfo->DataElement(AZ::Edit::UIHandlers::ComboBox, &UiTextComponent::m_textHAlignment, "Horizontal text alignment", "How to align the text within the rect")
@@ -4848,7 +4848,7 @@ AZ::Vector2 UiTextComponent::GetTextSizeFromDrawBatchLines(const UiTextComponent
 AZStd::string UiTextComponent::GetLocalizedText(const AZStd::string& text)
 {
     string locText;
-    gEnv->pSystem->GetLocalizationManager()->LocalizeString(text.c_str(), locText);
+    LocalizationManagerRequestBus::Broadcast(&LocalizationManagerRequestBus::Events::LocalizeString_ch, m_text.c_str(), locText, false);
     return locText.c_str();
 }
 

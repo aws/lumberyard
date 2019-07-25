@@ -18,6 +18,7 @@ AZTEST_EXPORT int AZ_UNIT_TEST_HOOK_NAME(int argc, char** argv)
 {
     ::testing::InitGoogleMock(&argc, argv);
     AZ::Test::excludeIntegTests();
+    AZ::Test::ApplyGlobalParameters(&argc, argv);
     AZ::Test::printUnusedParametersWarning(argc, argv);
     AZ::Test::addTestEnvironments({});
     int result = RUN_ALL_TESTS();

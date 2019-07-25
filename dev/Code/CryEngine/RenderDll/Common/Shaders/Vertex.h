@@ -18,11 +18,9 @@ namespace AZ
     namespace Vertex
     {
         const uint32_t VERTEX_BUFFER_ALIGNMENT = 4;
-        enum class AttributeUsage : uint32_t
+        // This enum must only have 8 entries because only 3 bits are used to store usage.
+        enum class AttributeUsage : uint8
         {
-            StreamDelimiter = 0,
-            Unknown,
-
             Position,
             Color,
             Normal,
@@ -31,10 +29,8 @@ namespace AZ
             Indices,
             Tangent,
             BiTangent,
-            BufferAlignment,
-
-            NumTypes
-        };      
+            NumUsages
+        };
 
         struct AttributeUsageData
         {
@@ -42,12 +38,9 @@ namespace AZ
             AZStd::string semanticName;
         };
 
-        static AttributeUsageData AttributeUsageDataTable[(unsigned int)AZ::Vertex::AttributeUsage::NumTypes] =
+        static AttributeUsageData AttributeUsageDataTable[(uint)AttributeUsage::NumUsages] =
         {
             // {friendlyName, semanticName}
-            { "StreamDelimiter", "UNKNOWN" },
-            { "Unknown", "UNKNOWN" },
-
             { "Position", "POSITION" },
             { "Color", "COLOR" },
             { "Normal", "NORMAL" },
@@ -55,11 +48,11 @@ namespace AZ
             { "Weights", "BLENDWEIGHT" },
             { "Indices", "BLENDINDICES" },
             { "Tangent", "TEXCOORD" },
-            { "BiTangent", "TEXCOORD" },
-            { "BufferAlignment", "UNKNOWN" },
+            { "BiTangent", "TEXCOORD" }
         };
 
-        enum class AttributeType : uint32_t
+        // This enum must have 32 or less entries as 5 bits are used to store type.
+        enum class AttributeType : uint8
         {
             Float16_1 = 0,
             Float16_2,
@@ -129,34 +122,30 @@ namespace AZ
         class Attribute
         {
         public:
-            Attribute(AttributeUsage usage, AttributeType type)
+            // Usage stored in the 3 lower bits and Type stored in the 5 upper bits.
+            static const uint8 kUsageBitCount = 3;
+            static const uint8 kUsageMask = 0x07;
+            static const uint8 kTypeMask = 0xf8;
+            static uint8 CreateAttribute(AttributeUsage usage, AttributeType type)
             {
-                m_usage = usage;
-                m_type = type;
-                m_byteLength = AttributeTypeDataTable[(unsigned int)m_type].byteSize;
+                return (static_cast<uint8>(type) << kUsageBitCount) | static_cast<uint8>(usage);
             }
-            AttributeUsage GetUsage() const { return m_usage; }
-            AttributeType GetType() const { return m_type; }
-            uint8 GetByteLength() const { return m_byteLength; }
-            AZStd::string ToString() const
+            static AttributeUsage GetUsage(const uint8 attribute)
+            { 
+                return static_cast<AttributeUsage>(attribute & kUsageMask);
+            }
+            static AttributeType GetType(const uint8 attribute)
+            { 
+                return static_cast<AttributeType>((attribute & kTypeMask) >> kUsageBitCount);
+            }
+            static uint8 GetByteLength(const uint8 attribute)
+            { 
+                return AttributeTypeDataTable[(uint)GetType(attribute)].byteSize;
+            }
+            static const AZStd::string& GetSemanticName(uint8 attribute)
             {
-                return AttributeUsageDataTable[(unsigned int)m_usage].friendlyName + "." + AttributeTypeDataTable[(unsigned int)m_type].friendlyName;
+                return AttributeUsageDataTable[(uint)GetUsage(attribute)].semanticName;
             }
-
-            bool operator==(const Attribute& other) const
-            {
-                if (m_usage == other.GetUsage() && m_type == other.GetType())
-                {
-                    return true;
-                }
-
-                return false;
-            }
-
-        private:
-            AttributeUsage m_usage;
-            AttributeType m_type;
-            uint32_t m_byteLength;
         };
 
         //! Flexible vertex format class
@@ -164,279 +153,249 @@ namespace AZ
         {
         public:
             Format(){};
-            Format(const AZStd::vector<Attribute>& attributes)
-            {
-                m_vertexAttributes = attributes;
-                m_enum = eVF_Unknown;
-                UpdateStride();
-                PadFormatForBufferAlignment();           
-                GenerateName();
-                GenerateCrc();
-            }
+
+
             //! Conversion from old hard-coded EVertexFormat enum to new, flexible vertex class
             Format(EVertexFormat format)
             {
+                m_enum = eVF_Unknown;
+                m_numAttributes = 0;
                 switch (format)
                 {
                 case eVF_Unknown:
                     m_enum = eVF_Unknown;
                     break;
                 case eVF_P3F_C4B_T2F:
-                    m_vertexAttributes =
-                    {
-                        Attribute(AttributeUsage::Position, AttributeType::Float32_3),
-                        Attribute(AttributeUsage::Color, AttributeType::Byte_4),
-                        Attribute(AttributeUsage::TexCoord, AttributeType::Float32_2)
-                    };
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::Position, AttributeType::Float32_3));
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::Color, AttributeType::Byte_4));
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::TexCoord, AttributeType::Float32_2));
                     m_enum = eVF_P3F_C4B_T2F;
                     break;
+                case eVF_P3F_C4B_T2F_T2F:
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::Position, AttributeType::Float32_3));
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::Color, AttributeType::Byte_4));
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::TexCoord, AttributeType::Float32_2));
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::TexCoord, AttributeType::Float32_2));
+                    m_enum = eVF_P3F_C4B_T2F_T2F;
+                    break;
                 case eVF_P3S_C4B_T2S:
-                    m_vertexAttributes =
-                    {
-                        Attribute(AttributeUsage::Position, AttributeType::Float16_4),// vec3f16 is backed by a CryHalf4
-                        Attribute(AttributeUsage::Color, AttributeType::Byte_4),
-                        Attribute(AttributeUsage::TexCoord, AttributeType::Float16_2)
-                    };
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::Position, AttributeType::Float16_4));// vec3f16 is backed by a CryHalf4
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::Color, AttributeType::Byte_4));
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::TexCoord, AttributeType::Float16_2));
                     m_enum = eVF_P3S_C4B_T2S;
                     break;
+                case eVF_P3S_C4B_T2S_T2S:
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::Position, AttributeType::Float16_4));// vec3f16 is backed by a CryHalf4
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::Color, AttributeType::Byte_4));
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::TexCoord, AttributeType::Float16_2));
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::TexCoord, AttributeType::Float16_2));
+                    m_enum = eVF_P3S_C4B_T2S_T2S;
+                    break;
                 case eVF_P3S_N4B_C4B_T2S:
-                    m_vertexAttributes =
-                    {
-                        Attribute(AttributeUsage::Position, AttributeType::Float16_4),// vec3f16 is backed by a CryHalf4
-                        Attribute(AttributeUsage::Normal, AttributeType::Byte_4),
-                        Attribute(AttributeUsage::Color, AttributeType::Byte_4),
-                        Attribute(AttributeUsage::TexCoord, AttributeType::Float16_2)
-                    };
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::Position, AttributeType::Float16_4));// vec3f16 is backed by a CryHalf4
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::Normal, AttributeType::Byte_4));
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::Color, AttributeType::Byte_4));
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::TexCoord, AttributeType::Float16_2));
                     m_enum = eVF_P3S_N4B_C4B_T2S;
                     break;
                 case eVF_P3F_C4B_T4B_N3F2:
-                    m_vertexAttributes =
-                    {
-                        Attribute(AttributeUsage::Position, AttributeType::Float32_3),
-                        Attribute(AttributeUsage::Color, AttributeType::Byte_4),
-                        Attribute(AttributeUsage::Color, AttributeType::Byte_4),
-                        Attribute(AttributeUsage::Tangent, AttributeType::Float32_3),//x-axis
-                        Attribute(AttributeUsage::BiTangent, AttributeType::Float32_3)//y-axis
-#ifdef PARTICLE_MOTION_BLUR
-                        Attribute(AttributeUsage::Position, AttributeType::Float32_3),//prevPos
-                        Attribute(AttributeUsage::Tangent, AttributeType::Float32_3),//prevXTan
-                        Attribute(AttributeUsage::BiTangent, AttributeType::Float32_3)//prevYTan
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::Position, AttributeType::Float32_3));
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::Color, AttributeType::Byte_4));
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::Color, AttributeType::Byte_4));
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::Tangent, AttributeType::Float32_3));//x-axis
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::BiTangent, AttributeType::Float32_3));//y-axis
+#ifdef PARTICLE_MOTION_BLUR // Nonfunctional and disabled.
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::Position, AttributeType::Float32_3));//prevPos
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::Tangent, AttributeType::Float32_3));//prevXTan
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::BiTangent, AttributeType::Float32_3));//prevYTan
 #endif
-                    };
                     m_enum = eVF_P3F_C4B_T4B_N3F2;// Particles.
                     break;
                 case eVF_TP3F_C4B_T2F:
-                    m_vertexAttributes =
-                    {
-                        Attribute(AttributeUsage::Position, AttributeType::Float32_4),
-                        Attribute(AttributeUsage::Color, AttributeType::Byte_4),
-                        Attribute(AttributeUsage::TexCoord, AttributeType::Float32_2)
-                    };
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::Position, AttributeType::Float32_4));
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::Color, AttributeType::Byte_4));
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::TexCoord, AttributeType::Float32_2));
                     m_enum = eVF_TP3F_C4B_T2F;// Fonts (28 bytes).
                     break;
                 case eVF_TP3F_T2F_T3F:
-                    m_vertexAttributes =
-                    {
-                        Attribute(AttributeUsage::Position, AttributeType::Float32_4),
-                        Attribute(AttributeUsage::TexCoord, AttributeType::Float32_2),
-                        Attribute(AttributeUsage::TexCoord, AttributeType::Float32_3)
-                    };
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::Position, AttributeType::Float32_4));
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::TexCoord, AttributeType::Float32_2));
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::TexCoord, AttributeType::Float32_3));
                     m_enum = eVF_TP3F_T2F_T3F;
                     break;
                 case eVF_P3F_T3F:
-                    m_vertexAttributes =
-                    {
-                        Attribute(AttributeUsage::Position, AttributeType::Float32_3),
-                        Attribute(AttributeUsage::TexCoord, AttributeType::Float32_3)
-                    };
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::Position, AttributeType::Float32_3));
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::TexCoord, AttributeType::Float32_3));
                     m_enum = eVF_P3F_T3F; // Miscellaneus.
                     break;
                 case eVF_P3F_T2F_T3F:
-                    m_vertexAttributes =
-                    {
-                        Attribute(AttributeUsage::Position, AttributeType::Float32_3),
-                        Attribute(AttributeUsage::TexCoord, AttributeType::Float32_2),
-                        Attribute(AttributeUsage::TexCoord, AttributeType::Float32_3)
-                    };
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::Position, AttributeType::Float32_3));
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::TexCoord, AttributeType::Float32_2));
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::TexCoord, AttributeType::Float32_3));
                     m_enum = eVF_P3F_T2F_T3F;
                     break;
                 // Additional streams
                 case eVF_T2F:
-                    m_vertexAttributes =
-                    {
-                        Attribute(AttributeUsage::TexCoord, AttributeType::Float32_2)
-                    };
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::TexCoord, AttributeType::Float32_2));
                     m_enum = eVF_T2F; // Light maps TC (8 bytes).
                     break;
                 case eVF_W4B_I4S:// Skinned weights/indices stream.
-                    m_vertexAttributes =
-                    {
-                        Attribute(AttributeUsage::Weights, AttributeType::Byte_4),
-                        Attribute(AttributeUsage::Indices, AttributeType::UInt16_4)
-                    };
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::Weights, AttributeType::Byte_4));
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::Indices, AttributeType::UInt16_4));
                     m_enum = eVF_W4B_I4S;
                     break;
                 case eVF_C4B_C4B:// SH coefficients.
-                    m_vertexAttributes =
-                    {
-                        Attribute(AttributeUsage::Unknown, AttributeType::Byte_4),    //coef0
-                        Attribute(AttributeUsage::Unknown, AttributeType::Byte_4)    //coef1
-                    };
+                    // We use the "Weights" usage since sh coefs use an unknown usage of 4 bytes.
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::Weights, AttributeType::Byte_4));    //coef0
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::Weights, AttributeType::Byte_4));    //coef1
                     m_enum = eVF_C4B_C4B;
                     break;
                 case eVF_P3F_P3F_I4B:// Shape deformation stream.
-                    m_vertexAttributes =
-                    {
-                        Attribute(AttributeUsage::Position, AttributeType::Float32_3),    //thin
-                        Attribute(AttributeUsage::Position, AttributeType::Float32_3),    //fat
-                        Attribute(AttributeUsage::Indices, AttributeType::Byte_4)
-                    };
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::Position, AttributeType::Float32_3));    //thin
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::Position, AttributeType::Float32_3));    //fat
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::Indices, AttributeType::Byte_4));
                     m_enum = eVF_P3F_P3F_I4B;
                     break;
                 case eVF_P3F:// Velocity stream.
-                    m_vertexAttributes =
-                    {
-                        Attribute(AttributeUsage::Position, AttributeType::Float32_3)
-                    };
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::Position, AttributeType::Float32_3));
                     m_enum = eVF_P3F;
                     break;
                 case eVF_C4B_T2S:
-                    m_vertexAttributes =
-                    {
-                        Attribute(AttributeUsage::Color, AttributeType::Byte_4),
-                        Attribute(AttributeUsage::TexCoord, AttributeType::Float16_2),
-                    };
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::Color, AttributeType::Byte_4));
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::TexCoord, AttributeType::Float16_2));
                     m_enum = eVF_C4B_T2S;// General (Position is merged with Tangent stream)
                     break;
                 case eVF_P2F_T4F_C4F: // Lens effects simulation
-                    m_vertexAttributes =
-                    {
-                        Attribute(AttributeUsage::Position, AttributeType::Float32_2),
-                        Attribute(AttributeUsage::TexCoord, AttributeType::Float32_4),
-                        Attribute(AttributeUsage::Color, AttributeType::Float32_4)
-                    };
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::Position, AttributeType::Float32_2));
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::TexCoord, AttributeType::Float32_4));
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::Color, AttributeType::Float32_4));
                     m_enum = eVF_P2F_T4F_C4F;
                     break;
                 case eVF_P2F_T4F_T4F_C4F:
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::Position, AttributeType::Float32_2));
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::TexCoord, AttributeType::Float32_4));
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::TexCoord, AttributeType::Float32_4));
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::Color, AttributeType::Float32_4));
                     m_enum = eVF_P2F_T4F_T4F_C4F;
                     break;
                 case eVF_P2S_N4B_C4B_T1F:// terrain
-                    m_vertexAttributes =
-                    {
-                        Attribute(AttributeUsage::Position, AttributeType::Float16_2),// xy-coordinates in terrain
-                        Attribute(AttributeUsage::Normal, AttributeType::Byte_4),
-                        Attribute(AttributeUsage::Color, AttributeType::Byte_4),
-                        Attribute(AttributeUsage::TexCoord, AttributeType::Float32_1)// z-coordinate in terrain
-                    };
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::Position, AttributeType::Float16_2));// xy-coordinates in terrain
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::Normal, AttributeType::Byte_4));
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::Color, AttributeType::Byte_4));
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::TexCoord, AttributeType::Float32_1));// z-coordinate in terrain
                     m_enum = eVF_P2S_N4B_C4B_T1F;
                     break;
                 case eVF_P3F_C4B_T2S:
-                    m_vertexAttributes =
-                    {
-                        Attribute(AttributeUsage::Position, AttributeType::Float32_3),
-                        Attribute(AttributeUsage::Color, AttributeType::Byte_4),
-                        Attribute(AttributeUsage::TexCoord, AttributeType::Float16_2)
-                    };
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::Position, AttributeType::Float32_3));
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::Color, AttributeType::Byte_4));
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::TexCoord, AttributeType::Float16_2));
                     m_enum = eVF_P3F_C4B_T2S;
                     break;
                 case eVF_P2F_C4B_T2F_F4B:
-                    m_vertexAttributes =
-                    {
-                        Attribute(AttributeUsage::Position, AttributeType::Float32_2),
-                        Attribute(AttributeUsage::Color, AttributeType::Byte_4),
-                        Attribute(AttributeUsage::TexCoord, AttributeType::Float32_2),
-                        Attribute(AttributeUsage::Indices, AttributeType::UInt16_2)
-                    };
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::Position, AttributeType::Float32_2));
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::Color, AttributeType::Byte_4));
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::TexCoord, AttributeType::Float32_2));
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::Indices, AttributeType::UInt16_2));
                     m_enum = eVF_P2F_C4B_T2F_F4B;
+                    break;
+                case eVF_P3F_C4B:
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::Position, AttributeType::Float32_3));
+                    AddAttribute(Attribute::CreateAttribute(AttributeUsage::Color, AttributeType::Byte_4));
+                    m_enum = eVF_P3F_C4B;
                     break;
                 case eVF_Max:
                 default:
-                    AZ_Assert(false, "Invalid vertex format");
+                    AZ_Error("VF", false, "Invalid vertex format");
                     m_enum = eVF_Unknown;
                 }
-                UpdateStride();
-                PadFormatForBufferAlignment();               
-                GenerateName();
-                GenerateCrc();
+                CalculateStrideAndUsageCounts();
             }
 
             //! Get the equivalent old-style EVertexFormat enum
             uint GetEnum() const { return m_enum; }
 
-            /*! The first 3 entries to the EVertexFormat enum (below) are labeled as Base Stream in the comments
-            CLodGeneratorInteractionManager::VerifyNoOverlap checks for these enums, then gets the uvs. I assume it is looking for
-            the base streams since it checks these 3, hence this function is called IsBaseStream
-            Need a more generic way to determine this...if possible
-            */
-            bool IsBaseStream() const
-            {
-                return m_enum == eVF_P3F_C4B_T2F || m_enum == eVF_P3S_C4B_T2S || m_enum == eVF_P3S_N4B_C4B_T2S;
-            }
+            static const uint8 kHas16BitFloatPosition  = 0x4;
+            static const uint8 kHas16BitFloatTexCoords = 0x2;
+            static const uint8 kHas32BitFloatTexCoords = 0x1;
+
+            
             //! Helper function to check to see if the vertex format has a position attribute that uses 16 bit floats for the underlying type
             bool Has16BitFloatPosition() const
             {
-                for (Attribute attribute : m_vertexAttributes)
-                {
-                    if (attribute.GetUsage() == AttributeUsage::Position && attribute.GetType() == AttributeType::Float16_4)
-                    {
-                        return true;
-                    }
-                }
-                return false;
+                return (m_flags & kHas16BitFloatPosition) != 0x0;
             }
             
             //! Helper function to check to see if the vertex format has a texture coordinate attribute that uses 16 bit floats for the underlying type
             bool Has16BitFloatTextureCoordinates() const
             {
-                for (Attribute attribute : m_vertexAttributes)
-                {
-                    if (attribute.GetUsage() == AttributeUsage::TexCoord && attribute.GetType() == AttributeType::Float16_2)
-                    {
-                        return true;
-                    }
-                }
-                return false;
+                return (m_flags & kHas16BitFloatTexCoords) != 0x0;
             }
 
             //! Helper function to check to see if the vertex format has a texture coordinate attribute that uses 32 bit floats for the underlying type
             bool Has32BitFloatTextureCoordinates() const
             {
-                for (Attribute attribute : m_vertexAttributes)
+                return (m_flags & kHas32BitFloatTexCoords) != 0x0;
+            }
+
+
+            uint32 GetAttributeUsageCount(AttributeUsage usage) const
+            {
+                return (uint32)m_attributeUsageCounts[(uint)usage];
+            }
+
+            bool TryGetAttributeOffsetAndType(AttributeUsage usage, uint32 index, uint& outOffset, AttributeType& outType) const
+            {
+                outOffset = 0;
+                outType = AttributeType::NumTypes;
+                for (uint ii=0; ii < m_numAttributes; ++ii)
                 {
-                    if (attribute.GetUsage() == AttributeUsage::TexCoord && attribute.GetType() == AttributeType::Float32_2)
+                    uint8 attribute = m_vertexAttributes[ii];
+                    if (Attribute::GetUsage(attribute) == usage)
                     {
-                        return true;
+                        if (index == 0)
+                        {
+                            outType = Attribute::GetType(attribute);
+                            return true;
+                        }
+                        else
+                        {
+                            --index;
+                        }
                     }
+                    outOffset += Attribute::GetByteLength(attribute);
                 }
                 return false;
             }
 
-            //! Return any attributes that match the usage. // waltont TODO It's possible that getting the number of attributes or the index of those attributes would be preferable
-            AZStd::vector<Attribute> GetAttributesByUsage(AttributeUsage usage) const
+            uint8 GetAttributeByteLength(AttributeUsage usage) const
             {
-                AZStd::vector<Attribute> outputAttributes;
-                for (Attribute attribute : m_vertexAttributes)
+                for (uint ii = 0; ii < m_numAttributes; ++ii)
                 {
-                    if (attribute.GetUsage() == usage)
+                    uint8 attribute = m_vertexAttributes[ii];
+                    if (Attribute::GetUsage(attribute) == usage)
                     {
-                        outputAttributes.push_back(attribute);
+                        return Attribute::GetByteLength(attribute);
                     }
                 }
-                return outputAttributes;
+                return 0;
             }
 
-            const AZStd::vector<Attribute>& GetAttributes() const
+
+            const uint8* GetAttributes( uint32 &outCount) const
             {
+                outCount = m_numAttributes;
                 return m_vertexAttributes;
             }
 
             //! Return true if the vertex format is a superset of the input
             bool IsSupersetOf(const AZ::Vertex::Format& input) const
             {
-                AZStd::vector<Attribute> attributes = input.GetAttributes();
-                for (Attribute a : attributes)
+                uint32 count = 0;
+                const uint8* attributes = input.GetAttributes(count);
+                for ( uint8 ii=0; ii<count; ++ii)
                 {
-                    if (this->GetAttributesByUsage(a.GetUsage()).size() < input.GetAttributesByUsage(a.GetUsage()).size())
+                    const uint8 attribute = attributes[ii];
+                    if (GetAttributeUsageCount(Attribute::GetUsage(attribute)) < input.GetAttributeUsageCount(Attribute::GetUsage(attribute)))
                     {
                         return false;
                     }
@@ -445,16 +404,15 @@ namespace AZ
             }
 
             uint GetStride(void) const { return m_stride; }
-            const char* GetName(void) const { return m_Name.data(); }
-            AZ::u32 GetCRC(void) const { return m_CRC; }
             
             //! Returns the true if an attribute with the given usage is found, false otherwise
             bool TryCalculateOffset(uint& offset, AttributeUsage usage, uint index = 0) const
             {
                 offset = 0;
-                for (Attribute attribute : m_vertexAttributes)
+                for (uint ii = 0; ii < m_numAttributes; ++ii)
                 {
-                    if (attribute.GetUsage() == usage)
+                    uint8 attribute = m_vertexAttributes[ii];
+                    if (Attribute::GetUsage(attribute) == usage)
                     {
                         if (index == 0)
                         {
@@ -465,15 +423,15 @@ namespace AZ
                             --index;
                         }
                     }
-                    offset += attribute.GetByteLength();
+                    offset += Attribute::GetByteLength(attribute);
                 }
                 return false;
             }
 
-            // Quick comparison operators. These will need to be replaced when we remove the EVertexFormat enum entirely
+            // Quick comparison operators.
             bool operator==(const Format& other) const
             {
-                return m_CRC == other.GetCRC();
+                return m_enum == other.m_enum;
             }
             bool operator!=(const Format& other) const
             {
@@ -484,23 +442,10 @@ namespace AZ
                 return m_enum == other;
             }
             // Used in RendermeshMerger.cpp
-            // waltont TODO In order to replace this, we need to determine if actual order of EVertexFormat enums have any significance other than base formats coming first, or if these are just needed to have an arbitrary way to sort by vertex format
             // CHWShader_D3D::mfUpdateFXVertexFormat and CHWShader_D3D::mfVertexFormat want the max between two vertex formats...why? It seems like a bad guess of which vertex format to use since there's no particular order to EVertexFormats...other than the more specialized EVertexFormats come after the base EVertexFormats
             bool operator<(const Format& other) const
             {
-                if (other.IsSupersetOf(*this))
-                {
-                    return true;
-                }
-                if (*this == other || this->IsSupersetOf(other))
-                {
-                    return false;
-                }
-                if (m_enum != eVF_Unknown && other.GetEnum() != eVF_Unknown)
-                {
-                    return m_enum < other.GetEnum();
-                }
-                return m_CRC < other.GetCRC();
+                return m_enum < other.m_enum;
             }
             bool operator<=(const Format& other) const
             {
@@ -515,85 +460,64 @@ namespace AZ
                 return (*this == other || *this > other);
             }
         private:
+            void AddAttribute(uint8 attribute)
+            {
+                AZ_Assert(m_numAttributes < kMaxAttributes, "Too many attributes added.  Change the size of kMaxAttributes");
+                m_vertexAttributes[m_numAttributes++] = attribute;
+
+                // Update the flags.
+                AttributeUsage usage = Attribute::GetUsage(attribute);
+                AttributeType type = Attribute::GetType(attribute);
+                if (usage == AttributeUsage::TexCoord)
+                {
+                    if (type == AttributeType::Float16_2) {
+                        m_flags |= kHas16BitFloatTexCoords;
+                    }
+                    else if (type == AttributeType::Float32_2) {
+                        m_flags |= kHas32BitFloatTexCoords;
+                    }
+                }
+                else if (usage == AttributeUsage::Position && type == AttributeType::Float16_4) {
+                    m_flags |= kHas16BitFloatPosition;
+                }
+            }
+
             //! Calculates the sum of the size in bytes of all attributes that make up this format
-            void UpdateStride()
+            void CalculateStrideAndUsageCounts()
             {
-                m_stride = 0;
-                for (Attribute attribute : m_vertexAttributes)
+                AZ_STATIC_ASSERT((uint32)AttributeUsage::NumUsages <= 8, "We use 3 bits to represent usage so we only support 8 usages for a vertex format attribute.");
+                AZ_STATIC_ASSERT((uint32)AttributeType::NumTypes <= 32, "We use 5 bits to represent type so we only support up to 32 types for a vertex format attribute.");
+
+                for (uint index = 0; index < (uint)AttributeUsage::NumUsages; ++index)
                 {
-                    m_stride += attribute.GetByteLength();
+                    m_attributeUsageCounts[index] = 0;
                 }
+                uint32 stride = 0;
+                for (uint ii = 0; ii < m_numAttributes; ++ii)
+                {
+                    uint8 attribute = m_vertexAttributes[ii];
+                    stride += Attribute::GetByteLength(attribute);
+                    m_attributeUsageCounts[(uint)Attribute::GetUsage(attribute)]++;
+                }
+                AZ_Assert(stride < (0x1 << (sizeof(m_stride) * 8)), "Vertex stride is larger than the maximum supported, update the type for m_stride in Vertex.h");
+
+                m_stride = stride;
             }
+            
+			
 
-            //! Add extra padding to the end of the vertex format for alignment
-            void PadFormatForBufferAlignment(void)
-            {
-                uint formatSize = GetStride();
+#ifdef PARTICLE_MOTION_BLUR
+            static const uint32_t kMaxAttributes = 8;
+#else
+            static const uint32_t kMaxAttributes = 5;
+#endif
+            uint8 m_vertexAttributes[kMaxAttributes] = { 0 };
 
-                // Add padding to the stream to make it 4-byte aligned
-                switch (formatSize % VERTEX_BUFFER_ALIGNMENT)
-                {
-                case (3):
-                {
-                    m_vertexAttributes.push_back(Attribute(AttributeUsage::BufferAlignment, AttributeType::Byte_1));
-                    break;
-                }
-                case (2):
-                {
-                    m_vertexAttributes.push_back(Attribute(AttributeUsage::BufferAlignment, AttributeType::Byte_2));
-                    break;
-                }
-                case (1):
-                {
-                    m_vertexAttributes.push_back(Attribute(AttributeUsage::BufferAlignment, AttributeType::Byte_2));
-                    m_vertexAttributes.push_back(Attribute(AttributeUsage::BufferAlignment, AttributeType::Byte_1));
-                    break;
-                }
-                case (0):
-                default:
-                    break;
-                }
-
-                //re-calculate and update the stride
-                UpdateStride();
-            }
-
-            void GenerateName(void)
-            {
-                auto itor = m_Name.begin();
-                for (Attribute attribute : m_vertexAttributes)
-                {
-                    const AZStd::string& usageStr = AttributeUsageDataTable[static_cast<unsigned int>(attribute.GetUsage())].friendlyName;
-                    itor = AZStd::copy(usageStr.begin(), usageStr.end() , itor);
-
-                    *itor++ = '.';
-
-                    const AZStd::string& typeStr = AttributeTypeDataTable[static_cast<unsigned int>(attribute.GetType())].friendlyName;
-                    itor = AZStd::copy(typeStr.begin(), typeStr.end(), itor);
-                }
-
-                if(itor < m_Name.end())
-                {
-                    *itor = '\0';
-                }
-                else
-                {
-                    m_Name.back() = '\0';
-                }
-            }
-
-            void GenerateCrc(void)
-            {
-                m_CRC = AZ::Crc32(m_vertexAttributes.data(), m_vertexAttributes.size() * sizeof(m_vertexAttributes[0]));
-            }
-
-            AZ::u32 m_CRC = 0;
-            static const uint32_t kMaxVertexNameLen = 128;
-            AZStd::array<char, kMaxVertexNameLen> m_Name;
-
-            AZStd::vector<Attribute> m_vertexAttributes;
-            uint m_enum = eVF_Unknown;
-            uint m_stride = 0;
+            uint8 m_attributeUsageCounts[(uint)AttributeUsage::NumUsages] = { 0 };
+            uint8 m_numAttributes = 0;
+            uint8 m_enum = eVF_Unknown;
+            uint8 m_stride = 0;
+            uint8 m_flags = 0x0;
         };
 
 
@@ -619,13 +543,7 @@ namespace AZ
                 }
                 else
                 {
-                    RequestedVertFormat = AZ::Vertex::Format({
-                        AZ::Vertex::Attribute(AZ::Vertex::AttributeUsage::Position, AZ::Vertex::AttributeType::Float32_3),
-                        AZ::Vertex::Attribute(AZ::Vertex::AttributeUsage::Color, AZ::Vertex::AttributeType::Byte_4),
-                        AZ::Vertex::Attribute(AZ::Vertex::AttributeUsage::TexCoord, AZ::Vertex::AttributeType::Float32_2),
-                        AZ::Vertex::Attribute(AZ::Vertex::AttributeUsage::TexCoord, AZ::Vertex::AttributeType::Float32_2)
-                    }
-                    );
+                    RequestedVertFormat = AZ::Vertex::Format(eVF_P3F_C4B_T2F_T2F);
                 }
             }
 

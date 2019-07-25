@@ -180,7 +180,7 @@ namespace InAppPurchases
         jboolean result = env->CallBooleanMethod(m_billingInstance, mid);
         if (result)
         {
-            EBUS_EVENT(NativeUI::NativeUIRequestBus, DisplayOkDialog, "Kindle Device Detected", "IAP currently unsupported on Kindle devices", false);
+            EBUS_EVENT(AZ::NativeUI::NativeUIRequestBus, DisplayOkDialog, "Kindle Device Detected", "IAP currently unsupported on Kindle devices", false);
         }
 
         env->DeleteGlobalRef(billingClass);

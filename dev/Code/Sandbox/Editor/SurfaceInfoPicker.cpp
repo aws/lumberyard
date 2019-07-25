@@ -20,6 +20,7 @@
 #include "VegetationObject.h"
 #include "Objects/EntityObject.h"
 #include "Viewport.h"
+#include "Plugins/ComponentEntityEditorPlugin/Objects/ComponentEntityObject.h"
 
 #include <LmbrCentral/Rendering/MeshComponentBus.h>
 #include <LmbrCentral/Rendering/GeomCacheComponentBus.h>
@@ -491,6 +492,46 @@ void CSurfaceInfoPicker::FindNearestInfoFromEntities(
                 }
             }
 
+            // If the entity has an ActorComponent or another component that overrides RenderNodeRequestBus, it will hit here
+            if (!hit)
+            {
+                // There might be multiple components with render nodes on the same entity
+                // This will get the highest priority one, as determined by RenderNodeRequests::GetRenderNodeRequestBusOrder
+                IRenderNode* renderNode = entityObject->GetEngineNode();
+
+                // If the renderNode exists and is physicalized, it will hit here
+                hit = RayIntersection_IRenderNode(vWorldRaySrc, vWorldRayDir, renderNode, &pickedMaterial, object->GetWorldTM(), outHitInfo);
+                if (!hit)
+                {
+                    // If the renderNode is not physicalized, such as an actor component, but still exists and has a valid material we might want to pick
+                    if (renderNode && renderNode->GetMaterial())
+                    {
+                        // Do a hit test with anything in this entity that has overridden EditorComponentSelectionRequestsBus          
+                        CComponentEntityObject* componentEntityObject = static_cast<CComponentEntityObject*>(entityObject);
+                        HitContext hc;
+                        hc.raySrc = vWorldRaySrc;
+                        hc.rayDir = vWorldRayDir;                       
+                        bool intersects = componentEntityObject->HitTest(hc);
+                        
+                        if (intersects)
+                        {
+                            // If the distance is closer than the nearest distance so far
+                            if (hc.dist < outHitInfo.fDistance)
+                            {
+                                hit = true;
+                                outHitInfo.vHitPos = hc.raySrc + hc.rayDir * hc.dist;
+                                outHitInfo.fDistance = hc.dist;
+                                // We don't get material/sub-material information back from HitTest, so just use the material from the render node
+                                pickedMaterial = renderNode->GetMaterial(); 
+                                outHitInfo.nHitMatID = 0;
+                                // We don't get normal information back from HitTest, so just orient the selection disk towards the camera
+                                outHitInfo.vHitNormal = vWorldRayDir.normalized();
+                            }
+                        }
+                    }
+                }
+            }
+
             // If the entity has a SkinnedMeshComponent, it will hit here
             if (!hit)
             {
@@ -788,18 +829,21 @@ bool CSurfaceInfoPicker::RayIntersection_IGeomCacheRenderNode(
         return false;
     }
 
-    outHitInfo.inReferencePoint = vWorldRaySrc;
-    outHitInfo.inRay                = Ray(vWorldRaySrc, vWorldRayDir);
-    outHitInfo.bInFirstHit  = false;
-    outHitInfo.bUseCache        = false;
+    SRayHitInfo newHitInfo = outHitInfo;
+    newHitInfo.inReferencePoint = vWorldRaySrc;
+    newHitInfo.inRay                = Ray(vWorldRaySrc, vWorldRayDir);
+    newHitInfo.bInFirstHit  = false;
+    newHitInfo.bUseCache        = false;
 
-    if (pGeomCacheRenderNode->RayIntersection(outHitInfo))
+    if (pGeomCacheRenderNode->RayIntersection(newHitInfo))
     {
-        if (outHitInfo.fDistance < 0)
+        if (newHitInfo.fDistance < 0 || newHitInfo.fDistance > kEnoughFarDistance || (outHitInfo.fDistance != 0 && newHitInfo.fDistance > outHitInfo.fDistance))
         {
             return false;
         }
 
+        // Only override outHitInfo if the new hit is closer than the original hit
+        outHitInfo = newHitInfo;
         if (ppOutLastMaterial)
         {
             _smart_ptr<IMaterial> pMaterial = pGeomCacheRenderNode->GetMaterial();
@@ -818,7 +862,7 @@ bool CSurfaceInfoPicker::RayIntersection_IGeomCacheRenderNode(
         return true;
     }
 
-    return outHitInfo.fDistance < kEnoughFarDistance;
+    return false;
 }
 #endif
 
@@ -851,6 +895,12 @@ bool CSurfaceInfoPicker::RayIntersection_IRenderNode(
     ray_hit hit;
     int col = GetIEditor()->GetSystem()->GetIPhysicalWorld()->RayTraceEntity(physics, vWorldRaySrc, vWorldRayDir, &hit, 0, geom_collides);
     if (col <= 0)
+    {
+        return false;
+    }
+
+    // Don't override outHitInfo if the previous hit was closer than the current hit
+    if (hit.dist < outHitInfo.fDistance)
     {
         return false;
     }
@@ -1086,8 +1136,8 @@ bool CSurfaceInfoPicker::RayIntersection_ICharacterInstance(
             hitCurrent = RayIntersection_IStatObj(vWorldRaySrc, vWorldRayDir, attachmentObject->GetIStatObj(), nullptr, attachmentWorldTM, currentHitInfo);
         }
         
-
-        if (hitCurrent && (currentHitInfo.fDistance < closestHitInfo.fDistance || !hitSomething))
+        // If the current attachement got hit, the hit distance is closer than both the original hit distance and the closest hit from all previously tested attachements
+        if (hitCurrent && currentHitInfo.fDistance < outHitInfo.fDistance && (currentHitInfo.fDistance < closestHitInfo.fDistance || !hitSomething))
         {
             hitSomething = true;
             closestHitInfo = currentHitInfo;

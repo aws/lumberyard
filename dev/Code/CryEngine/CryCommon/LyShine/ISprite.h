@@ -80,7 +80,7 @@ public: // member functions
     virtual void SetCellBorders(int cellIndex, Borders borders) = 0;
 
     //! Get the texture for this sprite
-    virtual ITexture* GetTexture() const = 0;
+    virtual ITexture* GetTexture() = 0;
 
     //! Serialize this object for save/load
     virtual void Serialize(TSerialize ser) = 0;
@@ -95,10 +95,10 @@ public: // member functions
     virtual bool AreCellBordersZeroWidth(int cellIndex) const = 0;
 
     //! Get the dimensions of the sprite
-    virtual AZ::Vector2 GetSize() const = 0;
+    virtual AZ::Vector2 GetSize() = 0;
 
     //! Gets the dimensions of a specific cell texture within a sprite-sheet
-    virtual AZ::Vector2 GetCellSize(int cellIndex) const = 0;
+    virtual AZ::Vector2 GetCellSize(int cellIndex) = 0;
 
     //! Gets cell info for each of the cells within the sprite-sheet.
     virtual const SpriteSheetCellContainer& GetSpriteSheetCells() const = 0;

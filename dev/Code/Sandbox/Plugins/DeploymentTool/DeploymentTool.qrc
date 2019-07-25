@@ -3,5 +3,9 @@
         <file alias="status_connected.png">icons/status_connected.png</file>
         <file alias="status_not_connected.png">icons/status_not_connected.png</file>
         <file alias="spinner_2x_V1.gif">icons/spinner_2x._V1_.gif</file>
+        <file alias="error.png">icons/DeviceFarm/Runs/error.png</file>
+        <file alias="in_progress.png">icons/DeviceFarm/Runs/in_progress.png</file>
+        <file alias="success.png">icons/DeviceFarm/Runs/success.png</file>
+        <file alias="warning.png">icons/DeviceFarm/Runs/warning.png</file>
     </qresource>
 </RCC>

@@ -973,7 +973,11 @@ namespace AzToolsFramework
                             rootEntity_item = ancestor.m_entity;
                         }
                     }
-                    AZ_Assert(rootEntity_item, "Cannot find corresponding entity in the target slice while setting up override items in Advanced Push Window.");
+                    
+                    if (!rootEntity_item)
+                    {
+                        continue;//must be new instance of slice which has been changed
+                    }
 
                     AZ::Entity* rootEntity_conflictTest = nullptr;
                     FieldTreeItem* entityField_conflictTest = confictTestItem->m_entityItem;
@@ -2115,6 +2119,7 @@ namespace AzToolsFramework
     {
         AZStd::vector<AZStd::pair<AZ::EntityId, AZ::SliceComponent::EntityAncestorList>> newChildEntityIdAncestorPairs;
         AZStd::unordered_map<AZ::EntityId, FieldTreeItem*> entityToFieldTreeItemMap;
+        AZStd::vector<AZStd::pair<AZ::EntityId, AZ::SliceComponent::EntityAncestorList>> unpushableChildEntityIdAncestorPairs; 
 
         AZStd::unordered_map<AZ::EntityId, AZ::SliceComponent::EntityAncestorList> sliceAncestryMapping;
         AzToolsFramework::EntityIdList entityIdList;
@@ -2123,27 +2128,51 @@ namespace AzToolsFramework
             entityIdList.emplace_back(entityId);
         }
 
-        pushableNewChildEntityIds = SliceUtilities::GetPushableNewChildEntityIds(entityIdList, unpushableNewChildEntityIds, sliceAncestryMapping, newChildEntityIdAncestorPairs);
+        AZStd::unordered_map<AZ::Data::AssetId, EntityIdSet> unpushableNewChildEntityIdsPerAsset;
+        EntityIdSet newEntityIds;
+        pushableNewChildEntityIds = SliceUtilities::GetPushableNewChildEntityIds(entityIdList, unpushableNewChildEntityIdsPerAsset, sliceAncestryMapping, newChildEntityIdAncestorPairs, newEntityIds);
 
-        for (const AZ::EntityId& entityId : unpushableNewChildEntityIds)
+        for (const auto& unpushableEntityIds : unpushableNewChildEntityIdsPerAsset)
         {
-            AZ::Entity* entity = nullptr;
-            AZ::ComponentApplicationBus::BroadcastResult(entity, &AZ::ComponentApplicationRequests::FindEntity, entityId);
-
-            FieldTreeItem* item = FieldTreeItem::CreateEntityAddItem(entity);
-            item->setText(0, QString("%1 (added, unsaveable [see (A) below])").arg(entity->GetName().c_str()));
-            item->setIcon(0, m_iconNewDataItem);
-            item->m_ancestors = AZStd::move(sliceAncestryMapping[entityId]);
-            item->setCheckState(0, Qt::CheckState::Unchecked);
-            item->setDisabled(true);
-            entityToFieldTreeItemMap[entity->GetId()] = item;
+            for (const AZ::EntityId& entityId : unpushableEntityIds.second)
+            {
+                if (unpushableNewChildEntityIds.find(entityId) == unpushableNewChildEntityIds.end())
+                {
+                    unpushableNewChildEntityIds.insert(entityId);
+                }
+            }
         }
-
+        
         bool hasUnpushableTransformDescendants = false;
         for (const auto& entityIdAncestorPair: newChildEntityIdAncestorPairs)
         {
             const AZ::EntityId& entityId = entityIdAncestorPair.first;
             const AZ::SliceComponent::EntityAncestorList& ancestors = entityIdAncestorPair.second;
+
+            //check for entities that are unpushable
+            if (!ancestors.empty())
+            {
+                AZ::SliceComponent::Ancestor rootAncestor = ancestors.back();
+                AZ::Data::AssetId rootId = rootAncestor.m_sliceAddress.GetReference()->GetSliceAsset().GetId();
+                if (unpushableNewChildEntityIdsPerAsset.find(rootId) != unpushableNewChildEntityIdsPerAsset.end())
+                {
+                    EntityIdSet unpushableIds = unpushableNewChildEntityIdsPerAsset[rootId];
+                    if (unpushableIds.find(entityId) != unpushableIds.end())
+                    {
+                        AZ::Entity* entity = nullptr;
+                        AZ::ComponentApplicationBus::BroadcastResult(entity, &AZ::ComponentApplicationRequests::FindEntity, entityId);
+
+                        FieldTreeItem* item = FieldTreeItem::CreateEntityAddItem(entity);
+                        item->setText(0, QString("%1 (added, unsaveable [see (A) below])").arg(entity->GetName().c_str()));
+                        item->setIcon(0, m_iconNewDataItem);
+                        item->m_ancestors = AZStd::move(sliceAncestryMapping[entityId]);
+                        item->setCheckState(0, Qt::CheckState::Unchecked);
+                        item->setDisabled(true);
+                        entityToFieldTreeItemMap[entity->GetId()] = item;
+                        continue;
+                    }
+                }
+            }
 
             // Test if the newly added loose entity is a descendant of an entity that's unpushable, if so mark it as unpushable too.
             AZ::EntityId unpushableAncestorId(AZ::EntityId::InvalidEntityId);
@@ -2187,7 +2216,27 @@ namespace AzToolsFramework
                 FieldTreeItem* item = FieldTreeItem::CreateEntityAddItem(entity);
                 item->setText(0, QString("%1 (added)").arg(entity->GetName().c_str()));
                 item->setIcon(0, m_iconNewDataItem);
-                item->m_ancestors = AZStd::move(ancestors);
+
+                //add any potential ancestors that aren't in the unpushable list for this entity
+                for (auto ancestor : ancestors)
+                {
+                    AZ::Data::AssetId id = ancestor.m_sliceAddress.GetReference()->GetSliceAsset().GetId();
+
+                    bool canUse = true;
+                    if (unpushableNewChildEntityIdsPerAsset.find(id) != unpushableNewChildEntityIdsPerAsset.end())
+                    {
+                        EntityIdSet idSet = unpushableNewChildEntityIdsPerAsset[id];
+                        if (idSet.find(entityId) != idSet.end())
+                        {
+                            canUse = false;
+                        }
+                    }
+                    if (canUse)
+                    {
+                        item->m_ancestors.push_back(ancestor);
+                    }
+                }
+                
 
                 item->setCheckState(0, m_config->m_defaultAddedEntitiesCheckState ? Qt::CheckState::Checked : Qt::CheckState::Unchecked);
                 entityToFieldTreeItemMap[entity->GetId()] = item;

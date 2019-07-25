@@ -18,6 +18,7 @@
 #include <QtCore/QAbstractItemModel>
 #include <QtCore/QItemSelectionModel>
 #include <Editor/ActorEditorBus.h>
+#include <Editor/QtMetaTypes.h>
 #include <QIcon>
 
 
@@ -119,8 +120,3 @@ namespace EMotionFX
     };
 
 } // namespace EMotionFX
-
-// Required to return different types through a QVariant
-Q_DECLARE_METATYPE(EMotionFX::Actor*);
-Q_DECLARE_METATYPE(EMotionFX::ActorInstance*);
-Q_DECLARE_METATYPE(EMotionFX::Node*);

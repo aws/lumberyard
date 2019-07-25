@@ -110,6 +110,12 @@ namespace AzFramework
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
+    const char* Application::Implementation::GetAppRootPath()
+    {
+        return "";
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////
     ApplicationAndroid::ApplicationAndroid()
         : m_eventDispatcher(nullptr)
         , m_lastEvent(ApplicationLifecycleEvents::Event::None)

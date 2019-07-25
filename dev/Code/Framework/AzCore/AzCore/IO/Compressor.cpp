@@ -11,6 +11,7 @@
 */
 #ifndef AZ_UNITY_BUILD
 
+#include <AzCore/std/algorithm.h>
 #include <AzCore/IO/Compressor.h>
 #include <AzCore/IO/CompressorStream.h>
 

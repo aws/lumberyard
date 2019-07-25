@@ -10,6 +10,7 @@
 *
 */
 
+#include <AzCore/Math/Quaternion.h>
 #include <AzCore/Math/Spline.h>
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzTest/AzTest.h>
@@ -122,6 +123,37 @@ namespace UnitTest
 
         EXPECT_NEAR(intersectionDistance, 9.5f, g_epsilon);
         EXPECT_TRUE(intersectionOutside);
+    }
+
+    TEST(ManipulatorBounds, RayIntersectsTorusAtAcuteAngle)
+    {
+        // torus approximation is side-on to ray
+        ManipulatorBoundTorus manipulatorTorus(RegisteredBoundId{});
+        manipulatorTorus.m_axis = AZ::Vector3::CreateAxisX();
+        manipulatorTorus.m_center = AZ::Vector3::CreateZero();
+        manipulatorTorus.m_majorRadius = 5.0f;
+        manipulatorTorus.m_minorRadius = 0.5f;
+
+        // calculation used to orientate the ray to hit
+        // the inside edge of the cylinder
+        //
+        // tan @ = opp / adj
+        // tan @ = 0.5 / 5.0 = 0.1
+        // @ = atan(0.1) = 5.71 degrees
+        //
+        // tan 5.71 = x / 15
+        // x = 15 * tan 5.71 = ~1.5
+
+        const AZ::Vector3 orientatedPickRay =
+            AZ::Quaternion::CreateRotationZ(AZ::DegToRad(5.7f)) * -AZ::Vector3::CreateAxisY();
+
+        float _;
+        bool intersection = manipulatorTorus.IntersectRay(
+            AZ::Vector3(-1.5f, 10.0f, 0.0f), orientatedPickRay, _);
+
+        // ensure we get a valid intersection (even if the first hit
+        // might have happened in the 'hollow' part of the cylinder)
+        EXPECT_TRUE(intersection);
     }
 
     TEST(ManipulatorBounds, Line)

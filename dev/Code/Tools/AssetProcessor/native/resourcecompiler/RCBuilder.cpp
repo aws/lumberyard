@@ -103,6 +103,7 @@ namespace AssetProcessor
 
             // If this is a copy job or critical is set to true in the ini file, then its a critical job
             descriptor.m_critical = recognizer->m_isCritical || isCopyJob;
+            descriptor.m_checkServer = recognizer->m_checkServer;
 
             // If the priority of copy job is default then we update it to 1
             // This will ensure that copy jobs will be processed before other critical jobs having default priority
@@ -369,7 +370,7 @@ namespace AssetProcessor
     };
 
     InternalAssetRecognizer::InternalAssetRecognizer(const AssetRecognizer& src, const QString& builderId, const QHash<QString, AssetPlatformSpec>& assetPlatformSpecByPlatform)
-        : AssetRecognizer(src.m_name, src.m_testLockSource, src.m_priority, src.m_isCritical, src.m_supportsCreateJobs, src.m_patternMatcher, src.m_version, src.m_productAssetType)
+        : AssetRecognizer(src.m_name, src.m_testLockSource, src.m_priority, src.m_isCritical, src.m_supportsCreateJobs, src.m_patternMatcher, src.m_version, src.m_productAssetType, src.m_checkServer)
         , m_builderId(builderId)
     {
         // assetPlatformSpecByPlatform is a hash table like

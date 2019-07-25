@@ -17,6 +17,7 @@
 #include <IConsole.h>
 #include <MicrophoneBus.h>
 
+
 namespace Audio
 {
     ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -179,6 +180,7 @@ namespace Audio
             "Usage: s_AudioListenerTranslationPercentage [0.0..1.0]\n"
             "Default: 0.0\n");
 
+#if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
         REGISTER_COMMAND("s_ExecuteTrigger", CmdExecuteTrigger, VF_CHEAT,
             "Execute an Audio Trigger.\n"
             "The first argument is the name of the AudioTrigger to be executed, the second argument is an optional AudioObject ID.\n"
@@ -224,7 +226,23 @@ namespace Audio
             "Usage: s_Microphone 0\n"
         );
 
-#if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
+        REGISTER_COMMAND("s_PlayExternalSource", CmdPlayExternalSource, VF_CHEAT,
+            "Execute an 'External Source' audio trigger.\n"
+            "The first argument is the name of the audio trigger to execute.\n"
+            "The second argument is the collection Id.\n"
+            "The third argument is the language Id.\n"
+            "The fourth argument is the file Id.\n"
+            "Usage: s_PlayExternalSource Play_ext_vo 0 0 1\n"
+        );
+
+        REGISTER_COMMAND("s_SetPanningMode", CmdSetPanningMode, VF_CHEAT,
+            "Set the Panning mode to either 'speakers' or 'headphones'.\n"
+            "Speakers will have a 60 degree angle from the listener to the L/R speakers.\n"
+            "Headphones will have a 180 degree angle from the listener to the L/R speakers.\n"
+            "Usage: s_SetPanningMode speakers    (default)\n"
+            "Usage: s_SetPanningMode headphones\n"
+        );
+
         REGISTER_CVAR2("s_IgnoreWindowFocus", &m_nIgnoreWindowFocus, 0, VF_DEV_ONLY,
             "If set to 1, the sound system will continue playing when the Editor or Game window loses focus.\n"
             "Usage: s_IgnoreWindowFocus [0/1]\n"
@@ -246,6 +264,7 @@ namespace Audio
             "v: List active Events.\n"
             "w: List active Audio Objects.\n"
             "x: Show FileCache Manager debug info.\n"
+            "y: Show memory pool usage info for the audio impl.\n"
             );
 
         REGISTER_CVAR2("s_FileCacheManagerDebugFilter", &m_nFileCacheManagerDebugFilter, 0, VF_CHEAT | VF_CHEAT_NOCHECK | VF_BITFIELD,
@@ -254,7 +273,8 @@ namespace Audio
             "Default: 0 (all)\n"
             "a: Globals\n"
             "b: Level Specifics\n"
-            "c: Game Hints\n");
+            "c: Game Hints\n"
+            "d: Currently Loaded\n");
 
         REGISTER_CVAR2("s_AudioLoggingOptions", &m_nAudioLoggingOptions, AlphaBits("ab"), VF_CHEAT | VF_CHEAT_NOCHECK | VF_BITFIELD,
             "Toggles the logging of audio related messages.\n"
@@ -272,12 +292,12 @@ namespace Audio
         m_pAudioTriggersDebugFilter = REGISTER_STRING("s_AudioTriggersDebugFilter", "", 0,
             "Allows for filtered display of audio triggers by a search string.\n"
             "Usage: s_AudioTriggersDebugFilter laser\n"
-            "Default: \" \" (all)\n");
+            "Default: \"\" (all)\n");
 
         m_pAudioObjectsDebugFilter = REGISTER_STRING("s_AudioObjectsDebugFilter", "", 0,
             "Allows for filtered display of audio objects by a search string.\n"
             "Usage: s_AudioObjectsDebugFilter spaceship.\n"
-            "Default: \" \" (all)\n");
+            "Default: \"\" (all)\n");
 
 #endif // INCLUDE_AUDIO_PRODUCTION_CODE
     }
@@ -302,13 +322,15 @@ namespace Audio
         pConsole->UnregisterVariable("s_AudioListenerTranslationYOffset");
         pConsole->UnregisterVariable("s_AudioListenerTranslationPercentage");
 
+#if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
         pConsole->UnregisterVariable("s_ExecuteTrigger");
         pConsole->UnregisterVariable("s_StopTrigger");
         pConsole->UnregisterVariable("s_SetRtpc");
         pConsole->UnregisterVariable("s_SetSwitchState");
         pConsole->UnregisterVariable("s_PlayFile");
+        pConsole->UnregisterVariable("s_PlayExternalSource");
+        pConsole->UnregisterVariable("s_SetPanningMode");
 
-#if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
         pConsole->UnregisterVariable("s_IgnoreWindowFocus");
         pConsole->UnregisterVariable("s_DrawAudioDebug");
         pConsole->UnregisterVariable("s_FileCacheManagerDebugFilter");
@@ -319,6 +341,8 @@ namespace Audio
 #endif // INCLUDE_AUDIO_PRODUCTION_CODE
     }
 
+
+#if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
     ///////////////////////////////////////////////////////////////////////////////////////////////////
     void CSoundCVars::CmdExecuteTrigger(IConsoleCmdArgs* pCmdArgs)
     {
@@ -716,5 +740,83 @@ namespace Audio
             g_audioLogger.Log(eALT_ERROR, "Usage: s_Microphone 1 Play_audio_input_2D  /  s_Microphone 0");
         }
     }
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////////
+    void CSoundCVars::CmdPlayExternalSource(IConsoleCmdArgs* pCmdArgs)
+    {
+        // This cookie value is a hash on the name of the External Source.
+        // By default when you add an External Source to a sound, it gives the name 'External_Source' and has this hash.
+        // Apparently it can be changed in the Wwise project, so it's unfortunately content-dependent.  But there's no easy
+        // way to extract that info in this context.
+        const AZ::u64 externalSourceCookieValue = 618371124ull;
+
+        TAudioControlID triggerId = INVALID_AUDIO_CONTROL_ID;
+
+        if (pCmdArgs->GetArgCount() == 5)
+        {
+            const char* triggerName = pCmdArgs->GetArg(1);
+            AudioSystemRequestBus::BroadcastResult(triggerId, &AudioSystemRequestBus::Events::GetAudioTriggerID, triggerName);
+            if (triggerId == INVALID_AUDIO_CONTROL_ID)
+            {
+                g_audioLogger.Log(eALT_ERROR, "Failed to find the trigger named '%s'\n", triggerName);
+                return;
+            }
+
+            int collection = std::strtol(pCmdArgs->GetArg(2), nullptr, 10);
+            int language = std::strtol(pCmdArgs->GetArg(3), nullptr, 10);
+            int file = std::strtol(pCmdArgs->GetArg(4), nullptr, 10);
+
+            SAudioSourceInfo sourceInfo(externalSourceCookieValue, file, language, collection, eACT_PCM);
+
+            SAudioRequest request;
+            SAudioObjectRequestData<eAORT_EXECUTE_SOURCE_TRIGGER> requestData(triggerId, sourceInfo);
+            request.nFlags = eARF_PRIORITY_NORMAL;
+            request.pData = &requestData;
+
+            AudioSystemRequestBus::Broadcast(&AudioSystemRequestBus::Events::PushRequest, request);
+        }
+        else
+        {
+            g_audioLogger.Log(eALT_ERROR, "Usage: s_PlayExternalSource Play_ext_vo 0 0 1");
+        }
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////////
+    void CSoundCVars::CmdSetPanningMode(IConsoleCmdArgs* pCmdArgs)
+    {
+        if (pCmdArgs->GetArgCount() == 2)
+        {
+            PanningMode panningMode;
+            const char* mode = pCmdArgs->GetArg(1);
+            if (azstricmp(mode, "speakers") == 0)
+            {
+                panningMode = PanningMode::Speakers;
+                g_audioLogger.Log(eALT_COMMENT, "Setting Panning Mode to 'Speakers'.\n");
+            }
+            else if (azstricmp(mode, "headphones") == 0)
+            {
+                panningMode = PanningMode::Headphones;
+                g_audioLogger.Log(eALT_COMMENT, "Setting Panning Mode to 'Headphones'.\n");
+            }
+            else
+            {
+                g_audioLogger.Log(eALT_ERROR, "Panning mode '%s' is invalid.  Please specify either 'speakers' or 'headphones'\n", mode);
+                return;
+            }
+
+            SAudioRequest request;
+            SAudioManagerRequestData<eAMRT_SET_AUDIO_PANNING_MODE> requestData(panningMode);
+            request.nFlags = eARF_PRIORITY_NORMAL;
+            request.pData = &requestData;
+
+            AudioSystemRequestBus::Broadcast(&AudioSystemRequestBus::Events::PushRequest, request);
+        }
+        else
+        {
+            g_audioLogger.Log(eALT_ERROR, "Usage: s_SetPanningMode speakers\nUsage: s_SetPanningMode headphones");
+        }
+    }
+
+#endif // INCLUDE_AUDIO_PRODUCTION_CODE
 
 } // namespace Audio

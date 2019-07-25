@@ -62,6 +62,8 @@ namespace PhysX
 
         void* GetNativePointer() override;
 
+        bool IsTrigger() const;
+
     private:
         void BindMaterialsWithPxShape();
         void ExtractMaterialsFromPxShape();

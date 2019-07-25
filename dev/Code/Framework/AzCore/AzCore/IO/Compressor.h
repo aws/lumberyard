@@ -12,14 +12,13 @@
 #ifndef AZCORE_IO_COMPRESSOR_H
 #define AZCORE_IO_COMPRESSOR_H
 
-#include <AzCore/EBus/EBus.h>
+#include <AzCore/base.h>
 
 namespace AZ
 {
     namespace IO
     {
         class CompressorStream;
-        struct CompressorHeader;
 
         /**
          * Compressor/Decompressor base interface.

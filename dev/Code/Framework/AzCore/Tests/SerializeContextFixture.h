@@ -44,4 +44,63 @@ namespace UnitTest
     protected:
         AZ::SerializeContext* m_serializeContext = nullptr;
     };
+
+    /*
+     * Scoped RAII class automatically invokes the supplied reflection functions and reflects them to the supplied SerializeContext
+     * On Destruction the serialize context is set to remove reflection and the reflection functions are invoked to to unreflect
+     * them from the SerializeContext
+     */
+    class ScopedSerializeContextReflector
+    {
+    public:
+        using ReflectCallable = AZStd::function<void(AZ::SerializeContext*)>;
+
+        ScopedSerializeContextReflector(AZ::SerializeContext& serializeContext, std::initializer_list<ReflectCallable> reflectFunctions)
+            : m_serializeContext(serializeContext)
+            , m_reflectFunctions(reflectFunctions)
+        {
+            bool isCurrentlyRemovingReflection = m_serializeContext.IsRemovingReflection();
+            if (isCurrentlyRemovingReflection)
+            {
+                m_serializeContext.DisableRemoveReflection();
+            }
+            for (ReflectCallable& reflectFunction : m_reflectFunctions)
+            {
+                if (reflectFunction)
+                {
+                    reflectFunction(&m_serializeContext);
+                }
+            }
+            if (isCurrentlyRemovingReflection)
+            {
+                m_serializeContext.EnableRemoveReflection();
+            }
+        }
+
+        ~ScopedSerializeContextReflector()
+        {
+            // Unreflects reflected functions in reverse order
+            bool isCurrentlyRemovingReflection = m_serializeContext.IsRemovingReflection();
+            if (!isCurrentlyRemovingReflection)
+            {
+                m_serializeContext.EnableRemoveReflection();
+            }
+            for (auto reflectFunctionIter = m_reflectFunctions.rbegin(); reflectFunctionIter != m_reflectFunctions.rend(); ++reflectFunctionIter)
+            {
+                ReflectCallable& reflectFunction = *reflectFunctionIter;
+                if (reflectFunction)
+                {
+                    reflectFunction(&m_serializeContext);
+                }
+            }
+            if (!isCurrentlyRemovingReflection)
+            {
+                m_serializeContext.DisableRemoveReflection();
+            }
+        }
+
+    private:
+        AZ::SerializeContext& m_serializeContext;
+        AZStd::vector<ReflectCallable> m_reflectFunctions;
+    };
 }

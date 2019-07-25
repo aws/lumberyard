@@ -28,12 +28,16 @@ namespace EMotionFX
     AZ_CLASS_ALLOCATOR_IMPL(ParameterMixinAnimGraphId, EMotionFX::CommandAllocator, 0)
     AZ_CLASS_ALLOCATOR_IMPL(ParameterMixinTransitionId, EMotionFX::CommandAllocator, 0)
     AZ_CLASS_ALLOCATOR_IMPL(ParameterMixinAnimGraphNodeId, EMotionFX::CommandAllocator, 0)
+    AZ_CLASS_ALLOCATOR_IMPL(ParameterMixinAttributesString, EMotionFX::CommandAllocator, 0)
+    AZ_CLASS_ALLOCATOR_IMPL(ParameterMixinSerializedContents, EMotionFX::CommandAllocator, 0)
 
     const char* ParameterMixinActorId::s_actorIdParameterName = "actorId";
     const char* ParameterMixinJointName::s_jointNameParameterName = "jointName";
     const char* ParameterMixinAnimGraphId::s_parameterName = "animGraphId";
     const char* ParameterMixinTransitionId::s_parameterName = "transitionId";
     const char* ParameterMixinAnimGraphNodeId::s_parameterName = "nodeId";
+    const char* ParameterMixinAttributesString::s_parameterName = "attributesString";
+    const char* ParameterMixinSerializedContents::s_parameterName = "contents";
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -301,5 +305,83 @@ namespace EMotionFX
         }
 
         return result;
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    void ParameterMixinAttributesString::Reflect(AZ::ReflectContext* context)
+    {
+        AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
+        if (!serializeContext)
+        {
+            return;
+        }
+
+        serializeContext->Class<ParameterMixinAttributesString>()
+            ->Version(1)
+            ->Field("attributesString", &ParameterMixinAttributesString::m_attributesString)
+            ;
+    }
+
+    void ParameterMixinAttributesString::InitSyntax(MCore::CommandSyntax& syntax, bool isParameterRequired)
+    {
+        const char* description = "The attributes string.";
+        if (isParameterRequired)
+        {
+            syntax.AddRequiredParameter(s_parameterName, description, MCore::CommandSyntax::PARAMTYPE_STRING);
+        } else
+        {
+            syntax.AddParameter(s_parameterName, description, MCore::CommandSyntax::PARAMTYPE_STRING, "");
+        }
+    }
+
+    bool ParameterMixinAttributesString::SetCommandParameters(const MCore::CommandLine& parameters)
+    {
+        if (parameters.CheckIfHasParameter(s_parameterName))
+        {
+            AZStd::string tempString;
+            parameters.GetValue(s_parameterName, "", tempString);
+            m_attributesString = tempString; // string to optional conversion
+        }
+        return true;
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    void ParameterMixinSerializedContents::Reflect(AZ::ReflectContext* context)
+    {
+        AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
+        if (!serializeContext)
+        {
+            return;
+        }
+
+        serializeContext->Class<ParameterMixinSerializedContents>()
+            ->Version(1)
+            ->Field("contents", &ParameterMixinSerializedContents::m_contents)
+            ;
+    }
+
+    void ParameterMixinSerializedContents::InitSyntax(MCore::CommandSyntax& syntax, bool isParameterRequired)
+    {
+        const char* description = "XML serialized contents.";
+        if (isParameterRequired)
+        {
+            syntax.AddRequiredParameter(s_parameterName, description, MCore::CommandSyntax::PARAMTYPE_STRING);
+        } else
+        {
+            syntax.AddParameter(s_parameterName, description, MCore::CommandSyntax::PARAMTYPE_STRING, "");
+        }
+    }
+
+    bool ParameterMixinSerializedContents::SetCommandParameters(const MCore::CommandLine& parameters)
+    {
+        if (parameters.CheckIfHasParameter(s_parameterName))
+        {
+            AZStd::string tempString;
+            parameters.GetValue(s_parameterName, "", tempString);
+            m_contents = tempString; // string to optional conversion
+        }
+        return true;
     }
 } // namespace EMotionFX

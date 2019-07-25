@@ -34,7 +34,7 @@
 
 
 namespace EMStudio
-{   
+{
     // constructor
     BlendGraphViewWidget::BlendGraphViewWidget(AnimGraphPlugin* plugin, QWidget* parentWidget)
         : QWidget(parentWidget)
@@ -222,7 +222,7 @@ namespace EMStudio
         verticalLayout->addWidget(toolbarWidget);
         verticalLayout->addLayout(navigationLayout);
         verticalLayout->addWidget(&mViewportStack);
-        
+
         mViewportSplitter = new QSplitter(Qt::Horizontal, this);
         mViewportSplitter->addWidget(blendGraphWidget);
         mViewportSplitter->addWidget(mParentPlugin->GetNavigateWidget());
@@ -230,7 +230,7 @@ namespace EMStudio
         QList<int> sizes = { this->width(), 0 };
         mViewportSplitter->setSizes(sizes);
         mViewportStack.addWidget(mViewportSplitter);
-        
+
         UpdateNavigation();
         UpdateAnimGraphOptions();
         UpdateSelection();
@@ -276,7 +276,7 @@ namespace EMStudio
         // do we have any selection?
         const bool anySelection = mParentPlugin->GetAnimGraphModel().GetSelectionModel().hasSelection();
         SetOptionEnabled(SELECTION_ZOOMSELECTION, anySelection);
-        
+
         QModelIndex firstSelectedNode;
         bool atLeastTwoNodes = false;
         const QModelIndexList selectedIndexes = mParentPlugin->GetAnimGraphModel().GetSelectionModel().selectedRows();
@@ -297,7 +297,8 @@ namespace EMStudio
             }
         }
 
-        if (atLeastTwoNodes)
+        if (mParentPlugin->GetActionFilter().m_editNodes &&
+            atLeastTwoNodes)
         {
             SetOptionEnabled(SELECTION_ALIGNLEFT, true);
             SetOptionEnabled(SELECTION_ALIGNRIGHT, true);
@@ -387,7 +388,7 @@ namespace EMStudio
             }
         }
     }
-    
+
     void BlendGraphViewWidget::SetOptionFlag(EOptionFlag option, bool isEnabled)
     {
         const uint32 optionIndex = (uint32)option;
@@ -468,7 +469,7 @@ namespace EMStudio
     }
 
     void BlendGraphViewWidget::BuildOpenMenu()
-    {        
+    {
         mOpenMenu->clear();
 
         mActions[FILE_OPEN] = mOpenMenu->addAction("Open...");
@@ -541,6 +542,11 @@ namespace EMStudio
     {
         NodeGraph* nodeGraph = mParentPlugin->GetGraphWidget()->GetActiveGraph();
         if (!nodeGraph)
+        {
+            return;
+        }
+
+        if (!mParentPlugin->GetActionFilter().m_editNodes)
         {
             return;
         }
@@ -671,7 +677,6 @@ namespace EMStudio
             // execute the group command
             GetCommandManager()->ExecuteCommandGroup(commandGroup, outResult);
         }
-        
     }
 
     void BlendGraphViewWidget::OnCreateAnimGraph()
@@ -736,7 +741,7 @@ namespace EMStudio
     void BlendGraphViewWidget::AlignBottom()        { AlignNodes(SELECTION_ALIGNBOTTOM); }
 
     void BlendGraphViewWidget::ZoomSelected()
-    { 
+    {
         BlendGraphWidget* blendGraphWidget = mParentPlugin->GetGraphWidget();
         if (blendGraphWidget)
         {
@@ -834,8 +839,8 @@ namespace EMStudio
     }
 
     void BlendGraphViewWidget::ToggleNavigationPane()
-    {        
-        QList<int> sizes = mViewportSplitter->sizes(); 
+    {
+        QList<int> sizes = mViewportSplitter->sizes();
         if (sizes[1] == 0)
         {
             // the nav pane is hidden if the width is 0, so set the width to 25%
@@ -860,7 +865,7 @@ namespace EMStudio
             mParentPlugin->GetAnimGraphModel().Focus(currentModelIndex);
         }
     }
-    
+
     // toggle playspeed viz
     void BlendGraphViewWidget::OnDisplayPlaySpeeds()
     {
@@ -930,7 +935,6 @@ namespace EMStudio
             event->ignore();
         }
     }
-
 } // namespace EMStudio
 
 #include <EMotionFX/Tools/EMotionStudio/Plugins/StandardPlugins/Source/AnimGraph/BlendGraphViewWidget.moc>

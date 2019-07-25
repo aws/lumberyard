@@ -124,14 +124,20 @@
         ],
         "EBus":
         [
-            "EBus/BusContainer.h",
             "EBus/BusImpl.h",
             "EBus/EBus.h",
-            "EBus/HandlerContainer.h",
             "EBus/Policies.h",
             "EBus/Results.h",
             "EBus/Environment.cpp",
             "EBus/Environment.h"
+        ],
+        "EBus/Internal":
+        [
+            "EBus/Internal/BusContainer.h",
+            "EBus/Internal/CallstackEntry.h",
+            "EBus/Internal/Debug.h",
+            "EBus/Internal/Handlers.h",
+            "EBus/Internal/StoragePolicies.h"
         ],
         "IO":
         [
@@ -330,6 +336,12 @@
             "Module/ModuleManager.cpp",
             "Module/ModuleManager.h"
         ],
+        "NativeUI":
+        [
+            "NativeUI/NativeUISystemComponent.cpp",
+            "NativeUI/NativeUISystemComponent.h",
+            "NativeUI/NativeUIRequests.h"
+        ],
         "Outcome":
         [
             "Outcome/Outcome.h"
@@ -418,6 +430,10 @@
             "Serialization/SerializeContext.h",
             "Serialization/DataPatch.h",
             "Serialization/DataPatch.cpp"
+        ],
+        "Serialization/std":
+        [
+            "Serialization/std/VariantReflection.inl"
         ],
         "State":
         [

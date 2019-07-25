@@ -34,7 +34,7 @@ namespace  TextureHelpers
     bool VerifyTexSuffix(EEfResTextures texSlot, const string& texPath)
     {
         MaterialTextureSemantic&    texSemantic = CTextureManager::Instance()->GetTextureSemantic(texSlot);
-        return (texPath.size() > strlen(texSemantic.suffix) && (CryStringUtils::stristr(texPath, texSemantic.suffix)));
+        return texSemantic.suffix && (texPath.size() > strlen(texSemantic.suffix) && (CryStringUtils::stristr(texPath, texSemantic.suffix)));
     }
 
     const char* LookupTexSuffix(EEfResTextures texSlot)

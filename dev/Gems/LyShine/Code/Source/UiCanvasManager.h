@@ -63,6 +63,7 @@ public: // member functions
     void UnloadCanvas(AZ::EntityId canvasEntityId) override;
     AZ::EntityId FindLoadedCanvasByPathName(const AZStd::string& canvasPathname) override;
     CanvasEntityList GetLoadedCanvases() override;
+    void SetLocalUserIdInputFilterForAllCanvases(AzFramework::LocalUserId localUserId) override;
     // ~UiCanvasManagerBus
 
     // UiCanvasOrderNotificationBus
@@ -160,6 +161,8 @@ private: // data
     AZStd::vector<AZ::EntityId> m_canvasesQueuedForDeletion;
 
     bool m_fontTextureHasChanged = false;
+
+    AzFramework::LocalUserId m_localUserIdInputFilter; // The local user id to filter UI input on
 
     // Indicates whether to generate a mouse position input event on the next canvas update.
     // Used to update the canvas' interactable hover states even when the mouse position hasn't changed

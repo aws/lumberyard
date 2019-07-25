@@ -224,8 +224,8 @@ class copy_outputs(Task):
         self.check_timestamp_and_size = True
 
     def run(self):
-        src = self.inputs[0].abspath()
-        tgt = self.outputs[0].abspath()
+        src = preprocess_pathlen_for_windows(self.inputs[0].abspath())
+        tgt = preprocess_pathlen_for_windows(self.outputs[0].abspath())
 
         # Create output folder
         tries = 0
@@ -287,8 +287,8 @@ class copy_outputs(Task):
         if not getattr(self.outputs[0], 'sig', None):
             return RUN_ME
 
-        src = self.inputs[0].abspath()
-        tgt = self.outputs[0].abspath()
+        src = preprocess_pathlen_for_windows(self.inputs[0].abspath())
+        tgt = preprocess_pathlen_for_windows(self.outputs[0].abspath())
 
         # If there any target file is missing, we have to copy
         try:
@@ -410,9 +410,14 @@ class symlink_outputs(Task):
     optional = False
     """If True, build doesn't fail if symlink fails."""
 
+    def __init__(self, *k, **kw):
+		# copy code from copy_outputs to check if file needs to be deployed again
+        super(symlink_outputs, self).__init__(self, *k, **kw)
+        self.check_timestamp_and_size = True
+
     def run(self):
-        src = self.inputs[0].abspath()
-        tgt = self.outputs[0].abspath()
+        src = preprocess_pathlen_for_windows(self.inputs[0].abspath())
+        tgt = preprocess_pathlen_for_windows(self.outputs[0].abspath())
 
         # Create output folder
         tries = 0
@@ -450,6 +455,40 @@ class symlink_outputs(Task):
 
         return result
 
+    def runnable_status(self):
+        if super(symlink_outputs, self).runnable_status() == -1:
+            return -1
+
+        # if we have no signature on our output node, it means the previous build was terminated or died
+        # before we had a chance to write out our cache, we need to recompute it by redoing this task once.
+        if not getattr(self.outputs[0], 'sig', None):
+            return RUN_ME
+
+        src = self.inputs[0].abspath()
+        tgt = self.outputs[0].abspath()
+
+        # If there any target file is missing, we have to copy
+        try:
+            stat_tgt = os.stat(tgt)
+        except OSError:
+            return RUN_ME
+
+        # Now compare both file stats
+        try:
+            stat_src = os.stat(src)
+        except OSError:
+            pass
+        else:
+            if self.check_timestamp_and_size:
+                # same size and identical timestamps -> make no copy
+                if stat_src.st_mtime >= stat_tgt.st_mtime + 2 or stat_src.st_size != stat_tgt.st_size:
+                    return RUN_ME
+            else:
+                return super(copy_outputs, self).runnable_status()
+
+        # Everything fine, we can skip this task
+        return SKIP_ME
+
 @taskgen_method
 def create_symlink_task(self, source_file, output_node, optional=False, check_timestamp_and_size=True):
     if not getattr(self.bld, 'existing_symlink_tasks', None):
@@ -460,7 +499,7 @@ def create_symlink_task(self, source_file, output_node, optional=False, check_ti
     else:
         new_task = self.create_task('symlink_outputs', source_file, output_node)
         new_task.optional = optional
-        new_task.check_timestamp_and_size = check_timestamp_and_size #unused, keep only for compat with copy_task
+        new_task.check_timestamp_and_size = check_timestamp_and_size
         self.bld.existing_symlink_tasks[output_node] = new_task
 
     return self.bld.existing_symlink_tasks[output_node]
@@ -474,14 +513,16 @@ if os.name == "nt":
         def hardlink_ms(source, link_name):
             import ctypes
             csl = ctypes.windll.kernel32.CreateHardLinkW
-            csl.argtypes = (ctypes.c_wchar_p, ctypes.c_wchar_p, ctypes.c_uint32)
+            csl.argtypes = (ctypes.c_wchar_p, ctypes.c_wchar_p, ctypes.c_uint64)
             csl.restype = ctypes.c_ubyte
-            flags = 1 if os.path.isdir(source) else 0
+            p_security_attributes = 0
             try:
-                if csl(link_name, source.replace('/', '\\'), flags) == 0:
-                    raise ctypes.WinError()
+                if csl(link_name, source.replace('/', '\\'), p_security_attributes) == 0:
+                    if not os.path.isfile(link_name):
+                        raise ctypes.WinError()
             except:
-                pass
+                if not os.path.isfile(link_name):
+                    raise ctypes.WinError()
         os.link = hardlink_ms
 
 class hardlink_outputs(Task):
@@ -492,9 +533,13 @@ class hardlink_outputs(Task):
     optional = False
     """If True, build doesn't fail if hardlink fails."""
 
+    def __init__(self, *k, **kw):
+        super(hardlink_outputs, self).__init__(self, *k, **kw)
+        self.check_timestamp_and_size = True
+
     def run(self):
-        src = self.inputs[0].abspath()
-        tgt = self.outputs[0].abspath()
+        src = preprocess_pathlen_for_windows(self.inputs[0].abspath())
+        tgt = preprocess_pathlen_for_windows(self.outputs[0].abspath())
 
         # Create output folder
         tries = 0
@@ -502,13 +547,15 @@ class hardlink_outputs(Task):
         created = False
         while not created and tries < 10:
             try:
-                os.makedirs(dir)
-                created = True
-            except OSError as ex:
-                self.err_msg = "%s\nCould not mkdir for hardlink %s -> %s" % (str(ex), src, tgt)
-                # ignore Directory already exists when this is called from multiple threads simultaneously
                 if os.path.isdir(dir):
                     created = True
+                else:
+                    os.makedirs(dir)
+                    created = True
+            except OSError as ex:
+                if tries == 9:
+                    self.err_msg = "%s\nCould not mkdir for hardlink %s -> %s" % (str(ex), src, tgt)
+
             tries += 1
 
         if not created:
@@ -518,11 +565,18 @@ class hardlink_outputs(Task):
         result = -1
         while result == -1 and tries < 10:
             try:
-                os.link(src, tgt)
-                result = 0
-                self.err_msg = None
+                if os.path.isfile(tgt):
+                    os.chmod(tgt, stat.S_IWRITE)
+                    os.remove(tgt)
+                if not os.path.isfile(tgt):
+                    os.link(src, tgt)
+                    result = 0
+                    self.err_msg = None
+                else:
+                    time.sleep(tries)
             except Exception as why:
-                self.err_msg = "Could not perform hardlink %s -> %s\n\t%s" % (src, tgt, str(why))
+                if tries == 9:
+                    self.err_msg = "Could not perform hardlink %s -> %s\n\t%s" % (src, tgt, str(why))
                 result = -1
                 time.sleep(tries)
             tries += 1
@@ -531,6 +585,40 @@ class hardlink_outputs(Task):
             result = 0
 
         return result
+
+    def runnable_status(self):
+        if super(hardlink_outputs, self).runnable_status() == -1:
+            return -1
+
+        # if we have no signature on our output node, it means the previous build was terminated or died
+        # before we had a chance to write out our cache, we need to recompute it by redoing this task once.
+        if not getattr(self.outputs[0], 'sig', None):
+            return RUN_ME
+
+        src = self.inputs[0].abspath()
+        tgt = self.outputs[0].abspath()
+
+        # If there any target file is missing, we have to copy
+        try:
+            stat_tgt = os.stat(tgt)
+        except OSError:
+            return RUN_ME
+
+        # Now compare both file stats
+        try:
+            stat_src = os.stat(src)
+        except OSError:
+            pass
+        else:
+            if self.check_timestamp_and_size:
+                # same size and identical timestamps -> make no copy
+                if stat_src.st_mtime >= stat_tgt.st_mtime + 2 or stat_src.st_size != stat_tgt.st_size:
+                    return RUN_ME
+            else:
+                return super(copy_outputs, self).runnable_status()
+
+        # Everything fine, we can skip this task
+        return SKIP_ME
 
 @taskgen_method
 def create_hardlink_task(self, source_file, output_node, optional=False, check_timestamp_and_size=True):
@@ -542,7 +630,7 @@ def create_hardlink_task(self, source_file, output_node, optional=False, check_t
     else:
         new_task = self.create_task('hardlink_outputs', source_file, output_node)
         new_task.optional = optional
-        new_task.check_timestamp_and_size = check_timestamp_and_size #unused, keep only for compat with copy_task
+        new_task.check_timestamp_and_size = check_timestamp_and_size
         self.bld.existing_hardlink_tasks[output_node] = new_task
 
     return self.bld.existing_hardlink_tasks[output_node]
@@ -1175,3 +1263,19 @@ def copy_module_dependent_files_keep_folder_tree(self):
     copy_module_dependent_files(self, keep_folder_tree=True)
 
 
+UNC_LONGPATH_THRESHOLD = 255
+UNC_LONGPATH_PREFIX = u'\\\\?\\'
+
+
+def preprocess_pathlen_for_windows(path):
+    """
+    For windows systems, preprocess a path to make sure that if it crosses the maximum length for a path defined for
+    windows (see https://docs.microsoft.com/en-us/windows/desktop/fileio/naming-a-file#maximum-path-length-limitation )
+    the prepend the path with a prefix that signal windows will expand the path
+    :param path:    The path to preprocess
+    :return: The preprocessed path
+    """
+    if isinstance(path, str) and Utils.unversioned_sys_platform() == "win32":
+        if len(path) > UNC_LONGPATH_THRESHOLD and not path.startswith(UNC_LONGPATH_PREFIX):
+            return UNC_LONGPATH_PREFIX + path
+    return path

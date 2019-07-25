@@ -19,7 +19,6 @@
 #include <SceneAPI/SceneCore/Containers/Utilities/Filters.h>
 #include <SceneAPI/SceneCore/DataTypes/Groups/IGroup.h>
 #include <SceneAPI/SceneCore/Events/SceneSerializationBus.h>
-#include <SceneAPIExt/Rules/MetaDataRule.h>
 #include <MCore/Source/StringConversions.h>
 
 namespace EMotionFX

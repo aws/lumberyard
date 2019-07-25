@@ -112,7 +112,9 @@ namespace AZ
 
                 virtual void UpdateSelectAllStatus();
 
-                virtual bool IsSelected(const Containers::SceneGraph::Name& name) const;
+                /// If you are calling this on a lot of elements in quick succession (like in a Build function), set 
+                /// updateNodeSelection to false for increased performance. 
+                virtual bool IsSelected(const Containers::SceneGraph::Name& name, bool updateNodeSelection = true) const;
                 virtual bool AddSelection(const QStandardItem* item);
                 virtual bool RemoveSelection(const QStandardItem* item);
 
@@ -131,6 +133,9 @@ namespace AZ
                 size_t m_totalCount;
                 EndPointOption m_endPointOption;
                 CheckableOption m_checkableOption;
+
+            private:
+                bool IsSelectedInSelectionList(const Containers::SceneGraph::Name& name, const DataTypes::ISceneNodeSelectionList& targetList) const;
             };
         } // namespace UI
     } // namespace SceneAPI

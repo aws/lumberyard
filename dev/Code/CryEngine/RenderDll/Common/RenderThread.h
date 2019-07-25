@@ -130,7 +130,6 @@ enum ERenderCommand
     eRC_PushProfileMarker,
     eRC_PopProfileMarker,
 
-    eRC_PrepareLevelTexStreaming,
     eRC_PostLevelLoading,
     eRC_SetState,
     eRC_PushWireframeMode,
@@ -239,7 +238,7 @@ struct SRenderThread
     CRenderThread* m_pThread;
     CRenderThreadLoading* m_pThreadLoading;
     ILoadtimeCallback* m_pLoadtimeCallback;
-    CryMutex m_rdldLock;
+    CryMutex m_lockRenderLoading;
     AZStd::mutex m_CommandsMutex;
     bool m_bQuit;
     bool m_bQuitLoading;
@@ -389,9 +388,9 @@ struct SRenderThread
             
 #if defined(_DEBUG) || !defined(__OPTIMIZE__) || !defined(__OPTIMIZE_SIZE__)
             // Note that we need bigger stack for debug routines
-            m_pThread->Start(BIT(1), RENDER_THREAD_NAME, renderThreadPriority, 128 * 1024);
+            m_pThread->Start(AFFINITY_MASK_RENDERTHREAD, RENDER_THREAD_NAME, renderThreadPriority, 128 * 1024);
 #else
-            m_pThread->Start(BIT(1), RENDER_THREAD_NAME, renderThreadPriority, 72 * 1024);
+            m_pThread->Start(AFFINITY_MASK_RENDERTHREAD, RENDER_THREAD_NAME, renderThreadPriority, 72 * 1024);
 #endif
             m_pThread->m_started.Wait();
         }
@@ -401,7 +400,7 @@ struct SRenderThread
     {
         if (m_pThreadLoading != NULL)
         {
-            m_pThreadLoading->Start(BIT(0), RENDER_THREAD_NAME, RENDER_THREAD_PRIORITY + 1, 72 * 1024);
+            m_pThreadLoading->Start(AFFINITY_MASK_USERTHREADS, RENDER_THREAD_NAME, RENDER_THREAD_PRIORITY + 1, 72 * 1024);
             m_pThreadLoading->m_started.Wait();
         }
     }
@@ -584,7 +583,7 @@ struct SRenderThread
     void QuitRenderLoadingThread();
     void SyncMainWithRender();
     void FlushAndWait();
-    void ProcessCommands();
+    void ProcessCommands(bool loadTimeProcessing);
     void Process();         // Render thread
     void ProcessLoading();  // Loading thread
     int  GetThreadList();
@@ -687,7 +686,6 @@ struct SRenderThread
     void    RT_StartVideoThread();
     void    RT_StopVideoThread();
 
-    void        RC_PrepareLevelTexStreaming();
     void    RC_PostLoadLevel();
     void    RC_SetEnvTexRT(SEnvTexture* pEnvTex, int nWidth, int nHeight, bool bPush);
     void    RC_SetEnvTexMatrix(SEnvTexture* pEnvTex);

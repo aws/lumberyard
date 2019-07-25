@@ -442,6 +442,8 @@ public:
     static void* GetBackingStorage(D3DBuffer* buffer);
     static void FreebackingStorage(void* base_ptr);
 
+    void DisplayMemoryUsage();
+
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION DEVICEMANAGER_H_SECTION_7
     #if defined(AZ_PLATFORM_XENIA)
@@ -469,7 +471,7 @@ private:
         }
     };
 
-    typedef std::vector<StagingTextureDef, stl::STLGlobalAllocator<StagingTextureDef> > StagingPoolVec;
+    typedef std::vector<StagingTextureDef> StagingPoolVec;
 
 private:
     StagingPoolVec m_stagingPool;
@@ -675,9 +677,14 @@ public:
         m_bNoDelete = noDelete;
     }
 
+    void TrackTextureMemory(uint32 usageFlags, const char* name);
+    void RemoveFromTextureMemoryTracking();
+
 private:
     CDeviceTexture(const CDeviceTexture&);
     CDeviceTexture& operator = (const CDeviceTexture&);
+
+    bool m_isTracked = false;
 
 private:
     int Cleanup();

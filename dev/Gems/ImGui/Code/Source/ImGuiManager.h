@@ -27,6 +27,10 @@
 #include <AzFramework/Input/Events/InputChannelEventListener.h>
 #include <AzFramework/Input/Events/InputTextEventListener.h>
 
+#if defined(LOAD_IMGUI_LIB_DYNAMICALLY)
+#include <AzCore/Module/DynamicModuleHandle.h>
+#endif // defined(LOAD_IMGUI_LIB_DYNAMICALLY)
+
 namespace ImGui
 {
     class ImGuiManager : public IGameFrameworkListener,
@@ -64,6 +68,10 @@ namespace ImGui
         // Rendering buffers
         std::vector<SVF_P3F_C4B_T2F> m_vertBuffer;
         std::vector<uint16> m_idxBuffer;
+
+#if defined(LOAD_IMGUI_LIB_DYNAMICALLY)
+        AZStd::unique_ptr<AZ::DynamicModuleHandle>  m_imgSharedLib;
+#endif // defined(LOAD_IMGUI_LIB_DYNAMICALLY)
     };
 
     static void AddMenuItemHelper(bool& control, const char* show, const char* hide)

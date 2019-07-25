@@ -1,0 +1,13 @@
+{
+    "auto": {
+        "Include": [
+            "Include/SaveData/SaveDataNotificationBus.h",
+            "Include/SaveData/SaveDataRequestBus.h"
+        ],
+        "Source": [
+            "Source/SaveDataModule.cpp",
+            "Source/SaveDataSystemComponent.cpp",
+            "Source/SaveDataSystemComponent.h"
+        ]
+    }
+}

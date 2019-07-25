@@ -1,3 +1,3 @@
 <ObjectLayer>
- <Layer Name="Airship" GUID="{cc0be8be-a4a3-4fc5-8073-026520374ef9}" Exportable="1" ExportLayerPak="1" DefaultLoaded="0" HavePhysics="1" IsDefaultColor="1"/>
+ <Layer Name="Airship" GUID="{CC0BE8BE-A4A3-4FC5-8073-026520374EF9}" Exportable="1" ExportLayerPak="1" DefaultLoaded="0" HavePhysics="1" IsDefaultColor="1"/>
 </ObjectLayer>

@@ -31,7 +31,7 @@ public:
     virtual ~ShaderCompilerJob();
     ShaderCompilerRequestMessage ShaderCompilerMessage() const;
     void initialize(QObject* pManager, const ShaderCompilerRequestMessage& ShaderCompilerMessage);
-    QString choseRandomServerAddress();
+    QString getServerAddress();
     bool isServerListEmpty();
     virtual void run() override;
 

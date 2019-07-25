@@ -26,6 +26,7 @@ namespace PhysX
             AssetBuilderSDK::AssetBuilderDesc builderDescriptor;
 
             builderDescriptor.m_name = "Legacy CGF to PhysX Builder";
+            builderDescriptor.m_version = 1;
             builderDescriptor.m_patterns.emplace_back(AssetBuilderSDK::AssetBuilderPattern("*.cgf", AssetBuilderSDK::AssetBuilderPattern::PatternType::Wildcard));
             builderDescriptor.m_busId = azrtti_typeid<CgfMeshAssetBuilderWorker>();
             builderDescriptor.m_createJobFunction = AZStd::bind(&CgfMeshAssetBuilderWorker::CreateJobs, &m_meshAssetBuilder, AZStd::placeholders::_1, AZStd::placeholders::_2);

@@ -41,6 +41,7 @@ namespace ScriptCanvas
 
             Nodes::Operators::OperatorBase::Reflect(reflection);
             Nodes::Operators::OperatorArithmetic::Reflect(reflection);
+            Nodes::Operators::OperatorArithmeticUnary::Reflect(reflection);
         }
 
         void Operators::InitNodeRegistry(NodeRegistry& nodeRegistry)

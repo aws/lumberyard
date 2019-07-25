@@ -111,6 +111,7 @@ extern "C" AZ_DLL_EXPORT void DestroyDLLTestVirtualClass()
 extern "C" AZ_DLL_EXPORT void InitializeDynamicModule(void* azEnvironmentInstance)
 {
     AZ::Environment::Attach(static_cast<AZ::EnvironmentInstance>(azEnvironmentInstance));
+    AZ_Assert(AZ::Environment::GetInstance() == azEnvironmentInstance, "Invalid!");
     AZ_Printf("DLL", "InitializeDynamicModule called");
 }
 
@@ -122,7 +123,7 @@ extern "C" AZ_DLL_EXPORT AZ::Module * CreateModuleClass()
 
 extern "C" AZ_DLL_EXPORT void DestroyModuleClass(AZ::Module* module)
 {
-    AZ_Printf("DLL", "CreateModuleClass called");
+    AZ_Printf("DLL", "DestroyModuleClass called");
     delete module;
 }
 

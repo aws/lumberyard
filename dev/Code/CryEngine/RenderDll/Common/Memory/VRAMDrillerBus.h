@@ -24,13 +24,15 @@ namespace Render
             VRAM_CATEGORY_BUFFER,
             VRAM_CATEGORY_MISC,
 
-            VRAM_CATEGORY_INVALID
+            VRAM_CATEGORY_NUMBER_CATEGORIES,
+            VRAM_CATEGORY_INVALID = VRAM_CATEGORY_NUMBER_CATEGORIES
         };
 
         enum VRAMAllocationSubcategory
         {
             VRAM_SUBCATEGORY_TEXTURE_RENDERTARGET,      // Rendertarget allocations
-            VRAM_SUBCATEGORY_TEXTURE_TEXTURE,           // Texture resources loaded from a file or created dynamically at runtime
+            VRAM_SUBCATEGORY_TEXTURE_TEXTURE,           // Texture resources loaded from a file
+            VRAM_SUBCATEGORY_TEXTURE_DYNAMIC,           // Texture created dynamically at runtime (staging or CPU-updated)
 
             VRAM_SUBCATEGORY_BUFFER_VERTEX_BUFFER,      // Vertex buffers
             VRAM_SUBCATEGORY_BUFFER_INDEX_BUFFER,       // Index buffers
@@ -39,7 +41,8 @@ namespace Render
 
             VRAM_SUBCATEGORY_MISC_OTHER,                // Other
 
-            VRAM_SUBCATEGORY_INVALID,
+            VRAM_SUBCATEGORY_NUMBER_SUBCATEGORIES,
+            VRAM_SUBCATEGORY_INVALID = VRAM_SUBCATEGORY_NUMBER_SUBCATEGORIES,
         };
 
         struct VRAMSubcategory
@@ -54,7 +57,7 @@ namespace Render
         };
 
         typedef AZStd::vector<VRAMSubcategory, AZ::OSStdAllocator> VRAMSubCategoryType;
-
+        
         /**
          * VRAM allocations driller message.
          *
@@ -76,6 +79,10 @@ namespace Render
             // Functions for registering and unregistering individual VRAM allocations
             virtual void RegisterAllocation(void* address, size_t byteSize, const char* allocationName, VRAMAllocationCategory category, VRAMAllocationSubcategory subcategories) = 0;
             virtual void UnregisterAllocation(void* address) = 0;
+
+            // Query the most up-to-date information about a specific category and subcategory.
+            // Returns the category and subcategory names, the number of currently allocated bytes and the current number of allocations
+            virtual void GetCurrentVRAMStats(VRAMAllocationCategory category, VRAMAllocationSubcategory subcategory, AZStd::string& categoryName, AZStd::string& subcategoryName, size_t& numberBytesAllocated, size_t& numberAllocations) = 0;
         };
 
         typedef AZ::EBus<VRAMDrillerMessages> VRAMDrillerBus;

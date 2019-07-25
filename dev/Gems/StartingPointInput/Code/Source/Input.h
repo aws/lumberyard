@@ -13,6 +13,7 @@
 #include <InputManagementFramework/InputSubComponent.h>
 #include <AzCore/RTTI/RTTI.h>
 #include <AzCore/Component/TickBus.h>
+#include <AzFramework/Input/Buses/Notifications/InputDeviceNotificationBus.h>
 #include <AzFramework/Input/Events/InputChannelEventListener.h>
 #include <InputNotificationBus.h>
 #include <InputRequestBus.h>
@@ -45,8 +46,8 @@ namespace Input
 
     protected:
         AZStd::string GetEditorText() const;
-        const AZStd::vector<AZStd::string> GetInputDeviceTypes() const;
-        const AZStd::vector<AZStd::string> GetInputNamesBySelectedDevice() const;
+        virtual const AZStd::vector<AZStd::string> GetInputDeviceTypes() const;
+        virtual const AZStd::vector<AZStd::string> GetInputNamesBySelectedDevice() const;
 
         AZ::Crc32 OnDeviceSelected();
 
@@ -63,7 +64,8 @@ namespace Input
         bool OnInputChannelEventFiltered(const AzFramework::InputChannel& inputChannel) override;
 
         using InputEventType = void(AZ::InputEventNotificationBus::Events::*)(float);
-        void SendEventsInternal(const AzFramework::InputChannel& inputChannel, const AZ::InputEventNotificationId busId, InputEventType eventType);
+        virtual float CalculateEventValue(const AzFramework::InputChannel& inputChannel) const;
+        void SendEventsInternal(float value, const AzFramework::LocalUserId& localUserIdOfEvent, const AZ::InputEventNotificationId busId, InputEventType eventType);
 
         //////////////////////////////////////////////////////////////////////////
         // Non Reflected Data
@@ -75,7 +77,53 @@ namespace Input
         float m_eventValueMultiplier = 1.f;
         AZStd::string m_inputName = "";
         AZStd::string m_inputDeviceType = "";
-        float m_deadZone = 0.2f;
+        float m_deadZone = 0.0f;
+    };
 
+    //////////////////////////////////////////////////////////////////////////
+    /// ThumbstickInput handles raw input from thumbstick sources, applies any
+    /// custom dead-zone or sensitivity curve calculations, and then outputs
+    /// Pressed, Held, and Released input events for the specified axis
+    class ThumbstickInput
+        : public Input
+    {
+    public:
+        ThumbstickInput();
+        ~ThumbstickInput() override = default;
+        AZ_RTTI(ThumbstickInput, "{4881FA7C-0667-476C-8C77-4DBB6C69F646}", Input);
+        static void Reflect(AZ::ReflectContext* reflection);
+
+    protected:
+        //////////////////////////////////////////////////////////////////////////
+        // InputSubComponent
+        AZStd::string GetEditorText() const;
+        const AZStd::vector<AZStd::string> GetInputDeviceTypes() const override;
+        const AZStd::vector<AZStd::string> GetInputNamesBySelectedDevice() const override;
+        bool OnInputChannelEventFiltered(const AzFramework::InputChannel& inputChannel) override;
+        float CalculateEventValue(const AzFramework::InputChannel& inputChannel) const override;
+
+        static AZ::Vector2 ApplyDeadZonesAndSensitivity(const AZ::Vector2& inputValues,
+                                                        float innerDeadZone,
+                                                        float outerDeadZone,
+                                                        float axisDeadZone,
+                                                        float sensitivityExponent);
+
+        enum class OutputAxis
+        {
+            X,
+            Y
+        };
+
+        //////////////////////////////////////////////////////////////////////////
+        // Non Reflected Data
+        const AzFramework::InputDeviceId* m_wasLastPressedByInputDeviceId = nullptr;
+
+        //////////////////////////////////////////////////////////////////////////
+        // Reflected Data
+        float m_innerDeadZoneRadius = 0.0f;
+        float m_outerDeadZoneRadius = 1.0f;
+        float m_axisDeadZoneValue = 0.0f;
+        float m_sensitivityExponent = 1.0f;
+        OutputAxis m_outputAxis = OutputAxis::X;
     };
 } // namespace Input

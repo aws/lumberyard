@@ -10,6 +10,7 @@
 *
 */
 #pragma once
+#include <AzCore/Component/ComponentBus.h>
 #include <AzCore/EBus/EBus.h>
 #include <AzCore/std/utils.h>
 #include <InputTypes.h>
@@ -24,8 +25,11 @@ namespace AZ
     {
         AZ_TYPE_INFO(EditableInputRecord, "{86B216E5-D40D-474A-8EE7-629591EC75EE}");
         EditableInputRecord() = default;
-        EditableInputRecord(Input::ProfileId profile, Input::ProcessedEventName eventGroup, AZStd::string deviceName, AZStd::string inputName)
-            : m_profile(profile)
+        EditableInputRecord(const AzFramework::LocalUserId& localUserId,
+                            const Input::ProcessedEventName& eventGroup,
+                            const AZStd::string& deviceName,
+                            const AZStd::string& inputName)
+            : m_localUserId(localUserId)
             , m_eventGroup(eventGroup)
             , m_deviceName(deviceName)
             , m_inputName(inputName)
@@ -33,13 +37,13 @@ namespace AZ
 
         bool operator==(const EditableInputRecord& rhs) const
         {
-            return m_profile == rhs.m_profile
+            return m_localUserId == rhs.m_localUserId
                 && m_eventGroup == rhs.m_eventGroup
                 && m_deviceName == rhs.m_deviceName
                 && m_inputName == rhs.m_inputName;
         }
 
-        Input::ProfileId m_profile;
+        AzFramework::LocalUserId m_localUserId;
         Input::ProcessedEventName m_eventGroup;
         AZStd::string m_deviceName;
         AZStd::string m_inputName;
@@ -85,21 +89,6 @@ namespace AZ
 
         // ToDo: This file should be moved to:
         // Gems/InputManagementFramework/Code/Include/InputManagementFramework/InputRequestBus.h
-
-        /**
-        * This will request a mapping from a profileId to a device index. The mapped index is returned.
-        */
-        virtual AZ::u8 RequestDeviceIndexMapping(const Input::ProfileId& profileId) = 0;
-
-        /**
-        * This will get the device index mapped to a profileId, or 0 if none is mapped
-        */
-        virtual AZ::u8 GetMappedDeviceIndex(const Input::ProfileId& profileId) = 0;
-
-        /**
-        * This will clear all profile<->device mappings
-        */
-        virtual void ClearAllDeviceMappings() = 0;
         
         /**
         * This will push the desired context onto the top of the input context stack making it active
@@ -129,6 +118,22 @@ namespace AZ
     };
 
     using InputRequestBus = AZ::EBus<InputRequests>;
+
+    /**
+    * Use this bus to send messages to an input component on an entity
+    */
+    class InputComponentRequests
+        : public AZ::ComponentBus
+    {
+    public:
+        virtual ~InputComponentRequests() = default;
+
+        /**
+        * Set the local user id that the input component should process input from
+        */
+        virtual void SetLocalUserId(AzFramework::LocalUserId localUserId) = 0;
+    };
+    using InputComponentRequestBus = AZ::EBus<InputComponentRequests>;
 } // namespace AZ
 
 

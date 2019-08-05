@@ -2463,6 +2463,9 @@ namespace AzToolsFramework
                 {
                     if (includeLegacySubIDs)
                     {
+                        // clear legacy ID array from previous assets
+                        combined.m_legacySubIDs.clear();
+
                         QueryLegacySubIdsByProductID(combined.m_productID, [&combined](LegacySubIDsEntry& entry)
                         {
                             combined.m_legacySubIDs.emplace_back(AZStd::move(entry));

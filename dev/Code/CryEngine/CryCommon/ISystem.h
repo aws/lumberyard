@@ -2236,7 +2236,7 @@ namespace Detail
 
 #else
 
-# define DeclareConstIntCVar(name, defaultValue) int name
+# define DeclareConstIntCVar(name, defaultValue) int name { defaultValue }
 # define DeclareStaticConstIntCVar(name, defaultValue) static int name
 # define DefineConstIntCVarName(strname, name, defaultValue, flags, help) \
     (gEnv->pConsole == 0 ? 0 : gEnv->pConsole->Register(strname, &name, defaultValue, flags | CONST_CVAR_FLAGS, CVARHELP(help)))

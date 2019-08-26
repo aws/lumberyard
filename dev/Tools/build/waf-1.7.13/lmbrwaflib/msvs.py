@@ -384,6 +384,9 @@ SUPPORTED_MSVS_VALUE_TABLE = {
 }
 
 
+MSVC_DEBUGGER_FILE_EXTS = { '.natvis' : 'Natvis', '.natjmc' : 'Natjmc', '.natstepfilter' : 'Natstepfilter' }
+
+
 class VS_Configuration(object):
 
     def __init__(self, vs_spec, waf_spec, waf_configuration):
@@ -799,9 +802,15 @@ class vsnode_project(vsnode):
         required for writing the source files
         """
         name = node.name
+        name_l = name.lower()
+        for debugger_source_ext in MSVC_DEBUGGER_FILE_EXTS:
+            if name_l.endswith(debugger_source_ext):
+                return MSVC_DEBUGGER_FILE_EXTS[debugger_source_ext]
+
         if self.ctx.is_cxx_file(name):
             return 'ClCompile'
-        return 'ClInclude'
+        else:
+            return 'ClInclude'
 
     def collect_properties(self):
         """

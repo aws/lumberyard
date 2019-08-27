@@ -842,6 +842,8 @@ namespace AZ
         {
             if (classElement)
             {
+                const SerializeContext::ClassData* classElementClassData = m_sc->FindClassData(classElement->m_typeId);
+
                 bool isCastableToClassElement{};
                 bool isConvertibleToClassElement{};
                 // ClassData can be influenced by converters. Verify the classData is compatible with the underlying class element.
@@ -850,13 +852,12 @@ namespace AZ
                     isCastableToClassElement = m_sc->CanDowncast(dataElementClassData->m_typeId, classElement->m_typeId, dataElementClassData->m_azRtti, classElement->m_azRtti);
                     if (!isCastableToClassElement)
                     {
-                        const SerializeContext::ClassData* classElementClassData = m_sc->FindClassData(classElement->m_typeId);
                         isConvertibleToClassElement = classElementClassData && classElementClassData->CanConvertFromType(dataElementClassData->m_typeId, *m_sc);
                     }
                     if (!isCastableToClassElement && !isConvertibleToClassElement)
                     {
                         AZStd::string error = AZStd::string::format("Converter switched to type %s, which cannot be casted to base type %s.",
-                            dataElementClassData->m_typeId.ToString<AZStd::string>().c_str(), classElement->m_typeId.ToString<AZStd::string>().c_str());
+                                                                    dataElementClassData->m_typeId.ToString<AZStd::string>().c_str(), classElement->m_typeId.ToString<AZStd::string>().c_str());
 
                         storageElement.m_errorResult = storageElement.m_errorResult && ((m_filterDesc.m_flags & FILTERFLAG_STRICT) == 0);  // in strict mode, this is a complete failure.
                         m_errorLogger.ReportError(error.c_str());
@@ -892,14 +893,37 @@ namespace AZ
                     storageElement.m_reserveAddress = reinterpret_cast<char*>(parentClassPtr) + classElement->m_offset;
                 }
 
-                storageElement.m_dataAddress = storageElement.m_reserveAddress;
+                const auto Convert = [&](void* dataAddress) {
+                    if (isConvertibleToClassElement)
+                    {
+                        void* temp = nullptr;
+                        classElementClassData->ConvertFromType(temp, dataElement.m_id, dataAddress, *m_sc);
+                        return temp;
+                    }
+                    else if (isCastableToClassElement)
+                    {
+                        // we need to account for additional offsets if we have a pointer to
+                        // a base class.
+                        void* basePtr = m_sc->DownCast(dataAddress, dataElement.m_id, classElement->m_typeId, dataElementClassData->m_azRtti, classElement->m_azRtti);
+                        AZ_Assert(basePtr != nullptr, storageElement.m_classContainer
+                                  ? "Can't cast container element %s(0x%x) to %s, make sure classes are registered in the system and not generics!"
+                                  : "Can't cast %s(0x%x) to %s, make sure classes are registered in the system and not generics!"
+                                  , dataElement.m_name ? dataElement.m_name : "NULL"
+                                  , dataElement.m_nameCrc
+                                  , dataElementClassData->m_name);
+                        return basePtr;
+                    }
+                    else
+                    {
+                        return dataAddress;
+                    }
+                };
 
                 // create a new instance if needed
                 if (classElement->m_flags & SerializeContext::ClassElement::FLG_POINTER)
                 {
                     // If the data element is convertible to the the type stored in the class element, then it is not castable(i.e a derived class)
                     // to the type stored in the class element. In that case an element of type class element should be allocated directly
-                    const SerializeContext::ClassData* classElementClassData = m_sc->FindClassData(classElement->m_typeId);
                     SerializeContext::IObjectFactory* classFactory = isCastableToClassElement ? dataElementClassData->m_factory : classElementClassData ? classElementClassData->m_factory : nullptr;
 
                     // create a new instance if we are referencing it by pointer
@@ -910,38 +934,29 @@ namespace AZ
                     // default constructor of object A allocates an object
                     // B and stores B in a field in A that is also
                     // serialized.
-                    if (!storageElement.m_classContainer && *reinterpret_cast<void**>(storageElement.m_reserveAddress))
+                    void*& pReserveAddress = *reinterpret_cast<void**>(storageElement.m_reserveAddress);
+                    if (!storageElement.m_classContainer && pReserveAddress != nullptr)
                     {
-                        classFactory->Destroy(*reinterpret_cast<void**>(storageElement.m_reserveAddress));
+                        classFactory->Destroy(pReserveAddress);
                     }
 
+                    // Create a new instance of the class and convert the result (if needed) to the target type
                     void* newDataAddress = classFactory->Create(dataElementClassData->m_name);
+                    void* convertedDataAddress = Convert(newDataAddress);
 
-                    // If the data element type is convertible to the class element type invoke the ClassData
-                    // DataConverter to retrieve the address to store the data element value
-                    if (isConvertibleToClassElement)
-                    {
-                        *reinterpret_cast<void**>(storageElement.m_reserveAddress) = newDataAddress;
-                        classElementClassData->ConvertFromType(storageElement.m_dataAddress, dataElement.m_id, newDataAddress, *m_sc);
-                    }
-                    else
-                    {
-                        // we need to account for additional offsets if we have a pointer to
-                        // a base class.
-                        void* basePtr = m_sc->DownCast(newDataAddress, dataElement.m_id, classElement->m_typeId, dataElementClassData->m_azRtti, classElement->m_azRtti);
-                        AZ_Assert(basePtr != nullptr, storageElement.m_classContainer
-                            ? "Can't cast container element %s(0x%x) to %s, make sure classes are registered in the system and not generics!"
-                            : "Can't cast %s(0x%x) to %s, make sure classes are registered in the system and not generics!"
-                            , dataElement.m_name ? dataElement.m_name : "NULL"
-                            , dataElement.m_nameCrc
-                            , dataElementClassData->m_name);
-
-                        *reinterpret_cast<void**>(storageElement.m_reserveAddress) = basePtr; // store the pointer in the class
-                        // further construction of the members need to be based off the pointer to the
-                        // actual type, not the base type!
-                        storageElement.m_dataAddress = newDataAddress;
-                    }
-
+                    // For pointer types, the data address is a pointer to the actual datum of the type specified by the class element
+                    // Further construction of the members requires a pointer to the actual type, not the base type which is stored by the container,
+                    // so the unconverted address is the data address.
+                    // The reserve address is the pointer returned by IDataContainer methods; it must also contain the address of the newly created
+                    // class type so it may take ownership of it in a later call to StoreElement. However, it expects a pointer to pointer of precisely
+                    // the type it stores, not a derived type, so the reserver address is a pointer to the converted data address.
+                    storageElement.m_dataAddress = newDataAddress;
+                    pReserveAddress = convertedDataAddress;
+                }
+                else
+                {
+                    // For non-pointers, the data address and reserve address are identical.
+                    storageElement.m_dataAddress = storageElement.m_reserveAddress = Convert(storageElement.m_reserveAddress);
                 }
             }
             else

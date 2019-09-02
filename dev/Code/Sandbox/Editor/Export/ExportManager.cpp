@@ -24,6 +24,7 @@
 #include "Objects/EntityObject.h"
 #include "Material/Material.h"
 #include "Terrain/TerrainManager.h"
+#include "Terrain/Heightmap.h"
 #include "VegetationMap.h"
 #include "VegetationObject.h"
 #include "ViewManager.h"
@@ -1599,14 +1600,27 @@ bool CExportManager::AddSelectedRegionObjects()
 
 bool CExportManager::AddTerrain()
 {
+    IEditorTerrain *terrain=GetIEditor()->GetTerrain();
+
+    if(terrain->GetType()==GetIEditor()->Get3DEngine()->GetTerrainId("CTerrain"))
+        return AddDefaultTerrain();
+    else
+        return true;
+
+    return false;
+}
+
+bool CExportManager::AddDefaultTerrain()
+{
     AABB box;
     GetIEditor()->GetSelectedRegion(box);
-    if (box.IsEmpty())
-    {
-        return false;
-    }
 
-    CHeightmap& heightmap = *GetIEditor()->GetHeightmap();
+    if(box.IsEmpty())
+        return false;
+
+    IEditorTerrain *terrain=GetIEditor()->GetTerrain();
+    CHeightmap &heightmap=*((CHeightmap *)terrain);
+
     t_hmap* pHeightmapData = heightmap.GetData();
     assert(pHeightmapData);
     int nHeightmapWidth = heightmap.GetWidth();

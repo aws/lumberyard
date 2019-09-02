@@ -187,6 +187,8 @@ private:
     void FillAnimTimeNode(XmlNodeRef writeNode, CTrackViewAnimNode* pObjectNode, CTrackViewSequence* currentSequence);
     QString CleanXMLText(const QString& text);
 
+    bool AddDefaultTerrain();
+
 private:
 
     TExporters m_exporters;

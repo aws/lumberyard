@@ -569,6 +569,10 @@ public:
     ILINE Vec3 GetPosition() const { return m_Matrix.GetTranslation(); }
     ILINE void SetPosition(const Vec3& p)   { m_Matrix.SetTranslation(p); UpdateFrustum(); }
     ILINE void SetPositionNoUpdate(const Vec3& p)   { m_Matrix.SetTranslation(p); }
+    ILINE Vec3i GetSector() const { return m_sector; }
+    ILINE void SetSector(const Vec3i &sector) { m_sector=sector; }
+    ILINE Vec3i GetSectorSize() const { return m_sectorSize; }
+    ILINE void SetSectorSize(const Vec3i &sectorSize) { m_sectorSize=sectorSize; }
     ILINE bool Project(const Vec3& p, Vec3& result, Vec2i topLeft = Vec2i(0, 0), Vec2i widthHeight = Vec2i(0, 0)) const;
     ILINE bool Unproject(const Vec3& viewportPos, Vec3& result, Vec2i topLeft = Vec2i(0, 0), Vec2i widthHeight = Vec2i(0, 0)) const;
     ILINE void CalcScreenBounds(int* vOut, const AABB* pAABB, int nWidth, int nHeight) const;
@@ -674,6 +678,8 @@ public:
         m_JustActivated = 0;
         m_nPosX = m_nPosY = m_nSizeX = m_nSizeY = 0;
         m_entityPos = Vec3(0, 0, 0);
+        m_sector = Vec3i(0, 0, 0);
+        m_sectorSize = Vec3i(0, 0, 0);
         m_entityRot = Quat(0, 0, 0, 1);
 #if AZ_RENDER_TO_TEXTURE_GEM_ENABLED
         m_frameUpdateId = 0;
@@ -733,6 +739,8 @@ private:
     Quat    m_entityRot;                //The rotation of this camera's entity (does not include HMD orientation)
     Vec3    m_entityPos;                //The position of this camera's entity (does not include HMD position or stereo offsets)
 
+    Vec3i   m_sector;                   // tracks the cameras current sector, used for segmented terrain
+    Vec3i   m_sectorSize;                   // sector size, used for segmented terrain
     Vec3    m_edge_nlt;                 // this is the left/upper vertex of the near-plane
     Vec3    m_edge_plt;                 // this is the left/upper vertex of the projection-plane
     Vec3    m_edge_flt;                 // this is the left/upper vertex of the far-clip-plane

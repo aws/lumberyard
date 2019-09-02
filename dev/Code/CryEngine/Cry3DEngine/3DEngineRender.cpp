@@ -2448,6 +2448,7 @@ void C3DEngine::DisplayInfo(float& fTextPosX, float& fTextPosY, float& fTextStep
     Matrix33 m = Matrix33(GetRenderingCamera().GetMatrix());
     //m.OrthonormalizeFast();       // why is that needed? is it?
     Ang3 aAng = RAD2DEG(Ang3::GetAnglesXYZ(m));
+    Vec3i vSector=GetRenderingCamera().GetSector();
     Vec3 vPos = GetRenderingCamera().GetPosition();
 
     // Time of day info
@@ -2481,8 +2482,8 @@ void C3DEngine::DisplayInfo(float& fTextPosX, float& fTextPosY, float& fTextStep
     m_pRenderer->EF_Query(EFQ_GetFogCullDistance, fogCullDist);
     m_pRenderer->EF_Query(EFQ_GetViewportDownscaleFactor, vViewportScale);
 
-    DrawTextRightAligned(fTextPosX, fTextPosY += fTextStepY, "CamPos=%.2f %.2f %.2f Angl=%3d %2d %3d ZN=%.2f ZF=%d",
-        vPos.x, vPos.y, vPos.z, (int)aAng.x, (int)aAng.y, (int)aAng.z,
+    DrawTextRightAligned(fTextPosX, fTextPosY += fTextStepY, "CamPos=(%2d %2d %2d) %.2f %.2f %.2f Angl=%3d %2d %3d ZN=%.2f ZF=%d",
+        vSector.x, vSector.y, vSector.z, vPos.x, vPos.y, vPos.z, (int)aAng.x, (int)aAng.y, (int)aAng.z,
         GetRenderingCamera().GetNearPlane(), (int)GetRenderingCamera().GetFarPlane());
 
     DrawTextRightAligned(fTextPosX, fTextPosY += fTextStepY, "Cam FC=%.2f VS=%.2f,%.2f Zoom=%.2f Speed=%1.2f TimeOfDay=%02d:%02d",

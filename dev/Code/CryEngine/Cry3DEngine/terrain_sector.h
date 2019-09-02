@@ -429,6 +429,8 @@ public:
     }
     ~CTerrainNode();
 
+    CTerrain *GetTerrain() const { return (CTerrain *)Cry3DEngineBase::GetTerrain(); }
+
     static void ResetStaticData();
 
     static void GetStaticMemoryUsage(ICrySizer* sizer);
@@ -593,7 +595,7 @@ private:
 
     static void SetupTexGenParams(SSurfaceType* pLayer, float* pOutParams, uint8 ucProjAxis, bool bOutdoor, float fTexGenScale = 1.f);
 
-    static void GenerateIndicesForAllSurfaces(IRenderMesh * mesh, int surfaceAxisIndexCount[SurfaceTile::MaxSurfaceCount][4], BuildMeshData * meshData);
+    void GenerateIndicesForAllSurfaces(IRenderMesh * mesh, int surfaceAxisIndexCount[SurfaceTile::MaxSurfaceCount][4], BuildMeshData * meshData);
 };
 
 

@@ -24,8 +24,10 @@
 #include "Util/AutoLogTime.h"
 #include "ITerrain.h"
 #include "Terrain/TerrainConverter.h"
+#include "Terrain/Heightmap.h"
 
 namespace {
+    const char* terrainFile="terrain.dat";
     const char* kHeightmapFile = "Heightmap.dat";
     const char* kTerrainTextureFile = "TerrainTexture.xml";
 
@@ -53,11 +55,13 @@ namespace {
 //////////////////////////////////////////////////////////////////////////
 CTerrainManager::CTerrainManager()
 {
+    m_terrain=new CHeightmap(); //make sure terrain always valid
 }
 
 //////////////////////////////////////////////////////////////////////////
 CTerrainManager::~CTerrainManager()
 {
+    delete m_terrain;
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -171,7 +175,12 @@ void CTerrainManager::ReloadSurfaceTypes(bool bUpdateEngineTerrain, bool bUpdate
 
     if (bUpdateHeightmap && gEnv->p3DEngine->GetITerrain() && bUpdateEngineTerrain)
     {
-        m_heightmap.UpdateEngineTerrain(false, false);
+        if(m_terrain->GetType()==GetIEditor()->Get3DEngine()->GetTerrainId("CTerrain"))
+        {
+            CHeightmap *heightmap=(CHeightmap *)m_terrain;
+
+            heightmap->UpdateEngineTerrain(false, false);
+        }
     }
 }
 
@@ -219,6 +228,11 @@ CLayer* CTerrainManager::FindLayerByLayerId(const uint32 dwLayerId) const
 //////////////////////////////////////////////////////////////////////////
 void CTerrainManager::RemoveLayer(CLayer* layer)
 {
+    if(m_terrain->GetType()!=GetIEditor()->Get3DEngine()->GetTerrainId("CTerrain"))
+        return;
+
+    CHeightmap *heightmap=(CHeightmap *)m_terrain;
+
     assert(m_layers.size() > 1 && "Removing last layer of terrain");
 
     if (layer && layer->GetCurrentLayerId() != CLayer::e_undefined)
@@ -237,7 +251,7 @@ void CTerrainManager::RemoveLayer(CLayer* layer)
                     break;
                 }
             }
-            m_heightmap.EraseLayerID(id, defaultLayer->GetCurrentLayerId());
+            heightmap->EraseLayerID(id, defaultLayer->GetCurrentLayerId());
         }
     }
 
@@ -251,6 +265,11 @@ void CTerrainManager::RemoveLayer(CLayer* layer)
 //////////////////////////////////////////////////////////////////////////
 void CTerrainManager::SwapLayers(int layer1, int layer2)
 {
+    if(m_terrain->GetType()!=GetIEditor()->Get3DEngine()->GetTerrainId("CTerrain"))
+        return;
+
+    CHeightmap *heightmap=(CHeightmap *)m_terrain;
+
     assert(layer1 >= 0 && layer1 < m_layers.size());
     assert(layer2 >= 0 && layer2 < m_layers.size());
     std::swap(m_layers[layer1], m_layers[layer2]);
@@ -270,7 +289,7 @@ void CTerrainManager::SwapLayers(int layer1, int layer2)
         CSurfaceType& surfaceType1 = *m_surfaceTypes[st1];
         CSurfaceType& surfaceType2 = *m_surfaceTypes[st2];
         std::swap(surfaceType1, surfaceType2);
-        m_heightmap.UpdateEngineTerrain();
+        heightmap->UpdateEngineTerrain();
     }
 }
 
@@ -432,7 +451,7 @@ void CTerrainManager::SerializeTerrain(TDocMultiArchive& arrXmlAr)
 
     if (bLoading)
     {
-        m_heightmap.Serialize((*arrXmlAr[WDB_LEVELGENERAL]));
+        m_terrain->Serialize((*arrXmlAr[WDB_LEVELGENERAL]));
 
         // Surface Types ///////////////////////////////////////////////////////
         {
@@ -449,10 +468,10 @@ void CTerrainManager::SerializeTerrain(TDocMultiArchive& arrXmlAr)
         {
             CAutoLogTime logtime("Load Terrain");
 
-            m_heightmap.SerializeTerrain((*arrXmlAr[WDB_LEVELGENERAL]));
+            m_terrain->SerializeTerrain((*arrXmlAr[WDB_LEVELGENERAL]));
         }
 
-        if (!m_heightmap.IsAllocated())
+        if (!m_terrain->IsAllocated())
         {
             gEnv->pSystem->ShowMessage("Heightmap data wasn't properly loaded. The file is missing or corrupted. Using this level is not recommended. Update level data from your backup.", "Error", MB_OK | MB_ICONERROR);
         }
@@ -467,9 +486,9 @@ void CTerrainManager::SerializeTerrain(TDocMultiArchive& arrXmlAr)
         if (arrXmlAr[WDB_LEVELGENERAL] != NULL)
         {
             // save terrain heightmap data
-            m_heightmap.Serialize((*arrXmlAr[WDB_LEVELGENERAL]));
+            m_terrain->Serialize((*arrXmlAr[WDB_LEVELGENERAL]));
 
-            m_heightmap.SerializeTerrain((*arrXmlAr[WDB_LEVELGENERAL]));
+            m_terrain->SerializeTerrain((*arrXmlAr[WDB_LEVELGENERAL]));
         }
 
         if (arrXmlAr[WDB_TERRAIN_LAYERS] != NULL)
@@ -487,46 +506,63 @@ void CTerrainManager::SerializeTerrain(CXmlArchive& xmlAr)
 {
     if (xmlAr.bLoading)
     {
-        m_heightmap.Serialize(xmlAr);
+        XmlNodeRef terrain=xmlAr.root;
+        int type=GetIEditor()->Get3DEngine()->GetTerrainId("CTerrain");
 
-        // Surface Types ///////////////////////////////////////////////////////
-        {
-            CAutoLogTime logtime("Loading Surface Types");
-            SerializeSurfaceTypes(xmlAr);
-        }
+        terrain->getAttr("Type", type);
+        SetTerrainType(type);
 
-        // Terrain texture /////////////////////////////////////////////////////
+        m_terrain->Serialize(xmlAr);
+        if(type==GetIEditor()->Get3DEngine()->GetTerrainId("CTerrain"))
         {
-            CAutoLogTime logtime("Loading Terrain Layers Info");
-            SerializeLayerSettings(xmlAr);
-        }
+            // Surface Types ///////////////////////////////////////////////////////
+            {
+                CAutoLogTime logtime("Loading Surface Types");
+                SerializeSurfaceTypes(xmlAr);
+            }
 
-        {
-            CAutoLogTime logtime("Load Terrain");
-            m_heightmap.SerializeTerrain(xmlAr);
-        }
+            // Terrain texture /////////////////////////////////////////////////////
+            {
+                CAutoLogTime logtime("Loading Terrain Layers Info");
+                SerializeLayerSettings(xmlAr);
+            }
 
-        if (!m_heightmap.IsAllocated())
-        {
-            gEnv->pSystem->ShowMessage("Heightmap data wasn't properly loaded. The file is missing or corrupted. Using this level is not recommended. Update level data from your backup.", "Error", MB_OK | MB_ICONERROR);
+            {
+                CAutoLogTime logtime("Load Terrain");
+                m_terrain->SerializeTerrain(xmlAr);
+            }
+
+            if(!m_terrain->IsAllocated())
+            {
+                gEnv->pSystem->ShowMessage("Heightmap data wasn't properly loaded. The file is missing or corrupted. Using this level is not recommended. Update level data from your backup.", "Error", MB_OK|MB_ICONERROR);
+            }
+            else
+            {
+                CAutoLogTime logtime("Process RGB Terrain Layers");
+                ConvertLayersToRGBLayer();
+            }
         }
         else
-        {
-            CAutoLogTime logtime("Process RGB Terrain Layers");
-            ConvertLayersToRGBLayer();
-        }
+            m_terrain->SerializeTerrain(xmlAr);
+
     }
     else
     {
+        xmlAr.root=XmlHelpers::CreateXmlNode("Terrain");
+        XmlNodeRef terrainNode=xmlAr.root;
+
+        terrainNode->setAttr("Type", (uint32)m_terrain->GetType());
+
         // save terrain heightmap data
-        m_heightmap.Serialize(xmlAr);
+        m_terrain->Serialize(xmlAr);
+        m_terrain->SerializeTerrain(xmlAr);
 
-        m_heightmap.SerializeTerrain(xmlAr);
-
-        // Surface Types
-        SerializeSurfaceTypes(xmlAr);
-
-        SerializeLayerSettings(xmlAr);
+        if(m_terrain->GetType()==GetIEditor()->Get3DEngine()->GetTerrainId("CTerrain"))
+        {
+            // Surface Types
+            SerializeSurfaceTypes(xmlAr);
+            SerializeLayerSettings(xmlAr);
+        }
     }
 }
 
@@ -534,7 +570,8 @@ void CTerrainManager::SerializeTerrain(CXmlArchive& xmlAr)
 //////////////////////////////////////////////////////////////////////////
 void CTerrainManager::SerializeTexture(CXmlArchive& xmlAr)
 {
-    GetRGBLayer()->Serialize(xmlAr.root, xmlAr.bLoading);
+    if(m_terrain->GetType()==GetIEditor()->Get3DEngine()->GetTerrainId("CTerrain"))
+        GetRGBLayer()->Serialize(xmlAr.root, xmlAr.bLoading);
 }
 
 
@@ -557,7 +594,7 @@ void    CTerrainManager::GetTerrainMemoryUsage(ICrySizer* pSizer)
     {
         SIZER_COMPONENT_NAME(pSizer, "CHeightmap");
 
-        m_heightmap.GetMemoryUsage(pSizer);
+        m_terrain->GetMemoryUsage(pSizer);
     }
 
     {
@@ -574,41 +611,98 @@ bool CTerrainManager::ConvertLayersToRGBLayer()
 }
 
 //////////////////////////////////////////////////////////////////////////
+void CTerrainManager::SetTerrainType(int type)
+{
+    if(type!=m_terrain->GetType())
+    {
+        delete m_terrain;
+
+        if(type == GetIEditor()->Get3DEngine()->GetTerrainId("CTerrain"))
+            m_terrain=new CHeightmap();
+//        case STerrainInfo::Voxel:
+//            m_terrain=new EditorVoxelTerrain();
+//            break;
+    }
+}
+
+//////////////////////////////////////////////////////////////////////////
 void CTerrainManager::SetTerrainSize(int resolution, int unitSize)
 {
-    m_heightmap.Resize(resolution, resolution, unitSize);
+    m_terrain->Resize(resolution, resolution, unitSize);
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CTerrainManager::SetTerrainSize(int sizeX, int sizeY, int sizeZ, int unitSize)
+{
+    m_terrain->Resize(sizeX, sizeY, sizeZ, unitSize);
 }
 
 //////////////////////////////////////////////////////////////////////////
 void CTerrainManager::SetUseTerrain(bool useTerrain)
 {
-    m_heightmap.SetUseTerrain(useTerrain);
+    m_useTerrain=useTerrain;
+//    m_terrain->SetUseTerrain(useTerrain);
 }
 
 //////////////////////////////////////////////////////////////////////////
 bool CTerrainManager::GetUseTerrain()
 {
-    return m_heightmap.GetUseTerrain();
+    return m_useTerrain;
+//    return m_terrain->GetUseTerrain();
+}
+
+void CTerrainManager::GetSectorsInfo(SSectorInfo& si)
+{
+    if(m_terrain->GetType()==GetIEditor()->Get3DEngine()->GetTerrainId("Voxel"))
+    {
+        ZeroStruct(si);
+
+        si.type=m_terrain->GetType();
+        si.unitSize=m_terrain->GetUnitSize();
+        si.sectorSize=m_terrain->GetWidth();
+        si.sectorSizeY=m_terrain->GetHeight();
+        si.sectorSizeZ=m_terrain->GetDepth();
+        si.numSectors=1;
+        si.sectorTexSize=0;
+        si.surfaceTextureSize=0;
+    }
+    else
+        m_terrain->GetSectorsInfo(si);
 }
 
 //////////////////////////////////////////////////////////////////////////
-void CTerrainManager::ResetHeightMap()
+void CTerrainManager::ResetTerrain()
 {
-    const int resolution = 1024;
-    const int unitSize = 2;
-    m_heightmap.Reset(resolution, unitSize);
+    ////////////////////////////////////////////////////////////////////////
+    // Reset Heightmap
+    ////////////////////////////////////////////////////////////////////////
+
+    if(m_terrain->GetType()==GetIEditor()->Get3DEngine()->GetTerrainId("CTerrain"))
+    {
+        CHeightmap *heightmap=(CHeightmap *)m_terrain;
+
+        heightmap->ClearModSectors();
+    }
+    m_terrain->SetOceanLevel(16);
+    SetTerrainSize(1024, 2);
+    m_terrain->SetMaxHeight(1024);
 }
 
 //////////////////////////////////////////////////////////////////////////
 CRGBLayer* CTerrainManager::GetRGBLayer()
 {
-    return m_heightmap.GetRGBLayer();
+    if(m_terrain->GetType()!=GetIEditor()->Get3DEngine()->GetTerrainId("CTerrain"))
+        return nullptr;
+
+    CHeightmap *heightmap=(CHeightmap *)m_terrain;
+
+    return heightmap->GetRGBLayer();
 }
 
 //////////////////////////////////////////////////////////////////////////
 void CTerrainManager::Save()
 {
-    CTempFileHelper helper((GetIEditor()->GetLevelDataFolder() + kHeightmapFile).toUtf8().data());
+    CTempFileHelper helper((GetIEditor()->GetLevelDataFolder() + terrainFile).toUtf8().data());
 
     CXmlArchive xmlAr;
     SerializeTerrain(xmlAr);
@@ -621,9 +715,10 @@ void CTerrainManager::Save()
 //////////////////////////////////////////////////////////////////////////
 bool CTerrainManager::Load()
 {
-    QString filename = GetIEditor()->GetLevelDataFolder() + kHeightmapFile;
+    QString filename = GetIEditor()->GetLevelDataFolder() + terrainFile;
     CXmlArchive xmlAr;
     xmlAr.bLoading = true;
+    
     if (!xmlAr.Load(filename))
     {
         return false;
@@ -644,6 +739,12 @@ bool CTerrainManager::Load()
 //////////////////////////////////////////////////////////////////////////
 void CTerrainManager::SaveTexture()
 {
+    if(m_terrain->GetType()!=GetIEditor()->Get3DEngine()->GetTerrainId("CTerrain"))
+    {
+        CLogFile::WriteLine("Not implemented!");
+        return;
+    }
+
     if (!GetIEditor()->GetTerrainManager()->GetRGBLayer()->WouldSaveSucceed())
     {
         CLogFile::WriteLine("Terrain texture can not be saved!");
@@ -700,11 +801,11 @@ void CTerrainManager::SetModified(int x1, int y1, int x2, int y2)
         int nTerrainSectorSize(gEnv->p3DEngine->GetTerrainSectorSize());
         assert(nTerrainSectorSize > 0);
 
-        x1 *= m_heightmap.GetUnitSize();
-        y1 *= m_heightmap.GetUnitSize();
+        x1 *= m_terrain->GetUnitSize();
+        y1 *= m_terrain->GetUnitSize();
 
-        x2 *= m_heightmap.GetUnitSize();
-        y2 *= m_heightmap.GetUnitSize();
+        x2 *= m_terrain->GetUnitSize();
+        y2 *= m_terrain->GetUnitSize();
 
         x1 /= nTerrainSectorSize;
         y1 /= nTerrainSectorSize;
@@ -715,6 +816,10 @@ void CTerrainManager::SetModified(int x1, int y1, int x2, int y2)
         bounds.Add(Vec3((y1 - 1) * nTerrainSectorSize, (x1 - 1) * nTerrainSectorSize, -32000.0f));
         bounds.Add(Vec3((y2 + 1) * nTerrainSectorSize, (x2 + 1) * nTerrainSectorSize, +32000.0f));
     }
+}
+void CTerrainManager::InitTerrain()
+{
+    m_terrain->Init();
 }
 
 QString CTerrainManager::GenerateUniqueLayerName(const QString& name) const

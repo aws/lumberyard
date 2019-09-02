@@ -136,6 +136,9 @@ public:
     void InvalidateBounds() override;
 
     //////////////////////////////////////////////////////////////////////////
+    virtual void SetSector(const Vec3i &vSector, int nWhyFlags = 0, bool bRecalcPhyBounds = false);
+    virtual const Vec3i &GetSector() const { return m_vSector; };
+
     virtual void SetPos(const Vec3& vPos, int nWhyFlags = 0, bool bRecalcPhyBounds = false, bool bForce = false);
     virtual const Vec3& GetPos() const { return m_vPos; }
 
@@ -455,6 +458,8 @@ private:
     // Pointer to the entity archetype.
     IEntityArchetype* m_pArchetype;
 
+    // Sector of the entity
+    Vec3i m_vSector;
     // Position of the entity in local space.
     Vec3 m_vPos;
     // Rotation of the entity in local space.

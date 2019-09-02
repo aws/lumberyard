@@ -729,21 +729,21 @@ bool CDecalManager::Spawn(CryEngineDecalInfo DecalInfo, CDecal* pCallerManagedDe
     }
     else
     {
-        CTerrain* pTerrain = GetTerrain();
+        IEngineTerrain* pTerrain = GetTerrain();
         if (!DecalInfo.preventDecalOnGround && DecalInfo.fSize > (fWrapMinSize * 2.f) && !DecalInfo.ownerInfo.pRenderNode &&
             (DecalInfo.vPos.z - pTerrain->GetBilinearZ(DecalInfo.vPos.x, DecalInfo.vPos.y)) < DecalInfo.fSize && !DecalInfo.bDeferred)
         {
             newDecal.m_eDecalType = eDecalType_WS_OnTheGround;
 
-            int nUnitSize = CTerrain::GetHeightMapUnitSize();
+            int nUnitSize = pTerrain->GetHeightMapUnitSize();
             int x1 = int(DecalInfo.vPos.x - DecalInfo.fSize) / nUnitSize * nUnitSize - nUnitSize;
             int x2 = int(DecalInfo.vPos.x + DecalInfo.fSize) / nUnitSize * nUnitSize + nUnitSize;
             int y1 = int(DecalInfo.vPos.y - DecalInfo.fSize) / nUnitSize * nUnitSize - nUnitSize;
             int y2 = int(DecalInfo.vPos.y + DecalInfo.fSize) / nUnitSize * nUnitSize + nUnitSize;
 
-            for (int x = x1; x <= x2; x += CTerrain::GetHeightMapUnitSize())
+            for (int x = x1; x <= x2; x += pTerrain->GetHeightMapUnitSize())
             {
-                for (int y = y1; y <= y2; y += CTerrain::GetHeightMapUnitSize())
+                for (int y = y1; y <= y2; y += pTerrain->GetHeightMapUnitSize())
                 {
                     if (pTerrain->IsHole(x, y))
                     {

@@ -1504,6 +1504,220 @@ functor(RT(CallType::* RHCB_CONST_REF f)(P1, P2, P3, P4, P5)const)
 	return CBMemberOf1stArgTranslator6<P1, P2, P3, P4, P5, P6, MemFunc>(f);
 }
 
+/************************* seven args - no return *******************/
+template <class P1, class P2, class P3, class P4, class P5, class P6, class P7>
+class Functor7:public FunctorBase
+{
+public:
+    Functor7(RHCB_DUMMY_INIT=0) {}
+    void operator()(P1 p1, P2 p2, P3 p3, P4 p4, P5 p5, P6 p6, P7 p7)const
+    {
+        thunk(*this, p1, p2, p3, p4, p5, p6, p7);
+    }
+protected:
+    typedef void(*Thunk)(const FunctorBase &, P1, P2, P3, P4, P5 p5, P6 p6, P7 p7);
+    Functor7(Thunk t, const void *c, PtrToFunc f, const void *mf, size_t sz):
+        FunctorBase(c, f, mf, sz), thunk(t) {}
+private:
+    Thunk thunk;
+};
+
+template <class P1, class P2, class P3, class P4, class P5, class P6, class P7,
+    class Callee, class MemFunc>
+    class CBMemberTranslator7:public Functor7<P1, P2, P3, P4, P5, P6, P7>
+{
+public:
+    CBMemberTranslator7(Callee &c, const MemFunc &m):
+        Functor7<P1, P2, P3, P4, P5, P6, P7>(thunk, &c, 0, &m, sizeof(MemFunc)) {}
+    static void thunk(const FunctorBase &ftor, P1 p1, P2 p2, P3 p3, P4 p4, P5 p5, P6 p6, P7 p7)
+    {
+        Callee *callee=(Callee *)ftor.getCallee();
+        MemFunc &memFunc RHCB_CTOR_STYLE_INIT
+        (*(MemFunc*)(void *)(ftor.getMemFunc()));
+        (callee->*memFunc)(p1, p2, p3, p4, p5, p6, p7);
+    }
+};
+
+template <class P1, class P2, class P3, class P4, class P5, class P6, class P7, class Func>
+class CBFunctionTranslator7:public Functor7<P1, P2, P3, P4, P5, P6, P7>
+{
+public:
+    CBFunctionTranslator7(Func f):
+        Functor7<P1, P2, P3, P4, P5, P6, P7>(thunk, 0, (PtrToFunc)f, 0, 0) {}
+    static void thunk(const FunctorBase &ftor, P1 p1, P2 p2, P3 p3, P4 p4, P5 p5, P6 p6, P7 p7)
+    {
+        (Func(ftor.getFunc()))(p1, p2, p3, p4, p5, p6, p7);
+    }
+};
+
+#if !defined(RHCB_CANT_OVERLOAD_ON_CONSTNESS)
+template <class Callee, class CallType, class P1, class P2, class P3, class P4, class P5, class P6, class P7>
+inline CBMemberTranslator7<P1, P2, P3, P4, P5, P6, P7, Callee,
+    void (CallType::*)(P1, P2, P3, P4, P5, P6, P7)>
+    functor(Callee &c, void (CallType::* RHCB_CONST_REF f)(P1, P2, P3, P4, P5, P6, P7))
+{
+    typedef void (CallType::*MemFunc)(P1, P2, P3, P4, P5, P6, P7);
+    return CBMemberTranslator7<P1, P2, P3, P4, P5, P6, P7, Callee, MemFunc>(c, f);
+}
+#endif
+
+template <class Callee, class CallType, class P1, class P2, class P3, class P4, class P5, class P6, class P7>
+inline CBMemberTranslator7<P1, P2, P3, P4, P5, P6, P7, const Callee,
+    void (CallType::*)(P1, P2, P3, P4, P5, P6, P7)const>
+    functor(const Callee &c, void (CallType::* RHCB_CONST_REF f)(P1, P2, P3, P4, P5, P6, P7)const)
+{
+    typedef void (CallType::*MemFunc)(P1, P2, P3, P4, P5, P6, P7)const;
+    return CBMemberTranslator7<P1, P2, P3, P4, P5, P6, P7, const Callee, MemFunc>(c, f);
+}
+
+template <class P1, class P2, class P3, class P4, class P5, class P6, class P7>
+inline CBFunctionTranslator7<P1, P2, P3, P4, P5, P6, P7, void(*)(P1, P2, P3, P4, P5, P6, P7)>
+functor(void(*f)(P1, P2, P3, P4, P5, P6, P7))
+{
+    return CBFunctionTranslator7<P1, P2, P3, P4, P5, P6, P7, void(*)(P1, P2, P3, P4, P5, P6, P7)>(f);
+}
+
+template <class P1, class P2, class P3, class P4, class P5, class P6, class P7, class MemFunc>
+class CBMemberOf1stArgTranslator7:public Functor7<P1, P2, P3, P4, P5, P6, P7>
+{
+public:
+    CBMemberOf1stArgTranslator7(const MemFunc &m):
+        Functor7<P1, P2, P3, P4, P5, P6, P7>(thunk, (void *)1, 0, &m, sizeof(MemFunc)) {}
+    static void thunk(const FunctorBase &ftor, P1 p1, P2 p2, P3 p3, P4 p4, P5 p5, P6 p6, P7 p7)
+    {
+        MemFunc &memFunc RHCB_CTOR_STYLE_INIT
+        (*(MemFunc*)(void *)(ftor.getMemFunc()));
+        (p1.*memFunc)(p2, p3, p4, p5, p6, p7);
+    }
+};
+
+#if !defined(RHCB_CANT_OVERLOAD_ON_CONSTNESS)
+template <class P1, class P2, class P3, class P4, class P5, class P6, class P7, class RT, class CallType>
+inline CBMemberOf1stArgTranslator7<P1, P2, P3, P4, P5, P6, P7, RT(CallType::*)(P1, P2, P3)>
+functor(RT(CallType::* RHCB_CONST_REF f)(P1, P2, P3, P4, P5, P6))
+{
+    typedef RT(CallType::*MemFunc)(P1, P2, P3, P4, P5, P6);
+    return CBMemberOf1stArgTranslator7<P1, P2, P3, P4, P5, P6, P7, MemFunc>(f);
+}
+#endif
+
+template <class P1, class P2, class P3, class P4, class P5, class P6, class P7, class RT, class CallType>
+inline CBMemberOf1stArgTranslator7<P1, P2, P3, P4, P5, P6, P7,
+    RT(CallType::*)(P1, P2, P3)const>
+    functor(RT(CallType::* RHCB_CONST_REF f)(P1, P2, P3, P4, P5, P6)const)
+{
+    typedef RT(CallType::*MemFunc)(P1, P2, P3, P4, P5, P6)const;
+    return CBMemberOf1stArgTranslator7<P1, P2, P3, P4, P5, P6, P7, MemFunc>(f);
+}
+
+
+/************************* seven args - with return *******************/
+template <class P1, class P2, class P3, class P4, class P5, class P6, class P7, class RT>
+class Functor7wRet:public FunctorBase
+{
+public:
+    Functor7wRet(RHCB_DUMMY_INIT=0) {}
+    RT operator()(P1 p1, P2 p2, P3 p3, P4 p4, P5 p5, P6 p6, P7 p7)const
+    {
+        return RHCB_BC4_RET_BUG(thunk(*this, p1, p2, p3, p4, p5, p6, p7));
+    }
+protected:
+    typedef RT(*Thunk)(const FunctorBase &, P1, P2, P3, P4, P5, P6, P7);
+    Functor7wRet(Thunk t, const void *c, PtrToFunc f, const void *mf, size_t sz):
+        FunctorBase(c, f, mf, sz), thunk(t) {}
+private:
+    Thunk thunk;
+};
+
+template <class P1, class P2, class P3, class P4, class P5, class P6, class P7, class RT, class Callee, class MemFunc>
+class CBMemberTranslator7wRet:public Functor7wRet<P1, P2, P3, P4, P5, P6, P7, RT>
+{
+public:
+    CBMemberTranslator7wRet(Callee &c, const MemFunc &m):
+        Functor7wRet<P1, P2, P3, P4, P5, P6, P7, RT>(thunk, &c, 0, &m, sizeof(MemFunc)) {}
+    static RT thunk(const FunctorBase &ftor, P1 p1, P2 p2, P3 p3, P4 p4, P5 p5, P6 p6, P7 p7)
+    {
+        Callee *callee=(Callee *)ftor.getCallee();
+        MemFunc &memFunc RHCB_CTOR_STYLE_INIT
+        (*(MemFunc*)(void *)(ftor.getMemFunc()));
+        return RHCB_BC4_RET_BUG((callee->*memFunc)(p1, p2, p3, p4, p5, p6, p7));
+    }
+};
+
+template <class P1, class P2, class P3, class P4, class P5, class P6, class P7, class RT, class Func>
+class CBFunctionTranslator7wRet:public Functor7wRet<P1, P2, P3, P4, P5, P6, P7, RT>
+{
+public:
+    CBFunctionTranslator7wRet(Func f):
+        Functor7wRet<P1, P2, P3, P4, P5, P6, P7, RT>(thunk, 0, (PtrToFunc)f, 0, 0) {}
+    static RT thunk(const FunctorBase &ftor, P1 p1, P2 p2, P3 p3, P4 p4, P5 p5, P6 p6, P7 p7)
+    {
+        return (Func(ftor.getFunc()))(p1, p2, p3, p4, p5, p6, p7);
+    }
+};
+
+#if !defined(RHCB_CANT_OVERLOAD_ON_CONSTNESS)
+template <class P1, class P2, class P3, class P4, class P5, class P6, class P7, class RT, class Callee, class CallType>
+inline CBMemberTranslator7wRet<P1, P2, P3, P4, P5, P6, P7, RT, Callee,
+    RT(CallType::*)(P1, P2, P3, P4, P5, P6, P7)>
+    functor(Callee &c, RT(CallType::* RHCB_CONST_REF f)(P1, P2, P3, P4, P5, P6, P7))
+{
+    typedef RT(CallType::*MemFunc)(P1, P2, P3, P4, P5, P6, P7);
+    return CBMemberTranslator7wRet<P1, P2, P3, P4, P5, P6, P7, RT, Callee, MemFunc>(c, f);
+}
+#endif
+
+template <class Callee, class RT, class CallType, class P1, class P2, class P3, class P4, class P5, class P6, class P7>
+inline CBMemberTranslator7wRet<P1, P2, P3, P4, P5, P6, P7, RT, const Callee,
+    RT(CallType::*)(P1, P2, P3, P4, P5, P6, P7)const>
+    functor(const Callee &c, RT(CallType::* RHCB_CONST_REF f)(P1, P2, P3, P4, P5, P6, P7)const)
+{
+    typedef RT(CallType::*MemFunc)(P1, P2, P3, P4, P5, P6, P7)const;
+    return CBMemberTranslator7wRet<P1, P2, P3, P4, P5, P6, P7, RT, const Callee, MemFunc>(c, f);
+}
+
+template <class RT, class P1, class P2, class P3, class P4, class P5, class P6, class P7>
+inline CBFunctionTranslator7wRet<P1, P2, P3, P4, P5, P6, P7, RT, RT(*)(P1, P2, P3, P4, P5, P6, P7)>
+functor(RT(*f)(P1, P2, P3, P4, P5, P6, P7))
+{
+    return CBFunctionTranslator7wRet
+        <P1, P2, P3, P4, P5, P6, P7, RT, RT(*)(P1, P2, P3, P4, P5, P6, P7)>(f);
+}
+
+
+template <class P1, class P2, class P3, class P4, class P5, class P6, class P7, class RT, class MemFunc>
+class CBMemberOf1stArgTranslator7wRet:public Functor7wRet<P1, P2, P3, P4, P5, P6, P7, RT>
+{
+public:
+    CBMemberOf1stArgTranslator7wRet(const MemFunc &m):
+        Functor7wRet<P1, P2, P3, P4, P5, P6, P7, RT>(thunk, (void *)1, 0, &m, sizeof(MemFunc)) {}
+    static RT thunk(const FunctorBase &ftor, P1 p1, P2 p2, P3 p3, P4 p4, P5 p5, P6 p6, P7 p7)
+    {
+        MemFunc &memFunc RHCB_CTOR_STYLE_INIT
+        (*(MemFunc*)(void *)(ftor.getMemFunc()));
+        return RHCB_BC4_RET_BUG((p1.*memFunc)(p2, p3, p4));
+    }
+};
+
+#if !defined(RHCB_CANT_OVERLOAD_ON_CONSTNESS)
+template <class P1, class P2, class P3, class P4, class P5, class P6, class P7, class RT, class CallType>
+inline CBMemberOf1stArgTranslator7wRet<P1, P2, P3, P4, P5, P6, P7, RT,
+    RT(CallType::*)(P1, P2, P3)>
+    functor(RT(CallType::* RHCB_CONST_REF f)(P1, P2, P3, P4, P5, P6))
+{
+    typedef RT(CallType::*MemFunc)(P1, P2, P3, P4, P5, P6);
+    return CBMemberOf1stArgTranslator7wRet<P1, P2, P3, P4, P5, P6, P7, RT, MemFunc>(f);
+}
+#endif
+
+template <class P1, class P2, class P3, class P4, class P5, class P6, class P7, class RT, class CallType>
+inline CBMemberOf1stArgTranslator7wRet<P1, P2, P3, P4, P5, P6, P7, RT,
+    RT(CallType::*)(P1, P2, P3)const>
+    functor(RT(CallType::* RHCB_CONST_REF f)(P1, P2, P3, P4, P5, P6)const)
+{
+    typedef RT(CallType::*MemFunc)(P1, P2, P3, P4, P5, P6)const;
+    return CBMemberOf1stArgTranslator7wRet<P1, P2, P3, P4, P5, P6, P7, RT, MemFunc>(f);
+}
 ///////////////////////////////////////////////////////////////////////////////
 //
 // Inlines.

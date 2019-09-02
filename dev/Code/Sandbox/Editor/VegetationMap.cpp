@@ -1321,16 +1321,21 @@ CVegetationInstance* CVegetationMap::PlaceObjectInstance(const Vec3& worldPos, C
 //////////////////////////////////////////////////////////////////////////
 bool CVegetationMap::PaintBrush(QRect& rc, bool bCircle, CVegetationObject* object, Vec3* pPos)
 {
-    assert(object != 0);
+    IEditorTerrain *terrain=GetIEditor()->GetTerrain();
 
-    CHeightmap* pHeightmap = GetIEditor()->GetHeightmap();
+    if(terrain->GetType()!=GetIEditor()->Get3DEngine()->GetTerrainId("CTerrain"))
+        return false;
+
+    CHeightmap *heightmap=(CHeightmap *)terrain;
+
+    assert(object != 0);
 
     GetIEditor()->SetModifiedFlag();
     GetIEditor()->SetModifiedModule(eModifiedTerrain);
 
     Vec3 p(0, 0, 0);
 
-    int unitSize = pHeightmap->GetUnitSize();
+    int unitSize = heightmap->GetUnitSize();
 
     int mapSize = m_numSectors * m_sectorSize;
 
@@ -1409,7 +1414,7 @@ bool CVegetationMap::PaintBrush(QRect& rc, bool bCircle, CVegetationObject* obje
 
         // Use the safe method for retrieving the height, or else the Editor
         // will crash if the x/y values are out of range
-        float currHeight = pHeightmap->GetSafeXY(hx, hy);
+        float currHeight = heightmap->GetSafeXY(hx, hy);
 
         // Check if height value is within brush min/max altitude.
         if (currHeight < AltMin || currHeight > AltMax)
@@ -1418,7 +1423,7 @@ bool CVegetationMap::PaintBrush(QRect& rc, bool bCircle, CVegetationObject* obje
         }
 
         // Calculate the slope for this spot
-        float slope = pHeightmap->GetSlope(hx, hy);
+        float slope = heightmap->GetSlope(hx, hy);
 
         // Check if slope is within brush min/max slope.
         if (slope < SlopeMin || slope > SlopeMax)
@@ -1604,7 +1609,7 @@ void CVegetationMap::ClearBrush(QRect& rc, bool bCircle, CVegetationObject* pObj
 
     Vec3 p(0, 0, 0);
 
-    int unitSize = GetIEditor()->GetHeightmap()->GetUnitSize();
+    int unitSize = GetIEditor()->GetTerrain()->GetUnitSize();
 
     int mapSize = m_numSectors * m_sectorSize;
 
@@ -2519,7 +2524,12 @@ void CVegetationMap::LoadOldStuff(CXmlArchive& xmlAr)
 //! Generate shadows from static objects and place them in shadow map bitarray.
 void CVegetationMap::GenerateShadowMap(CByteImage& shadowmap, float shadowAmmount, const Vec3& sunVector)
 {
-    CHeightmap* pHeightmap = GetIEditor()->GetHeightmap();
+    IEditorTerrain *terrain=GetIEditor()->GetTerrain();
+
+    if(terrain->GetType()!=GetIEditor()->Get3DEngine()->GetTerrainId("CTerrain"))
+        return;
+
+    CHeightmap *heightmap=(CHeightmap *)terrain;
 
     int width = shadowmap.GetWidth();
     int height = shadowmap.GetHeight();
@@ -2527,8 +2537,8 @@ void CVegetationMap::GenerateShadowMap(CByteImage& shadowmap, float shadowAmmoun
     //@FIXME: Hardcoded.
     int sectorSizeInMeters = 64;
 
-    int unitSize = pHeightmap->GetUnitSize();
-    int numSectors = (pHeightmap->GetWidth() * unitSize) / sectorSizeInMeters;
+    int unitSize =heightmap->GetUnitSize();
+    int numSectors = (heightmap->GetWidth() * unitSize) / sectorSizeInMeters;
 
     int sectorSize = shadowmap.GetWidth() / numSectors;
     int sectorSize2 = sectorSize * 2;

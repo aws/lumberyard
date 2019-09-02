@@ -358,6 +358,13 @@ bool CVegetationTool::OnMouseMove(CViewport* view, UINT nFlags, const QPoint& po
 //////////////////////////////////////////////////////////////////////////
 bool CVegetationTool::MouseCallback(CViewport* view, EMouseEvent event, QPoint& point, int flags)
 {
+    IEditorTerrain *terrain=GetIEditor()->GetTerrain();
+
+    if(terrain->GetType()!=GetIEditor()->Get3DEngine()->GetTerrainId("CTerrain"))
+        return false;
+
+    CHeightmap *heightmap=(CHeightmap *)terrain;
+
     m_isAffectedByBrushes = false;
     GetSelectedObjects(m_selectedObjects);
     if (!m_selectedObjects.empty() && m_selectedObjects[0]->IsAffectedByBrushes())
@@ -392,8 +399,8 @@ bool CVegetationTool::MouseCallback(CViewport* view, EMouseEvent event, QPoint& 
     if (flags & MK_CONTROL)
     {
         //swap x/y
-        int unitSize = GetIEditor()->GetHeightmap()->GetUnitSize();
-        float slope = GetIEditor()->GetHeightmap()->GetSlope(m_pointerPos.y / unitSize, m_pointerPos.x / unitSize);
+        int unitSize =heightmap->GetUnitSize();
+        float slope =heightmap->GetSlope(m_pointerPos.y / unitSize, m_pointerPos.x / unitSize);
         char szNewStatusText[512];
         sprintf_s(szNewStatusText, "Slope: %g", slope);
         GetIEditor()->SetStatusText(szNewStatusText);

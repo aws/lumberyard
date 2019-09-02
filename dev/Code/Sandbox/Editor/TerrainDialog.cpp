@@ -95,7 +95,12 @@ CTerrainDialog::CTerrainDialog()
     m_sLastParam = new SNoiseParams;
     m_sLastParam->bValid = false;
 
-    m_pHeightmap = GetIEditor()->GetHeightmap();
+    IEditorTerrain *terrain = GetIEditor()->GetTerrain();
+     
+    if(terrain->GetType()!=GetIEditor()->Get3DEngine()->GetTerrainId("CTerrain"))
+        return;
+
+    m_pHeightmap=(CHeightmap *)terrain;
 
     GetIEditor()->RegisterNotifyListener(this);
     LmbrCentral::WaterNotificationBus::Handler::BusConnect();
@@ -829,7 +834,9 @@ void CTerrainDialog::OnSetOceanLevel()
     ////////////////////////////////////////////////////////////////////////
     // Get the ocean level from the document and set it as default into
     // the dialog
-    float fPreviousOceanLevel = GetIEditor()->GetHeightmap()->GetOceanLevel();
+	IEditorTerrain *terrain=GetIEditor()->GetTerrain();
+
+    float fPreviousOceanLevel = terrain->GetOceanLevel();
     bool ok = false;
     int fractionalDigitCount = 2;
     float oceanLevel = aznumeric_caster(QInputDialog::getDouble(this, tr("Set Ocean Height"), tr("Ocean height"), fPreviousOceanLevel, AZ::OceanConstants::s_HeightMin, AZ::OceanConstants::s_HeightMax, fractionalDigitCount, &ok));
@@ -838,7 +845,7 @@ void CTerrainDialog::OnSetOceanLevel()
     if (ok)
     {
         // Save the new ocean level in the document
-        GetIEditor()->GetHeightmap()->SetOceanLevel(oceanLevel);
+        terrain->SetOceanLevel(oceanLevel);
         InvalidateTerrain();
         GetIEditor()->Notify(eNotify_OnTerrainRebuild);
     }
@@ -846,8 +853,10 @@ void CTerrainDialog::OnSetOceanLevel()
 
 void CTerrainDialog::OnSetMaxHeight()
 {
+    IEditorTerrain *terrain=GetIEditor()->GetTerrain();
+
     // Set up dialog box to update Max Height
-    float fValue = GetIEditor()->GetHeightmap()->GetMaxHeight();
+    float fValue =terrain->GetMaxHeight();
     bool ok = false;
     int fractionalDigitCount = 2;
     fValue = aznumeric_caster(QInputDialog::getDouble(this, tr("Set Max Terrain Height"), tr("Maximum terrain height"), fValue, 1.0, 65536.0, fractionalDigitCount, &ok));
@@ -855,7 +864,7 @@ void CTerrainDialog::OnSetMaxHeight()
     if (ok)
     {
         // Set the new max height, but don't rescale the terrain.
-        GetIEditor()->GetHeightmap()->SetMaxHeight(fValue, false);
+        terrain->SetMaxHeight(fValue, false);
 
         InvalidateTerrain();
     }
@@ -863,22 +872,22 @@ void CTerrainDialog::OnSetMaxHeight()
 
 void CTerrainDialog::OnSetUnitSize()
 {
-    CHeightmap* heightmap = GetIEditor()->GetHeightmap();
-    if (!heightmap)
+    IEditorTerrain *terrain=GetIEditor()->GetTerrain();;
+    if (!terrain)
     {
         return;
     }
 
-    // Don't go further if a level hasn't been loaded, since the heightmap
+    // Don't go further if a level hasn't been loaded, since the terrain
     // resolution will be 0, causing a divide by 0
-    uint64 terrainResolution = heightmap->GetWidth();
+    uint64 terrainResolution = terrain->GetWidth();
     if (terrainResolution <= 0)
     {
         return;
     }
 
     // Calculate valid unit sizes for the current terrain resolution
-    int currentUnitSize = heightmap->GetUnitSize();
+    int currentUnitSize = terrain->GetUnitSize();
     int maxUnitSize = IntegerLog2(Ui::MAXIMUM_TERRAIN_RESOLUTION / terrainResolution);
     int units = Ui::START_TERRAIN_UNITS;
     QStringList unitSizes;
@@ -901,7 +910,7 @@ void CTerrainDialog::OnSetUnitSize()
     QString newUnitSize = QInputDialog::getItem(this, tr("Set Unit Size"), tr("Unit size (meters/texel)"), unitSizes, currentIndex, false, &ok);
     if (ok)
     {
-        GetIEditor()->GetHeightmap()->SetUnitSize(newUnitSize.toInt());
+        terrain->SetUnitSize(newUnitSize.toInt());
 
         InvalidateTerrain();
     }
@@ -912,7 +921,7 @@ void CTerrainDialog::InvalidateTerrain()
 {
     GetIEditor()->SetModifiedFlag();
     GetIEditor()->SetModifiedModule(eModifiedTerrain);
-    GetIEditor()->GetHeightmap()->UpdateEngineTerrain(true);
+    GetIEditor()->GetTerrain()->Update();
 
     if (m_pTerrainTool)
     {

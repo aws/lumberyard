@@ -294,18 +294,54 @@ bool C3DEngine::LoadTerrain(XmlNodeRef pDoc, std::vector<struct IStatObj*>** ppS
         return 0;
     }
 
-    SwapEndian(header, (header.nFlags & SERIALIZATION_FLAG_BIG_ENDIAN) ? eBigEndian : eLittleEndian);
+    STerrainInfo terrainInfo;
+    int terrainInfoSize;
 
+    if(header.nVersion<=29)
+    {
+        STerrainInfo_29 oldTerrainInfo;
+
+        GetPak()->FRead(&oldTerrainInfo, 1, fileHandle, false);
+
+        SwapEndian(oldTerrainInfo, (header.nFlags & SERIALIZATION_FLAG_BIG_ENDIAN)?eBigEndian:eLittleEndian);
+
+        size_t id=TerrainFactory::getTerrainId("CTerrain");
+
+        terrainInfo.type=id;
+        terrainInfo.nTerrainSizeX_InUnits=oldTerrainInfo.nHeightMapSize_InUnits;
+        terrainInfo.nTerrainSizeY_InUnits=oldTerrainInfo.nHeightMapSize_InUnits;
+        terrainInfo.nTerrainSizeZ_InUnits=1;
+        terrainInfo.nUnitSize_InMeters=oldTerrainInfo.nUnitSize_InMeters;
+        terrainInfo.nSectorSize_InMeters=oldTerrainInfo.nSectorSize_InMeters;
+        terrainInfo.nSectorSizeY_InMeters=oldTerrainInfo.nSectorSize_InMeters;
+        terrainInfo.nSectorSizeZ_InMeters=1;
+        terrainInfo.nSectorsTableSize_InSectors=oldTerrainInfo.nSectorsTableSize_InSectors;
+        terrainInfo.fHeightmapZRatio=oldTerrainInfo.fHeightmapZRatio;
+        terrainInfo.fOceanWaterLevel=oldTerrainInfo.fOceanWaterLevel;
+
+        terrainInfoSize=sizeof(oldTerrainInfo);
+    }
+    else
+    {
+        GetPak()->FRead(&terrainInfo, 1, fileHandle, false);
+
+        SwapEndian(terrainInfo, (header.nFlags & SERIALIZATION_FLAG_BIG_ENDIAN)?eBigEndian:eLittleEndian);
+
+        terrainInfoSize=sizeof(STerrainInfo);
+    }
+    SwapEndian(header, (header.nFlags & SERIALIZATION_FLAG_BIG_ENDIAN) ? eBigEndian : eLittleEndian);
+    
     if (header.nChunkSize)
     {
+        int nDataSize=header.nChunkSize-sizeof(STerrainChunkHeader)-terrainInfoSize;
         if (!m_pTerrain)
         {
-            m_pTerrain = (CTerrain*)CreateTerrain(header.TerrainInfo);
+            m_pTerrain=(CTerrain*)CreateTerrain(terrainInfo);
         }
 
         m_pTerrain->LoadSurfaceTypesFromXML(pDoc);
 
-        if (!m_pTerrain->Load(fileHandle, header.nChunkSize - sizeof(STerrainChunkHeader), &header, ppStatObjTable, ppMatTable))
+        if (!m_pTerrain->LoadHandle(fileHandle, nDataSize, &header, &terrainInfo, ppStatObjTable, ppMatTable))
         {
             delete m_pTerrain;
             m_pTerrain = NULL;

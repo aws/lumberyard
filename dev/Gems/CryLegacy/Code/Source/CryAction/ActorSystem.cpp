@@ -230,6 +230,11 @@ IActor* CActorSystem::CreateActor(ChannelId channelId, const char* name, const c
     return actor;
 }
 
+IActor* CActorSystem::CreateActor(ChannelId channelId, const char* name, const char* actorClass, const Vec3i &sector, const Vec3& pos, const Quat& rot, const Vec3& scale, EntityId id, TSerialize* serializer)
+{
+    return CreateActor(channelId, name, actorClass, pos, rot, scale, id, serializer);
+}
+
 //------------------------------------------------------------------------
 void CActorSystem::SwitchDemoSpectator(EntityId id)
 {

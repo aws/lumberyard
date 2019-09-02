@@ -19,6 +19,7 @@
 #include "Terrain/Layer.h"
 #include "Terrain/TerrainTexGen.h"
 #include "Terrain/TerrainManager.h"
+#include "Terrain/Heightmap.h"
 #include "Material/MaterialManager.h"
 #include "QtViewPaneManager.h"
 #include "Util/AutoDirectoryRestoreFileDialog.h"
@@ -1116,7 +1117,7 @@ void CTerrainTextureDialog::OnSetOceanLevel()
     // Let the user change the current ocean level
     ////////////////////////////////////////////////////////////////////////
 
-    float level = GetIEditor()->GetHeightmap()->GetOceanLevel();
+    float level = GetIEditor()->GetTerrain()->GetOceanLevel();
 
     bool ok = false;
     int fractionalDigitCount = 2;
@@ -1124,7 +1125,7 @@ void CTerrainTextureDialog::OnSetOceanLevel()
     if (ok)
     {
         // Retrieve the new ocean level from the dialog and save it in the document
-        GetIEditor()->GetHeightmap()->SetOceanLevel(level);
+        GetIEditor()->GetTerrain()->SetOceanLevel(level);
 
         // We modified the document
         GetIEditor()->SetModifiedFlag();
@@ -1540,12 +1541,12 @@ void CTerrainTextureDialog::OnImportSplatMaps()
 {
     // Make sure we have an allocated heightmap and at least one masked layer before we import
     auto editor = GetIEditor();
-    CHeightmap* pHeightmap = editor->GetHeightmap();
-    if (!pHeightmap->IsAllocated())
+    IEditorTerrain* terrain = editor->GetTerrain();
+    if (!terrain->IsAllocated())
     {
         return;
     }
-    assert(pHeightmap->GetHeight() > 0 && pHeightmap->GetWidth() > 0);
+    assert(terrain->GetHeight() > 0 && terrain->GetWidth() > 0);
 
     auto terrainManager = editor->GetTerrainManager();
     auto layerCount = terrainManager->GetLayerCount();
@@ -1576,7 +1577,13 @@ void CTerrainTextureDialog::ImportSplatMaps()
     auto editor = GetIEditor();
     auto terrainManager = editor->GetTerrainManager();
     auto layerCount = terrainManager->GetLayerCount();
-    auto heightMap = editor->GetHeightmap();
+
+    IEditorTerrain *terrain=editor->GetTerrain();
+
+    if(terrain->GetType()!=GetIEditor()->Get3DEngine()->GetTerrainId("CTerrain"))
+        return;
+
+    CHeightmap *heightMap=(CHeightmap *)terrain;
 
     // Walk through the layers, skipping any non-mask layers
     AZStd::vector<uint8> layerIds;

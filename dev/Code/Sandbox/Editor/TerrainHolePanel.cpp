@@ -32,11 +32,10 @@ CTerrainHolePanel::CTerrainHolePanel(CTerrainHoleTool* tool, QWidget* pParent /*
 
     m_radius = ui->radiusSlider;
     uint64 nTerrainWidth(1024);
-    CHeightmap* pHeightmap = GetIEditor()->GetHeightmap();
-    if (pHeightmap)
-    {
-        nTerrainWidth = GetIEditor()->GetTerrainManager()->GetHeightmap()->GetWidth();
-    }
+    IEditorTerrain *terrain=GetIEditor()->GetTerrain();
+    if (terrain)
+        nTerrainWidth =terrain->GetWidth();
+
     float fMax = nTerrainWidth * 2.0f;
     m_radius->setRange(1, 100 * log10(fMax));
     SetRadius();

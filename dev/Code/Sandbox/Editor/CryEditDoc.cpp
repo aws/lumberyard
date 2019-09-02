@@ -495,10 +495,31 @@ void CCryEditDoc::Load(TDocMultiArchive& arrXmlAr, const QString& szFilename)
             {
                 GetIEditor()->GetTerrainManager()->SerializeTexture((*arrXmlAr[DMAS_GENERAL]));  // load old version
             }
-            GetIEditor()->GetHeightmap()->InitTerrain();
-            GetIEditor()->GetHeightmap()->UpdateEngineTerrain();
+//            GetIEditor()->GetHeightmap()->InitTerrain();
+            GetIEditor()->GetTerrainManager()->InitTerrain();
+            GetIEditor()->GetTerrain()->Update();
         }
 
+        //////////////////////////////////////////////////////////////////////////////
+        //setup camera based on terrain, voxel terrain uses sector sizes
+        ISystem *system=GetIEditor()->GetSystem();
+        CCamera &camera=system->GetViewCamera();
+        IEditorTerrain *terrain=GetIEditor()->GetTerrain();
+
+        camera.SetSectorSize(terrain->GetSectorSizeVector());
+
+        //update viewport cameras
+        int viewports=GetIEditor()->GetViewManager()->GetNumberOfGameViewports();
+
+        for(int i=0; i<viewports; i++)
+        {
+            CViewport* viewport=GetIEditor()->GetViewManager()->GetView(i);
+
+            if(viewport)
+                viewport->SetSectorSize(terrain->GetSectorSizeVector());
+        }
+
+        //////////////////////////////////////////////////////////////////////////////
         {
             CAutoLogTime logtime("Game Engine level load");
             GetIEditor()->GetGameEngine()->LoadLevel(currentMissionName, true, true);
@@ -2327,7 +2348,7 @@ void CCryEditDoc::DeleteTemporaryLevel()
     CFileUtil::Deltree(tempLevelPath.toUtf8().data(), true);
 }
 
-void CCryEditDoc::InitEmptyLevel(int resolution, int unitSize, bool bUseTerrain)
+void CCryEditDoc::InitEmptyLevel(int type, int sizeX, int sizeY, int sizeZ, int unitSize, bool bUseTerrain)
 {
     GetIEditor()->SetStatusText("Initializing Level...");
 
@@ -2339,13 +2360,14 @@ void CCryEditDoc::InitEmptyLevel(int resolution, int unitSize, bool bUseTerrain)
     ////////////////////////////////////////////////////////////////////////
     // Reset heightmap (water level, etc) to default
     ////////////////////////////////////////////////////////////////////////
-    GetIEditor()->GetTerrainManager()->ResetHeightMap();
+    GetIEditor()->GetTerrainManager()->ResetTerrain();
     GetIEditor()->GetTerrainManager()->SetUseTerrain(bUseTerrain);
 
     // If possible set terrain to correct size here, this will help with initial camera placement in new levels
     if (bUseTerrain)
     {
-        GetIEditor()->GetTerrainManager()->SetTerrainSize(resolution, unitSize);
+        GetIEditor()->GetTerrainManager()->SetTerrainType(type);
+        GetIEditor()->GetTerrainManager()->SetTerrainSize(sizeX, sizeY, sizeZ, unitSize);
     }
 
     ////////////////////////////////////////////////////////////////////////

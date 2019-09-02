@@ -386,12 +386,13 @@ void CDecal::RenderBigDecalOnTerrain(float fAlpha, float fScale, const SRenderin
     {
         return;
     }
-    if (m_vPos.x >= CTerrain::GetTerrainSize() + fRadius || m_vPos.y >= CTerrain::GetTerrainSize() + fRadius)
+
+    if (m_vPos.x >=GetTerrain()->GetTerrainSize() + fRadius || m_vPos.y >=GetTerrain()->GetTerrainSize() + fRadius)
     {
         return;
     }
 
-    const int nUsintSize = CTerrain::GetHeightMapUnitSize();
+    const int nUsintSize =GetTerrain()->GetHeightMapUnitSize();
     fRadius += nUsintSize;
 
     if (fabs(m_vPos.z - Get3DEngine()->GetTerrainZ(int(m_vPos.x), int(m_vPos.y))) > fRadius)

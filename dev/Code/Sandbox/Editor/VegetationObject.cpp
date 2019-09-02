@@ -50,7 +50,7 @@ CVegetationObject::CVegetationObject(int id)
 
     // Int vars.
     mv_size = 1;
-    mv_hmin = GetIEditor()->GetHeightmap()->GetOceanLevel();
+    mv_hmin = GetIEditor()->GetTerrain()->GetOceanLevel();
     mv_hmax = 4096;
     mv_slope_min = 0;
     mv_slope_max = 255;

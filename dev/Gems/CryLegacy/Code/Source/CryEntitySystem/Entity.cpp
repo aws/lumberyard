@@ -1219,6 +1219,18 @@ void CEntity::InvalidateTM(int nWhyFlags, bool bRecalcPhyBounds)
 }
 
 //////////////////////////////////////////////////////////////////////////
+void CEntity::SetSector(const Vec3i &vSector, int nWhyFlags, bool bRecalcPhyBounds)
+{
+    CHECKQNAN_VEC(m_vSector);
+    if(m_vSector==vSector)
+    {
+        return;
+    }
+
+    m_vSector=vSector;
+    InvalidateTM(nWhyFlags|ENTITY_XFORM_POS, bRecalcPhyBounds); // Position change.
+}
+//////////////////////////////////////////////////////////////////////////
 void CEntity::SetPos(const Vec3& vPos, int nWhyFlags, bool bRecalcPhyBounds, bool bForce)
 {
     CHECKQNAN_VEC(vPos);
@@ -1295,6 +1307,7 @@ void CEntity::InvalidateBounds()
         const_cast<IComponentRender*>(pRenderComponent.get())->InvalidateLocalBounds();
     }
 }
+
 //////////////////////////////////////////////////////////////////////////
 void CEntity::GetLocalBounds(AABB& bbox) const
 {

@@ -40,7 +40,7 @@
 IRenderNode* CTerrain::AddVegetationInstance(int nStaticGroupID, const Vec3& vPos, const float fScale, uint8 ucBright,
     uint8 angle, uint8 angleX, uint8 angleY)
 {
-    if (vPos.x <= 0 || vPos.y <= 0 || vPos.x >= CTerrain::GetTerrainSize() || vPos.y >= CTerrain::GetTerrainSize() || fScale * VEGETATION_CONV_FACTOR < 1.f)
+    if (vPos.x <= 0 || vPos.y <= 0 || vPos.x >= GetTerrainSize() || vPos.y >= GetTerrainSize() || fScale * VEGETATION_CONV_FACTOR < 1.f)
     {
         return 0;
     }
@@ -155,8 +155,8 @@ void CTerrain::BuildErrorsTableForArea(
     const SurfaceWeight* weightmap)
 {
     memset(pLodErrors, 0, nMaxLods * sizeof(pLodErrors[0]));
-    int nSectorSize = CTerrain::GetSectorSize() / CTerrain::GetHeightMapUnitSize();
-    int nTerrainSize = CTerrain::GetTerrainSize() / CTerrain::GetHeightMapUnitSize();
+    int nSectorSize = GetSectorSize() / GetHeightMapUnitSize();
+    int nTerrainSize = GetTerrainSize() / GetHeightMapUnitSize();
 
     bool bSectorHasHoles = false;
     bool bSectorHasMesh = false;
@@ -276,7 +276,7 @@ void CTerrain::SetTerrainElevation(int offsetX, int offsetY, int areaSize, const
 
     const float StartTime = GetCurAsyncTimeSec();
     const Meter MetersPerUnit = CTerrain::GetHeightMapUnitSize();
-    const Unit HeightmapSize = CTerrain::GetTerrainSize() / MetersPerUnit;
+    const Unit HeightmapSize = GetTerrainSize() / MetersPerUnit;
 
     ResetHeightMapCache();
     InitHeightfieldPhysics();

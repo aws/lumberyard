@@ -19,6 +19,7 @@
 #include "ResizeResolutionDialog.h"
 #include "Viewport.h"
 #include "Terrain/TerrainManager.h"
+#include "Terrain/Heightmap.h"
 #include "TerrainLighting.h"
 #include <ui_TerrainTextureExport.h>
 
@@ -317,8 +318,12 @@ void CTerrainTextureExport::ImportExport(bool bIsImport, bool bIsClipboard)
         }
     }
 
+    IEditorTerrain *terrain=GetIEditor()->GetTerrain();
 
-    CHeightmap* pHeightmap = GetIEditor()->GetHeightmap();
+    if(terrain->GetType()!=GetIEditor()->Get3DEngine()->GetTerrainId("CTerrain"))
+        return;
+
+    CHeightmap *heightmap =(CHeightmap *)terrain;
     CRGBLayer* pRGBLayer = GetIEditor()->GetTerrainManager()->GetRGBLayer();
 
     uint32 dwTileCountX = pRGBLayer->GetTileCountX();
@@ -351,10 +356,10 @@ void CTerrainTextureExport::ImportExport(bool bIsImport, bool bIsClipboard)
     if (bIsImport)
     {
         QRect rc(
-            QPoint(left* pHeightmap->GetWidth() / dwTileCountX, top * pHeightmap->GetHeight() / dwTileCountY),
-            QPoint((right + 1) * pHeightmap->GetWidth() / dwTileCountX, (bottom + 1) * pHeightmap->GetHeight() / dwTileCountY) - QPoint(1, 1)
+            QPoint(left* heightmap->GetWidth() / dwTileCountX, top * heightmap->GetHeight() / dwTileCountY),
+            QPoint((right + 1) * heightmap->GetWidth() / dwTileCountX, (bottom + 1) * heightmap->GetHeight() / dwTileCountY) - QPoint(1, 1)
         );
-        pHeightmap->UpdateLayerTexture(rc);
+        heightmap->UpdateLayerTexture(rc);
     }
 }
 
@@ -366,8 +371,14 @@ void CTerrainTextureExport::OnExport()
         return;
     }
 
-    CHeightmap* pHeightmap = GetIEditor()->GetHeightmap();
-    if (!pHeightmap->IsAllocated())
+    IEditorTerrain *terrain=GetIEditor()->GetTerrain();
+
+    if(terrain->GetType()!=GetIEditor()->Get3DEngine()->GetTerrainId("CTerrain"))
+        return;
+
+    CHeightmap *heightmap=(CHeightmap *)terrain;
+
+    if (!heightmap->IsAllocated())
     {
         return;
     }
@@ -383,8 +394,14 @@ void CTerrainTextureExport::OnImport()
         return;
     }
 
-    CHeightmap* pHeightmap = GetIEditor()->GetHeightmap();
-    if (!pHeightmap->IsAllocated())
+    IEditorTerrain *terrain=GetIEditor()->GetTerrain();
+
+    if(terrain->GetType()!=GetIEditor()->Get3DEngine()->GetTerrainId("CTerrain"))
+        return;
+
+    CHeightmap *heightmap=(CHeightmap *)terrain;
+
+    if (!heightmap->IsAllocated())
     {
         return;
     }
@@ -410,10 +427,15 @@ void CTerrainTextureExport::OnChangeResolutionBtn()
 
     PreviewToTile(dwTileX, dwTileY, sel.left(), sel.top());
 
-    CHeightmap* pHeightmap = GetIEditor()->GetHeightmap();
+    IEditorTerrain *terrain=GetIEditor()->GetTerrain();
+
+    if(terrain->GetType()!=GetIEditor()->Get3DEngine()->GetTerrainId("CTerrain"))
+        return;
+
+    CHeightmap *heightmap=(CHeightmap *)terrain;
 
     CResizeResolutionDialog dlg;
-    uint32 dwCurSize = pHeightmap->GetRGBLayer()->GetTileResolution(dwTileX, dwTileY);
+    uint32 dwCurSize = heightmap->GetRGBLayer()->GetTileResolution(dwTileX, dwTileY);
     dlg.SetSize(dwCurSize);
     if (dlg.exec() != QDialog::Accepted)
     {
@@ -436,13 +458,13 @@ void CTerrainTextureExport::OnChangeResolutionBtn()
         {
             PreviewToTile(dwTileX, dwTileY, x, y);
 
-            uint32 dwOldSize = pHeightmap->GetRGBLayer()->GetTileResolution(dwTileX, dwTileY);
+            uint32 dwOldSize = heightmap->GetRGBLayer()->GetTileResolution(dwTileX, dwTileY);
             if (dwOldSize == dwNewSize || dwNewSize < 64 || dwNewSize > 2048)
             {
                 continue;
             }
 
-            GetIEditor()->GetTerrainManager()->GetHeightmap()->GetRGBLayer()->ChangeTileResolution(dwTileX, dwTileY, dwNewSize);
+            heightmap->GetRGBLayer()->ChangeTileResolution(dwTileX, dwTileY, dwNewSize);
             GetIEditor()->GetDocument()->SetModifiedFlag(TRUE);
             GetIEditor()->SetModifiedModule(eModifiedTerrain);
 
@@ -454,8 +476,8 @@ void CTerrainTextureExport::OnChangeResolutionBtn()
 
             int nTerrainSize = p3DEngine->GetTerrainSize();
             int nTexSectorSize = p3DEngine->GetTerrainTextureNodeSizeMeters();
-            uint32 dwCountX = pHeightmap->GetRGBLayer()->GetTileCountX();
-            uint32 dwCountY = pHeightmap->GetRGBLayer()->GetTileCountY();
+            uint32 dwCountX = heightmap->GetRGBLayer()->GetTileCountX();
+            uint32 dwCountY = heightmap->GetRGBLayer()->GetTileCountY();
 
             if (!nTexSectorSize || !nTerrainSize || !dwCountX)
             {
@@ -470,7 +492,7 @@ void CTerrainTextureExport::OnChangeResolutionBtn()
             {
                 for (int iX = 0; iX < numTexSectorsX; ++iX)
                 {
-                    pHeightmap->UpdateSectorTexture(QPoint(iX + dwTileX * numTexSectorsY, iY + dwTileY * numTexSectorsX), 0, 0, 1, 1);
+                    heightmap->UpdateSectorTexture(QPoint(iX + dwTileX * numTexSectorsY, iY + dwTileY * numTexSectorsX), 0, 0, 1, 1);
                 }
             }
 

@@ -128,7 +128,7 @@ public:
     BOOL RegDelnodeRecurse(HKEY hKeyRoot, LPTSTR lpSubKey);
     RecentFileList* GetRecentFileList();
     virtual void AddToRecentFileList(const QString& lpszPathName);
-    ECreateLevelResult CreateLevel(const QString& levelName, int resolution, int unitSize, bool bUseTerrain, QString& fullyQualifiedLevelName);
+    ECreateLevelResult CreateLevel(const QString& levelName, int type, int sizeX, int sizeY, int sizeZ, int unitSize, bool bUseTerrain, QString& fullyQualifiedLevelName);
     void CloseCurrentLevel();
     static void InitDirectory();
     BOOL FirstInstance(bool bForceNewInstance = false);

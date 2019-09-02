@@ -76,7 +76,8 @@ public: // Create from serialization only
     void SetTitle(const QString& title);
 
     virtual bool OnNewDocument();
-    void InitEmptyLevel(int resolution = 0, int unitSize = 0, bool bUseTerrain = false);
+//    void InitEmptyLevel(int resolution = 0, int unitSize = 0, bool bUseTerrain = false);
+    void InitEmptyLevel(int type, int sizeX, int sizeY, int sizeZ, int unitSize, bool bUseTerrain);
     void CreateDefaultLevelAssets(int resolution = 0, int unitSize = 0);
 
     bool DoSave(const QString& pathName, bool replace);

@@ -52,6 +52,7 @@ public:
     // IActorSystem
     virtual IActor* GetActor(EntityId entityId);
     virtual IActor* CreateActor(ChannelId channelId, const char* name, const char* actorClass, const Vec3& pos, const Quat& rot, const Vec3& scale, EntityId id, TSerialize* serializer);
+    virtual IActor* CreateActor(ChannelId channelId, const char* name, const char* actorClass, const Vec3i &sector, const Vec3& pos, const Quat& rot, const Vec3& scale, EntityId id, TSerialize* serializer);
     virtual IActor* GetActorByChannelId(ChannelId channelId);
 
     virtual int GetActorCount() const { return (int)m_actors.size(); };

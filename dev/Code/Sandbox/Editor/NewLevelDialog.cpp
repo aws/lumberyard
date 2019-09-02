@@ -45,6 +45,14 @@ CNewLevelDialog::CNewLevelDialog(QWidget* pParent /*=NULL*/)
     // Default level folder is root (Levels/)
     m_ilevelFolders = 0;
 
+    // Default Terrain
+    m_terrainType=0;
+
+    //Default Map size
+    m_terrainSizeX=10240;
+    m_terrainSizeY=10240;
+    m_terrainSizeZ=1024;
+
     // Default is 1024x1024
     m_terrainResolution = 3;
 
@@ -56,6 +64,8 @@ CNewLevelDialog::CNewLevelDialog(QWidget* pParent /*=NULL*/)
     ui->LEVEL->setValidator(validator);
 
     connect(ui->USE_TERRAIN, &QGroupBox::clicked, this, &CNewLevelDialog::OnBnClickedUseTerrain);
+    connect(ui->TERRAIN_TYPE, SIGNAL(activated(int)), this, SLOT(OnCbnSelendokTerrainType()));
+    connect(ui->TERRAIN_SIZE_X, SIGNAL(textChanged(QString &)), this, SLOT(OnTerrainSizeXChanged(QString &)));
     connect(ui->TERRAIN_RESOLUTION, SIGNAL(activated(int)), this, SLOT(OnCbnSelendokTerrainResolution()));
     connect(ui->TERRAIN_UNITS, SIGNAL(activated(int)), this, SLOT(OnCbnSelendokTerraniUnits()));
     connect(ui->LEVEL_FOLDERS, SIGNAL(activated(int)), this, SLOT(OnCbnSelendokLevelFolders()));
@@ -84,6 +94,10 @@ void CNewLevelDialog::UpdateData(bool fromUi)
             m_useTerrain = ui->USE_TERRAIN->isChecked();
         }
         m_ilevelFolders = ui->LEVEL_FOLDERS->currentIndex();
+        m_terrainType =ui->TERRAIN_TYPE->currentIndex();
+        m_terrainSizeX=ui->TERRAIN_SIZE_X->text().toInt();
+        m_terrainSizeY=ui->TERRAIN_SIZE_Y->text().toInt();
+        m_terrainSizeZ=ui->TERRAIN_SIZE_Z->text().toInt();
         m_terrainResolution = ui->TERRAIN_RESOLUTION->currentIndex();
         m_terrainUnits = ui->TERRAIN_UNITS->currentIndex();
     }
@@ -93,6 +107,10 @@ void CNewLevelDialog::UpdateData(bool fromUi)
         ui->LEVEL_FOLDERS->setCurrentText(m_levelFolders);
         ui->USE_TERRAIN->setChecked(m_useTerrain);
         ui->LEVEL_FOLDERS->setCurrentIndex(m_ilevelFolders);
+        ui->TERRAIN_TYPE->setCurrentIndex(m_terrainType);
+        ui->TERRAIN_SIZE_X->setText(QString::number(m_terrainSizeX));
+        ui->TERRAIN_SIZE_Y->setText(QString::number(m_terrainSizeY));
+        ui->TERRAIN_SIZE_Z->setText(QString::number(m_terrainSizeZ));
         ui->TERRAIN_RESOLUTION->setCurrentIndex(m_terrainResolution);
         ui->TERRAIN_UNITS->setCurrentIndex(m_terrainUnits);
     }
@@ -108,6 +126,10 @@ void CNewLevelDialog::OnInitDialog()
 
     // Inititialize terrain values.
 
+    ui->TERRAIN_TYPE->addItem("Default");
+    ui->TERRAIN_TYPE->addItem("Voxel");
+    ui->TERRAIN_TYPE->setCurrentIndex(m_terrainType);
+
     int i;
     int resolution = Ui::START_TERRAIN_RESOLUTION;
     for (i = 0; i < 6; i++)
@@ -116,8 +138,8 @@ void CNewLevelDialog::OnInitDialog()
         resolution *= 2;
     }
 
+    UpdateTerrainUi();
     UpdateTerrainUnits();
-    ToggleTerrainControlLayout();
 
     if (m_bIsResize)
     {
@@ -175,6 +197,35 @@ void CNewLevelDialog::ReloadLevelFoldersRec(const QString& currentFolder)
 }
 
 //////////////////////////////////////////////////////////////////////////
+void CNewLevelDialog::UpdateTerrainUi()
+{
+    bool default=false;
+    bool voxel=false;
+
+    if(m_useTerrain)
+    {
+        if(m_terrainType==1)//Voxel
+            voxel=true;
+        else //Default
+            default=true;
+    }
+
+    ui->TERRAIN_RESOLUTION_LABEL->setVisible(default);
+    ui->TERRAIN_RESOLUTION->setVisible(default);
+
+    ui->TERRAIN_UNITS->setVisible(m_useTerrain);
+    ui->STATIC4->setVisible(m_useTerrain);
+
+    ui->TERRAIN_SIZE_LABEL->setVisible(voxel);
+    ui->TERRAIN_SIZE_X_LABEL->setVisible(voxel);
+    ui->TERRAIN_SIZE_X->setVisible(voxel);
+    ui->TERRAIN_SIZE_Y_LABEL->setVisible(voxel);
+    ui->TERRAIN_SIZE_Y->setVisible(voxel);
+    ui->TERRAIN_SIZE_Z_LABEL->setVisible(voxel);
+    ui->TERRAIN_SIZE_Z->setVisible(voxel);
+}
+
+//////////////////////////////////////////////////////////////////////////
 void CNewLevelDialog::UpdateTerrainUnits()
 {
     uint32 terrainRes = GetTerrainResolution();
@@ -198,13 +249,23 @@ void CNewLevelDialog::UpdateTerrainUnits()
 //////////////////////////////////////////////////////////////////////////
 void CNewLevelDialog::UpdateTerrainInfo()
 {
-    int sizeX = 0, sizeY = 0;
+    int sizeX = 0, sizeY = 0, sizeZ = 0;
 
     if (m_useTerrain)
     {
-        int size = GetTerrainResolution() * GetTerrainUnits();
-        sizeX = sizeY = size;
-        size > Ui::MAXIMUM_TERRAIN_RESOLUTION ? ShowWarning(tr("4096x4096 maximum recommended")) : ShowWarning("");
+        if(m_terrainType==1)
+        {
+            sizeX=m_terrainSizeX;
+            sizeY=m_terrainSizeY;
+            sizeZ=m_terrainSizeZ;
+        }
+        else
+        {
+            int size=GetTerrainResolution() * GetTerrainUnits();
+
+            sizeX=sizeY=size;
+            size>Ui::MAXIMUM_TERRAIN_RESOLUTION?ShowWarning(tr("4096x4096 maximum recommended")):ShowWarning("");
+        }
     }
     else
     {
@@ -212,10 +273,21 @@ void CNewLevelDialog::UpdateTerrainInfo()
     }
 
     QString str;
-    if (sizeX >= 1000)
+
+
+    if((sizeX >= 1000) || (sizeY>=1000) || (sizeZ>=1000))
     {
-        str = tr("Terrain Size: %1 x %2 Kilometers").arg((float)sizeX / 1000.0f, 0, 'f', 3)
-                .arg((float)sizeY / 1000.0f, 0, 'f', 3);
+        if(m_terrainType==1)
+        {
+            str=tr("Terrain Size: %1 x %2 x %3 Kilometers").arg((float)sizeX/1000.0f, 0, 'f', 3)
+                .arg((float)sizeY/1000.0f, 0, 'f', 3)
+                .arg((float)sizeZ/1000.0f, 0, 'f', 3);
+        }
+        else
+        {
+            str=tr("Terrain Size: %1 x %2 Kilometers").arg((float)sizeX/1000.0f, 0, 'f', 3)
+                .arg((float)sizeY/1000.0f, 0, 'f', 3);
+        }
     }
     else if (sizeX > 0)
     {
@@ -256,6 +328,48 @@ bool CNewLevelDialog::IsUseTerrain() const
 }
 
 //////////////////////////////////////////////////////////////////////////
+int CNewLevelDialog::GetTerrainType() const
+{
+    return m_terrainType;
+}
+
+//////////////////////////////////////////////////////////////////////////
+int CNewLevelDialog::GetTerrainSize(size_t index) const
+{
+    if(m_terrainType==1)
+    {
+        switch(index)
+        {
+        case 0:
+        default:
+            return m_terrainSizeX;
+            break;
+        case 1:
+            return m_terrainSizeY;
+            break;
+        case 2:
+            return m_terrainSizeZ;
+            break;
+        }
+    }
+    else
+    {
+        switch(index)
+        {
+        case 0:
+        case 1:
+        default:
+            return GetTerrainResolution();
+            break;
+        case 2:
+            return 0;
+            break;
+        }
+    }
+    return 0;
+}
+
+//////////////////////////////////////////////////////////////////////////
 int CNewLevelDialog::GetTerrainResolution() const
 {
     return Ui::START_TERRAIN_RESOLUTION * (1 << m_terrainResolution);
@@ -270,7 +384,33 @@ int CNewLevelDialog::GetTerrainUnits() const
 void CNewLevelDialog::OnBnClickedUseTerrain()
 {
     UpdateData();
-    ToggleTerrainControlLayout();
+    UpdateTerrainUi();
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CNewLevelDialog::OnCbnSelendokTerrainType()
+{
+    UpdateData();
+    UpdateTerrainUi();
+    UpdateTerrainInfo();
+}
+
+void CNewLevelDialog::OnTerrainSizeXChanged(QString &value)
+{
+    UpdateData();
+    UpdateTerrainInfo();
+}
+
+void CNewLevelDialog::OnTerrainSizeYChanged(QString &value)
+{
+    UpdateData();
+    UpdateTerrainInfo();
+}
+
+void CNewLevelDialog::OnTerrainSizeZChanged(QString &value)
+{
+    UpdateData();
+    UpdateTerrainInfo();
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -359,28 +499,6 @@ void CNewLevelDialog::SetTerrainUnits(int units)
 void CNewLevelDialog::IsResize(bool bIsResize)
 {
     m_bIsResize = bIsResize;
-}
-
-void CNewLevelDialog::ToggleTerrainControlLayout()
-{
-    if (m_useTerrain)
-    {
-        ui->TERRAIN_RESOLUTION->show();
-        ui->STATIC3->show();
-
-        ui->TERRAIN_UNITS->show();
-        ui->STATIC4->show();
-    }
-    else
-    {
-        ui->TERRAIN_RESOLUTION->hide();
-        ui->STATIC3->hide();
-
-        ui->TERRAIN_UNITS->hide();
-        ui->STATIC4->hide();
-    }
-
-    UpdateTerrainInfo();
 }
 
 //////////////////////////////////////////////////////////////////////////

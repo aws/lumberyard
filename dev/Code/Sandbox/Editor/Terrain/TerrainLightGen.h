@@ -19,6 +19,7 @@
 // forward declaration.
 class CLayer;
 struct LightingSettings;
+class CHeightmap;
 
 
 /** Class that generates terrain surface texture for lighting

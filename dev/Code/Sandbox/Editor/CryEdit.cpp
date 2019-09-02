@@ -134,6 +134,7 @@
 #include "DimensionsDialog.h"
 
 #include "Terrain/TerrainManager.h"
+#include "Terrain/Heightmap.h"
 
 #include "MeasurementSystem/MeasurementSystem.h"
 
@@ -433,10 +434,10 @@ namespace
         PyOpenLevel(pLevelName);
     }
 
-    int PyCreateLevel(const char* levelName, int resolution, int unitSize, bool bUseTerrain)
+    int PyCreateLevel(const char* levelName, int type, int sizeX, int sizeY, int sizeZ, int unitSize, bool bUseTerrain)
     {
         QString qualifiedName;
-        return CCryEditApp::instance()->CreateLevel(levelName, resolution, unitSize, bUseTerrain, qualifiedName);
+        return CCryEditApp::instance()->CreateLevel(levelName, type, sizeX, sizeY, sizeZ, unitSize, bUseTerrain, qualifiedName);
     }
 
     QString PyGetCurrentLevelName()
@@ -506,8 +507,8 @@ REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(PyOpenLevelNoPrompt, general, open_level_no
     "Opens a level. Doesn't prompt user about saving a modified level",
     "general.open_level_no_prompt(str levelName)");
 REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(PyCreateLevel, general, create_level,
-    "Creates a level with the parameters of 'levelName', 'resolution', 'unitSize' and 'bUseTerrain'.",
-    "general.create_level(str levelName, int resolution, int unitSize, bool useTerrain)");
+    "Creates a level with the parameters of 'levelName', 'type', 'sizeX', 'sizeY', 'sizeZ', 'unitSize' and 'bUseTerrain'.",
+    "general.create_level(str levelName, int type, int sizeX, int sizeY, int sizeZ, int unitSize, bool useTerrain)");
 REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(PyGetGameFolder, general, get_game_folder,
     "Gets the path to the Game folder of current project.",
     "general.get_game_folder()");
@@ -3887,7 +3888,10 @@ bool CCryEditApp::UserExportToGame(bool bExportTexture, bool bReloadTerrain, boo
 
         CGameExporter gameExporter;
 
-        if (bExportTexture)
+        IEditorTerrain *terrain=GetIEditor()->GetTerrain();
+        size_t cterrainId=GetIEditor()->Get3DEngine()->GetTerrainId("CTerrain");
+
+        if((terrain->GetType()==cterrainId) && (bExportTexture))
         {
             static UINT iWidth = 4096; // 4096x4096 is default
             CDimensionsDialog   dimensionDialog;
@@ -3982,7 +3986,7 @@ void CCryEditApp::GenerateTerrain()
         ////////////////////////////////////////////////////////////////////////
         // Reset heightmap (water level, etc) to default
         ////////////////////////////////////////////////////////////////////////
-        GetIEditor()->GetTerrainManager()->ResetHeightMap();
+        GetIEditor()->GetTerrainManager()->ResetTerrain();
 
         // If possible set terrain to correct size here, this will help with initial camera placement in new levels
         GetIEditor()->GetTerrainManager()->SetTerrainSize(resolution, unitSize);
@@ -4004,7 +4008,7 @@ void CCryEditApp::GenerateTerrain()
 
         GetIEditor()->SetModifiedFlag();
         GetIEditor()->SetModifiedModule(eModifiedTerrain);
-        GetIEditor()->GetHeightmap()->UpdateEngineTerrain(true);
+        GetIEditor()->GetTerrain()->Update();
 
         GetIEditor()->GetGameEngine()->ReloadEnvironment();
 
@@ -6146,7 +6150,7 @@ void CCryEditApp::OnUpdateNonGameMode(QAction* action)
 }
 
 //////////////////////////////////////////////////////////////////////////
-CCryEditApp::ECreateLevelResult CCryEditApp::CreateLevel(const QString& levelName, int resolution, int unitSize, bool bUseTerrain, QString& fullyQualifiedLevelName /* ={} */)
+CCryEditApp::ECreateLevelResult CCryEditApp::CreateLevel(const QString& levelName, int type, int sizeX, int sizeY, int sizeZ, int unitSize, bool bUseTerrain, QString& fullyQualifiedLevelName /* ={} */)
 {
     const QScopedValueRollback<bool> rollback(m_creatingNewLevel);
     m_creatingNewLevel = true;
@@ -6192,13 +6196,13 @@ CCryEditApp::ECreateLevelResult CCryEditApp::CreateLevel(const QString& levelNam
     }
 
 
-    GetIEditor()->GetDocument()->InitEmptyLevel(resolution, unitSize, bUseTerrain);
+    GetIEditor()->GetDocument()->InitEmptyLevel(type, sizeX, sizeY, sizeZ, unitSize, bUseTerrain);
 
     GetIEditor()->SetStatusText("Creating Level...");
 
     if (bUseTerrain)
     {
-        GetIEditor()->GetTerrainManager()->SetTerrainSize(resolution, unitSize);
+        GetIEditor()->GetTerrainManager()->SetTerrainSize(sizeX, sizeY, sizeZ, unitSize);
     }
 
     // Save the document to this folder
@@ -6217,7 +6221,8 @@ CCryEditApp::ECreateLevelResult CCryEditApp::CreateLevel(const QString& levelNam
             GetIEditor()->GetGameEngine()->GetIEditorGame()->OnAfterLevelLoad(GetIEditor()->GetGameEngine()->GetLevelName().toUtf8(), GetIEditor()->GetGameEngine()->GetLevelPath().toUtf8().data());
         }
 
-        GetIEditor()->GetHeightmap()->InitTerrain();
+//        GetIEditor()->GetTerrain()->InitTerrain();
+        GetIEditor()->GetTerrainManager()->InitTerrain();
 
         // During normal level load flow, the player is hidden after the player is spawned.
         // When creating a new level, the player is not spawned until later, after that hide player command was initially sent.
@@ -6255,6 +6260,8 @@ CCryEditApp::ECreateLevelResult CCryEditApp::CreateLevel(const QString& levelNam
     {
         GenerateTerrainTexture();
     }
+
+    int resolution=std::max(std::max(sizeX, sizeY), sizeZ);
 
     GetIEditor()->GetDocument()->CreateDefaultLevelAssets(resolution, unitSize);
     GetIEditor()->GetDocument()->SetDocumentReady(true);
@@ -6357,7 +6364,11 @@ bool CCryEditApp::CreateLevel(bool& wasCreateLevelOperationCancelled)
     QString levelNameWithPath = dlg.GetLevel();
     QString levelName = levelNameWithPath.mid(levelNameWithPath.lastIndexOf('/') + 1);
 
-    int resolution = dlg.GetTerrainResolution();
+    int type = dlg.GetTerrainType();
+    int sizeX=dlg.GetTerrainSize(0);
+    int sizeY=dlg.GetTerrainSize(1);
+    int sizeZ=dlg.GetTerrainSize(2);
+
     int unitSize = dlg.GetTerrainUnits();
     bool bUseTerrain = dlg.IsUseTerrain();
 
@@ -6380,7 +6391,7 @@ bool CCryEditApp::CreateLevel(bool& wasCreateLevelOperationCancelled)
     }
 
     QString fullyQualifiedLevelName;
-    ECreateLevelResult result = CreateLevel(levelNameWithPath, resolution, unitSize, bUseTerrain, fullyQualifiedLevelName);
+    ECreateLevelResult result = CreateLevel(levelNameWithPath, type, sizeX, sizeY, sizeZ, unitSize, bUseTerrain, fullyQualifiedLevelName);
 
     if (result == ECLR_ALREADY_EXISTS)
     {
@@ -6896,7 +6907,7 @@ void CCryEditApp::LoadTagLocations()
 void CCryEditApp::OnToolsLogMemoryUsage()
 {
     gEnv->pConsole->ExecuteString("SaveLevelStats");
-    //GetIEditor()->GetHeightmap()->LogLayerSizes();
+    //GetIEditor()->GetTerrain()->LogLayerSizes();
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -6931,6 +6942,13 @@ void CCryEditApp::OnGotoLocation12() { GotoTagLocation(12); }
 //////////////////////////////////////////////////////////////////////////
 void CCryEditApp::OnTerrainExportblock()
 {
+    IEditorTerrain *terrain=GetIEditor()->GetTerrain();
+
+    if(terrain->GetType()!=GetIEditor()->Get3DEngine()->GetTerrainId("CTerrain"))
+        return;
+
+    CHeightmap *heightmap=(CHeightmap *)terrain;
+
     // TODO: Add your command handler code here
     char szFilters[] = "Terrain Block files (*.trb);;All files (*)";
     QString filename;
@@ -6940,12 +6958,12 @@ void CCryEditApp::OnTerrainExportblock()
         AABB box;
         GetIEditor()->GetSelectedRegion(box);
 
-        QPoint p1 = GetIEditor()->GetHeightmap()->WorldToHmap(box.min);
-        QPoint p2 = GetIEditor()->GetHeightmap()->WorldToHmap(box.max);
+        QPoint p1 = GetIEditor()->GetTerrain()->FromWorld(box.min);
+        QPoint p2 = GetIEditor()->GetTerrain()->FromWorld(box.max);
         QRect rect(p1, p2 - QPoint(1, 1));
 
         CXmlArchive ar("Root");
-        GetIEditor()->GetHeightmap()->ExportBlock(rect, ar);
+        heightmap->ExportBlock(rect, ar);
 
         // Save selected objects.
         CSelectionGroup* sel = GetIEditor()->GetSelection();
@@ -6966,6 +6984,13 @@ void CCryEditApp::OnTerrainExportblock()
 //////////////////////////////////////////////////////////////////////////
 void CCryEditApp::OnTerrainImportblock()
 {
+    IEditorTerrain *terrain=GetIEditor()->GetTerrain();
+
+    if(terrain->GetType()!=GetIEditor()->Get3DEngine()->GetTerrainId("CTerrain"))
+        return;
+
+    CHeightmap *heightmap=(CHeightmap *)terrain;
+
     // TODO: Add your command handler code here
     char szFilters[] = "Terrain Block files (*.trb);;All files (*)";
     QString filename;
@@ -6985,8 +7010,8 @@ void CCryEditApp::OnTerrainImportblock()
         // Import terrain area.
         CUndo undo("Import Terrain Area");
 
-        CHeightmap* pHeightmap = GetIEditor()->GetHeightmap();
-        pHeightmap->ImportBlock(*ar, QPoint(0, 0), false);
+        IEditorTerrain* terrain = GetIEditor()->GetTerrain();
+        heightmap->ImportBlock(*ar, QPoint(0, 0), false);
         // Load selection from archive.
         XmlNodeRef objRoot = ar->root->findChild("Objects");
         if (objRoot)
@@ -7619,18 +7644,23 @@ void CCryEditApp::OnTerrainResizeterrain()
         return;
     }
 
-    CHeightmap* pHeightmap = GetIEditor()->GetHeightmap();
+    IEditorTerrain *terrain=GetIEditor()->GetTerrain();
+
+    if(terrain->GetType()!=GetIEditor()->Get3DEngine()->GetTerrainId("CTerrain"))
+        return;
+
+    CHeightmap *heightmap=(CHeightmap *)terrain;
 
     CNewLevelDialog dlg(AzToolsFramework::GetActiveWindow());
-    dlg.SetTerrainResolution(pHeightmap->GetWidth());
-    dlg.SetTerrainUnits(pHeightmap->GetUnitSize());
+    dlg.SetTerrainResolution(terrain->GetWidth());
+    dlg.SetTerrainUnits(terrain->GetUnitSize());
     dlg.IsResize(true);
     if (dlg.exec() != QDialog::Accepted)
     {
         return;
     }
 
-    pHeightmap->ClearModSectors();
+    heightmap->ClearModSectors();
 
     CUndoManager* undoMgr = GetIEditor()->GetUndoManager();
     if (undoMgr)
@@ -7641,9 +7671,9 @@ void CCryEditApp::OnTerrainResizeterrain()
     int resolution = dlg.GetTerrainResolution();
     int unitSize = dlg.GetTerrainUnits();
 
-    if (resolution != pHeightmap->GetWidth() || unitSize != pHeightmap->GetUnitSize())
+    if (resolution != terrain->GetWidth() || unitSize != terrain->GetUnitSize())
     {
-        pHeightmap->Resize(resolution, resolution, unitSize, false);
+        terrain->Resize(resolution, resolution, unitSize, false);
         UserExportToGame(true, false, false);
     }
 

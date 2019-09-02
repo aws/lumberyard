@@ -32,7 +32,7 @@ struct I3DEngine;
 struct IObjManager;
 struct CVars;
 struct CVisAreaManager;
-class CTerrain;
+class IEngineTerrain;
 class C3DEngine;
 class CParticleManager;
 class CDecalManager;
@@ -64,7 +64,7 @@ struct Cry3DEngineBase
     static CVars* m_pCVars;
     static ICryPak* m_pCryPak;
     static IObjManager* m_pObjManager;
-    static CTerrain* m_pTerrain;
+    static IEngineTerrain* m_pTerrain;
     static IParticleManager* m_pPartManager;
     static IOpticsManager* m_pOpticsManager;
     static CDecalManager* m_pDecalManager;
@@ -109,7 +109,7 @@ struct Cry3DEngineBase
     inline static IConsole* GetConsole() { return m_pConsole; }
     inline static C3DEngine* Get3DEngine() { return m_p3DEngine; }
     inline static IObjManager* GetObjManager() { return m_pObjManager; };
-    inline static CTerrain* GetTerrain() { return m_pTerrain; };
+    inline static IEngineTerrain* GetTerrain() { return m_pTerrain; };
     inline static CVars* GetCVars() { return m_pCVars; }
     inline static CVisAreaManager* GetVisAreaManager() { return m_pVisAreaManager; }
     inline static ICryPak* GetPak() { return m_pCryPak; }

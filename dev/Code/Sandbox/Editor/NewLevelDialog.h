@@ -52,6 +52,8 @@ public:
     void SetTerrainUnits(int units);
 
     QString GetLevel() const;
+    int GetTerrainType() const;
+    int GetTerrainSize(size_t index) const;
     int GetTerrainResolution() const;
     int GetTerrainUnits() const;
     bool IsUseTerrain() const;
@@ -62,18 +64,22 @@ protected:
     void UpdateData(bool fromUi = true);
     void OnInitDialog();
 
+    void UpdateTerrainUi();
     void UpdateTerrainUnits();
     void UpdateTerrainInfo();
     void ReloadLevelFolders();
     void ReloadLevelFoldersRec(const QString& currentFolder);
 
     void ShowWarning(const QString& message = "");
-    void ToggleTerrainControlLayout();
 
     void showEvent(QShowEvent* event);
 
 protected slots:
     void OnBnClickedUseTerrain();
+    void OnCbnSelendokTerrainType();
+    void OnTerrainSizeXChanged(QString &value);
+    void OnTerrainSizeYChanged(QString &value);
+    void OnTerrainSizeZChanged(QString &value);
     void OnCbnSelendokTerrainResolution();
     void OnCbnSelendokTerraniUnits();
     void OnCbnSelendokLevelFolders();
@@ -83,7 +89,11 @@ public:
     QString         m_level;
     QString         m_levelFolders;
     bool                m_useTerrain;
+    int                 m_terrainType;
     int                 m_terrainResolution;
+    int                 m_terrainSizeX;
+    int                 m_terrainSizeY;
+    int                 m_terrainSizeZ;
     int                 m_ilevelFolders;
     int                 m_terrainUnits;
     bool                m_bIsResize;

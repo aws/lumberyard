@@ -82,6 +82,14 @@ namespace CommandManagerHelper
     bool RegisterCommand(ICommandManager* pCmdMgr, const char* module, const char* name,
         const char* description, const char* example,
         const Functor6<LIST(6, P)>& functor);
+    template <LIST(7, typename P)>
+    bool RegisterCommand(ICommandManager* pCmdMgr, const char* module, const char* name,
+        const char* description, const char* example,
+        const Functor7<LIST(7, P)>& functor);
+    template <LIST(7, typename P), typename RT>
+    bool RegisterCommand(ICommandManager* pCmdMgr, const char* module, const char* name,
+        const char* description, const char* example,
+        const Functor7wRet<LIST(7, P), RT>& functor);
 
     namespace Private
     {
@@ -208,5 +216,21 @@ bool CommandManagerHelper::RegisterCommand(ICommandManager* pCmdMgr, const char*
     const Functor6<LIST(6, P)>& functor)
 {
     return Private::RegisterCommand<Functor6<LIST(6, P)>, CCommand6<LIST(6, P)> >(pCmdMgr, module, name, description, example, functor);
+}
+
+template <LIST(7, typename P)>
+bool CommandManagerHelper::RegisterCommand(ICommandManager* pCmdMgr, const char* module, const char* name,
+    const char* description, const char* example,
+    const Functor7<LIST(7, P)>& functor)
+{
+    return Private::RegisterCommand<Functor7<LIST(7, P)>, CCommand7<LIST(7, P)> >(pCmdMgr, module, name, description, example, functor);
+}
+
+template <LIST(7, typename P), typename RT>
+bool CommandManagerHelper::RegisterCommand(ICommandManager* pCmdMgr, const char* module, const char* name,
+    const char* description, const char* example,
+    const Functor7wRet<LIST(7, P), RT>& functor)
+{
+    return Private::RegisterCommand<Functor7wRet<LIST(7, P), RT>, CCommand7wRet<LIST(7, P), RT> >(pCmdMgr, module, name, description, example, functor);
 }
 #endif // CRYINCLUDE_EDITOR_INCLUDE_ICOMMANDMANAGER_H

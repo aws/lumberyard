@@ -12,6 +12,7 @@
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
 #include "StdAfx.h"
+#include "Heightmap.h"
 #include "Noise.h"
 #include "Layer.h"
 #include "CryEditDoc.h"
@@ -159,13 +160,20 @@ protected:
             w = m_rc.height();
         }
 
-        GetIEditor()->GetHeightmap()->UpdateEngineTerrain(m_rc.left(), m_rc.top(), w, w, true, false);
+        IEditorTerrain *terrain=GetIEditor()->GetTerrain();
+
+        if(terrain->GetType()!=GetIEditor()->Get3DEngine()->GetTerrainId("CTerrain"))
+            return;
+
+        CHeightmap *heightmap=(CHeightmap *)terrain;
+
+        heightmap->UpdateEngineTerrain(m_rc.left(), m_rc.top(), w, w, true, false);
 
         if (bUndo)
         {
             AABB box;
-            box.min = GetIEditor()->GetHeightmap()->HmapToWorld(m_rc.topLeft());
-            box.max = GetIEditor()->GetHeightmap()->HmapToWorld(QPoint(m_rc.left() + w, m_rc.top() + w));
+            box.min = heightmap->HmapToWorld(m_rc.topLeft());
+            box.max = heightmap->HmapToWorld(QPoint(m_rc.left() + w, m_rc.top() + w));
             box.min.z -= 10000;
             box.max.z += 10000;
             GetIEditor()->UpdateViews(eUpdateHeightmap, &box);
@@ -175,14 +183,21 @@ protected:
     {
         if (m_redo.IsValid())
         {
+            IEditorTerrain *terrain=GetIEditor()->GetTerrain();
+
+            if(terrain->GetType()!=GetIEditor()->Get3DEngine()->GetTerrainId("CTerrain"))
+                return;
+
+            CHeightmap *heightmap=(CHeightmap *)terrain;
+
             // Restore image.
             m_.SetSubImage(m_rc.left(), m_rc.top(), m_redo);
-            GetIEditor()->GetHeightmap()->UpdateEngineTerrain(m_rc.left(), m_rc.top(), m_rc.width(), m_rc.height(), true, false);
+            heightmap->UpdateEngineTerrain(m_rc.left(), m_rc.top(), m_rc.width(), m_rc.height(), true, false);
 
             {
                 AABB box;
-                box.min = GetIEditor()->GetHeightmap()->HmapToWorld(m_rc.topLeft());
-                box.max = GetIEditor()->GetHeightmap()->HmapToWorld(m_rc.bottomRight() + QPoint(1, 1));
+                box.min =heightmap->HmapToWorld(m_rc.topLeft());
+                box.max =heightmap->HmapToWorld(m_rc.bottomRight() + QPoint(1, 1));
                 box.min.z -= 10000;
                 box.max.z += 10000;
                 GetIEditor()->UpdateViews(eUpdateHeightmap, &box);
@@ -223,17 +238,31 @@ protected:
             // Store for redo.
             m_Weightmap.GetSubImage(m_rc.left(), m_rc.top(), m_rc.width(), m_rc.height(), m_redo);
         }
+
+        IEditorTerrain *terrain=GetIEditor()->GetTerrain();
+
+        if(terrain->GetType()!=GetIEditor()->Get3DEngine()->GetTerrainId("CTerrain"))
+            return;
+
+        CHeightmap *heightmap=(CHeightmap *)terrain;
         // Restore image.
         m_Weightmap.SetSubImage(m_rc.left(), m_rc.top(), m_undo);
-        GetIEditor()->GetHeightmap()->UpdateEngineHole(m_rc.left(), m_rc.top(), m_rc.width(), m_rc.height());
+        heightmap->UpdateEngineHole(m_rc.left(), m_rc.top(), m_rc.width(), m_rc.height());
     }
     virtual void Redo()
     {
         if (m_redo.IsValid())
         {
+            IEditorTerrain *terrain=GetIEditor()->GetTerrain();
+
+            if(terrain->GetType()!=GetIEditor()->Get3DEngine()->GetTerrainId("CTerrain"))
+                return;
+
+            CHeightmap *heightmap=(CHeightmap *)terrain;
+
             // Restore image.
             m_Weightmap.SetSubImage(m_rc.left(), m_rc.top(), m_redo);
-            GetIEditor()->GetHeightmap()->UpdateEngineHole(m_rc.left(), m_rc.top(), m_rc.width(), m_rc.height());
+            heightmap->UpdateEngineHole(m_rc.left(), m_rc.top(), m_rc.width(), m_rc.height());
         }
     }
 
@@ -291,6 +320,11 @@ CHeightmap::~CHeightmap()
 {
     // Reset the heightmap
     CleanUp();
+}
+
+int CHeightmap::GetType()
+{
+    return GetIEditor()->Get3DEngine()->GetTerrainId("CTerrain"); 
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -2617,14 +2651,15 @@ void CHeightmap::SerializeTerrain(CXmlArchive& xmlAr)
         if (xmlAr.pNamedData->GetDataBlock("TerrainCompiledData", pData, nSize))
         {
             STerrainChunkHeader* pHeader = (STerrainChunkHeader*)pData;
-            if ((pHeader->nVersion == TERRAIN_CHUNK_VERSION) && (pHeader->TerrainInfo.nSectorSize_InMeters == pHeader->TerrainInfo.nUnitSize_InMeters * SECTOR_SIZE_IN_UNITS))
+            STerrainInfo* pTerrainInfo=(STerrainInfo*)((unsigned char *)pData+sizeof(STerrainChunkHeader));
+            if ((pHeader->nVersion == TERRAIN_CHUNK_VERSION) && (pTerrainInfo->nSectorSize_InMeters == pTerrainInfo->nUnitSize_InMeters * SECTOR_SIZE_IN_UNITS))
             {
                 SSectorInfo si;
                 GetSectorsInfo(si);
 
-                ITerrain* pTerrain = GetIEditor()->Get3DEngine()->CreateTerrain(pHeader->TerrainInfo);
+                ITerrain* pTerrain = GetIEditor()->Get3DEngine()->CreateTerrain(*pTerrainInfo);
                 // check if size of terrain in compile data match
-                if (pHeader->TerrainInfo.nUnitSize_InMeters)
+                if (pTerrainInfo->nUnitSize_InMeters)
                 {
                     if (!pTerrain->SetCompiledData((uint8*)pData, nSize, nullptr, nullptr))
                     {
@@ -2868,6 +2903,8 @@ void CHeightmap::UpdateEngineHole(int x1, int y1, int width, int height)
 void CHeightmap::GetSectorsInfo(SSectorInfo& si)
 {
     ZeroStruct(si);
+
+    si.type=0;
     si.unitSize = m_unitSize;
     si.sectorSize = m_unitSize * SECTOR_SIZE_IN_UNITS;
     si.numSectors = m_numSectors;
@@ -3615,9 +3652,15 @@ void CHeightmap::InitTerrain()
     GetSectorsInfo(si);
 
     STerrainInfo TerrainInfo;
-    TerrainInfo.nHeightMapSize_InUnits = si.sectorSize * si.numSectors / si.unitSize;
+    
+    TerrainInfo.type=si.type;
+    TerrainInfo.nTerrainSizeX_InUnits= si.sectorSize * si.numSectors / si.unitSize;
+    TerrainInfo.nTerrainSizeY_InUnits=TerrainInfo.nTerrainSizeX_InUnits;
+    TerrainInfo.nTerrainSizeZ_InUnits=1;
     TerrainInfo.nUnitSize_InMeters = si.unitSize;
     TerrainInfo.nSectorSize_InMeters = si.sectorSize;
+    TerrainInfo.nSectorSizeY_InMeters=si.sectorSizeY;
+    TerrainInfo.nSectorSizeZ_InMeters=si.sectorSizeZ;
     TerrainInfo.nSectorsTableSize_InSectors = si.numSectors;
     TerrainInfo.fHeightmapZRatio = 0.0f;
     TerrainInfo.fOceanWaterLevel = GetOceanLevel();

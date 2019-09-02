@@ -94,6 +94,8 @@ public:
     void SetGridLineNumbers(bool bShowNumbers) { m_bShowNumbers = bShowNumbers; }
     void SetAutoAdjust(bool bAuto) { m_bAutoAdjustGrids = bAuto; }
 
+    void SetSectorSize(Vec3i size) {}
+    Vec3i GetSectorSize() const { return Vec3i(0, 0, 0); }
 
 protected:
     enum EViewportAxis

@@ -202,6 +202,7 @@ def build(bld):
                                                '..',
                                                'Include',
                                                bld.Path('Code/CryEngine'),
+                                               bld.Path('Code/CryEngine/Cry3DEngine'),
                                                bld.Path('Code/CryEngine/CryAction'),
                                                bld.Path('Code/CryEngine/CrySystem'),
                                                bld.Path('Gems/LmbrCentral/Code/include'),

@@ -199,7 +199,7 @@ public:
     IMissingAssetResolver* GetMissingAssetResolver() override { return m_pFileNameResolver; }
     IIconManager* GetIconManager();
     float GetTerrainElevation(float x, float y);
-    CHeightmap* GetHeightmap();
+    IEditorTerrain* GetTerrain();
     CVegetationMap* GetVegetationMap();
     Editor::EditorQtApplication* GetEditorQtApplication() { return m_QtApplication; }
     const QColor& GetColorByName(const QString& name) override;

@@ -23,6 +23,7 @@
 #include "Sky Accessibility/HeightmapAccessibility.h"
 
 #include "Terrain/TerrainManager.h"
+#include "Terrain/Heightmap.h"
 
 // Sector flags.
 enum
@@ -49,7 +50,13 @@ CTerrainLightGen::CTerrainLightGen
     //  m_iCachedSunBlurLevel=0;
     m_bNotValid = false;
 
-    m_heightmap = GetIEditor()->GetHeightmap();
+    IEditorTerrain *terrain=GetIEditor()->GetTerrain();
+
+    if(terrain->GetType()!=GetIEditor()->Get3DEngine()->GetTerrainId("CTerrain"))
+        m_heightmap=nullptr;
+    else
+        m_heightmap=(CHeightmap *)terrain;
+
     assert(m_heightmap);
 
     m_ApplySS = cApplySS;
@@ -69,7 +76,14 @@ CTerrainLightGen::~CTerrainLightGen()
 void CTerrainLightGen::Init(const int resolution, const bool bFullInit)
 {
     int i;
-    m_heightmap = GetIEditor()->GetHeightmap();
+    
+    IEditorTerrain *terrain=GetIEditor()->GetTerrain();
+
+    if(terrain->GetType()!=GetIEditor()->Get3DEngine()->GetTerrainId("CTerrain"))
+        m_heightmap=nullptr;
+    else
+        m_heightmap=(CHeightmap *)terrain;
+
     assert(m_heightmap);
 
     m_terrainMaxZ = 255.0f;
@@ -300,11 +314,11 @@ bool CTerrainLightGen::GenerateSectorTexture(const QPoint& sector, const QRect& 
 
 
     CCryEditDoc* pDocument = GetIEditor()->GetDocument();
-    CHeightmap* pHeightmap = GetIEditor()->GetHeightmap();
+    IEditorTerrain *terrain = GetIEditor()->GetTerrain();
     int sectorFlags = GetCLightGenSectorFlag(sector);
 
     assert(pDocument);
-    assert(pHeightmap);
+    assert(terrain);
 
     // Update heightmap for that sector.
     UpdateSectorHeightmap(sector);
@@ -746,10 +760,17 @@ bool CTerrainLightGen::GenerateLightmap(const QPoint& sector, LightingSettings* 
 //! Generate shadows from static objects and place them in shadow map bitarray.
 void CTerrainLightGen::GenerateShadowmap(const QPoint& sector, CByteImage& shadowmap, float shadowAmmount, const Vec3& sunVector)
 {
+    IEditorTerrain *terrain=GetIEditor()->GetTerrain();
+
+    if(terrain->GetType()!=GetIEditor()->Get3DEngine()->GetTerrainId("CTerrain"))
+        return;
+
+    CHeightmap *heightmap=(CHeightmap *)terrain;
+
     //  if(!m_pTerrain)
     //  return;
     SSectorInfo si;
-    GetIEditor()->GetHeightmap()->GetSectorsInfo(si);
+    heightmap->GetSectorsInfo(si);
 
     int width = shadowmap.GetWidth();
     int height = shadowmap.GetHeight();
@@ -770,7 +791,7 @@ void CTerrainLightGen::GenerateShadowmap(const QPoint& sector, CByteImage& shado
     }
     unsigned char* sectorImage2 = (unsigned char*)mem.GetBuffer();
 
-    Vec3 wp = GetIEditor()->GetHeightmap()->GetTerrainGrid()->SectorToWorld(sector);
+    Vec3 wp =heightmap->GetTerrainGrid()->SectorToWorld(sector);
     //  GetIEditor()->Get3DEngine()->MakeLightMap( wp.x+0.1f,wp.y+0.1f,sectorImage2,sectorTexSize2 );
     //GetIEditor()->Get3DEngine()->MakeTerrainLightMap( wp.x,wp.y,si.sectorSize,sectorImage2,sectorTexSize2 );
     memset(sectorImage2, 255, sectorTexSize2 * sectorTexSize2 * 3);
@@ -928,6 +949,13 @@ void CTerrainLightGen::InvalidateLighting()
 //////////////////////////////////////////////////////////////////////////
 void CTerrainLightGen::GetSubImageStretched(const float fSrcLeft, const float fSrcTop, const float fSrcRight, const float fSrcBottom, CImageEx& rOutImage, const int genFlags)
 {
+    IEditorTerrain *terrain=GetIEditor()->GetTerrain();
+
+    if(terrain->GetType()!=GetIEditor()->Get3DEngine()->GetTerrainId("CTerrain"))
+        return;
+
+    CHeightmap *heightmap=(CHeightmap *)terrain;
+
     assert(fSrcLeft >= 0.0f && fSrcLeft <= 1.0f);
     assert(fSrcTop >= 0.0f && fSrcTop <= 1.0f);
     assert(fSrcRight >= 0.0f && fSrcRight <= 1.0f);
@@ -981,8 +1009,8 @@ void CTerrainLightGen::GetSubImageStretched(const float fSrcLeft, const float fS
         }
     */
 
-    float* pHeightmapData = GetIEditor()->GetHeightmap()->GetData();
-    assert(m_resolution == GetIEditor()->GetHeightmap()->GetWidth());
+    float* pHeightmapData =heightmap->GetData();
+    assert(m_resolution == heightmap->GetWidth());
 
     float fHeightScale = CalcHeightScaleForLighting(pSettings, m_resolution);
     Vec3 lightVector = -pSettings->GetSunVector();
@@ -1066,7 +1094,7 @@ void CTerrainLightGen::GetSubImageStretched(const float fSrcLeft, const float fS
     {
         CVegetationMap* pVegetationMap = GetIEditor()->GetVegetationMap();
 
-        CHeightmap& roHeightMap = *GetIEditor()->GetHeightmap();
+        CHeightmap& roHeightMap = *heightmap;
 
         float fTerrainWidth = roHeightMap.GetWidth() * roHeightMap.GetUnitSize();
         float fTerrainHeight = roHeightMap.GetWidth() * roHeightMap.GetUnitSize();
@@ -1122,7 +1150,7 @@ void CTerrainLightGen::GetSubImageStretched(const float fSrcLeft, const float fS
                 uint32 shadowmap = GetRValue(col);
                 uint32 brightness_shadowmap = (shadowmap * brightness) >> 8;
 
-                CHeightmap& roHeightMap = *GetIEditor()->GetHeightmap();
+                CHeightmap& roHeightMap = *heightmap;
 
                 float wx = fSrcX * (roHeightMap.GetWidth() * roHeightMap.GetUnitSize());
                 float wy = fSrcY * (roHeightMap.GetHeight() * roHeightMap.GetUnitSize());

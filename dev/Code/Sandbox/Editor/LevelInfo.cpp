@@ -16,6 +16,7 @@
 #include "Material/MaterialManager.h"
 
 #include "./Terrain/Heightmap.h"
+#include "./Terrain/TerrainManager.h"
 #include "VegetationMap.h"
 #include "QtUI/WaitCursor.h"
 
@@ -107,7 +108,8 @@ void CLevelInfo::ValidateObjects()
     int gridSize = 256;
 
     SSectorInfo si;
-    GetIEditor()->GetHeightmap()->GetSectorsInfo(si);
+//    GetIEditor()->GetHeightmap()->GetSectorsInfo(si);
+    GetIEditor()->GetTerrainManager()->GetSectorsInfo(si);
     float worldSize = si.numSectors * si.sectorSize;
     float fGridToWorld = worldSize / gridSize;
 

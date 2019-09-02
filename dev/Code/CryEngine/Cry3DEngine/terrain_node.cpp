@@ -161,7 +161,7 @@ bool CTerrainNode::CheckVis(bool bAllInside, bool bAllowRenderIntoCBuffer, const
 
     m_nSetLodFrameId = passInfo.GetMainFrameID();
 
-    int nSectorSize = CTerrain::GetSectorSize() << m_nTreeLevel;
+    int nSectorSize = GetTerrain()->GetSectorSize() << m_nTreeLevel;
     bool bCameraInsideSector = distanceToCamera < nSectorSize;
 
     // The Geometry / Texture LODs have nothing to do with the tree level. But this is roughly saying that
@@ -278,7 +278,7 @@ void CTerrainNode::Init(int x1, int y1, int nNodeSize, CTerrainNode* pParent, bo
         m_DistanceToCamera[iStackLevel] = 0.f;
     }
 
-    if (nNodeSize == CTerrain::GetSectorSize())
+    if (nNodeSize ==GetTerrain()->GetSectorSize())
     {
         m_nTreeLevel = 0;
     }
@@ -310,15 +310,15 @@ void CTerrainNode::Init(int x1, int y1, int nNodeSize, CTerrainNode* pParent, bo
             m_LocalAABB.max.CheckMax(m_Children[nChild].m_LocalAABB.max);
         }
 
-        m_DistanceToCamera[0] = 2.f * CTerrain::GetTerrainSize();
+        m_DistanceToCamera[0] = 2.f * GetTerrain()->GetTerrainSize();
         if (m_DistanceToCamera[0] < 0)
         {
             m_DistanceToCamera[0] = 0;
         }
     }
 
-    int nSectorSize = CTerrain::GetSectorSize() << m_nTreeLevel;
-    assert(x1 >= 0 && y1 >= 0 && x1 < CTerrain::GetTerrainSize() && y1 < CTerrain::GetTerrainSize());
+    int nSectorSize =GetTerrain()->GetSectorSize() << m_nTreeLevel;
+    assert(x1 >= 0 && y1 >= 0 && x1 < GetTerrain()->GetTerrainSize() && y1 < GetTerrain()->GetTerrainSize());
     GetTerrain()->m_NodePyramid[m_nTreeLevel][x1 / nSectorSize][y1 / nSectorSize] = this;
 }
 
@@ -345,8 +345,8 @@ CTerrainNode::~CTerrainNode()
     delete[] m_ZErrorFromBaseLOD;
     m_ZErrorFromBaseLOD = NULL;
 
-    int nSectorSize = CTerrain::GetSectorSize() << m_nTreeLevel;
-    assert(m_nOriginX < CTerrain::GetTerrainSize() && m_nOriginY < CTerrain::GetTerrainSize());
+    int nSectorSize =GetTerrain()->GetSectorSize() << m_nTreeLevel;
+    assert(m_nOriginX < GetTerrain()->GetTerrainSize() && m_nOriginY < GetTerrain()->GetTerrainSize());
     GetTerrain()->m_NodePyramid[m_nTreeLevel][m_nOriginX / nSectorSize][m_nOriginY / nSectorSize] = NULL;
 
     if (m_pRNTmpData)
@@ -502,7 +502,7 @@ bool CTerrainNode::RenderNodeHeightmap(const SRenderingPassInfo& passInfo)
     // pre-cache surface types
     for (int s = 0; s < ITerrain::SurfaceWeight::Hole; s++)
     {
-        SSurfaceType* pSurf = &Cry3DEngineBase::GetTerrain()->m_SurfaceTypes[s];
+        SSurfaceType* pSurf = &GetTerrain()->m_SurfaceTypes[s];
 
         if (pSurf->HasMaterial())
         {
@@ -577,7 +577,7 @@ bool CTerrainNode::CheckUpdateProcObjects(const SRenderingPassInfo& passInfo)
 
     CMTRand_int32 rndGen(gEnv->bNoRandomSeed ? 0 : m_nOriginX + m_nOriginY);
 
-    float nSectorSize = (float)(CTerrain::GetSectorSize() << m_nTreeLevel);
+    float nSectorSize = (float)(GetTerrain()->GetSectorSize() << m_nTreeLevel);
     for (int nLayer = 0; nLayer < m_DetailLayers.Count(); nLayer++)
     {
         for (int g = 0; g < m_DetailLayers[nLayer].surfaceType->lstnVegetationGroups.Count(); g++)
@@ -631,7 +631,7 @@ bool CTerrainNode::CheckUpdateProcObjects(const SRenderingPassInfo& passInfo)
                         }
 
                         Vec3 vWPos = vPos;
-                        if (vWPos.x < 0 || vWPos.x >= CTerrain::GetTerrainSize() || vWPos.y < 0 || vWPos.y >= CTerrain::GetTerrainSize())
+                        if (vWPos.x < 0 || vWPos.x >=GetTerrain()->GetTerrainSize() || vWPos.y < 0 || vWPos.y >=GetTerrain()->GetTerrainSize())
                         {
                             continue;
                         }
@@ -650,13 +650,13 @@ bool CTerrainNode::CheckUpdateProcObjects(const SRenderingPassInfo& passInfo)
                         // check slope range
                         if (pGroup->fSlopeMin != 0 || pGroup->fSlopeMax != 255)
                         {
-                            int nStep = CTerrain::GetHeightMapUnitSize();
+                            int nStep =GetTerrain()->GetHeightMapUnitSize();
                             int x = (int)fX;
                             int y = (int)fY;
 
                             // calculate surface normal
                             float sx;
-                            if ((x + nStep) < CTerrain::GetTerrainSize() && x >= nStep)
+                            if ((x + nStep) < GetTerrain()->GetTerrainSize() && x >= nStep)
                             {
                                 sx = GetTerrain()->GetZ(x + nStep, y) - GetTerrain()->GetZ(x - nStep, y);
                             }
@@ -666,7 +666,7 @@ bool CTerrainNode::CheckUpdateProcObjects(const SRenderingPassInfo& passInfo)
                             }
 
                             float sy;
-                            if ((y + nStep) < CTerrain::GetTerrainSize() && y >= nStep)
+                            if ((y + nStep) < GetTerrain()->GetTerrainSize() && y >= nStep)
                             {
                                 sy = GetTerrain()->GetZ(x, y + nStep) - GetTerrain()->GetZ(x, y - nStep);
                             }
@@ -918,9 +918,9 @@ void CTerrainNode::UpdateDetailLayersInfo(bool bRecursive)
 
         m_bHasHoles = 0;
 
-        for (int X = m_nOriginX; X <= m_nOriginX + CTerrain::GetSectorSize(); X += CTerrain::GetHeightMapUnitSize())
+        for (int X = m_nOriginX; X <= m_nOriginX +GetTerrain()->GetSectorSize(); X +=GetTerrain()->GetHeightMapUnitSize())
         {
-            for (int Y = m_nOriginY; Y <= m_nOriginY + CTerrain::GetSectorSize(); Y += CTerrain::GetHeightMapUnitSize())
+            for (int Y = m_nOriginY; Y <= m_nOriginY +GetTerrain()->GetSectorSize(); Y +=GetTerrain()->GetHeightMapUnitSize())
             {
                 ITerrain::SurfaceWeight weight = GetTerrain()->GetSurfaceWeight(X, Y);
                 if (ITerrain::SurfaceWeight::Hole == weight.PrimaryId())
@@ -936,7 +936,7 @@ void CTerrainNode::UpdateDetailLayersInfo(bool bRecursive)
             }
         }
 
-        if (surfaceTypesInSector[ITerrain::SurfaceWeight::Hole] == (CTerrain::GetSectorSize() / CTerrain::GetHeightMapUnitSize() + 1) * (CTerrain::GetSectorSize() / CTerrain::GetHeightMapUnitSize() + 1))
+        if (surfaceTypesInSector[ITerrain::SurfaceWeight::Hole] == (GetTerrain()->GetSectorSize() /GetTerrain()->GetHeightMapUnitSize() + 1) * (GetTerrain()->GetSectorSize() /GetTerrain()->GetHeightMapUnitSize() + 1))
         {
             m_bHasHoles = 2; // only holes
         }
@@ -997,8 +997,8 @@ void CTerrainNode::IntersectWithShadowFrustum(bool bAllIn, PodArray<CTerrainNode
                 m_DistanceToCamera[passInfo.GetRecursiveLevel()] = GetPointToBoxDistance(passInfo.GetCamera().GetPosition(), GetBBox());
                 Get3DEngine()->CheckCreateRNTmpData(&m_pRNTmpData, NULL, passInfo);
                 SetLOD(passInfo);
-                int nSectorSize = CTerrain::GetSectorSize() << m_nTreeLevel;
-                while ((1 << m_QueuedLOD) * CTerrain::GetHeightMapUnitSize() < nSectorSize / 64)
+                int nSectorSize =GetTerrain()->GetSectorSize() << m_nTreeLevel;
+                while ((1 << m_QueuedLOD) * GetTerrain()->GetHeightMapUnitSize() < nSectorSize / 64)
                 {
                     m_QueuedLOD++;
                 }
@@ -1146,8 +1146,8 @@ void CTerrainNode::Render(const SRendParams& RendParams, const SRenderingPassInf
         m_DistanceToCamera[passInfo.GetRecursiveLevel()] = GetPointToBoxDistance(passInfo.GetCamera().GetPosition(), GetBBox());
         SetLOD(passInfo);
 
-        int nSectorSize = CTerrain::GetSectorSize() << m_nTreeLevel;
-        while ((1 << m_QueuedLOD) * CTerrain::GetHeightMapUnitSize() < nSectorSize / 64)
+        int nSectorSize =GetTerrain()->GetSectorSize() << m_nTreeLevel;
+        while ((1 << m_QueuedLOD) * GetTerrain()->GetHeightMapUnitSize() < nSectorSize / 64)
         {
             m_QueuedLOD++;
         }
@@ -1169,7 +1169,7 @@ void CTerrainNode::Render(const SRendParams& RendParams, const SRenderingPassInf
 
     if (!RenderSector(passInfo))
     {
-        m_pTerrain->m_pTerrainUpdateDispatcher->QueueJob(this, passInfo);
+        GetTerrain()->m_pTerrainUpdateDispatcher->QueueJob(this, passInfo);
     }
 
     m_nLastTimeUsed = fastftol_positive(GetCurTimeSec());
@@ -1199,8 +1199,8 @@ void DetailLayerMesh::DeleteRenderMeshes(IRenderer* pRend)
 
 int CTerrainNode::GetSectorSizeInHeightmapUnits() const
 {
-    int nSectorSize = CTerrain::GetSectorSize() << m_nTreeLevel;
-    return nSectorSize / CTerrain::GetHeightMapUnitSize();
+    int nSectorSize = GetTerrain()->GetSectorSize() << m_nTreeLevel;
+    return nSectorSize / GetTerrain()->GetHeightMapUnitSize();
 }
 
 SProcObjChunk::SProcObjChunk()

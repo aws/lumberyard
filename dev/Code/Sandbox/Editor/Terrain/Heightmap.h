@@ -17,6 +17,7 @@
 
 #include "RGBLayer.h"
 #include "Layer.h"
+#include "Editor/Terrain/IEditorTerrain.h"
 
 #define DEFAULT_HEIGHTMAP_SIZE 4096
 
@@ -31,25 +32,6 @@ struct SNoiseParams;
 class CTerrainGrid;
 struct SEditorPaintBrush;
 
-// Note: This type is used by the Terrain system; it isn't really a heightmap thing
-struct SSectorInfo
-{
-    //! Size of terrain unit.
-    int unitSize;
-
-    //! Sector size in meters.
-    int sectorSize;
-
-    //! Size of texture for one sector in pixels.
-    int sectorTexSize;
-
-    //! Number of sectors on one side of terrain.
-    int numSectors;
-
-    //! Size of whole terrain surface texture.
-    int surfaceTextureSize;
-};
-
 // Interface to access CHeightmap from gems
 class IHeightmap
 {
@@ -59,15 +41,21 @@ public:
 };
 
 // Editor data structure to keep the heights, detail layer information/holes, terrain texture
-class CHeightmap : public IHeightmap
+class CHeightmap : public IEditorTerrain, public IHeightmap
 {
 public:
     CHeightmap();
     CHeightmap(const CHeightmap&);
     virtual ~CHeightmap();
 
+    virtual int GetType();
+
+    virtual void Init() { InitTerrain(); }
+    virtual void Update() { UpdateEngineTerrain(); }
+
     uint64 GetWidth() const { return m_iWidth; }
     uint64 GetHeight() const { return m_iHeight; }
+    uint64 GetDepth() const { return 0; }
     float GetMaxHeight() const { return m_fMaxHeight; }
 
     //! Get size of every heightmap unit in meters.
@@ -81,9 +69,11 @@ public:
 
     //! Convert from world coordinates to heightmap coordinates.
     QPoint WorldToHmap(const Vec3& wp) const;
+    QPoint FromWorld(const Vec3& wp) const { return WorldToHmap(wp); }
 
     //! Convert from heightmap coordinates to world coordinates.
-    Vec3 HmapToWorld(const QPoint& hpos) const;
+    Vec3 HmapToWorld(const QPoint& pos) const;
+    Vec3 ToWorld(const QPoint& pos) const { return HmapToWorld(pos); }
 
     // Maps world bounding box to the heightmap space rectangle.
     QRect WorldBoundsToRect(const AABB& worldBounds) const;
@@ -94,6 +84,11 @@ public:
     //! Returns information about sectors on terrain.
     //! @param si Structure filled with queried data.
     void GetSectorsInfo(SSectorInfo& si);
+
+    Vec3i GetSectorSizeVector() const
+    {
+        return Vec3i(0, 0, 0); //this is related to positioning
+    }
 
     // TODO: This unchecked buffer access needs to go
     t_hmap* GetData() { return m_pHeightmap.data(); }
@@ -168,6 +163,7 @@ public:
 
     // (Re)Allocate / deallocate
     void Resize(int iWidth, int iHeight, int unitSize, bool bCleanOld = true, bool bForceKeepVegetation = false);
+    void Resize(int iWidth, int iHeight, int iDepth, int unitSize, bool bCleanOld=true, bool bForceKeepVegetation=false) { Resize(iWidth, iHeight, unitSize, bCleanOld, bForceKeepVegetation); }
     void CleanUp();
 
     // Importing / exporting
@@ -286,7 +282,7 @@ public:
 
     bool IsAllocated();
 
-
+    void SetTerrainType(int type);
     void SetUseTerrain(bool useTerrain);
     bool GetUseTerrain();
 

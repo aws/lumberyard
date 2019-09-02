@@ -113,10 +113,9 @@
             "VMath_SSE.hpp"
         ]
     },
-    "Cry3DEngine_terrain_uber.cpp":
-    {
-        "Terrain":
-        [
+    "Cry3DEngine_terrain_uber.cpp": {
+        "Terrain": [
+            "../CryCommon/TerrainFactory.cpp",
             "terrain.cpp",
             "terrain_compile.cpp",
             "terrain_det_tex.cpp",
@@ -125,8 +124,7 @@
             "terrain.h",
             "terrain_compile_info.h"
         ],
-        "Terrain/Texture":
-        [
+        "Terrain/Texture": [
             "Terrain/Texture/MacroTexture.h",
             "Terrain/Texture/MacroTexture.cpp",
             "Terrain/Texture/MacroTextureImporter.h",
@@ -134,8 +132,7 @@
             "Terrain/Texture/TexturePool.h",
             "Terrain/Texture/TexturePool.cpp"
         ],
-        "Terrain/Sector":
-        [
+        "Terrain/Sector": [
             "terrain_node.cpp",
             "terrain_node_compile.cpp",
             "terrain_sector.cpp",
@@ -348,7 +345,7 @@
             "RopeRenderNode.cpp",
             "RopeRenderNode.h"
         ],
-        "GeomCache":
+        "GeomCache": 
         [
             "GeomCache.cpp",
             "GeomCache.h",

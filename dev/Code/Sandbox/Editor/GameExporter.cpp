@@ -20,6 +20,7 @@
 
 #include "GameEngine.h"
 #include "CryEditDoc.h"
+#include "GameEngine.h"
 #include "Mission.h"
 #include "ShaderCache.h"
 
@@ -362,6 +363,8 @@ bool CGameExporter::Export(unsigned int flags, EEndian eExportEndian, const char
 
 bool CGameExporter::ExportMap(const char* pszGamePath, bool bSurfaceTexture, EEndian eExportEndian)
 {
+    IEditorTerrain* terrain=GetIEditor()->GetTerrain();
+
     GetIEditor()->ShowConsole(true);
 
     QString ctcFilename;
@@ -371,12 +374,15 @@ bool CGameExporter::ExportMap(const char* pszGamePath, bool bSurfaceTexture, EEn
     //level remove any old cover.ctc files, that will be overwritten by the resource compiler anyway.
     m_levelPak.m_pakFile.RemoveFile(ctcFilename.toUtf8().data());
 
-    // No need to generate texture if there are no layers or the caller does
-    // not demand the texture to be generated
-    if (GetIEditor()->GetTerrainManager()->GetLayerCount() == 0 || (!bSurfaceTexture && !GetIEditor()->GetTerrainManager()->GetRGBLayer()->GetNeedExportTexture()))
+    if(terrain->GetType()==GetIEditor()->Get3DEngine()->GetTerrainId("CTerrain"))
     {
-        CLogFile::WriteLine("Skip exporting terrain texture.");
-        return true;
+        // No need to generate texture if there are no layers or the caller does
+        // not demand the texture to be generated
+        if(GetIEditor()->GetTerrainManager()->GetLayerCount()==0||(!bSurfaceTexture&&!GetIEditor()->GetTerrainManager()->GetRGBLayer()->GetNeedExportTexture()))
+        {
+            CLogFile::WriteLine("Skip exporting terrain texture.");
+            return true;
+        }
     }
 
     CLogFile::FormatLine("Exporting data to game (%s)...", pszGamePath);
@@ -389,32 +395,38 @@ bool CGameExporter::ExportMap(const char* pszGamePath, bool bSurfaceTexture, EEn
     GetIEditor()->SetStatusText("Exporting terrain texture (Generating)...");
 
     // Check dimensions
-    CHeightmap* pHeightMap = GetIEditor()->GetHeightmap();
-    if (pHeightMap->GetWidth() != pHeightMap->GetHeight() || pHeightMap->GetWidth() % 128)
+    
+    if (terrain->GetWidth() != terrain->GetHeight() || terrain->GetWidth() % 128)
     {
-        assert(pHeightMap->GetWidth() % 128 == 0);
-        CLogFile::WriteLine("Can't export a heightmap");
-        Error("Can't export a heightmap with dimensions that can't be evenly divided by 128 or that are not square!");
+        assert(terrain->GetWidth() % 128 == 0);
+        CLogFile::WriteLine("Can't export a terrain");
+        Error("Can't export a terrain with dimensions that can't be evenly divided by 128 or that are not square!");
         return false;
     }
 
     DWORD startTime = GetTickCount();
 
     gEnv->p3DEngine->CloseTerrainTextureFile();
-    pHeightMap->GetTerrainGrid()->InitSectorGrid(pHeightMap->GetTerrainGrid()->GetNumSectors());
 
-    if (!ExportTerrainTexture(ctcFilename.toUtf8().data()))
+    if(terrain->GetType()==GetIEditor()->Get3DEngine()->GetTerrainId("CTerrain"))
     {
-        return false;
+        CHeightmap *heightmap=(CHeightmap *)terrain;
+
+        heightmap->GetTerrainGrid()->InitSectorGrid(heightmap->GetTerrainGrid()->GetNumSectors());
+
+        if(!ExportTerrainTexture(ctcFilename.toLatin1().data()))
+        {
+            return false;
+        }
+        GetIEditor()->GetTerrainManager()->GetRGBLayer()->SetNeedExportTexture(false);
+
+        CLogFile::WriteLine("Update heightmap texture file...");
+        GetIEditor()->GetTerrainManager()->GetRGBLayer()->CleanupCache();
+        heightmap->SetSurfaceTextureSize(m_settings.iExportTexWidth, m_settings.iExportTexWidth);
+        heightmap->ClearModSectors();
+
+        CLogFile::FormatLine("Terrain Texture Exported in %u seconds.", (GetTickCount()-startTime)/1000);
     }
-    GetIEditor()->GetTerrainManager()->GetRGBLayer()->SetNeedExportTexture(false);
-
-    CLogFile::WriteLine("Update terrain texture file...");
-    GetIEditor()->GetTerrainManager()->GetRGBLayer()->CleanupCache();
-    pHeightMap->SetSurfaceTextureSize(m_settings.iExportTexWidth, m_settings.iExportTexWidth);
-    pHeightMap->ClearModSectors();
-
-    CLogFile::FormatLine("Terrain Texture Exported in %u seconds.", (GetTickCount() - startTime) / 1000);
     return true;
 }
 
@@ -697,7 +709,7 @@ void CGameExporter::ExportLevelInfo(const QString& path)
 
     QString levelName = pEditor->GetGameEngine()->GetLevelPath();
     root->setAttr("Name", levelName.toUtf8().data());
-    root->setAttr("HeightmapSize", pEditor->GetHeightmap()->GetWidth());
+    root->setAttr("HeightmapSize", pEditor->GetTerrain()->GetWidth());
 
     if (gEnv->p3DEngine->GetITerrain())
     {
@@ -705,14 +717,16 @@ void CGameExporter::ExportLevelInfo(const QString& path)
         byte* pInfo = new byte[compiledDataSize];
         gEnv->p3DEngine->GetITerrain()->GetCompiledData(pInfo, compiledDataSize, 0, 0, 0, false);
         STerrainChunkHeader* pHeader = (STerrainChunkHeader*)pInfo;
+        STerrainInfo* pTerrainInfo=(STerrainInfo*)(pInfo+sizeof(STerrainChunkHeader));
+
         XmlNodeRef terrainInfo = root->newChild("TerrainInfo");
-        int heightmapSize = GetIEditor()->GetHeightmap()->GetWidth();
-        terrainInfo->setAttr("HeightmapSize", heightmapSize);
-        terrainInfo->setAttr("UnitSize", pHeader->TerrainInfo.nUnitSize_InMeters);
-        terrainInfo->setAttr("SectorSize", pHeader->TerrainInfo.nSectorSize_InMeters);
-        terrainInfo->setAttr("SectorsTableSize", pHeader->TerrainInfo.nSectorsTableSize_InSectors);
-        terrainInfo->setAttr("HeightmapZRatio", pHeader->TerrainInfo.fHeightmapZRatio);
-        terrainInfo->setAttr("OceanWaterLevel", pHeader->TerrainInfo.fOceanWaterLevel);
+        int terrainSize = GetIEditor()->GetTerrain()->GetWidth();
+        terrainInfo->setAttr("HeightmapSize", terrainSize);
+        terrainInfo->setAttr("UnitSize", pTerrainInfo->nUnitSize_InMeters);
+        terrainInfo->setAttr("SectorSize", pTerrainInfo->nSectorSize_InMeters);
+        terrainInfo->setAttr("SectorsTableSize", pTerrainInfo->nSectorsTableSize_InSectors);
+        terrainInfo->setAttr("HeightmapZRatio", pTerrainInfo->fHeightmapZRatio);
+        terrainInfo->setAttr("OceanWaterLevel", pTerrainInfo->fOceanWaterLevel);
 
         delete[] pInfo;
     }
@@ -748,16 +762,16 @@ void CGameExporter::ExportMapInfo(XmlNodeRef& node)
     IEditor* pEditor = GetIEditor();
     info->setAttr("Name", QFileInfo(pEditor->GetDocument()->GetTitle()).completeBaseName());
 
-    CHeightmap* heightmap = pEditor->GetHeightmap();
-    if (heightmap)
+    IEditorTerrain* terrain = pEditor->GetTerrain();
+    if (terrain)
     {
-        info->setAttr("HeightmapSize", heightmap->GetWidth());
-        info->setAttr("HeightmapUnitSize", heightmap->GetUnitSize());
-        info->setAttr("HeightmapMaxHeight", heightmap->GetMaxHeight());
-        info->setAttr("WaterLevel", heightmap->GetOceanLevel());
+        info->setAttr("HeightmapSize", terrain->GetWidth());
+        info->setAttr("HeightmapUnitSize", terrain->GetUnitSize());
+        info->setAttr("HeightmapMaxHeight", terrain->GetMaxHeight());
+        info->setAttr("WaterLevel", terrain->GetOceanLevel());
 
         SSectorInfo sectorInfo;
-        heightmap->GetSectorsInfo(sectorInfo);
+        terrain->GetSectorsInfo(sectorInfo);
         int nTerrainSectorSizeInMeters = sectorInfo.sectorSize;
         info->setAttr("TerrainSectorSizeInMeters", nTerrainSectorSizeInMeters);
     }

@@ -26,9 +26,11 @@ def build(bld):
         platforms          = ['all'],
         configurations     = ['all'],
         use                = [ 'AzFramework' ],
+        defines            = [],
         win_features       = ['crcfix'],
         includes           = [bld.ThirdPartyPath('mikkt')],
 
         # Testing
         test_all_file_list = ['cry3dengine_test.waf_files'],
+
     )

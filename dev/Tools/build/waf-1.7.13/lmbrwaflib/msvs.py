@@ -81,102 +81,105 @@ from waflib import Utils, TaskGen, Logs, Task, Context, Node, Options, Errors
 from waflib.Configure import conf, conf_event, ConfigurationContext, deprecated
 from cry_utils import append_to_unique_list, split_comma_delimited_string
 from utils import is_value_true
+
 try:
     import _winreg
     WINREG_SUPPORTED = True
 except ImportError:
     WINREG_SUPPORTED = False
     pass
-
+from waflib.Tools import c_preproc
+import qt5
 
 from lumberyard_modules import apply_project_settings_for_input
 import mscv_helper, cry_utils
 
 HEADERS_GLOB = '**/(*.h|*.hpp|*.H|*.inl|*.hxx)'
+#QOBJECT_RE = re.compile(r'\s*Q_OBJECT\s*', flags=re.MULTILINE)
 
 PROJECT_TEMPLATE = r'''<?xml version="1.0" encoding="UTF-8"?>
-<Project DefaultTargets="Build" ToolsVersion="${project.msvs_version}.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+<Project DefaultTargets="Build" ToolsVersion="${project.msvs_version}$.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
 	<ItemGroup Label="ProjectConfigurations">
-		${for b in project.build_properties}
-			<ProjectConfiguration Include="${b.configuration_name}|${b.platform.split()[0]}">
-				<Configuration>${b.configuration_name}</Configuration>
-				<Platform>${b.platform.split()[0]}</Platform>
+		${for b in project.build_properties}$
+			<ProjectConfiguration Include="${b.configuration_name}$|${b.platform.split()[0]}$">
+				<Configuration>${b.configuration_name}$</Configuration>
+				<Platform>${b.platform.split()[0]}$</Platform>
 			</ProjectConfiguration>
-		${endfor}
+		${endfor}$
 	</ItemGroup>
 	<PropertyGroup Label="Globals">
-		<ProjectGuid>{${project.uuid}}</ProjectGuid>
+		<ProjectGuid>{${project.uuid}$}</ProjectGuid>
 		<Keyword>MakefileProj</Keyword>
-		<ProjectName>${project.name}</ProjectName>
+		<ProjectName>${project.name}$</ProjectName>
 	</PropertyGroup>
 	<Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
-	${for b in project.build_properties}
-		<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='${b.configuration_name}|${b.platform.split()[0]}'" Label="Configuration">
+	${for b in project.build_properties}$
+		<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='${b.configuration_name}$|${b.platform.split()[0]}$'" Label="Configuration">
 			<ConfigurationType>Makefile</ConfigurationType>
-			<OutDir>${b.outdir}</OutDir>
-			${if b.platform == 'ARM'}
+			<OutDir>${b.outdir}$</OutDir>
+			${if b.platform == 'ARM'}$
 				<Keyword>Android</Keyword>
 				<PlatformToolset>Gcc_4_9</PlatformToolset>
 				<ApplicationType>Android</ApplicationType>
 				<AndroidAPILevel>android-21</AndroidAPILevel>
-			${else}
-				<PlatformToolset>${project.get_platform_toolset(b.platform)}</PlatformToolset>
-			${endif}
+			${else}$
+				<PlatformToolset>${project.get_platform_toolset(b.platform)}$</PlatformToolset>
+			${endif}$
 		</PropertyGroup>
-	${endfor}
+	${endfor}$
 	<Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
 	<ImportGroup Label="ExtensionSettings" />
-	<ImportGroup Label="PropertySheets" Condition="${project.get_all_config_platform_conditional_trimmed()}">
+	<ImportGroup Label="PropertySheets" Condition="${project.get_all_config_platform_conditional_trimmed()}$">
 		<Import Project="$(MSBuildProjectDirectory)\$(MSBuildProjectName).vcxproj.default.props" Condition="exists('$(MSBuildProjectDirectory)\$(MSBuildProjectName).vcxproj.default.props')"/>
 		<Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
 	</ImportGroup>
-	${for b in project.build_properties}
-		<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='${b.configuration_name}|${b.platform.split()[0]}'">
-			<NMakeBuildCommandLine>${xml:project.get_build_command(b)}</NMakeBuildCommandLine>
-			<NMakeReBuildCommandLine>${xml:project.get_rebuild_command(b)}</NMakeReBuildCommandLine>
-			<NMakeCleanCommandLine>${xml:project.get_clean_command(b)}</NMakeCleanCommandLine>
-			<NMakeIncludeSearchPath>${xml:b.includes_search_path}</NMakeIncludeSearchPath>
-			<NMakePreprocessorDefinitions>${xml:b.preprocessor_definitions};$(NMakePreprocessorDefinitions)</NMakePreprocessorDefinitions>
-			<IncludePath>${xml:b.includes_search_path}</IncludePath>
-			${if getattr(b, 'output_file', None)}
-				<NMakeOutput>${xml:b.output_file}</NMakeOutput>
-				<ExecutablePath>${xml:b.output_file}</ExecutablePath>
-			${endif}
-			${if not getattr(b, 'output_file', None)}
+	${for b in project.build_properties}$
+		<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='${b.configuration_name}$|${b.platform.split()[0]}$'">
+			<NMakeBuildCommandLine>${xml:project.get_build_command(b)}$</NMakeBuildCommandLine>
+			<NMakeReBuildCommandLine>${xml:project.get_rebuild_command(b)}$</NMakeReBuildCommandLine>
+			<NMakeCleanCommandLine>${xml:project.get_clean_command(b)}$</NMakeCleanCommandLine>
+			<NMakeIncludeSearchPath>${xml:b.includes_search_path}$</NMakeIncludeSearchPath>
+			<NMakePreprocessorDefinitions>${xml:b.preprocessor_definitions}$;$(NMakePreprocessorDefinitions)</NMakePreprocessorDefinitions>
+			<IncludePath>${xml:b.includes_search_path}$</IncludePath>
+			${if getattr(b, 'output_file', None)}$
+				<NMakeOutput>${xml:b.output_file}$</NMakeOutput>
+				<ExecutablePath>${xml:b.output_file}$</ExecutablePath>
+			${endif}$
+			${if not getattr(b, 'output_file', None)}$
 				<NMakeOutput>not_supported</NMakeOutput>
 				<ExecutablePath>not_supported</ExecutablePath>
-			${endif}
-			${if getattr(b, 'output_file_name', None)}
-				<TargetName>${b.output_file_name}</TargetName>
-			${endif}
-			${if getattr(b, 'deploy_dir', None)}
-				<RemoteRoot>${xml:b.deploy_dir}</RemoteRoot>
-			${endif}
+			${endif}$
+			${if getattr(b, 'output_file_name', None)}$
+				<TargetName>${b.output_file_name}$</TargetName>
+			${endif}$
+			${if getattr(b, 'deploy_dir', None)}$
+				<RemoteRoot>${xml:b.deploy_dir}$</RemoteRoot>
+			${endif}$
 
-			${if b.platform == 'Linux X64 GCC'}
-				${if 'Debug' in b.configuration_name}
-					<OutDir>${xml:project.get_output_folder('linux_x64_gcc','Debug')}</OutDir>
-				${else}
-					<OutDir>${xml:project.get_output_folder('linux_x64_gcc','')}</OutDir>
-				${endif}
+			${if b.platform == 'Linux X64 GCC'}$
+				${if 'Debug' in b.configuration_name}$
+					<OutDir>${xml:project.get_output_folder('linux_x64_gcc','Debug')}$</OutDir>
+				${else}$
+					<OutDir>${xml:project.get_output_folder('linux_x64_gcc','')}$</OutDir>
+				${endif}$
             <!--
             -->
-            ${endif}
+            ${endif}$
 		</PropertyGroup>
-	${endfor}
-	${for b in project.build_properties}
-		${if getattr(b, 'deploy_dir', None)}
-			<ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='${b.configuration_name}|${b.platform.split()[0]}'">
+	${endfor}$
+	${for b in project.build_properties}$
+		${if getattr(b, 'deploy_dir', None)}$
+			<ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='${b.configuration_name}$|${b.platform.split()[0]}$'">
 				<Deploy>
 					<DeploymentType>CopyToHardDrive</DeploymentType>
 				</Deploy>
 			</ItemDefinitionGroup>
-		${endif}
-	${endfor}
+		${endif}$
+	${endfor}$
 	<ItemGroup>
-		${for x in project.source}
-			<${project.get_key(x)} Include='${x.abspath()}' />
-		${endfor}
+		${for x in project.source}$
+			<${project.get_key(x)}$ Include='${x.abspath()}$' />
+		${endfor}$
 	</ItemGroup>
 	<Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
 	<Import Project="$(MSBuildProjectDirectory)\..\..\_WAF_\msbuild\waf_build.targets" />
@@ -184,34 +187,368 @@ PROJECT_TEMPLATE = r'''<?xml version="1.0" encoding="UTF-8"?>
 </Project>
 '''
 
+PROJECT_BUILD_TEMPLATE = r'''<?xml version="1.0" encoding="UTF-8"?>
+<Project DefaultTargets="Build" ToolsVersion="${project.msvs_version}$.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+	<ItemGroup Label="ProjectConfigurations">
+${for b in project.build_properties}$
+    <ProjectConfiguration Include="${b.configuration_name}$|${b.platform.split()[0]}$">
+        <Configuration>${b.configuration_name}$</Configuration>
+        <Platform>${b.platform.split()[0]}$</Platform>
+    </ProjectConfiguration>
+${endfor}$
+	</ItemGroup>
+	<PropertyGroup Label="Globals">
+		<ProjectGuid>{${project.uuid}$}</ProjectGuid>
+		<Keyword>Win32Proj</Keyword>
+        <Platform>${b.platform.split()[0]}$</Platform>
+		<ProjectName>${project.name}$</ProjectName>
+        <WindowsTargetPlatformVersion>${project.windows_sdk}$.0</WindowsTargetPlatformVersion>
+	</PropertyGroup>
+	<Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+${for b in project.build_properties}$
+	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='${b.configuration_name}$|${b.platform.split()[0]}$'" Label="Configuration">
+${  if hasattr(b, 'output_type')}$
+${      if b.output_type == 'exe'}$
+        <ConfigurationType>Application</ConfigurationType>
+${      elif b.output_type == 'dll'}$
+        <ConfigurationType>DynamicLibrary</ConfigurationType>
+${      elif b.output_type == 'lib'}$
+        <ConfigurationType>StaticLibrary</ConfigurationType>
+${      endif}$
+${  else}$
+        <ConfigurationType>Utility</ConfigurationType>
+${  endif}$
+		<OutDir>${b.outdir}$\</OutDir>
+${  if b.platform == 'ARM'}$
+		<Keyword>Android</Keyword>
+		<PlatformToolset>Gcc_4_9</PlatformToolset>
+		<ApplicationType>Android</ApplicationType>
+		<AndroidAPILevel>android-21</AndroidAPILevel>
+${  else}$
+		<PlatformToolset>${project.get_platform_toolset(b.platform)}$</PlatformToolset>
+${  endif}$
+	</PropertyGroup>
+${endfor}$
+	<Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+	<ImportGroup Label="ExtensionSettings" />
+	<ImportGroup Label="PropertySheets" Condition="${project.get_all_config_platform_conditional_trimmed()}$">
+		<Import Project="$(MSBuildProjectDirectory)\$(MSBuildProjectName).vcxproj.default.props" Condition="exists('$(MSBuildProjectDirectory)\$(MSBuildProjectName).vcxproj.default.props')"/>
+		<Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+	</ImportGroup>
+    <PropertyGroup>
+        <_ProjectFileVersion>10.0.20506.1</_ProjectFileVersion>
+${for b in project.build_properties}$
+${  if hasattr(b, 'output_type')}$
+        <OutDir Condition="'$(Configuration)|$(Platform)'=='${b.configuration_name}$|${b.platform.split()[0]}$'">${b.outdir}$\</OutDir>
+        <IntDir Condition="'$(Configuration)|$(Platform)'=='${b.configuration_name}$|${b.platform.split()[0]}$'">${b.assembly_name}$.dir\${b.configuration_name}$\</IntDir>
+        <TargetName Condition="'$(Configuration)|$(Platform)'=='${b.configuration_name}$|${b.platform.split()[0]}$'">${b.output_file_name}$</TargetName>
+        <TargetExt Condition="'$(Configuration)|$(Platform)'=='${b.configuration_name}$|${b.platform.split()[0]}$'">.${b.output_type}$</TargetExt>
+        <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='${b.configuration_name}$|${b.platform.split()[0]}$'">true</LinkIncremental>
+        <GenerateManifest Condition="'$(Configuration)|$(Platform)'=='${b.configuration_name}$|${b.platform.split()[0]}$'">true</GenerateManifest>
+${  endif}$
+${endfor}$
+    </PropertyGroup>
+
+${for b in project.build_properties}$
+    <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+${  if '/INCREMENTAL:NO' in b.link_flags}$
+        <LinkIncremental>false</LinkIncremental>
+${  else}$
+        <LinkIncremental>true</LinkIncremental>
+${  endif}$
+${  if '/MANIFEST:NO' in b.link_flags}$
+        <GenerateManifest>false</GenerateManifest>
+${  else}$
+        <GenerateManifest>true</GenerateManifest>
+${  endif}$
+    </PropertyGroup>
+${endfor}$
+
+${for b in project.build_properties}$
+	<ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='${b.configuration_name}$|${b.platform.split()[0]}$'">
+        <ClCompile>
+${  if '/nologo' not in b.cxx_flags}$
+            <SuppressStartupBanner>No</SuppressStartupBanner>
+${  endif}$
+            <AdditionalIncludeDirectories>${xml:b.includes_search_path}$</AdditionalIncludeDirectories>
+${  if '/bigobj' in b.cxx_flags}$
+            <AdditionalOptions>%(AdditionalOptions) /bigobj</AdditionalOptions>
+${  endif}$
+            <AssemblerListingLocation>${b.configuration_name}$/</AssemblerListingLocation>
+            <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
+            <CompileAs>CompileAsCpp</CompileAs>
+            <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+            <ExceptionHandling>Sync</ExceptionHandling>
+${  if '/Ox' in b.cxx_flags}$
+            <Optimization>Full</Optimization>
+${  elif '/O2' in b.cxx_flags}$
+            <Optimization>MaxSpeed</Optimization>
+${  elif '/O1' in b.cxx_flags}$
+            <Optimization>MinSpace</Optimization>
+${  elif '/Od' in b.cxx_flags}$
+            <Optimization>Disabled</Optimization>
+${  endif}$
+${  if '/Ox' in b.cxx_flags}$
+${      if '/Ob1' in b.cxx_flags}$
+            <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
+${      elif '/Ob0' in b.cxx_flags}$
+            <InlineFunctionExpansion>Disabled</InlineFunctionExpansion>
+${      else}$
+            <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
+${      endif}$
+${      if '/Oi' in b.cxx_flags}$
+            <IntrinsicFunctions>true</IntrinsicFunctions>
+${      else}$
+            <IntrinsicFunctions>false</IntrinsicFunctions>
+${      endif}$
+${      if '/Oy' in b.cxx_flags}$
+            <OmitFramePointers>true</OmitFramePointers>
+${      else}$
+            <OmitFramePointers>false</OmitFramePointers>
+${      endif}$
+${      if '/Os' in b.cxx_flags}$
+            <FavorSizeOrSpeed>Size</FavorSizeOrSpeed>
+${      else}$
+            <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
+${      endif}$
+${  endif}$
+${  if '/GL' in b.cxx_flags}$
+            <WholeProgramOptimization>true</WholeProgramOptimization>
+${  endif}$
+            <PrecompiledHeader>NotUsing</PrecompiledHeader>
+${  if '/Od' in b.cxx_flags}$
+            <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
+${  else}$
+            <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+${  endif}$
+${  if '/GR-' in b.cxx_flags}$
+            <RuntimeTypeInfo>false</RuntimeTypeInfo>
+${  else}$
+            <RuntimeTypeInfo>true</RuntimeTypeInfo>
+${  endif}$
+${  if '/Wd' in b.cxx_flags}$
+        ${disabled_warnings=re.findall("/Wd(\d\d\d\d)", b.cxx_flags)}$
+            <DisableSpecificWarnings>${';'.join(disabled_warnings)}$</DisableSpecificWarnings>
+${  endif}$
+    
+${  if '/W4' in b.cxx_flags}$
+            <WarningLevel>Level4</WarningLevel>
+${  elif '/W3' in b.cxx_flags}$
+            <WarningLevel>Level3</WarningLevel>
+${  elif '/W2' in b.cxx_flags}$
+            <WarningLevel>Level2</WarningLevel>
+${  elif '/W1' in b.cxx_flags}$
+            <WarningLevel>Level1</WarningLevel>
+${  elif '/W0' in b.cxx_flags}$
+            <WarningLevel>Level0</WarningLevel>
+${  endif}$
+            <PreprocessorDefinitions>${xml:b.preprocessor_definitions}$;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+            <ObjectFileName>$(IntDir)</ObjectFileName>
+${  if '/fp:fast' in b.cxx_flags}$
+            <FloatingPointModel>Fast</FloatingPointModel>
+${  endif}$
+${  if '/Zc:wchar_t' not in b.cxx_flags}$
+            <TreatWChar_tAsBuiltInType>false</TreatWChar_tAsBuiltInType>
+${  endif}$
+${  if '/Zc:forScope' not in b.cxx_flags}$
+            <ForceConformanceInForLoopScope>false</ForceConformanceInForLoopScope>
+${  endif}$
+${  if '/Zc:inline' not in b.cxx_flags}$
+            <RemoveUnreferencedCodeData>false</RemoveUnreferencedCodeData>
+${  endif}$
+${  if '/GF-' in b.cxx_flags}$
+            <StringPooling>false</StringPooling>
+${  endif}$
+        </ClCompile>
+        <Link>
+            <AdditionalDependencies>${xml:b.libs}$</AdditionalDependencies>
+            <AdditionalLibraryDirectories>${xml:b.libs_search_path}$; %(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+${  if '/CGTHREADS' in b.link_flags}$
+${      for flag in b.link_flags}$
+${          if '/CGTHREADS' in flag}$
+                    <AdditionalOptions>%(AdditionalOptions) ${flag}$</AdditionalOptions>
+${          endif}$
+${      endfor}$
+${  endif}$
+${  if '/OPT:ICF' in b.link_flags}$
+            <EnableCOMDATFolding>true</EnableCOMDATFolding>
+${  endif}$
+${  if '/DEBUG' in b.link_flags}$
+${      if '/DEBUG:FASTLINK' in b.link_flags}$
+            <GenerateDebugInformation>DebugFastLink</GenerateDebugInformation>
+${      else}$
+            <GenerateDebugInformation>true</GenerateDebugInformation>
+${      endif}$
+${  else}$
+            <GenerateDebugInformation>false</GenerateDebugInformation>
+${  endif}$
+            <IgnoreSpecificDefaultLibraries>%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
+${  if '/LARGEADDRESSAWARE' in b.link_flags}$
+            <LargeAddressAware>true</LargeAddressAware>
+${  else}$
+            <LargeAddressAware>false</LargeAddressAware>
+${  endif}$
+${  if '/LTCG' in b.link_flags}$
+${      if '/LTCG:incremental' in b.link_flags}$
+            <LinkTimeCodeGeneration>UseFastLinkTimeCodeGeneration</LinkTimeCodeGeneration>
+${      else}$
+            <LinkTimeCodeGeneration>UseLinkTimeCodeGeneration</LinkTimeCodeGeneration>
+${      endif}$
+${  endif}$
+${  if '/OPT:REF' in b.link_flags}$
+            <OptimizeReferences>true</OptimizeReferences>
+${  endif}$
+            <SubSystem>Windows</SubSystem>
+${  if '/NOLOGO' in b.link_flags}$
+            <SuppressStartupBanner>true</SuppressStartupBanner>
+${  else}$
+            <SuppressStartupBanner>false</SuppressStartupBanner>
+${  endif}$
+${  if '/MACHINE:X64' in b.link_flags}$
+            <TargetMachine>MachineX64</TargetMachine>
+${  endif}$
+        </Link>
+    </ItemDefinitionGroup>
+${endfor}$
+${for b in project.build_properties}$
+${  if getattr(b, 'deploy_dir', None)}$
+	<ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='${b.configuration_name}$|${b.platform.split()[0]}$'">
+		<Deploy>
+			<DeploymentType>CopyToHardDrive</DeploymentType>
+		</Deploy>
+	</ItemDefinitionGroup>
+${  endif}$
+${endfor}$
+${for qt_files in project.qt_file_types}$
+${  if hasattr(project, qt_files['type'])}$
+${      for qt_file in getattr(project, qt_files['type'])}$
+	<ItemGroup>
+		<CustomBuild Include="${qt_file['input'].abspath()}$">
+${          for b in project.build_properties}$
+${              if b.target_config not in project.ctx.all_envs}$${py:continue}$${endif}$
+${              py:env=project.ctx.all_envs[b.target_config]}$
+${              if qt_files['cmd'] not in env}$${py:continue}$${endif}$
+			<Message Condition="'$(Configuration)|$(Platform)'=='${b.configuration_name}$|${b.platform.split()[0]}$'">Generating ${qt_file['name']}$</Message>
+			<Command Condition="'$(Configuration)|$(Platform)'=='${b.configuration_name}$|${b.platform.split()[0]}$'">setlocal
+${getattr(env, qt_files['cmd'])}$ ${qt_files['call'].format(NAME=qt_file['src_name'], SRC=qt_file['input'].abspath(), TGT=qt_file['output'].abspath())}$
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd</Command>
+			<AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='${b.configuration_name}$|${b.platform.split()[0]}$'">${qt_file['input'].abspath()}$;%(AdditionalInputs)</AdditionalInputs>
+			<Outputs Condition="'$(Configuration)|$(Platform)'=='${b.configuration_name}$|${b.platform.split()[0]}$'">${qt_file['output'].abspath()}$</Outputs>
+			<LinkObjects Condition="'$(Configuration)|$(Platform)'=='${b.configuration_name}$|${b.platform.split()[0]}$'">false</LinkObjects>
+${          endfor}$
+		</CustomBuild>
+	</ItemGroup>
+${      endfor}$
+${  endif}$
+${endfor}$
+	<ItemGroup>
+${for x in project.source}$
+		<${project.get_key(x)}$ Include='${x.abspath()}$' />
+${endfor}$
+${for qt_files in project.qt_file_types}$
+${  if hasattr(project, qt_files['type'])}$
+${      for qt_file in getattr(project, qt_files['type'])}$
+${          if qt_file['included']}$
+		<ClInclude Include='${qt_file['output'].abspath()}$' />
+${          else}$
+		<ClCompile Include='${qt_file['output'].abspath()}$' />
+${          endif}$
+${      endfor}$
+${  endif}$
+${endfor}$
+${if hasattr(project, 'test_source')}$
+${  for x in project.test_source}$
+		<${project.get_key(x)}$ Include='${x.abspath()}$'>
+${      for b in project.build_properties}$
+${          if b.test}$${py:continue}$${endif}$
+			<ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='${b.configuration_name}$|${b.platform.split()[0]}$'">true</ExcludedFromBuild>
+${      endfor}$
+		</${project.get_key(x)}$>
+${  endfor}$
+${endif}$
+    </ItemGroup>
+	<Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+	<ImportGroup Label="ExtensionTargets" />
+</Project>
+'''
+
 PROJECT_USER_TEMPLATE = '''<?xml version="1.0" encoding="UTF-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-	${for b in project.build_properties}
+	${for b in project.build_properties}$
 		<!--
 		-->
 		<!--
 		-->
-	${endfor}
+	${endfor}$
 </Project>
 '''
 
 FILTER_TEMPLATE = '''<?xml version="1.0" encoding="UTF-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
 	<ItemGroup>
-		${for x in project.source}
-			<${project.get_key(x)} Include="${x.abspath()}">
-			${if project.get_filter_name(x) != '.'}
-				<Filter>${project.get_filter_name(x)}</Filter>
-			${endif}
-			</${project.get_key(x)}>
-		${endfor}
+		${for x in project.source}$
+		<${project.get_key(x)}$ Include="${x.abspath()}$">
+			${if project.get_filter_name(x) != '.'}$
+			<Filter>${project.get_filter_name(x)}$</Filter>
+			${endif}$
+		</${project.get_key(x)}$>
+		${endfor}$
+		${if hasattr(project, 'test_source')}$
+			${for x in project.test_source}$
+		<${project.get_key(x)}$ Include="${x.abspath()}$">
+				${if project.get_filter_name(x) != '.'}$
+			<Filter>${project.get_filter_name(x)}$</Filter>
+				${endif}$
+		</${project.get_key(x)}$>
+			${endfor}$
+		${endif}$
+${for qt_files in project.qt_file_types}$
+${  if hasattr(project, qt_files['type'])}$
+${      for qt_file in getattr(project, qt_files['type'])}$
+${          if qt_file['included']}$
+		<ClInclude Include='${qt_file['output'].abspath()}$'>
+			<Filter>${project.get_filter_name(qt_file['output'])}$</Filter>
+		</ClInclude>
+${          else}$
+		<ClCompile Include='${qt_file['output'].abspath()}$'>
+			<Filter>${project.get_filter_name(qt_file['output'])}$</Filter>
+		</ClCompile>
+${          endif}$
+${      endfor}$
+${  endif}$
+${endfor}$
 	</ItemGroup>
+${py:qt_custom=False}$
+${for qt_files in project.qt_file_types}$
+${  if hasattr(project, qt_files['type'])}$
+${      py:qt_custom=True}$
+${  endif}$
+${endfor}$
+${if qt_custom}$
 	<ItemGroup>
-		${for x in project.dirs()}
-			<Filter Include="${x}">
-				<UniqueIdentifier>{${project.make_uuid(x)}}</UniqueIdentifier>
+${  for qt_files in project.qt_file_types}$
+${      if hasattr(project, qt_files['type'])}$
+${          for qt_file in getattr(project, qt_files['type'])}$
+		<CustomBuild Include="${qt_file['input'].abspath()}$">
+				<Filter>${project.get_filter_name(qt_file['input'])}$</Filter>
+		</CustomBuild>
+${          endfor}$
+${      endif}$
+${  endfor}$
+	</ItemGroup>
+${endif}$
+	<ItemGroup>
+		${for x in project.dirs()}$
+			<Filter Include="${x}$">
+				<UniqueIdentifier>{${project.make_uuid(x)}$}</UniqueIdentifier>
 			</Filter>
-		${endfor}
+		${endfor}$
 	</ItemGroup>
 </Project>
 '''
@@ -220,48 +557,52 @@ FILTER_TEMPLATE = '''<?xml version="1.0" encoding="UTF-8"?>
 # Please mirror any changes in the solution template in the msvs_override_handling.py | get_solution_overrides()
 # This also include format changes such as spaces
 
-SOLUTION_TEMPLATE = '''Microsoft Visual Studio Solution File, Format Version ${project.formatver}
-# Visual Studio ${project.vsver}
-${for p in project.all_projects}
-Project("{${p.ptype()}}") = "${p.name}", "${p.title}", "{${p.uuid}}"
-	${if p != project.waf_project}
-		ProjectSection(ProjectDependencies) = postProject
-			{${project.waf_project.uuid}} = {${project.waf_project.uuid}}
-		EndProjectSection
-	${endif}
-EndProject${endfor}
+SOLUTION_TEMPLATE = '''Microsoft Visual Studio Solution File, Format Version ${project.formatver}$
+# Visual Studio ${project.vsver}$
+${for p in project.all_projects}$
+Project("{${p.ptype()}$}") = "${p.name}$", "${p.title}$", "{${p.uuid}$}"
+	${if p != project.waf_project}$
+		${if hasattr(p, 'dependencies')}$
+	ProjectSection(ProjectDependencies) = postProject
+			${for dependency in p.dependencies}$
+		{${dependency}$} = {${dependency}$}
+			${endfor}$
+	EndProjectSection
+		${endif}$
+	${endif}$
+EndProject${endfor}$
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
-		${if project.all_projects}
-			${for (configuration, platform) in project.all_projects[0].ctx.project_configurations()}
-				${configuration}|${platform.split()[0]} = ${configuration}|${platform.split()[0]}
-			${endfor}
-		${endif}
+		${if project.all_projects}$
+			${for (configuration, platform) in project.all_projects[0].ctx.project_configurations()}$
+		${configuration}$|${platform.split()[0]}$ = ${configuration}$|${platform.split()[0]}$
+			${endfor}$
+		${endif}$
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		${for p in project.all_projects}
-			${if hasattr(p, 'source')}
-				${for b in p.build_properties}
-					{${p.uuid}}.${b.configuration_name}|${b.platform.split()[0]}.ActiveCfg = ${b.configuration_name}|${b.platform.split()[0]}
-					${if getattr(p, 'is_active', None)}
-						{${p.uuid}}.${b.configuration_name}|${b.platform.split()[0]}.Build.0 = ${b.configuration_name}|${b.platform.split()[0]}
-					${endif}
-					${if getattr(p, 'is_deploy', None) and b.platform.lower() in p.is_deploy}
-						{${p.uuid}}.${b.configuration_name}|${b.platform.split()[0]}.Deploy.0 = ${b.configuration_name}|${b.platform.split()[0]}
-					${endif}
-				${endfor}
-			${endif}
-		${endfor}
+		${for p in project.all_projects}$
+			${if hasattr(p, 'source')}$
+				${for b in p.build_properties}$
+		{${p.uuid}$}.${b.configuration_name}$|${b.platform.split()[0]}$.ActiveCfg = ${b.configuration_name}$|${b.platform.split()[0]}$
+					${if getattr(p, 'is_active', None) and b.build}$
+		{${p.uuid}$}.${b.configuration_name}$|${b.platform.split()[0]}$.Build.0 = ${b.configuration_name}$|${b.platform.split()[0]}$
+					${endif}$
+					${if getattr(p, 'is_deploy', None) and b.platform.lower() in p.is_deploy}$
+		{${p.uuid}$}.${b.configuration_name}$|${b.platform.split()[0]}$.Deploy.0 = ${b.configuration_name}$|${b.platform.split()[0]}$
+					${endif}$
+				${endfor}$
+			${endif}$
+		${endfor}$
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
-	${for p in project.all_projects}
-		${if p.parent}
-			{${p.uuid}} = {${p.parent.uuid}}
-		${endif}
-	${endfor}
+	${for p in project.all_projects}$
+		${if p.parent}$
+		{${p.uuid}$} = {${p.parent.uuid}$}
+		${endif}$
+	${endfor}$
 	EndGlobalSection
 EndGlobal
 '''
@@ -269,71 +610,71 @@ EndGlobal
 PROPERTY_SHEET_TEMPLATE = r'''<?xml version="1.0" encoding="UTF-8"?>
 <Project DefaultTargets="Build" ToolsVersion="4.0"
 	xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-	${for b in project.build_properties}	
-		${if getattr(b, 'output_file_name', None)}
-			<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='${b.configuration_name}|${b.platform.split()[0]}'">
-				<WAF_TargetFile>${xml:b.output_file}</WAF_TargetFile>
+	${for b in project.build_properties}$	
+		${if getattr(b, 'output_file_name', None)}$
+			<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='${b.configuration_name}$|${b.platform.split()[0]}$'">
+				<WAF_TargetFile>${xml:b.output_file}$</WAF_TargetFile>
 				<TargetPath Condition="'$(WAF_TargetFile)' != ''">$(WAF_TargetFile)</TargetPath>
 				<LocalDebuggerCommand>$(TargetPath)</LocalDebuggerCommand>
 				<LocalDebuggerCommand Condition="$(TargetPath.EndsWith('.dll')) And  $(Configuration.EndsWith('_test'))">$(OutDir)/AzTestRunner</LocalDebuggerCommand>
-				<LocalDebuggerCommandArguments Condition="$(TargetPath.EndsWith('.dll')) And$(Configuration.EndsWith('_test'))">"${xml:b.output_file}" AzRunUnitTests --pause-on-completion --gtest_break_on_failure</LocalDebuggerCommandArguments>
+				<LocalDebuggerCommandArguments Condition="$(TargetPath.EndsWith('.dll')) And$(Configuration.EndsWith('_test'))">"${xml:b.output_file}$" AzRunUnitTests --pause-on-completion --gtest_break_on_failure</LocalDebuggerCommandArguments>
 				<LocalDebuggerWorkingDirectory>$(OutDir)</LocalDebuggerWorkingDirectory>
 			</PropertyGroup>
-		${endif}
-		<ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='${b.configuration_name}|${b.platform.split()[0]}'">
+		${endif}$
+		<ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='${b.configuration_name}$|${b.platform.split()[0]}$'">
 			<ClCompile>
 				<WAF_SingleCompilationMode>Code</WAF_SingleCompilationMode>
-				<WAF_TargetSolution>${xml:project.ctx.get_solution_node().abspath()} </WAF_TargetSolution>
-				${if getattr(b, 'target_spec', None)}
-					<WAF_TargetSpec>${xml:b.target_spec}</WAF_TargetSpec>
-				${endif}
-				${if getattr(b, 'target_config', None)}
-					<WAF_TargetConfig>${xml:b.target_config}</WAF_TargetConfig>
-				${endif}
-				${if getattr(b, 'output_file_name', None)}
-					<WAF_TargetName>${xml:b.output_file_name}</WAF_TargetName>
-				${endif}
-				${if getattr(b, 'output_file', None)}
-					<WAF_TargetFile>${xml:b.output_file} </WAF_TargetFile>
-				${endif}
-				${if getattr(b, 'includes_search_path', None)}
-					<WAF_IncludeDirectories>${xml:b.includes_search_path}</WAF_IncludeDirectories>
-				${endif}
-				${if getattr(b, 'preprocessor_definitions', None)}
-					<WAF_PreprocessorDefinitions>${xml:b.preprocessor_definitions}</WAF_PreprocessorDefinitions>
-				${endif}
-				${if getattr(b, 'deploy_dir', None)}
-					<WAF_DeployDir>${xml:b.deploy_dir}</WAF_DeployDir>
-				${endif}
-				${if getattr(b, 'output_dir', None)}
-					<WAF_OutputDir>${xml:b.output_dir}</WAF_OutputDir>
-				${endif}
-				${if getattr(b, 'c_flags', None)}
-					<WAF_CompilerOptions_C>${xml:b.c_flags} </WAF_CompilerOptions_C>
-				${endif}
-				${if getattr(b, 'cxx_flags', None)}
-					<WAF_CompilerOptions_CXX>${xml:b.cxx_flags} </WAF_CompilerOptions_CXX>
-				${endif}
-				${if getattr(b, 'link_flags', None)}
-				<WAF_LinkerOptions>${xml:b.link_flags}</WAF_LinkerOptions>
-				${endif}
+				<WAF_TargetSolution>${xml:project.ctx.get_solution_node().abspath()}$ </WAF_TargetSolution>
+				${if getattr(b, 'target_spec', None)}$
+					<WAF_TargetSpec>${xml:b.target_spec}$</WAF_TargetSpec>
+				${endif}$
+				${if getattr(b, 'target_config', None)}$
+					<WAF_TargetConfig>${xml:b.target_config}$</WAF_TargetConfig>
+				${endif}$
+				${if getattr(b, 'output_file_name', None)}$
+					<WAF_TargetName>${xml:b.output_file_name}$</WAF_TargetName>
+				${endif}$
+				${if getattr(b, 'output_file', None)}$
+					<WAF_TargetFile>${xml:b.output_file}$ </WAF_TargetFile>
+				${endif}$
+				${if getattr(b, 'includes_search_path', None)}$
+					<WAF_IncludeDirectories>${xml:b.includes_search_path}$</WAF_IncludeDirectories>
+				${endif}$
+				${if getattr(b, 'preprocessor_definitions', None)}$
+					<WAF_PreprocessorDefinitions>${xml:b.preprocessor_definitions}$</WAF_PreprocessorDefinitions>
+				${endif}$
+				${if getattr(b, 'deploy_dir', None)}$
+					<WAF_DeployDir>${xml:b.deploy_dir}$</WAF_DeployDir>
+				${endif}$
+				${if getattr(b, 'output_dir', None)}$
+					<WAF_OutputDir>${xml:b.output_dir}$</WAF_OutputDir>
+				${endif}$
+				${if getattr(b, 'c_flags', None)}$
+					<WAF_CompilerOptions_C>${xml:b.c_flags}$ </WAF_CompilerOptions_C>
+				${endif}$
+				${if getattr(b, 'cxx_flags', None)}$
+					<WAF_CompilerOptions_CXX>${xml:b.cxx_flags}$ </WAF_CompilerOptions_CXX>
+				${endif}$
+				${if getattr(b, 'link_flags', None)}$
+				<WAF_LinkerOptions>${xml:b.link_flags}$</WAF_LinkerOptions>
+				${endif}$
 				<WAF_DisableCompilerOptimization>false</WAF_DisableCompilerOptimization>
 				<WAF_ExcludeFromUberFile>false</WAF_ExcludeFromUberFile>
-				<WAF_BuildCommandLine>${xml:project.get_build_command(b)}</WAF_BuildCommandLine>
-				<WAF_RebuildCommandLine>${xml:project.get_rebuild_command(b)}</WAF_RebuildCommandLine>
-				<WAF_CleanCommandLine>${xml:project.get_clean_command(b)}</WAF_CleanCommandLine>
-				${if getattr(b, 'layout_dir', None)}
-					<LayoutDir>${xml:b.layout_dir}</LayoutDir>
-				${elif getattr(b, 'deploy_dir', None)}}
-					<LayoutDir>${xml:b.deploy_dir}</LayoutDir>
-				${endif}
+				<WAF_BuildCommandLine>${xml:project.get_build_command(b)}$</WAF_BuildCommandLine>
+				<WAF_RebuildCommandLine>${xml:project.get_rebuild_command(b)}$</WAF_RebuildCommandLine>
+				<WAF_CleanCommandLine>${xml:project.get_clean_command(b)}$</WAF_CleanCommandLine>
+				${if getattr(b, 'layout_dir', None)}$
+					<LayoutDir>${xml:b.layout_dir}$</LayoutDir>
+				${elif getattr(b, 'deploy_dir', None)}$
+					<LayoutDir>${xml:b.deploy_dir}$</LayoutDir>
+				${endif}$
 				<LayoutExtensionFilter>*</LayoutExtensionFilter>
 			</ClCompile>
 			<Deploy>
 				<DeploymentType>CopyToHardDrive</DeploymentType>
 			</Deploy>
 		</ItemDefinitionGroup>
-	${endfor}
+	${endfor}$
 	<ItemDefinitionGroup />
 	<ItemGroup />
 </Project>
@@ -451,6 +792,43 @@ def get_msbuild_root(toolset_version):
     (root_path, type) = _winreg.QueryValueEx(msbuild_root_regkey, 'MSBuildToolsRoot')
     return root_path.encode('utf-8')
 
+def get_windows_sdks():
+    """
+    Get the list of Windows SDKs from the registry
+    """
+
+    reg_key_name = 'SOFTWARE\\Microsoft\\Microsoft SDKs\\Windows'
+    try:
+        windows_sdks_regkey = _winreg.OpenKey(_winreg.HKEY_LOCAL_MACHINE, reg_key_name, 0, _winreg.KEY_READ)
+    except:
+        windows_sdks_regkey = _winreg.OpenKey(_winreg.HKEY_LOCAL_MACHINE, reg_key_name, 0, _winreg.KEY_READ|_winreg.KEY_WOW64_32KEY)
+    
+        
+    default_sdk=''
+    windows_sdks={}
+    highest_version=0.0
+
+    i=0
+    while True:
+        try:
+            key_name=_winreg.EnumKey(windows_sdks_regkey, i)
+            sdk_regkey=_winreg.OpenKey(windows_sdks_regkey, key_name)
+            sdk_version=_winreg.QueryValueEx(sdk_regkey, "ProductVersion")[0]
+
+            windows_sdks[key_name]=sdk_version
+
+            key_name=re.sub(r'[a-zA-Z]+', '', key_name, re.I)
+            version=float(key_name)
+            if version > highest_version:
+                highest_version=version
+                default_sdk=sdk_version
+
+            i=i+1
+        except EnvironmentError:
+            break
+
+    return default_sdk, windows_sdks
+
 
 def find_vswhere():
     vs_path = os.environ['ProgramFiles(x86)']
@@ -498,7 +876,7 @@ def check_cpp_platform_tools(toolsetVer, platform_tool_name, vs2017vswhereOption
         return True
 
 
-reg_act = re.compile(r"(?P<backslash>\\)|(?P<dollar>\$\$)|(?P<subst>\$\{(?P<code>[^}]*?)\})", re.M)
+reg_act = re.compile(r"(?P<backslash>\\)|(?P<dollar>\$\$)|(?P<subst>\$\{(?P<code>(?!\}\$).*?)\}\$)", re.M)
 
 
 def compile_template(line):
@@ -532,7 +910,7 @@ def compile_template(line):
         if params[x]:
             app("lst.append(%r)" % params[x])
 
-        f = extr[x]
+        f = extr[x].lstrip()
         if f.startswith('if') or f.startswith('for'):
             app(f + ':')
             indent += 1
@@ -648,6 +1026,15 @@ def diff(node, fromnode):
     lst.reverse()
     return tuple(lst)
 
+def subst_vars(_list, vars):
+    """Substitute any occurrence of @foo@ by vars['foo']"""
+    var = re.compile('@([a-zA-Z_]+)@')
+    
+    for index, item in enumerate(_list):
+        match = var.search(item)
+        if match:
+            _list[index]=item.replace('@%s@' % match.group(1), vars[match.group(1)])
+
 class build_property(object):
     pass
 
@@ -734,9 +1121,16 @@ class vsnode_project(vsnode):
         self.title = self.path.abspath()
         self.source = [] # list of node objects
         self.build_properties = [] # list of properties (nmake commands, output dir, etc)
-
+        
         self.defaultPlatformToolSet = ctx.defaultPlatformToolSet
         self.msvs_version = ctx.msvs_version
+        self.windows_sdk = ctx.windows_sdk
+        self.msbuild = ctx.options.msbuild
+        
+        #if we are building with msbuild need to let it know that we are active
+        if self.msbuild:
+            self.is_active = True
+        self.qt_file_types=[]
 
         canonical_enabled_game_list = ','.join(split_comma_delimited_string(ctx.options.enabled_game_projects, True))
         self.enabled_game_projects = canonical_enabled_game_list
@@ -775,6 +1169,14 @@ class vsnode_project(vsnode):
 
         for source in self.source:
             add( _get_filter_name(self.project_filter, source.abspath()) )
+        if hasattr(self, 'test_source'):
+            for source in self.test_source:
+                add( _get_filter_name(self.project_filter, source.abspath()) )
+        for qt_files in self.qt_file_types:
+            if not hasattr(self, qt_files['type']):
+                continue
+            for qt_file in getattr(self, qt_files['type']):
+                add( _get_filter_name(self.project_filter, qt_file['output'].abspath()) )
 
         # Remove duplicates
         lst = list(set(lst))
@@ -789,10 +1191,15 @@ class vsnode_project(vsnode):
             template_str = rm_blank_lines(template_str)
             output_node.stealth_write(template_str)
 
-        _write(PROJECT_TEMPLATE, self.path)
-        _write(FILTER_TEMPLATE, self.path.parent.make_node(self.path.name + '.filters'))
-        _write(PROJECT_USER_TEMPLATE, self.path.parent.make_node(self.path.name + '.user'))
-        _write(PROPERTY_SHEET_TEMPLATE, self.path.parent.make_node(self.path.name + '.default.props'))
+        if self.msbuild:
+            _write(PROJECT_BUILD_TEMPLATE, self.path)
+            _write(FILTER_TEMPLATE, self.path.parent.make_node(self.path.name + '.filters'))
+            _write(PROJECT_USER_TEMPLATE, self.path.parent.make_node(self.path.name + '.user'))
+        else:
+            _write(PROJECT_TEMPLATE, self.path)
+            _write(FILTER_TEMPLATE, self.path.parent.make_node(self.path.name + '.filters'))
+            _write(PROJECT_USER_TEMPLATE, self.path.parent.make_node(self.path.name + '.user'))
+            _write(PROPERTY_SHEET_TEMPLATE, self.path.parent.make_node(self.path.name + '.default.props'))
 
     def get_key(self, node):
         """
@@ -800,6 +1207,12 @@ class vsnode_project(vsnode):
         """
         name = node.name
         if self.ctx.is_cxx_file(name):
+            if self.msbuild and hasattr(self, 'tg'):
+                #make sure that item is not part of an uber file
+                for uber_file, file_list in self.tg.uber_file_lookup.iteritems():
+                    for file_node in file_list:
+                        if file_node.name == name:
+                            return 'ClInclude'
             return 'ClCompile'
         return 'ClInclude'
 
@@ -809,7 +1222,34 @@ class vsnode_project(vsnode):
         """
         ret = []
 
+        self.project_configurations=[]
         for vs_configuration in self.ctx.configurations:
+            self.project_configurations.append(vs_configuration.waf_configuration)
+        test_only=False
+
+        if hasattr(self, 'tg'):
+            if hasattr(self.tg, 'configurations'):
+                if len(self.tg.configurations) > 0:
+                    if not self.tg.configurations[0]=='all':
+                        self.project_configurations=self.tg.configurations
+
+            if hasattr(self.tg, 'test_only'):
+                test_only=self.tg.test_only
+
+        for vs_configuration in self.ctx.configurations:
+            configuration_name=vs_configuration.waf_configuration
+
+            build=True
+            if not configuration_name in self.project_configurations:
+                build=False
+
+            test_config=False
+            if '_test' in vs_configuration.waf_configuration:
+                test_config=True
+
+            if test_only and not test_config:
+                build=False
+                self.project_configurations.remove(configuration_name)
 
             for vs_platform in self.ctx.platforms:
 
@@ -827,6 +1267,11 @@ class vsnode_project(vsnode):
 
                 x.preprocessor_definitions = ''
                 x.includes_search_path = ''
+                x.libs_search_path = ''
+                x.libs = ''
+                x.test = test_config
+
+                x.build = build
 
                 # can specify "deploy_dir" too
                 ret.append(x)
@@ -916,6 +1361,8 @@ class vsnode_build_all(vsnode_alias):
             x.outdir = self.path.parent.abspath()
             x.preprocessor_definitions = ''
             x.includes_search_path = ''
+            x.libs_search_path = ''
+            x.libs = ''
             x.c_flags = ''
             x.cxx_flags = ''
             x.link_flags = ''
@@ -1037,6 +1484,10 @@ class vsnode_target(vsnode_project):
         vsnode_project.__init__(self, ctx, node)
         self.name = quote(tg.name)
         self.tg     = tg  # task generator
+        self.dependencies=[]
+        self.tg_dependencies=[]
+        self.test_source=[]
+
         if getattr(tg, 'need_deploy', None):
             if not isinstance(tg.need_deploy, list):
                 self.is_deploy = [ tg.need_deploy ]
@@ -1066,7 +1517,7 @@ class vsnode_target(vsnode_project):
         tg = self.tg
         source_files = tg.to_nodes(getattr(tg, 'source', []))
         include_dirs = Utils.to_list(getattr(tg, 'msvs_includes', []))
-        waf_file_entries = self.tg.waf_file_entries;
+        waf_file_entries = self.tg.waf_file_entries
 
         include_files = []
         """"
@@ -1077,10 +1528,189 @@ class vsnode_target(vsnode_project):
                 lst = [y for y in x.ant_glob(HEADERS_GLOB, flat=False)]
                 include_files.extend(lst)
         """
+
+        #need to remove test files so that they are only included in test builds
+        test_file_lists=getattr(tg, 'test_all_file_list', None)
+        if test_file_lists:
+            for file_list in test_file_lists:
+                files=tg.file_list_to_source.get(file_list, None)
+                if not files:
+                    continue
+
+                for test_file in files:
+                    if test_file not in source_files:
+                        continue
+
+                    source_files.remove(test_file)
+                    self.test_source.append(test_file)
+
         # remove duplicates
         self.source.extend(list(set(source_files + include_files)))
         self.source += [tg.path.make_node('wscript')] + waf_file_entries
         self.source.sort(key=lambda x: x.abspath())
+
+    def collect_qt_source(self, env):
+        tg = self.tg
+
+        if 'qt5' not in tg.features: #target has qt support
+            return
+
+        remove_files=[]
+        #lets find files that need to be moc'd
+        #loop through header to find Q_OBJECT
+        if hasattr(tg, 'header_files') and len(tg.header_files) > 0:
+            self.moc_files=[]
+            self.qt_file_types.append({'type':'moc_files', 'cmd':'QT_MOC', 'call': '{SRC} -o {TGT}'})
+            header_nodes = tg.to_nodes(tg.header_files)
+
+            for header_node in header_nodes:
+                header_contents = header_node.read()
+                header_contents = c_preproc.re_cpp.sub(c_preproc.repl, header_contents)
+
+                header_node_name = os.path.splitext(header_node.name)[0]
+
+#                #find if moc file is manual included
+#                included_mocs=[]
+#
+#                source_files=[]
+#                for ext in qt5.EXT_QT5:
+#                    source_files.append('{}{}'.format(header_node_name, ext)) #possible source file names
+#                source_files.append('moc.cpp') #check if there is a moc.cpp file, what the **** Lumberyard
+#
+##                for ext in qt5.EXT_QT5:
+##                    source_node = header_node.parent.search_node('{}{}'.format(header_node_name, ext))
+#                for source_file in source_files:
+#                    source_node = header_node.parent.search_node(source_file)
+#
+#                    if not source_node:
+#                        continue
+#
+#                    source_contents = source_node.read()
+#                    included_mocs = qt5.INCLUDE_MOC_RE.findall(source_contents)
+#
+#                    if included_mocs:
+#                        included_mocs=[s.replace('\\', '/') for s in included_mocs]
+#                        break
+
+                if not qt5.QOBJECT_RE.search(header_contents):
+                    continue
+
+                moc_file={}
+
+                moc_file_name = '%s.moc' % header_node_name
+                moc_file_path = os.path.join(header_node.parent.relpath(), moc_file_name)
+                moc_file_relpath=os.path.relpath(moc_file_path, tg.path.abspath()).replace('\\', '/')
+
+                moc_node = qt5.change_target_qt5_node(tg.bld,
+                    tg.path,
+                    tg.name,
+                    moc_file_path,
+                    tg.target_uid)
+
+                moc_file['name']=moc_file_name
+                moc_file['src_name']=header_node_name
+                moc_file['input'] = header_node
+                moc_file['output'] = moc_node
+                moc_file['included'] = False #moc_file_relpath in included_mocs
+
+                remove_files.append(header_node)
+
+                #put files in generated project folder
+                self.project_filter[moc_node.abspath()] = 'Generated'
+                self.moc_files.append(moc_file)
+
+        #now on to something daft, seems lumberyard is expecting moc files for a lot of things that dont need it
+        #lets loop through all the source files looking for anything that includes a *.moc file and see if 
+        #we need to generate it.
+        for source_node in self.source:
+            source_contents = source_node.read()
+            included_mocs = qt5.INCLUDE_MOC_RE.findall(source_contents)
+
+            for included_moc in included_mocs:
+                moc_file_name = os.path.basename(included_moc)
+                moc_node_name = os.path.splitext(moc_file_name)[0]
+                moc_file_path = os.path.join(source_node.parent.relpath(), moc_file_name)
+
+                #already processed it then skip it
+                moc_list=filter(lambda moc_file: moc_file['name'] == moc_file_name, self.moc_files)
+                if moc_list:
+                    moc_list[0]['included'] = True #found an include in the source for moc file
+                    continue
+
+                for ext in qt5.MOC_H:
+                    header_node = source_node.parent.search_node('{}{}'.format(moc_node_name, ext))
+
+                    if header_node:
+                        break
+                
+                if not header_node:
+                    continue
+
+                moc_file={}
+
+                moc_file_relpath=os.path.relpath(moc_file_path, tg.path.abspath()).replace('\\', '/')
+
+                moc_node = qt5.change_target_qt5_node(tg.bld,
+                    tg.path,
+                    tg.name,
+                    moc_file_path,
+                    tg.target_uid)
+
+                moc_file['name']= moc_file_name
+                moc_file['src_name']=moc_node_name
+                moc_file['input'] = header_node
+                moc_file['output'] = moc_node
+                moc_file['included'] = True #we are adding the moc becuse someone already included it
+
+                remove_files.append(header_node)
+
+                #put files in generated project folder
+                self.project_filter[moc_node.abspath()] = 'Generated'
+                self.moc_files.append(moc_file)
+
+        #lets handle other file types
+        self.qt_files=[]
+        file_types=[]
+        
+        file_types.append({'type':'ui_files', 'cmd':'QT_UIC', 'call': '{SRC} -o {TGT}', 'ext': '.ui', 'prefix': 'ui'})
+        file_types.append({'type':'qrc_files', 'cmd':'QT_RCC', 'call': '-name {NAME} {SRC} -o {TGT}', 'ext': '.qrc', 'prefix': 'rcc'})
+        self.qt_file_types.extend(file_types)
+
+        for file_type in file_types:
+            project_files=[]
+            for source_node in self.source:
+                source_name, source_ext = os.path.splitext(source_node.name)
+
+                ext=file_type['ext']
+                if source_ext != ext:
+                    continue
+
+                qt_file_name = '{}_{}.h'.format(file_type['prefix'], source_name)
+                qt_file_path = os.path.join(source_node.parent.relpath(), qt_file_name)
+
+                qt_file_node = qt5.change_target_qt5_node(tg.bld,
+                    tg.path,
+                    tg.name,
+                    qt_file_path,
+                    tg.target_uid)
+
+                qt_file={}
+                qt_file['name']=qt_file_name
+                qt_file['src_name']=source_name
+                qt_file['input'] = source_node
+                qt_file['output'] = qt_file_node
+                qt_file['included'] = True
+
+                remove_files.append(source_node)
+
+                #put files in generated project folder
+                self.project_filter[qt_file_node.abspath()] = 'Generated'
+                project_files.append(qt_file)
+            setattr(self, file_type['type'], project_files)
+        
+        #remove file from source as it will be included in custom build
+        if remove_files:
+            self.source=[source_node for source_node in self.source if source_node not in remove_files]
 
     def ConvertToDict(self, var):
         # dict type
@@ -1190,7 +1820,7 @@ class vsnode_target(vsnode_project):
 
 
     # Method to recurse a taskgen item's use dependencies and build up a unique include_list for include paths
-    def recurse_use_includes_and_defines(self, waf_platform, waf_configuration, cur_tg, include_list, defines_list, uselib_cache):
+    def recurse_use_includes_and_defines(self, waf_platform, waf_configuration, cur_tg, include_list, defines_list, libpath_list, lib_list, uselib_cache):
         """
         Method to recurse a taskgen item's use dependencies and build up a unique include_list for include paths
 
@@ -1201,8 +1831,9 @@ class vsnode_target(vsnode_project):
         :param uselib_cache:    uselib cache to maintain to prevent unnecessary processing
         """
         visited_nodes = set()
+        cached_dependencies = {}
 
-        def _recurse(tg):
+        def _recurse(tg, top_level, depedencies):
 
             # Prevent infinite loops from possible cyclic dependencies
             visited_nodes.add(tg.name)
@@ -1230,21 +1861,32 @@ class vsnode_target(vsnode_project):
                         append_to_unique_list(defines_list, export_define)
 
             # Perform additional includes and defines analysis on uselibs
-            self.process_uselib_include_and_defines(waf_platform, waf_configuration, cur_tg, include_list, defines_list, uselib_cache)
+            self.process_uselib_include_and_defines(waf_platform, waf_configuration, cur_tg, include_list, defines_list, libpath_list, lib_list, uselib_cache)
 
             # Recurse into the 'use' for this taskgen if possible
             if not hasattr(tg, 'use') or len(tg.use) == 0:
                 return
             for use_module in tg.use:
                 if use_module in self.ctx.task_gen_cache_names:
+                    local_depedencies=[]
+
                     use_tg = self.ctx.task_gen_cache_names[use_module]
+                    is_static_lib = 'stlib' == getattr(use_tg,'_type','')
                     if use_tg.name not in visited_nodes:
-                        _recurse(use_tg)
+                        _recurse(use_tg, False,  local_depedencies)
                         visited_nodes.add(use_tg.name)
+                        cached_dependencies[use_tg.name]=local_depedencies
+                    elif use_tg.name in cached_dependencies:
+                        local_depedencies=cached_dependencies[use_tg.name]
 
-        _recurse(cur_tg)
+                    #add target as dependency
+                    depedencies.append({'name':use_tg.name, 'top_level':top_level})
+                    if is_static_lib:
+                        depedencies.extend(local_depedencies)
 
-    def process_uselib_include_and_defines(self, waf_platform, waf_configuration, cur_tg, include_list, defines_list, uselib_cache):
+        _recurse(cur_tg, True, self.tg_dependencies)
+
+    def process_uselib_include_and_defines(self, waf_platform, waf_configuration, cur_tg, include_list, defines_list, libpath_list, lib_list, uselib_cache):
         """
         Perform inspection of a taskgen's uselib for additional includes and defines
 
@@ -1268,6 +1910,16 @@ class vsnode_target(vsnode_project):
                 tg_uselib_defines_value = uselib_cache[tg_uselib][1]
                 if tg_uselib_defines_value is not None and len(tg_uselib_defines_value) > 0:
                     append_to_unique_list(defines_list, tg_uselib_defines_value)
+
+                # Get the cached libpath value if any
+                tg_uselib_libpath_value = uselib_cache[tg_uselib][2]
+                if tg_uselib_libpath_value is not None and len(tg_uselib_libpath_value) > 0:
+                    append_to_unique_list(libpath_list, tg_uselib_libpath_value)
+
+                # Get the cached lib value if any
+                tg_uselib_lib_value = uselib_cache[tg_uselib][3]
+                if tg_uselib_lib_value is not None and len(tg_uselib_lib_value) > 0:
+                    append_to_unique_list(lib_list, tg_uselib_lib_value)
             else:
                 # Using the platform and configuration, get the env table to track down the includes and defines for the uselib name
                 platform_config_key = waf_platform + '_' + waf_configuration
@@ -1299,8 +1951,41 @@ class vsnode_target(vsnode_project):
                 if platform_config_uselib_defines_value is not None:
                     append_to_unique_list(defines_list, platform_config_uselib_defines_value)
 
+                for lib_type in ['', 'SHARED', 'ST']:
+                    platform_config_uselib_libpath_value = None
+                    libpath_variable_name = '{}LIBPATH_{}'.format(lib_type, tg_uselib)
+                    libpath_variable_name_debug = '{}LIBPATH_{}D'.format(lib_type, tg_uselib)
+
+                    if libpath_variable_name in platform_config_env:
+                        platform_config_uselib_libpath_value = platform_config_env[libpath_variable_name]
+                    elif libpath_variable_name_debug in platform_config_env:
+                        platform_config_uselib_libpath_value = platform_config_env[libpath_variable_name_debug]
+
+                    if platform_config_uselib_libpath_value is not None:
+                        append_to_unique_list(libpath_list, platform_config_uselib_libpath_value)
+
+                    platform_config_uselib_lib_value = None
+                    lib_variable_name = '{}LIB_{}'.format(lib_type, tg_uselib)
+                    lib_variable_name_debug = '{}LIB_{}D'.format(lib_type, tg_uselib)
+
+                    if lib_variable_name in platform_config_env:
+                        platform_config_uselib_lib_value = platform_config_env[lib_variable_name]
+                    elif lib_variable_name_debug in platform_config_env:
+                        platform_config_uselib_lib_value = platform_config_env[lib_variable_name_debug]
+
+                    if platform_config_uselib_lib_value is not None:
+                        remove_libs=[]
+                        for lib in platform_config_uselib_lib_value:
+                            if '.dll' in lib:
+                                remove_libs.append(lib)
+                        for lib in remove_libs:
+                            platform_config_uselib_lib_value.remove(lib)
+#                        for i, lib in enumerate(platform_config_uselib_lib_value):
+#                            platform_config_uselib_lib_value[i]=re.sub(r'\.dll', '', lib, re.I)
+                        append_to_unique_list(lib_list, platform_config_uselib_lib_value)
+
                 # Cache the results
-                uselib_cache[tg_uselib] = (platform_config_uselib_includes_value, platform_config_uselib_defines_value)
+                uselib_cache[tg_uselib] = (platform_config_uselib_includes_value, platform_config_uselib_defines_value, platform_config_uselib_libpath_value, platform_config_uselib_lib_value)
 
     def collect_properties(self):
 
@@ -1312,11 +1997,21 @@ class vsnode_target(vsnode_project):
         project_generator_prefix = project_generator_node.abspath()
         bintemp_prefix = self.ctx.bldnode.abspath()
 
+        env_defines=[]
+        if 'DEFINES' in self.tg.env:
+            env_defines=self.tg.env['DEFINES']
+            subst_vars(env_defines, {'root':'.'})
+        env_libpaths=[]
+        if 'LIBPATH' in self.tg.env:
+            env_libpaths=self.tg.env['LIBPATH']
+
         super(vsnode_target, self).collect_properties()
         for x in self.build_properties:
             x.outdir = self.path.parent.abspath()
             x.preprocessor_definitions = ''
             x.includes_search_path = ''
+            x.libs_search_path = ''
+            x.libs = ''
             x.c_flags = ''
             x.cxx_flags = ''
             x.link_flags = ''
@@ -1355,8 +2050,10 @@ class vsnode_target(vsnode_project):
                 output_file_name = 'Unsupported_For_Configuration'
                 x.output_file = output_file_name
                 x.output_file_name = output_file_name
-                x.includes_search_path = ""
-                x.preprocessor_definitions = ""
+                x.includes_search_path = ''
+                x.preprocessor_definitions = ''
+                x.libs_search_path = ''
+                x.libs = ''
                 x.c_flags = ''
                 x.cxx_flags = ''
                 x.link_flags = ''
@@ -1432,8 +2129,8 @@ class vsnode_target(vsnode_project):
                 x.output_file_name = output_file_name
 
             # Collect all defines for this configuration
-            define_list =  list(current_env['DEFINES'])
-
+            define_list = env_defines
+            define_list += list(current_env['DEFINES'])
             if project_settings:
                 define_list += project_settings.get('defines',[])
             else:
@@ -1447,6 +2144,13 @@ class vsnode_target(vsnode_project):
                 # Legacy
                 include_list += self.GetPlatformSettings( waf_platform, waf_configuration, 'includes', self.tg )
 
+            libpath_list = env_libpaths
+            libpath_list += list(current_env['LIBPATH'])
+            libpath_list += self.GetPlatformSettings( waf_platform, waf_configuration, 'libpath', self.tg )
+
+            lib_list = list(current_env['LIB'])
+            lib_list += self.GetPlatformSettings( waf_platform, waf_configuration, 'lib', self.tg )
+
             # make sure we only have absolute path for intellisense
             # If we don't have a absolute path, assume a relative one, hence prefix the path with the taskgen path and comvert it into an absolute one
             for i in range(len(include_list)):
@@ -1458,7 +2162,7 @@ class vsnode_target(vsnode_project):
 
             # Do a depth-first recursion into the use dependencies to collect any additional include paths
             uselib_include_cache = {}
-            self.recurse_use_includes_and_defines(waf_platform, waf_configuration, self.tg, include_list, define_list, uselib_include_cache)
+            self.recurse_use_includes_and_defines(waf_platform, waf_configuration, self.tg, include_list, define_list, libpath_list, lib_list, uselib_include_cache)
 
             # For generate header files that need to be included, the include path during project generation will
             # be $ROOT\BinTemp\project_generator\... because the task is generated based on files that are to be
@@ -1466,7 +2170,7 @@ class vsnode_target(vsnode_project):
             # so we will filter and replace all paths that start with $ROOT\BinTemp\project_generator\... and
             # replace the header with what the files WILL BE during the build process, where those platform
             # specific header files will be generated
-            platform_configuration = waf_platform + '_' + waf_configuration;
+            platform_configuration = waf_platform + '_' + waf_configuration
             replace_project_generator_prefix = self.ctx.bldnode.make_node(platform_configuration).abspath()
             include_list = [ p.replace(project_generator_prefix, replace_project_generator_prefix) for p in include_list]
             replace_bintemp_to_target = self.ctx.bldnode.make_node(platform_configuration).abspath()
@@ -1475,14 +2179,34 @@ class vsnode_target(vsnode_project):
             if 'qt5' in self.tg.features:
                 # Special case for projects that use QT.  It needs to resolve the intermediate/generated QT related files based
                 # on the configuration.
-                qt_intermediate_include_path = os.path.join(self.tg.bld.bldnode.abspath(),
+                if self.msbuild:
+                    qt_intermediate_include_path = os.path.join(self.tg.bld.bldnode.abspath(),
+                                                            'qt5',
+                                                            '{}.{}'.format(self.name, self.tg.target_uid))
+                else:
+                    qt_intermediate_include_path = os.path.join(self.tg.bld.bldnode.abspath(),
                                                             x.target_config,
                                                             'qt5',
                                                             '{}.{}'.format(self.name, self.tg.target_uid))
                 include_list.append(qt_intermediate_include_path)
 
+            #need to remove any refference to NetFxSDK as the IValidator will conflict
+#            for directory in include_list:
+#                if 'NETFXSDK' in directory:
+#                    include_list.remove(directory)
+            
+            #if CryCommon is included, need to move to top to fix include issues with IValidator as it is also in Windows Kit
+            for directory in include_list:
+                if 'CryCommon' in directory:
+                    include_list.remove(directory)
+                    include_list.insert(0, directory)
+
             x.includes_search_path = ';'.join(include_list)
             x.preprocessor_definitions = ';'.join(define_list)
+            x.libs_search_path = ';'.join(libpath_list)
+
+            lib_list=[lib+'.lib' for lib in lib_list] #add .lib to lib name
+            x.libs = ';'.join(lib_list)
 
     def get_output_folder_node(self, waf_configuration, waf_platform):
         # Handle projects that have a custom output folder
@@ -1558,6 +2282,10 @@ class msvs_generator(BuildContext):
 
         # Initialize the platform maps based on the any restri
         self.initialize_platform_maps(msvs_version, restricted_platforms)
+        
+        # get windows sdk versions
+        (default_sdk, windows_sdks) = get_windows_sdks()
+        self.windows_sdk=default_sdk
 
         selected_msvs_version_platform = SUPPORTED_MSVS_VALUE_TABLE[msvs_version]
 
@@ -1779,6 +2507,7 @@ class msvs_generator(BuildContext):
             return getattr(x, 'path', None) and x.path.abspath() or x.name
 
         self.all_projects.sort(key=sortfun)
+        self.collect_depedencies()
 
     def write_files(self):
         """
@@ -1793,6 +2522,7 @@ class msvs_generator(BuildContext):
         node = self.get_solution_node()
         node.parent.mkdir()
         Logs.warn('Creating %r' % node)
+
         template1 = compile_template(SOLUTION_TEMPLATE)
         sln_str = template1(self)
         sln_str = rm_blank_lines(sln_str)
@@ -1839,7 +2569,6 @@ class msvs_generator(BuildContext):
         allowed_specs = [] if len(spec_string_list)==0 else spec_string_list.replace(' ', '').split(',')
         qualified_taskgens = []
         unqualified_taskgens = []
-
 
         # Collect all the relevant task gens into a processing list
         taskgen_list = []
@@ -1900,6 +2629,7 @@ class msvs_generator(BuildContext):
 
             p = self.vsnode_target(self, taskgen)
             p.collect_source()  # delegate this processing
+            p.collect_qt_source(self.env)
             p.collect_properties()
             self.all_projects.append(p)
 
@@ -2014,6 +2744,60 @@ class msvs_generator(BuildContext):
                     n = proj.parent = seen[filter] = self.vsnode_vsdir(self, make_uuid(filter), folder)
                     self.all_projects.append(n)
                     proj = n
+
+    def collect_depedencies(self):
+        
+        project_dict={}
+
+        for p in self.all_projects:
+            if not isinstance(p, vsnode_project):
+                continue
+            project_dict[p.name]=p
+
+        #build project dependencies
+        for project in self.all_projects:
+            if isinstance(project, vsnode_project) and not project == self.waf_project: #add _WAF_ project as dependency
+                project.dependencies.append(self.waf_project.uuid)
+
+            if not hasattr(project, 'tg_dependencies'):
+                continue
+
+#            project.tg_dependencies=list(set(project.tg_dependencies)) #remove duplicates
+            project.tg_dependencies = [dict(tupleized) for tupleized in set(tuple(item.items()) for item in project.tg_dependencies)] #remove duplicates
+            for dependency_info in project.tg_dependencies:
+                dependency=project_dict.get(dependency_info['name'], None)
+                
+                if dependency is None:
+                    continue
+
+                if dependency_info['top_level']:
+                    project.dependencies.append(dependency.uuid)
+
+                dependency_build_search={}
+                for build in dependency.build_properties:
+                    dependency_build_search[build.configuration_name+build.platform]=build
+                
+                for build in project.build_properties:
+                    build_name=build.configuration_name+build.platform
+
+                    if not build.configuration.waf_configuration in dependency.project_configurations:
+                        continue #skip adding lib if it is not built for this config
+
+                    dependency_build=dependency_build_search.get(build_name)
+
+                    if dependency_build is None:
+                        continue
+
+                    if not hasattr(dependency_build, 'output_file_name'):
+                        continue
+                    if dependency_build.output_file_name == 'Unsupported_For_Configuration':
+                        continue
+                    if not hasattr(dependency_build, 'output_path'):
+                        continue
+
+                    if build.libs:
+                        build.libs+=';'
+                    build.libs+=dependency_build.output_path+'\\'+dependency_build.output_file_name+'.lib'
 
 
 def options(ctx):

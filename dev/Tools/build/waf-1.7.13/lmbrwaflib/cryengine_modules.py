@@ -354,6 +354,8 @@ def LoadFileLists(ctx, kw, file_lists):
 
     # Load file lists   and build all needed lookup lists
     for file_list_file in file_lists:
+        list_source_files            = set()
+        list_qt_source_files         = set()
 
         # Prevent processing the same file twice
         if file_list_file in file_list_to_file_collection:
@@ -442,12 +444,14 @@ def LoadFileLists(ctx, kw, file_lists):
                         found_pch = True
 
                     elif ctx.is_cxx_file(file):
+                        list_source_files.add(file_node)
                         source_files.add(file_node)
                         if not generate_uber_file:
                             no_uber_file_files.add(file_node)
                     elif file.endswith(('.mm', '.m')):
                         objc_source_files.add(file_node)
                     elif file.endswith(('.ui', '.qrc', '.ts')):
+                        list_qt_source_files.add(file_node)
                         qt_source_files.add(file_node)
                     elif file.endswith(('.h', '.H', '.hpp', '.HPP', '.hxx', '.HXX')):
                         header_files.add(file_node)
@@ -468,8 +472,8 @@ def LoadFileLists(ctx, kw, file_lists):
                             uber_file_to_file_list[uber_file_abspath]   = []
                         uber_file_to_file_list[uber_file_abspath]       += [ file_node ]
 
-            # Remember which sources come from which file list (for later lookup)
-            file_list_to_source[file_list_file] = list(source_files | qt_source_files)
+        # Remember which sources come from which file list (for later lookup)
+        file_list_to_source[file_list_file] = list(list_source_files | list_qt_source_files)
 
     # Report any files that were duplicated within a file_list spec
     if has_duplicate_files:

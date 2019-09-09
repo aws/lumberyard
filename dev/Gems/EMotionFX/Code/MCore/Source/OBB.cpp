@@ -13,10 +13,10 @@
 // include required headers
 #include "OBB.h"
 #include "AABB.h"
-#include "JobList.h"
-#include "Job.h"
-#include "JobManager.h"
 
+#include <AzCore/Jobs/JobFunction.h>
+#include <AzCore/Jobs/JobCompletion.h>
+#include <AzCore/Jobs/JobContext.h>
 
 namespace MCore
 {
@@ -537,26 +537,28 @@ namespace MCore
             minAreas[i] = FLT_MAX;
         }
 
+
         // try all rotation on the x axis (multithreaded)
-        GetJobManager().GetJobPool().Lock();
-        JobList* jobList = JobList::Create();
+        AZ::JobCompletion jobCompletion;           
         uint32 index = 0;
         for (float x = -180.0f; x < 180.0f; x += 5.0f)
         {
             MCORE_ASSERT(index < MAX_NUM);
 
             // create the job and add it
-            Job* newJob = Job::CreateWithoutLock(   [this, &minAreas, &minBoxes, &minRotMatrices, &numPoints, &points, x, index](const Job* job)
-                    {
-                        MCORE_UNUSED(job);
-                        InitFromPointsRange(points, numPoints, x, &minAreas[index], &minBoxes[index], &minRotMatrices[index]);
-                    });
+            AZ::JobContext* jobContext = nullptr;
+            AZ::Job* job = AZ::CreateJobFunction([this, &minAreas, &minBoxes, &minRotMatrices, &numPoints, &points, x, index]()
+            {   
+                InitFromPointsRange(points, numPoints, x, &minAreas[index], &minBoxes[index], &minRotMatrices[index]);
+            }, true, jobContext);
 
-            jobList->AddJob(newJob);
+            job->SetDependent(&jobCompletion);
+            job->Start();
+
             index++;
         }
-        GetJobManager().GetJobPool().Unlock();
-        ExecuteJobList(jobList); // automatically syncs to wait for all jobs to be completed
+
+        jobCompletion.StartAndWaitForCompletion();
 
         // find the real minimum value (single threaded lookup)
         float minimumArea = FLT_MAX;

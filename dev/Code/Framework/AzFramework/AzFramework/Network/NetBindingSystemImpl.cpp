@@ -136,9 +136,9 @@ namespace AzFramework
 
     void NetBindingSliceInstantiationHandler::OnSlicePreInstantiate(const AZ::Data::AssetId& /*sliceAssetId*/, const AZ::SliceComponent::SliceInstanceAddress& sliceAddress)
     {
-        const auto& entityMapping = sliceAddress.second->GetEntityIdToBaseMap();
+        const auto& entityMapping = sliceAddress.GetInstance()->GetEntityIdToBaseMap();
 
-        const AZ::SliceComponent::EntityList& sliceEntities = sliceAddress.second->GetInstantiated()->m_entities;
+        const AZ::SliceComponent::EntityList& sliceEntities = sliceAddress.GetInstance()->GetInstantiated()->m_entities;
         for (AZ::Entity *sliceEntity : sliceEntities)
         {
             auto it = entityMapping.find(sliceEntity->GetId());
@@ -174,13 +174,13 @@ namespace AzFramework
     {
         SliceInstantiationResultBus::Handler::BusDisconnect();
 
-        CloseEntityMap(sliceAddress.second->GetEntityIdMap());
+        CloseEntityMap(sliceAddress.GetInstance()->GetEntityIdMap());
 
-        const AZ::SliceComponent::EntityList sliceEntities = sliceAddress.second->GetInstantiated()->m_entities;
+        const AZ::SliceComponent::EntityList sliceEntities = sliceAddress.GetInstance()->GetInstantiated()->m_entities;
         for (AZ::Entity *sliceEntity : sliceEntities)
         {
-            auto it = sliceAddress.second->GetEntityIdToBaseMap().find(sliceEntity->GetId());
-            AZ_Assert(it != sliceAddress.second->GetEntityIdToBaseMap().end(), "Failed to retrieve static entity id for a slice entity!");
+            auto it = sliceAddress.GetInstance()->GetEntityIdToBaseMap().find(sliceEntity->GetId());
+            AZ_Assert(it != sliceAddress.GetInstance()->GetEntityIdToBaseMap().end(), "Failed to retrieve static entity id for a slice entity!");
             const AZ::EntityId staticEntityId = it->second;
             const auto itUnbound = m_bindingQueue.find(staticEntityId);
             if (itUnbound == m_bindingQueue.end())
@@ -378,7 +378,7 @@ namespace AzFramework
         // If entity came from a slice, try to get the mapping from it
         AZ::SliceComponent::SliceInstanceAddress sliceInfo;
         EBUS_EVENT_ID_RESULT(sliceInfo, entityId, EntityIdContextQueryBus, GetOwningSlice);
-        AZ::SliceComponent::SliceInstance* sliceInstance = sliceInfo.second;
+        AZ::SliceComponent::SliceInstance* sliceInstance = sliceInfo.GetInstance();
         if (sliceInstance)
         {
             const auto it = sliceInstance->GetEntityIdToBaseMap().find(entityId);
@@ -454,7 +454,7 @@ namespace AzFramework
         SpawnRequest& request = requestQueue.back();
         request.m_bindTo = bindTo;
         request.m_useEntityId = useEntityId;
-        request.m_spawnDataBuffer.resize(spawnData.GetLength());
+        request.m_spawnDataBuffer.resize_no_construct(spawnData.GetLength());
         spawnData.Read(request.m_spawnDataBuffer.size(), request.m_spawnDataBuffer.data());
     }
 
@@ -899,13 +899,10 @@ namespace AzFramework
         const AZ::SliceComponent::SliceInstanceId& sliceInstanceId)
     {
         bool success = false;
-        const bool shouldBindToNetwork = ShouldBindToNetwork();
 
-        AZ_Warning("NetBindingSystemImpl", shouldBindToNetwork, "Failed to bind entity %llu", entity->GetId());
-        if (shouldBindToNetwork)
+        if ( ShouldBindToNetwork() )
         {
             const GridMate::ReplicaPtr bindTo = m_contextData->GetReplicaManager()->FindReplica(replicaId);
-            AZ_Warning("NetBindingSystemImpl", bindTo, "Failed to bind entity %llu - could not find replica %u", entity->GetId(), replicaId);
             if (bindTo)
             {
                 if (addToContext)
@@ -919,7 +916,7 @@ namespace AzFramework
                 }
 
                 NetBindingHandlerInterface* binding = GetNetBindingHandler(entity);
-                AZ_Assert(binding, "Can't find NetBindingComponent on entity %llu (%s)!", static_cast<AZ::u64>(entity->GetId()), entity->GetName().c_str());
+                AZ_Warning("NetBindingSystemImpl", binding, "Can't find NetBindingComponent on entity %llu (%s)!", static_cast<AZ::u64>(entity->GetId()), entity->GetName().c_str());
                 if (binding)
                 {
                     binding->BindToNetwork(bindTo);
@@ -928,6 +925,13 @@ namespace AzFramework
                     entity->Activate();
                     success = true;
                 }
+            }
+            else
+            {
+                // NOTE: It is possible for entities spawned from a slice containing multiple entities with net binding
+                // to never receive their replica counterpart, either because the replica was destroyed, or was interest
+                // filtered.
+                AZ_ExtraTracePrintf("NetBindingSystemImpl", "Failed to bind entity %llu - could not find replica %u", entity->GetId(), replicaId);
             }
         }
 

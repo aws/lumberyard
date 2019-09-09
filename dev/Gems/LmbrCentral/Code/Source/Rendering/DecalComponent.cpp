@@ -34,6 +34,7 @@ namespace LmbrCentral
                 Field("Depth", &DecalConfiguration::m_depth)->
                 Field("Offset", &DecalConfiguration::m_position)->
                 Field("Opacity", &DecalConfiguration::m_opacity)->
+                Field("Angle Attenuation", &DecalConfiguration::m_angleAttenuation)->
                 Field("Deferred", &DecalConfiguration::m_deferred)->
                 Field("DeferredString", &DecalConfiguration::m_deferredString)->
                 Field("Max View Distance", &DecalConfiguration::m_maxViewDist)->
@@ -107,6 +108,7 @@ namespace LmbrCentral
         m_decalRenderNode = static_cast<IDecalRenderNode*>(gEnv->p3DEngine->CreateRenderNode(eERType_Decal));
         if (m_decalRenderNode)
         {
+            m_decalRenderNode->SetRndFlags(m_decalRenderNode->GetRndFlags() | ERF_COMPONENT_ENTITY);
             m_decalRenderNode->SetDecalProperties(decalProperties);
             m_decalRenderNode->SetMinSpec(static_cast<int>(decalProperties.m_minSpec));
             m_decalRenderNode->SetMatrix(AZTransformToLYTransform(transform));
@@ -211,9 +213,9 @@ namespace LmbrCentral
         return m_materialBusHandler->GetMaterial();
     }
 
-    void DecalComponent::SetMaterialHandle(MaterialHandle m)
+    void DecalComponent::SetMaterialHandle(const MaterialHandle& materialHandle)
     {
-        m_materialBusHandler->SetMaterialHandle(m);
+        m_materialBusHandler->SetMaterialHandle(materialHandle);
     }
 
     MaterialHandle DecalComponent::GetMaterialHandle()

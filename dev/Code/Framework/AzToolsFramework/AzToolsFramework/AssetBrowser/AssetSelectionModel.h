@@ -11,7 +11,8 @@
 */
 #pragma once
 
-#include <AzToolsFramework/AssetBrowser/AssetBrowserEntry.h>
+#include <AzToolsFramework/AssetBrowser/Entries/AssetBrowserEntry.h>
+#include <AzToolsFramework/AssetBrowser/Entries/ProductAssetBrowserEntry.h>
 #include <AzToolsFramework/AssetBrowser/Search/Filter.h>
 
 #include <AzCore/Memory/SystemAllocator.h>

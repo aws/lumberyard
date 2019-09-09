@@ -32,7 +32,6 @@ namespace AZ
 
 namespace StarterGameGem
 {
-
     class WaypointsComponent
         : public AZ::Component
         , private AZ::TickBus::Handler
@@ -54,12 +53,12 @@ namespace StarterGameGem
 
         static void GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided)
         {
-            provided.push_back(AZ_CRC("WaypointsService"));
+            provided.push_back(AZ_CRC("WaypointsService", 0x863c80b2));
         }
 
         static void GetIncompatibleServices(AZ::ComponentDescriptor::DependencyArrayType& incompatible)
         {
-            incompatible.push_back(AZ_CRC("WaypointsService"));
+            incompatible.push_back(AZ_CRC("WaypointsService", 0x863c80b2));
         }
 
         //////////////////////////////////////////////////////////////////////////
@@ -84,7 +83,5 @@ namespace StarterGameGem
 
     private:
         WaypointsConfiguration m_config;
-
     };
-
 } // namespace StarterGameGem

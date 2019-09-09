@@ -26,17 +26,8 @@ namespace MCore
     class IDGenerator;
     class StringIdPool;
     class AttributeFactory;
-    class AttributePool;
-    class JobList;
-    class JobManager;
-    class JobList;
     class MemoryTracker;
     class Mutex;
-
-    typedef AZStd::function<void(JobList* jobList, bool addSyncPointAfterList, bool waitForJobListToFinish)>                                  JobListExecuteFunctionType;
-    //typedef AZStd::function<void*(size_t numBytes, uint16 categoryID, uint16 blockID, const char* filename, uint32 lineNr)>                 MemAllocateFunctionType;
-    //typedef AZStd::function<void*(void* memory, size_t numBytes, uint16 categoryID, uint16 blockID, const char* filename, uint32 lineNr)>   MemReallocFunctionType;
-    //typedef AZStd::function<void(void* memory)>                                                                                             MemFreeFunctionType;
 
     typedef void* (MCORE_CDECL * AllocateCallback)(size_t numBytes, uint16 categoryID, uint16 blockID, const char* filename, uint32 lineNr);
     typedef void* (MCORE_CDECL * ReallocCallback)(void* memory, size_t numBytes, uint16 categoryID, uint16 blockID, const char* filename, uint32 lineNr);
@@ -54,8 +45,6 @@ namespace MCore
             AllocateCallback            mMemAllocFunction;          /**< The memory allocation function, defaults to nullptr, which means the standard malloc function will be used. */
             ReallocCallback             mMemReallocFunction;        /**< The memory reallocation function, defaults to nullptr, which means the standard realloc function will be used. */
             FreeCallback                mMemFreeFunction;           /**< The memory free function, defaults to nullptr, which means the standard free function will be used. */
-            JobListExecuteFunctionType  mJobExecutionFunction;      /**< The job execute function, defaults to nullptr, which then uses the JobListExecuteMCoreJobSystem function, you can also use JobListExecuteSerial and JobListExecuteOpenMP or your custom one. */
-            uint32                      mNumThreads;                /**< The initial number of threads to be created. When set to MCORE_INVALIDINDEX32 it will use the number of available logical processors (so including hyperthreads). */
             bool                        mTrackMemoryUsage;          /**< Enable this to track memory usage statistics. This has a bit of an impact on memory allocation and release speed and memory usage though. You should really only use this in debug mode. On default it is disabled. */
 
             InitSettings();
@@ -98,12 +87,6 @@ namespace MCore
         MCORE_INLINE LogManager& GetLogManager()                        { return *mLogManager; }
 
         /**
-         * Get the job manager.
-         * @result A reference to the job manager.
-         */
-        MCORE_INLINE JobManager& GetJobManager()                        { return *mJobManager; }
-
-        /**
          * Get the ID generator.
          * @result A reference to the ID generator.
          */
@@ -122,12 +105,6 @@ namespace MCore
         MCORE_INLINE AttributeFactory& GetAttributeFactory()            { return *mAttributeFactory; }
 
         /**
-         * Get the attribute pool.
-         * @result A reference to the attribute pool, which is used to prevent large number of small allocations when creating many attributes.
-         */
-        MCORE_INLINE AttributePool& GetAttributePool()                  { return *mAttributePool; }
-
-        /**
          * Get the memory tracker.
          * @result A reference to the memory tracker, which can be used to track memory allocations and usage.
          */
@@ -143,8 +120,6 @@ namespace MCore
 
         MCORE_INLINE Mutex& GetMemoryMutex()                            { return *mMemoryMutex; }
 
-        MCORE_INLINE JobListExecuteFunctionType GetJobListExecuteFunc() { return mJobListExecuteFunc; }
-        MCORE_INLINE void SetJobListExecuteFunc(const JobListExecuteFunctionType& newFunc) { mJobListExecuteFunc = newFunc; }
         MCORE_INLINE AllocateCallback GetAllocateFunction()             { return mAllocateFunction; }
         MCORE_INLINE ReallocCallback GetReallocFunction()               { return mReallocFunction; }
         MCORE_INLINE FreeCallback GetFreeFunction()                     { return mFreeFunction; }
@@ -154,11 +129,8 @@ namespace MCore
         IDGenerator*            mIDGenerator;       /**< The ID generator. */
         StringIdPool*           mStringIdPool; /**< The string based ID generator. */
         AttributeFactory*       mAttributeFactory;  /**< The attribute factory. */
-        AttributePool*          mAttributePool;     /**< The attribute pooling system. */
-        JobManager*             mJobManager;        /**< The multithread job manager. */
         MemoryTracker*          mMemoryTracker;     /**< The memory tracker. */
         Mutex*                  mMemoryMutex;
-        JobListExecuteFunctionType mJobListExecuteFunc;
         AllocateCallback        mAllocateFunction;
         ReallocCallback         mReallocFunction;
         FreeCallback            mFreeFunction;
@@ -214,7 +186,5 @@ namespace MCore
     MCORE_INLINE IDGenerator& GetIDGenerator()                 { return GetMCore().GetIDGenerator(); }
     MCORE_INLINE StringIdPool& GetStringIdPool()               { return GetMCore().GetStringIdPool(); }
     MCORE_INLINE AttributeFactory& GetAttributeFactory()       { return GetMCore().GetAttributeFactory(); }
-    MCORE_INLINE AttributePool& GetAttributePool()             { return GetMCore().GetAttributePool(); }
-    MCORE_INLINE JobManager& GetJobManager()                   { return GetMCore().GetJobManager(); }
     MCORE_INLINE MemoryTracker& GetMemoryTracker()             { return GetMCore().GetMemoryTracker(); }
 } // namespace MCore

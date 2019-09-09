@@ -21,8 +21,11 @@
 #include "IObjectManager.h"
 #include "BaseObject.h"
 #include "SelectionGroup.h"
+#include "ObjectManagerEventBus.h"
 
 #include <AzCore/std/smart_ptr/unique_ptr.h>
+#include <AzToolsFramework/ComponentMode/EditorComponentModeBus.h>
+#include <AzCore/EBus/EBus.h>
 
 // forward declarations.
 class CAITerritoryObject;
@@ -35,7 +38,6 @@ class CObjectLayer;
 class CObjectClassDesc;
 enum class ImageRotationDegrees;
 
-
 namespace AZ
 {
     namespace LegacyConversion
@@ -45,19 +47,21 @@ namespace AZ
 }
 
 //////////////////////////////////////////////////////////////////////////
-// Helper class to signal when we are exportin a level to game
+// Helper class to signal when we are exporting a level to game
 //////////////////////////////////////////////////////////////////////////
 class CObjectManagerLevelIsExporting
 {
 public:
     CObjectManagerLevelIsExporting()
     {
+        AZ::ObjectManagerEventBus::Broadcast(&AZ::ObjectManagerEventBus::Events::OnExportingStarting);
         GetIEditor()->GetObjectManager()->SetExportingLevel(true);
     }
 
     ~CObjectManagerLevelIsExporting()
     {
         GetIEditor()->GetObjectManager()->SetExportingLevel(false);
+        AZ::ObjectManagerEventBus::Broadcast(&AZ::ObjectManagerEventBus::Events::OnExportingFinished);
     }
 };
 
@@ -69,16 +73,29 @@ class CBaseObjectsCache
 public:
     int GetObjectCount() const { return m_objects.size(); }
     CBaseObject* GetObject(int nIndex) const { return m_objects[nIndex]; }
-    void AddObject(CBaseObject* pObject) { m_objects.push_back(pObject); }
-    void ClearObjects() { m_objects.clear(); }
-    void Reserve(int nCount) { m_objects.reserve(nCount); }
+    void AddObject(CBaseObject* object);
 
-    /// Checksum is used as a dirty flag.  
+    void ClearObjects()
+    {
+        m_objects.clear();
+        m_entityIds.clear();
+    }
+
+    void Reserve(int nCount)
+    {
+        m_objects.reserve(nCount);
+        m_entityIds.reserve(nCount);
+    }
+
+    const AZStd::vector<AZ::EntityId>& GetEntityIdCache() const { return m_entityIds; }
+
+    /// Checksum is used as a dirty flag.
     unsigned int GetSerialNumber() { return m_serialNumber; }
     void SetSerialNumber(unsigned int serialNumber) { m_serialNumber = serialNumber; }
 private:
     //! List of objects that was displayed at last frame.
     std::vector<_smart_ptr<CBaseObject> > m_objects;
+    AZStd::vector<AZ::EntityId> m_entityIds;
     unsigned int m_serialNumber = 0;
 };
 
@@ -88,6 +105,7 @@ private:
  */
 class CObjectManager
     : public IObjectManager
+    , private AzToolsFramework::ComponentModeFramework::EditorComponentModeNotificationBus::Handler
 {
 public:
     //! Selection functor callback.
@@ -255,6 +273,9 @@ public:
     //! Load class templates for specified directory,
     void    LoadClassTemplates(const QString& path);
 
+    //! Registers the ObjectManager's console variables.
+    void RegisterCVars();
+
     //! Find object class by name.
     CObjectClassDesc* FindClass(const QString& className);
     void    GetClassCategories(QStringList& categories);
@@ -368,6 +389,8 @@ public:
     void SetExportingLevel(bool bExporting) override { m_bLevelExporting = bExporting; }
     bool IsExportingLevelInprogress() const override { return m_bLevelExporting; }
 
+    int GetAxisHelperHitRadius() const override { return m_axisHelperHitRadius; }
+
 private:
     friend CObjectArchive;
     friend class CBaseObject;
@@ -399,6 +422,10 @@ private:
 
     void UpdateAttachedEntities();
 
+    // EditorComponentModeNotificationBus
+    void EnteredComponentMode(const AZStd::vector<AZ::Uuid>& componentModeTypes) override;
+    void LeftComponentMode(const AZStd::vector<AZ::Uuid>& componentModeTypes) override;
+
 private:
     typedef std::map<GUID, CBaseObjectPtr, guid_less_predicate> Objects;
     Objects m_objects;
@@ -413,10 +440,10 @@ private:
 
     //! Array of currently visible objects.
     TBaseObjects m_visibleObjects;
-    
+
     // this number changes whenever visibility is invalidated.  Viewports can use it to keep track of whether they need to recompute object
     // visibility.
-    unsigned int m_visibilitySerialNumber = 1; 
+    unsigned int m_visibilitySerialNumber = 1;
     unsigned int m_lastComputedVisibility = 0; // when the object manager itself last updated visibility (since it also has a cache)
     int m_lastHideMask = 0;
 
@@ -430,6 +457,10 @@ private:
     bool m_bSelectionChanged;
     IObjectSelectCallback* m_selectCallback;
     bool m_bLoadingObjects;
+
+    // True while performing a select or deselect operation on more than one object.
+    // Prevents individual undo/redo commands for every object, allowing bulk undo/redo
+    bool m_processingBulkSelect = false;
 
     //! Default selection.
     CSelectionGroup m_defaultSelection;
@@ -476,6 +507,8 @@ private:
     std::set<CEntityObject*> m_setEntitiesAssignedToSelectedWave;
     void RefreshEntitiesAssignedToSelectedTnW();
 
+    std::unordered_set<CEntityObject*> m_animatedAttachedEntities;
+
     bool m_isUpdateVisibilityList;
 
     uint64 m_currentHideCount;
@@ -485,6 +518,8 @@ private:
     bool m_bLevelExporting;
 
     AZStd::unique_ptr<AZ::LegacyConversion::Converter> m_converter;
+
+    int m_axisHelperHitRadius = 20;
 };
 
 #endif // CRYINCLUDE_EDITOR_OBJECTS_OBJECTMANAGER_H

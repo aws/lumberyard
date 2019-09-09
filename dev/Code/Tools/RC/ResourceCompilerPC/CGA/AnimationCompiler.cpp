@@ -457,7 +457,7 @@ bool CAnimationConvertor::RebuildDatabases()
         }
     }
 
-    string devRoot = gEnv->pFileIO->GetAlias("@devroot@");
+    string devRoot = AZ::IO::FileIOBase::GetInstance()->GetAlias("@devroot@");
     string sourceFolder = PathHelpers::Join(devRoot, m_sourceGameFolderPath);
     targetGameFolderPath = PathHelpers::Join(devRoot, targetGameFolderPath);
 
@@ -870,11 +870,6 @@ void CAnimationConvertor::Release()
 ICompiler* CAnimationConvertor::CreateCompiler()
 {
     return new CAnimationCompiler(this);
-}
-
-bool CAnimationConvertor::SupportsMultithreading() const
-{
-    return true;
 }
 
 void CAnimationConvertor::IncrementChangedAnimationCount()
@@ -1385,7 +1380,8 @@ bool CAnimationCompiler::ProcessCBA()
         }
 
         CAnimationManager animationManager;
-        ThreadUtils::StealingThreadPool pool(m_CC.threads, true);
+        const static int numThreads = 1;    // RC does not support multiple threads
+        ThreadUtils::StealingThreadPool pool(numThreads, true);
 
         RCLog("Processing CBA, source folder: %s", m_CC.sourceFolder);
 

@@ -100,6 +100,12 @@ namespace LmbrCentral
         return AZ::Aabb::CreateCenterRadius(m_currentTransform.GetPosition(), m_intersectionDataCache.m_radius);
     }
 
+    void SphereShape::GetTransformAndLocalBounds(AZ::Transform& transform, AZ::Aabb& bounds)
+    {
+        bounds = AZ::Aabb::CreateCenterRadius(AZ::Vector3::CreateZero(), m_sphereShapeConfig.m_radius);
+        transform = m_currentTransform;
+    }
+
     bool SphereShape::IsPointInside(const AZ::Vector3& point)
     {
         m_intersectionDataCache.UpdateIntersectionParams(m_currentTransform, m_sphereShapeConfig);
@@ -134,15 +140,15 @@ namespace LmbrCentral
 
     void DrawSphereShape(
         const ShapeDrawParams& shapeDrawParams, const SphereShapeConfig& boxConfig,
-        AzFramework::EntityDebugDisplayRequests& displayContext)
+        AzFramework::DebugDisplayRequests& debugDisplay)
     {
         if (shapeDrawParams.m_filled)
         {
-            displayContext.SetColor(shapeDrawParams.m_shapeColor.GetAsVector4());
-            displayContext.DrawBall(AZ::Vector3::CreateZero(), boxConfig.m_radius);
+            debugDisplay.SetColor(shapeDrawParams.m_shapeColor.GetAsVector4());
+            debugDisplay.DrawBall(AZ::Vector3::CreateZero(), boxConfig.m_radius);
         }
 
-        displayContext.SetColor(shapeDrawParams.m_wireColor.GetAsVector4());
-        displayContext.DrawWireSphere(AZ::Vector3::CreateZero(), boxConfig.m_radius);
+        debugDisplay.SetColor(shapeDrawParams.m_wireColor.GetAsVector4());
+        debugDisplay.DrawWireSphere(AZ::Vector3::CreateZero(), boxConfig.m_radius);
     }
 } // namespace LmbrCentral

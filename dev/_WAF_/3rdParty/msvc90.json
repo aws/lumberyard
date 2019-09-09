@@ -1,0 +1,21 @@
+{
+    "name": "MSVC90",
+    "source": "@ROOT@/Tools/Redistributables/MSVC90",
+    "description": "Some of Microsoft's MSVC90 Redistributable Shared Libraries needed specifically for this project",
+    "lib_required": "False",
+    "platform": {
+        "win_x64_vs2013": {
+            "sharedlibpath": [
+                "."
+            ],
+            "shared": [
+                "msvcr90.dll"
+            ],
+            "copy_extra": [
+                "Microsoft.VC90.CRT.manifest:."
+            ]
+        },
+        "win_x64_vs2015": "@win_x64_vs2013",
+        "win_x64_vs2017": "@win_x64_vs2013"
+    }
+}

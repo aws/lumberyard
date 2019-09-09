@@ -19,6 +19,7 @@
 #include <AzCore/std/parallel/mutex.h>
 #include <AzCore/Casting/numeric_cast.h>
 #include <AzCore/IO/SystemFile.h>
+#include <AzCore/Math/Aabb.h>
 
 #ifdef DrawText
 #undef DrawText
@@ -433,6 +434,8 @@ struct SPerObjectShadow
 
 #define LV_DLF_LIGHTVOLUMES_MASK (DLF_DISABLED | DLF_FAKE | DLF_AMBIENT | DLF_DEFERRED_CUBEMAPS)
 
+#define TERRAIN_AABB_PADDING 0.5f
+
 class CLightVolumesMgr
     : public Cry3DEngineBase
 {
@@ -699,9 +702,11 @@ public:
     virtual float GetTerrainElevation(float x, float y, int nSID = GetDefSID());
     virtual float GetTerrainElevation3D(Vec3 vPos);
     virtual float GetTerrainZ(int x, int y);
+    virtual int GetTerrainSurfaceId(int x, int y);
     virtual bool GetTerrainHole(int x, int y);
     virtual int GetHeightMapUnitSize();
     virtual int GetTerrainSize();
+    virtual const AZ::Aabb& GetTerrainAabb() const;
     virtual void SetSunDir(const Vec3& newSunOffset);
     virtual Vec3 GetSunDir() const;
     virtual Vec3 GetSunDirNormalized() const;
@@ -767,7 +772,7 @@ public:
     virtual void ClearAllPrecachePoints();
     virtual void GetPrecacheRoundIds(int pRoundIds[MAX_STREAM_PREDICTION_ZONES]);
 
-    virtual void TraceFogVolumes(const Vec3& worldPos, ColorF& fogVolumeContrib, const SRenderingPassInfo& passInfo);
+    virtual void TraceFogVolumes(const Vec3& vPos, const AABB& objBBox, SFogVolumeData& fogVolData, const SRenderingPassInfo& passInfo, bool fogVolumeShadingQuality);
 
     virtual Vec3 GetSunColor() const;
     virtual float GetSSAOAmount() const;
@@ -822,6 +827,7 @@ public:
     virtual void CompleteObjectsGeometry();
     virtual void LockCGFResources();
     virtual void UnlockCGFResources();
+    virtual void FreeUnusedCGFResources();
 
     virtual void SerializeState(TSerialize ser);
     virtual void PostSerialize(bool bReading);
@@ -911,6 +917,8 @@ public:
     {
         return CONFIG_VERYHIGH_SPEC; // very high spec.
     }
+
+    bool CheckMinSpec(uint32 nMinSpec) override;
 
     void UpdateRenderingCamera(const char* szCallerName, const SRenderingPassInfo& passInfo);
     virtual void PrepareOcclusion(const CCamera& rCamera);
@@ -1086,6 +1094,8 @@ public:
     Vec3 m_volFogHeightDensity;
     Vec3 m_volFogHeightDensity2;
     Vec3 m_volFogGradientCtrl;
+
+    AZ::Aabb m_terrainAabb;
 
 private:
     float m_oceanWindDirection;
@@ -1315,11 +1325,15 @@ public:
     PodArray<ShadowMapFrustum> m_lstCustomShadowFrustums;
     int m_nCustomShadowFrustumCount;
 
+    CryCriticalSection m_checkCreateRNTmpData;
     CThreadSafeRendererContainer<SFrameInfo> m_elementFrameInfo;
     CRNTmpData m_LTPRootFree, m_LTPRootUsed;
     void CreateRNTmpData(CRNTmpData** ppInfo, IRenderNode* pRNode, const SRenderingPassInfo& passInfo);
-    ILINE void CheckCreateRNTmpData(CRNTmpData** ppInfo, IRenderNode* pRNode, const SRenderingPassInfo& passInfo)
+    void CheckCreateRNTmpData(CRNTmpData** ppInfo, IRenderNode* pRNode, const SRenderingPassInfo& passInfo)
     {
+        // Lock to avoid a situation where two threads simultaneously find that *ppinfo is null,
+        // which would result in two CRNTmpData objects for the same owner which eventually leads to a crash
+        AUTO_LOCK(m_checkCreateRNTmpData);
         if (CRNTmpData* tmpData = (*ppInfo))
         {
             m_elementFrameInfo[tmpData->nFrameInfoId].nLastUsedFrameId = passInfo.GetMainFrameID();
@@ -1411,9 +1425,9 @@ public:
 
         void GarbageCollect();
 
+        CryCriticalSection m_Mutex;
     private:
         CThreadSafeRendererContainer<SPhysAreaNodeProxy> m_Proxies;
-        CryCriticalSection m_Mutex;
         PodArray<SAreaChangeRecord> m_DirtyAreas;
     };
 

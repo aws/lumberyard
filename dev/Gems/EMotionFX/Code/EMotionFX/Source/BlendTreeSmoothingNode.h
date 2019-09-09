@@ -61,7 +61,7 @@ namespace EMotionFX
         bool InitAfterLoading(AnimGraph* animGraph) override;
 
         void Rewind(AnimGraphInstance* animGraphInstance) override;
-        uint32 GetVisualColor() const override;
+        AZ::Color GetVisualColor() const override;
         bool GetSupportsDisable() const override;
 
         const char* GetPaletteName() const override;
@@ -79,8 +79,9 @@ namespace EMotionFX
         void Update(AnimGraphInstance* animGraphInstance, float timePassedInSeconds) override;
         AZ::Crc32 GetStartValueVisibility() const;
 
-        float       m_interpolationSpeed;
-        float       m_startValue;
-        bool        m_useStartValue;
+        float               m_interpolationSpeed;
+        float               m_startValue;
+        bool                m_useStartValue;
+        static const float  s_targetReachedRelativeTolerance;
     };
 } // namespace EMotionFX

@@ -27,6 +27,10 @@ public:
     virtual EmitterTypePtr GetEmitterByIndex(int index) override;
     virtual int GetEmitterCount() override;
 
+    virtual SShaderItem* GetRenderShader() override;
+
+    // ----------------------------------------------
+    //!< Called from the main thread.
     virtual void SetEmitterResourceParameters(EmitterTypePtr emitter, const ResourceParticleParams* parameters) override;
     virtual void SetEmitterTransform(EmitterTypePtr emitter, const Matrix34& transform) override;
     virtual void SetEmitterLodBlendAlpha(EmitterTypePtr emitter, const float lodBlendAlpha) override;
@@ -38,17 +42,21 @@ public:
     virtual void StopEmitter(EmitterTypePtr pEmitter) override;
     virtual void PrimeEmitter(EmitterTypePtr pEmitter, float equilibriumAge) override;
 
-    virtual void Update(EmitterTypePtr emitter) override;
-    virtual void Render(EmitterTypePtr emitter, EGPUParticlePass pass, int shadowMode, float fov, float aspectRatio, bool isWireframeEnabled) override;
-
     virtual void OnEffectChanged(EmitterTypePtr emitter) override;
 
     virtual void QueueEmitterNextFrame(EmitterTypePtr emitter, bool isAuxWindowUpdate) override;
-    virtual void UpdateFrame() override;
 
-    virtual SShaderItem* GetRenderShader() override;
+    void QueueRenderElementToReleaseNextFrame(CREParticleGPU* renderElement) override;
 
     void OnCubeDepthMapResolutionChanged(ICVar*) override;
+
+    // ----------------------------------------------
+    //!< Called from render thread.
+    virtual void UpdateFrame() override;
+
+    virtual void Update(EmitterTypePtr emitter) override;
+    virtual void Render(EmitterTypePtr emitter, EGPUParticlePass pass, int shadowMode, float fov, float aspectRatio, bool isWireframeEnabled) override;
+
 protected:
     CImpl_GPUParticles* m_impl;
 };

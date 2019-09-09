@@ -72,8 +72,6 @@ bool CryCHRLoader::BeginLoadCHRRenderMesh(CDefaultSkeleton* pSkel, EStreamTaskPr
 
     COMPILE_TIME_ASSERT(sizeof(TFace) == 6);
 
-    MEMSTAT_CONTEXT_FMT(EMemStatContextTypes::MSC_CHR, 0, "LoadCharacter %s", szFilePath);
-
     CRY_DEFINE_ASSET_SCOPE(CRY_SKEL_FILE_EXT, szFilePath);
 
     const char* szExt = CryStringUtils::FindExtension(szFilePath);
@@ -433,8 +431,6 @@ bool CDefaultSkeleton::LoadNewSKEL(const char* szFilePath, uint32 nLoadingFlags)
     LOADING_TIME_PROFILE_SECTION(g_pISystem);
 
     COMPILE_TIME_ASSERT(sizeof(TFace) == 6);
-
-    MEMSTAT_CONTEXT_FMT(EMemStatContextTypes::MSC_CHR, 0, "LoadCharacter %s", szFilePath);
 
     CRY_DEFINE_ASSET_SCOPE(CRY_SKEL_FILE_EXT, szFilePath);
 
@@ -838,14 +834,6 @@ bool CDefaultSkeleton::LoadAnimations(CParamLoader& paramLoader)
     {
         g_pILog->UpdateLoadingScreen("  %d animation-assets loaded (total assets: %d)", numAnimAssets, g_AnimationManager.m_arrGlobalCAF.size());
     }
-
-    if (Console::GetInst().ca_MemoryUsageLog)
-    {
-        CryModuleMemoryInfo info;
-        CryGetMemoryInfoForModule(&info);
-        g_pILog->UpdateLoadingScreen("Memstat %i", (int)(info.allocated - info.freed));
-    }
-
 
     // If there is a facial model, but no expression library, we should create an empty library for it.
     // When we assign the library to the facial model it will automatically be assigned the morphs as expressions.

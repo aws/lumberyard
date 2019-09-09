@@ -51,11 +51,12 @@ template<>
 inline void TAnimTrack<IConsoleKey>::Reflect(AZ::SerializeContext* serializeContext)
 {
     serializeContext->Class<TAnimTrack<IConsoleKey> >()
-        ->Version(1)
+        ->Version(2)
         ->Field("Flags", &TAnimTrack<IConsoleKey>::m_flags)
         ->Field("Range", &TAnimTrack<IConsoleKey>::m_timeRange)
         ->Field("ParamType", &TAnimTrack<IConsoleKey>::m_nParamType)
-        ->Field("Keys", &TAnimTrack<IConsoleKey>::m_keys);
+        ->Field("Keys", &TAnimTrack<IConsoleKey>::m_keys)
+        ->Field("Id", &TAnimTrack<IConsoleKey>::m_id);
 }
 
 //////////////////////////////////////////////////////////////////////////

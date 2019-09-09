@@ -26,14 +26,12 @@ def build(bld):
         configurations      = ['all'],
         pch                 = 'StdAfx.cpp',
         use                 = ['AzCore'],
+        defines             = ['ENGINE_EXPORTS', 'USE_CRY_NEW_AND_DELETE'],
 
         win_x64_clang_cxxflags = ['-Wno-deprecated-declarations'],
 
         # Platform Specific
-       
-
-       
-       
+        restricted_script   = 'update_restricted_parameters',
 
         darwin_cxxflags     = ['-Wno-shift-negative-value', '-Wno-shadow'],
 
@@ -41,7 +39,7 @@ def build(bld):
 
         appletv_cxxflags    = ['-Wno-shift-negative-value', '-Wno-shadow'],
 
-        android_armv7_clang_cxxflags  = ['-Wno-shift-negative-value', '-Wno-shadow'],
+        android_cxxflags    = ['-Wno-shift-negative-value', '-Wno-shadow', '-Wno-ignored-pragma-optimize'],
 
         # Testing
         test_all_file_list  = ['cryphysics_test.waf_files'],
@@ -55,8 +53,8 @@ def build(bld):
         copyright_org      = 'Amazon-CryTek',
         file_list          = 'cryphysics.waf_files',
         platforms          = ['win', 'darwin'],
-        configurations     = ['debug_all',
-                              'profile_all'],
+        configurations     = ['all'],
+        exclude_monolithic = True,
         use                = ['AzCore'],
 
         win_x64_clang_cxxflags = ['-Wno-deprecated-declarations'],

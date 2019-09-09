@@ -175,7 +175,7 @@ namespace LmbrCentral
             {
                 editContext->Class<EditorConstraintComponent>("Constraint", "The Constraint component creates a physical limitation or restriction between an entity and its target")
                     ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
-                        ->Attribute(AZ::Edit::Attributes::Category, "Physics")
+                        ->Attribute(AZ::Edit::Attributes::Category, "Physics (Legacy)")
                         ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/PhysicsConstraint.png")
                         ->Attribute(AZ::Edit::Attributes::ViewportIcon, "Editor/Icons/Components/Viewport/PhysicsConstraint.png")
                         ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("Game", 0x232b318c))  
@@ -220,18 +220,15 @@ namespace LmbrCentral
         }
     }
 
-    void EditorConstraintComponent::DisplayEntity(bool& handled)
+    void EditorConstraintComponent::DisplayEntityViewport(
+        const AzFramework::ViewportInfo& viewportInfo,
+        AzFramework::DebugDisplayRequests& debugDisplay)
     {
-        handled = true;
-
         // Don't draw extra visualization unless selected.
         if (!IsSelected())
         {
             return;
         }
-
-        auto* displayContext = AzFramework::EntityDebugDisplayRequestBus::FindFirstHandler();
-        AZ_Assert(displayContext, "Invalid display context.");
 
         const float sphereRadius = 0.5f;
         const float ballAlpha = 0.5f;
@@ -256,17 +253,17 @@ namespace LmbrCentral
             const AZ::Vector3 ownerWorldPos = ownerTransform.GetTranslation();
 
             // owner to pivot
-            displayContext->SetColor(lineWhite);
-            displayContext->DrawLine(ownerWorldPos, pivotWorldPos);
+            debugDisplay.SetColor(lineWhite);
+            debugDisplay.DrawLine(ownerWorldPos, pivotWorldPos);
 
             // owner position
-            displayContext->SetColor(ballGreen);
-            displayContext->DrawBall(ownerWorldPos, sphereRadius);
+            debugDisplay.SetColor(ballGreen);
+            debugDisplay.DrawBall(ownerWorldPos, sphereRadius);
         }
 
         // pivot position
-        displayContext->SetColor(ballYellow);
-        displayContext->DrawBall(pivotWorldPos, sphereRadius);
+        debugDisplay.SetColor(ballYellow);
+        debugDisplay.DrawBall(pivotWorldPos, sphereRadius);
 
         // Draw target-to-pivot
         if (m_config.m_targetEntity.IsValid())
@@ -276,12 +273,12 @@ namespace LmbrCentral
             const AZ::Vector3 targetWorldPos = targetTransform.GetTranslation();
 
             // target to pivot
-            displayContext->SetColor(lineWhite);
-            displayContext->DrawLine(targetWorldPos, pivotWorldPos);
+            debugDisplay.SetColor(lineWhite);
+            debugDisplay.DrawLine(targetWorldPos, pivotWorldPos);
 
             // pivot position
-            displayContext->SetColor(ballBlue);
-            displayContext->DrawBall(targetWorldPos, sphereRadius);
+            debugDisplay.SetColor(ballBlue);
+            debugDisplay.DrawBall(targetWorldPos, sphereRadius);
         }
 
         // Axis
@@ -314,15 +311,15 @@ namespace LmbrCentral
 
         const AZ::Vector3 axisVector = worldFrame * defaultAxis;
 
-        displayContext->SetColor(lineCyan);
-        displayContext->DrawArrow(pivotWorldPos, pivotWorldPos + (10.0f * axisVector));
+        debugDisplay.SetColor(lineCyan);
+        debugDisplay.DrawArrow(pivotWorldPos, pivotWorldPos + (10.0f * axisVector));
 
         if (m_config.m_constraintType == ConstraintConfiguration::ConstraintType::Ball)
         {
             const float height = 7.5f;
             const float radius = height * tanf(AZ::DegToRad(m_config.m_yzmax)); // r = h tan(x)
-            displayContext->SetColor(coneCyan);
-            displayContext->DrawCone(pivotWorldPos + (axisVector * height), -axisVector, radius, height);
+            debugDisplay.SetColor(coneCyan);
+            debugDisplay.DrawCone(pivotWorldPos + (axisVector * height), -axisVector, radius, height);
         }
     }
 

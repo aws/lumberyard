@@ -1,0 +1,101 @@
+# Shared compiler flags for msvc based compilation
+{
+    "env": {
+        "CFLAGS,CXXFLAGS": [
+            "/nologo",      # Suppress Copyright and version number message
+            "/W3",          # Warning Level 3
+            "/WX",          # Treat Warnings as Errors
+            "/MP",          # Allow Multicore compilation
+            "/Gy",          # Enable Function-Level Linking
+            "/GF",          # Enable string pooling
+            "/Gm-",         # Disable minimal rebuild (causes issues with IB)
+            "/fp:fast",     # Use fast (but not as precisce floatin point model)
+            "/Zc:wchar_t",  # Use compiler native wchar_t
+            "/Zc:forScope", # Force Conformance in for Loop Scope
+            "/GR-",         # Disable RTTI
+            "/Gd",          # Use _cdecl calling convention for all functions
+            # "/FC",        # debug
+            "/Zc:inline",   # Remove unreferenced COMDAT
+            "/bigobj",      # Increases the number of sections that an object file can contain
+            "/wd4530",		# Known issue, Disabling "C4530: C++ exception handler used, but unwind semantics are not enabled. Specify /EHsc" until it is fixed
+            "/wd4577"       # Known issue, disabling "C4577: 'noexcept' used with no exception handling mode specified; termination on exception is not guaranteed. Specify /EHsc"
+            # "/wd4351"		# Default initialization of array warning.  This is a mostly minor issue, but MSVC made it L1.
+
+
+        ],
+        "LINKFLAGS": [
+            "/NOLOGO",              # Suppress Copyright and version number message
+            "/MANIFEST",            # Create a manifest file
+            "/LARGEADDRESSAWARE",   # tell the linker that the application can handle addresses larger than 2 gigabytes.
+            "/INCREMENTAL:NO"       # Disable Incremental Linking
+        ]
+    },
+    "env/debug": {
+        "CFLAGS,CXXFLAGS": [
+            "/Od",      # Disable all optimizations
+            "/Ob0",     # Disable all inling
+            "/Oy-",     # Dont omit the frame pointer
+            "/RTC1",    # Add basic Runtime Checks
+            "/bigobj"   # Ensure we can store enough objects files
+        ],
+        "?use_recode?:DEFINES": [
+            "AZ_PROFILE_DISABLE_THREAD_LOCAL"   # Disable AZ Profiler's thread-local optimization, as it conflicts with Recode
+        ]
+    },
+    "env/profile": {
+        "CFLAGS,CXXFLAGS": [
+            "/Ox",     # Full optimization
+            "/Ob2",    # Inline any suitable function
+            "/Ot",     # Favor fast code over small code
+            "/Oi",     # Use Intrinsic Functions
+            "/Oy-"     # Don't omit the frame pointer
+        ],
+        "?use_recode?:DEFINES": [
+            "AZ_PROFILE_DISABLE_THREAD_LOCAL"   # Disable AZ Profiler's thread-local optimization, as it conflicts with Recode
+        ],
+        "?use_recode?:LINKFLAGS": [
+            "/FUNCTIONPADMIN:14"   # Reserve function padding for patch injection (improves Recoding)
+        ],
+        # Only add /OPT:REF or /OPT:ICF for Recode builds in profile
+        "?!use_recode?:LINKFLAGS": [
+            "/OPT:REF",            # elimination of unreferenced functions/data
+            "/OPT:ICF"             # comdat folding
+        ]
+    },
+    "env/performance": {
+        "CFLAGS,CXXFLAGS": [
+            "/Ox",      # Full optimization
+            "/Ob2",     # Inline any suitable function
+            "/Ot",      # Favor fast code over small code
+            "/Oi",      # Use Intrinsic Functions
+            "/Oy"       # omit the frame pointer
+        ],
+        "LINKFLAGS": [
+            "/OPT:REF", # Eliminate not referenced functions/data
+            "/OPT:ICF"  # Perform Comdat folding
+        ],
+        "@SET_LTCG_THREADS_FLAG@:LINKFLAGS": [
+            "/CGTHREADS:@LTCG_THREADS_COUNT@"
+        ]
+    },
+    "env/release": {
+        "DEFINES": [
+            "_RELEASE",
+            "NDEBUG"
+        ],
+        "CFLAGS,CXXFLAGS": [
+            "/Ox",     # Full optimization
+            "/Ob2",    # Inline any suitable function
+            "/Ot",     # Favor fast code over small code
+            "/Oi",     # Use Intrinsic Functions
+            "/Oy"      # omit the frame pointer
+        ],
+        "LINKFLAGS": [
+            "/OPT:REF", # Eliminate not referenced functions/data
+            "/OPT:ICF"  # Perform Comdat folding
+        ],
+        "@SET_LTCG_THREADS_FLAG@:LINKFLAGS": [
+            "/CGTHREADS:@LTCG_THREADS_COUNT@"
+        ]
+    }
+}

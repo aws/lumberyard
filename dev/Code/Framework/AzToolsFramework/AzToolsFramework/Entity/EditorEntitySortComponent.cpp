@@ -139,14 +139,13 @@ namespace AzToolsFramework
             {
                 m_childEntityOrderArray = entityOrderArray;
                 RebuildEntityOrderCache();
-                EditorEntitySortNotificationBus::Event(GetEntityId(), &EditorEntitySortNotificationBus::Events::ChildEntityOrderArrayUpdated);
-                m_entityOrderIsDirty = true;
+                MarkDirtyAndSendChangedEvent();
                 return true;
             }
             return false;
         }
 
-        bool EditorEntitySortComponent::AddChildEntity(const AZ::EntityId& entityId, bool addToBack)
+        bool EditorEntitySortComponent::AddChildEntityInternal(const AZ::EntityId& entityId, bool addToBack, EntityOrderArray::iterator insertPosition)
         {
             AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
             auto entityItr = m_childEntityOrderCache.find(entityId);
@@ -159,19 +158,47 @@ namespace AzToolsFramework
                 }
                 else
                 {
-                    m_childEntityOrderArray.insert(m_childEntityOrderArray.begin(), entityId);
+                    m_childEntityOrderArray.insert(insertPosition, entityId);
                     RebuildEntityOrderCache();
                 }
 
-                EditorEntitySortNotificationBus::Event(GetEntityId(), &EditorEntitySortNotificationBus::Events::ChildEntityOrderArrayUpdated);
-                m_entityOrderIsDirty = true;
-                
+                MarkDirtyAndSendChangedEvent();
+
                 // Use the ToolsApplication to mark the entity dirty, this will only do something if we already have an undo batch
                 ToolsApplicationRequestBus::Broadcast(&ToolsApplicationRequestBus::Events::AddDirtyEntity, GetEntityId());
                 
                 return true;
             }
             return false;
+        }
+
+        bool EditorEntitySortComponent::AddChildEntity(const AZ::EntityId& entityId, bool addToBack)
+        {
+            bool retval = false;
+
+            if (addToBack)
+            {
+                retval = AddChildEntityInternal(entityId, true, nullptr);
+            }
+            else
+            {
+                EntityOrderArray::iterator insertPosition = GetFirstSelectedEntityPosition();
+                retval = AddChildEntityInternal(entityId, false, insertPosition);
+                RebuildEntityOrderCache();
+            }
+
+            return retval;
+        }
+
+        bool EditorEntitySortComponent::AddChildEntityAtPosition(const AZ::EntityId& entityId, const AZ::EntityId& beforeEntity)
+        {
+            EntityOrderArray::iterator selectedEntityPos = AZStd::find(m_childEntityOrderArray.begin(), m_childEntityOrderArray.end(), beforeEntity);
+            EntityOrderArray::iterator insertPosition = selectedEntityPos < m_childEntityOrderArray.end() ? selectedEntityPos : m_childEntityOrderArray.begin();
+
+            bool retval = AddChildEntityInternal(entityId, false, insertPosition);
+            RebuildEntityOrderCache();
+
+            return retval;
         }
 
         bool EditorEntitySortComponent::RemoveChildEntity(const AZ::EntityId& entityId)
@@ -183,11 +210,11 @@ namespace AzToolsFramework
                 m_childEntityOrderArray.erase(m_childEntityOrderArray.begin() + entityItr->second);
                 RebuildEntityOrderCache();
 
-                EditorEntitySortNotificationBus::Event(GetEntityId(), &EditorEntitySortNotificationBus::Events::ChildEntityOrderArrayUpdated);
-                m_entityOrderIsDirty = true;
+                MarkDirtyAndSendChangedEvent();
 
                 // Use the ToolsApplication to mark the entity dirty, this will only do something if we already have an undo batch
                 ToolsApplicationRequestBus::Broadcast(&ToolsApplicationRequestBus::Events::AddDirtyEntity, GetEntityId());
+
                 return true;
             }
             return false;
@@ -223,8 +250,18 @@ namespace AzToolsFramework
                 }
 
                 RebuildEntityOrderCache();
+
+                m_entityOrderIsDirty = (m_childEntityOrderArray.size() != m_childEntityOrderEntryArray.size());
                 EditorEntitySortNotificationBus::Event(GetEntityId(), &EditorEntitySortNotificationBus::Events::ChildEntityOrderArrayUpdated);
             }
+        }
+
+        void EditorEntitySortComponent::MarkDirtyAndSendChangedEvent()
+        {
+            // mark the order as dirty before sending the ChildEntityOrderArrayUpdated event in order for PrepareSave to be properly handled in the case 
+            // one of the event listeners needs to build the InstanceDataHierarchy
+            m_entityOrderIsDirty = true;
+            EditorEntitySortNotificationBus::Event(GetEntityId(), &EditorEntitySortNotificationBus::Events::ChildEntityOrderArrayUpdated);
         }
 
         void EditorEntitySortComponent::Init()
@@ -295,6 +332,21 @@ namespace AzToolsFramework
             {
                 m_childEntityOrderCache[entityId] = m_childEntityOrderCache.size();
             }
+        }
+
+        EntityOrderArray::iterator EditorEntitySortComponent::GetFirstSelectedEntityPosition()
+        {
+            AzToolsFramework::EntityIdList selectedEntities;
+            AzToolsFramework::ToolsApplicationRequestBus::BroadcastResult(selectedEntities, &AzToolsFramework::ToolsApplicationRequests::GetSelectedEntities);
+
+            EntityOrderArray::iterator firstSelectedEntityPos = m_childEntityOrderArray.end();
+            for (const AZ::EntityId& selectedEntityId : selectedEntities)
+            {
+                EntityOrderArray::iterator selectedEntityPos = AZStd::find(m_childEntityOrderArray.begin(), m_childEntityOrderArray.end(), selectedEntityId);
+                firstSelectedEntityPos = selectedEntityPos < firstSelectedEntityPos ? selectedEntityPos : firstSelectedEntityPos;
+            }
+
+            return firstSelectedEntityPos == m_childEntityOrderArray.end() ? m_childEntityOrderArray.begin() : firstSelectedEntityPos;
         }
     }
 } // namespace AzToolsFramework

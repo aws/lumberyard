@@ -23,6 +23,7 @@
 #include <AzCore/std/parallel/mutex.h>
 #include <AzCore/std/parallel/semaphore.h>
 #include <AzCore/std/parallel/thread.h>
+#include <AzCore/std/parallel/atomic.h>
 #include <AzToolsFramework/SourceControl/SourceControlAPI.h>
 
 class LayerModel;
@@ -196,6 +197,8 @@ private:
     bool isPointInExpandButton(const QPoint& point, const QModelIndex& index) const;
     void UpdateLayersFromConnection();
     void QueueLayersForUpdate();
+
+    AZStd::atomic_bool m_threadWorkerBusy = { false };
 
     LayerModel* m_model;
 };

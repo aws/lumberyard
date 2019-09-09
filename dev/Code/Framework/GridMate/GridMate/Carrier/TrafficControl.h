@@ -81,13 +81,18 @@ namespace GridMate
         virtual bool IsSend(TrafficControlConnectionId id) = 0;
         /// Return true if you should send ACK/NACK data at this time.
         virtual bool IsSendAck(TrafficControlConnectionId id) = 0;
-        /// Return max packet size we are allow to send at the moment in bytes. The size can/will vary over time.
-        virtual unsigned int GetMaxPacketSize(TrafficControlConnectionId id) const = 0;
+        /// Return number of bytes we are allowed to send at the moment. The size can/will vary over time.
+        virtual unsigned int GetAvailableWindowSize(TrafficControlConnectionId id) const = 0;
         /**
         * Called for every package waiting for Ack. If this function returns true the packet will be considered lost.
         * You should resend it and call OnReSend function ASAP.
         */
         virtual bool IsResend(TrafficControlConnectionId id, const DataGramControlData& info, unsigned int resendDataSize) = 0;
+
+        /**
+        * Returns the timestamp for retransmission
+        */
+        virtual TimeStamp GetResendTime(TrafficControlConnectionId id, const DataGramControlData& info) = 0;
 
         /// Verify traffic conditions and disconnect if needed. This usually happens when we have bad conditions. Too much latency or high packet loss.
         virtual bool IsDisconnect(TrafficControlConnectionId id, float conditionThreshold) = 0;

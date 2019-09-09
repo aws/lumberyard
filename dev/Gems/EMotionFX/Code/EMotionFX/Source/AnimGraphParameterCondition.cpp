@@ -455,6 +455,64 @@ namespace EMotionFX
         }
     }
 
+    AZStd::vector<AZStd::string> AnimGraphParameterCondition::GetParameters() const
+    {
+        AZStd::vector<AZStd::string> parameters;
+        if (!m_parameterName.empty())
+        {
+            parameters.emplace_back(m_parameterName);
+        }
+        return parameters;
+    }
+
+    AnimGraph* AnimGraphParameterCondition::GetParameterAnimGraph() const
+    {
+        return GetAnimGraph();
+    }
+
+    void AnimGraphParameterCondition::ParameterMaskChanged(const AZStd::vector<AZStd::string>& newParameterMask)
+    {
+        if (!newParameterMask.empty())
+        {
+            m_parameterName = *newParameterMask.begin();
+            m_parameterIndex = mAnimGraph->FindValueParameterIndexByName(m_parameterName);
+        }
+    }
+
+    void AnimGraphParameterCondition::AddRequiredParameters(AZStd::vector<AZStd::string>& parameterNames) const
+    {
+        AZ_UNUSED(parameterNames);
+        // The parameter is replaceable
+    }
+
+    void AnimGraphParameterCondition::ParameterAdded(size_t newParameterIndex)
+    {
+        // Just recompute the index in the case the new parameter was inserted before ours
+        m_parameterIndex = mAnimGraph->FindValueParameterIndexByName(m_parameterName);
+    }
+
+    void AnimGraphParameterCondition::ParameterRenamed(const AZStd::string& oldParameterName, const AZStd::string& newParameterName)
+    {
+        if (GetParameterName() == oldParameterName)
+        {
+            SetParameterName(newParameterName);
+        }
+    }
+
+    void AnimGraphParameterCondition::ParameterOrderChanged(const ValueParameterVector& beforeChange, const ValueParameterVector& afterChange)
+    {
+        // Just recompute the index
+        m_parameterIndex = mAnimGraph->FindValueParameterIndexByName(m_parameterName);
+    }
+
+    void AnimGraphParameterCondition::ParameterRemoved(const AZStd::string& oldParameterName)
+    {
+        if (oldParameterName == m_parameterName)
+        {
+            m_parameterName.clear();
+            m_parameterIndex = AZ::Failure();
+        }
+    }
 
     void AnimGraphParameterCondition::Reflect(AZ::ReflectContext* context)
     {

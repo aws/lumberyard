@@ -18,6 +18,7 @@
 
 #include <Components/GridVisualComponent.h>
 #include <GraphCanvas/Editor/GraphCanvasProfiler.h>
+#include <GraphCanvas/Utils/QtDrawingUtils.h>
 
 namespace GraphCanvas
 {
@@ -36,7 +37,7 @@ namespace GraphCanvas
         }
     }
 
-    GridVisualComponent::GridVisualComponent()        
+    GridVisualComponent::GridVisualComponent()
     {
     }
 
@@ -112,6 +113,25 @@ namespace GraphCanvas
     bool GridVisualComponent::IsSelected() const
     {
         return false;
+    }
+
+    QPainterPath GridVisualComponent::GetOutline() const
+    {
+        return QPainterPath();
+    }
+
+    void GridVisualComponent::SetZValue(int)
+    {
+    }
+
+    int GridVisualComponent::GetZValue() const
+    {
+        if (m_gridVisualUi)
+        {
+            return m_gridVisualUi->zValue();
+        }
+
+        return -10000;
     }
 
     void GridVisualComponent::OnMajorPitchChanged(const AZ::Vector2& pitch)
@@ -249,25 +269,18 @@ namespace GraphCanvas
         gridStartY -= gridStartY % static_cast<int>(m_gridVisual.m_majorPitch.GetY());
 
         // Offset by one major step to give a buffer when dealing with negative values to avoid making this super complicated
-        gridStartY -= m_gridVisual.m_majorPitch.GetY();
-
-        int currentX = gridStartX;
-        int currentY = gridStartY;
+        gridStartY -= m_gridVisual.m_majorPitch.GetY();        
 
         int terminalY = option->exposedRect.bottom() + m_gridVisual.m_majorPitch.GetY();
 
-        while (currentY <= terminalY)
-        {
-            painter->drawPixmap(currentX, currentY, (*pixmap));
+        QRectF patternFillRect(QPointF(gridStartX, gridStartY), QPointF(option->exposedRect.right(), terminalY));
 
-            currentX += pixmap->width();
+        PatternFillConfiguration patternFillConfiguration;
+        patternFillConfiguration.m_minimumTileRepetitions = 1;
+        patternFillConfiguration.m_evenRowOffsetPercent = 0.0f;
+        patternFillConfiguration.m_oddRowOffsetPercent = 0.0f;
 
-            if (currentX > option->exposedRect.right())
-            {
-                currentX = gridStartX;
-                currentY += pixmap->height();
-            }
-        }
+        QtDrawingUtils::PatternFillArea((*painter), patternFillRect, (*pixmap), patternFillConfiguration);
     }
 
     void GridGraphicsItem::CacheStencils()
@@ -329,6 +342,11 @@ namespace GraphCanvas
             painter.drawLine(QPoint(0, i), QPoint(majorX, i));
         }
 
+        PatternFillConfiguration patternFillConfiguration;
+        patternFillConfiguration.m_minimumTileRepetitions = 1;
+        patternFillConfiguration.m_evenRowOffsetPercent = 0.0f;
+        patternFillConfiguration.m_oddRowOffsetPercent = 0.0f;
+
         for (int i = 1; i < m_levelOfDetails.size(); ++i)
         {
             QPixmap* drawStencil = m_levelOfDetails[i - 1];
@@ -339,21 +357,7 @@ namespace GraphCanvas
 
             QPainter localPainter(paintStencil);
 
-            int currentX = 0;
-            int currentY = 0;
-
-            while (currentY <= paintStencil->height())
-            {
-                localPainter.drawPixmap(currentX, currentY, (*drawStencil));
-
-                currentX += drawStencil->width();
-
-                if (currentX > paintStencil->width())
-                {
-                    currentX = 0;
-                    currentY += drawStencil->height();
-                }
-            }
+            QtDrawingUtils::PatternFillArea(localPainter, paintStencil->rect(), (*drawStencil), patternFillConfiguration);
         }
     }
 }

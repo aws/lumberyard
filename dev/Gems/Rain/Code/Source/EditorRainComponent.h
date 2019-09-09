@@ -60,8 +60,10 @@ namespace Rain
         // EditorComponentBase
         void BuildGameEntity(AZ::Entity* gameEntity) override;
 
-        // EntityDebugDisplayEventBus
-        void DisplayEntity(bool& handled) override;
+        // AzFrameowrk::EntityDebugDisplayEventBus
+        void DisplayEntityViewport(
+            const AzFramework::ViewportInfo& viewportInfo,
+            AzFramework::DebugDisplayRequests& debugDisplay) override;
 
         static void GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided)
         {

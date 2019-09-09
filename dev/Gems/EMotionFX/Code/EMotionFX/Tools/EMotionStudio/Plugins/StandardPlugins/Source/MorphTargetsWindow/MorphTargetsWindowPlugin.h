@@ -75,11 +75,7 @@ namespace EMStudio
         MCORE_DEFINECOMMANDCALLBACK(CommandAdjustMorphTargetCallback);
         MCORE_DEFINECOMMANDCALLBACK(CommandAdjustActorInstanceCallback);
 
-        CommandSelectCallback*                  mSelectCallback;
-        CommandUnselectCallback*                mUnselectCallback;
-        CommandClearSelectionCallback*          mClearSelectionCallback;
-        CommandAdjustMorphTargetCallback*       mAdjustMorphTargetCallback;
-        CommandAdjustActorInstanceCallback*     mAdjustActorInstanceCallback;
+        AZStd::vector<MCore::Command::Callback*> m_callbacks;
 
         // holds the generated groups for the morph targets
         AZStd::vector<MorphTargetGroupWidget*>  mMorphTargetGroups;

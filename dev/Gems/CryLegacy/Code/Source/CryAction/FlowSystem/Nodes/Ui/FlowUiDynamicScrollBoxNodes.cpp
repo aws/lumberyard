@@ -15,11 +15,11 @@
 
 namespace
 {
-    const string g_dynamicScrollBoxRefreshNodePath = "UI:DynamicScrollBox:RefreshContent";
-    const string g_dynamicScrollBoxGetLocationIndexOfChildNodePath = "UI:DynamicScrollBox:GetLocationIndexOfChild";
+    const char* g_dynamicScrollBoxRefreshNodePath = "UI:DynamicScrollBox:RefreshContent";
+    const char* g_dynamicScrollBoxGetLocationIndexOfChildNodePath = "UI:DynamicScrollBox:GetLocationIndexOfChild";
 
-    const string g_entDynamicScrollBoxRefreshNodePath = "UIe:DynamicScrollBox:RefreshContent";
-    const string g_entDynamicScrollBoxGetLocationIndexOfChildNodePath = "UIe:DynamicScrollBox:GetLocationIndexOfChild";
+    const char* g_entDynamicScrollBoxRefreshNodePath = "UIe:DynamicScrollBox:RefreshContent";
+    const char* g_entDynamicScrollBoxGetLocationIndexOfChildNodePath = "UIe:DynamicScrollBox:GetLocationIndexOfChild";
 }
 
 #define FLOW_UI_DYNAMICSCROLLBOX_NODE_COMMON_INPUT_PORT_CONFIGS \

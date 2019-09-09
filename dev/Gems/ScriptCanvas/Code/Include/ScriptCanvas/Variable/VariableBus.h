@@ -68,9 +68,12 @@ namespace ScriptCanvas
 
         //! Adds a variable that is keyed by the string and maps to a type that can be storedAZStd::any(any type with a AzTypeInfo specialization)
         //! returns an AZ::Outcome which on success contains the VariableId and on Failure contains a string with error information
+        virtual AZ::Outcome<VariableId, AZStd::string> CloneVariable(const VariableNameValuePair& baseVariable) = 0;
         virtual AZ::Outcome<VariableId, AZStd::string> RemapVariable(const VariableNameValuePair& variableConfiguration) = 0;
         virtual AZ::Outcome<VariableId, AZStd::string> AddVariable(AZStd::string_view key, const Datum& value) = 0;
         virtual AZ::Outcome<VariableId, AZStd::string> AddVariablePair(const AZStd::pair<AZStd::string_view, Datum>& keyValuePair) = 0;
+
+        virtual bool IsNameAvailable(AZStd::string_view key) = 0;
 
         //! Adds properties from the range [first, last)
         //! returns vector of AZ::Outcome which for successful outcomes contains the VariableId and for failing outcome
@@ -150,6 +153,12 @@ namespace ScriptCanvas
         virtual const VariableId& GetId() const = 0;
     };
 
+    class ScriptEventNodeRequests
+    {
+    public:
+        virtual void UpdateVersion() {}
+    };
+
     struct RequestByVariableIdTraits : public AZ::EBusTraits
     {
         static const AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::Multiple;
@@ -174,6 +183,8 @@ namespace ScriptCanvas
     using VariableRequestBus = AZ::EBus<VariableRequests, RequestByVariableIdTraits>;
     using GraphVariableManagerRequestBus = AZ::EBus<GraphVariableManagerRequests, RequestByGraphIdTraits>;
     using VariableNodeRequestBus = AZ::EBus<VariableNodeRequests, RequestByNodeIdTraits>;
+    using ScriptEventNodeRequestBus = AZ::EBus<ScriptEventNodeRequests, RequestByNodeIdTraits>;
+
 
     class GraphVariableManagerNotifications
         : public AZ::EBusTraits
@@ -210,6 +221,7 @@ namespace ScriptCanvas
         virtual void OnVariableValueChanged() {};
 
         virtual void OnVariableExposureChanged() {};
+        virtual void OnVariableExposureGroupChanged() {};
     };
 
     using VariableNotificationBus = AZ::EBus<VariableNotifications>;

@@ -18,6 +18,8 @@
 #include <AzToolsFramework/ToolsComponents/EditorComponentBase.h>
 #include <Integration/Components/SimpleMotionComponent.h>
 #include <Integration/Components/ActorComponent.h>
+#include <Integration/SimpleMotionComponentBus.h>
+#include <Integration/EditorSimpleMotionComponentBus.h>
 
 namespace EMotionFX
 {
@@ -25,7 +27,10 @@ namespace EMotionFX
     {
         class EditorSimpleMotionComponent
             : public AzToolsFramework::Components::EditorComponentBase
-            , private AZ::Data::AssetBus::Handler
+            , private AZ::Data::AssetBus::MultiHandler
+            , private ActorComponentNotificationBus::Handler
+            , private SimpleMotionComponentRequestBus::Handler
+            , private EditorSimpleMotionComponentRequestBus::Handler
         {
         public:
 
@@ -37,6 +42,10 @@ namespace EMotionFX
             // AZ::Component interface implementation
             void Activate() override;
             void Deactivate() override;
+
+            // ActorComponentNotificationBus::Handler
+            void OnActorInstanceCreated(EMotionFX::ActorInstance* actorInstance) override;
+            void OnActorInstanceDestroyed(EMotionFX::ActorInstance* actorInstance) override;
 
             // AZ::Data::AssetBus::Handler
             void OnAssetReady(AZ::Data::Asset<AZ::Data::AssetData> asset) override;
@@ -64,13 +73,43 @@ namespace EMotionFX
 
             static void Reflect(AZ::ReflectContext* context);
 
+            // SimpleMotionComponentRequestBus::Handler
+            void LoopMotion(bool enable) override;
+            bool GetLoopMotion() const override;
+            void RetargetMotion(bool enable) override;
+            void ReverseMotion(bool enable) override;
+            void MirrorMotion(bool enable) override;
+            void SetPlaySpeed(float speed) override;
+            float GetPlaySpeed() const override;
+            void PlayTime(float time) override;
+            float GetPlayTime() const override;
+            void Motion(AZ::Data::AssetId assetId) override;
+            AZ::Data::AssetId  GetMotion() const override;
+            void BlendInTime(float time) override;
+            float GetBlendInTime() const override;
+            void BlendOutTime(float time) override;
+            float GetBlendOutTime() const override;
+            void PlayMotion() override;
+
+            // EditorSimpleMotionComponentRequestBus::Handler
+            void SetPreviewInEditor(bool enable) override;
+            bool GetPreviewInEditor() const override;
+            float GetAssetDuration(const AZ::Data::AssetId& assetId) override;
+
         private:
             EditorSimpleMotionComponent(const EditorSimpleMotionComponent&) = delete;
 
+            void RemoveMotionInstanceFromActor(EMotionFX::MotionInstance* motionInstance);
             void BuildGameEntity(AZ::Entity* gameEntity) override;
             void VerifyMotionAssetState();
+            AZ::Crc32 OnEditorPropertyChanged();
 
-            SimpleMotionComponent::Configuration m_configuration;
+            bool                                    m_previewInEditor;      ///< Plays motion in Editor.
+            SimpleMotionComponent::Configuration    m_configuration;
+            EMotionFX::ActorInstance*               m_actorInstance;        ///< Associated actor instance (retrieved from Actor Component).
+            EMotionFX::MotionInstance*              m_motionInstance;       ///< Motion to play on the actor
+            AZ::Data::Asset<MotionAsset>            m_lastMotionAsset;      ///< Last active motion asset, kept alive for blending.
+            EMotionFX::MotionInstance*              m_lastMotionInstance;   ///< Last active motion instance, kept alive for blending.
         };
     }
 }

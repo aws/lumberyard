@@ -29,13 +29,13 @@ namespace EMotionFX
     {
         // setup the input ports
         InitInputPorts(2);
-        SetupInputPort("x", INPUTPORT_X, MCore::AttributeVector3::TYPE_ID, PORTID_INPUT_X);
-        SetupInputPort("y", INPUTPORT_Y, MCore::AttributeVector3::TYPE_ID, PORTID_INPUT_Y);
+        SetupInputPortAsVector3("x", INPUTPORT_X, PORTID_INPUT_X);
+        SetupInputPortAsVector3("y", INPUTPORT_Y, PORTID_INPUT_Y);
 
         // setup the output ports
         InitOutputPorts(2);
-        SetupOutputPort("Vector3", INPUTPORT_X, MCore::AttributeVector3::TYPE_ID, PORTID_OUTPUT_VECTOR3);
-        SetupOutputPort("Float", INPUTPORT_Y, MCore::AttributeFloat::TYPE_ID, PORTID_OUTPUT_FLOAT);
+        SetupOutputPort("Vector3", OUTPUTPORT_RESULT_VECTOR3, MCore::AttributeVector3::TYPE_ID, PORTID_OUTPUT_VECTOR3);
+        SetupOutputPort("Float", OUTPUTPORT_RESULT_FLOAT, MCore::AttributeFloat::TYPE_ID, PORTID_OUTPUT_FLOAT);
 
         if (mAnimGraph)
         {
@@ -129,25 +129,13 @@ namespace EMotionFX
 
         // if both x and y inputs have connections
         AZ::Vector3 x, y;
-        if (mConnections.size() == 2)
+        if (!TryGetInputVector3(animGraphInstance, INPUTPORT_X, x))
         {
-            x = AZ::Vector3(GetInputVector3(animGraphInstance, INPUTPORT_X)->GetValue());
-            y = AZ::Vector3(GetInputVector3(animGraphInstance, INPUTPORT_Y)->GetValue());
+            x = m_defaultValue;
         }
-        else // only x or y is connected
+        if (!TryGetInputVector3(animGraphInstance, INPUTPORT_Y, y))
         {
-            // if only x has something plugged in
-            if (mConnections[0]->GetTargetPort() == INPUTPORT_X)
-            {
-                x = AZ::Vector3(GetInputVector3(animGraphInstance, INPUTPORT_X)->GetValue());
-                y = m_defaultValue;
-            }
-            else // only y has an input
-            {
-                MCORE_ASSERT(mConnections[0]->GetTargetPort() == INPUTPORT_Y);
-                x = m_defaultValue;
-                y = AZ::Vector3(GetInputVector3(animGraphInstance, INPUTPORT_Y)->GetValue());
-            }
+            y = m_defaultValue;
         }
 
         // apply the operation

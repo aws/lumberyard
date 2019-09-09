@@ -76,6 +76,7 @@ extern "C" AZ_DLL_EXPORT void UninitializeDynamicModule()
         context->EnableRemoveReflection();
         Reflect(context);
         context->DisableRemoveReflection();
+        context->CleanupModuleGenericClassInfo();
     }
 
     if (!g_componentDescriptors.empty())

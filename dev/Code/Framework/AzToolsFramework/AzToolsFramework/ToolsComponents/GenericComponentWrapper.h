@@ -9,8 +9,8 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#ifndef AZTOOLSFRAMEWORK_GENERIC_COMPONENT_WRAPPER_H
-#define AZTOOLSFRAMEWORK_GENERIC_COMPONENT_WRAPPER_H
+
+#pragma once
 
 #include <AzCore/Slice/SliceBus.h>
 #include <AzCore/Serialization/SerializeContext.h>
@@ -51,21 +51,22 @@ namespace AzToolsFramework
             const char* GetDisplayName() const;
             const char* GetDisplayDescription() const;
 
-            //////////////////////////////////////////////////////////////////////////
             // AZ::Component
             void Init() override;
             void Activate() override;
             void Deactivate() override;
-            //////////////////////////////////////////////////////////////////////////
+            const AZ::TypeId& GetUnderlyingComponentType() const override;
 
-            //////////////////////////////////////////////////////////////////////////
-            // AzFramework::EntityDebugDisplayRequestBus::Handler
-            void DisplayEntity(bool& handled) override;
-            //////////////////////////////////////////////////////////////////////////
+            // AzFramework::DebugDisplayRequestBus
+            void DisplayEntityViewport(
+                const AzFramework::ViewportInfo& viewportInfo,
+                AzFramework::DebugDisplayRequests& debugDisplay) override;
 
             void BuildGameEntity(AZ::Entity* gameEntity) override;
-            void FinishedBuildingGameEntity(AZ::Entity* gameEntity) override;
             void SetPrimaryAsset(const AZ::Data::AssetId& assetId) override;
+
+            AZ::ComponentValidationResult ValidateComponentRequirements(
+                const AZ::ImmutableEntityVector& sliceEntities) const override;
 
             AZ::Component* GetTemplate() const { return m_template; }
 
@@ -81,34 +82,6 @@ namespace AzToolsFramework
             AZStd::string m_displayName;
             AZStd::string m_displayDescription;
         };
-
-        /**
-        * System component which removes unnecessary GenericComponentWrappers
-        * from an AZ::Entity after the entity is loaded from serialized data.
-        *
-        * It's possible that a component which hadn't been an editor-component
-        * has been changed into an editor-component over the course of development.
-        * If this happens to the component inside GenericComponentWrapper,
-        * the wrapper should swap places with the component and delete itself.
-        */
-        class GenericComponentUnwrapper
-            : public AZ::Component
-            , public AZ::SliceAssetSerializationNotificationBus::Handler
-        {
-        public:
-            AZ_COMPONENT(GenericComponentUnwrapper, "{7D00B08D-DC26-465A-949B-8DAC7787E607}");
-            static void Reflect(AZ::ReflectContext* context);
-
-        protected:
-            void Activate() override;
-            void Deactivate() override;
-
-            ////////////////////////////////////////////////////////////////////////
-            // SliceAssetSerializationNotificationBus
-            void OnSliceEntitiesLoaded(const AZStd::vector<AZ::Entity*>& entities) override;
-            ////////////////////////////////////////////////////////////////////////
-        };
-
     } // namespace Components
 
     /// Returns the component's type ID.
@@ -147,7 +120,3 @@ namespace AzToolsFramework
         return nullptr;
     }
 } // namespace AzToolsFramework
-
-#endif
-
-#pragma once

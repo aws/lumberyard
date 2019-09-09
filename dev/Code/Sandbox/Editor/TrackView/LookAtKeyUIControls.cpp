@@ -14,7 +14,6 @@
 #include "StdAfx.h"
 #include "TrackViewKeyPropertiesDlg.h"
 #include "TrackViewTrack.h"
-#include "TrackViewUndo.h"
 #include <Maestro/Types/AnimParamType.h>
 #include <Maestro/Types/SequenceType.h>
 
@@ -175,12 +174,7 @@ void CLookAtKeyUIControls::OnUIChange(IVariable* pVar, CTrackViewKeyBundle& sele
             bool isDuringUndo = false;
             AzToolsFramework::ToolsApplicationRequests::Bus::BroadcastResult(isDuringUndo, &AzToolsFramework::ToolsApplicationRequests::Bus::Events::IsDuringUndoRedo);
 
-            if (sequence->GetSequenceType() == SequenceType::Legacy)
-            {
-                CUndo::Record(new CUndoTrackObject(keyHandle.GetTrack()));
-                keyHandle.SetKey(&lookAtKey);
-            }
-            else if (isDuringUndo)
+            if (isDuringUndo)
             {
                 keyHandle.SetKey(&lookAtKey);
             }

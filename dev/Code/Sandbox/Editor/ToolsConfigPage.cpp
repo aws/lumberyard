@@ -827,7 +827,7 @@ void CToolsConfigPage::FillScriptCmds()
         = CAutoRegisterPythonModuleHelper::s_modules;
     for (size_t i = 0; i < modules.size(); ++i)
     {
-        commands.push_back(modules[i].name.c_str());
+        commands.push_back(modules[i].name);
     }
 
     // Add full command names to the auto-completion list.
@@ -835,7 +835,7 @@ void CToolsConfigPage::FillScriptCmds()
     while (pCurrent)
     {
         const QString command = pCurrent->m_name;
-        const QString fullCmd = QString("%1.%2()").arg(CAutoRegisterPythonModuleHelper::s_modules[pCurrent->m_moduleIndex].name.c_str()).arg(command);
+        const QString fullCmd = QString("%1.%2()").arg(CAutoRegisterPythonModuleHelper::s_modules[pCurrent->m_moduleIndex].name).arg(command);
 
         commands.push_back(fullCmd);
 

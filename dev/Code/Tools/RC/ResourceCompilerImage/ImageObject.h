@@ -726,6 +726,12 @@ private:
 
     // Convert to/from ETC2 format
     EResult ConvertFormatWithETC2Compressor(const CImageProperties* pProps, EPixelFormat fmtDst, EQuality quality);
+
+    // Decompress texture from pvrtc texture
+    EResult DecompressPVRTCTexture(const CImageProperties* pProps, EPixelFormat fmtDst, ImageObject* pRet);
+
+    //Compress to pvrtc texture
+    EResult CompressPVRTCTexture(const CImageProperties* pProps, EPixelFormat fmtDst, EQuality quality, ImageObject* pRet);
 public:
     // ---------------------------------------------------------------------------------
     //! can be used to compress, requires a preset

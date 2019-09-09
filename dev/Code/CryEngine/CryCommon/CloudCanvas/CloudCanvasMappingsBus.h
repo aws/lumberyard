@@ -58,6 +58,7 @@ namespace CloudGemFramework
         virtual MappingData GetAllMappings() = 0;
 
         virtual bool LoadLogicalMappingsFromFile(const AZStd::string& mappingsFileName) = 0;
+        virtual void InitializeGameMappings() {}
 
         virtual bool IsProtectedMapping() = 0;
         virtual void SetProtectedMapping(bool isProtected) = 0;

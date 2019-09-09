@@ -137,6 +137,7 @@ namespace AZ
         , protected Internal::ModuleManagerInternalRequestBus::Handler
     {
     public:
+        AZ_CLASS_ALLOCATOR(ModuleManager, AZ::OSAllocator, 0);
         static void Reflect(ReflectContext* context);
 
         ModuleManager();
@@ -147,6 +148,9 @@ namespace AZ
 
         // To be called by the Component Application when it deserializes an entity
         void AddModuleEntity(ModuleEntity* moduleEntity);
+
+        // Deactivates owned module entities without unloading the module
+        void DeactivateEntities();
 
         // To be called by the Component Application on startup
         void SetSystemComponentTags(AZStd::string_view tags);

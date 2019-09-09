@@ -88,46 +88,6 @@ namespace ScriptCanvasEditor
             ScriptCanvas::LogNotificationBus::Handler::BusDisconnect();
         }
 
-        void LogTab::OnNodeSignalOutput(const AZStd::string& sourceNodeName, const AZStd::string& targetNodeName, const AZStd::string& slotName)
-        {
-            if (slotName.empty())
-            {
-                AzToolsFramework::Logging::LogLine line(AZStd::string::format("From: %s To: %s", sourceNodeName.c_str(), targetNodeName.c_str()).c_str(), "Output", AzToolsFramework::Logging::LogLine::TYPE_MESSAGE, QDateTime::currentMSecsSinceEpoch());
-                m_bufferedLines.push(line);
-            }
-            else
-            {
-                AzToolsFramework::Logging::LogLine line(AZStd::string::format("From: %s To: %s (Slot: %s)", sourceNodeName.c_str(), targetNodeName.c_str(), slotName.c_str()).c_str(), "Output", AzToolsFramework::Logging::LogLine::TYPE_MESSAGE, QDateTime::currentMSecsSinceEpoch());
-                m_bufferedLines.push(line);
-            }
-
-            CommitAddedLines();
-        }
-
-        void LogTab::OnNodeSignalInput(const AZ::Uuid& nodeId, const AZStd::string& name, const AZStd::string& slotName)
-        {
-            if (slotName.empty())
-            {
-                AzToolsFramework::Logging::LogLine line(AZStd::string::format("%s", name.c_str()).c_str(), "Input", AzToolsFramework::Logging::LogLine::TYPE_MESSAGE, QDateTime::currentMSecsSinceEpoch());
-                m_bufferedLines.push(line);
-            }
-            else
-            {
-                AzToolsFramework::Logging::LogLine line(AZStd::string::format("%s (Slot: %s)", name.c_str(), slotName.c_str()).c_str(), "Input", AzToolsFramework::Logging::LogLine::TYPE_MESSAGE, QDateTime::currentMSecsSinceEpoch());
-                m_bufferedLines.push(line);
-            }
-
-            CommitAddedLines();
-        }
-
-        void LogTab::OnNodeInputChanged(const AZStd::string& sourceNodeName, const AZStd::string& objectName, const AZStd::string& slotName)
-        {
-            AzToolsFramework::Logging::LogLine line(AZStd::string::format("%s (%s) : %s", sourceNodeName.c_str(), objectName.c_str(), slotName.c_str()).c_str(), "Input Change", AzToolsFramework::Logging::LogLine::TYPE_MESSAGE, QDateTime::currentMSecsSinceEpoch());
-
-            m_bufferedLines.push(line);
-            CommitAddedLines();
-        }
-
         void LogTab::LogMessage(const AZStd::string& message)
         {
             AzToolsFramework::Logging::LogLine line(AZStd::string::format("%s", message.c_str()).c_str(), "Log", AzToolsFramework::Logging::LogLine::TYPE_MESSAGE, QDateTime::currentMSecsSinceEpoch());

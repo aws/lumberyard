@@ -53,6 +53,14 @@ void AWSProfileModel::SetDefaultProfile(const QString& profileName)
     QVariantMap args;
     args["set"] = profileName;
 
+    int previousDefaultProfileRow = FindRow(AWSProfileColumn::Default, true);
+    int newDefaultProfileRow = FindRow(AWSProfileColumn::Name, profileName);
+    if (newDefaultProfileRow != previousDefaultProfileRow)
+    {
+        setData(index(previousDefaultProfileRow, AWSProfileColumn::Default), false);
+        setData(index(newDefaultProfileRow, AWSProfileColumn::Default), true);
+    }
+
     // TODO: add error handling
     ExecuteAsync(ResourceManager()->AllocateRequestId(), "default-profile", args);
 
@@ -110,7 +118,15 @@ bool AWSProfileModel::AWSCredentialsFileExists() const
 void AWSProfileModel::ProcessOutputProfileList(const QVariant& value)
 {
     auto map = value.value<QVariantMap>();
+    for (auto thisElement : map)
+    {
+        qDebug() << "First: " << thisElement.toString();
+    }
     auto list = map["Profiles"].toList();
+    for (auto thisElement : list)
+    {
+        qDebug() << "Name: " << thisElement.toString();
+    }
     Sort(list, AWSProfileColumn::Name);
 
     // UpdateItems does the begin/end stuff that is necessary, but the view currently depends on the modelReset signal to refresh itself.

@@ -11,6 +11,7 @@
 */
 #include "BatchApplicationManager.h"
 
+#include <AzCore/std/containers/set.h>
 #include <AzCore/std/smart_ptr/shared_ptr.h>
 #include <AzCore/std/smart_ptr/make_shared.h>
 #include <AzCore/PlatformIncl.h>
@@ -26,7 +27,10 @@
 #include <native/connection/connectionManager.h>
 #include <native/utilities/ByteArrayStream.h>
 #include <native/AssetManager/AssetRequestHandler.h>
+#include <native/FileProcessor/FileProcessor.h>
 #include <native/utilities/CommunicatorTracePrinter.h>
+#include <native/FileProcessor/FileProcessor.h>
+#include <native/AssetDatabase/AssetDatabase.h>
 #include <AzFramework/Asset/AssetProcessorMessages.h>
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
 #include <AzToolsFramework/Asset/AssetProcessorMessages.h>
@@ -38,7 +42,6 @@
 #include <QCoreApplication>
 #include <AzToolsFramework/Asset/AssetProcessorMessages.h>
 #include <AzCore/std/string/string.h>
-#include <QMessageBox>
 #include <AzCore/Asset/AssetManagerBus.h>
 #include <AssetBuilderSDK/AssetBuilderSDK.h>
 #include <AzToolsFramework/Process/ProcessWatcher.h>
@@ -47,6 +50,9 @@
 #include <QElapsedTimer>
 #include <AzFramework/Network/AssetProcessorConnection.h>
 #include <AzCore/std/parallel/binary_semaphore.h>
+
+#include <AzCore/std/sort.h>
+
 #include <QStorageInfo>
 
 // in batch mode, we are going to show the log files of up to N failures.
@@ -84,11 +90,6 @@ namespace BatchApplicationManagerPrivate
     }
 }
 #endif  //#if defined(AZ_PLATFORM_WINDOWS) && defined(BATCH_MODE)
-
-#ifdef UNIT_TEST
-#include "native/connection/connectionManager.h"
-#include "native/utilities/UnitTests.h"
-#endif
 
 BatchApplicationManager::BatchApplicationManager(int* argc, char*** argv, QObject* parent)
     : ApplicationManager(argc, argv, parent)
@@ -173,6 +174,22 @@ void BatchApplicationManager::InitAssetProcessorManager()
             {
                 return new AssetProcessor::AssetProcessorManager(m_platformConfiguration, assetProcessorHelper);
             });
+    QObject::connect(this, &BatchApplicationManager::OnBuildersRegistered, m_assetProcessorManager, &AssetProcessor::AssetProcessorManager::OnBuildersRegistered, Qt::QueuedConnection);
+
+    QStringList args = QCoreApplication::arguments();
+    for (QString arg : args)
+    {
+        if (arg.startsWith("--fastAnalysisMode", Qt::CaseInsensitive))
+        {
+            m_assetProcessorManager->SetEnableAnalysisSkippingFeature(true);
+        }
+    }
+}
+
+void BatchApplicationManager::Rescan()
+{
+    m_assetProcessorManager->SetEnableAnalysisSkippingFeature(false);
+    GetAssetScanner()->StartScan();
 }
 
 void BatchApplicationManager::InitAssetCatalog()
@@ -191,6 +208,9 @@ void BatchApplicationManager::InitAssetCatalog()
 
                 return catalog;
             });
+
+    // schedule the asset catalog to build its registry in its own thread:
+    QMetaObject::invokeMethod(m_assetCatalog, "BuildRegistry", Qt::QueuedConnection);
 }
 
 void BatchApplicationManager::InitRCController()
@@ -216,11 +236,18 @@ void BatchApplicationManager::DestroyRCController()
 
 void BatchApplicationManager::InitAssetScanner()
 {
-    m_assetScanner = new AssetProcessor::AssetScanner(m_platformConfiguration);
-    QObject::connect(m_assetScanner, SIGNAL(AssetScanningStatusChanged(AssetProcessor::AssetScanningStatus)),
-        m_assetProcessorManager, SLOT(OnAssetScannerStatusChange(AssetProcessor::AssetScanningStatus)));
-    QObject::connect(m_assetScanner, SIGNAL(FileOfInterestFound(QString)),
-        m_assetProcessorManager, SLOT(AssessModifiedFile(QString)));
+    using namespace AssetProcessor;
+    m_assetScanner = new AssetScanner(m_platformConfiguration);
+
+    // asset processor manager
+    QObject::connect(m_assetScanner, &AssetScanner::AssetScanningStatusChanged, m_assetProcessorManager, &AssetProcessorManager::OnAssetScannerStatusChange);
+    QObject::connect(m_assetScanner, &AssetScanner::FilesFound,                 m_assetProcessorManager, &AssetProcessorManager::AssessFilesFromScanner);
+    
+    // file table
+    QObject::connect(m_assetScanner, &AssetScanner::AssetScanningStatusChanged, m_fileProcessor.get(), &FileProcessor::OnAssetScannerStatusChange);
+    QObject::connect(m_assetScanner, &AssetScanner::FilesFound,                 m_fileProcessor.get(), &FileProcessor::AssessFilesFromScanner);
+    QObject::connect(m_assetScanner, &AssetScanner::FoldersFound,               m_fileProcessor.get(), &FileProcessor::AssessFoldersFromScanner);
+    
 }
 
 void BatchApplicationManager::DestroyAssetScanner()
@@ -273,6 +300,11 @@ void BatchApplicationManager::InitFileMonitor()
         QObject::connect(newFolderWatch, &FolderWatchCallbackEx::fileRemoved,
             m_assetProcessorManager, &AssetProcessor::AssetProcessorManager::AssessDeletedFile);
 
+        QObject::connect(newFolderWatch, &FolderWatchCallbackEx::fileAdded,
+            m_fileProcessor.get(), &AssetProcessor::FileProcessor::AssessAddedFile);
+        QObject::connect(newFolderWatch, &FolderWatchCallbackEx::fileRemoved,
+            m_fileProcessor.get(), &AssetProcessor::FileProcessor::AssessDeletedFile);
+
         m_folderWatches.push_back(AZStd::unique_ptr<FolderWatchCallbackEx>(newFolderWatch));
         m_watchHandles.push_back(m_fileWatcher.AddFolderWatch(newFolderWatch));
     }
@@ -321,7 +353,8 @@ void BatchApplicationManager::InitConnectionManager()
     using namespace AzFramework::AssetSystem;
     using namespace AzToolsFramework::AssetSystem;
 
-    m_connectionManager = new ConnectionManager(GetPlatformConfiguration());
+    AssetProcessor::PlatformConfiguration* platformConfiguration = GetPlatformConfiguration();
+    m_connectionManager = new ConnectionManager(platformConfiguration);
 
     QObject* connectionAndChangeMessagesThreadContext = this;
 
@@ -422,6 +455,44 @@ void BatchApplicationManager::InitConnectionManager()
         };
     // connect the network messages to the Request handler:
     m_connectionManager->RegisterService(RequestAssetProcessorStatus::MessageType(), GetState);
+
+    // ability to see if an asset platform is enabled or not
+    using AzToolsFramework::AssetSystem::AssetProcessorPlatformStatusRequest;
+    m_connectionManager->RegisterService(AssetProcessorPlatformStatusRequest::MessageType(),
+        [](unsigned int connId, unsigned int, unsigned int serial, QByteArray payload, QString)
+        {
+            AssetProcessorPlatformStatusResponse responseMessage;
+
+            AssetProcessorPlatformStatusRequest requestMessage;
+            if (AssetProcessor::UnpackMessage(payload, requestMessage))
+            {
+                AzToolsFramework::AssetSystemRequestBus::BroadcastResult(responseMessage.m_isPlatformEnabled, 
+                        &AzToolsFramework::AssetSystemRequestBus::Events::IsAssetPlatformEnabled, requestMessage.m_platform.c_str());
+            }
+
+            AssetProcessor::ConnectionBus::Event(connId, 
+                &AssetProcessor::ConnectionBus::Events::SendResponse, serial, responseMessage);
+        });
+
+
+    // check the total number of assets remaining for a specified platform
+    using AzToolsFramework::AssetSystem::AssetProcessorPendingPlatformAssetsRequest;
+    m_connectionManager->RegisterService(AssetProcessorPendingPlatformAssetsRequest::MessageType(),
+        [this](unsigned int connId, unsigned int, unsigned int serial, QByteArray payload, QString)
+        {
+            AssetProcessorPendingPlatformAssetsResponse responseMessage;
+
+            AssetProcessorPendingPlatformAssetsRequest requestMessage;
+            if (AssetProcessor::UnpackMessage(payload, requestMessage))
+            {
+                const char* platformIdentifier = requestMessage.m_platform.c_str();
+                responseMessage.m_numberOfPendingJobs = 
+                    GetRCController()->NumberOfPendingJobsPerPlatform(requestMessage.m_platform.c_str());
+            }
+
+            AssetProcessor::ConnectionBus::Event(connId, 
+                &AssetProcessor::ConnectionBus::Events::SendResponse, serial, responseMessage);
+        });
 }
 
 void BatchApplicationManager::DestroyConnectionManager()
@@ -443,6 +514,7 @@ void BatchApplicationManager::InitAssetRequestHandler()
     m_assetRequestHandler = new AssetRequestHandler();
 
     m_assetRequestHandler->RegisterRequestHandler(AssetJobsInfoRequest::MessageType(), GetAssetProcessorManager());
+    m_assetRequestHandler->RegisterRequestHandler(GetAbsoluteAssetDatabaseLocationRequest::MessageType(), GetAssetProcessorManager());
     m_assetRequestHandler->RegisterRequestHandler(AssetJobLogRequest::MessageType(), GetAssetProcessorManager());
     m_assetRequestHandler->RegisterRequestHandler(SaveAssetCatalogRequest::MessageType(), GetAssetCatalog());
 
@@ -455,12 +527,14 @@ void BatchApplicationManager::InitAssetRequestHandler()
     m_connectionManager->RegisterService(GetFullSourcePathFromRelativeProductPathRequest::MessageType(), serviceRedirectHandler);
     m_connectionManager->RegisterService(AssetJobsInfoRequest::MessageType(), serviceRedirectHandler);
     m_connectionManager->RegisterService(AssetJobLogRequest::MessageType(), serviceRedirectHandler);
+    m_connectionManager->RegisterService(GetAbsoluteAssetDatabaseLocationRequest::MessageType(), serviceRedirectHandler);
     m_connectionManager->RegisterService(SourceAssetInfoRequest::MessageType(), serviceRedirectHandler);
     m_connectionManager->RegisterService(GetScanFoldersRequest::MessageType(), serviceRedirectHandler);
+    m_connectionManager->RegisterService(GetAssetSafeFoldersRequest::MessageType(), serviceRedirectHandler);
     m_connectionManager->RegisterService(RegisterSourceAssetRequest::MessageType(), serviceRedirectHandler);
     m_connectionManager->RegisterService(UnregisterSourceAssetRequest::MessageType(), serviceRedirectHandler);
     m_connectionManager->RegisterService(SaveAssetCatalogRequest::MessageType(), serviceRedirectHandler);
-
+    m_connectionManager->RegisterService(AssetInfoRequest::MessageType(), serviceRedirectHandler);
     // connect the "Does asset exist?" loop to each other:
     QObject::connect(m_assetRequestHandler, &AssetRequestHandler::RequestAssetExists, GetAssetProcessorManager(), &AssetProcessorManager::OnRequestAssetExists);
     QObject::connect(GetAssetProcessorManager(), &AssetProcessorManager::SendAssetExistsResponse, m_assetRequestHandler, &AssetRequestHandler::OnRequestAssetExistsResponse);
@@ -484,6 +558,11 @@ void BatchApplicationManager::InitAssetRequestHandler()
         {
             if (!m_assetProcessorManagerIsReady)
             {
+                if (m_remainingAPMJobs == newNum)
+                {
+                    return;
+                }
+
                 m_remainingAPMJobs = newNum;
 
                 if (!m_remainingAPMJobs)
@@ -545,6 +624,8 @@ ApplicationManager::BeforeRunStatus BatchApplicationManager::BeforeRun()
     qRegisterMetaType<AssetProcessor::AssetCatalogStatus>("AssetCatalogStatus");
     qRegisterMetaType<AssetProcessor::AssetCatalogStatus>("AssetProcessor::AssetCatalogStatus");
 
+    qRegisterMetaType<QSet<QString> >("QSet<QString>");
+
     AssetBuilderSDK::AssetBuilderBus::Handler::BusConnect();
     AssetProcessor::AssetBuilderRegistrationBus::Handler::BusConnect();
     AssetProcessor::AssetBuilderInfoBus::Handler::BusConnect();
@@ -568,6 +649,7 @@ void BatchApplicationManager::Destroy()
     m_assetRequestHandler = nullptr;
 
     ShutdownBuilderManager();
+    ShutDownFileProcessor();
 
     DestroyConnectionManager();
 
@@ -581,33 +663,6 @@ void BatchApplicationManager::Destroy()
 
 bool BatchApplicationManager::Run()
 {
-    QStringList args = QCoreApplication::arguments();
-#ifdef UNIT_TEST
-    for (QString arg : args)
-    {
-        bool runTests = false;
-
-        if (arg.startsWith("/unittest", Qt::CaseInsensitive))
-        {
-            runTests = true;
-        }
-
-        // Use the AZ testing framework unit tests instead if enabled
-#if !defined(AZ_TESTS_ENABLED)
-        else if (arg.startsWith("--unittest", Qt::CaseInsensitive))
-        {
-            runTests = true;
-            AZ_TracePrintf(AssetProcessor::ConsoleChannel, "the --unittest command line parameter has been deprecated.  please use /unittest[=TestName,TestName,TestName...] instead.");
-        }
-#endif
-        if (runTests)
-        {
-            // Before running the unit tests we are disconnecting from the AssetBuilderInfo bus as we will be making a dummy handler in the unit test
-            AssetProcessor::AssetBuilderInfoBus::Handler::BusDisconnect();
-            return RunUnitTests();
-        }
-    }
-#endif
     bool showErrorMessageOnRegistryProblem = false;
     RegistryCheckInstructions registryCheckInstructions = CheckForRegistryProblems(nullptr, showErrorMessageOnRegistryProblem);
     if (registryCheckInstructions != RegistryCheckInstructions::Continue)
@@ -696,42 +751,6 @@ void BatchApplicationManager::CheckForIdle()
     }
 }
 
-#ifdef UNIT_TEST
-bool BatchApplicationManager::RunUnitTests()
-{
-    if (!ApplicationManager::Activate())
-    {
-        return false;
-    }
-    AssetProcessor::PlatformConfiguration config;
-    ConnectionManager connectionManager(&config);
-    RegisterObjectForQuit(&connectionManager);
-    UnitTestWorker unitTestWorker;
-    int testResult = 1;
-    QObject::connect(&unitTestWorker, &UnitTestWorker::UnitTestCompleted, this, [&](int result)
-        {
-            testResult = result;
-            QuitRequested();
-        });
-
-    m_duringStartup = false;
-    unitTestWorker.Process();
-
-    qApp->exec();
-
-    if (!testResult)
-    {
-        AZ_TracePrintf(AssetProcessor::ConsoleChannel, "All Unit Tests passed.\n");
-    }
-    else
-    {
-        AZ_TracePrintf(AssetProcessor::ConsoleChannel, "WARNING: Unit Tests Failed.\n");
-    }
-    return !testResult ? true : false;
-}
-
-#endif
-
 void BatchApplicationManager::InitBuilderManager()
 {
     AZ_Assert(m_connectionManager != nullptr, "ConnectionManager must be started before the builder manager");
@@ -755,20 +774,39 @@ void BatchApplicationManager::ShutdownBuilderManager()
 bool BatchApplicationManager::InitAssetDatabase()
 {
     AzToolsFramework::AssetDatabase::AssetDatabaseRequests::Bus::Handler::BusConnect();
-    m_assetDatabaseConnection = new AssetProcessor::AssetDatabaseConnection();
-    return m_assetDatabaseConnection->OpenDatabase();
+
+    // create or upgrade the asset database here, so that it is already good for the rest of the application and the rest
+    // of the application does not have to worry about a failure to upgrade or create it.
+    AssetProcessor::AssetDatabaseConnection database;
+    if (!database.OpenDatabase())
+    {
+        return false;
+    }
+
+    database.CloseDatabase();
+
+    return true;
 }
 
 void BatchApplicationManager::ShutDownAssetDatabase()
 {
     AzToolsFramework::AssetDatabase::AssetDatabaseRequests::Bus::Handler::BusDisconnect();
-    delete m_assetDatabaseConnection;
-    m_assetDatabaseConnection = nullptr;
 }
 
-AzToolsFramework::AssetDatabase::AssetDatabaseConnection* BatchApplicationManager::GetAssetDatabaseConnection() const
+void BatchApplicationManager::InitFileProcessor() 
 {
-    return m_assetDatabaseConnection;
+    AssetProcessor::ThreadController<AssetProcessor::FileProcessor>* fileProcessorHelper = new AssetProcessor::ThreadController<AssetProcessor::FileProcessor>();
+
+    addRunningThread(fileProcessorHelper);
+    m_fileProcessor.reset(fileProcessorHelper->initialize([this, &fileProcessorHelper]()
+    {
+        return new AssetProcessor::FileProcessor(m_platformConfiguration);
+    }));
+}
+
+void BatchApplicationManager::ShutDownFileProcessor()
+{
+    m_fileProcessor.reset();
 }
 
 // IMPLEMENTATION OF -------------- AzToolsFramework::AssetDatabase::AssetDatabaseRequests::Bus::Listener
@@ -813,7 +851,6 @@ bool BatchApplicationManager::Activate()
         return false;
     }
 
-    // since we're not doing unit tests, we can go ahead and let bus queries know where the real DB is.
     if (!InitAssetDatabase())
     {
         return false;
@@ -842,6 +879,8 @@ bool BatchApplicationManager::Activate()
 
     InitAssetProcessorManager();
     AssetBuilderSDK::InitializeSerializationContext();
+    
+    InitFileProcessor();
 
     InitAssetCatalog();
     InitFileMonitor();
@@ -858,7 +897,7 @@ bool BatchApplicationManager::Activate()
     // inserting in the front so that the application server is notified first
     // and we stop listening for new incoming connections during shutdown
     RegisterObjectForQuit(m_applicationServer, true);
-
+    RegisterObjectForQuit(m_fileProcessor.get());
     RegisterObjectForQuit(m_connectionManager);
     RegisterObjectForQuit(m_assetProcessorManager);
     RegisterObjectForQuit(m_rcController);
@@ -955,6 +994,8 @@ bool BatchApplicationManager::Activate()
 
 bool BatchApplicationManager::PostActivate()
 {
+    m_connectionManager->LoadConnections();
+
     InitializeInternalBuilders();
     if (!InitializeExternalBuilders())
     {
@@ -962,11 +1003,14 @@ bool BatchApplicationManager::PostActivate()
         return false;
     }
 
+    Q_EMIT OnBuildersRegistered();
+
     // 25 milliseconds is above the 'while loop' thing that QT does on windows (where small time ticks will spin loop instead of sleep)
     m_ticker = new AzToolsFramework::Ticker(nullptr, 25.0f);
     m_ticker->Start();
     connect(m_ticker, &AzToolsFramework::Ticker::Tick, this, []()
         {
+            AZ::SystemTickBus::ExecuteQueuedEvents();
             AZ::SystemTickBus::Broadcast(&AZ::SystemTickEvents::OnSystemTick);
         });
 
@@ -1167,6 +1211,12 @@ void BatchApplicationManager::RegisterBuilderInformation(const AssetBuilderSDK::
         return;
     }
 
+    AZStd::sort(modifiedBuilderDesc.m_patterns.begin(), modifiedBuilderDesc.m_patterns.end(),
+        [](const AssetBuilderSDK::AssetBuilderPattern& first, const AssetBuilderSDK::AssetBuilderPattern& second)
+    {
+        return first.ToString() < second.ToString();
+    });
+
     m_builderDescMap[modifiedBuilderDesc.m_busId] = modifiedBuilderDesc;
     m_builderNameToId[modifiedBuilderDesc.m_name] = modifiedBuilderDesc.m_busId;
 
@@ -1262,6 +1312,14 @@ void BatchApplicationManager::GetMatchingBuildersInfo(const AZStd::string& asset
             uniqueBuilderDescIDs.insert(matcherPair.GetBuilderDescID());
             builderInfoList.push_back(builderDesc);
         }
+    }
+}
+
+void BatchApplicationManager::GetAllBuildersInfo(AssetProcessor::BuilderInfoList& builderInfoList)
+{
+    for (const auto &builderPair : m_builderDescMap)
+    {
+        builderInfoList.push_back(builderPair.second);
     }
 }
 

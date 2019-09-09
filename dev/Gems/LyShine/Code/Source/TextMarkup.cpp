@@ -103,6 +103,47 @@ namespace
         {
             newTag = new TextMarkup::ItalicTag();
         }
+        else if (AZStd::string(node->getTag()) == "a")
+        {
+            const int numAttributes = node->getNumAttributes();
+
+            if (numAttributes < 1)
+            {
+                // Expecting at least one attribute
+                return false;
+            }
+
+            AZStd::string action;
+            AZStd::string data;
+
+            for (int i = 0, count = numAttributes; i < count; ++i)
+            {
+                const char* key = "";
+                const char* value = "";
+                if (node->getAttributeByIndex(i, &key, &value))
+                {
+                    if (AZStd::string(key) == "action")
+                    {
+                        action = value;
+                    }
+                    else if (AZStd::string(key) == "data")
+                    {
+                        data = value;
+                    }
+                    else
+                    {
+                        // Unexpected font tag attribute
+                        return false;
+                    }
+                }
+            }
+
+            TextMarkup::AnchorTag* anchorTag = new TextMarkup::AnchorTag();
+            newTag = anchorTag;
+
+            anchorTag->action = action;
+            anchorTag->data = data;
+        }
         else if (AZStd::string(node->getTag()) == "font")
         {
             const int numAttributes = node->getNumAttributes();
@@ -152,6 +193,97 @@ namespace
 
             fontTag->face = face;
             fontTag->color = color;
+        }
+        else if (AZStd::string(node->getTag()) == "img")
+        {
+            const int numAttributes = node->getNumAttributes();
+
+            if (numAttributes <= 0)
+            {
+                // Expecting at least one attribute
+                return false;
+            }
+
+            AZStd::string imagePathname;
+            AZStd::string height;
+            float scale = 1.0f;
+            AZStd::string vAlign;
+            float yOffset = 0.0f;
+            float leftPadding = 0.0f;
+            float rightPadding = 0.0f;
+
+            for (int i = 0, count = node->getNumAttributes(); i < count; ++i)
+            {
+                const char* key = "";
+                const char* value = "";
+                if (node->getAttributeByIndex(i, &key, &value))
+                {
+                    if (AZStd::string(key) == "src")
+                    {
+                        imagePathname = value;
+                    }
+                    else if (AZStd::string(key) == "height")
+                    {
+                        height = value;
+                    }
+                    else if (AZStd::string(key) == "scale")
+                    {
+                        scale = AZStd::stof(AZStd::string(value));
+                    }
+                    else if (AZStd::string(key) == "vAlign")
+                    {
+                        vAlign = value;
+                    }
+                    else if (AZStd::string(key) == "yOffset")
+                    {
+                        yOffset = AZStd::stof(AZStd::string(value));
+                    }
+                    else if (AZStd::string(key) == "xPadding")
+                    {
+                        leftPadding = AZStd::stof(AZStd::string(value));
+                        rightPadding = leftPadding;
+                    }
+                    else if (AZStd::string(key) == "lPadding")
+                    {
+                        leftPadding = AZStd::stof(AZStd::string(value));
+                    }
+                    else if (AZStd::string(key) == "rPadding")
+                    {
+                        rightPadding = AZStd::stof(AZStd::string(value));
+                    }
+                    else
+                    {
+                        // Unexpected font tag attribute
+                        return false;
+                    }
+                }
+            }
+
+            if (imagePathname.empty())
+            {
+                // Need at least a path to a texture
+                return false;
+            }
+
+            TextMarkup::ImageTag* imageTag = new TextMarkup::ImageTag();
+            newTag = imageTag;
+
+            // Add an extension if it's not there
+            const char* extension = PathUtil::GetExt(imagePathname.c_str());
+            if (!extension || extension[0] == '\0')
+            {
+                // Empty path - add the texture extension
+                const AZStd::string textureExtension(".dds");
+                imagePathname += textureExtension;
+            }
+
+            imageTag->m_imagePathname = imagePathname;
+            imageTag->m_height = height;
+            imageTag->m_scale = scale;
+            imageTag->m_vAlign = vAlign;
+            imageTag->m_yOffset = yOffset;
+            imageTag->m_leftPadding = leftPadding;
+            imageTag->m_rightPadding = rightPadding;
         }
         else if (AZStd::string(node->getTag()) == "ch")
         {

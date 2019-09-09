@@ -18,7 +18,7 @@ namespace GraphCanvas
     /////////////////////////////////
     // DraggableNodePaletteTreeItem
     /////////////////////////////////
-    DraggableNodePaletteTreeItem::DraggableNodePaletteTreeItem(const QString& name, EditorId editorId)
+    DraggableNodePaletteTreeItem::DraggableNodePaletteTreeItem(AZStd::string_view name, EditorId editorId)
         : IconDecoratedNodePaletteTreeItem(name, editorId)
     {
     }

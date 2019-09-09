@@ -37,6 +37,8 @@ namespace AzToolsFramework
             void Activate() override;
             void Deactivate() override;
             static void Reflect(AZ::ReflectContext* context);
+            static void GetIncompatibleServices(AZ::ComponentDescriptor::DependencyArrayType& incompatible);
+            static void GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided);
 
             //////////////////////////////////////////////////////////////////////////
             // ThumbnailerRequests
@@ -44,6 +46,7 @@ namespace AzToolsFramework
             void RegisterContext(const char* contextName, int thumbnailSize) override;
             void RegisterThumbnailProvider(SharedThumbnailProvider provider, const char* contextName) override;
             SharedThumbnail GetThumbnail(SharedThumbnailKey thumbnailKey, const char* contextName) override;
+
 
         private:
             AZStd::unordered_map<AZStd::string, AZStd::shared_ptr<ThumbnailContext>> m_thumbnails;

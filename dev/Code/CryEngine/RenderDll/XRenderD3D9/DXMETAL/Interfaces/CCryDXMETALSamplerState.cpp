@@ -24,37 +24,51 @@
 CCryDXGLSamplerState::CCryDXGLSamplerState(const D3D11_SAMPLER_DESC& kDesc, CCryDXGLDevice* pDevice)
     : CCryDXGLDeviceChild(pDevice)
     , m_kDesc(kDesc)
-    //  Confetti BEGIN: Igor Lobanchikov
-    , m_MetalSamplerState(0)
-    //  Confetti End: Igor Lobanchikov
+    , m_MetalSamplerState(nil)
+    , m_MetalSamplerDescriptor(nil)
 {
     DXGL_INITIALIZE_INTERFACE(D3D11SamplerState)
 }
 
 CCryDXGLSamplerState::~CCryDXGLSamplerState()
 {
-    //  Confetti BEGIN: Igor Lobanchikov
+    if (m_MetalSamplerDescriptor)
+    {
+        [m_MetalSamplerDescriptor release];
+        m_MetalSamplerDescriptor = nil;
+    }
+    
     if (m_MetalSamplerState)
     {
         [m_MetalSamplerState release];
+        m_MetalSamplerState = nil;
     }
-    //  Confetti End: Igor Lobanchikov
 }
 
 bool CCryDXGLSamplerState::Initialize(CCryDXGLDevice* pDevice)
 {
-    //  Confetti BEGIN: Igor Lobanchikov
-    return NCryMetal::InitializeSamplerState(m_kDesc, m_MetalSamplerState, pDevice->GetGLDevice());
-    //  Confetti End: Igor Lobanchikov
+    m_pDevice = pDevice;
+    m_MetalSamplerDescriptor = [[MTLSamplerDescriptor alloc] init];
+    return NCryMetal::InitializeSamplerState(m_kDesc, m_MetalSamplerState, m_MetalSamplerDescriptor, pDevice->GetGLDevice());
 }
 
 void CCryDXGLSamplerState::Apply(uint32 uStage, uint32 uSlot, NCryMetal::CContext* pContext)
 {
-    //  Confetti BEGIN: Igor Lobanchikov
     pContext->SetSampler(m_MetalSamplerState, uStage, uSlot);
-    //  Confetti End: Igor Lobanchikov
 }
 
+void CCryDXGLSamplerState::SetLodMinClamp(float lodMinClamp)
+{
+    //You can either release the MTLSamplerDescriptor object or modify its property values and reuse it to create more MTLSamplerState objects.
+    //The descriptor's properties are only used during object creation; once created the behavior of a sampler state object is fixed and cannot be changed.
+    //Hence we delete the old sampler state and create a new one if any property needs to be changed.
+    if (m_MetalSamplerState)
+    {
+        [m_MetalSamplerState release];
+        m_MetalSamplerState = nil;
+    }
+    NCryMetal::SetLodMinClamp(m_MetalSamplerState, m_MetalSamplerDescriptor, lodMinClamp, m_pDevice->GetGLDevice());
+}
 
 ////////////////////////////////////////////////////////////////
 // Implementation of ID3D11SamplerState

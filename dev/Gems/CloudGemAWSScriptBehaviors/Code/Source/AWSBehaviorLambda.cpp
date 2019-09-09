@@ -102,11 +102,20 @@ namespace CloudGemAWSScriptBehaviors
                 Aws::IOStream& stream = job->result.GetPayload();
                 std::istreambuf_iterator<AZStd::string::value_type> eos;
                 AZStd::string content = AZStd::string{ std::istreambuf_iterator<AZStd::string::value_type>(stream),eos };
-                AWSBehaviorLambdaNotificationsBus::Broadcast(&AWSBehaviorLambdaNotificationsBus::Events::OnSuccess, content.c_str());
+                AZStd::function<void()> notifyOnMainThread = [content]()
+                {
+                    AWSBehaviorLambdaNotificationsBus::Broadcast(&AWSBehaviorLambdaNotificationsBus::Events::OnSuccess, content.c_str());
+                };
+                AZ::TickBus::QueueFunction(notifyOnMainThread);
             },
             [](LambdaInvokeRequestJob* job) // OnError handler
             {
-                AWSBehaviorLambdaNotificationsBus::Broadcast(&AWSBehaviorLambdaNotificationsBus::Events::OnError, job->error.GetMessage().c_str());
+                Aws::String errorMessage = job->error.GetMessage();
+                AZStd::function<void()> notifyOnMainThread = [errorMessage]()
+                {
+                    AWSBehaviorLambdaNotificationsBus::Broadcast(&AWSBehaviorLambdaNotificationsBus::Events::OnError, errorMessage.c_str());
+                };
+                AZ::TickBus::QueueFunction(notifyOnMainThread);
             },
             &config
         );

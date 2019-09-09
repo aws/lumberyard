@@ -147,7 +147,7 @@ namespace MCore
          */
         void GetValue(const char* paramName, Command* command, AZStd::string* outResult) const;
         void GetValue(const char* paramName, Command* command, AZStd::string& outResult) const;
-        AZStd::string GetValue(const char* paramName, Command* command) const;
+        const AZStd::string& GetValue(const char* paramName, Command* command) const;
 
         AZ::Outcome<AZStd::string> GetValueIfExists(const char* paramName, Command* command) const;
 

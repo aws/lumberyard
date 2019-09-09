@@ -17,18 +17,24 @@ class Worker(Thread):
 
     def run(self):      
         while True:  
+            output = None
             try:
-                func, args, kargs = self.tasks.get()            
-                util.debug_print("Function called by thread: \n")
-                util.debug_print(func)
-                util.debug_print("Function args: \n")
-                util.debug_print(args)
-                util.debug_print("Function kargs: \n")            
-                util.debug_print(kargs)
-                util.debug_print("Function output: \n")
-                util.debug_print(func(*args, **kargs))
+                func, args, kargs = self.tasks.get()
+                output = func(*args, **kargs)
             except Exception as e:            
-                print(traceback.format_exc())
-                raise e
+                self.debug_thread(func, args, kargs, output)
+                print(traceback.format_exc())  
+                print e              
             finally:            
                 self.tasks.task_done()
+
+    #Requires verbose CLI flag
+    def debug_thread(self, func, args, kargs, output):
+        util.debug_print("Function called by thread: \n")
+        util.debug_print(func)
+        util.debug_print("Function args: \n")
+        util.debug_print(args)
+        util.debug_print("Function kargs: \n")            
+        util.debug_print(kargs)
+        util.debug_print("Function output: \n")
+        util.debug_print(output)

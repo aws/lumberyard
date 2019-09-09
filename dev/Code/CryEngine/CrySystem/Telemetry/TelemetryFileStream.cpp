@@ -19,7 +19,8 @@
 
 namespace Telemetry
 {
-    const string CFileStream::ms_defaultDir("@log@/Telemetry/"), CFileStream::ms_defaultExtension("tlm");
+    const char* CFileStream::ms_defaultDir("@log@/Telemetry/");
+    const char* CFileStream::ms_defaultExtension("tlm");
 
     CFileStream::CFileStream()
         : m_fileHandle(AZ::IO::InvalidHandle)
@@ -77,7 +78,7 @@ namespace Telemetry
 
         if (pos == string::npos)
         {
-            gEnv->pCryPak->MakeDir(ms_defaultDir.c_str());
+            gEnv->pCryPak->MakeDir(ms_defaultDir);
 
             fileName.insert(0, ms_defaultDir);
         }

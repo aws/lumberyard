@@ -41,16 +41,64 @@
     <DebugSymbols>true</DebugSymbols>
   </PropertyGroup>
   <ItemGroup>
+    <Content Include="client-configuration-field.component.html" />
+    <Content Include="client-configuration.component.html" />
+    <Content Include="client-configuration.component.scss" />
+    <Content Include="create-jira-issue-window.component.html" />
+    <Content Include="create-jira-issue-window.component.scss" />
+    <Content Include="custom-field-value.component.html" />
+    <Content Include="custom-field-value.component.scss" />
+    <Content Include="dashboard-tab.component.html" />
+    <Content Include="defect-datatable.component.html" />
+    <Content Include="defect-datatable.component.scss" />
+    <Content Include="defect-detail-overview-tab.component.html" />
+    <Content Include="defect-details-page.component.css" />
+    <Content Include="defect-details-page.component.html" />
+    <Content Include="defect-details-page.component.scss" />
+    <Content Include="defect-list-overview-tab.component.html" />
+    <Content Include="defect-list-page.component.css" />
+    <Content Include="defect-list-page.component.html" />
+    <Content Include="defect-list-page.component.scss" />
+    <Content Include="index.component.html" />
+    <Content Include="jira-integration.component.html" />
+    <Content Include="jira-integration.component.scss" />
     <Content Include="package.json" />
+    <Content Include="player-information.component.html" />
+    <Content Include="raw-data-tab.component.html" />
+    <Content Include="recent-searches-tab.component.html" />
+    <Content Include="report-configuration.component.html" />
+    <Content Include="report-configuration.component.scss" />
+    <Content Include="report-information.component.html" />
+    <Content Include="system-information.component.html" />
     <Content Include="tsconfig.json" />
   </ItemGroup>
   <ItemGroup>
     <TypeScriptCompile Include="api-handler.class.ts" />
+    <TypeScriptCompile Include="client-configuration-field.component.ts" />
+    <TypeScriptCompile Include="client-configuration.component.ts" />
     <TypeScriptCompile Include="cloudgemdefectreporter.module.ts" />
     <TypeScriptCompile Include="cloudgemdefectreporter.ts" />
+    <TypeScriptCompile Include="create-jira-issue-window.component.ts" />
+    <TypeScriptCompile Include="custom-field-value.component.ts" />
+    <TypeScriptCompile Include="dashboard-tab.component.ts" />
+    <TypeScriptCompile Include="defect-datatable.component.ts" />
+    <TypeScriptCompile Include="defect-detail-overview-tab.component.ts" />
+    <TypeScriptCompile Include="defect-details-page.component.ts" />
+    <TypeScriptCompile Include="defect-list-overview-tab.component.ts" />
+    <TypeScriptCompile Include="defect-list-page.component.ts" />
+    <TypeScriptCompile Include="field-mapping.component.ts" />
     <TypeScriptCompile Include="index.component.ts" />
     <TypeScriptCompile Include="index.ts" />
+    <TypeScriptCompile Include="jira-integration.component.ts" />
+    <TypeScriptCompile Include="player-information.component.ts" />
+    <TypeScriptCompile Include="queries.class.ts" />
+    <TypeScriptCompile Include="raw-data-tab.component.ts" />
+    <TypeScriptCompile Include="recent-searches-tab.component.ts" />
+    <TypeScriptCompile Include="report-configuration.component.ts" />
+    <TypeScriptCompile Include="report-information.component.ts" />
+    <TypeScriptCompile Include="system-information.component.ts" />
     <TypeScriptCompile Include="thumbnail.component.ts" />
+    <TypeScriptCompile Include="util.class.ts" />
   </ItemGroup>
   <!-- Do not delete the following Import Project.  While this appears to do nothing it is a marker for setting TypeScript properties before our import that depends on them. -->
   <Import Project="$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\TypeScript\Microsoft.TypeScript.targets" Condition="False" />

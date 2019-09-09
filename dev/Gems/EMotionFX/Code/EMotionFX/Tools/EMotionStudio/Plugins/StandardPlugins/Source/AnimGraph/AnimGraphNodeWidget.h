@@ -12,9 +12,8 @@
 
 #pragma once
 
+#include <QPersistentModelIndex>
 #include <QWidget>
-#include <EMotionFX/Source/AnimGraphInstance.h>
-
 
 namespace EMotionFX
 {
@@ -26,15 +25,21 @@ namespace EMStudio
     class AnimGraphNodeWidget
         : public QWidget
     {
+        Q_OBJECT
+
     public:
-        AnimGraphNodeWidget(QWidget* parent=nullptr);
-        virtual ~AnimGraphNodeWidget();
+        AnimGraphNodeWidget(QWidget* parent = nullptr)
+            : QWidget(parent)
+        {
+        }
+
+        virtual ~AnimGraphNodeWidget() = default;
 
         virtual void SetCurrentNode(EMotionFX::AnimGraphNode* node) = 0;
 
-        //! Get the anim graph instance from the single-selected actor instance.
-        EMotionFX::AnimGraphInstance* GetAnimGraphInstance() const;
+        void SetCurrentModelIndex(const QPersistentModelIndex& nodeModelIndex) { m_modelIndex = nodeModelIndex; }
 
-    private:
+    protected:
+        QPersistentModelIndex m_modelIndex;
     };
 } //namespace EMStudio

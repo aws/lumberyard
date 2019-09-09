@@ -32,7 +32,11 @@
 #endif
 
 #if defined(AZ_RESTRICTED_PLATFORM)
-#include AZ_RESTRICTED_FILE(D3DShadows_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/D3DShadows_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/D3DShadows_cpp_provo.inl"
+    #endif
 #endif
 
 namespace
@@ -157,11 +161,7 @@ bool CD3D9Renderer::PrepareShadowGenForFrustum(ShadowMapFrustum* pCurFrustum, SR
     {
         return false;
     }
-    if (!(pCurFrustum->pCastersList))
-    {
-        return false;
-    }
-    if (pCurFrustum->pCastersList->Count() <= 0 && pCurFrustum->pJobExecutedCastersList->Count() <= 0 &&
+    if (pCurFrustum->m_castersList.IsEmpty() && pCurFrustum->m_jobExecutedCastersList.IsEmpty() &&
         !pCurFrustum->IsCached() && pCurFrustum->m_eFrustumType != ShadowMapFrustum::e_GsmDynamicDistance)
     {
         return false;
@@ -457,13 +457,21 @@ void CD3D9Renderer::PrepareShadowGenForFrustumNonJobs(const int nFlags)
             }
 #endif
 
+#if AZ_RENDER_TO_TEXTURE_GEM_ENABLED
+            if (IsRenderToTextureActive())
+            {
+                // the shadow render pass needs to know if we are rendering to texture
+                nRenderingFlags |= SRenderingPassInfo::RENDER_SCENE_TO_TEXTURE;
+            }
+#endif // if AZ_RENDER_TO_TEXTURE_GEM_ENABLED
+
             // create a matching rendering pass info for shadows
             SRenderingPassInfo passInfo = SRenderingPassInfo::CreateShadowPassRenderingInfo(tmpCamera, pCurFrustum->m_Flags, pCurFrustum->nShadowMapLod,
                     pCurFrustum->IsCached(), pCurFrustum->bIsMGPUCopy, &pCurFrustum->nShadowGenMask, nS, pCurFrustum->nShadowGenID[nThreadID][nS], nRenderingFlags);
 
-            for (int casterIdx = 0; casterIdx < pCurFrustum->pCastersList->Count(); casterIdx++)
+            for (int casterIdx = 0; casterIdx < pCurFrustum->m_castersList.Count(); ++casterIdx)
             {
-                IShadowCaster* pEnt  = (*pCurFrustum->pCastersList)[casterIdx];
+                IShadowCaster* pEnt  = pCurFrustum->m_castersList[casterIdx];
 
                 //TOFIX reactivate OmniDirectionalShadow
                 if (pCurFrustum->bOmniDirectionalShadow)
@@ -961,14 +969,18 @@ bool CD3D9Renderer::PrepareDepthMap(ShadowMapFrustum* lof, int nLightFrustumID, 
                 nFirstShadowGenRI = SRendItem::m_ShadowsStartRI[nThreadID][nShadowRecur];
                 nLastShadowGenRI = SRendItem::m_ShadowsEndRI[nThreadID][nShadowRecur];
                 const bool bClearRequired = lof->IsCached() && !lof->bIncrementalUpdate;
-                if (nLastShadowGenRI - nFirstShadowGenRI < 1 && !bClearRequired)
+                // If there's something to render, sort by lights.
+                if (nLastShadowGenRI - nFirstShadowGenRI > 0)
                 {
+                    auto& renderItems = CRenderView::CurrentRenderView()->GetRenderItems(SG_SORT_GROUP, EFSLIST_SHADOW_GEN);
+                    SRendItem* pFirst = &renderItems[nFirstShadowGenRI];
+                    SRendItem::mfSortByLight(pFirst, nLastShadowGenRI - nFirstShadowGenRI, true, false, false);
+                }
+                else if (!bClearRequired)
+                {
+                    // Nothing to render and there's no need to clear, so we can just continue.
                     continue;
                 }
-
-                auto& renderItems = CRenderView::CurrentRenderView()->GetRenderItems(SG_SORT_GROUP, EFSLIST_SHADOW_GEN);
-                SRendItem* pFirst = &renderItems[nFirstShadowGenRI];
-                SRendItem::mfSortByLight(pFirst, nLastShadowGenRI - nFirstShadowGenRI, true, false, false);
             }
 
             depthTarget.nWidth = lof->nTextureWidth;
@@ -1096,7 +1108,7 @@ bool CD3D9Renderer::PrepareDepthMap(ShadowMapFrustum* lof, int nLightFrustumID, 
 #if defined(CRY_USE_METAL)
                     //Clear calls are cached until a draw call is made. If there is nothing in the caster list no draw calls will be made.
                     //Hence make a draw call to clear the render targets.
-                    if (lof->pCastersList->Count() == 0)
+                    if (lof->m_castersList.IsEmpty() && lof->m_jobExecutedCastersList.IsEmpty())
                     {
                         FX_Commit();
                         FX_ClearTargetRegion();
@@ -1183,7 +1195,7 @@ bool CD3D9Renderer::PrepareDepthMap(ShadowMapFrustum* lof, int nLightFrustumID, 
                 FX_ProcessRenderList(EFSLIST_GENERAL, 1, FX_FlushShader_ShadowGen, false);
             }
             else
-            if (lof->pCastersList)
+            if (!lof->m_castersList.IsEmpty() || !lof->m_jobExecutedCastersList.IsEmpty())
             {
                 FX_ProcessRenderList(nFirstShadowGenRI,
                     nLastShadowGenRI,
@@ -1707,6 +1719,19 @@ void CD3D9Renderer::EF_PrepareCustomShadowMaps()
         return;
     }
 
+    // Find AABB of all nearest objects. Compute once for all lights as this can be slow
+    AABB aabbCasters(AABB::RESET);
+    m_RP.m_arrCustomShadowMapFrustumData[nThreadID].CoalesceMemory();
+    size_t shadowMapArraySize = m_RP.m_arrCustomShadowMapFrustumData[nThreadID].size();
+    for (size_t i = 0; i < shadowMapArraySize; ++i)
+    {
+        aabbCasters.Add(m_RP.m_arrCustomShadowMapFrustumData[nThreadID][i].aabb);
+    }
+
+    // AABBs are added in world space but without camera position applied
+    aabbCasters.min += GetCamera().GetPosition();
+    aabbCasters.max += GetCamera().GetPosition();
+
     // add nearest frustum if it has been set up
     for (int nLightID = 0; nLightID < NumDynLights; nLightID++)
     {
@@ -1728,18 +1753,6 @@ void CD3D9Renderer::EF_PrepareCustomShadowMaps()
                 //prepare custom frustums for sun
                 if (!m_RP.m_arrCustomShadowMapFrustumData[nThreadID].empty())
                 {
-                    // find aabb of all nearest objects
-                    AABB aabbCasters(AABB::RESET);
-                    m_RP.m_arrCustomShadowMapFrustumData[nThreadID].CoalesceMemory();
-                    for (size_t i = 0; i < m_RP.m_arrCustomShadowMapFrustumData[nThreadID].size(); ++i)
-                    {
-                        aabbCasters.Add(m_RP.m_arrCustomShadowMapFrustumData[nThreadID][i].aabb);
-                    }
-
-                    // AABB's added in world space but without camera position applied
-                    aabbCasters.min += GetCamera().GetPosition();
-                    aabbCasters.max += GetCamera().GetPosition();
-
                     //copy sun frustum
                     ShadowMapFrustum* pCustomFrustum = arrFrustums.AddIndex(1);
                     ShadowMapFrustum* pSunFrustum =  &arrFrustums[nStartIdx];
@@ -1985,16 +1998,23 @@ void CD3D9Renderer::FX_ClearShadowMaskTexture()
         curSliceRVDesc.m_Desc.nFirstSlice = i;
         SResourceView& firstSliceRV = CTexture::s_ptexShadowMask->GetResourceView(curSliceRVDesc);
 
-        FX_ClearTarget(static_cast<D3DSurface*>(firstSliceRV.m_pDeviceResourceView), Clr_Transparent, 0, nullptr);
-
 #if defined(CRY_USE_METAL)
-        // On metal we have to submit a draw call in order for a clear to take affect.
-        // Doing the commit/clear target region will produce the needed draw call for the clear.
-        FX_PushRenderTarget(0, static_cast<D3DSurface*>(firstSliceRV.m_pDeviceResourceView), nullptr);
-        RT_SetViewport(0, 0, CTexture::s_ptexShadowMask->GetWidth(), CTexture::s_ptexShadowMask->GetHeight());
-        FX_Commit();
-        FX_ClearTargetRegion();
-        FX_PopRenderTarget(0);
+        static ICVar* pVar = iConsole->GetCVar("e_ShadowsClearShowMaskAtLoad");
+        if (pVar && pVar->GetIVal())
+        {
+            FX_ClearTarget(static_cast<D3DSurface*>(firstSliceRV.m_pDeviceResourceView), Clr_Transparent, 0, nullptr);
+            
+            // On metal we have to submit a draw call in order for a clear to take affect.
+            // Doing the commit/clear target region will produce the needed draw call for the clear.
+            FX_PushRenderTarget(0, static_cast<D3DSurface*>(firstSliceRV.m_pDeviceResourceView), nullptr);
+            
+            RT_SetViewport(0, 0, CTexture::s_ptexShadowMask->GetWidth(), CTexture::s_ptexShadowMask->GetHeight());
+            FX_Commit();
+            FX_ClearTargetRegion();
+            FX_PopRenderTarget(0);
+        }
+#else
+        FX_ClearTarget(static_cast<D3DSurface*>(firstSliceRV.m_pDeviceResourceView), Clr_Transparent, 0, nullptr);
 #endif
     }
 }

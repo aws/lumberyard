@@ -17,22 +17,24 @@ import uuid
 import resource_manager.uploader
 
 import lmbr_aws_test_support
+from resource_manager.test import base_stack_test
 
 uploader_call_file_paths = []
 update_call_file_paths = []
 
-class IntegrationTest_CloudGemFramework_ResourceManager_UploaderHooks(lmbr_aws_test_support.lmbr_aws_TestCase):
+class IntegrationTest_CloudGemFramework_ResourceManager_UploaderHooks(base_stack_test.BaseStackTestCase):
 
     PROJECT_HOOK_NAME = 'Project'
-
-    TEST_RESOURCE_GROUP_NAME_1 = 'TestResourceGroup1'
-    TEST_RESOURCE_GROUP_NAME_2 = 'TestResourceGroup2'
+    TEST_RESOURCE_GROUP_NAME_1 = 'IntTestResourceGroup1'
+    TEST_RESOURCE_GROUP_NAME_2 = 'IntTestResourceGroup2'
 
     def __init__(self, *args, **kwargs):
         super(IntegrationTest_CloudGemFramework_ResourceManager_UploaderHooks, self).__init__(*args, **kwargs)
 
     def setUp(self):
-        self.prepare_test_envionment("uploader_hooks_test")
+        self.set_deployment_name(lmbr_aws_test_support.unique_name())
+        self.prepare_test_environment("uploader_hooks_test")
+        self.register_for_shared_resources()
 
     # Uploader hooks were deprecated in 1.9. TODO: Remove tests when support is removed.
 
@@ -215,8 +217,8 @@ def after_project_updated(hook, project_uploader, **kwargs):
     def test_update_hooks_end_to_end(self):  
         self.run_all_tests()      
 
-    def __010_initialize_project_files(self):
-        self.lmbr_aws('project', 'create', '--files-only', '--region', lmbr_aws_test_support.REGION)
+    def __010_initialize_project_files(self):        
+        self.base_create_project_stack()
 
     def __020_create_resource_groups(self):
 
@@ -224,13 +226,13 @@ def after_project_updated(hook, project_uploader, **kwargs):
             'cloud-gem', 'create',
             '--gem', self.TEST_RESOURCE_GROUP_NAME_1,
             '--initial-content', 'no-resources',
-            '--enable')
+            '--enable', '--no-sln-change', ignore_failure=True)
 
         self.lmbr_aws(
             'cloud-gem', 'create',
             '--gem', self.TEST_RESOURCE_GROUP_NAME_2,
             '--initial-content', 'no-resources',
-            '--enable')
+            '--enable', '--no-sln-change', ignore_failure=True)
 
     def __030_create_update_hooks(self):
 
@@ -244,9 +246,8 @@ def after_project_updated(hook, project_uploader, **kwargs):
         self.__create_update_hooks(self.get_gem_aws_path(self.TEST_RESOURCE_GROUP_NAME_2), self.TEST_RESOURCE_GROUP_NAME_2)
 
     def __040_create_project_stack(self):
-        self.__delete_uploader_call_files() # deprecated
         self.__delete_update_call_files()
-        self.lmbr_aws('project', 'create', '--stack-name', self.TEST_PROJECT_STACK_NAME, '--confirm-aws-usage', '--confirm-security-change', '--region', lmbr_aws_test_support.REGION)
+        self.base_update_project_stack()
         self.__assert_uploader_call_files(['project_content_pre','project_content_post'])        
         self.__assert_update_call_files(
             self.__get_update_call_file_list('before_project_updated', [ self.PROJECT_HOOK_NAME, self.TEST_RESOURCE_GROUP_NAME_1, self.TEST_RESOURCE_GROUP_NAME_2 ]),
@@ -256,7 +257,7 @@ def after_project_updated(hook, project_uploader, **kwargs):
     def __050_create_deployment_stack(self):
         self.__delete_uploader_call_files()
         self.__delete_update_call_files()
-        self.lmbr_aws('deployment', 'create', '--deployment', self.TEST_DEPLOYMENT_NAME, '--confirm-aws-usage', '--confirm-security-change')
+        self.lmbr_aws('deployment', 'create', '--deployment', self.TEST_DEPLOYMENT_NAME, '--confirm-aws-usage', '--confirm-security-change', '--parallel', '--only-cloud-gems', self.TEST_RESOURCE_GROUP_NAME_1, self.TEST_RESOURCE_GROUP_NAME_2)
         self.__assert_uploader_call_files(['deployment_content_pre', 'deployment_content_post', 'resource_group_content_pre','resource_group_content_post'])        
         self.__assert_update_call_files(
 
@@ -307,7 +308,7 @@ def after_project_updated(hook, project_uploader, **kwargs):
     def __100_project_updates(self):
         self.__delete_uploader_call_files()
         self.__delete_update_call_files()
-        self.lmbr_aws('project', 'update', '--confirm-aws-usage', '--confirm-security-change')
+        self.base_update_project_stack()
         self.__assert_uploader_call_files(['project_content_pre','project_content_post'])        
         self.__assert_update_call_files(
             self.__get_update_call_file_list('before_project_updated', [ self.PROJECT_HOOK_NAME, self.TEST_RESOURCE_GROUP_NAME_1, self.TEST_RESOURCE_GROUP_NAME_2 ]),
@@ -317,7 +318,7 @@ def after_project_updated(hook, project_uploader, **kwargs):
     def __110_deployment_updates(self):
         self.__delete_uploader_call_files()
         self.__delete_update_call_files()
-        self.lmbr_aws('deployment', 'update', '--deployment', self.TEST_DEPLOYMENT_NAME, '--confirm-aws-usage')
+        self.lmbr_aws('deployment', 'update', '--deployment', self.TEST_DEPLOYMENT_NAME, '--confirm-aws-usage', '--confirm-security-change', '--parallel', '--only-cloud-gems', self.TEST_RESOURCE_GROUP_NAME_1, self.TEST_RESOURCE_GROUP_NAME_2)
         self.__assert_uploader_call_files(['deployment_content_pre', 'deployment_content_post', 'resource_group_content_pre','resource_group_content_post'])
         self.__assert_update_call_files(
 
@@ -354,14 +355,15 @@ def after_project_updated(hook, project_uploader, **kwargs):
 
     def __900_delete_deployment(self):
         self.__delete_update_call_files()
-        self.lmbr_aws('deployment', 'delete', '--deployment', self.TEST_DEPLOYMENT_NAME, '--confirm-resource-deletion')
+        self.lmbr_aws('deployment', 'delete', '--deployment', self.TEST_DEPLOYMENT_NAME, '--confirm-resource-deletion', '--parallel')
         self.__assert_update_call_files(
             # no hooks should have been called when deleting
         ) 
 
     def __999_delete_project(self):
         self.__delete_update_call_files()
-        self.lmbr_aws('delete-project-stack', '--confirm-resource-deletion')
+        self.unregister_for_shared_resources()
+        self.teardown_base_stack()
         self.__assert_update_call_files(
             # no hooks should have been called when deleting
         ) 

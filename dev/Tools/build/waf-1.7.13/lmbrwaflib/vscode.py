@@ -73,7 +73,7 @@ class GenerateVSCodeWorkspace(Build.BuildContext):
         self.host = Utils.unversioned_sys_platform()
         self.default_config = 'debug'
         if self.host in ('win_x64', 'win32'):
-            if 'win_x64_clang' in self.get_available_platforms():
+            if 'win_x64_clang' in self.get_enabled_target_platform_names():
                 self.target_arch = 'win_x64_clang'
             else:
                 vs = {

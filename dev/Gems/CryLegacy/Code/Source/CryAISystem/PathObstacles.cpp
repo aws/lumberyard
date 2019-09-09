@@ -32,11 +32,11 @@
 static float criticalTopAlt = 0.5f;
 static float criticalBaseAlt = 2.0f;
 
-static std::vector<Vec3> s_pts;
-static std::vector<int> s_addedObstacleIndices;
+static StaticInstance<std::vector<Vec3>> s_pts;
+static StaticInstance<std::vector<int>> s_addedObstacleIndices;
 
-TPathObstacles CPathObstacles::s_pathObstacles;
-CPathObstacles::TCachedDynamicObstacleFlags CPathObstacles::s_dynamicObstacleFlags;
+StaticInstance<TPathObstacles> CPathObstacles::s_pathObstacles;
+StaticInstance<CPathObstacles::TCachedDynamicObstacleFlags> CPathObstacles::s_dynamicObstacleFlags;
 
 // NOTE Jun 4, 2007: <pvl> the comparison operators are used just for debugging ATM.
 inline bool operator== (const SPathObstacleCircle2D& lhs, const SPathObstacleCircle2D& rhs)
@@ -291,7 +291,7 @@ struct SCachedObstacle
 
 /// In a suit_demonstration level 32 results in about 80% cache hits
 int CPathObstacles::s_obstacleCacheSize = 32;
-CPathObstacles::TCachedObstacles CPathObstacles::s_cachedObstacles;
+StaticInstance<CPathObstacles::TCachedObstacles> CPathObstacles::s_cachedObstacles;
 
 //===================================================================
 // GetOrClearCachedObstacle
@@ -305,9 +305,9 @@ SCachedObstacle* CPathObstacles::GetOrClearCachedObstacle(IPhysicalEntity* entit
 
     unsigned entityHash = GetHashFromEntities(&entity, 1);
 
-    const TCachedObstacles::reverse_iterator itEnd = s_cachedObstacles.rend();
-    const TCachedObstacles::reverse_iterator itBegin = s_cachedObstacles.rbegin();
-    for (TCachedObstacles::reverse_iterator it = s_cachedObstacles.rbegin(); it != itEnd; ++it)
+    const TCachedObstacles::reverse_iterator itEnd = s_cachedObstacles->rend();
+    const TCachedObstacles::reverse_iterator itBegin = s_cachedObstacles->rbegin();
+    for (TCachedObstacles::reverse_iterator it = s_cachedObstacles->rbegin(); it != itEnd; ++it)
     {
         SCachedObstacle& cachedObstacle = **it;
         if (cachedObstacle.entity != entity || cachedObstacle.extraRadius != extraRadius)
@@ -316,8 +316,8 @@ SCachedObstacle* CPathObstacles::GetOrClearCachedObstacle(IPhysicalEntity* entit
         }
         if (cachedObstacle.entityHash == entityHash)
         {
-            s_cachedObstacles.erase(it.base() - 1);
-            s_cachedObstacles.push_back(&cachedObstacle);
+            s_cachedObstacles->erase(it.base() - 1);
+            s_cachedObstacles->push_back(&cachedObstacle);
 #ifdef CHECK_CACHED_OBST_CONSISTENCY
             if (cachedObstacle.shapesHash != GetHash (cachedObstacle.shapes))
             {
@@ -327,7 +327,7 @@ SCachedObstacle* CPathObstacles::GetOrClearCachedObstacle(IPhysicalEntity* entit
             return &cachedObstacle;
         }
         delete *(it.base() - 1);
-        s_cachedObstacles.erase(it.base() - 1);
+        s_cachedObstacles->erase(it.base() - 1);
         return 0;
     }
     return 0;
@@ -338,14 +338,14 @@ SCachedObstacle* CPathObstacles::GetOrClearCachedObstacle(IPhysicalEntity* entit
 //===================================================================
 void CPathObstacles::AddCachedObstacle(struct SCachedObstacle* obstacle)
 {
-    if (s_cachedObstacles.size() == s_obstacleCacheSize)
+    if (s_cachedObstacles->size() == s_obstacleCacheSize)
     {
-        delete s_cachedObstacles.front();
-        s_cachedObstacles.erase(s_cachedObstacles.begin());
+        delete s_cachedObstacles->front();
+        s_cachedObstacles->erase(s_cachedObstacles->begin());
     }
     if (s_obstacleCacheSize > 0)
     {
-        s_cachedObstacles.push_back(obstacle);
+        s_cachedObstacles->push_back(obstacle);
     }
 }
 
@@ -358,12 +358,12 @@ struct SCachedObstacle* CPathObstacles::GetNewCachedObstacle()
     {
         return 0;
     }
-    if ((int)s_cachedObstacles.size() < s_obstacleCacheSize)
+    if ((int)s_cachedObstacles->size() < s_obstacleCacheSize)
     {
         return new SCachedObstacle();
     }
-    SCachedObstacle* obs = s_cachedObstacles.front();
-    s_cachedObstacles.erase(s_cachedObstacles.begin());
+    SCachedObstacle* obs = s_cachedObstacles->front();
+    s_cachedObstacles->erase(s_cachedObstacles->begin());
     obs->Reset();
     return obs;
 }
@@ -1452,16 +1452,25 @@ void CPathObstacles::Reset()
 
 void CPathObstacles::ResetOfStaticData()
 {
-    while (!s_cachedObstacles.empty())
+    while (!s_cachedObstacles->empty())
     {
-        delete s_cachedObstacles.back();
-        s_cachedObstacles.pop_back();
+        delete s_cachedObstacles->back();
+        s_cachedObstacles->pop_back();
     }
     stl::free_container(s_cachedObstacles);
     stl::free_container(s_pathObstacles);
-    stl::free_container(s_dynamicObstacleFlags);
-    stl::free_container(s_pts);
-    stl::free_container(s_addedObstacleIndices);
+    if (s_dynamicObstacleFlags.size())
+    {
+        stl::free_container(s_dynamicObstacleFlags);
+    }
+    if (s_pts.size())
+    {
+        stl::free_container(s_pts);
+    }
+    if (s_addedObstacleIndices.size())
+    {
+        stl::free_container(s_addedObstacleIndices);
+    }
 }
 
 //===================================================================

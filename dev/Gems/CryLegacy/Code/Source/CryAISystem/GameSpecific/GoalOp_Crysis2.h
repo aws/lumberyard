@@ -403,17 +403,17 @@ private:
 
     const CFlightNavRegion2::NavData* m_Graph;
 
-    static SolverAllocator m_Solvers;
+    static StaticInstance<SolverAllocator> m_Solvers;
 
     ASTARSOLVER* AllocateSolver()
     {
-        return new (m_Solvers.Allocate())ASTARSOLVER;
+        return new (m_Solvers->Allocate())ASTARSOLVER;
     }
 
     void DestroySolver(ASTARSOLVER* solver)
     {
         solver->~ASTARSOLVER();
-        m_Solvers.Deallocate(solver);
+        m_Solvers->Deallocate(solver);
     }
 
     TargetResult    GetTarget  (CPipeUser* pPipeUser, Vec3& target) const;

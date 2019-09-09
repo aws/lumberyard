@@ -224,7 +224,7 @@ void CWaterRipples::AddHit(const Vec3& vPos, const float scale, const float stre
         hit.fHeight = vPos.z;
         hit.nCounter = nDisplayFrames;
 
-        std::vector<SWaterHitRecord>::iterator itHits = m_DebugWaterHits.begin();
+        auto itHits = m_DebugWaterHits.begin();
         for (; itHits != m_DebugWaterHits.end(); ++itHits)
         {
             if (itHits->nCounter <= 0)
@@ -524,7 +524,7 @@ void CWaterRipples::Render()
 void CWaterRipples::DEBUG_DrawWaterHits()
 {
     gRenDev->GetIRenderAuxGeom()->SetRenderFlags(SAuxGeomRenderFlags());
-    for (std::vector<SWaterHitRecord>::iterator itHits = m_DebugWaterHits.begin();
+    for (auto itHits = m_DebugWaterHits.begin();
          itHits != m_DebugWaterHits.end(); ++itHits)
     {
         if (itHits->nCounter > 0)
@@ -580,8 +580,7 @@ void CWaterVolume::Render()
 
             // Create texture if required
             if (!CTexture::IsTextureExist(CTexture::s_ptexWaterVolumeTemp))
-            {
-                ScopedSwitchToGlobalHeap globalHeap;
+            {                
                 if (!CTexture::s_ptexWaterVolumeTemp->Create2DTexture(64, 64, 1,
                         FT_DONT_RELEASE | FT_NOMIPS |  FT_USAGE_DYNAMIC,
                         0, eTF_R32G32B32A32F, eTF_R32G32B32A32F))
@@ -617,32 +616,26 @@ void CWaterVolume::Render()
                     return true;
                 };
 
-#if defined(OPENGL)
-                // OpenGL needs to create framebuffers in order to copy a texture (staging)
-                // to another one. Because some devices don't have floating point render target support, 
-                // we instead map the destination texture and copy the content directly.
-                if (!gRenDev->UseHalfFloatRenderTargets())
-                {
-                    D3DTexture* textureResouce = pDevTex->Get2DTexture();
-                    D3D11_MAPPED_SUBRESOURCE mappedResource;
-                    HRESULT hr = gcpRendD3D->GetDeviceContext().Map(textureResouce, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
+#if defined(AZ_PLATFORM_ANDROID)
+                // Due to unify memory on mobile it's jus faster to upload the data directly to the texture instead of using a staging resource.
+                D3DTexture* textureResouce = pDevTex->Get2DTexture();
+                D3D11_MAPPED_SUBRESOURCE mappedResource;
+                HRESULT hr = gcpRendD3D->GetDeviceContext().Map(textureResouce, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
 
-                    if (S_OK == hr)
-                    {
-                        const bool update = tranferFunc(mappedResource.pData, mappedResource.RowPitch, mappedResource.DepthPitch);
-                        gcpRendD3D->GetDeviceContext().Unmap(textureResouce, 0);
-                    }
-                    else
-                    {
-                        AZ_Assert(false, "Failed to map Water Voume");
-                        return;
-                    }
+                if (S_OK == hr)
+                {
+                    const bool update = tranferFunc(mappedResource.pData, mappedResource.RowPitch, mappedResource.DepthPitch);
+                    gcpRendD3D->GetDeviceContext().Unmap(textureResouce, 0);
                 }
                 else
-#endif // defined(OPENGL)
                 {
-                    pDevTex->UploadFromStagingResource(0, tranferFunc);
+                    AZ_Assert(false, "Failed to map Water Voume");
+                    return;
                 }
+#else
+                pDevTex->UploadFromStagingResource(0, tranferFunc);
+#endif // defined(AZ_PLATFORM_ANDROID)
+
             }
             nFrameID = nCurFrameID;
         }
@@ -682,7 +675,7 @@ void CWaterVolume::Render()
 
     CTexture::s_ptexWaterVolumeDDN->GenerateMipMaps();
 
-    // HACK (re-set back-buffer): due to lazy RT updates/setting there's strong possibility we run into problems on x360 when we try to resolve from edram with no RT set // ACCEPTED_USE
+    // (re-set back-buffer): if the platform does lazy RT updates/setting there's strong possibility we run into problems when we try to resolve with no RT set
     gcpRendD3D->FX_SetActiveRenderTargets();
     gcpRendD3D->FX_ResetPipe();
 

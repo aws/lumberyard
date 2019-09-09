@@ -1,0 +1,278 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+
+    "Metadata": {
+        "CloudCanvas": {
+            "Id": "$Revision: #1 $"
+        }
+    },
+
+    "Parameters": {
+
+        "ProjectResourceHandler": {
+            "Type": "String",
+            "Description": "The the project resource handler lambda ARN."
+        },
+
+        "ConfigurationBucket": {
+            "Type": "String",
+            "Description": "Bucket that contains configuration data."
+        },
+
+        "ConfigurationKey": {
+            "Type": "String",
+            "Description": "Key that contains the current upload location."
+        },
+
+        "ProjectPlayerAccessTokenExchangeHandler": {
+            "Type": "String",
+            "Description": "ARN for the lambda that the login cognito-identity pool needs access to."
+        },       
+
+        "ProjectStack": {
+            "Type": "String",
+            "Description": "The name of the project stack."
+        },
+
+        "DeploymentName": {
+            "Type": "String",
+            "Description": "The name of the deployment."
+        },
+
+        "DeploymentStack": {
+            "Type": "String",
+            "Description": "The name of the deployment stack."
+        },
+
+        "DeploymentStackArn": {
+            "Type": "String",
+            "Description": "The ARN of the deployment stack."
+        }
+
+    },    
+  
+    "Resources": {
+
+        "OwnerPolicy": {
+            "Type": "AWS::IAM::ManagedPolicy",
+            "Properties": {
+                "Description": "Policy that grants permissions to update a deployment stack, and all of it's resource group stacks.",
+                "Path": { "Fn::Join": [ "", [ "/", { "Ref": "ProjectStack" }, "/", { "Ref": "DeploymentName" }, "/" ]] },
+                "PolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Sid": "ReadProjectDeploymentAndResourceGroupStackState",
+                            "Effect": "Allow",
+                            "Action": [
+                                "cloudformation:DescribeStackResource",
+                                "cloudformation:DescribeStackResources",
+                                "cloudformation:DescribeStackEvents"
+                            ],
+                            "Resource": [
+                                { "Fn::Join": [ "", [ "arn:aws:cloudformation:", { "Ref": "AWS::Region" }, ":", { "Ref": "AWS::AccountId" }, ":stack/", { "Ref": "ProjectStack" }, "/*" ]] },
+                                { "Fn::Join": [ "", [ "arn:aws:cloudformation:", { "Ref": "AWS::Region" }, ":", { "Ref": "AWS::AccountId" }, ":stack/", { "Ref": "ProjectStack" }, "-*" ]] },
+                                { "Fn::Join": [ "", [ "arn:aws:cloudformation:", { "Ref": "AWS::Region" }, ":", { "Ref": "AWS::AccountId" }, ":stack/", { "Ref": "DeploymentStack" }, "/*" ]] },
+                                { "Fn::Join": [ "", [ "arn:aws:cloudformation:", { "Ref": "AWS::Region" }, ":", { "Ref": "AWS::AccountId" }, ":stack/", { "Ref": "DeploymentStack" }, "-*" ]] }
+                            ]
+                        },
+                        {
+                            "Sid": "InvokeProjectResourceHandler",
+                            "Effect": "Allow",
+                            "Action": [
+                                "lambda:InvokeFunction"
+                            ],
+                            "Resource": [
+                                { "Ref": "ProjectResourceHandler" }
+                            ]
+                        },
+                        {
+                            "Sid": "ReadAndWriteDeploymentAndResourceGroupConfiguration",
+                            "Effect": "Allow",
+                            "Action": [
+                                "s3:PutObject",
+                                "s3:GetObject"
+                            ],
+                            "Resource": [
+                                { "Fn::Join": [ "", [ "arn:aws:s3:::", { "Ref": "ConfigurationBucket" }, "/upload/*/deployment/", { "Ref": "DeploymentName" }, "/*" ]] }
+                            ]
+                        },
+                        {
+                            "Sid": "UpdateDeploymentStack",
+                            "Effect": "Allow",
+                            "Action": [
+                                "cloudformation:UpdateStack"
+                            ],
+                            "Resource": [
+                                { "Fn::Join": [ "", [ "arn:aws:cloudformation:", { "Ref": "AWS::Region" }, ":", { "Ref": "AWS::AccountId" }, ":stack/", { "Ref": "DeploymentStack" }, "/*" ]] }
+                            ]
+                        },
+                        {
+                            "Sid": "CreateUpdateAndDeleteResourceGroupStacks",
+                            "Effect": "Allow",
+                            "Action": [
+                                "cloudformation:CreateStack",
+                                "cloudformation:UpdateStack",
+                                "cloudformation:DeleteStack"
+                            ],
+                            "Resource": [
+                                { "Fn::Join": [ "", [ "arn:aws:cloudformation:", { "Ref": "AWS::Region" }, ":", { "Ref": "AWS::AccountId" }, ":stack/", { "Ref": "DeploymentStack" }, "-*" ]] }
+                            ]
+                        },
+                        {
+                            "Sid": "FullAccessToDeploymentAndResourceGroupResources",
+                            "Effect": "Allow",
+                            "Action": [
+                                "dynamodb:*",
+                                "s3:*",
+                                "sqs:*",
+                                "sns:*",
+                                "lambda:*"
+                            ],
+                            "Resource": [
+                                { "Fn::Join": [ "", [ "arn:aws:dynamodb:", { "Ref": "AWS::Region" }, ":", { "Ref": "AWS::AccountId" }, ":table/", { "Ref": "DeploymentStack" }, "-*" ]] },
+                                { "Fn::Join": [ "", [ "arn:aws:s3:::", { "Ref": "DeploymentStack" }, "-*" ] ] },
+                                { "Fn::Join": [ "", [ "arn:aws:sqs:", { "Ref": "AWS::Region" }, ":", { "Ref": "AWS::AccountId" }, ":", { "Ref": "DeploymentStack" }, "-*" ]] },
+                                { "Fn::Join": [ "", [ "arn:aws:sns:*:", { "Ref": "AWS::AccountId" }, ":", { "Ref": "DeploymentStack" }, "-*" ] ] },
+                                { "Fn::Join": [ "", [ "arn:aws:lambda:", { "Ref": "AWS::Region" }, ":", { "Ref": "AWS::AccountId" }, ":function:", { "Ref": "DeploymentStack" }, "-*" ]] }
+                            ]
+                        },
+                        {
+                            "Sid": "PassDeploymentRolesToLambdaFunctions",
+                            "Effect": "Allow",
+                            "Action": [
+                                "iam:PassRole"
+                            ],
+                            "Resource": [
+                                { "Fn::Join": [ "", [ "arn:aws:iam::", {"Ref": "AWS::AccountId"}, ":role/", {"Ref": "ProjectStack"}, "/", {"Ref": "DeploymentName"}, "/*"]] }
+                            ]
+                        },
+                        {
+                            "Sid": "CreateLambdaFunctions",
+                            "Effect": "Allow",
+                            "Action": "lambda:CreateFunction",
+                            "Resource": "*"
+                        }
+                    ]
+                }
+            }
+        },
+
+        "Owner": {
+            "Type": "AWS::IAM::Role",
+            "Properties": {
+                "Path": { "Fn::Join": [ "", [ "/", { "Ref": "ProjectStack" }, "/", { "Ref": "DeploymentName" }, "/" ]] },
+                "AssumeRolePolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Sid": "AccountUserAssumeRole",
+                            "Effect": "Allow",
+                            "Action": "sts:AssumeRole",
+                            "Principal": { "AWS": {"Ref": "AWS::AccountId"} }
+                        }
+                    ]
+                },
+                "ManagedPolicyArns": [
+                    { "Ref": "OwnerPolicy" }
+                ]
+            }
+        },
+        
+        "Player": {
+            "Type": "AWS::IAM::Role",
+            "Properties": {
+                "Path": { "Fn::Join": [ "", [ "/", { "Ref": "ProjectStack" }, "/", { "Ref": "DeploymentName" }, "/" ]] },
+                "AssumeRolePolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Action": "sts:AssumeRoleWithWebIdentity",
+                            "Principal": {
+                                "Federated": "cognito-identity.amazonaws.com"
+                            }
+                        }
+                    ]
+                }
+            }
+        },
+
+        "PlayerAccess": {
+            "Type": "Custom::PlayerAccess",
+            "Properties": {
+                "ServiceToken": { "Ref": "ProjectResourceHandler" },
+                "ConfigurationBucket": { "Ref": "ConfigurationBucket" },
+                "ConfigurationKey": { "Ref": "ConfigurationKey" },
+                "DeploymentStack": { "Ref": "DeploymentStackArn" }
+            },
+            "DependsOn": [ "Player" ]
+        },
+
+        "PlayerLoginRole": {
+            "Type": "AWS::IAM::Role",
+            "Properties": {
+                "AssumeRolePolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Action": "sts:AssumeRoleWithWebIdentity",
+                            "Principal": {
+                                "Federated": "cognito-identity.amazonaws.com"
+                            }
+                        }
+                    ]
+                },
+                "Policies": [
+                    {
+                        "PolicyName": "ExchangeTokenAccess",
+                        "PolicyDocument": {
+                            "Version": "2012-10-17",
+                            "Statement": [
+                                {
+                                    "Sid": "PlayerLoginExecution",
+                                    "Effect": "Allow",
+                                    "Action": [ "lambda:InvokeFunction" ],
+                                    "Resource": { "Ref": "ProjectPlayerAccessTokenExchangeHandler" }
+                                }
+                            ]
+                        }
+                    }
+                ]
+            }
+        },       
+
+        "PlayerLoginIdentityPool": {
+            "Type": "Custom::CognitoIdentityPool",
+            "Properties": {
+                "ServiceToken": { "Ref": "ProjectResourceHandler" },
+                "AllowUnauthenticatedIdentities": "true",
+                "UseAuthSettingsObject": "false",
+                "ConfigurationBucket": { "Ref": "ConfigurationBucket" },
+                "ConfigurationKey": { "Ref": "ConfigurationKey" },
+                "IdentityPoolName": "PlayerLogin",
+                "Roles": {
+                    "unauthenticated": { "Fn::GetAtt": [ "PlayerLoginRole", "Arn" ] }
+                }
+            }
+        },
+
+        "PlayerAccessIdentityPool": {
+            "Type": "Custom::CognitoIdentityPool",
+            "Properties": {
+                "ServiceToken": { "Ref": "ProjectResourceHandler" },
+                "AllowUnauthenticatedIdentities": "true",
+                "UseAuthSettingsObject": "true",
+                "ConfigurationBucket": { "Ref": "ConfigurationBucket" },
+                "ConfigurationKey": { "Ref": "ConfigurationKey" },
+                "IdentityPoolName": "PlayerAccess",
+                "Roles": {
+                    "unauthenticated":  { "Fn::GetAtt":  [ "Player", "Arn"] },
+                    "authenticated": { "Fn::GetAtt": [ "Player", "Arn" ] }
+                }
+            }
+        }
+    }
+}
+

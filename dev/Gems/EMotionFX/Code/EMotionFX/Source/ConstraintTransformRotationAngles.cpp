@@ -12,11 +12,10 @@
 
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/Serialization/EditContext.h>
-#include "ConstraintTransformRotationAngles.h"
-#include "EventManager.h"
 
-#include <AzCore/Math/Vector2.h>
-
+#include <EMotionFX/Source/ConstraintTransformRotationAngles.h>
+#include <EMotionFX/Source/EMotionFXManager.h>
+#include <EMotionFX/Source/DebugDraw.h>
 
 namespace EMotionFX
 {
@@ -212,12 +211,14 @@ namespace EMotionFX
     }
 
 
-    void ConstraintTransformRotationAngles::DrawSphericalLine(const AZ::Vector2& start, const AZ::Vector2& end, uint32 numSteps, uint32 color, float radius, const MCore::Matrix& offset) const
+    void ConstraintTransformRotationAngles::DrawSphericalLine(ActorInstance* actorInstance, const AZ::Vector2& start, const AZ::Vector2& end, uint32 numSteps, const AZ::Color& color, float radius, const MCore::Matrix& offset) const
     {
         const AZ::Vector2 totalVector = end - start;
         const AZ::Vector2 stepVector = totalVector / static_cast<float>(numSteps);
 
-        EventManager& eventManager = GetEventManager();
+        EMotionFX::DebugDraw& debugDraw = GetDebugDraw();
+        DebugDraw::ActorInstanceData* drawData = debugDraw.GetActorInstanceData(actorInstance);
+        drawData->Lock();
 
         AZ::Vector2 current = start;
         AZ::Vector3 lastPos = GetSphericalPos(start.GetX(), -start.GetY()) * radius * offset;
@@ -229,13 +230,15 @@ namespace EMotionFX
             pos *= radius;
             pos = pos * offset;
 
-            eventManager.OnDrawLine(lastPos, pos, color);
+            drawData->AddLine(lastPos, pos, color);
             lastPos = pos;
         }
+
+        drawData->Unlock();
     }
 
 
-    void ConstraintTransformRotationAngles::DebugDraw(const MCore::Matrix& offset, uint32 color, float radius) const
+    void ConstraintTransformRotationAngles::DebugDraw(ActorInstance* actorInstance, const MCore::Matrix& offset, const AZ::Color& color, float radius) const
     {
         const uint32 numSegments = 64;
         const AZ::Vector2 minValues = GetMinRotationAnglesRadians();
@@ -244,10 +247,10 @@ namespace EMotionFX
         const float maxX = maxValues.GetX();
         const float minY = minValues.GetY();
         const float maxY = maxValues.GetY();
-        DrawSphericalLine(AZ::Vector2(minX, minY), AZ::Vector2(maxX, minY), numSegments, color, radius, offset);
-        DrawSphericalLine(AZ::Vector2(minX, maxY), AZ::Vector2(maxX, maxY), numSegments, color, radius, offset);
-        DrawSphericalLine(AZ::Vector2(minX, minY), AZ::Vector2(minX, maxY), numSegments, color, radius, offset);
-        DrawSphericalLine(AZ::Vector2(maxX, minY), AZ::Vector2(maxX, maxY), numSegments, color, radius, offset);
+        DrawSphericalLine(actorInstance, AZ::Vector2(minX, minY), AZ::Vector2(maxX, minY), numSegments, color, radius, offset);
+        DrawSphericalLine(actorInstance, AZ::Vector2(minX, maxY), AZ::Vector2(maxX, maxY), numSegments, color, radius, offset);
+        DrawSphericalLine(actorInstance, AZ::Vector2(minX, minY), AZ::Vector2(minX, maxY), numSegments, color, radius, offset);
+        DrawSphericalLine(actorInstance, AZ::Vector2(maxX, minY), AZ::Vector2(maxX, maxY), numSegments, color, radius, offset);
     }
 
 

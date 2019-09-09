@@ -14,6 +14,7 @@
 #include "Writer.h"
 #include "JSONWriter.h"
 #include "Configuration.h"
+#include <cstdarg>
 #ifdef AZCG_PLATFORM_WINDOWS
 #include <io.h>
 // Underscore ISO C++ versions are only supported on windows right now
@@ -43,8 +44,7 @@ namespace CodeGenerator
             cl::values(
                 clEnumValN(NoRedirect, "none", "No output redirection, clang and python will output to stdout and stderr"),
                 clEnumValN(NullRedirect, "null", "Redirect clang and python to null, effectively suppressing that output"),
-                clEnumValN(FileRedirect, "file", "Redirect clang and python to disk, specify path with redirect-output-file"),
-                clEnumValEnd
+                clEnumValN(FileRedirect, "file", "Redirect clang and python to disk, specify path with redirect-output-file")
                 ),
             cl::cat(OutputSettingsCategory),
             cl::Optional,
@@ -232,7 +232,7 @@ namespace CodeGenerator
         }
         else
         {
-            printf("Generated File: %s (%s be added to the build)", fileName.c_str(), shouldBeAddedToBuild ? "should" : "should not");
+            printf("Generated File: %s (%s be added to the build)\n", fileName.c_str(), shouldBeAddedToBuild ? "should" : "should not");
         }
     }
 

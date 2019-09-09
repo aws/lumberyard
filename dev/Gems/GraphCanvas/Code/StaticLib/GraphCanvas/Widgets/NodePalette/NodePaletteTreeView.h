@@ -19,6 +19,8 @@
 
 namespace GraphCanvas
 {
+    class NodePaletteTreeItem;
+
     class NodePaletteTreeView
         : public AzToolsFramework::QTreeViewWithStateSaving
     {
@@ -30,12 +32,20 @@ namespace GraphCanvas
         
         void resizeEvent(QResizeEvent* event) override;
 
+        void selectionChanged(const QItemSelection& selected, const QItemSelection &deselected) override;
+
     protected:
         void mousePressEvent(QMouseEvent* ev) override;
         void mouseMoveEvent(QMouseEvent* ev) override;
         void mouseReleaseEvent(QMouseEvent* ev) override;
+        void leaveEvent(QEvent* ev) override;
+
+        void OnClicked(const QModelIndex& modelIndex);
 
     private:
         void UpdatePointer(const QModelIndex &modelIndex, bool isMousePressed);
+
+        QModelIndex m_lastIndex;
+        NodePaletteTreeItem* m_lastItem;
     };
 }

@@ -45,6 +45,8 @@ namespace AZ
     void UserSettingsProvider::Activate(u32 bindToProviderId)
     {
         UserSettingsBus::Handler::BusConnect(bindToProviderId);
+
+        UserSettingsNotificationBus::Event(bindToProviderId, &UserSettingsNotifications::OnUserSettingsActivated);
     }
     //-----------------------------------------------------------------------------
     void UserSettingsProvider::Deactivate()
@@ -87,7 +89,7 @@ namespace AZ
                
                 // do not try to load assets during User Settings Provider bootup - we are still initializing the application!
                 // in addition, the file may contain settings we don't understand, from other applications - don't error on those.
-                settingsLoaded = ObjectStream::LoadBlocking(&settingsFileStream, *sc, readyCB, ObjectStream::FilterDescriptor(AZ::ObjectStream::AssetFilterNoAssetLoading, AZ::ObjectStream::FILTERFLAG_IGNORE_UNKNOWN_CLASSES));
+                settingsLoaded = ObjectStream::LoadBlocking(&settingsFileStream, *sc, readyCB, ObjectStream::FilterDescriptor(&AZ::Data::AssetFilterNoAssetLoading, AZ::ObjectStream::FILTERFLAG_IGNORE_UNKNOWN_CLASSES));
                 settingsFile.Close();
             }
         }

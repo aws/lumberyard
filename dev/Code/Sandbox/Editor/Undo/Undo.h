@@ -18,6 +18,7 @@
 #include "IUndoManagerListener.h"
 #include "CrySizer.h"                           // ICrySizer
 #include "IUndoObject.h"
+#include <AzToolsFramework/Metrics/LyEditorMetricsBus.h>
 
 struct IUndoObject;
 class CSuperUndoStep;
@@ -41,6 +42,8 @@ public:
     }
     void ClearObjects()
     {
+        AzToolsFramework::EditorMetricsEventBusSelectionChangeHelper metricsHelper;
+
         int i;
         // Release all undo objects.
         std::vector<IUndoObject*> undoObjects = m_undoObjects;
@@ -68,6 +71,8 @@ public:
     virtual bool IsEmpty() const { return m_undoObjects.empty(); };
     virtual void Undo(bool bUndo)
     {
+        AzToolsFramework::EditorMetricsEventBusSelectionChangeHelper metricsHelper;
+
         for (int i = m_undoObjects.size() - 1; i >= 0; i--)
         {
             m_undoObjects[i]->Undo(bUndo);
@@ -75,6 +80,8 @@ public:
     }
     virtual void Redo()
     {
+        AzToolsFramework::EditorMetricsEventBusSelectionChangeHelper metricsHelper;
+
         for (int i = 0; i < m_undoObjects.size(); i++)
         {
             m_undoObjects[i]->Redo();
@@ -264,6 +271,8 @@ private: // ---------------------------------------------------------------
 
     bool                                            m_bUndoing;
     bool                                            m_bRedoing;
+
+    bool                                            m_bClearRedoStackQueued;
 
     CUndoStep*                             m_currentUndo;
     //! Undo step object created by SuperBegin.

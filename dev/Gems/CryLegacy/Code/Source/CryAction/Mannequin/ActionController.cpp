@@ -28,9 +28,9 @@
 
 const uint32 MAX_ALLOWED_QUEUE_SIZE = 10;
 
-CActionController::TActionControllerList CActionController::s_actionControllers;
-CActionController::TActionList CActionController::s_actionList;
-CActionController::TActionList CActionController::s_tickedActions;
+StaticInstance<CActionController::TActionControllerList> CActionController::s_actionControllers;
+StaticInstance<CActionController::TActionList> CActionController::s_actionList;
+StaticInstance<CActionController::TActionList> CActionController::s_tickedActions;
 
 bool CActionController::s_registeredCVars = false;
 uint32 CActionController::s_blendChannelCRCs[MANN_NUMBER_BLEND_CHANNELS];
@@ -1132,7 +1132,7 @@ bool CActionController::ResolveActionInstallations(float timePassed)
 
     const uint32 numActions = m_queuedActions.size();
 
-    s_actionList = m_queuedActions;
+    *s_actionList = m_queuedActions;
     for (uint32 i = 0; i < numActions; i++)
     {
         IAction& action = *s_actionList[i];

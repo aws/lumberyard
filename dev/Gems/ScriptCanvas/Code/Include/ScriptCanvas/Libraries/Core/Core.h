@@ -26,3 +26,7 @@
 #include "ExtractProperty.h"
 #include "GetVariable.h"
 #include "SetVariable.h"
+#include "ScriptEventBase.h"
+#include "SendScriptEvent.h"
+#include "ReceiveScriptEvent.h"
+#include "ForEach.h"

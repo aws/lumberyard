@@ -45,7 +45,7 @@ namespace EMStudio
 
         // move the notification window
         const QRect& notificationWindowGeometry = notificationWindow->geometry();
-        const QPoint mainWindowBottomRight = mainWindow->geometry().bottomRight();
+        const QPoint mainWindowBottomRight = mainWindow->window()->geometry().bottomRight();
         notificationWindow->move(mainWindowBottomRight.x() - notificationWindowGeometry.width() - notificationWindowMainWindowPadding, mainWindowBottomRight.y() - allNotificationWindowsHeight - notificationWindowGeometry.height() - notificationWindowMainWindowPadding);
 
         // add the notification window in the array

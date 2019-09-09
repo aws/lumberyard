@@ -4,7 +4,7 @@
         [metricIdentifier]="context.identifier"></facet-generator>
 <div *ngIf="activeSubMenuIndex == 0 || activeSubMenuIndex == 1">
     <div *ngIf="activeSubMenuIndex == 0" class="row search-row no-gutters">
-        <div class="col-6" [ngSwitch]="mode == modes.Show || mode == modes.Edit">
+        <div [ngSwitch]="mode == modes.Show || mode == modes.Edit">
             <button *ngSwitchCase="true" (click)="mode = modes.List" class="btn l-primary back-button">
                 < Back to all Player Accounts
             </button>
@@ -69,7 +69,7 @@
                     </tbody>
                 </table>
                 <ng-container *ngIf="enablePagination">
-                    <pagination type="Token" [showPrevious]="previousPaginationToken && currentPageIndex > 0" 
+                    <pagination type="Token" [showPrevious]="previousPaginationToken && currentPageIndex > 0"
                     [showNext]="nextPaginationToken && listModel.length >= 20"
                     (pageChanged)="pageChanged($event)"></pagination>
                 </ng-container>

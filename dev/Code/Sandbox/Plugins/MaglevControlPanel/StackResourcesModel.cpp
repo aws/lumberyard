@@ -16,5 +16,5 @@
 
 #include <StackResourcesModel.moc>
 
-StackResourcesModel::EmptyPendingChangeProxyModel StackResourcesModel::s_EmptyPendingChangeProxyModel;
+
 

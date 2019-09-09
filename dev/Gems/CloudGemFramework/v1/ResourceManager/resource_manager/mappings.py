@@ -18,8 +18,10 @@ import util
 import glob
 from resource_manager_common import constant
 from botocore.exceptions import ClientError
+from boto3.exceptions import S3UploadFailedError
 
 from cgf_utils import aws_utils
+from cgf_utils import custom_resource_utils
 from resource_manager_common import resource_type_info
 from resource_manager_common import stack_info
 
@@ -46,11 +48,9 @@ def update(context, args, force=False):
     if not context.config.project_initialized:
         raise HandledError('The project has not been initialized.')
 
-    context.view.mapping_update(context.config.default_deployment, args)
-
     if args.release:
         args.deployment = context.config.release_deployment
-    
+
     if not args.deployment:
         args.deployment = context.config.default_deployment
 
@@ -96,9 +96,12 @@ def update(context, args, force=False):
         # __update_with_deployment will update the user settings if it is the default deployment
         __update_with_deployment(context, args)
 
-        # Upload the resultant files to s3 both for caching purposes and for non-admin users to download
-        for file_name, file_path in zip(mappings_file_names, mappings_file_paths):
-            s3_client.upload_file(file_path, config_bucket, _MAPPINGS_KEY_PREFIX + file_name)
+        try:
+            # Upload the resultant files to s3 both for caching purposes and for non-admin users to download
+            for file_name, file_path in zip(mappings_file_names, mappings_file_paths):
+                s3_client.upload_file(file_path, config_bucket, _MAPPINGS_KEY_PREFIX + file_name)
+        except S3UploadFailedError as e:
+            print "This client does not have upload permissions for the project configuration bucket. skipping upload"
 
     elif args.deployment == context.config.default_deployment:
         # we didn't need to get the mappings from the backend, update the user settings ourselves from local mappings
@@ -132,14 +135,22 @@ def __update_user_mappings_from_file(context, player_mappings_file):
     with open(player_mappings_file) as mappings_file:
         mappings = json.load(mappings_file)
     context.config.set_user_mappings(mappings.get("LogicalMappings", {}))
-    
+
 def __update_logical_mappings_files(context, deployment_name, args=None):
     exclusions = __get_mapping_exclusions(context)
     ## AuthenticatedPlayer is a superset of general "Player" and "AuthenticatedPlayer" permissions
     ## The Player mappings file should include both
     player_mappings = __get_mappings(context, deployment_name, exclusions, 'AuthenticatedPlayer', args)
 
-    if context.config.default_deployment == deployment_name:
+    #update the user-settings.json file if this is the default deployment stack or a explicit deployment stack parameter was received in the CLI args list.
+    #If a explicit deployment stack parameter was received then someone is requesting the mappings to be set for to that specific deployment regardless whether it is the default
+    if args:
+        print("Deployment: ", args.deployment)
+    else:
+        print("Deployment: ", "None")
+    print("Deployment (Default): ", context.config.default_deployment)
+    if context.config.default_deployment == deployment_name or args and args.deployment:
+        print("Setting the user mappings to", player_mappings)
         context.config.set_user_mappings(player_mappings)
 
     __update_launcher(context, deployment_name, 'Player', player_mappings, args)
@@ -164,14 +175,14 @@ def __logical_mapping_file_path(context):
     logicalMappingsPath = context.config.root_directory_path
     logicalMappingsPath = os.path.join(logicalMappingsPath, context.config.game_directory_name)
     logicalMappingsPath = os.path.join(logicalMappingsPath, 'Config')
-    
+
     return logicalMappingsPath
 
 
 def __remove_old_mapping_files(context, deployment_name = None):
     if deployment_name is None:
         __remove_all_old_mapping_files(context)
-    logicalMappingsPath = __logical_mapping_file_path(context) 
+    logicalMappingsPath = __logical_mapping_file_path(context)
     server_mappings_file = os.path.join(logicalMappingsPath, '{}.{}.{}'.format(deployment_name, 'server', constant.MAPPING_FILE_SUFFIX))
     player_mappings_file = os.path.join(logicalMappingsPath, '{}.{}.{}'.format(deployment_name, 'player', constant.MAPPING_FILE_SUFFIX))
     if os.path.exists(player_mappings_file) and context.config.validate_writable(player_mappings_file):
@@ -181,7 +192,7 @@ def __remove_old_mapping_files(context, deployment_name = None):
 
 def __remove_all_old_mapping_files(context):
     logicalMappingsPath = __logical_mapping_file_path(context)
-    if not os.path.exists(logicalMappingsPath):      
+    if not os.path.exists(logicalMappingsPath):
         return
     cwd = os.getcwd()
     os.chdir(logicalMappingsPath)
@@ -191,7 +202,7 @@ def __remove_all_old_mapping_files(context):
             continue
         try:
             os.remove(f)
-        except: 
+        except:
             pass
     os.chdir(cwd)
 
@@ -203,13 +214,17 @@ def __get_mapping_exclusions(context):
 
 
 def __get_mappings(context, deployment_name, exclusions, role, args=None):
-
+    iam = context.aws.client('iam')
     mappings = {}
-
     deployment_stack_id = context.config.get_deployment_stack_id(deployment_name)
 
     region = util.get_region_from_arn(deployment_stack_id)
     account_id = util.get_account_id_from_arn(deployment_stack_id)
+
+    # Assemble and add the iam role ARN to the server mappings
+    deployment_access_stack_id = context.config.get_deployment_access_stack_id(deployment_name, True if args is not None and args.is_gui else False)
+    server_role_id = context.stack.get_physical_resource_id(deployment_access_stack_id, role, optional=True)
+    server_role_arn = iam.get_role(RoleName=server_role_id).get('Role', {}).get('Arn', '')
 
     context.view.retrieving_mappings(deployment_name, deployment_stack_id, role)
 
@@ -219,11 +234,11 @@ def __get_mappings(context, deployment_name, exclusions, role, args=None):
     resources = context.stack.describe_resources(deployment_stack_id, recursive=True)
 
     for logical_name, description in resources.iteritems():
-        
+
         if logical_name in exclusions:
             continue
 
-        physical_resource_id = description.get('PhysicalResourceId')
+        physical_resource_id = custom_resource_utils.get_embedded_physical_id(description.get('PhysicalResourceId'))
         if physical_resource_id:
             if __is_user_pool_resource(description):
                 mappings[logical_name] = {
@@ -240,7 +255,7 @@ def __get_mappings(context, deployment_name, exclusions, role, args=None):
                     type_definitions=type_definitions,
                     stack_arn=stack_id,
                     resource_type=description['ResourceType'],
-                    resource_name=physical_resource_id,
+                    physical_id=physical_resource_id,
                     optional = True,
                     lambda_client=lambda_client
                 )
@@ -265,12 +280,13 @@ def __get_mappings(context, deployment_name, exclusions, role, args=None):
         access_resources = context.stack.describe_resources(access_stack_arn, recursive=True)
         for logical_name, description in access_resources.iteritems():
             if description['ResourceType'] == 'Custom::CognitoIdentityPool':
-                
+
                 if logical_name in exclusions:
                     continue
 
                 mappings[logical_name] = {
-                    'PhysicalResourceId': description['PhysicalResourceId'],
+                    'PhysicalResourceId': custom_resource_utils.
+                        get_embedded_physical_id(description['PhysicalResourceId']),
                     'ResourceType': description['ResourceType']
                 }
 
@@ -279,6 +295,9 @@ def __get_mappings(context, deployment_name, exclusions, role, args=None):
 
     if 'account_id' not in exclusions:
         mappings['account_id'] = { 'PhysicalResourceId': account_id, 'ResourceType': 'Configuration' }
+
+    if 'server_role_arn' not in exclusions and role is not 'AuthenticatedPlayer':
+        mappings['server_role_arn'] = { 'PhysicalResourceId': server_role_arn, 'ResourceType': 'Configuration' }
 
     return mappings
 
@@ -309,7 +328,7 @@ def __add_service_api_mapping(context, logical_name, resource_description, mappi
 
     if not found:
         resource_group_name = logical_name.split('.')[0]
-        raise HandledError('The {} resource group template defines a ServiceApi resource but does not provide a ServiecUrl Output value.'.format(resource_group_name))
+        raise HandledError('The {} resource group template defines a ServiceApi resource but does not provide a ServiceUrl Output value.'.format(resource_group_name))
 
 def __get_player_accessible_arns(context, deployment_name, role, args=None):
 
@@ -318,11 +337,14 @@ def __get_player_accessible_arns(context, deployment_name, role, args=None):
     deployment_access_stack_id = context.config.get_deployment_access_stack_id(deployment_name, True if args is not None and args.is_gui else False)
     player_role_id = context.stack.get_physical_resource_id(deployment_access_stack_id, role, optional=True)
 
+    if player_role_id.startswith("{"): # same check that happens in custom_resource info class
+        player_role_id = custom_resource_utils.get_embedded_physical_id(player_role_id).split("/")[-1]
     if player_role_id == None:
         return {}
 
     iam = context.aws.client('iam')
 
+    res = {}
     try:
         res = iam.list_role_policies(RoleName=player_role_id)
     except ClientError as e:
@@ -330,7 +352,6 @@ def __get_player_accessible_arns(context, deployment_name, role, args=None):
             return {}
 
     for policy_name in res.get('PolicyNames', []):
-
         res = iam.get_role_policy(RoleName=player_role_id, PolicyName=policy_name)
 
         policy_document = res.get('PolicyDocument', {})
@@ -340,7 +361,6 @@ def __get_player_accessible_arns(context, deployment_name, role, args=None):
             statements = [ statements ]
 
         for statement in statements:
-
             if statement.get('Effect', '') != 'Allow':
                 continue
 

@@ -3,7 +3,8 @@
     {
         "Root":
         [
-            "Main.cpp"
+            "Main.cpp",
+            "resource.h"
         ]
     }
 }

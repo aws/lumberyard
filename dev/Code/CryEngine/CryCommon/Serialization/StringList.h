@@ -25,6 +25,8 @@
 #include <CryArray.h>
 #endif
 
+#include <AzCore/std/containers/fixed_vector.h>
+
 namespace Serialization {
     class IArchive;
     class StringListStatic
@@ -32,7 +34,7 @@ namespace Serialization {
         : public std::vector<const char*>
     {
 #else
-        : public DynArray<const char*>{
+        : public AZStd::fixed_vector<const char*, 64> {
 #endif
     public:
         enum

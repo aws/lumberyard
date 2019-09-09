@@ -108,7 +108,11 @@ static LRESULT WINAPI WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION SYSTEM_CPP_SECTION_1
-#include AZ_RESTRICTED_FILE(System_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/System_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/System_cpp_provo.inl"
+    #endif
 #endif
 
 
@@ -168,7 +172,6 @@ static LRESULT WINAPI WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam
 #include "ServerThrottle.h"
 #include "ILocalMemoryUsage.h"
 #include "ResourceManager.h"
-#include "MemoryManager.h"
 #include "LoadingProfiler.h"
 #include "HMDBus.h"
 #include "OverloadSceneManager/OverloadSceneManager.h"
@@ -314,6 +317,8 @@ struct SCVarsWhitelistConfigSink
 
 #if defined(AZ_MONOLITHIC_BUILD)
 SC_API struct SSystemGlobalEnvironment* gEnv = NULL;
+ComponentFactoryCreationNode* ComponentFactoryCreationNode::sm_head = nullptr;
+size_t ComponentFactoryCreationNode::sm_size = 0;
 #endif // AZ_MONOLITHIC_BUILD
 
 /////////////////////////////////////////////////////////////////////////////////
@@ -431,7 +436,11 @@ CSystem::CSystem(SharedEnvironmentInstance* pSharedEnvironment)
     m_sys_skip_input = nullptr;
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION SYSTEM_CPP_SECTION_2
-#include AZ_RESTRICTED_FILE(System_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/System_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/System_cpp_provo.inl"
+    #endif
 #endif
     m_sys_min_step = 0;
     m_sys_max_step = 0;
@@ -501,6 +510,9 @@ CSystem::CSystem(SharedEnvironmentInstance* pSharedEnvironment)
     m_bInDevMode = false;
     m_bGameFolderWritable = false;
 
+    m_bDrawConsole = true;
+    m_bDrawUI = true;
+
     m_nServerConfigSpec = CONFIG_VERYHIGH_SPEC;
     m_nMaxConfigSpec = CONFIG_VERYHIGH_SPEC;
 
@@ -564,8 +576,6 @@ CSystem::CSystem(SharedEnvironmentInstance* pSharedEnvironment)
 #endif
 
     m_ConfigPlatform = CONFIG_INVALID_PLATFORM;
-
-    m_GraphicsSettingsMap = nullptr;
 }
 
 /////////////////////////////////////////////////////////////////////////////////
@@ -871,7 +881,11 @@ void CSystem::ShutDown()
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION SYSTEM_CPP_SECTION_3
-#include AZ_RESTRICTED_FILE(System_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/System_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/System_cpp_provo.inl"
+    #endif
 #endif
 
     SAFE_RELEASE(m_sys_min_step);
@@ -974,11 +988,6 @@ void CSystem::Quit()
     {
         GetIRenderer()->RestoreGamma();
     }
-    
-#if CAPTURE_REPLAY_LOG
-    CryGetIMemReplay()->Stop();
-#endif
-
 
     /*
     * TODO: This call to _exit, _Exit, TerminateProcess etc. needs to
@@ -993,7 +1002,11 @@ void CSystem::Quit()
     */
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION SYSTEM_CPP_SECTION_4
-#include AZ_RESTRICTED_FILE(System_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/System_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/System_cpp_provo.inl"
+    #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
 #undef AZ_RESTRICTED_SECTION_IMPLEMENTED
@@ -1083,7 +1096,11 @@ public:
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION SYSTEM_CPP_SECTION_5
-#include AZ_RESTRICTED_FILE(System_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/System_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/System_cpp_provo.inl"
+    #endif
 #endif
         while (true)
         {
@@ -1259,11 +1276,14 @@ void CSystem::CreatePhysicsThread()
         threadParams.nStackSizeKB = PHYSICS_STACK_SIZE >> 10;
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION SYSTEM_CPP_SECTION_6
-#include AZ_RESTRICTED_FILE(System_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/System_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/System_cpp_provo.inl"
+    #endif
 #endif
 
-        {
-            ScopedSwitchToGlobalHeap globalHeap;
+        {            
             m_PhysThread = new CPhysicsThreadTask;
             GetIThreadTaskManager()->RegisterTask(m_PhysThread, threadParams);
         }
@@ -1502,17 +1522,6 @@ bool CSystem::UpdatePreTickBus(int updateFlags, int nPauseMode)
 #endif // defined(MAP_LOADING_SLICING)
     }
 #endif //EXCLUDE_UPDATE_ON_CONSOLE
-#if CAPTURE_REPLAY_LOG
-    if (CryGetIMemoryManager() && CryGetIMemReplay())
-    {
-        CryGetIMemReplay()->AddFrameStart();
-        if ((--m_ttMemStatSS) <= 0)
-        {
-            CryGetIMemReplay()->AddScreenshot();
-            m_ttMemStatSS = 30;
-        }
-    }
-#endif //CAPTURE_REPLAY_LOG
 
     gEnv->pOverloadSceneManager->Update();
 
@@ -1556,8 +1565,6 @@ bool CSystem::UpdatePreTickBus(int updateFlags, int nPauseMode)
     }
 #endif //EXCLUDE_UPDATE_ON_CONSOLE
        //////////////////////////////////////////////////////////////////////////
-
-    EBUS_EVENT(AzFramework::AssetSystemRequestBus, UpdateQueuedEvents);
 
     if (m_env.pLog)
     {
@@ -2212,8 +2219,6 @@ bool CSystem::UpdatePostTickBus(int updateFlags, int nPauseMode)
     }
 
     {
-        ScopedSwitchToGlobalHeap globalHeap;
-
         if (it != m_updateTimes.begin())
         {
             m_updateTimes.erase(m_updateTimes.begin(), it);
@@ -2647,7 +2652,11 @@ void CSystem::debug_GetCallStackRaw(void** callstack, uint32& callstackLength)
     callstackLength = RtlCaptureStackBackTrace(nNumStackFramesToSkip, callstackCapacity, callstack, NULL);
 #elif defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION SYSTEM_CPP_SECTION_7
-#include AZ_RESTRICTED_FILE(System_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/System_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/System_cpp_provo.inl"
+    #endif
 #endif
 
     if (callstackLength > 0)
@@ -2669,8 +2678,15 @@ void CSystem::ApplicationTest(const char* szParam)
     m_pTestSystem->ApplicationTest(szParam);
 }
 
-void CSystem::ExecuteCommandLine()
+void CSystem::ExecuteCommandLine(bool deferred)
 {
+    if (m_executedCommandLine)
+    {
+        return;
+    }
+
+    m_executedCommandLine = true;
+
     // auto detect system spec (overrides profile settings)
     if (m_pCmdLine->FindArg(eCLAT_Pre, "autodetect"))
     {
@@ -2683,7 +2699,6 @@ void CSystem::ExecuteCommandLine()
     assert(pCmdLine);
 
     const int iCnt = pCmdLine->GetArgCount();
-
     for (int i = 0; i < iCnt; ++i)
     {
         const ICmdLineArg* pCmd = pCmdLine->GetArg(i);
@@ -2702,7 +2717,7 @@ void CSystem::ExecuteCommandLine()
                 }
 
                 GetILog()->Log("Executing command from command line: \n%s\n", sLine.c_str()); // - the actual command might be executed much later (e.g. level load pause)
-                GetIConsole()->ExecuteString(sLine.c_str(), false, true);
+                GetIConsole()->ExecuteString(sLine.c_str(), false, deferred);
             }
 #if defined(DEDICATED_SERVER)
 #if defined(CVARS_WHITELIST)
@@ -2783,18 +2798,6 @@ void CSystem::SetConfigPlatform(const ESystemConfigPlatform platform)
 ESystemConfigPlatform CSystem::GetConfigPlatform() const
 {
     return m_ConfigPlatform;
-}
-
-//////////////////////////////////////////////////////////////////////////
-void CSystem::SetGraphicsSettingsMap(AZStd::unordered_map<AZStd::string, CVarInfo>* map)
-{
-    m_GraphicsSettingsMap = map;
-}
-
-//////////////////////////////////////////////////////////////////////////
-AZStd::unordered_map<AZStd::string, CVarInfo>* CSystem::GetGraphicsSettingsMap() const
-{
-    return m_GraphicsSettingsMap;
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -2932,12 +2935,15 @@ bool CSystem::SteamInit()
         return true;
     }
 
+    AZStd::string_view binFolderName;
+    AzFramework::ApplicationRequests::Bus::BroadcastResult(binFolderName, &AzFramework::ApplicationRequests::GetBinSubfolder);
+
     ////////////////////////////////////////////////////////////////////////////
     // ** DEVELOPMENT ONLY ** - creates the appropriate steam_appid.txt file needed to call SteamAPI_Init()
 #if !defined(RELEASE)
 #if defined(WIN64)
-    FILE* pSteamAppID = nullptr;
-    azfopen(&pSteamAppID, BINFOLDER_NAME "/steam_appid.txt", "wt");
+    AZStd::string appidPath = AZStd::string::format("%s/steam_appid.txt", binFolderName.data());
+    azfopen(&pSteamAppID, appidPath.c_str(), "wt");
 #else
 #if defined(WIN32)
     FILE* pSteamAppID = nullptr;
@@ -2960,7 +2966,7 @@ bool CSystem::SteamInit()
     // ** DEVELOPMENT ONLY ** - deletes the appropriate steam_appid.txt file as it's no longer needed
 #if !defined(RELEASE)
 #if defined(WIN64)
-    remove(BINFOLDER_NAME "/steam_appid.txt");
+    remove(appidPath.c_str());
 #else
 #if defined(WIN32)
     remove("Bin32/steam_appid.txt");

@@ -379,7 +379,7 @@ void CVolumeShadowCreator::CalculateShadows(const Vec3& newLightDir, float shado
 // CVolumeObjectRenderNode implementation
 
 CVolumeShadowCreator* CVolumeObjectRenderNode::ms_pVolShadowCreator(0);
-CVolumeObjectRenderNode::VolumeObjectSet CVolumeObjectRenderNode::ms_volumeObjects;
+StaticInstance<CVolumeObjectRenderNode::VolumeObjectSet> CVolumeObjectRenderNode::ms_volumeObjects;
 
 ICVar* CVolumeObjectRenderNode::ms_CV_volobj_stats(0);
 int CVolumeObjectRenderNode::e_volobj_stats(0);

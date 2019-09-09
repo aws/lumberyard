@@ -12,7 +12,7 @@
 #include "LyShine_precompiled.h"
 
 #include "UiParticleEmitterComponent.h"
-#include "UiImageComponent.h"
+#include "EditorPropertyTypes.h"
 
 #include <AzCore/Math/Crc.h>
 #include <AzCore/RTTI/BehaviorContext.h>
@@ -25,7 +25,6 @@
 
 #include <LyShine/IDraw2d.h>
 #include <LyShine/ISprite.h>
-#include <LyShine/IUiRenderer.h>
 #include <LyShine/Bus/UiCanvasBus.h>
 #include <LyShine/Bus/UiTransform2dBus.h>
 
@@ -35,7 +34,9 @@
 // STATIC MEMBER DATA
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-const AZ::u32 UiParticleEmitterComponent::m_activeParticlesLimit = 65536;
+// There are 6 indices per particle and the indices are 16 bit
+const AZ::u32 UiParticleEmitterComponent::m_activeParticlesLimit = 65536 / 6;
+
 const float UiParticleEmitterComponent::m_emitRateLimit = m_activeParticlesLimit * 10;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -55,7 +56,13 @@ UiParticleEmitterComponent::~UiParticleEmitterComponent()
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void UiParticleEmitterComponent::OnCanvasSizeOrScaleChange(AZ::EntityId canvasEntityId)
 {
-    ClearActiveParticles();
+    // Only clear particles if the canvas that resized is the one that this particle component is on.
+    AZ::EntityId canvasId;
+    EBUS_EVENT_ID_RESULT(canvasId, GetEntityId(), UiElementBus, GetCanvasEntityId);
+    if (canvasEntityId == canvasId)
+    {
+        ClearActiveParticles();
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -755,7 +762,7 @@ void UiParticleEmitterComponent::InGamePostActivate()
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-void UiParticleEmitterComponent::Render()
+void UiParticleEmitterComponent::Render(LyShine::IRenderGraph* renderGraph)
 {
     const char* profileMarker = "UI_PARTICLESYS";
     gEnv->pRenderer->PushProfileMarker(profileMarker);
@@ -778,26 +785,12 @@ void UiParticleEmitterComponent::Render()
     }
 
     AZ::u32 particlesToRender = AZ::GetMin<AZ::u32>(m_particleContainer.size(), m_particleBufferSize);
-    const int particleLimit = 10922; // due to the indices being stored in a u16 (65536 / 6)
 
-    ITexture* texture;
-    if (m_sprite)
-    {
-        texture = m_sprite->GetTexture();
-    }
-    else
-    {
-        texture = gEnv->pRenderer->EF_GetTextureByID(gEnv->pRenderer->GetWhiteTextureId());
-    }
-    texture->SetClamp(true);
+    ITexture* texture = (m_sprite) ? m_sprite->GetTexture() : nullptr;
 
-    int blendMode = GetBlendModeStateFlags();
-
-    IRenderer* renderer = gEnv->pRenderer;
-    renderer->SetTexture(texture->GetTextureID());
-
-    renderer->SetState(blendMode | IUiRenderer::Get()->GetBaseState());
-    renderer->SetColorOp(eCO_MODULATE, eCO_MODULATE, DEF_TEXARG0, DEF_TEXARG0);
+    bool isClampTextureMode = true;
+    bool isTextureSRGB = false;
+    bool isTexturePremultipliedAlpha = false;
 
     UiParticle::UiParticleRenderParameters renderParameters;
     renderParameters.isVelocityCartesian = IsMovementCoordinateTypeCartesian();
@@ -811,7 +804,7 @@ void UiParticleEmitterComponent::Render()
     renderParameters.isAlphaOverrideUsed = m_isAlphaOverridden;
     renderParameters.colorOverride = m_overrideColor;
     renderParameters.alphaOverride = m_overrideAlpha;
-    renderParameters.alphaFadeMultiplier = IUiRenderer::Get()->GetAlphaFade();
+    renderParameters.alphaFadeMultiplier = renderGraph->GetAlphaFade();
     renderParameters.isWidthMultiplierUsed = (m_particleWidthMultiplier.size() > 0);
     renderParameters.isHeightMultiplierUsed = (m_particleHeightMultiplier.size() > 0);
     renderParameters.isColorMultiplierUsed = (m_particleColorMultiplier.size() > 0);
@@ -829,24 +822,24 @@ void UiParticleEmitterComponent::Render()
     const int verticesPerParticle = 4;
     const int indicesPerParticle = 6;
 
-    for (AZ::u32 particlesProcessed = 0; particlesProcessed < particlesToRender; )
+    AZ::u32 totalParticlesInserted = 0;
+    AZ::u32 totalVerticesInserted = 0;
+
+    // particlesToRender is the max particles we will render, we could render less if some have zero alpha
+    for (int i = 0; i < particlesToRender; ++i)
     {
-        AZ::u32 particlesToProcessThisSegment = AZ::GetMin<AZ::u32>(particlesToRender - particlesProcessed, particleLimit);
-        AZ::u32 particlesProcessedThisSegment = 0;
-        AZ::u32 particlesToRenderThisSegment = 0;
+        SVF_P2F_C4B_T2F_F4B* firstVertexOfParticle = &m_cachedPrimitive.m_vertices[totalVerticesInserted];
 
-        AZ::u32 particlesInserted = 0;
-        for (auto currentParticle = m_particleContainer.begin() + particlesProcessed; currentParticle != m_particleContainer.end() && particlesProcessedThisSegment < particlesToProcessThisSegment; currentParticle++)
+        if (m_particleContainer[i].FillVertices(firstVertexOfParticle, renderParameters, transform))
         {
-            currentParticle->FillVertices(m_vertices.get() + particlesToRenderThisSegment * verticesPerParticle, renderParameters, particlesInserted, transform);
-
-            particlesToRenderThisSegment += particlesInserted;
-            particlesProcessedThisSegment++;
-            particlesProcessed++;
+            totalParticlesInserted++;
+            totalVerticesInserted += verticesPerParticle;
         }
-
-        renderer->DrawDynVB(m_vertices.get(), m_indicies.get(), particlesToRenderThisSegment * verticesPerParticle, particlesToRenderThisSegment * indicesPerParticle, prtTriangleList);
     }
+
+    m_cachedPrimitive.m_numVertices = totalVerticesInserted;
+    m_cachedPrimitive.m_numIndices = totalParticlesInserted * indicesPerParticle;
+    renderGraph->AddPrimitive(&m_cachedPrimitive, texture, isClampTextureMode, isTextureSRGB, isTexturePremultipliedAlpha, m_blendMode);
 
     gEnv->pRenderer->PopProfileMarker(profileMarker);
 }
@@ -854,6 +847,8 @@ void UiParticleEmitterComponent::Render()
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void UiParticleEmitterComponent::Update(float deltaTime)
 {
+    bool particlesExistedBeforeUpdate = m_particleContainer.size() > 0;
+
     // Update existing particles
     UiParticle::UiParticleUpdateParameters particleUpdateParameters;
     particleUpdateParameters.isVelocityCartesian = IsMovementCoordinateTypeCartesian();
@@ -866,7 +861,7 @@ void UiParticleEmitterComponent::Update(float deltaTime)
         m_particleContainer[currentParticleIndex].Update(deltaTime, particleUpdateParameters);
         if (!m_particleContainer[currentParticleIndex].IsActive(m_isParticleLifetimeInfinite))
         {
-            // Move the last active particle to the current position and pop_back to avoid vector shifing all
+            // Move the last active particle to the current position and pop_back to avoid vector shifting all
             // following elements.
             m_particleContainer[currentParticleIndex] = m_particleContainer.back();
             m_particleContainer.pop_back();
@@ -964,6 +959,47 @@ void UiParticleEmitterComponent::Update(float deltaTime)
             m_nextEmitTime = m_emitterAge;
         }
     }
+
+    // Currently we mark the render graph dirty whenever a particle emitter is updated and has any
+    // active particles.
+    // A future optimization could be that we only mark it dirty if new particles were emitted or 
+    // particles were removed. At other times we could update the vertices in m_cachedPrimitive
+    // without regenerating the graph. This would require some way to register to get the vertices updated
+    // during the canvas render in the case when the render graph was not being regenerated.
+    bool particlesExistAfterUpdate = m_particleContainer.size() > 0;
+    if (particlesExistedBeforeUpdate || particlesExistAfterUpdate)
+    {
+        MarkRenderGraphDirty();
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void UiParticleEmitterComponent::OnUiElementFixup(AZ::EntityId canvasEntityId, AZ::EntityId /*parentEntityId*/)
+{
+    bool isElementEnabled = false;
+    EBUS_EVENT_ID_RESULT(isElementEnabled, GetEntityId(), UiElementBus, GetAreElementAndAncestorsEnabled);
+    if (isElementEnabled)
+    {
+        UiCanvasUpdateNotificationBus::Handler::BusConnect(canvasEntityId);
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void UiParticleEmitterComponent::OnUiElementAndAncestorsEnabledChanged(bool areElementAndAncestorsEnabled)
+{
+    if (areElementAndAncestorsEnabled)
+    {
+        AZ::EntityId canvasEntityId;
+        EBUS_EVENT_ID_RESULT(canvasEntityId, GetEntityId(), UiElementBus, GetCanvasEntityId);
+        if (canvasEntityId.IsValid())
+        {
+            UiCanvasUpdateNotificationBus::Handler::BusConnect(canvasEntityId);
+        }
+    }
+    else
+    {
+        UiCanvasUpdateNotificationBus::Handler::BusDisconnect();
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1060,6 +1096,7 @@ void UiParticleEmitterComponent::Reflect(AZ::ReflectContext* context)
             auto editInfo = ec->Class<UiParticleEmitterComponent>("ParticleEmitter", "A visual component that emits 2D particles.");
 
             editInfo->ClassElement(AZ::Edit::ClassElements::EditorData, "")
+                ->Attribute(AZ::Edit::Attributes::Category, "UI")
                 ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("UI", 0x27ff46b0))
                 ->Attribute(AZ::Edit::Attributes::AutoExpand, true);
 
@@ -1405,12 +1442,16 @@ void UiParticleEmitterComponent::Init()
 
     m_currentAspectRatio = m_particleSize.GetX() / m_particleSize.GetY();
     m_currentParticleSize = m_particleSize;
-    ResetParticleBuffers();
     CreateMultiplierCurve(m_particleWidthMultiplierCurve, m_particleWidthMultiplier);
     CreateMultiplierCurve(m_particleHeightMultiplierCurve, m_particleHeightMultiplier);
     CreateMultiplierCurve(m_particleSpeedMultiplierCurve, m_particleSpeedMultiplier);
     CreateMultiplierCurve(m_particleColorMultiplierCurve, m_particleColorMultiplier);
     CreateMultiplierCurve(m_particleAlphaMultiplierCurve, m_particleAlphaMultiplier);
+
+    m_cachedPrimitive.m_indices = nullptr;
+    m_cachedPrimitive.m_vertices = nullptr;
+
+    ResetParticleBuffers();
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1419,9 +1460,21 @@ void UiParticleEmitterComponent::Activate()
     UiParticleEmitterBus::Handler::BusConnect(GetEntityId());
     UiInitializationBus::Handler::BusConnect(GetEntityId());
     UiRenderBus::Handler::BusConnect(GetEntityId());
-    UiUpdateBus::Handler::BusConnect(GetEntityId());
     UiVisualBus::Handler::BusConnect(GetEntityId());
     UiCanvasSizeNotificationBus::Handler::BusConnect();
+    UiElementNotificationBus::Handler::BusConnect(GetEntityId());
+
+    AZ::EntityId canvasEntityId;
+    EBUS_EVENT_ID_RESULT(canvasEntityId, GetEntityId(), UiElementBus, GetCanvasEntityId);
+    if (canvasEntityId.IsValid())
+    {
+        bool isElementEnabled = false;
+        EBUS_EVENT_ID_RESULT(isElementEnabled, GetEntityId(), UiElementBus, GetAreElementAndAncestorsEnabled);
+        if (isElementEnabled)
+        {
+            UiCanvasUpdateNotificationBus::Handler::BusConnect(canvasEntityId);
+        }
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1430,9 +1483,10 @@ void UiParticleEmitterComponent::Deactivate()
     UiParticleEmitterBus::Handler::BusDisconnect();
     UiInitializationBus::Handler::BusDisconnect();
     UiRenderBus::Handler::BusDisconnect();
-    UiUpdateBus::Handler::BusDisconnect();
+    UiCanvasUpdateNotificationBus::Handler::BusDisconnect();
     UiVisualBus::Handler::BusDisconnect();
     UiCanvasSizeNotificationBus::Handler::BusDisconnect();
+    UiElementNotificationBus::Handler::BusDisconnect();
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1740,6 +1794,12 @@ void UiParticleEmitterComponent::SortMultipliersByTime(AZStd::vector<ParticleFlo
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void UiParticleEmitterComponent::ResetParticleBuffers()
 {
+    // if this cached primitive is in any list in the render graph then mark the render graph as dirty
+    if (m_cachedPrimitive.m_next)
+    {
+        MarkRenderGraphDirty();
+    }
+
     if (m_isParticleLifetimeInfinite)
     {
         // there must be a limit on active particles if the lifetime is infinite so the active particles limit can be used directly here
@@ -1752,58 +1812,36 @@ void UiParticleEmitterComponent::ResetParticleBuffers()
     }
 
     const int indicesPerParticle = 6;
-    m_numIndices = m_particleBufferSize * indicesPerParticle;
-    uint16* indices = new uint16[m_numIndices];
+    AZ::u32 numIndices = m_particleBufferSize * indicesPerParticle;
+    if (m_cachedPrimitive.m_indices)
+    {
+        delete [] m_cachedPrimitive.m_indices;
+    }
+    m_cachedPrimitive.m_indices = new uint16[numIndices];
 
     const int verticesPerParticle = 4;
     int baseIndex = 0;
-    for (int i = 0; i < m_numIndices; i += indicesPerParticle)
+    for (int i = 0; i < numIndices; i += indicesPerParticle)
     {
-        indices[i + 0] = 0 + baseIndex;
-        indices[i + 1] = 1 + baseIndex;
-        indices[i + 2] = 3 + baseIndex;
-        indices[i + 3] = 2 + baseIndex;
-        indices[i + 4] = 3 + baseIndex;
-        indices[i + 5] = 1 + baseIndex;
+        m_cachedPrimitive.m_indices[i + 0] = 0 + baseIndex;
+        m_cachedPrimitive.m_indices[i + 1] = 1 + baseIndex;
+        m_cachedPrimitive.m_indices[i + 2] = 3 + baseIndex;
+        m_cachedPrimitive.m_indices[i + 3] = 2 + baseIndex;
+        m_cachedPrimitive.m_indices[i + 4] = 3 + baseIndex;
+        m_cachedPrimitive.m_indices[i + 5] = 1 + baseIndex;
         baseIndex += verticesPerParticle;
     }
-    m_indicies.reset(indices);
 
-    m_numVertices = m_particleBufferSize * verticesPerParticle;
-    m_vertices.reset(new SVF_P3F_C4B_T2F[m_numVertices]);
+    AZ::u32 numVertices = m_particleBufferSize * verticesPerParticle;
 
-    m_particleContainer.reserve(m_particleBufferSize);
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////
-int UiParticleEmitterComponent::GetBlendModeStateFlags()
-{
-    int flags = GS_BLSRC_SRCALPHA | GS_BLDST_ONEMINUSSRCALPHA; // the default
-    switch (m_blendMode)
+    if (m_cachedPrimitive.m_vertices)
     {
-    case LyShine::BlendMode::Normal:
-        // This is the default mode that does an alpha blend by interpolating based on src alpha
-        flags = GS_BLSRC_SRCALPHA | GS_BLDST_ONEMINUSSRCALPHA;
-        break;
-    case LyShine::BlendMode::Add:
-        // This works well, the amount of the src color added is controlled by src alpha
-        flags = GS_BLSRC_SRCALPHA | GS_BLDST_ONE;
-        break;
-    case LyShine::BlendMode::Screen:
-        // This is an approximation of the PhotoShop Screen mode but trying to take some account of src alpha
-        flags = GS_BLSRC_SRCALPHA | GS_BLDST_ONEMINUSSRCCOL;
-        break;
-    case LyShine::BlendMode::Darken:
-        // This is an approximation of the PhotoShop Darken mode but trying to take some account of src alpha
-        flags = GS_BLOP_MIN | GS_BLSRC_ONEMINUSSRCALPHA | GS_BLDST_ONE;
-        break;
-    case LyShine::BlendMode::Lighten:
-        // This is an approximation of the PhotoShop Lighten mode but trying to take some account of src alpha
-        flags = GS_BLOP_MAX | GS_BLSRC_SRCALPHA | GS_BLDST_ONE;
-        break;
+        delete [] m_cachedPrimitive.m_vertices;
     }
+    m_cachedPrimitive.m_vertices = new SVF_P2F_C4B_T2F_F4B[numVertices];
 
-    return flags;
+    m_particleContainer.clear();
+    m_particleContainer.reserve(m_particleBufferSize);
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -2046,8 +2084,17 @@ UiParticleEmitterComponent::AZu32ComboBoxVec UiParticleEmitterComponent::Populat
 
         if (numCells != 0)
         {
-            return UiImageComponent::GetEnumSpriteIndexList(0, numCells - 1, m_sprite);
+            return LyShine::GetEnumSpriteIndexList(GetEntityId(), 0, numCells - 1);
         }
     }
-    return UiImageComponent::AZu32ComboBoxVec();
+    return LyShine::AZu32ComboBoxVec();
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void UiParticleEmitterComponent::MarkRenderGraphDirty()
+{
+    // tell the canvas to invalidate the render graph
+    AZ::EntityId canvasEntityId;
+    EBUS_EVENT_ID_RESULT(canvasEntityId, GetEntityId(), UiElementBus, GetCanvasEntityId);
+    EBUS_EVENT_ID(canvasEntityId, UiCanvasComponentImplementationBus, MarkRenderGraphDirty);
 }

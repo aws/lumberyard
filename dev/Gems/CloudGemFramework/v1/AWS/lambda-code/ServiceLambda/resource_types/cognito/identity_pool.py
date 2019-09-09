@@ -12,6 +12,7 @@
 
 import boto3
 import json
+from cgf_utils import custom_resource_utils
 from resource_manager_common import stack_info
 import user_pool
 
@@ -28,7 +29,8 @@ def get_identity_pool(identity_pool_id):
     if not identity_pool_id or identity_pool_id.find(':') < 0:
         # The ID is missing or invalid.
         return None
-    return get_identity_client().describe_identity_pool(IdentityPoolId=identity_pool_id)
+    return get_identity_client().describe_identity_pool(
+        IdentityPoolId=custom_resource_utils.get_embedded_physical_id(identity_pool_id))
 
 # Gets the Cognito identity providers mapped to an identity pool.
 def get_cognito_identity_providers(stack_manager, stack_arn, identity_pool_logical_id):
@@ -51,7 +53,7 @@ def update_cognito_identity_providers(stack_manager, stack_arn, user_pool_id, up
     mappings = get_identity_mappings(stack_manager, stack_arn, updated_resources)
     
     for mapping in mappings:
-        identity_pool_id = mapping['identity_pool_resource'].physical_id
+        identity_pool_id = custom_resource_utils.get_embedded_physical_id(mapping['identity_pool_resource'].physical_id)
         if identity_pool_id:
             identity_pool = get_identity_client().describe_identity_pool(IdentityPoolId=identity_pool_id)
             is_linked = bool([provider for provider in identity_pool.get('CognitoIdentityProviders', []) if provider.get('ProviderName') == provider_to_update])
@@ -130,6 +132,7 @@ def get_identity_mappings(stack_manager, stack_arn, updated_resources={}):
                 physical_id = updated_resource.get('physical_id', resource.physical_id)
                 # Skip user pools that haven't been created yet, they will be linked later on creation.
                 if physical_id:
+                    physical_id = custom_resource_utils.get_embedded_physical_id(physical_id)
                     for identity in identities:
                         pool_name = identity.get('IdentityPoolLogicalName')
                         client_app = identity.get('ClientApp')

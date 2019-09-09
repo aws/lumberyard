@@ -7,6 +7,7 @@ import { Observable } from 'rxjs/Observable';
 import { Gemifiable } from 'app/view/game/module/cloudgems/class/gem-interfaces';
 import { DependencyService } from 'app/view/game/module/shared/service/index';
 import { FeatureDefinitions, Location } from 'app/view/game/module/shared/class/feature.class'
+import { Subscription } from 'rxjs/Subscription';
 
 @Component({
     selector: 'cgp-sidebar',
@@ -31,6 +32,7 @@ export class SidebarComponent implements OnInit {
     isViewingGem: boolean;
     isLoadingGems: boolean;
     featureMap: any;
+    dependencyservicesubscription: Subscription;
 
     @Input()
     get sidebarState() {
@@ -58,9 +60,11 @@ export class SidebarComponent implements OnInit {
         let featureDefinitions = new FeatureDefinitions();
         this.dependencyservice.subscribeToDeploymentChanges(featureDefinitions);
 
-        this.dependencyservice.featureMapSubscription.subscribe((featureMap) => {
+        this.dependencyservicesubscription = this.dependencyservice.featureMapSubscription.subscribe((featureMap) => {
             this.featureMap = featureMap;
         });
+        //Handle late subscriptions     
+        this.featureMap = this.dependencyservice.availableFeatures;        
     }
 
     // TODO: Implement a routing solution for metrics that covers the whole website.
@@ -69,6 +73,12 @@ export class SidebarComponent implements OnInit {
             "Name": route
         })
         this.router.navigate([route]);
+    }
+
+    ngOnDestroy() {
+        if (this.dependencyservicesubscription) {
+            this.dependencyservicesubscription.unsubscribe();
+        }
     }
 }
 

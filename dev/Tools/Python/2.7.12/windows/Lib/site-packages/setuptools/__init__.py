@@ -1,12 +1,18 @@
 """Extensions to the 'distutils' for large or complex distributions"""
 
 import os
+import sys
 import functools
 import distutils.core
 import distutils.filelist
+import re
+from distutils.errors import DistutilsOptionError
 from distutils.util import convert_path
 from fnmatch import fnmatchcase
 
+from ._deprecation_warning import SetuptoolsDeprecationWarning
+
+from setuptools.extern.six import PY3, string_types
 from setuptools.extern.six.moves import filter, map
 
 import setuptools.version
@@ -15,10 +21,17 @@ from setuptools.dist import Distribution, Feature
 from setuptools.depends import Require
 from . import monkey
 
+__metaclass__ = type
+
+
 __all__ = [
     'setup', 'Distribution', 'Feature', 'Command', 'Extension', 'Require',
-    'find_packages',
+    'SetuptoolsDeprecationWarning',
+    'find_packages'
 ]
+
+if PY3:
+  __all__.append('find_namespace_packages')
 
 __version__ = setuptools.version.__version__
 
@@ -31,7 +44,7 @@ run_2to3_on_doctests = True
 lib2to3_fixer_packages = ['lib2to3.fixes']
 
 
-class PackageFinder(object):
+class PackageFinder:
     """
     Generate a list of all Python packages found within a directory
     """
@@ -109,6 +122,9 @@ class PEP420PackageFinder(PackageFinder):
 
 find_packages = PackageFinder.find
 
+if PY3:
+  find_namespace_packages = PEP420PackageFinder.find
+
 
 def _install_setup_requires(attrs):
     # Note: do not use `setuptools.Distribution` directly, as
@@ -147,6 +163,37 @@ class Command(_Command):
         _Command.__init__(self, dist)
         vars(self).update(kw)
 
+    def _ensure_stringlike(self, option, what, default=None):
+        val = getattr(self, option)
+        if val is None:
+            setattr(self, option, default)
+            return default
+        elif not isinstance(val, string_types):
+            raise DistutilsOptionError("'%s' must be a %s (got `%s`)"
+                                       % (option, what, val))
+        return val
+
+    def ensure_string_list(self, option):
+        r"""Ensure that 'option' is a list of strings.  If 'option' is
+        currently a string, we split it either on /,\s*/ or /\s+/, so
+        "foo bar baz", "foo,bar,baz", and "foo,   bar baz" all become
+        ["foo", "bar", "baz"].
+        """
+        val = getattr(self, option)
+        if val is None:
+            return
+        elif isinstance(val, string_types):
+            setattr(self, option, re.split(r',\s*|\s+', val))
+        else:
+            if isinstance(val, list):
+                ok = all(isinstance(v, string_types) for v in val)
+            else:
+                ok = False
+            if not ok:
+                raise DistutilsOptionError(
+                      "'%s' must be a list of strings (got %r)"
+                      % (option, val))
+
     def reinitialize_command(self, command, reinit_subcommands=0, **kw):
         cmd = _Command.reinitialize_command(self, command, reinit_subcommands)
         vars(cmd).update(kw)
@@ -177,4 +224,5 @@ def findall(dir=os.curdir):
     return list(files)
 
 
+# Apply monkey patches
 monkey.patch_all()

@@ -2003,7 +2003,6 @@
             "Source/CryScriptSystem/ScriptSystem.cpp",
             "Source/CryScriptSystem/ScriptTable.cpp",
             "Source/CryScriptSystem/ScriptTimerMgr.cpp",
-            "Source/CryScriptSystem/BucketAllocator.h",
             "Source/CryScriptSystem/ScriptTimerMgr.h"
         ],
         "Source/CryScriptSystem/HeaderFiles":

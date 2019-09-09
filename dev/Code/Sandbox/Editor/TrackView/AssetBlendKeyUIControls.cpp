@@ -37,9 +37,17 @@ public:
     CSmartVariable<float> mv_startTime;
     CSmartVariable<float> mv_endTime;
     CSmartVariable<float> mv_timeScale;
+    CSmartVariable<float> mv_blendInTime;
+    CSmartVariable<float> mv_blendOutTime;
 
     virtual void OnCreateVars()
     {
+        // Init to an invalid id
+        AZ::Data::AssetId assetId;
+        assetId.SetInvalid();
+        mv_asset->SetUserData(assetId.m_subId);
+        mv_asset->SetDisplayValue(assetId.m_guid.ToString<AZStd::string>().c_str());
+
         AddVariable(mv_table, "Key Properties");
         // In the future, we may have different types of AssetBlends supported. Right now
         // "motion" for the Simple Motion Component is the only instance.
@@ -48,6 +56,8 @@ public:
         AddVariable(mv_table, mv_startTime, "Start Time");
         AddVariable(mv_table, mv_endTime, "End Time");
         AddVariable(mv_table, mv_timeScale, "Time Scale");
+        AddVariable(mv_table, mv_blendInTime, "Blend In Time");
+        AddVariable(mv_table, mv_blendOutTime, "Blend Out Time");
         mv_timeScale->SetLimits(0.001f, 100.f);
     }
 
@@ -82,6 +92,8 @@ void CAssetBlendKeyUIControls::ResetStartEndLimits(float assetBlendKeyDuration)
     float step = ReflectedPropertyItem::ComputeSliderStep(time_zero, assetBlendKeyDuration);
     mv_startTime.GetVar()->SetLimits(time_zero, assetBlendKeyDuration, step, true, true);
     mv_endTime.GetVar()->SetLimits(time_zero, assetBlendKeyDuration, step, true, true);
+    mv_blendInTime.GetVar()->SetLimits(time_zero, assetBlendKeyDuration, step, true, true);
+    mv_blendOutTime.GetVar()->SetLimits(time_zero, assetBlendKeyDuration, step, true, true);
 }
 
 bool CAssetBlendKeyUIControls::OnKeySelectionChange(CTrackViewKeyBundle& selectedKeys)
@@ -120,6 +132,8 @@ bool CAssetBlendKeyUIControls::OnKeySelectionChange(CTrackViewKeyBundle& selecte
             mv_endTime = assetBlendKey.m_endTime;
             mv_startTime = assetBlendKey.m_startTime;
             mv_timeScale = assetBlendKey.m_speed;
+            mv_blendInTime = assetBlendKey.m_blendInTime;
+            mv_blendOutTime = assetBlendKey.m_blendOutTime;
 
             bAssigned = true;
         }
@@ -180,6 +194,8 @@ void CAssetBlendKeyUIControls::OnUIChange(IVariable* pVar, CTrackViewKeyBundle& 
             SyncValue(mv_startTime, assetBlendKey.m_startTime, false, pVar);
             SyncValue(mv_endTime, assetBlendKey.m_endTime, false, pVar);
             SyncValue(mv_timeScale, assetBlendKey.m_speed, false, pVar);
+            SyncValue(mv_blendInTime, assetBlendKey.m_blendInTime, false, pVar);
+            SyncValue(mv_blendOutTime, assetBlendKey.m_blendOutTime, false, pVar);
 
             if (assetBlendKey.m_assetId.IsValid())
             {

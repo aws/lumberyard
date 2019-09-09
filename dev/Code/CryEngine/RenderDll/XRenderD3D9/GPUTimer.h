@@ -70,7 +70,11 @@ private:
 #if GPUTIMER_H_TRAIT_DEFINEQUERIES
     ID3D11Query* m_pQueryStart, *m_pQueryStop, *m_pQueryFreq;
 #elif defined(AZ_RESTRICTED_PLATFORM)
-#include AZ_RESTRICTED_FILE(GPUTimer_h, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/GPUTimer_h_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/GPUTimer_h_provo.inl"
+    #endif
 #endif
 
     void RecordSlice(AZ::u64 timeStart, AZ::u64 timeStop, AZ::u64 frequency);

@@ -17,7 +17,8 @@ from cgf_utils import custom_resource_response
 import defect_reporter_s3 as s3
 import defect_reporter_lambda as lambda_
 
-
+def empty_handler(event, context):
+    return custom_resource_response.success_response({}, '*')
 
 def handler(event, context):
     ''' Invoked when AWS Lambda service executes. '''
@@ -48,6 +49,8 @@ def handler(event, context):
     else:
         return custom_resource_response.failure_response('Could not succesfully configure AttachmentBucket')
 
+def empty_handler(event, context):
+    return custom_resource_response.success_response({}, '*')
 
 def __is_valid_event(event):
     ''' Validation on incoming event. ''' 

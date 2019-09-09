@@ -334,8 +334,6 @@ void CTestSystemLegacy::ScreenShot(const char* szDirectory, const char* szFilena
 //////////////////////////////////////////////////////////////////////////
 void CTestSystemLegacy::SetTimeDemoInfo(STimeDemoInfo* pTimeDemoInfo)
 {
-    ScopedSwitchToGlobalHeap useGlobalHeap;
-
     if (m_pTimeDemoInfo)
     {
         delete []m_pTimeDemoInfo->pFrames;

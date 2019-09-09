@@ -606,7 +606,7 @@ void QtViewport::keyPressEvent(QKeyEvent* event)
     int nativeKey = event->nativeVirtualKey();
 #ifdef AZ_PLATFORM_APPLE
     // nativeVirtualKey is always zero on macOS, therefore we
-    // need to turn the Command and Option key into VK_XYZ manualy
+    // need to manually set the nativeKey based on the Qt key
     switch (event->key())
     {
         case Qt::Key_Control:
@@ -614,6 +614,24 @@ void QtViewport::keyPressEvent(QKeyEvent* event)
             break;
         case Qt::Key_Alt:
             nativeKey = VK_MENU;
+            break;
+        case Qt::Key_QuoteLeft:
+            nativeKey = VK_OEM_3;
+            break;
+        case Qt::Key_BracketLeft:
+            nativeKey = VK_OEM_4;
+            break;
+        case Qt::Key_BracketRight:
+            nativeKey = VK_OEM_6;
+            break;
+        case Qt::Key_Comma:
+            nativeKey = VK_OEM_COMMA;
+            break;
+        case Qt::Key_Period:
+            nativeKey = VK_OEM_PERIOD;
+            break;
+        case Qt::Key_Escape:
+            nativeKey = VK_ESCAPE;
             break;
     }
 #endif
@@ -625,7 +643,7 @@ void QtViewport::keyReleaseEvent(QKeyEvent* event)
     int nativeKey = event->nativeVirtualKey();
 #ifdef AZ_PLATFORM_APPLE
     // nativeVirtualKey is always zero on macOS, therefore we
-    // need to turn the Command and Option key into VK_XYZ manualy
+    // need to manually set the nativeKey based on the Qt key
     switch (event->key())
     {
         case Qt::Key_Control:
@@ -633,6 +651,24 @@ void QtViewport::keyReleaseEvent(QKeyEvent* event)
             break;
         case Qt::Key_Alt:
             nativeKey = VK_MENU;
+            break;
+        case Qt::Key_QuoteLeft:
+            nativeKey = VK_OEM_3;
+            break;
+        case Qt::Key_BracketLeft:
+            nativeKey = VK_OEM_4;
+            break;
+        case Qt::Key_BracketRight:
+            nativeKey = VK_OEM_6;
+            break;
+        case Qt::Key_Comma:
+            nativeKey = VK_OEM_COMMA;
+            break;
+        case Qt::Key_Period:
+            nativeKey = VK_OEM_PERIOD;
+            break;
+        case Qt::Key_Escape:
+            nativeKey = VK_ESCAPE;
             break;
     }
 #endif
@@ -825,6 +861,11 @@ void QtViewport::SetCurrentCursor(EStdCursor stdCursor, const QString& cursorStr
     QCursor hCursor = m_hCursor[stdCursor];
     setCursor(hCursor);
     m_cursorStr = cursorString;
+}
+
+void QtViewport::SetSupplementaryCursorStr(const QString& str)
+{
+    m_cursorSupplementaryStr = str;
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -1020,6 +1061,8 @@ void QtViewport::MakeConstructionPlane(int axis)
 //////////////////////////////////////////////////////////////////////////
 Vec3 QtViewport::MapViewToCP(const QPoint& point, int axis)
 {
+    AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::Editor);
+
     if (axis == AXIS_TERRAIN)
     {
         return SnapToGrid(ViewToWorld(point));
@@ -1223,10 +1266,7 @@ bool QtViewport::IsBoundsVisible(const AABB& box) const
 //////////////////////////////////////////////////////////////////////////
 bool QtViewport::HitTestLine(const Vec3& lineP1, const Vec3& lineP2, const QPoint& hitpoint, int pixelRadius, float* pToCameraDistance) const
 {
-    auto p1 = WorldToView(lineP1);
-    auto p2 = WorldToView(lineP2);
-
-    float dist = PointToLineDistance2D(Vec3(p1.x(), p1.y(), 0), Vec3(p2.x(), p2.y(), 0), Vec3(hitpoint.x(), hitpoint.y(), 0));
+    float dist = GetDistanceToLine(lineP1, lineP2, hitpoint);
     if (dist <= pixelRadius)
     {
         if (pToCameraDistance)
@@ -1245,6 +1285,18 @@ bool QtViewport::HitTestLine(const Vec3& lineP1, const Vec3& lineP2, const QPoin
     }
 
     return false;
+}
+
+//////////////////////////////////////////////////////////////////////////
+float QtViewport::GetDistanceToLine(const Vec3& lineP1, const Vec3& lineP2, const QPoint& point) const
+{
+    QPoint p1 = WorldToView(lineP1);
+    QPoint p2 = WorldToView(lineP2);
+
+    return PointToLineDistance2D(
+        Vec3(p1.x(), p1.y(), 0), 
+        Vec3(p2.x(), p2.y(), 0), 
+        Vec3(point.x(), point.y(), 0));
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -1303,6 +1355,8 @@ bool QtViewport::GetAdvancedSelectModeFlag()
 //////////////////////////////////////////////////////////////////////////
 bool QtViewport::MouseCallback(EMouseEvent event, const QPoint& point, Qt::KeyboardModifiers modifiers, Qt::MouseButtons buttons)
 {
+    AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::Editor);
+
     // Ignore any mouse events in game mode.
     if (GetIEditor()->IsInGameMode())
     {
@@ -1346,7 +1400,12 @@ bool QtViewport::MouseCallback(EMouseEvent event, const QPoint& point, Qt::Keybo
         }
         m_nLastMouseMoveFrame = m_nLastUpdateFrame;
 
-        if (!(buttons & Qt::RightButton) /* && m_nLastUpdateFrame != m_nLastMouseMoveFrame*/)
+        // Skip the marker position update if anything is selected, since it is only used
+        // by the info bar which doesn't show the marker when there is an active selection.
+        // This helps a performance issue when calling ViewToWorld (which calls RayWorldIntersection)
+        // on every mouse movement becomes very expensive in scenes with large amounts of entities.
+        CSelectionGroup* selection = GetIEditor()->GetSelection();
+        if (!(buttons & Qt::RightButton) /* && m_nLastUpdateFrame != m_nLastMouseMoveFrame*/ && (selection && selection->IsEmpty()))
         {
             //m_nLastMouseMoveFrame = m_nLastUpdateFrame;
             Vec3 pos = ViewToWorld(point);

@@ -28,17 +28,10 @@ namespace stl
     class HeapSysAllocator
     {
     public:
-    #if bMEM_ACCESS_CHECK
         static void* SysAlloc(size_t nSize)
-        { return VirtualAlloc(0, nSize, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE); }
+        { return CryModuleMalloc(nSize); }
         static void SysDealloc(void* ptr)
-        { VirtualFree(ptr, 0, MEM_DECOMMIT); }
-    #else
-        static void* SysAlloc(size_t nSize)
-        { return malloc(nSize); }
-        static void SysDealloc(void* ptr)
-        { free(ptr); }
-    #endif
+        { CryModuleFree(ptr); }
     };
 
     class GlobalHeapSysAllocator
@@ -46,13 +39,11 @@ namespace stl
     public:
         static void* SysAlloc(size_t nSize)
         {
-            ScopedSwitchToGlobalHeap useGlobalHeap;
-            return malloc(nSize);
+            return CryModuleMalloc(nSize);
         }
         static void SysDealloc(void* ptr)
         {
-            ScopedSwitchToGlobalHeap useGlobalHeap;
-            free(ptr);
+            CryModuleFree(ptr);
         }
     };
 
@@ -171,7 +162,6 @@ namespace stl
                     return 0;
                 }
                 pEndUsed = pNew + nSize;
-                MEMSTAT_USAGE(this, GetMemoryUsed());
                 return pNew;
             }
 
@@ -183,7 +173,6 @@ namespace stl
             void Reset()
             {
                 pEndUsed = StartUsed();
-                MEMSTAT_USAGE(this, GetMemoryUsed());
             }
 
             size_t GetMemoryAlloc() const

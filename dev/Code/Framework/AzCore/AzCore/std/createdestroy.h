@@ -163,8 +163,8 @@ namespace AZStd
             AZStd::size_t numElements = last - first;
             if (numElements > 0)
             {
-                AZ_Assert((&*result < &*first) || (&*result >= (&*first + numElements)), "AZStd::copy memory overlaps use AZStd::move_backward!");
-                AZ_Assert(((&*result + numElements) <= &*first) || ((&*result + numElements) > (&*first + numElements)), "AZStd::copy memory overlaps use AZStd::move_backward!");
+                AZ_Assert((static_cast<const void*>(&*result) < static_cast<const void*>(&*first)) || (static_cast<const void*>(&*result) >= static_cast<const void*>(&*first + numElements)), "AZStd::copy memory overlaps use AZStd::move_backward!");
+                AZ_Assert((static_cast<const void*>(&*result + numElements) <= static_cast<const void*>(&*first)) || (static_cast<const void*>(&*result + numElements) > static_cast<const void*>(&*first + numElements)), "AZStd::copy memory overlaps use AZStd::move_backward!");
                 /*AZSTD_STL::*/ memcpy(&*result, &*first, numElements * sizeof(typename iterator_traits<InputIterator>::value_type));
             }
             return result + numElements;

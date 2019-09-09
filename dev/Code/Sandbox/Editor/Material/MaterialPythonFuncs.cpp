@@ -988,6 +988,8 @@ namespace
                 propertyName == "No Shadow" ||
                 propertyName == "Use Scattering" ||
                 propertyName == "Hide After Breaking" ||
+                propertyName == "Fog Volume Shading Quality High" ||
+                propertyName == "Blend Terrain Color" ||
                 propertyName == "Propagate Material Settings" ||
                 propertyName == "Propagate Opacity Settings" ||
                 propertyName == "Propagate Lighting Settings" ||
@@ -1046,7 +1048,7 @@ namespace
             DynArray<SShaderParam>& shaderParams = pMaterial->GetShaderResources().m_ShaderParams;
             for (int i = 0; i < shaderParams.size(); i++)
             {
-                if (propertyName == ParseUINameFromPublicParamsScript(shaderParams[i].m_Script))
+                if (propertyName == ParseUINameFromPublicParamsScript(shaderParams[i].m_Script.c_str()))
                 {
                     if (shaderParams[i].m_Type == eType_FLOAT)
                     {
@@ -1055,7 +1057,7 @@ namespace
                         {
                             throw std::runtime_error(errorMsgInvalidDataType.toUtf8().data());
                         }
-                        std::map<QString, float> range = ParseValidRangeFromPublicParamsScript(shaderParams[i].m_Script);
+                        std::map<QString, float> range = ParseValidRangeFromPublicParamsScript(shaderParams[i].m_Script.c_str());
                         if (value.property.floatValue < range["UIMin"] ||  value.property.floatValue > range["UIMax"])
                         {
                             QString errorMsg;
@@ -1268,6 +1270,16 @@ namespace
             {
                 value.type = SPyWrappedProperty::eType_Bool;
                 value.property.boolValue = pMaterial->GetFlags() & MTL_FLAG_HIDEONBREAK;
+            }
+            else if (propertyName == "Fog Volume Shading Quality High")
+            {
+                value.type = SPyWrappedProperty::eType_Bool;
+                value.property.boolValue = pMaterial->GetFlags() & MTL_FLAG_FOG_VOLUME_SHADING_QUALITY_HIGH;
+            }
+            else if (propertyName == "Blend Terrain Color")
+            {
+                value.type = SPyWrappedProperty::eType_Bool;
+                value.property.boolValue = pMaterial->GetFlags() & MTL_FLAG_BLEND_TERRAIN;
             }
             else if (propertyName == "Voxel Coverage")
             {
@@ -1556,7 +1568,7 @@ namespace
 
             for (int i = 0; i < shaderParams.size(); i++)
             {
-                if (propertyName == ParseUINameFromPublicParamsScript(shaderParams[i].m_Script))
+                if (propertyName == ParseUINameFromPublicParamsScript(shaderParams[i].m_Script.c_str()))
                 {
                     if (shaderParams[i].m_Type == eType_FLOAT)
                     {
@@ -1912,9 +1924,13 @@ namespace
             {
                 SetMaterialFlag(pMaterial, MTL_FLAG_HIDEONBREAK, value.property.boolValue);
             }
-            else if (propertyName == "Hide After Breaking")
+            else if (propertyName == "Fog Volume Shading Quality High")
             {
-                SetMaterialFlag(pMaterial, MTL_FLAG_HIDEONBREAK, value.property.boolValue);
+                SetMaterialFlag(pMaterial, MTL_FLAG_FOG_VOLUME_SHADING_QUALITY_HIGH, value.property.boolValue);
+            }
+            else if (propertyName == "Blend Terrain Color")
+            {
+                SetMaterialFlag(pMaterial, MTL_FLAG_BLEND_TERRAIN, value.property.boolValue);
             }
             else if (propertyName == "Voxel Coverage")
             {
@@ -2121,7 +2137,7 @@ namespace
 
             for (int i = 0; i < shaderParams.size(); i++)
             {
-                if (propertyName == ParseUINameFromPublicParamsScript(shaderParams[i].m_Script))
+                if (propertyName == ParseUINameFromPublicParamsScript(shaderParams[i].m_Script.c_str()))
                 {
                     if (shaderParams[i].m_Type == eType_FLOAT)
                     {

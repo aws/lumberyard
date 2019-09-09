@@ -52,6 +52,8 @@
 #include "AzCore/Math/MathUtils.h"
 #include <Controls/ReflectedPropertyControl/ReflectedPropertiesPanel.h>
 
+#include <AzToolsFramework/API/ComponentEntityObjectBus.h>
+
 #include <QMenu>
 #include <QAction>
 
@@ -290,6 +292,9 @@ void CUndoBaseObject::Undo(bool bUndo)
     }
 
     GetIEditor()->ResumeUndo();
+
+    using namespace AzToolsFramework;
+    ComponentEntityObjectRequestBus::Event(pObject, &ComponentEntityObjectRequestBus::Events::UpdatePreemptiveUndoCache);
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -318,6 +323,9 @@ void CUndoBaseObject::Redo()
     pObject->UpdatePrefab();
 
     GetIEditor()->ResumeUndo();
+
+    using namespace AzToolsFramework;
+    ComponentEntityObjectRequestBus::Event(pObject, &ComponentEntityObjectRequestBus::Events::UpdatePreemptiveUndoCache);
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -387,6 +395,9 @@ void CUndoBaseObjectMinimal::Undo(bool bUndo)
     {
         pObject->UpdateGroup();
     }
+
+    using namespace AzToolsFramework;
+    ComponentEntityObjectRequestBus::Event(pObject, &ComponentEntityObjectRequestBus::Events::UpdatePreemptiveUndoCache);
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -411,6 +422,9 @@ void CUndoBaseObjectMinimal::Redo()
         CObjectPanel::SParams uip(pObject);
         s_objectPanel->SetParams(pObject, uip);
     }
+
+    using namespace AzToolsFramework;
+    ComponentEntityObjectRequestBus::Event(pObject, &ComponentEntityObjectRequestBus::Events::UpdatePreemptiveUndoCache);
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -2038,6 +2052,8 @@ float CBaseObject::GetCameraVisRatio(const CCamera& camera)
 //////////////////////////////////////////////////////////////////////////
 int CBaseObject::MouseCreateCallback(CViewport* view, EMouseEvent event, QPoint& point, int flags)
 {
+    AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::Editor);
+
     if (event == eMouseMove || event == eMouseLDown)
     {
         Vec3 pos;
@@ -2143,11 +2159,6 @@ void CBaseObject::SetFrozen(bool bFrozen)
         {
             ClearFlags(OBJFLAG_FROZEN);
         }
-    }
-    if (bFrozen && IsSelected())
-    {
-        // If frozen must be unselected.
-        GetObjectManager()->UnselectObject(this);
     }
 }
 
@@ -2848,6 +2859,8 @@ bool CBaseObject::HitTestRectBounds(HitContext& hc, const AABB& box)
 //////////////////////////////////////////////////////////////////////////
 bool CBaseObject::HitTestRect(HitContext& hc)
 {
+    AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::Entity);
+
     AABB box;
 
     if (hc.bUseSelectionHelpers)
@@ -2883,6 +2896,8 @@ bool CBaseObject::HitHelperTest(HitContext& hc)
 //////////////////////////////////////////////////////////////////////////
 bool CBaseObject::HitHelperAtTest(HitContext& hc, const Vec3& pos)
 {
+    AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::Entity);
+
     bool bResult = false;
 
     if (m_nTextureIcon && (gSettings.viewports.bShowIcons || gSettings.viewports.bShowSizeBasedIcons) && !hc.bUseSelectionHelpers)

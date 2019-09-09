@@ -38,7 +38,7 @@
 //#pragma optimize("", off)
 //#pragma inline_depth(0)
 
-std::vector<std::pair<float, size_t> > CPuppet::s_weights;
+StaticInstance<std::vector<std::pair<float, size_t> >> CPuppet::s_weights;
 
 // Helper structure to sort indices pointing to an array of weights.
 struct SDamageLUTSorter

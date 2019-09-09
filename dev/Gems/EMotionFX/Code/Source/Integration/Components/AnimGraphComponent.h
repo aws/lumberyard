@@ -24,6 +24,7 @@
 #include <Integration/Assets/MotionSetAsset.h>
 #include <Integration/ActorComponentBus.h>
 #include <Integration/AnimGraphComponentBus.h>
+#include <Integration/AnimGraphNetworkingBus.h>
 
 namespace EMotionFX
 {
@@ -34,6 +35,8 @@ namespace EMotionFX
             , private AZ::Data::AssetBus::MultiHandler
             , private ActorComponentNotificationBus::Handler
             , private AnimGraphComponentRequestBus::Handler
+            , private AnimGraphComponentNotificationBus::Handler
+            , private AnimGraphComponentNetworkRequestBus::Handler
         {
         public:
 
@@ -49,7 +52,7 @@ namespace EMotionFX
             {
                 AZ_TYPE_INFO(ParameterDefaults, "{E6826EB9-C79B-43F3-A03F-3298DD3C724E}")
 
-                    ParameterDefaults();
+                ParameterDefaults();
                 ~ParameterDefaults();
                 ParameterDefaults& operator=(const ParameterDefaults& rhs)
                 {
@@ -79,11 +82,12 @@ namespace EMotionFX
             {
                 AZ_TYPE_INFO(Configuration, "{F5A93340-60CD-4A16-BEF3-1014D762B217}")
 
-                    Configuration();
+                Configuration();
 
                 AZ::Data::Asset<AnimGraphAsset>     m_animGraphAsset;           ///< Selected anim graph.
                 AZ::Data::Asset<MotionSetAsset>     m_motionSetAsset;           ///< Selected motion set asset.
                 AZStd::string                       m_activeMotionSetName;      ///< Selected motion set.
+                bool                                m_visualize = false;        ///< Debug visualization.
                 ParameterDefaults                   m_parameterDefaults;        ///< Defaults for parameter values.
 
                 static void Reflect(AZ::ReflectContext* context);
@@ -91,7 +95,7 @@ namespace EMotionFX
 
             AnimGraphComponent(const Configuration* config = nullptr);
             ~AnimGraphComponent() override;
-
+            
             //////////////////////////////////////////////////////////////////////////
             // AZ::Component interface implementation
             void Init() override;
@@ -103,6 +107,7 @@ namespace EMotionFX
             // AnimGraphComponentRequestBus::Handler
             EMotionFX::AnimGraphInstance* GetAnimGraphInstance() override { return m_animGraphInstance ? m_animGraphInstance.get() : nullptr; }
             AZ::u32 FindParameterIndex(const char* parameterName) override;
+            const char* FindParameterName(AZ::u32 parameterIndex) override;
             void SetParameterFloat(AZ::u32 parameterIndex, float value) override;
             void SetParameterBool(AZ::u32 parameterIndex, bool value) override;
             void SetParameterString(AZ::u32 parameterIndex, const char* value) override;
@@ -117,6 +122,7 @@ namespace EMotionFX
             void SetNamedParameterVector3(const char* parameterName, const AZ::Vector3& value) override;
             void SetNamedParameterRotationEuler(const char* parameterName, const AZ::Vector3& value) override;
             void SetNamedParameterRotation(const char* parameterName, const AZ::Quaternion& value) override;
+            void SetVisualizeEnabled(bool enabled) override;
             float GetParameterFloat(AZ::u32 parameterIndex) override;
             bool GetParameterBool(AZ::u32 parameterIndex) override;
             AZStd::string GetParameterString(AZ::u32 parameterIndex) override;
@@ -131,12 +137,32 @@ namespace EMotionFX
             AZ::Vector3 GetNamedParameterVector3(const char* parameterName) override;
             AZ::Vector3 GetNamedParameterRotationEuler(const char* parameterName) override;
             AZ::Quaternion GetNamedParameterRotation(const char* parameterName) override;
+            bool GetVisualizeEnabled() override;
+            void SyncAnimGraph(AZ::EntityId masterEntityId) override;
+            void DesyncAnimGraph(AZ::EntityId masterEntityId) override;
             //////////////////////////////////////////////////////////////////////////
 
             //////////////////////////////////////////////////////////////////////////
             // ActorComponentNotificationBus::Handler
             void OnActorInstanceCreated(EMotionFX::ActorInstance* /*actorInstance*/) override;
             void OnActorInstanceDestroyed(EMotionFX::ActorInstance* /*actorInstance*/) override;
+            //////////////////////////////////////////////////////////////////////////
+
+            // AnimGraphComponentNetworkRequestBus
+            bool IsAssetReady() const override;
+            bool HasSnapshot() const override;
+            void CreateSnapshot(bool isAuthoritative) override;
+            void SetActiveStates(const NodeIndexContainer& activeStates) override;
+            const NodeIndexContainer& GetActiveStates() const override;
+            void SetMotionPlaytimes(const MotionNodePlaytimeContainer& motionNodePlaytimes) override;
+            const MotionNodePlaytimeContainer& GetMotionPlaytimes() const override;
+            void UpdateActorExternal(float deltatime) override;
+            void SetNetworkRandomSeed(AZ::u64 seed) override;
+            AZ::u64 GetNetworkRandomSeed() const override;
+            //////////////////////////////////////////////////////////////////////////
+            // AnimGraphComponentNotificationBus::Handler
+            void OnAnimGraphSynced(EMotionFX::AnimGraphInstance* /*animGraphInstance(Servant)*/) override;
+            void OnAnimGraphDesynced(EMotionFX::AnimGraphInstance* /*animGraphInstance(Servant)*/) override;
             //////////////////////////////////////////////////////////////////////////
 
             //////////////////////////////////////////////////////////////////////////
@@ -148,14 +174,18 @@ namespace EMotionFX
             static void GetIncompatibleServices(AZ::ComponentDescriptor::DependencyArrayType& incompatible)
             {
                 incompatible.push_back(AZ_CRC("EMotionFXAnimGraphService", 0x9ec3c819));
+                incompatible.push_back(AZ_CRC("EMotionFXSimpleMotionService", 0xea7a05d8));
             }
 
-            static void GetDependentServices(AZ::ComponentDescriptor::DependencyArrayType& /*dependent*/)
+            static void GetDependentServices(AZ::ComponentDescriptor::DependencyArrayType& dependent)
             {
+                dependent.push_back(AZ_CRC("PhysicsService", 0xa7350d22));
+                dependent.push_back(AZ_CRC("MeshService", 0x71d8a455));
             }
 
             static void GetRequiredServices(AZ::ComponentDescriptor::DependencyArrayType& required)
             {
+                required.push_back(AZ_CRC("TransformService", 0x8ee22c50));
                 required.push_back(AZ_CRC("EMotionFXActorService", 0xd6e8f48d));
             }
 

@@ -45,6 +45,7 @@ namespace EMotionFX
         AZ_CLASS_ALLOCATOR_DECL
 
     public:
+        AZ_RTTI(Motion, "{CCC21150-37F5-477A-9EBF-B5E71C0B5D71}", BaseObject)
         /**
          * Set the name of the motion.
          * @param name The name of the motion.
@@ -177,6 +178,12 @@ namespace EMotionFX
         MotionEventTable* GetEventTable() const;
 
         /**
+         * Set the event table.
+         * @param newTable The new motion event table for the Motion to use.
+         */
+        void SetEventTable(MotionEventTable* newTable);
+
+        /**
          * Set the motion framerate.
          * @param motionFPS The number of keyframes per second.
          */
@@ -223,12 +230,6 @@ namespace EMotionFX
         void* GetCustomData() const;
 
         /**
-         * Allocate memory for the default playback info. After creating the default playback info using this function you can retrieve a
-         * pointer to it by calling the GetDefaultPlayBackInfo() function.
-         */
-        void CreateDefaultPlayBackInfo();
-
-        /**
          * Set the default playback info to the given playback info. In case the default playback info hasn't been created yet this function will automatically take care of that.
          * @param playBackInfo The new playback info which will be copied over to this motion's default playback info.
          */
@@ -236,10 +237,9 @@ namespace EMotionFX
 
         /**
          * Get the default playback info of this motion.
-         * @return A pointer to the default playback info, nullptr in case it hasn't been allocated yet. You can call CreateDefaultPlayBackInfo() to allocate memory for
-         *         the default playback info. This case only happens when the loaded motion file didn't contain a default playback info in the file already.
          */
-        PlayBackInfo* GetDefaultPlayBackInfo() const;
+        PlayBackInfo* GetDefaultPlayBackInfo();
+        const PlayBackInfo* GetDefaultPlayBackInfo() const;
 
         /**
          * Get the motion extraction flags.
@@ -281,6 +281,18 @@ namespace EMotionFX
         bool GetAutoUnregister() const;
 
         /**
+        * Set if we want to make the motion an additive motion.
+        * @result if true the motion becomes an additive motion, otherwise it is not.
+        */
+        void SetIsAdditive(bool isAdditive);
+
+        /**
+        * Get if the motion is an additive motion.
+        * @result Return true when it is an additive motion.
+        */
+        bool GetIsAdditive() const;
+
+        /**
          * Marks the object as used by the engine runtime, as opposed to the tool suite.
          */
         void SetIsOwnedByRuntime(bool isOwnedByRuntime);
@@ -309,7 +321,7 @@ namespace EMotionFX
 
     protected:
         AZStd::string               mFileName;              /**< The filename of the motion. */
-        PlayBackInfo*               mDefaultPlayBackInfo;   /**< The default/fallback motion playback info which will be used when no playback info is passed to the Play() function. */
+        PlayBackInfo                m_defaultPlayBackInfo;   /**< The default/fallback motion playback info which will be used when no playback info is passed to the Play() function. */
         MotionEventTable*           mEventTable;            /**< The event table, which contains all events, and will make sure events get executed. */
         MCore::Distance::EUnitType  mUnitType;              /**< The type of units used. */
         MCore::Distance::EUnitType  mFileUnitType;          /**< The type of units used, inside the file that got loaded. */
@@ -321,6 +333,7 @@ namespace EMotionFX
         EMotionExtractionFlags      mExtractionFlags;       /**< The motion extraction flags, which define behavior of the motion extraction system when applied to this motion. */
         bool                        mDirtyFlag;             /**< The dirty flag which indicates whether the user has made changes to the motion since the last file save operation. */
         bool                        mAutoUnregister;        /**< Automatically unregister the motion from the motion manager when this motion gets deleted? Default is true. */
+        bool                        mIsAdditive;            /**< Additive motion should only be used as the 2nd input in BlendTreeBlend2AdditiveNode. */
 
 #if defined(EMFX_DEVELOPMENT_BUILD)
         bool                        mIsOwnedByRuntime;

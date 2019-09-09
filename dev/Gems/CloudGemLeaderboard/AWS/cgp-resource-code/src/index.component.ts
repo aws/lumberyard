@@ -12,7 +12,7 @@ import { PaginationComponent } from 'app/view/game/module/shared/component/index
 import { CacheHandlerService } from 'app/view/game/module/cloudgems/service/cachehandler.service';
 import { AbstractCloudGemIndexComponent } from 'app/view/game/module/cloudgems/class/index';
 import { ToastsManager } from 'ng2-toastr';
-import { LyMetricService } from 'app/shared/service/index';
+import { LyMetricService, BreadcrumbService } from 'app/shared/service/index';
 
 const CACHE_TIME_LIMIT_IN_SECONDS = 300; // 5 minute
 
@@ -68,7 +68,7 @@ export class LeaderboardIndexComponent extends AbstractCloudGemIndexComponent {
 
     @ViewChild(ModalComponent) modalRef: ModalComponent;
 
-    constructor(private http: Http, private aws: AwsService, private cache: CacheHandlerService, private toastr: ToastsManager, vcr: ViewContainerRef, private metric: LyMetricService) {
+    constructor(private http: Http, private aws: AwsService, private cache: CacheHandlerService, private toastr: ToastsManager, vcr: ViewContainerRef, private metric: LyMetricService, private breadcrumbs: BreadcrumbService) {
         super()
         this.toastr.setRootViewContainerRef(vcr);
     }
@@ -266,6 +266,7 @@ export class LeaderboardIndexComponent extends AbstractCloudGemIndexComponent {
     public show(leaderboard: any, currentPageIndex: number = 1): void {
         this.currentLeaderboard = leaderboard;
         this.mode = LeaderboardMode.Show;
+        this.breadcrumbs.addBreadcrumb(this.currentLeaderboard.name, null);
         this.isLoadingScores = true;
 
         if (leaderboard.additional_data === undefined) {

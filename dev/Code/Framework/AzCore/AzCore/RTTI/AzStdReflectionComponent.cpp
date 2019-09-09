@@ -19,6 +19,7 @@
 #include <AzCore/RTTI/BehaviorContext.h>
 #include <AzCore/Script/ScriptContextAttributes.h>
 #include <AzCore/Script/lua/lua.h>
+#include <AzCore/Serialization/SerializeContext.h>
 
 namespace AZ
 {
@@ -194,7 +195,12 @@ namespace AZ
 
     void AzStdReflectionComponent::Reflect(ReflectContext* context)
     {
-        if (BehaviorContext* behavior = azrtti_cast<BehaviorContext*>(context))
+        if (AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
+        {
+            serializeContext->Class<AzStdReflectionComponent, AZ::Component>()
+                ->Version(1);
+        }
+        else if (BehaviorContext* behavior = azrtti_cast<BehaviorContext*>(context))
         {
             behavior->Class<AZStd::any>()
                 ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)

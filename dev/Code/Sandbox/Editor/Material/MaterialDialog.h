@@ -159,6 +159,7 @@ protected:
     QScopedPointer<QMaterialImageListModel> m_pMaterialImageListModel;
 
     QToolBar* m_toolbar;
+    QComboBox* m_filterTypeSelection;
     QAction* m_addAction;
     QAction* m_assignToSelectionAction;
     QAction* m_copyAction;

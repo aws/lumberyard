@@ -490,12 +490,22 @@ AmazonToolbar ToolbarManager::GetEditModeToolbar() const
     AmazonToolbar t = AmazonToolbar("EditMode", QObject::tr("Edit Mode Toolbar"));
     t.AddAction(ID_TOOLBAR_WIDGET_UNDO, ORIGINAL_TOOLBAR_VERSION);
     t.AddAction(ID_TOOLBAR_WIDGET_REDO, ORIGINAL_TOOLBAR_VERSION);
+
+    if (!GetIEditor()->IsNewViewportInteractionModelEnabled())
+    {
+        t.AddAction(ID_TOOLBAR_SEPARATOR, ORIGINAL_TOOLBAR_VERSION);
+        t.AddAction(ID_EDITTOOL_LINK, ORIGINAL_TOOLBAR_VERSION);
+        t.AddAction(ID_EDITTOOL_UNLINK, ORIGINAL_TOOLBAR_VERSION);
+    }
+
     t.AddAction(ID_TOOLBAR_SEPARATOR, ORIGINAL_TOOLBAR_VERSION);
-    t.AddAction(ID_EDITTOOL_LINK, ORIGINAL_TOOLBAR_VERSION);
-    t.AddAction(ID_EDITTOOL_UNLINK, ORIGINAL_TOOLBAR_VERSION);
-    t.AddAction(ID_TOOLBAR_SEPARATOR, ORIGINAL_TOOLBAR_VERSION);
-    t.AddAction(ID_TOOLBAR_WIDGET_SELECTION_MASK, ORIGINAL_TOOLBAR_VERSION);
-    t.AddAction(ID_EDITMODE_SELECT, ORIGINAL_TOOLBAR_VERSION);
+
+    if (!GetIEditor()->IsNewViewportInteractionModelEnabled())
+    {
+        t.AddAction(ID_TOOLBAR_WIDGET_SELECTION_MASK, ORIGINAL_TOOLBAR_VERSION);
+        t.AddAction(ID_EDITMODE_SELECT, ORIGINAL_TOOLBAR_VERSION);
+    }
+
     t.AddAction(ID_EDITMODE_MOVE, ORIGINAL_TOOLBAR_VERSION);
     t.AddAction(ID_EDITMODE_ROTATE, ORIGINAL_TOOLBAR_VERSION);
     t.AddAction(ID_EDITMODE_SCALE, ORIGINAL_TOOLBAR_VERSION);
@@ -514,6 +524,7 @@ AmazonToolbar ToolbarManager::GetEditModeToolbar() const
     t.AddAction(ID_TOOLBAR_WIDGET_SNAP_GRID, ORIGINAL_TOOLBAR_VERSION);
     t.AddAction(ID_TOOLBAR_WIDGET_SNAP_ANGLE, ORIGINAL_TOOLBAR_VERSION);
     t.AddAction(ID_RULER, ORIGINAL_TOOLBAR_VERSION);
+
     if (GetIEditor()->IsLegacyUIEnabled())
     {
         t.AddAction(ID_TOOLBAR_SEPARATOR, ORIGINAL_TOOLBAR_VERSION);
@@ -528,7 +539,7 @@ AmazonToolbar ToolbarManager::GetEditModeToolbar() const
 
     return t;
 }
-        
+
 AmazonToolbar ToolbarManager::GetObjectToolbar() const
 {
     AmazonToolbar t = AmazonToolbar("Object", QObject::tr("Object Toolbar"));
@@ -537,9 +548,14 @@ AmazonToolbar ToolbarManager::GetObjectToolbar() const
     t.AddAction(ID_OBJECTMODIFY_ALIGNTOGRID, ORIGINAL_TOOLBAR_VERSION);
     t.AddAction(ID_OBJECTMODIFY_SETHEIGHT, ORIGINAL_TOOLBAR_VERSION);
     t.AddAction(ID_MODIFY_ALIGNOBJTOSURF, ORIGINAL_TOOLBAR_VERSION);
-    t.AddAction(ID_TOOLBAR_SEPARATOR, ORIGINAL_TOOLBAR_VERSION);
-    t.AddAction(ID_EDIT_FREEZE, ORIGINAL_TOOLBAR_VERSION);
-    t.AddAction(ID_EDIT_UNFREEZEALL, ORIGINAL_TOOLBAR_VERSION);
+
+    if (!GetIEditor()->IsNewViewportInteractionModelEnabled())
+    {
+        t.AddAction(ID_TOOLBAR_SEPARATOR, ORIGINAL_TOOLBAR_VERSION);
+        t.AddAction(ID_EDIT_FREEZE, ORIGINAL_TOOLBAR_VERSION);
+        t.AddAction(ID_EDIT_UNFREEZEALL, ORIGINAL_TOOLBAR_VERSION);
+    }
+
     t.AddAction(ID_OBJECTMODIFY_VERTEXSNAPPING, ORIGINAL_TOOLBAR_VERSION);
     t.AddAction(ID_EDIT_PHYS_RESET, ORIGINAL_TOOLBAR_VERSION);
     t.AddAction(ID_EDIT_PHYS_GET, ORIGINAL_TOOLBAR_VERSION);
@@ -547,7 +563,7 @@ AmazonToolbar ToolbarManager::GetObjectToolbar() const
 
     return t;
 }
-    
+
 AmazonToolbar ToolbarManager::GetEditorsToolbar() const
 {
     AmazonToolbar t = AmazonToolbar("Editors", QObject::tr("Editors Toolbar"));
@@ -557,7 +573,11 @@ AmazonToolbar ToolbarManager::GetEditorsToolbar() const
         t.AddAction(ID_OPEN_LAYER_EDITOR, ORIGINAL_TOOLBAR_VERSION);
     }
 
-    t.AddAction(ID_OPEN_MATERIAL_EDITOR, ORIGINAL_TOOLBAR_VERSION);
+    if (!GetIEditor()->IsNewViewportInteractionModelEnabled())
+    {
+        t.AddAction(ID_OPEN_MATERIAL_EDITOR, ORIGINAL_TOOLBAR_VERSION);
+    }
+
     t.AddAction(ID_OPEN_CHARACTER_TOOL, ORIGINAL_TOOLBAR_VERSION);
     t.AddAction(ID_OPEN_MANNEQUIN_EDITOR, ORIGINAL_TOOLBAR_VERSION);
     AZ::EBusReduceResult<bool, AZStd::logical_or<bool>> emfxEnabled(false);
@@ -570,10 +590,20 @@ AmazonToolbar ToolbarManager::GetEditorsToolbar() const
     }
     t.AddAction(ID_OPEN_FLOWGRAPH, ORIGINAL_TOOLBAR_VERSION);
     t.AddAction(ID_OPEN_AIDEBUGGER, ORIGINAL_TOOLBAR_VERSION);
-    t.AddAction(ID_OPEN_TRACKVIEW, ORIGINAL_TOOLBAR_VERSION);
+
+    if (!GetIEditor()->IsNewViewportInteractionModelEnabled())
+    {
+        t.AddAction(ID_OPEN_TRACKVIEW, ORIGINAL_TOOLBAR_VERSION);
+    }
+
     t.AddAction(ID_OPEN_AUDIO_CONTROLS_BROWSER, ORIGINAL_TOOLBAR_VERSION);
-    t.AddAction(ID_OPEN_TERRAIN_EDITOR, ORIGINAL_TOOLBAR_VERSION);
-    t.AddAction(ID_OPEN_TERRAINTEXTURE_EDITOR, ORIGINAL_TOOLBAR_VERSION);
+
+    if (!GetIEditor()->IsNewViewportInteractionModelEnabled())
+    {
+        t.AddAction(ID_OPEN_TERRAIN_EDITOR, ORIGINAL_TOOLBAR_VERSION);
+        t.AddAction(ID_OPEN_TERRAINTEXTURE_EDITOR, ORIGINAL_TOOLBAR_VERSION);
+    }
+
     t.AddAction(ID_PARTICLE_EDITOR, ORIGINAL_TOOLBAR_VERSION);
     t.AddAction(ID_TERRAIN_TIMEOFDAYBUTTON, ORIGINAL_TOOLBAR_VERSION);
     t.AddAction(ID_GENERATORS_LIGHTING, ORIGINAL_TOOLBAR_VERSION);
@@ -582,14 +612,14 @@ AmazonToolbar ToolbarManager::GetEditorsToolbar() const
 
     return t;
 }
-        
+
 AmazonToolbar ToolbarManager::GetSubstanceToolbar() const
 {
     AmazonToolbar t = AmazonToolbar("Substance", QObject::tr("Substance Toolbar"));
     t.AddAction(ID_OPEN_SUBSTANCE_EDITOR, ORIGINAL_TOOLBAR_VERSION);
     return t;
 }
-        
+
 AmazonToolbar ToolbarManager::GetMiscToolbar() const
 {
     AmazonToolbar t = AmazonToolbar("Misc", QObject::tr("Misc Toolbar"));
@@ -786,7 +816,7 @@ bool ToolbarManager::IsCustomToolbar(const QString& toolbarName) const
             return false;
         }
     }
-    
+
     return true;
 }
 

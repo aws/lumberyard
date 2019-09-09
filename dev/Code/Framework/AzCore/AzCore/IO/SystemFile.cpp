@@ -12,12 +12,14 @@
 #ifndef AZ_UNITY_BUILD
 
 #include <AzCore/IO/SystemFile.h>
+#include <AzCore/IO/FileIO.h>
 #include <AzCore/IO/FileIOEventBus.h>
 #include <AzCore/Casting/numeric_cast.h>
 
 #include <AzCore/PlatformIncl.h>
 #include <AzCore/std/functional.h>
 #include <AzCore/Utils/Utils.h>
+#include <AzCore/std/containers/vector.h>
 
 #include <stdio.h>
 
@@ -34,7 +36,6 @@
 #define SYSTEMFILE_CPP_SECTION_9 9
 #define SYSTEMFILE_CPP_SECTION_10 10
 #define SYSTEMFILE_CPP_SECTION_11 11
-#define SYSTEMFILE_CPP_SECTION_12 12
 #define SYSTEMFILE_CPP_SECTION_13 13
 #define SYSTEMFILE_CPP_SECTION_14 14
 #define SYSTEMFILE_CPP_SECTION_15 15
@@ -186,7 +187,17 @@ namespace
                     if (ret)
                     {
                         // now that our parent is created, try to create again
-                        return CreateDirectory(dirPath, nullptr) != 0;
+                        if (CreateDirectory(dirPath, nullptr))
+                        {
+                            return true;
+                        }
+                        DWORD creationError = GetLastError();
+                        if (creationError == ERROR_ALREADY_EXISTS)
+                        {
+                            DWORD attributes = GetFileAttributes(dirPath);
+                            return (attributes & FILE_ATTRIBUTE_DIRECTORY) != 0;
+                        }
+                        return false;
                     }
                     return false;
                 }
@@ -400,7 +411,11 @@ SystemFile::Open(const char* fileName, int mode, int platformFlags)
 #define AZ_RESTRICTED_SECTION_IMPLEMENTED
 #elif defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION SYSTEMFILE_CPP_SECTION_1
-#include AZ_RESTRICTED_FILE(SystemFile_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/SystemFile_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/SystemFile_cpp_provo.inl"
+    #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
 #undef AZ_RESTRICTED_SECTION_IMPLEMENTED
@@ -607,7 +622,11 @@ SystemFile::Close()
     }
 #elif defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION SYSTEMFILE_CPP_SECTION_2
-#include AZ_RESTRICTED_FILE(SystemFile_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/SystemFile_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/SystemFile_cpp_provo.inl"
+    #endif
 #elif defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_APPLE)
     if (m_handle != PlatformSpecificInvalidHandle)
     {
@@ -654,7 +673,11 @@ SystemFile::Seek(SizeType offset, SeekMode mode)
     }
 #elif defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION SYSTEMFILE_CPP_SECTION_3
-#include AZ_RESTRICTED_FILE(SystemFile_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/SystemFile_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/SystemFile_cpp_provo.inl"
+    #endif
 #elif defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_APPLE)
     if (m_handle != PlatformSpecificInvalidHandle)
     {
@@ -698,7 +721,11 @@ SystemFile::SizeType SystemFile::Tell()
     }
 #elif defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION SYSTEMFILE_CPP_SECTION_4
-#include AZ_RESTRICTED_FILE(SystemFile_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/SystemFile_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/SystemFile_cpp_provo.inl"
+    #endif
 #elif defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_APPLE)
     if (m_handle != PlatformSpecificInvalidHandle)
     {
@@ -754,7 +781,11 @@ bool SystemFile::Eof()
     }
 #elif defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION SYSTEMFILE_CPP_SECTION_5
-#include AZ_RESTRICTED_FILE(SystemFile_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/SystemFile_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/SystemFile_cpp_provo.inl"
+    #endif
 #elif defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_APPLE)
     if (m_handle != PlatformSpecificInvalidHandle)
     {
@@ -806,7 +837,11 @@ AZ::u64 SystemFile::ModificationTime()
     }
 #elif defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION SYSTEMFILE_CPP_SECTION_6
-#include AZ_RESTRICTED_FILE(SystemFile_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/SystemFile_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/SystemFile_cpp_provo.inl"
+    #endif
 #elif defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_APPLE)
     if (m_handle != PlatformSpecificInvalidHandle)
     {
@@ -864,7 +899,11 @@ SystemFile::Read(SizeType byteSize, void* buffer)
     }
 #elif defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION SYSTEMFILE_CPP_SECTION_7
-#include AZ_RESTRICTED_FILE(SystemFile_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/SystemFile_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/SystemFile_cpp_provo.inl"
+    #endif
 #elif defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_APPLE)
     if (m_handle != PlatformSpecificInvalidHandle)
     {
@@ -928,7 +967,11 @@ SystemFile::Write(const void* buffer, SizeType byteSize)
     }
 #elif defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION SYSTEMFILE_CPP_SECTION_8
-#include AZ_RESTRICTED_FILE(SystemFile_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/SystemFile_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/SystemFile_cpp_provo.inl"
+    #endif
 #elif defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_APPLE)
     if (m_handle != PlatformSpecificInvalidHandle)
     {
@@ -974,7 +1017,11 @@ void SystemFile::Flush()
     }
 #elif defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION SYSTEMFILE_CPP_SECTION_9
-#include AZ_RESTRICTED_FILE(SystemFile_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/SystemFile_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/SystemFile_cpp_provo.inl"
+    #endif
 #elif defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_APPLE)
     if (m_handle != PlatformSpecificInvalidHandle)
     {
@@ -1015,7 +1062,11 @@ SystemFile::Length() const
     }
 #elif defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION SYSTEMFILE_CPP_SECTION_10
-#include AZ_RESTRICTED_FILE(SystemFile_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/SystemFile_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/SystemFile_cpp_provo.inl"
+    #endif
 #elif defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_APPLE)
     if (m_handle != PlatformSpecificInvalidHandle)
     {
@@ -1086,7 +1137,11 @@ SystemFile::Exists(const char* fileName)
 #define AZ_RESTRICTED_SECTION_IMPLEMENTED
 #elif defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION SYSTEMFILE_CPP_SECTION_11
-#include AZ_RESTRICTED_FILE(SystemFile_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/SystemFile_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/SystemFile_cpp_provo.inl"
+    #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
 #undef AZ_RESTRICTED_SECTION_IMPLEMENTED
@@ -1106,10 +1161,43 @@ SystemFile::Exists(const char* fileName)
 #endif
 }
 
-#if defined(AZ_RESTRICTED_PLATFORM)
-#define AZ_RESTRICTED_SECTION SYSTEMFILE_CPP_SECTION_12
-#include AZ_RESTRICTED_FILE(SystemFile_cpp, AZ_RESTRICTED_PLATFORM)
-#endif
+#if !AZ_TRAIT_USE_WINDOWS_FILE_API
+//=========================================================================
+// FormatAndPeelOffWildCardExtension
+// [11/22/2011]
+//=========================================================================
+void FormatAndPeelOffWildCardExtension(const char* sourcePath, char* filePath, char* extensionPath)
+{
+    const char* pSrcPath = sourcePath;
+    char*       pDestPath = filePath;
+    unsigned    numFileChars = 0;
+    unsigned    numExtensionChars = 0;
+    unsigned*   pNumDestChars = &numFileChars;
+    bool        bIsWildcardExtension = false;
+    while (*pSrcPath)
+    {
+        char srcChar = *pSrcPath++;
+
+        // Skip '*' and '.'
+        if ((!bIsWildcardExtension && srcChar != '*') || (bIsWildcardExtension && srcChar != '.' && srcChar != '*'))
+        {
+            unsigned numChars = *pNumDestChars;
+            pDestPath[ numChars++ ] = srcChar;
+            *pNumDestChars = numChars;
+        }
+        // Wild-card extension is separate
+        if (srcChar == '*')
+        {
+            bIsWildcardExtension = true;
+            pDestPath = extensionPath;
+            pNumDestChars = &numExtensionChars;
+        }
+    }
+    // Close strings
+    filePath[ numFileChars ] = 0;
+    extensionPath[ numExtensionChars ] = 0;
+}
+#endif //!AZ_TRAIT_USE_WINDOWS_FILE_API
 
 
 //=========================================================================
@@ -1186,10 +1274,19 @@ SystemFile::FindFiles(const char* filter, FindFileCB cb)
     }
 #elif defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION SYSTEMFILE_CPP_SECTION_13
-#include AZ_RESTRICTED_FILE(SystemFile_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/SystemFile_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/SystemFile_cpp_provo.inl"
+    #endif
 #elif defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_ANDROID) || defined(AZ_PLATFORM_APPLE)
-    //TODO: Linux implementation does not correctly handle filters
-    DIR* dir = opendir(filter);
+    // If we have wildcards, peel off
+    char    filePath[AZ_MAX_PATH_LEN];
+    char    extensionPath[AZ_MAX_PATH_LEN];
+
+    FormatAndPeelOffWildCardExtension(filter, filePath, extensionPath);
+
+    DIR* dir = opendir(filePath);
 
     if (dir != NULL)
     {
@@ -1200,7 +1297,10 @@ SystemFile::FindFiles(const char* filter, FindFileCB cb)
         // List all the other files in the directory.
         while (entry != NULL)
         {
-            cb(entry->d_name, (entry->d_type & DT_DIR) == 0);
+            if (NameMatchesFilter(entry->d_name, extensionPath))
+            {
+                cb(entry->d_name, (entry->d_type & DT_DIR) == 0);
+            }
             entry = readdir(dir);
         }
 
@@ -1261,7 +1361,11 @@ AZ::u64 SystemFile::ModificationTime(const char* fileName)
 #define AZ_RESTRICTED_SECTION_IMPLEMENTED
 #elif defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION SYSTEMFILE_CPP_SECTION_14
-#include AZ_RESTRICTED_FILE(SystemFile_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/SystemFile_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/SystemFile_cpp_provo.inl"
+    #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
 #undef AZ_RESTRICTED_SECTION_IMPLEMENTED
@@ -1322,7 +1426,11 @@ SystemFile::Length(const char* fileName)
 #define AZ_RESTRICTED_SECTION_IMPLEMENTED
 #elif defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION SYSTEMFILE_CPP_SECTION_15
-#include AZ_RESTRICTED_FILE(SystemFile_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/SystemFile_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/SystemFile_cpp_provo.inl"
+    #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
 #undef AZ_RESTRICTED_SECTION_IMPLEMENTED
@@ -1405,7 +1513,11 @@ SystemFile::Delete(const char* fileName)
 #define AZ_RESTRICTED_SECTION_IMPLEMENTED
 #elif defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION SYSTEMFILE_CPP_SECTION_16
-#include AZ_RESTRICTED_FILE(SystemFile_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/SystemFile_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/SystemFile_cpp_provo.inl"
+    #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
 #undef AZ_RESTRICTED_SECTION_IMPLEMENTED
@@ -1464,7 +1576,11 @@ SystemFile::Rename(const char* sourceFileName, const char* targetFileName, bool 
 #define AZ_RESTRICTED_SECTION_IMPLEMENTED
 #elif defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION SYSTEMFILE_CPP_SECTION_17
-#include AZ_RESTRICTED_FILE(SystemFile_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/SystemFile_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/SystemFile_cpp_provo.inl"
+    #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
 #undef AZ_RESTRICTED_SECTION_IMPLEMENTED
@@ -1494,7 +1610,11 @@ SystemFile::IsWritable(const char* sourceFileName)
 #define AZ_RESTRICTED_SECTION_IMPLEMENTED
 #elif defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION SYSTEMFILE_CPP_SECTION_18
-#include AZ_RESTRICTED_FILE(SystemFile_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/SystemFile_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/SystemFile_cpp_provo.inl"
+    #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
 #undef AZ_RESTRICTED_SECTION_IMPLEMENTED
@@ -1532,7 +1652,11 @@ SystemFile::SetWritable(const char* sourceFileName, bool writable)
 #define AZ_RESTRICTED_SECTION_IMPLEMENTED
 #elif defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION SYSTEMFILE_CPP_SECTION_19
-#include AZ_RESTRICTED_FILE(SystemFile_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/SystemFile_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/SystemFile_cpp_provo.inl"
+    #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
 #undef AZ_RESTRICTED_SECTION_IMPLEMENTED
@@ -1651,7 +1775,7 @@ SystemFile::DeleteDir(const char* dirName)
         return RemoveDirectory(dirName) != 0;
 #   endif
 #elif defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_ANDROID) || defined(AZ_PLATFORM_APPLE)
-        return rmdir(dirName) != 0;
+        return rmdir(dirName) == 0;
 #else
         AZ_Assert(false, "CreateDir not implemented on this platform!");
 #endif

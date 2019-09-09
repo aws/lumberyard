@@ -63,7 +63,7 @@ namespace AzToolsFramework
             void AddStatement(const char* shortName, const char* sqlStatement);
 
             //! Looks up a prepared statement and returns a Statement handle to it, which can then be used
-            //! To bind paramaters and execute the statement.
+            //! To bind parameters and execute the statement.
             Statement* GetStatement(const AZStd::string& stmtName);
 
             //! Unregisters and finalizes the statement, freeing its memory
@@ -76,7 +76,7 @@ namespace AzToolsFramework
             //! This value is unaffected by other types of queries.
             AZ::s64 GetLastRowID();
 
-            //! Returns the number of rows affected by the most recent statment.
+            //! Returns the number of rows affected by the most recent statement.
             int GetNumAffectedRows();
 
             //! If a Statement takes no parameters, you can execute it one-off without binding any parameters:
@@ -137,14 +137,6 @@ namespace AzToolsFramework
             //! returns zero if it does not find the named index.
             int GetNamedParamIdx(const char* name);
 
-            // Convenience functions if you don't need to retain the parameter index
-            bool BindNamedUuid(const char* name, AZ::Uuid& value);
-            bool BindNamedBlob(const char* name, void* data, int dataSize);
-            bool BindNamedDouble(const char* name, double value);
-            bool BindNamedInt(const char* name, int value);
-            bool BindNamedText(const char* name, const char* value);
-            bool BindNamedInt64(const char* name, AZ::s64 value);
-
             // internal use only
             const StatementPrototype* GetParentPrototype() const;
 
@@ -159,27 +151,28 @@ namespace AzToolsFramework
             Statement() = delete;
         };
 
-        // a utiltity class which auto-finalizes a statement in a scope.
+        // a utility class which auto-finalizes a statement in a scope.
         // use Get() to retrieve the statement.  it will be null if it couldn't find it.
         // The auto finalizer owns the statement
         class StatementAutoFinalizer
         {
         public:
+            StatementAutoFinalizer() = default;
             StatementAutoFinalizer(Connection& connect, const char* statementName);
-            Statement* Get() const;
+            StatementAutoFinalizer(const StatementAutoFinalizer&) = delete;
+            StatementAutoFinalizer& operator=(const StatementAutoFinalizer&) = delete;
+            StatementAutoFinalizer(StatementAutoFinalizer&& other);
+            StatementAutoFinalizer& operator=(StatementAutoFinalizer&& other);
             ~StatementAutoFinalizer();
 
-            // no default construction allowed neither is copy:
-            StatementAutoFinalizer(const StatementAutoFinalizer& other) = delete;
-            StatementAutoFinalizer(StatementAutoFinalizer&& other) = delete;
-            StatementAutoFinalizer& operator=(const StatementAutoFinalizer& other) = delete;
+            Statement* Get() const;
 
         private:
             Statement* m_statement = nullptr;
         };
 
         //! A utility class to limit a transaction by scope
-        //! unless you tell it to commit the transaction it will revert automaticaly
+        //! unless you tell it to commit the transaction it will revert automatically
         //! if scope is lost for any reason
         class ScopedTransaction
         {
@@ -196,6 +189,6 @@ namespace AzToolsFramework
             Connection* m_connection = nullptr;
         };
     } // namespace SQLite
-} // namespace AZFramework
+} // namespace AzFramework
 
 #endif //AZFRAMEWORK_SQLITECONNECTION_H

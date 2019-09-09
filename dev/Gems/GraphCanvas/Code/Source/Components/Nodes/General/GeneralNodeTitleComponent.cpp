@@ -25,6 +25,7 @@
 #include <GraphCanvas/Editor/GraphCanvasProfiler.h>
 #include <GraphCanvas/tools.h>
 #include <GraphCanvas/Styling/StyleHelper.h>
+#include <GraphCanvas/Utils/QtDrawingUtils.h>
 
 
 namespace GraphCanvas
@@ -172,6 +173,22 @@ namespace GraphCanvas
         }
     }
 
+    void GeneralNodeTitleComponent::SetColorPaletteOverride(const QColor& color)
+    {
+        if (m_generalNodeTitleWidget)
+        {
+            m_generalNodeTitleWidget->SetPaletteOverride(color);
+        }
+    }
+
+    void GeneralNodeTitleComponent::ConfigureIconConfiguration(PaletteIconConfiguration& paletteConfiguration)
+    {
+        if (m_generalNodeTitleWidget)
+        {
+            m_generalNodeTitleWidget->ConfigureIconConfiguration(paletteConfiguration);
+        }
+    }
+
     void GeneralNodeTitleComponent::ClearPaletteOverride()
     {
         m_saveData.m_paletteOverride = "";
@@ -199,7 +216,6 @@ namespace GraphCanvas
                 m_generalNodeTitleWidget->SetPaletteOverride(m_basePalette);
             }
         }
-
     }
 
     ///////////////////////////////////
@@ -208,6 +224,7 @@ namespace GraphCanvas
     GeneralNodeTitleGraphicsWidget::GeneralNodeTitleGraphicsWidget(const AZ::EntityId& entityId)
         : m_entityId(entityId)
         , m_paletteOverride(nullptr)
+        , m_colorOverride(nullptr)
     {
         setCacheMode(QGraphicsItem::CacheMode::DeviceCoordinateCache);
         setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
@@ -221,6 +238,11 @@ namespace GraphCanvas
         m_linearLayout->setSpacing(0);
         setLayout(m_linearLayout);
         setData(GraphicsItemName, QStringLiteral("Title/%1").arg(static_cast<AZ::u64>(GetEntityId()), 16, 16, QChar('0')));
+    }
+
+    GeneralNodeTitleGraphicsWidget::~GeneralNodeTitleGraphicsWidget()
+    {
+        delete m_colorOverride;
     }
 
     void GeneralNodeTitleGraphicsWidget::Activate()
@@ -262,8 +284,15 @@ namespace GraphCanvas
         }
     }
 
-    void GeneralNodeTitleGraphicsWidget::SetPaletteOverride(const AZStd::string& paletteOverride)
+    void GeneralNodeTitleGraphicsWidget::SetPaletteOverride(AZStd::string_view paletteOverride)
     {
+        AZ_Error("GraphCanvas", m_colorOverride == nullptr, "Unsupported use of Color and Palete Overrides");
+        if (m_colorOverride)
+        {
+            delete m_colorOverride;
+            m_colorOverride = nullptr;
+        }
+
         AZ::EntityId sceneId;
         SceneMemberRequestBus::EventResult(sceneId, GetEntityId(), &SceneMemberRequests::GetScene);
         
@@ -272,14 +301,62 @@ namespace GraphCanvas
         update();
     }
 
+    void GeneralNodeTitleGraphicsWidget::ConfigureIconConfiguration(PaletteIconConfiguration& paletteConfiguration)
+    {
+        if (m_colorOverride)
+        {
+            m_colorOverride->PopulatePaletteConfiguration(paletteConfiguration);
+        }
+        else if (m_paletteOverride)
+        {
+            m_paletteOverride->PopulatePaletteConfiguration(paletteConfiguration);
+        }
+        else
+        {
+            m_styleHelper.PopulatePaletteConfiguration(paletteConfiguration);
+        }
+    }
+
     void GeneralNodeTitleGraphicsWidget::SetPaletteOverride(const AZ::Uuid& uuid)
     {
+        AZ_Error("GraphCanvas", m_colorOverride == nullptr, "Unsupported use of Color and DataType Overrides");
+        if (m_colorOverride)
+        {
+            delete m_colorOverride;
+            m_colorOverride = nullptr;
+        }
+
         AZ::EntityId sceneId;
         SceneMemberRequestBus::EventResult(sceneId, GetEntityId(), &SceneMemberRequests::GetScene);
 
         m_paletteOverride = nullptr;
         StyleManagerRequestBus::BroadcastResult(m_paletteOverride, &StyleManagerRequests::FindDataColorPalette, uuid);
         update();
+    }
+
+    void GeneralNodeTitleGraphicsWidget::SetPaletteOverride(const QColor& color)
+    {
+        if (m_colorOverride == nullptr)
+        {
+            if (m_paletteOverride != nullptr)
+            {
+                m_paletteOverride = nullptr;
+            }
+
+            AZ::EntityId sceneId;
+            SceneMemberRequestBus::EventResult(sceneId, GetEntityId(), &SceneMemberRequests::GetScene);
+
+            m_colorOverride = new Styling::StyleHelper();
+            m_colorOverride->SetScene(sceneId);
+            m_colorOverride->SetStyle("ColorOverrideNodeTitlePalette");
+        }
+
+        if (m_colorOverride)
+        {
+            m_colorOverride->AddAttributeOverride(Styling::Attribute::BackgroundColor, color);
+            m_colorOverride->AddAttributeOverride(Styling::Attribute::LineColor, color);
+            update();
+        }
     }
 
     void GeneralNodeTitleGraphicsWidget::ClearPaletteOverride()
@@ -349,46 +426,60 @@ namespace GraphCanvas
     {
         GRAPH_CANVAS_DETAILED_PROFILE_FUNCTION();
 
-        // Background
+        Styling::PaletteStyle style = m_styleHelper.GetAttribute(Styling::Attribute::PaletteStyle, Styling::PaletteStyle::Solid);
+
+        if (m_paletteOverride)
         {
-            QRectF bounds = boundingRect();
-
-            qreal cornerRadius = 0.0;
-
-            NodeUIRequestBus::EventResult(cornerRadius, GetEntityId(), &NodeUIRequests::GetCornerRadius);
-
-            // Ensure the bounds are large enough to draw the full radius
-            // Even in our smaller section
-            if (bounds.height() < 2.0 * cornerRadius)
-            {
-                bounds.setHeight(2.0 * cornerRadius);
-            }
-
-            QBrush brush = m_styleHelper.GetBrush(Styling::Attribute::BackgroundColor);
-
-            if (m_paletteOverride)
-            {
-                brush.setColor(m_paletteOverride->GetColor(Styling::Attribute::BackgroundColor));
-            }
-
-            QPainterPath path;
-            path.setFillRule(Qt::WindingFill);
-
-            // -1.0 because the rounding is a little bit short(for some reason), so I subtract one and let it overshoot a smidge.
-            path.addRoundedRect(bounds, cornerRadius - 1.0, cornerRadius - 1.0);
-
-            // We only want corners on the top half. So we need to draw a rectangle over the bottom bits to square it out.
-            QPointF bottomTopLeft(bounds.bottomLeft());
-            bottomTopLeft.setY(bottomTopLeft.y() - cornerRadius - 1.0);
-            path.addRect(QRectF(bottomTopLeft, bounds.bottomRight()));
-
-            painter->fillPath(path, brush);
-
-            QLinearGradient gradient(bounds.bottomLeft(), bounds.topLeft());
-            gradient.setColorAt(0, QColor(0, 0, 0, 102));
-            gradient.setColorAt(1, QColor(0, 0, 0, 77));
-            painter->fillPath(path, gradient);
+            style = m_paletteOverride->GetAttribute(Styling::Attribute::PaletteStyle, Styling::PaletteStyle::Solid);
         }
+        
+        // Background
+        QRectF bounds = boundingRect();
+
+        qreal cornerRadius = 0.0;
+
+        NodeUIRequestBus::EventResult(cornerRadius, GetEntityId(), &NodeUIRequests::GetCornerRadius);
+
+        // Ensure the bounds are large enough to draw the full radius
+        // Even in our smaller section
+        if (bounds.height() < 2.0 * cornerRadius)
+        {
+            bounds.setHeight(2.0 * cornerRadius);
+        }
+
+        QPainterPath path;
+        path.setFillRule(Qt::WindingFill);
+
+        // -1.0 because the rounding is a little bit short(for some reason), so I subtract one and let it overshoot a smidge.
+        path.addRoundedRect(bounds, cornerRadius - 1.0, cornerRadius - 1.0);
+
+        // We only want corners on the top half. So we need to draw a rectangle over the bottom bits to square it out.
+        QPointF bottomTopLeft(bounds.bottomLeft());
+        bottomTopLeft.setY(bottomTopLeft.y() - cornerRadius - 1.0);
+        path.addRect(QRectF(bottomTopLeft, bounds.bottomRight()));
+
+        painter->save();
+        painter->setClipPath(path);
+
+        if (m_colorOverride)
+        {
+            QtDrawingUtils::FillArea((*painter), path.boundingRect(), (*m_colorOverride));
+        }
+        else if (m_paletteOverride)
+        {
+            QtDrawingUtils::FillArea((*painter), path.boundingRect(), (*m_paletteOverride));
+        }
+        else
+        {
+            QtDrawingUtils::FillArea((*painter), path.boundingRect(), m_styleHelper);
+        }
+
+        QLinearGradient gradient(bounds.bottomLeft(), bounds.topLeft());
+        gradient.setColorAt(0, QColor(0, 0, 0, 102));
+        gradient.setColorAt(1, QColor(0, 0, 0, 77));
+        painter->fillPath(path, gradient);
+
+        painter->restore();
 
         QGraphicsWidget::paint(painter, option, widget);
     }

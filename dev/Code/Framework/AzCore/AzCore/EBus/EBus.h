@@ -24,10 +24,11 @@
 
 #include <AzCore/EBus/BusImpl.h>
 #include <AzCore/EBus/Results.h>
-#include <AzCore/std/utils.h>
 #include <AzCore/std/typetraits/is_same.h>
 #include <AzCore/std/typetraits/is_abstract.h>
 #include <AzCore/std/containers/unordered_map.h>
+#include <AzCore/std/parallel/scoped_lock.h>
+#include <AzCore/std/parallel/shared_mutex.h>
 
 namespace AZStd
 {
@@ -70,7 +71,7 @@ namespace AZ
     protected:
 
         /**
-         * Destroys the instance of the class.
+         * Note - the destructor is intentionally not virtual to avoid adding vtable overhead to every EBusTraits derived class.
          */
         ~EBusTraits() = default;
 
@@ -414,8 +415,13 @@ namespace AZ
     {
         struct CallstackEntry;
     public:
+        class Context;
+
         template <class Iterator>
         struct CallstackEntryIterator;
+
+        template <class ReverseIterator>
+        struct CallstackEntryReverseIterator;
 
         /**
          * Contains data about EBusTraits.
@@ -536,15 +542,8 @@ namespace AZ
          */
         using ConnectionPolicy = typename Traits::template ConnectionPolicy<ThisType>;
 
-        /**
-         * The scoped lock guard to use (either AZStd::lock_guard<MutexType> or NullLockGuard<MutexType>
-         * during broadcast/event dispatch. 
-         * @see EBusTraits::LocklessDispatch
-         */
-        using DispatchLockGuard = typename AZStd::Utils::if_c<BusTraits::LocklessDispatch || AZStd::is_same<MutexType, NullMutex>::value, Internal::NullLockGuard<MutexType>, AZStd::lock_guard<MutexType>>::type;
-
         using CallstackForwardIterator = CallstackEntryIterator<typename EBNode::iterator>; 
-        using CallstackReverseIterator = CallstackEntryIterator<typename EBNode::reverse_iterator>;
+        using CallstackReverseIterator = CallstackEntryReverseIterator<typename EBNode::reverse_iterator>;
 
         /**
          * Specifies whether the %EBus supports an event queue.
@@ -623,12 +622,31 @@ namespace AZ
         */
         static void Connect(BusPtr& ptr, HandlerNode& handler, const BusIdType& id = 0);
 
+        /**
+         * Connects a handler to an EBus address without locking the mutex
+         * Only call this if the context mutex is held already
+         * A handler will not receive EBus events until it is connected to the bus.
+         * @param[out] ptr A pointer that will be bound to the EBus address that
+         * the handler will be connected to.
+         * @param handler The handler to connect to the EBus address.
+         * @param id The ID of the EBus address that the handler will be connected to.
+        */
+        static void ConnectInternal(Context* context, BusPtr& ptr, HandlerNode& handler, const BusIdType& id = 0);
+
          /**
          * Disconnects a handler from an EBus address.
          * @param handler The handler to disconnect from the EBus address.
          * @param ptr A pointer to a specific address on the EBus.
          */
         static void Disconnect(HandlerNode& handler, BusPtr& ptr);
+
+        /**
+         * Disconnects a handler from an EBus address without locking the mutex
+         * Only call this if the context mutex is held already
+         * @param handler The handler to disconnect from the EBus address.
+         * @param ptr A pointer to a specific address on the EBus.
+         */
+        static void DisconnectInternal(Context* context, HandlerNode& handler, BusPtr& ptr);
 
         /**
          * Disconnects a handler from an EBus address, referencing the address by its ID.
@@ -759,15 +777,29 @@ namespace AZ
         };
 
     public:
-        using CallstackEntryStorageType = Internal::EBusCallstackStorage<CallstackEntry, !AZStd::is_same<MutexType, AZ::NullMutex>::value>;
 
         class Context : public Internal::ContextBase
         {
             friend ThisType;
             friend Router;
         public:
-            BusesContainer          m_buses;        ///< The actual bus container, which is a static map for each bus type.
-            mutable MutexType       m_mutex;        ///< Mutex to control access to the bus.
+            /**
+             * The mutex type to use during broadcast/event dispatch.
+             * When LocklessDispatch is set on the EBus and a NullMutex is supplied a shared_mutex is used to protect the context otherwise the supplied MutexType is used
+             * The reason why a recursive_mutex is used in this situation, is that specifying LocklessDispatch is implies that the EBus will be used across multiple threads
+             * @see EBusTraits::LocklessDispatch
+             */
+            using ContextMutexType = AZStd::conditional_t<BusTraits::LocklessDispatch && AZStd::is_same<MutexType, AZ::NullMutex>::value, AZStd::shared_mutex, MutexType>;
+
+            /**
+             * The scoped lock guard to use (either AZStd::scoped_lock<MutexType> or NullLockGuard<MutexType>
+             * during broadcast/event dispatch.
+             * @see EBusTraits::LocklessDispatch
+             */
+            using DispatchLockGuard = AZStd::conditional_t<BusTraits::LocklessDispatch, Internal::NullLockGuard<ContextMutexType>, AZStd::scoped_lock<ContextMutexType>>;
+
+            BusesContainer          m_buses;         ///< The actual bus container, which is a static map for each bus type.
+            ContextMutexType        m_contextMutex;  ///< Mutex to control access to the around modifying the context
             QueuePolicy             m_queue;
             RouterPolicy            m_routing;
 
@@ -782,6 +814,7 @@ namespace AZ
             Context& operator=(Context&&) = delete;
 
         private:
+            using CallstackEntryStorageType = Internal::EBusCallstackStorage<CallstackEntry, !AZStd::is_same<ContextMutexType, AZ::NullMutex>::value>;
             mutable AZStd::unordered_map<AZStd::native_thread_id_type, CallstackEntryRoot, AZStd::hash<AZStd::native_thread_id_type>, AZStd::equal_to<AZStd::native_thread_id_type>, Internal::EBusEnvironmentAllocator> m_callstackRoots;
             CallstackEntryStorageType s_callstack;    ///< Linked list of other bus calls to this bus on the stack, per thread if MutexType is defined
             AZStd::atomic_uint m_dispatches;   ///< Number of active dispatches in progress
@@ -825,24 +858,45 @@ namespace AZ
         struct CallstackEntryIterator 
             : public CallstackEntryBasic
         {
-            CallstackEntryIterator(EBNode& container, Iterator it, const BusIdType* busId);
+            CallstackEntryIterator(EBNode& container, Iterator it, const BusIdType* busId)
+                : CallstackEntryBasic(busId)
+                , m_container(container)
+                , m_iterator(it)
+            {}
 
-            void OnRemoveHandler(InterfaceType* handler) override;
+            void OnRemoveHandler(InterfaceType* handler) override
+            {
+                if (m_iterator != m_container.end() && handler == *m_iterator) // If we are removing what the current iterator is pointing to, move to the next element.
+                {
+                    ++m_iterator;
+                }
+            }
 
             EBNode& m_container;
             Iterator m_iterator;
         };
 
-        template <class Iterator>
-        struct CallstackEntryIterator<AZStd::reverse_iterator<Iterator>> 
+        template <class ReverseIterator>
+        struct CallstackEntryReverseIterator
             : public CallstackEntryBasic
         {
-            CallstackEntryIterator(EBNode& container, AZStd::reverse_iterator<Iterator> it, const BusIdType* busId);
-            
-            void OnRemoveHandler(InterfaceType* handler) override;
-            
+            CallstackEntryReverseIterator(EBNode& container, ReverseIterator it, const BusIdType* busId)
+                : CallstackEntryBasic(busId)
+                , m_container(container)
+                , m_iterator(it)
+            {}
+
+            void OnRemoveHandler(InterfaceType* handler) override
+            {
+                // First check that m_iterator is valid before dereferencing it.
+                if (m_iterator != m_container.rend() && handler == *m_iterator) // If we are removing what the current iterator is pointing to, move to the next element.
+                {
+                    ++m_iterator;
+                }
+            }
+
             EBNode& m_container;
-            AZStd::reverse_iterator<Iterator> m_iterator;
+            ReverseIterator m_iterator;
         };
 
         struct RouterCallstackEntry
@@ -867,6 +921,17 @@ namespace AZ
         };
         /// @endcond
     };
+
+    /// Helper macro to deprecate the helper typedef EBus<_Interface> _BusName
+    /// Where _Interface is a deprecated  EBus API class
+#   define DEPRECATE_EBUS(_Interface, _BusName, _message) DEPRECATE_EBUS_WITH_TRAITS(_Interface, _Interface, _BusName, _message)
+    /// Helper macro to deprecate the helper typedef EBus<_Interface, _BusTraits> _BusName
+    /// Where _Interface is a deprecated EBus API class and/or _BusTraits is a deprecated EBusTraits class
+#   define DEPRECATE_EBUS_WITH_TRAITS(_Interface, _BusTraits, _BusName, _message)       \
+    AZ_PUSH_DISABLE_WARNING(4996, "-Wdeprecated-declarations")                          \
+    typedef AZ::EBus<_Interface, _BusTraits> DeprecatedBus_##_Interface##_BusTraits;    \
+    AZ_POP_DISABLE_WARNING                                                              \
+    AZ_DEPRECATED(typedef DeprecatedBus_##_Interface##_BusTraits _BusName, _message);
 
     // The macros below correspond to functions in BusImpl.h. 
     // The macros enable you to write shorter code, but don't work as well for code completion.
@@ -1102,7 +1167,7 @@ namespace AZ
         Context& context = GetOrCreateContext(false);
 
         // scoped lock guard in case of exception / other odd situation
-        AZStd::lock_guard<MutexType> lock(context.m_mutex);
+        AZStd::scoped_lock<decltype(context.m_contextMutex)> lock(context.m_contextMutex);
         ConnectionPolicy::Bind(ptr, context, id);
     }
 
@@ -1119,16 +1184,29 @@ namespace AZ
     {
         Context& context = GetOrCreateContext();
         // scoped lock guard in case of exception / other odd situation
-        AZStd::lock_guard<MutexType> lock(context.m_mutex);
-
-        // To call this while executing a message, you need to make sure this mutex is AZStd::recursive_mutex. Otherwise, a deadlock will occur.
-        AZ_Assert(!Traits::LocklessDispatch || !IsInDispatch(&context), "It is not safe to connect during dispatch on a lockless dispatch EBus");
-        if (context.s_callstack->m_prevCall) // Make sure we don't change the iterator order because we are in the middle of a message.
+        // Context mutex is separate from the Dispatch lock guard and therefore this is safe to lock this mutex while in the middle of a dispatch
+        AZStd::scoped_lock<decltype(context.m_contextMutex)> lock(context.m_contextMutex);
+        // check ptr after taking the lock to make sure no other thread has connected already
+        if (!ptr)
         {
-            context.m_buses.KeepIteratorsStable();
+            ConnectInternal(&context, ptr, handler, id);
+        }
+    }
+
+    //=========================================================================
+    // ConnectInternal
+    //=========================================================================
+    template<class Interface, class Traits>
+    inline void EBus<Interface, Traits>::ConnectInternal(Context* context, BusPtr& ptr, HandlerNode& handler, const BusIdType& id)
+    {
+        // To call this while executing a message, you need to make sure this mutex is AZStd::recursive_mutex. Otherwise, a deadlock will occur.
+        AZ_Assert(!Traits::LocklessDispatch || !IsInDispatch(context), "It is not safe to connect during dispatch on a lockless dispatch EBus");
+        if (context->s_callstack->m_prevCall) // Make sure we don't change the iterator order because we are in the middle of a message.
+        {
+            context->m_buses.KeepIteratorsStable();
         }
         CallstackEntryBasic callstack(&id);
-        ConnectionPolicy::Connect(ptr, context, handler, id);
+        ConnectionPolicy::Connect(ptr, *context, handler, id);
     }
 
     //=========================================================================
@@ -1137,21 +1215,34 @@ namespace AZ
     template<class Interface, class Traits>
     inline void EBus<Interface, Traits>::Disconnect(HandlerNode& handler, BusPtr& ptr)
     {
-        // To call Disconnect() from a message while being thread safe, you need to make sure the context.m_mutex is AZStd::recursive_mutex. Otherwise, a deadlock will occur.
+        // To call Disconnect() from a message while being thread safe, you need to make sure the context.m_contextMutex is AZStd::recursive_mutex. Otherwise, a deadlock will occur.
         if (Context* context = GetContext())
         {
             // scoped lock guard in case of exception / other odd situation
-            AZStd::lock_guard<MutexType> lock(context->m_mutex);
-
-            AZ_Assert(!Traits::LocklessDispatch || !IsInDispatch(context), "It is not safe to disconnect during dispatch on a lockless dispatch EBus");
-            if (context->s_callstack->m_prevCall)
+            AZStd::scoped_lock<decltype(context->m_contextMutex)> lock(context->m_contextMutex);
+            // To call this while executing a message, you need to make sure this mutex is a recursive_mutex. Otherwise, a deadlock will occur.
+            // check ptr after taking the lock to make sure no other thread has disconnected already
+            if (ptr)
             {
-                DisconnectCallstackFix(handler, ptr->m_busId);
+                DisconnectInternal(context, handler, ptr);
             }
-            CallstackEntryBasic callstack(nullptr);
-            ConnectionPolicy::Disconnect(*context, handler, ptr);
-            ptr = nullptr; // If the refcount goes to zero here, it will alter context.m_buses so it must be inside the protected section.
         }
+    }
+
+    //=========================================================================
+    // DisconnectInternal
+    //=========================================================================
+    template<class Interface, class Traits>
+    inline void EBus<Interface, Traits>::DisconnectInternal(Context* context, HandlerNode& handler, BusPtr& ptr)
+    {
+        AZ_Assert(!Traits::LocklessDispatch || !IsInDispatch(context), "It is not safe to disconnect during dispatch on a lockless dispatch EBus");
+        if (context->s_callstack->m_prevCall)
+        {
+            DisconnectCallstackFix(handler, ptr->m_busId);
+        }
+        CallstackEntryBasic callstack(nullptr);
+        ConnectionPolicy::Disconnect(*context, handler, ptr);
+        ptr = nullptr; // If the refcount goes to zero here, it will alter context.m_buses so it must be inside the protected section.
     }
 
     //=========================================================================
@@ -1163,9 +1254,9 @@ namespace AZ
         if (Context* context = GetContext())
         {
             // scoped lock guard in case of exception / other odd situation
-            AZStd::lock_guard<MutexType> lock(context->m_mutex);
+            AZStd::scoped_lock<decltype(context->m_contextMutex)> lock(context->m_contextMutex);
 
-            // To call Disconnect() from a message while being thread safe, you need to make sure the context.m_mutex is AZStd::recursive_mutex. Otherwise, a deadlock will occur.
+            // To call Disconnect() from a message while being thread safe, you need to make sure the context mutex is a recursive_mutex. Otherwise, a deadlock will occur.
             AZ_Assert(!Traits::LocklessDispatch || !IsInDispatch(context), "It is not safe to disconnect during dispatch on a lockless dispatch EBus");
             if (context->s_callstack->m_prevCall)
             {
@@ -1211,12 +1302,11 @@ namespace AZ
         Context* context = GetContext(false);
         if (context && context->m_buses.size())
         {
-            context->m_mutex.lock();
+            AZStd::scoped_lock<decltype(context->m_contextMutex)> lock(context->m_contextMutex);
             for (auto iter = context->m_buses.begin(); iter != context->m_buses.end(); ++iter)
             {
                 size += iter->size();
             }
-            context->m_mutex.unlock();
         }
         return size;
     }
@@ -1324,7 +1414,7 @@ namespace AZ
         if (trackCallstack && context && !context->s_callstack)
         {
             // cache the callstack into this thread/dll
-            AZStd::lock_guard<MutexType> lock(context->m_mutex);
+            AZStd::scoped_lock<decltype(context->m_contextMutex)> lock(context->m_contextMutex);
             context->s_callstack = &context->m_callstackRoots[AZStd::this_thread::get_id().m_id];
         }
         return context;
@@ -1340,7 +1430,7 @@ namespace AZ
         if (trackCallstack && !context.s_callstack)
         {
             // cache the callstack into this thread/dll
-            AZStd::lock_guard<MutexType> lock(context.m_mutex);
+            AZStd::scoped_lock<decltype(context.m_contextMutex)> lock(context.m_contextMutex);
             context.s_callstack = &context.m_callstackRoots[AZStd::this_thread::get_id().m_id];
         }
         return context;
@@ -1419,53 +1509,6 @@ namespace AZ
         if (context->s_callstack->m_prevCall == nullptr && context->m_buses.IsKeepIteratorsStable())
         {
             context->m_buses.AllowUnstableIterators();
-        }
-    }
-
-    //=========================================================================
-    template<class Interface, class Traits>
-    template<class Iterator>
-    EBus<Interface, Traits>::CallstackEntryIterator<Iterator>::CallstackEntryIterator(EBNode& container, Iterator it, const BusIdType* busId)
-        : CallstackEntryBasic(busId)
-        , m_container(container)
-        , m_iterator(it)
-    {
-    }
-
-    //=========================================================================
-    template<class Interface, class Traits>
-    template<class Iterator>
-    void EBus<Interface, Traits>::CallstackEntryIterator<Iterator>::OnRemoveHandler(InterfaceType* handler)
-    {
-        if (m_iterator != m_container.end() && handler == *m_iterator) // If we are removing what the current iterator is pointing to, move to the next element.
-        {
-            ++m_iterator;
-        }
-    }
-
-
-    //=========================================================================
-    template<class Interface, class Traits>
-    template<class Iterator>
-    EBus<Interface, Traits>::CallstackEntryIterator<AZStd::reverse_iterator<Iterator>>::CallstackEntryIterator(EBNode& container, AZStd::reverse_iterator<Iterator> it, const BusIdType* busId)
-        : CallstackEntryBasic(busId)
-        , m_container(container)
-        , m_iterator(it)
-    {
-    }
-
-    //=========================================================================
-    template<class Interface, class Traits>
-    template<class Iterator>
-    void EBus<Interface, Traits>::CallstackEntryIterator<AZStd::reverse_iterator<Iterator>>::OnRemoveHandler(InterfaceType* handler)
-    {
-        // First check that m_iterator is valid before dereferencing it.
-        if (m_iterator.base() != m_container.end() && handler == *m_iterator.base()) // If we are removing what the current iterator is pointing to, move to the next element.
-        {
-            // Reverse iterator points to the element after the one we are pointing to.
-            // For example, *m_iterator does ( *(--m_interator.base()) to the counter that we need to move 
-            // to the right in the container. This is a reverse iterator, so moving to the right is subtraction.
-            --m_iterator;
         }
     }
 
@@ -1995,14 +2038,15 @@ namespace AZ
             {
                 m_routerNode.m_order = order;
                 auto& context = EBus::GetOrCreateContext();
-                // We could support connection/disconnection while routing a message, but it would require a call to a fix  
-                // function because there is already a stack entry. This is typically not a good pattern because routers are 
-                // executed often. If time is not important to you, you can always queue the connect/disconnect functions 
+                // We could support connection/disconnection while routing a message, but it would require a call to a fix
+                // function because there is already a stack entry. This is typically not a good pattern because routers are
+                // executed often. If time is not important to you, you can always queue the connect/disconnect functions
                 // on the TickBus or another safe bus.
                 AZ_Assert(context.s_callstack->m_prevCall == nullptr, "Current we don't allow router connect while in a message on the bus!");
-                context.m_mutex.lock();
-                context.m_routing.m_routers.insert(&m_routerNode);
-                context.m_mutex.unlock();
+                {
+                    AZStd::scoped_lock<decltype(context.m_contextMutex)> lock(context.m_contextMutex);
+                    context.m_routing.m_routers.insert(&m_routerNode);
+                }
                 m_isConnected = true;
             }
         }
@@ -2015,14 +2059,15 @@ namespace AZ
             {
                 auto* context = EBus::GetContext();
                 AZ_Assert(context, "Internal error: context deleted while router attached.");
-                context->m_mutex.lock();
-                // We could support connection/disconnection while routing a message, but it would require a call to a fix  
-                // function because there is already a stack entry. This is typically not a good pattern because routers are 
-                // executed often. If time is not important to you, you can always queue the connect/disconnect functions 
-                // on the TickBus or another safe bus.
-                AZ_Assert(context->s_callstack->m_prevCall == nullptr, "Current we don't allow router disconnect while in a message on the bus!");
-                context->m_routing.m_routers.erase(&m_routerNode);
-                context->m_mutex.unlock();
+                {
+                    AZStd::scoped_lock<decltype(context->m_contextMutex)> lock(context->m_contextMutex);
+                    // We could support connection/disconnection while routing a message, but it would require a call to a fix
+                    // function because there is already a stack entry. This is typically not a good pattern because routers are
+                    // executed often. If time is not important to you, you can always queue the connect/disconnect functions
+                    // on the TickBus or another safe bus.
+                    AZ_Assert(context->s_callstack->m_prevCall == nullptr, "Current we don't allow router disconnect while in a message on the bus!");
+                    context->m_routing.m_routers.erase(&m_routerNode);
+                }
                 m_isConnected = false;
             }
         }
@@ -2188,6 +2233,12 @@ namespace AZ
         template<class EBus>
         void EBusEventHandler<EBus, false>::BusConnect(const typename EBus::BusIdType& id)  /// You are required to provide a bus ID.
         {
+            typename EBus::Context& context = EBus::GetOrCreateContext();
+            
+            // scoped lock guard in case of exception / other odd situation
+            AZStd::scoped_lock<decltype(context.m_contextMutex)> lock(context.m_contextMutex);
+
+            // check ptr after taking the lock to make sure no other thread has disconnected already
             if (m_busPtr)
             {
                 if (m_busPtr->m_busId == id)
@@ -2195,10 +2246,11 @@ namespace AZ
                     return;
                 }
                 AZ_Assert(false, "Connecting to a different id on this bus without disconnecting first! Please ensure you call BusDisconnect before calling BusConnect again, or if multiple connections are desired you must use a MultiHandler instead.");
-                EBus::Disconnect(m_handlerNode, m_busPtr);
+                EBus::DisconnectInternal(&context, m_handlerNode, m_busPtr);
             }
+
             m_handlerNode = this;
-            EBus::Connect(m_busPtr, m_handlerNode, id);
+            EBus::ConnectInternal(&context, m_busPtr, m_handlerNode, id);
         }
 
         //////////////////////////////////////////////////////////////////////////
@@ -2215,15 +2267,21 @@ namespace AZ
         template<class EBus>
         void EBusEventHandler<EBus, false>::BusDisconnect(const typename EBus::BusIdType& id)
         {
-            if (m_busPtr)
+            if (typename EBus::Context* context = EBus::GetContext())
             {
-                if (m_busPtr->m_busId == id)
+                // scoped lock guard in case of exception / other odd situation
+                AZStd::scoped_lock<decltype(context->m_contextMutex)> lock(context->m_contextMutex);
+
+                if (m_busPtr)
                 {
-                    EBus::Disconnect(m_handlerNode, m_busPtr);
-                }
-                else
-                {
-                    AZ_Warning("System", false, "You are not connected to this ID! Check your disconnect logic!");
+                    if (m_busPtr->m_busId == id)
+                    {
+                        EBus::DisconnectInternal(context, m_handlerNode, m_busPtr);
+                    }
+                    else
+                    {
+                        AZ_Warning("System", false, "You are not connected to this ID! Check your disconnect logic!");
+                    }
                 }
             }
         }

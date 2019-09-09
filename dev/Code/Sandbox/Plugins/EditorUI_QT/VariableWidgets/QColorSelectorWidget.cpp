@@ -201,7 +201,7 @@ bool QColorSelectorWidget::LoadPreset(QString filepath)
                 QXmlStreamAttributes att = stream.attributes();
                 for (QXmlStreamAttribute attr : att)
                 {
-                    if (attr.name().compare("name", Qt::CaseInsensitive) == 0)
+                    if (attr.name().compare(QLatin1String("name"), Qt::CaseInsensitive) == 0)
                     {
                         if ((libIndex = AddNewLibrary(libName)) != m_currentLibrary && libIndex != -1 && libIndex < libFilePaths.count()) //make sure we're not resetting
                         {
@@ -238,11 +238,11 @@ bool QColorSelectorWidget::LoadPreset(QString filepath)
                 QXmlStreamAttributes attributes = stream.attributes();
                 for (QXmlStreamAttribute attr : attributes)
                 {
-                    if (attr.name().compare("name", Qt::CaseInsensitive) == 0)
+                    if (attr.name().compare(QLatin1String("name"), Qt::CaseInsensitive) == 0)
                     {
                         name = attr.value().toString();
                     }
-                    if (attr.name().compare("value", Qt::CaseInsensitive) == 0)
+                    if (attr.name().compare(QLatin1String("value"), Qt::CaseInsensitive) == 0)
                     {
                         color.setNamedColor(attr.value().toString());
                     }

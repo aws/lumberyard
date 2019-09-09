@@ -22,6 +22,7 @@
 #include "AnimGraphAttributeTypes.h"
 #include "AnimGraphStateTransition.h"
 #include "AnimGraphTransitionCondition.h"
+#include "AnimGraphTriggerAction.h"
 #include "AnimGraphExitNode.h"
 #include "AnimGraphNodeGroup.h"
 #include "AnimGraphEntryNode.h"
@@ -37,7 +38,7 @@ namespace EMotionFX
     AZ_CLASS_ALLOCATOR_IMPL(AnimGraphStateMachine::UniqueData, AnimGraphObjectUniqueDataAllocator, 0)
 
     AnimGraphStateMachine::AnimGraphStateMachine()
-        : AnimGraphNode(nullptr, "")
+        : AnimGraphNode()
         , mEntryState(nullptr)
         , mEntryStateNodeNr(MCORE_INVALIDINDEX32)
         , m_entryStateId(AnimGraphNodeId::InvalidId)
@@ -55,14 +56,14 @@ namespace EMotionFX
         RemoveAllTransitions();
     }
 
-    void AnimGraphStateMachine::Reinit()
+    void AnimGraphStateMachine::RecursiveReinit()
     {
         // Re-initialize all child nodes and connections
-        AnimGraphNode::Reinit();
+        AnimGraphNode::RecursiveReinit();
 
         for (AnimGraphStateTransition* transition : mTransitions)
         {
-            transition->Reinit();
+            transition->RecursiveReinit();
         }
     }
 
@@ -116,9 +117,10 @@ namespace EMotionFX
         }
 
         // reset the error flag
-    #ifdef EMFX_EMSTUDIOBUILD
-        SetHasError(animGraphInstance, false);
-    #endif
+        if (GetEMotionFX().GetIsInEditorMode())
+        {
+            SetHasError(animGraphInstance, false);
+        }
 
         // in case no state is currently active and evaluated, use the bind pose
         UniqueData* uniqueData = static_cast<UniqueData*>(FindUniqueNodeData(animGraphInstance));
@@ -127,13 +129,10 @@ namespace EMotionFX
             RequestPoses(animGraphInstance);
             AnimGraphPose* outputPose = GetOutputPose(animGraphInstance, OUTPUTPORT_POSE)->GetValue();
             outputPose->InitFromBindPose(animGraphInstance->GetActorInstance());
-        #ifdef EMFX_EMSTUDIOBUILD
-            if (GetCanVisualize(animGraphInstance))
+            if (GetEMotionFX().GetIsInEditorMode() && GetCanVisualize(animGraphInstance))
             {
                 actorInstance->DrawSkeleton(outputPose->GetPose(), mVisualizeColor);
             }
-        #endif
-
             return;
         }
 
@@ -178,12 +177,10 @@ namespace EMotionFX
         }
 
         // visualize it
-    #ifdef EMFX_EMSTUDIOBUILD
-        if (GetCanVisualize(animGraphInstance))
+        if (GetEMotionFX().GetIsInEditorMode() && GetCanVisualize(animGraphInstance))
         {
             actorInstance->DrawSkeleton(outputPose->GetPose(), mVisualizeColor);
         }
-    #endif
     }
 
 
@@ -749,39 +746,30 @@ namespace EMotionFX
     }
 
 
-    // find a transition index based on the identification value
-    uint32 AnimGraphStateMachine::FindTransitionIndexByID(uint32 transitionID) const
+    AZ::Outcome<size_t> AnimGraphStateMachine::FindTransitionIndexById(AnimGraphNodeId transitionId) const
     {
         const size_t numTransitions = mTransitions.size();
         for (size_t i = 0; i < numTransitions; ++i)
         {
-            // get the current transition and check if its id is the one we are searching for, return the index in case of success
-            AnimGraphStateTransition* transition = mTransitions[i];
-            if (transition->GetID() == transitionID)
+            if (mTransitions[i]->GetId() == transitionId)
             {
-                return static_cast<uint32>(i);
+                return AZ::Success(i);
             }
         }
 
-        // failure, the transition with the given id hasn't been found
-        return MCORE_INVALIDINDEX32;
+        return AZ::Failure();
     }
 
 
-    // find a transition based on the identification value
-    AnimGraphStateTransition* AnimGraphStateMachine::FindTransitionByID(uint32 transitionID) const
+    AnimGraphStateTransition* AnimGraphStateMachine::FindTransitionById(AnimGraphNodeId transitionId) const
     {
-        // find the transition index based on the id
-        const uint32 transitionIndex = FindTransitionIndexByID(transitionID);
-
-        // check if the index is valid and return directly in this case
-        if (transitionIndex == MCORE_INVALIDINDEX32)
+        const AZ::Outcome<size_t> transitionIndex = FindTransitionIndexById(transitionId);
+        if (transitionIndex.IsSuccess())
         {
-            return nullptr;
+            return mTransitions[transitionIndex.GetValue()];
         }
 
-        // success, return the transition
-        return mTransitions[transitionIndex];
+        return nullptr;
     }
 
 
@@ -816,16 +804,13 @@ namespace EMotionFX
     }
 
 
-    // remove a given transition
-    void AnimGraphStateMachine::RemoveTransition(uint32 transitionIndex, bool delFromMem)
+    void AnimGraphStateMachine::RemoveTransition(size_t transitionIndex, bool delFromMem)
     {
-        // destroy the memory for the transition
         if (delFromMem)
         {
             delete mTransitions[transitionIndex];
         }
 
-        // remove the transition from our array
         mTransitions.erase(mTransitions.begin() + transitionIndex);
     }
 
@@ -1003,6 +988,8 @@ namespace EMotionFX
             animGraphInstance->RegisterUniqueObjectData(uniqueData);
         }
 
+        OnUpdateTriggerActionsUniqueData(animGraphInstance);
+
         // check if any of the active states are invalid and reset them if they are
         if (uniqueData->mCurrentState && FindChildNodeIndex(uniqueData->mCurrentState) == MCORE_INVALIDINDEX32)
         {
@@ -1033,6 +1020,13 @@ namespace EMotionFX
             {
                 AnimGraphTransitionCondition* condition = transition->GetCondition(c);
                 condition->OnUpdateUniqueData(animGraphInstance);
+            }
+
+            const size_t numActions = transition->GetTriggerActionSetup().GetNumActions();
+            for (size_t a = 0; a < numActions; ++a)
+            {
+                AnimGraphTriggerAction* action = transition->GetTriggerActionSetup().GetAction(a);
+                action->OnUpdateUniqueData(animGraphInstance);
             }
         }
     }
@@ -1071,9 +1065,10 @@ namespace EMotionFX
             {
                 uniqueData->mCurrentState->OnStateExit(animGraphInstance, entryState, nullptr);
                 uniqueData->mCurrentState->OnStateEnd(animGraphInstance, entryState, nullptr);
+
+                GetEventManager().OnStateExit(animGraphInstance, uniqueData->mCurrentState);
+                GetEventManager().OnStateEnd(animGraphInstance, uniqueData->mCurrentState);
             }
-            GetEventManager().OnStateExit(animGraphInstance, uniqueData->mCurrentState);
-            GetEventManager().OnStateEnd(animGraphInstance, uniqueData->mCurrentState);
 
             // rewind the entry state and reset conditions of all outgoing transitions
             entryState->Rewind(animGraphInstance);
@@ -1087,16 +1082,6 @@ namespace EMotionFX
             // reset the the unique data of the state machine and overwrite the current state as that is not nullptr but the entry state
             uniqueData->Reset();
             uniqueData->mCurrentState = entryState;
-
-            // get the number of child nodes, iterate through and rewind them as well
-            // TODO: only rewind relevant states instead of all child nodes?
-            for (AnimGraphNode* childNode : mChildNodes)
-            {
-                if (childNode != entryState) // prevent a double rewind, as we already rewinded the entry state before
-                {
-                    childNode->Rewind(animGraphInstance);
-                }
-            }
         }
     }
 
@@ -1128,7 +1113,14 @@ namespace EMotionFX
             stateB->RecursiveResetFlags(animGraphInstance, flagsToDisable);
         }
     }
-    
+
+
+    bool AnimGraphStateMachine::GetIsDeletable() const
+    {
+        // Only the root state machine is not deletable.
+        return GetParentNode() != nullptr;
+    }
+
 
     // reset all conditions for all outgoing transitions of the given state
     void AnimGraphStateMachine::ResetOutgoingTransitionConditions(AnimGraphInstance* animGraphInstance, AnimGraphNode* state)
@@ -1207,6 +1199,34 @@ namespace EMotionFX
         }
         // add the node and its children
         AnimGraphNode::RecursiveCollectObjects(outObjects);
+    }
+
+
+    void AnimGraphStateMachine::RecursiveCollectObjectsOfType(const AZ::TypeId& objectType, AZStd::vector<AnimGraphObject*>& outObjects) const
+    {
+        AnimGraphNode::RecursiveCollectObjectsOfType(objectType, outObjects);
+
+        const size_t numTransitions = GetNumTransitions();
+        for (size_t i = 0; i < numTransitions; ++i)
+        {
+            const AnimGraphStateTransition* transition = GetTransition(i);
+            if (azrtti_istypeof(objectType, transition))
+            {
+                outObjects.emplace_back(const_cast<AnimGraphStateTransition*>(transition));
+            }
+
+            // get the number of conditions and iterate through them
+            const size_t numConditions = transition->GetNumConditions();
+            for (size_t j = 0; j < numConditions; ++j)
+            {
+                // check if the given condition is of the given type and add it to the output array in this case
+                AnimGraphTransitionCondition* condition = transition->GetCondition(j);
+                if (azrtti_istypeof(objectType, condition))
+                {
+                    outObjects.emplace_back(condition);
+                }
+            }
+        }
     }
 
 
@@ -1359,6 +1379,26 @@ namespace EMotionFX
         }
     }
     
+
+    void AnimGraphStateMachine::RecursiveCollectActiveNetTimeSyncNodes(AnimGraphInstance * animGraphInstance, AZStd::vector<AnimGraphNode*>* outNodes) const
+    {
+        // get the active states
+        AnimGraphNode* nodeA = nullptr;
+        AnimGraphNode* nodeB = nullptr;
+        GetActiveStates(animGraphInstance, &nodeA, &nodeB);
+
+        // recurse into the active nodes
+        if (nodeA)
+        {
+            nodeA->RecursiveCollectActiveNetTimeSyncNodes(animGraphInstance, outNodes);
+        }
+
+        if (nodeB)
+        {
+            nodeB->RecursiveCollectActiveNetTimeSyncNodes(animGraphInstance, outNodes);
+        }
+    }
+
 
     void AnimGraphStateMachine::ReserveTransitions(size_t numTransitions)
     {

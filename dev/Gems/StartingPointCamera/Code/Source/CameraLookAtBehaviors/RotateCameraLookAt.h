@@ -16,6 +16,7 @@
 #include <AzCore/std/string/string.h>
 #include <GameplayEventBus.h>
 #include "StartingPointCamera/StartingPointCameraConstants.h"
+#include <AzCore/Memory/SystemAllocator.h>
 
 namespace Camera
 {
@@ -33,6 +34,7 @@ namespace Camera
     public:
         ~RotateCameraLookAt() override = default;
         AZ_RTTI(RotateCameraLookAt, "{B72C5BE7-2DAF-412B-BBBB-F216B3DFB9A0}", ICameraLookAtBehavior);
+        AZ_CLASS_ALLOCATOR(RotateCameraLookAt, AZ::SystemAllocator, 0); ///< Use AZ::SystemAllocator, otherwise a CryEngine allocator will be used. This will cause the Asset Processor to crash when this object is deleted, because of the wrong uninitialisation order
         static void Reflect(AZ::ReflectContext* reflection);
 
         //////////////////////////////////////////////////////////////////////////

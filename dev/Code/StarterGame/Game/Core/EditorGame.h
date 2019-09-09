@@ -30,16 +30,17 @@ namespace LYGame
 
         //////////////////////////////////////////////////////////////////////////
         //! IEditorGame
-        virtual bool Init(ISystem* system, IGameToEditorInterface* gameToEditorInterface) override;
-        virtual void Shutdown() override;
-        virtual bool SetGameMode(bool isInGame) override;
-        virtual IEntity* GetPlayer() override;
-        virtual void SetPlayerPosAng(Vec3 position, Vec3 viewDirection) override;
-        virtual void HidePlayer(bool hide) override;
-        virtual void OnBeforeLevelLoad() override;
-        virtual void OnAfterLevelLoad(const char* levelName, const char* levelFolder) override;
-        virtual IFlowSystem* GetIFlowSystem() override;
-        virtual IGameTokenSystem* GetIGameTokenSystem() override;
+        bool Init(ISystem* system, IGameToEditorInterface* gameToEditorInterface) override;
+        void Shutdown() override;
+        bool SetGameMode(bool isInGame) override;
+        IEntity* GetPlayer() override;
+        void SetPlayerPosAng(Vec3 position, Vec3 viewDirection) override;
+        void HidePlayer(bool hide) override;
+        void OnBeforeLevelLoad() override;
+        void OnAfterLevelLoad(const char* levelName, const char* levelFolder) override;
+        void OnCloseLevel() override;
+        IFlowSystem* GetIFlowSystem() override;
+        IGameTokenSystem* GetIGameTokenSystem() override;
         //////////////////////////////////////////////////////////////////////////
 
     protected:

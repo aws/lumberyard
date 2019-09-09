@@ -9,6 +9,7 @@ import CloudCanvas
 import service
 
 from cgf_utils import aws_utils
+from cgf_utils import custom_resource_utils
 
 # import errors
 #
@@ -18,10 +19,10 @@ from cgf_utils import aws_utils
 #
 # Any other exception results in HTTP 500 with a generic internal service error message.
 
-log_db = CloudCanvas.get_setting('LogDB')
+log_db = custom_resource_utils.get_embedded_physical_id(CloudCanvas.get_setting('LogDB'))
 dynamo_client = boto3.client('dynamodb')
 
-kvs_table = CloudCanvas.get_setting('KVS')
+kvs_table = custom_resource_utils.get_embedded_physical_id(CloudCanvas.get_setting('KVS'))
 active_workflow_key = 'active_workflow'
 
 @service.api

@@ -112,20 +112,71 @@ namespace AzToolsFramework
     AZ::EntityId GetEntityIdForSortInfo(const AZ::EntityId parentId);
 
     void AddEntityIdToSortInfo(const AZ::EntityId parentId, const AZ::EntityId childId, bool forceAddToBack = false);
+    void AddEntityIdToSortInfo(const AZ::EntityId parentId, const AZ::EntityId childId, const AZ::EntityId beforeEntity);
 
-    void RecoverEntitySortInfo(const AZ::EntityId parentId, const AZ::EntityId childId, AZ::u64 sortIndex);
+    // returns true if the restore modified the sort order, false otherwise
+    bool RecoverEntitySortInfo(const AZ::EntityId parentId, const AZ::EntityId childId, AZ::u64 sortIndex);
 
     void RemoveEntityIdFromSortInfo(const AZ::EntityId parentId, const AZ::EntityId childId);
 
-    void SetEntityChildOrder(const AZ::EntityId parentId, const EntityIdList& children);
+    // returns true if the order was updated, false otherwise
+    bool SetEntityChildOrder(const AZ::EntityId parentId, const EntityIdList& children);
 
     EntityIdList GetEntityChildOrder(const AZ::EntityId parentId);
 
-    void GetEntityLocationInHierarchy(const AZ::EntityId& entityId, std::list<AZ::u64>& location);
+    void GetEntityLocationInHierarchy(const AZ::EntityId& entityId, AZStd::list<AZ::u64>& location);
 
     void SortEntitiesByLocationInHierarchy(EntityIdList& entityIds);
 
-    bool EntityHasComponentOfType(const AZ::EntityId& entityId, AZ::Uuid componentType);
+    /// Return root slice containing this entity
+    AZ::SliceComponent* GetEntityRootSlice(AZ::EntityId entityId);
+
+    bool EntityHasComponentOfType(const AZ::EntityId& entityId, AZ::Uuid componentType, bool checkPendingComponents = false, bool checkDisabledComponents = false);
     bool IsComponentWithServiceRegistered(const AZ::Crc32& serviceId);
 
+    /// Clones the passed in set of instantiated entities. Note that this will have unexpected results
+    /// if given any entities that are not instantiated.
+    /// @param entitiesToClone The container of entities to clone.
+    /// @param clonedEntities An output parameter containing the IDs of all cloned entities.
+    /// @return True if anything was cloned, false if no cloning occurred.
+    bool CloneInstantiatedEntities(const EntityIdSet& entitiesToClone, EntityIdSet& clonedEntities);
+
+    /// Clones the passed in set of instantiated entities. Note that this will have unexpected results
+    /// if given any entities that are not instantiated.
+    /// @param entitiesToClone The container of entities to clone.
+    /// @return True if anything was cloned, false if no cloning occurred.
+    inline bool CloneInstantiatedEntities(const EntityIdSet& entitiesToClone)
+    {
+        EntityIdSet unusedClonedEntities;
+        return CloneInstantiatedEntities(entitiesToClone, unusedClonedEntities);
+    }
+
+    /// Remove all Components from the Entity that are not displayed in the Entity Inspector.
+    void RemoveHiddenComponents(AZ::Entity::ComponentArrayType& componentsOnEntity);
+
+    /// Is the entity currently selected.
+    bool IsSelected(AZ::EntityId entityId);
+    /// Is the entity currently selectable in the viewport.
+    bool IsSelectableInViewport(AZ::EntityId entityId);
+
+    /// Entity Lock interface to enable/disable selection in the viewport.
+    /// Setting the editor lock state on a parent will recursively set the flag on all descendants as well. (to match visibility)
+    void SetEntityLockState(AZ::EntityId entityId, bool locked);
+    void ToggleEntityLockState(AZ::EntityId entityId);
+
+    /// Entity Visibility interface to enable/disable rendering in the viewport.
+    /// Setting the editor visibility on a parent will recursively set the flag on all descendants as well.
+    void SetEntityVisibility(AZ::EntityId entityId, bool visible);
+    void ToggleEntityVisibility(AZ::EntityId entityId);
+
+    /// Determine if an Entity is visible or not in the Editor.
+    /// This call looks at the visibility flag of the entity (GetVisibilityFlag)
+    /// or the state of the layer (AreLayerChildrenVisible) if this entity is a layer.
+    bool IsEntitySetToBeVisible(AZ::EntityId entityId);
+
+    /// Wrap EBus GetWorldTranslation call.
+    AZ::Vector3 GetWorldTranslation(AZ::EntityId entityId);
+
+    /// Wrap EBus GetLocalTranslation call.
+    AZ::Vector3 GetLocalTranslation(AZ::EntityId entityId);
 }; // namespace AzToolsFramework

@@ -111,9 +111,6 @@
         "ios_framework": [
             "security"
         ], 
-        "appletv_framework": [
-            "security"
-        ], 
         "linux_rpath": [
             "$ORIGIN"
         ]
@@ -425,6 +422,7 @@
             ]
         }, 
         "win_x64_vs2017": "@win_x64_vs2015", 
+        "win_x64_clang": "@win_x64_vs2015", 
         "darwin_x64": {
             "sharedlibpath_debug": [
                 "lib/mac/Debug"
@@ -622,10 +620,10 @@
         }, 
         "durango_vs2015": {
             "importlibpath_debug": [
-                "bin/durango/171100/Debug"
+                "bin/durango/180702/Debug"
             ], 
             "importlibpath_release": [
-                "bin/durango/171100/Release"
+                "bin/durango/180702/Release"
             ], 
             "aws_cpp_sdk_all_shared/import": [
                 "${aws_cpp_sdk_all}.lib"
@@ -667,10 +665,10 @@
                 "${aws_cpp_sdk_identity_metrics}.lib"
             ], 
             "sharedlibpath_debug": [
-                "bin/durango/171100/Debug"
+                "bin/durango/180702/Debug"
             ], 
             "sharedlibpath_release": [
-                "bin/durango/171100/Release"
+                "bin/durango/180702/Release"
             ], 
             "aws_cpp_sdk_all_shared/shared": [
                 "${aws_cpp_sdk_all}.dll"

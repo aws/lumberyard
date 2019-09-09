@@ -55,7 +55,7 @@ private:
         IRenderNode* m_pRndNode;
         IPhysicalEntity* m_pEntity;
     };
-    static std::vector<PhysVisAreaUpdate> m_physVisAreaUpdateVector;
+    static StaticInstance<std::vector<PhysVisAreaUpdate>> m_physVisAreaUpdateVector;
 };
 
 #endif // CRYINCLUDE_CRYENTITYSYSTEM_PHYSICSEVENTLISTENER_H

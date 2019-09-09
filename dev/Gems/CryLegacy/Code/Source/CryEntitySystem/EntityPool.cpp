@@ -101,8 +101,6 @@ bool CEntityPool::CreatePool(const CEntityPoolDefinition& definition)
 
     assert(!gEnv->IsEditor());
 
-    MEMSTAT_CONTEXT_FMT(EMemStatContextTypes::MSC_Other, EMemStatContextFlags::MSF_Instance, "Create Pool %s", definition.GetName().c_str());
-
     bool bResult = false;
 
     m_sDefaultClass = definition.GetDefaultClass();
@@ -213,8 +211,6 @@ bool CEntityPool::CreatePoolEntity(CEntity*& pOutEntity, bool bAddToInactiveList
     LOADING_TIME_PROFILE_SECTION(GetISystem());
 
     assert(!gEnv->IsEditor());
-
-    MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_Other, EMemStatContextFlags::MSF_Instance, "Create Pool Entity");
 
     bool bResult = false;
 

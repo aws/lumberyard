@@ -26,6 +26,8 @@ public:
         HierarchyItemRawPtrList& selectedItems,
         uint32 flags);
 
+    void DrawHover(Draw2dHelper& draw2d, AZ::EntityId hoverElement);
+
 private:
 
     std::unique_ptr< ViewportIcon > m_highlightIconSelected;

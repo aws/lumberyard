@@ -12,120 +12,85 @@
 
 #include <GridMate/Replica/Interest/BitmaskInterestHandler.h>
 
-#include <GridMate/Replica/ReplicaChunk.h>
 #include <GridMate/Replica/Interpolators.h>
 #include <GridMate/Replica/Replica.h>
 #include <GridMate/Replica/ReplicaFunctions.h>
 #include <GridMate/Replica/ReplicaMgr.h>
-#include <GridMate/Replica/RemoteProcedureCall.h>
 
 #include <GridMate/Replica/Interest/InterestManager.h>
 
 namespace GridMate
 {
-    class BitmaskInterestChunk
-        : public ReplicaChunk
+
+    void BitmaskInterestChunk::OnReplicaActivate(const ReplicaContext& rc) 
     {
-    public:
-        GM_CLASS_ALLOCATOR(BitmaskInterestChunk);
-
-        // ReplicaChunk
-        typedef AZStd::intrusive_ptr<BitmaskInterestChunk> Ptr;
-        bool IsReplicaMigratable() override { return false; }
-        static const char* GetChunkName() { return "BitmaskInterestChunk"; }
-        bool IsBroadcast() { return true; }
-        ///////////////////////////////////////////////////////////////////////////
-
-
-        BitmaskInterestChunk()
-            : AddRuleRpc("AddRule")
-            , RemoveRuleRpc("RemoveRule")
-            , UpdateRuleRpc("UpdateRule")
-            , AddRuleForPeerRpc("AddRuleForPeerRpc")
-            , m_interestHandler(nullptr)
+        m_interestHandler = static_cast<BitmaskInterestHandler*>(rc.m_rm->GetUserContext(AZ_CRC("BitmaskInterestHandler", 0x5bf5d75b)));
+        AZ_Warning("GridMate", m_interestHandler != nullptr, "No bitmask interest handler in the user context");
+        if (m_interestHandler)
         {
+            m_interestHandler->OnNewRulesChunk(this, rc.m_peer);
+        }
+    }
 
+    void BitmaskInterestChunk::OnReplicaDeactivate(const ReplicaContext& rc) 
+    {
+        if (rc.m_peer && m_interestHandler)
+        {
+            m_interestHandler->OnDeleteRulesChunk(this, rc.m_peer);
+        }
+    }
+
+    bool BitmaskInterestChunk::AddRuleFn(RuleNetworkId netId, InterestBitmask bits, const RpcContext& ctx)
+    {
+        if (IsProxy())
+        {
+            auto rulePtr = m_interestHandler->CreateRule(ctx.m_sourcePeer);
+            rulePtr->Set(bits);
+            m_rules.insert(AZStd::make_pair(netId, rulePtr));
         }
 
-        void OnReplicaActivate(const ReplicaContext& rc) override
+        return true;
+    }
+
+    bool BitmaskInterestChunk::RemoveRuleFn(RuleNetworkId netId, const RpcContext&)
+    {
+        if (IsProxy())
         {
-            m_interestHandler = static_cast<BitmaskInterestHandler*>(rc.m_rm->GetUserContext(AZ_CRC("BitmaskInterestHandler", 0x5bf5d75b)));
-            AZ_Warning("GridMate", m_interestHandler != nullptr, "No bitmask interest handler in the user context");
-            if (m_interestHandler)
+            m_rules.erase(netId);
+        }
+
+        return true;
+    }
+
+    bool BitmaskInterestChunk::UpdateRuleFn(RuleNetworkId netId, InterestBitmask bits, const RpcContext&)
+    {
+        if (IsProxy())
+        {
+            auto it = m_rules.find(netId);
+            if (it != m_rules.end())
             {
-                m_interestHandler->OnNewRulesChunk(this, rc.m_peer);
+                it->second->Set(bits);
             }
         }
 
-        void OnReplicaDeactivate(const ReplicaContext& rc) override
+        return true;
+    }
+
+    bool BitmaskInterestChunk::AddRuleForPeerFn(RuleNetworkId netId, PeerId peerId, InterestBitmask bitmask, const RpcContext&)
+    {
+        BitmaskInterestChunk::Ptr peerChunk = m_interestHandler->FindRulesChunkByPeerId(peerId);
+        if (peerChunk)
         {
-            if (rc.m_peer && m_interestHandler)
+            auto it = peerChunk->m_rules.find(netId);
+            if (it == peerChunk->m_rules.end())
             {
-                m_interestHandler->OnDeleteRulesChunk(this, rc.m_peer);
+                auto rulePtr = m_interestHandler->CreateRule(peerId);
+                peerChunk->m_rules.insert(AZStd::make_pair(netId, rulePtr));
+                rulePtr->Set(bitmask);
             }
         }
-
-        bool AddRuleFn(RuleNetworkId netId, InterestBitmask bits, const RpcContext& ctx)
-        {
-            if (IsProxy())
-            {
-                auto rulePtr = m_interestHandler->CreateRule(ctx.m_sourcePeer);
-                rulePtr->Set(bits);
-                m_rules.insert(AZStd::make_pair(netId, rulePtr));
-            }
-
-            return true;
-        }
-
-        bool RemoveRuleFn(RuleNetworkId netId, const RpcContext&)
-        {
-            if (IsProxy())
-            {
-                m_rules.erase(netId);
-            }
-
-            return true;
-        }
-
-        bool UpdateRuleFn(RuleNetworkId netId, InterestBitmask bits, const RpcContext&)
-        {
-            if (IsProxy())
-            {
-                auto it = m_rules.find(netId);
-                if (it != m_rules.end())
-                {
-                    it->second->Set(bits);
-                }
-            }
-
-            return true;
-        }
-
-        bool AddRuleForPeerFn(RuleNetworkId netId, PeerId peerId, InterestBitmask bitmask, const RpcContext&)
-        {
-            BitmaskInterestChunk* peerChunk = m_interestHandler->FindRulesChunkByPeerId(peerId);
-            if (peerChunk)
-            {
-                auto it = peerChunk->m_rules.find(netId);
-                if (it == peerChunk->m_rules.end())
-                {
-                    auto rulePtr = m_interestHandler->CreateRule(peerId);
-                    peerChunk->m_rules.insert(AZStd::make_pair(netId, rulePtr));
-                    rulePtr->Set(bitmask);
-                }
-            }
-            return false;
-        }
-
-        Rpc<RpcArg<RuleNetworkId>, RpcArg<InterestBitmask>>::BindInterface<BitmaskInterestChunk, &BitmaskInterestChunk::AddRuleFn> AddRuleRpc;
-        Rpc<RpcArg<RuleNetworkId>>::BindInterface<BitmaskInterestChunk, &BitmaskInterestChunk::RemoveRuleFn> RemoveRuleRpc;
-        Rpc<RpcArg<RuleNetworkId>, RpcArg<InterestBitmask>>::BindInterface<BitmaskInterestChunk, &BitmaskInterestChunk::UpdateRuleFn> UpdateRuleRpc;
-
-        Rpc<RpcArg<RuleNetworkId>, RpcArg<PeerId>, RpcArg<InterestBitmask>>::BindInterface<BitmaskInterestChunk, &BitmaskInterestChunk::AddRuleForPeerFn> AddRuleForPeerRpc;
-
-        unordered_map<RuleNetworkId, BitmaskInterestRule::Ptr> m_rules;
-        BitmaskInterestHandler* m_interestHandler;
-    };
+        return false;
+    }
     ///////////////////////////////////////////////////////////////////////////
 
 
@@ -182,10 +147,6 @@ namespace GridMate
         , m_lastRuleNetId(0)
         , m_rulesReplica(nullptr)
     {
-        if (!ReplicaChunkDescriptorTable::Get().FindReplicaChunkDescriptor(ReplicaChunkClassId(BitmaskInterestChunk::GetChunkName())))
-        {
-            ReplicaChunkDescriptorTable::Get().RegisterChunkType<BitmaskInterestChunk>();
-        }
     }
 
     BitmaskInterestRule::Ptr BitmaskInterestHandler::CreateRule(PeerId peerId)
@@ -256,7 +217,7 @@ namespace GridMate
         m_dirtyAttributes.insert(attrib);
     }
 
-    void BitmaskInterestHandler::OnNewRulesChunk(BitmaskInterestChunk* chunk, ReplicaPeer* peer)
+    void BitmaskInterestHandler::OnNewRulesChunk(BitmaskInterestChunk::Ptr chunk, ReplicaPeer* peer)
     {
         if (chunk != m_rulesReplica) // non-local
         {
@@ -269,7 +230,7 @@ namespace GridMate
         }
     }
 
-    void BitmaskInterestHandler::OnDeleteRulesChunk(BitmaskInterestChunk* chunk, ReplicaPeer* peer)
+    void BitmaskInterestHandler::OnDeleteRulesChunk(BitmaskInterestChunk::Ptr chunk, ReplicaPeer* peer)
     {
         (void)chunk;
         m_peerChunks.erase(peer->GetId());
@@ -281,7 +242,7 @@ namespace GridMate
         return m_rulesReplica->GetReplicaId() | (static_cast<AZ::u64>(m_lastRuleNetId) << 32);
     }
 
-    BitmaskInterestChunk* BitmaskInterestHandler::FindRulesChunkByPeerId(PeerId peerId)
+    BitmaskInterestChunk::Ptr BitmaskInterestHandler::FindRulesChunkByPeerId(PeerId peerId)
     {
         auto it = m_peerChunks.find(peerId);
         if (it == m_peerChunks.end())

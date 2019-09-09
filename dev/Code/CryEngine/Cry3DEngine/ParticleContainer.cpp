@@ -771,6 +771,9 @@ void CParticleContainer::UpdateParticleStates(SParticleUpdateContext& context)
     }
     for (ParticleList<CParticle>::iterator pPart(m_Particles); pPart; )
     {
+        // Update the particle before the IsAlive check so it can be removed immediately if it is killed by the update
+        pPart->Update(context, context.fUpdateTime);
+
         if (!pPart->IsAlive(fLifetimeCheck))
         {
             if (m_pParams->bRemainWhileVisible)
@@ -784,10 +787,6 @@ void CParticleContainer::UpdateParticleStates(SParticleUpdateContext& context)
             {
                 ERASE_PARTICLE(pPart)
             }
-        }
-        else
-        {
-            pPart->Update(context, context.fUpdateTime);
         }
 
         if (!context.aParticleSort.empty() && !params.IsConnectedParticles())
@@ -1091,11 +1090,11 @@ void CParticleContainer::Render(SRendParams const& RenParams, SPartRenderParams 
         // Set sort distance based on params and bounding box.
         if (pParams->fSortBoundsScale == PRParams.m_fMainBoundsScale)
         {
-            job.pRenderObject->m_fDistance = PRParams.m_fCamDistance;
+            job.pRenderObject->m_fDistance = PRParams.m_fCamDistance * passInfo.GetZoomFactor();
         }
         else
         {
-            job.pRenderObject->m_fDistance = GetMain().GetNearestDistance(passInfo.GetCamera().GetPosition(), pParams->fSortBoundsScale);
+            job.pRenderObject->m_fDistance = GetMain().GetNearestDistance(passInfo.GetCamera().GetPosition(), pParams->fSortBoundsScale) * passInfo.GetZoomFactor();
         }
         job.pRenderObject->m_fDistance += pParams->fSortOffset;
         job.pRenderObject->m_ParticleObjFlags = (pParams->bHalfRes ? CREParticle::ePOF_HALF_RES : 0)
@@ -1108,8 +1107,7 @@ void CParticleContainer::Render(SRendParams const& RenParams, SPartRenderParams 
         if (pParams->pMaterial)
         {
             _smart_ptr<IMaterial> material = pParams->pMaterial;
-            SShaderItem& shaderItem = material->GetShaderItem();
-
+            SShaderItem shaderItem = material->GetShaderItem();
             if (shaderItem.m_pShader == nullptr)
             {
                 //Attempt retrieving sub-materials if the base material was invalid
@@ -1138,9 +1136,11 @@ void CParticleContainer::Render(SRendParams const& RenParams, SPartRenderParams 
                     //Issue a warning if we're using the default sub-material's shader item
                     AZ_Warning("Particle Container", false, "No valid shader item was found for %s or any of its sub-materials. Using default material.", material->GetName());
                 }
+
+                material->SetShaderItem(shaderItem);
             }
 
-            job.pShaderItem = &shaderItem; 
+            job.pShaderItem = &material->GetShaderItem();
             if (job.pShaderItem->m_pShader && (job.pShaderItem->m_pShader->GetFlags() & EF_REFRACTIVE))
             {
                 SetScreenBounds(passInfo.GetCamera(), pOD->m_screenBounds);

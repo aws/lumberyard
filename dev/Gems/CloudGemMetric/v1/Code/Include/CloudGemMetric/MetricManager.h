@@ -43,10 +43,11 @@ namespace CloudGemMetric
     {
     public:
         MetricManager(DefaultAttributesGenerator* defaultAttributesGenerator);
-        ~MetricManager();
+        ~MetricManager() = default;
 
         // Init must be called before GetMetricsConfigsFromServerAsync can be called
         bool Init();
+        void Shutdown();
 
         void GetMetricsConfigsFromServerAsync();
 

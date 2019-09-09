@@ -13,37 +13,51 @@ import os
 import sys
 import subprocess
 import logging
+import aztest.log as lg
 
-import aztest.common
-
+from aztest.common import subprocess_with_timeout, SubprocessTimeoutException, clean_timestamp
 from datetime import datetime
 
 log = logging.getLogger(__name__)
 
-PYTEST_RESULT_FILENAME = "pytest_results"
-XML_EXTENSION = ".xml"
+RESULT_XML_FILENAME = "pytest_results.xml"
+ARTIFACT_FOLDER = "pytest_results"
 
 
 def run_pytest(known_args, extra_args):
     """
     Triggers test discovery and execution through pytest
     :param known_args: Arguments recognized by the parser and handled here
-        - output_path: the location to save XML results
     :param extra_args: Additional arguments, passed directly to pytest
     :raises: CalledProcessError if pytest detects failures (returning a non-zero return code)
+    :raises: SubprocessTimeoutException if pytest fails to return within timeout
     """
-    xunit_command = _get_xunit_command(known_args.output_path)
-    argument_call = [sys.executable, "-m", "pytest", "-c", "lmbr_test_pytest.ini", xunit_command]
+    lg.setup_logging(level=known_args.verbosity)
+    timeout_sec = known_args.module_timeout
+    xunit_flags = _get_xunit_flags(known_args.output_path)
+    argument_call = [sys.executable, "-B", "-m", "pytest", "--cache-clear", "-c",
+                     "lmbr_test_pytest.ini"]
+    argument_call.extend(xunit_flags)
     argument_call.extend(extra_args)
-    log.info("Invoking pytest")
+    log.info("Invoking pytest with a timeout of {} seconds".format(timeout_sec))
     log.info(argument_call)
 
-    # raise on failure
-    subprocess.check_call(argument_call)
+    try:
+        return_code = subprocess_with_timeout(argument_call, timeout_sec)
+    except SubprocessTimeoutException as ste:
+        log.error("Pytest execution timed out after {} seconds".format(timeout_sec))
+
+    if return_code != 0:
+        log.error("Pytest tests failed with exit code: {}".format(return_code))
+        # raise on failure
+        raise subprocess.CalledProcessError(return_code, argument_call)
 
 
-def _get_xunit_command(output_path):
-    timestamp = aztest.common.clean_timestamp(datetime.now().isoformat())
-    full_filename = "{}_{}{}".format(PYTEST_RESULT_FILENAME, timestamp, XML_EXTENSION)
-    output_file = os.path.join(output_path, full_filename)
-    return "--junitxml={}".format(output_file)
+def _get_xunit_flags(output_path):
+    timestamp = clean_timestamp(datetime.now().isoformat())
+    output_folder = os.path.join(output_path, timestamp, ARTIFACT_FOLDER)
+    results_file = os.path.join(output_folder, RESULT_XML_FILENAME)
+
+    log.info("Setting results folder to {}".format(output_folder))
+    return ["--junitxml={}".format(results_file),
+            "--logs_path={}".format(output_folder)]

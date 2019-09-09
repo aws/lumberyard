@@ -70,14 +70,11 @@ export class GemIndexComponent implements OnInit, OnDestroy{
 
         this.subscriptions.push(this.aws.context.project.settings.subscribe(settings => {
             let deploymentCount = Object.keys(settings.deployment).length
-            if (deploymentCount == 0)
+            if (deploymentCount === 0)
                 this.gems.isLoading = false;
         }));
 
-        // If there is already an active deployment use that and initialize the gems in the gem index
-        if (this.aws.context.project.activeDeployment) {
-            this.loadGems(this.aws.context.project.activeDeployment);
-        }
+        this.loadGems(this.aws.context.project.activeDeployment);
     }
 
     private isDeploymentLoading = (): boolean => {
@@ -90,8 +87,8 @@ export class GemIndexComponent implements OnInit, OnDestroy{
     private loadGems(activeDeployment) {
         //you must initialize the component with isLoading = true so that we do not see the "No gems present" message
         this.gems.isLoading = true;
-        this._loader = this.definition.isProd ? this._loader = new AwsCloudGemLoader(this.definition, this.aws, this.http) : new LocalCloudGemLoader(this.definition, this.http);        
-                
+        this._loader = this.definition.isProd ? this._loader = new AwsCloudGemLoader(this.definition, this.aws, this.http) : new LocalCloudGemLoader(this.definition, this.http);
+
         if (!activeDeployment) {
             //this is used for removing the loading icon when no deployments exist.
             this.gems.isLoading = false;
@@ -100,7 +97,7 @@ export class GemIndexComponent implements OnInit, OnDestroy{
 
         this._subscribedDeployments.push(activeDeployment.settings.name);
         this.subscriptions.push(activeDeployment.resourceGroup.subscribe(rgs => {
-            if (rgs === undefined || rgs.length == 0) {               
+            if (rgs === undefined || rgs.length == 0) {
                 if (!activeDeployment.isLoading) {
                     //this is used for removing the loading icon when no cloud gems exist in the project stack.
                     this.gems.isLoading = false;
@@ -128,14 +125,14 @@ export class GemIndexComponent implements OnInit, OnDestroy{
     }
 
 
-    private handleLoadedGem(gem: Gemifiable): void {        
+    private handleLoadedGem(gem: Gemifiable): void {
         if (gem === undefined) {
             return;
         }
         this.gems.isLoading = false;
         this.zone.run(() => {
             this.gems.addGem(gem);
-            this.navigateToSpecificPage();       
+            this.navigateToSpecificPage();
         })
     }
 

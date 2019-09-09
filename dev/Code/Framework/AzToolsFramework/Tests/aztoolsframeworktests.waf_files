@@ -1,0 +1,20 @@
+{
+    "none": {
+        "Root": [
+            "Main.cpp"
+        ],
+        "AzToolsFramework": [
+            "ComponentModeTests.cpp",
+            "EditorTransformComponentSelectionTests.cpp",
+            "LogLines.cpp",
+            "ManipulatorBoundsTests.cpp",
+            "UndoStack.cpp"
+        ],
+        "Entity": [
+          "Entity/EditorEntityContextComponentTests.cpp"
+        ],
+        "ToolsComponents": [
+            "ToolsComponents/EditorLayerComponentTests.cpp"
+        ]
+    }
+}

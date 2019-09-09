@@ -13,16 +13,22 @@ package com.amazon.lumberyard;
 
 
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.app.NativeActivity;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageInfo;
+import android.content.pm.PackageManager;
 import android.content.pm.PackageManager.NameNotFoundException;
 import android.content.res.AssetManager;
 import android.content.res.Resources;
 import android.graphics.Point;
+import android.Manifest;
 import android.media.AudioManager;
 import android.os.Bundle;
 import android.os.Looper;
+import android.support.v4.app.ActivityCompat;
+import android.support.v4.content.ContextCompat;
 import android.util.Log;
 import android.view.Display;
 import android.view.Gravity;
@@ -31,6 +37,7 @@ import android.view.View;
 import android.view.WindowManager;
 import android.widget.LinearLayout;
 import android.widget.PopupWindow;
+import android.widget.TextView;
 
 import java.io.File;
 import java.io.InputStream;
@@ -38,6 +45,7 @@ import java.io.IOException;
 import java.lang.InterruptedException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Random;
 
 import com.amazon.lumberyard.io.APKHandler;
 import com.amazon.lumberyard.io.obb.ObbDownloaderActivity;
@@ -46,6 +54,11 @@ import com.amazon.lumberyard.io.obb.ObbDownloaderActivity;
 ////////////////////////////////////////////////////////////////
 public class LumberyardActivity extends NativeActivity
 {
+    ////////////////////////////////////////////////////////////////
+    // Native methods
+    public static native void nativeOnRequestPermissionsResult(boolean granted);
+
+
     ////////////////////////////////////////////////////////////////
     @Override
     public void onBackPressed()
@@ -163,6 +176,52 @@ public class LumberyardActivity extends NativeActivity
         return resources.getBoolean(resourceId);
     }
 
+    ////////////////////////////////////////////////////////////////
+    // Request permissions at runtime.
+    public void RequestPermission(final String permission, final String rationale)
+    {
+        if (ContextCompat.checkSelfPermission(this, permission) != PackageManager.PERMISSION_GRANTED)
+        {
+            Random rand = new Random();
+            m_runtimePermissionRequestCode = rand.nextInt(500);
+            final int requestCode = m_runtimePermissionRequestCode;
+            if (ActivityCompat.shouldShowRequestPermissionRationale(this, permission))
+            {
+                final LumberyardActivity activity = this;
+
+                Runnable uiDialog = new Runnable()
+                {
+                    public void run()
+                    {
+                        AlertDialog.Builder builder = new AlertDialog.Builder(activity);
+                        TextView textView = new TextView(activity);
+                        String title = new String("Reason for requesting " + permission);
+                        textView.setText(title + "\n" + rationale);
+                        builder.setCustomTitle(textView);
+                        builder.setItems(new String[]{"OK"}, new DialogInterface.OnClickListener() {
+                            public void onClick(DialogInterface dialog, int index) {
+                                ActivityCompat.requestPermissions(activity, new String[]{permission}, requestCode);
+                            }
+                        });
+                        AlertDialog dialog = builder.create();
+                        dialog.show();
+                    }
+                };
+    
+                activity.runOnUiThread(uiDialog);
+            }
+            else
+            {
+                ActivityCompat.requestPermissions(this, new String[]{permission}, requestCode);
+            }
+        }
+        else
+        {
+            nativeOnRequestPermissionsResult(true);
+        }
+    }
+
+
     // ----
 
     ////////////////////////////////////////////////////////////////
@@ -265,6 +324,35 @@ public class LumberyardActivity extends NativeActivity
         for (ActivityResultsListener listener : m_activityResultsListeners)
         {
             listener.ProcessActivityResult(requestCode, resultCode, data);
+        }
+    }
+
+    ////////////////////////////////////////////////////////////////
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String permissions[], int[] grantResults)
+    {
+        if (requestCode == m_runtimePermissionRequestCode)
+        {
+            if (grantResults.length > 0)
+            {
+                if (grantResults[0] == PackageManager.PERMISSION_GRANTED)
+                {
+                    Log.d(TAG, "Permission Granted");
+                    nativeOnRequestPermissionsResult(true);
+                }
+                else
+                {
+                    Log.d(TAG, "Permission Denied");
+                    nativeOnRequestPermissionsResult(false);
+                }
+            }
+            else
+            {
+                // Request was cancelled
+                nativeOnRequestPermissionsResult(false);
+            }
+
+            m_runtimePermissionRequestCode = -1;
         }
     }
 
@@ -410,6 +498,8 @@ public class LumberyardActivity extends NativeActivity
 
     private PopupWindow m_slashWindow = null;
     private boolean m_splashShowing = false;
+
+    private int m_runtimePermissionRequestCode = -1;
 
     private List<ActivityResultsListener> m_activityResultsListeners = new ArrayList<ActivityResultsListener>();
     private List<ActivityResult> m_waitingResultList = new ArrayList<ActivityResult>();

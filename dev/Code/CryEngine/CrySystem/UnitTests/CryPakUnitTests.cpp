@@ -14,18 +14,22 @@
 #include <AzTest/AzTest.h>
 #include <CryPak.h>
 
+#include <AzCore/Component/ComponentApplication.h>
 #include <AzCore/IO/SystemFile.h> // for max path decl
 #include <AzCore/std/parallel/thread.h>
 #include <AzCore/std/parallel/semaphore.h>
 #include <CryPakFileIO.h>
 #include <AzCore/std/functional.h> // for function<> in the find files callback.
+#include <AzFramework/IO/LocalFileIO.h>
+
+namespace CryPakUnitTests
+{
 
 #if defined(WIN32) || defined(WIN64)
 
-// Note:  none of the below is really a unit test, its all basic feature tests
-// for critical functionality
-namespace CryPakUnitTests
-{
+    // Note:  none of the below is really a unit test, its all basic feature tests
+    // for critical functionality
+    
     // for fuzzing test, how much work to do?
     static int s_numTrialsToPerform = 200500; // as much we can do in about a second.
 
@@ -1231,7 +1235,290 @@ namespace CryPakUnitTests
         }
         
     }
-}
-
 
 #endif //defined(WIN32) || defined(WIN64)
+
+    // Unit tests for CCryPak::BeautifyPath
+    TEST(CryPakUnitTests, BeautifyPath_AliasedPathMakeLowerTrue_PathIsToLoweredSlashesReplaced)
+    {
+        char nativeSlash = CCryPak::g_cNativeSlash;
+
+        AZStd::string aliasedPath = "@alias@/someDir/SomeFile.EXT";
+        CCryPak::BeautifyPath(aliasedPath.data(), true);
+
+        char expectedPath[AZ_MAX_PATH_LEN];
+        azsnprintf(expectedPath, AZ_MAX_PATH_LEN, "@alias@%csomedir%csomefile.ext", nativeSlash, nativeSlash);
+
+        EXPECT_STREQ(aliasedPath.data(), expectedPath);
+    }
+
+    TEST(CryPakUnitTests, BeautifyPath_AliasedPathMakeLowerFalse_PathNotToLoweredSlashesReplaced)
+    {
+        char nativeSlash = CCryPak::g_cNativeSlash;
+
+        AZStd::string falseMakeLowerPath = "@alias@/someDir/SomeFile.EXT";
+        CCryPak::BeautifyPath(falseMakeLowerPath.data(), false);
+
+        char expectedPath[AZ_MAX_PATH_LEN];
+        azsnprintf(expectedPath, AZ_MAX_PATH_LEN, "@alias@%csomeDir%cSomeFile.EXT", nativeSlash, nativeSlash);
+
+        EXPECT_STREQ(falseMakeLowerPath.data(), expectedPath);
+    }
+
+    TEST(CryPakUnitTests, BeautifyPath_UnaliasedPath_PathIsToLoweredSlashesReplaced)
+    {
+        char nativeSlash = CCryPak::g_cNativeSlash;
+
+        AZStd::string unaliasedPath = "someDir/SomeFile.EXT";
+        CCryPak::BeautifyPath(unaliasedPath.data(), true);
+
+        char expectedPath[AZ_MAX_PATH_LEN];
+        azsnprintf(expectedPath, AZ_MAX_PATH_LEN, "somedir%csomefile.ext", nativeSlash);
+
+        EXPECT_STREQ(unaliasedPath.data(), expectedPath);
+    }
+
+    TEST(CryPakUnitTests, BeautifyPath_CaseSensitiveAlias_AliasUnalteredButPathToLowered)
+    {
+        char nativeSlash = CCryPak::g_cNativeSlash;
+
+        AZStd::string caseSensitiveAliasPath = "@ALiAs@/someDir/SomeFile.EXT";
+        CCryPak::BeautifyPath(caseSensitiveAliasPath.data(), true);
+
+        char expectedPath[AZ_MAX_PATH_LEN];
+        azsnprintf(expectedPath, AZ_MAX_PATH_LEN, "@ALiAs@%csomedir%csomefile.ext", nativeSlash, nativeSlash);
+
+        EXPECT_STREQ(caseSensitiveAliasPath.data(), expectedPath);
+    }
+
+    TEST(CryPakUnitTests, BeautifyPath_AbsolutePathMakeLowerTrue_NotToLoweredButSlashesSwitched)
+    {
+        char nativeSlash = CCryPak::g_cNativeSlash;
+#if defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_APPLE_OSX)
+        AZStd::string caseSensitiveAliasPath = "//absolutePath\\someDir\\SomeFile.EXT";
+        CCryPak::BeautifyPath(caseSensitiveAliasPath.data(), true);
+
+        char expectedPath[AZ_MAX_PATH_LEN];
+        azsnprintf(expectedPath, AZ_MAX_PATH_LEN, "//absolutePath%csomeDir%cSomeFile.EXT", nativeSlash, nativeSlash);
+#else // WINDOWS
+        AZStd::string caseSensitiveAliasPath = "C:/absolutePath/someDir/SomeFile.EXT";
+        CCryPak::BeautifyPath(caseSensitiveAliasPath.data(), true);
+
+        char expectedPath[AZ_MAX_PATH_LEN];
+        azsnprintf(expectedPath, AZ_MAX_PATH_LEN, "C:%cabsolutePath%csomeDir%cSomeFile.EXT", nativeSlash, nativeSlash, nativeSlash);
+#endif // defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_APPLE_OSX)
+
+        EXPECT_STREQ(caseSensitiveAliasPath.data(), expectedPath);
+    }
+
+    TEST(CryPakUnitTests, BeautifyPath_EmptyString_ReturnsNullTerminatedEmptyString)
+    {
+        char nativeSlash = CCryPak::g_cNativeSlash;
+
+        AZStd::string emptyPath("");
+        CCryPak::BeautifyPath(emptyPath.data(), true);
+        
+        EXPECT_STREQ(emptyPath.data(), "\0");
+    }
+
+    /*
+    // Commenting this test out since CryPak tests do not support AZ_TEST_START_ASSERTTEST
+    TEST(CryPakUnitTests, BeautifyPath_NullCharPtr_AssertsPathIsNullptr)
+    {
+        char nativeSlash = CCryPak::g_cNativeSlash;
+
+        char* nullPath = nullptr;
+
+        CCryPak::BeautifyPath(nullPath, true);
+    }
+    */
+
+    class CryPakUnitTestsWithAllocators
+        : public ::testing::Test
+    {
+    protected:
+
+        void SetUp() override
+        {
+            AZ::AllocatorInstance<AZ::LegacyAllocator>::Create();
+            AZ::AllocatorInstance<CryStringAllocator>::Create();
+            m_localFileIO = aznew AZ::IO::LocalFileIO();
+            AZ::IO::FileIOBase::SetDirectInstance(m_localFileIO);
+            m_localFileIO->SetAlias(m_firstAlias.c_str(), m_firstAliasPath.c_str());
+            m_localFileIO->SetAlias(m_secondAlias.c_str(), m_secondAliasPath.c_str());
+        }
+
+        void TearDown() override
+        {
+            AZ::IO::FileIOBase::SetDirectInstance(nullptr);
+            delete m_localFileIO;
+            m_localFileIO = nullptr;
+            AZ::AllocatorInstance<CryStringAllocator>::Destroy();
+            AZ::AllocatorInstance<AZ::LegacyAllocator>::Destroy();
+        }
+
+        AZ::IO::FileIOBase* m_localFileIO = nullptr;
+        AZStd::string m_firstAlias = "@devassets@";
+        AZStd::string m_firstAliasPath = "devassets_absolutepath";
+        AZStd::string m_secondAlias = "@assets@";
+        AZStd::string m_secondAliasPath = "assets_absolutepath";
+    };
+
+    // ConvertAbsolutePathToAliasedPath tests are built to verify existing behavior doesn't change.
+    // Tt's a legacy function and the actual intended behavior is unknown, so these are black box unit tests.
+    TEST_F(CryPakUnitTestsWithAllocators, ConvertAbsolutePathToAliasedPath_NullString_ReturnsSuccess)
+    {
+        AZ::Outcome<string, AZStd::string> conversionResult = CryPakInternal::ConvertAbsolutePathToAliasedPath(nullptr);
+        EXPECT_TRUE(conversionResult.IsSuccess());
+        // ConvertAbsolutePathToAliasedPath returns string(sourcePath) if sourcePath is nullptr.
+        string fromNull(nullptr);
+        EXPECT_EQ(conversionResult.GetValue().compare(fromNull),0);
+    }
+
+    TEST_F(CryPakUnitTestsWithAllocators, ConvertAbsolutePathToAliasedPath_NoAliasInSource_ReturnsSource)
+    {
+        AZStd::string sourceString("NoAlias");
+        AZ::Outcome<string, AZStd::string> conversionResult = CryPakInternal::ConvertAbsolutePathToAliasedPath(sourceString.c_str());
+        EXPECT_TRUE(conversionResult.IsSuccess());
+        // ConvertAbsolutePathToAliasedPath returns sourceString if there is no alias in the source.
+        EXPECT_EQ(conversionResult.GetValue().compare(sourceString.c_str()), 0);
+    }
+
+    TEST_F(CryPakUnitTestsWithAllocators, ConvertAbsolutePathToAliasedPath_NullAliasToLookFor_ReturnsSource)
+    {
+        AZStd::string sourceString("NoAlias");
+        AZ::Outcome<string, AZStd::string> conversionResult = 
+            CryPakInternal::ConvertAbsolutePathToAliasedPath(sourceString.c_str(), nullptr);
+        EXPECT_TRUE(conversionResult.IsSuccess());
+        EXPECT_EQ(conversionResult.GetValue().compare(sourceString.c_str()), 0);
+    }
+
+    TEST_F(CryPakUnitTestsWithAllocators, ConvertAbsolutePathToAliasedPath_NullAliasToReplaceWith_ReturnsSource)
+    {
+        AZStd::string sourceString("NoAlias");
+        AZ::Outcome<string, AZStd::string> conversionResult =
+            CryPakInternal::ConvertAbsolutePathToAliasedPath(sourceString.c_str(), "@SomeAlias", nullptr);
+        EXPECT_TRUE(conversionResult.IsSuccess());
+        EXPECT_EQ(conversionResult.GetValue().compare(sourceString.c_str()), 0);
+    }
+
+    TEST_F(CryPakUnitTestsWithAllocators, ConvertAbsolutePathToAliasedPath_NullAliases_ReturnsSource)
+    {
+        AZStd::string sourceString("NoAlias");
+        AZ::Outcome<string, AZStd::string> conversionResult = 
+            CryPakInternal::ConvertAbsolutePathToAliasedPath(sourceString.c_str(), nullptr, nullptr);
+        EXPECT_TRUE(conversionResult.IsSuccess());
+        EXPECT_EQ(conversionResult.GetValue().compare(sourceString.c_str()), 0);
+    }
+
+    TEST_F(CryPakUnitTestsWithAllocators, ConvertAbsolutePathToAliasedPath_AbsPathInSource_ReturnsReplacedAlias)
+    {
+        // ConvertAbsolutePathToAliasedPath only replaces data if GetDirectInstance is valid.
+        EXPECT_TRUE(AZ::IO::FileIOBase::GetDirectInstance() != nullptr);
+        
+        const char* fullPath = AZ::IO::FileIOBase::GetDirectInstance()->GetAlias(m_firstAlias.c_str());
+        AZStd::string sourceString = AZStd::string::format("%sSomeStringWithAlias", fullPath);
+        AZStd::string expectedResult = AZStd::string::format("%s" CRY_NATIVE_PATH_SEPSTR "SomeStringWithAlias", m_secondAlias.c_str());
+
+        AZ::Outcome<string, AZStd::string> conversionResult = CryPakInternal::ConvertAbsolutePathToAliasedPath(
+            sourceString.c_str(), 
+            m_firstAlias.c_str(),  // find any instance of FirstAlias in sourceString
+            m_secondAlias.c_str());  // replace it with SecondAlias
+        EXPECT_TRUE(conversionResult.IsSuccess());
+        EXPECT_STREQ(conversionResult.GetValue().c_str(), expectedResult.c_str());
+    }
+
+    TEST_F(CryPakUnitTestsWithAllocators, ConvertAbsolutePathToAliasedPath_AliasInSource_ReturnsReplacedAlias)
+    {
+        // ConvertAbsolutePathToAliasedPath only replaces data if GetDirectInstance is valid.
+        EXPECT_TRUE(AZ::IO::FileIOBase::GetDirectInstance() != nullptr);
+
+        AZStd::string sourceString = AZStd::string::format("%sSomeStringWithAlias", m_firstAlias.c_str());
+        AZStd::string expectedResult = AZStd::string::format("%s" CRY_NATIVE_PATH_SEPSTR "SomeStringWithAlias", m_secondAlias.c_str());
+        
+        AZ::Outcome<string, AZStd::string> conversionResult = CryPakInternal::ConvertAbsolutePathToAliasedPath(
+            sourceString.c_str(), 
+            m_firstAlias.c_str(),  // find any instance of FirstAlias in sourceString
+            m_secondAlias.c_str());  // replace it with SecondAlias
+        EXPECT_TRUE(conversionResult.IsSuccess());
+        EXPECT_STREQ(conversionResult.GetValue().c_str(), expectedResult.c_str());
+    }
+
+    TEST_F(CryPakUnitTestsWithAllocators, ConvertAbsolutePathToAliasedPath_AbsPathInSource_DOSSlashInSource_ReturnsReplacedAlias)
+    {
+        // ConvertAbsolutePathToAliasedPath only replaces data if GetDirectInstance is valid.
+        EXPECT_TRUE(AZ::IO::FileIOBase::GetDirectInstance() != nullptr);
+        
+        const char* fullPath = AZ::IO::FileIOBase::GetDirectInstance()->GetAlias(m_firstAlias.c_str());
+        AZStd::string sourceString = AZStd::string::format("%s" DOS_PATH_SEP_STR "SomeStringWithAlias", fullPath);
+        AZStd::string expectedResult = AZStd::string::format("%s" CRY_NATIVE_PATH_SEPSTR "SomeStringWithAlias", m_secondAlias.c_str());
+        AZ::Outcome<string, AZStd::string> conversionResult = CryPakInternal::ConvertAbsolutePathToAliasedPath(
+            sourceString.c_str(), 
+            m_firstAlias.c_str(),  // find any instance of FirstAlias in sourceString
+            m_secondAlias.c_str());  // replace it with SecondAlias
+        EXPECT_TRUE(conversionResult.IsSuccess());
+        EXPECT_STREQ(conversionResult.GetValue().c_str(), expectedResult.c_str());
+    }
+
+    TEST_F(CryPakUnitTestsWithAllocators, ConvertAbsolutePathToAliasedPath_AbsPathInSource_UNIXSlashInSource_ReturnsReplacedAlias)
+    {
+        // ConvertAbsolutePathToAliasedPath only replaces data if GetDirectInstance is valid.
+        EXPECT_TRUE(AZ::IO::FileIOBase::GetDirectInstance() != nullptr);
+
+        const char* fullPath = AZ::IO::FileIOBase::GetDirectInstance()->GetAlias(m_firstAlias.c_str());
+        AZStd::string sourceString = AZStd::string::format("%s" UNIX_PATH_SEP_STR "SomeStringWithAlias", fullPath);
+        AZStd::string expectedResult = AZStd::string::format("%s" CRY_NATIVE_PATH_SEPSTR "SomeStringWithAlias", m_secondAlias.c_str());
+        AZ::Outcome<string, AZStd::string> conversionResult = CryPakInternal::ConvertAbsolutePathToAliasedPath(
+            sourceString.c_str(), 
+            m_firstAlias.c_str(),  // find any instance of FirstAlias in sourceString
+            m_secondAlias.c_str());  // replace it with SecondAlias
+        EXPECT_TRUE(conversionResult.IsSuccess());
+        EXPECT_STREQ(conversionResult.GetValue().c_str(), expectedResult.c_str());
+    }
+
+    TEST_F(CryPakUnitTestsWithAllocators, ConvertAbsolutePathToAliasedPath_AliasInSource_DOSSlashInSource_ReturnsReplacedAlias)
+    {
+        // ConvertAbsolutePathToAliasedPath only replaces data if GetDirectInstance is valid.
+        EXPECT_TRUE(AZ::IO::FileIOBase::GetDirectInstance() != nullptr);
+
+        AZStd::string sourceString = AZStd::string::format("%s" DOS_PATH_SEP_STR "SomeStringWithAlias", m_firstAlias.c_str());
+        AZStd::string expectedResult = AZStd::string::format("%s" CRY_NATIVE_PATH_SEPSTR "SomeStringWithAlias", m_secondAlias.c_str());
+
+        // sourceString is now (firstAlias)SomeStringWithAlias
+
+        AZ::Outcome<string, AZStd::string> conversionResult = CryPakInternal::ConvertAbsolutePathToAliasedPath(
+            sourceString.c_str(), 
+            m_firstAlias.c_str(),  // find any instance of FirstAlias in sourceString
+            m_secondAlias.c_str());  // replace it with SecondAlias
+        EXPECT_TRUE(conversionResult.IsSuccess());
+        EXPECT_STREQ(conversionResult.GetValue().c_str(), expectedResult.c_str());
+    }
+
+    TEST_F(CryPakUnitTestsWithAllocators, ConvertAbsolutePathToAliasedPath_AliasInSource_UNIXSlashInSource_ReturnsReplacedAlias)
+    {
+        // ConvertAbsolutePathToAliasedPath only replaces data if GetDirectInstance is valid.
+        EXPECT_TRUE(AZ::IO::FileIOBase::GetDirectInstance() != nullptr);
+
+        AZStd::string sourceString = AZStd::string::format("%s" UNIX_PATH_SEP_STR "SomeStringWithAlias", m_firstAlias.c_str());
+        AZStd::string expectedResult = AZStd::string::format("%s" CRY_NATIVE_PATH_SEPSTR "SomeStringWithAlias", m_secondAlias.c_str());
+
+        // sourceString is now (firstAlias)SomeStringWithAlias
+
+        AZ::Outcome<string, AZStd::string> conversionResult = CryPakInternal::ConvertAbsolutePathToAliasedPath(
+            sourceString.c_str(), 
+            m_firstAlias.c_str(),  // find any instance of FirstAlias in sourceString
+            m_secondAlias.c_str());  // replace it with SecondAlias
+        EXPECT_TRUE(conversionResult.IsSuccess());
+        EXPECT_STREQ(conversionResult.GetValue().c_str(), expectedResult.c_str());
+    }
+
+    TEST_F(CryPakUnitTestsWithAllocators, ConvertAbsolutePathToAliasedPath_SourceLongerThanMaxPath_ReturnsFailure)
+    {
+        const int longPathArraySize = AZ_MAX_PATH_LEN + 2;
+        char longPath[longPathArraySize];
+        memset(longPath, 'a', sizeof(char)*longPathArraySize);
+        longPath[longPathArraySize-1] = '\0';
+        AZ::Outcome<string, AZStd::string> conversionResult = CryPakInternal::ConvertAbsolutePathToAliasedPath(longPath);
+        EXPECT_FALSE(conversionResult.IsSuccess());
+    }
+}

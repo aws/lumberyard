@@ -75,7 +75,7 @@ public:
 
     const char* GetDescription() const;
 
-    void Offset(float offset);
+    void Offset(float offset, bool notifyListeners);
 
     bool operator==(const CTrackViewKeyHandle& keyHandle) const;
     bool operator!=(const CTrackViewKeyHandle& keyHandle) const;
@@ -155,8 +155,6 @@ enum ETrackViewNodeType
 ////////////////////////////////////////////////////////////////////////////
 class CTrackViewNode
 {
-    friend class CAbstractUndoTrackTransaction;
-
 public:
     CTrackViewNode(CTrackViewNode* pParent);
     virtual ~CTrackViewNode() {}
@@ -196,6 +194,7 @@ public:
     virtual bool GetExpanded() const = 0;
 
     // Disabled state
+    virtual bool CanBeEnabled() const { return true; }
     virtual void SetDisabled(bool bDisabled) {}
     virtual bool IsDisabled() const { return false; }
 

@@ -55,8 +55,7 @@ namespace MCore
         MCORE_MEMCATEGORY_FRUSTUM           = 36,
         MCORE_MEMCATEGORY_STREAM            = 37,
         MCORE_MEMCATEGORY_MULTITHREADMANAGER= 38,
-        MCORE_MEMCATEGORY_JOBSYSTEM         = 39,
-        MCORE_MEMCATEGORY_TRIANGULATOR      = 40,
+        MCORE_MEMCATEGORY_TRIANGULATOR      = 39,
         // insert new categories here
         MCORE_MEMCATEGORY_MISC              = 99
     };

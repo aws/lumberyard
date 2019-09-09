@@ -605,6 +605,17 @@ namespace AZ
                             SkipElement();
                         }
                         element.m_dataSize = static_cast<size_t>(element.m_stream->GetCurPos());
+
+                        // If the convertedClassElement could not be found in the parent class
+                        // Set the convertedNode a DefaultDataElementNode so that the ObjectStream
+                        // does not attempt to parse the sub element of the convertedClassElement
+                        // by searching through the parentClassInfo class element container
+                        // which is really the grandparent class of the convertedClassElement sub element nodes
+                        if (convertedNode)
+                        {
+                            *convertedNode = {};
+                        }
+
                         continue;
                     }
                 }
@@ -634,11 +645,7 @@ namespace AZ
                             m_errorLogger.ReportError(error.c_str());
                         }
 
-                        convertedClassElement.m_classData = nullptr;
-                        while (!convertedClassElement.m_subElements.empty())
-                        {
-                            convertedClassElement.RemoveElement(convertedClassElement.GetNumSubElements() - 1);
-                        }
+                        convertedClassElement = {};
                         continue; // go to next element
                     }
                 }
@@ -676,7 +683,7 @@ namespace AZ
                         {
                             dataAddress = classContainer->GetElementByIndex(parentClassPtr, classElement, currentContainerElementIndex);
                         }
-                        else
+                        else if(parentClassPtr)
                         {
                             dataAddress = classContainer->ReserveElement(parentClassPtr, classElement);
                         }
@@ -687,6 +694,7 @@ namespace AZ
                             
                             result = result && ((m_filterDesc.m_flags & FILTERFLAG_STRICT) == 0);  // in strict mode, this is a complete failure.
                             m_errorLogger.ReportError(error.c_str());
+                            continue; // go to next element
                         }
 
                         currentContainerElementIndex++;
@@ -774,85 +782,24 @@ namespace AZ
 
                 if (element.m_id == GetAssetClassId())
                 {
-                    // Special case if we are serialiazing an asset pointer that may need to trigger an asset load
-                    // for all other types we go through the else branch.
-                    if (element.m_dataSize > 0)
-                    {
-                        AZ_Assert(dataAddress, "Data address failed to initialize!");
-                        // read the class value
-                        AZ_Assert(classData->m_serializer, "Resource types should always have a serializer defined!");
+                    AZ_Assert(dataAddress, "Reference field address is invalid");
+                    AZ_Assert(classData->m_serializer, "Asset references should always have a serializer defined");
 
-                        // Load asset information.
-                        if (classData->m_serializer->Load(dataAddress, *element.m_stream, element.m_version, element.m_dataType == SerializeContext::DataElement::DT_BINARY_BE))
-                        {
-                            Data::Asset<Data::AssetData>* asset = reinterpret_cast<Data::Asset<Data::AssetData>*>(dataAddress);
-                            
-                            // Queue the asset for load if it passes the filter.
-                            if (asset->GetId().IsValid() && m_filterDesc.m_assetCB(*asset))
-                            {
-                                // Construct the asset.
-                                const u8 assetFlags = asset->GetFlags();
-                                *asset = Data::AssetManager::Instance().GetAsset(asset->GetId(), asset->GetType(), false);
+                    // Intercept asset references so we can forward asset load filter information.
+                    static_cast<AssetSerializer*>(classData->m_serializer)->LoadWithFilter(
+                        dataAddress,
+                        *element.m_stream,
+                        element.m_version,
+                        m_filterDesc.m_assetCB,
+                        element.m_dataType == SerializeContext::DataElement::DT_BINARY_BE);
 
-                                // If the asset holder is flagged for pre-load, this stream is dependent on the asset job
-                                // and will not complete until the asset is loaded.
-                                if (assetFlags == static_cast<u8>(Data::AssetFlags::OBJECTSTREAM_PRE_LOAD))
-                                {
-                                    // Conduct a blocking load within the current thread.
-                                    AZ_Assert(Data::AssetManager::IsReady(), "AssetManager has not been started!");
-                                    *asset = Data::AssetManager::Instance().GetAsset(asset->GetId(), asset->GetType(), true, m_filterDesc.m_assetCB, true /*blocking*/);
-
-                                    if (asset->IsError())
-                                    {
-                                        const AZStd::string error = AZStd::string::format("Dependent PRE_LOAD asset from element \"%s\" %s could not be loaded.", 
-                                            element.m_name,
-                                            asset->ToString<AZ::OSString>().c_str());
-                                        
-                                        result = result && ((m_filterDesc.m_flags & FILTERFLAG_STRICT) == 0);  // in strict mode, this is a complete failure.
-                                        m_errorLogger.ReportError(error.c_str());
-                                    }
-                                }
-                                else
-                                {
-                                    // Queue asynchronous load.
-                                    asset->QueueLoad(m_filterDesc.m_assetCB);
-                                }
-
-                                asset->SetFlags(assetFlags);
-                            }
-                            else
-                            {
-                                // it was told not to explicitly load or it did not pass the asset filter.
-                                // we are allowed to bind it to assets that are already loaded.
-                                Data::AssetId assetId = asset->GetId();
-                                if (assetId.IsValid() && asset->GetType() != Data::s_invalidAssetType)
-                                {
-                                    // Valid populated asset pointer. If the asset has already been constructed and/or loaded, acquire a pointer.
-                                    if (Data::AssetManager::IsReady())
-                                    {
-                                        Data::Asset<Data::AssetData> existingAsset = Data::AssetManager::Instance().FindAsset(assetId);
-                                        if (existingAsset)
-                                        {
-                                            *asset = existingAsset;
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                        else
-                        {
-                            const AZStd::string error = AZStd::string::format("Failed to read asset information for element \"%s\".", element.m_name);
-                            
-                            result = result && ((m_filterDesc.m_flags & FILTERFLAG_STRICT) == 0);  // in strict mode, this is a complete failure.
-                            m_errorLogger.ReportError(error.c_str());
-                        }
-                    }
                 }
+                // Serializable leaf element.
                 else if (classData->m_serializer)
                 {
                     // Wrap the stream
                     IO::GenericStream* currentStream = &m_inStream;
-                    IO::MemoryStream memStream(m_inStream.GetData()->data(), 0, static_cast<size_t>(m_inStream.GetCurPos()));
+                    IO::MemoryStream memStream(m_inStream.GetData()->data(), 0, element.m_dataSize);
                     currentStream = &memStream;
 
                     if (element.m_byteStream.GetLength() > 0)
@@ -863,7 +810,8 @@ namespace AZ
                     currentStream->Seek(0, IO::GenericStream::ST_SEEK_BEGIN);
 
                     // read the class value
-                    if (!classData->m_serializer->Load(dataAddress, *currentStream, element.m_version, element.m_dataType == SerializeContext::DataElement::DT_BINARY_BE))
+                    if (dataAddress == nullptr || 
+                        !classData->m_serializer->Load(dataAddress, *currentStream, element.m_version, element.m_dataType == SerializeContext::DataElement::DT_BINARY_BE))
                     {
                         result = result && ((m_filterDesc.m_flags & FILTERFLAG_STRICT) == 0);  // in strict mode, this is a complete failure.
                     }
@@ -1007,11 +955,9 @@ namespace AZ
                 // find the registered class data
                 cd = sc.FindClassData(element.m_id, parent, element.m_nameCrc);
 
-                if (m_version <= 1 && cd)
+                if (cd)
                 {
-                    // For version 1 the stored typeId was statically associated with the GenericClassInfo, which is now the generic type id
-                    // Therefore the GenericClassInfo is looked up using the generic typeId on the ClassData object
-                    // Afterwards the element.m_id field is updated with the specialized type id
+                    // Lookup the SpecializedTypeId from the class if it has GenericClassInfo registered with it
                     if (GenericClassInfo* genericClassInfo = sc.FindGenericClassInfo(cd->m_typeId))
                     {
                         element.m_id = genericClassInfo->GetSpecializedTypeId();
@@ -1136,11 +1082,9 @@ namespace AZ
 
                 // find the registered class data
                 cd = sc.FindClassData(element.m_id, parent, element.m_nameCrc);
-                if (m_version <= 1 && cd)
+                if (cd)
                 {
-                    // For version 1 the stored typeId was statically associated with the GenericClassInfo, which is now the generic type id
-                    // Therefore the GenericClassInfo is looked up using the generic typeId on the ClassData object
-                    // Afterwards the element.m_id field is updated with the specialized type id
+                    // Lookup the SpecializedTypeId from the class if it has GenericClassInfo registered with it
                     if (GenericClassInfo* genericClassInfo = sc.FindGenericClassInfo(cd->m_typeId))
                     {
                         element.m_id = genericClassInfo->GetSpecializedTypeId();
@@ -1248,11 +1192,9 @@ namespace AZ
 
                 // find the registered class data
                 cd = sc.FindClassData(element.m_id, parent, element.m_nameCrc);
-                if (m_version <= 1 && cd)
+                if (cd)
                 {
-                    // For version 1 the stored typeId was statically associated with the GenericClassInfo, which is now the generic type id
-                    // Therefore the GenericClassInfo is looked up using the generic typeId on the ClassData object
-                    // Afterwards the element.m_id field is updated with the specialized type id
+                    // Lookup the SpecializedTypeId from the class if it has GenericClassInfo registered with it
                     if (GenericClassInfo* genericClassInfo = sc.FindGenericClassInfo(cd->m_typeId))
                     {
                         element.m_id = genericClassInfo->GetSpecializedTypeId();
@@ -1431,15 +1373,23 @@ namespace AZ
         bool ObjectStreamImpl::WriteClass(const void* classPtr, const Uuid& classId, const SerializeContext::ClassData* classData)
         {
             m_errorLogger.Reset();
-            m_sc->EnumerateInstanceConst(classPtr
+
+            SerializeContext::EnumerateInstanceCallContext callContext(
+                AZStd::bind(&ObjectStreamImpl::WriteElement, this, AZStd::placeholders::_1, AZStd::placeholders::_2, AZStd::placeholders::_3),
+                AZStd::bind(&ObjectStreamImpl::CloseElement, this),
+                m_sc,
+                SerializeContext::ENUM_ACCESS_FOR_READ,
+                &m_errorLogger
+            );
+
+            m_sc->EnumerateInstanceConst(
+                  &callContext
+                , classPtr
                 , classId
-                , AZStd::bind(&ObjectStreamImpl::WriteElement, this, AZStd::placeholders::_1, AZStd::placeholders::_2, AZStd::placeholders::_3)
-                , AZStd::bind(&ObjectStreamImpl::CloseElement, this)
-                , SerializeContext::ENUM_ACCESS_FOR_READ
                 , classData
                 , nullptr
-                , &m_errorLogger
                 );
+
             return m_errorLogger.GetErrorCount() == 0;
         }
 
@@ -1465,14 +1415,21 @@ namespace AZ
                     overlayElementMetadata.m_nameCrc = classElement->m_nameCrc;
                     overlayElementMetadata.m_flags = 0;
                     overlayElementMetadata.m_typeId = SerializeTypeInfo<DataOverlayInfo>::GetUuid();
-                    m_sc->EnumerateInstance(&overlay
+
+                    SerializeContext::EnumerateInstanceCallContext callContext(
+                        AZStd::bind(&ObjectStreamImpl::WriteElement, this, AZStd::placeholders::_1, AZStd::placeholders::_2, AZStd::placeholders::_3), 
+                        AZStd::bind(&ObjectStreamImpl::CloseElement, this), 
+                        m_sc,
+                        SerializeContext::ENUM_ACCESS_FOR_READ,
+                        &m_errorLogger
+                    );
+
+                    m_sc->EnumerateInstance(
+                          &callContext
+                        , &overlay
                         , overlayClassMetadata->m_typeId
-                        , AZStd::bind(&ObjectStreamImpl::WriteElement, this, AZStd::placeholders::_1, AZStd::placeholders::_2, AZStd::placeholders::_3)
-                        , AZStd::bind(&ObjectStreamImpl::CloseElement, this)
-                        , SerializeContext::ENUM_ACCESS_FOR_READ
                         , overlayClassMetadata
                         , &overlayElementMetadata
-                        , &m_errorLogger
                         );
                     m_isOverlaying = true;
                     return false;
@@ -1918,7 +1875,7 @@ namespace AZ
                         jsonDocument.ParseInsitu(memoryBuffer.data());
                         if (jsonDocument.HasParseError())
                         {
-                            AZ_Error("Serialize", false, "JSON parse error: %d (%u)", rapidjson::GetParseError_En(jsonDocument.GetParseError()), jsonDocument.GetErrorOffset());
+                            AZ_Error("Serialize", false, "JSON parse error: %s (%u)", rapidjson::GetParseError_En(jsonDocument.GetParseError()), jsonDocument.GetErrorOffset());
                             // this is considered a "fatal" error since the entire stream is unreadable.
                             result = false;
                         }
@@ -1976,7 +1933,8 @@ namespace AZ
                 if (GetType() == ST_XML)
                 {
                     IO::RapidXMLStreamWriter out(m_stream);
-                    rapidxml::print(out, *m_xmlDoc);
+                    rapidxml::print(out.Iterator(), *m_xmlDoc);
+                    out.FlushCache();
                     azdestroy(m_xmlDoc, SystemAllocator, rapidxml::xml_document<char>);
                     m_xmlDoc = nullptr;
                     success = out.m_errorCount == 0;
@@ -2062,7 +2020,7 @@ namespace AZ
     //=========================================================================
     /*static*/ bool ObjectStream::AssetFilterDefault(const Data::Asset<Data::AssetData>& asset)
     {
-        return 0 == (asset.GetFlags() & static_cast<u8>(Data::AssetFlags::OBJECTSTREAM_NO_LOAD));
+        return (asset.GetAutoLoadBehavior() != AZ::Data::AssetLoadBehavior::NoLoad);
     }
 
     //=========================================================================
@@ -2073,7 +2031,7 @@ namespace AZ
         // Expand regular slice references (but not dynamic slice references).
         if (asset.GetType() == AzTypeInfo<SliceAsset>::Uuid())
         {
-            return 0 == (asset.GetFlags() & static_cast<u8>(Data::AssetFlags::OBJECTSTREAM_NO_LOAD));
+            return AssetFilterDefault(asset);
         }
 
         return false;
@@ -2086,6 +2044,7 @@ namespace AZ
     {
         return false;
     }
+
 } // namespace AZ
 
 #endif // #ifndef AZ_UNITY_BUILD

@@ -32,7 +32,7 @@
 struct SImpl_GPUParticleContainer
 {
     SImpl_GPUParticleContainer()
-        : parent(nullptr)
+        : particleContainer(nullptr)
         , renderer(nullptr)
         , reParticleGPU(nullptr)
         , reReflectionPass(nullptr)
@@ -42,29 +42,72 @@ struct SImpl_GPUParticleContainer
 
     ~SImpl_GPUParticleContainer()
     {
+        ReleaseRenderElements();
+
+        DestroyGPUEmitter();
+    }
+
+    void CreateGPUEmitter(IGPUParticleEngine::EmitterTypePtr parentGPUEmitter)
+    {
+        if (!particleContainer || !renderer || !renderer->GetGPUParticleEngine())
+        {
+            return;
+        }
+
+        if (instance)
+        {
+            DestroyGPUEmitter();
+        }
+
+        const SpawnParams& spawnParams = particleContainer->GetMain().GetSpawnParams();
+
+        instance = renderer->GetGPUParticleEngine()->AddEmitter(&particleContainer->GetParams(), spawnParams, &(particleContainer->GetMain().GetEmitterFlags()), parentGPUEmitter, &target, &(particleContainer->GetMain().GetPhysEnviron()));
+        AZ_Assert(instance, "GPU emitter was not created!");
+    }
+
+    void DestroyGPUEmitter()
+    {
+        if (!renderer || !renderer->GetGPUParticleEngine())
+        {
+            return;
+        }
+
+        if (instance)
+        {
+            renderer->GetGPUParticleEngine()->RemoveEmitter(instance);
+            instance = nullptr;
+        }
+    }
+
+    void ReleaseRenderElements()
+    {
+        if (!renderer || !renderer->GetGPUParticleEngine())
+        {
+            return;
+        }
+
+        IGPUParticleEngine* particleEngine = renderer->GetGPUParticleEngine();
+
         if (reParticleGPU)
         {
-            reParticleGPU->Release();
+            particleEngine->QueueRenderElementToReleaseNextFrame(reParticleGPU);
+            reParticleGPU = nullptr;
         }
 
         if (reReflectionPass)
         {
-            reReflectionPass->Release();
+            particleEngine->QueueRenderElementToReleaseNextFrame(reReflectionPass);
+            reReflectionPass = nullptr;
         }
 
         for (int i = 0; i < reShadow.size(); i++)
         {
-            reShadow[i]->Release();
+            particleEngine->QueueRenderElementToReleaseNextFrame(reShadow[i]);
         }
-
-        if (instance &&  renderer->GetGPUParticleEngine())
-        {
-            // cleanup emitter
-            renderer->GetGPUParticleEngine()->RemoveEmitter(instance);
-        }
+        reShadow.clear();
     }
 
-    CParticleContainer*                 parent;
+    CParticleContainer*                 particleContainer;
     IRenderer*                          renderer;
     CREParticleGPU*                     reParticleGPU;
     CREParticleGPU*                     reReflectionPass;
@@ -76,33 +119,49 @@ struct SImpl_GPUParticleContainer
 
 CParticleContainerGPU::CParticleContainerGPU()
 {
-    CRY_ASSERT(sizeof(m_implBuffer) >= sizeof(SImpl_GPUParticleContainer));
-    m_impl = new (m_implBuffer) SImpl_GPUParticleContainer();
+    CreateImplementation();
 }
 
 CParticleContainerGPU::~CParticleContainerGPU()
 {
+    DestroyImplementation();
+}
+
+void CParticleContainerGPU::CreateImplementation()
+{
+    CRY_ASSERT(sizeof(m_implBuffer) >= sizeof(SImpl_GPUParticleContainer));
+    m_impl = new (m_implBuffer) SImpl_GPUParticleContainer();
+}
+
+void CParticleContainerGPU::DestroyImplementation()
+{
     if (m_impl)
     {
         m_impl->~SImpl_GPUParticleContainer();
+        m_impl = nullptr;
     }
-    m_impl = nullptr;
 }
 
-void CParticleContainerGPU::Initialize(CParticleContainer* parent)
+void CParticleContainerGPU::Initialize(CParticleContainer* particleContainer)
 {
-    if (!parent)
+    if (!particleContainer)
     {
-        CRY_ASSERT(parent);
         return;
     }
 
-    m_impl->parent = parent;
-    m_impl->renderer = m_impl->parent->GetRenderer();
+    // Recreate implementation if we are initializing again to relese memory correctly
+    if (m_impl->particleContainer)
+    {
+        DestroyImplementation();
+        CreateImplementation();
+    }
+
+    m_impl->particleContainer = particleContainer;
+    m_impl->renderer = particleContainer->GetRenderer();
 
     if (!m_impl->renderer)
     {
-        CRY_ASSERT(m_impl->renderer);
+        m_impl->particleContainer = nullptr;
         return;
     }
 
@@ -110,19 +169,19 @@ void CParticleContainerGPU::Initialize(CParticleContainer* parent)
 
     if (!particleEngine)
     {
-        CRY_ASSERT(particleEngine);
+        m_impl->particleContainer = nullptr;
+        m_impl->renderer = nullptr;
         return;
     }
 
-    void* GPUparent = nullptr;
-    if (m_impl->parent->GetParent() && m_impl->parent->GetParent()->GetGPUData())
+    IGPUParticleEngine::EmitterTypePtr parentGPUEmitter = nullptr;
+    if (m_impl->particleContainer->GetParent() && m_impl->particleContainer->GetParent()->GetGPUData())
     {
-        GPUparent = m_impl->parent->GetParent()->GetGPUData()->m_impl->instance;
+        parentGPUEmitter = m_impl->particleContainer->GetParent()->GetGPUData()->m_impl->instance;
     }
 
-    const SpawnParams& spawnParams = parent->GetMain().GetSpawnParams();
-    
-    m_impl->instance = particleEngine->AddEmitter(&m_impl->parent->GetParams(), spawnParams, &(parent->GetMain().GetEmitterFlags()), GPUparent, &m_impl->target, &(parent->GetMain().GetPhysEnviron()));
+    m_impl->CreateGPUEmitter(parentGPUEmitter);
+
     m_impl->reParticleGPU = static_cast<CREParticleGPU*>(m_impl->renderer->EF_CreateRE(eDATA_GPUParticle));
     m_impl->reParticleGPU->SetInstance(m_impl->instance);
 
@@ -168,11 +227,11 @@ void CParticleContainerGPU::Render(SRendParams const& rParam, SPartRenderParams 
     }
 
     //Set the lod blend value for gpu.
-    SetLodBlendAlpha(m_impl->parent->ComputeLodBlend(PRParams.m_fCamDistance, m_impl->parent->GetAge() - m_impl->lodBlendAlphaUpdateTime));
-    m_impl->lodBlendAlphaUpdateTime = m_impl->parent->GetAge();
+    SetLodBlendAlpha(m_impl->particleContainer->ComputeLodBlend(PRParams.m_fCamDistance, m_impl->particleContainer->GetAge() - m_impl->lodBlendAlphaUpdateTime));
+    m_impl->lodBlendAlphaUpdateTime = m_impl->particleContainer->GetAge();
 
-    const Matrix34 translation(m_impl->parent->GetMain().GetLocation());
-    const Matrix34 scale = Matrix34::CreateScale(Vec3(m_impl->parent->GetMain().GetSpawnParams().fSizeScale));
+    const Matrix34 translation(m_impl->particleContainer->GetMain().GetLocation());
+    const Matrix34 scale = Matrix34::CreateScale(Vec3(m_impl->particleContainer->GetMain().GetSpawnParams().fSizeScale));
     pObj->m_II.m_Matrix = translation * scale;
 
     pObj->m_fSort = 0;  //set to 0 to remove bias in sorting
@@ -190,7 +249,7 @@ void CParticleContainerGPU::Render(SRendParams const& rParam, SPartRenderParams 
     }
 
     // create lighting information
-    auto* pParams = &m_impl->parent->GetParams();
+    auto* pParams = &m_impl->particleContainer->GetParams();
 
     CRenderObject* pRenderObject = pObj;
     SRenderObjData* pOD = gEnv->pRenderer->EF_GetObjData(pRenderObject, true, passInfo.ThreadID());
@@ -220,11 +279,11 @@ void CParticleContainerGPU::Render(SRendParams const& rParam, SPartRenderParams 
     // Set sort distance based on params and bounding box.
     if (pParams->fSortBoundsScale == PRParams.m_fMainBoundsScale)
     {
-        pRenderObject->m_fDistance = PRParams.m_fCamDistance;
+        pRenderObject->m_fDistance = PRParams.m_fCamDistance * passInfo.GetZoomFactor();
     }
     else
     {
-        m_impl->parent->GetMain().GetNearestDistance(passInfo.GetCamera().GetPosition(), pParams->fSortBoundsScale);
+        pRenderObject->m_fDistance = m_impl->particleContainer->GetMain().GetNearestDistance(passInfo.GetCamera().GetPosition(), pParams->fSortBoundsScale) * passInfo.GetZoomFactor();
     }
 
     pRenderObject->m_fDistance += pParams->fSortOffset;
@@ -290,10 +349,10 @@ void CParticleContainerGPU::Render(SRendParams const& rParam, SPartRenderParams 
     //get list of objects for cubemap depth collision if necessary
     if (pParams->eDepthCollision == ParticleParams::EDepthCollision::Cubemap)
     {
-        AABB cubemapAABB(m_impl->parent->GetMain().GetPos(), pParams->fCubemapFarDistance);
+        AABB cubemapAABB(m_impl->particleContainer->GetMain().GetPos(), pParams->fCubemapFarDistance);
         PodArray<IShadowCaster*> nodes;
 
-        m_impl->parent->m_pObjManager->MakeDepthCubemapRenderItemList(reinterpret_cast<CVisArea*>(m_impl->parent->GetMain().GetEntityVisArea()),
+        m_impl->particleContainer->m_pObjManager->MakeDepthCubemapRenderItemList(reinterpret_cast<CVisArea*>(m_impl->particleContainer->GetMain().GetEntityVisArea()),
             cubemapAABB, 0, &nodes, passInfo);
 
         //create RenderingPassInfo for GPU particle cubemap
@@ -324,13 +383,13 @@ void CParticleContainerGPU::OnContainerUpdateLife()
         return;
     }
 
-    if (!m_impl->parent)
+    if (!m_impl->particleContainer)
     {
-        CRY_ASSERT(m_impl->parent);
+        CRY_ASSERT(m_impl->particleContainer);
         return;
     }
 
-    if (AZ::IsClose(m_impl->parent->GetAge(), 0.0f, EPSILON))
+    if (AZ::IsClose(m_impl->particleContainer->GetAge(), 0.0f, EPSILON))
     {
         if (m_impl->instance)
         {
@@ -341,12 +400,12 @@ void CParticleContainerGPU::OnContainerUpdateLife()
             CRY_ASSERT(m_impl->instance);
         }
     }
-    else if (m_impl->parent->GetAge() >= m_impl->parent->GetMain().GetStopAge())
+    else if (m_impl->particleContainer->GetAge() >= m_impl->particleContainer->GetMain().GetStopAge())
     {
         // Without this, disabling the emitter was not actually stopping particle generation
         particleEngine->StopEmitter(m_impl->instance);
     }
-    else if (m_impl->parent->GetAge() > 0)
+    else if (m_impl->particleContainer->GetAge() > 0)
     {
         particleEngine->StartEmitter(m_impl->instance);
     }
@@ -382,13 +441,13 @@ void CParticleContainerGPU::OnEffectChange()
 void CParticleContainerGPU::Update()
 {
     m_impl->target.bTarget = false;
-    if (m_impl->parent)
+    if (m_impl->particleContainer)
     {
-        m_impl->parent->GetTarget(m_impl->target, m_impl->parent->GetDirectEmitter());
+        m_impl->particleContainer->GetTarget(m_impl->target, m_impl->particleContainer->GetDirectEmitter());
     }
     else
     {
-        CRY_ASSERT(m_impl->parent);
+        CRY_ASSERT(m_impl->particleContainer);
     }
 }
 

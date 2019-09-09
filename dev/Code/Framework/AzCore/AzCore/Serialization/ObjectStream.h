@@ -163,6 +163,12 @@ namespace AZ
 
         virtual bool WriteClass(const void* classPtr, const Uuid& classId, const SerializeContext::ClassData* classData = nullptr) = 0;
 
+        /// Default asset filter obeys the Asset<> holder's load flags.
+        static bool AssetFilterDefault(const Data::Asset<Data::AssetData>& asset);
+
+        /// SlicesOnly filter ignores all asset references except for slices.
+        static bool AssetFilterSlicesOnly(const Data::Asset<Data::AssetData>& asset);
+
         /// returns true if successfully flushed and closed the object stream, false otherwise
         virtual bool Finalize() = 0;
 
@@ -173,11 +179,13 @@ namespace AZ
         template<typename T>
         bool WriteClass(const T* obj, const char* elemName = nullptr);
 
-        /// Default asset filter obeys the Asset<> holder's load flags.
-        static bool AssetFilterDefault(const Data::Asset<Data::AssetData>& asset);
 
-        /// SlicesOnly filter ignores all asset references except for slices.
-        static bool AssetFilterSlicesOnly(const Data::Asset<Data::AssetData>& asset);
+        /// Filter ignores all asset references except for the specified classes.
+        template<typename T>
+        static bool AssetFilterAssetTypesOnly(const Data::Asset<Data::AssetData>& asset);
+
+        template<typename T0, typename T1, typename... Args>
+        static bool AssetFilterAssetTypesOnly(const Data::Asset<Data::AssetData>& asset);
 
         /// NoAssetLoading filter ignores all asset references.
         static bool AssetFilterNoAssetLoading(const Data::Asset<Data::AssetData>& asset);
@@ -194,7 +202,7 @@ namespace AZ
     bool ObjectStream::WriteClass(const T* obj, const char* elemName)
     {
         (void)elemName;
-        AZ_Assert(!AZStd::is_pointer<T>::value, "Cannot serialize pointer-to-pointer as root element! This makes no sense!");
+        static_assert(!AZStd::is_pointer<T>::value, "Cannot serialize pointer-to-pointer as root element! This makes no sense!");
         // Call SaveClass with the potential pointer to derived class fully resolved.
         const void* classPtr = SerializeTypeInfo<T>::RttiCast(obj, SerializeTypeInfo<T>::GetRttiTypeId(obj));
         const Uuid& classId = SerializeTypeInfo<T>::GetUuid(obj);
@@ -217,6 +225,28 @@ namespace AZ
         }
         return WriteClass(classPtr, classId);
     }
+
+    /// Filter ignores all asset references except for the specified classes.
+    template<typename T>
+    /*static*/ bool ObjectStream::AssetFilterAssetTypesOnly(const Data::Asset<Data::AssetData>& asset)
+    {
+        static_assert(std::is_base_of<Data::AssetData, T>::value, "T not derived from Data::AssetData.");
+
+        const bool isValidAsset = asset.GetType() == AzTypeInfo<T>::Uuid();
+        if (isValidAsset)
+        {
+            return asset.GetAutoLoadBehavior() != AZ::Data::AssetLoadBehavior::NoLoad;
+        }
+
+        return false;
+    }
+
+    template<typename T0, typename T1, typename... Args>
+    /*static*/ bool ObjectStream::AssetFilterAssetTypesOnly(const Data::Asset<Data::AssetData>& asset)
+    {
+        return ObjectStream::AssetFilterAssetTypesOnly<T0>(asset) || AssetFilterAssetTypesOnly<T1, Args...>(asset);
+    }
+
 } // namespace AZ
 
 #endif  // AZCORE_OBJECT_STREAM_H

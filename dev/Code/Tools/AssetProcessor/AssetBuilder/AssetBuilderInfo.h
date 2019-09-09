@@ -36,7 +36,7 @@ namespace AssetBuilder
     /**
     * Class to manage external module builders for AssetBuilder.  Note that this is similar
     * to a class in Asset Processor, because both AssetProcessor.exe and AssetBuilder.exe both load builders in a similar manner.
-    * The imlementation details differ.
+    * The implementation details differ.
     */
     class ExternalModuleAssetBuilderInfo
     {
@@ -55,13 +55,17 @@ namespace AssetBuilder
         //! Perform the necessary process of uninitializing an external builder
         void UnInitialize();
 
-        //! Register a builder descriptor ID to track as part of this builders lifecycle managementg
+        //! Register a builder descriptor ID to track as part of this builders lifecycle management
         void RegisterBuilderDesc(const AZ::Uuid& builderDesc);
 
-        //! Register a component descriptor to track as part of this builders lifecycle managementg
+        //! Register a component descriptor to track as part of this builders lifecycle management
         void RegisterComponentDesc(AZ::ComponentDescriptor* descriptor);
+
+        //! Check to see if the builder has the required functions defined.
+        bool IsAssetBuilder();
+
     protected:
-        void Load();
+        bool Load();
         void Unload();
 
         AZStd::set<AZ::Uuid>    m_registeredBuilderDescriptorIDs;

@@ -256,8 +256,7 @@ namespace CommandSystem
             EMotionFX::Importer::SkeletalMotionSettings settings;
 
             // extract default values from the command syntax automatically, if they aren't specified explicitly
-            settings.mLoadMotionEvents          = parameters.GetValueAsBool("loadMotionEvents",     this);
-            settings.mAutoRegisterEvents        = parameters.GetValueAsBool("autoRegisterEvents",   this);
+            settings.mLoadMotionEvents = parameters.GetValueAsBool("loadMotionEvents",     this);
 
             // try to load the actor
             motion = EMotionFX::GetImporter().LoadSkeletalMotion(filename.c_str(), &settings);
@@ -288,9 +287,6 @@ namespace CommandSystem
         AZStd::string motionName;
         AzFramework::StringFunc::Path::GetFileName(filename.c_str(), motionName);
         motion->SetName(motionName.c_str());
-
-        // create the default playback info in case there is none yet
-        motion->CreateDefaultPlayBackInfo();
 
         // select the motion automatically
         if (parameters.GetValueAsBool("autoSelect", this))

@@ -19,6 +19,9 @@
             ],
             "shared": [
                 "PVRTexLib.dll"
+            ],
+            "copy_extra": [
+                "PVRTexLib_License.txt:."
             ]
         },
         "win_x64_vs2015": "@win_x64_vs2013",
@@ -29,6 +32,9 @@
             ],
             "shared": [
                 "libPVRTexLib.dylib"
+            ],
+            "copy_extra": [
+                "PVRTexLib_License.txt:."
             ]
         },
         "linux_x64": {
@@ -37,6 +43,9 @@
             ],
             "shared": [
                 "libPVRTexLib.so"
+            ],
+            "copy_extra": [
+                "PVRTexLib_License.txt:."
             ]
         }
     }

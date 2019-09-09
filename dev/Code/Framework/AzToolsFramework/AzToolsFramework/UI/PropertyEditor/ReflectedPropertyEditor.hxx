@@ -36,6 +36,7 @@ namespace AzToolsFramework
 {
     class ReflectedPropertyEditorState;
     class PropertyRowWidget;
+    class ComponentEditor;
 
     /**
      * the Reflected Property Editor is a Qt Control which you can place inside a GUI, which you then feed
@@ -55,7 +56,7 @@ namespace AzToolsFramework
         ReflectedPropertyEditor(QWidget* pParent);
         virtual ~ReflectedPropertyEditor();
 
-        void Setup(AZ::SerializeContext* context, IPropertyEditorNotify* ptrNotify, bool enableScrollbars, int propertyLabelWidth = 200);
+        void Setup(AZ::SerializeContext* context, IPropertyEditorNotify* ptrNotify, bool enableScrollbars, int propertyLabelWidth = 200, ComponentEditor *editorParent = nullptr);
 
         // allows disabling display of root container property widgets
         void SetHideRootProperties(bool hideRootProperties);
@@ -73,6 +74,8 @@ namespace AzToolsFramework
         void InvalidateAttributesAndValues(); // re-reads all attributes, and all values.
         void InvalidateValues(); // just updates the values inside properties.
 
+        void SetFilterString(AZStd::string str);
+        AZStd::string GetFilterString();
         void SetSavedStateKey(AZ::u32 key); // a settings key which is used to store and load the set of things that are expanded or not and other settings
 
         void QueueInvalidation(PropertyModificationRefreshLevel level);
@@ -80,6 +83,8 @@ namespace AzToolsFramework
         void ForceQueuedInvalidation();
 
         void CancelQueuedRefresh(); // Cancels any pending property refreshes
+
+        void PreventRefresh(bool shouldPrevent);    // Set to true to prevent refreshes from happening, false to allow them.
 
         void SetAutoResizeLabels(bool autoResizeLabels);
 
@@ -108,8 +113,17 @@ namespace AzToolsFramework
 
         void SetValueComparisonFunction(const InstanceDataHierarchy::ValueComparisonFunction& valueComparisonFunction);
 
+        // Set custom function for evaluating whether a node is read-only
+        void SetReadOnlyQueryFunction(const ReadOnlyQueryFunction& readOnlyQueryFunction);
+
+        // Set custom function for evaluating whether a node is hidden
+        void SetHiddenQueryFunction(const HiddenQueryFunction& hiddenQueryFunction);
+
         bool HasFilteredOutNodes() const;
         bool HasVisibleNodes() const;
+
+        // Set custom function for evaluating if we a given node should show an indicator or not
+        void SetIndicatorQueryFunction(const IndicatorQueryFunction& indicatorQueryFunction);
 
         // if you want it to save its state, you need to give it a user settings label:
         //void SetSavedStateLabel(AZ::u32 label);
@@ -117,6 +131,9 @@ namespace AzToolsFramework
 
         void SetDynamicEditDataProvider(DynamicEditDataProvider provider);
 
+
+        QWidget* GetContainerWidget();
+        
         void SetSizeHintOffset(const QSize& offset);
         QSize GetSizeHintOffset() const;
 
@@ -130,14 +147,20 @@ namespace AzToolsFramework
         // during construction, therefore doesn't support updating dynamically after showing the widget.
         void SetLeafIndentation(int indentation);
 
+        using VisibilityCallback = AZStd::function<void(InstanceDataNode* node, NodeDisplayVisibility& visibility, bool& checkChildVisibility)>;
+        void SetVisibilityCallback(VisibilityCallback callback);
+
     signals:
         void OnExpansionContractionDone();
     private:
         class Impl;
         std::unique_ptr<Impl> m_impl;
+        
+        AZStd::string m_currentFilterString;
 
         virtual void paintEvent(QPaintEvent* event) override;
-
+        int m_updateDepth = 0;
+        bool m_releasePrompt = false;
 
     private slots:
         void OnPropertyRowExpandedOrContracted(PropertyRowWidget* widget, InstanceDataNode* node, bool expanded, bool fromUserInteraction);

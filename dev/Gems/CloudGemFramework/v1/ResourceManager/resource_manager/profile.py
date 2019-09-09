@@ -172,7 +172,7 @@ def default(context, args):
         context.config.clear_user_default_profile()
 
     # update mappings if default profile changed
-    if old_default != context.config.user_default_profile:
+    if old_default != context.config.user_default_profile and context.config.project_initialized:
         mappings.update(context, args)
 
     context.view.default_profile(context.config.user_default_profile)

@@ -49,11 +49,13 @@ struct FileChangeInfo
     FileChangeInfo(const FileChangeInfo& rhs)
         : m_action(rhs.m_action)
         , m_filePath(rhs.m_filePath)
+        , m_filePathOld(rhs.m_filePathOld)
     {
     }
 
     FileAction m_action;
     QString m_filePath;
+    QString m_filePathOld;
 };
 
 Q_DECLARE_METATYPE(FileChangeInfo)

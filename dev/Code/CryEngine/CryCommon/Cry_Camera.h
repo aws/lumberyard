@@ -25,6 +25,10 @@
 #include <Cry_XOptimise.h>
 //DOC-IGNORE-END
 
+#if AZ_RENDER_TO_TEXTURE_GEM_ENABLED
+#include <AzCore/Component/EntityId.h>
+#endif // if AZ_RENDER_TO_TEXTURE_GEM_ENABLED
+
 //////////////////////////////////////////////////////////////////////
 #define CAMERA_MIN_NEAR         0.001f
 #define DEFAULT_NEAR            0.2f
@@ -53,7 +57,6 @@ enum cull
     CULL_OVERLAP,           // The object &  frustum overlap.
     CULL_INCLUSION      // The whole object is inside frustum.
 };
-
 
 class CameraViewParameters
 {
@@ -601,6 +604,11 @@ public:
 
     ILINE const Plane* GetFrustumPlane(int numplane)    const       { return &m_fp[numplane]; }
 
+#if AZ_RENDER_TO_TEXTURE_GEM_ENABLED
+    ILINE const AZ::EntityId GetEntityId() const { return m_entityId;  }
+    ILINE void SetEntityId( AZ::EntityId entityId ) { m_entityId = entityId;  }
+#endif // if AZ_RENDER_TO_TEXTURE_GEM_ENABLED
+
     //////////////////////////////////////////////////////////////////////////
     // Z-Buffer ranges.
     // This values are defining near/far clipping plane, it only used to specify z-buffer range.
@@ -667,6 +675,10 @@ public:
         m_nPosX = m_nPosY = m_nSizeX = m_nSizeY = 0;
         m_entityPos = Vec3(0, 0, 0);
         m_entityRot = Quat(0, 0, 0, 1);
+#if AZ_RENDER_TO_TEXTURE_GEM_ENABLED
+        m_frameUpdateId = 0;
+        m_entityId = AZ::EntityId();
+#endif // if AZ_RENDER_TO_TEXTURE_GEM_ENABLED
     }
     ~CCamera() {}
 
@@ -696,6 +708,15 @@ public:
     void GetMemoryUsage(ICrySizer* pSizer) const { /*nothing*/}
 
     CameraViewParameters m_viewParameters;
+
+#if AZ_RENDER_TO_TEXTURE_GEM_ENABLED
+    // Get this camera's sequential frame update ID.
+    uint32_t GetFrameUpdateId() const { return m_frameUpdateId;  }
+
+    // Increment this camera's sequential frame update ID.  This should be 
+    // called every time the camera is used to render the scene.
+    void IncrementFrameUpdateId() { m_frameUpdateId++;  }
+#endif // if AZ_RENDER_TO_TEXTURE_GEM_ENABLED
 
 private:
     bool AdditionalCheck(const AABB& aabb) const;
@@ -734,6 +755,17 @@ private:
     float m_zrangeMax;
 
     int m_nPosX, m_nPosY, m_nSizeX, m_nSizeY;
+
+#if AZ_RENDER_TO_TEXTURE_GEM_ENABLED
+    // A sequential counter that is incremented every time this camera is used 
+    // to render a frame. This id is not the same as the frame update ID used 
+    // by the renderer which handles multiple cameras. Systems that rely on 
+    // per-camera temporal buffers can use this to index temporal data.
+    uint32_t m_frameUpdateId;
+
+    // This camera's Entity ID, useful when multiple cameras are active.
+    AZ::EntityId m_entityId;
+#endif // if AZ_RENDER_TO_TEXTURE_GEM_ENABLED
 
     //------------------------------------------------------------------------
     //---   OLD STUFF

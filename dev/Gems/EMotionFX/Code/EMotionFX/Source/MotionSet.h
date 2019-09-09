@@ -258,7 +258,7 @@ namespace EMotionFX
         MotionEntry* FindMotionEntryById(const AZStd::string& motionId) const;
         MotionEntry* RecursiveFindMotionEntryById(const AZStd::string& motionId) const;
         Motion* RecursiveFindMotionById(const AZStd::string& motionId, bool loadOnDemand = true) const;
-        MotionSet* RecursiveFindMotionSetByName(const AZStd::string& motionSetName, bool isOwnedByRuntime = false);
+        MotionSet* RecursiveFindMotionSetByName(const AZStd::string& motionSetName, bool isOwnedByRuntime = false) const;
 
         /**
          * Set a new motion id for the given motion entry.
@@ -370,6 +370,12 @@ namespace EMotionFX
         void SetIsOwnedByRuntime(bool isOwnedByRuntime);
         bool GetIsOwnedByRuntime() const;
 
+        /**
+         * Marks the object as owned by an asset, as opposed to the tool suite.
+         */
+        void SetIsOwnedByAsset(bool isOwnedByAsset);
+        bool GetIsOwnedByAsset() const;
+
         void SetCallback(MotionSetCallback* callback, bool delExistingOneFromMem = true);
 
         MotionSetCallback* GetCallback() const;
@@ -407,6 +413,7 @@ namespace EMotionFX
 
 #if defined(EMFX_DEVELOPMENT_BUILD)
         bool                                        m_isOwnedByRuntime; /**< Set if this motion set belongs to the engine runtime, as opposed to the tool suite. */
+        bool                                        m_isOwnedByAsset;        /**< Set if the anim graph is used/owned by an asset. */
 #endif // EMFX_DEVELOPMENT_BUILD
     };
 

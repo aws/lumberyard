@@ -329,7 +329,7 @@ bool UiTextInputComponent::HandleTextInput(const AZStd::string& inputTextUTF8)
 
     bool changedText = false;
 
-    if (inputTextUTF8 == "\b")
+    if (inputTextUTF8 == "\b" || inputTextUTF8 == "\x7f")
     {
         // backspace pressed, delete character before cursor or the selected range
         if (m_textCursorPos > 0 || m_textCursorPos != m_textSelectionStartPos)
@@ -1218,6 +1218,7 @@ void UiTextInputComponent::Reflect(AZ::ReflectContext* context)
             auto editInfo = ec->Class<UiTextInputComponent>("TextInput", "An interactable component for editing a text string.");
 
             editInfo->ClassElement(AZ::Edit::ClassElements::EditorData, "")
+                ->Attribute(AZ::Edit::Attributes::Category, "UI")
                 ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/UiTextInput.png")
                 ->Attribute(AZ::Edit::Attributes::ViewportIcon, "Editor/Icons/Components/Viewport/UiTextInput.png")
                 ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("UI", 0x27ff46b0))

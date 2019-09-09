@@ -33,36 +33,72 @@ def configure_reflection(object):
     if object.get('type') in ('class', 'struct'):
         # look for there to either be a Serialize dict or just AzClass::Serialize(true/false)
         object['serialize'] = resolve_annotation(object['annotations'], 'AzClass::Serialize', False) != False
-        object['reflectForEdit'] = resolve_annotation(object['annotations'], 'AzClass::Edit', False) != False
+        # The field serialization default is if serialize is true and not set to opt-in
+        field_serialize_default = object['serialize'] in (True, None, "true") and not resolve_annotation(object['annotations'], 'AzClass::Serialize::OptIn', False) != False
 
+        object['reflectForEdit'] = resolve_annotation(object['annotations'], 'AzClass::Edit', False) != False
+        # Behavior context class tags
+        object['behavior'] = False
+        behavior_class_tags = ('BehaviorName',)
+        for tag in behavior_class_tags:
+            if resolve_annotation(object['annotations'], 'AzClass::' + tag, False) != False:
+                object['behavior'] = True
+
+        # Method tags checks
+        for method in object['methods']:
+            # Behavior context function tags
+            behavior_method_tags = ('Behavior', 'BehaviorReadOnly')
+            for tag in behavior_method_tags:
+                if resolve_annotation(method['annotations'], 'AzFunction::' + tag, False) != False:
+                    object['behavior'] = True
+
+        # Fields tags checks
         serialized_fields = 0
+
         for field in object['fields']:
             annotations = field['annotations']
             annotations.setdefault('AzField', {}) # force AzField to exist, even if it's empty
-            exclude_field = resolve_annotation(annotations, 'AzField::Serialize', object['serialize']) not in (True, None)
-            field['serialize'] = not exclude_field
-
-            if field['serialize']:
-                serialized_fields += 1
+            # NOTE: TODO: We should exclude special fields in the actual script however AzProperty seem to NOT be used, so this is temporary till add CG support
+            if 'm_azCodeGenInternal' in field['name']:
+                field['serialize'] = False
+            else:
+                field['serialize'] = resolve_annotation(annotations, 'AzField::Serialize', field_serialize_default) in (True, None, "true")
+                if field['serialize']:
+                    serialized_fields += 1
 
             # Look for edit property attributes and mark the class for editing/serialization
             field['edit'] = False
-            tags_that_imply_edit = ('Edit', 'UIHandler', 'Group', 'Name', 'Description')
+            tags_that_imply_edit = ('Edit', 'ElementUIHandler', 'UIHandler', 'Group', 'Name', 'Description')
             for tag in tags_that_imply_edit:
-                if (resolve_annotation(annotations, 'AzField::' + tag)):
+                if resolve_annotation(annotations, 'AzField::' + tag):
                     object['reflectForEdit'] = True
-                    field['serialize'] = True # edit implies serialize
                     field['edit'] = True
-                    serialized_fields += 1
-                    break
+                    # Fields not marked for Serialize need to be fixed up. Edit requires Serialize
+                    if not field['serialize']:
+                        OutputError('{}({}): Error: Field {} marked with tags used for Edit but not Serialize. Serialize is required for Edit features. Implicitly marking field for Serialize.'.format(field['file_name'], field['line_number'], field['qualified_name']))
+                        field['serialize'] = True # edit implies serialize
+                        serialized_fields += 1
+
+            # BehaviorContext field tags
+            behavior_field_tags = ('Behavior', 'BehaviorReadOnly')
+            for tag in behavior_field_tags:
+                if resolve_annotation(annotations, 'AzField::' + tag, False) != False:
+                    object['behavior'] = True
 
         # Ensure that the object is marked for serialization if fields need it
         object['serialize'] = object['serialize'] or serialized_fields > 0
     elif object.get('type') in ('enum'):
         object['serialize'] = resolve_annotation(object['annotations'], 'AzEnum') is not None
         object['reflectForEdit'] = resolve_annotation(object['annotations'], 'AzEnum::Values') is not None
+        if resolve_annotation(object['annotations'], 'AzEnum::Behavior', False) != False:
+            object['behavior'] = True
     else:
         OutputPrint('configure_reflection: Unexpected object: {} {}'.format(object.get('type'), object.get('qualified_name')))
+    # determine of the object needs Reflection function.
+    if object['serialize'] or object['behavior'] or resolve_annotation(object['annotations'], 'AzClass::CustomReflection', False):
+        object['hasReflection'] = True
+    else:
+        object['hasReflection'] = False
 
 def sort_fields_by_group(fields):
     fields_by_group = defaultdict(list)
@@ -105,6 +141,9 @@ class AzReflectionCPP_Driver(TemplateDriver):
 
         components = []
         nonComponents = []
+        needsSerializeContext = False
+        needsEditContext = False
+        needsBehaviorContext = False
 
         for object in json_object.get('objects', []):
             # determine serialization/reflection configuration for classes
@@ -123,6 +162,13 @@ class AzReflectionCPP_Driver(TemplateDriver):
             for field in object['fields']:
                 format_description(field['annotations'], 'AzField', field['name'])
 
+            if object['serialize']:
+                needsSerializeContext = True
+            if object['reflectForEdit']:
+                needsEditContext = True
+            if object['behavior']:
+                needsBehaviorContext = True
+
         for enum in json_object.get('enums', []):
             configure_reflection(enum)
             format_description(enum['annotations'], 'AzEnum', enum['name'])
@@ -130,6 +176,9 @@ class AzReflectionCPP_Driver(TemplateDriver):
 
         json_object['components'] = components
         json_object['classes'] = nonComponents
+        json_object['needsSerializeContext'] = needsSerializeContext
+        json_object['needsEditContext'] = needsEditContext
+        json_object['needsBehaviorContext'] = needsBehaviorContext
 
 
     def render_templates(self, input_file, **template_kwargs):

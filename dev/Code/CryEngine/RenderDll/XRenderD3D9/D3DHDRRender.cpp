@@ -745,7 +745,7 @@ void CHDRPostProcess::MeasureLuminance()
     CD3D9Renderer* rd = gcpRendD3D;
 
     uint64 nFlagsShader_RT = gRenDev->m_RP.m_FlagsShader_RT;
-    gRenDev->m_RP.m_FlagsShader_RT &= ~(g_HWSR_MaskBit[HWSR_SAMPLE0] | g_HWSR_MaskBit[HWSR_SAMPLE1] | g_HWSR_MaskBit[HWSR_SAMPLE2] | g_HWSR_MaskBit[HWSR_SAMPLE5]);
+    gRenDev->m_RP.m_FlagsShader_RT &= ~(g_HWSR_MaskBit[HWSR_SAMPLE0] | g_HWSR_MaskBit[HWSR_SAMPLE1] | g_HWSR_MaskBit[HWSR_SAMPLE2] | g_HWSR_MaskBit[HWSR_SAMPLE4] | g_HWSR_MaskBit[HWSR_SAMPLE5]);
 
     int32 dwCurTexture = NUM_HDR_TONEMAP_TEXTURES - 1;
     static CCryNameR Param1Name("SampleOffsets");
@@ -771,25 +771,33 @@ void CHDRPostProcess::MeasureLuminance()
 
     rd->FX_PushRenderTarget(0, CTexture::s_ptexHDRToneMaps[dwCurTexture], NULL);
 
-    // CONFETTI BEGIN: David Srour
-    // Metal Load/Store Actions
     rd->FX_SetColorDontCareActions(0, true, false);
     rd->FX_SetDepthDontCareActions(0, true, true);
     rd->FX_SetStencilDontCareActions(0, true, true);
-    // CONFETTI END
+
 
     rd->FX_SetActiveRenderTargets();
     rd->RT_SetViewport(0, 0, CTexture::s_ptexHDRToneMaps[dwCurTexture]->GetWidth(), CTexture::s_ptexHDRToneMaps[dwCurTexture]->GetHeight());
 
+    if (CRenderer::CV_r_HDREyeAdaptationMode == 2)
+    {
+        gRenDev->m_RP.m_FlagsShader_RT |= g_HWSR_MaskBit[HWSR_SAMPLE4];
+    }
+    else
+    {
+        CTexture::s_ptexSceneNormalsMap->Apply(1, nTexStateLinear);
+        CTexture::s_ptexSceneDiffuse->Apply(2, nTexStateLinear);
+        CTexture::s_ptexSceneSpecular->Apply(3, nTexStateLinear);
+    }
+    
     static CCryNameTSCRC TechName("HDRSampleLumInitial");
     m_shHDR->FXSetTechnique(TechName);
     m_shHDR->FXBegin(&nPasses, FEF_DONTSETTEXTURES | FEF_DONTSETSTATES);
     m_shHDR->FXBeginPass(0);
 
     CTexture::s_ptexHDRTargetScaled[1]->Apply(0, nTexStateLinear);
-    CTexture::s_ptexSceneNormalsMap->Apply(1, nTexStateLinear);
-    CTexture::s_ptexSceneDiffuse->Apply(2, nTexStateLinear);
-    CTexture::s_ptexSceneSpecular->Apply(3, nTexStateLinear);
+    
+    
 
     float s1 = 1.0f / static_cast<float>(CTexture::s_ptexHDRTargetScaled[1]->GetWidth());
     float t1 = 1.0f / static_cast<float>(CTexture::s_ptexHDRTargetScaled[1]->GetHeight());
@@ -885,7 +893,16 @@ void CHDRPostProcess::EyeAdaptation()
     const int32 lumMask = static_cast<int32>((sizeof(CTexture::s_ptexHDRAdaptedLuminanceCur) / sizeof(CTexture::s_ptexHDRAdaptedLuminanceCur[0]))) - 1;
     const int32 numTextures = static_cast<int32>(max(min(gRenDev->GetActiveGPUCount(), static_cast<uint32>(sizeof(CTexture::s_ptexHDRAdaptedLuminanceCur) / sizeof(CTexture::s_ptexHDRAdaptedLuminanceCur[0]))), 1u));
 
+#if AZ_RENDER_TO_TEXTURE_GEM_ENABLED
+    // only increment the current luminance texture when drawing the main scene 
+    if (!(rd->m_RP.m_TI[rd->m_RP.m_nProcessThreadID].m_PersFlags & RBPF_RENDER_SCENE_TO_TEXTURE))
+    {
+        CTexture::s_nCurLumTextureIndex++;
+    }
+#else
     CTexture::s_nCurLumTextureIndex++;
+#endif // if AZ_RENDER_TO_TEXTURE_GEM_ENABLED
+
     CTexture* pTexPrev = CTexture::s_ptexHDRAdaptedLuminanceCur[(CTexture::s_nCurLumTextureIndex - numTextures) & lumMask];
     CTexture* pTexCur = CTexture::s_ptexHDRAdaptedLuminanceCur[CTexture::s_nCurLumTextureIndex & lumMask];
     CTexture::s_ptexCurLumTexture = pTexCur;
@@ -1290,15 +1307,42 @@ void CHDRPostProcess::ToneMapping()
         rRP.m_FlagsShader_RT |= g_HWSR_MaskBit[HWSR_SAMPLE0];
     }
     
+#if AZ_RENDER_TO_TEXTURE_GEM_ENABLED
+    // Disable gamma application if requested 
+    if (!CRenderer::CV_r_FinalOutputsRGB)
+    {
+        rRP.m_FlagsShader_RT |= g_HWSR_MaskBit[HWSR_SAMPLE2];
+    }
+
+    // Output fully opaque alpha if rendering to texture without AA or depth
+    if ((nAAMode & eAT_NOAA_MASK) && rd->IsRenderToTextureActive())
+    {
+        rRP.m_FlagsShader_RT |= g_HWSR_MaskBit[HWSR_SAMPLE3];
+    }
+#endif // if AZ_RENDER_TO_TEXTURE_GEM_ENABLED
+
     PostProcessUtils().SetSRGBShaderFlags();
     
     rd->FX_SetColorDontCareActions(0, true, false);
     rd->FX_SetStencilDontCareActions(0, true, true);
-    rd->FX_SetDepthDontCareActions(0, true, true);
     rd->FX_SetColorDontCareActions(1, true, false);
     rd->FX_SetStencilDontCareActions(1, true, true);
-    rd->FX_SetDepthDontCareActions(1, true, true);
+    
 
+    bool bEmpty = SRendItem::IsListEmpty(EFSLIST_AFTER_POSTPROCESS, rd->m_RP.m_nProcessThreadID, rd->m_RP.m_pRLD);
+    
+    //We may need to preserve the depth buffer in case there is something to render in the EFSLIST_AFTER_POSTPROCESS bucket.
+    //It could be UI in the 3d world. If the bucket is empty ignore the depth buffer as it is not needed.
+    if (bEmpty)
+    {
+        rd->FX_SetDepthDontCareActions(0, true, true);
+        rd->FX_SetDepthDontCareActions(1, true, true);
+    }
+    else
+    {
+        rd->FX_SetDepthDontCareActions(0, false, false);
+        rd->FX_SetDepthDontCareActions(1, false, false);
+    }
 
     // Final bloom RT
 
@@ -1940,7 +1984,7 @@ void CHDRPostProcess::End()
 
     PostProcessUtils().SetFillModeSolid(false);
 
-    // (re-set back-buffer): due to lazy RT updates/setting there's strong possibility we run into problems on x360 when we try to resolve from edram with no RT set // ACCEPTED_USE
+    // (re-set back-buffer): if the platform does lazy RT updates/setting there's strong possibility we run into problems when we try to resolve with no RT set
     gcpRendD3D->FX_SetActiveRenderTargets();
 }
 
@@ -1955,7 +1999,7 @@ void CHDRPostProcess::Render()
     {
         CRY_ASSERT(gcpRendD3D->FX_GetCurrentRenderTarget(0) == CTexture::s_ptexHDRTarget);
 
-        gcpRendD3D->FX_SetActiveRenderTargets(); // Called explicitly to work around RT stack problems on 360
+        gcpRendD3D->FX_SetActiveRenderTargets(); // Called explicitly to work around RT stack problems on deprecated platform
         gcpRendD3D->RT_UnbindTMUs();// Avoid d3d error due to potential rtv still bound as shader input.
         gcpRendD3D->FX_PopRenderTarget(0);
         gcpRendD3D->EF_ClearTargetsLater(0);
@@ -2081,8 +2125,19 @@ void CHDRPostProcess::Render()
 
     gcpRendD3D->SetCurDownscaleFactor(gcpRendD3D->m_CurViewportScale);
 
-    gcpRendD3D->FX_PushRenderTarget(0, SPostEffectsUtils::AcquireFinalCompositeTarget(bDolbyHDRMode), &gcpRendD3D->m_DepthBufferOrigMSAA);
-
+    bool postAAWillApplyAA = (CRenderer::CV_r_AntialiasingMode == eAT_SMAA1TX) || (CRenderer::CV_r_AntialiasingMode == eAT_FXAA);
+    bool shouldRenderToBackbufferNow = CRenderer::CV_r_SkipNativeUpscale && CRenderer::CV_r_SkipRenderComposites && !postAAWillApplyAA;
+    if (shouldRenderToBackbufferNow)
+    {
+        gcpRendD3D->RT_SetViewport(0, 0, gcpRendD3D->GetNativeWidth(), gcpRendD3D->GetNativeHeight());
+        gcpRendD3D->FX_SetRenderTarget(0, gcpRendD3D->GetBackBuffer(), nullptr);
+        gcpRendD3D->FX_SetActiveRenderTargets();
+    }
+    else
+    {
+        gcpRendD3D->FX_PushRenderTarget(0, SPostEffectsUtils::AcquireFinalCompositeTarget(bDolbyHDRMode), &gcpRendD3D->m_DepthBufferOrigMSAA);
+    }
+    
     // Render final scene to the back buffer
     if (CRenderer::CV_r_HDRDebug != 1 && CRenderer::CV_r_HDRDebug != 2)
     {
@@ -2130,14 +2185,29 @@ void CD3D9Renderer::FX_FinalComposite()
     if (FX_GetCurrentRenderTarget(0) == upscaleSource && upscaleSource != nullptr)
     {
         FX_PopRenderTarget(0);
+
+#if AZ_RENDER_TO_TEXTURE_GEM_ENABLED
+        const bool isRenderSceneToTexture = (m_RP.m_TI[m_RP.m_nProcessThreadID].m_PersFlags & RBPF_RENDER_SCENE_TO_TEXTURE) != 0;
+        if (!isRenderSceneToTexture)
+        {
+            RT_SetViewport(0, 0, m_nativeWidth, m_nativeHeight);
+            FX_SetRenderTarget(0, m_pBackBuffer, nullptr);
+            FX_SetActiveRenderTargets();
+        }
+#else
         RT_SetViewport(0, 0, m_nativeWidth, m_nativeHeight);
         FX_SetRenderTarget(0, m_pBackBuffer, nullptr);
         FX_SetActiveRenderTargets();
+#endif // if AZ_RENDER_TO_TEXTURE_GEM_ENABLED
 
         static ICVar* DolbyCvar = gEnv->pConsole->GetCVar("r_HDRDolby");
         int DolbyCvarValue = DolbyCvar ? DolbyCvar->GetIVal() : eDVM_Disabled;
 
+#if AZ_RENDER_TO_TEXTURE_GEM_ENABLED
+        if (DolbyCvarValue == eDVM_Vision && !isRenderSceneToTexture)
+#else
         if (DolbyCvarValue == eDVM_Vision)
+#endif // if AZ_RENDER_TO_TEXTURE_GEM_ENABLED
         {
             CHDRPostProcess::GetInstance()->EncodeDolbyVision(upscaleSource);
         }

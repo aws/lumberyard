@@ -13,15 +13,32 @@
 #define SHADERCOMPILERUNITTEST_H
 
 #include "UnitTestRunner.h"
+
+#include <AzCore/std/functional.h>
+
 #include "native/shadercompiler/shadercompilerManager.h"
 //#include "native/shadercompiler/shadercompilerMessages.h"
 #include "native/utilities/UnitTestShaderCompilerServer.h"
-
-
 #include <QString>
 #include <QByteArray>
 
 class ConnectionManager;
+
+class ShaderCompilerManagerForUnitTest : public ShaderCompilerManager
+{
+public:
+    explicit ShaderCompilerManagerForUnitTest(QObject* parent = 0) : ShaderCompilerManager(parent) {};
+    
+    // for this test, we override sendResponse and make it so that it just calls a callback instead of actually sending it to the connection manager.
+    void sendResponse(unsigned int connId, unsigned int type, unsigned int serial, QByteArray payload) override
+    {
+        if (m_sendResponseCallbackFn)
+        {
+            m_sendResponseCallbackFn(connId, type, serial, payload);
+        }
+    }
+    AZStd::function<void(unsigned int, unsigned int, unsigned int, QByteArray)> m_sendResponseCallbackFn;
+};
 
 class ShaderCompilerUnitTest
     : public UnitTestRun
@@ -54,7 +71,7 @@ public Q_SLOTS:
 
 private:
     UnitTestShaderCompilerServer m_server;
-    ShaderCompilerManager m_shaderCompilerManager;
+    ShaderCompilerManagerForUnitTest m_shaderCompilerManager;
     ConnectionManager* m_connectionManager;
     QByteArray m_testPayload;
     QString m_lastShaderCompilerErrorMessage;

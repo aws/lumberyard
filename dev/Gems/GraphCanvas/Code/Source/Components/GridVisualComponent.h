@@ -83,6 +83,11 @@ namespace GraphCanvas
 
         void SetSelected(bool selected) override;
         bool IsSelected() const override;
+
+        QPainterPath GetOutline() const override;
+
+        void SetZValue(int zValue) override;
+        int GetZValue() const override;
         ////
 
         // GridNotificationBus

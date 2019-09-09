@@ -261,7 +261,7 @@ void CFactionMap::SetReaction(uint8 factionOne, uint8 factionTwo, IFactionMap::R
 	{
 		m_reactions[factionOne][factionTwo] = reaction;
 
-		// Márcio: HAX
+		// Marcio: HAX
 		AIObjects::iterator it = GetAISystem()->m_mapFaction.find(factionOne);
 		AIObjects::iterator end = GetAISystem()->m_mapFaction.end();
 		

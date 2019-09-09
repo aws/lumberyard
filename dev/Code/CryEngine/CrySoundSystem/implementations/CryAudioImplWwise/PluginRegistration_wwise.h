@@ -13,15 +13,6 @@
 #pragma once
 
 //
-// Registration of plugins via:
-//      AK::SoundEngine::RegisterAllPlugins()
-//      AK::SoundEngine::RegisterPlugin(...)
-// is deprecated in AK_WWISESDK_VERSION_MAJOR == 2016 and later.
-// See 2016 migration page:
-// https://www.audiokinetic.com/library/edge/?source=SDK&id=whatsnew__2016__1__migration.html
-//
-
-//
 // Use this plugin registration helpers header to auto-register plugin libraries.
 // This will give a standard set of plugins, check <AK/Plugin/AllPluginFactories.h> for what it includes.
 //

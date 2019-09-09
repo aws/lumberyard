@@ -22,10 +22,11 @@
 #include "Include/SandboxAPI.h"
 
 #include <QMenu>
-#include <QUuid>
 #if defined(Q_OS_WIN)
 #include <QtWinExtras/qwinfunctions.h>
 #endif
+
+#include <AzCore/Math/Uuid.h>
 
 namespace AzQtComponents
 {
@@ -200,6 +201,8 @@ public:
     virtual void CenterOnSelection() = 0;
     virtual void CenterOnAABB(const AABB& aabb) = 0;
 
+    virtual void CenterOnSliceInstance() = 0;
+
     /** Set ID of this viewport
     */
     void SetViewportId(int id) { m_nCurViewportID = id; };
@@ -207,6 +210,9 @@ public:
     /** Get ID of this viewport
     */
     int GetViewportId() const { return m_nCurViewportID; };
+
+    // Store final Game Matrix ready for editor
+    void SetGameTM(const Matrix34& tm) { m_gameTM = tm; };
 
     //////////////////////////////////////////////////////////////////////////
     // Drag and drop support on viewports.
@@ -237,6 +243,7 @@ public:
 
     virtual void SetCurrentCursor(EStdCursor stdCursor) = 0;
     virtual void SetCurrentCursor(EStdCursor stdCursor, const QString& str) = 0;
+    virtual void SetSupplementaryCursorStr(const QString& str) = 0;
     virtual void SetCursorString(const QString& str) = 0;
 
     virtual CEditTool* GetEditTool() = 0;
@@ -271,6 +278,8 @@ protected:
     // Screen Matrix
     Matrix34 m_screenTM;
     int m_nCurViewportID;
+    // Final game view matrix before drpping back to editor
+    Matrix34 m_gameTM;
 
     // Custom drop callback (Leroy@Conffx)
     DropCallback m_dropCallback;
@@ -310,7 +319,7 @@ public:
     static const GUID& GetClassID()
     {
         static GUID guid = [] {
-            return QUuid::createUuid();
+            return AZ::Uuid::CreateRandom();
         } ();
         return guid;
     }
@@ -400,18 +409,22 @@ public:
     QRect GetSelectionRectangle() const override { return m_selectedRect; };
     //! Called when dragging selection rectangle.
     void OnDragSelectRectangle(const QRect& rect, bool bNormalizeRect = false) override;
-    //! Get selection procision tollerance.
+    //! Get selection procision tolerance.
     float GetSelectionTolerance() const { return m_selectionTolerance; }
     //! Center viewport on selection.
-    virtual void CenterOnSelection() override {};
-    virtual void CenterOnAABB(const AABB& aabb) override {};
+    void CenterOnSelection() override {}
+    void CenterOnAABB(const AABB& aabb) override {}
+
+    virtual void CenterOnSliceInstance() {}
 
     //! Performs hit testing of 2d point in view to find which object hit.
-    virtual bool HitTest(const QPoint& point, HitContext& hitInfo) override;
+    bool HitTest(const QPoint& point, HitContext& hitInfo) override;
 
     //! Do 2D hit testing of line in world space.
     // pToCameraDistance is an optional output parameter in which distance from the camera to the line is returned.
-    virtual bool HitTestLine(const Vec3& lineP1, const Vec3& lineP2, const QPoint& hitpoint, int pixelRadius, float* pToCameraDistance = 0) const override;
+    bool HitTestLine(const Vec3& lineP1, const Vec3& lineP2, const QPoint& hitpoint, int pixelRadius, float* pToCameraDistance = 0) const override;
+
+    float GetDistanceToLine(const Vec3& lineP1, const Vec3& lineP2, const QPoint& point) const override;
 
     // Access to the member m_bAdvancedSelectMode so interested modules can know its value.
     bool GetAdvancedSelectModeFlag();
@@ -462,6 +475,7 @@ public:
     void SetCurrentCursor(EStdCursor stdCursor);
     virtual void SetCursorString(const QString& cursorString);
     void ResetCursor();
+    void SetSupplementaryCursorStr(const QString& str);
 
     virtual CEditTool* GetEditTool();
     // Assign an edit tool to viewport
@@ -569,6 +583,7 @@ protected:
     //! Mouse is over this object.
     CBaseObject* m_pMouseOverObject;
     QString m_cursorStr;
+    QString m_cursorSupplementaryStr;
 
     static bool m_bDegradateQuality;
 

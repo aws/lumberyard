@@ -44,6 +44,10 @@ namespace AzToolsFramework
 
         // Returns if the component entity is isolated when the editor is in Isolation Mode
         virtual bool IsSandBoxObjectIsolated() = 0;
+
+        /// Updates the entity to match the visibility and lock state of its hierarchy.
+        /// Necessary because ancestors that are layers can override the current entity's visibility and lock state.
+        virtual void RefreshVisibilityAndLock() = 0;
     };
 
     using ComponentEntityEditorRequestBus = AZ::EBus < ComponentEntityEditorRequests >;
@@ -64,6 +68,9 @@ namespace AzToolsFramework
 
         /// Retrieve AZ Entity Id associated with this sandbox object.
         virtual AZ::EntityId GetAssociatedEntityId() = 0;
+
+        /// Updates the undo cache for this sandbox object
+        virtual void UpdatePreemptiveUndoCache() = 0;
     };
 
     using ComponentEntityObjectRequestBus = AZ::EBus < ComponentEntityObjectRequests >;

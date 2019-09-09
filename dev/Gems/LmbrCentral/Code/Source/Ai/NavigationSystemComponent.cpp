@@ -25,15 +25,14 @@
 #include <functor.h> // needed in <INavigationSystem.h>
 #include <INavigationSystem.h>
 
-using namespace AZ;
 
 namespace LmbrCentral
 {
-    AZ_CLASS_ALLOCATOR_IMPL(NavRayCastResult, SystemAllocator, 0)
+    AZ_CLASS_ALLOCATOR_IMPL(NavRayCastResult, AZ::SystemAllocator, 0)
 
-    void NavigationSystemComponent::Reflect(ReflectContext* context)
+    void NavigationSystemComponent::Reflect(AZ::ReflectContext* context)
     {
-        if (SerializeContext* serializeContext = azrtti_cast<SerializeContext*>(context))
+        if (AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
         {
             serializeContext->Class<NavigationSystemComponent, Component>()
                 ->Version(1)
@@ -47,7 +46,7 @@ namespace LmbrCentral
                 ;
         }
 
-        if (BehaviorContext* behaviorContext = azrtti_cast<BehaviorContext*>(context))
+        if (AZ::BehaviorContext* behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context))
         {
             // RayCastWorld return type
             behaviorContext->Class<NavRayCastResult>()

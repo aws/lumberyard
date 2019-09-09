@@ -22,8 +22,78 @@
     <PtvsTargetsFile>$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\Python Tools\Microsoft.PythonTools.targets</PtvsTargetsFile>
   </PropertyGroup>
   <ItemGroup>
+    <Content Include="cgp-resource-code\dist\cloudgemtexttospeech.js" />
+    <Content Include="cgp-resource-code\src\api-handler.class.ts" />
+    <Content Include="cgp-resource-code\src\cloudgemtesttospeech.module.ts" />
+    <Content Include="cgp-resource-code\src\cloudgemtexttospeech.ts" />
+    <Content Include="cgp-resource-code\src\index.component.html" />
+    <Content Include="cgp-resource-code\src\index.component.scss" />
+    <Content Include="cgp-resource-code\src\index.component.ts" />
+    <Content Include="cgp-resource-code\src\index.ts" />
+    <Content Include="cgp-resource-code\src\model.class.ts" />
+    <Content Include="cgp-resource-code\src\package.json" />
+    <Content Include="cgp-resource-code\src\thumbnail.component.ts" />
+    <Content Include="cgp-resource-code\src\tsconfig.json" />
+    <Content Include="common-code\PollyCommon\.ignore" />
+    <Content Include="common-code\PollyCommon\.import" />
+    <Content Include="common-code\PollyCommon\PollyCommon.pyproj" />
+    <Content Include="lambda-code\PackageVoiceLines\.ignore" />
+    <Content Include="lambda-code\PackageVoiceLines\.import" />
+    <Content Include="project-code\lambda-code\PollyResourceType\.import" />
+    <Content Include="project-template.json" />
     <Content Include="resource-template.json" />
     <Content Include="swagger.json" />
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="cgp-resource-code\" />
+    <Folder Include="cgp-resource-code\dist\" />
+    <Folder Include="cgp-resource-code\src\" />
+    <Folder Include="common-code\" />
+    <Folder Include="common-code\PollyCommon\" />
+    <Folder Include="lambda-code\" />
+    <Folder Include="lambda-code\PackageVoiceLines\" />
+    <Folder Include="lambda-code\ServiceLambda\" />
+    <Folder Include="lambda-code\ServiceLambda\api\" />
+    <Folder Include="lambda-code\ServiceLambda\resource_types\" />
+    <Folder Include="project-code\" />
+    <Folder Include="project-code\lambda-code\" />
+    <Folder Include="project-code\lambda-code\PollyResourceType\" />
+    <Folder Include="project-code\lambda-code\PollyResourceType\resource_types\" />
+    <Folder Include="resource-manager-code\" />
+    <Folder Include="test\" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="common-code\PollyCommon\character_config.py" />
+    <Compile Include="common-code\PollyCommon\speech_lib.py" />
+    <Compile Include="common-code\PollyCommon\tts.py" />
+    <Compile Include="common-code\PollyCommon\zip_exporter.py" />
+    <Compile Include="lambda-code\PackageVoiceLines\package_speeches.py" />
+    <Compile Include="lambda-code\ServiceLambda\api\character.py" />
+    <Compile Include="lambda-code\ServiceLambda\api\characterlib.py" />
+    <Compile Include="lambda-code\ServiceLambda\api\characters.py" />
+    <Compile Include="lambda-code\ServiceLambda\api\service_status.py" />
+    <Compile Include="lambda-code\ServiceLambda\api\speechlib.py" />
+    <Compile Include="lambda-code\ServiceLambda\api\speechlib_filter.py" />
+    <Compile Include="lambda-code\ServiceLambda\api\speechlib_import.py" />
+    <Compile Include="lambda-code\ServiceLambda\api\speechlib_preview.py" />
+    <Compile Include="lambda-code\ServiceLambda\api\tts_custommappings.py" />
+    <Compile Include="lambda-code\ServiceLambda\api\tts_exporter.py" />
+    <Compile Include="lambda-code\ServiceLambda\api\tts_exporter_library.py" />
+    <Compile Include="lambda-code\ServiceLambda\api\tts_generatedpackage.py" />
+    <Compile Include="lambda-code\ServiceLambda\api\tts_generatedpackages.py" />
+    <Compile Include="lambda-code\ServiceLambda\api\tts_runtimecache.py" />
+    <Compile Include="lambda-code\ServiceLambda\api\tts_runtimecapabilities.py" />
+    <Compile Include="lambda-code\ServiceLambda\api\tts_speechmarks.py" />
+    <Compile Include="lambda-code\ServiceLambda\api\tts_voiceline.py" />
+    <Compile Include="lambda-code\ServiceLambda\api\voicelist.py" />
+    <Compile Include="lambda-code\ServiceLambda\api\__init__.py" />
+    <Compile Include="lambda-code\ServiceLambda\resource_types\Custom_Polly.py" />
+    <Compile Include="lambda-code\ServiceLambda\resource_types\__init__.py" />
+    <Compile Include="project-code\lambda-code\PollyResourceType\resource_types\Custom_Polly.py" />
+    <Compile Include="project-code\lambda-code\PollyResourceType\resource_types\__init__.py" />
+    <Compile Include="resource-manager-code\command.py" />
+    <Compile Include="test\test_integration.py" />
+    <Compile Include="test\__init__.py" />
   </ItemGroup>
   <Import Project="$(PtvsTargetsFile)" Condition="Exists($(PtvsTargetsFile))" />
   <Import Project="$(MSBuildToolsPath)\Microsoft.Common.targets" Condition="!Exists($(PtvsTargetsFile))" />

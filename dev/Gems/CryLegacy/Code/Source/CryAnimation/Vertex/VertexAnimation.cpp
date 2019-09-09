@@ -22,8 +22,8 @@
 #include "AttachmentSkin.h"
 #include "AttachmentVCloth.h"
 
-std::vector<CAttachmentSKIN*> CVertexAnimation::s_softwareRenderMeshes;
-std::vector<CAttachmentSKIN*> CVertexAnimation::s_newSoftwareRenderMeshes;
+StaticInstance<std::vector<CAttachmentSKIN*>> CVertexAnimation::s_softwareRenderMeshes;
+StaticInstance<std::vector<CAttachmentSKIN*>> CVertexAnimation::s_newSoftwareRenderMeshes;
 
 void CVertexAnimation::RegisterSoftwareRenderMesh(CAttachmentSKIN* pAttachment)
 {
@@ -55,8 +55,8 @@ void CVertexAnimation::RemoveSoftwareRenderMesh(CAttachmentSKIN* pAttachment)
 }
 
 
-std::vector<CAttachmentVCLOTH*> CVertexAnimation::s_softwareRenderMeshesVCloth;
-std::vector<CAttachmentVCLOTH*> CVertexAnimation::s_newSoftwareRenderMeshesVCloth;
+StaticInstance<std::vector<CAttachmentVCLOTH*>> CVertexAnimation::s_softwareRenderMeshesVCloth;
+StaticInstance<std::vector<CAttachmentVCLOTH*>> CVertexAnimation::s_newSoftwareRenderMeshesVCloth;
 
 void CVertexAnimation::RegisterSoftwareRenderMesh(CAttachmentVCLOTH* pAttachment)
 {
@@ -94,7 +94,7 @@ void CVertexAnimation::ClearSoftwareRenderMeshes()
     {
         s_softwareRenderMeshes[i]->ReleaseSoftwareRenderMeshes();
     }
-    std::swap(s_softwareRenderMeshes, s_newSoftwareRenderMeshes);
+    std::swap(*s_softwareRenderMeshes, *s_newSoftwareRenderMeshes);
     s_newSoftwareRenderMeshes.clear();
 
     uint32 numMeshesVCloth = s_softwareRenderMeshesVCloth.size();
@@ -102,7 +102,7 @@ void CVertexAnimation::ClearSoftwareRenderMeshes()
     {
         s_softwareRenderMeshesVCloth[i]->ReleaseSoftwareRenderMeshes();
     }
-    std::swap(s_softwareRenderMeshesVCloth, s_newSoftwareRenderMeshesVCloth);
+    std::swap(*s_softwareRenderMeshesVCloth, *s_newSoftwareRenderMeshesVCloth);
     s_newSoftwareRenderMeshesVCloth.clear();
 }
 

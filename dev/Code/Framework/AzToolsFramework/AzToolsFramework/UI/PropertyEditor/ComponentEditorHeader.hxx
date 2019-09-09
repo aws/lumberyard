@@ -38,6 +38,12 @@ namespace AzToolsFramework
         /// Set a title. Passing an empty string will hide the widget.
         void SetTitle(const QString& title);
 
+        /// Set a title style option.
+        void setTitleProperty(const char *name, const QVariant &value);
+
+        /// Redraw title to get new style to work
+        void RefreshTitle();
+
         /// Set an icon. Passing a null icon will hide the widget.
         void SetIcon(const QIcon& icon);
 
@@ -65,6 +71,7 @@ namespace AzToolsFramework
         void SetHelpURL(AZStd::string& url);
         void ClearHelpURL();
 
+        void SetFilterString(const AZStd::string& str);
     Q_SIGNALS:
         void OnContextMenuClicked(const QPoint& position);
         void OnExpanderChanged(bool expanded);
@@ -84,6 +91,8 @@ namespace AzToolsFramework
         QLabel* m_warningLabel = nullptr;
         QPushButton* m_contextMenuButton = nullptr;
         QPushButton* m_helpButton = nullptr;
+        QString m_title;
+        QString m_currentFilterString;
         bool m_warning = false;
         bool m_readOnly = false;
 

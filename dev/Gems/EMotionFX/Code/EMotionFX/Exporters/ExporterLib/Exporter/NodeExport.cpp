@@ -32,13 +32,14 @@ namespace ExporterLib
         const uint32                nodeIndex           = node->GetNodeIndex();
         const uint32                parentIndex         = node->GetParentIndex();
         const uint32                numChilds           = node->GetNumChildNodes();
-        const EMotionFX::Transform& transform           = actor->GetBindPose()->GetLocalTransform(nodeIndex);
+        const EMotionFX::Transform& transform           = actor->GetBindPose()->GetLocalSpaceTransform(nodeIndex);
         AZ::PackedVector3f          position            = AZ::PackedVector3f(transform.mPosition);
         MCore::Quaternion           rotation            = transform.mRotation;
         AZ::PackedVector3f          scale               = AZ::PackedVector3f(transform.mScale);
 
         // create the node chunk and copy over the information
         EMotionFX::FileFormat::Actor_Node nodeChunk;
+        memset(&nodeChunk, 0, sizeof(EMotionFX::FileFormat::Actor_Node));
 
         CopyVector(nodeChunk.mLocalPos,    position);
         CopyQuaternion(nodeChunk.mLocalQuat,   rotation);
@@ -194,6 +195,7 @@ namespace ExporterLib
 
         // the node group chunk
         EMotionFX::FileFormat::Actor_NodeGroup groupChunk;
+        memset(&groupChunk, 0, sizeof(EMotionFX::FileFormat::Actor_NodeGroup));
 
         // set the data
         groupChunk.mNumNodes            = static_cast<uint16>(numNodes);

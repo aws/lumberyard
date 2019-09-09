@@ -867,6 +867,8 @@ int CParticleSubEmitter::SpawnBeamEmitter(const ResourceParticleParams& params, 
         }
         WalkAlongWaveForm(params, segmentTransformMatrix, static_cast<float>(i), static_cast<float>(finalCount), dist, segmentSpawnStep, spawnPos, segmentUpVector, noise, params.fTangent(VRANDOM, GetRelativeAge()));
         QuatTS plocSegmentPreTransform(segmentTransformMatrix);
+        // Emitter offset is applied during particle init, a pre-transform also containing this would cause the offset to be applied twice.
+        plocSegmentPreTransform.t -= spawnPos; 
         SpawnParticleToContainer(params, context, fAge, data, &plocSegmentPreTransform, segmentOffset, finalCount - BEAM_COUNT_CORRECTION, segmentSpawnStep, isEdgeParticle);
     }
     return static_cast<int>(finalCount); // there is a two particle tax to using trail particles these are not rendered.

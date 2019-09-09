@@ -18,8 +18,9 @@
 #pragma once
 
 #include <AzCore/Component/Component.h>
+#include <AzCore/Component/EntityBus.h>
 #include <AzCore/Slice/SliceMetadataInfoBus.h>
-#include <AzCore/Component/ComponentApplicationBus.h>
+#include <AzCore/Component/ComponentExport.h>
 
 namespace AZ
 {
@@ -36,7 +37,7 @@ namespace AZ
     class SliceMetadataInfoComponent
         : public AZ::Component
         , public SliceMetadataInfoRequestBus::Handler
-        , private ComponentApplicationEventBus::Handler
+        , public AZ::EntityBus::MultiHandler
         , public SliceMetadataInfoManipulationBus::Handler
     {
     public:
@@ -84,8 +85,8 @@ namespace AZ
         friend SliceComponent;
 
         //////////////////////////////////////////////////////////////////////////
-        // ComponentApplicationEventBus
-        void OnEntityRemoved(const AZ::EntityId& entityId) override;
+        // EntityBus
+        void OnEntityDestruction(const AZ::EntityId& entityId) override;
         //////////////////////////////////////////////////////////////////////////
 
         //////////////////////////////////////////////////////////////////////////
@@ -105,7 +106,7 @@ namespace AZ
 
         /**
         * Component Descriptor - Incompatible Services
-        * @param provided An array to fill out with all the services this component is incompatible with
+        * @param incompatible An array to fill out with all the services this component is incompatible with
         */
         static void GetIncompatibleServices(AZ::ComponentDescriptor::DependencyArrayType& incompatible);
 
@@ -119,6 +120,16 @@ namespace AZ
         *       not trigger the deletion of the entity itself.
         */
         void CheckDependencyCount();
+
+        /**
+        * Handles the runtime export of the SliceMetadataInfoComponent.  
+        * The SliceMetadataInfo component shouldn't exist at runtime, so the export function returns a null component.
+        * @param thisComponent The source component that is being exported.
+        * @param platformTags The set of platforms to export for.
+        * @return The exported component, along with a flag on whether or not to delete it at the end of the export process.
+        */
+        AZ::ExportedComponent ExportComponent(AZ::Component* thisComponent, const AZ::PlatformTagSet& platformTags);
+
 
         SliceMetadataInfoNotificationBus::BusPtr m_notificationBus; /**< A bus pointer for emitting addressed notifications */
 

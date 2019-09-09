@@ -532,9 +532,6 @@ void CItemSystem::Scan(const char* folderName)
 //------------------------------------------------------------------------
 bool CItemSystem::ScanXML(XmlNodeRef& root, const char* xmlFile)
 {
-    MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_Other, 0, "ItemSystem");
-    MEMSTAT_CONTEXT_FMT(EMemStatContextTypes::MSC_Other, 0, "Item XML (%s)", xmlFile);
-
     if (azstricmp(root->getTag(), "item"))
     {
         // We don't want to report error here, we have other files in the same folder like ammo with different tag
@@ -1585,7 +1582,6 @@ void CItemSystem::SerializePlayerLTLInfo(bool bReading)
 
     if (!bReading)
     {
-        ScopedSwitchToGlobalHeap globalHeap;
         m_playerLevelToLevelSave = gEnv->pSystem->CreateXmlNode("Inventory");
     }
 
@@ -1604,7 +1600,6 @@ void CItemSystem::SerializePlayerLTLInfo(bool bReading)
     TSerialize ser = TSerialize(pSer);
     if (pActor)
     {
-        ScopedSwitchToGlobalHeap globalHeap;
         pActor->SerializeLevelToLevel(ser);
     }
     pSerializer->Release();

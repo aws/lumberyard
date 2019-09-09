@@ -245,7 +245,11 @@ typedef Vec4_tpl<real> Vec4r; // variable float precision. depending on the targ
 #if defined(WIN32) || defined(WIN64) || defined(LINUX) || defined(APPLE)
 typedef Vec4_tpl<f32> Vec4A;
 #elif defined(AZ_RESTRICTED_PLATFORM)
-#include AZ_RESTRICTED_FILE(Cry_Vector4_h, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/Cry_Vector4_h_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/Cry_Vector4_h_provo.inl"
+    #endif
 #endif
 
 //vector self-addition

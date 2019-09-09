@@ -89,6 +89,7 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_Custom_ServiceApi_Reques
     @mock.patch.object(Custom_ServiceApi, 'get_configured_swagger_content', return_value = SWAGGER_CONTENT)
     @mock.patch.object(Custom_ServiceApi, 'create_api_gateway', return_value = REST_API_ID)
     @mock.patch.object(Custom_ServiceApi, 'register_service_interfaces')
+    @mock.patch.object(Custom_ServiceApi, 'list_rest_apis', return_value = [])
     def test_Create_with_full_properties(self, *args):
 
         # Setup
@@ -127,6 +128,7 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_Custom_ServiceApi_Reques
                 REST_API_RESOURCE_NAME)
 
             Custom_ServiceApi.create_api_gateway.assert_called_once_with(
+                REST_API_RESOURCE_NAME,
                 PROPS_MATCHER,
                 SWAGGER_CONTENT)
 
@@ -152,6 +154,7 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_Custom_ServiceApi_Reques
     @mock.patch.object(Custom_ServiceApi, 'get_configured_swagger_content', return_value = SWAGGER_CONTENT)
     @mock.patch.object(Custom_ServiceApi, 'create_api_gateway', return_value = REST_API_ID)
     @mock.patch.object(Custom_ServiceApi, 'register_service_interfaces')
+    @mock.patch.object(Custom_ServiceApi, 'list_rest_apis', return_value = [])
     def test_Create_with_mimimal_properties(self, *args):
 
         # Setup
@@ -190,6 +193,7 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_Custom_ServiceApi_Reques
                 REST_API_RESOURCE_NAME)
 
             Custom_ServiceApi.create_api_gateway.assert_called_once_with(
+                REST_API_RESOURCE_NAME,
                 PROPS_MATCHER,
                 SWAGGER_CONTENT)
 
@@ -466,11 +470,13 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_Custom_ServiceApi_ApiGat
     @mock.patch.object(Custom_ServiceApi, 'create_rest_api_deployment')
     @mock.patch.object(Custom_ServiceApi, 'update_rest_api_stage')
     @mock.patch.object(Custom_ServiceApi, 'create_documentation_version')
+    @mock.patch.object(Custom_ServiceApi, 'list_rest_apis', return_value = [])
     def test_create_api_gateway(self, *args):
 
         # Execute
 
         result = Custom_ServiceApi.create_api_gateway(
+            REST_API_RESOURCE_NAME,
             FULL_PROPS, 
             SWAGGER_CONTENT)
 
@@ -481,7 +487,8 @@ class UnitTest_CloudGemFramework_ProjectResourceHandler_Custom_ServiceApi_ApiGat
 
         Custom_ServiceApi.create_rest_api_deployment.assert_called_once_with(
             REST_API_ID, 
-            SWAGGER_DIGEST)
+            SWAGGER_DIGEST,
+            True)
 
         Custom_ServiceApi.update_rest_api_stage(
             REST_API_ID,

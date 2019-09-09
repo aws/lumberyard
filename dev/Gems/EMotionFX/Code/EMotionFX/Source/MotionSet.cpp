@@ -160,6 +160,7 @@ namespace EMotionFX
 
 #if defined(EMFX_DEVELOPMENT_BUILD)
         m_isOwnedByRuntime   = false;
+        m_isOwnedByAsset     = false;
 #endif // EMFX_DEVELOPMENT_BUILD
 
         // Automatically register the motion set.
@@ -198,9 +199,16 @@ namespace EMotionFX
         }
 
         // Get rid of the child motion sets.
-        for (MotionSet* childSet : m_childSets)
+        // Can't use a range for loop here, because deleting the child
+        // MotionSet also erases the child set from m_childSet, which
+        // invalidates the iterators
+        // Delete back to front to avoid shifting the elements in m_childSets
+        // every time a child is erased
+        const size_t numChildSets = m_childSets.size();
+        for (size_t i = numChildSets; i > 0; --i)
         {
-            if (!childSet->GetIsOwnedByRuntime())
+            MotionSet* childSet = m_childSets[i-1];
+            if (!childSet->GetIsOwnedByRuntime() && !childSet->GetIsOwnedByAsset())
             {
                 delete childSet;
             }
@@ -465,16 +473,17 @@ namespace EMotionFX
         return motion;
     }
 
-    MotionSet* MotionSet::RecursiveFindMotionSetByName(const AZStd::string& motionSetName, bool isOwnedByRuntime) 
+
+    MotionSet* MotionSet::RecursiveFindMotionSetByName(const AZStd::string& motionSetName, bool isOwnedByRuntime) const
     {
         MCore::LockGuardRecursive lock(m_mutex);
         
         if (GetIsOwnedByRuntime() == isOwnedByRuntime && m_name == motionSetName)
         {
-            return this;
+            return const_cast<MotionSet*>(this);
         }
         MotionSet* motionSet = nullptr;
-        for (MotionSet* childMotionSet : m_childSets)
+        for (const MotionSet* childMotionSet : m_childSets)
         {
             motionSet = childMotionSet->RecursiveFindMotionSetByName(motionSetName, isOwnedByRuntime);
             if (motionSet)
@@ -484,6 +493,7 @@ namespace EMotionFX
         }
         return motionSet;
     }
+
 
     void MotionSet::SetMotionEntryId(MotionEntry* motionEntry, const AZStd::string& newMotionId)
     {
@@ -589,6 +599,8 @@ namespace EMotionFX
     {
 #if defined(EMFX_DEVELOPMENT_BUILD)
         m_isOwnedByRuntime = isOwnedByRuntime;
+#else
+        AZ_UNUSED(isOwnedByRuntime);
 #endif
     }
 
@@ -601,6 +613,27 @@ namespace EMotionFX
         return true;
 #endif
     }
+
+
+    void MotionSet::SetIsOwnedByAsset(bool isOwnedByAsset)
+    {
+#if defined(EMFX_DEVELOPMENT_BUILD)
+        m_isOwnedByAsset = isOwnedByAsset;
+#else
+        AZ_UNUSED(isOwnedByAsset);
+#endif
+    }
+
+
+    bool MotionSet::GetIsOwnedByAsset() const
+    {
+#if defined(EMFX_DEVELOPMENT_BUILD)
+        return m_isOwnedByAsset;
+#else
+        return true;
+#endif
+    }
+
 
     bool MotionSet::GetDirtyFlag() const
     {

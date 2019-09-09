@@ -67,19 +67,19 @@ void CAlignPickCallback::OnPick(CBaseObject* picked)
             {
                 if (bKeepScale && bKeepRotation)  // Keep scale and rotation of a moved object
                 {
-                    pMovedObj->SetWorldTM(Matrix34::Create(pMovedObj->GetScale(), pMovedObj->GetRotation(), pickedPos));
+                    pMovedObj->SetWorldTM(Matrix34::Create(pMovedObj->GetScale(), pMovedObj->GetRotation(), pickedPos), eObjectUpdateFlags_UserInput);
                 }
                 else if (bKeepScale)  // Keep only scale of a moved object
                 {
-                    pMovedObj->SetWorldTM(Matrix34::Create(pMovedObj->GetScale(), pickedRot, pickedPos));
+                    pMovedObj->SetWorldTM(Matrix34::Create(pMovedObj->GetScale(), pickedRot, pickedPos), eObjectUpdateFlags_UserInput);
                 }
                 else if (bKeepRotation)   // Keep only rotation of a moved object
                 {
-                    pMovedObj->SetWorldTM(Matrix34::Create(pickedScale, pMovedObj->GetRotation(), pickedPos));
+                    pMovedObj->SetWorldTM(Matrix34::Create(pickedScale, pMovedObj->GetRotation(), pickedPos), eObjectUpdateFlags_UserInput);
                 }
                 else // Scale, Rotation and Position of a picked object are applied to a moved object.
                 {
-                    pMovedObj->SetWorldTM(pickedTM);
+                    pMovedObj->SetWorldTM(pickedTM, eObjectUpdateFlags_UserInput);
                 }
             }
             else if (bAlignToBoundBox)  // align to the bounding box.
@@ -133,7 +133,7 @@ void CAlignPickCallback::OnPick(CBaseObject* picked)
                     Vec3 volumePivot(fPickedWidth * 0.5f, fPickedLength * 0.5f, fPickedHeight * 0.5f);
                     Matrix34 worldTM = Matrix34::CreateIdentity();
                     worldTM.SetTranslation(pickedPos + (pickedPivot - volumePivot));
-                    pMovedObj->SetWorldTM(worldTM);
+                    pMovedObj->SetWorldTM(worldTM, eObjectUpdateFlags_UserInput);
                     continue;
                 }
 
@@ -206,12 +206,12 @@ void CAlignPickCallback::OnPick(CBaseObject* picked)
                             varLength->Set(fScaledPickedLength);
                             worldTM = Matrix34::Create(Vec3(1, 1, 1), pickedRot, pickedPos + (pickedPivot - movedPivot));
                         }
-                        pMovedObj->SetWorldTM(worldTM);
+                        pMovedObj->SetWorldTM(worldTM, eObjectUpdateFlags_UserInput);
                     }
                 }
                 else
                 {
-                    pMovedObj->SetWorldTM(Matrix34::Create(scale, pickedRot, Vec3(pickedPos + (pickedPivot - movedPivot))));
+                    pMovedObj->SetWorldTM(Matrix34::Create(scale, pickedRot, Vec3(pickedPos + (pickedPivot - movedPivot))), eObjectUpdateFlags_UserInput);
                 }
             }
         }

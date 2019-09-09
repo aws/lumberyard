@@ -119,6 +119,7 @@ namespace AzFramework
         virtual void CalculateAppRoot(const char* appRootOverride = nullptr);
 
         AZ::ComponentTypeList GetRequiredSystemComponents() const override;
+        void CreateStaticModules(AZStd::vector<AZ::Module*>& outModules) override;
 
         //////////////////////////////////////////////////////////////////////////
         //! ApplicationRequests::Bus::Handler
@@ -182,12 +183,7 @@ namespace AzFramework
 
         //////////////////////////////////////////////////////////////////////////
         //! UserSettingsFileLocatorBus
-        AZStd::string ResolveFilePath(AZ::u32 providerId) override
-        {
-            (void)providerId;
-
-            return AZStd::string(GetAppRoot()) + "/UserSettings.xml";
-        }
+        AZStd::string ResolveFilePath(AZ::u32 providerId) override;
         //////////////////////////////////////////////////////////////////////////
 
         AZ::Component* EnsureComponentAdded(AZ::Entity* systemEntity, const AZ::Uuid& typeId);

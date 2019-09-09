@@ -30,11 +30,11 @@ def build(bld):
         platforms = ['all'],
 
         file_list = file_list,
-        use = [ 'CloudGemFrameworkStaticLibrary',
+        use = [ 'CloudGemFramework.StaticLibrary',
                 'AzFramework'],
         uselib = ['AWS_CPP_SDK_CORE',
                   'AWS_CPP_SDK_LAMBDA',
                   'AWS_CPP_SDK_S3'],
 
-       
+        restricted_script   = 'update_restricted_parameters',
     )

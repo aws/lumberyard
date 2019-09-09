@@ -17,13 +17,14 @@
 
 #include <AzCore/Memory/SystemAllocator.h>
 #include <AzCore/base.h>
-#include <AzQtComponents/Components/FilteredSearchWidget.h>
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
+#include <AzToolsFramework/ComponentMode/EditorComponentModeBus.h>
 #include <AzToolsFramework/Entity/EditorEntityInfoBus.h>
 #include <AzToolsFramework/Entity/EditorEntityContextBus.h>
 #include <AzToolsFramework/Metrics/LyEditorMetricsBus.h>
 #include <AzToolsFramework/ToolsMessaging/EntityHighlightBus.h>
 #include <AzToolsFramework/UI/SearchWidget/SearchWidgetTypes.hxx>
+#include "OutlinerSearchWidget.h"
 
 #include <QWidget>
 #include <QtGui/QIcon>
@@ -42,56 +43,76 @@ class QItemSelection;
 class OutlinerListModel;
 class OutlinerSortFilterProxyModel;
 
+namespace EntityOutliner
+{
+    class DisplayOptionsMenu;
+    enum class DisplaySortMode : unsigned char;
+    enum class DisplayOption : unsigned char;
+}
+
 class OutlinerWidget
     : public QWidget
     , private AzToolsFramework::EditorMetricsEventsBus::Handler
-    , private AzToolsFramework::EditorPickModeRequests::Bus::Handler
+    , private AzToolsFramework::EditorPickModeNotificationBus::Handler
     , private AzToolsFramework::EntityHighlightMessages::Bus::Handler
     , private OutlinerModelNotificationBus::Handler
     , private AzToolsFramework::ToolsApplicationEvents::Bus::Handler
     , private AzToolsFramework::EditorEntityContextNotificationBus::Handler
+    , private AzToolsFramework::EditorEntityInfoNotificationBus::Handler
+    , private AzToolsFramework::ComponentModeFramework::EditorComponentModeNotificationBus::Handler
 {
     Q_OBJECT;
 public:
     AZ_CLASS_ALLOCATOR(OutlinerWidget, AZ::SystemAllocator, 0)
 
-        OutlinerWidget(QWidget* pParent = NULL, Qt::WindowFlags flags = 0);
+    OutlinerWidget(QWidget* pParent = NULL, Qt::WindowFlags flags = 0);
     virtual ~OutlinerWidget();
 
-    private Q_SLOTS:
+private Q_SLOTS:
     void OnSelectionChanged(const QItemSelection&, const QItemSelection&);
     void OnOpenTreeContextMenu(const QPoint& pos);
-        
+
     void OnSearchTextChanged(const QString& activeTextFilter);
     void OnFilterChanged(const AzQtComponents::SearchTypeFilterList& activeTypeFilters);
-    
+
+    void OnSortModeChanged(EntityOutliner::DisplaySortMode sortMode);
+    void OnDisplayOptionChanged(EntityOutliner::DisplayOption displayOption, bool enable);
+
 private:
-    void RevertMouseSelection();
-    void resizeEvent(QResizeEvent* event) override;
 
     QString FindCommonSliceAssetName(const AZStd::vector<AZ::EntityId>& entityList) const;
+
+    AzFramework::EntityContextId GetPickModeEntityContextId();
 
     // EntityHighlightMessages
     virtual void EntityHighlightRequested(AZ::EntityId) override;
     virtual void EntityStrongHighlightRequested(AZ::EntityId) override;
 
-    //////////////////////////////////////////////////////////////////////////
-    // EditorPickModeRequests::Bus::Handler
-    void StartObjectPickMode() override;
-    void StopObjectPickMode() override;
-    void OnPickModeSelect(AZ::EntityId /*id*/) override;
-    //////////////////////////////////////////////////////////////////////////
+    // EditorPickModeNotificationBus
+    void OnEntityPickModeStarted() override;
+    void OnEntityPickModeStopped() override;
 
-    //////////////////////////////////////////////////////////////////////////
-    // EditorMetricsEventsBus::Handler
+    // EditorMetricsEventsBus
     void EntityCreated(const AZ::EntityId& entityId) override;
-    //////////////////////////////////////////////////////////////////////////
 
-    //////////////////////////////////////////////////////////////////////////
-    /// AzToolsFramework::EditorEntityContextNotificationBus implementation
+    // EditorEntityContextNotificationBus
+    void OnSliceInstantiated(const AZ::Data::AssetId& /*sliceAssetId*/, AZ::SliceComponent::SliceInstanceAddress& /*sliceAddress*/, const AzFramework::SliceInstantiationTicket& /*ticket*/) override;
     void OnStartPlayInEditor() override;
     void OnStopPlayInEditor() override;
-    //////////////////////////////////////////////////////////////////////////
+    void OnFocusInEntityOutliner(const AzToolsFramework::EntityIdList& entityIdList) override;
+
+    /// AzToolsFramework::EditorEntityInfoNotificationBus implementation
+    void OnEntityInfoUpdatedAddChildEnd(AZ::EntityId /*parentId*/, AZ::EntityId /*childId*/) override;
+    void OnEntityInfoUpdatedName(AZ::EntityId entityId, const AZStd::string& /*name*/) override;
+    
+
+    // EditorMetricsEventsBus
+    using EditorMetricsEventsBusTraits::EnteredComponentMode;
+    using EditorMetricsEventsBusTraits::LeftComponentMode;
+
+    // EditorComponentModeNotificationBus
+    void EnteredComponentMode(const AZStd::vector<AZ::Uuid>& componentModeTypes) override;
+    void LeftComponentMode(const AZStd::vector<AZ::Uuid>& componentModeTypes) override;
 
     // Build a selection object from the given entities. Entities already in the Widget's selection buffers are ignored.
     template <class EntityIdCollection>
@@ -111,11 +132,11 @@ private:
     void DoDeleteSelection();
     void DoDeleteSelectionAndDescendants();
     void DoRenameSelection();
-    void DoReparentSelection();
     void DoMoveEntityUp();
     void DoMoveEntityDown();
     void GoToEntitiesInViewport();
     void SetupActions();
+    void SelectSliceRoot();
 
     QAction* m_actionToShowSlice;
     QAction* m_actionToCreateEntity;
@@ -133,38 +154,49 @@ private:
     void OnExpandEntity(const AZ::EntityId& entityId, bool expand);
     void OnSelectEntity(const AZ::EntityId& entityId, bool selected);
     void OnEnableSelectionUpdates(bool enable);
+    void OnDropEvent();
     bool m_inObjectPickMode;
-    bool m_initiatedObjectPickMode;
 
     void InvalidateFilter();
     void ClearFilter();
 
     AZ::EntityId GetEntityIdFromIndex(const QModelIndex& index) const;
     QModelIndex GetIndexFromEntityId(const AZ::EntityId& entityId) const;
+    void ExtractEntityIdsFromSelection(const QItemSelection& selection, AzToolsFramework::EntityIdList& entityIdList) const;
 
-    //////////////////////////////////////////////////////////////////////////
     // AzToolsFramework::OutlinerModelNotificationBus::Handler
     // Receive notification from the outliner model that we should scroll
     // to a given entity
-    //////////////////////////////////////////////////////////////////////////
     void QueueScrollToNewContent(const AZ::EntityId& entityId) override;
 
     void ScrollToNewContent();
     bool m_scrollToNewContentQueued;
+    bool m_scrollToSelectedEntity;
+    bool m_dropOperationInProgress;
+    bool m_expandSelectedEntity;
+    bool m_focusInEntityOutliner;
     AZ::EntityId m_scrollToEntityId;
 
     void QueueUpdateSelection();
     void UpdateSelection();
-    AZStd::unordered_set<AZ::EntityId> m_entitiesToSelect;
-    AZStd::unordered_set<AZ::EntityId> m_entitiesToDeselect;
-    AZStd::unordered_set<AZ::EntityId> m_entitiesSelectedByOutliner;
-    AZStd::unordered_set<AZ::EntityId> m_entitiesDeselectedByOutliner;
+    AzToolsFramework::EntityIdSet m_entitiesToSelect;
+    AzToolsFramework::EntityIdSet m_entitiesToDeselect;
+    AzToolsFramework::EntityIdSet m_entitiesSelectedByOutliner;
+    AzToolsFramework::EntityIdSet m_entitiesDeselectedByOutliner;
     bool m_selectionChangeQueued;
     bool m_selectionChangeInProgress;
     bool m_enableSelectionUpdates;
 
     QIcon m_emptyIcon;
     QIcon m_clearIcon;
+
+    void QueueContentUpdateSort(const AZ::EntityId& entityId);
+    void SortContent();
+
+    EntityOutliner::DisplayOptionsMenu* m_displayOptionsMenu;
+    AzToolsFramework::EntityIdSet m_entitiesToSort;
+    EntityOutliner::DisplaySortMode m_sortMode;
+    bool m_sortContentQueued;
 };
 
 #endif

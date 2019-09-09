@@ -85,6 +85,29 @@ namespace AZ
         return result;
     }
 
+    // efficient check to determine if a transform has scale applied or not.
+    bool IsUnit(const Transform& t)
+    {
+        return IsCloseMag<AZ::VectorFloat>(t.GetBasisX().GetLengthSq(), AZ::VectorFloat::CreateOne())
+            && IsCloseMag<AZ::VectorFloat>(t.GetBasisY().GetLengthSq(), AZ::VectorFloat::CreateOne())
+            && IsCloseMag<AZ::VectorFloat>(t.GetBasisZ().GetLengthSq(), AZ::VectorFloat::CreateOne());
+    }
+
+    const Quaternion Quaternion::CreateRotationFromScaledTransform(Transform t)
+    {
+        t.ExtractScaleExact();
+        return CreateFromTransform(t);
+    }
+    
+    const Quaternion Quaternion::CreateRotationFromUnscaledTransform(const Transform& t)
+    {
+        AZ_Assert(IsUnit(t), "Creating quaternion from transform without normalized scale - "
+            "the orientation will likely not be what you expect. Either extract the scale first, "
+            "or prefer calling CreateRotationFromScaledTransform which will call ExtractScale for you");
+
+        return CreateFromTransform(t);
+    }
+
     const Quaternion Quaternion::CreateFromTransform(const Transform& t)
     {
         return CreateFromMatrix3x3(Matrix3x3::CreateFromTransform(t));
@@ -103,21 +126,50 @@ namespace AZ
         return CreateFromVector3AndValue(sin * axis, cos);
     }
 
-    const Quaternion Quaternion::CreateShortestArc(const Vector3& v1, const Vector3& v2)
+    const Quaternion Quaternion::CreateFromAxisAngleExact(const Vector3& axis, const VectorFloat& angle)
     {
-        Vector3 c = v1.Cross(v2);
-        float d = v1.Dot(v2);
-
-        if (d < -0.99999f)
-        {
-            return Quaternion(0.0f, 1.0f, 0.0f, 0.0f); // just pick any vector
-        }
-        float s = sqrtf((1.0f + d) * 2.0f);
-        float rs = 1.0f / s;
-
-        return Quaternion::CreateFromVector3AndValue(c * rs, 0.5f * s);
+        const VectorFloat halfAngle = 0.5f * angle;
+        return CreateFromVector3AndValue(sinf(halfAngle) * axis, cosf(halfAngle));
     }
 
+    const Quaternion Quaternion::CreateShortestArc(const Vector3& v1, const Vector3& v2)
+    {
+        const float dotProduct = v1.Dot(v2);
+        const Vector3 crossProduct = v1.Cross(v2);
+        const float magnitudeProduct = sqrtf(v1.GetLengthSq() * v2.GetLengthSq());
+
+        if (dotProduct >= 0.0f)
+        {
+            // The cross product is in the right direction for the vector part of the quaternion and has magnitude
+            // |v1||v2|sin(t)
+            // = 2|v1||v2|cos(t / 2) [sin(t / 2)]
+            // Then, if we make a quaternion with the cross product as its vector part and scalar part given by
+            // |v1||v2| + v1.v2
+            // = |v1||v2| + |v1||v2|cos(t)
+            // = |v1||v2|(1 + cos(t))
+            // = |v1||v2|(2 cos(t / 2) ^ 2)
+            // = 2|v1||v2|cos(t / 2) [cos(t / 2)]
+            // then normalizing the quaternion will eliminate the common factor of 2|v1||v2|cos(t / 2) and give the
+            // desired rotation.
+            const float w = magnitudeProduct + dotProduct;
+            return CreateFromVector3AndValue(crossProduct, w).GetNormalized();
+        }
+
+        // If the vectors aren't in the same hemisphere, return the product of a 180 degree rotation and the rotation
+        // from -v1 to v2.  This gives much better accuracy in the case where v1 is very close to -v2.
+        const float w = magnitudeProduct - dotProduct;
+        const Vector3 orthogonalVector = v1.GetOrthogonalVector();
+        Quaternion result = (CreateFromVector3AndValue(-crossProduct, w) * CreateFromVector3(orthogonalVector)).GetNormalized();
+        return result.GetW() >= 0.0f ? result : -result;
+    }
+
+    const Quaternion Quaternion::NLerp(const Quaternion& dest, const VectorFloat& t) const
+    {
+        Quaternion result = Lerp(dest, t);
+        result.Normalize();
+        return result;
+    }
+    
     const Quaternion
     Quaternion::Slerp(const Quaternion& dest, float t) const
     {
@@ -228,7 +280,7 @@ namespace AZ
     // Non-member functionality belonging to the AZ namespace
     Vector3 ConvertQuaternionToEulerDegrees(const AZ::Quaternion& q)
     {
-        return q.GetEulerRadians();
+        return q.GetEulerDegrees();
     }
 
     AZ::Vector3 ConvertQuaternionToEulerRadians(const AZ::Quaternion& q)

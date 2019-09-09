@@ -158,12 +158,6 @@ ICompiler* LuaCompiler::CreateCompiler()
 }
 
 //////////////////////////////////////////////////////////////////////////
-bool LuaCompiler::SupportsMultithreading() const
-{
-    return false;
-}
-
-//////////////////////////////////////////////////////////////////////////
 bool LuaCompiler::Process()
 {
     string sourceFile = m_CC.GetSourcePath();

@@ -1,14 +1,19 @@
 {
     "none": {
         "Root": [
-            "newoverride.inl",
             "StdAfx.h",
             "StdAfx.cpp"
         ],
         "AssetEditor": [
             "AssetEditor/AssetEditorBus.h",
+            "AssetEditor/AssetEditorToolbar.ui",
+            "AssetEditor/AssetEditorStatusBar.ui",
             "AssetEditor/AssetEditorWidget.cpp",
-            "AssetEditor/AssetEditorWidget.h"
+            "AssetEditor/AssetEditorWidget.h",
+            "AssetEditor/AssetEditorUtils.h"
+        ],
+        "AssetEditor/Resources": [
+            "AssetEditor/Resources/AssetEditorResources.qrc"
         ],
         "UI/Logging": [
             "UI/Logging/LogLine.h",
@@ -24,6 +29,10 @@
         ]
     },
     "auto": {
+        "Root": [
+            "AzToolsFrameworkModule.h",
+            "AzToolsFrameworkModule.cpp"
+        ],
         "API": [
             "API/ToolsApplicationAPI.h",
             "API/EditorAssetSystemAPI.h",
@@ -61,13 +70,12 @@
             "AssetBrowser/AssetBrowserBus.h",
             "AssetBrowser/AssetBrowserComponent.cpp",
             "AssetBrowser/AssetBrowserComponent.h",
-            "AssetBrowser/AssetBrowserEntry.cpp",
             "AssetBrowser/AssetBrowserEntry.h",
-            "AssetBrowser/AssetBrowserEntry.inl",
             "AssetBrowser/AssetBrowserFilterModel.cpp",
             "AssetBrowser/AssetBrowserFilterModel.h",
             "AssetBrowser/AssetBrowserModel.cpp",
             "AssetBrowser/AssetBrowserModel.h",
+            "AssetBrowser/AssetEntryChange.h",
             "AssetBrowser/AssetEntryChangeset.cpp",
             "AssetBrowser/AssetEntryChangeset.h",
             "AssetBrowser/AssetSelectionModel.cpp",
@@ -78,7 +86,25 @@
             "AssetBrowser/Views/AssetBrowserTreeView.cpp",
             "AssetBrowser/Views/AssetBrowserTreeView.h",
             "AssetBrowser/Views/EntryDelegate.cpp",
-            "AssetBrowser/Views/EntryDelegate.h"
+            "AssetBrowser/Views/EntryDelegate.h",
+            "AssetBrowser/Views/AssetBrowserFolderWidget.cpp",
+            "AssetBrowser/Views/AssetBrowserFolderWidget.h",
+            "AssetBrowser/Views/AssetBrowserFolderWidget.qrc"
+        ],
+        "AssetBrowser/Entries": [
+            "AssetBrowser/Entries/AssetBrowserEntry.cpp",
+            "AssetBrowser/Entries/AssetBrowserEntry.h",
+            "AssetBrowser/Entries/AssetBrowserEntry.inl",
+            "AssetBrowser/Entries/AssetBrowserEntryCache.cpp",
+            "AssetBrowser/Entries/AssetBrowserEntryCache.h",
+            "AssetBrowser/Entries/FolderAssetBrowserEntry.cpp",
+            "AssetBrowser/Entries/FolderAssetBrowserEntry.h",
+            "AssetBrowser/Entries/ProductAssetBrowserEntry.cpp",
+            "AssetBrowser/Entries/ProductAssetBrowserEntry.h",
+            "AssetBrowser/Entries/RootAssetBrowserEntry.cpp",
+            "AssetBrowser/Entries/RootAssetBrowserEntry.h",
+            "AssetBrowser/Entries/SourceAssetBrowserEntry.cpp",
+            "AssetBrowser/Entries/SourceAssetBrowserEntry.h"
         ],
         "AssetBrowser/Search": [
             "AssetBrowser/Search/Filter.cpp",
@@ -97,9 +123,13 @@
             "AssetBrowser/Search/SearchWidget.h",
             "AssetBrowser/Search/SearchWidget.ui"
         ],
-        "AssetBrowser/Internal": [
-            "AssetBrowser/AssetBrowserEntryCache.cpp",
-            "AssetBrowser/AssetBrowserEntryCache.h"
+        "AssetBrowser/Thumbnails": [
+            "AssetBrowser/Thumbnails/FolderThumbnail.cpp",
+            "AssetBrowser/Thumbnails/FolderThumbnail.h",
+            "AssetBrowser/Thumbnails/ProductThumbnail.cpp",
+            "AssetBrowser/Thumbnails/ProductThumbnail.h",
+            "AssetBrowser/Thumbnails/SourceThumbnail.cpp",
+            "AssetBrowser/Thumbnails/SourceThumbnail.h"
         ],
         "MaterialBrowser": [
             "MaterialBrowser/MaterialBrowserBus.h",
@@ -128,14 +158,6 @@
             "Thumbnails/ThumbnailerBus.h",
             "Thumbnails/ThumbnailWidget.cpp",
             "Thumbnails/ThumbnailWidget.h"
-        ],
-        "AssetBrowser/Thumbnails": [
-            "AssetBrowser/Thumbnails/FolderThumbnail.cpp",
-            "AssetBrowser/Thumbnails/FolderThumbnail.h",
-            "AssetBrowser/Thumbnails/ProductThumbnail.cpp",
-            "AssetBrowser/Thumbnails/ProductThumbnail.h",
-            "AssetBrowser/Thumbnails/SourceThumbnail.cpp",
-            "AssetBrowser/Thumbnails/SourceThumbnail.h"
         ],
         "AssetDatabase": [
             "AssetDatabase/AssetDatabaseConnection.cpp",
@@ -169,6 +191,8 @@
             "Entity/EditorEntityContextPickingBus.h",
             "Entity/EditorEntityActionComponent.cpp",
             "Entity/EditorEntityActionComponent.h",
+            "Entity/EditorEntityFixupComponent.cpp",
+            "Entity/EditorEntityFixupComponent.h",
             "Entity/EditorEntityHelpers.cpp",
             "Entity/EditorEntityHelpers.h",
             "Entity/EditorEntityInfoBus.h",
@@ -177,19 +201,23 @@
             "Entity/EditorEntityModelBus.h",
             "Entity/EditorEntityModelComponent.cpp",
             "Entity/EditorEntityModelComponent.h",
+            "Entity/EditorEntityRuntimeActivationBus.h",
             "Entity/EditorEntitySortBus.h",
             "Entity/EditorEntitySortComponent.cpp",
-            "Entity/EditorEntitySortComponent.h"
+            "Entity/EditorEntitySortComponent.h",
+            "Entity/EditorEntityTransformBus.h"
         ],
         "Manipulators": [
             "Manipulators/AngularManipulator.cpp",
             "Manipulators/AngularManipulator.h",
             "Manipulators/BaseManipulator.cpp",
             "Manipulators/BaseManipulator.h",
+            "Manipulators/BoxManipulatorRequestBus.h",
             "Manipulators/EditorVertexSelection.h",
             "Manipulators/EditorVertexSelection.cpp",
             "Manipulators/HoverSelection.h",
-            "Manipulators/HoverSelection.cpp",
+            "Manipulators/LineHoverSelection.h",
+            "Manipulators/LineHoverSelection.cpp",
             "Manipulators/LineSegmentSelectionManipulator.cpp",
             "Manipulators/LineSegmentSelectionManipulator.h",
             "Manipulators/LinearManipulator.cpp",
@@ -201,18 +229,25 @@
             "Manipulators/ManipulatorView.h",
             "Manipulators/ManipulatorSnapping.cpp",
             "Manipulators/ManipulatorSnapping.h",
-            "Manipulators/SurfaceManipulator.cpp",
-            "Manipulators/SurfaceManipulator.h",
             "Manipulators/PlanarManipulator.cpp",
             "Manipulators/PlanarManipulator.h",
+            "Manipulators/RotationManipulators.cpp",
+            "Manipulators/RotationManipulators.h",
+            "Manipulators/ScaleManipulators.cpp",
+            "Manipulators/ScaleManipulators.h",
             "Manipulators/SelectionManipulator.cpp",
             "Manipulators/SelectionManipulator.h",
+            "Manipulators/SplineHoverSelection.h",
+            "Manipulators/SplineHoverSelection.cpp",
             "Manipulators/SplineSelectionManipulator.h",
             "Manipulators/SplineSelectionManipulator.cpp",
-            "Manipulators/TransformManipulator.cpp",
-            "Manipulators/TransformManipulator.h",
-            "Manipulators/TranslationManipulator.cpp",
-            "Manipulators/TranslationManipulator.h"
+            "Manipulators/SurfaceManipulator.cpp",
+            "Manipulators/SurfaceManipulator.h",
+            "Manipulators/TranslationManipulators.cpp",
+            "Manipulators/TranslationManipulators.h"
+        ],
+        "Maths": [
+            "Maths/TransformUtils.h"
         ],
         "Metrics": [
             "Metrics/LyEditorMetricsBus.h"
@@ -226,9 +261,7 @@
         ],
         "Picking": [
             "Picking/BoundInterface.h",
-            "Picking/ContextBoundAPI.h",
-            "Picking/DefaultContextBoundManager.cpp",
-            "Picking/DefaultContextBoundManager.h"
+            "Picking/ContextBoundAPI.h"
         ],
         "Picking/Manipulators": [
             "Picking/Manipulators/ManipulatorBoundManager.cpp",
@@ -241,6 +274,8 @@
             "Slice/SliceDataFlagsCommand.cpp",
             "Slice/SliceUtilities.h",
             "Slice/SliceUtilities.cpp",
+            "Slice/SliceCompilation.h",
+            "Slice/SliceCompilation.cpp",
             "Slice/SliceTransaction.cpp",
             "Slice/SliceTransaction.h",
             "Slice/SliceDependencyBrowserComponent.h",
@@ -265,7 +300,9 @@
         ],
         "SQLite": [
             "SQLite/SQLiteConnection.cpp",
-            "SQLite/SQLiteConnection.h"
+            "SQLite/SQLiteConnection.h",
+            "SQLite/SQLiteQuery.cpp",
+            "SQLite/SQLiteQuery.h"
         ],
         "ToolsComponents": [
             "ToolsComponents/ComponentAssetMimeDataContainer.cpp",
@@ -281,11 +318,19 @@
             "ToolsComponents/EditorDisabledCompositionComponent.h",
             "ToolsComponents/EditorDisabledCompositionComponent.cpp",
             "ToolsComponents/EditorDisabledCompositionBus.h",
+            "ToolsComponents/EditorOnlyEntityComponent.h",
+            "ToolsComponents/EditorOnlyEntityComponent.cpp",
+            "ToolsComponents/EditorOnlyEntityComponentBus.h",
             "ToolsComponents/EditorEntityIdContainer.cpp",
             "ToolsComponents/EditorEntityIdContainer.h",
             "ToolsComponents/EditorEntityIconComponent.h",
             "ToolsComponents/EditorEntityIconComponent.cpp",
             "ToolsComponents/EditorEntityIconComponentBus.h",
+            "ToolsComponents/EditorLayerComponent.h",
+            "ToolsComponents/EditorLayerComponent.cpp",
+            "ToolsComponents/EditorLayerComponentBus.h",
+            "ToolsComponents/LayerResult.cpp",
+            "ToolsComponents/LayerResult.h",
             "ToolsComponents/EditorLockComponent.cpp",
             "ToolsComponents/EditorLockComponent.h",
             "ToolsComponents/EditorLockComponentBus.h",
@@ -318,6 +363,10 @@
         "ToolsMessaging": [
             "ToolsMessaging/EntityHighlightBus.h"
         ],
+        "UI/Layer": [
+            "UI/Layer/AddToLayerMenu.cpp",
+            "UI/Layer/AddToLayerMenu.h"
+        ],
         "UI/Logging": [
             "UI/Logging/LoggingCommon.h",
             "UI/Logging/LogEntry.h",
@@ -332,7 +381,16 @@
             "UI/Logging/TracePrintFLogPanel.cpp",
             "UI/Logging/GenericLogPanel.h",
             "UI/Logging/GenericLogPanel.cpp",
-            "UI/Logging/NewLogTabDialog.ui"
+            "UI/Logging/NewLogTabDialog.ui",
+            "UI/Logging/NewLogTabDialog.qss",
+            "UI/Logging/LogTableModel.cpp",
+            "UI/Logging/LogTableModel.h",
+            "UI/Logging/LogTableItemDelegate.cpp",
+            "UI/Logging/LogTableItemDelegate.h",
+            "UI/Logging/StyledLogPanel.cpp",
+            "UI/Logging/StyledLogPanel.h",
+            "UI/Logging/StyledTracePrintFLogPanel.cpp",
+            "UI/Logging/StyledTracePrintFLogPanel.h"
         ],
         "UI/ComponentPalette": [
             "UI/ComponentPalette/ComponentPaletteWidget.hxx",
@@ -343,6 +401,10 @@
             "UI/ComponentPalette/ComponentPaletteModelFilter.cpp",
             "UI/ComponentPalette/ComponentPaletteUtil.hxx",
             "UI/ComponentPalette/ComponentPaletteUtil.cpp"
+        ],
+        "UI/NameConflictWarning": [
+            "UI/Layer/NameConflictWarning.hxx",
+            "UI/Layer/NameConflictWarning.cpp"
         ],
         "UI/PropertyEditor": [
             "UI/PropertyEditor/EntityPropertyEditor.ui",
@@ -360,6 +422,9 @@
             "UI/PropertyEditor/EntityIdQLabel.cpp",
             "UI/PropertyEditor/EntityPropertyEditor.hxx",
             "UI/PropertyEditor/EntityPropertyEditor.cpp",
+            "UI/PropertyEditor/GenericComboBoxCtrl.h",
+            "UI/PropertyEditor/GenericComboBoxCtrl.cpp",
+            "UI/PropertyEditor/GenericComboBoxCtrl.inl",
             "UI/PropertyEditor/InstanceDataHierarchy.cpp",
             "UI/PropertyEditor/InstanceDataHierarchy.h",
             "UI/PropertyEditor/PropertyAssetCtrl.hxx",
@@ -418,6 +483,12 @@
         "UI/Slice": [
             "UI/Slice/SlicePushWidget.cpp",
             "UI/Slice/SlicePushWidget.hxx",
+            "UI/Slice/SliceOverridesNotificationWindow.cpp",
+            "UI/Slice/SliceOverridesNotificationWindow.hxx",
+            "UI/Slice/SliceOverridesNotificationWindowManager.cpp",
+            "UI/Slice/SliceOverridesNotificationWindowManager.hxx",
+            "UI/Slice/NotificationWindow.ui",
+            "UI/Slice/Constants.h",
             "UI/Slice/SliceRelationshipWidget.cpp",
             "UI/Slice/SliceRelationshipWidget.hxx"
         ],
@@ -450,6 +521,10 @@
             "Undo/UndoSystem.h"
         ],
         "Undo/Commands": [
+            "Commands/ComponentModeCommand.cpp",
+            "Commands/ComponentModeCommand.h",
+            "Commands/EntityManipulatorCommand.h",
+            "Commands/EntityManipulatorCommand.cpp",
             "Commands/EntityStateCommand.cpp",
             "Commands/EntityStateCommand.h",
             "Commands/SelectionCommand.cpp",
@@ -458,10 +533,55 @@
             "Commands/EntityTransformCommand.h",
             "Commands/PreemptiveUndoCache.cpp",
             "Commands/PreemptiveUndoCache.h",
+            "Commands/SliceDetachEntityCommand.cpp",
+            "Commands/SliceDetachEntityCommand.h",
             "Commands/LegacyCommand.h"
         ],
         "Viewport": [
-            "Viewport/ViewportMessages.h"
+            "Viewport/ActionBus.h",
+            "Viewport/EditorContextMenu.h",
+            "Viewport/EditorContextMenu.cpp",
+            "Viewport/VertexContainerDisplay.h",
+            "Viewport/VertexContainerDisplay.cpp",
+            "Viewport/ViewportMessages.h",
+            "Viewport/ViewportTypes.h",
+            "Viewport/ViewportTypes.cpp"
+        ],
+        "ComponentMode": [
+            "ComponentMode/EditorComponentModeBus.h",
+            "ComponentMode/ComponentModeCollection.h",
+            "ComponentMode/ComponentModeCollection.cpp",
+            "ComponentMode/ComponentModeDelegate.h",
+            "ComponentMode/ComponentModeDelegate.cpp",
+            "ComponentMode/EditorBaseComponentMode.h",
+            "ComponentMode/EditorBaseComponentMode.cpp"
+        ],
+        "ComponentModes": [
+            "ComponentModes/BoxComponentMode.h",
+            "ComponentModes/BoxComponentMode.cpp"
+        ],
+        "ViewportSelection":  [
+            "ViewportSelection/EditorBoxSelect.h",
+            "ViewportSelection/EditorBoxSelect.cpp",
+            "ViewportSelection/EditorDefaultSelection.h",
+            "ViewportSelection/EditorDefaultSelection.cpp",
+            "ViewportSelection/EditorHelpers.h",
+            "ViewportSelection/EditorHelpers.cpp",
+            "ViewportSelection/EditorInteractionSystemComponent.h",
+            "ViewportSelection/EditorInteractionSystemComponent.cpp",
+            "ViewportSelection/EditorInteractionSystemViewportSelectionRequestBus.h",
+            "ViewportSelection/EditorPickEntitySelection.h",
+            "ViewportSelection/EditorPickEntitySelection.cpp",
+            "ViewportSelection/EditorSelectionUtil.h",
+            "ViewportSelection/EditorSelectionUtil.cpp",
+            "ViewportSelection/EditorTransformComponentSelection.h",
+            "ViewportSelection/EditorTransformComponentSelection.cpp",
+            "ViewportSelection/EditorTransformComponentSelectionRequestBus.h",
+            "ViewportSelection/EditorVisibleEntityDataCache.h",
+            "ViewportSelection/EditorVisibleEntityDataCache.cpp"
+        ],
+	"Physics": [
+            "Physics/EditorTerrainComponentBus.h"
         ]
     }
 }

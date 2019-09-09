@@ -25,8 +25,8 @@ namespace ScriptCanvas
         static void Reflect(AZ::ReflectContext* context);
 
         VariableDatum();
-        VariableDatum(const Datum& variableData);
-        VariableDatum(Datum&& variableData);
+        explicit VariableDatum(const Datum& variableData);
+        explicit VariableDatum(Datum&& variableData);
 
         bool operator==(const VariableDatum& rhs) const;
         bool operator!=(const VariableDatum& rhs) const;
@@ -43,17 +43,23 @@ namespace ScriptCanvas
         bool ExposeAsComponentInput() const { return m_exposeAsInput; }
         void SetExposeAsComponentInput(bool exposeAsInput) { m_exposeAsInput = exposeAsInput;  }
 
+        void SetExposureCategory(AZStd::string_view exposureCategory) { m_exposureCategory = exposureCategory; }
+        AZStd::string_view GetExposureCategory() const { return m_exposureCategory; }
+
         void GenerateNewId();
 
     private:
         friend bool VariableDatumVersionConverter(AZ::SerializeContext&, AZ::SerializeContext::DataElementNode&);
         void OnExposureChanged();
+        void OnExposureGroupChanged();
 
         // Still need to make this a proper bitmask, once we have support for multiple
         // input/output attributes. For now, just going to assume it's only the single flag(which is is).
         bool m_exposeAsInput;
         AZ::Crc32 m_inputControlVisibility;
         AZ::Crc32 m_visibility;
+
+        AZStd::string m_exposureCategory;
     };
 
     struct VariableNameValuePair
@@ -61,10 +67,18 @@ namespace ScriptCanvas
         AZ_TYPE_INFO(VariableNameValuePair, "{C1732C54-5E61-4D00-9A39-5B919CF2F8E7}");
         AZ_CLASS_ALLOCATOR(VariableNameValuePair, AZ::SystemAllocator, 0);
         static void Reflect(AZ::ReflectContext* context);
-        AZStd::string m_varName;
+
+        VariableNameValuePair() = default;
+        VariableNameValuePair(AZStd::string_view variableName, const VariableDatum& variableDatum);
+
         VariableDatum m_varDatum;
+
+        void SetVariableName(AZStd::string_view displayName);
+        AZStd::string_view GetVariableName() const;
 
     private:
         AZStd::string GetDescriptionOverride();
+
+        AZStd::string m_varName;
     };
 }

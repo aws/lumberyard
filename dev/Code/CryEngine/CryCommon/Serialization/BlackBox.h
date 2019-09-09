@@ -65,10 +65,10 @@ namespace Serialization
             this->format = _format;
             if (_data && _size)
             {
-                this->data = malloc(_size);
+                this->data = CryModuleMalloc(_size);
                 memcpy(this->data, _data, _size);
                 this->size = _size;
-                freeFunction = &free;
+                freeFunction = &Free;
             }
         }
 
@@ -81,6 +81,11 @@ namespace Serialization
         ~SBlackBox()
         {
             set("", 0, 0);
+        }
+
+        static void Free(void* ptr)
+        {
+            CryModuleFree(ptr);
         }
     };
 }

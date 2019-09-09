@@ -30,7 +30,7 @@ namespace ImageQImage
 
     bool UpdateAndSaveSettings(const char* settingsFilename, const string& settings);
     bool UpdateAndSaveSettings(const char* settingsFilename, const CImageProperties* pProps, const string* pOriginalSettings, bool bLogSettings);
-    ImageObject* LoadByUsingQImageLoader(const char* filenameRead, const char* settingsFilename, CImageProperties* pProps, string& res_specialInstructions);
+    ImageObject* LoadByUsingQImageLoader(const char* filenameRead, const char* extension, const char* settingsFilename, CImageProperties* pProps, string& res_specialInstructions);
 };
 
 #endif // CRYINCLUDE_TOOLS_RC_RESOURCECOMPILERIMAGE_FORMATS_QIMAGE_H

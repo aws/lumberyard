@@ -26,21 +26,6 @@
 
 void CAISystem::GetMemoryStatistics(ICrySizer* pSizer)
 {
-#ifndef AZ_MONOLITHIC_BUILD // Only when compiling as dynamic library
-    {
-        //SIZER_COMPONENT_NAME(pSizer,"Strings");
-        //pSizer->AddObject( (this+1),string::_usedMemory(0) );
-    }
-    {
-        SIZER_COMPONENT_NAME(pSizer, "STL Allocator Waste");
-        CryModuleMemoryInfo meminfo;
-        ZeroStruct(meminfo);
-        CryGetMemoryInfoForModule(&meminfo);
-        pSizer->AddObject((this + 2), (size_t)meminfo.STL_wasted);
-    }
-#endif
-
-    //sizeof(bool) + sizeof(void*)*3 + sizeof(MapType::value_type)
     size_t size = 0;
 
     size = sizeof(*this);

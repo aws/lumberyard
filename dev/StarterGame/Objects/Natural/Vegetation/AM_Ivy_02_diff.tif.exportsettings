@@ -1,1 +1,1 @@
-/autooptimizefile=0 /M=50,0,0,50,50,50 /preset=AlbedoWithGenericAlpha /reduce=0
+/autooptimizefile=0 /M=50,0,0,50,50,50 /preset=AlbedoWithGenericAlpha /reduce="es3:3,ios:3,osx_gl:0,pc:0,ps4:0,xboxone:0"

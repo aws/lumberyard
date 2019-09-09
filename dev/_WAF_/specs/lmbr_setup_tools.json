@@ -3,7 +3,7 @@
     "visual_studio_name"    : "Lumberyard Setup Tools",
     "disable_game_projects" : true,
     "platforms" : ["win","darwin","linux"],
-    "configurations" : ["debug","profile","debug_test"],
+    "configurations" : ["debug","profile","debug_test", "profile_test"],
 
     "modules" :
     [
@@ -14,7 +14,6 @@
         "Lyzard",
         "lmbr",
         "LyzardSDK",
-        "LyzardHelloWorld",
         "LyzardEngines",
         "LyzardGems",
         "LyzardProjects",

@@ -14,7 +14,7 @@ declare var AMA
 enum Modes {
     READ,
     EDIT,
-    DELETE 
+    DELETE
 }
 
 /**
@@ -27,7 +27,7 @@ enum Modes {
 * @param response
 */
 export function MetricLineData(series_x_label: string, series_y_name: string, dataSeriesLabel: string, response: any): any {
-    let data = response.Result;    
+    let data = response.Result;
     data = data.slice();
 
     let header = data[0]
@@ -38,7 +38,7 @@ export function MetricLineData(series_x_label: string, series_y_name: string, da
     if (header.length == 2) {
         result = MapTuple(header, data)
     } else if (header.length == 3) {
-        result = MapVector(header, data)    
+        result = MapVector(header, data)
     } else if (header.length >= 4) {
         result = MapMatrix(header, data)
     }
@@ -50,12 +50,12 @@ export function MetricLineData(series_x_label: string, series_y_name: string, da
     template: `
         <div>Charts will become available as data becomes present.  Charts will refresh automatically every 5 minutes. </div>
         <p>Deep dive into your data with <a [href]="quicksighturl" target="_quicksight">AWS QuickSight</a></p>
-        <div *ngIf="!isLoadingGraphs; else loading"></div>        
+        <div *ngIf="!isLoadingGraphs; else loading"></div>
         <ng-container *ngFor="let chart of metricGraphs">
-            <graph [ref]="chart" [edit]=edit [delete]=confirmDeletion></graph>                    
-        </ng-container>   
+            <graph [ref]="chart" [edit]=edit [delete]=confirmDeletion></graph>
+        </ng-container>
         <ng-container *ngIf="!isLoadingGraphs">
-            <graph [add]=add></graph>                    
+            <graph [add]=add></graph>
         </ng-container>
         <modal *ngIf="mode == modes.EDIT && currentGraph "
             [title]="modalTitle"
@@ -69,7 +69,7 @@ export function MetricLineData(series_x_label: string, series_y_name: string, da
                 <form [formGroup]="graphForm">
                     <div class="form-group row" [ngClass]="{'has-danger': control('title').invalid && submitted}">
                         <label class="col-lg-3 col-form-label affix" for="title"> Title </label>
-                        <div class="col-lg-8"><input class="form-control" type="string" formControlName="title" id="title" [(ngModel)]="currentGraph.model.title"></div>                        
+                        <div class="col-lg-8"><input class="form-control" type="string" formControlName="title" id="title" [(ngModel)]="currentGraph.model.title"></div>
                         <div *ngIf="control('title').invalid && submitted" class="form-control-danger">
                           <div *ngIf="control('title').errors.required">
                             Title is required.
@@ -80,7 +80,7 @@ export function MetricLineData(series_x_label: string, series_y_name: string, da
                         <label class="col-lg-3 col-form-label affix" for="type"> Visualization Type </label>
                         <div class="col-lg-8">
                             <dropdown class="search-dropdown" (dropdownChanged)="updateCurrentGraph($event)" [currentOption]="findChartType(currentGraph.model.type)" [options]="chartTypeOptions" placeholderText="Select type"> </dropdown>
-                        </div>                   
+                        </div>
                         <div *ngIf="control('type').invalid && submitted" class="form-control-danger">
                           <div *ngIf="control('type').errors.required">
                             Type is required.
@@ -89,7 +89,7 @@ export function MetricLineData(series_x_label: string, series_y_name: string, da
                     </div>
                     <div class="form-group row" [ngClass]="{'has-danger': control('xaxislabel').invalid && submitted}">
                         <label class="col-lg-3 col-form-label affix" for="xaxislabel"> X-Axis Label </label>
-                        <div class="col-lg-8"><input class="form-control" type="string" formControlName="xaxislabel" [(ngModel)]="currentGraph.model.xaxislabel"></div>                        
+                        <div class="col-lg-8"><input class="form-control" type="string" formControlName="xaxislabel" [(ngModel)]="currentGraph.model.xaxislabel"></div>
                         <div *ngIf="control('xaxislabel').invalid && submitted" class="form-control-danger">
                           <div *ngIf="control('xaxislabel').errors.required">
                             X-Axis is required.
@@ -98,22 +98,22 @@ export function MetricLineData(series_x_label: string, series_y_name: string, da
                     </div>
                     <div class="form-group row" [ngClass]="{'has-danger': control('yaxislabel').invalid && submitted}">
                         <label class="col-lg-3 col-form-label affix" for="yaxislabel"> Y-Axis Label </label>
-                        <div class="col-lg-8"><input class="form-control" type="string" formControlName="yaxislabel" [(ngModel)]="currentGraph.model.yaxislabel"></div>                        
+                        <div class="col-lg-8"><input class="form-control" type="string" formControlName="yaxislabel" [(ngModel)]="currentGraph.model.yaxislabel"></div>
                         <div *ngIf="control('yaxislabel').invalid && submitted" class="form-control-danger">
                           <div *ngIf="control('yaxislabel').errors.required">
                             Y-Axis is required.
                           </div>
                         </div>
-                    </div>                   
+                    </div>
                     <div class="form-group row" [ngClass]="{'has-danger': control('sql').invalid && submitted}">
-                        <label class="col-lg-3" for="sql"> SQL </label>                        
+                        <label class="col-lg-3" for="sql"> SQL </label>
                         <div *ngIf="control('sql').invalid && submitted" class="form-control-danger">
                           <div *ngIf="control('sql').errors.required">
                             SQL is required.
                           </div>
                         </div>
-                        <textarea cols=104 rows=10 formControlName="sql" [(ngModel)]="currentGraph.model.sql[0]"></textarea>                              
-                        <p>Edit with <a [href]="getAthenaQueryUrl()" target="_athena">AWS Athena</a>. </p>                                                
+                        <textarea cols=104 rows=10 formControlName="sql" [(ngModel)]="currentGraph.model.sql[0]"></textarea>
+                        <p>Edit with <a [href]="getAthenaQueryUrl()" target="_athena">AWS Athena</a>. </p>
                     </div>
                 </form>
             </div>
@@ -125,7 +125,7 @@ export function MetricLineData(series_x_label: string, series_y_name: string, da
                [onDismiss]="onDismissModal"
                [onClose]="closeModal"
                submitButtonText="Delete"
-               (modalSubmitted)="delete(currentGraph)">               
+               (modalSubmitted)="delete(currentGraph)">
             <div class="modal-body">
                 <p>
                     Are you sure you want to delete this graph?
@@ -135,11 +135,11 @@ export function MetricLineData(series_x_label: string, series_y_name: string, da
         <ng-template #loading>
             <loading-spinner></loading-spinner>
         </ng-template>
-      
+
     `,
-    styles: [`textarea{  
-        width: 26em; 
-        width: 645px; 
+    styles: [`textarea{
+        width: 26em;
+        width: 645px;
     }`]
 })
 export class DashboardGraphComponent implements OnInit, OnDestroy {
@@ -152,7 +152,7 @@ export class DashboardGraphComponent implements OnInit, OnDestroy {
     private graphModels = []
     private quicksighturl: string
     private isLoadingGraphs: boolean
-    private graphForm: FormGroup    
+    private graphForm: FormGroup
     private chartTypeOptions = [
         { text: "Line", parser: "lineData", ngx_chart_type: "ngx-charts-line-chart"},
         { text: "Stacked Line", parser: "lineData", ngx_chart_type: "ngx-charts-area-chart-stacked" },
@@ -176,14 +176,16 @@ export class DashboardGraphComponent implements OnInit, OnDestroy {
 
     ngOnInit() {
         let metric_service = this.definition.getService("CloudGemMetric")
-        this._metricApiHandler = new metric_service.constructor(metric_service.serviceUrl, this.http, this.aws)
-        this.facetid = this.facetid.toLocaleLowerCase()
-        this.quicksighturl = `https://${this.aws.context.region}.quicksight.aws.amazon.com/sn/start?#`
-        this.load()
+        if (metric_service) {
+            this._metricApiHandler = new metric_service.constructor(metric_service.serviceUrl, this.http, this.aws)
+            this.facetid = this.facetid.toLocaleLowerCase()
+            this.quicksighturl = `https://${this.aws.context.region}.quicksight.aws.amazon.com/sn/start?#`
+            this.load()
+        }
     }
 
     load = () => {
-        this.isLoadingGraphs = true       
+        this.isLoadingGraphs = true
         this.graphModels = []
         this.metricGraphs = new Array<MetricGraph>()
         this._metricApiHandler.getDashboard(this.facetid).subscribe(r => {
@@ -192,9 +194,9 @@ export class DashboardGraphComponent implements OnInit, OnDestroy {
                 let distinctEvents = JSON.parse(res.body.text()).result
                 this._query = new MetricQuery(this.aws, "", distinctEvents, [new AllTablesUnion(this.aws, distinctEvents)])
                 for (let idx in r) {
-                    let metric = r[idx]                                           
-                    metric.index = idx                   
-                    
+                    let metric = r[idx]
+                    metric.index = idx
+
                     this.metricGraphs.push(
                         new MetricGraph(metric.title,
                             metric.xaxislabel,
@@ -221,15 +223,15 @@ export class DashboardGraphComponent implements OnInit, OnDestroy {
     }
 
     refresh = (graph: MetricGraph) => {
-        let metric = graph.model          
+        let metric = graph.model
         let sources = []
-        
+
         graph.isLoading = true
 
         for (let idy in metric.sql) {
             let sql = metric.sql[idy]
             sources.push(this._metricApiHandler.postQuery(this._query.toString(sql)))
-        }        
+        }
 
         this.graphModels[graph.model.index] = graph.model
         this.metricGraphs[graph.model.index] = new MetricGraph(metric.title,
@@ -250,7 +252,7 @@ export class DashboardGraphComponent implements OnInit, OnDestroy {
         let barData = MetricBarData
         let lineData = MetricLineData
         let choroplethData = ChoroplethData
-        
+
         for (let idy in metric.parsers) {
             let parser = eval(metric.parsers[idy])
             parsers.push(parser)
@@ -267,7 +269,7 @@ export class DashboardGraphComponent implements OnInit, OnDestroy {
         return sources
     }
 
-    findChartType = (type) => {        
+    findChartType = (type) => {
         for (let idx in this.chartTypeOptions) {
             let chart = this.chartTypeOptions[idx]
             if (type == chart.ngx_chart_type || type == chart.text) {
@@ -276,15 +278,15 @@ export class DashboardGraphComponent implements OnInit, OnDestroy {
         }
     }
 
-    edit = (graph) => {        
-        this.currentGraph = graph        
+    edit = (graph) => {
+        this.currentGraph = graph
         this.modalTitle = "Edit SQL"
         this.modalSubmitTitle = "Submit"
         this.setFormGroup()
-        this.mode = Modes.EDIT        
+        this.mode = Modes.EDIT
     }
 
-    add = () => {            
+    add = () => {
         this.currentGraph = new MetricGraph("", "", "", [], [], [])
         this.modalTitle = "Add new graph"
         this.modalSubmitTitle = "Save"
@@ -297,7 +299,7 @@ export class DashboardGraphComponent implements OnInit, OnDestroy {
             "xaxislabel": "",
             "yaxislabel": "",
             "id": AMA.Util.GUID()
-        }      
+        }
         this.setFormGroup()
         this.mode = Modes.EDIT
     }
@@ -308,21 +310,21 @@ export class DashboardGraphComponent implements OnInit, OnDestroy {
     }
 
     delete = (graph: MetricGraph) => {
-        let index = graph.model.index    
-        let name = graph.title   
+        let index = graph.model.index
+        let name = graph.title
         this.graphModels.splice(index, 1);
         this.metricGraphs.splice(index, 1);
         this._metricApiHandler.postDashboard(this.facetid, this.graphModels).subscribe(r => {
-            this.toastr.success(`The graph '${name}' has been deleted.`);            
+            this.toastr.success(`The graph '${name}' has been deleted.`);
         }, err => {
             this.toastr.success(`The graph '${name}' failed to delete. ${err}`);
             console.log(err)
         })
-        this.dismissModal()       
+        this.dismissModal()
     }
 
     control = (id) => {
-        return this.graphForm.get(id);    
+        return this.graphForm.get(id);
     }
 
     setFormGroup = () => {
@@ -331,16 +333,16 @@ export class DashboardGraphComponent implements OnInit, OnDestroy {
             type: [this.currentGraph.model.type, Validators.required],
             xaxislabel: [this.currentGraph.model.xaxislabel, Validators.required],
             yaxislabel: [this.currentGraph.model.yaxislabel, Validators.required],
-            sql: [this.currentGraph.model.sql[0], Validators.required]            
-        })       
+            sql: [this.currentGraph.model.sql[0], Validators.required]
+        })
     }
 
     updateCurrentGraph = (val) => {
         this.currentGraph.model.type = val.text;
     }
 
-    valid = (graph) => {        
-        for (let idx in this.graphForm.controls) {            
+    valid = (graph) => {
+        for (let idx in this.graphForm.controls) {
             if (idx == 'type')
                 continue
             let control = this.graphForm.get(idx)
@@ -358,12 +360,12 @@ export class DashboardGraphComponent implements OnInit, OnDestroy {
         return valid
     }
 
-    submit = (graph: MetricGraph) => {  
-        this.submitted = true      
+    submit = (graph: MetricGraph) => {
+        this.submitted = true
         if (!this.valid(graph))
             return
 
-        let name = graph.title ? graph.title : graph.model.title        
+        let name = graph.title ? graph.title : graph.model.title
         let found = false
         for (let idx in this.graphModels) {
             let graph_entry = this.graphModels[idx]
@@ -387,10 +389,10 @@ export class DashboardGraphComponent implements OnInit, OnDestroy {
         } else {
             graph.isLoading = true
         }
-        
+
         this._metricApiHandler.postDashboard(this.facetid, this.graphModels).subscribe(r => {
             this.toastr.success(`The graph '${name}' has been update successfully.`);
-            if(found)            
+            if(found)
                 this.refresh(graph)
             else
                 this.load()
@@ -398,18 +400,18 @@ export class DashboardGraphComponent implements OnInit, OnDestroy {
             graph.isLoading = false
             this.toastr.success(`The graph '${name}' failed to update. ${err}`);
             console.log(err)
-            })        
-        this.submitted = false 
-        this.dismissModal()        
+            })
+        this.submitted = false
+        this.dismissModal()
     }
 
     closeModal = () => {
-        this.mode = Modes.READ;        
+        this.mode = Modes.READ;
         this.currentGraph = undefined
     }
 
-    dismissModal = () => {        
-        this.modalRef.close();        
+    dismissModal = () => {
+        this.modalRef.close();
     }
 
     getAthenaQueryUrl = () => {
@@ -423,5 +425,5 @@ export class DashboardGraphComponent implements OnInit, OnDestroy {
             graph.clearInterval();
         });
     }
-    
+
 }

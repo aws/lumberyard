@@ -9,7 +9,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#include "precompiled.h"
+
 #include "SlotTypeContract.h"
 #include <ScriptCanvas/Core/ContractBus.h>
 #include <ScriptCanvas/Core/Slot.h>
@@ -18,21 +18,21 @@ namespace ScriptCanvas
 {
     static const char* GetConnectionFailureReason(SlotType sourceType, SlotType targetType)
     {
-        if (IsData(sourceType) != IsData(targetType) || IsExecution(sourceType) != IsExecution(targetType))
+        if (SlotUtils::IsData(sourceType) != SlotUtils::IsData(targetType) || SlotUtils::IsExecution(sourceType) != SlotUtils::IsExecution(targetType))
         {
             return "Cannot connect execution slots to data slots or vice-versa";
         }
-        else if (IsIn(sourceType) == IsIn(targetType))
+        else if (SlotUtils::IsInput(sourceType) == SlotUtils::IsInput(targetType))
         {
             return "Cannot connect input slots to other input slots";
         }
-        else if (IsOut(sourceType) == IsOut(targetType))
+        else if (SlotUtils::IsOutput(sourceType) == SlotUtils::IsOutput(targetType))
         {
             return "Cannot connect output slots to other output slots";
         }
         else
         {
-            AZ_Assert(!CanConnect(sourceType, targetType), "no failure reason for connectable types");
+            AZ_Assert(!SlotUtils::CanConnect(sourceType, targetType), "no failure reason for connectable types");
             return "";
         }
     }
@@ -42,7 +42,7 @@ namespace ScriptCanvas
         const auto sourceType = sourceSlot.GetType();
         const auto targetType = targetSlot.GetType();
         
-        if (CanConnect(sourceType, targetType))
+        if (SlotUtils::CanConnect(sourceType, targetType))
         {
             return AZ::Success();
         }

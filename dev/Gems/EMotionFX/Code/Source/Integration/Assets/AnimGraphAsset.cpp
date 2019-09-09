@@ -55,10 +55,12 @@ namespace EMotionFX
             AnimGraphAsset* assetData = asset.GetAs<AnimGraphAsset>();
             assetData->m_emfxAnimGraph.reset(EMotionFX::GetImporter().LoadAnimGraph(
                 assetData->m_emfxNativeData.data(),
-                assetData->m_emfxNativeData.size()));
+                assetData->m_emfxNativeData.size(),
+                nullptr));
 
             if (assetData->m_emfxAnimGraph)
             {
+                assetData->m_emfxAnimGraph->SetIsOwnedByAsset(true);
                 assetData->m_emfxAnimGraph->SetIsOwnedByRuntime(true);
 
                 assetData->m_emfxAnimGraph->FindAndRemoveCycles();
@@ -80,12 +82,15 @@ namespace EMotionFX
                 }
                 else
                 {
-                    AZ_Warning("EMotionFX", false, "Failed to retrieve asset source path with alias '@devassets@'. Cannot set absolute filename for '%s'", assetFilename.c_str());
+                    if (GetEMotionFX().GetIsInEditorMode())
+                    {
+                        AZ_Warning("EMotionFX", false, "Failed to retrieve asset source path with alias '@devassets@'. Cannot set absolute filename for '%s'", assetFilename.c_str());
+                    }
                     assetData->m_emfxAnimGraph->SetFileName(assetFilename.c_str());
                 }
             }
 
-            AZ_Error("EMotionFX", assetData->m_emfxAnimGraph, "Failed to initialize anim graph asset %s", asset.ToString<AZStd::string>().c_str());
+            AZ_Error("EMotionFX", assetData->m_emfxAnimGraph, "Failed to initialize anim graph asset %s", asset.GetHint().c_str());
             return static_cast<bool>(assetData->m_emfxAnimGraph);
         }
 
@@ -133,5 +138,11 @@ namespace EMotionFX
         {
             return "EMotion FX Anim Graph";
         }
+
+        const char* AnimGraphAssetHandler::GetBrowserIcon() const
+        {
+            return "Editor/Images/AssetBrowser/AnimGraph_16.png";
+        }
+
     } // namespace Integration
 } // namespace EMotionFX

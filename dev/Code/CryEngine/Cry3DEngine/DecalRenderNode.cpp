@@ -367,6 +367,7 @@ void CDecalRenderNode::Render(const SRendParams& rParam, const SRenderingPassInf
         }
         SDeferredDecal newItem;
         newItem.fAlpha = m_decalProperties.m_opacity;
+        newItem.angleAttenuation = m_decalProperties.m_angleAttenuation;
         newItem.pMaterial = m_pMaterial;
         newItem.projMatrix = m_Matrix;
         newItem.nSortOrder = m_decalProperties.m_sortPrio;

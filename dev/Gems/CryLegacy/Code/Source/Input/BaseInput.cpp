@@ -66,7 +66,11 @@ CBaseInput::CBaseInput()
     , m_forceFeedbackDeviceIndex(EFF_INVALID_DEVICE_INDEX)
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION BASEINPUT_CPP_SECTION_1
-#include AZ_RESTRICTED_FILE(BaseInput_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/BaseInput_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/BaseInput_cpp_provo.inl"
+    #endif
 #endif
 {
     GetISystem()->GetISystemEventDispatcher()->RegisterListener(this);
@@ -86,7 +90,11 @@ CBaseInput::~CBaseInput()
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION BASEINPUT_CPP_SECTION_2
-#include AZ_RESTRICTED_FILE(BaseInput_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/BaseInput_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/BaseInput_cpp_provo.inl"
+    #endif
 #endif
 }
 
@@ -96,7 +104,11 @@ bool CBaseInput::Init()
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION BASEINPUT_CPP_SECTION_3
-#include AZ_RESTRICTED_FILE(BaseInput_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/BaseInput_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/BaseInput_cpp_provo.inl"
+    #endif
 #endif
 
     return true;
@@ -141,7 +153,11 @@ void CBaseInput::Update(bool bFocus)
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION BASEINPUT_CPP_SECTION_4
-#include AZ_RESTRICTED_FILE(BaseInput_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/BaseInput_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/BaseInput_cpp_provo.inl"
+    #endif
 #endif
 }
 
@@ -691,7 +707,11 @@ bool CBaseInput::ShouldBlockInputEventPosting(const EKeyId keyId, const EInputDe
 {
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION BASEINPUT_CPP_SECTION_5
-#include AZ_RESTRICTED_FILE(BaseInput_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/BaseInput_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/BaseInput_cpp_provo.inl"
+    #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
 #undef AZ_RESTRICTED_SECTION_IMPLEMENTED

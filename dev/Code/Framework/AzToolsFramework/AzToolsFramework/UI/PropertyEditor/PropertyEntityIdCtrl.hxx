@@ -32,13 +32,14 @@ class QPushButton;
 namespace AzToolsFramework
 {
     class EntityIdQLabel;
+    class EditorEntityIdContainer;
 
     //just a test to see how it would work to pop a dialog
 
     class PropertyEntityIdCtrl
         : public QWidget
-        , private EditorPickModeRequests::Bus::Handler
-        , private AzToolsFramework::EditorEvents::Bus::Handler
+        , private EditorPickModeRequestBus::Handler
+        , private EditorEvents::Bus::Handler
     {
         Q_OBJECT
     public:
@@ -60,15 +61,12 @@ namespace AzToolsFramework
         virtual void dropEvent(QDropEvent* event) override;
         virtual void dragLeaveEvent(QDragLeaveEvent* event) override;
 
-        //////////////////////////////////////////////////////////////////////////
-        // EditorPickModeRequests::Bus::Handler
-        void StopObjectPickMode() override;
-        void OnPickModeSelect(AZ::EntityId /*id*/) override;        
-        //////////////////////////////////////////////////////////////////////////
+        // EditorPickModeRequestBus
+        void StopEntityPickMode() override;
+        void PickModeSelectEntity(AZ::EntityId /*id*/) override;
 
         // AzToolsFramework::EditorEvents::Bus::Handler
         void OnEscape() override;
-        ////
 
         void SetRequiredServices(const AZStd::vector<AZ::ComponentServiceType>& requiredServices);
         void SetIncompatibleServices(const AZStd::vector<AZ::ComponentServiceType>& incompatibleServices);
@@ -86,10 +84,12 @@ namespace AzToolsFramework
         void SetCurrentEntityId(const AZ::EntityId& newEntityId, bool emitChange, const AZStd::string& nameOverride);
 
     protected:
-        bool IsCorrectMimeData(const QMimeData* data) const;
-        AZ::EntityId EntityIdFromMimeData(const QMimeData &data) const;
-        void InitObjectPickMode();
-        void CancelObjectPickMode();
+        bool IsCorrectMimeData(const QMimeData* mimeData) const;
+        bool EntityIdsFromMimeData(const QMimeData &mimeData, AzToolsFramework::EditorEntityIdContainer* entityIdListContainer = nullptr) const;
+
+        // Move the editor into Pick Mode.
+        void StartEntityPickMode();
+        AzFramework::EntityContextId GetPickModeEntityContextId();
 
         QString BuildTooltip();
 

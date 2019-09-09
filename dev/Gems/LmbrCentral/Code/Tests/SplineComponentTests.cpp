@@ -49,6 +49,8 @@ namespace UnitTest
 
         void TearDown() override
         {
+            m_transformComponentDescriptor.reset();
+            m_splineComponentDescriptor.reset();
             m_serializeContext.reset();
             AllocatorsFixture::TearDown();
         }

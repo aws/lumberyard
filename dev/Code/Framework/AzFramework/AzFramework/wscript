@@ -34,13 +34,9 @@ def build(bld):
         win_file_list       = ['azframework_win.waf_files'],
         win_features        = ['crcfix'],
 
-       
-       
-
-       
+        restricted_script   = 'update_restricted_parameters',
 
         android_file_list   = ['azframework_android.waf_files'],
-        android_use         = ['NativeActivityGlue'],
 
         ios_file_list       = ['azframework_ios.waf_files'],
 

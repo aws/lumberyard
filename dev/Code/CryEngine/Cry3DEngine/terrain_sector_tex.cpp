@@ -195,7 +195,14 @@ void CTerrainNode::SetupTexturing(const SRenderingPassInfo& passInfo)
         pRenderMesh->SetCustomTexID(textureId);
     }
 
+#if AZ_RENDER_TO_TEXTURE_GEM_ENABLED
+    // Use m_TextureParams for double buffering to prevent flickering of terrain texture due to threading issues
+    const int fillThreadId = passInfo.ThreadID();
+    leafData.m_TextureParams[fillThreadId].Set(renderSet);
+#else
     leafData.m_TextureParams[0].Set(renderSet);
+#endif // if AZ_RENDER_TO_TEXTURE_GEM_ENABLED
+
     pRenderMesh->GetChunks()[0].pRE->m_CustomData = leafData.m_TextureParams;
 }
 

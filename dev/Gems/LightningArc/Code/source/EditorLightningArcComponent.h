@@ -137,7 +137,9 @@ namespace Lightning
         _smart_ptr<IMaterial> GetMaterial();
 
         // EntityDebugDisplayBus
-        void DisplayEntity(bool& handled) override;
+        void DisplayEntityViewport(
+            const AzFramework::ViewportInfo& viewportInfo,
+            AzFramework::DebugDisplayRequests& debugDisplay) override;
 
     private:
         //Reflected data

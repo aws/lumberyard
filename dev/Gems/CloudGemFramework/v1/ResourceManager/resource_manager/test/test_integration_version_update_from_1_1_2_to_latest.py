@@ -34,7 +34,7 @@ class IntegrationTest_CloudGemFramework_ResourceManager_version_update1_1_2(lmbr
         super(IntegrationTest_CloudGemFramework_ResourceManager_version_update1_1_2, self).__init__(*args, **kwargs)
 
     def setUp(self):
-        self.prepare_test_envionment("project_update_1_1_2")
+        self.prepare_test_environment("project_update_1_1_2")
 
     def test_framework_version_update_end_to_end(self):  
         self.run_all_tests()    
@@ -93,7 +93,7 @@ class IntegrationTest_CloudGemFramework_ResourceManager_version_update1_1_2(lmbr
         self.lmbr_aws('deployment', 'list')
     
     def __043_commands_succeed_after_updating_unitialized_project(self):
-        self.lmbr_aws('deployment', 'create', '--deployment', 'TestDeployment1', '--confirm-aws-usage', '--confirm-security-change')
+        self.lmbr_aws('deployment', 'create', '--deployment', 'TestDeployment1', '--confirm-aws-usage', '--confirm-security-change', '--parallel')
 
     def __099_cleanup_uninitialized_project(self):
         self.lmbr_aws('deployment', 'delete', '-d', 'TestDeployment1', '--confirm-resource-deletion')

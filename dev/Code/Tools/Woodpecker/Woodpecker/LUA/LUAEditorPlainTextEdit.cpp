@@ -246,9 +246,11 @@ namespace LUAEditor
                 {
                     QString text = block.text();
 
+                    QString leadingSpacing;
+
                     // Count the number of leading tabs
                     int position = 0;
-                    while (position < text.size() && text.at(position) == '\t') { ++position; }
+                    while (position < text.size() && (text.at(position) == '\t' || text.at(position) == ' ')) { leadingSpacing += text.at(position); ++position; }
 
                     QString left = text.left(cursorStartColumn);
                     QString trail = text.right(text.size() - cursorStartColumn);
@@ -259,9 +261,9 @@ namespace LUAEditor
 
                     cursor.insertText(left);
                     cursor.insertText("\n");
-                    for (int indent = 0; indent < position; ++indent)
+                    if (leadingSpacing.size() > 0)
                     {
-                        cursor.insertText("\t");
+                        cursor.insertText(leadingSpacing);
                     }
                     cursor.insertText(trail);
 
@@ -364,6 +366,7 @@ namespace LUAEditor
         if (event->key() == Qt::Key::Key_Tab || event->key() == Qt::Key::Key_Backtab)
         {
             bool addIndent = (event->key() == Qt::Key::Key_Tab);
+            QString tabString = m_useSpaces ? QString(" ").repeated(m_tabSize) : "\t";
 
             auto cursor = textCursor();
             if (cursor.hasSelection())
@@ -387,6 +390,15 @@ namespace LUAEditor
 
                 // set a new selection with the new beginning
                 QString text = cursor.selection().toPlainText();
+
+                if (m_useSpaces)
+                {
+                    // Replace tabs with spaces and adjust position
+                    int tabs = text.count("\t");
+                    text.replace("\t", tabString);
+                    position += tabs * (m_tabSize - 1);
+                }
+
                 QStringList list = text.split("\n");
 
                 // get the selected text and split into lines
@@ -396,15 +408,15 @@ namespace LUAEditor
 
                     if (addIndent)
                     {
-                        line.insert(0, "\t");
-                        ++position;
+                        line.insert(0, tabString);
+                        position += tabString.length();
                     }
                     else
                     {
-                        if (line.startsWith('\t'))
+                        if (line.startsWith(tabString))
                         {
-                            line.remove(0, 1);
-                            --position;
+                            line.remove(0, tabString.length());
+                            position -= tabString.length();
                         }
                     }
                 }
@@ -429,21 +441,33 @@ namespace LUAEditor
             }
             else
             {
-                if (event->key() == Qt::Key::Key_Backtab)
+                if (addIndent && !isReadOnly())
+                {
+                    cursor.insertText(tabString);
+                    return true;
+                }
+                else if (event->key() == Qt::Key::Key_Backtab)
                 {
                     int position = cursor.position();
                     int columnNumber = cursor.columnNumber();
+                    int removeCount = 1;
 
                     cursor.movePosition(QTextCursor::EndOfLine, QTextCursor::KeepAnchor);
 
                     QString text = cursor.block().text();
 
-                    if (text[columnNumber] != '\t')
+                    if (text[columnNumber] != '\t' || text.midRef(columnNumber, m_tabSize) != tabString)
                     {
                         if (columnNumber > 0 && text[columnNumber - 1] == '\t')
                         {
                             --columnNumber;
                             --position;
+                        }
+                        else if (columnNumber > 0 && text.midRef(columnNumber - m_tabSize, m_tabSize) == tabString)
+                        {
+                            columnNumber -= tabString.length();
+                            position -= tabString.length();
+                            removeCount = tabString.length();
                         }
                         else
                         {
@@ -453,7 +477,7 @@ namespace LUAEditor
                     }
 
                     // Remove the tab
-                    text.remove(columnNumber, 1);
+                    text.remove(columnNumber, removeCount);
 
                     // Select the entire line, we'll replace it with the modified text
                     cursor.movePosition(QTextCursor::StartOfLine, QTextCursor::MoveAnchor);
@@ -512,7 +536,16 @@ namespace LUAEditor
     void LUAEditorPlainTextEdit::CompletionSelected(const QString& text)
     {
         QString prefix = m_completer->completionPrefix();
-        textCursor().insertText(text.right(text.length() - m_completer->GetCompletionPrefixTailLength()));
+
+        QTextCursor cursor = textCursor();
+
+        // lastIndexOf will return -1 if not found, so subtracting index of lastPeriod + 1, 
+        // the math will always work regardless of whether the prefix contains a . or not
+        int lastPeriod = prefix.lastIndexOf('.');
+        int charactersToReplace = prefix.length() - (lastPeriod + 1);
+
+        cursor.setPosition(cursor.position() - charactersToReplace, QTextCursor::KeepAnchor);
+        cursor.insertText(text);
     }
 
     void LUAEditorPlainTextEdit::OnScopeNamesUpdated(const QStringList& scopeNames)

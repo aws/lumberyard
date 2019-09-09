@@ -56,6 +56,7 @@ namespace ScriptCanvas
 
 
         AZStd::vector<AZ::BehaviorProperty*> GetBehaviorProperties(const Data::Type& type);
+
         GetterContainer ExplodeToGetters(const Data::Type& type);
         SetterContainer ExplodeToSetters(const Data::Type& type);
 
@@ -450,7 +451,7 @@ namespace ScriptCanvas
                             if (!thisObjectParam.IsSuccess())
                             {
                                 return AZ::Failure(AZStd::string::format("BehaviorContextObject %s couldn't be turned into a BehaviorValueParameter for getter: %s",
-                                    Data::GetName(thisDatum.GetType()),
+                                    Data::GetName(thisDatum.GetType()).data(),
                                     thisObjectParam.GetError().data()));
                             }
                             getterParams[0].Set(thisObjectParam.TakeValue());
@@ -464,7 +465,16 @@ namespace ScriptCanvas
                             return behaviorMethodInvokeOutcome;
                         };
 
-                        getterFunctions.insert({ behaviorProperty->m_name, { AZStd::move(getterFunction), Data::FromAZType(getterMethod->GetResult()->m_typeId), behaviorProperty->m_name } });
+                        const AZ::BehaviorParameter* resultParam = getterMethod->GetResult();
+
+                        Data::Type resultType = Data::FromAZType(resultParam->m_typeId);
+
+                        if (AZ::BehaviorContextHelper::IsStringParameter((*resultParam)))
+                        {
+                            resultType = Data::Type::String();
+                        }
+
+                        getterFunctions.insert({ behaviorProperty->m_name, { AZStd::move(getterFunction), resultType, behaviorProperty->m_name } });
                     }
                 }
 
@@ -491,7 +501,7 @@ namespace ScriptCanvas
                             if (!thisObjectParam.IsSuccess())
                             {
                                 return AZ::Failure(AZStd::string::format("BehaviorContextObject %s couldn't be turned into a BehaviorValueParameter for setter: %s",
-                                    Data::GetName(thisDatum.GetType()),
+                                    Data::GetName(thisDatum.GetType()).data(),
                                     thisObjectParam.GetError().data()));
                             }
                             setterParams[thisIndex].Set(thisObjectParam.TakeValue());
@@ -501,8 +511,8 @@ namespace ScriptCanvas
                             if (!propertyObjectParam.IsSuccess())
                             {
                                 return AZ::Failure(AZStd::string::format("Property type %s couldn't be turned into a BehaviorValueParameter for setter. BehaviorContextObject %s will not be set: %s.",
-                                    Data::GetName(propertyDatum.GetType()),
-                                    Data::GetName(thisDatum.GetType()),
+                                    Data::GetName(propertyDatum.GetType()).data(),
+                                    Data::GetName(thisDatum.GetType()).data(),
                                     propertyObjectParam.GetError().data()));
                             }
 
@@ -516,7 +526,16 @@ namespace ScriptCanvas
                             return AZ::Success();
                         };
 
-                        setterFunctions.insert({ behaviorProperty->m_name, { AZStd::move(setterFunction), Data::FromAZType(setterMethod->GetArgument(propertyIndex)->m_typeId), behaviorProperty->m_name } });
+                        const AZ::BehaviorParameter* argumentParam = setterMethod->GetArgument(propertyIndex);
+
+                        Data::Type argumentType = Data::FromAZType(argumentParam->m_typeId);
+
+                        if (AZ::BehaviorContextHelper::IsStringParameter((*argumentParam)))
+                        {
+                            argumentType = Data::Type::String();
+                        }
+
+                        setterFunctions.insert({ behaviorProperty->m_name, { AZStd::move(setterFunction), argumentType, behaviorProperty->m_name } });
                     }
                 }
 
@@ -524,32 +543,37 @@ namespace ScriptCanvas
             }
         };
 
-        struct TypeErasedPropertyTraits
+        namespace Properties
         {
-            AZ_CLASS_ALLOCATOR(TypeErasedPropertyTraits, AZ::SystemAllocator, 0);
-
-            TypeErasedPropertyTraits() = default;
-
-            template<typename Traits>
-            explicit TypeErasedPropertyTraits(Traits)
+            struct TypeErasedPropertyTraits
             {
-                m_getterFunctionCB = &Traits::GetGetterWrappers;
-                m_setterFunctionCB = &Traits::GetSetterWrappers;
+                AZ_CLASS_ALLOCATOR(TypeErasedPropertyTraits, AZ::SystemAllocator, 0);
+
+                TypeErasedPropertyTraits() = default;
+
+                template<typename Traits>
+                explicit TypeErasedPropertyTraits(Traits)
+                {
+                    m_getterFunctionCB = &Traits::GetGetterWrappers;
+                    m_setterFunctionCB = &Traits::GetSetterWrappers;
+                }
+
+                bool m_isTransient = false;
+
+                GetterContainer GetGetterWrappers(const Data::Type& type) const { return m_getterFunctionCB ? m_getterFunctionCB(type) : GetterContainer{}; }
+                SetterContainer GetSetterWrappers(const Data::Type& type) const { return m_setterFunctionCB ? m_setterFunctionCB(type) : SetterContainer{}; }
+
+                using GetterContainerCreator = GetterContainer(*)(const Data::Type&);
+                GetterContainerCreator m_getterFunctionCB = nullptr;
+                using SetterContainerCreator = SetterContainer(*)(const Data::Type&);
+                SetterContainerCreator m_setterFunctionCB = nullptr;
+            };
+
+            template<eType scTypeValue>
+            static TypeErasedPropertyTraits MakeTypeErasedPropertyTraits()
+            {
+                return TypeErasedPropertyTraits(PropertyTraits<scTypeValue>{});
             }
-
-            GetterContainer GetGetterWrappers(const Data::Type& type) const { return m_getterFunctionCB ? m_getterFunctionCB(type) : GetterContainer{}; }
-            SetterContainer GetSetterWrappers(const Data::Type& type) const { return m_setterFunctionCB ? m_setterFunctionCB(type) : SetterContainer{}; }
-
-            using GetterContainerCreator = GetterContainer(*)(const Data::Type&);
-            GetterContainerCreator m_getterFunctionCB = nullptr;
-            using SetterContainerCreator = SetterContainer(*)(const Data::Type&);
-            SetterContainerCreator m_setterFunctionCB = nullptr;
-        };
-
-        template<eType scTypeValue>
-        static TypeErasedPropertyTraits MakeTypeErasedPropertyTraits()
-        {
-            return TypeErasedPropertyTraits(PropertyTraits<scTypeValue>{});
         }
     } // namespace Data
 } // namespace ScriptCanvas

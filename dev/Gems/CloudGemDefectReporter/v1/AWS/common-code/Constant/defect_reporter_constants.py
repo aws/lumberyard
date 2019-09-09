@@ -50,7 +50,10 @@ PRESIGNED_POST_LIFETIME = 300
 Mime-type for jpeg images (ex. screenshots).
 '''
 MIME_TYPE_IMAGE_JPEG = 'image/jpeg'
-
+'''
+Mime-type for png images (ex. screenshots).
+'''
+MIME_TYPE_IMAGE_PNG = 'image/png'
 
 '''
 Mime-type for plain text files (ex. game logs).
@@ -61,4 +64,20 @@ MIME_TYPE_TEXT_PLAIN = 'text/plain'
 '''
 Event version for event published by S3 source.
 '''
-S3_EVENT_VERSION = '2.0'
+S3_EVENT_VERSION_MIN = 2.0
+S3_EVENT_VERSION_MAX = 2.1
+
+'''
+Name of the sanitized bucket.
+'''
+SANITIZED_BUCKET = 'SanitizedBucket'
+
+'''
+Name of the attachment bucket.
+'''
+ATTACHMENT_BUCKET = 'AttachmentBucket'
+
+'''
+Name of the Jira credentials lambda function.
+'''
+JIRA_CREDENTIALS_LAMBDA = 'JiraCredentialsLambda'

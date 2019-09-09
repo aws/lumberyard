@@ -25,36 +25,33 @@ namespace EMotionFX
     AnimGraphParameterMaskHandler::AnimGraphParameterMaskHandler()
         : QObject()
         , AzToolsFramework::PropertyHandler<AZStd::vector<AZStd::string>, AnimGraphParameterPicker>()
-        , m_parameterNode(nullptr)
+        , m_object(nullptr)
     {
     }
-
 
     AZ::u32 AnimGraphParameterMaskHandler::GetHandlerName() const
     {
         return AZ_CRC("AnimGraphParameterMask", 0x67dd0993);
     }
 
-
     QWidget* AnimGraphParameterMaskHandler::CreateGUI(QWidget* parent)
     {
         AnimGraphParameterPicker* picker = aznew AnimGraphParameterPicker(parent, false, true);
 
-        connect(picker, &AnimGraphParameterPicker::ParametersChanged, this, [picker]()
+        connect(picker, &AnimGraphParameterPicker::ParametersChanged, this, [picker](const AZStd::vector<AZStd::string>& newParameters)
         {
             EBUS_EVENT(AzToolsFramework::PropertyEditorGUIMessages::Bus, RequestWrite, picker);
         });
-
         return picker;
     }
-
 
     void AnimGraphParameterMaskHandler::ConsumeAttribute(AnimGraphParameterPicker* GUI, AZ::u32 attrib, AzToolsFramework::PropertyAttributeReader* attrValue, const char* debugName)
     {
         if (attrValue)
         {
-            m_parameterNode = static_cast<BlendTreeParameterNode*>(attrValue->GetInstancePointer());
-            GUI->SetParameterNode(m_parameterNode);
+            AnimGraphNode* node = static_cast<AnimGraphNode*>(attrValue->GetInstancePointer());
+            m_object = azdynamic_cast<ObjectAffectedByParameterChanges*>(node);
+            GUI->SetObjectAffectedByParameterChanges(m_object);
         }
 
         if (attrib == AZ::Edit::Attributes::ReadOnly)
@@ -67,34 +64,16 @@ namespace EMotionFX
         }
     }
 
-
-    void AnimGraphParameterMaskHandler::FireParameterMaskChangedEvent()
-    {
-        if (m_parameterNode)
-        {
-            GetEventManager().OnParameterNodeMaskChanged(m_parameterNode, m_temp);
-        }
-    }
-
-
     void AnimGraphParameterMaskHandler::WriteGUIValuesIntoProperty(size_t index, AnimGraphParameterPicker* GUI, property_t& instance, AzToolsFramework::InstanceDataNode* node)
     {
-        m_temp = GUI->GetParameterNames();
-        EMotionFX::BlendTreeParameterNode::SortParameterNames(m_parameterNode->GetAnimGraph(), m_temp);
-
         // Don't update the parameter names yet, we still need the information for constructing the command group.
-        instance = m_parameterNode->GetParameters();
-
-        QTimer::singleShot(100, this, SLOT(FireParameterMaskChangedEvent()));
+        instance = m_object->GetParameters();
     }
-
 
     bool AnimGraphParameterMaskHandler::ReadValuesIntoGUI(size_t index, AnimGraphParameterPicker* GUI, const property_t& instance, AzToolsFramework::InstanceDataNode* node)
     {
         QSignalBlocker signalBlocker(GUI);
-        GUI->SetParameterNames(instance);
+        GUI->InitializeParameterNames(instance);
         return true;
     }
 } // namespace EMotionFX
-
-#include <Source/Editor/PropertyWidgets/AnimGraphParameterMaskHandler.moc>

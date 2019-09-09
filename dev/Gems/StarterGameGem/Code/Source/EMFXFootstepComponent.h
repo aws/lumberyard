@@ -12,6 +12,7 @@
 #pragma once
 
 #include <AzCore/Component/Component.h>
+#include <AzCore/std/string/string_view.h>
 
 #include <Integration/AnimationBus.h>
 
@@ -19,26 +20,32 @@ namespace StarterGameGem
 {
     class EMFXFootstepComponent
         : public AZ::Component
-		, protected EMotionFX::Integration::ActorNotificationBus::Handler
-	{
+        , protected EMotionFX::Integration::ActorNotificationBus::Handler
+    {
     public:
         AZ_COMPONENT(EMFXFootstepComponent, "{01654896-2D06-4B43-B184-8ED407B35AF5}");
 
         static void Reflect(AZ::ReflectContext* context);
-		////////////////////////////////////////////////////////////////////////
-		// ActorNotificationBus interface implementation
-		void OnMotionEvent(EMotionFX::Integration::MotionEvent motionEvent) override;
-		////////////////////////////////////////////////////////////////////////
-
-    protected:
 
         ////////////////////////////////////////////////////////////////////////
+        // ActorNotificationBus interface implementation
+        void OnMotionEvent(EMotionFX::Integration::MotionEvent motionEvent) override;
+        ////////////////////////////////////////////////////////////////////////
+
+    protected:
+        ////////////////////////////////////////////////////////////////////////
         // AZ::Component interface implementation
-        void Init() override;
         void Activate() override;
         void Deactivate() override;
         ////////////////////////////////////////////////////////////////////////
-	private:
-		void OnFootstepEvent(const char* eventName, const char* boneName, const char* fxLib);
+
+    private:
+        void OnFootstepEvent(const AZStd::string_view eventName, const AZStd::string_view fxLib);
+
+        AZStd::string m_leftFootEventName = "LeftFoot"; // EMFX default
+        AZStd::string m_rightFootEventName = "RightFoot"; // EMFX default
+        AZStd::string m_leftFootBoneName = "Jack:Bip01__L_Heel"; // Jack default
+        AZStd::string m_rightFootBoneName = "Jack:Bip01__R_Heel"; // Jack Default
+        AZStd::string m_defaultFXLib = "footstep"; // default FXLib
     };
 }

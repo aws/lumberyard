@@ -28,6 +28,4 @@ def build(bld):
         win_test_file_list = "crycommon_testing.waf_files",
         win_cxxflags       = [ '/wd4355' ],
         win_features       = ['crcfix'],
-       
-       
 )

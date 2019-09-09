@@ -644,7 +644,7 @@ int CPhysicalWorld::RayWorldIntersection(const IPhysicalWorld::SRWIParams& rp, c
         objtypes |= ent_areas;
     }
 
-    IF (objtypes & ~(ent_terrain | ent_water), 1)
+    IF ((objtypes & ~(ent_terrain | ent_water)) && m_gthunks, 1)
     {
         MarkSkipEnts(rp.pSkipEnts, rp.nSkipEnts, 1 << iCaller);
 

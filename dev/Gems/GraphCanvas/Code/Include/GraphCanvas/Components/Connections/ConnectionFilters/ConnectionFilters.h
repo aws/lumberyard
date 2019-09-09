@@ -49,16 +49,16 @@ namespace GraphCanvas
             m_slotTypes.insert(slotType);
         }
         
-        bool CanConnectWith(const AZ::EntityId& slotId, Connectability& connectability) const override
+        bool CanConnectWith(const Endpoint& endpoint) const override
         {
             SlotType connectingSlotType = SlotTypes::Invalid;
-            SlotRequestBus::EventResult(connectingSlotType, slotId, &SlotRequests::GetSlotType);
-            AZ_Assert(connectingSlotType != SlotGroups::Invalid, "Slot %s is in an invalid slot group. Connections to it are disabled", slotId.ToString().c_str());
+            SlotRequestBus::EventResult(connectingSlotType, endpoint.GetSlotId(), &SlotRequests::GetSlotType);
+            AZ_Assert(connectingSlotType != SlotGroups::Invalid, "Slot %s is in an invalid slot type. Connections to it are disabled", endpoint.GetSlotId().ToString().c_str());
             
             bool canConnect = false;
             
             if (connectingSlotType != SlotTypes::Invalid)
-            {            
+            {
                 bool isInFilter = m_slotTypes.count(connectingSlotType) != 0;
                 
                 switch (m_filterType)
@@ -70,17 +70,6 @@ namespace GraphCanvas
                     canConnect = !isInFilter;
                     break;
                 }
-                
-                if (!canConnect)
-                {
-                    connectability.status = Connectability::NotConnectable;
-                    connectability.details = AZStd::string::format("Slot Type %d not allowed by filter on Slot %s.", connectingSlotType, slotId.ToString().c_str());
-                }
-            }
-            else
-            {
-                connectability.status = Connectability::NotConnectable;
-                connectability.details = "Invalid Slot Type given for comparison.";
             }
             
             return canConnect;
@@ -116,11 +105,11 @@ namespace GraphCanvas
             m_connectionTypes.insert(connectionType);
         }
         
-        bool CanConnectWith(const AZ::EntityId& slotId, Connectability& connectability) const override
+        bool CanConnectWith(const Endpoint& endpoint) const override
         {
             ConnectionType connectionType = ConnectionType::CT_Invalid;
-            SlotRequestBus::EventResult(connectionType, slotId, &SlotRequests::GetConnectionType);
-            AZ_Assert(connectionType != ConnectionType::CT_Invalid, "Slot %s is in an invalid slot group. Connections to it are disabled", slotId.ToString().c_str())
+            SlotRequestBus::EventResult(connectionType, endpoint.GetSlotId(), &SlotRequests::GetConnectionType);
+            AZ_Assert(connectionType != ConnectionType::CT_Invalid, "Slot %s is in an invalid slot type. Connections to it are disabled", endpoint.GetSlotId().ToString().c_str())
             
             bool canConnect = false;
             
@@ -137,17 +126,6 @@ namespace GraphCanvas
                     canConnect = !isInFilter;
                     break;
                 }
-                
-                if (!canConnect)
-                {
-                    connectability.status = Connectability::NotConnectable;
-                    connectability.details = AZStd::string::format("Slot Type %d not allowed by filter on Slot %s.", connectionType, slotId.ToString().c_str());
-                }
-            }
-            else
-            {
-                connectability.status = Connectability::NotConnectable;
-                connectability.details = "Invalid Slot Type given for comparison.";
             }
             
             return canConnect;

@@ -59,15 +59,6 @@ namespace LmbrCentral
         }
     };
 
-    void EditorFlowGraphComponent::DisplayEntity(bool& handled)
-    {
-        // Draw extra visualization when not selected.
-        if (!IsSelected())
-        {
-            handled = true;
-        }
-    }
-
     void EditorFlowGraphComponent::Reflect(AZ::ReflectContext* context)
     {
         AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
@@ -141,9 +132,6 @@ namespace LmbrCentral
     {
         EditorComponentBase::Activate();
         FlowGraphEditorRequestsBus::Handler::BusConnect(FlowEntityId(GetEntityId()));
-        AzFramework::EntityDebugDisplayEventBus::Handler::BusConnect(GetEntityId());
-
-        AZ::ComponentApplicationEventBus::Handler::BusConnect();
 
         for (FlowGraphWrapper& flowGraphWrapper : m_flowGraphs)
         {
@@ -165,12 +153,8 @@ namespace LmbrCentral
 
     void EditorFlowGraphComponent::Deactivate()
     {
-        AZ::ComponentApplicationEventBus::Handler::BusDisconnect();
-
         FlowGraphEditorRequestsBus::Handler::BusDisconnect();
         EditorComponentBase::Deactivate();
-
-        AzFramework::EntityDebugDisplayEventBus::Handler::BusDisconnect();
     }
 
     EditorFlowGraphComponent::~EditorFlowGraphComponent()

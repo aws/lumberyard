@@ -86,7 +86,7 @@ namespace LmbrCentral
         // Calculate a fade value to pass as the environment amount for the entity.
         // Linear fade is fine, the audio middleware can be authored to translate this into custom curves.
         float fadeValue = AZ::GetClamp(distanceFromShape, 0.f, m_environmentFadeDistance);
-        fadeValue = (1.f - (distanceFromShape / m_environmentFadeDistance));
+        fadeValue = (1.f - (fadeValue / m_environmentFadeDistance));
 
         AudioProxyComponentRequestBus::Event(*busEntityId, &AudioProxyComponentRequestBus::Events::SetEnvironmentAmount, m_environmentId, fadeValue);
     }
@@ -101,6 +101,12 @@ namespace LmbrCentral
     void AudioAreaEnvironmentComponent::OnTriggerAreaExited(AZ::EntityId exitingEntityId)
     {
         AZ::TransformNotificationBus::MultiHandler::BusDisconnect(exitingEntityId);
+
+        if (m_environmentId != INVALID_AUDIO_ENVIRONMENT_ID)
+        {
+            // When entities fully exit the broad-phase trigger area, set the environment amount to zero to ensure no effects linger on the entity.
+            AudioProxyComponentRequestBus::Event(exitingEntityId, &AudioProxyComponentRequestBus::Events::SetEnvironmentAmount, m_environmentId, 0.f);
+        }
     }
 
 } // namespace LmbrCentral

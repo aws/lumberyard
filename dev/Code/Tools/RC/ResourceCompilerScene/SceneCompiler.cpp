@@ -57,6 +57,7 @@
 #include <RC/ResourceCompilerScene/Common/SkinWeightExporter.h>
 #include <RC/ResourceCompilerScene/Common/AnimationExporter.h>
 #include <RC/ResourceCompilerScene/Common/BlendShapeExporter.h>
+#include <RC/ResourceCompilerScene/Common/TouchBendingExporter.h>
 #include <RC/ResourceCompilerScene/SceneSerializationHandler.h>
 
 #include <SceneAPI/SceneCore/Components/ExportingComponent.h>
@@ -94,6 +95,7 @@ namespace AZ
             RegisterComponentDescriptor(SkinWeightExporter::CreateDescriptor());
             RegisterComponentDescriptor(UVStreamExporter::CreateDescriptor());
             RegisterComponentDescriptor(WorldMatrixExporter::CreateDescriptor());
+            RegisterComponentDescriptor(TouchBendingExporter::CreateDescriptor());
         }
 
         void RCToolApplication::AddSystemComponents(AZ::Entity* systemEntity)
@@ -144,21 +146,25 @@ namespace AZ
             AZ_TracePrintf(SceneAPI::Utilities::LogWindow, "Starting scene processing.\n");
             AssetBuilderSDK::ProcessJobResponse response;
 
-            const char* gameFolder = m_context.pRC->GetSystemEnvironment()->pFileIO->GetAlias("@devassets@");
+            const char* gameFolder = AZ::IO::FileIOBase::GetInstance()->GetAlias("@devassets@");
             AZStd::string configPath = AZStd::string::format("%s/Config/Editor.xml", gameFolder);
             AZ_TraceContext("Gem config file", configPath);
 
             RCToolApplication application;
             if (!PrepareForExporting(configPath.c_str(), application, m_appRoot))
             {
-                return WriteResponse(m_context.GetOutputFolder().c_str(), response, false);
+                bool result = WriteResponse(m_context.GetOutputFolder().c_str(), response, false);
+                AzFramework::AssetSystemRequestBus::Broadcast(&AzFramework::AssetSystemRequestBus::Events::Disconnect);
+                return result;
             }
 
             // Do this  after PrepareForExporting is called so the types are registered for reading the request and writing a response.
             AZStd::unique_ptr<AssetBuilderSDK::ProcessJobRequest> request = ReadJobRequest(m_context.GetOutputFolder().c_str());
             if (!request)
             {
-                return WriteResponse(m_context.GetOutputFolder().c_str(), response, false);
+                bool result = WriteResponse(m_context.GetOutputFolder().c_str(), response, false);
+                AzFramework::AssetSystemRequestBus::Broadcast(&AzFramework::AssetSystemRequestBus::Events::Disconnect);
+                return result;
             }
 
             bool result = false;
@@ -189,6 +195,10 @@ namespace AZ
                 AZ_TracePrintf(SceneAPI::Utilities::ErrorWindow, "During processing one or more problems were found.\n");
                 result = false;
             }
+
+            // Manually disconnect from the Asset Processor before the application goes out of scope to avoid
+            // a potential serialization issue due to deficiencies in the order of teardown operations.
+            AzFramework::AssetSystemRequestBus::Broadcast(&AzFramework::AssetSystemRequestBus::Events::Disconnect);
             
             AZ_TracePrintf(SceneAPI::Utilities::LogWindow, "Finished scene processing.\n");
             return WriteResponse(m_context.GetOutputFolder().c_str(), response, result);

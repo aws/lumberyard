@@ -9,9 +9,8 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#ifndef ASSETPROCESSINGSTATEDATAUNITTEST_H
-#define ASSETPROCESSINGSTATEDATAUNITTEST_H
-#ifdef UNIT_TEST
+#pragma once
+
 #include "UnitTestRunner.h"
 
 namespace AssetProcessor
@@ -27,6 +26,10 @@ public:
     void AssetProcessingStateDataTest();
     void ExistenceTest(AssetProcessor::AssetDatabaseConnection* stateData);
     void DataTest(AssetProcessor::AssetDatabaseConnection* stateData);
+    void BuilderInfoTest(AssetProcessor::AssetDatabaseConnection* stateData);
+    void SourceDependencyTest(AssetProcessor::AssetDatabaseConnection* stateData);
+    void SourceFingerprintTest(AssetProcessor::AssetDatabaseConnection* stateData);
+
     virtual void StartTest() override;
     virtual int UnitTestPriority() const override { return -10; } // other classes depend on this one
 
@@ -36,5 +39,3 @@ public Q_SLOTS:
 private:
 };
 
-#endif
-#endif // ASSETPROCESSINGSTATEDATAUNITTEST_H

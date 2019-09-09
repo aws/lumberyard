@@ -563,7 +563,11 @@ enum EToken
     eT__LT_3_TYPE,
     eT__TT_TEXCOORD_MATRIX,
     eT__TT_TEXCOORD_PROJ,
-    eT__TT_TEXCOORD_GEN_OBJECT_LINEAR,
+    eT__TT_TEXCOORD_GEN_OBJECT_LINEAR_DIFFUSE,
+    eT__TT_TEXCOORD_GEN_OBJECT_LINEAR_EMITTANCE,
+    eT__TT_TEXCOORD_GEN_OBJECT_LINEAR_EMITTANCE_MULT,
+    eT__TT_TEXCOORD_GEN_OBJECT_LINEAR_DETAIL,
+    eT__TT_TEXCOORD_GEN_OBJECT_LINEAR_CUSTOM,
     eT__VT_TYPE,
     eT__VT_TYPE_MODIF,
     eT__VT_BEND,
@@ -642,7 +646,6 @@ enum EToken
     eT_DURANGO, // ACCEPTED_USE
     eT_PCDX11,
     eT_GL4,
-    eT_OSXGL4,
     eT_GLES3,
     eT_METAL,
     eT_OSXMETAL,
@@ -689,15 +692,7 @@ enum EToken
 
     eT_Global,
 
-    eT_GMEM,
-    eT_GMEM_PLS,
-    eT_GMEM_256BPP,
-    eT_GMEM_128BPP,
-
-    eT_FIXED_POINT,
     eT_GLES3_0,
-
-    eT_LLVM_DIRECTX_SHADER_COMPILER,
 
     eT_Load,
     eT_Sample,
@@ -706,8 +701,6 @@ enum EToken
     eT_GatherGreen,
     eT_GatherBlue,
     eT_GatherAlpha,
-
-    eT_NoDepthClipping,
 
     eT_max,
     eT_user_first = eT_max + 1
@@ -750,7 +743,7 @@ struct SMacroBinFX
 
 class CParserBin;
 
-typedef std::map<uint32, SMacroBinFX> FXMacroBin;
+typedef AZStd::unordered_map<uint32, SMacroBinFX, AZStd::hash<uint32>, AZStd::equal_to<uint32>, AZ::StdLegacyAllocator> FXMacroBin;
 typedef FXMacroBin::iterator FXMacroBinItor;
 
 struct SParserFrame
@@ -1009,11 +1002,13 @@ public:
     static void SetupForD3D11();
     static void SetupForGL4();
     static void SetupForGLES3();
-    // Confetti Nicholas Baldwin: adding metal shader language support
     static void SetupForMETAL();
+    static void SetupTargetPlatform();
     // Confetti David Srour: sets up GMEM path related macros
     // 0 = no gmem, 1 = 256bpp, 2 = 128bpp (matches the r_enableGMEMPath cvar)
-    static void SetupForGMEM(int gmemPath, int& curMacroNum);
+    static void SetupForGMEM(int gmemPath);
+    static void SetupGMEMCommonStaticFlags();
+    static void RemoveGMEMStaticFlags();
     static void SetupForDurango(); // ACCEPTED_USE
     static void SetupFeatureDefines();
     static void SetupShadersCacheAndFilter();
@@ -1031,7 +1026,8 @@ public:
     static bool PlatformIsConsole(){return (CParserBin::m_nPlatform == SF_ORBIS || CParserBin::m_nPlatform == SF_DURANGO); }; // ACCEPTED_USE
 
     static bool m_bEditable;
-    static uint32 m_nPlatform;
+    static uint32 m_nPlatform;                  // Shader language
+    static AZ::PlatformID m_targetPlatform;     // Platform
     static bool m_bEndians;
     static bool m_bParseFX;
     static bool m_bShaderCacheGen;

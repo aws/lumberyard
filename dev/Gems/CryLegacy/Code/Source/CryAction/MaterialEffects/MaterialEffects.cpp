@@ -34,19 +34,19 @@
 //////////////////////////////////////////////////////////////////////////
 
 #define IMPL_POOL_RETURNING(type, rtype)                       \
-    static stl::PoolAllocatorNoMT<sizeof(type)> m_pool_##type; \
+    static StaticInstance<stl::PoolAllocatorNoMT<sizeof(type)>> m_pool_##type; \
     rtype type::Create()                                       \
     {                                                          \
-        return new (m_pool_##type.Allocate())type();           \
+        return new (m_pool_##type->Allocate())type();           \
     }                                                          \
     void type::Destroy()                                       \
     {                                                          \
         this->~type();                                         \
-        m_pool_##type.Deallocate(this);                        \
+        m_pool_##type->Deallocate(this);                        \
     }                                                          \
     void type::FreePool()                                      \
     {                                                          \
-        m_pool_##type.FreeMemory();                            \
+        m_pool_##type->FreeMemory();                            \
     }
 #define IMPL_POOL(type) IMPL_POOL_RETURNING(type, type*)
 
@@ -102,8 +102,6 @@ CMaterialEffects::~CMaterialEffects()
 
 void CMaterialEffects::LoadFXLibraries()
 {
-    MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_Other, 0, "MaterialEffects");
-
     m_mfxLibraries.clear();
     m_effectContainers.clear();
     m_effectContainers.push_back(0); // 0 -> invalid effect id
@@ -131,8 +129,6 @@ void CMaterialEffects::LoadFXLibraries()
 
 void CMaterialEffects::LoadFXLibrary(const char* name)
 {
-    MEMSTAT_CONTEXT_FMT(EMemStatContextTypes::MSC_Other, 0, "FX Library XML (%s)", name);
-
     string path = PathUtil::Make(MATERIAL_EFFECTS_LIBRARIES_FOLDER, name);
     string fileName = name;
 

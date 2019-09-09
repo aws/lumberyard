@@ -18,6 +18,21 @@
 namespace ImageTGA
 {
     void WriteTga(const char* fname, int width, int height, const float* p, int step);
+
+    enum class Type
+    {
+        Unknown = -1,
+
+        NoImageData = 0,
+        UncompressedPalettized = 1,
+        UncompressedTrueColor = 2,
+        UncompressedGrayscale = 3,
+        RunLengthEncodedPalettized = 9,
+        RunLengthEncodedTrueColor = 10,
+        RunLengthEncodedGrayscale = 11
+    };
+
+    Type ReadTgaType(const char* fname);
 };
 
 #endif // CRYINCLUDE_TOOLS_RC_RESOURCECOMPILERIMAGE_FORMATS_TGA_H

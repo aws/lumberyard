@@ -23,6 +23,7 @@ namespace AzToolsFramework
 
     GrowTextEdit::GrowTextEdit(QWidget* parent)
         : QTextEdit(parent)
+        , m_textChanged(false)
     {
         setSizePolicy(QSizePolicy::Policy::Ignored, QSizePolicy::Policy::Maximum);
         setMinimumHeight(PropertyQTConstant_DefaultHeight * 3);
@@ -33,13 +34,18 @@ namespace AzToolsFramework
             {
                 updateGeometry();
             }
+
+            m_textChanged = true;
         });
     }
 
     void GrowTextEdit::SetText(const AZStd::string& text)
     {
+        int cursorPos = textCursor().position();
         setPlainText(text.c_str());
-        document()->adjustSize();
+        QTextCursor cursor = textCursor();
+        cursor.movePosition(QTextCursor::MoveOperation::Right, QTextCursor::MoveMode::MoveAnchor, cursorPos);
+        setTextCursor(cursor);
         updateGeometry();
     }
 
@@ -63,6 +69,16 @@ namespace AzToolsFramework
         QSize documentSize = document()->size().toSize();
         sizeHint.setHeight(documentSize.height() + s_padding);
         return sizeHint;
+    }
+
+    void GrowTextEdit::focusOutEvent(QFocusEvent* /* event*/)
+    {
+        if (m_textChanged)
+        {
+            emit EditCompleted();
+        }
+
+        m_textChanged = false;
     }
 }
 

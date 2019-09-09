@@ -29,8 +29,6 @@
 #include <AzCore/std/parallel/mutex.h>
 #include <AzFramework/IO/LocalFileIO.h>
 
-using namespace ZipFile;
-
 enum PackFileStatus
 {
     PACKFILE_COMPRESSED,
@@ -190,16 +188,26 @@ public:
         return 0;
     }
 
-    void Start(int numThreads)
+    void Start(unsigned numExtraThreads)
     {
-        for (size_t i = 0; i < m_files.size(); ++i)
+        if (numExtraThreads == 0)
         {
-            PackFileJob* job = m_files[i];
-            m_files[i] = 0;
-            m_pool.Submit(&ProcessFile, job);
+            for (PackFileJob* job : m_files)
+            {
+                PackFileFromDisc(job);
+            }
         }
+        else
+        {
+            for (size_t i = 0; i < m_files.size(); ++i)
+            {
+                PackFileJob* job = m_files[i];
+                m_files[i] = 0;
+                m_pool.Submit(&ProcessFile, job);
+            }
 
-        m_pool.Start(numThreads);
+            m_pool.Start(numExtraThreads);
+        }
     }
 
     size_t GetJobCount() const
@@ -314,7 +322,7 @@ static size_t CalculateAlignedHeaderOffset(const char* fileName, size_t currentO
     }
 
     // Local header is followed by filename
-    const size_t totalHeaderSize = sizeof(LocalFileHeader) + strlen(fileName);
+    const size_t totalHeaderSize = sizeof(ZipFile::LocalFileHeader) + strlen(fileName);
 
     // Align end of the header
     const size_t dataOffset = AlignTo(currentOffset + totalHeaderSize, alignment);
@@ -455,8 +463,8 @@ static void PackFileFromMemory(PackFileJob* job)
 
     switch (job->batch->compressionMethod)
     {
-    case METHOD_DEFLATE_AND_ENCRYPT:
-    case METHOD_DEFLATE:
+    case ZipFile::METHOD_DEFLATE_AND_ENCRYPT:
+    case ZipFile::METHOD_DEFLATE:
     {
         // allocate memory for compression. Min is nSize * 1.001 + 12
         if (job->uncompressedSize > 0)
@@ -485,7 +493,7 @@ static void PackFileFromMemory(PackFileJob* job)
         }
         break;
     }
-    case METHOD_STORE:
+    case ZipFile::METHOD_STORE:
         job->compressedData = job->uncompressedData;
         job->compressedSize = job->uncompressedSize;
         job->status = PACKFILE_COMPRESSED;
@@ -683,7 +691,7 @@ void ZipDir::CacheRW::StorePackedFile(PackFileJob* job)
         return;
     }
 
-    const bool encrypt = pFileEntry->nMethod == METHOD_DEFLATE_AND_ENCRYPT;
+    const bool encrypt = pFileEntry->nMethod == ZipFile::METHOD_DEFLATE_AND_ENCRYPT;
 
     if (!WriteCompressedData((char*)job->compressedData, job->compressedSize, encrypt, m_pFile))
     {
@@ -844,16 +852,16 @@ static void PackFileFromDisc(PackFileJob* job)
 
 bool ZipDir::CacheRW::UpdateMultipleFiles(const char** realFilenames, const char** filenamesInZip, size_t fileCount,
     int compressionLevel, bool encryptContent, size_t zipMaxSize, int sourceMinSize, int sourceMaxSize,
-    int numExtraThreads, ZipDir::IReporter* reporter, ZipDir::ISplitter* splitter)
+    unsigned numExtraThreads, ZipDir::IReporter* reporter, ZipDir::ISplitter* splitter)
 {
-    int compressionMethod = METHOD_DEFLATE;
+    int compressionMethod = ZipFile::METHOD_DEFLATE;
     if (encryptContent)
     {
-        compressionMethod = METHOD_DEFLATE_AND_ENCRYPT;
+        compressionMethod = ZipFile::METHOD_DEFLATE_AND_ENCRYPT;
     }
     else if (compressionLevel == 0)
     {
-        compressionMethod = METHOD_STORE;
+        compressionMethod = ZipFile::METHOD_STORE;
     }
 
     uint64 totalSize = 0;
@@ -863,273 +871,154 @@ bool ZipDir::CacheRW::UpdateMultipleFiles(const char** realFilenames, const char
     PackFileBatch batch;
     batch.compressionLevel = compressionLevel;
     batch.compressionMethod = compressionMethod;
-    batch.pool = 0;
     batch.sourceMinSize = sourceMinSize;
     batch.sourceMaxSize = sourceMaxSize;
     batch.zipMaxSize = zipMaxSize;
 
-    if (numExtraThreads == 0)
+    const size_t memoryLimit = 1024 * 1024 * 1024; // prevents threads from generating more than 1GB of data
+    PackFilePool pool(fileCount, memoryLimit);
+    batch.pool = &pool;
+
+    for (int i = 0; i < fileCount; ++i)
     {
-        for (int i = 0; i < fileCount; ++i)
+        const char* realFilename = realFilenames[i];
+        const char* filenameInZip = filenamesInZip[i];
+
+        PackFileJob job;
+
+        job.relativePathSrc = filenameInZip;
+        job.realFilename = realFilename;
+        job.batch = &batch;
+
         {
-            const char* realFilename = realFilenames[i];
-            const char* filenameInZip = filenamesInZip[i];
-
-            PackFileJob job;
-
-            job.key = i;
-            job.relativePathSrc = filenameInZip;
-            job.realFilename = realFilename;
-            job.batch = &batch;
-
+            // crc will be used to check if this file need to be updated at all
+            ZipDir::FileEntry* entry = FindFile(filenameInZip);
+            if (entry)
             {
-                // crc will be used to check if this file need to be updated at all
-                ZipDir::FileEntry* entry = FindFile(filenameInZip);
-                if (entry)
+                uint64 fileSize = 0;
+
+                const FILETIME ft = GetFileWriteTimeAndSize(&fileSize, realFilename);
+                LARGE_INTEGER lt;
+
+                lt.HighPart = ft.dwHighDateTime;
+                lt.LowPart = ft.dwLowDateTime;
+                job.modTime = lt.QuadPart;
+                job.existingCRC = entry->desc.lCRC32;
+                job.compressedSizePreviously = entry->desc.lSizeCompressed;
+                job.uncompressedSizePreviously = entry->desc.lSizeUncompressed;
+
+                // Check if file with the same name, timestamp and size already exists in pak.
+                if (entry->CompareFileTimeNTFS(job.modTime) && fileSize == entry->desc.lSizeUncompressed)
                 {
-                    uint64 fileSize = 0;
-
-                    const FILETIME ft = GetFileWriteTimeAndSize(&fileSize, realFilename);
-                    LARGE_INTEGER lt;
-
-                    lt.HighPart = ft.dwHighDateTime;
-                    lt.LowPart = ft.dwLowDateTime;
-                    job.modTime = lt.QuadPart;
-                    job.existingCRC = entry->desc.lCRC32;
-                    job.compressedSizePreviously = entry->desc.lSizeCompressed;
-                    job.uncompressedSizePreviously = entry->desc.lSizeUncompressed;
-
-                    // Check if file with the same name, timestamp and size already exists in pak.
-                    if (entry->CompareFileTimeNTFS(job.modTime) && fileSize == entry->desc.lSizeUncompressed)
+                    if (reporter)
                     {
-                        if (reporter)
-                        {
-                            reporter->ReportUpToDate(filenameInZip);
-                        }
-                        continue;
+                        reporter->ReportUpToDate(filenameInZip);
                     }
+                    continue;
                 }
             }
-
-            PackFileFromDisc(&job);
-
-            if (job.status == PACKFILE_COMPRESSED)
-            {
-                if (splitter != NULL)
-                {
-                    size_t dsk = GetTotalFileSizeOnDiskSoFar();
-                    size_t bse = 0;
-                    size_t add = 0;
-                    size_t sub = 0;
-
-                    bse += sizeof(ZipFile::CDRFileHeader)   + strlen(job.relativePathSrc);
-                    bse += sizeof(ZipFile::LocalFileHeader) + strlen(job.relativePathSrc);
-
-                    if (job.compressedSize)
-                    {
-                        add += bse + job.compressedSize;
-                    }
-                    if (job.compressedSizePreviously)
-                    {
-                        sub += bse + job.compressedSizePreviously;
-                    }
-
-                    if (splitter->CheckWriteLimit(dsk, add, sub))
-                    {
-                        splitter->SetLastFile(dsk, add, sub, job.key - 1);
-                        break;
-                    }
-                }
-
-                StorePackedFile(&job);
-            }
-
-            switch (job.status)
-            {
-            case PACKFILE_ADDED:
-                if (reporter)
-                {
-                    reporter->ReportAdded(filenameInZip);
-                }
-
-                totalSize += job.uncompressedSize;
-                break;
-            case PACKFILE_MISSING:
-                if (reporter)
-                {
-                    reporter->ReportMissing(realFilename);
-                }
-                break;
-            case PACKFILE_UPTODATE:
-                if (reporter)
-                {
-                    reporter->ReportUpToDate(realFilename);
-                }
-                break;
-            case PACKFILE_SKIPPED:
-                if (reporter)
-                {
-                    reporter->ReportSkipped(realFilename);
-                }
-                break;
-            default:
-                if (reporter)
-                {
-                    reporter->ReportFailed(realFilename, ""); // TODO reason
-                }
-                continue;
-            }
-            ;
         }
+
+        pool.Submit(i, job);
     }
-    else
+
+    // Get the number of submitted jobs, which is at most
+    // as large as the largest successfully submitted file-index.
+    // Any number of files can be skipped for submission.
+    const int jobCount = pool.GetJobCount();
+    if (jobCount == 0)
     {
-        const size_t memoryLimit = 1024 * 1024 * 1024; // prevents threads from generating more than 1GB of data
-        PackFilePool pool(fileCount, memoryLimit);
-        batch.pool = &pool;
+        return true;
+    }
 
-        for (int i = 0; i < fileCount; ++i)
+    pool.Start(numExtraThreads);
+
+    for (int i = 0; i < jobCount; ++i)
+    {
+        PackFileJob* job = pool.WaitForFile(i);
+        if (!job)
         {
-            const char* realFilename = realFilenames[i];
-            const char* filenameInZip = filenamesInZip[i];
-
-            PackFileJob job;
-
-            job.relativePathSrc = filenameInZip;
-            job.realFilename = realFilename;
-            job.batch = &batch;
-
-            {
-                // crc will be used to check if this file need to be updated at all
-                ZipDir::FileEntry* entry = FindFile(filenameInZip);
-                if (entry)
-                {
-                    uint64 fileSize = 0;
-                    const FILETIME ft = GetFileWriteTimeAndSize(&fileSize, realFilename);
-                    LARGE_INTEGER lt;
-                    lt.HighPart = ft.dwHighDateTime;
-                    lt.LowPart = ft.dwLowDateTime;
-                    job.modTime = lt.QuadPart;
-                    job.existingCRC = entry->desc.lCRC32;
-                    job.compressedSizePreviously = entry->desc.lSizeCompressed;
-                    job.uncompressedSizePreviously = entry->desc.lSizeUncompressed;
-
-                    // Check if file with the same name, timestamp and size already exists in pak.
-                    if (entry->CompareFileTimeNTFS(job.modTime) && fileSize == entry->desc.lSizeUncompressed)
-                    {
-                        if (reporter)
-                        {
-                            reporter->ReportUpToDate(filenameInZip);
-                        }
-                        continue;
-                    }
-                }
-            }
-
-            pool.Submit(i, job);
+            assert(job);
+            continue;
         }
 
-        // Get the number of submitted jobs, which is at most
-        // as large as the largest successfully submitted file-index.
-        // Any number of files can be skipped for submittion.
-        const int jobCount = pool.GetJobCount();
-        if (jobCount == 0)
+        if (job->status == PACKFILE_COMPRESSED)
         {
-            return true;
+            if (splitter)
+            {
+                size_t dsk = GetTotalFileSizeOnDiskSoFar();
+                size_t bse = 0;
+                size_t add = 0;
+                size_t sub = 0;
+
+                bse += sizeof(ZipFile::CDRFileHeader)   + strlen(job->relativePathSrc);
+                bse += sizeof(ZipFile::LocalFileHeader) + strlen(job->relativePathSrc);
+
+                if (job->compressedSize)
+                {
+                    add += bse + job->compressedSize;
+                }
+                if (job->compressedSizePreviously)
+                {
+                    sub += bse + job->compressedSizePreviously;
+                }
+
+                if (splitter->CheckWriteLimit(dsk, add, sub))
+                {
+                    splitter->SetLastFile(dsk, add, sub, job->key - 1);
+
+                    // deplete the pool before leaving the loop
+                    pool.SkipPendingFiles();
+                    for (; i < jobCount; ++i)
+                    {
+                        pool.WaitForFile(i);
+                        pool.ReleaseFile(i);
+                    }
+
+                    break;
+                }
+            }
+
+            StorePackedFile(job);
         }
 
-        pool.Start(numExtraThreads);
-
-        bool reachedMaxSize = false;
-
-        for (int i = 0; i < jobCount; ++i)
+        switch (job->status)
         {
-            PackFileJob* job = pool.WaitForFile(i);
-            if (!job)
+        case PACKFILE_ADDED:
+            if (reporter)
             {
-                assert(job);
-                continue;
+                reporter->ReportAdded(job->relativePathSrc);
             }
 
-            if (job->status == PACKFILE_COMPRESSED)
+            totalSize += job->uncompressedSize;
+            break;
+        case PACKFILE_MISSING:
+            if (reporter)
             {
-                if (splitter != NULL)
-                {
-                    size_t dsk = GetTotalFileSizeOnDiskSoFar();
-                    size_t bse = 0;
-                    size_t add = 0;
-                    size_t sub = 0;
-
-                    bse += sizeof(ZipFile::CDRFileHeader)   + strlen(job->relativePathSrc);
-                    bse += sizeof(ZipFile::LocalFileHeader) + strlen(job->relativePathSrc);
-
-                    if (job->compressedSize)
-                    {
-                        add += bse + job->compressedSize;
-                    }
-                    if (job->compressedSizePreviously)
-                    {
-                        sub += bse + job->compressedSizePreviously;
-                    }
-
-                    if (splitter->CheckWriteLimit(dsk, add, sub))
-                    {
-                        splitter->SetLastFile(dsk, add, sub, job->key - 1);
-
-                        // deplete the pool before leaving the loop
-                        pool.SkipPendingFiles();
-                        for (; i < jobCount; ++i)
-                        {
-                            pool.WaitForFile(i);
-                            pool.ReleaseFile(i);
-                        }
-
-                        break;
-                    }
-                }
-
-                StorePackedFile(job);
+                reporter->ReportMissing(job->realFilename);
             }
-
-            switch (job->status)
+            break;
+        case PACKFILE_UPTODATE:
+            if (reporter)
             {
-            case PACKFILE_ADDED:
-                if (reporter)
-                {
-                    reporter->ReportAdded(job->relativePathSrc);
-                }
-
-                totalSize += job->uncompressedSize;
-                break;
-            case PACKFILE_MISSING:
-                if (reporter)
-                {
-                    reporter->ReportMissing(job->realFilename);
-                }
-                break;
-            case PACKFILE_UPTODATE:
-                if (reporter)
-                {
-                    reporter->ReportUpToDate(job->realFilename);
-                }
-                break;
-            case PACKFILE_SKIPPED:
-                if (reporter)
-                {
-                    reporter->ReportSkipped(job->realFilename);
-                }
-                break;
-            default:
-                if (reporter)
-                {
-                    reporter->ReportFailed(job->realFilename, ""); // TODO reason
-                }
-                continue;
+                reporter->ReportUpToDate(job->realFilename);
             }
-            ;
-
-            pool.ReleaseFile(i);
+            break;
+        case PACKFILE_SKIPPED:
+            if (reporter)
+            {
+                reporter->ReportSkipped(job->realFilename);
+            }
+            break;
+        default:
+            if (reporter)
+            {
+                reporter->ReportFailed(job->realFilename, ""); // TODO reason
+            }
+            break;
         }
+
+        pool.ReleaseFile(i);
     }
 
     clock_t endTime = clock();
@@ -1162,7 +1051,7 @@ ZipDir::ErrorEnum ZipDir::CacheRW::StartContinuousFileUpdate(const char* szRelat
         return ZD_ERROR_INVALID_PATH;
     }
 
-    pFileEntry->OnNewFileData (NULL, nSize, nSize, METHOD_STORE, false);
+    pFileEntry->OnNewFileData (NULL, nSize, nSize, ZipFile::METHOD_STORE, false);
     // since we changed the time, we'll have to update CDR
     m_nFlags |= FLAGS_CDR_DIRTY;
 
@@ -1254,7 +1143,7 @@ ZipDir::ErrorEnum ZipDir::CacheRW::UpdateFileContinuousSegment (const char* szRe
         return ZD_ERROR_INVALID_PATH;
     }
 
-    pFileEntry->OnNewFileData (pUncompressed, nSegmentSize, nSegmentSize, METHOD_STORE, true);
+    pFileEntry->OnNewFileData (pUncompressed, nSegmentSize, nSegmentSize, ZipFile::METHOD_STORE, true);
     // since we changed the time, we'll have to update CDR
     m_nFlags |= FLAGS_CDR_DIRTY;
 
@@ -1497,7 +1386,7 @@ ZipDir::ErrorEnum ZipDir::CacheRW::ReadFile (FileEntry* pFileEntry, void* pCompr
         return ZD_ERROR_IO_FAILED;
     }
 
-    if (pFileEntry->nMethod == METHOD_DEFLATE_AND_ENCRYPT)
+    if (pFileEntry->nMethod == ZipFile::METHOD_DEFLATE_AND_ENCRYPT)
     {
         ZipDir::Decrypt((char*)pBuffer, pFileEntry->desc.lSizeCompressed, m_encryptionKey);
     }
@@ -1743,7 +1632,7 @@ bool ZipDir::CacheRW::RelinkZip(FILE* fTmp)
             return false;
         }
 
-        if (entry->nMethod == METHOD_DEFLATE_AND_ENCRYPT)
+        if (entry->nMethod == ZipFile::METHOD_DEFLATE_AND_ENCRYPT)
         {
             ZipDir::Decrypt((char*)pFile->GetData(), entry->desc.lSizeCompressed, m_encryptionKey);
         }
@@ -1808,7 +1697,7 @@ bool ZipDir::CacheRW::WriteZipFiles(std::vector<FileDataRecordPtr>& queFiles, FI
         ;
 
         // write the compressed file data
-        const bool encrypt = (*it)->pFileEntry->nMethod == METHOD_DEFLATE_AND_ENCRYPT;
+        const bool encrypt = (*it)->pFileEntry->nMethod == ZipFile::METHOD_DEFLATE_AND_ENCRYPT;
         if (!WriteCompressedData((char*)(*it)->GetData(), (*it)->pFileEntry->desc.lSizeCompressed, encrypt, fTmp))
         {
             return false;
@@ -1891,24 +1780,24 @@ bool ZipDir::CacheRW::EncryptArchive(EncryptionChange change, IEncryptPredicate*
         ZipFile::ushort newMethod = oldMethod;
         if (change == ENCRYPT)
         {
-            if (entry->nMethod == METHOD_DEFLATE)
+            if (entry->nMethod == ZipFile::METHOD_DEFLATE)
             {
-                newMethod = METHOD_DEFLATE_AND_ENCRYPT;
+                newMethod = ZipFile::METHOD_DEFLATE_AND_ENCRYPT;
             }
         }
         else
         {
-            if (entry->nMethod == METHOD_DEFLATE_AND_ENCRYPT)
+            if (entry->nMethod == ZipFile::METHOD_DEFLATE_AND_ENCRYPT)
             {
-                newMethod = METHOD_DEFLATE;
+                newMethod = ZipFile::METHOD_DEFLATE;
             }
         }
 
         // allow encryption only for matching files
-        if (newMethod == METHOD_DEFLATE_AND_ENCRYPT &&
+        if (newMethod == ZipFile::METHOD_DEFLATE_AND_ENCRYPT &&
             (!encryptContentPredicate || !encryptContentPredicate->Match(it->strPath.c_str())))
         {
-            newMethod = METHOD_DEFLATE;
+            newMethod = ZipFile::METHOD_DEFLATE;
         }
 
         entry->nMethod = newMethod;
@@ -1953,7 +1842,7 @@ bool ZipDir::CacheRW::EncryptArchive(EncryptionChange change, IEncryptPredicate*
             return false;
         }
 
-        if (oldMethod == METHOD_DEFLATE_AND_ENCRYPT)
+        if (oldMethod == ZipFile::METHOD_DEFLATE_AND_ENCRYPT)
         {
             ZipDir::Decrypt((char*)pFile->GetData(), entry->desc.lSizeCompressed, m_encryptionKey);
         }
@@ -1967,7 +1856,7 @@ bool ZipDir::CacheRW::EncryptArchive(EncryptionChange change, IEncryptPredicate*
             return false;
         }
 
-        const bool encryptContent = newMethod == METHOD_DEFLATE_AND_ENCRYPT;
+        const bool encryptContent = newMethod == ZipFile::METHOD_DEFLATE_AND_ENCRYPT;
         if (!WriteCompressedData((const char*)pFile->GetData(), entry->desc.lSizeCompressed, encryptContent, m_pFile))
         {
             return false;

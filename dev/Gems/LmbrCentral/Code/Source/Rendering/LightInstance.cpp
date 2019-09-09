@@ -152,6 +152,7 @@ namespace
             lightParams.m_ProbeExtents.x = configuration.m_probeArea.GetX() / 2.0f;
             lightParams.m_ProbeExtents.y = configuration.m_probeArea.GetY() / 2.0f;
             lightParams.m_ProbeExtents.z = configuration.m_probeArea.GetZ() / 2.0f;
+            lightParams.m_fRadius = lightParams.m_ProbeExtents.len();
             lightParams.m_nSortPriority = configuration.m_probeSortPriority;
             lightParams.m_fProbeAttenuation = configuration.m_probeFade;
 
@@ -168,7 +169,7 @@ namespace
 
             lightParams.ReleaseCubemaps();
 
-            const AZStd::string& specularMap = configuration.m_probeCubemap;
+            const AZStd::string& specularMap = configuration.m_probeCubemap.GetAssetPath();
 
             if (!specularMap.empty())
             {
@@ -262,7 +263,7 @@ namespace
             {
                 IOpticsElementBase* flare = gEnv->pOpticsManager->GetOptics(lensOpticsID);
                 lightParams.SetLensOpticsElement(flare);
-                lightParams.SetOpticsParams({ configuration.m_brightness, configuration.m_size, { color.r, color.g, color.b }, true });
+                lightParams.SetOpticsParams({ configuration.m_brightness, configuration.m_size, { color.r, color.g, color.b, color.a }, true });
             }
             else
             {
@@ -407,7 +408,7 @@ namespace LmbrCentral
             return;
         }
 
-        ICVar* cvarSysSpecLight = gEnv->pConsole->GetCVar("sys_spec_light");
+        ICVar* cvarSysSpecLight = gEnv->pConsole->GetCVar("e_LightQuality");
         const int configSpec = cvarSysSpecLight ? cvarSysSpecLight->GetIVal() : gEnv->pSystem->GetConfigSpec(true);
 
         if (static_cast<AZ::u32>(configSpec) < static_cast<AZ::u32>(configuration.m_minSpec))

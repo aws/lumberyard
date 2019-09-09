@@ -53,6 +53,21 @@ namespace LmbrCentral
         }
     };
 
+    class TagComponentBehaviorHelper
+    {
+    public:
+        AZ_RTTI(TagComponentBehaviorHelper, "{9BE9EE51-3705-4C3F-B9F1-F799C628D76F}");
+
+        virtual ~TagComponentBehaviorHelper() = default;
+
+        static AZStd::vector< AZ::EntityId > FindTaggedEntities(const AZ::Crc32& tagName)
+        {
+            AZ::EBusAggregateResults<AZ::EntityId> aggregator;
+            TagGlobalRequestBus::EventResult(aggregator, tagName, &TagGlobalRequests::RequestTaggedEntities);
+            return aggregator.values;
+        }
+    };
+
     //=========================================================================
     // Component Descriptor
     //=========================================================================
@@ -69,6 +84,13 @@ namespace LmbrCentral
         AZ::BehaviorContext* behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context);
         if (behaviorContext)
         {
+            behaviorContext->Class<TagComponentBehaviorHelper>("Tag Helper")
+                ->Method("Get Entities by Tag", &TagComponentBehaviorHelper::FindTaggedEntities)
+                ->Attribute(AZ::Script::Attributes::Ignore, 0)
+                ->Attribute(AZ::Script::Attributes::Category, "Gameplay/Tag")
+                ->Attribute(AZ::ScriptCanvasAttributes::FloatingFunction, 0)
+                ;
+
             behaviorContext->EBus<TagComponentRequestBus>("TagComponentRequestBus")
                 ->Event("HasTag", &TagComponentRequestBus::Events::HasTag)
                 ->Event("AddTag", &TagComponentRequestBus::Events::AddTag)

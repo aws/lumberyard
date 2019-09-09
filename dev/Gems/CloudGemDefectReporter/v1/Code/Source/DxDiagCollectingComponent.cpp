@@ -1,3 +1,14 @@
+/*
+* All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates, or 
+* a third party where indicated.
+*
+* For complete copyright and license terms please see the LICENSE at the root of this
+* distribution (the "License"). All use of this software is governed by the License,  
+* or, if provided, by the license below or the license accompanying this file. Do not
+* remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.  
+*
+*/
 
 #include "CloudGemDefectReporter_precompiled.h"
 
@@ -14,7 +25,7 @@
 #include <AzCore/Jobs/JobFunction.h>
 #include <AzCore/Jobs/JobManagerBus.h>
 
-#include <CloudGemFramework/CloudGemFrameworkBus.h>
+#include <CloudCanvasCommon/CloudCanvasCommonBus.h>
 
 namespace CloudGemDefectReporter
 {
@@ -79,12 +90,14 @@ namespace CloudGemDefectReporter
     }
 
     void DxDiagCollectingComponent::OnCollectDefectReporterData(int reportID)
-    {
+    {  
+        // only upload dxdiag when on windows platform 
+#if defined(AZ_PLATFORM_WINDOWS)
         int handlerId = CloudGemDefectReporter::INVALID_ID;
         CloudGemDefectReporterRequestBus::BroadcastResult(handlerId, &CloudGemDefectReporterRequestBus::Events::GetHandlerID, reportID);
 
         AZ::JobContext* jobContext{ nullptr };
-        EBUS_EVENT_RESULT(jobContext, CloudGemFramework::CloudGemFrameworkRequestBus, GetDefaultJobContext);
+        EBUS_EVENT_RESULT(jobContext, CloudCanvasCommon::CloudCanvasCommonRequestBus, GetDefaultJobContext);
 
         AZ::Job* job{ nullptr };
         job = AZ::CreateJobFunction([reportID, handlerId, this]()
@@ -130,6 +143,7 @@ namespace CloudGemDefectReporter
         }, true, jobContext);
 
         job->Start();
+#endif        
     }
 
     const char* DxDiagCollectingComponent::GetDxDiagFileDir() const

@@ -42,7 +42,7 @@
 
 
 ////////////////////////////////////////////////////////////////////////////
-// util macros for __DETAIL__LINK_THIRD_PARTY_LIBRARY and __DETAIL__LINK_SYSTEM_PARTY_LIBRARY
+// util macros for __DETAIL__LINK_SYSTEM_PARTY_LIBRARY
 // SNC is a little strange with macros and pragmas
 // the lib pragma requieres a string literal containing a escaped string literal
 // eg _Pragma ("comment (lib, \"<lib>\")")
@@ -52,10 +52,6 @@
 // Create a string from an Preprocessor macro or a literal text
 #define CRY_DETAIL_CREATE_STRING(string) #string
 #define CRY_CREATE_STRING(string) CRY_DETAIL_CREATE_STRING(string)
-
-////////////////////////////////////////////////////////////////////////////
-#define __DETAIL__LINK_THIRD_PARTY_LIBRARY(name) \
-    __DETAIL__CREATE_PRAGMA("comment(lib, \"" CRY_CREATE_STRING(CODE_BASE_FOLDER) CRY_CREATE_STRING(name) "\")")
 
 ////////////////////////////////////////////////////////////////////////////
 #define __DETAIL__LINK_SYSTEM_PARTY_LIBRARY(name) \

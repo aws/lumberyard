@@ -452,11 +452,7 @@ namespace AZ
         unsigned int count = countAndFlags & FLAG_DEPENDENTCOUNT_MASK;
         if (count == 1)
         {
-            if (countAndFlags & FLAG_CHILD_JOBS)
-            {
-                m_context->GetJobManager().NotifySuspendedJobReady(this);
-            }
-            else
+            if (!(countAndFlags & FLAG_CHILD_JOBS))
             {
 #ifdef AZ_DEBUG_JOB_STATE
                 AZ_Assert(m_state == STATE_STARTED, "Job has not been started but the dependent count is zero, must be a dependency error");

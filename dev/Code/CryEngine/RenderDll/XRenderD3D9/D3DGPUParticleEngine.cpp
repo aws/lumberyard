@@ -18,12 +18,15 @@
 #include "D3DPostProcess.h"
 #include "../../Cry3DEngine/ParticleEnviron.h"
 #include "../../CryEngine/CryCommon/ParticleParams.h"
+#include "../../CryEngine/CryCommon/CREParticleGPU.h"
 
 #include "D3DGPUParticleEngine.h"
 #include "D3DGPUParticleProfiler.h"
 #include "GPUTimerFactory.h"
+#include "GPUTimer.h"
 
 #include <AzCore/Casting/numeric_cast.h>
+#include <AzCore/std/containers/set.h>
 #include <vector>
 #include "Common/RenderView.h"
 
@@ -85,7 +88,11 @@ static const float nearPlane = 0.2f;
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION D3DGPUPARTICLEENGINE_CPP_SECTION_1
-#include AZ_RESTRICTED_FILE(D3DGPUParticleEngine_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/D3DGPUParticleEngine_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/D3DGPUParticleEngine_cpp_provo.inl"
+    #endif
 #endif
 static const Vec3 s_GPUParticles_RotationOffset = Vec3(90, 0, 0);
 
@@ -95,15 +102,20 @@ struct GPUEmitterResources
         : numMaxParticlesInBuffer(0)
         , texSampledCurves(0)
         , depthCubemap(nullptr)
-    {
-    }
+    {}
 
     ~GPUEmitterResources()
     {
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION D3DGPUPARTICLEENGINE_CPP_SECTION_2
-#include AZ_RESTRICTED_FILE(D3DGPUParticleEngine_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/D3DGPUParticleEngine_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/D3DGPUParticleEngine_cpp_provo.inl"
+    #endif
 #endif
+
+        SAFE_RELEASE(depthCubemap);
     }
 
 
@@ -118,7 +130,11 @@ struct GPUEmitterResources
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION D3DGPUPARTICLEENGINE_CPP_SECTION_3
-#include AZ_RESTRICTED_FILE(D3DGPUParticleEngine_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/D3DGPUParticleEngine_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/D3DGPUParticleEngine_cpp_provo.inl"
+    #endif
 #endif
 
     unsigned int texSampledCurves;                      // bind as t9
@@ -219,7 +235,6 @@ struct GPUEmitterBaseData
         , isIndirect(false)
         , isIndirectParent(false)
         , isPrimed(false)
-        , numWindAreas(0)
         , windAreaBufferSize(0)
     {}
 
@@ -252,7 +267,6 @@ struct GPUEmitterBaseData
     bool isIndirectParent;
     bool isPrimed;
 
-    int numWindAreas;
     int windAreaBufferSize;
 };
 
@@ -261,20 +275,19 @@ struct SGPUParticleEmitterData
     SGPUParticleEmitterData(const SpawnParams& a_spawnParams)
         : baseData()
         , spawnParams(a_spawnParams)
-        , resourceParameters(0)
     {}
 
     GPUEmitterResources resources;
     GPUEmitterBaseData baseData;
-    const ResourceParticleParams* resourceParameters;
+    const ResourceParticleParams* resourceParameters = nullptr;
     const SpawnParams& spawnParams;
 
-    int numMaxSubemitters; //this is how many we have space for, not a hard limit
+    int numMaxSubemitters = 0; //this is how many we have space for, not a hard limit
     std::stack<int> availableOffsets;
     std::vector<GPUSubemitterData> subEmitters;
 
     std::vector<SGPUParticleEmitterData*> children;
-    SGPUParticleEmitterData* parent;
+    SGPUParticleEmitterData* parent = nullptr;
 };
 
 struct SGPUParticleCurve
@@ -377,13 +390,30 @@ public:
     CShader* shrGpuOddEvenSort;
     SShaderItem shrGpuRender;
 
+    // GPU Buffers
+    WrappedDX11Buffer bufDummyWindAreas;
+
     //Flag to mark when shaders need to be reloaded
     bool requireShaderReload = false;
 
-    // GPU Particle buffer
-    std::vector<SGPUParticleEmitterData*> emitters;
-    std::vector<SGPUParticleEmitterData*> emittersQueuedForUpdate;
-    
+    // GPU Particle emitters
+    // The emitters inside this vector are accessed on both the sim/main thread and render thread, 
+    // but the vector itself is only manipulated on sim/main. It keeps tracks of what emitters the
+    // sim/main thread knows about. When the sim/main thread wants to render or delete an emitter, 
+    // it will be inserted to emittersQueuedForUpdate or moved to emittersToDelete respectively,
+    // which are accessed by both threads and protected by mutex.
+    AZStd::vector<SGPUParticleEmitterData*> emitters;
+    AZStd::vector<SGPUParticleEmitterData*> emittersQueuedForUpdate;
+    AZStd::set<SGPUParticleEmitterData*> emittersToDelete;
+
+    // Render Elements to be released safely from render thread
+    // while no render lists are being processed. It's manipulated from
+    // both sim/main and render thread, so it's also protected by mutex.
+    AZStd::set<CREParticleGPU*> renderElementsToRelease;
+
+    // Mutex used to make GPU Particle Engine thread safe manipulating emitters
+    AZStd::mutex emittersMutex;
+
     // Used in RenderEmiter() to measure render-time for throttling emission rates.
     IGPUTimer* gpuTimer;
 
@@ -601,6 +631,7 @@ static void BindEmitterDataToCS(const GPUSubemitterData& emitData, const GPUEmit
     static const CCryNameR paramEmitterDataDragRandom("ed_drag_random");
     static const CCryNameR paramEmitterDataColor("ed_color");
     static const CCryNameR paramEmitterDataColorRandom("ed_color_random");
+    static const CCryNameR paramEmitterDataColorRandomRange("ed_color_random_range");
     static const CCryNameR paramEmitterDataColorEmtStrength("ed_colorEmtStrength");
     static const CCryNameR paramEmitterDataColorEmtStrengthRandom("ed_colorEmtStrength_random");
     static const CCryNameR paramEmitterDataPosition("ed_positionOffset");
@@ -696,24 +727,51 @@ static void BindEmitterDataToCS(const GPUSubemitterData& emitData, const GPUEmit
             0);
 
     // * Color logic
-    // final_color = lerp(colorMin, colorMax, 1.0-rnd0) * lerp(emtStrengthMin, emtStrengthMax, 1.0-rnd0) * lerp(particleAgeColorMin, particleAgeColorMax, 1.0-rnd0)
-    // final_color = (colorMax + colorRandom * rnd0) * (colorEmtStrengthMax + colorEmtStrengthRandom * rnd0) * (particleAgeColorMax + particleAgeColorRandom * rnd0)
-    Vec4 vecEmitterColor = Vec4(
+    // final_color = (1.0-randomRange) * lerp(colorMin, colorMax, 1.0-rnd0) * lerp(emtStrengthMin, emtStrengthMax, 1.0-rnd0) * lerp(particleAgeColorMin, particleAgeColorMax, 1.0-rnd0)
+    // final_color = (1.0-randomRange) * (colorMax + colorDiff * rnd0) * (colorEmtStrengthMax + colorEmtStrengthRandom * rnd0) * (particleAgeColorMax + particleAgeColorRandom * rnd0)
+    Color3F randomrange = particleParams->cColor.GetRandomRange().GetRandom();
+    Vec4 vecEmitterColor;
+    Vec4 vecEmitterColorRandom;
+    Vec4 vecEmitterColorRandomRange(
+        randomrange[0], 
+        randomrange[1], 
+        randomrange[2], 
+        particleParams->fAlpha.GetRandomRange());
+
+    // The random range returns a value between 0 to X, where X is the random value that is set.
+    // This value means how much "random" we should apply to the color with 0 being no random (disabled), and 1 full random.
+    vecEmitterColorRandomRange = Vec4(1.0f) - vecEmitterColorRandomRange;
+
+    if (particleParams->cColor.GetRandomLerpColor())
+    {
+        const Color3F secondaryColor = particleParams->cColor.GetSecondValue();
+        vecEmitterColor = Vec4(
+            secondaryColor.x, 
+            secondaryColor.y, 
+            secondaryColor.z, 
+            particleParams->fAlpha);
+
+        // We calculate the differences and on the gpu we generate a random number between 0 and 1 and do a multiply and add to the base value
+        vecEmitterColorRandom = Vec4(
+            particleParams->cColor.x - vecEmitterColor.x,
+            particleParams->cColor.y - vecEmitterColor.y,
+            particleParams->cColor.z - vecEmitterColor.z,
+            particleParams->fAlpha - vecEmitterColor.w);
+    }
+    else
+    {
+        vecEmitterColor = Vec4(
             particleParams->cColor.x,
             particleParams->cColor.y,
             particleParams->cColor.z,
             particleParams->fAlpha);
-    Color3F randomrange = particleParams->cColor.GetRandomRange().GetRandom();
-    Vec4 vecEmitterColorRandom = Vec4(
-            particleParams->cColor.x * -randomrange[0],
-            particleParams->cColor.y * -randomrange[1],
-            particleParams->cColor.z * -randomrange[2],
-            particleParams->fAlpha * -particleParams->fAlpha.GetRandomRange()
-            );
+
+        vecEmitterColorRandom = Vec4(0.0f, 0.0f, 0.0f, 0.0f);
+    }
+
     Vec4 vecEmitterStrengthColor;
     Vec4 vecEmitterStrengthColorRandom;
     Vec4 vecEmitterFocusDirection = Vec4(GetFocusDirection(emitData, particleParams), 0.f);
-
     if (particleParams->cColor.GetRandomLerpStrength())
     {
         vecEmitterStrengthColor = Vec4(
@@ -779,6 +837,7 @@ static void BindEmitterDataToCS(const GPUSubemitterData& emitData, const GPUEmit
     shader->FXSetCSFloat(paramEmitterDataScale, &vecEmitterScaleRandom, 1);
     shader->FXSetCSFloat(paramEmitterDataColor, &vecEmitterColor, 1);
     shader->FXSetCSFloat(paramEmitterDataColorRandom, &vecEmitterColorRandom, 1);
+    shader->FXSetCSFloat(paramEmitterDataColorRandomRange, &vecEmitterColorRandomRange, 1);
     shader->FXSetCSFloat(paramEmitterDataColorEmtStrength, &vecEmitterStrengthColor, 1);
     shader->FXSetCSFloat(paramEmitterDataColorEmtStrengthRandom, &vecEmitterStrengthColorRandom, 1);
     shader->FXSetCSFloat(paramEmitterDataPosition, &vecEmitterPosition, 1);
@@ -982,6 +1041,9 @@ static float ComputePulsePeriod(const ResourceParticleParams* particleParams, co
 
 static void UpdateEmitterLifetimeParams(GPUSubemitterData& emitter, const ResourceParticleParams* particleParams, const SpawnParams& spawnParams, float time)
 {
+    // Note that time here is actually emitter->baseData.time!
+    // This method gets called from UpdateSubemitter when a repeating emitter must be re-initiated, so using time to calculate repeatAge is correct
+
     // time buffer is a time offset to make sure that floating point inaccuracies don't give any problem with
     // particle/emitter lifetimes. 0.5 is a reasonable buffer time wouldn't keep things alive for too long.
     const float timeBuffer = 0.5;
@@ -994,7 +1056,14 @@ static void UpdateEmitterLifetimeParams(GPUSubemitterData& emitter, const Resour
 
         emitter.repeatAge = time + repeat;
     }
-    emitter.startAge = emitter.stopAge = time;
+
+    // Ignore ParentCollide and ParentDeath as starting age for GPU particles:
+    // Using time to calculate startAge and stopAge will cause the window to "slide" together with time, resulting in never-ending emission.
+    // Instead, assume activate age of 0.f (need to check if this is true for ParticleCollision and ParticleDeath spawn conditions)
+    float fActivateAge = 0.f;
+
+    // Reference (ParticleSubEmitter.cpp, line 88): m_fStartAge = m_fStopAge = m_fLastEmitAge = m_fActivateAge + params.fSpawnDelay(VRANDOM);
+    emitter.startAge = emitter.stopAge = fActivateAge + particleParams->fSpawnDelay(VRANDOM);
     emitter.deathAge = emitter.stopAge + particleParams->fParticleLifeTime(VMAX) + timeBuffer;
 
     if (particleParams->bContinuous || !particleParams->fParticleLifeTime)
@@ -1112,12 +1181,11 @@ void CD3DGPUParticleEngine::OnCubeDepthMapResolutionChanged(ICVar*)
         return;
     }
 
+    AZStd::lock_guard<AZStd::mutex> lockGuard(gpuParticleEngine_impl->emittersMutex);
+
     for (auto emit : gpuParticleEngine_impl->emitters)
     {
-        if (emit->resources.depthCubemap)
-        {
-            SAFE_RELEASE(emit->resources.depthCubemap);
-        }
+        SAFE_RELEASE(emit->resources.depthCubemap);
         gpuParticleEngine_impl->OnEffectChanged(emit->resources, emit->baseData, emit->resourceParameters, *emit->baseData.emitterFlags);
     }
 }
@@ -1308,7 +1376,11 @@ void CImpl_GPUParticles::InitializeBuffers(GPUEmitterResources& resources, int n
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION D3DGPUPARTICLEENGINE_CPP_SECTION_4
-#include AZ_RESTRICTED_FILE(D3DGPUParticleEngine_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/D3DGPUParticleEngine_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/D3DGPUParticleEngine_cpp_provo.inl"
+    #endif
 #endif
 
     resources.bufParticleIndices.Create(resources.numMaxParticlesInBuffer, sizeof(int) * 2, DXGI_FORMAT_UNKNOWN, DX11BUF_STRUCTURED | DX11BUF_BIND_UAV | DX11BUF_BIND_SRV, cpuSortIndices);
@@ -2168,21 +2240,17 @@ void CImpl_GPUParticles::UpdateGPU(GPUEmitterBaseData& baseData, GPUEmitterResou
     {
         m_impl->dxRenderer->m_RP.m_FlagsShader_RT |= g_HWSR_MaskBit[HWSR_GPU_PARTICLE_TARGET_ATTRACTION];
     }
-    if (baseData.numWindAreas != 0 || particleParams->fAirResistance != 0.0f)
+
+    int numWindAreas = SendWindDataToGPU(resources, baseData.physEnv, baseData.windAreaBufferSize);
+
+    Vec3 globalWind = gEnv->p3DEngine->GetGlobalWind(false);
+    bool shaderUsesGPUParticleWind = (numWindAreas > 0 || !globalWind.IsZero()) && particleParams->fAirResistance.fWindScale > 0.0f;
+    if (shaderUsesGPUParticleWind)
     {
         m_impl->dxRenderer->m_RP.m_FlagsShader_RT |= g_HWSR_MaskBit[HWSR_GPU_PARTICLE_WIND];
     }
 
     SetEmitterShapeFlag(particleParams->GetEmitterShape());
-
-    if (particleParams->fAirResistance != 0)
-    {
-        baseData.numWindAreas = SendWindDataToGPU(resources, baseData.physEnv, baseData.windAreaBufferSize);
-    }
-    else
-    {
-        baseData.numWindAreas = 0;
-    }
 
     uint32 nPasses = 0;
     // start fx pass
@@ -2219,10 +2287,9 @@ void CImpl_GPUParticles::UpdateGPU(GPUEmitterBaseData& baseData, GPUEmitterResou
     UpdateGPUCurveData(resources, particleParams);
 
     static const CCryNameR paramNumWindAreas("ed_numWindAreas_windScale");
-    Vec4 vecNumWindAreas(reinterpret_cast<float&>(baseData.numWindAreas), particleParams->fAirResistance.fWindScale, 0, 0);
+    Vec4 vecNumWindAreas(reinterpret_cast<float&>(numWindAreas), particleParams->fAirResistance.fWindScale, 0, 0);
     shader->FXSetCSFloat(paramNumWindAreas, &vecNumWindAreas, 1);
 
-    Vec3 globalWind = gEnv->p3DEngine->GetGlobalWind(false);
     static const CCryNameR paramGlobalWind("ed_globalWind");
     Vec4 vecGlobalWind(globalWind, 0.0f);
     shader->FXSetCSFloat(paramGlobalWind, &vecGlobalWind, 1);
@@ -2261,9 +2328,30 @@ void CImpl_GPUParticles::UpdateGPU(GPUEmitterBaseData& baseData, GPUEmitterResou
     }
 
     const uint32 windAreasBindLocation = 7;
-    if (baseData.numWindAreas != 0)
+    if (shaderUsesGPUParticleWind)
     {
-        m_impl->dxRenderer->m_DevMan.BindSRV(eHWSC_Compute, resources.bufWindAreas.GetShaderResourceView(), windAreasBindLocation);
+        D3DShaderResourceView* bufWindAreasSRV = resources.bufWindAreas.GetShaderResourceView();
+        
+        // Since the flag HWSR_GPU_PARTICLE_WIND is going to be used the shader needs to bind a
+        // WindAreas buffer successfully. Create a dummy buffer when the emitter's windAreas buffer
+        // is invalid because there are no wind areas.
+        if (!bufWindAreasSRV)
+        {
+            // This case should only happen when there are no wind areas
+            AZ_Assert(numWindAreas == 0, "There are wind areas and emitter's wind areas buffer is invalid");
+        
+            // Create and Upload a dummy wind areas buffer
+            if (!m_impl->bufDummyWindAreas.GetShaderResourceView())
+            {
+                m_impl->bufDummyWindAreas.Create(1, sizeof(SGPUWindArea), DXGI_FORMAT_UNKNOWN, DX11BUF_STRUCTURED | DX11BUF_BIND_SRV | DX11BUF_DYNAMIC, nullptr);
+                SGPUWindArea dummyWindArea;
+                m_impl->bufDummyWindAreas.UpdateBufferContent(&dummyWindArea, sizeof(SGPUWindArea));
+            }
+            
+            bufWindAreasSRV = m_impl->bufDummyWindAreas.GetShaderResourceView();
+        }
+        
+        m_impl->dxRenderer->m_DevMan.BindSRV(eHWSC_Compute, bufWindAreasSRV, windAreasBindLocation);
     }
 
     // dispatch compute (internally actuates GPU state changes)
@@ -2271,7 +2359,7 @@ void CImpl_GPUParticles::UpdateGPU(GPUEmitterBaseData& baseData, GPUEmitterResou
     m_impl->dxRenderer->m_DevMan.Dispatch(RoundUpAndDivide(baseData.numParticlesPerChunk, s_GPUParticles_ThreadGroupUpdateX), 1, 1);
     GPU_PARTICLE_PROFILER_END((&resources), CGPUParticleProfiler::UPDATE);
 
-    if (baseData.numWindAreas != 0)
+    if (shaderUsesGPUParticleWind)
     {
         m_impl->dxRenderer->m_DevMan.BindSRV(eHWSC_Compute, nullptr, windAreasBindLocation);
     }
@@ -2458,7 +2546,11 @@ void CImpl_GPUParticles::GatherSortScore(GPUEmitterResources& emitter)
     // bind UAVs (rwStructuredBuffers) & SRVs (textures/structuredBuffers/curve data)
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION D3DGPUPARTICLEENGINE_CPP_SECTION_5
-#include AZ_RESTRICTED_FILE(D3DGPUParticleEngine_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/D3DGPUParticleEngine_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/D3DGPUParticleEngine_cpp_provo.inl"
+    #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
 #undef AZ_RESTRICTED_SECTION_IMPLEMENTED
@@ -2510,7 +2602,11 @@ void CImpl_GPUParticles::SortParticlesBitonicLocal(GPUEmitterResources& emitter,
     // bind UAVs (rwStructuredBuffers)
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION D3DGPUPARTICLEENGINE_CPP_SECTION_6
-#include AZ_RESTRICTED_FILE(D3DGPUParticleEngine_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/D3DGPUParticleEngine_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/D3DGPUParticleEngine_cpp_provo.inl"
+    #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
 #undef AZ_RESTRICTED_SECTION_IMPLEMENTED
@@ -2583,7 +2679,11 @@ void CImpl_GPUParticles::SortParticlesBitonic(GPUEmitterResources& emitter, GPUE
         // bind UAVs (rwStructuredBuffers)
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION D3DGPUPARTICLEENGINE_CPP_SECTION_7
-#include AZ_RESTRICTED_FILE(D3DGPUParticleEngine_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/D3DGPUParticleEngine_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/D3DGPUParticleEngine_cpp_provo.inl"
+    #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
 #undef AZ_RESTRICTED_SECTION_IMPLEMENTED
@@ -2900,7 +3000,11 @@ CD3DGPUParticleEngine::CD3DGPUParticleEngine()
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION D3DGPUPARTICLEENGINE_CPP_SECTION_8
-#include AZ_RESTRICTED_FILE(D3DGPUParticleEngine_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/D3DGPUParticleEngine_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/D3DGPUParticleEngine_cpp_provo.inl"
+    #endif
 #endif
 }
 
@@ -2937,6 +3041,8 @@ bool CD3DGPUParticleEngine::Initialize(CRenderer* renderer)
 
 void CD3DGPUParticleEngine::Update(EmitterTypePtr pEmitter)
 {
+    // NOTE: Called from UpdateFrame() that is already protected with a mutex
+
     SGPUParticleEmitterData& emitter = *reinterpret_cast<SGPUParticleEmitterData*>(pEmitter);
 
     // check if there were changes in the emitter data & reinitialize emitter if this is the case
@@ -2993,6 +3099,8 @@ void CD3DGPUParticleEngine::Update(EmitterTypePtr pEmitter)
 
 void CD3DGPUParticleEngine::Render(EmitterTypePtr emitter, EGPUParticlePass pass, int shadowMode, float fov, float aspectRatio, bool isWireframeEnabled)
 {
+    AZStd::lock_guard<AZStd::mutex> lockGuard(m_impl->emittersMutex);
+
     SGPUParticleEmitterData* pEmitter = reinterpret_cast<SGPUParticleEmitterData*>(emitter);
 
     RenderPassData renderPassData;
@@ -3080,7 +3188,54 @@ void CD3DGPUParticleEngine::Render(EmitterTypePtr emitter, EGPUParticlePass pass
 
 void CD3DGPUParticleEngine::UpdateFrame()
 {
-    if (m_impl->emittersQueuedForUpdate.size() == 0)
+    AZStd::lock_guard<AZStd::mutex> lockGuard(m_impl->emittersMutex);
+
+    // Delete Emitters
+    for (auto& emitter : m_impl->emittersToDelete)
+    {
+        // Erase emitter that is about to be deleted from the update queue
+        while(true)
+        {
+            auto it = std::find(m_impl->emittersQueuedForUpdate.begin(), m_impl->emittersQueuedForUpdate.end(), emitter);
+            if (it != m_impl->emittersQueuedForUpdate.end())
+            {
+                m_impl->emittersQueuedForUpdate.erase(it);
+            }
+            else
+            {
+                break;
+            }
+        }
+
+        //go through children and reset parent pointer
+        for (auto& child : emitter->children)
+        {
+            child->parent = nullptr;
+        }
+
+        //remove from parent's child array
+        if (emitter->parent)
+        {
+            auto itChild = std::find(emitter->parent->children.begin(), emitter->parent->children.end(), emitter);
+            if (itChild != emitter->parent->children.end())
+            {
+                emitter->parent->children.erase(itChild);
+            }
+        }
+
+        delete emitter;
+    }
+    m_impl->emittersToDelete.clear();
+
+    // Release render elements
+    for (auto& renderElement : m_impl->renderElementsToRelease)
+    {
+        renderElement->SetInstance(nullptr);
+        renderElement->Release();
+    }
+    m_impl->renderElementsToRelease.clear();
+
+    if (m_impl->emittersQueuedForUpdate.empty())
     {
         return;
     }
@@ -3090,7 +3245,11 @@ void CD3DGPUParticleEngine::UpdateFrame()
     // sort particles that need sorting
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION D3DGPUPARTICLEENGINE_CPP_SECTION_9
-#include AZ_RESTRICTED_FILE(D3DGPUParticleEngine_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/D3DGPUParticleEngine_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/D3DGPUParticleEngine_cpp_provo.inl"
+    #endif
 #endif
 
     //render cubemaps for collision, if necesary
@@ -3140,7 +3299,11 @@ void CD3DGPUParticleEngine::UpdateFrame()
             {
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION D3DGPUPARTICLEENGINE_CPP_SECTION_10
-#include AZ_RESTRICTED_FILE(D3DGPUParticleEngine_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/D3DGPUParticleEngine_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/D3DGPUParticleEngine_cpp_provo.inl"
+    #endif
 #endif
                 m_impl->GatherSortScore(emitter->resources);
             }
@@ -3164,7 +3327,11 @@ void CD3DGPUParticleEngine::UpdateFrame()
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION D3DGPUPARTICLEENGINE_CPP_SECTION_11
-#include AZ_RESTRICTED_FILE(D3DGPUParticleEngine_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/D3DGPUParticleEngine_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/D3DGPUParticleEngine_cpp_provo.inl"
+    #endif
 #endif
         }
     }
@@ -3179,7 +3346,11 @@ void CD3DGPUParticleEngine::UpdateFrame()
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION D3DGPUPARTICLEENGINE_CPP_SECTION_12
-#include AZ_RESTRICTED_FILE(D3DGPUParticleEngine_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/D3DGPUParticleEngine_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/D3DGPUParticleEngine_cpp_provo.inl"
+    #endif
 #endif
     }
 
@@ -3196,6 +3367,8 @@ SShaderItem* CD3DGPUParticleEngine::GetRenderShader()
 
 void CD3DGPUParticleEngine::SetEmitterTransform(EmitterTypePtr pEmitter, const Matrix34& transform)
 {
+    AZStd::lock_guard<AZStd::mutex> lockGuard(m_impl->emittersMutex);
+
     SGPUParticleEmitterData* emitter = reinterpret_cast<SGPUParticleEmitterData*>(pEmitter);
     emitter->baseData.transform = transform;
 
@@ -3208,18 +3381,24 @@ void CD3DGPUParticleEngine::SetEmitterTransform(EmitterTypePtr pEmitter, const M
 
 void CD3DGPUParticleEngine::SetEmitterResourceParameters(EmitterTypePtr pEmitter, const ResourceParticleParams* parameters)
 {
+    AZStd::lock_guard<AZStd::mutex> lockGuard(m_impl->emittersMutex);
+
     SGPUParticleEmitterData* emitter = reinterpret_cast<SGPUParticleEmitterData*>(pEmitter);
     emitter->resourceParameters = parameters;
 }
 
 void CD3DGPUParticleEngine::SetEmitterLodBlendAlpha(EmitterTypePtr pEmitter, const float lodBlendAlpha)
 {
+    AZStd::lock_guard<AZStd::mutex> lockGuard(m_impl->emittersMutex);
+
     SGPUParticleEmitterData* emitter = reinterpret_cast<SGPUParticleEmitterData*>(pEmitter);
     emitter->baseData.lodBlendAlpha = lodBlendAlpha;
 }
 
 void CD3DGPUParticleEngine::QueueEmitterNextFrame(EmitterTypePtr pEmitter, bool isAuxWindowUpdate)
 {
+    AZStd::lock_guard<AZStd::mutex> lockGuard(m_impl->emittersMutex);
+
     SGPUParticleEmitterData* emitterData = reinterpret_cast<SGPUParticleEmitterData*>(pEmitter);
     if (emitterData->baseData.frameQueued == m_impl->renderer->GetFrameID())
     {
@@ -3246,6 +3425,8 @@ void CD3DGPUParticleEngine::Release()
     SAFE_RELEASE(m_impl->shrGpuRender.m_pShader);
     SAFE_RELEASE(m_impl->shrGpuRender.m_pShaderResources);
 
+    m_impl->bufDummyWindAreas.Release();
+
     m_impl->requireShaderReload = true;
 }
 
@@ -3256,57 +3437,62 @@ IGPUParticleEngine::EmitterTypePtr CD3DGPUParticleEngine::AddEmitter(const Resou
     emitter->baseData.emitterFlags = emitterFlags;
     emitter->baseData.target = target;
     emitter->baseData.physEnv = physEnv;
-    AddChild(reinterpret_cast<SGPUParticleEmitterData*>(parent), emitter);
     if (parent)
     {
+        AZ_Assert(std::find(m_impl->emitters.begin(), m_impl->emitters.end(), parent) != m_impl->emitters.end(), "Parent GPU emitter is not in the emitters list.");
+
+        // Protect with mutex because parent is going to be modified in AddChild() and 
+        // it could be being manipulated in the render thread. In addition emitter could
+        // be affected from the moment is linked to parent.
+        AZStd::lock_guard<AZStd::mutex> lockGuard(m_impl->emittersMutex);
+
+        AddChild(reinterpret_cast<SGPUParticleEmitterData*>(parent), emitter);
         emitter->baseData.isIndirect = true;
+
+        m_impl->InitializeEmitter(emitter);
     }
-    m_impl->InitializeEmitter(emitter);
+    else
+    {
+        m_impl->InitializeEmitter(emitter);
+    }
     m_impl->emitters.push_back(emitter);
     return emitter;
 }
 
 bool CD3DGPUParticleEngine::RemoveEmitter(EmitterTypePtr emitter)
 {
-    SGPUParticleEmitterData* emitterData = reinterpret_cast<SGPUParticleEmitterData*>(emitter);
-
-    // remove from queued emitters
-    auto itQueued = std::find(m_impl->emittersQueuedForUpdate.begin(), m_impl->emittersQueuedForUpdate.end(), emitter);
-    if (itQueued != m_impl->emittersQueuedForUpdate.end())
-    {
-        m_impl->emittersQueuedForUpdate.erase(itQueued);
-    }
-
-    //go through children and reset parent pointer
-    for (auto child : emitterData->children)
-    {
-        child->parent = nullptr;
-    }
-
-    //remove from parent's child array
-    if (emitterData->parent)
-    {
-        auto itChild = std::find(emitterData->parent->children.begin(), emitterData->parent->children.end(), emitterData);
-        if (itChild != emitterData->parent->children.end())
-        {
-            emitterData->parent->children.erase(itChild);
-        }
-    }
-
     // remove from emitter list
     auto itEmitter = std::find(m_impl->emitters.begin(), m_impl->emitters.end(), emitter);
     if (itEmitter != m_impl->emitters.end())
     {
-        auto emitterToDelete = *itEmitter;
+        {
+            AZStd::lock_guard<AZStd::mutex> lockGuard(m_impl->emittersMutex);
+
+            // Insert emitter for deletion next frame
+            m_impl->emittersToDelete.insert(reinterpret_cast<SGPUParticleEmitterData*>(emitter));
+        }
+
         m_impl->emitters.erase(itEmitter);
-        delete emitterToDelete;
         return true;
     }
     return false;
 }
 
+void CD3DGPUParticleEngine::QueueRenderElementToReleaseNextFrame(CREParticleGPU* renderElement)
+{
+    if (renderElement)
+    {
+        AZStd::lock_guard<AZStd::mutex> lockGuard(m_impl->emittersMutex);
+
+        // Insert render element to Release next frame
+        m_impl->renderElementsToRelease.insert(renderElement);
+    }
+}
+
 void CD3DGPUParticleEngine::ResetEmitter(EmitterTypePtr pEmitter)
 {
+    AZStd::lock_guard<AZStd::mutex> lockGuard(m_impl->emittersMutex);
+
     SGPUParticleEmitterData* emitter = reinterpret_cast<SGPUParticleEmitterData*>(pEmitter);
     emitter->subEmitters.clear();
 
@@ -3323,6 +3509,8 @@ void CD3DGPUParticleEngine::ResetEmitter(EmitterTypePtr pEmitter)
 
 void CD3DGPUParticleEngine::StartEmitter(EmitterTypePtr pEmitter)
 {
+    AZStd::lock_guard<AZStd::mutex> lockGuard(m_impl->emittersMutex);
+
     SGPUParticleEmitterData* emitter = reinterpret_cast<SGPUParticleEmitterData*>(pEmitter);
     for (GPUSubemitterData& emitData : emitter->subEmitters)
     {
@@ -3332,6 +3520,8 @@ void CD3DGPUParticleEngine::StartEmitter(EmitterTypePtr pEmitter)
 
 void CD3DGPUParticleEngine::StopEmitter(EmitterTypePtr pEmitter)
 {
+    AZStd::lock_guard<AZStd::mutex> lockGuard(m_impl->emittersMutex);
+
     SGPUParticleEmitterData* emitter = reinterpret_cast<SGPUParticleEmitterData*>(pEmitter);
     for (GPUSubemitterData& emitData : emitter->subEmitters)
     {
@@ -3341,6 +3531,8 @@ void CD3DGPUParticleEngine::StopEmitter(EmitterTypePtr pEmitter)
 
 void CD3DGPUParticleEngine::PrimeEmitter(EmitterTypePtr pEmitter, float equilibriumAge)
 {
+    AZStd::lock_guard<AZStd::mutex> lockGuard(m_impl->emittersMutex);
+
     SGPUParticleEmitterData* emitter = reinterpret_cast<SGPUParticleEmitterData*>(pEmitter);
     emitter->baseData.time = equilibriumAge;
     emitter->baseData.isPrimed = true;
@@ -3359,6 +3551,8 @@ int CD3DGPUParticleEngine::GetEmitterCount()
 
 void CD3DGPUParticleEngine::OnEffectChanged(EmitterTypePtr pEmitter)
 {
+    AZStd::lock_guard<AZStd::mutex> lockGuard(m_impl->emittersMutex);
+
     SGPUParticleEmitterData* emitter = reinterpret_cast<SGPUParticleEmitterData*>(pEmitter);
 
     m_impl->OnEffectChanged(emitter->resources, emitter->baseData, emitter->resourceParameters, *emitter->baseData.emitterFlags);

@@ -15,6 +15,7 @@
 #include <AzCore/base.h>
 #include <AzCore/std/parallel/atomic.h>
 #include <AzCore/std/parallel/mutex.h>
+#include <AzCore/std/typetraits/static_storage.h>
 
 #if AZ_TRAIT_HARDWARE_ENABLE_EMM_INTRINSICS
 #   include <emmintrin.h>
@@ -105,7 +106,7 @@ namespace AZ
          * Returns the default global instance of the Sfmt, initialized with time(NULL) as seed. We recommend
          * creating your own instances when need a big set of random numbers.
          */
-        static inline Sfmt&     GetInstance() { return s_default; }
+        static Sfmt&     GetInstance();
 
     protected:
 
@@ -117,8 +118,6 @@ namespace AZ
         AZ::u64*                    m_psfmt64;
 
         AZStd::mutex                m_generationMutex;
-
-        static Sfmt                 s_default;  ///< A Global default random number generator, init with time(NULL) seed!
     };
 }
 

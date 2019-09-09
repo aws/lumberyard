@@ -34,7 +34,7 @@ namespace LmbrCentral
                 editContext->Class<EditorForceVolumeComponent>(
                     "Force Volume", "The force volume component is used to apply a physical force on objects within the volume")
                     ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
-                    ->Attribute(AZ::Edit::Attributes::Category, "Physics")
+                    ->Attribute(AZ::Edit::Attributes::Category, "Physics (Legacy)")
                     ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/ForceVolume.png")
                     ->Attribute(AZ::Edit::Attributes::ViewportIcon, "Editor/Icons/Components/Viewport/ForceVolume.png")
                     ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("Game", 0x232b318c))
@@ -69,20 +69,18 @@ namespace LmbrCentral
         gameEntity->CreateComponent<ForceVolumeComponent>(m_forceVolume, m_debugForces);
     }
 
-    void EditorForceVolumeComponent::DisplayEntity(bool& handled)
+    void EditorForceVolumeComponent::DisplayEntityViewport(
+        const AzFramework::ViewportInfo& viewportInfo,
+        AzFramework::DebugDisplayRequests& debugDisplay)
     {
         if (!IsSelected() && !m_visibleInEditor)
         {
             return;
         }
 
-        handled = true;
+        debugDisplay.SetColor(AZ::Vector4(1.f, 0.f, 0.f, 1.0f));
 
-        AzFramework::EntityDebugDisplayRequests* displayContext = AzFramework::EntityDebugDisplayRequestBus::FindFirstHandler();
-        AZ_Assert(displayContext, "Invalid display context.");
-        displayContext->SetColor(AZ::Vector4(1.f, 0.f, 0.f, 1.0f));
-
-        m_forceVolume.Display(*displayContext);
+        m_forceVolume.Display(debugDisplay);
     }
 
 } // namespace LmbrCentral

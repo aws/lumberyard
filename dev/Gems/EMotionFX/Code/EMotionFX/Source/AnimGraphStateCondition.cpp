@@ -15,6 +15,7 @@
 #include <EMotionFX/Source/EMotionFXConfig.h>
 #include <EMotionFX/Source/AnimGraph.h>
 #include <EMotionFX/Source/AnimGraphManager.h>
+#include <EMotionFX/Source/AnimGraphReferenceNode.h>
 #include <EMotionFX/Source/AnimGraphStateMachine.h>
 #include <EMotionFX/Source/AnimGraphNode.h>
 #include <EMotionFX/Source/AnimGraphInstance.h>
@@ -124,6 +125,25 @@ namespace EMotionFX
 
                     // check if we have reached an exit state
                     return stateMachine->GetExitStateReached(animGraphInstance);
+                }
+                else if (azrtti_typeid(m_state) == azrtti_typeid<AnimGraphReferenceNode>())
+                {
+                    AnimGraphReferenceNode* referenceNode = static_cast<AnimGraphReferenceNode*>(m_state);
+                    AnimGraph* referencedAnimGraph = referenceNode->GetReferencedAnimGraph();
+                    if (referencedAnimGraph)
+                    {
+                        AnimGraphReferenceNode::UniqueData* referenceNodeUniqueData = static_cast<AnimGraphReferenceNode::UniqueData*>(referenceNode->FindUniqueNodeData(animGraphInstance));
+                        if (referenceNodeUniqueData && referenceNodeUniqueData->m_referencedAnimGraphInstance)
+                        {
+                            AnimGraphStateMachine* stateMachine = referencedAnimGraph->GetRootStateMachine();
+                            return stateMachine->GetExitStateReached(referenceNodeUniqueData->m_referencedAnimGraphInstance);
+                        }
+                    }
+                    else
+                    {
+                        // if the reference node does not have an anim graph, assume the exit state was reached
+                        return true;
+                    }
                 }
             }
             break;
@@ -250,9 +270,9 @@ namespace EMotionFX
     {
         if (mEventHandler)
         {
-            mAnimGraphInstance->RemoveEventHandler(mEventHandler, false);
+            mAnimGraphInstance->RemoveEventHandler(mEventHandler);
 
-            mEventHandler->Destroy();
+            delete mEventHandler;
             mEventHandler = nullptr;
         }
     }
@@ -316,6 +336,15 @@ namespace EMotionFX
         }
     }
 
+    const AZStd::vector<EventTypes> AnimGraphStateCondition::EventHandler::GetHandledEventTypes() const
+    {
+        return {
+            EVENT_TYPE_ON_STATE_ENTER,
+            EVENT_TYPE_ON_STATE_ENTERING, 
+            EVENT_TYPE_ON_STATE_EXIT,
+            EVENT_TYPE_ON_STATE_END
+        };
+    }
 
     void AnimGraphStateCondition::EventHandler::OnStateEnter(AnimGraphInstance* animGraphInstance, AnimGraphNode* state)
     {

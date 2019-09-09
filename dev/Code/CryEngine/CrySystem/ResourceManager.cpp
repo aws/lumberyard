@@ -187,7 +187,6 @@ CResourceManager::CResourceManager()
 //////////////////////////////////////////////////////////////////////////
 void CResourceManager::PrepareLevel(const char* sLevelFolder, const char* sLevelName)
 {
-    MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_Other, 0, "Preload Level pak files");
     LOADING_TIME_PROFILE_SECTION;
 
     m_sLevelFolder = sLevelFolder;
@@ -283,7 +282,6 @@ bool CResourceManager::LoadFastLoadPaks(bool bToMemory)
     else
     //if (g_cvars.pakVars.nLoadCache)
     {
-        MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_Other, 0, "Paks Fast Load Cache");
         LOADING_TIME_PROFILE_SECTION;
 
         // Load a special _fastload paks
@@ -354,8 +352,6 @@ IResourceList* CResourceManager::GetLevelResourceList()
 bool CResourceManager::LoadLevelCachePak(const char* sPakName, const char* sBindRoot, bool bOnlyDuringLevelLoading)
 {
     LOADING_TIME_PROFILE_SECTION;
-    MEMSTAT_CONTEXT_FMT(EMemStatContextTypes::MSC_Other, 0, "LoadLevelCachePak %s", sPakName);
-
     CryPathString pakPath = GetCurrentLevelCacheFolder() + "/" + sPakName;
 
     pakPath.MakeLower();
@@ -746,43 +742,6 @@ void CResourceManager::OnSystemEvent(ESystemEvent event, UINT_PTR wparam, UINT_P
 
         break;
 
-    case ESYSTEM_EVENT_SWITCHED_TO_GLOBAL_HEAP:
-        if (!m_bLevelTransitioning)
-        {
-            if (g_cvars.pakVars.nLoadFrontendShaderCache)
-            {
-                gEnv->pRenderer->LoadShaderLevelCache();
-                gEnv->pRenderer->EF_Query(EFQ_SetShaderCombinations);
-            }
-            if (g_cvars.pakVars.nLoadModePaks)
-            {
-                if (!gEnv->bMultiplayer && LoadMenuCommonPak(FRONTEND_COMMON_PAK_FILENAME_SP) == false)
-                {
-                    CryWarning(VALIDATOR_MODULE_GAME, VALIDATOR_WARNING, "Could not load %s during return to menu flow. This file can significantly reduce frontend loading times.\n", FRONTEND_COMMON_PAK_FILENAME_SP);
-                }
-                else if (gEnv->bMultiplayer && LoadMenuCommonPak(FRONTEND_COMMON_PAK_FILENAME_MP) == false)
-                {
-                    CryWarning(VALIDATOR_MODULE_GAME, VALIDATOR_WARNING, "Could not load %s during return to menu flow. This file can significantly reduce frontend loading times.\n", FRONTEND_COMMON_PAK_FILENAME_MP);
-                }
-            }
-        }
-        else
-        {
-            CryLog("Not loading frontend cache pak, as we're transitioning to a new level.");
-        }
-        break;
-
-    case ESYSTEM_EVENT_SWITCHED_TO_LEVEL_HEAP:
-        if (!gEnv->bMultiplayer)
-        {
-            UnloadMenuCommonPak(FRONTEND_COMMON_PAK_FILENAME_SP, FRONTEND_COMMON_LIST_FILENAME "_sp");
-        }
-        else
-        {
-            UnloadMenuCommonPak(FRONTEND_COMMON_PAK_FILENAME_MP, FRONTEND_COMMON_LIST_FILENAME "_mp");
-        }
-        break;
-
     case ESYSTEM_EVENT_LEVEL_PRECACHE_START:
     {
         // Unpause all streams in streaming engine.
@@ -814,13 +773,7 @@ void CResourceManager::OnSystemEvent(ESystemEvent event, UINT_PTR wparam, UINT_P
 
         UnloadAllLevelCachePaks(true);
     }
-
-        #if CAPTURE_REPLAY_LOG
-        static int s_loadCount = 0;
-        CryGetIMemReplay()->AddLabelFmt("precacheEnd%d_%s", s_loadCount++, m_sLevelName.c_str());
-        #endif
-
-        break;
+    break;
     }
 }
 

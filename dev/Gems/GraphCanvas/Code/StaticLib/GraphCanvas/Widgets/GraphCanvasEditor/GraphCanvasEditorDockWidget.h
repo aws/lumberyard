@@ -15,6 +15,7 @@
 
 #include <AzCore/Component/EntityId.h>
 #include <AzCore/EBus/Ebus.h>
+#include <AzCore/Memory/SystemAllocator.h>
 #include <AzCore/std/smart_ptr/unique_ptr.h>
 
 #include <GraphCanvas/Editor/AssetEditorBus.h>
@@ -26,33 +27,57 @@ namespace Ui
 }
 
 namespace GraphCanvas
-{    
+{
+    class GraphCanvasGraphicsView;
+
     class EditorDockWidget
         : public QDockWidget
+        , public ActiveEditorDockWidgetRequestBus::Handler
         , public AssetEditorNotificationBus::Handler
         , public EditorDockWidgetRequestBus::Handler
     {
         Q_OBJECT
+
+        friend class AssetEditorCentralDockWindow;
     public:    
         AZ_CLASS_ALLOCATOR(EditorDockWidget,AZ::SystemAllocator,0);
         EditorDockWidget(const EditorId& editorId, QWidget* parent);
         ~EditorDockWidget();
         
-        const DockWidgetId& GetDockWidgetId() const;
+        // ActiveEditorDockWidgetRequestBus
+        DockWidgetId GetDockWidgetId() const override;
+
+        void ReleaseBus() override;
+        ////
 
         const EditorId& GetEditorId() const;
         
         // GraphCanvasEditorDockWidgetBus
-        AZ::EntityId GetAssetId() const override;
-        void SetAssetId(const AZ::EntityId& assetId) override;
-        ////
+        AZ::EntityId GetViewId() const override;
+        GraphCanvas::GraphId GetGraphId() const override;
+
+        EditorDockWidget* AsEditorDockWidget() override;
+        ////        
+        
+    signals:
+        void OnEditorClosed(EditorDockWidget*);
+
+    protected:        
+
+        GraphCanvasGraphicsView* GetGraphicsView() const;
         
     private:
+
+        void closeEvent(QCloseEvent* closeEvent) override;
+        void SignalActiveEditor();
+
         DockWidgetId m_dockWidgetId;;
         EditorId     m_editorId;
 
         AZ::EntityId m_assetId;
 
         AZStd::unique_ptr<Ui::GraphCanvasEditorDockWidget> m_ui;
+
+        int windowId = 0;
     };
 }

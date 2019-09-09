@@ -48,9 +48,9 @@ namespace LmbrCentral
         void OnTransformChanged(const AZ::Transform& local, const AZ::Transform& world) override;
         
         /**
-         * Interface to draw using EntityDebugDisplayRequests API.
+         * Interface to draw using DebugDisplayRequests API.
          */
-        virtual void Draw(AzFramework::EntityDebugDisplayRequests* displayContext) = 0;
+        virtual void Draw(AzFramework::DebugDisplayRequests& debugDisplay) = 0;
 
         const AZ::Transform& GetCurrentTransform() const { return m_currentEntityTransform; }
     
@@ -58,7 +58,9 @@ namespace LmbrCentral
         AZ_DISABLE_COPY_MOVE(EntityDebugDisplayComponent)
 
         // AzFramework::EntityDebugDisplayEventBus
-        void DisplayEntity(bool& handled) override;
+        void DisplayEntityViewport(
+            const AzFramework::ViewportInfo& viewportInfo,
+            AzFramework::DebugDisplayRequests& debugDisplay) override;
 
         AZ::Transform m_currentEntityTransform; ///< Stores the transform of the entity.
     };

@@ -361,7 +361,7 @@ void CVars::Init()
     DefineConstIntCVar(e_ShadowsLodBiasInvis, 0, VF_NULL,
         "Simplifies mesh for shadow map generation by X LOD levels, if object is not visible in main frame");
 
-    DefineConstIntCVar(e_Tessellation, 1, VF_NULL,
+    REGISTER_CVAR(e_Tessellation, 1, VF_NULL,
         "HW geometry tessellation  0 = not allowed, 1 = allowed");
     REGISTER_CVAR(e_TessellationMaxDistance, 30.f, VF_NULL,
         "Maximum distance from camera in meters to allow tessellation, also affects distance-based displacement fadeout");
@@ -417,6 +417,10 @@ void CVars::Init()
         "Shadows slope bias for shadowgen");
     REGISTER_CVAR(e_ShadowsConstBiasHQ, 0.05f, VF_NULL,
         "Shadows slope bias for shadowgen (high quality mode)");
+    REGISTER_CVAR(e_ShadowsClearShowMaskAtLoad, 1, VF_NULL,
+                  "Clears the shadow mask at level load to remove any bad shadow data from previous level.\n"
+                  "0 = Better perf. It does not clear the shadow which will help set shadowmask texture to be memoryless. This will help reduce gpu bandwidth)\n"
+                  "1 = This will disable the memoryless optimization as it would clear the shadow at level load. Only use this if you see residual shadows from previous level showing up in current level.\n");
 
     DefineConstIntCVar(e_ShadowsMasksLimit, 0, VF_NULL,
         "Maximum amount of allocated shadow mask textures\n"
@@ -623,7 +627,10 @@ void CVars::Init()
         "Activates drawing of water volumes\n"
         "1: use usual rendering path\n"
         "2: use fast rendering path with merged fog");
-
+    DefineConstIntCVar(e_RenderTransparentUnderWater, e_RenderTransparentUnderWaterDefault, VF_NULL,
+        "Determines how transparent/alphablended objects are rendered in WaterVolume\n"
+        "0: they are not rendered under water (fast performance)\n"
+        "1: they are rendered twice under water and above water (higher quality)");
     if (!OceanToggle::IsActive())
     {
         REGISTER_CVAR(e_WaterTessellationAmount, 200, VF_NULL,  // being deprecated by Water gem
@@ -807,6 +814,8 @@ void CVars::Init()
         "Use geometric mean of faces area to compute LOD");
     DefineConstIntCVar(e_LodsForceUse, 1, VF_NULL,
         "Force using LODs even if triangle count do not suit");
+    DefineConstFloatCVar(e_LodBoundingBoxDistanceMultiplier, VF_CHEAT,
+        "e_LodBoundingBoxDistanceMultiplier ");
 
     REGISTER_CVAR(e_SQTestDelay, 5.f, VF_NULL,
         "Time to stabilize the system before camera movements");
@@ -848,6 +857,8 @@ void CVars::Init()
         "LOD distance ratio for objects");
     REGISTER_CVAR(e_LodFaceAreaTargetSize, 0.005f, VF_NULL,
         "Threshold used for LOD computation.");
+    REGISTER_CVAR(e_FogVolumeShadingQuality, 0, VF_NULL,
+        "Fog Volume Shading Quality 0: standard, 1:high (better fog volume interaction)");
     DefineConstFloatCVar(e_LodCompMaxSize, VF_NULL,
         "Affects LOD selection for big objects, small number will switch more objects into lower LOD");
     REGISTER_CVAR(e_ViewDistRatio, 60.0f, VF_CVARGRP_IGNOREINREALVAL,
@@ -870,6 +881,8 @@ void CVars::Init()
         "Min LOD for objects");
     REGISTER_CVAR(e_CharLodMin, 0, VF_NULL,
         "Min LOD for character objects");
+    REGISTER_CVAR(e_LodForceUpdate, 0, VF_NULL,
+        "When active, recalculate object LOD when rendering instead of using LOD calculated during previous frame.");
     REGISTER_CVAR(e_LodMax, MAX_STATOBJ_LODS_NUM - 1, VF_CHEAT,
         "Max LOD for objects");
     DefineConstIntCVar(e_LodMinTtris, 300, VF_CHEAT,
@@ -996,6 +1009,12 @@ void CVars::Init()
 
     REGISTER_CVAR(e_ObjQuality, 0, VF_NULL,
         "Object detail quality");
+    REGISTER_CVAR(e_LightQuality, 0, VF_NULL,
+        "Light detail quality. Controls whether lights are created or casts shadows based on the minimum spec level set in the light configuration."
+        "1: Creates or casts shadows from lights that have the minimum spec level set to low."
+        "2: Creates or casts shadows from lights that have the minimum spec level set to low or medium."
+        "3: Creates or casts shadows from lights that have the minimum spec level set to low, medium or high."
+        "4: Creates or casts shadows from lights that have the minimum spec level set to low, medium, high or very high.");
     REGISTER_CVAR(e_ParticlesQuality, 0, VF_NULL,
         "Particles detail quality");
     REGISTER_CVAR(e_ObjShadowCastSpec, 0, VF_NULL,
@@ -1151,7 +1170,7 @@ void CVars::Init()
     REGISTER_CVAR(e_MergedMeshesPool, 2750, VF_NULL,    "amount of mainmeory (in kb) that merged meshes are allowed to sustain");
     REGISTER_CVAR(e_MergedMeshesPoolSpines, 32, VF_NULL,  "percentage of the pool for spines");
     REGISTER_CVAR(e_MergedMeshesTesselationSupport, 0, VF_NULL, "Enable or disable support for tessellation on mergedmeshes");
-    REGISTER_CVAR(e_MergedMeshesViewDistRatio, 30.f, VF_NULL, "merged meshes view dist ratio");
+    REGISTER_CVAR(e_MergedMeshesViewDistRatio, 100.f, VF_NULL, "merged meshes view dist ratio");
     REGISTER_CVAR(e_MergedMeshesLodRatio, 3.f, VF_NULL, "merged meshes lod ratio");
     REGISTER_CVAR(e_MergedMeshesDeformViewDistMod, 0.45f, VF_NULL, "distance modifier applied to view dist ratios after which deformables stop updating");
     REGISTER_CVAR(e_MergedMeshesInstanceDist, 4.5f, VF_NULL, "Distance fudge factor at which merged meshes turn off animation");
@@ -1162,6 +1181,14 @@ void CVars::Init()
     REGISTER_CVAR(e_MergedMeshesBulletScale, 35.f, VF_NULL, "MergedMesh Bullet approximations size scale");
     REGISTER_CVAR(e_MergedMeshesBulletLifetime, 0.15f, VF_NULL, "MergedMesh Bullet approximations lifetime");
     REGISTER_CVAR(e_MergedMeshesOutdoorOnly, 0, VF_NULL, "MergedMeshes will receive ERF_OUTDOORONLY by default");
+    REGISTER_CVAR(e_MergedMeshesForceSSE2, 0, VF_NULL, "Forces Merged meshes to use SSE2 instructions regardless of whether F16C instructions are available or not.");
+    REGISTER_CVAR(e_MergedMeshesUpdateRateLOD0,  3, VF_NULL, "Sets the update rate of static merged meshes for LOD 0.");
+    REGISTER_CVAR(e_MergedMeshesUpdateRateLOD1,  5, VF_NULL, "Sets the update rate of static merged meshes for LOD 1.");
+    REGISTER_CVAR(e_MergedMeshesUpdateRateLOD2,  7, VF_NULL, "Sets the update rate of static merged meshes for LOD 2.");
+    REGISTER_CVAR(e_MergedMeshesUpdateRateLOD3, 11, VF_NULL, "Sets the update rate of static merged meshes for LOD 3.");
+    REGISTER_CVAR(e_MergedMeshesUpdateRateLOD4, 17, VF_NULL, "Sets the update rate of static merged meshes for LOD 4.");
+    REGISTER_CVAR(e_MergedMeshesUpdateRateLOD5, 25, VF_NULL, "Sets the update rate of static merged meshes for LOD 5.");
+
     REGISTER_CVAR(e_CheckOctreeObjectsBoxSize, 1, VF_NULL, "CryWarning for crazy sized COctreeNode m_objectsBoxes");
     REGISTER_CVAR(e_DebugGeomPrep, 0, VF_NULL,  "enable logging of Geom preparation");
     DefineConstIntCVar(e_GeomCaches, 1, VF_NULL, "Activates drawing of geometry caches");

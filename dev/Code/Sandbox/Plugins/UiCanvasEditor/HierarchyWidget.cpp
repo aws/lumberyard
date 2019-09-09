@@ -13,6 +13,7 @@
 
 #include "EditorCommon.h"
 #include <AzToolsFramework/ToolsComponents/EditorEntityIdContainer.h>
+#include <AzToolsFramework/ToolsComponents/EditorOnlyEntityComponentBus.h>
 
 HierarchyWidget::HierarchyWidget(EditorWindow* editorWindow)
     : QTreeWidget()
@@ -23,6 +24,7 @@ HierarchyWidget::HierarchyWidget(EditorWindow* editorWindow)
     , m_inDragStartState(false)
     , m_selectionChangedBeforeDrag(false)
     , m_signalSelectionChange(true)
+    , m_inObjectPickMode(false)
     , m_inited(false)
 {
     setMouseTracking(true);
@@ -72,15 +74,17 @@ HierarchyWidget::HierarchyWidget(EditorWindow* editorWindow)
 
             if (column == kHierarchyColumnIsVisible)
             {
-                CommandHierarchyItemToggleIsVisible::Push(m_editorWindow->GetActiveStack(),
-                    this,
-                    HierarchyItemRawPtrList({i}));
+                ToggleVisibility(i);
             }
             else if (column == kHierarchyColumnIsSelectable)
             {
                 CommandHierarchyItemToggleIsSelectable::Push(m_editorWindow->GetActiveStack(),
                     this,
                     HierarchyItemRawPtrList({i}));
+            }
+            else if (m_inObjectPickMode)
+            {
+                PickItem(i);
             }
         });
 
@@ -103,6 +107,14 @@ HierarchyWidget::HierarchyWidget(EditorWindow* editorWindow)
                 this,
                 dynamic_cast<HierarchyItem*>(item));
         });
+
+    EntityHighlightMessages::Bus::Handler::BusConnect();
+}
+
+HierarchyWidget::~HierarchyWidget()
+{
+    AzToolsFramework::EditorPickModeNotificationBus::Handler::BusDisconnect();
+    EntityHighlightMessages::Bus::Handler::BusDisconnect();
 }
 
 void HierarchyWidget::SetIsDeleting(bool b)
@@ -120,12 +132,33 @@ EditorWindow* HierarchyWidget::GetEditorWindow()
     return m_editorWindow;
 }
 
+void HierarchyWidget::ActiveCanvasChanged()
+{
+    EntityContextChanged();
+}
+
+void HierarchyWidget::EntityContextChanged()
+{
+    if (m_inObjectPickMode)
+    {
+        OnEntityPickModeStopped();
+    }
+
+    // Disconnect from the PickModeRequests bus and reconnect with the new entity context
+    AzToolsFramework::EditorPickModeNotificationBus::Handler::BusDisconnect();
+    UiEditorEntityContext* context = m_editorWindow->GetEntityContext();
+    if (context)
+    {
+        AzToolsFramework::EditorPickModeNotificationBus::Handler::BusConnect(context->GetContextId());
+    }
+}
+
 void HierarchyWidget::CreateItems(const LyShine::EntityArray& elements)
 {
     std::list<AZ::Entity*> elementList(elements.begin(), elements.end());
 
     // Build the rest of the list.
-    // Note: This is a breadth-first traversal thru all child elements.
+    // Note: This is a breadth-first traversal through all child elements.
     for (auto& e : elementList)
     {
         LyShine::EntityArray childElements;
@@ -153,6 +186,9 @@ void HierarchyWidget::CreateItems(const LyShine::EntityArray& elements)
         }
     }
 
+    // restore the expanded state of all items
+    ApplyElementIsExpanded();
+
     m_inited = true;
 }
 
@@ -165,9 +201,6 @@ void HierarchyWidget::RecreateItems(const LyShine::EntityArray& elements)
     ClearItems();
 
     CreateItems(elements);
-
-    // restore the expanded state of all items
-    ApplyElementIsExpanded();
 
     HierarchyHelpers::SetSelectedItems(this, &selectedEntityIds);
 }
@@ -205,9 +238,10 @@ void HierarchyWidget::contextMenuEvent(QContextMenuEvent* ev)
              HierarchyMenu::Show::kDeleteElement |
              HierarchyMenu::Show::kNewSlice |
              HierarchyMenu::Show::kNew_InstantiateSlice |
-             HierarchyMenu::Show::kPushToSlice),
-            true,
-            nullptr);
+             HierarchyMenu::Show::kPushToSlice |
+             HierarchyMenu::Show::kFindElements |
+             HierarchyMenu::Show::kEditorOnly),
+            true);
 
         contextMenu.exec(ev->globalPos());
     }
@@ -233,7 +267,7 @@ void HierarchyWidget::CurrentSelectionHasChanged(const QItemSelection& selected,
     // having to track what's added and removed to the selection,
     // we'll use selectedItems().
 
-    if (m_signalSelectionChange)
+    if (m_signalSelectionChange && !m_isDeleting)
     {
         SignalUserSelectionHasChanged(selectedItems());
     }
@@ -670,6 +704,22 @@ void HierarchyWidget::mouseReleaseEvent(QMouseEvent* ev)
     }
 
     QTreeWidget::mouseReleaseEvent(ev);
+
+    // In pick mode, the user can click on an item and drag the mouse to change the current item.
+    // In this case, a click event is not sent on a mouse release, so set the current item as the
+    // picked item here
+    if (m_inObjectPickMode)
+    {
+        // If there is a current item, set that as picked
+        if (currentIndex() != QModelIndex()) // check for a valid index
+        {
+            QTreeWidgetItem* item = itemFromIndex(currentIndex());
+            if (item)
+            {
+                PickItem(dynamic_cast<HierarchyItem*>(item));
+            }
+        }
+    }
 }
 
 void HierarchyWidget::leaveEvent(QEvent* ev)
@@ -713,9 +763,144 @@ void HierarchyWidget::ClearItemBeingHovered()
     m_itemBeingHovered = nullptr;
 }
 
+void HierarchyWidget::UpdateSliceInfo()
+{
+    // Update the slice information (color, font, tooltip) for all elements.
+    // As a simple way of going through all the HierarchyItem's we use the
+    // EntityHelpers::EntityToHierarchyItemMap
+    for (auto mapItem : m_entityItemMap)
+    {
+        mapItem.second->UpdateSliceInfo();
+    }
+}
+
 void HierarchyWidget::DeleteSelectedItems()
 {
     DeleteSelectedItems(selectedItems());
+}
+
+void HierarchyWidget::OnEntityPickModeStarted()
+{
+    setDragEnabled(false);
+    m_currentItemBeforePickMode = currentIndex();
+    m_selectionModeBeforePickMode = selectionMode();
+    setSelectionMode(QAbstractItemView::NoSelection);
+    m_editTriggersBeforePickMode = editTriggers();
+    setEditTriggers(QAbstractItemView::NoEditTriggers);
+    setCursor(m_editorWindow->GetEntityPickerCursor());
+    m_inObjectPickMode = true;
+}
+
+void HierarchyWidget::OnEntityPickModeStopped()
+{
+    if (m_inObjectPickMode)
+    {
+        setCurrentIndex(m_currentItemBeforePickMode);
+        setDragEnabled(true);
+        setSelectionMode(m_selectionModeBeforePickMode);
+        setEditTriggers(m_editTriggersBeforePickMode);
+        setCursor(Qt::ArrowCursor);
+        m_inObjectPickMode = false;
+    }
+}
+
+void HierarchyWidget::EntityHighlightRequested(AZ::EntityId entityId)
+{
+}
+
+void HierarchyWidget::EntityStrongHighlightRequested(AZ::EntityId entityId)
+{
+    // Check if this entity is in the same entity context
+    if (!IsEntityInEntityContext(entityId))
+    {
+        return;
+    }
+
+    QTreeWidgetItem* item = HierarchyHelpers::ElementToItem(this, entityId, false);
+    if (!item)
+    {
+        return;
+    }
+
+    // Scrolling to the entity will make sure that it is visible.
+    // This will automatically open parents
+    scrollToItem(item);
+
+    // Select the entity
+    SetUniqueSelectionHighlight(item);
+}
+
+void HierarchyWidget::PickItem(HierarchyItem* item)
+{
+    const AZ::EntityId entityId = item->GetEntityId();
+    if (entityId.IsValid())
+    {
+        AzToolsFramework::EditorPickModeRequestBus::Broadcast(
+            &AzToolsFramework::EditorPickModeRequests::PickModeSelectEntity, entityId);
+
+        AzToolsFramework::EditorPickModeRequestBus::Broadcast(
+            &AzToolsFramework::EditorPickModeRequests::StopEntityPickMode);
+    }
+}
+
+bool HierarchyWidget::IsEntityInEntityContext(AZ::EntityId entityId)
+{
+    AzFramework::EntityContextId contextId = AzFramework::EntityContextId::CreateNull();
+    EBUS_EVENT_ID_RESULT(contextId, entityId, AzFramework::EntityIdContextQueryBus, GetOwningContextId);
+
+    if (!contextId.IsNull())
+    {
+        UiEditorEntityContext* editorEntityContext = m_editorWindow->GetEntityContext();
+        if (editorEntityContext && editorEntityContext->GetContextId() == contextId)
+        {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+void HierarchyWidget::ToggleVisibility(HierarchyItem* hierarchyItem)
+{
+    bool isItemVisible = true;
+    AZ::EntityId itemEntityId = hierarchyItem->GetEntityId();
+    EBUS_EVENT_ID_RESULT(isItemVisible, itemEntityId, UiEditorBus, GetIsVisible);
+
+    // There is one exception to toggling the visibility. If the clicked item has invisible ancestors,
+    // then we make that item and all its ancestors visible regardless of the item's visibility
+
+    // Make a list of items to modify
+    HierarchyItemRawPtrList items;
+
+    // Look for invisible ancestors
+    AZ::EntityId parent;
+    EBUS_EVENT_ID_RESULT(parent, itemEntityId, UiElementBus, GetParentEntityId);
+    while (parent.IsValid())
+    {
+        bool isParentVisible = true;
+        EBUS_EVENT_ID_RESULT(isParentVisible, parent, UiEditorBus, GetIsVisible);
+
+        if (!isParentVisible)
+        {
+            items.push_back(m_entityItemMap[parent]);
+        }
+
+        AZ::EntityId newParent = parent;
+        parent.SetInvalid();
+        EBUS_EVENT_ID_RESULT(parent, newParent, UiElementBus, GetParentEntityId);
+    }
+
+    bool makeVisible = items.size() > 0 ? true : !isItemVisible;
+
+    // Add the item that was clicked
+    if (makeVisible != isItemVisible)
+    {
+        items.push_back(m_entityItemMap[itemEntityId]);
+    }
+
+    CommandHierarchyItemToggleIsVisible::Push(m_editorWindow->GetActiveStack(),
+        this,
+        items);
 }
 
 void HierarchyWidget::DeleteSelectedItems(const QTreeWidgetItemRawPtrQList& selectedItems)
@@ -761,6 +946,29 @@ void HierarchyWidget::PasteAsChild()
         true);
 }
 
+void HierarchyWidget::SetEditorOnlyForSelectedItems(bool editorOnly)
+{
+    QTreeWidgetItemRawPtrQList selection = selectedItems();
+    if (!selection.empty())
+    {
+        SerializeHelpers::SerializedEntryList preChangeState;
+        HierarchyClipboard::BeginUndoableEntitiesChange(m_editorWindow, preChangeState);
+
+        for (auto item : selection)
+        {
+            HierarchyItem* i = dynamic_cast<HierarchyItem*>(item);
+
+            AzToolsFramework::EditorOnlyEntityComponentRequestBus::Event(i->GetEntityId(), &AzToolsFramework::EditorOnlyEntityComponentRequests::SetIsEditorOnlyEntity, editorOnly);
+
+            i->UpdateEditorOnlyInfo();
+        }
+
+        HierarchyClipboard::EndUndoableEntitiesChange(m_editorWindow, "editor only selection", preChangeState);
+
+        emit editorOnlyStateChangedOnSelectedElements();
+    }
+}
+
 void HierarchyWidget::AddElement(const QTreeWidgetItemRawPtrQList& selectedItems, const QPoint* optionalPos)
 {
     CommandHierarchyItemCreate::Push(m_editorWindow->GetActiveStack(),
@@ -777,6 +985,10 @@ void HierarchyWidget::AddElement(const QTreeWidgetItemRawPtrQList& selectedItems
 
 void HierarchyWidget::SetUniqueSelectionHighlight(QTreeWidgetItem* item)
 {
+    // Stop object pick mode when an action explicitly wants to set the hierarchy's selected items
+    AzToolsFramework::EditorPickModeRequestBus::Broadcast(
+        &AzToolsFramework::EditorPickModeRequests::StopEntityPickMode);
+
     clearSelection();
 
     setCurrentIndex(indexFromItem(item));

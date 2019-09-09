@@ -15,6 +15,7 @@
 
 #include <AzCore/EBus/EBus.h>
 
+#include <AzCore/std/containers/set.h>
 #include <AzCore/std/smart_ptr/shared_ptr.h>
 #include <AzCore/std/smart_ptr/unique_ptr.h>
 

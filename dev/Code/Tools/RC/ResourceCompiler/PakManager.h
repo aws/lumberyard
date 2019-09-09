@@ -32,9 +32,7 @@ public:
     IPakSystem* GetPakSystem();
     bool HasPakFiles() const;
 
-    void SetMaxThreads(int maxThreads);
-    int GetMaxThreads() const;
-
+    unsigned GetMaxThreads() const;
     // -----------------------------------------------
     enum ECallResult
     {
@@ -79,7 +77,6 @@ private:
 private:
     // All output zip files.
     std::vector<string> m_zipFiles;
-    int m_maxThreads;
 
     PakSystem m_pPakSystem;
     IProgress* m_pProgress;

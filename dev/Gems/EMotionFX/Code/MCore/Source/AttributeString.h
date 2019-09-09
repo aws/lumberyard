@@ -15,6 +15,8 @@
 // include the required headers
 #include "StandardHeaders.h"
 #include "Attribute.h"
+#include <MCore/Source/AttributeAllocator.h>
+
 
 namespace MCore
 {
@@ -25,6 +27,8 @@ namespace MCore
     class MCORE_API AttributeString
         : public Attribute
     {
+        AZ_CLASS_ALLOCATOR(AttributeString, AttributeAllocator, 0)
+
         friend class AttributeFactory;
     public:
         enum
@@ -45,7 +49,6 @@ namespace MCore
 
         // overloaded from the attribute base class
         Attribute* Clone() const override                           { return AttributeString::Create(mValue); }
-        Attribute* CreateInstance(void* destMemory) override        { return new(destMemory) AttributeString(); }
         const char* GetTypeString() const override                  { return "AttributeString"; }
         bool InitFrom(const Attribute* other) override
         {

@@ -12,6 +12,8 @@
 
 #include "SystemComponentFixture.h"
 
+#include <EMotionFX/Source/EMotionFX.h>
+
 namespace EMotionFX
 {
 

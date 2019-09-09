@@ -122,7 +122,11 @@ struct IEditorParticleUtils;  // Leroy@conffx
 struct ILogFile; // Vladimir@conffx
 
 // Qt/QML
+
+#ifdef DEPRECATED_QML_SUPPORT
 class QQmlEngine;
+#endif // #ifdef DEPRECATED_QML_SUPPORT
+
 class QWidget;
 class QMimeData;
 class QString;
@@ -236,8 +240,15 @@ enum EEditorNotifyEvent
     eNotify_OnExportBrushes, // For Designer objects, or objects using the Designer Tool.
 
     eNotify_OnTextureLayerChange,      // Sent when texture layer was added, removed or moved
+
+#ifdef DEPRECATED_QML_SUPPORT
     eNotify_BeforeQMLDestroyed, // called before QML is destroyed so you can kill your resources (if any)
     eNotify_QMLReady, // when QML has been re-initialized - this can happen during runtime if plugins are unloaded and loaded and is your opportunity to register your types.
+#else
+    // QML is deprecated! These are left here so that the enum order doesn't change. Don't use
+    eNotify_BeforeQMLDestroyed_Deprecated,
+    eNotify_QMLReady_Deprecated,
+#endif
 
     eNotify_OnParticleUpdate,          // A particle effect was modified.
     eNotify_OnAddAWSProfile,           // An AWS profile was added
@@ -245,7 +256,11 @@ enum EEditorNotifyEvent
     eNotify_OnSwitchAWSDeployment,     // The AWS deployment was switched
     eNotify_OnFirstAWSUse,             // This should only be emitted once
 
-    eNotify_OnRefCoordSysChange
+    eNotify_OnRefCoordSysChange,
+
+    // Entity selection events.
+    eNotify_OnEntitiesSelected,
+    eNotify_OnEntitiesDeselected
 };
 
 // UI event handler
@@ -262,7 +277,7 @@ struct IUIEvent
 struct IDocListener
 {
     virtual ~IDocListener() = default;
-    
+
     //! Called after new level is created.
     virtual void OnNewDocument() = 0;
     //! Called after level have been loaded.
@@ -429,7 +444,7 @@ enum EModifiedModule
 struct IPickObjectCallback
 {
     virtual ~IPickObjectCallback() = default;
-    
+
     //! Called when object picked.
     virtual void OnPick(CBaseObject* picked) = 0;
     //! Called when pick mode cancelled.
@@ -465,7 +480,7 @@ class CTrackViewSequence;
 struct ITrackViewSequenceManager
 {
     virtual IAnimSequence* OnCreateSequenceObject(QString name, bool isLegacySequence = true, AZ::EntityId entityId = AZ::EntityId()) = 0;
-    
+
     //! Notifies of the delete of a sequence entity OR legacy sequence object
     //! @param entityId The Sequence Component Entity Id OR the legacy sequence object Id packed in the lower 32-bits, as returned from IAnimSequence::GetSequenceEntityId()
     virtual void OnDeleteSequenceEntity(const AZ::EntityId& entityId) = 0;
@@ -474,9 +489,6 @@ struct ITrackViewSequenceManager
     //! Only intended for use with scripting or other cases where a user provides a name.
     virtual CTrackViewSequence* GetSequenceByName(QString name) const = 0;
 
-    //! Get the legacy sequence with the given name. There can only be one legacy sequence with a given name.
-    virtual CTrackViewSequence* GetLegacySequenceByName(QString name) const = 0;
-
     //! Get the sequence with the given EntityId. For legacy support, legacy sequences can be found by giving
     //! the sequence ID in the lower 32 bits of the EntityId.
     virtual CTrackViewSequence* GetSequenceByEntityId(const AZ::EntityId& entityId) const = 0;
@@ -484,8 +496,6 @@ struct ITrackViewSequenceManager
     virtual void OnCreateSequenceComponent(AZStd::intrusive_ptr<IAnimSequence>& sequence) = 0;
 
     virtual void OnSequenceActivated(const AZ::EntityId& entityId) = 0;
-
-    virtual void OnLegacySequencePostLoad(CTrackViewSequence* sequence, bool undo) = 0;
 };
 
 //! Interface to expose TrackViewSequence functionality to SequenceComponent
@@ -836,6 +846,8 @@ struct IEditor
     virtual bool FlushUndo(bool isShowMessage = false) = 0;
     //! Clear the last N number of steps in the undo stack
     virtual bool ClearLastUndoSteps(int steps) = 0;
+    //! Clear all current Redo steps in the undo stack
+    virtual bool ClearRedoStack() = 0;
     //! Retrieve current animation context.
     virtual CAnimationContext* GetAnimation() = 0;
     //! Retrieve sequence manager
@@ -896,8 +908,8 @@ struct IEditor
     // Console federation helper
     virtual void LaunchAWSConsole(QString destUrl) = 0;
 
-	// Prompt to open the Project Configurator with a specific message.
-	virtual bool ToProjectConfigurator(const QString& msg, const QString& caption, const QString& location) = 0;
+    // Prompt to open the Project Configurator with a specific message.
+    virtual bool ToProjectConfigurator(const QString& msg, const QString& caption, const QString& location) = 0;
 
     // Provides a way to extend the context menu of an object. The function gets called every time the menu is opened.
     typedef Functor2<QMenu*, const CBaseObject*> TContextMenuExtensionFunc;
@@ -909,7 +921,11 @@ struct IEditor
     virtual IAssetBrowser* GetAssetBrowser() = 0; // Vladimir@Conffx
     virtual IImageUtil* GetImageUtil() = 0;  // Vladimir@conffx
     virtual SEditorSettings* GetEditorSettings() = 0;
+
+#ifdef DEPRECATED_QML_SUPPORT
     virtual QQmlEngine* GetQMLEngine() const = 0;
+#endif // #ifdef DEPRECATED_QML_SUPPORT
+
     virtual ILogFile* GetLogFile() = 0;  // Vladimir@conffx
 
     // unload all plugins.  Destroys the QML engine because it has to.
@@ -924,6 +940,8 @@ struct IEditor
     // For flagging if the legacy UI items should be enabled
     virtual bool IsLegacyUIEnabled() = 0;
     virtual void SetLegacyUIEnabled(bool enabled) = 0;
+
+    virtual bool IsNewViewportInteractionModelEnabled() const = 0;
 };
 
 //! Callback used by editor when initializing for info in UI dialogs

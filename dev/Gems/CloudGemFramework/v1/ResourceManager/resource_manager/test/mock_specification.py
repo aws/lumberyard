@@ -132,9 +132,6 @@ def ok_deployment_access_stack(permissions = {}):
             'Server': {
                 'ResourceType': 'AWS::IAM::Role'
             },
-            'AccessControl': {
-                'ResourceType': 'Custom::AccessControl'
-            },
             'PlayerAccessIdentityPool': {
                 'ResourceType': 'Custom::CognitoIdentityPool'
             },

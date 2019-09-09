@@ -32,6 +32,11 @@ namespace AZ
                     systemFileMode |= SystemFile::SF_OPEN_CREATE;
                 }
 
+                if (AnyFlag(mode & OpenMode::ModeCreatePath))
+                {
+                    systemFileMode |= SystemFile::SF_OPEN_CREATE_PATH;
+                }
+
                 // If appending, append.
                 if (AnyFlag(mode & OpenMode::ModeAppend))
                 {

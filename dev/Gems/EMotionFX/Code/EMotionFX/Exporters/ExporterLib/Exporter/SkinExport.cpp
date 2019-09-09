@@ -88,6 +88,7 @@ namespace ExporterLib
             MCore::LogDetailedInfo("    + Num total influences: %d", numTotalInfluences);
 
             EMotionFX::FileFormat::Actor_SkinningInfo skinningInfoChunk;
+            memset(&skinningInfoChunk, 0, sizeof(EMotionFX::FileFormat::Actor_SkinningInfo));
             skinningInfoChunk.mIsForCollisionMesh   = isCollisionMesh ? 1 : 0;
             skinningInfoChunk.mNodeIndex            = nodeIndex;
             skinningInfoChunk.mLOD                  = lodLevel;
@@ -136,6 +137,7 @@ namespace ExporterLib
                 for (uint32 w = 0; w < weightCount; ++w)
                 {
                     EMotionFX::FileFormat::Actor_SkinInfluence skinInfluence;
+                    memset(&skinInfluence, 0, sizeof(EMotionFX::FileFormat::Actor_SkinInfluence));
                     skinInfluence.mNodeNr = skinLayer->GetInfluence(v, w)->GetNodeNr();
                     skinInfluence.mWeight = skinLayer->GetInfluence(v, w)->GetWeight();
 

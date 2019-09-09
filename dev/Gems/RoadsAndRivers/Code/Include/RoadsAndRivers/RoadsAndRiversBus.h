@@ -1,8 +1,22 @@
+/*
+* All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates, or 
+* a third party where indicated.
+*
+* For complete copyright and license terms please see the LICENSE at the root of this
+* distribution (the "License"). All use of this software is governed by the License,  
+* or, if provided, by the license below or the license accompanying this file. Do not
+* remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.  
+*
+*/
 
 #pragma once
 
 #include <AzCore/EBus/EBus.h>
 #include <AzCore/Component/ComponentBus.h>
+#include <AzCore/Math/Color.h>
+#include <AzCore/Math/Vector3.h>
+#include <AzCore/Math/Plane.h>
 
 namespace RoadsAndRivers
 {
@@ -27,6 +41,17 @@ namespace RoadsAndRivers
 
     };
     using RoadRequestBus = AZ::EBus<RoadRequests>;
+
+    class RoadNotifications
+        : public AZ::ComponentBus
+    {
+    public:
+        /**
+         * Notify listeners that the setting for Ignore Terrain Holes has changed
+         */
+        virtual void OnIgnoreTerrainHolesChanged(bool ignoreTerrainHoles) {}
+    };
+    using RoadNotificationBus = AZ::EBus<RoadNotifications>;
 
     class RiverRequests
         : public AZ::ComponentBus
@@ -189,12 +214,31 @@ namespace RoadsAndRivers
          */
         virtual float GetWaterStreamSpeed() = 0;
 
+
+        /**
+         * Gets the plane representing the rendered water surface.
+         */
+        virtual AZ::Plane GetWaterSurfacePlane() = 0;
+        /* There is no equivalent SetWaterSurfacePlane() because it's driven by the spline geometry. */
+
         /**
          * Triggers full rebuild of the river object, including geometry and render node generation.
          */
         virtual void Rebuild() = 0;
     };
     using RiverRequestBus = AZ::EBus<RiverRequests>;
+
+    class RiverNotifications
+        : public AZ::ComponentBus
+    {
+    public:
+        /**
+         * Notify listeners that the river depth has changed
+         */
+        virtual void OnWaterVolumeDepthChanged(float depth) {}
+
+    };
+    using RiverNotificationBus = AZ::EBus<RiverNotifications>;
 
     class RoadsAndRiversGeometryRequests
         : public AZ::ComponentBus
@@ -245,6 +289,32 @@ namespace RoadsAndRivers
          * Gets segment length
          */
         virtual float GetSegmentLength() = 0;
+
+        virtual AZStd::vector<AZ::Vector3> GetQuadVertices() const = 0;
     };
+
     using RoadsAndRiversGeometryRequestsBus = AZ::EBus<RoadsAndRiversGeometryRequests>;
+
+    class RoadsAndRiversGeometryNotifications
+        : public AZ::ComponentBus
+    {
+    public:
+        /**
+         * Notify listeners that a width value has changed
+         */
+        virtual void OnWidthChanged() {}
+
+        /**
+         * Notify listeners that the tile length has changed
+         */
+        virtual void OnTileLengthChanged(float tileLength) {}
+
+        /**
+         * Notify listeners that the segment length has changed
+         */
+        virtual void OnSegmentLengthChanged(float segmentLength) {}
+    };
+
+    using RoadsAndRiversGeometryNotificationBus = AZ::EBus<RoadsAndRiversGeometryNotifications>;
+
 } // namespace RoadsAndRivers

@@ -28,7 +28,11 @@
 // Traits
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION MEMORYACCESS_H_SECTION_TRAITS
-#include AZ_RESTRICTED_FILE(MemoryAccess_h, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/MemoryAccess_h_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/MemoryAccess_h_provo.inl"
+    #endif
 #else
 #define MEMORYACCESS_H_TRAIT_USE_LEGACY_PREFETCHLINE 1
 #endif
@@ -58,6 +62,7 @@ extern int g_CpuFlags;
 #define CPUF_3DNOW 0x04
 #define CPUF_MMX   0x08
 #define CPUF_SSE3  0x10
+#define CPUF_F16C  0x20
 
 #ifdef _CPU_SSE
 
@@ -560,7 +565,11 @@ ILINE void cryMemcpy(void* Dst, const void* Src, int n, int nFlags)
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION MEMORYACCESS_H_SECTION_CRYPREFETCH
-#include AZ_RESTRICTED_FILE(MemoryAccess_h, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/MemoryAccess_h_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/MemoryAccess_h_provo.inl"
+    #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
 #undef AZ_RESTRICTED_SECTION_IMPLEMENTED

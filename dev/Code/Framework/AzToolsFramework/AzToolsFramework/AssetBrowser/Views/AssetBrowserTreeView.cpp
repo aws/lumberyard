@@ -17,8 +17,11 @@
 #include <AzToolsFramework/AssetBrowser/AssetBrowserBus.h>
 #include <AzToolsFramework/AssetBrowser/AssetBrowserFilterModel.h>
 #include <AzToolsFramework/AssetBrowser/AssetBrowserModel.h>
+#include <AzToolsFramework/AssetBrowser/Entries/SourceAssetBrowserEntry.h>
+#include <AzToolsFramework/AssetBrowser/Entries/ProductAssetBrowserEntry.h>
 #include <AzToolsFramework/Thumbnails/SourceControlThumbnail.h>
 #include <AzToolsFramework/Thumbnails/ThumbnailerBus.h>
+#include <AzToolsFramework/Metrics/LyEditorMetricsBus.h>
 
 #include <QMenu>
 #include <QHeaderView>
@@ -51,16 +54,10 @@ namespace AzToolsFramework
                     {
                         return;
                     }
-                    auto data = index.data(AssetBrowserModel::Roles::EntryRole);
-                    if (data.canConvert<const AssetBrowserEntry*>())
+                    if (auto source = GetEntryFromIndex<SourceAssetBrowserEntry>(index))
                     {
-                        auto entry = qvariant_cast<const AssetBrowserEntry*>(data);
-                        auto source = azrtti_cast<const SourceAssetBrowserEntry*>(entry);
-                        if (source)
-                        {
-                            EditorMetricsEventsBus::Broadcast(&EditorMetricsEventsBusTraits::AssetBrowserAction,
-                                AssetBrowserActionType::SourceExpanded, source->GetSourceUuid(),  source->GetExtension().c_str(), source->GetChildCount());
-                        }
+                        EditorMetricsEventsBus::Broadcast(&EditorMetricsEventsBusTraits::AssetBrowserAction,
+                            AssetBrowserActionType::SourceExpanded, source->GetSourceUuid(),  source->GetExtension().c_str(), source->GetChildCount());
                     }
                 });
             connect(this, &QTreeView::collapsed, this, [&](const QModelIndex& index)
@@ -69,19 +66,15 @@ namespace AzToolsFramework
                     {
                         return;
                     }
-                    auto data = index.data(AssetBrowserModel::Roles::EntryRole);
-                    if (data.canConvert<const AssetBrowserEntry*>())
+                    if (auto source = GetEntryFromIndex<SourceAssetBrowserEntry>(index))
                     {
-                        auto entry = qvariant_cast<const AssetBrowserEntry*>(data);
-                        auto source = azrtti_cast<const SourceAssetBrowserEntry*>(entry);
-                        if (source)
-                        {
-                            EditorMetricsEventsBus::Broadcast(&EditorMetricsEventsBusTraits::AssetBrowserAction,
-                                AssetBrowserActionType::SourceCollapsed, source->GetSourceUuid(), source->GetExtension().c_str(), source->GetChildCount());
-                        }
+                        EditorMetricsEventsBus::Broadcast(&EditorMetricsEventsBusTraits::AssetBrowserAction,
+                            AssetBrowserActionType::SourceCollapsed, source->GetSourceUuid(), source->GetExtension().c_str(), source->GetChildCount());
                     }
                 });
             connect(m_scTimer, &QTimer::timeout, this, &AssetBrowserTreeView::OnUpdateSCThumbnailsList);
+
+            AssetBrowserViewRequestBus::Handler::BusConnect();
         }
 
         AssetBrowserTreeView::~AssetBrowserTreeView() = default;
@@ -126,65 +119,10 @@ namespace AzToolsFramework
             SelectProduct(QModelIndex(), assetID);
         }
 
-        void AssetBrowserTreeView::drawBranches(QPainter* painter, const QRect& rect, const QModelIndex& index) const
+        void AssetBrowserTreeView::ClearFilter()
         {
-            QTreeView::drawBranches(painter, rect, index);
-
-            auto role_data = index.data(AssetBrowserModel::Roles::EntryRole);
-            if (role_data.canConvert<const AssetBrowserEntry*>())
-            {
-                auto entry = qvariant_cast<const AssetBrowserEntry*>(role_data);
-                if (azrtti_istypeof<const ProductAssetBrowserEntry*>(entry))
-                {
-                    painter->save();
-                    painter->setRenderHint(QPainter::RenderHint::Antialiasing, false);
-
-                    // Model index used to walk up the tree to get information about ancestors
-                    // for determining where to draw branch lines and when to draw connecting lines
-                    // between parents and uncles.
-                    QModelIndex ancestorIndex = index.parent();
-
-                    // Compute the depth of the current entity in the hierarchy to determine where to draw the branch lines
-                    int depth = 1;
-                    while (ancestorIndex.isValid())
-                    {
-                        ancestorIndex = ancestorIndex.parent();
-                        ++depth;
-                    }
-
-                    QColor whiteColor(255, 255, 255);
-
-                    QPen pen;
-                    pen.setColor(whiteColor);
-                    pen.setWidthF(2.5f);
-                    painter->setPen(pen);
-
-                    style()->standardPalette().background();
-
-                    QRect entryRect = visualRect(index);
-
-                    int totalIndent = indentation() * (depth - 1) - (indentation() / 2);
-
-                    int x = totalIndent;
-                    int midY = entryRect.y() + (entryRect.height() / 2);
-
-                    // draw horizontal line
-                    painter->drawLine(x, midY, x + (indentation()), midY);
-
-                    // number of children the parent has
-                    int rowCount = m_assetBrowserSortFilterProxyModel->rowCount(index.parent());
-                    // is it last child of the parent
-                    bool isLast = (rowCount == (index.row() + 1));
-
-                    int y1 = entryRect.y();
-                    // if item is last draw vertical line to the center of the item, else to the whole height of the item to connect with item below
-                    int y2 = isLast ? (midY) : (entryRect.y() + entryRect.height());
-                    // draw vertical line
-                    painter->drawLine(x, y1, x, y2);
-
-                    painter->restore();
-                }
-            }
+            emit ClearStringFilter();
+            m_assetBrowserSortFilterProxyModel->FilterUpdatedSlotImmediate();
         }
 
         void AssetBrowserTreeView::startDrag(Qt::DropActions supportedActions)
@@ -250,15 +188,48 @@ namespace AzToolsFramework
             }
         }
 
+        void AssetBrowserTreeView::UpdateAfterFilter(bool hasFilter, bool selectFirstValidEntry)
+        {
+            // Flag our default expansion state so that we expand down to source entries after filtering
+            m_expandToEntriesByDefault = hasFilter;
+            // Then ask our state saver to apply its current snapshot again, falling back on asking us if entries should be expanded or not
+            m_treeStateSaver->ApplySnapshot();
+
+            // If we're filtering for a valid entry, select the first valid entry
+            if (hasFilter && selectFirstValidEntry)
+            {
+                QModelIndex curIndex = m_assetBrowserSortFilterProxyModel->index(0, 0);
+                while (curIndex.isValid())
+                {
+                    if (GetEntryFromIndex<SourceAssetBrowserEntry>(curIndex))
+                    {
+                        setCurrentIndex(curIndex);
+                        break;
+                    }
+
+                    curIndex = indexBelow(curIndex);
+                }
+            }
+        }
+
+        bool AssetBrowserTreeView::IsIndexExpandedByDefault(const QModelIndex& index) const
+        {
+            if (!m_expandToEntriesByDefault)
+            {
+                return false;
+            }
+
+            // Expand until we get to source entries, we don't want to go beyond that
+            return GetEntryFromIndex<SourceAssetBrowserEntry>(index) == nullptr;
+        }
+
         bool AssetBrowserTreeView::SelectProduct(const QModelIndex& idxParent, AZ::Data::AssetId assetID)
         {
             int elements = model()->rowCount(idxParent);
             for (int idx = 0; idx < elements; ++idx)
             {
                 auto rowIdx = model()->index(idx, 0, idxParent);
-                auto modelIdx = m_assetBrowserSortFilterProxyModel->mapToSource(rowIdx);
-                auto assetEntry = static_cast<AssetBrowserEntry*>(modelIdx.internalPointer());
-                auto productEntry = azrtti_cast<ProductAssetBrowserEntry*>(assetEntry);
+                auto productEntry = GetEntryFromIndex<ProductAssetBrowserEntry>(rowIdx);
                 if (productEntry && productEntry->GetAssetId() == assetID)
                 {
                     selectionModel()->clear();

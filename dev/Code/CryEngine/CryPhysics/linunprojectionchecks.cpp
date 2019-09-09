@@ -2486,7 +2486,7 @@ int cyl_cyl_lin_unprojection(unprojection_mode* pmode, const cylinder* pcyl1, in
             {
                 nlen = n.len();
             }
-            else // in case of degenerate n (ño-axis cylinders) mask it to point to center, not to plane
+            else // in case of degenerate n (no-axis cylinders) mask it to point to center, not to plane
             {
                 n = center[1] - center[0];
                 n -= pcyl[icyl]->axis * (n * pcyl[icyl]->axis);

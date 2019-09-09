@@ -20,8 +20,9 @@ def build(bld):
         vs_filter      = 'Tools',
         copyright_org  = 'Amazon-CryTek',
         file_list      = 'shader_cache_gen.waf_files',
-        platforms      = ['win'],
-        configurations = ['debug', 'debug_test', 'profile', 'profile_test'],
+        platforms      = ['win', 'darwin'],
+        client_only         = True,
+        exclude_monolithic  = True,
         use            = ['AzGameFramework'],
-        defines        = ['_LAUNCHER']
+        defines        = ['_LAUNCHER', 'USE_CRY_NEW_AND_DELETE']
     )

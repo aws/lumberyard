@@ -18,19 +18,22 @@ namespace GraphCanvas
     /////////////////////////
     // GraphCanvasTreeModel
     /////////////////////////
-    
+
     void GraphCanvasTreeModel::Reflect(AZ::ReflectContext* reflectContext)
     {
         GraphCanvasMimeEvent::Reflect(reflectContext);
         GraphCanvasMimeContainer::Reflect(reflectContext);
     }
-    
+
     GraphCanvasTreeModel::GraphCanvasTreeModel(GraphCanvasTreeItem* treeRoot, QObject* parent)
         : QAbstractItemModel(parent)
         , m_treeRoot(treeRoot)
     {
+        layoutAboutToBeChanged();
+        m_treeRoot->RegisterModel(this);
+        layoutChanged();
     }
-    
+
     QModelIndex GraphCanvasTreeModel::index(int row, int column, const QModelIndex& parent) const
     {
         if (!hasIndex(row, column, parent))
@@ -53,9 +56,7 @@ namespace GraphCanvas
 
         if (childItem)
         {
-            QModelIndex modelIndex = createIndex(row, column, childItem);
-            childItem->RegisterModel(const_cast<GraphCanvasTreeModel*>(this), modelIndex);
-            return modelIndex;
+            return createIndex(row, column, childItem);
         }
         else
         {
@@ -78,11 +79,9 @@ namespace GraphCanvas
             return QModelIndex();
         }
 
-        QModelIndex modelIndex = createIndex(parentItem->FindRowUnderParent(), index.column(), parentItem);
-        parentItem->RegisterModel(const_cast<GraphCanvasTreeModel*>(this), modelIndex);
-        return modelIndex;
+        return createIndex(parentItem->FindRowUnderParent(), index.column(), parentItem);
     }
-    
+
     int GraphCanvasTreeModel::columnCount(const QModelIndex& parent) const
     {
         if (parent.isValid() && parent.internalPointer() != nullptr)
@@ -97,7 +96,7 @@ namespace GraphCanvas
 
     int GraphCanvasTreeModel::rowCount(const QModelIndex& parent) const
     {
-        GraphCanvasTreeItem* parentItem;
+        GraphCanvasTreeItem* parentItem = nullptr;
 
         if (parent.column() > 0)
         {
@@ -125,6 +124,17 @@ namespace GraphCanvas
 
         GraphCanvasTreeItem* item = static_cast<GraphCanvasTreeItem*>(index.internalPointer());
         return item->Data(index, role);
+    }
+
+    bool GraphCanvasTreeModel::setData(const QModelIndex& index, const QVariant& value, int role)
+    {
+        if (!index.isValid())
+        {
+            return false;
+        }
+
+        GraphCanvasTreeItem* item = static_cast<GraphCanvasTreeItem*>(index.internalPointer());
+        return item->SetData(index, value, role);
     }
 
     Qt::ItemFlags GraphCanvasTreeModel::flags(const QModelIndex& index) const
@@ -160,12 +170,15 @@ namespace GraphCanvas
         GraphCanvasMimeContainer container;
         for (const QModelIndex& index : indexes)
         {
-            GraphCanvasTreeItem* item = static_cast<GraphCanvasTreeItem*>(index.internalPointer());
-            GraphCanvasMimeEvent* mimeEvent = item->CreateMimeEvent();
-
-            if (mimeEvent)
+            if (index.column() == 0)
             {
-                container.m_mimeEvents.push_back(mimeEvent);
+                GraphCanvasTreeItem* item = static_cast<GraphCanvasTreeItem*>(index.internalPointer());
+                GraphCanvasMimeEvent* mimeEvent = item->CreateMimeEvent();
+
+                if (mimeEvent)
+                {
+                    container.m_mimeEvents.push_back(mimeEvent);
+                }
             }
         }
 
@@ -188,14 +201,21 @@ namespace GraphCanvas
 
         return mimeDataPtr;
     }
-    
+
     bool GraphCanvasTreeModel::removeRows(int row, int count, const QModelIndex &parent)
     {
         GraphCanvasTreeItem* parentItem = static_cast<GraphCanvasTreeItem*>(parent.internalPointer());
 
-        if (parentItem == nullptr)
+        if (parent.isValid())
         {
-            return false;
+            if (parentItem == nullptr)
+            {
+                return false;
+            }
+        }
+        else
+        {
+            parentItem = m_treeRoot.get();
         }
 
         if (row > parentItem->m_childItems.size())
@@ -218,7 +238,7 @@ namespace GraphCanvas
 
         beginRemoveRows(parent, row, row + (count - 1));
 
-        for (int i=0; i < count; ++i)
+        for (int i = 0; i < count; ++i)
         {
             GraphCanvasTreeItem* childItem = parentItem->m_childItems[row + i];
             childItem->RemoveParent(parentItem);
@@ -239,5 +259,35 @@ namespace GraphCanvas
     const GraphCanvas::GraphCanvasTreeItem* GraphCanvasTreeModel::GetTreeRoot() const
     {
         return m_treeRoot.get();
+    }
+
+    QModelIndex GraphCanvasTreeModel::CreateIndex(GraphCanvasTreeItem* treeItem, int column)
+    {
+        if (treeItem == m_treeRoot.get())
+        {
+            return QModelIndex();
+        }
+
+        return createIndex(treeItem->FindRowUnderParent(), column, treeItem);
+    }
+
+    QModelIndex GraphCanvasTreeModel::CreateParentIndex(GraphCanvasTreeItem* treeItem, int column)
+    {
+        return parent(CreateIndex(treeItem, column));
+    }
+
+    void GraphCanvasTreeModel::ChildAboutToBeAdded(GraphCanvasTreeItem* treeItem, int position)
+    {
+        if (position < 0)
+        {
+            position = treeItem->GetChildCount() - 1;
+        }
+
+        beginInsertRows(CreateIndex(treeItem), position, position);
+    }
+
+    void GraphCanvasTreeModel::OnChildAdded()
+    {
+        endInsertRows();
     }
 }

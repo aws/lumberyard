@@ -13,7 +13,7 @@ if __package__ == '':
     path = os.path.dirname(os.path.dirname(__file__))
     sys.path.insert(0, path)
 
-import pip  # noqa
+from pip._internal import main as _main  # isort:skip # noqa
 
 if __name__ == '__main__':
-    sys.exit(pip.main())
+    sys.exit(_main())

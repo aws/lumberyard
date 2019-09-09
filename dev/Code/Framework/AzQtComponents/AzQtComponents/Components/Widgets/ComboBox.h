@@ -15,6 +15,7 @@
 
 #include <QPointer>
 #include <QColor>
+#include <QStyle>
 
 class QSettings;
 
@@ -38,6 +39,7 @@ namespace AzQtComponents
             int boxShadowBlurRadius;
             QColor boxShadowColor;
             QColor placeHolderTextColor;
+            QColor framelessTextColor;
         };
 
         /*!
@@ -55,6 +57,10 @@ namespace AzQtComponents
 
         static bool polish(Style* style, QWidget* widget, const Config& config);
         static bool unpolish(Style* style, QWidget* widget, const Config& config);
+        static QSize sizeFromContents(const Style* style, QStyle::ContentsType type, const QStyleOption* option, const QSize& size, const QWidget* widget, const ComboBox::Config& config);
+        static bool drawComboBox(const Style* style, const QStyleOptionComplex* option, QPainter* painter, const QWidget* widget, const Config& config);
+        static bool drawComboBoxLabel(const Style* style, const QStyleOption* option, QPainter* painter, const QWidget* widget, const Config& config);
+        static bool drawIndicatorArrow(const Style* style, const QStyleOption* option, QPainter* painter, const QWidget* widget, const Config& config);
     };
 
 } // namespace AzQtComponents

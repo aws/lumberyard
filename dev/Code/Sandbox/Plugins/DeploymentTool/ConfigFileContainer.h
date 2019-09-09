@@ -12,72 +12,46 @@
 
 #pragma once
 
-#include <AzCore/IO/SystemFile.h>
-#include <AzFramework/StringFunc/StringFunc.h>
 #include <AzCore/Outcome/Outcome.h>
-#include <AzCore/Component/ComponentApplicationBus.h>
+#include <AzCore/std/string/string.h>
+#include <AzCore/std/containers/unordered_map.h>
+
+
+struct DeploymentConfig;
 
 using StringOutcome = AZ::Outcome<void, AZStd::string>;
-using AZ::IO::SystemFile;
 
-/**
-* Shorthand for checking a condition, and failing if false.
-* Works with any function that returns AZ::Outcome<..., AZStd::string>.
-* Unlike assert, it is not removed in release builds.
-* Ensure all strings are passed with c_str(), as they are passed to AZStd::string::format().
-*/
-#define LMBR_ENSURE(cond, ...) if (!(cond)) { return AZ::Failure(AZStd::string::format(__VA_ARGS__)); }
+
+StringOutcome ReadFile(const AZStd::string& file, AZStd::string& fileContents);
+
 
 // general class to read/modify .cfg style config files
 class ConfigFileContainer
 {
 public:
-    ConfigFileContainer(const AZStd::string& localFilePath);
-    ConfigFileContainer(const ConfigFileContainer& rhs) = delete;
-    ConfigFileContainer& operator=(const ConfigFileContainer& rhs) = delete;
-    ConfigFileContainer& operator=(ConfigFileContainer&& rhs) = delete;
+    ConfigFileContainer(const AZStd::string& filePath);
     virtual ~ConfigFileContainer() = default;
 
-    // read file into m_fileContents
-    StringOutcome ReadContents();
+    virtual StringOutcome ApplyConfiguration(const DeploymentConfig& deploymentConfig);
 
-    // write m_fileContents to original file location, overwriting original
-    StringOutcome WriteContents();
+    StringOutcome Load();
+    StringOutcome Reload();
+    StringOutcome Write() const;
 
-    AZStd::string GetString(const char* key) const;
-    bool GetBool(const char* key) const;
+    const AZStd::string& GetString(const AZStd::string& key, bool includeComments = false) const;
+    bool GetBool(const AZStd::string& key, bool includeComments = false) const;
 
-    AZStd::string GetStringIncludingComments(const char* key) const;
-    bool GetBoolIncludingComments(const char* key) const;
+    void SetString(const AZStd::string& key, const AZStd::string& newValue);
+    void SetBool(const AZStd::string& key, bool newValue);
 
-    void SetString(const char* key, const AZStd::string& newValue);
-    void SetBool(const char* key, bool newValue);
 
-    // read file at filePath into contents
-    static StringOutcome ReadFile(const char* filePath, AZStd::string& contents);
+private:
+    AZ_DISABLE_COPY_MOVE(ConfigFileContainer);
 
-    // write contents to filePath, overwriting any existing file
-    static StringOutcome WriteFile(const char* filePath, const AZStd::string& contents);
+    bool IsKeyInFile(const AZStd::string& key) const;
 
-    // check if fileContents contains key
-    static bool HasKey(const AZStd::string& fileContents, const AZStd::string& key);
-
-    // get value at key if there is one
-    static AZStd::string ReadValue(const AZStd::string& fileContents, const AZStd::string& key);
-    static AZStd::string ReadValueIncludingComments(const AZStd::string& fileContents, const AZStd::string& key);
-
-    // insert new key/value pair into fileContents
-    static void InsertKey(AZStd::string& fileContents, const AZStd::string& key, const AZStd::string& value);
-
-    // replace existing value at key in fileContents
-    static void ReplaceValue(AZStd::string& fileContents, const AZStd::string& key, const AZStd::string& newValue);
-
-protected:
-    static const char* s_commentPrefix;
-    static const char* s_regexPrefix;
-    static const char* s_regexPostfix;
 
     AZStd::string m_filePath;
     AZStd::string m_fileContents;
-    mutable AZStd::unordered_map <AZStd::string, AZStd::string> m_configValues;
+    mutable AZStd::unordered_map<AZStd::string, AZStd::string> m_configValues;
 };

@@ -74,14 +74,19 @@
     <Compile Include="test\test_constant.py" />
     <Compile Include="test\test_integration.py" />
     <Compile Include="test\test_integration_cgp.py" />
+    <Compile Include="test\test_integration_custom_resource.py" />
     <Compile Include="test\test_integration_service_api.py" />
+    <Compile Include="test\test_integration_shared_resource.py" />
     <Compile Include="test\test_integration_version_update.py">
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="test\test_integration_security.py" />
+    <Compile Include="test\test_integration_version_update_from_1_1_1_to_latest.py" />
+    <Compile Include="test\test_integration_version_update_from_1_1_2_to_latest.py" />
     <Compile Include="test\test_integraton_cognito_resource_handlers.py" />
     <Compile Include="test\test_integraton_custom_resource_handler_plugins.py" />
     <Compile Include="test\test_project_resource_hooks.py" />
+    <Compile Include="test\test_service_helpers.py" />
     <Compile Include="test\test_unit_common_code_import.py" />
     <Compile Include="test\test_unit_lmbr_aws.py" />
     <Compile Include="test\test_update_hooks.py" />

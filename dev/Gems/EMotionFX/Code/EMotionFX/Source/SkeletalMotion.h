@@ -13,9 +13,12 @@
 #pragma once
 
 // include the required headers
-#include "EMotionFXConfig.h"
-#include "Motion.h"
-#include "MorphTarget.h"
+#include <AzCore/std/parallel/shared_mutex.h>
+#include <EMotionFX/Source/EMotionFXConfig.h>
+#include <EMotionFX/Source/Allocators.h>
+#include <EMotionFX/Source/EventHandler.h>
+#include <EMotionFX/Source/MorphTarget.h>
+#include <EMotionFX/Source/Motion.h>
 
 
 namespace EMotionFX
@@ -35,7 +38,7 @@ namespace EMotionFX
     class EMFX_API SkeletalMotion
         : public Motion
     {
-        AZ_CLASS_ALLOCATOR_DECL
+        AZ_CLASS_ALLOCATOR(SkeletalMotion, MotionAllocator, 0)
 
     public:
         // The skeletal motion type ID, returned by GetType()
@@ -82,7 +85,7 @@ namespace EMotionFX
          * Returns the number of sub-motions inside this skeletal motion.
          * @result The number of sub-motions.
          */
-        MCORE_INLINE uint32 GetNumSubMotions() const                                { return mSubMotions.GetLength(); }
+        MCORE_INLINE uint32 GetNumSubMotions() const                                { return static_cast<uint32>(mSubMotions.size()); }
 
         /**
          * Get a given sub-motion.
@@ -202,10 +205,9 @@ namespace EMotionFX
         /**
          * Output the skeleton of a given actor, when applying the bind pose of this motion onto it.
          * @param actor The actor from which to use the bind pose in case there are some nodes that are not animated in the motion while they still are in the actor.
-         * @param localMatrixBuffer A temp output array used to store the local space matrices in. The array will be resized if needed.
-         * @param outMatrices The array of matrices, which will be automatically resized when needed. The array length will equal the number of nodes in the actor.
+         * @param outPose The output pose containing the bind pose of the motion. Please keep in mind to only use GetLocalSpaceTransform and GetModelSpaceTransform on this pose.
          */
-        void CalcMotionBindPose(Actor* actor, MCore::Array<MCore::Matrix>& localMatrixBuffer, MCore::Array<MCore::Matrix>& outMatrices);
+        void CalcMotionBindPose(Actor* actor, Pose* outPose);
 
         //----------------
         void RemoveMorphSubMotion(uint32 nr, bool delFromMem);
@@ -235,7 +237,7 @@ namespace EMotionFX
          * Get the number of morph sub-motions in this motion.
          * @result The number of morph sub-motions.
          */
-        MCORE_INLINE uint32 GetNumMorphSubMotions() const                                   { return mMorphSubMotions.GetLength(); }
+        MCORE_INLINE uint32 GetNumMorphSubMotions() const                                   { return static_cast<uint32>(mMorphSubMotions.size()); }
 
         /**
          * Add a sub-motion to this motion.
@@ -275,9 +277,46 @@ namespace EMotionFX
         void BasicRetarget(const MotionInstance* motionInstance, const SkeletalSubMotion* subMotion, uint32 nodeIndex, Transform& inOutTransform);
 
     protected:
-        MCore::Array<SkeletalSubMotion*>    mSubMotions;            /**< The sub-motions. */
-        MCore::Array<MorphSubMotion*>       mMorphSubMotions;       /**< The morph sub-motions, that contain the keyframing data. */
-        bool                                mDoesInfluencePhonemes; /**< Does this motion influence any phonemes? */
+        class SubMotionIndexCache
+            : public EventHandler
+        {
+            friend class EventHandler;
+
+        public:
+            AZ_CLASS_ALLOCATOR(SubMotionIndexCache, MotionAllocator, 0)
+
+            SubMotionIndexCache() = default;
+            ~SubMotionIndexCache() = default;
+
+            void CreateMotionLinks(Actor* actor, SkeletalMotion& skeletalMotion, MotionInstance* instance);
+
+        private:
+            const AZStd::vector<EventTypes> GetHandledEventTypes() const override
+            {
+                return {
+                           EVENT_TYPE_ON_DELETE_ACTOR
+                };
+            }
+            void OnDeleteActor(Actor* actor) override;
+
+            using IndexVector = AZStd::vector<uint32, STLAllocator<MotionAllocator> >;  // the vector index is the nodeIndex, the value is the submotion index
+
+            static void RecursiveAddIndices(const IndexVector& indicesVector, Actor* actor, uint32 nodeIndex, MotionInstance* instance);
+
+            AZStd::unordered_map<Actor*,
+                IndexVector,
+                AZStd::hash<Actor*>,
+                AZStd::equal_to<Actor*>,
+                STLAllocator<MotionAllocator> > m_subMotionIndexByActorNode;
+
+            AZStd::shared_mutex m_mutex;
+        };
+
+        AZStd::vector<SkeletalSubMotion*, STLAllocator<MotionAllocator> >    mSubMotions;            /**< The sub-motions. */
+        AZStd::vector<MorphSubMotion*, STLAllocator<MotionAllocator> >       mMorphSubMotions;       /**< The morph sub-motions, that contain the keyframing data. */
+        SubMotionIndexCache                  m_subMotionIndexCache;  /**< A cache of sub-motion index by actor's node. The vector will be the same size as the actor's node count. */
+        bool                                 mDoesInfluencePhonemes; /**< Does this motion influence any phonemes? */
+
 
         /**
          * Constructor.
@@ -289,15 +328,6 @@ namespace EMotionFX
          * Destructor.
          */
         ~SkeletalMotion();
-
-        /**
-         * Recursively create motion links down the hierarchy, starting from a given node.
-         * This is used to handle the start node inside the motion instance.
-         * @param actor The actor to work on.
-         * @param node The start node.
-         * @param instance The motion instance to create the links for.
-         */
-        void RecursiveCreateMotionLinkForNode(Actor* actor, Node* node, MotionInstance* instance);
 
         void MirrorPose(Pose* inOutPose, MotionInstance* instance);
     };

@@ -25,9 +25,22 @@ DEFAULT_REGION='us-east-1'
 
 DEFAULT_PREFIXES = [ 'cctest' ]
 
+
+def global_resource(cleanup_function):
+    def wrapper(cleaner):
+        if cleaner.delete_global_resources:
+            cleanup_function(cleaner)
+        else:
+            print("Skipping deletion of global {} (use --delete-global-resources or exclude --region to delete)".
+                format(cleanup_function.__name__[len("_delete_"):]))
+    
+    return wrapper
+
+        
 class Cleaner:
 
-    def __init__(self, session):
+    def __init__(self, session, delete_global_resources):
+        self.delete_global_resources = delete_global_resources
         self.cf = session.client('cloudformation')
         self.s3 = session.client('s3',config=Config(signature_version='s3v4'))
         self.iam = session.client('iam')
@@ -38,15 +51,14 @@ class Cleaner:
         self.dynamodb = session.client('dynamodb')
         self.lambda_client = session.client('lambda')        
         self.sqs = session.client('sqs')                
-        self.glue = session.client('glue')        
-        
+        self.glue = session.client('glue')
         self.iot_client = session.client('iot')
+        self.swf = session.client('swf')
         
     def cleanup(self, prefixes, exceptions):
         self.__prefixes = prefixes
         self.__exceptions = exceptions
         self._delete_stacks()
-        self._delete_buckets()
         self._delete_identity_pools()
         self._delete_user_pools()        
         self._delete_dynamodb_tables()
@@ -56,6 +68,8 @@ class Cleaner:
         self._delete_sqs_queues()
         self._delete_glue_crawlers()
         self._delete_glue_databases()
+        self._delete_buckets()
+        self._delete_swf_resources()
 
         #users/roles/policies need to be deleted last
         self._delete_users()
@@ -232,6 +246,7 @@ class Cleaner:
                         print '      ERROR:', e
                         break               
 
+    @global_resource
     def _delete_buckets(self):
 
         print '\n\nlooking for buckets with names starting with one of', self.__describe_prefixes()
@@ -501,6 +516,7 @@ class Cleaner:
             else:
                 res = self.cognito_idp.list_user_pools(MaxResults=60, NextToken=next_token)
 
+    @global_resource
     def _delete_roles(self):
 
         print '\n\nlooking for roles with names or paths starting with one of', self.__describe_prefixes()
@@ -531,7 +547,7 @@ class Cleaner:
             else:
                 res = self.iam.list_roles(Marker=marker)
 
-
+    @global_resource
     def _delete_users(self):
 
         print '\n\nlooking for users with names or paths starting with one of', self.__describe_prefixes()
@@ -562,7 +578,7 @@ class Cleaner:
             else:
                 res = self.iam.list_users(Marker=marker)
 
-
+    @global_resource
     def _delete_policies(self):
 
         print '\n\nlooking for policies with names or paths starting with one of', self.__describe_prefixes()
@@ -730,6 +746,27 @@ class Cleaner:
                 break
             else:
                 res = self.iot_client.list_policies(pageSize=100, marker=next_marker)
+
+    def _delete_swf_resources(self):
+
+        print '\n\nlooking for SWF resources with names starting with one of', self.__describe_prefixes()
+
+        res = self.swf.list_domains(registrationStatus='REGISTERED', maximumPageSize=100)
+        while True:
+            for domain in res['domainInfos']:          
+                name = domain['name']
+                if not self._has_prefix(name):
+                    continue    
+                try:
+                    print '  deleting SWF domain {}'.format(name)
+                    self.swf.deprecate_domain(name=name)
+                except ClientError as e:
+                    print '    ERROR', e.message
+            next_marker = res.get('nextPageToken', None)
+            if next_marker is None:
+                break
+            else:
+                res = self.swf.list_domains(maximumPageSize=100, nextPageToken=next_marker)
                 
 if __name__ == '__main__':
     def __get_user_settings_path():
@@ -780,7 +817,8 @@ if __name__ == '__main__':
     parser.add_argument('--profile', default='default', help='The AWS profile to use. Defaults to the default AWS profile.')
     parser.add_argument('--aws-access-key', required=False, help='The AWS access key to use.')
     parser.add_argument('--aws-secret-key', required=False, help='The AWS secret key to use.')
-    parser.add_argument('--region', default=DEFAULT_REGION, help='The AWS region to use. Defaults to {}.'.format(DEFAULT_REGION))
+    parser.add_argument('--region', default=None, help='The AWS region to use. Defaults to {}.'.format(DEFAULT_REGION))
+    parser.add_argument('--delete-global-resources', action='store_true', default=False, help='If --region specified, use to delete global resources such as IAM roles and S3 buckets. Ignored if --region is unspecified.')
 
     args = parser.parse_args()
 
@@ -791,13 +829,25 @@ if __name__ == '__main__':
     exceptions = []
     for exception in args.exceptions:
         exceptions.append(exception.lower())
+        
+    use_region = args.region if args.region else DEFAULT_REGION
 
     if args.aws_access_key and args.aws_secret_key:
-        session = boto3.Session(aws_access_key_id=args.aws_access_key, aws_secret_access_key=args.aws_secret_key, region_name=args.region)
+        session = boto3.Session(aws_access_key_id=args.aws_access_key, aws_secret_access_key=args.aws_secret_key, region_name=use_region)
     elif os.environ.get('NO_TEST_PROFILE', None):
-        session = boto3.Session(region_name=args.region)
+        session = boto3.Session(region_name=use_region)
     else:
         args.profile = __get_default_profile(args)
-        session = boto3.Session(profile_name=args.profile, region_name=args.region)    
-    cleaner = Cleaner(session)
+        session = boto3.Session(profile_name=args.profile, region_name=use_region)
+        
+    delete_global_resources = True
+    if args.region and not args.delete_global_resources:
+        print("WARNING: Specifying a --region skips deletion of global resources like IAM roles and S3 buckets. Add --delete-global-resources or do not specify a region to include these resources in deletion.")
+        delete_global_resources = False
+    elif args.delete_global_resources and not args.region:
+        print("WARNING: --delete-global-resources is ignored without specifying a --region. (Global resources are always included for deletion if --region is left unspecified.)")
+    elif not args.region:
+        print("WARNING: No --region was specified.  The cleanup will default to the region '{}' and delete any matching global resources.".format(DEFAULT_REGION))
+        
+    cleaner = Cleaner(session, delete_global_resources)
     cleaner.cleanup(prefixes, exceptions)

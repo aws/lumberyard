@@ -119,7 +119,7 @@ void FileContentModel::OnFileChanged(const QString& path)
     auto modifiedTime = fileInfo.lastModified();
 
     // Filter out multiple notifications in rapid succession generated for some file operations.
-    if (ContentIndex().data(FileTimestampRole).toDateTime().secsTo(modifiedTime) >= 1)
+    if (ContentIndex().data(FileTimestampRole).toDateTime().msecsTo(modifiedTime) >= 1)
     {
         setData(ContentIndex(), modifiedTime, FileTimestampRole);
         Reload();

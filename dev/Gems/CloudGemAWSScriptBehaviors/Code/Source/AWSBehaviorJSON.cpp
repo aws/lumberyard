@@ -15,18 +15,14 @@
 
 #include "AWSBehaviorJSON.h"
 
+#include <AzCore/JSON/prettywriter.h>
+#include <AzCore/JSON/stringbuffer.h>
+
 namespace CloudGemAWSScriptBehaviors
 {
-    using JsonValue = Aws::Utils::Json::JsonValue;
-
     AWSBehaviorJSON::AWSBehaviorJSON()
-        : m_topLevelObject()
-        , m_currentValue()
-        , m_prevValues()
-        , m_currentArray()
-        , m_currentArrayIndex(0)
     {
-        m_currentValue = m_topLevelObject;
+
     }
 
     void AWSBehaviorJSON::ReflectSerialization(AZ::SerializeContext* serializeContext)
@@ -67,36 +63,46 @@ namespace CloudGemAWSScriptBehaviors
 
     AZStd::string AWSBehaviorJSON::ToString()
     {
-        return  m_topLevelObject.WriteReadable().c_str();
+        rapidjson::StringBuffer buffer;
+        rapidjson::PrettyWriter<rapidjson::StringBuffer> writer(buffer);
+        m_topLevelObject.Accept(writer);
+        return buffer.GetString();
     }
 
     bool AWSBehaviorJSON::FromString(AZStd::string jsonStr)
     {
-        m_topLevelObject = JsonValue(Aws::String(jsonStr.c_str()));
-        if (!m_topLevelObject.WasParseSuccessful())
+        m_currentValue = nullptr;
+        m_topLevelObject.Parse<rapidjson::kParseStopWhenDoneFlag>(jsonStr.c_str());
+
+        if (m_topLevelObject.HasParseError())
         {
-            auto errorMessage = m_topLevelObject.GetErrorMessage();
-            AZ_Printf("AWSBehaviorJSON", "Error parsing string: %s", errorMessage.c_str());
+            AZ_Printf("AWSBehaviorJSON", "Error parsing string: %d", m_topLevelObject.GetParseError());
             return false;
         }
 
-        m_currentValue = m_topLevelObject;
         return true;
     }
 
     bool AWSBehaviorJSON::EnterObject(const AZStd::string& key)
     {
-        if (m_currentValue.IsObject() && m_currentValue.ValueExists(key.c_str()))
+        if (m_currentValue)
         {
-            m_prevValues.push(m_currentValue);
-            m_currentValue = m_currentValue.GetObject(key.c_str());
+            if (m_currentValue->HasMember(key.c_str()))
+            {
+                m_prevValues.push(m_currentValue);
+                m_currentValue = &m_currentValue->FindMember(key.c_str())->value;
+                return true;
+            }
+        }
+        else if (m_topLevelObject.HasMember(key.c_str()))
+        {
+            m_currentValue = &m_topLevelObject.FindMember(key.c_str())->value;
             return true;
         }
-        else
-        {
-            AZ_Printf("AWSBehaviorJSON", "Unable to find object at key %s", key.c_str());
-            return false;
-        }
+
+        AZ_Printf("AWSBehaviorJSON", "Unable to find object at key %s", key.c_str());
+        return false;
+
     }
 
     void AWSBehaviorJSON::ExitCurrentObject()
@@ -114,17 +120,21 @@ namespace CloudGemAWSScriptBehaviors
 
     size_t AWSBehaviorJSON::EnterArray()
     {
-        if (m_currentValue.IsListType())
+        if (m_currentValue && m_currentValue->IsArray())
         {
-            m_currentArray = m_currentValue.AsArray();
+            m_currentArray.clear();
+            for (auto valueIter = m_currentValue->Begin(); valueIter != m_currentValue->End(); ++valueIter)
+            {
+                m_currentArray.push_back(valueIter);
+            }
             m_currentArrayIndex = 0;
-            if (m_currentArray.GetLength() == 0)
+            if (m_currentArray.size() == 0)
             {
                 return 0;
             }
             m_prevValues.push(m_currentValue);
-            m_currentValue = m_currentArray.GetItem(m_currentArrayIndex);
-            return m_currentArray.GetLength();
+            m_currentValue = m_currentArray[m_currentArrayIndex];
+            return m_currentArray.size();
         }
         else
         {
@@ -142,12 +152,12 @@ namespace CloudGemAWSScriptBehaviors
 
     bool AWSBehaviorJSON::NextArrayItem()
     {
-        if (m_currentArray.GetLength() > 0)
+        if (m_currentArray.size() > 0)
         {
             ++m_currentArrayIndex;
-            if (m_currentArrayIndex < m_currentArray.GetLength())
+            if (m_currentArrayIndex < m_currentArray.size())
             {
-                m_currentValue = m_currentArray.GetItem(m_currentArrayIndex);
+                m_currentValue = m_currentArray[m_currentArrayIndex];
                 return true;
             }
             else
@@ -160,39 +170,43 @@ namespace CloudGemAWSScriptBehaviors
 
     bool AWSBehaviorJSON::IsObject()
     {
-        return m_currentValue.IsObject();
+        if (m_currentValue)
+        {
+            return m_currentValue->IsObject();
+        }
+        return m_topLevelObject.IsObject();
     }
 
     bool AWSBehaviorJSON::IsArray()
     {
-        return m_currentValue.IsListType();
+        return m_currentValue && m_currentValue->IsArray();
     }
 
     bool AWSBehaviorJSON::IsDouble()
     {
-        return m_currentValue.IsFloatingPointType();
+        return m_currentValue && m_currentValue->IsDouble();
     }
 
     bool AWSBehaviorJSON::IsInteger()
     {
-        return m_currentValue.IsIntegerType();
+        return m_currentValue && m_currentValue->IsInt();
     }
 
     bool AWSBehaviorJSON::IsString()
     {
-        return m_currentValue.IsString();
+        return m_currentValue && m_currentValue->IsString();
     }
 
     bool AWSBehaviorJSON::IsBoolean()
     {
-        return m_currentValue.IsBool();
+        return m_currentValue && m_currentValue->IsBool();
     }
 
     double AWSBehaviorJSON::GetDouble()
     {
-        if(m_currentValue.IsFloatingPointType())
+        if(m_currentValue && m_currentValue->IsDouble())
         { 
-            return m_currentValue.AsDouble();
+            return m_currentValue->GetDouble();
         }
         else
         {
@@ -203,9 +217,9 @@ namespace CloudGemAWSScriptBehaviors
 
     int AWSBehaviorJSON::GetInteger()
     {
-        if (m_currentValue.IsIntegerType())
+        if (m_currentValue && m_currentValue->IsInt())
         {
-            return m_currentValue.AsInteger();
+            return m_currentValue->GetInt();
         }
         else
         {
@@ -216,9 +230,9 @@ namespace CloudGemAWSScriptBehaviors
     
     AZStd::string AWSBehaviorJSON::GetString()
     {
-        if (m_currentValue.IsString())
+        if (m_currentValue && m_currentValue->IsString())
         {
-            return AZStd::string(m_currentValue.AsString().c_str());
+            return AZStd::string(m_currentValue->GetString());
         }
         else
         {
@@ -229,9 +243,9 @@ namespace CloudGemAWSScriptBehaviors
 
     bool AWSBehaviorJSON::GetBoolean()
     {
-        if (m_currentValue.IsBool())
+        if (m_currentValue && m_currentValue->IsBool())
         {
-            return m_currentValue.AsBool();
+            return m_currentValue->GetBool();
         }
         else
         {

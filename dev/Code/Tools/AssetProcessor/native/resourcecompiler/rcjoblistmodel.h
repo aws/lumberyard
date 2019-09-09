@@ -26,6 +26,7 @@ namespace AssetProcessor
     class QueueElementID;
 }
 
+class RCcontrollerUnitTests;
 
 namespace AssetProcessor
 {
@@ -35,6 +36,7 @@ namespace AssetProcessor
     class RCJobListModel
         : public QAbstractItemModel
     {
+        friend class ::RCcontrollerUnitTests;
         Q_OBJECT
 
     public:

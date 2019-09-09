@@ -88,7 +88,7 @@ public:
     virtual void GetValue(float time, Vec4& value, bool applyMultiplier = false);
     virtual void GetValue(float time, Quat& value);
     virtual void GetValue(float time, bool& value) { assert(0); };
-    virtual void GetValue(float time, AZ::Data::AssetBlends<AZ::Data::AssetData>& value) { assert(0); }
+    virtual void GetValue(float time, Maestro::AssetBlends<AZ::Data::AssetData>& value) { assert(0); }
 
     //////////////////////////////////////////////////////////////////////////
     // Set track value at specified time.
@@ -99,7 +99,7 @@ public:
     void SetValue(float time, const Vec4& value, bool bDefault = false, bool applyMultiplier = false);
     virtual void SetValue(float time, const Quat& value, bool bDefault = false);
     virtual void SetValue(float time, const bool& value, bool bDefault = false) { assert(0); };
-    virtual void SetValue(float time, const AZ::Data::AssetBlends<AZ::Data::AssetData>& value, bool bDefault = false) { assert(0); }
+    virtual void SetValue(float time, const Maestro::AssetBlends<AZ::Data::AssetData>& value, bool bDefault = false) { assert(0); }
 
     virtual void OffsetKeyPosition(const Vec3& value);
     virtual void UpdateKeyDataAfterParentChanged(const AZ::Transform& oldParentWorldTM, const AZ::Transform& newParentWorldTM);
@@ -154,6 +154,9 @@ public:
     void SetExpanded(bool expanded) override;
     bool GetExpanded() const override;
 
+    unsigned int GetId() const override;
+    void SetId(unsigned int id) override;
+
     static void Reflect(AZ::SerializeContext* serializeContext);
 
 protected:
@@ -174,6 +177,7 @@ protected:
     int GetSubTrackIndex(int& key) const;
     IAnimNode* m_node;
     bool m_expanded;
+    unsigned int m_id = 0;
 };
 
 //////////////////////////////////////////////////////////////////////////

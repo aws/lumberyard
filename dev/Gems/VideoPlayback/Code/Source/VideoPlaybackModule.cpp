@@ -32,11 +32,13 @@ namespace AZ
             VideoPlaybackModule()
                 : CryHooksModule()
             {
+#if AZ_VIDEOPLAYBACK_GEM_TRAIT_ENABLE_DECODER
                 // Push results of [MyComponent]::CreateDescriptor() into m_descriptors here.
                 m_descriptors.insert(m_descriptors.end(), {
                     VideoPlaybackSystemComponent::CreateDescriptor(),
                     VideoPlaybackGameComponent::CreateDescriptor(),
                 });
+#endif
             }
 
             /**

@@ -10,7 +10,7 @@
 # Original file Copyright Crytek GMBH or its affiliates, used under license.
 #
 pushd $(dirname "$0")
-./python.sh -m pip $*
+./python.sh -m pip "$@"
 
 popd
 exit 0

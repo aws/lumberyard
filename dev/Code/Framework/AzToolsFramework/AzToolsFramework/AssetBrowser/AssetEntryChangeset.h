@@ -14,38 +14,45 @@
 #include <AzCore/std/smart_ptr/shared_ptr.h>
 #include <AzCore/std/containers/vector.h>
 #include <AzCore/Asset/AssetCommon.h>
+#include <AzToolsFramework/AssetBrowser/Entries/RootAssetBrowserEntry.h>
 
 namespace AzToolsFramework
 {
     namespace AssetDatabase
     {
         class AssetDatabaseConnection;
+        class FileDatabaseEntry;
+        class ScanFolderDatabaseEntry;
+        class SourceDatabaseEntry;
         class CombinedDatabaseEntry;
+        class ProductDatabaseEntry;
     }
-
-    using namespace AssetDatabase;
 
     namespace AssetBrowser
     {
-        class RootAssetBrowserEntry;
+        class AssetEntryChange;
 
         class AssetEntryChangeset
         {
         public:
             AssetEntryChangeset(
-                AZStd::shared_ptr<AssetDatabaseConnection> databaseConnection, 
+                AZStd::shared_ptr<AssetDatabase::AssetDatabaseConnection> databaseConnection,
                 AZStd::shared_ptr<RootAssetBrowserEntry> rootEntry);
             ~AssetEntryChangeset();
 
             void PopulateEntries();
-            void AddEntry(const AZ::Data::AssetId& assetId);
-            void RemoveEntry(const AZ::Data::AssetId& assetId);
-            void RemoveSource(const AZ::Uuid& sourceUUID);
             void Update();
             void Synchronize();
 
+            void AddFile(const AZ::s64& fileId);
+            void RemoveFile(const AZ::s64& fileId);
+            void AddSource(const AZ::Uuid& sourceUuid);
+            void RemoveSource(const AZ::Uuid& sourceUuid);
+            void AddProduct(const AZ::Data::AssetId& assetId);
+            void RemoveProduct(const AZ::Data::AssetId& assetId);
+
         private:
-            AZStd::shared_ptr<AssetDatabaseConnection> m_databaseConnection;
+            AZStd::shared_ptr<AssetDatabase::AssetDatabaseConnection> m_databaseConnection;
 
             AZStd::shared_ptr<RootAssetBrowserEntry> m_rootEntry;
 
@@ -54,19 +61,18 @@ namespace AzToolsFramework
 
             AZStd::atomic_bool m_fullUpdate;
             bool m_updated;
-            
-            AZStd::vector<AZ::Data::AssetId> m_toAdd;
-            AZStd::vector<AZ::Data::AssetId> m_toAddAccumulator;
-            AZStd::vector<AZ::Data::AssetId> m_toRemove;
-            AZStd::vector<AZ::Data::AssetId> m_toUpdate;
-            AZStd::vector<AZ::Uuid> m_sourcesToRemove;
 
-            AZStd::vector<CombinedDatabaseEntry> m_entriesToAdd;
+            AZStd::vector<AssetEntryChange*> m_changes;
+
+            AZStd::vector<AZ::s64> m_fileIdsToAdd;
+            AZStd::vector<AZ::Uuid> m_sourceUuidsToAdd;
+            AZStd::vector<AZ::Data::AssetId> m_productAssetIdsToAdd;
 
             AZStd::string m_relativePath;
 
             void QueryEntireDatabase();
-            void QueryAsset(AZ::Data::AssetId assetId);
+            void QueryChangeset();
+            
         };
     } // namespace AssetBrowser
 } // namespace AzToolsFramework

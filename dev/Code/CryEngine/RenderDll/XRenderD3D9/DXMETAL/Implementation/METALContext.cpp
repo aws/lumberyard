@@ -881,7 +881,7 @@ encoding: NSASCIIStringEncoding]
         DXMETAL_TODO("Tune this parameter per project.")
 #if defined(AZ_PLATFORM_APPLE_OSX)
         , m_RingBufferShared(pDevice->GetMetalDevice(), 10 * 1024 * 1024, 256, MEM_SHARED_RINGBUFFER)
-        , m_RingBufferManaged(pDevice->GetMetalDevice(), 10 * 1024 * 1024, 256, MEM_MANAGED_RINGBUFFER)
+        , m_RingBufferManaged(pDevice->GetMetalDevice(), 50 * 1024 * 1024, 256, MEM_MANAGED_RINGBUFFER)
 #else
         , m_RingBufferShared(pDevice->GetMetalDevice(), 16 * 1024 * 1024, 256, MEM_SHARED_RINGBUFFER)
 #endif
@@ -1603,12 +1603,17 @@ withRange: range];
             }
             
             //setDepthClipMode  not supported on ios.
-#if defined(AZ_PLATFORM_APPLE_OSX)
+#if defined(AZ_COMPILER_CLANG) && AZ_COMPILER_CLANG >= 9    //@available was added in Xcode 9
+#if defined(__MAC_10_11) || defined(__IPHONE_11_0)
             if (RenderCapabilities::SupportsDepthClipping() && kCache.m_RateriserDirty & SRasterizerCache::RS_DEPTH_CLIP_MODE_DIRTY)
             {
                 kCache.m_RateriserDirty &= ~SRasterizerCache::RS_DEPTH_CLIP_MODE_DIRTY;
-                [m_CurrentEncoder setDepthClipMode: kCache.depthClipMode];
+                if(@available(macOS 10.11, iOS 11.0, *))
+                {
+                    [m_CurrentEncoder setDepthClipMode: kCache.depthClipMode];
+                }
             }
+#endif
 #endif
         }
 

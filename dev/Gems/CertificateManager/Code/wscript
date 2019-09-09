@@ -25,6 +25,5 @@ def build(bld):
                                        'AWS_CPP_SDK_CORE'],
         win_lib                     = ['gdi32', 'Winhttp', 'Ws2_32', 'mswsock'],
 
-       
-       
+        restricted_script           = 'update_restricted_parameters',
     )

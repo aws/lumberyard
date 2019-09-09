@@ -15,9 +15,16 @@
 #include "../StandardPluginsConfig.h"
 #include <MysticQt/Source/ColorLabel.h>
 #include <QDialog>
+#include <EMotionStudio/EMStudioSDK/Source/MotionEventPresetManager.h>
+#include <EMotionStudio/Plugins/StandardPlugins/Source/MotionEvents/EventDataEditor.h>
 
 QT_FORWARD_DECLARE_CLASS(QLineEdit)
 
+
+namespace EMotionFX
+{
+    class ObjectEditor;
+}
 
 namespace EMStudio
 {
@@ -25,26 +32,22 @@ namespace EMStudio
         : public QDialog
     {
         Q_OBJECT
-        MCORE_MEMORYOBJECTCATEGORY(MotionEventPresetCreateDialog, MCore::MCORE_DEFAULT_ALIGNMENT, MEMCATEGORY_STANDARDPLUGINS);
 
     public:
-        MotionEventPresetCreateDialog(QWidget* parent, const char* eventType = "", const char* parameter = "", const char* mirrorType = "", uint32 color = 0xffff00ff);
-        ~MotionEventPresetCreateDialog();
+        AZ_TYPE_INFO(EMStudio::MotionEventPresetCreateDialog, "{644087A8-D442-4A48-AF04-8DD34D9DF4D7}");
 
-        AZStd::string GetEventType() const;
-        AZStd::string GetParameter() const;
-        AZStd::string GetMirrorType() const;
-        uint32 GetColor() const;
+        MotionEventPresetCreateDialog(const MotionEventPreset& preset = MotionEventPreset(), QWidget* parent = nullptr);
+
+        MotionEventPreset& GetPreset();
 
     private slots:
         void OnCreateButton();
 
     private:
-        QLineEdit*              mEventType;
-        QLineEdit*              mParameter;
-        QLineEdit*              mMirrorType;
-        MysticQt::ColorLabel*   mColorLabel;
+        void Init();
 
-        void Init(const char* eventType, const char* parameter, const char* mirrorType, uint32 color);
+        MotionEventPreset m_preset;
+        EMotionFX::ObjectEditor* m_editor;
+        EMStudio::EventDataEditor m_eventDataEditor;
     };
 } // namespace EMStudio

@@ -738,7 +738,7 @@ public:
     void StoreCallstack(const char* tag, void** callstack, uint32 callstackLength);
 
     template <typename T, typename A>
-    static const char* GetDataGroupsCVarHelpString(const std::vector<T*, A>& dgs)
+    const char* GetDataGroupsCVarHelpString(const std::vector<T*, A>& dgs) const
     {
         const char* helpStr = "Which data groups are recorded each frame: flags+ enables, flags- disables\n"
             " 0 = none\n"
@@ -751,19 +751,18 @@ public:
             sizeNeeded += 7 + strlen(dgs[i]->GetName());
         }
 
-        static string helpString;
-        helpString.reserve(sizeNeeded);
-        helpString.append(helpStr);
+        m_helpString.reserve(sizeNeeded);
+        m_helpString.append(helpStr);
 
         string tmp;
         for (uint32 i = 0; i < dgs.size(); i++)
         {
             const T* dg = dgs[i];
             tmp.Format(" %c+ = %s\n", dg->GetId(), dg->GetName());
-            helpString += tmp;
+            m_helpString += tmp;
         }
 
-        return helpString.c_str();
+        return m_helpString.c_str();
     }
 
     static void ConsoleAddUserMarker(IConsoleCmdArgs* pParams);
@@ -809,6 +808,7 @@ public:
     ICVar* m_pStatoscopeAllowFPSOverrideCVar;
 
     string m_currentMap;
+    mutable string m_helpString;
 
     float m_lastDumpTime;
     float m_screenshotLastCaptureTime;

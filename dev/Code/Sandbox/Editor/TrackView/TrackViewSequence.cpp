@@ -21,7 +21,6 @@
 #include "TrackViewSequence.h"
 #include "TrackViewSequenceManager.h"
 #include "TrackViewAnimNode.h"
-#include "TrackViewUndo.h"
 #include "TrackViewTrack.h"
 #include "TrackViewNodeFactories.h"
 #include "TrackViewSequence.h"
@@ -58,7 +57,7 @@ CTrackViewSequence::~CTrackViewSequence()
     GetIEditor()->GetUndoManager()->RemoveListener(this);       // For safety. Should be done by OnRemoveSequence callback
 
     // For safety, disconnect to any buses we may have been listening on for record mode
-    if (m_pAnimSequence && m_pAnimSequence->GetSequenceType() == SequenceType::SequenceComponent)
+    if (m_pAnimSequence)
     {
         // disconnect from all EBuses for notification of changes for all AZ::Entities in our sequence
         for (int i = m_pAnimSequence->GetNodeCount(); --i >= 0;)
@@ -81,13 +80,13 @@ void CTrackViewSequence::Load()
     const int nodeCount = m_pAnimSequence->GetNodeCount();
     for (int i = 0; i < nodeCount; ++i)
     {
-        IAnimNode* pNode = m_pAnimSequence->GetNode(i);
+        IAnimNode* node = m_pAnimSequence->GetNode(i);
 
         // Only add top level nodes to sequence
-        if (!pNode->GetParent())
+        if (!node->GetParent())
         {
             CTrackViewAnimNodeFactory animNodeFactory;
-            CTrackViewAnimNode* pNewTVAnimNode = animNodeFactory.BuildAnimNode(m_pAnimSequence.get(), pNode, this);
+            CTrackViewAnimNode* pNewTVAnimNode = animNodeFactory.BuildAnimNode(m_pAnimSequence.get(), node, this);
             m_childNodes.push_back(std::unique_ptr<CTrackViewNode>(pNewTVAnimNode));
         }
     }
@@ -139,24 +138,11 @@ CObjectLayer* CTrackViewSequence::GetSequenceObjectLayer() const
 {
     CObjectLayer* retLayer = nullptr;
 
-    SequenceType sequenceType = m_pAnimSequence->GetSequenceType();
-    switch (sequenceType)
+    CEntityObject* entityObject = nullptr;
+    AzToolsFramework::ComponentEntityEditorRequestBus::EventResult(entityObject, m_pAnimSequence->GetSequenceEntityId(), &AzToolsFramework::ComponentEntityEditorRequestBus::Events::GetSandboxObject);
+    if (entityObject)
     {
-        case SequenceType::Legacy:
-        {
-            retLayer = GetSequenceObject()->GetLayer();
-            break;
-        }
-        case SequenceType::SequenceComponent:
-        {
-            CEntityObject* entityObject = nullptr;
-            AzToolsFramework::ComponentEntityEditorRequestBus::EventResult(entityObject, m_pAnimSequence->GetSequenceEntityId(), &AzToolsFramework::ComponentEntityEditorRequestBus::Events::GetSandboxObject);
-            if (entityObject)
-            {
-                retLayer = entityObject->GetLayer();
-            }
-            break;
-        }
+        retLayer = entityObject->GetLayer();
     }
 
     return retLayer;
@@ -175,6 +161,64 @@ void CTrackViewSequence::OnEntityComponentPropertyChanged(AZ::ComponentId change
         {
             // we have a component animNode for this changedComponentId. Process the component change
             RecordTrackChangesForNode(static_cast<CTrackViewAnimNode*>(animNode->GetNodeOwner()));
+        }
+    }
+}
+
+//////////////////////////////////////////////////////////////////////////
+CTrackViewTrack* CTrackViewSequence::FindTrackById(unsigned int trackId)
+{
+    CTrackViewTrack* result = nullptr;
+    CTrackViewTrackBundle allTracks = GetAllTracks();
+    
+    int allTracksCount = allTracks.GetCount();
+    for (int trackIndex = 0; trackIndex < allTracksCount; trackIndex++)
+    {
+        CTrackViewTrack* track = allTracks.GetTrack(trackIndex);
+        AZ_Assert(track, "Expected valid track.");
+        if (track->GetId() == trackId)
+        {
+            result = track;
+            break;
+        }
+    }
+
+    return result;
+}
+
+//////////////////////////////////////////////////////////////////////////
+std::vector<bool> CTrackViewSequence::SaveKeyStates() const
+{
+    // const hack because GetAllKeys();
+    CTrackViewSequence* nonConstSequence = const_cast<CTrackViewSequence*>(this);
+    CTrackViewKeyBundle keys = nonConstSequence->GetAllKeys();
+    const unsigned int numkeys = keys.GetKeyCount();
+
+    std::vector<bool> selectionState;
+    selectionState.reserve(numkeys);
+
+    for (unsigned int i = 0; i < numkeys; ++i)
+    {
+        const CTrackViewKeyHandle& keyHandle = keys.GetKey(i);
+        selectionState.push_back(keyHandle.IsSelected());
+    }
+
+    return selectionState;
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CTrackViewSequence::RestoreKeyStates(const std::vector<bool>& keyStates)
+{
+    CTrackViewKeyBundle keys = GetAllKeys();
+    const unsigned int numkeys = keys.GetKeyCount();
+
+    if (keyStates.size() >= numkeys)
+    {
+        CTrackViewSequenceNotificationContext context(this);
+        for (unsigned int i = 0; i < numkeys; ++i)
+        {
+            CTrackViewKeyHandle keyHandle = keys.GetKey(i);
+            keyHandle.Select(keyStates[i]);
         }
     }
 }
@@ -213,7 +257,7 @@ int CTrackViewSequence::RecordTrackChangesForNode(CTrackViewAnimNode* componentN
 //////////////////////////////////////////////////////////////////////////
 void CTrackViewSequence::SetRecording(bool enableRecording)
 {
-    if (m_pAnimSequence && m_pAnimSequence->GetSequenceType() == SequenceType::SequenceComponent)
+    if (m_pAnimSequence)
     {
         // connect (or disconnect) to EBuses for notification of changes for all AZ::Entities in our sequence
         for (int i = m_pAnimSequence->GetNodeCount(); --i >= 0;)
@@ -422,15 +466,17 @@ void CTrackViewSequence::OnKeyAdded(CTrackViewKeyHandle& addedKeyHandle)
 }
 
 //////////////////////////////////////////////////////////////////////////
-void CTrackViewSequence::OnNodeChanged(CTrackViewNode* pNode, ITrackViewSequenceListener::ENodeChangeType type)
+void CTrackViewSequence::OnNodeChanged(CTrackViewNode* node, ITrackViewSequenceListener::ENodeChangeType type)
 {
-    if (pNode && pNode->GetNodeType() == eTVNT_AnimNode)
+    if (node && node->GetNodeType() == eTVNT_AnimNode)
     {
         // Deselect the node before deleting to give listeners a chance to update things like UI state.
         if (type == ITrackViewSequenceListener::eNodeChangeType_Removed)
         {
+            CTrackViewSequenceNotificationContext context(this);
+
             // Make sure to deselect any keys
-            CTrackViewKeyBundle keys = pNode->GetAllKeys();
+            CTrackViewKeyBundle keys = node->GetAllKeys();
             for (int key = 0; key < keys.GetKeyCount(); key++)
             {
                 CTrackViewKeyHandle keyHandle = keys.GetKey(key);
@@ -441,20 +487,20 @@ void CTrackViewSequence::OnNodeChanged(CTrackViewNode* pNode, ITrackViewSequence
                 }
             }
 
-            // Flush the key selection notifications.
-            if (m_bKeySelectionChanged)
+            // Cancel notification if nothing changed.
+            if (!m_bKeySelectionChanged)
             {
-                SubmitPendingNotifcations(true);
+                context.Cancel();
             }
             
             // deselect the node
-            if (pNode->IsSelected())
+            if (node->IsSelected())
             {
-                pNode->SetSelected(false);
+                node->SetSelected(false);
             }
         }
 
-        CTrackViewAnimNode* pAnimNode = static_cast<CTrackViewAnimNode*>(pNode);
+        CTrackViewAnimNode* pAnimNode = static_cast<CTrackViewAnimNode*>(node);
         CEntityObject* pNodeEntity = pAnimNode->GetNodeEntity();
 
         if (pAnimNode->IsActive() && pNodeEntity)
@@ -518,17 +564,17 @@ void CTrackViewSequence::OnNodeChanged(CTrackViewNode* pNode, ITrackViewSequence
     CTrackViewSequenceNoNotificationContext context(this);
     for (auto iter = m_sequenceListeners.begin(); iter != m_sequenceListeners.end(); ++iter)
     {
-        (*iter)->OnNodeChanged(pNode, type);
+        (*iter)->OnNodeChanged(node, type);
     }
 }
 
 //////////////////////////////////////////////////////////////////////////
-void CTrackViewSequence::OnNodeRenamed(CTrackViewNode* pNode, const char* pOldName)
+void CTrackViewSequence::OnNodeRenamed(CTrackViewNode* node, const char* pOldName)
 {
     bool bLightAnimationSetActive = GetFlags() & IAnimSequence::eSeqFlags_LightAnimationSet;
     if (bLightAnimationSetActive)
     {
-        UpdateLightAnimationRefs(pOldName, pNode->GetName());
+        UpdateLightAnimationRefs(pOldName, node->GetName());
     }
 
     // Marks Layer with Sequence Object as dirty
@@ -542,7 +588,7 @@ void CTrackViewSequence::OnNodeRenamed(CTrackViewNode* pNode, const char* pOldNa
     CTrackViewSequenceNoNotificationContext context(this);
     for (auto iter = m_sequenceListeners.begin(); iter != m_sequenceListeners.end(); ++iter)
     {
-        (*iter)->OnNodeRenamed(pNode, pOldName);
+        (*iter)->OnNodeRenamed(node, pOldName);
     }
 }
 
@@ -568,22 +614,7 @@ void CTrackViewSequence::MarkAsModified()
 {
     if (m_pAnimSequence)
     {
-        switch (GetSequenceType())
-        {
-            case SequenceType::SequenceComponent:
-            {
-                Maestro::EditorSequenceComponentRequestBus::Event(m_pAnimSequence->GetSequenceEntityId(), &Maestro::EditorSequenceComponentRequestBus::Events::MarkEntityLayerAsDirty);
-                break;
-            }
-            case SequenceType::Legacy:
-            {
-                if (m_pAnimSequence->GetLegacySequenceObject())
-                {
-                    m_pAnimSequence->GetLegacySequenceObject()->OnModified();
-                }
-                break;
-            }
-        }
+        Maestro::EditorSequenceComponentRequestBus::Event(m_pAnimSequence->GetSequenceEntityId(), &Maestro::EditorSequenceComponentRequestBus::Events::MarkEntityLayerAsDirty);
     }
 }
 
@@ -592,6 +623,17 @@ void CTrackViewSequence::QueueNotifications()
 {
     m_bQueueNotifications = true;
     ++m_selectionRecursionLevel;
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CTrackViewSequence::DequeueNotifications()
+{
+    AZ_Assert(m_selectionRecursionLevel > 0, "QueueNotifications should be called before DequeueNotifications()");
+    --m_selectionRecursionLevel;
+    if (m_selectionRecursionLevel == 0)
+    {
+        m_bQueueNotifications = false;
+    }
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -667,15 +709,15 @@ void CTrackViewSequence::OnSequenceAdded(CTrackViewSequence* addedSequence)
 //////////////////////////////////////////////////////////////////////////
 void CTrackViewSequence::DeleteSelectedNodes()
 {
-    assert(CUndo::IsRecording());
-
-    CTrackViewSequenceNotificationContext context(this);
-
     if (IsSelected())
     {
         GetIEditor()->GetSequenceManager()->DeleteSequence(this);
         return;
     }
+
+    // Don't notify in the above IsSelected() case,
+    // because 'this' will become deleted and invalid.
+    CTrackViewSequenceNotificationContext context(this);
 
     CTrackViewAnimNodeBundle selectedNodes = GetSelectedAnimNodes();
     const unsigned int numSelectedNodes = selectedNodes.GetCount();
@@ -717,7 +759,7 @@ void CTrackViewSequence::DeleteSelectedNodes()
     if (nullptr != m_pAnimSequence)
     {
         AZ::EntityId sequenceEntityId = m_pAnimSequence->GetSequenceEntityId();
-        if (m_pAnimSequence->GetSequenceType() == SequenceType::SequenceComponent && sequenceEntityId.IsValid())
+        if (sequenceEntityId.IsValid())
         {
             for (unsigned int i = 0; i < numSelectedNodes; ++i)
             {
@@ -767,13 +809,13 @@ void CTrackViewSequence::DeleteSelectedNodes()
 
     // GetSelectedAnimNodes() will add parent nodes first and then children to the selected
     // node bundle list. So iterating backwards here causes child nodes to be deleted first,
-    // and then parents. If parent nodes get deleted first, pNode->GetParentNode() will return
+    // and then parents. If parent nodes get deleted first, node->GetParentNode() will return
     // a bad pointer if it happens to be one of the nodes that was deleted.
     for (int i = numSelectedNodes - 1; i >= 0; i--)
     {
-        CTrackViewAnimNode* pNode = selectedNodes.GetNode(i);
-        CTrackViewAnimNode* pParentNode = static_cast<CTrackViewAnimNode*>(pNode->GetParentNode());
-        pParentNode->RemoveSubNode(pNode);
+        CTrackViewAnimNode* node = selectedNodes.GetNode(i);
+        CTrackViewAnimNode* pParentNode = static_cast<CTrackViewAnimNode*>(node->GetParentNode());
+        pParentNode->RemoveSubNode(node);
     }
 
     if (sequenceEntityWasActive && sequenceEntity != nullptr)
@@ -825,28 +867,24 @@ void CTrackViewSequence::SelectSelectedNodesInViewport()
     {
         for (unsigned int i = 0; i < numSelectedNodes; ++i)
         {
-            CEntityObject* pEntity = nullptr;
-            CTrackViewAnimNode* pNode = selectedNodes.GetNode(i);
-            ETrackViewNodeType nodeType = pNode->GetNodeType();
+            CEntityObject* entity = nullptr;
+            CTrackViewAnimNode* node = selectedNodes.GetNode(i);
+            ETrackViewNodeType nodeType = node->GetNodeType();
 
             if (nodeType == eTVNT_Sequence)
             {
-                CTrackViewSequence* seqNode = static_cast<CTrackViewSequence*>(pNode);
-                // Legacy Sequence Objects are not entities so we skip them - we're going to deprecate them anyway
-                if (seqNode->GetSequenceType() == SequenceType::SequenceComponent)
-                {
-                    AzToolsFramework::ComponentEntityEditorRequestBus::EventResult(pEntity, seqNode->GetSequenceComponentEntityId(), &AzToolsFramework::ComponentEntityEditorRequestBus::Events::GetSandboxObject);
-                }
+                CTrackViewSequence* seqNode = static_cast<CTrackViewSequence*>(node);
+                AzToolsFramework::ComponentEntityEditorRequestBus::EventResult(entity, seqNode->GetSequenceComponentEntityId(), &AzToolsFramework::ComponentEntityEditorRequestBus::Events::GetSandboxObject);
             }
             else
             {
                 // TrackView AnimNode
-                pEntity = pNode->GetNodeEntity();
+                entity = node->GetNodeEntity();
             }
 
-            if (pEntity)
+            if (entity)
             {
-                stl::push_back_unique(entitiesToBeSelected, pEntity);
+                stl::push_back_unique(entitiesToBeSelected, entity);
             }
         }
     }
@@ -979,25 +1017,25 @@ void CTrackViewSequence::UpdateLightAnimationRefs(const char* pOldName, const ch
 }
 
 //////////////////////////////////////////////////////////////////////////
-bool CTrackViewSequence::SetName(const char* pName)
+bool CTrackViewSequence::SetName(const char* name)
 {
     // Check if there is already a sequence with that name
     const CTrackViewSequenceManager* pSequenceManager = GetIEditor()->GetSequenceManager();
-    if (pSequenceManager->GetSequenceByName(pName))
+    if (pSequenceManager->GetSequenceByName(name))
     {
         return false;
     }
 
-    string oldName = GetName();
-    m_pAnimSequence->SetName(pName);
-    MarkAsModified();
-
-    if (CUndo::IsRecording())
+    const char* oldName = GetName();
+    if (0 != strcmp(name, oldName))
     {
-        CUndo::Record(new CUndoAnimNodeRename(this, oldName));
-    }
+        m_pAnimSequence->SetName(name);
+        MarkAsModified();
 
-    GetSequence()->OnNodeRenamed(this, oldName);
+        AzToolsFramework::ScopedUndoBatch undoBatch("Rename Sequence");
+        GetSequence()->OnNodeRenamed(this, oldName);
+        undoBatch.MarkEntityDirty(m_pAnimSequence->GetSequenceEntityId());
+    }
 
     return true;
 }
@@ -1005,10 +1043,6 @@ bool CTrackViewSequence::SetName(const char* pName)
 //////////////////////////////////////////////////////////////////////////
 void CTrackViewSequence::DeleteSelectedKeys()
 {
-    assert(CUndo::IsRecording());
-
-    StoreUndoForTracksWithSelectedKeys();
-
     CTrackViewSequenceNotificationContext context(this);
     CTrackViewKeyBundle selectedKeys = GetSelectedKeys();
     for (int k = (int)selectedKeys.GetKeyCount() - 1; k >= 0; --k)
@@ -1019,38 +1053,6 @@ void CTrackViewSequence::DeleteSelectedKeys()
 
     // The selected keys are deleted, so notify the selection was just changed.
     OnKeySelectionChanged();
-}
-
-//////////////////////////////////////////////////////////////////////////
-void CTrackViewSequence::StoreUndoForTracksWithSelectedKeys()
-{
-    // Only use CUndo for legacy sequences
-    if (GetSequenceType() == SequenceType::Legacy)
-    {
-        assert(CUndo::IsRecording());
-
-        CTrackViewKeyBundle selectedKeys = GetSelectedKeys();
-
-        // Construct the set of tracks that have selected keys
-        std::set<CTrackViewTrack*> tracks;
-        for (int k = 0; k < (int)selectedKeys.GetKeyCount(); ++k)
-        {
-            CTrackViewKeyHandle skey = selectedKeys.GetKey(k);
-            tracks.insert(skey.GetTrack());
-        }
-
-        // Store one key selection undo before...
-        CUndo::Record(new CUndoAnimKeySelection(this));
-
-        // For each of those tracks store an undo object
-        for (auto iter = tracks.begin(); iter != tracks.end(); ++iter)
-        {
-            CUndo::Record(new CUndoTrackObject(*iter, false));
-        }
-
-        // ... and one after key changes
-        CUndo::Record(new CUndoAnimKeySelection(this));
-    }
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -1300,11 +1302,11 @@ void CTrackViewSequence::GetMatchedPasteLocationsRec(std::vector<TMatchedTrackLo
             const unsigned int childCount = pCurrentNode->GetChildCount();
             for (unsigned int i = 0; i < childCount; ++i)
             {
-                CTrackViewNode* pNode = pCurrentNode->GetChild(i);
+                CTrackViewNode* node = pCurrentNode->GetChild(i);
 
-                if (pNode->GetNodeType() == eTVNT_Track)
+                if (node->GetNodeType() == eTVNT_Track)
                 {
-                    CTrackViewTrack* pTrack = static_cast<CTrackViewTrack*>(pNode);
+                    CTrackViewTrack* pTrack = static_cast<CTrackViewTrack*>(node);
                     if (pTrack->GetName() == trackName && pTrack->GetParameterType() == trackParamType)
                     {
                         locations.push_back(TMatchedTrackLocation(pTrack, xmlChildNode));
@@ -1318,32 +1320,6 @@ void CTrackViewSequence::GetMatchedPasteLocationsRec(std::vector<TMatchedTrackLo
 //////////////////////////////////////////////////////////////////////////
 void CTrackViewSequence::AdjustKeysToTimeRange(Range newTimeRange)
 {
-    if (GetSequenceType() == SequenceType::Legacy)
-    {
-        AZ_Assert(CUndo::IsRecording(), "Expected CUndo to be recording for legacy sequences.");
-
-        // Store one key selection undo before...
-        CUndo::Record(new CUndoAnimKeySelection(this));
-    }
-
-    // Store key undo for each track
-    CTrackViewTrackBundle tracks = GetAllTracks();
-    const unsigned int numTracks = tracks.GetCount();
-    for (unsigned int i = 0; i < numTracks; ++i)
-    {
-        CTrackViewTrack* pTrack = tracks.GetTrack(i);
-        if (GetSequenceType() == SequenceType::Legacy)
-        {
-            CUndo::Record(new CUndoTrackObject(pTrack, false));
-        }
-    }
-
-    if (GetSequenceType() == SequenceType::Legacy)
-    {
-        // ... and one after key changes
-        CUndo::Record(new CUndoAnimKeySelection(this));
-    }
-
     // Set new time range
     Range oldTimeRange = GetTimeRange();
     float offset = newTimeRange.start - oldTimeRange.start;
@@ -1376,15 +1352,6 @@ void CTrackViewSequence::AdjustKeysToTimeRange(Range newTimeRange)
 //////////////////////////////////////////////////////////////////////////
 void CTrackViewSequence::SetTimeRange(Range timeRange)
 {
-    if (GetSequenceType() == SequenceType::Legacy)
-    {
-        if (CUndo::IsRecording())
-        {
-            // Store old sequence settings
-            CUndo::Record(new CUndoSequenceSettings(this));
-        }
-    }
-
     m_pAnimSequence->SetTimeRange(timeRange);
     OnSequenceSettingsChanged();
 }
@@ -1398,12 +1365,6 @@ Range CTrackViewSequence::GetTimeRange() const
 //////////////////////////////////////////////////////////////////////////
 void CTrackViewSequence::SetFlags(IAnimSequence::EAnimSequenceFlags flags)
 {
-    if (CUndo::IsRecording())
-    {
-        // Store old sequence settings
-        CUndo::Record(new CUndoSequenceSettings(this));
-    }
-
     m_pAnimSequence->SetFlags(flags);
     OnSequenceSettingsChanged();
 }
@@ -1435,11 +1396,21 @@ void CTrackViewSequence::OffsetSelectedKeys(const float timeOffset)
 
     CTrackViewKeyBundle selectedKeys = GetSelectedKeys();
 
+    // Set notifyListeners to false and wait until all keys 
+    // have been updated, otherwise the indexes in CTrackViewKeyHandle
+    // may become invalid after sorted with a new time.
+    bool notifyListeners = false;
+
     const CTrackViewTrack* pTrack = nullptr;
     for (int k = 0; k < (int)selectedKeys.GetKeyCount(); ++k)
     {
         CTrackViewKeyHandle skey = selectedKeys.GetKey(k);
-        skey.Offset(timeOffset);
+        skey.Offset(timeOffset, notifyListeners);
+    }
+
+    if (selectedKeys.GetKeyCount() > 0)
+    {
+        OnKeysChanged();
     }
 }
 

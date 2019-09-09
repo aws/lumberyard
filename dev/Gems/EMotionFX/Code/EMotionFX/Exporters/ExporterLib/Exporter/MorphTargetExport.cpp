@@ -84,7 +84,7 @@ namespace ExporterLib
             // write the deform data struct
             EMotionFX::MorphTargetStandard::DeformData* deformData = morphTarget->GetDeformData(i);
 
-            EMotionFX::FileFormat::Actor_MorphTargetMeshDeltas meshDeformDataChunk;
+            EMotionFX::FileFormat::Actor_MorphTargetMeshDeltas2 meshDeformDataChunk;
 
             meshDeformDataChunk.mNodeIndex  = deformData->mNodeIndex;
             meshDeformDataChunk.mNumVertices = deformData->mNumVerts;
@@ -102,7 +102,7 @@ namespace ExporterLib
             ConvertUnsignedInt(&meshDeformDataChunk.mNumVertices, targetEndianType);
             ConvertUnsignedInt(&meshDeformDataChunk.mNodeIndex, targetEndianType);
 
-            file->Write(&meshDeformDataChunk, sizeof(EMotionFX::FileFormat::Actor_MorphTargetMeshDeltas));
+            file->Write(&meshDeformDataChunk, sizeof(EMotionFX::FileFormat::Actor_MorphTargetMeshDeltas2));
 
 
             // write the position deltas
@@ -113,11 +113,9 @@ namespace ExporterLib
                 deltaP.mX = deformData->mDeltas[a].mPosition.mX;
                 deltaP.mY = deformData->mDeltas[a].mPosition.mY;
                 deltaP.mZ = deformData->mDeltas[a].mPosition.mZ;
-
                 ConvertUnsignedShort(&deltaP.mX, targetEndianType);
                 ConvertUnsignedShort(&deltaP.mY, targetEndianType);
                 ConvertUnsignedShort(&deltaP.mZ, targetEndianType);
-
                 file->Write(&deltaP, sizeof(EMotionFX::FileFormat::File16BitVector3));
             }
 
@@ -128,7 +126,6 @@ namespace ExporterLib
                 deltaN.mX = deformData->mDeltas[a].mNormal.mX;
                 deltaN.mY = deformData->mDeltas[a].mNormal.mY;
                 deltaN.mZ = deformData->mDeltas[a].mNormal.mZ;
-
                 file->Write(&deltaN, sizeof(EMotionFX::FileFormat::File8BitVector3));
             }
 
@@ -136,11 +133,20 @@ namespace ExporterLib
             EMotionFX::FileFormat::File8BitVector3 deltaT;
             for (a = 0; a < deformData->mNumVerts; ++a)
             {
-                deltaT.mX = deformData->mDeltas[a].mTangent.mX; // TODO: disable the tangents when they aren't there
+                deltaT.mX = deformData->mDeltas[a].mTangent.mX;
                 deltaT.mY = deformData->mDeltas[a].mTangent.mY;
                 deltaT.mZ = deformData->mDeltas[a].mTangent.mZ;
-
                 file->Write(&deltaT, sizeof(EMotionFX::FileFormat::File8BitVector3));
+            }
+
+            // write the bitangent deltas
+            EMotionFX::FileFormat::File8BitVector3 deltaBT;
+            for (a = 0; a < deformData->mNumVerts; ++a)
+            {
+                deltaBT.mX = deformData->mDeltas[a].mBitangent.mX;
+                deltaBT.mY = deformData->mDeltas[a].mBitangent.mY;
+                deltaBT.mZ = deformData->mDeltas[a].mBitangent.mZ;
+                file->Write(&deltaBT, sizeof(EMotionFX::FileFormat::File8BitVector3));
             }
 
             // write the vertex numbers
@@ -224,10 +230,11 @@ namespace ExporterLib
         {
             EMotionFX::MorphTargetStandard::DeformData* deformData = morphTarget->GetDeformData(i);
 
-            totalSize += sizeof(EMotionFX::FileFormat::Actor_MorphTargetMeshDeltas);
+            totalSize += sizeof(EMotionFX::FileFormat::Actor_MorphTargetMeshDeltas2);
             totalSize += deformData->mNumVerts * sizeof(EMotionFX::FileFormat::File16BitVector3); // positions
-            totalSize += deformData->mNumVerts * sizeof(EMotionFX::FileFormat::File8BitVector3); // normals
-            totalSize += deformData->mNumVerts * sizeof(EMotionFX::FileFormat::File8BitVector3); // tangents
+            totalSize += deformData->mNumVerts * sizeof(EMotionFX::FileFormat::File8BitVector3);  // normals
+            totalSize += deformData->mNumVerts * sizeof(EMotionFX::FileFormat::File8BitVector3);  // tangents
+            totalSize += deformData->mNumVerts * sizeof(EMotionFX::FileFormat::File8BitVector3);  // bitangents
             totalSize += deformData->mNumVerts * sizeof(uint32); // vertex indices
         }
 
@@ -323,12 +330,11 @@ namespace ExporterLib
         EMotionFX::FileFormat::FileChunk chunkHeader;
         chunkHeader.mChunkID        = EMotionFX::FileFormat::ACTOR_CHUNK_STDPMORPHTARGETS;
         chunkHeader.mSizeInBytes    = GetMorphSetupChunkSize(morphSetup);
-        chunkHeader.mVersion        = 1;
+        chunkHeader.mVersion        = 2;
 
         // endian convert the chunk and write it to the file
         ConvertFileChunk(&chunkHeader, targetEndianType);
         file->Write(&chunkHeader, sizeof(EMotionFX::FileFormat::FileChunk));
-
 
         // fill in the chunk header
         EMotionFX::FileFormat::Actor_MorphTargets morphTargetsChunk;

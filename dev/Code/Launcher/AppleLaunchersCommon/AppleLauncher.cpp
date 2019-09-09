@@ -27,6 +27,8 @@
 #include <AzGameFramework/Application/GameApplication.h>
 #include <Foundation/Foundation.h>
 
+#include <LegacyAllocator.h>
+
 #if defined(AZ_MONOLITHIC_BUILD)
     // Include common type defines for static linking
     // Manually instantiate templates as needed here.
@@ -114,18 +116,26 @@ namespace AppleLauncher
             return EXIT_CODE_FAILURE;
         }
 
+        AZ::AllocatorInstance<AZ::LegacyAllocator>::Create();
+        AZ::AllocatorInstance<CryStringAllocator>::Create();
+
         // Engine Config (bootstrap.cfg)
         char pathToAssets[AZ_MAX_PATH_LEN] = { 0 };
         const char* pathToResources = [[[NSBundle mainBundle] resourcePath] UTF8String];
         azsnprintf(pathToAssets, AZ_MAX_PATH_LEN, "%s/%s", pathToResources, "assets");
         const char* sourcePaths[] = { pathToAssets };
         CEngineConfig engineConfig(sourcePaths, 1);
+        engineConfig.m_gameFolder.MakeLower();
 
         // Game Application (AzGameFramework)
         AzGameFramework::GameApplication gameApplication;
         {
             char pathToGameDescriptorFile[AZ_MAX_PATH_LEN] = { 0 };
             AzGameFramework::GameApplication::GetGameDescriptorPath(pathToGameDescriptorFile, engineConfig.m_gameFolder);
+
+            // this lowercasing is temporary until we fix packaging for Apple platforms and read Game.xml from
+            // the project root instead of from the asset cache, it is not an asset
+            AZStd::to_lower(pathToGameDescriptorFile, pathToGameDescriptorFile + strlen(pathToGameDescriptorFile));
 
             char fullPathToGameDescriptorFile[AZ_MAX_PATH_LEN] = { 0 };
             azsnprintf(fullPathToGameDescriptorFile, AZ_MAX_PATH_LEN, "%s/%s", pathToAssets, pathToGameDescriptorFile);
@@ -290,6 +300,10 @@ namespace AppleLauncher
         {
             CryFreeLibrary(gameLib);
         }
+
+        AZ::AllocatorInstance<CryStringAllocator>::Destroy();
+        AZ::AllocatorInstance<AZ::LegacyAllocator>::Destroy();
+
         return EXIT_CODE_SUCCESS;
     }
 }

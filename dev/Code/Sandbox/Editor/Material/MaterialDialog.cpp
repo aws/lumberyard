@@ -200,6 +200,7 @@ public:
     CSmartVariable<float> heatAmount;
     CSmartVariable<bool> bScatter;
     CSmartVariable<bool> bHideAfterBreaking;
+    CSmartVariable<bool> bFogVolumeShadingQualityHigh;
     CSmartVariable<bool> bBlendTerrainColor;
     //CSmartVariable<bool> bTranslucenseLayer;
     CSmartVariableEnum<QString> surfaceType;
@@ -454,7 +455,7 @@ public:
         //////////////////////////////////////////////////////////////////////////
         // Opacity.
         //////////////////////////////////////////////////////////////////////////
-        AddVariable(tableOpacity, opacity, "Opacity", 
+        AddVariable(tableOpacity, opacity, "Opacity",
             scriptingDescription("opacity", "Sets the transparency amount. Uses 0-99 to set Alpha Blend and 100 for Opaque and Alpha Test.").c_str(), IVariable::DT_PERCENT);
         AddVariable(tableOpacity, alphaTest, "AlphaTest",
             scriptingDescription("alpha", "Uses the alpha mask and refines the transparent edge. Uses 0-50 to bias toward white or 50-100 to bias toward black.").c_str(), IVariable::DT_PERCENT);
@@ -492,9 +493,9 @@ public:
         AddVariable(tableAdvanced, bNoShadow, "No Shadow", "Disables casting shadows from mesh faces");
         AddVariable(tableAdvanced, bScatter, "Use Scattering", "Deprecated");
         AddVariable(tableAdvanced, bHideAfterBreaking, "Hide After Breaking", "Causes the object to disappear after procedurally breaking");
+        AddVariable(tableAdvanced, bFogVolumeShadingQualityHigh, "Fog Volume Shading Quality High", "high fog volume shading quality behaves more accurately with fog volumes.");
         AddVariable(tableAdvanced, bBlendTerrainColor, "Blend Terrain Color", "");
-
-        AddVariable(tableAdvanced, voxelCoverage, "Voxel Coverage", "Fine tunes occlsuion amount for svoti feature. Higher values occlude more closely to object shape.");
+        AddVariable(tableAdvanced, voxelCoverage, "Voxel Coverage", "Fine tunes occlusion amount for svogi feature. Higher values occlude more closely to object shape.");
         voxelCoverage->SetLimits(0, 1.0f);
 
         //////////////////////////////////////////////////////////////////////////
@@ -699,7 +700,7 @@ void CMaterialUI::SetShaderResources(const SInputShaderResources& srTextures, bo
 
     SetVertexDeform(srTextures);
 
-   
+
     for (EEfResTextures texId = EEfResTextures(0); texId < EFTT_MAX; texId = EEfResTextures(texId + 1))
     {
         if (!MaterialHelpers::IsAdjustableTexSlot(texId))
@@ -874,9 +875,28 @@ void CMaterialUI::GetTextureResources(SInputShaderResources& sr, int tex, int pr
     {
         // Remove the texture if the path was cleared in the UI
         sr.m_TexturesResourcesMap.erase(tex);
+
+        // If the normal map/second normal map has been cleared in the UI,
+        // we must also clear the smoothness/second smoothness since smoothness lives in the alpha of the normal
+        if (tex == EFTT_NORMALS)
+        {
+            sr.m_TexturesResourcesMap.erase(EFTT_SMOOTHNESS);
+        }
+        // EFTT_CUSTOM_SECONDARY is the 2nd normal
+        if (tex == EFTT_CUSTOM_SECONDARY)
+        {
+            sr.m_TexturesResourcesMap.erase(EFTT_SECOND_SMOOTHNESS);
+        }
         return;
     }
     texFilename = Path::ToUnixPath(texFilename);
+
+    // Clear any texture resource that has no associated file
+    if (texFilename.size() > AZ_MAX_PATH_LEN)
+    {
+        AZ_Error("Material Editor", false, "Texture path exceeds the maximium allowable length of %d.", AZ_MAX_PATH_LEN);
+        return;
+    }
 
     // The following line will insert the slot if did not exist.
     SEfResTexture*      pTextureRes = &(sr.m_TexturesResourcesMap[tex]);
@@ -1080,6 +1100,7 @@ void CMaterialUI::SetFromMaterial(CMaterial* mtlIn)
     b2Sided = (mtlFlags & MTL_FLAG_2SIDED);
     bScatter = (mtlFlags & MTL_FLAG_SCATTER);
     bHideAfterBreaking = (mtlFlags & MTL_FLAG_HIDEONBREAK);
+    bFogVolumeShadingQualityHigh = (mtlFlags & MTL_FLAG_FOG_VOLUME_SHADING_QUALITY_HIGH);
     bBlendTerrainColor = (mtlFlags & MTL_FLAG_BLEND_TERRAIN);
     texUsageMask = mtlIn->GetTexmapUsageMask();
 
@@ -1173,6 +1194,15 @@ void CMaterialUI::SetToMaterial(CMaterial* mtl, int propagationFlags)
         else
         {
             mtlFlags &= ~MTL_FLAG_HIDEONBREAK;
+        }
+
+        if (bFogVolumeShadingQualityHigh)
+        {
+            mtlFlags |= MTL_FLAG_FOG_VOLUME_SHADING_QUALITY_HIGH;
+        }
+        else
+        {
+            mtlFlags &= ~MTL_FLAG_FOG_VOLUME_SHADING_QUALITY_HIGH;
         }
 
         if (bBlendTerrainColor)
@@ -1433,9 +1463,19 @@ BOOL CMaterialDialog::OnInitDialog()
         m_wndMtlBrowser->StartRecordUpdateJobs();
     }
 
+    // Set the image list control to give stretch priority to the other widgets. This is both to avoid resizing the
+    // image list control when the window is resized and to avoid an issue with the QSplitter resizing the image list
+    // control when enabling/disabling the other two widgets.
+    const int materialImageControlIndex = 0;
+    const int materialImagePropertiesControlIndex = 1;
+    const int materialPlaceholderLabelIndex = 2;
+    rightWidget->setStretchFactor(materialImageControlIndex, 0);
+    rightWidget->setStretchFactor(materialImagePropertiesControlIndex, 1);
+    rightWidget->setStretchFactor(materialPlaceholderLabelIndex, 1);
+
     resize(1200, 800);
 
-    return TRUE; // return TRUE unless you set the focus to a control
+    return true; // return true unless you set the focus to a control
     // EXCEPTION: OCX Property Pages should return FALSE
 }
 
@@ -1451,37 +1491,79 @@ void CMaterialDialog::closeEvent(QCloseEvent *ev)
 // Create the toolbar
 void CMaterialDialog::InitToolbar(UINT nToolbarResID)
 {
+    // detect if the new viewport interaction model is enabled and give
+    // feedback to the user that certain operations are not yet compatible
+    const bool newViewportInteractionModelEnabled = GetIEditor()->IsNewViewportInteractionModelEnabled();
+    const char* const newViewportInteractionModelWarning =
+        "This option is currently not available with the new Viewport Interaction Model enabled";
+
     m_toolbar = addToolBar(tr("Material ToolBar"));
     m_toolbar->setFloatable(false);
+
     QIcon assignselectionIcon;
     assignselectionIcon.addPixmap(QPixmap{ ":/MaterialDialog/ToolBar/images/materialdialog_assignselection_normal.png" }, QIcon::Normal);
     assignselectionIcon.addPixmap(QPixmap{ ":/MaterialDialog/ToolBar/images/materialdialog_assignselection_active.png" }, QIcon::Active);
     assignselectionIcon.addPixmap(QPixmap{ ":/MaterialDialog/ToolBar/images/materialdialog_assignselection_disabled.png" }, QIcon::Disabled);
-    m_assignToSelectionAction = m_toolbar->addAction(assignselectionIcon, tr("Assign Item to Selected Objects"), this, SLOT(OnAssignMaterialToSelection()));
+
+    m_assignToSelectionAction =
+        m_toolbar->addAction(assignselectionIcon,
+            newViewportInteractionModelEnabled
+                ? tr(newViewportInteractionModelWarning)
+                : tr("Assign Item to Selected Objects"),
+            this, SLOT(OnAssignMaterialToSelection()));
+
     QIcon resetIcon;
     resetIcon.addPixmap(QPixmap{ ":/MaterialDialog/ToolBar/images/materialdialog_reset_normal.png" }, QIcon::Normal);
     resetIcon.addPixmap(QPixmap{ ":/MaterialDialog/ToolBar/images/materialdialog_reset_active.png" }, QIcon::Active);
     resetIcon.addPixmap(QPixmap{ ":/MaterialDialog/ToolBar/images/materialdialog_reset_disabled.png" }, QIcon::Disabled);
-    m_resetAction = m_toolbar->addAction(resetIcon, tr("Reset Material on Selection to Default"), this, SLOT(OnResetMaterialOnSelection()));
+
+    m_resetAction =
+        m_toolbar->addAction(resetIcon,
+            newViewportInteractionModelEnabled
+                ? tr(newViewportInteractionModelWarning)
+                : tr("Reset Material on Selection to Default"),
+            this, SLOT(OnResetMaterialOnSelection()));
+
     QIcon getfromselectionIcon;
     getfromselectionIcon.addPixmap(QPixmap{ ":/MaterialDialog/ToolBar/images/materialdialog_getfromselection_normal.png" }, QIcon::Normal);
     getfromselectionIcon.addPixmap(QPixmap{ ":/MaterialDialog/ToolBar/images/materialdialog_getfromselection_active.png" }, QIcon::Active);
     getfromselectionIcon.addPixmap(QPixmap{ ":/MaterialDialog/ToolBar/images/materialdialog_getfromselection_disabled.png" }, QIcon::Disabled);
-    m_getFromSelectionAction = m_toolbar->addAction(getfromselectionIcon, tr("Get Properties From Selection"), this, SLOT(OnGetMaterialFromSelection()));
+
+    m_getFromSelectionAction =
+        m_toolbar->addAction(
+            getfromselectionIcon,
+            newViewportInteractionModelEnabled
+                ? tr(newViewportInteractionModelWarning)
+                : tr("Get Properties From Selection"),
+            this, SLOT(OnGetMaterialFromSelection()));
+
     QIcon pickIcon;
     pickIcon.addPixmap(QPixmap{ ":/MaterialDialog/ToolBar/images/materialdialog_pick_normal.png" }, QIcon::Normal);
     pickIcon.addPixmap(QPixmap{ ":/MaterialDialog/ToolBar/images/materialdialog_pick_active.png" }, QIcon::Active);
     pickIcon.addPixmap(QPixmap{ ":/MaterialDialog/ToolBar/images/materialdialog_pick_disabled.png" }, QIcon::Disabled);
-    m_pickAction = m_toolbar->addAction(pickIcon, tr("Pick Material from Object"), this, SLOT(OnPickMtl()));
+
+    m_pickAction = m_toolbar->addAction(
+        pickIcon,
+        newViewportInteractionModelEnabled
+            ? tr(newViewportInteractionModelWarning)
+            : tr("Pick Material from Object"),
+        this, SLOT(OnPickMtl()));
+
     m_pickAction->setCheckable(true);
+
+    if (newViewportInteractionModelEnabled)
+    {
+        m_pickAction->setEnabled(false);
+    }
+
     QAction* sepAction = m_toolbar->addSeparator();
-    QComboBox* cb = new QComboBox(this);
-    cb->addItem(tr("All Materials"));
-    cb->addItem(tr("Used In Level"));
-    cb->setMinimumWidth(150);
-    QAction* cbAction = m_toolbar->addWidget(cb);
-    cb->setCurrentIndex(0);
-    connect(cb, SIGNAL(currentIndexChanged(int)), this, SLOT(OnChangedBrowserListType(int)));
+    m_filterTypeSelection = new QComboBox(this);
+    m_filterTypeSelection->addItem(tr("All Materials"));
+    m_filterTypeSelection->addItem(tr("Used In Level"));
+    m_filterTypeSelection->setMinimumWidth(150);
+    QAction* cbAction = m_toolbar->addWidget(m_filterTypeSelection);
+    m_filterTypeSelection->setCurrentIndex(0);
+    connect(m_filterTypeSelection, SIGNAL(currentIndexChanged(int)), this, SLOT(OnChangedBrowserListType(int)));
     m_toolbar->addSeparator();
     QIcon addIcon;
     addIcon.addPixmap(QPixmap{ ":/MaterialDialog/ToolBar/images/materialdialog_add_normal.png" }, QIcon::Normal);
@@ -1570,7 +1652,7 @@ void CMaterialDialog::OnSaveItem()
         if (parent)
         {
             //The reload function will clear all the sub-material references, and re-create them.
-            //Thus pMtl will point to old sub-material that should be deleted instead. 
+            //Thus pMtl will point to old sub-material that should be deleted instead.
             //So we need to set m_pMatManager's current material to the new one.
             int index = -1;
 
@@ -1584,12 +1666,12 @@ void CMaterialDialog::OnSaveItem()
                 }
             }
             pMtl->Reload();
-            
+
             if (index >= 0 && index < parent->GetSubMaterialCount())
             {
                 m_pMatManager->SetCurrentMaterial(parent->GetSubMaterial(index));
             }
-            else //If we can't find the sub-material, use parent instead 
+            else //If we can't find the sub-material, use parent instead
             {
                 m_pMatManager->SetCurrentMaterial(parent);
             }
@@ -1598,7 +1680,7 @@ void CMaterialDialog::OnSaveItem()
         {
             pMtl->Reload();
         }
-        
+
     }
     UpdateActions();
 }
@@ -1751,7 +1833,7 @@ void CMaterialDialog::SelectItem(CBaseLibraryItem* item, bool bForceReload)
     }
 
     m_pPrevSelectedItem = item;
-    
+
     // Empty preview control.
     //m_previewCtrl.SetEntity(0);
     m_pMatManager->SetCurrentMaterial((CMaterial*)item);
@@ -1766,7 +1848,7 @@ void CMaterialDialog::SelectItem(CBaseLibraryItem* item, bool bForceReload)
         m_placeHolderLabel->show();
         return;
     }
-    
+
     // Render preview geometry with current material
     CMaterial* mtl = (CMaterial*)item;
 
@@ -2046,12 +2128,13 @@ void CMaterialDialog::UpdateActions()
     CMaterial* mtl = GetSelectedMaterial();
     if (mtl && mtl->CanModify(false))
     {
-        m_saveAction->setEnabled(TRUE);
+        m_saveAction->setEnabled(true);
     }
     else
     {
         m_saveAction->setEnabled(false);
     }
+
     if (GetIEditor()->GetEditTool() && GetIEditor()->GetEditTool()->GetClassDesc() && QString::compare(GetIEditor()->GetEditTool()->GetClassDesc()->ClassName(), "EditTool.PickMaterial") == 0)
     {
         m_pickAction->setChecked(true);
@@ -2060,14 +2143,16 @@ void CMaterialDialog::UpdateActions()
     {
         m_pickAction->setChecked(false);
     }
+
     if (mtl && (!GetIEditor()->GetSelection()->IsEmpty() || GetIEditor()->IsInPreviewMode()))
     {
-        m_assignToSelectionAction->setEnabled(TRUE);
+        m_assignToSelectionAction->setEnabled(true);
     }
     else
     {
         m_assignToSelectionAction->setEnabled(false);
     }
+
     if (!GetIEditor()->GetSelection()->IsEmpty() || GetIEditor()->IsInPreviewMode())
     {
         m_resetAction->setEnabled(true);
@@ -2152,6 +2237,7 @@ void CMaterialDialog::UpdatePreview()
 //////////////////////////////////////////////////////////////////////////
 void CMaterialDialog::OnChangedBrowserListType(int sel)
 {
+    m_wndMtlBrowser->ShowOnlyLevelMaterials(sel == 1);
     m_pMatManager->SetCurrentMaterial(0);
     UpdateActions();
 }
@@ -2202,9 +2288,16 @@ void CMaterialDialog::OnDataBaseItemEvent(IDataBaseItem* pItem, EDataBaseItemEve
 // If an object is selected or de-selected, update the available actions in the Material Editor toolbar
 void CMaterialDialog::OnEditorNotifyEvent(EEditorNotifyEvent event)
 {
-    if (event == eNotify_OnSelectionChange)
+    switch (event)
     {
+    case eNotify_OnSelectionChange:
         UpdateActions();
+        break;
+    case eNotify_OnCloseScene:
+    case eNotify_OnEndNewScene:
+    case eNotify_OnEndSceneOpen:
+        m_filterTypeSelection->setCurrentIndex(0);
+        break;
     }
 }
 

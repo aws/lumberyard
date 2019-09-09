@@ -75,12 +75,18 @@ def gui_list(context, args, pak_status = None):
     sections['PakStatus'] = pak_status
     context.view.show_manifest_file(sections)
 
+def validate_manifest_name(manifest_name):
+    regex_str = '^[-0-9a-zA-Z!_][-0-9a-zA-Z!_.]*$'
+    return re.match(regex_str, manifest_name) != None
+
 @stack_required
 def gui_list_manifests(context, args):
     list_manifests(context, args)
 
 @stack_required
 def gui_new_manifest(context, args):
+    if not validate_manifest_name(args.new_file_name):
+        raise HandledError('Invalid manifest name')
     manifest_path = os.path.normpath(os.path.dirname(_get_default_manifest_path(context)))
     new_file_name = os.path.join(manifest_path, args.new_file_name + os.path.extsep + 'json')
     new_file_platforms = args.platform_list
@@ -270,6 +276,8 @@ def validate_add_key_name(file_name):
         raise HandledError('File does not match naming rules')
 
 def command_new_manifest(context, args):
+    if not validate_manifest_name(args.manifest_name):
+        raise HandledError('Invalid manifest name')
     manifest_path = determine_manifest_path(context, args.manifest_path)
     manifest_dir_path = os.path.normpath(os.path.dirname(manifest_path))
     new_manifest_name = os.path.join(manifest_dir_path, args.manifest_name + os.path.extsep + 'json')
@@ -700,7 +708,7 @@ def _get_bucket_item_hash(bucketItem):
     return bucketItem.get('Metadata',{}).get(_get_meta_hash_name(),{})
 
 # Retrieve the list of files in the bucket which do not line up with our current manifest
-def _get_unmatched_content(context, manifest, manifest_path, deployment_name):
+def _get_unmatched_content(context, manifest, manifest_path, deployment_name, do_signing):
     s3 = context.aws.client('s3')
     bucketName = _get_content_bucket_by_name(context, deployment_name)
     manifestDict = _create_manifest_bucket_key_map(context, manifest, manifest_path)
@@ -716,7 +724,7 @@ def _get_unmatched_content(context, manifest, manifest_path, deployment_name):
             returnDict[thisKey] = thisHash
             continue
         show_manifest.hash_comparison_bucket(thisKey, thisHash, _get_bucket_item_hash(headResponse))
-        if _get_bucket_item_hash(headResponse) != thisHash:
+        if _get_bucket_item_hash(headResponse) != thisHash or staging.signing_status_changed(context, thisKey, do_signing):
             returnDict[thisKey] = thisHash
     return returnDict
 
@@ -745,11 +753,11 @@ def command_upload_manifest_content(context, args):
 # 3 - Check each item in our manifest against a HEAD call to get the metadata with our saved local hash values
 # 4 - Upload each unmatched pak file
 # 5 - Upload the manifest
-def upload_manifest_content(context, manifest_path, deployment_name, staging_args, upload_all = False, do_signing=False):
+def upload_manifest_content(context, manifest_path, deployment_name, staging_args, upload_all = False, do_signing = False):
     build_new_paks(context, manifest_path, upload_all)
     manifest_path, manifest = _get_path_and_manifest(context, manifest_path)
     _update_file_hashes(context, manifest_path, manifest)
-    remainingContent = _get_unmatched_content(context, manifest, manifest_path, deployment_name)
+    remainingContent = _get_unmatched_content(context, manifest, manifest_path, deployment_name, do_signing)
     bucketName = _get_content_bucket_by_name(context, deployment_name)
     filesList = _get_files_list(context, manifest, 'Paks')
     thisFile = {}

@@ -128,7 +128,7 @@
                         </div>
                         <div class="col-lg-1">
                             <label> Limit </label>                            
-                            <dropdown class="search-dropdown" (dropdownChanged)="setLimit($event)" [currentOption]="{text: limit}" [options]="[{text: '100'}, {text: '500'}, {text: '1000'}, {text: 'All'}]" placeholderText="Return row limit."> </dropdown>
+                            <dropdown class="search-dropdown" (dropdownChanged)="setLimit($event)" [currentOption]="limit" [options]="[{text: '100'}, {text: '500'}, {text: '1000'}, {text: '10000'}, {text: '100000'}, {text: 'All'}]" placeholderText="Return row limit."> </dropdown>
                         </div>
                    </div>        
                 </ng-container>

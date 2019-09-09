@@ -208,7 +208,11 @@ class CRemoteCommandServer
     , public CryRunnable
 {
 #if defined(AZ_RESTRICTED_PLATFORM)
-#include AZ_RESTRICTED_FILE(RemoteCommand_h, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/RemoteCommand_h_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/RemoteCommand_h_provo.inl"
+    #endif
 	#endif
 
 protected:

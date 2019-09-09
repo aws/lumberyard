@@ -13,10 +13,11 @@ from cgf_utils import properties
 from cgf_utils import aws_utils
 from resource_manager_common import stack_info
 from iot_policy_shared import detach_policy_principals
+import web_communicator_iot
 import boto3
 import json
 
-iot_client = aws_utils.ClientWrapper(boto3.client('iot'))
+iot_client = web_communicator_iot.get_iot_client()
 
 def handler(event, context):
 

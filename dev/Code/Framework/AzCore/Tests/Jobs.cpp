@@ -67,32 +67,23 @@ namespace UnitTest
     static AZStd::sys_time_t s_totalJobsTime = 0;
 
     class DefaultJobManagerSetupFixture
-        : public ::testing::Test
+        : public AllocatorsTestFixture
+
     {
     protected:
         JobManager* m_jobManager = nullptr;
         JobContext* m_jobContext = nullptr;
-        void* m_memBlock = nullptr;
-        const size_t m_memBlockSize;
         unsigned int m_numWorkerThreads;
     public:
-        DefaultJobManagerSetupFixture(const size_t memBlockSize = 15 * 1024 * 1024, unsigned int numWorkerThreads = 0)
-            : m_memBlockSize(memBlockSize)
-            , m_numWorkerThreads(numWorkerThreads)
+        DefaultJobManagerSetupFixture(unsigned int numWorkerThreads = 0)
+            : m_numWorkerThreads(numWorkerThreads)
         {
         }
 
         void SetUp() override
         {
-            SystemAllocator::Descriptor memDesc;
+            AllocatorsTestFixture::SetUp();
 
-            m_memBlock = DebugAlignAlloc(m_memBlockSize, memDesc.m_heap.m_memoryBlockAlignment);
-
-            memDesc.m_heap.m_numMemoryBlocks = 1;
-            memDesc.m_heap.m_memoryBlocksByteSize[0] = m_memBlockSize;
-            memDesc.m_heap.m_memoryBlocks[0] = m_memBlock;
-
-            AllocatorInstance<SystemAllocator>::Create(memDesc);
             AllocatorInstance<PoolAllocator>::Create();
             AllocatorInstance<ThreadPoolAllocator>::Create();
 
@@ -130,9 +121,8 @@ namespace UnitTest
 
             AllocatorInstance<ThreadPoolAllocator>::Destroy();
             AllocatorInstance<PoolAllocator>::Destroy();
-            AllocatorInstance<SystemAllocator>::Destroy();
 
-            DebugAlignFree(m_memBlock);
+            AllocatorsTestFixture::TearDown();
         }
     };
 
@@ -1159,7 +1149,7 @@ namespace UnitTest
 #endif
 
         PERF_JobParallelForOverheadTest()
-            : DefaultJobManagerSetupFixture((100 + (300 / numElementsScale)) * 1024 * 1024)
+            : DefaultJobManagerSetupFixture()
         {}
 
         void TearDown() override

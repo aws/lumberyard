@@ -33,14 +33,15 @@ namespace EMotionFX
             MotionAsset* assetData = asset.GetAs<MotionAsset>();
             assetData->m_emfxMotion = EMotionFXPtr<EMotionFX::SkeletalMotion>::MakeFromNew(EMotionFX::GetImporter().LoadSkeletalMotion(
                 assetData->m_emfxNativeData.data(),
-                assetData->m_emfxNativeData.size()));
+                assetData->m_emfxNativeData.size(),
+                nullptr));
 
             if (assetData->m_emfxMotion)
             {
                 assetData->m_emfxMotion->SetIsOwnedByRuntime(true);
             }
 
-            AZ_Error("EMotionFX", assetData->m_emfxMotion, "Failed to initialize motion asset %s", asset.ToString<AZStd::string>().c_str());
+            AZ_Error("EMotionFX", assetData->m_emfxMotion, "Failed to initialize motion asset %s", asset.GetHint().c_str());
             return (assetData->m_emfxMotion);
         }
 
@@ -60,6 +61,12 @@ namespace EMotionFX
         const char* MotionAssetHandler::GetAssetTypeDisplayName() const
         {
             return "EMotion FX Motion";
+        }
+
+        //////////////////////////////////////////////////////////////////////////
+        const char* MotionAssetHandler::GetBrowserIcon() const
+        {
+            return "Editor/Images/AssetBrowser/Motion_16.png";
         }
 
     } // namespace Integration

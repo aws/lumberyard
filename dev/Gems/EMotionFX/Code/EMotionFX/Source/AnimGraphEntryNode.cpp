@@ -19,6 +19,7 @@
 #include "AnimGraphStateMachine.h"
 #include "AnimGraphRefCountedData.h"
 #include <EMotionFX/Source/AnimGraph.h>
+#include <EMotionFX/Source/EMotionFXManager.h>
 
 
 namespace EMotionFX
@@ -79,14 +80,7 @@ namespace EMotionFX
         {
             // cast the parent of the state machine where this pass-through node is in to a state machine
             AnimGraphStateMachine* stateMachineParent = static_cast<AnimGraphStateMachine*>(stateMachineParentNode);
-
-            // get the current state of the parent state machine and pass the pose through
-            // only do this when the current state is not the state machine where our pass-through node is in isn't the current node, else we pass through our own pose
-            AnimGraphNode* currentState = stateMachineParent->GetCurrentState(animGraphInstance);
-            if (currentState != parentNode)
-            {
-                return currentState;
-            }
+            return stateMachineParent->GetCurrentState(animGraphInstance);
         }
 
         return nullptr;
@@ -98,30 +92,39 @@ namespace EMotionFX
     {
         AnimGraphPose* outputPose;
 
-        // get the parent node and check if it is a state machine
+        // we only need to get the pose from the source node for the cases where the source node is valid (not null) and 
+        // is not the parent node (since the source of the parent state machine is the binding pose)
         AnimGraphNode* sourceNode = FindSourceNode(animGraphInstance);
-        if (sourceNode == nullptr)
+        if (!sourceNode)
+        {
+            RequestPoses(animGraphInstance);
+            outputPose = GetOutputPose(animGraphInstance, OUTPUTPORT_RESULT)->GetValue();
+            outputPose->InitFromBindPose(animGraphInstance->GetActorInstance());
+
+            if (GetEMotionFX().GetIsInEditorMode())
+            {
+                SetHasError(animGraphInstance, true);
+            }
+            return;
+        }
+        else if (sourceNode == GetParentNode())
         {
             RequestPoses(animGraphInstance);
             outputPose = GetOutputPose(animGraphInstance, OUTPUTPORT_RESULT)->GetValue();
             outputPose->InitFromBindPose(animGraphInstance->GetActorInstance());
 
             // visualize it
-        #ifdef EMFX_EMSTUDIOBUILD
-            SetHasError(animGraphInstance, true);
-
-            if (GetCanVisualize(animGraphInstance))
+            if (GetEMotionFX().GetIsInEditorMode() && GetCanVisualize(animGraphInstance))
             {
                 animGraphInstance->GetActorInstance()->DrawSkeleton(outputPose->GetPose(), mVisualizeColor);
             }
-        #endif
-
             return;
         }
 
-    #ifdef EMFX_EMSTUDIOBUILD
-        SetHasError(animGraphInstance, false);
-    #endif
+        if (GetEMotionFX().GetIsInEditorMode())
+        {
+            SetHasError(animGraphInstance, false);
+        }
 
         OutputIncomingNode(animGraphInstance, sourceNode);
 
@@ -132,12 +135,10 @@ namespace EMotionFX
         sourceNode->DecreaseRef(animGraphInstance);
 
         // visualize it
-    #ifdef EMFX_EMSTUDIOBUILD
-        if (GetCanVisualize(animGraphInstance))
+        if (GetEMotionFX().GetIsInEditorMode() && GetCanVisualize(animGraphInstance))
         {
             animGraphInstance->GetActorInstance()->DrawSkeleton(outputPose->GetPose(), mVisualizeColor);
         }
-    #endif
     }
 
 
@@ -149,7 +150,7 @@ namespace EMotionFX
 
         // find the source node
         AnimGraphNode* sourceNode = FindSourceNode(animGraphInstance);
-        if (sourceNode == nullptr)
+        if (!sourceNode || sourceNode == GetParentNode())
         {
             uniqueData->Clear();
             return;
@@ -167,7 +168,7 @@ namespace EMotionFX
     {
         // find the source node
         AnimGraphNode* sourceNode = FindSourceNode(animGraphInstance);
-        if (sourceNode == nullptr)
+        if (!sourceNode || sourceNode == GetParentNode())
         {
             return;
         }
@@ -185,7 +186,7 @@ namespace EMotionFX
     {
         // find the source node
         AnimGraphNode* sourceNode = FindSourceNode(animGraphInstance);
-        if (sourceNode == nullptr)
+        if (!sourceNode || sourceNode == GetParentNode())
         {
             AnimGraphNodeData* uniqueData = FindUniqueNodeData(animGraphInstance);
             RequestRefDatas(animGraphInstance);

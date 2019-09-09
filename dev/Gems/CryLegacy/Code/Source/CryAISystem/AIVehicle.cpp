@@ -720,7 +720,7 @@ void CAIVehicle::Reset(EObjectResetType type)
 
     if (type == AIOBJRESET_INIT)
     {
-        SetObserver(false); // TODO(Márcio): clean this up
+        SetObserver(false); // TODO(Marcio): clean this up
     }
     CAISystem* pAISystem = GetAISystem();
 

@@ -28,7 +28,11 @@
 #include <AzCore/std/parallel/conditional_variable.h>
 
 #if defined(AZ_RESTRICTED_PLATFORM)
-#include AZ_RESTRICTED_FILE(AssetManager_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/AssetManager_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/AssetManager_cpp_provo.inl"
+    #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
 #undef AZ_RESTRICTED_SECTION_IMPLEMENTED
@@ -483,7 +487,7 @@ namespace UnitTest
 
         Asset<SimpleAssetType> m_asset;
 
-        SimpleClassWithAnAssetRef() : m_asset(static_cast<u8>(AssetFlags::OBJECTSTREAM_NO_LOAD)) {}
+        SimpleClassWithAnAssetRef() : m_asset(AssetLoadBehavior::NoLoad) {}
 
         static void Reflect(SerializeContext& context)
         {
@@ -698,9 +702,9 @@ namespace UnitTest
 
         EXPECT_EQ(EmptyAssetTypeWithId::s_alive, 1);
 
-        // Construct with flags
+                // Construct with flags
         {
-            Asset<EmptyAssetTypeWithId> assetWithFlags(5);
+                    Asset<EmptyAssetTypeWithId> assetWithFlags(AssetLoadBehavior::PreLoad);
             EXPECT_TRUE(!assetWithFlags.GetId().IsValid());
             EXPECT_TRUE(assetWithFlags.GetType() == AzTypeInfo<EmptyAssetTypeWithId>::Uuid());
         }
@@ -1451,7 +1455,7 @@ namespace UnitTest
             AZ_RTTI(AssetC, "{283255FE-0FCB-4938-AC25-8FB18EB07158}", Data::AssetData);
             AZ_CLASS_ALLOCATOR(AssetC, SystemAllocator, 0);
             AssetC()
-                : data((AZ::u8)Data::AssetFlags::OBJECTSTREAM_PRE_LOAD)
+                : data(Data::AssetLoadBehavior::PreLoad)
             {}
             AssetC(const AssetC&) = delete;
             static void Reflect(SerializeContext& context)
@@ -1470,7 +1474,7 @@ namespace UnitTest
             AZ_RTTI(AssetB, "{C4E8D87D-4F1D-4888-9F65-AD143945E11A}", Data::AssetData);
             AZ_CLASS_ALLOCATOR(AssetB, SystemAllocator, 0);
             AssetB()
-                : data((AZ::u8)Data::AssetFlags::OBJECTSTREAM_PRE_LOAD)
+                : data(Data::AssetLoadBehavior::PreLoad)
             {}
             AssetB(const AssetB&) = delete;
             static void Reflect(SerializeContext& context)
@@ -1489,7 +1493,7 @@ namespace UnitTest
             AZ_RTTI(AssetA, "{32FCA086-20E9-465D-A8D7-7E1001F464F6}", Data::AssetData);
             AZ_CLASS_ALLOCATOR(AssetA, SystemAllocator, 0);
             AssetA()
-                : data((AZ::u8)Data::AssetFlags::OBJECTSTREAM_PRE_LOAD)
+                : data(Data::AssetLoadBehavior::PreLoad)
             {}
             AssetA(const AssetA&) = delete;
             static void Reflect(SerializeContext& context)
@@ -1508,7 +1512,7 @@ namespace UnitTest
             AZ_RTTI(CyclicAsset, "{97383A2D-B84B-46D6-B3FA-FB8E49A4407F}", Data::AssetData);
             AZ_CLASS_ALLOCATOR(CyclicAsset, SystemAllocator, 0);
             CyclicAsset()
-                : data((AZ::u8)Data::AssetFlags::OBJECTSTREAM_PRE_LOAD)
+                : data(Data::AssetLoadBehavior::PreLoad)
             {}
             CyclicAsset(const CyclicAsset&) = delete;
             static void Reflect(SerializeContext& context)
@@ -1527,9 +1531,8 @@ namespace UnitTest
         public:
             AZ_CLASS_ALLOCATOR(AssetHandlerAndCatalog, AZ::SystemAllocator, 0);
             AssetHandlerAndCatalog() = default;
-
-            AZ::u32 m_numCreations = 0;
-            AZ::u32 m_numDestructions = 0;
+            AZStd::atomic<int> m_numCreations = { 0 };
+            AZStd::atomic<int> m_numDestructions = { 0 };
             AZ::SerializeContext* m_context = nullptr;
 #if defined(USE_LOCAL_STORAGE)
             template <class T>
@@ -2164,6 +2167,117 @@ namespace UnitTest
 
             AssetManager::Destroy();
         }
+
+        void ParallelGetAndReleaseAsset()
+        {
+            SerializeContext context;
+            Asset1Prime::Reflect(context);
+
+            const size_t numThreads = 4;
+
+            AssetManager::Descriptor desc;
+            desc.m_maxWorkerThreads = 2;
+            AssetManager::Create(desc);
+
+            auto& db = AssetManager::Instance();
+
+            AssetHandlerAndCatalog* assetHandlerAndCatalog = aznew AssetHandlerAndCatalog;
+            assetHandlerAndCatalog->m_context = &context;
+            AZStd::vector<AssetType> types;
+            assetHandlerAndCatalog->GetHandledAssetTypes(types);
+            for (const auto& type : types)
+            {
+                db.RegisterHandler(assetHandlerAndCatalog, type);
+                db.RegisterCatalog(assetHandlerAndCatalog, type);
+            }
+
+            AZStd::vector<AZ::Uuid> assetUuids = {
+                AZ::Uuid(MYASSET1_ID),
+                AZ::Uuid(MYASSET2_ID),
+            };
+            AZStd::vector<AZStd::thread> threads;
+            AZStd::atomic<int> threadCount(numThreads);
+            AZStd::atomic_bool keepDispatching(true);
+
+            auto dispatch = [&keepDispatching]()
+            {
+                while (keepDispatching)
+                {
+                    AssetManager::Instance().DispatchEvents();
+                }
+            };
+
+            AZStd::atomic_bool wait(true);
+            AZStd::atomic_bool keepRunning(true);
+            AZStd::atomic<int> threadsRunning(0);
+            AZStd::atomic<int> dummy(0);
+
+            AZStd::thread dispatchThread(dispatch);
+
+            auto getAssetFunc = [&db, &threadCount, assetUuids, &wait, &threadsRunning, &dummy, &keepRunning](int index)
+            {
+                threadsRunning++;
+                while (wait)
+                {
+                    AZStd::this_thread::yield();
+                }
+
+                while (keepRunning)
+                {
+                    for (int innerIdx = index* 7; innerIdx > 0; innerIdx--)
+                    {
+                        // this inner loop is just to burn some time which will be different
+                        // per thread. Adding a dummy statement to ensure that the compiler does not optimize this loop.
+                        dummy = innerIdx;
+                    }
+
+                    int assetIndex = (int)(index % assetUuids.size());
+                    Data::Asset<Asset1Prime> asset1 = db.GetAsset(assetUuids[assetIndex], azrtti_typeid<Asset1Prime>(), false, nullptr);
+                    
+                    // There should be at least 1 ref here in this scope
+                    EXPECT_GE(asset1.Get()->GetUseCount(), 1);
+                };
+
+                threadCount--;
+            };
+
+            for (int idx = 0; idx < numThreads; idx++)
+            {
+                threads.emplace_back(AZStd::bind(getAssetFunc, idx));
+            }
+
+            while (threadsRunning < numThreads)
+            {
+                AZStd::this_thread::yield();
+            }
+
+            // We have ensured that all the threads have started at this point and we can let them start hammering at the AssetManager
+            wait = false;
+
+            AZStd::chrono::system_clock::time_point start = AZStd::chrono::system_clock::now();
+            while (AZStd::chrono::duration_cast<AZStd::chrono::milliseconds>(AZStd::chrono::system_clock::now() - start) < AZStd::chrono::seconds(2))
+            {
+                AZStd::this_thread::yield();
+            }
+
+            keepRunning = false;
+
+            for (auto& thread : threads)
+            {
+                thread.join();
+            }
+
+            EXPECT_EQ(threadCount, 0);
+
+            EXPECT_EQ(assetHandlerAndCatalog->m_numCreations, assetHandlerAndCatalog->m_numDestructions);
+            EXPECT_FALSE(db.FindAsset(assetUuids[0]));
+            EXPECT_FALSE(db.FindAsset(assetUuids[1]));
+
+            keepDispatching = false;
+            dispatchThread.join();
+
+            AssetManager::Destroy();
+        }
     };
 
     TEST_F(AssetJobsMultithreadedTest, ParallelCreateAndDestroy)
@@ -2171,6 +2285,14 @@ namespace UnitTest
         // This test will hang on apple platforms.  Disable it for those platforms for now until we can fix it, but keep it enabled for the other platforms
 #if !defined(AZ_PLATFORM_APPLE)
         ParallelCreateAndDestroy();
+#endif
+    }
+
+    TEST_F(AssetJobsMultithreadedTest, ParallelGetAndReleaseAsset)
+    {
+        // This test will hang on apple platforms.  Disable it for those platforms for now until we can fix it, but keep it enabled for the other platforms
+#if !defined(AZ_PLATFORM_APPLE)
+        ParallelGetAndReleaseAsset();
 #endif
     }
 

@@ -126,7 +126,7 @@ private:
     typedef std::vector<Vec3> Points;
     void SimplifyCoverPath(Points& points) const;
 
-    static Points s_simplifiedPoints;
+    static StaticInstance<Points> s_simplifiedPoints;
 
     bool ILINE IsPointBehindSegment(const Vec3& eye, const Vec3& point, const Segment& segment) const
     {

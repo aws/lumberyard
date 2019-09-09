@@ -31,12 +31,18 @@
 #include "Objects/AiPoint.h"
 #include "Objects/ParticleEffectObject.h"
 #include "Objects/PrefabObject.h"
+#include "SurfaceInfoPicker.h"
+#include <Plugins/ComponentEntityEditorPlugin/Objects/ComponentEntityObject.h>
 
 #include <AzCore/Math/Vector2.h>
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
+#include <AzToolsFramework/Entity/EditorEntityTransformBus.h>
+#include <AzToolsFramework/ToolsComponents/EditorOnlyEntityComponentBus.h>
+#include <AzToolsFramework/ViewportSelection/EditorInteractionSystemViewportSelectionRequestBus.h>
 
 #include <QMenu>
 #include <QCursor>
+#include <QTimer>
 
 //////////////////////////////////////////////////////////////////////////
 CObjectMode::CObjectMode(QObject* parent)
@@ -352,6 +358,8 @@ bool CObjectMode::OnKeyUp(CViewport* view, uint32 nChar, uint32 nRepCnt, uint32 
 //////////////////////////////////////////////////////////////////////////
 bool CObjectMode::OnLButtonDown(CViewport* view, int nFlags, const QPoint& point)
 {
+    AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::Editor);
+
     if (m_bMoveByFaceNormManipShown)
     {
         HideMoveByFaceNormGizmo();
@@ -526,10 +534,41 @@ bool CObjectMode::OnLButtonDown(CViewport* view, int nFlags, const QPoint& point
     if (editMode != eEditModeTool)
     {
         // Check for Move to position.
-        if (bCtrlClick && bShiftClick)
+        if (bCtrlClick && bShiftClick && !hitInfo.object)
         {
             // Ctrl-Click on terrain will move selected objects to specified location.
             MoveSelectionToPos(view, pos, bAltClick, point);
+            bLockSelection = true;
+        }
+        else if (bCtrlClick && bShiftClick && hitInfo.object)
+        {
+            const int nPickFlag = CSurfaceInfoPicker::ePOG_All & (~CSurfaceInfoPicker::ePOG_Terrain);
+            view->BeginUndo();
+            CSelectionGroup* pSelection = GetIEditor()->GetSelection();
+            const int numObjects = pSelection->GetCount();
+            for (int objectIndex = 0;objectIndex < numObjects;++objectIndex)
+            {
+                CBaseObject* m_curObj = pSelection->GetObject(objectIndex);
+                CSurfaceInfoPicker::CExcludedObjects excludeObjects;
+                excludeObjects.Add(m_curObj);
+                SRayHitInfo hitInfo;
+                CSurfaceInfoPicker surfacePicker;
+                if (surfacePicker.Pick(point, hitInfo, &excludeObjects, nPickFlag))
+                {                 
+                    m_curObj->SetPos(hitInfo.vHitPos);
+                    if (bAltClick)
+                    {
+                        Quat nq;
+                        Vec3 zaxis = m_curObj->GetRotation() * Vec3(AZ::Vector3::CreateAxisZ());
+                        zaxis.Normalize();
+                        nq.SetRotationV0V1(zaxis, hitInfo.vHitNormal);
+                        m_curObj->SetRotation(nq * m_curObj->GetRotation());
+                    }
+                }
+
+            }
+            AzToolsFramework::ScopedUndoBatch undo("Transform");
+            view->AcceptUndo("Move Selection");
             bLockSelection = true;
         }
     }
@@ -630,6 +669,15 @@ bool CObjectMode::OnLButtonDown(CViewport* view, int nFlags, const QPoint& point
         GetCommandMode() == ScaleMode)
     {
         view->BeginUndo();
+
+        AzToolsFramework::EntityIdList selectedEntities;
+        AzToolsFramework::ToolsApplicationRequests::Bus::BroadcastResult(
+            selectedEntities,
+            &AzToolsFramework::ToolsApplicationRequests::Bus::Events::GetSelectedEntities);
+
+        AzToolsFramework::EditorTransformChangeNotificationBus::Broadcast(
+            &AzToolsFramework::EditorTransformChangeNotificationBus::Events::OnEntityTransformChanging,
+            selectedEntities);
     }
 
     //////////////////////////////////////////////////////////////////////////
@@ -693,17 +741,23 @@ bool CObjectMode::OnLButtonUp(CViewport* view, int nFlags, const QPoint& point)
     {
         if (GetCommandMode() == MoveMode)
         {
-            AzToolsFramework::ScopedUndoBatch undo("Move");
+            {
+                AzToolsFramework::ScopedUndoBatch undo("Move");
+            }
             view->AcceptUndo("Move Selection");
         }
         else if (GetCommandMode() == RotateMode)
         {
-            AzToolsFramework::ScopedUndoBatch undo("Rotate");
+            {
+                AzToolsFramework::ScopedUndoBatch undo("Rotate");
+            }
             view->AcceptUndo("Rotate Selection");
         }
         else if (GetCommandMode() == ScaleMode)
         {
-            AzToolsFramework::ScopedUndoBatch undo("Scale");
+            {
+                AzToolsFramework::ScopedUndoBatch undo("Scale");
+            }
             view->AcceptUndo("Scale Selection");
         }
         else
@@ -772,6 +826,15 @@ bool CObjectMode::OnLButtonUp(CViewport* view, int nFlags, const QPoint& point)
     if (GetCommandMode() == ScaleMode || GetCommandMode() == MoveMode || GetCommandMode() == RotateMode)
     {
         GetIEditor()->GetObjectManager()->GetSelection()->ObjectModified();
+
+        AzToolsFramework::EntityIdList selectedEntities;
+        AzToolsFramework::ToolsApplicationRequests::Bus::BroadcastResult(
+            selectedEntities,
+            &AzToolsFramework::ToolsApplicationRequests::Bus::Events::GetSelectedEntities);
+
+        AzToolsFramework::EditorTransformChangeNotificationBus::Broadcast(
+            &AzToolsFramework::EditorTransformChangeNotificationBus::Events::OnEntityTransformChanged,
+            selectedEntities);
     }
 
     if (GetIEditor()->GetEditMode() != eEditModeSelectArea)
@@ -824,9 +887,28 @@ bool CObjectMode::OnLButtonDblClk(CViewport* view, int nFlags, const QPoint& poi
         HitContext hitInfo;
         view->HitTest(point, hitInfo);
 
-        CBaseObject* hitObj = hitInfo.object;
-        if (hitObj)
+        if (CBaseObject* hitObj = hitInfo.object)
         {
+            // check if the object is an AZ::Entity
+            if ((hitObj->GetType() == OBJTYPE_AZENTITY))
+            {
+                if (CRenderViewport* renderViewport = viewport_cast<CRenderViewport*>(view))
+                {
+                    // if we double clicked on an AZ::Entity/Component, build a mouse interaction
+                    // and send a double click event to the EditorInteractionSystemViewportSelectionRequestBus.
+                    // if we have double clicked on a component supporting ComponentMode, we will enter it.
+                    // note: this is to support entering ComponentMode with a double click using the old viewport interaction model
+                    const auto mouseInteraction = renderViewport->BuildMouseInteraction(
+                        Qt::LeftButton, QGuiApplication::queryKeyboardModifiers(), point);
+                    
+                    AzToolsFramework::EditorInteractionSystemViewportSelectionRequestBus::Event(
+                        AzToolsFramework::GetEntityContextId(),
+                        &AzToolsFramework::ViewportInteraction::MouseViewportRequests::HandleMouseInteraction,
+                        AzToolsFramework::ViewportInteraction::MouseInteractionEvent(
+                            mouseInteraction, AzToolsFramework::ViewportInteraction::MouseEvent::DoubleClick));
+                }
+            }
+
             // Fire double click event on hit object.
             hitObj->OnEvent(EVENT_DBLCLICK);
         }
@@ -844,7 +926,7 @@ bool CObjectMode::OnLButtonDblClk(CViewport* view, int nFlags, const QPoint& poi
 //////////////////////////////////////////////////////////////////////////
 bool CObjectMode::OnRButtonDown(CViewport* view, int nFlags, const QPoint& point)
 {
-    if (gSettings.viewports.bEnableContextMenu)
+    if (gSettings.viewports.bEnableContextMenu && !GetIEditor()->IsInSimulationMode())
     {
         m_openContext = true;
     }
@@ -858,19 +940,19 @@ bool CObjectMode::OnRButtonUp(CViewport* view, int nFlags, const QPoint& point)
     {
         bool selectionLocked = GetIEditor()->IsSelectionLocked();
 
-        QMenu* menu = new QMenu(viewport_cast<QtViewport*>(view));
-
         // Check if right clicked on object.
         HitContext hitInfo;
         hitInfo.bIgnoreAxis = true; // ignore gizmo
         view->HitTest(point, hitInfo);
 
+        QPointer<CBaseObject> object;
+
         if (selectionLocked)
         {
             if (hitInfo.object)
             {
-                // Populate object context.
-                hitInfo.object->OnContextMenu(menu);
+                // Save so we can use this for the context menu later
+                object = hitInfo.object;
             }
         }
         else
@@ -909,12 +991,14 @@ bool CObjectMode::OnRButtonUp(CViewport* view, int nFlags, const QPoint& point)
                 // hit object has not been selected
                 if (!selections->IsContainObject(hitInfo.object))
                 {
+                    view->BeginUndo();
                     GetIEditor()->GetObjectManager()->ClearSelection();
                     GetIEditor()->GetObjectManager()->SelectObject(hitInfo.object, true);
+                    view->AcceptUndo("Select Object(s)");
                 }
 
-                // Populate object context.
-                hitInfo.object->OnContextMenu(menu);
+                // Save so we can use this for the context menu later
+                object = hitInfo.object;
             }
             else
             {
@@ -926,30 +1010,40 @@ bool CObjectMode::OnRButtonUp(CViewport* view, int nFlags, const QPoint& point)
                 view->SetConstructionMatrix(COORDS_PARENT, tm);
                 view->SetConstructionMatrix(COORDS_USERDEFINED, userTM);
 
+                view->BeginUndo();
                 GetIEditor()->GetObjectManager()->ClearSelection();
+                view->AcceptUndo("Select Object(s)");
             }
         }
 
-        // Populate global context menu.
-        int contextMenuFlag = 0;
-        EBUS_EVENT(AzToolsFramework::EditorEvents::Bus,
-            PopulateEditorGlobalContextMenu,
-            menu,
-            AZ::Vector2(static_cast<float>(point.x()), static_cast<float>(point.y())),
-            contextMenuFlag);
+        // CRenderViewport hides the cursor when the mouse button is pressed
+        // and shows it when button is released. If we exec the context menu directly, then we block
+        // and the cursor stays invisible while the menu is open so instead, we queue it to happen
+        // after the mouse button release is finished
+        QTimer::singleShot(0, this, [point, view, object]()
+        {
+            QMenu menu(viewport_cast<QtViewport*>(view));
 
-        if (menu->isEmpty())
-        {
-            delete menu;
-        }
-        else
-        {
-            // Don't use exec() here: CRenderViewport hides the cursor when the mouse button is pressed
-            // and shows it when button is released. If we exec  then we block and the cursor stays invisible while the menu is open
-            //QObject::connect(menu, &QMenu::aboutToHide, menu, &QMenu::deleteLater);
-            menu->popup(QCursor::pos());
-        }
+            if (object)
+            {
+                object->OnContextMenu(&menu);
+            }
+
+            // Populate global context menu.
+            int contextMenuFlag = 0;
+            EBUS_EVENT(AzToolsFramework::EditorEvents::Bus,
+                PopulateEditorGlobalContextMenu,
+                &menu,
+                AZ::Vector2(static_cast<float>(point.x()), static_cast<float>(point.y())),
+                contextMenuFlag);
+
+            if (!menu.isEmpty())
+            {
+                menu.exec(QCursor::pos());
+            }
+        });
     }
+
     return true;
 }
 
@@ -1011,7 +1105,9 @@ void CObjectMode::MoveSelectionToPos(CViewport* view, Vec3& pos, bool align, con
 
     // This will capture any entity state changes that occurred
     // during the move.
-    AzToolsFramework::ScopedUndoBatch undo("Transform");
+    {
+        AzToolsFramework::ScopedUndoBatch undo("Transform");
+    }
 
     view->AcceptUndo("Move Selection");
 }
@@ -1019,6 +1115,8 @@ void CObjectMode::MoveSelectionToPos(CViewport* view, Vec3& pos, bool align, con
 //////////////////////////////////////////////////////////////////////////
 bool CObjectMode::OnMouseMove(CViewport* view, int nFlags, const QPoint& point)
 {
+    AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::Editor);
+
     if (GetIEditor()->IsInGameMode() || GetIEditor()->IsInSimulationMode())
     {
         // Ignore while in game.
@@ -1033,8 +1131,6 @@ bool CObjectMode::OnMouseMove(CViewport* view, int nFlags, const QPoint& point)
     }
     m_prevMousePos = point;
     SetObjectCursor(view, 0);
-
-    Vec3 pos = view->SnapToGrid(view->ViewToWorld(point));
 
     // get world/local coordinate system setting.
     int coordSys = GetIEditor()->GetReferenceCoordSys();
@@ -1197,6 +1293,7 @@ void CObjectMode::SetObjectCursor(CViewport* view, CBaseObject* hitObj, bool bCh
 {
     EStdCursor cursor = STD_CURSOR_DEFAULT;
     QString m_cursorStr;
+    QString supplementaryCursor = "";
 
     CBaseObject* pMouseOverObject = NULL;
     if (!GuidUtil::IsEmpty(m_MouseOverObject))
@@ -1253,6 +1350,26 @@ void CObjectMode::SetObjectCursor(CViewport* view, CBaseObject* hitObj, bool bCh
             if (pMouseOverObject->IsSelected())
             {
                 bHitSelectedObject = true;
+            }
+
+            if (pMouseOverObject->GetType() == OBJTYPE_AZENTITY)
+            {
+                CComponentEntityObject* componentEntity = static_cast<CComponentEntityObject*>(pMouseOverObject);
+
+                bool isEditorOnly = false;
+                AzToolsFramework::EditorOnlyEntityComponentRequestBus::EventResult(isEditorOnly, componentEntity->GetAssociatedEntityId(), &AzToolsFramework::EditorOnlyEntityComponentRequests::IsEditorOnlyEntity);
+                AZ::Entity* entity = nullptr;
+                AZ::ComponentApplicationBus::BroadcastResult(entity, &AZ::ComponentApplicationBus::Events::FindEntity, componentEntity->GetAssociatedEntityId());
+                const bool isInitiallyActive = entity ? entity->IsRuntimeActiveByDefault() : true;
+
+                if (isEditorOnly)
+                {
+                    supplementaryCursor = "\n[" + QObject::tr("Editor Only") + "]";
+                }
+                else if (!isInitiallyActive)
+                {
+                    supplementaryCursor = "\n[" + QObject::tr("Inactive") + "]";
+                }
             }
         }
 
@@ -1331,19 +1448,8 @@ void CObjectMode::SetObjectCursor(CViewport* view, CBaseObject* hitObj, bool bCh
     cursor = static_cast<EStdCursor>(cursorId);
     m_cursorStr = cursorStr.c_str();
 
-    /*
-    if (bChangeNow)
-    {
-        if (GetCapture() == NULL)
-        {
-            if (m_hCurrCursor)
-                SetCursor( m_hCurrCursor );
-            else
-                SetCursor( m_hDefaultCursor );
-        }
-    }
-    */
     view->SetCurrentCursor(cursor, m_cursorStr);
+    view->SetSupplementaryCursorStr(supplementaryCursor);
 }
 
 //////////////////////////////////////////////////////////////////////////

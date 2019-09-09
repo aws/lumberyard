@@ -1,0 +1,392 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09", 
+    "Metadata": {
+        "CloudCanvas": {
+            "Id": "$Revision: #1 $"
+        }
+    }, 
+    "Outputs": {
+    }, 
+    "Parameters": {
+        "CloudCanvasStack": {
+            "Default": "ResourceGroup", 
+            "Description": "Identifies this stack as a Lumberyard Cloud Canvas managed stack.", 
+            "Type": "String"
+        }, 
+        "ConfigurationBucket": {
+            "Description": "Bucket that contains configuration data.", 
+            "Type": "String"
+        }, 
+        "ConfigurationKey": {
+            "Description": "Location in the configuration bucket of configuration data.", 
+            "Type": "String"
+        }, 
+        "DeploymentName": {
+            "Description": "Name of the resource group's deployment.", 
+            "Type": "String"
+        }, 
+        "DeploymentStackArn": {
+            "Description": "ARN of the deployment stack that owns this resource group stack.", 
+            "Type": "String"
+        }, 
+        "ProjectResourceHandler": {
+            "Description": "Service token of the custom resource handler.", 
+            "Type": "String"
+        }, 
+        "ResourceGroupName": {
+            "Description": "Name of the resource group.", 
+            "Type": "String"
+        }
+    }, 
+    "Resources": {
+        "AccessControl": {
+            "DependsOn": [
+                "PythonLambda",
+                "JavaJarLambda",
+                "DotnetLambda",
+                "GoLambda",
+                "NodeLambda"
+            ], 
+            "Properties": {
+                "ConfigurationBucket": {
+                    "Ref": "ConfigurationBucket"
+                }, 
+                "ConfigurationKey": {
+                    "Ref": "ConfigurationKey"
+                }, 
+                "ServiceToken": {
+                    "Ref": "ProjectResourceHandler"
+                }
+            }, 
+            "Type": "Custom::AccessControl"
+        }, 
+        "PythonLambda": {
+            "Properties": {
+                "Code": {
+                    "S3Bucket": {
+                        "Fn::GetAtt": [
+                            "PythonLambdaConfiguration", 
+                            "ConfigurationBucket"
+                        ]
+                    }, 
+                    "S3Key": {
+                        "Fn::GetAtt": [
+                            "PythonLambdaConfiguration", 
+                            "ConfigurationKey"
+                        ]
+                    }
+                }, 
+                "Handler": "main.main", 
+                "Role": {
+                    "Fn::GetAtt": [
+                        "PythonLambdaConfiguration", 
+                        "Role"
+                    ]
+                }, 
+                "Environment": {
+                    "Variables": {
+                        "Fn::GetAtt": [
+                            "PythonLambdaConfiguration",
+                            "CCSettings"
+                        ]
+                    }
+                },
+                "Runtime": {
+                    "Fn::GetAtt": [
+                        "PythonLambdaConfiguration", 
+                        "Runtime"
+                    ]
+                }
+            }, 
+            "Type": "AWS::Lambda::Function"
+        }, 
+        "PythonLambdaConfiguration": {
+            "Properties": {
+                "ConfigurationBucket": {
+                    "Ref": "ConfigurationBucket"
+                }, 
+                "ConfigurationKey": {
+                    "Ref": "ConfigurationKey"
+                }, 
+                "FunctionName": "PythonLambda", 
+                "Runtime": "python2.7", 
+                "ServiceToken": {
+                    "Ref": "ProjectResourceHandler"
+                }
+            }, 
+            "Type": "Custom::LambdaConfiguration"
+        },
+        "JavaJarLambda": {
+            "Metadata": {
+                "CloudCanvas": {
+                    "Permissions": [
+                        {
+                            "AbstractRole": "Player",
+                            "Action": [
+                                "lambda:InvokeFunction"
+                            ]
+                        }
+                    ]
+                }
+            },
+            "Properties": {
+                "Code": {
+                    "S3Bucket": {
+                        "Fn::GetAtt": [
+                            "JavaJarLambdaConfiguration",
+                            "ConfigurationBucket"
+                        ]
+                    },
+                    "S3Key": {
+                        "Fn::GetAtt": [
+                            "JavaJarLambdaConfiguration",
+                            "ConfigurationKey"
+                        ]
+                    }
+                },
+                "Handler": "example.hello",
+                "Role": {
+                    "Fn::GetAtt": [
+                        "JavaJarLambdaConfiguration",
+                        "Role"
+                    ]
+                },
+                "Environment": {
+                    "Variables": {
+                        "Fn::GetAtt": [
+                            "JavaJarLambdaConfiguration",
+                            "CCSettings"
+                        ]
+                    }
+                },
+                "Runtime": {
+                    "Fn::GetAtt": [
+                        "JavaJarLambdaConfiguration",
+                        "Runtime"
+                    ]
+                }
+            },
+            "Type": "AWS::Lambda::Function"
+        },
+        "JavaJarLambdaConfiguration": {
+            "Properties": {
+                "ConfigurationBucket": {
+                    "Ref": "ConfigurationBucket"
+                },
+                "ConfigurationKey": {
+                    "Ref": "ConfigurationKey"
+                },
+                "FunctionName": "JavaJarLambda",
+                "Runtime": "java8",
+                "ServiceToken": {
+                    "Ref": "ProjectResourceHandler"
+                }
+            },
+            "Type": "Custom::LambdaConfiguration"
+        },
+        "DotnetLambda": {
+            "Metadata": {
+                "CloudCanvas": {
+                    "Permissions": [
+                        {
+                            "AbstractRole": "Player",
+                            "Action": [
+                                "lambda:InvokeFunction"
+                            ]
+                        }
+                    ]
+                }
+            },
+            "Properties": {
+                "Code": {
+                    "S3Bucket": {
+                        "Fn::GetAtt": [
+                            "DotnetLambdaConfiguration",
+                            "ConfigurationBucket"
+                        ]
+                    },
+                    "S3Key": {
+                        "Fn::GetAtt": [
+                            "DotnetLambdaConfiguration",
+                            "ConfigurationKey"
+                        ]
+                    }
+                },
+                "Handler": "DotnetLambda::DotnetLambda.Function::FunctionHandler",
+                "Role": {
+                    "Fn::GetAtt": [
+                        "DotnetLambdaConfiguration",
+                        "Role"
+                    ]
+                },
+                "Environment": {
+                    "Variables": {
+                        "Fn::GetAtt": [
+                            "DotnetLambdaConfiguration",
+                            "CCSettings"
+                        ]
+                    }
+                },
+                "Runtime": {
+                    "Fn::GetAtt": [
+                        "DotnetLambdaConfiguration",
+                        "Runtime"
+                    ]
+                }
+            },
+            "Type": "AWS::Lambda::Function"
+        },
+        "DotnetLambdaConfiguration": {
+            "Properties": {
+                "ConfigurationBucket": {
+                    "Ref": "ConfigurationBucket"
+                },
+                "ConfigurationKey": {
+                    "Ref": "ConfigurationKey"
+                },
+                "FunctionName": "DotnetLambda",
+                "Runtime": "dotnetcore1.0",
+                "ServiceToken": {
+                    "Ref": "ProjectResourceHandler"
+                }
+            },
+            "Type": "Custom::LambdaConfiguration"
+        },
+        "GoLambda": {
+            "Metadata": {
+                "CloudCanvas": {
+                    "Permissions": [
+                        {
+                            "AbstractRole": "Player",
+                            "Action": [
+                                "lambda:InvokeFunction"
+                            ]
+                        }
+                    ]
+                }
+            },
+            "Properties": {
+                "Code": {
+                    "S3Bucket": {
+                        "Fn::GetAtt": [
+                            "GoLambdaConfiguration",
+                            "ConfigurationBucket"
+                        ]
+                    },
+                    "S3Key": {
+                        "Fn::GetAtt": [
+                            "GoLambdaConfiguration",
+                            "ConfigurationKey"
+                        ]
+                    }
+                },
+                "Handler": "hello",
+                "Role": {
+                    "Fn::GetAtt": [
+                        "GoLambdaConfiguration",
+                        "Role"
+                    ]
+                },
+                "Environment": {
+                    "Variables": {
+                        "Fn::GetAtt": [
+                            "GoLambdaConfiguration",
+                            "CCSettings"
+                        ]
+                    }
+                },
+                "Runtime": {
+                    "Fn::GetAtt": [
+                        "GoLambdaConfiguration",
+                        "Runtime"
+                    ]
+                }
+            },
+            "Type": "AWS::Lambda::Function"
+        },
+        "GoLambdaConfiguration": {
+            "Properties": {
+                "ConfigurationBucket": {
+                    "Ref": "ConfigurationBucket"
+                },
+                "ConfigurationKey": {
+                    "Ref": "ConfigurationKey"
+                },
+                "FunctionName": "GoLambda",
+                "Runtime": "go1.x",
+                "ServiceToken": {
+                    "Ref": "ProjectResourceHandler"
+                }
+            },
+            "Type": "Custom::LambdaConfiguration"
+        },
+        "NodeLambda": {
+            "Metadata": {
+                "CloudCanvas": {
+                    "Permissions": [
+                        {
+                            "AbstractRole": "Player",
+                            "Action": [
+                                "lambda:InvokeFunction"
+                            ]
+                        }
+                    ]
+                }
+            },
+            "Properties": {
+                "Code": {
+                    "S3Bucket": {
+                        "Fn::GetAtt": [
+                            "NodeLambdaConfiguration",
+                            "ConfigurationBucket"
+                        ]
+                    },
+                    "S3Key": {
+                        "Fn::GetAtt": [
+                            "NodeLambdaConfiguration",
+                            "ConfigurationKey"
+                        ]
+                    }
+                },
+                "Handler": "filename.handler",
+                "Role": {
+                    "Fn::GetAtt": [
+                        "NodeLambdaConfiguration",
+                        "Role"
+                    ]
+                },
+                "Environment": {
+                    "Variables": {
+                        "Fn::GetAtt": [
+                            "NodeLambdaConfiguration",
+                            "CCSettings"
+                        ]
+                    }
+                },
+                "Runtime": {
+                    "Fn::GetAtt": [
+                        "NodeLambdaConfiguration",
+                        "Runtime"
+                    ]
+                }
+            },
+            "Type": "AWS::Lambda::Function"
+        },
+        "NodeLambdaConfiguration": {
+            "Properties": {
+                "ConfigurationBucket": {
+                    "Ref": "ConfigurationBucket"
+                },
+                "ConfigurationKey": {
+                    "Ref": "ConfigurationKey"
+                },
+                "FunctionName": "NodeLambda",
+                "Runtime": "nodejs6.10",
+                "ServiceToken": {
+                    "Ref": "ProjectResourceHandler"
+                }
+            },
+            "Type": "Custom::LambdaConfiguration"
+        }
+    }
+}

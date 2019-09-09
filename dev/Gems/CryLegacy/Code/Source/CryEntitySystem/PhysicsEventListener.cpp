@@ -29,7 +29,7 @@
 
 #include "../Cry3DEngine/Environment/OceanEnvironmentBus.h"
 
-std::vector<CPhysicsEventListener::PhysVisAreaUpdate> CPhysicsEventListener::m_physVisAreaUpdateVector;
+StaticInstance<std::vector<CPhysicsEventListener::PhysVisAreaUpdate>> CPhysicsEventListener::m_physVisAreaUpdateVector;
 
 //////////////////////////////////////////////////////////////////////////
 CPhysicsEventListener::CPhysicsEventListener(CEntitySystem* pEntitySystem, IPhysicalWorld* pPhysics)

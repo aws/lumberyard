@@ -46,17 +46,17 @@ namespace AzToolsFramework
         void valueChanged(AZStd::string& newValue);
 
     public slots:
-        void setValue(AZStd::string& val);
+        virtual void setValue(AZStd::string& val);
         void setMaxLen(int maxLen);
 
     protected slots:
         void onChildLineEditValueChange(const QString& value);
 
-    private:
-        QLineEdit* m_pLineEdit;
-
     protected:
+        virtual void ConnectWidgets();
         virtual void focusInEvent(QFocusEvent* e);
+
+        QLineEdit* m_pLineEdit;
     };
 
     class StringPropertyLineEditHandler

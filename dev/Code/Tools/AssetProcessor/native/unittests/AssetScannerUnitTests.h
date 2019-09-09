@@ -9,12 +9,9 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#ifndef ASSETSCANNERUNITTEST_H
-#define ASSETSCANNERUNITTEST_H
+#pragma once
 
-#ifdef UNIT_TEST
 #include "UnitTestRunner.h"
-
 
 class AssetScannerUnitTest
     : public UnitTestRun
@@ -23,5 +20,3 @@ class AssetScannerUnitTest
 public:
     virtual void StartTest() override;
 };
-#endif //UNIT_TEST
-#endif // ASSETSCANNERUNITTEST_H

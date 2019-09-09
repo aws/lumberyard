@@ -838,7 +838,7 @@ void CAIObject::SetObservable(bool observable)
                 observableParams.skipList[i] = skipList[i];
             }
 
-            // Márcio: Should check for associated objects and add them here too?
+            // Marcio: Should check for associated objects and add them here too?
             if (!m_visionID)
             {
                 m_visionID = gAIEnv.pVisionMap->CreateVisionID(GetName());

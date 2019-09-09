@@ -76,7 +76,11 @@ namespace Multiplayer
         searchParams.m_familyType = Multiplayer::Utils::CVarToFamilyType(gEnv->pConsole->GetCVar("gm_ipversion")->GetString());
 
 #if defined(AZ_RESTRICTED_PLATFORM)
-#include AZ_RESTRICTED_FILE(MultiplayerLobbyLANServiceWrapper_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/MultiplayerLobbyLANServiceWrapper_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/MultiplayerLobbyLANServiceWrapper_cpp_provo.inl"
+    #endif
 #endif
 
         EBUS_EVENT_ID_RESULT(retVal, gridMate, GridMate::LANSessionServiceBus, StartGridSearch, searchParams);

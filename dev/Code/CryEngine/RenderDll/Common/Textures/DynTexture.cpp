@@ -1127,7 +1127,7 @@ SDynTexture_Shadow* SDynTexture_Shadow::GetForFrustum(ShadowMapFrustum* pFrustum
 }
 //====================================================================================
 
-SDynTexture2::TextureSet2 SDynTexture2::s_TexturePool[eTP_Max];
+AZStd::unique_ptr<SDynTexture2::TextureSet2> SDynTexture2::s_TexturePool[eTP_Max];
 
 SDynTexture2::SDynTexture2(const char* szSource, ETexPool eTexPool)
 {
@@ -1186,11 +1186,11 @@ SDynTexture2::SDynTexture2(uint32 nWidth, uint32 nHeight, uint32 nTexFlags, cons
 
     ETEX_Format eTF = GetPoolTexFormat(eTexPool);
 
-    TextureSet2Itor tset = s_TexturePool[eTexPool].find(eTF);
-    if (tset == s_TexturePool[eTexPool].end())
+    TextureSet2Itor tset = s_TexturePool[eTexPool]->find(eTF);
+    if (tset == s_TexturePool[eTexPool]->end())
     {
         m_pOwner = new STextureSetFormat(eTF, eTexPool, FT_NOMIPS | FT_USAGE_ATLAS);
-        s_TexturePool[eTexPool].insert(TextureSet2::value_type(eTF, m_pOwner));
+        s_TexturePool[eTexPool]->insert(TextureSet2::value_type(eTF, m_pOwner));
     }
     else
     {
@@ -1274,6 +1274,10 @@ ETEX_Format SDynTexture2::GetPoolTexFormat(ETexPool eTexPool)
 
 void SDynTexture2::Init(ETexPool eTexPool)
 {
+    if (!s_TexturePool[eTexPool])
+    {
+        s_TexturePool[eTexPool] = AZStd::make_unique<TextureSet2>();
+    }
     if (CRenderer::CV_r_texpreallocateatlases)
     {
         int nSize = CRenderer::CV_r_texatlassize;
@@ -1690,19 +1694,22 @@ void SDynTexture2::ShutDown()
     uint32 i;
     for (i = 0; i < eTP_Max; i++)
     {
-        for (TextureSet2Itor it = s_TexturePool[i].begin(); it != s_TexturePool[i].end(); it++)
+        if (s_TexturePool[i])
         {
-            STextureSetFormat* pF = it->second;
-            PREFAST_ASSUME(pF);
-            SDynTexture2* pDT, * pNext;
-            for (pDT = pF->m_pRoot; pDT; pDT = pNext)
+            for (TextureSet2Itor it = s_TexturePool[i]->begin(); it != s_TexturePool[i]->end(); it++)
             {
-                pNext = pDT->m_Next;
-                SAFE_RELEASE_FORCE(pDT);
+                STextureSetFormat* pF = it->second;
+                PREFAST_ASSUME(pF);
+                SDynTexture2* pDT, *pNext;
+                for (pDT = pF->m_pRoot; pDT; pDT = pNext)
+                {
+                    pNext = pDT->m_Next;
+                    SAFE_RELEASE_FORCE(pDT);
+                }
+                SAFE_DELETE(pF);
             }
-            SAFE_DELETE(pF);
+            s_TexturePool[i]->clear();
         }
-        s_TexturePool[i].clear();
     }
 }
 

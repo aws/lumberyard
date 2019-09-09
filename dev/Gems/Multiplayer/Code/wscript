@@ -12,7 +12,7 @@
 
 def build(bld):
 
-    bld.DefineGem(
+    kw = dict(
         # Add custom build options here
         use         = ['GridMate'],
         uselib      = ['OPENSSL'],
@@ -38,11 +38,12 @@ def build(bld):
         linux_performance_dedicated_uselib = ['AWS_GAMELIFT_SERVER_STATIC'],
         linux_release_dedicated_uselib = ['AWS_GAMELIFT_SERVER_STATIC'],
 
-       
-
-       
-
-       
-       
-
+        restricted_script = 'update_restricted_parameters',
     )
+    for p0, p1, p2, p3 in bld.env['RESTRICTED_PLATFORMS']:
+        kw['file_list'] += [
+            'Source/{0}/Multiplayer_tools_{1}.waf_files'.format(p0, p1),
+            'Source/BehaviorContext/{0}/BehaviorContext_tools_{1}.waf_files'.format(p0, p1)
+        ]
+        kw['{}_file_list'.format(p3)] = ['Source/{0}/Multiplayer_{1}.waf_files'.format(p0, p1)]
+    bld.DefineGem(**kw)

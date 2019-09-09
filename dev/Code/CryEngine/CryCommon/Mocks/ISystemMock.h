@@ -293,10 +293,6 @@ public:
         void());
     MOCK_METHOD3(LoadConfiguration,
         void(const char*, ILoadConfigurationEntrySink*, bool));
-    MOCK_CONST_METHOD0(GetGraphicsSettingsMap,
-        AZStd::unordered_map<AZStd::string, CVarInfo>*());
-    MOCK_METHOD1(SetGraphicsSettingsMap,
-        void(AZStd::unordered_map<AZStd::string, CVarInfo>*));
 
     MOCK_METHOD1(GetConfigSpec,
         ESystemConfigSpec(bool));
@@ -340,6 +336,10 @@ public:
         bool());
     MOCK_METHOD1(SetAssertVisible,
         void(bool bAssertVisble));
+    MOCK_METHOD1(SetConsoleDrawEnabled,
+        void(bool enabled));
+    MOCK_METHOD1(SetUIDrawEnabled,
+        void(bool enabled));
     MOCK_METHOD0(GetApplicationInstance,
         int());
     MOCK_METHOD0(GetCurrentUpdateTimeStats,
@@ -356,8 +356,8 @@ public:
         void(const char* szParam));
     MOCK_METHOD0(GetITestSystem,
         ITestSystem * ());
-    MOCK_METHOD0(ExecuteCommandLine,
-        void());
+    MOCK_METHOD1(ExecuteCommandLine,
+        void(bool));
     MOCK_METHOD1(GetUpdateStats,
         void(SSystemUpdateStats & stats));
     MOCK_METHOD0(DumpMemoryCoverage,

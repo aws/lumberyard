@@ -41,7 +41,7 @@ public:
     static const int scrollRowHeight = 22;
     static const int verticalHeadingMarginSize = 2 * 11;
     static const int defaultWidth = 300;
-    static const int defaultScrollWidth = defaultWidth - 30;
+    static const int defaultScrollWidth = defaultWidth - 28;
     static const int defaultHeight = 120;
     static const int defaultScrollHeight = 70;
     static const int windowBuffer = 20;

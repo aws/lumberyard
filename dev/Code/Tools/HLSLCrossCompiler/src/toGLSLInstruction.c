@@ -2603,7 +2603,6 @@ void SetDataTypes(HLSLCrossCompilerContext* psContext, Instruction* psInst, cons
     int32_t i;
 
     SHADER_VARIABLE_TYPE aeTempVecType[MAX_TEMP_VEC4 * 4];
-    SHADER_VARIABLE_TYPE eNewType;
 
     for (i = 0; i < MAX_TEMP_VEC4 * 4; ++i)
     {
@@ -2770,6 +2769,7 @@ void SetDataTypes(HLSLCrossCompilerContext* psContext, Instruction* psInst, cons
             }
         }
 
+        SHADER_VARIABLE_TYPE eNewType = SVT_FORCE_DWORD;
 
         switch (psInst->eOpcode)
         {
@@ -2913,6 +2913,10 @@ void SetDataTypes(HLSLCrossCompilerContext* psContext, Instruction* psInst, cons
             {
                 eNewType = GetOperandDataType(psContext, &psInst->asOperands[1]);
             }
+            else
+            {
+                continue;
+            }
             break;
         }
         case OPCODE_MOVC:
@@ -2927,6 +2931,10 @@ void SetDataTypes(HLSLCrossCompilerContext* psContext, Instruction* psInst, cons
                 {
                     ASSERT(GetOperandDataType(psContext, &psInst->asOperands[2]) == GetOperandDataType(psContext, &psInst->asOperands[3]));
                 }
+            }
+            else
+            {
+                continue;
             }
             break;
         }
@@ -2990,6 +2998,10 @@ void SetDataTypes(HLSLCrossCompilerContext* psContext, Instruction* psInst, cons
                         }
                     }
                 }
+            }
+            else
+            {
+                continue;
             }
             break;
         }
@@ -3093,6 +3105,7 @@ void SetDataTypes(HLSLCrossCompilerContext* psContext, Instruction* psInst, cons
                 }
             }
         }
+        ASSERT(eNewType != SVT_FORCE_DWORD);
     }
 }
 
@@ -4409,7 +4422,7 @@ void TranslateInstruction(HLSLCrossCompilerContext* psContext, Instruction* psIn
         AddIndentation(psContext);
 
         bcatcstr(glsl, "case ");
-        TranslateOperand(psContext, &psInst->asOperands[0], TO_FLAG_NONE);
+        TranslateOperand(psContext, &psInst->asOperands[0], TO_FLAG_INTEGER);
         bcatcstr(glsl, ":\n");
 
         ++psContext->indent;

@@ -18,10 +18,9 @@
 #include <AzToolsFramework/ToolsComponents/EditorVisibilityBus.h>
 #include <AzToolsFramework/API/ComponentEntitySelectionBus.h>
 
-#include <AzFramework/Entity/EntityDebugDisplayBus.h>
-
 #include <LmbrCentral/Rendering/RenderNodeBus.h>
 #include <LmbrCentral/Rendering/MaterialOwnerBus.h>
+#include <LmbrCentral/Rendering/RenderBoundsBus.h>
 
 #include "SkinnedMeshComponent.h"
 
@@ -36,13 +35,13 @@ namespace LmbrCentral
     */
     class EditorSkinnedMeshComponent
         : public AzToolsFramework::Components::EditorComponentBase
+        , private RenderBoundsRequestBus::Handler
         , private MeshComponentRequestBus::Handler
         , private MaterialOwnerRequestBus::Handler
         , private MeshComponentNotificationBus::Handler
         , private RenderNodeRequestBus::Handler
         , private AZ::TransformNotificationBus::Handler
         , private AzToolsFramework::EditorVisibilityNotificationBus::Handler
-        , private AzFramework::EntityDebugDisplayEventBus::Handler
         , private SkinnedMeshComponentRequestBus::Handler
         , private SkeletalHierarchyRequestBus::Handler
         , public AzToolsFramework::EditorComponentSelectionRequestsBus::Handler
@@ -62,13 +61,18 @@ namespace LmbrCentral
         // SkinnedMeshComponentRequestBus interface implementation
         ICharacterInstance* GetCharacterInstance() override;
 
-        // MeshComponentRequestBus interface implementation
+        // RenderBoundsRequestBus interface implementation
         AZ::Aabb GetWorldBounds() override;
         AZ::Aabb GetLocalBounds() override;
+        //////////////////////////////////////////////////////////////////////////
+
+        //////////////////////////////////////////////////////////////////////////
+        // MeshComponentRequestBus interface implementation
         void SetMeshAsset(const AZ::Data::AssetId& id) override;
         AZ::Data::Asset<AZ::Data::AssetData> GetMeshAsset() override { return m_mesh.GetMeshAsset(); }
         void SetVisibility(bool newVisibility) override;
         bool GetVisibility() override;
+        //////////////////////////////////////////////////////////////////////////
 
         // SkeletalHierarchyRequestBus::Handler
         AZ::u32 GetJointCount() override;
@@ -91,17 +95,15 @@ namespace LmbrCentral
         // TransformBus::Handler
         void OnTransformChanged(const AZ::Transform& local, const AZ::Transform& world) override;
 
-        // EditorVisibilityNotificationBus::Handler
+        // EditorVisibilityNotificationBus
         void OnEntityVisibilityChanged(bool visibility) override;
-
-        // AzFramework::EntityDebugDisplayEventBus interface implementation
-        void DisplayEntity(bool& handled) override;
 
         // EditorComponentBase
         void BuildGameEntity(AZ::Entity* gameEntity) override;
 
         // EditorComponentSelectionRequestsBus::Handler
-        AZ::Aabb GetEditorSelectionBounds() override;
+        AZ::Aabb GetEditorSelectionBoundsViewport(
+            const AzFramework::ViewportInfo& viewportInfo) override;
 
         //! Called when you want to change the game asset through code (like when creating components based on assets).
         void SetPrimaryAsset(const AZ::Data::AssetId& assetId) override;

@@ -6,8 +6,6 @@
  *  This code is distributed under the MIT License:
  *                          http://www.opensource.org/licenses/MIT
  */
-#ifndef CRYINCLUDE_EDITORCOMMON_QPROPERTYTREE_PROPERTYROW_H
-#define CRYINCLUDE_EDITORCOMMON_QPROPERTYTREE_PROPERTYROW_H
 #pragma once
 
 
@@ -557,17 +555,16 @@ struct PropertyRowPtrSerializer : Serialization::SharedPtrSerializer<PropertyRow
 
 inline bool Serialize(Serialization::IArchive& ar, Serialization::SharedPtr<PropertyRow>& ptr, const char* name, const char* label)
 {
-	PropertyRowPtrSerializer serializer(ptr);
-	return ar(static_cast<Serialization::IPointer&>(serializer), name, label);
+    PropertyRowPtrSerializer serializer(ptr);
+    return ar(static_cast<Serialization::IPointer&>(serializer), name, label);
 }
 
 #define REGISTER_PROPERTY_ROW(DataType, RowType) \
-	REGISTER_IN_FACTORY(PropertyRowFactory, Serialization::TypeID::get<DataType>().name(), RowType, []{ return new RowType; }); \
-	SERIALIZATION_CLASS_NAME_FOR_FACTORY(GlobalPropertyRowClassFactory(), PropertyRow, RowType, #DataType, #DataType);
+    PropertyRow* _Factory_For_##RowType() {return new RowType; }; \
+    REGISTER_IN_FACTORY(PropertyRowFactory, Serialization::TypeID::get<DataType>().name(), RowType, _Factory_For_##RowType); \
+    SERIALIZATION_CLASS_NAME_FOR_FACTORY(GlobalPropertyRowClassFactory(), PropertyRow, RowType, #DataType, #DataType);
 
 // Exposes the necessary class factories to extend the property tree
 // Exposes the necessary class factories to extend the property tree
 EDITOR_COMMON_API Serialization::ClassFactory<PropertyRow>& GetPropertyRowClassFactory();
 EDITOR_COMMON_API PropertyRowFactory& GetPropertyRowFactory();
-
-#endif // CRYINCLUDE_EDITORCOMMON_QPROPERTYTREE_PROPERTYROW_H

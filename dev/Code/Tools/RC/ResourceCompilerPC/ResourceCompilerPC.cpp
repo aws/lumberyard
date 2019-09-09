@@ -59,6 +59,24 @@ BOOL APIENTRY DllMain(
 }
 #endif
 
+static struct CryCleanup
+{
+    CryCleanup()
+        : m_cryXml(NULL)
+    {
+    }
+
+    ~CryCleanup()
+    {
+        if (m_cryXml)
+        {
+            CryFreeLibrary(m_cryXml);
+        }
+    }
+
+    HMODULE m_cryXml;
+} g_cryCleanup;
+
 ICryXML* LoadICryXML()
 {
     HMODULE hXMLLibrary = CryLoadLibrary(CryLibraryDefName("CryXML"));
@@ -79,14 +97,13 @@ ICryXML* LoadICryXML()
         return 0;
     }
 
+    g_cryCleanup.m_cryXml = hXMLLibrary;
+
     return pfnGetICryXML();
 }
 
 extern "C" DLL_EXPORT void __stdcall RegisterConvertors(IResourceCompiler* const pRC)
 {
-    gEnv = pRC->GetSystemEnvironment();
-    AZ::Environment::Attach(gEnv->pSharedEnvironment);
-
     SetRCLog(pRC->GetIRCLog());
 
     pRC->RegisterConvertor("StatCGFCompiler", new CStatCGFCompiler());
@@ -168,11 +185,6 @@ extern "C" DLL_EXPORT void __stdcall RegisterConvertors(IResourceCompiler* const
     pRC->RegisterKey("SplitLODs", "[CGF] Auto split LODs into the separate files");
 
     pRC->RegisterKey("maxWeightsPerVertex", "[CHR] Maximum number of weights per vertex (default is 4)");
-}
-
-void __stdcall BeforeUnloadDLL()
-{
-    AZ::Environment::Detach();
 }
 
 #include <Common_TypeInfo.h>

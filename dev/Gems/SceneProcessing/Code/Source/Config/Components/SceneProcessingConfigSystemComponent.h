@@ -18,6 +18,7 @@
 #include <SceneAPI/SceneCore/Components/SceneSystemComponent.h>
 #include <Config/SceneProcessingConfigBus.h>
 #include <Config/SettingsObjects/SoftNameSetting.h>
+#include <SceneAPI/SceneCore/Events/AssetImportRequest.h>
 
 namespace AZ
 {
@@ -37,6 +38,7 @@ namespace AZ
         class SceneProcessingConfigSystemComponent
             : public AZ::SceneAPI::SceneCore::SceneSystemComponent
             , protected SceneProcessingConfigRequestBus::Handler
+            , public AZ::SceneAPI::Events::AssetImportRequestBus::Handler
         {
         public:
             AZ_COMPONENT(SceneProcessingConfigSystemComponent, "{80FE1130-91B4-44D4-869F-859BB996161A}", AZ::SceneAPI::SceneCore::SceneSystemComponent);
@@ -49,7 +51,16 @@ namespace AZ
 
             void Clear();
 
+            // SceneProcessingConfigRequestBus START
             const AZStd::vector<SoftNameSetting*>* GetSoftNames() override;
+            bool AddNodeSoftName(const char* pattern,
+                SceneAPI::SceneCore::PatternMatcher::MatchApproach approach,
+                const char* virtualType, bool includeChildren) override;
+            bool AddFileSoftName(const char* pattern, SceneAPI::SceneCore::PatternMatcher::MatchApproach approach,
+                const char* virtualType, bool inclusive, const AZStd::string& graphObjectTypeName) override;
+            // SceneProcessingConfigRequestBus END
+
+            void AreCustomNormalsUsed(bool &value) override;
 
             static void Reflect(AZ::ReflectContext* context);
 
@@ -59,11 +70,16 @@ namespace AZ
             static void GetDependentServices(ComponentDescriptor::DependencyArrayType& dependent);
 
         private:
+            /// It is the responsibility of the caller to delete newSoftname if this method returns
+            /// false.
+            bool AddSoftName(SoftNameSetting* newSoftname);
+
             static void ReflectSceneModule(ReflectContext* context, const AZStd::unique_ptr<DynamicModuleHandle>& module);
             static void ActivateSceneModule(const AZStd::unique_ptr<DynamicModuleHandle>& module);
             static void DeactivateSceneModule(const AZStd::unique_ptr<DynamicModuleHandle>& module);
 
             AZStd::vector<SoftNameSetting*> m_softNames;
+            bool m_UseCustomNormals;
         };
     } // namespace SceneProcessingConfig
 } // namespace AZ

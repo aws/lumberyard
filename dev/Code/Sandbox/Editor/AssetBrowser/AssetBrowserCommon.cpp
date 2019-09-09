@@ -35,7 +35,7 @@
 #include <QtWinExtras/qwinfunctions.h>
 #endif
 
-namespace AssetBrowser
+namespace AssetBrowserCommon
 {
     const char* kThumbnailsRoot = "AssetBrowser/Thumbs/";
 }
@@ -1166,7 +1166,7 @@ bool CAssetItem::Cache()
 {
     QString strUserFolder = Path::GetResolvedUserSandboxFolder();
 
-    const QString str = QString::fromUtf8("%1%2%3.jpg").arg(strUserFolder, QString(AssetBrowser::kThumbnailsRoot), QString::number(m_hash));
+    const QString str = QString::fromUtf8("%1%2%3.jpg").arg(strUserFolder, QString(AssetBrowserCommon::kThumbnailsRoot), QString::number(m_hash));
 
     return m_cachedThumbBmp.save(str);
 }
@@ -1187,7 +1187,7 @@ bool CAssetItem::LoadThumbnail()
 
     QString strUserFolder = Path::GetResolvedUserSandboxFolder();
 
-    const QString str = QString::fromUtf8("%1%2%3.jpg").arg(strUserFolder, QString(AssetBrowser::kThumbnailsRoot), QString::number(m_hash));
+    const QString str = QString::fromUtf8("%1%2%3.jpg").arg(strUserFolder, QString(AssetBrowserCommon::kThumbnailsRoot), QString::number(m_hash));
 
     if (m_cachedThumbBmp.load(str))
     {

@@ -240,14 +240,23 @@ class StackInfo(object):
     @property
     def client(self):
         if self.__client is None:
-            self.__client = aws_utils.ClientWrapper(self.session.client('cloudformation', region_name=self.region))
+            self.__client = aws_utils.ClientWrapper(self.session.client(
+                'cloudformation', region_name=self.region))
         return self.__client
 
     @property
     def resources(self):
+        return self.get_resources(True)
+
+    def get_resources(self, verbose):
         if self.__resources is None:
+            if verbose:
+                client = self.client
+            else:
+                client = aws_utils.ClientWrapper(self.session.client(
+                    'cloudformation', region_name=self.region), log_level=aws_utils.LOG_LEVEL_NONE)
             resources = ResourceInfoList(self)
-            res = self.client.list_stack_resources(StackName=self.stack_arn)
+            res = client.list_stack_resources(StackName=self.stack_arn)
             for resource_summary in res['StackResourceSummaries']:
                 resources.append(ResourceInfo(self, resource_summary))
             while('NextToken' in res):
@@ -280,8 +289,9 @@ class StackInfo(object):
     @property
     def resource_definitions(self):
         if self.__resource_definitions is None:
-            bucket = self.project_stack.configuration_bucket
-            s3_client = aws_utils.ClientWrapper(self.session.client("s3"))
+            bucket = self.project_stack.get_configuration_bucket(verbose=False)
+            s3_client = aws_utils.ClientWrapper(
+                self.session.client("s3"), log_level=aws_utils.LOG_LEVEL_NONE)
             self.__resource_definitions = resource_type_info.load_resource_type_mapping(bucket, self, s3_client)
         return self.__resource_definitions
 
@@ -438,7 +448,6 @@ class DeploymentInfo(StackInfo):
 
                 access_stack_name = self.stack_name + '-Access'
                 try:
-                
                     res = self.client.describe_stacks(StackName=access_stack_name)
                     for stack in res.get('Stacks', []):
                         if stack['StackStatus'] != 'DELETE_COMPLETE':
@@ -522,24 +531,48 @@ class ProjectInfo(StackInfo):
     def deployments(self):
         if self.__deployment_infos is None:
             deployment_infos = []
-            for deployment_name, deployment_settings in self.project_settings.get('deployment', {}).iteritems():
+
+            deployments = self.project_settings.get('deployment', {})
+            if (deployments == {}):
+                # project-settings.json was removed in Version 2 of the cloud project settings.
+                # Each deployment is stored in a seperate json file with the suffix 'dstack'.
+                s3_client = aws_utils.ClientWrapper(self.session.client("s3"))
+                res = s3_client.list_objects_v2(Bucket = self.configuration_bucket, Prefix = "dstack.deployment.")
+                cloud_deployments = res.get('Contents', {})
+
+                for deployment in cloud_deployments:
+                    name = deployment['Key']
+                    prefix, group, deployment_name, ext = name.split('.')
+
+                    # Skip over dstack.deployment.*.json file. This file contains the default resource group settings.
+                    if deployment_name != '*':
+                        deployment_settings = json.load(s3_client.get_object(Bucket=self.configuration_bucket, Key=name)["Body"])
+                        deployments[deployment_name] = deployment_settings
+
+            for deployment_name, deployment_settings in deployments.iteritems():
                 deployment_stack_arn = deployment_settings.get('DeploymentStackId')
                 deployment_access_stack_arn = deployment_settings.get('DeploymentAccessStackId')
                 if deployment_stack_arn:
                     deployment_infos.append(DeploymentInfo(self.stack_manager, deployment_stack_arn, deployment_access_stack_arn=deployment_access_stack_arn, session=self.session, project_info=self))
+            
             self.__deployment_infos = deployment_infos
         return self.__deployment_infos
 
     @property
     def configuration_bucket(self):
-        resource = self.resources.get_by_logical_id('Configuration', expected_type='AWS::S3::Bucket')
+        return self.get_configuration_bucket(True)
+
+    def get_configuration_bucket(self, verbose):
+        resource = self.get_resources(verbose).get_by_logical_id(
+            'Configuration', expected_type='AWS::S3::Bucket')
         return resource.physical_id
 
     @property
     def project_settings(self):
         if self.__project_settings is None:
             try:
-                res = s3.get_object(Bucket = self.configuration_bucket, Key='project-settings.json')
+                s3_client = aws_utils.ClientWrapper(self.session.client("s3"))
+                res = s3_client.get_object(Bucket = self.configuration_bucket, Key='project-settings.json')
                 json_string = res['Body'].read()
                 print 'read project-settings.json contents: {}'.format(json_string)
                 self.__project_settings = json.loads(json_string)
@@ -554,6 +587,10 @@ class ProjectInfo(StackInfo):
                 print 'WARNING: could not read project-settings.json from the project configuration bucket.'
                 self.__project_settings = {}
         return self.__project_settings
+    
+    @property
+    def project_uuid(self):
+        return "{}-{}".format(self.stack_name, self.configuration_bucket.split('-')[-1])
 
     @property
     def parent_stack(self):
@@ -587,7 +624,7 @@ class StackInfoManager(object):
         self.__cache = {}
         self.__session = default_session
 
-    def get_stack_info(self, stack_arn, session=None, stack_type=None):
+    def get_stack_info(self, stack_arn, session=None, stack_type=None, no_logging=False):
         """Gets the StackInfo for a CloudFormation stack from its arn.
 
         Keyword arguments:
@@ -604,7 +641,11 @@ class StackInfoManager(object):
 
         if stack_type is None:
             region = aws_utils.get_region_from_stack_arn(stack_arn)
-            cf_client = aws_utils.ClientWrapper(session.client("cloudformation", region_name=region))
+            if no_logging:
+                cf_client = aws_utils.ClientWrapper(session.client("cloudformation", region_name=region), log_level=aws_utils.LOG_LEVEL_NONE)
+            else:
+                cf_client = aws_utils.ClientWrapper(session.client("cloudformation", region_name=region))
+            
             res = cf_client.describe_stacks(StackName = stack_arn)
             stack_description = res['Stacks'][0]
             parameters = stack_description.get('Parameters', [])

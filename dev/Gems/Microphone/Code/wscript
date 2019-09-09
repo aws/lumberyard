@@ -20,10 +20,10 @@ def build(bld):
         android_file_list   = ['microphone_android.waf_files'],
         # appletv_file_list   = ['microphone_appletv.waf_files'],
         darwin_file_list    = ['microphone_darwin.waf_files'],
-        #
+
         ios_file_list       = ['microphone_ios.waf_files'],
         # linux_file_list     = ['microphone_linux.waf_files'],
-        #
+
         win_file_list       = ['microphone_win.waf_files'],
 
         # Add custom build options here

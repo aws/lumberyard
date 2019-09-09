@@ -620,6 +620,10 @@ QTabWidget::pane { /* The tab widget frame */
     margin-top:-1px;
 }
 
+QTabWidget::tab-bar {
+    width: 9999px;
+}
+
 /*----------------------------------------------------------------------------*/
 /* TOP TAB BAR */
 /*----------------------------------------------------------------------------*/
@@ -708,6 +712,7 @@ QProgressBar::chunk{
 /*----------------------------------------------------------------------------*/
 QToolBar{
     border: 0px;
+    spacing: 0px;
 }
 
 QToolBar:horizontal{
@@ -726,6 +731,11 @@ QToolBar:separator{
     width:1px;
     height:1px;
     margin:5px;
+}
+
+QToolButton {
+    width: 24px;
+    height: 24px;
 }
 
 /*----------------------------------------------------------------------------*/

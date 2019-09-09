@@ -28,7 +28,7 @@
     X(PROFILE_ANIMATION,    "Animation")    \
     X(PROFILE_MOVIE,        "Movie")        \
     X(PROFILE_ENTITY,       "Entity")       \
-    X(PROFILE_FONT,         "Font")         \
+    X(PROFILE_UI,           "UI")           \
     X(PROFILE_NETWORK,      "Network")      \
     X(PROFILE_PHYSICS,      "Physics")      \
     X(PROFILE_SCRIPT,       "Script")       \
@@ -433,9 +433,12 @@ public:
         ,   m_pOfflineHistory(NULL)
         ,   m_bAlwaysCollect(bAlwaysCollect)
     {
-        if (IFrameProfileSystem* const pFrameProfileSystem = m_pISystem->GetIProfileSystem())
+        if (m_pISystem)
         {
-            pFrameProfileSystem->AddFrameProfiler(this);
+            if (IFrameProfileSystem* const pFrameProfileSystem = m_pISystem->GetIProfileSystem())
+            {
+                pFrameProfileSystem->AddFrameProfiler(this);
+            }
         }
     }
 
@@ -470,7 +473,7 @@ public:
 
     ILINE CFrameProfilerSection(CFrameProfiler* profiler)
     {
-        if ((gEnv->bProfilerEnabled || profiler->m_bAlwaysCollect) && (gEnv->callbackStartSection))
+        if (gEnv && ((gEnv->bProfilerEnabled || profiler->m_bAlwaysCollect) && (gEnv->callbackStartSection)))
         {
             m_pFrameProfiler = profiler;
             gEnv->callbackStartSection(this);

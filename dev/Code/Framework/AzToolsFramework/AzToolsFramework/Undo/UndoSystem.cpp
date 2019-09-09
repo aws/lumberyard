@@ -155,8 +155,13 @@ namespace AzToolsFramework
         }
 
         //--------------------------------------------------------------------
-        UndoStack::UndoStack(int limit, IUndoNotify* notify)
-            : m_SequencePointsBuffer(limit)
+        UndoStack::UndoStack(int /* no longer used */, IUndoNotify* notify)
+            : UndoStack(notify)
+        {
+        }
+
+        UndoStack::UndoStack(IUndoNotify* notify)
+            : m_SequencePointsBuffer()
         {
             m_notify = notify;
             reentryGuard = false;
@@ -186,14 +191,6 @@ namespace AzToolsFramework
             // any commands beyond the cursor are invalidated thereby
             Slice();
 
-            if (m_SequencePointsBuffer.full())
-            {
-                delete m_SequencePointsBuffer[0];
-                m_SequencePointsBuffer[0] = nullptr;
-
-                m_SequencePointsBuffer.pop_front();
-                --m_CleanPoint;
-            }
             m_SequencePointsBuffer.push_back(cmd);
             m_Cursor = int(m_SequencePointsBuffer.size()) - 1;
 #ifdef _DEBUG
@@ -273,7 +270,7 @@ namespace AzToolsFramework
 
         URSequencePoint* UndoStack::Undo()
         {
-            AZ_TracePrintf("Undo System", "Undo operation at cursor = %d and buffer size = %d\n", m_Cursor, int(m_SequencePointsBuffer.size()));
+            // AZ_TracePrintf("Undo System", "Undo operation at cursor = %d and buffer size = %d\n", m_Cursor, int(m_SequencePointsBuffer.size()));
 
             AZ_Assert(!reentryGuard, "UndoStack operations are not reentrant");
             reentryGuard = true;
@@ -296,7 +293,7 @@ namespace AzToolsFramework
         }
         URSequencePoint* UndoStack::Redo()
         {
-            AZ_TracePrintf("Undo System", "Redo operation at cursor = %d and buffer size %d\n", m_Cursor, int(m_SequencePointsBuffer.size()));
+            // AZ_TracePrintf("Undo System", "Redo operation at cursor = %d and buffer size %d\n", m_Cursor, int(m_SequencePointsBuffer.size()));
 
             AZ_Assert(!reentryGuard, "UndoStack operations are not reentrant");
             reentryGuard = true;
@@ -397,7 +394,7 @@ namespace AzToolsFramework
         {
             if (!CanRedo())
             {
-                return nullptr;
+                return "";
             }
 
             return m_SequencePointsBuffer[m_Cursor + 1]->GetName().c_str();
@@ -406,7 +403,7 @@ namespace AzToolsFramework
         {
             if (!CanUndo())
             {
-                return nullptr;
+                return "";
             }
 
             return m_SequencePointsBuffer[m_Cursor]->GetName().c_str();

@@ -50,6 +50,7 @@
 #include <IAISystem.h>
 #include "IPlatformOS.h"
 #include <CryProfileMarker.h>
+#include <ThermalInfo.h>
 
 
 
@@ -727,7 +728,7 @@ struct SDebugFrustrum
     float                     m_fQuadDist;      // < 0 if not used
 };
 
-static std::vector<SDebugFrustrum> g_DebugFrustrums;
+static StaticInstance<std::vector<SDebugFrustrum>> g_DebugFrustrums;
 
 void C3DEngine::DebugDraw_Draw()
 {
@@ -1445,8 +1446,13 @@ void C3DEngine::UpdatePreRender(const SRenderingPassInfo& passInfo)
     // (bethelz) This has to happen before particle updates.
     m_PhysicsAreaUpdates.Update();
 
-    // Update particle system as late as possible, only renderer is dependent on it.
-    m_pPartManager->Update();
+#if AZ_RENDER_TO_TEXTURE_GEM_ENABLED
+    if (!passInfo.IsRenderSceneToTexturePass())
+#endif // if AZ_RENDER_TO_TEXTURE_GEM_ENABLED
+    {
+        // Update particle system as late as possible, only renderer is dependent on it.
+        m_pPartManager->Update();
+    }
 
     if (passInfo.RenderClouds())
     {
@@ -1641,7 +1647,7 @@ void C3DEngine::SetSkyMaterial(_smart_ptr<IMaterial> pSkyMat)
 
 bool C3DEngine::IsHDRSkyMaterial(_smart_ptr<IMaterial> pMat) const
 {
-    return pMat && !azstricmp(pMat->GetShaderItem().m_pShader->GetName(), "SkyHDR");
+    return pMat && !azstricmp(pMat->GetSafeSubMtl(0)->GetShaderItem().m_pShader->GetName(), "SkyHDR");
 }
 
 void C3DEngine::RenderScene(const int nRenderFlags, const SRenderingPassInfo& passInfo)
@@ -1756,6 +1762,10 @@ void C3DEngine::RenderScene(const int nRenderFlags, const SRenderingPassInfo& pa
     {
         RenderSkyBox(GetSkyMaterial(), passInfo);
     }
+    
+    // Outdoor is not visible, that means there is no SkyBox to render.
+    // So we want to clear the GBuffer RT/background in order to avoid artifacts.
+    GetRenderer()->SetClearBackground(!IsOutdoorVisible());
 
     if (nRenderFlags & SHDF_ALLOW_AO)
     {
@@ -1828,7 +1838,11 @@ void C3DEngine::RenderScene(const int nRenderFlags, const SRenderingPassInfo& pa
         m_pObjManager->RenderBufferedRenderMeshes(passInfo);
     }
 
-    GetRenderer()->EF_InvokeShadowMapRenderJobs(IsShadersSyncLoad() ? (nRenderFlags | SHDF_NOASYNC | SHDF_STREAM_SYNC) : nRenderFlags);
+    // don't start shadow jobs if we aren't generating shadows
+    if ((nRenderFlags & SHDF_NO_SHADOWGEN) == 0)
+    {
+        GetRenderer()->EF_InvokeShadowMapRenderJobs(IsShadersSyncLoad() ? (nRenderFlags | SHDF_NOASYNC | SHDF_STREAM_SYNC) : nRenderFlags);
+    }
 
     if (m_pTerrain != nullptr)
     {
@@ -1886,7 +1900,7 @@ void C3DEngine::RenderScene(const int nRenderFlags, const SRenderingPassInfo& pa
     gEnv->pRenderer->EF_Query(EFQ_RenderMultithreaded, bIsMultiThreadedRenderer);
     if (bIsMultiThreadedRenderer)
     {
-        gEnv->pRenderer->EndSpawningGeneratingRendItemJobs(passInfo.ThreadID());
+        gEnv->pRenderer->EndSpawningGeneratingRendItemJobs();
     }
 
     m_bIsInRenderScene = false;
@@ -2213,7 +2227,7 @@ void C3DEngine::RenderSkyBox(_smart_ptr<IMaterial> pMat, const SRenderingPassInf
 
             // add sky dome to render list
             SRendItemSorter rendItemSorter = SRendItemSorter::CreateRendItemSorter(passInfo);
-            GetRenderer()->EF_AddEf(m_pREHDRSky, pMat->GetShaderItem(), pObj, passInfo, EFSLIST_GENERAL, 1, rendItemSorter);
+            GetRenderer()->EF_AddEf(m_pREHDRSky, pMat->GetSafeSubMtl(0)->GetShaderItem(), pObj, passInfo, EFSLIST_GENERAL, 1, rendItemSorter);
         }
     }
     // skybox
@@ -2241,7 +2255,7 @@ void C3DEngine::RenderSkyBox(_smart_ptr<IMaterial> pMat, const SRenderingPassInf
             m_pRESky->m_fSkyBoxStretching = m_fSkyBoxStretching;
 
             SRendItemSorter rendItemSorter = SRendItemSorter::CreateRendItemSorter(passInfo);
-            GetRenderer()->EF_AddEf(m_pRESky, pMat->GetShaderItem(), pObj, passInfo, EFSLIST_GENERAL, 1, rendItemSorter);
+            GetRenderer()->EF_AddEf(m_pRESky, pMat->GetSafeSubMtl(0)->GetShaderItem(), pObj, passInfo, EFSLIST_GENERAL, 1, rendItemSorter);
         }
     }
 }
@@ -2918,25 +2932,6 @@ void C3DEngine::DisplayInfo(float& fTextPosX, float& fTextPosY, float& fTextStep
     //////////////////////////////////////////////////////////////////////////
     {
         {
-#if TRACK_LEVEL_HEAP_USAGE
-            {
-                bool usingLevelHeap;
-                size_t lvlAllocs, lvlSize;
-                bool leaked = CryGetIMemoryManager()->GetLevelHeapViolationState(usingLevelHeap, lvlAllocs, lvlSize);
-                if (usingLevelHeap)
-                {
-                    if (leaked)
-                    {
-                        DrawTextRightAligned(fTextPosX, fTextPosY += fTextStepY, 1.3f, Col_Red, "Level Heap Leaked (%i allocs, totalling %iKB)", (int) lvlAllocs, (int) (lvlSize / 1024));
-                    }
-                    else
-                    {
-                        DrawTextRightAligned(fTextPosX, fTextPosY += fTextStepY, 1.3f, Col_Green, "Level Heap Healthy");
-                    }
-                }
-            }
-#endif
-
 #ifndef _RELEASE
             // Checkpoint loading information
             if (!gEnv->bMultiplayer)
@@ -3027,20 +3022,7 @@ void C3DEngine::DisplayInfo(float& fTextPosX, float& fTextPosY, float& fTextStep
 
         m_nDeferredLightsNum = 0;
     }
-#if CAPTURE_REPLAY_LOG
-    {
-        CryReplayInfo replayInfo;
-        CryGetIMemReplay()->GetInfo(replayInfo);
-        if (replayInfo.filename)
-        {
-            DrawTextRightAligned(
-                fTextPosX, fTextPosY += fTextStepY,
-                "MemReplay log sz: %lluMB cost: %i MB",
-                (replayInfo.writtenLength + (512ULL * 1024ULL)) / (1024ULL * 1024ULL),
-                (replayInfo.trackingSize + (512 * 1024)) / (1024 * 1024));
-        }
-    }
-#endif
+
     assert(pDisplayInfo);
     if (bEnhanced)
     {
@@ -3241,6 +3223,38 @@ void C3DEngine::DisplayInfo(float& fTextPosX, float& fTextPosY, float& fTextStep
 #undef TICKS_TO_MS
 #undef CONVY
 #undef CONVX
+
+    //////////////////////////////////////////////////////////////////////////
+    // Display Thermal information of the device (if supported)
+    //////////////////////////////////////////////////////////////////////////
+
+    if (ThermalInfoRequestsBus::GetTotalNumOfEventHandlers())
+    {
+        const int thermalSensorCount = static_cast<int>(ThermalSensorType::Count);
+        const char* sensorStrings[thermalSensorCount] = { "CPU", "GPU", "Battery" };
+        for (int i = 0; i < thermalSensorCount; ++i)
+        {
+            float temperature = 0.f;
+            ThermalSensorType sensor = static_cast<ThermalSensorType>(i);
+            EBUS_EVENT_RESULT(temperature, ThermalInfoRequestsBus, GetSensorTemp, sensor);
+            AZStd::string tempText;
+            ColorF tempColor;
+            if (temperature > 0.f)
+            {
+                float overheatingTemp = 0.f;
+                EBUS_EVENT_RESULT(overheatingTemp, ThermalInfoRequestsBus, GetSensorOverheatingTemp, sensor);
+                tempText = AZStd::string::format(" %.1f C", temperature);
+                tempColor = temperature >= overheatingTemp ? Col_Red : Col_White;
+            }
+            else
+            {
+                tempText = "N/A";
+                tempColor = Col_White;
+            }
+            DrawTextRightAligned(fTextPosX, fTextPosY += fTextStepY, DISPLAY_INFO_SCALE, tempColor, "%s Temp %s", sensorStrings[i], tempText.c_str());
+        }       
+    }
+
     //////////////////////////////////////////////////////////////////////////
     // Display Current fps
     //////////////////////////////////////////////////////////////////////////
@@ -3422,7 +3436,7 @@ void C3DEngine::DisplayInfo(float& fTextPosX, float& fTextPosY, float& fTextStep
                 }
 
                 char* pstr = szText + strlen(szText);
-                sprintf_s(pstr, sizeof(szText) - (pstr - szText), "%d", pLsource->pCastersList->Count());
+                sprintf_s(pstr, sizeof(szText) - (pstr - szText), "%d", pLsource->m_castersList.Count());
             }
 
             DrawTextRightAligned(fTextPosX, fTextPosY += fTextStepY, szText);
@@ -3689,6 +3703,15 @@ void C3DEngine::DisplayInfo(float& fTextPosX, float& fTextPosY, float& fTextStep
 void C3DEngine::SetupDistanceFog()
 {
     FUNCTION_PROFILER_3DENGINE;
+
+#if AZ_RENDER_TO_TEXTURE_GEM_ENABLED
+    // render to texture does not support volumetric fog 
+    if (GetRenderer()->IsRenderToTextureActive() && (GetCVars()->e_VolumetricFog != 0))
+    {
+        GetRenderer()->EnableFog(false);
+        return;
+    }
+#endif // AZ_RENDER_TO_TEXTURE_GEM_ENABLED
 
     GetRenderer()->SetFogColor(ColorF(m_vFogColor.x, m_vFogColor.y, m_vFogColor.z, 1.0f));
     GetRenderer()->EnableFog(GetCVars()->e_Fog > 0);

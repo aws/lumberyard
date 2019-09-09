@@ -49,4 +49,11 @@ void Vector3::BuildTangentBasis(Vector3& tangent, Vector3& bitangent) const
     bitangent.Normalize();
 }
 
+Vector3 Vector3::GetOrthogonalVector() const
+{
+    // for stability choose an axis which has a small component in this vector
+    const Vector3 axis = (GetX() * GetX() < 0.5f * GetLengthSq()) ? Vector3::CreateAxisX() : Vector3::CreateAxisY();
+    return Cross(axis);
+}
+
 #endif // #ifndef AZ_UNITY_BUILD

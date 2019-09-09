@@ -80,15 +80,16 @@ namespace AZ
         /// Reset a memory break. -1 all slots, otherwise (0 to MaxNumMemoryBreaks)
         void ResetMemoryBreak(int slot = -1);
         //////////////////////////////////////////////////////////////////////////
+
+        // Called from IAllocator
+        void RegisterAllocator(IAllocator* alloc);
+        void UnRegisterAllocator(IAllocator* alloc);
+
     private:
         void DebugBreak(void* address, const Debug::AllocationInfo& info);
 
         AllocatorManager(const AllocatorManager&);
         AllocatorManager& operator=(const AllocatorManager&);
-
-        // Called from IAllocator
-        void RegisterAllocator(IAllocator* alloc);
-        void UnRegisterAllocator(IAllocator* alloc);
 
         static const int m_maxNumAllocators = 100;
         IAllocator*         m_allocators[m_maxNumAllocators];

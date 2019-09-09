@@ -91,6 +91,8 @@ namespace AZStd
 
         AZ_FORCE_INLINE unordered_set()
             : base_type(hasher(), key_eq(), allocator_type()) {}
+        explicit unordered_set(const allocator_type& alloc)
+            : base_type(hasher(), key_eq(), alloc) {}
         AZ_FORCE_INLINE unordered_set(const unordered_set& rhs)
             : base_type(rhs) {}
         /// This constructor is AZStd extension (so we don't rehash/allocate memory)
@@ -261,6 +263,8 @@ namespace AZStd
 
         AZ_FORCE_INLINE unordered_multiset()
             : base_type(hasher(), key_eq(), allocator_type()) {}
+        explicit unordered_multiset(const allocator_type& alloc)
+            : base_type(hasher(), key_eq(), alloc) {}
         AZ_FORCE_INLINE unordered_multiset(const unordered_multiset& rhs)
             : base_type(rhs) {}
         /// This constructor is AZStd extension (so we don't rehash/allocate memory)

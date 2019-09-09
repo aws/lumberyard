@@ -25,8 +25,8 @@
 #include <AzCore/std/sort.h>
 
 extern "C" {
-#	include	<Lua/lualib.h>
-#	include	<Lua/lauxlib.h>
+#include<Lua/lualib.h>
+#include<Lua/lauxlib.h>
 }
 
 namespace AZ
@@ -44,7 +44,7 @@ namespace AZ
                 : m_value(value) {}
             virtual ~AttributeDynamicScriptValue() 
             { 
-                m_value.DestroyData();			
+                m_value.DestroyData();
             }
 
             template<class T>
@@ -63,9 +63,9 @@ namespace AZ
             }
 
             template<class T>
-            void GetValue(T& value, AZStd::false_type /*AZStd::is_pointer<T>::type()*/)		{ value = *reinterpret_cast<T*>(m_value.m_data); }
+            void GetValue(T& value, AZStd::false_type /*AZStd::is_pointer<T>::type()*/) { value = *reinterpret_cast<T*>(m_value.m_data); }
             template<class T>
-            void GetValue(T& value, AZStd::true_type /*AZStd::is_pointer<T>::type()*/)		{ value = reinterpret_cast<T>(m_value.m_data); }
+            void GetValue(T& value, AZStd::true_type /*AZStd::is_pointer<T>::type()*/) { value = reinterpret_cast<T>(m_value.m_data); }
 
             DynamicSerializableField m_value;
         };
@@ -107,7 +107,7 @@ namespace AzToolsFramework
 
         //=========================================================================
         // Activate
-        //=========================================================================	
+        //=========================================================================
         void ScriptEditorComponent::Activate()
         {
             // Setup the context
@@ -130,15 +130,16 @@ namespace AzToolsFramework
 
         //=========================================================================
         // Deactivate
-        //=========================================================================	
+        //=========================================================================
         void ScriptEditorComponent::Deactivate()
         {
             AZ::Data::AssetBus::Handler::BusDisconnect();
+            ClearDataElements();
         }
 
         //=========================================================================
         // CacheString
-        //=========================================================================	
+        //=========================================================================
         const char* ScriptEditorComponent::CacheString(const char* str)
         {
             if (str == nullptr)
@@ -151,7 +152,7 @@ namespace AzToolsFramework
 
         //=========================================================================
         // LoadDefaultAsset
-        //=========================================================================	
+        //=========================================================================
         bool ScriptEditorComponent::LoadDefaultAsset(AZ::ScriptDataContext& sdc, int valueIndex, const char* name, AzFramework::ScriptPropertyGroup& group, ElementInfo& elementInfo)
         {
             LSV_BEGIN(sdc.GetNativeContext(), 0);
@@ -190,7 +191,7 @@ namespace AzToolsFramework
 
         //=========================================================================
         // LoadDefaultEntityRef
-        //=========================================================================	
+        //=========================================================================
         bool ScriptEditorComponent::LoadDefaultEntityRef(AZ::ScriptDataContext& sdc, int valueIndex, const char* name, AzFramework::ScriptPropertyGroup& group, ElementInfo& elementInfo)
         {
             LSV_BEGIN(sdc.GetNativeContext(), 0);
@@ -253,7 +254,7 @@ namespace AzToolsFramework
 
         //=========================================================================
         // LoadAttribute
-        //=========================================================================	
+        //=========================================================================
         bool ScriptEditorComponent::LoadAttribute(AZ::ScriptDataContext& sdc, int valueIndex, const char* name, AZ::Edit::ElementData& ed, AZ::ScriptProperty* prop)
         {
             LSV_BEGIN(sdc.GetNativeContext(), 0);
@@ -324,7 +325,7 @@ namespace AzToolsFramework
 
         //=========================================================================
         // LoadAttribute
-        //=========================================================================	
+        //=========================================================================
         bool ScriptEditorComponent::LoadEnumValuesDouble(AZ::ScriptDataContext& sdc, int valueIndex, AZ::Edit::ElementData& ed)
         {
             LSV_BEGIN(sdc.GetNativeContext(), 0);
@@ -393,7 +394,7 @@ namespace AzToolsFramework
 
         //=========================================================================
         // LoadAttribute
-        //=========================================================================	
+        //=========================================================================
         bool ScriptEditorComponent::LoadEnumValuesString(AZ::ScriptDataContext& sdc, int valueIndex, AZ::Edit::ElementData& ed)
         {
             LSV_BEGIN(sdc.GetNativeContext(), 0);
@@ -490,9 +491,33 @@ namespace AzToolsFramework
                         int defaultValueIndex = 0;
                         if (propertyTable.PushTableElement(AzFramework::ScriptComponent::DefaultFieldName, &defaultValueIndex))  // Is this a value or a group
                         {
-                            // If the property is new, try creating it
+                            bool needToCreateProperty = false;
                             AZ::ScriptProperty* groupProperty = group.GetProperty(propertyName);
                             if (!groupProperty)
+                            {
+                                needToCreateProperty = true;
+                            }
+                            else
+                            {
+                                if (groupProperty->DoesTypeMatch(propertyTable, defaultValueIndex))
+                                {
+                                    needToCreateProperty = false;
+                                }
+                                else
+                                {
+                                    if (auto itr = AZStd::find(group.m_properties.begin(), group.m_properties.end(), groupProperty))
+                                    {
+                                        if (itr != group.m_properties.end())
+                                        { 
+                                            delete *itr;
+                                            group.m_properties.erase(itr);
+                                        }
+                                    }
+                                    needToCreateProperty = true;
+                                }
+                            }
+
+                            if (needToCreateProperty)
                             {
                                 if (AZ::ScriptProperty* scriptProperty = propertyTable.ConstructScriptProperty(defaultValueIndex, propertyName, restrictToPropertyArrays))
                                 {
@@ -818,6 +843,16 @@ namespace AzToolsFramework
             }
 
             m_dataElements.clear();
+
+            // The display tree might still be holding onto pointers to our attributes that we just cleared above, so force a refresh to remove them.
+            // However, only force the refresh if we have a valid entity.  If we don't have an entity, this component isn't currently being shown or
+            // edited, so a refresh is at best superfluous, and at worst could cause a feedback loop of infinite refreshes.
+            if (GetEntity())
+            {
+                AzToolsFramework::ToolsApplicationEvents::Bus::Broadcast(
+                    &AzToolsFramework::ToolsApplicationEvents::InvalidatePropertyDisplay, 
+                    AzToolsFramework::Refresh_EntireTree);
+            }
         }
 
         const AZ::Edit::ElementData* ScriptEditorComponent::GetDataElement(const void* element, const AZ::Uuid& typeUuid) const
@@ -835,12 +870,15 @@ namespace AzToolsFramework
 
         void ScriptEditorComponent::BuildGameEntity(AZ::Entity* gameEntity)
         {
-            gameEntity->AddComponent(&m_scriptComponent);
-        }
+            AZ::SerializeContext* context = nullptr;
+            AZ::ComponentApplicationBus::BroadcastResult(context, &AZ::ComponentApplicationBus::Events::GetSerializeContext);
+            if (!context)
+            {
+                AZ_Error("ScriptEditorComponent", false, "Can't get serialize context from component application.");
+                return;
+            }
 
-        void ScriptEditorComponent::FinishedBuildingGameEntity(AZ::Entity* gameEntity)
-        {
-            gameEntity->RemoveComponent(&m_scriptComponent);
+            gameEntity->AddComponent(context->CloneObject(&m_scriptComponent));
         }
 
         void ScriptEditorComponent::SetPrimaryAsset(const AZ::Data::AssetId& assetId)
@@ -858,8 +896,13 @@ namespace AzToolsFramework
         {
             AZ::Data::AssetBus::Handler::BusDisconnect();
 
-            m_scriptComponent.m_properties.Clear();
-            ClearDataElements();
+            // Only clear properties and data elements if the asset we're changing to is not the same one we already had set on our scriptComponent
+            // The only time we shouldn't do this is when someone has set the same script on the component through the editor
+            if (m_scriptAsset != m_scriptComponent.GetScript())
+            {
+                m_scriptComponent.m_properties.Clear();
+                ClearDataElements();
+            }
 
             if (m_scriptAsset.GetId().IsValid())
             {
@@ -920,7 +963,7 @@ namespace AzToolsFramework
 
             if (script)
             {
-                bool outcome = false;
+                 bool outcome = false;
                 AZStd::string folderFoundIn;
                 AZ::Data::AssetInfo assetInfo;
 

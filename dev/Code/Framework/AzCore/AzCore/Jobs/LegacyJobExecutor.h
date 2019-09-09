@@ -116,13 +116,13 @@ namespace AZ
                 if (!postCount)
                 {
                     postJob = m_postJob.release();
+                    m_completionCondition.notify_all();
                 }
             }
 
             // outside the lock...
             if (!postCount)
             {
-                m_completionCondition.notify_all();
                 if (postJob)
                 {
                     postJob->StartOnExecutor();

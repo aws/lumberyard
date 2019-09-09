@@ -44,13 +44,13 @@ import { ToastsManager } from 'ng2-toastr/ng2-toastr';
                             <tooltip placement="right" tooltip="The maximum back off period in seconds for failed AWS requests."> </tooltip>
                         </div>
                         <div class="form-group row">
-                            <label class="col-lg-3"> Target Amoeba aggregation file size </label>
+                            <label class="col-lg-3">  Target Amoeba Aggregation File Size </label>
                             <div class="slider-container">
-                                <nouislider [connect]="[true, false]" [min]="1" [max]="256" [step]="1.0" [formControl]="settingsForm.controls.amoeba_target_aggregation_file_size_in_MB" >
+                                <nouislider [connect]="[true, false]" [min]="1" [max]="40" [step]="1.0" [formControl]="settingsForm.controls.amoeba_target_aggregation_file_size_in_MB" >
                                 </nouislider>
                                 <span class="small"> {{settingsForm.controls.amoeba_target_aggregation_file_size_in_MB.value}} MB </span>
                             </div>
-                            <tooltip placement="right" tooltip="The target aggregation file size in MB.  The amoeba file generator will attempt to generate S3 parquet files of this size.  128 MB is ideal."> </tooltip>
+                            <tooltip placement="right" tooltip="The target aggregation file size in MB.  The amoeba file generator will attempt to generate S3 parquet files of this size.  128 MB is ideal but lambdas are memory restricted.  In this environment 32MB is best."> </tooltip>
                         </div>
                         <div class="form-group row">
                             <label class="col-lg-3"> Number Of Initial Consumers </label>
@@ -107,7 +107,7 @@ import { ToastsManager } from 'ng2-toastr/ng2-toastr';
                             <tooltip placement="right" tooltip="The frequency in which to check the threshold for spawning a new consumer lambda."> </tooltip>
                         </div>
                         <div class="form-group row">
-                            <label class="col-lg-3"> Backoff Max Trys </label>
+                            <label class="col-lg-3"> Backoff Max Attempts </label>
                             <div class="slider-container">
                                 <nouislider [connect]="[true, false]" [min]="1" [max]="15" [step]="1.0" [formControl]="settingsForm.controls.backoff_max_trys" >
                                 </nouislider>
@@ -125,7 +125,7 @@ import { ToastsManager } from 'ng2-toastr/ng2-toastr';
                             <tooltip placement="right" tooltip="The maximum number of retries before a message starting logging as an error.  Messages that are processed multiple times are considered to be in error."> </tooltip>
                         </div>
                         <div class="form-group row">
-                            <label class="col-lg-3"> CSV Seperator </label>
+                            <label class="col-lg-3"> CSV Separator </label>
                             <input class="form-control" type="string" formControlName="csv_seperator" >
                             <tooltip placement="right" tooltip="The separator used both for encoding the client CSV and decoding the SQS message payload."> </tooltip>
                         </div>
@@ -159,7 +159,7 @@ import { ToastsManager } from 'ng2-toastr/ng2-toastr';
                         <div class="form-group row">
                             <label class="col-lg-3"> Max Lambda Execution Time  </label>
                             <div class="slider-container">
-                                <nouislider [connect]="[true, false]" [min]="1" [max]="275" [step]="1.0" [formControl]="settingsForm.controls.max_lambda_execution_time" >
+                                <nouislider [connect]="[true, false]" [min]="60" [max]="275" [step]="1.0" [formControl]="settingsForm.controls.max_lambda_execution_time" >
                                 </nouislider>
                                 <span class="small"> {{settingsForm.controls.max_lambda_execution_time.value}} seconds </span>
                             </div>
@@ -238,6 +238,15 @@ import { ToastsManager } from 'ng2-toastr/ng2-toastr';
                             <tooltip placement="right" tooltip="Longitude/Latitude is considered personally identifiable information in some countries and is against the law. It is disabled by default."> </tooltip>
                         </div>
                         <div class="form-group row">
+                            <label class="col-lg-3"> Save Detailed Event Information </label>
+                            <div class="slider-container">
+                                <div class="col-2">
+                                    <dropdown [options]="booleanOptions" (dropdownChanged)="updateWriteDetailedCloudWatchEvents($event)" [currentOption]="{text:writeDetailedCloudWatchEvents}" name="dropdown" ></dropdown>
+                                </div>                                
+                            </div>
+                            <tooltip placement="right" tooltip="Set the value to True to have detailed counts of the types of events created in AWS CloudWatch.  Mainly used for creating CloudWatch Alarms."> </tooltip>
+                        </div>
+                        <div class="form-group row">
                             <button class="btn l-primary btn-primary" type="submit">
                                 Update Settings
                             </button>
@@ -304,6 +313,7 @@ export class MetricSettingsComponent implements OnInit {
     private crawlerStatus: string = "initializing"        
     private booleanOptions = [{ text: "False" }, { text: "True" }]
     private writeLongLat = "False"
+    private writeDetailedCloudWatchEvents = "False"
     private _crawlerName: string
     private _statusTimeout : any    
 
@@ -350,11 +360,12 @@ export class MetricSettingsComponent implements OnInit {
                 file_max_metrics_to_send_in_batch_in_mb: [settings.file_max_metrics_to_send_in_batch_in_mb, Validators.required],
                 file_send_metrics_interval_in_seconds: [settings.file_send_metrics_interval_in_seconds, Validators.required],
                 file_max_size_in_mb: [settings.file_max_size_in_mb, Validators.required],
-                file_threshold_to_prioritize_in_perc: [settings.file_threshold_to_prioritize_in_perc, Validators.required],
+                file_threshold_to_prioritize_in_perc: [settings.file_threshold_to_prioritize_in_perc, Validators.required],                
                 frequency_to_check_to_spawn: [settings.frequency_to_check_to_spawn, Validators.required],                 
                 frequency_to_check_sqs_state: [settings.frequency_to_check_sqs_state, Validators.required]
             });
             this.writeLongLat = settings.write_long_lat
+            this.writeDetailedCloudWatchEvents = settings.write_detailed_cloudwatch_event
             this.isLoadingSettings = false;
         })
     }
@@ -364,6 +375,7 @@ export class MetricSettingsComponent implements OnInit {
         let settingsObj = this.settingsForm.value;
         settingsObj.growth_rate_trigger = (settingsObj.growth_rate_trigger_percent / 100).toString();
         settingsObj.write_long_lat = this.writeLongLat
+        settingsObj.write_detailed_cloudwatch_event = this.writeDetailedCloudWatchEvents
         delete settingsObj.growth_rate_trigger_percent;
         this._apiHandler.updateSettings(settingsObj).subscribe(() => {
             this.toastr.success("The settings have been updated successfully.");
@@ -398,5 +410,9 @@ export class MetricSettingsComponent implements OnInit {
 
     updateWriteLongLat = (val) => {        
         this.writeLongLat = val.text        
+    }
+
+    updateWriteDetailedCloudWatchEvents = (val) => {
+        this.writeDetailedCloudWatchEvents = val.text
     }
 }

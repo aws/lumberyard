@@ -9,6 +9,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
+
 #pragma once
 
 #include <AzToolsFramework/API/ComponentEntitySelectionBus.h>
@@ -21,7 +22,7 @@
 namespace RoadsAndRivers
 {
     /**
-     * In-editor river component. Handles debug drawing of the river geometry, listents to callbacks of underlying spline  
+     * In-editor river component. Handles debug drawing of the river geometry, listens to callbacks of underlying spline  
      * to regenerate the river
      */
     class EditorRiverComponent
@@ -54,13 +55,18 @@ namespace RoadsAndRivers
 
     private:
         // EntityDebugDisplayEventBus
-        void DisplayEntity(bool& handled) override;
+        void DisplayEntityViewport(
+            const AzFramework::ViewportInfo& viewportInfo,
+            AzFramework::DebugDisplayRequests& debugDisplay) override;
 
         // EditorComponentSelectionRequestsBus::Handler
-        AZ::Aabb GetEditorSelectionBounds() override;
-        bool EditorSelectionIntersectRay(const AZ::Vector3& src, const AZ::Vector3& dir, AZ::VectorFloat& distance) override;
+        AZ::Aabb GetEditorSelectionBoundsViewport(
+            const AzFramework::ViewportInfo& viewportInfo) override;
+        bool EditorSelectionIntersectRayViewport(
+            const AzFramework::ViewportInfo& viewportInfo,
+            const AZ::Vector3& src, const AZ::Vector3& dir, AZ::VectorFloat& distance) override;
         bool SupportsEditorRayIntersect() override { return true; };
-        AZ::u32 GetBoundingBoxDisplayType() override { return AzToolsFramework::EditorComponentSelectionRequests::NoBoundingBox; }
+        AZ::u32 GetBoundingBoxDisplayType() override { return NoBoundingBox; }
 
         // EditorComponentSelectionNotificationsBus::Handler
         void OnAccentTypeChanged(AzToolsFramework::EntityAccentType accent) override;
@@ -94,4 +100,4 @@ namespace RoadsAndRivers
         AzToolsFramework::EntityAccentType m_accentType = AzToolsFramework::EntityAccentType::None;
         River m_river;
     };
-}
+} // namespace RoadsAndRivers

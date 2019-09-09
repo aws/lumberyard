@@ -19,10 +19,12 @@
 #include <AzCore/std/parallel/mutex.h>
 #include <AzCore/std/smart_ptr/shared_ptr.h>
 #include <AzCore/std/string/string.h>
+#include <AzCore/std/string/string_view.h>
 
 #include <CloudCanvas/CloudCanvasMappingsBus.h>
 
 #include <CrySystemBus.h>
+#include <IConsole.h>
 
 #undef GetObject
 
@@ -128,10 +130,15 @@ namespace CloudGemFramework
         virtual bool LoadLogicalMappingsFromJson(const Aws::Utils::Json::JsonValue& mappingsJsonData);
         void HandleCustomResourceMapping(const Aws::String& logicalName, const Aws::String& resourceType, const std::pair<Aws::String, Aws::Utils::Json::JsonValue>& mapping);
 
-        void InitializeGameMappings();
+        static void ConsoleCommandSetLauncherDeployment(IConsoleCmdArgs* pCmdArgs);
+
+        void InitializeGameMappings() override;
         AZStd::string GetLogicalMappingsPath() const;
         AZStd::string GetCurrentDeploymentFromConfig() const;
         AZStd::string GetMappingsFileName(const AZStd::string &dep, const AZStd::string &role) const;
+        AZStd::string GetOverrideDeployment() const;
+
+        static void SetOverrideDeployment(AZStd::string_view newDeployment);
 
         // Any special mapping handling (Such as for Configuration values)
         void HandleMappingType(const AZStd::string& resourceType, const AZStd::string& logicalName, const AZStd::string& physicalName);

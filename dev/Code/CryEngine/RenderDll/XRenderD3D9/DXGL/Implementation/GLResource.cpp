@@ -122,8 +122,6 @@ namespace NCryOpenGL
         }
     }
 
-#if !DXGL_SUPPORT_COPY_IMAGE || !DXGL_SUPPORT_GETTEXIMAGE
-
     SOutputMergerTextureViewPtr GetCopyOutputMergerView(STexture* pTexture, STexSubresourceID kSubID, CContext* pContext, const SGIFormatInfo* pFormatInfo)
     {
         uint32 uSubresource(D3D11CalcSubresource(kSubID.m_iMipLevel, kSubID.m_uElement, pTexture->m_uNumMipLevels));
@@ -145,8 +143,6 @@ namespace NCryOpenGL
 
         return spOMView;
     }
-
-#endif //!DXGL_SUPPORT_COPY_IMAGE || !DXGL_SUPPORT_GETTEXIMAGE
 
     struct STex1DBase
     {
@@ -493,13 +489,12 @@ namespace NCryOpenGL
             return pTexture->m_uNumElements;
         }
 
-#if DXGL_SUPPORT_COPY_IMAGE
         static void InitializeCopyImageView(STexture* pTexture, const SGIFormatInfo* pFormat, CContext* pContext)
         {
+            AZ_Assert(pContext->GetDevice()->IsFeatureSupported(eF_CopyImage), "Copy image is not supported on this platform");
             pTexture->m_kCopyImageView = pTexture->m_kName;
             pTexture->m_eCopyImageTarget = pTexture->m_eTarget;
         }
-#endif //DXGL_SUPPORT_COPY_IMAGE
     };
 
     struct SCubePartition
@@ -525,10 +520,10 @@ namespace NCryOpenGL
             return pTexture->m_uNumElements / 6;
         }
 
-#if DXGL_SUPPORT_COPY_IMAGE
         static void InitializeCopyImageView(STexture* pTexture, const SGIFormatInfo* pFormat, CContext* pContext)
         {
             CDevice* pDevice(pContext->GetDevice());
+            AZ_Assert(pDevice->IsFeatureSupported(eF_CopyImage), "Copy image is not supported on this platform");
             if (!pDevice->GetAdapter()->m_kCapabilities.m_bCopyImageWorksOnCubeMapFaces && pDevice->IsFeatureSupported(eF_TextureViews))
             {
                 GLuint uCopyViewName;
@@ -543,7 +538,6 @@ namespace NCryOpenGL
                 pTexture->m_eCopyImageTarget = pTexture->m_eTarget;
             }
         }
-#endif //DXGL_SUPPORT_COPY_IMAGE
     };
 
 #if DXGL_CHECK_TEXTURE_UPLOAD_READ_BOUNDS
@@ -669,9 +663,10 @@ namespace NCryOpenGL
             }
 #endif
 
-#if DXGL_SUPPORT_COPY_IMAGE
-            Partition::InitializeCopyImageView(pTexture, pFormat, pContext);
-#endif //DXGL_SUPPORT_COPY_IMAGE
+            if (pContext->GetDevice()->IsFeatureSupported(eF_CopyImage))
+            {
+                Partition::InitializeCopyImageView(pTexture, pFormat, pContext);
+            }
 
             LogTextureSize<Interface, Partition>(pTexture);
         }
@@ -773,9 +768,10 @@ namespace NCryOpenGL
             }
 #endif
 
-#if DXGL_SUPPORT_COPY_IMAGE
-            Partition::InitializeCopyImageView(pTexture, pFormat, pContext);
-#endif //DXGL_SUPPORT_COPY_IMAGE
+            if (pContext->GetDevice()->IsFeatureSupported(eF_CopyImage))
+            {
+                Partition::InitializeCopyImageView(pTexture, pFormat, pContext);
+            }
 
             LogTextureSize<Interface, Partition>(pTexture);
         }
@@ -1153,8 +1149,6 @@ namespace NCryOpenGL
         Impl::DownloadImage(pTexture, kSubID, kBox, kDataLocation.m_pBuffer + kDataLocation.m_uDataOffset, kDataLocation.m_uRowPitch, kDataLocation.m_uImagePitch, pContext, pFormat);
     }
 
-#if DXGL_USE_PBO_FOR_STAGING_TEXTURES || !DXGL_SUPPORT_COPY_IMAGE
-
     template <typename Impl>
     uint32 LocateTexPackedData(STexture* pTexture, STexSubresourceID kSubID, STexPos kOffset, SMappedSubTexture& kDataLocation)
     {
@@ -1176,19 +1170,15 @@ namespace NCryOpenGL
         return kPackedLayout.m_uTextureSize;
     }
 
-#endif //DXGL_USE_PBO_FOR_STAGING_TEXTURES || !DXGL_SUPPORT_COPY_IMAGE
-
     template <typename Impl>
     void InitializeTexture(STexture* pTexture, const D3D11_SUBRESOURCE_DATA* pInitialData, uint32 uCPUAccess, CContext* pContext, const SGIFormatInfo* pFormatInfo)
     {
         pTexture->m_pfUpdateSubresource = &UpdateTexSubresource<Impl>;
         pTexture->m_pfMapSubresource = &MapTexSubresource<Impl>;
         pTexture->m_pfUnmapSubresource = &UnmapTexSubresource<Impl>;
-#if DXGL_USE_PBO_FOR_STAGING_TEXTURES || !DXGL_SUPPORT_COPY_IMAGE
         pTexture->m_pfUnpackData = &UnpackTexData<Impl>;
         pTexture->m_pfPackData = &PackTexData<Impl>;
         pTexture->m_pfLocatePackedDataFunc = &LocateTexPackedData<Impl>;
-#endif //DXGL_USE_PBO_FOR_STAGING_TEXTURES || !DXGL_SUPPORT_COPY_IMAGE
 
         Impl::AllocateResource(pTexture, pContext->GetDevice());
 
@@ -1800,7 +1790,6 @@ namespace NCryOpenGL
 
     STexture::~STexture()
     {
-#if DXGL_SUPPORT_COPY_IMAGE
         if (m_kCopyImageView.IsValid())
         {
             GLuint uViewName(m_kCopyImageView.GetName());
@@ -1809,7 +1798,6 @@ namespace NCryOpenGL
                 glDeleteTextures(1, &uViewName);
             }
         }
-#endif //DXGL_SUPPORT_COPY_IMAGE
 
         if (m_kName.IsValid())
         {
@@ -1839,7 +1827,7 @@ namespace NCryOpenGL
     void STexture::SetMinLod(float minLod)
     {
         m_fMinLod = minLod;
-        glTextureParameterfEXT(m_kName.GetName(), m_eTarget, GL_TEXTURE_MAX_LEVEL, minLod);
+        glTextureParameterfEXT(m_kName.GetName(), m_eTarget, GL_TEXTURE_MIN_LOD, minLod);
     }
 
     SShaderTextureViewPtr STexture::CreateShaderResourceView(const SShaderTextureViewConfiguration& kConfiguration, CContext* pContext)
@@ -2374,11 +2362,9 @@ namespace NCryOpenGL
         m_pfUpdateSubresource = &UpdateSubresource;
         m_pfMapSubresource       = &MapSubresource;
         m_pfUnmapSubresource     = &UnmapSubresource;
-#if DXGL_USE_PBO_FOR_STAGING_TEXTURES || !DXGL_SUPPORT_COPY_IMAGE
         m_pfUnpackData           = &UnpackData;
         m_pfPackData             = &PackData;
         m_pfLocatePackedDataFunc = &LocatePackedData;
-#endif //DXGL_USE_PBO_FOR_STAGING_TEXTURES || !DXGL_SUPPORT_COPY_IMAGE
     }
 
     SDefaultFrameBufferTexture::~SDefaultFrameBufferTexture()
@@ -2447,10 +2433,11 @@ namespace NCryOpenGL
             GLuint uName;
             glGenTextures(1, &uName);
             m_kName = pContext->GetDevice()->GetTextureNamePool().Create(uName);
-#if DXGL_SUPPORT_COPY_IMAGE
-            m_kCopyImageView = m_kName;
-            m_eCopyImageTarget = m_eTarget;
-#endif //DXGL_SUPPORT_COPY_IMAGE
+            if (pContext->GetDevice()->IsFeatureSupported(eF_CopyImage))
+            {
+                m_kCopyImageView = m_kName;
+                m_eCopyImageTarget = m_eTarget;
+            }
             m_kInputFBO.m_bUsesSRGB   = pFormatInfo->m_pTexture->m_bSRGB;
             m_kDefaultFBO.m_bUsesSRGB = pFormatInfo->m_pTexture->m_bSRGB;
 
@@ -2558,9 +2545,7 @@ namespace NCryOpenGL
             glDeleteTextures(1, &uTextureName);
             m_kName = CResourceName();
         }
-#if DXGL_SUPPORT_COPY_IMAGE
         m_kCopyImageView = m_kName;
-#endif //DXGL_SUPPORT_COPY_IMAGE
     }
 
     void SDefaultFrameBufferTexture::OnWrite(CContext* pContext, bool bDefaultFrameBuffer)
@@ -2614,7 +2599,7 @@ namespace NCryOpenGL
             uint32 glVersion = pContext->GetDevice()->GetFeatureSpec().m_kVersion.ToUint();
             if (DXGLES && glVersion == DXGLES_VERSION_30 && gRenDev->GetFeatures() & RFT_HW_QUALCOMM)
             {
-                // OpenGLES 3.0 Qualcomm driver has a bug that rotates the image 90° when doing a
+                // OpenGLES 3.0 Qualcomm driver has a bug that rotates the image 90 degrees when doing a
                 // glBlitFramebuffer into the default framebuffer when in landscape mode. Because of this we
                 // do the blitting using a shader instead.
                 if (!m_kInputFBOColorTextureView)
@@ -2727,8 +2712,6 @@ namespace NCryOpenGL
         UnmapTexSubresource<TDefaultFrameBufferTextureImpl>(pDefaultFrameBufferTexture, uSubresource, pContext);
     }
 
-#if DXGL_USE_PBO_FOR_STAGING_TEXTURES || !DXGL_SUPPORT_COPY_IMAGE
-
     void SDefaultFrameBufferTexture::UnpackData(STexture* pTexture, STexSubresourceID kSubID, STexPos kOffset, STexSize kSize, const SMappedSubTexture& kDataLocation, CContext* pContext)
     {
         SDefaultFrameBufferTexture* pDefaultFrameBufferTexture = static_cast<SDefaultFrameBufferTexture*>(pTexture);
@@ -2765,8 +2748,6 @@ namespace NCryOpenGL
 
         return LocateTexPackedData<TDefaultFrameBufferTextureImpl>(pTexture, kSubID, kOffset, kDataLocation);
     }
-
-#endif //DXGL_USE_PBO_FOR_STAGING_TEXTURES || !DXGL_SUPPORT_COPY_IMAGE
 
     const SGIFormatInfo* GetCompatibleTextureFormatInfo(EGIFormat* peGIFormat)
     {
@@ -3566,8 +3547,6 @@ namespace NCryOpenGL
 
     typedef void (* CopyTextureBoxFunc)(STexture*, STexPos, STexSubresourceID, STexture*, STexPos, STexSubresourceID, STexSize, CContext*);
 
-#if DXGL_SUPPORT_COPY_IMAGE
-
     void CopyVideoTextureBoxWithCopyImage(
         STexture* pDstTexture, STexPos kDstPos, STexSubresourceID kDstSubID,
         STexture* pSrcTexture, STexPos kSrcPos, STexSubresourceID kSrcSubID,
@@ -3578,8 +3557,6 @@ namespace NCryOpenGL
             pDstTexture->m_kCopyImageView.GetName(), pDstTexture->m_eCopyImageTarget, kDstSubID.m_iMipLevel, kDstPos.x, kDstPos.y, kDstPos.z + kDstSubID.m_uElement,
             kBoxSize.x, kBoxSize.y, kBoxSize.z);
     }
-
-#else
 
     void CopyVideoTextureBoxWithBlitFrameBuffer(
         STexture* pDstTexture, STexPos kDstPos, STexSubresourceID kDstSubID,
@@ -3619,8 +3596,6 @@ namespace NCryOpenGL
         pDstTexture->m_pfUnpackData(pDstTexture, kDstSubID, kDstPos, kBoxSize, kDataLocation, pContext);
         pContext->BindBuffer(CResourceName(), eBB_PixelUnpack);
     }
-
-#endif
 
 #if DXGL_USE_PBO_FOR_STAGING_TEXTURES
 
@@ -3733,27 +3708,30 @@ namespace NCryOpenGL
 
         if (pDstTexture->m_kName.IsValid() && pSrcTexture->m_kName.IsValid())
         {
-#if DXGL_SUPPORT_COPY_IMAGE
-            CopyTextureImpl<CopyVideoTextureBoxWithCopyImage>(pDstTexture, pSrcTexture, pContext);
-#else
-            const SGIFormatInfo* pSrcFormatInfo(GetGIFormatInfo(pSrcTexture->m_eFormat));
-            if (pSrcFormatInfo->m_pUncompressed != NULL && pSrcTexture->m_iDepth == 1)
+            if (pContext->GetDevice()->IsFeatureSupported(eF_CopyImage))
             {
-                const SGIFormatInfo* pDstFormatInfo(GetGIFormatInfo(pDstTexture->m_eFormat));
-                if (pDstFormatInfo->m_pUncompressed != NULL && pDstTexture->m_iDepth == 1)
-                {
-                    CopyTextureImpl<CopyVideoTextureBoxWithBlitFrameBuffer>(pDstTexture, pSrcTexture, pContext);
-                }
-                else
-                {
-                    CopyTextureImpl<CopyVideoTextureBoxWithPixelBuffer>(pDstTexture, pSrcTexture, pContext);
-                }
+                CopyTextureImpl<CopyVideoTextureBoxWithCopyImage>(pDstTexture, pSrcTexture, pContext);
             }
             else
             {
-                CopyTextureImpl<CopySystemTextureBox>(pDstTexture, pSrcTexture, pContext);
+                const SGIFormatInfo* pSrcFormatInfo(GetGIFormatInfo(pSrcTexture->m_eFormat));
+                if (pSrcFormatInfo->m_pUncompressed != NULL && pSrcTexture->m_iDepth == 1)
+                {
+                    const SGIFormatInfo* pDstFormatInfo(GetGIFormatInfo(pDstTexture->m_eFormat));
+                    if (pDstFormatInfo->m_pUncompressed != NULL && pDstTexture->m_iDepth == 1)
+                    {
+                        CopyTextureImpl<CopyVideoTextureBoxWithBlitFrameBuffer>(pDstTexture, pSrcTexture, pContext);
+                    }
+                    else
+                    {
+                        CopyTextureImpl<CopyVideoTextureBoxWithPixelBuffer>(pDstTexture, pSrcTexture, pContext);
+                    }
+                }
+                else
+                {
+                    CopyTextureImpl<CopySystemTextureBox>(pDstTexture, pSrcTexture, pContext);
+                }
             }
-#endif
         }
 #if DXGL_USE_PBO_FOR_STAGING_TEXTURES
         else if (pDstTexture->m_kName.IsValid())
@@ -3811,27 +3789,30 @@ namespace NCryOpenGL
 
         if (pDstTexture->m_kName.IsValid() && pSrcTexture->m_kName.IsValid())
         {
-#if DXGL_SUPPORT_COPY_IMAGE
-            CopySubTextureImpl<CopyVideoTextureBoxWithCopyImage>(pDstTexture, uDstSubresource, uDstX, uDstY, uDstZ, pSrcTexture, uSrcSubresource, pSrcBox, pContext);
-#else
-            const SGIFormatInfo* pSrcFormatInfo(GetGIFormatInfo(pSrcTexture->m_eFormat));
-            if (pSrcFormatInfo->m_pUncompressed != NULL && pSrcTexture->m_iDepth == 1)
+            if (pContext->GetDevice()->IsFeatureSupported(eF_CopyImage))
             {
-                const SGIFormatInfo* pDstFormatInfo(GetGIFormatInfo(pDstTexture->m_eFormat));
-                if (pDstFormatInfo->m_pUncompressed != NULL && pDstTexture->m_iDepth == 1)
-                {
-                    CopySubTextureImpl<CopyVideoTextureBoxWithBlitFrameBuffer>(pDstTexture, uDstSubresource, uDstX, uDstY, uDstZ, pSrcTexture, uSrcSubresource, pSrcBox, pContext);
-                }
-                else
-                {
-                    CopySubTextureImpl<CopyVideoTextureBoxWithPixelBuffer>(pDstTexture, uDstSubresource, uDstX, uDstY, uDstZ, pSrcTexture, uSrcSubresource, pSrcBox, pContext);
-                }
+                CopySubTextureImpl<CopyVideoTextureBoxWithCopyImage>(pDstTexture, uDstSubresource, uDstX, uDstY, uDstZ, pSrcTexture, uSrcSubresource, pSrcBox, pContext);
             }
             else
             {
-                CopySubTextureImpl<CopySystemTextureBox>(pDstTexture, uDstSubresource, uDstX, uDstY, uDstZ, pSrcTexture, uSrcSubresource, pSrcBox, pContext);
+                const SGIFormatInfo* pSrcFormatInfo(GetGIFormatInfo(pSrcTexture->m_eFormat));
+                if (pSrcFormatInfo->m_pUncompressed != NULL && pSrcTexture->m_iDepth == 1)
+                {
+                    const SGIFormatInfo* pDstFormatInfo(GetGIFormatInfo(pDstTexture->m_eFormat));
+                    if (pDstFormatInfo->m_pUncompressed != NULL && pDstTexture->m_iDepth == 1)
+                    {
+                        CopySubTextureImpl<CopyVideoTextureBoxWithBlitFrameBuffer>(pDstTexture, uDstSubresource, uDstX, uDstY, uDstZ, pSrcTexture, uSrcSubresource, pSrcBox, pContext);
+                    }
+                    else
+                    {
+                        CopySubTextureImpl<CopyVideoTextureBoxWithPixelBuffer>(pDstTexture, uDstSubresource, uDstX, uDstY, uDstZ, pSrcTexture, uSrcSubresource, pSrcBox, pContext);
+                    }
+                }
+                else
+                {
+                    CopySubTextureImpl<CopySystemTextureBox>(pDstTexture, uDstSubresource, uDstX, uDstY, uDstZ, pSrcTexture, uSrcSubresource, pSrcBox, pContext);
+                }
             }
-#endif
         }
 #if DXGL_USE_PBO_FOR_STAGING_TEXTURES
         else if (pDstTexture->m_kName.IsValid())

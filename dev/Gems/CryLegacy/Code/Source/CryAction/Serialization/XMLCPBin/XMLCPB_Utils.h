@@ -30,7 +30,6 @@ namespace XMLCPB {
         {
             if (!s_pThis)
             {
-                ScopedSwitchToGlobalHeap useGlobalHeap;
                 s_pThis = new CDebugUtils();
             }
         }

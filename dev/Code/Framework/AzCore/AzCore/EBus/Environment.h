@@ -265,12 +265,10 @@ namespace AZ
             {
                 Context* globalContext = &s_defaultGlobalContext.Get();
 
-    #if !defined(AZ_PLATFORM_APPLE) // thread_local not supported prior to iOS9
                 if (EBusEnvironment* tlsEnvironment = globalContext->m_ebusEnvironmentGetter())
                 {
                     return tlsEnvironment->GetBusContext<Context>(globalContext->m_ebusEnvironmentTLSIndex);
                 }
-    #endif // #if !defined(AZ_PLATFORM_APPLE)
                 return globalContext;
             }
         }
@@ -289,12 +287,10 @@ namespace AZ
 
         Context& globalContext = *s_defaultGlobalContext;
 
-#if !defined(AZ_PLATFORM_APPLE) // thread_local not supported prior to iOS9
         if (EBusEnvironment* tlsEnvironment = globalContext.m_ebusEnvironmentGetter())
         {
             return *tlsEnvironment->GetBusContext<Context>(globalContext.m_ebusEnvironmentTLSIndex);
         }
-#endif // #if !defined(AZ_PLATFORM_APPLE)
 
         return globalContext;
     }

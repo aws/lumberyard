@@ -11,8 +11,7 @@
 */
 #include "StdAfx.h"
 #include "SliceDataFlagsCommand.h"
-#include <AzCore/Slice/SliceComponent.h>
-#include <AzFramework/Entity/EntityContextBus.h>
+#include <AzToolsFramework/Entity/EditorEntityHelpers.h>
 
 namespace AzToolsFramework
 {
@@ -27,12 +26,14 @@ namespace AzToolsFramework
         , m_entityId(entityId)
         , m_dataAddress(targetDataAddress)
     {
-        AZ::SliceComponent::SliceInstanceAddress sliceInstanceAddress;
-        AzFramework::EntityIdContextQueryBus::EventResult(sliceInstanceAddress, m_entityId, &AzFramework::EntityIdContextQueryBus::Events::GetOwningSlice);
-        AZ_Warning("Undo", sliceInstanceAddress.second, "Cannot find slice instance for entity ID %s", m_entityId.ToString().c_str());
-        if (AZ::SliceComponent::SliceInstance* sliceInstance = sliceInstanceAddress.second)
+
+        if (AZ::SliceComponent* rootSlice = GetEntityRootSlice(m_entityId))
         {
-            m_previousDataFlags = sliceInstance->GetDataFlags().GetEntityDataFlagsAtAddress(m_entityId, m_dataAddress);
+            m_previousDataFlags = rootSlice->GetEntityDataFlagsAtAddress(m_entityId, m_dataAddress);
+        }
+        else
+        {
+            AZ_Warning("Undo", false, "Cannot find slice containing entity ID %s", m_entityId.ToString().c_str());
         }
 
         if (additive)
@@ -49,21 +50,17 @@ namespace AzToolsFramework
 
     void SliceDataFlagsCommand::Undo()
     {
-        AZ::SliceComponent::SliceInstanceAddress sliceInstanceAddress;
-        AzFramework::EntityIdContextQueryBus::EventResult(sliceInstanceAddress, m_entityId, &AzFramework::EntityIdContextQueryBus::Events::GetOwningSlice);
-        if (AZ::SliceComponent::SliceInstance* sliceInstance = sliceInstanceAddress.second)
+        if (AZ::SliceComponent* rootSlice = GetEntityRootSlice(m_entityId))
         {
-            sliceInstance->GetDataFlags().SetEntityDataFlagsAtAddress(m_entityId, m_dataAddress, m_previousDataFlags);
+            rootSlice->SetEntityDataFlagsAtAddress(m_entityId, m_dataAddress, m_previousDataFlags);
         }
     }
 
     void SliceDataFlagsCommand::Redo()
     {
-        AZ::SliceComponent::SliceInstanceAddress sliceInstanceAddress;
-        AzFramework::EntityIdContextQueryBus::EventResult(sliceInstanceAddress, m_entityId, &AzFramework::EntityIdContextQueryBus::Events::GetOwningSlice);
-        if (AZ::SliceComponent::SliceInstance* sliceInstance = sliceInstanceAddress.second)
+        if (AZ::SliceComponent* rootSlice = GetEntityRootSlice(m_entityId))
         {
-            sliceInstance->GetDataFlags().SetEntityDataFlagsAtAddress(m_entityId, m_dataAddress, m_nextDataFlags);
+            rootSlice->SetEntityDataFlagsAtAddress(m_entityId, m_dataAddress, m_nextDataFlags);
         }
     }
 
@@ -76,12 +73,9 @@ namespace AzToolsFramework
         , m_entityId(entityId)
         , m_dataAddress(targetDataAddress)
     {
-        AZ::SliceComponent::SliceInstanceAddress sliceInstanceAddress;
-        AzFramework::EntityIdContextQueryBus::EventResult(sliceInstanceAddress, m_entityId, &AzFramework::EntityIdContextQueryBus::Events::GetOwningSlice);
-        AZ_Warning("Undo", sliceInstanceAddress.second, "Cannot find slice instance for entity ID %s", m_entityId.ToString().c_str());
-        if (AZ::SliceComponent::SliceInstance* sliceInstance = sliceInstanceAddress.second)
+        if (AZ::SliceComponent* rootSlice = GetEntityRootSlice(m_entityId))
         {
-            m_previousDataFlagsMap = sliceInstance->GetDataFlags().GetEntityDataFlags(m_entityId);
+            m_previousDataFlagsMap = rootSlice->GetEntityDataFlags(m_entityId);
 
             // m_nextDataFlagsMap is a copy of the map, but without entries at or below m_dataAddress
             for (const auto& addressFlagsPair : m_previousDataFlagsMap)
@@ -98,27 +92,27 @@ namespace AzToolsFramework
                 m_nextDataFlagsMap.emplace(addressFlagsPair);
             }
         }
+        else
+        {
+            AZ_Warning("Undo", false, "Cannot find slice containing entity ID %s", m_entityId.ToString().c_str());
+        }
 
         Redo();
     }
 
     void ClearSliceDataFlagsBelowAddressCommand::Undo()
     {
-        AZ::SliceComponent::SliceInstanceAddress sliceInstanceAddress;
-        AzFramework::EntityIdContextQueryBus::EventResult(sliceInstanceAddress, m_entityId, &AzFramework::EntityIdContextQueryBus::Events::GetOwningSlice);
-        if (AZ::SliceComponent::SliceInstance* sliceInstance = sliceInstanceAddress.second)
+        if (AZ::SliceComponent* rootSlice = GetEntityRootSlice(m_entityId))
         {
-            sliceInstance->GetDataFlags().SetEntityDataFlags(m_entityId, m_previousDataFlagsMap);
+            rootSlice->SetEntityDataFlags(m_entityId, m_previousDataFlagsMap);
         }
     }
 
     void ClearSliceDataFlagsBelowAddressCommand::Redo()
     {
-        AZ::SliceComponent::SliceInstanceAddress sliceInstanceAddress;
-        AzFramework::EntityIdContextQueryBus::EventResult(sliceInstanceAddress, m_entityId, &AzFramework::EntityIdContextQueryBus::Events::GetOwningSlice);
-        if (AZ::SliceComponent::SliceInstance* sliceInstance = sliceInstanceAddress.second)
+        if (AZ::SliceComponent* rootSlice = GetEntityRootSlice(m_entityId))
         {
-            sliceInstance->GetDataFlags().SetEntityDataFlags(m_entityId, m_nextDataFlagsMap);
+            rootSlice->SetEntityDataFlags(m_entityId, m_nextDataFlagsMap);
         }
     }
 

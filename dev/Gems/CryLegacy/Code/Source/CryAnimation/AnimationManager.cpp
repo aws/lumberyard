@@ -1383,7 +1383,7 @@ void CAnimationManager::DebugAnimUsage(uint32 printtxt)
 
     if (printtxt)
     {
-        CControllerDefragHeap::Stats stats = g_controllerHeap.GetStats();
+        CControllerDefragHeap::Stats stats = g_controllerHeap->GetStats();
         size_t moveableFree = stats.defragStats.nCapacity - stats.defragStats.nInUseSize;
         g_pIRenderer->Draw2dLabel(1, g_YLine, 2.0f, fRed, false, "Defrag heap: %" PRISIZE_T " KB moveable %" PRISIZE_T "KB fixed %.2f%% frag", stats.defragStats.nInUseSize / 1024, stats.bytesInFixedAllocs / 1024,
             100.0f * ((moveableFree - stats.defragStats.nLargestFreeBlockSize) / (float)stats.defragStats.nCapacity));

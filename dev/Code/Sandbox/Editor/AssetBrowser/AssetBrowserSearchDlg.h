@@ -30,16 +30,6 @@ namespace Ui
     class AssetBrowserSearchDlg;
 }
 
-namespace AssetBrowser
-{
-    enum AssetBrowserSearchTypes
-    {
-        AssetBrowserSearchTypes_Name,
-        AssetBrowserSearchTypes_Tags,
-        AssetBrowserSearchTypes_All
-    };
-};
-
 class CAssetBrowserSearchDlg;
 
 class CSearchEditCtrl
@@ -60,21 +50,27 @@ class CAssetBrowserSearchDlg
 {
     Q_OBJECT
 public:
+    enum AssetBrowserSearchTypes
+    {
+        AssetBrowserSearchTypes_Name,
+        AssetBrowserSearchTypes_Tags,
+        AssetBrowserSearchTypes_All
+    };
+
     CAssetBrowserSearchDlg(QWidget* pParent = nullptr);   // standard constructor
     virtual ~CAssetBrowserSearchDlg();
 
-    AssetBrowser::AssetBrowserSearchTypes GetSearchType() const
+    AssetBrowserSearchTypes GetSearchType() const
     {
         return m_assetSearchType;
     }
-
 
 protected:
     void HandleDebugCommand(const QString& command);
 
 public:
     CAssetBrowserDialog* m_pAssetBrowserDlg;
-    AssetBrowser::AssetBrowserSearchTypes m_assetSearchType;
+    AssetBrowserSearchTypes m_assetSearchType;
     IAssetItemDatabase::TAssetFields m_fields;
     bool m_bForceFilterUsedInLevel, m_bForceShowFavorites, m_bForceHideLods;
     bool m_bAllowOnlyFilenames;

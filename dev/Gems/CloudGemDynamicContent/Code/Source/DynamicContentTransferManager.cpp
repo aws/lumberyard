@@ -9,7 +9,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#include "CloudGemDynamicContent_precompiled.h"
+
 #include <DynamicContentTransferManager.h>
 #include <DynamicContent/DynamicContentBus.h>
 #include <AzCore/Component/ComponentApplicationBus.h>
@@ -25,7 +25,10 @@
 #include <AzCore/std/smart_ptr/make_shared.h>
 #include <AzCore/IO/SystemFile.h>
 
+#include <platform.h>
 #include <PakVars.h>
+#include <ICryPak.h>
+#include <ISystem.h>
 
 #include <AzCore/std/parallel/lock.h>
 
@@ -86,7 +89,7 @@ namespace CloudCanvas
         {
         public:
             AZ_EBUS_BEHAVIOR_BINDER(BehaviorDynamicContentComponentNotificationBusHandler, "{9CE84D29-3DEF-4021-B899-6D971E39F75D}", AZ::SystemAllocator,
-                NewContentReady, NewPakContentReady, RequestsCompleted);
+                NewContentReady, NewPakContentReady, FileStatusChanged, RequestsCompleted, FileStatusFailed);
 
             void NewContentReady(const AZStd::string& outputFile) override
             {
@@ -101,6 +104,14 @@ namespace CloudCanvas
             void RequestsCompleted() override
             {
                 Call(FN_RequestsCompleted);
+            }
+            void FileStatusChanged(const AZStd::string& fileName, const AZStd::string& fileStatus) override
+            {
+                Call(FN_FileStatusChanged, fileName, fileStatus);
+            }
+            void FileStatusFailed(const AZStd::string& outputFile) override
+            {
+                Call(FN_FileStatusFailed, outputFile);
             }
         };
 
@@ -173,6 +184,7 @@ namespace CloudCanvas
                     ->Event("DeletePak", &DynamicContentRequestBus::Events::DeletePak)
                     ->Event("GetPakStatus", &DynamicContentRequestBus::Events::GetPakStatus)
                     ->Event("GetPakStatusString", &DynamicContentRequestBus::Events::GetPakStatusString)
+                    ->Event("HandleWebCommunicatorUpdate", &DynamicContentRequestBus::Events::HandleWebCommunicatorUpdate)
                     ;
 
                 behaviorContext->Class<DynamicContentTransferManager>("DynamicContent")
@@ -472,25 +484,27 @@ namespace CloudCanvas
 
         bool DynamicContentTransferManager::LoadManifestData(const AZStd::string& manifestPath)
         {
-            if (!gEnv->pCryPak)
+            SSystemGlobalEnvironment* pEnv = GetISystem()->GetGlobalEnvironment();
+            ICryPak* cryPak = pEnv->pCryPak;
+            if (!cryPak)
             {
                 return false;
             }
 
-            AZ::IO::HandleType pFile = gEnv->pCryPak->FOpen(manifestPath.c_str(), "rt");
+            AZ::IO::HandleType pFile = cryPak->FOpen(manifestPath.c_str(), "rt");
             if (pFile == AZ::IO::InvalidHandle)
             {
                 return false;
             }
 
-            size_t fileSize = gEnv->pCryPak->FGetSize(pFile);
+            size_t fileSize = cryPak->FGetSize(pFile);
             if (fileSize > 0)
             {
                 AZStd::string fileBuf;
                 fileBuf.resize(fileSize);
 
-                size_t read = gEnv->pCryPak->FRead(fileBuf.data(), fileSize, pFile);
-                gEnv->pCryPak->FClose(pFile);
+                size_t read = cryPak->FRead(fileBuf.data(), fileSize, pFile);
+                cryPak->FClose(pFile);
 
                 rapidjson::Document parseDoc;
                 parseDoc.Parse<rapidjson::kParseStopWhenDoneFlag>(fileBuf.data());
@@ -508,7 +522,7 @@ namespace CloudCanvas
 
                 return true;
             }
-            gEnv->pCryPak->FClose(pFile);
+            cryPak->FClose(pFile);
             return false;
         }
 
@@ -900,6 +914,9 @@ namespace CloudCanvas
 
         void DynamicContentTransferManager::UpdatePakFilesToMount()
         {
+            SSystemGlobalEnvironment* pEnv = GetISystem()->GetGlobalEnvironment();
+            ICryPak* cryPak = pEnv->pCryPak;
+
             AZStd::vector<DynamicFileInfoPtr> paksMounted;
             DynamicFileInfoPtr failurePak; // A single pak will stop the mount process, don't need to keep trying after one fails
             {
@@ -907,13 +924,13 @@ namespace CloudCanvas
                 while (m_pakFilesToMount.size() &&
                     m_pakFilesToMount.front()->GetStatus() == DynamicContentFileInfo::FileStatus::READY)
                 {
-                    if (gEnv->pCryPak->GetPakPriority() == ePakPriorityFileFirst)
+                    if (cryPak->GetPakPriority() == ePakPriorityFileFirst)
                     {
                         AZ_TracePrintf("CloudCanvas", "Warning - Dynamic Content downloaded but Pak priority is currently set to FileFirst.  Use the console command sys_PakPriority=1 if you wish to switch to prefer paks.");
                     }
                     const auto& pakFileToMount = m_pakFilesToMount.front();
                     const AZStd::string downloadedPath{ pakFileToMount->GetFullLocalFileName() };
-                    const bool pakMounted = gEnv->pCryPak->OpenPack("@assets@", downloadedPath.c_str(), ICryPak::FLAGS_NO_LOWCASE);
+                    const bool pakMounted = cryPak->OpenPack("@assets@", downloadedPath.c_str(), ICryPak::FLAGS_NO_LOWCASE);
                     if (!pakMounted)
                     {
                         pakFileToMount->IncrementOpenRetryCount();
@@ -971,6 +988,7 @@ namespace CloudCanvas
                 // Top level manifests and user requested paks can be removed from the pending list - they have no dependencies
                 RemovePendingPak(requestPtr);
             }
+            EBUS_EVENT(CloudCanvas::DynamicContent::DynamicContentUpdateBus, FileStatusFailed, requestPtr->GetKeyName());
         }
 
         bool DynamicContentTransferManager::RequestFileStatus(FileTransferSupport::FileRequestMap& requestMap, bool manifestRequest)
@@ -1113,6 +1131,27 @@ namespace CloudCanvas
             return true;
         }
 
+        void DynamicContentTransferManager::HandleWebCommunicatorUpdate(const AZStd::string& messageData)
+        {
+            rapidjson::Document parseDoc;
+            parseDoc.Parse<rapidjson::kParseStopWhenDoneFlag>(messageData.c_str());
+
+            if (parseDoc.HasParseError())
+            {
+                return;
+            }
+
+            const rapidjson::Value& updateType = parseDoc["update"];
+            const AZStd::string updateStr{ updateType.GetString() };
+            if (updateStr == "FILE_STATUS_CHANGED")
+            {
+                const AZStd::string fileName{ parseDoc["pak_name"].GetString() };
+                const AZStd::string fileStatus{ parseDoc["status"].GetString() };
+
+                EBUS_EVENT(CloudCanvas::DynamicContent::DynamicContentUpdateBus, FileStatusChanged, fileName, fileStatus);
+            }
+        }
+
         DynamicContentTransferManager::SignatureHashVec DynamicContentTransferManager::GetMD5Hash(const AZStd::string& filePath)
         {
             return FileTransferSupport::GetMD5Buffer(filePath.c_str());
@@ -1162,6 +1201,8 @@ namespace CloudCanvas
         // OpenSSL Signature Verification
         int DynamicContentTransferManager::ValidateSignatureOpenSSL(const AZStd::string& checkString, const AZStd::vector<unsigned char>& signatureBuf) const
         {
+            SSystemGlobalEnvironment* pEnv = GetISystem()->GetGlobalEnvironment();
+            ICryPak* cryPak = pEnv->pCryPak;
             int verifyResult = 1;
 
 #if defined(OPENSSL_ENABLED)
@@ -1174,7 +1215,7 @@ namespace CloudCanvas
             }
 
             AZStd::vector<unsigned char> keyBuf;
-            AZ::IO::HandleType pFile = gEnv->pCryPak->FOpen(GetDefaultPublicKeyPath().c_str(), "rt");
+            AZ::IO::HandleType pFile = cryPak->FOpen(GetDefaultPublicKeyPath().c_str(), "rt");
             if (pFile == AZ::IO::InvalidHandle)
             {
                 AZ_TracePrintf("CloudCanvas", "No public key file found at %s", GetDefaultPublicKeyPath().c_str());
@@ -1185,23 +1226,23 @@ namespace CloudCanvas
 
             if (!signatureBuf.size())
             {
-                gEnv->pCryPak->FClose(pFile);
+                cryPak->FClose(pFile);
                 AZ_TracePrintf("CloudCanvas", "No signature set for %s", checkString.c_str());
                 return 0;
             }
 
-            size_t fileSize = gEnv->pCryPak->FGetSize(pFile);
+            size_t fileSize = cryPak->FGetSize(pFile);
             if (!fileSize)
             {
                 AZ_TracePrintf("CloudCanvas", "No public key data found at %s", GetDefaultPublicKeyPath().c_str());
-                gEnv->pCryPak->FClose(pFile);
+                cryPak->FClose(pFile);
                 // Pass if we don't have a public key
                 return 1;
             }
             keyBuf.resize(fileSize);
 
-            size_t read = gEnv->pCryPak->FRead(&keyBuf[0], fileSize, pFile);
-            gEnv->pCryPak->FClose(pFile);
+            size_t read = cryPak->FRead(&keyBuf[0], fileSize, pFile);
+            cryPak->FClose(pFile);
 
             BIO *bufio;
             bufio = BIO_new_mem_buf((void*)&keyBuf[0], keyBuf.size());

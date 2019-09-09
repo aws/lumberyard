@@ -15,11 +15,32 @@
 #include <AzCore/Asset/AssetManager.h>
 #include <AzCore/Component/ComponentApplicationBus.h>
 #include <AzCore/std/parallel/lock.h>
+#include <AzCore/std/string/conversions.h>
 
 namespace AZ
 {
     namespace Data
     {
+        AssetId AssetId::CreateString(AZStd::string_view input)
+        {
+            size_t separatorIdx = input.find(':');
+            if (separatorIdx == AZStd::string_view::npos)
+            {
+                return AssetId();
+            }
+
+            AssetId assetId;
+            assetId.m_guid = Uuid::CreateString(input.data(), separatorIdx);
+            if (assetId.m_guid.IsNull())
+            {
+                return AssetId();
+            }
+
+            assetId.m_subId = strtoul(&input[separatorIdx + 1], nullptr, 16);
+
+            return assetId;
+        }
+
         namespace AssetInternal
         {
             //=========================================================================
@@ -121,19 +142,19 @@ namespace AZ
         void AssetData::Release()
         {
             AZ_Assert(m_useCount > 0, "Usecount is already 0!");
+
+            AssetId assetId = m_assetId;
+            int creationToken = m_creationToken;
+            AssetType assetType = GetType();
+            bool removeFromHash = IsRegisterReadonlyAndShareable(); 
+            // default creation token implies that the asset was not created by the asset manager and therefore it cannot be in the asset map. 
+            removeFromHash = creationToken == s_defaultCreationToken ? false : removeFromHash;
+
+
             if (m_useCount.fetch_sub(1) == 1)
             {
-                RemoveFromDB();
+                AssetManager::Instance().ReleaseAsset(this, assetId, assetType, removeFromHash, creationToken);
             }
-        }
-
-        //=========================================================================
-        // RemoveFromDB
-        // [6/19/2012]
-        //=========================================================================
-        void AssetData::RemoveFromDB()
-        {
-            AssetManager::Instance().ReleaseAsset(this);
         }
 
         //=========================================================================
@@ -231,6 +252,15 @@ namespace AZ
                 m_onAssetErrorCB(asset, *this);
             }
         }
+
+        //=========================================================================
+        // AssetFilterNoAssetLoading
+        //=========================================================================
+        /*static*/ bool AssetFilterNoAssetLoading(const Asset<Data::AssetData>& /*asset*/)
+        {
+            return false;
+        }
+
     }   // namespace Data
 }   // namespace AZ
 

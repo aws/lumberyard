@@ -113,7 +113,9 @@ namespace EMotionFX
         // apply mirroring to the sync track
         if (GetIsMirroringEnabled(animGraphInstance) && !mDisabled)
         {
-            uniqueData->GetSyncTrack().InitFromSyncTrackMirrored(sourceNode->FindUniqueNodeData(animGraphInstance)->GetSyncTrack());
+            EMotionFX::AnimGraphNodeData* sourceNodeData = sourceNode->FindUniqueNodeData(animGraphInstance);
+            uniqueData->SetSyncTrack(sourceNodeData->GetSyncTrack());
+            uniqueData->SetIsMirrorMotion(sourceNodeData->GetIsMirrorMotion());
         }
     }
 
@@ -178,21 +180,19 @@ namespace EMotionFX
                 mirrorPlaneNormal.SetElement(mirrorInfo.mAxis, 1.0f);
 
                 // apply the mirrored delta to the bind pose of the current node
-                outputTransform = bindPose->GetLocalTransform(nodeIndex);
-                outputTransform.ApplyDeltaMirrored(bindPose->GetLocalTransform(mirrorInfo.mSourceNode), inPose.GetLocalTransform(mirrorInfo.mSourceNode), mirrorPlaneNormal, mirrorInfo.mFlags);
+                outputTransform = bindPose->GetLocalSpaceTransform(nodeIndex);
+                outputTransform.ApplyDeltaMirrored(bindPose->GetLocalSpaceTransform(mirrorInfo.mSourceNode), inPose.GetLocalSpaceTransform(mirrorInfo.mSourceNode), mirrorPlaneNormal, mirrorInfo.mFlags);
 
                 // update the pose with the new transform
-                outPose.SetLocalTransform(nodeIndex, outputTransform);
+                outPose.SetLocalSpaceTransform(nodeIndex, outputTransform);
             }
         }
 
         // visualize it
-    #ifdef EMFX_EMSTUDIOBUILD
-        if (GetCanVisualize(animGraphInstance))
+        if (GetEMotionFX().GetIsInEditorMode() && GetCanVisualize(animGraphInstance))
         {
             animGraphInstance->GetActorInstance()->DrawSkeleton(outputPose->GetPose(), mVisualizeColor);
         }
-    #endif
     }
 
 
@@ -255,6 +255,6 @@ namespace EMotionFX
             ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
             ->Attribute(AZ::Edit::Attributes::AutoExpand, "")
             ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
-            ;
+        ;
     }
 } // namespace EMotionFX

@@ -49,7 +49,6 @@ namespace StarterGameGem
         * Notifies all 'Play From Here' entities to move to the specified location.
         */
         virtual void OnPlayFromHere(const AZ::Vector3& pos) {}
-
     };
     using PlayFromHereEditorSystemComponentNotificationBus = AZ::EBus<PlayFromHereEditorSystemComponentNotifications>;
 
@@ -86,7 +85,7 @@ namespace StarterGameGem
     private:
         ////////////////////////////////////////////////////////////////////////
         // AzToolsFramework::EditorEvents
-        void PopulateEditorGlobalContextMenu(QMenu *menu, const AZ::Vector2& point, int flags) override;
+        void PopulateEditorGlobalContextMenu(QMenu* menu, const AZ::Vector2& point, int flags) override;
         ////////////////////////////////////////////////////////////////////////
 
         ////////////////////////////////////////////////////////////////////////

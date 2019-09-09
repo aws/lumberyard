@@ -50,7 +50,6 @@ namespace NAsyncCull
 
     bool CCullThread::LoadLevel(const char* pFolderName)
     {
-        MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_Other, 0, "Occluder Mesh");
         m_OCMBuffer.resize(0);
         AZ::IO::HandleType fileHandle = gEnv->pCryPak->FOpen((string(pFolderName) + "/occluder.ocm").c_str(), "rbx");
         if (fileHandle == AZ::IO::InvalidHandle)

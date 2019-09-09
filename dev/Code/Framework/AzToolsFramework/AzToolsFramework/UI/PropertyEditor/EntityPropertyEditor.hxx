@@ -13,6 +13,8 @@
 #ifndef ENTITY_PROPERTY_EDITOR_H
 #define ENTITY_PROPERTY_EDITOR_H
 
+#pragma once
+
 #include <AzCore/base.h>
 #include <AzCore/Memory/SystemAllocator.h>
 #include <AzCore/std/containers/vector.h>
@@ -24,17 +26,19 @@
 #include <AzToolsFramework/UI/PropertyEditor/PropertyEditorAPI.h>
 #include <AzToolsFramework/Undo/UndoSystem.h>
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
+#include <AzToolsFramework/ComponentMode/EditorComponentModeBus.h>
 #include <AzToolsFramework/Entity/EditorEntityContextBus.h>
+#include <AzToolsFramework/ToolsComponents/ComponentMimeData.h>
 #include <AzToolsFramework/ToolsComponents/EditorInspectorComponentBus.h>
 #include <QtWidgets/QWidget>
 #include <QtGui/QIcon>
-
-#pragma once
+#include <QComboBox>
 
 class QLabel;
 class QSpacerItem;
 class QMenu;
 class QMimeData;
+class QStandardItem;
 
 namespace Ui
 {
@@ -84,6 +88,7 @@ namespace AzToolsFramework
         , public AzToolsFramework::EditorEntityContextNotificationBus::Handler
         , public AzToolsFramework::PropertyEditorEntityChangeNotificationBus::MultiHandler
         , public EditorInspectorComponentNotificationBus::MultiHandler
+        , private AzToolsFramework::ComponentModeFramework::EditorComponentModeNotificationBus::Handler
         , public AZ::EntitySystemBus::Handler
     {
         Q_OBJECT;
@@ -91,7 +96,7 @@ namespace AzToolsFramework
 
         AZ_CLASS_ALLOCATOR(EntityPropertyEditor, AZ::SystemAllocator, 0)
 
-        EntityPropertyEditor(QWidget* pParent = NULL, Qt::WindowFlags flags = 0);
+        EntityPropertyEditor(QWidget* pParent = NULL, Qt::WindowFlags flags = 0, bool isLevelEntityEditor = false);
         virtual ~EntityPropertyEditor();
 
         virtual void BeforeUndoRedo();
@@ -120,7 +125,11 @@ namespace AzToolsFramework
 
         void SetSystemEntityEditor(bool isSystemEntityEditor);
 
+    Q_SIGNALS:
+        void SelectedEntityNameChanged(const AZ::EntityId& entityId, const AZStd::string& name);
+
     private:
+        bool m_disabled = false;
 
         struct SharedComponentInfo
         {
@@ -134,7 +143,7 @@ namespace AzToolsFramework
         //////////////////////////////////////////////////////////////////////////
         // ToolsApplicationEvents::Bus::Handler
         void BeforeEntitySelectionChanged() override;
-        void AfterEntitySelectionChanged() override;
+        void AfterEntitySelectionChanged(const AzToolsFramework::EntityIdList& newlySelectedEntities, const AzToolsFramework::EntityIdList& newlyDeselectedEntities) override;
 
         virtual void EntityParentChanged(AZ::EntityId, AZ::EntityId, AZ::EntityId) {}
         //////////////////////////////////////////////////////////////////////////
@@ -160,6 +169,11 @@ namespace AzToolsFramework
         void OnEntityNameChanged(const AZ::EntityId& entityId, const AZStd::string& name) override;
         //////////////////////////////////////////////////////////////////////////
 
+        // EditorComponentModeNotificationBus
+        void EnteredComponentMode(const AZStd::vector<AZ::Uuid>& componentModeTypes) override;
+        void LeftComponentMode(const AZStd::vector<AZ::Uuid>& componentModeTypes) override;
+        void ActiveComponentModeChanged(const AZ::Uuid& componentType) override;
+
         bool IsEntitySelected(const AZ::EntityId& id) const;
         bool IsSingleEntitySelected(const AZ::EntityId& id) const;
 
@@ -178,33 +192,58 @@ namespace AzToolsFramework
         void ClearInstances(bool invalidateImmediately = true);
 
         void GetAllComponentsForEntityInOrder(const AZ::Entity* entity, AZ::Entity::ComponentArrayType& componentsOnEntity);
-        void RemoveHiddenComponents(AZ::Entity::ComponentArrayType& componentsOnEntity);
         void SortComponentsByPriority(AZ::Entity::ComponentArrayType& componentsOnEntity);
-        void SortComponentsByOrder(const AZ::EntityId& entityId, AZ::Entity::ComponentArrayType& componentsOnEntity);
-        void SaveComponentOrder(const AZ::EntityId& entityId, const AZ::Entity::ComponentArrayType& componentsInOrder);
-
-        void BuildSharedComponentArray(SharedComponentArray& sharedComponentArray);
+        void BuildSharedComponentArray(SharedComponentArray& sharedComponentArray, bool containsLayerEntity);
         void BuildSharedComponentUI(SharedComponentArray& sharedComponentArray);
         bool ComponentMatchesCurrentFilter(SharedComponentInfo& sharedComponentInfo) const;
         ComponentEditor* CreateComponentEditor();
         void UpdateEntityIcon();
         void UpdateEntityDisplay();
+        bool DoesComponentPassFilter(const AZ::Component* component) const;
         bool IsComponentRemovable(const AZ::Component* component) const;
         bool AreComponentsRemovable(const AZ::Entity::ComponentArrayType& components) const;
+        bool AreComponentsCopyable(const AZ::Entity::ComponentArrayType& components) const;
 
         void AddMenuOptionsForComponents(QMenu& menu, const QPoint& position);
         void AddMenuOptionsForFields(InstanceDataNode* fieldNode, InstanceDataNode* componentNode, const AZ::SerializeContext::ClassData* componentClassData, QMenu& menu);
-        void AddMenuOptionForSliceReset(QMenu& menu);
+        void AddMenuOptionsForRevert(InstanceDataNode* fieldNode, InstanceDataNode* componentNode, const AZ::SerializeContext::ClassData* componentClassData, QMenu& menu);
+
+        bool HasAnyVisibleElements(const InstanceDataNode& node);
 
         void ContextMenuActionPullFieldData(AZ::Component* parentComponent, InstanceDataNode* fieldNode);
         void ContextMenuActionSetDataFlag(InstanceDataNode* node, AZ::DataPatch::Flag flag, bool additive);
 
         /// Given an InstanceDataNode, calculate a DataPatch address relative to the entity.
         /// @return true if successful.
-        bool GetEntityDataPatchAddress(const InstanceDataNode* node, AZ::DataPatch::AddressType& dataPatchAddressOut, AZ::EntityId* entityIdOut=nullptr) const;
+        bool GetEntityDataPatchAddress(const InstanceDataNode* componentFieldNode, AZ::DataPatch::AddressType& dataPatchAddressOut, AZ::EntityId* entityIdOut = nullptr) const;
+
+        enum class AddressRootType
+        {
+            RootAtComponentsContainer,  // Address will be made rooted at the entity's components container (from "Components" container down).
+            RootAtEntity,               // Address will be made rooted at the entity itself (from "AZ::Entity" down).
+        };
+
+        // Input address is expected to be relative to a component, as each property editor corresponds to a component and its own data hierarchy.
+        // \param componentFieldNode instance data hierarchy node corresponding to a field under a component, as provided by the component's ReflectedPropertyEditor.
+        // \param rootType type of root the address should be adjusted to. See \ref AddressRootType.
+        // \param outAddress output parameter to be populated with the adjusted node address.
+        void CalculateAndAdjustNodeAddress(const InstanceDataNode& componentFieldNode, AddressRootType rootType, InstanceDataNode::Address& outAddress) const;
 
         // Custom function for comparing values of InstanceDataNodes
-        bool CompareInstanceDataNodeValues(const InstanceDataNode* sourceNode, const InstanceDataNode* targetNode);
+        bool InstanceNodeValueHasNoPushableChange(const InstanceDataNode* sourceNode, const InstanceDataNode* targetNode);
+
+        // Custom function for determining whether InstanceDataNodes are read-only
+        bool QueryInstanceDataNodeReadOnlyStatus(const InstanceDataNode* node);
+        bool QueryInstanceDataNodeReadOnlySetStatus(const InstanceDataNode* node);
+
+        // Custom function for determining whether InstanceDataNodes are hidden
+        bool QueryInstanceDataNodeHiddenStatus(const InstanceDataNode* node);
+        bool QueryInstanceDataNodeHiddenSetStatus(const InstanceDataNode* node);
+
+        bool QueryInstanceDataNodeSetStatus(const InstanceDataNode* node, AZ::DataPatch::Flag testFlag);
+        bool QueryInstanceDataNodeEffectStatus(const InstanceDataNode* node, AZ::DataPatch::Flag testFlag);
+
+        const char* GetAppropriateIndicator(const InstanceDataNode* node);
 
         void OnDisplayComponentEditorMenu(const QPoint& position);
         void OnRequestRequiredComponents(const QPoint& position, const QSize& size, const AZStd::vector<AZ::ComponentServiceType>& services);
@@ -221,23 +260,47 @@ namespace AzToolsFramework
             const QSize& size,
             const AZStd::vector<AZ::ComponentServiceType>& serviceFilter);
 
-        QAction* m_actionToAddComponents;
-        QAction* m_actionToDeleteComponents;
-        QAction* m_actionToCutComponents;
-        QAction* m_actionToCopyComponents;
-        QAction* m_actionToPasteComponents;
-        QAction* m_actionToEnableComponents;
-        QAction* m_actionToDisableComponents;
-        QAction* m_actionToMoveComponentsUp;
-        QAction* m_actionToMoveComponentsDown;
-        QAction* m_actionToMoveComponentsTop;
-        QAction* m_actionToMoveComponentsBottom;
-        QAction* m_resetToSliceAction;
+        enum class SelectionEntityTypeInfo
+        {
+            None,
+            OnlyStandardEntities,
+            OnlyLayerEntities,
+            Mixed,
+            LevelEntity
+        };
+        /**
+         * Returns what kinds of entities are in the current selection. This is used because mixed selection
+         * and layer entities requires special logic in the property editor.
+         * \param selection The selected entities.
+         */
+        SelectionEntityTypeInfo GetSelectionEntityTypeInfo(const EntityIdList& selection) const;
+
+        /**
+         * Returns true if a selection matching the passed in selection informatation allows components to be added.
+         */
+        bool CanAddComponentsToSelection(const SelectionEntityTypeInfo& selectionEntityTypeInfo) const;
+
+        QVector<QAction*> m_entityComponentActions;
+        QAction* m_actionToAddComponents = nullptr;
+        QAction* m_actionToDeleteComponents = nullptr;
+        QAction* m_actionToCutComponents = nullptr;
+        QAction* m_actionToCopyComponents = nullptr;
+        QAction* m_actionToPasteComponents = nullptr;
+        QAction* m_actionToEnableComponents = nullptr;
+        QAction* m_actionToDisableComponents = nullptr;
+        QAction* m_actionToMoveComponentsUp = nullptr;
+        QAction* m_actionToMoveComponentsDown = nullptr;
+        QAction* m_actionToMoveComponentsTop = nullptr;
+        QAction* m_actionToMoveComponentsBottom = nullptr;
+        QAction* m_resetToSliceAction = nullptr;
 
         bool m_isShowingContextMenu = false;
 
         void CreateActions();
         void UpdateActions();
+
+        bool CanPasteComponentsOnSelectedEntities() const;
+        bool CanPasteComponentsOnEntity(const ComponentTypeMimeData::ClassDataContainer& classDataForComponentsToPaste, const AZ::Entity* entity) const;
 
         AZ::Entity::ComponentArrayType GetCopyableComponents() const;
         void DeleteComponents(const AZ::Entity::ComponentArrayType& components);
@@ -289,8 +352,10 @@ namespace AzToolsFramework
         void ClearComponentEditorSelection();
         void SelectRangeOfComponentEditors(const AZ::s32 index1, const AZ::s32 index2, bool selected = true);
         void SelectIntersectingComponentEditors(const QRect& globalRect, bool selected = true);
+        bool SelectIntersectingComponentEditorsSafe(const QRect& globalRect);
         void ToggleIntersectingComponentEditors(const QRect& globalRect);
         AZ::s32 GetComponentEditorIndex(const ComponentEditor* componentEditor) const;
+        AZ::s32 GetComponentEditorIndexFromType(const AZ::Uuid& componentType) const;
         ComponentEditorVector GetIntersectingComponentEditors(const QRect& globalRect) const;
 
         const ComponentEditorVector& GetSelectedComponentEditors() const;
@@ -309,7 +374,6 @@ namespace AzToolsFramework
 
         struct ComponentEditorSaveState
         {
-            bool m_expanded = true;
             bool m_selected = false;
         };
         AZStd::unordered_map<AZ::ComponentId, ComponentEditorSaveState> m_componentEditorSaveStateTable;
@@ -368,7 +432,17 @@ namespace AzToolsFramework
 
         void UpdateInternalState();
 
-        void UpdateInitiallyActiveDisplay();
+        enum StatusType
+        {
+            StatusStartActive,
+            StatusStartInactive,
+            StatusEditorOnly,
+            StatusItems
+        };
+
+        QStringList m_itemNames{ "Start active","Start inactive","Editor only" };
+
+        void UpdateStatusComboBox();
 
         bool m_isBuildingProperties;
 
@@ -397,6 +471,7 @@ namespace AzToolsFramework
         int m_propertyEditBusy;
 
         bool m_isSystemEntityEditor;
+        bool m_isLevelEntityEditor = false;
 
         // the spacer's job is to make sure that its always at the end of the list of components.
         QSpacerItem* m_spacer;
@@ -407,9 +482,12 @@ namespace AzToolsFramework
         AZStd::string m_filterString;
 
         // IDs of entities currently bound to this property editor.
-        AZStd::vector<AZ::EntityId> m_selectedEntityIds;
+        EntityIdList m_selectedEntityIds;
 
         ComponentFilter m_componentFilter;
+        // Tracks if a custom filter has been set. A comparison operator is not available for
+        // the filter, so it can't be checked if it's the default filter.
+        bool m_customFilterSet = false;
 
         // Pointer to entity that first entity is compared against for the purpose of rendering deltas vs. slice in the property grid.
         AZStd::unique_ptr<AZ::Entity> m_sliceCompareToEntity;
@@ -419,13 +497,15 @@ namespace AzToolsFramework
 
         QIcon m_emptyIcon;
         QIcon m_clearIcon;
+        QIcon m_checkmarkIcon;
+        QIcon m_rectangleIcon;
+        QIcon m_spacerIcon;
 
+        QStandardItem* m_comboItems[StatusItems];
         EntityIdList m_overrideSelectedEntityIds;
 
         void GetSelectedEntities(EntityIdList& selectedEntityIds);
         bool IsLockedToSpecificEntities() { return m_overrideSelectedEntityIds.size() > 0; }
-
-        EntityIdList m_lastSelectedEntityIds;
 
         // When m_initiatingPropertyChangeNotification is set to true, it means this EntityPropertyEditor is
         // broadcasting a change to all listeners about a property change for a given entity.  This is needed
@@ -434,14 +514,14 @@ namespace AzToolsFramework
         void ConnectToEntityBuses(const AZ::EntityId& entityId);
         void DisconnectFromEntityBuses(const AZ::EntityId& entityId);
 
-        private slots:
+    private slots:
         void OnPropertyRefreshRequired(); // refresh is needed for a property.
         void UpdateContents();
         void OnAddComponent();
         void OnEntityNameChanged();
         void ScrollToNewComponent();
         void QueueScrollToNewComponent();
-        void OnInitiallyActiveChanged(int);
+        void OnStatusChanged(int index);
         void BuildEntityIconMenu();
 
         void OnSearchTextChanged();
@@ -452,8 +532,28 @@ namespace AzToolsFramework
         bool SelectedEntitiesAreFromSameSourceSliceEntity() const;
 
         void CloseInspectorWindow();
+
+        AZ::Entity* GetSelectedEntityById(AZ::EntityId& entityId) const;
     };
 
-}
+    void SortComponentsByOrder(AZ::EntityId entityId, AZ::Entity::ComponentArrayType& componentsOnEntity);
+    void SaveComponentOrder(AZ::EntityId entityId, const AZ::Entity::ComponentArrayType& componentsInOrder);
+
+} // namespace AzToolsFramework
+
+class StatusComboBox : public QComboBox
+{
+    Q_OBJECT
+public:
+    StatusComboBox(QWidget* parent = nullptr);
+
+    void setHeaderOverride(QString overrideString);
+
+protected:
+    void paintEvent(QPaintEvent* event) override;
+    void showPopup() override;
+
+    QString m_headerOverride = "";
+};
 
 #endif

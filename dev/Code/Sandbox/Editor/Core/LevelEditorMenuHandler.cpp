@@ -25,6 +25,7 @@
 #include <AzCore/Component/ComponentApplicationBus.h>
 #include <AzToolsFramework/Metrics/LyEditorMetricsBus.h>
 #include <AzToolsFramework/AssetEditor/AssetEditorBus.h>
+#include <AzToolsFramework/Slice/SliceUtilities.h>
 
 #include <LyMetricsProducer/LyMetricsAPI.h>
 #include <AzQtComponents/Components/SearchLineEdit.h>
@@ -38,12 +39,19 @@
 using namespace AZ;
 using namespace AzToolsFramework;
 
-static const char* g_LUAEditorName = "Lua Editor";
+static const char* const s_LUAEditorName = "Lua Editor";
+static const char* const s_netPromoterScore = "NetPromoterScore";
+static const char* const s_shortTimeInterval = "debug";
+static const char* const s_assetImporterMetricsIdentifier = "AssetImporter";
 
-static const char* g_netPromoterScore = "NetPromoterScore";
-static const char* g_shortTimeInterval = "debug";
-
-static const char* g_assetImporterMetricsIdentifier = "AssetImporter";
+// top level menu ids
+static const char* const s_fileMenuId = "FileMenu";
+static const char* const s_editMenuId = "EditMenu";
+static const char* const s_gameMenuId = "GameMenu";
+static const char* const s_toolMenuId = "ToolMenu";
+static const char* const s_viewMenuId = "ViewMenu";
+static const char* const s_awsMenuId = "AwsMenu";
+static const char* const s_helpMenuId = "HelpMenu";
 
 static bool CompareLayoutNames(const QString& name1, const QString& name2)
 {
@@ -53,14 +61,14 @@ static bool CompareLayoutNames(const QString& name1, const QString& name2)
 static void AddOpenViewPaneAction(ActionManager::MenuWrapper& menu, const char* name)
 {
     QAction* action = menu->addAction(QObject::tr(name));
-    QObject::connect(action, &QAction::triggered, action, [name]() {
-        QtViewPaneManager::instance()->OpenPane(name);
-    });
+    QObject::connect(action, &QAction::triggered, action, [name]()
+        {
+            QtViewPaneManager::instance()->OpenPane(name);
+        });
 }
 
 namespace
 {
-
     // This helper allows us to watch editor notifications to control action enable states
     class EditorListener
         : public QObject
@@ -98,9 +106,34 @@ namespace
         }
     }
 
+    void HideActionWhileEntitiesDeselected(QAction* action, EEditorNotifyEvent editorNotifyEvent)
+    {
+        if (action == nullptr)
+        {
+            return;
+        }
+
+        switch (editorNotifyEvent)
+        {
+        case eNotify_OnEntitiesDeselected:
+        {
+            action->setVisible(false);
+            break;
+        }
+        case eNotify_OnEntitiesSelected:
+        {
+            action->setVisible(true);
+            break;
+        }
+        default:
+            break;
+        }
+    }
+
 }
 
-LevelEditorMenuHandler::LevelEditorMenuHandler(MainWindow* mainWindow, QtViewPaneManager* const viewPaneManager, QSettings& settings)
+LevelEditorMenuHandler::LevelEditorMenuHandler(
+    MainWindow* mainWindow, QtViewPaneManager* const viewPaneManager, QSettings& settings)
     : QObject(mainWindow)
     , m_mainWindow(mainWindow)
     , m_viewPaneManager(viewPaneManager)
@@ -113,10 +146,16 @@ LevelEditorMenuHandler::LevelEditorMenuHandler(MainWindow* mainWindow, QtViewPan
     m_mainWindow->menuBar()->hide();
     m_mainWindow->menuBar()->setNativeMenuBar(true);
 #endif
+
+    ComponentModeFramework::EditorComponentModeNotificationBus::Handler::BusConnect(
+        AzToolsFramework::GetEntityContextId());
+    EditorMenuRequestBus::Handler::BusConnect();
 }
 
 LevelEditorMenuHandler::~LevelEditorMenuHandler()
 {
+    EditorMenuRequestBus::Handler::BusDisconnect();
+    ComponentModeFramework::EditorComponentModeNotificationBus::Handler::BusDisconnect();
 }
 
 void LevelEditorMenuHandler::Initialize()
@@ -124,10 +163,19 @@ void LevelEditorMenuHandler::Initialize()
     m_enableLegacyCryEntities = GetIEditor()->IsLegacyUIEnabled();
 
     // make sure we can fix the view menus
-    connect(m_viewPaneManager, &QtViewPaneManager::registeredPanesChanged, this, &LevelEditorMenuHandler::ResetToolsMenus);
+    connect(
+        m_viewPaneManager, &QtViewPaneManager::registeredPanesChanged,
+        this, &LevelEditorMenuHandler::ResetToolsMenus);
 
     m_topLevelMenus << CreateFileMenu();
-    m_topLevelMenus << CreateEditMenu();
+
+    auto editMenu = CreateEditMenu();
+    auto editMenuWrapper = ActionManager::MenuWrapper(editMenu, m_actionManager);
+    PopulateEditMenu(editMenuWrapper);
+
+    m_editmenu = editMenu;
+
+    m_topLevelMenus << editMenu;
     m_topLevelMenus << CreateGameMenu();
     m_topLevelMenus << CreateToolsMenu();
     m_topLevelMenus << CreateViewMenu();
@@ -159,7 +207,17 @@ bool LevelEditorMenuHandler::MRUEntryIsValid(const QString& entry, const QString
         return false;
     }
 
-    return info.absolutePath().startsWith(gameFolderPath);
+    const QDir gameDir(gameFolderPath);
+    QDir dir(entry); // actually pointing at file, first cdUp() gets us the parent dir
+    while (dir.cdUp())
+    {
+        if (dir == gameDir)
+        {
+            return true;
+        }
+    }
+
+    return false;
 }
 
 void LevelEditorMenuHandler::IncrementViewPaneVersion()
@@ -240,7 +298,7 @@ void LevelEditorMenuHandler::ResetToolsMenus()
 
     QtViewPanes allRegisteredViewPanes = QtViewPaneManager::instance()->GetRegisteredPanes();
 
-    QMap<QString, QList<QtViewPane*>> menuMap;
+    QMap<QString, QList<QtViewPane*> > menuMap;
 
     CreateMenuMap(menuMap, allRegisteredViewPanes);
 
@@ -268,7 +326,7 @@ void LevelEditorMenuHandler::ResetToolsMenus()
     // Optional Sub Menus
     if (!menuMap.isEmpty())
     {
-        QMap<QString, QList<QtViewPane*>>::iterator it = menuMap.begin();
+        QMap<QString, QList<QtViewPane*> >::iterator it = menuMap.begin();
 
         while (it != menuMap.end())
         {
@@ -282,18 +340,53 @@ void LevelEditorMenuHandler::ResetToolsMenus()
 
 QMenu* LevelEditorMenuHandler::CreateFileMenu()
 {
-    auto fileMenu = m_actionManager->AddMenu(tr("&File"));
+    auto fileMenu = m_actionManager->AddMenu(tr("&File"), s_fileMenuId);
     connect(fileMenu, &QMenu::aboutToShow, this, &LevelEditorMenuHandler::OnUpdateOpenRecent);
 
-    // New
+    // New level
     auto fileNew = fileMenu.AddAction(ID_FILE_NEW);
-    GetIEditor()->RegisterNotifyListener(new EditorListener(fileNew, [fileNew](EEditorNotifyEvent e) {
+    GetIEditor()->RegisterNotifyListener(new EditorListener(fileNew, [fileNew](EEditorNotifyEvent e)
+    {
         DisableActionWhileLevelChanges(fileNew, e);
     }));
-    // Open...
+
+    // Open level...
     auto fileOpenLevel = fileMenu.AddAction(ID_FILE_OPEN_LEVEL);
-    GetIEditor()->RegisterNotifyListener(new EditorListener(fileOpenLevel, [fileOpenLevel](EEditorNotifyEvent e) {
+    GetIEditor()->RegisterNotifyListener(new EditorListener(fileOpenLevel, [fileOpenLevel](EEditorNotifyEvent e)
+    {
         DisableActionWhileLevelChanges(fileOpenLevel, e);
+    }));
+
+#ifdef ENABLE_SLICE_EDITOR
+    // New slice
+    auto fileNewSlice = fileMenu.AddAction(ID_FILE_NEW_SLICE);
+    GetIEditor()->RegisterNotifyListener(new EditorListener(fileNewSlice, [fileNewSlice](EEditorNotifyEvent e)
+    {
+        DisableActionWhileLevelChanges(fileNewSlice, e);
+    }));
+
+    // Open slice...
+    auto fileOpenSlice = fileMenu.AddAction(ID_FILE_OPEN_SLICE);
+    GetIEditor()->RegisterNotifyListener(new EditorListener(fileOpenSlice, [fileOpenSlice](EEditorNotifyEvent e)
+    {
+        DisableActionWhileLevelChanges(fileOpenSlice, e);
+    }));
+#endif
+
+    // Save Selected Slice
+    auto saveSelectedSlice = fileMenu.AddAction(ID_FILE_SAVE_SELECTED_SLICE);
+    saveSelectedSlice->setVisible(false);
+    GetIEditor()->RegisterNotifyListener(new EditorListener(saveSelectedSlice, [saveSelectedSlice](EEditorNotifyEvent e)
+    {
+        HideActionWhileEntitiesDeselected(saveSelectedSlice, e);
+    }));
+
+    // Save Slice to Root
+    auto saveSliceToRoot = fileMenu.AddAction(ID_FILE_SAVE_SLICE_TO_ROOT);
+    saveSliceToRoot->setVisible(false);
+    GetIEditor()->RegisterNotifyListener(new EditorListener(saveSliceToRoot, [saveSliceToRoot](EEditorNotifyEvent e)
+    {
+        HideActionWhileEntitiesDeselected(saveSliceToRoot, e);
     }));
 
     // Open Recent
@@ -305,7 +398,8 @@ QMenu* LevelEditorMenuHandler::CreateFileMenu()
     // Import...
     auto assetImporterMenu = fileMenu.Get()->addAction(tr("Import..."));
     connect(assetImporterMenu, &QAction::triggered, this, &LevelEditorMenuHandler::ActivateAssetImporter);
-    EditorMetricsEventsBus::Broadcast(&EditorMetricsEventsBus::Events::RegisterAction, assetImporterMenu, g_assetImporterMetricsIdentifier);
+    EditorMetricsEventsBus::Broadcast(
+        &EditorMetricsEventsBus::Events::RegisterAction, assetImporterMenu, s_assetImporterMetricsIdentifier);
 
     fileMenu.AddSeparator();
 
@@ -338,19 +432,20 @@ QMenu* LevelEditorMenuHandler::CreateFileMenu()
     // If the current project is external to the engine folder, then do not add options to launch AP or Project Configurator
     // because this feature is in preview mode.
     bool isProjectExternal = false;
-    AzFramework::ApplicationRequests::Bus::BroadcastResult(isProjectExternal, &AzFramework::ApplicationRequests::IsEngineExternal);
+    AzFramework::ApplicationRequests::Bus::BroadcastResult(
+        isProjectExternal, &AzFramework::ApplicationRequests::IsEngineExternal);
 
     if (!isProjectExternal)
     {
         // Switch Projects
         projectSettingMenu.AddAction(ID_PROJECT_CONFIGURATOR_PROJECTSELECTION);
 
-    	if (m_enableLegacyCryEntities)
-	    {
-        	// Input Mapping
-        	auto inputMappingMenu = projectSettingMenu.Get()->addAction(tr("Input Mapping"));
-        	connect(inputMappingMenu, &QAction::triggered, this, &LevelEditorMenuHandler::OnOpenAssetEditor);
-		}
+        if (m_enableLegacyCryEntities)
+        {
+            // Input Mapping
+            auto inputMappingMenu = projectSettingMenu.Get()->addAction(tr("Input Mapping"));
+            connect(inputMappingMenu, &QAction::triggered, this, &LevelEditorMenuHandler::OnOpenAssetEditor);
+        }
         // Configure Gems
         auto configureGemSubMenu = projectSettingMenu.Get()->addAction(tr("Configure Gems"));
         connect(configureGemSubMenu, &QAction::triggered, this, &LevelEditorMenuHandler::ActivateGemConfiguration);
@@ -358,6 +453,13 @@ QMenu* LevelEditorMenuHandler::CreateFileMenu()
 
     // Deployment Tool
     AddOpenViewPaneAction(projectSettingMenu, LyViewPane::DeploymentTool);
+
+    // Project Settings Tool
+    // Shortcut must be set while adding the action otherwise it doesn't work
+    projectSettingMenu.Get()->addAction(
+        tr(LyViewPane::ProjectSettingsTool),
+        []() { QtViewPaneManager::instance()->OpenPane(LyViewPane::ProjectSettingsTool); },
+        tr("Ctrl+Shift+P"));
 
     fileMenu.AddSeparator();
 
@@ -371,6 +473,12 @@ QMenu* LevelEditorMenuHandler::CreateFileMenu()
     // Show Log File
     fileMenu.AddAction(ID_FILE_EDITLOGFILE);
 
+    fileMenu.AddSeparator();
+
+    fileMenu.AddAction(ID_FILE_RESAVESLICES);
+
+    fileMenu.AddSeparator();
+
     fileMenu.AddAction(ID_CONVERT_LEGACY_ENTITIES);
 
     fileMenu.AddAction(ID_APP_EXIT);
@@ -378,9 +486,9 @@ QMenu* LevelEditorMenuHandler::CreateFileMenu()
     return fileMenu;
 }
 
-QMenu* LevelEditorMenuHandler::CreateEditMenu()
+void LevelEditorMenuHandler::PopulateEditMenu(ActionManager::MenuWrapper& editMenu)
 {
-    auto editMenu = m_actionManager->AddMenu(tr("&Edit"));
+    const bool newViewportInteractionModelEnabled = GetIEditor()->IsNewViewportInteractionModelEnabled();
 
     // Undo
     editMenu.AddAction(ID_UNDO);
@@ -409,10 +517,13 @@ QMenu* LevelEditorMenuHandler::CreateEditMenu()
     editMenu.AddAction(ID_EDIT_SELECTALL);
 
     // Deselect All
-    editMenu.AddAction(ID_EDIT_SELECTNONE);
+    if (!newViewportInteractionModelEnabled)
+    {
+        editMenu.AddAction(ID_EDIT_SELECTNONE);
+    }
 
     // Next Selection Mask
-    if (m_enableLegacyCryEntities)
+    if (m_enableLegacyCryEntities && !newViewportInteractionModelEnabled)
     {
         editMenu.AddAction(ID_EDIT_NEXTSELECTIONMASK);
     }
@@ -420,23 +531,43 @@ QMenu* LevelEditorMenuHandler::CreateEditMenu()
     // Invert Selection
     editMenu.AddAction(ID_EDIT_INVERTSELECTION);
 
+    // Select Slice Root
+    if (!m_selectSliceRootMenu)
+    {
+        m_selectSliceRootMenu = editMenu.AddMenu(QObject::tr("Select root"));
+        m_selectSliceRootMenu->setEnabled(false);
+    }
+
     editMenu.AddSeparator();
+
+    // New Viewport Interaction Model actions/shortcuts
+    if (newViewportInteractionModelEnabled)
+    {
+        editMenu.AddAction(ID_EDIT_PIVOT);
+        editMenu.AddAction(ID_EDIT_RESET);
+        editMenu.AddAction(ID_EDIT_RESET_MANIPULATOR);
+        editMenu.AddAction(ID_EDIT_RESET_LOCAL);
+        editMenu.AddAction(ID_EDIT_RESET_WORLD);
+    }
 
     // Hide Selection
     editMenu.AddAction(ID_EDIT_HIDE);
 
-    // Show Selection
-    auto showSelectionMenu = editMenu.Get()->addAction(tr("Show Selection"));
-    connect(showSelectionMenu, &QAction::triggered, this, [this]() {ToggleSelection(false); });
+    if (!newViewportInteractionModelEnabled)
+    {
+        // Show Selection
+        auto showSelectionMenu = editMenu.Get()->addAction(tr("Show Selection"));
+        connect(showSelectionMenu, &QAction::triggered, this, [this]() { ToggleSelection(false); });
 
-    // Show Last Hidden
-    editMenu.AddAction(ID_EDIT_SHOW_LAST_HIDDEN);
+        // Show Last Hidden
+        editMenu.AddAction(ID_EDIT_SHOW_LAST_HIDDEN);
+    }
 
     // Unhide All
     editMenu.AddAction(ID_EDIT_UNHIDEALL);
 
     /*
-     * The following block of code is part of the feature "Isolation Mode" and is temporarily 
+     * The following block of code is part of the feature "Isolation Mode" and is temporarily
      * disabled for 1.10 release.
      * Jira: https://jira.agscollab.com/browse/LY-49532
 
@@ -472,7 +603,7 @@ QMenu* LevelEditorMenuHandler::CreateEditMenu()
     editMenu.AddSeparator();
 
     // Group Sub Menu
-    if (m_enableLegacyCryEntities)
+    if (m_enableLegacyCryEntities && !newViewportInteractionModelEnabled)
     {
         auto groupSubMenu = editMenu.AddMenu(tr("Group"));
 
@@ -505,40 +636,60 @@ QMenu* LevelEditorMenuHandler::CreateEditMenu()
 
     // Modify Menu
     auto modifyMenu = editMenu.AddMenu(tr("&Modify"));
-    modifyMenu.AddAction(ID_MODIFY_LINK);
-    modifyMenu.AddAction(ID_MODIFY_UNLINK);
-    modifyMenu.AddSeparator();
 
-    auto alignMenu = modifyMenu.AddMenu(tr("Align"));
-    alignMenu.AddAction(ID_OBJECTMODIFY_ALIGNTOGRID);
-    alignMenu.AddAction(ID_OBJECTMODIFY_ALIGN);
-    alignMenu.AddAction(ID_MODIFY_ALIGNOBJTOSURF);
+    if (!newViewportInteractionModelEnabled)
+    {
+        modifyMenu.AddAction(ID_MODIFY_LINK);
+        modifyMenu.AddAction(ID_MODIFY_UNLINK);
+        modifyMenu.AddSeparator();
 
-    auto constrainMenu = modifyMenu.AddMenu(tr("Constrain"));
-    constrainMenu.AddAction(ID_SELECT_AXIS_X);
-    constrainMenu.AddAction(ID_SELECT_AXIS_Y);
-    constrainMenu.AddAction(ID_SELECT_AXIS_Z);
-    constrainMenu.AddAction(ID_SELECT_AXIS_XY);
-    constrainMenu.AddAction(ID_SELECT_AXIS_TERRAIN);
+        auto alignMenu = modifyMenu.AddMenu(tr("Align"));
+        alignMenu.AddAction(ID_OBJECTMODIFY_ALIGNTOGRID);
+        alignMenu.AddAction(ID_OBJECTMODIFY_ALIGN);
+        alignMenu.AddAction(ID_MODIFY_ALIGNOBJTOSURF);
+
+        auto constrainMenu = modifyMenu.AddMenu(tr("Constrain"));
+        constrainMenu.AddAction(ID_SELECT_AXIS_X);
+        constrainMenu.AddAction(ID_SELECT_AXIS_Y);
+        constrainMenu.AddAction(ID_SELECT_AXIS_Z);
+        constrainMenu.AddAction(ID_SELECT_AXIS_XY);
+        constrainMenu.AddAction(ID_SELECT_AXIS_TERRAIN);
+    }
 
     auto snapMenu = modifyMenu.AddMenu(tr("Snap"));
-    snapMenu.AddAction(ID_SNAP_TO_GRID);
+
+    if (!newViewportInteractionModelEnabled)
+    {
+        snapMenu.AddAction(ID_SNAP_TO_GRID);
+    }
+
     snapMenu.AddAction(ID_SNAPANGLE);
 
-    auto fastRotateMenu = modifyMenu.AddMenu(tr("Fast Rotate"));
-    fastRotateMenu.AddAction(ID_ROTATESELECTION_XAXIS);
-    fastRotateMenu.AddAction(ID_ROTATESELECTION_YAXIS);
-    fastRotateMenu.AddAction(ID_ROTATESELECTION_ZAXIS);
-    fastRotateMenu.AddAction(ID_ROTATESELECTION_ROTATEANGLE);
+    if (!newViewportInteractionModelEnabled)
+    {
+        auto fastRotateMenu = modifyMenu.AddMenu(tr("Fast Rotate"));
+        fastRotateMenu.AddAction(ID_ROTATESELECTION_XAXIS);
+        fastRotateMenu.AddAction(ID_ROTATESELECTION_YAXIS);
+        fastRotateMenu.AddAction(ID_ROTATESELECTION_ZAXIS);
+        fastRotateMenu.AddAction(ID_ROTATESELECTION_ROTATEANGLE);
+    }
 
     auto transformModeMenu = modifyMenu.AddMenu(tr("Transform Mode"));
-    transformModeMenu.AddAction(ID_EDITMODE_SELECT);
+    if (!newViewportInteractionModelEnabled)
+    {
+        transformModeMenu.AddAction(ID_EDITMODE_SELECT);
+    }
+
     transformModeMenu.AddAction(ID_EDITMODE_MOVE);
     transformModeMenu.AddAction(ID_EDITMODE_ROTATE);
     transformModeMenu.AddAction(ID_EDITMODE_SCALE);
-    transformModeMenu.AddAction(ID_EDITMODE_SELECTAREA);
 
-    if (m_enableLegacyCryEntities)
+    if (!newViewportInteractionModelEnabled)
+    {
+        transformModeMenu.AddAction(ID_EDITMODE_SELECTAREA);
+    }
+
+    if (m_enableLegacyCryEntities && !newViewportInteractionModelEnabled)
     {
         auto convertToMenu = modifyMenu.AddMenu(tr("Convert to"));
         convertToMenu.AddAction(ID_CONVERTSELECTION_TOBRUSHES);
@@ -569,16 +720,16 @@ QMenu* LevelEditorMenuHandler::CreateEditMenu()
     editMenu.AddAction(ID_EDIT_FREEZE);
 
     // NEWMENUS: NEEDS IMPLEMENTATION
-    //// Unlock Selection 
+    //// Unlock Selection
     //auto unlockSelectionMenu = editMenu.Get()->addAction(tr("Unlock Selection"));
 
     //// Unlock Last Locked
     //auto unlockLastLockedMenu = editMenu.Get()->addAction(tr("Unlock Last Locked"));
 
-    // Unlock All 
+    // Unlock All
     editMenu.AddAction(ID_EDIT_UNFREEZEALL);
 
-    if (m_enableLegacyCryEntities)
+    if (m_enableLegacyCryEntities && !newViewportInteractionModelEnabled)
     {
         // Rename Object(s)...
         editMenu.AddAction(ID_EDIT_RENAMEOBJECT);
@@ -613,7 +764,11 @@ QMenu* LevelEditorMenuHandler::CreateEditMenu()
     pcMenu.AddAction(ID_GAME_PC_ENABLEMEDIUMSPEC);
     pcMenu.AddAction(ID_GAME_PC_ENABLELOWSPEC);
 
-    graphicPerformanceSubMenu.AddAction(ID_GAME_OSXMETAL_ENABLESPEC);
+    auto osxmetalMenu = graphicPerformanceSubMenu.AddMenu(tr("OSX Metal"));
+    osxmetalMenu.AddAction(ID_GAME_OSXMETAL_ENABLEVERYHIGHSPEC);
+    osxmetalMenu.AddAction(ID_GAME_OSXMETAL_ENABLEHIGHSPEC);
+    osxmetalMenu.AddAction(ID_GAME_OSXMETAL_ENABLEMEDIUMSPEC);
+    osxmetalMenu.AddAction(ID_GAME_OSXMETAL_ENABLELOWSPEC);
 
     auto androidMenu = graphicPerformanceSubMenu.AddMenu(tr("Android"));
     androidMenu.AddAction(ID_GAME_ANDROID_ENABLEVERYHIGHSPEC);
@@ -628,13 +783,13 @@ QMenu* LevelEditorMenuHandler::CreateEditMenu()
     iosMenu.AddAction(ID_GAME_IOS_ENABLELOWSPEC);
 
 #if defined(AZ_TOOLS_EXPAND_FOR_RESTRICTED_PLATFORMS)
-#define AZ_TOOLS_RESTRICTED_PLATFORM_EXPANSION(PrivateName, PRIVATENAME, privatename, PublicName, PUBLICNAME, publicname, PublicAuxName1, PublicAuxName2, PublicAuxName3)\
+#define AZ_RESTRICTED_PLATFORM_EXPANSION(CodeName, CODENAME, codename, PrivateName, PRIVATENAME, privatename, PublicName, PUBLICNAME, publicname, PublicAuxName1, PublicAuxName2, PublicAuxName3)\
     auto publicname##Menu = graphicPerformanceSubMenu.AddMenu(tr(PublicAuxName2));\
     publicname##Menu.AddAction(ID_GAME_##PUBLICNAME##_ENABLEHIGHSPEC);\
     publicname##Menu.AddAction(ID_GAME_##PUBLICNAME##_ENABLEMEDIUMSPEC);\
     publicname##Menu.AddAction(ID_GAME_##PUBLICNAME##_ENABLELOWSPEC);
     AZ_TOOLS_EXPAND_FOR_RESTRICTED_PLATFORMS
-#undef AZ_TOOLS_RESTRICTED_PLATFORM_EXPANSION
+#undef AZ_RESTRICTED_PLATFORM_EXPANSION
 #endif
 
     graphicPerformanceSubMenu.AddAction(ID_GAME_APPLETV_ENABLESPEC);
@@ -644,13 +799,16 @@ QMenu* LevelEditorMenuHandler::CreateEditMenu()
     keyboardCustomizationMenu.AddAction(ID_TOOLS_CUSTOMIZEKEYBOARD);
     keyboardCustomizationMenu.AddAction(ID_TOOLS_EXPORT_SHORTCUTS);
     keyboardCustomizationMenu.AddAction(ID_TOOLS_IMPORT_SHORTCUTS);
+}
 
-    return editMenu;
+QMenu* LevelEditorMenuHandler::CreateEditMenu()
+{
+    return m_actionManager->AddMenu(tr("&Edit"), s_editMenuId);
 }
 
 QMenu* LevelEditorMenuHandler::CreateGameMenu()
 {
-    auto gameMenu = m_actionManager->AddMenu(tr("&Game"));
+    auto gameMenu = m_actionManager->AddMenu(tr("&Game"), s_gameMenuId);
 
     // Play Game
     gameMenu.AddAction(ID_VIEW_SWITCHTOGAME);
@@ -756,7 +914,7 @@ QMenu* LevelEditorMenuHandler::CreateGameMenu()
 
     gameMenu.AddSeparator();
 
-    // Audio 
+    // Audio
     auto audioMenu = gameMenu.AddMenu(tr("Audio"));
 
     // Stop All Sounds
@@ -804,35 +962,39 @@ QMenu* LevelEditorMenuHandler::CreateGameMenu()
         gameMenu.AddSeparator();
     }
 
-    // Terrain
-    auto terrainMenu = gameMenu.AddMenu(tr("&Terrain"));
+    if (!GetIEditor()->IsNewViewportInteractionModelEnabled())
+    {
+        // Terrain
+        auto terrainMenu = gameMenu.AddMenu(tr("&Terrain"));
 
-    terrainMenu.AddAction(ID_FILE_GENERATETERRAINTEXTURE);
-    terrainMenu.AddAction(ID_FILE_GENERATETERRAIN);
-    terrainMenu.AddSeparator();
-    terrainMenu.AddAction(ID_TERRAIN);
+        terrainMenu.AddAction(ID_FILE_GENERATETERRAINTEXTURE);
+        terrainMenu.AddAction(ID_FILE_GENERATETERRAIN);
+        terrainMenu.AddSeparator();
 
-    terrainMenu.AddAction(ID_TERRAIN_TEXTURE_EXPORT);
+        terrainMenu.AddAction(ID_TERRAIN);
 
-    terrainMenu.AddSeparator();
+        terrainMenu.AddAction(ID_TERRAIN_TEXTURE_EXPORT);
 
-    terrainMenu.AddAction(ID_TERRAIN_EXPORTBLOCK);
-    terrainMenu.AddAction(ID_TERRAIN_IMPORTBLOCK);
-    terrainMenu.AddAction(ID_TERRAIN_RESIZE);
-    terrainMenu.AddSeparator();
+        terrainMenu.AddSeparator();
 
-    auto terrainModifyMenu = terrainMenu.AddMenu(tr("Terrain Modify"));
-    terrainModifyMenu.AddAction(ID_TOOLTERRAINMODIFY_SMOOTH);
-    terrainModifyMenu.AddAction(ID_TERRAINMODIFY_SMOOTH);
+        terrainMenu.AddAction(ID_TERRAIN_EXPORTBLOCK);
+        terrainMenu.AddAction(ID_TERRAIN_IMPORTBLOCK);
+        terrainMenu.AddAction(ID_TERRAIN_RESIZE);
+        terrainMenu.AddSeparator();
 
-    terrainMenu.AddAction(ID_TERRAIN_VEGETATION);
-    terrainMenu.AddAction(ID_TERRAIN_PAINTLAYERS);
-    terrainMenu.AddAction(ID_TERRAIN_REFINETERRAINTEXTURETILES);
-    terrainMenu.AddSeparator();
-    terrainMenu.AddAction(ID_FILE_EXPORT_TERRAINAREA);
-    terrainMenu.AddAction(ID_FILE_EXPORT_TERRAINAREAWITHOBJECTS);
+        auto terrainModifyMenu = terrainMenu.AddMenu(tr("Terrain Modify"));
+        terrainModifyMenu.AddAction(ID_TOOLTERRAINMODIFY_SMOOTH);
+        terrainModifyMenu.AddAction(ID_TERRAINMODIFY_SMOOTH);
 
-    gameMenu.AddSeparator();
+        terrainMenu.AddAction(ID_TERRAIN_VEGETATION);
+        terrainMenu.AddAction(ID_TERRAIN_PAINTLAYERS);
+        terrainMenu.AddAction(ID_TERRAIN_REFINETERRAINTEXTURETILES);
+        terrainMenu.AddSeparator();
+        terrainMenu.AddAction(ID_FILE_EXPORT_TERRAINAREA);
+        terrainMenu.AddAction(ID_FILE_EXPORT_TERRAINAREAWITHOBJECTS);
+
+        gameMenu.AddSeparator();
+    }
 
     CreateDebuggingSubMenu(gameMenu);
 
@@ -842,15 +1004,14 @@ QMenu* LevelEditorMenuHandler::CreateGameMenu()
 QMenu* LevelEditorMenuHandler::CreateToolsMenu()
 {
     // Tools
-    m_toolsMenu = m_actionManager->AddMenu(tr("&Tools"));
-
+    m_toolsMenu = m_actionManager->AddMenu(tr("&Tools"), s_toolMenuId);
     return m_toolsMenu;
 }
 
 QMenu* LevelEditorMenuHandler::CreateAWSMenu()
 {
     // AWS
-    auto awsMenu = m_actionManager->AddMenu(tr("&AWS"));
+    auto awsMenu = m_actionManager->AddMenu(tr("&AWS"), s_awsMenuId);
     connect(awsMenu, &QMenu::aboutToShow,
         this, &LevelEditorMenuHandler::AWSMenuClicked);
     awsMenu.AddAction(ID_AWS_CREDENTIAL_MGR);
@@ -887,7 +1048,7 @@ QMenu* LevelEditorMenuHandler::CreateAWSMenu()
 
 QMenu* LevelEditorMenuHandler::CreateViewMenu()
 {
-    auto viewMenu = m_actionManager->AddMenu(tr("&View"));
+    auto viewMenu = m_actionManager->AddMenu(tr("&View"), s_viewMenuId);
 
     // NEWMENUS: NEEDS IMPLEMENTATION
     // minimize window - Ctrl+M
@@ -913,9 +1074,9 @@ QMenu* LevelEditorMenuHandler::CreateViewMenu()
     // Layouts
     m_layoutsMenu = viewMenu.AddMenu(tr("Layouts"));
     connect(m_viewPaneManager, &QtViewPaneManager::savedLayoutsChanged, this, [this]()
-    {
-        UpdateViewLayoutsMenu(m_layoutsMenu);
-    });
+        {
+            UpdateViewLayoutsMenu(m_layoutsMenu);
+        });
 
     UpdateViewLayoutsMenu(m_layoutsMenu);
 
@@ -929,16 +1090,19 @@ QMenu* LevelEditorMenuHandler::CreateViewMenu()
     connect(viewportTypesMenuWrapper, &QMenu::aboutToShow, this, &LevelEditorMenuHandler::UpdateOpenViewPaneMenu);
 
     InitializeViewPaneMenu(m_actionManager, viewportTypesMenuWrapper, [](const QtViewPane& view)
-    {
-        return view.IsViewportPane();
-    });
+        {
+            return view.IsViewportPane();
+        });
 #endif
 
     viewportViewsMenuWrapper.AddAction(ID_WIREFRAME);
     viewportViewsMenuWrapper.AddSeparator();
 
-    // Ruler
-    viewportViewsMenuWrapper.AddAction(ID_RULER);
+    if (!GetIEditor()->IsNewViewportInteractionModelEnabled())
+    {
+        // Ruler
+        viewportViewsMenuWrapper.AddAction(ID_RULER);
+    }
 
     viewportViewsMenuWrapper.AddAction(ID_VIEW_GRIDSETTINGS);
     viewportViewsMenuWrapper.AddSeparator();
@@ -1005,7 +1169,7 @@ QMenu* LevelEditorMenuHandler::CreateViewMenu()
 QMenu* LevelEditorMenuHandler::CreateHelpMenu()
 {
     // Help
-    auto helpMenu = m_actionManager->AddMenu(tr("&Help"));
+    auto helpMenu = m_actionManager->AddMenu(tr("&Help"), s_helpMenuId);
 
     auto lineEditSearchAction = new QWidgetAction(m_mainWindow);
     auto lineEdit = new QLineEdit(m_mainWindow);
@@ -1018,33 +1182,33 @@ QMenu* LevelEditorMenuHandler::CreateHelpMenu()
     lineEdit->addAction(searchButtonAction, QLineEdit::TrailingPosition);
 
     auto searchAction = [lineEdit]()
-    {
-        auto text = lineEdit->text();
-        if (text.isEmpty())
         {
-            QDesktopServices::openUrl(QUrl("https://aws.amazon.com/documentation/lumberyard/"));
-        }
-        else
-        {
-            static const int versionStringSize = 128;
-            char productVersionString[versionStringSize];
-            const SFileVersion& productVersion = gEnv->pSystem->GetProductVersion();
-            productVersion.ToString(productVersionString, versionStringSize);
+            auto text = lineEdit->text();
+            if (text.isEmpty())
+            {
+                QDesktopServices::openUrl(QUrl("https://aws.amazon.com/documentation/lumberyard/"));
+            }
+            else
+            {
+                static const int versionStringSize = 128;
+                char productVersionString[versionStringSize];
+                const SFileVersion& productVersion = gEnv->pSystem->GetProductVersion();
+                productVersion.ToString(productVersionString, versionStringSize);
 
-            QUrl docSearchUrl("https://docs.aws.amazon.com/search/doc-search.html");
-            QUrlQuery docSearchQuery;
-            // The order of these QueryItems matters. wiki Search URL Formatting
-            docSearchQuery.addQueryItem("searchPath", "documentation-product");
-            docSearchQuery.addQueryItem("searchQuery", text);
-            docSearchQuery.addQueryItem("this_doc_product", "Lumberyard");
-            docSearchQuery.addQueryItem("ref", "lye");
-            docSearchQuery.addQueryItem("ev", productVersionString);
-            docSearchUrl.setQuery(docSearchQuery);
-            docSearchUrl.setFragment("facet_doc_product=Lumberyard");
-            QDesktopServices::openUrl(docSearchUrl);
-        }
-        lineEdit->clear();
-    };
+                QUrl docSearchUrl("https://docs.aws.amazon.com/search/doc-search.html");
+                QUrlQuery docSearchQuery;
+                // The order of these QueryItems matters. wiki Search URL Formatting
+                docSearchQuery.addQueryItem("searchPath", "documentation-product");
+                docSearchQuery.addQueryItem("searchQuery", text);
+                docSearchQuery.addQueryItem("this_doc_product", "Lumberyard");
+                docSearchQuery.addQueryItem("ref", "lye");
+                docSearchQuery.addQueryItem("ev", productVersionString);
+                docSearchUrl.setQuery(docSearchQuery);
+                docSearchUrl.setFragment("facet_doc_product=Lumberyard");
+                QDesktopServices::openUrl(docSearchUrl);
+            }
+            lineEdit->clear();
+        };
     connect(lineEdit, &QLineEdit::returnPressed, this, searchAction);
     connect(pushButton, &QAbstractButton::clicked, this, searchAction);
     connect(helpMenu.Get(), &QMenu::aboutToHide, lineEdit, &QLineEdit::clear);
@@ -1109,7 +1273,10 @@ QAction* LevelEditorMenuHandler::CreateViewPaneAction(const QtViewPane* view)
 
     if (!action)
     {
-        QString menuText = view->m_options.optionalMenuText.length() > 0 ? view->m_options.optionalMenuText : view->m_name;
+        const QString menuText = view->m_options.optionalMenuText.length() > 0
+            ? view->m_options.optionalMenuText
+            : view->m_name;
+
         action = new QAction(menuText, this);
         action->setObjectName(view->m_name);
         action->setCheckable(view->IsViewportPane());
@@ -1120,11 +1287,14 @@ QAction* LevelEditorMenuHandler::CreateViewPaneAction(const QtViewPane* view)
             action->setShortcut(view->m_options.shortcut);
         }
 
-        QObject::connect(action, &QAction::triggered, this, &LevelEditorMenuHandler::checkOrOpenView, Qt::UniqueConnection);
+        QObject::connect(
+            action, &QAction::triggered, this, &LevelEditorMenuHandler::checkOrOpenView, Qt::UniqueConnection);
 
         if (view->m_options.sendViewPaneNameBackToAmazonAnalyticsServers)
         {
-            AzToolsFramework::EditorMetricsEventsBus::Broadcast(&AzToolsFramework::EditorMetricsEventsBus::Events::RegisterAction, action, QString("ViewPaneMenu %1").arg(view->m_name));
+            AzToolsFramework::EditorMetricsEventsBus::Broadcast(
+                &AzToolsFramework::EditorMetricsEventsBus::Events::RegisterAction,
+                action, QString("ViewPaneMenu %1").arg(view->m_name));
         }
     }
 
@@ -1134,7 +1304,8 @@ QAction* LevelEditorMenuHandler::CreateViewPaneAction(const QtViewPane* view)
 // Function used to show menu options without its icon and be able to toggle shortcut visibility in the new menu layout
 // This is a work around for the fact that setting the shortcut on the original action isn't working for some reasons
 // and we need to investigate it further in the future.
-QAction* LevelEditorMenuHandler::CreateViewPaneMenuItem(ActionManager* actionManager, ActionManager::MenuWrapper& menu, const QtViewPane* view)
+QAction* LevelEditorMenuHandler::CreateViewPaneMenuItem(
+    ActionManager* actionManager, ActionManager::MenuWrapper& menu, const QtViewPane* view)
 {
     QAction* action = CreateViewPaneAction(view);
 
@@ -1143,7 +1314,9 @@ QAction* LevelEditorMenuHandler::CreateViewPaneMenuItem(ActionManager* actionMan
     return action;
 }
 
-void LevelEditorMenuHandler::InitializeViewPaneMenu(ActionManager* actionManager, ActionManager::MenuWrapper& menu, AZStd::function < bool(const QtViewPane& view)> functor)
+void LevelEditorMenuHandler::InitializeViewPaneMenu(
+    ActionManager* actionManager, ActionManager::MenuWrapper& menu,
+    AZStd::function <bool(const QtViewPane& view)> functor)
 {
     QtViewPanes views = QtViewPaneManager::instance()->GetRegisteredPanes();
 
@@ -1171,20 +1344,22 @@ void LevelEditorMenuHandler::LoadLegacyLayout()
 
 void LevelEditorMenuHandler::LoadNetPromoterScoreDialog(ActionManager::MenuWrapper& menu)
 {
-    m_settings.beginGroup(g_netPromoterScore);
+    m_settings.beginGroup(s_netPromoterScore);
 
-    if (!m_settings.value(g_shortTimeInterval).isNull())
+    if (!m_settings.value(s_shortTimeInterval).isNull())
     {
         auto showNetPromoterDialog = menu.Get()->addAction(tr("Show Net Promoter Score Dialog"));
-        connect(showNetPromoterDialog, &QAction::triggered, this, [this]() {
-            NetPromoterScoreDialog p(m_mainWindow);
-            p.exec();
-        });
+        connect(showNetPromoterDialog, &QAction::triggered, this, [this]()
+            {
+                NetPromoterScoreDialog p(m_mainWindow);
+                p.exec();
+            });
     }
     m_settings.endGroup();
 }
 
-QMap<QString, QList<QtViewPane*>> LevelEditorMenuHandler::CreateMenuMap(QMap<QString, QList<QtViewPane*>>& menuMap, QtViewPanes& allRegisteredViewPanes)
+QMap<QString, QList<QtViewPane*>> LevelEditorMenuHandler::CreateMenuMap(
+    QMap<QString, QList<QtViewPane*> >& menuMap, QtViewPanes& allRegisteredViewPanes)
 {
     // set up view panes to each category
     for (QtViewPane& viewpane : allRegisteredViewPanes)
@@ -1208,7 +1383,14 @@ struct CaseInsensitiveStringCompare
     }
 };
 
-void LevelEditorMenuHandler::CreateMenuOptions(QMap<QString, QList<QtViewPane*>>* menuMap, ActionManager::MenuWrapper& menu, const char * category)
+static void LaunchLuaEditor()
+{
+    AzToolsFramework::EditorRequestBus::Broadcast(
+        &AzToolsFramework::EditorRequests::LaunchLuaEditor, nullptr);
+}
+
+void LevelEditorMenuHandler::CreateMenuOptions(
+    QMap<QString, QList<QtViewPane*> >* menuMap, ActionManager::MenuWrapper& menu, const char* category)
 {
     // list in the menu and remove this menu category from the menuMap
     QList<QtViewPane*> menuList = menuMap->take(category);
@@ -1221,7 +1403,7 @@ void LevelEditorMenuHandler::CreateMenuOptions(QMap<QString, QList<QtViewPane*>>
     {
         if (viewpane->m_options.builtInActionId != LyViewPane::NO_BUILTIN_ACTION)
         {
-            sortMenuMap[viewpane->m_name] = [&menu, viewpane]() -> void
+            sortMenuMap[viewpane->m_name] = [&menu, viewpane]()
             {
                 // Handle shortcuts for actions with a built-in ID since they
                 // bypass our CreateViewPaneMenuItem method
@@ -1234,8 +1416,11 @@ void LevelEditorMenuHandler::CreateMenuOptions(QMap<QString, QList<QtViewPane*>>
         }
         else
         {
-            QString menuText = viewpane->m_options.optionalMenuText.length() > 0 ? viewpane->m_options.optionalMenuText : viewpane->m_name;
-            sortMenuMap[menuText] = [this, viewpane, &menu]() -> void
+            const QString menuText = viewpane->m_options.optionalMenuText.length() > 0
+                ? viewpane->m_options.optionalMenuText
+                : viewpane->m_name;
+
+            sortMenuMap[menuText] = [this, viewpane, &menu]()
             {
                 CreateViewPaneMenuItem(m_actionManager, menu, viewpane);
             };
@@ -1245,13 +1430,10 @@ void LevelEditorMenuHandler::CreateMenuOptions(QMap<QString, QList<QtViewPane*>>
     if (category == LyViewPane::CategoryTools)
     {
         // Add LUA Editor into the Tools map
-        sortMenuMap[g_LUAEditorName] = [this, &menu]()->void
+        sortMenuMap[s_LUAEditorName] = [this, &menu]()
         {
-            auto luaEditormenu = menu->addAction(tr(g_LUAEditorName));
-
-            connect(luaEditormenu, &QAction::triggered, this, []() {
-                EBUS_EVENT(AzToolsFramework::EditorRequests::Bus, LaunchLuaEditor, nullptr);
-            });
+            auto luaEditormenu = menu.AddAction(ID_TOOLS_LUA_EDITOR);
+            connect(luaEditormenu, &QAction::triggered, this, &LaunchLuaEditor, Qt::UniqueConnection);
         };
     }
 
@@ -1377,15 +1559,18 @@ void LevelEditorMenuHandler::UpdateMRUFiles()
         QAction* action = m_actionManager->GetAction(ID_FILE_MRU_FILE1 + i);
         action->setText(entry);
 
-        m_actionManager->RegisterActionHandler(ID_FILE_MRU_FILE1 + i, [i]() {
-            auto cryEdit = CCryEditApp::instance();
-            RecentFileList* mruList = cryEdit->GetRecentFileList();
-            cryEdit->OpenDocumentFile((*mruList)[i].toUtf8().data());
-        });
+        m_actionManager->RegisterActionHandler(ID_FILE_MRU_FILE1 + i, [i]()
+            {
+                auto cryEdit = CCryEditApp::instance();
+                RecentFileList* mruList = cryEdit->GetRecentFileList();
+                cryEdit->OpenDocumentFile((*mruList)[i].toUtf8().data());
+            });
+        m_actionManager->RegisterUpdateCallback(ID_FILE_MRU_FILE1 + i, cryEdit, &CCryEditApp::OnUpdateFileOpen);
 
-        GetIEditor()->RegisterNotifyListener(new EditorListener(action, [action](EEditorNotifyEvent e) {
-            DisableActionWhileLevelChanges(action, e);
-        }));
+        GetIEditor()->RegisterNotifyListener(new EditorListener(action, [action](EEditorNotifyEvent e)
+            {
+                DisableActionWhileLevelChanges(action, e);
+            }));
 
         m_mostRecentLevelsMenu->addAction(action);
     }
@@ -1476,6 +1661,26 @@ void LevelEditorMenuHandler::OnUpdateMacrosMenu()
     }
 }
 
+void LevelEditorMenuHandler::SetupSliceSelectMenu(AZ::EntityId id)
+{
+    if (id.IsValid())
+    {
+        if (SliceUtilities::PopulateSliceSelectSubMenu(id, m_selectSliceRootMenu))
+        {
+            m_selectSliceRootMenu->setEnabled(true);
+        }
+        else
+        {
+            m_selectSliceRootMenu->setEnabled(false);
+        }
+    }
+    else
+    {
+        m_selectSliceRootMenu->clear();
+        m_selectSliceRootMenu->setEnabled(false);
+    }
+}
+
 void LevelEditorMenuHandler::UpdateMacrosMenu()
 {
     m_macrosMenu->clear();
@@ -1497,7 +1702,7 @@ void LevelEditorMenuHandler::UpdateMacrosMenu()
 void LevelEditorMenuHandler::UpdateOpenViewPaneMenu()
 {
     // This function goes through all the viewport menu actions (top, left, perspective...)
-    // and adds a checkmark on the viewport that has focus
+    // and adds a check mark on the viewport that has focus
 
     QtViewport* viewport = m_mainWindow->GetActiveViewport();
     QString activeViewportName = viewport ? viewport->GetName() : QString();
@@ -1516,7 +1721,7 @@ void LevelEditorMenuHandler::AWSMenuClicked()
 
 void LevelEditorMenuHandler::checkOrOpenView()
 {
-    QAction *action = qobject_cast<QAction*>(sender());
+    QAction* action = qobject_cast<QAction*>(sender());
     const QString viewPaneName = action->objectName();
     // If this action is checkable and was just unchecked, then we
     // should close the view pane
@@ -1527,12 +1732,57 @@ void LevelEditorMenuHandler::checkOrOpenView()
     // Otherwise, this action should open the view pane
     else
     {
-        const QtViewPane *pane = QtViewPaneManager::instance()->OpenPane(viewPaneName);
+        const QtViewPane* pane = QtViewPaneManager::instance()->OpenPane(viewPaneName);
 
         QObject::connect(pane->Widget(), &QWidget::destroyed, action, [action]
         {
             action->setChecked(false);
         });
+    }
+}
+
+void LevelEditorMenuHandler::EnteredComponentMode(const AZStd::vector<AZ::Uuid>& /*componentModeTypes*/)
+{
+    auto menuWrapper = m_actionManager->FindMenu(s_editMenuId);
+    if (!menuWrapper.isNull())
+    {
+        // copy of menu actions
+        auto actions = menuWrapper.Get()->actions();
+        // remove all non-reserved edit menu options
+        actions.erase(
+            std::remove_if(actions.begin(), actions.end(), [](QAction* action)
+            {
+                return !action->property("Reserved").toBool();
+            }),
+            actions.end());
+
+        // clear and update the menu with new actions
+        menuWrapper.Get()->clear();
+        menuWrapper.Get()->addActions(actions);
+    }
+}
+
+void LevelEditorMenuHandler::LeftComponentMode(const AZStd::vector<AZ::Uuid>& /*componentModeTypes*/)
+{
+    RestoreEditMenuToDefault();
+}
+
+void LevelEditorMenuHandler::AddEditMenuAction(QAction* action)
+{
+    auto menuWrapper = m_actionManager->FindMenu(s_editMenuId);
+    if (!menuWrapper.isNull())
+    {
+        menuWrapper.Get()->addAction(action);
+    }
+}
+
+void LevelEditorMenuHandler::RestoreEditMenuToDefault()
+{
+    auto menuWrapper = m_actionManager->FindMenu(s_editMenuId);
+    if (!menuWrapper.isNull())
+    {
+        menuWrapper.Get()->clear();
+        PopulateEditMenu(menuWrapper);
     }
 }
 

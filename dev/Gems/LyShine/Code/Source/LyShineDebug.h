@@ -11,6 +11,12 @@
 */
 #pragma once
 
+#ifndef _RELEASE
+#include <AzCore/std/containers/vector.h>
+
+class ITexture;
+#endif
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 //! Class for drawing test displays for testing the LyShine functionality
 //
@@ -35,4 +41,42 @@ public: // static member functions
     DeclareStaticConstIntCVar(CV_r_DebugUIDraw2dLine, 0);
 
     DeclareStaticConstIntCVar(CV_r_DebugUIDraw2dDefer, 0);
+
+#ifndef _RELEASE
+    //! Shared structures used for debug console commands
+
+    struct DebugInfoRenderGraph
+    {
+        int m_numPrimitives;
+        int m_numRenderNodes;
+        int m_numTriangles;
+        int m_numUniqueTextures;
+        int m_numMasks;
+        int m_numRTs;
+        int m_numNodesDueToMask;
+        int m_numNodesDueToRT;
+        int m_numNodesDueToBlendMode;
+        int m_numNodesDueToSrgb;
+        int m_numNodesDueToMaxVerts;
+        int m_numNodesDueToTextures;
+        bool m_wasBuiltThisFrame;
+        AZ::u64 m_timeGraphLastBuiltMs;
+        bool m_isReusingRenderTargets;
+    };
+
+    struct DebugInfoTextureUsage
+    {
+        ITexture*   m_texture;
+        bool        m_isClampTextureUsage;
+        int         m_numCanvasesUsed;
+        int         m_numDrawCallsUsed;
+        int         m_numDrawCallsWhereExceedingMaxTextures;
+        void*       m_lastContextUsed;
+    };
+
+    struct DebugInfoDrawCallReport
+    {
+        AZStd::vector<DebugInfoTextureUsage> m_textures;
+    };
+#endif
 };

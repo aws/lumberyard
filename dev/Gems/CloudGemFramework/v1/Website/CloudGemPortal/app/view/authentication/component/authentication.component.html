@@ -93,7 +93,7 @@
         <div class='has-danger'><p class="form-control-feedback">{{error}}</p></div>
     </login-container>
 
-    <login-container *ngIf="isFirstTimeLogin && (state === undefined
+    <login-container *ngIf="isFirstTimeLogin && !loading && (state === undefined
                 || state == loginstates.LOGIN
                 || state == authstates.LOGIN_FAILURE
                 || state == authstates.FORGOT_PASSWORD_SUCCESS

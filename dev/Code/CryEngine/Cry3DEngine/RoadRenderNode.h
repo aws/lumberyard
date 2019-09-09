@@ -66,7 +66,7 @@ public:
     virtual void SetLayerId(uint16 nLayerId) { m_nLayerId = nLayerId; }
     virtual uint16 GetLayerId() { return m_nLayerId; }
 
-    static bool ClipTriangle(PodArray<Vec3>& lstVerts, PodArray<vtx_idx>& lstInds, int nStartIdxId, Plane* pPlanes);
+    static void ClipTriangle(PodArray<Vec3>& lstVerts, PodArray<vtx_idx>& lstInds, PodArray<vtx_idx>& lstClippedInds, int nStartIdxId, Plane* pPlanes);
     using IRenderNode::Physicalize;
     virtual void Dephysicalize(bool bKeepIfReferenced = false);
     void Compile();
@@ -96,6 +96,7 @@ public:
 
     static PodArray<Vec3> m_lstVerts;
     static PodArray<vtx_idx> m_lstIndices;
+    static PodArray<vtx_idx> m_lstClippedIndices;
 
     static PodArray<SPipTangents> m_lstTang;
     static PodArray<SVF_P3F_C4B_T2S> m_lstVertices;

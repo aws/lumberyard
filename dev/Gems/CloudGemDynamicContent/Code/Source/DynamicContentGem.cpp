@@ -10,18 +10,11 @@
 *
 */
 
-#include "CloudGemDynamicContent_precompiled.h"
-#include <platform_impl.h>
-
 #include "DynamicContentGem.h"
-#include <FlowSystem/Nodes/FlowBaseNode.h>
 #include <AzCore/RTTI/RTTI.h>
 
-#if defined(DYNAMIC_CONTENT_EDITOR)
-#include "DynamicContentEditorSystemComponent.h"
-#endif
+#include <platform_impl.h>
 
-#include <AzCore/std/smart_ptr/make_shared.h>
 #include <DynamicContentTransferManager.h>
 
 namespace DynamicContent
@@ -31,32 +24,6 @@ namespace DynamicContent
         m_descriptors.insert(m_descriptors.end(), {
             CloudCanvas::DynamicContent::DynamicContentTransferManager::CreateDescriptor()
         });
-    }
-
-    void DynamicContentGem::OnSystemEvent(ESystemEvent event, UINT_PTR wparam, UINT_PTR lparam)
-    {
-        using namespace DynamicContent;
-
-        switch (event)
-        {
-        case ESYSTEM_EVENT_FLOW_SYSTEM_REGISTER_EXTERNAL_NODES:
-            RegisterExternalFlowNodes();
-            break;
-
-        case ESYSTEM_EVENT_GAME_POST_INIT:
-            // Put your init code here
-            // All other Gems will exist at this point
-#if defined(PLATFORM_SUPPORTS_AWS_NATIVE_SDK)
-            m_presignedManager = AZStd::make_shared<CloudCanvas::PresignedURLManager>();
-#endif
-            break;
-
-        case ESYSTEM_EVENT_FULL_SHUTDOWN:
-        case ESYSTEM_EVENT_FAST_SHUTDOWN:
-            // Put your shutdown code here
-            // Other Gems may have been shutdown already, but none will have destructed
-            break;
-        }
     }
 
     AZ::ComponentTypeList DynamicContent::DynamicContentGem::GetRequiredSystemComponents() const

@@ -13,6 +13,8 @@
 #pragma once
 
 #include <AzCore/Component/Component.h>
+#include <AzCore/Memory/AllocatorScope.h>
+#include <AzFramework/InGameUI/UiFrameworkBus.h>
 
 #include <LmbrCentral/Rendering/MaterialAsset.h>
 
@@ -25,11 +27,17 @@
 
 namespace LyShine
 {
+    // LyShine depends on the LegacyAllocator and CryStringAllocator. This will be managed
+    // by the LyShineSystemComponent
+    using LyShineAllocatorScope = AZ::AllocatorScope<AZ::LegacyAllocator, CryStringAllocator>;
+
     class LyShineSystemComponent
         : public AZ::Component
         , protected LyShineRequestBus::Handler
         , protected UiSystemBus::Handler
         , protected UiSystemToolsBus::Handler
+        , protected LyShineAllocatorScope
+        , protected UiFrameworkBus::Handler
     {
     public:
         AZ_COMPONENT(LyShineSystemComponent, lyShineSystemComponentUuid);
@@ -74,6 +82,13 @@ namespace LyShine
         void DestroyCanvas(CanvasAssetHandle* canvas) override;
         ////////////////////////////////////////////////////////////////////////
 
+        ////////////////////////////////////////////////////////////////////////
+        // UiFrameworkInterface interface implementation
+        bool HasUiElementComponent(AZ::Entity* entity) override;
+        void AddEditorOnlyEntity(AZ::Entity* editorOnlyEntity, EntityIdSet& editorOnlyEntities) override;
+        void HandleEditorOnlyEntities(const EntityList& exportSliceEntities, const EntityIdSet& editorOnlyEntityIds) override;
+        ////////////////////////////////////////////////////////////////////////
+
         void BroadcastCursorImagePathname();
 
     protected:  // data
@@ -82,7 +97,7 @@ namespace LyShine
 
         AzFramework::SimpleAssetReference<LmbrCentral::TextureAsset> m_cursorImagePathname;
 
-        // The components types registers in order to cotrol their order in the add component
+        // The components types registers in order to control their order in the add component
         // menu and the properties pane - may go away soon
         AZStd::vector<AZ::Uuid> m_componentTypes;
 

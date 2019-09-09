@@ -30,7 +30,7 @@ UID = Type("uid",'infer','unique_user_identifier')
 MESSAGE_ID = Type("msgid",'utf8', 'sqs_message_identifer')
 BUILD_ID = Type("bldid",'utf8', 'client_build_identifier')  
 PLATFORM_ID = Type("pltf",'utf8', 'platform_identifier')
-CLIENT_TIMESTAMP = Type("tmutc",'utf8', 'client_timestamp')
+CLIENT_TIMESTAMP = Type("tmutc",'float', 'client_timestamp')
 SOURCE = Type("source",'utf8', 'event_source')
 SERVER_TIMESTAMP = Type("srv_tmutc",'float','server_timestamp')
 LONGITUDE = Type("longitude",'float', 'client_longitude')
@@ -200,7 +200,7 @@ def object_encoding(columns):
     for col in columns:
         notfound = True
         for req in REQUIRED_ORDER:
-            if col == req.id:
+            if col == req.long_name:
                 notfound = False
                 result[col] = req.type        
                 break;

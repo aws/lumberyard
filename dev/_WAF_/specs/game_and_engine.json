@@ -18,18 +18,11 @@
         "CryAudioImplWwise",
         "LyIdentity_shared",
         "LyIdentity_static",
-        "CryRenderNULL",
         "CryRenderGL",
         "CryRenderD3D11",
         "CryRenderD3D12",
         "CryRenderMetal",
         "CryRenderNULL"
-    ],
-
-    "appletv_modules" :
-    [
-        "CryAudioImplWwise",
-        "CryRenderMetal"
     ]
 }
 

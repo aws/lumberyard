@@ -87,6 +87,14 @@ export class CloudGemMetricApi extends ApiHandler {
         return super.post("filter", body);
     }
 
+    getPriorities(): Observable<any> {
+        return super.get("priority");
+    }
+
+    updatePriorities(body: any): Observable<any> {
+        return super.post("priority", body);
+    }
+
     getSettings(): Observable<any> {
         return super.get("setting")
     }

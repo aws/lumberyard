@@ -73,10 +73,10 @@ namespace LmbrCentral
         // If we are set to spawn on activate, then we need to make sure we don't point to ourself or we create an infinite spawn loop
         AZ::SliceComponent::SliceInstanceAddress sliceInstanceAddress;
         AzFramework::EntityIdContextQueryBus::EventResult(sliceInstanceAddress, GetEntityId(), &AzFramework::EntityIdContextQueryBus::Events::GetOwningSlice);
-        if (m_spawnOnActivate && sliceInstanceAddress.first)
+        if (m_spawnOnActivate && sliceInstanceAddress.GetReference())
         {
             // Compare the ids because one is source and the other is going to be the dynamic slice
-            return m_sliceAsset.GetId().m_guid == sliceInstanceAddress.first->GetSliceAsset().GetId().m_guid;
+            return m_sliceAsset.GetId().m_guid == sliceInstanceAddress.GetReference()->GetSliceAsset().GetId().m_guid;
         }
 
         return false;

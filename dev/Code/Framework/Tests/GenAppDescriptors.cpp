@@ -61,12 +61,20 @@ namespace UnitTest
                 { "Win64",      "DebugEditor",      ".dll"},
                 { "Win64",      "DebugOptEditor",   ".dll"},
                 { "Win64",      "ReleaseEditor",    ".dll"},
-                { "XB1",        "Debug",            ".dll"},
-                { "XB1",        "DebugOpt",         ".dll"},
-                { "XB1",        "Release",          ".dll"},
-                { "PS4",        "Debug",            ".so"},
-                { "PS4",        "DebugOpt",         ".so"},
-                { "PS4",        "Release",          ".so"},
+#if defined(AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/GenAppDescriptors_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/GenAppDescriptors_cpp_provo.inl"
+    #endif
+#elif defined(AZ_TOOLS_EXPAND_FOR_RESTRICTED_PLATFORMS)
+#if defined(TOOLS_SUPPORT_XENIA)
+    #include "Xenia/GenAppDescriptors_cpp_xenia.inl"
+#endif
+#if defined(TOOLS_SUPPORT_PROVO)
+    #include "Provo/GenAppDescriptors_cpp_provo.inl"
+#endif
+#endif
                 { "Linux",      "Debug",            ".so"},
                 { "Linux",      "DebugOpt",         ".so"},
                 { "Linux",      "Release",          ".so"},

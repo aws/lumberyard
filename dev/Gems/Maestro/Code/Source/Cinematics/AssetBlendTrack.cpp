@@ -15,9 +15,9 @@
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzFramework/StringFunc/StringFunc.h>
 
+#include <Maestro/Types/AssetBlends.h>
 #include <AnimKey.h>
 #include <Maestro/Types/AssetBlendKey.h>
-
 #include "AssetBlendTrack.h"
 #include "Maestro/Types/AnimValueType.h"
 
@@ -62,6 +62,8 @@ void CAssetBlendTrack::SerializeKey(AZ::IAssetBlendKey& key, XmlNodeRef& keyNode
         keyNode->getAttr("speed", key.m_speed);
         keyNode->getAttr("loop", key.m_bLoop);
         keyNode->getAttr("start", key.m_startTime);
+        keyNode->getAttr("blendInTime", key.m_blendInTime);
+        keyNode->getAttr("blendOutTime", key.m_blendOutTime);
     }
     else
     {
@@ -95,6 +97,14 @@ void CAssetBlendTrack::SerializeKey(AZ::IAssetBlendKey& key, XmlNodeRef& keyNode
         if (key.m_startTime != 0)
         {
             keyNode->setAttr("start", key.m_startTime);
+        }
+        if (key.m_blendInTime != 0)
+        {
+            keyNode->setAttr("blendInTime", key.m_blendInTime);
+        }
+        if (key.m_blendOutTime != 0)
+        {
+            keyNode->setAttr("blendOutTime", key.m_blendOutTime);
         }
     }
 }
@@ -157,11 +167,12 @@ template<>
 inline void TAnimTrack<AZ::IAssetBlendKey>::Reflect(AZ::SerializeContext* serializeContext)
 {
     serializeContext->Class<TAnimTrack<AZ::IAssetBlendKey> >()
-        ->Version(1)
+        ->Version(2)
         ->Field("Flags", &TAnimTrack<AZ::IAssetBlendKey>::m_flags)
         ->Field("Range", &TAnimTrack<AZ::IAssetBlendKey>::m_timeRange)
         ->Field("ParamType", &TAnimTrack<AZ::IAssetBlendKey>::m_nParamType)
-        ->Field("Keys", &TAnimTrack<AZ::IAssetBlendKey>::m_keys);
+        ->Field("Keys", &TAnimTrack<AZ::IAssetBlendKey>::m_keys)
+        ->Field("Id", &TAnimTrack<AZ::IAssetBlendKey>::m_id);
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -171,22 +182,92 @@ AnimValueType CAssetBlendTrack::GetValueType()
 }
 
 //////////////////////////////////////////////////////////////////////////
-void CAssetBlendTrack::GetValue(float time, AZ::Data::AssetBlends<AZ::Data::AssetData>& value)
+void CAssetBlendTrack::GetValue(float time, Maestro::AssetBlends<AZ::Data::AssetData>& value)
 {
     // Start by clearing all the assets.
     m_assetBlend.m_assetBlends.clear();
 
+    // Keep track of the nearest keys to be used if not key is found at the input time.
+    bool foundPreviousKey = false;
+    bool foundNextKey = false;
+    float previousKeyTimeDistance = FLT_MAX;
+    float nextKeyTimeDistance = FLT_MAX;
+    AZ::IAssetBlendKey previousKey;
+    AZ::IAssetBlendKey nextKey;
+
     // Check each key to see if it has an asset that is in time range right now.
     for (auto key : m_keys)
     {
+        float localTime = time - key.time;
+        float segmentLength = key.GetValidEndTime() - key.m_startTime;
+
         if (key.IsInRange(time) && key.m_assetId.IsValid())
-        {           
-            m_assetBlend.m_assetBlends.push_back(AZ::Data::AssetBlend(key.m_assetId, key.time));
+        {
+            float segmentPercent = localTime / (segmentLength / key.GetValidSpeed());
+            m_assetBlend.m_assetBlends.push_back(Maestro::AssetBlend(key.m_assetId, key.m_startTime + (segmentLength * segmentPercent), key.m_blendInTime, key.m_blendOutTime));
+        }
+
+        // Find the nearest previous key
+        if (key.time < time)
+        {
+            if (abs(time - key.time) < previousKeyTimeDistance)
+            {
+                previousKeyTimeDistance = abs(time - key.time);
+                previousKey = key;
+                foundPreviousKey = true;
+            }
+
+        }
+
+        // Find the nearest next key
+        if (key.time > time)
+        {
+            if (abs(time - key.time) < nextKeyTimeDistance)
+            {
+                nextKeyTimeDistance = abs(time - key.time);
+                nextKey = key;
+                foundNextKey = true;
+            }
+        }
+    }
+
+    // If no asset blends have been added, and there is a key somewhere in the time line,
+    // add the first or last frame of the key.
+    if (m_assetBlend.m_assetBlends.empty() && !m_keys.empty())
+    {
+        // Check for looping the anim on the last key
+        if (foundPreviousKey && previousKey.m_bLoop)
+        {
+            float localTime = time - previousKey.time;
+            float segmentLength = previousKey.GetValidEndTime() - previousKey.m_startTime;
+            float segmentPercent = static_cast<float>(fmod(localTime / (segmentLength / previousKey.GetValidSpeed()), 1.0));
+            m_assetBlend.m_assetBlends.push_back(Maestro::AssetBlend(previousKey.m_assetId, previousKey.m_startTime + (segmentLength * segmentPercent), previousKey.m_blendInTime, previousKey.m_blendOutTime));
+        }
+        else
+        {
+            // Nothing set, just freeze frame on the first or last frame of the nearest animation
+            if (!foundPreviousKey && foundNextKey)
+            {
+                m_assetBlend.m_assetBlends.push_back(Maestro::AssetBlend(nextKey.m_assetId, nextKey.m_startTime, nextKey.m_blendInTime, nextKey.m_blendOutTime));
+            }
+            else if (foundPreviousKey)
+            {
+                // Add a small fudge factor to the end time so the animation will be frozen on the last frame if we play off the end
+                // of an animation and there is no other animation set on the tack.
+                m_assetBlend.m_assetBlends.push_back(Maestro::AssetBlend(previousKey.m_assetId, previousKey.GetValidEndTime() - 0.001f, previousKey.m_blendInTime, previousKey.m_blendOutTime));
+            }
         }
     }
 
     // Return the updated assetBlend
     value = m_assetBlend;
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CAssetBlendTrack::SetDefaultValue(const Maestro::AssetBlends<AZ::Data::AssetData>& defaultValue)
+{
+    m_defaultValue = defaultValue;
+    Invalidate();
 }
 
 //////////////////////////////////////////////////////////////////////////

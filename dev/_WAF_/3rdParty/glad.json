@@ -1,0 +1,19 @@
+{
+    "name": "glad",
+    "source": "@3P:glad@",
+    "description": "Glad OpenGL loader library (Header Only)",
+    "includes": [
+        "include"
+    ],
+    "defines": [],
+    "lib_required": "True",
+    "shared_required": "False",
+    "platform": {
+        "win_x64_vs2013": {},
+        "win_x64_vs2015": "@win_x64_vs2013",
+        "win_x64_vs2017": "@win_x64_vs2013",
+        "android_armv7_clang": {},
+        "android_armv8_clang": "@android_armv7_clang"
+    }
+
+}

@@ -1068,9 +1068,9 @@ struct CEnumDef
 
     struct SInit
     {
-        static DynArray<SElem>* s_pElems;
+        static LegacyDynArray<SElem>* s_pElems;
 
-        static void Init(DynArray<SElem>& elems)
+        static void Init(LegacyDynArray<SElem>& elems)
         {
             s_pElems = &elems;
         }
@@ -1114,7 +1114,7 @@ struct CEnumInfo
         ILINE static uint Count() { return TypeInfo().Count(); }   \
         static const CEnumInfo<TInt>& TypeInfo() {                 \
             static char enum_str[] = #__VA_ARGS__;                 \
-            static DynArray<CEnumDef::SElem> Elems;                \
+            static LegacyDynArray<CEnumDef::SElem> Elems;          \
             CEnumDef::SInit::Init(Elems);                          \
             CEnumDef::SInit __VA_ARGS__;                           \
             static CEnumInfo<TInt> info( #EType, Elems, enum_str); \

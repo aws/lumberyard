@@ -1,4 +1,10 @@
 ﻿<h2 class="header">Report Information</h2>
+<div *ngIf="reportInformation.jira_status && reportInformation.jira_status != 'pending'" class="row">
+    <label class="col-5 affix">Jira Issue</label>
+    <div class="col-7 jira-issue-number" (click)="viewJiraIssue.emit()">
+        <p>{{reportInformation.jira_status}}</p>
+    </div>
+</div>
 <div *ngFor="let mapping of configurationMappings">
     <div *ngIf="mapping['category'] === 'Report Information' && reportInformation[mapping['key']]" class="row">
         <label class="col-5 affix">{{mapping['displayName']}}</label>
@@ -7,12 +13,24 @@
         </div>
     </div>
 </div>
-<div *ngIf="reportInformation.screenshot_attachment" class="row">
-    <label class="col-5 affix">Screenshot</label>
-    <div class="col-7">
-        <label class="download-link" (click)="downloadAttachment(reportInformation.screenshot_attachment)">{{reportInformation.screenshot_attachment.id}}.{{reportInformation.screenshot_attachment.extension}}</label>
-        <img [src]="reportInformation.screenshot_attachment.url" alt="Report screenshot">
-    </div>
+<div *ngIf="reportInformation.textAttachments.length > 0" class="row">
+    <label class="col-5 affix"> Text Uploads </label>
+    <ng-container *ngFor="let attachment of reportInformation.textAttachments; first as isFirst">
+        <div class="col-5" *ngIf="!isFirst"></div>
+        <div class="col-7">
+            <label class="download-link" (click)="downloadAttachment(attachment)">{{attachment.id}}.{{attachment.extension}}</label>
+        </div>
+    </ng-container>
+</div>
+<div *ngIf="reportInformation.imageAttachments.length > 0" class="row">
+    <label class="col-5 affix"> Image Uploads </label>
+    <ng-container *ngFor="let attachment of reportInformation.imageAttachments; first as isFirst" >
+        <div class="col-5" *ngIf="!isFirst"></div>
+        <div class="col-7">
+            <label class="download-link" (click)="downloadAttachment(attachment)">{{attachment.id}}.{{attachment.extension}}</label>
+            <img [src]="attachment.url" alt="Report screenshot">
+        </div>
+    </ng-container>
 </div>
 <div *ngIf="reportInformation.dxdiag_attachment" class="row">
     <label class="col-5 affix">DxDiag</label>

@@ -48,16 +48,41 @@ bool raw_movable(T const& dest)
     return false;
 }
 
-// Generic move function: transfer an existing source object to uninitialised dest address.
+// This container was written before C++11 and move semantics. As a result, it attempts
+// to fake move semantics where possible by constructing over top of existing instances.
+// This works great, unless the type being operated on has internal pointers to its own
+// memory space (for instance a string with SSO, or COW semantics).
+template <class T>
+struct fake_move_helper
+{
+    static void move(T& dest, T& source)
+    {
+        ::new(&dest) T(source);
+        source.~T();
+    }
+};
+
+// Override for string to ensure proper construction
+template <>
+struct fake_move_helper<string>
+{
+    static void move(string& dest, string& source)
+    {
+        ::new((void*)&dest) string(); 
+        dest = source;
+        source.~string();
+    }
+};
+
+// Generic move function: transfer an existing source object to uninitialized dest address.
 // Addresses must not overlap (requirement on caller).
-// May be specialised for specific types, to provide a more optimal move.
-// For types that can be trivially moved (memcpy), do not specialise move_init, rather specialise raw_movable to return true.
+// May be specialized for specific types, to provide a more optimal move.
+// For types that can be trivially moved (memcpy), do not specialize move_init, rather specialize raw_movable to return true.
 template<class T>
 void move_init(T& dest, T& source)
 {
     assert(&dest != &source);
-    new(&dest)T(source);
-    source.~T();
+    fake_move_helper<T>::move(dest, source);
 }
 
 /*---------------------------------------------------------------------------
@@ -488,28 +513,20 @@ namespace NAlloc
 
         if (old_elems)
         {
+            Array<T, I> old_elems_array(old_elems, old_size);
             if (new_elems)
             {
                 // Move elements.
-                ArrayT(new_elems, NArray::min(old_size, new_size)).move_init(ArrayT(old_elems, old_size));
+                ArrayT(new_elems, NArray::min(old_size, new_size)).move_init(old_elems_array);
             }
 
             // Dealloc old.
+            old_elems_array.destroy(); // call destructors
             size_t zero = 0;
             allocator.alloc(old_elems, zero, alignment);
         }
 
         return new_elems;
-    }
-
-    template<class A>
-    void deallocate(A& allocator, void* old_elems, size_t alignment = 1)
-    {
-        if (old_elems)
-        {
-            size_t zero = 0;
-            allocator.alloc(old_elems, zero, alignment);
-        }
     }
 
     template<class A>
@@ -719,15 +736,13 @@ namespace NArray
             // Construction.
             Store()
                 : m_nCapacity(0)
-            {
-                MEMSTAT_REGISTER_CONTAINER(this, EMemStatContainerType::MSC_Vector, T);
+            {                
             }
 
             Store(const A& a)
                 : A(a)
                 , m_nCapacity(0)
             {
-                MEMSTAT_REGISTER_CONTAINER(this, EMemStatContainerType::MSC_Vector, T);
             }
 
             I capacity() const
@@ -742,7 +757,6 @@ namespace NArray
                 {
                     m_nCapacity = new_size;
                     m_aElems = NAlloc::reallocate(static_cast<A&>(*this), m_aElems, m_nCount, m_nCapacity, alignof(T), allow_slack);
-                    MEMSTAT_BIND_TO_CONTAINER(this, m_aElems);
                 }
                 set_size(new_size);
             }
@@ -755,7 +769,6 @@ namespace NArray
             {
                 assert(new_size >= 0 && new_size <= capacity());
                 m_nCount = new_size;
-                MEMSTAT_USAGE(m_aElems, new_size * sizeof(T));
             }
         };
     };
@@ -844,14 +857,12 @@ namespace NArray
             Store()
             {
                 set_null();
-                MEMSTAT_REGISTER_CONTAINER(this, EMemStatContainerType::MSC_Vector, T);
             }
 
             Store(const A& a)
                 : A(a)
             {
                 set_null();
-                MEMSTAT_REGISTER_CONTAINER(this, EMemStatContainerType::MSC_Vector, T);
             }
 
             // Basic storage.
@@ -872,7 +883,6 @@ namespace NArray
                 {
                     new_cap = new_size;
                     m_aElems = NAlloc::reallocate(allocator(), header()->is_null() ? 0 : m_aElems, size(), new_cap, alignof(T), allow_slack);
-                    MEMSTAT_BIND_TO_CONTAINER(this, m_aElems);
                     if (!m_aElems)
                     {
                         set_null();
@@ -880,7 +890,6 @@ namespace NArray
                     }
                 }
                 header()->set_sizes(new_size, new_cap);
-                MEMSTAT_USAGE(begin(), new_size * sizeof(T));
             }
 
         protected:
@@ -952,11 +961,222 @@ namespace NArray
 // S specifies storage scheme, as with Array, but adds resize(), capacity(), ...
 // A specifies the actual memory allocation function: alloc()
 
+// NOTE: This version has been re-based on AZStd::vector for correctness and performance
+// The original implementation has been retained as LegacyDynArray below, for the few
+// cases where we must retain the old internal behavior
 template< class T, class I = int, class STORE = NArray::SmallDynStorage<> >
 struct DynArray
+    : public AZStd::vector<T, AZ::StdLegacyAllocator>
+{
+    typedef AZStd::vector<T, AZ::StdLegacyAllocator> vector_base;
+    using value_type = typename vector_base::value_type;
+    using size_type = I;
+    using iterator = typename vector_base::iterator;
+    using const_iterator = typename vector_base::const_iterator;
+
+    using vector_base::begin;
+    using vector_base::end;
+
+    DynArray()
+        : vector_base::vector()
+    {
+    }
+
+    explicit DynArray(size_type numElements)
+        : vector_base::vector(numElements)
+    {
+    }
+
+    DynArray(size_type numElements, const T& value)
+        : vector_base::vector(numElements, value)
+    {
+    }
+
+    // Ignore any specialized allocators, they all pull from the LegacyAllocator now
+    // Because we mandate that all DynArrays use the StdLegacyAllocator, matching allocators
+    // isn't meaningful here, so it's factored out
+    // Note that the STORE/S& is ignored entirely, because we do not support sharing storage
+    // between 2 DynArrays anymore. LegacyDynArray can still do that, but this feature is no longer used
+    template <typename S, typename = AZStd::enable_if_t<AZStd::is_base_of<S, typename STORE::template Store<T, I>>::value>>
+    explicit DynArray(const S&)
+        : vector_base::vector()
+    {
+    }
+
+    size_type capacity() const
+    {
+        return static_cast<size_type>(vector_base::capacity());
+    }
+
+    size_type size() const
+    {
+        return static_cast<size_type>(vector_base::size());
+    }
+
+    size_type available() const
+    {
+        return capacity() - size();
+    }
+
+    size_type get_alloc_size() const
+    {
+        return capacity() * sizeof(T);
+    }
+
+    // Grow array, return iterator to new raw elems.
+    iterator grow_raw(size_type count = 1, bool /*allow_slack*/ = true)
+    {
+        vector_base::resize(size() + count);
+        return end() - count;
+    }
+    
+    iterator grow(size_type count)
+    {
+        return grow_raw(count);
+    }
+    iterator grow(size_type count, const T& val)
+    {
+        vector_base::reserve(size() + count);
+        for (size_type idx = 0; idx < count; ++idx)
+        {
+            vector_base::push_back(val);
+        }
+        return end() - count;
+    }
+
+    void shrink()
+    {
+        // Realloc memory to exact array size.
+        vector_base::shrink_to_fit();
+    }
+
+    void resize(size_type newSize)
+    {
+        vector_base::resize(newSize);
+    }
+
+    void resize(size_type new_size, const T& val)
+    {
+        size_type s = size();
+        if (new_size > s)
+        {
+            grow(new_size - s, val);
+        }
+        else
+        {
+            pop_back(s - new_size);
+        }
+    }
+
+    void assign(const_iterator first, const_iterator last)
+    {
+        vector_base::assign(first, last);
+    }
+
+    void assign(size_type n, const T& val)
+    {
+        clear();
+        grow(n, val);
+    }
+
+    iterator push_back()
+    {
+        return grow(1);
+    }
+    iterator push_back(const T& val)
+    {
+        vector_base::push_back(val);
+        return vector_base::end() - 1;
+    }
+    iterator push_back(const DynArray& other)
+    {
+        return insert(end(), other.begin(), other.end());
+    }
+
+    iterator insert_raw(iterator pos, size_type count = 1)
+    {
+        // Grow array, return iterator to inserted raw elems.
+        assert(pos >= begin() && pos <= end());
+        vector_base::insert(pos, count, T());
+        return pos;
+    }
+
+    iterator insert(iterator it, const T& val)
+    {
+        vector_base::insert(it, 1, val);
+        return it;
+    }
+    iterator insert(iterator it, size_type count, const T& val)
+    {
+        vector_base::insert(it, count, val);
+        return it;
+    }
+    iterator insert(iterator it, const_iterator start, const_iterator finish)
+    {
+        vector_base::insert(it, start, finish);
+        return it;
+    }
+
+    iterator insert(size_type pos)
+    {
+        return insert_raw(begin() + pos);
+    }
+    iterator insert(size_type pos, const T& val)
+    {
+        iterator it = insert_raw(begin() + pos);
+        *it = val;
+        return it;
+    }
+
+    void pop_back(size_type count = 1, bool allow_slack = true)
+    {
+        // Destroy erased elems, change size without reallocing.
+        assert(count >= 0 && count <= size());
+        for (size_type idx = 0; idx < count; ++idx)
+        {
+            vector_base::pop_back();
+        }
+    }
+
+    iterator erase(iterator pos)
+    {
+        return vector_base::erase(pos);
+    }
+
+    iterator erase(iterator start, iterator finish)
+    {
+        AZ_Assert(start >= begin() && finish >= start && finish <= end(), "DynArray: Erasure range out of bounds");
+
+        // Copy over erased elems, destroy those at end.
+        iterator it = start, e = end();
+        while (finish < e)
+        {
+            *it++ = *finish++;
+        }
+        pop_back(check_cast<size_type>(finish - it));
+        return it;
+    }
+
+    iterator erase(size_type pos, size_type count = 1)
+    {
+        return erase(begin() + pos, begin() + pos + count);
+    }
+
+    void clear()
+    {
+        vector_base::clear();
+        vector_base::shrink_to_fit();
+    }
+};
+
+//---------------------------------------------------------------------------
+// Original Cry DynArray
+//---------------------------------------------------------------------------
+template< class T, class I = int, class STORE = NArray::SmallDynStorage<> >
+struct LegacyDynArray
     : Array< T, I, STORE >
 {
-    typedef DynArray<T, I, STORE> self_type;
+    typedef LegacyDynArray<T, I, STORE> self_type;
     typedef Array<T, I, STORE> super_type;
     typedef typename STORE::template Store<T, I> S;
 
@@ -979,28 +1199,28 @@ struct DynArray
     //
     // Construction.
     //
-    DynArray()
+    LegacyDynArray()
     {}
 
-    DynArray(size_type count)
+    LegacyDynArray(size_type count)
     {
         grow(count);
     }
-    DynArray(size_type count, const T& val)
+    LegacyDynArray(size_type count, const T& val)
     {
         grow(count, val);
     }
 
 #if !defined(_DISALLOW_INITIALIZER_LISTS)
     // Initializer-list
-    DynArray(std::initializer_list<T> l)
+    LegacyDynArray(std::initializer_list<T> l)
     {
         push_back(Array<const T, I>(l.begin(), l.size()));
     }
 #endif
 
     // Copying from a generic array type.
-    DynArray(const_array a)
+    LegacyDynArray(const_array a)
     {
         push_back(a);
     }
@@ -1032,7 +1252,7 @@ struct DynArray
     }
 
     // Copy init/assign.
-    inline DynArray(const self_type& a)
+    inline LegacyDynArray(const self_type& a)
     {
         push_back(a());
     }
@@ -1042,7 +1262,7 @@ struct DynArray
     }
 
     // Init/assign from basic storage type.
-    inline DynArray(const S& a)
+    inline LegacyDynArray(const S& a)
     {
         push_back(const_array(a.begin(), a.size()));
     }
@@ -1051,7 +1271,7 @@ struct DynArray
         return *this = const_array(a.begin(), a.size());
     }
 
-    inline ~DynArray()
+    inline ~LegacyDynArray()
     {
         destroy();
         S::resize_raw(0);
@@ -1063,7 +1283,6 @@ struct DynArray
         S temp = static_cast<S&>(*this);
         static_cast<S&>(*this) = static_cast<S&>(a);
         static_cast<S&>(a) = temp;
-        MEMSTAT_SWAP_CONTAINERS(this, &a);
     }
 
     inline size_type available() const
@@ -1220,7 +1439,7 @@ struct DynArray
             *it++ = *finish++;
         }
         pop_back(check_cast<size_type>(finish - it));
-        return start;
+        return it;
     }
 
     iterator erase(iterator it)
@@ -1240,6 +1459,7 @@ struct DynArray
     }
 };
 
+
 //---------------------------------------------------------------------------
 
 template<class T, class I = int, class A = NAlloc::StandardAlloc>
@@ -1250,7 +1470,7 @@ struct FastDynArray
 
 template<class T, class I = int>
 struct FixedDynArray
-    : DynArray< T, I, NArray::FastDynStorage<NAlloc::NullAlloc> >
+    : LegacyDynArray< T, I, NArray::FastDynStorage<NAlloc::NullAlloc> >
 {
     typedef NArray::ArrayStorage::Store<T, I> S;
 
@@ -1270,7 +1490,7 @@ struct FixedDynArray
 
 template<class T, int nSIZE, class I = int>
 struct StaticDynArray
-    : DynArray< T, I, NArray::StaticDynStorage<nSIZE> >
+    : LegacyDynArray< T, I, NArray::StaticDynStorage<nSIZE> >
 {
 };
 

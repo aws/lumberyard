@@ -95,7 +95,7 @@
      </widget>
     </item>
     <item>
-     <widget class="QGraphicsView" name="graphicsView"/>
+     <widget class="GraphCanvas::GraphCanvasGraphicsView" name="graphicsView"/>
     </item>
     <item>
      <widget class="QFrame" name="footerToolbar">
@@ -144,6 +144,13 @@
    </layout>
   </widget>
  </widget>
+ <customwidgets>
+  <customwidget>
+   <class>GraphCanvas::GraphCanvasGraphicsView</class>
+   <extends>QGraphicsView</extends>
+   <header location="global">StaticLib/GraphCanvas/Widgets/GraphCanvasGraphicsView/GraphCanvasGraphicsView.h</header>
+  </customwidget>
+ </customwidgets>
  <resources>
   <include location="../Resources/GraphCanvasEditorResources.qrc"/>
  </resources>

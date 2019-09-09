@@ -17,6 +17,7 @@
 #include <AzCore/Memory/SystemAllocator.h>
 #include <AzCore/std/containers/map.h>
 
+#include <AzToolsFramework/AssetBrowser/Search/Filter.h>
 #include <AzToolsFramework/UI/LegacyFramework/UIFrameworkAPI.h>
 #include <AzToolsFramework/UI/LegacyFramework/MainWindowSavedState.h>
 #include <AzToolsFramework/UI/Logging/LogPanel_Panel.h>
@@ -45,6 +46,11 @@ namespace Ui
 namespace AzToolsFramework
 {
     class TargetSelectorButtonAction;
+
+    namespace AssetBrowser
+    {
+        class AssetBrowserFilterModel;
+    }
 }
 
 namespace LUA
@@ -57,10 +63,18 @@ class ClassReferenceFilterModel;
 
 namespace LUAEditor
 {
+    // Structure used for storing/retrieving compilation error data
+    struct CompilationErrorData
+    {
+        AZStd::string m_filename;
+        int m_lineNumber = 0;
+    };
+
     //forwards
     class LUAViewWidget;
     class LUAEditorSettingsDialog;
     class DebugAttachmentButtonAction;
+    class AssetDatabaseLocationListener;
 
     //////////////////////////////////////////////////////////////////////////
     //Main Window
@@ -184,6 +198,8 @@ namespace LUAEditor
         // user closed all tabs in the log control
         void OnLogTabsReset();
 
+        void AddMessageToLog(AzToolsFramework::Logging::LogLine::LogType type, const char* window, const char* message, void* data);
+
     private:
         AZStd::string m_currentTabContextMenuUUID;
 
@@ -192,8 +208,14 @@ namespace LUAEditor
         AZStd::vector<FindResultsBlockInfo> m_dProcessFindListClicked;
         void OnDataLoadedAndSet(const DocumentInfo& info, LUAViewWidget* pLUAViewWidget);
 
+        AzToolsFramework::AssetBrowser::AssetBrowserFilterModel* m_filterModel;
+        QSharedPointer<AzToolsFramework::AssetBrowser::CompositeFilter> CreateFilter();
+
+        void LogLineSelectionChanged(const AzToolsFramework::Logging::LogLine& logLine);
 
     public:
+
+        void SetupLuaFilesPanel();
 
         void ResetSearchClicks();
         bool NeedsCheckout();
@@ -202,6 +224,9 @@ namespace LUAEditor
         //ClientInterface Messages
     private:
         //////////////////////////////////////////////////////////////////////////
+
+        AssetDatabaseLocationListener* m_assetDatabaseListener = nullptr;
+
     public:
         void OnOpenLUAView(const DocumentInfo& docInfo);
         void OnOpenWatchView();
@@ -405,6 +430,7 @@ namespace LUAEditor
 
         AZStd::vector<AZStd::string> m_openAssetIds;
         bool m_bAutocompleteEnabled;
+        bool m_bAutoReloadUnmodifiedFiles = false;
 
         LUAEditorMainWindowSavedState() {}
         void Init(const QByteArray& windowState,const QByteArray& windowGeom)

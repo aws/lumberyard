@@ -570,7 +570,7 @@ public:
     void run()
     {
         AZ_TracePrintf("GridMate", "\n");
-        Replica* replica = Replica::CreateReplica("TestReplica");
+        ReplicaPtr replica = Replica::CreateReplica("TestReplica");
 
         ReplicaChunkDescriptorTable::Get().RegisterChunkType<RpcWithoutArgumentsChunk>();
         AZStd::unique_ptr<RpcWithoutArgumentsChunk> chunk(CreateReplicaChunk<RpcWithoutArgumentsChunk>());

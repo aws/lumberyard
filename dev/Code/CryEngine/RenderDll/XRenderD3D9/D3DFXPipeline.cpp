@@ -59,7 +59,11 @@ long CD3D9Renderer::FX_SetVertexDeclaration(int StreamMask, const AZ::Vertex::Fo
     SOnDemandD3DVertexDeclarationCache* pDeclCache = &m_RP.m_D3DVertexDeclarationCache[(StreamMask & 0xff) >> 1][bMorph || bInstanced][declCacheCRC];
 
 #if defined(AZ_RESTRICTED_PLATFORM)
-#include AZ_RESTRICTED_FILE(D3DFXPipeline_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/D3DFXPipeline_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/D3DFXPipeline_cpp_provo.inl"
+    #endif
 #endif
 #endif
 
@@ -1753,6 +1757,14 @@ void CD3D9Renderer::FX_CommitStates(const SShaderTechnique* pTech, const SShader
             rRP.m_FlagsShader_RT |= g_HWSR_MaskBit[HWSR_ALPHABLEND];
         }
     }
+
+    // Enable position invariant flag to disable fast math on certain vertex shader operations that affect position calculations.
+    // This fixes issues with geometry that renders in both z-prepass and any other pass from having precision
+    // issues when executing different vertex shaders and expecting the same position output results.
+    if (rRP.m_RIs[0][0]->nBatchFlags & FB_ZPREPASS)
+    {
+        rRP.m_FlagsShader_MDV |= MDV_POSITION_INVARIANT;
+    }
 }
 
 //=====================================================================================
@@ -1959,6 +1971,11 @@ CTexture* CD3D9Renderer::FX_GetCurrentRenderTarget(int target)
     return m_RTStack[target][gcpRendD3D->m_nRTStackLevel[target]].m_pTex;
 }
 
+D3DSurface* CD3D9Renderer::FX_GetCurrentRenderTargetSurface(int target) const
+{
+    return m_RTStack[target][gcpRendD3D->m_nRTStackLevel[target]].m_pTarget;
+}
+
 void CD3D9Renderer::FX_SetColorDontCareActions(int const nTarget,
     bool const loadDontCare,
     bool const storeDontCare)
@@ -2123,19 +2140,26 @@ bool CD3D9Renderer::FX_PopRenderTarget(int nTarget)
 //////////////////////////////////////////////////////////////////////////
 // REFACTOR BEGIN: (bethelz) Move scratch depth pool into its own class.
 
-SDepthTexture* CD3D9Renderer::FX_GetDepthSurface(int nWidth, int nHeight, bool bAA)
+SDepthTexture* CD3D9Renderer::FX_GetDepthSurface(int nWidth, int nHeight, bool bAA, bool shaderResourceView)
 {
     assert(m_pRT->IsRenderThread());
 
     SDepthTexture* pSrf = NULL;
+    D3D11_TEXTURE2D_DESC desc;
     uint32 i;
     int nBestX = -1;
     int nBestY = -1;
     for (i = 0; i < m_TempDepths.Num(); i++)
     {
         pSrf = m_TempDepths[i];
-        if (!pSrf->bBusy)
+        if (!pSrf->bBusy && pSrf->pSurf)
         {
+            // verify that this texture supports binding as a shader resource if requested
+            pSrf->pTarget->GetDesc(&desc);
+            if (shaderResourceView && !(desc.BindFlags & D3D11_BIND_SHADER_RESOURCE))
+            {
+                continue;
+            }
             if (pSrf->nWidth == nWidth && pSrf->nHeight == nHeight)
             {
                 nBestX = i;
@@ -2178,6 +2202,12 @@ SDepthTexture* CD3D9Renderer::FX_GetDepthSurface(int nWidth, int nHeight, bool b
         for (i = 0; i < m_TempDepths.Num(); i++)
         {
             pSrf = m_TempDepths[i];
+            // verify that this texture supports binding as a shader resource if requested
+            pSrf->pTarget->GetDesc(&desc);
+            if (shaderResourceView && !(desc.BindFlags & D3D11_BIND_SHADER_RESOURCE))
+            {
+                continue;
+            }
             if (pSrf->nWidth >= nWidth && pSrf->nHeight >= nHeight && !pSrf->bBusy)
             {
                 break;
@@ -2191,7 +2221,7 @@ SDepthTexture* CD3D9Renderer::FX_GetDepthSurface(int nWidth, int nHeight, bool b
 
     if (i == m_TempDepths.Num())
     {
-        pSrf = CreateDepthSurface(nWidth, nHeight);
+        pSrf = CreateDepthSurface(nWidth, nHeight, shaderResourceView);
         if (pSrf != nullptr)
         {
             if (pSrf->pSurf != nullptr)
@@ -2201,6 +2231,7 @@ SDepthTexture* CD3D9Renderer::FX_GetDepthSurface(int nWidth, int nHeight, bool b
             else
             {
                 DestroyDepthSurface(pSrf);
+                pSrf = nullptr;
             }
         }
     }
@@ -2428,7 +2459,7 @@ void CD3D9Renderer::FX_DrawInstances(CShader* ef, SShaderPass* slw, int nRE, uin
         for (i = 0; i < rRP.m_CustomVD.Num(); i++)
         {
             vd = rRP.m_CustomVD[i];
-            if (vd->StreamMask == StreamMask && rRP.m_CurVFormat == vd->VertexFormat && vd->InstAttrMask == nInstAttrMask)
+            if (vd->StreamMask == StreamMask && rRP.m_CurVFormat == vd->VertexFormat && vd->InstAttrMask == nInstAttrMask && vd->m_vertexShader == CHWShader_D3D::s_pCurInstVS)
             {
                 break;
             }
@@ -2442,6 +2473,7 @@ void CD3D9Renderer::FX_DrawInstances(CShader* ef, SShaderPass* slw, int nRE, uin
             vd->VertexFormat = rRP.m_CurVFormat;
             vd->InstAttrMask = nInstAttrMask;
             vd->m_pDeclaration = NULL;
+            vd->m_vertexShader = CHWShader_D3D::s_pCurInstVS;
 
             // Copy the base vertex format declaration
             SOnDemandD3DVertexDeclaration Decl;
@@ -2629,6 +2661,7 @@ void CD3D9Renderer::FX_DrawShader_InstancedHW(CShader* ef, SShaderPass* slw)
     CHWShader_D3D* pCurHS, * pCurDS;
     bool bTessEnabled = FX_SetTessellationShaders(pCurHS, pCurDS, slw);
 
+    vp->UpdatePerInstanceConstantBuffer();
     ps->UpdatePerInstanceConstantBuffer();
 
     #ifdef TESSELLATION_RENDERER
@@ -2931,12 +2964,11 @@ void CD3D9Renderer::FX_DrawBatchesSkinned(CShader* pSh, SShaderPass* pPass, SSki
         rRP.m_FlagsShader_RT |= (g_HWSR_MaskBit[HWSR_SKINNING_DUAL_QUAT]);
     }
 
-
-    CHWShader_D3D* pCurHS, * pCurDS;
-    bool bTessEnabled = FX_SetTessellationShaders(pCurHS, pCurDS, pPass);
-
     bool bRes = pCurPS->mfSetPS(HWSF_SETTEXTURES);
     bRes &= pCurVS->mfSetVS(0);
+
+    CHWShader_D3D* pCurHS, *pCurDS;
+    bool bTessEnabled = FX_SetTessellationShaders(pCurHS, pCurDS, pPass);
 
     if (pCurGS)
     {
@@ -3263,15 +3295,13 @@ void CD3D9Renderer::FX_DrawBatches(CShader* pSh, SShaderPass* pPass)
             CHWShader_D3D::mfBindGS(NULL, NULL);
         }
 
-
-        CHWShader_D3D* pCurHS, * pCurDS;
-        bool bTessEnabled = FX_SetTessellationShaders(pCurHS, pCurDS, pPass);
-
-
         CHWShader_D3D* pCurVS = (CHWShader_D3D*)pPass->m_VShader;
         CHWShader_D3D* pCurPS = (CHWShader_D3D*)pPass->m_PShader;
         bRes &= pCurPS->mfSetPS(HWSF_SETTEXTURES);
         bRes &= pCurVS->mfSetVS(HWSF_SETTEXTURES);
+
+        CHWShader_D3D* pCurHS, *pCurDS;
+        bool bTessEnabled = FX_SetTessellationShaders(pCurHS, pCurDS, pPass);
 
         if (bRes)
         {
@@ -4523,8 +4553,12 @@ void CD3D9Renderer::FX_FlushShader_General()
             }
         }
 #endif
-
-        MultiLayerAlphaBlendPass::GetInstance().ConfigureShaderFlags(rRP.m_FlagsShader_RT);
+        // If the object is transparent and if the object has the UAV bound.
+        bool multilayerUAVBound = (rRP.m_ObjFlags & FOB_AFTER_WATER) != 0;
+        if (rRP.m_pShaderResources && rRP.m_pShaderResources->IsTransparent() && multilayerUAVBound)
+        {
+            MultiLayerAlphaBlendPass::GetInstance().ConfigureShaderFlags(rRP.m_FlagsShader_RT);
+        }
 
         if (!rd->FX_SetResourcesState())
         {
@@ -4559,7 +4593,14 @@ void CD3D9Renderer::FX_FlushShader_General()
                 rRP.m_FlagsShader_RT |= g_HWSR_MaskBit[HWSR_VOLUMETRIC_FOG];
             }
         }
-
+        rd->m_RP.m_FlagsShader_RT &= ~(g_HWSR_MaskBit[HWSR_FOG_VOLUME_HIGH_QUALITY_SHADER]);
+        static ICVar* pCVarFogVolumeShadingQuality = gEnv->pConsole->GetCVar("e_FogVolumeShadingQuality");
+        if (pCVarFogVolumeShadingQuality->GetIVal() > 0)
+        {
+            rRP.m_FlagsShader_RT |= g_HWSR_MaskBit[HWSR_FOG_VOLUME_HIGH_QUALITY_SHADER];
+        }
+        
+        
         const uint64 objFlags = rRP.m_ObjFlags;
         if (objFlags & FOB_NEAREST)
         {
@@ -4773,9 +4814,6 @@ void CD3D9Renderer::FX_FlushShader_ShadowGen()
     }
 #endif
 
-    //per-object bias for Shadow Generation
-    rd->m_cEF.m_TempVecs[1][0] = 0.0f;
-
     if (!rd->FX_SetResourcesState())
     {
         return;
@@ -4917,7 +4955,13 @@ void CD3D9Renderer::FX_FlushShader_ZPass()
             rRP.m_ForceStateOr |=   GS_STENCIL;
 
             uint32 nStencilRef = CRenderer::CV_r_VisAreaClipLightsPerPixel ? 0 : (rd->m_RP.m_RIs[0][0]->nStencRef | BIT_STENCIL_INSIDE_CLIPVOLUME);
-            nStencilRef |= (!(rRP.m_pCurObject->m_ObjFlags & FOB_DYNAMIC_OBJECT) || CV_r_deferredDecalsOnDynamicObjects ? BIT_STENCIL_RESERVED : 0);
+            
+            // Here we check if an object can receive decals.
+            bool bObjectAcceptsDecals = !(rRP.m_pCurObject->m_NoDecalReceiver);
+            if (bObjectAcceptsDecals)
+            {
+                nStencilRef |= (!(rRP.m_pCurObject->m_ObjFlags & FOB_DYNAMIC_OBJECT) || CV_r_deferredDecalsOnDynamicObjects ? BIT_STENCIL_RESERVED : 0);
+            }
             const int32 stencilState = STENC_FUNC(FSS_STENCFUNC_ALWAYS) | STENCOP_FAIL(FSS_STENCOP_KEEP) | STENCOP_ZFAIL(FSS_STENCOP_KEEP) | STENCOP_PASS(FSS_STENCOP_REPLACE);
             rd->FX_SetStencilState(stencilState, nStencilRef, 0xFF, 0xFF);
         }
@@ -5139,12 +5183,12 @@ bool CD3D9Renderer::FX_DrawToRenderTarget(CShader* pShader, CShaderResources* pR
 
     if (pRT->m_nIDInPool >= 0)
     {
-        assert((int)CTexture::s_CustomRT_2D.Num() > pRT->m_nIDInPool);
-        if ((int)CTexture::s_CustomRT_2D.Num() <= pRT->m_nIDInPool)
+        assert((int)CTexture::s_CustomRT_2D->Num() > pRT->m_nIDInPool);
+        if ((int)CTexture::s_CustomRT_2D->Num() <= pRT->m_nIDInPool)
         {
             return false;
         }
-        pEnvTex = &CTexture::s_CustomRT_2D[pRT->m_nIDInPool];
+        pEnvTex = &(*CTexture::s_CustomRT_2D)[pRT->m_nIDInPool];
 
         if (nWidth == -1)
         {
@@ -5184,6 +5228,14 @@ bool CD3D9Renderer::FX_DrawToRenderTarget(CShader* pShader, CShaderResources* pR
 
             bMakeEnvironmentTexture = (!pEnvTex->m_pTex || pEnvTex->m_pTex->GetFormat() != eTF);
         }
+
+#if AZ_RENDER_TO_TEXTURE_GEM_ENABLED
+        // do not re-create the environment texture for the RTT pass for now, just use the existing one.
+        if (m_RP.m_TI[nThreadList].m_PersFlags & RBPF_RENDER_SCENE_TO_TEXTURE && pEnvTex->m_pTex)
+        {
+            bMakeEnvironmentTexture = false;
+        }
+#endif // if AZ_RENDER_TO_TEXTURE_GEM_ENABLED
 
         // clamping to a reasonable texture size
         if (nWidth < 32)

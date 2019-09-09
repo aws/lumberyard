@@ -249,7 +249,7 @@ void CWrinkleMapShaderParamCallback::SetupShaderParams(
                 if (pParams->GetParamBySemantic(m_eSemantic[i]) == 0)
                 {
                     SShaderParam newParam;
-                    cry_strcpy(newParam.m_Name, wrinkleMask[i]);
+                    newParam.m_Name = wrinkleMask[i];
                     newParam.m_Type = eType_FCOLOR;
                     newParam.m_eSemantic = m_eSemantic[i];
                     pParams->AddParam(newParam);

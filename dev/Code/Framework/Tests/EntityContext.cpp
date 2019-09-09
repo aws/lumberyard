@@ -28,20 +28,17 @@ namespace UnitTest
     using namespace AzFramework;
 
     class EntityContextBasicTest
-        : public AllocatorsFixture
+        : public ScopedAllocatorSetupFixture
         , public EntityContextEventBus::Handler
     {
     public:
 
         EntityContextBasicTest()
-            : AllocatorsFixture(15, false)
         {
         }
 
         void SetUp() override
         {
-            AllocatorsFixture::SetUp();
-
             AllocatorInstance<PoolAllocator>::Create();
             AllocatorInstance<ThreadPoolAllocator>::Create();
 
@@ -59,8 +56,6 @@ namespace UnitTest
 
             AllocatorInstance<PoolAllocator>::Destroy();
             AllocatorInstance<ThreadPoolAllocator>::Destroy();
-
-            AllocatorsFixture::TearDown();
         }
 
         void run()
@@ -68,7 +63,8 @@ namespace UnitTest
             ComponentApplication app;
             ComponentApplication::Descriptor desc;
             desc.m_useExistingAllocator = true;
-            app.Create(desc);
+            desc.m_enableDrilling = false; // we already created a memory driller for the test (AllocatorsFixture)
+            AZ::Entity* systemEntity = app.Create(desc);
 
             Data::AssetManager::Instance().RegisterHandler(aznew SliceAssetHandler(app.GetSerializeContext()), AZ::AzTypeInfo<AZ::SliceAsset>::Uuid());
 
@@ -111,6 +107,9 @@ namespace UnitTest
             context.GetRootSlice()->GetEntities(entities);
             AZ_TEST_ASSERT(entities.size() == 1);
 
+            EntityContextEventBus::Handler::BusDisconnect(context.GetContextId());
+
+            delete systemEntity;
             app.Destroy();
         }
 
@@ -131,7 +130,7 @@ namespace UnitTest
             (void)sliceAssetId;
             (void)instance;
             ++m_prefabSuccesses;
-            prefabResults = instance.second->GetInstantiated()->m_entities;
+            prefabResults = instance.GetInstance()->GetInstantiated()->m_entities;
         }
 
         void OnSliceInstantiationFailed(const AZ::Data::AssetId& sliceAssetId)

@@ -17,7 +17,7 @@
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzFramework/Physics/PhysicsComponentBus.h>
 #include <AzFramework/Entity/EntityDebugDisplayBus.h>
-#include <LmbrCentral/Rendering/MeshComponentBus.h>
+#include <LmbrCentral/Rendering/RenderBoundsBus.h>
 #include <LmbrCentral/Shape/SplineComponentBus.h>
 #include <LmbrCentral/Shape/ShapeComponentBus.h>
 #include <LmbrCentral/Shape/TubeShapeComponentBus.h>
@@ -125,7 +125,7 @@ namespace LmbrCentral
         ShapeComponentRequestsBus::EventResult(m_volumeParams.m_aabb, m_entityId, &ShapeComponentRequestsBus::Events::GetEncompassingAabb);
     }
 
-    void ForceVolume::Display(AzFramework::EntityDebugDisplayRequests& displayContext)
+    void ForceVolume::Display(AzFramework::DebugDisplayRequests& debugDisplay)
     {
         AZ::Crc32 shapeType;
         ShapeComponentRequestsBus::EventResult(shapeType, m_entityId, &ShapeComponentRequestsBus::Events::GetShapeType);
@@ -170,10 +170,10 @@ namespace LmbrCentral
         }
 
         // Display forces
-        displayContext.SetColor(s_arrowColor);
+        debugDisplay.SetColor(s_arrowColor);
         for (auto& point : points)
         {
-            ForceVolumeUtil::DisplayForceDirection(*this, displayContext, m_worldTransform * point);
+            ForceVolumeUtil::DisplayForceDirection(*this, debugDisplay, m_worldTransform * point);
         }
     }
 
@@ -204,7 +204,7 @@ namespace LmbrCentral
         AZ::Aabb combinedAabb = AZ::Aabb::CreateNull();
         AZ::Aabb componentAabb = AZ::Aabb::CreateNull();
 
-        MeshComponentRequestBus::EventResult(componentAabb, entityId, &MeshComponentRequests::GetWorldBounds);
+        LmbrCentral::RenderBoundsRequestBus::EventResult(componentAabb, entityId, &LmbrCentral::RenderBoundsRequests::GetWorldBounds);
         combinedAabb.AddAabb(componentAabb);
 
         ShapeComponentRequestsBus::EventResult(componentAabb, entityId, &ShapeComponentRequestsBus::Events::GetEncompassingAabb);
@@ -351,7 +351,7 @@ namespace LmbrCentral
         }
     }
 
-    void ForceVolumeUtil::DisplayForceDirection(const ForceVolume& forceVolume, AzFramework::EntityDebugDisplayRequests& displayContext, const AZ::Vector3& worldPoint)
+    void ForceVolumeUtil::DisplayForceDirection(const ForceVolume& forceVolume, AzFramework::DebugDisplayRequests& debugDisplay, const AZ::Vector3& worldPoint)
     {
         EntityParams entityParams;
         entityParams.m_id.SetInvalid();
@@ -364,11 +364,11 @@ namespace LmbrCentral
         {
             forceDirection.Normalize();
             forceDirection *= 0.5f;
-            displayContext.DrawArrow(worldPoint - forceDirection, worldPoint + forceDirection, 1.5f);
+            debugDisplay.DrawArrow(worldPoint - forceDirection, worldPoint + forceDirection, 1.5f);
         }
         else
         {
-            displayContext.DrawBall(worldPoint, 0.05f);
+            debugDisplay.DrawBall(worldPoint, 0.05f);
         }
     }
 }

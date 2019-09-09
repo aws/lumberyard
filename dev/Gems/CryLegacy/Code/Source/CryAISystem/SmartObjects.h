@@ -223,9 +223,9 @@ public:
         typedef std::map< string, int > MapSmartObjectStateIds;
         typedef std::vector< const char* > MapSmartObjectStates;
 
-        static MapSmartObjectStateIds   g_mapStateIds;
-        static MapSmartObjectStates     g_mapStates;
-        static SetStates                            g_defaultStates;
+        static StaticInstance<MapSmartObjectStateIds>   g_mapStateIds;
+        static StaticInstance<MapSmartObjectStates>     g_mapStates;
+        static StaticInstance<SetStates>                            g_defaultStates;
 
         void Assign(const char* state)
         {
@@ -258,9 +258,18 @@ public:
 
         static void Reset()
         {
-            stl::free_container(g_mapStates);
-            stl::free_container(g_mapStateIds);
-            stl::free_container(g_defaultStates);
+            if (g_mapStates.size())
+            {
+                stl::free_container(g_mapStates);
+            }
+            if (g_mapStateIds.size())
+            {
+                stl::free_container(g_mapStateIds);
+            }
+            if (g_defaultStates.size())
+            {
+                stl::free_container(g_defaultStates);
+            }
         }
 
         static const SetStates& GetDefaultStates();
@@ -594,13 +603,13 @@ public:
 
 
     typedef std::vector< SmartObjectHelper* > VectorHelpers;
-    VectorHelpers m_vHelpers;
+    StaticInstance<VectorHelpers> m_vHelpers;
 
     typedef std::map< string, CSmartObjectClass* > MapClassesByName;
-    static MapClassesByName g_AllByName;
+    static StaticInstance<MapClassesByName> g_AllByName;
 
     typedef std::vector< CSmartObjectClass* > VectorClasses;
-    static VectorClasses    g_AllUserClasses;
+    static StaticInstance<VectorClasses>    g_AllUserClasses;
     static VectorClasses::iterator  g_itAllUserClasses;
 
     CSmartObjectClass(const char* className);
@@ -1057,7 +1066,7 @@ private:
     typedef VectorMap<CSmartObject*, float> SmartObjectFloatMap;
     SmartObjectFloatMap m_bannedNavSmartObjects;
     std::map<string, string> m_MappingSOUserPathType;
-    static std::map<EntityId, CSmartObject*> g_smartObjectEntityMap;
+    static StaticInstance<std::map<EntityId, CSmartObject*>> g_smartObjectEntityMap;
 
     const AgentPathfindingProperties* GetPFPropertiesOfSoUser(const string& soUser);
 
@@ -1067,11 +1076,11 @@ private:
         int iCount = 1, const IEntity* pAdditionalEntity = NULL, const  CSmartObject::SetStates* pStatesExcludedFromMatchingTheObjectState = NULL) const;
 
     typedef std::set< CSmartObject* > SmartObjects;
-    static SmartObjects g_AllSmartObjects;
+    static StaticInstance<SmartObjects> g_AllSmartObjects;
 
     typedef std::pair< CSmartObject*, CCondition* > PairObjectCondition;
     typedef std::pair< PairObjectCondition, float > PairDelayTime;
-    typedef std::vector< PairDelayTime > VecDelayTimes;
+    typedef StaticInstance<std::vector< PairDelayTime >> VecDelayTimes;
 
     struct Pred_IgnoreSecond
     {

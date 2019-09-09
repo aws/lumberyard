@@ -41,7 +41,8 @@ namespace Telemetry
 
         void Write(const uint8* pData, size_t size);
 
-        static const string ms_defaultDir, ms_defaultExtension;
+        static const char* ms_defaultDir;
+        static const char* ms_defaultExtension;
 
     private:
 

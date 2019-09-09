@@ -26,6 +26,7 @@ def build(bld):
         darwin_test_all_file_list = ['cryaction_tests.waf_files'],
         platforms               = ['all'],
         configurations          = ['all'],
+        defines                 = ['USE_CRY_NEW_AND_DELETE'],
         use                     = ['AzCore'],
     )
 

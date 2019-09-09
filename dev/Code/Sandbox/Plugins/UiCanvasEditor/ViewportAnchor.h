@@ -18,7 +18,8 @@ public:
     ViewportAnchor();
     virtual ~ViewportAnchor();
 
-    void Draw(Draw2dHelper& draw2d, AZ::Entity* element, bool drawUnTransformedRect, bool drawAnchorLines, ViewportHelpers::SelectedAnchors highlightedAnchors) const;
+    void Draw(Draw2dHelper& draw2d, AZ::Entity* element, bool drawUnTransformedRect, bool drawAnchorLines, bool drawLinesToParent,
+        bool anchorInteractionEnabled, ViewportHelpers::SelectedAnchors highlightedAnchors) const;
 
 private:
 

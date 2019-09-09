@@ -13,6 +13,7 @@
 #include "AnimGraphTransitionConditionFixture.h"
 #include <EMotionFX/Source/EMotionFXManager.h>
 #include <EMotionFX/Source/AnimGraph.h>
+#include <EMotionFX/Source/AnimGraphManager.h>
 #include <EMotionFX/Source/AnimGraphStateMachine.h>
 #include <EMotionFX/Source/AnimGraphExitNode.h>
 #include <EMotionFX/Source/AnimGraphMotionNode.h>
@@ -26,7 +27,7 @@
 #include <EMotionFX/Source/Parameter/FloatSliderParameter.h>
 #include <EMotionFX/Source/Parameter/TagParameter.h>
 #include <EMotionFX/Source/Parameter/Vector2Parameter.h>
-#include <MCore/Source/ReflectionSerializer.h>
+#include <EMotionFX/Source/TwoStringEventData.h>
 
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/std/string/conversions.h>
@@ -52,236 +53,6 @@ namespace EMotionFX
         PrintTo(static_cast<AnimGraphNode*>(object), os);
     }
 
-    // This class is used as a simple holder for attribute values to pass to an
-    // MCore::Attribute instance at test time. The test data for parameterized
-    // tests use this class instead of using MCore::Attribute directly.
-    // MCore::Attribute's API doesn't support stack-allocated instances since
-    // it has a private constructor, and the Attribute::Create() method uses
-    // MCore's allocator, which is not set up when the test data is
-    // initialized.
-    class Variant
-    {
-    public:
-        enum Type
-        {
-            Bool,
-            String,
-            StringVector,
-            StdString,
-            Float,
-            Vector2,
-
-            // NodeName represents the name of a node, where the serialized
-            // type stores a node id. The id is not known until runtime, so the
-            // setter for a NodeName type looks up the node id from the name
-            // stored, and then sets the property name with the node id
-            NodeName,
-            AZu8,
-            AZu32,
-            AZu64
-        };
-
-        Variant(bool value) : type(Bool)
-        {
-            data.b = value;
-        }
-
-        Variant(const char* value, Type type = String) : type(type)
-        {
-            data.string = value;
-        }
-
-        Variant(float f) : type(Float)
-        {
-            data.f = f;
-        }
-
-        Variant(float x, float y) : type(Vector2), y(y)
-        {
-            data.f = x;
-        }
-
-        Variant(const std::string& string) : type(StdString)
-        {
-            m_string = string;
-        }
-
-        Variant(const std::vector<std::string>& stringVector) : type(StringVector), m_stringVector(stringVector)
-        {
-        }
-
-        Variant(AZ::u8 value) : type(AZu8)
-        {
-            data.u8 = value;
-        }
-
-        Variant(AZ::u32 value) : type(AZu32)
-        {
-            data.u32 = value;
-        }
-
-        Variant(AZ::u64 value) : type(AZu64)
-        {
-            data.u64 = value;
-        }
-
-        Type GetType() const { return type; }
-
-        template<typename T>
-        T Get() const;
-
-    private:
-        union Data
-        {
-            bool b;
-            float f;
-            const char* string;
-            AZ::u8 u8;
-            AZ::u32 u32;
-            AZ::u64 u64;
-        } data;
-
-        // For Vector2, the x value is stored in the above-declared union. This
-        // is the Vector2 y value.
-        float y = 0.0f;
-
-        std::string m_string;
-
-        std::vector<std::string> m_stringVector;
-
-        Type type;
-    };
-
-    template<>
-    bool Variant::Get<bool>() const
-    {
-        AZ_Assert(type == Bool, "Get<bool>() called on Variant that is not a Bool");
-        return data.b;
-    }
-
-    template<>
-    float Variant::Get<float>() const
-    {
-        AZ_Assert(type == Float, "Get<float>() called on Variant that is not a float");
-        return data.f;
-    }
-
-    template<>
-    const char* Variant::Get<const char*>() const
-    {
-        AZ_Assert(type == String || type == NodeName, "Get<const char*>() called on Variant that is not a String");
-        return data.string;
-    }
-
-    template<>
-    const AZ::Vector2 Variant::Get<const AZ::Vector2>() const
-    {
-        AZ_Assert(type == Vector2, "Get<AZ::Vector2>() called on Variant that is not a Vector2");
-        return AZ::Vector2(data.f, y);
-    }
-
-    template <>
-    const AZStd::string Variant::Get<const AZStd::string>() const
-    {
-        return AZStd::string(m_string.c_str(), m_string.size());
-    }
-
-    template <>
-    const std::string Variant::Get<const std::string>() const
-    {
-        return m_string;
-    }
-
-    template<>
-    AZStd::vector<AZStd::string> Variant::Get<AZStd::vector<AZStd::string>>() const
-    {
-        AZ_Assert(type == StringVector, "Get<AZStd::vector<AZStd::string>>() called on Variant that is not a StringVector");
-        AZStd::vector<AZStd::string> stringVector;
-        for (const std::string& string : m_stringVector)
-        {
-            stringVector.emplace_back(string.c_str(), string.size());
-        }
-
-        return stringVector;
-    }
-
-    template<>
-    const std::vector<std::string> Variant::Get<const std::vector<std::string>>() const
-    {
-        return m_stringVector;
-    }
-
-    template <>
-    AZ::u8 Variant::Get<AZ::u8>() const
-    {
-        AZ_Assert(type == AZu8, "Get<AZ::u8>() called on Variant that is not a AZ::u8");
-        return data.u8;
-    }
-
-    template <>
-    AZ::u32 Variant::Get<AZ::u32>() const
-    {
-        AZ_Assert(type == AZu32, "Get<AZ::u32>() called on Variant that is not a AZ::u32");
-        return data.u32;
-    }
-
-    template <>
-    AZ::u64 Variant::Get<AZ::u64>() const
-    {
-        AZ_Assert(type == AZu64, "Get<NodeId>() called on Variant that is not a NodeId");
-        return data.u64;
-    }
-
-    using AttributeKeyValuePairs = std::unordered_map<std::string, const Variant>;
-    using AttributeKeyValuePair = AttributeKeyValuePairs::value_type;
-
-    template <typename ValueType>
-    void SetAttributeValueImpl(AZ::SerializeContext* context, AnimGraphObject* object, const AttributeKeyValuePair& value)
-    {
-        const std::string& propertyName = std::get<0>(value);
-        MCore::ReflectionSerializer::SetIntoMember(context, object, propertyName.c_str(), value.second.Get<ValueType>());
-    }
-
-    // The test data does not instantiate the conditions when the data is
-    // declared. Instead, the values of the condition's properties are
-    // declared, and then set by the test during SetUp()
-    void SetAttributeValue(AZ::SerializeContext* context, AnimGraphObject* object, const AttributeKeyValuePair& attribute)
-    {
-        switch (attribute.second.GetType()) {
-            case Variant::Bool:
-                SetAttributeValueImpl<bool>(context, object, attribute);
-                break;
-            case Variant::Float:
-                SetAttributeValueImpl<float>(context, object, attribute);
-                break;
-            case Variant::StringVector:
-                SetAttributeValueImpl<AZStd::vector<AZStd::string>>(context, object, attribute);
-                break;
-            case Variant::StdString:
-                SetAttributeValueImpl<const AZStd::string>(context, object, attribute);
-                break;
-            case Variant::NodeName:
-            {
-                AnimGraph* animGraph = object->GetAnimGraph();
-                AZ::u64 id = animGraph->RecursiveFindNodeByName(attribute.second.Get<const char*>())->GetId();
-                Variant idVariant = Variant(id);
-                SetAttributeValue(context, object, AttributeKeyValuePair {attribute.first, idVariant});
-                break;
-            }
-            case Variant::AZu8:
-                SetAttributeValueImpl<AZ::u8>(context, object, attribute);
-                break;
-            case Variant::AZu32:
-                SetAttributeValueImpl<AZ::u32>(context, object, attribute);
-                break;
-            case Variant::AZu64:
-                SetAttributeValueImpl<AZ::u64>(context, object, attribute);
-                break;
-            default:
-                ASSERT_TRUE(false) << "Request to set unsupported value type " << attribute.second.GetType();
-        }
-    }
-
     // This is used to map from frame numbers to a list of AnimGraphNodes. Test
     // data defines the expected list of active nodes per frame using this
     // type.
@@ -296,18 +67,21 @@ namespace EMotionFX
 
     // The TransitionConditionFixtureP fixture is parameterized
     // on this type
+    template<class ConditionType>
     struct ConditionFixtureParams
     {
+        using ConditionSetUpFn = void(*)(ConditionType*);
+
         ConditionFixtureParams(
-            const AttributeKeyValuePairs& attributeValues,
+            const ConditionSetUpFn& fn,
             const ActiveNodesMap& activeNodesMap,
             const FrameCallback& frameCallback = [](AnimGraphInstance*, int) {}
-        ) : attributeValues(attributeValues), activeNodes(activeNodesMap), callback(frameCallback)
+        ) : m_setUpFn(fn), activeNodes(activeNodesMap), callback(frameCallback)
         {
         }
 
-        // attributes to set on the condition
-        const AttributeKeyValuePairs attributeValues;
+        // Function to set up the condition's parameters
+        const ConditionSetUpFn m_setUpFn;
 
         // List of nodes that are active on each frame
         const ActiveNodesMap activeNodes;
@@ -315,75 +89,9 @@ namespace EMotionFX
         const FrameCallback callback;
     };
 
-    void PrintTo(const Variant& object, ::std::ostream* os)
-    {
-        switch (object.GetType())
-        {
-            case Variant::Bool:
-                *os << object.Get<bool>();
-                break;
-            case Variant::String:
-            case Variant::NodeName:
-                *os << object.Get<const char*>();
-                break;
-            case Variant::StringVector:
-            {
-                const std::vector<std::string>& stringVector = object.Get<const std::vector<std::string>>();
-                std::copy(stringVector.begin(), stringVector.end() -1, std::ostream_iterator<std::string>(*os, ", "));
-                *os << stringVector.back();
-                break;
-            }
-            case Variant::StdString:
-                *os << object.Get<const std::string>();
-                break;
-            case Variant::Float:
-                *os << object.Get<float>();
-                break;
-            case Variant::Vector2:
-            {
-                const AZ::Vector2& vector2 = object.Get<const AZ::Vector2>();
-                *os << '{' << vector2.GetX() << ", " << vector2.GetY() << '}';
-                break;
-            }
-            case Variant::AZu8:
-            {
-                AZStd::string value;
-                AZStd::to_string(value, object.Get<AZ::u8>());
-                *os << value.c_str();
-                break;
-            }
-            case Variant::AZu32:
-            {
-                AZStd::string value;
-                AZStd::to_string(value, object.Get<AZ::u32>());
-                *os << value.c_str();
-                break;
-            }
-            case Variant::AZu64:
-            {
-                AZStd::string value;
-                AZStd::to_string(value, object.Get<AZ::u64>());
-                *os << value.c_str();
-                break;
-            }
-            default:
-                break;
-        }
-    }
-
-    void PrintTo(const ConditionFixtureParams& object, ::std::ostream* os)
-    {
-        for (const AttributeKeyValuePair& attribute : object.attributeValues)
-        {
-            *os << attribute.first << ": [";
-            PrintTo(attribute.second, os);
-            *os << "] ";
-        }
-    }
-
     template<class ConditionType>
     class TransitionConditionFixtureP : public AnimGraphTransitionConditionFixture,
-                                        public ::testing::WithParamInterface<ConditionFixtureParams>
+                                        public ::testing::WithParamInterface<ConditionFixtureParams<ConditionType>>
     {
     public:
         const float fps;
@@ -408,8 +116,6 @@ namespace EMotionFX
 
         void AddNodesToAnimGraph() override
         {
-            const AttributeKeyValuePairs& conditionAttributes = GetParam().attributeValues;
-
             AddParameter<FloatSliderParameter>("FloatParam", 0.1f);
             AddParameter<Vector2Parameter>("Vector2Param", AZ::Vector2(0.1f, 0.1f));
             AddParameter<TagParameter>("TagParam1", false);
@@ -417,14 +123,11 @@ namespace EMotionFX
 
             // Create the appropriate condition type from this test's
             // parameters
-            AnimGraphTransitionCondition* condition = aznew ConditionType();
+            ConditionType* condition = aznew ConditionType();
             mTransition->AddCondition(condition);
             condition->SetAnimGraph(mAnimGraph);
 
-            for (const auto& attribute : conditionAttributes)
-            {
-                SetAttributeValue(GetSerializeContext(), condition, attribute);
-            }
+            this->GetParam().m_setUpFn(condition);
 
             mTransition->SetBlendTime(0.5f);
         }
@@ -432,8 +135,8 @@ namespace EMotionFX
     protected:
         void RunEMotionFXUpdateLoop()
         {
-            const ActiveNodesMap& activeNodes = GetParam().activeNodes;
-            const FrameCallback& callback = GetParam().callback;
+            const ActiveNodesMap& activeNodes = this->GetParam().activeNodes;
+            const FrameCallback& callback = this->GetParam().callback;
 
             // Allow tests to set starting values for parameters
             callback(mAnimGraphInstance, -1);
@@ -529,8 +232,6 @@ namespace EMotionFX
             AddParameter<FloatSliderParameter>("FloatParam", 0.1f);
             AddParameter<Vector2Parameter>("Vector2Param", AZ::Vector2(0.1f, 0.1f));
 
-            const AttributeKeyValuePairs& conditionAttributes = GetParam().attributeValues;
-
             // Create another state machine inside the top-level one
             AnimGraphMotionNode* childMotionNode = aznew AnimGraphMotionNode();
             childMotionNode->SetName("ChildMotionNode");
@@ -575,18 +276,33 @@ namespace EMotionFX
 
             // Create the appropriate condition type from this test's
             // parameters
-            AnimGraphTransitionCondition* condition = aznew AnimGraphStateCondition();
+            AnimGraphStateCondition* condition = aznew AnimGraphStateCondition();
             condition->SetAnimGraph(mAnimGraph);
             childStateToMotion1Transition->AddCondition(condition);
 
-            for (const auto& attribute : conditionAttributes)
-            {
-                SetAttributeValue(GetSerializeContext(), condition, attribute);
-            }
+            this->GetParam().m_setUpFn(condition);
         }
 
     protected:
         AnimGraphStateMachine* mChildState;
+    };
+
+    class RangedMotionEventConditionFixture : public TransitionConditionFixtureP<AnimGraphMotionCondition>
+    {
+    public:
+        void AddNodesToAnimGraph() override
+        {
+            this->TransitionConditionFixtureP<AnimGraphMotionCondition>::AddNodesToAnimGraph();
+
+            AnimGraphMotionCondition* rangeMotionCondition = aznew AnimGraphMotionCondition();
+            rangeMotionCondition->SetTestFunction(AnimGraphMotionCondition::FUNCTION_EVENT);
+            rangeMotionCondition->SetMotionNodeId(mMotionNode0->GetId());
+            const AZStd::shared_ptr<const EventData> eventData = GetEventManager().FindOrCreateEventData<TwoStringEventData>("TestRangeEvent", "TestParameter");
+            rangeMotionCondition->SetEventDatas({eventData});
+
+            this->mTransition->AddCondition(rangeMotionCondition);
+            rangeMotionCondition->SetAnimGraph(mAnimGraph);
+        }
     };
 
     // The test data changes various parameters of the conditions being tested,
@@ -595,16 +311,12 @@ namespace EMotionFX
     // testSkeletalMotionNode1 at the same point in time). These following
     // functions centralize some of the expected behavior.
     template<class AttributeType>
-    void changeParamTo(AnimGraphInstance* animGraphInstance, int currentFrame, int testFrame, const Variant& newValue, const char* paramName)
+    void ChangeParamTo(AnimGraphInstance* animGraphInstance, int currentFrame, int testFrame, const char* paramName, void (*changeFunc)(AttributeType* parameter))
     {
-        // The type we want to use to set the new value is whatever the return
-        // type of GetValue() is
-        using ValueType = typename std::remove_reference<typename std::result_of<decltype(&AttributeType::GetValue)(AttributeType)>::type>::type;
-
         if (currentFrame == testFrame)
         {
             AttributeType* parameter = static_cast<AttributeType*>(animGraphInstance->FindParameter(paramName));
-            parameter->SetValue(newValue.Get<ValueType>());
+            changeFunc(parameter);
         }
     }
 
@@ -623,64 +335,60 @@ namespace EMotionFX
         }
     }
 
-    void ChangeNodeAttribute(AnimGraphInstance* animGraphInstance, int currentFrame, int testFrame, const AttributeKeyValuePair& newValue)
+    void ChangeNodeAttribute(AnimGraphInstance* animGraphInstance, int currentFrame, int testFrame, void(*changeFunc)(AnimGraphMotionNode*))
     {
         if (currentFrame == testFrame)
         {
             const AnimGraph* animGraph = animGraphInstance->GetAnimGraph();
-            AnimGraphNode* node = animGraph->RecursiveFindNodeByName("testSkeletalMotion0");
+            AnimGraphMotionNode* node = static_cast<AnimGraphMotionNode*>(animGraph->RecursiveFindNodeByName("testSkeletalMotion0"));
             AZ_Assert(node, "There is no node named 'testSkeletalMotion0'");
 
-            AZ::SerializeContext serializeContext;
-            serializeContext.CreateEditContext();
-            AnimGraphMotionNode::Reflect(&serializeContext);
-
-            SetAttributeValue(&serializeContext, node, newValue);
+            changeFunc(node);
             node->OnUpdateUniqueData(animGraphInstance);
         }
     }
 
-    static const auto changeNodeToLooping = std::bind(
+    static const auto ChangeNodeToLooping = std::bind(
         ChangeNodeAttribute,
         std::placeholders::_1,
         std::placeholders::_2,
         -1,
-        AttributeKeyValuePair {"loop", true}
+        [](AnimGraphMotionNode* node) { node->SetLoop(true); }
     );
 
-    static const auto changeNodeToNonLooping = std::bind(
+    static const auto ChangeNodeToNonLooping = std::bind(
         ChangeNodeAttribute,
         std::placeholders::_1,
         std::placeholders::_2,
         -1,
-        AttributeKeyValuePair {"loop", false}
+        [](AnimGraphMotionNode* node) { node->SetLoop(false); }
     );
 
-    static const auto changeFloatParamToPointFiveOnFrameThirty = std::bind(
-        changeParamTo<MCore::AttributeFloat>,
+    static const auto ChangeFloatParamToPointFiveOnFrameThirty = std::bind(
+        ChangeParamTo<MCore::AttributeFloat>,
         std::placeholders::_1,
         std::placeholders::_2,
         30,
-        0.5f,
-        "FloatParam"
+        "FloatParam",
+        [](MCore::AttributeFloat* parameter) { parameter->SetValue(0.5f); }
     );
 
-    static const auto changeFloatParamToNegativePointFiveOnFrameThirty = std::bind(
-        changeParamTo<MCore::AttributeFloat>,
+    static const auto ChangeFloatParamToNegativePointFiveOnFrameThirty = std::bind(
+        ChangeParamTo<MCore::AttributeFloat>,
         std::placeholders::_1,
         std::placeholders::_2,
         30,
-        -0.5f,
-        "FloatParam"
+        "FloatParam",
+        [](MCore::AttributeFloat* parameter) { parameter->SetValue(-0.5f); }
     );
 
-    static const auto changeVector2Param = std::bind(
-        changeParamTo<MCore::AttributeVector2>,
+    static const auto ChangeVector2Param = std::bind(
+        ChangeParamTo<MCore::AttributeVector2>,
         std::placeholders::_1,
         std::placeholders::_2,
         std::placeholders::_3,
-        std::placeholders::_4,
-        "Vector2Param"
+        "Vector2Param",
+        std::placeholders::_4
     );
 
     static const ActiveNodesMap moveToMotion1AtFrameThirty
@@ -695,14 +403,13 @@ namespace EMotionFX
     // Remember that the test runs the update loop at 60 fps. All the frame
     // numbers in the ActiveNodesPerFrameMaps are based on this value.
     // testSkeletalMotion0 is exactly 1 second long.
-    static const std::vector<ConditionFixtureParams> motionTransitionConditionData
+    static const std::vector<ConditionFixtureParams<AnimGraphMotionCondition>> motionTransitionConditionData
     {
-        ConditionFixtureParams(
-            AttributeKeyValuePairs {
-                {"motionNodeId", Variant("testSkeletalMotion0", Variant::NodeName)},
-                {"testFunction", static_cast<AZ::u8>(AnimGraphMotionCondition::FUNCTION_EVENT)},
-                {"eventType", std::string {"TestEvent"}},
-                {"eventParameter", std::string {"TestParameter"}}
+        {
+            [](AnimGraphMotionCondition* condition) {
+                condition->SetMotionNodeId(condition->GetAnimGraph()->RecursiveFindNodeByName("testSkeletalMotion0")->GetId());
+                condition->SetTestFunction(AnimGraphMotionCondition::FUNCTION_EVENT);
+                condition->SetEventDatas({GetEventManager().FindOrCreateEventData<TwoStringEventData>("TestEvent", "TestParameter")});
             },
             ActiveNodesMap {
                 {0, {"testSkeletalMotion0"}},
@@ -712,11 +419,11 @@ namespace EMotionFX
                 {74, {"testSkeletalMotion0", "testSkeletalMotion1"}},
                 {75, {"testSkeletalMotion1"}}
             }
-        ),
-        ConditionFixtureParams(
-            AttributeKeyValuePairs {
-                {"motionNodeId", Variant("testSkeletalMotion0", Variant::NodeName)},
-                {"testFunction", static_cast<AZ::u8>(AnimGraphMotionCondition::FUNCTION_HASENDED)}
+        },
+        {
+            [](AnimGraphMotionCondition* condition) {
+                condition->SetMotionNodeId(condition->GetAnimGraph()->RecursiveFindNodeByName("testSkeletalMotion0")->GetId());
+                condition->SetTestFunction(AnimGraphMotionCondition::FUNCTION_HASENDED);
             },
             ActiveNodesMap {
                 {0, {"testSkeletalMotion0"}},
@@ -725,12 +432,12 @@ namespace EMotionFX
                 {89, {"testSkeletalMotion0", "testSkeletalMotion1"}},
                 {90, {"testSkeletalMotion1"}}
             }
-        ),
-        ConditionFixtureParams(
-            AttributeKeyValuePairs {
-                {"motionNodeId", Variant("testSkeletalMotion0", Variant::NodeName)},
-                {"testFunction", static_cast<AZ::u8>(AnimGraphMotionCondition::FUNCTION_HASREACHEDMAXNUMLOOPS)},
-                {"numLoops", AZ::u32(1.0f)}
+        },
+        {
+            [](AnimGraphMotionCondition* condition) {
+                condition->SetMotionNodeId(condition->GetAnimGraph()->RecursiveFindNodeByName("testSkeletalMotion0")->GetId());
+                condition->SetTestFunction(AnimGraphMotionCondition::FUNCTION_HASREACHEDMAXNUMLOOPS);
+                condition->SetNumLoops(1);
             },
             ActiveNodesMap {
                 {0, {"testSkeletalMotion0"}},
@@ -743,13 +450,13 @@ namespace EMotionFX
                 {91, {"testSkeletalMotion0", "testSkeletalMotion1"}},
                 {92, {"testSkeletalMotion1"}}
             },
-            changeNodeToLooping
-        ),
-        ConditionFixtureParams(
-            AttributeKeyValuePairs {
-                {"motionNodeId", Variant("testSkeletalMotion0", Variant::NodeName)},
-                {"testFunction", static_cast<AZ::u8>(AnimGraphMotionCondition::FUNCTION_PLAYTIME)},
-                {"playTime", 0.2f}
+            ChangeNodeToLooping
+        },
+        {
+            [](AnimGraphMotionCondition* condition) {
+                condition->SetMotionNodeId(condition->GetAnimGraph()->RecursiveFindNodeByName("testSkeletalMotion0")->GetId());
+                condition->SetTestFunction(AnimGraphMotionCondition::FUNCTION_PLAYTIME);
+                condition->SetPlayTime(0.2f);
             },
             ActiveNodesMap {
                 {0, {"testSkeletalMotion0"}},
@@ -758,13 +465,13 @@ namespace EMotionFX
                 {41, {"testSkeletalMotion0", "testSkeletalMotion1"}},
                 {42, {"testSkeletalMotion1"}}
             },
-            changeNodeToNonLooping
-        ),
-        ConditionFixtureParams(
-            AttributeKeyValuePairs {
-                {"motionNodeId", Variant("testSkeletalMotion0", Variant::NodeName)},
-                {"testFunction", static_cast<AZ::u8>(AnimGraphMotionCondition::FUNCTION_PLAYTIMELEFT)},
-                {"playTime", 0.2f}
+            ChangeNodeToNonLooping
+        },
+        {
+            [](AnimGraphMotionCondition* condition) {
+                condition->SetMotionNodeId(condition->GetAnimGraph()->RecursiveFindNodeByName("testSkeletalMotion0")->GetId());
+                condition->SetTestFunction(AnimGraphMotionCondition::FUNCTION_PLAYTIMELEFT);
+                condition->SetPlayTime(0.2f);
             },
             ActiveNodesMap {
                 {0, {"testSkeletalMotion0"}},
@@ -773,11 +480,12 @@ namespace EMotionFX
                 {77, {"testSkeletalMotion0", "testSkeletalMotion1"}},
                 {78, {"testSkeletalMotion1"}}
             }
-        ),
-        ConditionFixtureParams(
-            AttributeKeyValuePairs {
-                {"motionNodeId", Variant("testSkeletalMotion0", Variant::NodeName)},
-                {"testFunction", static_cast<AZ::u8>(AnimGraphMotionCondition::FUNCTION_ISMOTIONASSIGNED)}
+        },
+        {
+            [](AnimGraphMotionCondition* condition) {
+                condition->SetMotionNodeId(condition->GetAnimGraph()->RecursiveFindNodeByName("testSkeletalMotion0")->GetId());
+                condition->SetTestFunction(AnimGraphMotionCondition::FUNCTION_ISMOTIONASSIGNED);
+                condition->SetPlayTime(0.2f);
             },
             ActiveNodesMap {
                 // This condition will always evaluate to true. The transition
@@ -786,30 +494,49 @@ namespace EMotionFX
                 {29, {"testSkeletalMotion0", "testSkeletalMotion1"}},
                 {30, {"testSkeletalMotion1"}}
             }
-        )
+        }
         // TODO AnimGraphMotionCondition::FUNCTION_ISMOTIONNOTASSIGNED
     };
 
-    static const std::vector<ConditionFixtureParams> parameterTransitionConditionData
+    static const std::vector<ConditionFixtureParams<AnimGraphMotionCondition>> rangedMotionTransitionConditionData
+    {
+        {
+            [](AnimGraphMotionCondition* condition) {
+                condition->SetMotionNodeId(condition->GetAnimGraph()->RecursiveFindNodeByName("testSkeletalMotion0")->GetId());
+                condition->SetTestFunction(AnimGraphMotionCondition::FUNCTION_EVENT);
+                condition->SetEventDatas({GetEventManager().FindOrCreateEventData<TwoStringEventData>("TestEvent", "TestParameter")});
+            },
+            ActiveNodesMap {
+                {0, {"testSkeletalMotion0"}},
+                {44, {"testSkeletalMotion0"}},
+                {45, {"testSkeletalMotion0", "testSkeletalMotion1"}},   // The event gets triggered on frame 44, but the condition only will only be reevaluated the next frame, so we have one frame delay.
+                {46, {"testSkeletalMotion0", "testSkeletalMotion1"}},
+                {74, {"testSkeletalMotion0", "testSkeletalMotion1"}},
+                {75, {"testSkeletalMotion1"}}
+            }
+        },
+    };
+
+    static const std::vector<ConditionFixtureParams<AnimGraphParameterCondition>> parameterTransitionConditionData
     {
         // FUNCTION_EQUAL tests
-        ConditionFixtureParams(
-            AttributeKeyValuePairs {
-                {"parameterName", std::string {"FloatParam"}},
-                {"function", static_cast<AZ::u8>(AnimGraphParameterCondition::FUNCTION_EQUAL)},
-                {"testValue", 0.1f}
+        {
+            [](AnimGraphParameterCondition* condition) {
+                condition->SetParameterName("FloatParam");
+                condition->SetFunction(AnimGraphParameterCondition::FUNCTION_EQUAL);
+                condition->SetTestValue(0.1f);
             },
             ActiveNodesMap {
                 {0, {"testSkeletalMotion0", "testSkeletalMotion1"}},
                 {29, {"testSkeletalMotion0", "testSkeletalMotion1"}},
                 {30, {"testSkeletalMotion1"}}
             }
-        ),
-        ConditionFixtureParams(
-            AttributeKeyValuePairs {
-                {"parameterName", std::string {"FloatParam"}},
-                {"function", static_cast<AZ::u8>(AnimGraphParameterCondition::FUNCTION_EQUAL)},
-                {"testValue", 0.5f}
+        },
+        {
+            [](AnimGraphParameterCondition* condition) {
+                condition->SetParameterName("FloatParam");
+                condition->SetFunction(AnimGraphParameterCondition::FUNCTION_EQUAL);
+                condition->SetTestValue(0.5f);
             },
             ActiveNodesMap {
                 {0, {"testSkeletalMotion0"}},
@@ -818,15 +545,15 @@ namespace EMotionFX
                 {59, {"testSkeletalMotion0", "testSkeletalMotion1"}},
                 {60, {"testSkeletalMotion1"}}
             },
-            changeFloatParamToPointFiveOnFrameThirty
-        ),
+            ChangeFloatParamToPointFiveOnFrameThirty
+        },
 
         // FUNCTION_NOTEQUAL tests
-        ConditionFixtureParams(
-            AttributeKeyValuePairs {
-                {"parameterName", std::string {"FloatParam"}},
-                {"function", static_cast<AZ::u8>(AnimGraphParameterCondition::FUNCTION_NOTEQUAL)},
-                {"testValue", 0.1f}
+        {
+            [](AnimGraphParameterCondition* condition) {
+                condition->SetParameterName("FloatParam");
+                condition->SetFunction(AnimGraphParameterCondition::FUNCTION_NOTEQUAL);
+                condition->SetTestValue(0.1f);
             },
             ActiveNodesMap {
                 {0, {"testSkeletalMotion0"}},
@@ -835,16 +562,16 @@ namespace EMotionFX
                 {59, {"testSkeletalMotion0", "testSkeletalMotion1"}},
                 {60, {"testSkeletalMotion1"}}
             },
-            changeFloatParamToPointFiveOnFrameThirty
-        ),
+            ChangeFloatParamToPointFiveOnFrameThirty
+        },
 
         // FUNCTION_INRANGE tests
-        ConditionFixtureParams(
-            AttributeKeyValuePairs {
-                {"parameterName", std::string {"FloatParam"}},
-                {"function", static_cast<AZ::u8>(AnimGraphParameterCondition::FUNCTION_INRANGE)},
-                {"testValue", 0.4f},
-                {"rangeValue", 0.6f},
+        {
+            [](AnimGraphParameterCondition* condition) {
+                condition->SetParameterName("FloatParam");
+                condition->SetFunction(AnimGraphParameterCondition::FUNCTION_INRANGE);
+                condition->SetTestValue(0.4f);
+                condition->SetRangeValue(0.6f);
             },
             ActiveNodesMap {
                 {0, {"testSkeletalMotion0"}},
@@ -853,16 +580,16 @@ namespace EMotionFX
                 {59, {"testSkeletalMotion0", "testSkeletalMotion1"}},
                 {60, {"testSkeletalMotion1"}}
             },
-            changeFloatParamToPointFiveOnFrameThirty
-        ),
+            ChangeFloatParamToPointFiveOnFrameThirty
+        },
 
         // FUNCTION_NOTINRANGE tests
-        ConditionFixtureParams(
-            AttributeKeyValuePairs {
-                {"parameterName", std::string {"FloatParam"}},
-                {"function", static_cast<AZ::u8>(AnimGraphParameterCondition::FUNCTION_NOTINRANGE)},
-                {"testValue", -0.2f},
-                {"rangeValue", 0.2f},
+        {
+            [](AnimGraphParameterCondition* condition) {
+                condition->SetParameterName("FloatParam");
+                condition->SetFunction(AnimGraphParameterCondition::FUNCTION_NOTINRANGE);
+                condition->SetTestValue(-0.2f);
+                condition->SetRangeValue(0.2f);
             },
             ActiveNodesMap {
                 {0, {"testSkeletalMotion0"}},
@@ -871,15 +598,15 @@ namespace EMotionFX
                 {59, {"testSkeletalMotion0", "testSkeletalMotion1"}},
                 {60, {"testSkeletalMotion1"}}
             },
-            changeFloatParamToPointFiveOnFrameThirty
-        ),
+            ChangeFloatParamToPointFiveOnFrameThirty
+        },
 
         // FUNCTION_LESS tests
-        ConditionFixtureParams(
-            AttributeKeyValuePairs {
-                {"parameterName", std::string {"FloatParam"}},
-                {"function", static_cast<AZ::u8>(AnimGraphParameterCondition::FUNCTION_LESS)},
-                {"testValue", 0.0f},
+        {
+            [](AnimGraphParameterCondition* condition) {
+                condition->SetParameterName("FloatParam");
+                condition->SetFunction(AnimGraphParameterCondition::FUNCTION_LESS);
+                condition->SetTestValue(0.0f);
             },
             ActiveNodesMap {
                 {0, {"testSkeletalMotion0"}},
@@ -888,15 +615,15 @@ namespace EMotionFX
                 {59, {"testSkeletalMotion0", "testSkeletalMotion1"}},
                 {60, {"testSkeletalMotion1"}}
             },
-            changeFloatParamToNegativePointFiveOnFrameThirty
-        ),
+            ChangeFloatParamToNegativePointFiveOnFrameThirty
+        },
 
         // FUNCTION_GREATER tests
-        ConditionFixtureParams(
-            AttributeKeyValuePairs {
-                {"parameterName", std::string {"FloatParam"}},
-                {"function", static_cast<AZ::u8>(AnimGraphParameterCondition::FUNCTION_GREATER)},
-                {"testValue", 0.1f},
+        {
+            [](AnimGraphParameterCondition* condition) {
+                condition->SetParameterName("FloatParam");
+                condition->SetFunction(AnimGraphParameterCondition::FUNCTION_GREATER);
+                condition->SetTestValue(0.1f);
             },
             ActiveNodesMap {
                 {0, {"testSkeletalMotion0"}},
@@ -905,15 +632,15 @@ namespace EMotionFX
                 {59, {"testSkeletalMotion0", "testSkeletalMotion1"}},
                 {60, {"testSkeletalMotion1"}}
             },
-            changeFloatParamToPointFiveOnFrameThirty
-        ),
+            ChangeFloatParamToPointFiveOnFrameThirty
+        },
 
         // FUNCTION_GREATEREQUAL tests
-        ConditionFixtureParams(
-            AttributeKeyValuePairs {
-                {"parameterName", std::string {"FloatParam"}},
-                {"function", static_cast<AZ::u8>(AnimGraphParameterCondition::FUNCTION_GREATEREQUAL)},
-                {"testValue", 0.5f},
+        {
+            [](AnimGraphParameterCondition* condition) {
+                condition->SetParameterName("FloatParam");
+                condition->SetFunction(AnimGraphParameterCondition::FUNCTION_GREATEREQUAL);
+                condition->SetTestValue(0.5f);
             },
             ActiveNodesMap {
                 {0, {"testSkeletalMotion0"}},
@@ -922,13 +649,13 @@ namespace EMotionFX
                 {59, {"testSkeletalMotion0", "testSkeletalMotion1"}},
                 {60, {"testSkeletalMotion1"}}
             },
-            changeFloatParamToPointFiveOnFrameThirty
-        ),
-        ConditionFixtureParams(
-            AttributeKeyValuePairs {
-                {"parameterName", std::string {"FloatParam"}},
-                {"function", static_cast<AZ::u8>(AnimGraphParameterCondition::FUNCTION_GREATEREQUAL)},
-                {"testValue", 0.49f},
+            ChangeFloatParamToPointFiveOnFrameThirty
+        },
+        {
+            [](AnimGraphParameterCondition* condition) {
+                condition->SetParameterName("FloatParam");
+                condition->SetFunction(AnimGraphParameterCondition::FUNCTION_GREATEREQUAL);
+                condition->SetTestValue(0.49f);
             },
             ActiveNodesMap {
                 {0, {"testSkeletalMotion0"}},
@@ -937,15 +664,15 @@ namespace EMotionFX
                 {59, {"testSkeletalMotion0", "testSkeletalMotion1"}},
                 {60, {"testSkeletalMotion1"}}
             },
-            changeFloatParamToPointFiveOnFrameThirty
-        ),
+            ChangeFloatParamToPointFiveOnFrameThirty
+        },
 
         // FUNCTION_LESSEQUAL tests
-        ConditionFixtureParams(
-            AttributeKeyValuePairs {
-                {"parameterName", std::string {"FloatParam"}},
-                {"function", static_cast<AZ::u8>(AnimGraphParameterCondition::FUNCTION_LESSEQUAL)},
-                {"testValue", -0.1f},
+        {
+            [](AnimGraphParameterCondition* condition) {
+                condition->SetParameterName("FloatParam");
+                condition->SetFunction(AnimGraphParameterCondition::FUNCTION_LESSEQUAL);
+                condition->SetTestValue(-0.1f);
             },
             ActiveNodesMap {
                 {0, {"testSkeletalMotion0"}},
@@ -954,16 +681,16 @@ namespace EMotionFX
                 {59, {"testSkeletalMotion0", "testSkeletalMotion1"}},
                 {60, {"testSkeletalMotion1"}}
             },
-            changeFloatParamToNegativePointFiveOnFrameThirty
-        )
+            ChangeFloatParamToNegativePointFiveOnFrameThirty
+        }
     };
 
-    static const std::vector<ConditionFixtureParams> playTimeTransitionConditionData
+    static const std::vector<ConditionFixtureParams<AnimGraphPlayTimeCondition>> playTimeTransitionConditionData
     {
-        ConditionFixtureParams(
-            AttributeKeyValuePairs {
-                {"nodeId", Variant("testSkeletalMotion0", Variant::NodeName)},
-                {"mode", static_cast<AZ::u8>(AnimGraphPlayTimeCondition::MODE_REACHEDEND)}
+        {
+            [](AnimGraphPlayTimeCondition* condition) {
+                condition->SetNodeId(condition->GetAnimGraph()->RecursiveFindNodeByName("testSkeletalMotion0")->GetId());
+                condition->SetMode(AnimGraphPlayTimeCondition::MODE_REACHEDEND);
             },
             ActiveNodesMap {
                 {0, {"testSkeletalMotion0"}},
@@ -972,12 +699,12 @@ namespace EMotionFX
                 {89, {"testSkeletalMotion0", "testSkeletalMotion1"}},
                 {90, {"testSkeletalMotion1"}}
             }
-        ),
-        ConditionFixtureParams(
-            AttributeKeyValuePairs {
-                {"nodeId", Variant("testSkeletalMotion0", Variant::NodeName)},
-                {"mode", static_cast<AZ::u8>(AnimGraphPlayTimeCondition::MODE_REACHEDTIME)},
-                {"playTime", 0.3f}
+        },
+        {
+            [](AnimGraphPlayTimeCondition* condition) {
+                condition->SetNodeId(condition->GetAnimGraph()->RecursiveFindNodeByName("testSkeletalMotion0")->GetId());
+                condition->SetMode(AnimGraphPlayTimeCondition::MODE_REACHEDTIME);
+                condition->SetPlayTime(0.3f);
             },
             ActiveNodesMap {
                 {0, {"testSkeletalMotion0"}},
@@ -986,12 +713,12 @@ namespace EMotionFX
                 {47, {"testSkeletalMotion0", "testSkeletalMotion1"}},
                 {48, {"testSkeletalMotion1"}}
             }
-        ),
-        ConditionFixtureParams(
-            AttributeKeyValuePairs {
-                {"nodeId", Variant("testSkeletalMotion0", Variant::NodeName)},
-                {"mode", static_cast<AZ::u8>(AnimGraphPlayTimeCondition::MODE_HASLESSTHAN)},
-                {"playTime", 0.3f}
+        },
+        {
+            [](AnimGraphPlayTimeCondition* condition) {
+                condition->SetNodeId(condition->GetAnimGraph()->RecursiveFindNodeByName("testSkeletalMotion0")->GetId());
+                condition->SetMode(AnimGraphPlayTimeCondition::MODE_HASLESSTHAN);
+                condition->SetPlayTime(0.3f);
             },
             ActiveNodesMap {
                 {0, {"testSkeletalMotion0"}},
@@ -1000,15 +727,15 @@ namespace EMotionFX
                 {71, {"testSkeletalMotion0", "testSkeletalMotion1"}},
                 {72, {"testSkeletalMotion1"}}
             }
-        )
+        }
     };
 
-    static const std::vector<ConditionFixtureParams> stateTransitionConditionData
+    static const std::vector<ConditionFixtureParams<AnimGraphStateCondition>> stateTransitionConditionData
     {
-        ConditionFixtureParams(
-            AttributeKeyValuePairs {
-                {"stateId", Variant("ChildStateMachine", Variant::NodeName)},
-                {"testFunction", static_cast<AZ::u8>(AnimGraphStateCondition::FUNCTION_EXITSTATES)}
+        {
+            [](AnimGraphStateCondition* condition) {
+                condition->SetStateId(condition->GetAnimGraph()->RecursiveFindNodeByName("ChildStateMachine")->GetId());
+                condition->SetTestFunction(AnimGraphStateCondition::FUNCTION_EXITSTATES);
             },
             ActiveNodesMap {
                 {0, {"testSkeletalMotion0"}},
@@ -1021,11 +748,11 @@ namespace EMotionFX
                 {119, {"ChildStateMachine", "testSkeletalMotion1"}},
                 {120, {"testSkeletalMotion1"}}
             }
-        ),
-        ConditionFixtureParams(
-            AttributeKeyValuePairs {
-                {"stateId", Variant("ChildMotionNode", Variant::NodeName)},
-                {"testFunction", static_cast<AZ::u8>(AnimGraphStateCondition::FUNCTION_END)}
+        },
+        {
+            [](AnimGraphStateCondition* condition) {
+                condition->SetStateId(condition->GetAnimGraph()->RecursiveFindNodeByName("ChildMotionNode")->GetId());
+                condition->SetTestFunction(AnimGraphStateCondition::FUNCTION_END);
             },
             ActiveNodesMap {
                 {0, {"testSkeletalMotion0"}},
@@ -1040,11 +767,11 @@ namespace EMotionFX
                 {120, {"ChildStateMachine", "testSkeletalMotion1"}},
                 {121, {"testSkeletalMotion1"}}
             }
-        ),
-        ConditionFixtureParams(
-            AttributeKeyValuePairs {
-                {"stateId", Variant("ChildStateMachine", Variant::NodeName)},
-                {"testFunction", static_cast<AZ::u8>(AnimGraphStateCondition::FUNCTION_ENTERING)}
+        },
+        {
+            [](AnimGraphStateCondition* condition) {
+                condition->SetStateId(condition->GetAnimGraph()->RecursiveFindNodeByName("ChildStateMachine")->GetId());
+                condition->SetTestFunction(AnimGraphStateCondition::FUNCTION_ENTERING);
             },
             ActiveNodesMap {
                 // Stay in entry state for 0.5s
@@ -1062,11 +789,11 @@ namespace EMotionFX
                 {89, {"ChildStateMachine", "testSkeletalMotion1"}},
                 {90, {"testSkeletalMotion1"}}
             }
-        ),
-        ConditionFixtureParams(
-            AttributeKeyValuePairs {
-                {"stateId", Variant("ChildStateMachine", Variant::NodeName)},
-                {"testFunction", static_cast<AZ::u8>(AnimGraphStateCondition::FUNCTION_ENTER)}
+        },
+        {
+            [](AnimGraphStateCondition* condition) {
+                condition->SetStateId(condition->GetAnimGraph()->RecursiveFindNodeByName("ChildStateMachine")->GetId());
+                condition->SetTestFunction(AnimGraphStateCondition::FUNCTION_ENTER);
             },
             ActiveNodesMap {
                 // Stay in entry state for 0.5s
@@ -1084,11 +811,11 @@ namespace EMotionFX
                 {89, {"ChildStateMachine", "testSkeletalMotion1"}},
                 {90, {"testSkeletalMotion1"}}
             }
-        ),
-        ConditionFixtureParams(
-            AttributeKeyValuePairs {
-                {"stateId", Variant("testSkeletalMotion0", Variant::NodeName)},
-                {"testFunction", static_cast<AZ::u8>(AnimGraphStateCondition::FUNCTION_END)}
+        },
+        {
+            [](AnimGraphStateCondition* condition) {
+                condition->SetStateId(condition->GetAnimGraph()->RecursiveFindNodeByName("testSkeletalMotion0")->GetId());
+                condition->SetTestFunction(AnimGraphStateCondition::FUNCTION_END);
             },
             ActiveNodesMap {
                 // Stay in entry state for 0.5s
@@ -1106,70 +833,72 @@ namespace EMotionFX
                 {89, {"ChildStateMachine", "testSkeletalMotion1"}},
                 {90, {"testSkeletalMotion1"}}
             }
-        )
+        }
     };
 
-    static const std::vector<ConditionFixtureParams> tagTransitionConditionData
+    static const std::vector<ConditionFixtureParams<AnimGraphTagCondition>> tagTransitionConditionData
     {
-        ConditionFixtureParams(
-            AttributeKeyValuePairs {
-                {"function", static_cast<AZ::u8>(AnimGraphTagCondition::FUNCTION_ALL)},
-                {"tags", std::vector<std::string> {"TagParam1", "TagParam2"}}
+        {
+            [](AnimGraphTagCondition* condition) {
+                condition->SetFunction(AnimGraphTagCondition::FUNCTION_ALL);
+                condition->SetTags({"TagParam1", "TagParam2"});
             },
             moveToMotion1AtFrameThirty,
             [] (AnimGraphInstance* animGraphInstance, int currentFrame) {
-                changeParamTo<MCore::AttributeBool>(animGraphInstance, currentFrame, 30, true, "TagParam1");
-                changeParamTo<MCore::AttributeBool>(animGraphInstance, currentFrame, 15, true, "TagParam2");
+                ChangeParamTo<MCore::AttributeBool>(animGraphInstance, currentFrame, 30, "TagParam1", [](MCore::AttributeBool* param) { param->SetValue(true); });
+                ChangeParamTo<MCore::AttributeBool>(animGraphInstance, currentFrame, 15, "TagParam2", [](MCore::AttributeBool* param) { param->SetValue(true); });
             }
-        ),
-        ConditionFixtureParams(
-            AttributeKeyValuePairs {
-                {"function", static_cast<AZ::u8>(AnimGraphTagCondition::FUNCTION_NOTALL)},
-                {"tags", std::vector<std::string> {"TagParam1", "TagParam2"}}
+        },
+        {
+            [](AnimGraphTagCondition* condition) {
+                condition->SetFunction(AnimGraphTagCondition::FUNCTION_NOTALL);
+                condition->SetTags({"TagParam1", "TagParam2"});
             },
             moveToMotion1AtFrameThirty,
             [] (AnimGraphInstance* animGraphInstance, int currentFrame) {
                 // initialize tags to on
-                changeParamTo<MCore::AttributeBool>(animGraphInstance, currentFrame, -1, true, "TagParam1");
-                changeParamTo<MCore::AttributeBool>(animGraphInstance, currentFrame, -1, true, "TagParam2");
+                ChangeParamTo<MCore::AttributeBool>(animGraphInstance, currentFrame, -1, "TagParam1", [](MCore::AttributeBool* param) { param->SetValue(true); });
+                ChangeParamTo<MCore::AttributeBool>(animGraphInstance, currentFrame, -1, "TagParam2", [](MCore::AttributeBool* param) { param->SetValue(true); });
 
                 // turn TagParam1 off on frame 30
-                changeParamTo<MCore::AttributeBool>(animGraphInstance, currentFrame, 30, false, "TagParam1");
+                ChangeParamTo<MCore::AttributeBool>(animGraphInstance, currentFrame, 30, "TagParam1", [](MCore::AttributeBool* param) { param->SetValue(false); });
             }
-        ),
-        ConditionFixtureParams(
-            AttributeKeyValuePairs {
-                {"function", static_cast<AZ::u8>(AnimGraphTagCondition::FUNCTION_NONE)},
-                {"tags", std::vector<std::string> {"TagParam1", "TagParam2"}}
+        },
+        {
+            [](AnimGraphTagCondition* condition) {
+                condition->SetFunction(AnimGraphTagCondition::FUNCTION_NONE);
+                condition->SetTags({"TagParam1", "TagParam2"});
             },
             moveToMotion1AtFrameThirty,
             [] (AnimGraphInstance* animGraphInstance, int currentFrame) {
                 // initialize tags to on
-                changeParamTo<MCore::AttributeBool>(animGraphInstance, currentFrame, -1, true, "TagParam1");
-                changeParamTo<MCore::AttributeBool>(animGraphInstance, currentFrame, -1, true, "TagParam2");
+                ChangeParamTo<MCore::AttributeBool>(animGraphInstance, currentFrame, -1, "TagParam1", [](MCore::AttributeBool* param) { param->SetValue(true); });
+                ChangeParamTo<MCore::AttributeBool>(animGraphInstance, currentFrame, -1, "TagParam2", [](MCore::AttributeBool* param) { param->SetValue(true); });
 
                 // turn TagParam2 off on frame 15
-                changeParamTo<MCore::AttributeBool>(animGraphInstance, currentFrame, 15, false, "TagParam2");
+                ChangeParamTo<MCore::AttributeBool>(animGraphInstance, currentFrame, 15, "TagParam2", [](MCore::AttributeBool* param) { param->SetValue(false); });
 
                 // turn TagParam1 off on frame 30
-                changeParamTo<MCore::AttributeBool>(animGraphInstance, currentFrame, 30, false, "TagParam1");
+                ChangeParamTo<MCore::AttributeBool>(animGraphInstance, currentFrame, 30, "TagParam1", [](MCore::AttributeBool* param) { param->SetValue(false); });
             }
-        ),
-        ConditionFixtureParams(
-            AttributeKeyValuePairs {
-                {"function", static_cast<AZ::u8>(AnimGraphTagCondition::FUNCTION_ONEORMORE)},
-                {"tags", std::vector<std::string> {"TagParam1", "TagParam2"}}
+        },
+        {
+            [](AnimGraphTagCondition* condition) {
+                condition->SetFunction(AnimGraphTagCondition::FUNCTION_ONEORMORE);
+                condition->SetTags({"TagParam1", "TagParam2"});
             },
             moveToMotion1AtFrameThirty,
-            std::bind(changeParamTo<MCore::AttributeBool>, std::placeholders::_1, std::placeholders::_2, 30, true, "TagParam1")
-        ),
+            [] (AnimGraphInstance* animGraphInstance, int currentFrame) {
+                ChangeParamTo<MCore::AttributeBool>(animGraphInstance, currentFrame, 30, "TagParam1", [](MCore::AttributeBool* param) { param->SetValue(true); });
+            }
+        }
     };
 
-    static const std::vector<ConditionFixtureParams> timeTransitionConditionData
+    static const std::vector<ConditionFixtureParams<AnimGraphTimeCondition>> timeTransitionConditionData
     {
-        ConditionFixtureParams(
-            AttributeKeyValuePairs {
-                {{"countDownTime"}, 1.3f}
+        {
+            [](AnimGraphTimeCondition* condition) {
+                condition->SetCountDownTime(1.3f);
             },
             ActiveNodesMap {
                 {0, {"testSkeletalMotion0"}},
@@ -1178,340 +907,340 @@ namespace EMotionFX
                 {107, {"testSkeletalMotion0", "testSkeletalMotion1"}},
                 {108, {"testSkeletalMotion1"}}
             }
-        )
+        }
     };
 
-    static const std::vector<ConditionFixtureParams> vector2TransitionConditionData
+    static const std::vector<ConditionFixtureParams<AnimGraphVector2Condition>> vector2TransitionConditionData
     {
         // --------------------------------------------------------------------
         // FUNCTION_EQUAL
-        ConditionFixtureParams(
-            AttributeKeyValuePairs {
-                {"parameterName", std::string("Vector2Param")},
-                {"operation", static_cast<AZ::u8>(AnimGraphVector2Condition::OPERATION_GETX)},
-                {"testFunction", static_cast<AZ::u8>(AnimGraphParameterCondition::FUNCTION_EQUAL)},
-                {"testValue", 0.5f}
+        {
+            [](AnimGraphVector2Condition* condition) {
+                condition->SetParameterName("Vector2Param");
+                condition->SetOperation(AnimGraphVector2Condition::OPERATION_GETX);
+                condition->SetFunction(AnimGraphParameterCondition::FUNCTION_EQUAL);
+                condition->SetTestValue(0.5f);
             },
             moveToMotion1AtFrameThirty,
-            std::bind(changeVector2Param, std::placeholders::_1, std::placeholders::_2, 30, Variant(0.5f, 0.0f))
-        ),
-        ConditionFixtureParams(
-            AttributeKeyValuePairs {
-                {"parameterName", std::string("Vector2Param")},
-                {"operation", static_cast<AZ::u8>(AnimGraphVector2Condition::OPERATION_GETY)},
-                {"testFunction", static_cast<AZ::u8>(AnimGraphParameterCondition::FUNCTION_EQUAL)},
-                {"testValue", 0.5f}
+            std::bind(ChangeVector2Param, std::placeholders::_1, std::placeholders::_2, 30, [](MCore::AttributeVector2* vec2) { vec2->SetValue(AZ::Vector2(0.5f, 0.0f)); })
+        },
+        {
+            [](AnimGraphVector2Condition* condition) {
+                condition->SetParameterName("Vector2Param");
+                condition->SetOperation(AnimGraphVector2Condition::OPERATION_GETY);
+                condition->SetFunction(AnimGraphParameterCondition::FUNCTION_EQUAL);
+                condition->SetTestValue(0.5f);
             },
             moveToMotion1AtFrameThirty,
-            std::bind(changeVector2Param, std::placeholders::_1, std::placeholders::_2, 30, Variant(0.0f, 0.5f))
-        ),
-        ConditionFixtureParams(
-            AttributeKeyValuePairs {
-                {"parameterName", std::string("Vector2Param")},
-                {"operation", static_cast<AZ::u8>(AnimGraphVector2Condition::OPERATION_LENGTH)},
-                {"testFunction", static_cast<AZ::u8>(AnimGraphParameterCondition::FUNCTION_EQUAL)},
-                {"testValue", 0.5f}
+            std::bind(ChangeVector2Param, std::placeholders::_1, std::placeholders::_2, 30, [](MCore::AttributeVector2* vec2) { vec2->SetValue(AZ::Vector2(0.0f, 0.5f)); })
+        },
+        {
+            [](AnimGraphVector2Condition* condition) {
+                condition->SetParameterName("Vector2Param");
+                condition->SetOperation(AnimGraphVector2Condition::OPERATION_LENGTH);
+                condition->SetFunction(AnimGraphParameterCondition::FUNCTION_EQUAL);
+                condition->SetTestValue(0.5f);
             },
             moveToMotion1AtFrameThirty,
-            std::bind(changeVector2Param, std::placeholders::_1, std::placeholders::_2, 30, Variant(std::sqrt(0.25f / 2.0f), std::sqrt(0.25f / 2.0f)))
-        ),
+            std::bind(ChangeVector2Param, std::placeholders::_1, std::placeholders::_2, 30, [](MCore::AttributeVector2* vec2) { vec2->SetValue(AZ::Vector2(std::sqrt(0.25f / 2.0f), std::sqrt(0.25f / 2.0f))); })
+        },
 
         // --------------------------------------------------------------------
         // FUNCTION_NOTEQUAL
-        ConditionFixtureParams(
-            AttributeKeyValuePairs {
-                {"parameterName", std::string("Vector2Param")},
-                {"operation", static_cast<AZ::u8>(AnimGraphVector2Condition::OPERATION_GETX)},
-                {"testFunction", static_cast<AZ::u8>(AnimGraphParameterCondition::FUNCTION_NOTEQUAL)},
-                {"testValue", 0.1f}
+        {
+            [](AnimGraphVector2Condition* condition) {
+                condition->SetParameterName("Vector2Param");
+                condition->SetOperation(AnimGraphVector2Condition::OPERATION_GETX);
+                condition->SetFunction(AnimGraphParameterCondition::FUNCTION_NOTEQUAL);
+                condition->SetTestValue(0.1f);
             },
             moveToMotion1AtFrameThirty,
-            std::bind(changeVector2Param, std::placeholders::_1, std::placeholders::_2, 30, Variant(0.5f, 0.0f))
-        ),
-        ConditionFixtureParams(
-            AttributeKeyValuePairs {
-                {"parameterName", std::string("Vector2Param")},
-                {"operation", static_cast<AZ::u8>(AnimGraphVector2Condition::OPERATION_GETY)},
-                {"testFunction", static_cast<AZ::u8>(AnimGraphParameterCondition::FUNCTION_NOTEQUAL)},
-                {"testValue", 0.1f}
+            std::bind(ChangeVector2Param, std::placeholders::_1, std::placeholders::_2, 30, [](MCore::AttributeVector2* vec2) { vec2->SetValue(AZ::Vector2(0.5f, 0.0f)); })
+        },
+        {
+            [](AnimGraphVector2Condition* condition) {
+                condition->SetParameterName("Vector2Param");
+                condition->SetOperation(AnimGraphVector2Condition::OPERATION_GETY);
+                condition->SetFunction(AnimGraphParameterCondition::FUNCTION_NOTEQUAL);
+                condition->SetTestValue(0.1f);
             },
             moveToMotion1AtFrameThirty,
-            std::bind(changeVector2Param, std::placeholders::_1, std::placeholders::_2, 30, Variant(0.0f, 0.5f))
-        ),
-        ConditionFixtureParams(
-            AttributeKeyValuePairs {
-                {"parameterName", std::string("Vector2Param")},
-                {"operation", static_cast<AZ::u8>(AnimGraphVector2Condition::OPERATION_LENGTH)},
-                {"testFunction", static_cast<AZ::u8>(AnimGraphParameterCondition::FUNCTION_NOTEQUAL)},
-                {"testValue", std::sqrt(0.1f*0.1f + 0.1f*0.1f)}
+            std::bind(ChangeVector2Param, std::placeholders::_1, std::placeholders::_2, 30, [](MCore::AttributeVector2* vec2) { vec2->SetValue(AZ::Vector2(0.0f, 0.5f)); })
+        },
+        {
+            [](AnimGraphVector2Condition* condition) {
+                condition->SetParameterName("Vector2Param");
+                condition->SetOperation(AnimGraphVector2Condition::OPERATION_LENGTH);
+                condition->SetFunction(AnimGraphParameterCondition::FUNCTION_NOTEQUAL);
+                condition->SetTestValue(std::sqrt(0.1f*0.1f + 0.1f*0.1f));
             },
             moveToMotion1AtFrameThirty,
-            std::bind(changeVector2Param, std::placeholders::_1, std::placeholders::_2, 30, Variant(std::sqrt(0.25f / 2.0f), std::sqrt(0.25f / 2.0f)))
-        ),
+            std::bind(ChangeVector2Param, std::placeholders::_1, std::placeholders::_2, 30, [](MCore::AttributeVector2* vec2) { vec2->SetValue(AZ::Vector2(std::sqrt(0.25f / 2.0f), std::sqrt(0.25f / 2.0f))); })
+        },
 
         // --------------------------------------------------------------------
         // FUNCTION_LESS
-        ConditionFixtureParams(
-            AttributeKeyValuePairs {
-                {"parameterName", std::string("Vector2Param")},
-                {"operation", static_cast<AZ::u8>(AnimGraphVector2Condition::OPERATION_GETX)},
-                {"testFunction", static_cast<AZ::u8>(AnimGraphParameterCondition::FUNCTION_LESS)},
-                {"testValue", 0.1f}
+        {
+            [](AnimGraphVector2Condition* condition) {
+                condition->SetParameterName("Vector2Param");
+                condition->SetOperation(AnimGraphVector2Condition::OPERATION_GETX);
+                condition->SetFunction(AnimGraphParameterCondition::FUNCTION_LESS);
+                condition->SetTestValue(0.1f);
             },
             moveToMotion1AtFrameThirty,
-            std::bind(changeVector2Param, std::placeholders::_1, std::placeholders::_2, 30, Variant(0.05f, 0.0f))
-        ),
-        ConditionFixtureParams(
-            AttributeKeyValuePairs {
-                {"parameterName", std::string("Vector2Param")},
-                {"operation", static_cast<AZ::u8>(AnimGraphVector2Condition::OPERATION_GETY)},
-                {"testFunction", static_cast<AZ::u8>(AnimGraphParameterCondition::FUNCTION_LESS)},
-                {"testValue", 0.1f}
+            std::bind(ChangeVector2Param, std::placeholders::_1, std::placeholders::_2, 30, [](MCore::AttributeVector2* vec2) { vec2->SetValue(AZ::Vector2(0.05f, 0.0f)); })
+        },
+        {
+            [](AnimGraphVector2Condition* condition) {
+                condition->SetParameterName("Vector2Param");
+                condition->SetOperation(AnimGraphVector2Condition::OPERATION_GETY);
+                condition->SetFunction(AnimGraphParameterCondition::FUNCTION_LESS);
+                condition->SetTestValue(0.1f);
             },
             moveToMotion1AtFrameThirty,
-            std::bind(changeVector2Param, std::placeholders::_1, std::placeholders::_2, 30, Variant(0.0f, 0.05f))
-        ),
-        ConditionFixtureParams(
-            AttributeKeyValuePairs {
-                {"parameterName", std::string("Vector2Param")},
-                {"operation", static_cast<AZ::u8>(AnimGraphVector2Condition::OPERATION_LENGTH)},
-                {"testFunction", static_cast<AZ::u8>(AnimGraphParameterCondition::FUNCTION_LESS)},
-                {"testValue", 0.1f}
+            std::bind(ChangeVector2Param, std::placeholders::_1, std::placeholders::_2, 30, [](MCore::AttributeVector2* vec2) { vec2->SetValue(AZ::Vector2(0.0f, 0.05f)); })
+        },
+        {
+            [](AnimGraphVector2Condition* condition) {
+                condition->SetParameterName("Vector2Param");
+                condition->SetOperation(AnimGraphVector2Condition::OPERATION_LENGTH);
+                condition->SetFunction(AnimGraphParameterCondition::FUNCTION_LESS);
+                condition->SetTestValue(0.1f);
             },
             moveToMotion1AtFrameThirty,
-            std::bind(changeVector2Param, std::placeholders::_1, std::placeholders::_2, 30, Variant(0.05f, 0.05f))
-        ),
+            std::bind(ChangeVector2Param, std::placeholders::_1, std::placeholders::_2, 30, [](MCore::AttributeVector2* vec2) { vec2->SetValue(AZ::Vector2(0.05f, 0.05f)); })
+        },
 
         // --------------------------------------------------------------------
         // FUNCTION_GREATER
-        ConditionFixtureParams(
-            AttributeKeyValuePairs {
-                {"parameterName", std::string("Vector2Param")},
-                {"operation", static_cast<AZ::u8>(AnimGraphVector2Condition::OPERATION_GETX)},
-                {"testFunction", static_cast<AZ::u8>(AnimGraphParameterCondition::FUNCTION_GREATER)},
-                {"testValue", 0.1f}
+        {
+            [](AnimGraphVector2Condition* condition) {
+                condition->SetParameterName("Vector2Param");
+                condition->SetOperation(AnimGraphVector2Condition::OPERATION_GETX);
+                condition->SetFunction(AnimGraphParameterCondition::FUNCTION_GREATER);
+                condition->SetTestValue(0.1f);
             },
             moveToMotion1AtFrameThirty,
-            std::bind(changeVector2Param, std::placeholders::_1, std::placeholders::_2, 30, Variant(0.15f, 0.0f))
-        ),
-        ConditionFixtureParams(
-            AttributeKeyValuePairs {
-                {"parameterName", std::string("Vector2Param")},
-                {"operation", static_cast<AZ::u8>(AnimGraphVector2Condition::OPERATION_GETY)},
-                {"testFunction", static_cast<AZ::u8>(AnimGraphParameterCondition::FUNCTION_GREATER)},
-                {"testValue", 0.1f}
+            std::bind(ChangeVector2Param, std::placeholders::_1, std::placeholders::_2, 30, [](MCore::AttributeVector2* vec2) { vec2->SetValue(AZ::Vector2(0.15f, 0.0f)); })
+        },
+        {
+            [](AnimGraphVector2Condition* condition) {
+                condition->SetParameterName("Vector2Param");
+                condition->SetOperation(AnimGraphVector2Condition::OPERATION_GETY);
+                condition->SetFunction(AnimGraphParameterCondition::FUNCTION_GREATER);
+                condition->SetTestValue(0.1f);
             },
             moveToMotion1AtFrameThirty,
-            std::bind(changeVector2Param, std::placeholders::_1, std::placeholders::_2, 30, Variant(0.0f, 0.15f))
-        ),
-        ConditionFixtureParams(
-            AttributeKeyValuePairs {
-                {"parameterName", std::string("Vector2Param")},
-                {"operation", static_cast<AZ::u8>(AnimGraphVector2Condition::OPERATION_LENGTH)},
-                {"testFunction", static_cast<AZ::u8>(AnimGraphParameterCondition::FUNCTION_GREATER)},
-                {"testValue", 0.2f}
+            std::bind(ChangeVector2Param, std::placeholders::_1, std::placeholders::_2, 30, [](MCore::AttributeVector2* vec2) { vec2->SetValue(AZ::Vector2(0.0f, 0.15f)); })
+        },
+        {
+            [](AnimGraphVector2Condition* condition) {
+                condition->SetParameterName("Vector2Param");
+                condition->SetOperation(AnimGraphVector2Condition::OPERATION_LENGTH);
+                condition->SetFunction(AnimGraphParameterCondition::FUNCTION_GREATER);
+                condition->SetTestValue(0.2f);
             },
             moveToMotion1AtFrameThirty,
-            std::bind(changeVector2Param, std::placeholders::_1, std::placeholders::_2, 30, Variant(0.25f, 0.0f))
-        ),
+            std::bind(ChangeVector2Param, std::placeholders::_1, std::placeholders::_2, 30, [](MCore::AttributeVector2* vec2) { vec2->SetValue(AZ::Vector2(0.25f, 0.0f)); })
+        },
 
         // --------------------------------------------------------------------
         // FUNCTION_GREATEREQUAL
-        ConditionFixtureParams(
-            AttributeKeyValuePairs {
-                {"parameterName", std::string("Vector2Param")},
-                {"operation", static_cast<AZ::u8>(AnimGraphVector2Condition::OPERATION_GETX)},
-                {"testFunction", static_cast<AZ::u8>(AnimGraphParameterCondition::FUNCTION_GREATEREQUAL)},
-                {"testValue", 0.2f}
+        {
+            [](AnimGraphVector2Condition* condition) {
+                condition->SetParameterName("Vector2Param");
+                condition->SetOperation(AnimGraphVector2Condition::OPERATION_GETX);
+                condition->SetFunction(AnimGraphParameterCondition::FUNCTION_GREATEREQUAL);
+                condition->SetTestValue(0.2f);
             },
             moveToMotion1AtFrameThirty,
-            std::bind(changeVector2Param, std::placeholders::_1, std::placeholders::_2, 30, Variant(0.2f, 0.0f))
-        ),
-        ConditionFixtureParams(
-            AttributeKeyValuePairs {
-                {"parameterName", std::string("Vector2Param")},
-                {"operation", static_cast<AZ::u8>(AnimGraphVector2Condition::OPERATION_GETX)},
-                {"testFunction", static_cast<AZ::u8>(AnimGraphParameterCondition::FUNCTION_GREATEREQUAL)},
-                {"testValue", 0.2f}
+            std::bind(ChangeVector2Param, std::placeholders::_1, std::placeholders::_2, 30, [](MCore::AttributeVector2* vec2) { vec2->SetValue(AZ::Vector2(0.2f, 0.0f)); })
+        },
+        {
+            [](AnimGraphVector2Condition* condition) {
+                condition->SetParameterName("Vector2Param");
+                condition->SetOperation(AnimGraphVector2Condition::OPERATION_GETX);
+                condition->SetFunction(AnimGraphParameterCondition::FUNCTION_GREATEREQUAL);
+                condition->SetTestValue(0.2f);
             },
             moveToMotion1AtFrameThirty,
-            std::bind(changeVector2Param, std::placeholders::_1, std::placeholders::_2, 30, Variant(0.3f, 0.0f))
-        ),
-        ConditionFixtureParams(
-            AttributeKeyValuePairs {
-                {"parameterName", std::string("Vector2Param")},
-                {"operation", static_cast<AZ::u8>(AnimGraphVector2Condition::OPERATION_GETY)},
-                {"testFunction", static_cast<AZ::u8>(AnimGraphParameterCondition::FUNCTION_GREATEREQUAL)},
-                {"testValue", 0.2f}
+            std::bind(ChangeVector2Param, std::placeholders::_1, std::placeholders::_2, 30, [](MCore::AttributeVector2* vec2) { vec2->SetValue(AZ::Vector2(0.3f, 0.0f)); })
+        },
+        {
+            [](AnimGraphVector2Condition* condition) {
+                condition->SetParameterName("Vector2Param");
+                condition->SetOperation(AnimGraphVector2Condition::OPERATION_GETY);
+                condition->SetFunction(AnimGraphParameterCondition::FUNCTION_GREATEREQUAL);
+                condition->SetTestValue(0.2f);
             },
             moveToMotion1AtFrameThirty,
-            std::bind(changeVector2Param, std::placeholders::_1, std::placeholders::_2, 30, Variant(0.0f, 0.2f))
-        ),
-        ConditionFixtureParams(
-            AttributeKeyValuePairs {
-                {"parameterName", std::string("Vector2Param")},
-                {"operation", static_cast<AZ::u8>(AnimGraphVector2Condition::OPERATION_GETY)},
-                {"testFunction", static_cast<AZ::u8>(AnimGraphParameterCondition::FUNCTION_GREATEREQUAL)},
-                {"testValue", 0.2f}
+            std::bind(ChangeVector2Param, std::placeholders::_1, std::placeholders::_2, 30, [](MCore::AttributeVector2* vec2) { vec2->SetValue(AZ::Vector2(0.0f, 0.2f)); })
+        },
+        {
+            [](AnimGraphVector2Condition* condition) {
+                condition->SetParameterName("Vector2Param");
+                condition->SetOperation(AnimGraphVector2Condition::OPERATION_GETY);
+                condition->SetFunction(AnimGraphParameterCondition::FUNCTION_GREATEREQUAL);
+                condition->SetTestValue(0.2f);
             },
             moveToMotion1AtFrameThirty,
-            std::bind(changeVector2Param, std::placeholders::_1, std::placeholders::_2, 30, Variant(0.0f, 0.3f))
-        ),
-        ConditionFixtureParams(
-            AttributeKeyValuePairs {
-                {"parameterName", std::string("Vector2Param")},
-                {"operation", static_cast<AZ::u8>(AnimGraphVector2Condition::OPERATION_LENGTH)},
-                {"testFunction", static_cast<AZ::u8>(AnimGraphParameterCondition::FUNCTION_GREATEREQUAL)},
-                {"testValue", 0.5f}
+            std::bind(ChangeVector2Param, std::placeholders::_1, std::placeholders::_2, 30, [](MCore::AttributeVector2* vec2) { vec2->SetValue(AZ::Vector2(0.0f, 0.3f)); })
+        },
+        {
+            [](AnimGraphVector2Condition* condition) {
+                condition->SetParameterName("Vector2Param");
+                condition->SetOperation(AnimGraphVector2Condition::OPERATION_LENGTH);
+                condition->SetFunction(AnimGraphParameterCondition::FUNCTION_GREATEREQUAL);
+                condition->SetTestValue(0.5f);
             },
             moveToMotion1AtFrameThirty,
-            std::bind(changeVector2Param, std::placeholders::_1, std::placeholders::_2, 30, Variant(1.0f, 0.0f))
-        ),
-        ConditionFixtureParams(
-            AttributeKeyValuePairs {
-                {"parameterName", std::string("Vector2Param")},
-                {"operation", static_cast<AZ::u8>(AnimGraphVector2Condition::OPERATION_LENGTH)},
-                {"testFunction", static_cast<AZ::u8>(AnimGraphParameterCondition::FUNCTION_GREATEREQUAL)},
-                {"testValue", 0.5f}
+            std::bind(ChangeVector2Param, std::placeholders::_1, std::placeholders::_2, 30, [](MCore::AttributeVector2* vec2) { vec2->SetValue(AZ::Vector2(1.0f, 0.0f)); })
+        },
+        {
+            [](AnimGraphVector2Condition* condition) {
+                condition->SetParameterName("Vector2Param");
+                condition->SetOperation(AnimGraphVector2Condition::OPERATION_LENGTH);
+                condition->SetFunction(AnimGraphParameterCondition::FUNCTION_GREATEREQUAL);
+                condition->SetTestValue(0.5f);
             },
             moveToMotion1AtFrameThirty,
-            std::bind(changeVector2Param, std::placeholders::_1, std::placeholders::_2, 30, Variant(0.5f, 0.0f))
-        ),
+            std::bind(ChangeVector2Param, std::placeholders::_1, std::placeholders::_2, 30, [](MCore::AttributeVector2* vec2) { vec2->SetValue(AZ::Vector2(0.5f, 0.0f)); })
+        },
 
         // --------------------------------------------------------------------
         // FUNCTION_LESSEQUAL
-        ConditionFixtureParams(
-            AttributeKeyValuePairs {
-                {"parameterName", std::string("Vector2Param")},
-                {"operation", static_cast<AZ::u8>(AnimGraphVector2Condition::OPERATION_GETX)},
-                {"testFunction", static_cast<AZ::u8>(AnimGraphParameterCondition::FUNCTION_LESSEQUAL)},
-                {"testValue", 0.1f}
+        {
+            [](AnimGraphVector2Condition* condition) {
+                condition->SetParameterName("Vector2Param");
+                condition->SetOperation(AnimGraphVector2Condition::OPERATION_GETX);
+                condition->SetFunction(AnimGraphParameterCondition::FUNCTION_LESSEQUAL);
+                condition->SetTestValue(0.1f);
             },
             moveToMotion1AtFrameThirty,
             std::bind(ChangeVector2ParamSpecial, std::placeholders::_1, std::placeholders::_2, 30, AZ::Vector2(0.05f, 0.0f), AZ::Vector2(1.0f, 1.0f))
-        ),
-        ConditionFixtureParams(
-            AttributeKeyValuePairs {
-                {"parameterName", std::string("Vector2Param")},
-                {"operation", static_cast<AZ::u8>(AnimGraphVector2Condition::OPERATION_GETX)},
-                {"testFunction", static_cast<AZ::u8>(AnimGraphParameterCondition::FUNCTION_LESSEQUAL)},
-                {"testValue", 0.5f}
+        },
+        {
+            [](AnimGraphVector2Condition* condition) {
+                condition->SetParameterName("Vector2Param");
+                condition->SetOperation(AnimGraphVector2Condition::OPERATION_GETX);
+                condition->SetFunction(AnimGraphParameterCondition::FUNCTION_LESSEQUAL);
+                condition->SetTestValue(0.5f);
             },
             moveToMotion1AtFrameThirty,
             std::bind(ChangeVector2ParamSpecial, std::placeholders::_1, std::placeholders::_2, 30, AZ::Vector2(0.5f, 0.0f), AZ::Vector2(1.0f, 1.0f))
-        ),
-        ConditionFixtureParams(
-            AttributeKeyValuePairs {
-                {"parameterName", std::string("Vector2Param")},
-                {"operation", static_cast<AZ::u8>(AnimGraphVector2Condition::OPERATION_GETY)},
-                {"testFunction", static_cast<AZ::u8>(AnimGraphParameterCondition::FUNCTION_LESSEQUAL)},
-                {"testValue", 0.1f}
+        },
+        {
+            [](AnimGraphVector2Condition* condition) {
+                condition->SetParameterName("Vector2Param");
+                condition->SetOperation(AnimGraphVector2Condition::OPERATION_GETY);
+                condition->SetFunction(AnimGraphParameterCondition::FUNCTION_LESSEQUAL);
+                condition->SetTestValue(0.1f);
             },
             moveToMotion1AtFrameThirty,
             std::bind(ChangeVector2ParamSpecial, std::placeholders::_1, std::placeholders::_2, 30, AZ::Vector2(0.0f, 0.05f), AZ::Vector2(1.0f, 1.0f))
-        ),
-        ConditionFixtureParams(
-            AttributeKeyValuePairs {
-                {"parameterName", std::string("Vector2Param")},
-                {"operation", static_cast<AZ::u8>(AnimGraphVector2Condition::OPERATION_GETY)},
-                {"testFunction", static_cast<AZ::u8>(AnimGraphParameterCondition::FUNCTION_LESSEQUAL)},
-                {"testValue", 0.5f}
+        },
+        {
+            [](AnimGraphVector2Condition* condition) {
+                condition->SetParameterName("Vector2Param");
+                condition->SetOperation(AnimGraphVector2Condition::OPERATION_GETY);
+                condition->SetFunction(AnimGraphParameterCondition::FUNCTION_LESSEQUAL);
+                condition->SetTestValue(0.5f);
             },
             moveToMotion1AtFrameThirty,
             std::bind(ChangeVector2ParamSpecial, std::placeholders::_1, std::placeholders::_2, 30, AZ::Vector2(0.0f, 0.5f), AZ::Vector2(1.0f, 1.0f))
-        ),
-        ConditionFixtureParams(
-            AttributeKeyValuePairs {
-                {"parameterName", std::string("Vector2Param")},
-                {"operation", static_cast<AZ::u8>(AnimGraphVector2Condition::OPERATION_LENGTH)},
-                {"testFunction", static_cast<AZ::u8>(AnimGraphParameterCondition::FUNCTION_LESSEQUAL)},
-                {"testValue", 0.1f}
+        },
+        {
+            [](AnimGraphVector2Condition* condition) {
+                condition->SetParameterName("Vector2Param");
+                condition->SetOperation(AnimGraphVector2Condition::OPERATION_LENGTH);
+                condition->SetFunction(AnimGraphParameterCondition::FUNCTION_LESSEQUAL);
+                condition->SetTestValue(0.1f);
             },
             moveToMotion1AtFrameThirty,
-            std::bind(changeVector2Param, std::placeholders::_1, std::placeholders::_2, 30, Variant(0.05f, 0.0f))
-        ),
-        ConditionFixtureParams(
-            AttributeKeyValuePairs {
-                {"parameterName", std::string("Vector2Param")},
-                {"operation", static_cast<AZ::u8>(AnimGraphVector2Condition::OPERATION_LENGTH)},
-                {"testFunction", static_cast<AZ::u8>(AnimGraphParameterCondition::FUNCTION_LESSEQUAL)},
-                {"testValue", 0.5f}
+            std::bind(ChangeVector2Param, std::placeholders::_1, std::placeholders::_2, 30, [](MCore::AttributeVector2* vec2) { vec2->SetValue(AZ::Vector2(0.05f, 0.0f)); })
+        },
+        {
+            [](AnimGraphVector2Condition* condition) {
+                condition->SetParameterName("Vector2Param");
+                condition->SetOperation(AnimGraphVector2Condition::OPERATION_LENGTH);
+                condition->SetFunction(AnimGraphParameterCondition::FUNCTION_LESSEQUAL);
+                condition->SetTestValue(0.5f);
             },
             moveToMotion1AtFrameThirty,
             std::bind(ChangeVector2ParamSpecial, std::placeholders::_1, std::placeholders::_2, 30, AZ::Vector2(0.5f, 0.0f), AZ::Vector2(1.0f, 1.0f))
-        ),
+        },
 
         // --------------------------------------------------------------------
         // FUNCTION_INRANGE
-        ConditionFixtureParams(
-            AttributeKeyValuePairs {
-                {"parameterName", std::string("Vector2Param")},
-                {"operation", static_cast<AZ::u8>(AnimGraphVector2Condition::OPERATION_GETX)},
-                {"testFunction", static_cast<AZ::u8>(AnimGraphParameterCondition::FUNCTION_INRANGE)},
-                {"testValue", 0.2f},
-                {"rangeValue", 0.3f}
+        {
+            [](AnimGraphVector2Condition* condition) {
+                condition->SetParameterName("Vector2Param");
+                condition->SetOperation(AnimGraphVector2Condition::OPERATION_GETX);
+                condition->SetFunction(AnimGraphParameterCondition::FUNCTION_INRANGE);
+                condition->SetTestValue(0.2f);
+                condition->SetRangeValue(0.3f);
             },
             moveToMotion1AtFrameThirty,
-            std::bind(changeVector2Param, std::placeholders::_1, std::placeholders::_2, 30, Variant(0.25f, 0.0f))
-        ),
-        ConditionFixtureParams(
-            AttributeKeyValuePairs {
-                {"parameterName", std::string("Vector2Param")},
-                {"operation", static_cast<AZ::u8>(AnimGraphVector2Condition::OPERATION_GETY)},
-                {"testFunction", static_cast<AZ::u8>(AnimGraphParameterCondition::FUNCTION_INRANGE)},
-                {"testValue", 0.2f},
-                {"rangeValue", 0.3f}
+            std::bind(ChangeVector2Param, std::placeholders::_1, std::placeholders::_2, 30, [](MCore::AttributeVector2* vec2) { vec2->SetValue(AZ::Vector2(0.25f, 0.0f)); })
+        },
+        {
+            [](AnimGraphVector2Condition* condition) {
+                condition->SetParameterName("Vector2Param");
+                condition->SetOperation(AnimGraphVector2Condition::OPERATION_GETY);
+                condition->SetFunction(AnimGraphParameterCondition::FUNCTION_INRANGE);
+                condition->SetTestValue(0.2f);
+                condition->SetRangeValue(0.3f);
             },
             moveToMotion1AtFrameThirty,
-            std::bind(changeVector2Param, std::placeholders::_1, std::placeholders::_2, 30, Variant(0.0f, 0.25f))
-        ),
-        ConditionFixtureParams(
-            AttributeKeyValuePairs {
-                {"parameterName", std::string("Vector2Param")},
-                {"operation", static_cast<AZ::u8>(AnimGraphVector2Condition::OPERATION_LENGTH)},
-                {"testFunction", static_cast<AZ::u8>(AnimGraphParameterCondition::FUNCTION_INRANGE)},
-                {"testValue", 0.2f},
-                {"rangeValue", 0.3f}
+            std::bind(ChangeVector2Param, std::placeholders::_1, std::placeholders::_2, 30, [](MCore::AttributeVector2* vec2) { vec2->SetValue(AZ::Vector2(0.0f, 0.25f)); })
+        },
+        {
+            [](AnimGraphVector2Condition* condition) {
+                condition->SetParameterName("Vector2Param");
+                condition->SetOperation(AnimGraphVector2Condition::OPERATION_LENGTH);
+                condition->SetFunction(AnimGraphParameterCondition::FUNCTION_INRANGE);
+                condition->SetTestValue(0.2f);
+                condition->SetRangeValue(0.3f);
             },
             moveToMotion1AtFrameThirty,
-            std::bind(changeVector2Param, std::placeholders::_1, std::placeholders::_2, 30, Variant(0.15f, 0.15f))
-        ),
+            std::bind(ChangeVector2Param, std::placeholders::_1, std::placeholders::_2, 30, [](MCore::AttributeVector2* vec2) { vec2->SetValue(AZ::Vector2(0.15f, 0.15f)); })
+        },
 
         // --------------------------------------------------------------------
         // FUNCTION_NOTINRANGE
-        ConditionFixtureParams(
-            AttributeKeyValuePairs {
-                {"parameterName", std::string("Vector2Param")},
-                {"operation", static_cast<AZ::u8>(AnimGraphVector2Condition::OPERATION_GETX)},
-                {"testFunction", static_cast<AZ::u8>(AnimGraphParameterCondition::FUNCTION_NOTINRANGE)},
-                {"testValue", 0.05f},
-                {"rangeValue", 0.15f}
+        {
+            [](AnimGraphVector2Condition* condition) {
+                condition->SetParameterName("Vector2Param");
+                condition->SetOperation(AnimGraphVector2Condition::OPERATION_GETX);
+                condition->SetFunction(AnimGraphParameterCondition::FUNCTION_NOTINRANGE);
+                condition->SetTestValue(0.05f);
+                condition->SetRangeValue(0.15f);
             },
             moveToMotion1AtFrameThirty,
-            std::bind(changeVector2Param, std::placeholders::_1, std::placeholders::_2, 30, Variant(0.25f, 0.0f))
-        ),
-        ConditionFixtureParams(
-            AttributeKeyValuePairs {
-                {"parameterName", std::string("Vector2Param")},
-                {"operation", static_cast<AZ::u8>(AnimGraphVector2Condition::OPERATION_GETY)},
-                {"testFunction", static_cast<AZ::u8>(AnimGraphParameterCondition::FUNCTION_NOTINRANGE)},
-                {"testValue", 0.05f},
-                {"rangeValue", 0.15f}
+            std::bind(ChangeVector2Param, std::placeholders::_1, std::placeholders::_2, 30, [](MCore::AttributeVector2* vec2) { vec2->SetValue(AZ::Vector2(0.25f, 0.0f)); })
+        },
+        {
+            [](AnimGraphVector2Condition* condition) {
+                condition->SetParameterName("Vector2Param");
+                condition->SetOperation(AnimGraphVector2Condition::OPERATION_GETY);
+                condition->SetFunction(AnimGraphParameterCondition::FUNCTION_NOTINRANGE);
+                condition->SetTestValue(0.05f);
+                condition->SetRangeValue(0.15f);
             },
             moveToMotion1AtFrameThirty,
-            std::bind(changeVector2Param, std::placeholders::_1, std::placeholders::_2, 30, Variant(0.0f, 0.25f))
-        ),
-        ConditionFixtureParams(
-            AttributeKeyValuePairs {
-                {"parameterName", std::string("Vector2Param")},
-                {"operation", static_cast<AZ::u8>(AnimGraphVector2Condition::OPERATION_LENGTH)},
-                {"testFunction", static_cast<AZ::u8>(AnimGraphParameterCondition::FUNCTION_NOTINRANGE)},
-                {"testValue", 0.05f},
-                {"rangeValue", 0.15f}
+            std::bind(ChangeVector2Param, std::placeholders::_1, std::placeholders::_2, 30, [](MCore::AttributeVector2* vec2) { vec2->SetValue(AZ::Vector2(0.0f, 0.25f)); })
+        },
+        {
+            [](AnimGraphVector2Condition* condition) {
+                condition->SetParameterName("Vector2Param");
+                condition->SetOperation(AnimGraphVector2Condition::OPERATION_LENGTH);
+                condition->SetFunction(AnimGraphParameterCondition::FUNCTION_NOTINRANGE);
+                condition->SetTestValue(0.05f);
+                condition->SetRangeValue(0.15f);
             },
             moveToMotion1AtFrameThirty,
-            std::bind(changeVector2Param, std::placeholders::_1, std::placeholders::_2, 30, Variant(0.15f, 0.15f))
-        ),
+            std::bind(ChangeVector2Param, std::placeholders::_1, std::placeholders::_2, 30, [](MCore::AttributeVector2* vec2) { vec2->SetValue(AZ::Vector2(0.15f, 0.15f)); })
+        },
     };
 
     using MotionConditionFixture = TransitionConditionFixtureP<AnimGraphMotionCondition>;
@@ -1521,6 +1250,14 @@ namespace EMotionFX
     }
     INSTANTIATE_TEST_CASE_P(TestMotionCondition, MotionConditionFixture,
         ::testing::ValuesIn(motionTransitionConditionData)
+    );
+
+    TEST_P(RangedMotionEventConditionFixture, TestTransitionCondition)
+    {
+        RunEMotionFXUpdateLoop();
+    }
+    INSTANTIATE_TEST_CASE_P(TestRangedMotionCondition, RangedMotionEventConditionFixture,
+        ::testing::ValuesIn(rangedMotionTransitionConditionData)
     );
 
     using ParameterConditionFixture = TransitionConditionFixtureP<AnimGraphParameterCondition>;

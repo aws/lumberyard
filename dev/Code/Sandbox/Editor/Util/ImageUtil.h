@@ -14,8 +14,6 @@
 // Description : Image utilities.
 
 
-#ifndef CRYINCLUDE_EDITOR_UTIL_IMAGEUTIL_H
-#define CRYINCLUDE_EDITOR_UTIL_IMAGEUTIL_H
 #pragma once
 
 #include <Include/IImageUtil.h>
@@ -74,10 +72,11 @@ public:
     //! \return 0..255
     static unsigned char GetBilinearFilteredAt(const int iniX256, const int iniY256, const CByteImage& image);
 
+    static bool QImageToImage(const QImage& bitmap, CImageEx& image);
+    static bool ImageToQImage(const CImageEx& image, QImage& bitmapObj);
+
 private:
     static bool Load(const QString& fileName, CImageEx& image);
     static bool Save(const QString& strFileName, CImageEx& inImage);
-    static bool QImageToImage(const QImage& bitmap, CImageEx& image);
-    static bool ImageToQImage(const CImageEx& image, QImage& bitmapObj);
 };
-#endif // CRYINCLUDE_EDITOR_UTIL_IMAGEUTIL_H
+

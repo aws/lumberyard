@@ -47,7 +47,7 @@ namespace AZ
     {
         namespace UI
         {
-            class NodeTreeSelectionHandler 
+            class SCENE_UI_API NodeTreeSelectionHandler
                 : public QObject
                 , public AzToolsFramework::PropertyHandler<DataTypes::ISceneNodeSelectionList, NodeTreeSelectionWidget>
             {

@@ -38,6 +38,12 @@
             "_comment": "LegacyGameInterface"
         },
         {
+            "Path": "Gems/ScriptEvents",
+            "Uuid": "32d8ba21703e4bbbb08487366e48dd69",
+            "Version": "0.1.0",
+            "_comment": "ScriptEvents"
+        },
+        {
             "Path": "Gems/CryLegacy",
             "Uuid": "352fef7706634c92814c587e84d7165a",
             "Version": "0.1.0",
@@ -62,6 +68,12 @@
             "_comment": "InputManagementFramework"
         },
         {
+            "Path": "Gems/TextureAtlas",
+            "Uuid": "5a149b6b3c964064bd4970f0e92f72e2",
+            "Version": "0.1.0",
+            "_comment": "TextureAtlas"
+        },
+        {
             "Path": "Gems/UiBasics",
             "Uuid": "6bb61c9e547043f0afc5019d6d460b78",
             "Version": "0.1.0",
@@ -70,7 +82,7 @@
         {
             "Path": "Gems/CloudGemFramework/v1",
             "Uuid": "6fc787a982184217a5a553ca24676cfa",
-            "Version": "1.1.3",
+            "Version": "1.1.4",
             "_comment": "CloudGemFramework"
         },
         {
@@ -94,7 +106,14 @@
         {
             "Path": "CloudGemDefectReportSample/Gem",
             "Uuid": "99fd2a91d540451fa728e40d2e4dd16f",
-            "Version": "0.1.0"
+            "Version": "0.1.0",
+            "_comment": "CloudGemDefectReportSample"
+        },
+        {
+            "Path": "Gems/NativeUI",
+            "Uuid": "d2a325d80a0445dbb64b22f7d2f20960",
+            "Version": "0.1.0",
+            "_comment": "NativeUI"
         },
         {
             "Path": "Gems/ScriptCanvasDiagnosticLibrary",
@@ -109,16 +128,16 @@
             "_comment": "CloudGemMetric"
         },
         {
+            "Path": "Gems/ImageProcessing",
+            "Uuid": "eeffbd9211cf4ce0b5cc73696b427cbe",
+            "Version": "0.1.0",
+            "_comment": "ImageProcessing"
+        },
+        {
             "Path": "Gems/CryEntityRemoval",
             "Uuid": "f3ae24a1635e4f849535f37ef9f4b4da",
             "Version": "0.1.0",
             "_comment": "CryEntityRemoval"
-        },
-        {
-            "Path": "Gems/ScriptCanvasDeveloper",
-            "Uuid": "f905c05883b94fd6bddc91052c3c5a86",
-            "Version": "0.1.0",
-            "_comment": "ScriptCanvasDeveloperGem"
         },
         {
             "Path": "Gems/Camera",
@@ -131,6 +150,12 @@
             "Uuid": "ff06785f7145416b9d46fde39098cb0c",
             "Version": "0.1.0",
             "_comment": "LmbrCentral"
+        },
+        {
+            "Path": "Gems/ImageProcessing",
+            "Uuid": "eeffbd9211cf4ce0b5cc73696b427cbe",
+            "Version": "0.1.0",
+            "_comment": "ImageProcessing"
         }
     ]
 }

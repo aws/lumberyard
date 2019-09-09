@@ -182,14 +182,14 @@ public:
     virtual void GetValue(float time, Vec4& value, bool applyMultiplier = false) { assert(0); }
     virtual void GetValue(float time, Quat& value) { assert(0); }
     virtual void GetValue(float time, bool& value) { assert(0); }
-    virtual void GetValue(float time, AZ::Data::AssetBlends<AZ::Data::AssetData>& value) { assert(0); }
+    virtual void GetValue(float time, Maestro::AssetBlends<AZ::Data::AssetData>& value) { assert(0); }
 
     virtual void SetValue(float time, const float& value, bool bDefault = false, bool applyMultiplier = false) { assert(0); }
     virtual void SetValue(float time, const Vec3& value, bool bDefault = false, bool applyMultiplier = false) { assert(0); }
     virtual void SetValue(float time, const Vec4& value, bool bDefault = false, bool applyMultiplier = false) { assert(0); }
     virtual void SetValue(float time, const Quat& value, bool bDefault = false) { assert(0); }
     virtual void SetValue(float time, const bool& value, bool bDefault = false) { assert(0); }
-    virtual void SetValue(float time, const AZ::Data::AssetBlends<AZ::Data::AssetData>& value, bool bDefault = false) { assert(0); }
+    virtual void SetValue(float time, const Maestro::AssetBlends<AZ::Data::AssetData>& value, bool bDefault = false) { assert(0); }
 
     virtual void OffsetKeyPosition(const Vec3& value) { assert(0); };
     virtual void UpdateKeyDataAfterParentChanged(const AZ::Transform& oldParentWorldTM, const AZ::Transform& newParentWorldTM) { assert(0); };
@@ -360,6 +360,16 @@ public:
         return false;
     }
 
+    unsigned int GetId() const override 
+    { 
+        return m_id; 
+    }
+
+    void SetId(unsigned int id) override
+    {
+        m_id = id;
+    }
+
     static void Reflect(AZ::SerializeContext* serializeContext) {}
 
 protected:
@@ -400,6 +410,8 @@ private:
     IAnimNode* m_node;
 
     float m_trackMultiplier;
+
+    unsigned int m_id = 0;
 
     static bool VersionConverter(AZ::SerializeContext& context, AZ::SerializeContext::DataElementNode& classElement) {};
 };
@@ -470,6 +482,8 @@ inline bool TAnimSplineTrack<T>::Serialize(XmlNodeRef& xmlNode, bool bLoading, b
             keyNode->getAttr("dd", m_spline->key(i).dd);
         }
 
+        xmlNode->getAttr("Id", m_id);
+
         if ((!num) && (!bLoadEmptyTracks))
         {
             return false;
@@ -530,6 +544,8 @@ inline bool TAnimSplineTrack<T>::Serialize(XmlNodeRef& xmlNode, bool bLoading, b
             keyNode->setAttr("ds", m_spline->key(i).ds);
             keyNode->setAttr("dd", m_spline->key(i).dd);
         }
+
+        xmlNode->setAttr("Id", m_id);
     }
     return true;
 }

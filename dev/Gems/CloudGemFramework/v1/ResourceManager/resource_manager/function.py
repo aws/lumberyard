@@ -82,7 +82,8 @@ def __upload_lambda_code(context, stack_id, uploader, function_name, keep):
 
         # zip and send it to s3 in preparation for lambdas
         function_name = lambda_function_description['LogicalResourceId']
-        key = uploader.zip_and_upload_lambda_function_code(function_name, aggregated_content = aggregated_content, keep = keep)
+        key = uploader.upload_lambda_function_code(
+            function_name, function_runtime="python2.7", aggregated_content=aggregated_content, keep=keep)
 
         # update the lambda function
         client.update_function_code(FunctionName = lambda_function_description['PhysicalResourceId'], S3Bucket = uploader.bucket, S3Key = key)

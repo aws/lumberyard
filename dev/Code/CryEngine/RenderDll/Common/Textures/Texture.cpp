@@ -49,7 +49,6 @@
 
 STexState CTexture::s_sDefState;
 STexStageInfo CTexture::s_TexStages[MAX_TMU];
-int CTexture::s_TexStateIDs[eHWSC_Num][MAX_TMU];
 int CTexture::s_nStreamingMode;
 int CTexture::s_nStreamingUpdateMode;
 bool CTexture::s_bPrecachePhase;
@@ -57,12 +56,12 @@ bool CTexture::s_bInLevelPhase = false;
 bool CTexture::s_bPrestreamPhase;
 int CTexture::s_nStreamingThroughput = 0;
 float CTexture::s_nStreamingTotalTime = 0;
-std::vector<STexState> CTexture::s_TexStates;
+AZStd::vector<STexState, AZ::StdLegacyAllocator> CTexture::s_TexStates;
 CTextureStreamPoolMgr* CTexture::s_pPoolMgr;
-std::set<string> CTexture::s_vTexReloadRequests;
+AZStd::set<string, AZStd::less<string>, AZ::StdLegacyAllocator> CTexture::s_vTexReloadRequests;
 CryCriticalSection CTexture::s_xTexReloadLock;
 #ifdef TEXTURE_GET_SYSTEM_COPY_SUPPORT
-CTexture::LowResSystemCopyType CTexture::s_LowResSystemCopy;
+StaticInstance<CTexture::LowResSystemCopyType> CTexture::s_LowResSystemCopy;
 #endif
 
 bool CTexture::m_bLoadedSystem;
@@ -94,7 +93,11 @@ CTexture* CTexture::s_ptexSceneDiffuse;
 CTexture* CTexture::s_ptexSceneSpecular;
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION TEXTURE_CPP_SECTION_1
-#include AZ_RESTRICTED_FILE(Texture_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/Texture_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/Texture_cpp_provo.inl"
+    #endif
 #endif
 CTexture* CTexture::s_ptexAmbientLookup;
 
@@ -188,9 +191,9 @@ CTexture* CTexture::s_ptexFlaresGather = NULL;
 SEnvTexture CTexture::s_EnvCMaps[MAX_ENVCUBEMAPS];
 SEnvTexture CTexture::s_EnvTexts[MAX_ENVTEXTURES];
 
-TArray<SEnvTexture> CTexture::s_CustomRT_2D;
+StaticInstance<TArray<SEnvTexture>> CTexture::s_CustomRT_2D;
 
-TArray<CTexture> CTexture::s_ShaderTemplates(EFTT_MAX);
+StaticInstance<TArray<CTexture>> CTexture::s_ShaderTemplates(EFTT_MAX);
 bool CTexture::s_ShaderTemplatesInitialized = false;
 
 CTexture* CTexture::s_pTexNULL = 0;
@@ -489,8 +492,6 @@ CTexture* CTexture::CreateTextureObject(const char* name, uint32 nWidth, uint32 
 
     bool bFound = false;
 
-    MEMSTAT_CONTEXT_FMT(EMemStatContextTypes::MSC_Texture, 0, "%s", name);
-
     CTexture* pTex = NewTexture(name, nFlags, eTF, bFound);
     if (bFound)
     {
@@ -779,9 +780,6 @@ CTexture* CTexture::ForName(const char* name, uint32 nFlags, ETEX_Format eTFDst)
     SLICE_AND_SLEEP();
 
     bool bFound = false;
-
-    MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_Other, 0, "Textures");
-    MEMSTAT_CONTEXT_FMT(EMemStatContextTypes::MSC_Texture, 0, "%s", name);
 
     CRY_DEFINE_ASSET_SCOPE("Texture", name);
 
@@ -1532,12 +1530,20 @@ uint32 CTexture::TextureDataSize(uint32 nWidth, uint32 nHeight, uint32 nDepth, u
     {
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION TEXTURE_CPP_SECTION_2
-#include AZ_RESTRICTED_FILE(Texture_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/Texture_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/Texture_cpp_provo.inl"
+    #endif
 #endif
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION TEXTURE_CPP_SECTION_3
-#include AZ_RESTRICTED_FILE(Texture_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/Texture_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/Texture_cpp_provo.inl"
+    #endif
 #endif
 
         __debugbreak();
@@ -1905,13 +1911,6 @@ void CTexture::Init()
     SDynTexture::Init();
     InitStreaming();
     CTexture::s_TexStates.reserve(300); // this likes to expand, so it'd be nice if it didn't; 300 => ~6Kb, there were 171 after one level
-    for (int i = 0; i < MAX_TMU; i++)
-    {
-        for (int j = 0; j < eHWSC_Num; j++)
-        {
-            s_TexStateIDs[j][i] = -1;
-        }
-    }
 
     SDynTexture2::Init(eTP_Clouds);
 }
@@ -1975,13 +1974,13 @@ void CTexture::Update()
 
     // reload pending texture reload requests
     {
-        std::set<string> queue;
+        AZStd::set<string, AZStd::less<string>, AZ::StdLegacyAllocator> queue;
 
         s_xTexReloadLock.Lock();
         s_vTexReloadRequests.swap(queue);
         s_xTexReloadLock.Unlock();
 
-        for (std::set<string>::iterator i = queue.begin(); i != queue.end(); i++)
+        for (auto i = queue.begin(); i != queue.end(); i++)
         {
             ReloadFile(*i);
         }
@@ -2587,10 +2586,10 @@ void CTexture::ShutDown()
     {
         for (i = 0; i < EFTT_MAX; i++)
         {
-            s_ShaderTemplates[i].~CTexture();
+            (*s_ShaderTemplates)[i].~CTexture();
         }
     }
-    s_ShaderTemplates.Free();
+    s_ShaderTemplates->Free();
 
     SAFE_DELETE(s_pTexNULL);
 
@@ -2790,7 +2789,7 @@ void CTexture::ReleaseSystemTextures()
 
     SAFE_RELEASE_FORCE(s_defaultEnvironmentProbeDummy);
 
-    s_CustomRT_2D.Free();
+    s_CustomRT_2D->Free();
 
     s_pPoolMgr->Flush();
 
@@ -2810,11 +2809,9 @@ void CTexture::LoadDefaultSystemTextures()
     char str[256];
     int i;
 
-    MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_Other, 0, "Engine textures");
-
     if (!m_bLoadedSystem)
     {
-        ScopedSwitchToGlobalHeap useGlobalHeap;
+        
 
         m_bLoadedSystem = true;
 
@@ -2852,7 +2849,11 @@ void CTexture::LoadDefaultSystemTextures()
         s_ptexSceneSpecularAccMapMS = CTexture::CreateTextureObject("$SceneSpecularAccMS", 0, 0, 1, eTT_2D, FT_DONT_RELEASE | FT_DONT_STREAM | FT_USAGE_RENDERTARGET, eTF_Unknown, TO_SCENE_SPECULAR_ACC_MS);
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION TEXTURE_CPP_SECTION_4
-#include AZ_RESTRICTED_FILE(Texture_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/Texture_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/Texture_cpp_provo.inl"
+    #endif
 #endif
         s_ptexRT_ShadowPool = CTexture::CreateTextureObject("$RT_ShadowPool", 0, 0, 1, eTT_2D, FT_DONT_STREAM | FT_USAGE_RENDERTARGET | FT_USAGE_DEPTHSTENCIL, eTF_Unknown);
         //  Confetti BEGIN: Igor Lobanchikov
@@ -2913,9 +2914,24 @@ void CTexture::LoadDefaultSystemTextures()
             s_ptexSceneSpecular = CTexture::CreateTextureObject("$SceneSpecular", 0, 0, 1, eTT_2D, nRTFlags, eTF_R8G8B8A8);
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION TEXTURE_CPP_SECTION_5
-#include AZ_RESTRICTED_FILE(Texture_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/Texture_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/Texture_cpp_provo.inl"
+    #endif
 #endif
+            
+#if defined(AZ_PLATFORM_APPLE_IOS)
+            int nRTSceneDiffuseFlags =  nRTFlags;
+            static ICVar* pVar = gEnv->pConsole->GetCVar("e_ShadowsClearShowMaskAtLoad");
+            if (pVar && !pVar->GetIVal())
+            {
+                nRTSceneDiffuseFlags |= FT_USAGE_MEMORYLESS;
+            }
+            s_ptexSceneDiffuseAccMap = CTexture::CreateTextureObject("$SceneDiffuseAcc", 0, 0, 1, eTT_2D, nRTSceneDiffuseFlags, eTF_R8G8B8A8, TO_SCENE_DIFFUSE_ACC);
+#else
             s_ptexSceneDiffuseAccMap = CTexture::CreateTextureObject("$SceneDiffuseAcc", 0, 0, 1, eTT_2D, nRTFlags, eTF_R8G8B8A8, TO_SCENE_DIFFUSE_ACC);
+#endif
             s_ptexSceneSpecularAccMap = CTexture::CreateTextureObject("$SceneSpecularAcc", 0, 0, 1, eTT_2D, nRTFlags, eTF_R8G8B8A8, TO_SCENE_SPECULAR_ACC);
             s_ptexAmbientLookup = CTexture::CreateTextureObject("$AmbientLookup", 0, 0, 1, eTT_2D, nRTFlags, eTF_R8G8B8A8);
             s_ptexShadowMask = CTexture::CreateTextureObject("$ShadowMask", 0, 0, 1, eTT_2D, nRTFlags, eTF_R8G8B8A8, TO_SHADOWMASK);
@@ -2950,8 +2966,6 @@ void CTexture::LoadDefaultSystemTextures()
             if (!s_ptexZTarget)
             {
                 //for d3d10 we cannot free it during level transition, therefore allocate once and keep it
-                ScopedSwitchToGlobalHeap globalHeapScope;
-
 #if defined(OPENGL_ES) || defined(CRY_USE_METAL)
                 // Custom Z-Target for GMEM render path
                 if (gcpRendD3D && gcpRendD3D->FX_GetEnabledGmemPath(nullptr))
@@ -2983,7 +2997,11 @@ void CTexture::LoadDefaultSystemTextures()
         }
 #elif defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION TEXTURE_CPP_SECTION_6
-#include AZ_RESTRICTED_FILE(Texture_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/Texture_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/Texture_cpp_provo.inl"
+    #endif
 #endif
 
         // Create dummy texture object for terrain and clouds lightmap
@@ -3024,9 +3042,9 @@ void CTexture::LoadDefaultSystemTextures()
 
         for (i = 0; i < EFTT_MAX; i++)
         {
-            ::new(&s_ShaderTemplates[i])CTexture(FT_DONT_RELEASE);
-            s_ShaderTemplates[i].SetCustomID(EFTT_DIFFUSE + i);
-            s_ShaderTemplates[i].SetFlags(FT_DONT_RELEASE);
+            ::new(&((*s_ShaderTemplates)[i]))CTexture(FT_DONT_RELEASE);
+            (*s_ShaderTemplates)[i].SetCustomID(EFTT_DIFFUSE + i);
+            (*s_ShaderTemplates)[i].SetFlags(FT_DONT_RELEASE);
         }
         s_ShaderTemplatesInitialized = true;
 
@@ -3046,7 +3064,11 @@ void CTexture::LoadDefaultSystemTextures()
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION TEXTURE_CPP_SECTION_7
-#include AZ_RESTRICTED_FILE(Texture_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/Texture_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/Texture_cpp_provo.inl"
+    #endif
 #endif
     }
 #endif
@@ -3333,7 +3355,7 @@ void CTexture::AddInvalidateCallback(void* listener, InvalidateCallbackType call
     //which point to this texture. We need to lock to avoid a race-condition.
     AZStd::lock_guard<AZStd::mutex> lockGuard(m_invalidateCallbacksMutex);
 
-    m_invalidateCallbacks.push_back(AZStd::make_pair(listener, callback));
+    m_invalidateCallbacks.insert(AZStd::pair<void*, InvalidateCallbackType>(listener, callback));
 }
 
 void CTexture::RemoveInvalidateCallbacks(void* listener)
@@ -3342,17 +3364,7 @@ void CTexture::RemoveInvalidateCallbacks(void* listener)
     //which point to this texture. We need to lock to avoid a race-condition.
     AZStd::lock_guard<AZStd::mutex> lockGuard(m_invalidateCallbacksMutex);
 
-    for (auto it = m_invalidateCallbacks.begin(); it != m_invalidateCallbacks.end(); )
-    {
-        if (it->first == listener)
-        {
-            it = m_invalidateCallbacks.erase(it);
-        }
-        else
-        {
-            ++it;
-        }
-    }
+    m_invalidateCallbacks.erase(listener);
 }
 
 void CTexture::ApplyDepthTextureState(int unit, int nFilter, bool clamp)

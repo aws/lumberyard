@@ -29,12 +29,15 @@
 #include <functional>
 #include <utility>
 
+#include <AzToolsFramework/Viewport/ActionBus.h>
+
 class QSignalMapper;
 class QPixmap;
 class QDockWidget;
 class DynamicMenu;
 class MainWindow;
 class QtViewPaneManager;
+class ShortcutDispatcher;
 
 class PatchedAction
     : public QAction
@@ -61,8 +64,30 @@ private:
     MainWindow* const m_mainWindow;
 };
 
+class ActionManager;
+
+// If the action handler puts up a modal dialog, the event queue will be pumped
+// and double clicks on menu items will go through, in some cases.
+// This class can be used to guard against that.
+class ActionManagerExecutionGuard
+{
+public:
+    ActionManagerExecutionGuard(ActionManager* actionManager, QAction* action);
+    ActionManagerExecutionGuard(ActionManager* actionManager, int actionId);
+    ~ActionManagerExecutionGuard();
+
+    // Only execute the action of this returns true
+    bool CanExecute() const { return m_canExecute; }
+
+private:
+    QPointer<ActionManager> m_actionManager;
+    int m_actionId;
+    bool m_canExecute;
+};
+
 class ActionManager
     : public QObject
+    , private AzToolsFramework::EditorActionRequestBus::Handler
 {
     Q_OBJECT
 
@@ -77,17 +102,26 @@ public:
         ActionWrapper& SetShortcut(const QKeySequence& shortcut) { m_action->setShortcut(shortcut); return *this; }
         ActionWrapper& SetToolTip(const QString& toolTip) { m_action->setToolTip(toolTip); return *this; }
         ActionWrapper& SetStatusTip(const QString& statusTip) { m_action->setStatusTip(statusTip); return *this; }
-
         ActionWrapper& SetCheckable(bool value) { m_action->setCheckable(value); return *this; }
+        ActionWrapper& SetReserved(); // if reserved, the action should not be allowed to be disabled or overridden
 
         //ActionWrapper &SetMenu(QMenu *menu) { m_action->setMenu(menu); return *this; }
         //ActionWrapper &SetMenu(QMenu *menu) { m_action->setMenu(menu); return *this; }
         template <typename Func1, typename Func2>
         ActionWrapper& Connect(Func1 signal, Func2 slot)
         {
-            QObject::connect(m_action, signal, m_action, [slot]()
+            // The ActionWrapper class is stack based usually so
+            // the lambda below can't use the this pointer.
+            // As a result, wrap the actionManager and the action in
+            // a QPointer, and capture them in the lambda
+            QPointer<ActionManager> actionManager = m_actionManager;
+            QPointer<QAction> action = m_action;
+
+            QObject::connect(m_action, signal, m_action, [action, actionManager, slot]()
                 {
-                    if (!GetIEditor()->IsInGameMode())
+                    ActionManagerExecutionGuard guard(actionManager.data(), action.data());
+
+                    if (!GetIEditor()->IsInGameMode() && guard.CanExecute())
                     {
                         slot();
                     }
@@ -98,9 +132,18 @@ public:
         template <typename Func1, typename Object, typename Func2>
         ActionWrapper& Connect(Func1 signal, Object* context, const Func2 slot, Qt::ConnectionType type = Qt::AutoConnection)
         {
-            QObject::connect(m_action, signal, context, [context, slot]()
+            // The ActionWrapper class is stack based usually so
+            // the lambda below can't use the this pointer.
+            // As a result, wrap the actionManager and the action in
+            // a QPointer, and capture them in the lambda
+            QPointer<ActionManager> actionManager = m_actionManager;
+            QPointer<QAction> action = m_action;
+
+            QObject::connect(m_action, signal, context, [action, actionManager, context, slot]()
                 {
-                    if (!GetIEditor()->IsInGameMode())
+                    ActionManagerExecutionGuard guard(actionManager.data(), action.data());
+
+                    if (!GetIEditor()->IsInGameMode() && guard.CanExecute())
                     {
                         (context->*slot)();
                     }
@@ -141,6 +184,10 @@ public:
     {
     public:
         MenuWrapper() = default;
+        MenuWrapper(QMenu* menu, ActionManager* am)
+            : m_menu(menu)
+            , m_actionManager(am) {}
+
         MenuWrapper& SetTitle(const QString& text) { m_menu->setTitle(text); return *this; }
         MenuWrapper& SetIcon(const QIcon& icon) { m_menu->setIcon(icon); return *this; }
 
@@ -158,9 +205,9 @@ public:
             return m_menu->addSeparator();
         }
 
-        MenuWrapper AddMenu(const QString& name)
+        MenuWrapper AddMenu(const QString& name, const QString& menuId = QString())
         {
-            auto menu = m_actionManager->AddMenu(name);
+            auto menu = m_actionManager->AddMenu(name, menuId);
             m_menu->addMenu(menu);
             return menu;
         }
@@ -170,22 +217,23 @@ public:
             return !m_menu;
         }
 
-        operator QMenu*() const
+        operator QMenu*()
         {
             return m_menu;
         }
-        QMenu* operator->() const { return m_menu; }
 
-        QMenu* Get() const
+        QMenu* operator->()
+        {
+            return m_menu;
+        }
+
+        QMenu* Get()
         {
             return m_menu;
         }
 
     private:
         friend ActionManager;
-        MenuWrapper(QMenu* menu, ActionManager* am)
-            : m_menu(menu)
-            , m_actionManager(am) { Q_ASSERT(m_menu); }
 
         QPointer<QMenu> m_menu = nullptr;
         ActionManager* m_actionManager = nullptr;
@@ -236,11 +284,13 @@ public:
     };
 
 public:
-    explicit ActionManager(MainWindow* parent, QtViewPaneManager* qtViewPaneManager);
+    explicit ActionManager(
+        MainWindow* parent, QtViewPaneManager* qtViewPaneManager,
+        ShortcutDispatcher* shortcutDispatcher);
     ~ActionManager();
     void AddMenu(QMenu* menu);
-    MenuWrapper AddMenu(const QString& name);
-    MenuWrapper CreateMenuPath(const QStringList& menuPath);
+    MenuWrapper AddMenu(const QString& title, const QString& menuId);
+    MenuWrapper FindMenu(const QString& menuId);
     bool ActionIsWidget(int actionId) const;
 
     void AddToolBar(QToolBar* toolBar);
@@ -248,12 +298,21 @@ public:
 
     void AddAction(QAction* action);
     void AddAction(int id, QAction* action);
+    void RemoveAction(QAction* action);
     ActionWrapper AddAction(int id, const QString& name);
     bool HasAction(QAction*) const;
     bool HasAction(int id) const;
 
     QAction* GetAction(int id) const;
     QList<QAction*> GetActions() const;
+
+    // AzToolsFramework::EditorActionRequests
+    void AddActionViaBus(int id, QAction* action) override;
+    void RemoveActionViaBus(QAction* action) override;
+    void EnableDefaultActions() override;
+    void DisableDefaultActions() override;
+    void AttachOverride(QWidget* object) override;
+    void DetachOverride() override;
 
     template<typename T>
     void RegisterUpdateCallback(int id, T* object, void (T::* method)(QAction*))
@@ -282,6 +341,12 @@ public:
     void SendMetricsEvent(int id);
     bool eventFilter(QObject* watched, QEvent* event);
 
+    // returns false if the action was already inserted, indicating that the action should not be processed again
+    bool InsertActionExecuting(int id);
+
+    // returns true if the action was inserted with InsertActionExecuting previously
+    bool RemoveActionExecuting(int id);
+
 Q_SIGNALS:
     void SendMetricsSignal(const char* viewPaneName, const char* openLocation);
 
@@ -293,8 +358,6 @@ private slots:
     void UpdateActions();
 
 private:
-    QMenu* GetMenu(const QString& name) const;
-    QMenu* GetMenu(const QString& name, const QList<QAction*>& actions) const;
     QHash<int, QAction*> m_actions;
     QVector<QMenu*> m_menus;
     QVector<QToolBar*> m_toolBars;
@@ -304,6 +367,7 @@ private:
     MainWindow* const m_mainWindow;
 
     QtViewPaneManager* m_qtViewPaneManager;
+    ShortcutDispatcher* m_shortcutDispatcher = nullptr;
 
     // for sending shortcut metrics events
     bool m_isShortcutEvent = false;
@@ -314,8 +378,15 @@ private:
     // for sending main menu metrics events
     QSet<int> m_registeredViewPaneIds;
 
-    // Update the registered view pane Ids when the registered view pane list is modified
+    // update the registered view pane Ids when the registered view pane list is modified
     void RebuildRegisteredViewPaneIds();
+
+    // Guard against recursive actions being triggered by double clicks on menu items
+    // while modal dialogs are in the process of popping up
+    QSet<int> m_executingIds;
+
+    // have all default actions (not including reserved actions) been suspended
+    bool m_defaultActionsSuspended = false;
 };
 
 class DynamicMenu

@@ -41,7 +41,7 @@ namespace Telemetry
 
         size = std::max(size, sizeof(SChunkHeader) + sizeof(uint64));
 
-        if (m_pBegin = static_cast<uint8*>(malloc(size)))
+        if (m_pBegin = static_cast<uint8*>(CryModuleMalloc(size)))
         {
             m_pEnd                  = m_pBegin + size;
             m_pPos                  = m_pBegin;
@@ -64,7 +64,7 @@ namespace Telemetry
     {
         if (m_pBegin)
         {
-            free(m_pBegin);
+            CryModuleFree(m_pBegin);
         }
 
         m_pBegin                = NULL;

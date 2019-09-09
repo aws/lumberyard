@@ -1,0 +1,4 @@
+<Entity
+	Name="WindArea"
+	Script="Scripts/Entities/Physics/WindArea.lua"
+/>

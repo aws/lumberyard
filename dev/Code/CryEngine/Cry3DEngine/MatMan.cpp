@@ -341,9 +341,7 @@ _smart_ptr<IMaterial> CMatMan::LoadMaterialInternal(const char* sMtlName, bool b
         }
         return nullptr;
     }
-    
-    MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_Other, 0, "Materials");
-    MEMSTAT_CONTEXT_FMT(EMemStatContextTypes::MSC_MTL, EMemStatContextFlags::MSF_Instance, "%s", name.c_str());
+
     LOADING_TIME_PROFILE_SECTION; // Only profile actually loading of the material.
 
     CRY_DEFINE_ASSET_SCOPE("Material", sMtlName);
@@ -895,7 +893,7 @@ void CMatMan::ParsePublicParams(SInputShaderResources& sr, XmlNodeRef paramsNode
         paramsNode->getAttributeByIndex(i, &key, &val);
         SShaderParam Param;
         assert(val && key);
-        cry_strcpy(Param.m_Name, key);
+        Param.m_Name = key;
         Param.m_Value.m_Color[0] = Param.m_Value.m_Color[1] = Param.m_Value.m_Color[2] = Param.m_Value.m_Color[3] = 0;
         shGetVector4(val, Param.m_Value.m_Color);
         Param.m_Type = eType_FCOLOR;

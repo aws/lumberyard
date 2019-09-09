@@ -55,7 +55,7 @@ public:
 
     virtual bool IsKeySelected(int key) const
     {
-        assert(key >= 0 && key < (int)m_keys.size());
+        AZ_Assert(key >= 0 && key < (int)m_keys.size(), "Key index is out of range");
         if (m_keys[key].flags & AKEY_SELECTED)
         {
             return true;
@@ -65,7 +65,7 @@ public:
 
     virtual void SelectKey(int key, bool select)
     {
-        assert(key >= 0 && key < (int)m_keys.size());
+        AZ_Assert(key >= 0 && key < (int)m_keys.size(), "Key index is out of range");
         if (select)
         {
             m_keys[key].flags |= AKEY_SELECTED;
@@ -73,6 +73,29 @@ public:
         else
         {
             m_keys[key].flags &= ~AKEY_SELECTED;
+        }
+    }
+
+    bool IsSortMarkerKey(unsigned int key) const override
+    {
+        AZ_Assert(key < m_keys.size(), "key index is out of range");
+        if (m_keys[key].flags & AKEY_SORT_MARKER)
+        {
+            return true;
+        }
+        return false;
+    }
+
+    void SetSortMarkerKey(unsigned int key, bool enabled) override
+    {
+        AZ_Assert(key < m_keys.size(), "key index is out of range");
+        if (enabled)
+        {
+            m_keys[key].flags |= AKEY_SORT_MARKER;
+        }
+        else
+        {
+            m_keys[key].flags &= ~AKEY_SORT_MARKER;
         }
     }
 
@@ -143,7 +166,7 @@ public:
     virtual void GetValue(float time, Vec4& value, bool applyMultiplier = false) { assert(0); };
     virtual void GetValue(float time, Quat& value) { assert(0); };
     virtual void GetValue(float time, bool& value) { assert(0); };
-    virtual void GetValue(float time, AZ::Data::AssetBlends<AZ::Data::AssetData>& value) { assert(0); }
+    virtual void GetValue(float time, Maestro::AssetBlends<AZ::Data::AssetData>& value) { assert(0); }
 
     //////////////////////////////////////////////////////////////////////////
     // Set track value at specified time.
@@ -154,7 +177,7 @@ public:
     virtual void SetValue(float time, const Vec4& value, bool bDefault = false, bool applyMultiplier = false) { assert(0); };
     virtual void SetValue(float time, const Quat& value, bool bDefault = false) { assert(0); };
     virtual void SetValue(float time, const bool& value, bool bDefault = false) { assert(0); };
-    virtual void SetValue(float time, const AZ::Data::AssetBlends<AZ::Data::AssetData>& value, bool bDefault = false) { assert(0); }
+    virtual void SetValue(float time, const Maestro::AssetBlends<AZ::Data::AssetData>& value, bool bDefault = false) { assert(0); }
 
     virtual void OffsetKeyPosition(const Vec3& value) { assert(0); };
     virtual void UpdateKeyDataAfterParentChanged(const AZ::Transform& oldParentWorldTM, const AZ::Transform& newParentWorldTM) { assert(0); };
@@ -216,6 +239,16 @@ public:
         return false;
     }
 
+    unsigned int GetId() const override
+    {
+        return m_id;
+    }
+
+    void SetId(unsigned int id) override
+    {
+        m_id = id;
+    }
+
     static void Reflect(AZ::SerializeContext* serializeContext) {}
 
 protected:
@@ -251,6 +284,8 @@ protected:
     IAnimNode* m_node;
 
     float m_trackMultiplier;
+
+    unsigned int m_id = 0;
 };
 
 //////////////////////////////////////////////////////////////////////////
@@ -290,7 +325,7 @@ inline TAnimTrack<KeyType>::TAnimTrack()
 template <class KeyType>
 inline void TAnimTrack<KeyType>::RemoveKey(int index)
 {
-    assert(index >= 0 && index < (int)m_keys.size());
+    AZ_Assert(index >= 0 && index < (int)m_keys.size(), "Key index is out of range");
     m_keys.erase(m_keys.begin() + index);
     Invalidate();
 }
@@ -299,8 +334,8 @@ inline void TAnimTrack<KeyType>::RemoveKey(int index)
 template <class KeyType>
 inline void TAnimTrack<KeyType>::GetKey(int index, IKey* key) const
 {
-    assert(index >= 0 && index < (int)m_keys.size());
-    assert(key != 0);
+    AZ_Assert(index >= 0 && index < (int)m_keys.size(), "Key index is out of range");
+    AZ_Assert(key != 0, "Key cannot be null!");
     *(KeyType*)key = m_keys[index];
 }
 
@@ -308,8 +343,8 @@ inline void TAnimTrack<KeyType>::GetKey(int index, IKey* key) const
 template <class KeyType>
 inline void TAnimTrack<KeyType>::SetKey(int index, IKey* key)
 {
-    assert(index >= 0 && index < (int)m_keys.size());
-    assert(key != 0);
+    AZ_Assert(index >= 0 && index < (int)m_keys.size(), "Key index is out of range");
+    AZ_Assert(key != 0, "Key cannot be null!");
     m_keys[index] = *(KeyType*)key;
     Invalidate();
 }
@@ -318,7 +353,7 @@ inline void TAnimTrack<KeyType>::SetKey(int index, IKey* key)
 template <class KeyType>
 inline float TAnimTrack<KeyType>::GetKeyTime(int index) const
 {
-    assert(index >= 0 && index < (int)m_keys.size());
+    AZ_Assert(index >= 0 && index < (int)m_keys.size(), "Key index is out of range");
     return m_keys[index].time;
 }
 
@@ -326,7 +361,7 @@ inline float TAnimTrack<KeyType>::GetKeyTime(int index) const
 template <class KeyType>
 inline void TAnimTrack<KeyType>::SetKeyTime(int index, float time)
 {
-    assert(index >= 0 && index < (int)m_keys.size());
+    AZ_Assert(index >= 0 && index < (int)m_keys.size(), "Key index is out of range");
     m_keys[index].time = time;
     Invalidate();
 }
@@ -349,7 +384,7 @@ inline int TAnimTrack<KeyType>::FindKey(float time)
 template <class KeyType>
 inline int TAnimTrack<KeyType>::GetKeyFlags(int index)
 {
-    assert(index >= 0 && index < (int)m_keys.size());
+    AZ_Assert(index >= 0 && index < (int)m_keys.size(), "Key index is out of range");
     return m_keys[index].flags;
 }
 
@@ -357,7 +392,7 @@ inline int TAnimTrack<KeyType>::GetKeyFlags(int index)
 template <class KeyType>
 inline void TAnimTrack<KeyType>::SetKeyFlags(int index, int flags)
 {
-    assert(index >= 0 && index < (int)m_keys.size());
+    AZ_Assert(index >= 0 && index < (int)m_keys.size(), "Key index is out of range");
     m_keys[index].flags = flags;
     Invalidate();
 }
@@ -406,6 +441,8 @@ inline bool TAnimTrack<KeyType>::Serialize(XmlNodeRef& xmlNode, bool bLoading, b
             SerializeKey(m_keys[i], keyNode, bLoading);
         }
 
+        xmlNode->getAttr("Id", m_id);
+
         if ((!num) && (!bLoadEmptyTracks))
         {
             return false;
@@ -433,6 +470,8 @@ inline bool TAnimTrack<KeyType>::Serialize(XmlNodeRef& xmlNode, bool bLoading, b
 
             SerializeKey(m_keys[i], keyNode, bLoading);
         }
+
+        xmlNode->setAttr("Id", m_id);
     }
     return true;
 }

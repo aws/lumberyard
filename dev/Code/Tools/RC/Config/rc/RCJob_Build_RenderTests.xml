@@ -1,0 +1,378 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<RCJobs>
+	<!-- General properties-->
+	<DefaultProperties GameFolder="RenderTests" /> <!-- The subfolder that contains game assets -->
+	<DefaultProperties LocalizationFolder="Localization" /> <!-- The subfolder that contains localization data -->
+	<DefaultProperties EngineFolder="Engine" /> <!-- The subfolder containing engine assets, probably should never be changed by 3rd party projects (it's hardcoded) -->
+	<DefaultProperties P="PC" /> <!-- Special case: p must be set from the commandline, and it cannot be set to something else using RCJob, this default reflects the hardcoded default -->
+	<Properties Platform="${P}" /> <!-- This is an alias of p that is used in this job file only -->
+
+	<!-- Default path properties -->
+	<DefaultProperties InputPath="." /> <!-- By default, assume current directory contains source assets -->
+	<DefaultProperties TempPath="${InputPath}/TempRC/${Platform}" /> <!-- This script will store converted (but unpacked) files in a temp folder -->
+	<DefaultProperties OutputPath="${InputPath}/OutRC/${Platform}" /> <!-- The target folder for the output files (packed converted files) -->
+
+	<!-- Default index format, you can override this from the command line -->
+	<!-- This is used by meshes (.cgf) and geomcaches (.cax) -->
+	<!-- Alternative: u16. Should match the engine typedef of vtx_idx type to prevent run-time conversion -->
+	<DefaultProperties VertexIndexFormat="u32" />
+
+
+	<!-- If passed on the command-line, this will also package DLC -->
+	<!-- Be default, no need to waste time doing this -->
+	<DefaultProperties PackageDlc="0" />
+
+	<!-- CryTek source-control specific options, we use separate branches for some assets, these properties allows control over which assets to process -->
+	<!-- By default, don't suppress anything (just assume all assets should be processed at once if nothing is specified on command-line) -->
+	<!-- It's also possible to run specific jobs by name by using /jobtarget command-line switch -->
+	<DefaultProperties SuppressCodeBranchSpecificConversion="0" />
+	<DefaultProperties SuppressDataBranchSpecificConversion="0" />
+	<DefaultProperties SuppressCleanupJob="0" />
+
+	<!-- Shared constant properties -->
+	<Properties XmlFilterFile="${_rc_exe_folder}xmlfilter.txt" />
+	<Properties XmlExtensions="*.animevents;*.adb;*.bspace;*.cdf;*.chrparams;*.comb;*.dlg;*.ent;*.fsq;*.fxl;*.ik;*.json;*.lmg;*.mtl;*.setup;*.xml;*.node;*.veg;*.lyr" />
+
+	<!-- TargetHasEditor, if not passed assume this is only the case for PC -->
+	<!-- By passing explicit zero while platform is PC, you can create a "pure client" asset build -->
+	<DefaultProperties TargetHasEditor="" />
+	<If TargetHasEditor="">
+		<If Platform="PC">
+			<Properties TargetHasEditor="1" />
+		</If>
+		<IfNot Platform="PC">
+			<Properties TargetHasEditor="0" />
+		</IfNot>
+	</If>
+
+	<!-- Alembic currently crashes when building for Android/IOS. Disable on those platforms for now -->
+	<Properties BuildAlembic="1" />
+	<If Platform="es3">
+		<Properties BuildAlembic="0" />
+	</If>
+	<If Platform="ios">
+		<Properties BuildAlembic="0" />
+	</If>
+
+	<!-- Optimize meshes for ios and Android -->
+	<Properties UseOptimizedPrimitiveType="0" />
+	<If Platform="es3">
+		<Properties UseOptimizedPrimitiveType="1" />
+	</If>
+	<If Platform="ios">
+		<Properties UseOptimizedPrimitiveType="1" />
+	</If>
+
+	<!-- If (TargetHasEditor == 0 && Platform == PC) store temp files in a separate folder -->
+	<If TargetHasEditor="0">
+		<If Platform="PC">
+			<Properties TempPath="${TempPath}_pure" />
+		</If>
+	</If>
+
+	<!-- Audio subfolder containing platform-specific assets. Using Wwise LTX, so no platform specific sound -->
+	<DefaultProperties AudioSubfolder="" />
+
+	<!-- Convert meshes template -->
+	<MeshesJob>
+		<DefaultProperties VertexPositionFormat="exporter" /> <!-- Alternative: exporter to use exporter-config, f16 or f32 to force format -->
+		<DefaultProperties SplitLoDs="1" />
+		<DefaultProperties OptimizedPrimitiveType="${UseOptimizedPrimitiveType}" />
+		<Job Input="*.cgf;*.cga" Refresh="1" />
+	</MeshesJob>
+
+	<!-- Convert animation template -->
+	<AnimationsJob>
+		<DefaultProperties DbaStreamPrepare="1" />
+		<DefaultProperties CafAlignTracks="1" />
+		<DefaultProperties AnimConfigFolder="Animations" />
+		<Job Input="*.i_caf" />
+		<Job Input="*.anm" CopyOnly="1" />
+	</AnimationsJob>
+
+	<!-- Convert alembic template -->
+	<AlembicJob>
+		<DefaultProperties SkipFilesWithoutBuildConfig="1" />
+		<Job Input="*.abc" />
+	</AlembicJob>
+
+	<!-- Convert textures template -->
+	<TexturesJob>
+		<If Streaming=""> <!-- If not specified on command-line or otherwise -->
+			<If Platform="PC">
+				<Properties Streaming="1" /> <!-- Split, no tiling -->
+			</If>
+			<If Platform="es3">
+				<Properties Streaming="0" /> <!-- ES3 refers to ETC2 compression, RC can't split this yet -->
+			</If>
+			<If Platform="ios">
+				<Properties Streaming="0" /> <!-- ios refers to ETC2 compression, RC can't split this yet -->
+			</If>
+		</If>
+		<If PreventDdsSplitting=""> <!-- Work-around for precompiled DDS that can't be split, default: only if not streaming -->
+			<If Streaming="0">
+				<Properties PreventDdsSplitting="1" />
+			</If>
+			<IfNot Streaming="0">
+				<Properties PreventDdsSplitting="0" />
+			</IfNot>
+		</If>
+		<Job Input="*.tif" />
+		<If AllowDdsCopying="1">
+			<Job Input="*.dds" CopyOnly="${PreventDdsSplitting}" />
+		</If>
+		<Job Input="*.gfx;*.png;*.usm" SourceRoot="${SourceRoot}/Textures" TargetRoot="${TargetRoot}/Textures" CopyOnly="1" />
+	</TexturesJob>
+
+	<!-- Convert XML template -->
+	<XmlJob>
+		<Properties OverwriteExtension="xml" />
+		<If TargetHasEditor="1">
+			<Properties CopyOnly="1" /> <!-- If we have editor, don't make binary XML -->
+		</If>
+		<Job Input="${XmlExtensions}" />
+	</XmlJob>
+
+	<!-- Convert character template -->
+	<CharactersJob>
+		<If TargetHasEditor="1">
+			<Properties CopyOnly="1" /> <!-- Editor needs un-converted files -->
+		</If>
+		<DefaultProperties CompactVertexStreams="1" />
+		<DefaultProperties CompactVertexStreamsKeepNormals="1" />
+		<DefaultProperties ComputeSubsetTexelDensity="1" />
+		<DefaultProperties VertexPositionFormat="exporter" /> <!-- Alternative: exporter to use exporter-config, f16 or f32 to force format -->
+		<DefaultProperties QTangents="1" />
+		<DefaultProperties OverwriteExtension="chr" />
+		<DefaultProperties OptimizedPrimitiveType="${UseOptimizedPrimitiveType}" />
+		<Job Input="*.chr" Write_Manifests="1" StripMesh="4" />
+		<Job Input="*.chr" Refresh="1" StripNonMesh="1" />
+		<Job Input="*.skin" Write_Manifests="1" StripMesh="3" />
+		<Job Input="*.skin" Refresh="1" StripNonMesh="1" />
+	</CharactersJob>
+
+	<!-- Compile lua script template -->
+	<LuaJob>
+		<If TargetHasEditor="1">
+			<Properties CopyOnly="1" /> <!-- If we have editor, don't compile lua script -->
+		</If>
+		<!-- Android and IOS currently have problems if we compile the lua scripts -->
+		<If Platform="es3">
+			<Properties CopyOnly="1" />
+		</If>
+		<If Platform="ios">
+			<Properties CopyOnly="1" />
+		</If>
+		<Job Input="*.lua" />
+	</LuaJob>
+
+	<!-- Copy in subfolder template -->
+	<CopySubfolderJob>
+		<If AudioSpecific="1">
+			<Properties SourceRoot="${SourceRoot}/${Subfolder}/wwise/${AudioSubfolder}" />
+			<Properties TargetRoot="${TargetRoot}/${Subfolder}/wwise" />
+		</If>
+		<IfNot AudioSpecific="1">
+			<Properties SourceRoot="${SourceRoot}/${Subfolder}" />
+			<Properties TargetRoot="${TargetRoot}/${Subfolder}" />
+		</IfNot>
+		<Job Input="${Input}" CopyOnly="1" />
+	</CopySubfolderJob>
+
+	<GameAssetsConversion>
+		<IfNot SuppressDataBranchSpecificConversion="1">
+			<!-- Conversion -->
+			<Properties SourceRoot="${InputPath}/${GameFolder}" />
+			<Properties TargetRoot="${TempPath}/${GameFolder}_Assets" />
+			<Run Job="AnimationsJob" />
+			<Run Job="MeshesJob" />
+			<If BuildAlembic="1">
+				<Run Job="AlembicJob" />
+			</If>
+			<Run Job="TexturesJob" AllowDdsCopying="0" />
+			<Run Job="XmlJob" />
+			<Run Job="CharactersJob" />
+
+			<!-- Copying -->
+			<Run Job="CopySubfolderJob" SubFolder="Libs" Input="*.cfg;*.dat;*.gfx;*.lua;*.lut;*.txt;*.usm" />
+			<Run Job="CopySubfolderJob" SubFolder="Sounds" Input="*.fev;*.fsb;*.bnk;*.wem" AudioSpecific="1" />
+			<Run Job="CopySubfolderJob" SubFolder="Sounds" Input="*.fdp" />
+			<Run Job="CopySubfolderJob" SubFolder="Music" Input="*.ogg;*.fsb" AudioSpecific="1" />
+			<Run Job="CopySubfolderJob" SubFolder="Objects" Input="*.cal;*.gfx;*.grd;*.grp;*.skin" />
+			<Run Job="CopySubfolderJob" SubFolder="Difficulty" Input="*.cfg;*.xls" />
+			<Run Job="CopySubfolderJob" SubFolder="Videos" Input="*.txt;*.usm" />
+			<Run Job="CopySubfolderJob" SubFolder="UI" Input="*.uicanvas" />
+
+			<!-- Pack files -->
+			<Properties SourceRoot="${TempPath}/${GameFolder}_Assets" />
+			<Properties TargetRoot="${OutputPath}/${GameFolder}" />
+			<Properties AnimationTypes="*.animevents;*.animsettings;*.anm;*.fxl;*.comb;*.bspace;*.dba;*.caf" />
+			<Properties TextureTypes="*.dds;*.dds.*" />
+			<Properties AlembicTypes="*.cax" />
+
+			<!-- Compressed files -->
+			<Job Input="Animations/*.*;${AnimationTypes}" Zip="${TargetRoot}/Animations.pak" />
+			<Job Input="Objects/*.*" Exclude="${AlembicTypes};${AnimationTypes}" Zip="${TargetRoot}/Objects.pak" Zip_SizeSplit="1" Zip_MaxSize="1900000" />
+			<Job Input="Textures/*.*;FX/*.*" Zip="${TargetRoot}/Textures.pak" Zip_SizeSplit="1" Zip_MaxSize="1900000" />
+			<Job Input="Libs/*.*;Materials/*.*;Prefabs/*.*;Fonts/*.*;Difficulty/*.*;Data/*.*;UI/*.*" Exclude="Libs/UI/*.*" Zip="${TargetRoot}/GameData.pak" />
+
+			<!-- Uncompressed files -->
+			<If BuildAlembic="1">
+				<Job Input="${AlembicTypes}" Zip="${TargetRoot}/GeomCaches.pak" Zip_Compression="0" />
+			</If>
+			<Job Input="Libs/UI/*.*" Zip="${TargetRoot}/GameData.pak" Zip_Compression="0" />
+			<Job Input="Sounds/*.*" Zip="${TargetRoot}/Sounds.pak" Zip_Compression="0" />
+			<Job Input="Music/*.*" Zip="${TargetRoot}/Music.pak" Zip_Compression="0" />
+			<Job Input="Videos/*.*" Zip="${TargetRoot}/Videos.pak" Zip_Compression="0" />
+
+			<!-- Startup cache, this is deprecated -->
+			<If CreateStartupCache="1">
+				<Run Job="StartupCache" />
+			</If>
+
+			<!-- Loose files -->
+			<Properties SourceRoot="${InputPath}/${GameFolder}" />
+			<Properties EditorOnlyTypes="*.txt;*.cry;*.scry" /> <!-- Those files only have meaning for the editor, ignore them for non-editor targets -->
+			<Properties EditorOnlyLevelSubFolders="*/Layers/*.*;*/LevelData/*.*" /> <!-- Those folders contain files that only have meaning for the editor, ignore them for non-editor targets -->
+			<Properties AlreadyConvertedTypes="${XmlExtensions};*.tif" /> <!-- Those files have already been converted previously, ignore them now -->
+			<If TargetHasEditor="1">
+				<Run Job="CopySubfolderJob" SubFolder="Levels" Input="*.*" Exclude="${AlreadyConvertedTypes};*_list.txt" />
+			</If>
+			<IfNot TargetHasEditor="1">
+				<Run Job="CopySubfolderJob" SubFolder="Levels" Input="*.*" Exclude="${EditorOnlyLevelSubFolders};${EditorOnlyTypes};${AlreadyConvertedTypes}" />
+			</IfNot>
+			<Job Input="game.cfg" CopyOnly="1" />
+
+			<!-- Converted loose files from levels, overwrite -->
+			<Properties SourceRoot="${TempPath}/${GameFolder}_Assets" />
+			<If TargetHasEditor="1">
+				<Run Job="CopySubfolderJob" SubFolder="Levels" Input="*.*" Exclude="*.$*" Refresh="1" />
+			</If>
+			<IfNot TargetHasEditor="1">
+				<Run Job="CopySubfolderJob" SubFolder="Levels" Input="*.*" Exclude="${EditorOnlyLevelSubFolders};*.$*" Refresh="1" />
+			</IfNot>
+		</IfNot>
+	</GameAssetsConversion>
+
+	<ScriptFolderConversion>
+		<!-- Pack scripts inside a single subfolder -->
+		<Properties SourceRoot="${SourceRoot}/${SubFolder}" />
+		<Properties TargetRoot="${TargetRoot}/${SubFolder}" />
+		<Run Job="XmlJob" />
+		<Run Job="LuaJob" />
+		<Job Input="*.*" Exclude="${XmlExtensions};*.lua" CopyOnly="1" />
+	</ScriptFolderConversion>
+	<ScriptAssetsConversion>
+		<IfNot SuppressCodeBranchSpecificConversion="1">
+			<!-- Conversion -->
+			<Properties SourceRoot="${InputPath}/${RootFolder}" />
+			<Properties TargetRoot="${TempPath}/${RootFolder}_Scripts" />
+			<Run Job="ScriptFolderConversion" SubFolder="Entities" />
+			<Run Job="ScriptFolderConversion" SubFolder="Scripts" />
+
+			<!-- Pack files -->
+			<Properties SourceRoot="${TargetRoot}" />
+			<Properties TargetRoot="${OutputPath}/${RootFolder}" />
+			<Job Input="*.*" Zip="${TargetRoot}/Scripts.pak" />
+		</IfNot>
+	</ScriptAssetsConversion>
+
+	<EngineAssetsConversion>
+		<IfNot SuppressCodeBranchSpecificConversion="1">
+			<!-- Conversion -->
+			<Properties SourceRoot="${InputPath}/${EngineFolder}" />
+			<Properties TargetRoot="${TempPath}/${EngineFolder}_Assets" />
+			<Run Job="MeshesJob" />
+			<If BuildAlembic="1">
+				<Run Job="AlembicJob" />
+			</If>
+			<Run Job="TexturesJob" PreventDdsSplitting="1" AllowDdsCopying="1" /> <!-- Engine folder has some DDS that can't be split -->
+			<Run Job="XmlJob" />
+
+			<!-- Copying -->
+			<Run Job="CopySubfolderJob" SubFolder="Config" Input="*.cfg;*.dat;*.ini;*.txt" />
+			<Run Job="CopySubfolderJob" SubFolder="EngineAssets" Input="*.cfg;*.dat;*.ini;*.txt" />
+			<Run Job="CopySubfolderJob" SubFolder="Fonts" Input="*.ttf;*.txt" />
+			<Run Job="CopySubfolderJob" SubFolder="Shaders" Input="*.ext;*.cfi;*.cfx" />
+
+			<!-- Pack files -->
+			<Properties SourceRoot="${TempPath}/${EngineFolder}_Assets" />
+			<Properties TargetRoot="${OutputPath}/${EngineFolder}" />
+			<Job Input="*.*" Exclude="Shaders/*.*" Zip="${TargetRoot}/Engine.pak" />
+			<Job Input="Shaders/*.*" Zip="${TargetRoot}/Shaders.pak" />
+
+			<Run Job="ScriptAssetsConversion" RootFolder="${EngineFolder}"/>
+
+			<!-- Loose files -->
+			<Properties SourceRoot="${InputPath}/${EngineFolder}" />
+		</IfNot>
+	</EngineAssetsConversion>
+
+	<!-- Per-language localization template -->
+	<LanguageJob>
+		<Properties SourceRoot="${SourceRoot}/${Language}" />
+
+		<!-- Dialog files -->
+		<Properties TargetRoot="${TargetRoot}/${Language}" />
+		<Run Job="CopySubfolderJob" Subfolder="Dialog" Input="*.*" />
+		<Run Job="CopySubfolderJob" Subfolder="Dialog" Input="*.*" AudioSpecific="1" />
+		<Job Input="*.*" SourceRoot="${TargetRoot}" TargetRoot="" Zip="${OutputPath}/${LocalizationFolder}/${Language}.pak" Zip_Compression="0" />
+
+		<!-- Other translated files -->
+		<Properties TargetRoot="${TargetRoot}_xml" />
+		<Run Job="XmlJob" Recursive="0" />
+		<Job Input="*.gfx" CopyOnly="1" Recursive="0" />
+		<Job Input="*.*" SourceRoot="${TargetRoot}" TargetRoot="" Zip="${OutputPath}/${LocalizationFolder}/${Language}_xml.pak" />
+	</LanguageJob>
+
+	<!-- Localization, all languages -->
+	<LocalizationConversion>
+		<IfNot SuppressDataBranchSpecificConversion="1">
+			<Properties SourceRoot="${InputPath}/${LocalizationFolder}" />
+			<Properties TargetRoot="${TempPath}/${LocalizationFolder}_Assets" />
+			<Run Job="LanguageJob" Language="English" />
+			<Run Job="LanguageJob" Language="German" />
+			<Run Job="LanguageJob" Language="Korean" />
+		</IfNot>
+	</LocalizationConversion>
+
+	<!-- DLC packaging -->
+	<DlcPacking>
+		<If PackageDlc="1">
+			<IfNot SuppressDataBranchSpecificConversion="1">
+				<If Platform="PC">
+
+					<!-- DLC2, Wwise project files -->
+					<Properties SourceRoot="${InputPath}/${GameFolder}/Sounds/wwise_project" />
+					<Properties TargetRoot="${OutputPath}/DLC2" />
+					<Job Input="*" Zip="${TargetRoot}/CRYENGINE_WwiseProject.zip" />
+				</If>
+			</IfNot>
+		</If>
+	</DlcPacking>
+
+	<CopyJob>
+		<!-- DE369: Hack, there is some problem reading some engine assets on android. Needs to be looked into, just copy all the loose assets for now. -->
+		<Job sourceroot="${TempPath}/${EngineFolder}_Assets"   targetroot="${OutputPath}/${EngineFolder}"   input="*.*" copyonly="1"/>
+		<Job sourceroot="${TempPath}/${EngineFolder}_Scripts"   targetroot="${OutputPath}/${EngineFolder}"   input="*.*" copyonly="1"/>
+		<Job sourceroot="${TempPath}/${GameFolder}_Assets/Config"   targetroot="${OutputPath}/${GameFolder}/Config"   input="*.*" copyonly="1"/>
+	</CopyJob>
+
+	<!-- Used to generate file list -->
+	<CleanJob>
+		<IfNot SuppressCleanupJob="1">
+			<Job Input="" TargetRoot="${TempPath}" Clean_TargetRoot="1" />
+		</IfNot>
+	</CleanJob>
+
+	<!-- Run the complete asset build by default -->
+	<!-- Note: You can run just one by passing /jobtarget parameter -->
+	<Run Job="ScriptAssetsConversion"  RootFolder="${GameFolder}" />
+	<Run Job="EngineAssetsConversion" />
+	<Run Job="GameAssetsConversion" />
+	<Run Job="LocalizationConversion" />
+	<Run Job="DlcPacking" />
+ 	<Run Job="CopyJob"/>
+	<Run Job="CleanJob" />
+</RCJobs>
+

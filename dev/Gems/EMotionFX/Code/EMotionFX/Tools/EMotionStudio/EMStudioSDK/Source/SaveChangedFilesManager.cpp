@@ -163,11 +163,11 @@ namespace EMStudio
 
     int DirtyFileManager::SaveDirtyFiles(uint32 type, uint32 filter, QDialogButtonBox::StandardButtons buttons)
     {
+        AZStd::vector<SaveDirtyFilesCallback*> neededCallbacks;
+
         const size_t numDirtyFilesCallbacks = mSaveDirtyFilesCallbacks.size();
 
         // check if there are any dirty files
-        AZStd::vector<AZStd::string> dirtyFileNames;
-        AZStd::vector<SaveDirtyFilesCallback::ObjectPointer> objects;
         for (size_t i = 0; i < numDirtyFilesCallbacks; ++i)
         {
             SaveDirtyFilesCallback* callback = mSaveDirtyFilesCallbacks[i];
@@ -177,8 +177,42 @@ namespace EMStudio
             {
                 continue;
             }
+            neededCallbacks.push_back(callback);
+        }
 
-            callback->GetDirtyFileNames(&dirtyFileNames, &objects);
+        return SaveDirtyFiles(neededCallbacks, buttons);
+    }
+
+    int DirtyFileManager::SaveDirtyFiles(const AZStd::vector<AZ::TypeId>& typeIds, QDialogButtonBox::StandardButtons buttons)
+    {
+        AZStd::vector<SaveDirtyFilesCallback*> neededCallbacks;
+
+        const size_t numDirtyFilesCallbacks = mSaveDirtyFilesCallbacks.size();
+
+        for (size_t i = 0; i < numDirtyFilesCallbacks; ++i)
+        {
+            SaveDirtyFilesCallback* callback = mSaveDirtyFilesCallbacks[i];
+
+            // make sure we want to handle the given save dirty files callback
+            if (AZStd::find(typeIds.begin(), typeIds.end(), callback->GetFileRttiType()) != typeIds.end())
+            {
+                neededCallbacks.push_back(callback);
+            }
+        }
+
+        return SaveDirtyFiles(neededCallbacks, buttons);
+    }
+
+    int DirtyFileManager::SaveDirtyFiles(const AZStd::vector<SaveDirtyFilesCallback*>& neededSaveDirtyFilesCallbacks, QDialogButtonBox::StandardButtons buttons)
+    {
+        const size_t numDirtyFilesCallbacks = neededSaveDirtyFilesCallbacks.size();
+
+        // check if there are any dirty files
+        AZStd::vector<AZStd::string> dirtyFileNames;
+        AZStd::vector<SaveDirtyFilesCallback::ObjectPointer> objects;
+        for (size_t i = 0; i < numDirtyFilesCallbacks; ++i)
+        {
+            neededSaveDirtyFilesCallbacks[i]->GetDirtyFileNames(&dirtyFileNames, &objects);
         }
 
         bool hasDirtyFiles = !dirtyFileNames.empty();
@@ -226,13 +260,7 @@ namespace EMStudio
             // iterate through the callbacks
             for (size_t i = 0; i < numDirtyFilesCallbacks; ++i)
             {
-                SaveDirtyFilesCallback* callback = mSaveDirtyFilesCallbacks[i];
-
-                // make sure we want to handle the given save dirty files callback
-                if (type != MCORE_INVALIDINDEX32 && callback->GetType() != type)
-                {
-                    continue;
-                }
+                SaveDirtyFilesCallback* callback = neededSaveDirtyFilesCallbacks[i];
 
                 // is this a post processed callback? if yes skip
                 if (callback->GetIsPostProcessed())
@@ -259,13 +287,7 @@ namespace EMStudio
             // iterate through the callbacks
             for (size_t i = 0; i < numDirtyFilesCallbacks; ++i)
             {
-                SaveDirtyFilesCallback* callback = mSaveDirtyFilesCallbacks[i];
-
-                // make sure we want to handle the given save dirty files callback
-                if (type != MCORE_INVALIDINDEX32 && callback->GetType() != type)
-                {
-                    continue;
-                }
+                SaveDirtyFilesCallback* callback = neededSaveDirtyFilesCallbacks[i];
 
                 // is this a post processed callback? if not skip
                 if (callback->GetIsPostProcessed() == false)
@@ -292,6 +314,7 @@ namespace EMStudio
 
         return FINISHED;
     }
+
 
 
     // constructor

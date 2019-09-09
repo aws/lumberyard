@@ -22,6 +22,7 @@ namespace Visibility
     {
         provides.push_back(AZ::Crc32("PortalService"));
     }
+
     void PortalComponent::GetRequiredServices(AZ::ComponentDescriptor::DependencyArrayType& requires)
     {
         requires.push_back(AZ::Crc32("TransformService"));
@@ -29,8 +30,7 @@ namespace Visibility
 
     void PortalConfiguration::Reflect(AZ::ReflectContext* context)
     {
-        AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
-        if (serializeContext)
+        if (auto serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
         {
             serializeContext->Class<PortalConfiguration>()
                 ->Version(1)
@@ -48,56 +48,46 @@ namespace Visibility
                 ;
         }
 
-        if (AZ::BehaviorContext* behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context))
+        if (auto* behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context))
         {
             behaviorContext->EBus<PortalRequestBus>("PortalRequestBus")
-
-                ->Event("SetHeight", &PortalRequestBus::Events::SetHeight)
                 ->Event("GetHeight", &PortalRequestBus::Events::GetHeight)
-                ->VirtualProperty("Height", "GetHeight", "SetHeight")
+                ->VirtualProperty("Height", "GetHeight", nullptr)
 
-                ->Event("SetDisplayFilled", &PortalRequestBus::Events::SetDisplayFilled)
                 ->Event("GetDisplayFilled", &PortalRequestBus::Events::GetDisplayFilled)
-                ->VirtualProperty("DisplayFilled", "GetDisplayFilled", "SetDisplayFilled")
+                ->VirtualProperty("DisplayFilled", "GetDisplayFilled", nullptr)
 
-                ->Event("SetAffectedBySun", &PortalRequestBus::Events::SetAffectedBySun)
                 ->Event("GetAffectedBySun", &PortalRequestBus::Events::GetAffectedBySun)
-                ->VirtualProperty("AffectedBySun", "GetAffectedBySun", "SetAffectedBySun")
+                ->VirtualProperty("AffectedBySun", "GetAffectedBySun", nullptr)
 
-                ->Event("SetViewDistRatio", &PortalRequestBus::Events::SetViewDistRatio)
                 ->Event("GetViewDistRatio", &PortalRequestBus::Events::GetViewDistRatio)
-                ->VirtualProperty("ViewDistRatio", "GetViewDistRatio", "SetViewDistRatio")
+                ->VirtualProperty("ViewDistRatio", "GetViewDistRatio", nullptr)
 
-                ->Event("SetSkyOnly", &PortalRequestBus::Events::SetSkyOnly)
                 ->Event("GetSkyOnly", &PortalRequestBus::Events::GetSkyOnly)
-                ->VirtualProperty("SkyOnly", "GetSkyOnly", "SetSkyOnly")
+                ->VirtualProperty("SkyOnly", "GetSkyOnly", nullptr)
 
-                ->Event("SetOceanIsVisible", &PortalRequestBus::Events::SetOceanIsVisible)
                 ->Event("GetOceanIsVisible", &PortalRequestBus::Events::GetOceanIsVisible)
-                ->VirtualProperty("OceanIsVisible", "GetOceanIsVisible", "SetOceanIsVisible")
+                ->VirtualProperty("OceanIsVisible", "GetOceanIsVisible", nullptr)
 
-                ->Event("SetUseDeepness", &PortalRequestBus::Events::SetUseDeepness)
                 ->Event("GetUseDeepness", &PortalRequestBus::Events::GetUseDeepness)
-                ->VirtualProperty("UseDeepness", "GetUseDeepness", "SetUseDeepness")
+                ->VirtualProperty("UseDeepness", "GetUseDeepness", nullptr)
 
-                ->Event("SetDoubleSide", &PortalRequestBus::Events::SetDoubleSide)
                 ->Event("GetDoubleSide", &PortalRequestBus::Events::GetDoubleSide)
-                ->VirtualProperty("DoubleSide", "GetDoubleSide", "SetDoubleSide")
+                ->VirtualProperty("DoubleSide", "GetDoubleSide", nullptr)
 
-                ->Event("SetLightBlending", &PortalRequestBus::Events::SetLightBlending)
                 ->Event("GetLightBlending", &PortalRequestBus::Events::GetLightBlending)
-                ->VirtualProperty("LightBlending", "GetLightBlending", "SetLightBlending")
+                ->VirtualProperty("LightBlending", "GetLightBlending", nullptr)
 
-                ->Event("SetLightBlendValue", &PortalRequestBus::Events::SetLightBlendValue)
                 ->Event("GetLightBlendValue", &PortalRequestBus::Events::GetLightBlendValue)
-                ->VirtualProperty("LightBlendValue", "GetLightBlendValue", "SetLightBlendValue")
+                ->VirtualProperty("LightBlendValue", "GetLightBlendValue", nullptr)
                 ;
 
             behaviorContext->Class<PortalComponent>()->RequestBus("PortalRequestBus");
         }
     }
 
-    bool PortalConfiguration::VersionConverter(AZ::SerializeContext& context, AZ::SerializeContext::DataElementNode& classElement)
+    bool PortalConfiguration::VersionConverter(
+        AZ::SerializeContext& context, AZ::SerializeContext::DataElementNode& classElement)
     {
         // conversion from version 1:
         // - Remove IgnoreSkyColor
@@ -113,8 +103,7 @@ namespace Visibility
 
     void PortalComponent::Reflect(AZ::ReflectContext* context)
     {
-        AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
-        if (serializeContext)
+        if (auto serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
         {
             serializeContext->Class<PortalComponent, AZ::Component>()
                 ->Version(1)
@@ -125,120 +114,69 @@ namespace Visibility
         PortalConfiguration::Reflect(context);
     }
 
+    PortalComponent::PortalComponent(const PortalConfiguration& params)
+        : m_config(params)
+    {
+    }
+
     void PortalComponent::Activate()
     {
-        Update();
         PortalRequestBus::Handler::BusConnect(GetEntityId());
-        AZ::TransformNotificationBus::Handler::BusConnect(GetEntityId());
     }
 
     void PortalComponent::Deactivate()
     {
-        AZ::TransformNotificationBus::Handler::BusDisconnect(GetEntityId());
         PortalRequestBus::Handler::BusDisconnect(GetEntityId());
     }
 
-    void PortalComponent::SetHeight(const float value)
-    {
-        m_config.m_height = value;
-        Update();
-    }
     float PortalComponent::GetHeight()
     {
         return m_config.m_height;
     }
 
-    void PortalComponent::SetDisplayFilled(const bool value)
-    {
-        m_config.m_displayFilled = value;
-        Update();
-    }
     bool PortalComponent::GetDisplayFilled()
     {
         return m_config.m_displayFilled;
     }
 
-    void PortalComponent::SetAffectedBySun(const bool value)
-    {
-        m_config.m_affectedBySun = value;
-        Update();
-    }
     bool PortalComponent::GetAffectedBySun()
     {
         return m_config.m_affectedBySun;
     }
 
-    void PortalComponent::SetViewDistRatio(const float value)
-    {
-        m_config.m_viewDistRatio = value;
-        Update();
-    }
     float PortalComponent::GetViewDistRatio()
     {
         return m_config.m_viewDistRatio;
     }
 
-    void PortalComponent::SetSkyOnly(const bool value)
-    {
-        m_config.m_skyOnly = value;
-        Update();
-    }
     bool PortalComponent::GetSkyOnly()
     {
         return m_config.m_skyOnly;
     }
 
-    void PortalComponent::SetOceanIsVisible(const bool value)
-    {
-        m_config.m_oceanIsVisible = value;
-        Update();
-    }
     bool PortalComponent::GetOceanIsVisible()
     {
         return m_config.m_oceanIsVisible;
     }
 
-    void PortalComponent::SetUseDeepness(const bool value)
-    {
-        m_config.m_useDeepness = value;
-        Update();
-    }
     bool PortalComponent::GetUseDeepness()
     {
         return m_config.m_useDeepness;
     }
 
-    void PortalComponent::SetDoubleSide(const bool value)
-    {
-        m_config.m_doubleSide = value;
-        Update();
-    }
     bool PortalComponent::GetDoubleSide()
     {
         return m_config.m_doubleSide;
     }
 
-    void PortalComponent::SetLightBlending(const bool value)
-    {
-        m_config.m_lightBlending = value;
-        Update();
-    }
     bool PortalComponent::GetLightBlending()
     {
         return m_config.m_lightBlending;
     }
 
-    void PortalComponent::SetLightBlendValue(const float value)
-    {
-        m_config.m_lightBlendValue = value;
-        Update();
-    }
     float PortalComponent::GetLightBlendValue()
     {
         return m_config.m_lightBlendValue;
     }
 
-    void PortalComponent::Update()
-    {
-    }
 } //namespace Visibility

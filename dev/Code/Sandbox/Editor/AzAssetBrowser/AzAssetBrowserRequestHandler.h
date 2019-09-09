@@ -38,6 +38,8 @@ public:
     void AddContextMenuActions(QWidget* caller, QMenu* menu, const AZStd::vector<AzToolsFramework::AssetBrowser::AssetBrowserEntry*>& entries) override;
     void AddSourceFileOpeners(const char* fullSourceFileName, const AZ::Uuid& sourceUUID, AzToolsFramework::AssetBrowser::SourceFileOpenerList& openers) override;
     void OpenAssetInAssociatedEditor(const AZ::Data::AssetId& assetId, bool& alreadyHandled) override;
+
+    static bool OpenWithOS(const AZStd::string& fullEntryPath);
 protected:
 
     //////////////////////////////////////////////////////////////////////////
@@ -47,8 +49,6 @@ protected:
     void DragMove(QDragMoveEvent* event, AzQtComponents::DragAndDropContextBase& context) override;
     void DragLeave(QDragLeaveEvent* event) override;
     void Drop(QDropEvent* event, AzQtComponents::DragAndDropContextBase& context) override;
-
-    static void ResaveSlice(AZ::Entity* sliceEntity, const AZStd::string& fullFilePath);
 
     bool CanAcceptDragAndDropEvent(QDropEvent* event, AzQtComponents::DragAndDropContextBase& context) const;
 };

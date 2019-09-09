@@ -411,6 +411,14 @@
                         "Role"
                     ]
                 },
+                "Environment": {
+                    "Variables": {
+                        "Fn::GetAtt": [
+                            "RecordSetProcessorConfiguration",
+                            "CCSettings"
+                        ]
+                    }
+                },
                 "Runtime": {
                     "Fn::GetAtt": [
                         "RecordSetProcessorConfiguration",
@@ -552,6 +560,7 @@
                             "ResourceSuffix": [
                                 "/api/POST/score",
                                 "/api/GET/score/*",
+                                "/api/POST/score/dedicated",
                                 "/api/GET/scores/*",
                                 "/api/GET/leaderboard/*",
                                 "/api/POST/leaderboard/*"
@@ -615,12 +624,20 @@
                         ]
                     }
                 },
-                "Handler": "service.dispatch",
+                "Handler": "cgf_lambda_service.dispatch",
                 "Role": {
                     "Fn::GetAtt": [
                         "ServiceLambdaConfiguration",
                         "Role"
                     ]
+                },
+                "Environment": {
+                    "Variables": {
+                        "Fn::GetAtt": [
+                            "ServiceLambdaConfiguration",
+                            "CCSettings"
+                        ]
+                    }
                 },
                 "Runtime": {
                     "Fn::GetAtt": [

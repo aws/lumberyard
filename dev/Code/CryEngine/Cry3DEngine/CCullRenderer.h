@@ -26,7 +26,11 @@ extern  SHWOccZBuffer HWZBuffer;
 
 
 #if defined(AZ_RESTRICTED_PLATFORM)
-#include AZ_RESTRICTED_FILE(CCullRenderer_h, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/CCullRenderer_h_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/CCullRenderer_h_provo.inl"
+    #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
 #undef AZ_RESTRICTED_SECTION_IMPLEMENTED
@@ -491,11 +495,7 @@ namespace NAsyncCull
 
         bool DownLoadHWDepthBuffer(float nearPlane, float farPlane, float nearestMax, float Bias)
         {
-#if defined(LINUX)
-            Matrix44A   Reproject _ALIGN(16);
-#else
-            Matrix44A& Reproject    =   *reinterpret_cast<Matrix44A*>(&m_Reproject);
-#endif
+            Matrix44A& Reproject = *reinterpret_cast<Matrix44A*>(&m_Reproject);
 
             m_VMaxXY    =   NVMath::int32Tofloat(NVMath::Vec4(SIZEX, SIZEY, SIZEX, SIZEY));
 

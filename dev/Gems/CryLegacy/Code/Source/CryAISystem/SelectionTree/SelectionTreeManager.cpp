@@ -329,8 +329,6 @@ bool CSelectionTreeManager::LoadFileNode(const XmlNodeRef& rootNode, const char*
 
 bool CSelectionTreeManager::LoadTreeTemplate(const XmlNodeRef& rootNode, const char* fileName)
 {
-    MEMSTAT_CONTEXT_FMT(EMemStatContextTypes::MSC_Other, 0, "SelectionTreeManager::LoadTreeTemplate - %s", fileName);
-
     const char* treeName = 0;
     if (rootNode->haveAttr("name"))
     {

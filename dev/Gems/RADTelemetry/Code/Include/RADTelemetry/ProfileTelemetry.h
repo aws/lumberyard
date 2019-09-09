@@ -20,7 +20,7 @@
 #define TM_API_PTR g_radTmApi
 #include <rad_tm.h>
 
-#define  AZ_PROFILE_CAT_TO_RAD_CAPFLAGS(category) (1 << static_cast<AZ::Debug::ProfileCategoryPrimitiveType>(category))
+#define  AZ_PROFILE_CAT_TO_RAD_CAPFLAGS(category) (static_cast<AZ::Debug::ProfileCategoryPrimitiveType>(1) << static_cast<AZ::Debug::ProfileCategoryPrimitiveType>(category))
 // Helpers
 #define AZ_INTERNAL_PROF_VERIFY_CAT(category) static_assert(category < AZ::Debug::ProfileCategory::Count, "Invalid profile category")
 

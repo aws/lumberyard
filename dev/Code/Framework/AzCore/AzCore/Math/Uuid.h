@@ -114,6 +114,8 @@ namespace AZ
         AZ_MATH_FORCE_INLINE bool operator!=(const Uuid& rhs) const { return !(*this == rhs); }
         bool operator<(const Uuid& rhs) const;
         bool operator>(const Uuid& rhs) const;
+        bool operator<=(const Uuid& rhs) const { return !(*this > rhs); }
+        bool operator>=(const Uuid& rhs) const { return !(*this < rhs); }
 
     #if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_APPLE_OSX)
         // Add some conversion to from windows

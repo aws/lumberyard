@@ -21,13 +21,20 @@
 #include <CloudCanvas/ICloudCanvas.h>
 #include <CrySystemBus.h>
 
+#include <PresignedURL/PresignedURL.h>
+#include <AzCore/std/smart_ptr/unique_ptr.h>
+#include <AzCore/Jobs/JobManager.h>
+#include <AzCore/Jobs/JobContext.h>
+#include <AzCore/Jobs/JobCancelGroup.h>
+
 namespace CloudCanvasCommon
 {
     class CloudCanvasCommonSystemComponent
         : public AZ::Component
         , protected CloudCanvasCommonRequestBus::Handler
-        , protected CloudCanvas::AwsApiInitRequestBus::Handler,
-          public CrySystemEventBus::Handler
+        , protected CloudCanvas::AwsApiInitRequestBus::Handler
+        , public CrySystemEventBus::Handler
+        , public CloudCanvas::PresignedURLManager
     {
     public:
 
@@ -78,6 +85,8 @@ namespace CloudCanvasCommon
         // CrySystemEvents
         void OnCrySystemInitialized(ISystem&, const SSystemInitParams&) override;
         void OnCrySystemShutdown(ISystem&) override;
+
+        AZ::JobContext* GetDefaultJobContext() override;
     private:
         CloudCanvasCommonSystemComponent(const CloudCanvasCommonSystemComponent&) = delete;
 
@@ -97,5 +106,16 @@ namespace CloudCanvasCommon
         AZStd::mutex m_certPathMutex;
         mutable AZStd::mutex m_resolveUserPathMutex;
         AZStd::mutex m_certCopyMutex;
+
+        int m_threadCount{ 2 };
+        int m_firstThreadCPU{ -1 };
+        int m_threadPriority{ 0 };
+        int m_threadStackSize{ -1 };
+
+        // Order here is of importance. To be correct, JobContext needs to 
+        // destruct before the JobManager and the JobCancelGroup.
+        AZStd::unique_ptr<AZ::JobCancelGroup> m_jobCancelGroup{ nullptr };
+        AZStd::unique_ptr<AZ::JobManager> m_jobManager{ nullptr };
+        AZStd::unique_ptr<AZ::JobContext> m_jobContext{ nullptr };
     };
 }

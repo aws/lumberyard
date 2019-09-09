@@ -15,6 +15,26 @@
 
 namespace MCore
 {
+    unsigned int LcgRandom::GetRandom()
+    {
+        m_seed = (m_seed * 0x5DEECE66DLL + 0xBLL) & ((1LL << 48) - 1);
+        return static_cast<unsigned int>(m_seed >> 16);
+    }
+
+    float LcgRandom::GetRandomFloat()
+    {
+        unsigned int r = GetRandom();
+        r &= 0x007fffff; //sets mantissa to random bits
+        r |= 0x3f800000; //result is in [1,2), uniformly distributed
+        union
+        {
+            float f;
+            unsigned int i;
+        } u;
+        u.i = r;
+        return u.f - 1.0f;
+    }
+
     // returns a random direction vector
     AZ::Vector3 Random::RandDirVecF()
     {
@@ -275,13 +295,13 @@ namespace MCore
 
 
 
-    Array<AZ::Vector3> Random::RandomDirVectorsHalton(const AZ::Vector3& dir, float coneAngle, uint32 numVectors, uint32 p2)
+    AZStd::vector<AZ::Vector3> Random::RandomDirVectorsHalton(const AZ::Vector3& dir, float coneAngle, size_t numVectors, uint32 p2)
     {
-        Array<AZ::Vector3> arrayResult(numVectors, MCORE_MEMCATEGORY_RANDOM);
+        AZStd::vector<AZ::Vector3> arrayResult(numVectors);
 
         // generate the uvset
         float* uvSet = new float[numVectors << 1];
-        PlaneHalton(uvSet, numVectors, p2);
+        PlaneHalton(uvSet, static_cast<uint32>(numVectors), p2);
 
         //  precalculate values
         const float r = SafeLength(dir);
@@ -323,13 +343,13 @@ namespace MCore
 
 
 
-    Array<AZ::Vector3> Random::RandomDirVectorsHalton2(const AZ::Vector3& dir, float coneAngle, uint32 numVectors, uint32 baseA, uint32 baseB)
+    AZStd::vector<AZ::Vector3> Random::RandomDirVectorsHalton2(const AZ::Vector3& dir, float coneAngle, size_t numVectors, uint32 baseA, uint32 baseB)
     {
-        Array<AZ::Vector3> arrayResult(numVectors, MCORE_MEMCATEGORY_ARRAY);
+        AZStd::vector<AZ::Vector3> arrayResult(numVectors);
 
         // generate the uvset
         float* uvSet = new float[numVectors << 1];
-        PlaneHalton2(uvSet, numVectors, baseA, baseB);
+        PlaneHalton2(uvSet, static_cast<uint32>(numVectors), baseA, baseB);
 
         //  precalculate values
         const float r = SafeLength(dir);

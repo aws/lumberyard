@@ -13,15 +13,18 @@
 #ifndef GM_REPLICA_PROXIMITYINTERESTHANDLER_H
 #define GM_REPLICA_PROXIMITYINTERESTHANDLER_H
 
+#include <GridMate/Replica/RemoteProcedureCall.h>
+#include <GridMate/Replica/ReplicaChunk.h>
 #include <GridMate/Replica/Interest/RulesHandler.h>
 #include <GridMate/Replica/Interest/BvDynamicTree.h>
+#include <GridMate/Serialize/UtilityMarshal.h>
+
 #include <AzCore/Math/Aabb.h>
 #include <AzCore/std/smart_ptr/unique_ptr.h>
 
 namespace GridMate
 {
     class ProximityInterestHandler;
-    class ProximityInterestChunk;
     class ProximityInterestAttribute;
 
     /*
@@ -157,6 +160,44 @@ namespace GridMate
     };
     ///////////////////////////////////////////////////////////////////////////
 
+    class ProximityInterestChunk
+        : public ReplicaChunk
+    {
+    public:
+        GM_CLASS_ALLOCATOR(ProximityInterestChunk);
+
+        // ReplicaChunk
+        typedef AZStd::intrusive_ptr<ProximityInterestChunk> Ptr;
+        bool IsReplicaMigratable() override { return false; }
+        bool IsBroadcast() override { return true; }
+        static const char* GetChunkName() { return "ProximityInterestChunk"; }
+
+        ProximityInterestChunk()
+            : AddRuleRpc("AddRule")
+            , RemoveRuleRpc("RemoveRule")
+            , UpdateRuleRpc("UpdateRule")
+            , AddRuleForPeerRpc("AddRuleForPeerRpc")
+            , m_interestHandler(nullptr)
+        {
+        }
+
+        void OnReplicaActivate(const ReplicaContext& rc) override;
+        void OnReplicaDeactivate(const ReplicaContext& rc) override;
+
+        bool AddRuleFn(RuleNetworkId netId, AZ::Aabb bbox, const RpcContext& ctx);
+        bool RemoveRuleFn(RuleNetworkId netId, const RpcContext&);
+        bool UpdateRuleFn(RuleNetworkId netId, AZ::Aabb bbox, const RpcContext&);
+        bool AddRuleForPeerFn(RuleNetworkId netId, PeerId peerId, AZ::Aabb bbox, const RpcContext&);
+
+        Rpc<RpcArg<RuleNetworkId>, RpcArg<AZ::Aabb>>::BindInterface<ProximityInterestChunk, &ProximityInterestChunk::AddRuleFn> AddRuleRpc;
+        Rpc<RpcArg<RuleNetworkId>>::BindInterface<ProximityInterestChunk, &ProximityInterestChunk::RemoveRuleFn> RemoveRuleRpc;
+        Rpc<RpcArg<RuleNetworkId>, RpcArg<AZ::Aabb>>::BindInterface<ProximityInterestChunk, &ProximityInterestChunk::UpdateRuleFn> UpdateRuleRpc;
+
+        Rpc<RpcArg<RuleNetworkId>, RpcArg<PeerId>, RpcArg<AZ::Aabb>>::BindInterface<ProximityInterestChunk, &ProximityInterestChunk::AddRuleForPeerFn> AddRuleForPeerRpc;
+
+        unordered_map<RuleNetworkId, ProximityInterestRule::Ptr> m_rules;
+        ProximityInterestHandler* m_interestHandler;
+    };
 
     /*
     * Rules handler

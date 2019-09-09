@@ -245,12 +245,8 @@ void CEntityPoolManager::Reset()
 
     m_pRootSID = XmlNodeRef();
 
-    {
-        // Make sure any default allocations made by the queue end up on the global heap
-        ScopedSwitchToGlobalHeap useGlobalHeap;
-        stl::free_container(m_PrepareRequestQueue);
-    }
-
+    stl::free_container(m_PrepareRequestQueue);
+    
     m_uFramePrepareRequests = 0;
 }
 
@@ -585,8 +581,6 @@ bool CEntityPoolManager::LoadBookmarkedFromPool(EntityId entityId, EntityId forc
             m_currentParams.aiObjectId = bookmark.aiObjectId;
             m_currentParams.entityId = bookmark.loadParams.spawnParams.id;
 
-            MEMSTAT_CONTEXT_FMT(EMemStatContextTypes::MSC_Entity, EMemStatContextFlags::MSF_Instance, "Prepare Static Bookmark %s", bookmark.loadParams.spawnParams.pClass->GetName());
-
             bool outIsActive = false;
             bool outHasAI = false;
             TEntityPoolId owningPoolId = INVALID_ENTITY_POOL;
@@ -692,8 +686,6 @@ bool CEntityPoolManager::LoadBookmarkedFromPool(EntityId entityId, EntityId forc
 CEntity* CEntityPoolManager::LoadDynamicFromPool(SEntityBookmark& bookmark, EntityId forcedPoolId /*= 0*/, bool bCallInit /*= true*/)
 {
     FUNCTION_PROFILER(GetISystem(), PROFILE_ENTITY);
-
-    MEMSTAT_CONTEXT_FMT(EMemStatContextTypes::MSC_Entity, EMemStatContextFlags::MSF_Instance, "Prepare Dynamic Bookmark %s", bookmark.loadParams.spawnParams.pClass->GetName());
 
     CEntity* pReturnEntity = NULL;
 
@@ -923,8 +915,6 @@ bool CEntityPoolManager::ReturnToPool(EntityId entityId, bool bSaveState, bool b
         {
             SEntityBookmark& bookmark = itBookMark->second;
 
-            MEMSTAT_CONTEXT_FMT(EMemStatContextTypes::MSC_Entity, EMemStatContextFlags::MSF_Instance, "Return Bookmark %s", bookmark.loadParams.spawnParams.pClass->GetName());
-
             TEntityPools::iterator itEntityPool = m_EntityPools.begin();
             TEntityPools::iterator itEntityPoolEnd = m_EntityPools.end();
             for (; itEntityPool != itEntityPoolEnd; ++itEntityPool)
@@ -1023,8 +1013,6 @@ void CEntityPoolManager::SerializeBookmarkEntity(SEntityBookmark& bookmark, IEnt
     assert(pEntity);
     assert(bookmark.pLastState);
     assert(m_pSerializeHelper);
-
-    MEMSTAT_CONTEXT_FMT(EMemStatContextTypes::MSC_Other, EMemStatContextFlags::MSF_Instance, "Serialize Bookmark %s", bookmark.loadParams.spawnParams.pClass->GetName());
 
     if (m_pSerializeHelper)
     {
@@ -1382,8 +1370,6 @@ bool CEntityPoolManager::AddPoolBookmark(SEntityLoadParams& loadParams, bool bIs
 {
     FUNCTION_PROFILER(GetISystem(), PROFILE_ENTITY);
     LOADING_TIME_PROFILE_SECTION(GetISystem());
-
-    MEMSTAT_CONTEXT_FMT(EMemStatContextTypes::MSC_Other, EMemStatContextFlags::MSF_Instance, "Add Bookmark %s", loadParams.spawnParams.pClass->GetName());
 
     bool bResult = false;
 

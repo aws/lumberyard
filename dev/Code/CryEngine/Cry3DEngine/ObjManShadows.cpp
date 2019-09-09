@@ -34,8 +34,8 @@ void CObjManager::MakeShadowCastersList(CVisArea* pArea, const AABB& aabbReceive
 
     assert(pLight && vLightPos.len() > 1); // world space pos required
 
-    pFr->pCastersList->Clear();
-    pFr->pJobExecutedCastersList->Clear();
+    pFr->m_castersList.Clear();
+    pFr->m_jobExecutedCastersList.Clear();
 
     CVisArea* pLightArea = pLight->m_pOwner ? (CVisArea*)pLight->m_pOwner->GetEntityVisArea() : NULL;
 
@@ -159,7 +159,7 @@ void CObjManager::MakeShadowCastersList(CVisArea* pArea, const AABB& aabbReceive
                     }
                 }
 
-                pFr->pCastersList->Add(pNode);
+                pFr->m_castersList.Add(pNode);
             }
         }
     }
@@ -185,7 +185,7 @@ void CObjManager::MakeShadowCastersList(CVisArea* pArea, const AABB& aabbReceive
                 continue;
             }
 
-            pFr->pCastersList->Add(pCaster);
+            pFr->m_castersList.Add(pCaster);
         }
     }
 }

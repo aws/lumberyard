@@ -55,7 +55,7 @@ def find_dx12(conf, windows_kit):
                 if windows_kit in path:
                     for root, dirs, files in os.walk(path):
                         if 'd3d12.lib' in files:
-                            Logs.warn('[DX12] libraries found, can compile for DX12')
+                            Logs.debug('[DX12] libraries found, can compile for DX12')
                             DX12_LIB_DIR[windows_kit] = root
                             break
                     if DX12_LIB_DIR[windows_kit]:
@@ -77,7 +77,7 @@ def load_win_x64_host_settings(conf):
     # Look for the most recent version of the code generator subfolder.  This should be either installed or built by the bootstrap process at this point
     global AZCG_VALIDATED_PATH
     if AZCG_VALIDATED_PATH is None:
-        az_code_gen_subfolders = ['bin/vc141', 'bin/vc140', 'bin/vc120']
+        az_code_gen_subfolders = ['bin/vc141', 'bin/vc140']
         validated_azcg_dir = None
         for az_code_gen_subfolder in az_code_gen_subfolders:
             azcg_dir = conf.Path('Tools/AzCodeGenerator/{}'.format(az_code_gen_subfolder))
@@ -104,6 +104,13 @@ def load_win_x64_host_settings(conf):
                                               conf.ThirdPartyPath('jinja2', 'x64')]
     v['CODE_GENERATOR_PYTHON_HOME'] = conf.Path('Tools/Python/2.7.12/windows')
     v['CODE_GENERATOR_PYTHON_HOME_DEBUG'] = conf.Path('Tools/Python/2.7.12/windows')
+    v['CODE_GENERATOR_INCLUDE_PATHS'] = []
 
+    crcfix_dir = conf.Path('Tools/crcfix/bin/vc141')
+    if not os.path.exists(crcfix_dir):
+        crcfix_dir = conf.Path('Tools/crcfix/bin/vc140')
+        if not os.path.exists(crcfix_dir):
+            Logs.warn('Unable to locate the crcfix subfolder.  Make sure that you have VS2017 crcfix binaries available')
+    v['CRCFIX_PATH'] = [crcfix_dir]
     v['CRCFIX_EXECUTABLE'] = 'crcfix.exe'
 

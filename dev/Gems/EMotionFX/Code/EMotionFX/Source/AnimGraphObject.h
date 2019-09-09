@@ -73,7 +73,8 @@ namespace EMotionFX
             CATEGORY_MATH                   = 5,
             CATEGORY_MISC                   = 6,
             CATEGORY_TRANSITIONS            = 10,
-            CATEGORY_TRANSITIONCONDITIONS   = 11
+            CATEGORY_TRANSITIONCONDITIONS   = 11,
+            CATEGORY_TRIGGERACTIONS         = 12
         };
 
         enum ESyncMode : AZ::u8
@@ -88,7 +89,8 @@ namespace EMotionFX
             EVENTMODE_MASTERONLY            = 0,
             EVENTMODE_SLAVEONLY             = 1,
             EVENTMODE_BOTHNODES             = 2,
-            EVENTMODE_MOSTACTIVE            = 3
+            EVENTMODE_MOSTACTIVE            = 3,
+            EVENTMODE_NONE                  = 4
         };
 
         enum EExtractionMode : AZ::u8
@@ -105,6 +107,8 @@ namespace EMotionFX
          * anim graph object gets constructed by a copy and paste operation.
          */
         virtual void Reinit() {}
+
+        virtual void RecursiveReinit() { Reinit(); }
 
         virtual bool InitAfterLoading(AnimGraph* animGraph) = 0;
 
@@ -135,10 +139,10 @@ namespace EMotionFX
         virtual void OnActorMotionExtractionNodeChanged()                                                        {}
 
         MCORE_INLINE uint32 GetObjectIndex() const                                      { return mObjectIndex; }
-        MCORE_INLINE void SetObjectIndex(uint32 index)                                  { mObjectIndex = index; }
+        MCORE_INLINE void SetObjectIndex(size_t index)                                  { mObjectIndex = static_cast<uint32>(index); }
 
-        MCORE_INLINE AnimGraph* GetAnimGraph() const                                  { return mAnimGraph; }
-        MCORE_INLINE void SetAnimGraph(AnimGraph* animGraph)                         { mAnimGraph = animGraph; }
+        MCORE_INLINE AnimGraph* GetAnimGraph() const                                    { return mAnimGraph; }
+        MCORE_INLINE void SetAnimGraph(AnimGraph* animGraph)                            { mAnimGraph = animGraph; }
 
         virtual uint32 GetAnimGraphSaveVersion() const        { return 1; }
 

@@ -129,12 +129,12 @@
       </item>
       <item>
        <property name="text">
-        <string>nodejs4.3</string>
+        <string>nodejs8.10</string>
        </property>
       </item>
       <item>
        <property name="text">
-        <string>nodejs</string>
+        <string>nodejs6.10</string>
        </property>
       </item>
      </widget>

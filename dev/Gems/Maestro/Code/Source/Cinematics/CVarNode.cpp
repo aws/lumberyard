@@ -121,7 +121,7 @@ void CAnimCVarNode::SetName(const char* name)
 //////////////////////////////////////////////////////////////////////////
 void CAnimCVarNode::Animate(SAnimContext& ec)
 {
-    if (ec.bResetting)
+    if (ec.resetting)
     {
         return;
     }

@@ -23,12 +23,12 @@
                 "interface": "CloudGemLeaderboard_LoadTest_1_0_0"
             }
         },
-        "/score": {
+        "/score/dedicated": {
             "x-amazon-cloud-canvas-lambda-dispatch": {
-                "module": "submit_score"
+                "module": "submit_score_dedicated"
             },
             "post" : {
-                "description": "submit a new high score",
+                "description": "submit a new high score from a dedicated server",
                 "parameters": [
                     {
                         "name": "score_entry",
@@ -381,11 +381,11 @@
                 "scores": {
                     "$ref": "#/definitions/ScoreList"
                 },
-                "current_page": { 
+                "current_page": {
                     "description": "The current page number to view.",
                     "type": "integer"
                 },
-                "total_pages": { 
+                "total_pages": {
                     "description": "The total number of pages within the leaderboard stat table.",
                     "type": "integer"
                 }

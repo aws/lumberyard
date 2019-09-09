@@ -1,0 +1,5 @@
+<Entity
+ Name="EnvironmentLight" 
+ Script="Scripts/Entities/Lights/EnvironmentLight.lua"
+ Invisible="1"
+/>

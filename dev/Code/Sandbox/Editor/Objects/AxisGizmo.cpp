@@ -90,13 +90,18 @@ void CAxisGizmo::Display(DisplayContext& dc)
 {
     if (m_object)
     {
-        bool bNotSelected = m_object->CheckFlags(OBJFLAG_INVISIBLE) || !m_object->IsSelected();
-        if (bNotSelected)
+        const bool visible =
+                !m_object->IsHidden()
+            &&  !m_object->IsFrozen()
+            &&  m_object->IsSelected();
+
+        if (!visible)
         {
             // This gizmo must be deleted.
             DeleteThis();
             return;
         }
+
         if (m_object->IsSkipSelectionHelper())
         {
             return;
@@ -319,6 +324,8 @@ Matrix34 CAxisGizmo::GetTransformation(RefCoordSys coordSys, IDisplayViewport* v
 //////////////////////////////////////////////////////////////////////////
 bool CAxisGizmo::MouseCallback(CViewport* view, EMouseEvent event, QPoint& point, int nFlags)
 {
+    AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::Editor);
+
     if (event == eMouseLDown)
     {
         HitContext hc;

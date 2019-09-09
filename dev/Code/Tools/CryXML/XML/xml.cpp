@@ -73,7 +73,7 @@ public:
         {
             BLOCK* temp = p->next;
             //nFree++;
-            free(p);
+            CryModuleFree(p);
             p = temp;
         }
         m_blocks = 0;
@@ -165,7 +165,7 @@ private:
     void AllocBlock(int blockSize)
     {
         //nMallocs++;
-        BLOCK* pBlock = (BLOCK*)malloc(offsetof(BLOCK, s) + blockSize * sizeof(char));
+        BLOCK* pBlock = (BLOCK*)CryModuleMalloc(offsetof(BLOCK, s) + blockSize * sizeof(char));
         if (!pBlock)
         {
             // no memory.
@@ -189,7 +189,7 @@ private:
         BLOCK* pPrevBlock = m_blocks->next;
         m_blocks = pPrevBlock;
         //nMallocs++;
-        BLOCK* pBlock = (BLOCK*)realloc(pThisBlock, offsetof(BLOCK, s) + blockSize * sizeof(char));
+        BLOCK* pBlock = (BLOCK*)CryModuleRealloc(pThisBlock, offsetof(BLOCK, s) + blockSize * sizeof(char));
         if (!pBlock)
         {
             // no memory.
@@ -1242,15 +1242,27 @@ void    XmlParserImp::onRawData(const char* const data)
 //////////////////////////////////////////////////////////////////////////
 static void* custom_xml_malloc(size_t nSize)
 {
-    return malloc(nSize);
+    return CryModuleMalloc(nSize);
 }
 static void* custom_xml_realloc(void* p, size_t nSize)
 {
-    return realloc(p, nSize);
+    return CryModuleRealloc(p, nSize);
 }
 static void custom_xml_free(void* p)
 {
-    free(p);
+    CryModuleFree(p);
+}
+
+namespace CryXML_Internal
+{
+    XML_Memory_Handling_Suite memHandler;
+    XML_Memory_Handling_Suite* GetMemoryHandler()
+    {
+        memHandler.malloc_fcn = custom_xml_malloc; // CryModuleMalloc;
+        memHandler.realloc_fcn = custom_xml_realloc; // CryModuleRealloc;
+        memHandler.free_fcn = custom_xml_free;  // CryModuleFree;
+        return &memHandler;
+    }
 }
 
 XmlParserImp::XmlParserImp(bool bRemoveNonessentialSpacesFromContent)
@@ -1259,12 +1271,8 @@ XmlParserImp::XmlParserImp(bool bRemoveNonessentialSpacesFromContent)
 
     m_root = 0;
     nodeStack.reserve(100);
-
-    XML_Memory_Handling_Suite memHandler;
-    memHandler.malloc_fcn = custom_xml_malloc; // CryModuleMalloc;
-    memHandler.realloc_fcn = custom_xml_realloc; // CryModuleRealloc;
-    memHandler.free_fcn = custom_xml_free;  // CryModuleFree;
-    m_parser = XML_ParserCreate_MM(NULL, &memHandler, NULL);
+        
+    m_parser = XML_ParserCreate_MM(NULL, CryXML_Internal::GetMemoryHandler(), NULL);
 
     XML_SetUserData(m_parser, this);
     XML_SetElementHandler(m_parser, startElement, endElement);

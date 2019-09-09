@@ -195,6 +195,20 @@ namespace AzFramework
             classElement.AddElementWithData(context, "IsStatic", false);
         }
 
+        // note the == on the following line.  Do not add to this block.  If you add an "InterpolateScale" back in, then
+        // consider erasing this block.
+        // The version was bumped from 3 to 4 to ensure this code runs.
+        // if you add the field back in, then increment the version number again.
+        if (classElement.GetVersion() == 3)
+        {
+            // a field was temporarily added to this specific version, then was removed.
+            // However, some data may have been exported with this field present, so 
+            // remove it if its found, but only in this version which the change was present in, so that
+            // future re-additions of it won't remove it (as long as they bump the version number.)
+            classElement.RemoveElementByName(AZ_CRC("InterpolateScale", 0x9d00b831));
+        }
+        
+
         return true;
     }
 
@@ -204,6 +218,7 @@ namespace AzFramework
     //=========================================================================
     TransformComponent::TransformComponent()
         : m_parentTM(nullptr)
+        , m_parentActive(false)
         , m_onNewParentKeepWorldTM(true)
         , m_parentActivationTransformMode(ParentActivationTransformMode::MaintainOriginalRelativeTransform)
         , m_isStatic(false)
@@ -219,6 +234,7 @@ namespace AzFramework
         , m_worldTM(copy.m_worldTM)
         , m_parentId(copy.m_parentId)
         , m_parentTM(copy.m_parentTM)
+        , m_parentActive(copy.m_parentActive)
         , m_notificationBus(nullptr)
         , m_onNewParentKeepWorldTM(copy.m_onNewParentKeepWorldTM)
         , m_parentActivationTransformMode(copy.m_parentActivationTransformMode)
@@ -642,62 +658,57 @@ namespace AzFramework
         SetLocalTM(newLocalTM);
     }
 
-    void TransformComponent::RotateAroundLocalX(float eulerAngleRadian)
+    static AZ::Transform RotateAroundLocalHelper(float eulerAngleRadian, AZ::Transform localTM, AZ::Vector3 axis)
     {
-        AZ::Transform currentLocalTM = m_localTM;
-        AZ::Vector3 xAxis = currentLocalTM.GetBasisX();
-        AZ::Quaternion xRotate = AZ::Quaternion::CreateFromAxisAngle(xAxis, eulerAngleRadian);
+        //get the existing translation and scale
+        AZ::Vector3 translation = localTM.GetTranslation();
+        AZ::Vector3 scale = localTM.ExtractScaleExact();
 
-        AZ::Vector3 translation = currentLocalTM.GetTranslation();
-        AZ::Vector3 scale = currentLocalTM.ExtractScaleExact();
+        //normalize the axis before creating rotation
+        axis.Normalize();
+        AZ::Quaternion rotate = AZ::Quaternion::CreateFromAxisAngle(axis, eulerAngleRadian);
 
-        AZ::Quaternion currentRotate = AZ::Quaternion::CreateFromTransform(currentLocalTM);
-        AZ::Quaternion newRotate = xRotate * currentRotate;
+        //create new rotation transform
+        AZ::Quaternion currentRotate = AZ::Quaternion::CreateFromTransform(localTM);
+        AZ::Quaternion newRotate = rotate * currentRotate;
         newRotate.NormalizeExact();
 
-        AZ::Transform newLocalTM = AZ::Transform::CreateFromQuaternion(newRotate);
-        newLocalTM.MultiplyByScale(scale);
+        //scale
+        AZ::Transform newLocalTM = AZ::Transform::CreateScale(scale);
+
+        //rotate
+        AZ::Transform rotateLocalTM = AZ::Transform::CreateFromQuaternion(newRotate);
+        newLocalTM = rotateLocalTM * newLocalTM;
+
+        //translate
         newLocalTM.SetTranslation(translation);
 
+        return newLocalTM;
+    }
+
+    void TransformComponent::RotateAroundLocalX(float eulerAngleRadian)
+    {
+        AZ::Vector3 xAxis = m_localTM.GetBasisX();
+        
+        AZ::Transform newLocalTM = RotateAroundLocalHelper(eulerAngleRadian, m_localTM, xAxis);
+        
         SetLocalTM(newLocalTM);
     }
 
     void TransformComponent::RotateAroundLocalY(float eulerAngleRadian)
     {
-        AZ::Transform currentLocalTM = m_localTM;
-        AZ::Vector3 yAxis = currentLocalTM.GetBasisY();
-        AZ::Quaternion yRotate = AZ::Quaternion::CreateFromAxisAngle(yAxis, eulerAngleRadian);
-
-        AZ::Vector3 translation = currentLocalTM.GetTranslation();
-        AZ::Vector3 scale = currentLocalTM.ExtractScaleExact();
-
-        AZ::Quaternion currentRotate = AZ::Quaternion::CreateFromTransform(currentLocalTM);
-        AZ::Quaternion newRotate = yRotate * currentRotate;
-        newRotate.NormalizeExact();
-
-        AZ::Transform newLocalTM = AZ::Transform::CreateFromQuaternion(newRotate);
-        newLocalTM.MultiplyByScale(scale);
-        newLocalTM.SetTranslation(translation);
+        AZ::Vector3 yAxis = m_localTM.GetBasisY();
+        
+        AZ::Transform newLocalTM = RotateAroundLocalHelper(eulerAngleRadian, m_localTM, yAxis);
 
         SetLocalTM(newLocalTM);
     }
 
     void TransformComponent::RotateAroundLocalZ(float eulerAngleRadian)
     {
-        AZ::Transform currentLocalTM = m_localTM;
-        AZ::Vector3 zAxis = currentLocalTM.GetBasisZ();
-        AZ::Quaternion zRotate = AZ::Quaternion::CreateFromAxisAngle(zAxis, eulerAngleRadian);
-
-        AZ::Vector3 translation = currentLocalTM.GetTranslation();
-        AZ::Vector3 scale = currentLocalTM.ExtractScaleExact();
-
-        AZ::Quaternion currentRotate = AZ::Quaternion::CreateFromTransform(currentLocalTM);
-        AZ::Quaternion newRotate = zRotate * currentRotate;
-        newRotate.NormalizeExact();
-
-        AZ::Transform newLocalTM = AZ::Transform::CreateFromQuaternion(newRotate);
-        newLocalTM.MultiplyByScale(scale);
-        newLocalTM.SetTranslation(translation);
+        AZ::Vector3 zAxis = m_localTM.GetBasisZ();
+        
+        AZ::Transform newLocalTM = RotateAroundLocalHelper(eulerAngleRadian, m_localTM, zAxis);
 
         SetLocalTM(newLocalTM);
     }
@@ -902,6 +913,7 @@ namespace AzFramework
             // so update m_parentTM and compute worldTM instead.
             AZ_Assert(parentEntityId == m_parentId, "We expect to receive notifications only from the current parent!");
             m_parentTM = nullptr;
+            m_parentActive = false;
             ComputeWorldTM();
         }
     }
@@ -1075,11 +1087,16 @@ namespace AzFramework
             AZ::TransformNotificationBus::Handler::BusDisconnect();
             AZ::TransformHierarchyInformationBus::Handler::BusDisconnect();
             AZ::EntityBus::Handler::BusDisconnect();
+            m_parentActive = false;
         }
 
         m_parentId = parentId;
         if (m_parentId.IsValid())
         {
+            AZ::Entity* parentEntity = nullptr;
+            AZ::ComponentApplicationBus::BroadcastResult(parentEntity, &AZ::ComponentApplicationBus::Events::FindEntity, m_parentId);
+            m_parentActive = parentEntity && (parentEntity->GetState() == AZ::Entity::ES_ACTIVE);
+
             m_onNewParentKeepWorldTM = isKeepWorldTM;
 
             AZ::TransformNotificationBus::Handler::BusConnect(m_parentId);
@@ -1142,6 +1159,8 @@ namespace AzFramework
     {
         AZ_Assert(parentEntityId == m_parentId, "We expect to receive notifications only from the current parent!");
 
+        m_parentActive = true;
+
         AZ::Entity* parentEntity = nullptr;
         EBUS_EVENT_RESULT(parentEntity, AZ::ComponentApplicationBus, FindEntity, parentEntityId);
         AZ_Assert(parentEntity, "We expect to have a parent entity associated with the provided parent's entity Id.");
@@ -1169,6 +1188,7 @@ namespace AzFramework
         (void)parentEntityId;
         AZ_Assert(parentEntityId == m_parentId, "We expect to receive notifications only from the current parent!");
         m_parentTM = nullptr;
+        m_parentActive = false;
         ComputeLocalTM();
     }
 
@@ -1178,10 +1198,11 @@ namespace AzFramework
         {
             m_localTM = m_parentTM->GetWorldTM().GetInverseFull() * m_worldTM;
         }
-        else
+        else if (!m_parentActive)
         {
             m_localTM = m_worldTM;
         }
+
         EBUS_EVENT_PTR(m_notificationBus, AZ::TransformNotificationBus, OnTransformChanged, m_localTM, m_worldTM);
     }
 
@@ -1191,7 +1212,7 @@ namespace AzFramework
         {
             m_worldTM = m_parentTM->GetWorldTM() * m_localTM;
         }
-        else if (!m_parentId.IsValid())
+        else if (!m_parentActive)
         {
             m_worldTM = m_localTM;
         }
@@ -1227,7 +1248,7 @@ namespace AzFramework
         if (serializeContext)
         {
             serializeContext->Class<TransformComponent, AZ::Component, NetBindable>()
-                ->Version(3, &TransformComponentVersionConverter)
+                ->Version(4, &TransformComponentVersionConverter)
                 ->Field("Parent", &TransformComponent::m_parentId)
                 ->Field("Transform", &TransformComponent::m_worldTM)
                 ->Field("LocalTransform", &TransformComponent::m_localTM)

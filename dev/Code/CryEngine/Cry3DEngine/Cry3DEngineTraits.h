@@ -14,7 +14,11 @@
 #include "ProjectDefines.h"
 
 #if defined(AZ_RESTRICTED_PLATFORM)
-#include AZ_RESTRICTED_FILE(Cry3DEngineTraits_h, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/Cry3DEngineTraits_h_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/Cry3DEngineTraits_h_provo.inl"
+    #endif
 #else
 #if defined(WIN32) || defined(WIN64)
 #define AZ_LEGACY_3DENGINE_TRAIT_DEFINE_MM_MULLO_EPI32_EMU 1

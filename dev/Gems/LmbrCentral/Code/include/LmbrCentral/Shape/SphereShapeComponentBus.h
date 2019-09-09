@@ -13,28 +13,23 @@
 #pragma once
 
 #include <AzCore/Component/ComponentBus.h>
+#include <LmbrCentral/Shape/ShapeComponentBus.h>
 
 namespace LmbrCentral
 {
-    /**
-     * Type ID for SphereShapeComponent
-     */
+    /// Type ID for SphereShapeComponent
     static const AZ::Uuid SphereShapeComponentTypeId = "{E24CBFF0-2531-4F8D-A8AB-47AF4D54BCD2}";
 
-    /**
-     * Type ID for EditorSphereShapeComponent
-     */
+    /// Type ID for EditorSphereShapeComponent
     static const AZ::Uuid EditorSphereShapeComponentTypeId = "{2EA56CBF-63C8-41D9-84D5-0EC2BECE748E}";
 
-    /**
-     * Configuration data for SphereShapeComponent
-     */
+    /// Configuration data for SphereShapeComponent
     class SphereShapeConfig
-        : public AZ::ComponentConfig
+        : public ShapeComponentConfig
     {
     public:
         AZ_CLASS_ALLOCATOR(SphereShapeConfig, AZ::SystemAllocator, 0);
-        AZ_RTTI(SphereShapeConfig, "{4AADFD75-48A7-4F31-8F30-FE4505F09E35}", ComponentConfig);
+        AZ_RTTI(SphereShapeConfig, "{4AADFD75-48A7-4F31-8F30-FE4505F09E35}", ShapeComponentConfig);
         
         static void Reflect(AZ::ReflectContext* context);
 
@@ -58,24 +53,18 @@ namespace LmbrCentral
 
     using SphereShapeConfiguration = SphereShapeConfig; ///< @deprecated Use SphereShapeConfig.
 
-    /**
-     * Services provided by the Sphere Shape Component.
-     */
+    /// Services provided by the Sphere Shape Component.
     class SphereShapeComponentRequests 
         : public AZ::ComponentBus
     {
     public:
         virtual SphereShapeConfig GetSphereConfiguration() = 0;
 
-        /**
-         * @brief Returns the radius for the sphere shape component.
-         */
+        /// @brief Returns the radius for the sphere shape component.
         virtual float GetRadius() = 0;
 
-        /**
-         * @brief Sets the radius for the sphere shape component.
-         * @param radius new Radius of the sphere shape.
-         */
+        /// @brief Sets the radius for the sphere shape component.
+        /// @param radius new Radius of the sphere shape.
         virtual void SetRadius(float radius) = 0;
     };
 

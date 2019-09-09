@@ -27,7 +27,10 @@
 #include <AzFramework/StringFunc/StringFunc.h>
 #include <AzToolsFramework/Asset/AssetProcessorMessages.h>
 #include <AzToolsFramework/Asset/AssetSystemComponent.h>
+
+#if !defined(BATCH_MODE)
 #include <AzToolsFramework/UI/Logging/LogPanel_Panel.h>
+#endif
 
 #include "native/utilities/assetUtils.h"
 #include "native/utilities/ApplicationManagerAPI.h"
@@ -44,18 +47,22 @@
 #include <QCommandLineParser>
 #include <QCommandLineOption>
 
-#include <QMessageBox>
 #include <QSettings>
+
+#if !defined(BATCH_MODE)
+#include <QMessageBox>
 #include <QDialogButtonBox>
 #include <QLabel>
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QPushButton>
+#endif
 
 #include <string.h> // for base  strcpy
 #include <AzFramework/Asset/AssetCatalogComponent.h>
+#include <AzToolsFramework/Entity/EditorEntityFixupComponent.h>
 #include <AzToolsFramework/ToolsComponents/ToolsAssetCatalogComponent.h>
-#include <AzToolsFramework/ToolsComponents/GenericComponentWrapper.h>
+#include <AzToolsFramework/AssetBrowser/AssetBrowserComponent.h>
 #include <LyShine/UiAssetTypes.h>
 
 namespace AssetProcessor
@@ -136,6 +143,7 @@ AZ::ComponentTypeList AssetProcessorAZApplication::GetRequiredSystemComponents()
             || *iter == azrtti_typeid<AzFramework::AssetCatalogComponent>() // AP will use its own AssetCatalogComponent
             || *iter == AZ::Uuid("{624a7be2-3c7e-4119-aee2-1db2bdb6cc89}") // ScriptDebugAgent
             || *iter == AZ::Uuid("{CAF3A025-FAC9-4537-B99E-0A800A9326DF}") // InputSystemComponent
+            || *iter == azrtti_typeid<AssetProcessor::ToolsAssetCatalogComponent>()
            ) 
         {
             // AP does not require the above components to be active
@@ -147,7 +155,6 @@ AZ::ComponentTypeList AssetProcessorAZApplication::GetRequiredSystemComponents()
         }
     }
 
-    components.push_back(azrtti_typeid<AssetProcessor::ToolsAssetCatalogComponent>());
 
     return components;
 }
@@ -156,8 +163,8 @@ void AssetProcessorAZApplication::RegisterCoreComponents()
 {
     AzToolsFramework::ToolsApplication::RegisterCoreComponents();
 
-    RegisterComponentDescriptor(AssetProcessor::ToolsAssetCatalogComponent::CreateDescriptor());
-    RegisterComponentDescriptor(AzToolsFramework::Components::GenericComponentUnwrapper::CreateDescriptor());
+    RegisterComponentDescriptor(AzToolsFramework::EditorEntityFixupComponent::CreateDescriptor());
+    RegisterComponentDescriptor(AzToolsFramework::AssetBrowser::AssetBrowserComponent::CreateDescriptor());
 }
 
 void AssetProcessorAZApplication::ResolveModulePath(AZ::OSString& modulePath)
@@ -234,7 +241,10 @@ void ApplicationManager::GetExternalBuilderFileList(QStringList& externalBuilder
     builderPaths.append(builderPath1);
 
     // Second priority, locate the Builds based on the engine root path + bin folder
-    QString builderPath2 = QDir::toNativeSeparators(QString(this->m_frameworkApp.GetEngineRoot()) + QString(BINFOLDER_NAME AZ_CORRECT_FILESYSTEM_SEPARATOR_STRING) + builderFolderName);
+    AZStd::string_view binFolderName;
+    AZ::ComponentApplicationBus::BroadcastResult(binFolderName, &AZ::ComponentApplicationRequests::GetBinFolder);
+
+    QString builderPath2 = QDir::toNativeSeparators(QString(this->m_frameworkApp.GetEngineRoot()) + QString("%1" AZ_CORRECT_FILESYSTEM_SEPARATOR_STRING).arg(binFolderName.data()) + builderFolderName);
 #if defined (AZ_PLATFORM_WINDOWS)
     bool isDuplicate = (builderPath1.compare(builderPath2, Qt::CaseInsensitive)==0);
 #else
@@ -551,10 +561,12 @@ bool ApplicationManager::StartAZFramework(QString appRootOverride)
     //Registering all the Components
     m_frameworkApp.RegisterComponentDescriptor(AzFramework::LogComponent::CreateDescriptor());
  
+#if !defined(BATCH_MODE)
     AZ::SerializeContext* context;
     EBUS_EVENT_RESULT(context, AZ::ComponentApplicationBus, GetSerializeContext);
     AZ_Assert(context, "No serialize context");
     AzToolsFramework::LogPanel::BaseLogPanel::Reflect(context);
+#endif
     
     // the log folder currently goes in the bin folder:
     AZStd::string fullBinFolder;
@@ -746,13 +758,23 @@ bool ApplicationManager::Activate()
     
     // the following controls what registry keys (or on mac or linux what entries in home folder) are used
     // so they should not be translated!
-    qApp->setOrganizationName("Amazon");
+    qApp->setOrganizationName(GetOrganizationName());
     qApp->setOrganizationDomain("amazon.com");
-    qApp->setApplicationName("Asset Processor");
+    qApp->setApplicationName(GetApplicationName());
 
     InstallTranslators();
 
     return true;
+}
+
+QString ApplicationManager::GetOrganizationName() const
+{
+    return "Amazon";
+}
+
+QString ApplicationManager::GetApplicationName() const
+{
+    return "Asset Processor";
 }
 
 bool ApplicationManager::PostActivate()
@@ -866,7 +888,7 @@ ApplicationManager::RegistryCheckInstructions ApplicationManager::CheckForRegist
                 "4) Delete the key for %1\n"
                 "5) %2"
             ).arg(compatibilityRegistryGroupName, windowsFriendlyRegPath);
-
+#if !defined(BATCH_MODE)
             if (showPopupMessage)
             {
                 warningText = warningText.arg(tr("Click the Restart button"));
@@ -907,6 +929,7 @@ ApplicationManager::RegistryCheckInstructions ApplicationManager::CheckForRegist
                 }
             }
             else
+#endif // BATCH MODE
             {
                 warningText = warningText.arg(tr("Restart the Asset Processor"));
                 QByteArray warningUtf8 = warningText.toUtf8();

@@ -57,8 +57,7 @@ uint32 GlobalAnimationHeaderCAF::LoadCAF()
 {
     LOADING_TIME_PROFILE_SECTION(GetISystem());
     const char* pname = m_FilePath.c_str();
-    MEMSTAT_CONTEXT_FMT(EMemStatContextTypes::MSC_Other, 0, "CAF Animation %s", pname);
-
+    
     m_nFlags = 0;
     OnAssetNotFound();
 
@@ -83,16 +82,16 @@ uint32 GlobalAnimationHeaderCAF::LoadCAF()
 
     content.m_fSampleRate = GetSampleRate();
 
-    content.m_hControllerData = g_controllerHeap.AllocPinned(nUsefulSize, NULL);
+    content.m_hControllerData = g_controllerHeap->AllocPinned(nUsefulSize, NULL);
     if (content.m_hControllerData.IsValid())
     {
         uint32 numChunks = pChunkFile->NumChunks();
 
         IControllerRelocatableChain* pRelocateHead = NULL;
-        char* pStorage = (char*)g_controllerHeap.WeakPin(content.m_hControllerData);
+        char* pStorage = (char*)g_controllerHeap->WeakPin(content.m_hControllerData);
         if (content.ParseChunkRange(pChunkFile, 0, numChunks, bLoadOldChunks, pStorage, pRelocateHead))
         {
-            g_controllerHeap.ChangeContext(content.m_hControllerData, pRelocateHead);
+            g_controllerHeap->ChangeContext(content.m_hControllerData, pRelocateHead);
 
             CommitContent(content);
 
@@ -131,8 +130,6 @@ void GlobalAnimationHeaderCAF::LoadControllersCAF()
 
 void GlobalAnimationHeaderCAF::LoadDBA()
 {
-    MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_Other, 0, "Animation DBA");
-
     if (m_nControllers == 0 && m_FilePathDBACRC32)
     {
         size_t numDBA_Files = g_AnimationManager.m_arrGlobalHeaderDBA.size();
@@ -266,7 +263,7 @@ GlobalAnimationHeaderCAFStreamContent::~GlobalAnimationHeaderCAFStreamContent()
 {
     if (m_hControllerData.IsValid())
     {
-        g_controllerHeap.Free(m_hControllerData);
+        g_controllerHeap->Free(m_hControllerData);
         m_hControllerData = CControllerDefragHdl();
     }
 }
@@ -277,12 +274,10 @@ void* GlobalAnimationHeaderCAFStreamContent::StreamOnNeedStorage(IReadStream* pS
 
     if (static_cast<int>(nSize) >= Console::GetInst().ca_MinInPlaceCAFStreamSize)
     {
-        MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_CAF, 0, m_pPath);
-
-        m_hControllerData = g_controllerHeap.AllocPinned(nSize, NULL);
+        m_hControllerData = g_controllerHeap->AllocPinned(nSize, NULL);
         if (m_hControllerData.IsValid())
         {
-            pData = (char*)g_controllerHeap.WeakPin(m_hControllerData);
+            pData = (char*)g_controllerHeap->WeakPin(m_hControllerData);
         }
     }
 
@@ -291,8 +286,6 @@ void* GlobalAnimationHeaderCAFStreamContent::StreamOnNeedStorage(IReadStream* pS
 
 void GlobalAnimationHeaderCAFStreamContent::StreamAsyncOnComplete(IReadStream* pStream, unsigned nError)
 {
-    MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_CAF, 0, m_pPath);
-
     if (pStream->IsError())
     {
         return;
@@ -313,12 +306,12 @@ void GlobalAnimationHeaderCAFStreamContent::StreamAsyncOnComplete(IReadStream* p
     CControllerDefragHdl hStorage;
     if (!bLoadInPlace)
     {
-        hStorage = g_controllerHeap.AllocPinned(nUsefulSize, NULL);
+        hStorage = g_controllerHeap->AllocPinned(nUsefulSize, NULL);
     }
 
     uint32 numChunks = pChunkFile->NumChunks();
 
-    char* pStorage = (char*)(hStorage.IsValid() ? g_controllerHeap.WeakPin(hStorage) : NULL);
+    char* pStorage = (char*)(hStorage.IsValid() ? g_controllerHeap->WeakPin(hStorage) : NULL);
     IControllerRelocatableChain* pRelocateHead = NULL;
     if (ParseChunkRange(pChunkFile, 0, numChunks, bLoadOldChunks, pStorage, pRelocateHead))
     {
@@ -326,13 +319,13 @@ void GlobalAnimationHeaderCAFStreamContent::StreamAsyncOnComplete(IReadStream* p
         {
             if (m_hControllerData.IsValid())
             {
-                g_controllerHeap.Free(m_hControllerData);
+                g_controllerHeap->Free(m_hControllerData);
             }
 
             m_hControllerData = hStorage;
         }
 
-        g_controllerHeap.ChangeContext(m_hControllerData, pRelocateHead);
+        g_controllerHeap->ChangeContext(m_hControllerData, pRelocateHead);
     }
 
     pStream->FreeTemporaryMemory();
@@ -416,7 +409,7 @@ void GlobalAnimationHeaderCAF::ClearControllerData()
 {
     if (m_hControllerData.IsValid())
     {
-        g_controllerHeap.Free(m_hControllerData);
+        g_controllerHeap->Free(m_hControllerData);
         m_hControllerData = CControllerDefragHdl();
     }
 }
@@ -1205,7 +1198,7 @@ void GlobalAnimationHeaderCAF::CommitContent(GlobalAnimationHeaderCAFStreamConte
 
     if (m_hControllerData.IsValid())
     {
-        g_controllerHeap.Unpin(m_hControllerData);
+        g_controllerHeap->Unpin(m_hControllerData);
     }
 }
 

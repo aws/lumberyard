@@ -126,8 +126,6 @@ namespace AZ {
         PGET_MODULE_BASE_ROUTINE64 GetModuleBaseRoutine, PTRANSLATE_ADDRESS_ROUTINE64 TranslateAddress);
     typedef DWORD (__stdcall WINAPI * UnDecorateSymbolName_t)(PCSTR DecoratedName, PSTR UnDecoratedName, DWORD UndecoratedLength, DWORD Flags);
     typedef BOOL (__stdcall WINAPI * SymGetSearchPath_t)(HANDLE hProcess, PSTR SearchPath, DWORD SearchPathLength);
-    // This fails in release
-    static USHORT (WINAPI * s_pfnCaptureStackBackTrace)(ULONG, ULONG, PVOID*, PULONG) = 0;
     typedef BOOL(__stdcall WINAPI * SymRegisterCallback64_t)(HANDLE hProcess, PSYMBOL_REGISTERED_CALLBACK64 CallbackFunction, ULONG64 UserContext);
 
     SymInitialize_t             g_SymInitialize;
@@ -307,8 +305,8 @@ namespace AZ {
                 return;
             }
 
-            const HMODULE hNtDll = ::GetModuleHandle(_T("ntdll.dll"));
-            m_LdrRegisterDllNotification = reinterpret_cast<PLDR_REGISTER_DLL_NOTIFICATION>(::GetProcAddress(hNtDll, "LdrRegisterDllNotification"));
+            const HMODULE hNtDll = GetModuleHandle(_T("ntdll.dll"));
+            m_LdrRegisterDllNotification = reinterpret_cast<PLDR_REGISTER_DLL_NOTIFICATION>(GetProcAddress(hNtDll, "LdrRegisterDllNotification"));
 
             if (m_LdrRegisterDllNotification)
             {
@@ -331,8 +329,8 @@ namespace AZ {
                 return;
             }
 
-            const HMODULE hNtDll = ::GetModuleHandle(_T("ntdll.dll"));
-            m_LdrUnregisterDllNotification = reinterpret_cast<PLDR_UNREGISTER_DLL_NOTIFICATION>(::GetProcAddress(hNtDll, "LdrUnregisterDllNotification"));
+            const HMODULE hNtDll = GetModuleHandle(_T("ntdll.dll"));
+            m_LdrUnregisterDllNotification = reinterpret_cast<PLDR_UNREGISTER_DLL_NOTIFICATION>(GetProcAddress(hNtDll, "LdrUnregisterDllNotification"));
 
             if (m_LdrUnregisterDllNotification)
             {
@@ -372,15 +370,32 @@ namespace AZ {
                 return TRUE;
             }
             
-            // the sym path is by default just '.' which isn't even technically the folder that the exe is in.
             // if no override has been set by someone calling SetSymbolPath (which completely overrides this)
-            // then at the very least, add paths that contain known modules.
+            // then at the very least, add paths to current folder, current executable folder and known modules.
             if (!m_szSymPath)
             {
-                AZ::Debug::SymbolStorageDynamicallyLoadedModules& loadedModules = AZ::Debug::GetRegisteredLoadedModules();
                 g_reservedScratchSpace1[0] = 0;
-                azstrcpy(g_reservedScratchSpace1, g_scratchSpaceSize, ".;");
+                char* finalPosition = g_reservedScratchSpace1;
 
+                // Add the current execution path and the current process path
+                DWORD pathLen = GetModuleFileNameA(nullptr, g_reservedScratchSpace1, AZ_ARRAY_SIZE(g_reservedScratchSpace1));
+                if (pathLen > 0)
+                {
+                    char* exeDirEnd = g_reservedScratchSpace1 + pathLen;
+                    AZStd::replace(g_reservedScratchSpace1, exeDirEnd, '\\', '/');
+                    
+                    // g_reservedScratchSpace1 currently contains full path to EXE. Modify to end the string after the last '/'
+                    finalPosition = strrchr(g_reservedScratchSpace1, '/');
+                    if (finalPosition)
+                    {
+                        *finalPosition = 0;
+                    }
+                }
+
+                // Add the current folder
+                azstrcat(g_reservedScratchSpace1, AZ_ARRAY_SIZE(g_reservedScratchSpace1), ";.");
+
+                AZ::Debug::SymbolStorageDynamicallyLoadedModules& loadedModules = AZ::Debug::GetRegisteredLoadedModules();
                 for (int j = 0; j < loadedModules.m_size; ++j)
                 {
                     AZ::Debug::DynamicallyLoadedModuleInfo& module = loadedModules.m_modules[j];
@@ -1027,7 +1042,7 @@ cleanup:
     // [7/29/2009]
     //=========================================================================
     unsigned int
-    StackRecorder::Record(StackFrame* frames, unsigned int maxNumOfFrames, unsigned int suppressCount /* = 0 */, void* nativeThread /*= NULL*/)
+    StackRecorder::Record(StackFrame* frames, unsigned int maxNumOfFrames, unsigned int suppressCount, void* nativeThread)
     {
 #if defined(AZ_ENABLE_DEBUG_TOOLS)
         unsigned int numFrames = 0;
@@ -1035,16 +1050,12 @@ cleanup:
         if (nativeThread == NULL)
         {
             ++suppressCount; // Skip current call
-            if (s_pfnCaptureStackBackTrace == 0)
-            {
-                const HMODULE hNtDll = ::GetModuleHandle("ntdll.dll");
-                s_pfnCaptureStackBackTrace = reinterpret_cast<decltype(s_pfnCaptureStackBackTrace)>(::GetProcAddress(hNtDll, "RtlCaptureStackBackTrace"));
-            }
+            PVOID myFrames[50] = { nullptr };
 
-            AZ_ALIGN(PVOID myFrames[50], 8);
-            AZ_Assert(maxNumOfFrames < AZ_ARRAY_SIZE(myFrames), "You need to increase the size of myFrames array %d (needed %d)!", maxNumOfFrames, AZ_ARRAY_SIZE(myFrames));
-            // for 64 bit we can use (PVOID*)frames since it has the same size as DWORD64
-            numFrames = s_pfnCaptureStackBackTrace(suppressCount, maxNumOfFrames, /*(PVOID*)frames*/ myFrames, NULL);
+            static_assert(AZ_ARRAY_SIZE(myFrames) <= 0xffff, "RtlCaptureStackBackTrace only supports a maximum of MAXUSHORT (0xffff) frames captured.");
+            AZ_Assert(maxNumOfFrames <= AZ_ARRAY_SIZE(myFrames), "You need to increase the size of myFrames array %u (needed %zu)!", maxNumOfFrames, AZ_ARRAY_SIZE(myFrames));
+            
+            numFrames = RtlCaptureStackBackTrace(suppressCount, maxNumOfFrames, myFrames, NULL);
             for (unsigned int frame = 0; frame < numFrames; ++frame)
             {
                 frames[frame].m_programCounter = (ProgramCounterType)myFrames[frame];
@@ -1062,11 +1073,10 @@ cleanup:
             context.ContextFlags = CONTEXT_ALL;
             GetThreadContext(hThread, &context);
 
-            STACKFRAME64 sf /*= {0}*/;
+            STACKFRAME64 sf;
             memset(&sf, 0, sizeof(STACKFRAME64));
             DWORD imageType;
 
-    #   ifdef AZ_PLATFORM_WINDOWS_X64
             imageType = IMAGE_FILE_MACHINE_AMD64;
             sf.AddrPC.Offset = context.Rip;
             sf.AddrPC.Mode = AddrModeFlat;
@@ -1074,15 +1084,6 @@ cleanup:
             sf.AddrFrame.Mode = AddrModeFlat;
             sf.AddrStack.Offset = context.Rsp;
             sf.AddrStack.Mode = AddrModeFlat;
-    #   else
-            imageType = IMAGE_FILE_MACHINE_I386;
-            sf.AddrPC.Offset = context.Eip;
-            sf.AddrPC.Mode = AddrModeFlat;
-            sf.AddrFrame.Offset = context.Ebp;
-            sf.AddrFrame.Mode = AddrModeFlat;
-            sf.AddrStack.Offset = context.Esp;
-            sf.AddrStack.Mode = AddrModeFlat;
-    #   endif
 
             EnterCriticalSection(&g_csDbgHelpDll);
             s32 frame = -(s32)suppressCount;

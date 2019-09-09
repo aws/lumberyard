@@ -1,0 +1,13 @@
+{
+  "auto": {
+    "Source": [
+      "Source/ScriptCanvasTestingEditorModule.cpp",
+      "Source/ScriptCanvasTestingSystemComponent.cpp",
+      "Source/ScriptCanvasTestingSystemComponent.h"
+    ],
+    "Source/Framework": [
+      "Source/Framework/ScriptCanvasTestVerify.cpp",
+      "Source/Framework/ScriptCanvasTestVerify.h"
+    ]
+  }
+}

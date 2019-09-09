@@ -425,13 +425,7 @@ namespace NCryOpenGL
         //  Confetti End: Igor Lobanchikov
 
         typedef std::vector<SMappedSubTexture> TMappedSubTextures;
-#if !DXGL_SUPPORT_COPY_IMAGE
         typedef std::vector<SOutputMergerTextureViewPtr> TCopySubTextureViews;
-#endif //!DXGL_SUPPORT_COPY_IMAGE
-#if DXGL_USE_PBO_FOR_STAGING_TEXTURES || !DXGL_SUPPORT_COPY_IMAGE
-        typedef void (* TransferDataFunc) (STexture* pTexture, STexSubresourceID kSubID, STexPos kOffset, STexSize kSize, const SMappedSubTexture& kDataLocation, CContext* pContext);
-        typedef uint32 (* LocatePackedDataFunc) (STexture* pTexture, STexSubresourceID kSubID, STexPos kOffset, SMappedSubTexture& kDataLocation);
-#endif //DXGL_USE_PBO_FOR_STAGING_TEXTURES || !DXGL_SUPPORT_COPY_IMAGE
 
         GLsizei m_iWidth, m_iHeight, m_iDepth;
         GLenum m_eTarget;
@@ -439,17 +433,16 @@ namespace NCryOpenGL
         uint32 m_uNumMipLevels;
         uint32 m_uNumElements; // array_size * number_of_faces
 
-#if DXGL_SUPPORT_COPY_IMAGE
         // Texture view used for glCopyImageSubData if the driver requires a custom view for that, texture name otherwise
         CResourceName m_kCopyImageView;
         GLenum m_eCopyImageTarget;
-#endif //DXGL_SUPPORT_COPY_IMAGE
 
-#if DXGL_USE_PBO_FOR_STAGING_TEXTURES || !DXGL_SUPPORT_COPY_IMAGE
+        typedef void(*TransferDataFunc) (STexture* pTexture, STexSubresourceID kSubID, STexPos kOffset, STexSize kSize, const SMappedSubTexture& kDataLocation, CContext* pContext);
+        typedef uint32(*LocatePackedDataFunc) (STexture* pTexture, STexSubresourceID kSubID, STexPos kOffset, SMappedSubTexture& kDataLocation);
+
         TransferDataFunc m_pfUnpackData;
         TransferDataFunc m_pfPackData;
         LocatePackedDataFunc m_pfLocatePackedDataFunc;
-#endif //DXGL_USE_PBO_FOR_STAGING_TEXTURES || !DXGL_SUPPORT_COPY_IMAGE
 
 #if DXGL_USE_PBO_FOR_STAGING_TEXTURES
         CResourceName* m_akPixelBuffers; // Only used for staging textures
@@ -458,9 +451,7 @@ namespace NCryOpenGL
 #endif
 
         TMappedSubTextures m_kMappedSubTextures;
-#if !DXGL_SUPPORT_COPY_IMAGE || !DXGL_SUPPORT_GETTEXIMAGE
         TCopySubTextureViews m_kCopySubTextureViews;
-#endif //!DXGL_SUPPORT_COPY_IMAGE
 
         STextureState m_kCache;
         SShaderTextureView* m_pShaderViewsHead;
@@ -664,11 +655,11 @@ namespace NCryOpenGL
         static void UpdateSubresource(SResource* pResource, uint32 uSubresource, const D3D11_BOX* pDstBox, const void* pSrcData, uint32 uSrcRowPitch, uint32 uSrcDepthPitch, CContext* pContext);
         static bool MapSubresource(SResource* pResource, uint32 uSubresource, D3D11_MAP MapType, UINT MapFlags, D3D11_MAPPED_SUBRESOURCE* pMappedResource, CContext* pContext);
         static void UnmapSubresource(SResource* pResource, uint32 uSubresource, CContext* pContext);
-#if DXGL_USE_PBO_FOR_STAGING_TEXTURES || !DXGL_SUPPORT_COPY_IMAGE
+
         static void UnpackData(STexture* pTexture, STexSubresourceID kSubID, STexPos kOffset, STexSize kSize, const SMappedSubTexture& kDataLocation, CContext* pContext);
         static void PackData(STexture* pTexture, STexSubresourceID kSubID, STexPos kOffset, STexSize kSize, const SMappedSubTexture& kDataLocation, CContext* pContext);
         static uint32 LocatePackedData(STexture* pTexture, STexSubresourceID kSubID, STexPos kOffset, SMappedSubTexture& kDataLocation);
-#endif //DXGL_USE_PBO_FOR_STAGING_TEXTURES || !DXGL_SUPPORT_COPY_IMAGE
+
 
         uint32 m_uTextureRefCount;
         SFrameBufferObject m_kInputFBO;

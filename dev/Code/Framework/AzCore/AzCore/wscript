@@ -14,7 +14,7 @@ def build(bld):
 
     defines = []
 
-    bld.CryEngineStaticLibrary(
+    kw = dict(
         # Settings
         target          = 'AzCore',
         vs_filter       = 'AZ Framework',
@@ -33,8 +33,6 @@ def build(bld):
         defines         = list(defines),
         export_defines  = list(defines),
         features        = ['internal_telemetry'],
-        test_all_defines = ['AZCORE_ENABLE_MEMORY_TRACKING'],
-        test_all_export_defines = ['AZCORE_ENABLE_MEMORY_TRACKING'],
 
         # Compiler Specific
         msvc_cxxflags       = ['/W4'],
@@ -48,10 +46,7 @@ def build(bld):
                               ],
         win_features        = ['crcfix'],
 
-       
-       
-
-       
+        restricted_script = 'update_restricted_parameters',
 
         android_file_list   = ['azcore_android.waf_files', 'std/azstd_android.waf_files'],
 
@@ -64,6 +59,10 @@ def build(bld):
 
         linux_file_list     = ['azcore_linux.waf_files', 'std/azstd_linux.waf_files'],
         linux_includes      = ['/usr/include/libcxxabi'],
-
     )
-
+    for p0, p1, p2, p3 in bld.env['RESTRICTED_PLATFORMS']:
+        kw['{}_file_list'.format(p3)] = [
+            '{0}/azcore_{1}.waf_files'.format(p0, p1),
+            'std/{0}/azstd_{1}.waf_files'.format(p0, p1),
+        ]
+    bld.CryEngineStaticLibrary(**kw)

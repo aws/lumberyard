@@ -100,7 +100,7 @@ end
 function leaderboardmainmenu:ShowTopFiveSample(scores)
     local scoreList = {}
     for scoreCount = 1, 5 do -- just show first 5
-        if #scores > scoreCount then
+        if #scores >= scoreCount then
             table.insert(scoreList, scores[scoreCount]);
         end
     end
@@ -111,36 +111,10 @@ function leaderboardmainmenu:OnPostLeaderboardRequestSuccess(response)
     self:ShowTopFiveSample(response.scores);
 end
 
-
 function leaderboardmainmenu:OnPostLeaderboardRequestError(error)
    Debug.Log("Error getting leaderboard");
 end
 
-
-function leaderboardmainmenu:SubmitRandomScores()
-    for count = self.submitCount, self.submitCount+10 do
-        local user = "GeneratedUser_"..tostring(count);
-        Debug.Log("submitting score for "..user);
-        local scoreObj = CloudGemLeaderboard_SingleScore();
-        scoreObj.user = user;
-        scoreObj.stat = self.Properties.stat;
-        scoreObj.value = math.random(1,40) * (1 + (math.random(0,99)/100));
-        CloudGemLeaderboardRequestBus.Event.PostScore(self.entityId, scoreObj, nil);
-    end
-    self.submitCount = self.submitCount + 11;
-end
-
-function leaderboardmainmenu:SubmitScoreForLocalUser(score)
-    if self.username == "" then
-        Debug.Log("Log in using CloudGemPlayerAccount sample level");
-        return;
-    end
-    local scoreObj = CloudGemLeaderboard_SingleScore();
-    scoreObj.stat = self.Properties.stat;
-    scoreObj.user = self.username;
-    scoreObj.value = score;
-    CloudGemLeaderboardRequestBus.Event.PostScore(self.entityId, scoreObj, nil);
-end
 
 function leaderboardmainmenu:OnAction(entityId, actionName)
     if actionName == "GetScores" then
@@ -152,46 +126,7 @@ function leaderboardmainmenu:OnAction(entityId, actionName)
         Debug.Log("getting leaderboard for " .. self.Properties.stat);
         CloudGemLeaderboardRequestBus.Event.PostLeaderboard(self.entityId, self.Properties.stat, additionalData, nil);
         -- self:GenerateSampleScore();
-    elseif actionName == "RandomBatch" then
-        self:SubmitRandomScores();
-        Debug.Log("Submiting random score batch");
-    elseif actionName == "SubmitUser10" then
-        self:SubmitScoreForLocalUser(10.0);
-        Debug.Log("Submiting score 10");
-    elseif actionName == "SubmitUser25" then
-        self:SubmitScoreForLocalUser(25.0);
-        Debug.Log("Submiting score 25");
-    elseif actionName == "SubmitUser50" then
-        self:SubmitScoreForLocalUser(50.0);
-        Debug.Log("Submiting score 50");
     end
-end
-
-function leaderboardmainmenu:OnPostScoreRequestSuccess(response)
-    Debug.Log("Successfully submitted score for "..response.user ..":"..response.value);
-end
-
-function leaderboardmainmenu:OnPostScoreRequestError(error)
-    Debug.Log("Error submitting score: ".. error.message);
-end
-
-function leaderboardmainmenu:GenerateSampleScore()
-    local scoreList = {}
-    local scoreObject = CloudGemLeaderboard_SingleScore();
-    scoreObject.stat = "score";
-    scoreObject.user = "Player 1";
-    scoreObject.value = 14.0;
-    scoreObject.estimated_rank = 2;
-
-    local scoreObject2 = CloudGemLeaderboard_SingleScore();
-    scoreObject2.stat = "score";
-    scoreObject2.user = "Player 2";
-    scoreObject2.value = 15.0;
-    scoreObject2.estimated_rank = 1;
-
-    table.insert(scoreList, scoreObject);
-    table.insert(scoreList, scoreObject2);
-    self:UpdateScores(scoreList, self.Properties.stat);
 end
 
 function leaderboardmainmenu:UpdateScores(scoreList, metricName)

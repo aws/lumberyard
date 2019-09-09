@@ -17,8 +17,9 @@ import subprocess
 from time import sleep
 
 import lmbr_aws_test_support
+from resource_manager.test import base_stack_test
 
-class UnitTest_CloudGemFramework_ResourceManager_CommonCodeImport(lmbr_aws_test_support.lmbr_aws_TestCase):
+class UnitTest_CloudGemFramework_ResourceManager_CommonCodeImport(base_stack_test.BaseStackTestCase):
 
     TEST_GEM_NAME_1 = 'TestGem1'
     TEST_GEM_NAME_2 = 'TestGem2'
@@ -63,7 +64,8 @@ def __assert(result, msg):
 '''
 
     def setUp(self):        
-        self.prepare_test_envionment("test_unit_common_code_import")
+        self.prepare_test_environment("test_unit_common_code_import")
+        self.register_for_shared_resources()
         
     def test_unit_lmbr_aws_end_to_end(self):
         self.run_all_tests()
@@ -87,7 +89,8 @@ def __assert(result, msg):
             'cloud-gem', 'create',
             '--gem', gem_name,
             '--initial-content', 'no-resources',
-            '--enable'
+            '--enable','--no-sln-change',
+            ignore_failure=True
         )
 
         self.make_gem_aws_file(

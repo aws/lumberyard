@@ -26,7 +26,7 @@ namespace AzQtComponents
      * Create a dock tab widget that extends a QTabWidget with a custom DockTabBar to replace the default tab bar
      */
     DockTabWidget::DockTabWidget(QWidget* mainEditorWindow, QWidget* parent)
-        : QTabWidget(parent)
+        : TabWidget(parent)
         , m_tabBar(new DockTabBar)
         , m_mainEditorWindow(mainEditorWindow)
     {
@@ -61,7 +61,7 @@ namespace AzQtComponents
 
         // Let the QTabWidget handle the rest
         AzQtComponents::RepolishMinimizer minimizer;
-        int tab = QTabWidget::addTab(page, page->windowTitle());
+        int tab = TabWidget::addTab(page, page->windowTitle());
 
         // Make sure that changes to the window title get reflected by the tab too
         m_titleBarChangedConnections[page] = connect(page, &QWidget::windowTitleChanged, this, [this, page]() {
@@ -160,7 +160,7 @@ namespace AzQtComponents
             return;
         }
 
-        QTabWidget::closeEvent(event);
+        TabWidget::closeEvent(event);
     }
 
     /**

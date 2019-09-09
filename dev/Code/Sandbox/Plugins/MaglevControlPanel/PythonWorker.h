@@ -24,7 +24,11 @@
 
 // Suppress warning in pymath.h where a conflict with round exists with VS 12.0 math.h ::  pymath.h(22) : warning C4273: 'round' : inconsistent dll linkage
 #pragma warning(disable: 4273)
+// Suppress warning in boost/python/opaque_pointer_converter.hpp, boost/python/return_opaque_pointer.hpp and python/detail/dealloc.hpp
+// for non UTF-8 characters.
+#pragma warning(disable: 4828)
 #include <boost/python.hpp>
+#pragma warning(default: 4828)
 #pragma warning(default: 4273)
 
 class CloudCanvasLogger;

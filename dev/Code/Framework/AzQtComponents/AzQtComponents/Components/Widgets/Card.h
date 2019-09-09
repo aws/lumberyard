@@ -69,6 +69,7 @@ namespace AzQtComponents
 
         CardNotification* addNotification(QString message);
         void clearNotifications();
+        int getNotificationCount() const;
 
         void setExpanded(bool expand);
         bool isExpanded() const;
@@ -90,6 +91,8 @@ namespace AzQtComponents
 
         void setSecondaryContentWidget(QWidget* secondaryContentWidget);
         QWidget* secondaryContentWidget() const;
+
+        void hideFrame();
 
         /*!
         * Loads the Card config data from a settings object.

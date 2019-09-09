@@ -10,10 +10,7 @@
 *
 */
 
-#ifndef MOCK_APPLICATION_MANAGER_H
-#define MOCK_APPLICATION_MANAGER_H
-
-#if defined (UNIT_TEST)
+#pragma once
 
 #include "../utilities/ApplicationManagerAPI.h"
 #include "native/AssetManager/assetProcessorManager.h"
@@ -65,6 +62,7 @@ namespace AssetProcessor
         void UnRegisterAllBuilders();
 
         void GetMatchingBuildersInfo(const AZStd::string& assetPath, AssetProcessor::BuilderInfoList& builderInfoList) override;
+        void GetAllBuildersInfo(AssetProcessor::BuilderInfoList& builderInfoList) override;
 
         void ResetMatchingBuildersInfoFunctionCalls();
         int GetMatchingBuildersInfoFunctionCalls();
@@ -99,11 +97,11 @@ namespace AssetProcessor
 
         //! AssetProcessor::AssetBuilderInfoBus Interface
         void GetMatchingBuildersInfo(const AZStd::string& assetPath, AssetProcessor::BuilderInfoList& builderInfoList) override;
+        void GetAllBuildersInfo(AssetProcessor::BuilderInfoList& builderInfoList) override;
         ////////////////////////////////////////////////
 
         AssetBuilderSDK::AssetBuilderDesc m_assetBuilderDesc;
         int m_numberOfJobsToCreate = 0;
     };
 }
-#endif // UNIT_TEST
-#endif //MOCK_APPLICATION_MANAGER_H
+

@@ -226,9 +226,9 @@ class ClientWrapper(object):
 
 class CloudFormationClientWrapper(ClientWrapper):
 
-    BACKOFF_BASE_SECONDS = 0.1
-    BACKOFF_MAX_SECONDS = 20.0
-    BACKOFF_MAX_TRYS = 5
+    BACKOFF_BASE_SECONDS = 0.75
+    BACKOFF_MAX_SECONDS = 30.0
+    BACKOFF_MAX_TRYS = 10
 
     def __init__(self, wrapped_client, verbose):
         super(CloudFormationClientWrapper, self).__init__(wrapped_client, verbose)
@@ -250,7 +250,7 @@ class CloudFormationClientWrapper(ClientWrapper):
 
                         backoff = min(self.BACKOFF_MAX_SECONDS, random.uniform(self.BACKOFF_BASE_SECONDS, backoff * 3.0))
                         if self.verbose:
-                            self.log(attr, 'throttled attempt {}. Sleeping {} seconds'.format(count, backoff))
+                            self.log(attr, 'throttled on attempt {}. Sleeping {} seconds at {}'.format(count, backoff, str(datetime.datetime.now())))
                         time.sleep(backoff)
                         count += 1
 
@@ -401,6 +401,17 @@ class AWSContext(object):
             wrapped_client = ClientWrapper(client, self.__args.verbose)
         return wrapped_client
 
+    def resource(self, service_name, region = None, use_role = True):
+
+        if self.__session is None:
+            self.__init_session()
+
+        if use_role:
+            session = self.__session
+        else:
+            session = self.__session_without_role
+
+        return session.resource(service_name, region_name = region, config=Config(signature_version='s3v4'))
 
     @property
     def session(self):

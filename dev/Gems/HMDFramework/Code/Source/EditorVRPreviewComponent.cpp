@@ -78,9 +78,9 @@ namespace AZ
 
         //////////////////////////////////////////////////////////////////////////
         // AzToolsFramework::EditorEntityContextNotificationBus interface implementation
-        void EditorVRPreviewComponent::OnSliceInstantiated(const Data::AssetId& sliceAssetId, const SliceComponent::SliceInstanceAddress& sliceAddress, const AzFramework::SliceInstantiationTicket& ticket)
+        void EditorVRPreviewComponent::OnSliceInstantiated(const Data::AssetId& sliceAssetId, SliceComponent::SliceInstanceAddress& sliceAddress, const AzFramework::SliceInstantiationTicket& ticket)
         {
-            const SliceComponent::EntityList& entities = sliceAddress.second->GetInstantiated()->m_entities;
+            const SliceComponent::EntityList& entities = sliceAddress.GetInstance()->GetInstantiated()->m_entities;
             const EntityId entityId = m_entity->GetId();
 
             for (const Entity* entity : entities)

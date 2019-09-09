@@ -28,12 +28,12 @@
 
 // bump this value up if you want to invalidate shader cache (e.g. changed some code or .ext file)
 // #### VIP NOTE ####: DON'T USE MORE THAN ONE DECIMAL PLACE!!!! else it doesn't work...
-#define FX_CACHE_VER       9.8f
+#define FX_CACHE_VER       10.1f
 #define FX_SER_CACHE_VER   1.0f  // Shader serialization version (FX_CACHE_VER + FX_SER_CACHE_VER)
 
 // Maximum 1 digit here
 // The version determines the parse logic in the shader cache gen, these values cannot overlap
-#define SHADER_LIST_VER 3
+#define SHADER_LIST_VER 4
 #define SHADER_SERIALISE_VER (SHADER_LIST_VER + 1)
 
 //#define SHADER_NO_SOURCES 1 // If this defined all binary shaders (.fxb) should be located in Game folder (not user)
@@ -276,7 +276,7 @@ struct STokenD
     unsigned Size() { return sizeof(STokenD) /*+ sizeofVector(Offsets)*/ + SToken.capacity(); }
     void GetMemoryUsage(ICrySizer* pSizer) const { pSizer->AddObject(SToken); }
 };
-typedef std::vector<STokenD> FXShaderToken;
+typedef AZStd::vector<STokenD, AZ::StdLegacyAllocator> FXShaderToken;
 typedef FXShaderToken::iterator FXShaderTokenItor;
 
 struct SFXStruct
@@ -516,12 +516,12 @@ struct SCompressedData
     }
 };
 
-typedef std::map<int, struct SD3DShader*> FXDeviceShader;
+typedef AZStd::unordered_map<int, struct SD3DShader*, AZStd::hash<int>, AZStd::equal_to<int>, AZ::StdLegacyAllocator> FXDeviceShader;
 typedef FXDeviceShader::iterator FXDeviceShaderItor;
 
-typedef std::map<int, SCompressedData> FXCompressedShader;
+typedef AZStd::unordered_map<int, SCompressedData, AZStd::hash<int>, AZStd::equal_to<int>, AZ::StdLegacyAllocator> FXCompressedShader;
 typedef FXCompressedShader::iterator FXCompressedShaderItor;
-typedef std::map<CCryNameTSCRC, int> FXCompressedShaderRemap;
+typedef AZStd::unordered_map<CCryNameTSCRC, int, AZStd::hash<CCryNameTSCRC>, AZStd::equal_to<CCryNameTSCRC>, AZ::StdLegacyAllocator> FXCompressedShaderRemap;
 typedef FXCompressedShaderRemap::iterator FXCompressedShaderRemapItor;
 struct SHWActivatedShader
 {
@@ -533,7 +533,7 @@ struct SHWActivatedShader
     int Size();
     void GetMemoryUsage(ICrySizer* pSizer) const;
 };
-typedef std::map<CCryNameTSCRC, SHWActivatedShader*> FXCompressedShaders;
+typedef AZStd::unordered_map<CCryNameTSCRC, SHWActivatedShader*, AZStd::hash<CCryNameTSCRC>, AZStd::equal_to<CCryNameTSCRC>, AZ::StdLegacyAllocator> FXCompressedShaders;
 typedef FXCompressedShaders::iterator FXCompressedShadersItor;
 
 #define CACHE_READONLY 0
@@ -558,13 +558,13 @@ struct SOptimiseStats
     }
 };
 
-typedef std::map<CCryNameR, SShaderCache*> FXShaderCache;
+typedef AZStd::unordered_map<CCryNameR, SShaderCache*, AZStd::hash<CCryNameR>, AZStd::equal_to<CCryNameR>, AZ::StdLegacyAllocator> FXShaderCache;
 typedef FXShaderCache::iterator FXShaderCacheItor;
 
-typedef std::map<CCryNameR, SShaderDevCache*> FXShaderDevCache;
+typedef AZStd::unordered_map<CCryNameR, SShaderDevCache*, AZStd::hash<CCryNameR>, AZStd::equal_to<CCryNameR>, AZ::StdLegacyAllocator> FXShaderDevCache;
 typedef FXShaderDevCache::iterator FXShaderDevCacheItor;
 
-typedef std::map<string, uint32> FXShaderCacheNames;
+typedef AZStd::unordered_map<string, uint32, AZStd::hash<string>, AZStd::equal_to<string>, AZ::StdLegacyAllocator> FXShaderCacheNames;
 typedef FXShaderCacheNames::iterator FXShaderCacheNamesItor;
 
 
@@ -663,7 +663,9 @@ enum EHWSRMaskBit
     HWSR_MULTI_LAYER_ALPHA_BLEND,
     HWSR_ADDITIVE_BLENDING,
     HWSR_APPLY_SSDO,
-    
+    HWSR_FOG_VOLUME_HIGH_QUALITY_SHADER,
+
+
     HWSR_SRGB0,
     HWSR_SRGB1,
     HWSR_SRGB2,
@@ -700,7 +702,12 @@ extern uint64 g_HWSR_MaskBit[HWSR_MAX];
 // Texture transform flag
 #define HWMD_TEXCOORD_MATRIX                        0x100
 // Object linear texgen flag
-#define HWMD_TEXCOORD_GEN_OBJECT_LINEAR 0x1000
+#define HWMD_TEXCOORD_GEN_OBJECT_LINEAR_DIFFUSE         0x1000
+#define HWMD_TEXCOORD_GEN_OBJECT_LINEAR_EMITTANCE       0x2000
+#define HWMD_TEXCOORD_GEN_OBJECT_LINEAR_EMITTANCE_MULT  0x4000
+#define HWMD_TEXCOORD_GEN_OBJECT_LINEAR_DETAIL          0x8000
+#define HWMD_TEXCOORD_GEN_OBJECT_LINEAR_CUSTOM          0x10000
+
 
 #define HWMD_TEXCOORD_FLAG_MASK    (0xfffff000 | 0xf00)
 
@@ -721,6 +728,16 @@ extern uint64 g_HWSR_MaskBit[HWSR_MAX];
 #define HWSF_PRECACHE_INST        0x200
 #define HWSF_STORECOMBINATION     0x400
 #define HWSF_STOREDATA            0x800
+
+// Static flags
+enum EHWSSTFlag
+{
+    HWSST_Invalid = -1,
+#undef FX_STATIC_FLAG
+#define FX_STATIC_FLAG(flag) HWSST_##flag,
+#include "ShaderStaticFlags.inl"
+    HWSST_MAX
+};
 
 class CHWShader
     : public CBaseResource
@@ -748,6 +765,7 @@ public:
     uint64 m_nMaskGenShader;        // Masked/Optimised m_nMaskGenFX for this specific HW shader
     uint64 m_nMaskGenFX;            // FX Shader should be parsed with this flags
     uint64 m_nMaskSetFX;            // AffectMask GL for parser tree
+    uint64 m_maskGenStatic;         // Mask for global static flags used for generating the shader.
 
     uint32 m_nPreprocessFlags;
     int m_nFrame;
@@ -809,7 +827,7 @@ public:
     static const char* mfClassString(EHWShaderClass eClass);
     static EHWShaderClass mfStringProfile(const char* profile);
     static EHWShaderClass mfStringClass(const char* szClass);
-    static void mfGenName(uint64 GLMask, uint64 RTMask, uint32 LightMask, uint32 MDMask, uint32 MDVMask, uint64 PSS, EHWShaderClass eClass, char* dstname, int nSize, byte bType);
+    static void mfGenName(uint64 GLMask, uint64 RTMask, uint32 LightMask, uint32 MDMask, uint32 MDVMask, uint64 PSS, uint64 STMask, EHWShaderClass eClass, char* dstname, int nSize, byte bType);
 
     static void mfCleanupCache();
 
@@ -1198,17 +1216,17 @@ struct SShaderTechnique
     }
     void UpdatePreprocessFlags(CShader* pSH);
 
-    void* operator new(size_t Size) { void* ptr = malloc(Size); memset(ptr, 0, Size); return ptr; }
+    void* operator new(size_t Size) { void* ptr = CryModuleMalloc(Size); memset(ptr, 0, Size); return ptr; }
     void* operator new(size_t Size, const std::nothrow_t& nothrow)
     {
-        void* ptr = malloc(Size);
+        void* ptr = CryModuleMalloc(Size);
         if (ptr)
         {
             memset(ptr, 0, Size);
         }
         return ptr;
     }
-    void operator delete(void* Ptr) { free(Ptr); }
+    void operator delete(void* Ptr) { CryModuleFree(Ptr); }
 };
 
 //===============================================================================
@@ -1239,7 +1257,9 @@ public:
     EShaderType             m_eShaderType;                  // [Shader System TO DO] - possibly change to be data driven
 
     uint64                  m_nMaskGenFX;
+    uint64                  m_maskGenStatic;                // Static global flags used for generating the shader.
     SShaderGen*             m_ShaderGenParams;              // BitMask params used in automatic script generation
+    SShaderGen*             m_ShaderGenStaticParams;
     SShaderTexSlots*        m_ShaderTexSlots[TTYPE_MAX];    // filled out with data of the used texture slots for a given technique
                                                             // (might be NULL if this data isn't gathered)
     std::vector<CShader*>*  m_DerivedShaders;
@@ -1271,6 +1291,8 @@ public:
         , m_nRefreshFrame(0)
         , m_SourceCRC32(0)
         , m_CRC32(0)
+        , m_ShaderGenStaticParams(nullptr)
+        , m_maskGenStatic(0)
     {
         memset(m_ShaderTexSlots, 0, sizeof(m_ShaderTexSlots));
     }
@@ -1460,17 +1482,17 @@ public:
     }
 
     virtual void GetMemoryUsage(ICrySizer* Sizer) const;
-    void* operator new(size_t Size) { void* ptr = malloc(Size); memset(ptr, 0, Size); return ptr; }
+    void* operator new(size_t Size) { void* ptr = CryModuleMalloc(Size); memset(ptr, 0, Size); return ptr; }
     void* operator new(size_t Size, const std::nothrow_t& nothrow)
     {
-        void* ptr = malloc(Size);
+        void* ptr = CryModuleMalloc(Size);
         if (ptr)
         {
             memset(ptr, 0, Size);
         }
         return ptr;
     }
-    void operator delete(void* Ptr) { free(Ptr); }
+    void operator delete(void* Ptr) { CryModuleFree(Ptr); }
 
     static CCryNameTSCRC mfGetClassName()
     {

@@ -53,7 +53,7 @@ public:
     virtual bool OnKeyUp(CViewport* view, uint32 nChar, uint32 nRepCnt, uint32 nFlags) { return false; };
     //////////////////////////////////////////////////////////////////////////
 
-    void Accept();
+    void Accept(bool resetPosition = false);
     void Abort();
 
 protected:

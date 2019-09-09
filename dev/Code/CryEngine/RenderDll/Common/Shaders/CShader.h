@@ -380,6 +380,7 @@ public:
 
 #ifndef NULL_RENDERER
     static CShader* s_ShaderFPEmu;
+    static CShader* s_ShaderUI;
     static CShader* s_ShaderFallback;
     static CShader* s_ShaderStars;
     static CShader* s_ShaderShadowBlur;
@@ -405,6 +406,8 @@ public:
 
     const SInputShaderResources* m_pCurInputResources;
     SShaderGen* m_pGlobalExt;
+    SShaderGen* m_staticExt;    // Shader gen info for static flags (Statics.ext)
+    uint64 m_staticFlags;       // Enabled global flags used for generating the shaders.
     SShaderLevelPolicies* m_pLevelsPolicies;
 
     Vec4 m_TempVecs[16];
@@ -486,6 +489,8 @@ public:
         m_bLoadedSystem = false;
         s_DefaultShader = NULL;
         m_pGlobalExt = NULL;
+        m_staticExt = nullptr;
+        m_staticFlags = 0;
         g_pShaderParserHelper = &m_shaderParserHelper;
         m_nCombinationsProcess = -1;
         m_nCombinationsProcessOverall = -1;
@@ -508,12 +513,17 @@ public:
     string mfGetShaderBitNamesFromMaskGen(const char* szName, uint64 nMaskGen);
 
     bool mfUsesGlobalFlags(const char* szShaderName);
-    const char* mfGetShaderBitNamesFromGlobalMaskGen(uint64 nMaskGen);
+    AZStd::string mfGetShaderBitNamesFromGlobalMaskGen(uint64 nMaskGen);
     uint64 mfGetShaderGlobalMaskGenFromString(const char* szShaderGen);
 
     void mfInitGlobal(void);
     void mfInitLevelPolicies(void);
     void mfInitLookups(void);
+
+    void InitStaticFlags();
+    void AddStaticFlag(EHWSSTFlag flag);
+    void RemoveStaticFlag(EHWSSTFlag flag);
+    bool HasStaticFlag(EHWSSTFlag flag);
 
     void mfPreloadShaderExts(void);
     void mfInitCommonGlobalFlags(void);

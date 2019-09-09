@@ -22,6 +22,7 @@
 
 #include <AzToolsFramework/AssetBrowser/AssetBrowserBus.h>
 #include <AzToolsFramework/API/EditorAssetSystemAPI.h>
+#include <AzFramework/Network/SocketConnection.h>
 
 namespace AzToolsFramework
 {
@@ -50,6 +51,7 @@ namespace AzToolsFramework
             , public AzFramework::AssetCatalogEventBus::Handler
             , public AZ::TickBus::Handler
             , public AssetSystemBus::Handler
+            , public AssetBrowserInteractionNotificationBus::Handler
         {
         public:
             AZ_COMPONENT(AssetBrowserComponent, "{4BC5F93F-2F9E-412E-B00A-396C68CFB5FB}")
@@ -63,6 +65,9 @@ namespace AzToolsFramework
             void Activate() override;
             void Deactivate() override;
             static void Reflect(AZ::ReflectContext* context);
+            static void GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& services);
+            static void GetRequiredServices(AZ::ComponentDescriptor::DependencyArrayType& required);
+            static void GetIncompatibleServices(AZ::ComponentDescriptor::DependencyArrayType& incompatible);
 
             //////////////////////////////////////////////////////////////////////////
             // AssetDatabaseLocationNotificationBus
@@ -78,6 +83,7 @@ namespace AzToolsFramework
             // AssetCatalogEventBus
             //////////////////////////////////////////////////////////////////////////
             void OnCatalogAssetAdded(const AZ::Data::AssetId& assetId) override;
+            void OnCatalogAssetChanged(const AZ::Data::AssetId& assetId) override;
             void OnCatalogAssetRemoved(const AZ::Data::AssetId& assetId) override;
 
             //////////////////////////////////////////////////////////////////////////
@@ -88,7 +94,15 @@ namespace AzToolsFramework
             //////////////////////////////////////////////////////////////////////////
             // AssetSystemBus
             //////////////////////////////////////////////////////////////////////////
-            void SourceFileRemoved(AZStd::string relativePath, AZStd::string scanFolder, AZ::Uuid sourceUUID) override;
+            void SourceFileChanged(AZStd::string relativePath, AZStd::string scanFolder, AZ::Uuid sourceUuid) override;
+
+            //////////////////////////////////////////////////////////////////////////
+            // AssetBrowserInteractionNotificationBus
+            SourceFileDetails GetSourceFileDetails(const char* fullSourceFileName) override;
+            //////////////////////////////////////////////////////////////////////////
+
+            void AddFile(const AZ::s64& fileId);
+            void RemoveFile(const AZ::s64& fileId);
 
             void PopulateAssets();
             void UpdateAssets();
@@ -108,8 +122,12 @@ namespace AzToolsFramework
             AZStd::unique_ptr<AssetBrowserModel> m_assetBrowserModel;
             AZStd::shared_ptr<AssetEntryChangeset> m_changeset;
 
+            AzFramework::SocketConnection::TMessageCallbackHandle m_cbHandle = 0;
+
             //! Notify to start the query thread
             void NotifyUpdateThread();
+
+            void HandleFileInfoNotification(const void* buffer, unsigned int bufferSize);
         };
     }
 } // namespace AssetBrowser

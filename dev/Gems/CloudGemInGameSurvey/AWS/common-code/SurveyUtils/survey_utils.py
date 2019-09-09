@@ -14,10 +14,12 @@ from boto3.dynamodb.conditions import Key
 import CloudCanvas
 import errors
 import base64
+from cgf_utils import custom_resource_utils
+from botocore.client import Config
 
 def get_survey_table():
     if not hasattr(get_survey_table, 'survey_table'):
-        survey_table_name = CloudCanvas.get_setting('Surveys')
+        survey_table_name = custom_resource_utils.get_embedded_physical_id(CloudCanvas.get_setting('Surveys'))
         get_survey_table.survey_table = boto3.resource('dynamodb').Table(survey_table_name)
         if get_survey_table.survey_table is None:
             raise RuntimeError('No Survey Table')
@@ -33,7 +35,7 @@ def get_answer_table():
 
 def get_answer_aggregation_table():
     if not hasattr(get_answer_aggregation_table, 'answer_aggregation_table'):
-        answer_aggregation_table_name = CloudCanvas.get_setting('AnswerAggregations')
+        answer_aggregation_table_name = custom_resource_utils.get_embedded_physical_id(CloudCanvas.get_setting('AnswerAggregations'))
         get_answer_aggregation_table.answer_aggregation_table = boto3.resource('dynamodb').Table(answer_aggregation_table_name)
         if get_answer_aggregation_table.answer_aggregation_table is None:
             raise RuntimeError('No AnswerAggregation Table')
@@ -41,7 +43,7 @@ def get_answer_aggregation_table():
 
 def get_question_table():
     if not hasattr(get_question_table, 'question_table'):
-        question_table_name = CloudCanvas.get_setting('Questions')
+        question_table_name = custom_resource_utils.get_embedded_physical_id(CloudCanvas.get_setting('Questions'))
         get_question_table.question_table = boto3.resource('dynamodb').Table(question_table_name)
         if get_question_table.question_table is None:
             raise RuntimeError('No Question Table')
@@ -107,7 +109,7 @@ def get_submission_by_id(survey_id, submission_id, attributes=None, raise_except
 def get_answer_submissions_export_s3_bucket():
     if not hasattr(get_answer_submissions_export_s3_bucket, 'answer_submissions_export_s3_bucket'):
         answer_submissions_export_s3_bucket_name = get_answer_submissions_export_s3_bucket_name()
-        get_answer_submissions_export_s3_bucket.answer_submissions_export_s3_bucket = boto3.resource('s3').Bucket(answer_submissions_export_s3_bucket_name)
+        get_answer_submissions_export_s3_bucket.answer_submissions_export_s3_bucket = boto3.resource('s3', config=Config(signature_version='s3v4')).Bucket(answer_submissions_export_s3_bucket_name)
         if get_answer_submissions_export_s3_bucket.answer_submissions_export_s3_bucket is None:
             raise RuntimeError('No Answer Submission Export S3 Bucket')
     return get_answer_submissions_export_s3_bucket.answer_submissions_export_s3_bucket

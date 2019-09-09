@@ -13,7 +13,10 @@
 #ifndef GM_REPLICA_BITMASKINTERESTHANDLER_H
 #define GM_REPLICA_BITMASKINTERESTHANDLER_H
 
+#include <GridMate/Replica/RemoteProcedureCall.h>
+#include <GridMate/Replica/ReplicaChunk.h>
 #include <GridMate/Replica/Interest/RulesHandler.h>
+#include <GridMate/Serialize/UtilityMarshal.h>
 
 #include <GridMate/Containers/vector.h>
 #include <GridMate/Containers/unordered_set.h>
@@ -23,9 +26,7 @@
 namespace GridMate
 {
     class BitmaskInterestHandler;
-    class BitmaskInterestChunk;
     using InterestBitmask = AZ::u32;
-    class BitmaskInterestChunk;
 
     /*
      * Base interest
@@ -120,6 +121,42 @@ namespace GridMate
     };
     ///////////////////////////////////////////////////////////////////////////
 
+    class BitmaskInterestChunk
+        : public ReplicaChunk
+    {
+    public:
+        GM_CLASS_ALLOCATOR(BitmaskInterestChunk);
+
+        BitmaskInterestChunk()
+            : AddRuleRpc("AddRule")
+            , RemoveRuleRpc("RemoveRule")
+            , UpdateRuleRpc("UpdateRule")
+            , AddRuleForPeerRpc("AddRuleForPeerRpc")
+            , m_interestHandler(nullptr)
+        {}
+
+        typedef AZStd::intrusive_ptr<BitmaskInterestChunk> Ptr;
+        bool IsReplicaMigratable() override { return false; }
+        bool IsBroadcast() { return true; }
+        static const char* GetChunkName() { return "BitmaskInterestChunk"; }
+
+        void OnReplicaActivate(const ReplicaContext& rc) override;
+        void OnReplicaDeactivate(const ReplicaContext& rc) override;
+
+        bool AddRuleFn(RuleNetworkId netId, InterestBitmask bits, const RpcContext& ctx);
+        bool RemoveRuleFn(RuleNetworkId netId, const RpcContext&);
+        bool UpdateRuleFn(RuleNetworkId netId, InterestBitmask bits, const RpcContext&);
+        bool AddRuleForPeerFn(RuleNetworkId netId, PeerId peerId, InterestBitmask bitmask, const RpcContext&);
+
+        Rpc<RpcArg<RuleNetworkId>, RpcArg<InterestBitmask>>::BindInterface<BitmaskInterestChunk, &BitmaskInterestChunk::AddRuleFn> AddRuleRpc;
+        Rpc<RpcArg<RuleNetworkId>>::BindInterface<BitmaskInterestChunk, &BitmaskInterestChunk::RemoveRuleFn> RemoveRuleRpc;
+        Rpc<RpcArg<RuleNetworkId>, RpcArg<InterestBitmask>>::BindInterface<BitmaskInterestChunk, &BitmaskInterestChunk::UpdateRuleFn> UpdateRuleRpc;
+
+        Rpc<RpcArg<RuleNetworkId>, RpcArg<PeerId>, RpcArg<InterestBitmask>>::BindInterface<BitmaskInterestChunk, &BitmaskInterestChunk::AddRuleForPeerFn> AddRuleForPeerRpc;
+
+        unordered_map<RuleNetworkId, BitmaskInterestRule::Ptr> m_rules;
+        BitmaskInterestHandler* m_interestHandler;
+    };
 
     /*
     * Rules handler
@@ -165,12 +202,12 @@ namespace GridMate
         void UpdateAttribute(BitmaskInterestAttribute* attrib);
 
 
-        void OnNewRulesChunk(BitmaskInterestChunk* chunk, ReplicaPeer* peer);
-        void OnDeleteRulesChunk(BitmaskInterestChunk* chunk, ReplicaPeer* peer);
+        void OnNewRulesChunk(BitmaskInterestChunk::Ptr chunk, ReplicaPeer* peer);
+        void OnDeleteRulesChunk(BitmaskInterestChunk::Ptr chunk, ReplicaPeer* peer);
 
         RuleNetworkId GetNewRuleNetId();
 
-        BitmaskInterestChunk* FindRulesChunkByPeerId(PeerId peerId);
+        BitmaskInterestChunk::Ptr FindRulesChunkByPeerId(PeerId peerId);
 
         typedef unordered_set<BitmaskInterestAttribute*> AttributeSet;
         typedef unordered_set<BitmaskInterestRule*> RuleSet;
@@ -181,7 +218,7 @@ namespace GridMate
         
         AZ::u32 m_lastRuleNetId;
 
-        unordered_map<PeerId, BitmaskInterestChunk*> m_peerChunks;
+        unordered_map<PeerId, BitmaskInterestChunk::Ptr> m_peerChunks;
 
         RuleSet m_localRules;
 

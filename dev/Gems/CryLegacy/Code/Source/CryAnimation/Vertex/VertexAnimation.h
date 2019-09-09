@@ -148,10 +148,10 @@ public:
     static void ClearSoftwareRenderMeshes();
 
 private:
-    static std::vector<CAttachmentSKIN*> s_softwareRenderMeshes;
-    static std::vector<CAttachmentSKIN*> s_newSoftwareRenderMeshes;
-    static std::vector<CAttachmentVCLOTH*> s_softwareRenderMeshesVCloth;
-    static std::vector<CAttachmentVCLOTH*> s_newSoftwareRenderMeshesVCloth;
+    static StaticInstance<std::vector<CAttachmentSKIN*>> s_softwareRenderMeshes;
+    static StaticInstance<std::vector<CAttachmentSKIN*>> s_newSoftwareRenderMeshes;
+    static StaticInstance<std::vector<CAttachmentVCLOTH*>> s_softwareRenderMeshesVCloth;
+    static StaticInstance<std::vector<CAttachmentVCLOTH*>> s_newSoftwareRenderMeshesVCloth;
 
 public:
     CVertexAnimation();

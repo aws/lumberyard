@@ -23,7 +23,7 @@
 
 #ifdef EDITOR_PCDEBUGCODE
 typedef std::map<std::pair<string, int>, bool> TValidatedSkeletonMap;
-static TValidatedSkeletonMap s_validatedSkeletons;
+static StaticInstance<TValidatedSkeletonMap> s_validatedSkeletons;
 #endif
 
 namespace CryCHRLoader_LoadNewSKIN_Helpers
@@ -72,8 +72,7 @@ bool CryCHRLoader::BeginLoadSkinRenderMesh(CSkin* pSkin, int nRenderLod, EStream
     COMPILE_TIME_ASSERT(sizeof(TFace) == 6);
 
     const char* szFilePath = pSkin->GetModelFilePath();
-    MEMSTAT_CONTEXT_FMT(EMemStatContextTypes::MSC_CHR, 0, "LoadCharacter %s", szFilePath);
-
+    
     const char* szExt = CryStringUtils::FindExtension(szFilePath);
     m_strGeomFileNameNoExt.assign (szFilePath, *szExt ? szExt - 1 : szExt);
 
@@ -469,8 +468,6 @@ bool CSkin::LoadNewSKIN(const char* szFilePath, uint32 nLoadingFlags)
     LOADING_TIME_PROFILE_SECTION(g_pISystem);
 
     COMPILE_TIME_ASSERT(sizeof(TFace) == 6);
-
-    MEMSTAT_CONTEXT_FMT(EMemStatContextTypes::MSC_CHR, 0, "LoadCharacter %s", szFilePath);
 
     CRY_DEFINE_ASSET_SCOPE(CRY_SKEL_FILE_EXT, szFilePath);
 

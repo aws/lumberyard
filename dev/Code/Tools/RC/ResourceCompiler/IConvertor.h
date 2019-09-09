@@ -21,9 +21,6 @@
 
 // A Convertor does no actual work, it merely describes the work that a Compiler will do,
 // and can create Compiler instances to do the actual processing.
-//
-// For convertors that support multithreading (see SupportsMultithreading()) it is possible
-// to create *more than one* compiler and run them in multiple threads.
 
 // Compiler interface, all compilers must implement this interface.
 struct ICompiler
@@ -77,13 +74,8 @@ struct IConvertor
     virtual void DeInit() {}
 
     // Return an object that will do actual processing.
-    // Called only once if SupportsMultithreading() returns false.
-    // Otherwise can be called multiple times and run from separate threads.
+    // Called only once since we do not support multi-threading in RC
     virtual ICompiler* CreateCompiler() = 0;
-
-    // Check whether the convertor supports multithreading.
-    // See CreateCompiler() comments for details.
-    virtual bool SupportsMultithreading() const = 0;
 
     // Get supported extension by zero-based index.
     // If index is < 0  or >= number of supported extensions,

@@ -7,3 +7,11 @@ import { CloudGemDefectReporterModule } from './index';
 export function definition(context: any): any {
     return CloudGemDefectReporterModule;
 }
+
+import { CloudGemDefectReporterApi } from './index'
+/*
+*  Expose the API Handler to the directory service
+*/
+export function serviceApiType(): Function {
+    return CloudGemDefectReporterApi
+}

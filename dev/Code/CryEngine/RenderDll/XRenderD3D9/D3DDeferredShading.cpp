@@ -22,6 +22,8 @@
 #include "../Common/RenderCapabilities.h"
 #include "D3DTiledShading.h"
 
+#include <AzCore/std/sort.h>
+
 #if defined(AZ_RESTRICTED_PLATFORM)
 #undef AZ_RESTRICTED_SECTION
 #define D3DDEFERREDSHADING_CPP_SECTION_1 1
@@ -574,19 +576,14 @@ uint32 CDeferredShading::AddLight(const CDLight& pDL, float fMult, const SRender
     const uint32 nThreadID = gcpRendD3D->m_RP.m_nFillThreadID;
     const int32 nRecurseLevel = passInfo.GetRecursiveLevel();
 
-    bool bSort = true;
-    bool bAppend = true;
-
     eDeferredLightType LightType = eDLT_DeferredLight;
     if (pDL.m_Flags & DLF_DEFERRED_CUBEMAPS)
     {
         LightType = eDLT_DeferredCubemap;
-        bSort = false;
     }
     else if (pDL.m_Flags & DLF_AMBIENT)
     {
         LightType = eDLT_DeferredAmbientLight;
-        bSort = false;
     }
 
     if (pDL.GetLensOpticsElement() && !pDL.m_pSoftOccQuery)
@@ -602,51 +599,10 @@ uint32 CDeferredShading::AddLight(const CDLight& pDL, float fMult, const SRender
     const int32 lightsNum = (int32)rArray.Num();
     int idx = -1;
 
-    if (CRenderer::CV_r_DeferredShadingSortLights == 1 && bSort && lightsNum)
-    {
-        int endPoint = lightsNum - 1;
-        int midPoint = 0;
-        int startPoint = 0;
-
-        uint32 lightArea = pDL.m_sWidth * pDL.m_sHeight;
-
-        while (startPoint <= endPoint)  //binary search for insertion point
-        {
-            midPoint = (endPoint + startPoint) / 2;
-
-            SRenderLight& compareLight = rArray[midPoint];
-            uint32 compareLightArea = compareLight.m_sWidth * compareLight.m_sHeight;
-
-            if (lightArea < compareLightArea)
-            {
-                endPoint = midPoint - 1;
-            }
-            else
-            {
-                startPoint = midPoint + 1;
-            }
-        }
-
-        if (startPoint < lightsNum)
-        {
-            idx = startPoint;
-            rArray.Insert(idx);
-
-            rArray[idx] = pDL;
-            rArray[idx].AcquireResources();
-
-            bAppend = false;
-        }
-    }
-
-    if (bAppend)
-    {
-        rArray.AddElem(pDL);
-
-        idx = rArray.Num() - 1;
-
-        rArray[idx].AcquireResources();
-    }
+    rArray.AddElem(pDL);
+    idx = rArray.Num() - 1;
+    rArray[idx].m_lightId = idx;
+    rArray[idx].AcquireResources();
 
     IF_LIKELY (eDLT_DeferredLight == LightType)
     {
@@ -687,12 +643,13 @@ SRenderLight* CDeferredShading::GetLightByID(const uint16 nLightID, const eDefer
     const int32 nRecurseLevel = SRendItem::m_RecurseLevel[nThreadID];
 
     TArray<SRenderLight>& pLightsList = GetLights(nThreadID, nRecurseLevel,  eType);
-    if (nLightID < pLightsList.size())
+    SRenderLight* foundIter = AZStd::find_if(pLightsList.begin(), pLightsList.end(), [&](const SRenderLight& light) {return light.m_lightId == nLightID; });
+    if (foundIter != pLightsList.end())
     {
-        return &pLightsList[nLightID];
+        return foundIter;
     }
 
-    return 0;
+    return nullptr;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -802,7 +759,7 @@ void CDeferredShading::ReleaseData()
     m_shadowPoolAlloc.SetUse(0);
     stl::free_container(m_shadowPoolAlloc);
 
-    m_blockPack.FreeContainers();
+    m_blockPack->FreeContainers();
 
     m_nShadowPoolSize = 0;
 }
@@ -1038,7 +995,11 @@ void CDeferredShading::FilterGBuffer()
     {
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION D3DDEFERREDSHADING_CPP_SECTION_1
-#include AZ_RESTRICTED_FILE(D3DDeferredShading_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/D3DDeferredShading_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/D3DDeferredShading_cpp_provo.inl"
+    #endif
 #endif
         return;
     }
@@ -1051,7 +1012,11 @@ void CDeferredShading::FilterGBuffer()
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION D3DDEFERREDSHADING_CPP_SECTION_2
-#include AZ_RESTRICTED_FILE(D3DDeferredShading_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/D3DDeferredShading_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/D3DDeferredShading_cpp_provo.inl"
+    #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
 #undef AZ_RESTRICTED_SECTION_IMPLEMENTED
@@ -1244,7 +1209,7 @@ void GetDynamicDecalParams(DynArrayRef<SShaderParam>& shaderParams, float& decal
 
     for (uint32 i = 0, si = shaderParams.size(); i < si; ++i)
     {
-        const char* name = shaderParams[i].m_Name;
+        const char* name = shaderParams[i].m_Name.c_str();
         if (azstricmp(name, "DecalAlphaMult") == 0)
         {
             decalAlphaMult = shaderParams[i].m_Value.m_Float;
@@ -1330,7 +1295,9 @@ bool CDeferredShading::DeferredDecalPass(const SDeferredDecal& rDecal, uint32 in
 
     SD3DPostEffectsUtils::SetTexture((CTexture*)CTexture::s_ptexBackBuffer, 6, FILTER_POINT, 0);   //contains copy of normals buffer
 
-    if (!gcpRendD3D->FX_GetEnabledGmemPath(nullptr))    // We have our own depth and stencil buffer in GMEM path
+    // Need to set the depth texture if is not available as a RT
+    const bool needDepthTexture = !rd->FX_GetEnabledGmemPath(nullptr) || rd->FX_GmemGetDepthStencilMode() == CD3D9Renderer::eGDSM_Texture;
+    if (needDepthTexture)
     {
         m_pDepthRT->Apply(0, m_nTexStatePoint);
     }
@@ -1402,6 +1369,10 @@ bool CDeferredShading::DeferredDecalPass(const SDeferredDecal& rDecal, uint32 in
     vDiff.w = sItem.m_pShaderResources->GetStrengthValue(EFTT_OPACITY) * rDecal.fAlpha;
     m_pShader->FXSetPSFloat(m_pParamDecalDiffuse, &vDiff, 1);
 
+    // Angle Attenuation
+    Vec4 angleAttenuation = Vec4(rDecal.angleAttenuation,0,0,0);
+    m_pShader->FXSetPSFloat(m_pParamDecalAngleAttenuation, &angleAttenuation, 1);
+    
     // Specular
     Vec4 vSpec = sItem.m_pShaderResources->GetColorValue(EFTT_SPECULAR).toVec4();
     vSpec.w = sItem.m_pShaderResources->GetStrengthValue(EFTT_SMOOTHNESS);
@@ -1411,12 +1382,6 @@ bool CDeferredShading::DeferredDecalPass(const SDeferredDecal& rDecal, uint32 in
     float decalAlphaMult, decalFalloff, decalDiffuseOpacity, emittanceMapGamma;
     DynArrayRef<SShaderParam>& shaderParams = sItem.m_pShaderResources->GetParameters();
     GetDynamicDecalParams(shaderParams, decalAlphaMult, decalFalloff, decalDiffuseOpacity, emittanceMapGamma);
-
-    // Params to linearize depth for cases when we can't fetch the linearized depth render target
-    if (gcpRendD3D->FX_GetEnabledGmemPath(nullptr) && RenderCapabilities::GetFrameBufferFetchCapabilities().test(RenderCapabilities::FBF_DEPTH))
-    {
-        rd->SetupLinearizeDepthParams(m_pShader);
-    }
 
     float fGrowAlphaRef = rDecal.fGrowAlphaRef;
 
@@ -1574,7 +1539,9 @@ void CDeferredShading::DeferredDecalEmissivePass(const SDeferredDecal& rDecal, u
     SD3DPostEffectsUtils::SetTexture((CTexture*)CTexture::s_ptexZTarget,    0, FILTER_POINT, 0);    // depth
     SD3DPostEffectsUtils::SetTexture((CTexture*)CTexture::s_ptexBackBuffer, 6, FILTER_POINT, 0);    // copy of normals
 
-    if (!gcpRendD3D->FX_GetEnabledGmemPath(nullptr))// We have our own depth and stencil buffer in GMEM path
+    // Need to set the depth texture if is not available as a RT
+    const bool needDepthTexture = !rd->FX_GetEnabledGmemPath(nullptr) || rd->FX_GmemGetDepthStencilMode() == CD3D9Renderer::eGDSM_Texture;
+    if (needDepthTexture)
     {
         m_pDepthRT->Apply(0, m_nTexStatePoint);
     }
@@ -1626,12 +1593,6 @@ void CDeferredShading::DeferredDecalEmissivePass(const SDeferredDecal& rDecal, u
     Vec4 vEmissive = sItem.m_pShaderResources->GetColorValue(EFTT_EMITTANCE).toVec4();
     vEmissive.w = sItem.m_pShaderResources->GetStrengthValue(EFTT_EMITTANCE);
     m_pShader->FXSetPSFloat(m_pParamDecalEmissive, &vEmissive, 1);
-
-    // Params to linearize depth for cases when we can't fetch the linearized depth render target
-    if (gcpRendD3D->FX_GetEnabledGmemPath(nullptr) && RenderCapabilities::GetFrameBufferFetchCapabilities().test(RenderCapabilities::FBF_DEPTH))
-    {
-        rd->SetupLinearizeDepthParams(m_pShader);
-    }
 
     // __________________________________________________________________________________________
     // State
@@ -1797,7 +1758,7 @@ void CDeferredShading::GetLightRenderSettings(const SRenderLight* const __restri
     }
 }
 
-void CDeferredShading::LightPass(const SRenderLight* const __restrict pDL, bool bForceStencilDisable)
+void CDeferredShading::LightPass(const SRenderLight* const __restrict pDL, bool bForceStencilDisable /*= false*/)
 {
     PROFILE_FRAME(CDeferredShading_LightPass);
     PROFILE_SHADER_SCOPE;
@@ -1818,6 +1779,9 @@ void CDeferredShading::LightPass(const SRenderLight* const __restrict pDL, bool 
     CD3D9Renderer* const __restrict rd = gcpRendD3D;
     SRenderPipeline& RESTRICT_REFERENCE rRP = rd->m_RP;
 
+    CD3D9Renderer::EGmemPath gmemPath = gcpRendD3D->FX_GetEnabledGmemPath(nullptr);
+    bool castShadowMaps = (pDL->m_Flags & DLF_CASTSHADOW_MAPS) != 0;
+    bool isGmemEnabled = gmemPath != CD3D9Renderer::eGT_REGULAR_PATH;
     const ITexture* pLightTex = pDL->m_pLightImage ? pDL->m_pLightImage : NULL;
     const bool bProj2D = (pDL->m_Flags & DLF_PROJECT) && pLightTex && !(pLightTex->GetFlags() & FT_REPLICATE_TO_ALL_SIDES);
     const bool bAreaLight = (pDL->m_Flags & DLF_AREA_LIGHT) && pDL->m_fAreaWidth && pDL->m_fAreaHeight && pDL->m_fLightFrustumAngle;
@@ -1915,7 +1879,7 @@ void CDeferredShading::LightPass(const SRenderLight* const __restrict pDL, bool 
         //  Confetti End: Igor Lobanchikov
 
         rd->SetDepthBoundTest(0.0f, 1.0f, false); // stencil pre-passes are rop bound, using depth bounds increases even more rop cost
-        rd->FX_StencilFrustumCull((pDL->m_Flags & DLF_CASTSHADOW_MAPS) ? -4 : -1, pDL, NULL, 0);
+        rd->FX_StencilFrustumCull(castShadowMaps ? -4 : -1, pDL, NULL, 0);
     }
     else
     if (rd->m_bDeviceSupports_NVDBT && CRenderer::CV_r_DeferredShadingDepthBoundsTest == 1)
@@ -1949,6 +1913,20 @@ void CDeferredShading::LightPass(const SRenderLight* const __restrict pDL, bool 
         rd->m_RP.m_FlagsShader_RT |= g_HWSR_MaskBit[HWSR_APPLY_SSDO];
     }
 
+    uint64 currentSample2MaskBit = rRP.m_FlagsShader_RT & g_HWSR_MaskBit[HWSR_SAMPLE2];
+    if (isGmemEnabled)
+    {
+        // Signal the shader if we support independent blending
+        if (RenderCapabilities::SupportsIndependentBlending())
+        {
+            rRP.m_FlagsShader_RT |= g_HWSR_MaskBit[HWSR_SAMPLE2];
+        }
+        else
+        {
+            rRP.m_FlagsShader_RT &= ~g_HWSR_MaskBit[HWSR_SAMPLE2];
+        }
+    }
+
     if (bUseLightVolumes)
     {
         rRP.m_FlagsShader_RT |= g_HWSR_MaskBit[HWSR_CUBEMAP0];
@@ -1965,7 +1943,8 @@ void CDeferredShading::LightPass(const SRenderLight* const __restrict pDL, bool 
     nStates &= ~(GS_NODEPTHTEST | GS_DEPTHFUNC_MASK);           // Ensure zcull used.
     nStates |= GS_DEPTHFUNC_LEQUAL;
 
-    if (!gcpRendD3D->FX_GetEnabledGmemPath(nullptr))     // We do programmable blending in fragment shader in GMEM render path
+    // For PLS we do programmable blending in the fragment shader since we need to write to the PLS struct
+    if (!(isGmemEnabled && RenderCapabilities::SupportsPLSExtension()))
     {
         if (!(pDL->m_Flags & DLF_AMBIENT))
         {
@@ -1984,6 +1963,25 @@ void CDeferredShading::LightPass(const SRenderLight* const __restrict pDL, bool 
     }
 
     rd->FX_SetState(nStates);
+
+    SStateBlend currentBlendState = gcpRendD3D->m_StatesBL[gcpRendD3D->m_nCurStateBL];
+    if (CD3D9Renderer::eGT_256bpp_PATH == gmemPath && RenderCapabilities::SupportsIndependentBlending())
+    {
+        // For GMEM 256 we have 6 RTs so we need to disable blending and writing for all the non lighting RTs
+        SStateBlend newBlendState = currentBlendState;
+        newBlendState.Desc.IndependentBlendEnable = TRUE;
+        for (int i = 0; i < AZ_ARRAY_SIZE(newBlendState.Desc.RenderTarget); ++i)
+        {
+            newBlendState.Desc.RenderTarget[i].BlendEnable = FALSE;
+            newBlendState.Desc.RenderTarget[i].RenderTargetWriteMask = 0;
+        }
+
+        // Enable blending for specular and diffuse light buffers
+        // Copy all state info from slot 0 since the engine only update that slot when calling FX_State.
+        newBlendState.Desc.RenderTarget[CD3D9Renderer::s_gmemRendertargetSlots[gmemPath][CD3D9Renderer::eGT_SpecularLight]] = currentBlendState.Desc.RenderTarget[0];
+        newBlendState.Desc.RenderTarget[CD3D9Renderer::s_gmemRendertargetSlots[gmemPath][CD3D9Renderer::eGT_DiffuseLight]] = currentBlendState.Desc.RenderTarget[0];
+        gcpRendD3D->SetBlendState(&newBlendState);
+    }
 
     if (bStencilMask)
     {
@@ -2019,7 +2017,7 @@ void CDeferredShading::LightPass(const SRenderLight* const __restrict pDL, bool 
         Vec2 vLightSize = Vec2(pDL->m_fAreaWidth * 0.5f, pDL->m_fAreaHeight * 0.5f);
 
         float fAreaFov = pDL->m_fLightFrustumAngle * 2.0f;
-        if ((pDL->m_Flags & DLF_CASTSHADOW_MAPS) && bAreaLight)
+        if (castShadowMaps && bAreaLight)
         {
             fAreaFov = min(fAreaFov, 135.0f);     // Shadow can only cover ~135 degree FOV without looking bad, so we clamp the FOV to hide shadow clipping.
         }
@@ -2046,7 +2044,7 @@ void CDeferredShading::LightPass(const SRenderLight* const __restrict pDL, bool 
     const int ssdoTexSlot = 8;
     SetSSDOParameters(ssdoTexSlot);
     
-    if (pDL->m_Flags & DLF_CASTSHADOW_MAPS)
+    if (castShadowMaps)
     {
         static ICVar* pVar = iConsole->GetCVar("e_ShadowsPoolSize");
         int nShadowAtlasRes = pVar->GetIVal();
@@ -2076,9 +2074,7 @@ void CDeferredShading::LightPass(const SRenderLight* const __restrict pDL, bool 
 
     CTexture* pTexLightImage = (CTexture*)pLightTex;
 
-    
-
-    if (CD3D9Renderer::eGT_256bpp_PATH != gcpRendD3D->FX_GetEnabledGmemPath(nullptr))
+    if (CD3D9Renderer::eGT_256bpp_PATH != gmemPath)
     {
         // Note: Shadows use slot 3 and slot 7 for shadow map and jitter map
         //  Confetti BEGIN: Igor Lobanchikov
@@ -2093,7 +2089,7 @@ void CDeferredShading::LightPass(const SRenderLight* const __restrict pDL, bool 
         m_pSpecularRT->Apply(4, m_nTexStatePoint, EFTT_UNKNOWN, -1, SResourceView::DefaultView);
     }
 
-    if (!gcpRendD3D->FX_GetEnabledGmemPath(nullptr))
+    if (!isGmemEnabled)
     {
         m_pMSAAMaskRT->Apply(9, m_nTexStatePoint);
 
@@ -2109,7 +2105,7 @@ void CDeferredShading::LightPass(const SRenderLight* const __restrict pDL, bool 
         SD3DPostEffectsUtils::SetTexture(pTexLightImage, 5, FILTER_TRILINEAR, bProj2D ? 1 : 0);
     }
 
-    if (gcpRendD3D->FX_GetEnabledGmemPath(nullptr) && nNumClipVolumes > 0)
+    if (isGmemEnabled && nNumClipVolumes > 0)
     {
         m_pShader->FXSetPSFloat(m_pClipVolumeParams, m_vClipVolumeParams, min((uint32)MAX_DEFERRED_CLIP_VOLUMES, nNumClipVolumes + VIS_AREAS_OUTDOOR_STENCIL_OFFSET));
 
@@ -2146,6 +2142,14 @@ void CDeferredShading::LightPass(const SRenderLight* const __restrict pDL, bool 
     if (CRenderer::CV_r_DeferredShadingScissor)
     {
         rd->EF_Scissor(false, 0, 0, 0, 0);
+    }
+
+    // Restore blend state
+    if (CD3D9Renderer::eGT_256bpp_PATH == gmemPath)
+    {
+        gcpRendD3D->SetBlendState(&currentBlendState);
+        rRP.m_FlagsShader_RT &= ~g_HWSR_MaskBit[HWSR_SAMPLE2];
+        rRP.m_FlagsShader_RT |= currentSample2MaskBit;
     }
 }
 
@@ -2286,6 +2290,8 @@ void CDeferredShading::PrepareClipVolumeData(bool& bOutdoorVisible)
 {
     CD3D9Renderer* const __restrict rd = gcpRendD3D;
     const bool bMSAA = false;
+    const bool isGmemEnabled = gcpRendD3D->FX_GetEnabledGmemPath(nullptr) != CD3D9Renderer::eGT_REGULAR_PATH;
+    const CD3D9Renderer::EGmemDepthStencilMode gmemStencilMode = gcpRendD3D->FX_GmemGetDepthStencilMode();
 
     // Reserved outdoor fragments
     std::vector<SClipVolumeData>& pClipVolumes = m_pClipVolumes[m_nThreadID][m_nRecurseLevel];
@@ -2310,7 +2316,7 @@ void CDeferredShading::PrepareClipVolumeData(bool& bOutdoorVisible)
 
     if (CRenderer::CV_r_VolumetricFog != 0)
     {
-        if (gcpRendD3D->FX_GetEnabledGmemPath(nullptr))
+        if (isGmemEnabled)
         {
             CRY_ASSERT(0); // TODO: implement volumetric fog to work with GMEM
         }
@@ -2330,7 +2336,7 @@ void CDeferredShading::PrepareClipVolumeData(bool& bOutdoorVisible)
         //ClipVolumes
         {
             PROFILE_LABEL_SCOPE("CLIPVOLUMES TO STENCIL");
-            if (!gcpRendD3D->FX_GetEnabledGmemPath(nullptr))
+            if (!isGmemEnabled)
             {
                 //  Confetti BEGIN: Igor Lobanchikov
                 if (!RenderCapabilities::SupportsStencilTextures())
@@ -2350,7 +2356,7 @@ void CDeferredShading::PrepareClipVolumeData(bool& bOutdoorVisible)
                 rd->RT_SetViewport(0, 0, m_pLBufferDiffuseRT->GetWidth(), m_pLBufferDiffuseRT->GetHeight());
             }
             RenderClipVolumesToStencil(nClipVolumeReservedStencilBit);
-            if (!gcpRendD3D->FX_GetEnabledGmemPath(nullptr))
+            if (!isGmemEnabled)
             {
                 rd->FX_PopRenderTarget(0);
             }
@@ -2358,7 +2364,7 @@ void CDeferredShading::PrepareClipVolumeData(bool& bOutdoorVisible)
 
         // Portals blending and volumetric fog are not supported in GMEM path.
         // Use "r_GMEMVisAreasBlendWeight" for global blending between portals.
-        if (!gcpRendD3D->FX_GetEnabledGmemPath(nullptr))
+        if (!isGmemEnabled)
         {
             // Portal blend factors
             static ICVar* pPortalsBlendCVar =  iConsole->GetCVar("e_PortalsBlend");
@@ -2381,21 +2387,30 @@ void CDeferredShading::PrepareClipVolumeData(bool& bOutdoorVisible)
 
     rd->m_nStencilMaskRef = nClipVolumeReservedStencilBit + m_nClipVolumesCount[m_nThreadID][m_nRecurseLevel] + 1;
 
-    if (gcpRendD3D->FX_GetEnabledGmemPath(nullptr))
+    if (isGmemEnabled)
     {
-        //PLS does not support reading and writing to gmem render targets from non 0 slots
-        if(!RenderCapabilities::SupportsPLSExtension())
+        switch (gmemStencilMode)
         {
-            PROFILE_LABEL_SCOPE("RESOLVE STENCIL");
-
-            static CCryNameTSCRC pszResolveStencil("ResolveStencil");
-            PostProcessUtils().ShBeginPass(CShaderMan::s_shDeferredShading, pszResolveStencil, FEF_DONTSETTEXTURES | FEF_DONTSETSTATES);
-            rd->FX_SetState(GS_NODEPTHTEST | GS_NOCOLMASK_R | GS_NOCOLMASK_B | GS_NOCOLMASK_A);
-            GetUtils().DrawQuadFS(CShaderMan::s_shDeferredShading, false, m_pLBufferDiffuseRT->GetWidth(), m_pLBufferDiffuseRT->GetHeight());
-            GetUtils().ShEndPass();
+        case CD3D9Renderer::eGDSM_RenderTarget:
+        {
+            if (!RenderCapabilities::SupportsPLSExtension())
+            {
+                PROFILE_LABEL_SCOPE("RESOLVE STENCIL");
+                static CCryNameTSCRC pszResolveStencil("ResolveStencil");
+                PostProcessUtils().ShBeginPass(CShaderMan::s_shDeferredShading, pszResolveStencil, FEF_DONTSETTEXTURES | FEF_DONTSETSTATES);
+                gcpRendD3D->FX_SetState(GS_NODEPTHTEST | GS_NOCOLMASK_R | GS_NOCOLMASK_B | GS_NOCOLMASK_A);
+                GetUtils().DrawQuadFS(CShaderMan::s_shDeferredShading, false, CTexture::s_ptexGmemStenLinDepth->GetWidth(), CTexture::s_ptexGmemStenLinDepth->GetHeight());
+                GetUtils().ShEndPass();
+            }
+            return;
         }
-
-        return; // can't resolve buffers... need to keep them in GMEM
+        case CD3D9Renderer::eGDSM_DepthStencilBuffer:
+            // We resolve the stencil during the depth linearization 
+            return;
+        default:
+            // Stencil is resolved using the non gmem path.
+            break;
+        }
     }
 
     // Need to resolve stencil because light volumes and shadow mask overwrite stencil
@@ -2411,20 +2426,23 @@ void CDeferredShading::PrepareClipVolumeData(bool& bOutdoorVisible)
         //  Confetti End: Igor Lobanchikov
         rd->FX_PushRenderTarget(0, m_pResolvedStencilRT, NULL, -1, false, 1);
 
-        // CONFETTI BEGIN: David Srour
+        const bool isGmemResolve = isGmemEnabled && gmemStencilMode == CD3D9Renderer::eGDSM_Texture;
         // Metal Load/Store Actions
-        rd->FX_SetColorDontCareActions(0, true, false);
+        rd->FX_SetColorDontCareActions(0, isGmemResolve ? false : true, false); // For GMEM we need to preserve the Red channel because it contains the linearized depth.
         rd->FX_SetDepthDontCareActions(0, true, true);
         rd->FX_SetStencilDontCareActions(0, true, true);
         rd->FX_SetColorDontCareActions(1, true, false);
         rd->FX_SetDepthDontCareActions(1, true, true);
         rd->FX_SetStencilDontCareActions(1, true, true);
-        // CONFETTI END
 
         // color mask
         static CCryNameTSCRC pszResolveStencil("ResolveStencil");
         PostProcessUtils().ShBeginPass(CShaderMan::s_shDeferredShading, pszResolveStencil, FEF_DONTSETTEXTURES | FEF_DONTSETSTATES);
-        rd->FX_SetState(GS_NODEPTHTEST | GS_NOCOLMASK_G | GS_NOCOLMASK_B | GS_NOCOLMASK_A);
+        int states = GS_NODEPTHTEST | GS_NOCOLMASK_B | GS_NOCOLMASK_A;
+
+        // For Gmem we write into the green channel.
+        states |= isGmemResolve ? GS_NOCOLMASK_R : GS_NOCOLMASK_G;
+        rd->FX_SetState(states);
 
         CTexture::SetSamplerState(4, m_nTexStatePoint, eHWSC_Pixel);
         rd->m_DevMan.BindSRV(eHWSC_Pixel, gcpRendD3D->m_pZBufferStencilReadOnlySRV, 4);
@@ -3043,14 +3061,29 @@ void CDeferredShading::ScreenSpaceReflectionPass()
         rd->m_RP.m_TI[rd->m_RP.m_nProcessThreadID].m_PersFlags &= ~RBPF_REVERSE_DEPTH;
     }
 
-    const int frameID = GetUtils().m_iFrameCounter;
-
     Matrix44 mViewport(0.5f, 0,    0,    0,
         0,   -0.5f, 0,    0,
         0,    0,    1.0f, 0,
         0.5f, 0.5f, 0,    1.0f);
-    uint32 numGPUs = rd->GetActiveGPUCount();
+    const uint32 numGPUs = rd->GetActiveGPUCount();
+
+#if AZ_RENDER_TO_TEXTURE_GEM_ENABLED
+    // render to texture supports view projections for multiple cameras
+    const CCamera& camera = rd->m_RP.m_TI[rd->m_RP.m_nProcessThreadID].m_cam;
+    const AZ::EntityId cameraID = camera.GetEntityId();
+    const int frameID = camera.GetFrameUpdateId();
+    const uint32 prevViewProjID = max((frameID - (int)numGPUs) % MAX_GPU_NUM, 0);
+    auto iter = m_prevViewProj[prevViewProjID].find(cameraID);
+    if (iter == m_prevViewProj[prevViewProjID].end())
+    {
+        // initialize with the current view projection in case this is a one-off render.
+        m_prevViewProj[prevViewProjID].insert({ cameraID, mViewProj });
+    }
+    Matrix44 mViewProjPrev = m_prevViewProj[prevViewProjID][cameraID] * mViewport;
+#else
+    const int frameID = GetUtils().m_iFrameCounter;
     Matrix44 mViewProjPrev = m_prevViewProj[max((frameID - (int)numGPUs) % MAX_GPU_NUM, 0)] * mViewport;
+#endif // if AZ_RENDER_TO_TEXTURE_GEM_ENABLED
 
     PROFILE_LABEL_SCOPE("SS_REFLECTIONS");
 
@@ -3187,7 +3220,21 @@ void CDeferredShading::ScreenSpaceReflectionPass()
     rd->RT_SetViewport(prevVpX, prevVpY, prevVpWidth, prevVpHeight);
 
     // Array used for MGPU support
+#if AZ_RENDER_TO_TEXTURE_GEM_ENABLED
+    // Don't use array assignment to insert or Matrix44 will assert because
+    // the allocator calls the constructor with an invalid Matrix44
+    iter = m_prevViewProj[frameID % MAX_GPU_NUM].find(cameraID);
+    if (iter == m_prevViewProj[frameID % MAX_GPU_NUM].end())
+    {
+        m_prevViewProj[frameID % MAX_GPU_NUM].insert({ cameraID, mViewProj });
+    }
+    else
+    {
+       iter->second = mViewProj;
+    }
+#else
     m_prevViewProj[frameID % MAX_GPU_NUM] = mViewProj;
+#endif // if AZ_RENDER_TO_TEXTURE_GEM_ENABLED
 }
 
 void CDeferredShading::ApplySSReflections()
@@ -3417,7 +3464,11 @@ void CDeferredShading::DirectionalOcclusionPass()
     CTexture* pDstSSDO = CTexture::s_ptexStereoR;// re-using stereo buffers (only full resolution 32bit non-multisampled available at this step)
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION D3DDEFERREDSHADING_CPP_SECTION_3
-#include AZ_RESTRICTED_FILE(D3DDeferredShading_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/D3DDeferredShading_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/D3DDeferredShading_cpp_provo.inl"
+    #endif
 #endif
 
     const bool bLowResOutput = (CRenderer::CV_r_ssdoHalfRes == 3);
@@ -3899,7 +3950,7 @@ void CDeferredShading::DeferredLights(TArray<SRenderLight>& rLights, bool bCastS
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-CPowerOf2BlockPacker CDeferredShading::m_blockPack(0, 0);
+StaticInstance<CPowerOf2BlockPacker> CDeferredShading::m_blockPack;
 TArray<SShadowAllocData> CDeferredShading::m_shadowPoolAlloc;
 
 bool CDeferredShading::PackAllShadowFrustums(TArray<SRenderLight>& arrLights, bool bPreLoop)
@@ -3909,20 +3960,18 @@ bool CDeferredShading::PackAllShadowFrustums(TArray<SRenderLight>& arrLights, bo
     const uint64 nPrevFlagsShaderRT = rd->m_RP.m_FlagsShader_RT;
 
     static ICVar* p_e_ShadowsPoolSize = iConsole->GetCVar("e_ShadowsPoolSize");
+    const bool isGmemEnabled = gcpRendD3D->FX_GetEnabledGmemPath(nullptr) != CD3D9Renderer::eGT_REGULAR_PATH;
 
     int nRequestedPoolSize = p_e_ShadowsPoolSize->GetIVal();
     if (m_nShadowPoolSize !=  nRequestedPoolSize)
     {
-        m_blockPack.UpdateSize(nRequestedPoolSize >> TEX_POOL_BLOCKLOGSIZE, nRequestedPoolSize >> TEX_POOL_BLOCKLOGSIZE);
+        m_blockPack->UpdateSize(nRequestedPoolSize >> TEX_POOL_BLOCKLOGSIZE, nRequestedPoolSize >> TEX_POOL_BLOCKLOGSIZE);
         m_nShadowPoolSize = nRequestedPoolSize;
 
         // clear pool and reset allocations
-        m_blockPack.Clear();
+        m_blockPack->Clear();
         m_shadowPoolAlloc.SetUse(0);
     }
-
-
-    bool bShadowRendered = false;
 
     // light pass here
     if (!bPreLoop)
@@ -3934,11 +3983,9 @@ bool CDeferredShading::PackAllShadowFrustums(TArray<SRenderLight>& arrLights, bo
             {
                 continue;
             }
-            ShadowLightPasses(rLight, nLightPacked);
+            ShadowLightPasses(rLight);
         }
     }
-
-    // TODO: Sort lights so allocated ones are rendered first to reduce impact of a thrash
 
     while (m_nCurrentShadowPoolLight < arrLights.Num()) //pre-loop to avoid 0.5 ms restore/resolve
     {
@@ -3950,7 +3997,6 @@ bool CDeferredShading::PackAllShadowFrustums(TArray<SRenderLight>& arrLights, bo
         m_nCurrentShadowPoolLight++;
     }
 
-
     if (bPreLoop && m_nCurrentShadowPoolLight < arrLights.Num()) // Shadow allocation tick, free old shadows.
     {
         uint32 nAllocs = m_shadowPoolAlloc.Num();
@@ -3960,14 +4006,18 @@ bool CDeferredShading::PackAllShadowFrustums(TArray<SRenderLight>& arrLights, bo
             uint32 currFrame = gcpRendD3D->GetFrameID(false) & 0xFF;
             if (!pAlloc->isFree()  && ((currFrame - pAlloc->m_frameID) > (uint)CRenderer::CV_r_ShadowPoolMaxFrames))
             {
-                m_blockPack.RemoveBlock(pAlloc->m_blockID);
+                m_blockPack->RemoveBlock(pAlloc->m_blockID);
                 pAlloc->Clear();
                 break;  //Max one delete per frame, this should spread updates across more frames
             }
         }
     }
 
-    while (m_nCurrentShadowPoolLight < arrLights.Num()   &&   (!bPreLoop || !bShadowRendered))
+    // In GMEM we only pack shadows during the preloop (that happens before the deferred lighting pass)
+    // We don't do it during the deferred lighting pass (preloop = false) because that would cause a resolve of the lighting accumulation buffers.
+    bool packShadows = bPreLoop || !isGmemEnabled;
+    bool bShadowRendered = false;
+    while (m_nCurrentShadowPoolLight < arrLights.Num() && (!bPreLoop || !bShadowRendered))
     {
         m_nFirstCandidateShadowPoolLight = m_nCurrentShadowPoolLight;
 
@@ -3980,19 +4030,18 @@ bool CDeferredShading::PackAllShadowFrustums(TArray<SRenderLight>& arrLights, bo
         {
             PROFILE_LABEL_SCOPE("SHADOWMAP_POOL");
 
-            if (!bPreLoop && !gcpRendD3D->FX_GetEnabledGmemPath(nullptr))
+            if (!bPreLoop && !isGmemEnabled)
             {
                 ResolveCurrentBuffers();
             }
 
-            // Do not pack while in deferred lighting pass with GMEM! This would cause a resolve.
-            while (m_nCurrentShadowPoolLight < arrLights.Num() && (gcpRendD3D->FX_GetEnabledGmemPath(nullptr) ? bPreLoop : true))
+            while (m_nCurrentShadowPoolLight < arrLights.Num())
             {
                 SRenderLight& rLight = arrLights[m_nCurrentShadowPoolLight];
 
-                if (!(rLight.m_Flags & (DLF_DIRECTIONAL | DLF_FAKE)) && (rLight.m_Flags & DLF_CASTSHADOW_MAPS))
+                if (packShadows && !(rLight.m_Flags & (DLF_DIRECTIONAL | DLF_FAKE)) && (rLight.m_Flags & DLF_CASTSHADOW_MAPS))
                 {
-                    bool bPacked = PackToPool(&m_blockPack, rLight, m_nCurrentShadowPoolLight, m_nFirstCandidateShadowPoolLight, m_bClearPool);
+                    bool bPacked = PackToPool(m_blockPack, rLight, m_bClearPool);
                     m_bClearPool = !bPacked;
                     if (!bPacked)
                     {
@@ -4015,36 +4064,41 @@ bool CDeferredShading::PackAllShadowFrustums(TArray<SRenderLight>& arrLights, bo
                 }
             }
 #endif
-
-            // In preloop? bail out
-            if (gcpRendD3D->FX_GetEnabledGmemPath(nullptr) && bPreLoop)
-            {
-                return true;
-            }
         }
 
         if (!bPreLoop && bShadowRendered)
         {
-            if (!gcpRendD3D->FX_GetEnabledGmemPath(nullptr))
+            if (!isGmemEnabled)
             {
                 RestoreCurrentBuffers();
             }
 
+            size_t numLightsWithoutShadow = 0;
             //insert light pass here
             for (uint nLightPacked = m_nFirstCandidateShadowPoolLight; nLightPacked < m_nCurrentShadowPoolLight; ++nLightPacked)
             {
-                const SRenderLight& rLight = arrLights[nLightPacked];
-                if (rLight.m_Flags & DLF_FAKE)
+                SRenderLight& rLight = arrLights[nLightPacked];
+                if ((rLight.m_Flags & (DLF_FAKE | DLF_DIRECTIONAL)) || !(rLight.m_Flags & DLF_CASTSHADOW_MAPS))
                 {
                     continue;
                 }
 
-                ShadowLightPasses(rLight, nLightPacked);
+                if (packShadows)
+                {
+                    ShadowLightPasses(rLight);
+                }
+                else
+                {
+                    // We are not allow to pack shadows (like in GMEM during the ligthing pass) so this light doesn't have a shadowmap.
+                    // Remove the cast shadow flag so it get's render without shadows later.
+                    rLight.m_Flags &= ~DLF_CASTSHADOW_MAPS;
+                    ++numLightsWithoutShadow;
+                }
             }
-        }
-        else if (gcpRendD3D->FX_GetEnabledGmemPath(nullptr))
-        {
-            return true;
+
+            AZ_Warning("Rendering", numLightsWithoutShadow == 0, "%d lights will be rendered without shadows because there's no more space in the shadowmap pool texture.\
+                Try decreasing the number of lights casting shadows or increasing the size of the shadowmap pool (e_ShadowsPoolSize)",
+                numLightsWithoutShadow);
         }
     }
 
@@ -4056,7 +4110,7 @@ bool CDeferredShading::PackAllShadowFrustums(TArray<SRenderLight>& arrLights, bo
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-bool CDeferredShading::PackToPool(CPowerOf2BlockPacker* pBlockPack, SRenderLight& light, const int nLightID, const int nFirstCandidateLight, bool bClearPool)
+bool CDeferredShading::PackToPool(CPowerOf2BlockPacker* pBlockPack, SRenderLight& light, bool bClearPool)
 {
     CD3D9Renderer* const __restrict rd = gcpRendD3D;
 
@@ -4064,7 +4118,7 @@ bool CDeferredShading::PackToPool(CPowerOf2BlockPacker* pBlockPack, SRenderLight
     int nDLights = rd->m_RP.m_DLights[m_nThreadID][m_nRecurseLevel].Num();
 
     //////////////////////////////////////////////////////////////////////////
-    int nFrustumIdx = nLightID + nDLights;
+    int nFrustumIdx = light.m_lightId + nDLights;
     int nStartIdx = SRendItem::m_StartFrust[m_nThreadID][nFrustumIdx];
     int nEndIdx = SRendItem::m_EndFrust[m_nThreadID][nFrustumIdx];
 
@@ -4303,7 +4357,7 @@ void CDeferredShading::RestoreCurrentBuffers()
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-bool CDeferredShading::ShadowLightPasses(const SRenderLight& light, const int nLightID)
+bool CDeferredShading::ShadowLightPasses(const SRenderLight& light)
 {
     PROFILE_SHADER_SCOPE;
 
@@ -4315,7 +4369,7 @@ bool CDeferredShading::ShadowLightPasses(const SRenderLight& light, const int nL
     int nDLights = rd->m_RP.m_DLights[m_nThreadID][m_nRecurseLevel].Num();
 
     //////////////////////////////////////////////////////////////////////////
-    int nFrustumIdx = nLightID + nDLights;
+    int nFrustumIdx = light.m_lightId + nDLights;
     int nStartIdx = SRendItem::m_StartFrust[m_nThreadID][nFrustumIdx];
     int nEndIdx = SRendItem::m_EndFrust[m_nThreadID][nFrustumIdx];
 
@@ -4476,7 +4530,7 @@ bool CDeferredShading::ShadowLightPasses(const SRenderLight& light, const int nL
                 TS.SetClampMode(TADDR_CLAMP, TADDR_CLAMP, TADDR_CLAMP);
                 TS.m_bSRGBLookup = false;
                 TS.SetComparisonFilter(true);
-                CTexture::s_ptexRT_ShadowPool->Apply(3, CTexture::GetTexState(TS));
+                CTexture::s_ptexRT_ShadowPool->Apply(3, CTexture::GetTexState(TS), EFTT_UNKNOWN, 6);
                 //  Confetti BEGIN: Igor Lobanchikov
                 //  Igor: this assigned comparison sampler to correct sampler slot for shadowmapped light sources
                 if (!rd->UseHalfFloatRenderTargets())
@@ -4501,7 +4555,7 @@ bool CDeferredShading::ShadowLightPasses(const SRenderLight& light, const int nL
 
         int nShadowQuality = rd->FX_ApplyShadowQuality();
 
-        m_nCurLighID = nLightID;
+        m_nCurLighID = light.m_lightId;
 
         LightPass(&light, true);
 
@@ -4609,7 +4663,11 @@ void CDeferredShading::CreateDeferredMaps()
         SD3DPostEffectsUtils::CreateRenderTarget("$SceneSpecular", CTexture::s_ptexSceneSpecular, nWidth, nHeight, Clr_Empty, true, false, eTF_R8G8B8A8, -1, nMsaaAndSrgbFlag);
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION D3DDEFERREDSHADING_CPP_SECTION_4
-#include AZ_RESTRICTED_FILE(D3DDeferredShading_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/D3DDeferredShading_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/D3DDeferredShading_cpp_provo.inl"
+    #endif
 #endif
 
         //  Confetti BEGIN: Igor Lobanchikov :END
@@ -4654,19 +4712,27 @@ void CDeferredShading::CreateDeferredMaps()
 
     // shadow mask
     {
-        if (CTexture::s_ptexShadowMask)
+        if (gcpRendD3D->FX_GetEnabledGmemPath(nullptr) && !RenderCapabilities::SupportsPLSExtension())
         {
-            CTexture::s_ptexShadowMask->Invalidate(gcpRendD3D->GetWidth(), gcpRendD3D->GetHeight(), eTF_R8G8B8A8);
+            // Gmem only supports one shadow mask texture and it's saved on the alpha channel of the diffuse light acc texture.
+            CTexture::s_ptexShadowMask = CTexture::s_ptexCurrentSceneDiffuseAccMap;
         }
-
-        if (!CTexture::IsTextureExist(CTexture::s_ptexShadowMask))
+        else
         {
+            if (CTexture::s_ptexShadowMask)
+            {
+                CTexture::s_ptexShadowMask->Invalidate(gcpRendD3D->GetWidth(), gcpRendD3D->GetHeight(), eTF_R8G8B8A8);
+            }
+
+            if (!CTexture::IsTextureExist(CTexture::s_ptexShadowMask))
+            {
 #if defined(CRY_USE_METAL)
-            const int nArraySize = 1; // iOS currently only supports one shadow mask texture
+                const int nArraySize = 1; // iOS currently only supports one shadow mask texture
 #else
-            const int nArraySize = (gcpRendD3D->CV_r_ShadowCastingLightsMaxCount + 3) / 4;
+                const int nArraySize = (gcpRendD3D->CV_r_ShadowCastingLightsMaxCount + 3) / 4;
 #endif
-            CTexture::s_ptexShadowMask = CTexture::CreateTextureArray("$ShadowMask", eTT_2D, gcpRendD3D->GetWidth(), gcpRendD3D->GetHeight(), nArraySize, 1, FT_DONT_STREAM | FT_USAGE_RENDERTARGET, eTF_R8G8B8A8, TO_SHADOWMASK);
+                CTexture::s_ptexShadowMask = CTexture::CreateTextureArray("$ShadowMask", eTT_2D, gcpRendD3D->GetWidth(), gcpRendD3D->GetHeight(), nArraySize, 1, FT_DONT_STREAM | FT_USAGE_RENDERTARGET, eTF_R8G8B8A8, TO_SHADOWMASK);
+            }
         }
     }
 
@@ -4785,7 +4851,7 @@ void CDeferredShading::SetupGmemPath()
     SetupPasses();
     TArray<SRenderLight>& rDeferredLights = m_pLights[eDLT_DeferredLight][m_nThreadID][m_nRecurseLevel];
 
-    m_bClearPool = (CRenderer::CV_r_ShadowPoolMaxFrames > 0) ? false : true;
+    m_bClearPool |= CRenderer::CV_r_ShadowPoolMaxFrames == 0;
 
     m_nCurrentShadowPoolLight = 0;
     m_nFirstCandidateShadowPoolLight = 0;
@@ -4798,6 +4864,7 @@ void CDeferredShading::SetupGmemPath()
     rd->m_RP.m_PS[m_nThreadID].m_NumShadowMaskChannels = 0;
 #endif
 
+    SortLigths(rDeferredLights);
     if (CRenderer::CV_r_DeferredShadingLights)
     {
         PackAllShadowFrustums(rDeferredLights, true);
@@ -4853,6 +4920,69 @@ void CDeferredShading::DebugShadowMaskClear()
 #endif
 }
 
+void CDeferredShading::SortLigths(TArray<SRenderLight>& ligths) const
+{
+    if (CRenderer::CV_r_DeferredShadingSortLights <= 0 || ligths.size() <= 1)
+    {
+        return;
+    }
+
+    int swapPos = -1;
+    if (CRenderer::CV_r_DeferredShadingSortLights == 2 ||
+        CRenderer::CV_r_DeferredShadingSortLights == 3)
+    {
+        // Sort the lights so we process the ones that are packed first.
+        // This reduce the probability of trashing the shadowmap.
+        for (size_t i = 0; i < ligths.Num(); ++i)
+        {
+            const SRenderLight& light = ligths[i];
+            bool isPacked = m_shadowPoolAlloc.end() != AZStd::find_if(m_shadowPoolAlloc.begin(), m_shadowPoolAlloc.end(), [&light](const SShadowAllocData& data) {return data.m_lightID == light.m_nEntityId; });
+            if (isPacked)
+            {
+                ++swapPos;
+                if (i != swapPos)
+                {
+                    AZStd::swap(ligths[i], ligths[swapPos]);
+                }
+            }
+        }
+    }
+
+    if (CRenderer::CV_r_DeferredShadingSortLights == 1 ||
+        CRenderer::CV_r_DeferredShadingSortLights == 3)
+    {
+        CD3D9Renderer* const __restrict rd = gcpRendD3D;
+        auto sortFunc = [&rd](const SRenderLight& lhs, const SRenderLight& rhs)
+        {
+            // First compare by influence area in screen area (bigger area goes first)
+            // If they have the same area then render the closest to the camera first
+            // If they are at the same distance then just use the entityId (to break the tie)
+            int lhsSize = lhs.m_sWidth * lhs.m_sHeight;
+            int rhsSize = rhs.m_sWidth * rhs.m_sHeight;
+            if (lhsSize == rhsSize)
+            {
+                Vec3 cameraPos = rd->GetCamera().GetPosition();
+                float lhsDistance = cameraPos.GetDistance(lhs.GetPosition());
+                float rhsDistance = cameraPos.GetDistance(rhs.GetPosition());
+                return lhsDistance == rhsDistance ? lhs.m_nEntityId < rhs.m_nEntityId : lhsDistance < rhsDistance;
+            }
+
+            return lhsSize > rhsSize;
+        };
+
+        // Sort in two halfs so we don't break the previous order. 
+        // The first half are the lights that are already packed (if r_DeferredShadingSortLights = 3).
+        // The second half are the rest of the lights. 
+        SRenderLight* firstHalfElement = swapPos < 0 ? ligths.end() : ligths.begin() + swapPos + 1;
+        AZStd::sort(ligths.begin(), firstHalfElement, sortFunc);
+        // Check if there's even a second half.
+        if (firstHalfElement != ligths.end())
+        {
+            AZStd::sort(firstHalfElement, ligths.end(), sortFunc);
+        }
+    }
+}
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -4906,6 +5036,7 @@ void CDeferredShading::Render()
 
     if (!gcpRendD3D->FX_GetEnabledGmemPath(nullptr))
     {
+        SortLigths(rDeferredLights);
         FilterGBuffer();
 
         // Generate directional occlusion information
@@ -5036,7 +5167,7 @@ void CDeferredShading::Render()
 
     if (!gcpRendD3D->FX_GetEnabledGmemPath(nullptr))
     {
-        // Commit any potential render target changes - required for x360 resolves, do not remove this plz. // ACCEPTED_USE
+        // Commit any potential render target changes - required for deprecated platform resolves, do not remove this plz. // ACCEPTED_USE
         rd->FX_SetActiveRenderTargets(false);
 
         rd->FX_PopRenderTarget(0);
@@ -5564,7 +5695,11 @@ bool CD3D9Renderer::FX_DeferredDecals()
     DynArray<SDeferredDecal>& deferredDecals = rd->m_RP.m_DeferredDecals[nThreadID][nRecurseLevel];
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION D3DDEFERREDSHADING_CPP_SECTION_5
-#include AZ_RESTRICTED_FILE(D3DDeferredShading_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/D3DDeferredShading_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/D3DDeferredShading_cpp_provo.inl"
+    #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
 #undef AZ_RESTRICTED_SECTION_IMPLEMENTED
@@ -5662,7 +5797,11 @@ bool CD3D9Renderer::FX_DeferredDecalsEmissive()
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION D3DDEFERREDSHADING_CPP_SECTION_6
-#include AZ_RESTRICTED_FILE(D3DDeferredShading_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/D3DDeferredShading_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/D3DDeferredShading_cpp_provo.inl"
+    #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
 #undef AZ_RESTRICTED_SECTION_IMPLEMENTED

@@ -14,6 +14,7 @@
 struct SpawnParams;
 struct ResourceParticleParams;
 class CRenderer;
+class CREParticleGPU;
 class CParticleContainerGPU;
 struct ParticleTarget;
 struct SPhysEnviron;
@@ -37,6 +38,12 @@ public:
     virtual EmitterTypePtr GetEmitterByIndex(int index) = 0;
     virtual int GetEmitterCount() = 0;
 
+    virtual SShaderItem* GetRenderShader() = 0;
+
+    //!< Interface designed to be non thread-safe.
+
+    // ----------------------------------------------
+    //!< Expected to be called from the main thread.
     virtual void SetEmitterTransform(EmitterTypePtr emitter, const Matrix34& transform) = 0;
     virtual void SetEmitterResourceParameters(EmitterTypePtr emitter, const ResourceParticleParams* parameters) = 0;
     virtual void SetEmitterLodBlendAlpha(EmitterTypePtr emitter, const float lodBlendAlpha) = 0;
@@ -48,17 +55,19 @@ public:
     virtual void StopEmitter(EmitterTypePtr pEmitter) = 0;
     virtual void PrimeEmitter(EmitterTypePtr pEmitter, float equilibriumAge) = 0;
 
-    virtual void UpdateFrame() = 0;
     virtual void QueueEmitterNextFrame(EmitterTypePtr emitter, bool isAuxWindowUpdate) = 0;            //!< Expects emitter to be only added once - does not check for duplicate updates!
-    //!< Designed to be non thread-safe. Expects to be called from the render thread.
 
-    virtual void Update(EmitterTypePtr emitter) = 0;
-    virtual void Render(EmitterTypePtr emitter, EGPUParticlePass pass, int shadowMode, float fov, float aspectRatio, bool isWireframeEnabled) = 0;
+    virtual void QueueRenderElementToReleaseNextFrame(CREParticleGPU* renderElement) = 0;
 
     virtual void OnEffectChanged(EmitterTypePtr emitter) = 0;
 
     virtual void OnCubeDepthMapResolutionChanged(ICVar*) {};
 
-    virtual SShaderItem* GetRenderShader() = 0;
+    // ----------------------------------------------
+    //!< Expected to be called from the render thread.
+    virtual void UpdateFrame() = 0;
+
+    virtual void Update(EmitterTypePtr emitter) = 0;
+    virtual void Render(EmitterTypePtr emitter, EGPUParticlePass pass, int shadowMode, float fov, float aspectRatio, bool isWireframeEnabled) = 0;
 };
 

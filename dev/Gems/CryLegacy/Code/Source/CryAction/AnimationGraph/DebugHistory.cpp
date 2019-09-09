@@ -530,8 +530,6 @@ void CDebugHistory::Render()
 //--------------------------------------------------------------------------------
 IDebugHistory* CDebugHistoryManager::CreateHistory(const char* id, const char* name)
 {
-    ScopedSwitchToGlobalHeap useGlobalHeap;
-
     if (!name)
     {
         name = id;

@@ -29,6 +29,7 @@ namespace Maestro
         , public EditorSequenceAgentComponentRequestBus::MultiHandler
         , public SequenceAgentComponentRequestBus::MultiHandler
         , public SequenceAgent
+        , public EditorSequenceAgentComponentNotificationBus::MultiHandler
     {
     public:
         AZ_EDITOR_COMPONENT(EditorSequenceAgentComponent, "{D90A3A45-CA0C-4ED7-920A-41D50557D67B}");
@@ -71,6 +72,9 @@ namespace Maestro
        
         // Override from SequenceAgent
         const AZ::Uuid& GetComponentTypeUuid(const AZ::Component& component) const override;
+
+        // Get all of the components available on the current entity.
+        void GetEntityComponents(AZ::Entity::ComponentArrayType& entityComponents) const override;
 
         ////////////////////////////////////////////////////////////////////////
         void BuildGameEntity(AZ::Entity* gameEntity) override;

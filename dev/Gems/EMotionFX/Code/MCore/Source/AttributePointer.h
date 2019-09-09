@@ -26,6 +26,8 @@ namespace MCore
     class MCORE_API AttributePointer
         : public Attribute
     {
+        AZ_CLASS_ALLOCATOR(AttributePointer, AttributeAllocator, 0)
+
         friend class AttributeFactory;
     public:
         enum
@@ -41,7 +43,6 @@ namespace MCore
 
         // overloaded from the attribute base class
         Attribute* Clone() const override                           { return AttributePointer::Create(mValue); }
-        Attribute* CreateInstance(void* destMemory) override        { return new(destMemory) AttributePointer(); }
         const char* GetTypeString() const override                  { return "AttributePointer"; }
         bool InitFrom(const Attribute* other) override
         {

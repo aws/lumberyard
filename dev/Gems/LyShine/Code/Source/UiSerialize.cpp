@@ -208,30 +208,17 @@ namespace UiSerialize
                 Field("a", &ColorB::a);
         }
 
-        // Vec2
+        // Vec2 (still used in UI Animation sequence splines)
         {
             if (serializeContext)
             {
                 serializeContext->Class<Vec2>()->
                     Field("x", &Vec2::x)->
                     Field("y", &Vec2::y);
-
-                // The only purpose of this EditContext stuff is to make things work in Push to Slice
-                AZ::EditContext* ec = serializeContext->GetEditContext();
-                if (ec)
-                {
-                    auto editInfo = ec->Class<Vec2>(0, "");
-                    editInfo->DataElement(0, &Vec2::x, "", "")
-                        ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::Hide)
-                        ->Attribute(AZ::Edit::Attributes::SliceFlags, AZ::Edit::UISliceFlags::PushableEvenIfInvisible);
-                    editInfo->DataElement(0, &Vec2::y, "", "")
-                        ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::Hide)
-                        ->Attribute(AZ::Edit::Attributes::SliceFlags, AZ::Edit::UISliceFlags::PushableEvenIfInvisible);
-                }
             }
         }
 
-        // Vec3
+        // Vec3 (possibly no longer used)
         {
             if (serializeContext)
             {
@@ -239,22 +226,6 @@ namespace UiSerialize
                     Field("x", &Vec3::x)->
                     Field("y", &Vec3::y)->
                     Field("z", &Vec3::z);
-
-                // The only purpose of this EditContext stuff is to make things work in Push to Slice
-                AZ::EditContext* ec = serializeContext->GetEditContext();
-                if (ec)
-                {
-                    auto editInfo = ec->Class<Vec3>(0, "");
-                    editInfo->DataElement(0, &Vec3::x, "", "")
-                        ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::Hide)
-                        ->Attribute(AZ::Edit::Attributes::SliceFlags, AZ::Edit::UISliceFlags::PushableEvenIfInvisible);
-                    editInfo->DataElement(0, &Vec3::y, "", "")
-                        ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::Hide)
-                        ->Attribute(AZ::Edit::Attributes::SliceFlags, AZ::Edit::UISliceFlags::PushableEvenIfInvisible);
-                    editInfo->DataElement(0, &Vec3::z, "", "")
-                        ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::Hide)
-                        ->Attribute(AZ::Edit::Attributes::SliceFlags, AZ::Edit::UISliceFlags::PushableEvenIfInvisible);
-                }
             }
         }
 
@@ -267,25 +238,6 @@ namespace UiSerialize
                     Field("top", &UiTransform2dInterface::Anchors::m_top)->
                     Field("right", &UiTransform2dInterface::Anchors::m_right)->
                     Field("bottom", &UiTransform2dInterface::Anchors::m_bottom);
-
-                // The only purpose of this EditContext stuff is to make things work in Push to Slice
-                AZ::EditContext* ec = serializeContext->GetEditContext();
-                if (ec)
-                {
-                    auto editInfo = ec->Class<UiTransform2dInterface::Anchors>(0, "");
-                    editInfo->DataElement(0, &UiTransform2dInterface::Anchors::m_left, "", "")
-                        ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::Hide)
-                        ->Attribute(AZ::Edit::Attributes::SliceFlags, AZ::Edit::UISliceFlags::PushableEvenIfInvisible);
-                    editInfo->DataElement(0, &UiTransform2dInterface::Anchors::m_top, "", "")
-                        ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::Hide)
-                        ->Attribute(AZ::Edit::Attributes::SliceFlags, AZ::Edit::UISliceFlags::PushableEvenIfInvisible);
-                    editInfo->DataElement(0, &UiTransform2dInterface::Anchors::m_right, "", "")
-                        ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::Hide)
-                        ->Attribute(AZ::Edit::Attributes::SliceFlags, AZ::Edit::UISliceFlags::PushableEvenIfInvisible);
-                    editInfo->DataElement(0, &UiTransform2dInterface::Anchors::m_bottom, "", "")
-                        ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::Hide)
-                        ->Attribute(AZ::Edit::Attributes::SliceFlags, AZ::Edit::UISliceFlags::PushableEvenIfInvisible);
-                }
             }
 
             if (behaviorContext)
@@ -346,25 +298,6 @@ namespace UiSerialize
                     Field("top", &UiTransform2dInterface::Offsets::m_top)->
                     Field("right", &UiTransform2dInterface::Offsets::m_right)->
                     Field("bottom", &UiTransform2dInterface::Offsets::m_bottom);
-
-                // The only purpose of this EditContext stuff is to make things work in Push to Slice
-                AZ::EditContext* ec = serializeContext->GetEditContext();
-                if (ec)
-                {
-                    auto editInfo = ec->Class<UiTransform2dInterface::Offsets>(0, "");
-                    editInfo->DataElement(0, &UiTransform2dInterface::Offsets::m_left, "", "")
-                        ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::Hide)
-                        ->Attribute(AZ::Edit::Attributes::SliceFlags, AZ::Edit::UISliceFlags::PushableEvenIfInvisible);
-                    editInfo->DataElement(0, &UiTransform2dInterface::Offsets::m_top, "", "")
-                        ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::Hide)
-                        ->Attribute(AZ::Edit::Attributes::SliceFlags, AZ::Edit::UISliceFlags::PushableEvenIfInvisible);
-                    editInfo->DataElement(0, &UiTransform2dInterface::Offsets::m_right, "", "")
-                        ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::Hide)
-                        ->Attribute(AZ::Edit::Attributes::SliceFlags, AZ::Edit::UISliceFlags::PushableEvenIfInvisible);
-                    editInfo->DataElement(0, &UiTransform2dInterface::Offsets::m_bottom, "", "")
-                        ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::Hide)
-                        ->Attribute(AZ::Edit::Attributes::SliceFlags, AZ::Edit::UISliceFlags::PushableEvenIfInvisible);
-                }
             }
 
             if (behaviorContext)
@@ -401,25 +334,6 @@ namespace UiSerialize
                     Field("top", &UiLayoutInterface::Padding::m_top)->
                     Field("right", &UiLayoutInterface::Padding::m_right)->
                     Field("bottom", &UiLayoutInterface::Padding::m_bottom);
-
-                // The only purpose of this EditContext stuff is to make things work in Push to Slice
-                AZ::EditContext* ec = serializeContext->GetEditContext();
-                if (ec)
-                {
-                    auto editInfo = ec->Class<UiLayoutInterface::Padding>(0, "");
-                    editInfo->DataElement(0, &UiLayoutInterface::Padding::m_left, "", "")
-                        ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::Hide)
-                        ->Attribute(AZ::Edit::Attributes::SliceFlags, AZ::Edit::UISliceFlags::PushableEvenIfInvisible);
-                    editInfo->DataElement(0, &UiLayoutInterface::Padding::m_top, "", "")
-                        ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::Hide)
-                        ->Attribute(AZ::Edit::Attributes::SliceFlags, AZ::Edit::UISliceFlags::PushableEvenIfInvisible);
-                    editInfo->DataElement(0, &UiLayoutInterface::Padding::m_right, "", "")
-                        ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::Hide)
-                        ->Attribute(AZ::Edit::Attributes::SliceFlags, AZ::Edit::UISliceFlags::PushableEvenIfInvisible);
-                    editInfo->DataElement(0, &UiLayoutInterface::Padding::m_bottom, "", "")
-                        ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::Hide)
-                        ->Attribute(AZ::Edit::Attributes::SliceFlags, AZ::Edit::UISliceFlags::PushableEvenIfInvisible);
-                }
             }
 
             if (behaviorContext)
@@ -507,76 +421,6 @@ namespace UiSerialize
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////
-    // Helper function to change all owned UI elements to be referenced by EntityId
-    // and to copy the owned UI element entities' DataElementNodes to a container
-    bool MoveEntityAndDescendantsToListAndReplaceWithEntityId(AZ::SerializeContext& context,
-        AZ::SerializeContext::DataElementNode& elementNode,
-        AZStd::vector<AZ::SerializeContext::DataElementNode>& entities)
-    {
-        // Find the UiElementComponent on this entity
-        AZ::SerializeContext::DataElementNode* elementComponentNode =
-            LyShine::FindComponentNode(elementNode, UiElementComponent::TYPEINFO_Uuid());
-        if (!elementComponentNode)
-        {
-            return false;
-        }
-
-        // We must process the children first so that when we make a copy of this entity to the entities list
-        // it will already have had its child entities replaced with entity IDs
-
-        // find the m_children field
-        int childrenIndex = elementComponentNode->FindElement(AZ_CRC("Children", 0xa197b1ba));
-        if (childrenIndex == -1)
-        {
-            return false;
-        }
-        AZ::SerializeContext::DataElementNode& childrenNode = elementComponentNode->GetSubElement(childrenIndex);
-
-        // iterate through children and recursively call this function
-        int numChildren = childrenNode.GetNumSubElements();
-        for (int childIndex = 0; childIndex < numChildren; ++childIndex)
-        {
-            AZ::SerializeContext::DataElementNode& childElementNode = childrenNode.GetSubElement(childIndex);
-            MoveEntityAndDescendantsToListAndReplaceWithEntityId(context, childElementNode, entities);
-        }
-
-        // the children list has now been processed so it will now just contain entity IDs
-        // Now copy this node (elementNode) to the list we are building and then replace it
-        // with an Entity ID node
-
-        // copy this node to the list
-        entities.push_back(elementNode);
-
-        // Remember the name of this node (it could be "element" or "RootElement" for example)
-        AZStd::string elementFieldName = elementNode.GetNameString();
-
-        // Find the EntityId node within this entity
-        int entityIdIndex = elementNode.FindElement(AZ_CRC("Id", 0xbf396750));
-        if (entityIdIndex == -1)
-        {
-            return false;
-        }
-        AZ::SerializeContext::DataElementNode& elementIdNode = elementNode.GetSubElement(entityIdIndex);
-
-        // Find the sub node of the EntityID that actually stores the u64 and make a copy of it
-        int u64Index = elementIdNode.FindElement(AZ_CRC("id", 0xbf396750));
-        if (u64Index == -1)
-        {
-            return false;
-        }
-        AZ::SerializeContext::DataElementNode u64Node = elementIdNode.GetSubElement(u64Index);
-
-        // Convert this node (which was an entire Entity) into just an EntityId, keeping the same
-        // node name as it had
-        elementNode.Convert<AZ::EntityId>(context, elementFieldName.c_str());
-
-        // copy in the subNode that stores the actual u64 (that we saved a copy of above)
-        int newEntityIdIndex = elementNode.AddElement(u64Node);
-
-        return true;
-    }
-
-    ////////////////////////////////////////////////////////////////////////////////////////////////////
     bool PrefabFileObject::VersionConverter(AZ::SerializeContext& context, AZ::SerializeContext::DataElementNode& classElement)
     {
         if (classElement.GetVersion() == 1)
@@ -598,7 +442,7 @@ namespace UiSerialize
 
             // recursively process the root element and all of its child elements, copying their child entities to the
             // entities container and replacing them with EntityIds
-            if (!MoveEntityAndDescendantsToListAndReplaceWithEntityId(context, rootEntityNode, copiedEntities))
+            if (!UiElementComponent::MoveEntityAndDescendantsToListAndReplaceWithEntityId(context, rootEntityNode, -1, copiedEntities))
             {
                 return false;
             }

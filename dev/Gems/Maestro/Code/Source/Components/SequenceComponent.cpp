@@ -18,6 +18,7 @@
 
 #include <Cinematics/Movie.h>
 #include <Cinematics/AnimSplineTrack.h>
+#include <Maestro/Types/AssetBlends.h>
 #include <Maestro/Types/AssetBlendKey.h>
 #include <Cinematics/AssetBlendTrack.h>
 #include <Cinematics/CompoundSplineTrack.h>
@@ -48,7 +49,6 @@
 #include <Cinematics/ScriptVarNode.h>
 #include <Cinematics/AnimEnvironmentNode.h>
 #include <Cinematics/AnimPostFXNode.h>
-#include <Cinematics/EntityNode.h>
 #include <Cinematics/EventNode.h>
 #include <Cinematics/LayerNode.h>
 #include <Cinematics/MaterialNode.h>
@@ -182,7 +182,6 @@ namespace Maestro
         CAnimEnvironmentNode::Reflect(context);
         CAnimNodeGroup::Reflect(context);
         CAnimPostFXNode::Reflect(context);
-        CAnimEntityNode::Reflect(context);
         CAnimEventNode::Reflect(context);
         CLayerNode::Reflect(context);
         CAnimMaterialNode::Reflect(context);

@@ -308,7 +308,7 @@ namespace ScriptCanvasEditor
             }
         }
 
-        static const char* GetSafeTypeName(ScriptCanvas::Data::Type dataType)
+        static AZStd::string GetSafeTypeName(ScriptCanvas::Data::Type dataType)
         {
             if (!dataType.IsValid())
             {

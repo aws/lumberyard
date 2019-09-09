@@ -20,7 +20,7 @@
 
 #include <AssetBrowser/ui_AssetBrowserSearchDlg.h>
 
-namespace AssetBrowser
+namespace AssetBrowserSearchDlgInternal
 {
     const UINT kSearchEditBoxOffset = 0;
     const UINT  kSearchFileFontSize = 100;
@@ -44,7 +44,7 @@ CAssetBrowserSearchDlg::CAssetBrowserSearchDlg(QWidget* pParent /*=NULL*/)
 
     m_pAssetBrowserDlg = NULL;
     m_bForceFilterUsedInLevel = m_bForceShowFavorites = m_bForceHideLods = false;
-    m_assetSearchType = AssetBrowser::AssetBrowserSearchTypes_Tags;
+    m_assetSearchType = AssetBrowserSearchTypes::AssetBrowserSearchTypes_Tags;
 
     connect(m_ui->m_edSearchText, &QLineEdit::returnPressed, this, &CAssetBrowserSearchDlg::OnEnChangeEditSearchText);
 
@@ -60,9 +60,9 @@ CAssetBrowserSearchDlg::~CAssetBrowserSearchDlg()
 
 void CAssetBrowserSearchDlg::OnInitDialog()
 {
-    m_ui->m_edSearchText->setFont(QFont(QStringLiteral("Arial"), AssetBrowser::kSearchFileFontSize / 10.0));
-    m_ui->m_edSearchText->setPlaceholderText(AssetBrowser::kSearchTextDefault);
-    layout()->setContentsMargins(AssetBrowser::kSearchEditBoxOffset, AssetBrowser::kSearchEditBoxMargin, AssetBrowser::kSearchEditBoxMargin, AssetBrowser::kSearchEditBoxMargin);
+    m_ui->m_edSearchText->setFont(QFont(QStringLiteral("Arial"), AssetBrowserSearchDlgInternal::kSearchFileFontSize / 10.0));
+    m_ui->m_edSearchText->setPlaceholderText(AssetBrowserSearchDlgInternal::kSearchTextDefault);
+    layout()->setContentsMargins(AssetBrowserSearchDlgInternal::kSearchEditBoxOffset, AssetBrowserSearchDlgInternal::kSearchEditBoxMargin, AssetBrowserSearchDlgInternal::kSearchEditBoxMargin, AssetBrowserSearchDlgInternal::kSearchEditBoxMargin);
 }
 
 void CAssetBrowserSearchDlg::OnEnChangeEditSearchText()
@@ -186,14 +186,14 @@ void CAssetBrowserSearchDlg::Search()
     if (m_pAssetBrowserDlg->GetAssetViewer().GetAssetItems().empty() && !searchText.isEmpty())
     {
         m_ui->m_edSearchText->m_bNotFound = true;
-        setStyleSheet(QString::fromLatin1("QLineEdit { color: %1; background: %2; }").arg(AssetBrowser::kSearchNoResultsForeColor.name(), AssetBrowser::kSearchNoResultsBackColor.name()));
+        setStyleSheet(QString::fromLatin1("QLineEdit { color: %1; background: %2; }").arg(AssetBrowserSearchDlgInternal::kSearchNoResultsForeColor.name(), AssetBrowserSearchDlgInternal::kSearchNoResultsBackColor.name()));
     }
     else
     {
         m_ui->m_edSearchText->m_bNotFound = false;
         setStyleSheet(QString::fromLatin1("QLineEdit { color: %1; background: %2; }")
-                .arg((bNoTextToSearch || (originalSearchText.isEmpty() && !m_ui->m_edSearchText->hasFocus()) ? AssetBrowser::kSearchTextDefaultForeColor : AssetBrowser::kSearchTextForeColor).name())
-                .arg((bNoTextToSearch || originalSearchText.isEmpty() ? AssetBrowser::kSearchTextDefaultBackColor : AssetBrowser::kSearchTextBackColor).name()));
+                .arg((bNoTextToSearch || (originalSearchText.isEmpty() && !m_ui->m_edSearchText->hasFocus()) ? AssetBrowserSearchDlgInternal::kSearchTextDefaultForeColor : AssetBrowserSearchDlgInternal::kSearchTextForeColor).name())
+                .arg((bNoTextToSearch || originalSearchText.isEmpty() ? AssetBrowserSearchDlgInternal::kSearchTextDefaultBackColor : AssetBrowserSearchDlgInternal::kSearchTextBackColor).name()));
     }
 
     s_bAlreadySearching = false;
@@ -202,7 +202,7 @@ void CAssetBrowserSearchDlg::Search()
 CSearchEditCtrl::CSearchEditCtrl(QWidget* parent)
     : QLineEdit(parent)
 {
-    setStyleSheet(QString::fromLatin1("QLineEdit { color: %1; background: %2; }").arg(AssetBrowser::kSearchTextDefaultForeColor.name(), AssetBrowser::kSearchTextDefaultBackColor.name()));
+    setStyleSheet(QString::fromLatin1("QLineEdit { color: %1; background: %2; }").arg(AssetBrowserSearchDlgInternal::kSearchTextDefaultForeColor.name(), AssetBrowserSearchDlgInternal::kSearchTextDefaultBackColor.name()));
     m_bNotFound = false;
 }
 
@@ -212,7 +212,7 @@ void CSearchEditCtrl::focusInEvent(QFocusEvent* event)
 
     if (text().isEmpty())
     {
-        setStyleSheet(QString::fromLatin1("QLineEdit { color: %1; background: %2; }").arg(AssetBrowser::kSearchTextDefaultForeColor.name(), AssetBrowser::kSearchTextDefaultBackColor.name()));
+        setStyleSheet(QString::fromLatin1("QLineEdit { color: %1; background: %2; }").arg(AssetBrowserSearchDlgInternal::kSearchTextDefaultForeColor.name(), AssetBrowserSearchDlgInternal::kSearchTextDefaultBackColor.name()));
     }
 }
 
@@ -220,11 +220,11 @@ void CSearchEditCtrl::focusOutEvent(QFocusEvent* event)
 {
     if (text().isEmpty())
     {
-        setStyleSheet(QString::fromLatin1("QLineEdit { color: %1; background: %2; }").arg(AssetBrowser::kSearchTextDefaultForeColor.name(), AssetBrowser::kSearchTextDefaultBackColor.name()));
+        setStyleSheet(QString::fromLatin1("QLineEdit { color: %1; background: %2; }").arg(AssetBrowserSearchDlgInternal::kSearchTextDefaultForeColor.name(), AssetBrowserSearchDlgInternal::kSearchTextDefaultBackColor.name()));
     }
     else if (!m_bNotFound)
     {
-        setStyleSheet(QString::fromLatin1("QLineEdit { color: %1; background: %2; }").arg(AssetBrowser::kSearchTextForeColor.name(), AssetBrowser::kSearchTextBackColor.name()));
+        setStyleSheet(QString::fromLatin1("QLineEdit { color: %1; background: %2; }").arg(AssetBrowserSearchDlgInternal::kSearchTextForeColor.name(), AssetBrowserSearchDlgInternal::kSearchTextBackColor.name()));
     }
 }
 

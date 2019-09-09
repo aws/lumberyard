@@ -114,6 +114,10 @@ void CPoseAlignerChain::AlignToTarget(const SAnimationPoseModifierParams& params
 
 bool CPoseAlignerChain::MoveToTarget(const SAnimationPoseModifierParams& params, Vec3& contactPosition)
 {
+    if (!m_pIkLimbType || m_pIkLimbType->m_arrLimbChildren.empty())
+    {
+        return false;
+    }
     float offsetMax = ComputePoseAbsoluteOffsetMax(params, *m_pIkLimbType, m_stateExecute.target.offsetMax);
     float offsetMin = ComputePoseAbsoluteOffsetMax(params, *m_pIkLimbType, m_stateExecute.target.offsetMin - 0.1f);
 

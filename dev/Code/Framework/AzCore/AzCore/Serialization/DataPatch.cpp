@@ -19,6 +19,7 @@
 #include <AzCore/std/sort.h>
 #include <AzCore/std/string/conversions.h>
 #include <AzCore/Math/MathUtils.h>
+#include <AzCore/std/containers/unordered_map.h>
 
 namespace AZ
 {
@@ -59,16 +60,53 @@ namespace AZ
 
         void Build(const void* classPtr, const Uuid& classId);
 
-        bool BeginNode(void* ptr, const SerializeContext::ClassData* classData, const SerializeContext::ClassElement* classElement);
+        bool BeginNode(
+            void* ptr,
+            const SerializeContext::ClassData* classData,
+            const SerializeContext::ClassElement* classElement);
         bool EndNode();
 
         /// Compare two nodes and fill the patch structure
-        static void CompareElements(const DataNode* sourceNode, const DataNode* targetNode, DataPatch::PatchMap& patch, const DataPatch::FlagsMap& patchFlags, SerializeContext* context);
-        static void CompareElementsInternal(const DataNode* sourceNode, const DataNode* targetNode, DataPatch::PatchMap& patch, const DataPatch::FlagsMap& patchFlags, SerializeContext* context, DataPatch::AddressType& address, DataPatch::Flags& addressFlags, AZStd::vector<AZ::u8>& tmpSourceBuffer);
+        static void CompareElements(
+            const DataNode* sourceNode,
+            const DataNode* targetNode,
+            DataPatch::PatchMap& patch,
+            const DataPatch::FlagsMap& sourceFlagsMap,
+            const DataPatch::FlagsMap& targetFlagsMap,
+            SerializeContext* context);
+
+        static void CompareElementsInternal(
+            const DataNode* sourceNode,
+            const DataNode* targetNode,
+            DataPatch::PatchMap& patch,
+            const DataPatch::FlagsMap& sourceFlagsMap,
+            const DataPatch::FlagsMap& targetFlagsMap,
+            SerializeContext* context,
+            DataPatch::AddressType& address,
+            DataPatch::Flags parentAddressFlags,
+            AZStd::vector<AZ::u8>& tmpSourceBuffer);
 
         /// Apply patch to elements, return a valid pointer only for the root element
-        typedef AZStd::unordered_map<DataPatch::AddressType, AZStd::vector<DataPatch::AddressType> > ChildPatchMap;
-        static void* ApplyToElements(DataNode* sourceNode, const DataPatch::PatchMap& patch, const ChildPatchMap& childPatchLookup, DataPatch::AddressType& address, void* parentPointer, const SerializeContext::ClassData* parentClassData, AZStd::vector<AZ::u8>& tmpSourceBuffer, SerializeContext* context, const AZ::ObjectStream::FilterDescriptor& filterDesc);
+        static void* ApplyToElements(
+            DataNode* sourceNode,
+            const DataPatch::PatchMap& patch,
+            const DataPatch::ChildPatchMap& childPatchLookup,
+            const DataPatch::FlagsMap& sourceFlagsMap,
+            const DataPatch::FlagsMap& targetFlagsMap,
+            DataPatch::Flags parentAddressFlags,
+            DataPatch::AddressType& address,
+            void* parentPointer,
+            const SerializeContext::ClassData* parentClassData,
+            AZStd::vector<AZ::u8>& tmpSourceBuffer,
+            SerializeContext* context,
+            const AZ::ObjectStream::FilterDescriptor& filterDesc,
+            int& parentContainerElementCounter);
+
+        static DataPatch::Flags CalculateDataFlagsAtThisAddress(
+            const DataPatch::FlagsMap& sourceFlagsMap,
+            const DataPatch::FlagsMap& targetFlagsMap,
+            DataPatch::Flags parentAddressFlags,
+            const DataPatch::AddressType& address);
 
         DataNode m_root;
         DataNode* m_currentNode;        ///< Used as temp during tree building
@@ -88,15 +126,21 @@ namespace AZ
 
         if (m_context && rootClassPtr)
         {
-            m_context->EnumerateInstanceConst(
-                rootClassPtr,
-                rootClassId,
+            SerializeContext::EnumerateInstanceCallContext callContext(
                 AZStd::bind(&DataNodeTree::BeginNode, this, AZStd::placeholders::_1, AZStd::placeholders::_2, AZStd::placeholders::_3),
                 AZStd::bind(&DataNodeTree::EndNode, this),
+                m_context,
                 SerializeContext::ENUM_ACCESS_FOR_READ,
+                nullptr
+            );
+
+            m_context->EnumerateInstanceConst(
+                &callContext,
+                rootClassPtr,
+                rootClassId,
                 nullptr,
                 nullptr
-                );
+            );
         }
 
         m_currentNode = nullptr;
@@ -105,7 +149,10 @@ namespace AZ
     //=========================================================================
     // DataNodeTree::BeginNode
     //=========================================================================
-    bool DataNodeTree::BeginNode(void* ptr, const SerializeContext::ClassData* classData, const SerializeContext::ClassElement* classElement)
+    bool DataNodeTree::BeginNode(
+        void* ptr,
+        const SerializeContext::ClassData* classData,
+        const SerializeContext::ClassElement* classElement)
     {
         DataNode* newNode;
         if (m_currentNode)
@@ -170,243 +217,297 @@ namespace AZ
     //=========================================================================
     // DataNodeTree::CompareElements
     //=========================================================================
-    void DataNodeTree::CompareElements(const DataNode* sourceNode, const DataNode* targetNode, DataPatch::PatchMap& patch, const DataPatch::FlagsMap& patchFlags, SerializeContext* context)
+    void DataNodeTree::CompareElements(
+        const DataNode* sourceNode,
+        const DataNode* targetNode,
+        DataPatch::PatchMap& patch,
+        const DataPatch::FlagsMap& sourceFlagsMap,
+        const DataPatch::FlagsMap& targetFlagsMap,
+        SerializeContext* context)
     {
         DataPatch::AddressType tmpAddress;
-        DataPatch::Flags tmpAddressFlags = 0;
         AZStd::vector<AZ::u8> tmpSourceBuffer;
 
-        CompareElementsInternal(sourceNode, targetNode, patch, patchFlags, context, tmpAddress, tmpAddressFlags, tmpSourceBuffer);
+        CompareElementsInternal(
+            sourceNode,
+            targetNode,
+            patch,
+            sourceFlagsMap,
+            targetFlagsMap,
+            context,
+            tmpAddress,
+            0,
+            tmpSourceBuffer);
     }
 
     //=========================================================================
     // DataNodeTree::CompareElementsInternal
     //=========================================================================
-    void DataNodeTree::CompareElementsInternal(const DataNode* sourceNode, const DataNode* targetNode, DataPatch::PatchMap& patch, const DataPatch::FlagsMap& patchFlags, SerializeContext* context, DataPatch::AddressType& address, DataPatch::Flags& addressFlags, AZStd::vector<AZ::u8>& tmpSourceBuffer)
+    void DataNodeTree::CompareElementsInternal(
+        const DataNode* sourceNode,
+        const DataNode* targetNode,
+        DataPatch::PatchMap& patch,
+        const DataPatch::FlagsMap& sourceFlagsMap,
+        const DataPatch::FlagsMap& targetFlagsMap,
+        SerializeContext* context,
+        DataPatch::AddressType& address,
+        DataPatch::Flags parentAddressFlags,
+        AZStd::vector<AZ::u8>& tmpSourceBuffer)
     {
-        if (targetNode->m_classData->m_typeId == sourceNode->m_classData->m_typeId)
+        // calculate the flags affecting this address
+        DataPatch::Flags addressFlags = CalculateDataFlagsAtThisAddress(sourceFlagsMap, targetFlagsMap, parentAddressFlags, address);
+
+        // don't compare any addresses affected by the PreventOverride flag
+        if (addressFlags & DataPatch::Flag::PreventOverrideEffect)
         {
-            if (targetNode->m_classData->m_container)
-            {
-                // find elements that we have added or modified
-                u64 elementIndex = 0;
-                u64 elementId = 0;
-                for (const DataNode& targetElementNode : targetNode->m_children)
-                {
-                    const DataNode* sourceNodeMatch = nullptr;
-                    SerializeContext::ClassPersistentId targetPersistentIdFunction = targetElementNode.m_classData->GetPersistentId(*context);
-                    if (targetPersistentIdFunction)
-                    {
-                        u64 targetElementId = targetPersistentIdFunction(targetElementNode.m_data);
-
-                        for (const DataNode& sourceElementNode : sourceNode->m_children)
-                        {
-                            SerializeContext::ClassPersistentId sourcePersistentIdFunction = sourceElementNode.m_classData->GetPersistentId(*context);
-                            if (sourcePersistentIdFunction)
-                            {
-                                if (targetElementId == sourcePersistentIdFunction(sourceElementNode.m_data))
-                                {
-                                    sourceNodeMatch = &sourceElementNode;
-                                    break;
-                                }
-                            }
-                        }
-
-                        elementId = targetElementId; // we use persistent ID for an id
-                    }
-                    else
-                    {
-                        // if we don't have IDs use the container index
-                        if (elementIndex < sourceNode->m_children.size())
-                        {
-                            sourceNodeMatch = &(*AZStd::next(sourceNode->m_children.begin(), elementIndex));
-                        }
-
-                        elementId = elementIndex; // use index as an ID
-                    }
-
-                    address.push_back(elementId);
-
-                    // determine flags for next address
-                    DataPatch::Flags nextAddressFlags = addressFlags;
-                    auto foundNewAddressFlags = patchFlags.find(address);
-                    if (foundNewAddressFlags != patchFlags.end())
-                    {
-                        nextAddressFlags |= foundNewAddressFlags->second;
-                    }
-
-                    if (sourceNodeMatch)
-                    {
-                        // compare elements
-                        CompareElementsInternal(sourceNodeMatch, &targetElementNode, patch, patchFlags, context, address, nextAddressFlags, tmpSourceBuffer);
-                    }
-                    else
-                    {
-                        // this is a new node store it
-                        auto insertResult = patch.insert_key(address);
-                        insertResult.first->second.clear();
-
-                        IO::ByteContainerStream<DataPatch::PatchMap::mapped_type> stream(&insertResult.first->second);
-                        if (!Utils::SaveObjectToStream(stream, AZ::ObjectStream::ST_BINARY, targetElementNode.m_data, targetElementNode.m_classData->m_typeId, context, targetElementNode.m_classData))
-                        {
-                            AZ_Assert(false, "Unable to serialize class %s, SaveObjectToStream() failed.", targetElementNode.m_classData->m_name);
-                        }
-                    }
-
-                    address.pop_back();
-
-                    ++elementIndex;
-                }
-
-                // find elements we have removed (todo: mark matching elements in the first traversal above)
-                elementIndex = 0;
-                elementId = 0;
-                for (const DataNode& sourceElementNode : sourceNode->m_children)
-                {
-                    bool isRemoved = true;
-
-                    SerializeContext::ClassPersistentId sourcePersistentIdFunction = sourceElementNode.m_classData->GetPersistentId(*context);
-                    if (sourcePersistentIdFunction)
-                    {
-                        u64 sourceElementId = sourcePersistentIdFunction(sourceElementNode.m_data);
-                        elementId = sourceElementId;
-
-                        for (const DataNode& targetElementNode : targetNode->m_children)
-                        {
-                            SerializeContext::ClassPersistentId targetPersistentIdFunction = targetElementNode.m_classData->GetPersistentId(*context);
-                            if (targetPersistentIdFunction)
-                            {
-                                if (sourceElementId == targetPersistentIdFunction(targetElementNode.m_data))
-                                {
-                                    isRemoved = false;
-                                    break;
-                                }
-                            }
-                        }
-                    }
-                    else
-                    {
-                        if (elementIndex < targetNode->m_children.size())
-                        {
-                            isRemoved = false;
-                        }
-                        elementId = elementIndex;
-                    }
-
-                    if (isRemoved)
-                    {
-                        address.push_back(elementId);
-
-                        // record removal of element by inserting a key with a 0 byte patch
-                        patch.insert_key(address);
-
-                        address.pop_back();
-                    }
-                    ++elementIndex;
-                }
-            }
-            else if (targetNode->m_classData->m_serializer)
-            {
-                AZ_Assert(targetNode->m_classData == sourceNode->m_classData, "Comparison raw data for mismatched types.");
-
-                // This is a leaf element (has a direct serializer).
-                // Write to patch if values differ, or if the ForceOverride flag applies to this address
-                if ((addressFlags & DataPatch::Flag::ForceOverride)
-                    || !targetNode->m_classData->m_serializer->CompareValueData(sourceNode->m_data, targetNode->m_data))
-                {
-                    //serialize target override
-                    auto insertResult = patch.insert_key(address);
-                    insertResult.first->second.clear();
-
-                    IO::ByteContainerStream<DataPatch::PatchMap::mapped_type> stream(&insertResult.first->second);
-                    if (!Utils::SaveObjectToStream(stream, AZ::ObjectStream::ST_BINARY, targetNode->m_data, targetNode->m_classData->m_typeId, context, targetNode->m_classData))
-                    {
-                        AZ_Assert(false, "Unable to serialize class %s, SaveObjectToStream() failed.", targetNode->m_classData->m_name);
-                    }
-                }
-            }
-            else
-            {
-                // Not containers, just compare elements. Since they are known at compile time and class data is shared
-                // elements will be there if they are not nullptr
-                // When elements are nullptrs, they are not serialized out and therefore causes the number of children to differ
-                /* For example the AzFramework::EntityReference class serializes out a AZ::EntityId and AZ::Entity*
-                class EntityReference
-                {
-                    AZ::Entity m_entityId;
-                    AZ::Entity* m_entity;
-                }
-                    If the EntityReference::m_entity element is nullptr in the source instance, it is not part of the source node children
-                */
-                // find elements that we have added or modified by creating a union of the source data nodes and target data nodes
-
-                AZStd::unordered_map<AZ::u64, const AZ::DataNode*> sourceAddressMap;
-                AZStd::unordered_map<AZ::u64, const AZ::DataNode*> targetAddressMap;
-                AZStd::unordered_map<AZ::u64, const AZ::DataNode*> unionAddressMap;
-                for (auto targetElementIt = targetNode->m_children.begin(); targetElementIt != targetNode->m_children.end(); ++targetElementIt)
-                {
-                    targetAddressMap.emplace(targetElementIt->m_classElement->m_nameCrc, &(*targetElementIt));
-                    unionAddressMap.emplace(targetElementIt->m_classElement->m_nameCrc, &(*targetElementIt));
-                }
-
-                for (auto sourceElementIt = sourceNode->m_children.begin(); sourceElementIt != sourceNode->m_children.end(); ++sourceElementIt)
-                {
-                    sourceAddressMap.emplace(sourceElementIt->m_classElement->m_nameCrc, &(*sourceElementIt));
-                    unionAddressMap.emplace(sourceElementIt->m_classElement->m_nameCrc, &(*sourceElementIt));
-                }
-
-                for (auto& unionAddressNode : unionAddressMap)
-                {
-                    auto sourceFoundIt = sourceAddressMap.find(unionAddressNode.first);
-                    auto targetFoundIt = targetAddressMap.find(unionAddressNode.first);
-
-                    if (sourceFoundIt != sourceAddressMap.end() && targetFoundIt != targetAddressMap.end())
-                    {
-                        address.push_back(sourceFoundIt->first); // use element class element name as an ID
-                        DataPatch::Flags nextAddressFlags = addressFlags;
-                        auto foundNewAddressFlags = patchFlags.find(address);
-                        if (foundNewAddressFlags != patchFlags.end())
-                        {
-                            nextAddressFlags |= foundNewAddressFlags->second;
-                        }
-
-                        CompareElementsInternal(sourceFoundIt->second, targetFoundIt->second, patch, patchFlags, context, address, nextAddressFlags, tmpSourceBuffer);
-                        address.pop_back();
-                    }
-                    else if (targetFoundIt != targetAddressMap.end())
-                    {
-                        // this is a new node store it
-                        address.push_back(targetFoundIt->first); // use element class element name as an ID
-                        auto insertResult = patch.insert_key(address);
-                        insertResult.first->second.clear();
-
-                        auto& targetElementNode = targetFoundIt->second;
-                        IO::ByteContainerStream<DataPatch::PatchMap::mapped_type> stream(&insertResult.first->second);
-                        if (!Utils::SaveObjectToStream(stream, AZ::ObjectStream::ST_BINARY, targetElementNode->m_data, targetElementNode->m_classData->m_typeId, context, targetElementNode->m_classData))
-                        {
-                            AZ_Assert(false, "Unable to serialize class %s, SaveObjectToStream() failed.", targetElementNode->m_classData->m_name);
-                        }
-                        address.pop_back();
-                    }
-                    else
-                    {
-                        address.push_back(sourceFoundIt->first); // use element class element name as an ID
-                        patch.insert_key(address); // record removal of element by inserting a key with a 0 byte patch
-                        address.pop_back();
-                    }
-                }
-            }
+            return;
         }
-        else
+
+        if (targetNode->m_classData->m_typeId != sourceNode->m_classData->m_typeId)
         {
             // serialize the entire target class
             auto insertResult = patch.insert_key(address);
             insertResult.first->second.clear();
 
             IO::ByteContainerStream<DataPatch::PatchMap::mapped_type> stream(&insertResult.first->second);
-            if (!Utils::SaveObjectToStream(stream, AZ::ObjectStream::ST_BINARY, targetNode->m_data, targetNode->m_classData->m_typeId, context, targetNode->m_classData))
+            bool saveResult = Utils::SaveObjectToStream(
+                stream,
+                AZ::ObjectStream::ST_BINARY,
+                targetNode->m_data,
+                targetNode->m_classData->m_typeId,
+                context,
+                targetNode->m_classData);
+
+            if (!saveResult)
             {
-                AZ_Assert(false, "Unable to serialize class %s, SaveObjectToStream() failed.", targetNode->m_classData->m_name);
+                AZ_Assert(saveResult, "Unable to serialize class %s, SaveObjectToStream() failed.", targetNode->m_classData->m_name);
+            }
+            return;
+        }
+
+        if (targetNode->m_classData->m_container)
+        {
+            AZStd::unordered_map<const DataNode*, AZStd::pair<u64, bool>> nodesToRemove;
+            nodesToRemove.reserve(sourceNode->m_children.size());
+            u64 elementIndex = 0;
+            AZStd::pair<u64, bool> tempPair(0, true);
+            for (auto& sourceElementNode : sourceNode->m_children)
+            {
+                SerializeContext::ClassPersistentId sourcePersistentIdFunction = sourceElementNode.m_classData->GetPersistentId(*context);
+
+                tempPair.first = 
+                    sourcePersistentIdFunction 
+                    ? sourcePersistentIdFunction(sourceElementNode.m_data) 
+                    : elementIndex;
+
+                nodesToRemove[&sourceElementNode] = tempPair;
+
+                ++elementIndex;
+            }
+
+            // find elements that we have added or modified
+            elementIndex = 0;
+            u64 elementId = 0;
+            for (const DataNode& targetElementNode : targetNode->m_children)
+            {
+                const DataNode* sourceNodeMatch = nullptr;
+                SerializeContext::ClassPersistentId targetPersistentIdFunction = targetElementNode.m_classData->GetPersistentId(*context);
+                if (targetPersistentIdFunction)
+                {
+                    u64 targetElementId = targetPersistentIdFunction(targetElementNode.m_data);
+
+                    for (const DataNode& sourceElementNode : sourceNode->m_children)
+                    {
+                        SerializeContext::ClassPersistentId sourcePersistentIdFunction = sourceElementNode.m_classData->GetPersistentId(*context);
+                        if (sourcePersistentIdFunction && targetElementId == sourcePersistentIdFunction(sourceElementNode.m_data))
+                        {
+                            sourceNodeMatch = &sourceElementNode;
+                            break;
+                        }
+                    }
+
+                    elementId = targetElementId; // we use persistent ID for an id
+                }
+                else
+                {
+                    // if we don't have IDs use the container index
+                    if (elementIndex < sourceNode->m_children.size())
+                    {
+                        sourceNodeMatch = &(*AZStd::next(sourceNode->m_children.begin(), elementIndex));
+                    }
+
+                    elementId = elementIndex; // use index as an ID
+                }
+
+                address.push_back(elementId);
+
+                if (sourceNodeMatch)
+                {
+                    nodesToRemove[sourceNodeMatch].second = false;
+
+                    // compare elements
+                    CompareElementsInternal(
+                        sourceNodeMatch,
+                        &targetElementNode,
+                        patch,
+                        sourceFlagsMap,
+                        targetFlagsMap,
+                        context,
+                        address,
+                        addressFlags,
+                        tmpSourceBuffer);
+                }
+                else
+                {
+                    // this is a new node store it
+                    auto insertResult = patch.insert_key(address);
+                    insertResult.first->second.clear();
+
+                    IO::ByteContainerStream<DataPatch::PatchMap::mapped_type> stream(&insertResult.first->second);
+                    bool saveResult = Utils::SaveObjectToStream(
+                        stream,
+                        AZ::ObjectStream::ST_BINARY,
+                        targetElementNode.m_data,
+                        targetElementNode.m_classData->m_typeId,
+                        context,
+                        targetElementNode.m_classData);
+                    if (!saveResult)
+                    {
+                        AZ_Assert(saveResult, "Unable to serialize class %s, SaveObjectToStream() failed.", targetElementNode.m_classData->m_name);
+                    }
+                }
+
+                address.pop_back();
+
+                ++elementIndex;
+            }
+
+            // find elements we have removed 
+            for (auto& node : nodesToRemove)
+            {
+                //do not need to remove this node
+                if (!node.second.second)
+                {
+                    continue;
+                }
+
+                address.push_back(node.second.first);
+
+                // record removal of element by inserting a key with a 0 byte patch
+                patch.insert_key(address);
+
+                address.pop_back();
+            }
+        }
+        else if (targetNode->m_classData->m_serializer)
+        {
+            AZ_Assert(targetNode->m_classData == sourceNode->m_classData, "Comparison raw data for mismatched types.");
+
+            // This is a leaf element (has a direct serializer).
+            // Write to patch if values differ, or if the ForceOverride flag affects this address
+            if ((addressFlags & DataPatch::Flag::ForceOverrideEffect)
+                || !targetNode->m_classData->m_serializer->CompareValueData(sourceNode->m_data, targetNode->m_data))
+            {
+                //serialize target override
+                auto insertResult = patch.insert_key(address);
+                insertResult.first->second.clear();
+
+                IO::ByteContainerStream<DataPatch::PatchMap::mapped_type> stream(&insertResult.first->second);
+                bool saveResult = Utils::SaveObjectToStream(
+                    stream,
+                    AZ::ObjectStream::ST_BINARY,
+                    targetNode->m_data,
+                    targetNode->m_classData->m_typeId,
+                    context,
+                    targetNode->m_classData);
+                if (!saveResult)
+                {
+                    AZ_Assert(saveResult, "Unable to serialize class %s, SaveObjectToStream() failed.", targetNode->m_classData->m_name);
+                }
+            }
+        }
+        else
+        {
+            // Not containers, just compare elements. Since they are known at compile time and class data is shared
+            // elements will be there if they are not nullptr
+            // When elements are nullptrs, they are not serialized out and therefore causes the number of children to differ
+            /* For example the AzFramework::EntityReference class serializes out a AZ::EntityId and AZ::Entity*
+            class EntityReference
+            {
+                AZ::Entity m_entityId;
+                AZ::Entity* m_entity;
+            }
+                If the EntityReference::m_entity element is nullptr in the source instance, it is not part of the source node children
+            */
+            // find elements that we have added or modified by creating a union of the source data nodes and target data nodes
+
+            AZStd::unordered_map<AZ::u64, const AZ::DataNode*> sourceAddressMap;
+            AZStd::unordered_map<AZ::u64, const AZ::DataNode*> targetAddressMap;
+            AZStd::unordered_map<AZ::u64, const AZ::DataNode*> unionAddressMap;
+            for (auto targetElementIt = targetNode->m_children.begin(); targetElementIt != targetNode->m_children.end(); ++targetElementIt)
+            {
+                targetAddressMap.emplace(targetElementIt->m_classElement->m_nameCrc, &(*targetElementIt));
+                unionAddressMap.emplace(targetElementIt->m_classElement->m_nameCrc, &(*targetElementIt));
+            }
+
+            for (auto sourceElementIt = sourceNode->m_children.begin(); sourceElementIt != sourceNode->m_children.end(); ++sourceElementIt)
+            {
+                sourceAddressMap.emplace(sourceElementIt->m_classElement->m_nameCrc, &(*sourceElementIt));
+                unionAddressMap.emplace(sourceElementIt->m_classElement->m_nameCrc, &(*sourceElementIt));
+            }
+
+            for (auto& unionAddressNode : unionAddressMap)
+            {
+                auto sourceFoundIt = sourceAddressMap.find(unionAddressNode.first);
+                auto targetFoundIt = targetAddressMap.find(unionAddressNode.first);
+
+                if (sourceFoundIt != sourceAddressMap.end() && targetFoundIt != targetAddressMap.end())
+                {
+                    address.push_back(sourceFoundIt->first); // use element class element name as an ID
+
+                    CompareElementsInternal(
+                        sourceFoundIt->second,
+                        targetFoundIt->second,
+                        patch,
+                        sourceFlagsMap,
+                        targetFlagsMap,
+                        context,
+                        address,
+                        addressFlags,
+                        tmpSourceBuffer);
+
+                    address.pop_back();
+                }
+                else if (targetFoundIt != targetAddressMap.end())
+                {
+                    // this is a new node store it
+                    address.push_back(targetFoundIt->first); // use element class element name as an ID
+                    auto insertResult = patch.insert_key(address);
+                    insertResult.first->second.clear();
+
+                    auto& targetElementNode = targetFoundIt->second;
+
+                    IO::ByteContainerStream<DataPatch::PatchMap::mapped_type> stream(&insertResult.first->second);
+                    bool saveResult = Utils::SaveObjectToStream(
+                        stream,
+                        AZ::ObjectStream::ST_BINARY,
+                        targetElementNode->m_data,
+                        targetElementNode->m_classData->m_typeId,
+                        context,
+                        targetElementNode->m_classData);
+                    if (!saveResult)
+                    {
+                        AZ_Assert(saveResult, "Unable to serialize class %s, SaveObjectToStream() failed.", targetElementNode->m_classData->m_name);
+                    }
+
+                    address.pop_back();
+                }
+                else
+                {
+                    address.push_back(sourceFoundIt->first); // use element class element name as an ID
+                    patch.insert_key(address); // record removal of element by inserting a key with a 0 byte patch
+                    address.pop_back();
+                }
             }
         }
     }
@@ -414,80 +515,99 @@ namespace AZ
     //=========================================================================
     // ApplyToElements
     //=========================================================================
-    void* DataNodeTree::ApplyToElements(DataNode* sourceNode, const DataPatch::PatchMap& patch, const ChildPatchMap& childPatchLookup, DataPatch::AddressType& address, void* parentPointer, const SerializeContext::ClassData* parentClassData, AZStd::vector<AZ::u8>& tmpSourceBuffer, SerializeContext* context, const AZ::ObjectStream::FilterDescriptor& filterDesc)
+    void* DataNodeTree::ApplyToElements(
+        DataNode* sourceNode,
+        const DataPatch::PatchMap& patch,
+        const DataPatch::ChildPatchMap& childPatchLookup,
+        const DataPatch::FlagsMap& sourceFlagsMap,
+        const DataPatch::FlagsMap& targetFlagsMap,
+        DataPatch::Flags parentAddressFlags,
+        DataPatch::AddressType& address,
+        void* parentPointer,
+        const SerializeContext::ClassData* parentClassData,
+        AZStd::vector<AZ::u8>& tmpSourceBuffer,
+        SerializeContext* context,
+        const AZ::ObjectStream::FilterDescriptor& filterDesc,
+        int& parentContainerElementCounter)
     {
         void* targetPointer = nullptr;
         void* reservePointer = nullptr;
+
+        // calculate the flags affecting this address
+        DataPatch::Flags addressFlags = CalculateDataFlagsAtThisAddress(sourceFlagsMap, targetFlagsMap, parentAddressFlags, address);
+
         auto patchIt = patch.find(address);
-        if (patchIt != patch.end())
+        if (patchIt != patch.end() && !(addressFlags & DataPatch::Flag::PreventOverrideEffect))
         {
-            // we have a patch to this node
-            if (parentPointer)
+            if (patchIt->second.empty())
             {
-                if (parentClassData->m_container)
+                // if patch is empty do remove the element
+                return nullptr;
+            }
+
+            IO::MemoryStream stream(patchIt->second.data(), patchIt->second.size());
+
+            if (!parentPointer)
+            {
+                // Since this is the root element, we will need to allocate it using the creator provided
+                return Utils::LoadObjectFromStream(stream, context, nullptr, filterDesc);
+            }
+
+            // we have a patch to this node, and the PreventOverride flag is not preventing it from being applied
+            if (parentClassData->m_container)
+            {
+                if (parentClassData->m_container->CanAccessElementsByIndex() && parentClassData->m_container->Size(parentPointer) > parentContainerElementCounter)
                 {
-                    if (patchIt->second.empty())
-                    {
-                        // if patch is empty do remove the element
-                        return nullptr;
-                    }
-                    else
-                    {
-                        // Allocate space in the container for our element
-                        targetPointer = parentClassData->m_container->ReserveElement(parentPointer, sourceNode->m_classElement);
-                    }
+                    targetPointer = parentClassData->m_container->GetElementByIndex(parentPointer, sourceNode->m_classElement, parentContainerElementCounter);
                 }
                 else
                 {
-                    // We are stored by value, use the parent offset
-                    targetPointer = reinterpret_cast<char*>(parentPointer) + sourceNode->m_classElement->m_offset;
+                    // Allocate space in the container for our element
+                    targetPointer = parentClassData->m_container->ReserveElement(parentPointer, sourceNode->m_classElement);
                 }
 
-                reservePointer = targetPointer;
-                if (patchIt->second.empty())
-                {
-                    // if patch is empty do remove the element
-                    return nullptr;
-                }
-
-                IO::MemoryStream stream(patchIt->second.data(), patchIt->second.size());
-                if (sourceNode->m_classElement->m_flags & SerializeContext::ClassElement::FLG_POINTER)
-                {
-                    // load the element
-                    *reinterpret_cast<void**>(targetPointer) = Utils::LoadObjectFromStream(stream, context, nullptr, filterDesc);
-                }
-                else
-                {
-                    // load in place
-                    ObjectStream::LoadBlocking(&stream, *context, ObjectStream::ClassReadyCB(), filterDesc,
-                        [&targetPointer, &sourceNode, parentClassData](void** rootAddress, const SerializeContext::ClassData** classData, const Uuid&, SerializeContext* sc)
-                        {
-                            if (rootAddress)
-                            {
-                                *rootAddress = targetPointer;
-                            }
-                            if (classData)
-                            {
-                                *classData = sourceNode->m_classData;
-                                if (!*classData && sourceNode->m_classElement)
-                                {
-                                    *classData = sc->FindClassData(sourceNode->m_classElement->m_typeId, parentClassData, sourceNode->m_classElement->m_nameCrc);
-                                }
-
-                            }
-                        });
-                }
-
-                if (parentClassData->m_container)
-                {
-                    parentClassData->m_container->StoreElement(parentPointer, targetPointer);
-                }
+                ++parentContainerElementCounter;
             }
             else
             {
-                // Since this is the root element, we will need to allocate it using the creator provided
-                IO::MemoryStream stream(patchIt->second.data(), patchIt->second.size());
-                return Utils::LoadObjectFromStream(stream, context, nullptr, filterDesc);
+                // We are stored by value, use the parent offset
+                targetPointer = reinterpret_cast<char*>(parentPointer) + sourceNode->m_classElement->m_offset;
+            }
+            reservePointer = targetPointer;
+
+            if (sourceNode->m_classElement->m_flags & SerializeContext::ClassElement::FLG_POINTER)
+            {
+                // load the element
+                *reinterpret_cast<void**>(targetPointer) = Utils::LoadObjectFromStream(stream, context, nullptr, filterDesc);
+            }
+            else
+            {
+                // load in place
+                ObjectStream::LoadBlocking(&stream, *context, ObjectStream::ClassReadyCB(), filterDesc,
+                    [&targetPointer, &sourceNode, parentClassData](void** rootAddress, const SerializeContext::ClassData** classData, const Uuid&, SerializeContext* sc)
+                {
+                    if (rootAddress)
+                    {
+                        *rootAddress = targetPointer;
+                    }
+                    if (classData)
+                    {
+                        *classData = sourceNode->m_classData;
+                        if (!*classData && sourceNode->m_classElement)
+                        {
+                            *classData = sc->FindClassData(
+                                sourceNode->m_classElement->m_typeId,
+                                parentClassData,
+                                sourceNode->m_classElement->m_nameCrc);
+                        }
+
+                    }
+                });
+            }
+
+            if (parentClassData->m_container)
+            {
+                parentClassData->m_container->StoreElement(parentPointer, targetPointer);
             }
         }
         else
@@ -496,8 +616,17 @@ namespace AZ
             {
                 if (parentClassData->m_container)
                 {
-                    // Allocate space in the container for our element
-                    targetPointer = parentClassData->m_container->ReserveElement(parentPointer, sourceNode->m_classElement);
+                    if (parentClassData->m_container->CanAccessElementsByIndex() && parentClassData->m_container->Size(parentPointer) > parentContainerElementCounter)
+                    {
+                        targetPointer = parentClassData->m_container->GetElementByIndex(parentPointer, sourceNode->m_classElement, parentContainerElementCounter);
+                    }
+                    else
+                    {
+                        // Allocate space in the container for our element
+                        targetPointer = parentClassData->m_container->ReserveElement(parentPointer, sourceNode->m_classElement);
+                    }
+
+                    ++parentContainerElementCounter;
                 }
                 else
                 {
@@ -510,11 +639,21 @@ namespace AZ
                 if (sourceNode->m_classElement->m_flags & SerializeContext::ClassElement::FLG_POINTER)
                 {
                     // create a new instance if we are referencing it by pointer
-                    AZ_Assert(sourceNode->m_classData->m_factory != nullptr, "We are attempting to create '%s', but no factory is provided! Either provide factory or change data member '%s' to value not pointer!", sourceNode->m_classData->m_name, sourceNode->m_classElement->m_name);
+                    AZ_Assert(
+                        sourceNode->m_classData->m_factory != nullptr,
+                        "We are attempting to create '%s', but no factory is provided! Either provide factory or change data member '%s' to value not pointer!",
+                        sourceNode->m_classData->m_name,
+                        sourceNode->m_classElement->m_name);
                     void* newTargetPointer = sourceNode->m_classData->m_factory->Create(sourceNode->m_classData->m_name);
 
                     // we need to account for additional offsets if we have a pointer to a base class.
-                    void* basePtr = context->DownCast(newTargetPointer, sourceNode->m_classData->m_typeId, sourceNode->m_classElement->m_typeId, sourceNode->m_classData->m_azRtti, sourceNode->m_classElement->m_azRtti);
+                    void* basePtr = context->DownCast(
+                        newTargetPointer,
+                        sourceNode->m_classData->m_typeId,
+                        sourceNode->m_classElement->m_typeId,
+                        sourceNode->m_classData->m_azRtti,
+                        sourceNode->m_classElement->m_azRtti);
+
                     AZ_Assert(basePtr != nullptr, parentClassData->m_container
                         ? "Can't cast container element %s(0x%x) to %s, make sure classes are registered in the system and not generics!"
                         : "Can't cast %s(0x%x) to %s, make sure classes are registered in the system and not generics!"
@@ -538,7 +677,10 @@ namespace AZ
             if (sourceNode->m_classData->m_eventHandler)
             {
                 sourceNode->m_classData->m_eventHandler->OnWriteBegin(targetPointer);
+                sourceNode->m_classData->m_eventHandler->OnPatchBegin(targetPointer, { address, patch, childPatchLookup });
             }
+
+            int targetContainerElementCounter = 0;
 
             if (sourceNode->m_classData->m_serializer)
             {
@@ -549,37 +691,51 @@ namespace AZ
                 IO::MemoryStream targetStream(tmpSourceBuffer.data(), tmpSourceBuffer.size());
                 sourceNode->m_classData->m_serializer->Load(targetPointer, targetStream, sourceNode->m_classData->m_version);
             }
-            else
+            else if (sourceNode->m_classData->m_container)
             {
-                if (sourceNode->m_classData->m_container)
+                // Traverse child elements of container
+                u64 elementIndex = 0;
+                u64 elementId = 0;
+                for (DataNode& sourceElementNode : sourceNode->m_children)
                 {
-                    // find elements that we have added or modified
-                    u64 elementIndex = 0;
-                    u64 elementId = 0;
-                    for (DataNode& sourceElementNode : sourceNode->m_children)
+                    SerializeContext::ClassPersistentId sourcePersistentIdFunction = sourceElementNode.m_classData->GetPersistentId(*context);
+                    if (sourcePersistentIdFunction)
                     {
-                        SerializeContext::ClassPersistentId sourcePersistentIdFunction = sourceElementNode.m_classData->GetPersistentId(*context);
-                        if (sourcePersistentIdFunction)
-                        {
-                            // we use persistent ID for an id
-                            elementId = sourcePersistentIdFunction(sourceElementNode.m_data);
-                        }
-                        else
-                        {
-                            // use index as an ID
-                            elementId = elementIndex;
-                        }
-
-                        address.push_back(elementId);
-
-                        ApplyToElements(&sourceElementNode, patch, childPatchLookup, address, targetPointer, sourceNode->m_classData, tmpSourceBuffer, context, filterDesc);
-
-                        address.pop_back();
-
-                        ++elementIndex;
+                        // we use persistent ID for an id
+                        elementId = sourcePersistentIdFunction(sourceElementNode.m_data);
+                    }
+                    else
+                    {
+                        // use index as an ID
+                        elementId = elementIndex;
                     }
 
-                    // Find missing elements that need to be added to container (new element patches).
+                    address.push_back(elementId);
+
+                    ApplyToElements(
+                        &sourceElementNode,
+                        patch,
+                        childPatchLookup,
+                        sourceFlagsMap,
+                        targetFlagsMap,
+                        addressFlags,
+                        address,
+                        targetPointer,
+                        sourceNode->m_classData,
+                        tmpSourceBuffer,
+                        context,
+                        filterDesc,
+                        targetContainerElementCounter);
+
+                    address.pop_back();
+
+                    ++elementIndex;
+                }
+
+                // Find missing elements that need to be added to container (new element patches).
+                // Skip this step if PreventOverride flag is preventing creation of new elements.
+                if (!(addressFlags & DataPatch::Flag::PreventOverrideEffect))
+                {
                     AZStd::vector<u64> newElementIds;
                     {
                         // Check each datapatch that matches our address + 1 address element ("possible new element datapatches")
@@ -641,31 +797,60 @@ namespace AZ
                         DataNode defaultSourceNode;
                         defaultSourceNode.m_classElement = sourceNode->m_classData->m_container->GetElement(sourceNode->m_classData->m_container->GetDefaultElementNameCrc());
 
-                        ApplyToElements(&defaultSourceNode, patch, childPatchLookup, address, targetPointer, sourceNode->m_classData, tmpSourceBuffer, context, filterDesc);
+                        ApplyToElements(
+                            &defaultSourceNode,
+                            patch,
+                            childPatchLookup,
+                            sourceFlagsMap,
+                            targetFlagsMap,
+                            addressFlags,
+                            address,
+                            targetPointer,
+                            sourceNode->m_classData,
+                            tmpSourceBuffer,
+                            context,
+                            filterDesc,
+                            targetContainerElementCounter);
 
                         address.pop_back();
                     }
                 }
-                else
+            }
+            else
+            {
+                // Traverse child elements
+                AZStd::unordered_set<u64> parsedElementIds;
+                auto sourceElementIt = sourceNode->m_children.begin();
+                while (sourceElementIt != sourceNode->m_children.end())
                 {
-                    // Traverse child elements
-                    AZStd::unordered_set<u64> parsedElementIds;
-                    auto sourceElementIt = sourceNode->m_children.begin();
-                    while (sourceElementIt != sourceNode->m_children.end())
-                    {
-                        address.push_back(sourceElementIt->m_classElement->m_nameCrc); // use element class element name as an ID
-                        parsedElementIds.emplace(address.back());
-                        ApplyToElements(&(*sourceElementIt), patch, childPatchLookup, address, targetPointer, sourceNode->m_classData, tmpSourceBuffer, context, filterDesc);
+                    address.push_back(sourceElementIt->m_classElement->m_nameCrc); // use element class element name as an ID
+                    parsedElementIds.emplace(address.back());
+                    ApplyToElements(
+                        &(*sourceElementIt),
+                        patch,
+                        childPatchLookup,
+                        sourceFlagsMap,
+                        targetFlagsMap,
+                        addressFlags,
+                        address,
+                        targetPointer,
+                        sourceNode->m_classData,
+                        tmpSourceBuffer,
+                        context,
+                        filterDesc,
+                        targetContainerElementCounter);
 
-                        address.pop_back();
+                    address.pop_back();
 
-                        ++sourceElementIt;
-                    }
+                    ++sourceElementIt;
+                }
 
-                    // Find missing elements that need to be added to structure.
-                    // \note check performance, tag new elements to improve it.
+                // Find missing elements that need to be added to structure.
+                // \note check performance, tag new elements to improve it.
+                // Skip this step if PreventOverride flag is preventing creation of new elements.
+                if (!(addressFlags & DataPatch::Flag::PreventOverrideEffect))
+                {
                     AZStd::vector<u64> newElementIds;
-                    
                     auto foundIt = childPatchLookup.find(address);
                     if (foundIt != childPatchLookup.end())
                     {
@@ -698,7 +883,20 @@ namespace AZ
                             if (classElement.m_nameCrc == static_cast<AZ::u32>(newElementId))
                             {
                                 defaultSourceNode.m_classElement = &classElement;
-                                ApplyToElements(&defaultSourceNode, patch, childPatchLookup, address, targetPointer, sourceNode->m_classData, tmpSourceBuffer, context, filterDesc);
+                                ApplyToElements(
+                                    &defaultSourceNode,
+                                    patch,
+                                    childPatchLookup,
+                                    sourceFlagsMap,
+                                    targetFlagsMap,
+                                    addressFlags,
+                                    address,
+                                    targetPointer,
+                                    sourceNode->m_classData,
+                                    tmpSourceBuffer,
+                                    context,
+                                    filterDesc,
+                                    targetContainerElementCounter);
                                 break;
                             }
                         }
@@ -710,6 +908,7 @@ namespace AZ
 
             if (sourceNode->m_classData->m_eventHandler)
             {
+                sourceNode->m_classData->m_eventHandler->OnPatchEnd(targetPointer, { address, patch, childPatchLookup });
                 sourceNode->m_classData->m_eventHandler->OnWriteEnd(targetPointer);
             }
 
@@ -720,6 +919,86 @@ namespace AZ
         }
 
         return targetPointer;
+    }
+
+    //=========================================================================
+    // CalculateDataFlagsAtThisAddress
+    //=========================================================================
+    DataPatch::Flags DataNodeTree::CalculateDataFlagsAtThisAddress(
+        const DataPatch::FlagsMap& sourceFlagsMap,
+        const DataPatch::FlagsMap& targetFlagsMap,
+        DataPatch::Flags parentAddressFlags,
+        const DataPatch::AddressType& address)
+    {
+        DataPatch::Flags flags = DataPatch::GetEffectOfParentFlagsOnThisAddress(parentAddressFlags);
+
+        auto foundSourceFlags = sourceFlagsMap.find(address);
+        if (foundSourceFlags != sourceFlagsMap.end())
+        {
+            flags |= DataPatch::GetEffectOfSourceFlagsOnThisAddress(foundSourceFlags->second);
+        }
+
+        auto foundTargetFlags = targetFlagsMap.find(address);
+        if (foundTargetFlags != targetFlagsMap.end())
+        {
+            flags |= DataPatch::GetEffectOfTargetFlagsOnThisAddress(foundTargetFlags->second);
+        }
+
+        return flags;
+    }
+
+    //=========================================================================
+    // GetEffectOfParentFlagsOnThisAddress
+    //=========================================================================
+    DataPatch::Flags DataPatch::GetEffectOfParentFlagsOnThisAddress(Flags flagsAtParentAddress)
+    {
+        Flags flagsAtDescendantAddress = 0;
+
+        // currently, all "effect" flags are passed down from parent address
+        const Flags inheritFlagsFromParentMask = Flag::EffectMask;
+
+        flagsAtDescendantAddress |= flagsAtParentAddress & inheritFlagsFromParentMask;
+
+        return flagsAtDescendantAddress;
+    }
+
+    //=========================================================================
+    // GetEffectOfSourceFlagsOnThisAddress
+    //=========================================================================
+    DataPatch::Flags DataPatch::GetEffectOfSourceFlagsOnThisAddress(Flags flagsAtSourceAddress)
+    {
+        Flags flagsAtChildAddress = 0;
+
+        // PreventOverride prevents targets from overriding data that comes from the source.
+        // This "effect" is passed along to all "descendants" of the data (ex: deeply nested slices).
+        if (flagsAtSourceAddress & (Flag::PreventOverrideSet | Flag::PreventOverrideEffect))
+        {
+            flagsAtChildAddress |= Flag::PreventOverrideEffect;
+        }
+
+        if (flagsAtSourceAddress & (Flag::HidePropertySet | Flag::HidePropertyEffect))
+        {
+            flagsAtChildAddress |= Flag::HidePropertyEffect;
+        }
+
+        return flagsAtChildAddress;
+    }
+
+    //=========================================================================
+    // GetEffectOfTargetFlagsOnThisAddress
+    //=========================================================================
+    DataPatch::Flags DataPatch::GetEffectOfTargetFlagsOnThisAddress(Flags flagsAtTargetAddress)
+    {
+        Flags flags = flagsAtTargetAddress;
+
+        // ForceOverride forces the target to override data from its source.
+        // This effect begins at the address it's set on and is passed down to child addresses in the data hierarchy.
+        if (flags & Flag::ForceOverrideSet)
+        {
+            flags |= Flag::ForceOverrideEffect;
+        }
+
+        return flags;
     }
 
     //=========================================================================
@@ -773,7 +1052,14 @@ namespace AZ
     //=========================================================================
     // Create
     //=========================================================================
-    bool DataPatch::Create(const void* source, const Uuid& sourceClassId, const void* target, const Uuid& targetClassId, const FlagsMap& patchFlags, SerializeContext* context)
+    bool DataPatch::Create(
+        const void* source,
+        const Uuid& sourceClassId,
+        const void* target,
+        const Uuid& targetClassId,
+        const FlagsMap& sourceFlagsMap,
+        const FlagsMap& targetFlagsMap,
+        SerializeContext* context)
     {
         AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzCore);
 
@@ -832,7 +1118,14 @@ namespace AZ
 
             {
                 AZ_PROFILE_SCOPE(AZ::Debug::ProfileCategory::AzCore, "DataPatch::Create:RecursiveCallToCompareElements");
-                sourceTree.CompareElements(&sourceTree.m_root, &targetTree.m_root, m_patch, patchFlags, context);
+
+                sourceTree.CompareElements(
+                    &sourceTree.m_root,
+                    &targetTree.m_root,
+                    m_patch,
+                    sourceFlagsMap,
+                    targetFlagsMap,
+                    context);
             }
         }
         return true;
@@ -841,7 +1134,13 @@ namespace AZ
     //=========================================================================
     // Apply
     //=========================================================================
-    void* DataPatch::Apply(const void* source, const Uuid& sourceClassId, SerializeContext* context, const AZ::Utils::FilterDescriptor& filterDesc)
+    void* DataPatch::Apply(
+        const void* source,
+        const Uuid& sourceClassId,
+        SerializeContext* context,
+        const AZ::Utils::FilterDescriptor& filterDesc,
+        const FlagsMap& sourceFlagsMap,
+        const FlagsMap& targetFlagsMap) const
     {
         AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzCore);
 
@@ -856,7 +1155,7 @@ namespace AZ
             EBUS_EVENT_RESULT(context, ComponentApplicationBus, GetSerializeContext);
             if (!context)
             {
-                AZ_Error("Serialization", false, "Not serialize context provided! Failed to get component application default serialize context! ComponentApp is not started or input serialize context should not be null!");
+                AZ_Error("Serialization", false, "No serialize context provided! Failed to get component application default serialize context! ComponentApp is not started or input serialize context should not be null!");
                 return nullptr;
             }
         }
@@ -879,9 +1178,9 @@ namespace AZ
         DataPatch::AddressType address;
         AZStd::vector<AZ::u8> tmpSourceBuffer;
         void* result;
-        
+
         // Build a mapping of child patches for quick look-up: [parent patch address] -> [list of patches for child elements (parentAddress + one more address element)]
-        DataNodeTree::ChildPatchMap childPatchMap;
+        DataPatch::ChildPatchMap childPatchMap;
         {
             AZ_PROFILE_SCOPE(AZ::Debug::ProfileCategory::AzCore, "DataPatch::Apply:GenerateChildPatchMap");
             for (auto& patch : m_patch)
@@ -910,71 +1209,24 @@ namespace AZ
         }
         {
             AZ_PROFILE_SCOPE(AZ::Debug::ProfileCategory::AzCore, "DataPatch::Apply:RecursiveCallToApplyToElements");
-            result = DataNodeTree::ApplyToElements(&sourceTree.m_root, m_patch, childPatchMap, address, nullptr, nullptr, tmpSourceBuffer, context, filterDesc);
+            int rootContainerElementCounter = 0;
+
+            result = DataNodeTree::ApplyToElements(
+                &sourceTree.m_root,
+                m_patch,
+                childPatchMap,
+                sourceFlagsMap,
+                targetFlagsMap,
+                0,
+                address,
+                nullptr,
+                nullptr,
+                tmpSourceBuffer,
+                context,
+                filterDesc,
+                rootContainerElementCounter);
         }
         return result;
-    }
-
-    //=========================================================================
-    // Apply
-    //=========================================================================
-    bool DataPatch::Apply(const DataPatch& patch)
-    {
-        AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzCore);
-
-        if (m_targetClassId.IsNull())
-        {
-            if (patch.m_targetClassId.IsNull())
-            {
-                return false; // both patches don't have target
-            }
-
-            // since this is an empty patch adopt the target class id
-            AZ_Assert(m_patch.empty(), "We have patch data, but not targetClassId, this should not happen (invalid patch)!");
-            m_targetClassId = patch.m_targetClassId;
-        }
-        else if (m_targetClassId != patch.m_targetClassId)
-        {
-            if (patch.m_targetClassId.IsNull())
-            {
-                //target patch is empty... we can consider it applied
-                return true;
-            }
-            else
-            {
-                // current patch and the one to apply are pointing to different root/target classes,
-                // you can't apply patches that are unrelated.
-                return false;
-            }
-        }
-
-        for (auto extraPatchIt : patch.m_patch)
-        {
-            // remove patches that are going to be overridden after adding the extra patch.
-            for (auto currentPatchIt = m_patch.begin(); currentPatchIt != m_patch.end(); )
-            {
-                // check if we have a patch which overrides existing patch
-                if (currentPatchIt->first.size() >= extraPatchIt.first.size() &&   // check if the address is shorter or equal
-                    memcmp(currentPatchIt->first.data(), extraPatchIt.first.data(), extraPatchIt.first.size() * sizeof(DataPatch::AddressType::value_type)) == 0) // if first part of the address matches the extraPatch will override the current
-                {
-                    currentPatchIt = m_patch.erase(currentPatchIt);
-                }
-                else if (currentPatchIt->second.size() == 0 &&  // if we removing an element, but have a patch for it in the target patch, undo the removal
-                         currentPatchIt->first.size() < extraPatchIt.first.size() &&
-                         memcmp(currentPatchIt->first.data(), extraPatchIt.first.data(), currentPatchIt->first.size() * sizeof(DataPatch::AddressType::value_type)) == 0)
-                {
-                    currentPatchIt = m_patch.erase(currentPatchIt);
-                }
-                else
-                {
-                    ++currentPatchIt;
-                }
-            }
-
-            m_patch.insert(extraPatchIt);
-        }
-
-        return true;
     }
 
     /**

@@ -222,12 +222,12 @@ private:
     static int s_obstacleCacheSize;
     typedef std::vector<struct SCachedObstacle*> TCachedObstacles;
     /// cached obstacle shapes - so that the most recently used is at the back.
-    static TCachedObstacles s_cachedObstacles;
+    static StaticInstance<TCachedObstacles> s_cachedObstacles;
 
-    static TPathObstacles s_pathObstacles;
+    static StaticInstance<TPathObstacles> s_pathObstacles;
 
     typedef std::map<EntityId, bool> TCachedDynamicObstacleFlags;
-    static TCachedDynamicObstacleFlags s_dynamicObstacleFlags;
+    static StaticInstance<TCachedDynamicObstacleFlags> s_dynamicObstacleFlags;
     static const int s_maxDynamicObstacleFlags = 256;
 
     /// If there is a cached record for entity/extraRadius and its position matches the entity position then it will

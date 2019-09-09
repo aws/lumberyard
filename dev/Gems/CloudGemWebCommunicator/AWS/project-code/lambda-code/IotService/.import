@@ -3,3 +3,4 @@ CloudGemFramework.LambdaSettings
 CloudGemFramework.ResourceManagerCommon
 CloudGemFramework.Utils
 CloudGemWebCommunicator.iot_policy
+CloudGemWebCommunicator.client

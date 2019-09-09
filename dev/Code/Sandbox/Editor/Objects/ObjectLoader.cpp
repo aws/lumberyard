@@ -144,16 +144,18 @@ void CObjectArchive::ResolveObjects()
         int numObj = m_loadedObjects.size();
         for (i = 0; i < numObj; i++)
         {
-            SLoadedObjectInfo& obj = m_loadedObjects[i];
-            m_pCurrentErrorReport->SetCurrentValidatorObject(obj.pObject);
-            node = obj.xmlNode;
-
             if (m_bProgressBarEnabled)
             {
                 wait.Step((i * 100) / numObj);
             }
 
+            SLoadedObjectInfo& obj = m_loadedObjects[i];
+            m_pCurrentErrorReport->SetCurrentValidatorObject(obj.pObject);
+            node = obj.xmlNode;
+
             obj.pObject->Serialize(*this);
+
+            m_pCurrentErrorReport->SetCurrentValidatorObject(nullptr);
 
             // Objects can be added to the list here (from Groups).
             numObj = m_loadedObjects.size();
@@ -237,14 +239,13 @@ void CObjectArchive::ResolveObjects()
         int numObj = m_loadedObjects.size();
         for (i = 0; i < numObj; i++)
         {
-            SLoadedObjectInfo& obj = m_loadedObjects[i];
-            m_pCurrentErrorReport->SetCurrentValidatorObject(obj.pObject);
-
             if (m_bProgressBarEnabled)
             {
                 wait.Step((i * 100) / numObj);
             }
-            //wait.SetText( obj.pObject->GetName() );
+
+            SLoadedObjectInfo& obj = m_loadedObjects[i];
+            m_pCurrentErrorReport->SetCurrentValidatorObject(obj.pObject);
 
             obj.pObject->CreateGameObject();
             // remove collisions of hidden objects
@@ -264,6 +265,10 @@ void CObjectArchive::ResolveObjects()
             {
                 pManager->OnRequestMaterial(pMaterial->GetMatInfo());
             }
+
+            // unset the current validator object because the wait Step 
+            // might generate unrelated errors
+            m_pCurrentErrorReport->SetCurrentValidatorObject(nullptr);
         }
         m_pCurrentErrorReport->SetCurrentValidatorObject(NULL);
         //////////////////////////////////////////////////////////////////////////

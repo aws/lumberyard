@@ -130,7 +130,7 @@ namespace EMotionFX
     void MotionGroup::RemoveMotion(Motion* motion)
     {
         // for all the motion instances
-        for (uint32 i = 0; i < mMotionInstances.GetLength(); )
+        for (uint32 i = 0; i < mMotionInstances.GetLength();)
         {
             // if this motion instance uses the given motion
             if (mMotionInstances[i]->GetMotion() == motion)
@@ -220,8 +220,8 @@ namespace EMotionFX
                 const uint32 numTransforms = outPose->GetNumTransforms();
                 for (uint32 t = 0; t < numTransforms; ++t)
                 {
-                    Transform& transform = groupBlendPose->GetLocalTransformDirect(t);
-                    Transform& outTransform = outPose->GetLocalTransformDirect(t);
+                    Transform& transform = groupBlendPose->GetLocalSpaceTransformDirect(t);
+                    Transform& outTransform = outPose->GetLocalSpaceTransformDirect(t);
                     transform.mRotation.Normalize();
 
                     EMFX_SCALECODE
@@ -242,8 +242,8 @@ namespace EMotionFX
                 const uint32 numTransforms = outPose->GetNumTransforms();
                 for (uint32 t = 0; t < numTransforms; ++t)
                 {
-                    Transform& transform = groupBlendPose->GetLocalTransformDirect(t);
-                    Transform& outTransform = outPose->GetLocalTransformDirect(t);
+                    Transform& transform = groupBlendPose->GetLocalSpaceTransformDirect(t);
+                    Transform& outTransform = outPose->GetLocalSpaceTransformDirect(t);
 
                     outTransform.mPosition += transform.mPosition * normalizedWeight;
 
@@ -273,7 +273,7 @@ namespace EMotionFX
         const uint32 numTransforms = outPose->GetNumTransforms();
         for (uint32 t = 0; t < numTransforms; ++t)
         {
-            Transform& outTransform = outPose->GetLocalTransformDirect(t);
+            Transform& outTransform = outPose->GetLocalSpaceTransformDirect(t);
             outTransform.mRotation.Normalize();
 
             //EMFX_SCALECODE

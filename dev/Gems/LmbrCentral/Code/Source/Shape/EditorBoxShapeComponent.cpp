@@ -9,42 +9,22 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
+
 #include "LmbrCentral_precompiled.h"
-#include "EditorBoxShapeComponent.h"
 
 #include <AzCore/Math/Transform.h>
 #include <AzCore/RTTI/ReflectContext.h>
 #include <AzCore/Serialization/EditContext.h>
-#include <AzToolsFramework/Manipulators/LinearManipulator.h>
-#include <AzToolsFramework/Manipulators/ManipulatorBus.h>
-#include <AzToolsFramework/Manipulators/ManipulatorView.h>
-#include <AzToolsFramework/Manipulators/ManipulatorSnapping.h>
+#include <AzToolsFramework/ComponentModes/BoxComponentMode.h>
+#include <AzToolsFramework/Maths/TransformUtils.h>
 
 #include "BoxShapeComponent.h"
+#include "EditorBoxShapeComponent.h"
 #include "EditorShapeComponentConverters.h"
 #include "ShapeDisplay.h"
 
 namespace LmbrCentral
 {
-    const AZStd::array<AZ::Vector3, 6> s_boxAxes =
-    { {
-        AZ::Vector3::CreateAxisX(), -AZ::Vector3::CreateAxisX(),
-        AZ::Vector3::CreateAxisY(), -AZ::Vector3::CreateAxisY(),
-        AZ::Vector3::CreateAxisZ(), -AZ::Vector3::CreateAxisZ()
-    } };
-
-    /**
-     * Pass a single axis, and return not of elements
-     * Example: In -> (1, 0, 0) Out -> (0, 1, 1)
-     */
-    static AZ::Vector3 NotAxis(const AZ::Vector3& offset)
-    {
-        return AZ::Vector3::CreateOne() - AZ::Vector3(
-            fabsf(AzToolsFramework::Sign(offset.GetX())),
-            fabsf(AzToolsFramework::Sign(offset.GetY())),
-            fabsf(AzToolsFramework::Sign(offset.GetZ())));
-    }
-
     void EditorBoxShapeComponent::Reflect(AZ::ReflectContext* context)
     {
         if (auto serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
@@ -59,6 +39,7 @@ namespace LmbrCentral
             serializeContext->Class<EditorBoxShapeComponent, EditorBaseShapeComponent>()
                 ->Version(3, &ClassConverters::UpgradeEditorBoxShapeComponent)
                 ->Field("BoxShape", &EditorBoxShapeComponent::m_boxShape)
+                ->Field("ComponentMode", &EditorBoxShapeComponent::m_componentModeDelegate)
                 ;
 
             if (auto editContext = serializeContext->GetEditContext())
@@ -73,40 +54,57 @@ namespace LmbrCentral
                         ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
                         ->Attribute(AZ::Edit::Attributes::HelpPageURL, "https://docs.aws.amazon.com/lumberyard/latest/userguide/component-shapes.html")
                     ->DataElement(AZ::Edit::UIHandlers::Default, &EditorBoxShapeComponent::m_boxShape, "Box Shape", "Box Shape Configuration")
+                        // ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)  // disabled - prevents ChangeNotify attribute firing correctly
                         ->Attribute(AZ::Edit::Attributes::ChangeNotify, &EditorBoxShapeComponent::ConfigurationChanged)
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &EditorBoxShapeComponent::m_componentModeDelegate, "Component Mode", "Box Shape Component Mode")
                         ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
                         ;
             }
         }
     }
 
+    void EditorBoxShapeComponent::Init()
+    {
+        EditorBaseShapeComponent::Init();
+
+        SetShapeComponentConfig(&m_boxShape.ModifyConfiguration());
+    }
+
     void EditorBoxShapeComponent::Activate()
     {
         EditorBaseShapeComponent::Activate();
         m_boxShape.Activate(GetEntityId());
-        EntitySelectionEvents::Bus::Handler::BusConnect(GetEntityId());
         AzFramework::EntityDebugDisplayEventBus::Handler::BusConnect(GetEntityId());
+        AzToolsFramework::BoxManipulatorRequestBus::Handler::BusConnect(
+            AZ::EntityComponentIdPair(GetEntityId(), GetId()));
+
+        // ComponentMode
+        m_componentModeDelegate.ConnectWithSingleComponentMode<
+            EditorBoxShapeComponent, AzToolsFramework::BoxComponentMode>(
+                AZ::EntityComponentIdPair(GetEntityId(), GetId()), this);
     }
 
     void EditorBoxShapeComponent::Deactivate()
     {
-        DestroyManipulators();
+        m_componentModeDelegate.Disconnect();
 
+        AzToolsFramework::BoxManipulatorRequestBus::Handler::BusDisconnect();
         AzFramework::EntityDebugDisplayEventBus::Handler::BusDisconnect();
-        EntitySelectionEvents::Bus::Handler::BusDisconnect();
         m_boxShape.Deactivate();
         EditorBaseShapeComponent::Deactivate();
     }
 
-    void EditorBoxShapeComponent::DisplayEntity(bool& handled)
+    void EditorBoxShapeComponent::DisplayEntityViewport(
+        const AzFramework::ViewportInfo& viewportInfo,
+        AzFramework::DebugDisplayRequests& debugDisplay)
     {
-        DisplayShape(handled,
-            [this]() { return CanDraw(); },
-            [this](AzFramework::EntityDebugDisplayRequests* displayContext)
+        DisplayShape(
+            debugDisplay, [this]() { return CanDraw(); },
+            [this](AzFramework::DebugDisplayRequests& debugDisplay)
             {
                 DrawBoxShape(
-                    { m_shapeColor, m_shapeWireColor, m_displayFilled },
-                    m_boxShape.GetBoxConfiguration(), *displayContext);
+                    { m_boxShape.GetBoxConfiguration().GetDrawColor(), m_shapeWireColor, m_boxShape.GetBoxConfiguration().IsFilled() },
+                    m_boxShape.GetBoxConfiguration(), debugDisplay);
             },
             m_boxShape.GetCurrentTransform());
     }
@@ -119,7 +117,9 @@ namespace LmbrCentral
             &ShapeComponentNotificationsBus::Events::OnShapeChanged,
             ShapeComponentNotifications::ShapeChangeReasons::ShapeChanged);
 
-        UpdateManipulators();
+        AzToolsFramework::ComponentModeFramework::ComponentModeSystemRequestBus::Broadcast(
+            &AzToolsFramework::ComponentModeFramework::ComponentModeSystemRequests::Refresh,
+            AZ::EntityComponentIdPair(GetEntityId(), GetId()));
     }
 
     void EditorBoxShapeComponent::BuildGameEntity(AZ::Entity* gameEntity)
@@ -138,103 +138,31 @@ namespace LmbrCentral
         }
     }
 
-    void EditorBoxShapeComponent::OnTransformChanged(const AZ::Transform& /*local*/, const AZ::Transform& /*world*/)
+    void EditorBoxShapeComponent::OnTransformChanged(
+        const AZ::Transform& /*local*/, const AZ::Transform& /*world*/)
     {
-        UpdateManipulators();
+        AzToolsFramework::ComponentModeFramework::ComponentModeSystemRequestBus::Broadcast(
+            &AzToolsFramework::ComponentModeFramework::ComponentModeSystemRequests::Refresh,
+            AZ::EntityComponentIdPair(GetEntityId(), GetId()));
     }
 
-    void EditorBoxShapeComponent::OnSelected()
+    AZ::Vector3 EditorBoxShapeComponent::GetDimensions()
     {
-        CreateManipulators();
+        return m_boxShape.GetBoxDimensions();
     }
 
-    void EditorBoxShapeComponent::OnDeselected()
+    void EditorBoxShapeComponent::SetDimensions(const AZ::Vector3& dimensions)
     {
-        DestroyManipulators();
+        return m_boxShape.SetBoxDimensions(dimensions);
     }
 
-    void EditorBoxShapeComponent::CreateManipulators()
+    AZ::Transform EditorBoxShapeComponent::GetCurrentTransform()
     {
-        bool selected = false;
-        AzToolsFramework::ToolsApplicationRequestBus::BroadcastResult(
-            selected, &AzToolsFramework::ToolsApplicationRequests::IsSelected, GetEntityId());
-
-        if (!selected)
-        {
-            return;
-        }
-
-        const AzToolsFramework::ManipulatorManagerId manipulatorManagerId = AzToolsFramework::ManipulatorManagerId(1);
-        for (size_t i = 0; i < m_linearManipulators.size(); ++i)
-        {
-            AZStd::unique_ptr<AzToolsFramework::LinearManipulator>& linearManipulator = m_linearManipulators[i];
-
-            if (linearManipulator == nullptr)
-            {
-                linearManipulator = AZStd::make_unique<AzToolsFramework::LinearManipulator>(GetEntityId());
-                linearManipulator->SetAxis(s_boxAxes[i]);
-
-                AzToolsFramework::ManipulatorViews views;
-                views.emplace_back(AzToolsFramework::CreateManipulatorViewQuadBillboard(
-                    AZ::Color(0.06275f, 0.1647f, 0.1647f, 1.0f), 0.05f));
-                linearManipulator->SetViews(AZStd::move(views));
-
-                const AZ::Vector3 axis = linearManipulator->GetAxis();
-                linearManipulator->InstallMouseMoveCallback([this, axis](
-                    const AzToolsFramework::LinearManipulator::Action& action)
-                {
-                    OnMouseMoveManipulator(action, axis);
-                });
-            }
-
-            linearManipulator->Register(manipulatorManagerId);
-        }
-
-        UpdateManipulators();
+        return AzToolsFramework::TransformNormalizedScale(m_boxShape.GetCurrentTransform());
     }
 
-    void EditorBoxShapeComponent::DestroyManipulators()
+    AZ::Vector3 EditorBoxShapeComponent::GetBoxScale()
     {
-        for (AZStd::unique_ptr<AzToolsFramework::LinearManipulator>& linearManipulator : m_linearManipulators)
-        {
-            if (linearManipulator)
-            {
-                linearManipulator->Unregister();
-                linearManipulator.reset();
-            }
-        }
-    }
-
-    void EditorBoxShapeComponent::UpdateManipulators()
-    {
-        const AZ::Vector3 boxDimensions = m_boxShape.GetBoxConfiguration().m_dimensions;
-        for (size_t i = 0; i < m_linearManipulators.size(); ++i)
-        {
-            if (AZStd::unique_ptr<AzToolsFramework::LinearManipulator>& linearManipulator = m_linearManipulators[i])
-            {
-                linearManipulator->SetPosition(s_boxAxes[i] * AZ::VectorFloat(0.5f) * boxDimensions);
-                linearManipulator->SetBoundsDirty();
-            }
-        }
-    }
-
-    void EditorBoxShapeComponent::OnMouseMoveManipulator(
-        const AzToolsFramework::LinearManipulator::Action& action, const AZ::Vector3& axis)
-    {
-        // calculate the amount of displacement along an axis this manipulator has moved
-        // clamp movement so it cannot go negative based on axis direction
-        const AZ::Vector3 axisDisplacement =
-            action.LocalPosition().GetAbs() * 2.0f
-                * action.LocalPosition().GetNormalized().Dot(axis).GetMax(AZ::VectorFloat::CreateZero());
-
-        // update dimensions - preserve dimensions not effected by this
-        // axis, and update current axis displacement
-        m_boxShape.SetBoxDimensions((NotAxis(axis)
-            * m_boxShape.GetBoxConfiguration().m_dimensions).GetMax(axisDisplacement));
-
-        UpdateManipulators();
-
-        AzToolsFramework::ToolsApplicationNotificationBus::Broadcast(
-            &AzToolsFramework::ToolsApplicationNotificationBus::Events::InvalidatePropertyDisplay, AzToolsFramework::Refresh_Values);
+        return AZ::Vector3(m_boxShape.GetCurrentTransform().RetrieveScale().GetMaxElement());
     }
 } // namespace LmbrCentral

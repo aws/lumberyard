@@ -13,6 +13,7 @@
 #include <AzCore/Component/ComponentApplicationBus.h>
 #include <AzCore/IO/SystemFile.h>
 #include <AzCore/Serialization/SerializeContext.h>
+#include <AzCore/std/containers/set.h>
 #include <AzFramework/StringFunc/StringFunc.h>
 #include <AzToolsFramework/Debug/TraceContext.h>
 #include <SceneAPI/SceneCore/Components/ExportingComponent.h>
@@ -37,6 +38,38 @@ namespace SceneBuilder
         m_isShuttingDown = true;
     }
 
+    const char* SceneBuilderWorker::GetFingerprint() const
+    {
+        if (m_cachedFingerprint.empty())
+        {
+            // put them in an ORDERED set so that changing the reflection
+            // or the gems loaded does not invalidate FBX files due to order of reflection changing.
+            AZStd::set<AZStd::string> fragments;
+
+            AZ::SerializeContext* context = nullptr;
+            AZ::ComponentApplicationBus::BroadcastResult(context, &AZ::ComponentApplicationBus::Events::GetSerializeContext);
+            if (context)
+            {
+                auto callback = [&fragments](const AZ::SerializeContext::ClassData* data, const AZ::Uuid& typeId)
+                {
+                    AZ_UNUSED(typeId);
+                    fragments.insert(AZStd::string::format("[%s:v%i]", data->m_name, data->m_version));
+                    return true;
+                };
+
+                context->EnumerateDerived(callback, azrtti_typeid<AZ::SceneAPI::SceneCore::ExportingComponent>(), azrtti_typeid<AZ::SceneAPI::SceneCore::ExportingComponent>());
+                context->EnumerateDerived(callback, azrtti_typeid<AZ::SceneAPI::SceneCore::LoadingComponent>(), azrtti_typeid<AZ::SceneAPI::SceneCore::LoadingComponent>());
+            }
+
+            for (const AZStd::string& element : fragments)
+            {
+                m_cachedFingerprint.append(element);
+            }
+        }
+
+        return m_cachedFingerprint.c_str();
+    }
+
     void SceneBuilderWorker::CreateJobs(const AssetBuilderSDK::CreateJobsRequest& request, AssetBuilderSDK::CreateJobsResponse& response)
     {
         // Check for shutdown
@@ -46,22 +79,6 @@ namespace SceneBuilder
             return;
         }
 
-        AZ::SerializeContext* context = nullptr;
-        AZ::ComponentApplicationBus::BroadcastResult(context, &AZ::ComponentApplicationBus::Events::GetSerializeContext);
-
-        AZStd::string fingerPrint;
-        if (context)
-        {
-            auto callback = [&fingerPrint](const AZ::SerializeContext::ClassData* data, const AZ::Uuid& typeId) -> bool
-            {
-                AZ_UNUSED(typeId);
-                fingerPrint += AZStd::string::format("%s:%i\n", data->m_name, data->m_version);
-                return true;
-            };
-            context->EnumerateDerived(callback, azrtti_typeid<AZ::SceneAPI::SceneCore::ExportingComponent>(), azrtti_typeid<AZ::SceneAPI::SceneCore::ExportingComponent>());
-            context->EnumerateDerived(callback, azrtti_typeid<AZ::SceneAPI::SceneCore::LoadingComponent>(), azrtti_typeid<AZ::SceneAPI::SceneCore::LoadingComponent>());
-        }
-
         for (auto& enabledPlatform : request.m_enabledPlatforms)
         {
             AssetBuilderSDK::JobDescriptor descriptor;
@@ -69,9 +86,16 @@ namespace SceneBuilder
             descriptor.SetPlatformIdentifier(enabledPlatform.m_identifier.c_str());
             descriptor.m_failOnError = true;
             descriptor.m_priority = 11; // more important than static mesh files, since these may control logic (actors and motions specifically)
-            descriptor.m_additionalFingerprintInfo = fingerPrint;
+            descriptor.m_additionalFingerprintInfo = GetFingerprint();
             response.m_createJobOutputs.push_back(descriptor);
         }
+
+        // Adding corresponding material file as a source file dependency
+        AssetBuilderSDK::SourceFileDependency sourceFileDependencyInfo;
+        AZStd::string relPath = request.m_sourceFile.c_str();
+        AzFramework::StringFunc::Path::ReplaceExtension(relPath, "mtl");
+        sourceFileDependencyInfo.m_sourceFileDependencyPath = relPath;
+        response.m_sourceFileDependencyList.push_back(sourceFileDependencyInfo);
 
         response.m_result = AssetBuilderSDK::CreateJobsResultCode::Success;
     }

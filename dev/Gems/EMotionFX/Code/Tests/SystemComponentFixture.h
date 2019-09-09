@@ -23,6 +23,7 @@
 
 #include <AzCore/Asset/AssetManager.h>
 #include <AzCore/Memory/PoolAllocator.h>
+#include <AzCore/Jobs/JobManagerComponent.h>
 
 namespace EMotionFX
 {
@@ -54,8 +55,6 @@ namespace EMotionFX
             mLocalFileIO->SetAlias("@devassets@", dir);
 
             Activate();
-            
-            EMotionFX::Integration::SystemComponent::Reflect(GetSerializeContext());
         }
 
         void TearDown() override
@@ -82,7 +81,7 @@ namespace EMotionFX
         virtual void Activate()
         {
             // Poor-man's c++11 fold expression
-            std::initializer_list<int> {(Components::CreateDescriptor(), 0)...};
+            std::initializer_list<int> {(mApp.RegisterComponentDescriptor(Components::CreateDescriptor()), 0)...};
             std::initializer_list<int> {(mSystemEntity->CreateComponent<Components>(), 0)...};
             mSystemEntity->Init();
             mSystemEntity->Activate();
@@ -102,7 +101,10 @@ namespace EMotionFX
             std::initializer_list<int> {(([&]() {
                 auto component = mSystemEntity->FindComponent<Components>();
                 mSystemEntity->RemoveComponent(component);
+                delete component;
             })(), 0)...};
+
+            std::initializer_list<int> {(mApp.UnregisterComponentDescriptor(Components::CreateDescriptor()), 0)...};
         }
 
     private:
@@ -126,6 +128,7 @@ namespace EMotionFX
     // Note that the SystemComponent depends on the AssetManagerComponent
     using SystemComponentFixture = ComponentFixture<
         AZ::AssetManagerComponent,
+        AZ::JobManagerComponent,
         EMotionFX::Integration::SystemComponent
     >;
 

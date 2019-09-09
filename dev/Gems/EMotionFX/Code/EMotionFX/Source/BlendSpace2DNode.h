@@ -34,6 +34,7 @@ namespace EMotionFX
         {
             INPUTPORT_XVALUE = 0,
             INPUTPORT_YVALUE = 1,
+            INPUTPORT_INPLACE = 2,
             OUTPUTPORT_POSE = 0
         };
 
@@ -41,6 +42,7 @@ namespace EMotionFX
         {
             PORTID_INPUT_XVALUE = 0,
             PORTID_INPUT_YVALUE = 1,
+            PORTID_INPUT_INPLACE = 2,
             PORTID_OUTPUT_POSE = 0
         };
 
@@ -135,7 +137,8 @@ namespace EMotionFX
         bool    GetSupportsDisable() const override { return true; }
         bool    GetHasVisualGraph() const override { return true; }
         bool    GetHasOutputPose() const override { return true; }
-        uint32  GetVisualColor() const override { return MCore::RGBA(59, 181, 200); }
+        bool    GetNeedsNetTimeSync() const override { return true; }
+        AZ::Color GetVisualColor() const override { return AZ::Color(0.23f, 0.71f, 0.78f, 1.0f); }
         void    OnUpdateUniqueData(AnimGraphInstance* animGraphInstance) override;
         AnimGraphPose* GetMainOutputPose(AnimGraphInstance* animGraphInstance) const override { return GetOutputPose(animGraphInstance, OUTPUTPORT_POSE)->GetValue(); }
 
@@ -183,6 +186,7 @@ namespace EMotionFX
         void SetMotions(const AZStd::vector<BlendSpaceMotion>& motions) override;
         const AZStd::vector<BlendSpaceMotion>& GetMotions() const override;
 
+        bool GetIsInPlace(AnimGraphInstance* animGraphInstance) const;
 
         static void Reflect(AZ::ReflectContext* context);
 

@@ -45,19 +45,18 @@ namespace AzToolsFramework
             {
                 AZ::u32 readBufferSize = 0;
                 AZStd::string readBuffer;
-                readBuffer.resize(readBufferSize);
                 // Don't call readOutput unless there is output or else it will block...
                 readBufferSize = m_communicator->PeekOutput();
                 if (readBufferSize)
                 {
-                    readBuffer.resize(readBufferSize);
+                    readBuffer.resize_no_construct(readBufferSize);
                     m_communicator->ReadOutput(readBuffer.data(), readBufferSize);
                     EchoBuffer(readBuffer);
                 }
                 readBufferSize = m_communicator->PeekError();
                 if (readBufferSize)
                 {
-                    readBuffer.resize(readBufferSize);
+                    readBuffer.resize_no_construct(readBufferSize);
                     m_communicator->ReadError(readBuffer.data(), readBufferSize);
                     EchoBuffer(readBuffer);
                 }

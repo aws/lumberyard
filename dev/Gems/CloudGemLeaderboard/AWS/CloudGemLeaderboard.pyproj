@@ -21,8 +21,52 @@
     <PtvsTargetsFile>$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\Python Tools\Microsoft.PythonTools.targets</PtvsTargetsFile>
   </PropertyGroup>
   <ItemGroup>
+    <Content Include="api-definition\LoadTest_1_0_0.json" />
+    <Content Include="common-code\Constant\leaderboard_constant.pyc" />
+    <Content Include="common-code\LoadTest\.import" />
+    <Content Include="common-code\LoadTest\LoadTest__CloudGemLeaderboard.pyc" />
+    <Content Include="lambda-code\RecordSetProcessor\.ignore" />
+    <Content Include="lambda-code\RecordSetProcessor\.import" />
+    <Content Include="lambda-code\RecordSetProcessor\RecordSetProcessor.pyproj" />
+    <Content Include="lambda-code\ServiceLambda\.ignore" />
+    <Content Include="lambda-code\ServiceLambda\.import" />
+    <Content Include="lambda-code\ServiceLambda\ServiceLambda.pyproj" />
     <Content Include="resource-template.json" />
     <Content Include="swagger.json" />
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="api-definition\" />
+    <Folder Include="common-code\" />
+    <Folder Include="common-code\Constant\" />
+    <Folder Include="common-code\LoadTest\" />
+    <Folder Include="lambda-code\" />
+    <Folder Include="lambda-code\RecordSetProcessor\" />
+    <Folder Include="lambda-code\ServiceLambda\" />
+    <Folder Include="lambda-code\ServiceLambda\api\" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="common-code\Constant\leaderboard_constant.py" />
+    <Compile Include="common-code\LoadTest\LoadTest__CloudGemLeaderboard.py" />
+    <Compile Include="lambda-code\RecordSetProcessor\record_set_processor.py" />
+    <Compile Include="lambda-code\ServiceLambda\api\leaderboard.py" />
+    <Compile Include="lambda-code\ServiceLambda\api\loadtest_setup.py" />
+    <Compile Include="lambda-code\ServiceLambda\api\loadtest_teardown.py" />
+    <Compile Include="lambda-code\ServiceLambda\api\player_ban.py" />
+    <Compile Include="lambda-code\ServiceLambda\api\player_ban_list.py" />
+    <Compile Include="lambda-code\ServiceLambda\api\process_records.py" />
+    <Compile Include="lambda-code\ServiceLambda\api\service_status.py" />
+    <Compile Include="lambda-code\ServiceLambda\api\stats.py" />
+    <Compile Include="lambda-code\ServiceLambda\api\submit_score.py" />
+    <Compile Include="lambda-code\ServiceLambda\api\user_scores.py" />
+    <Compile Include="lambda-code\ServiceLambda\api\__init__.py" />
+    <Compile Include="lambda-code\ServiceLambda\ban_handler.py" />
+    <Compile Include="lambda-code\ServiceLambda\identity_validator.py" />
+    <Compile Include="lambda-code\ServiceLambda\leaderboard_utils.py" />
+    <Compile Include="lambda-code\ServiceLambda\reservoir_sampler.py" />
+    <Compile Include="lambda-code\ServiceLambda\score_reader.py" />
+    <Compile Include="lambda-code\ServiceLambda\score_submitter.py" />
+    <Compile Include="lambda-code\ServiceLambda\stats_settings.py" />
+    <Compile Include="stats_settings.py" />
   </ItemGroup>
   <Import Project="$(PtvsTargetsFile)" Condition="Exists($(PtvsTargetsFile))" />
   <Import Project="$(MSBuildToolsPath)\Microsoft.Common.targets" Condition="!Exists($(PtvsTargetsFile))" />

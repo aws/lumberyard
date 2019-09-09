@@ -175,6 +175,11 @@ namespace AZ
     AZ_MATH_FORCE_INLINE bool Vector4::IsGreaterThan(const Vector4& rhs) const      { return (GetX() > rhs.GetX()) && (GetY() > rhs.GetY()) && (GetZ() > rhs.GetZ()) && (GetW() > rhs.GetW()); }
     AZ_MATH_FORCE_INLINE bool Vector4::IsGreaterEqualThan(const Vector4& rhs) const { return (GetX() >= rhs.GetX()) && (GetY() >= rhs.GetY()) && (GetZ() >= rhs.GetZ()) && (GetW() >= rhs.GetW()); }
 
+    AZ_MATH_FORCE_INLINE const Vector4 Vector4::Lerp(const Vector4& dest, const VectorFloat& t) const
+    {
+        return (*this) * (1.0f - t) + dest * t;
+    }
+
     AZ_MATH_FORCE_INLINE const VectorFloat Vector4::Dot(const Vector4& rhs) const
     {
         return (m_x * rhs.m_x + m_y * rhs.m_y + m_z * rhs.m_z + m_w * rhs.m_w);

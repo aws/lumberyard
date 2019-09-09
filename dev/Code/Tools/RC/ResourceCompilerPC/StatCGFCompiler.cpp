@@ -100,12 +100,6 @@ ICompiler* CStatCGFCompiler::CreateCompiler()
 }
 
 //////////////////////////////////////////////////////////////////////////
-bool CStatCGFCompiler::SupportsMultithreading() const
-{
-    return false;
-}
-
-//////////////////////////////////////////////////////////////////////////
 static string getTextMatrix(const Matrix34& M)
 {
     string text = "";

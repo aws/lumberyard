@@ -346,6 +346,6 @@ private:
         OutModuleId = 0,
     };
 
-    static std::map<int, TModuleInstanceId> m_ids;
+    static StaticInstance<std::map<int, TModuleInstanceId>> m_ids;
 };
 #endif // CRYINCLUDE_CRYACTION_FLOWSYSTEM_MODULES_FLOWMODULENODES_H

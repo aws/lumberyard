@@ -25,6 +25,8 @@ namespace AZ
     {
         class FbxSkinWrapper;
         class FbxBlendShapeWrapper;
+        class FbxVertexTangentWrapper;
+        class FbxVertexBitangentWrapper;
 
         class FbxMeshWrapper
         {
@@ -65,6 +67,11 @@ namespace AZ
             virtual FbxUVWrapper GetElementUV(int index = 0);
             
             virtual int GetElementUVCount() const;
+
+            virtual int GetElementTangentCount() const;
+            virtual int GetElementBitangentCount() const;
+            virtual FbxVertexTangentWrapper GetElementTangent(int index = 0);
+            virtual FbxVertexBitangentWrapper GetElementBitangent(int index = 0);
             
             // Returns this geometry's vertex color element
             virtual FbxVertexColorWrapper GetElementVertexColor(int index = 0);

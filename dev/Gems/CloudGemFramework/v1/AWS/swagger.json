@@ -25,6 +25,54 @@
             }
         },
 
+        "/open-cloud-gem-portal": {
+            "x-amazon-cloud-canvas-lambda-dispatch": {
+                "module": "service_cloud_gem_portal",
+                "function": "open",
+                "enable_cores":  false           
+            },
+            "get": {
+                "x-amazon-cloud-canvas-lambda-dispatch": {
+                    "additional-properties": {                        
+                        "responses": {
+                            "default": {
+                                "statusCode": "200",
+                                "responseParameters": {
+                                    "method.response.header.Content-Type": "'text/html'",
+                                    "method.response.header.Access-Control-Allow-Origin": "'*'"
+                                },
+                                "responseTemplates": {
+                                    "text/html": "$input.path('$')"                                        
+                                }
+                            }
+                        }                        
+                    }
+                },
+                "description": "Open the Cloud Gem Portal.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "text/html"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A response with the scores for the user",
+                        "headers": {
+                            "Content-Type": {
+                                "type": "string"
+                            },
+                            "Access-Control-Allow-Origin": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                },
+                "security": [
+                ]
+            }           
+        },
+
         "/deployment": {
             "x-cloud-gem-framework-interface-implementation": {
                 "interface": [
@@ -69,5 +117,18 @@
             }
         }
 
+    },
+    "definitions": {
+        "state": {
+            "type": "object",
+            "properties": {
+                "state": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "state"
+            ]
+        }
     }
 }

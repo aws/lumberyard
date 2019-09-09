@@ -42,6 +42,8 @@ namespace LmbrCentral
                         ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
                         ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
                         ->Attribute(AZ::Edit::Attributes::HelpPageURL, "https://docs.aws.amazon.com/lumberyard/latest/userguide/component-projector-light.html")
+                        ->Attribute(AZ::Edit::Attributes::ExportIfAllPlatformTags, AZStd::vector<AZ::Crc32>{AZ_CRC("renderer", 0xf199a19c)}) // Only export on platforms that render
+                        ->Attribute(AZ::Edit::Attributes::RuntimeExportCallback, &EditorLightComponent::ExportLightComponent)
                     ;
             }
         }

@@ -47,6 +47,7 @@ export class InGameSurveyEditSurveyComponent {
     private SurveyStatus = SurveyStatus;
     private epochToString = TimeUtil.epochToString;    
     private isFormFieldRequiredEmpty = ValidationUtil.isFormFieldRequiredEmpty;
+    private isFormFieldNotNonNegativeNum = ValidationUtil.isFormFieldNotNonNegativeNum;
     private isFormFieldNotValid = ValidationUtil.isFormFieldNotValid;
 
     private questionTypes = [
@@ -402,8 +403,8 @@ export class InGameSurveyEditSurveyComponent {
                 this.curEditingQuestion.predefines = predefines;
                 break;
             case "scale":
-                this.curEditingQuestion.min = this.scaleQuestionForm.value.min;
-                this.curEditingQuestion.max = this.scaleQuestionForm.value.max;
+                this.curEditingQuestion.min = Number(this.scaleQuestionForm.value.min);
+                this.curEditingQuestion.max = Number(this.scaleQuestionForm.value.max);
                 this.curEditingQuestion.minLabel = this.scaleQuestionForm.value.minLabel;
                 this.curEditingQuestion.maxLabel = this.scaleQuestionForm.value.maxLabel;
                 break;
@@ -558,8 +559,8 @@ export class InGameSurveyEditSurveyComponent {
 
     private createScaleQuestionForm(): void {
         this.scaleQuestionForm = this.fb.group({
-            'min': [this.curEditingQuestion.min, Validators.compose([Validators.required])],
-            'max': [this.curEditingQuestion.max, Validators.compose([Validators.required])],
+            'min': [this.curEditingQuestion.min, Validators.compose([Validators.required, ValidationUtil.nonNegativeNumberValidator])],
+            'max': [this.curEditingQuestion.max, Validators.compose([Validators.required, ValidationUtil.nonNegativeNumberValidator])],
             'minLabel': [this.curEditingQuestion.minLabel],
             'maxLabel': [this.curEditingQuestion.maxLabel]
         });

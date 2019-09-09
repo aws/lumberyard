@@ -111,7 +111,7 @@ struct SResourceContainer
     }
 };
 
-typedef std::map<CCryNameTSCRC, SResourceContainer*> ResourceClassMap;
+typedef AZStd::unordered_map<CCryNameTSCRC, SResourceContainer*, AZStd::hash<CCryNameTSCRC>, AZStd::equal_to<CCryNameTSCRC>, AZ::StdLegacyAllocator> ResourceClassMap;
 
 typedef ResourceClassMap::iterator ResourceClassMapItor;
 
@@ -196,81 +196,3 @@ public:
     virtual void InvalidateDeviceResource(uint32 dirtyFlags) {};
 };
 
-//=================================================================
-
-#if CAPTURE_REPLAY_LOG
-#if (defined(WIN32) || defined (WIN64)) && !defined(NULL_RENDERER)
-# define MEMREPLAY_WRAP_D3D11
-# define MEMREPLAY_WRAP_D3D11_CONTEX
-#endif
-
-#if defined(AZ_RESTRICTED_PLATFORM)
-#include AZ_RESTRICTED_FILE(CommonRender_h, AZ_RESTRICTED_PLATFORM)
-#endif
-#endif
-
-#ifdef MEMREPLAY_WRAP_D3D11
-
-class MemReplayD3DAnnotation
-    : public IUnknown
-{
-public:
-    static const GUID s_guid;
-
-public:
-    MemReplayD3DAnnotation(ID3D11DeviceChild* pRes, size_t sz);
-    virtual ~MemReplayD3DAnnotation();
-
-    void AddMap(UINT nSubRes, void* pData, size_t sz);
-    void RemoveMap(UINT nSubRes);
-
-    virtual HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** ppvObject);
-    virtual ULONG STDMETHODCALLTYPE AddRef();
-    virtual ULONG STDMETHODCALLTYPE Release();
-
-private:
-    struct MapDesc
-    {
-        UINT nSubResource;
-        void* pData;
-    };
-
-private:
-    MemReplayD3DAnnotation(const MemReplayD3DAnnotation&);
-    MemReplayD3DAnnotation& operator = (const MemReplayD3DAnnotation&);
-
-private:
-    ULONG m_nRefCount;
-    ID3D11DeviceChild* m_pRes;
-    std::vector<MapDesc> m_maps;
-};
-
-inline void MemReplayAnnotateD3DResource(ID3D11DeviceChild* pResource, size_t resSz)
-{
-    if (pResource)
-    {
-        UINT sz = sizeof(MemReplayD3DAnnotation*);
-        MemReplayD3DAnnotation* pAnnotation;
-        if (FAILED(pResource->GetPrivateData(MemReplayD3DAnnotation::s_guid, &sz, &pAnnotation)))
-        {
-            pAnnotation = new MemReplayD3DAnnotation(pResource, resSz);
-            pResource->SetPrivateDataInterface(MemReplayD3DAnnotation::s_guid, pAnnotation);
-        }
-    }
-}
-
-inline MemReplayD3DAnnotation* MemReplayGetD3DAnnotation(ID3D11DeviceChild* pResource)
-{
-    if (pResource)
-    {
-        UINT sz = sizeof(MemReplayD3DAnnotation*);
-        MemReplayD3DAnnotation* pAnnotation;
-        if (!FAILED(pResource->GetPrivateData(MemReplayD3DAnnotation::s_guid, &sz, &pAnnotation)))
-        {
-            return pAnnotation;
-        }
-    }
-    return NULL;
-}
-
-#endif

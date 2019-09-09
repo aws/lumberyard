@@ -273,21 +273,30 @@ void CRenderer::EF_AddEf_NotVirtual(IRenderElement* re, SShaderItem& SH, CRender
             nList = EFSLIST_TRANSP;
         }
     }
-
+     
     // FogVolume contribution for transparencies isn't needed when volumetric fog is turned on.
     // TODO (bethelz) Not a great place for this.
     if ((((nBatchFlags & FB_TRANSPARENT) || (pSH->GetFlags2() & EF2_HAIR)) && CRenderer::CV_r_VolumetricFog == 0)
         || passInfo.IsRecursivePass() /* account for recursive scene traversal done in forward fashion*/)
     {
+        // Check if we need high fog volume shading quality 
+        static ICVar* pCVarFogVolumeShadingQuality = gEnv->pConsole->GetCVar("e_FogVolumeShadingQuality");
+        bool fogVolumeShadingQuality = pShaderResources && (pShaderResources->GetResFlags() & MTL_FLAG_FOG_VOLUME_SHADING_QUALITY_HIGH) && (pCVarFogVolumeShadingQuality->GetIVal() > 0);
+
+
         SRenderObjData* pOD = obj->GetObjData();
-        if (pOD && pOD->m_FogVolumeContribIdx[nThreadID] == (uint16) - 1)
+        if (pOD && ( fogVolumeShadingQuality || (pOD->m_FogVolumeContribIdx[nThreadID] == (uint16) - 1) ) )
         {
             I3DEngine* pEng = gEnv->p3DEngine;
-            ColorF newContrib;
-            pEng->TraceFogVolumes(obj->GetTranslation(), newContrib, passInfo);
-
+  
+            SFogVolumeData fogVolData;
+            if (obj->m_pRenderNode)
+            {
+                // Pass the AABB of the object to in order to retrieve fog contribution.
+                pEng->TraceFogVolumes(obj->m_pRenderNode->GetBBox().GetCenter(), obj->m_pRenderNode->GetBBox(), fogVolData, passInfo, fogVolumeShadingQuality);
+            }
             // TODO (bethelz) Decouple fog volume color from renderer. Just store in render obj data.
-            pOD->m_FogVolumeContribIdx[nThreadID] = CRenderer::PushFogVolumeContribution(newContrib, passInfo);
+            pOD->m_FogVolumeContribIdx[nThreadID] = CRenderer::PushFogVolumeContribution(fogVolData, passInfo);
         }
     }
 
@@ -415,12 +424,12 @@ void CRenderer::EF_AddEf (IRenderElement* re, SShaderItem& pSH, CRenderObject* o
 }
 
 //////////////////////////////////////////////////////////////////////////
-uint16 CRenderer::PushFogVolumeContribution(const ColorF& fogVolumeContrib, const SRenderingPassInfo& passInfo)
+uint16 CRenderer::PushFogVolumeContribution(const SFogVolumeData& fogVolData, const SRenderingPassInfo& passInfo)
 {
     int nThreadID = passInfo.ThreadID();
 
     const size_t maxElems((1 << (sizeof(uint16) * 8)) - 1);
-    size_t numElems(m_RP.m_fogVolumeContibutions[nThreadID].size());
+    size_t numElems(m_RP.m_fogVolumeContibutionsData[nThreadID].size());
     assert(numElems < maxElems);
     if (numElems >= maxElems)
     {
@@ -428,22 +437,22 @@ uint16 CRenderer::PushFogVolumeContribution(const ColorF& fogVolumeContrib, cons
     }
 
     size_t nIndex = ~0;
-    m_RP.m_fogVolumeContibutions[nThreadID].push_back(fogVolumeContrib, nIndex);
-    assert(nIndex <= (uint16) - 1); // Beware! Casting from uint32 to uint16 may loose top bits
+    m_RP.m_fogVolumeContibutionsData[nThreadID].push_back(fogVolData, nIndex);
+  
     return static_cast<uint16>(nIndex);
 }
 
 //////////////////////////////////////////////////////////////////////////
-void CRenderer::GetFogVolumeContribution(uint16 idx, ColorF& rColor) const
+void CRenderer::GetFogVolumeContribution(uint16 idx, SFogVolumeData& fogVolData ) const
 {
     int nThreadID = m_RP.m_nProcessThreadID;
-    if (idx >= m_RP.m_fogVolumeContibutions[nThreadID].size())
+    if (idx >= m_RP.m_fogVolumeContibutionsData[nThreadID].size())
     {
-        rColor = ColorF(0.0f, 0.0f, 0.0f, 1.0f);
+        fogVolData.fogColor= ColorF(0.0f, 0.0f, 0.0f, 1.0f);
     }
     else
     {
-        rColor = m_RP.m_fogVolumeContibutions[nThreadID][idx];
+        fogVolData = m_RP.m_fogVolumeContibutionsData[nThreadID][idx];
     }
 }
 
@@ -580,7 +589,7 @@ CRenderObject* CRenderer::EF_GetObject_Temp(int nThreadID)
 
     if (*ppObj == NULL)
     {
-        *ppObj = new CRenderObject;
+        *ppObj = aznew CRenderObject();
     }
     pObj = *ppObj;
 
@@ -683,21 +692,21 @@ void CRenderer::FinalizeRendItems_FindShadowFrustums(int nThreadID)
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-AZ::LegacyJobExecutor* CRenderer::GetGenerateRendItemJobExecutor(int nThreadID)
+AZ::LegacyJobExecutor* CRenderer::GetGenerateRendItemJobExecutor()
 {
-    return &m_generateRendItemJobExecutor[nThreadID];
+    return &m_generateRendItemJobExecutor;
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-AZ::LegacyJobExecutor* CRenderer::GetGenerateShadowRendItemJobExecutor(int nThreadID)
+AZ::LegacyJobExecutor* CRenderer::GetGenerateShadowRendItemJobExecutor()
 {
-    return &m_generateShadowRendItemJobExecutor[nThreadID];
+    return &m_generateShadowRendItemJobExecutor;
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-AZ::LegacyJobExecutor* CRenderer::GetGenerateRendItemJobExecutorPreProcess(int nThreadID)
+AZ::LegacyJobExecutor* CRenderer::GetGenerateRendItemJobExecutorPreProcess()
 {
-    return &m_generateRendItemPreProcessJobExecutor[nThreadID];
+    return &m_generateRendItemPreProcessJobExecutor;
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -752,7 +761,7 @@ struct CShaderPublicParams
     {
         for (int32 i = 0; i < m_shaderParams.size(); i++)
         {
-            if (!_stricmp(pszName, m_shaderParams[i].m_Name))
+            if (pszName == m_shaderParams[i].m_Name)
             {
                 return &m_shaderParams[i];
             }
@@ -765,7 +774,7 @@ struct CShaderPublicParams
     {
         for (int32 i = 0; i < m_shaderParams.size(); i++)
         {
-            if (!_stricmp(pszName, m_shaderParams[i].m_Name))
+            if (pszName == m_shaderParams[i].m_Name)
             {
                 return &m_shaderParams[i];
             }
@@ -818,7 +827,7 @@ struct CShaderPublicParams
     {
         for (int32 i = 0; i < m_shaderParams.size(); i++)
         {
-            if (!_stricmp(pszName, m_shaderParams[i].m_Name))
+            if (pszName == m_shaderParams[i].m_Name)
             {
                 m_shaderParams.erase(i);
             }
@@ -842,7 +851,7 @@ struct CShaderPublicParams
 
         for (i = 0; i < m_shaderParams.size(); i++)
         {
-            if (!_stricmp(pszName, m_shaderParams[i].m_Name))
+            if (pszName == m_shaderParams[i].m_Name)
             {
                 break;
             }
@@ -851,7 +860,7 @@ struct CShaderPublicParams
         if (i == m_shaderParams.size())
         {
             SShaderParam pr;
-            cry_strcpy(pr.m_Name, pszName);
+            pr.m_Name = pszName;
             pr.m_Type = nType;
             pr.m_eSemantic = eSemantic;
             m_shaderParams.push_back(pr);
@@ -930,6 +939,14 @@ void CMotionBlur::SetupObject(CRenderObject* renderObject, const SRenderingPassI
 
     uint32 fillThreadId = passInfo.ThreadID();
 
+#if AZ_RENDER_TO_TEXTURE_GEM_ENABLED
+    // Motion blur is not yet supported in RTT passes
+    if (passInfo.IsRenderSceneToTexturePass())
+    {
+        return;
+    }
+#endif // if AZ_RENDER_TO_TEXTURE_GEM_ENABLED
+
     if (passInfo.IsRecursivePass())
     {
         return;
@@ -944,16 +961,30 @@ void CMotionBlur::SetupObject(CRenderObject* renderObject, const SRenderingPassI
     renderObject->m_ObjFlags &= ~FOB_HAS_PREVMATRIX;
     if (renderObjectData->m_uniqueObjectId != 0 && renderObject->m_fDistance < CRenderer::CV_r_MotionBlurMaxViewDist)
     {
+#if AZ_RENDER_TO_TEXTURE_GEM_ENABLED
+        const AZ::u32 currentFrameId = gRenDev->GetCameraFrameID();
+        const AZ::u32 bufferIndex = GetCurrentBufferIndex();
+#else
         const AZ::u32 currentFrameId = passInfo.GetMainFrameID();
+        const AZ::u32 bufferIndex = (currentFrameId) % CMotionBlur::s_maxObjectBuffers;
+#endif
         const uintptr_t objectId = renderObjectData ? renderObjectData->m_uniqueObjectId : 0;
-        const AZ::u32 bufferIndex = (currentFrameId) % 3;
-        auto currentIt = m_Objects[bufferIndex].find(objectId);
-        if (currentIt != m_Objects[bufferIndex].end())
+        if (!m_Objects[bufferIndex])
         {
-            const AZ::u32 lastBufferIndex = (currentFrameId - 1) % 3;
+            return;
+        }
 
-            auto historyIt = m_Objects[lastBufferIndex].find(objectId);
-            if (historyIt != m_Objects[lastBufferIndex].end())
+        auto currentIt = m_Objects[bufferIndex]->find(objectId);
+        if (currentIt != m_Objects[bufferIndex]->end())
+        {
+#if AZ_RENDER_TO_TEXTURE_GEM_ENABLED
+            const AZ::u32 lastBufferIndex = GetPrevBufferIndex();
+#else
+            const AZ::u32 lastBufferIndex = (currentFrameId - 1) % CMotionBlur::s_maxObjectBuffers;
+#endif // if AZ_RENDER_TO_TEXTURE_GEM_ENABLED
+
+            auto historyIt = m_Objects[lastBufferIndex]->find(objectId);
+            if (historyIt != m_Objects[lastBufferIndex]->end())
             {
                 MotionBlurObjectParameters* currentParameters = &currentIt->second;
                 MotionBlurObjectParameters* historyParameters = &historyIt->second;

@@ -1,3 +1,14 @@
+/*
+* All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates, or 
+* a third party where indicated.
+*
+* For complete copyright and license terms please see the LICENSE at the root of this
+* distribution (the "License"). All use of this software is governed by the License,  
+* or, if provided, by the license below or the license accompanying this file. Do not
+* remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.  
+*
+*/
 
 #pragma once
 
@@ -93,6 +104,10 @@ namespace CloudGemDefectReporter
         // remove reports in the list provided
         virtual void FlushReports(AZStd::vector<int> reportIDs) = 0;
 
+        // notify when an attachment has been uploaded to allow it to be added
+        // for deletion if needed or other processing
+        virtual void AttachmentUploadComplete(AZStd::string attachmentPath, bool autoDelete) = 0;
+
         // save completed reports to disk to allow recovery of report after crash
         virtual void BackupCompletedReports() = 0;
 
@@ -177,9 +192,17 @@ namespace CloudGemDefectReporter
         // called when the set of reports has been updated, allowing UI to respond
         virtual void OnReportsUpdated(int totalAvailableReports, int totalPending) {}
 
-        // called on the UI to allow UI feedback on the progress of uploading reports
-        virtual void OnDefectReportPostStatus(int currentReport, int totalReports) {}
-
+        // called when posting reports starts and tells how many steps there will be in the post
+        // this allows a progress indicator to show the current steps
+        // Also indicates that another post shouldn't start until OnDefectReportPostEnd is called
+        virtual void OnDefectReportPostStart(int numberOfSteps) {}
+        
+        // called when the defect report post process has completed a step
+        // step number is not sent as these are latent calls and it can't be tracked
+        // ui should track and compare to the number of steps passed in to OnDefectReportPostStart
+        // the report is complete when the final step has been posted
+        virtual void OnDefectReportPostStep() {}
+        
         //called if there is an error attempting to upload the reports
         virtual void OnDefectReportPostError(const AZStd::string& error) {}
 

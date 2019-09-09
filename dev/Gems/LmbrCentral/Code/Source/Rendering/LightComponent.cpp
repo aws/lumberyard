@@ -59,6 +59,8 @@ namespace LmbrCentral
         {
             behaviorContext->Class<LightComponent>()->RequestBus("LightComponentRequestBus");
             ;
+            auto probeFadeDefaultValue(behaviorContext->MakeDefaultValue(1.0f));
+
             behaviorContext->EBus<LightComponentRequestBus>("Light", "LightComponentRequestBus")
                 ->Attribute(AZ::Script::Attributes::Category, "Rendering")
                 ->Event("SetState", &LightComponentRequestBus::Events::SetLightState, "SetLightState", { { { "State", "1=On, 0=Off" } } })
@@ -138,7 +140,7 @@ namespace LmbrCentral
                 ->Event("SetProbeAttenuationFalloff", &LightComponentRequestBus::Events::SetProbeAttenuationFalloff, { { { "Falloff", "Smoothness of the falloff around the probe's bounds" } } })
                 ->VirtualProperty("ProbeAttenuationFalloff", "GetProbeAttenuationFalloff", "SetProbeAttenuationFalloff")
                 ->Event("GetProbeFade", &LightComponentRequestBus::Events::GetProbeFade)
-                ->Event("SetProbeFade", &LightComponentRequestBus::Events::SetProbeFade, { { { "Fade", "Multiplier for fading out a probe [0-1]", behaviorContext->MakeDefaultValue(1.0f) } } })
+                ->Event("SetProbeFade", &LightComponentRequestBus::Events::SetProbeFade, { { { "Fade", "Multiplier for fading out a probe [0-1]", probeFadeDefaultValue } } })
                 ->VirtualProperty("ProbeFade", "GetProbeFade", "SetProbeFade")
                 ;
 
@@ -155,7 +157,7 @@ namespace LmbrCentral
         if (serializeContext)
         {
             serializeContext->Class<LightConfiguration>()
-                ->Version(7, &VersionConverter)
+                ->Version(8, &VersionConverter)
                 ->Field("LightType", &LightConfiguration::m_lightType)
                 ->Field("Visible", &LightConfiguration::m_visible)
                 ->Field("OnInitially", &LightConfiguration::m_onInitially)
@@ -354,6 +356,37 @@ namespace LmbrCentral
             }
 
             if (!useVisAreasNode.SetData<bool>(context, !ignoreVisAreas))
+            {
+                return false;
+            }
+        }
+
+        if (classElement.GetVersion() <= 7)
+        {
+            AZ::SerializeContext::DataElementNode* cubemapTexture = classElement.FindSubElement(AZ_CRC("CubemapTexture", 0xbf6d8df4));
+
+            if (!cubemapTexture)
+            {
+                return false;
+            }
+
+            AZStd::string cubemapPath;
+
+            if (!cubemapTexture->GetData<AZStd::string>(cubemapPath))
+            {
+                return false;
+            }
+
+            AzFramework::SimpleAssetReference<TextureAsset> cubemapSimpleAsset;
+
+            cubemapSimpleAsset.SetAssetPath(cubemapPath.c_str());
+
+            if (!classElement.RemoveElementByName(AZ_CRC("CubemapTexture", 0xbf6d8df4)))
+            {
+                return false;
+            }
+
+            if (!classElement.AddElementWithData<AzFramework::SimpleAssetReference<TextureAsset>>(context, "CubemapTexture", cubemapSimpleAsset))
             {
                 return false;
             }

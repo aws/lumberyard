@@ -386,8 +386,18 @@ float UiLayoutGridComponent::GetTargetHeight()
     AZ::Vector2 rectSize(0.0f, 0.0f);
     EBUS_EVENT_ID_RESULT(rectSize, GetEntityId(), UiTransformBus, GetCanvasSpaceSizeNoScaleRotate);
 
-    float availableWidth = rectSize.GetX() - (m_padding.m_left + m_padding.m_right + m_cellSize.GetX());
-    int numElementsPerRow = 1 + static_cast<int>(availableWidth / m_cellSize.GetX());
+    // At least one child must fit in each row
+    int numElementsPerRow = 1;
+    float additionalElementWidth = m_spacing.GetX() + m_cellSize.GetX();
+    if (additionalElementWidth > 0.0f)
+    {
+        float availableWidthForAdditionalElements = AZ::GetMax(0.0f, rectSize.GetX() - (m_padding.m_left + m_padding.m_right + m_cellSize.GetX()));
+        numElementsPerRow += static_cast<int>(availableWidthForAdditionalElements / additionalElementWidth);
+    }
+    else
+    {
+        numElementsPerRow = numChildElements;
+    }
 
     // Calculate number of rows
     int numRows = static_cast<int>(ceil(static_cast<float>(numChildElements) / numElementsPerRow));
@@ -447,6 +457,7 @@ void UiLayoutGridComponent::Reflect(AZ::ReflectContext* context)
             auto editInfo = ec->Class<UiLayoutGridComponent>("LayoutGrid", "A layout component that arranges its children in a grid");
 
             editInfo->ClassElement(AZ::Edit::ClassElements::EditorData, "")
+                ->Attribute(AZ::Edit::Attributes::Category, "UI")
                 ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/UiLayoutGrid.png")
                 ->Attribute(AZ::Edit::Attributes::ViewportIcon, "Editor/Icons/Components/Viewport/UiLayoutGrid.png")
                 ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("UI", 0x27ff46b0))
@@ -554,7 +565,11 @@ void UiLayoutGridComponent::Activate()
     UiLayoutCellDefaultBus::Handler::BusConnect(m_entity->GetId());
     UiTransformChangeNotificationBus::Handler::BusConnect(m_entity->GetId());
 
+    // If this is the first time the entity has been activated this has no effect since the canvas
+    // is not known. But if a LayoutGrid component has just been pasted onto an existing entity
+    // we need to invalidate the layout in case that affects things.
     InvalidateLayout();
+    InvalidateParentLayout();
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -565,6 +580,11 @@ void UiLayoutGridComponent::Deactivate()
     UiLayoutGridBus::Handler::BusDisconnect();
     UiLayoutCellDefaultBus::Handler::BusDisconnect();
     UiTransformChangeNotificationBus::Handler::BusDisconnect();
+
+    // We could be about to remove this component and then reactivate the entity
+    // which could affect the layout if there is a parent layout component
+    InvalidateLayout();
+    InvalidateParentLayout();
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////

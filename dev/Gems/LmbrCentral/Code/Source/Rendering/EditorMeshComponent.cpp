@@ -87,6 +87,8 @@ namespace LmbrCentral
                         ->Attribute(AZ::Edit::Attributes::Max, 255)
                     ->DataElement(AZ::Edit::UIHandlers::Default, &MeshComponentRenderNode::MeshRenderOptions::m_castShadows, "Cast shadows", "Casts shadows.")
                         ->Attribute(AZ::Edit::Attributes::ChangeNotify, &MeshComponentRenderNode::MeshRenderOptions::OnMinorChanged)
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &MeshComponentRenderNode::MeshRenderOptions::m_lodBoundingBoxBased, "LOD based on Bounding Boxes", "LOD based on Bounding Boxes.")
+                        ->Attribute(AZ::Edit::Attributes::ChangeNotify, &MeshComponentRenderNode::MeshRenderOptions::OnMinorChanged)
                     ->DataElement(AZ::Edit::UIHandlers::Default, &MeshComponentRenderNode::MeshRenderOptions::m_useVisAreas, "Use VisAreas", "Allow VisAreas to control this component's visibility.")
                         ->Attribute(AZ::Edit::Attributes::ChangeNotify, &MeshComponentRenderNode::MeshRenderOptions::OnMinorChanged)
 
@@ -156,6 +158,7 @@ namespace LmbrCentral
         // Note we are purposely connecting to buses before calling m_mesh.CreateMesh().
         // m_mesh.CreateMesh() can result in events (eg: OnMeshCreated) that we want receive.
         MaterialOwnerRequestBus::Handler::BusConnect(m_entity->GetId());
+        RenderBoundsRequestBus::Handler::BusConnect(m_entity->GetId());
         MeshComponentRequestBus::Handler::BusConnect(m_entity->GetId());
         MeshComponentNotificationBus::Handler::BusConnect(m_entity->GetId());
         LegacyMeshComponentRequestBus::Handler::BusConnect(m_entity->GetId());
@@ -163,8 +166,10 @@ namespace LmbrCentral
         AZ::TransformNotificationBus::Handler::BusConnect(m_entity->GetId());
         AzToolsFramework::EditorVisibilityNotificationBus::Handler::BusConnect(GetEntityId());
         AzFramework::EntityDebugDisplayEventBus::Handler::BusConnect(GetEntityId());
+        CryPhysicsComponentRequestBus::Handler::BusConnect(GetEntityId());
         AzToolsFramework::EditorComponentSelectionRequestsBus::Handler::BusConnect(GetEntityId());
         AzToolsFramework::EditorComponentSelectionNotificationsBus::Handler::BusConnect(GetEntityId());
+        AzToolsFramework::EditorLocalBoundsRequestBus::Handler::BusConnect(GetEntityId());
 
         m_mesh.m_renderOptions.m_changeCallback =
             [this]()
@@ -178,7 +183,9 @@ namespace LmbrCentral
 
     void EditorMeshComponent::Deactivate()
     {
+        CryPhysicsComponentRequestBus::Handler::BusDisconnect();
         MaterialOwnerRequestBus::Handler::BusDisconnect();
+        RenderBoundsRequestBus::Handler::BusDisconnect();
         MeshComponentRequestBus::Handler::BusDisconnect();
         MeshComponentNotificationBus::Handler::BusDisconnect();
         LegacyMeshComponentRequestBus::Handler::BusDisconnect();
@@ -188,6 +195,7 @@ namespace LmbrCentral
         AzFramework::EntityDebugDisplayEventBus::Handler::BusDisconnect();
         AzToolsFramework::EditorComponentSelectionRequestsBus::Handler::BusDisconnect();
         AzToolsFramework::EditorComponentSelectionNotificationsBus::Handler::BusDisconnect();
+        AzToolsFramework::EditorLocalBoundsRequestBus::Handler::BusDisconnect();
 
         DestroyEditorPhysics();
 
@@ -197,6 +205,43 @@ namespace LmbrCentral
         m_mesh.AttachToEntity(AZ::EntityId());
 
         EditorComponentBase::Deactivate();
+    }
+
+    IPhysicalEntity* EditorMeshComponent::GetPhysicalEntity()
+    {
+        return m_physicalEntity;
+    }
+
+    void EditorMeshComponent::GetPhysicsParameters(pe_params& outParameters)
+    {
+        if (m_physicalEntity)
+        {
+            m_physicalEntity->GetParams(&outParameters);
+        }
+    }
+
+    void EditorMeshComponent::SetPhysicsParameters(const pe_params& parameters)
+    {
+        if (m_physicalEntity)
+        {
+            m_physicalEntity->SetParams(&parameters);
+        }
+    }
+
+    void EditorMeshComponent::GetPhysicsStatus(pe_status& outStatus)
+    {
+        if (m_physicalEntity)
+        {
+            m_physicalEntity->GetStatus(&outStatus);
+        }
+    }
+
+    void EditorMeshComponent::ApplyPhysicsAction(const pe_action& action, bool threadSafe)
+    {
+        if (m_physicalEntity)
+        {
+            m_physicalEntity->Action(&action, threadSafe);
+        }
     }
 
     void EditorMeshComponent::OnMeshCreated(const AZ::Data::Asset<AZ::Data::AssetData>& asset)
@@ -333,7 +378,9 @@ namespace LmbrCentral
         }
     }
 
-    void EditorMeshComponent::DisplayEntity(bool& handled)
+    void EditorMeshComponent::DisplayEntityViewport(
+        const AzFramework::ViewportInfo& viewportInfo,
+        AzFramework::DebugDisplayRequests& /*debugDisplay*/)
     {
         const bool mouseHovered = m_accentType == AzToolsFramework::EntityAccentType::Hover;
 
@@ -362,13 +409,6 @@ namespace LmbrCentral
             {
                 geometry->DebugDraw(dd);
             }
-        }
-
-        if (m_mesh.HasMesh())
-        {
-            // Only allow Sandbox to draw the default sphere if we don't have a
-            // visible mesh.
-            handled = true;
         }
     }
 
@@ -494,12 +534,19 @@ namespace LmbrCentral
         CreateEditorPhysics();
     }
 
-    AZ::Aabb EditorMeshComponent::GetEditorSelectionBounds()
+    AZ::Aabb EditorMeshComponent::GetEditorSelectionBoundsViewport(
+        const AzFramework::ViewportInfo& /*viewportInfo*/)
     {
         return GetWorldBounds();
     }
 
-    bool EditorMeshComponent::EditorSelectionIntersectRay(
+    AZ::Aabb EditorMeshComponent::GetEditorLocalBounds()
+    {
+        return GetLocalBounds();
+    }
+
+    bool EditorMeshComponent::EditorSelectionIntersectRayViewport(
+        const AzFramework::ViewportInfo& /*viewportInfo*/,
         const AZ::Vector3& src, const AZ::Vector3& dir, AZ::VectorFloat& distance)
     {
         if (IStatObj* geometry = GetStatObj())

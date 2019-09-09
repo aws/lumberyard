@@ -23,23 +23,22 @@
 
 namespace StarterGameGem
 {
+    /*!
+     * System component which listens for IPhysicalWorld events,
+     * filters for events that involve AZ::Entities,
+     * and broadcasts these events on the EntityPhysicsEventBus.
+     */
+    class PersistentDataSystemComparitorComponent
+        : public AZ::Component
+        , public AZ::GameplayNotificationBus::MultiHandler
+    {
+    public:
+        AZ_COMPONENT(PersistentDataSystemComparitorComponent, "{362949E8-F603-4D31-9581-01B966BFF1BB}");
 
-	/*!
-	 * System component which listens for IPhysicalWorld events,
-	 * filters for events that involve AZ::Entities,
-	 * and broadcasts these events on the EntityPhysicsEventBus.
-	 */
-	class PersistentDataSystemComparitorComponent
-		: public AZ::Component
-		, public AZ::GameplayNotificationBus::MultiHandler
-	{
-	public:
-		AZ_COMPONENT(PersistentDataSystemComparitorComponent, "{362949E8-F603-4D31-9581-01B966BFF1BB}");
-
-		PersistentDataSystemComparitorComponent();
+        PersistentDataSystemComparitorComponent();
         ~PersistentDataSystemComparitorComponent() override {}
 
-		static void Reflect(AZ::ReflectContext* context);
+        static void Reflect(AZ::ReflectContext* context);
 
         virtual AZ::u32 MajorPropertyChanged();
 
@@ -47,36 +46,36 @@ namespace StarterGameGem
         bool IsDataString() const;
         bool IsDataNumber() const;
 
-		//////////////////////////////////////////////////////////////////////////
-		// AZ::GameplayNotificationBus
-		void OnEventBegin(const AZStd::any& value) override;
-		void OnEventUpdating(const AZStd::any& value) override;
-		void OnEventEnd(const AZStd::any& value) override;
+        //////////////////////////////////////////////////////////////////////////
+        // AZ::GameplayNotificationBus
+        void OnEventBegin(const AZStd::any& value) override;
+        void OnEventUpdating(const AZStd::any& value) override;
+        void OnEventEnd(const AZStd::any& value) override;
 
-	private:
-		////////////////////////////////////////////////////////////////////////
-		// AZ::Component
-		void Activate() override;
-		void Deactivate() override;
-		////////////////////////////////////////////////////////////////////////
+    private:
+        ////////////////////////////////////////////////////////////////////////
+        // AZ::Component
+        void Activate() override;
+        void Deactivate() override;
+        ////////////////////////////////////////////////////////////////////////
 
 
-		AZStd::string m_keyName;
+        AZStd::string m_keyName;
 
-		bool m_sendMessagesOnChange;
-		AZStd::string m_testMessage;
+        bool m_sendMessagesOnChange;
+        AZStd::string m_testMessage;
 
-		PersistentDataSystemComponent::eBasicDataTypes m_dataToUse;
-		bool m_BoolData;
-		AZStd::string m_stringData;
-		float m_numberData;
-		PersistentDataSystemComponent::eComparison m_comparisonForData;
+        PersistentDataSystemComponent::eBasicDataTypes m_dataToUse;
+        bool m_BoolData;
+        AZStd::string m_stringData;
+        float m_numberData;
+        PersistentDataSystemComponent::eComparison m_comparisonForData;
 
-		AZStd::string m_successMessage;
-		AZStd::string m_failMessage;
-		AZ::EntityId m_targetOfMessage;
+        AZStd::string m_successMessage;
+        AZStd::string m_failMessage;
+        AZ::EntityId m_targetOfMessage;
 
-		AZ::GameplayNotificationId m_callbackMessageID;
-		AZ::GameplayNotificationId m_testMessageID;
-	};
+        AZ::GameplayNotificationId m_callbackMessageID;
+        AZ::GameplayNotificationId m_testMessageID;
+    };
 } // namespace LmbrCentral

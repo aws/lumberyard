@@ -7,6 +7,7 @@ import CloudCanvas
 import service
 
 from cgf_utils import aws_utils
+from cgf_utils import custom_resource_utils
 
 # import errors
 #
@@ -16,7 +17,7 @@ from cgf_utils import aws_utils
 #
 # Any other exception results in HTTP 500 with a generic internal service error message.
 
-workflow = CloudCanvas.get_setting('Workflow')
+workflow = custom_resource_utils.get_embedded_physical_id(CloudCanvas.get_setting('Workflow'))
 workflow_domain_name = workflow + '-domain'
 
 swf_client = boto3.client('swf', region_name=aws_utils.current_region)

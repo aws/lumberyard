@@ -41,9 +41,13 @@ namespace AZ
     namespace Data
     {
         class AssetData;
-        template<typename AssetType>
-        struct AssetBlends;
     }
+}
+
+namespace Maestro
+{
+    template<typename AssetType>
+    struct AssetBlends;
 }
 
 typedef IMovieSystem* (* PFNCREATEMOVIESYSTEM)(struct ISystem*);
@@ -72,8 +76,8 @@ enum class AnimParamType;
 #define kAnimValueDefault static_cast<AnimValueType>(0)
 // AnimValueType::Unknown
 #define kAnimValueUnknown static_cast<AnimValueType>(0xFFFFFFFF)
-// SequenceType::Legacy is the default value
-#define kSequenceTypeDefault static_cast<SequenceType>(0)
+// SequenceType::SequenceComponent is the default value
+#define kSequenceTypeDefault static_cast<SequenceType>(1)
 // AnimParamType::Invalid
 #define kAnimParamTypeInvalid static_cast<AnimParamType>(0xFFFFFFFF)
 // AnimParamType::ByString
@@ -82,10 +86,11 @@ enum class AnimParamType;
 //! Flags that can be set on animation node.
 enum EAnimNodeFlags
 {
-    eAnimNodeFlags_Expanded         = BIT(0), //!< Deprecated, handled by sandbox now
-    eAnimNodeFlags_EntitySelected   = BIT(1), //!< Set if the referenced entity is selected in the editor
-    eAnimNodeFlags_CanChangeName    = BIT(2), //!< Set if this node allow changing of its name.
-    eAnimNodeFlags_Disabled         = BIT(3), //!< Disable this node.
+    eAnimNodeFlags_Expanded                 = BIT(0), //!< Deprecated, handled by sandbox now
+    eAnimNodeFlags_EntitySelected           = BIT(1), //!< Set if the referenced entity is selected in the editor
+    eAnimNodeFlags_CanChangeName            = BIT(2), //!< Set if this node allow changing of its name.
+    eAnimNodeFlags_Disabled                 = BIT(3), //!< Disable this node.
+    eAnimNodeFlags_DisabledForComponent     = BIT(4), //!< Disable this node for a disabled or pending entity component.
 };
 
 enum ENodeExportType
@@ -112,7 +117,7 @@ public:
     {
         *this = name;
     }
-
+   
     CAnimParamType(AnimParamType type)
     {
         *this = type;
@@ -130,6 +135,11 @@ public:
         m_name = name;
     }
 
+    void operator =(const AZStd::string& name)
+    {
+        m_type = kAnimParamTypeByString;
+        m_name = name;
+    }
     // Convert to enum. This needs to be explicit,
     // otherwise operator== will be ambiguous
     AnimParamType GetType() const { return m_type; }
@@ -215,7 +225,7 @@ enum EAnimCurveType
     eAnimCurveType_TCBFloat         = 1,
     eAnimCurveType_TCBVector        = 2,
     eAnimCurveType_TCBQuat          = 3,
-    eAnimCurveType_BezierFloat  = 4,
+    eAnimCurveType_BezierFloat      = 4,
 
     eAnimCurveType_Unknown          = 0xFFFFFFFF
 };
@@ -230,26 +240,26 @@ struct SAnimContext
 {
     SAnimContext()
     {
-        bSingleFrame = false;
-        bForcePlay = false;
-        bResetting = false;
+        singleFrame = false;
+        forcePlay = false;
+        resetting = false;
         time = 0;
         dt = 0;
         fps = 0;
-        pSequence = NULL;
+        sequence = nullptr;
         trackMask = 0;
         startTime = 0;
         m_activeCameraEntity = INVALID_ENTITYID;
     }
 
-    float time;                 //!< Current time in seconds.
-    float   dt;                     //!< Delta of time from previous animation frame in seconds.
-    float   fps;                    //!< Last calculated frames per second value.
-    bool bSingleFrame;  //!< This is not a playing animation, more a single-frame update
-    bool bForcePlay;        //!< Set when force playing animation
-    bool bResetting;        //!< Set when animation sequence is resetted.
+    float time;             //!< Current time in seconds.
+    float dt;               //!< Delta of time from previous animation frame in seconds.
+    float fps;              //!< Last calculated frames per second value.
+    bool singleFrame;       //!< This is not a playing animation, more a single-frame update.
+    bool forcePlay;         //!< Set when force playing animation.
+    bool resetting;         //!< Set when animation sequence is resetting.
 
-    IAnimSequence* pSequence; //!< Sequence in which animation performed.
+    IAnimSequence* sequence; //!< Sequence in which animation performed.
     EntityId m_activeCameraEntity; //!< Used for editor to pass viewport camera to CryMovie
 
     // TODO: Replace trackMask with something more type safe
@@ -257,7 +267,7 @@ struct SAnimContext
     uint32 trackMask;       //!< To update certain types of tracks only
     float startTime;        //!< The start time of this playing sequence
 
-    void Serialize(XmlNodeRef& xmlNode, bool bLoading);
+    void Serialize(XmlNodeRef& xmlNode, bool loading);
 };
 
 /** Parameters for cut-scene cameras
@@ -266,13 +276,13 @@ struct SCameraParams
 {
     SCameraParams()
     {
-        fFOV = 0.0f;
-        fNearZ = DEFAULT_NEAR;
+        fov = 0.0f;
+        nearZ = DEFAULT_NEAR;
         justActivated = false;
     }
-    AZ::EntityId cameraEntityId;    // Both a legacy id or new entity id can be packed in here. Initialized by default to Invalid
-    float fFOV;
-    float fNearZ;
+    AZ::EntityId cameraEntityId;
+    float fov;
+    float nearZ;
     bool justActivated;
 };
 
@@ -453,7 +463,7 @@ struct IAnimTrack
     virtual void GetValue(float time, Vec4& value, bool applyMultiplier = false) = 0;
     virtual void GetValue(float time, Quat& value) = 0;
     virtual void GetValue(float time, bool& value) = 0;
-    virtual void GetValue(float time, AZ::Data::AssetBlends<AZ::Data::AssetData>& value) = 0;
+    virtual void GetValue(float time, Maestro::AssetBlends<AZ::Data::AssetData>& value) = 0;
 
     // support for AZ:: vector types - re-route to legacy types
     void GetValue(float time, AZ::Vector3& value, bool applyMultiplier = false)
@@ -478,7 +488,7 @@ struct IAnimTrack
     virtual void SetValue(float time, const Vec4& value, bool bDefault = false, bool applyMultiplier = false) = 0;
     virtual void SetValue(float time, const Quat& value, bool bDefault = false) = 0;
     virtual void SetValue(float time, const bool& value, bool bDefault = false) = 0;
-    virtual void SetValue(float time, const AZ::Data::AssetBlends<AZ::Data::AssetData>& value, bool bDefault = false) = 0;
+    virtual void SetValue(float time, const Maestro::AssetBlends<AZ::Data::AssetData>& value, bool bDefault = false) = 0;
 
     // support for AZ:: vector types - re-route to legacy types
     void SetValue(float time, AZ::Vector3& value, bool bDefault = false, bool applyMultiplier = false)
@@ -517,6 +527,9 @@ struct IAnimTrack
 
     virtual void SelectKey(int key, bool select) {}
 
+    virtual void SetSortMarkerKey(unsigned int keyIndex, bool enabled) {}
+    virtual bool IsSortMarkerKey(unsigned int keyIndex) const { return false; }
+
     //! Return the index of the key which lies right after the given key in time.
     //! @param key Index of of key.
     //! @return Index of the next key in time. If the last key given, this returns -1.
@@ -549,6 +562,9 @@ struct IAnimTrack
     // Expanded state interface
     virtual void SetExpanded(bool expanded) = 0;
     virtual bool GetExpanded() const = 0;
+
+    virtual unsigned int GetId() const = 0;
+    virtual void SetId(unsigned int id) = 0;
 
     // </interfuscator:shuffle>
 };
@@ -584,6 +600,7 @@ public:
     enum ESupportedParamFlags
     {
         eSupportedParamFlags_MultipleTracks = 0x01, // Set if parameter can be assigned multiple tracks.
+        eSupportedParamFlags_Hidden         = 0x02, // Hidden from the Track View UI.
     };
 
     struct SParamInfo
@@ -862,6 +879,9 @@ public:
     // Expanded state interface
     virtual void SetExpanded(bool expanded) = 0;
     virtual bool GetExpanded() const = 0;
+
+    // Return the node id. This id is unique within a given sequence.
+    virtual int GetId() const = 0;
 };
 
 //! Track event listener
@@ -887,7 +907,7 @@ struct ITrackEventListener
     //      reason - Reason for update (see EReason)
     //      event - Track event added
     //      pUserData - Data to accompany reason
-    virtual void OnTrackEvent(IAnimSequence* pSequence, int reason, const char* event, void* pUserData) = 0;
+    virtual void OnTrackEvent(IAnimSequence* sequence, int reason, const char* event, void* pUserData) = 0;
     virtual void GetMemoryUsage(ICrySizer* pSizer) const{};
     // </interfuscator:shuffle>
 };
@@ -977,7 +997,7 @@ struct IAnimSequence
     //! Get parent animation sequence
     virtual const IAnimSequence* GetParentSequence() const = 0;
     //! Check whether this sequence has the given sequence as a descendant through one of its sequence tracks.
-    virtual bool IsAncestorOf(const IAnimSequence* pSequence) const = 0;
+    virtual bool IsAncestorOf(const IAnimSequence* sequence) const = 0;
 
     //! Return number of animation nodes in sequence.
     virtual int GetNodeCount() const = 0;
@@ -1073,9 +1093,6 @@ struct IAnimSequence
     */
     virtual void TimeChanged(float newTime) = 0;
 
-    //!@deprecated Serialize this sequence to XML - Sequence Components use AZ::Serialization
-    virtual void Serialize(XmlNodeRef& xmlNode, bool bLoading, bool bLoadEmptyTracks = true, uint32 overrideId = 0, bool bUndo = false) = 0;
-
     // fix up internal pointers after load from Sequence Component
     virtual void InitPostLoad() = 0;
 
@@ -1117,6 +1134,8 @@ struct IAnimSequence
     // Expanded state interface
     virtual void SetExpanded(bool expanded) = 0;
     virtual bool GetExpanded() const = 0;
+
+    virtual unsigned int GetUniqueTrackIdAndGenerateNext() = 0;
 
     // </interfuscator:shuffle>
 };
@@ -1169,13 +1188,10 @@ struct IMovieSystem
     virtual void SetUser(IMovieUser* pUser) = 0;
     //! Get the user.
     virtual IMovieUser* GetUser() = 0;
-    //! Loads all nodes and sequences from a specific file (should be called when the level is loaded).
-    virtual bool Load(const char* pszFile, const char* pszMission) = 0;
 
     virtual IAnimSequence* CreateSequence(const char* sequence, bool bLoad = false, uint32 id = 0, SequenceType = kSequenceTypeDefault, AZ::EntityId entityId = AZ::EntityId()) = 0;
-    virtual IAnimSequence* LoadSequence(XmlNodeRef& xmlNode, bool bLoadEmpty = true) = 0;
-    virtual void AddSequence(IAnimSequence* pSequence) = 0;
-    virtual void RemoveSequence(IAnimSequence* pSequence) = 0;
+    virtual void AddSequence(IAnimSequence* sequence) = 0;
+    virtual void RemoveSequence(IAnimSequence* sequence) = 0;
     virtual IAnimSequence* FindLegacySequenceByName(const char* sequence) const = 0;
     virtual IAnimSequence* FindSequence(const AZ::EntityId& componentEntitySequenceId) const = 0;
     virtual IAnimSequence* FindSequenceById(uint32 id) const = 0;
@@ -1213,16 +1229,16 @@ struct IMovieSystem
     virtual int OnCameraRenamed(const char* before, const char* after) = 0;
 
     // Adds a listener to a sequence
-    // @param pSequence Pointer to sequence
+    // @param sequence Pointer to sequence
     // @param pListener Pointer to an IMovieListener
     // @return true on successful add, false otherwise
-    virtual bool AddMovieListener(IAnimSequence* pSequence, IMovieListener* pListener) = 0;
+    virtual bool AddMovieListener(IAnimSequence* sequence, IMovieListener* pListener) = 0;
 
     // Removes a listener from a sequence
-    // @param pSequence Pointer to sequence
+    // @param sequence Pointer to sequence
     // @param pListener Pointer to an IMovieListener
     // @return true on successful removal, false otherwise
-    virtual bool RemoveMovieListener(IAnimSequence* pSequence, IMovieListener* pListener) = 0;
+    virtual bool RemoveMovieListener(IAnimSequence* sequence, IMovieListener* pListener) = 0;
 
     virtual ISystem* GetSystem() = 0;
 
@@ -1240,7 +1256,7 @@ struct IMovieSystem
     // Start playing sequence.
     // Call ignored if sequence is already playing.
     // @param sequence Pointer to Valid sequence to play.
-    virtual void PlaySequence(IAnimSequence* pSequence, IAnimSequence* pParentSeq, bool bResetFX, bool bTrackedSequence, float startTime = -FLT_MAX, float endTime = -FLT_MAX) = 0;
+    virtual void PlaySequence(IAnimSequence* sequence, IAnimSequence* pParentSeq, bool bResetFX, bool bTrackedSequence, float startTime = -FLT_MAX, float endTime = -FLT_MAX) = 0;
 
     // Stops currently playing sequence.
     // Ignored if sequence is not playing.
@@ -1252,7 +1268,7 @@ struct IMovieSystem
     // Ignored if sequence is not playing.
     // Returns true if sequence has been stopped. false otherwise
     // @param sequence Pointer to Valid sequence to stop.
-    virtual bool StopSequence(IAnimSequence* pSequence) = 0;
+    virtual bool StopSequence(IAnimSequence* sequence) = 0;
 
     /** Aborts a currently playing sequence.
             Ignored if sequence is not playing.
@@ -1261,7 +1277,7 @@ struct IMovieSystem
             @param sequence Pointer to Valid sequence to stop.
             @param bLeaveTime If false, uses default stop behavior, otherwise leaves the sequence at time
     */
-    virtual bool AbortSequence(IAnimSequence* pSequence, bool bLeaveTime = false) = 0;
+    virtual bool AbortSequence(IAnimSequence* sequence, bool bLeaveTime = false) = 0;
 
     // Stops all currently playing sequences.
     virtual void StopAllSequences() = 0;
@@ -1309,6 +1325,9 @@ struct IMovieSystem
     // This is needed for the timing issue of turning on/off the capturing.
     virtual void ControlCapture() = 0;
 
+    // Returns true if a Render Output capture is currently active.
+    virtual bool IsCapturing() const = 0;
+
     // Set movie system into recording mode,
     // While in recording mode any changes made to node will be added as keys to tracks.
     virtual void SetRecording(bool recording) = 0;
@@ -1333,9 +1352,6 @@ struct IMovieSystem
     virtual void SetCallback(IMovieCallback* pCallback) = 0;
 
     virtual IMovieCallback* GetCallback() = 0;
-
-    //!@deprecated Serialize to XML (for legacy object sequences only - Sequence Components use AZ::Serialization
-    virtual void Serialize(XmlNodeRef& xmlNode, bool bLoading, bool bRemoveOldNodes = false, bool bLoadEmpty = true) = 0;
 
     virtual const SCameraParams& GetCameraParams() const = 0;
     virtual void SetCameraParams(const SCameraParams& Params) = 0;
@@ -1373,12 +1389,6 @@ struct IMovieSystem
     virtual void EnableBatchRenderMode(bool bOn) = 0;
     virtual bool IsInBatchRenderMode() const = 0;
 
-    // Accessor for entity node params for displaying in sandbox
-    virtual int GetEntityNodeParamCount() const = 0;
-    virtual CAnimParamType GetEntityNodeParamType(int index) const = 0;
-    virtual const char* GetEntityNodeParamName(int index) const = 0;
-    virtual IAnimNode::ESupportedParamFlags GetEntityNodeParamFlags(int index) const = 0;
-
     virtual ILightAnimWrapper* CreateLightAnimWrapper(const char* name) const = 0;
 
     virtual void LoadParamTypeFromXml(CAnimParamType& animParamType, const XmlNodeRef& xmlNode, const uint version) = 0;
@@ -1413,28 +1423,28 @@ inline void SAnimContext::Serialize(XmlNodeRef& xmlNode, bool bLoading)
         XmlString name;
         if (xmlNode->getAttr("sequence", name))
         {
-            pSequence = gEnv->pMovieSystem->FindLegacySequenceByName(name.c_str());
+            sequence = gEnv->pMovieSystem->FindLegacySequenceByName(name.c_str());
         }
         xmlNode->getAttr("dt", dt);
         xmlNode->getAttr("fps", fps);
         xmlNode->getAttr("time", time);
-        xmlNode->getAttr("bSingleFrame", bSingleFrame);
-        xmlNode->getAttr("bResetting", bResetting);
+        xmlNode->getAttr("bSingleFrame", singleFrame);
+        xmlNode->getAttr("bResetting", resetting);
         xmlNode->getAttr("trackMask", trackMask);
         xmlNode->getAttr("startTime", startTime);
     }
     else
     {
-        if (pSequence)
+        if (sequence)
         {
-            string fullname = pSequence->GetName();
+            string fullname = sequence->GetName();
             xmlNode->setAttr("sequence", fullname.c_str());
         }
         xmlNode->setAttr("dt", dt);
         xmlNode->setAttr("fps", fps);
         xmlNode->setAttr("time", time);
-        xmlNode->setAttr("bSingleFrame", bSingleFrame);
-        xmlNode->setAttr("bResetting", bResetting);
+        xmlNode->setAttr("bSingleFrame", singleFrame);
+        xmlNode->setAttr("bResetting", resetting);
         xmlNode->setAttr("trackMask", trackMask);
         xmlNode->setAttr("startTime", startTime);
     }

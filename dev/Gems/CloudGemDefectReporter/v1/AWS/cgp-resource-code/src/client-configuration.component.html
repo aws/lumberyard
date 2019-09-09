@@ -1,65 +1,47 @@
-﻿<div [ngSwitch]="isLoadingClientConfiguration">
+﻿<p>Define your custom defect report field</p>
+<button class="btn l-primary add-button" (click)="onAddNewFieldModal(customFields)">
+    Add New Field
+</button>
+<button class="btn btn-outline-primary add-button" (click)="updateClientConfiguration()">
+    Save Configuration
+</button>
+<div [ngSwitch]="isLoadingClientConfiguration">
     <div *ngSwitchCase="true">
-        <div class="loading-spinner-container">
-            <i class="fa fa-spinner fa-spin fa-lg" aria-hidden="true"></i>
-        </div>
+        <loading-spinner></loading-spinner>
     </div>
     <div class="content-container" *ngSwitchCase="false">
-        <div class="field-preview" *ngFor="let field of customFields; let fieldIndex = index">
-            <span class="float-right">
-                <i (click)="onShowModifyFieldModal(field, fieldIndex)" class="fa fa-cog" data-toggle="tooltip" data-placement="top" title="Edit"></i>
-                <i (click)="onShowDeleteFieldModal(field, fieldIndex)" class="fa fa-trash-o"></i>
-            </span>
-            <div class="questino-title">
-                {{field.title}}
-            </div>
-
-            <div class="fields" *ngIf="field['type'] == 'predefined'">
-                <ng-container *ngIf="field['multipleSelect'] == true">
-                    <div class="radio-btn-label" *ngFor="let predefine of field['predefines']; let i = index">
-                        <input id="field_{{fieldIndex}}_option_{{i}}" type="checkbox" />
-                        <label class="l-checkbox" for="field_{{fieldIndex}}_option_{{i}}">
-                            {{predefine}}
-                        </label>
-                    </div>
-                </ng-container>
-                <ng-container *ngIf="field['multipleSelect'] == false">
-                    <div [formGroup]="dummyRadioButtonForm">
-                        <div class="radio-btn-container">
-                            <div *ngFor="let predefine of field['predefines']; let i = index">
-                                <label class="radio-btn-label">
-                                    <input class="form-control" type="radio" [value]="i" formControlName="dummy" />
-                                    <span></span> {{predefine}}
-                                </label>
-                            </div>
-                        </div>
-                    </div>
-                </ng-container>
-            </div>
-
-            <div class="fields" *ngIf="field.type == 'text'">
-                <div>
-                    <textarea class="field-textarea-preview" [(ngModel)]="dummyTextAreaModels[fieldIndex]" [maxLength]="field.maxChars"></textarea>
-                    <div class="question-textarea-chars-label">
-                        {{dummyTextAreaModels[fieldIndex].length}}/{{field.maxChars}}
+        <div *ngFor="let field of customFields; let fieldIndex = index">
+            <client-configuration-field 
+                [field]="field"
+                [fieldIdPrefix]="''"
+                [isObjectProperty]="false"
+                (addNewProperty)="onAddNewFieldModal(field['properties'])"
+                (showModifyField)="onModifyFieldModal(customFields, field, fieldIndex)"
+                (showDeleteField)="onDeleteFieldModal(customFields, field, fieldIndex)">
+                <div class="fields" *ngIf="field.type === 'object'">
+                    <div *ngFor="let property of field.properties; let propertyIndex = index">
+                        <client-configuration-field 
+                                [field]="property"
+                                [fieldIdPrefix]="field['title']"
+                                [isObjectProperty]="true"
+                                (showModifyField)="onModifyFieldModal(field.properties, property, propertyIndex)"
+                                (showDeleteField)="onDeleteFieldModal(field.properties, property, propertyIndex)">
+                        </client-configuration-field>
                     </div>
                 </div>
-            </div>
+            </client-configuration-field>
         </div>
     </div>
 </div>
-<button class="btn l-primary add-button" (click)="onShowAddNewFieldModal()">
-    Add New Field
-</button>
 
-<modal *ngIf="editMode == EditMode.EditField || editMode == EditMode.CreateField"
-        [title]="editMode == EditMode.EditField ? 'Edit Field' : 'Add New Field'"
+<modal *ngIf="editMode === EditMode.EditField || editMode === EditMode.CreateField"
+        [title]="getModalName()"
         [autoOpen]="true"
         [hasSubmit]="true"
-        [submitButtonText]="editMode == EditMode.EditField ? 'Save Changes' : 'Add Field'"
+        [submitButtonText]="getSubmitButtonText()"
         [onDismiss]="onDismissModal"
         [onClose]="onDismissModal"
-        (modalSubmitted)="editMode == EditMode.EditField ? onModifyField() : onAddField()">
+        (modalSubmitted)="onModalSubmit()">
     <div class="modal-body">
         <div class="form-group row">
             <label class="col-form-label col-3">
@@ -71,7 +53,9 @@
                     <i class="fa fa-caret-down" aria-hidden="true"></i>
                 </button>
                 <div class="dropdown-menu dropdown-menu-center" aria-labelledby="path-dropdown">
-                    <button *ngFor="let fieldType of fieldTypes" type="button" class="dropdown-item" (click)="onChangeFieldType(fieldType)"> {{fieldType.displayText}} </button>
+                    <div *ngFor="let fieldType of fieldTypes">
+                        <button *ngIf="curFields === customFields || fieldType.displayText !== 'Object' " type="button" class="dropdown-item" (click)="onChangeFieldType(fieldType)"> {{fieldType.displayText}} </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -86,28 +70,33 @@
 
                 <span class="col-3"></span>
                 <div *ngIf="isFormFieldRequiredEmpty(fieldTitleForm, 'title')" class="form-control-feedback col-8">Title cannot be empty</div>
+                <div *ngIf="isFormFieldTitleDuplicate(fieldTitleForm, 'title')" class="form-control-feedback col-8">Title already exists</div>
             </div>
         </form>
 
-        <ng-container *ngIf="curEditingField.type == 'text'">
+        <ng-container *ngIf="curEditingField.type === 'text'">
             <form [formGroup]="textFieldForm">
                 <div class="form-group row" [ngClass]="{'has-danger': isFormFieldNotValid(textFieldForm, 'maxChars')}">
                     <label class="col-form-label col-3" for="maxChars">
                         Character Limit
                     </label>
-                    <input class="form-control col-8" id="maxChars" type="number" [formControl]="textFieldForm.controls['maxChars']"
+                    <input class="form-control col-8" id="maxChars" [formControl]="textFieldForm.controls['maxChars']"
                             [ngClass]="{'form-control-danger': isFormFieldNotValid(textFieldForm, 'maxChars')}" />
 
                     <span class="col-3"></span>
-                    <div *ngIf="isFormFieldRequiredEmpty(textFieldForm, 'maxChars')" class="form-control-feedback col-8">Character Limit is invalid</div>
+                    <div *ngIf="isFormFieldRequiredEmpty(textFieldForm, 'maxChars')" class="form-control-feedback col-8">Character Limit cannot be emtpy</div>
+                    <div *ngIf="!isFormFieldRequiredEmpty(textFieldForm, 'maxChars') &&
+                         isFormFieldNotPositiveNum(textFieldForm, 'maxChars')" class="form-control-feedback col-8">
+                        Invalid number
+                    </div>
                 </div>
             </form>
         </ng-container>
 
-        <ng-container *ngIf="curEditingField.type == 'predefined'">
+        <ng-container *ngIf="curEditingField.type === 'predefined'">
             <div *ngFor="let optionForm of predefinedFieldForm.controls['options'].controls; let i = index; trackBy:trackByFn">
                 <div class="form-group row" [ngClass]="{'has-danger': isFormFieldNotValid(optionForm, 'value')}">
-                    <label class="col-form-label col-3" *ngIf="i==0">
+                    <label class="col-form-label col-3" *ngIf="i===0">
                         Multiple Choice Options
                     </label>
                     <span class="col-3" *ngIf="i>0"></span>
@@ -132,14 +121,14 @@
     </div>
 </modal>
 
-<modal *ngIf="editMode == EditMode.DeleteField"
-        title="Delete Field"
+<modal *ngIf="editMode === EditMode.DeleteField"
+        [title]="getModalName()"
         [autoOpen]="true"
         [hasSubmit]="true"
         [onDismiss]="onDismissModal"
         [onClose]="onDismissModal"
-        submitButtonText="Delete Field"
-        (modalSubmitted)="onDeleteField(this.fieldIndex)"
+        [submitButtonText]="getSubmitButtonText()"
+        (modalSubmitted)="onModalSubmit()"
         [metricIdentifier]="context.identifier">
     <div class="modal-body">
         <p>

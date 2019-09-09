@@ -485,8 +485,8 @@ namespace Path
     QString GamePathToFullPath(const QString& path)
     {
         using namespace AzToolsFramework;
-
-        if ((gEnv) && (gEnv->pFileIO) && gEnv->pCryPak)
+        AZ_Warning("GamePathToFullPath", path.size() <= AZ_MAX_PATH_LEN, "Path exceeds maximum path length of %d", AZ_MAX_PATH_LEN);
+        if ((gEnv) && (gEnv->pFileIO) && gEnv->pCryPak && path.size() <= AZ_MAX_PATH_LEN)
         {
             // first, adjust the file name for mods:
             bool fullPathfound = false;
@@ -506,8 +506,8 @@ namespace Path
                 // If the path passed in exists already, then return the resolved filepath
                 if (AZ::IO::FileIOBase::GetDirectInstance()->Exists(adjustedFilePath.c_str()))
                 {
-                    char resolvedPath[AZ_MAX_PATH_LEN] = { 0 };
-                    AZ::IO::FileIOBase::GetDirectInstance()->ResolvePath(adjustedFilePath.c_str(), resolvedPath, AZ_MAX_PATH_LEN);
+                    char resolvedPath[AZ_MAX_PATH_LEN + PathUtil::maxAliasLength] = { 0 };
+                    AZ::IO::FileIOBase::GetDirectInstance()->ResolvePath(adjustedFilePath.c_str(), resolvedPath, AZ_MAX_PATH_LEN + PathUtil::maxAliasLength);
                     return QString::fromUtf8(resolvedPath);
                 }
                 // if we get here it means that the Asset Processor does not know about this file.  most of the time we should never get here
@@ -519,7 +519,7 @@ namespace Path
                     adjustedFilePath = prefix + adjustedFilePath;
                 }
 
-                char szAdjustedFile[AZ_MAX_PATH_LEN] = { 0 };
+                char szAdjustedFile[AZ_MAX_PATH_LEN + PathUtil::maxAliasLength] = { 0 };
                 gEnv->pCryPak->AdjustFileName(adjustedFilePath.c_str(), szAdjustedFile, AZ_ARRAY_SIZE(szAdjustedFile), ICryPak::FLAGS_NO_LOWCASE);
 
                 if ((strnicmp(szAdjustedFile, "@devassets@", 11) == 0) && ((szAdjustedFile[11] == '/') || (szAdjustedFile[11] == '\\')))
@@ -552,8 +552,8 @@ namespace Path
                 // there is a case in which the loose asset exists only within a pak file for some reason
                 // this is not recommended but it is possible.in that case, we want to return the original szAdjustedFile
                 // without touching it or resolving it so that crypak can open it successfully.
-                char adjustedPath[AZ_MAX_PATH_LEN] = { 0 };
-                if (gEnv->pFileIO->ResolvePath(szAdjustedFile, adjustedPath, AZ_MAX_PATH_LEN)) // resolve to full path
+                char adjustedPath[AZ_MAX_PATH_LEN + PathUtil::maxAliasLength] = { 0 };
+                if (gEnv->pFileIO->ResolvePath(szAdjustedFile, adjustedPath, AZ_MAX_PATH_LEN + PathUtil::maxAliasLength)) // resolve to full path
                 {
                     if ((gEnv->pCryPak->IsFileExist(adjustedPath)) || (!gEnv->pCryPak->IsFileExist(szAdjustedFile)))
                     {
@@ -563,7 +563,7 @@ namespace Path
                         // in which case we may as well just resolve the path to a full path and return it.
                         assetFullPath = adjustedPath;
                         AzFramework::StringFunc::Path::Normalize(assetFullPath);
-                        azstrcpy(szAdjustedFile, AZ_MAX_PATH_LEN, assetFullPath.c_str());
+                        azstrcpy(szAdjustedFile, AZ_MAX_PATH_LEN + PathUtil::maxAliasLength, assetFullPath.c_str());
                     }
                     // if the above case succeeded then it means that the file does NOT exist loose
                     // but DOES exist in a pak, in which case we leave szAdjustedFile with the alias on the front of it, meaning

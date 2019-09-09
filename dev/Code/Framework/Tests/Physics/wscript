@@ -19,7 +19,12 @@ def build(bld):
         vs_filter               = 'AZ Framework/TestSuites',
         file_list               = 'azphysicstests.waf_files',
         platforms               = ['win'],
-        configurations          = ['test_all'],
+        configurations          = ['all'],
+        test_only               = True,
         use                     = ['AzTest', 'AzToolsFramework'],
         msvc_cxxflags           = ['/W4'],
+        
+        # This test dll does not have any actual source files defined. Prevent it from trying to generate an rc file
+        inject_copyright        = False
     )
+

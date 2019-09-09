@@ -1,0 +1,11 @@
+<Material MtlFlags="526336" Shader="Watervolume" GenMask="800000D3" StringGenMask="" SurfaceType="mat_water" Diffuse="1,1,1,1" Specular="1,1,1,1" Opacity="1" Shininess="255" vertModifType="0" LayerAct="1">
+ <Textures>
+  <Texture Map="Environment" File="textures/cubemaps/startergame/caveriverreflection_cm.dds" TexType="3"/>
+  <Texture Map="Diffuse" File="objects/natural/caves/am_geode_01_diff.dds"/>
+  <Texture Map="Bumpmap" File="objects/natural/caves/am_geode_01_ddna.dds"/>
+  <Texture Map="Heightmap" File="textures/natural/terrain/am_rockground_displ.dds">
+   <TexMod TexMod_RotateType="0" TexMod_TexGenType="0" TexMod_bTexGenProjected="0" TileU="0.25" TileV="0.25"/>
+  </Texture>
+ </Textures>
+ <PublicParams NormalsScale="1.3" SoftIntersectionFactor="0.47" Tilling="6" FoamAmount="4" DetailNormalsScale="0.2" EnvCubeReflMul="2" VertexWaveScale="0.0099999998" DetailTilling="2" EnvCubeScale="17.74" RealtimeReflMul="1.6" FoamSoftIntersectionFactor="0.99000001" FoamTilling="0.89999998" RainTilling="1" WaterFlowSpeed="0.40000001"/>
+</Material>

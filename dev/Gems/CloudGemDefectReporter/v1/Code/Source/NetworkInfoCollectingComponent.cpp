@@ -1,3 +1,14 @@
+/*
+* All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates, or 
+* a third party where indicated.
+*
+* For complete copyright and license terms please see the LICENSE at the root of this
+* distribution (the "License"). All use of this software is governed by the License,  
+* or, if provided, by the license below or the license accompanying this file. Do not
+* remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.  
+*
+*/
 
 #include "CloudGemDefectReporter_precompiled.h"
 
@@ -12,8 +23,9 @@
 #include <AzCore/Jobs/JobContext.h>
 #include <AzCore/Jobs/JobFunction.h>
 #include <AzCore/Jobs/JobManagerBus.h>
+#include <AzCore/std/string/regex.h>
 
-#include <CloudGemFramework/CloudGemFrameworkBus.h>
+#include <CloudCanvasCommon/CloudCanvasCommonBus.h>
 
 #include <iterator>
 #include <sstream>
@@ -124,9 +136,17 @@ namespace CloudGemDefectReporter
         std::vector<std::string> tokens{ std::istream_iterator<std::string>{iss},
             std::istream_iterator<std::string>{} };
 
+        AZStd::regex domainNameRegex("^([a-z0-9]+(-[a-z0-9]+)*\\.)+[a-z]{2,}$", AZStd::regex::extended);
         for (auto& domainName : tokens)
         {
-            m_serverDomainNames.push_back(domainName.c_str());
+            if (AZStd::regex_match(domainName.c_str(), domainNameRegex))
+            {
+                m_serverDomainNames.push_back(domainName.c_str());
+            }
+            else
+            {
+                AZ_Warning("CloudCanvas", false, "Invalid domain name encountered, skip..");
+            }
         }        
 
         return true;
@@ -143,7 +163,7 @@ namespace CloudGemDefectReporter
         CloudGemDefectReporterRequestBus::BroadcastResult(handlerId, &CloudGemDefectReporterRequestBus::Events::GetHandlerID, reportID);
 
         AZ::JobContext* jobContext{ nullptr };
-        EBUS_EVENT_RESULT(jobContext, CloudGemFramework::CloudGemFrameworkRequestBus, GetDefaultJobContext);
+        EBUS_EVENT_RESULT(jobContext, CloudCanvasCommon::CloudCanvasCommonRequestBus, GetDefaultJobContext);
 
         NetworkInfoCollectingJob* job = aznew NetworkInfoCollectingJob(jobContext, m_serverDomainNames, reportID, handlerId);
         job->Start();        

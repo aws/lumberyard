@@ -150,16 +150,23 @@ namespace AzToolsFramework
         connect(m_sliceDependencyTree, &QTreeWidget::itemDoubleClicked, this, &SliceRelationshipWidget::OnSliceAssetDrilledDown);
 
         SliceDependencyBrowserNotificationsBus::Handler::BusConnect();
+        SliceRelationshipRequestBus::Handler::BusConnect();
     }
 
     SliceRelationshipWidget::~SliceRelationshipWidget()
     {
         SliceDependencyBrowserNotificationsBus::Handler::BusDisconnect();
+        SliceRelationshipRequestBus::Handler::BusDisconnect();
     }
 
     void SliceRelationshipWidget::OnSliceRelationshipModelUpdated(const AZStd::shared_ptr<SliceRelationshipNode>& focusNode)
     {
         GenerateTreesForNode(focusNode);
+    }
+
+    void SliceRelationshipWidget::OnSliceRelationshipViewRequested(const AZ::Data::AssetId& assetId)
+    {
+        ResetTrees(assetId);
     }
 
     QTreeWidgetItem* AddRootItem(QTreeWidget* widget, const QString& name)
@@ -273,12 +280,12 @@ namespace AzToolsFramework
     {
         if (entityId.IsValid())
         {
-            AZ::SliceComponent::SliceInstanceAddress entitySliceAddress(nullptr, nullptr);
+            AZ::SliceComponent::SliceInstanceAddress entitySliceAddress;
             EBUS_EVENT_ID_RESULT(entitySliceAddress, entityId, AzFramework::EntityIdContextQueryBus, GetOwningSlice);
 
-            if (entitySliceAddress.first != nullptr)
+            if (entitySliceAddress.IsValid())
             {
-                ResetTrees((entitySliceAddress.first)->GetSliceAsset().GetId());
+                ResetTrees((entitySliceAddress.GetReference())->GetSliceAsset().GetId());
             }
         }
     }

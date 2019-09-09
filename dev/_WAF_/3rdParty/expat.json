@@ -31,6 +31,7 @@
             ]
         },
         "win_x64_vs2017": "@win_x64_vs2015",
+        "win_x64_clang": "@win_x64_vs2015",
         "durango_vs2015": {
             "libpath_debug": [
                 "build/win_x64/durango_xdk_03_2016_qfe3/debug"
@@ -54,6 +55,7 @@
                 "libexpat.a"
             ]
         },
+        "orbis_vs2017": "@orbis_vs2015",
         "darwin_x64": {
             "libpath_debug": [
                 "build/osx/darwin-clang-703.0.31/debug"
@@ -82,17 +84,6 @@
             ],
             "libpath_release": [
                 "build/osx/appletv-clang-703.0.31/release"
-            ],
-            "lib": [
-                "libexpat.a"
-            ]
-        },
-        "android_armv7_gcc": {
-            "libpath_debug": [
-                "build/win_x64/android_ndk_r12/android-19/armeabi-v7a/gcc-4.9/debug"
-            ],
-            "libpath_release": [
-                "build/win_x64/android_ndk_r12/android-19/armeabi-v7a/gcc-4.9/release"
             ],
             "lib": [
                 "libexpat.a"

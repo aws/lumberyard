@@ -44,6 +44,25 @@ public:
     static CRenderView* CurrentFillView()    { return gRenDev->m_RP.m_pCurrentFillView; }
     static CRenderView* GetRenderViewForThread(int thread) { return gRenDev->GetRenderViewForThread(thread); }
 
+#if AZ_RENDER_TO_TEXTURE_GEM_ENABLED
+    int GetWidth() const 
+    { 
+        return m_width; 
+    }
+    int GetHeight() const
+    { 
+        return m_height; 
+    }
+    void SetWidth(int width)
+    { 
+        m_width = width; 
+    }
+    void SetHeight(int height)
+    { 
+        m_height = height;
+    }
+#endif // if AZ_RENDER_TO_TEXTURE_GEM_ENABLED
+
 private:
     CThreadSafeWorkerContainer<SRendItem> m_renderItems[MAX_LIST_ORDER][EFSLIST_NUM];
     
@@ -55,6 +74,13 @@ public:
 private:
     CCamera m_camera;                       // Current camera
     CameraViewParameters m_viewParameters;
+
+#if AZ_RENDER_TO_TEXTURE_GEM_ENABLED
+    //! width and height of this view 
+    int m_width;
+    int m_height;
+#endif // if AZ_RENDER_TO_TEXTURE_GEM_ENABLED
+
 };
 
 typedef std::shared_ptr<CRenderView> CRenderViewPtr;

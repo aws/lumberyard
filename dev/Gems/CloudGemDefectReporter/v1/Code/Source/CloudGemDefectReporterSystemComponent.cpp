@@ -1,3 +1,14 @@
+/*
+* All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates, or 
+* a third party where indicated.
+*
+* For complete copyright and license terms please see the LICENSE at the root of this
+* distribution (the "License"). All use of this software is governed by the License,  
+* or, if provided, by the license below or the license accompanying this file. Do not
+* remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.  
+*
+*/
 
 #include "CloudGemDefectReporter_precompiled.h"
 
@@ -56,7 +67,8 @@ namespace CloudGemDefectReporter
             , OnNewReportTriggered
             , OnNewReportReady
             , OnReportsUpdated
-            , OnDefectReportPostStatus
+            , OnDefectReportPostStart
+            , OnDefectReportPostStep
             , OnDefectReportPostError
             , OnClientConfigurationAvailable
             , OnSubmittingReport
@@ -84,9 +96,14 @@ namespace CloudGemDefectReporter
             Call(FN_OnReportsUpdated, totalAvailableReports, totalPending);
         }
 
-        void OnDefectReportPostStatus(int currentReport, int totalReports) override
+        void OnDefectReportPostStart(int numberOfSteps)
         {
-            Call(FN_OnDefectReportPostStatus, currentReport, totalReports);
+            Call(FN_OnDefectReportPostStart, numberOfSteps);
+        }
+
+        void OnDefectReportPostStep()
+        {
+            Call(FN_OnDefectReportPostStep);
         }
 
         void OnDefectReportPostError(const AZStd::string& error) override
@@ -213,6 +230,7 @@ namespace CloudGemDefectReporter
         DefectReport::Reflect(context);
         DefectReportManager::ReflectDataStructures(context);
 
+        ServiceAPI::ObjectFieldProperty::Reflect(context);
         ServiceAPI::CustomField::Reflect(context);
         ServiceAPI::ClientConfiguration::Reflect(context);
         
@@ -411,6 +429,7 @@ namespace CloudGemDefectReporter
 
     void CloudGemDefectReporterSystemComponent::RemoveReport(int reportID)
     {
+        m_reportManager.DeleteReportAttachments(reportID);
         m_reportManager.RemoveReport(reportID);
         int availableReports = m_reportManager.CountCompleteReports();
         int pendingReports = m_reportManager.CountPendingReports();
@@ -428,6 +447,15 @@ namespace CloudGemDefectReporter
         int availableReports = m_reportManager.CountCompleteReports();
         int pendingReports = m_reportManager.CountPendingReports();
         CloudGemDefectReporterUINotificationBus::QueueBroadcast(&CloudGemDefectReporterUINotificationBus::Events::OnReportsUpdated, availableReports, pendingReports);
+    }
+
+    void CloudGemDefectReporterSystemComponent::AttachmentUploadComplete(AZStd::string attachmentPath, bool autoDelete)
+    {
+        // auto delete attachments can't be deleted until they are sent to the service
+        if (autoDelete == true)
+        {
+            m_reportManager.DeleteAttachment(attachmentPath);
+        }
     }
 
     void CloudGemDefectReporterSystemComponent::BackupCompletedReports()
@@ -524,7 +552,7 @@ namespace CloudGemDefectReporter
 
         AttachmentDesc attachmentDesc;
         attachmentDesc.m_name = "screenshot";
-        attachmentDesc.m_autoDelete = false;
+        attachmentDesc.m_autoDelete = true;
         attachmentDesc.m_type = "image/jpeg";
         attachmentDesc.m_extension = "jpg";
 

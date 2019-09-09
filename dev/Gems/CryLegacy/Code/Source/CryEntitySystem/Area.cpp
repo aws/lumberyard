@@ -19,7 +19,7 @@
 
 namespace
 {
-    static CArea::TAreaBoxes s_areaBoxes;
+    static StaticInstance<CArea::TAreaBoxes> s_areaBoxes;
 }
 
 //////////////////////////////////////////////////////////////////////////

@@ -12,14 +12,15 @@
 
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/Serialization/EditContext.h>
-#include "BlendTreeMaskNode.h"
-#include "AnimGraphInstance.h"
-#include "Actor.h"
-#include "ActorInstance.h"
-#include "AnimGraphManager.h"
-#include "AnimGraph.h"
-#include "EMotionFXManager.h"
-#include "Node.h"
+#include <EMotionFX/Source/BlendTreeMaskNode.h>
+#include <EMotionFX/Source/AnimGraphInstance.h>
+#include <EMotionFX/Source/AnimGraphAttributeTypes.h>
+#include <EMotionFX/Source/Actor.h>
+#include <EMotionFX/Source/ActorInstance.h>
+#include <EMotionFX/Source/AnimGraphManager.h>
+#include <EMotionFX/Source/AnimGraph.h>
+#include <EMotionFX/Source/EMotionFXManager.h>
+#include <EMotionFX/Source/Node.h>
 
 
 namespace EMotionFX
@@ -167,7 +168,7 @@ namespace EMotionFX
                 for (size_t n = 0; n < numNodes; ++n)
                 {
                     const uint32 nodeIndex = uniqueData->mMasks[i][n];
-                    outputLocalPose.SetLocalTransform(nodeIndex, localPose.GetLocalTransform(nodeIndex));
+                    outputLocalPose.SetLocalSpaceTransform(nodeIndex, localPose.GetLocalSpaceTransform(nodeIndex));
                 }
             }
             else
@@ -177,12 +178,10 @@ namespace EMotionFX
         }
 
         // visualize it
-    #ifdef EMFX_EMSTUDIOBUILD
-        if (GetCanVisualize(animGraphInstance))
+        if (GetEMotionFX().GetIsInEditorMode() && GetCanVisualize(animGraphInstance))
         {
             animGraphInstance->GetActorInstance()->DrawSkeleton(outputPose->GetPose(), mVisualizeColor);
         }
-    #endif
     }
 
 
@@ -291,32 +290,17 @@ namespace EMotionFX
     {
         switch (index)
         {
-            case 0: return m_outputEvents0;
-            case 1: return m_outputEvents1;
-            case 2: return m_outputEvents2;
-            case 3: return m_outputEvents3;
+        case 0:
+            return m_outputEvents0;
+        case 1:
+            return m_outputEvents1;
+        case 2:
+            return m_outputEvents2;
+        case 3:
+            return m_outputEvents3;
         }
 
         return true;
-    }
-
-
-    void BlendTreeMaskNode::UpdateUniqueMask(Actor* actor, const AZStd::vector<AZStd::string>& nodeMask, AZStd::vector<AZ::u32>& outNodeIndices) const
-    {
-        Skeleton* skeleton = actor->GetSkeleton();
-        const size_t numNodes = nodeMask.size();
-        
-        outNodeIndices.clear();
-        outNodeIndices.reserve(numNodes);
-
-        for (size_t i = 0; i < numNodes; ++i)
-        {
-            Node* node = skeleton->FindNodeByName(nodeMask[i].c_str());
-            if (node)
-            {
-                outNodeIndices.push_back(node->GetNodeIndex());
-            }
-        }
     }
 
 
@@ -327,10 +311,10 @@ namespace EMotionFX
         {
             Actor* actor = animGraphInstance->GetActorInstance()->GetActor();
 
-            UpdateUniqueMask(actor, m_mask0, uniqueData->mMasks[0]);
-            UpdateUniqueMask(actor, m_mask1, uniqueData->mMasks[1]);
-            UpdateUniqueMask(actor, m_mask2, uniqueData->mMasks[2]);
-            UpdateUniqueMask(actor, m_mask3, uniqueData->mMasks[3]);
+            AnimGraphPropertyUtils::ReinitJointIndices(actor, m_mask0, uniqueData->mMasks[0]);
+            AnimGraphPropertyUtils::ReinitJointIndices(actor, m_mask1, uniqueData->mMasks[1]);
+            AnimGraphPropertyUtils::ReinitJointIndices(actor, m_mask2, uniqueData->mMasks[2]);
+            AnimGraphPropertyUtils::ReinitJointIndices(actor, m_mask3, uniqueData->mMasks[3]);
 
             // Don't update the next time again.
             uniqueData->mMustUpdate = false;
@@ -377,7 +361,7 @@ namespace EMotionFX
     void BlendTreeMaskNode::SetOutputEvents3(bool outputEvents3)
     {
         m_outputEvents3 = outputEvents3;
-    }    
+    }
 
     void BlendTreeMaskNode::Reflect(AZ::ReflectContext* context)
     {
@@ -408,28 +392,28 @@ namespace EMotionFX
 
         editContext->Class<BlendTreeMaskNode>("Pose Mask", "Pose mark attributes")
             ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
-                ->Attribute(AZ::Edit::Attributes::AutoExpand, "")
-                ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
+            ->Attribute(AZ::Edit::Attributes::AutoExpand, "")
+            ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
             ->DataElement(AZ_CRC("ActorNodes", 0x70504714), &BlendTreeMaskNode::m_mask0, "Mask 1", "The mask to apply on the Pose 1 input port.")
-                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &BlendTreeMaskNode::Reinit)
-                ->Attribute(AZ::Edit::Attributes::ContainerCanBeModified, false)
-                ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::HideChildren)
+            ->Attribute(AZ::Edit::Attributes::ChangeNotify, &BlendTreeMaskNode::Reinit)
+            ->Attribute(AZ::Edit::Attributes::ContainerCanBeModified, false)
+            ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::HideChildren)
             ->DataElement(AZ_CRC("ActorNodes", 0x70504714), &BlendTreeMaskNode::m_mask1, "Mask 2", "The mask to apply on the Pose 2 input port.")
-                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &BlendTreeMaskNode::Reinit)
-                ->Attribute(AZ::Edit::Attributes::ContainerCanBeModified, false)
-                ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::HideChildren)
+            ->Attribute(AZ::Edit::Attributes::ChangeNotify, &BlendTreeMaskNode::Reinit)
+            ->Attribute(AZ::Edit::Attributes::ContainerCanBeModified, false)
+            ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::HideChildren)
             ->DataElement(AZ_CRC("ActorNodes", 0x70504714), &BlendTreeMaskNode::m_mask2, "Mask 3", "The mask to apply on the Pose 3 input port.")
-                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &BlendTreeMaskNode::Reinit)
-                ->Attribute(AZ::Edit::Attributes::ContainerCanBeModified, false)
-                ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::HideChildren)
+            ->Attribute(AZ::Edit::Attributes::ChangeNotify, &BlendTreeMaskNode::Reinit)
+            ->Attribute(AZ::Edit::Attributes::ContainerCanBeModified, false)
+            ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::HideChildren)
             ->DataElement(AZ_CRC("ActorNodes", 0x70504714), &BlendTreeMaskNode::m_mask3, "Mask 4", "The mask to apply on the Pose 4 input port.")
-                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &BlendTreeMaskNode::Reinit)
-                ->Attribute(AZ::Edit::Attributes::ContainerCanBeModified, false)
-                ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::HideChildren)
+            ->Attribute(AZ::Edit::Attributes::ChangeNotify, &BlendTreeMaskNode::Reinit)
+            ->Attribute(AZ::Edit::Attributes::ContainerCanBeModified, false)
+            ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::HideChildren)
             ->DataElement(AZ::Edit::UIHandlers::Default, &BlendTreeMaskNode::m_outputEvents0, "Output Events 1", "Output events of the first input port?")
             ->DataElement(AZ::Edit::UIHandlers::Default, &BlendTreeMaskNode::m_outputEvents1, "Output Events 2", "Output events of the second input port?")
             ->DataElement(AZ::Edit::UIHandlers::Default, &BlendTreeMaskNode::m_outputEvents2, "Output Events 3", "Output events of the third input port?")
             ->DataElement(AZ::Edit::UIHandlers::Default, &BlendTreeMaskNode::m_outputEvents3, "Output Events 4", "Output events of the forth input port?")
-            ;
+        ;
     }
 } // namespace EMotionFX

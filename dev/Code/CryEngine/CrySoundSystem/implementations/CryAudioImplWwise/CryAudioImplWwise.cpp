@@ -32,7 +32,11 @@
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION CRYAUDIOIMPLWWISE_CPP_SECTION_1
-#include AZ_RESTRICTED_FILE(CryAudioImplWwise_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/CryAudioImplWwise_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/CryAudioImplWwise_cpp_provo.inl"
+    #endif
 #endif
 
 namespace Audio
@@ -78,10 +82,10 @@ class CEngineModule_CryAudioImplWwise
 
             // Generic Allocator:
             allocDesc.m_allocationRecords = true;
-            allocDesc.m_heap.m_numMemoryBlocks = 1;
-            allocDesc.m_heap.m_memoryBlocksByteSize[0] = poolSize;
+            allocDesc.m_heap.m_numFixedMemoryBlocks = 1;
+            allocDesc.m_heap.m_fixedMemoryBlocksByteSize[0] = poolSize;
 
-            allocDesc.m_heap.m_memoryBlocks[0] = AZ::AllocatorInstance<AZ::OSAllocator>::Get().Allocate(allocDesc.m_heap.m_memoryBlocksByteSize[0], allocDesc.m_heap.m_memoryBlockAlignment);
+            allocDesc.m_heap.m_fixedMemoryBlocks[0] = AZ::AllocatorInstance<AZ::OSAllocator>::Get().Allocate(allocDesc.m_heap.m_fixedMemoryBlocksByteSize[0], allocDesc.m_heap.m_memoryBlockAlignment);
 
             // Note: This allocator is destroyed in CAudioSystemImpl_wwise::Release() after the impl object has been freed.
             AZ::AllocatorInstance<Audio::AudioImplAllocator>::Create(allocDesc);
@@ -93,7 +97,11 @@ class CEngineModule_CryAudioImplWwise
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION CRYAUDIOIMPLWWISE_CPP_SECTION_2
-#include AZ_RESTRICTED_FILE(CryAudioImplWwise_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/CryAudioImplWwise_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/CryAudioImplWwise_cpp_provo.inl"
+    #endif
     #endif
 
         g_audioImplMemoryPoolSecondary_wwise.InitMem(nSecondarySize, (uint8*)pSecondaryMemory);

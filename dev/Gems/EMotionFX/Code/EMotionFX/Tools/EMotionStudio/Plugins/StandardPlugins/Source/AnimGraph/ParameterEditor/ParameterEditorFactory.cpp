@@ -13,6 +13,7 @@
 #include "ParameterEditorFactory.h"
 
 #include <AzCore/std/containers/unordered_map.h>
+#include <MCore/Source/StaticAllocator.h>
 #include <EMotionFX/Source/Parameter/BoolParameter.h>
 #include <EMotionFX/Source/Parameter/ColorParameter.h>
 #include <EMotionFX/Source/Parameter/FloatSliderParameter.h>
@@ -73,7 +74,7 @@ namespace EMStudio
           return aznew TYPE ## ParameterEditor(animGraph, valueParameter, attributes); }                                                         \
     }
 
-        static AZStd::unordered_map<AZ::TypeId, AZStd::function<ValueParameterEditor*(EMotionFX::AnimGraph*, const EMotionFX::ValueParameter*, const AZStd::vector<MCore::Attribute*>&)> > creationFunctionByParameterType = {
+        static AZStd::unordered_map<AZ::TypeId, AZStd::function<ValueParameterEditor*(EMotionFX::AnimGraph*, const EMotionFX::ValueParameter*, const AZStd::vector<MCore::Attribute*>&)>, AZStd::hash<AZ::TypeId>, AZStd::equal_to<AZ::TypeId>, MCore::StaticAllocator > creationFunctionByParameterType = {
             EMSTUDIO_PARAMETER_EDITOR_CREATE_ENTRY(Bool),
             EMSTUDIO_PARAMETER_EDITOR_CREATE_ENTRY(Color),
             EMSTUDIO_PARAMETER_EDITOR_CREATE_ENTRY(FloatSlider),

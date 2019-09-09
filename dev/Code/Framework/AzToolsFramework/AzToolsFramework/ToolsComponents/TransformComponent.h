@@ -9,30 +9,30 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#ifndef TRANSFORM_COMPONENT_H_
-#define TRANSFORM_COMPONENT_H_
+
+#pragma once
 
 #include <AzCore/Component/Component.h>
 #include <AzCore/Math/Vector3.h>
 #include <AzCore/Component/TransformBus.h>
 #include <AzCore/Component/EntityBus.h>
-#include "TransformComponentBus.h"
-#include "EditorComponentBase.h"
 #include <AzCore/Component/EntityId.h>
 #include <AzCore/Slice/SliceBus.h>
 #include <AzFramework/Components/TransformComponent.h>
+#include <AzFramework/Entity/EntityDebugDisplayBus.h>
+#include <AzToolsFramework/API/ComponentEntitySelectionBus.h>
+#include <AzToolsFramework/API/ToolsApplicationAPI.h>
+#include <AzToolsFramework/Commands/SelectionCommand.h>
 
-#pragma once
+#include "EditorComponentBase.h"
+#include "TransformComponentBus.h"
 
 namespace AzToolsFramework
 {
     namespace Components
     {
-        //////////////////////////////////////////////////////////////////////////
-        // Manages transform data as separate vector fields for editing purposes.
-
-        // the transform component is referenced by other components in the same entity
-        // it is not an asset.
+        /// Manages transform data as separate vector fields for editing purposes.
+        /// The TransformComponent is referenced by other components in the same entity, it is not an asset.
         class TransformComponent
             : public EditorComponentBase
             , public AZ::TransformBus::Handler
@@ -45,24 +45,22 @@ namespace AzToolsFramework
         public:
             friend class TransformComponentFactory;
 
-            AZ_COMPONENT(TransformComponent, AZ::EditorTransformComponentTypeId, EditorComponentBase, AZ::SliceEntityHierarchyInterface)
+            AZ_EDITOR_COMPONENT(TransformComponent, AZ::EditorTransformComponentTypeId, EditorComponentBase, AZ::SliceEntityHierarchyInterface, AZ::TransformInterface)
 
             TransformComponent();
             virtual ~TransformComponent();
 
-            //////////////////////////////////////////////////////////////////////////
-            // AZ::EntityBus::Handler
-            void OnEntityActivated(const AZ::EntityId& parentEntityId) override;
-            void OnEntityDeactivated(const AZ::EntityId& parentEntityId) override;
-
-            //////////////////////////////////////////////////////////////////////////
             // AZ::Component
             void Init() override;
             void Activate() override;
             void Deactivate() override;
-            //////////////////////////////////////////////////////////////////////////
 
-            //////////////////////////////////////////////////////////////////////////
+            static void PasteOverComponent(const TransformComponent* sourceComponent, TransformComponent* destinationComponent);
+
+            // AZ::EntityBus
+            void OnEntityActivated(const AZ::EntityId& parentEntityId) override;
+            void OnEntityDeactivated(const AZ::EntityId& parentEntityId) override;
+
             // AZ::TransformBus
             const AZ::Transform& GetLocalTM() override;
             void SetLocalTM(const AZ::Transform& tm) override;
@@ -70,11 +68,7 @@ namespace AzToolsFramework
             void SetWorldTM(const AZ::Transform& tm) override;
             void GetLocalAndWorld(AZ::Transform& localTM, AZ::Transform& worldTM) override;
 
-            //////////////////////////////////////////////////////////////////////////
-
-            //////////////////////////////////////////////////////////////////////////
             // Translation modifiers
-
             void SetWorldTranslation(const AZ::Vector3& newPosition) override;
             void SetLocalTranslation(const AZ::Vector3& newPosition) override;
 
@@ -99,9 +93,6 @@ namespace AzToolsFramework
             float GetLocalY() override;
             float GetLocalZ() override;
 
-            //////////////////////////////////////////////////////////////////////////
-
-            //////////////////////////////////////////////////////////////////////////
             // Rotation modifiers
             void SetRotation(const AZ::Vector3& eulerAnglesRadians) override;
             void SetRotationQuaternion(const AZ::Quaternion& quaternion) override;
@@ -132,9 +123,7 @@ namespace AzToolsFramework
 
             AZ::Vector3 GetLocalRotation() override;
             AZ::Quaternion GetLocalRotationQuaternion() override;
-            //////////////////////////////////////////////////////////////////////////
 
-            //////////////////////////////////////////////////////////////////////////
             // Scale Modifiers
             void SetScale(const AZ::Vector3& newScale) override;
             void SetScaleX(float newScale) override;
@@ -152,7 +141,6 @@ namespace AzToolsFramework
             void SetLocalScaleZ(float scaleZ) override;
 
             AZ::Vector3 GetLocalScale() override;
-            //////////////////////////////////////////////////////////////////////////
 
             AZ::EntityId  GetParentId() override;
             AZ::TransformInterface* GetParent() override;
@@ -162,13 +150,13 @@ namespace AzToolsFramework
             AZStd::vector<AZ::EntityId> GetAllDescendants() override;
             bool IsStaticTransform() override;
 
-            //////////////////////////////////////////////////////////////////////////
             // TransformComponentMessages::Bus
             void TranslateBy(const AZ::Vector3&) override;
             void RotateBy(const AZ::Vector3&) override; // euler in degrees
             void ScaleBy(const AZ::Vector3&) override;
             const EditorTransform& GetLocalEditorTransform() override;
             void SetLocalEditorTransform(const EditorTransform& dest) override;
+            bool IsTransformLocked() override;
 
             /// \return true if the entity is a root-level entity (has no transform parent).
             bool IsRootEntity() const { return !m_parentEntityId.IsValid(); }
@@ -197,28 +185,26 @@ namespace AzToolsFramework
             bool IsPositionInterpolated() override;
             bool IsRotationInterpolated() override;
 
-            //////////////////////////////////////////////////////////////////////////
             // SliceEntityHierarchyRequestBus
             AZ::EntityId GetSliceEntityParentId() override;
             AZStd::vector<AZ::EntityId> GetSliceEntityChildren() override;
-            //////////////////////////////////////////////////////////////////////////
 
         private:
-
-            //////////////////////////////////////////////////////////////////////////
             // AZ::TransformNotificationBus - Connected to parent's ID
             void OnTransformChanged(const AZ::Transform& local, const AZ::Transform& world) override;
 
-            //////////////////////////////////////////////////////////////////////////
+            void OnTransformChanged(); //convienence
+
             // TransformHierarchyInformationBus
             void GatherChildren(AZStd::vector<AZ::EntityId>& children) override;
-            //////////////////////////////////////////////////////////////////////////
+
+            void AddContextMenuActions(QMenu* menu) override;
 
             static void GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided);
             static void GetIncompatibleServices(AZ::ComponentDescriptor::DependencyArrayType& incompatible);
             static void Reflect(AZ::ReflectContext* context);
 
-            bool ValidatePotentialParent(void* newValue, const AZ::Uuid& valueType);
+            AZ::Outcome<void, AZStd::string> ValidatePotentialParent(void* newValue, const AZ::Uuid& valueType);
             AZ::u32 ParentChanged();
             AZ::u32 TransformChanged();
             AZ::u32 StaticChanged();
@@ -260,9 +246,12 @@ namespace AzToolsFramework
             AZ::Transform m_cachedWorldTransform;
             AZ::EntityId m_cachedWorldTransformParent;
 
-            AZStd::vector<AZ::EntityId> m_childrenEntityIds;
+            EntityIdList m_childrenEntityIds;
 
             bool m_suppressTransformChangedEvent;
+
+            bool m_localTransformDirty = true;
+            bool m_worldTransformDirty = true;
 
             // Used to serialize data required for NetBindable
             bool m_netSyncEnabled;
@@ -271,5 +260,3 @@ namespace AzToolsFramework
         };
     }
 } // namespace AzToolsFramework
-
-#endif // TRANSFORM_COMPONENT_H_

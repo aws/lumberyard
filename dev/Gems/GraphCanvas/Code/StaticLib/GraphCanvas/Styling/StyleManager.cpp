@@ -9,6 +9,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
+#include <QBitmap>
 #include <QPainter>
 
 #include <AzCore/Asset/AssetManagerBus.h>
@@ -16,6 +17,7 @@
 #include <AzCore/IO/FileIO.h>
 #include <AzCore/RTTI/RTTI.h>
 #include <AzCore/RTTI/TypeInfo.h>
+#include <AzCore/Serialization/Utils.h>
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/Math/Color.h>
 #include <AzCore/Math/Transform.h>
@@ -30,6 +32,8 @@
 #include <GraphCanvas/Styling/Style.h>
 #include <GraphCanvas/Styling/StyleHelper.h>
 #include <GraphCanvas/Styling/Parser.h>
+#include <GraphCanvas/Utils/QtDrawingUtils.h>
+#include <GraphCanvas/Utils/QtVectorMath.h>
 
 namespace
 {
@@ -58,6 +62,81 @@ namespace
             }
         }
     };
+
+    class HexagonIcon
+        : public GraphCanvas::TintableIcon
+    {
+    public:
+        AZ_CLASS_ALLOCATOR(HexagonIcon, AZ::SystemAllocator, 0);
+
+        HexagonIcon()
+        {
+            m_paletteSwatches.push_back(QColor(0, 0, 0));
+            m_sourcePixmap = new QPixmap(16, 16);
+            m_sourcePixmap->fill(Qt::transparent);
+            
+            QPainter painter(m_sourcePixmap);
+            painter.setRenderHint(QPainter::RenderHint::HighQualityAntialiasing);
+            
+            QPen pen;
+            pen.setWidth(4);
+            pen.setColor(QColor(0, 0, 0));
+
+            painter.setPen(pen);
+            painter.drawLine(QPointF(0, 16), QPointF(8, 10));
+            painter.drawLine(QPointF(16, 16), QPointF(8, 10));
+            painter.drawLine(QPointF(8, 0), QPointF(8, 10));
+        }
+
+        AZ::Crc32 GetIconId() const override { return AZ_CRC("HexagonIcon", 0x34053842); }
+    };
+
+    class CheckerboardIcon
+        : public GraphCanvas::TintableIcon
+    {
+    public:
+        AZ_CLASS_ALLOCATOR(CheckerboardIcon, AZ::SystemAllocator, 0);
+
+        CheckerboardIcon()
+        {
+            m_paletteSwatches.push_back(QColor(0, 0, 0));
+
+            m_sourcePixmap = new QPixmap(16, 16);
+            m_sourcePixmap->fill(Qt::transparent);
+
+            QPainter painter(m_sourcePixmap);
+            painter.setRenderHint(QPainter::RenderHint::HighQualityAntialiasing);
+
+            painter.fillRect(QRectF(0, 0, 8, 8), QColor(0, 0, 0));
+            painter.fillRect(QRectF(8, 8, 8, 8), QColor(0, 0, 0));
+        }
+
+        AZ::Crc32 GetIconId() const override { return AZ_CRC("CheckerboardIcon", 0x782adcad); }
+    };
+
+    class TriColorCheckerboardIcon
+        : public GraphCanvas::TintableIcon
+    {
+    public:
+        AZ_CLASS_ALLOCATOR(TriColorCheckerboardIcon, AZ::SystemAllocator, 0);
+
+        TriColorCheckerboardIcon()
+        {
+            m_paletteSwatches.push_back(QColor(0, 0, 0));
+            m_paletteSwatches.push_back(QColor(1, 1, 1));
+
+            m_sourcePixmap = new QPixmap(16, 16);
+            m_sourcePixmap->fill(Qt::transparent);
+
+            QPainter painter(m_sourcePixmap);
+            painter.setRenderHint(QPainter::RenderHint::HighQualityAntialiasing);
+
+            painter.fillRect(QRectF(0, 0, 8, 8), QColor(0, 0, 0));
+            painter.fillRect(QRectF(8, 8, 8, 8), QColor(1, 1, 1));
+        }
+
+        AZ::Crc32 GetIconId() const override { return AZ_CRC("TriColorCheckerboardIcon", 0x9f93d99d); }
+    };
 }
 
 namespace GraphCanvas
@@ -85,15 +164,115 @@ namespace GraphCanvas
     }
 
     /////////////////
+    // TintableIcon
+    /////////////////
+
+    QPixmap* TintableIcon::CreatePixmap(const AZStd::vector< QColor >& colors) const
+    {
+        if (m_sourcePixmap == nullptr)
+        {
+            return nullptr;
+        }
+
+        QPixmap* pixmap = new QPixmap(m_sourcePixmap->size());
+        pixmap->fill(Qt::transparent);
+
+        if (colors.empty())
+        {
+            pixmap->fromImage(m_sourcePixmap->toImage());
+            return pixmap;
+        }
+
+        QRectF drawRect = QRectF(0, 0, pixmap->width(), pixmap->height());
+
+        QPainter painter(pixmap);
+        painter.setRenderHint(QPainter::HighQualityAntialiasing);
+
+        for (int i = 0; i < m_paletteSwatches.size(); ++i)
+        {
+            QBitmap mask = m_sourcePixmap->createMaskFromColor(m_paletteSwatches[i], Qt::MaskOutColor);
+            painter.setClipRegion(QRegion(mask));
+
+            painter.fillRect(drawRect, colors[i % colors.size()]);
+        }
+
+        return pixmap;
+    }
+
+    QPixmap* TintableIcon::CreatePixmap(const AZStd::vector< QBrush >& brushes) const
+    {
+        if (m_sourcePixmap == nullptr)
+        {
+            return nullptr;
+        }
+
+        QPixmap* pixmap = new QPixmap(m_sourcePixmap->size());
+        pixmap->fill(Qt::transparent);
+
+        if (brushes.empty())
+        {
+            pixmap->fromImage(m_sourcePixmap->toImage());
+            return pixmap;
+        }
+
+        QRectF drawRect = QRectF(0, 0, pixmap->width(), pixmap->height());
+
+        QPainter painter(pixmap);
+        painter.setRenderHint(QPainter::HighQualityAntialiasing);
+
+        for (int i=0; i < m_paletteSwatches.size(); ++i)
+        {
+            QBitmap mask = m_sourcePixmap->createMaskFromColor(m_paletteSwatches[i], Qt::MaskOutColor);
+            painter.setClipRegion(QRegion(mask));
+
+            painter.fillRect(drawRect, brushes[i % brushes.size()]);
+        }
+
+        return pixmap;
+    }
+
+    QPixmap* TintableIcon::CreatePixmap(const AZStd::vector< Styling::StyleHelper* >& palettes) const
+    {
+        if (m_sourcePixmap == nullptr)
+        {
+            return nullptr;
+        }
+
+        QPixmap* pixmap = new QPixmap(m_sourcePixmap->size());
+        pixmap->fill(Qt::transparent);
+
+        if (palettes.empty())
+        {
+            pixmap->fromImage(m_sourcePixmap->toImage());
+            return pixmap;
+        }
+
+        QRectF drawRect = QRectF(0, 0, pixmap->width(), pixmap->height());
+
+        QPainter painter(pixmap);
+        painter.setRenderHint(QPainter::HighQualityAntialiasing);
+
+        for (int i = 0; i < m_paletteSwatches.size(); ++i)
+        {
+            QBitmap mask = m_sourcePixmap->createMaskFromColor(m_paletteSwatches[i], Qt::MaskOutColor);
+            painter.setClipRegion(QRegion(mask));
+
+            QtDrawingUtils::FillArea(painter, drawRect, (*palettes[i%palettes.size()]));            
+        }
+
+        return pixmap;
+    }
+
+    /////////////////
     // StyleManager
     /////////////////
-   
+
     StyleManager::StyleManager(const EditorId& editorId, AZStd::string_view assetPath)
         : m_editorId(editorId)
         , m_assetPath(assetPath)
     {
         StyleManagerRequestBus::Handler::BusConnect(m_editorId);
-        
+
         AZ::Data::AssetInfo assetInfo;
         AZStd::string watchFolder;
 
@@ -109,6 +288,11 @@ namespace GraphCanvas
 
         LoadStyleSheet();
         PopulateDataPaletteMapping();
+
+        AddPatternIcon(aznew HexagonIcon());
+        AddPatternIcon(aznew CheckerboardIcon());
+        AddPatternIcon(aznew TriColorCheckerboardIcon());
+
         RefreshColorPalettes();
     }
 
@@ -119,28 +303,21 @@ namespace GraphCanvas
             delete mapPair.second;
         }
 
-        for (auto& mapPair : m_iconMapping)
-        {
-            for (auto& pixmapPair : mapPair.second)
-            {
-                delete pixmapPair.second.second;
-            }
-        }
-
-        ClearStyles();        
+        ClearCache();
+        ClearStyles();
     }
-    
+
     void StyleManager::OnCatalogAssetChanged(const AZ::Data::AssetId& asset)
     {
         if (asset == m_styleAssetId)
         {
             LoadStyleSheet();
         }
-    }    
-    
+    }
+
     void StyleManager::LoadStyleSheet()
-    {        
-        AZStd::string file = AZStd::string::format("@assets@/%s", m_assetPath.c_str());        
+    {
+        AZStd::string file = AZStd::string::format("@assets@/%s", m_assetPath.c_str());
 
         AZ::IO::FileIOBase* fileBase = AZ::IO::FileIOBase::GetInstance();
 
@@ -161,18 +338,19 @@ namespace GraphCanvas
                 {
                     rapidjson::Document styleSheet;
                     styleSheet.Parse(buffer.data());
-                    
+
                     if (styleSheet.HasParseError())
                     {
                         rapidjson::ParseErrorCode errCode = styleSheet.GetParseError();
                         QString errMessage = QString("Parse Error: %1 at offset: %2").arg(errCode).arg(styleSheet.GetErrorOffset());
 
-                        AZ_Warning("GraphCanvas", false, "%s", errMessage.toUtf8().data());                        
+                        AZ_Warning("GraphCanvas", false, "%s", errMessage.toUtf8().data());
                     }
                     else
                     {
                         Styling::Parser::Parse((*this), styleSheet);
                         RefreshColorPalettes();
+                        ClearCache();
                         StyleManagerNotificationBus::Event(m_editorId, &StyleManagerNotifications::OnStylesLoaded);
                     }
                 }
@@ -189,7 +367,7 @@ namespace GraphCanvas
         else
         {
             AZ_Error("GraphCanvas", false, "Could not find StyleSheet at path(%s)", file.c_str());
-        }        
+        }
     }
 
     AZ::EntityId StyleManager::ResolveStyles(const AZ::EntityId& object) const
@@ -249,7 +427,7 @@ namespace GraphCanvas
             auto mapIter = m_dataPaletteMapping.find(dataType);
 
             if (mapIter == m_dataPaletteMapping.end())
-            {
+            {                
                 return "ObjectDataColorPalette";
             }
             else
@@ -276,7 +454,26 @@ namespace GraphCanvas
     {
         AZStd::string paletteStyle = GetDataPaletteStyle(dataType);
 
-        return GetPaletteIcon("DataTypeIcon", paletteStyle);
+        PaletteIconConfiguration configuration;
+        configuration.m_iconPalette = "DataTypeIcon";
+        configuration.AddColorPalette(paletteStyle);
+
+        return GetConfiguredPaletteIcon(configuration);
+    }
+
+    const QPixmap* StyleManager::GetMultiDataTypeIcon(const AZStd::vector<AZ::Uuid>& dataTypes)
+    {
+        PaletteIconConfiguration configuration;
+        configuration.m_iconPalette = "DataTypeIcon";
+        configuration.ReservePalettes(dataTypes.size());
+
+        for (const AZ::Uuid& dataType : dataTypes)
+        {
+            AZStd::string paletteStyle = GetDataPaletteStyle(dataType);
+            configuration.AddColorPalette(paletteStyle);
+        }
+
+        return GetConfiguredPaletteIcon(configuration);
     }
 
     const Styling::StyleHelper* StyleManager::FindColorPalette(const AZStd::string& paletteString)
@@ -294,34 +491,91 @@ namespace GraphCanvas
 
     const QPixmap* StyleManager::GetPaletteIcon(const AZStd::string& iconStyle, const AZStd::string& palette)
     {
-        Styling::StyleHelper* colorStyle = FindCreateStyleHelper(palette);
-        Styling::StyleHelper* iconStyleHelper = FindCreateStyleHelper(iconStyle);
+        PaletteIconConfiguration configuration;
+        configuration.m_iconPalette = iconStyle;
+        configuration.AddColorPalette(palette);
 
-        if (!colorStyle || !iconStyleHelper)
+        return GetConfiguredPaletteIcon(configuration);
+    }
+
+    const QPixmap* StyleManager::GetConfiguredPaletteIcon(const PaletteIconConfiguration& paletteConfiguration)
+    {
+        Styling::StyleHelper* iconStyleHelper = FindCreateStyleHelper(paletteConfiguration.m_iconPalette);
+
+        if (!iconStyleHelper)
         {
             return nullptr;
         }
 
-        QColor color = colorStyle->GetAttribute(Styling::Attribute::BackgroundColor, QColor());
+        const QPixmap* pixmap = FindCachedIcon(paletteConfiguration);
 
-        IconDescriptor iconDescriptor;
+        if (pixmap == nullptr)
+        {
+            pixmap = CreateAndCacheIcon(paletteConfiguration);
+        }
 
-        if (!FindIconDescriptor(iconStyle, palette, iconDescriptor) || iconDescriptor.first != color)
+        return pixmap;
+    }
+
+    const Styling::StyleHelper* StyleManager::FindPaletteIconStyleHelper(const PaletteIconConfiguration& paletteConfiguration)
+    {
+        auto colorPalettes = paletteConfiguration.GetColorPalettes();
+
+        if (colorPalettes.size() == 1)
         {
-            return CreateAndCacheIcon(color, iconStyle, palette);
+            return FindCreateStyleHelper(colorPalettes.front());
         }
-        else
-        {
-            // We must have found the icon, and the color hasn't changed. So we can use the cached version
-            return iconDescriptor.second;
-        }
+
+        return nullptr;
     }
 
     QPixmap* StyleManager::CreateIcon(const QColor& color, const AZStd::string& iconStyle)
     {
+        QColor drawColor = color;
+        drawColor.setAlpha(255);
+
+        QBrush brush(drawColor);
+
+        return CreateIcon(brush, iconStyle);
+    }
+
+    QPixmap* StyleManager::CreateIconFromConfiguration(const PaletteIconConfiguration& paletteConfiguration)
+    {
+        const AZStd::vector< AZStd::string >& colorPalettes = paletteConfiguration.GetColorPalettes();
+
+        if (colorPalettes.size() == 1)
+        {
+            Styling::StyleHelper* colorStyleHelper = FindCreateStyleHelper(colorPalettes.front());
+
+            if (colorStyleHelper)
+            {
+                return CreateIcon((*colorStyleHelper), paletteConfiguration.m_iconPalette);
+            }
+        }
+        else if (!paletteConfiguration.GetColorPalettes().empty())
+        {
+            AZStd::vector<QColor> colors;
+
+            const AZStd::vector< AZStd::string >& colorPalettes = paletteConfiguration.GetColorPalettes();
+            colors.reserve(colorPalettes.size());
+
+            for (const AZStd::string& colorPalette : colorPalettes)
+            {
+                Styling::StyleHelper* colorHelper = FindCreateStyleHelper(colorPalette);
+                colors.push_back(colorHelper->GetColor(Styling::Attribute::BackgroundColor));
+            }
+
+            return CreateMultiColoredIcon(colors, paletteConfiguration.m_transitionPercent, paletteConfiguration.m_iconPalette);
+        }
+
+        return nullptr;
+    }
+
+    QPixmap* StyleManager::CreateMultiColoredIcon(const AZStd::vector<QColor>& colors, float transitionPercent, const AZStd::string& iconStyle)
+    {
         Styling::StyleHelper* iconStyleHelper = FindCreateStyleHelper(iconStyle);
 
-        if (!iconStyleHelper)
+        if (!iconStyleHelper || colors.empty())
         {
             return nullptr;
         }
@@ -330,38 +584,87 @@ namespace GraphCanvas
         qreal height = iconStyleHelper->GetAttribute(Styling::Attribute::Height, 8.0);
         qreal margin = iconStyleHelper->GetAttribute(Styling::Attribute::Margin, 2.0);
 
-        QPixmap* icon = new QPixmap(width + 2 * margin, height + 2 * margin);
-        icon->fill(Qt::transparent);
-
         QPainter painter;
         QPainterPath path;
 
-        qreal borderWidth = iconStyleHelper->GetAttribute(Styling::Attribute::BorderWidth, 1.0);;
-        qreal borderRadius = iconStyleHelper->GetAttribute(Styling::Attribute::BorderRadius, 1.0);;
+        qreal borderWidth = iconStyleHelper->GetAttribute(Styling::Attribute::BorderWidth, 1.0);
+        qreal borderRadius = iconStyleHelper->GetAttribute(Styling::Attribute::BorderRadius, 1.0);
 
         QRectF rect(margin, margin, width, height);
         QRectF adjusted = rect.marginsRemoved(QMarginsF(borderWidth / 2.0, borderWidth / 2.0, borderWidth / 2.0, borderWidth / 2.0));
 
-        path.addRoundedRect(adjusted, borderRadius, borderRadius);
+        QPointF startPoint = adjusted.bottomLeft();
+        QPointF endPoint = adjusted.topRight();
 
-        QColor borderColor = iconStyleHelper->GetAttribute(Styling::Attribute::BorderColor, QColor());
-        Qt::PenStyle borderStyle = iconStyleHelper->GetAttribute(Styling::Attribute::BorderStyle, Qt::PenStyle());
+        QPointF slope = QtVectorMath::Transpose(endPoint - startPoint);
+        slope = QtVectorMath::Normalize(slope);
+        slope *= adjusted.width() * sin(atan(adjusted.height() / adjusted.width()));
 
-        QPen pen(borderColor, borderWidth);
-        pen.setStyle(borderStyle);
+        QLinearGradient fillGradient = QLinearGradient(adjusted.center() + slope, adjusted.center() - slope);
 
-        QColor drawColor = color;
-        drawColor.setAlpha(255);
+        double transition = transitionPercent * (1.0 / colors.size());
 
-        painter.begin(icon);
-        painter.setRenderHint(QPainter::Antialiasing);
-        painter.setPen(pen);
-        painter.fillPath(path, drawColor);
-        painter.drawRoundedRect(adjusted, borderRadius, borderRadius);
+        fillGradient.setColorAt(0, colors[0]);
 
-        painter.end();
+        for (size_t i = 1; i < colors.size(); ++i)
+        {
+            double transitionStart = AZStd::max(0.0, ((double)i / colors.size()) - (transition * 0.5));
+            double transitionEnd = AZStd::min(1.0, ((double)i / colors.size()) + (transition * 0.5));
 
-        return icon;
+            fillGradient.setColorAt(transitionStart, colors[i-1]);
+            fillGradient.setColorAt(transitionEnd, colors[i]);
+        }
+
+        fillGradient.setColorAt(1, colors[colors.size() - 1]);
+        QBrush brush(fillGradient);
+
+        return CreateIcon(brush, iconStyle);
+    }
+
+    QPixmap* StyleManager::CreateColoredPatternPixmap(const AZStd::vector<QColor>& colorTypes, const AZStd::string& patternName)
+    {
+        const TintableIcon* icon = FindPatternIcon(AZ::Crc32(patternName.c_str()));
+
+        if (icon)
+        {
+            return icon->CreatePixmap(colorTypes);
+        }
+
+        return nullptr;
+    }
+
+    const QPixmap* StyleManager::CreatePatternPixmap(const AZStd::vector< AZStd::string>& palettes, const AZStd::string& patternName)
+    {
+        AZ::Crc32 iconKey = AZ::Crc32(patternName.c_str());
+        AZ::Crc32 cacheKey = iconKey;
+
+        for (const AZStd::string& paletteString : palettes)
+        {
+            cacheKey.Add(paletteString.c_str());
+        }
+
+        const QPixmap* cachePixmap = FindPatternCache(cacheKey);
+
+        if (cachePixmap)
+        {
+            return cachePixmap;
+        }
+
+        const TintableIcon* icon = FindPatternIcon(iconKey);
+
+        AZStd::vector< Styling::StyleHelper* > styleHelpers;
+        styleHelpers.reserve(palettes.size());
+
+        for (const AZStd::string& palette : palettes)
+        {
+            styleHelpers.push_back(FindCreateStyleHelper(palette));
+        }
+
+        QPixmap* newPixmap = icon->CreatePixmap(styleHelpers);
+
+        AddPatternCache(cacheKey, newPixmap);
+
+        return newPixmap;
     }
 
     AZStd::vector<AZStd::string> StyleManager::GetColorPaletteStyles() const
@@ -398,6 +701,103 @@ namespace GraphCanvas
 
         m_pixmapCache[key] = pixmap;
     }
+
+    int StyleManager::FindLayerZValue(AZStd::string_view layer)
+    {
+        AZ::Crc32 layerId(layer.data());
+
+        Styling::StyleHelper* styleHelper = FindCreateStyleHelper(layer);
+
+        return styleHelper->GetAttribute(GraphCanvas::Styling::Attribute::ZValue, 0);
+    }
+
+    QPixmap* StyleManager::CreateIcon(QBrush& brush, const AZStd::string& iconStyle)
+    {
+        Styling::StyleHelper* iconStyleHelper = FindCreateStyleHelper(iconStyle);
+
+        if (!iconStyleHelper)
+        {
+            return nullptr;
+        }
+
+        qreal width = iconStyleHelper->GetAttribute(Styling::Attribute::Width, 12.0);
+        qreal height = iconStyleHelper->GetAttribute(Styling::Attribute::Height, 8.0);
+        qreal margin = iconStyleHelper->GetAttribute(Styling::Attribute::Margin, 2.0);
+
+        QPixmap* icon = new QPixmap(width + 2 * margin, height + 2 * margin);
+        icon->fill(Qt::transparent);
+
+        QPainter painter;
+        QPainterPath path;
+
+        qreal borderWidth = iconStyleHelper->GetAttribute(Styling::Attribute::BorderWidth, 1.0);
+        qreal borderRadius = iconStyleHelper->GetAttribute(Styling::Attribute::BorderRadius, 1.0);
+
+        QRectF rect(margin, margin, width, height);
+        QRectF adjusted = rect.marginsRemoved(QMarginsF(borderWidth / 2.0, borderWidth / 2.0, borderWidth / 2.0, borderWidth / 2.0));
+
+        path.addRoundedRect(adjusted, borderRadius, borderRadius);
+
+        QColor borderColor = iconStyleHelper->GetAttribute(Styling::Attribute::BorderColor, QColor());
+        Qt::PenStyle borderStyle = iconStyleHelper->GetAttribute(Styling::Attribute::BorderStyle, Qt::PenStyle());
+
+        QPen pen(borderColor, borderWidth);
+        pen.setStyle(borderStyle);
+
+        painter.begin(icon);
+        painter.setRenderHint(QPainter::Antialiasing);
+        painter.setPen(pen);
+        painter.fillPath(path, brush);
+        painter.drawRoundedRect(adjusted, borderRadius, borderRadius);
+
+        painter.end();
+
+        return icon;
+    }
+
+    QPixmap* StyleManager::CreateIcon(const Styling::StyleHelper& styleHelper, const AZStd::string& iconStyle)
+    {
+        Styling::StyleHelper* iconStyleHelper = FindCreateStyleHelper(iconStyle);
+
+        if (!iconStyleHelper)
+        {
+            return nullptr;
+        }
+
+        qreal width = iconStyleHelper->GetAttribute(Styling::Attribute::Width, 12.0);
+        qreal height = iconStyleHelper->GetAttribute(Styling::Attribute::Height, 8.0);
+        qreal margin = iconStyleHelper->GetAttribute(Styling::Attribute::Margin, 2.0);
+
+        QPixmap* icon = new QPixmap(width + 2 * margin, height + 2 * margin);
+        icon->fill(Qt::transparent);
+
+        QPainter painter;
+        QPainterPath path;
+
+        qreal borderWidth = iconStyleHelper->GetAttribute(Styling::Attribute::BorderWidth, 1.0);
+        qreal borderRadius = iconStyleHelper->GetAttribute(Styling::Attribute::BorderRadius, 1.0);
+
+        QRectF rect(margin, margin, width, height);
+        QRectF adjusted = rect.marginsRemoved(QMarginsF(borderWidth / 2.0, borderWidth / 2.0, borderWidth / 2.0, borderWidth / 2.0));
+
+        path.addRoundedRect(adjusted, borderRadius, borderRadius);
+
+        QPen borderPen = iconStyleHelper->GetPen(Styling::Attribute::BorderWidth, Styling::Attribute::BorderStyle, Styling::Attribute::BorderColor, Styling::Attribute::CapStyle);
+
+        painter.begin(icon);
+        painter.setRenderHint(QPainter::Antialiasing);
+        painter.setPen(borderPen);
+
+        painter.save();
+        painter.setClipPath(path);
+        QtDrawingUtils::FillArea(painter, path.boundingRect(), styleHelper);
+        painter.restore();
+
+        painter.drawRoundedRect(adjusted, borderRadius, borderRadius);
+        painter.end();
+
+        return icon;
+    }
     
     void StyleManager::ClearStyles()
     {
@@ -408,6 +808,26 @@ namespace GraphCanvas
             delete style;
         }
         m_styles.clear();
+    }
+
+    void StyleManager::ClearCache()
+    {
+        for (auto& mapPair : m_iconMapping)
+        {
+            for (auto& pixmapIter : mapPair.second)
+            {
+                delete pixmapIter.second;
+            }
+        }
+
+        m_iconMapping.clear();
+
+        for (auto& mapPair : m_patternCache)
+        {
+            delete mapPair.second;
+        }
+
+        m_patternCache.clear();
     }
 
     void StyleManager::RefreshColorPalettes()
@@ -468,6 +888,32 @@ namespace GraphCanvas
         m_dataPaletteMapping[azrtti_typeid<AZ::Transform>()] = "TransformDataColorPalette";
     }
 
+    const TintableIcon* StyleManager::FindPatternIcon(AZ::Crc32 patternIcon) const
+    {
+        auto patternIter = m_patternIcons.find(patternIcon);
+
+        if (patternIter == m_patternIcons.end())
+        {
+            return nullptr;
+        }
+
+        return patternIter->second;
+    }
+
+    void StyleManager::AddPatternIcon(TintableIcon* icon)
+    {
+        auto patternIter = m_patternIcons.find(icon->GetIconId());
+
+        if (patternIter == m_patternIcons.end())
+        {
+            m_patternIcons[icon->GetIconId()] = icon;
+        }
+        else
+        {
+            AZ_Warning("GraphCanvas", false, "Pattern Id %llu already in use", icon->GetIconId());
+        }
+    }
+
     Styling::StyleHelper* StyleManager::FindCreateStyleHelper(const AZStd::string& paletteString)
     {
         Styling::StyleHelper* styleHelper = nullptr;
@@ -490,44 +936,66 @@ namespace GraphCanvas
         return styleHelper;
     }
 
-    const QPixmap* StyleManager::CreateAndCacheIcon(const QColor& color, const AZStd::string& iconStyle, const AZStd::string& palette)
+    const QPixmap* StyleManager::CreateAndCacheIcon(const PaletteIconConfiguration& configuration)
     {
-        auto iconIter = m_iconMapping.find(iconStyle);
+        auto iconIter = m_iconMapping.find(configuration.m_iconPalette);
 
         if (iconIter != m_iconMapping.end())
         {
-            auto paletteIter = iconIter->second.find(palette);
+            auto paletteIter = iconIter->second.find(configuration.GetPaletteCrc());
 
             if (paletteIter != iconIter->second.end())
             {
-                delete paletteIter->second.second;
+                delete paletteIter->second;
                 iconIter->second.erase(paletteIter);
             }
         }
 
-        QPixmap* icon = CreateIcon(color, iconStyle);
+        QPixmap* icon = CreateIconFromConfiguration(configuration);
 
-        m_iconMapping[iconStyle][palette] = { color, icon };
+        m_iconMapping[configuration.m_iconPalette][configuration.GetPaletteCrc()] = icon;
 
         return icon;
     }
 
-    bool StyleManager::FindIconDescriptor(const AZStd::string& iconStyle, const AZStd::string& palette, IconDescriptor& iconDescriptor)
+    const QPixmap* StyleManager::FindCachedIcon(const PaletteIconConfiguration& configuration)
     {
-        bool foundResult = false;
-        auto iconIter = m_iconMapping.find(iconStyle);
+        auto iconIter = m_iconMapping.find(configuration.m_iconPalette);
 
         if (iconIter != m_iconMapping.end())
         {
-            auto paletteIter = iconIter->second.find(palette);
+            auto paletteIter = iconIter->second.find(configuration.GetPaletteCrc());
 
             if (paletteIter != iconIter->second.end())
             {
-                foundResult = true;
-                iconDescriptor = paletteIter->second;
+                return paletteIter->second;
             }
         }
 
-        return foundResult;
+        return nullptr;
+    }
+
+    const QPixmap* StyleManager::FindPatternCache(const AZ::Crc32& patternCache) const
+    {
+        auto patternIter = m_patternCache.find(patternCache);
+
+        if (patternIter == m_patternCache.end())
+        {
+            return nullptr;
+        }
+
+        return patternIter->second;
+    }
+
+    void StyleManager::AddPatternCache(const AZ::Crc32& patternCache, QPixmap* pixmap)
+    {
+        auto patternIter = m_patternCache.find(patternCache);
+
+        if (patternIter != m_patternCache.end())
+        {
+            delete patternIter->second;
+        }
+
+        m_patternCache[patternCache] = pixmap;
     }
 }

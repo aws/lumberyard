@@ -28,7 +28,7 @@
         {
             "Path": "Gems/CloudGemFramework/v1",
             "Uuid": "6fc787a982184217a5a553ca24676cfa",
-            "Version": "1.1.3",
+            "Version": "1.1.4",
             "_comment": "CloudGemFramework"
         },
         {
@@ -36,6 +36,12 @@
             "Uuid": "869a0d0ec11a45c299917d45c81555e6",
             "Version": "0.1.0",
             "_comment": "ScriptCanvasGem"
+        },
+        {
+            "Path": "Gems/ScriptEvents",
+            "Uuid": "32d8ba21703e4bbbb08487366e48dd69",
+            "Version": "0.1.0",
+            "_comment": "ScriptEvents"
         },
         {
             "Path": "Gems/ScriptCanvasPhysics",
@@ -188,6 +194,18 @@
             "_comment": "CryEntityRemoval"
         },
         {
+            "Path": "Gems/ImageProcessing",
+            "Uuid": "eeffbd9211cf4ce0b5cc73696b427cbe",
+            "Version": "0.1.0",
+            "_comment": "ImageProcessing"
+        },
+        {
+            "Path": "Gems/TextureAtlas",
+            "Uuid": "5a149b6b3c964064bd4970f0e92f72e2",
+            "Version": "0.1.0",
+            "_comment": "TextureAtlas"
+        },
+        {
             "Path": "Gems/Camera",
             "Uuid": "f910686b6725452fbfc4671f95f733c6",
             "Version": "0.1.0",
@@ -204,6 +222,12 @@
             "Uuid": "ed07631f95fb4be1bd10cd37298ec697",
             "Version": "1.0.0",
             "_comment": "PrimitiveAssets"
+        },
+        {
+            "Path": "Gems/ImageProcessing",
+            "Uuid": "eeffbd9211cf4ce0b5cc73696b427cbe",
+            "Version": "0.1.0",
+            "_comment": "ImageProcessing"
         },
         {
             "Path" : "${ProjectName}/Gem",

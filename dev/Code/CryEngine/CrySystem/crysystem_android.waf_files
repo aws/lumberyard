@@ -1,0 +1,13 @@
+{
+    "auto":
+    {
+        "Source Files":
+        [
+            "MobileDetectSpec_Android.cpp",
+            "MobileDetectSpec.cpp",
+            "MobileDetectSpec.h",
+            "ThermalInfoAndroid.h",
+            "ThermalInfoAndroid.cpp"
+        ]
+    }
+}

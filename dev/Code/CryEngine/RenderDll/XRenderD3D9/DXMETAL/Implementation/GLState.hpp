@@ -20,17 +20,15 @@
 
 #include "GLCommon.hpp"
 
-//  Confetti BEGIN: Igor Lobanchikov
 #import <Metal/MTLRenderPipeline.h>
 #import <Metal/MTLRenderCommandEncoder.h>
-//  Confetti END: Igor Lobanchikov
+#import <Metal/MTLSampler.h>
 
 namespace NCryMetal
 {
     class CDevice;
     class CContext;
 
-    //  Confetti BEGIN: Igor Lobanchikov
     struct SMetalBlendState
     {
         MTLColorWriteMask   writeMask;
@@ -51,16 +49,12 @@ namespace NCryMetal
             sourceAlphaBlendFactor = sourceRGBBlendFactor = MTLBlendFactorOne;
         }
     };
-    //  Confetti End: Igor Lobanchikov
 
     struct SBlendState
     {
-        //  Confetti BEGIN: Igor Lobanchikov
         SMetalBlendState colorAttachements[D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT];
-        //  Confetti End: Igor Lobanchikov
     };
 
-    //  Confetti BEGIN: Igor Lobanchikov
     struct SRasterizerState
     {
         MTLCullMode         cullMode;
@@ -75,14 +69,12 @@ namespace NCryMetal
         //  but rather via scissor rect property.
         bool                scissorEnable;
     };
-    //  Confetti End: Igor Lobanchikov
-
-    //  Confetti BEGIN: Igor Lobanchikov
+    
     bool InitializeBlendState(const D3D11_BLEND_DESC& kDesc, SBlendState& kState, CDevice* pDevice);
     bool InitializeDepthStencilState(const D3D11_DEPTH_STENCIL_DESC& kDesc, id<MTLDepthStencilState>& kState, CDevice* pDevice);
     bool InitializeRasterizerState(const D3D11_RASTERIZER_DESC& kDesc, SRasterizerState& kState, CDevice* pDevice);
-    bool InitializeSamplerState(const D3D11_SAMPLER_DESC& kDesc, id<MTLSamplerState>& kState, CDevice* pDevice);
-    //  Confetti End: Igor Lobanchikov
+    bool InitializeSamplerState(const D3D11_SAMPLER_DESC& kDesc, id<MTLSamplerState>& kState, MTLSamplerDescriptor* mtlSamplerDesc, CDevice* pDevice);
+    void SetLodMinClamp(id<MTLSamplerState>& mtlSamplerState, MTLSamplerDescriptor* mtlSamplerDesc, const float lodMinClamp, CDevice* pDevice);
 }
 
 

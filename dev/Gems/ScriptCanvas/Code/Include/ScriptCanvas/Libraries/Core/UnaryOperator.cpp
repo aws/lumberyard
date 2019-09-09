@@ -10,7 +10,6 @@
 *
 */
 
-#include "precompiled.h"
 #include "UnaryOperator.h"
 
 namespace ScriptCanvas

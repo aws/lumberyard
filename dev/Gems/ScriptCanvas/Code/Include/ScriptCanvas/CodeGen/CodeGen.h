@@ -241,7 +241,6 @@ namespace ScriptCanvasTags
 {
     struct Name
     {
-        Name(const char* name) {}
         Name(const char* name, const char* description) {}
     };
 
@@ -292,6 +291,11 @@ namespace ScriptCanvasTags
         EditAttributes(Args&&... args) {}
     };
 
+    struct BaseClass
+    {
+        BaseClass(AZStd::initializer_list<const char*>) {}
+    };
+
     struct Deprecated
     {
         Deprecated(const char* details) {}
@@ -308,6 +312,7 @@ namespace ScriptCanvas_Node
     using ScriptCanvasTags::EventHandler;
     using ScriptCanvasTags::EditAttributes;
     using ScriptCanvasTags::Category;
+    using ScriptCanvasTags::Deprecated;
     
     struct GraphEntryPoint
     {

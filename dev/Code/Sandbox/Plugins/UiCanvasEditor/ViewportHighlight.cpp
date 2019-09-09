@@ -115,3 +115,8 @@ void ViewportHighlight::Draw(Draw2dHelper& draw2d,
         }
     }
 }
+
+void ViewportHighlight::DrawHover(Draw2dHelper& draw2d, AZ::EntityId hoverElement)
+{
+    m_highlightIconSelected->DrawElementRectOutline(draw2d, hoverElement, ViewportHelpers::highlightColor);
+}

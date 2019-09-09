@@ -37,9 +37,9 @@ D3DResource* CDeviceManager::AllocateStagingResource(D3DResource* pForTex, bool 
     Desc.CPUAccessFlags = bUpload ? D3D11_CPU_ACCESS_WRITE     : D3D11_CPU_ACCESS_READ;
     Desc.BindFlags      = bUpload ? D3D11_BIND_SHADER_RESOURCE : 0;
 
-#if defined(CRY_USE_METAL)
+#if defined(AZ_PLATFORM_APPLE_OSX)
     // For metal when we do a subresource copy we render to the texture so need to set the render target flag
-    Desc.BindFlags |= D3D11_BIND_RENDER_TARGET;
+    Desc.BindFlags |= D3D11_BIND_RENDER_TARGET; //todo: Remove this for mac too
 #endif
 
     // BindFlags play a part in matching the descriptions. Only search after we have finished
@@ -63,9 +63,9 @@ D3DResource* CDeviceManager::AllocateStagingResource(D3DResource* pForTex, bool 
             stagingDesc.CPUAccessFlags = bUpload ? D3D11_CPU_ACCESS_WRITE     : D3D11_CPU_ACCESS_READ;
             stagingDesc.BindFlags      = bUpload ? D3D11_BIND_SHADER_RESOURCE : 0;
 
-#if defined(CRY_USE_METAL)
+#if defined(AZ_PLATFORM_APPLE_OSX)
             // For metal when we do a subresource copy we render to the texture so need to set the render target flag
-            stagingDesc.BindFlags |= D3D11_BIND_RENDER_TARGET;
+            stagingDesc.BindFlags |= D3D11_BIND_RENDER_TARGET; //todo: Remove this for mac too
 #endif
 
             if (memcmp(&stagingDesc, &Desc, sizeof(Desc)) != 0)
@@ -247,10 +247,19 @@ HRESULT CDeviceManager::Create2DTexture(const string& textureName, uint32 nWidth
     {
         nBindFlags |= D3D11_BIND_RENDER_TARGET;
     }
+    
+#if defined(AZ_PLATFORM_APPLE_IOS)
+    if (nUsage & USAGE_MEMORYLESS)
+    {
+        nBindFlags |= D3D11_BIND_MEMORYLESS;
+    }
+#endif
+    
     if (nUsage & USAGE_UNORDERED_ACCESS)
     {
         nBindFlags |= D3D11_BIND_UNORDERED_ACCESS;
     }
+    
     uint32 nMiscFlags = 0;
     if (nUsage & USAGE_AUTOGENMIPS)
     {
@@ -284,7 +293,11 @@ HRESULT CDeviceManager::Create2DTexture(const string& textureName, uint32 nWidth
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION DEVICEMANAGER_D3D11_INL_SECTION_1
-#include AZ_RESTRICTED_FILE(DeviceManager_D3D11_inl, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/DeviceManager_D3D11_inl_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/DeviceManager_D3D11_inl_provo.inl"
+    #endif
 #endif
 
     D3D11_SUBRESOURCE_DATA* pSRD = NULL;
@@ -300,14 +313,22 @@ HRESULT CDeviceManager::Create2DTexture(const string& textureName, uint32 nWidth
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION DEVICEMANAGER_D3D11_INL_SECTION_2
-#include AZ_RESTRICTED_FILE(DeviceManager_D3D11_inl, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/DeviceManager_D3D11_inl_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/DeviceManager_D3D11_inl_provo.inl"
+    #endif
 #endif
         }
     }
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION DEVICEMANAGER_D3D11_INL_SECTION_3
-#include AZ_RESTRICTED_FILE(DeviceManager_D3D11_inl, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/DeviceManager_D3D11_inl_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/DeviceManager_D3D11_inl_provo.inl"
+    #endif
 #endif
 
     hr = gcpRendD3D->GetDevice().CreateTexture2D(&Desc, pSRD, &pD3DTex);
@@ -369,6 +390,14 @@ HRESULT CDeviceManager::CreateCubeTexture(const string& textureName, uint32 nSiz
     {
         nBindFlags |= D3D11_BIND_RENDER_TARGET;
     }
+    
+#if defined(AZ_PLATFORM_APPLE_IOS)
+    if (nUsage & USAGE_MEMORYLESS)
+    {
+        nBindFlags |= D3D11_BIND_MEMORYLESS;
+    }
+#endif
+    
     if (nUsage & USAGE_AUTOGENMIPS)
     {
         nMiscFlags |= D3D11_RESOURCE_MISC_GENERATE_MIPS;
@@ -407,7 +436,11 @@ HRESULT CDeviceManager::CreateCubeTexture(const string& textureName, uint32 nSiz
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION DEVICEMANAGER_D3D11_INL_SECTION_4
-#include AZ_RESTRICTED_FILE(DeviceManager_D3D11_inl, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/DeviceManager_D3D11_inl_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/DeviceManager_D3D11_inl_provo.inl"
+    #endif
 #endif
             }
         }
@@ -415,7 +448,11 @@ HRESULT CDeviceManager::CreateCubeTexture(const string& textureName, uint32 nSiz
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION DEVICEMANAGER_D3D11_INL_SECTION_5
-#include AZ_RESTRICTED_FILE(DeviceManager_D3D11_inl, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/DeviceManager_D3D11_inl_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/DeviceManager_D3D11_inl_provo.inl"
+    #endif
 #endif
 
     hr = gcpRendD3D->GetDevice().CreateTexture2D(&Desc, pSRD, &pD3DTex);
@@ -474,6 +511,14 @@ HRESULT CDeviceManager::CreateVolumeTexture(const string& textureName, uint32 nW
     {
         nBindFlags |= D3D11_BIND_RENDER_TARGET;
     }
+    
+#if defined(AZ_PLATFORM_APPLE_IOS)
+    if (nUsage & USAGE_MEMORYLESS)
+    {
+        nBindFlags |= D3D11_BIND_MEMORYLESS;
+    }
+#endif
+    
     if (nUsage & USAGE_UNORDERED_ACCESS)
     {
         nBindFlags |= D3D11_BIND_UNORDERED_ACCESS;
@@ -505,7 +550,11 @@ HRESULT CDeviceManager::CreateVolumeTexture(const string& textureName, uint32 nW
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION DEVICEMANAGER_D3D11_INL_SECTION_6
-#include AZ_RESTRICTED_FILE(DeviceManager_D3D11_inl, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/DeviceManager_D3D11_inl_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/DeviceManager_D3D11_inl_provo.inl"
+    #endif
 #endif
         }
     }
@@ -554,7 +603,6 @@ HRESULT CDeviceManager::CreateBuffer(
     , D3DBuffer** ppBuff)
 {
     FUNCTION_PROFILER(gEnv->pSystem, PROFILE_RENDERER);
-    MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_Other, 0, "CreateBuffer");
     HRESULT hr = S_OK;
 
 # ifndef _RELEASE
@@ -567,7 +615,11 @@ HRESULT CDeviceManager::CreateBuffer(
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION DEVICEMANAGER_D3D11_INL_SECTION_7
-#include AZ_RESTRICTED_FILE(DeviceManager_D3D11_inl, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/DeviceManager_D3D11_inl_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/DeviceManager_D3D11_inl_provo.inl"
+    #endif
 #endif
 
     BufDesc.ByteWidth = nSize * elemSize;
@@ -666,7 +718,11 @@ void CDeviceManager::ExtractBasePointer(D3DBuffer* buffer, uint8*& base_ptr)
 #   if BUFFER_ENABLE_DIRECT_ACCESS
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION DEVICEMANAGER_D3D11_INL_SECTION_8
-#include AZ_RESTRICTED_FILE(DeviceManager_D3D11_inl, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/DeviceManager_D3D11_inl_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/DeviceManager_D3D11_inl_provo.inl"
+    #endif
 #       endif
 #   else
     base_ptr = NULL;

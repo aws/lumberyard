@@ -56,7 +56,7 @@ namespace AzToolsFramework
             }
         }
 
-        void EditorSelectionAccentSystemComponent::AfterEntitySelectionChanged()
+        void EditorSelectionAccentSystemComponent::AfterEntitySelectionChanged(const AzToolsFramework::EntityIdList&, const AzToolsFramework::EntityIdList&)
         {
             if (!m_isAccentRefreshQueued)
             {
@@ -95,6 +95,7 @@ namespace AzToolsFramework
             {
                 AzToolsFramework::ComponentEntityEditorRequestBus::Event(accentedEntity, &AzToolsFramework::ComponentEntityEditorRequests::SetSandboxObjectAccent, ComponentEntityAccentType::None);
             }
+            m_currentlyAccentedEntities.clear();
         }
 
         void EditorSelectionAccentSystemComponent::RecalculateAndApplyAccents()

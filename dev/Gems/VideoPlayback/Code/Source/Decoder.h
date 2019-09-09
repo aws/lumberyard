@@ -24,6 +24,20 @@
 #include <AzCore/std/parallel/atomic.h>
 #include <AzCore/std/parallel/semaphore.h>
 
+#if defined AZ_RESTRICTED_PLATFORM
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/Decoder_h_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/Decoder_h_provo.inl"
+    #endif
+#endif
+#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
+#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
+#else
+#define AZ_VIDEOPLAYBACK_GEM_TRAIT_ENABLE_DECODER 1
+#endif
+
+#if AZ_VIDEOPLAYBACK_GEM_TRAIT_ENABLE_DECODER
 extern "C"
 {
     #pragma warning( disable : 4244 )   //Disable warning for libav
@@ -189,3 +203,5 @@ namespace AZ
         };
     } // namespace VideoPlayback
 }//namespace AZ
+
+#endif

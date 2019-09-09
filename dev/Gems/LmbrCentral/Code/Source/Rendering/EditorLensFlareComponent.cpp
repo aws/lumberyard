@@ -118,7 +118,7 @@ namespace LmbrCentral
                         Attribute(AZ::Edit::Attributes::Min, 0.f)->
 
                     DataElement(0, &LensFlareConfiguration::m_attachToSun, "Attach to sun", "Attach this flare to the sun")->
-                        Attribute(AZ::Edit::Attributes::ChangeNotify, &LensFlareConfiguration::PropertyChanged)->
+                        Attribute(AZ::Edit::Attributes::ChangeNotify, &LensFlareConfiguration::AttachToSunChanged)->
 
                     DataElement(0, &LensFlareConfiguration::m_useVisAreas, "Use VisAreas", "Lens Flares is affected by VisAreas")->
                         Attribute(AZ::Edit::Attributes::ChangeNotify, &LensFlareConfiguration::PropertyChanged)->
@@ -130,7 +130,9 @@ namespace LmbrCentral
                         Attribute(AZ::Edit::Attributes::ChangeNotify, &LensFlareConfiguration::PropertyChanged)->
 
                     DataElement(0, &LensFlareConfiguration::m_viewDistMultiplier, "View distance multiplier", "Adjusts max view distance. If 1.0 then default is used. 1.1 would be 10% further than default.")->
-                        Attribute(AZ::Edit::Attributes::ChangeNotify, &LensFlareConfiguration::PropertyChanged)->
+                    Attribute(AZ::Edit::Attributes::ChangeNotify, &LensFlareConfiguration::PropertyChanged)->
+                        // Will be visible if attach to sun is false.
+                        Attribute(AZ::Edit::Attributes::Visibility, &LensFlareConfiguration::ShouldViewDistanceMultiplier)->
                         Attribute(AZ::Edit::Attributes::Suffix, "x")->
                         Attribute(AZ::Edit::Attributes::Min, 0.f)->
 
@@ -222,6 +224,25 @@ namespace LmbrCentral
         return AZ_CRC("RefreshEntireTree", 0xefbc823c);
     }
 
+    AZ::u32 EditorLensFlareConfiguration::AttachToSunChanged()
+    {
+        // if attached to the sun , then use VIEW_DISTANCE_MULTIPLIER_MAX value
+        // else use the value set by user.
+        if (m_attachToSun)
+        {
+            m_viewDistMultiplierUser = m_viewDistMultiplier; 
+            m_viewDistMultiplier = static_cast<float>(IRenderNode::VIEW_DISTANCE_MULTIPLIER_MAX);
+        }
+        else
+        {
+            // We restore the cache user set value when it is not attached to the sun.
+            m_viewDistMultiplier = m_viewDistMultiplierUser;
+        }
+
+        PropertyChanged();
+
+        return AZ_CRC("RefreshEntireTree", 0xefbc823c);
+    }
     void EditorLensFlareConfiguration::AnimationSettingsChanged()
     {
         PropertyChanged();
@@ -260,6 +281,10 @@ namespace LmbrCentral
 
         //Check to see if we need to start connected to the LightSettingsNotificationBus
         m_configuration.SyncAnimationChanged();
+        // We call this one in order to cache the user set value.
+        m_configuration.m_viewDistMultiplierUser = m_configuration.m_viewDistMultiplier;
+
+        m_configuration.AttachToSunChanged();
 
         EditorLensFlareComponentRequestBus::Handler::BusConnect(entityId);
         RenderNodeRequestBus::Handler::BusConnect(entityId);
@@ -322,7 +347,9 @@ namespace LmbrCentral
         }
     }
 
-    void EditorLensFlareComponent::DisplayEntity(bool& handled)
+    void EditorLensFlareComponent::DisplayEntityViewport(
+        const AzFramework::ViewportInfo& viewportInfo,
+        AzFramework::DebugDisplayRequests& debugDisplay)
     {
         // Don't draw extra visualization unless selected.
         if (!IsSelected())
@@ -330,21 +357,18 @@ namespace LmbrCentral
             return;
         }
 
-        handled = true;
-
-        auto* dc = AzFramework::EntityDebugDisplayRequestBus::FindFirstHandler();
-        AZ_Assert(dc, "Invalid display context.");
-
         AZ::Transform transform = AZ::Transform::CreateIdentity();
         EBUS_EVENT_ID_RESULT(transform, GetEntityId(), AZ::TransformBus, GetWorldTM);
 
-        dc->PushMatrix(transform);
+        debugDisplay.PushMatrix(transform);
+
         {
             const AZ::Vector3& color = m_configuration.m_tint;
-            dc->SetColor(AZ::Vector4(color.GetX(), color.GetY(), color.GetZ(), 1.f));
-            dc->DrawWireSphere(AZ::Vector3::CreateZero(), 1.0f);
+            debugDisplay.SetColor(AZ::Vector4(color.GetX(), color.GetY(), color.GetZ(), 1.f));
+            debugDisplay.DrawWireSphere(AZ::Vector3::CreateZero(), 1.0f);
         }
-        dc->PopMatrix();
+
+        debugDisplay.PopMatrix();
     }
 
     AZ::u32 EditorLensFlareComponent::OnLensFlareSelected()

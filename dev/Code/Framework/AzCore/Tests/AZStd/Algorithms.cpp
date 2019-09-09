@@ -16,6 +16,8 @@
 #include <AzCore/std/functional.h>
 #include <AzCore/std/containers/array.h>
 #include <AzCore/std/containers/vector.h>
+#include <AzCore/std/smart_ptr/make_shared.h>
+#include <AzCore/std/smart_ptr/shared_ptr.h>
 #include <AzCore/std/sort.h>
 
 #include <AzCore/Memory/SystemAllocator.h>
@@ -231,6 +233,38 @@ namespace UnitTest
         }
     }
 
+    TEST_F(Algorithms, InsertionSort_SharedPtr)
+    {
+        array<shared_ptr<int>, 10> elementsSrc = {
+        { 
+            make_shared<int>(10), make_shared<int>(2), make_shared<int>(6), make_shared<int>(3), 
+            make_shared<int>(5), make_shared<int>(8), make_shared<int>(7), make_shared<int>(9), 
+            make_shared<int>(1), make_shared<int>(4) }
+        };
+
+        // Insertion sort
+        auto compareLesser = [](const shared_ptr<int>& lhs, const shared_ptr<int>& rhs) -> bool
+        {
+            return *lhs < *rhs;
+        };
+        array<shared_ptr<int>, 10> elements1(elementsSrc);
+        insertion_sort(elements1.begin(), elements1.end(), compareLesser);
+        for (size_t i = 1; i < elements1.size(); ++i)
+        {
+            EXPECT_LT(*elements1[i - 1], *elements1[i]);
+        }
+
+        auto compareGreater = [](const shared_ptr<int>& lhs, const shared_ptr<int>& rhs) -> bool
+        {
+            return *lhs > *rhs;
+        };
+        insertion_sort(elements1.begin(), elements1.end(), compareGreater);
+        for (size_t i = 1; i < elements1.size(); ++i)
+        {
+            EXPECT_GT(*elements1[i - 1], *elements1[i]);
+        }
+    }
+
     TEST_F(Algorithms, Sort)
     {
         vector<int> sortTest;
@@ -254,7 +288,7 @@ namespace UnitTest
             }
 
             sortTest.clear();
-            for (int i = vectorSize; i >= 0; --i)
+            for (int i = vectorSize-1; i >= 0; --i)
             {
                 sortTest.push_back(i);
             }
@@ -269,6 +303,57 @@ namespace UnitTest
             for (size_t i = 1; i < sortTest.size(); ++i)
             {
                 EXPECT_GT(sortTest[i - 1], sortTest[i]);
+            }
+        }
+    }
+
+    TEST_F(Algorithms, Sort_SharedPtr)
+    {
+        vector<shared_ptr<int>> sortTest;
+        for (int iSizeTest = 0; iSizeTest < 4; ++iSizeTest)
+        {
+            int vectorSize = 0;
+            switch (iSizeTest)
+            {
+            case 0:
+                vectorSize = 15;     // less than insertion sort threshold (32 at the moment)
+                break;
+            case 1:
+                vectorSize = 32;     // exact size
+                break;
+            case 2:
+                vectorSize = 64;     // double
+                break;
+            case 3:
+                vectorSize = 100;     // just more
+                break;
+            }
+
+            sortTest.clear();
+            for (int i = vectorSize - 1; i >= 0; --i)
+            {
+                sortTest.push_back(make_shared<int>(i));
+            }
+
+            // Normal sort test
+            auto compareLesser = [](const shared_ptr<int>& lhs, const shared_ptr<int>& rhs) -> bool
+            {
+                return *lhs < *rhs;
+            };
+            sort(sortTest.begin(), sortTest.end(), compareLesser);
+            for (size_t i = 1; i < sortTest.size(); ++i)
+            {
+                EXPECT_LT(*sortTest[i - 1], *sortTest[i]);
+            }
+
+            auto compareGreater = [](const shared_ptr<int>& lhs, const shared_ptr<int>& rhs) -> bool
+            {
+                return *lhs > *rhs;
+            };
+            sort(sortTest.begin(), sortTest.end(), compareGreater);
+            for (size_t i = 1; i < sortTest.size(); ++i)
+            {
+                EXPECT_GT(*sortTest[i - 1], *sortTest[i]);
             }
         }
     }
@@ -296,7 +381,7 @@ namespace UnitTest
             }
 
             sortTest.clear();
-            for (int i = vectorSize; i >= 0; --i)
+            for (int i = vectorSize-1; i >= 0; --i)
             {
                 sortTest.push_back(i);
             }
@@ -311,6 +396,57 @@ namespace UnitTest
             for (size_t i = 1; i < sortTest.size(); ++i)
             {
                 EXPECT_GT(sortTest[i - 1], sortTest[i]);
+            }
+        }
+    }
+
+    TEST_F(Algorithms, StableSort_SharedPtr)
+    {
+        vector<shared_ptr<int>> sortTest;
+        for (int iSizeTest = 0; iSizeTest < 4; ++iSizeTest)
+        {
+            int vectorSize = 0;
+            switch (iSizeTest)
+            {
+            case 0:
+                vectorSize = 15;     // less than insertion sort threshold (32 at the moment)
+                break;
+            case 1:
+                vectorSize = 32;     // exact size
+                break;
+            case 2:
+                vectorSize = 64;     // double
+                break;
+            case 3:
+                vectorSize = 100;     // just more
+                break;
+            }
+
+            sortTest.clear();
+            for (int i = vectorSize-1; i >= 0; --i)
+            {
+                sortTest.push_back(make_shared<int>(i));
+            }
+
+            // Stable sort test
+            auto compareLesser = [](const shared_ptr<int>& lhs, const shared_ptr<int>& rhs) -> bool
+            {
+                return *lhs < *rhs;
+            };
+            stable_sort(sortTest.begin(), sortTest.end(), compareLesser, sortTest.get_allocator());
+            for (size_t i = 1; i < sortTest.size(); ++i)
+            {
+                EXPECT_LT(*sortTest[i - 1], *sortTest[i]);
+            }
+
+            auto compareGreater = [](const shared_ptr<int>& lhs, const shared_ptr<int>& rhs) -> bool
+            {
+                return *lhs > *rhs;
+            };
+            stable_sort(sortTest.begin(), sortTest.end(), compareGreater, sortTest.get_allocator());
+            for (size_t i = 1; i < sortTest.size(); ++i)
+            {
+                EXPECT_GT(*sortTest[i - 1], *sortTest[i]);
             }
         }
     }
@@ -338,7 +474,7 @@ namespace UnitTest
             }
 
             sortTest.clear();
-            for (int i = vectorSize; i >= 0; --i)
+            for (int i = vectorSize-1; i >= 0; --i)
             {
                 sortTest.push_back(i);
             }
@@ -354,6 +490,58 @@ namespace UnitTest
             for (int i = 1; i < sortSize; ++i)
             {
                 EXPECT_GT(sortTest[i - 1], sortTest[i]);
+            }
+        }
+    }
+
+    TEST_F(Algorithms, PartialSort_SharedPtr)
+    {
+        vector<shared_ptr<int>> sortTest;
+        for (int iSizeTest = 0; iSizeTest < 4; ++iSizeTest)
+        {
+            int vectorSize = 0;
+            switch (iSizeTest)
+            {
+            case 0:
+                vectorSize = 15;     // less than insertion sort threshold (32 at the moment)
+                break;
+            case 1:
+                vectorSize = 32;     // exact size
+                break;
+            case 2:
+                vectorSize = 64;     // double
+                break;
+            case 3:
+                vectorSize = 100;     // just more
+                break;
+            }
+
+            sortTest.clear();
+            for (int i = vectorSize - 1; i >= 0; --i)
+            {
+                sortTest.push_back(make_shared<int>(i));
+            }
+
+            // partial_sort test
+            auto compareLesser = [](const shared_ptr<int>& lhs, const shared_ptr<int>& rhs) -> bool
+            {
+                return *lhs < *rhs;
+            };
+            int sortSize = vectorSize / 2;
+            partial_sort(sortTest.begin(), sortTest.begin() + sortSize, sortTest.end(), compareLesser);
+            for (int i = 1; i < sortSize; ++i)
+            {
+                EXPECT_LT(*sortTest[i - 1], *sortTest[i]);
+            }
+
+            auto compareGreater = [](const shared_ptr<int>& lhs, const shared_ptr<int>& rhs) -> bool
+            {
+                return *lhs > *rhs;
+            };
+            partial_sort(sortTest.begin(), sortTest.begin() + sortSize, sortTest.end(), compareGreater);
+            for (int i = 1; i < sortSize; ++i)
+            {
+                EXPECT_GT(*sortTest[i - 1], *sortTest[i]);
             }
         }
     }

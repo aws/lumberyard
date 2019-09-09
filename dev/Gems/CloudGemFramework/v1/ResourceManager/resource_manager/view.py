@@ -8,7 +8,7 @@
 # remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #
-# $Revision: #2 $
+# $Revision: #1 $
 
 import util
 import dateutil
@@ -110,6 +110,18 @@ class ViewContext(object):
 
     def deleting_stack(self, stack_name, stack_id):
         self._output_message('\nDeleting stack {} ({})'.format(stack_name, stack_id))
+
+    def deleting_custom_resource_lambdas(self):
+        self._output_message('Deleting custom resource lambdas')
+
+    def deleting_lambda(self, lambda_name, version=None):
+        if version:
+            self._output_message('Deleting {}:{}'.format(lambda_name, version))
+        else:
+            self._output_message('Deleting {}'.format(lambda_name))
+
+    def deleting_lambdas_completed(self, delete_count):
+        self._output_message('Deleted {} lambdas.'.format(delete_count))
 
     def processing_lambda_code(self, description, function_name):
         self._output_message('\nProcessing code for the {} {} Lambda function.'.format(description, function_name))

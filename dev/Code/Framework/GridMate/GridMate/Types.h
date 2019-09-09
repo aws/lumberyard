@@ -65,7 +65,7 @@ namespace GridMate
     * \note if a platform supports multiple you can switch them, but you need to
     * first stop all currently running services.
     */
-    enum ServiceType
+    enum ServiceType : int
     {
         ST_LAN,
         ST_XLIVE, // ACCEPTED_USE

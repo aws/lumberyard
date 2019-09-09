@@ -22,3 +22,13 @@ def sanitize_lambda_name(lambda_name):
         result = lambda_name[:MAX_LAMBDA_NAME_LENGTH - len(digest)] + digest
 
     return result
+
+
+def get_function_runtime(name, description, resources):
+    function_runtime = description["Properties"]["Runtime"]
+    # we are probably looking for a configuration
+    if type(function_runtime) is type({}) and "Fn::GetAtt" in function_runtime:
+        lambda_config = function_runtime["Fn::GetAtt"][0]
+        function_runtime = resources[lambda_config]['Properties']["Runtime"]
+
+    return function_runtime

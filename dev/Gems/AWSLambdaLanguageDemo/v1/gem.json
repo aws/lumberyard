@@ -1,0 +1,24 @@
+{
+    "DisplayName": "AWS Lambda Language Demo",
+    "Uuid": "35d2c0caf522417398ce5807cbedb60c",
+    "Tags": ["AWS","Cloud Canvas","Lambda"],
+    "Modules": [
+        {
+            "Type": "GameModule"
+        }
+    ],
+    "Summary": "A gem containing a Cloud Canvas resource group with multiple Lambdas, all implemented in different languages.",
+    "Version": "1.0.0",
+    "IconPath": "preview.png",
+    "GemFormatVersion": 4,
+    "Dependencies": [
+        {
+            "VersionConstraints": [
+                "~>1.1.3"
+            ],
+            "_comment": "CloudGemFramework",
+            "Uuid": "6fc787a982184217a5a553ca24676cfa"
+        }
+    ],
+    "Name": "AWSLambdaLanguageDemo"
+}

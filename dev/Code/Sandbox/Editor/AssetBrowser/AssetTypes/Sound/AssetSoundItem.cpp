@@ -28,7 +28,7 @@
 
 #include <QVariant>
 
-namespace AssetBrowser
+namespace AssetSoundItemInternal
 {
     const char* kSoundImageFilename = "Editor/UI/Icons/asset_sound.png";
 };
@@ -47,7 +47,7 @@ CAssetSoundItem::CAssetSoundItem()
 
     if (s_uncachedSoundThumbBmp.isNull())
     {
-        s_uncachedSoundThumbBmp.load(AssetBrowser::kSoundImageFilename);
+        s_uncachedSoundThumbBmp.load(AssetSoundItemInternal::kSoundImageFilename);
     }
 
     m_pUncachedThumbBmp = &s_uncachedSoundThumbBmp;

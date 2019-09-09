@@ -1,0 +1,30 @@
+﻿@import "../../../styles/variables";
+
+.jira-integration-settings {
+    padding-left: 0px;
+}
+
+.reportData {
+    padding: 0;
+}
+
+.update-jira-mappings-link {
+    cursor: pointer;
+    color: $primary-color;
+}
+
+.object-field {
+    border: 1px solid $lighter-gray;
+    padding: 10px;
+    background-color: $border-gray;
+    margin-bottom: 5px;
+}
+
+.add-array-item {
+    cursor: pointer;
+}
+
+.delete-icon {
+    margin-right: 5px;
+    cursor: pointer;
+}

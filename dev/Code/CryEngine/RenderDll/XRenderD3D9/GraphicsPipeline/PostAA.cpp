@@ -17,6 +17,7 @@
 #include "D3DPostProcess.h"
 #include "DepthOfField.h"
 #include "../../Common/Textures/TextureManager.h"
+#include <Common/RenderCapabilities.h>
 
 struct TemporalAAParameters
 {
@@ -29,7 +30,6 @@ struct TemporalAAParameters
     // 1  0  3
     // 7  4  8
     float m_beckmannHarrisFilter[9];
-    float m_sharpeningFactor;
     float m_useAntiFlickerFilter;
     float m_clampingFactor;
     float m_newFrameWeight;
@@ -48,6 +48,16 @@ void CPostAA::Render()
     gcpRendD3D->GetGraphicsPipeline().RenderPostAA();
 }
 
+PostAAPass::PostAAPass()
+{
+    AZ::RenderNotificationsBus::Handler::BusConnect();
+}
+
+PostAAPass::~PostAAPass()
+{
+    AZ::RenderNotificationsBus::Handler::BusDisconnect();
+}
+
 void PostAAPass::Init()
 {
     m_TextureAreaSMAA = CTexture::ForName("EngineAssets/ScreenSpace/AreaTex.dds", FT_DONT_STREAM, eTF_Unknown);
@@ -58,6 +68,16 @@ void PostAAPass::Shutdown()
 {
     SAFE_RELEASE(m_TextureAreaSMAA);
     SAFE_RELEASE(m_TextureSearchSMAA);
+}
+
+void PostAAPass::OnRendererFreeResources(int flags)
+{
+    // If texture resources are about to be freed by the renderer
+    if (flags & FRR_TEXTURES)
+    {
+        // Release the PostAA textures first so they do not leak
+        Shutdown();
+    }
 }
 
 void PostAAPass::Reset()
@@ -136,7 +156,6 @@ static void BuildTemporalParameters(TemporalAAParameters& temporalAAParameters)
     }
 
     temporalAAParameters.m_reprojection = reprojection64;
-    temporalAAParameters.m_sharpeningFactor = max(CRenderer::CV_r_AntialiasingTAASharpening + 1.0f, 1.0f);
     temporalAAParameters.m_useAntiFlickerFilter = (float)CRenderer::CV_r_AntialiasingTAAUseAntiFlickerFilter;
     temporalAAParameters.m_clampingFactor = CRenderer::CV_r_AntialiasingTAAClampingFactor;
     temporalAAParameters.m_newFrameWeight = AZStd::max(gRenDev->CV_r_AntialiasingTAANewFrameWeight, FLT_EPSILON);
@@ -292,22 +311,39 @@ void PostAAPass::Execute()
 
     uint64 nSaveFlagsShader_RT = gRenDev->m_RP.m_FlagsShader_RT;
     gRenDev->m_RP.m_FlagsShader_RT &= ~(g_HWSR_MaskBit[HWSR_SAMPLE0] | g_HWSR_MaskBit[HWSR_SAMPLE1] | g_HWSR_MaskBit[HWSR_SAMPLE2] | g_HWSR_MaskBit[HWSR_SAMPLE3]);
-
+    
     CTexture* inOutBuffer = CTexture::s_ptexSceneSpecular;
 
+    static ICVar* DolbyCvar = gEnv->pConsole->GetCVar("r_HDRDolby");
+    const int DolbyCvarValue = DolbyCvar ? DolbyCvar->GetIVal() : eDVM_Disabled;
+    const bool bDolbyHDRMode = DolbyCvarValue > eDVM_Disabled;
+    
+    CTexture* currentRT = gcpRendD3D->FX_GetCurrentRenderTarget(0);
+    if (currentRT == SPostEffectsUtils::AcquireFinalCompositeTarget(bDolbyHDRMode) && CRenderer::CV_r_SkipNativeUpscale)
+    {
+        gcpRendD3D->FX_PopRenderTarget(0);
+        gcpRendD3D->RT_SetViewport(0, 0, gcpRendD3D->GetNativeWidth(), gcpRendD3D->GetNativeHeight());
+        gcpRendD3D->FX_SetRenderTarget(0, gcpRendD3D->GetBackBuffer(), nullptr);
+        gcpRendD3D->FX_SetActiveRenderTargets();
+    }
+
+    bool useCurrentRTForAAOutput = (CRenderer::CV_r_SkipRenderComposites == 1);
     switch (CRenderer::CV_r_AntialiasingMode)
     {
     case eAT_SMAA1TX:
-        RenderSMAA(inOutBuffer, &inOutBuffer);
+        RenderSMAA(inOutBuffer, &inOutBuffer, useCurrentRTForAAOutput);
         break;
     case eAT_FXAA:
-        RenderFXAA(inOutBuffer, &inOutBuffer);        
+        RenderFXAA(inOutBuffer, &inOutBuffer, useCurrentRTForAAOutput);
         break;
     case eAT_NOAA:
         break;
     }
-
-    RenderComposites(inOutBuffer);
+    
+    if (!CRenderer::CV_r_SkipRenderComposites)
+    {
+        RenderComposites(inOutBuffer);
+    }
 
     gcpRendD3D->m_RP.m_PersFlags2 |= RBPF2_NOPOSTAA;
     CTexture::s_ptexBackBuffer->SetResolved(true);
@@ -315,7 +351,7 @@ void PostAAPass::Execute()
     gRenDev->m_RP.m_FlagsShader_RT = nSaveFlagsShader_RT;
 }
 
-void PostAAPass::RenderSMAA(CTexture* sourceTexture, CTexture** outputTexture)
+void PostAAPass::RenderSMAA(CTexture* sourceTexture, CTexture** outputTexture, bool useCurrentRT)
 {
     CTexture* pEdgesTex = CTexture::s_ptexSceneNormalsMap; // Reusing esram resident target
     CTexture* pBlendTex = CTexture::s_ptexSceneDiffuse;    // Reusing esram resident target (note that we access this FP16 RT using point filtering - full rate on GCN)
@@ -413,7 +449,14 @@ void PostAAPass::RenderSMAA(CTexture* sourceTexture, CTexture** outputTexture)
             CTexture* currentTarget = GetUtils().GetTemporalCurrentTarget();
             CTexture* historyTarget = GetUtils().GetTemporalHistoryTarget();
 
-            gcpRendD3D->FX_PushRenderTarget(0, currentTarget, nullptr);
+            if (useCurrentRT)
+            {
+                currentTarget = gcpRendD3D->FX_GetCurrentRenderTarget(0);
+            }
+            else
+            {
+                gcpRendD3D->FX_PushRenderTarget(0, currentTarget, nullptr);
+            }
 
             static CCryNameTSCRC TechNameTAA("SMAA_TAA");
             GetUtils().ShBeginPass(pShader, TechNameTAA, FEF_DONTSETTEXTURES | FEF_DONTSETSTATES);
@@ -422,6 +465,8 @@ void PostAAPass::RenderSMAA(CTexture* sourceTexture, CTexture** outputTexture)
                 TemporalAAParameters temporalAAParameters;
                 BuildTemporalParameters(temporalAAParameters);
 
+                const float sharpening = max(1.0f + CRenderer::CV_r_AntialiasingNonTAASharpening, 1.0f);
+
                 static CCryNameR szReprojMatrix("ReprojectionMatrix");
                 pShader->FXSetPSFloat(szReprojMatrix, (Vec4*)temporalAAParameters.m_reprojection.GetData(), 4);
 
@@ -429,7 +474,7 @@ void PostAAPass::RenderSMAA(CTexture* sourceTexture, CTexture** outputTexture)
                     temporalAAParameters.m_useAntiFlickerFilter,
                     temporalAAParameters.m_clampingFactor,
                     temporalAAParameters.m_newFrameWeight,
-                    temporalAAParameters.m_sharpeningFactor);
+                    sharpening);
 
                 static CCryNameR paramName("TemporalParams");
                 pShader->FXSetPSFloat(paramName, &temporalParams, 1);
@@ -452,18 +497,28 @@ void PostAAPass::RenderSMAA(CTexture* sourceTexture, CTexture** outputTexture)
 
             GetUtils().ShEndPass();
 
-            gcpRendD3D->FX_PopRenderTarget(0);
+            if (!useCurrentRT)
+            {
+                gcpRendD3D->FX_PopRenderTarget(0);
+            }
 
             *outputTexture = currentTarget;
         }
     }
 }
 
-void PostAAPass::RenderFXAA(CTexture* sourceTexture, CTexture** outputTexture)
+void PostAAPass::RenderFXAA(CTexture* sourceTexture, CTexture** outputTexture, bool useCurrentRT)
 {
     PROFILE_LABEL_SCOPE("FXAA");
     CTexture* currentTarget = CTexture::s_ptexSceneNormalsMap;
-    gcpRendD3D->FX_PushRenderTarget(0, currentTarget, nullptr);
+    if (useCurrentRT)
+    {
+        currentTarget = gcpRendD3D->FX_GetCurrentRenderTarget(0);
+    }
+    else
+    {
+        gcpRendD3D->FX_PushRenderTarget(0, currentTarget, nullptr);
+    }
 
     CShader* pShader = CShaderMan::s_shPostAA;
     const f32 fWidthRcp = 1.0f / (float)gcpRendD3D->GetWidth();
@@ -485,7 +540,10 @@ void PostAAPass::RenderFXAA(CTexture* sourceTexture, CTexture** outputTexture)
     gcpRendD3D->FX_Commit();
 
     GetUtils().ShEndPass();
-    gcpRendD3D->FX_PopRenderTarget(0);
+    if (!useCurrentRT)
+    {
+        gcpRendD3D->FX_PopRenderTarget(0);
+    }
     *outputTexture = currentTarget;
 }
 
@@ -493,8 +551,27 @@ void PostAAPass::RenderComposites(CTexture* sourceTexture)
 {
     PROFILE_LABEL_SCOPE("FLARES, GRAIN");
 
-    gRenDev->m_RP.m_FlagsShader_RT &= ~(g_HWSR_MaskBit[HWSR_SAMPLE0] | g_HWSR_MaskBit[HWSR_SAMPLE1] | g_HWSR_MaskBit[HWSR_SAMPLE2] | g_HWSR_MaskBit[HWSR_SAMPLE3]);
-    if ((gcpRendD3D->FX_GetAntialiasingType() & eAT_TEMPORAL_MASK) == 0)
+    CD3D9Renderer* rd = gcpRendD3D;
+    
+    rd->FX_SetStencilDontCareActions(0, true, true);
+    bool bEmpty = SRendItem::IsListEmpty(EFSLIST_AFTER_POSTPROCESS, rd->m_RP.m_nProcessThreadID, rd->m_RP.m_pRLD);
+    //We may need to preserve the depth buffer in case there is something to render in the EFSLIST_AFTER_POSTPROCESS bucket.
+    //It could be UI in the 3d world. If the bucket is empty ignore the depth buffer as it is not needed.
+    if (bEmpty)
+    {
+        rd->FX_SetDepthDontCareActions(0, true, true);
+    }
+    else
+    {
+        rd->FX_SetDepthDontCareActions(0, false, false);
+    }
+    
+    gRenDev->m_RP.m_FlagsShader_RT &= ~(g_HWSR_MaskBit[HWSR_SAMPLE0] | g_HWSR_MaskBit[HWSR_SAMPLE1] | g_HWSR_MaskBit[HWSR_SAMPLE2] | g_HWSR_MaskBit[HWSR_SAMPLE3] | g_HWSR_MaskBit[HWSR_SAMPLE5]);
+
+    // enable sharpening controlled by r_AntialiasingNonTAASharpening here 
+    // TAA applies sharpening in a different shader stage (TAAGatherHistory)
+    if (!(gcpRendD3D->FX_GetAntialiasingType() & eAT_TAA_MASK) &&
+        CRenderer::CV_r_AntialiasingNonTAASharpening > 0.f)
     {
         gRenDev->m_RP.m_FlagsShader_RT |= g_HWSR_MaskBit[HWSR_SAMPLE2];
     }
@@ -515,6 +592,11 @@ void PostAAPass::RenderComposites(CTexture* sourceTexture)
     else
     {
         gRenDev->m_RP.m_FlagsShader_RT &= ~g_HWSR_MaskBit[HWSR_SAMPLE4];
+    }
+
+    if (!RenderCapabilities::SupportsTextureViews())
+    {
+        gRenDev->m_RP.m_FlagsShader_RT |= g_HWSR_MaskBit[HWSR_SAMPLE5];
     }
     
     PostProcessUtils().SetSRGBShaderFlags();
@@ -588,7 +670,7 @@ void PostAAPass::RenderComposites(CTexture* sourceTexture)
     }
     else
     {
-        const Vec4 temporalParams(0, 0, 0, max(1.0f + CRenderer::CV_r_AntialiasingTAASharpening, 1.0f));
+        const Vec4 temporalParams(0, 0, 0, max(1.0f + CRenderer::CV_r_AntialiasingNonTAASharpening, 1.0f));
         static CCryNameR paramName("TemporalParams");
         CShaderMan::s_shPostAA->FXSetPSFloat(paramName, &temporalParams, 1);
 
@@ -635,6 +717,11 @@ void PostAAPass::RenderComposites(CTexture* sourceTexture)
     gcpRendD3D->FX_PopWireframeMode();
 
     GetUtils().ShEndPass();
+    
+    //UI should be coming in next. Since its in a gem we cant set loadactions in lyshine.
+    //Hence we are setting it here. Stencil is setup as DoCare as it gets cleared at the start of UI rendering
+    rd->FX_SetDepthDontCareActions(0, true, true); //We set this again here as all the actions get reset to conservative settings (do care) after the draw call
+    rd->FX_SetStencilDontCareActions(0, false, true);
 }
 
 void PostAAPass::RenderFinalComposite(CTexture* sourceTexture)
@@ -645,11 +732,29 @@ void PostAAPass::RenderFinalComposite(CTexture* sourceTexture)
     }
 
     PROFILE_LABEL_SCOPE("NATIVE_UPSCALE");
-    gRenDev->m_RP.m_FlagsShader_RT &= ~g_HWSR_MaskBit[HWSR_SAMPLE0];
+    gRenDev->m_RP.m_FlagsShader_RT &= ~(g_HWSR_MaskBit[HWSR_SAMPLE0] | g_HWSR_MaskBit[HWSR_SAMPLE5]);
+#if AZ_RENDER_TO_TEXTURE_GEM_ENABLED
+    const bool renderSceneToTexture = (gcpRendD3D->m_RP.m_TI[gcpRendD3D->m_RP.m_nProcessThreadID].m_PersFlags & RBPF_RENDER_SCENE_TO_TEXTURE) != 0;
+    if ((sourceTexture->GetWidth() != gRenDev->GetOverlayWidth() || sourceTexture->GetHeight() != gRenDev->GetOverlayHeight()) && !renderSceneToTexture)
+#else
     if (sourceTexture->GetWidth() != gRenDev->GetOverlayWidth() || sourceTexture->GetHeight() != gRenDev->GetOverlayHeight())
+#endif // if AZ_RENDER_TO_TEXTURE_GEM_ENABLED
     {
         gRenDev->m_RP.m_FlagsShader_RT |= g_HWSR_MaskBit[HWSR_SAMPLE0];
     }
+
+    if (!RenderCapabilities::SupportsTextureViews())
+    {
+        gRenDev->m_RP.m_FlagsShader_RT |= g_HWSR_MaskBit[HWSR_SAMPLE5];
+    }
+    
+#if AZ_RENDER_TO_TEXTURE_GEM_ENABLED
+    if (CRenderer::CV_r_FinalOutputAlpha == static_cast<int>(AzRTT::AlphaMode::ALPHA_DEPTH_BASED))
+    {
+        // enable sampling of depth target for alpha value
+        gRenDev->m_RP.m_FlagsShader_RT |= g_HWSR_MaskBit[HWSR_SAMPLE1];
+    }
+#endif // if AZ_RENDER_TO_TEXTURE_GEM_ENABLED
     
     PostProcessUtils().SetSRGBShaderFlags();
     
@@ -662,6 +767,13 @@ void PostAAPass::RenderFinalComposite(CTexture* sourceTexture)
     STexState texStateLinerSRGB(FILTER_LINEAR, true);
     texStateLinerSRGB.m_bSRGBLookup = true;
     sourceTexture->Apply(0, CTexture::GetTexState(texStateLinerSRGB));
+
+#if AZ_RENDER_TO_TEXTURE_GEM_ENABLED
+    if (CRenderer::CV_r_FinalOutputAlpha == static_cast<int>(AzRTT::AlphaMode::ALPHA_DEPTH_BASED))
+    {
+        CTexture::s_ptexZTarget->Apply(1, CTexture::GetTexState(STexState(FILTER_POINT, true)));
+    }
+#endif // if AZ_RENDER_TO_TEXTURE_GEM_ENABLED
 
     SPostEffectsUtils::DrawFullScreenTri(gcpRendD3D->GetOverlayWidth(), gcpRendD3D->GetOverlayHeight());
     SPostEffectsUtils::ShEndPass();

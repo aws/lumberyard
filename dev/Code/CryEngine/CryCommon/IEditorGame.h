@@ -99,7 +99,7 @@ struct IEditorGame
     virtual bool Init(ISystem* pSystem, IGameToEditorInterface* pEditorInterface) = 0;
     /// Called after all Editor systems have been initialized.
     virtual void PostInit() { };
-    virtual int AZ_DEPRECATED(Update(bool haveFocus, unsigned int updateFlags), "Deprecated, please delete overridden functions (main loop now in launcher)") { return 0; }
+    AZ_DEPRECATED(virtual int Update(bool haveFocus, unsigned int updateFlags), "Deprecated, please delete overridden functions (main loop now in launcher)") { return 0; }
     virtual void Shutdown() = 0;
     virtual bool SetGameMode(bool bGameMode) = 0;
     virtual IEntity* GetPlayer() = 0;

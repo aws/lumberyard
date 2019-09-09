@@ -866,7 +866,12 @@ public:
                 assert(0);
                 RCLogError("%s: pixelformat '%s' not recognized", __FUNCTION__, sPixelformat.c_str());
             }
-            else if (format != ePixelFormat_A8 && format != ePixelFormat_3DCp && format != ePixelFormat_EAC_R11 && format != ePixelFormat_BC4 && format != ePixelFormat_BC4s && format != ePixelFormat_DXT1 && format != ePixelFormat_BC1)
+            else if (format != ePixelFormat_A8 && format != ePixelFormat_3DCp && format != ePixelFormat_EAC_R11 
+                    && format != ePixelFormat_BC4 && format != ePixelFormat_BC4s && format != ePixelFormat_DXT1 
+                    && format != ePixelFormat_BC1 
+                    && format != ePixelFormat_PVRTC2 //This format can be used to store normal/smoothness data for ios
+                    && format != ePixelFormat_PVRTC4 //This format can be used to store normal/smoothness data for ios
+                )
             {
                 assert(0);
                 RCLogError("%s: pixelformat '%s' cannot be used for alpha", __FUNCTION__, sPixelformat.c_str());
@@ -1016,10 +1021,9 @@ public:
             // "value" or "value,value" or "value,value,value" or "value,value,value,value" string format
             //
             // The last three formats above are obsolete. Those formats were used to store nameless
-            // values for up to four *hardcoded* platforms pc, x360, ps3, wiiu (in this order). // ACCEPTED_USE
+            // values for up to four *hardcoded* platforms (pc and three deprecated platforms).
             // We don't write those formats anymore, but we still need to parse them because we
-            // have a lot of old files that have strings stored in those formats. The good news are
-            // that the platforms x360, ps3, wiiu are not supported by the CryEngine anymore - // ACCEPTED_USE
+            // have a lot of old files that have strings stored in those formats - 
             // because of that we use the first value only.
 
             const int value = ComputeClampedReduce(::atoi(parts[0].c_str()));

@@ -75,11 +75,19 @@ namespace AZ
          * An entity cannot be activated unless all component dependency requirements are met, and 
          * components are sorted so that each can be activated before the components that depend on it.
          */
-        enum DependencySortResult
+        enum class DependencySortResult
         {
-            DSR_OK = 0,             ///< All component dependency requirements are met. The entity can be activated.
-            DSR_MISSING_REQUIRED,   ///< One or more components that provide required services are not in the list of components to activate.
-            DSR_CYCLIC_DEPENDENCY,  ///< A cycle in component service dependencies was detected.
+            Success = 0,                ///< All component dependency requirements are met. The entity can be activated.
+            MissingRequiredService,     ///< One or more components that provide required services are not in the list of components to activate.
+            HasCyclicDependency,        ///< A cycle in component service dependencies was detected.
+            HasIncompatibleServices,    ///< A component is incompatible with a service provided by another component.
+            DescriptorNotRegistered,    ///< A component descriptor was not registered with the AZ::ComponentApplication.
+            MissingDescriptor,          ///< Cannot find a component's ComponentDescriptor
+
+            // Deprecated values
+            DSR_OK = Success,
+            DSR_MISSING_REQUIRED = MissingRequiredService,
+            DSR_CYCLIC_DEPENDENCY = HasCyclicDependency,
         };
 
         /**
@@ -347,14 +355,33 @@ namespace AZ
         void            InvalidateDependencies();
 
         /**
-         * Calls DependencySort() to sort an entity's components based on the dependencies
-         * among components. If all dependencies are met, the required services can be 
-         * activated before the components that depend on them. An entity will not be 
-         * activated unless the sort succeeds.
-         * @return Indicates whether the entity can determine an order in which
-         * to activate its components.
+         * Contains a failed DependencySortResult code
+         * and a detailed message that can be presented to users.
          */
-        DependencySortResult    EvaluateDependencies();
+        struct FailedSortDetails
+        {
+            DependencySortResult m_code;
+            AZStd::string m_message;
+        };
+
+        using DependencySortOutcome = AZ::Outcome<void, FailedSortDetails>;
+
+        /**
+         * Calls DependencySort() to sort an entity's components based on the dependencies
+         * among components. If all dependencies are met, the required services can be
+         * activated before the components that depend on them. An entity will not be
+         * activated unless the sort succeeds.
+         * @return A successful outcome is returned if the entity can
+         * determine an order in which to activate its components.
+         * Otherwise the failed outcome contains details on why the sort failed.
+         */
+        DependencySortOutcome EvaluateDependenciesGetDetails();
+
+        /**
+         * Same as EvaluateDependenciesGetDetails(), but if sort fails
+         * only a code is returned, there is no detailed error message.
+         */
+        DependencySortResult EvaluateDependencies();
 
         /**
          * Mark the entity to be activated by default. This is observed automatically by EntityContext,
@@ -394,6 +421,17 @@ namespace AZ
         inline TransformInterface* GetTransform() const { return m_transform; }
         /// @endcond
 
+        /**
+        * Sorts an entity's components based on the dependencies between components.
+        * If all dependencies are met, the required services can be activated
+        * before the components that depend on them.
+        * @param components An array of components attached to the entity.
+        * @return A successful outcome is returned if the entity can
+        * determine an order in which to activate its components.
+        * Otherwise the outcome contains details on why the sort failed.
+        */
+        static DependencySortOutcome DependencySort(ComponentArrayType& components);
+
     protected:
 
         /// @cond EXCLUDE_DOCS 
@@ -417,16 +455,6 @@ namespace AZ
          * Otherwise, false.
          */
         bool CanAddRemoveComponents() const;
-
-        /**
-         * Sorts an entity's components based on the dependencies between components.
-         * If all dependencies are met, the required services can be activated 
-         * before the components that depend on them.
-         * @param components An array of components attached to the entity.
-         * @return Indicates whether the entity can determine an order in which
-         * to activate its components.
-         */
-        static DependencySortResult DependencySort(ComponentArrayType& components);
 
         // Helpers for child classes
         static void ActivateComponent(Component& component) { component.Activate(); }

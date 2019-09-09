@@ -44,6 +44,14 @@ namespace UnitTest
             m_sphereShapeComponentDescriptor.reset(SphereShapeComponent::CreateDescriptor());
             m_sphereShapeComponentDescriptor->Reflect(&(*m_serializeContext));
         }
+
+        void TearDown() override
+        {
+            m_transformShapeComponentDescriptor.reset();
+            m_sphereShapeComponentDescriptor.reset();
+            m_serializeContext.reset();
+            AllocatorsFixture::TearDown();
+        }
     };
 
     void CreateSphere(const Transform& transform, const float radius, Entity& entity)
@@ -245,6 +253,36 @@ namespace UnitTest
 
         EXPECT_TRUE(aabb.GetMin().IsClose(AZ::Vector3(98.75f, 198.75f, 298.75f)));
         EXPECT_TRUE(aabb.GetMax().IsClose(AZ::Vector3(101.25f, 201.25f, 301.25f)));
+    }
+
+    TEST_F(SphereShapeTest, GetTransformAndLocalBounds1)
+    {
+        Entity entity;
+        Transform transformIn = Transform::CreateIdentity();
+        CreateSphere(transformIn, 2.0f, entity);
+
+        Transform transformOut;
+        Aabb aabb;
+        ShapeComponentRequestsBus::Event(entity.GetId(), &ShapeComponentRequests::GetTransformAndLocalBounds, transformOut, aabb);
+
+        EXPECT_TRUE(transformOut.IsClose(transformIn));
+        EXPECT_TRUE(aabb.GetMin().IsClose(AZ::Vector3(-2.0f, -2.0f, -2.0f)));
+        EXPECT_TRUE(aabb.GetMax().IsClose(AZ::Vector3(2.0f, 2.0f, 2.0f)));
+    }
+
+    TEST_F(SphereShapeTest, GetTransformAndLocalBounds2)
+    {
+        Entity entity;
+        Transform transformIn = Transform::CreateTranslation(Vector3(100.0f, 200.0f, 300.0f)) * Transform::CreateScale(Vector3(2.5f));
+        CreateSphere(transformIn, 2.0f, entity);
+
+        Transform transformOut;
+        Aabb aabb;
+        ShapeComponentRequestsBus::Event(entity.GetId(), &ShapeComponentRequests::GetTransformAndLocalBounds, transformOut, aabb);
+
+        EXPECT_TRUE(transformOut.IsClose(transformIn));
+        EXPECT_TRUE(aabb.GetMin().IsClose(AZ::Vector3(-2.0f, -2.0f, -2.0f)));
+        EXPECT_TRUE(aabb.GetMax().IsClose(AZ::Vector3(2.0f, 2.0f, 2.0f)));
     }
 
     // point inside scaled

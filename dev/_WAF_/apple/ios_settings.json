@@ -1,0 +1,6 @@
+{
+    "IPHONEOS_DEPLOYMENT_TARGET" : "9.0",
+    "SDKROOT" : "iphoneos",
+    "SUPPORTED_PLATFORMS" : "iphoneos",
+    "TARGETED_DEVICE_FAMILY" : "1,2"
+}

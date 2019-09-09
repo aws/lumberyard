@@ -246,7 +246,7 @@ void CPost3DRenderer::RenderMeshes(uint8 groupId, float screenRect[4], ERenderMe
     }
 
     // Create custom camera so FOV is the same when ever we render
-    CCamera prevCamera = gcpRendD3D.GetCamera();
+    CCamera prevCamera = gcpRendD3D->GetCamera();
     CCamera postRenderCamera = prevCamera;
 
     Matrix34 cameraMatrix;
@@ -256,7 +256,7 @@ void CPost3DRenderer::RenderMeshes(uint8 groupId, float screenRect[4], ERenderMe
     const float fov = DEFAULT_FOV * clamp_tpl<float>(m_pFOVScale->GetParam(), 0.05f, 1.0f);
     const float pixelAspectRatio = m_pPixelAspectRatio->GetParam();
     postRenderCamera.SetFrustum(prevCamera.GetViewSurfaceX(), prevCamera.GetViewSurfaceZ(), fov, DEFAULT_NEAR, DEFAULT_FAR, pixelAspectRatio);
-    gcpRendD3D.SetCamera(postRenderCamera);
+    gcpRendD3D->SetCamera(postRenderCamera);
 
     // Set flags
     const uint32 prevAnd = renderPipeline.m_ForceStateAnd;
@@ -322,7 +322,7 @@ void CPost3DRenderer::RenderMeshes(uint8 groupId, float screenRect[4], ERenderMe
     {
         renderPipeline.m_PersFlags2 &= ~RBPF2_SINGLE_FORWARD_LIGHT_PASS;
     }
-    gcpRendD3D.SetCamera(prevCamera);
+    gcpRendD3D->SetCamera(prevCamera);
     p3DEngine->SetupDistanceFog();
 
     if (bDoStencil)

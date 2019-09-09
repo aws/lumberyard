@@ -5282,7 +5282,7 @@ int CScriptBind_Entity::SetPublicParam(IFunctionHandler* pH)
     }
 
     SShaderParam shaderParam;
-    cry_strcpy(shaderParam.m_Name, name);
+    shaderParam.m_Name = name;
 
     switch (pH->GetParamType(2))
     {

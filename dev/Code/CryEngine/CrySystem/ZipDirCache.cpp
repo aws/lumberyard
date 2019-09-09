@@ -29,8 +29,6 @@
 #include <AzCore/IO/FileIO.h>
 #include <AzCore/IO/SystemFile.h> // for AZ_MAX_PATH_LEN
 
-using namespace ZipFile;
-
 // initializes the instance structure
 void ZipDir::Cache::Construct(CZipFile& fNew, CMTSafeHeap* pHeap, size_t nDataSizeIn, unsigned int nFactoryFlags, size_t nAllocatedSize)
 {
@@ -46,8 +44,8 @@ void ZipDir::Cache::Construct(CZipFile& fNew, CMTSafeHeap* pHeap, size_t nDataSi
     m_pCacheData->m_pHeap = pHeap;
     m_nCacheFactoryFlags = nFactoryFlags;
     m_pRootData = (DirHeader*)GetDataPointer();
-    m_encryptedHeaders = HEADERS_NOT_ENCRYPTED;
-    m_signedHeaders = HEADERS_NOT_SIGNED;
+    m_encryptedHeaders = ZipFile::HEADERS_NOT_ENCRYPTED;
+    m_signedHeaders = ZipFile::HEADERS_NOT_SIGNED;
     if (m_nCacheFactoryFlags & CacheFactory::FLAGS_FILENAMES_AS_CRC32)
     {
         m_pRootData = NULL;
@@ -72,8 +70,6 @@ void ZipDir::Cache::Delete()
 
 void ZipDir::Cache::PreloadToMemory(IMemoryBlock* pMemoryBlock)
 {
-    MEMSTAT_CONTEXT_FMT(EMemStatContextTypes::MSC_Other, 0, "In-Memory Pak %s", GetFilePath());
-
     // Make sure that fseek/fread by LoadToMemory is atomic (and reads from other threads don't conflict)
     CryAutoCriticalSection lock(m_pCacheData->m_csCacheIOLock);
 
@@ -251,7 +247,11 @@ ZipDir::ErrorEnum ZipDir::Cache::ReadFile (FileEntry* pFileEntry, void* pCompres
 #define AZ_RESTRICTED_SECTION_IMPLEMENTED
 #elif defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION ZIPDIRCACHE_CPP_SECTION_1
-#include AZ_RESTRICTED_FILE(ZipDirCache_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/ZipDirCache_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/ZipDirCache_cpp_provo.inl"
+    #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
 #undef AZ_RESTRICTED_SECTION_IMPLEMENTED
@@ -280,7 +280,11 @@ ZipDir::ErrorEnum ZipDir::Cache::ReadFile (FileEntry* pFileEntry, void* pCompres
 #define AZ_RESTRICTED_SECTION_IMPLEMENTED
 #elif defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION ZIPDIRCACHE_CPP_SECTION_2
-#include AZ_RESTRICTED_FILE(ZipDirCache_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/ZipDirCache_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/ZipDirCache_cpp_provo.inl"
+    #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
 #undef AZ_RESTRICTED_SECTION_IMPLEMENTED
@@ -303,7 +307,7 @@ ZipDir::ErrorEnum ZipDir::Cache::ReadFile (FileEntry* pFileEntry, void* pCompres
             //Intentionally empty block
         }
 #ifdef SUPPORT_RSA_AND_STREAMCIPHER_PAK_ENCRYPTION
-        else if (pFileEntry->nMethod == METHOD_STORE_AND_STREAMCIPHER_KEYTABLE || pFileEntry->nMethod == METHOD_DEFLATE_AND_STREAMCIPHER_KEYTABLE)
+        else if (pFileEntry->nMethod == ZipFile::METHOD_STORE_AND_STREAMCIPHER_KEYTABLE || pFileEntry->nMethod == ZipFile::METHOD_DEFLATE_AND_STREAMCIPHER_KEYTABLE)
         {
             unsigned char IV[ZipFile::BLOCK_CIPHER_KEY_LENGTH]; //16 byte
             int nKeyIndex = ZipEncrypt::GetEncryptionKeyIndex(pFileEntry);

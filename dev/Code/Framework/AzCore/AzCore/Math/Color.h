@@ -48,6 +48,9 @@ namespace AZ
         ///Creates a vector with all components set to one, more efficient than calling Color(1.0f)
         static const Color CreateOne();
 
+        ///Sets components from rgba
+        static const Color CreateFromRgba(u8 r, u8 g, u8 b, u8 a);
+
         ///Sets components from an array of 4 floats, stored in xyzw order
         static const Color CreateFromFloat4(const float* values);
 
@@ -168,6 +171,16 @@ namespace AZ
         bool IsGreaterThan(const Color& rhs) const;
         bool IsGreaterEqualThan(const Color& rhs) const;
         /*@}*/
+
+        //===============================================================
+        // Interpolation
+        //===============================================================
+
+        /**
+         * Linear interpolation between this color and a destination.
+         * @return (*this)*(1-t) + dest*t
+         */
+        const Color Lerp(const Color& dest, const VectorFloat& t) const;
 
         //===============================================================
         // Dot products

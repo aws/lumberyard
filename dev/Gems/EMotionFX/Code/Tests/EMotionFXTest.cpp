@@ -14,24 +14,5 @@
 
 #include <AzTest/AzTest.h>
 
-class EMotionFXTest
-    : public ::testing::Test
-{
-protected:
-    void SetUp() override
-    {
-
-    }
-
-    void TearDown() override
-    {
-
-    }
-};
-
-TEST_F(EMotionFXTest, ExampleTest)
-{
-    ASSERT_TRUE(true);
-}
-
-AZ_UNIT_TEST_HOOK();
+// The fuzz testing causes errors inside the object stream handlers, so we are disabling the default environment for now
+AZ_UNIT_TEST_HOOK(nullptr);

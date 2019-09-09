@@ -11,21 +11,18 @@
 */
 
 #include "precompiled.h"
-
-#include <LyViewPaneNames.h>
-
 #include <Asset/EditorAssetSystemComponent.h>
+
 #include <AzCore/Asset/AssetManager.h>
 #include <AzCore/IO/FileIO.h>
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/std/string/wildcard.h>
-
 #include <AzFramework/StringFunc/StringFunc.h>
-
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
 #include <AzToolsFramework/AssetBrowser/AssetBrowserEntry.h>
 #include <AzToolsFramework/ToolsComponents/ToolsAssetCatalogBus.h>
-
+#include <Builder/ScriptCanvasBuilderWorker.h>
+#include <LyViewPaneNames.h>
 #include <ScriptCanvas/Asset/RuntimeAsset.h>
 #include <ScriptCanvas/Assets/ScriptCanvasAsset.h>
 #include <ScriptCanvas/Assets/ScriptCanvasAssetHandler.h>
@@ -68,10 +65,12 @@ namespace ScriptCanvasEditor
     {
         m_editorAssetRegistry.Register();
         AzToolsFramework::AssetBrowser::AssetBrowserInteractionNotificationBus::Handler::BusConnect();
+        EditorAssetConversionBus::Handler::BusConnect();
     }
 
     void EditorAssetSystemComponent::Deactivate()
     {
+        EditorAssetConversionBus::Handler::BusDisconnect();
         AzToolsFramework::AssetBrowser::AssetBrowserInteractionNotificationBus::Handler::BusDisconnect();
         m_editorAssetRegistry.Unregister();
     }
@@ -93,19 +92,29 @@ namespace ScriptCanvasEditor
         return false;
     }
 
+    AZ::Outcome<AZ::Data::Asset<ScriptCanvas::RuntimeAsset>, AZStd::string> EditorAssetSystemComponent::CreateRuntimeAsset(AZStd::string_view graphPath) 
+    {
+        return ScriptCanvasBuilder::Worker::CreateRuntimeAsset(graphPath);
+    }
+
     void EditorAssetSystemComponent::AddSourceFileOpeners(const char* fullSourceFileName, const AZ::Uuid& sourceUuid, AzToolsFramework::AssetBrowser::SourceFileOpenerList& openers)
     {
         using namespace AzToolsFramework;
         using namespace AzToolsFramework::AssetBrowser;
-        if (const SourceAssetBrowserEntry* source = SourceAssetBrowserEntry::GetSourceByAssetId(sourceUuid))  // get the full details of the source file based on its UUID.
+        if (const SourceAssetBrowserEntry* source = SourceAssetBrowserEntry::GetSourceByUuid(sourceUuid))  // get the full details of the source file based on its UUID.
         {
             if (!HandlesSource(source))
             {
                 return;
             }
         }
+        else
+        {
+            // has no UUID / Not a source file.
+            return;
+        }
         // You can push back any number of "Openers" - choose a unique identifier, and icon, and then a lambda which will be activated if the user chooses to open it with your opener:
-        openers.push_back({ "ScriptCanvas_Editor_Asset_Edit", "Script Canvas Editor...", QIcon(ScriptCanvasAssetHandler().GetBrowserIcon()),
+        openers.push_back({ "ScriptCanvas_Editor_Asset_Edit", "Script Canvas Editor...", QIcon(),
             [](const char*, const AZ::Uuid& scSourceUuid)
         {
             AzToolsFramework::OpenViewPane(LyViewPane::ScriptCanvas);
@@ -114,7 +123,7 @@ namespace ScriptCanvasEditor
             auto& assetManager = AZ::Data::AssetManager::Instance();
             AZ::Data::Asset<ScriptCanvasAsset> scriptCanvasAsset = assetManager.GetAsset(sourceAssetId, azrtti_typeid<ScriptCanvasAsset>());
             AZ::Outcome<int, AZStd::string> openOutcome = AZ::Failure(AZStd::string());
-            GeneralRequestBus::BroadcastResult(openOutcome, &GeneralRequests::OpenScriptCanvasAsset, scriptCanvasAsset, -1, AZ::EntityId());
+            GeneralRequestBus::BroadcastResult(openOutcome, &GeneralRequests::OpenScriptCanvasAsset, scriptCanvasAsset, -1);
             if (!openOutcome)
             {
                 AZ_Warning("Script Canvas", openOutcome, "%s", openOutcome.GetError().data());

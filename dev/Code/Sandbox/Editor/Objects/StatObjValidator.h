@@ -14,11 +14,9 @@
 // This class is supposed to validate CGF with assigned material.
 // Some of the asset issues may be diagnosed only when SurfaceType is known.
 
-#ifndef CRYINCLUDE_EDITOR_OBJECTS_STATOBJVALIDATOR_H
-#define CRYINCLUDE_EDITOR_OBJECTS_STATOBJVALIDATOR_H
 #pragma once
 
-class CStatObjValidator
+class CRYEDIT_API CStatObjValidator
 {
 public:
     CStatObjValidator();
@@ -32,4 +30,3 @@ private:
     QString m_description;
 };
 
-#endif // CRYINCLUDE_EDITOR_OBJECTS_STATOBJVALIDATOR_H

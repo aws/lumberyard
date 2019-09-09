@@ -20,6 +20,7 @@
 #include <AzCore/Asset/AssetCommon.h>
 #include <AzCore/IO/SystemFile.h>
 #include <AzToolsFramework/SQLite/SQLiteConnection.h>
+#include <AzToolsFramework/SQLite/SQLiteQuery.h>
 #include <AzCore/Math/Crc.h>
 #include <AzCore/std/string/conversions.h>
 #include <AzCore/std/algorithm.h>
@@ -34,7 +35,7 @@ namespace AssetProcessor
     using namespace AzToolsFramework::AssetSystem;
     using namespace AzToolsFramework::AssetDatabase;
     using namespace AzToolsFramework::SQLite;
-    
+
     //tack on the namespace to avoid statement name collisions
     namespace
     {
@@ -65,6 +66,7 @@ namespace AssetProcessor
             "    ScanFolderPK     INTEGER NOT NULL, "
             "    SourceName       TEXT NOT NULL collate nocase, "
             "    SourceGuid       BLOB NOT NULL, "
+            "    AnalysisFingerprint TEXT default('') collate nocase, "
             "    FOREIGN KEY (ScanFolderPK) REFERENCES "
             "       ScanFolders(ScanFolderID) ON DELETE CASCADE);";
 
@@ -127,7 +129,8 @@ namespace AssetProcessor
             "    SourceDependencyID            INTEGER PRIMARY KEY AUTOINCREMENT, "
             "    BuilderGuid                   BLOB NOT NULL, "
             "    Source                        TEXT NOT NULL collate nocase, "
-            "    DependsOnSource               TEXT NOT NULL collate nocase); ";
+            "    DependsOnSource               TEXT NOT NULL collate nocase, "
+            "    TypeOfDependency              INTEGER NOT NULL DEFAULT 0); ";
 
         static const char* CREATE_PRODUCT_DEPENDENCY_TABLE = "AssetProcessor::CreateProductDependencyTable";
         static const char* CREATE_PRODUCT_DEPENDENCY_TABLE_STATEMENT =
@@ -139,6 +142,16 @@ namespace AssetProcessor
             "    DependencyFlags      INTEGER NOT NULL, "
             "    FOREIGN KEY (ProductPK) REFERENCES "
             "        Products(ProductID) ON DELETE CASCADE);";
+
+        static const char* CREATE_FILES_TABLE = "AssetProcessor::CreateFilesTable";
+        static const char* CREATE_FILES_TABLE_STATEMENT =
+            "CREATE TABLE IF NOT EXISTS Files( "
+            "    FileID         INTEGER PRIMARY KEY AUTOINCREMENT, "
+            "    ScanFolderPK   INTEGER NOT NULL, "
+            "    FileName       TEXT NOT NULL collate nocase, "
+            "    IsFolder       INTEGER NOT NULL, "
+            "    FOREIGN KEY (ScanFolderPK) REFERENCES "
+            "       ScanFolders(ScanFolderID) ON DELETE CASCADE);";
 
         //////////////////////////////////////////////////////////////////////////
         //indices
@@ -194,6 +207,13 @@ namespace AssetProcessor
         static const char* CREATEINDEX_PRODUCTDEPENDENCIES_PRODUCTPK_STATEMENT =
             "CREATE INDEX IF NOT EXISTS ProductDependencies_ProductPK ON ProductDependencies (ProductPK);";
 
+        static const char* CREATEINDEX_FILE_NAME = "AssetProcessor::CreateIndexFilesName";
+        static const char* CREATEINDEX_FILE_NAME_STATEMENT =
+            "CREATE INDEX IF NOT EXISTS Files_FileName ON Files (FileName);";
+
+        static const char* CREATEINDEX_SCANFOLDERS_FILES = "AssetProcesser::CreateIndexScanFoldersFiles";
+        static const char* CREATEINDEX_SCANFOLDERS_FILES_STATEMENT =
+            "CREATE INDEX IF NOT EXISTS ScanFolders_Files ON Files (ScanFolderPK);";
 
         //////////////////////////////////////////////////////////////////////////
         //insert/set/update/delete
@@ -202,58 +222,120 @@ namespace AssetProcessor
             "INSERT OR REPLACE INTO dbinfo(rowID, version) "
             "VALUES (1, :ver);";
 
+        static const auto s_SetDatabaseVersionQuery = MakeSqlQuery(SET_DATABASE_VERSION, SET_DATABASE_VERSION_STATEMENT, LOG_NAME,
+            SqlParam<AZ::s32>(":ver"));
+
         static const char* INSERT_SCANFOLDER = "AssetProcessor::InsertScanFolder";
         static const char* INSERT_SCANFOLDER_STATEMENT =
             "INSERT INTO ScanFolders (ScanFolder, DisplayName, PortableKey, OutputPrefix, IsRoot) "
             "VALUES (:scanfolder, :displayname, :portablekey, :outputprefix, :isroot);";
 
+        static const auto s_InsertScanfolderQuery = MakeSqlQuery(INSERT_SCANFOLDER, INSERT_SCANFOLDER_STATEMENT, LOG_NAME,
+            SqlParam<const char*>(":scanfolder"),
+            SqlParam<const char*>(":displayname"),
+            SqlParam<const char*>(":portablekey"),
+            SqlParam<const char*>(":outputprefix"),
+            SqlParam<AZ::s32>(":isroot"));
+
         static const char* UPDATE_SCANFOLDER = "AssetProcessor::UpdateScanFolder";
         static const char* UPDATE_SCANFOLDER_STATEMENT =
             "UPDATE ScanFolders SET "
-                "ScanFolder =   :scanfolder, "
-                "DisplayName =  :displayname, "
-                "PortableKey =  :portablekey, "
-                "OutputPrefix = :outputprefix, "
-                "IsRoot = :isroot "
+            "ScanFolder =   :scanfolder, "
+            "DisplayName =  :displayname, "
+            "PortableKey =  :portablekey, "
+            "OutputPrefix = :outputprefix, "
+            "IsRoot = :isroot "
             "WHERE "
-                "ScanFolderID = :scanfolderid;";
+            "ScanFolderID = :scanfolderid;";
+
+        static const auto s_UpdateScanfolderQuery = MakeSqlQuery(UPDATE_SCANFOLDER, UPDATE_SCANFOLDER_STATEMENT, LOG_NAME,
+            SqlParam<const char*>(":scanfolder"),
+            SqlParam<const char*>(":displayname"),
+            SqlParam<const char*>(":portablekey"),
+            SqlParam<const char*>(":outputprefix"),
+            SqlParam<AZ::s32>(":isroot"),
+            SqlParam<AZ::s64>(":scanfolderid"));
 
         static const char* DELETE_SCANFOLDER = "AssetProcessor::RemoveScanFolder";
         static const char* DELETE_SCANFOLDER_STATEMENT =
             "DELETE FROM ScanFolders WHERE "
             "(ScanFolderID = :scanfolderid);";
 
+        static const auto s_DeleteScanfolderQuery = MakeSqlQuery(DELETE_SCANFOLDER, DELETE_SCANFOLDER_STATEMENT, LOG_NAME,
+            SqlParam<AZ::s64>(":scanfolderid"));
+
         static const char* INSERT_SOURCE = "AssetProcessor::InsertSource";
         static const char* INSERT_SOURCE_STATEMENT =
-            "INSERT INTO Sources (ScanFolderPK, SourceName, SourceGuid) "
-            "VALUES (:scanfolderid, :sourcename, :sourceguid);";
+            "INSERT INTO Sources (ScanFolderPK, SourceName, SourceGuid, AnalysisFingerprint) "
+            "VALUES (:scanfolderid, :sourcename, :sourceguid, :analysisFingerprint);";
+
+        static const auto s_InsertSourceQuery = MakeSqlQuery(INSERT_SOURCE, INSERT_SOURCE_STATEMENT, LOG_NAME,
+            SqlParam<AZ::s64>(":scanfolderid"),
+            SqlParam<const char*>(":sourcename"),
+            SqlParam<AZ::Uuid>(":sourceguid"),
+            SqlParam<const char*>(":analysisFingerprint"));
 
         static const char* UPDATE_SOURCE = "AssetProcessor::UpdateSource";
         static const char* UPDATE_SOURCE_STATEMENT =
             "UPDATE Sources SET "
             "ScanFolderPK = :scanfolderpk, "
             "SourceName = :sourcename, "
-            "SourceGuid = :sourceguid WHERE "
+            "SourceGuid = :sourceguid, "
+            "AnalysisFingerprint = :analysisFingerprint WHERE "
             "SourceID = :sourceid;";
+
+        static const auto s_UpdateSourceQuery = MakeSqlQuery(UPDATE_SOURCE, UPDATE_SOURCE_STATEMENT, LOG_NAME,
+            SqlParam<AZ::s64>(":scanfolderpk"),
+            SqlParam<const char*>(":sourcename"),
+            SqlParam<AZ::Uuid>(":sourceguid"),
+            SqlParam<AZ::s64>(":sourceid"),
+            SqlParam<const char*>(":analysisFingerprint"));
 
         static const char* DELETE_SOURCE = "AssetProcessor::DeleteSource";
         static const char* DELETE_SOURCE_STATEMENT =
             "DELETE FROM Sources WHERE "
             "SourceID = :sourceid;";
 
+        static const auto s_DeleteSourceQuery = MakeSqlQuery(DELETE_SOURCE, DELETE_SOURCE_STATEMENT, LOG_NAME,
+            SqlParam<AZ::s64>(":sourceid"));
+
         static const char* DELETE_SOURCE_BY_SCANFOLDERID = "AssetProcessor::DeleteSourceByScanFolderID";
         static const char* DELETE_SOURCE_BY_SCANFOLDERID_STATEMENT =
             "DELETE FROM Sources WHERE "
             "ScanFolderPK = :scanfolderid;";
 
+        static const auto s_DeleteSourceByScanfolderidQuery = MakeSqlQuery(DELETE_SOURCE_BY_SCANFOLDERID, DELETE_SOURCE_BY_SCANFOLDERID_STATEMENT, LOG_NAME,
+            SqlParam<AZ::s64>(":scanfolderid"));
+
+        static const char* INVALIDATE_SOURCE_ANALYSISFINGEPRINTS = "AssetProcessor::InvalidateSourceAnalysisFingerprints";
+        static const char* INVALIDATE_SOURCE_ANALYSISFINGEPRINTS_STATEMENT =
+            "UPDATE Sources SET AnalysisFingerprint = ''";
+
         static const char* GET_HIGHEST_JOBRUNKEY = "AssetProcessor::GetHighestJobRunKey";
         static const char* GET_HIGHEST_JOBRUNKEY_STATEMENT =
-            "SELECT JobRunKey FROM Jobs ORDER BY JobRunKey DESC LIMIT 1";
+            "SELECT JobRunKey FROM Jobs ORDER BY JobRunKey DESC LIMIT 1;";
+
+        static const auto s_GetHighestJobrunkeyQuery = MakeSqlQuery(GET_HIGHEST_JOBRUNKEY, GET_HIGHEST_JOBRUNKEY_STATEMENT, LOG_NAME);
 
         static const char* INSERT_JOB = "AssetProcessor::InsertJob";
         static const char* INSERT_JOB_STATEMENT =
             "INSERT INTO Jobs (SourcePK, JobKey, Fingerprint, Platform, BuilderGuid, Status, JobRunKey, FirstFailLogTime, FirstFailLogFile, LastFailLogTime, LastFailLogFile, LastLogTime, LastLogFile) "
             "VALUES (:sourceid, :jobkey, :fingerprint, :platform, :builderguid, :status, :jobrunkey, :firstfaillogtime, :firstfaillogfile, :lastfaillogtime, :lastfaillogfile, :lastlogtime, :lastlogfile);";
+
+        static const auto s_InsertJobQuery = MakeSqlQuery(INSERT_JOB, INSERT_JOB_STATEMENT, LOG_NAME,
+            SqlParam<AZ::s64>(":sourceid"),
+            SqlParam<const char*>(":jobkey"),
+            SqlParam<AZ::u32>(":fingerprint"),
+            SqlParam<const char*>(":platform"),
+            SqlParam<AZ::Uuid>(":builderguid"),
+            SqlParam<AZ::s32>(":status"),
+            SqlParam<AZ::u64>(":jobrunkey"),
+            SqlParam<AZ::s64>(":firstfaillogtime"),
+            SqlParam<const char*>(":firstfaillogfile"),
+            SqlParam<AZ::s64>(":lastfaillogtime"),
+            SqlParam<const char*>(":lastfaillogfile"),
+            SqlParam<AZ::s64>(":lastlogtime"),
+            SqlParam<const char*>(":lastlogfile"));
 
         static const char* UPDATE_JOB = "AssetProcessor::UpdateJob";
         static const char* UPDATE_JOB_STATEMENT =
@@ -273,15 +355,41 @@ namespace AssetProcessor
             "LastLogFile = :lastlogfile WHERE "
             "JobID = :jobid;";
 
+        static const auto s_UpdateJobQuery = MakeSqlQuery(UPDATE_JOB, UPDATE_JOB_STATEMENT, LOG_NAME,
+            SqlParam<AZ::s64>(":sourceid"),
+            SqlParam<const char*>(":jobkey"),
+            SqlParam<AZ::u32>(":fingerprint"),
+            SqlParam<const char*>(":platform"),
+            SqlParam<AZ::Uuid>(":builderguid"),
+            SqlParam<AZ::s32>(":status"),
+            SqlParam<AZ::u64>(":jobrunkey"),
+            SqlParam<AZ::s64>(":firstfaillogtime"),
+            SqlParam<const char*>(":firstfaillogfile"),
+            SqlParam<AZ::s64>(":lastfaillogtime"),
+            SqlParam<const char*>(":lastfaillogfile"),
+            SqlParam<AZ::s64>(":lastlogtime"),
+            SqlParam<const char*>(":lastlogfile"),
+            SqlParam<AZ::s64>(":jobid"));
+
         static const char* DELETE_JOB = "AssetProcessor::DeleteJob";
         static const char* DELETE_JOB_STATEMENT =
             "DELETE FROM Jobs WHERE "
             "JobID = :jobid;";
 
+        static const auto s_DeleteJobQuery = MakeSqlQuery(DELETE_JOB, DELETE_JOB_STATEMENT, LOG_NAME,
+            SqlParam<AZ::s64>(":jobid"));
+
         static const char* INSERT_PRODUCT = "AssetProcessor::InsertProduct";
         static const char* INSERT_PRODUCT_STATEMENT =
             "INSERT INTO Products (JobPK, SubID, ProductName, AssetType, LegacyGuid) "
             "VALUES (:jobid, :subid, :productname, :assettype, :legacyguid);";
+
+        static const auto s_InsertProductQuery = MakeSqlQuery(INSERT_PRODUCT, INSERT_PRODUCT_STATEMENT, LOG_NAME,
+            SqlParam<AZ::s64>(":jobid"),
+            SqlParam<AZ::u32>(":subid"),
+            SqlParam<const char*>(":productname"),
+            SqlParam<AZ::Uuid>(":assettype"),
+            SqlParam<AZ::Uuid>(":legacyguid"));
 
         static const char* UPDATE_PRODUCT = "AssetProcessor::UpdateProduct";
         static const char* UPDATE_PRODUCT_STATEMENT =
@@ -293,15 +401,29 @@ namespace AssetProcessor
             "LegacyGuid = :legacyguid WHERE "
             "ProductID = :productid;";
 
+        static const auto s_UpdateProductQuery = MakeSqlQuery(UPDATE_PRODUCT, UPDATE_PRODUCT_STATEMENT, LOG_NAME,
+            SqlParam<AZ::s64>(":jobid"),
+            SqlParam<AZ::u32>(":subid"),
+            SqlParam<const char*>(":productname"),
+            SqlParam<AZ::Uuid>(":assettype"),
+            SqlParam<AZ::Uuid>(":legacyguid"),
+            SqlParam<AZ::s64>(":productid"));
+
         static const char* DELETE_PRODUCT = "AssetProcessor::DeleteProduct";
         static const char* DELETE_PRODUCT_STATEMENT =
             "DELETE FROM Products WHERE "
             "ProductID = :productid;";
 
+        static const auto s_DeleteProductQuery = MakeSqlQuery(DELETE_PRODUCT, DELETE_PRODUCT_STATEMENT, LOG_NAME,
+            SqlParam<AZ::s64>(":productid"));
+
         static const char* DELETE_PRODUCTS_BY_JOBID = "AssetProcessor::DeleteAllProductsByJobID";
         static const char* DELETE_PRODUCTS_BY_JOBID_STATEMENT =
             "DELETE FROM Products WHERE "
             "JobPK = :jobid;";
+
+        static const auto s_DeleteProductsByJobidQuery = MakeSqlQuery(DELETE_PRODUCTS_BY_JOBID, DELETE_PRODUCTS_BY_JOBID_STATEMENT, LOG_NAME,
+            SqlParam<AZ::s64>(":jobid"));
 
         static const char* DELETE_PRODUCTS_BY_SOURCEID = "AssetProcessor::DeleteAllProductsBySourceID";
         static const char* DELETE_PRODUCTS_BY_SOURCEID_STATEMENT =
@@ -310,7 +432,10 @@ namespace AssetProcessor
             "(SELECT * FROM Jobs WHERE "
             "Products.JobPK = Jobs.JobID AND "
             "Jobs.SourcePK = :sourceid);";
-        
+
+        static const auto s_DeleteProductsBySourceidQuery = MakeSqlQuery(DELETE_PRODUCTS_BY_SOURCEID, DELETE_PRODUCTS_BY_SOURCEID_STATEMENT, LOG_NAME,
+            SqlParam<AZ::s64>(":sourceid"));
+
         static const char* DELETE_PRODUCTS_BY_SOURCEID_PLATFORM = "AssetProcessor::DeleteProductsBySourceIDPlatform";
         static const char* DELETE_PRODUCTS_BY_SOURCEID_PLATFORM_STATEMENT =
             "DELETE FROM Products "
@@ -320,27 +445,35 @@ namespace AssetProcessor
             "Jobs.SourcePK = :sourceid AND "
             "Jobs.Platform = :platform);";
 
+        static const auto s_DeleteProductsBySourceidPlatformQuery = MakeSqlQuery(DELETE_PRODUCTS_BY_SOURCEID_PLATFORM, DELETE_PRODUCTS_BY_SOURCEID_PLATFORM_STATEMENT, LOG_NAME,
+            SqlParam<AZ::s64>(":sourceid"),
+            SqlParam<const char*>(":platform"));
+
         static const char* INSERT_SOURCE_DEPENDENCY = "AssetProcessor::InsertSourceDependency";
         static const char* INSERT_SOURCE_DEPENDENCY_STATEMENT =
-            "INSERT INTO SourceDependency (BuilderGuid, Source, DependsOnSource) "
-            "VALUES (:builderGuid, :source, :dependsOnSource);";
-
-        static const char* UPDATE_SOURCE_DEPENDENCY = "AssetProcessor::UpdateSourceDependency";
-        static const char* UPDATE_SOURCE_DEPENDENCY_STATEMENT =
-            "UPDATE SourceDependency SET "
-            "DependsOnSource = :dependsOnSource, WHERE "
-            "BuilderGuid = :builderGuid AND "
-            "Source = :source;";
+            "INSERT INTO SourceDependency (BuilderGuid, Source, DependsOnSource, TypeOfDependency) "
+            "VALUES (:builderGuid, :source, :dependsOnSource, :typeofdependency);";
+        static const auto s_InsertSourceDependencyQuery = MakeSqlQuery(INSERT_SOURCE_DEPENDENCY, INSERT_SOURCE_DEPENDENCY_STATEMENT, LOG_NAME,
+            SqlParam<AZ::Uuid>(":builderGuid"),
+            SqlParam<const char*>(":source"),
+            SqlParam<const char*>(":dependsOnSource"),
+            SqlParam<AZ::s32>(":typeofdependency"));
 
         static const char* DELETE_SOURCE_DEPENDENCY_SOURCEDEPENDENCYID = "AssetProcessor::DeleteSourceDependencBySourceDependencyId";
         static const char* DELETE_SOURCE_DEPENDENCY_SOURCEDEPENDENCYID_STATEMENT =
             "DELETE FROM SourceDependency WHERE "
             "SourceDependencyID = :sourceDependencyId;";
+        static const auto s_DeleteSourceDependencySourcedependencyidQuery = MakeSqlQuery(DELETE_SOURCE_DEPENDENCY_SOURCEDEPENDENCYID, DELETE_SOURCE_DEPENDENCY_SOURCEDEPENDENCYID_STATEMENT, LOG_NAME,
+            SqlParam<AZ::s64>(":sourceDependencyId"));
 
         static const char* INSERT_NEW_LEGACYSUBID = "AssetProcessor::InsertLegacySubID";
         static const char* INSERT_NEW_LEGACYSUBID_STATEMENT =
             "INSERT INTO LegacySubIDs (ProductPK, SubID) "
             "VALUES (:productPK, :subID);";
+
+        static const auto s_InsertNewLegacysubidQuery = MakeSqlQuery(INSERT_NEW_LEGACYSUBID, INSERT_NEW_LEGACYSUBID_STATEMENT, LOG_NAME,
+            SqlParam<AZ::s64>(":productPK"),
+            SqlParam<AZ::u32>(":subID"));
 
         static const char* OVERWRITE_EXISTING_LEGACYSUBID = "AssetProcessor::OverwriteLegacySubID";
         static const char* OVERWRITE_EXISTING_LEGACYSUBID_STATEMENT =
@@ -350,21 +483,38 @@ namespace AssetProcessor
             "     SubID = :subID "
             "  WHERE "
             "     LegacySubID = :legacySubID;";
-        
+
+        static const auto s_OverwriteExistingLegacysubidQuery = MakeSqlQuery(OVERWRITE_EXISTING_LEGACYSUBID, OVERWRITE_EXISTING_LEGACYSUBID_STATEMENT, LOG_NAME,
+            SqlParam<AZ::s64>(":productPK"),
+            SqlParam<AZ::u32>(":subID"),
+            SqlParam<AZ::s64>(":legacySubID"));
+
         static const char* DELETE_LEGACYSUBIDS_BY_PRIMARY_KEY = "AssetProcessor::DeleteLegacySubIDsByPrimaryKey";
         static const char* DELETE_LEGACYSUBIDS_BY_PRIMARY_KEY_STATEMENT =
             "DELETE FROM LegacySubIDs WHERE "
             "LegacySubID = :legacySubID;";
+
+        static const auto s_DeleteLegacysubidsByPrimaryKeyQuery = MakeSqlQuery(DELETE_LEGACYSUBIDS_BY_PRIMARY_KEY, DELETE_LEGACYSUBIDS_BY_PRIMARY_KEY_STATEMENT, LOG_NAME,
+            SqlParam<AZ::s64>(":legacySubID"));
 
         static const char* DELETE_LEGACYSUBIDS_BY_PRODUCTID = "AssetProcessor::DeleteLegacySubIDsByProductID";
         static const char* DELETE_LEGACYSUBIDS_BY_PRODUCTID_STATEMENT =
             "DELETE FROM LegacySubIDs WHERE "
             "ProductPK = :productPK;";
 
+        static const auto s_DeleteLegacysubidsByProductidQuery = MakeSqlQuery(DELETE_LEGACYSUBIDS_BY_PRODUCTID, DELETE_LEGACYSUBIDS_BY_PRODUCTID_STATEMENT, LOG_NAME,
+            SqlParam<AZ::s64>(":productPK"));
+
         static const char* INSERT_PRODUCT_DEPENDENCY = "AssetProcessor::InsertProductDependency";
         static const char* INSERT_PRODUCT_DEPENDENCY_STATEMENT =
             "INSERT INTO ProductDependencies (ProductPK, DependencySourceGuid, DependencySubID, DependencyFlags) "
             "VALUES (:productPK, :dependencySourceGuid, :dependencySubID, :dependencyFlags);";
+
+        static const auto s_InsertProductDependencyQuery = MakeSqlQuery(INSERT_PRODUCT_DEPENDENCY, INSERT_PRODUCT_DEPENDENCY_STATEMENT, LOG_NAME,
+            SqlParam<AZ::s64>(":productPK"),
+            SqlParam<AZ::Uuid>(":dependencySourceGuid"),
+            SqlParam<AZ::u32>(":dependencySubID"),
+            SqlParam<AZ::s64>(":dependencyFlags"));
 
         static const char* UPDATE_PRODUCT_DEPENDENCY = "AssetProcessor::UpdateProductDependency";
         static const char* UPDATE_PRODUCT_DEPENDENCY_STATEMENT =
@@ -375,27 +525,94 @@ namespace AssetProcessor
             "DependencyFlags = :dependencyFlags, WHERE "
             "ProductDependencyID = :productDependencyID;";
 
+        static const auto s_UpdateProductDependencyQuery = MakeSqlQuery(UPDATE_PRODUCT_DEPENDENCY, UPDATE_PRODUCT_DEPENDENCY_STATEMENT, LOG_NAME,
+            SqlParam<AZ::s64>(":productPK"),
+            SqlParam<AZ::Uuid>(":dependencySourceGuid"),
+            SqlParam<AZ::u32>(":dependencySubID"),
+            SqlParam<AZ::u64>(":dependencyFlags"),
+            SqlParam<AZ::s64>(":productDependencyID"));
+
         static const char* DELETE_PRODUCT_DEPENDENCY_BY_PRODUCTID = "AssetProcessor::DeleteProductDependencyByProductId";
         static const char* DELETE_PRODUCT_DEPENDENCY_BY_PRODUCTID_STATEMENT =
             "DELETE FROM ProductDependencies WHERE "
             "ProductPK = :productpk;";
 
+        static const auto s_DeleteProductDependencyByProductIdQuery = MakeSqlQuery(DELETE_PRODUCT_DEPENDENCY_BY_PRODUCTID, DELETE_PRODUCT_DEPENDENCY_BY_PRODUCTID_STATEMENT, LOG_NAME,
+            SqlParam<AZ::s64>(":productpk"));
+
         static const char* DELETE_AUTO_SUCCEED_JOBS = "AssetProcessor::DeleteAutoSucceedJobs";
         static const char* DELETE_AUTO_SUCCEED_JOBS_STATEMENT =
             "DELETE FROM Jobs WHERE JobKey LIKE 'CreateJobs_success_'";
+
+        static const char* CREATE_BUILDERINFO_TABLE = "AssetProcessor::CreateBuilderInfoTable";
+        static const char* CREATE_BUILDERINFO_TABLE_STATEMENT =
+            "CREATE TABLE IF NOT EXISTS BuilderInfo( "
+            "    BuilderID   INTEGER PRIMARY KEY AUTOINCREMENT, "
+            "    Guid BLOB NOT NULL, "
+            "    AnalysisFingerprint TEXT default('') collate nocase);";
+
+        static const char* CLEAR_BUILDERINFO_TABLE = "AssetProcessor::ClearBuilderInfoTable";
+        static const char* CLEAR_BUILDERINFO_TABLE_STATEMENT = "DELETE FROM  BuilderInfo;";
+
+        static const char* INSERT_BUILDERINFO = "AssetProcessor::InsertBuilderInfo";
+        static const char* INSERT_BUILDERINFO_STATEMENT =
+            "INSERT INTO BuilderInfo (Guid, AnalysisFingerprint) "
+            "VALUES (:guid, :analysisFingerprint);";
+        static const auto s_InsertBuilderInfoQuery = MakeSqlQuery(INSERT_BUILDERINFO, INSERT_BUILDERINFO_STATEMENT, LOG_NAME,
+            SqlParam<AZ::Uuid>(":guid"),
+            SqlParam<const char*>(":analysisFingerprint"));
+
+        static const char* INSERT_COLUMN_ANALYSISFINGERPRINT = "AssetProcessor::AddColumnAnalysisFingerprint";
+        static const char* INSERT_COLUMN_ANALYSISFINGERPRINT_STATEMENT = 
+            "ALTER TABLE Sources "
+            "ADD AnalysisFingerprint TEXT NOT NULL collate nocase default('');";
+
+        static const char* INSERT_COLUMN_SOURCEDEPENDENCY_TYPEOFDEPENDENCY = "AssetProcessor::AddSourceDependency_TypeOfDependency";
+        static const char* INSERT_COLUMN_SOURCEDEPENDENCY_TYPEOFDEPENDENCY_STATEMENT =
+            "ALTER TABLE SourceDependency "
+            "ADD TypeOfDependency INTEGER NOT NULL DEFAULT 0;";
+
+        static const char* INSERT_FILE = "AssetProcessor::InsertFile";
+        static const char* INSERT_FILE_STATEMENT =
+            "INSERT INTO Files (ScanFolderPK, FileName, IsFolder) "
+            "VALUES (:scanfolderpk, :filename, :isfolder);";
+        static const auto s_InsertFileQuery = MakeSqlQuery(INSERT_FILE, INSERT_FILE_STATEMENT, LOG_NAME,
+            SqlParam<AZ::s64>(":scanfolderpk"),
+            SqlParam<const char*>(":filename"),
+            SqlParam<AZ::s64>(":isfolder"));
+        
+        static const char* UPDATE_FILE = "AssetProcessor::UpdateFile";
+        static const char* UPDATE_FILE_STATEMENT =
+            "UPDATE Files SET "
+            "ScanFolderPK = :scanfolderpk, "
+            "FileName = :filename, "
+            "IsFolder = :isfolder WHERE "
+            "FileID = :fileid;";
+        static const auto s_UpdateFileQuery = MakeSqlQuery(UPDATE_FILE, UPDATE_FILE_STATEMENT, LOG_NAME,
+            SqlParam<AZ::s64>(":scanfolderpk"),
+            SqlParam<const char*>(":filename"),
+            SqlParam<AZ::s64>(":isfolder"),
+            SqlParam<AZ::s64>(":fileid"));
+
+        static const char* DELETE_FILE = "AssetProcessor::DeleteFile";
+        static const char* DELETE_FILE_STATEMENT =
+            "DELETE FROM Files WHERE "
+            "FileID = :fileid;";
+        static const auto s_DeleteFileQuery = MakeSqlQuery(DELETE_FILE, DELETE_FILE_STATEMENT, LOG_NAME,
+            SqlParam<AZ::s64>(":fileid"));
     }
 
     AssetDatabaseConnection::AssetDatabaseConnection()
     {
-        qRegisterMetaType<ScanFolderDatabaseEntry>( "ScanFolderEntry" );
-        qRegisterMetaType<SourceDatabaseEntry>( "SourceEntry" );
-        qRegisterMetaType<JobDatabaseEntry>( "JobDatabaseEntry" );
-        qRegisterMetaType<ProductDatabaseEntry>( "ProductEntry" );
-        qRegisterMetaType<CombinedDatabaseEntry>( "CombinedEntry" );
-        qRegisterMetaType<SourceDatabaseEntryContainer>( "SourceEntryContainer" );
-        qRegisterMetaType<JobDatabaseEntryContainer>( "JobDatabaseEntryContainer" );
-        qRegisterMetaType<ProductDatabaseEntryContainer>( "ProductEntryContainer" );
-        qRegisterMetaType<CombinedDatabaseEntryContainer>( "CombinedEntryContainer" );
+        qRegisterMetaType<ScanFolderDatabaseEntry>("ScanFolderEntry");
+        qRegisterMetaType<SourceDatabaseEntry>("SourceEntry");
+        qRegisterMetaType<JobDatabaseEntry>("JobDatabaseEntry");
+        qRegisterMetaType<ProductDatabaseEntry>("ProductEntry");
+        qRegisterMetaType<CombinedDatabaseEntry>("CombinedEntry");
+        qRegisterMetaType<SourceDatabaseEntryContainer>("SourceEntryContainer");
+        qRegisterMetaType<JobDatabaseEntryContainer>("JobDatabaseEntryContainer");
+        qRegisterMetaType<ProductDatabaseEntryContainer>("ProductEntryContainer");
+        qRegisterMetaType<CombinedDatabaseEntryContainer>("CombinedEntryContainer");
     }
 
     AssetDatabaseConnection::~AssetDatabaseConnection()
@@ -411,7 +628,7 @@ namespace AssetProcessor
 
     void AssetDatabaseConnection::LoadData()
     {
-        if((!m_databaseConnection) || (!m_databaseConnection->IsOpen()))
+        if ((!m_databaseConnection) || (!m_databaseConnection->IsOpen()))
         {
             OpenDatabase();
         }
@@ -419,7 +636,7 @@ namespace AssetProcessor
 
     void AssetDatabaseConnection::ClearData()
     {
-        if((m_databaseConnection) && (m_databaseConnection->IsOpen()))
+        if ((m_databaseConnection) && (m_databaseConnection->IsOpen()))
         {
             CloseDatabase();
         }
@@ -431,8 +648,22 @@ namespace AssetProcessor
 
     bool AssetDatabaseConnection::PostOpenDatabase()
     {
-        DatabaseVersion foundVersion = QueryDatabaseVersion();
+        DatabaseVersion foundVersion = DatabaseVersion::DatabaseDoesNotExist;
+
+        if (m_databaseConnection->DoesTableExist("dbinfo"))
+        {
+            foundVersion = QueryDatabaseVersion();
+        }
         bool dropAllTables = true;
+
+        // if its a future version, we don't want to drop tables and blow up, we'd rather just inform the user, and move on:
+        if (foundVersion > CurrentDatabaseVersion())
+        {
+            AZ_Error(AssetProcessor::ConsoleChannel, false,
+                "The database in the Cache folder appears to be from a NEWER version of Asset Processor than this one.\n"
+                "To prevent loss of data in the cache for the newer version, this Asset Processor will close.\n");
+            return false;
+        }
 
         if (foundVersion == DatabaseVersion::AddedOutputPrefixToScanFolders)
         {
@@ -440,6 +671,7 @@ namespace AssetProcessor
             if (m_databaseConnection->ExecuteOneOffStatement(CREATEINDEX_JOBS_JOBKEY))
             {
                 foundVersion = DatabaseVersion::AddedJobKeyIndex;
+                AZ_TracePrintf(AssetProcessor::ConsoleChannel, "Upgraded Asset Database to version %i (AddedJobKeyIndex)\n", foundVersion)
             }
         }
 
@@ -447,11 +679,12 @@ namespace AssetProcessor
         if (foundVersion == DatabaseVersion::AddedJobKeyIndex)
         {
             if (
-                (m_databaseConnection->ExecuteOneOffStatement(CREATEINDEX_SOURCE_GUID))&&
+                (m_databaseConnection->ExecuteOneOffStatement(CREATEINDEX_SOURCE_GUID)) &&
                 (m_databaseConnection->ExecuteOneOffStatement(CREATEINDEX_SCANFOLDERS_SOURCES_SCANFOLDER))
                 )
             {
                 foundVersion = DatabaseVersion::AddedSourceGuidIndex;
+                AZ_TracePrintf(AssetProcessor::ConsoleChannel, "Upgraded Asset Database to version %i (AddedSourceGuidIndex)\n", foundVersion)
             }
         }
 
@@ -464,6 +697,7 @@ namespace AssetProcessor
                 )
             {
                 foundVersion = DatabaseVersion::AddedSourceDependencyTable;
+                AZ_TracePrintf(AssetProcessor::ConsoleChannel, "Upgraded Asset Database to version %i (AddedSourceDependencyTable)\n", foundVersion)
             }
         }
 
@@ -476,6 +710,7 @@ namespace AssetProcessor
                 )
             {
                 foundVersion = DatabaseVersion::AddedLegacySubIDsTable;
+                AZ_TracePrintf(AssetProcessor::ConsoleChannel, "Upgraded Asset Database to version %i (AddedLegacySubIDsTable)\n", foundVersion)
             }
         }
 
@@ -484,6 +719,7 @@ namespace AssetProcessor
             if (m_databaseConnection->ExecuteOneOffStatement(CREATE_PRODUCT_DEPENDENCY_TABLE))
             {
                 foundVersion = DatabaseVersion::AddedProductDependencyTable;
+                AZ_TracePrintf(AssetProcessor::ConsoleChannel, "Upgraded Asset Database to version %i (AddedProductDependencyTable)\n", foundVersion)
             }
         }
 
@@ -492,15 +728,45 @@ namespace AssetProcessor
             if (m_databaseConnection->ExecuteOneOffStatement(DELETE_AUTO_SUCCEED_JOBS))
             {
                 foundVersion = DatabaseVersion::ClearAutoSucceedJobs;
+                AZ_TracePrintf(AssetProcessor::ConsoleChannel, "Upgraded Asset Database to version %i (ClearAutoSucceedJobs)\n", foundVersion)
             }
         }
-        
-        if(foundVersion == CurrentDatabaseVersion())
+
+        if (foundVersion == DatabaseVersion::ClearAutoSucceedJobs)
+        {
+            if (m_databaseConnection->ExecuteOneOffStatement(CREATE_FILES_TABLE))
+            {
+                foundVersion = DatabaseVersion::AddedFilesTable;
+                AZ_TracePrintf(AssetProcessor::ConsoleChannel, "Upgraded Asset Database to version %i (AddedFilesTable)\n", foundVersion)
+            }
+        }
+
+        if (foundVersion == DatabaseVersion::AddedFilesTable)
+        {
+            if ((m_databaseConnection->ExecuteOneOffStatement(INSERT_COLUMN_ANALYSISFINGERPRINT))&&
+                (m_databaseConnection->ExecuteOneOffStatement(CREATE_BUILDERINFO_TABLE)))
+            {
+                foundVersion = DatabaseVersion::AddedAnalysisFingerprint;
+                AZ_TracePrintf(AssetProcessor::ConsoleChannel, "Upgraded Asset Database to version %i (AddedAnalysisFingerprint)\n", foundVersion)
+            }
+        }
+
+        if (foundVersion == DatabaseVersion::AddedAnalysisFingerprint)
+        {
+            if (m_databaseConnection->ExecuteOneOffStatement(INSERT_COLUMN_SOURCEDEPENDENCY_TYPEOFDEPENDENCY))
+            {
+                foundVersion = DatabaseVersion::AddedSourceDependencyType;
+                AZ_TracePrintf(AssetProcessor::ConsoleChannel, "Upgraded Asset Database to version %i (AddedSourceDependencyType)\n", foundVersion)
+            }
+        }
+
+        if (foundVersion == CurrentDatabaseVersion())
         {
             dropAllTables = false;
         }
         else
         {
+            AZ_TracePrintf(AssetProcessor::ConsoleChannel, "Asset Database must be cleared (hasVersion: %i currentVersion: %i)\n", foundVersion, CurrentDatabaseVersion())
             dropAllTables = true;
         }
 
@@ -509,13 +775,25 @@ namespace AssetProcessor
         // if you know how to upgrade, write your modify statements here, then set dropAllTables to false.
         // otherwise it will re-create from scratch.
 
-        if(dropAllTables)
+        if (dropAllTables)
         {
             // drop all tables by destroying the entire database.
             m_databaseConnection->Close();
+
             AZStd::string dbFilePath = GetAssetDatabaseFilePath();
-            AZ::IO::SystemFile::Delete(dbFilePath.c_str());
-            if(!m_databaseConnection->Open(dbFilePath, IsReadOnly()))
+            if (dbFilePath != ":memory:")
+            {
+                // you cannot delete a memory database, but it drops all data when you close it anyway.
+                if (!AZ::IO::SystemFile::Delete(dbFilePath.c_str()))
+                {
+                    delete m_databaseConnection;
+                    m_databaseConnection = nullptr;
+                    AZ_Error(LOG_NAME, false, "Unable to clear the asset database at %s\n", dbFilePath.c_str());
+                    return false;
+                }
+            }
+
+            if (!m_databaseConnection->Open(dbFilePath, IsReadOnly()))
             {
                 delete m_databaseConnection;
                 m_databaseConnection = nullptr;
@@ -523,6 +801,7 @@ namespace AssetProcessor
                 return false;
             }
 
+            AZ_TracePrintf(AssetProcessor::ConsoleChannel, "Asset Database has been cleared.\n")
             CreateStatements();
             ExecuteCreateStatements();
         }
@@ -537,7 +816,7 @@ namespace AssetProcessor
     void AssetDatabaseConnection::ExecuteCreateStatements()
     {
         AZ_Assert(m_databaseConnection, "No connection!");
-        for(const auto& element : m_createStatements)
+        for (const auto& element : m_createStatements)
         {
             m_databaseConnection->ExecuteOneOffStatement(element.c_str());
         }
@@ -549,13 +828,9 @@ namespace AssetProcessor
         AZ_Error(LOG_NAME, m_databaseConnection->IsOpen(), "Fatal: attempt to work on a database connection that isn't open");
         AZ_Error(LOG_NAME, m_databaseConnection->DoesTableExist("dbinfo"), "Fatal: dbinfo table does not exist");
 
-        StatementAutoFinalizer autoFinal(*m_databaseConnection, SET_DATABASE_VERSION);
-        Statement* statement = autoFinal.Get();
-        AZ_Error(LOG_NAME, statement, "Statement not found: %s", SET_DATABASE_VERSION);
-
-        statement->BindValueInt(statement->GetNamedParamIdx(":ver"), static_cast<int>(ver));
-        Statement::SqlStatus result = statement->Step();
-        AZ_Warning(LOG_NAME, result != SQLite::Statement::SqlOK, "Failed to execute SetDatabaseVersion.");
+        StatementAutoFinalizer autoFinal;
+        // note that BindAndStep outputs errors if it fails, no need to ouput them here.
+        s_SetDatabaseVersionQuery.BindAndStep(*m_databaseConnection, static_cast<int>(ver));
     }
 
     void AssetDatabaseConnection::CreateStatements()
@@ -564,7 +839,6 @@ namespace AssetProcessor
         AZ_Assert(m_databaseConnection->IsOpen(), "Connection is not open");
 
         AzToolsFramework::AssetDatabase::AssetDatabaseConnection::CreateStatements();
-
 
         // ---------------------------------------------------------------------------------------------
         //                  Housekeeping
@@ -578,17 +852,18 @@ namespace AssetProcessor
         m_databaseConnection->AddStatement(CREATE_DATABASE_INFOTABLE, CREATE_DATABASE_INFOTABLE_STATEMENT);
         m_createStatements.push_back(CREATE_DATABASE_INFOTABLE);
 
-        m_databaseConnection->AddStatement(SET_DATABASE_VERSION, SET_DATABASE_VERSION_STATEMENT);
+        AddStatement(m_databaseConnection, s_SetDatabaseVersionQuery);
 
         // ----------------------------------------------------------------------------------------------
         //                  ScanFolders table
         // ----------------------------------------------------------------------------------------------
         m_databaseConnection->AddStatement(CREATE_SCANFOLDERS_TABLE, CREATE_SCANFOLDERS_TABLE_STATEMENT);
         m_createStatements.push_back(CREATE_SCANFOLDERS_TABLE);
-        
-        m_databaseConnection->AddStatement(INSERT_SCANFOLDER, INSERT_SCANFOLDER_STATEMENT);
-        m_databaseConnection->AddStatement(UPDATE_SCANFOLDER, UPDATE_SCANFOLDER_STATEMENT);
-        m_databaseConnection->AddStatement(DELETE_SCANFOLDER, DELETE_SCANFOLDER_STATEMENT);
+
+        AddStatement(m_databaseConnection, s_InsertScanfolderQuery);
+        AddStatement(m_databaseConnection, s_UpdateScanfolderQuery);
+        AddStatement(m_databaseConnection, s_DeleteScanfolderQuery);
+        AddStatement(m_databaseConnection, s_DeleteSourceByScanfolderidQuery);
 
         // ---------------------------------------------------------------------------------------------
         //                  Source table
@@ -596,43 +871,54 @@ namespace AssetProcessor
         m_databaseConnection->AddStatement(CREATE_SOURCES_TABLE, CREATE_SOURCES_TABLE_STATEMENT);
         m_createStatements.push_back(CREATE_SOURCES_TABLE);
 
-        m_databaseConnection->AddStatement(INSERT_SOURCE, INSERT_SOURCE_STATEMENT);
-        m_databaseConnection->AddStatement(UPDATE_SOURCE, UPDATE_SOURCE_STATEMENT);
-        m_databaseConnection->AddStatement(DELETE_SOURCE, DELETE_SOURCE_STATEMENT);
+        AddStatement(m_databaseConnection, s_InsertSourceQuery);
+        AddStatement(m_databaseConnection, s_UpdateSourceQuery);
+        AddStatement(m_databaseConnection, s_DeleteSourceQuery);
+        m_databaseConnection->AddStatement(INVALIDATE_SOURCE_ANALYSISFINGEPRINTS, INVALIDATE_SOURCE_ANALYSISFINGEPRINTS_STATEMENT);
 
         // ---------------------------------------------------------------------------------------------
         //                  Jobs table
         // ---------------------------------------------------------------------------------------------
         m_databaseConnection->AddStatement(CREATE_JOBS_TABLE, CREATE_JOBS_TABLE_STATEMENT);
         m_createStatements.push_back(CREATE_JOBS_TABLE);
+
+        AddStatement(m_databaseConnection, s_GetHighestJobrunkeyQuery);
+        AddStatement(m_databaseConnection, s_InsertJobQuery);
+        AddStatement(m_databaseConnection, s_UpdateJobQuery);
+        AddStatement(m_databaseConnection, s_DeleteJobQuery);
         
-        m_databaseConnection->AddStatement(GET_HIGHEST_JOBRUNKEY, GET_HIGHEST_JOBRUNKEY_STATEMENT);
-        m_databaseConnection->AddStatement(INSERT_JOB, INSERT_JOB_STATEMENT);
-        m_databaseConnection->AddStatement(UPDATE_JOB, UPDATE_JOB_STATEMENT);
-        m_databaseConnection->AddStatement(DELETE_JOB, DELETE_JOB_STATEMENT);
+        // ---------------------------------------------------------------------------------------------
+        //                  Builder Info Table
+        // ---------------------------------------------------------------------------------------------
+        m_databaseConnection->AddStatement(INSERT_COLUMN_ANALYSISFINGERPRINT, INSERT_COLUMN_ANALYSISFINGERPRINT_STATEMENT);
+        m_databaseConnection->AddStatement(CREATE_BUILDERINFO_TABLE, CREATE_BUILDERINFO_TABLE_STATEMENT);
+        m_databaseConnection->AddStatement(CLEAR_BUILDERINFO_TABLE, CLEAR_BUILDERINFO_TABLE_STATEMENT);
+        m_databaseConnection->AddStatement(INSERT_BUILDERINFO, INSERT_BUILDERINFO_STATEMENT);
+        m_createStatements.push_back(CREATE_BUILDERINFO_TABLE);
+
         // ---------------------------------------------------------------------------------------------
         //                   Products table
         // ---------------------------------------------------------------------------------------------
         m_databaseConnection->AddStatement(CREATE_PRODUCT_TABLE, CREATE_PRODUCT_TABLE_STATEMENT);
         m_createStatements.push_back(CREATE_PRODUCT_TABLE);
 
-        m_databaseConnection->AddStatement(INSERT_PRODUCT, INSERT_PRODUCT_STATEMENT);
-        m_databaseConnection->AddStatement(UPDATE_PRODUCT, UPDATE_PRODUCT_STATEMENT);
-        m_databaseConnection->AddStatement(DELETE_PRODUCT, DELETE_PRODUCT_STATEMENT);
-
-        m_databaseConnection->AddStatement(DELETE_PRODUCTS_BY_JOBID, DELETE_PRODUCTS_BY_JOBID_STATEMENT);
-        m_databaseConnection->AddStatement(DELETE_PRODUCTS_BY_SOURCEID, DELETE_PRODUCTS_BY_SOURCEID_STATEMENT);
-        m_databaseConnection->AddStatement(DELETE_PRODUCTS_BY_SOURCEID_PLATFORM, DELETE_PRODUCTS_BY_SOURCEID_PLATFORM_STATEMENT);
+        AddStatement(m_databaseConnection, s_InsertProductQuery);
+        AddStatement(m_databaseConnection, s_UpdateProductQuery);
+        AddStatement(m_databaseConnection, s_DeleteProductQuery);
+        AddStatement(m_databaseConnection, s_DeleteProductsByJobidQuery);
+        AddStatement(m_databaseConnection, s_DeleteProductsBySourceidQuery);
+        AddStatement(m_databaseConnection, s_DeleteProductsBySourceidPlatformQuery);
 
         // ---------------------------------------------------------------------------------------------
         //                   Source Dependency table
         // ---------------------------------------------------------------------------------------------
         m_databaseConnection->AddStatement(CREATE_SOURCE_DEPENDENCY_TABLE, CREATE_SOURCE_DEPENDENCY_TABLE_STATEMENT);
+        m_databaseConnection->AddStatement(INSERT_COLUMN_SOURCEDEPENDENCY_TYPEOFDEPENDENCY, INSERT_COLUMN_SOURCEDEPENDENCY_TYPEOFDEPENDENCY_STATEMENT);
+        
         m_createStatements.push_back(CREATE_SOURCE_DEPENDENCY_TABLE);
 
-        m_databaseConnection->AddStatement(INSERT_SOURCE_DEPENDENCY, INSERT_SOURCE_DEPENDENCY_STATEMENT);
-        m_databaseConnection->AddStatement(UPDATE_SOURCE_DEPENDENCY, UPDATE_SOURCE_DEPENDENCY_STATEMENT);
-        m_databaseConnection->AddStatement(DELETE_SOURCE_DEPENDENCY_SOURCEDEPENDENCYID, DELETE_SOURCE_DEPENDENCY_SOURCEDEPENDENCYID_STATEMENT);
+        AddStatement(m_databaseConnection, s_InsertSourceDependencyQuery);
+        AddStatement(m_databaseConnection, s_DeleteSourceDependencySourcedependencyidQuery);
 
         // ---------------------------------------------------------------------------------------------
         //                    Legacy SubIDs table
@@ -642,10 +928,10 @@ namespace AssetProcessor
         m_createStatements.push_back(CREATE_LEGACYSUBIDS_TABLE);
         m_createStatements.push_back(CREATEINDEX_LEGACYSUBIDS_PRODUCTPK);
 
-        m_databaseConnection->AddStatement(INSERT_NEW_LEGACYSUBID, INSERT_NEW_LEGACYSUBID_STATEMENT);
-        m_databaseConnection->AddStatement(OVERWRITE_EXISTING_LEGACYSUBID, OVERWRITE_EXISTING_LEGACYSUBID_STATEMENT);
-        m_databaseConnection->AddStatement(DELETE_LEGACYSUBIDS_BY_PRIMARY_KEY, DELETE_LEGACYSUBIDS_BY_PRIMARY_KEY_STATEMENT);
-        m_databaseConnection->AddStatement(DELETE_LEGACYSUBIDS_BY_PRODUCTID, DELETE_LEGACYSUBIDS_BY_PRODUCTID_STATEMENT);
+        AddStatement(m_databaseConnection, s_InsertNewLegacysubidQuery);
+        AddStatement(m_databaseConnection, s_OverwriteExistingLegacysubidQuery);
+        AddStatement(m_databaseConnection, s_DeleteLegacysubidsByPrimaryKeyQuery);
+        AddStatement(m_databaseConnection, s_DeleteLegacysubidsByProductidQuery);
 
         // ---------------------------------------------------------------------------------------------
         //                   Product Dependency table
@@ -653,9 +939,19 @@ namespace AssetProcessor
         m_databaseConnection->AddStatement(CREATE_PRODUCT_DEPENDENCY_TABLE, CREATE_PRODUCT_DEPENDENCY_TABLE_STATEMENT);
         m_createStatements.push_back(CREATE_PRODUCT_DEPENDENCY_TABLE);
 
-        m_databaseConnection->AddStatement(INSERT_PRODUCT_DEPENDENCY, INSERT_PRODUCT_DEPENDENCY_STATEMENT);
-        m_databaseConnection->AddStatement(UPDATE_PRODUCT_DEPENDENCY, UPDATE_PRODUCT_DEPENDENCY_STATEMENT);
-        m_databaseConnection->AddStatement(DELETE_PRODUCT_DEPENDENCY_BY_PRODUCTID, DELETE_PRODUCT_DEPENDENCY_BY_PRODUCTID_STATEMENT);
+        AddStatement(m_databaseConnection, s_InsertProductDependencyQuery);
+        AddStatement(m_databaseConnection, s_UpdateProductDependencyQuery);
+        AddStatement(m_databaseConnection, s_DeleteProductDependencyByProductIdQuery);
+
+        // ---------------------------------------------------------------------------------------------
+        //                  Files table
+        // ---------------------------------------------------------------------------------------------
+        m_databaseConnection->AddStatement(CREATE_FILES_TABLE, CREATE_FILES_TABLE_STATEMENT);
+        m_createStatements.push_back(CREATE_FILES_TABLE);
+
+        m_databaseConnection->AddStatement(INSERT_FILE, INSERT_FILE_STATEMENT);
+        m_databaseConnection->AddStatement(UPDATE_FILE, UPDATE_FILE_STATEMENT);
+        m_databaseConnection->AddStatement(DELETE_FILE, DELETE_FILE_STATEMENT);
 
         // ---------------------------------------------------------------------------------------------
         //                   Indices
@@ -673,7 +969,7 @@ namespace AssetProcessor
         m_createStatements.push_back(CREATEINDEX_SOURCES_JOBS);
 
         m_databaseConnection->AddStatement(CREATEINDEX_JOBS_PRODUCTS, CREATEINDEX_JOBS_PRODUCTS_STATEMENT);
-        
+
         m_createStatements.push_back(CREATEINDEX_JOBS_PRODUCTS);
 
         m_databaseConnection->AddStatement(CREATEINDEX_JOBS_JOBRUNKEY, CREATEINDEX_JOBS_JOBRUNKEY_STATEMENT);
@@ -687,7 +983,7 @@ namespace AssetProcessor
 
         m_databaseConnection->AddStatement(CREATEINDEX_SOURCE_GUID, CREATEINDEX_SOURCE_GUID_STATEMENT);
         m_createStatements.push_back(CREATEINDEX_SOURCE_GUID);
-        
+
         m_databaseConnection->AddStatement(CREATEINDEX_PRODUCT_NAME, CREATEINDEX_PRODUCT_NAME_STATEMENT);
         m_createStatements.push_back(CREATEINDEX_PRODUCT_NAME);
 
@@ -697,12 +993,18 @@ namespace AssetProcessor
         m_databaseConnection->AddStatement(CREATEINDEX_PRODUCTDEPENDENCIES_PRODUCTPK, CREATEINDEX_PRODUCTDEPENDENCIES_PRODUCTPK_STATEMENT);
         m_createStatements.push_back(CREATEINDEX_PRODUCTDEPENDENCIES_PRODUCTPK);
 
+        m_databaseConnection->AddStatement(CREATEINDEX_FILE_NAME, CREATEINDEX_FILE_NAME_STATEMENT);
+        m_createStatements.push_back(CREATEINDEX_FILE_NAME);
+
+        m_databaseConnection->AddStatement(CREATEINDEX_SCANFOLDERS_FILES, CREATEINDEX_SCANFOLDERS_FILES_STATEMENT);
+        m_createStatements.push_back(CREATEINDEX_SCANFOLDERS_FILES);
+
         m_databaseConnection->AddStatement(DELETE_AUTO_SUCCEED_JOBS, DELETE_AUTO_SUCCEED_JOBS_STATEMENT);
     }
 
     void AssetDatabaseConnection::VacuumAndAnalyze()
     {
-        if(m_databaseConnection)
+        if (m_databaseConnection)
         {
             m_databaseConnection->ExecuteOneOffStatement("VACUUM");
             m_databaseConnection->ExecuteOneOffStatement("ANALYZE");
@@ -717,7 +1019,7 @@ namespace AssetProcessor
             {
                 entry = scanFolderEntry;
                 found = true;
-                return false; // stop after the first result
+                return false;//only one
             });
         return found;
     }
@@ -730,7 +1032,7 @@ namespace AssetProcessor
         {
             entry = scanFolderEntry;
             found = true;
-            return false; // stop after the first result
+            return false;//only one
         });
         return found;
     }
@@ -790,20 +1092,14 @@ namespace AssetProcessor
 
     bool AssetDatabaseConnection::SetScanFolder(ScanFolderDatabaseEntry& entry)
     {
-        if(!ValidateDatabaseTable(INSERT_SCANFOLDER, "ScanFolders"))
-        {
-            AZ_Error(LOG_NAME, false, "Could not find ScanFolder table");
-            return false;
-        }
-
         ScanFolderDatabaseEntry existingEntry;
 
-        if(entry.m_scanFolderID == -1)
+        if (entry.m_scanFolderID == -1)
         {
             //they didn't supply an id, add to database!
 
             //make sure the scan path is not already in the database
-            if(GetScanFolderByPortableKey(entry.m_portableKey.c_str(), existingEntry))
+            if (GetScanFolderByPortableKey(entry.m_portableKey.c_str(), existingEntry))
             {
                 //its in the database already, update the input entry id and try again:
                 entry.m_scanFolderID = existingEntry.m_scanFolderID;
@@ -812,57 +1108,12 @@ namespace AssetProcessor
 
             //its not in the database, add it
             // it is a single statement, do not wrap it in a transaction, this wastes a lot of time.
-            StatementAutoFinalizer autoFinal(*m_databaseConnection, INSERT_SCANFOLDER);
-            Statement* statement = autoFinal.Get();
-            AZ_Error(LOG_NAME, statement, "Could not get statement: %s", INSERT_SCANFOLDER);
-
-            int scanFolderIdx = statement->GetNamedParamIdx(":scanfolder");
-            if(!scanFolderIdx)
+            if (!s_InsertScanfolderQuery.BindAndStep(*m_databaseConnection, entry.m_scanFolder.c_str(), entry.m_displayName.c_str(), entry.m_portableKey.c_str(), entry.m_outputPrefix.c_str(), entry.m_isRoot))
             {
-                AZ_Error(LOG_NAME, false, "Could not find the Idx for scanFolder in %s", INSERT_SCANFOLDER);
-                return false;
-            }
-            statement->BindValueText(scanFolderIdx, entry.m_scanFolder.c_str());
-
-            int displayNameIdx = statement->GetNamedParamIdx(":displayname");
-            if (!displayNameIdx)
-            {
-                AZ_Error(LOG_NAME, false, "Could not find the Idx for displayname in %s", INSERT_SCANFOLDER);
-                return false;
-            }
-            statement->BindValueText(displayNameIdx, entry.m_displayName.c_str());
-
-            int portableKeyIdx = statement->GetNamedParamIdx(":portablekey");
-            if (!portableKeyIdx)
-            {
-                AZ_Error(LOG_NAME, false, "Could not find the Idx for portablekey in %s", INSERT_SCANFOLDER);
-                return false;
-            }
-            statement->BindValueText(portableKeyIdx, entry.m_portableKey.c_str());
-
-            int outputPrefixIdx = statement->GetNamedParamIdx(":outputprefix");
-            if (!outputPrefixIdx)
-            {
-                AZ_Error(LOG_NAME, false, "Could not find the Idx for outputPrefix %i", outputPrefixIdx);
-                return false;
-            }
-            statement->BindValueText(outputPrefixIdx, entry.m_outputPrefix.c_str());
-
-            int isRootIdx = statement->GetNamedParamIdx(":isroot");
-            if (!isRootIdx)
-            {
-                AZ_Error(LOG_NAME, false, "Could not find the Idx for isRootIdx %i", isRootIdx);
-                return false;
-            }
-            statement->BindValueInt(isRootIdx, entry.m_isRoot);
-
-            if(statement->Step() == Statement::SqlError)
-            {
-                AZ_Warning(LOG_NAME, false, "Failed to write the new scan folder into the database.");
                 return false;
             }
 
-            if(GetScanFolderByPortableKey(entry.m_portableKey.c_str(), existingEntry))
+            if (GetScanFolderByPortableKey(entry.m_portableKey.c_str(), existingEntry))
             {
                 //its in the database already, update the input entry
                 entry.m_scanFolderID = existingEntry.m_scanFolderID;
@@ -875,98 +1126,22 @@ namespace AssetProcessor
         else
         {
             //they supplied an id, see if it exists in the database
-            if(!GetScanFolderByScanFolderID(entry.m_scanFolderID, existingEntry))
+            if (!GetScanFolderByScanFolderID(entry.m_scanFolderID, existingEntry))
             {
                 AZ_WarningOnce(LOG_NAME, false, "Failed to write the new scan folder into the database.");
                 return false;
             }
 
-            StatementAutoFinalizer autoFinal(*m_databaseConnection, UPDATE_SCANFOLDER);
-            Statement* statement = autoFinal.Get();
-            AZ_Error(LOG_NAME, statement, "Could not get statement: %s", UPDATE_SCANFOLDER);
-
-            int scanFolderIDIdx = statement->GetNamedParamIdx(":scanfolderid");
-            if(!scanFolderIDIdx)
-            {
-                AZ_Error(LOG_NAME, false, "Could not find the Idx for scanfolderid %i", scanFolderIDIdx);
-                return false;
-            }
-            statement->BindValueInt64(scanFolderIDIdx, entry.m_scanFolderID);
-
-            int scanFolderIdx = statement->GetNamedParamIdx(":scanfolder");
-            if(!scanFolderIdx)
-            {
-                AZ_Error(LOG_NAME, false, "Could not find the Idx for scanFolder %i", scanFolderIdx);
-                return false;
-            }
-            statement->BindValueText(scanFolderIdx, entry.m_scanFolder.c_str());
-
-            int displayNameIdx = statement->GetNamedParamIdx(":displayname");
-            if (!displayNameIdx)
-            {
-                AZ_Error(LOG_NAME, false, "Could not find the Idx for displayname %i", displayNameIdx);
-                return false;
-            }
-            statement->BindValueText(displayNameIdx, entry.m_displayName.c_str());
-
-            int portableKeyIdx = statement->GetNamedParamIdx(":portablekey");
-            if (!portableKeyIdx)
-            {
-                AZ_Error(LOG_NAME, false, "Could not find the Idx for portablekey %i", portableKeyIdx);
-                return false;
-            }
-            statement->BindValueText(portableKeyIdx, entry.m_portableKey.c_str());
-
-            int outputPrefixIdx = statement->GetNamedParamIdx(":outputprefix");
-            if (!outputPrefixIdx)
-            {
-                AZ_Error(LOG_NAME, false, "Could not find the Idx for outputprefix %i", outputPrefixIdx);
-                return false;
-            }
-            statement->BindValueText(outputPrefixIdx, entry.m_outputPrefix.c_str());
-
-            int isRootIdx = statement->GetNamedParamIdx(":isroot");
-            if (!isRootIdx)
-            {
-                AZ_Error(LOG_NAME, false, "Could not find the Idx for isroot %i", isRootIdx);
-                return false;
-            }
-            statement->BindValueInt(isRootIdx, entry.m_isRoot);
-
-            if(statement->Step() == Statement::SqlError)
-            {
-                AZ_Warning(LOG_NAME, false, "Failed to write the new scan folder into the database.");
-                return false;
-            }
-
-            return true;
+            return s_UpdateScanfolderQuery.BindAndStep(*m_databaseConnection, entry.m_scanFolder.c_str(), entry.m_displayName.c_str(), entry.m_portableKey.c_str(), entry.m_outputPrefix.c_str(), entry.m_isRoot, entry.m_scanFolderID);
         }
     }
 
     bool AssetDatabaseConnection::RemoveScanFolder(AZ::s64 scanFolderID)
     {
-        if(!ValidateDatabaseTable(DELETE_SCANFOLDER, "ScanFolders"))
-        {
-            return false;
-        }
-
         ScopedTransaction transaction(m_databaseConnection);
 
-        StatementAutoFinalizer autoFinal(*m_databaseConnection, DELETE_SCANFOLDER);
-        Statement* statement = autoFinal.Get();
-        AZ_Error(LOG_NAME, statement, "Could not get statement: %s", DELETE_SCANFOLDER);
-
-        int scanFolderIDIdx = statement->GetNamedParamIdx(":scanfolderid");
-        if(!scanFolderIDIdx)
+        if (!s_DeleteScanfolderQuery.BindAndStep(*m_databaseConnection, scanFolderID))
         {
-            AZ_Error(LOG_NAME, false, "Could not find the Idx for scanFolderID %i", scanFolderIDIdx);
-            return false;
-        }
-        statement->BindValueInt64(scanFolderIDIdx, scanFolderID);
-
-        if(statement->Step() == Statement::SqlError)
-        {
-            AZ_Warning(LOG_NAME, false, "Failed to remove the scan folder from the database.");
             return false;
         }
 
@@ -978,10 +1153,10 @@ namespace AssetProcessor
     bool AssetDatabaseConnection::RemoveScanFolders(ScanFolderDatabaseEntryContainer& container)
     {
         bool succeeded = true;
-        for(auto& entry : container)
+        for (auto& entry : container)
         {
             succeeded &= RemoveScanFolder(entry.m_scanFolderID);
-            if(succeeded)
+            if (succeeded)
             {
                 entry.m_scanFolderID = -1;//set it to default -1 as this is no longer exists
             }
@@ -1106,46 +1281,40 @@ namespace AssetProcessor
     bool AssetDatabaseConnection::GetSourcesByProductName(QString exactProductName, SourceDatabaseEntryContainer& container)
     {
         bool found = false;
-        bool succeeded = QueryCombinedByProductName(exactProductName.toUtf8().constData(), 
-            [&](CombinedDatabaseEntry& combined)
-        {
-            found = true;
-            container.push_back();
-            container.back() = AZStd::move(combined);
-            return true; // return true to continue collecting all
-        });
-        return  found && succeeded;
+        bool succeeded = QueryCombinedByProductName(exactProductName.toUtf8().constData(),
+                [&](CombinedDatabaseEntry& combined)
+                {
+                    found = true;
+                    container.push_back();
+                    container.back() = AZStd::move(combined);
+                    return true; // return true to continue collecting all
+                });
+        return found && succeeded;
     }
 
     bool AssetDatabaseConnection::GetSourcesLikeProductName(QString likeProductName, LikeType likeType, SourceDatabaseEntryContainer& container)
     {
         bool found = false;
         bool succeeded = QueryCombinedLikeProductName(likeProductName.toUtf8().constData(), likeType,
-            [&](CombinedDatabaseEntry& combined)
-        {
-            found = true;
-            container.push_back();
-            container.back() = AZStd::move(combined);
-            return true;//all
-        });
-        return  found && succeeded;
+                [&](CombinedDatabaseEntry& combined)
+                {
+                    found = true;
+                    container.push_back();
+                    container.back() = AZStd::move(combined);
+                    return true;//all
+                });
+        return found && succeeded;
     }
 
     bool AssetDatabaseConnection::SetSource(SourceDatabaseEntry& entry)
     {
-        if(!ValidateDatabaseTable(INSERT_SOURCE, "Sources"))
-        {
-            AZ_Error(LOG_NAME, false, "Could not find Sources table");
-            return false;
-        }
-        
-        if(entry.m_sourceID == -1)
+        if (entry.m_sourceID == -1)
         {
             //they didn't supply an id, add to database
-            
+
             //first make sure its not already in the database
             SourceDatabaseEntry existingEntry;
-            if(GetSourceBySourceGuid(entry.m_sourceGuid, existingEntry))
+            if (GetSourceBySourceGuid(entry.m_sourceGuid, existingEntry))
             {
                 // this source guid already exists.  note that the UUID is final, there is only ever one UUID for a source
                 // if folders override each other, the UUID stays the same but the scanfolder field changes but its still considered the same source file.
@@ -1153,60 +1322,21 @@ namespace AssetProcessor
                 return SetSource(entry); // now update the existing field
             }
 
-            // it is a single statement, do not wrap it in a transaction, this wastes a lot of time.
-            StatementAutoFinalizer autoFinal(*m_databaseConnection, INSERT_SOURCE);
-            Statement* statement = autoFinal.Get();
-            if(!statement)
-            {
-                AZ_Error(LOG_NAME, statement, "Could not get statement: %s", INSERT_SOURCE);
-                return false;
-            }
-
-            int scanFolderIDIdx = statement->GetNamedParamIdx(":scanfolderid");
-            if(!scanFolderIDIdx)
-            {
-                AZ_Error(LOG_NAME, false, "could not find scanfolderpk in statement %s", INSERT_SOURCE);
-                return false;
-            }
-            statement->BindValueInt64(scanFolderIDIdx, entry.m_scanFolderPK);
-
-            int sourceNameIdx = statement->GetNamedParamIdx(":sourcename");
-            if(!sourceNameIdx)
-            {
-                AZ_Error(LOG_NAME, false, "could not find sourcename in statement %s", INSERT_SOURCE);
-                return false;
-            }
-            statement->BindValueText(sourceNameIdx, entry.m_sourceName.c_str());
-
-            int sourceGuidIdx = statement->GetNamedParamIdx(":sourceguid");
-            if(!sourceGuidIdx)
-            {
-                AZ_Error(LOG_NAME, false, "could not find sourceguid in statement %s", INSERT_SOURCE);
-                return false;
-            }
-            statement->BindValueUuid(sourceGuidIdx, entry.m_sourceGuid);
-
-            if(statement->Step() == Statement::SqlError)
+            if (!s_InsertSourceQuery.BindAndStep(*m_databaseConnection, entry.m_scanFolderPK, entry.m_sourceName.c_str(), entry.m_sourceGuid, entry.m_analysisFingerprint.c_str()))
             {
                 AZ_Warning(LOG_NAME, false, "Failed to write the new source into the database.");
                 return false;
             }
 
-            //now that its in the database get the id
-            if (GetSourceBySourceGuid(entry.m_sourceGuid, existingEntry))
-            {
-                entry.m_sourceID = existingEntry.m_sourceID;
-                return true;
-            }
-
-            AZ_Error(LOG_NAME, false, "Failed to read the new source into the database.");
-            return false;
+            //now that its in the database get the id:
+            entry.m_sourceID = m_databaseConnection->GetLastRowID();
+            return true;
         }
         else
         {
             //they supplied an id, see if it exists in the database
             SourceDatabaseEntry existingEntry;
-            if(!GetSourceBySourceID(entry.m_sourceID, existingEntry))
+            if (!GetSourceBySourceID(entry.m_sourceID, existingEntry))
             {
                 //they supplied an id but is not in the database!
                 AZ_Error(LOG_NAME, false, "Failed to write the source into the database.");
@@ -1217,107 +1347,45 @@ namespace AssetProcessor
             // note that we already looked it up by source ID
             if ((existingEntry.m_scanFolderPK == entry.m_scanFolderPK) &&
                 (existingEntry.m_sourceGuid == entry.m_sourceGuid) &&
-                (existingEntry.m_sourceName == entry.m_sourceName))
+                (existingEntry.m_sourceName == entry.m_sourceName) &&
+                (existingEntry.m_analysisFingerprint == entry.m_analysisFingerprint)
+                )
             {
                 return true;
             }
-                
-            StatementAutoFinalizer autoFinal(*m_databaseConnection, UPDATE_SOURCE);
-            Statement* statement = autoFinal.Get();
-            if(!statement)
-            {
-                AZ_Error(LOG_NAME, statement, "Could not get statement: %s", UPDATE_SOURCE);
-                return false;
-            }
 
-            int sourceIdx = statement->GetNamedParamIdx(":sourceid");
-            if(!sourceIdx)
-            {
-                AZ_Error(LOG_NAME, false, "could not find sourceid in statement %s", INSERT_SOURCE);
-                return false;
-            }
-            statement->BindValueInt64(sourceIdx, entry.m_sourceID);
 
-            int scanFolderIdx = statement->GetNamedParamIdx(":scanfolderpk");
-            if(!scanFolderIdx)
-            {
-                AZ_Error(LOG_NAME, false, "could not find scanfolderpk in statement %s", INSERT_SOURCE);
-                return false;
-            }
-            statement->BindValueInt64(scanFolderIdx, entry.m_scanFolderPK);
-
-            int sourceNameIdx = statement->GetNamedParamIdx(":sourcename");
-            if(!sourceNameIdx)
-            {
-                AZ_Error(LOG_NAME, false, "could not find sourcename in statement %s", UPDATE_SOURCE);
-                return false;
-            }
-            statement->BindValueText(sourceNameIdx, entry.m_sourceName.c_str());
-
-            int sourceGuidIdx = statement->GetNamedParamIdx(":sourceguid");
-            if(!sourceGuidIdx)
-            {
-                AZ_Error(LOG_NAME, false, "could not find sourceguid in statement %s", UPDATE_SOURCE);
-                return false;
-            }
-            statement->BindValueUuid(sourceGuidIdx, entry.m_sourceGuid);
-
-            if(statement->Step() == Statement::SqlError)
-            {
-                AZ_Warning(LOG_NAME, false, "Failed to execute %s to update fingerprints (key %i)", UPDATE_SOURCE, entry.m_sourceID);
-                return false;
-            }
-
-            return true;
+            return s_UpdateSourceQuery.BindAndStep(*m_databaseConnection, entry.m_scanFolderPK, entry.m_sourceName.c_str(), entry.m_sourceGuid, entry.m_sourceID, entry.m_analysisFingerprint.c_str());
         }
+    }
+
+    bool AssetDatabaseConnection::InvalidateSourceAnalysisFingerprints()
+    {
+        return m_databaseConnection->ExecuteOneOffStatement(INVALIDATE_SOURCE_ANALYSISFINGEPRINTS);
     }
 
     // this must actually delete the source
     bool AssetDatabaseConnection::RemoveSource(AZ::s64 sourceID)
     {
-        if(!ValidateDatabaseTable(DELETE_SOURCE, "Sources"))
-        {
-            AZ_Error(LOG_NAME, false, "Could not find Sources table");
-            return false;
-        }
-
         ScopedTransaction transaction(m_databaseConnection);
 
-        StatementAutoFinalizer autoFinal(*m_databaseConnection, DELETE_SOURCE);
-        Statement* statement = autoFinal.Get();
-        if(!statement)
+        if (!s_DeleteSourceQuery.BindAndStep(*m_databaseConnection, sourceID))
         {
-            AZ_Error(LOG_NAME, statement, "Could not get statement: %s", DELETE_SOURCE);
-            return false;
-        }
-
-        int sourceIDIdx = statement->GetNamedParamIdx(":sourceid");
-        if(!sourceIDIdx)
-        {
-            AZ_Error(LOG_NAME, false, "could not find sourceid in statement %s", DELETE_SOURCE);
-            return false;
-        }
-
-        statement->BindValueInt64(sourceIDIdx, sourceID);
-
-        if(statement->Step() == Statement::SqlError)
-        {
-            AZ_Warning(LOG_NAME, false, "Failed to RemoveSource from the database");
             return false;
         }
 
         transaction.Commit();
-        
+
         return true;
     }
 
     bool AssetDatabaseConnection::RemoveSources(SourceDatabaseEntryContainer& container)
     {
         bool succeeded = true;
-        for(auto& entry : container)
+        for (auto& entry : container)
         {
             succeeded &= RemoveSource(entry.m_sourceID);
-            if(succeeded)
+            if (succeeded)
             {
                 entry.m_sourceID = -1;//set it to -1 as it no longer exists
             }
@@ -1328,13 +1396,13 @@ namespace AssetProcessor
     bool AssetDatabaseConnection::RemoveSourcesByScanFolderID(AZ::s64 scanFolderID)
     {
         bool found = false;
-        bool succeeded = QuerySourceByScanFolderID( scanFolderID,
-            [&](SourceDatabaseEntry& source)
-        {
-            found = true;
-            succeeded &= RemoveSource(source.m_sourceID);
-            return true;//all
-        });
+        bool succeeded = QuerySourceByScanFolderID(scanFolderID,
+                [&](SourceDatabaseEntry& source)
+                {
+                    found = true;
+                    succeeded &= RemoveSource(source.m_sourceID);
+                    return true;//all
+                });
         return found && succeeded;
     }
 
@@ -1344,13 +1412,15 @@ namespace AssetProcessor
         {
             return 0;
         }
-        StatementAutoFinalizer autoFinal(*m_databaseConnection, GET_HIGHEST_JOBRUNKEY);
-        Statement* statement = autoFinal.Get();
-        if (!statement)
+
+        StatementAutoFinalizer autoFinal;
+
+        if (!s_GetHighestJobrunkeyQuery.Bind(*m_databaseConnection, autoFinal))
         {
-            AZ_Error(LOG_NAME, statement, "Could not get statement: %s\n", GET_HIGHEST_JOBRUNKEY);
             return 0;
         }
+
+        Statement* statement = autoFinal.Get();
 
         if (statement->Step() == Statement::SqlError)
         {
@@ -1365,16 +1435,16 @@ namespace AssetProcessor
     {
         bool found = false;
         bool succeeded = QueryJobsTable(
-            [&](JobDatabaseEntry& job)
-        {
-            found = true;
-            container.push_back();
-            container.back() = AZStd::move(job);
-            return true;//all
-        },  builderGuid,
-            jobKey.isEmpty() ? nullptr : jobKey.toUtf8().constData(),
-            platform.isEmpty() ? nullptr : platform.toUtf8().constData(),
-            status);
+                [&](JobDatabaseEntry& job)
+                {
+                    found = true;
+                    container.push_back();
+                    container.back() = AZStd::move(job);
+                    return true;//all
+                },  builderGuid,
+                jobKey.isEmpty() ? nullptr : jobKey.toUtf8().constData(),
+                platform.isEmpty() ? nullptr : platform.toUtf8().constData(),
+                status);
         return found && succeeded;
     }
 
@@ -1469,7 +1539,7 @@ namespace AssetProcessor
         });
         return found && succeeded;
     }
-    
+
     bool AssetDatabaseConnection::GetJobsByProductName(QString exactProductName, JobDatabaseEntryContainer& container, AZ::Uuid builderGuid, QString jobKey, QString platform, JobStatus status)
     {
         bool found = false;
@@ -1516,30 +1586,24 @@ namespace AssetProcessor
 
     bool AssetDatabaseConnection::SetJob(JobDatabaseEntry& entry)
     {
-        if(!ValidateDatabaseTable("SetJob", "Jobs"))
-        {
-            AZ_Error(LOG_NAME, false, "Could not find Jobs table");
-            return false;
-        }
-
         if (entry.m_jobRunKey <= 0)
         {
             AZ_Error(LOG_NAME, false, "You must specify a valid Job Run Key for a job to make it into the database.\n");
             return false;
         }
 
-        if(entry.m_jobID == -1)
+        if (entry.m_jobID == -1)
         {
             //they didn't supply an id, add to database
 
             //make sure its not already in the database
             JobDatabaseEntryContainer existingJobs;
-            if(GetJobsBySourceID(entry.m_sourcePK, existingJobs, entry.m_builderGuid, entry.m_jobKey.c_str(), entry.m_platform.c_str()))
+            if (GetJobsBySourceID(entry.m_sourcePK, existingJobs, entry.m_builderGuid, entry.m_jobKey.c_str(), entry.m_platform.c_str()))
             {
                 //see if this job is already here
-                for(const auto& existingjob : existingJobs)
+                for (const auto& existingjob : existingJobs)
                 {
-                    if(existingjob == entry)
+                    if (existingjob == entry)
                     {
                         //this job already exists
                         entry.m_jobID = existingjob.m_jobID;
@@ -1548,133 +1612,21 @@ namespace AssetProcessor
                 }
             }
 
-            // it is a single statement, do not wrap it in a transaction, this wastes a lot of time.
-            StatementAutoFinalizer autoFinal(*m_databaseConnection, INSERT_JOB);
-            Statement* statement = autoFinal.Get();
-            if(!statement)
+            if (!s_InsertJobQuery.BindAndStep(*m_databaseConnection, entry.m_sourcePK, entry.m_jobKey.c_str(), entry.m_fingerprint, entry.m_platform.c_str(),
+                entry.m_builderGuid, static_cast<int>(entry.m_status), entry.m_jobRunKey, entry.m_firstFailLogTime, entry.m_firstFailLogFile.c_str(),
+                entry.m_lastFailLogTime, entry.m_lastFailLogFile.c_str(), entry.m_lastLogTime, entry.m_lastLogFile.c_str()))
             {
-                AZ_Error(LOG_NAME, statement, "Could not get statement: %s", INSERT_JOB);
-                return false;
-            }
-
-            int sourceIdx = statement->GetNamedParamIdx(":sourceid");
-            if(!sourceIdx)
-            {
-                AZ_Error(LOG_NAME, false, "could not find sourceid in statement %s", INSERT_JOB);
-                return false;
-            }
-            statement->BindValueInt64(sourceIdx, entry.m_sourcePK);
-
-            int jobKeyIdx = statement->GetNamedParamIdx(":jobkey");
-            if(!jobKeyIdx)
-            {
-                AZ_Error(LOG_NAME, false, "could not find jobkey in statement %s", INSERT_JOB);
-                return false;
-            }
-            statement->BindValueText(jobKeyIdx, entry.m_jobKey.c_str());
-
-            int fingerprintIdx = statement->GetNamedParamIdx(":fingerprint");
-            if(!fingerprintIdx)
-            {
-                AZ_Error(LOG_NAME, false, "could not find fingerprint in statement %s", INSERT_JOB);
-                return false;
-            }
-            statement->BindValueInt(fingerprintIdx, entry.m_fingerprint);
-
-            int platformIdx = statement->GetNamedParamIdx(":platform");
-            if(!platformIdx)
-            {
-                AZ_Error(LOG_NAME, false, "could not find platform in statement %s", INSERT_JOB);
-                return false;
-            }
-            statement->BindValueText(platformIdx, entry.m_platform.c_str());
-
-            int builderguidIdx = statement->GetNamedParamIdx(":builderguid");
-            if(!builderguidIdx)
-            {
-                AZ_Error(LOG_NAME, false, "could not find builderguid in statement %s", INSERT_JOB);
-                return false;
-            }
-            statement->BindValueUuid(builderguidIdx, entry.m_builderGuid);
-
-            int statusIdx = statement->GetNamedParamIdx(":status");
-            if(!statusIdx)
-            {
-                AZ_Error(LOG_NAME, false, "could not find status in statement %s", INSERT_JOB);
-                return false;
-            }
-            statement->BindValueInt(statusIdx, static_cast<int>(entry.m_status));
-
-            int jobrunkeyIdx = statement->GetNamedParamIdx(":jobrunkey");
-            if(!jobrunkeyIdx)
-            {
-                AZ_Error(LOG_NAME, false, "could not find jobrunkey in statement %s", INSERT_JOB);
-                return false;
-            }
-            statement->BindValueInt64(jobrunkeyIdx, entry.m_jobRunKey);
-
-            int firstfaillogtimeIdx = statement->GetNamedParamIdx(":firstfaillogtime");
-            if(!firstfaillogtimeIdx)
-            {
-                AZ_Error(LOG_NAME, false, "could not find firstfaillogtime in statement %s", INSERT_JOB);
-                return false;
-            }
-            statement->BindValueInt64(firstfaillogtimeIdx, entry.m_firstFailLogTime);
-
-            int firstfaillogfileIdx = statement->GetNamedParamIdx(":firstfaillogfile");
-            if(!firstfaillogfileIdx)
-            {
-                AZ_Error(LOG_NAME, false, "could not find firstfaillogfile in statement %s", INSERT_JOB);
-                return false;
-            }
-            statement->BindValueText(firstfaillogfileIdx, entry.m_firstFailLogFile.c_str());
-
-            int lastfaillogtimeIdx = statement->GetNamedParamIdx(":lastfaillogtime");
-            if(!lastfaillogtimeIdx)
-            {
-                AZ_Error(LOG_NAME, false, "could not find lastfaillogtime in statement %s", INSERT_JOB);
-                return false;
-            }
-            statement->BindValueInt64(lastfaillogtimeIdx, entry.m_lastFailLogTime);
-
-            int lastfaillogfileIdx = statement->GetNamedParamIdx(":lastfaillogfile");
-            if(!lastfaillogfileIdx)
-            {
-                AZ_Error(LOG_NAME, false, "could not find lastfaillogfile in statement %s", INSERT_JOB);
-                return false;
-            }
-            statement->BindValueText(lastfaillogfileIdx, entry.m_lastFailLogFile.c_str());
-
-            int lastlogtimeIdx = statement->GetNamedParamIdx(":lastlogtime");
-            if(!lastlogtimeIdx)
-            {
-                AZ_Error(LOG_NAME, false, "could not find lastlogtime in statement %s", INSERT_JOB);
-                return false;
-            }
-            statement->BindValueInt64(lastlogtimeIdx, entry.m_lastLogTime);
-
-            int lastlogfileIdx = statement->GetNamedParamIdx(":lastlogfile");
-            if(!lastlogfileIdx)
-            {
-                AZ_Error(LOG_NAME, false, "could not find lastlogfile in statement %s", INSERT_JOB);
-                return false;
-            }
-            statement->BindValueText(lastlogfileIdx, entry.m_lastLogFile.c_str());
-
-            if(statement->Step() == Statement::SqlError)
-            {
-                AZ_Warning(LOG_NAME, false, "Failed to write the new job into the database.");
                 return false;
             }
 
             //make sure its now in the database
             existingJobs.clear();
-            if(GetJobsBySourceID(entry.m_sourcePK, existingJobs, entry.m_builderGuid, entry.m_jobKey.c_str(), entry.m_platform.c_str()))
+            if (GetJobsBySourceID(entry.m_sourcePK, existingJobs, entry.m_builderGuid, entry.m_jobKey.c_str(), entry.m_platform.c_str()))
             {
                 //see if this job is already here
-                for(const auto& existingjob : existingJobs)
+                for (const auto& existingjob : existingJobs)
                 {
-                    if(existingjob == entry)
+                    if (existingjob == entry)
                     {
                         //this job already exists
                         entry.m_jobID = existingjob.m_jobID;
@@ -1690,179 +1642,31 @@ namespace AssetProcessor
         {
             //they supplied an id, see if it exists in the database
             JobDatabaseEntry existingEntry;
-            if(!GetJobByJobID(entry.m_jobID, existingEntry))
+            if (!GetJobByJobID(entry.m_jobID, existingEntry))
             {
                 AZ_Error(LOG_NAME, false, "Failed to find the job in the database.");
                 return false;
             }
 
             //its in the database already, if its not the same update the database
-            if(existingEntry == entry)
+            if (existingEntry == entry)
             {
                 return true;
             }
 
-            // it is a single statement, do not wrap it in a transaction, this wastes a lot of time.
-            StatementAutoFinalizer autoFinal(*m_databaseConnection, UPDATE_JOB);
-            Statement* statement = autoFinal.Get();
-            if(!statement)
-            {
-                AZ_Error(LOG_NAME, statement, "Could not get statement: %s", UPDATE_JOB);
-                return false;
-            }
-            
-            int jobIDIdx = statement->GetNamedParamIdx(":jobid");
-            if(!jobIDIdx)
-            {
-                AZ_Error(LOG_NAME, false, "could not find jobid in statement %s", UPDATE_JOB);
-                return false;
-            }
-            statement->BindValueInt64(jobIDIdx, entry.m_jobID);
-
-            int sourceIdx = statement->GetNamedParamIdx(":sourceid");
-            if(!sourceIdx)
-            {
-                AZ_Error(LOG_NAME, false, "could not find sourceid in statement %s", UPDATE_JOB);
-                return false;
-            }
-            statement->BindValueInt64(sourceIdx, entry.m_sourcePK);
-
-            int jobKeyIdx = statement->GetNamedParamIdx(":jobkey");
-            if(!jobKeyIdx)
-            {
-                AZ_Error(LOG_NAME, false, "could not find jobkey in statement %s", UPDATE_JOB);
-                return false;
-            }
-            statement->BindValueText(jobKeyIdx, entry.m_jobKey.c_str());
-
-            int fingerprintIdx = statement->GetNamedParamIdx(":fingerprint");
-            if(!fingerprintIdx)
-            {
-                AZ_Error(LOG_NAME, false, "could not find fingerprint in statement %s", UPDATE_JOB);
-                return false;
-            }
-            statement->BindValueInt(fingerprintIdx, entry.m_fingerprint);
-
-            int platformIdx = statement->GetNamedParamIdx(":platform");
-            if(!platformIdx)
-            {
-                AZ_Error(LOG_NAME, false, "could not find platform in statement %s", UPDATE_JOB);
-                return false;
-            }
-            statement->BindValueText(platformIdx, entry.m_platform.c_str());
-
-            int builderguidIdx = statement->GetNamedParamIdx(":builderguid");
-            if(!builderguidIdx)
-            {
-                AZ_Error(LOG_NAME, false, "could not find builderguid in statement %s", UPDATE_JOB);
-                return false;
-            }
-            statement->BindValueUuid(builderguidIdx, entry.m_builderGuid);
-
-            int statusIdx = statement->GetNamedParamIdx(":status");
-            if(!statusIdx)
-            {
-                AZ_Error(LOG_NAME, false, "could not find status in statement %s", UPDATE_JOB);
-                return false;
-            }
-            statement->BindValueInt(statusIdx, static_cast<int>(entry.m_status));
-
-            int jobrunkeyIdx = statement->GetNamedParamIdx(":jobrunkey");
-            if(!jobrunkeyIdx)
-            {
-                AZ_Error(LOG_NAME, false, "could not find jobrunkey in statement %s", UPDATE_JOB);
-                return false;
-            }
-            statement->BindValueInt64(jobrunkeyIdx, entry.m_jobRunKey);
-
-            int firstfaillogtimeIdx = statement->GetNamedParamIdx(":firstfaillogtime");
-            if(!firstfaillogtimeIdx)
-            {
-                AZ_Error(LOG_NAME, false, "could not find firstfaillogtime in statement %s", UPDATE_JOB);
-                return false;
-            }
-            statement->BindValueInt64(firstfaillogtimeIdx, entry.m_firstFailLogTime);
-
-            int firstfaillogfileIdx = statement->GetNamedParamIdx(":firstfaillogfile");
-            if(!firstfaillogfileIdx)
-            {
-                AZ_Error(LOG_NAME, false, "could not find firstfaillogfile in statement %s", UPDATE_JOB);
-                return false;
-            }
-            statement->BindValueText(firstfaillogfileIdx, entry.m_firstFailLogFile.c_str());
-
-            int lastfaillogtimeIdx = statement->GetNamedParamIdx(":lastfaillogtime");
-            if(!lastfaillogtimeIdx)
-            {
-                AZ_Error(LOG_NAME, false, "could not find lastfaillogtime in statement %s", UPDATE_JOB);
-                return false;
-            }
-            statement->BindValueInt64(lastfaillogtimeIdx, entry.m_lastFailLogTime);
-
-            int lastfaillogfileIdx = statement->GetNamedParamIdx(":lastfaillogfile");
-            if(!lastfaillogfileIdx)
-            {
-                AZ_Error(LOG_NAME, false, "could not find lastfaillogfile in statement %s", UPDATE_JOB);
-                return false;
-            }
-            statement->BindValueText(lastfaillogfileIdx, entry.m_lastFailLogFile.c_str());
-
-            int lastlogtimeIdx = statement->GetNamedParamIdx(":lastlogtime");
-            if(!lastlogtimeIdx)
-            {
-                AZ_Error(LOG_NAME, false, "could not find lastlogtime in statement %s", UPDATE_JOB);
-                return false;
-            }
-            statement->BindValueInt64(lastlogtimeIdx, entry.m_lastLogTime);
-
-            int lastlogfileIdx = statement->GetNamedParamIdx(":lastlogfile");
-            if(!lastlogfileIdx)
-            {
-                AZ_Error(LOG_NAME, false, "could not find lastlogfile in statement %s", UPDATE_JOB);
-                return false;
-            }
-            statement->BindValueText(lastlogfileIdx, entry.m_lastLogFile.c_str());
-
-            if(statement->Step() == Statement::SqlError)
-            {
-                AZ_Warning(LOG_NAME, false, "Failed to execute %s to update job (key %i)", UPDATE_JOB, entry.m_jobID);
-                return false;
-            }
-
-            return true;
+            return s_UpdateJobQuery.BindAndStep(*m_databaseConnection, entry.m_sourcePK, entry.m_jobKey.c_str(), entry.m_fingerprint, entry.m_platform.c_str(),
+                entry.m_builderGuid, static_cast<int>(entry.m_status), entry.m_jobRunKey, entry.m_firstFailLogTime, entry.m_firstFailLogFile.c_str(),
+                entry.m_lastFailLogTime, entry.m_lastFailLogFile.c_str(), entry.m_lastLogTime, entry.m_lastLogFile.c_str(), entry.m_jobID);
         }
     }
 
     // this must actually delete the job
     bool AssetDatabaseConnection::RemoveJob(AZ::s64 jobID)
     {
-        if(!ValidateDatabaseTable(DELETE_JOB, "Jobs"))
-        {
-            AZ_Error(LOG_NAME, false, "Could not find Jobs table");
-            return false;
-        }
-
         ScopedTransaction transaction(m_databaseConnection);
 
-        StatementAutoFinalizer autoFinal(*m_databaseConnection, DELETE_JOB);
-        Statement* statement = autoFinal.Get();
-        if(!statement)
+        if(!s_DeleteJobQuery.BindAndStep(*m_databaseConnection, jobID))
         {
-            AZ_Error(LOG_NAME, statement, "Could not get statement: %s", DELETE_JOB);
-            return false;
-        }
-
-        int jobIDIdx = statement->GetNamedParamIdx(":jobid");
-        if(!jobIDIdx)
-        {
-            AZ_Error(LOG_NAME, false, "could not find jobid in statement %s", DELETE_JOB);
-            return false;
-        }
-        statement->BindValueInt64(jobIDIdx, jobID);
-
-        if(statement->Step() == Statement::SqlError)
-        {
-            AZ_Warning(LOG_NAME, false, "Failed to RemoveJob from the database");
             return false;
         }
 
@@ -1874,10 +1678,10 @@ namespace AssetProcessor
     bool AssetDatabaseConnection::RemoveJobs(JobDatabaseEntryContainer& container)
     {
         bool succeeded = true;
-        for(auto& entry : container)
+        for (auto& entry : container)
         {
             succeeded &= RemoveJob(entry.m_jobID);
-            if(succeeded)
+            if (succeeded)
             {
                 entry.m_jobID = -1; //set it to -1 as the id is no longer valid
             }
@@ -1890,7 +1694,7 @@ namespace AssetProcessor
     {
         JobDatabaseEntry job;
         bool succeeded = GetJobByProductID(productID, job);
-        if(succeeded)
+        if (succeeded)
         {
             succeeded &= RemoveJob(job.m_jobID);
         }
@@ -2005,7 +1809,7 @@ namespace AssetProcessor
             status);
         return found && succeeded;
     }
-    
+
     bool AssetDatabaseConnection::GetProductsBySourceID(AZ::s64 sourceID, ProductDatabaseEntryContainer& container, AZ::Uuid builderGuid, QString jobKey, QString platform, JobStatus status)
     {
         bool found = false;
@@ -2055,12 +1859,6 @@ namespace AssetProcessor
     //! Note that an empty list is in fact acceptable data, it means the source emitted no products
     bool AssetDatabaseConnection::SetProduct(ProductDatabaseEntry& entry)
     {
-        if(!ValidateDatabaseTable(INSERT_PRODUCT, "Products"))
-        {
-            AZ_Error(LOG_NAME, false, "Could not find Products table");
-            return false;
-        }
-
         bool wasAlreadyInDatabase = false;
         ProductDatabaseEntry existingProductInDatabase;
 
@@ -2102,62 +1900,26 @@ namespace AssetProcessor
         {
             // note, intentional scope created for the statement finalizer
             const char* statementToUse = wasAlreadyInDatabase ? UPDATE_PRODUCT : INSERT_PRODUCT;
-            StatementAutoFinalizer autoFinalizer(*m_databaseConnection, statementToUse);
-            Statement* statement = autoFinalizer.Get();
-            AZ_Assert(statement, "Statement not found: %s", statementToUse);
 
+            StatementAutoFinalizer autoFinalizer;
             if (wasAlreadyInDatabase)
             {
-                // the "update" version requires the prior product row Id:
-                int productIdx = statement->GetNamedParamIdx(":productid");
-                if (!productIdx)
+                // it was already in the database, so use the "UPDATE" version
+                if (!s_UpdateProductQuery.Bind(*m_databaseConnection, autoFinalizer, entry.m_jobPK, entry.m_subID, entry.m_productName.c_str(), entry.m_assetType, entry.m_legacyGuid, entry.m_productID))
                 {
-                    AZ_Error(LOG_NAME, false, "Could not find the Idx for :productid for %s ", statementToUse);
                     return false;
                 }
-
-                statement->BindValueInt64(productIdx, entry.m_productID);
             }
-
-            int jobIdx = statement->GetNamedParamIdx(":jobid");
-            if(!jobIdx)
+            else
             {
-                AZ_Error(LOG_NAME, false, "Could not find the Idx for :jobid for %s ", statementToUse);
-                return false;
+                // it wasn't in the database, so use the "INSERT" version
+                if (!s_InsertProductQuery.Bind(*m_databaseConnection, autoFinalizer, entry.m_jobPK, entry.m_subID, entry.m_productName.c_str(), entry.m_assetType, entry.m_legacyGuid))
+                {
+                    return false;
+                }
             }
-            statement->BindValueInt64(jobIdx, entry.m_jobPK);
 
-            int subIdIdx = statement->GetNamedParamIdx(":subid");
-            if(!subIdIdx)
-            {
-                AZ_Error(LOG_NAME, false, "Could not find the Idx for :subid for %s ", statementToUse);
-                return false;
-            }
-            statement->BindValueInt(subIdIdx, entry.m_subID);
-            
-            int productNameIdx = statement->GetNamedParamIdx(":productname");
-            if(!productNameIdx)
-            {
-                AZ_Error(LOG_NAME, false, "Could not find the Idx for :productname for %s ", statementToUse);
-                return false;
-            }
-            statement->BindValueText(productNameIdx, entry.m_productName.c_str());
-
-            int assetTypeIdx = statement->GetNamedParamIdx(":assettype");
-            if(!assetTypeIdx)
-            {
-                AZ_Error(LOG_NAME, false, "Could not find the Idx for :assettype for %s ", statementToUse);
-                return false;
-            }
-            statement->BindValueUuid(assetTypeIdx, entry.m_assetType);
-
-            int legacyGuidIdx = statement->GetNamedParamIdx(":legacyguid");
-            if(!legacyGuidIdx)
-            {
-                AZ_Error(LOG_NAME, false, "Could not find the Idx for :legacyguid for %s ", statementToUse);
-                return false;
-            }
-            statement->BindValueUuid(legacyGuidIdx, entry.m_legacyGuid);
+            Statement* statement = autoFinalizer.Get();
 
             if(statement->Step() == Statement::SqlError)
             {
@@ -2184,7 +1946,7 @@ namespace AssetProcessor
         }
         
         bool succeeded = true;
-        for(auto& entry : container)
+        for (auto& entry : container)
         {
             succeeded &= SetProduct(entry);
         }
@@ -2194,30 +1956,10 @@ namespace AssetProcessor
     //! Clear the products for a given source.  This removes the entry entirely, not just sets it to empty.
     bool AssetDatabaseConnection::RemoveProduct(AZ::s64 productID)
     {
-        if(!ValidateDatabaseTable("RemoveProduct", "Products"))
-        {
-            AZ_Error(LOG_NAME, false, "Could not find Products table");
-            return false;
-        }
-
         ScopedTransaction transaction(m_databaseConnection);
 
-        // scope created for the statement.
-        StatementAutoFinalizer autoFinalizer(*m_databaseConnection, DELETE_PRODUCT);
-        Statement* statement = autoFinalizer.Get();
-        AZ_Assert(statement, "Statement not found: %s", DELETE_PRODUCT);
-
-        int productIDIdx = statement->GetNamedParamIdx(":productid");
-        if(!productIDIdx)
+        if (!s_DeleteProductQuery.BindAndStep(*m_databaseConnection, productID))
         {
-            AZ_Error(LOG_NAME, false, "Could not find the Idx for :productid for %s ", DELETE_PRODUCT);
-            return false;
-        }
-        statement->BindValueInt64(productIDIdx, productID);
-
-        if(statement->Step() == Statement::SqlError)
-        {
-            AZ_Warning(LOG_NAME, false, "Failed to execute the DELETE_PRODUCT statement on productID %i", productID);
             return false;
         }
 
@@ -2236,10 +1978,10 @@ namespace AssetProcessor
         }
 
         bool succeeded = true;
-        for(auto& entry : container)
+        for (auto& entry : container)
         {
             succeeded &= RemoveProduct(entry.m_productID);
-            if(succeeded)
+            if (succeeded)
             {
                 entry.m_productID = -1;
             }
@@ -2249,31 +1991,10 @@ namespace AssetProcessor
 
     bool AssetDatabaseConnection::RemoveProductsByJobID(AZ::s64 jobID)
     {
-        if(!ValidateDatabaseTable(DELETE_PRODUCTS_BY_JOBID, "Products"))
-        {
-            AZ_Error(LOG_NAME, false, "Could not find Jobs or Products table");
-            return false;
-        }
-
         ScopedTransaction transaction(m_databaseConnection);
 
-        // scope created for the statement.
-        StatementAutoFinalizer autoFinalizer(*m_databaseConnection, DELETE_PRODUCTS_BY_JOBID);
-        Statement* statement = autoFinalizer.Get();
-        AZ_Assert(statement, "Statement not found: %s", DELETE_PRODUCTS_BY_JOBID);
-
-        int jobIdx = statement->GetNamedParamIdx(":jobid");
-        if(!jobIdx)
+        if (!s_DeleteProductsByJobidQuery.BindAndStep(*m_databaseConnection, jobID))
         {
-            AZ_Error(LOG_NAME, false, "Could not find the Idx for :jobid for %s",
-                DELETE_PRODUCTS_BY_JOBID);
-            return false;
-        }
-        statement->BindValueInt64(jobIdx, jobID);
-
-        if(statement->Step() == Statement::SqlError)
-        {
-            AZ_Warning(LOG_NAME, false, "Failed to execute the %s statement on jobID %i", jobID);
             return false;
         }
 
@@ -2292,58 +2013,26 @@ namespace AssetProcessor
             //we have to do custom query the delete
             ProductDatabaseEntryContainer products;
             bool succeeded = GetProductsBySourceID(sourceID, products, builderGuid, jobKey, platform, status);
-            if(succeeded)
+            if (succeeded)
             {
                 succeeded &= RemoveProducts(products);
             }
             return succeeded;
         }
 
-        if( !ValidateDatabaseTable("RemoveProductsBySourceID", "Jobs") ||
-            !ValidateDatabaseTable("RemoveProductsBySourceID", "Products"))
-        {
-            AZ_Error(LOG_NAME, false, "Could not find Jobs or Products table");
-            return false;
-        }
-
-        const char* name = DELETE_PRODUCTS_BY_SOURCEID;
-        if(!platform.isEmpty())
-        {
-            name = DELETE_PRODUCTS_BY_SOURCEID_PLATFORM;
-        }
-
         ScopedTransaction transaction(m_databaseConnection);
 
-        // scope created for the statement.
-        StatementAutoFinalizer autoFinalizer(*m_databaseConnection, name);
-        Statement* statement = autoFinalizer.Get();
-        AZ_Assert(statement, "Statement not found: %s", name);
-
-        int sourceIdx = statement->GetNamedParamIdx(":sourceid");
-        if(!sourceIdx)
+        if(!platform.isEmpty())
         {
-            AZ_Error(LOG_NAME, false, "Could not find the Idx for :sourceid for %s",
-                name);
-            return false;
-        }
-        statement->BindValueInt64(sourceIdx, sourceID);
-
-        AZStd::string platformStr;
-        if(name == DELETE_PRODUCTS_BY_SOURCEID_PLATFORM)
-        {
-            int platformIdx = statement->GetNamedParamIdx(":platform");
-            if(!platformIdx)
+            AZStd::string platformStr = platform.toUtf8().constData();
+            
+            if (!s_DeleteProductsBySourceidPlatformQuery.BindAndStep(*m_databaseConnection, sourceID, platformStr.c_str()))
             {
-                AZ_Error(LOG_NAME, false, "Could not find the Idx for :platform for %s ", name);
                 return false;
             }
-            platformStr = platform.toUtf8().constData();
-            statement->BindValueText(platformIdx, platformStr.c_str());
         }
-
-        if(statement->Step() == Statement::SqlError)
+        else if(!s_DeleteProductsBySourceidQuery.BindAndStep(*m_databaseConnection, sourceID))
         {
-            AZ_Warning(LOG_NAME, false, "Failed to execute the %s statement on sourceID %i", name, sourceID);
             return false;
         }
 
@@ -2413,7 +2102,7 @@ namespace AssetProcessor
             status);
         return found && succeeded;
     }
-   
+
     bool AssetDatabaseConnection::SetSourceFileDependencies(SourceFileDependencyEntryContainer& container)
     {
         bool succeeded = true;
@@ -2426,227 +2115,69 @@ namespace AssetProcessor
 
     bool AssetDatabaseConnection::SetSourceFileDependency(SourceFileDependencyEntry& entry)
     {
-        if (!ValidateDatabaseTable(INSERT_SOURCE_DEPENDENCY, "SourceDependency"))
+        //first make sure its not already in the database
+        if (!s_InsertSourceDependencyQuery.BindAndStep(*m_databaseConnection, entry.m_builderGuid, entry.m_source.c_str(), entry.m_dependsOnSource.c_str(), entry.m_typeOfDependency))
         {
-            AZ_Error(LOG_NAME, false, "Could not find Source Dependency table");
             return false;
         }
 
-        if (entry.m_sourceDependencyID == -1)
-        {
-            //they didn't supply an id, add to database
-
-            //first make sure its not already in the database
-            SourceFileDependencyEntry existingEntry;
-            if (GetSourceFileDependency(entry, existingEntry))
-            {
-                // We already have this entry in the database
-                return true;
-            }
-
-            // it is a single statement, do not wrap it in a transaction, this wastes a lot of time.
-            StatementAutoFinalizer autoFinal(*m_databaseConnection, INSERT_SOURCE_DEPENDENCY);
-            Statement* statement = autoFinal.Get();
-            if (!statement)
-            {
-                AZ_Error(LOG_NAME, statement, "Could not get statement: %s", INSERT_SOURCE_DEPENDENCY);
-                return false;
-            }
-
-            int builderGuidIdx = statement->GetNamedParamIdx(":builderGuid");
-            if (!builderGuidIdx)
-            {
-                AZ_Error(LOG_NAME, false, "could not find builderGuid in statement %s", INSERT_SOURCE_DEPENDENCY);
-                return false;
-            }
-            statement->BindValueUuid(builderGuidIdx, entry.m_builderGuid);
-
-            int sourceIdx = statement->GetNamedParamIdx(":source");
-            if (!sourceIdx)
-            {
-                AZ_Error(LOG_NAME, false, "could not find source in statement %s", INSERT_SOURCE_DEPENDENCY);
-                return false;
-            }
-            statement->BindValueText(sourceIdx, entry.m_source.c_str());
-
-            int dependsOnSourceIdx = statement->GetNamedParamIdx(":dependsOnSource");
-            if (!dependsOnSourceIdx)
-            {
-                AZ_Error(LOG_NAME, false, "could not find dependsOnSource in statement %s", INSERT_SOURCE_DEPENDENCY);
-                return false;
-            }
-
-            statement->BindValueText(dependsOnSourceIdx, entry.m_dependsOnSource.c_str());
-
-            if (statement->Step() == Statement::SqlError)
-            {
-                AZ_Warning(LOG_NAME, false, "Failed to write the new source dependency into the database.");
-                return false;
-            }
-
-            //now that its in the database get the id
-            if (GetSourceFileDependency(entry, existingEntry))
-            {
-                entry.m_sourceDependencyID = existingEntry.m_sourceDependencyID;
-                return true;
-            }
-
-            AZ_Error(LOG_NAME, false, "Failed to read the new source dependency into the database.");
-            return false;
-        }
-        else
-        {
-            //they supplied an id, see if it exists in the database
-            SourceFileDependencyEntry existingEntry;
-            if (!GetSourceFileDependencyBySourceDependencyId(entry.m_sourceDependencyID, existingEntry))
-            {
-                //they supplied an id but is not in the database!
-                AZ_Error(LOG_NAME, false, "Failed to write the source dependency into the database.");
-                return false;
-            }
-
-            // don't bother updating the database if all fields are equal.
-            if ((existingEntry.m_builderGuid == entry.m_builderGuid) &&
-                (existingEntry.m_source == entry.m_source) &&
-                (existingEntry.m_dependsOnSource == entry.m_dependsOnSource))
-            {
-                return true;
-            }
-
-            StatementAutoFinalizer autoFinal(*m_databaseConnection, UPDATE_SOURCE_DEPENDENCY);
-            Statement* statement = autoFinal.Get();
-            if (!statement)
-            {
-                AZ_Error(LOG_NAME, statement, "Could not get statement: %s", UPDATE_SOURCE_DEPENDENCY);
-                return false;
-            }
-
-            int builderGuidIdx = statement->GetNamedParamIdx(":builderGuid");
-            if (!builderGuidIdx)
-            {
-                AZ_Error(LOG_NAME, false, "could not find builderGuid in statement %s", UPDATE_SOURCE_DEPENDENCY);
-                return false;
-            }
-            statement->BindValueUuid(builderGuidIdx, entry.m_builderGuid);
-
-            int sourceIdx = statement->GetNamedParamIdx(":source");
-            if (!sourceIdx)
-            {
-                AZ_Error(LOG_NAME, false, "could not find source in statement %s", UPDATE_SOURCE_DEPENDENCY);
-                return false;
-            }
-            statement->BindValueText(sourceIdx, entry.m_source.c_str());
-
-            int dependsOnSourceIdx = statement->GetNamedParamIdx(":dependsOnSource");
-            if (!dependsOnSourceIdx)
-            {
-                AZ_Error(LOG_NAME, false, "could not find dependsOnSource in statement %s", UPDATE_SOURCE_DEPENDENCY);
-                return false;
-            }
-            statement->BindValueText(dependsOnSourceIdx, entry.m_dependsOnSource.c_str());
-
-            if (statement->Step() == Statement::SqlError)
-            {
-                AZ_Warning(LOG_NAME, false, "Failed to execute %s to update source dependency (key %i)", UPDATE_SOURCE_DEPENDENCY, entry.m_sourceDependencyID);
-                return false;
-            }
-
-            return true;
-        }
+        entry.m_sourceDependencyID = m_databaseConnection->GetLastRowID();
+        return true;
     }
 
-    bool AssetDatabaseConnection::RemoveSourceFileDependencies(SourceFileDependencyEntryContainer& container)
+    bool AssetDatabaseConnection::RemoveSourceFileDependencies(const AZStd::unordered_set<AZ::s64>& container)
     {
+        ScopedTransaction transaction(m_databaseConnection);
         bool succeeded = true;
-        for (auto& entry : container)
+        for (AZ::s64 entry : container)
         {
             succeeded = succeeded && RemoveSourceFileDependency(entry);
-            if (succeeded)
-            {
-                entry.m_sourceDependencyID = -1;//set it to -1 as it no longer exists
-            }
         }
-        return succeeded;
-    }
-
-    bool AssetDatabaseConnection::RemoveSourceFileDependency(const SourceFileDependencyEntry& entry)
-    {
-        if (!ValidateDatabaseTable(DELETE_SOURCE_DEPENDENCY_SOURCEDEPENDENCYID, "SourceDependency"))
+        
+        if (succeeded)
         {
-            AZ_Error(LOG_NAME, false, "Could not find Source Dependency table");
-            return false;
-        }
-
-        if (entry.m_sourceDependencyID == -1)
-        {
-            //they didn't supply an id, check to make sure that an entry exists in the database and then delete it
-            SourceFileDependencyEntry existingEntry;
-            if (GetSourceFileDependency(entry, existingEntry))
-            {
-                return RemoveSourceFileDependency(existingEntry);
-            }
-
-            return true; // no such entry exists in the database
-        }
-        else
-        {
-            //they supplied an id, see if it exists in the database
-            SourceFileDependencyEntry existingEntry;
-            if (!GetSourceFileDependencyBySourceDependencyId(entry.m_sourceDependencyID, existingEntry))
-            {
-                //they supplied an id but is not found in the database!
-                AZ_Warning(LOG_NAME, false, "Could not find SourceDependencyid in the database.");
-                return true;
-            }
-
-            ScopedTransaction transaction(m_databaseConnection);
-
-            StatementAutoFinalizer autoFinal(*m_databaseConnection, DELETE_SOURCE_DEPENDENCY_SOURCEDEPENDENCYID);
-            Statement* statement = autoFinal.Get();
-            if (!statement)
-            {
-                AZ_Error(LOG_NAME, statement, "Could not get statement: %s", DELETE_SOURCE_DEPENDENCY_SOURCEDEPENDENCYID);
-                return false;
-            }
-
-            int sourceDependencyID = statement->GetNamedParamIdx(":sourceDependencyId");
-            if (!sourceDependencyID)
-            {
-                AZ_Error(LOG_NAME, false, "could not find sourceid in statement %s", DELETE_SOURCE_DEPENDENCY_SOURCEDEPENDENCYID);
-                return false;
-            }
-
-            statement->BindValueInt64(sourceDependencyID, existingEntry.m_sourceDependencyID);
-
-            if (statement->Step() == Statement::SqlError)
-            {
-                AZ_Warning(LOG_NAME, false, "Failed to RemoveSourceDependency from the database");
-                return false;
-            }
-
             transaction.Commit();
-
             return true;
         }
+        return false;
     }
 
-    bool AssetDatabaseConnection::GetSourceFileDependency(const SourceFileDependencyEntry& inputEntry, SourceFileDependencyEntry& databaseEntry)
+    bool AssetDatabaseConnection::RemoveSourceFileDependencies(const SourceFileDependencyEntryContainer& container)
+    {
+        AZStd::unordered_set<AZ::s64> uniqueRowIds;
+        for (const SourceFileDependencyEntry& item : container)
+        {
+            uniqueRowIds.insert(item.m_sourceDependencyID);
+        }
+        return RemoveSourceFileDependencies(uniqueRowIds);
+    }
+
+    bool AssetDatabaseConnection::RemoveSourceFileDependency(AZ::s64 sourceFileDependencyId)
+    {
+        return s_DeleteSourceDependencySourcedependencyidQuery.BindAndStep(*m_databaseConnection, sourceFileDependencyId);
+    }
+
+    bool AssetDatabaseConnection::GetSourceFileDependenciesByBuilderGUIDAndSource(const AZ::Uuid& builderGuid, const char* source, AzToolsFramework::AssetDatabase::SourceFileDependencyEntry::TypeOfDependency typeOfDependency, SourceFileDependencyEntryContainer& container)
     {
         bool found = false;
-        QuerySourceDependency(inputEntry.m_builderGuid, inputEntry.m_source.c_str(), inputEntry.m_dependsOnSource.c_str(),
+        bool succeeded = QueryDependsOnSourceBySourceDependency(source, nullptr, typeOfDependency,
             [&](SourceFileDependencyEntry& entry)
         {
-            found = true;
-            databaseEntry = AZStd::move(entry);
-            return false; // stop after the first result
+            if (builderGuid == entry.m_builderGuid)
+            {
+                found = true;
+                container.push_back();
+                container.back() = AZStd::move(entry);
+            }
+            return true; // return true to keep iterating over further rows.
         });
-        return found;
+        return found && succeeded;
     }
 
-    bool AssetDatabaseConnection::GetSourceFileDependenciesByBuilderGUIDAndSource(const AZ::Uuid& builderGuid, const char* source, SourceFileDependencyEntryContainer& container)
+    bool AssetDatabaseConnection::GetSourceFileDependenciesByDependsOnSource(const QString& dependsOnSource, AzToolsFramework::AssetDatabase::SourceFileDependencyEntry::TypeOfDependency typeOfDependency, SourceFileDependencyEntryContainer& container)
     {
         bool found = false;
-        bool succeeded = QuerySourceDependencyByBuilderGUIDAndSource(builderGuid, source,
+        bool succeeded = QuerySourceDependencyByDependsOnSource(dependsOnSource.toUtf8().constData(), nullptr, typeOfDependency,
             [&](SourceFileDependencyEntry& entry)
         {
             found = true;
@@ -2657,24 +2188,13 @@ namespace AssetProcessor
         return found && succeeded;
     }
 
-    bool AssetDatabaseConnection::GetSourceFileDependenciesByDependsOnSource(const QString& dependsOnSource, SourceFileDependencyEntryContainer& container)
+    bool AssetDatabaseConnection::GetDependsOnSourceBySource(
+        const char* source, 
+        AzToolsFramework::AssetDatabase::SourceFileDependencyEntry::TypeOfDependency typeOfDependency,
+        AzToolsFramework::AssetDatabase::SourceFileDependencyEntryContainer& container)
     {
         bool found = false;
-        bool succeeded = QuerySourceDependencyByDependsOnSource(dependsOnSource.toUtf8().constData(),nullptr,
-            [&](SourceFileDependencyEntry& entry)
-        {
-            found = true;
-            container.push_back();
-            container.back() = AZStd::move(entry);
-            return true; // return true to keep iterating over further rows.
-        });
-        return found && succeeded;
-    }
-
-    bool AssetDatabaseConnection::GetDependsOnSourceBySource(const QString& source, AzToolsFramework::AssetDatabase::SourceFileDependencyEntryContainer& container)
-    {
-        bool found = false;
-        bool succeeded = QueryDependsOnSourceBySourceDependency(source.toUtf8().constData(),nullptr,
+        bool succeeded = QueryDependsOnSourceBySourceDependency(source, nullptr, typeOfDependency,
             [&](SourceFileDependencyEntry& entry)
         {
             found = true;
@@ -2688,7 +2208,7 @@ namespace AssetProcessor
     bool AssetDatabaseConnection::GetSourceFileDependencyBySourceDependencyId(AZ::s64 sourceDependencyId, SourceFileDependencyEntry& sourceDependencyEntry)
     {
         bool found = false;
-        QuerySourceDependencyBySourceDependencyId(sourceDependencyId,
+        QuerySourceDependencyBySourceDependencyId(sourceDependencyId, 
             [&](SourceFileDependencyEntry& entry)
         {
             found = true;
@@ -2711,45 +2231,15 @@ namespace AssetProcessor
             statementName = OVERWRITE_EXISTING_LEGACYSUBID;
         }
 
-        StatementAutoFinalizer autoFinal(*m_databaseConnection, statementName);
-        Statement* statement = autoFinal.Get();
-        if (!statement)
+        if (creatingNew)
         {
-            AZ_Error(LOG_NAME, statement, "Could not get statement: %s", statementName);
-            return false;
-        }
-
-        int subIDIndex = statement->GetNamedParamIdx(":subID");
-        if (!subIDIndex)
-        {
-            AZ_Error(LOG_NAME, false, "could not find subIDIndex in statement %s", statementName);
-            return false;
-        }
-        statement->BindValueInt64(subIDIndex, entry.m_subID);
-
-        int productPKIdx = statement->GetNamedParamIdx(":productPK");
-        if (!productPKIdx)
-        {
-            AZ_Error(LOG_NAME, false, "could not find productPK in statement %s", statementName);
-            return false;
-        }
-        statement->BindValueInt64(productPKIdx, entry.m_productPK);
-
-        if (!creatingNew)
-        {
-            // ovewrite existing row.  Need to supply the id
-            int legacySubIDIdx = statement->GetNamedParamIdx(":legacySubID");
-            if (!legacySubIDIdx)
+            if (!s_InsertNewLegacysubidQuery.BindAndStep(*m_databaseConnection, entry.m_productPK, entry.m_subID))
             {
-                AZ_Error(LOG_NAME, false, "could not find legacySubID");
                 return false;
             }
-            statement->BindValueInt64(legacySubIDIdx, entry.m_subIDsEntryID);
         }
-        
-        if (statement->Step() == Statement::SqlError)
+        else if (!s_OverwriteExistingLegacysubidQuery.BindAndStep(*m_databaseConnection, entry.m_productPK, entry.m_subID, entry.m_subIDsEntryID))
         {
-            AZ_Warning(LOG_NAME, false, "Failed to CreateOrUpdateLegacySubID in the database");
             return false;
         }
 
@@ -2775,34 +2265,10 @@ namespace AssetProcessor
 
     bool AssetDatabaseConnection::RemoveLegacySubID(AZ::s64 legacySubIDsEntryID)
     {
-        if (!ValidateDatabaseTable("RemoveLegacySubID", "LegacySubIDs"))
-        {
-            AZ_Error(LOG_NAME, false, "Could not find LegacySubIDs table");
-            return false;
-        }
-
         ScopedTransaction transaction(m_databaseConnection);
 
-        StatementAutoFinalizer autoFinal(*m_databaseConnection, DELETE_LEGACYSUBIDS_BY_PRIMARY_KEY);
-        Statement* statement = autoFinal.Get();
-        if (!statement)
+        if (!s_DeleteLegacysubidsByPrimaryKeyQuery.BindAndStep(*m_databaseConnection, legacySubIDsEntryID))
         {
-            AZ_Error(LOG_NAME, statement, "Could not get statement: %s", DELETE_LEGACYSUBIDS_BY_PRIMARY_KEY);
-            return false;
-        }
-
-        int productPKIdx = statement->GetNamedParamIdx(":legacySubID");
-        if (!productPKIdx)
-        {
-            AZ_Error(LOG_NAME, false, "could not find legacySubID in statement %s", DELETE_LEGACYSUBIDS_BY_PRIMARY_KEY);
-            return false;
-        }
-
-        statement->BindValueInt64(productPKIdx, legacySubIDsEntryID);
-
-        if (statement->Step() == Statement::SqlError)
-        {
-            AZ_Warning(LOG_NAME, false, "Failed to RemoveLegacySubID from the database");
             return false;
         }
 
@@ -2813,34 +2279,10 @@ namespace AssetProcessor
 
     bool AssetDatabaseConnection::RemoveLegacySubIDsByProductID(AZ::s64 productID)
     {
-        if (!ValidateDatabaseTable("RemoveLegacySubIDsByProductID", "LegacySubIDs"))
-        {
-            AZ_Error(LOG_NAME, false, "Could not find LegacySubIDs table");
-            return false;
-        }
-
         ScopedTransaction transaction(m_databaseConnection);
 
-        StatementAutoFinalizer autoFinal(*m_databaseConnection, DELETE_LEGACYSUBIDS_BY_PRODUCTID);
-        Statement* statement = autoFinal.Get();
-        if (!statement)
+        if (!s_DeleteLegacysubidsByProductidQuery.BindAndStep(*m_databaseConnection, productID))
         {
-            AZ_Error(LOG_NAME, statement, "Could not get statement: %s", DELETE_LEGACYSUBIDS_BY_PRODUCTID);
-            return false;
-        }
-
-        int productPKIdx = statement->GetNamedParamIdx(":productPK");
-        if (!productPKIdx)
-        {
-            AZ_Error(LOG_NAME, false, "could not find productPK in statement %s", DELETE_LEGACYSUBIDS_BY_PRODUCTID);
-            return false;
-        }
-
-        statement->BindValueInt64(productPKIdx,productID);
-
-        if (statement->Step() == Statement::SqlError)
-        {
-            AZ_Warning(LOG_NAME, false, "Failed to RemoveLegacySubIDsByProductID from the database");
             return false;
         }
 
@@ -2920,12 +2362,6 @@ namespace AssetProcessor
 
     bool AssetDatabaseConnection::SetProductDependency(ProductDependencyDatabaseEntry& entry)
     {
-        if (!ValidateDatabaseTable(INSERT_PRODUCT_DEPENDENCY, "Products"))
-        {
-            AZ_Error(LOG_NAME, false, "Could not find Products table");
-            return false;
-        }
-
         if (entry.m_productDependencyID == -1)
         {
             //they didn't set an id, add to database
@@ -2945,19 +2381,8 @@ namespace AssetProcessor
                 }
             }
 
-            // scope created for the statement.
-            StatementAutoFinalizer autoFinalizer(*m_databaseConnection, INSERT_PRODUCT_DEPENDENCY);
-            Statement* statement = autoFinalizer.Get();
-            AZ_Assert(statement, "Statement not found: %s", INSERT_PRODUCT_DEPENDENCY);
-
-            if (!statement->BindNamedInt64(":productPK", entry.m_productPK)) { return false; }
-            if (!statement->BindNamedUuid(":dependencySourceGuid", entry.m_dependencySourceGuid)) { return false; }
-            if (!statement->BindNamedInt(":dependencySubID", entry.m_dependencySubID)) { return false; }
-            if (!statement->BindNamedInt64(":dependencyFlags", entry.m_dependencyFlags.to_ullong())) { return false; }
-
-            if (statement->Step() == Statement::SqlError)
+            if (!s_InsertProductDependencyQuery.BindAndStep(*m_databaseConnection, entry.m_productPK, entry.m_dependencySourceGuid, entry.m_dependencySubID, entry.m_dependencyFlags.to_ullong()))
             {
-                AZ_Warning(LOG_NAME, false, "Failed to execute the INSERT_PRODUCT_DEPENDENCY statement");
                 return false;
             }
 
@@ -2993,77 +2418,188 @@ namespace AssetProcessor
                 return true;
             }
 
-            //its in the database already, update the database
-            // it is a single statement, do not wrap it in a transaction, this wastes a lot of time.
-            StatementAutoFinalizer autoFinal(*m_databaseConnection, UPDATE_PRODUCT_DEPENDENCY);
-            Statement* statement = autoFinal.Get();
-            if (!statement)
-            {
-                AZ_Error(LOG_NAME, statement, "Could not get statement: %s", UPDATE_PRODUCT_DEPENDENCY);
-                return false;
-            }
-
-            if (!statement->BindNamedInt64(":productPK", entry.m_productPK) || 
-                !statement->BindNamedUuid(":dependencySourceGuid", entry.m_dependencySourceGuid) ||
-                !statement->BindNamedInt(":dependencySubID", entry.m_dependencySubID) ||
-                !statement->BindNamedInt64(":dependencyFlags", entry.m_dependencyFlags.to_ullong()) ||
-                !statement->BindNamedInt64(":productDependencyID", entry.m_productDependencyID))
-            { 
-                return false;
-            }
-
-            if (statement->Step() == Statement::SqlError)
-            {
-                AZ_Warning(LOG_NAME, false, "Failed to execute %s to update (key %i)", UPDATE_PRODUCT_DEPENDENCY, entry.m_productDependencyID);
-                return false;
-            }
-
-            return true;
+            return s_UpdateProductDependencyQuery.BindAndStep(*m_databaseConnection, entry.m_productPK, entry.m_dependencySourceGuid, entry.m_dependencySubID, entry.m_dependencyFlags.to_ullong(), entry.m_productDependencyID);
         }
     }
 
-    bool AssetDatabaseConnection::SetProductDependencies(ProductDependencyDatabaseEntryContainer& container)
+    bool AssetDatabaseConnection::SetProductDependencies(const ProductDependencyDatabaseEntryContainer& container)
     {
-        bool succeeded = true;
+        // first, collect all unique ProductPKs:
+        ScopedTransaction transaction(m_databaseConnection);
+
+        AZStd::unordered_set<AZ::s64> uniqueProductIds;
+        for (const ProductDependencyDatabaseEntry& item : container)
+        {
+            uniqueProductIds.insert(item.m_productPK);
+        }
+
+        // unordered set eliminates dupes
+        for (AZ::s64 productId : uniqueProductIds)
+        {
+            if (!RemoveProductDependencyByProductId(productId))
+            {
+                return false; // auto rollback will occur
+            }
+        }
+
+        // now insert the new ones since we know there's no collisions:
+                
         for (auto& entry : container)
         {
-            succeeded = succeeded && SetProductDependency(entry);
+
+            if (!s_InsertProductDependencyQuery.BindAndStep(*m_databaseConnection, entry.m_productPK, entry.m_dependencySourceGuid, entry.m_dependencySubID, entry.m_dependencyFlags.to_ullong()))
+            {
+                return false;
+            }
         }
-        return succeeded;
+
+        transaction.Commit();
+        return true;
     }
 
     bool AssetDatabaseConnection::RemoveProductDependencyByProductId(AZ::s64 productID)
     {
-        if (!ValidateDatabaseTable(DELETE_PRODUCT_DEPENDENCY_BY_PRODUCTID, "ProductDependencies"))
-        {
-            AZ_Error(LOG_NAME, false, "Could not find Product Dependency table");
-            return false;
-        }
-
         ScopedTransaction transaction(m_databaseConnection);
 
-        StatementAutoFinalizer autoFinal(*m_databaseConnection, DELETE_PRODUCT_DEPENDENCY_BY_PRODUCTID);
-        Statement* statement = autoFinal.Get();
-        if (!statement)
+        if (!s_DeleteProductDependencyByProductIdQuery.BindAndStep(*m_databaseConnection, productID))
         {
-            AZ_Error(LOG_NAME, statement, "Could not get statement: %s", DELETE_PRODUCT_DEPENDENCY_BY_PRODUCTID);
-            return false;
-        }
-
-        if (!statement->BindNamedInt64(":productpk", productID))
-        {
-            AZ_Error(LOG_NAME, false, "could not find %s in statement %s", "productpk", DELETE_PRODUCT_DEPENDENCY_BY_PRODUCTID);
-            return false;
-        }
-
-        if (statement->Step() == Statement::SqlError)
-        {
-            AZ_Warning(LOG_NAME, false, "Failed to RemoveProductDependency from the database");
             return false;
         }
 
         transaction.Commit();
 
+        return true;
+    }
+
+    bool AssetDatabaseConnection::GetFileByFileID(AZ::s64 fileID, FileDatabaseEntry& entry)
+    {
+        bool found = false;
+        bool succeeded = QueryFileByFileID(fileID,
+                [&](FileDatabaseEntry& file)
+                {
+                    found = true;
+                    entry = AZStd::move(file);
+                    return false;//one
+                });
+        return found && succeeded;
+    }
+
+    bool AssetDatabaseConnection::GetFileByFileNameAndScanFolderId(QString fileName, AZ::s64 scanFolderId, FileDatabaseEntry& entry)
+    {
+        bool found = false;
+        bool succeeded = QueryFilesByFileNameAndScanFolderID(AssetUtilities::NormalizeFilePath(fileName).toUtf8().constData(), scanFolderId,
+                [&](FileDatabaseEntry& file)
+                {
+                    found = true;
+                    entry = AZStd::move(file);
+                    return false;//one
+                });
+        return found && succeeded;
+    }
+
+    bool AssetDatabaseConnection::GetFilesLikeFileName(QString likeFileName, LikeType likeType, FileDatabaseEntryContainer& container)
+    {
+        bool found = false;
+        bool succeeded = QueryFilesLikeFileName(likeFileName.toUtf8().constData(), likeType,
+            [&](FileDatabaseEntry& file)
+        {
+            found = true;
+            container.push_back(file);
+            return true;//all
+        });
+        return found && succeeded;
+    }
+
+    bool AssetDatabaseConnection::InsertFile(FileDatabaseEntry& entry)
+    {
+        //they didn't supply an id, add to database
+        if (entry.m_fileID == -1)
+        {
+            //first make sure its not already in the database
+            FileDatabaseEntry existingEntry;
+            if (GetFileByFileNameAndScanFolderId(entry.m_fileName.c_str(), entry.m_scanFolderPK, existingEntry))
+            {
+                entry.m_fileID = existingEntry.m_fileID;
+                return UpdateFile(entry); // now update the existing field
+            }
+            StatementAutoFinalizer autoFinal;
+
+            if (!s_InsertFileQuery.Bind(*m_databaseConnection, autoFinal, entry.m_scanFolderPK, entry.m_fileName.c_str(), static_cast<AZ::s64>(entry.m_isFolder)))
+            {
+                return false;
+            }
+
+            Statement* statement = autoFinal.Get();
+            
+            if (statement->Step() == Statement::SqlError)
+            {
+                AZ_Warning(LOG_NAME, false, "Failed to write the new source into the database.");
+                return false;
+            }
+
+            //now that its in the database get the id
+            AZ::s64 rowID = m_databaseConnection->GetLastRowID();
+            entry.m_fileID = rowID;
+
+            return true;
+        }
+
+        return UpdateFile(entry);
+    }
+
+    bool AssetDatabaseConnection::UpdateFile(FileDatabaseEntry& entry) 
+    {
+        //they supplied an id, see if it exists in the database
+        FileDatabaseEntry existingEntry;
+        if (!GetFileByFileID(entry.m_fileID, existingEntry))
+        {
+            //they supplied an id but is not in the database!
+            AZ_Error(LOG_NAME, false, "Failed to write the file into the database.");
+            return false;
+        }
+
+        // don't bother updating the database if all fields are equal.
+        // note that we already looked it up by source ID
+        if ((existingEntry.m_scanFolderPK == entry.m_scanFolderPK) &&
+            (existingEntry.m_fileName == entry.m_fileName) &&
+            (existingEntry.m_isFolder == entry.m_isFolder))
+        {
+            return false;
+        }
+
+        StatementAutoFinalizer autoFinal;
+        if (!s_UpdateFileQuery.BindAndStep(*m_databaseConnection, entry.m_scanFolderPK, entry.m_fileName.c_str(), entry.m_isFolder, entry.m_fileID))
+        {
+            return false;
+        }
+
+        return true;
+    }
+
+    bool AssetDatabaseConnection::RemoveFile(AZ::s64 fileID)
+    {
+        return s_DeleteFileQuery.BindAndStep(*m_databaseConnection, fileID);
+    }
+
+    bool AssetDatabaseConnection::SetBuilderInfoTable(AzToolsFramework::AssetDatabase::BuilderInfoEntryContainer& newEntries)
+    {
+        ScopedTransaction transaction(m_databaseConnection);
+        if (!m_databaseConnection->ExecuteOneOffStatement(CLEAR_BUILDERINFO_TABLE))
+        {
+            return false;
+        }
+
+        for (AzToolsFramework::AssetDatabase::BuilderInfoEntry &entry : newEntries)
+        {
+            if (!s_InsertBuilderInfoQuery.BindAndStep(*m_databaseConnection, entry.m_builderUuid, entry.m_analysisFingerprint.c_str()))
+            {
+                return false;
+            }
+            // update the entry to have the applied ID.
+            entry.m_builderInfoID = m_databaseConnection->GetLastRowID();
+        }
+
+        transaction.Commit();
         return true;
     }
 

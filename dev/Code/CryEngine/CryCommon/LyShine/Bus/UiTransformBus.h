@@ -98,6 +98,15 @@ public: // types
         bool operator!=(const Rect& rhs) const;
     };
 
+    //! Enum used as a parameter to SetRecomputeFlags
+    enum class Recompute
+    {
+        RectOnly,               //!< Only the rect (offsets or anchors for example) changed (this may affect transform if local scale or rotation)
+        TransformOnly,          //!< Only the transform changed (canvas and viewport transforms must be recomputed)
+        ViewportTransformOnly,  //!< Only the viewport transform changed (viewport transform must be recomputed)
+        RectAndTransform        //!< Both rect and transform changed (all cached data must be recomputed)
+    };
+
 public: // member functions
 
     virtual ~UiTransformInterface() {}
@@ -296,8 +305,8 @@ public: // member functions
     // Optimization and caching
     ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    //! Set the dirty flag for the cached transform and rect on this element and all its children
-    virtual void SetRecomputeTransformFlag() = 0;
+    //! Set the required dirty flags for the cached transforms and rect on this element and all its children
+    virtual void SetRecomputeFlags(Recompute recompute) = 0;
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////
     // Canvas space rect change
@@ -317,9 +326,6 @@ public: // member functions
     //! Send notification of canvas space rect change and reset to unchanged
     virtual void NotifyAndResetCanvasSpaceRectChange() = 0;
 
-    //! This is called each frame (when needed) to efficiently update the rect and transform in one pass
-    virtual void RecomputeTransformsAndSendNotifications() = 0;
-
 public: // static member data
 
     //! Only one component on a entity can implement the events
@@ -337,8 +343,11 @@ public: // member functions
 
     virtual ~UiTransformChangeNotification(){}
 
-    //! Called when an entity's transform has been modified
+    //! Called when an entity's transform (canvas space) has been modified
     virtual void OnCanvasSpaceRectChanged(AZ::EntityId entityId, const UiTransformInterface::Rect& oldRect, const UiTransformInterface::Rect& newRect) = 0;
+
+    //! Called when an entity's transform (viewport space) has been modified
+    virtual void OnTransformToViewportChanged() {}
 };
 
 typedef AZ::EBus<UiTransformChangeNotification> UiTransformChangeNotificationBus;

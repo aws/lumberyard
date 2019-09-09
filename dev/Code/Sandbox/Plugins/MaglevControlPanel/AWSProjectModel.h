@@ -58,7 +58,7 @@ public:
     QModelIndex DeploymentListIndex() const override;
     QModelIndex ProjectStackIndex() const override;
     void VisitDetail(const QModelIndex& index, IAWSProjectDetailVisitor* visitor) override;
-    void AddResourceGroup(const QString& resourceGroupName, bool includeExampleResources, AsyncOperationCallback callback) override;
+    void CreateCloudGem(const QString& name, const QString& initialContent, AsyncOperationCallback callback) override;
     void AddServiceApi(const QString& resourceGroupName, AsyncOperationCallback callback) override;
     void DisableResourceGroup(const QString& resourceGroupName, AsyncOperationCallback callback) override;
     void EnableResourceGroup(const QString& resourceGroupName, AsyncOperationCallback callback) override;

@@ -17,7 +17,11 @@
 #include "ShadersResourcesGroups/PerFrame.h"
 
 #if defined(AZ_RESTRICTED_PLATFORM)
-#include AZ_RESTRICTED_FILE(ShaderComponents_h, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/ShaderComponents_h_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/ShaderComponents_h_provo.inl"
+    #endif
 #endif
 
 #if defined(PF_LOCAL) && !(PF_LOCAL == 1)
@@ -492,8 +496,6 @@ struct SCGTexture : SCGBind
             sp.m_BindingSlot == m_BindingSlot &&
             sp.m_Flags == m_Flags &&
             sp.m_pAnimInfo == m_pAnimInfo &&
-            sp.m_pTexture == m_pTexture &&
-            sp.m_eCGTextureType == m_eCGTextureType &&
             sp.m_bSRGBLookup == m_bSRGBLookup &&
             sp.m_bGlobal == m_bGlobal)
         {

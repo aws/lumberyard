@@ -19,12 +19,7 @@
 #include <AzCore/std/parallel/lock.h>
 
 #include <AK/AkWwiseSDKVersion.h>
-
-#if (AK_WWISESDK_VERSION_MAJOR >= 2016)
-    #include <AK/Plugin/AkAudioInputPlugin.h>
-#else
-    #include <AK/Plugin/AkAudioInputSourceFactory.h>
-#endif // AK_WWISESDK_VERSION_MAJOR
+#include <AK/Plugin/AkAudioInputPlugin.h>
 
 namespace Audio
 {
@@ -116,12 +111,7 @@ namespace Audio
             }
         }
 
-    #if (AK_WWISESDK_VERSION_MAJOR >= 2016)
         AkChannelConfig akChannelConfig(m_config.m_numChannels, speakerConfig);
-    #else
-        AkChannelConfig akChannelConfig;
-        akChannelConfig.SetStandardOrAnonymous(m_config.m_numChannels, speakerConfig);
-    #endif // AK_WWISESDK_VERSION_MAJOR
 
         format.SetAll(
             m_config.m_sampleRate,

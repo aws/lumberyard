@@ -49,7 +49,16 @@ namespace AzToolsFramework
         // EntityId -> Slice Info
         virtual AZStd::string GetSliceAssetName() const = 0;
         virtual bool IsSliceEntity() const = 0;
+        virtual bool IsSubsliceEntity() const = 0;
         virtual bool IsSliceRoot() const = 0;
+        virtual bool IsSubsliceRoot() const = 0;
+        virtual bool HasSliceEntityOverrides() const = 0;
+        virtual bool HasSliceChildrenOverrides() const = 0;
+        virtual bool HasSliceAnyOverrides() const = 0;
+        virtual bool HasCyclicDependency() const = 0;
+        virtual void AddToCyclicDependencyList(const AZ::EntityId& entityId) = 0;
+        virtual void RemoveFromCyclicDependencyList(const AZ::EntityId& entityId) = 0;
+        virtual AzToolsFramework::EntityIdList GetCyclicDependencyList() const = 0;
 
         // EntityId -> Order Info
         virtual AZ::u64 GetIndexForSorting() const = 0;
@@ -58,6 +67,16 @@ namespace AzToolsFramework
         virtual bool IsVisible() const = 0;
         virtual bool IsHidden() const = 0;
         virtual bool IsLocked() const = 0;
+
+        // Locked layers override the lock status of entities, but shouldn't change
+        // that entity's lock state. This allows layers to have their lock toggled on and
+        // off while preserving the state of the entities within.
+        // This check allows the outliner to detect if this entity was specifically locked,
+        // so it can render that state. Everywhere else should use the IsLocked check, which checks entities.
+        virtual bool IsJustThisEntityLocked() const = 0;
+
+        virtual bool IsComponentExpanded(AZ::ComponentId id) const = 0;
+        virtual void SetComponentExpanded(AZ::ComponentId id, bool expanded) = 0;
     };
     using EditorEntityInfoRequestBus = AZ::EBus<EditorEntityInfoRequests>;
 
@@ -70,18 +89,20 @@ namespace AzToolsFramework
     {
     public:
         virtual ~EditorEntityInfoNotifications() = default;
-        virtual void OnEntityInfoResetBegin() {};
-        virtual void OnEntityInfoResetEnd() {};
-        virtual void OnEntityInfoUpdatedAddChildBegin(AZ::EntityId /*parentId*/, AZ::EntityId /*childId*/) {};
-        virtual void OnEntityInfoUpdatedAddChildEnd(AZ::EntityId /*parentId*/, AZ::EntityId /*childId*/) {};
-        virtual void OnEntityInfoUpdatedRemoveChildBegin(AZ::EntityId /*parentId*/, AZ::EntityId /*childId*/) {};
-        virtual void OnEntityInfoUpdatedRemoveChildEnd(AZ::EntityId /*parentId*/, AZ::EntityId /*childId*/) {};
-        virtual void OnEntityInfoUpdatedOrderBegin(AZ::EntityId /*parentId*/, AZ::EntityId /*childId*/, AZ::u64 /*index*/) {};
-        virtual void OnEntityInfoUpdatedOrderEnd(AZ::EntityId /*parentId*/, AZ::EntityId /*childId*/, AZ::u64 /*index*/) {};
-        virtual void OnEntityInfoUpdatedSelection(AZ::EntityId /*entityId*/, bool /*selected*/){};
-        virtual void OnEntityInfoUpdatedLocked(AZ::EntityId /*entityId*/, bool /*locked*/){};
-        virtual void OnEntityInfoUpdatedVisibility(AZ::EntityId /*entityId*/, bool /*visible*/){};
-        virtual void OnEntityInfoUpdatedName(AZ::EntityId /*entityId*/, const AZStd::string& /*name*/){};
+        virtual void OnEntityInfoResetBegin() {}
+        virtual void OnEntityInfoResetEnd() {}
+        virtual void OnEntityInfoUpdatedAddChildBegin(AZ::EntityId /*parentId*/, AZ::EntityId /*childId*/) {}
+        virtual void OnEntityInfoUpdatedAddChildEnd(AZ::EntityId /*parentId*/, AZ::EntityId /*childId*/) {}
+        virtual void OnEntityInfoUpdatedRemoveChildBegin(AZ::EntityId /*parentId*/, AZ::EntityId /*childId*/) {}
+        virtual void OnEntityInfoUpdatedRemoveChildEnd(AZ::EntityId /*parentId*/, AZ::EntityId /*childId*/) {}
+        virtual void OnEntityInfoUpdatedOrderBegin(AZ::EntityId /*parentId*/, AZ::EntityId /*childId*/, AZ::u64 /*index*/) {}
+        virtual void OnEntityInfoUpdatedOrderEnd(AZ::EntityId /*parentId*/, AZ::EntityId /*childId*/, AZ::u64 /*index*/) {}
+        virtual void OnEntityInfoUpdatedSelection(AZ::EntityId /*entityId*/, bool /*selected*/){}
+        virtual void OnEntityInfoUpdatedLocked(AZ::EntityId /*entityId*/, bool /*locked*/){}
+        virtual void OnEntityInfoUpdatedVisibility(AZ::EntityId /*entityId*/, bool /*visible*/){}
+        virtual void OnEntityInfoUpdatedName(AZ::EntityId /*entityId*/, const AZStd::string& /*name*/){}
+        virtual void OnEntityInfoUpdatedUnsavedChanges(AZ::EntityId /*entityId*/) {}
+        virtual void OnEntityInfoUpdateSliceOwnership(AZ::EntityId /*entityId*/){}
     };
     using EditorEntityInfoNotificationBus = AZ::EBus<EditorEntityInfoNotifications>;
 }

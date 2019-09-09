@@ -89,6 +89,7 @@ namespace AzToolsFramework
         connect(newCtrl, &PropertyBoolComboBoxCtrl::valueChanged, this, [newCtrl]()
             {
                 EBUS_EVENT(PropertyEditorGUIMessages::Bus, RequestWrite, newCtrl);
+                AzToolsFramework::PropertyEditorGUIMessages::Bus::Broadcast(&PropertyEditorGUIMessages::Bus::Handler::OnEditingFinished, newCtrl);
             });
         return newCtrl;
     }

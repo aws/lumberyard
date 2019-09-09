@@ -120,6 +120,12 @@ namespace LmbrCentral
                     Attribute(AZ::Edit::Attributes::Max, 1.f)->
                     Attribute(AZ::Edit::Attributes::Visibility, &DecalConfiguration::m_deferred)->
 
+                    DataElement(AZ::Edit::UIHandlers::Slider, &DecalConfiguration::m_angleAttenuation, "Angle Attenuation", "amount of angle attenuation computation taken into account")->
+                    Attribute(AZ::Edit::Attributes::ChangeNotify, &DecalConfiguration::MinorPropertyChanged)->
+                    Attribute(AZ::Edit::Attributes::Min, 0.f)->
+                    Attribute(AZ::Edit::Attributes::Max, 1.f)->
+                    Attribute(AZ::Edit::Attributes::Visibility, &DecalConfiguration::m_deferred)->
+
                     ClassElement(AZ::Edit::ClassElements::Group, "Options")->
 
                     DataElement(AZ::Edit::UIHandlers::Default, &DecalConfiguration::m_maxViewDist, "Max view distance", "The furthest distance this decal can be seen from")->
@@ -287,6 +293,7 @@ namespace LmbrCentral
         SDecalProperties decalProperties = m_configuration.GetDecalProperties(transform);
         m_decalRenderNode->SetDecalProperties(decalProperties);
 
+        m_renderFlags |= ERF_COMPONENT_ENTITY;
         m_decalRenderNode->SetRndFlags(m_renderFlags);
         m_decalRenderNode->SetMatrix(AZTransformToLYTransform(transform));
         m_decalRenderNode->SetMinSpec(static_cast<int>(decalProperties.m_minSpec));
@@ -303,55 +310,43 @@ namespace LmbrCentral
         EBUS_EVENT(AzToolsFramework::ToolsApplicationRequests::Bus, AddDirtyEntity, GetEntityId());
     }
 
-    void EditorDecalComponent::DisplayEntity(bool& handled)
+    void EditorDecalComponent::DisplayEntityViewport(
+        const AzFramework::ViewportInfo& viewportInfo,
+        AzFramework::DebugDisplayRequests& debugDisplay)
     {
-        auto* dc = AzFramework::EntityDebugDisplayRequestBus::FindFirstHandler();
-        AZ_Assert(dc, "Invalid display context.");
-
         // Displays a small grid over the area where the decal will be applied.
-        if (dc)
+        if (!IsSelected())
         {
-            if (!IsSelected())
-            {
-                handled = true;
-                return;
-            }
-            else
-            {
-                AZ::Transform transform = AZ::Transform::CreateIdentity();
-                EBUS_EVENT_ID_RESULT(transform, GetEntityId(), AZ::TransformBus, GetWorldTM);
-
-                AZ::Vector3 x1 = transform * AZ::Vector3(-1, 0, 0);
-                AZ::Vector3 x2 = transform * AZ::Vector3(1, 0, 0);
-                AZ::Vector3 y1 = transform * AZ::Vector3(0, -1, 0);
-                AZ::Vector3 y2 = transform * AZ::Vector3(0, 1, 0);
-                AZ::Vector3 p = transform * AZ::Vector3(0, 0, 0);
-                AZ::Vector3 n = transform * AZ::Vector3(0, 0, 1);
-
-                dc->SetColor(AZ::Vector4(1, 0, 0, 1));
-
-                dc->DrawLine(p, n);
-                dc->DrawLine(x1, x2);
-                dc->DrawLine(y1, y2);
-
-                AZ::Vector3 p0 = transform * AZ::Vector3(-1, -1, 0);
-                AZ::Vector3 p1 = transform * AZ::Vector3(-1, 1, 0);
-                AZ::Vector3 p2 = transform * AZ::Vector3(1, 1, 0);
-                AZ::Vector3 p3 = transform * AZ::Vector3(1, -1, 0);
-
-                dc->DrawLine(p0, p1);
-                dc->DrawLine(p1, p2);
-                dc->DrawLine(p2, p3);
-                dc->DrawLine(p3, p0);
-                dc->DrawLine(p0, p2);
-                dc->DrawLine(p1, p3);
-            }
+            return;
         }
 
-        if (m_decalRenderNode && !m_configuration.m_material.GetAssetPath().empty())
-        {
-            handled = true;
-        }
+        AZ::Transform transform = AZ::Transform::CreateIdentity();
+        EBUS_EVENT_ID_RESULT(transform, GetEntityId(), AZ::TransformBus, GetWorldTM);
+
+        AZ::Vector3 x1 = transform * AZ::Vector3(-1, 0, 0);
+        AZ::Vector3 x2 = transform * AZ::Vector3(1, 0, 0);
+        AZ::Vector3 y1 = transform * AZ::Vector3(0, -1, 0);
+        AZ::Vector3 y2 = transform * AZ::Vector3(0, 1, 0);
+        AZ::Vector3 p = transform * AZ::Vector3(0, 0, 0);
+        AZ::Vector3 n = transform * AZ::Vector3(0, 0, 1);
+
+        debugDisplay.SetColor(AZ::Vector4(1, 0, 0, 1));
+
+        debugDisplay.DrawLine(p, n);
+        debugDisplay.DrawLine(x1, x2);
+        debugDisplay.DrawLine(y1, y2);
+
+        AZ::Vector3 p0 = transform * AZ::Vector3(-1, -1, 0);
+        AZ::Vector3 p1 = transform * AZ::Vector3(-1, 1, 0);
+        AZ::Vector3 p2 = transform * AZ::Vector3(1, 1, 0);
+        AZ::Vector3 p3 = transform * AZ::Vector3(1, -1, 0);
+
+        debugDisplay.DrawLine(p0, p1);
+        debugDisplay.DrawLine(p1, p2);
+        debugDisplay.DrawLine(p2, p3);
+        debugDisplay.DrawLine(p3, p0);
+        debugDisplay.DrawLine(p0, p2);
+        debugDisplay.DrawLine(p1, p3);
     }
 
     void EditorDecalComponent::OnEntityVisibilityChanged(bool /*visibility*/)

@@ -99,8 +99,6 @@ ObstacleData& CVertexList::ModifyVertex(int index)
 
 bool CVertexList::ReadFromFile(const char* fileName)
 {
-    MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_Navigation, 0, "Triangulation vertices");
-
     m_obstacles.clear();
     m_hashSpace->Clear(true);
 

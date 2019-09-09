@@ -278,7 +278,7 @@ void CStatObj::FillRenderObject(const SRendParams& rParams, IRenderNode* pRender
 
     pObj->m_pRenderNode = rParams.pRenderNode;
     pObj->m_pCurrMaterial = pMaterial;
-
+    pObj->m_NoDecalReceiver = rParams.NoDecalReceiver;
     if (Get3DEngine()->IsTessellationAllowed(pObj, passInfo))
     {
         // Allow this RO to be tessellated, however actual tessellation will be applied if enabled in material

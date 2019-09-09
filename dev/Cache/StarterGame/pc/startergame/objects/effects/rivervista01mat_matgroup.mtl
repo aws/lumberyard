@@ -1,0 +1,14 @@
+<Material MtlFlags="524544" vertModifType="0">
+ <SubMaterials>
+  <Material Name="RiverVista01MAT" MtlFlags="524448" Shader="Illum" GenMask="81000000" StringGenMask="%NORMAL_MAP%SUBSURFACE_SCATTERING" SurfaceType="mat_water" Diffuse="0.19461785,0.58407855,0.79129809" Specular="0.057805438,0.057805438,0.057805438" Emittance="0,0,0,0" Opacity="1" Shininess="192" vertModifType="0" LayerAct="1">
+   <Textures>
+    <Texture Map="Diffuse" File="Objects/Effects/FX_RiverVista_01.tif">
+     <TexMod TexMod_RotateType="0" TexMod_TexGenType="0" TexMod_bTexGenProjected="0" TexMod_VOscillatorType="2" TexMod_VOscillatorRate="0.1" TexMod_VOscillatorAmplitude="1"/>
+    </Texture>
+    <Texture Map="Bumpmap" File="objects/effects/fx_rivervista_01_ddn.dds"/>
+   </Textures>
+   <PublicParams EmittanceMapGamma="1" SSSIndex="0" IndirectColor="0.25,0.25,0.25"/>
+  </Material>
+ </SubMaterials>
+ <PublicParams EmittanceMapGamma="1" SSSIndex="0" IndirectColor="0.25,0.25,0.25"/>
+</Material>

@@ -58,7 +58,7 @@ struct IGameStartup
     virtual void Shutdown() = 0;
 
     // Deprecated
-    virtual int AZ_DEPRECATED(Update(bool haveFocus, unsigned int updateFlags), "Deprecated, please delete overridden functions (main loop now in launcher)") { return 0; }
+    AZ_DEPRECATED(virtual int Update(bool haveFocus, unsigned int updateFlags), "Deprecated, please delete overridden functions (main loop now in launcher)") { return 0; }
 
     // Description:
     //      Returns a restart level and thus triggers a restart.
@@ -79,7 +79,7 @@ struct IGameStartup
     virtual bool GetRestartMod(char* pModNameBuffer, int modNameBufferSizeInBytes) { return false; }
 
     // Deprecated:
-    virtual int AZ_DEPRECATED(Run(const char* autoStartLevelName), "Deprecated, please delete overridden functions (main loop now in launcher)") { return 0; }
+    AZ_DEPRECATED(virtual int Run(const char* autoStartLevelName), "Deprecated, please delete overridden functions (main loop now in launcher)") { return 0; }
 
     // Description:
     //      Returns the RSA Public Key used by the engine to decrypt pak files which are encrypted by an offline tool.

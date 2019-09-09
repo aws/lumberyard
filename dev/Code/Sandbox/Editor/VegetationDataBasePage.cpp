@@ -247,6 +247,12 @@ void CVegetationDataBasePage::OnBnClickedScale()
     {
         ((CVegetationTool*)pTool)->ScaleObjects();
     }
+    else
+    {
+        CVegetationTool* pTempTool = new CVegetationTool;
+        pTempTool->ScaleObjects();
+        pTempTool->Release();
+    }
 }
 
 //////////////////////////////////////////////////////////////////////////

@@ -39,6 +39,8 @@ namespace CloudCanvas
             virtual ReturnStr GetStrValue(const char* structName, const char* fieldName, bool& wasSuccess) const override;
             virtual ReturnDouble GetDoubleValue(const char* structName, const char* fieldName, bool& wasSuccess) const override;
 
+            size_t GetNumElements() const override;
+
             static AttributeValueType ParseFromStream(std::stringstream& inStream);
         protected:
             bool LoadData(const char* initBuffer) override;

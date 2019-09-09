@@ -39,22 +39,21 @@
 
 namespace LmbrCentral
 {
-    // Private statics
-    IEditor*             EditorLightComponent::m_editor = nullptr;
-    IMaterialManager*    EditorLightComponent::m_materialManager = nullptr;
-    
+    // private statics
+    IEditor* EditorLightComponent::m_editor = nullptr;
+    IMaterialManager* EditorLightComponent::m_materialManager = nullptr;
 
     const char* EditorLightComponent::BUTTON_GENERATE = "Generate";
     const char* EditorLightComponent::BUTTON_ADDBOUNCE = "Add Bounce";
 
-    //class converter. Convert EditorLightComponent to one of four above components
+    // class converter. Convert EditorLightComponent to one of four above components
     namespace ClassConverters
     {
         static bool ConvertEditorLightComponent(AZ::SerializeContext& context, AZ::SerializeContext::DataElementNode& classElement)
         {
-            //extract light type
+            // extract light type
             bool isFound = false;
-            LightConfiguration::LightType lightType;                
+            LightConfiguration::LightType lightType;
 
             int lightConfigIndex = classElement.FindElement(AZ_CRC("EditorLightConfiguration", 0xe4cf6af9));
             if (lightConfigIndex != -1)
@@ -64,7 +63,7 @@ namespace LmbrCentral
                 if (baseClassIndex != -1)
                 {
                     AZ::SerializeContext::DataElementNode baseConfig = configElement.GetSubElement(baseClassIndex);
-                    
+
                     int lightTypeIndex = baseConfig.FindElement(AZ_CRC("LightType", 0x9884ece8));
                     if (lightTypeIndex != -1)
                     {
@@ -86,7 +85,7 @@ namespace LmbrCentral
             for (int i = 0; i < classElement.GetNumSubElements(); i++)
             {
                 subElements.push_back(classElement.GetSubElement(i));
-            }            
+            }
 
             // Convert to specific editor light component.
             bool result = true;
@@ -115,7 +114,7 @@ namespace LmbrCentral
                 int baseClass = classElement.AddElement<EditorLightComponent>(context, "BaseClass1");
                 AZ::SerializeContext::DataElementNode& baseClassNode = classElement.GetSubElement(baseClass);
 
-                //then add all the sub elements to this base class. it's because we didn't introduce any other new element to specific light components. 
+                //then add all the sub elements to this base class. it's because we didn't introduce any other new element to specific light components.
                 for (int i = 0; i < subElements.size(); i++)
                 {
                     baseClassNode.AddElement(subElements[i]);
@@ -124,6 +123,16 @@ namespace LmbrCentral
 
             return result;
         }
+    }
+
+    AZ::ExportedComponent EditorLightComponent::ExportLightComponent(AZ::Component* thisComponent, const AZ::PlatformTagSet& /*platformTags*/)
+    {
+        EditorLightComponent* editorLightComponent = static_cast<EditorLightComponent*>(thisComponent);
+
+        LightComponent* lightComponent = aznew LightComponent();
+        lightComponent->m_configuration = editorLightComponent->m_configuration;
+
+        return AZ::ExportedComponent(lightComponent, true);
     }
 
     void EditorLightComponent::Reflect(AZ::ReflectContext* context)
@@ -138,13 +147,12 @@ namespace LmbrCentral
             serializeContext->ClassDeprecate("EditorLightComponent", "{33BB1CD4-6A33-46AA-87ED-8BBB40D94B0D}", &ClassConverters::ConvertEditorLightComponent);
 
             serializeContext->Class<EditorLightComponent, EditorComponentBase>()
-                ->Version(1)
+                ->Version(2, &EditorLightComponent::VersionConverter)
                 ->Field("EditorLightConfiguration", &EditorLightComponent::m_configuration)
                 ->Field("CubemapRegen", &EditorLightComponent::m_cubemapRegen)
                 ->Field("CubemapClear", &EditorLightComponent::m_cubemapClear)
                 ->Field("ViewCubemap", &EditorLightComponent::m_viewCubemap)
                 ->Field("UseCustomizedCubemap", &EditorLightComponent::m_useCustomizedCubemap)
-                ->Field("cubemapAsset", &EditorLightComponent::m_cubemapAsset)
             ;
 
             AZ::EditContext* editContext = serializeContext->GetEditContext();
@@ -165,12 +173,6 @@ namespace LmbrCentral
                     ->DataElement(AZ::Edit::UIHandlers::CheckBox, &EditorLightComponent::m_useCustomizedCubemap, "Use customized cubemap", "Check to enable usage of customized cubemap")
                         ->Attribute(AZ::Edit::Attributes::Visibility, &EditorLightComponent::IsProbe)
                         ->Attribute(AZ::Edit::Attributes::ChangeNotify, &EditorLightComponent::OnCustomizedCubemapChanged)
-
-                    //asset selection
-                    ->DataElement(0, &EditorLightComponent::m_cubemapAsset, "Cubemap asset", "Cubemap file path")
-                        ->Attribute(AZ::Edit::Attributes::Visibility, &EditorLightComponent::IsProbe)
-                        ->Attribute(AZ::Edit::Attributes::ChangeNotify, &EditorLightComponent::OnCubemapAssetChanged)
-                        ->Attribute(AZ::Edit::Attributes::ReadOnly,&EditorLightComponent::CanGenerateCubemap)
 
                     ->DataElement("Button", &EditorLightComponent::m_cubemapRegen, "Cubemap", "Generate the associated cubemap")
                         ->Attribute(AZ::Edit::Attributes::ButtonText, &EditorLightComponent::GetGenerateCubemapButtonName)
@@ -324,6 +326,18 @@ namespace LmbrCentral
         }
     }
 
+    bool EditorLightComponent::VersionConverter(AZ::SerializeContext& context, AZ::SerializeContext::DataElementNode& classElement)
+    {
+        if (classElement.GetVersion() <= 1)
+        {
+            if (!classElement.RemoveElementByName(AZ_CRC("cubemapAsset", 0xc10ac43b)))
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
     void EditorLightConfiguration::Reflect(AZ::ReflectContext* context)
     {
         AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
@@ -343,13 +357,13 @@ namespace LmbrCentral
                       Attribute(AZ::Edit::Attributes::AutoExpand, true)->
                       Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)->
 
-                    DataElement(AZ::Edit::UIHandlers::CheckBox, &LightConfiguration::m_visible, "Visible", "The current visibility status of this flare")->
-                        Attribute(AZ::Edit::Attributes::ChangeNotify, &LightConfiguration::MajorPropertyChanged)->
-                    
-                    DataElement(0, &LightConfiguration::m_onInitially, "On initially", "The light is initially turned on.")->
-
                     ClassElement(AZ::Edit::ClassElements::Group, "General Settings")->
                         Attribute(AZ::Edit::Attributes::AutoExpand, true)->
+
+                    DataElement(AZ::Edit::UIHandlers::CheckBox, &LightConfiguration::m_visible, "Visible", "The current visibility status of this flare")->
+                        Attribute(AZ::Edit::Attributes::ChangeNotify, &LightConfiguration::MajorPropertyChanged)->
+
+                    DataElement(0, &LightConfiguration::m_onInitially, "On initially", "The light is initially turned on.")->
 
                     DataElement(AZ::Edit::UIHandlers::Color, &LightConfiguration::m_color, "Color", "Light color")->
                         Attribute(AZ::Edit::Attributes::ChangeNotify, &LightConfiguration::MinorPropertyChanged)->
@@ -380,7 +394,7 @@ namespace LmbrCentral
                         Attribute(AZ::Edit::Attributes::Suffix, " m")->
                         Attribute(AZ::Edit::Attributes::Min, 0.1f)->
                         Attribute(AZ::Edit::Attributes::Step, 0.1f)->
-                        
+
                     DataElement(0, &LightConfiguration::m_pointAttenuationBulbSize, "Attenuation bulb size", "Radius of area inside falloff.")->
                         Attribute(AZ::Edit::Attributes::Visibility, &LightConfiguration::GetPointLightVisibility)->
                         Attribute(AZ::Edit::Attributes::ChangeNotify, &LightConfiguration::MinorPropertyChanged)->
@@ -462,7 +476,7 @@ namespace LmbrCentral
                     DataElement(0, &LightConfiguration::m_material, "Material", "Projector light material")->
                         Attribute(AZ::Edit::Attributes::Visibility, &LightConfiguration::GetProjectorLightVisibility)->
                         Attribute(AZ::Edit::Attributes::ChangeNotify, &LightConfiguration::MajorPropertyChanged)->
-                       
+
                     //environment probe settings
                     ClassElement(AZ::Edit::ClassElements::Group, "Environment Probe Settings")->
                         Attribute(AZ::Edit::Attributes::AutoExpand, true)->
@@ -477,7 +491,7 @@ namespace LmbrCentral
                     DataElement(AZ::Edit::UIHandlers::CheckBox, &LightConfiguration::m_isBoxProjected, "Box projected", "Check to enable box projection during runtime")->
                         Attribute(AZ::Edit::Attributes::Visibility, &LightConfiguration::GetProbeLightVisibility)->
                         Attribute(AZ::Edit::Attributes::ChangeNotify, &LightConfiguration::MinorPropertyChanged)->
-                    
+
                     DataElement(0, &LightConfiguration::m_boxHeight, "Box height", "Height of box projection area")->
                         Attribute(AZ::Edit::Attributes::Visibility, &LightConfiguration::GetProbeLightVisibility)->
                         Attribute(AZ::Edit::Attributes::ChangeNotify, &LightConfiguration::MinorPropertyChanged)->
@@ -510,7 +524,16 @@ namespace LmbrCentral
                         EnumAttribute(ResolutionSetting::Res128, "128")->
                         EnumAttribute(ResolutionSetting::Res256, "256")->
                         EnumAttribute(ResolutionSetting::Res512, "512")->
-                            
+
+                    ClassElement(AZ::Edit::ClassElements::Group, "Cubemap Generation")->
+                        Attribute(AZ::Edit::Attributes::Visibility, &LightConfiguration::GetProbeLightVisibility)->
+                        Attribute(AZ::Edit::Attributes::AutoExpand, true)->
+
+                    DataElement(AZ::Edit::UIHandlers::Default, &LightConfiguration::m_probeCubemap, "Cubemap asset", "Cubemap file path")->
+                        Attribute(AZ::Edit::Attributes::Visibility, &LightConfiguration::GetProbeLightVisibility)->
+                        Attribute(AZ::Edit::Attributes::ChangeNotify, &LightConfiguration::OnCubemapAssetChanged)->
+                        Attribute(AZ::Edit::Attributes::ReadOnly,&LightConfiguration::CanGenerateCubemap)->
+
                     ClassElement(AZ::Edit::ClassElements::Group, "Animation")->
 
                     DataElement(0, &LightConfiguration::m_animIndex, "Style", "Light animation curve ID (\"style\") as it corresponds to values in Light.cfx")->
@@ -545,15 +568,6 @@ namespace LmbrCentral
                         EnumAttribute(EngineSpec::Medium, "Medium")->
                         EnumAttribute(EngineSpec::Low, "Low")->
 
-                    DataElement(AZ::Edit::UIHandlers::ComboBox, &LightConfiguration::m_castShadowsSpec, "Cast shadow spec", "Min spec for shadow casting.")->
-                        Attribute(AZ::Edit::Attributes::Visibility, &LightConfiguration::GetShadowSpecVisibility)->
-                        Attribute(AZ::Edit::Attributes::ChangeNotify, &LightConfiguration::MajorPropertyChanged)->
-                        EnumAttribute(EngineSpec::Never, "Never")->
-                        EnumAttribute(EngineSpec::VeryHigh, "Very high")->
-                        EnumAttribute(EngineSpec::High, "High")->
-                        EnumAttribute(EngineSpec::Medium, "Medium")->
-                        EnumAttribute(EngineSpec::Low, "Low")->
-
                     DataElement(AZ::Edit::UIHandlers::ComboBox, &LightConfiguration::m_voxelGIMode, "Voxel GI mode", "Mode for light interaction with voxel GI.")->
                         Attribute(AZ::Edit::Attributes::ChangeNotify, &LightConfiguration::MajorPropertyChanged)->
                         EnumAttribute(IRenderNode::VM_None, "None")->
@@ -582,9 +596,20 @@ namespace LmbrCentral
                         Attribute(AZ::Edit::Attributes::Visibility, AZ_CRC("PropertyVisibility_Hide", 0x32ab90f7))->         // Deprecated on non mobile platforms - hidden until we have a platform to use this
 
                     ClassElement(AZ::Edit::ClassElements::Group, "Shadow Settings")->
+                        Attribute(AZ::Edit::Attributes::Visibility, &LightConfiguration::GetShadowSpecVisibility)->
                         Attribute(AZ::Edit::Attributes::AutoExpand, true)->
 
+                    DataElement(AZ::Edit::UIHandlers::ComboBox, &LightConfiguration::m_castShadowsSpec, "Cast shadow spec", "Min spec for shadow casting.")->
+                        Attribute(AZ::Edit::Attributes::Visibility, &LightConfiguration::GetShadowSpecVisibility)->
+                        Attribute(AZ::Edit::Attributes::ChangeNotify, &LightConfiguration::MajorPropertyChanged)->
+                        EnumAttribute(EngineSpec::Never, "Never")->
+                        EnumAttribute(EngineSpec::VeryHigh, "Very high")->
+                        EnumAttribute(EngineSpec::High, "High")->
+                        EnumAttribute(EngineSpec::Medium, "Medium")->
+                        EnumAttribute(EngineSpec::Low, "Low")->
+
                     DataElement(0, &LightConfiguration::m_castTerrainShadows, "Terrain Shadows", "Include the terrain in the shadow casters for this light")->
+                        Attribute(AZ::Edit::Attributes::Visibility, &LightConfiguration::GetShadowSettingsVisibility)->
                         Attribute(AZ::Edit::Attributes::ChangeNotify, &LightConfiguration::MinorPropertyChanged)->
 
 
@@ -628,7 +653,7 @@ namespace LmbrCentral
         }
     }
 
-    AZ::Crc32 EditorLightConfiguration::GetAmbientLightVisibility() const 
+    AZ::Crc32 EditorLightConfiguration::GetAmbientLightVisibility() const
     {
         return m_lightType != LightType::Probe ?
                 AZ::Edit::PropertyVisibility::Show : AZ::Edit::PropertyVisibility::Hide;
@@ -674,7 +699,7 @@ namespace LmbrCentral
     {
         if (m_editorEntityId.IsValid())
         {
-            EBUS_EVENT_ID(m_editorEntityId, EditorLightComponentRequestBus, RefreshLight);
+            EditorLightComponentRequestBus::Event(m_editorEntityId, &EditorLightComponentRequests::RefreshLight);
         }
 
         return AZ::Edit::PropertyRefreshLevels::EntireTree;
@@ -684,7 +709,7 @@ namespace LmbrCentral
     {
         if (m_editorEntityId.IsValid())
         {
-            EBUS_EVENT_ID(m_editorEntityId, EditorLightComponentRequestBus, RefreshLight);
+            EditorLightComponentRequestBus::Event(m_editorEntityId, &EditorLightComponentRequests::RefreshLight);
         }
 
         return AZ::Edit::PropertyRefreshLevels::None;
@@ -694,12 +719,33 @@ namespace LmbrCentral
     {
         if (m_editorEntityId.IsValid())
         {
-            EBUS_EVENT_ID(m_editorEntityId, EditorLightComponentRequestBus, RefreshLight);
-
-            EBUS_EVENT(LightSettingsNotificationsBus, AnimationSettingsChanged);
+            EditorLightComponentRequestBus::Event(m_editorEntityId, &EditorLightComponentRequests::RefreshLight);
+            LightSettingsNotificationsBus::Broadcast(&LightSettingsNotifications::AnimationSettingsChanged);
         }
 
         return AZ_CRC("RefreshNone", 0x98a5045b);
+    }
+
+    AZ::Crc32 EditorLightConfiguration::OnCubemapAssetChanged()
+    {
+        if (!m_component)
+        {
+            AZ_Error("Lighting", false, "Lighting configuration has a null component, unable to change CubemapAsset");
+            return 0;
+        }
+
+        return m_component->OnCubemapAssetChanged();
+    }
+
+    bool EditorLightConfiguration::CanGenerateCubemap() const
+    {
+        if (!m_component)
+        {
+            AZ_Error("Lighting", false, "Lighting configuration has a null component, unable to generate Cubemap");
+            return false;
+        }
+
+        return m_component->CanGenerateCubemap();
     }
 
     EditorLightComponent::EditorLightComponent()
@@ -724,16 +770,15 @@ namespace LmbrCentral
     {
         Base::Activate();
 
+        m_configuration.SetComponent(this);
         m_configuration.m_editorEntityId = GetEntityId();
-
-        m_cubemapAsset.SetAssetPath(m_configuration.m_probeCubemap.c_str());
 
         m_light.SetEntity(GetEntityId());
         RefreshLight();
 
         if (m_configuration.m_lightType == LightConfiguration::LightType::Probe)
         {
-            m_cubemapPreview.Setup(m_configuration.m_probeCubemap.c_str());
+            m_cubemapPreview.Setup(m_configuration.m_probeCubemap.GetAssetPath().c_str());
 
             AZ::Transform transform = AZ::Transform::Identity();
             AZ::TransformBus::EventResult(transform, GetEntityId(), &AZ::TransformInterface::GetWorldTM);
@@ -742,6 +787,7 @@ namespace LmbrCentral
             OnViewCubemapChanged(); // Check to see if it should be displayed now.
         }
 
+        EditorCameraCorrectionRequestBus::Handler::BusConnect(GetEntityId());
         EditorLightComponentRequestBus::Handler::BusConnect(GetEntityId());
         RenderNodeRequestBus::Handler::BusConnect(GetEntityId());
         AzFramework::EntityDebugDisplayEventBus::Handler::BusConnect(GetEntityId());
@@ -752,6 +798,7 @@ namespace LmbrCentral
 
     void EditorLightComponent::Deactivate()
     {
+        EditorCameraCorrectionRequestBus::Handler::BusDisconnect();
         EditorLightComponentRequestBus::Handler::BusDisconnect();
         RenderNodeRequestBus::Handler::BusDisconnect();
         AzFramework::EntityDebugDisplayEventBus::Handler::BusDisconnect();
@@ -808,12 +855,12 @@ namespace LmbrCentral
 
     bool EditorLightComponent::HasCubemap() const
     {
-        return !m_configuration.m_probeCubemap.empty();
+        return !m_configuration.m_probeCubemap.GetAssetPath().empty();
     }
 
     const char* EditorLightComponent::GetCubemapAssetName() const
     {
-        return m_configuration.m_probeCubemap.c_str();
+        return m_configuration.m_probeCubemap.GetAssetPath().c_str();
     }
 
 
@@ -838,11 +885,9 @@ namespace LmbrCentral
     {
         if (CanGenerateCubemap())
         {
-            EBUS_EVENT(AzToolsFramework::EditorRequests::Bus,
-                GenerateCubemapForEntity,
-                GetEntityId(),
-                nullptr,
-                false);
+            AzToolsFramework::EditorRequestBus::Broadcast(
+                &AzToolsFramework::EditorRequests::GenerateCubemapForEntity,
+                GetEntityId(), nullptr, false);
         }
     }
 
@@ -862,7 +907,7 @@ namespace LmbrCentral
             gEnv->p3DEngine->FreeRenderNodeState(&m_cubemapPreview);
         }
     }
-    
+
     void EditorLightComponent::BuildGameEntity(AZ::Entity* gameEntity)
     {
         LightComponent* lightComponent = gameEntity->CreateComponent<LightComponent>();
@@ -872,28 +917,30 @@ namespace LmbrCentral
             lightComponent->m_configuration = m_configuration;
         }
     }
-    
+
     void EditorLightComponent::SetCubemap(const AZStd::string& cubemap)
     {
-        if (cubemap != m_configuration.m_probeCubemap)
+        if (cubemap != m_configuration.m_probeCubemap.GetAssetPath())
         {
             AzToolsFramework::ScopedUndoBatch undo("Cubemap Assignment");
 
-            m_cubemapAsset.SetAssetPath(cubemap.c_str());
-            m_configuration.m_probeCubemap = m_cubemapAsset.GetAssetPath();
-            m_cubemapPreview.UpdateTexture(m_configuration.m_probeCubemap.c_str());
+            m_configuration.m_probeCubemap.SetAssetPath(cubemap.c_str());
+            m_cubemapPreview.UpdateTexture(m_configuration.m_probeCubemap.GetAssetPath().c_str());
 
-            EBUS_EVENT(AzToolsFramework::ToolsApplicationRequests::Bus, AddDirtyEntity, GetEntityId());
+            AzToolsFramework::ToolsApplicationRequestBus::Broadcast(
+                &AzToolsFramework::ToolsApplicationRequests::AddDirtyEntity, GetEntityId());
         }
 
-        if (m_configuration.m_probeCubemap.empty())
+        if (m_configuration.m_probeCubemap.GetAssetPath().empty())
         {
             // Since the cubemap was simply cleared, there is no need to wait for an asset to be processed.
             // Instead, refresh the light now so the output will be cleared immediately.
 
             if (IsSelected())
             {
-                EBUS_EVENT(AzToolsFramework::ToolsApplicationEvents::Bus, InvalidatePropertyDisplay, AzToolsFramework::Refresh_AttributesAndValues);
+                AzToolsFramework::ToolsApplicationEvents::Bus::Broadcast(
+                    &AzToolsFramework::ToolsApplicationEvents::InvalidatePropertyDisplay, AzToolsFramework::Refresh_AttributesAndValues);
+
             }
 
             if (EditorLightConfiguration::LightType::Probe == m_configuration.m_lightType)
@@ -920,8 +967,10 @@ namespace LmbrCentral
     void EditorLightComponent::OnCatalogAssetAdded(const AZ::Data::AssetId& assetId)
     {
         AZ::Data::AssetId cmAssetId;
-        EBUS_EVENT_RESULT(cmAssetId, AZ::Data::AssetCatalogRequestBus, GetAssetIdByPath, m_cubemapAsset.GetAssetPath().c_str(), 
-            m_cubemapAsset.GetAssetType(), true);
+        AZ::Data::AssetCatalogRequestBus::BroadcastResult(
+            cmAssetId, &AZ::Data::AssetCatalogRequests::GetAssetIdByPath,
+            m_configuration.m_probeCubemap.GetAssetPath().c_str(),
+            m_configuration.m_probeCubemap.GetAssetType(), true);
 
         if (cmAssetId == assetId)
         {
@@ -929,7 +978,8 @@ namespace LmbrCentral
             //refresh the tree since we don't need to wait for the asset imported
             if (IsSelected())
             {
-                EBUS_EVENT(AzToolsFramework::ToolsApplicationEvents::Bus, InvalidatePropertyDisplay, AzToolsFramework::Refresh_AttributesAndValues);
+                AzToolsFramework::ToolsApplicationEvents::Bus::Broadcast(
+                    &AzToolsFramework::ToolsApplicationEvents::InvalidatePropertyDisplay, AzToolsFramework::Refresh_AttributesAndValues);
             }
 
             // We wait to refresh the light until after the new asset has finished loading to avoid showing old data; for example, when you
@@ -947,37 +997,39 @@ namespace LmbrCentral
     }
 
     AZ::Crc32 EditorLightComponent::OnCubemapAssetChanged()
-    {        
+    {
         //in case user select a "_diff" texture file. remove it and generate specular file name
         static const char* diffExt = "_diff";
         static const int diffStrSize = 5; //string len of "_diff"
 
         const char* specularCubemap = 0;
-        string specularName(m_cubemapAsset.GetAssetPath().c_str());
+        string specularName(m_configuration.m_probeCubemap.GetAssetPath().c_str());
 
         int strIndex = specularName.find(diffExt);
         if (strIndex >= 0)
         {
             specularName = specularName.substr(0, strIndex) + specularName.substr(strIndex + diffStrSize, specularName.length());
             specularCubemap = specularName.c_str();
-            m_cubemapAsset.SetAssetPath(specularName);
+            m_configuration.m_probeCubemap.SetAssetPath(specularName);
         }
 
-        //set value back to light configuration
-        m_configuration.m_probeCubemap = m_cubemapAsset.GetAssetPath();
-        m_cubemapPreview.UpdateTexture(m_configuration.m_probeCubemap.c_str());
+        m_cubemapPreview.UpdateTexture(m_configuration.m_probeCubemap.GetAssetPath().c_str());
 
         RefreshLight();
 
         return AZ::Edit::PropertyRefreshLevels::ValuesOnly;
     }
 
+    void EditorLightConfiguration::SetComponent(EditorLightComponent* component)
+    {
+        m_component = component;
+    }
+
     AZ::Crc32 EditorLightComponent::OnCustomizedCubemapChanged()
     {
         //clean assets
-        m_cubemapAsset.SetAssetPath("");
-        m_configuration.m_probeCubemap = m_cubemapAsset.GetAssetPath();
-        m_cubemapPreview.UpdateTexture(m_configuration.m_probeCubemap.c_str());
+        m_configuration.m_probeCubemap.SetAssetPath("");
+        m_cubemapPreview.UpdateTexture(m_configuration.m_probeCubemap.GetAssetPath().c_str());
 
         RefreshLight();
 
@@ -1009,7 +1061,7 @@ namespace LmbrCentral
     {
         return m_configuration;
     }
-    
+
     ////////////////////////////////////////////////////////////
     // Modifiers
     void EditorLightComponent::SetVisible(bool isVisible)
@@ -1269,7 +1321,7 @@ namespace LmbrCentral
             m_configuration.MinorPropertyChanged();
         }
     }
-        
+
     float EditorLightComponent::GetProbeBoxLength()
     {
         return m_configuration.m_boxLength;
@@ -1619,38 +1671,35 @@ namespace LmbrCentral
         return "Deprecated Light";
     }
 
-    void EditorLightComponent::DisplayEntity(bool& handled)
+    void EditorLightComponent::DisplayEntityViewport(
+        const AzFramework::ViewportInfo& viewportInfo,
+        AzFramework::DebugDisplayRequests& debugDisplay)
     {
-        handled = true;
-
         // Don't draw extra visualization unless selected.
         if (!IsSelected())
         {
             return;
         }
 
-        auto* dc = AzFramework::EntityDebugDisplayRequestBus::FindFirstHandler();
-        AZ_Assert(dc, "Invalid display context.");
-
         AZ::Transform transform = AZ::Transform::CreateIdentity();
-        EBUS_EVENT_ID_RESULT(transform, GetEntityId(), AZ::TransformBus, GetWorldTM);
+        AZ::TransformBus::EventResult(transform, GetEntityId(), &AZ::TransformInterface::GetWorldTM);
 
         transform.ExtractScaleExact();
-        dc->PushMatrix(transform);
+        debugDisplay.PushMatrix(transform);
         const AZ::Color& color = m_configuration.m_color;
-        dc->SetColor(AZ::Vector4(color.GetR(), color.GetG(), color.GetB(), 1.f));
+        debugDisplay.SetColor(AZ::Vector4(color.GetR(), color.GetG(), color.GetB(), 1.f));
 
         switch (m_configuration.m_lightType)
         {
         case EditorLightConfiguration::LightType::Point:
         {
-            dc->DrawWireSphere(AZ::Vector3::CreateZero(), m_configuration.m_pointMaxDistance);
-            dc->DrawWireSphere(AZ::Vector3::CreateZero(), m_configuration.m_pointAttenuationBulbSize);
+            debugDisplay.DrawWireSphere(AZ::Vector3::CreateZero(), m_configuration.m_pointMaxDistance);
+            debugDisplay.DrawWireSphere(AZ::Vector3::CreateZero(), m_configuration.m_pointAttenuationBulbSize);
             break;
         }
         case EditorLightConfiguration::LightType::Area:
         {
-            dc->SetColor(AZ::Vector4(color.GetR(), color.GetG(), color.GetB(), 0.5f));
+            debugDisplay.SetColor(AZ::Vector4(color.GetR(), color.GetG(), color.GetB(), 0.5f));
 
             // Some initial calculations for drawing
             AZ::Matrix3x3 rotYMatrix = AZ::Matrix3x3::CreateRotationY(AZ::DegToRad(m_configuration.m_areaFOV));
@@ -1666,77 +1715,77 @@ namespace LmbrCentral
             points[1] = AZ::Vector3(0,  m_configuration.m_areaWidth * 0.5f, -m_configuration.m_areaHeight * 0.5f);
             points[2] = AZ::Vector3(0,  m_configuration.m_areaWidth * 0.5f,  m_configuration.m_areaHeight * 0.5f);
             points[3] = AZ::Vector3(0, -m_configuration.m_areaWidth * 0.5f,  m_configuration.m_areaHeight * 0.5f);
-            dc->DrawPolyLine(points, 4, true);
+            debugDisplay.DrawPolyLine(points, 4, true);
 
             // draw lines from corners of light
-            dc->DrawLine(points[0], points[0] + AZ::Vector3(AngleRefPoint.GetX(), -AngleRefPoint.GetY(), -AngleRefPoint.GetZ()));
-            dc->DrawLine(points[1], points[1] + AZ::Vector3(AngleRefPoint.GetX(),  AngleRefPoint.GetY(), -AngleRefPoint.GetZ()));
-            dc->DrawLine(points[2], points[2] + AZ::Vector3(AngleRefPoint.GetX(),  AngleRefPoint.GetY(),  AngleRefPoint.GetZ()));
-            dc->DrawLine(points[3], points[3] + AZ::Vector3(AngleRefPoint.GetX(), -AngleRefPoint.GetY(),  AngleRefPoint.GetZ()));
+            debugDisplay.DrawLine(points[0], points[0] + AZ::Vector3(AngleRefPoint.GetX(), -AngleRefPoint.GetY(), -AngleRefPoint.GetZ()));
+            debugDisplay.DrawLine(points[1], points[1] + AZ::Vector3(AngleRefPoint.GetX(),  AngleRefPoint.GetY(), -AngleRefPoint.GetZ()));
+            debugDisplay.DrawLine(points[2], points[2] + AZ::Vector3(AngleRefPoint.GetX(),  AngleRefPoint.GetY(),  AngleRefPoint.GetZ()));
+            debugDisplay.DrawLine(points[3], points[3] + AZ::Vector3(AngleRefPoint.GetX(), -AngleRefPoint.GetY(),  AngleRefPoint.GetZ()));
 
             // draw curves to the corners of the max distance box
             const float sqrthalf = sqrt(0.5f);
-            dc->DrawArc(points[0], m_configuration.m_areaMaxDistance, 0, m_configuration.m_areaFOV,  1.0f, AZ::Vector3(0,  sqrthalf, -sqrthalf));
-            dc->DrawArc(points[1], m_configuration.m_areaMaxDistance, -m_configuration.m_areaFOV, m_configuration.m_areaFOV, 1.0f, AZ::Vector3(0, -sqrthalf, -sqrthalf));
-            dc->DrawArc(points[2], m_configuration.m_areaMaxDistance, 0, m_configuration.m_areaFOV,  1.0f, AZ::Vector3(0, -sqrthalf,  sqrthalf));
-            dc->DrawArc(points[3], m_configuration.m_areaMaxDistance, -m_configuration.m_areaFOV, m_configuration.m_areaFOV, 1.0f, AZ::Vector3(0,  sqrthalf,  sqrthalf));
+            debugDisplay.DrawArc(points[0], m_configuration.m_areaMaxDistance, 0, m_configuration.m_areaFOV,  1.0f, AZ::Vector3(0,  sqrthalf, -sqrthalf));
+            debugDisplay.DrawArc(points[1], m_configuration.m_areaMaxDistance, -m_configuration.m_areaFOV, m_configuration.m_areaFOV, 1.0f, AZ::Vector3(0, -sqrthalf, -sqrthalf));
+            debugDisplay.DrawArc(points[2], m_configuration.m_areaMaxDistance, 0, m_configuration.m_areaFOV,  1.0f, AZ::Vector3(0, -sqrthalf,  sqrthalf));
+            debugDisplay.DrawArc(points[3], m_configuration.m_areaMaxDistance, -m_configuration.m_areaFOV, m_configuration.m_areaFOV, 1.0f, AZ::Vector3(0,  sqrthalf,  sqrthalf));
 
             // Draw middle rounded rect
-            dc->DrawLine(
+            debugDisplay.DrawLine(
                 AZ::Vector3(AngleRefPoint.GetX(), points[0].GetY(), points[0].GetZ() - roundedRectangleOffset),
                 AZ::Vector3(AngleRefPoint.GetX(), points[1].GetY(), points[1].GetZ() - roundedRectangleOffset)
             );
-            dc->DrawLine(
+            debugDisplay.DrawLine(
                 AZ::Vector3(AngleRefPoint.GetX(), points[1].GetY() + roundedRectangleOffset, points[1].GetZ()),
                 AZ::Vector3(AngleRefPoint.GetX(), points[2].GetY() + roundedRectangleOffset, points[2].GetZ())
             );
-            dc->DrawLine(
+            debugDisplay.DrawLine(
                 AZ::Vector3(AngleRefPoint.GetX(), points[2].GetY(), points[2].GetZ() + roundedRectangleOffset),
                 AZ::Vector3(AngleRefPoint.GetX(), points[3].GetY(), points[3].GetZ() + roundedRectangleOffset)
             );
-            dc->DrawLine(
+            debugDisplay.DrawLine(
                 AZ::Vector3(AngleRefPoint.GetX(), points[3].GetY() - roundedRectangleOffset, points[3].GetZ()),
                 AZ::Vector3(AngleRefPoint.GetX(), points[0].GetY() - roundedRectangleOffset, points[0].GetZ())
             );
 
-            dc->DrawArc(AZ::Vector3(AngleRefPoint.GetX(), points[0].GetY(), points[0].GetZ()), roundedRectangleOffset, 270.0f, 90.0f, 2.0f, AZ::Vector3(1.0f, 0.0f, 0.0f));
-            dc->DrawArc(AZ::Vector3(AngleRefPoint.GetX(), points[1].GetY(), points[1].GetZ()), roundedRectangleOffset,   0.0f, 90.0f, 2.0f, AZ::Vector3(1.0f, 0.0f, 0.0f));
-            dc->DrawArc(AZ::Vector3(AngleRefPoint.GetX(), points[2].GetY(), points[2].GetZ()), roundedRectangleOffset,  90.0f, 90.0f, 2.0f, AZ::Vector3(1.0f, 0.0f, 0.0f));
-            dc->DrawArc(AZ::Vector3(AngleRefPoint.GetX(), points[3].GetY(), points[3].GetZ()), roundedRectangleOffset, 180.0f, 90.0f, 2.0f, AZ::Vector3(1.0f, 0.0f, 0.0f));
+            debugDisplay.DrawArc(AZ::Vector3(AngleRefPoint.GetX(), points[0].GetY(), points[0].GetZ()), roundedRectangleOffset, 270.0f, 90.0f, 2.0f, AZ::Vector3(1.0f, 0.0f, 0.0f));
+            debugDisplay.DrawArc(AZ::Vector3(AngleRefPoint.GetX(), points[1].GetY(), points[1].GetZ()), roundedRectangleOffset,   0.0f, 90.0f, 2.0f, AZ::Vector3(1.0f, 0.0f, 0.0f));
+            debugDisplay.DrawArc(AZ::Vector3(AngleRefPoint.GetX(), points[2].GetY(), points[2].GetZ()), roundedRectangleOffset,  90.0f, 90.0f, 2.0f, AZ::Vector3(1.0f, 0.0f, 0.0f));
+            debugDisplay.DrawArc(AZ::Vector3(AngleRefPoint.GetX(), points[3].GetY(), points[3].GetZ()), roundedRectangleOffset, 180.0f, 90.0f, 2.0f, AZ::Vector3(1.0f, 0.0f, 0.0f));
 
             // draw box at max distance in front of light
             points[0] = AZ::Vector3(m_configuration.m_areaMaxDistance, -m_configuration.m_areaWidth * 0.5f, -m_configuration.m_areaHeight * 0.5f);
             points[1] = AZ::Vector3(m_configuration.m_areaMaxDistance,  m_configuration.m_areaWidth * 0.5f, -m_configuration.m_areaHeight * 0.5f);
             points[2] = AZ::Vector3(m_configuration.m_areaMaxDistance,  m_configuration.m_areaWidth * 0.5f,  m_configuration.m_areaHeight * 0.5f);
             points[3] = AZ::Vector3(m_configuration.m_areaMaxDistance, -m_configuration.m_areaWidth * 0.5f,  m_configuration.m_areaHeight * 0.5f);
-            dc->DrawPolyLine(points, 4, true);
+            debugDisplay.DrawPolyLine(points, 4, true);
 
             break;
         }
         case EditorLightConfiguration::LightType::Projector:
         {
-            dc->SetColor(AZ::Vector4(color.GetR(), color.GetG(), color.GetB(), 0.5f));
+            debugDisplay.SetColor(AZ::Vector4(color.GetR(), color.GetG(), color.GetB(), 0.5f));
 
             const float range = m_configuration.m_projectorRange;
             const float attenuation = m_configuration.m_projectorAttenuationBulbSize;
             const float nearPlane = m_configuration.m_projectorNearPlane;
 
-            DrawProjectionGizmo(dc, range);
-            DrawProjectionGizmo(dc, attenuation);
-            DrawPlaneGizmo(dc, nearPlane);
+            DrawProjectionGizmo(debugDisplay, range);
+            DrawProjectionGizmo(debugDisplay, attenuation);
+            DrawPlaneGizmo(debugDisplay, nearPlane);
 
             break;
         }
         case EditorLightConfiguration::LightType::Probe:
-        { 
+        {
             AZ::Vector3 halfAreaSize = m_configuration.m_probeArea/2;
-            dc->SetColor(1, 1, 0, 0.8f);
-            dc->DrawWireBox( -halfAreaSize, halfAreaSize);
+            debugDisplay.SetColor(1, 1, 0, 0.8f);
+            debugDisplay.DrawWireBox( -halfAreaSize, halfAreaSize);
             if (m_configuration.m_isBoxProjected)
             {
                 AZ::Vector3 halfBoxSize = AZ::Vector3(m_configuration.m_boxWidth, m_configuration.m_boxLength, m_configuration.m_boxHeight) / 2;
-                dc->SetColor(0, 1, 0, 0.8f);
-                dc->DrawWireBox(-halfBoxSize, halfBoxSize);
+                debugDisplay.SetColor(0, 1, 0, 0.8f);
+                debugDisplay.DrawWireBox(-halfBoxSize, halfBoxSize);
             }
 
             // Note that rendering the cubemap preview is handled by m_cubemapPreview
@@ -1745,10 +1794,11 @@ namespace LmbrCentral
         }
         }
 
-        dc->PopMatrix();
+        debugDisplay.PopMatrix();
     }
 
-    void EditorLightComponent::DrawProjectionGizmo(AzFramework::EntityDebugDisplayRequests* dc, const float radius) const
+    void EditorLightComponent::DrawProjectionGizmo(
+        AzFramework::DebugDisplayRequests& debugDisplay, const float radius) const
     {
         //Don't draw if the radius isn't going to result in anything visible
         if (radius <= 0)
@@ -1821,18 +1871,18 @@ namespace LmbrCentral
         }
 
         // Draw pyramid and sphere intersection.
-        dc->DrawPolyLine(points, numPoints * 4, false);
+        debugDisplay.DrawPolyLine(points, numPoints * 4, false);
 
         // Draw cross.
-        dc->DrawPolyLine(points + numPoints * 4, numPoints, false);
-        dc->DrawPolyLine(points + numPoints * 5, numPoints, false);
-        dc->DrawLine(AZ::Vector3::CreateZero(), points[numPoints * 0]);
-        dc->DrawLine(AZ::Vector3::CreateZero(), points[numPoints * 1]);
-        dc->DrawLine(AZ::Vector3::CreateZero(), points[numPoints * 2]);
-        dc->DrawLine(AZ::Vector3::CreateZero(), points[numPoints * 3]);
+        debugDisplay.DrawPolyLine(points + numPoints * 4, numPoints, false);
+        debugDisplay.DrawPolyLine(points + numPoints * 5, numPoints, false);
+        debugDisplay.DrawLine(AZ::Vector3::CreateZero(), points[numPoints * 0]);
+        debugDisplay.DrawLine(AZ::Vector3::CreateZero(), points[numPoints * 1]);
+        debugDisplay.DrawLine(AZ::Vector3::CreateZero(), points[numPoints * 2]);
+        debugDisplay.DrawLine(AZ::Vector3::CreateZero(), points[numPoints * 3]);
     }
 
-    void EditorLightComponent::DrawPlaneGizmo(AzFramework::EntityDebugDisplayRequests* dc, const float depth) const
+    void EditorLightComponent::DrawPlaneGizmo(AzFramework::DebugDisplayRequests& debugDisplay, const float depth) const
     {
         //Don't draw if depth isn't going to result in anything visible
         if (depth <= 0)
@@ -1861,21 +1911,21 @@ namespace LmbrCentral
 
 
         //Draw Square
-        dc->DrawLine(points[0], points[1]); //TL to TR
-        dc->DrawLine(points[1], points[2]); //TR to BR
-        dc->DrawLine(points[2], points[3]); //BR to BL
-        dc->DrawLine(points[3], points[0]); //BL to TL
+        debugDisplay.DrawLine(points[0], points[1]); //TL to TR
+        debugDisplay.DrawLine(points[1], points[2]); //TR to BR
+        debugDisplay.DrawLine(points[2], points[3]); //BR to BL
+        debugDisplay.DrawLine(points[3], points[0]); //BL to TL
 
         const AZ::Vector3 depthVec(depth, 0, 0);
 
         // Draw Cross
-        dc->DrawLine(depthVec, points[4]);
-        dc->DrawLine(depthVec, points[5]);
-        dc->DrawLine(depthVec, points[6]);
-        dc->DrawLine(depthVec, points[7]);
+        debugDisplay.DrawLine(depthVec, points[4]);
+        debugDisplay.DrawLine(depthVec, points[5]);
+        debugDisplay.DrawLine(depthVec, points[6]);
+        debugDisplay.DrawLine(depthVec, points[7]);
     }
 
-    EditorLightComponent::CubemapPreview::CubemapPreview() 
+    EditorLightComponent::CubemapPreview::CubemapPreview()
         : m_renderTransform(Matrix34::CreateIdentity())
         , m_statObj(nullptr)
     {
@@ -1886,14 +1936,14 @@ namespace LmbrCentral
     {
         if (!m_editor)
         {
-            EBUS_EVENT_RESULT(m_editor, AzToolsFramework::EditorRequests::Bus, GetEditor);
+            AzToolsFramework::EditorRequestBus::BroadcastResult(m_editor, &AzToolsFramework::EditorRequests::GetEditor);
         }
 
         if (!m_materialManager)
         {
             m_materialManager = m_editor->Get3DEngine()->GetMaterialManager();
         }
-        
+
         _smart_ptr<IMaterial> material = m_materialManager->LoadMaterial("Editor/Objects/envcube", false, true);
         QString matName = Path::GetFileName(textureName);
         if (material)
@@ -1935,7 +1985,7 @@ namespace LmbrCentral
 
                 SInputShaderResources isr = si.m_pShaderResources;
                 // The following operation will create a texture slot entry and copy the name to it.
-                isr.m_TexturesResourcesMap[EFTT_ENV].m_Name = textureName;	
+                isr.m_TexturesResourcesMap[EFTT_ENV].m_Name = textureName;
 
                 SShaderItem siDst = m_editor->GetRenderer()->EF_LoadShaderItem(si.m_pShader->GetName(), true, 0, &isr, si.m_pShader->GetGenerationMask());
                 material->AssignShaderItem(siDst);
@@ -1943,9 +1993,9 @@ namespace LmbrCentral
         }
     }
 
-    void EditorLightComponent::CubemapPreview::SetTransform(const Matrix34& transform) 
+    void EditorLightComponent::CubemapPreview::SetTransform(const Matrix34& transform)
     {
-        m_renderTransform = transform; 
+        m_renderTransform = transform;
     }
 
     void EditorLightComponent::CubemapPreview::Render(const struct SRendParams& inRenderParams, const struct SRenderingPassInfo& passInfo)
@@ -1964,22 +2014,22 @@ namespace LmbrCentral
 
     EERType EditorLightComponent::CubemapPreview::GetRenderNodeType()
     {
-        return eERType_RenderComponent; 
+        return eERType_RenderComponent;
     }
 
-    const char* EditorLightComponent::CubemapPreview::GetName() const 
-    { 
+    const char* EditorLightComponent::CubemapPreview::GetName() const
+    {
         return "CubemapPreview";
     }
 
-    const char* EditorLightComponent::CubemapPreview::GetEntityClassName() const 
-    { 
-        return "CubemapPreview"; 
+    const char* EditorLightComponent::CubemapPreview::GetEntityClassName() const
+    {
+        return "CubemapPreview";
     }
 
-    Vec3 EditorLightComponent::CubemapPreview::GetPos(bool bWorldOnly) const 
+    Vec3 EditorLightComponent::CubemapPreview::GetPos(bool bWorldOnly) const
     {
-        return m_renderTransform.GetTranslation(); 
+        return m_renderTransform.GetTranslation();
     }
 
     const AABB EditorLightComponent::CubemapPreview::GetBBox() const
@@ -1993,17 +2043,17 @@ namespace LmbrCentral
         return transformedAABB;
     }
 
-    struct IPhysicalEntity* EditorLightComponent::CubemapPreview::GetPhysics() const 
-    { 
-        return nullptr; 
+    struct IPhysicalEntity* EditorLightComponent::CubemapPreview::GetPhysics() const
+    {
+        return nullptr;
     }
 
-    _smart_ptr<IMaterial> EditorLightComponent::CubemapPreview::GetMaterial(Vec3* pHitPos) 
+    _smart_ptr<IMaterial> EditorLightComponent::CubemapPreview::GetMaterial(Vec3* pHitPos)
     {
         return m_statObj ? m_statObj->GetMaterial() : nullptr;
     }
 
-    _smart_ptr<IMaterial> EditorLightComponent::CubemapPreview::GetMaterialOverride() 
+    _smart_ptr<IMaterial> EditorLightComponent::CubemapPreview::GetMaterialOverride()
     {
         return m_statObj ? m_statObj->GetMaterial() : nullptr;
     }
@@ -2023,14 +2073,14 @@ namespace LmbrCentral
         return nullptr;
     }
 
-    float EditorLightComponent::CubemapPreview::GetMaxViewDist() 
-    { 
-        return FLT_MAX; 
+    float EditorLightComponent::CubemapPreview::GetMaxViewDist()
+    {
+        return FLT_MAX;
     }
 
     void EditorLightComponent::CubemapPreview::GetMemoryUsage(class ICrySizer* pSizer) const
     {
-        pSizer->AddObjectSize(this); 
+        pSizer->AddObjectSize(this);
     }
 
 

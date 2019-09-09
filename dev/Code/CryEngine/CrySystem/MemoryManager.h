@@ -17,10 +17,6 @@
 
 #include "ISystem.h"
 
-#if !defined(_RELEASE) && !defined(MEMMAN_STATIC)
-#define CRYMM_SUPPORT_DEADLIST
-#endif
-
 //////////////////////////////////////////////////////////////////////////
 // Class that implements IMemoryManager interface.
 //////////////////////////////////////////////////////////////////////////
@@ -29,27 +25,11 @@ class CCryMemoryManager
     : public IMemoryManager
 {
 public:
-    static int s_sys_MemoryDeadListSize;
-
-public:
     // Singleton
     static CCryMemoryManager* GetInstance();
-    static void RegisterCVars();
 
     //////////////////////////////////////////////////////////////////////////
     virtual bool GetProcessMemInfo(SProcessMemInfo& minfo);
-    virtual void FakeAllocation(long size);
-
-    virtual void InitialiseLevelHeap();
-
-    virtual void SwitchToLevelHeap();
-    virtual void SwitchToGlobalHeap();
-
-    virtual int LocalSwitchToGlobalHeap();
-    virtual int LocalSwitchToLevelHeap();
-    virtual void LocalSwitchToHeap(int heap);
-
-    virtual bool GetLevelHeapViolationState(bool& usingLevelHeap, size_t& numAllocs, size_t& allocSize);
 
     virtual HeapHandle TraceDefineHeap(const char* heapName, size_t size, const void* pBase);
     virtual void TraceHeapAlloc(HeapHandle heap, void* mem, size_t size, size_t blockSize, const char* sUsage, const char* sNameHint = 0);
@@ -58,7 +38,6 @@ public:
     virtual uint32 TraceHeapGetColor();
     virtual void TraceHeapSetLabel(const char* sLabel);
 
-    virtual struct IMemReplay* GetIMemReplay();
     virtual ICustomMemoryHeap* const CreateCustomMemoryHeapInstance(IMemoryManager::EAllocPolicy const eAllocPolicy);
     virtual IGeneralMemoryHeap* CreateGeneralExpandingMemoryHeap(size_t upperLimit, size_t reserveSize, const char* sUsage);
     virtual IGeneralMemoryHeap* CreateGeneralMemoryHeap(void* base, size_t sz, const char* sUsage);
@@ -67,9 +46,6 @@ public:
     virtual IPageMappingHeap* CreatePageMappingHeap(size_t addressSpace, const char* sName);
 
     virtual IDefragAllocator* CreateDefragAllocator();
-
-    virtual void* AllocPages(size_t size);
-    virtual void FreePages(void* p, size_t size);
 };
 #else
 typedef IMemoryManager CCryMemoryManager;

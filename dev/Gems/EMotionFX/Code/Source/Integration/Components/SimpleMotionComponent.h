@@ -54,6 +54,9 @@ namespace EMotionFX
                 bool                                 m_reverse;                 ///< Toggles reversing of the motion
                 bool                                 m_mirror;                  ///< Toggles mirroring of the motion
                 float                                m_playspeed;               ///< Determines the rate at which the motion is played
+                float                                m_blendInTime;             ///< Determines the blend in time in seconds.
+                float                                m_blendOutTime;            ///< Determines the blend out time in seconds.
+                bool                                 m_playOnActivation;                 ///< Determines if the motion should be played immediately
 
                 static void Reflect(AZ::ReflectContext* context);
             };
@@ -72,6 +75,8 @@ namespace EMotionFX
             }
             static void GetDependentServices(AZ::ComponentDescriptor::DependencyArrayType& dependent)
             {
+                dependent.push_back(AZ_CRC("PhysicsService", 0xa7350d22));
+                dependent.push_back(AZ_CRC("MeshService", 0x71d8a455));
             }
             static void GetRequiredServices(AZ::ComponentDescriptor::DependencyArrayType& required)
             {
@@ -80,15 +85,27 @@ namespace EMotionFX
             static void GetIncompatibleServices(AZ::ComponentDescriptor::DependencyArrayType& incompatible)
             {
                 incompatible.push_back(AZ_CRC("EMotionFXAnimGraphService", 0x9ec3c819));
+                incompatible.push_back(AZ_CRC("EMotionFXSimpleMotionService", 0xea7a05d8));
             }
             static void Reflect(AZ::ReflectContext* /*context*/);
 
             // SimpleMotionComponentRequestBus::Handler
             void LoopMotion(bool enable) override;
+            bool GetLoopMotion() const override;
             void RetargetMotion(bool enable) override;
             void ReverseMotion(bool enable) override;
             void MirrorMotion(bool enable) override;
             void SetPlaySpeed(float speed) override;
+            float GetPlaySpeed() const override;
+            void PlayTime(float time) override;
+            float GetPlayTime() const override;
+            void Motion(AZ::Data::AssetId assetId) override;
+            AZ::Data::AssetId  GetMotion() const override;
+            void BlendInTime(float time) override;
+            float GetBlendInTime() const override;
+            void BlendOutTime(float time) override;
+            float GetBlendOutTime() const override;
+            void PlayMotion() override;
 
         private:
             // ActorComponentNotificationBus::Handler
@@ -99,12 +116,15 @@ namespace EMotionFX
             void OnAssetReady(AZ::Data::Asset<AZ::Data::AssetData> asset) override;
             void OnAssetReloaded(AZ::Data::Asset<AZ::Data::AssetData> asset) override;
 
-            void UpdateMotionInstance();
-            void RemoveMotionInstanceFromActor();
+            void RemoveMotionInstanceFromActor(EMotionFX::MotionInstance* motionInstance);
+
+            static EMotionFX::MotionInstance* PlayMotionInternal(const EMotionFX::ActorInstance* actorInstance, const SimpleMotionComponent::Configuration& cfg, bool deleteOnZeroWeight);
 
             Configuration                               m_configuration;        ///< Component configuration.
             EMotionFX::ActorInstance*                   m_actorInstance;        ///< Associated actor instance (retrieved from Actor Component).
             EMotionFX::MotionInstance*                  m_motionInstance;       ///< Motion to play on the actor
+            AZ::Data::Asset<MotionAsset>                m_lastMotionAsset;      ///< Last active motion asset, kept alive for blending.
+            EMotionFX::MotionInstance*                  m_lastMotionInstance;   ///< Last active motion instance, kept alive for blending.
         };
 
     } // namespace Integration

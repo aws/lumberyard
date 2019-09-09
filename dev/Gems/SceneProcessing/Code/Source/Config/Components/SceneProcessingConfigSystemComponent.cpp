@@ -16,6 +16,7 @@
 #include <Config/SettingsObjects/NodeSoftNameSetting.h>
 #include <Config/SettingsObjects/FileSoftNameSetting.h>
 #include <Config/Components/SceneProcessingConfigSystemComponent.h>
+#include <Config/Widgets/GraphTypeSelector.h>
 
 namespace AZ
 {
@@ -54,16 +55,22 @@ namespace AZ
             // cause only animations to be exported from the .fbx file even if there's other data available.
             m_softNames.push_back(aznew FileSoftNameSetting("_anim", PatternMatcher::MatchApproach::PostFix, "Ignore", false,
                 { FileSoftNameSetting::GraphType(SceneAPI::DataTypes::IAnimationData::TYPEINFO_Name()) }));
+
+            m_UseCustomNormals = true;
         }
 
         void SceneProcessingConfigSystemComponent::Activate()
         {
+            SceneProcessingConfig::GraphTypeSelector::Register();
             SceneProcessingConfigRequestBus::Handler::BusConnect();
+            AZ::SceneAPI::Events::AssetImportRequestBus::Handler::BusConnect();
         }
 
         void SceneProcessingConfigSystemComponent::Deactivate()
         {
+            AZ::SceneAPI::Events::AssetImportRequestBus::Handler::BusDisconnect();
             SceneProcessingConfigRequestBus::Handler::BusDisconnect();
+            SceneProcessingConfig::GraphTypeSelector::Unregister();
         }
 
         SceneProcessingConfigSystemComponent::~SceneProcessingConfigSystemComponent()
@@ -77,11 +84,66 @@ namespace AZ
         {
             m_softNames.clear();
             m_softNames.shrink_to_fit();
+            m_UseCustomNormals = true;
         }
 
         const AZStd::vector<SoftNameSetting*>* SceneProcessingConfigSystemComponent::GetSoftNames()
         {
             return &m_softNames;
+        }
+
+        bool SceneProcessingConfigSystemComponent::AddSoftName(SoftNameSetting* newSoftname)
+        {
+            bool success = true;
+            Crc32 newHash = newSoftname->GetVirtualTypeHash();
+            for (SoftNameSetting* softName : m_softNames)
+            {
+                //First check whether an item with the same CRC value already exists.
+                if (newHash == softName->GetVirtualTypeHash())
+                {
+                    AZ_Error("SceneProcessing", "newSoftname(%s) and existing softName(%s) have the same hash: 0x%X",
+                             newSoftname->GetVirtualType().c_str(), softName->GetVirtualType().c_str(), newHash);
+                    success = false;
+                    break;
+                }
+            }
+            if (success)
+            {
+                m_softNames.push_back(newSoftname);
+            }
+            return success;
+        }
+
+        bool SceneProcessingConfigSystemComponent::AddNodeSoftName(const char* pattern,
+            SceneAPI::SceneCore::PatternMatcher::MatchApproach approach,
+            const char* virtualType, bool includeChildren)
+        {
+            SoftNameSetting* newSoftname = aznew NodeSoftNameSetting(pattern, approach, virtualType, includeChildren);
+            bool success = AddSoftName(newSoftname);
+            if (!success)
+            {
+                delete newSoftname;
+            }
+            return success;
+        }
+
+        bool SceneProcessingConfigSystemComponent::AddFileSoftName(const char* pattern,
+            SceneAPI::SceneCore::PatternMatcher::MatchApproach approach,
+            const char* virtualType, bool inclusive, const AZStd::string& graphObjectTypeName)
+        {
+            SoftNameSetting* newSoftname = aznew FileSoftNameSetting(pattern, approach, virtualType, inclusive,
+                { FileSoftNameSetting::GraphType(graphObjectTypeName) });
+            bool success = AddSoftName(newSoftname);
+            if (!success)
+            {
+                delete newSoftname;
+            }
+            return success;
+        }
+
+        void SceneProcessingConfigSystemComponent::AreCustomNormalsUsed(bool &value)
+        {
+            value = m_UseCustomNormals;
         }
 
         void SceneProcessingConfigSystemComponent::Reflect(AZ::ReflectContext* context)
@@ -98,9 +160,10 @@ namespace AZ
             if (serialize)
             {
                 serialize->Class<SceneProcessingConfigSystemComponent, AZ::Component>()
-                    ->Version(1)
+                    ->Version(2)
                     ->EventHandler<SceneProcessingConfigSystemComponentSerializationEvents>() 
-                    ->Field("softNames", &SceneProcessingConfigSystemComponent::m_softNames);
+                    ->Field("softNames", &SceneProcessingConfigSystemComponent::m_softNames)
+                    ->Field("useCustomNormals", &SceneProcessingConfigSystemComponent::m_UseCustomNormals);
 
                 if (AZ::EditContext* ec = serialize->GetEditContext())
                 {
@@ -111,6 +174,9 @@ namespace AZ
                             ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
                         ->DataElement(AZ::Edit::UIHandlers::Default, &SceneProcessingConfigSystemComponent::m_softNames,
                             "Soft naming conventions", "Update the naming conventions to suit your project.")
+                            ->Attribute(AZ::Edit::Attributes::AutoExpand, false)
+                        ->DataElement(AZ::Edit::UIHandlers::Default, &SceneProcessingConfigSystemComponent::m_UseCustomNormals,
+                            "Use Custom Normals", "When enabled, Lumberyard will use the DCC assets custom or tangent space normals. When disabled, the normals will be averaged. This setting can be overridden on individual FBX asset settings.")
                             ->Attribute(AZ::Edit::Attributes::AutoExpand, false);
                 }
             }

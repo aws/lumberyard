@@ -73,4 +73,16 @@ namespace AZ
         return aznew SliceAsset(GetId());
     }
 
+    namespace Data
+    {
+        //=========================================================================
+        // AssetFilterSourceSlicesOnly
+        //=========================================================================
+        bool AssetFilterSourceSlicesOnly(const AZ::Data::Asset<AZ::Data::AssetData>& asset)
+        {
+            // Expand regular slice references (but not dynamic slice references).
+            return (asset.GetType() == AZ::AzTypeInfo<AZ::SliceAsset>::Uuid());
+        }
+    }
+
 } // namespace AZ

@@ -31,7 +31,7 @@ namespace AzToolsFramework
     {
     public:
         AZ_CLASS_ALLOCATOR(SliceDataFlagsCommand, AZ::SystemAllocator, 0);
-        AZ_RTTI(SliceDataFlagsCommand, "{002F9CCE-3677-46FE-A2E8-FE406A002694}");
+        AZ_RTTI(SliceDataFlagsCommand, "{002F9CCE-3677-46FE-A2E8-FE406A002694}", UndoSystem::URSequencePoint);
 
         /** 
          * @param entityId The entity to set the data flag in.
@@ -70,7 +70,7 @@ namespace AzToolsFramework
     {
     public:
         AZ_CLASS_ALLOCATOR(ClearSliceDataFlagsBelowAddressCommand, AZ::SystemAllocator, 0);
-        AZ_RTTI(ClearSliceDataFlagsBelowAddressCommand, "{3128AD23-40EB-4DEE-A16A-3FA04D94B573}");
+        AZ_RTTI(ClearSliceDataFlagsBelowAddressCommand, "{3128AD23-40EB-4DEE-A16A-3FA04D94B573}", UndoSystem::URSequencePoint);
 
         /**
         * @param entityId The entity to whose data flags are being cleared.

@@ -33,6 +33,19 @@ namespace MCore
     // returns the approximately normalized linear interpolated result [t must be between 0..1]
     Quaternion Quaternion::NLerp(const Quaternion& to, float t) const
     {
+        AZ_Assert(t > -MCore::Math::epsilon && t < (1 + MCore::Math::epsilon), "Expected t to be between 0..1");
+        static const float weightCloseToOne = 1.0f - MCore::Math::epsilon;
+
+        // Early out for boundaries (common cases)
+        if (t < MCore::Math::epsilon)
+        {
+            return *this;
+        }
+        else if (t > weightCloseToOne)
+        {
+            return to;
+        }
+
     #ifdef MCORE_SSE_ENABLED
         __m128 num1, num2, num3, num4, fromVec, toVec;
         const float omt = 1.0f - t;
@@ -77,7 +90,11 @@ namespace MCore
     #else
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION QUATERNION_CPP_SECTION_1
-#include AZ_RESTRICTED_FILE(Quaternion_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/Quaternion_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/Quaternion_cpp_provo.inl"
+    #endif
 #endif
         const float omt = 1.0f - t;
         const float dot = x * to.x + y * to.y + z * to.z + w * to.w;
@@ -112,7 +129,11 @@ namespace MCore
     {
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION QUATERNION_CPP_SECTION_2
-#include AZ_RESTRICTED_FILE(Quaternion_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/Quaternion_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/Quaternion_cpp_provo.inl"
+    #endif
 #endif
         const float omt = 1.0f - t;
         const float cosom = x * to.x + y * to.y + z * to.z + w * to.w;

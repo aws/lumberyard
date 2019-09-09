@@ -98,6 +98,7 @@ namespace LmbrCentral
                     rendFlags &= ~ERF_HIDDEN;
                 }
 
+                rendFlags |= ERF_COMPONENT_ENTITY;
                 m_fogRenderNode->SetRndFlags(rendFlags);
             }
         }

@@ -14,8 +14,7 @@
 }
 
 .field-preview {
-    border: 1px solid $border-gray;
-    width: 800px;
+    border: 1px solid $lighter-gray;
     padding: 10px;
     margin-top: 15px;
     margin-bottom: 15px;
@@ -26,7 +25,6 @@
 }
 
 .field-preview .field-textarea-preview {
-    width: 560px;
     height: 200px;
     max-height: 200px;
 }
@@ -43,4 +41,16 @@
 .loading-spinner-container {
     clear: both;
     text-align: center;
+}
+
+.custom-field {
+    background-color: $border-gray;
+}
+
+.object-property {
+    background-color: $white;
+}
+
+.action {
+    cursor: pointer;
 }

@@ -23,24 +23,23 @@ namespace AzFramework
 {
     namespace AssetSystem
     {
-
-        // Do this here because including Windows.h causes problems with SetPort being a define
-        void AssetSystemComponent::ShowAssetProcessor()
+        void AllowAssetProcessorToForeground()
         {
 #if defined(AZ_PLATFORM_WINDOWS)
             // Make sure that all of the asset processors can bring their window to the front
             // Hacky to put it here, but not really any better place.
-            AZStd::vector<DWORD> processIds;
             DWORD bytesReturned;
 
-            // There's no easy way to get the exact number of running processes
-            // I'm guestimating that 8K is a reasonable upper limit.
-            processIds.resize(8 * 1024);
+            // There's no straightforward way to get the exact number of running processes,
+            // So we use 2^13 processes as a generous upper bound that shouldn't be hit.
+            DWORD processIds[8 * 1024];
 
-            if (EnumProcesses(&(processIds[0]), static_cast<DWORD>(sizeof(DWORD) * processIds.size()), &bytesReturned))
+            if (EnumProcesses(processIds, sizeof(processIds), &bytesReturned))
             {
-                for (DWORD processId : processIds)
+                const DWORD numProcesses = bytesReturned / sizeof(DWORD);
+                for (DWORD processIndex = 0; processIndex < numProcesses; ++processIndex)
                 {
+                    DWORD processId = processIds[processIndex];
                     HANDLE processHandle = OpenProcess(PROCESS_QUERY_INFORMATION |
                         PROCESS_VM_READ,
                         FALSE, processId);
@@ -67,8 +66,23 @@ namespace AzFramework
                 }
             }
 #endif // #if defined(AZ_PLATFORM_WINDOWS)
+        }
+
+        // Do this here because including Windows.h causes problems with SetPort being a define
+        void AssetSystemComponent::ShowAssetProcessor()
+        {
+            AllowAssetProcessorToForeground();
 
             ShowAssetProcessorRequest request;
+            SendRequest(request);
+        }
+
+        void AssetSystemComponent::ShowInAssetProcessor(const AZStd::string& assetPath)
+        {
+            AllowAssetProcessorToForeground();
+
+            ShowAssetInAssetProcessorRequest request;
+            request.m_assetPath = assetPath;
             SendRequest(request);
         }
     }

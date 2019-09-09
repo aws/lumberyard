@@ -25,6 +25,7 @@
 #include <AzCore/Android/Utils.h>
 
 #include <AzFramework/API/ApplicationAPI_android.h>
+#include <AzFramework/Input/Buses/Notifications/RawInputNotificationBus_android.h>
 #include <AzGameFramework/Application/GameApplication.h>
 
 #include <android/asset_manager_jni.h>
@@ -92,33 +93,87 @@
     _appState->userData = nullptr; \
     ANativeActivity_finish(_appState->activity); \
     while (_appState->destroyRequested == 0) { \
-        PumpEvents(_appState); \
+        g_eventDispatcher.PumpAllEvents(); \
     } \
     return;
 
 
 namespace
 {
-    bool g_windowInitialized = false;
-
-    //////////////////////////////////////////////////////////////////////////
-    void PumpEvents(android_app* appState)
+    class NativeEventDispatcher
+        : public AzFramework::AndroidEventDispatcher
     {
-        int events;
-        android_poll_source* source;
-        while (ALooper_pollAll(0, NULL, &events, reinterpret_cast<void**>(&source)) >= 0)
+    public:
+        NativeEventDispatcher()
+            : m_appState(nullptr)
         {
-            if (source != NULL)
-            {
-                source->process(appState, source);
-            }
+        }
 
-            if (appState->destroyRequested != 0)
+        ~NativeEventDispatcher() = default;
+
+        void PumpAllEvents() override
+        {
+            bool continueRunning = true;
+            while (continueRunning) 
             {
-                break;
+                continueRunning = PumpEvents(&ALooper_pollAll);
             }
         }
-    }
+
+        void PumpEventLoopOnce() override
+        {
+            PumpEvents(&ALooper_pollOnce);
+        }
+
+        void SetAppState(android_app* appState)
+        {
+            m_appState = appState;
+        }
+
+    private:
+        // signature of ALooper_pollOnce and ALooper_pollAll -> int timeoutMillis, int* outFd, int* outEvents, void** outData
+        typedef int (*EventPumpFunc)(int, int*, int*, void**); 
+
+        bool PumpEvents(EventPumpFunc looperFunc)
+        {
+            if (!m_appState)
+            {
+                return false;
+            }
+
+            int events = 0;
+            android_poll_source* source = nullptr;
+            const AZ::Android::AndroidEnv* androidEnv = AZ::Android::AndroidEnv::Get();
+
+            // when timeout is negative, the function will block until an event is received
+            const int result = looperFunc(androidEnv->IsRunning() ? 0 : -1, nullptr, &events, reinterpret_cast<void**>(&source));
+
+            // the value returned from the looper poll func is either:
+            // 1. the identifier associated with the event source (>= 0) and has event data that needs to be processed manually
+            // 2. an ALOOPER_POLL_* enum (< 0) indicating there is no data to be processed due to error or callback(s) registered 
+            //    with the event source were called
+            const bool validIdentifier = (result >= 0);
+            if (validIdentifier && source)
+            {
+                source->process(m_appState, source);
+            }
+
+            const bool destroyRequested = (m_appState->destroyRequested != 0);
+            if (destroyRequested)
+            {
+                AzFramework::ApplicationRequests::Bus::Broadcast(&AzFramework::ApplicationRequests::ExitMainLoop);
+            }
+
+            return (validIdentifier && !destroyRequested);
+        }
+
+        android_app* m_appState;
+    };
+
+
+    NativeEventDispatcher g_eventDispatcher;
+    bool g_windowInitialized = false;
+
 
     //////////////////////////////////////////////////////////////////////////
     bool IncreaseResourceToMaxLimit(int resource)
@@ -166,6 +221,14 @@ namespace
     {
         LOGE("[ERROR] Signal (%d) was just raised", sig);
         signal(sig, HandleSignal);
+    }
+
+    //////////////////////////////////////////////////////////////////////////
+    // this callback is triggered on the same thread the events are pumped
+    int32_t HandleInputEvents(android_app* app, AInputEvent* event)
+    {
+        AzFramework::RawInputNotificationBusAndroid::Broadcast(&AzFramework::RawInputNotificationsAndroid::OnRawInputEvent, event);
+        return 0;
     }
 
     //////////////////////////////////////////////////////////////////////////
@@ -372,6 +435,8 @@ void android_main(android_app* appState)
 
     // setup the system command handler
     appState->onAppCmd = HandleApplicationLifecycleEvents;
+    appState->onInputEvent = HandleInputEvents;
+    g_eventDispatcher.SetAppState(appState);
 
     // This callback will notify us when the orientation of the device changes.
     // While Android does have an onNativeWindowResized callback, it is never called in android_native_app_glue when the window size changes.
@@ -380,6 +445,9 @@ void android_main(android_app* appState)
 
     // setup the android environment
     AZ::AllocatorInstance<AZ::OSAllocator>::Create();
+    AZ::AllocatorInstance<AZ::LegacyAllocator>::Create();
+    AZ::AllocatorInstance<CryStringAllocator>::Create();
+
     {
         AZ::Android::AndroidEnv::Descriptor descriptor;
 
@@ -413,7 +481,7 @@ void android_main(android_app* appState)
         // platforms
         while (!g_windowInitialized)
         {
-            PumpEvents(appState);
+            g_eventDispatcher.PumpAllEvents();
         }
 
         // Now that the window has been created we can show the java splash screen.  We need
@@ -438,7 +506,8 @@ void android_main(android_app* appState)
     const char* searchPaths[] = { assetsPath };
     CEngineConfig engineCfg(searchPaths, 1);
     const char* gameName = engineCfg.m_gameDLL.c_str();
-
+    engineCfg.m_gameFolder.MakeLower();
+    
     // Game Application (AzGameFramework)
     AzGameFramework::GameApplication gameApp;
     AzGameFramework::GameApplication::StartupParameters gameAppParams;
@@ -458,6 +527,8 @@ void android_main(android_app* appState)
         char descriptorRelativePath[AZ_MAX_PATH_LEN] = { 0 };
         AzGameFramework::GameApplication::GetGameDescriptorPath(descriptorRelativePath, engineCfg.m_gameFolder);
 
+        AZStd::to_lower(descriptorRelativePath, descriptorRelativePath + strlen(descriptorRelativePath));
+ 
         char descriptorFullPath[AZ_MAX_PATH_LEN] = { 0 };
         azsnprintf(descriptorFullPath, AZ_MAX_PATH_LEN, "%s%s%s", assetsPath, pathSep, descriptorRelativePath);
 
@@ -471,7 +542,7 @@ void android_main(android_app* appState)
     }
 
     // set the native app state with the application framework
-    AzFramework::AndroidAppRequests::Bus::Broadcast(&AzFramework::AndroidAppRequests::SetAppState, appState);
+    AzFramework::AndroidAppRequests::Bus::Broadcast(&AzFramework::AndroidAppRequests::SetEventDispatcher, &g_eventDispatcher);
 
     // System Init Params ("Legacy" Lumberyard)
     SSystemInitParams startupParams;
@@ -586,7 +657,7 @@ void android_main(android_app* appState)
 
         // Run the main loop
         LumberyardLauncher::RunMainLoop(gameApp);
-	}
+    }
     else
     {
         MAIN_EXIT_FAILURE(appState, "Failed to initialize the CrySystem Interface!");
@@ -614,5 +685,13 @@ void android_main(android_app* appState)
     gameApp.Stop();
 
     AZ::Android::AndroidEnv::Destroy();
+    AZ::AllocatorInstance<CryStringAllocator>::Destroy();
+    AZ::AllocatorInstance<AZ::LegacyAllocator>::Destroy();
+    AZ::AllocatorInstance<AZ::OSAllocator>::Destroy();
 }
 
+
+
+#if defined(AZ_MONOLITHIC_BUILD)
+#include <StaticModules.inl>
+#endif

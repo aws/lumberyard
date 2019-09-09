@@ -31,6 +31,7 @@ void AssetScannerWorker::StartScan()
     Q_ASSERT(QThread::currentThread() == this->thread());
 
     m_fileList.clear();
+    m_folderList.clear();
     m_doScan = true;
 
     AZ_TracePrintf(AssetProcessor::ConsoleChannel, "Scanning file system for changes...\n");
@@ -50,6 +51,7 @@ void AssetScannerWorker::StartScan()
     if (!m_doScan)
     {
         m_fileList.clear();
+        m_folderList.clear();
         Q_EMIT ScanningStateChanged(AssetProcessor::AssetScanningStatus::Stopped);
         return;
     }
@@ -110,6 +112,7 @@ void AssetScannerWorker::ScanForSourceFiles(ScanFolderInfo scanFolderInfo)
         if (entry.isDir())
         {
             //Entry is a directory
+            m_folderList.insert(absPath);
             ScanFolderInfo tempScanFolderInfo(absPath, "", "", "", false, true);
             ScanForSourceFiles(tempScanFolderInfo);
         }
@@ -143,15 +146,10 @@ void AssetScannerWorker::ScanForSourceFiles(ScanFolderInfo scanFolderInfo)
 void AssetScannerWorker::EmitFiles()
 {
     //Loop over all source asset files and send them up the chain:
-    for (const QString& fileEntries : m_fileList)
-    {
-        if (!m_doScan)
-        {
-            break;
-        }
-        Q_EMIT FileOfInterestFound(fileEntries);
-    }
+    Q_EMIT FilesFound(m_fileList);
     m_fileList.clear();
+    Q_EMIT FoldersFound(m_folderList);
+    m_folderList.clear();
 }
 
 

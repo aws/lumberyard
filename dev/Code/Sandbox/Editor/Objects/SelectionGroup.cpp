@@ -42,6 +42,11 @@ void CSelectionGroup::AddObject(CBaseObject* obj)
         m_objects.push_back(obj);
         m_objectsSet.insert(obj);
         m_filtered.clear();
+
+        if (obj->GetType() != OBJTYPE_AZENTITY)
+        {
+            m_legacyObjectsSet.insert(obj);
+        }
     }
 }
 
@@ -54,6 +59,7 @@ void CSelectionGroup::RemoveObject(CBaseObject* obj)
         {
             m_objects.erase(it);
             m_objectsSet.erase(obj);
+            m_legacyObjectsSet.erase(obj);
             m_filtered.clear();
             break;
         }
@@ -62,6 +68,14 @@ void CSelectionGroup::RemoveObject(CBaseObject* obj)
 
 //////////////////////////////////////////////////////////////////////////
 void CSelectionGroup::RemoveAll()
+{
+    m_objects.clear();
+    m_objectsSet.clear();
+    m_filtered.clear();
+    m_legacyObjectsSet.clear();
+}
+
+void CSelectionGroup::RemoveAllExceptLegacySet()
 {
     m_objects.clear();
     m_objectsSet.clear();
@@ -164,6 +178,12 @@ CBaseObject* CSelectionGroup::GetObjectByGuidInPrefab(REFGUID guid) const
         }
     }
     return nullptr;
+}
+
+//////////////////////////////////////////////////////////////////////////
+std::set<CBaseObjectPtr>& CSelectionGroup::GetLegacyObjects()
+{
+    return m_legacyObjectsSet;
 }
 
 //////////////////////////////////////////////////////////////////////////

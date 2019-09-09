@@ -37,10 +37,10 @@ namespace AzToolsFramework
             AZ_RTTI(AssetJobsInfoRequest, "{E5DEF45C-C4CF-47ED-843F-97B3C4A3D5B3}", AzFramework::AssetSystem::BaseAssetProcessorMessage);
             static void Reflect(AZ::ReflectContext* context);
             static unsigned int MessageType();
-            bool RequireFencing() override;
 
-            AssetJobsInfoRequest() = default;
-            AssetJobsInfoRequest(const AZ::OSString& searchTerm);
+            explicit AssetJobsInfoRequest(bool requireFencing = true);
+            explicit AssetJobsInfoRequest(const AZ::Data::AssetId& assetId, bool m_escalateJobs = true, bool requireFencing = true);
+            AssetJobsInfoRequest(const AZ::OSString& searchTerm, bool requireFencing = true);
             unsigned int GetMessageType() const override;
 
             AZ::OSString m_searchTerm;
@@ -76,10 +76,8 @@ namespace AzToolsFramework
             AZ_RTTI(AssetJobLogRequest, "{8E69F76E-F25D-486E-BC3F-26BB3FF5A3A3}", AzFramework::AssetSystem::BaseAssetProcessorMessage);
             static void Reflect(AZ::ReflectContext* context);
             static unsigned int MessageType();
-            bool RequireFencing() override;
-
-            AssetJobLogRequest() = default;
-            AssetJobLogRequest(AZ::s64 jobRunKey);
+            explicit AssetJobLogRequest(bool requireFencing = true);
+            explicit AssetJobLogRequest(AZ::u64 jobRunKey, bool requireFencing = true);
             unsigned int GetMessageType() const override;
 
             AZ::u64 m_jobRunKey;
@@ -129,6 +127,33 @@ namespace AzToolsFramework
             NotificationType m_type;
         };
 
+        class GetAbsoluteAssetDatabaseLocationRequest
+            : public AzFramework::AssetSystem::BaseAssetProcessorMessage
+        {
+        public:
+            AZ_CLASS_ALLOCATOR(GetAbsoluteAssetDatabaseLocationRequest, AZ::OSAllocator, 0);
+            AZ_RTTI(GetAbsoluteAssetDatabaseLocationRequest, "{8696976E-F19D-48E3-BDDF-2GB63FA1AF23}", AzFramework::AssetSystem::BaseAssetProcessorMessage);
+            static void Reflect(AZ::ReflectContext* context);
+            static unsigned int MessageType();
+            GetAbsoluteAssetDatabaseLocationRequest() = default;
+            unsigned int GetMessageType() const override;
+        };
+
+        class GetAbsoluteAssetDatabaseLocationResponse
+            : public AzFramework::AssetSystem::BaseAssetProcessorMessage
+        {
+        public:
+            AZ_CLASS_ALLOCATOR(GetAbsoluteAssetDatabaseLocationResponse, AZ::OSAllocator, 0);
+            AZ_RTTI(GetAbsoluteAssetDatabaseLocationResponse, "{BDF155AB-EE74-FACA-3654-54069289AF2C}", AzFramework::AssetSystem::BaseAssetProcessorMessage);
+            static void Reflect(AZ::ReflectContext* context);
+
+            GetAbsoluteAssetDatabaseLocationResponse() = default;
+            unsigned int GetMessageType() const override;
+
+            bool m_isSuccess = false;
+            AZStd::string m_absoluteAssetDatabaseLocation;
+        };
+
         class GetScanFoldersRequest
             : public AzFramework::AssetSystem::BaseAssetProcessorMessage
         {
@@ -159,6 +184,170 @@ namespace AzToolsFramework
             unsigned int GetMessageType() const override;
 
             AZStd::vector<AZStd::string> m_scanFolders;
+        };
+
+
+        class GetAssetSafeFoldersRequest
+            : public AzFramework::AssetSystem::BaseAssetProcessorMessage
+        {
+        public:
+            AZ_CLASS_ALLOCATOR(GetAssetSafeFoldersRequest, AZ::OSAllocator, 0);
+            AZ_RTTI(GetAssetSafeFoldersRequest, "{9A7951B1-257C-45F0-B334-A52A42A5A871}", AzFramework::AssetSystem::BaseAssetProcessorMessage);
+            static void Reflect(AZ::ReflectContext* context);
+            static unsigned int MessageType();
+
+            ~GetAssetSafeFoldersRequest() override = default;
+
+            unsigned int GetMessageType() const override;
+        };
+
+        class GetAssetSafeFoldersResponse
+            : public AzFramework::AssetSystem::BaseAssetProcessorMessage
+        {
+        public:
+            AZ_CLASS_ALLOCATOR(GetAssetSafeFoldersResponse, AZ::OSAllocator, 0);
+            AZ_RTTI(GetAssetSafeFoldersResponse, "{36C1AA51-8940-4909-A01B-19454B6312E5}", AzFramework::AssetSystem::BaseAssetProcessorMessage);
+            static void Reflect(AZ::ReflectContext* context);
+
+            GetAssetSafeFoldersResponse() = default;
+            explicit GetAssetSafeFoldersResponse(const AZStd::vector<AZStd::string>& assetSafeFolders);
+            explicit GetAssetSafeFoldersResponse(AZStd::vector<AZStd::string>&& assetSafeFolders);
+            ~GetAssetSafeFoldersResponse() override = default;
+
+            unsigned int GetMessageType() const override;
+
+            AZStd::vector<AZStd::string> m_assetSafeFolders;
+        };
+
+        class FileInfosNotificationMessage
+            : public AzFramework::AssetSystem::BaseAssetProcessorMessage
+        {
+        public:
+            enum NotificationType : unsigned int
+            {
+                Synced,
+                FileAdded,
+                FileRemoved
+            };
+
+            AZ_CLASS_ALLOCATOR(FileInfosNotificationMessage, AZ::OSAllocator, 0);
+            AZ_RTTI(FileInfosNotificationMessage, "{F5AF3ED1-1644-4972-AE21-B6A1B28D898A}", AzFramework::AssetSystem::BaseAssetProcessorMessage);
+            static void Reflect(AZ::ReflectContext* context);
+
+            FileInfosNotificationMessage() = default;
+            unsigned int GetMessageType() const override;
+
+            NotificationType m_type = NotificationType::Synced;
+            AZ::s64 m_fileID = 0;
+        };
+
+        //////////////////////////////////////////////////////////////////////////
+        //! Request the enabled status of an asset platform
+        class AssetProcessorPlatformStatusRequest
+            : public AzFramework::AssetSystem::BaseAssetProcessorMessage
+        {
+        public:
+            AZ_CLASS_ALLOCATOR(AssetProcessorPlatformStatusRequest, AZ::OSAllocator, 0);
+            AZ_RTTI(AssetProcessorPlatformStatusRequest, "{529A8549-DD78-4E66-9BEA-D633846115C6}", BaseAssetProcessorMessage);
+            static void Reflect(AZ::ReflectContext* context);
+            static unsigned int MessageType();
+
+            AssetProcessorPlatformStatusRequest() = default;
+            unsigned int GetMessageType() const override;
+            AZ::OSString m_platform;
+        };
+
+        //! This will be sent in response to the AssetProcessorPlatformStatusRequest request,
+        //! indicating if the asset platform is currently enabled or not
+        class AssetProcessorPlatformStatusResponse
+            : public AzFramework::AssetSystem::BaseAssetProcessorMessage
+        {
+        public:
+            AZ_CLASS_ALLOCATOR(AssetProcessorPlatformStatusResponse, AZ::OSAllocator, 0);
+            AZ_RTTI(AssetProcessorPlatformStatusResponse, "{3F804A16-3C5A-41A5-9051-7714E3CFAC9A}", BaseAssetProcessorMessage);
+            static void Reflect(AZ::ReflectContext* context);
+
+            AssetProcessorPlatformStatusResponse() = default;
+            unsigned int GetMessageType() const override;
+            bool m_isPlatformEnabled = false;
+        };
+
+        //////////////////////////////////////////////////////////////////////////
+        //! Request the total number of pending jobs for an asset platform
+        class AssetProcessorPendingPlatformAssetsRequest
+            : public AzFramework::AssetSystem::BaseAssetProcessorMessage
+        {
+        public:
+            AZ_CLASS_ALLOCATOR(AssetProcessorPendingPlatformAssetsRequest, AZ::OSAllocator, 0);
+            AZ_RTTI(AssetProcessorPendingPlatformAssetsRequest, "{5B16F6F2-0F94-4BAE-8238-1E8F3E66D507}", BaseAssetProcessorMessage);
+            static void Reflect(AZ::ReflectContext* context);
+            static unsigned int MessageType();
+
+            AssetProcessorPendingPlatformAssetsRequest() = default;
+            unsigned int GetMessageType() const override;
+            AZ::OSString m_platform;
+        };
+
+
+        //! This will be sent in response to the AssetProcessorPendingPlatformAssetsRequest request,
+        //! indicating the number of pending assets for the specified platform
+        class AssetProcessorPendingPlatformAssetsResponse
+            : public AzFramework::AssetSystem::BaseAssetProcessorMessage
+        {
+        public:
+            AZ_CLASS_ALLOCATOR(AssetProcessorPendingPlatformAssetsResponse, AZ::OSAllocator, 0);
+            AZ_RTTI(AssetProcessorPendingPlatformAssetsResponse, "{E63825D6-4704-471D-8594-B96656FA4477}", BaseAssetProcessorMessage);
+            static void Reflect(AZ::ReflectContext* context);
+
+            AssetProcessorPendingPlatformAssetsResponse() = default;
+            unsigned int GetMessageType() const override;
+            int m_numberOfPendingJobs = -1;
+        };
+
+        // WantAssetBrowserShowRequest
+        class WantAssetBrowserShowRequest
+            : public AzFramework::AssetSystem::BaseAssetProcessorMessage
+        {
+        public:
+            AZ_CLASS_ALLOCATOR(WantAssetBrowserShowRequest, AZ::OSAllocator, 0);
+            AZ_RTTI(WantAssetBrowserShowRequest, "{C66852BF-1A8C-47AC-9CFF-183CC4241075}", BaseAssetProcessorMessage);
+            static void Reflect(AZ::ReflectContext* context);
+            static unsigned int MessageType();
+
+            WantAssetBrowserShowRequest() = default;
+            unsigned int GetMessageType() const override;
+        };
+
+        // WantAssetBrowserShowResponse
+        class WantAssetBrowserShowResponse
+            : public AzFramework::AssetSystem::BaseAssetProcessorMessage
+        {
+        public:
+            AZ_CLASS_ALLOCATOR(WantAssetBrowserShowResponse, AZ::OSAllocator, 0);
+            AZ_RTTI(WantAssetBrowserShowResponse, "{B3015EF2-A91F-4E7D-932A-DA6043EDB678}", BaseAssetProcessorMessage);
+            static void Reflect(AZ::ReflectContext* context);
+            static unsigned int MessageType();
+
+            WantAssetBrowserShowResponse() = default;
+            unsigned int GetMessageType() const override;
+
+            unsigned int m_processId = 0;
+        };
+
+        // AssetBrowserShowRequest
+        class AssetBrowserShowRequest
+            : public AzFramework::AssetSystem::BaseAssetProcessorMessage
+        {
+        public:
+            AZ_CLASS_ALLOCATOR(AssetBrowserShowRequest, AZ::OSAllocator, 0);
+            AZ_RTTI(AssetBrowserShowRequest, "{D44903DD-45D8-4CBA-8A9D-C9D5E7FFB0A6}", BaseAssetProcessorMessage);
+            static void Reflect(AZ::ReflectContext* context);
+            static unsigned int MessageType();
+
+            AssetBrowserShowRequest() = default;
+            unsigned int GetMessageType() const override;
+
+            AZ::OSString m_filePath;
         };
     } // namespace AssetSystem
 } // namespace AzToolsFramework

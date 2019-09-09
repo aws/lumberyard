@@ -12,15 +12,21 @@
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
 #include "StdAfx.h"
-#include "ATLAudioObject.h"
-#include "SoundCVars.h"
-#include "ATLUtils.h"
-#include "Random.h"
+#include <ATLAudioObject.h>
+
+#include <SoundCVars.h>
+#include <ATLUtils.h>
+
+#include <Random.h>
 #include <IEntitySystem.h>
 #include <I3DEngine.h>
 #include <IRenderer.h>
 #include <IRenderAuxGeom.h>
 #include <ISurfaceType.h>
+
+#if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
+    #include <AzCore/std/string/conversions.h>
+#endif // INCLUDE_AUDIO_PRODUCTION_CODE
 
 namespace Audio
 {
@@ -484,6 +490,7 @@ namespace Audio
         , m_rRefCounter(rRefCounter)
         , m_fCurrListenerDist(0.0f)
         , m_eObstOcclCalcType(eAOOCT_NONE)
+        , m_pendingRaysReleased(false)
 
 #if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
         , m_vRayDebugInfos(s_maxObstructionRays)
@@ -636,6 +643,12 @@ namespace Audio
     ///////////////////////////////////////////////////////////////////////////////////////////////////
     void CATLAudioObject::CPropagationProcessor::ReportRayProcessed(const size_t nRayID)
     {
+        // make the function to be more tolerant of results when we've released the pending rays.
+        if (m_pendingRaysReleased)
+        {
+            return;
+        }
+
         AZ_Assert(m_nRemainingRays > 0, "ReportRayProcessed - There are no more remaining rays!"); // make sure there are rays remaining
         AZ_Assert((0 <= nRayID) && (nRayID <= m_nTotalRays), "ReportRayProcessed - The passed RayID is invalid!"); // check RayID validity
 
@@ -660,6 +673,7 @@ namespace Audio
         {
             m_nRemainingRays = 0;
             --m_rRefCounter;
+            m_pendingRaysReleased = true;
         }
     }
 
@@ -995,6 +1009,30 @@ namespace Audio
 
         if (!m_cTriggers.empty())
         {
+            // Inspect triggers and apply filter (if set)...
+            TTriggerCountMap cTriggerCounts;
+
+            // Should use a fixed string once available in AZStd...
+            AZStd::string triggerFilter(g_audioCVars.m_pAudioTriggersDebugFilter->GetString());
+            AZStd::to_lower(triggerFilter.begin(), triggerFilter.end());
+
+            for (auto& trigger : m_cTriggers)
+            {
+                AZStd::string triggerName(pDebugNameStore->LookupAudioTriggerName(trigger.second.nTriggerID));
+                AZStd::to_lower(triggerName.begin(), triggerName.end());
+
+                if (AudioDebugDrawFilter(triggerName, triggerFilter))
+                {
+                    ++cTriggerCounts[trigger.second.nTriggerID];
+                }
+            }
+
+            // Early out for this object if all trigger names were filtered out.
+            if (cTriggerCounts.empty())
+            {
+                return;
+            }
+
             const Vec3 vPos(m_oPosition.GetPositionVec());
             Vec3 vScreenPos(ZERO);
 
@@ -1097,14 +1135,7 @@ namespace Audio
                 if ((g_audioCVars.m_nDrawAudioDebug & eADDF_SHOW_OBJECT_TRIGGERS) != 0)
                 {
                     const float fTriggerTextColor[4] = { 0.8f, 0.8f, 0.8f, 1.0f };
-                    CryFixedStringT<MAX_AUDIO_MISC_STRING_LENGTH> sTriggerString;
-
-                    TTriggerCountMap cTriggerCounts;
-
-                    for (auto& trigger : m_cTriggers)
-                    {
-                        ++cTriggerCounts[trigger.second.nTriggerID];
-                    }
+                    AZStd::string triggerStringFormatted;
 
                     for (auto& triggerCount : cTriggerCounts)
                     {
@@ -1114,11 +1145,12 @@ namespace Audio
                             const size_t nInstances = triggerCount.second;
                             if (nInstances == 1)
                             {
-                                sTriggerString.Format("%s%s\n", sTriggerString.c_str(), pName);
+                                triggerStringFormatted += pName;
+                                triggerStringFormatted += "\n";
                             }
                             else
                             {
-                                sTriggerString.Format("%s%s: %" PRISIZE_T "\n", sTriggerString.c_str(), pName, nInstances);
+                                triggerStringFormatted += AZStd::string::format("%s: %" PRISIZE_T "\n", pName, nInstances);
                             }
                         }
                     }
@@ -1130,7 +1162,7 @@ namespace Audio
                         fTriggerTextColor,
                         false,
                         "%s",
-                        sTriggerString.c_str());
+                        triggerStringFormatted.c_str());
                 }
 
                 if ((g_audioCVars.m_nDrawAudioDebug & eADDF_SHOW_OBJECT_RTPCS) != 0)

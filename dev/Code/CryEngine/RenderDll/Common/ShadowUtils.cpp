@@ -14,8 +14,6 @@
 #include "StdAfx.h"
 #include "ShadowUtils.h"
 
-std::vector<CPoissonDiskGen> CPoissonDiskGen::s_kernelSizeGens;
-
 bool CShadowUtils::bShadowFrustumCacheValid = false;
 
 void CShadowUtils::CalcDifferentials(const CCamera& cam, float fViewWidth, float fViewHeight, float& fFragSizeX)
@@ -594,6 +592,8 @@ Vec2& CPoissonDiskGen::GetSample(int ind)
     return m_vSamples[ind];
 }
 
+// the size of the kernel for each entry is the index in this vector
+StaticInstance<std::vector<CPoissonDiskGen>> s_kernelSizeGens;
 CPoissonDiskGen& CPoissonDiskGen::GetGenForKernelSize(int size)
 {
     if ((int)s_kernelSizeGens.size() <= size)
@@ -614,7 +614,7 @@ CPoissonDiskGen& CPoissonDiskGen::GetGenForKernelSize(int size)
 
 void CPoissonDiskGen::FreeMemory()
 {
-    stl::free_container(s_kernelSizeGens);
+    s_kernelSizeGens.clear();
 }
 
 void CPoissonDiskGen::RandomPoint(CRndGen& rand, Vec2& p)

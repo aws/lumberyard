@@ -91,6 +91,10 @@ void CDirectorNodeAnimator::Animate(CTrackViewAnimNode* pNode, const SAnimContex
                 // No notifications because binding would call ForceAnimation again
                 CTrackViewSequenceNoNotificationContext context(pSequence);
                 pSequence->BindToEditorObjects();
+
+                // Make sure the sequence is active, harmless to call if the sequences is already
+                // active. The sequence may not be active in the Editor if this key was just created.
+                pSequence->Activate();
             }
         }
 
@@ -163,7 +167,7 @@ void CDirectorNodeAnimator::ForEachActiveSequence(const SAnimContext& ac, CTrack
 
                 if (!bInsideKeyRange)
                 {
-                    if (ac.bForcePlay && sequenceTime >= 0.0f && newAnimContext.time != pSequence->GetTime())
+                    if (ac.forcePlay && sequenceTime >= 0.0f && newAnimContext.time != pSequence->GetTime())
                     {
                         // If forcing animation force previous keys to their last playback position
                         animateFunction(pSequence, newAnimContext);
@@ -194,7 +198,7 @@ void CDirectorNodeAnimator::ForEachActiveSequence(const SAnimContext& ac, CTrack
             newAnimContext.time = std::min(sequenceTime, sequenceDuration);
             const bool bInsideKeyRange = (sequenceTime >= 0.0f) && (sequenceTime <= sequenceDuration);
 
-            if ((bInsideKeyRange && (newAnimContext.time != pSequence->GetTime() || ac.bForcePlay)))
+            if ((bInsideKeyRange && (newAnimContext.time != pSequence->GetTime() || ac.forcePlay)))
             {
                 animateFunction(pSequence, newAnimContext);
             }
@@ -228,25 +232,17 @@ void CDirectorNodeAnimator::UnBind(CTrackViewAnimNode* pNode)
 /*static*/ CTrackViewSequence* CDirectorNodeAnimator::GetSequenceFromSequenceKey(const ISequenceKey& sequenceKey)
 {
     CTrackViewSequence* retSequence = nullptr;
-    const CTrackViewSequenceManager* pSequenceManager = GetIEditor()->GetSequenceManager();
+    const CTrackViewSequenceManager* sequenceManager = GetIEditor()->GetSequenceManager();
 
-    if (pSequenceManager)
+    if (sequenceManager)
     {
-        // Legacy sequences that have had their sequenceEntityId's set by UpConvertKeys() will take
-        // this code path too, not just component sequences.
-        // Delete this comment when SequenceType::Legacy is removed.
         if (sequenceKey.sequenceEntityId.IsValid())
         {            
-            retSequence = pSequenceManager->GetSequenceByEntityId(sequenceKey.sequenceEntityId);
+            retSequence = sequenceManager->GetSequenceByEntityId(sequenceKey.sequenceEntityId);
             AZ_Assert(retSequence, "Null sequence returned when a Sequence Component was expected.");
         }
-        else if (!sequenceKey.szSelection.empty())
-        {
-            // SequenceType::Legacy
-            retSequence = pSequenceManager->GetLegacySequenceByName(sequenceKey.szSelection.c_str());
-            AZ_Assert(retSequence && retSequence->GetSequenceType() == SequenceType::SequenceComponent, "Component or Null sequence returned when a Legacy Sequence was expected.");
-        }
     }
+
     return retSequence;
 }
 

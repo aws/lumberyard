@@ -5,9 +5,10 @@
             "CloudGemMessageOfTheDay", 
             "CloudGemPlayerAccount", 
             "CloudGemInGameSurvey", 
-            "CloudGemDynamicContent"
+            "CloudGemDynamicContent",
+            "CloudGemAWSScriptBehaviors"
         ],
         "Set": "default",
-        "FrameworkVersion": "1.1.3"
+        "FrameworkVersion": "1.1.4"
     }
 }

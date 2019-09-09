@@ -117,7 +117,6 @@ public:
     bool IsInExportMode() { return m_bExportMode; };
     bool IsInConsoleMode() { return m_bConsoleMode; };
     bool IsInLevelLoadTestMode() { return m_bLevelLoadTestMode; }
-    bool IsInSWBatchMode() { return m_bSWBatchMode; }
     bool IsInRegularEditorMode();
     bool IsExiting() const { return m_bExiting; }
     void EnableAccelerator(bool bEnable);
@@ -164,7 +163,6 @@ public:
 
     bool OpenSetupAssistant() const;
     QString GetRootEnginePath() const;
-
     // Overrides
     // ClassWizard generated virtual function overrides
 public:
@@ -180,6 +178,8 @@ public:
     // Implementation
     void OnCreateLevel();
     void OnOpenLevel();
+    void OnCreateSlice();
+    void OnOpenSlice();
     void OnAppAbout();
     void OnOnlineDocumentation();
     void OnDocumentationTutorials();
@@ -317,6 +317,7 @@ public:
     void OnLockSelection();
     void OnEditLevelData();
     void OnFileEditLogFile();
+    void OnFileResaveSlices();
     void OnFileEditEditorini();
     void OnSelectAxisTerrain();
     void OnSelectAxisSnapToAll();
@@ -382,6 +383,7 @@ public:
     void OnFileSaveExternalLayers();
     void OnFileConvertLegacyEntities();
     void OnUpdateDocumentReady(QAction* action);
+    void OnUpdateFileOpen(QAction* action);
     void OnUpdateCurrentLayer(QAction* action);
     void OnUpdateNonGameMode(QAction* action);
 
@@ -419,6 +421,12 @@ private:
     void OpenAWSConsoleFederated(const QString& str);
 
     bool FixDanglingSharedMemory(const QString& sharedMemName) const;
+
+    //! Displays level load errors after a certain number of idle frames have been processed.
+    //! Due to the asyncrhonous nature of loading assets any errors that are reported by components
+    //! can happen after the level is loaded. This method will wait for a few idle updates and then
+    //! display the load errors to ensure all errors are displayed properly.
+    void DisplayLevelLoadErrors();
 
 #if AZ_TESTS_ENABLED
     //! Runs tests in the plugin specified as the file argument to the command line,
@@ -460,8 +468,6 @@ private:
     bool m_bRunPythonScript = false;
     CMatEditMainDlg* m_pMatEditDlg = nullptr;
     CConsoleDialog* m_pConsoleDialog = nullptr;
-    //! In this mode, editor will load world segments and process command for each batch
-    bool m_bSWBatchMode = false;
     Vec3 m_tagLocations[12];
     Ang3 m_tagAngles[12];
     float m_fastRotateAngle = 45.0f;
@@ -479,10 +485,15 @@ private:
     bool m_bKeepEditorActive = false;
     // Currently creating a new level
     bool m_creatingNewLevel = false;
+    bool m_openingLevel = false;
+    bool m_savingLevel = false;
+    // Flag indicating if the errors for the currently loaded level have been displayed
+    bool m_levelErrorsHaveBeenDisplayed = false;
+    // Number of idle frames that have passed before displaying level errors
+    int m_numBeforeDisplayErrorFrames = 0;
 
     QString m_lastOpenLevelPath;
     CQuickAccessBar* m_pQuickAccessBar = nullptr;
-    int m_initSegmentsToOpen = 0;
     IEventLoopHook* m_pEventLoopHook = nullptr;
     QString m_rootEnginePath;
 

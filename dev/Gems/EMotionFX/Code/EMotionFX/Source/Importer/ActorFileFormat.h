@@ -41,6 +41,7 @@ namespace EMotionFX
             ACTOR_CHUNK_ATTACHMENTNODES       = 15,       // Actor_AttachmentNodes
             ACTOR_CHUNK_MATERIALATTRIBUTESET  = 16,
             ACTOR_CHUNK_GENERICMATERIAL       = 17,       // Actor_GenericMaterial
+            ACTOR_CHUNK_PHYSICSSETUP          = 18,
             ACTOR_FORCE_32BIT                 = 0xFFFFFFFF
         };
 
@@ -65,8 +66,10 @@ namespace EMotionFX
             ACTOR_LAYERID_FORCE_8BIT      = 0xFF// don't use more than 8 bit values
         };
 
+        // When a struct is not aligned, memset the object to 0 before using it, otherwise you might end up with some garbage paddings.
 
         // the actor file type header
+        // (aligned)
         struct Actor_Header
         {
             uint8 mFourcc[4];   // must be "ACTR"
@@ -76,6 +79,7 @@ namespace EMotionFX
         };
 
 
+        // (not aligned)
         struct Actor_Info
         {
             uint32  mNumLODs;               // the number of level of details
@@ -93,6 +97,8 @@ namespace EMotionFX
             // string : the name of the actor
         };
 
+
+        // (not aligned)
         struct Actor_Info2
         {
             uint32  mNumLODs;               // the number of level of details
@@ -110,8 +116,8 @@ namespace EMotionFX
         };
 
 
-
         // a node header
+        // (not aligned)
         struct Actor_Node
         {
             FileQuaternion  mLocalQuat; // the local rotation (before hierarchy)
@@ -129,6 +135,7 @@ namespace EMotionFX
 
 
         // a mesh LOD level
+        // (aligned)
         struct Actor_MeshLODLevel
         {
             uint32 mLODLevel;
@@ -140,6 +147,7 @@ namespace EMotionFX
 
 
         // uv (texture) coordinate
+        // (aligned)
         struct Actor_UV
         {
             float   mU;
@@ -147,6 +155,7 @@ namespace EMotionFX
         };
 
 
+        // (not aligned)
         struct Actor_SkinningInfo
         {
             uint32  mNodeIndex;             // the node number in the actor
@@ -161,6 +170,7 @@ namespace EMotionFX
         };
 
 
+        // (aligned)
         struct Actor_SkinningInfoTableEntry
         {
             uint32  mStartIndex;// index inside the SkinInfluence array
@@ -169,6 +179,7 @@ namespace EMotionFX
 
 
         // a skinning influence
+        // (not aligned)
         struct Actor_SkinInfluence
         {
             float   mWeight;
@@ -177,6 +188,7 @@ namespace EMotionFX
 
 
         // standard material, with integrated set of standard material layers
+        // (aligned)
         struct Actor_StandardMaterial
         {
             uint32      mLOD;           // the level of detail
@@ -200,6 +212,7 @@ namespace EMotionFX
 
 
         // a material layer (version 2)
+        // (aligned)
         struct Actor_StandardMaterialLayer
         {
             float   mAmount;        // the amount, between 0 and 1
@@ -217,6 +230,7 @@ namespace EMotionFX
         };
 
 
+        // (aligned)
         struct Actor_GenericMaterial
         {
             uint32      mLOD;       // the level of detail
@@ -227,6 +241,7 @@ namespace EMotionFX
 
 
         // a vertex attribute layer (added layer name)
+        // (not aligned)
         struct Actor_VertexAttributeLayer
         {
             uint32  mLayerTypeID;   // the type of vertex attribute layer
@@ -241,6 +256,7 @@ namespace EMotionFX
 
 
         // a submesh (with polygon support)
+        // (aligned)
         struct Actor_SubMesh
         {
             uint32  mNumIndices;    // number of indices
@@ -257,6 +273,7 @@ namespace EMotionFX
 
 
         // a mesh (now using Actor_VertexAttributeLayer2)
+        // (not aligned)
         struct Actor_Mesh
         {
             uint32  mNodeIndex;     // the node number this mesh belongs to (0 means the first node in the file, 1 means the second, etc.)
@@ -278,6 +295,7 @@ namespace EMotionFX
         //-------------------------------------------------------
 
         // node limit information
+        // (aligned)
         struct Actor_Limit
         {
             FileVector3     mTranslationMin;// the minimum translation values
@@ -292,6 +310,7 @@ namespace EMotionFX
 
 
         // a  morph target mesh
+        // (aligned)
         struct Actor_MorphTarget
         {
             float   mRangeMin;          // the slider min
@@ -309,6 +328,7 @@ namespace EMotionFX
 
 
         // a chunk that contains all morph targets in the file
+        // (aligned)
         struct Actor_MorphTargets
         {
             uint32  mNumMorphTargets;   // the number of morph targets to follow
@@ -320,6 +340,7 @@ namespace EMotionFX
 
 
         // morph target deformation data
+        // (aligned)
         struct Actor_MorphTargetMeshDeltas
         {
             uint32  mNodeIndex;
@@ -334,8 +355,25 @@ namespace EMotionFX
             // uint32[ mNumVertices ]            (vertex numbers)
         };
 
+       // morph target deformation data (including bitangents)
+        struct Actor_MorphTargetMeshDeltas2
+        {
+            uint32  mNodeIndex;
+            float   mMinValue;      // minimum range value for x y and z components of the compressed position vectors
+            float   mMaxValue;      // maximum range value for x y and z components of the compressed position vectors
+            uint32  mNumVertices;   // the number of deltas
 
-        // a  morph target transformation
+            // followed by:
+            // File16BitVector3[ mNumVertices ]  (delta position values)
+            // File8BitVector3[ mNumVertices ]   (delta normal values)
+            // File8BitVector3[ mNumVertices ]   (delta tangent values)
+            // File8BitVector3[ mNumVertices ]   (delta bitangent values)
+            // uint32[ mNumVertices ]            (vertex numbers)
+        };
+
+
+        // a morph target transformation
+        // (aligned)
         struct Actor_MorphTargetTransform
         {
             uint32          mNodeIndex;         // the node name where the transform belongs to
@@ -347,6 +385,7 @@ namespace EMotionFX
 
 
         // a node group
+        // (not aligned)
         struct Actor_NodeGroup
         {
             uint16  mNumNodes;
@@ -358,6 +397,7 @@ namespace EMotionFX
         };
 
 
+        // (aligned)
         struct Actor_Nodes
         {
             uint32          mNumNodes;
@@ -369,6 +409,7 @@ namespace EMotionFX
 
 
         // material statistics, which appears before the actual material chunks
+        // (aligned)
         struct Actor_MaterialInfo
         {
             uint32  mLOD;                   // the level of detail
@@ -380,6 +421,7 @@ namespace EMotionFX
 
 
         // node motion sources used for the motion mirroring feature
+        // (aligned)
         struct Actor_NodeMotionSources2
         {
             uint32 mNumNodes;
@@ -390,6 +432,7 @@ namespace EMotionFX
 
 
         // list of node number which are used for attachments
+        // (aligned)
         struct Actor_AttachmentNodes
         {
             uint32 mNumNodes;
@@ -398,6 +441,7 @@ namespace EMotionFX
 
 
         // material attribute set
+        // (aligned)
         struct Actor_MaterialAttributeSet
         {
             uint32  mMaterialIndex;

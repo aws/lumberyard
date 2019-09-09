@@ -69,7 +69,7 @@ protected:
     virtual bool GetParamInfoFromType(const CAnimParamType& paramId, SParamInfo& info) const;
 
     typedef std::map< AnimNodeType, _smart_ptr<CFXNodeDescription> > FxNodeDescriptionMap;
-    static FxNodeDescriptionMap s_fxNodeDescriptions;
+    static StaticInstance<FxNodeDescriptionMap> s_fxNodeDescriptions;
     static bool s_initialized;
 
     CFXNodeDescription* m_pDescription;

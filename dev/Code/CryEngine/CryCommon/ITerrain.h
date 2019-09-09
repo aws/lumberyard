@@ -110,6 +110,8 @@ struct ITerrain
     virtual Vec3 GetTerrainSurfaceNormal(Vec3 vPos, float fRange) = 0;
     virtual void GetTerrainAlignmentMatrix(const Vec3& vPos, const float amount, Matrix33& matrix33) = 0;
 
+    virtual void GetMaterials(AZStd::vector<_smart_ptr<IMaterial>>& materials) = 0;
+
     virtual bool IsHole(int x, int y) const = 0;
     virtual bool IsMeshQuadFlipped(const int x, const int y, const int nUnitSize) const = 0;
 

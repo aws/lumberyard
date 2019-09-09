@@ -18,6 +18,7 @@
 
 #include <AzCore/std/smart_ptr/make_shared.h>
 #include <AzFramework/StringFunc/StringFunc.h>
+#include <AzToolsFramework/Slice/SliceUtilities.h>
 
 
 namespace AzToolsFramework
@@ -60,7 +61,7 @@ namespace AzToolsFramework
             AZStd::vector<AZStd::string> dependencies;
             AZStd::string relativePath(GetRelativeAssetPathByGuid(assetId.m_guid));
 
-            if(AzFramework::StringFunc::Path::IsExtension(relativePath.c_str(), ".slice", false))
+            if(AzFramework::StringFunc::Path::IsExtension(relativePath.c_str(), AzToolsFramework::SliceUtilities::GetSliceFileExtension().c_str(), false))
             {
                 GetSliceDependenciesByRelativeAssetPath(relativePath, dependencies);
 
@@ -211,7 +212,10 @@ namespace AzToolsFramework
     bool SliceDependencyBrowserComponent::GetSliceDependenciesByRelativeAssetPath(const AZStd::string& relativePath, AZStd::vector<AZStd::string>& dependencies) const
     {
         bool found = false;
-        bool succeeded = m_databaseConnection->QueryDependsOnSourceBySourceDependency(relativePath.c_str(),"%.slice", [&](AssetDatabase::SourceFileDependencyEntry& entry)
+        bool succeeded = m_databaseConnection->QueryDependsOnSourceBySourceDependency(
+            relativePath.c_str(),"%.slice", 
+            AzToolsFramework::AssetDatabase::SourceFileDependencyEntry::DEP_SourceToSource, 
+            [&](AssetDatabase::SourceFileDependencyEntry& entry)
         {
             found = true;
             dependencies.push_back(AZStd::move(entry.m_dependsOnSource));
@@ -223,7 +227,10 @@ namespace AzToolsFramework
     bool SliceDependencyBrowserComponent::GetSliceDependendentsByRelativeAssetPath(const AZStd::string& relativePath, AZStd::vector<AZStd::string>& dependents) const
     {
         bool found = false;
-        bool succeeded = m_databaseConnection->QuerySourceDependencyByDependsOnSource(relativePath.c_str(), "%.slice", [&](AssetDatabase::SourceFileDependencyEntry& entry)
+        bool succeeded = m_databaseConnection->QuerySourceDependencyByDependsOnSource(
+            relativePath.c_str(), "%.slice",
+            AzToolsFramework::AssetDatabase::SourceFileDependencyEntry::DEP_SourceToSource,
+            [&](AssetDatabase::SourceFileDependencyEntry& entry)
         {
             found = true;
             dependents.push_back(AZStd::move(entry.m_source));

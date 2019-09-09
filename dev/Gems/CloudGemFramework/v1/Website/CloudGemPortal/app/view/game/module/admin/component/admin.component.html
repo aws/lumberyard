@@ -1,22 +1,15 @@
 <h1> Administration </h1>
-
-<thumbnail url="/game/admin/users" icon="https://m.media-amazon.com/images/G/01/cloudcanvas/images/user._CB536715123_.png">
-    <div class="thumbnail-label-section row no-gutters">
-        <div> User Administration </div>
+<div class="row" *ngIf="dependencyservice.availableFeatures.Administration !== null">
+    <div *ngFor="let feature of dependencyservice.availableFeatures.Administration">
+        <thumbnail *ngIf="feature.location === 1" url="/game/{{feature.route_path}}" icon="https://m.media-amazon.com/images/G/01/cloudcanvas/images/{{feature.image}}">
+            <div class="thumbnail-label-section row no-gutters">
+                <div> {{feature.name}} </div>
+            </div>
+            <div class="expanded-section row no-gutters">
+                <div class="col-12">
+                    {{feature.description}}
+                </div>
+            </div>
+        </thumbnail>
     </div>
-    <div class="expanded-section row no-gutters">
-        <div class="col-12">
-            Manage who has access to the Cloud Gem Portal
-        </div>
-    </div>
-</thumbnail>
-<thumbnail url="/game/admin/logs" icon="https://m.media-amazon.com/images/G/01/cloudcanvas/images/setting._CB536715120_.png">
-    <div class="thumbnail-label-section row no-gutters">
-        <div> Project Stack Logs </div>
-    </div>
-    <div class="expanded-section row no-gutters">
-        <div class="col-12">
-            View the logs for the project stack
-        </div>
-    </div>
-</thumbnail>
+</div>

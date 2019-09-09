@@ -1,0 +1,56 @@
+﻿@import "../../../styles/variables";
+
+.field-label {
+    padding: 15px;
+    max-width: 200px;
+}
+
+.save-button {
+    margin-left: 15px;
+}
+
+.format {
+    white-space:nowrap;
+    .schema-template {
+        display:inline-block;
+        vertical-align: text-top;
+        margin-left: 5px;
+        margin-right: 20px;
+    }
+
+    .example {
+        vertical-align: text-top;
+        display:inline-block;
+        margin-right: 5px;
+    }
+}
+
+.tooltip-content {
+    color: $white;
+    font-family: "AmazonEmber-Light";
+    font-size: 11px;
+}
+
+.tooltip-content-bold {
+    color: $white;
+    font-family: "AmazonEmber-Bold";
+    font-size: 11px;
+}
+
+.remove-item {
+    margin-left: 10px;
+}
+
+.field-mapping-name {
+    margin-left: 15px;
+    width: 250px;
+}
+
+.valign {
+    align-items: baseline;
+}
+
+.fa.fa-minus-circle {
+    height: inherit;
+    vertical-align: bottom;
+}

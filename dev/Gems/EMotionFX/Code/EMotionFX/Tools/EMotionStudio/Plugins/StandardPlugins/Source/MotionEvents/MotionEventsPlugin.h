@@ -40,6 +40,8 @@ namespace EMStudio
         MotionEventsPlugin();
         ~MotionEventsPlugin();
 
+        void Reflect(AZ::ReflectContext* context) override;
+
         // overloaded
         const char* GetCompileDate() const override     { return MCORE_DATE; }
         const char* GetName() const override            { return "Motion Events"; }

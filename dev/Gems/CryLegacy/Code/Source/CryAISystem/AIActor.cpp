@@ -212,8 +212,6 @@ void CAIActor::ResetModularBehaviorTree(EObjectResetType type)
 
                 if (properties->GetValue("esModularBehaviorTree", behaviorTreeName) && behaviorTreeName && behaviorTreeName[0])
                 {
-                    MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_Other, 0, "Modular Behavior Tree Runtime");
-
                     StartBehaviorTree(behaviorTreeName);
                 }
             }
@@ -232,9 +230,6 @@ void CAIActor::ResetBehaviorSelectionTree(EObjectResetType type)
     {
         // Try to load a Selection Tree
         const char* behaviorSelectionTreeName = proxy->GetBehaviorSelectionTreeName();
-
-        MEMSTAT_CONTEXT_FMT(EMemStatContextTypes::MSC_Other, 0, "Behavior Selection Tree: %s", behaviorSelectionTreeName);
-
         bool treeChanged = ((behaviorSelectionTreeName && !m_behaviorSelectionTree.get()) ||
                             (behaviorSelectionTreeName != 0 && azstricmp(m_behaviorSelectionTree->GetTemplate().GetName(), behaviorSelectionTreeName)));
 

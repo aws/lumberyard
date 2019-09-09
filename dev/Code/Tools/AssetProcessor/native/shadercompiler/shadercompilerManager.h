@@ -41,15 +41,9 @@ public:
     int numberOfJobsStarted();
     int numberOfJobsEnded();
     int numberOfErrors();
-
-#if !defined(UNIT_TEST)
-    void sendResponse(unsigned int connId, unsigned int type, unsigned int serial, QByteArray payload);
-#endif
+    virtual void sendResponse(unsigned int connId, unsigned int type, unsigned int serial, QByteArray payload);
 
 signals:
-#if defined(UNIT_TEST)
-    void sendResponse(unsigned int connId, unsigned int type, unsigned int serial, QByteArray payload);
-#endif
     void sendErrorMessage(QString errorMessage);
     void sendErrorMessageFromShaderJob(QString errorMessage, QString server, QString timestamp, QString payload);
     void numberOfJobsStartedChanged();

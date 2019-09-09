@@ -15,10 +15,14 @@
 #include <AzFramework/Input/Buses/Notifications/RawInputNotificationBus_android.h>
 
 #include <AzCore/Android/AndroidEnv.h>
+#include <AzCore/Android/JNI/Object.h>
+#include <AzCore/Android/JNI/scoped_ref.h>
+#include <AzCore/Android/Utils.h>
+#include <AzCore/std/parallel/atomic.h>
+#include <AzCore/std/parallel/conditional_variable.h>
 
 #include <android/input.h>
 #include <android/keycodes.h>
-#include <android_native_app_glue.h>
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -26,11 +30,26 @@ namespace AzFramework
 {
     namespace
     {
-        // this callback is triggered on the same thread the events are pumped
-        static int32_t InputHandler(android_app* app, AInputEvent* event)
+        class PermissionRequestResultNotification
+            : public AZ::EBusTraits
         {
-            RawInputNotificationBusAndroid::Broadcast(&RawInputNotificationsAndroid::OnRawInputEvent, event);
-            return 0;
+        public:
+            using Bus = AZ::EBus<PermissionRequestResultNotification>;
+
+            //////////////////////////////////////////////////////////////////////////
+            // EBusTraits overrides
+            static const AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::Single;
+            static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::Single;
+
+            virtual ~PermissionRequestResultNotification() = default;
+
+            virtual void OnRequestPermissionsResult(bool granted) { AZ_UNUSED(granted); };
+        };
+
+
+        void JNI_OnRequestPermissionsResult(JNIEnv* env, jobject obj, bool granted)
+        {
+            AzFramework::PermissionRequestResultNotification::Bus::Broadcast(&AzFramework::PermissionRequestResultNotification::OnRequestPermissionsResult, granted);
         }
     }
 
@@ -39,6 +58,7 @@ namespace AzFramework
         : public Application::Implementation
         , public AndroidLifecycleEvents::Bus::Handler
         , public AndroidAppRequests::Bus::Handler
+        , public PermissionRequestResultNotification::Bus::Handler
     {
     public:
         ////////////////////////////////////////////////////////////////////////////////////////////
@@ -48,7 +68,8 @@ namespace AzFramework
 
         ////////////////////////////////////////////////////////////////////////////////////////////
         // AndroidAppRequests
-        void SetAppState(android_app* appState) override;
+        void SetEventDispatcher(AndroidEventDispatcher* eventDispatcher) override;
+        bool RequestPermission(const AZStd::string& permission, const AZStd::string& rationale) override;
 
         ////////////////////////////////////////////////////////////////////////////////////////////
         // AndroidLifecycleEvents
@@ -63,13 +84,23 @@ namespace AzFramework
         void OnWindowRedrawNeeded() override;
 
         ////////////////////////////////////////////////////////////////////////////////////////////
+        // PermissionRequestResultNotification
+        void OnRequestPermissionsResult(bool granted) override;
+
+        ////////////////////////////////////////////////////////////////////////////////////////////
         // Application::Implementation
         void PumpSystemEventLoopOnce() override;
         void PumpSystemEventLoopUntilEmpty() override;
 
     private:
-        android_app* m_appState;
+        AndroidEventDispatcher* m_eventDispatcher;
         ApplicationLifecycleEvents::Event m_lastEvent;
+
+        AZStd::atomic<bool> m_requestResponseReceived;
+        AZStd::unique_ptr<AZ::Android::JNI::Object> m_lumberyardActivity;
+        AZStd::condition_variable m_conditionVar;
+        AZStd::mutex m_mutex;
+        bool m_permissionGranted;
     };
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
@@ -80,31 +111,71 @@ namespace AzFramework
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
     ApplicationAndroid::ApplicationAndroid()
-        : m_appState(nullptr)
+        : m_eventDispatcher(nullptr)
         , m_lastEvent(ApplicationLifecycleEvents::Event::None)
     {
+        m_lumberyardActivity.reset(aznew AZ::Android::JNI::Object(AZ::Android::Utils::GetActivityClassRef(), AZ::Android::Utils::GetActivityRef()));
+
+        m_lumberyardActivity->RegisterNativeMethods(
+        { { "nativeOnRequestPermissionsResult", "(Z)V", (void*)JNI_OnRequestPermissionsResult } }
+        );
+
+        m_lumberyardActivity->RegisterMethod("RequestPermission", "(Ljava/lang/String;Ljava/lang/String;)V");
+
         AndroidLifecycleEvents::Bus::Handler::BusConnect();
         AndroidAppRequests::Bus::Handler::BusConnect();
+        PermissionRequestResultNotification::Bus::Handler::BusConnect();
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
     ApplicationAndroid::~ApplicationAndroid()
     {
+        m_lumberyardActivity.reset();
+        PermissionRequestResultNotification::Bus::Handler::BusDisconnect();
         AndroidAppRequests::Bus::Handler::BusDisconnect();
         AndroidLifecycleEvents::Bus::Handler::BusDisconnect();
+        m_conditionVar.notify_all();
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
-    void ApplicationAndroid::SetAppState(android_app* appState)
+    void ApplicationAndroid::SetEventDispatcher(AndroidEventDispatcher* eventDispatcher)
     {
-        AZ_Assert(!m_appState, "Duplicate call to setting the Android application state!");
-        m_appState = appState;
-        if (m_appState)
-        {
-            m_appState->onInputEvent = InputHandler;
-        }
+        AZ_Assert(!m_eventDispatcher, "Duplicate call to setting the Android event dispatcher!");
+        m_eventDispatcher = eventDispatcher;
     }
 
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    bool ApplicationAndroid::RequestPermission(const AZStd::string& permission, const AZStd::string& rationale)
+    {
+        AZ::Android::JNI::scoped_ref<jstring> permissionString(AZ::Android::JNI::ConvertStringToJstring(permission));
+        AZ::Android::JNI::scoped_ref<jstring> permissionRationaleString(AZ::Android::JNI::ConvertStringToJstring(rationale));
+
+        m_requestResponseReceived = false;
+        m_permissionGranted = false;
+
+        m_lumberyardActivity->InvokeVoidMethod("RequestPermission", permissionString.get(), permissionRationaleString.get());
+
+        bool looperExistsForThread = (ALooper_forThread() != nullptr);
+
+        // Make sure a looper exists for thread before pumping events.
+        // For threads that are not the main thread, we just block and
+        // the events will be pumped by the main thread and unblock this
+        // thread when the user responds.
+        if (looperExistsForThread)
+        {
+            while (!m_requestResponseReceived.load())
+            {
+                PumpSystemEventLoopOnce();
+            }
+        }
+        else
+        {
+            AZStd::unique_lock<AZStd::mutex> lock(m_mutex);
+            m_conditionVar.wait(lock, [&] { return m_requestResponseReceived.load(); });
+        }
+
+        return m_permissionGranted;
+    }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
     void ApplicationAndroid::OnLostFocus()
@@ -166,50 +237,30 @@ namespace AzFramework
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
+    void ApplicationAndroid::OnRequestPermissionsResult(bool granted)
+    {
+        m_permissionGranted = granted;
+        m_requestResponseReceived = true;
+        m_conditionVar.notify_all();
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////
     void ApplicationAndroid::PumpSystemEventLoopOnce()
     {
-        AZ_ErrorOnce("ApplicationAndroid", m_appState, "The Android application state is not valid, unable to pump the event loop properly.");
-        if (m_appState)
+        AZ_ErrorOnce("ApplicationAndroid", m_eventDispatcher, "The Android event dispatcher is not valid, unable to pump the event loop properly.");
+        if (m_eventDispatcher)
         {
-            int events;
-            android_poll_source* source;
-            AZ::Android::AndroidEnv* androidEnv = AZ::Android::AndroidEnv::Get();
-
-            // passing a negative value will cause the function to block till it recieves an event
-            if (ALooper_pollOnce(androidEnv->IsRunning() ? 0 : -1, NULL, &events, reinterpret_cast<void**>(&source)) >= 0)
-            {
-                if (source != NULL)
-                {
-                    source->process(m_appState, source);
-                }
-            }
+            m_eventDispatcher->PumpEventLoopOnce();
         }
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
     void ApplicationAndroid::PumpSystemEventLoopUntilEmpty()
     {
-        AZ_ErrorOnce("ApplicationAndroid", m_appState, "The Android application state is not valid, unable to pump the event loop properly.");
-        if (m_appState)
+        AZ_ErrorOnce("ApplicationAndroid", m_eventDispatcher, "The Android event dispatcher is not valid, unable to pump the event loop properly.");
+        if (m_eventDispatcher)
         {
-            int events;
-            android_poll_source* source;
-            AZ::Android::AndroidEnv* androidEnv = AZ::Android::AndroidEnv::Get();
-
-            // passing a negative value will cause the function to block till it recieves an event
-            while (ALooper_pollAll(androidEnv->IsRunning() ? 0 : -1, NULL, &events, reinterpret_cast<void**>(&source)) >= 0)
-            {
-                if (source != NULL)
-                {
-                    source->process(m_appState, source);
-                }
-
-                if (m_appState->destroyRequested != 0)
-                {
-                    ApplicationRequests::Bus::Broadcast(&ApplicationRequests::ExitMainLoop);
-                    break;
-                }
-            }
+            m_eventDispatcher->PumpAllEvents();
         }
     }
 } // namespace AzFramework

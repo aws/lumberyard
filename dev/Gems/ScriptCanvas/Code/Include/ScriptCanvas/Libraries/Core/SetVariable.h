@@ -12,6 +12,8 @@
 
 #pragma once
 
+#include <AzCore/Serialization/EditContextConstants.inl>
+
 #include <ScriptCanvas/CodeGen/CodeGen.h>
 #include <ScriptCanvas/Core/GraphBus.h>
 #include <ScriptCanvas/Core/Node.h>
@@ -38,27 +40,31 @@ namespace ScriptCanvas
                     ScriptCanvas_Node::Name("Set Variable", "Node for setting a property within the graph")
                     ScriptCanvas_Node::Uuid("{5EFD2942-AFF9-4137-939C-023AEAA72EB0}")
                     ScriptCanvas_Node::Icon("Editor/Icons/ScriptCanvas/Placeholder.png")
-                    ScriptCanvas_Node::Version(0)
+                    ScriptCanvas_Node::Version(1)
                 );
-
-                friend class SetVariableNodeEventHandler;
 
                 //// VariableNodeRequestBus
                 void SetId(const VariableId& variableId) override;
                 const VariableId& GetId() const override;
                 ////
+
                 const Datum* GetDatum() const;
 
                 const SlotId& GetDataInSlotId() const;
+                const SlotId& GetDataOutSlotId() const;
 
             protected:
+
                 void OnInit() override;
                 void OnInputSignal(const SlotId&) override;
 
-                void AddInputSlot();
-                void RemoveInputSlot();
+                void AddSlots();
+                void RemoveSlots();
+                void AddPropertySlots(const Data::Type& type);
+                void ClearPropertySlots();
+                void RefreshPropertyFunctions();
 
-                Datum* ModDatum() const;
+                VariableDatumBase* ModVariable() const;
 
                 void OnIdChanged(const VariableId& oldVariableId);
                 AZStd::vector<AZStd::pair<VariableId, AZStd::string>> GetGraphVariables() const;
@@ -74,10 +80,14 @@ namespace ScriptCanvas
 
                 ScriptCanvas_EditPropertyWithDefaults(VariableId, m_variableId, , EditProperty::NameLabelOverride("Variable Name"),
                     EditProperty::DescriptionTextOverride("Name of ScriptCanvas Variable"),
-                    EditProperty::UIHandler(Attributes::UIHandlers::GenericComboBox),
-                    EditProperty::EditAttributes(ScriptCanvas::Attributes::GenericValueList(&SetVariableNode::GetGraphVariables), ScriptCanvas::Attributes::PostChangeNotify(&SetVariableNode::OnIdChanged)));
+                    EditProperty::UIHandler(AZ::Edit::UIHandlers::ComboBox),
+                    EditProperty::EditAttributes(AZ::Edit::Attributes::GenericValueList(&SetVariableNode::GetGraphVariables), AZ::Edit::Attributes::PostChangeNotify(&SetVariableNode::OnIdChanged)));
 
                 ScriptCanvas_SerializeProperty(SlotId, m_variableDataInSlotId);
+                ScriptCanvas_SerializeProperty(SlotId, m_variableDataOutSlotId);
+
+                ScriptCanvas_SerializeProperty(AZStd::vector<Data::PropertyMetadata>, m_propertyAccounts);
+
             };
         }
     }

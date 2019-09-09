@@ -65,8 +65,6 @@ namespace stl
 
         pointer allocate(size_type n = 1, const void* hint = 0)
         {
-            ScopedSwitchToGlobalHeap useGlobalHeap;
-
             if (n == 1)
             {
                 return Super::allocate(n, hint);

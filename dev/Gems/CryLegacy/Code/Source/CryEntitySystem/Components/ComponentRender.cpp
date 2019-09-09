@@ -41,7 +41,7 @@ float CComponentRender::s_fViewDistMin          = 0.0f;
 float CComponentRender::s_fViewDistRatio        = 60.0f;
 float CComponentRender::s_fViewDistRatioCustom  = 60.0f;
 float CComponentRender::s_fViewDistRatioDetail  = 30.0f;
-std::vector<CComponentRender*> CComponentRender::s_arrCharactersToRegisterForRendering;
+StaticInstance<std::vector<CComponentRender*>> CComponentRender::s_arrCharactersToRegisterForRendering;
 
 CEntityTimeoutList* CComponentRender::s_pTimeoutList = 0;
 
@@ -908,7 +908,7 @@ void CComponentRender::Render(const SRendParams& inRenderParams, const SRenderin
     {
 #if defined(SUPPORT_COMPONENTRENDER_RENDER_JOB)
         // legacy job priority: "passInfo.IsGeneralPass() ? JobManager::eRegularPriority : JobManager::eLowPriority"
-        AZ::LegacyJobExecutor *pJobExecutor = passInfo.IsShadowPass() ? gEnv->pRenderer->GetGenerateShadowRendItemJobExecutor(passInfo.ThreadID()) : gEnv->pRenderer->GetGenerateRendItemJobExecutor(passInfo.ThreadID());
+        AZ::LegacyJobExecutor *pJobExecutor = passInfo.IsShadowPass() ? gEnv->pRenderer->GetGenerateShadowRendItemJobExecutor() : gEnv->pRenderer->GetGenerateRendItemJobExecutor();
         pJobExecutor->StartJob(
             [this, inRenderParams, passInfo]
             {

@@ -10,8 +10,6 @@
 *
 */
 
-#include "precompiled.h"
-
 #include "Start.h"
 #include <ScriptCanvas/Core/GraphBus.h>
 

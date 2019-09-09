@@ -254,12 +254,6 @@ ICompiler* CChunkCompiler::CreateCompiler()
 }
 
 
-bool CChunkCompiler::SupportsMultithreading() const
-{
-    return false;
-}
-
-
 const char* CChunkCompiler::GetExt(int index) const
 {
     return (index == 0) ? "chunk" : 0;

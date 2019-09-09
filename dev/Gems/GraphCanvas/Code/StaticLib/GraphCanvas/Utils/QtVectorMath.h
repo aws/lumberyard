@@ -9,6 +9,8 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
+#pragma once
+
 #include <cmath>
 
 #include <qpoint.h>
@@ -40,6 +42,87 @@ namespace GraphCanvas
             {
                 return point;
             }
+        }
+
+        static int GetMinimumDistanceBetween(const QRectF& rectA, const QRectF& rectB)
+        {
+            if (rectA.intersects(rectB))
+            {
+                return 0;
+            }
+
+            int distance = -1;
+
+            // Find the line between the two rectangles.
+            QPointF direction = rectA.center() - rectB.center();
+            QLineF directionLine(rectA.center(), rectB.center());
+
+            QLineF aLine1;
+            QLineF aLine2;
+            QLineF aFinalLine;
+
+            QLineF bLine1;
+            QLineF bLine2;
+            QLineF bFinalLine;
+
+
+            // Not strictly correct, but correct enough.
+            //
+            // Finds the two points on the line from center to center, and returns the distance between them.
+            AZStd::vector< QPointF > aIntersectionPoints;
+
+            AZStd::vector< QLineF > aLines = {
+                QLineF(rectA.topLeft(), rectA.topRight()),
+                QLineF(rectA.topRight(), rectA.bottomRight()),
+                QLineF(rectA.bottomRight(), rectA.bottomLeft()),
+                QLineF(rectA.bottomLeft(), rectA.topLeft())
+            };
+
+            for (const auto& aLine : aLines)
+            {
+                QPointF temporaryPoint;
+
+                if (aLine.intersect(directionLine, &temporaryPoint) == QLineF::IntersectType::BoundedIntersection)
+                {
+                    aIntersectionPoints.push_back(temporaryPoint);
+                }
+            }
+
+            AZStd::vector< QPointF > bIntersectionPoints;
+
+            AZStd::vector< QLineF > bLines = {
+                QLineF(rectB.topLeft(), rectB.topRight()),
+                QLineF(rectB.topRight(), rectB.bottomRight()),
+                QLineF(rectB.bottomRight(), rectB.bottomLeft()),
+                QLineF(rectB.bottomLeft(), rectB.topLeft())
+            };
+
+            for (const auto& bLine : bLines)
+            {
+                QPointF temporaryPoint;
+
+                if (bLine.intersect(directionLine, &temporaryPoint) == QLineF::IntersectType::BoundedIntersection)
+                {
+                    bIntersectionPoints.push_back(temporaryPoint);
+                }
+            }
+
+            int minimumLength = -1;
+
+            for (const QPointF& aPoint : aIntersectionPoints)
+            {
+                for (const QPointF& bPoint : bIntersectionPoints)
+                {
+                    int testLength = GetLength(aPoint - bPoint);
+
+                    if (minimumLength < 0 || testLength < minimumLength)
+                    {
+                        minimumLength = testLength;
+                    }
+                }
+            }
+
+            return minimumLength;
         }
     };
 }

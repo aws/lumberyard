@@ -20,6 +20,7 @@
 
 #include "I3DEngine.h"
 #include "physinterface.h"
+#include <LmbrCentral/Physics/WaterNotificationBus.h>
 
 namespace Water
 {
@@ -157,6 +158,17 @@ namespace Water
         }
     }
 
+    WaterVolumeCommon::~WaterVolumeCommon()
+    {
+        // Ensure that we're disconnected from the bus on destruction.  We can end up still connected here
+        // if a WaterVolumeComponent has been created with a copy of connected WaterOceanComponentData.
+        // The new copy doesn't get an Activate or a Deactivate call, but will be connected.
+        LmbrCentral::ShapeComponentNotificationsBus::Handler::BusDisconnect();
+        LmbrCentral::MaterialOwnerRequestBus::Handler::BusDisconnect();
+        AZ::TransformNotificationBus::Handler::BusDisconnect();
+        WaterVolumeComponentRequestBus::Handler::BusDisconnect();
+    }
+
     void WaterVolumeCommon::Init(const AZ::EntityId& entityId)
     {
         m_entityId = entityId;
@@ -194,6 +206,7 @@ namespace Water
 
     void WaterVolumeCommon::Deactivate()
     {
+        LmbrCentral::WaterNotificationBus::Broadcast(&LmbrCentral::WaterNotificationBus::Events::WaterVolumeShapeChanged, m_entityId);
         m_volumeId = 0;
 
         if (m_waterRenderNode)
@@ -215,6 +228,8 @@ namespace Water
         UpdateVertices();
         UpdatePhysicsAreaParams();
         UpdateWaterArea();
+
+        LmbrCentral::WaterNotificationBus::Broadcast(&LmbrCentral::WaterNotificationBus::Events::WaterVolumeTransformChanged, m_entityId, world);
     }
 
     void WaterVolumeCommon::OnShapeChanged(LmbrCentral::ShapeComponentNotifications::ShapeChangeReasons reasons)
@@ -247,6 +262,7 @@ namespace Water
         UpdatePhysicsAreaParams();
 
         m_waterRenderNode->SetVolumeDepth(m_waterDepthScaled);
+        LmbrCentral::WaterNotificationBus::Broadcast(&LmbrCentral::WaterNotificationBus::Events::WaterVolumeShapeChanged, m_entityId);
     }
 
     void WaterVolumeCommon::SetMaterial(_smart_ptr<IMaterial> material)
@@ -468,6 +484,7 @@ namespace Water
                     rendFlags &= ~ERF_HIDDEN;
                 }
 
+                rendFlags |= ERF_COMPONENT_ENTITY;
                 m_waterRenderNode->SetRndFlags(rendFlags);
             }
         }
@@ -599,6 +616,7 @@ namespace Water
         physicalAreaParams.waveSim.waveSpeed = m_waveSpeed;
         physicalAreaParams.waveSim.dampingCenter = m_waveDampening;
         physicalAreaParams.waveSim.timeStep = m_waveTimestep;
+        physicalAreaParams.waveSim.simDepth = m_waveDepthCellSize;
         physicalAreaParams.waveSim.heightLimit = m_waveHeightLimit;
         physicalAreaParams.waveSim.minVel = m_waveSleepThreshold;
         physicalAreaParams.waveSim.resistance = m_waveForce;

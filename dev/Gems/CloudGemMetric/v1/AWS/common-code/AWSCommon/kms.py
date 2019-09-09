@@ -1,5 +1,5 @@
 import retry
-import boto3
+import boto3_util
 import metric_constant as c
 import math
 import uuid
@@ -12,7 +12,7 @@ from botocore.exceptions import ClientError
 class Kms(object):
 
     def __init__(self):                
-        self.__client = boto3.client('kms',region_name=os.environ[c.ENV_REGION], api_version='2014-11-01')                
+        self.__client = boto3.client('kms', api_version='2014-11-01')
 
     def encrypt(self, data):        
         params = dict({})

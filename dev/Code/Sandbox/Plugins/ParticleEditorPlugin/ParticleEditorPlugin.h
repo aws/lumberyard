@@ -36,5 +36,11 @@ protected:
     ////////////////////////////////////////////////////////////////////////////////////////////////
     /// AzToolsFramework::AssetBrowser::AssetBrowserInteractionNotificationBus::Handler
     void AddSourceFileOpeners(const char* fullSourceFileName, const AZ::Uuid& /*sourceUUID*/, AzToolsFramework::AssetBrowser::SourceFileOpenerList& openers) override;
+    virtual AZ::s32 GetPriority() const override;
+    virtual AzToolsFramework::AssetBrowser::SourceFileDetails GetSourceFileDetails(const char* sourceFileName) override;
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+
+    // helper
+    bool IsParticleXMLFile(const char* fileSourceFilePath) const;
 };
 #endif // CRYINCLUDE__PARTICLEEDITOR_EXAMPLEPLUGIN_H

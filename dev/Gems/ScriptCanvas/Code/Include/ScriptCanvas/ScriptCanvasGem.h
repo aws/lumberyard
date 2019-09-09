@@ -44,7 +44,6 @@ namespace ScriptCanvas
         AZ_CLASS_ALLOCATOR(ScriptCanvasModule, AZ::SystemAllocator, 0);
 
         ScriptCanvasModule();
-        ~ScriptCanvasModule() override;
         
         AZ::ComponentTypeList GetRequiredSystemComponents() const override;
 

@@ -211,6 +211,14 @@
                         "Role"
                     ]
                 },
+                "Environment": {
+                    "Variables": {
+                        "Fn::GetAtt": [
+                            "ServiceLambdaConfiguration",
+                            "CCSettings"
+                        ]
+                    }
+                },
                 "Runtime": {
                     "Fn::GetAtt": [
                         "ServiceLambdaConfiguration",
@@ -227,8 +235,8 @@
                     "Permissions": [
                         {
                             "AbstractRole": "ServiceLambda",
-                            "Action": ["iot:AttachPrincipalPolicy",
-                                "iot:DetachPrincipalPolicy",
+                            "Action": ["iot:AttachPolicy",
+                                "iot:DetachPolicy",
                                 "iot:ListPrincipalPolicies",
                                 "iot:CreateKeysAndCertificate",
                                 "iot:CreateThing",

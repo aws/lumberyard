@@ -820,7 +820,7 @@ bool CD3D9Renderer::BakeMesh(const SMeshBakingInputParams* pInputParams, SMeshBa
             {
                 TRenderChunkArray& chunkList = pRM[m]->GetChunks();
 
-                CRenderObject* pObj = new CRenderObject();
+                CRenderObject* pObj = aznew CRenderObject();
                 pObj->Init();
                 pObj->m_II.m_Matrix.SetIdentity();
                 pObj->m_II.m_Matrix.SetTranslationMat(GetCamera().GetPosition());

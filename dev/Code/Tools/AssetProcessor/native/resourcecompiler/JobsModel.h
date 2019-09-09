@@ -15,9 +15,14 @@
 #include <QVector>
 #include <QHash>
 #include <QDateTime>
+#include <QIcon>
 #include <QAbstractItemModel>
 #include <AzToolsFramework/API/EditorAssetSystemAPI.h>
 #include <native/assetprocessor.h>
+
+// Do this here, rather than EditorAssetSystemAPI.h so that we don't have to link against Qt5Core to
+// use EditorAssetSystemAPI.h
+Q_DECLARE_METATYPE(AzToolsFramework::AssetSystem::JobStatus);
 
 namespace AssetProcessor
 {
@@ -42,15 +47,17 @@ namespace AssetProcessor
         enum DataRoles
         {
             logRole = Qt::UserRole + 1,
+            statusRole,
+            logFileRole
         };
 
         enum Column
         {
             ColumnStatus,
             ColumnSource,
+            ColumnCompleted,
             ColumnPlatform,
             ColumnJobKey,
-            ColumnCompleted,
             Max
         };
 
@@ -64,7 +71,7 @@ namespace AssetProcessor
         QVariant data(const QModelIndex& index, int role) const override;
         int itemCount() const;
         CachedJobInfo* getItem(int index) const;
-        QString GetStatusInString(const AzToolsFramework::AssetSystem::JobStatus& state) const;
+        static QString GetStatusInString(const AzToolsFramework::AssetSystem::JobStatus& state);
         void PopulateJobsFromDatabase();
 
 public Q_SLOTS:
@@ -73,6 +80,10 @@ public Q_SLOTS:
         void OnSourceRemoved(QString sourceDatabasePath);
 
     protected:
+        QIcon m_pendingIcon;
+        QIcon m_errorIcon;
+        QIcon m_okIcon;
+        QIcon m_processingIcon;
         QVector<CachedJobInfo*> m_cachedJobs;
         QHash<AssetProcessor::QueueElementID, int> m_cachedJobsLookup; // QVector uses int as type of index.  
 

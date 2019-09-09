@@ -13,6 +13,7 @@
 
 #include "EditorCommon.h"
 #include "ViewportSnap.h"
+#include <LyShine/Bus/UiEditorCanvasBus.h>
 
 namespace
 {
@@ -38,193 +39,13 @@ namespace
     }
 } // anonymous namespace.
 
-AZ::Vector2 ViewportSnap::Move(HierarchyWidget* hierarchy,
-    const AZ::EntityId& canvasId,
-    ViewportInteraction::CoordinateSystem coordinateSystem,
-    const ViewportHelpers::GizmoParts& grabbedGizmoParts,
-    AZ::Entity* element,
-    const AZ::Vector2& translation)
-{
-    AZ::Vector2 deltaInCanvasSpace;
-
-    AZ::Entity* parentElement = EntityHelpers::GetParentElement(element);
-
-    bool isSnapping = false;
-    EBUS_EVENT_ID_RESULT(isSnapping, canvasId, UiCanvasBus, GetIsSnapEnabled);
-
-    if (isSnapping)
-    {
-        HierarchyItem* item = dynamic_cast<HierarchyItem*>(HierarchyHelpers::ElementToItem(hierarchy, element, false));
-
-        // Update the non-snapped offset.
-        item->SetNonSnappedOffsets(item->GetNonSnappedOffsets() + translation);
-
-        // Update the currently used offset.
-        {
-            if (coordinateSystem == ViewportInteraction::CoordinateSystem::LOCAL)
-            {
-                UiTransform2dInterface::Offsets currentOffsets;
-                EBUS_EVENT_ID_RESULT(currentOffsets, element->GetId(), UiTransform2dBus, GetOffsets);
-
-                // Get the width and height in canvas space no scale rotate.
-                AZ::Vector2 elementSize;
-                EBUS_EVENT_ID_RESULT(elementSize, element->GetId(), UiTransformBus, GetCanvasSpaceSizeNoScaleRotate);
-
-                AZ::Vector2 pivot;
-                EBUS_EVENT_ID_RESULT(pivot, element->GetId(), UiTransformBus, GetPivot);
-
-                AZ::Vector2 pivotRelativeToTopLeftAnchor(currentOffsets.m_left + (elementSize.GetX() * pivot.GetX()),
-                    currentOffsets.m_top + (elementSize.GetY() * pivot.GetY()));
-
-                AZ::Vector2 snappedPivot;
-                {
-                    AZ::Vector2 nonSnappedPivot;
-                    {
-                        UiTransform2dInterface::Offsets nonSnappedOffsets(item->GetNonSnappedOffsets());
-
-                        nonSnappedPivot = AZ::Vector2(nonSnappedOffsets.m_left + (elementSize.GetX() * pivot.GetX()),
-                                nonSnappedOffsets.m_top + (elementSize.GetY() * pivot.GetY()));
-                    }
-
-                    float snapDistance = 1.0f;
-                    EBUS_EVENT_ID_RESULT(snapDistance, canvasId, UiCanvasBus, GetSnapDistance);
-
-                    snappedPivot = EntityHelpers::Snap(nonSnappedPivot, snapDistance);
-                }
-
-                if (grabbedGizmoParts.Single())
-                {
-                    if (!grabbedGizmoParts.m_right)
-                    {
-                        // Zero-out the horizontal delta.
-                        snappedPivot.SetX(pivotRelativeToTopLeftAnchor.GetX());
-                    }
-
-                    if (!grabbedGizmoParts.m_top)
-                    {
-                        // Zero-out the vertical delta.
-                        snappedPivot.SetY(pivotRelativeToTopLeftAnchor.GetY());
-                    }
-                }
-
-                if (pivotRelativeToTopLeftAnchor == snappedPivot)
-                {
-                    deltaInCanvasSpace = AZ::Vector2(0.0f, 0.0f);
-                }
-                else
-                {
-                    AZ::Vector2 deltaInLocalSpace(snappedPivot - pivotRelativeToTopLeftAnchor);
-                    EBUS_EVENT_ID(element->GetId(), UiTransform2dBus, SetOffsets, (currentOffsets + deltaInLocalSpace));
-                    EBUS_EVENT_ID(element->GetId(), UiElementChangeNotificationBus, UiElementPropertyChanged);
-
-                    // Return value.
-                    {
-                        AZ::Matrix4x4 transformToCanvasSpace;
-                        EBUS_EVENT_ID(parentElement->GetId(), UiTransformBus, GetTransformToCanvasSpace, transformToCanvasSpace);
-                        AZ::Vector3 deltaInCanvasSpace3 = transformToCanvasSpace.Multiply3x3(EntityHelpers::MakeVec3(deltaInLocalSpace));
-                        deltaInCanvasSpace = AZ::Vector2(deltaInCanvasSpace3.GetX(), deltaInCanvasSpace3.GetY());
-                    }
-                }
-            }
-            else if (coordinateSystem == ViewportInteraction::CoordinateSystem::VIEW)
-            {
-                UiTransform2dInterface::Offsets currentOffsetsInLocalSpace;
-                EBUS_EVENT_ID_RESULT(currentOffsetsInLocalSpace, element->GetId(), UiTransform2dBus, GetOffsets);
-
-                AZ::Vector2 currentPivotInCanvasSpace;
-                EBUS_EVENT_ID_RESULT(currentPivotInCanvasSpace, element->GetId(), UiTransformBus, GetCanvasSpacePivot);
-
-                AZ::Vector2 snappedPivotInCanvasSpace;
-                {
-                    UiTransform2dInterface::Offsets nonSnappedOffsetsInLocalSpace(item->GetNonSnappedOffsets());
-                    AZ::Vector2 nonSnappedPivotInCNSR(EntityHelpers::ComputeCanvasSpacePivotNoScaleRotate(element->GetId(), nonSnappedOffsetsInLocalSpace));
-
-                    AZ::Matrix4x4 transformToCanvasSpace;
-                    EBUS_EVENT_ID(parentElement->GetId(), UiTransformBus, GetTransformToCanvasSpace, transformToCanvasSpace);
-                    AZ::Vector3 nonSnappedPivotInCanvasSpace3 = transformToCanvasSpace * EntityHelpers::MakeVec3(nonSnappedPivotInCNSR);
-                    AZ::Vector2 nonSnappedPivotInCanvasSpace(nonSnappedPivotInCanvasSpace3.GetX(), nonSnappedPivotInCanvasSpace3.GetY());
-
-                    // Snap.
-                    {
-                        float snapDistance = 1.0f;
-                        EBUS_EVENT_ID_RESULT(snapDistance, canvasId, UiCanvasBus, GetSnapDistance);
-
-                        snappedPivotInCanvasSpace = EntityHelpers::Snap(nonSnappedPivotInCanvasSpace, snapDistance);
-                    }
-                }
-
-                if (grabbedGizmoParts.Single())
-                {
-                    if (!grabbedGizmoParts.m_right)
-                    {
-                        // Zero-out the horizontal delta.
-                        snappedPivotInCanvasSpace.SetX(currentPivotInCanvasSpace.GetX());
-                    }
-
-                    if (!grabbedGizmoParts.m_top)
-                    {
-                        // Zero-out the vertical delta.
-                        snappedPivotInCanvasSpace.SetY(currentPivotInCanvasSpace.GetY());
-                    }
-                }
-
-                if (currentPivotInCanvasSpace == snappedPivotInCanvasSpace)
-                {
-                    deltaInCanvasSpace = AZ::Vector2(0.0f, 0.0f);
-                }
-                else
-                {
-                    AZ::Vector2 deltaInLocalSpace;
-                    {
-                        // deltaInLocalSpace: The delta between the snapped and non-snapped point.
-                        AZ::Matrix4x4 transform;
-                        EBUS_EVENT_ID(parentElement->GetId(), UiTransformBus, GetTransformFromCanvasSpace, transform);
-
-                        deltaInCanvasSpace = (snappedPivotInCanvasSpace - currentPivotInCanvasSpace);
-                        AZ::Vector3 deltaInCanvasSpace3 = transform.Multiply3x3(EntityHelpers::MakeVec3(deltaInCanvasSpace));
-                        deltaInLocalSpace = AZ::Vector2(deltaInCanvasSpace3.GetX(), deltaInCanvasSpace3.GetY());
-                    }
-
-                    EBUS_EVENT_ID(element->GetId(), UiTransform2dBus, SetOffsets, (currentOffsetsInLocalSpace + deltaInLocalSpace));
-                    EBUS_EVENT_ID(element->GetId(), UiElementChangeNotificationBus, UiElementPropertyChanged);
-                }
-            }
-            else
-            {
-                AZ_Assert(0, "Invalid CoordinateSystem.");
-            }
-        }
-    }
-    else // if (!isSnapping)
-    {
-        // Translate the offsets
-        UiTransform2dInterface::Offsets offsets;
-        EBUS_EVENT_ID_RESULT(offsets, element->GetId(), UiTransform2dBus, GetOffsets);
-
-        EBUS_EVENT_ID(element->GetId(), UiTransform2dBus, SetOffsets, (offsets + translation));
-
-        EBUS_EVENT_ID(element->GetId(), UiElementChangeNotificationBus, UiElementPropertyChanged);
-
-        // Return value.
-        {
-            AZ::Matrix4x4 transformToCanvasSpace;
-            EBUS_EVENT_ID(parentElement->GetId(), UiTransformBus, GetTransformToCanvasSpace, transformToCanvasSpace);
-
-            AZ::Vector3 deltaInCanvasSpace3 = transformToCanvasSpace.Multiply3x3(EntityHelpers::MakeVec3(translation));
-            deltaInCanvasSpace = AZ::Vector2(deltaInCanvasSpace3.GetX(), deltaInCanvasSpace3.GetY());
-        }
-    }
-
-    return deltaInCanvasSpace;
-}
-
 void ViewportSnap::Rotate(HierarchyWidget* hierarchy,
     const AZ::EntityId& canvasId,
     AZ::Entity* element,
     float signedAngle)
 {
     bool isSnapping = false;
-    EBUS_EVENT_ID_RESULT(isSnapping, canvasId, UiCanvasBus, GetIsSnapEnabled);
+    EBUS_EVENT_ID_RESULT(isSnapping, canvasId, UiEditorCanvasBus, GetIsSnapEnabled);
 
     if (isSnapping)
     {
@@ -240,7 +61,7 @@ void ViewportSnap::Rotate(HierarchyWidget* hierarchy,
         float snappedRotation = item->GetNonSnappedZRotation();
         {
             float snapRotationInDegrees = 1.0f;
-            EBUS_EVENT_ID_RESULT(snapRotationInDegrees, canvasId, UiCanvasBus, GetSnapRotationDegrees);
+            EBUS_EVENT_ID_RESULT(snapRotationInDegrees, canvasId, UiEditorCanvasBus, GetSnapRotationDegrees);
 
             snappedRotation = EntityHelpers::Snap(snappedRotation, snapRotationInDegrees);
         }
@@ -270,7 +91,7 @@ void ViewportSnap::ResizeByGizmo(HierarchyWidget* hierarchy,
     const AZ::Vector2& translation)
 {
     bool isSnapping = false;
-    EBUS_EVENT_ID_RESULT(isSnapping, canvasId, UiCanvasBus, GetIsSnapEnabled);
+    EBUS_EVENT_ID_RESULT(isSnapping, canvasId, UiEditorCanvasBus, GetIsSnapEnabled);
 
     if (isSnapping)
     {
@@ -285,7 +106,7 @@ void ViewportSnap::ResizeByGizmo(HierarchyWidget* hierarchy,
         UiTransform2dInterface::Offsets snappedOffsets(item->GetNonSnappedOffsets());
         {
             float snapDistance = 1.0f;
-            EBUS_EVENT_ID_RESULT(snapDistance, canvasId, UiCanvasBus, GetSnapDistance);
+            EBUS_EVENT_ID_RESULT(snapDistance, canvasId, UiEditorCanvasBus, GetSnapDistance);
 
             UiTransform2dInterface::Anchors anchors;
             EBUS_EVENT_ID_RESULT(anchors, element->GetId(), UiTransform2dBus, GetAnchors);
@@ -346,7 +167,7 @@ void ViewportSnap::ResizeDirectlyWithScaleOrRotation(HierarchyWidget* hierarchy,
     const UiTransformInterface::RectPoints& translation)
 {
     bool isSnapping = false;
-    EBUS_EVENT_ID_RESULT(isSnapping, canvasId, UiCanvasBus, GetIsSnapEnabled);
+    EBUS_EVENT_ID_RESULT(isSnapping, canvasId, UiEditorCanvasBus, GetIsSnapEnabled);
 
     if (isSnapping)
     {
@@ -363,7 +184,7 @@ void ViewportSnap::ResizeDirectlyWithScaleOrRotation(HierarchyWidget* hierarchy,
             UiTransform2dInterface::Offsets snappedOffsets(item->GetNonSnappedOffsets());
             {
                 float snapDistance = 1.0f;
-                EBUS_EVENT_ID_RESULT(snapDistance, canvasId, UiCanvasBus, GetSnapDistance);
+                EBUS_EVENT_ID_RESULT(snapDistance, canvasId, UiEditorCanvasBus, GetSnapDistance);
 
                 snappedOffsets = EntityHelpers::Snap(snappedOffsets, grabbedEdges, snapDistance);
             }
@@ -394,7 +215,7 @@ void ViewportSnap::ResizeDirectlyNoScaleNoRotation(HierarchyWidget* hierarchy,
     const AZ::Vector2& translation)
 {
     bool isSnapping = false;
-    EBUS_EVENT_ID_RESULT(isSnapping, canvasId, UiCanvasBus, GetIsSnapEnabled);
+    EBUS_EVENT_ID_RESULT(isSnapping, canvasId, UiEditorCanvasBus, GetIsSnapEnabled);
 
     if (isSnapping)
     {
@@ -411,7 +232,7 @@ void ViewportSnap::ResizeDirectlyNoScaleNoRotation(HierarchyWidget* hierarchy,
             UiTransform2dInterface::Offsets snappedOffsets(item->GetNonSnappedOffsets());
             {
                 float snapDistance = 1.0f;
-                EBUS_EVENT_ID_RESULT(snapDistance, canvasId, UiCanvasBus, GetSnapDistance);
+                EBUS_EVENT_ID_RESULT(snapDistance, canvasId, UiEditorCanvasBus, GetSnapDistance);
 
                 snappedOffsets = EntityHelpers::Snap(snappedOffsets, grabbedEdges, snapDistance);
             }

@@ -18,8 +18,6 @@
 
 #include <AzCore/Debug/EventTraceDrillerBus.h>
 
-extern CD3D9Renderer gcpRendD3D;
-
 #define TRACK_RENDERTREAD_WAIT_TIME SScopedExecutionTimeTracker renderThreadWaitTimeTracker(gcpRendD3D->m_fTimeWaitForGPU[gcpRendD3D->m_RP.m_nProcessThreadID]);
 
 struct SScopedExecutionTimeTracker

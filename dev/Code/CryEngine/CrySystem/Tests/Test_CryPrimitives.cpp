@@ -11,6 +11,7 @@
 */
 #include "StdAfx.h"
 #include <AzTest/AzTest.h>
+#include <AzCore/Memory/AllocatorScope.h>
 
 TEST(StringTests, CUT_Strings)
 {
@@ -238,7 +239,26 @@ TEST(StringTests, CUT_Strings)
     EXPECT_TRUE(bOk && !memcmp(bf, "ax\000d", 4));
 }
 
-TEST(CryStringTests, CUT_CryString)
+using CryPrimitivesAllocatorScope = AZ::AllocatorScope<AZ::LegacyAllocator, CryStringAllocator>;
+
+class CryPrimitives
+    : public ::testing::Test
+{
+public:
+    void SetUp() override
+    {
+        m_memory.ActivateAllocators();
+    }
+
+    void TearDown() override
+    {
+        m_memory.DeactivateAllocators();
+    }
+
+    CryPrimitivesAllocatorScope m_memory;
+};
+
+TEST_F(CryPrimitives, CUT_CryString)
 {
     //////////////////////////////////////////////////////////////////////////
     // Based on MS documentation of find_last_of
@@ -267,7 +287,7 @@ TEST(CryStringTests, CUT_CryString)
     EXPECT_TRUE(nPosition == 16);
 
 
-    nPosition = strTestFindLastOfOverload3.find_last_of(cstr3a, 8, 8);
+    nPosition = strTestFindLastOfOverload3.find_last_of(cstr3a, 8, 2);
     EXPECT_TRUE(nPosition == 4);
 
 
@@ -317,7 +337,7 @@ TEST(CryStringTests, CUT_CryString)
 }
 
 
-TEST(FixedStringTests, CUT_FixedString)
+TEST_F(CryPrimitives, CUT_FixedString)
 {
     CryStackStringT<char, 10> str1;
     CryStackStringT<char, 10> str2;
@@ -408,7 +428,7 @@ TEST(FixedStringTests, CUT_FixedString)
 //////////////////////////////////////////////////////////////////////////
 // Unit Testing of aligned_vector
 //////////////////////////////////////////////////////////////////////////
-TEST(AlignedVectorTests, CUT_AlignedVector)
+TEST_F(CryPrimitives, CUT_AlignedVector)
 {
     stl::aligned_vector<int, 16> vec;
 
@@ -420,9 +440,9 @@ TEST(AlignedVectorTests, CUT_AlignedVector)
     EXPECT_TRUE(((INT_PTR)(&vec[0]) % 16) == 0);
 }
 
-TEST(DynamicArrayTests, CUT_DynArray)
+TEST_F(CryPrimitives, CUT_DynArray)
 {
-    DynArray<int> a;
+    LegacyDynArray<int> a;
     a.push_back(3);
     a.insert(&a[0], 1, 1);
     a.insert(&a[1], 1, 2);
@@ -435,7 +455,7 @@ TEST(DynamicArrayTests, CUT_DynArray)
 
     const int nStrs = 11;
     string Strs[nStrs] = { "nought", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten" };
-    DynArray<string> s;
+    LegacyDynArray<string> s;
     for (int i = 0; i < nStrs; i += 2)
     {
         s.push_back(Strs[i]);
@@ -449,7 +469,7 @@ TEST(DynamicArrayTests, CUT_DynArray)
         EXPECT_TRUE(s[i] == Strs[i]);
     }
 
-    DynArray<string> s2 = s;
+    LegacyDynArray<string> s2 = s;
     s.erase(5, 2);
     EXPECT_TRUE(s.size() == nStrs - 2);
 

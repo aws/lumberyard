@@ -67,6 +67,7 @@ namespace AZ
         void GarbageCollectStep(int numberOfSteps) override;
 
         bool Load(const Data::Asset<ScriptAsset>& asset, ScriptContextId id) override;
+        void ClearAssetReferences(Data::AssetId assetBaseId);
         //////////////////////////////////////////////////////////////////////////
 
         //////////////////////////////////////////////////////////////////////////
@@ -157,15 +158,13 @@ namespace AZ
         /// Default require hook installed on new contexts
         int                     DefaultRequireHook(lua_State* l, ScriptContext* context, const char* module);
 
-        void ClearAssetReferences(Data::AssetId assetBaseId);
-
         AZStd::vector<ContextContainer> m_contexts;
 
         // #TEMP: Remove when asset dependencies are in place
         // Used to avoid cascading reloads
         bool m_isReloadQueued = false;
         // Used to store scripts needing reloading
-        AZStd::unordered_set<Data::AssetId> m_assetsAlreadyReloaded;
+        AZStd::unordered_set<Data::AssetId> m_queuedReloads;
         // Used for being alerted when a require()'d script has finished reloading
         void OnAssetReloaded(Data::Asset<Data::AssetData> asset) override;
 

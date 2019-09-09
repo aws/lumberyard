@@ -122,7 +122,7 @@ VAR_INFO_ATTRS(eGPUSpawnIndirection, "Direct: spawn from emitter location, else 
 //Note: we have different maximum particle count for cpu and gpu. Search PARTICLE_PARAMS_MAX_COUNT_GPU for detail. 
 VAR_INFO_ATTRS(fCount, "<Min=0><Max=" STRINGIFY(PARTICLE_PARAMS_MAX_COUNT_CPU) ">Number of particles alive at once")
 VAR_INFO_ATTRS(fBeamCount, "<Max=100>Number of beams alive at once") //Max is arbitrary max reasonable value for this emitter type
-VAR_INFO_ATTRS(fMaintainDensity, "<SoftMax=1> Increase count when emitter moves to maintain spatial density")
+VAR_INFO_ATTRS(fMaintainDensity, "<Min = 0><Max = " STRINGIFY(PARTICLE_PARAMS_MAX_MAINTAIN_DENSITY) "> Increase count when emitter moves to maintain spatial density")
 VAR_INFO_ATTRS(vVelocity, "Simplified speed controller")
 
 //For level of details - Vera, Confetti
@@ -313,6 +313,7 @@ VAR_INFO_ATTRS(fCameraFadeNearStrength, "Strength of the camera distance fade at
 VAR_INFO_ATTRS(fCameraFadeFarStrength, "Strength of the camera distance fade at the far end")
 VAR_INFO_ATTRS(fSortOffset, "<SoftMin=-1> <SoftMax=1> Offset distance used for sorting")
 VAR_INFO_ATTRS(fSortBoundsScale, "<SoftMin=-1> <SoftMax=1> Specify point in emitter for sorting; 1 = bounds nearest, 0 = origin, -1 = bounds farthest")
+VAR_INFO_ATTRS(bDynamicCulling, "Force enable Dynamic Culling. This disables culling of particle simulation to get accurate bounds for render culling.")
 VAR_INFO_ATTRS(bDrawNear, "Render particle in near space (weapon)")
 VAR_INFO_ATTRS(bDrawOnTop, "Render particle on top of everything (no depth test)")
 VAR_INFO_ATTRS(tVisibleIndoors, "Whether visible indoors / outdoors / both")
@@ -337,6 +338,7 @@ VAR_INFO_ATTRS(bVolumeFog, "Use as a participating media of volumetric fog")
 VAR_INFO_ATTRS(fVolumeThickness, "Thickness of participating media, scale for particle size")
 VAR_INFO_ATTRS(nParticleSizeDiscard, "Minimum size in pixels of particle, particles smaller or equal too this value will be discarted")
 VAR_INFO_ATTRS(DepthOfFieldBlur, "Particles will be blurred against depth of field fullscreen effect. (Excluding geometry and decal types)")
+VAR_INFO_ATTRS(FogVolumeShadingQualityHigh, "Particle fog volume shading quality high, fog volumes are handled more accurately.")
 
 ATTRS_INFO("<Group=Configuration>")
 VAR_INFO_ATTRS(eConfigMin, "Minimum config spec this effect runs in")
@@ -352,7 +354,7 @@ VAR_INFO_ATTRS(fZ, "0 - Unlimited, otherwise limit to this size along the Z axis
 STRUCT_INFO_END(ParticleParams::BoundingVolume)
 
 STRUCT_INFO_BEGIN(ParticleParams::SMaintainDensity)
-BASE_INFO(UFloat)
+BASE_INFO(UFloatMaintainDensity)
 VAR_INFO_ATTRS(fReduceLifeTime, "<SoftMax=1> Reduce life time inversely to count increase")
 VAR_INFO_ATTRS(fReduceAlpha, "<SoftMax=1> Reduce alpha inversely to count increase")
 VAR_INFO_ATTRS(fReduceSize, "<SoftMax=1> Reduce size inversely to count increase")

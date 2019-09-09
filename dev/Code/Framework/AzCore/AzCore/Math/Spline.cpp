@@ -104,27 +104,8 @@ namespace AZ
 
         if (BehaviorContext* behaviorContext = azrtti_cast<BehaviorContext*>(context))
         {
-            behaviorContext->Class<Spline>()->
-                Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)->
-                Attribute(Script::Attributes::Storage, Script::Attributes::StorageType::RuntimeOwn)->
-                Method("GetNearestAddressRay", &Spline::GetNearestAddressRay)->
-                Method("GetNearestAddressPosition", &Spline::GetNearestAddressPosition)->
-                Method("GetAddressByDistance", &Spline::GetAddressByDistance)->
-                Method("GetAddressByFraction", &Spline::GetAddressByFraction)->
-                Method("GetPosition", &Spline::GetPosition)->
-                Method("GetNormal", &Spline::GetNormal)->
-                Method("GetTangent", &Spline::GetTangent)->
-                Method("GetLength", &Spline::GetLength)->
-                Method("GetSplineLength", &Spline::GetSplineLength)->
-                Method("GetSegmentLength", &Spline::GetSegmentLength)->
-                Method("GetSegmentCount", &Spline::GetSegmentCount)->
-                Method("GetSegmentGranularity", &Spline::GetSegmentGranularity)->
-                Method("GetAabb", [](Spline* thisPtr, const Transform& transform) { Aabb aabb; thisPtr->GetAabb(aabb, transform); return aabb; })->
-                Method("IsClosed", &Spline::IsClosed)->
-                Property("vertexContainer", BehaviorValueGetter(&Spline::m_vertexContainer), nullptr);
-
             behaviorContext->Class<SplineAddress>()->
-                Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)->
+                Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::List)->
                 Constructor<u64, float>()->
                 Attribute(Script::Attributes::Storage, Script::Attributes::StorageType::Value)->
                 Attribute(Script::Attributes::ConstructorOverride, &Internal::SplineAddressScriptConstructor)->
@@ -144,6 +125,25 @@ namespace AZ
                 Property("splineAddress", [](RaySplineQueryResult* thisPtr) { return thisPtr->m_splineAddress; }, nullptr)->
                 Property("distanceSq", [](RaySplineQueryResult* thisPtr) { return thisPtr->m_distanceSq; }, nullptr)->
                 Property("rayDistance", [](RaySplineQueryResult* thisPtr) { return thisPtr->m_rayDistance; }, nullptr);
+
+            behaviorContext->Class<Spline>()->
+                Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::List)->
+                Attribute(Script::Attributes::Storage, Script::Attributes::StorageType::RuntimeOwn)->
+                Method("GetNearestAddressRay", &Spline::GetNearestAddressRay)->
+                Method("GetNearestAddressPosition", &Spline::GetNearestAddressPosition)->
+                Method("GetAddressByDistance", &Spline::GetAddressByDistance)->
+                Method("GetAddressByFraction", &Spline::GetAddressByFraction)->
+                Method("GetPosition", &Spline::GetPosition)->
+                Method("GetNormal", &Spline::GetNormal)->
+                Method("GetTangent", &Spline::GetTangent)->
+                Method("GetLength", &Spline::GetLength)->
+                Method("GetSplineLength", &Spline::GetSplineLength)->
+                Method("GetSegmentLength", &Spline::GetSegmentLength)->
+                Method("GetSegmentCount", &Spline::GetSegmentCount)->
+                Method("GetSegmentGranularity", &Spline::GetSegmentGranularity)->
+                Method("GetAabb", [](Spline* thisPtr, const Transform& transform) { Aabb aabb; thisPtr->GetAabb(aabb, transform); return aabb; })->
+                Method("IsClosed", &Spline::IsClosed)->
+                Property("vertexContainer", BehaviorValueGetter(&Spline::m_vertexContainer), nullptr);
         }
     }
 
@@ -257,13 +257,16 @@ namespace AZ
 
         /**
          * Update minimum distance struct bases on current distance from spline.
-         * For ray, favour shortest distance along spline, as well as closest point on ray to spline.
+         * For ray, favor shortest distance along spline, as well as closest point on ray to spline.
          * Note: This helps give expected results with parallel lines/splines and rays.
          */
         bool CompareLess(RayMinResult& rayMinResult) const
         {
-            if (m_distanceSq.IsLessThan(rayMinResult.m_minDistanceSq) ||
-                m_distanceSq.IsLessEqualThan(rayMinResult.m_minDistanceSq) && m_rayDistance.IsLessThan(rayMinResult.m_rayDistance))
+            const AZ::VectorFloat delta = m_distanceSq - rayMinResult.m_minDistanceSq;
+            const bool zero = AZ::IsCloseMag(delta, AZ::VectorFloat::CreateZero(), AZ::VectorFloat(0.0001f));
+            const bool lessThan = m_distanceSq.IsLessThan(rayMinResult.m_minDistanceSq);
+
+            if (lessThan || ((zero || lessThan) && m_rayDistance.IsLessThan(rayMinResult.m_rayDistance)))
             {
                 rayMinResult.m_rayDistance = m_rayDistance;
                 rayMinResult.m_minDistanceSq = m_distanceSq;
@@ -560,7 +563,7 @@ namespace AZ
                 ->DataElement(Edit::UIHandlers::Default, &Spline::m_vertexContainer, "Vertices", "Data representing the spline, in the entity's local coordinate space")
                     ->Attribute(Edit::Attributes::AutoExpand, true)
                 ->DataElement(Edit::UIHandlers::CheckBox, &Spline::m_closed, "Closed", "Determine whether a spline is self closing (looping) or not")
-                    ->Attribute(Edit::Attributes::ChangeNotify, &Spline::OnSplineChanged)
+                    ->Attribute(Edit::Attributes::ChangeNotify, &Spline::OnOpenCloseChanged)
                 ;
         }
     }
@@ -569,7 +572,7 @@ namespace AZ
         : m_vertexContainer(
             [this](size_t index) { OnVertexAdded(index); },
             [this](size_t index) { OnVertexRemoved(index); },
-            [this]() { OnSplineChanged(); },
+            [this](size_t) { OnSplineChanged(); },
             [this]() { OnVerticesSet(); },
             [this]() { OnVerticesCleared(); })
     {
@@ -579,43 +582,54 @@ namespace AZ
         : m_vertexContainer(
             [this](size_t index) { OnVertexAdded(index); },
             [this](size_t index) { OnVertexRemoved(index); },
-            [this]() { OnSplineChanged(); },
+            [this](size_t) { OnSplineChanged(); },
             [this]() { OnVerticesSet(); },
             [this]() { OnVerticesCleared(); })
         , m_closed(spline.m_closed)
+        , m_onOpenCloseCallback(nullptr) // note: do not copy the callback, just spline data
     {
         m_vertexContainer.SetVertices(spline.GetVertices());
     }
 
     void Spline::SetCallbacks(
-        const AZStd::function<void()>& OnChangeElement, const AZStd::function<void()>& OnChangeContainer)
+        const VoidFunction& onChangeElement, const VoidFunction& onChangeContainer,
+        const BoolFunction& onOpenClose)
     {
         m_vertexContainer.SetCallbacks(
-            [this, OnChangeContainer](size_t index) { OnVertexAdded(index); if (OnChangeContainer) { OnChangeContainer(); } },
-            [this, OnChangeContainer](size_t index) { OnVertexRemoved(index); if (OnChangeContainer) { OnChangeContainer(); } },
-            [this, OnChangeElement]() { OnSplineChanged(); if (OnChangeElement) { OnChangeElement(); } },
-            [this, OnChangeContainer]() { OnVerticesSet(); if (OnChangeContainer) { OnChangeContainer(); } },
-            [this, OnChangeContainer]() { OnVerticesCleared(); if (OnChangeContainer) { OnChangeContainer(); } });
+            [this, onChangeContainer](const size_t index) { OnVertexAdded(index); if (onChangeContainer) { onChangeContainer(); } },
+            [this, onChangeContainer](const size_t index) { OnVertexRemoved(index); if (onChangeContainer) { onChangeContainer(); } },
+            [this, onChangeElement](const size_t) { OnSplineChanged(); if (onChangeElement) { onChangeElement(); } },
+            [this, onChangeContainer]() { OnVerticesSet(); if (onChangeContainer) { onChangeContainer(); } },
+            [this, onChangeContainer]() { OnVerticesCleared(); if (onChangeContainer) { onChangeContainer(); } });
+
+        m_onOpenCloseCallback = onOpenClose;
     }
 
     void Spline::SetCallbacks(
-        const AZStd::function<void(size_t)>& OnAddVertex, const AZStd::function<void(size_t)>& OnRemoveVertex,
-        const AZStd::function<void()>& OnUpdateVertex, const AZStd::function<void()>& OnSetVertices,
-        const AZStd::function<void()>& OnClearVertices)
+        const IndexFunction& onAddVertex, const IndexFunction& onRemoveVertex,
+        const IndexFunction& onUpdateVertex, const VoidFunction& onSetVertices,
+        const VoidFunction& onClearVertices, const BoolFunction& onOpenClose)
     {
         m_vertexContainer.SetCallbacks(
-            [this, OnAddVertex](size_t index) { OnVertexAdded(index); if (OnAddVertex) { OnAddVertex(index); } },
-            [this, OnRemoveVertex](size_t index) { OnVertexRemoved(index); if (OnRemoveVertex) { OnRemoveVertex(index); } },
-            [this, OnUpdateVertex]() { OnSplineChanged(); if (OnUpdateVertex) { OnUpdateVertex(); } },
-            [this, OnSetVertices]() { OnVerticesSet(); if (OnSetVertices) { OnSetVertices(); } },
-            [this, OnClearVertices]() { OnVerticesCleared(); if (OnClearVertices) { OnClearVertices(); } });
+            [this, onAddVertex](const size_t index) { OnVertexAdded(index); if (onAddVertex) { onAddVertex(index); } },
+            [this, onRemoveVertex](const size_t index) { OnVertexRemoved(index); if (onRemoveVertex) { onRemoveVertex(index); } },
+            [this, onUpdateVertex](const size_t index) { OnSplineChanged(); if (onUpdateVertex) { onUpdateVertex(index); } },
+            [this, onSetVertices]() { OnVerticesSet(); if (onSetVertices) { onSetVertices(); } },
+            [this, onClearVertices]() { OnVerticesCleared(); if (onClearVertices) { onClearVertices(); } });
+
+        m_onOpenCloseCallback = onOpenClose;
     }
 
-    void Spline::SetClosed(bool closed)
+    void Spline::SetClosed(const bool closed)
     {
         if (closed != m_closed)
         {
             m_closed = closed;
+
+            if (m_onOpenCloseCallback)
+            {
+                m_onOpenCloseCallback(closed);
+            }
         }
     }
 
@@ -637,6 +651,16 @@ namespace AZ
 
     void Spline::OnSplineChanged()
     {
+    }
+
+    void Spline::OnOpenCloseChanged()
+    {
+        if (m_onOpenCloseCallback)
+        {
+            m_onOpenCloseCallback(m_closed);
+        }
+
+        OnSplineChanged();
     }
 
     RaySplineQueryResult LinearSpline::GetNearestAddressRay(const Vector3& localRaySrc, const Vector3& localRayDir) const
@@ -724,7 +748,7 @@ namespace AZ
 
     float LinearSpline::GetSplineLength() const
     {
-        size_t vertexCount = GetVertexCount();
+        const size_t vertexCount = GetVertexCount();
         return vertexCount > 1
                ? GetSplineLengthInternal(*this, 0, GetLastVertexDefault(m_closed, vertexCount))
                : 0.0f;
@@ -737,7 +761,7 @@ namespace AZ
             return 0.0f;
         }
 
-        size_t nextIndex = (index + 1) % GetVertexCount();
+        const size_t nextIndex = (index + 1) % GetVertexCount();
         return (GetVertex(nextIndex) - GetVertex(index)).GetLength();
     }
 
@@ -786,7 +810,7 @@ namespace AZ
     BezierSpline::BezierSpline(const Spline& spline)
         : Spline(spline)
     {
-        size_t vertexCount = spline.GetVertexCount();
+        const size_t vertexCount = spline.GetVertexCount();
 
         BezierData bezierData;
         m_bezierData.reserve(vertexCount);
@@ -805,7 +829,7 @@ namespace AZ
 
     RaySplineQueryResult BezierSpline::GetNearestAddressRay(const Vector3& localRaySrc, const Vector3& localRayDir) const
     {
-        size_t vertexCount = GetVertexCount();
+        const size_t vertexCount = GetVertexCount();
         return vertexCount > 1
             ? GetNearestAddressInternal<RayQuery, RayIntermediateQueryResult, RaySplineQueryResult, RayMinResult>(
                 *this, 0, GetLastVertexDefault(m_closed, vertexCount), GetSegmentGranularity(), RayQuery(localRaySrc, localRayDir))
@@ -814,7 +838,7 @@ namespace AZ
 
     PositionSplineQueryResult BezierSpline::GetNearestAddressPosition(const Vector3& localPos) const
     {
-        size_t vertexCount = GetVertexCount();
+        const size_t vertexCount = GetVertexCount();
         return vertexCount > 1
             ? GetNearestAddressInternal<PosQuery, PosIntermediateQueryResult, PositionSplineQueryResult, PosMinResult>(
                 *this, 0, GetLastVertexDefault(m_closed, vertexCount), GetSegmentGranularity(), PosQuery(localPos))
@@ -823,7 +847,7 @@ namespace AZ
 
     SplineAddress BezierSpline::GetAddressByDistance(float distance) const
     {
-        size_t vertexCount = GetVertexCount();
+        const size_t vertexCount = GetVertexCount();
         return vertexCount > 1
             ? GetAddressByDistanceInternal(*this, 0, GetLastVertexDefault(m_closed, vertexCount), distance)
             : SplineAddress();
@@ -831,7 +855,7 @@ namespace AZ
 
     SplineAddress BezierSpline::GetAddressByFraction(float fraction) const
     {
-        size_t vertexCount = GetVertexCount();
+        const size_t vertexCount = GetVertexCount();
         return vertexCount > 1
             ? GetAddressByFractionInternal(*this, 0, GetLastVertexDefault(m_closed, vertexCount), fraction)
             : SplineAddress();
@@ -936,7 +960,7 @@ namespace AZ
 
     Vector3 BezierSpline::GetTangent(const SplineAddress& splineAddress) const
     {
-        size_t segmentCount = GetSegmentCount();
+        const size_t segmentCount = GetSegmentCount();
         if (segmentCount == 0)
         {
             return Vector3::CreateAxisX();
@@ -970,7 +994,7 @@ namespace AZ
 
     float BezierSpline::GetSplineLength() const
     {
-        size_t vertexCount = GetVertexCount();
+        const size_t vertexCount = GetVertexCount();
         return vertexCount > 1
                ? GetSplineLengthInternal(*this, 0, GetLastVertexDefault(m_closed, vertexCount))
                : 0.0f;
@@ -995,7 +1019,7 @@ namespace AZ
 
     void BezierSpline::GetAabb(Aabb& aabb, const Transform& transform /*= Transform::CreateIdentity()*/) const
     {
-        size_t vertexCount = GetVertexCount();
+        const size_t vertexCount = GetVertexCount();
         if (vertexCount > 1)
         {
             CalculateAabbPiecewise(*this, 0, GetLastVertexDefault(m_closed, vertexCount), aabb, transform);
@@ -1050,7 +1074,7 @@ namespace AZ
         return *this;
     }
 
-    void BezierSpline::OnVertexAdded(size_t index)
+    void BezierSpline::OnVertexAdded(const size_t index)
     {
         Spline::OnVertexAdded(index);
         AddBezierDataForIndex(index);
@@ -1096,7 +1120,7 @@ namespace AZ
         CalculateBezierAngles(startIndex, range, iterations);
     }
 
-    void BezierSpline::BezierAnglesCorrectionRange(size_t index, size_t range)
+    void BezierSpline::BezierAnglesCorrectionRange(const size_t index, const size_t range)
     {
         const size_t vertexCount = GetVertexCount();
         AZ_Assert(range < vertexCount, "Range should be less than vertexCount to prevent wrap around");
@@ -1283,7 +1307,7 @@ namespace AZ
 
     RaySplineQueryResult CatmullRomSpline::GetNearestAddressRay(const Vector3& localRaySrc, const Vector3& localRayDir) const
     {
-        size_t vertexCount = GetVertexCount();
+        const size_t vertexCount = GetVertexCount();
         return vertexCount > 3
             ? GetNearestAddressInternal<RayQuery, RayIntermediateQueryResult, RaySplineQueryResult, RayMinResult>(
                 *this, m_closed ? 0 : 1, GetLastVertexCatmullRom(m_closed, vertexCount), GetSegmentGranularity(), RayQuery(localRaySrc, localRayDir))
@@ -1292,7 +1316,7 @@ namespace AZ
 
     PositionSplineQueryResult CatmullRomSpline::GetNearestAddressPosition(const Vector3& localPos) const
     {
-        size_t vertexCount = GetVertexCount();
+        const size_t vertexCount = GetVertexCount();
         return vertexCount > 3
             ? GetNearestAddressInternal<PosQuery, PosIntermediateQueryResult, PositionSplineQueryResult, PosMinResult>(
                 *this, m_closed ? 0 : 1, GetLastVertexCatmullRom(m_closed, vertexCount), GetSegmentGranularity(), PosQuery(localPos))
@@ -1301,7 +1325,7 @@ namespace AZ
 
     SplineAddress CatmullRomSpline::GetAddressByDistance(float distance) const
     {
-        size_t vertexCount = GetVertexCount();
+        const size_t vertexCount = GetVertexCount();
         return vertexCount > 3
             ? GetAddressByDistanceInternal(*this, m_closed ? 0 : 1, GetLastVertexCatmullRom(m_closed, vertexCount), distance)
             : SplineAddress();
@@ -1309,7 +1333,7 @@ namespace AZ
 
     SplineAddress CatmullRomSpline::GetAddressByFraction(float fraction) const
     {
-        size_t vertexCount = GetVertexCount();
+        const size_t vertexCount = GetVertexCount();
         return vertexCount > 3
             ? GetAddressByFractionInternal(*this, m_closed ? 0 : 1, GetLastVertexCatmullRom(m_closed, vertexCount), fraction)
             : SplineAddress();
@@ -1449,7 +1473,7 @@ namespace AZ
 
     float CatmullRomSpline::GetSplineLength() const
     {
-        size_t vertexCount = GetVertexCount();
+        const size_t vertexCount = GetVertexCount();
         return vertexCount > 3
                ? GetSplineLengthInternal(*this, m_closed ? 0 : 1, GetLastVertexCatmullRom(m_closed, vertexCount))
                : 0.0f;
@@ -1472,14 +1496,14 @@ namespace AZ
     size_t CatmullRomSpline::GetSegmentCount() const
     {
         // Catmull-Rom spline must have at least four vertices to be valid.
-        size_t vertexCount = GetVertexCount();
+        const size_t vertexCount = GetVertexCount();
         return vertexCount > 3 ? (m_closed ? vertexCount : vertexCount - 3) : 0;
     }
 
     // Gets the Aabb of the vertices in the spline
     void CatmullRomSpline::GetAabb(Aabb& aabb, const Transform& transform /*= Transform::CreateIdentity()*/) const
     {
-        size_t vertexCount = GetVertexCount();
+        const size_t vertexCount = GetVertexCount();
         if (vertexCount > 3)
         {
             CalculateAabbPiecewise(*this, m_closed ? 0 : 1, GetLastVertexCatmullRom(m_closed, vertexCount), aabb, transform);

@@ -12,6 +12,7 @@
 #ifndef AZ_UNITY_BUILD
 
 #include <AzCore/PlatformIncl.h>
+#include <AzCore/AzCoreModule.h>
 
 #include <AzCore/Casting/numeric_cast.h>
 
@@ -25,7 +26,6 @@
 
 #include <AzCore/RTTI/AttributeReader.h>
 #include <AzCore/RTTI/BehaviorContext.h>
-#include <AzCore/RTTI/AzStdReflectionComponent.h>
 
 #include <AzCore/Module/Module.h>
 #include <AzCore/Module/ModuleManager.h>
@@ -39,22 +39,13 @@
 #include <AzCore/Debug/ProfilerDriller.h>
 #include <AzCore/Debug/EventTraceDriller.h>
 
-#include <AzCore/Asset/AssetManagerComponent.h>
-#include <AzCore/UserSettings/UserSettingsComponent.h>
-#include <AzCore/Memory/MemoryComponent.h>
-#include <AzCore/Debug/FrameProfilerComponent.h>
-#include <AzCore/IO/StreamerComponent.h>
-#include <AzCore/Jobs/JobManagerComponent.h>
-#include <AzCore/Serialization/ObjectStreamComponent.h>
-#include <AzCore/Script/ScriptSystemComponent.h>
-
-#include <AzCore/Slice/SliceComponent.h>
-#include <AzCore/Slice/SliceSystemComponent.h>
-#include <AzCore/Slice/SliceMetadataInfoComponent.h>
+#include <AzCore/Script/ScriptSystemBus.h>
 
 #include <AzCore/Math/PolygonPrism.h>
 #include <AzCore/Math/Spline.h>
 #include <AzCore/Math/VertexContainer.h>
+
+#include <AzCore/UserSettings/UserSettingsComponent.h>
 
 #include <AzCore/XML/rapidxml.h>
 
@@ -237,7 +228,7 @@ namespace AZ
         m_isStarted = false;
         m_isSystemAllocatorOwner = false;
         m_isOSAllocatorOwner = false;
-        m_memoryBlock = nullptr;
+        m_fixedMemoryBlock = nullptr;
         m_osAllocator = nullptr;
         m_currentTime = AZStd::chrono::system_clock::time_point::max();
         m_drillerManager = nullptr;
@@ -297,8 +288,9 @@ namespace AZ
 
         AZ::SystemAllocator::Descriptor desc;
 
-        // Create temporary system allocator
-        bool isExistingSystemAllocator = AZ::AllocatorInstance<AZ::SystemAllocator>::IsReady();
+        // Create temporary system allocator to initialize the serialization context, after that the SystemAllocator
+        // will be created by CreateSystemAllocator
+        const bool isExistingSystemAllocator = AZ::AllocatorInstance<AZ::SystemAllocator>::IsReady();
 
         if (!isExistingSystemAllocator)
         {
@@ -307,9 +299,9 @@ namespace AZ
                 TemporaryBlockSize = 10 *  1024 * 1024
             };
 
-            desc.m_heap.m_numMemoryBlocks = 1;
-            desc.m_heap.m_memoryBlocksByteSize[0] = TemporaryBlockSize;
-            desc.m_heap.m_memoryBlocks[0] = m_osAllocator->Allocate(desc.m_heap.m_memoryBlocksByteSize[0], desc.m_heap.m_memoryBlockAlignment);
+            desc.m_heap.m_numFixedMemoryBlocks = 1;
+            desc.m_heap.m_fixedMemoryBlocksByteSize[0] = TemporaryBlockSize;
+            desc.m_heap.m_fixedMemoryBlocks[0] = m_osAllocator->Allocate(desc.m_heap.m_fixedMemoryBlocksByteSize[0], desc.m_heap.m_memoryBlockAlignment);
             AZ::AllocatorInstance<AZ::SystemAllocator>::Create(desc);
         }
 
@@ -317,14 +309,14 @@ namespace AZ
         {
             SerializeContext sc;
             Descriptor::Reflect(&sc, this);
-            ObjectStream::LoadBlocking(&stream, sc, nullptr, ObjectStream::FilterDescriptor(ObjectStream::AssetFilterNoAssetLoading, ObjectStream::FILTERFLAG_IGNORE_UNKNOWN_CLASSES));
+            ObjectStream::LoadBlocking(&stream, sc, nullptr, ObjectStream::FilterDescriptor(&AZ::Data::AssetFilterNoAssetLoading, ObjectStream::FILTERFLAG_IGNORE_UNKNOWN_CLASSES));
         }
 
         // Destroy the temp system allocator
         if (!isExistingSystemAllocator)
         {
             AZ::AllocatorInstance<AZ::SystemAllocator>::Destroy();
-            m_osAllocator->DeAllocate(desc.m_heap.m_memoryBlocks[0], desc.m_heap.m_memoryBlocksByteSize[0], desc.m_heap.m_memoryBlockAlignment);
+            m_osAllocator->DeAllocate(desc.m_heap.m_fixedMemoryBlocks[0], desc.m_heap.m_fixedMemoryBlocksByteSize[0], desc.m_heap.m_memoryBlockAlignment);
         }
 
         CreateCommon();
@@ -353,7 +345,7 @@ namespace AZ
                 AZ_Error("ComponentApplication", false, "Unknown class type %p %s", classPtr, idStr);
             }
         }, 
-            ObjectStream::FilterDescriptor(ObjectStream::AssetFilterNoAssetLoading, ObjectStream::FILTERFLAG_IGNORE_UNKNOWN_CLASSES));
+            ObjectStream::FilterDescriptor(&AZ::Data::AssetFilterNoAssetLoading, ObjectStream::FILTERFLAG_IGNORE_UNKNOWN_CLASSES));
         // we cannot load assets during system bootstrap since we haven't even got the catalog yet.  But we can definitely read their IDs.
 
         AZ_Assert(systemEntity, "SystemEntity failed to load!");
@@ -449,11 +441,9 @@ namespace AZ
             }
 #endif
         }
-        // Load static modules if provided by the platform
-        if (m_startupParameters.m_createStaticModulesCallback)
-        {
-            ModuleManagerRequestBus::Broadcast(&ModuleManagerRequests::LoadStaticModules, m_startupParameters.m_createStaticModulesCallback, ModuleInitializationSteps::RegisterComponentDescriptors);
-        }
+
+        // Load static modules
+        ModuleManagerRequestBus::Broadcast(&ModuleManagerRequests::LoadStaticModules, AZStd::bind(&ComponentApplication::CreateStaticModules, this, AZStd::placeholders::_1), ModuleInitializationSteps::RegisterComponentDescriptors);
     }
 
     //=========================================================================
@@ -470,6 +460,8 @@ namespace AZ
         
         SystemTickBus::ExecuteQueuedEvents();
         SystemTickBus::AllowFunctionQueuing(false);
+
+        AZ::UserSettingsComponentRequestBus::Broadcast(&AZ::UserSettingsComponentRequests::Finalize);
 
         // deactivate all entities
         Entity* systemEntity = nullptr;
@@ -493,8 +485,9 @@ namespace AZ
         // This problem could also be solved by using ref-counting for reflected data.
         ScriptSystemRequestBus::Broadcast(&ScriptSystemRequests::GarbageCollect);
 
-        // Uninit and unload any dynamic modules.
-        m_moduleManager.reset();
+        // Deactivate all module entities before the System Entity is deactivated, but do not unload the modules as
+        // components on the SystemEntity are allowed to reference module data at this point.
+        m_moduleManager->DeactivateEntities();
 
         // deactivate all system components
         if (systemEntity)
@@ -503,15 +496,20 @@ namespace AZ
             {
                 systemEntity->Deactivate();
             }
-
-            delete systemEntity;
         }
 
         m_entities.clear();
         m_entities.rehash(0); // force free all memory
 
-
         DestroyReflectionManager();
+
+        // Uninit and unload any dynamic modules.
+        m_moduleManager.reset();
+
+        if (systemEntity)
+        {
+            delete systemEntity;
+        }
 
         // delete all descriptors left for application clean up
         EBUS_EVENT(ComponentDescriptorBus, ReleaseDescriptor);
@@ -534,11 +532,11 @@ namespace AZ
         {
             AZ::AllocatorInstance<AZ::SystemAllocator>::Destroy();
 
-            if (m_memoryBlock != nullptr)
+            if (m_fixedMemoryBlock)
             {
-                m_osAllocator->DeAllocate(m_memoryBlock);
+                m_osAllocator->DeAllocate(m_fixedMemoryBlock);
             }
-            m_memoryBlock = nullptr;
+            m_fixedMemoryBlock = nullptr;
             m_isSystemAllocatorOwner = false;
         }
 
@@ -578,7 +576,6 @@ namespace AZ
             AZ::SystemAllocator::Descriptor desc;
             desc.m_heap.m_pageSize = m_descriptor.m_pageSize;
             desc.m_heap.m_poolPageSize = m_descriptor.m_poolPageSize;
-            desc.m_heap.m_numMemoryBlocks = 1;
             if (m_descriptor.m_grabAllMemory)
             {
                 // grab all available memory
@@ -588,23 +585,21 @@ namespace AZ
                 AZ_Warning("Memory", false, "This platform is not supported for grabAllMemory flag! Provide a valid allocation size and set the m_grabAllMemory flag to false! Using default max memory size %llu!", availableOS);
                 AZ_Assert(availableOS > 0, "OS doesn't have any memory available!");
                 // compute total memory to grab
-                desc.m_heap.m_memoryBlocksByteSize[0] = static_cast<size_t>(availableOS - reservedOS - reservedDbg);
+                desc.m_heap.m_fixedMemoryBlocksByteSize[0] = static_cast<size_t>(availableOS - reservedOS - reservedDbg);
                 // memory block MUST be a multiple of pages
-                desc.m_heap.m_memoryBlocksByteSize[0] = AZ::SizeAlignDown(desc.m_heap.m_memoryBlocksByteSize[0], m_descriptor.m_pageSize);
+                desc.m_heap.m_fixedMemoryBlocksByteSize[0] = AZ::SizeAlignDown(desc.m_heap.m_fixedMemoryBlocksByteSize[0], m_descriptor.m_pageSize);
             }
             else
             {
-                desc.m_heap.m_memoryBlocksByteSize[0] = static_cast<size_t>(m_descriptor.m_memoryBlocksByteSize);
+                desc.m_heap.m_fixedMemoryBlocksByteSize[0] = static_cast<size_t>(m_descriptor.m_memoryBlocksByteSize);
             }
 
+            if (desc.m_heap.m_fixedMemoryBlocksByteSize[0] > 0) // 0 means one demand memory which we support
             {
-                if (desc.m_heap.m_memoryBlocksByteSize[0] > 0) // 0 means one demand memory which we support
-                {
-                    m_memoryBlock = m_osAllocator->Allocate(desc.m_heap.m_memoryBlocksByteSize[0], m_descriptor.m_memoryBlockAlignment);
-                }
+                m_fixedMemoryBlock = m_osAllocator->Allocate(desc.m_heap.m_fixedMemoryBlocksByteSize[0], m_descriptor.m_memoryBlockAlignment);
+                desc.m_heap.m_fixedMemoryBlocks[0] = m_fixedMemoryBlock;
+                desc.m_heap.m_numFixedMemoryBlocks = 1;
             }
-
-            desc.m_heap.m_memoryBlocks[0] = m_memoryBlock;
             desc.m_allocationRecords = m_descriptor.m_allocationRecords;
             desc.m_stackRecordLevels = aznumeric_caster(m_descriptor.m_stackRecordLevels);
             AZ::AllocatorInstance<AZ::SystemAllocator>::Create(desc);
@@ -672,7 +667,11 @@ namespace AZ
     //=========================================================================
     bool ComponentApplication::AddEntity(Entity* entity)
     {
-        EBUS_EVENT(ComponentApplicationEventBus, OnEntityAdded, entity);
+        AZ_Error("ComponentApplication", entity, "Input entity is null, cannot add entity");
+        if (!entity)
+        {
+            return false;
+        }
 
         return m_entities.insert(AZStd::make_pair(entity->GetId(), entity)).second;
     }
@@ -683,7 +682,11 @@ namespace AZ
     //=========================================================================
     bool ComponentApplication::RemoveEntity(Entity* entity)
     {
-        EBUS_EVENT(ComponentApplicationEventBus, OnEntityRemoved, entity->GetId());
+        AZ_Error("ComponentApplication", entity, "Input entity is null, cannot remove entity");
+        if (!entity)
+        {
+            return false;
+        }
 
         return (m_entities.erase(entity->GetId()) == 1);
     }
@@ -780,6 +783,19 @@ namespace AZ
     }
 
     //=========================================================================
+    // CreateStaticModules
+    //=========================================================================
+    void ComponentApplication::CreateStaticModules(AZStd::vector<AZ::Module*>& outModules)
+    {
+        if (m_startupParameters.m_createStaticModulesCallback)
+        {
+            m_startupParameters.m_createStaticModulesCallback(outModules);
+        }
+
+        outModules.emplace_back(aznew AzCoreModule());
+    }
+
+    //=========================================================================
     // Tick
     //=========================================================================
     void ComponentApplication::Tick(float deltaOverride /*= -1.f*/)
@@ -871,27 +887,9 @@ namespace AZ
 
     //=========================================================================
     // RegisterCoreComponents
-    // [5/30/2012]
     //=========================================================================
     void ComponentApplication::RegisterCoreComponents()
     {
-        RegisterComponentDescriptor(AzStdReflectionComponent::CreateDescriptor());
-        RegisterComponentDescriptor(MemoryComponent::CreateDescriptor());
-        RegisterComponentDescriptor(StreamerComponent::CreateDescriptor());
-        RegisterComponentDescriptor(JobManagerComponent::CreateDescriptor());
-        RegisterComponentDescriptor(AssetManagerComponent::CreateDescriptor());
-        RegisterComponentDescriptor(ObjectStreamComponent::CreateDescriptor());
-        RegisterComponentDescriptor(UserSettingsComponent::CreateDescriptor());
-        RegisterComponentDescriptor(Debug::FrameProfilerComponent::CreateDescriptor());
-        RegisterComponentDescriptor(SliceComponent::CreateDescriptor());
-        RegisterComponentDescriptor(SliceSystemComponent::CreateDescriptor());
-        RegisterComponentDescriptor(SliceMetadataInfoComponent::CreateDescriptor());
-
-
-#if !defined(AZCORE_EXCLUDE_LUA)
-        RegisterComponentDescriptor(ScriptSystemComponent::CreateDescriptor());
-#endif // #if !defined(AZCORE_EXCLUDE_LUA)
-
     }
 
     //=========================================================================
@@ -980,7 +978,11 @@ namespace AZ
         }
 
 #if defined(AZ_RESTRICTED_PLATFORM)
-#include AZ_RESTRICTED_FILE(ComponentApplication_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/ComponentApplication_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/ComponentApplication_cpp_provo.inl"
+    #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
 #undef AZ_RESTRICTED_SECTION_IMPLEMENTED
@@ -1012,16 +1014,7 @@ namespace AZ
 
         // exeDirectory currently contains full path to EXE.
         // Modify to end the string after the last '/'
-
-        // Iterate until finding last '/'
-        char* finalSlash = nullptr;
-        for (char* c = exeDirectory; c < exeDirEnd; ++c)
-        {
-            if (*c == '/')
-            {
-                finalSlash = c;
-            }
-        }
+        char* finalSlash = strrchr(exeDirectory, '/');
 
         // If no slashes found, path invalid.
         if (finalSlash)
@@ -1034,7 +1027,97 @@ namespace AZ
         }
 
         azstrcpy(m_exeDirectory, AZ_ARRAY_SIZE(m_exeDirectory), exeDirectory);
+
+        CalculateBinFolder();
+
 #endif
+    }
+    /// Calculates the Bin folder name where the application is running from (off of the engine root folder)
+    void ComponentApplication::CalculateBinFolder()
+    {
+        azstrcpy(m_binFolder, AZ_ARRAY_SIZE(m_binFolder), "");
+
+#if !defined(AZ_RESTRICTED_PLATFORM) && !defined(AZ_PLATFORM_ANDROID) && !defined(AZ_PLATFORM_APPLE_TV) && !defined(AZ_PLATFORM_APPLE_IOS)
+        if (strlen(m_exeDirectory) > 0)
+        {
+            bool engineMarkerFound = false;
+            // Prepare a working mutable path initialized with the current exe path
+            char workingExeDirectory[AZ_MAX_PATH_LEN];
+            azstrcpy(workingExeDirectory, AZ_ARRAY_SIZE(workingExeDirectory), m_exeDirectory);
+
+            const char* lastCheckFolderName = "";
+
+            // Calculate the bin folder name by walking up the path folders until we find the 'engine.json' file marker
+            size_t checkFolderIndex = strlen(workingExeDirectory);
+            if (checkFolderIndex > 0)
+            {
+                checkFolderIndex--; // Skip the right-most trailing slash since exeDirectory represents a folder
+                while (true)
+                {
+                    // Eat up all trailing slashes
+                    while ((checkFolderIndex > 0) && workingExeDirectory[checkFolderIndex] == '/')
+                    {
+                        workingExeDirectory[checkFolderIndex] = '\0';
+                        checkFolderIndex--;
+                    }
+                    // Check if the current index is the drive letter separater
+                    if (workingExeDirectory[checkFolderIndex] == ':')
+                    {
+                        // If we reached a drive letter separator, then use the last check folder 
+                        // name as the bin folder since we cant go any higher
+                        break;
+                    }
+                    else
+                    {
+
+                        // Find the next path separator
+                        while ((checkFolderIndex > 0) && workingExeDirectory[checkFolderIndex] != '/')
+                        {
+                            checkFolderIndex--;
+                        }
+                    }
+                    // Split the path and folder and test for engine.json
+                    if (checkFolderIndex > 0)
+                    {
+                        lastCheckFolderName = &workingExeDirectory[checkFolderIndex + 1];
+                        workingExeDirectory[checkFolderIndex] = '\0';
+                        if (CheckPathForEngineMarker(workingExeDirectory))
+                        {
+                            // engine.json was found at the folder, break now to register the lastCheckFolderName as the bin folder
+                            engineMarkerFound = true;
+
+                            // Set the bin folder name only if the engine marker was found
+                            azstrcpy(m_binFolder, AZ_ARRAY_SIZE(m_binFolder), lastCheckFolderName);
+
+                            break;
+                        }
+                        checkFolderIndex--;
+                    }
+                    else
+                    {
+                        // We've reached the beginning, break out of the loop
+                        break;
+                    }
+                }
+                AZ_Warning("ComponentApplication", engineMarkerFound, "Unable to determine Bin folder. Cannot locate engine marker file 'engine.json'");
+            }
+        }
+#endif // !defined(AZ_RESTRICTED_PLATFORM) && !defined(AZ_PLATFORM_ANDROID) && !defined(AZ_PLATFORM_APPLE_TV) && !defined(AZ_PLATFORM_APPLE_IOS)
+    }
+
+    //=========================================================================
+    // CheckEngineMarkerFile
+    //=========================================================================
+    bool ComponentApplication::CheckPathForEngineMarker(const char* fullPath) const
+    {
+        static const char* engineMarkerFileName = "engine.json";
+        char engineMarkerFullPathToCheck[AZ_MAX_PATH_LEN] = "";
+
+        azstrcpy(engineMarkerFullPathToCheck, AZ_ARRAY_SIZE(engineMarkerFullPathToCheck), fullPath);
+        azstrcat(engineMarkerFullPathToCheck, AZ_ARRAY_SIZE(engineMarkerFullPathToCheck), "/");
+        azstrcat(engineMarkerFullPathToCheck, AZ_ARRAY_SIZE(engineMarkerFullPathToCheck), engineMarkerFileName);
+
+        return AZ::IO::SystemFile::Exists(engineMarkerFullPathToCheck);
     }
 
     //=========================================================================

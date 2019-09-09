@@ -49,7 +49,7 @@ public:
     virtual void FX_Commit(bool bAllowDIP = false) override {}
     virtual long FX_SetVertexDeclaration(int StreamMask, const AZ::Vertex::Format& vertexFormat) override { return 0; }
     virtual void FX_DrawIndexedPrimitive(const eRenderPrimitiveType eType, const int nVBOffset, const int nMinVertexIndex, const int nVerticesCount, const int nStartIndex, const int nNumIndices, bool bInstanced = false) override {}
-    virtual SDepthTexture* FX_GetDepthSurface(int nWidth, int nHeight, bool bAA) override { return nullptr; }
+    virtual SDepthTexture* FX_GetDepthSurface(int nWidth, int nHeight, bool bAA, bool shaderResourceView = false) override { return nullptr; }
     virtual long FX_SetIStream(const void* pB, uint32 nOffs, RenderIndexType idxType) override { return -1; }
     virtual long FX_SetVStream(int nID, const void* pB, uint32 nOffs, uint32 nStride, uint32 nFreq = 1) override { return -1; }
     virtual void FX_DrawPrimitive(const eRenderPrimitiveType eType, const int nStartVertex, const int nVerticesCount, const int nInstanceVertices = 0) {}
@@ -89,8 +89,9 @@ public:
 
     virtual int  CreateRenderTarget(const char* name, int nWidth, int nHeight, const ColorF& cClear, ETEX_Format eTF = eTF_R8G8B8A8);
     virtual bool DestroyRenderTarget(int nHandle);
+    virtual bool ResizeRenderTarget(int nHandle, int nWidth, int nHeight);
     virtual bool SetRenderTarget(int nHandle, SDepthTexture* pDepthSurf = nullptr);
-    virtual SDepthTexture* CreateDepthSurface(int nWidth, int nHeight);
+    virtual SDepthTexture* CreateDepthSurface(int nWidth, int nHeight, bool shaderResourceView = false);
     virtual void DestroyDepthSurface(SDepthTexture* pDepthSurf);
 
     virtual int GetOcclusionBuffer(uint16* pOutOcclBuffer, Matrix44* pmCamBuffe);
@@ -132,6 +133,7 @@ public:
     virtual void    RT_ReleaseCB(void*){}
 
     virtual void DrawDynVB(SVF_P3F_C4B_T2F* pBuf, uint16* pInds, int nVerts, int nInds, const PublicRenderPrimitiveType nPrimType);
+    virtual void DrawDynUiPrimitiveList(DynUiPrimitiveList& primitives, int totalNumVertices, int totalNumIndices);
 
     virtual void  DrawBuffer(CVertexBuffer* pVBuf, CIndexBuffer* pIBuf, int nNumIndices, int nOffsIndex, const PublicRenderPrimitiveType nPrmode, int nVertStart = 0, int nVertStop = 0);
 
@@ -274,8 +276,8 @@ public:
     virtual bool ScreenShot(const char* filename = NULL, int width = 0);
 
     virtual void Set2DMode(uint32 orthoX, uint32 orthoY, TransformationMatrices& backupMatrices, float znear = -1e10f, float zfar = 1e10f) {}
-
     virtual void Unset2DMode(const TransformationMatrices& restoringMatrices) {}
+    virtual void Set2DModeNonZeroTopLeft(float orthoLeft, float orthoTop, float orthoWidth, float orthoHeight, TransformationMatrices& backupMatrices, float znear = -1e10f, float zfar = 1e10f) {}
 
     virtual int ScreenToTexture(int nTexID);
 
@@ -323,10 +325,12 @@ public:
     virtual IColorGradingController* GetIColorGradingController();
     virtual IStereoRenderer* GetIStereoRenderer();
 
+    virtual ITexture* Create2DTexture(const char* name, int width, int height, int numMips, int flags, unsigned char* data, ETEX_Format format);
+
     //////////////////////////////////////////////////////////////////////
     // Replacement functions for the Font engine ( vlad: for font can be used old functions )
     virtual bool FontUploadTexture(class CFBitmap*, ETEX_Format eTF = eTF_R8G8B8A8);
-    virtual   int  FontCreateTexture(int Width, int Height, byte* pData, ETEX_Format eTF = eTF_R8G8B8A8, bool genMips = false);
+    virtual   int  FontCreateTexture(int Width, int Height, byte* pData, ETEX_Format eTF = eTF_R8G8B8A8, bool genMips = FontCreateTextureGenMipsDefaultValue, const char* textureName = nullptr);
     virtual   bool FontUpdateTexture(int nTexId, int X, int Y, int USize, int VSize, byte* pData);
     virtual void FontReleaseTexture(class CFBitmap* pBmp);
     virtual void FontSetTexture(class CFBitmap*, int nFilterMode);
@@ -376,6 +380,7 @@ public:
     virtual void RT_ReleaseVBStream(void* pVB, int nStream) {};
     virtual void RT_DrawDynVB(int Pool, uint32 nVerts) {}
     virtual void RT_DrawDynVB(SVF_P3F_C4B_T2F* pBuf, uint16* pInds, uint32 nVerts, uint32 nInds, const PublicRenderPrimitiveType nPrimType) {}
+    virtual void RT_DrawDynVBUI(SVF_P2F_C4B_T2F_F4B* pBuf, uint16* pInds, uint32 nVerts, uint32 nInds, const PublicRenderPrimitiveType nPrimType) {}
     virtual void RT_DrawStringU(IFFont_RenderProxy* pFont, float x, float y, float z, const char* pStr, const bool asciiMultiLine, const STextDrawContext& ctx) const {}
     virtual void RT_DrawLines(Vec3 v[], int nump, ColorF& col, int flags, float fGround) {}
     virtual void RT_Draw2dImage(float xpos, float ypos, float w, float h, CTexture* pTexture, float s0, float t0, float s1, float t1, float angle, DWORD col, float z) {}

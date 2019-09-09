@@ -108,10 +108,23 @@ namespace EMotionFX
     }
 
 
-    // search for a node on a specific name, and return a pointer to it
     Node* Skeleton::FindNodeByName(const char* name) const
     {
-        // check the name of all nodes
+        const uint32 numNodes = mNodes.GetLength();
+        for (uint32 i = 0; i < numNodes; ++i)
+        {
+            if (mNodes[i]->GetNameString() == name)
+            {
+                return mNodes[i];
+            }
+        }
+
+        return nullptr;
+    }
+
+
+    Node* Skeleton::FindNodeByName(const AZStd::string& name) const
+    {
         const uint32 numNodes = mNodes.GetLength();
         for (uint32 i = 0; i < numNodes; ++i)
         {
@@ -213,83 +226,6 @@ namespace EMotionFX
     }
 
 
-    // calc the local space matrix for a given node
-    void Skeleton::CalcLocalSpaceMatrix(uint32 nodeIndex, const Transform* localTransforms, MCore::Matrix* outMatrix)
-    {
-    #ifdef EMFX_SCALE_DISABLED
-        outMatrix->InitFromPosRot(localTransforms[nodeIndex].mPosition, localTransforms[nodeIndex].mRotation);
-    #else
-        // check if there is a parent
-        const uint32 parentIndex = GetNode(nodeIndex)->GetParentIndex();
-        if (parentIndex != MCORE_INVALIDINDEX32)    // if there is a parent and it has scale
-        {
-            // calculate the inverse parent scale
-            AZ::Vector3 invParentScale(1.0f, 1.0f, 1.0f);
-            invParentScale /= localTransforms[parentIndex].mScale;  // TODO: unsafe, can get division by zero
-
-            outMatrix->InitFromNoScaleInherit(localTransforms[nodeIndex].mPosition, localTransforms[nodeIndex].mRotation, localTransforms[nodeIndex].mScale, invParentScale);
-        }
-        else // there is NO parent, so its a root node
-        {
-            outMatrix->InitFromPosRotScale(localTransforms[nodeIndex].mPosition, localTransforms[nodeIndex].mRotation, localTransforms[nodeIndex].mScale);
-        }
-    #endif
-    }
-
-
-    // calculate the local space matrices in bind pose
-    void Skeleton::CalcBindPoseLocalMatrices(MCore::Array<MCore::Matrix>& outLocalMatrices)
-    {
-        // resize the array to the right number
-        const uint32 numNodes = mNodes.GetLength();
-        outLocalMatrices.Resize(numNodes);
-
-        // for all nodes
-        for (uint32 n = 0; n < numNodes; ++n)
-        {
-            CalcLocalSpaceMatrix(n, mBindPose.GetLocalTransforms(), &outLocalMatrices[n]); // calculate the local TM from the bind pose transform
-        }
-    }
-
-
-    // calculate the global space matrices from a given set of local space matrices
-    void Skeleton::CalcGlobalMatrices(const MCore::Array<MCore::Matrix>& localMatrices, MCore::Array<MCore::Matrix>& outGlobalMatrices)
-    {
-        // resize the array to the right number
-        const uint32 numNodes = GetNumNodes();
-        outGlobalMatrices.Resize(numNodes);
-
-        // process all nodes
-        for (uint32 i = 0; i < numNodes; ++i)
-        {
-            const Node* node = mNodes[i];
-
-            // if this is a root node
-            const uint32 parentIndex = node->GetParentIndex();
-            if (parentIndex != MCORE_INVALIDINDEX32)
-            {
-                outGlobalMatrices[i].MultMatrix4x3(localMatrices[i], outGlobalMatrices[parentIndex]);
-            }
-            else
-            {
-                outGlobalMatrices[i] = localMatrices[i];
-            }
-        }
-    }
-
-
-    // calculate the global space matrices of the bind pose
-    void Skeleton::CalcBindPoseGlobalMatrices(MCore::Array<MCore::Matrix>& outGlobalMatrices)
-    {
-        // calculate the local space matrices of the bind pose first
-        MCore::Array<MCore::Matrix> localMatrices;
-        CalcBindPoseLocalMatrices(localMatrices);
-
-        // now calculate the global space matrices using those local space matrices
-        CalcGlobalMatrices(localMatrices, outGlobalMatrices);
-    }
-
-
     // log all node names
     void Skeleton::LogNodes()
     {
@@ -313,5 +249,25 @@ namespace EMotionFX
         }
 
         return result;
+    }
+
+
+    Node* Skeleton::FindNodeAndIndexByName(const AZStd::string& name, AZ::u32& outIndex) const
+    {
+        if (name.empty())
+        {
+            outIndex = MCORE_INVALIDINDEX32;
+            return nullptr;
+        }
+
+        Node* joint = FindNodeByNameNoCase(name.c_str());
+        if (!joint)
+        {
+            outIndex = MCORE_INVALIDINDEX32;
+            return nullptr;
+        }
+
+        outIndex = joint->GetNodeIndex();
+        return joint;
     }
 }   // namespace EMotionFX

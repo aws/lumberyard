@@ -44,27 +44,13 @@ struct SStringData
 private:
 };
 
-//copy/paste/hack from StlUtils.h (specializing the template was causing linker problems on old ps3 // ACCEPTED_USE
-// Can we just fix this now?)
-struct hash_stringdata
+template<>
+inline const char* stl::constchar_cast(const SStringData& in)
 {
-    enum    // parameters for hash table
-    {
-        bucket_size = 4,    // 0 < bucket_size
-        min_buckets = 8
-    };// min_buckets = 2 ^^ N, 0 < N
+    return in.m_szString;
+}
 
-    size_t operator()(const SStringData& key) const
-    {
-        unsigned int h = 0;
-        const char* s = key.m_szString;
-        for (; * s; ++s)
-        {
-            h = 5 * h + *(unsigned char*)s;
-        }
-        return size_t(h);
-    }
-};
+
 /////////////////////////////////////////////////////////////////////
 // String pool implementation.
 // Inspired by expat implementation.
@@ -92,7 +78,7 @@ public:
     int nUsedBlocks;
     bool m_reuseStrings;
 
-    typedef AZStd::unordered_map<SStringData, char*, hash_stringdata > TStringToExistingStringMap;
+    typedef AZStd::unordered_map<SStringData, char*, stl::hash_string<SStringData> > TStringToExistingStringMap;
     TStringToExistingStringMap m_stringToExistingStringMap;
 
     static size_t g_nTotalAllocInXmlStringPools;
@@ -130,7 +116,7 @@ public:
         {
             BLOCK* temp = pBlock->next;
             g_nTotalAllocInXmlStringPools -= (offsetof(BLOCK, s) + pBlock->size * sizeof(char));
-            free(pBlock);
+            CryModuleFree(pBlock);
             pBlock = temp;
         }
         pBlock = m_free_blocks;
@@ -138,7 +124,7 @@ public:
         {
             BLOCK* temp = pBlock->next;
             g_nTotalAllocInXmlStringPools -= (offsetof(BLOCK, s) + pBlock->size * sizeof(char));
-            free(pBlock);
+            CryModuleFree(pBlock);
             pBlock = temp;
         }
         m_blocks = 0;
@@ -189,8 +175,6 @@ public:
     }
     char* Append(const char* ptr, int nStrLen)
     {
-        MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_Other, 0, "StringPool");
-
         // If a string does not fit within the remainder of the string pool, a new pool will be allocated with at least
         // nStrLen + 1 size, which means this code does take care of incredibly large strings.
 
@@ -222,7 +206,6 @@ public:
 
         if (m_reuseStrings)
         {
-            MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_Other, 0, "String map");
             assert(!FindExistingString(ptr, nStrLen));
             m_stringToExistingStringMap[SStringData(ret, nStrLen)] = ret;
         }
@@ -342,7 +325,7 @@ private:
         size_t nMallocSize = offsetof(BLOCK, s) + blockSize * sizeof(char);
         g_nTotalAllocInXmlStringPools += nMallocSize;
 
-        BLOCK* pBlock = (BLOCK*)malloc(nMallocSize);
+        BLOCK* pBlock = (BLOCK*)CryModuleMalloc(nMallocSize);
         ;
         assert(pBlock);
         pBlock->size = blockSize;
@@ -372,7 +355,7 @@ private:
         g_nTotalAllocInXmlStringPools += nMallocSize;
 
 
-        BLOCK* pBlock = (BLOCK*)realloc(pThisBlock, nMallocSize);
+        BLOCK* pBlock = (BLOCK*)CryModuleRealloc(pThisBlock, nMallocSize);
         assert(pBlock);
         pBlock->size = blockSize;
         pBlock->next = m_blocks;

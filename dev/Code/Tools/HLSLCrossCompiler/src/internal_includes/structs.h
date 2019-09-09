@@ -270,6 +270,7 @@ typedef struct Shader_TAG
 
 	SHADER_VARIABLE_TYPE aeCommonTempVecType[MAX_TEMP_VEC4];
 	uint32_t bUseTempCopy;
+	FRAMEBUFFER_FETCH_TYPE eGmemType;
 } Shader;
 
 /* CONFETTI NOTE: DAVID SROUR
@@ -330,17 +331,6 @@ enum
 {
     GMEM_PLS_RW_SLOT = 62
 };                              // READ/WRITE
-
-typedef enum _FRAMEBUFFER_FETCH_TYPE
-{
-    FBF_NONE = 0,
-    FBF_EXT_COLOR = 1 << 0,
-    FBF_ARM_COLOR = 1 << 1,
-    FBF_ARM_DEPTH = 1 << 2,
-    FBF_ARM_STENCIL = 1 << 3,
-    FBF_ANY = FBF_EXT_COLOR | FBF_ARM_COLOR | FBF_ARM_DEPTH | FBF_ARM_STENCIL
-} FRAMEBUFFER_FETCH_TYPE;
-
 
 static const uint32_t MAIN_PHASE = 0;
 static const uint32_t HS_FORK_PHASE = 1;

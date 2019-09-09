@@ -120,6 +120,8 @@ protected:
     //! Handles calling the appropriate builder job function for the incoming job
     void JobThread();
 
+    void ProcessJob(const AssetBuilderSDK::ProcessJobFunction& job, const AssetBuilderSDK::ProcessJobRequest& request, AssetBuilderSDK::ProcessJobResponse& outResponse);
+
     //! Handles a builder registration request
     bool HandleRegisterBuilder(const AZStd::string& inputFilePath, const AZStd::string& outputFilePath) const;
 
@@ -137,7 +139,7 @@ protected:
     AZStd::vector<AZStd::unique_ptr<AssetBuilder::ExternalModuleAssetBuilderInfo>> m_assetBuilderInfoList;
 
     //! Currently loading builder
-    AssetBuilder::ExternalModuleAssetBuilderInfo* m_currentAssetBuilder;
+    AssetBuilder::ExternalModuleAssetBuilderInfo* m_currentAssetBuilder = nullptr;
     
     //! Thread for running a job, so we don't block the network thread while doing work
     AZStd::thread_desc m_jobThreadDesc;

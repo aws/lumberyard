@@ -48,6 +48,7 @@ namespace CloudGemFramework
                 fileIO->Read(fileHandle, &destFileBuffer->at(0), destFileBuffer->size());
             }
         }
+        fileIO->Close(fileHandle);
     }
 
     void MultipartFormData::AddFileBytes(AZStd::string fieldName, AZStd::string fileName, const void* bytes, size_t length)

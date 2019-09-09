@@ -14,7 +14,6 @@
 #include <AzCore/Serialization/EditContext.h>
 #include <MCore/Source/IDGenerator.h>
 #include <MCore/Source/AttributeFactory.h>
-#include <MCore/Source/AttributePool.h>
 #include <MCore/Source/MCoreSystem.h>
 #include <MCore/Source/ReflectionSerializer.h>
 #include <EMotionFX/Source/AnimGraphBus.h>
@@ -386,7 +385,8 @@ namespace EMotionFX
             ->Value("Master Node Only", EVENTMODE_MASTERONLY)
             ->Value("Servant Node Only", EVENTMODE_SLAVEONLY)
             ->Value("Both Nodes", EVENTMODE_BOTHNODES)
-            ->Value("Most Active", EVENTMODE_MOSTACTIVE);
+            ->Value("Most Active", EVENTMODE_MOSTACTIVE)
+            ->Value("None", EVENTMODE_NONE);
 
         editContext->Enum<EExtractionMode>("Extraction Mode", "The motion extraction blend mode to use.")
             ->Value("Blend", EXTRACTIONMODE_BLEND)

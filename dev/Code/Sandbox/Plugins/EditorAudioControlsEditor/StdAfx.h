@@ -15,8 +15,6 @@
 
 #include <AzCore/PlatformDef.h>
 
-//#define NOT_USE_CRY_MEMORY_MANAGER
-
 #ifndef VC_EXTRALEAN
 #define VC_EXTRALEAN        // Exclude rarely-used stuff from Windows headers
 #endif

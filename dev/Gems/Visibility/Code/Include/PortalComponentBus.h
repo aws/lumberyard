@@ -12,45 +12,32 @@
 
 #pragma once
 
-#include <AzCore/EBus/EBus.h>
-#include <AzFramework/Asset/SimpleAsset.h>
-#include <LmbrCentral/Rendering/MeshAsset.h>
-#include <LmbrCentral/Rendering/MaterialAsset.h>
+#include <AzCore/Component/ComponentBus.h>
+#include <AzCore/Math/Vector3.h>
+#include <AzCore/Math/VertexContainerInterface.h>
 
 namespace Visibility
 {
-    // Request bus for the component
+    // Request bus for the PortalComponent.
     class PortalRequests
-        : public AZ::ComponentBus
     {
-        public:
-            virtual ~PortalRequests() {}
+    public:
+        virtual float GetHeight() = 0;
+        virtual bool GetDisplayFilled() = 0;
+        virtual bool GetAffectedBySun() = 0;
+        virtual float GetViewDistRatio() = 0;
+        virtual bool GetSkyOnly() = 0;
+        virtual bool GetOceanIsVisible() = 0;
+        virtual bool GetUseDeepness() = 0;
+        virtual bool GetDoubleSide() = 0;
+        virtual bool GetLightBlending() = 0;
+        virtual float GetLightBlendValue() = 0;
 
-            /////////////////////////////////////////////////////////////////
-            // Property Set/Get functions for the component.
-            /////////////////////////////////////////////////////////////////
-            virtual void SetHeight(const float value) = 0;
-            virtual float GetHeight() = 0;
-            virtual void SetDisplayFilled(const bool value) = 0;
-            virtual bool GetDisplayFilled() = 0;
-            virtual void SetAffectedBySun(const bool value) = 0;
-            virtual bool GetAffectedBySun() = 0;
-            virtual void SetViewDistRatio(const float value) = 0;
-            virtual float GetViewDistRatio() = 0;
-            virtual void SetSkyOnly(const bool value) = 0;
-            virtual bool GetSkyOnly() = 0;
-            virtual void SetOceanIsVisible(const bool value) = 0;
-            virtual bool GetOceanIsVisible() = 0;
-            virtual void SetUseDeepness(const bool value) = 0;
-            virtual bool GetUseDeepness() = 0;
-            virtual void SetDoubleSide(const bool value) = 0;
-            virtual bool GetDoubleSide() = 0;
-            virtual void SetLightBlending(const bool value) = 0;
-            virtual bool GetLightBlending() = 0;
-            virtual void SetLightBlendValue(const float value) = 0;
-            virtual float GetLightBlendValue() = 0;
+    protected:
+        ~PortalRequests() = default;
     };
 
-    using PortalRequestBus = AZ::EBus<PortalRequests>;
+    /// Type to inherit to implement PortalRequests.
+    using PortalRequestBus = AZ::EBus<PortalRequests, AZ::ComponentBus>;
 
 } // namespace Visibility

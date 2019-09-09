@@ -37,23 +37,30 @@ namespace CloudGemFramework
             AZStd::string m_name;
         };
 
+// This will run the code fed to the macro, and then assign 0 to a static int (note the ,0 at the end)
+#define CLOUD_CANVAS_ONCE_PASTE(x) (x)
+#define CLOUD_CANVAS_ONCE(x) static int AZ_JOIN(init, __LINE__)((CLOUD_CANVAS_ONCE_PASTE(x), 0))
+
 #define CLOUD_CANVAS_HTTP_METHOD_ENTRY(x)   { HttpRequestJob::HttpMethod::HTTP_##x, HttpMethodInfo{ Aws::Http::HttpMethod::HTTP_##x, #x } }
 
         using MethodLookup = AZStd::unordered_map<HttpRequestJob::HttpMethod, HttpMethodInfo>;
 
+        AZ::EnvironmentVariable<MethodLookup> s_methodLookup = nullptr;
         const MethodLookup& GetMethodLookup()
         {
-            static const auto result = AZ::Environment::CreateVariable<MethodLookup>("methodlookup.httprequestjob.cloudcanvas", MethodLookup
-            {
-                CLOUD_CANVAS_HTTP_METHOD_ENTRY(GET),
-                CLOUD_CANVAS_HTTP_METHOD_ENTRY(POST),
-                CLOUD_CANVAS_HTTP_METHOD_ENTRY(DELETE),
-                CLOUD_CANVAS_HTTP_METHOD_ENTRY(PUT),
-                CLOUD_CANVAS_HTTP_METHOD_ENTRY(HEAD),
-                CLOUD_CANVAS_HTTP_METHOD_ENTRY(PATCH),
-            });
-
-            return *result;
+            CLOUD_CANVAS_ONCE(
+                s_methodLookup = AZ::Environment::CreateVariable<MethodLookup>("methodlookup.httprequestjob.cloudcanvas", MethodLookup
+                {
+                    CLOUD_CANVAS_HTTP_METHOD_ENTRY(GET),
+                    CLOUD_CANVAS_HTTP_METHOD_ENTRY(POST),
+                    CLOUD_CANVAS_HTTP_METHOD_ENTRY(DELETE),
+                    CLOUD_CANVAS_HTTP_METHOD_ENTRY(PUT),
+                    CLOUD_CANVAS_HTTP_METHOD_ENTRY(HEAD),
+                    CLOUD_CANVAS_HTTP_METHOD_ENTRY(PATCH),
+                })
+            );
+            
+            return *s_methodLookup;
         }
 
 #undef CLOUD_CANVAS_HTTP_METHOD_ENTRY
@@ -62,19 +69,21 @@ namespace CloudGemFramework
 
         using MethodAwsReverseLookup = AZStd::unordered_map<Aws::Http::HttpMethod, HttpRequestJob::HttpMethod>;
 
+        AZ::EnvironmentVariable<MethodAwsReverseLookup> s_methodAwsReverseLookup = nullptr;
         const MethodAwsReverseLookup& GetMethodAwsReverseLookup()
         {
-            static const auto result = AZ::Environment::CreateVariable<MethodAwsReverseLookup>("methodawsreverselookup.httprequestjob.cloudcanvas", MethodAwsReverseLookup
-            {
-                CLOUD_CANVAS_HTTP_METHOD_AWS_ENTRY(GET),
-                CLOUD_CANVAS_HTTP_METHOD_AWS_ENTRY(POST),
-                CLOUD_CANVAS_HTTP_METHOD_AWS_ENTRY(DELETE),
-                CLOUD_CANVAS_HTTP_METHOD_AWS_ENTRY(PUT),
-                CLOUD_CANVAS_HTTP_METHOD_AWS_ENTRY(HEAD),
-                CLOUD_CANVAS_HTTP_METHOD_AWS_ENTRY(PATCH),
-            });
+            CLOUD_CANVAS_ONCE(s_methodAwsReverseLookup = AZ::Environment::CreateVariable<MethodAwsReverseLookup>("methodawsreverselookup.httprequestjob.cloudcanvas", MethodAwsReverseLookup
+                {
+                    CLOUD_CANVAS_HTTP_METHOD_AWS_ENTRY(GET),
+                    CLOUD_CANVAS_HTTP_METHOD_AWS_ENTRY(POST),
+                    CLOUD_CANVAS_HTTP_METHOD_AWS_ENTRY(DELETE),
+                    CLOUD_CANVAS_HTTP_METHOD_AWS_ENTRY(PUT),
+                    CLOUD_CANVAS_HTTP_METHOD_AWS_ENTRY(HEAD),
+                    CLOUD_CANVAS_HTTP_METHOD_AWS_ENTRY(PATCH),
+                })
+            );
 
-            return *result;
+            return *s_methodAwsReverseLookup;
         }
 
 #undef CLOUD_CANVAS_HTTP_METHOD_AWS_ENTRY
@@ -83,19 +92,21 @@ namespace CloudGemFramework
 
         using MethodStringReverseLookup = AZStd::unordered_map<AZStd::string, HttpRequestJob::HttpMethod>;
 
+        AZ::EnvironmentVariable<MethodStringReverseLookup> s_methodStringReverseLookup = nullptr;
         const MethodStringReverseLookup& GetMethodStringReverseLookup()
         {
-            static const auto result = AZ::Environment::CreateVariable<MethodStringReverseLookup>("methodstringreverselookup.httprequestjob.cloudcanvas", MethodStringReverseLookup
-            {
-                CLOUD_CANVAS_HTTP_METHOD_STRING_ENTRY(GET),
-                CLOUD_CANVAS_HTTP_METHOD_STRING_ENTRY(POST),
-                CLOUD_CANVAS_HTTP_METHOD_STRING_ENTRY(DELETE),
-                CLOUD_CANVAS_HTTP_METHOD_STRING_ENTRY(PUT),
-                CLOUD_CANVAS_HTTP_METHOD_STRING_ENTRY(HEAD),
-                CLOUD_CANVAS_HTTP_METHOD_STRING_ENTRY(PATCH),
-            });
+            CLOUD_CANVAS_ONCE(s_methodStringReverseLookup = AZ::Environment::CreateVariable<MethodStringReverseLookup>("methodstringreverselookup.httprequestjob.cloudcanvas", MethodStringReverseLookup
+                {
+                    CLOUD_CANVAS_HTTP_METHOD_STRING_ENTRY(GET),
+                    CLOUD_CANVAS_HTTP_METHOD_STRING_ENTRY(POST),
+                    CLOUD_CANVAS_HTTP_METHOD_STRING_ENTRY(DELETE),
+                    CLOUD_CANVAS_HTTP_METHOD_STRING_ENTRY(PUT),
+                    CLOUD_CANVAS_HTTP_METHOD_STRING_ENTRY(HEAD),
+                    CLOUD_CANVAS_HTTP_METHOD_STRING_ENTRY(PATCH),
+                })
+            );
 
-            return *result;
+            return *s_methodStringReverseLookup;
         }
 
 #undef CLOUD_CANVAS_HTTP_METHOD_STRING_ENTRY
@@ -104,33 +115,37 @@ namespace CloudGemFramework
 
         using HeaderLookup = AZStd::unordered_map<HttpRequestJob::HeaderField, AZStd::string>;
 
+        AZ::EnvironmentVariable<HeaderLookup> s_headerLookup = nullptr;
         const HeaderLookup& GetHeaderLookup()
         {
-            static const auto result = AZ::Environment::CreateVariable<HeaderLookup>("headerlookup.httprequestjob.cloudcanvas", HeaderLookup
-            {
-                CLOUD_CANVAS_HEADER_FIELD_ENTRY(DATE),
-                CLOUD_CANVAS_HEADER_FIELD_ENTRY(AWS_DATE),
-                { HttpRequestJob::HeaderField::AWS_SECURITY_TOKEN, Aws::Http::AWS_SECURITY_TOKEN },
-                CLOUD_CANVAS_HEADER_FIELD_ENTRY(ACCEPT),
-                CLOUD_CANVAS_HEADER_FIELD_ENTRY(ACCEPT_CHAR_SET),
-                CLOUD_CANVAS_HEADER_FIELD_ENTRY(ACCEPT_ENCODING),
-                CLOUD_CANVAS_HEADER_FIELD_ENTRY(AUTHORIZATION),
-                CLOUD_CANVAS_HEADER_FIELD_ENTRY(AWS_AUTHORIZATION),
-                CLOUD_CANVAS_HEADER_FIELD_ENTRY(COOKIE),
-                CLOUD_CANVAS_HEADER_FIELD_ENTRY(CONTENT_LENGTH),
-                CLOUD_CANVAS_HEADER_FIELD_ENTRY(CONTENT_TYPE),
-                CLOUD_CANVAS_HEADER_FIELD_ENTRY(USER_AGENT),
-                CLOUD_CANVAS_HEADER_FIELD_ENTRY(VIA),
-                CLOUD_CANVAS_HEADER_FIELD_ENTRY(HOST),
-                CLOUD_CANVAS_HEADER_FIELD_ENTRY(AMZ_TARGET),
-                CLOUD_CANVAS_HEADER_FIELD_ENTRY(X_AMZ_EXPIRES),
-                CLOUD_CANVAS_HEADER_FIELD_ENTRY(CONTENT_MD5),
-            });
+            CLOUD_CANVAS_ONCE(s_headerLookup = AZ::Environment::CreateVariable<HeaderLookup>("headerlookup.httprequestjob.cloudcanvas", HeaderLookup
+                {
+                    CLOUD_CANVAS_HEADER_FIELD_ENTRY(DATE),
+                    CLOUD_CANVAS_HEADER_FIELD_ENTRY(AWS_DATE),
+                    { HttpRequestJob::HeaderField::AWS_SECURITY_TOKEN, Aws::Http::AWS_SECURITY_TOKEN },
+                    CLOUD_CANVAS_HEADER_FIELD_ENTRY(ACCEPT),
+                    CLOUD_CANVAS_HEADER_FIELD_ENTRY(ACCEPT_CHAR_SET),
+                    CLOUD_CANVAS_HEADER_FIELD_ENTRY(ACCEPT_ENCODING),
+                    CLOUD_CANVAS_HEADER_FIELD_ENTRY(AUTHORIZATION),
+                    CLOUD_CANVAS_HEADER_FIELD_ENTRY(AWS_AUTHORIZATION),
+                    CLOUD_CANVAS_HEADER_FIELD_ENTRY(COOKIE),
+                    CLOUD_CANVAS_HEADER_FIELD_ENTRY(CONTENT_LENGTH),
+                    CLOUD_CANVAS_HEADER_FIELD_ENTRY(CONTENT_TYPE),
+                    CLOUD_CANVAS_HEADER_FIELD_ENTRY(USER_AGENT),
+                    CLOUD_CANVAS_HEADER_FIELD_ENTRY(VIA),
+                    CLOUD_CANVAS_HEADER_FIELD_ENTRY(HOST),
+                    CLOUD_CANVAS_HEADER_FIELD_ENTRY(AMZ_TARGET),
+                    CLOUD_CANVAS_HEADER_FIELD_ENTRY(X_AMZ_EXPIRES),
+                    CLOUD_CANVAS_HEADER_FIELD_ENTRY(CONTENT_MD5),
+                })
+            );
 
-            return *result;
+            return *s_headerLookup;
         }
 
 #undef CLOUD_CANVAS_HEADER_FIELD_ENTRY
+#undef CLOUD_CANVAS_ONCE_PASTE
+#undef CLOUD_CANVAS_ONCE
 
         template<typename MapT>
         inline const typename MapT::mapped_type* FindInMap(const MapT& haystack, const typename MapT::key_type& needle)
@@ -150,6 +165,21 @@ namespace CloudGemFramework
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     // HttpRequestJob methods
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    void HttpRequestJob::StaticInit()
+    {
+        GetMethodLookup();
+        GetMethodAwsReverseLookup();
+        GetMethodStringReverseLookup();
+        GetHeaderLookup();
+    }
+
+    void HttpRequestJob::StaticShutdown()
+    {
+        s_methodLookup.Reset();
+        s_methodAwsReverseLookup.Reset();
+        s_methodStringReverseLookup.Reset();
+        s_headerLookup.Reset();
+    }
 
     void HttpRequestJob::SetUrl(AZStd::string url)
     {

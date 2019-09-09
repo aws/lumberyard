@@ -41,8 +41,8 @@ namespace AzToolsFramework
         //////////////////////////////////////////////////////////////////////////
         // FolderThumbnail
         //////////////////////////////////////////////////////////////////////////
-        static const char* FOLDER_ICON_PATH = "Editor/Icons/AssetBrowser/folder.png";
-        static const char* GEM_ICON_PATH = "Editor/Icons/AssetBrowser/gem.png";
+        static const char* FOLDER_ICON_PATH = "Editor/Icons/AssetBrowser/Folder_16.png";
+        static const char* GEM_ICON_PATH = "Editor/Icons/AssetBrowser/GemFolder_16.png";
 
         FolderThumbnail::FolderThumbnail(SharedThumbnailKey key, int thumbnailSize)
             : Thumbnail(key, thumbnailSize)

@@ -54,10 +54,10 @@ namespace
         // Avoid a divide by zero. We could compare with 0.0f here and that would avoid a divide
         // by zero. However comparing with FLT_EPSILON also avoids the rare case of an overflow.
         // FLT_EPSILON is small enough to be considered equivalent to zero in this application.
-        float inverseScaleX = (fabsf(scale.GetX()) > FLT_EPSILON) ? 1.0f / scale.GetX() : 0;
-        float inverseScaleY = (fabsf(scale.GetY()) > FLT_EPSILON) ? 1.0f / scale.GetY() : 0;
+        float inverseScaleX = (fabsf(scale.GetX()) > FLT_EPSILON) ? 1.0f / scale.GetX() : 1;
+        float inverseScaleY = (fabsf(scale.GetY()) > FLT_EPSILON) ? 1.0f / scale.GetY() : 1;
 
-        AZ::Vector3 scale3(inverseScaleX, inverseScaleY, 0); // inverse scale
+        AZ::Vector3 scale3(inverseScaleX, inverseScaleY, 1); // inverse scale
 
         AZ::Matrix4x4 moveToPivotSpaceMat = AZ::Matrix4x4::CreateTranslation(-pivot3);
         AZ::Matrix4x4 scaleMat = AZ::Matrix4x4::CreateScale(scale3);
@@ -78,7 +78,8 @@ UiTransform2dComponent::UiTransform2dComponent()
     , m_rotation(0.0f)
     , m_scale(AZ::Vector2(1.0f, 1.0f))
     , m_scaleToDevice(false)
-    , m_recomputeTransform(true)
+    , m_recomputeTransformToViewport(true)
+    , m_recomputeTransformToCanvasSpace(true)
     , m_recomputeCanvasSpaceRect(true)
     , m_rectInitialized(false)
     , m_rectChangedByInitialization(false)
@@ -99,8 +100,11 @@ float UiTransform2dComponent::GetZRotation()
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void UiTransform2dComponent::SetZRotation(float rotation)
 {
-    m_rotation = rotation;
-    SetRecomputeTransformFlag();
+    if (m_rotation != rotation)
+    {
+        m_rotation = rotation;
+        SetRecomputeFlags(UiTransformInterface::Recompute::TransformOnly);
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -112,8 +116,11 @@ AZ::Vector2 UiTransform2dComponent::GetScale()
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void UiTransform2dComponent::SetScale(AZ::Vector2 scale)
 {
-    m_scale = scale;
-    SetRecomputeTransformFlag();
+    if (m_scale != scale)
+    {
+        m_scale = scale;
+        SetRecomputeFlags(UiTransformInterface::Recompute::TransformOnly);
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -149,8 +156,14 @@ AZ::Vector2 UiTransform2dComponent::GetPivot()
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void UiTransform2dComponent::SetPivot(AZ::Vector2 pivot)
 {
-    m_pivot = pivot;
-    SetRecomputeTransformFlag();
+    if (m_pivot != pivot)
+    {
+        m_pivot = pivot;
+        // changing the pivot does not change the rect, but if there is scale or rotation it does affect the transform.
+        // However, we do want to notify other components if the pivot changes (for example the ImageComponent in
+        // fixed mode is affected). So we recompute regardless of whether there is a scale or rotation.
+        SetRecomputeFlags(UiTransformInterface::Recompute::TransformOnly);
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -186,8 +199,11 @@ bool UiTransform2dComponent::GetScaleToDevice()
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void UiTransform2dComponent::SetScaleToDevice(bool scaleToDevice)
 {
-    m_scaleToDevice = scaleToDevice;
-    SetRecomputeTransformFlag();
+    if (m_scaleToDevice != scaleToDevice)
+    {
+        m_scaleToDevice = scaleToDevice;
+        SetRecomputeFlags(UiTransformInterface::Recompute::TransformOnly);
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -223,7 +239,7 @@ AZ::Vector2 UiTransform2dComponent::GetViewportSpacePivot()
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void UiTransform2dComponent::GetTransformToViewport(AZ::Matrix4x4& mat)
 {
-    RecomputeTransformIfNeeded();
+    RecomputeTransformToViewportIfNeeded();
     mat = m_transformToViewport;
 }
 
@@ -297,22 +313,8 @@ AZ::Vector2 UiTransform2dComponent::GetCanvasSpacePivot()
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void UiTransform2dComponent::GetTransformToCanvasSpace(AZ::Matrix4x4& mat)
 {
-    // this takes a matrix and builds the concatenation of this elements rotate and scale about the pivot
-    // with the transforms for all parent elements into one 3x4 matrix.
-    UiTransform2dComponent* parentTransformComponent = GetParentTransformComponent();
-    if (parentTransformComponent)
-    {
-        parentTransformComponent->GetTransformToCanvasSpace(mat);
-
-        AZ::Matrix4x4 transformToParent;
-        GetLocalTransform(transformToParent);
-
-        mat = mat * transformToParent;
-    }
-    else
-    {
-        mat = AZ::Matrix4x4::CreateIdentity();
-    }
+    RecomputeTransformToCanvasSpaceIfNeeded();
+    mat = m_transformToCanvasSpace;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -450,9 +452,11 @@ void UiTransform2dComponent::SetViewportPosition(const AZ::Vector2& position)
     point3 = transform * point3;
     AZ::Vector2 canvasSpacePosition(point3.GetX(), point3.GetY());
 
-    m_offsets += canvasSpacePosition - curCanvasSpacePosition;
-
-    SetRecomputeTransformFlag();
+    if (canvasSpacePosition != curCanvasSpacePosition)
+    {
+        m_offsets += canvasSpacePosition - curCanvasSpacePosition;
+        SetRecomputeFlags(UiTransformInterface::Recompute::RectOnly);
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -479,9 +483,11 @@ void UiTransform2dComponent::SetCanvasPosition(const AZ::Vector2& position)
     point3 = transform * point3;
     AZ::Vector2 canvasSpacePosition(point3.GetX(), point3.GetY());
 
-    m_offsets += canvasSpacePosition - curCanvasSpacePosition;
-
-    SetRecomputeTransformFlag();
+    if (canvasSpacePosition != curCanvasSpacePosition)
+    {
+        m_offsets += canvasSpacePosition - curCanvasSpacePosition;
+        SetRecomputeFlags(UiTransformInterface::Recompute::RectOnly);
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -495,9 +501,12 @@ AZ::Vector2 UiTransform2dComponent::GetLocalPosition()
 void UiTransform2dComponent::SetLocalPosition(const AZ::Vector2& position)
 {
     AZ::Vector2 curPosition = GetLocalPosition();
-    m_offsets += position - curPosition;
 
-    SetRecomputeTransformFlag();
+    if (position != curPosition)
+    {
+        m_offsets += position - curPosition;
+        SetRecomputeFlags(UiTransformInterface::Recompute::RectOnly);
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -703,12 +712,19 @@ bool UiTransform2dComponent::BoundsAreOverlappingRect(const AZ::Vector2& bound0,
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-void UiTransform2dComponent::SetRecomputeTransformFlag()
+void UiTransform2dComponent::SetRecomputeFlags(Recompute recompute)
 {
     if (!IsFullyInitialized())
     {
         // If not initialized yet then transform will be recomputed after Fixup so no need to emit warning
         return;
+    }
+
+    if (recompute == Recompute::RectOnly && HasScaleOrRotation())
+    {
+        // if this element has scale or rotation then a rect change will require the transforms to be recomputed
+        // This is an optimization because, in most canvases, most elements have no scale or rotation
+        recompute = Recompute::RectAndTransform;
     }
 
     int numChildren = GetElementComponent()->GetNumChildElements();
@@ -717,15 +733,31 @@ void UiTransform2dComponent::SetRecomputeTransformFlag()
         UiTransform2dComponent* childTransformComponent = GetChildTransformComponent(i);
         if (childTransformComponent)
         {
-            childTransformComponent->SetRecomputeTransformFlag();
+            childTransformComponent->SetRecomputeFlags(recompute);
         }
     }
 
-    m_recomputeTransform = true;
-    m_recomputeCanvasSpaceRect = true;
+    switch (recompute)
+    {
+    case Recompute::RectOnly:
+        m_recomputeCanvasSpaceRect = true;
+        break;
+    case Recompute::TransformOnly:
+        m_recomputeTransformToCanvasSpace = true;
+        m_recomputeTransformToViewport = true;
+        break;
+    case Recompute::ViewportTransformOnly:
+        m_recomputeTransformToViewport = true;
+        break;
+    case Recompute::RectAndTransform:
+        m_recomputeTransformToCanvasSpace = true;
+        m_recomputeTransformToViewport = true;
+        m_recomputeCanvasSpaceRect = true;
+        break;
+    }
 
-    // Tell the canvas that there are elements needing a recompute
-    GetCanvasComponent()->SetTransformsNeedRecomputeFlag();
+    // Tell the canvas that this element needs a recompute
+    GetCanvasComponent()->ScheduleElementForTransformRecompute(GetElementComponent());
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -769,13 +801,6 @@ void UiTransform2dComponent::NotifyAndResetCanvasSpaceRectChange()
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-void UiTransform2dComponent::RecomputeTransformsAndSendNotifications()
-{
-    NotifyAndResetCanvasSpaceRectChange();
-    RecomputeTransformIfNeeded();
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////
 UiTransform2dComponent::Anchors UiTransform2dComponent::GetAnchors()
 {
     return m_anchors;
@@ -784,6 +809,9 @@ UiTransform2dComponent::Anchors UiTransform2dComponent::GetAnchors()
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void UiTransform2dComponent::SetAnchors(Anchors anchors, bool adjustOffsets, bool allowPush)
 {
+    Anchors oldAnchors = m_anchors;
+    Offsets oldOffsets = m_offsets;
+
     // First adjust the input structure to be valid.
     // If either pair of anchors is flipped then set them to be the same.
     // To avoid changing one anchor "pushing" the other we check which one changed and correct that
@@ -876,7 +904,10 @@ void UiTransform2dComponent::SetAnchors(Anchors anchors, bool adjustOffsets, boo
         m_offsets.m_top = m_offsets.m_bottom = (m_offsets.m_top + m_offsets.m_bottom) * 0.5f;
     }
 
-    SetRecomputeTransformFlag();
+    if (oldAnchors != m_anchors || oldOffsets != m_offsets)
+    {
+        SetRecomputeFlags(UiTransformInterface::Recompute::RectOnly);
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -971,14 +1002,21 @@ void UiTransform2dComponent::SetOffsets(Offsets offsets)
         }
     }
 
-    m_offsets = offsets;
-
-    SetRecomputeTransformFlag();
+    if (m_offsets != offsets)
+    {
+        m_offsets = offsets;
+        SetRecomputeFlags(UiTransformInterface::Recompute::RectOnly);
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void UiTransform2dComponent::SetPivotAndAdjustOffsets(AZ::Vector2 pivot)
 {
+    if (m_pivot == pivot)
+    {
+        return;
+    }
+
     // if the element has local rotation or scale then we have to modify the offsets to keep the rect from moving
     // in transformed space.
     if (HasScaleOrRotation())
@@ -1019,7 +1057,7 @@ void UiTransform2dComponent::SetPivotAndAdjustOffsets(AZ::Vector2 pivot)
         m_offsets.m_top += deltaY;
         m_offsets.m_bottom += deltaY;
 
-        SetRecomputeTransformFlag();
+        SetRecomputeFlags(UiTransformInterface::Recompute::RectOnly);
     }
     else
     {
@@ -1031,6 +1069,7 @@ void UiTransform2dComponent::SetPivotAndAdjustOffsets(AZ::Vector2 pivot)
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void UiTransform2dComponent::SetLocalWidth(float width)
 {
+    // If anchors are different the local width isn't a fixed quantity
     if (m_anchors.m_left == m_anchors.m_right)
     {
         Offsets offsets = GetOffsets();
@@ -1046,6 +1085,7 @@ void UiTransform2dComponent::SetLocalWidth(float width)
 float UiTransform2dComponent::GetLocalWidth()
 {
     float width = 0;
+    // If anchors are different the local width isn't a fixed quantity
     if (m_anchors.m_left == m_anchors.m_right)
     {
         width = m_offsets.m_right - m_offsets.m_left;
@@ -1056,6 +1096,7 @@ float UiTransform2dComponent::GetLocalWidth()
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void UiTransform2dComponent::SetLocalHeight(float height)
 {
+    // If anchors are different the local height isn't a fixed quantity
     if (m_anchors.m_top == m_anchors.m_bottom)
     {
         Offsets offsets = GetOffsets();
@@ -1071,6 +1112,7 @@ void UiTransform2dComponent::SetLocalHeight(float height)
 float UiTransform2dComponent::GetLocalHeight()
 {
     float height = 0;
+    // If anchors are different the local height isn't a fixed quantity
     if (m_anchors.m_top == m_anchors.m_bottom)
     {
         height = m_offsets.m_bottom - m_offsets.m_top;
@@ -1078,6 +1120,18 @@ float UiTransform2dComponent::GetLocalHeight()
     return height;
 }
 
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void UiTransform2dComponent::PropertyValuesChanged()
+{
+    SetRecomputeFlags(UiTransformInterface::Recompute::RectAndTransform);
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void UiTransform2dComponent::RecomputeTransformsAndSendNotifications()
+{
+    NotifyAndResetCanvasSpaceRectChange();
+    RecomputeTransformToViewportIfNeeded();
+}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 // PUBLIC STATIC MEMBER FUNCTIONS
@@ -1158,11 +1212,11 @@ void UiTransform2dComponent::Reflect(AZ::ReflectContext* context)
                 "The rotation in degrees about the pivot point")
                 ->Attribute(AZ::Edit::Attributes::Step, 0.1f)
                 ->Attribute(AZ::Edit::Attributes::Suffix, " degrees")
-                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &UiTransform2dComponent::SetRecomputeTransformFlag);
+                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &UiTransform2dComponent::OnTransformPropertyChanged);
 
             editInfo->DataElement(0, &UiTransform2dComponent::m_scale, "Scale",
                 "The X and Y scale around the pivot point")
-                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &UiTransform2dComponent::SetRecomputeTransformFlag);
+                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &UiTransform2dComponent::OnTransformPropertyChanged);
 
             editInfo->DataElement("CheckBox", &UiTransform2dComponent::m_scaleToDevice, "Scale to device",
                 "If checked, at runtime, this element and all its children will be scaled to allow for\n"
@@ -1327,17 +1381,22 @@ UiCanvasComponent* UiTransform2dComponent::GetCanvasComponent() const
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-void UiTransform2dComponent::RecomputeTransformIfNeeded()
+void UiTransform2dComponent::OnTransformPropertyChanged()
+{
+    SetRecomputeFlags(UiTransformInterface::Recompute::TransformOnly);
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void UiTransform2dComponent::RecomputeTransformToViewportIfNeeded()
 {
     // if we already computed the transform, don't recompute.
-    if (!m_recomputeTransform)
+    if (!m_recomputeTransformToViewport)
     {
         return;
     }
 
     // first get the transform to canvas space
-    AZ::Matrix4x4 transformToCanvasSpace;
-    GetTransformToCanvasSpace(transformToCanvasSpace);
+    RecomputeTransformToCanvasSpaceIfNeeded();
 
     // then get the transform from canvas to viewport space
     AZ::Matrix4x4 canvasToViewportMatrix;
@@ -1352,9 +1411,47 @@ void UiTransform2dComponent::RecomputeTransformIfNeeded()
     }
 
     // add the transform to viewport space to the matrix
-    m_transformToViewport = canvasToViewportMatrix * transformToCanvasSpace;
+    m_transformToViewport = canvasToViewportMatrix * m_transformToCanvasSpace;
 
-    m_recomputeTransform = false;
+    m_recomputeTransformToViewport = false;
+
+    EBUS_EVENT_ID(GetEntityId(), UiTransformChangeNotificationBus, OnTransformToViewportChanged);
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void UiTransform2dComponent::RecomputeTransformToCanvasSpaceIfNeeded()
+{
+    // if we already computed the transform, don't recompute.
+    if (!m_recomputeTransformToCanvasSpace)
+    {
+        return;
+    }
+
+    // this takes a matrix and builds the concatenation of this elements rotate and scale about the pivot
+    // with the transforms for all parent elements into one 3x4 matrix.
+    UiTransform2dComponent* parentTransformComponent = GetParentTransformComponent();
+    if (parentTransformComponent)
+    {
+        parentTransformComponent->GetTransformToCanvasSpace(m_transformToCanvasSpace);
+
+        AZ::Matrix4x4 transformToParent;
+        if (HasScaleOrRotation())
+        {
+            GetLocalTransform(transformToParent);
+        }
+        else
+        {
+            transformToParent = AZ::Matrix4x4::CreateIdentity();
+        }
+
+        m_transformToCanvasSpace = m_transformToCanvasSpace * transformToParent;
+    }
+    else
+    {
+        m_transformToCanvasSpace = AZ::Matrix4x4::CreateIdentity();
+    }
+
+    m_recomputeTransformToCanvasSpace = false;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1538,12 +1635,6 @@ void UiTransform2dComponent::EmitNotInitializedWarning() const
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-void UiTransform2dComponent::PropertyValuesChanged()
-{
-    SetRecomputeTransformFlag();
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////
 bool UiTransform2dComponent::VersionConverter(AZ::SerializeContext& context,
     AZ::SerializeContext::DataElementNode& classElement)
 {
@@ -1564,3 +1655,5 @@ bool UiTransform2dComponent::VersionConverter(AZ::SerializeContext& context,
 
     return true;
 }
+
+#include "Tests/internal/test_UiTransform2dComponent.cpp"

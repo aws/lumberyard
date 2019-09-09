@@ -90,6 +90,9 @@ namespace AzToolsFramework
             // you alter the data.  call scrollToBottom to scroll to the bottom!
             bool IsAtMaxScroll() const;
 
+            // Does some visual tidying up on show
+            void showEvent(QShowEvent *event) override;
+
             // Context menus.  you can add whatever else you want to it.  You don't need to override this.
             // but you can if you want to delete the actions so that you cant select.
             // just create QActions, and add them to 'this' at any time.

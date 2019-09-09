@@ -57,6 +57,8 @@ protected slots:
     void OnApplyClicked();
 
 private:
+    void SetLabelText(const AZStd::string& motion);
+
     QToolButton* m_pBrowseButton;
     QToolButton* m_pApplyButton;
     QLabel* m_motionLabel;

@@ -24,6 +24,7 @@
 #include <SceneAPI/SceneData/Rules/MaterialRule.h>
 #include <SceneAPI/SceneData/Rules/PhysicsRule.h>
 #include <SceneAPI/SceneData/Rules/SkeletonProxyRule.h>
+#include <SceneAPI/SceneData/Rules/TangentsRule.h>
 
 #include <SceneAPI/SceneData/ManifestBase/SceneNodeSelectionList.h>
 
@@ -34,6 +35,8 @@
 #include <SceneAPI/SceneData/GraphData/MeshData.h>
 #include <SceneAPI/SceneData/GraphData/MeshVertexColorData.h>
 #include <SceneAPI/SceneData/GraphData/MeshVertexUVData.h>
+#include <SceneAPI/SceneData/GraphData/MeshVertexTangentData.h>
+#include <SceneAPI/SceneData/GraphData/MeshVertexBitangentData.h>
 #include <SceneAPI/SceneData/GraphData/RootBoneData.h>
 #include <SceneAPI/SceneData/GraphData/SkinMeshData.h>
 #include <SceneAPI/SceneData/GraphData/SkinWeightData.h>
@@ -71,6 +74,7 @@ namespace AZ
             SceneData::PhysicsRule::Reflect(context);
             SceneData::SkeletonProxyRule::Reflect(context);
             SceneData::SkinMeshAdvancedRule::Reflect(context);
+            SceneData::TangentsRule::Reflect(context);
 
             // Utility
             SceneData::SceneNodeSelectionList::Reflect(context);
@@ -83,6 +87,8 @@ namespace AZ
             context->Class<AZ::SceneData::GraphData::MeshData>()->Version(1);
             context->Class<AZ::SceneData::GraphData::MeshVertexColorData>()->Version(1);
             context->Class<AZ::SceneData::GraphData::MeshVertexUVData>()->Version(1);
+            context->Class<AZ::SceneData::GraphData::MeshVertexTangentData>()->Version(1);
+            context->Class<AZ::SceneData::GraphData::MeshVertexBitangentData>()->Version(1);
             AZ::SceneData::GraphData::RootBoneData::Reflect(context);
             context->Class<AZ::SceneData::GraphData::SkinMeshData>()->Version(1);
             context->Class<AZ::SceneData::GraphData::SkinWeightData>()->Version(1);

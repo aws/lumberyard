@@ -9,14 +9,14 @@ import s3fs
 import pandas as pd
 import util
 import time
+import mem_util as mutil
 
-def read(s3, bucket, key):  
+def read(s3, bucket, key):      
     s3_open = s3.open    
-    if key.index("/") == 0:
-        key = key[1:]
-    path1='{}/{}'.format(bucket,key)
-    pf1 = ParquetFile(path1, open_with=s3_open)
-    return pf1.to_pandas()  
+    path1='{}{}'.format(bucket,key)
+    pf1 = ParquetFile(path1, open_with=s3_open)    
+    results = pf1.to_pandas()      
+    return results
 
 def debug_file(context, args):
     if args.file_path:
@@ -26,8 +26,8 @@ def debug_file(context, args):
         resources = util.get_resources(context)
         bucket = resources[c.RES_S3_STORAGE] 
         key = args.s3_key
-        if key.index("/") == 0:
-            key = key[1:]
+        if not key.startswith('/'):
+            key = "/{}".format(key)
         print read(s3,bucket,key)
 
 def debug_local_file(context, args):

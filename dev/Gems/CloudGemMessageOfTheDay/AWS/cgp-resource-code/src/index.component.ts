@@ -3,7 +3,7 @@ import { FormControl } from '@angular/forms';
 import { DateTimeUtil, StringUtil } from 'app/shared/class/index';
 import { ModalComponent } from 'app/shared/component/index';
 import { ActionItem } from "app/view/game/module/shared/class/index";
-import { Subscription } from 'rxjs/rx';
+import { Subscription } from 'rxjs/Subscription';
 import { SearchResult } from 'app/view/game/module/shared/component/index';
 import { MotdForm, MessageOfTheDayApi} from './index'
 import { Http } from '@angular/http';

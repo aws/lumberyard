@@ -9,6 +9,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
+
 #pragma once
 
 #include <AzToolsFramework/ToolsComponents/EditorComponentBase.h>
@@ -44,7 +45,8 @@ namespace LmbrCentral
         // Overrides from LensFlareConfiguration
         AZ::u32 PropertyChanged() override;
         AZ::u32 SyncAnimationChanged() override;
-
+        AZ::u32 AttachToSunChanged() override;
+    
         // Overrides from LightSettingsNotificationBus
         void AnimationSettingsChanged() override;
 
@@ -82,11 +84,6 @@ namespace LmbrCentral
         //////////////////////////////////////////////////////////////////////////
         // AzToolsFramework::EditorVisibilityNotificationBus interface implementation
         void OnEntityVisibilityChanged(bool visibility) override;
-        //////////////////////////////////////////////////////////////////////////
-
-        //////////////////////////////////////////////////////////////////////////
-        // AzFramework::EntityDebugDisplayEventBus interface implementation
-        void DisplayEntity(bool& handled) override;
         //////////////////////////////////////////////////////////////////////////
 
         //////////////////////////////////////////////////////////////////////////
@@ -147,6 +144,11 @@ namespace LmbrCentral
         // AzToolsFramework::EditorEvents::Bus::Handler interface implementation
         void OnEditorSpecChange() override;
         //////////////////////////////////////////////////////////////////////////
+
+        // AzFramework::EntityDebugDisplayEventBus
+        void DisplayEntityViewport(
+            const AzFramework::ViewportInfo& viewportInfo,
+            AzFramework::DebugDisplayRequests& debugDisplay) override;
 
         AZStd::string GetSelectedLensFlareFullName() const;
         AZStd::string GetFlareNameFromPath(const AZStd::string& path) const;

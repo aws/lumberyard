@@ -77,7 +77,8 @@ CViewManager::CViewManager()
 
     GetIEditor()->RegisterNotifyListener(this);
 
-    m_manipulatorManager = AZStd::make_shared<AzToolsFramework::ManipulatorManager>(AzToolsFramework::ManipulatorManagerId(1));
+    m_manipulatorManager =
+        AZStd::make_shared<AzToolsFramework::ManipulatorManager>(AzToolsFramework::g_mainManipulatorManagerId);
 }
 
 //////////////////////////////////////////////////////////////////////////

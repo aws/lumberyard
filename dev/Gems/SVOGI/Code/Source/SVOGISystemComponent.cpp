@@ -295,7 +295,7 @@ namespace SVOGI
 #if !defined(AZ_MONOLITHIC_BUILD)
         gEnv = nullptr;
 #endif
-        if (gEnv->pRenderer->GetISvoRenderer())
+        if (gEnv && gEnv->pRenderer && gEnv->pRenderer->GetISvoRenderer())
         {
             gEnv->pRenderer->GetISvoRenderer()->Release();
         }

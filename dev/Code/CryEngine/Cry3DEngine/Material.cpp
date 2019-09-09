@@ -781,7 +781,7 @@ bool CMatInfo::SetGetMaterialParamFloat(const char* sParamName, float& v, bool b
             for (int i = 0; i < shaderParams.size(); ++i)
             {
                 SShaderParam& param = shaderParams[i];
-                if (_stricmp(param.m_Name, sParamName) == 0)
+                if (param.m_Name == sParamName )
                 {
                     v = 0.0f;
 
@@ -917,7 +917,7 @@ bool CMatInfo::SetGetMaterialParamVec4(const char* sParamName, Vec4& v, bool bGe
             for (int i = 0; i < shaderParams.size(); ++i)
             {
                 SShaderParam& param = shaderParams[i];
-                if (_stricmp(param.m_Name, sParamName) == 0)
+                if (param.m_Name == sParamName)
                 {
                     if (param.m_Type == eType_VECTOR)
                     {
@@ -1227,7 +1227,7 @@ void CMatInfo::DisableTextureStreaming()
                     }
 
                     // Calling load texture here will not actually re-create/re-load an existing texture. It will simply toggle streaming off
-                    ITexture*       texture = gEnv->pRenderer->EF_LoadTexture(pTextureRes->m_Name, textureFlags);
+                    ITexture*       texture = gEnv->pRenderer->EF_LoadTexture(pTextureRes->m_Name.c_str(), textureFlags);
                     // Call release to decrement the ref count, otherwise the texture will leak when switching between maps
                     if (texture)
                     {

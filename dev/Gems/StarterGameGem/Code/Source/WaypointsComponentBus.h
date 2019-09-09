@@ -24,7 +24,6 @@
 
 namespace StarterGameGem
 {
-
     typedef AZStd::vector<AZ::EntityId> VecOfEntityIds;
 
     struct WaypointsConfiguration
@@ -120,7 +119,6 @@ namespace StarterGameGem
         virtual void CloneWaypoints(const AZ::EntityId& srcEntityId) = 0;
         //! Get the waypoint component.
         virtual VecOfEntityIds* GetWaypoints() { return nullptr; }
-
     };
 
     using WaypointsComponentRequestsBus = AZ::EBus<WaypointsComponentRequests>;

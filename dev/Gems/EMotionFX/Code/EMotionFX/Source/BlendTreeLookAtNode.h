@@ -84,7 +84,7 @@ namespace EMotionFX
         bool GetSupportsVisualization() const override              { return true; }
         bool GetHasOutputPose() const override                      { return true; }
         bool GetSupportsDisable() const override                    { return true; }
-        uint32 GetVisualColor() const override                      { return MCore::RGBA(255, 0, 0); }
+        AZ::Color GetVisualColor() const override                   { return AZ::Color(1.0f, 0.0f, 0.0f, 1.0f); }
         AnimGraphPose* GetMainOutputPose(AnimGraphInstance* animGraphInstance) const override     { return GetOutputPose(animGraphInstance, OUTPUTPORT_POSE)->GetValue(); }
 
         const char* GetPaletteName() const override;
@@ -98,6 +98,7 @@ namespace EMotionFX
         void SetFollowSpeed(float followSpeed);
         void SetTwistAxis(ConstraintTransformRotationAngles::EAxis twistAxis);
         void SetLimitsEnabled(bool limitsEnabled);
+        void SetSmoothingEnabled(bool smoothingEnabled);
 
         static void Reflect(AZ::ReflectContext* context);
 
@@ -107,6 +108,7 @@ namespace EMotionFX
         void Update(AnimGraphInstance* animGraphInstance, float timePassedInSeconds) override;
 
         AZ::Crc32 GetLimitWidgetsVisibility() const;
+        AZ::Crc32 GetFollowSpeedVisibility() const;
 
         AZStd::string                               m_targetNodeName;
         AZ::Quaternion                              m_constraintRotation;
@@ -116,5 +118,6 @@ namespace EMotionFX
         float                                       m_followSpeed;
         ConstraintTransformRotationAngles::EAxis    m_twistAxis;
         bool                                        m_limitsEnabled;
+        bool                                        m_smoothing;
     };
 } // namespace EMotionFX

@@ -24,6 +24,7 @@
 
 #include "MathConversion.h"
 #include <AzFramework/Math/MathUtils.h>
+#include <AzToolsFramework/Viewport/ViewportMessages.h>
 
 #include <QFontMetrics>
 
@@ -139,11 +140,31 @@ CInfoBar::CInfoBar(QWidget* parent)
     connect(ui->m_vrBtn, &QAbstractButton::toggled, ui->m_vrBtn, [this](bool checked) {
         ui->m_vrBtn->setToolTip(checked ? tr("Disable VR Preview") : tr("Enable VR Preview"));
     });
+
+    // hide old ui elements that are not valid with the new viewport interaction model
+    if (GetIEditor()->IsNewViewportInteractionModelEnabled())
+    {
+        ui->m_lockSelection->setVisible(false);
+        ui->m_posCtrlX->setVisible(false);
+        ui->m_posCtrlY->setVisible(false);
+        ui->m_posCtrlZ->setVisible(false);
+        ui->m_setVector->setVisible(false);
+        ui->label_2->setVisible(false);
+        ui->label_3->setVisible(false);
+        ui->label_4->setVisible(false);
+        ui->m_vectorLock->setVisible(false);
+    }
+
+    using namespace AzToolsFramework::ComponentModeFramework;
+    EditorComponentModeNotificationBus::Handler::BusConnect(AzToolsFramework::GetEntityContextId());
 }
 
 //////////////////////////////////////////////////////////////////////////
 CInfoBar::~CInfoBar()
 {
+    using namespace AzToolsFramework::ComponentModeFramework;
+    EditorComponentModeNotificationBus::Handler::BusDisconnect();
+
     GetIEditor()->UnregisterNotifyListener(this);
 
     AZ::VR::VREventBus::Handler::BusDisconnect();
@@ -333,16 +354,21 @@ void CInfoBar::OnVectorUpdate(bool followTerrain)
     {
         if (obj)
         {
-            Quat qrot = AZQuaternionToLYQuaternion(AZ::ConvertEulerDegreesToQuaternion(LYVec3ToAZVec3(v)));
+            AZ::Vector3 av = LYVec3ToAZVec3(v);
+            AZ::Transform tr = AZ::ConvertEulerDegreesToTransformPrecise(av);
+            Matrix34 lyTransform = AZTransformToLYTransform(tr);
+
+            AffineParts newap;
+            newap.SpectralDecompose(lyTransform);
 
             if (referenceCoordSys == COORDS_WORLD)
             {
-                tm = Matrix34::Create(ap.scale, qrot, ap.pos);
+                tm = Matrix34::Create(ap.scale, newap.rot, ap.pos);
                 obj->SetWorldTM(tm);
             }
             else
             {
-                obj->SetRotation(qrot);
+                obj->SetRotation(newap.rot);
             }
         }
         else
@@ -868,6 +894,11 @@ void CInfoBar::OnBnClickedTerrainCollision()
 
 void CInfoBar::OnBnClickedPhysics()
 {
+    if (!ui->m_physicsBtn->isEnabled())
+    {
+        return;
+    }
+
     bool bPhysics = GetIEditor()->GetGameEngine()->GetSimulationMode();
     ui->m_physicsBtn->setChecked(bPhysics);
     emit ActionTriggered(ID_SWITCH_PHYSICS);
@@ -944,6 +975,16 @@ void CInfoBar::OnBnClickedEnableVR()
 {
     gSettings.bEnableGameModeVR = !gSettings.bEnableGameModeVR;
     ui->m_vrBtn->setChecked(gSettings.bEnableGameModeVR);
+}
+
+void CInfoBar::EnteredComponentMode(const AZStd::vector<AZ::Uuid>& /*componentModeTypes*/)
+{
+    ui->m_physicsBtn->setDisabled(true);
+}
+
+void CInfoBar::LeftComponentMode(const AZStd::vector<AZ::Uuid>& /*componentModeTypes*/)
+{
+    ui->m_physicsBtn->setEnabled(true);
 }
 
 #include <InfoBar.moc>

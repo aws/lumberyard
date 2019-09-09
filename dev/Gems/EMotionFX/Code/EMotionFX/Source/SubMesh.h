@@ -15,6 +15,7 @@
 // include the required headers
 #include "EMotionFXConfig.h"
 #include "BaseObject.h"
+#include <MCore/Source/Array.h>
 
 
 namespace EMotionFX

@@ -10,22 +10,7 @@
 *
 */
 
-QTabWidget
-{
-}
-
-/* An empty ::pane rule removes the default pane style. */
-QTabWidget::pane
-{
-}
-
-QTabBar
-{
-    qproperty-drawBase: 0;
-    alignment: center;
-}
-
-QTabBar::tab
+AzQtComponents--SegmentBar QAbstractButton
 {
     background-color: #333333;
     border-color: #000000;
@@ -40,22 +25,38 @@ QTabBar::tab
 
     margin-left: 0px;
 
-    min-width: 100px
+    margin-bottom: 15px;
+
+    min-width: 68px; /* 100 - (padding-left + padding-right) */
+
+    padding-left: 16px;
+    padding-right: 16px;
 }
 
-QTabBar::tab::middle,
-QTabBar::tab::last
+AzQtComponents--SegmentBar[orientation="1"] QAbstractButton.TabMiddle,
+AzQtComponents--SegmentBar[orientation="1"] QAbstractButton.TabLast
 {
     margin-left: -1px;
 }
 
-QTabBar::tab:selected
+AzQtComponents--SegmentBar[orientation="2"] QAbstractButton
+{
+    text-align: left;
+}
+
+AzQtComponents--SegmentBar[orientation="2"] QAbstractButton.TabMiddle,
+AzQtComponents--SegmentBar[orientation="2"] QAbstractButton.TabLast
+{
+    margin-top: -1px;
+}
+
+AzQtComponents--SegmentBar QAbstractButton:checked
 {
     background-color: #222222;
 }
 
-QTabBar::tab:hover
-
+AzQtComponents--SegmentBar QAbstractButton:hover:!checked,
+AzQtComponents--SegmentBar QAbstractButton:pressed:!checked
 {
     background-color: #444444;
 }

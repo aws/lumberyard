@@ -99,7 +99,8 @@ namespace LUAEditor
 		void OnBlockDoubleClicked(QMouseEvent* event, const QTextBlock& block);
 
 	private:
-		Ui::LUAEditorFindResults* m_gui;
-		class FindResultsHighlighter* m_highlighter;
+        Ui::LUAEditorFindResults* m_gui;
+        class FindResultsHighlighter* m_highlighter;
+        QColor m_resultLineHighlightColor;
 	};
 }

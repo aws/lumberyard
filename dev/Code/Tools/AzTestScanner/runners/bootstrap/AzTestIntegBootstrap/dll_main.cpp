@@ -12,6 +12,7 @@
 #define NOMINMAX
 #include <windows.h>
 
+#include <AZCore/Memory/AllocatorScope.h>
 #include <AzGameFramework/Application/GameApplication.h>
 #include <IGameStartup.h>
 #include <IEditorGame.h>
@@ -38,6 +39,7 @@ BOOL APIENTRY DllMain(HMODULE hModule,
 AzGameFramework::GameApplication gameApp;
 IGameStartup* m_gameStartup = nullptr;
 HMODULE m_gameDLL = 0;
+AZ::AllocatorScope<AZ::LegacyAllocator, CryStringAllocator> m_legacyAllocatorScope;
 
 extern "C" __declspec(dllexport) int Initialize();
 extern "C" __declspec(dllexport) int Shutdown();
@@ -45,6 +47,8 @@ extern "C" __declspec(dllexport) int Shutdown();
 //! Initialize the engine using the active game project
 int Initialize()
 {
+    m_legacyAllocatorScope.ActivateAllocators();
+
     char descriptorPath[AZ_MAX_PATH_LEN] = { 0 };
     {
         CEngineConfig engineCfg;
@@ -118,5 +122,6 @@ int Shutdown()
         }
     }
 
+    m_legacyAllocatorScope.DeactivateAllocators();
     return 0;
 }

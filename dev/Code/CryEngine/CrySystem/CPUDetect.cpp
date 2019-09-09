@@ -133,7 +133,11 @@ bool IsAMD()
     #define AZ_SUPPORTS_AMD
 #elif defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION CPUDETECT_CPP_SECTION_1
-#include AZ_RESTRICTED_FILE(CPUDetect_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/CPUDetect_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/CPUDetect_cpp_provo.inl"
+    #endif
 #endif
 
 #if defined(AZ_SUPPORTS_AMD)
@@ -327,6 +331,10 @@ unsigned long GetCPUFeatureSet()
         if (CPUInfo[2] & (1 << 0))
         {
             features |= CFI_SSE3;
+        }
+        if (CPUInfo[2] & (1 << 29))
+        {
+            features |= CFI_F16C;
         }
     }
 
@@ -1514,7 +1522,11 @@ void CCpuFeatures::Detect(void)
 
 #elif defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION CPUDETECT_CPP_SECTION_2
-#include AZ_RESTRICTED_FILE(CPUDetect_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/CPUDetect_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/CPUDetect_cpp_provo.inl"
+    #endif
 #endif
 
 
@@ -1599,6 +1611,10 @@ void CCpuFeatures::Detect(void)
     if (has3DNow())
     {
         g_CpuFlags |= CPUF_3DNOW;
+    }
+    if (hasF16C())
+    {
+        g_CpuFlags |= CPUF_F16C;
     }
 }
 

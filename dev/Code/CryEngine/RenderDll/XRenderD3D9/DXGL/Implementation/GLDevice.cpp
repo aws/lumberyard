@@ -15,11 +15,12 @@
 //               initialize OpenGL contexts and detect hardware
 //               capabilities
 
-
 #include <StdAfx.h>
+
 #include "GLDevice.hpp"
 #include "GLResource.hpp"
 #include <Common/RenderCapabilities.h>
+#include <SFunctor.h>
 
 #include <AzCore/std/smart_ptr/make_shared.h>
 #include <AzCore/Module/DynamicModuleHandle.h>
@@ -48,23 +49,9 @@
 // Used when checking the capabilities of an adapter.
 static const int MIN_UNIFORM_BUFFERS_REQUIRED = 8;
 
-#if defined(DXGLES_LOAD_EXTENSIONS)
-// Declare the function pointers for the gles extensions.
-#undef EXTENSION_FUNC
-#define EXTENSION_FUNC(func, ...) FunctPtr ## func DXGL_EXT_FUNCPTR(func) = nullptr;
-#include "GLExtensionFunctions.inl"
-#endif
-
 namespace NCryOpenGL
 {
     extern const DXGI_FORMAT DXGI_FORMAT_INVALID = DXGI_FORMAT_FORCE_UINT;
-
-    // Size of uniform buffers to hold all the skinning data (768 bones * 4 floats
-    // per quaternion * 4 bytes per float * 2 for motion blur). If the device does
-    // not support this size then we set a shader constant (SMALL_UNIFORM_BUFFERS)
-    // to indicate this, which in FXConstantDefs.cfi changes the max number of
-    // bones to 512.
-    static const int BASE_UNIFORM_BUFFER_SIZE = 24 * 1024;
 
     CDevice::WindowSizeList CDevice::m_windowSizes;
 
@@ -640,6 +627,7 @@ namespace NCryOpenGL
         , m_kFeatureSpec(kFeatureSpec)
         , m_kPixelFormatSpec(kPixelFormatSpec)
         , m_kContextFenceIssued(false)
+        , m_texturesStreamingFunctorId(0)
     {
         if (ms_pCurrentDevice == NULL)
         {
@@ -756,6 +744,19 @@ namespace NCryOpenGL
         ms_uNumContextsPerDevice = min((uint32)MAX_NUM_CONTEXT_PER_DEVICE, 1 + uNumSharedContexts);
     }
 
+
+    static void OnChangeTexturesStreaming(ICVar* pCVar, CDevice* device)
+    {
+        int32 newVal = pCVar->GetIVal();
+        if (newVal > 0 && !device->IsFeatureSupported(NCryOpenGL::eF_CopyImage))
+        {
+            AZ_Warning("Rendering", false, "Disabling Textures Streaming because is not supported on this device.");
+            newVal = 0;
+        }
+
+        pCVar->Set(newVal);
+    }
+
     bool CDevice::Initialize(const TNativeDisplay& kDefaultNativeDisplay)
     {
         if (kDefaultNativeDisplay == NULL)
@@ -808,6 +809,15 @@ namespace NCryOpenGL
 
         MakeCurrent(m_kDefaultWindowContext, NULL);
 
+        // Check for textures streaming support
+        if (ICVar* cVar = gEnv->pConsole->GetCVar("r_texturesStreaming"))
+        {
+            SFunctor onChange;
+            onChange.Set(OnChangeTexturesStreaming, cVar, this);
+            m_texturesStreamingFunctorId = cVar->AddOnChangeFunctor(onChange);
+            onChange.Call();
+        }
+
         return true;
     }
 
@@ -837,6 +847,11 @@ namespace NCryOpenGL
         if (m_kDefaultWindowContext != NULL)
         {
             ReleaseWindowContext(m_kDefaultWindowContext);
+        }
+
+        if (ICVar* cVar = gEnv->pConsole->GetCVar("r_texturesStreaming"))
+        {
+            cVar->RemoveOnChangeFunctor(m_texturesStreamingFunctorId);
         }
     }
 
@@ -1732,7 +1747,7 @@ namespace NCryOpenGL
         return uSupport;
     }
 
-#if DXGL_SUPPORT_COPY_IMAGE && DXGL_SUPPORT_GETTEXIMAGE
+#if DXGL_SUPPORT_GETTEXIMAGE
 
     bool DetectIfCopyImageWorksOnCubeMapFaces()
     {
@@ -1782,7 +1797,7 @@ namespace NCryOpenGL
         return memcmp(auInput, auOutput, sizeof(auOutput)) == 0;
     }
 
-#endif //DXGL_SUPPORT_COPY_IMAGE && DXGL_SUPPORT_GETTEXIMAGE
+#endif //DXGL_SUPPORT_GETTEXIMAGE
 
 #define ELEMENT(_Enum) _Enum,
 
@@ -1862,6 +1877,7 @@ namespace NCryOpenGL
 #if DXGLES || defined(DXGL_ES_SUBSET)
         bool gles30orHigher = glVersion >= DXGLES_VERSION_30;
         bool gles31orHigher = glVersion >= DXGLES_VERSION_31;
+        bool gles32orHigher = glVersion >= DXGLES_VERSION_32;
 
         kFeatures.Set(eF_IndexedBoolState, gles31orHigher);
         kFeatures.Set(eF_StencilOnlyFormat, gles31orHigher);
@@ -1875,6 +1891,9 @@ namespace NCryOpenGL
         kFeatures.Set(eF_SeparablePrograms, gles31orHigher || DXGL_GL_EXTENSION_SUPPORTED(EXT_separate_shader_objects));
         kFeatures.Set(eF_ComputeShader, gles31orHigher);
         kFeatures.Set(eF_DualSourceBlending, false);
+        kFeatures.Set(eF_IndependentBlending, gles32orHigher);
+        // glCopyImageSubData causes a crash on Mali GPUs. Disabling it for now.
+        kFeatures.Set(eF_CopyImage, (gles32orHigher || DXGL_GL_EXTENSION_SUPPORTED(EXT_copy_image)) && driverVendor != RenderCapabilities::s_gpuVendorIdARM);
         // OpenGLES doesn't support depth clamping but we emulate it by writing the depth in the pixel shader.
         // Unfortunately Qualcomm OpenGL ES 3.0 drivers have a bug and they don't support modifying the depth in the pixel shader.
         kFeatures.Set(eF_DepthClipping, !(glVersion == DXGLES_VERSION_30 && driverVendor == RenderCapabilities::s_gpuVendorIdQualcomm));
@@ -1910,6 +1929,8 @@ namespace NCryOpenGL
         kFeatures.Set(eF_DebugOutput, gl43orHigher || DXGL_GL_EXTENSION_SUPPORTED(KHR_debug));
         kFeatures.Set(eF_ComputeShader, gl43orHigher || DXGL_GL_EXTENSION_SUPPORTED(ARB_compute_shader));
         kFeatures.Set(eF_BufferStorage, gl44orHigher || DXGL_GL_EXTENSION_SUPPORTED(ARB_buffer_storage));
+        kFeatures.Set(eF_IndependentBlending, true);
+		kFeatures.Set(eF_CopyImage, gl43orHigher);
 #if DXGL_GLSL_FROM_HLSLCROSSCOMPILER
         // Technically dual source blending is supported since OpenGL 3.3 but you need to declare the fragment shader output with the 
         // position and the index (for OpenGL < 4.4): 
@@ -1963,7 +1984,6 @@ namespace NCryOpenGL
             DetectResourceUnitCapabilities(&kCapabilities.m_akResourceUnits[eRUT_Image], g_aeMaxImageUnits);
         }
 #endif
-        gRenDev->m_hasSmallUniformBuffers = (kCapabilities.m_iMaxUniformBlockSize <= BASE_UNIFORM_BUFFER_SIZE);
 
 #if DXGL_SUPPORT_VERTEX_ATTRIB_BINDING
         if (kFeatures.Get(eF_VertexAttribBinding))
@@ -1982,10 +2002,15 @@ namespace NCryOpenGL
         {
             kCapabilities.m_auFormatSupport[uGIFormat] = DetectGIFormatSupport((EGIFormat)uGIFormat);
         }
-
-#if DXGL_SUPPORT_COPY_IMAGE && DXGL_SUPPORT_GETTEXIMAGE
-        kCapabilities.m_bCopyImageWorksOnCubeMapFaces = DetectIfCopyImageWorksOnCubeMapFaces();
-#endif //DXGL_SUPPORT_COPY_IMAGE && DXGL_SUPPORT_GETTEXIMAGE
+        
+        // Assume it works
+        kCapabilities.m_bCopyImageWorksOnCubeMapFaces = true;
+#if DXGL_SUPPORT_GETTEXIMAGE
+        if(kFeatures.Get(eF_CopyImage))
+        {
+            kCapabilities.m_bCopyImageWorksOnCubeMapFaces = DetectIfCopyImageWorksOnCubeMapFaces();
+        }
+#endif // DXGL_SUPPORT_GETTEXIMAGE
 
 
         glGetIntegerv(GL_MAX_COLOR_ATTACHMENTS, &kCapabilities.m_maxRenderTargets);
@@ -2095,109 +2120,53 @@ namespace NCryOpenGL
     }
 
 #if DXGL_EXTENSION_LOADER
-#if defined(DXGLES_LOAD_EXTENSIONS)
-    void LoadDXGLESExtensionEntryPoints()
+    bool LoadEarlyGLEntryPoints()
     {
-        // Assign the function pointer to the correct function.
-        #undef EXTENSION_FUNC
-        #define EXTENSION_FUNC(func, ...) DXGL_EXT_FUNCPTR(func) = DXGL_GL_LOADER_FUNCTION_PTR(func) ? \
-                                                                            DXGL_GL_LOADER_FUNCTION_PTR(func) : \
-                                                                            DXGL_GL_LOADER_FUNCTION_PTR(func ## EXT);
-        #include "GLExtensionFunctions.inl"
-    }
-#endif // defined(DXGLES_LOAD_EXTENSIONS)
-
-#if defined(OPENGL_ES) && defined(DXGL_USE_LOADER_GLAD)
-    namespace FunctionLoaderHelper
-    {
-        AZStd::unique_ptr<AZ::DynamicModuleHandle> s_moduleHandle;
-
-        bool LoadModule()
+#if defined(DXGL_USE_LOADER_GLAD)
+#   if defined(DXGL_USE_EGL)
+        if (gladLoaderLoadEGL(NULL) == 0)
         {
-            s_moduleHandle = AZ::DynamicModuleHandle::Create("libGLESv2");
-            return s_moduleHandle->Load(false);
-        }
-        
-        bool UnloadModule()
-        {
-            if (s_moduleHandle)
-            {
-                return s_moduleHandle->Unload();
-            }
-
+            DXGL_ERROR("Failed to retrieve EGL entry points");
             return false;
         }
-
-        void* GetGLProcAddress(const char* funcName)
-        {
-             AZStd::function<void*(const char*)> libLoader;
- #if defined(DXGL_USE_WGL)
-             libLoader = wglGetProcAddress;
- #elif defined(DXGL_USE_EGL)
-             typedef void* (*funcLoader)(const char *name);
-             libLoader = reinterpret_cast<funcLoader>(eglGetProcAddress);
- #endif
-             // First try to load the function address using the library function
-             if (libLoader)
-             {
-                 void* function = libLoader(funcName);
-                 if (function)
-                 {
-                     return function;
-                 }
-             }
-
-            // Now try to load the function symbol directly from the library.
-            // This is needed because some implementations only load extensions and not core functions.
-            if (!s_moduleHandle)
-            {
-                if (!LoadModule())
-                {
-                    AZ_Assert(false, "Failed to load module");
-                    return nullptr;
-                }
-            }
-
-            return s_moduleHandle->GetFunction<void*>(funcName);
-        }
-    };
-#endif //defined(OPENGL_ES) && defined(DXGL_USE_LOADER_GLAD)
+#   endif
+#else
+#error "Not implemented on this platform"
+#endif
+        return true;
+    }
 
     bool LoadGLEntryPoints(SDummyContext& kDummyContext)
     {
 #if defined(DXGL_USE_LOADER_GLAD)
+#   if defined(DXGL_USE_GLX)
+        if (gladLoaderLoadGLX(NULL, 0) == 0)
+        {
+            DXGL_ERROR("Failed to retrieve GLX entry points");
+            return false;
+        }
+#   endif
+
 #if defined(OPENGL_ES)
-        int ret = gladLoadGLES2Loader(FunctionLoaderHelper::GetGLProcAddress);
-        // Unload library if needed
-        FunctionLoaderHelper::UnloadModule();
+        int ret = gladLoaderLoadGLES2();
 #else
-        int ret = gladLoadGL();
+        int ret = gladLoaderLoadGL();
 #endif //defined(OPENGL_ES)
-        if (ret != 1)
+        
+        if (ret == 0)
         {
             DXGL_ERROR("Failed to retrieve GL entry points");
             return false;
         }
 
 #   if defined(DXGL_USE_WGL)
-        if (gladLoadWGL(kDummyContext.m_kDummyWindow.m_kNativeDisplay) != 1)
+        if (gladLoaderLoadWGL(kDummyContext.m_kDummyWindow.m_kNativeDisplay) == 0)
         {
             DXGL_ERROR("Failed to retrieve WGL entry points");
             return false;
         }
-#   elif defined(DXGL_USE_EGL)
-        if (gladLoadEGL() != 1)
-        {
-            DXGL_ERROR("Failed to retrieve EGL entry points");
-            return false;
-        }
-#   elif defined(DXGL_USE_GLX)
-        if (gladLoadGLX(NULL, 0) != 1)
-        {
-            DXGL_ERROR("Failed to retrieve GLX entry points");
-            return false;
-        }
-#   endif
+#   endif 
+
 #elif defined(DXGL_USE_LOADER_GLEW)
         GLenum err = glewInit();
         if (GLEW_OK != err)
@@ -2223,13 +2192,8 @@ namespace NCryOpenGL
 #else
 #error "Not implemented on this platform"
 #endif
-
-#if defined(DXGLES_LOAD_EXTENSIONS)
-        LoadDXGLESExtensionEntryPoints();
-#endif // defined(DXGLES_LOAD_EXTENSIONS)
         return true;
     }
-
 #endif //DXGL_EXTENSION_LOADER
 
     bool GetGLVersion(SAdapterPtr& pAdapter)
@@ -2280,6 +2244,13 @@ namespace NCryOpenGL
 
     bool DetectAdapters(std::vector<SAdapterPtr>& kAdapters)
     {
+#if DXGL_EXTENSION_LOADER
+        if (!LoadEarlyGLEntryPoints())
+        {
+            return false;
+        }
+#endif // DXGL_EXTENSION_LOADER
+
         SDummyContext kDummyContext;
         if (!kDummyContext.Initialize())
         {
@@ -2305,6 +2276,11 @@ namespace NCryOpenGL
         AZ_Warning("Renderer", result, "Failed to get the OpenGL version for adapter %s %s", spAdapter->m_strVendor.c_str(), spAdapter->m_strRenderer.c_str());
         result = ParseExtensions(spAdapter);
         AZ_Warning("Renderer", result, "Failed to parse OpenGL Extensions for adapter %s %s", spAdapter->m_strVendor.c_str(), spAdapter->m_strRenderer.c_str());
+
+        if (gEnv->pRenderer)
+        {
+            gEnv->pRenderer->SetApiVersion(spAdapter->m_strVersion.c_str());
+        }
 
         if (!DetectFeaturesAndCapabilities(spAdapter->m_kFeatures, spAdapter->m_kCapabilities, spAdapter->m_sVersion, spAdapter->m_eDriverVendor))
         {

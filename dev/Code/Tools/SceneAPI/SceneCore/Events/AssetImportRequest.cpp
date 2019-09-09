@@ -14,7 +14,6 @@
 #include <AzCore/std/smart_ptr/make_shared.h>
 #include <AzFramework/StringFunc/StringFunc.h>
 #include <AzToolsFramework/Debug/TraceContext.h>
-#include <AzToolsFramework/API/EditorAssetSystemAPI.h>
 #include <SceneAPI/SceneCore/Components/LoadingComponent.h>
 #include <SceneAPI/SceneCore/Components/SceneSystemComponent.h>
 #include <SceneAPI/SceneCore/Components/Utilities/EntityConstructor.h>
@@ -100,6 +99,12 @@ namespace AZ
             ProcessingResult AssetImportRequest::UpdateManifest(Containers::Scene& /*scene*/, ManifestAction /*action*/, RequestingApplication /*requester*/)
             {
                 return ProcessingResult::Ignored;
+            }
+
+            void AssetImportRequest::AreCustomNormalsUsed(bool &value)
+            {
+                // Leave the SceneProcessingConfigSystemComponent do the job
+                AZ_UNUSED(value);
             }
 
             AZStd::shared_ptr<Containers::Scene> AssetImportRequest::LoadSceneFromVerifiedPath(const AZStd::string& assetFilePath, const Uuid& sourceGuid,

@@ -81,5 +81,7 @@ namespace EMStudio
 
         AZStd::unique_ptr<EMotionFX::Parameter> m_parameter;
         AZStd::string                       m_originalName;
+
+        static int                          m_parameterEditorMinWidth;
     };
 } // namespace EMStudio

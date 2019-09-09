@@ -1,0 +1,6 @@
+<download name="LambdaLanguage" type="Map">
+ <index src="filelist.xml" dest="filelist.xml"/>
+ <files>
+  <file src="level.pak" dest="level.pak" size="9140" md5="7a68458b3f23aba46f5ccbc56b6f84b8"/>
+ </files>
+</download>

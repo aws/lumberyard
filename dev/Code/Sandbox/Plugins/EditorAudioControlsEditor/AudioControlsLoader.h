@@ -56,9 +56,9 @@ namespace AudioControls
 
         CATLControl* CreateInternalSwitchState(CATLControl* parentControl, const string& switchName, const string& stateName);
 
-        static const string ms_sControlsLevelsFolder;
-        static const string ms_sConfigFile;
-        static const string ms_sLevelsFolder;
+        static const char* ms_sControlsLevelsFolder;
+        static const char* ms_sConfigFile;
+        static const char* ms_sLevelsFolder;
 
         CATLControlsModel* m_pModel;
         QStandardItemModel* m_pLayout;

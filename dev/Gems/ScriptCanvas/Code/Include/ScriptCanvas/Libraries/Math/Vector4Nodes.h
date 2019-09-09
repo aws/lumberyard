@@ -34,10 +34,16 @@ namespace ScriptCanvas
         {
             return lhs + rhs;
         }
-        SCRIPT_CANVAS_GENERIC_FUNCTION_NODE(Add, "Math/Vector4", "{900CABAF-BAA9-4C4D-A6AB-9ABD49270F3C}", "returns the vector sum of A and B", "A", "B");
+        SCRIPT_CANVAS_GENERIC_FUNCTION_NODE_DEPRECATED(Add, "Math/Vector4", "{900CABAF-BAA9-4C4D-A6AB-9ABD49270F3C}", "This node is deprecated, use Add (+), it provides contextual type and slots", "A", "B");
 
         AZ_INLINE Vector4Type DivideByNumber(const Vector4Type source, const NumberType divisor)
         {
+            if (AZ::IsClose(divisor, Data::NumberType(0), std::numeric_limits<Data::NumberType>::epsilon()))
+            {
+                AZ_Error("Script Canvas", false, "Division by zero");
+                return Vector4Type::CreateZero();
+            }
+
             return source / ToVectorFloat(divisor);
         }
         SCRIPT_CANVAS_GENERIC_FUNCTION_NODE(DivideByNumber, "Math/Vector4", "{2AA9BBC5-B2A6-405B-BED3-59317DFDEE70}", "returns the source with each element divided by Divisor", "Source", "Divisor");
@@ -46,7 +52,7 @@ namespace ScriptCanvas
         {
             return source / divisor;
         }
-        SCRIPT_CANVAS_GENERIC_FUNCTION_NODE(DivideByVector, "Math/Vector4", "{63033E8A-2FD1-4796-AE8B-0A8DE2A53C4D}", "returns the Numerator with each element divided by the corresponding element in Divisor", "Numerator", "Divisor");
+        SCRIPT_CANVAS_GENERIC_FUNCTION_NODE_DEPRECATED(DivideByVector, "Math/Vector4", "{63033E8A-2FD1-4796-AE8B-0A8DE2A53C4D}", "This node is deprecated, use Divide (/), it provides contextual type and slots", "Numerator", "Divisor");
 
         AZ_INLINE NumberType Dot(const Vector4Type lhs, const Vector4Type rhs)
         {
@@ -140,33 +146,33 @@ namespace ScriptCanvas
         }
         SCRIPT_CANVAS_GENERIC_FUNCTION_NODE(LengthSquared, "Math/Vector4", "{C2D83735-69EC-4DA4-81C7-AA2B3C45FAB3}", "returns the magnitude squared of the source, generally faster than getting the exact length", "Source");
 
-        AZ_INLINE Vector4Type ModW(Vector4Type source, NumberType value)
+        AZ_INLINE Vector4Type SetW(Vector4Type source, NumberType value)
         {
             source.SetW(ToVectorFloat(value));
             return source;
         }
-        SCRIPT_CANVAS_GENERIC_FUNCTION_NODE(ModW, "Math/Vector4", "{BE23146C-03DF-4A5C-BFF8-724A5E588F2E}", "returns a the vector(Source.X, Source.Y, Source.Z, W)", "Source", "W");
+        SCRIPT_CANVAS_GENERIC_FUNCTION_NODE(SetW, "Math/Vector4", "{BE23146C-03DF-4A5C-BFF8-724A5E588F2E}", "returns a the vector(Source.X, Source.Y, Source.Z, W)", "Source", "W");
 
-        AZ_INLINE Vector4Type ModX(Vector4Type source, NumberType value)
+        AZ_INLINE Vector4Type SetX(Vector4Type source, NumberType value)
         {
             source.SetX(ToVectorFloat(value));
             return source;
         }
-        SCRIPT_CANVAS_GENERIC_FUNCTION_NODE(ModX, "Math/Vector4", "{A1D746E9-8B71-4452-AF07-96993547373C}", "returns a the vector(X, Source.Y, Source.Z, Source.W)", "Source", "X");
+        SCRIPT_CANVAS_GENERIC_FUNCTION_NODE(SetX, "Math/Vector4", "{A1D746E9-8B71-4452-AF07-96993547373C}", "returns a the vector(X, Source.Y, Source.Z, Source.W)", "Source", "X");
 
-        AZ_INLINE Vector4Type ModY(Vector4Type source, NumberType value)
+        AZ_INLINE Vector4Type SetY(Vector4Type source, NumberType value)
         {
             source.SetY(ToVectorFloat(value));
             return source;
         }
-        SCRIPT_CANVAS_GENERIC_FUNCTION_NODE(ModY, "Math/Vector4", "{D7C5E214-8E73-471C-8026-CB35D2D2FD58}", "returns a the vector(Source.X, Y, Source.Z, Source.W)", "Source", "Y");
+        SCRIPT_CANVAS_GENERIC_FUNCTION_NODE(SetY, "Math/Vector4", "{D7C5E214-8E73-471C-8026-CB35D2D2FD58}", "returns a the vector(Source.X, Y, Source.Z, Source.W)", "Source", "Y");
 
-        AZ_INLINE Vector4Type ModZ(Vector4Type source, NumberType value)
+        AZ_INLINE Vector4Type SetZ(Vector4Type source, NumberType value)
         {
             source.SetZ(ToVectorFloat(value));
             return source;
         }
-        SCRIPT_CANVAS_GENERIC_FUNCTION_NODE(ModZ, "Math/Vector4", "{5458F2CC-B8E2-43E2-B59F-8825A4D1F70A}", "returns a the vector(Source.X, Source.Y, Z, Source.W)", "Source", "Z");
+        SCRIPT_CANVAS_GENERIC_FUNCTION_NODE(SetZ, "Math/Vector4", "{5458F2CC-B8E2-43E2-B59F-8825A4D1F70A}", "returns a the vector(Source.X, Source.Y, Z, Source.W)", "Source", "Z");
 
         AZ_INLINE Vector4Type MultiplyByNumber(const Vector4Type source, const NumberType multiplier)
         {
@@ -178,7 +184,7 @@ namespace ScriptCanvas
         {
             return source * multiplier;
         }
-        SCRIPT_CANVAS_GENERIC_FUNCTION_NODE(MultiplyByVector, "Math/Vector4", "{5F75288F-F7D5-4963-ABB3-14414DEB61E6}", "returns the vector Source with each element multiplied by the corresponding element in Multipler", "Source", "Multiplier");
+        SCRIPT_CANVAS_GENERIC_FUNCTION_NODE_DEPRECATED(MultiplyByVector, "Math/Vector4", "{5F75288F-F7D5-4963-ABB3-14414DEB61E6}", "This node is deprecated, use Multiply (*), it provides contextual type and slots", "Source", "Multiplier");
 
         AZ_INLINE Vector4Type Negate(const Vector4Type source)
         {
@@ -209,7 +215,7 @@ namespace ScriptCanvas
         {
             return lhs - rhs;
         }
-        SCRIPT_CANVAS_GENERIC_FUNCTION_NODE(Subtract, "Math/Vector4", "{A5FA6465-9C39-4A44-BD7C-E8ECF9503E46}", "returns the vector A - B", "A", "B");
+        SCRIPT_CANVAS_GENERIC_FUNCTION_NODE_DEPRECATED(Subtract, "Math/Vector4", "{A5FA6465-9C39-4A44-BD7C-E8ECF9503E46}", "This node is deprecated, use Subtract (-), it provides contextual type and slots", "A", "B");
                         
         using Registrar = RegistrarGeneric<
             AbsoluteNode,
@@ -243,14 +249,10 @@ namespace ScriptCanvas
             LengthNode,
             LengthReciprocalNode,
             LengthSquaredNode,
-
-#if ENABLE_EXTENDED_MATH_SUPPORT
-            ModWNode,
-            ModXNode,
-            ModYNode,
-            ModZNode,
-#endif
-
+            SetWNode,
+            SetXNode,
+            SetYNode,
+            SetZNode,
             MultiplyByNumberNode,
             MultiplyByVectorNode,
             NegateNode,

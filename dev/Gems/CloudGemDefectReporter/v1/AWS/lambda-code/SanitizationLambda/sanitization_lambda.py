@@ -31,8 +31,8 @@ def main(event, request):
     __validate_event(event)
 
     s3_client = s3.get_client()
-    attachment_bucket = CloudCanvas.get_setting('AttachmentBucket')
-    sanitized_bucket = CloudCanvas.get_setting('SanitizedBucket')
+    attachment_bucket = CloudCanvas.get_setting(constants.ATTACHMENT_BUCKET)
+    sanitized_bucket = CloudCanvas.get_setting(constants.SANITIZED_BUCKET)
 
     sanitizer = Sanitizer(s3_client, attachment_bucket)
 
@@ -44,7 +44,6 @@ def main(event, request):
 
         if sanitizer.validate(key):
             sanitizer.move_to_target(key, sanitized_bucket)
-        
     if sanitizer.rejected_files:
         print("[REJECTED FILES]")
         for status in sanitizer.rejected_files:
@@ -64,17 +63,19 @@ def __validate_record(record):
     if 'eventVersion' not in record:
         raise RuntimeError('Malformed event recieved. (eventVersion)')
 
-    if record['eventVersion'] != constants.S3_EVENT_VERSION:
-        raise RuntimeError('Malformed event recieved. (eventVersion)')
+    versionValue = float(record['eventVersion'])
+    if versionValue < constants.S3_EVENT_VERSION_MIN or versionValue > constants.S3_EVENT_VERSION_MAX:
+        print('Unexpected event version - Received {} support min {} max {}'.format(
+              versionValue, constants.S3_EVENT_VERSION_MIN, constants.S3_EVENT_VERSION_MAX))
 
     if 's3' not in record:
         raise RuntimeError('Malformed event received. (s3)')
-    
+
     s3 = record['s3']
 
     if 'object' not in s3:
         raise RuntimeError('Malformed event received. (object)')
-    
+
     object_ = s3['object']
 
     if 'key' not in object_:
@@ -101,14 +102,14 @@ class Sanitizer:
         if not self.__validate_mime_type(key, content_type):
             return False
 
-        if content_type == constants.MIME_TYPE_IMAGE_JPEG and self.__validate_image(key, download_path):
+        if content_type in (constants.MIME_TYPE_IMAGE_JPEG, constants.MIME_TYPE_IMAGE_PNG) and self.__validate_image(key, content_type, download_path):
             return True
         elif content_type == constants.MIME_TYPE_TEXT_PLAIN and self.__validate_file(key, download_path):
             return True
         else:
             return False
 
-    
+
     def move_to_target(self, key, target):
         ''' Moves object with key to target bucket. '''
 
@@ -132,15 +133,15 @@ class Sanitizer:
             copy_source = {'Bucket': self.source_bucket, 'Key': key}
             if is_encrypted:
                 self.s3_client.copy_object(
-                    Bucket=target_bucket, 
-                    CopySource=copy_source, 
-                    ServerSideEncryption='AES256', 
+                    Bucket=target_bucket,
+                    CopySource=copy_source,
+                    ServerSideEncryption='AES256',
                     Key=key
                     )
             else:
                 self.s3_client.copy_object(
-                    Bucket=target_bucket, 
-                    CopySource=copy_source, 
+                    Bucket=target_bucket,
+                    CopySource=copy_source,
                     Key=key
                     )
         except Exception as error:
@@ -164,11 +165,11 @@ class Sanitizer:
 
         return '/tmp/unsanitized-{}'.format(key)
 
-        
-    def __validate_image(self, key, file_path):
-        ''' Validates image is within the allowed parameters defined in the settings. '''
 
-        self.__remove_metadata(file_path)
+    def __validate_image(self, key, content_type, file_path):
+        ''' Validates image is within the allowed parameters defined in the settings. '''
+        if content_type == constants.MIME_TYPE_IMAGE_JPEG:
+            self.__remove_metadata(file_path)
 
         if not self.__validate_file_size(file_path):
             self.rejected_files.append(FileStatus(key, False, "Invalid file size.", ''))
@@ -198,12 +199,12 @@ class Sanitizer:
         if size_in_bytes > settings.MAXIMUM_IMAGE_SIZE_IN_BYTES:
             return False
         else:
-            return True        
+            return True
 
 
     def __validate_image_dimensions(self, image_object):
         ''' Validates image dimensions are less than the maximum allowed in settings. '''
-        
+
         width, height = image_object.size
 
         if (width < settings.MAXIMUM_IMAGE_WIDTH) and (height < settings.MAXIMUM_IMAGE_HEIGHT):
@@ -225,7 +226,7 @@ class Sanitizer:
             return False
         else:
             return True
-    
+
 
     def __remove_metadata(self, file_path):
         ''' Removes metadata from image. '''
@@ -242,7 +243,7 @@ class Sanitizer:
     def __validate_mime_type(self, key, content_type):
         ''' Validates mime type is of expected type. '''
 
-        if content_type == constants.MIME_TYPE_IMAGE_JPEG or content_type == constants.MIME_TYPE_TEXT_PLAIN:
+        if content_type in (constants.MIME_TYPE_IMAGE_JPEG, constants.MIME_TYPE_TEXT_PLAIN, constants.MIME_TYPE_IMAGE_PNG):
             return True
         else:
             self.rejected_files.append(FileStatus(key, False, "Content-type not valid. (Mime)", ''))
@@ -256,7 +257,7 @@ class Sanitizer:
             return True
         else:
             self.rejected_files.append(FileStatus(key, False, "Invalid file size.", ''))
-            return False    
+            return False
 
 
     def __get_serverside_encryption(self, key):
@@ -271,6 +272,6 @@ class Sanitizer:
             raise RuntimeError('Cannot determine encryption on object {}. {} '.format(key,e))
 
         if 'ServerSideEncryption' in response:
-            return response['ServerSideEncryption']        
+            return response['ServerSideEncryption']
         else:
             return ''

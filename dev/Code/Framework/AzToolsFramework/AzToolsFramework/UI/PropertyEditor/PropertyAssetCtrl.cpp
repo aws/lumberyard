@@ -428,7 +428,7 @@ namespace AzToolsFramework
             tabsResetFunction();
 
             #pragma warning(push)
-            #pragma warning(disable: 4573)	// the usage of 'X' requires the compiler to capture 'this' but the current default capture mode 
+            #pragma warning(disable: 4573)  // the usage of 'X' requires the compiler to capture 'this' but the current default capture mode 
 
             // Connect the above function to when the user clicks the reset tabs button
             QObject::connect(logPanel, &AzToolsFramework::LogPanel::BaseLogPanel::TabsReset, logPanel, tabsResetFunction);
@@ -441,6 +441,13 @@ namespace AzToolsFramework
             logDialog->adjustSize();
             logDialog->show();
         });
+    }
+
+    void PropertyAssetCtrl::ClearAssetInternal()
+    {
+        SetCurrentAssetHint(AZStd::string());
+        SetCurrentAssetID(AZ::Data::AssetId());
+        EBUS_EVENT(ToolsApplicationEvents::Bus, InvalidatePropertyDisplay, Refresh_EntireTree);
     }
 
     void PropertyAssetCtrl::SourceFileChanged(AZStd::string /*relativePath*/, AZStd::string /*scanFolder*/, AZ::Uuid sourceUUID)
@@ -557,15 +564,18 @@ namespace AzToolsFramework
                 const AZ::SerializeContext::ClassData* classData = serializeContext->FindClassData(GetCurrentAssetType());
                 if (classData && classData->m_editData)
                 {
-                    // if there is no file selected then open the asset editor and let them create one
-                    AZ::Data::Asset<AZ::Data::AssetData> asset = GetCurrentAssetID().IsValid()? AZ::Data::AssetManager::Instance().GetAsset(GetCurrentAssetID(), GetCurrentAssetType(), true) : AZ::Data::Asset<AZ::Data::AssetData>();
-                    QObject* rootOfAll = this;
-                    while (QObject* nextParent = rootOfAll->parent())
+                    if (!GetCurrentAssetID().IsValid())
                     {
-                        rootOfAll = nextParent;
+                        // No Asset Id selected - Open editor and create new asset for them
+                        AssetEditor::AssetEditorRequestsBus::Broadcast(&AssetEditor::AssetEditorRequests::CreateNewAsset, GetCurrentAssetType());
+                    }
+                    else
+                    {
+                        // Open the asset with the preferred asset editor
+                        bool handled = false;
+                        AssetBrowser::AssetBrowserInteractionNotificationBus::Broadcast(&AssetBrowser::AssetBrowserInteractionNotifications::OpenAssetInAssociatedEditor, GetCurrentAssetID(), handled);
                     }
 
-                    AssetEditor::AssetEditorRequestsBus::Broadcast(&AssetEditor::AssetEditorRequests::OpenAssetEditor, asset);
                     return;
                 }
             }
@@ -580,28 +590,39 @@ namespace AzToolsFramework
         AZ_Assert(m_currentAssetType != AZ::Data::s_invalidAssetType, "No asset type was assigned.");
 
         // Request the AssetBrowser Dialog and set a type filter
-        AssetSelectionModel selection = AssetSelectionModel::AssetTypeSelection(GetCurrentAssetType());
+        AssetSelectionModel selection = GetAssetSelectionModel();
         selection.SetSelectedAssetId(m_currentAssetID);
         EditorRequests::Bus::Broadcast(&EditorRequests::BrowseForAssets, selection);
         if (selection.IsValid())
         {
             auto product = azrtti_cast<const ProductAssetBrowserEntry*>(selection.GetResult());
-            AZ_Assert(product, "Incorrect entry type selected. Expected product.");
-            SetCurrentAssetID(product->GetAssetId());
+            auto folder = azrtti_cast<const FolderAssetBrowserEntry*>(selection.GetResult());
+            AZ_Assert(product || folder, "Incorrect entry type selected. Expected product or folder.");
+            if (product)
+            {
+                SetCurrentAssetID(product->GetAssetId());
+            }
+            else if (folder)
+            {
+                SetFolderSelection(folder->GetRelativePath());
+                SetCurrentAssetID(AZ::Data::AssetId());
+            }
         }
     }
 
     void PropertyAssetCtrl::ClearAsset()
     {
-        SetCurrentAssetHint(AZStd::string());
-        SetCurrentAssetID(AZ::Data::AssetId());
-        EBUS_EVENT(ToolsApplicationEvents::Bus, InvalidatePropertyDisplay, Refresh_EntireTree);
+        ClearAssetInternal();
     }
 
 
     void PropertyAssetCtrl::SetCurrentAssetID(const AZ::Data::AssetId& newID)
     {
-        if (m_currentAssetID == newID)
+        // Early out if we're attempting to set the same asset ID unless the
+        // asset is a folder. Folders don't have an asset ID, so we bypass
+        // the early-out for folder selections. See PropertyHandlerDirectory.
+        const bool isFolderSelection = !GetFolderSelection().empty();
+        if (m_currentAssetID == newID && !isFolderSelection)
         {
             return;
         }
@@ -669,7 +690,7 @@ namespace AzToolsFramework
         }
 
         AZ::Outcome<AssetSystem::JobInfoContainer> jobOutcome = AZ::Failure();
-        AssetSystemJobRequestBus::BroadcastResult(jobOutcome, &AssetSystemJobRequestBus::Events::GetAssetJobsInfoByAssetID, GetCurrentAssetID(), false);
+        AssetSystemJobRequestBus::BroadcastResult(jobOutcome, &AssetSystemJobRequestBus::Events::GetAssetJobsInfoByAssetID, GetCurrentAssetID(), false, false);
 
         if (jobOutcome.IsSuccess())
         {
@@ -796,6 +817,7 @@ namespace AzToolsFramework
             {
                 (void)newAssetID;
                 EBUS_EVENT(PropertyEditorGUIMessages::Bus, RequestWrite, newCtrl);
+                AzToolsFramework::PropertyEditorGUIMessages::Bus::Broadcast(&PropertyEditorGUIMessages::Bus::Handler::OnEditingFinished, newCtrl);
             });
         return newCtrl;
     }
@@ -882,6 +904,7 @@ namespace AzToolsFramework
             {
                 (void)newAssetID;
                 EBUS_EVENT(PropertyEditorGUIMessages::Bus, RequestWrite, newCtrl);
+                AzToolsFramework::PropertyEditorGUIMessages::Bus::Broadcast(&PropertyEditorGUIMessages::Bus::Handler::OnEditingFinished, newCtrl);
             });
         return newCtrl;
     }

@@ -14,6 +14,8 @@
 #include <AzCore/std/smart_ptr/make_shared.h>
 #include <SceneAPI/FbxSDKWrapper/FbxMeshWrapper.h>
 #include <SceneAPI/FbxSDKWrapper/FbxSkinWrapper.h>
+#include <SceneAPI/FbxSDKWrapper/FbxVertexTangentWrapper.h>
+#include <SceneAPI/FbxSDKWrapper/FbxVertexBitangentWrapper.h>
 #include <SceneAPI/FbxSDKWrapper/FbxBlendShapeWrapper.h>
 #include <SceneAPI/FbxSDKWrapper/FbxTypeConverter.h>
 
@@ -108,9 +110,29 @@ namespace AZ
             return FbxUVWrapper(m_fbxMesh->GetElementUV(index));
         }
 
+        FbxVertexTangentWrapper FbxMeshWrapper::GetElementTangent(int index)
+        {
+            return FbxVertexTangentWrapper(m_fbxMesh->GetElementTangent(index));
+        }
+
+        FbxVertexBitangentWrapper FbxMeshWrapper::GetElementBitangent(int index)
+        {
+            return FbxVertexBitangentWrapper(m_fbxMesh->GetElementBinormal(index));
+        }
+
         int FbxMeshWrapper::GetElementUVCount() const
         {
             return m_fbxMesh->GetElementUVCount();
+        }
+
+        int FbxMeshWrapper::GetElementTangentCount() const
+        {
+            return m_fbxMesh->GetElementTangentCount();
+        }
+
+        int FbxMeshWrapper::GetElementBitangentCount() const
+        {
+            return m_fbxMesh->GetElementBinormalCount();
         }
 
         FbxVertexColorWrapper FbxMeshWrapper::GetElementVertexColor(int index)

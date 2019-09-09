@@ -20,7 +20,8 @@ def build(bld):
         vs_filter = 'Tools',
         file_list = 'hlslcc.waf_files',
         platforms       = ['win'],
-        configurations  = ['debug', 'profile'],
+        configurations  = ['all'],
+        exclude_monolithic = True,
         disable_pch = True,
 
         includes = [bld.Path('Code/Tools/HLSLCrossCompiler/include'),

@@ -9,8 +9,6 @@
 *WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#if defined (UNIT_TEST)
-
 #include <QElapsedTimer>
 #include <QCoreApplication>
 
@@ -288,6 +286,14 @@ namespace AssetProcessor
         }
     };
 
+    void MockApplicationManager::GetAllBuildersInfo(AssetProcessor::BuilderInfoList& builderInfoList)
+    {
+        for (auto matcherInfo : m_matcherBuilderPatterns)
+        {
+            builderInfoList.push_back(matcherInfo.m_builderDesc);
+        }
+    };
+
     bool MockApplicationManager::GetBuilderByID(const AZStd::string& builderName, AZStd::shared_ptr<InternalMockBuilder>& builder)
     {
         if (m_internalBuilders.find(builderName) == m_internalBuilders.end())
@@ -383,6 +389,8 @@ namespace AssetProcessor
         builderInfoList.push_back(m_assetBuilderDesc);
     }
 
+    void MockAssetBuilderInfoHandler::GetAllBuildersInfo(AssetProcessor::BuilderInfoList& builderInfoList)
+    {
+        builderInfoList.push_back(m_assetBuilderDesc);
+    };
 }
-
-#endif // UNIT_TEST

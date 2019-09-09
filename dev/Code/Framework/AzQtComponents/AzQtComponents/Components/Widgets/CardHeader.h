@@ -42,7 +42,10 @@ namespace AzQtComponents
 
         /// Set a title. Passing an empty string will hide the widget.
         void setTitle(const QString& title);
+        void refreshTitle();
+        void setTitleProperty(const char *name, const QVariant &value);
         QString title() const;
+        QLabel* titleLabel() const;
 
         /// Set an icon. Passing a null icon will hide the icon.
         void setIcon(const QIcon& icon);
@@ -80,7 +83,7 @@ namespace AzQtComponents
         void contextMenuRequested(const QPoint& position);
         void expanderChanged(bool expanded);
 
-    private:
+    protected:
         void mouseDoubleClickEvent(QMouseEvent* event) override;
         void contextMenuEvent(QContextMenuEvent* event) override;
         void triggerContextMenuUnderButton();

@@ -1,3 +1,14 @@
+/*
+* All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates, or 
+* a third party where indicated.
+*
+* For complete copyright and license terms please see the LICENSE at the root of this
+* distribution (the "License"). All use of this software is governed by the License,  
+* or, if provided, by the license below or the license accompanying this file. Do not
+* remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.  
+*
+*/
 
 #include "CloudGemDefectReporter_precompiled.h"
 
@@ -19,6 +30,8 @@
 #include <CloudGemMetric/MetricsEventParameter.h>
 #include <CloudGemMetric/CloudGemMetricBus.h>
 
+#include <CloudCanvasCommon/CloudCanvasCommonBus.h>
+
 namespace CloudGemDefectReporter
 {
     PostDefectReportsJob::PostDefectReportsJob(AZ::JobContext* jobContext, AZStd::vector<ReportWrapper> reports) :
@@ -37,6 +50,11 @@ namespace CloudGemDefectReporter
 
         int numRequestPresignedPostJobs = numAttachments / s_maxNumURLPerRequest + (numAttachments%s_maxNumURLPerRequest ? 1 : 0);
 
+        // a step is one request to AWS, be it for getting presigned urls, sending metrics or sending attachments to S3
+        int totalSteps = numAttachments + numRequestPresignedPostJobs + m_reports.size();
+
+        CloudGemDefectReporterUINotificationBus::QueueBroadcast(&CloudGemDefectReporterUINotificationBus::Events::OnDefectReportPostStart, totalSteps);
+
         AZStd::vector<ServiceAPI::EncryptedPresignedPostFields> encryptedPresignedPostFieldsVector;
         encryptedPresignedPostFieldsVector.resize(numAttachments);
 
@@ -52,7 +70,7 @@ namespace CloudGemDefectReporter
             {
                 int idx = i * s_maxNumURLPerRequest;
                 auto job = ServiceAPI::PostServiceUploadRequestJob::Create(
-                    [&encryptedPresignedPostFieldsVector, &postUrl, idx, &cv, &mutex, &numRequestJobFinished] (ServiceAPI::PostServiceUploadRequestJob* job) mutable
+                    [this, &encryptedPresignedPostFieldsVector, &postUrl, idx, &cv, &mutex, &numRequestJobFinished] (ServiceAPI::PostServiceUploadRequestJob* job) mutable
                 {
                     if (idx == 0)
                     {
@@ -69,12 +87,16 @@ namespace CloudGemDefectReporter
                         cv.notify_one();
                         numRequestJobFinished++;
                     }                    
+                    
+                    CloudGemDefectReporterUINotificationBus::QueueBroadcast(&CloudGemDefectReporterUINotificationBus::Events::OnDefectReportPostStep);
                 },
-                    [&cv, &mutex, &numRequestJobFinished] (ServiceAPI::PostServiceUploadRequestJob* job)
+                    [this, &cv, &mutex, &numRequestJobFinished] (ServiceAPI::PostServiceUploadRequestJob* job)
                 {
                     AZStd::unique_lock<AZStd::mutex> lock(mutex);
                     cv.notify_one();
                     numRequestJobFinished++;
+
+                    CloudGemDefectReporterUINotificationBus::QueueBroadcast(&CloudGemDefectReporterUINotificationBus::Events::OnDefectReportPostStep);
 
                     AZ_Warning("CloudCanvas", false, "Failed to request presigned url!");
                 }
@@ -115,6 +137,8 @@ namespace CloudGemDefectReporter
 
             for (auto& metrics : report.GetMetrics())
             {
+                // note that this is hard coded to assume the report will have a position for heat mapping 
+                // included in the report metrics with the following three key names. 
                 if (metrics.m_key == "translationx" ||
                     metrics.m_key == "translationy" ||
                     metrics.m_key == "translationz")
@@ -143,7 +167,7 @@ namespace CloudGemDefectReporter
                     attachmentIdJson += AZStd::string::format("{\"name\":\"%s\", \"type\":\"%s\", \"extension\":\"%s\", \"id\":\"%s\"}",
                         attachment.m_name.c_str(), attachment.m_type.c_str(), attachment.m_extension.c_str(), fields.Key.c_str());
 
-                    UploadAttachment(attachment.m_path.c_str(), postUrl, fields);
+                    UploadAttachment(attachment.m_path.c_str(), attachment.m_autoDelete, postUrl, fields);
                 }
 
                 attachmentIdJson = "[" + attachmentIdJson + "]";
@@ -153,30 +177,28 @@ namespace CloudGemDefectReporter
 
             
             AZ::JobContext* jobContext{ nullptr };
-            EBUS_EVENT_RESULT(jobContext, CloudGemFramework::CloudGemFrameworkRequestBus, GetDefaultJobContext);
+            EBUS_EVENT_RESULT(jobContext, CloudCanvasCommon::CloudCanvasCommonRequestBus, GetDefaultJobContext);
 
             AZ::Job* job{ nullptr };
 
             int reportId = report.GetReportID();
             int numExpectedReports = m_reports.size();
-            job = AZ::CreateJobFunction([reportAttributes, reportId, numExpectedReports]()
+            job = AZ::CreateJobFunction([this, reportAttributes, reportId, numExpectedReports]()
             {
                 bool success = false;
 
-                CloudGemMetric::OnSendMetricsSuccessCallback successOutcome = [reportId, numExpectedReports](int) 
+                CloudGemMetric::OnSendMetricsSuccessCallback successOutcome = [this, reportId, numExpectedReports](int) 
                 {
                     AZStd::vector<int> reportIds = { reportId };
-                    EBUS_EVENT(CloudGemDefectReporter::CloudGemDefectReporterRequestBus, FlushReports, reportIds);
+                    CloudGemDefectReporter::CloudGemDefectReporterRequestBus::QueueBroadcast(
+                        &CloudGemDefectReporter::CloudGemDefectReporterRequestBus::Events::FlushReports, reportIds);
 
-                    AZStd::vector<int> availableReportIDs;
-                    EBUS_EVENT_RESULT(availableReportIDs, CloudGemDefectReporter::CloudGemDefectReporterRequestBus, GetAvailableReportIDs);
-
-                    int numAvailableReportIDs = availableReportIDs.size();
-                    CloudGemDefectReporterUINotificationBus::Broadcast(&CloudGemDefectReporterUINotificationBus::Events::OnDefectReportPostStatus, numExpectedReports - numAvailableReportIDs, numExpectedReports);
+                    CloudGemDefectReporterUINotificationBus::QueueBroadcast(&CloudGemDefectReporterUINotificationBus::Events::OnDefectReportPostStep);
                 };
 
-                CloudGemMetric::OnSendMetricsFailureCallback failOutcome = [] (int)
+                CloudGemMetric::OnSendMetricsFailureCallback failOutcome = [this] (int)
                 {
+                    CloudGemDefectReporterUINotificationBus::QueueBroadcast(&CloudGemDefectReporterUINotificationBus::Events::OnDefectReportPostStep);
                     EBUS_EVENT(CloudGemDefectReporter::CloudGemDefectReporterUINotificationBus, OnDefectReportPostError, "Failed to submit defect");
                 };
                 AZStd::vector<CloudGemMetric::MetricsEventParameter> params;
@@ -190,18 +212,27 @@ namespace CloudGemDefectReporter
         }
     }
 
-    void PostDefectReportsJob::UploadAttachment(const char* filePath, const AZStd::string& url, const ServiceAPI::EncryptedPresignedPostFields& fields)
+    void PostDefectReportsJob::UploadAttachment(const char* filePath, bool isAutoDelete, const AZStd::string& url, const ServiceAPI::EncryptedPresignedPostFields& fields)
     {
         auto uploadJob = aznew CloudGemFramework::HttpFileUploadJob(true, CloudGemFramework::HttpFileUploadJob::GetDefaultConfig());
         uploadJob->AddFile("file", "dummy", filePath);  // Note: field name MUST be "file" to work with S3 presigned URL.
 
-        uploadJob->SetCallbacks([](const AZStd::shared_ptr<CloudGemFramework::HttpRequestJob::Response>& response)
+        // need to copy the string here so the lambda has a reference to something that won't get deleted
+        AZStd::string capturedFilePath(filePath);
+
+        uploadJob->SetCallbacks([this, capturedFilePath, isAutoDelete](const AZStd::shared_ptr<CloudGemFramework::HttpRequestJob::Response>& response)
         {
+            CloudGemDefectReporterUINotificationBus::QueueBroadcast(&CloudGemDefectReporterUINotificationBus::Events::OnDefectReportPostStep);
+
+            CloudGemDefectReporterRequestBus::QueueBroadcast(&CloudGemDefectReporterRequestBus::Events::AttachmentUploadComplete, capturedFilePath, isAutoDelete);
+
             AZ_Printf("", "Upload SUCCEEDED! %d", response->GetResponseCode());
         },
-            [](const AZStd::shared_ptr<CloudGemFramework::HttpRequestJob::Response>& response)
+            [this](const AZStd::shared_ptr<CloudGemFramework::HttpRequestJob::Response>& response)
         {
             EBUS_EVENT(CloudGemDefectReporter::CloudGemDefectReporterUINotificationBus, OnDefectReportPostError, "Failed to upload attachment");
+
+            CloudGemDefectReporterUINotificationBus::QueueBroadcast(&CloudGemDefectReporterUINotificationBus::Events::OnDefectReportPostStep);
 
             AZ_Printf("", "Upload FAILED! %d", response->GetResponseCode());
             AZ_Printf("", response->GetResponseBody().c_str());

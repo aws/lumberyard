@@ -1,7 +1,7 @@
 ﻿import { Tackable, TackableStatus, TackableMeasure, Measurable } from 'app/view/game/module/cloudgems/class/index';
 import { Component, Input, OnInit } from '@angular/core'
 import { SpeechToTextApi } from './index'
-import { Observable } from 'rxjs/rx'
+import { Observable } from 'rxjs/Observable'
 import { Http } from '@angular/http';
 import { AwsService } from "app/aws/aws.service";
 import { LyMetricService } from 'app/shared/service/index';

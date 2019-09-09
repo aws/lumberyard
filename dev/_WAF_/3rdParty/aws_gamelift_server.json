@@ -56,6 +56,22 @@
                 "libboost_random.lib",
                 "libboost_system.lib",
                 "libprotobuf.lib"
+            ],
+            "aws_gamelift_server_static/lib_debug": [
+                "aws-cpp-sdk-gamelift-server.lib",
+                "sioclient.lib",
+                "libboost_date_time.lib",
+                "libboost_random.lib",
+                "libboost_system.lib",
+                "libprotobufd.lib"
+            ],
+            "aws_gamelift_server_static/lib_release": [
+                "aws-cpp-sdk-gamelift-server.lib",
+                "sioclient.lib",
+                "libboost_date_time.lib",
+                "libboost_random.lib",
+                "libboost_system.lib",
+                "libprotobuf.lib"
             ]
         },
         "win_x64_vs2015": {

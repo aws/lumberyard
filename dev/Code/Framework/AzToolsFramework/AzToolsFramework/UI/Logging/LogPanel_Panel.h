@@ -19,6 +19,9 @@
 #include <AzCore/std/containers/ring_buffer.h>
 #include <AzCore/std/containers/unordered_map.h>
 #include <AzCore/Memory/SystemAllocator.h>
+#include <AzCore/UserSettings/UserSettings.h>
+#include <AzCore/Serialization/SerializeContext.h>
+#include <AzCore/std/containers/vector.h>
 #include <AzCore/RTTI/RTTI.h>
 #include <AzToolsFramework/UI/Logging/LogLine.h>
 
@@ -146,6 +149,9 @@ namespace AzToolsFramework
             //! by calling SetStorageID next time, to the same number, and then calling LoadState().
             void SetStorageID(AZ::u32 id);
 
+            int GetTabWidgetCount();
+            QWidget* GetTabWidgetAtIndex(int index);
+
             static void Reflect(AZ::ReflectContext* reflection);
 
         Q_SIGNALS:
@@ -199,6 +205,8 @@ namespace AzToolsFramework
             void AppendLine(Logging::LogLine& source);
             void CommitAdd();
             void Clear();
+
+            const Logging::LogLine& GetLineFromIndex(const QModelIndex& index);
 
         private:
             AZStd::ring_buffer<Logging::LogLine> m_lines;
@@ -309,6 +317,35 @@ Q_SIGNALS:
 
         private:
             int m_messageColumn; // which column contains the message data ?
+        };
+
+        class SavedState
+            : public AZ::UserSettings
+        {
+        public:
+            AZ_RTTI(SavedState, "{38930360-DB02-445A-9CA0-3D1FB07B8236}", AZ::UserSettings);
+            AZ_CLASS_ALLOCATOR(SavedState, AZ::SystemAllocator, 0);
+            AZStd::vector<LogPanel::TabSettings> m_tabSettings;
+
+            SavedState() {}
+
+            static void Reflect(AZ::ReflectContext* context)
+            {
+                AZ::SerializeContext* serialize = azrtti_cast<AZ::SerializeContext*>(context);
+                if (serialize)
+                {
+                    serialize->Class<SavedState, AZ::UserSettings>()
+                        ->Version(1)
+                        ->Field("m_tabSettings", &SavedState::m_tabSettings);
+
+                    serialize->Class<TabSettings>()
+                        ->Version(1)
+                        ->Field("window", &TabSettings::m_window)
+                        ->Field("tabName", &TabSettings::m_tabName)
+                        ->Field("textFilter", &TabSettings::m_textFilter)
+                        ->Field("filterFlags", &TabSettings::m_filterFlags);
+                }
+            }
         };
     } // namespace LogPanel
 } // namespace AzToolsFramework

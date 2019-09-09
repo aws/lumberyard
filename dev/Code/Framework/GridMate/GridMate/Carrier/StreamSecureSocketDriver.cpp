@@ -365,8 +365,11 @@ namespace GridMate
 
         void Teardown()
         {
-            delete[] m_scratch;
-            m_scratch = nullptr;
+            if (m_scratch != nullptr)
+            {
+                azfree(m_scratch);
+                m_scratch = nullptr;
+            }
 
             if (m_ssl != nullptr)
             {

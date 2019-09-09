@@ -172,6 +172,17 @@ namespace AzFramework
     }
 
     //=========================================================================
+    // OnRootSlicePreDestruction
+    //=========================================================================
+    void GameEntityContextComponent::OnRootSlicePreDestruction()
+    {
+        // Clearing dynamic slice destruction queue now since all slices in it 
+        // are being deleted during the destruction phase (ResetContext()).
+        // We don't want this list holding onto deleted slices!
+        m_dynamicSlicesToDestroy.clear();
+    }
+
+    //=========================================================================
     // OnContextReset
     //=========================================================================
     void GameEntityContextComponent::OnContextReset()
@@ -285,9 +296,9 @@ namespace AzFramework
         if (rootSlice)
         {
             const auto address = rootSlice->FindSlice(id);
-            if (address.second)
+            if (address.GetInstance())
             {
-                auto sliceInstance = address.second;
+                auto sliceInstance = address.GetInstance();
                 const auto instantiatedSliceEntities = sliceInstance->GetInstantiated();
                 if (instantiatedSliceEntities)
                 {
@@ -305,15 +316,14 @@ namespace AzFramework
                 }
 
                 // Queue Slice deletion until next tick. This prevents deleting a dynamic slice from an active entity within that slice.
-                AZStd::function<void()> destroySlice = [this, sliceInstance]()
+                m_dynamicSlicesToDestroy.insert(address);
+
+                AZStd::function<void()> deleteDynamicSlices = [this]()
                 {
-                    if (AZ::SliceComponent* queuedRootSlice = GetRootSlice())
-                    {
-                        queuedRootSlice->RemoveSliceInstance(sliceInstance);
-                    }
+                    this->FlushDynamicSliceDeletionList();
                 };
 
-                AZ::TickBus::QueueFunction(destroySlice);
+                AZ::TickBus::QueueFunction(deleteDynamicSlices);
                 return true;
             }
         }
@@ -327,6 +337,19 @@ namespace AzFramework
     void GameEntityContextComponent::ActivateGameEntity(const AZ::EntityId& entityId)
     {
         ActivateEntity(entityId);
+    }
+
+    //=========================================================================
+    // GameEntityContextComponent::FlushDynamicSliceDeletionList
+    //=========================================================================
+    void GameEntityContextComponent::FlushDynamicSliceDeletionList()
+    {
+        for (const auto& sliceAddress : m_dynamicSlicesToDestroy)
+        {
+            GetRootSlice()->RemoveSliceInstance(sliceAddress);
+        }
+
+        m_dynamicSlicesToDestroy.clear();
     }
 
     //=========================================================================
@@ -424,7 +447,7 @@ namespace AzFramework
         {
             InstantiatingDynamicSliceInfo& instantiating = instantiatingIter->second;
 
-            const AZ::SliceComponent::EntityList& entities = sliceAddress.second->GetInstantiated()->m_entities;
+            const AZ::SliceComponent::EntityList& entities = sliceAddress.GetInstance()->GetInstantiated()->m_entities;
 
             // If the context was loaded from a stream and Ids were remapped, fix up entity Ids in that slice that
             // point to entities in the stream (i.e. level entities).
@@ -455,8 +478,7 @@ namespace AzFramework
                 if (transformComponent)
                 {
                     // Non-root entities will be positioned relative to their parents.
-                    // NOTE: The second expression (parentId == entity->Id) is needed only due to backward data compatibility.
-                    if (!transformComponent->GetParentId().IsValid() || transformComponent->GetParentId() == entity->GetId())
+                    if (!transformComponent->GetParentId().IsValid())
                     {
                         // Note: Root slice entity always has translation at origin, so this maintains scale & rotation.
                         transformComponent->SetWorldTM(instantiating.m_transform * transformComponent->GetWorldTM());
@@ -473,12 +495,12 @@ namespace AzFramework
     {
         const SliceInstantiationTicket& ticket = *SliceInstantiationResultBus::GetCurrentBusId();
 
-        SliceInstantiationResultBus::MultiHandler::BusDisconnect(ticket);
-
         if (m_instantiatingDynamicSlices.erase(ticket) > 0)
         {
             EBUS_EVENT(GameEntityContextEventBus, OnSliceInstantiated, sliceAssetId, instance, ticket);
         }
+
+        SliceInstantiationResultBus::MultiHandler::BusDisconnect(ticket);
     }
 
     //=========================================================================
@@ -488,11 +510,12 @@ namespace AzFramework
     {
         const SliceInstantiationTicket& ticket = *SliceInstantiationResultBus::GetCurrentBusId();
 
-        SliceInstantiationResultBus::MultiHandler::BusDisconnect(ticket);
-
         if (m_instantiatingDynamicSlices.erase(ticket) > 0)
         {
             EBUS_EVENT(GameEntityContextEventBus, OnSliceInstantiationFailed, sliceAssetId, ticket);
         }
+
+        SliceInstantiationResultBus::MultiHandler::BusDisconnect(ticket);
+
     }
 } // namespace AzFramework

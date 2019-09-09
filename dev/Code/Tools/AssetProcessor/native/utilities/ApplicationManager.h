@@ -134,6 +134,9 @@ protected:
     //! Override this method to create either QApplication or QCoreApplication
     virtual void CreateQtApplication() = 0;
 
+    QString GetOrganizationName() const;
+    QString GetApplicationName() const;
+
     void RegisterObjectForQuit(QObject* source, bool insertInFront = false);
     bool NeedRestart() const;
     void addRunningThread(AssetProcessor::ThreadWorker* thread);

@@ -82,11 +82,12 @@ template<>
 inline void TAnimTrack<ICommentKey>::Reflect(AZ::SerializeContext* serializeContext)
 {
     serializeContext->Class<TAnimTrack<ICommentKey> >()
-        ->Version(1)
+        ->Version(2)
         ->Field("Flags", &TAnimTrack<ICommentKey>::m_flags)
         ->Field("Range", &TAnimTrack<ICommentKey>::m_timeRange)
         ->Field("ParamType", &TAnimTrack<ICommentKey>::m_nParamType)
-        ->Field("Keys", &TAnimTrack<ICommentKey>::m_keys);
+        ->Field("Keys", &TAnimTrack<ICommentKey>::m_keys)
+        ->Field("Id", &TAnimTrack<ICommentKey>::m_id);
 }
 
 //////////////////////////////////////////////////////////////////////////

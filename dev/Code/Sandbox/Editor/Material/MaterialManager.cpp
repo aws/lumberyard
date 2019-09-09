@@ -694,7 +694,7 @@ void CMaterialManager::AddSourceFileOpeners(const char* fullSourceFileName, cons
         // we can handle these!  
         auto materialCallback = [this](const char* fullSourceFileNameInCall, const AZ::Uuid& sourceUUIDInCall)
         {
-            const SourceAssetBrowserEntry* fullDetails = SourceAssetBrowserEntry::GetSourceByAssetId(sourceUUIDInCall);
+            const SourceAssetBrowserEntry* fullDetails = SourceAssetBrowserEntry::GetSourceByUuid(sourceUUIDInCall);
             if (fullDetails)
             {
                 CMaterial* materialFile = LoadMaterialWithFullSourcePath(QString::fromUtf8(fullDetails->GetRelativePath().c_str()), QString::fromUtf8(fullSourceFileNameInCall), false);
@@ -1098,10 +1098,7 @@ bool CMaterialManager::SelectSaveMaterial(QString& itemName, QString& fullSource
         return false;
     }
 
-    // KDAB Not sure why Path::GamePathToFullPath is being used here & filename should be an
-    // KDAB absolute path under Qt: suspect this should be removed.
-    itemName = Path::GamePathToFullPath(fullSourcePath);
-    itemName = FilenameToMaterial(itemName);
+    itemName = FilenameToMaterial(fullSourcePath);
     if (itemName.isEmpty())
     {
         return false;
@@ -1987,7 +1984,7 @@ void CMaterialManager::DccMaterialSourceControlCheck(const AZStd::string& relati
         }
         else
         {
-            QString errorMessage = QObject::tr("Could not check out read-only file %s in source control. Either check your source control configuration or disable source control.").arg(fullSourcePath.c_str());
+            QString errorMessage = QObject::tr("Could not check out read-only file %1 in source control. Either check your source control configuration or disable source control.").arg(QString::fromUtf8(fullSourcePath.c_str()));
 
             // Alter error message slightly if source control is disabled
             bool isSourceControlActive = false;
@@ -1995,7 +1992,7 @@ void CMaterialManager::DccMaterialSourceControlCheck(const AZStd::string& relati
 
             if (!isSourceControlActive)
             {
-                errorMessage = QObject::tr("Could not check out read-only file %s because source control is disabled. Either enable source control or check out the file manually to make it writable.").arg(fullSourcePath.c_str());
+                errorMessage = QObject::tr("Could not check out read-only file %1 because source control is disabled. Either enable source control or check out the file manually to make it writable.").arg(QString::fromUtf8(fullSourcePath.c_str()));
             }
 
             // Pop open an error message box if this is the first error we encounter

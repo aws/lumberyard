@@ -32,6 +32,7 @@ class CTrackViewAnimNode;
 class QRubberBand;
 class QScrollBar;
 class ReflectedPropertyControl;
+class QColorDialog;
 
 enum ETVActionMode
 {
@@ -121,6 +122,12 @@ private:
     void OnRButtonUp(Qt::KeyboardModifiers modifiers, const QPoint& point);
     void OnCaptureChanged();
 
+private slots:
+    void OnCurrentColorChange(const QColor& color);
+
+private:
+    void UpdateColorKey(const QColor& color, bool addToUndo);
+    void UpdateColorKeyHelper(const ColorF& color);
     void AddKeys(const QPoint& point, const bool bTryAddKeysInGroup);
 
     void ShowKeyPropertyCtrlOnSpot(int x, int y, bool bMultipleKeysSelected, bool bKeyChangeInSameTrack);
@@ -199,7 +206,6 @@ private:
     bool CreateColorKey(CTrackViewTrack* pTrack, float keyTime);
     void EditSelectedColorKey(CTrackViewTrack* pTrack);
 
-    void RecordTrackUndoLegacy(CTrackViewTrack* pTrack);
     void AcceptUndo();
 
     // Returns the snapping mode modified active keys
@@ -233,6 +239,8 @@ private:
     void DrawTimeLineInFrames(QPainter* dc, const QRect& rc, const QColor& lineCol, const QColor& textCol, double step);
     void DrawTimeLineInSeconds(QPainter* dc, const QRect& rc, const QColor& lineCol, const QColor& textCol, double step);
 
+    static bool CompareKeyHandleByTime(const CTrackViewKeyHandle &a, const CTrackViewKeyHandle &b);
+
     QBrush m_bkgrBrush;
     QBrush m_bkgrBrushEmpty;
     QBrush m_selectedBrush;
@@ -261,6 +269,7 @@ private:
 
     QRubberBand* m_rubberBand;
     QScrollBar* m_scrollBar;
+    QColorDialog* m_colorDialog;
 
     // Time
     float m_timeScale;
@@ -318,6 +327,12 @@ private:
 
     // Cached clipboard XML for eTVMouseMode_Paste
     XmlNodeRef m_clipboardKeys;
+
+    // Store current track whose color is being updated
+    CTrackViewTrack* m_colorUpdateTrack;
+
+    // Store the key time of that track
+    float            m_colorUpdateKeyTime;
 
     // Mementos of unchanged tracks for Move/Scale/Slide etc.
     struct TrackMemento

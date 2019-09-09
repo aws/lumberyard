@@ -13,20 +13,22 @@
 #pragma once
 
 #include "EditorBaseShapeComponent.h"
-#include <AzFramework/Entity/EntityDebugDisplayBus.h>
-#include <LmbrCentral/Shape/SplineComponentBus.h>
 #include "TubeShapeComponent.h"
+
+#include <AzFramework/Entity/EntityDebugDisplayBus.h>
+#include <AzToolsFramework/ComponentMode/ComponentModeDelegate.h>
+#include <LmbrCentral/Shape/SplineComponentBus.h>
+#include <LmbrCentral/Shape/EditorTubeShapeComponentBus.h>
 
 namespace LmbrCentral
 {
-    /**
-     * Editor representation of a tube shape
-     */
+    /// Editor representation of a tube shape.
     class EditorTubeShapeComponent
         : public EditorBaseShapeComponent
         , private AzFramework::EntityDebugDisplayEventBus::Handler
         , private SplineComponentNotificationBus::Handler
         , private SplineAttributeNotificationBus::Handler
+        , private EditorTubeShapeComponentRequestBus::Handler
     {
     public:
         AZ_EDITOR_COMPONENT(EditorTubeShapeComponent, EditorTubeShapeComponentTypeId, EditorBaseShapeComponent);
@@ -35,6 +37,7 @@ namespace LmbrCentral
         EditorTubeShapeComponent() = default;
 
         // AZ::Component
+        void Init() override;
         void Activate() override;
         void Deactivate() override;
 
@@ -46,21 +49,21 @@ namespace LmbrCentral
         {
             EditorBaseShapeComponent::GetProvidedServices(provided);
             provided.push_back(AZ_CRC("TubeShapeService", 0x3fe791b4));
-            provided.push_back(AZ_CRC("ShapeService", 0xe86aa5fe));
         }
 
         static void GetRequiredServices(AZ::ComponentDescriptor::DependencyArrayType& required)
         {
             EditorBaseShapeComponent::GetRequiredServices(required);
             required.push_back(AZ_CRC("SplineService", 0x2b674d3c));
-            required.push_back(AZ_CRC("TransformService", 0x8ee22c50));
         }
 
     private:
         AZ_DISABLE_COPY_MOVE(EditorTubeShapeComponent)
 
         // AzFramework::EntityDebugDisplayEventBus
-        void DisplayEntity(bool& handled) override;
+        void DisplayEntityViewport(
+            const AzFramework::ViewportInfo& viewportInfo,
+            AzFramework::DebugDisplayRequests& debugDisplay) override;
 
         // SplineComponentNotificationBus
         void OnSplineChanged() override;
@@ -71,11 +74,17 @@ namespace LmbrCentral
         void OnAttributesSet(size_t size) override;
         void OnAttributesCleared() override;
 
+        // EditorTubeShapeComponentRequestBus
+        void GenerateVertices() override;
+
         void ConfigurationChanged();
-        void GenerateVertices();
 
         TubeShape m_tubeShape; ///< Underlying tube shape.
         TubeShapeMeshConfig m_tubeShapeMeshConfig; ///< Configuration to control how the TubeShape should look.
         ShapeMesh m_tubeShapeMesh; ///< Buffer to hold index and vertex data for TubeShape when drawing.
+
+        using ComponentModeDelegate = AzToolsFramework::ComponentModeFramework::ComponentModeDelegate;
+        ComponentModeDelegate m_componentModeDelegate; ///< Responsible for detecting ComponentMode activation 
+                                                       ///< and creating a concrete ComponentMode(s).
     };
 } // namespace LmbrCentral

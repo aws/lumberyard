@@ -28,7 +28,10 @@
 #include <AzCore/RTTI/TypeInfo.h>
 
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
+#include <AzToolsFramework/Slice/SliceCompilation.h>
 #include <AzToolsFramework/ToolsComponents/TransformComponent.h>
+#include <AzToolsFramework/ToolsComponents/EditorOnlyEntityComponent.h>
+#include <AzToolsFramework/ToolsComponents/EditorOnlyEntityComponentBus.h>
 #include <AzToolsFramework/UI/PropertyEditor/ReflectedPropertyEditor.hxx>
 
 #include "EntityTestbed.h"
@@ -498,7 +501,7 @@ namespace UnitTest
                     if (entity)
                     {
                         AZ::SliceComponent::SliceInstanceAddress sliceAddress = rootSlice->FindSlice(entity);
-                        if (sliceAddress.first)
+                        if (sliceAddress.IsValid())
                         {
                             // This entity already belongs to a slice instance, so inherit that instance (the whole thing for now).
                             if (sliceInstances.end() == AZStd::find(sliceInstances.begin(), sliceInstances.end(), sliceAddress))
@@ -517,7 +520,7 @@ namespace UnitTest
 
                 for (AZ::SliceComponent::SliceInstanceAddress& info : sliceInstances)
                 {
-                    info = newSlice->AddSliceInstance(info.first, info.second);
+                    info = newSlice->AddSliceInstance(info.GetReference(), info.GetInstance());
                 }
 
                 const QString saveAs = QFileDialog::getSaveFileName(nullptr,
@@ -534,9 +537,9 @@ namespace UnitTest
                 }
 
                 // Reclaim slices.
-                for (const AZ::SliceComponent::SliceInstanceAddress& info : sliceInstances)
+                for (AZ::SliceComponent::SliceInstanceAddress& info : sliceInstances)
                 {
-                    rootSlice->AddSliceInstance(info.first, info.second);
+                    rootSlice->AddSliceInstance(info.GetReference(), info.GetInstance());
                 }
 
                 ++sliceCounter;
@@ -647,6 +650,732 @@ namespace UnitTest
     TEST_F(MinimalEntityWorkflowTester, DISABLED_Test)
     {
         run();
+    }
+    
+    class SortTransformParentsBeforeChildrenTest
+        : public ScopedAllocatorSetupFixture
+    {
+    protected:
+        AZStd::vector<AZ::Entity*> m_unsorted;
+        AZStd::vector<AZ::Entity*> m_sorted;
+
+        void TearDown() override
+        {
+            for (AZ::Entity* entity : m_unsorted)
+            {
+                delete entity;
+            }
+            m_unsorted.clear();
+            m_sorted.clear();
+        }
+
+        // Entity IDs to use in tests
+        AZ::EntityId E1 = AZ::EntityId(1);
+        AZ::EntityId E2 = AZ::EntityId(2);
+        AZ::EntityId E3 = AZ::EntityId(3);
+        AZ::EntityId E4 = AZ::EntityId(4);
+        AZ::EntityId E5 = AZ::EntityId(5);
+        AZ::EntityId E6 = AZ::EntityId(6);
+        AZ::EntityId MissingNo = AZ::EntityId(999);
+
+        // add entity to m_unsorted
+        void AddEntity(AZ::EntityId id, AZ::EntityId parentId = AZ::EntityId())
+        {
+            m_unsorted.push_back(aznew AZ::Entity(id));
+            m_unsorted.back()->CreateComponent<AzFramework::TransformComponent>()->SetParent(parentId);
+        }
+
+        void SortAndSanityCheck()
+        {
+            m_sorted = m_unsorted;
+            AzToolsFramework::SortTransformParentsBeforeChildren(m_sorted);
+
+            // sanity check that all entries are still there
+            EXPECT_TRUE(DoSameEntriesExistAfterSort());
+        }
+
+        bool DoSameEntriesExistAfterSort()
+        {
+            if (m_sorted.size() != m_unsorted.size())
+            {
+                return false;
+            }
+
+            for (AZ::Entity* entity : m_unsorted)
+            {
+                // compare counts in case multiple entries are identical (ex: 2 nullptrs)
+                size_t unsortedCount = Count(entity, m_unsorted);
+                size_t sortedCount = Count(entity, m_sorted);
+                if (sortedCount < 1 || sortedCount != unsortedCount)
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        int Count(const AZ::Entity* value, const AZStd::vector<AZ::Entity*>& entityList)
+        {
+            int count = 0;
+            for (const AZ::Entity* entity : entityList)
+            {
+                if (entity == value)
+                {
+                    ++count;
+                }
+            }
+            return count;
+        }
+
+        bool IsChildAfterParent(AZ::EntityId childId, AZ::EntityId parentId)
+        {
+            int parentIndex = -1;
+            int childIndex = -1;
+            for (int i = 0; i < m_sorted.size(); ++i)
+            {
+                if (m_sorted[i] && (m_sorted[i]->GetId() == parentId) && (parentIndex == -1))
+                {
+                    parentIndex = i;
+                }
+                if (m_sorted[i] && (m_sorted[i]->GetId() == childId) && (childIndex == -1))
+                {
+                    childIndex = i;
+                }
+            }
+
+            EXPECT_NE(childIndex, -1);
+            EXPECT_NE(parentIndex, -1);
+            return childIndex > parentIndex;
+        }
+    };
+
+    TEST_F(SortTransformParentsBeforeChildrenTest, 0Entities_IsOk)
+    {
+        SortAndSanityCheck();
+    }
+
+    TEST_F(SortTransformParentsBeforeChildrenTest, 1Entity_IsOk)
+    {
+        AddEntity(E1);
+
+        SortAndSanityCheck();
+    }
+
+    TEST_F(SortTransformParentsBeforeChildrenTest, ParentAndChild_SortsCorrectly)
+    {
+        AddEntity(E2, E1);
+        AddEntity(E1);
+
+        SortAndSanityCheck();
+
+        EXPECT_TRUE(IsChildAfterParent(E2, E1));
+    }
+
+    TEST_F(SortTransformParentsBeforeChildrenTest, 6EntitiesWith2Roots_SortsCorrectly)
+    {
+        // Hierarchy looks like:
+        // 1
+        // + 2
+        //   + 3
+        // 4
+        // + 5
+        // + 6
+        // The entities are added in "randomish" order on purpose
+        AddEntity(E3, E2);
+        AddEntity(E1);
+        AddEntity(E6, E4);
+        AddEntity(E5, E4);
+        AddEntity(E2, E1);
+        AddEntity(E4);
+
+        SortAndSanityCheck();
+
+        EXPECT_TRUE(IsChildAfterParent(E2, E1));
+        EXPECT_TRUE(IsChildAfterParent(E3, E2));
+        EXPECT_TRUE(IsChildAfterParent(E5, E4));
+        EXPECT_TRUE(IsChildAfterParent(E6, E4));
+    }
+
+    TEST_F(SortTransformParentsBeforeChildrenTest, ParentNotFound_ChildTreatedAsRoot)
+    {
+        AddEntity(E1);
+        AddEntity(E2, E1);
+        AddEntity(E3, MissingNo); // E3's parent not found
+        AddEntity(E4, E3);
+
+        SortAndSanityCheck();
+
+        EXPECT_TRUE(IsChildAfterParent(E2, E1));
+        EXPECT_TRUE(IsChildAfterParent(E4, E2));
+    }
+
+    TEST_F(SortTransformParentsBeforeChildrenTest, NullptrEntry_IsToleratedButNotSorted)
+    {
+        AddEntity(E2, E1);
+        m_unsorted.push_back(nullptr);
+        AddEntity(E1);
+
+        SortAndSanityCheck();
+
+        EXPECT_TRUE(IsChildAfterParent(E2, E1));
+    }
+
+    TEST_F(SortTransformParentsBeforeChildrenTest, DuplicateEntityId_IsToleratedButNotSorted)
+    {
+        AddEntity(E2, E1);
+        AddEntity(E1);
+        AddEntity(E1); // duplicate EntityId
+
+        SortAndSanityCheck();
+
+        EXPECT_TRUE(IsChildAfterParent(E2, E1));
+    }
+
+    TEST_F(SortTransformParentsBeforeChildrenTest, DuplicateEntityPtr_IsToleratedButNotSorted)
+    {
+        AddEntity(E2, E1);
+        AddEntity(E1);
+        m_unsorted.push_back(m_unsorted.back()); // duplicate Entity pointer
+
+        SortAndSanityCheck();
+
+        m_unsorted.pop_back(); // remove duplicate ptr so we don't double-delete during teardown
+
+        EXPECT_TRUE(IsChildAfterParent(E2, E1));
+    }
+
+    TEST_F(SortTransformParentsBeforeChildrenTest, LoopingHierarchy_PicksAnyParentAsRoot)
+    {
+        // loop: E1 -> E2 -> E3 -> E1 -> ...
+        AddEntity(E2, E1);
+        AddEntity(E3, E2);
+        AddEntity(E1, E3);
+
+        SortAndSanityCheck();
+
+        AZ::EntityId first = m_sorted.front()->GetId();
+
+        if (first == E1)
+        {
+            EXPECT_TRUE(IsChildAfterParent(E2, E1));
+            EXPECT_TRUE(IsChildAfterParent(E3, E2));
+        }
+        else if (first == E2)
+        {
+            EXPECT_TRUE(IsChildAfterParent(E3, E2));
+            EXPECT_TRUE(IsChildAfterParent(E1, E3));
+        }
+        else // if (first == E3)
+        {
+            EXPECT_TRUE(IsChildAfterParent(E1, E3));
+            EXPECT_TRUE(IsChildAfterParent(E2, E1));
+        }
+    }
+
+    TEST_F(SortTransformParentsBeforeChildrenTest, EntityLackingTransformComponent_IsTreatedLikeItHasNoParent)
+    {
+        AddEntity(E2, E1);
+        m_unsorted.push_back(aznew AZ::Entity(E1)); // E1 has no components
+
+        SortAndSanityCheck();
+
+        EXPECT_TRUE(IsChildAfterParent(E2, E1));
+    }
+
+    TEST_F(SortTransformParentsBeforeChildrenTest, EntityParentedToSelf_IsTreatedLikeItHasNoParent)
+    {
+        AddEntity(E2, E1);
+        AddEntity(E1, E1); // parented to self
+
+        SortAndSanityCheck();
+
+        EXPECT_TRUE(IsChildAfterParent(E2, E1));
+    }
+
+    TEST_F(SortTransformParentsBeforeChildrenTest, EntityWithInvalidId_IsToleratedButNotSorted)
+    {
+        AddEntity(E2, E1);
+        AddEntity(E1);
+        AddEntity(AZ::EntityId()); // entity using invalid ID as its own ID
+
+        SortAndSanityCheck();
+
+        EXPECT_TRUE(IsChildAfterParent(E2, E1));
+    }
+
+    class TestExportRuntimeComponent
+        : public AZ::Component
+    {
+    public:
+        AZ_COMPONENT(TestExportRuntimeComponent, "{C984534F-C907-4968-B9D3-AF2A99CBD678}", AZ::Component);
+
+        TestExportRuntimeComponent() {}
+
+        TestExportRuntimeComponent(bool returnPointerToSelf, bool exportHandled) :
+            m_returnPointerToSelf(returnPointerToSelf),
+            m_exportHandled(exportHandled)
+        {}
+
+        void Activate() override {}
+        void Deactivate() override {}
+
+        static void Reflect(AZ::ReflectContext* context)
+        {
+            if (AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
+            {
+                serializeContext->Class<TestExportRuntimeComponent, AZ::Component>()
+                    ;
+
+                if (AZ::EditContext* editContext = serializeContext->GetEditContext())
+                {
+                    editContext->Class<TestExportRuntimeComponent>(
+                        "Test Export Runtime Component", "Validate different options for exporting runtime components")
+                        ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
+                        ->Attribute(AZ::Edit::Attributes::RuntimeExportCallback, &TestExportRuntimeComponent::ExportComponent)
+                        ;
+                }
+            }
+        }
+
+        AZ::ExportedComponent ExportComponent(AZ::Component* thisComponent, const AZ::PlatformTagSet& /*platformTags*/)
+        {
+            return AZ::ExportedComponent(m_returnPointerToSelf ? thisComponent : nullptr, false, m_exportHandled);
+        }
+
+        bool m_returnPointerToSelf = false;
+        bool m_exportHandled = false;
+    };
+
+    class TestExportOtherRuntimeComponent
+        : public AZ::Component
+    {
+    public:
+        AZ_COMPONENT(TestExportOtherRuntimeComponent, "{7EEDCE0A-2D5F-4017-A20B-9224E52D75B8}");
+
+        void Activate() override {}
+        void Deactivate() override {}
+        static void Reflect(ReflectContext* context)
+        {
+            auto* serialize = azrtti_cast<AZ::SerializeContext*>(context);
+            if (serialize)
+            {
+                serialize->Class<TestExportOtherRuntimeComponent, AZ::Component>()
+                    ;
+            }
+        }
+    };
+
+
+    class TestExportEditorComponent
+        : public AzToolsFramework::Components::EditorComponentBase
+    {
+    public:
+        AZ_COMPONENT(TestExportEditorComponent, "{8FA877A2-38E6-49AD-B31E-71B86DC8BB03}", AzToolsFramework::Components::EditorComponentBase);
+
+        enum ExportComponentType
+        {
+            EXPORT_EDITOR_COMPONENT,
+            EXPORT_RUNTIME_COMPONENT,
+            EXPORT_OTHER_RUNTIME_COMPONENT,
+            EXPORT_NULL_COMPONENT
+        };
+
+        TestExportEditorComponent() {}
+
+        TestExportEditorComponent(ExportComponentType exportType, bool exportHandled) :
+            m_exportType(exportType),
+            m_exportHandled(exportHandled)
+        {}
+
+        void Activate() override {}
+        void Deactivate() override {}
+
+        static void Reflect(AZ::ReflectContext* context)
+        {
+            if (AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
+            {
+                serializeContext->Class<TestExportEditorComponent, AzToolsFramework::Components::EditorComponentBase>()
+                    ;
+
+                if (AZ::EditContext* editContext = serializeContext->GetEditContext())
+                {
+                    editContext->Class<TestExportEditorComponent>(
+                        "Test Export Editor Component", "Validate different options for exporting editor components")
+                        ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
+                        ->Attribute(AZ::Edit::Attributes::RuntimeExportCallback, &TestExportEditorComponent::ExportComponent)
+                        ;
+                }
+            }
+        }
+
+        AZ::ExportedComponent ExportComponent(AZ::Component* thisComponent, const AZ::PlatformTagSet& /*platformTags*/)
+        {
+            switch (m_exportType)
+            {
+                case EXPORT_EDITOR_COMPONENT:    
+                    return AZ::ExportedComponent(thisComponent, false, m_exportHandled);
+                case EXPORT_RUNTIME_COMPONENT:   
+                    return AZ::ExportedComponent(aznew TestExportRuntimeComponent(true, true), true, m_exportHandled);
+                case EXPORT_OTHER_RUNTIME_COMPONENT:
+                    return AZ::ExportedComponent(aznew TestExportOtherRuntimeComponent(), true, m_exportHandled);
+                case EXPORT_NULL_COMPONENT:      
+                    return AZ::ExportedComponent(nullptr, false, m_exportHandled);
+            }
+
+            return AZ::ExportedComponent();
+        }
+
+        void BuildGameEntity(AZ::Entity* gameEntity) override
+        {
+            gameEntity->CreateComponent<TestExportRuntimeComponent>(true, true);
+        }
+
+        ExportComponentType m_exportType = EXPORT_NULL_COMPONENT;
+        bool m_exportHandled = false;
+    };
+
+
+    class SliceCompilerTest
+        : public ::testing::Test
+    {
+    protected:
+        AzToolsFramework::ToolsApplication m_app;
+
+        AZ::Data::Asset<AZ::SliceAsset> m_editorSliceAsset;
+        AZ::SliceComponent* m_editorSliceComponent = nullptr;
+
+        AZ::Data::Asset<AZ::SliceAsset> m_compiledSliceAsset;
+        AZ::SliceComponent* m_compiledSliceComponent = nullptr;
+
+        void SetUp() override
+        {
+            m_app.Start(AzFramework::Application::Descriptor());
+            m_app.RegisterComponentDescriptor(TestExportRuntimeComponent::CreateDescriptor());
+            m_app.RegisterComponentDescriptor(TestExportOtherRuntimeComponent::CreateDescriptor());
+            m_app.RegisterComponentDescriptor(TestExportEditorComponent::CreateDescriptor());
+
+            m_editorSliceAsset = Data::AssetManager::Instance().CreateAsset<SliceAsset>(Data::AssetId(Uuid::CreateRandom()));
+
+            AZ::Entity* editorSliceEntity = aznew AZ::Entity();
+            m_editorSliceComponent = editorSliceEntity->CreateComponent<AZ::SliceComponent>();
+            m_editorSliceAsset.Get()->SetData(editorSliceEntity, m_editorSliceComponent);
+        }
+
+        void TearDown() override
+        {
+            m_compiledSliceComponent = nullptr;
+            m_compiledSliceAsset.Release();
+            m_editorSliceComponent = nullptr;
+            m_editorSliceAsset.Release();
+            m_app.Stop();
+        }
+
+        // create entity with a given parent in the editor slice
+        void CreateEditorEntity(AZ::u64 id, const char* name, AZ::u64 parentId = (AZ::u64)AZ::EntityId())
+        {
+            AZ::Entity* entity = aznew AZ::Entity(AZ::EntityId(id), name);
+            AzToolsFramework::Components::TransformComponent* transformComponent = entity->CreateComponent<AzToolsFramework::Components::TransformComponent>();
+            transformComponent->SetParent(AZ::EntityId(parentId));
+
+            m_editorSliceComponent->AddEntity(entity);
+        }
+
+        // create entity containing the EditorOnly component in the editor slice
+        void CreateEditorOnlyEntity(const char* name, bool editorOnly)
+        {
+            AZ::Entity* entity = aznew AZ::Entity(name);
+            entity->CreateComponent<AzToolsFramework::Components::TransformComponent>();
+            entity->CreateComponent<AzToolsFramework::Components::EditorOnlyEntityComponent>();
+            m_editorSliceComponent->AddEntity(entity);
+
+            entity->Init();
+            EXPECT_EQ(AZ::Entity::ES_INIT, entity->GetState());
+            entity->Activate();
+            EXPECT_EQ(AZ::Entity::ES_ACTIVE, entity->GetState());
+
+            AzToolsFramework::EditorOnlyEntityComponentRequestBus::Event(entity->GetId(), &AzToolsFramework::EditorOnlyEntityComponentRequests::SetIsEditorOnlyEntity, editorOnly);
+
+        }
+
+        // create entity containing the EditorOnly component in the editor slice
+        void CreateTestExportRuntimeEntity(const char* name, bool returnPointerToSelf, bool exportHandled)
+        {
+            AZ::Entity* entity = aznew AZ::Entity(name);
+            entity->CreateComponent<AzToolsFramework::Components::TransformComponent>();
+            entity->CreateComponent<TestExportRuntimeComponent>(returnPointerToSelf, exportHandled);
+            m_editorSliceComponent->AddEntity(entity);
+        }
+
+        // create entity containing the EditorOnly component in the editor slice
+        void CreateTestExportEditorEntity(const char* name, TestExportEditorComponent::ExportComponentType exportType, bool exportHandled)
+        {
+            AZ::Entity* entity = aznew AZ::Entity(name);
+            entity->CreateComponent<AzToolsFramework::Components::TransformComponent>();
+            entity->CreateComponent<TestExportEditorComponent>(exportType, exportHandled);
+            m_editorSliceComponent->AddEntity(entity);
+        }
+
+
+        // compile m_editorSliceAsset -> m_compiledSliceAsset
+        bool CompileSlice(bool expectSuccess = true)
+        {
+            AzToolsFramework::WorldEditorOnlyEntityHandler worldEditorOnlyEntityHandler;
+            AzToolsFramework::EditorOnlyEntityHandlers handlers =
+            {
+                &worldEditorOnlyEntityHandler
+            };
+            AzToolsFramework::SliceCompilationResult compileResult = AzToolsFramework::CompileEditorSlice(m_editorSliceAsset, AZ::PlatformTagSet(), *m_app.GetSerializeContext(), handlers);
+
+            EXPECT_EQ(compileResult.IsSuccess(), expectSuccess);
+            if (compileResult.IsSuccess())
+            {
+                m_compiledSliceAsset = AZStd::move(compileResult.GetValue());
+                m_compiledSliceComponent = m_compiledSliceAsset.Get()->GetComponent();
+                return true;
+            }
+
+            return false;
+        }
+
+        // check order of entities in compiled slice
+        // reference entities by name, since they have different IDs in compiled slice
+        bool IsChildAfterParent(const char* childName, const char* parentName)
+        {
+            AZStd::vector<AZ::Entity*> entities;
+            m_compiledSliceComponent->GetEntities(entities);
+
+            AZ::Entity* parent = nullptr;
+            for (AZ::Entity* entity : entities)
+            {
+                const AZStd::string& name = entity->GetName();
+                if (name == parentName)
+                {
+                    parent = entity;
+                }
+
+                if (name == childName)
+                {
+                    return parent != nullptr;
+                }
+            }
+
+            return false;
+        }
+
+        // Locate and return an entity from the compiled slice
+        AZ::Entity* GetCompiledEntity(const char* entityName)
+        {
+            AZStd::vector<AZ::Entity*> entities;
+            m_compiledSliceComponent->GetEntities(entities);
+
+            for (AZ::Entity* entity : entities)
+            {
+                const AZStd::string& name = entity->GetName();
+                if (name == entityName)
+                {
+                    return entity;
+                }
+            }
+
+            return nullptr;
+        }
+    };
+
+    TEST_F(SliceCompilerTest, EntitiesInCompiledSlice_SortedParentsBeforeChildren)
+    {
+        // Hieararchy looks like:
+        // A
+        // + B
+        //   + C
+        // D
+        // + E
+        // + F
+        CreateEditorEntity(0xB, "B", 0xA);
+        CreateEditorEntity(0xE, "E", 0xD);
+        CreateEditorEntity(0xD, "D");
+        CreateEditorEntity(0xA, "A");
+        CreateEditorEntity(0xF, "F", 0xD);
+        CreateEditorEntity(0xC, "C", 0xB);
+
+        if (!CompileSlice())
+        {
+            return;
+        }
+
+        EXPECT_TRUE(IsChildAfterParent("B", "A"));
+        EXPECT_TRUE(IsChildAfterParent("C", "B"));
+        EXPECT_TRUE(IsChildAfterParent("E", "D"));
+        EXPECT_TRUE(IsChildAfterParent("F", "D"));
+    }
+
+    TEST_F(SliceCompilerTest, EditorOnlyEntity_OnlyRuntimeEntityExported)
+    {
+        // Create one entity that's flagged as Editor-Only, and one that's enabled for runtime.
+        CreateEditorOnlyEntity("EditorOnly", true);
+        CreateEditorOnlyEntity("EditorAndRuntime", false);
+
+        if (!CompileSlice())
+        {
+            return;
+        }
+
+        // Expected result:  Only the runtime entity exists in the exported slice.
+        EXPECT_FALSE(GetCompiledEntity("EditorOnly"));
+        EXPECT_TRUE(GetCompiledEntity("EditorAndRuntime"));
+    }
+
+    TEST_F(SliceCompilerTest, RuntimeExportCallback_RuntimeComponentExportedSuccessfully)
+    {
+        // Create a component that has a RuntimeExportCallback and successfully exports itself
+        CreateTestExportRuntimeEntity("EntityWithRuntimeComponent", true, true);
+
+        if (!CompileSlice())
+        {
+            return;
+        }
+
+        // Expected result:  exported slice contains the component.
+        AZ::Entity* entity = GetCompiledEntity("EntityWithRuntimeComponent");
+        EXPECT_TRUE(entity);
+        EXPECT_TRUE(entity->FindComponent<TestExportRuntimeComponent>());
+    }
+
+    TEST_F(SliceCompilerTest, RuntimeExportCallback_RuntimeComponentExportSuppressed)
+    {
+        // Create a component that has a RuntimeExportCallback and successfully suppresses itself from exporting
+        CreateTestExportRuntimeEntity("EntityWithRuntimeComponent", false, true);
+
+        if (!CompileSlice())
+        {
+            return;
+        }
+
+        // Expected result:  exported slice does NOT contain the component.
+        AZ::Entity* entity = GetCompiledEntity("EntityWithRuntimeComponent");
+        EXPECT_TRUE(entity);
+        EXPECT_FALSE(entity->FindComponent<TestExportRuntimeComponent>());
+    }
+
+    TEST_F(SliceCompilerTest, RuntimeExportCallback_RuntimeComponentExportUnhandled)
+    {
+        // Create a component that has a RuntimeExportCallback, returns a pointer to itself, but says it wasn't handled.
+        CreateTestExportRuntimeEntity("EntityWithRuntimeComponent", true, false);
+
+        if (!CompileSlice())
+        {
+            return;
+        }
+
+        // Expected result:  exported slice contains the component, because the default behavior is "clone/add" for
+        // runtime components.
+        AZ::Entity* entity = GetCompiledEntity("EntityWithRuntimeComponent");
+        EXPECT_TRUE(entity);
+        EXPECT_TRUE(entity->FindComponent<TestExportRuntimeComponent>());
+    }
+
+    TEST_F(SliceCompilerTest, RuntimeExportCallback_RuntimeComponentExportSuppressedAndUnhandled)
+    {
+        // Create a component that has a RuntimeExportCallback and suppresses itself from exporting, but says it wasn't handled
+        CreateTestExportRuntimeEntity("EntityWithRuntimeComponent", false, false);
+
+        if (!CompileSlice())
+        {
+            return;
+        }
+
+        // Expected result:  exported slice contains the component, because by saying it wasn't handled, it
+        // should fall back on the default behavior of "clone/add" for runtime components.
+        AZ::Entity* entity = GetCompiledEntity("EntityWithRuntimeComponent");
+        EXPECT_TRUE(entity);
+        EXPECT_TRUE(entity->FindComponent<TestExportRuntimeComponent>());
+    }
+
+
+
+
+    TEST_F(SliceCompilerTest, RuntimeExportCallback_EditorComponentExportedSuccessfully)
+    {
+        // Create an editor component that has a RuntimeExportCallback and successfully exports itself
+        CreateTestExportEditorEntity("EntityWithEditorComponent", TestExportEditorComponent::ExportComponentType::EXPORT_OTHER_RUNTIME_COMPONENT, true);
+
+        if (!CompileSlice())
+        {
+            return;
+        }
+
+        // Expected result:  exported slice contains the OtherRuntime component, exported from RuntimeExportCallback.
+        // (A result of Runtime component means BuildGameEntity() ran instead)
+        AZ::Entity* entity = GetCompiledEntity("EntityWithEditorComponent");
+        EXPECT_TRUE(entity);
+        EXPECT_FALSE(entity->FindComponent<TestExportEditorComponent>());
+        EXPECT_FALSE(entity->FindComponent<TestExportRuntimeComponent>());
+        EXPECT_TRUE(entity->FindComponent<TestExportOtherRuntimeComponent>());
+    }
+
+    TEST_F(SliceCompilerTest, RuntimeExportCallback_EditorComponentExportSuppressed)
+    {
+        // Create an editor component that has a RuntimeExportCallback and successfully suppresses itself from exporting
+        CreateTestExportEditorEntity("EntityWithEditorComponent", TestExportEditorComponent::ExportComponentType::EXPORT_NULL_COMPONENT, true);
+
+        if (!CompileSlice())
+        {
+            return;
+        }
+
+        // Expected result:  exported slice does NOT contain either component.
+        AZ::Entity* entity = GetCompiledEntity("EntityWithEditorComponent");
+        EXPECT_TRUE(entity);
+        EXPECT_FALSE(entity->FindComponent<TestExportEditorComponent>());
+        EXPECT_FALSE(entity->FindComponent<TestExportRuntimeComponent>());
+        EXPECT_FALSE(entity->FindComponent<TestExportOtherRuntimeComponent>());
+    }
+
+    TEST_F(SliceCompilerTest, RuntimeExportCallback_EditorComponentExportUnhandledFallbackToBuildGameEntity)
+    {
+        // Create an editor component that has a RuntimeExportCallback, returns a pointer to itself, but says it wasn't handled.
+        CreateTestExportEditorEntity("EntityWithEditorComponent", TestExportEditorComponent::ExportComponentType::EXPORT_EDITOR_COMPONENT, false);
+
+        if (!CompileSlice())
+        {
+            return;
+        }
+
+        // Expected result:  exported slice contains the runtime component, because the fallback to BuildGameEntity()
+        // produced a runtime component.
+        AZ::Entity* entity = GetCompiledEntity("EntityWithEditorComponent");
+        EXPECT_TRUE(entity);
+        EXPECT_FALSE(entity->FindComponent<TestExportEditorComponent>());
+        EXPECT_TRUE(entity->FindComponent<TestExportRuntimeComponent>());
+        EXPECT_FALSE(entity->FindComponent<TestExportOtherRuntimeComponent>());
+    }
+
+    TEST_F(SliceCompilerTest, RuntimeExportCallback_EditorComponentExportSuppressedAndUnhandledFallbackToBuildGameEntity)
+    {
+        // Create an editor component that has a RuntimeExportCallback and suppresses itself from exporting, but says it wasn't handled
+        CreateTestExportEditorEntity("EntityWithEditorComponent", TestExportEditorComponent::ExportComponentType::EXPORT_NULL_COMPONENT, false);
+
+        if (!CompileSlice())
+        {
+            return;
+        }
+
+        // Expected result:  exported slice contains the runtime component, because the fallback to BuildGameEntity()
+        // produced a runtime component.
+        AZ::Entity* entity = GetCompiledEntity("EntityWithEditorComponent");
+        EXPECT_TRUE(entity);
+        EXPECT_FALSE(entity->FindComponent<TestExportEditorComponent>());
+        EXPECT_TRUE(entity->FindComponent<TestExportRuntimeComponent>());
+        EXPECT_FALSE(entity->FindComponent<TestExportOtherRuntimeComponent>());
+    }
+
+    TEST_F(SliceCompilerTest, RuntimeExportCallback_EditorComponentFailsToExportItself)
+    {
+        // Create an editor component that has a RuntimeExportCallback and suppresses itself from exporting, but says it wasn't handled
+        CreateTestExportEditorEntity("EntityWithEditorComponent", TestExportEditorComponent::ExportComponentType::EXPORT_EDITOR_COMPONENT, true);
+
+        // We expect the slice compilation to fail, since an editor component is being exported as a game component
+        CompileSlice(false);
     }
 } // namespace UnitTest
 

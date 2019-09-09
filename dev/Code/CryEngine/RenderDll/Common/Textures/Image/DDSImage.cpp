@@ -168,7 +168,10 @@ bool CImageDDSFile::LoadFromFile(DDSSplitted::FileWrapper& file, uint32 nFlags, 
                     return false;
                 }
             }
-
+            else
+            {
+                file.ReadRaw(&ddsHeader.dwMagic, sizeof(ddsHeader.dwMagic));
+            }
             file.ReadRaw(&ddsHeader.header, sizeof(CImageExtensionHelper::DDS_HEADER));
             SwapEndian(ddsHeader.header);
             ddsHeader.dwMagic = MAKEFOURCC('D', 'D', 'S', ' ');

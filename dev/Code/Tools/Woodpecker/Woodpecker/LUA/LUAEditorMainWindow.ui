@@ -109,6 +109,7 @@
      <string>&amp;Options</string>
     </property>
     <addaction name="actionAutocomplete"/>
+    <addaction name="actionAutoReloadUnmodifiedFiles"/>
     <addaction name="actionSettings"/>
    </widget>
    <widget class="QMenu" name="menuHelp">
@@ -689,11 +690,7 @@
       <number>0</number>
      </property>
      <item row="0" column="0">
-      <widget class="QLineEdit" name="luaClassFilterEdit">
-       <property name="placeholderText">
-        <string>Name Filter</string>
-       </property>
-      </widget>
+       <widget class="AzQtComponents::FilteredSearchWidget" name="m_searchWidget" native="true"/>
      </item>
      <item row="1" column="0">
       <widget class="DHClassReferenceWidget" name="classReferenceTreeView">
@@ -729,6 +726,52 @@
     </layout>
    </widget>
   </widget>
+   <widget class="QDockWidget" name="luaFilesDockWidget">
+     <property name="windowTitle">
+       <string>Lua Files</string>
+     </property>
+     <attribute name="dockWidgetArea">
+       <number>1</number>
+     </attribute>
+     <widget class="QWidget" name="stackLayout_luafiles">
+       <layout class="QVBoxLayout" name="horizontalLayout_luafiles">
+         <property name="leftMargin">
+           <number>0</number>
+         </property>
+         <property name="topMargin">
+           <number>0</number>
+         </property>
+         <property name="rightMargin">
+           <number>0</number>
+         </property>
+         <property name="bottomMargin">
+           <number>0</number>
+         </property>
+         <item>
+           <widget class="AzQtComponents::FilteredSearchWidget" name="m_assetBrowserSearchWidget" native="true"/>
+         </item>
+         <item>
+           <widget class="AzToolsFramework::AssetBrowser::AssetBrowserTreeView" name="m_assetBrowserTreeView">
+             <property name="sizePolicy">
+               <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
+                 <horstretch>0</horstretch>
+                 <verstretch>0</verstretch>
+               </sizepolicy>
+             </property>
+             <property name="contextMenuPolicy">
+               <enum>Qt::CustomContextMenu</enum>
+             </property>
+             <property name="selectionMode">
+               <enum>QAbstractItemView::ExtendedSelection</enum>
+             </property>
+             <attribute name="headerVisible">
+               <bool>false</bool>
+             </attribute>
+           </widget>
+         </item>
+       </layout>
+     </widget>
+   </widget>
   <action name="actionSave">
    <property name="icon">
     <iconset resource="../../../../Framework/AzToolsFramework/AzToolsFramework/UI/LegacyFramework/Resources/sharedResources.qrc">
@@ -1176,18 +1219,32 @@
    </property>
   </action>
   <action name="actionAutocomplete">
-   <property name="checkable">
-    <bool>true</bool>
-   </property>
-   <property name="checked">
-    <bool>true</bool>
-   </property>
-   <property name="text">
-    <string>Autocomplete</string>
-   </property>
-   <property name="autoRepeat">
-    <bool>false</bool>
-   </property>
+    <property name="checkable">
+      <bool>true</bool>
+    </property>
+    <property name="checked">
+      <bool>true</bool>
+    </property>
+    <property name="text">
+      <string>Autocomplete</string>
+    </property>
+    <property name="autoRepeat">
+      <bool>false</bool>
+    </property>
+  </action>
+  <action name="actionAutoReloadUnmodifiedFiles">
+    <property name="checkable">
+      <bool>true</bool>
+    </property>
+    <property name="checked">
+      <bool>false</bool>
+    </property>
+    <property name="text">
+      <string>Auto Reload Unmodified Files</string>
+    </property>
+    <property name="autoRepeat">
+      <bool>false</bool>
+    </property>
   </action>
   <action name="actionSettings">
    <property name="checkable">
@@ -1252,6 +1309,29 @@
    <header>Woodpecker/LUA/LUAEditorFindResults.hxx</header>
    <container>1</container>
   </customwidget>
+   <customwidget>
+     <class>AzQtComponents::FilteredSearchWidget</class>
+     <extends>QWidget</extends>
+     <header>AzQtComponents/Components/FilteredSearchWidget.h</header>
+     <container>1</container>
+   </customwidget>
+   <customwidget>
+     <class>AzToolsFramework::AssetBrowser::SearchWidget</class>
+     <extends>QWidget</extends>
+     <header>AzToolsFramework/AssetBrowser/Search/SearchWidget.h</header>
+     <container>1</container>
+   </customwidget>
+   <customwidget>
+     <class>AzToolsFramework::AssetBrowser::AssetBrowserTreeView</class>
+     <extends>QTreeView</extends>
+     <header>AzToolsFramework/AssetBrowser/Views/AssetBrowserTreeView.h</header>
+   </customwidget>
+   <customwidget>
+     <class>AzQtComponents::FilteredSearchWidget</class>
+     <extends>QWidget</extends>
+     <header>AzQtComponents/Components/FilteredSearchWidget.h</header>
+     <container>1</container>
+   </customwidget>
  </customwidgets>
  <resources>
   <include location="../../../../Framework/AzToolsFramework/AzToolsFramework/UI/LegacyFramework/Resources/sharedResources.qrc"/>

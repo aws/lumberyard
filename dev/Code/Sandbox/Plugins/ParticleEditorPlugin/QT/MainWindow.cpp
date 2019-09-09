@@ -1777,11 +1777,11 @@ QString CMainWindow::ProcessStyleSheet(QString const& fileName)
                 QXmlStreamAttributes att = stream.attributes();
                 for (QXmlStreamAttribute attr : att)
                 {
-                    if (attr.name().compare("name", Qt::CaseInsensitive) == 0)
+                    if (attr.name().compare(QLatin1String("name"), Qt::CaseInsensitive) == 0)
                     {
                         key.first = attr.value().toString();
                     }
-                    if (attr.name().compare("value", Qt::CaseInsensitive) == 0)
+                    if (attr.name().compare(QLatin1String("value"), Qt::CaseInsensitive) == 0)
                     {
                         QString fullColor = attr.value().toString();
                         QColor temp;
@@ -2528,6 +2528,14 @@ void CMainWindow::UnregisterActions()
         action->setParent(nullptr);
         removeAction(action);
         SAFE_DELETE(action);
+    }
+}
+
+void CMainWindow::RefreshItemUI()
+{
+    if (m_LoDDock)
+    {
+       m_LoDDock->RefreshGUI();
     }
 }
 

@@ -12,7 +12,6 @@
 #pragma once
 
 #include <LyShine/Bus/UiInteractableBus.h>
-#include <LyShine/Bus/UiUpdateBus.h>
 #include <LyShine/Bus/UiInteractableStatesBus.h>
 #include <LyShine/Bus/UiImageBus.h>
 #include <LyShine/IDraw2d.h>
@@ -27,8 +26,6 @@
 #include <LyShine/UiAssetTypes.h>
 
 #include <IFont.h>
-
-#include "UiImageComponent.h"
 
 // Forward declarations
 class ISprite;
@@ -168,8 +165,10 @@ protected: // member functions
     void OnTargetElementChange();
     void LoadSpriteFromTargetElement();
 
+    using AZu32ComboBoxVec = AZStd::vector<AZStd::pair<AZ::u32, AZStd::string> >;
+
     //! Returns a string representation of the indices used to index sprite-sheet types.
-    UiImageComponent::AZu32ComboBoxVec PopulateIndexStringList() const;
+    AZu32ComboBoxVec PopulateIndexStringList() const;
 
 protected: // data
     AZ::EntityId m_targetEntity;
@@ -181,6 +180,7 @@ protected: // data
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 class UiInteractableStateFont
     : public UiInteractableStateAction
+    , public FontNotificationBus::Handler
 {
 public: // types
     using FontEffectComboBoxVec = AZStd::vector < AZStd::pair<unsigned int, AZStd::string> >;
@@ -200,6 +200,10 @@ public: // member functions
     AZ::EntityId GetTargetEntity() override { return m_targetEntity; }
     // ~UiInteractableStateAction
 
+    // FontNotifications
+    void OnFontsReloaded() override;
+    // ~FontNotifications
+
     const AZStd::string&  GetFontPathname() { return m_fontFilename.GetAssetPath(); }
     void SetFontPathname(const AZStd::string& pathname);
 
@@ -215,6 +219,10 @@ public: // member functions
 
 public: // static member functions
     static void Reflect(AZ::ReflectContext* context);
+
+protected: // member functions
+
+    void InitCommon(const AZStd::string& fontPathname);
 
 protected: // data
     AZ::EntityId m_targetEntity;

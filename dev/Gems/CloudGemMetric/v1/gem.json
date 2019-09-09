@@ -12,13 +12,20 @@
     "IconPath": "preview.png",
     "GemFormatVersion": 4,
     "Dependencies": [
-        {
-            "VersionConstraints": [
-                "~>1.1.2"
-            ],
-            "_comment": "CloudGemFramework",
-            "Uuid": "6fc787a982184217a5a553ca24676cfa"
-        }
-    ],
+      {
+        "VersionConstraints": [
+          "~>1.1.2"
+        ],
+        "_comment": "CloudGemFramework",
+        "Uuid": "6fc787a982184217a5a553ca24676cfa"
+      },
+      {
+        "Uuid": "102e23cf4c4c4b748585edbce2bbdc65",
+        "VersionConstraints": [
+          "~>0.1"
+        ],
+        "_comment": "CloudCanvasCommon"
+      }
+  ],
     "Name": "CloudGemMetric"
 }

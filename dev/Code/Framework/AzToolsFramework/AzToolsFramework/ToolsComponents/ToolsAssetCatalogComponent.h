@@ -46,6 +46,8 @@ namespace AssetProcessor
         ////////////////////////////////////////////////////////////////////////////////
 
         // AssetCatalogRequestBus overrides
+        AZStd::string GetAssetPathById(const AZ::Data::AssetId& id) override;
+        AZ::Data::AssetId GetAssetIdByPath(const char* path, const AZ::Data::AssetType& typeToRegister, bool autoRegisterIfNotFound) override;
         void EnableCatalogForAsset(const AZ::Data::AssetType& assetType) override;
         void DisableCatalog() override;
         AZ::Data::AssetInfo GetAssetInfoById(const AZ::Data::AssetId& id) override;

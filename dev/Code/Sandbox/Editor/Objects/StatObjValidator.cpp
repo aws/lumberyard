@@ -29,18 +29,16 @@ bool HasPrefix(const char* name, const char (&prefix)[size])
 
 struct SMeshMaterialIssue
 {
-    const char* nodeName;
-    const char* description;
+    AZStd::string nodeName;
+    AZStd::string description;
     int subMaterialIndex;
 
     SMeshMaterialIssue()
-        : nodeName(0)
-        , description(0)
-        , subMaterialIndex(-1)
+        : subMaterialIndex(-1)
     {
     }
 
-    SMeshMaterialIssue(const char* name, const char* description)
+    SMeshMaterialIssue(const AZStd::string& name, const AZStd::string& description)
         : nodeName(name)
         , description(description)
         , subMaterialIndex(-1)
@@ -86,8 +84,9 @@ static void ValidateMeshMaterials(std::vector<SMeshMaterialIssue>* issues, IStat
                 size_t meshUVs = subset.vertexFormat.GetAttributesByUsage(AZ::Vertex::AttributeUsage::TexCoord).size();
                 if (materialUVs != meshUVs)
                 {
+                    const char* meshName = pStatObj->GetRenderMesh() ? pStatObj->GetRenderMesh()->GetSourceName() : "unknown";
                     AZStd::string errorMessage;
-                    errorMessage = AZStd::string::format("Material '%s' sub-material %d with %d uv set(s) was assigned to mesh '%s' with %d uv set(s). ", pIMaterial->GetName(), i + 1, materialUVs, pStatObj->GetRenderMesh() ? pStatObj->GetRenderMesh()->GetSourceName() : "unknown", meshUVs);
+                    errorMessage = AZStd::string::format("Material '%s' sub-material %d with %d uv set(s) was assigned to mesh '%s' with %d uv set(s). ", pIMaterial->GetName(), i + 1, materialUVs, meshName, meshUVs);
 
                     AZStd::string recommendedAction;
                     if (materialUVs < meshUVs)
@@ -100,6 +99,8 @@ static void ValidateMeshMaterials(std::vector<SMeshMaterialIssue>* issues, IStat
                     }
                     errorMessage += recommendedAction;
                     AZ_Warning("Material Editor", false, errorMessage.c_str());
+                    SMeshMaterialIssue issue(meshName, errorMessage);
+                    issues->push_back(issue);
                 }
             }
 
@@ -191,23 +192,23 @@ void CStatObjValidator::Validate(IStatObj* statObj, CMaterial* editorMaterial, I
             {
                 m_description += "\n";
             }
-            if (issue.nodeName)
+            if (!issue.nodeName.empty())
             {
                 m_description += "Node ";
-                m_description += issue.nodeName;
+                m_description += issue.nodeName.c_str();
                 m_description += ":";
             }
             if (issue.subMaterialIndex >= 0)
             {
                 m_description += QStringLiteral("SubMaterial %1:").arg(issue.subMaterialIndex + 1);
             }
-            if (issue.nodeName || issue.subMaterialIndex >= 0)
+            if (!issue.nodeName.empty() || issue.subMaterialIndex >= 0)
             {
                 m_description += "\n  ";
             }
-            if (issue.description)
+            if (!issue.description.empty())
             {
-                m_description += issue.description;
+                m_description += issue.description.c_str();
             }
         }
     }

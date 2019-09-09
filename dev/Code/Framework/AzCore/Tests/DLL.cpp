@@ -174,7 +174,7 @@ namespace UnitTest
         EXPECT_EQ(1, uniqueValues.size());
     }
 
-    TEST(DLLStatus, LoadFailure)
+    TEST_F(DLL, LoadFailure)
     {
         auto handle = DynamicModuleHandle::Create("Not_a_DLL");
         bool isLoaded = handle->Load(true);
@@ -184,7 +184,7 @@ namespace UnitTest
         EXPECT_FALSE(isUnloaded);
     }
 
-    TEST(DLLStatus, LoadModuleTwice)
+    TEST_F(DLL, LoadModuleTwice)
     {
         auto handle = DynamicModuleHandle::Create("AZCoreTestDLL");
         bool isLoaded = handle->Load(true);

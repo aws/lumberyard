@@ -14,178 +14,54 @@
 // Description : Implements an aligned allocator for STL
 //               based on the Mallocator (http://blogs.msdn.com/b/vcblog/archive/2008/08/28/the-mallocator.aspx)
 
-
-#ifndef CRYINCLUDE_CRYCOMMON_STL_STLALIGNEDALLOC_H
-#define CRYINCLUDE_CRYCOMMON_STL_STLALIGNEDALLOC_H
 #pragma once
 
 #include <stddef.h>  // Required for size_t and ptrdiff_t and NULL
-//#include <new>       // Required for placement new and std::bad_alloc
-//#include <stdexcept> // Required for std::length_error
+
+#include <AzCore/Memory/AllocatorBase.h>
 
 namespace stl
 {
-    template <typename T, int AlignSize>
-    class aligned_alloc
+    template <size_t Alignment>
+    class AlignedAllocator
+        : public AZ::AllocatorBase<AZ::ChildAllocatorSchema<AZ::LegacyAllocator>>
     {
     public:
-        // The following will be the same for virtually all allocators.
-        typedef T* pointer;
-        typedef const T* const_pointer;
-        typedef T& reference;
-        typedef const T& const_reference;
-        typedef T value_type;
-        typedef size_t size_type;
-        typedef ptrdiff_t difference_type;
+        AZ_TYPE_INFO(AlignedAllocator, "{DF152D8A-36ED-4A2A-9FA6-734F212716C6}");
+        using Base = AZ::AllocatorBase<AZ::ChildAllocatorSchema<AZ::LegacyAllocator>>;
+        using Descriptor = Base::Descriptor;
+        using Schema = AZ::ChildAllocatorSchema<AZ::LegacyAllocator>;
 
-        T* address(T& r) const
+        AlignedAllocator()
+            : Base("AlignedAllocator", "Legacy Cry Aligned Allocator")
         {
-            return &r;
+            m_schema = new (&m_schemaStorage) Schema(Descriptor());
         }
 
-        const T* address(const T& s) const
+        pointer_type Allocate(size_type byteSize, size_type /*alignment*/, int flags /* = 0 */, const char* name /* = 0 */, const char* fileName /* = 0 */, int lineNum /* = 0 */, unsigned int suppressStackRecord /* = 0 */)
         {
-            return &s;
+            return Base::Allocate(byteSize, Alignment, flags, name, fileName, lineNum, suppressStackRecord);
         }
 
-        size_t max_size() const
+        pointer_type ReAllocate(pointer_type ptr, size_type newSize, size_type /*newAlignment*/) override
         {
-            // The following has been carefully written to be independent of
-            // the definition of size_t and to avoid signed/unsigned warnings.
-            return (static_cast<size_t>(0) - static_cast<size_t>(1)) / sizeof(T);
+            return Base::ReAllocate(ptr, newSize, Alignment);
         }
-
-        // The following must be the same for all allocators.
-        template <typename U>
-        struct rebind
-        {
-            typedef aligned_alloc<U, AlignSize> other;
-        };
-
-
-        bool operator!=(const aligned_alloc& other) const
-        {
-            return !(*this == other);
-        }
-
-        void construct(T* const p, const T& t) const
-        {
-            void* const pv = static_cast<void*>(p);
-            new (pv) T(t);
-        }
-
-
-        void destroy(T* const p) const; // Defined below.
-
-
-        // Returns true if and only if storage allocated from *this
-        // can be deallocated from other, and vice versa.
-        // Always returns true for stateless allocators.
-        bool operator==(const aligned_alloc& other) const
-        {
-            return true;
-        }
-
-        // Default constructor, copy constructor, rebinding constructor, and destructor.
-        // Empty for stateless allocators.
-        aligned_alloc() {}
-        aligned_alloc(const aligned_alloc&) {}
-        template <typename U>
-        aligned_alloc(const aligned_alloc<U, AlignSize>&) {}
-        ~aligned_alloc() {}
-
-
-        // The following will be different for each allocator.
-        T* allocate(const size_t n) const
-        {
-            // The return value of allocate(0) is unspecified.
-            // aligned_alloc returns NULL in order to avoid depending
-            // on malloc(0)'s implementation-defined behavior
-            // (the implementation can define malloc(0) to return NULL,
-            // in which case the bad_alloc check below would fire).
-            // All allocators can return NULL in this case.
-            if (n == 0)
-            {
-                return NULL;
-            }
-
-            // All allocators should contain an integer overflow check.
-            // The Standardization Committee recommends that std::length_error
-            // be thrown in the case of integer overflow.
-            if (n > max_size())
-            {
-                //throw std::length_error( "aligned_alloc<T>::allocate() - Integer overflow." );
-                assert(0);
-            }
-
-            // aligned_alloc wraps malloc().
-            void* const pv = CryModuleMemalign(n * sizeof(T), AlignSize);
-
-            // Allocators should throw std::bad_alloc in the case of memory allocation failure.
-            if (pv == NULL)
-            {
-                //throw std::bad_alloc();
-            }
-            return static_cast<T*>(pv);
-        }
-
-
-
-        void deallocate(T* const p, const size_t n) const
-        {
-            // aligned_alloc wraps free().
-            CryModuleMemalignFree(p);
-        }
-
-        // The following will be the same for all allocators that ignore hints.
-
-        template <typename U>
-        T* allocate(const size_t n, const U* /* const hint */) const
-        {
-            return allocate(n);
-        }
-
-        // Allocators are not required to be assignable, so
-        // all allocators should have a private unimplemented
-        // assignment operator. Note that this will trigger the
-        // off-by-default (enabled under /Wall) warning C4626
-        // "assignment operator could not be generated because a
-        // base class assignment operator is inaccessible" within
-        // the STL headers, but that warning is useless.
-    private:
-        aligned_alloc& operator=(const aligned_alloc&);
     };
 
-
-
-    // A compiler bug causes it to believe that p->~T() doesn't reference p.
-#ifdef _MSC_VER
-#pragma warning(push)
-#pragma warning(disable: 4100) // unreferenced formal parameter
-#endif
-
-    // The definition of destroy() must be the same for all allocators.
-    template <typename T, int AlignSize>
-    void aligned_alloc<T, AlignSize>::destroy(T* const p) const
-    {
-        p->~T();
-    }
-
-#ifdef _MSC_VER
-#pragma warning(pop)
-#endif
-
+    template <size_t Alignment>
+    using aligned_alloc = AZ::AZStdAlloc<AlignedAllocator<Alignment>>;
 
     //////////////////////////////////////////////////////////////////////////
     // Defines aligned vector type
     //////////////////////////////////////////////////////////////////////////
     template <typename T, int AlignSize>
     class aligned_vector
-        : public std::vector<T, aligned_alloc<T, AlignSize> >
+        : public AZStd::vector<T, aligned_alloc<AlignSize> >
     {
     public:
-        typedef aligned_alloc<T, AlignSize>   MyAlloc;
-        typedef std::vector<T, MyAlloc>       MySuperClass;
+        typedef aligned_alloc<AlignSize>      MyAlloc;
+        typedef AZStd::vector<T, MyAlloc>     MySuperClass;
         typedef aligned_vector<T, AlignSize>  MySelf;
         typedef size_t size_type;
 
@@ -223,4 +99,37 @@ namespace stl
     }
 } // namespace stl
 
-#endif // CRYINCLUDE_CRYCOMMON_STL_STLALIGNEDALLOC_H
+// Specialize for the AlignedAllocator to provide one per module that does not use the
+// environment for its storage. Since this allocator just uses LegacyAllocator
+// to do the real work, it's fine if there is one of these per cry module
+namespace AZ
+{
+    template <size_t Alignment>
+    class AllocatorInstance<stl::AlignedAllocator<Alignment>>
+    {
+    public:
+        using AllocatorType = stl::AlignedAllocator<Alignment>;
+        using Descriptor = typename AllocatorType::Descriptor;
+
+        static AllocatorType& Get()
+        {
+            static AllocatorType s_allocator;
+            return s_allocator;
+        }
+
+        static void Create(const Descriptor& desc = Descriptor())
+        {
+
+        }
+
+        static void Destroy()
+        {
+            Get().Destroy();
+        }
+
+        AZ_FORCE_INLINE static bool IsReady()
+        {
+            return true;
+        }
+    };
+}

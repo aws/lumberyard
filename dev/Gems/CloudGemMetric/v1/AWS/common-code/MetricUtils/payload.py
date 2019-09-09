@@ -169,7 +169,7 @@ class CSV(AbstractPayload):
 
     # Append server metrics to the metric payload
     def append_server_metrics(self, metric):        
-        metric.append(uuid.uuid1().hex)
+        metric.append(uuid.uuid4().hex)
         #must be a string for String IO concatenation
         metric.append(str(self.current_unix_datetime()))
         metric.append(str(self.longitude) if self.context[c.KEY_SAVE_GLOBAL_COORDINATES] else "0.0")
@@ -246,7 +246,7 @@ class CSV(AbstractPayload):
         return messages, total_metrics 
    
 class JSON(AbstractPayload):
-    def __init__(self, context, compression_mode, sensitivity_type, source_IP):
+    def __init__(self, context, compression_mode, sensitivity_type, source_IP=None):
         AbstractPayload.__init__(self, context, compression_mode, sensitivity_type, source_IP)        
 
     def extract(self, data):        
@@ -266,7 +266,7 @@ class JSON(AbstractPayload):
 
     # Append server metrics to the metric payload
     def append_server_metrics(self, metric):            
-        metric[schema.Required.Server.uuid().id]= uuid.uuid1().hex 
+        metric[schema.Required.Server.uuid().id]= uuid.uuid4().hex 
         metric[schema.Required.Server.server_timestamp_utc().id]= self.current_unix_datetime()
         #it is against the law in some countries to save personally identifiable information in some countries like Europe zone.   Enough lat/longs and you can track a person. 
         metric[schema.Required.Server.longtitude().id]= self.longitude if self.context[c.KEY_SAVE_GLOBAL_COORDINATES] else 0.0

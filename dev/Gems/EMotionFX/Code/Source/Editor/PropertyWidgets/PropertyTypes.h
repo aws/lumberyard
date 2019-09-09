@@ -12,9 +12,15 @@
 
 #pragma once
 
+#include <AzCore/std/containers/vector.h>
+
+namespace AzToolsFramework
+{
+    class PropertyHandlerBase;
+}
 
 namespace EMotionFX
 {
-    void RegisterPropertyTypes();
-    void UnregisterPropertyTypes();
+    AZStd::vector<AzToolsFramework::PropertyHandlerBase*> RegisterPropertyTypes();
+    void UnregisterPropertyTypes(const AZStd::vector<AzToolsFramework::PropertyHandlerBase*>& handlers);
 } // namespace EMotionFX

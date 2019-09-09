@@ -11,11 +11,11 @@ import { Facetable } from '../../class/index';
                 <div *ngIf="data['properties'] !== undefined">
                     <div *ngFor="let prop of data['properties'] | objKeys">
                         <div *ngIf="isObjectToDisplay(data['properties'][prop])" class="row mb-3 no-gutters rest-prop" [ngClass]="{'has-danger': data['properties'][prop].valid === false}">
-                            <span class="col-lg-2" affix> {{prop}} </span>                        
-                            <input *ngIf="!isObjectOrArray(data['properties'][prop].type)" class="form-control" type="{{data['properties'][prop].type}}" [ngClass]="{'input-dotted' : data['required'] === undefined || data['required'].indexOf(prop) < 0, 'form-control-danger': data['properties'][prop].valid === false}" 
+                            <span class="col-lg-4" affix> {{prop}} </span>                        
+                            <input *ngIf="!isObjectOrArray(data['properties'][prop].type)" class="form-control col-lg-6" type="{{data['properties'][prop].type}}" [ngClass]="{'input-dotted' : data['required'] === undefined || data['required'].indexOf(prop) < 0, 'form-control-danger': data['properties'][prop].valid === false}" 
                                 [(ngModel)]="data['properties'][prop].value" 
                                 placeholder="{{placeholder(data['properties'][prop])}}" />                            
-                            <textarea rows="10" *ngIf="isObjectOrArray(data['properties'][prop].type)" class="col-lg-8 form-control" [ngClass]="{'input-dotted' : data['required'] === undefined || data['required'].indexOf(prop) < 0, 'form-control-danger': data['properties'][prop].valid === false}" 
+                            <textarea rows="10" *ngIf="isObjectOrArray(data['properties'][prop].type)" class="col-lg-6 form-control" [ngClass]="{'input-dotted' : data['required'] === undefined || data['required'].indexOf(prop) < 0, 'form-control-danger': data['properties'][prop].valid === false}" 
                                 [(ngModel)]="data['properties'][prop].value" 
                                 placeholder="{{placeholder(data['properties'][prop])}}">
                             </textarea>
@@ -34,7 +34,7 @@ export class BodyTreeViewComponent {
     }
 
     placeholder(obj: any) {        
-        if (obj.type.indexOf('array') >= 0 && obj.items) {
+        if (obj !== undefined && obj.type !== undefined && obj.type.indexOf('array') >= 0 && obj.items) {
             if (obj.items.properties) {
                 let keys = Object.keys(obj.items.properties)
                 let result = "[{"
@@ -165,7 +165,7 @@ export class RestApiExplorerComponent implements Facetable {
                 let part = parts[i]
                 template = template[part]
             }
-            if (template.type == 'array') {
+            if (template.type == 'array' && template.items) {
                 parameter.type = 'array[' + template.items.type + ']'
                 return undefined
             }

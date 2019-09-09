@@ -519,13 +519,28 @@ void CColorGradingControllerD3D::DrawDebugInfo() const
 
 bool CColorGradingControllerD3D::LoadStaticColorChart(const char* pChartFilePath)
 {
+    bool success = true;
+
+    // Prevent a dangling pointer by updating the current chart if it was set to the old static chart.
+    bool updateCurrentChart = false;
+    if (m_pChartToUse == m_pChartStatic)
+    {
+        updateCurrentChart = true;
+    }
+
     SAFE_RELEASE(m_pChartStatic);
     if (pChartFilePath && pChartFilePath[0] != '\0')
     {
         m_pChartStatic = LoadColorChartInt(pChartFilePath);
-        return m_pChartStatic != 0;
+        success = m_pChartStatic != 0;
     }
-    return true;
+
+    if (updateCurrentChart)
+    {
+        m_pChartToUse = m_pChartStatic;
+    }
+
+    return success;
 }
 
 

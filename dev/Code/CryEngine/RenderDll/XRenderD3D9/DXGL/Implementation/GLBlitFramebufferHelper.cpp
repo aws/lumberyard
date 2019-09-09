@@ -182,9 +182,7 @@ namespace NCryOpenGL
 #endif
 
         m_blendState.m_bAlphaToCoverageEnable = false;
-#if DXGL_SUPPORT_INDEPENDENT_BLEND_STATES
         m_blendState.m_bIndependentBlendEnable = false;
-#endif
         for (int i = 0; i < DXGL_ARRAY_SIZE(m_blendState.m_kTargets); ++i)
         {
             STargetBlendState& targetBlendState = m_blendState.m_kTargets[i];

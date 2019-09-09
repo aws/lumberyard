@@ -124,13 +124,11 @@ namespace EMotionFX
             OutputFeathering(animGraphInstance, uniqueData);
         }
 
-    #ifdef EMFX_EMSTUDIOBUILD
-        if (GetCanVisualize(animGraphInstance))
+        if (GetEMotionFX().GetIsInEditorMode() && GetCanVisualize(animGraphInstance))
         {
             AnimGraphPose* outPose = GetOutputPose(animGraphInstance, OUTPUTPORT_POSE)->GetValue();
             animGraphInstance->GetActorInstance()->DrawSkeleton(outPose->GetPose(), mVisualizeColor);
         }
-    #endif
     }
 
 
@@ -224,9 +222,9 @@ namespace EMotionFX
             {
                 const float finalWeight = blendWeight;// * uniqueData->mWeights[n];
                 const uint32 nodeIndex = uniqueData->mMask[n];
-                transform = outputLocalPose.GetLocalTransform(nodeIndex);
-                transform.ApplyAdditive(additivePose.GetLocalTransform(nodeIndex), finalWeight);
-                outputLocalPose.SetLocalTransform(nodeIndex, transform);
+                transform = outputLocalPose.GetLocalSpaceTransform(nodeIndex);
+                transform.ApplyAdditive(additivePose.GetLocalSpaceTransform(nodeIndex), finalWeight);
+                outputLocalPose.SetLocalSpaceTransform(nodeIndex, transform);
             }
         }
     }
@@ -240,8 +238,10 @@ namespace EMotionFX
         const Actor* actor = actorInstance->GetActor();
         AnimGraphRefCountedData* nodeAData = nodeA->FindUniqueNodeData(animGraphInstance)->GetRefCountedData();
         AnimGraphRefCountedData* nodeBData = nodeB ? nodeB->FindUniqueNodeData(animGraphInstance)->GetRefCountedData() : nullptr;
-        if (!nodeAData && !nodeBData)
+
+        if (!nodeAData)
         {
+            // nodeAData is assumed to be present
             data->ZeroTrajectoryDelta();
             return;
         }
@@ -359,26 +359,20 @@ namespace EMotionFX
                 {
                     continue;
                 }
-              
+
                 nodeToSync->AutoSync(animGraphInstance, nodeA, 0.0f, m_syncMode, false, false);
             }
         }
         else
         {
-            nodeA->SetPlaySpeed(animGraphInstance, uniqueData->GetPlaySpeed());
-
             if (animGraphInstance->GetIsObjectFlagEnabled(nodeA->GetObjectIndex(), AnimGraphInstance::OBJECTFLAGS_SYNCED))
             {
                 nodeA->RecursiveSetUniqueDataFlag(animGraphInstance, AnimGraphInstance::OBJECTFLAGS_SYNCED, false);
             }
 
-            if (nodeB)
+            if (nodeB && animGraphInstance->GetIsObjectFlagEnabled(nodeB->GetObjectIndex(), AnimGraphInstance::OBJECTFLAGS_SYNCED))
             {
-                nodeB->SetPlaySpeed(animGraphInstance, uniqueData->GetPlaySpeed());
-                if (animGraphInstance->GetIsObjectFlagEnabled(nodeB->GetObjectIndex(), AnimGraphInstance::OBJECTFLAGS_SYNCED))
-                {
-                    nodeB->RecursiveSetUniqueDataFlag(animGraphInstance, AnimGraphInstance::OBJECTFLAGS_SYNCED, false);
-                }
+                nodeB->RecursiveSetUniqueDataFlag(animGraphInstance, AnimGraphInstance::OBJECTFLAGS_SYNCED, false);
             }
         }
 
@@ -483,8 +477,8 @@ namespace EMotionFX
 
         editContext->Class<BlendTreeBlend2AdditiveNode>("Blend 2 Additive", "Blend 2 additive attributes")
             ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
-                ->Attribute(AZ::Edit::Attributes::AutoExpand, "")
-                ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
+            ->Attribute(AZ::Edit::Attributes::AutoExpand, "")
+            ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
         ;
     }
 } // namespace EMotionFX

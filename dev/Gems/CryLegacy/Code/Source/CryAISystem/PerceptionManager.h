@@ -188,8 +188,8 @@ private:
     std::vector<SAIEventListener>   m_eventListeners;
     float m_visBroadPhaseDt;
 
-    static std::vector<CAIObject*> s_targetEntities;
-    static std::vector<CAIVehicle*> s_playerVehicles;
+    static StaticInstance<std::vector<CAIObject*>> s_targetEntities;
+    static StaticInstance<std::vector<CAIVehicle*>> s_playerVehicles;
 
     static const int PERF_TRACKER_SAMPLE_COUNT = 200;
 

@@ -16,6 +16,7 @@
 #pragma once
 
 #include <QMainWindow>
+#include <LmbrCentral/Physics/WaterNotificationBus.h>
 
 struct SNoiseParams;
 class CHeightmap;
@@ -33,6 +34,7 @@ namespace Ui {
 class CTerrainDialog
     : public QMainWindow
     , public IEditorNotifyListener
+    , private LmbrCentral::WaterNotificationBus::Handler
 {
     Q_OBJECT
 
@@ -100,6 +102,10 @@ protected:
     //void OnCustomize();
     //void OnExportShortcuts();
     //void OnImportShortcuts();
+
+    ////////////////////////////////////////////////////////////////////////////
+    // WaterNotificationBus
+    void OceanHeightChanged(float height) override;
 
     QScopedPointer<Ui::TerrainDialog> m_ui;
 

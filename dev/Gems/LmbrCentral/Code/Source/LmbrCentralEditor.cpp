@@ -23,6 +23,7 @@
 #include "Audio/EditorAudioAreaEnvironmentComponent.h"
 #include "Audio/EditorAudioEnvironmentComponent.h"
 #include "Audio/EditorAudioListenerComponent.h"
+#include "Audio/EditorAudioMultiPositionComponent.h"
 #include "Audio/EditorAudioPreloadComponent.h"
 #include "Audio/EditorAudioRtpcComponent.h"
 #include "Audio/EditorAudioSwitchComponent.h"
@@ -79,6 +80,7 @@ namespace LmbrCentral
             EditorAudioAreaEnvironmentComponent::CreateDescriptor(),
             EditorAudioEnvironmentComponent::CreateDescriptor(),
             EditorAudioListenerComponent::CreateDescriptor(),
+            EditorAudioMultiPositionComponent::CreateDescriptor(),
             EditorAudioPreloadComponent::CreateDescriptor(),
             EditorAudioRtpcComponent::CreateDescriptor(),
             EditorAudioSwitchComponent::CreateDescriptor(),

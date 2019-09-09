@@ -75,7 +75,6 @@ class CTrackViewTrack
     friend class CTrackViewKeyHandle;
     friend class CTrackViewKeyConstHandle;
     friend class CTrackViewKeyBundle;
-    friend class CAbstractUndoTrackTransaction;
 
 public:
     CTrackViewTrack(IAnimTrack* pTrack, CTrackViewAnimNode* pTrackAnimNode, CTrackViewNode* pParentNode,
@@ -195,6 +194,16 @@ public:
 
     IAnimTrack* GetAnimTrack() const { return m_pAnimTrack.get(); }
 
+    unsigned int GetId() const
+    {
+        return m_pAnimTrack->GetId();
+    }
+
+    void SetId(unsigned int id)
+    {
+        m_pAnimTrack->SetId(id);
+    }
+
 private:
     CTrackViewKeyHandle GetPrevKey(const float time);
     CTrackViewKeyHandle GetNextKey(const float time);
@@ -205,6 +214,9 @@ private:
 
     void SelectKey(unsigned int keyIndex, bool bSelect);
     bool IsKeySelected(unsigned int keyIndex) const;
+
+    void SetSortMarkerKey(unsigned int keyIndex, bool enabled);
+    bool IsSortMarkerKey(unsigned int keyIndex) const;
 
     void SetKeyTime(const int index, const float time, bool notifyListeners = true);
     float GetKeyTime(const int index) const;

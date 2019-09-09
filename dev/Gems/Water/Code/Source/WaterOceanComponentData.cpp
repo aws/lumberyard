@@ -82,6 +82,11 @@ namespace Water
 
     WaterOceanComponentData::~WaterOceanComponentData()
     {
+        // Ensure that we're disconnected from the bus on destruction.  We can end up still connected here
+        // if a WaterOceanComponent has been created with a copy of connected WaterOceanComponentData.
+        // The new copy doesn't get an Activate or a Deactivate call, but will be connected.
+        AZ::OceanEnvironmentBus::Handler::BusDisconnect();
+
         m_enabled = false;
     }
 
@@ -89,39 +94,43 @@ namespace Water
     {
         _smart_ptr<IMaterial> pMaterial;
 
-        if (gEnv->p3DEngine)
-        {
 #if WATER_GEM_EDITOR
-            CMaterial* cMaterial = GetIEditor()->GetMaterialManager()->LoadMaterial(materialName.c_str(), false);
-            if (cMaterial)
-            {
-                pMaterial = cMaterial->GetMatInfo();
-            }
-#else
-            pMaterial = gEnv->p3DEngine->GetMaterialManager()->LoadMaterial(materialName.c_str(), false);
-#endif
+        CMaterial* cMaterial = GetIEditor()->GetMaterialManager()->LoadMaterial(materialName.c_str(), false);
+        if (cMaterial)
+        {
+            pMaterial = cMaterial->GetMatInfo();
         }
+#else
+        ISystem* system = GetISystem();
+        if (system && system->GetI3DEngine() && system->GetI3DEngine()->GetMaterialManager())
+        {
+            pMaterial = system->GetI3DEngine()->GetMaterialManager()->LoadMaterial(materialName.c_str(), false);
+        }
+#endif
+
         return pMaterial;
     }
 
     void WaterOceanComponentData_UpdateOceanMaterial(const AZStd::string& materialName)
     {
-        if (gEnv && gEnv->p3DEngine)
+        ISystem* system = GetISystem();
+        if (system && system->GetI3DEngine() && system->GetI3DEngine()->GetITerrain())
         {
             auto pMaterial = WaterOceanComponentData_LoadMaterial(materialName);
             if (pMaterial)
             {
-                gEnv->p3DEngine->GetITerrain()->ChangeOceanMaterial(pMaterial);
+                system->GetI3DEngine()->GetITerrain()->ChangeOceanMaterial(pMaterial);
             }
         }
     }
 
     void WaterOceanComponentData_UpdateOceanBuoyancy(float height)
     {
-        if (gEnv && gEnv->p3DEngine && gEnv->p3DEngine->GetITerrain())
+        ISystem* system = GetISystem();
+        if (system && system->GetI3DEngine() && system->GetI3DEngine()->GetITerrain())
         {
             // updates the buoyancy area associated with the ocean.
-            gEnv->p3DEngine->GetITerrain()->SetOceanWaterLevel(height);
+            system->GetI3DEngine()->GetITerrain()->SetOceanWaterLevel(height);
         }
     }
 
@@ -135,13 +144,14 @@ namespace Water
         WaterOceanComponentData_UpdateOceanBuoyancy(m_general.m_height);
         WaterOceanComponentData_UpdateOceanMaterial(m_general.m_oceanMaterialAsset.GetAssetPath());
 
-        if (gEnv->p3DEngine)
+        I3DEngine* engine = GetISystem() ? GetISystem()->GetI3DEngine() : nullptr;
+        if (engine)
         {
-            gEnv->p3DEngine->EnableOceanRendering(true); // Sets a bool that allows the ocean to render
-            if (gEnv->p3DEngine->GetITerrain())
+            engine->EnableOceanRendering(true); // Sets a bool that allows the ocean to render
+            if (engine->GetITerrain())
             {
                 auto pMaterial = WaterOceanComponentData_LoadMaterial(m_general.m_oceanMaterialAsset.GetAssetPath());
-                gEnv->p3DEngine->GetITerrain()->InitTerrainWater(pMaterial); // Causes the ocean to be created
+                engine->GetITerrain()->InitTerrainWater(pMaterial); // Causes the ocean to be created
             }
         }
     }
@@ -152,16 +162,17 @@ namespace Water
 
         m_enabled = false;
         AZ::OceanEnvironmentBus::Handler::BusDisconnect();
-        WaterOceanComponentData_UpdateOceanBuoyancy(m_general.m_height);
+        WaterOceanComponentData_UpdateOceanBuoyancy(AZ::OceanConstants::s_HeightMin);
 
         // turn off ocean and delete it
-        if (gEnv->p3DEngine)
+        I3DEngine* engine = GetISystem() ? GetISystem()->GetI3DEngine() : nullptr;
+        if (engine)
         {
-            if (gEnv->p3DEngine->GetITerrain())
+            if (engine->GetITerrain())
             {
-                gEnv->p3DEngine->GetITerrain()->InitTerrainWater(nullptr); // Causes the ocean to be deleted
+                engine->GetITerrain()->InitTerrainWater(nullptr); // Causes the ocean to be deleted
             }
-            gEnv->p3DEngine->EnableOceanRendering(false); // turns off ocean rendering
+            engine->EnableOceanRendering(false); // turns off ocean rendering
         }
     }
 
@@ -182,12 +193,22 @@ namespace Water
 
     float WaterOceanComponentData::GetWaterLevel(const Vec3& pvPos) const
     {
-        return gEnv->p3DEngine->GetWaterLevel(&pvPos);
+        ISystem* system = GetISystem();
+        if (system && system->GetI3DEngine())
+        {
+            return system->GetI3DEngine()->GetWaterLevel(&pvPos);
+        }
+        return 0.0f;
     }
 
     float WaterOceanComponentData::GetAccurateOceanHeight(const Vec3& pCurrPos) const
     {
-        return gEnv->p3DEngine->GetAccurateOceanHeight(pCurrPos);
+        ISystem* system = GetISystem();
+        if (system && system->GetI3DEngine())
+        {
+            return system->GetI3DEngine()->GetAccurateOceanHeight(pCurrPos);
+        }
+        return 0.0f;
     }
 
     int WaterOceanComponentData::GetWaterTessellationAmount() const

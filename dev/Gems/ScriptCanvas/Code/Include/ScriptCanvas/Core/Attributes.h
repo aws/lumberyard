@@ -34,8 +34,7 @@ namespace ScriptCanvas
 
         namespace UIHandlers
         {
-            const static AZ::Crc32 GenericLineEdit = AZ_CRC("GenericLineEdit", 0xf6133796);
-            const static AZ::Crc32 GenericComboBox = AZ_CRC("GenericComboBox", 0x4c8bc9c5);
+            const static AZ::Crc32 GenericLineEdit = AZ_CRC("GenericLineEdit", 0xf6133796);            
         }
 
         namespace NodePalette
@@ -43,12 +42,9 @@ namespace ScriptCanvas
             // Attribute that can be used to store a function which creates a custom NodePaletteTreeItem
             const static AZ::Crc32 TreeItemOverride = AZ_CRC("TreeItemOverride", 0xd457505c);
         }
-
-        const static AZ::Crc32 GenericValue = AZ_CRC("GenericValue", 0x7a28c4bc);
-        const static AZ::Crc32 GenericValueList = AZ_CRC("GenericValueList", 0x6847012e);
+        
         const static AZ::Crc32 StringToProperty = AZ_CRC("StringToProperty", 0x3e76c0a2);
-        const static AZ::Crc32 PropertyToString = AZ_CRC("PropertyToString", 0x323fc400);
-        const static AZ::Crc32 PostChangeNotify = AZ_CRC("PostChangeNotify", 0x456e84c8);
+        const static AZ::Crc32 PropertyToString = AZ_CRC("PropertyToString", 0x323fc400);        
 
         const static AZ::Crc32 Input = AZ_CRC("Input", 0xd82832d7);
         const static AZ::Crc32 Output = AZ_CRC("Output", 0xccde149e);

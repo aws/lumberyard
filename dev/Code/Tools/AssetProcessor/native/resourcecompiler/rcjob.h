@@ -182,6 +182,7 @@ namespace AssetProcessor
     public:
         static QString GetStateDescription(const JobState& state);
         static void ExecuteBuilderCommand(BuilderParams builderParams);
+        static void AutoFailJob(BuilderParams& builderParams);
         static bool CopyCompiledAssets(BuilderParams& params, AssetBuilderSDK::ProcessJobResponse& response);
 
         QString GetJobKey() const;
@@ -189,6 +190,7 @@ namespace AssetProcessor
         bool IsCritical() const;
         bool IsAutoFail() const;
         int GetPriority() const;
+        const AZStd::vector<JobDependencyInternal>& GetJobDependencies();
 
     protected:
         //! DoWork ensure that the job is ready for being processing and than makes the actual builder call   

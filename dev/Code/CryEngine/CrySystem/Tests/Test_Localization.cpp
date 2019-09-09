@@ -11,6 +11,7 @@
 */
 #include "StdAfx.h"
 #include <AzTest/AzTest.h>
+#include <AzCore/Memory/AllocatorScope.h>
 #include "LocalizedStringManager.h"
 #include <Mocks/ISystemMock.h>
 #include <Mocks/IConsoleMock.h>
@@ -33,8 +34,11 @@ public:
 using namespace testing;
 using ::testing::NiceMock;
 
+using SystemAllocatorScope = AZ::AllocatorScope<AZ::LegacyAllocator, CryStringAllocator>;
+
 class SystemFixture
     : public ::testing::Test
+    , public SystemAllocatorScope
 {
 public:
     SystemFixture()
@@ -57,6 +61,8 @@ public:
 
     void SetUp() override 
     {
+        SystemAllocatorScope::ActivateAllocators();
+
         memset(&m_stubEnv, 0, sizeof(SSystemGlobalEnvironment));
         m_stubEnv.pConsole = &m_console;
         m_stubEnv.pSystem = &m_system;
@@ -69,6 +75,8 @@ public:
     void TearDown() override
     {
         gEnv = m_priorEnv;
+
+        SystemAllocatorScope::DeactivateAllocators();
     }
 
     NiceMock<SystemMock> m_system;

@@ -12,6 +12,8 @@
 #include "stdafx.h"
 
 #include "EditorCommon.h"
+#include <LyShine/Bus/UiEditorCanvasBus.h>
+#include "CanvasHelpers.h"
 
 namespace
 {
@@ -107,14 +109,20 @@ void CoordinateSystemToolbarSection::SetCurrentIndex(int index)
 
 void CoordinateSystemToolbarSection::HandleCoordinateSystemCycle()
 {
-    SetCoordinateSystemFromCombobox(m_editorWindow, m_combobox, CycleSelectedItem());
+    if (m_combobox->isEnabled())
+    {
+        SetCoordinateSystemFromCombobox(m_editorWindow, m_combobox, CycleSelectedItem());
+    }
 }
 
 void CoordinateSystemToolbarSection::HandleSnapToGridToggle()
 {
-    m_snapCheckbox->toggle();
+    if (m_snapCheckbox->isEnabled())
+    {
+        m_snapCheckbox->toggle();
 
-    UpdateCanvasSnapEnabled();
+        UpdateCanvasSnapEnabled();
+    }
 }
 
 void CoordinateSystemToolbarSection::SetSnapToGridIsChecked(bool checked)
@@ -127,17 +135,9 @@ void CoordinateSystemToolbarSection::UpdateCanvasSnapEnabled()
     bool checked = (m_snapCheckbox->checkState() == Qt::Checked);
 
     // Add an undo command
-    AZStd::string canvasUndoXml;
-    EBUS_EVENT_ID_RESULT(canvasUndoXml, m_editorWindow->GetCanvas(), UiCanvasBus, SaveToXmlString);
-    AZ_Assert(!canvasUndoXml.empty(), "Failed to serialize");
-
-    EBUS_EVENT_ID(m_editorWindow->GetCanvas(), UiCanvasBus, SetIsSnapEnabled, checked);
-
-    AZStd::string canvasRedoXml;
-    EBUS_EVENT_ID_RESULT(canvasRedoXml, m_editorWindow->GetCanvas(), UiCanvasBus, SaveToXmlString);
-    AZ_Assert(!canvasRedoXml.empty(), "Failed to serialize");
-
-    CommandCanvasPropertiesChange::Push(m_editorWindow->GetActiveStack(), canvasUndoXml, canvasRedoXml, m_editorWindow);
+    AZStd::string canvasUndoXml = CanvasHelpers::BeginUndoableCanvasChange(m_editorWindow->GetCanvas());
+    EBUS_EVENT_ID(m_editorWindow->GetCanvas(), UiEditorCanvasBus, SetIsSnapEnabled, checked);
+    CanvasHelpers::EndUndoableCanvasChange(m_editorWindow, "toggle snapping", canvasUndoXml);
 }
 
 #include <CoordinateSystemToolbarSection.moc>

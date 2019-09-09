@@ -10,14 +10,13 @@
 *
 */
 
-#include "precompiled.h"
-
 #include "EBusEventHandler.h"
 
 #include <AzCore/RTTI/BehaviorContext.h>
 #include <AzCore/Serialization/Utils.h>
 
 #include <ScriptCanvas/Execution/RuntimeBus.h>
+#include <ScriptCanvas/Utils/NodeUtils.h>
 
 namespace ScriptCanvas
 {
@@ -30,6 +29,31 @@ namespace ScriptCanvas
 
             static bool EBusEventHandlerVersionConverter(AZ::SerializeContext& serializeContext, AZ::SerializeContext::DataElementNode& rootElement)
             {
+                if (rootElement.GetVersion() <= 3)
+                {
+                    auto element = rootElement.FindSubElement(AZ_CRC("m_ebusName", 0x74a03d75));
+
+                    if (element)
+                    {
+                        AZStd::string ebusName;
+                        element->GetData(ebusName);
+
+                        if (!ebusName.empty())
+                        {
+                            ScriptCanvas::EBusBusId busId = ScriptCanvas::EBusBusId(ebusName.c_str());
+
+                            if (rootElement.AddElementWithData(serializeContext, "m_busId", busId) == -1)
+                            {
+                                return false;
+                            }
+                        }
+                    }
+                    else
+                    {
+                        return false;
+                    }
+                }
+
                 if (rootElement.GetVersion() <= 2)
                 {
                     // Renamed "BusId" to "Source"
@@ -173,7 +197,7 @@ namespace ScriptCanvas
 
             EBusEventHandler::~EBusEventHandler()
             {
-                if (m_ebus)
+                if (m_ebus && m_ebus->m_destroyHandler)
                 {
                     m_ebus->m_destroyHandler->Invoke(m_handler);
                 }
@@ -188,11 +212,15 @@ namespace ScriptCanvas
                         InitializeEvent(eventIndex);
                     }
                 }
+
+                // Set the auto connect value to the serialized value to give the setter 
+                // the chance to overrule it if the node's Connect slot is manually connected.
+                SetAutoConnectToGraphOwner(m_autoConnectToGraphOwner);
             }
 
             void EBusEventHandler::OnActivate()
             {
-                if (m_ebus && m_handler)
+                if (m_ebus && m_handler && m_autoConnectToGraphOwner)
                 {
                     Connect();
                 }
@@ -393,25 +421,44 @@ namespace ScriptCanvas
                     {
                         const auto busToolTip = AZStd::string::format("%s (Type: %s)", c_busIdTooltip, m_ebus->m_idParam.m_name);
                         const AZ::TypeId& busId = m_ebus->m_idParam.m_typeId;
+                        
                         if (busId == azrtti_typeid<AZ::EntityId>())
                         {
-                            AddInputDatumSlot(c_busIdName, busToolTip, Datum::eOriginality::Original, ScriptCanvas::SelfReferenceId);
+                            DataSlotConfiguration config;
+                            
+                            config.m_name = c_busIdName;
+                            config.m_toolTip = busToolTip;
+                            config.m_slotType = SlotType::DataIn;
+                            config.m_contractDescs = { { []() { return aznew RestrictedTypeContract({ Data::Type::EntityID() }); } } };
+
+                            AddInputDatumSlot(config, Datum(SelfReferenceId));
                         }
                         else
                         {
                             Data::Type busIdType(AZ::BehaviorContextHelper::IsStringParameter(m_ebus->m_idParam) ? Data::Type::String() : Data::FromAZType(busId));
-                            AddInputDatumSlot(c_busIdName, busToolTip, busIdType, Datum::eOriginality::Original);
+
+                            DataSlotConfiguration config;
+
+                            config.m_name = c_busIdName;
+                            config.m_toolTip = busToolTip;
+                            config.m_slotType = SlotType::DataIn;
+                            config.m_contractDescs = { { [busIdType]() { return aznew RestrictedTypeContract({ busIdType }); } } };
+
+                            AddInputDatumSlot(config, Datum(busIdType, Datum::eOriginality::Original));
                         }
                     }
                 }
 
                 m_ebusName = m_ebus->m_name;
+                m_busId = ScriptCanvas::EBusBusId(m_ebusName.c_str());
 
                 const AZ::BehaviorEBusHandler::EventArray& events = m_handler->GetEvents();
                 for (int eventIndex(0); eventIndex < events.size(); ++eventIndex)
                 {
                     InitializeEvent(eventIndex);
                 }
+
+                PopulateNodeType();
             }
 
             void EBusEventHandler::InitializeEvent(int eventIndex)
@@ -448,8 +495,7 @@ namespace ScriptCanvas
                 {
                     const AZ::BehaviorParameter& argument(event.m_parameters[AZ::eBehaviorBusForwarderEventIndices::Result]);
                     Data::Type inputType(AZ::BehaviorContextHelper::IsStringParameter(argument) ? Data::Type::String() : Data::FromAZType(argument.m_typeId));
-                    const char* argumentTypeName = Data::GetName(inputType);
-                    const AZStd::string argName(AZStd::string::format("Result: %s", argumentTypeName));
+                    const AZStd::string argName(AZStd::string::format("Result: %s", Data::GetName(inputType).data()).data());
                     ebusEventEntry.m_resultSlotId = AddInputDatumSlot(argName.c_str(), "", AZStd::move(inputType), Datum::eOriginality::Copy, false);
                 }
 
@@ -463,7 +509,7 @@ namespace ScriptCanvas
                     AZStd::string argName = event.m_metadataParameters[parameterIndex].m_name;
                     if (argName.empty())
                     {
-                        argName = AZStd::string::format("%s", Data::GetName(outputType));
+                        argName = Data::GetName(outputType);
                     }
                     const AZStd::string& argToolTip = event.m_metadataParameters[parameterIndex].m_toolTip;
                     ebusEventEntry.m_parameterSlotIds.push_back(AddOutputTypeSlot(argName, argToolTip, AZStd::move(outputType), OutputStorage::Required, false));
@@ -473,15 +519,18 @@ namespace ScriptCanvas
                 ebusEventEntry.m_eventSlotId = AddSlot(eventID, "", SlotType::ExecutionOut);
                 AZ_Assert(ebusEventEntry.m_eventSlotId.IsValid(), "the event execution out slot must be valid");
                 ebusEventEntry.m_eventName = event.m_name;
+                ebusEventEntry.m_eventId = event.m_eventId;
 
                 m_eventMap[AZ::Crc32(event.m_name)] = ebusEventEntry;
             }
 
             bool EBusEventHandler::IsEventConnected(const EBusEventEntry& entry) const
             {
-                return Node::IsConnected(*GetSlot(entry.m_eventSlotId))
-                    || (entry.m_resultSlotId.IsValid() && Node::IsConnected(*GetSlot(entry.m_resultSlotId)))
-                    || AZStd::any_of(entry.m_parameterSlotIds.begin(), entry.m_parameterSlotIds.end(), [this](const SlotId& id) { return this->Node::IsConnected(*GetSlot(id)); });
+                auto eventSlot = GetSlot(entry.m_eventSlotId);
+                auto resultSlot = GetSlot(entry.m_resultSlotId);
+                return (eventSlot && Node::IsConnected(*eventSlot))
+                    || (resultSlot && Node::IsConnected(*resultSlot))
+                    || AZStd::any_of(entry.m_parameterSlotIds.begin(), entry.m_parameterSlotIds.end(), [this](const SlotId& id) { auto slot = GetSlot(id); return slot && this->Node::IsConnected(*slot); });
             }
 
             bool EBusEventHandler::IsEventHandler() const
@@ -494,8 +543,21 @@ namespace ScriptCanvas
                 return !m_eventMap.empty();
             }
 
+            void EBusEventHandler::SetAutoConnectToGraphOwner(bool enabled)
+            {
+                ScriptCanvas::SlotId connectSlotId = EBusEventHandlerProperty::GetConnectSlotId(this);
+                ScriptCanvas::Slot* connectSlot = GetSlot(connectSlotId);
+
+                if (connectSlot)
+                {
+                    m_autoConnectToGraphOwner = enabled && !IsConnected(*connectSlot);
+                }
+            }
+
             void EBusEventHandler::OnEvent(const char* eventName, const int eventIndex, AZ::BehaviorValueParameter* result, const int numParameters, AZ::BehaviorValueParameter* parameters)
             {
+                AZ_PROFILE_SCOPE_DYNAMIC(AZ::Debug::ProfileCategory::ScriptCanvas, "EBusEventHandler::OnEvent %s", eventName);
+
                 SCRIPTCANVAS_RETURN_IF_ERROR_STATE((*this));
 
                 auto iter = m_eventMap.find(AZ::Crc32(eventName));
@@ -527,19 +589,11 @@ namespace ScriptCanvas
                     const auto& value = *(parameters + parameterIndex);
                     const Datum input(value);
 
-                    #pragma warning(push)
-                    #pragma warning(disable: 4573)	// the usage of 'X' requires the compiler to capture 'this' but the current default capture mode does not allow it
-                    auto callable = [&input](Node& node, const SlotId& slotID)
-                    {
-                        Node::SetInput(node, slotID, input);
-                    };
-                    #pragma warning(pop)
-
-                    ForEachConnectedNode(*slot, AZStd::move(callable));
+                    PushOutput(input, (*slot));
                 }
 
                 // now, this should pass execution off to the nodes that will push their output into this result input
-                SignalOutput(ebusEventEntry.m_eventSlotId);
+                SignalOutput(ebusEventEntry.m_eventSlotId, ExecuteMode::UntilNodeIsFoundInStack);
 
                 // route executed nodes output to my input, and my input to the result
                 if (ebusEventEntry.IsExpectingResult())
@@ -622,6 +676,56 @@ namespace ScriptCanvas
                 }
             }
 
+            NodeTypeIdentifier EBusEventHandler::GetOutputNodeType(const SlotId& slotId) const
+            {
+                for (auto mapPair : m_eventMap)
+                {
+                    bool isEvent = mapPair.second.m_eventSlotId == slotId;
+
+                    if (!isEvent)
+                    {
+                        for (auto paramSlotId : mapPair.second.m_parameterSlotIds)
+                        {
+                            if (paramSlotId == slotId)
+                            {
+                                isEvent = true;
+                                break;
+                            }
+                        }
+                    }
+
+                    if (isEvent)
+                    {
+                        return NodeUtils::ConstructEBusEventReceiverIdentifier(m_busId, mapPair.second.m_eventId);
+                    }
+                }
+
+                // If we don't match any of the output slots for our events, just return our base type as it's
+                // one of the control pins firing.
+                return GetNodeType();
+            }
+
+            bool EBusEventEntry::EBusEventEntryVersionConverter(AZ::SerializeContext& serializeContext, AZ::SerializeContext::DataElementNode& rootElement)
+            {
+                if (rootElement.GetVersion() == 0)
+                {
+                    auto element = rootElement.FindSubElement(AZ_CRC("m_eventName", 0x5c560197));
+
+                    AZStd::string eventName;
+                    if (element->GetData(eventName))
+                    {
+                        AZ::Crc32 eventId = AZ::Crc32(eventName.c_str());
+
+                        if (rootElement.AddElementWithData(serializeContext, "m_eventId", eventId) == -1)
+                        {
+                            return false;
+                        }
+                    }
+                }
+
+                return true;
+            }
+
             void EBusEventEntry::Reflect(AZ::ReflectContext* context)
             {
                 AZ::SerializeContext* serialize = azrtti_cast<AZ::SerializeContext*>(context);
@@ -634,8 +738,9 @@ namespace ScriptCanvas
                     }
 
                     serialize->Class<EBusEventEntry>()
-                        ->Version(0)
+                        ->Version(1, EBusEventEntryVersionConverter)
                         ->Field("m_eventName", &EBusEventEntry::m_eventName)
+                        ->Field("m_eventId", &EBusEventEntry::m_eventId)
                         ->Field("m_eventSlotId", &EBusEventEntry::m_eventSlotId)
                         ->Field("m_resultSlotId", &EBusEventEntry::m_resultSlotId)
                         ->Field("m_parameterSlotIds", &EBusEventEntry::m_parameterSlotIds)

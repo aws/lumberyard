@@ -53,7 +53,14 @@ namespace AzQtComponents
         Q_OBJECT // AUTOMOC
 
     public:
-        FancyDocking(QMainWindow* mainWindow);
+
+        ////////////////////////////////////////////////////////////////////////////////////////////
+        //! Constructor
+        //! \param[in] mainWindow: the window to apply the fancy docking to
+        //! \param[in] identifierPrefix: prefix to use for properties on widgets/windows to flag them
+        //!            as owned by this instance of the FancyDocking manager. Can be anything, as long
+        //!            as it is unique
+        FancyDocking(QMainWindow* mainWindow, const char* identifierPrefix = "fancydocking");
         ~FancyDocking();
 
         struct TabContainerType
@@ -137,7 +144,7 @@ namespace AzQtComponents
         void dropDockWidget(QDockWidget* dock, QWidget* onto, Qt::DockWidgetArea area);
         QMainWindow* createFloatingMainWindow(const QString& name, const QRect& geometry, bool skipTitleBarDrawing = false);
         DockTabWidget* createTabWidget(QMainWindow* mainWindow, QDockWidget* widgetToReplace, QString name = QString());
-        QString getUniqueDockWidgetName(const char* prefix);
+        QString getUniqueDockWidgetName(const QString& prefix);
         void destroyIfUseless(QMainWindow* mw);
         void clearDraggingState();
         QDockWidget* getTabWidgetContainer(QObject* obj);
@@ -156,6 +163,8 @@ namespace AzQtComponents
         bool AdjustForSnappingToFloatingWindow(QRect& rect, const QRect& floatingRect);
 
         bool AnyDockWidgetsExist(QStringList names);
+
+        int titleBarOffset(const QDockWidget* dockWidget) const;
 
         QMainWindow* m_mainWindow;
         QDesktopWidget* m_desktopWidget;
@@ -228,6 +237,9 @@ namespace AzQtComponents
         QList<FancyDockingDropZoneWidget*> m_activeDropZoneWidgets;
 
         QList<QString> m_orderedFloatingDockWidgetNames;
+
+        QString m_floatingWindowIdentifierPrefix;
+        QString m_tabContainerIdentifierPrefix;
     };
 
 } // namespace AzQtComponents

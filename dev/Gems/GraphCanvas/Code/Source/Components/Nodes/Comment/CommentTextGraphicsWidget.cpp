@@ -322,13 +322,16 @@ namespace GraphCanvas
 
                 displaySize.setHeight(preferredSize.height());
 
-                if (displaySize.width() == 0 || displaySize.height() == 0)
+                if (displaySize.width() == 0)
                 {
-                    return;
+                    m_textEdit->setMinimumHeight(preferredSize.height());
+                    m_textEdit->setMaximumHeight(preferredSize.height());
                 }
-
-                m_textEdit->setMinimumSize(displaySize.size().toSize());
-                m_textEdit->setMaximumSize(displaySize.size().toSize());
+                else
+                {
+                    m_textEdit->setMinimumSize(displaySize.size().toSize());
+                    m_textEdit->setMaximumSize(displaySize.size().toSize());
+                }
             }
 
             QSizeF newSize = m_textEdit->minimumSize();
@@ -445,6 +448,15 @@ namespace GraphCanvas
             QObject::connect(m_textEdit, &Internal::FocusableTextEdit::textChanged, [this]() { this->UpdateSizing(); });
             QObject::connect(m_textEdit, &Internal::FocusableTextEdit::OnFocusIn, [this]() { this->m_layoutLock = true; });
             QObject::connect(m_textEdit, &Internal::FocusableTextEdit::OnFocusOut, [this]() { this->SubmitValue(); this->m_layoutLock = false; this->SetEditable(false); });
+            QObject::connect(m_textEdit, &Internal::FocusableTextEdit::EnterPressed, [this]() 
+            { 
+                QTimer::singleShot(0, [this]()
+                {
+                    this->SubmitValue(); 
+                    this->m_layoutLock = false; 
+                    this->SetEditable(false);
+                });
+            });
         }
     }
 

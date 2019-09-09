@@ -65,15 +65,11 @@ namespace AzToolsFramework
             void Update() override;
 
         private:
-            static const char* CHECKEDOUT_ICON_PATH;
-            static const char* READONLY_ICON_PATH;
-
             //! If another sc thumbnail is currently requesting sc status this will return false
             static bool m_readyForUpdate;
             
             // To avoid overpopulating sc update stack with status requests, sc thumbnail does not load until this function is called
             void RequestSourceControlStatus();
-
             void SourceControlFileInfoUpdated(bool succeeded, const SourceControlFileInfo& fileInfo);
         };
 

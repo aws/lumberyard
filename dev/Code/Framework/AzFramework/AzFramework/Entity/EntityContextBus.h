@@ -148,6 +148,13 @@ namespace AzFramework
         virtual AZ::SliceComponent* GetRootSlice() = 0;
 
         /**
+        * Gets the Asset ID of the currently instantiating slice.
+        * If no slice is currently being instantiated, it returns an invalid ID
+        * @return The Asset ID of the slice currently being instantiated.
+        */
+        virtual AZ::Data::AssetId CurrentlyInstantiatingSlice() = 0;
+
+        /**
          * Creates an entity and adds it to the root slice of the entity context.
          * This operation does not activate the entity by default.
          * @param name A name for the entity.
@@ -210,6 +217,14 @@ namespace AzFramework
          * If the stream was loaded without remapping enabled, the map will be empty.
          */
         virtual const AZ::SliceComponent::EntityIdToEntityIdMap& GetLoadedEntityIdMap() = 0;
+
+        /**
+         * Returns the mapped of a stream-loaded EntityId to the remapped entity ID
+         * if remapping was performed.
+         * @return The remapped EntityId
+         *
+         */
+        virtual AZ::EntityId FindLoadedEntityIdMapping(const AZ::EntityId& staticId) const = 0;
 
         /**
          * Clears the entity context by destroying all entities and slice instances 
@@ -401,9 +416,17 @@ namespace AzFramework
 
         /**
          * Signals that a slice could not be instantiated.
+         * @deprecated Please use OnSliceInstantiationFailedOrCanceled
          * @param sliceAssetId A reference to the slice asset ID.
          */
         virtual void OnSliceInstantiationFailed(const AZ::Data::AssetId& /*sliceAssetId*/) {}
+
+        /**
+         * Signals that a slice could not be instantiated.
+         * @param sliceAssetId A reference to the slice asset ID.
+         * @param canceled Set to true if the failure was due to cancellation.
+         */
+        virtual void OnSliceInstantiationFailedOrCanceled(const AZ::Data::AssetId& /*sliceAssetId*/, bool /*canceled*/) {}
     };
 
     /**

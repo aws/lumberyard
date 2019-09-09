@@ -23,16 +23,6 @@ namespace ComponentFactoryRegistryTests
     class ComponentFactoryRegistryTests
         : public ::testing::Test
     {
-    public:
-        void SetUp() override
-        {
-            AZ::AllocatorInstance<AZ::SystemAllocator>::Create();
-        }
-
-        void TearDown() override
-        {
-            AZ::AllocatorInstance<AZ::SystemAllocator>::Destroy();
-        }
     };
 
     class IComponentDog

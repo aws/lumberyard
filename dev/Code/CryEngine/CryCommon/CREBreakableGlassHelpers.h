@@ -39,14 +39,31 @@ struct SBreakableGlassInitParams
         , uvYAxis(Vec2_OneY)
         , size(Vec2_One)
         , thickness(0.01f)
-        , pGlassMaterial(NULL)
-        , pShatterEffect(NULL)
+        , pGlassMaterial(nullptr)
+        , pShatterEffect(nullptr)
         , surfaceTypeId(0)
-        , pInitialFrag(NULL)
+        , pInitialFrag(nullptr)
         , numInitialFragPts(0)
         , numAnchors(0)
     {
         memset(anchors, 0, sizeof(anchors));
+    }
+
+    SBreakableGlassInitParams& operator=(const SBreakableGlassInitParams& params)
+    {
+        if (pGlassMaterial)
+        {
+            pGlassMaterial->Release();
+        }
+
+        memcpy(this, &params, sizeof(SBreakableGlassInitParams));
+
+        if (pGlassMaterial)
+        {
+            pGlassMaterial->AddRef();
+        }
+
+        return *this;
     }
 
     static const uint MaxNumAnchors = 4;
@@ -59,8 +76,8 @@ struct SBreakableGlassInitParams
     Vec2                            size;
     float                           thickness;
 
-    _smart_ptr<IMaterial>              pGlassMaterial;
-    IParticleEffect*    pShatterEffect;
+    _smart_ptr<IMaterial>           pGlassMaterial;
+    IParticleEffect*                pShatterEffect;
     int                             surfaceTypeId;
 
     Vec2*                           pInitialFrag;

@@ -12,7 +12,7 @@
 
 #include <Editor/PropertyWidgets/ActorMorphTargetHandler.h>
 #include <Editor/PropertyWidgets/ActorGoalNodeHandler.h>
-#include <Editor/PropertyWidgets/ActorNodeHandler.h>
+#include <Editor/PropertyWidgets/ActorJointHandler.h>
 #include <Editor/PropertyWidgets/AnimGraphNodeHandler.h>
 #include <Editor/PropertyWidgets/AnimGraphNodeNameHandler.h>
 #include <Editor/PropertyWidgets/AnimGraphParameterHandler.h>
@@ -22,64 +22,77 @@
 #include <Editor/PropertyWidgets/BlendSpaceEvaluatorHandler.h>
 #include <Editor/PropertyWidgets/BlendSpaceMotionContainerHandler.h>
 #include <Editor/PropertyWidgets/BlendSpaceMotionHandler.h>
+#include <Editor/PropertyWidgets/EventDataHandler.h>
 #include <Editor/PropertyWidgets/MotionSetMotionIdHandler.h>
+#include <Editor/PropertyWidgets/BlendTreeRotationLimitHandler.h>
 #include <Editor/PropertyWidgets/MotionSetNameHandler.h>
+#include <Editor/PropertyWidgets/RagdollJointHandler.h>
 #include <Editor/PropertyWidgets/TransitionStateFilterLocalHandler.h>
+#include <Editor/PropertyWidgets/BlendNParamWeightsHandler.h>
+#include <Editor/PropertyWidgets/LODTreeSelectionHandler.h>
 #include <AzToolsFramework/UI/PropertyEditor/PropertyEditorAPI.h>
 
 
 namespace EMotionFX
 {
-    void RegisterPropertyTypes()
+
+    AZStd::vector<AzToolsFramework::PropertyHandlerBase*> RegisterPropertyTypes()
     {
 #if defined(EMOTIONFXANIMATION_EDITOR)
-        AzToolsFramework::PropertyTypeRegistrationMessages::Bus::Broadcast(&AzToolsFramework::PropertyTypeRegistrationMessages::RegisterPropertyType, aznew EMotionFX::ActorSingleNodeHandler());
-        AzToolsFramework::PropertyTypeRegistrationMessages::Bus::Broadcast(&AzToolsFramework::PropertyTypeRegistrationMessages::RegisterPropertyType, aznew EMotionFX::ActorMultiNodeHandler());
-        AzToolsFramework::PropertyTypeRegistrationMessages::Bus::Broadcast(&AzToolsFramework::PropertyTypeRegistrationMessages::RegisterPropertyType, aznew EMotionFX::ActorMultiWeightedNodeHandler());
-        AzToolsFramework::PropertyTypeRegistrationMessages::Bus::Broadcast(&AzToolsFramework::PropertyTypeRegistrationMessages::RegisterPropertyType, aznew EMotionFX::ActorSingleMorphTargetHandler());
-        AzToolsFramework::PropertyTypeRegistrationMessages::Bus::Broadcast(&AzToolsFramework::PropertyTypeRegistrationMessages::RegisterPropertyType, aznew EMotionFX::ActorMultiMorphTargetHandler());
-        AzToolsFramework::PropertyTypeRegistrationMessages::Bus::Broadcast(&AzToolsFramework::PropertyTypeRegistrationMessages::RegisterPropertyType, aznew EMotionFX::ActorGoalNodeHandler());
-        AzToolsFramework::PropertyTypeRegistrationMessages::Bus::Broadcast(&AzToolsFramework::PropertyTypeRegistrationMessages::RegisterPropertyType, aznew EMotionFX::AnimGraphNodeIdHandler());
-        AzToolsFramework::PropertyTypeRegistrationMessages::Bus::Broadcast(&AzToolsFramework::PropertyTypeRegistrationMessages::RegisterPropertyType, aznew EMotionFX::AnimGraphNodeNameHandler());
-        AzToolsFramework::PropertyTypeRegistrationMessages::Bus::Broadcast(&AzToolsFramework::PropertyTypeRegistrationMessages::RegisterPropertyType, aznew EMotionFX::AnimGraphMotionNodeIdHandler());
-        AzToolsFramework::PropertyTypeRegistrationMessages::Bus::Broadcast(&AzToolsFramework::PropertyTypeRegistrationMessages::RegisterPropertyType, aznew EMotionFX::AnimGraphSingleParameterHandler());
-        AzToolsFramework::PropertyTypeRegistrationMessages::Bus::Broadcast(&AzToolsFramework::PropertyTypeRegistrationMessages::RegisterPropertyType, aznew EMotionFX::AnimGraphMultipleParameterHandler());
-        AzToolsFramework::PropertyTypeRegistrationMessages::Bus::Broadcast(&AzToolsFramework::PropertyTypeRegistrationMessages::RegisterPropertyType, aznew EMotionFX::AnimGraphParameterMaskHandler());
-        AzToolsFramework::PropertyTypeRegistrationMessages::Bus::Broadcast(&AzToolsFramework::PropertyTypeRegistrationMessages::RegisterPropertyType, aznew EMotionFX::AnimGraphStateIdHandler());
-        AzToolsFramework::PropertyTypeRegistrationMessages::Bus::Broadcast(&AzToolsFramework::PropertyTypeRegistrationMessages::RegisterPropertyType, aznew EMotionFX::AnimGraphTagHandler());
-        AzToolsFramework::PropertyTypeRegistrationMessages::Bus::Broadcast(&AzToolsFramework::PropertyTypeRegistrationMessages::RegisterPropertyType, aznew EMotionFX::BlendSpaceEvaluatorHandler());
-        AzToolsFramework::PropertyTypeRegistrationMessages::Bus::Broadcast(&AzToolsFramework::PropertyTypeRegistrationMessages::RegisterPropertyType, aznew EMotionFX::BlendSpaceMotionContainerHandler());
-        AzToolsFramework::PropertyTypeRegistrationMessages::Bus::Broadcast(&AzToolsFramework::PropertyTypeRegistrationMessages::RegisterPropertyType, aznew EMotionFX::BlendSpaceMotionHandler());
-        AzToolsFramework::PropertyTypeRegistrationMessages::Bus::Broadcast(&AzToolsFramework::PropertyTypeRegistrationMessages::RegisterPropertyType, aznew EMotionFX::TransitionStateFilterLocalHandler());
-        AzToolsFramework::PropertyTypeRegistrationMessages::Bus::Broadcast(&AzToolsFramework::PropertyTypeRegistrationMessages::RegisterPropertyType, aznew EMotionFX::MotionSetMultiMotionIdHandler());
-        AzToolsFramework::PropertyTypeRegistrationMessages::Bus::Broadcast(&AzToolsFramework::PropertyTypeRegistrationMessages::RegisterPropertyType, aznew EMotionFX::MotionSetNameHandler());
+        AZStd::vector<AzToolsFramework::PropertyHandlerBase*> propertyHandlers =
+        {
+            aznew EMotionFX::ActorJointElementHandler(),
+            aznew EMotionFX::ActorSingleJointHandler(),
+            aznew EMotionFX::ActorMultiJointHandler(),
+            aznew EMotionFX::ActorMultiWeightedJointHandler(),
+            aznew EMotionFX::ActorSingleMorphTargetHandler(),
+            aznew EMotionFX::ActorMultiMorphTargetHandler(),
+            aznew EMotionFX::ActorGoalNodeHandler(),
+            aznew EMotionFX::AnimGraphNodeIdHandler(),
+            aznew EMotionFX::AnimGraphNodeNameHandler(),
+            aznew EMotionFX::AnimGraphMotionNodeIdHandler(),
+            aznew EMotionFX::AnimGraphSingleParameterHandler(),
+            aznew EMotionFX::AnimGraphMultipleParameterHandler(),
+            aznew EMotionFX::AnimGraphParameterMaskHandler(),
+            aznew EMotionFX::AnimGraphStateIdHandler(),
+            aznew EMotionFX::AnimGraphTagHandler(),
+            aznew EMotionFX::BlendSpaceEvaluatorHandler(),
+            aznew EMotionFX::BlendSpaceMotionContainerHandler(),
+            aznew EMotionFX::BlendSpaceMotionHandler(),
+            aznew EMotionFX::EventDataHandler(),
+            aznew EMotionFX::RagdollMultiJointHandler(),
+            aznew EMotionFX::TransitionStateFilterLocalHandler(),
+            aznew EMotionFX::MotionSetMultiMotionIdHandler(),
+            aznew EMotionFX::MotionIdRandomSelectionWeightsHandler(),
+            aznew EMotionFX::MotionSetNameHandler(),
+            aznew EMotionFX::BlendTreeRotationLimitHandler(),
+            aznew EMotionFX::BlendTreeRotationLimitContainerHandler(),
+            aznew EMotionFX::Pipeline::UI::LODTreeSelectionHandler(),
+            aznew EMotionFX::BlendNParamWeightsHandler(),
+            aznew EMotionFX::BlendNParamWeightElementHandler()
+        };
+
+        for (const auto handler : propertyHandlers)
+        {
+            AzToolsFramework::PropertyTypeRegistrationMessages::Bus::Broadcast(&AzToolsFramework::PropertyTypeRegistrationMessages::RegisterPropertyType, handler);
+        }
+        return propertyHandlers;
 #endif
+        return AZStd::vector<AzToolsFramework::PropertyHandlerBase*> {};
     }
 
 
-    void UnregisterPropertyTypes()
+    void UnregisterPropertyTypes(const AZStd::vector<AzToolsFramework::PropertyHandlerBase*>& handlers)
     {
 #if defined(EMOTIONFXANIMATION_EDITOR)
-        AzToolsFramework::PropertyTypeRegistrationMessages::Bus::Broadcast(&AzToolsFramework::PropertyTypeRegistrationMessages::UnregisterPropertyType, aznew EMotionFX::ActorSingleNodeHandler());
-        AzToolsFramework::PropertyTypeRegistrationMessages::Bus::Broadcast(&AzToolsFramework::PropertyTypeRegistrationMessages::UnregisterPropertyType, aznew EMotionFX::ActorMultiNodeHandler());
-        AzToolsFramework::PropertyTypeRegistrationMessages::Bus::Broadcast(&AzToolsFramework::PropertyTypeRegistrationMessages::UnregisterPropertyType, aznew EMotionFX::ActorMultiWeightedNodeHandler());
-        AzToolsFramework::PropertyTypeRegistrationMessages::Bus::Broadcast(&AzToolsFramework::PropertyTypeRegistrationMessages::UnregisterPropertyType, aznew EMotionFX::ActorSingleMorphTargetHandler());
-        AzToolsFramework::PropertyTypeRegistrationMessages::Bus::Broadcast(&AzToolsFramework::PropertyTypeRegistrationMessages::UnregisterPropertyType, aznew EMotionFX::ActorMultiMorphTargetHandler());
-        AzToolsFramework::PropertyTypeRegistrationMessages::Bus::Broadcast(&AzToolsFramework::PropertyTypeRegistrationMessages::UnregisterPropertyType, aznew EMotionFX::ActorGoalNodeHandler());
-        AzToolsFramework::PropertyTypeRegistrationMessages::Bus::Broadcast(&AzToolsFramework::PropertyTypeRegistrationMessages::UnregisterPropertyType, aznew EMotionFX::AnimGraphNodeIdHandler());
-        AzToolsFramework::PropertyTypeRegistrationMessages::Bus::Broadcast(&AzToolsFramework::PropertyTypeRegistrationMessages::UnregisterPropertyType, aznew EMotionFX::AnimGraphNodeNameHandler());
-        AzToolsFramework::PropertyTypeRegistrationMessages::Bus::Broadcast(&AzToolsFramework::PropertyTypeRegistrationMessages::UnregisterPropertyType, aznew EMotionFX::AnimGraphMotionNodeIdHandler());
-        AzToolsFramework::PropertyTypeRegistrationMessages::Bus::Broadcast(&AzToolsFramework::PropertyTypeRegistrationMessages::UnregisterPropertyType, aznew EMotionFX::AnimGraphSingleParameterHandler());
-        AzToolsFramework::PropertyTypeRegistrationMessages::Bus::Broadcast(&AzToolsFramework::PropertyTypeRegistrationMessages::UnregisterPropertyType, aznew EMotionFX::AnimGraphMultipleParameterHandler());
-        AzToolsFramework::PropertyTypeRegistrationMessages::Bus::Broadcast(&AzToolsFramework::PropertyTypeRegistrationMessages::UnregisterPropertyType, aznew EMotionFX::AnimGraphParameterMaskHandler());
-        AzToolsFramework::PropertyTypeRegistrationMessages::Bus::Broadcast(&AzToolsFramework::PropertyTypeRegistrationMessages::UnregisterPropertyType, aznew EMotionFX::AnimGraphStateIdHandler());
-        AzToolsFramework::PropertyTypeRegistrationMessages::Bus::Broadcast(&AzToolsFramework::PropertyTypeRegistrationMessages::UnregisterPropertyType, aznew EMotionFX::AnimGraphTagHandler());
-        AzToolsFramework::PropertyTypeRegistrationMessages::Bus::Broadcast(&AzToolsFramework::PropertyTypeRegistrationMessages::UnregisterPropertyType, aznew EMotionFX::BlendSpaceEvaluatorHandler());
-        AzToolsFramework::PropertyTypeRegistrationMessages::Bus::Broadcast(&AzToolsFramework::PropertyTypeRegistrationMessages::UnregisterPropertyType, aznew EMotionFX::BlendSpaceMotionContainerHandler());
-        AzToolsFramework::PropertyTypeRegistrationMessages::Bus::Broadcast(&AzToolsFramework::PropertyTypeRegistrationMessages::UnregisterPropertyType, aznew EMotionFX::BlendSpaceMotionHandler());
-        AzToolsFramework::PropertyTypeRegistrationMessages::Bus::Broadcast(&AzToolsFramework::PropertyTypeRegistrationMessages::UnregisterPropertyType, aznew EMotionFX::TransitionStateFilterLocalHandler());
-        AzToolsFramework::PropertyTypeRegistrationMessages::Bus::Broadcast(&AzToolsFramework::PropertyTypeRegistrationMessages::UnregisterPropertyType, aznew EMotionFX::MotionSetMultiMotionIdHandler());
-        AzToolsFramework::PropertyTypeRegistrationMessages::Bus::Broadcast(&AzToolsFramework::PropertyTypeRegistrationMessages::UnregisterPropertyType, aznew EMotionFX::MotionSetNameHandler());
+        for (auto handler : handlers)
+        {
+            if (!handler->AutoDelete())
+            {
+                AzToolsFramework::PropertyTypeRegistrationMessages::Bus::Broadcast(&AzToolsFramework::PropertyTypeRegistrationMessages::UnregisterPropertyType, handler);
+                delete handler;
+            }
+        }
 #endif
     }
 } // namespace EMotionFX

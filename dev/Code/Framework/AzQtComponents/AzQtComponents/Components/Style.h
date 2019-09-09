@@ -15,6 +15,8 @@
 #include <QProxyStyle>
 #include <QScopedPointer>
 #include <QPainterPath>
+#include <QVariant>
+#include <QPointer>
 
 class QLineEdit;
 class QPainter;
@@ -26,6 +28,11 @@ class QEvent;
 
 namespace AzQtComponents
 {
+    namespace Internal
+    {
+        class DialogEventFilter;
+    } // namespace Internal
+
     /**
     * The UI 2.0 Lumberyard Qt Style.
     * 
@@ -49,13 +56,77 @@ namespace AzQtComponents
         explicit Style(QStyle* style = nullptr);
         ~Style() override;
 
+
+
+        /*!
+         * Tracks this widget so that when *Config.ini files change, this widget will get repolished.
+         * Call this if your widget changes based on the config in it's polish() method, so that it
+         * dynamically reloads when the file changes on disk.
+         */
+        void repolishOnSettingsChange(QWidget* widget);
+
+        /*!
+         * Returns true if the widget parameter has the css className applied
+         */
+        bool hasClass(const QWidget* widget, const QString& className) const;
+
+        /*!
+         * Adds the css className to the input widget
+         */
+        static void addClass(QWidget* widget, const QString& className);
+
+        /*!
+         * Removes the css className from the input widget
+         */
+        static void removeClass(QWidget* widget, const QString& className);
+
+        /*!
+         * Finds or loads and then caches the pixmap referenced by fileName
+         */
+        static QPixmap cachedPixmap(const QString& fileName);
+
+        /*!
+         * QPainter is not guaranteed to have its QPaintEngine initialized in setRenderHint,
+         * so call this work around that.
+         * See: QTBUG-51247
+         */
+        static void prepPainter(QPainter* painter);
+
+        /*!
+         * Fixes up the parent of the current application style if need be.
+         * This is used for internal bookkeeping to prevent crashes from styles being
+         * parented badly.
+         */
+        static void fixProxyStyle(QProxyStyle* proxyStyle, QStyle* baseStyle);
+
+        /*!
+         * Simple helper to draw an anti-aliased frame
+         */
+        static void drawFrame(QPainter* painter, const QPainterPath& frameRect, const QPen& border, const QBrush& background);
+
+        /*!
+         * Call this to explicitly mark your widget to not use the UI 2.0 styling
+         */
+        static void flagToIgnore(QWidget* widget);
+
+        /*!
+         * Call this to remove the flags set from calling flagToIgnore()
+         */
+        static void removeFlagToIgnore(QWidget* widget);
+
+
+
         QSize sizeFromContents(QStyle::ContentsType type, const QStyleOption* option, const QSize& size, const QWidget* widget) const override;
 
         void drawControl(QStyle::ControlElement element, const QStyleOption* option, QPainter* painter, const QWidget* widget) const override;
         void drawPrimitive(QStyle::PrimitiveElement element, const QStyleOption* option, QPainter* painter, const QWidget* widget) const override;
         void drawComplexControl(QStyle::ComplexControl element, const QStyleOptionComplex* option, QPainter* painter, const QWidget* widget) const override;
+        void drawItemText(QPainter* painter, const QRect& rectangle, int alignment, const QPalette& palette, bool enabled, const QString& text, QPalette::ColorRole textRole) const override;
+
+        QPixmap generatedIconPixmap(QIcon::Mode iconMode, const QPixmap& pixmap, const QStyleOption* option) const override;
 
         QRect subControlRect(ComplexControl control, const QStyleOptionComplex* option, SubControl subControl, const QWidget* widget) const override;
+        QRect subElementRect(SubElement element, const QStyleOption* option, const QWidget* widget) const override;
 
         int pixelMetric(QStyle::PixelMetric metric, const QStyleOption* option, const QWidget* widget) const override;
 
@@ -73,21 +144,21 @@ namespace AzQtComponents
         // A path to draw a border frame when color == Qt::Transparent
         QPainterPath lineEditRect(const QRect& contentsRect, int borderWidth = -1, int borderRadius = CORNER_RECTANGLE) const;
 
-        void repolishOnSettingsChange(QWidget* widget);
-
         bool eventFilter(QObject* watched, QEvent* ev) override;
 
-        bool hasClass(const QWidget* button, const QString& className) const;
-        static void addClass(QWidget* button, const QString& className);
+        // Use this class if you have a TableView and you need to wrap calls, indirectly
+        // to Style::generatedIconPixmap in order to properly style icons.
+        class DrawWidgetSentinel
+        {
+        public:
+            DrawWidgetSentinel(const QWidget* widgetAboutToDraw);
+            ~DrawWidgetSentinel();
 
-        static QPixmap cachedPixmap(const QString& fileName);
-        static void prepPainter(QPainter* painter);
+        private:
+            QPointer<const Style> m_style;
+            QPointer<const QWidget> m_lastDrawWidget;
+        };
 
-        static void fixProxyStyle(QProxyStyle* proxyStyle, QStyle* baseStyle);
-
-        static void drawFrame(QPainter* painter, const QPainterPath& frameRect, const QPen& border, const QBrush& background);
-
-        static void doNotStyle(QWidget* widget);
 
 #ifdef _DEBUG
     protected:
@@ -101,5 +172,10 @@ namespace AzQtComponents
         bool hasStyle(const QWidget* widget) const;
 
         QScopedPointer<Data> m_data;
+
+        // To be used when text alignment has to be forced from outside Qt
+        mutable QVariant m_drawItemTextAlignmentOverride;
+
+        mutable const QWidget* m_drawControlWidget = nullptr;
     };
 } // namespace AzQtComponents

@@ -33,14 +33,14 @@ namespace EMStudio
         EMotionFX::TransformData* transformData = actorInstance->GetTransformData();
 
         m_name = node->GetNameString();
-                
+
         // transform info
-        m_position = transformData->GetCurrentPose()->GetLocalTransform(nodeIndex).mPosition;
-        const MCore::Quaternion& quat = transformData->GetCurrentPose()->GetLocalTransform(nodeIndex).mRotation;
+        m_position = transformData->GetCurrentPose()->GetLocalSpaceTransform(nodeIndex).mPosition;
+        const MCore::Quaternion& quat = transformData->GetCurrentPose()->GetLocalSpaceTransform(nodeIndex).mRotation;
         m_rotation = AZ::Quaternion(quat.x, quat.y, quat.z, quat.w);
-        
+
 #ifdef EMFX_SCALECODE
-        m_scale = transformData->GetCurrentPose()->GetLocalTransform(nodeIndex).mScale;
+        m_scale = transformData->GetCurrentPose()->GetLocalSpaceTransform(nodeIndex).mScale;
 #else
         m_scale = AZ::Vector3(1.0f, 1.0f, 1.0f);
 #endif
@@ -53,7 +53,7 @@ namespace EMStudio
                 m_parentName = parent->GetNameString();
             }
         }
-   
+
         // the mirrored node
         if (actor->GetHasMirrorInfo())
         {
@@ -71,7 +71,7 @@ namespace EMStudio
             EMotionFX::Node* child = actor->GetSkeleton()->GetNode(node->GetChildIndex(i));
             m_childNodeNames.emplace_back(child->GetNameString());
         }
-        
+
         // attributes
         const uint32 numAttributes = node->GetNumAttributes();
         for (uint32 i = 0; i < numAttributes; ++i)
@@ -111,7 +111,7 @@ namespace EMStudio
             ->Field("childNodeNames", &NodeInfo::m_childNodeNames)
             ->Field("attributeTypes", &NodeInfo::m_attributeTypes)
             ->Field("meshByLod", &NodeInfo::m_meshByLod)
-            ;
+        ;
 
         AZ::EditContext* editContext = serializeContext->GetEditContext();
         if (!editContext)
@@ -121,30 +121,29 @@ namespace EMStudio
 
         editContext->Class<NodeInfo>("Node info", "")
             ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
-                ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
-                ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
-                ->Attribute(AZ::Edit::Attributes::ReadOnly, true)
+            ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
+            ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
+            ->Attribute(AZ::Edit::Attributes::ReadOnly, true)
             ->DataElement(AZ::Edit::UIHandlers::Default, &NodeInfo::m_name, "Name", "")
             ->DataElement(AZ::Edit::UIHandlers::Default, &NodeInfo::m_position, "Position", "")
             ->DataElement(AZ::Edit::UIHandlers::Default, &NodeInfo::m_rotation, "Rotation", "")
             ->DataElement(AZ::Edit::UIHandlers::Default, &NodeInfo::m_scale, "Scale", "")
-                ->Attribute(AZ::Edit::Attributes::Visibility,
+            ->Attribute(AZ::Edit::Attributes::Visibility,
 #ifdef EMFX_SCALECODE
-                    true
+            true
 #else
-                    false
+            false
 #endif
-                    )
+            )
             ->DataElement(AZ::Edit::UIHandlers::Default, &NodeInfo::m_parentName, "Parent name", "")
             ->DataElement(AZ::Edit::UIHandlers::Default, &NodeInfo::m_mirrorNodeName, "Mirror", "")
-                ->Attribute(AZ::Edit::Attributes::Visibility, &NodeInfo::HasMirror)
+            ->Attribute(AZ::Edit::Attributes::Visibility, &NodeInfo::HasMirror)
             ->DataElement(AZ::Edit::UIHandlers::Default, &NodeInfo::m_childNodeNames, "Child nodes", "")
-                ->Attribute(AZ::Edit::Attributes::Visibility, &NodeInfo::HasChildNodes)
+            ->Attribute(AZ::Edit::Attributes::Visibility, &NodeInfo::HasChildNodes)
             ->DataElement(AZ::Edit::UIHandlers::Default, &NodeInfo::m_attributeTypes, "Attributes", "")
-                ->Attribute(AZ::Edit::Attributes::Visibility, &NodeInfo::HasAttributes)
+            ->Attribute(AZ::Edit::Attributes::Visibility, &NodeInfo::HasAttributes)
             ->DataElement(AZ::Edit::UIHandlers::Default, &NodeInfo::m_meshByLod, "Meshes by lod", "")
-                ->Attribute(AZ::Edit::Attributes::Visibility, &NodeInfo::HasMeshes)
-            ;
+            ->Attribute(AZ::Edit::Attributes::Visibility, &NodeInfo::HasMeshes)
+        ;
     }
-
 } // namespace EMStudio

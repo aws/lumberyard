@@ -27,6 +27,7 @@ class QStyleOption;
 class QStyleOptionComplex;
 class QAction;
 class QProxyStyle;
+class QMenu;
 
 namespace AzQtComponents
 {
@@ -104,14 +105,15 @@ namespace AzQtComponents
 
         /// Always connect to this signal in the main UI thread, with a direct connection; do not use Qt::QueuedConnection or Qt::BlockingQueuedConnection
         /// as the parameters will only be valid for a short time
-        void contextMenuAboutToShow(QAction* undoAction, QAction* redoAction);
+        void contextMenuAboutToShow(QMenu* menu, QAction* undoAction, QAction* redoAction);
 
     protected:
         friend class Style;
         friend class EditorProxyStyle;
         friend class SpinBoxWatcher;
 
-        static QPointer<SpinBoxWatcher> m_spinBoxWatcher;
+        static QPointer<SpinBoxWatcher> s_spinBoxWatcher;
+        static unsigned int s_watcherReferenceCount;
         static void initializeWatcher();
         static void uninitializeWatcher();
 
@@ -127,6 +129,8 @@ namespace AzQtComponents
         void contextMenuEvent(QContextMenuEvent* ev) override;
 
         internal::SpinBoxLineEdit* m_lineEdit = nullptr;
+
+        friend class DoubleSpinBox;
     };
 
     /**
@@ -162,8 +166,17 @@ namespace AzQtComponents
     {
         Q_OBJECT
     public:
+        enum Option
+        {
+            SHOW_ONE_DECIMAL_PLACE_ALWAYS, // indicates that zeros after the decimal place should be shown (i.e. 2.00 won't be truncated to 2)
+        };
+        Q_DECLARE_FLAGS(Options, Option)
+        Q_FLAG(Options)
+
         Q_PROPERTY(bool undoAvailable READ isUndoAvailable)
         Q_PROPERTY(bool redoAvailable READ isRedoAvailable)
+        Q_PROPERTY(Options options READ options WRITE setOptions)
+        Q_PROPERTY(int displayDecimals READ displayDecimals WRITE setDisplayDecimals)
 
         explicit DoubleSpinBox(QWidget* parent = nullptr);
 
@@ -171,6 +184,14 @@ namespace AzQtComponents
 
         bool isUndoAvailable() const;
         bool isRedoAvailable() const;
+
+        Options options() const { return m_options; }
+        void setOptions(Options options) { m_options = options; }
+
+        int displayDecimals() const { return m_displayDecimals; }
+        void setDisplayDecimals(int displayDecimals) { m_displayDecimals = displayDecimals; }
+
+        bool isEditing() const;
 
     Q_SIGNALS:
         void valueChangeBegan();
@@ -181,17 +202,21 @@ namespace AzQtComponents
 
         /// Always connect to this signal in the main UI thread, with a direct connection; do not use Qt::QueuedConnection or Qt::BlockingQueuedConnection
         /// as the parameters will only be valid for a short time
-        void contextMenuAboutToShow(QAction* undoAction, QAction* redoAction);
+        void contextMenuAboutToShow(QMenu* menu, QAction* undoAction, QAction* redoAction);
 
     protected:
         friend class SpinBoxWatcher;
 
         void focusInEvent(QFocusEvent* e) override;
         void contextMenuEvent(QContextMenuEvent* ev) override;
+        QString stringValue(double value, bool truncated = false) const;
+        void updateToolTip(double value);
 
         internal::SpinBoxLineEdit* m_lineEdit = nullptr;
+        
+        int m_displayDecimals;
+        Options m_options;
     };
-
 
     namespace internal
     {
@@ -222,3 +247,5 @@ namespace AzQtComponents
         };
     } // namespace internal
 } // namespace AzQtComponents
+
+Q_DECLARE_OPERATORS_FOR_FLAGS(AzQtComponents::DoubleSpinBox::Options)

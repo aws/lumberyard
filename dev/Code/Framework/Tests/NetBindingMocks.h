@@ -272,7 +272,7 @@ namespace UnitTest
         MOCK_METHOD0(GetSerializeContext, AZ::SerializeContext* ());
         MOCK_METHOD0(GetBehaviorContext, AZ::BehaviorContext* ());
         MOCK_METHOD0(GetAppRoot, const char* ());
-        MOCK_METHOD0(GetExecutableFolder, const char* ());
+        MOCK_CONST_METHOD0(GetExecutableFolder, const char* ());
         MOCK_METHOD0(GetDrillerManager, AZ::Debug::DrillerManager* ());
         MOCK_METHOD0(GetTickDeltaTime, float ());
         MOCK_METHOD0(GetTimeAtCurrentTick, AZ::ScriptTimePoint ());
@@ -288,6 +288,7 @@ namespace UnitTest
         MOCK_METHOD1(AddSystemComponents, void (AZ::Entity*));
         MOCK_METHOD0(ReflectSerialize, void ());
         MOCK_METHOD1(Reflect, void (AZ::ReflectContext*));
+        MOCK_CONST_METHOD0(GetBinFolder, const char* ());
     };
 
     class MockBindingComponent

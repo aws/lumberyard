@@ -556,8 +556,6 @@ CTimeDemoRecorder::CTimeDemoRecorder()
     REGISTER_CVAR2("demo_num_runs", &m_maxLoops, 1, 0, "Number of times to loop timedemo");
     REGISTER_CVAR2("demo_scroll_pause", &m_demo_scroll_pause, 1, 0, "ScrollLock pauses demo play/record");
     REGISTER_CVAR2("demo_quit", &m_demo_quit, 0, 0, "Quit game after demo runs finished");
-    REGISTER_CVAR2("demo_finish_memreplay_sizer", &m_finish_replaysizer, 0, 0, "Add a crysizer tree to memreplay when demo is finished");
-    REGISTER_CVAR2("demo_finish_memreplay_stop", &m_finish_replaystop, 0, 0, "Stop memreplay when demo is finished");
     REGISTER_CVAR2("demo_screenshot_frame", &m_demo_screenshot_frame, 0, 0, "Make screenshot on specified frame during demo playback, If Negative then do screen shoot every N frame");
     REGISTER_CVAR2("demo_max_frames", &m_demo_max_frames, 100000, 0, "Max number of frames to save");
     REGISTER_CVAR2("demo_savestats", &m_demo_savestats, 0, 0, "Save level stats at the end of the loop");
@@ -645,8 +643,6 @@ void CTimeDemoRecorder::Record(bool bEnable)
 
         // Start recording.
         {
-            ScopedSwitchToGlobalHeap globalHeap;
-
             m_records.clear();
             m_records.reserve(1000);
         }
@@ -1022,8 +1018,6 @@ void CTimeDemoRecorder::Save(const char* filename)
 //////////////////////////////////////////////////////////////////////////
 void CTimeDemoRecorder::AddFrameRecord(const FrameRecord& rec)
 {
-    ScopedSwitchToGlobalHeap globalHeap;
-
     m_records.push_back(rec);
 }
 
@@ -1072,8 +1066,6 @@ bool CTimeDemoRecorder::Load(const char* filename)
     m_totalDemoTime = m_recordedDemoTime;
 
     {
-        ScopedSwitchToGlobalHeap globalHeap;
-
         m_file = filename;
         m_records.reserve(hdr.numFrames);
     }
@@ -2027,8 +2019,6 @@ void CTimeDemoRecorder::StartSession()
     }
 
     {
-        ScopedSwitchToGlobalHeap useGlobalHeap;
-
         if (!m_pTimeDemoInfo)
         {
             m_pTimeDemoInfo = new STimeDemoInfo();
@@ -2705,17 +2695,6 @@ void CTimeDemoRecorder::EndDemo()
     {
         pGameFramework->EndGameContext(false);
     }
-
-#if CAPTURE_REPLAY_LOG
-    if (m_finish_replaysizer)
-    {
-        CryGetIMemReplay()->AddSizerTree("TimeDemoSizers");
-    }
-    if (m_finish_replaystop)
-    {
-        CryGetIMemReplay()->Stop();
-    }
-#endif
 
     CryLogAlways("Testing Successfully Finished, Quiting...");
 }

@@ -47,6 +47,7 @@ namespace ScriptCanvasEditor
         , public ScriptCanvas::VariableNotificationBus::Handler
     {
     public:
+        AZ_RTTI(GetVariableNodePaletteTreeItem, "{0589E084-2E57-4650-96BF-E42DA17D7731}", GraphCanvas::DraggableNodePaletteTreeItem)
         AZ_CLASS_ALLOCATOR(GetVariableNodePaletteTreeItem, AZ::SystemAllocator, 0);
         static const QString& GetDefaultIcon();
 
@@ -59,6 +60,8 @@ namespace ScriptCanvasEditor
         // VariableNotificationBus::Handler
         void OnVariableRenamed(AZStd::string_view variableName) override;
         ////
+
+        const ScriptCanvas::VariableId& GetVariableId() const;
 
     private:
         ScriptCanvas::VariableId m_variableId;
@@ -79,7 +82,7 @@ namespace ScriptCanvasEditor
         explicit CreateSetVariableNodeMimeEvent(const ScriptCanvas::VariableId& variableId);
         ~CreateSetVariableNodeMimeEvent() = default;
 
-        ScriptCanvasEditor::NodeIdPair CreateNode(const AZ::EntityId& graphId) const override;
+        ScriptCanvasEditor::NodeIdPair CreateNode(const AZ::EntityId& graphId) const override;        
 
     private:
         ScriptCanvas::VariableId m_variableId;
@@ -90,6 +93,7 @@ namespace ScriptCanvasEditor
         , public ScriptCanvas::VariableNotificationBus::Handler
     {
     public:
+        AZ_RTTI(SetVariableNodePaletteTreeItem, "{BCFD5653-6621-4BAC-BD8E-71EC6190062F}", GraphCanvas::DraggableNodePaletteTreeItem)
         AZ_CLASS_ALLOCATOR(SetVariableNodePaletteTreeItem, AZ::SystemAllocator, 0);
         static const QString& GetDefaultIcon();
 
@@ -101,6 +105,8 @@ namespace ScriptCanvasEditor
         void OnVariableRenamed(AZStd::string_view variableName) override;
         ////
 
+        const ScriptCanvas::VariableId& GetVariableId() const;
+
         GraphCanvas::GraphCanvasMimeEvent* CreateMimeEvent() const override;
     private:
         ScriptCanvas::VariableId m_variableId;
@@ -109,10 +115,10 @@ namespace ScriptCanvasEditor
 
     // <GetOrSetVariableNodeMimeEvent>
     class CreateGetOrSetVariableNodeMimeEvent
-        : public SpecializedCreateNodeMimeEvent
+        : public MultiCreateNodeMimeEvent
     {
     public:
-        AZ_RTTI(CreateGetOrSetVariableNodeMimeEvent, "{924C1192-C32A-4A35-B146-2739AB4383DB}", SpecializedCreateNodeMimeEvent);
+        AZ_RTTI(CreateGetOrSetVariableNodeMimeEvent, "{924C1192-C32A-4A35-B146-2739AB4383DB}", MultiCreateNodeMimeEvent);
         AZ_CLASS_ALLOCATOR(CreateGetOrSetVariableNodeMimeEvent, AZ::SystemAllocator, 0);
 
         static void Reflect(AZ::ReflectContext* reflectContext);
@@ -123,6 +129,8 @@ namespace ScriptCanvasEditor
 
         bool ExecuteEvent(const AZ::Vector2& mousePosition, AZ::Vector2& sceneDropPosition, const AZ::EntityId& graphCanvasGraphId) override;
         ScriptCanvasEditor::NodeIdPair ConstructNode(const AZ::EntityId& graphCanvasGraphId, const AZ::Vector2& scenePosition) override;
+
+        AZStd::vector< GraphCanvas::GraphCanvasMimeEvent* > CreateMimeEvents() const override;
 
     private:
 
@@ -136,7 +144,7 @@ namespace ScriptCanvasEditor
     {
     public:
         AZ_CLASS_ALLOCATOR(VariableCategoryNodePaletteTreeItem, AZ::SystemAllocator, 0);
-        VariableCategoryNodePaletteTreeItem(const QString& displayName);
+        VariableCategoryNodePaletteTreeItem(AZStd::string_view displayName);
         ~VariableCategoryNodePaletteTreeItem() = default;
 
     private:
@@ -154,7 +162,7 @@ namespace ScriptCanvasEditor
     {
     public:
         AZ_CLASS_ALLOCATOR(LocalVariablesListNodePaletteTreeItem, AZ::SystemAllocator, 0);
-        LocalVariablesListNodePaletteTreeItem(const QString& displayName);
+        LocalVariablesListNodePaletteTreeItem(AZStd::string_view displayName);
         ~LocalVariablesListNodePaletteTreeItem() = default;
 
         // GraphCanvas::AssetEditorNotificationBus

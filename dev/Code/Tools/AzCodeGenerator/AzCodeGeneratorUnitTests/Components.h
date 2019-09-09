@@ -74,7 +74,7 @@ public:
         AzClass::Version(1),
         AzComponent::Provides({"ServiceB", "ServiceX"}),
         AzComponent::Dependent({"ServiceE"}),
-        AzComponent::Incompatible({"ServiceF"}),
+        AzComponent::Incompatible({"ServiceF"})
     );
 
     // MyCodegenBus
@@ -107,7 +107,7 @@ public:
         AzComponent::Provides({"ServiceJ", "ServiceK"}),
         AzComponent::Requires({"ServiceJ", "ServiceK"}),
         AzComponent::Dependent({"ServiceE", "ServiceZ"}),
-        AzComponent::Incompatible({"ServiceF"}),
+        AzComponent::Incompatible({"ServiceF"})
     );
 
     // Component

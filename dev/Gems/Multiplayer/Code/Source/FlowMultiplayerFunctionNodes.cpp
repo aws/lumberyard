@@ -34,7 +34,11 @@
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION FLOWMULTIPLAYERFUNCTIONNODES_CPP_SECTION_1
-#include AZ_RESTRICTED_FILE(FlowMultiplayerFunctionNodes_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/FlowMultiplayerFunctionNodes_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/FlowMultiplayerFunctionNodes_cpp_provo.inl"
+    #endif
 #endif
 
 #if !defined(BUILD_GAMELIFT_SERVER) && defined(BUILD_GAMELIFT_CLIENT)
@@ -66,13 +70,13 @@ namespace
     const char* g_multiplayerListServersLANNodePath = "Multiplayer:Functions:LAN:ListServers";
 
 #if defined(AZ_TOOLS_EXPAND_FOR_RESTRICTED_PLATFORMS)
-#if defined(TOOLS_SUPPORT_XBONE)
+#if defined(TOOLS_SUPPORT_XENIA)
 #define AZ_RESTRICTED_SECTION FLOWMULTIPLAYERFUNCTIONNODES_CPP_SECTION_LANPATH
-#include AZ_RESTRICTED_FILE(FlowMultiplayerFunctionNodes_cpp, TOOLS_SUPPORT_XBONE)
+    #include "Xenia/FlowMultiplayerFunctionNodes_cpp_xenia.inl"
 #endif
-#if defined(TOOLS_SUPPORT_PS4)
+#if defined(TOOLS_SUPPORT_PROVO)
 #define AZ_RESTRICTED_SECTION FLOWMULTIPLAYERFUNCTIONNODES_CPP_SECTION_LANPATH
-#include AZ_RESTRICTED_FILE(FlowMultiplayerFunctionNodes_cpp, TOOLS_SUPPORT_PS4)
+    #include "Provo/FlowMultiplayerFunctionNodes_cpp_provo.inl"
 #endif
 #endif
 }
@@ -828,7 +832,11 @@ public:
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION FLOWMULTIPLAYERFUNCTIONNODES_CPP_SECTION_2
-#include AZ_RESTRICTED_FILE(FlowMultiplayerFunctionNodes_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/FlowMultiplayerFunctionNodes_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/FlowMultiplayerFunctionNodes_cpp_provo.inl"
+    #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
 #undef AZ_RESTRICTED_SECTION_IMPLEMENTED
@@ -1047,13 +1055,13 @@ public:
 // </LAN>
 
 #if defined(AZ_TOOLS_EXPAND_FOR_RESTRICTED_PLATFORMS)
-#if defined(TOOLS_SUPPORT_XBONE)
+#if defined(TOOLS_SUPPORT_XENIA)
 #define AZ_RESTRICTED_SECTION FLOWMULTIPLAYERFUNCTIONNODES_CPP_SECTION_FLOWNODES
-#include AZ_RESTRICTED_FILE(FlowMultiplayerFunctionNodes_cpp, TOOLS_SUPPORT_XBONE)
+    #include "Xenia/FlowMultiplayerFunctionNodes_cpp_xenia.inl"
 #endif
-#if defined(TOOLS_SUPPORT_PS4)
+#if defined(TOOLS_SUPPORT_PROVO)
 #define AZ_RESTRICTED_SECTION FLOWMULTIPLAYERFUNCTIONNODES_CPP_SECTION_FLOWNODES
-#include AZ_RESTRICTED_FILE(FlowMultiplayerFunctionNodes_cpp, TOOLS_SUPPORT_PS4)
+    #include "Provo/FlowMultiplayerFunctionNodes_cpp_provo.inl"
 #endif
 #endif
 
@@ -1116,13 +1124,13 @@ REGISTER_FLOW_NODE(g_multiplayerConnectLANNodePath,LANFlowNode_Connect);
 REGISTER_FLOW_NODE(g_multiplayerListServersLANNodePath,LANFlowNode_ListServers);
 
 #if defined(AZ_TOOLS_EXPAND_FOR_RESTRICTED_PLATFORMS)
-#if defined(TOOLS_SUPPORT_XBONE)
+#if defined(TOOLS_SUPPORT_XENIA)
 #define AZ_RESTRICTED_SECTION FLOWMULTIPLAYERFUNCTIONNODES_CPP_SECTION_REGISTERNODES
-#include AZ_RESTRICTED_FILE(FlowMultiplayerFunctionNodes_cpp, TOOLS_SUPPORT_XBONE)
+    #include "Xenia/FlowMultiplayerFunctionNodes_cpp_xenia.inl"
 #endif
-#if defined(TOOLS_SUPPORT_PS4)
+#if defined(TOOLS_SUPPORT_PROVO)
 #define AZ_RESTRICTED_SECTION FLOWMULTIPLAYERFUNCTIONNODES_CPP_SECTION_REGISTERNODES
-#include AZ_RESTRICTED_FILE(FlowMultiplayerFunctionNodes_cpp, TOOLS_SUPPORT_PS4)
+    #include "Provo/FlowMultiplayerFunctionNodes_cpp_provo.inl"
 #endif
 #endif
 

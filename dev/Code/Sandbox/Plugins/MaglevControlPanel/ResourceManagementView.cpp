@@ -896,7 +896,7 @@ void ResourceManagementView::OnMenuNewResourceGroup()
     QComboBox includedContentComboBox {
         &dialog
     };
-    includedContentComboBox.addItems({"None", "API, Lambda, DynamoDB"});
+    includedContentComboBox.addItems({"no-resources", "bucket", "lambda", "api-lambda", "api-lambda-bucket", "api-lambda-dynamodb"});
     includedContentComboBox.setCurrentIndex(0);
     includedContentComboBox.setToolTip(tr("Example resources to be included in the resource group."));
     dialog.AddWidgetPairRow(new QLabel {tr("Example resources")}, &includedContentComboBox);
@@ -919,17 +919,17 @@ void ResourceManagementView::OnMenuNewResourceGroup()
             return;
         }
 
-        ValidateSourceCreateResourceGroup(resourceGroupName, includedContentComboBox.currentIndex() == 1);
+        ValidateSourceCreateResourceGroup(resourceGroupName, includedContentComboBox.currentText());
     }
 }
 
-void ResourceManagementView::ValidateSourceCreateResourceGroup(const QString& resourceGroupName, bool includeExample)
+void ResourceManagementView::ValidateSourceCreateResourceGroup(const QString& resourceGroupName, const QString& initialContent)
 {
-    QObject::connect(&*m_resourceManager->GetDeploymentTemplateSourceModel(), &IFileSourceControlModel::SourceControlStatusUpdated, this, [this, resourceGroupName, includeExample]() {SourceUpdatedCreateResourceGroup(resourceGroupName, includeExample); });
+    QObject::connect(&*m_resourceManager->GetDeploymentTemplateSourceModel(), &IFileSourceControlModel::SourceControlStatusUpdated, this, [this, resourceGroupName, initialContent]() {SourceUpdatedCreateResourceGroup(resourceGroupName, initialContent); });
     m_resourceManager->UpdateSourceControlStates();
 }
 
-void ResourceManagementView::SourceUpdatedCreateResourceGroup(const QString& resourceGroupName, bool includeExample)
+void ResourceManagementView::SourceUpdatedCreateResourceGroup(const QString& resourceGroupName, const QString& initialContent)
 {
     QObject::disconnect(&*m_resourceManager->GetDeploymentTemplateSourceModel(), &IFileSourceControlModel::SourceControlStatusUpdated, this, 0);
 
@@ -945,35 +945,26 @@ void ResourceManagementView::SourceUpdatedCreateResourceGroup(const QString& res
 
         if (reply == QMessageBox::Yes)
         {
-            QObject::connect(&*m_resourceManager->GetGemsFileSourceModel(), &IFileSourceControlModel::SourceControlStatusChanged, this, [this, resourceGroupName, includeExample]() { SourceChangedCreateResourceGroup(resourceGroupName, includeExample); });
+            QObject::connect(&*m_resourceManager->GetGemsFileSourceModel(), &IFileSourceControlModel::SourceControlStatusChanged, this, [this, resourceGroupName, initialContent]() { SourceChangedCreateResourceGroup(resourceGroupName, initialContent); });
             GetIEditor()->GetAWSResourceManager()->RequestEditGemsFile();
         }
         return;
     }
-    DoCreateResourceGroup(resourceGroupName, includeExample);
+    DoCreateResourceGroup(resourceGroupName, initialContent);
 }
 
-void ResourceManagementView::DoCreateResourceGroup(const QString& resourceGroupName, bool includeExample)
+void ResourceManagementView::DoCreateResourceGroup(const QString& resourceGroupName, const QString& initialContent)
 {
-    auto callback = [this](const QString& errorMessage)
-    {
-        if (!errorMessage.isEmpty())
-        {
-            QMessageBox::critical(this, "Error", errorMessage);
-        }
-    };
-
-    m_waitingForResourceGroup = resourceGroupName;
-    m_projectModel->AddResourceGroup(resourceGroupName, includeExample, callback);
+   QMessageBox::critical(this, "Error", "Adding resource groups is no longer supported and was deprecated in Lumberyard 1.11.  Please use the 'lmbr_aws gem create' command.");   
 }
 
-void ResourceManagementView::SourceChangedCreateResourceGroup(const QString& resourceGroupName, bool includeExample)
+void ResourceManagementView::SourceChangedCreateResourceGroup(const QString& resourceGroupName, const QString& initialContent)
 {
     QObject::disconnect(&*m_resourceManager->GetDeploymentTemplateSourceModel(), &IFileSourceControlModel::SourceControlStatusUpdated, this, 0);
     QObject::disconnect(&*m_resourceManager->GetDeploymentTemplateSourceModel(), &IFileSourceControlModel::SourceControlStatusChanged, this, 0);
     if (!m_resourceManager->DeploymentTemplateNeedsCheckout())
     {
-        DoCreateResourceGroup(resourceGroupName, includeExample);
+        DoCreateResourceGroup(resourceGroupName, initialContent);
     }
 }
 

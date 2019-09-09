@@ -12,6 +12,7 @@
 
 #pragma once
 
+#include <AzCore/Component/TickBus.h>
 #include <AzCore/Outcome/Outcome.h>
 #include <AzCore/Component/Component.h>
 #include <AzFramework/Network/SocketConnection.h>
@@ -34,6 +35,7 @@ namespace AzToolsFramework
             , private AzToolsFramework::AssetSystemJobRequestBus::Handler
             , private AzToolsFramework::AssetSystemBus::Handler
             , private AzToolsFramework::ToolsAssetSystemBus::Handler
+            , private AZ::SystemTickBus::Handler
         {
         public:
             AZ_COMPONENT(AssetSystemComponent, "{B1352D59-945B-446A-A7E1-B2D3EB717C6D}")
@@ -57,21 +59,24 @@ namespace AzToolsFramework
 
             //////////////////////////////////////////////////////////////////////////
             // AzToolsFramework::AssetSystemRequestBus::Handler overrides
+            bool GetAbsoluteAssetDatabaseLocation(AZStd::string& result) override;
             const char* GetAbsoluteDevGameFolderPath() override;
             const char* GetAbsoluteDevRootFolderPath() override;
             bool GetRelativeProductPathFromFullSourceOrProductPath(const AZStd::string& fullPath, AZStd::string& outputPath) override;
             bool GetFullSourcePathFromRelativeProductPath(const AZStd::string& relPath, AZStd::string& fullPath) override;
-            void UpdateQueuedEvents() override;
             bool GetAssetInfoById(const AZ::Data::AssetId& assetId, const AZ::Data::AssetType& assetType, AZ::Data::AssetInfo& assetInfo, AZStd::string& rootFilePath) override;
             bool GetSourceInfoBySourcePath(const char* sourcePath, AZ::Data::AssetInfo& assetInfo, AZStd::string& watchFolder) override;
             bool GetSourceInfoBySourceUUID(const AZ::Uuid& sourceUuid, AZ::Data::AssetInfo& assetInfo, AZStd::string& watchFolder) override;
             bool GetScanFolders(AZStd::vector<AZStd::string>& scanFolders) override;
+            bool GetAssetSafeFolders(AZStd::vector<AZStd::string>& assetSafeFolders) override;
+            bool IsAssetPlatformEnabled(const char* platform) override;
+            int GetPendingAssetsForPlatform(const char* platform) override;
             //////////////////////////////////////////////////////////////////////////
 
             //////////////////////////////////////////////////////////////////////////
             // AzToolsFramework::AssetSystemJobRequest::Bus::Handler overrides
             virtual AZ::Outcome<AssetSystem::JobInfoContainer> GetAssetJobsInfo(const AZStd::string& path, const bool escalateJobs) override;
-            virtual AZ::Outcome<JobInfoContainer> GetAssetJobsInfoByAssetID(const AZ::Data::AssetId& assetId, const bool escalateJobs) override;
+            virtual AZ::Outcome<JobInfoContainer> GetAssetJobsInfoByAssetID(const AZ::Data::AssetId& assetId, const bool escalateJobs, bool requireFencing) override;
             virtual AZ::Outcome<JobInfoContainer> GetAssetJobsInfoByJobKey(const AZStd::string& jobKey, const bool escalateJobs) override;
             virtual AZ::Outcome<JobStatus> GetAssetJobsStatusByJobKey(const AZStd::string& jobKey, const bool escalateJobs) override;
             virtual AZ::Outcome<AZStd::string> GetJobLog(AZ::u64 jobrunkey) override;
@@ -90,7 +95,14 @@ namespace AzToolsFramework
             void UnregisterSourceAssetType(const AZ::Data::AssetType& assetType) override;
             //////////////////////////////////////////////////////////////////////////
 
+            //////////////////////////////////////////////////////////////////////////
+            // SystemTickBus::Handler overrides
+            void OnSystemTick() override;
+            //////////////////////////////////////////////////////////////////////////
+
             AzFramework::SocketConnection::TMessageCallbackHandle m_cbHandle = 0;
+            AzFramework::SocketConnection::TMessageCallbackHandle m_showAssetBrowserCBHandle = 0;
+            AzFramework::SocketConnection::TMessageCallbackHandle m_wantShowAssetBrowserCBHandle = 0;
 
             AZStd::unordered_map<AZStd::string, AZStd::string> m_assetSourceRelativePathToFullPathCache;
         };

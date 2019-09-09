@@ -18,6 +18,8 @@
 #include "Attribute.h"
 #include "Vector.h"
 #include "StringConversions.h"
+#include <MCore/Source/AttributeAllocator.h>
+
 
 namespace MCore
 {
@@ -28,6 +30,8 @@ namespace MCore
     class MCORE_API AttributeVector2
         : public Attribute
     {
+        AZ_CLASS_ALLOCATOR(AttributeVector2, AttributeAllocator, 0)
+
         friend class AttributeFactory;
     public:
         enum
@@ -48,7 +52,6 @@ namespace MCore
 
         // overloaded from the attribute base class
         Attribute* Clone() const override                           { return AttributeVector2::Create(mValue); }
-        Attribute* CreateInstance(void* destMemory) override        { return new(destMemory) AttributeVector2(); }
         const char* GetTypeString() const override                  { return "AttributeVector2"; }
         bool InitFrom(const Attribute* other) override
         {

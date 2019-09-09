@@ -76,8 +76,8 @@ namespace EMStudio
         layout->addWidget(mHierarchy);
         setLayout(layout);
 
-        connect(mHierarchy, SIGNAL(itemSelectionChanged()), this, SLOT(UpdateSelection()));
-        connect(mHierarchy, SIGNAL(itemDoubleClicked(QTreeWidgetItem*, int)), this, SLOT(ItemDoubleClicked(QTreeWidgetItem*, int)));
+        connect(mHierarchy, &QTreeWidget::itemSelectionChanged, this, &MotionSetHierarchyWidget::UpdateSelection);
+        connect(mHierarchy, &QTreeWidget::itemDoubleClicked, this, &MotionSetHierarchyWidget::ItemDoubleClicked);
 
         // connect the window activation signal to refresh if reactivated
         //connect( this, SIGNAL(visibilityChanged(bool)), this, SLOT(OnVisibilityChanged(bool)) );

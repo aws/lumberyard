@@ -115,10 +115,26 @@ namespace CommandSystem
         if (parameters.CheckIfHasParameter("nodeId"))
         {
             const AZStd::string nodeIdString = parameters.GetValue("nodeId", this);
-            return EMotionFX::AnimGraphNodeId::FromString(nodeIdString);
+            return EMotionFX::AnimGraphNodeId::CreateFromString(nodeIdString);
         }
 
         return mNodeId;
+    }
+
+
+    void CommandAnimGraphCreateNode::DeleteGraphNode(EMotionFX::AnimGraphNode* node)
+    {
+        EMotionFX::AnimGraph* animGraph = node->GetAnimGraph();
+        if (animGraph)
+        {
+            animGraph->RemoveAllObjectData(node, true);
+        }
+        EMotionFX::AnimGraphNode* parentNode = node->GetParentNode();
+        if (parentNode)
+        {
+            parentNode->RemoveChildNodeByPointer(node);
+        }
+        delete node;
     }
 
 
@@ -201,33 +217,26 @@ namespace CommandSystem
         {
             AZStd::string contents;
             parameters.GetValue("contents", this, &contents);
-            MCore::ReflectionSerializer::Deserialize(node, contents);
+            MCore::ReflectionSerializer::DeserializeMembers(node, contents);
 
             // The deserialize method will deserialize back the old id
             node->SetId(mNodeId);
 
-            // Clear the connections
-            node->RemoveAllConnections();
-
-            // Clear all child nodes
-            node->RemoveAllChildNodes(true);
-
-            // in case the node is a state machine
-            if (azrtti_typeid(node) == azrtti_typeid<EMotionFX::AnimGraphStateMachine>())
-            {
-                EMotionFX::AnimGraphStateMachine* stateMachine = static_cast<EMotionFX::AnimGraphStateMachine*>(node);
-                stateMachine->RemoveAllTransitions();
-            }
+            // Verify we have not serialized connections, child nodes and transitions
+            AZ_Assert(node->GetNumConnections() == 0, "Unexpected serialized connections");
+            AZ_Assert(node->GetNumChildNodes() == 0, "Unexpected serialized child nodes");
+            AZ_Assert(azrtti_typeid(node) != azrtti_typeid<EMotionFX::AnimGraphStateMachine>() || static_cast<EMotionFX::AnimGraphStateMachine*>(node)->GetNumTransitions() == 0, "Unexpected serialized transitions");
         }
 
-        // Force set the node id. Undo of the remove node command calls a create node command which has to force set the node id when reconstrucrting it.
-        // Elsewise all linked objects like transition conditions will be linked to an invalid node.
+        // Force set the node id. Undo of the remove node command calls a create node command which has to force set the node id when reconstructing it.
+        // Else wise all linked objects like transition conditions will be linked to an invalid node.
         if (parameters.CheckIfHasParameter("nodeId"))
         {
             const AZStd::string nodeIdString = parameters.GetValue("nodeId", this);
 
-            const EMotionFX::AnimGraphNodeId nodeId = EMotionFX::AnimGraphNodeId::FromString(nodeIdString);
+            const EMotionFX::AnimGraphNodeId nodeId = EMotionFX::AnimGraphNodeId::CreateFromString(nodeIdString);
             node->SetId(nodeId);
+            mNodeId = nodeId;
         }
 
         // if the name is not empty, set it
@@ -246,8 +255,8 @@ namespace CommandSystem
         // Avoid adding a node with an id that another node in the anim graph already has.
         if (animGraph->RecursiveFindNodeById(node->GetId()) != nullptr)
         {
-            outResult = AZStd::string::format("Node with id '%s' and type '%s' cannot get added to anim graph. Node with the given id already exists.", node->GetId().ToString().c_str(), typeString.GetValue().c_str());
-            delete node;
+            outResult = AZStd::string::format("Node with id '%s' and type '%s' cannot be added to anim graph. Node with the given id already exists.", node->GetId().ToString().c_str(), typeString.GetValue().c_str());
+            DeleteGraphNode(node);
             return false;
         }
 
@@ -255,9 +264,9 @@ namespace CommandSystem
         if (parentNode == nullptr)
         {
             if (azrtti_typeid(node) != azrtti_typeid<EMotionFX::AnimGraphStateMachine>())
-            {
-                delete node;
+            {                
                 outResult = AZStd::string::format("Nodes without parents are only allowed to be state machines, cancelling creation!");
+                DeleteGraphNode(node);
                 return false;
             }
         }
@@ -268,15 +277,15 @@ namespace CommandSystem
                 if (!node->GetCanActAsState())
                 {
                     outResult = AZStd::string::format("Node with name '%s' cannot be added to state machine as the node with type '%s' can not act as a state.", name.c_str(), typeString.GetValue().c_str());
-                    delete node;
+                    DeleteGraphNode(node);
                     return false;
                 }
 
                 // Handle node types that are only allowed once as a child.
                 if (node->GetCanHaveOnlyOneInsideParent() && parentNode->HasChildNodeOfType(azrtti_typeid(node)))
                 {
-                    outResult = AZStd::string::format("Node with name '%s' and type '%s' cannot be added to state machine as a node with the given type already exists. Multiple nodes with of this type per state machine are not allowed.", name.c_str(), typeString.GetValue().c_str());
-                    delete node;
+                    outResult = AZStd::string::format("Node with name '%s' and type '%s' cannot be added to state machine as a node with the given type already exists. Multiple nodes of this type per state machine are not allowed.", name.c_str(), typeString.GetValue().c_str());
+                    DeleteGraphNode(node);
                     return false;
                 }
             }
@@ -361,7 +370,7 @@ namespace CommandSystem
         // call the post create node event
         EMotionFX::GetEventManager().OnCreatedNode(animGraph, node);
 
-        animGraph->Reinit();
+        node->Reinit();
         animGraph->UpdateUniqueData();
 
         // init new node for all anim graph instances belonging to it
@@ -499,6 +508,12 @@ namespace CommandSystem
             return false;
         }
 
+        if (parameters.CheckIfHasParameter("attributesString"))
+        {
+            const AZStd::string attributesString = parameters.GetValue("attributesString", this);
+            MCore::ReflectionSerializer::Deserialize(node, MCore::CommandLine(attributesString));
+        }
+
         // get the x and y pos
         int32 xPos = node->GetVisualPosX();
         int32 yPos = node->GetVisualPosY();
@@ -562,35 +577,7 @@ namespace CommandSystem
             node->SetVisualization(parameters.GetValueAsBool("visualize", this));
         }
 
-        // adjust the position
-        node->SetVisualPos(xPos, yPos);
         mNodeId = node->GetId();
-
-        // do only for parameter nodes
-        if (azrtti_typeid(node) == azrtti_typeid<EMotionFX::BlendTreeParameterNode>() && parameters.CheckIfHasParameter("parameterMask"))
-        {
-            EMotionFX::BlendTreeParameterNode* parameterNode = static_cast<EMotionFX::BlendTreeParameterNode*>(node);
-
-            // remember the old attribute mask for undo
-            mOldParameterMask = parameterNode->ConstructParameterNamesString();
-
-            // get the new parameter mask and set it
-            AZStd::string newParameterMaskString;
-            parameters.GetValue("parameterMask", this, &newParameterMaskString);
-                        
-            AZStd::vector<AZStd::string> newParameterMask;
-            AzFramework::StringFunc::Tokenize(newParameterMaskString.c_str(), newParameterMask, MCore::CharacterConstants::semiColon, false /* keep empty strings */, false /* keep space strings */);
-
-            // get the parameter mask attribute and update the mask
-            parameterNode->SetParameters(newParameterMask);
-        }
-
-        if (parameters.CheckIfHasParameter("attributesString"))
-        {
-            AZStd::string attributesString;
-            parameters.GetValue("attributesString", this, &attributesString);
-            MCore::ReflectionSerializer::Deserialize(node, MCore::CommandLine(attributesString));
-        }
 
         // save the current dirty flag and tell the anim graph that something got changed
         mOldDirtyFlag = animGraph->GetDirtyFlag();
@@ -599,7 +586,7 @@ namespace CommandSystem
         // only update attributes in case it is wanted
         if (parameters.GetValueAsBool("updateAttributes", this))
         {
-            animGraph->Reinit();
+            node->Reinit();
             animGraph->UpdateUniqueData();
         }
 
@@ -671,7 +658,7 @@ namespace CommandSystem
         // set the dirty flag back to the old value
         animGraph->SetDirtyFlag(mOldDirtyFlag);
 
-        animGraph->Reinit();
+        node->Reinit();
         animGraph->UpdateUniqueData();
 
         return true;
@@ -691,7 +678,6 @@ namespace CommandSystem
         GetSyntax().AddParameter("enabled",                 "Is the node enabled?", MCore::CommandSyntax::PARAMTYPE_BOOLEAN, "true");
         GetSyntax().AddParameter("visualize",               "Is the node visualized?", MCore::CommandSyntax::PARAMTYPE_BOOLEAN, "false");
         GetSyntax().AddParameter("updateAttributes",        "Update attributes afterwards?", MCore::CommandSyntax::PARAMTYPE_BOOLEAN, "true");
-        GetSyntax().AddParameter("parameterMask",           "The new parameter mask. Parameter names separated by semicolon.", MCore::CommandSyntax::PARAMTYPE_STRING, "");
         GetSyntax().AddParameter("attributesString",        "The node attributes as string.", MCore::CommandSyntax::PARAMTYPE_STRING, "");
     }
 
@@ -748,7 +734,7 @@ namespace CommandSystem
         mPosX               = emfxNode->GetVisualPosX();
         mPosY               = emfxNode->GetVisualPosY();
         mCollapsed          = emfxNode->GetIsCollapsed();
-        mOldContents        = MCore::ReflectionSerializer::Serialize(emfxNode).GetValue();
+        mOldContents        = MCore::ReflectionSerializer::SerializeMembersExcept(emfxNode, {"childNodes", "connections", "actionSetup", "transitions"}).GetValue();
         mNodeId             = emfxNode->GetId();
 
         // remember the node group for the node for undo
@@ -822,7 +808,6 @@ namespace CommandSystem
         mOldDirtyFlag = animGraph->GetDirtyFlag();
         animGraph->SetDirtyFlag(true);
 
-        animGraph->Reinit();
         animGraph->UpdateUniqueData();
 
         return true;
@@ -999,7 +984,7 @@ namespace CommandSystem
         mOldDirtyFlag = animGraph->GetDirtyFlag();
         animGraph->SetDirtyFlag(true);
 
-        animGraph->Reinit();
+        stateMachine->Reinit();
         animGraph->UpdateUniqueData();
 
         return true;
@@ -1052,7 +1037,7 @@ namespace CommandSystem
         // set the dirty flag back to the old value
         animGraph->SetDirtyFlag(mOldDirtyFlag);
 
-        animGraph->Reinit();
+        stateMachine->Reinit();
         animGraph->UpdateUniqueData();
 
         return true;
@@ -1336,7 +1321,7 @@ namespace CommandSystem
     }
 
 
-    void CopyAnimGraphNodeCommand(MCore::CommandGroup* commandGroup, EMotionFX::AnimGraphNode* targetNode, EMotionFX::AnimGraphNode* node, 
+    void CopyAnimGraphNodeCommand(MCore::CommandGroup* commandGroup, EMotionFX::AnimGraph* targetAnimGraph, EMotionFX::AnimGraphNode* targetNode, EMotionFX::AnimGraphNode* node, 
                                   bool cutMode, AZStd::unordered_map<AZ::u64, AZ::u64>& convertedIds, AZStd::unordered_map<EMotionFX::AnimGraphNode*, AZStd::string>& newNamesByCopiedNodes, AZStd::unordered_set<AZStd::string>& generatedNames)
     {
         if (!node)
@@ -1365,12 +1350,13 @@ namespace CommandSystem
             nodeId = EMotionFX::AnimGraphNodeId::Create();
             convertedIds.emplace(node->GetId(), nodeId);
 
-            nodeName = GenerateUniqueNodeName(targetNode->GetAnimGraph(), node->GetNameString(), node->RTTI_GetTypeName(), generatedNames);
+            nodeName = GenerateUniqueNodeName(targetAnimGraph, node, generatedNames);
             generatedNames.emplace(nodeName);
         }
         newNamesByCopiedNodes.emplace(node, nodeName);
 
-        AZStd::string commandString = AZStd::string::format("AnimGraphCreateNode -type \"%s\" -parentName \"%s\" -xPos %i -yPos %i -name \"%s\" -collapsed %s -enabled %s -visualize %s -nodeId %s",
+        AZStd::string commandString = AZStd::string::format("AnimGraphCreateNode -animGraphID %d -type \"%s\" -parentName \"%s\" -xPos %i -yPos %i -name \"%s\" -collapsed %s -enabled %s -visualize %s -nodeId %s",
+            targetAnimGraph->GetID(),
             azrtti_typeid(node).ToString<AZStd::string>().c_str(),
             parentName.c_str(),
             node->GetVisualPosX(),
@@ -1383,7 +1369,7 @@ namespace CommandSystem
 
         // Don't put that into the format as the attribute string can become pretty big strings.
         commandString +=  " -contents {";
-        commandString += MCore::ReflectionSerializer::Serialize(node).GetValue();
+        commandString += MCore::ReflectionSerializer::SerializeMembersExcept(node, {"childNodes", "connections", "actionSetup", "transitions"}).GetValue();
         commandString += "}";
 
         commandGroup->AddCommandString(commandString);
@@ -1395,7 +1381,8 @@ namespace CommandSystem
             if (!attributesString.empty())
             {
                 // need to convert
-                commandString = AZStd::string::format("AnimGraphAdjustNode -name \"%s\" -attributesString {%s}",
+                commandString = AZStd::string::format("AnimGraphAdjustNode -animGraphID %d -name \"%s\" -attributesString {%s}",
+                    targetAnimGraph->GetID(),
                     nodeName.c_str(),
                     attributesString);
                 commandGroup->AddCommandString(commandString);
@@ -1406,9 +1393,10 @@ namespace CommandSystem
         EMotionFX::AnimGraphNodeGroup* nodeGroup = node->GetAnimGraph()->FindNodeGroupForNode(node);
         if (nodeGroup && !cutMode)
         {
-            commandString = AZStd::string::format("AnimGraphAdjustNodeGroup -name \"%s\" -nodeNames \"%s\" -nodeAction \"add\"",
-                    nodeGroup->GetName(),
-                    nodeName.c_str());
+            commandString = AZStd::string::format("AnimGraphAdjustNodeGroup -animGraphID %d -name \"%s\" -nodeNames \"%s\" -nodeAction \"add\"",
+                targetAnimGraph->GetID(),
+                nodeGroup->GetName(),
+                nodeName.c_str());
             commandGroup->AddCommandString(commandString);
         }
 
@@ -1417,12 +1405,12 @@ namespace CommandSystem
         for (uint32 i = 0; i < numChildNodes; ++i)
         {
             EMotionFX::AnimGraphNode* childNode = node->GetChildNode(i);
-            CopyAnimGraphNodeCommand(commandGroup, node, childNode,
+            CopyAnimGraphNodeCommand(commandGroup, targetAnimGraph, node, childNode,
                 cutMode, convertedIds, newNamesByCopiedNodes, generatedNames);
         }
     }
 
-    void CopyAnimGraphConnectionsCommand(MCore::CommandGroup* commandGroup, EMotionFX::AnimGraphNode* node,
+    void CopyAnimGraphConnectionsCommand(MCore::CommandGroup* commandGroup, EMotionFX::AnimGraph* targetAnimGraph, EMotionFX::AnimGraphNode* node,
         bool cutMode, AZStd::unordered_map<AZ::u64, AZ::u64>& convertedIds, AZStd::unordered_map<EMotionFX::AnimGraphNode*, AZStd::string>& newNamesByCopiedNodes, AZStd::unordered_set<AZStd::string>& generatedNames,
         bool ignoreTopLevelConnections)
     {
@@ -1436,7 +1424,7 @@ namespace CommandSystem
         for (uint32 i = 0; i < numChildNodes; ++i)
         {
             EMotionFX::AnimGraphNode* childNode = node->GetChildNode(i);
-            CopyAnimGraphConnectionsCommand(commandGroup, childNode,
+            CopyAnimGraphConnectionsCommand(commandGroup, targetAnimGraph, childNode,
                 cutMode, convertedIds, newNamesByCopiedNodes, generatedNames,
                 false);
         }
@@ -1459,14 +1447,14 @@ namespace CommandSystem
                             entryStateName = itRenamedNode->second;
                         }
                     }
-                    const AZStd::string commandString = AZStd::string::format("AnimGraphSetEntryState -entryNodeName \"%s\"", entryStateName.c_str());
+                    const AZStd::string commandString = AZStd::string::format("AnimGraphSetEntryState -animGraphID %d -entryNodeName \"%s\"", targetAnimGraph->GetID(), entryStateName.c_str());
                     commandGroup->AddCommandString(commandString);
                 }
 
-                const uint32 numTransitions = stateMachine->GetNumTransitions();
-                for (uint32 i = 0; i < numTransitions; ++i)
+                const size_t numTransitions = stateMachine->GetNumTransitions();
+                for (size_t i = 0; i < numTransitions; ++i)
                 {
-                    CopyStateTransition(commandGroup, stateMachine, stateMachine->GetTransition(i),
+                    CopyStateTransition(commandGroup, targetAnimGraph, stateMachine->GetTransition(i),
                         cutMode, convertedIds, newNamesByCopiedNodes);
                 }
             }
@@ -1476,7 +1464,7 @@ namespace CommandSystem
                 for (uint32 i = 0; i < numConnections; ++i)
                 {
                     EMotionFX::BlendTreeConnection* connection = node->GetConnection(i);
-                    CopyBlendTreeConnection(commandGroup, node, connection,
+                    CopyBlendTreeConnection(commandGroup, targetAnimGraph, node, connection,
                         cutMode, convertedIds, newNamesByCopiedNodes);
                 }
             }
@@ -1529,16 +1517,18 @@ namespace CommandSystem
         {
             if (cutMode || !node->GetCanHaveOnlyOneInsideParent())
             {
-                CopyAnimGraphNodeCommand(commandGroup, targetNode, node,
+                CopyAnimGraphNodeCommand(commandGroup, targetNode->GetAnimGraph(), targetNode, node, 
                     cutMode, convertedIds, newNamesByCopiedNodes, generatedNames);
             }
         }
 
-        // Copy connections and collect the parent state machines for all copied nodes
-        AZStd::vector<EMotionFX::AnimGraphStateMachine*> parentStateMachines;
+        // Collect transitions between the nodes to copy (wildcards to a target transition that is being copied or transitions
+        // where both the source and destination are being copied)
+        AZStd::unordered_set<EMotionFX::AnimGraphStateMachine*> parentStateMachines;
+
         for (EMotionFX::AnimGraphNode* node : nodesToCopy)
         {
-            CopyAnimGraphConnectionsCommand(commandGroup, node,
+            CopyAnimGraphConnectionsCommand(commandGroup, targetNode->GetAnimGraph(), node,
                 cutMode, convertedIds, newNamesByCopiedNodes, generatedNames,
                 ignoreTopLevelConnections);
 
@@ -1551,10 +1541,7 @@ namespace CommandSystem
                 AZStd::find(nodesToCopy.begin(), nodesToCopy.end(), parentNode) == nodesToCopy.end())
             {
                 EMotionFX::AnimGraphStateMachine* parentSM = static_cast<EMotionFX::AnimGraphStateMachine*>(parentNode);
-                if (AZStd::find(parentStateMachines.begin(), parentStateMachines.end(), parentSM) == parentStateMachines.end())
-                {
-                    parentStateMachines.push_back(parentSM);
-                }
+                parentStateMachines.emplace(parentSM);
             }
         }
 
@@ -1566,10 +1553,10 @@ namespace CommandSystem
             {
                 for (EMotionFX::AnimGraphStateMachine* stateMachine : parentStateMachines)
                 {
-                    const AZ::u32 numTransitions = stateMachine->GetNumTransitions();
-                    for (AZ::u32 t = 0; t < numTransitions; ++t)
+                    const size_t numTransitions = stateMachine->GetNumTransitions();
+                    for (size_t t = 0; t < numTransitions; ++t)
                     {
-                        CopyStateTransition(commandGroup, targetStateMachine, stateMachine->GetTransition(t), cutMode, convertedIds, newNamesByCopiedNodes);
+                        CopyStateTransition(commandGroup, targetStateMachine->GetAnimGraph(), stateMachine->GetTransition(t), cutMode, convertedIds, newNamesByCopiedNodes);
                     }
                 }
             }
@@ -1583,7 +1570,7 @@ namespace CommandSystem
         // We only need to fix the top-level nodes
         int32   middlePosX = 0;
         int32   middlePosY = 0;
-
+        
         for (EMotionFX::AnimGraphNode* node : nodesToCopy)
         {
             middlePosX += node->GetVisualPosX();
@@ -1612,7 +1599,7 @@ namespace CommandSystem
             const int newNodeY = node->GetVisualPosY() + (posY - middlePosY);
 
             const AZStd::string commandString = AZStd::string::format("AnimGraphAdjustNode -animGraphID %d -name \"%s\" -xPos %d -yPos %d",
-                node->GetAnimGraph()->GetID(),
+                targetNode->GetAnimGraph()->GetID(),
                 nodeName.c_str(),
                 newNodeX,
                 newNodeY);

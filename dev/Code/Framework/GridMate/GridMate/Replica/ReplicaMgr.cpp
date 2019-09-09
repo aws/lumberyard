@@ -164,7 +164,7 @@ namespace GridMate
 #endif
             if (m_unreliableOutBuffer.Size() > carrier->GetMessageMTU())
             {
-                AZ_TracePrintf("GridMate", "SendBuffer [%s]: Unreliable replica update exceeds MTU (size=%u, MTU=%u), this will cause fragmentation!\n", carrier->ConnectionToAddress(GetConnectionId()).c_str(), static_cast<unsigned int>(m_unreliableOutBuffer.Size()), carrier->GetMessageMTU());
+                AZ_TracePrintf("GridMate", "SendBuffer [0x%p]: Unreliable replica update exceeds MTU (size=%u, MTU=%u), forcing reliable for this send.\n", GetConnectionId(), static_cast<unsigned int>(m_unreliableOutBuffer.Size()), carrier->GetMessageMTU());
             }
 
             auto callback = AZStd::make_unique<PeerAckCallbacks>((m_unreliableCallbacks));
@@ -1281,7 +1281,7 @@ namespace GridMate
                 }
                 else
                 {
-                    //AZ_TracePrintf("GridMate", "Skipping unmarshal for 0x%x because we can't identify the correct peer.\n", pObj->GetRepId());
+                    //AZ_TracePrintf("GridMate", "Skipping unmarshal for 0x%x because we can't identify the correct peer.\n", pObj->GetRepId());      
                 }
 
                 break;     // TODO: should we process incoming data for orphaned replicas?

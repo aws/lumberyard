@@ -1,0 +1,26 @@
+# Configuration to set the flags to use the static version of the windows C-Runtime Library
+{
+    "msvc:debug": {
+        # Flags to apply for the debug version
+        "defines": [
+            "_MT"
+        ],
+        "cflags": [
+            "/MTd"
+        ],
+        "cxxflags": [
+            "/MTd"
+        ]
+    },
+    "msvc:!debug": {
+        "defines": [
+            "_MT"
+        ],
+        "cflags": [
+            "/MT"
+        ],
+        "cxxflags": [
+            "/MT"
+        ]
+    }
+}

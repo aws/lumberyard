@@ -13,6 +13,7 @@
 
 #include <AzCore/Component/Component.h>
 #include <AzCore/Component/ComponentBus.h>
+#include <AzCore/Component/ComponentExport.h>
 #include <AzToolsFramework/ToolsComponents/EditorComponentBase.h>
 #include <AzToolsFramework/ToolsComponents/EditorVisibilityBus.h>
 #include <AzToolsFramework/UI/PropertyEditor/PropertyEditorAPI.h>
@@ -22,6 +23,7 @@
 #include <AzFramework/Asset/AssetCatalogBus.h>
 
 #include <LmbrCentral/Rendering/EditorLightComponentBus.h>
+#include <LmbrCentral/Rendering/EditorCameraCorrectionBus.h>
 
 #include "LightComponent.h"
 
@@ -29,16 +31,18 @@
 
 namespace LmbrCentral
 {
+    class EditorLightComponent;
+
     /**
      * Extends LightConfiguration structure to add editor functionality
      * such as property handlers and visibility filters, as well as
      * reflection for editing.
      */
+
     class EditorLightConfiguration
         : public LightConfiguration
     {
     public:
-
         AZ_TYPE_INFO(EditorLightConfiguration, "{1D3B114F-8FB2-47BD-9C21-E089F4F37861}");
 
         ~EditorLightConfiguration() override {}
@@ -56,6 +60,11 @@ namespace LmbrCentral
         AZ::Crc32 MinorPropertyChanged() override;
         AZ::Crc32 MajorPropertyChanged() override;
         AZ::Crc32 OnAnimationSettingChanged() override;
+        AZ::Crc32 OnCubemapAssetChanged() override;
+        bool CanGenerateCubemap() const override;
+
+        void SetComponent(EditorLightComponent* component);
+        EditorLightComponent* m_component;
     };
 
     /*!
@@ -71,11 +80,13 @@ namespace LmbrCentral
         , private RenderNodeRequestBus::Handler
         , private AzFramework::AssetCatalogEventBus::Handler
         , private AZ::TransformNotificationBus::Handler
+        , private EditorCameraCorrectionRequestBus::Handler
     {
     private:
         using Base = AzToolsFramework::Components::EditorComponentBase;
     public:
         
+        friend EditorLightConfiguration;
         //old guid "{33BB1CD4-6A33-46AA-87ED-8BBB40D94B0D}" before splitting editor light component
         AZ_COMPONENT(EditorLightComponent, "{7C18B273-5BA3-4E0F-857D-1F30BD6B0733}", AzToolsFramework::Components::EditorComponentBase); 
  
@@ -94,10 +105,10 @@ namespace LmbrCentral
         void OnEntityVisibilityChanged(bool visibility) override;
         //////////////////////////////////////////////////////////////////////////
 
-        //////////////////////////////////////////////////////////////////////////
-        // AzFramework::EntityDebugDisplayEventBus interface implementation
-        void DisplayEntity(bool& handled) override;
-        //////////////////////////////////////////////////////////////////////////
+        // AzFramework::EntityDebugDisplayEventBus
+        void DisplayEntityViewport(
+            const AzFramework::ViewportInfo& viewportInfo,
+            AzFramework::DebugDisplayRequests& debugDisplay) override;
 
         //////////////////////////////////////////////////////////////////////////
         // LightComponentEditorRequestBus::Handler interface implementation
@@ -111,6 +122,10 @@ namespace LmbrCentral
         const LightConfiguration& GetConfiguration() const override;
         AZ::Crc32 OnCubemapAssetChanged();
         AZ::Crc32 OnCustomizedCubemapChanged();
+
+        // EditorCameraCorrectionRequestBus interface implementation
+        // Light is aligned along the the x-axis so add a transform correction to align along the y-axis.
+        AZ::Matrix3x3 GetTransformCorrection() override { return AZ::Matrix3x3::CreateRotationZ(-AZ::Constants::HalfPi); }
 
         ///////////////////////////////////////////
         // LightComponentEditorRequestBus Modifiers
@@ -287,6 +302,8 @@ namespace LmbrCentral
             LightComponent::GetIncompatibleServices(incompatible);
         }
 
+        static AZ::ExportedComponent ExportLightComponent(AZ::Component* thisComponent, const AZ::PlatformTagSet& /*platformTags*/);
+
         static void Reflect(AZ::ReflectContext* context);
         //////////////////////////////////////////////////////////////////////////
 
@@ -299,6 +316,9 @@ namespace LmbrCentral
         virtual const char* GetLightTypeText() const;
 
     private:
+
+        static bool VersionConverter(AZ::SerializeContext& context,
+            AZ::SerializeContext::DataElementNode& classElement);
 
         //! Handles rendering of the preview cubemap by creating a simple cubemapped sphere.
         class CubemapPreview : public IRenderNode
@@ -362,16 +382,14 @@ namespace LmbrCentral
         
         const char* GetCubemapAssetName() const;
 
-        void DrawProjectionGizmo(AzFramework::EntityDebugDisplayRequests* dc, const float radius) const;
-        void DrawPlaneGizmo(AzFramework::EntityDebugDisplayRequests* dc, const float depth) const;
+        void DrawProjectionGizmo(AzFramework::DebugDisplayRequests& dc, const float radius) const;
+        void DrawPlaneGizmo(AzFramework::DebugDisplayRequests& dc, const float depth) const;
 
         EditorLightConfiguration m_configuration;
         bool m_viewCubemap;
         bool m_useCustomizedCubemap;
         bool m_cubemapRegen;
         bool m_cubemapClear;
-        //for cubemap asset selection
-        AzFramework::SimpleAssetReference<TextureAsset> m_cubemapAsset;
 
         CubemapPreview m_cubemapPreview;
 

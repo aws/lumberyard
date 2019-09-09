@@ -19,11 +19,13 @@
 #pragma once
 
 #include <AzCore/Component/ComponentBus.h>
+#include <AzCore/Component/NamedEntityId.h>
 
 #include <AzCore/RTTI/ReflectContext.h>
 
 #include <AzCore/Memory/Memory.h>
 #include <AzCore/Memory/SystemAllocator.h> // Used as the allocator for most components.
+#include <AzCore/Outcome/Outcome.h>
 
 namespace AZ
 {
@@ -34,6 +36,7 @@ namespace AZ
     using ImmutableEntityVector = AZStd::vector<AZ::Entity const *>;
 
     using ComponentTypeList = AZStd::vector<Uuid>; ///< List of Component class type IDs.
+    using ComponentValidationResult = AZ::Outcome<void, AZStd::string>;
 
     /**
      * Base class for all components. 
@@ -88,6 +91,14 @@ namespace AZ
         EntityId GetEntityId() const;
 
         /**
+        * Returns the NamedEntityId if the component is attached to an entity.
+        * If the component is not attached to any entity, this function asserts.
+        * As a safeguard, make sure that GetEntity()!=nullptr.
+        * @return The ID of the entity that contains the component.
+        */
+        NamedEntityId GetNamedEntityId() const;
+
+        /**
          * Returns the component ID, which is valid only when the component is attached to an entity.
          * If the component is not attached to any entity, the return value is 0.
          * As a safeguard, make sure that GetEntity()!=nullptr.
@@ -97,11 +108,25 @@ namespace AZ
         ComponentId GetId() const       { return m_id; }
 
         /**
+        * Returns the type ID
+        * Can be overridden for components that wrap other components, to provide a punch through
+        * to the wrapped component's ID.
+        * @return The type ID of the component.
+        */
+        virtual const TypeId& GetUnderlyingComponentType() const { return RTTI_GetType(); }
+
+        /**
          * Sets the component ID.
          * This function is for internal use only.
          * @param id The ID to assign to the component.
          */
         void SetId(const ComponentId& id)   { m_id = id; }
+
+        /**
+        * Override to conduct per-component or per-slice validation logic during slice asset processing.
+        * @param sliceEntities All entities that belong to the slice that the entity with this component is on.
+        */
+        virtual ComponentValidationResult ValidateComponentRequirements(const ImmutableEntityVector& /*sliceEntities*/) const { return AZ::Success(); }
 
         /**
          * Set the component's configuration.
@@ -125,8 +150,9 @@ namespace AZ
         /**
         * Override to conduct per-component or per-slice validation logic during slice asset processing.
         * @param sliceEntities All entities that belong to the slice that the entity with this component is on.
+        * @param platformTags list of platforms supplied during slice asset processing
         */
-        virtual bool ValidateComponentRequirements(const ImmutableEntityVector& /*sliceEntities*/) const { return true; }
+        virtual bool ValidateComponentRequirements(const ImmutableEntityVector& /*sliceEntities*/, const AZStd::unordered_set<AZ::Crc32>& /*platformTags*/) const { return true; }
 
     protected:
         /**
@@ -241,6 +267,22 @@ namespace AZ
             AZ::ComponentDescriptorBus::EventResult(descriptor, _ComponentClass::RTTI_Type(), &AZ::ComponentDescriptor::GetDescriptor); \
             if (descriptor)                                                                                                             \
             {                                                                                                                           \
+                /* Compare strings first, then pointers.  If we compare pointers first, different strings will give the wrong error message */ \
+                if (strcmp(descriptor->GetName(), _ComponentClass::RTTI_TypeName()) != 0)                                               \
+                {                                                                                                                       \
+                    AZ_Error("Component", false, "Two different components have the same UUID (%s), which is not allowed.\n"            \
+                        "Change the UUID on one of them.\nComponent A: %s\nComponent B: %s",                                            \
+                        _ComponentClass::RTTI_Type().ToString<AZStd::string>().c_str(), descriptor->GetName(), _ComponentClass::RTTI_TypeName());          \
+                    return nullptr;                                                                                                     \
+                }                                                                                                                       \
+                else if (descriptor->GetName() != _ComponentClass::RTTI_TypeName())                                                     \
+                {                                                                                                                       \
+                    AZ_Error("Component", false, "The same component UUID (%s) / name (%s) was registered twice.  This isn't allowed, " \
+                             "it can cause lifetime management issues / crashes.\nThis situation can happen by declaring a component "  \
+                             "in a header and registering it from two different Gems.\n",                                               \
+                        _ComponentClass::RTTI_Type().ToString<AZStd::string>().c_str(), descriptor->GetName());                         \
+                    return nullptr;                                                                                                     \
+                }                                                                                                                       \
                 return descriptor;                                                                                                      \
             }                                                                                                                           \
             return aznew DescriptorType;                                                                                                \

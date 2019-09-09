@@ -217,10 +217,6 @@ namespace CommandSystem
         // save the current dirty flag and tell the anim graph that something got changed
         mOldDirtyFlag = animGraph->GetDirtyFlag();
         animGraph->SetDirtyFlag(true);
-
-        animGraph->Reinit();
-        animGraph->UpdateUniqueData();
-
         return true;
     }
 
@@ -352,10 +348,6 @@ namespace CommandSystem
         mOldDirtyFlag   = animGraph->GetDirtyFlag();
         mOldName        = nodeGroup->GetName();
         animGraph->SetDirtyFlag(true);
-
-        animGraph->Reinit();
-        animGraph->UpdateUniqueData();
-
         return true;
     }
 
@@ -442,10 +434,6 @@ namespace CommandSystem
         // save the current dirty flag and tell the anim graph that something got changed
         mOldDirtyFlag = animGraph->GetDirtyFlag();
         animGraph->SetDirtyFlag(true);
-
-        animGraph->Reinit();
-        animGraph->UpdateUniqueData();
-
         return true;
     }
 

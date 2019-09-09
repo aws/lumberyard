@@ -22,14 +22,21 @@ namespace AZ
     {
         AZStd::vector<SerializeContext::DataElementNode*> nodeStack;
         nodeStack.push_back(m_dataContainer);
-        m_sc->EnumerateInstanceConst(classPtr
+
+        SerializeContext::EnumerateInstanceCallContext callContext(
+            AZStd::bind(&DataOverlayTarget::ElementBegin, this, &nodeStack, AZStd::placeholders::_1, AZStd::placeholders::_2, AZStd::placeholders::_3),
+            AZStd::bind(&DataOverlayTarget::ElementEnd, this, &nodeStack),
+            m_sc,
+            SerializeContext::ENUM_ACCESS_FOR_READ,
+            m_errorLogger
+        );
+
+        m_sc->EnumerateInstanceConst(
+              &callContext
+            , classPtr
             , classData->m_typeId
-            , AZStd::bind(&DataOverlayTarget::ElementBegin, this, &nodeStack, AZStd::placeholders::_1, AZStd::placeholders::_2, AZStd::placeholders::_3)
-            , AZStd::bind(&DataOverlayTarget::ElementEnd, this, &nodeStack)
-            , SerializeContext::ENUM_ACCESS_FOR_READ
             , classData
             , nullptr
-            , m_errorLogger
             );
     }
     //-------------------------------------------------------------------------

@@ -64,7 +64,7 @@
 #include "ObjectCreateTool.h"
 #include "TerrainModifyTool.h"
 #include "RotateTool.h"
-#include "ManipulatorShim.h"
+#include "NullEditTool.h"
 #include "VegetationMap.h"
 #include "VegetationTool.h"
 #include "TerrainTexturePainter.h"
@@ -267,9 +267,12 @@ CEditorImpl::CEditorImpl()
     SetMasterCDFolder();
     gSettings.Load();
 
-    // Retrieve this after the settings have been loaded
-    // This will end up being overriden if the CryEntityRemoval gem is present
-    m_isLegacyUIEnabled = gSettings.enableLegacyUI;
+    // retrieve this after the settings have been loaded
+    // this will end up being overridden if the CryEntityRemoval gem is present
+    // if the new viewport interaction model is enabled we must also disable the legacy ui
+    // it is not compatible with any of the legacy system (e.g. CryDesigner)
+    m_isLegacyUIEnabled = gSettings.enableLegacyUI && !gSettings.newViewportInteractionModel;
+    m_isNewViewportInteractionModelEnabled = gSettings.newViewportInteractionModel;
 
     m_pErrorReport = new CErrorReport;
     m_pFileNameResolver = new CMissingAssetResolver;
@@ -410,22 +413,31 @@ void CEditorImpl::UnloadPlugins(bool shuttingDown/* = false*/)
     QCoreApplication::sendPostedEvents(Q_NULLPTR, QEvent::DeferredDelete);
 
     GetPluginManager()->ReleaseAllPlugins();
+
+#ifdef DEPRECATED_QML_SUPPORT
     m_QtApplication->UninitializeQML(); // destroy QML first since it will hang onto memory inside the DLLs
+#endif // #ifdef DEPRECATED_QML_SUPPORT
+
     GetPluginManager()->UnloadAllPlugins();
 
     if (!shuttingDown)
     {
+#ifdef DEPRECATED_QML_SUPPORT
         // since we mean to continue, so need to bring QML back up again in case someone needs it.
         m_QtApplication->InitializeQML();
+#endif // #ifdef DEPRECATED_QML_SUPPORT
     }
 }
 
 void CEditorImpl::LoadPlugins()
 {
     CryAutoLock<CryMutex> lock(m_pluginMutex);
+
+#ifdef DEPRECATED_QML_SUPPORT
     // plugins require QML, so make sure its present:
 
     m_QtApplication->InitializeQML();
+#endif // #ifdef DEPRECATED_QML_SUPPORT
 
     static const char* editor_plugins_folder = "EditorPlugins";
 
@@ -435,8 +447,11 @@ void CEditorImpl::LoadPlugins()
     EBUS_EVENT_RESULT(engineRoot, AzToolsFramework::ToolsApplicationRequestBus, GetEngineRootPath);
     if (engineRoot != nullptr)
     {
+        AZStd::string_view binFolderName;
+        AZ::ComponentApplicationBus::BroadcastResult(binFolderName, &AZ::ComponentApplicationRequests::GetBinFolder);
+
         QDir testDir;
-        testDir.setPath(QString("%1/" BINFOLDER_NAME).arg(engineRoot));
+        testDir.setPath(QString("%1/%2").arg(engineRoot, binFolderName.data()));
         if (testDir.exists() && testDir.cd(QString(editor_plugins_folder)))
         {
             editorPluginPathStr = testDir.absolutePath();
@@ -455,6 +470,7 @@ void CEditorImpl::LoadPlugins()
     InitMetrics();
 }
 
+#ifdef DEPRECATED_QML_SUPPORT
 QQmlEngine* CEditorImpl::GetQMLEngine() const
 {
     if (!m_QtApplication)
@@ -472,6 +488,7 @@ QQmlEngine* CEditorImpl::GetQMLEngine() const
 
     return pEngine;
 }
+#endif // #ifdef DEPRECATED_QML_SUPPORT
 
 CEditorImpl::~CEditorImpl()
 {
@@ -558,9 +575,12 @@ void CEditorImpl::SetMasterCDFolder()
     QString szFolder = qApp->applicationDirPath();
 
     // Remove Bin32/Bin64 folder/
+    AZStd::string_view binFolderName;
+    AZ::ComponentApplicationBus::BroadcastResult(binFolderName, &AZ::ComponentApplicationRequests::GetBinFolder);
+
     szFolder.remove(QRegularExpression(R"((\\|/)Bin32.*)"));
 
-    szFolder.remove(QRegularExpression(QStringLiteral("(\\\\|/)%1.*").arg(QRegularExpression::escape(BINFOLDER_NAME))));
+    szFolder.remove(QRegularExpression(QStringLiteral("(\\\\|/)%1.*").arg(QRegularExpression::escape(binFolderName.data()))));
 
 
     m_masterCDFolder = QDir::toNativeSeparators(szFolder);
@@ -589,6 +609,7 @@ void CEditorImpl::SetGameEngine(CGameEngine* ge)
 
     m_templateRegistry.LoadTemplates("Editor");
     m_pObjectManager->LoadClassTemplates("Editor");
+    m_pObjectManager->RegisterCVars();
 
     m_pMaterialManager->Set3DEngine();
     m_pAnimationContext->Init();
@@ -613,7 +634,7 @@ void CEditorImpl::RegisterTools()
     CModellingModeTool::RegisterTool(rc);
     CVertexSnappingModeTool::RegisterTool(rc);
     CRotateTool::RegisterTool(rc);
-    ManipulatorShim::RegisterTool(rc);
+    NullEditTool::RegisterTool(rc);
 }
 
 void CEditorImpl::ExecuteCommand(const char* sCommand, ...)
@@ -1129,6 +1150,11 @@ void CEditorImpl::SetEditTool(const QString& sEditToolName, bool bStopCurrentToo
 
 CEditTool* CEditorImpl::GetEditTool()
 {
+    if (m_isNewViewportInteractionModelEnabled)
+    {
+        return nullptr;
+    }
+    
     return m_pEditTool;
 }
 
@@ -1390,10 +1416,14 @@ CViewManager* CEditorImpl::GetViewManager()
 
 CViewport* CEditorImpl::GetActiveView()
 {
-    CLayoutViewPane* viewPane = MainWindow::instance()->GetActiveView();
-    if (viewPane)
+    MainWindow* mainWindow = MainWindow::instance();
+    if (mainWindow)
     {
-        return qobject_cast<QtViewport*>(viewPane->GetViewport());
+        CLayoutViewPane* viewPane = mainWindow->GetActiveView();
+        if (viewPane)
+        {
+            return qobject_cast<QtViewport*>(viewPane->GetViewport());
+        }
     }
     return nullptr;
 }
@@ -1812,7 +1842,9 @@ void CEditorImpl::InitMetrics()
 
     AWSNativeSDKInit::InitializationManager::InitAwsApi();
     const bool metricsInitAwsApi = false;
-    LyMetrics_Initialize("Editor.exe", 2, metricsInitAwsApi, projectId.data(), statusFilePath);
+
+    // LY_METRICS_BUILD_TIME is defined by the build system
+    LyMetrics_Initialize("Editor.exe", 2, metricsInitAwsApi, projectId.data(), statusFilePath, LY_METRICS_BUILD_TIME);
 }
 
 void CEditorImpl::DetectVersion()
@@ -2053,6 +2085,17 @@ bool CEditorImpl::ClearLastUndoSteps(int steps)
     }
 
     m_pUndoManager->ClearUndoStack(steps);
+    return true;
+}
+
+bool CEditorImpl::ClearRedoStack()
+{
+    if (!m_pUndoManager || !m_pUndoManager->IsHaveRedo())
+    {
+        return false;
+    }
+
+    m_pUndoManager->ClearRedoStack();
     return true;
 }
 
@@ -2505,6 +2548,11 @@ void CEditorImpl::SetLegacyUIEnabled(bool enabled)
     m_isLegacyUIEnabled = enabled;
 }
 
+bool CEditorImpl::IsNewViewportInteractionModelEnabled() const
+{
+    return m_isNewViewportInteractionModelEnabled;
+}
+
 void CEditorImpl::OnStartPlayInEditor()
 {
     if (SelectionContainsComponentEntities())
@@ -2516,7 +2564,7 @@ void CEditorImpl::OnStartPlayInEditor()
 
 void CEditorImpl::InitializeCrashLog()
 {
-    LyMetrics_InitializeCurrentProcessStatus(m_crashLogFileName);
+    LyMetrics_InitializeCurrentProcessStatus(m_crashLogFileName, LY_METRICS_BUILD_TIME);
 
 #if defined(WIN32) || defined(WIN64)
     if (::IsDebuggerPresent())

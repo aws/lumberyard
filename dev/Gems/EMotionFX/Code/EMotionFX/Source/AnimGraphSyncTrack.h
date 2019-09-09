@@ -14,53 +14,80 @@
 
 // include the required headers
 #include "EMotionFXConfig.h"
-#include <MCore/Source/Array.h>
+#include "MotionEventTrack.h"
+#include <AzCore/std/containers/vector.h>
+
+
+namespace AZ
+{
+    class ReflectContext;
+}
 
 
 namespace EMotionFX
 {
-    // forward declarations
-    class MotionEventTrack;
-
     /**
      *
      *
      */
     class EMFX_API AnimGraphSyncTrack
+        : public MotionEventTrack
     {
-        MCORE_MEMORYOBJECTCATEGORY(AnimGraphSyncTrack, EMFX_DEFAULT_ALIGNMENT, EMFX_MEMCATEGORY_ANIMGRAPH_SYNCTRACK);
-
     public:
-        struct EMFX_API Event
-        {
-            uint32      mID;        /**< The event type ID. */
-            uint32      mMirrorID;  /**< The mirror ID. */
-            float       mTime;      /**< The time in seconds, at which this event happens. */
-        };
+        AZ_RTTI(AnimGraphSyncTrack, "{5C49D549-4A2D-42A9-BB16-564BEA63C4B1}", MotionEventTrack);
+        AZ_CLASS_ALLOCATOR_DECL
 
         AnimGraphSyncTrack();
-        AnimGraphSyncTrack(const AnimGraphSyncTrack& track);
-        ~AnimGraphSyncTrack();
+        AnimGraphSyncTrack(Motion* motion);
+        AnimGraphSyncTrack(const char* name, Motion* motion);
+        AnimGraphSyncTrack(const AnimGraphSyncTrack& other);
+        ~AnimGraphSyncTrack() override;
 
-        void Clear();
-        void InitFromEventTrack(const MotionEventTrack* track);
-        void InitFromEventTrackMirrored(const MotionEventTrack* track);
-        void InitFromSyncTrackMirrored(const AnimGraphSyncTrack& track);
+        AnimGraphSyncTrack& operator=(const AnimGraphSyncTrack& other);
 
-        bool FindEventIndices(float timeInSeconds, uint32* outIndexA, uint32* outIndexB) const;
-        bool FindMatchingEvents(uint32 syncIndex, uint32 firstEventID, uint32 secondEventID, uint32* outIndexA, uint32* outIndexB, bool forward) const;
-        float CalcSegmentLength(uint32 indexA, uint32 indexB) const;
-        bool ExtractOccurrence(uint32 occurrence, uint32 firstEventID, uint32 secondEventID, uint32* outIndexA, uint32* outIndexB) const;
-        uint32 CalcOccurrence(uint32 indexA, uint32 indexB) const;
+        static void Reflect(AZ::ReflectContext* context);
 
-        void SetDuration(float seconds);
-        MCORE_INLINE float GetDuration() const                          { return mDuration; }
+        /**
+        * @brief: Finds the event to the left and right of @p timeInSeconds
+        *
+        * @param[in]  timeInSeconds
+        * @param[out] outIndexA The event whose start time is closest to, but less than, @p timeInSeconds
+        * @param[out] outIndexB The event whose start time is closest to, but greater than, @p timeInSeconds
+        *
+        * @return: bool true iff an event pair was found
+        */
+        bool FindEventIndices(float timeInSeconds, size_t* outIndexA, size_t* outIndexB) const;
 
-        MCORE_INLINE uint32 GetNumEvents() const                        { return mEvents.GetLength(); }
-        MCORE_INLINE const Event& GetEvent(uint32 index) const          { return mEvents[index]; }
+        /**
+        * @brief: Finds the indices of the next event pair
+        *
+        * @param[in]  syncIndex Start the search from this event index
+        * @param[in]  firstEventID The hash of the first event in the pair to search for
+        * @param[in]  secondEventID The hash of the second event in the pair to search for
+        * @param[out] outIndexA The index of the found event matching @p firstEventID
+        * @param[out] outIndexB The index of the found event matching @p secondEventID
+        * @param[in]  forward Direction of the search. True for forward playback, false otherwise
+        * @param[in]  mirror True if the the motion using this event track is mirrored
+        *
+        * @return: bool true iff a valid matching pair of events was found.
+        *
+        * Search for matching event pairs. @p firstEventID and @p secondEventID
+        * represent the hash of a sequential event pair in a different event
+        * track. This method attempts to find a pair of sequential events that
+        * have the same hash value.
+        */
+        bool FindMatchingEvents(size_t syncIndex, size_t firstEventID, size_t secondEventID, size_t* outIndexA, size_t* outIndexB, bool forward, bool mirror) const;
+        float CalcSegmentLength(size_t indexA, size_t indexB) const;
+        bool ExtractOccurrence(size_t occurrence, size_t firstEventID, size_t secondEventID, size_t* outIndexA, size_t* outIndexB, bool mirror) const;
+        size_t CalcOccurrence(size_t indexA, size_t indexB, bool mirror) const;
+
+        float GetDuration() const;
 
     private:
-        MCore::Array<Event> mEvents;        /**< The sync events, sorted on time. */
-        float               mDuration;      /**< The duration of the track. */
+        using EventIterator = decltype(m_events)::const_iterator;
+        bool FindMatchingEvents(EventIterator start, size_t firstEventID, size_t secondEventID, size_t* outIndexA, size_t* outIndexB, bool forward, bool mirror) const;
+
+        bool AreEventsSyncable(const MotionEvent& eventA, const MotionEvent& eventB, bool isMirror) const;
+
     };
 }   // namespace EMotionFX

@@ -22,14 +22,16 @@ public:
     static void Push(UndoStack* stack,
         AZStd::string& undoXml,
         AZStd::string& redoXml,
-        EditorWindow* editorWindow);
+        EditorWindow* editorWindow,
+        const char* commandName);
 
 private:
 
     CommandCanvasPropertiesChange(UndoStack* stack,
         AZStd::string& undoXml,
         AZStd::string& redoXml,
-        EditorWindow* editorWindow);
+        EditorWindow* editorWindow,
+        const char* commandName);
 
     void Recreate(bool isUndo);
 
@@ -39,6 +41,10 @@ private:
     // event that has ALREADY completed the necessary work. We ONLY
     // want to execute redo() on SUBSEQUENT calls.
     bool m_isFirstExecution;
+
+    // If the selection was empty when the command first occured then it should be set to empty on undo/redo
+    // This is so that the use can see the change in the properties pane on undo/redo
+    bool m_selectionWasEmpty;
 
     AZStd::string m_undoXml;
     AZStd::string m_redoXml;

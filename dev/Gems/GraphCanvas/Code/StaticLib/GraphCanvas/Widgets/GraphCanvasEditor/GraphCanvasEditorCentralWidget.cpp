@@ -25,63 +25,47 @@
 
 namespace GraphCanvas
 {
-    ///////////////////////////////////
-    // GraphCanvasEditorCentralWidget
-    ///////////////////////////////////
-    GraphCanvasEditorCentralWidget::GraphCanvasEditorCentralWidget(QWidget* parent)
-        : QWidget(parent)
+    /////////////////////////////////////
+    // GraphCanvasEditorEmptyDockWidget
+    /////////////////////////////////////
+    GraphCanvasEditorEmptyDockWidget::GraphCanvasEditorEmptyDockWidget(QWidget* parent)
+        : QDockWidget(parent)
         , m_ui(new Ui::GraphCanvasEditorCentralWidget())
-        , m_emptyChildrenCount(-1)
     {
         m_ui->setupUi(this);
-
         setAcceptDrops(true);
 
-        m_emptyChildrenCount = children().count();
+        // Because this is the empty visualization. We don't want a title bar.
+        setTitleBarWidget(new QWidget(this));
     }
     
-    GraphCanvasEditorCentralWidget::~GraphCanvasEditorCentralWidget()
+    GraphCanvasEditorEmptyDockWidget::~GraphCanvasEditorEmptyDockWidget()
     {        
     }
         
-    void GraphCanvasEditorCentralWidget::SetDragTargetText(const AZStd::string& dragTargetString)
+    void GraphCanvasEditorEmptyDockWidget::SetDragTargetText(const AZStd::string& dragTargetString)
     {
         m_ui->dropTarget->setText(dragTargetString.c_str());
     }
 
-    void GraphCanvasEditorCentralWidget::RegisterAcceptedMimeType(const QString& mimeType)
+    void GraphCanvasEditorEmptyDockWidget::RegisterAcceptedMimeType(const QString& mimeType)
     {
         m_mimeTypes.emplace_back(mimeType);
     }
     
-    void GraphCanvasEditorCentralWidget::SetEditorId(const EditorId& editorId)
+    void GraphCanvasEditorEmptyDockWidget::SetEditorId(const EditorId& editorId)
     {
         AZ_Warning("GraphCanvas", m_editorId == EditorId() || m_editorId == editorId, "Trying to re-use the same Central widget in two different editors.");
         
         m_editorId = editorId;
     }
     
-    const EditorId& GraphCanvasEditorCentralWidget::GetEditorId() const
+    const EditorId& GraphCanvasEditorEmptyDockWidget::GetEditorId() const
     {
         return m_editorId;
     }
 
-    GraphCanvas::DockWidgetId GraphCanvasEditorCentralWidget::CreateNewEditor()
-    {
-        return CreateEditorDockWidget(GetEditorId())->GetDockWidgetId();
-    }
-
-    void GraphCanvasEditorCentralWidget::childEvent(QChildEvent* event)
-    {
-        QWidget::childEvent(event);
-
-        if (m_emptyChildrenCount > 0)
-        {
-            m_ui->dropTarget->setVisible(children().size() == m_emptyChildrenCount);
-        }
-    }
-
-    void GraphCanvasEditorCentralWidget::dragEnterEvent(QDragEnterEvent* enterEvent)
+    void GraphCanvasEditorEmptyDockWidget::dragEnterEvent(QDragEnterEvent* enterEvent)
     {
         const QMimeData* mimeData = enterEvent->mimeData();
 
@@ -89,12 +73,12 @@ namespace GraphCanvas
         enterEvent->setAccepted(m_allowDrop);
     }
 
-    void GraphCanvasEditorCentralWidget::dragMoveEvent(QDragMoveEvent* moveEvent)
+    void GraphCanvasEditorEmptyDockWidget::dragMoveEvent(QDragMoveEvent* moveEvent)
     {
         moveEvent->setAccepted(m_allowDrop);
     }
 
-    void GraphCanvasEditorCentralWidget::dropEvent(QDropEvent* dropEvent)
+    void GraphCanvasEditorEmptyDockWidget::dropEvent(QDropEvent* dropEvent)
     {
         const QMimeData* mimeData = dropEvent->mimeData();
 
@@ -142,13 +126,8 @@ namespace GraphCanvas
             });
         }
     }
-    
-    EditorDockWidget* GraphCanvasEditorCentralWidget::CreateEditorDockWidget(const EditorId& editorId)
-    {
-        return aznew EditorDockWidget(editorId, this);
-    }
 
-    bool GraphCanvasEditorCentralWidget::AcceptsMimeData(const QMimeData* mimeData) const
+    bool GraphCanvasEditorEmptyDockWidget::AcceptsMimeData(const QMimeData* mimeData) const
     {
         bool retVal = false;
 
@@ -162,6 +141,161 @@ namespace GraphCanvas
         }
 
         return retVal;
+    }
+
+    /////////////////////////////////
+    // AssetEditorCentralDockWindow
+    /////////////////////////////////
+
+    AssetEditorCentralDockWindow::AssetEditorCentralDockWindow(const EditorId& editorId)
+        : QMainWindow()
+        , m_editorId(editorId)
+    {
+        setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+        setAutoFillBackground(true);
+
+        setDockNestingEnabled(false);
+        setTabPosition(Qt::DockWidgetArea::AllDockWidgetAreas, QTabWidget::TabPosition::North);
+
+        m_emptyDockWidget = aznew GraphCanvasEditorEmptyDockWidget(this);
+        addDockWidget(Qt::DockWidgetArea::TopDockWidgetArea, m_emptyDockWidget);
+
+        QObject::connect(qApp, &QApplication::focusChanged, this, &AssetEditorCentralDockWindow::OnFocusChanged);
+    }
+
+    AssetEditorCentralDockWindow::~AssetEditorCentralDockWindow()
+    {
+    }
+
+    GraphCanvasEditorEmptyDockWidget* AssetEditorCentralDockWindow::GetEmptyDockWidget() const
+    {
+        return m_emptyDockWidget;
+    }
+
+    void AssetEditorCentralDockWindow::OnEditorOpened(EditorDockWidget* dockWidget)
+    {
+        QObject::connect(dockWidget, &EditorDockWidget::OnEditorClosed, this, &AssetEditorCentralDockWindow::OnEditorClosed);
+        QObject::connect(dockWidget, &QDockWidget::topLevelChanged, this, &AssetEditorCentralDockWindow::OnEditorDockChanged);
+
+        DockWidgetId activeDockWidgetId;
+        ActiveEditorDockWidgetRequestBus::EventResult(activeDockWidgetId, m_editorId, &ActiveEditorDockWidgetRequests::GetDockWidgetId);
+
+        EditorDockWidget* activeDockWidget = nullptr;
+
+        if (activeDockWidgetId.IsValid())
+        {
+            EditorDockWidgetRequestBus::EventResult(activeDockWidget, activeDockWidgetId, &EditorDockWidgetRequests::AsEditorDockWidget);
+        }
+
+        if (activeDockWidget && !activeDockWidget->isFloating())
+        {
+            tabifyDockWidget(activeDockWidget, dockWidget);
+        }
+        else
+        {
+
+            if (m_emptyDockWidget->isVisible())
+            {
+                addDockWidget(Qt::DockWidgetArea::TopDockWidgetArea, dockWidget);
+            }
+            else
+            {
+                QDockWidget* leftMostDock = nullptr;
+                int minimumPoint = 0;
+
+                for (QDockWidget* testWidget : m_editorDockWidgets)
+                {
+                    if (!testWidget->isFloating())
+                    {
+                        QPoint pos = testWidget->pos();
+
+                        if (leftMostDock == nullptr || pos.x() < minimumPoint)
+                        {
+                            if (pos.x() >= 0)
+                            {
+                                leftMostDock = testWidget;
+                                minimumPoint = pos.x();
+                            }
+                        }
+                    }
+                }
+
+                if (leftMostDock)
+                {
+                    tabifyDockWidget(leftMostDock, dockWidget);
+                }
+                else
+                {
+                    addDockWidget(Qt::DockWidgetArea::TopDockWidgetArea, dockWidget);
+                }
+            }
+        }
+
+        m_editorDockWidgets.insert(dockWidget);
+
+        dockWidget->show();
+        dockWidget->setFocus();
+        dockWidget->raise();
+
+        UpdateCentralWidget();
+    }
+
+    void AssetEditorCentralDockWindow::OnEditorClosed(EditorDockWidget* dockWidget)
+    {
+        m_editorDockWidgets.erase(dockWidget);
+
+        UpdateCentralWidget();
+    }
+
+    void AssetEditorCentralDockWindow::OnEditorDockChanged(bool isDocked)
+    {
+        AZ_UNUSED(isDocked);
+        UpdateCentralWidget();
+    }
+
+    void AssetEditorCentralDockWindow::OnFocusChanged(QWidget* oldFocus, QWidget* newFocus)
+    {
+        if (newFocus != nullptr)
+        {
+            QObject* parent = newFocus;
+            EditorDockWidget* dockWidget = qobject_cast<EditorDockWidget*>(newFocus);
+
+            while (parent != nullptr && dockWidget == nullptr)
+            {
+                parent = parent->parent();
+                dockWidget = qobject_cast<EditorDockWidget*>(parent);
+            }
+
+            if (dockWidget)
+            {
+                dockWidget->SignalActiveEditor();
+            }
+        }
+    }
+
+    void AssetEditorCentralDockWindow::UpdateCentralWidget()
+    {
+        bool isMainWindowEmpty = true;
+
+        for (QDockWidget* dockWidget : m_editorDockWidgets)
+        {
+            if (!dockWidget->isFloating())
+            {
+                isMainWindowEmpty = false;
+                break;
+            }
+        }
+
+        if (isMainWindowEmpty && !m_emptyDockWidget->isVisible())
+        {
+            m_emptyDockWidget->show();
+            setDockOptions((dockOptions() | ForceTabbedDocks));            
+        }
+        else if (!isMainWindowEmpty && m_emptyDockWidget->isVisible())
+        {
+            m_emptyDockWidget->hide();
+            setDockOptions((dockOptions() & ~ForceTabbedDocks));
+        }
     }
     
 #include <StaticLib/GraphCanvas/Widgets/GraphCanvasEditor/GraphCanvasEditorCentralWidget.moc>

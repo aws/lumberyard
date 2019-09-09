@@ -21,7 +21,9 @@ def build(bld):
         vs_filter                   = 'Sandbox/Plugins',
         file_list                   = 'editorassetimporter.waf_files',
         platforms                   = ['win', 'darwin'],
-        configurations              = ['debug', 'debug_test', 'profile', 'profile_test'],
+        configurations              = ['all'],
+        exclude_monolithic          = True,
+        client_only                 = True,
         includes                    = [bld.Path('Code/Tools'),
                                        bld.Path('Code/Framework/AzToolsFramework')],
         pch                         = 'StdAfx.cpp',
@@ -37,6 +39,7 @@ def build(bld):
         uselib                      = ['QT5CORE',
                                        'QT5GUI',
                                        'QT5WIDGETS',
+                                       'QT5NETWORK', # this lib depends on EditorLib, which depends on NewsShared, which depends on Qt5Network
                                        'AWS_CPP_SDK_IDENTITY_METRICS'],
         features                    = ['qt5'],
 

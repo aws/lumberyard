@@ -32,6 +32,8 @@
 
 #include "IPostRenderer.h"
 
+#include <Maestro/Bus/EditorSequenceBus.h>
+
 //////////////////////////////////////////////////////////////////////////
 // Movie Callback.
 //////////////////////////////////////////////////////////////////////////
@@ -196,12 +198,12 @@ void CAnimationContext::NotifyTimeChangedListenersUsingCurrTime() const
 }
 
 //////////////////////////////////////////////////////////////////////////
-void CAnimationContext::SetSequence(CTrackViewSequence* pSequence, bool bForce, bool bNoNotify)
+void CAnimationContext::SetSequence(CTrackViewSequence* sequence, bool force, bool noNotify, bool user)
 {
     float newSeqStartTime = .0f;
     CTrackViewSequence* pCurrentSequence = m_pSequence;
 
-    if (!bForce && pSequence == pCurrentSequence)
+    if (!force && sequence == pCurrentSequence)
     {
         return;
     }
@@ -211,9 +213,9 @@ void CAnimationContext::SetSequence(CTrackViewSequence* pSequence, bool bForce, 
     m_recording = false;
     SetRecordingInternal(false);
 
-    if (pSequence)
+    if (sequence)
     {
-        newSeqStartTime = pSequence->GetTimeRange().start;
+        newSeqStartTime = sequence->GetTimeRange().start;
     }
 
     m_currTime = newSeqStartTime;
@@ -242,7 +244,10 @@ void CAnimationContext::SetSequence(CTrackViewSequence* pSequence, bool bForce, 
 
         m_pSequence->UnBindFromEditorObjects();
     }
-    m_pSequence = pSequence;
+    m_pSequence = sequence;
+    
+    // Notify a new sequence was just selected.
+    Maestro::EditorSequenceNotificationBus::Broadcast(&Maestro::EditorSequenceNotificationBus::Events::OnSequenceSelected, m_pSequence ? m_pSequence->GetSequenceComponentEntityId() : AZ::EntityId());
 
     if (m_pSequence)
     {
@@ -262,10 +267,17 @@ void CAnimationContext::SetSequence(CTrackViewSequence* pSequence, bool bForce, 
 
         m_pSequence->BindToEditorObjects();
     }
+    else if (user)
+    {
+        // If this was a sequence that was selected by the user in Track View
+        // and it was "No Sequence" clear the m_mostRecentSequenceId so the sequence
+        // will not be reselected at unwanted events like a slice reload or an undo operation.
+        m_mostRecentSequenceId.SetInvalid();
+    }
 
     ForceAnimation();
 
-    if (!bNoNotify)
+    if (!noNotify)
     {
         NotifyTimeChangedListenersUsingCurrTime();
         for (size_t i = 0; i < m_contextListeners.size(); ++i)
@@ -611,24 +623,12 @@ void CAnimationContext::SetAutoRecording(bool bEnable, float fTimeStep)
     {
         m_bAutoRecording = true;
         m_fRecordingTimeStep = fTimeStep;
-
-        // Enables physics/ai if legacy sequence. Don't enable for Component Entity Sequences because Editor position/rotation gizmos would disappear
-        if (m_pSequence && m_pSequence->GetSequenceType() == SequenceType::Legacy)
-        {
-            GetIEditor()->GetGameEngine()->SetSimulationMode(true);
-        }
         SetRecording(bEnable);
     }
     else
     {
         m_bAutoRecording = false;
         m_fRecordingTimeStep = 0;
-
-        // Disables physics/ai mode (enabled only for Legacy sequences)
-        if (m_pSequence && m_pSequence->GetSequenceType() == SequenceType::Legacy)
-        {
-            GetIEditor()->GetGameEngine()->SetSimulationMode(false);
-        }
     }
 }
 
@@ -670,8 +670,8 @@ void CAnimationContext::OnPostRender()
         ac.dt = 0;
         ac.fps = GetIEditor()->GetSystem()->GetITimer()->GetFrameRate();
         ac.time = m_currTime;
-        ac.bSingleFrame = true;
-        ac.bForcePlay = true;
+        ac.singleFrame = true;
+        ac.forcePlay = true;
         m_pSequence->Render(ac);
     }
 }
@@ -800,9 +800,6 @@ void CAnimationContext::OnEditorNotifyEvent(EEditorNotifyEvent event)
     case eNotify_OnEndLoad:
         SetRecordingInternal(m_bSavedRecordingState);
         break;
-
-    case eNotify_CameraChanged:
-        ForceAnimation();
     }
 }
 
@@ -826,8 +823,8 @@ void CAnimationContext::AnimateActiveSequence()
     ac.dt = 0;
     ac.fps = GetIEditor()->GetSystem()->GetITimer()->GetFrameRate();
     ac.time = m_currTime;
-    ac.bSingleFrame = true;
-    ac.bForcePlay = true;
+    ac.singleFrame = true;
+    ac.forcePlay = true;
 
     CViewport* pViewport = GetIEditor()->GetActiveView();
     if (CRenderViewport* pRenderViewport = viewport_cast<CRenderViewport*>(pViewport))

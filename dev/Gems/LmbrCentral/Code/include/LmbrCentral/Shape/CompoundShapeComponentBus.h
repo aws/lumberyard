@@ -19,8 +19,11 @@
 namespace LmbrCentral
 {
     /**
-     * Configuration data for CompoundShapeConfiguration
-     */
+    * Type ID for the EditorCompoundShapeComponent
+    */
+    static const AZ::Uuid EditorCompoundShapeComponentTypeId = "{837AA0DF-9C14-4311-8410-E7983E1F4B8D}";
+
+    /// Configuration data for CompoundShapeConfiguration
     class CompoundShapeConfiguration
     {
     public:
@@ -57,20 +60,28 @@ namespace LmbrCentral
         AZStd::list<AZ::EntityId> m_childEntities;
     };
 
-    /**
-     * Services provided by the Compound Shape Component
-     */
+    /// Services provided by the Compound Shape Component
     class CompoundShapeComponentRequests : public AZ::ComponentBus
     {
     public:
         virtual CompoundShapeConfiguration GetCompoundShapeConfiguration() = 0;
-
-        // This method returns whether or not any entity referenced in the shape component (traversing the enitre reference tree through compound shape components) has a reference to the passed
-        // in entity id.  This is needed to detect circular references
-        virtual bool HasShapeComponentReferencingEntityId(const AZ::EntityId& /*entityId*/) { return false; }
     };
 
     // Bus to service the Compound Shape component event group
     using CompoundShapeComponentRequestsBus = AZ::EBus<CompoundShapeComponentRequests>;
+
+    /// Services provided by the Compound Shape Component hierarchy tests
+    class CompoundShapeComponentHierarchyRequests : public AZ::ComponentBus
+    {
+    public:
+        // This method returns whether or not any entity referenced in the shape component (traversing the enitre reference tree through compound shape components) has a reference to the passed
+        // in entity id.  This is needed to detect circular references
+        virtual bool HasChildId(const AZ::EntityId& /*entityId*/) { return false; }
+
+        virtual bool ValidateChildIds() { return true; }
+    };
+
+    // Bus to service the Compound Shape component hierarchy tests
+    using CompoundShapeComponentHierarchyRequestsBus = AZ::EBus<CompoundShapeComponentHierarchyRequests>;
 
 } // namespace LmbrCentral

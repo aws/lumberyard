@@ -414,6 +414,37 @@ namespace UnitTest
         myclass_member_list.clear();
     }
 
+    TEST(IntrusiveListContainers, IntrusiveListRemoveWhileIterating)
+    {
+        typedef intrusive_list<MyListClass, list_base_hook<MyListClass> > myclass_base_list_type;
+
+        // A static array of MyClass, init with default ctor. Used as source for some of the tests.
+        array<MyListClass, 20> myclassArray;
+        myclass_base_list_type      myclass_base_list;
+
+        FillArray(myclassArray);
+
+        myclass_base_list.assign(myclassArray.begin(), myclassArray.end());
+
+        // remove
+        myclass_base_list.assign(myclassArray.begin(), myclassArray.end());
+        myclass_base_list_type::const_iterator it = myclass_base_list.begin();
+        while (it != myclass_base_list.end())
+        {
+            myclass_base_list.erase(it++);
+        }
+        AZ_TEST_ASSERT(myclass_base_list.empty());
+
+        // repopulate and remove in reverse order
+        myclass_base_list.assign(myclassArray.begin(), myclassArray.end());
+        myclass_base_list_type::const_reverse_iterator rit = myclass_base_list.rbegin();
+        while (rit != myclass_base_list.rend())
+        {
+            myclass_base_list.erase(*(rit++));
+        }
+        AZ_TEST_ASSERT(myclass_base_list.empty());
+    }
+
     TEST(IntrusiveListContainers, IntrusiveListMerge)
     {
         typedef intrusive_list<MyListClass, list_base_hook<MyListClass> > myclass_base_list_type;

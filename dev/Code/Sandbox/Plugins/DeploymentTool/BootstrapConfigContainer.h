@@ -14,49 +14,25 @@
 
 #include "ConfigFileContainer.h"
 
+enum class PlatformOptions : unsigned char; 
+
 // interface to read/modify bootstrap.cfg
-class BootstrapConfigContainer : private ConfigFileContainer
+class BootstrapConfigContainer
+    : public ConfigFileContainer
 {
 public:
     BootstrapConfigContainer();
-    BootstrapConfigContainer(const BootstrapConfigContainer& rhs) = delete;
-    BootstrapConfigContainer& operator=(const BootstrapConfigContainer& rhs) = delete;
-    BootstrapConfigContainer& operator=(BootstrapConfigContainer&& rhs) = delete;
     ~BootstrapConfigContainer();
 
-    using ConfigFileContainer::ReadContents;
-    using ConfigFileContainer::WriteContents;
+    StringOutcome ApplyConfiguration(const DeploymentConfig& deploymentConfig) override;
 
-    StringOutcome ConfigureForVFSUsage(const AZStd::string& remoteIpAddress, const AZStd::string& remoteIpPort);
-    StringOutcome Reset();
-
+    AZStd::string GetHostAssetsType() const;
+    AZStd::string GetAssetsTypeForPlatform(PlatformOptions platform) const;
     AZStd::string GetGameFolder() const;
-    bool GetRemoteFileSystem() const;
     AZStd::string GetRemoteIP() const;
-    AZStd::string GetRemotePort() const;
-    bool GetConnectToRemote() const;
-    bool GetWaitForConnect() const;
-    bool GetAndroidConnectToRemote() const;
 
-    AZStd::string GetRemoteIPIncludingComments() const;
-    AZStd::string GetRemotePortIncludingComments() const;
-
-    void SetGameFolder(const AZStd::string& gameFolder);
-    void SetRemoteFileSystem(bool remoteFileSystem);
-    void SetRemoteIP(const AZStd::string& newIp);
-    void SetRemotePort(const AZStd::string& newPort);
-    void SetConnectToRemote(bool connectToRemote);
-    void SetWaitForConnect(bool waitForConnect);
-    void SetAndroidConnectToRemote(bool androidConnectToRemote);
 
 private:
-    static const char* s_localFilePath;
-    static const char* s_gameFolderKey;
-    static const char* s_remoteFileSystemKey;
-    static const char* s_remoteIPKey;
-    static const char* s_remotePortKey;
-    static const char* s_connectToRemoteKey;
-    static const char* s_waitForConnectKey;
-    static const char* s_androidConnectToRemoteKey;
+    AZ_DISABLE_COPY_MOVE(BootstrapConfigContainer);
 };
 

@@ -97,7 +97,7 @@ def handler(event, context):
     props = properties.load(event, _schema)
     definitions_src = event['ResourceProperties']['Definitions']
     lambda_client = aws_utils.ClientWrapper(boto3.client("lambda", aws_utils.get_region_from_stack_arn(stack_arn)))
-    lambda_arns = []
+    created_or_updated_lambdas = {}
     lambda_roles = []
 
     # Build the file key as "<root directory>/<project stack>/<deployment stack>/<resource_stack>/<resource_name>.json"
@@ -107,26 +107,33 @@ def handler(event, context):
     resource_file_key = aws_utils.s3_key_join(*path_components)
     path_info = resource_type_info.ResourceTypesPathInfo(resource_file_key)
 
-    # Load information from the JSON file if it exists
-    if event_type != 'Create':
+    # Load information from the JSON file if it exists.
+    # (It will exist on a Create event if the resource was previously deleted and recreated.)
+    try:
         contents = s3_client.get_object(Bucket=configuration_bucket, Key=resource_file_key)['Body'].read()
         existing_info = json.loads(contents)
-    else:
-        existing_info = None
+        definitions_dictionary = existing_info['Definitions']
+        existing_lambdas = existing_info['Lambdas']
+        if isinstance(existing_lambdas, dict):
+            lambda_dictionary = existing_lambdas
+        else:
+            # Backwards compatibility
+            lambda_dictionary = {}
+            existing_lambdas = set([x.split(":")[6] for x in existing_lambdas])  # Convert arn to function name
+    except ClientError as e:
+        error_code = e.response['Error']['Code']
+        if error_code == 'NoSuchKey':
+            definitions_dictionary = {}
+            existing_lambdas = {}
+            lambda_dictionary = {}
+        else:
+            raise e
 
     # Process the actual event
     if event_type == 'Delete':
-        _delete_resources(existing_info['Lambdas'], existing_info['Roles'], lambda_client)
-        custom_resource_response.succeed(event, context, {}, existing_info['Id'])
+        deleted_entries = set(definitions_dictionary.keys())
 
     else:
-        existing_roles = set()
-        existing_lambdas = set()
-
-        if event_type == 'Update':
-            existing_roles = set([arn.split(":")[-1] for arn in existing_info['Roles']])
-            existing_lambdas = set([arn.split(":")[-1] for arn in existing_info['Lambdas']])
-
         definitions = props.Definitions
         lambda_config_src = event['ResourceProperties'].get('LambdaConfiguration', None)
 
@@ -134,8 +141,9 @@ def handler(event, context):
         lambdas_to_create = []
 
         for resource_type_name in definitions_src.keys():
-            type_info = resource_type_info.ResourceTypeInfo(stack_arn, source_resource_name, resource_type_name,
-                                                            definitions_src[resource_type_name])
+            type_info = resource_type_info.ResourceTypeInfo(
+                stack_arn, source_resource_name, resource_type_name, lambda_dictionary, False,
+                definitions_src[resource_type_name])
             function_infos = [type_info.arn_function, type_info.handler_function]
 
             for function_info, field, tag, description in zip(function_infos, _lambda_fields, _lambda_tags,
@@ -164,7 +172,6 @@ def handler(event, context):
                 except ClientError as e:
                     if e.response["Error"]["Code"] != 'EntityAlreadyExists':
                         raise e
-                    existing_roles.discard(role_name)
                     res = iam_client.get_role(RoleName=role_name)
                     role_arn = res['Role']['Arn']
 
@@ -192,25 +199,26 @@ def handler(event, context):
 
         for info in lambdas_to_create:
             # Create the lambda function
-            arn = _create_or_update_lambda_function(
+            arn, version = _create_or_update_lambda_function(
                 lambda_client=lambda_client,
                 timeout=props.LambdaTimeout,
                 lambda_config_src=lambda_config_src,
                 info=info,
                 existing_lambdas=existing_lambdas
             )
-            lambda_arns.append(arn)
+            created_or_updated_lambdas[info['lambda_function_name']] = {'arn': arn, 'v': version}
 
-        # For Update operations, delete any lambdas and roles that previously existed and now no longer do.
-        _delete_resources(existing_lambdas, existing_roles, lambda_client)
+        deleted_entries = set(definitions_dictionary.keys()) - set(definitions_src.keys())
 
     physical_resource_id = "-".join(path_components[1:])
+    lambda_dictionary.update(created_or_updated_lambdas)
+    definitions_dictionary.update(definitions_src)
     config_info = {
         'StackId': stack_arn,
         'Id': physical_resource_id,
-        'Lambdas': lambda_arns,
-        'Roles': lambda_roles,
-        'Definitions': definitions_src
+        'Lambdas': lambda_dictionary,
+        'Definitions': definitions_dictionary,
+        'Deleted': list(deleted_entries)
     }
     data = {
         'ConfigBucket': configuration_bucket,
@@ -218,7 +226,7 @@ def handler(event, context):
     }
 
     # Copy the resource definitions to the configuration bucket.
-    s3_client.put_object(Bucket=configuration_bucket, Key=resource_file_key, Body=json.dumps(config_info))
+    s3_client.put_object(Bucket=configuration_bucket, Key=resource_file_key, Body=json.dumps(config_info, indent=2))
     custom_resource_response.succeed(event, context, data, physical_resource_id)
 
 
@@ -233,11 +241,10 @@ def _create_or_update_lambda_function(lambda_client, timeout, lambda_config_src,
 
     if lambda_name in existing_lambdas:
         # Just update the function code if it already exists
-        existing_lambdas.remove(lambda_name)
         src_config = lambda_config['Code']
         src_config['FunctionName'] = lambda_name
+        src_config['Publish'] = True
         result = lambda_client.update_function_code(**src_config)
-        arn = result.get('FunctionArn', None)
 
     else:
         # Create the new lambda
@@ -247,23 +254,17 @@ def _create_or_update_lambda_function(lambda_client, timeout, lambda_config_src,
                 'Role': info['role_arn'],
                 'Handler': info['handler'],
                 'Timeout': timeout,
-                'Description': info['description'] % type_info.resource_type_name
+                'Description': info['description'] % type_info.resource_type_name,
+                'Publish': True
             }
         )
         result = lambda_client.create_function(**lambda_config)
-        arn = result.get('FunctionArn', None)
 
-    if arn is None:
+    arn = result.get('FunctionArn', None)
+    version = result.get('Version', None)
+
+    if arn is None or version is None:
         raise RuntimeError("Unable to create the lambda for type '%s' in resource '%s'" % (
             type_info.resource_type_name, type_info.source_resource_name))
 
-    return arn
-
-
-def _delete_resources(lambdas, roles, lambda_client):
-    for lambda_id in lambdas:
-        lambda_client.delete_function(FunctionName=lambda_id)
-
-    for role_id in roles:
-        iam_client.delete_role_policy(RoleName=role_id, PolicyName=_inline_policy_name)
-        iam_client.delete_role(RoleName=role_id)
+    return arn, version

@@ -123,18 +123,10 @@ void CEntityLayer::Enable(bool isEnable, bool isSerialized /*=true*/, bool bAllo
     // Wait for the physics thread to avoid massive amounts of ChangeRequest queuing
     gEnv->pSystem->SetThreadState(ESubsys_Physics, false);
 
-#ifdef ENABLE_PROFILING_CODE
-    bool bChanged = (m_isEnabledBrush != isEnable) || (m_isEnabled != isEnable);
-    float fStartTime = gEnv->pTimer->GetAsyncCurTime();
-#endif //ENABLE_PROFILING_CODE
-
     if (isEnable && IsSkippedBySpec())
     {
         return;
     }
-
-    MEMSTAT_LABEL_FMT("Layer '%s' %s", m_name.c_str(), (isEnable ? "Activating" : "Deactivating"));
-    MEMSTAT_CONTEXT_FMT(EMemStatContextTypes::MSC_Entity, 0, "Layer '%s' %s", m_name.c_str(), (isEnable ? "Activating" : "Deactivating"));
 
     if (isEnable)
     {
@@ -171,26 +163,11 @@ void CEntityLayer::Enable(bool isEnable, bool isSerialized /*=true*/, bool bAllo
 
     m_isSerialized = isSerialized;
 
-#ifdef ENABLE_PROFILING_CODE
-    if (CVar::es_LayerDebugInfo == 5 && bChanged)
-    {
-        float fTimeMS = (gEnv->pTimer->GetAsyncCurTime() - fStartTime) * 1000.0f;
-        CEntitySystem::SLayerProfile layerProfile;
-        layerProfile.pLayer = this;
-        layerProfile.fTimeOn = gEnv->pTimer->GetCurrTime();
-        layerProfile.isEnable = isEnable;
-        layerProfile.fTimeMS = fTimeMS;
-        g_pIEntitySystem->m_layerProfiles.insert(g_pIEntitySystem->m_layerProfiles.begin(), layerProfile);
-    }
-#endif //ENABLE_PROFILING_CODE
-
     if (m_pHeap && m_pHeap->Cleanup())
     {
         m_pHeap->Release();
         m_pHeap = NULL;
     }
-
-    MEMSTAT_LABEL_FMT("Layer '%s' %s", m_name.c_str(), (isEnable ? "Activated" : "Deactivated"));
 }
 
 

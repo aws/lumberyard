@@ -46,6 +46,7 @@ namespace AzToolsFramework
 
     signals:
         void valueChanged(double newValue);
+        void editingFinished();
 
     public slots:
         void setValue(double val);
@@ -66,7 +67,8 @@ namespace AzToolsFramework
         double m_multiplier;
 
     protected:
-        virtual void focusInEvent(QFocusEvent* e);
+        void focusInEvent(QFocusEvent* e) override;
+        void focusOutEvent(QFocusEvent* e) override;
     };
 
     template <class ValueType>

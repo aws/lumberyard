@@ -19,11 +19,12 @@
 
 namespace EMotionFX
 {
+    // Handler to pick paramaters and get input/outputs in a node affected. The node has to implement IParameterPickerRule
     class AnimGraphParameterMaskHandler
         : public QObject
         , public AzToolsFramework::PropertyHandler<AZStd::vector<AZStd::string>, AnimGraphParameterPicker>
     {
-        Q_OBJECT
+        Q_OBJECT // AUTOMOC
 
     public:
         AZ_CLASS_ALLOCATOR_DECL
@@ -38,11 +39,7 @@ namespace EMotionFX
         void WriteGUIValuesIntoProperty(size_t index, AnimGraphParameterPicker* GUI, property_t& instance, AzToolsFramework::InstanceDataNode* node) override;
         bool ReadValuesIntoGUI(size_t index, AnimGraphParameterPicker* GUI, const property_t& instance, AzToolsFramework::InstanceDataNode* node) override;
 
-    private slots:
-        void FireParameterMaskChangedEvent();
-
     protected:
-        AZStd::vector<AZStd::string> m_temp;
-        BlendTreeParameterNode*  m_parameterNode;
+        ObjectAffectedByParameterChanges* m_object;
     };
 } // namespace EMotionFX

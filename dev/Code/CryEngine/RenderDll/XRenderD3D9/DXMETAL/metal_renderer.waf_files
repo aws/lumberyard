@@ -175,6 +175,12 @@
             "../PostProcessWater.cpp",
             "../PostProcessSnow.cpp"
         ],
+        "Source Files/RTT":
+        [
+            "../RTT/RTTContext.cpp",
+            "../RTT/RTTContextManager.cpp",
+            "../RTT/RTTSwappableRenderTarget.cpp"
+        ],
         "Header Files":
         [
             "../D3D_SVO.h",
@@ -198,6 +204,7 @@
             "../DeviceInfo.h",
             "../DriverD3D.h",
             "../GPUTimer.h",
+            "../GPUTimerFactory.h",
             "../NullD3D11Device.h",
             "../PipelineProfiler.h",
             "../resource.h",
@@ -205,6 +212,13 @@
             "../StatoscopeRenderStats.h",
             "../DeviceInfo.inl",
             "../MultiLayerAlphaBlendPass.h"
+        ],
+        "Header Files/RTT":
+        [
+            "../RTT/RTTContext.h",
+            "../RTT/RTTContextManager.h",
+            "../RTT/RTTSwappableRenderTarget.h",
+            "../RTT/RTTSwappableCVar.h"
         ],
         "Common":
         [
@@ -264,6 +278,7 @@
         [
             "../../Common/Shaders/Parser.cpp",
             "../../Common/Shaders/ParserBin.cpp",
+            "../../Common/Shaders/PoundPoundParser.cpp",
             "../../Common/Shaders/RemoteCompiler.cpp",
             "../../Common/Shaders/ShaderCache.cpp",
             "../../Common/Shaders/ShaderComponents.cpp",
@@ -278,6 +293,7 @@
             "../../Common/Shaders/CShaderBin.h",
             "../../Common/Shaders/Parser.h",
             "../../Common/Shaders/ParserBin.h",
+            "../../Common/Shaders/PoundPoundParser.h",
             "../../Common/Shaders/RemoteCompiler.h",
             "../../Common/Shaders/Shader.h",
             "../../Common/Shaders/ShaderCache.h",

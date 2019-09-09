@@ -30,7 +30,7 @@ namespace DynamicContent
         QAbstractTableModel(parent),
         m_checkBoxIcon("Editor/Icons/checkmark_checked.png")
     {
-        m_pathToAssets = gEnv->pFileIO->GetAlias("@assets@");
+        m_pathToAssets = AZ::IO::FileIOBase::GetInstance()->GetAlias("@assets@");
     }
 
     FileWatcherModel::~FileWatcherModel()
@@ -176,7 +176,7 @@ namespace DynamicContent
 
     QString FileWatcherModel::FullFilePath(const ManifestFile file)
     {
-        AZStd::string fullPathToAssets = gEnv->pFileIO->GetAlias("@assets@");
+        AZStd::string fullPathToAssets = AZ::IO::FileIOBase::GetInstance()->GetAlias("@assets@");
         QString fullPath = fullPathToAssets.c_str();
         fullPath.replace("\\", "/");
 

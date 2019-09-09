@@ -66,3 +66,26 @@ int CTerrainNode::GetSecIndex()
     int nSectorsTableSize = CTerrain::GetSectorsTableSize() >> m_nTreeLevel;
     return (m_nOriginX / nSectorSize) * nSectorsTableSize + (m_nOriginY / nSectorSize);
 }
+
+void CTerrainNode::GetMaterials(AZStd::vector<_smart_ptr<IMaterial>>& materials)
+{
+    const int projectionAxisCount = 3;
+    const uint8 projectionAxis[projectionAxisCount] = { 'X', 'Y', 'Z' };
+
+    for (int i = 0; i < m_DetailLayers.Count(); i++)
+    {
+        if (!m_DetailLayers[i].surfaceType || !m_DetailLayers[i].surfaceType->HasMaterial() || !m_DetailLayers[i].HasRM())
+        {
+            continue;
+        }
+
+        for (int p = 0; p < projectionAxisCount; p++)
+        {
+            _smart_ptr<IMaterial> pMat = m_DetailLayers[i].surfaceType->GetMaterialOfProjection(projectionAxis[p]);
+            if (pMat)
+            {
+                materials.push_back(pMat);
+            }
+        }
+    }
+}

@@ -25,6 +25,7 @@
 #include <QDateTime>
 #include <QLabel>
 #include <QTimer>
+#include <QHeaderView>
 
 namespace AZ
 {

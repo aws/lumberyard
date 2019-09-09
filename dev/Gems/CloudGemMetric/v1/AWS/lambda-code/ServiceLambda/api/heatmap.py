@@ -20,8 +20,15 @@ from cgf_utils import custom_resource_response
 
 # Get a specific heatmap
 @service.api
-def get(request, heatmapid):
+def get(request, id):
     db = DynamoDb()
+    result = db.get_key("heatmaps")
+    if result and len(result['Items']) > 0:
+        for item in result['Items']:
+            for heatmap in item['value']:
+                if heatmap['id'] == id:
+                    return heatmap
+    return None
 
 # List existing heatmaps
 @service.api
@@ -82,6 +89,13 @@ def delete(request, id):
     return db.set("heatmaps", heatmapArr)
 
 def cli(context, args):
+    from resource_manager_common import constant
+    credentials = context.aws.load_credentials()
+
     resources = util.get_resources(context)
     os.environ[c.ENV_REGION] = context.config.project_region
     os.environ[c.ENV_DB_TABLE_CONTEXT] = resources[c.RES_DB_TABLE_CONTEXT]
+    os.environ["AWS_ACCESS_KEY"] = credentials.get(
+        args.profile if args.profile else context.config.user_default_profile, constant.ACCESS_KEY_OPTION)
+    os.environ["AWS_SECRET_KEY"] = credentials.get(
+        args.profile if args.profile else context.config.user_default_profile, constant.SECRET_KEY_OPTION)

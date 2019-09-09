@@ -22,7 +22,6 @@
 #include "Prefabs/PrefabEvents.h"
 #include <AzCore/EBus/EBus.h>
 
-#include <AzCore/EBus/EBus.h>
 #include <MathConversion.h>
 #include <AzCore/Component/Entity.h>
 #include <AzCore/Component/ComponentApplicationBus.h>

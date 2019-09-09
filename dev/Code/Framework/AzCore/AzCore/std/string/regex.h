@@ -22,7 +22,11 @@
 #include <AzCore/Memory/SystemAllocator.h>
 
 #if defined(AZ_RESTRICTED_PLATFORM)
-#include AZ_RESTRICTED_FILE(regex_h, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/regex_h_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/regex_h_provo.inl"
+    #endif
 #elif  defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_ANDROID) || defined(AZ_PLATFORM_APPLE)
 #   include <limits.h>
 #   include <limits>
@@ -1347,6 +1351,8 @@ namespace AZStd
         typedef AZ_REGEX_DIFFT (ForwardIterator) DiffType;
 
         Builder(const RegExTraits& traits, regex_constants::syntax_option_type);
+        ~Builder();
+
         bool BeginExpression() const;
         void SetLong();
         void DiscardPattern();
@@ -2627,6 +2633,16 @@ namespace AZStd
         , m_bitmapArrayMax(flags & regex_constants::collate ? 0 : BITMAP_ARRAY_THRESHOLD)
     {
     }
+
+    template<class ForwardIterator, class Element, class RegExTraits>
+    inline Builder<ForwardIterator, Element, RegExTraits>::~Builder()
+    {
+        if (m_root && m_root->m_refs == 0)
+        {
+            DestroyNode(m_root);
+        }
+    }
+
 
     template<class ForwardIterator, class Element, class RegExTraits>
     inline void Builder<ForwardIterator, Element, RegExTraits>::SetLong()

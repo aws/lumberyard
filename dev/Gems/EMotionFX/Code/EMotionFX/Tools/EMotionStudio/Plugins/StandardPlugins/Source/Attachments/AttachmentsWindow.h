@@ -62,6 +62,7 @@ namespace EMStudio
 
         EMotionFX::ActorInstance* GetSelectedAttachment();
         AZStd::string GetSelectedNodeName();
+
     protected:
         void dropEvent(QDropEvent* event) override;
         void dragEnterEvent(QDragEnterEvent* event) override;
@@ -79,7 +80,6 @@ namespace EMStudio
         void OnDroppedAttachmentsActors();
         void OnDroppedDeformableActors();
         void OnVisibilityChanged(int visibility);
-        void OnFastUpdatesChanged(int fastUpdates);
         void OnAttachmentNodesSelected(MCore::Array<SelectionItem> selection);
         void OnCancelAttachmentNodeSelection();
         void OnEscapeButtonPressed();

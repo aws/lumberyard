@@ -38,7 +38,6 @@
 #include <AzCore/Script/ScriptSystemComponent.h>
 #include <AzCore/Asset/AssetManager.h>
 #include <AzCore/Asset/AssetManagerComponent.h>
-#include <AzCore/RTTI/AzStdReflectionComponent.h>
 
 namespace UnitTest
 {
@@ -59,6 +58,9 @@ namespace UnitTest
 
     int g_globalValue = 501;
     int g_globalData = 0;
+    int g_globalTestClassesConstructed = 0;
+    int g_globalTestClassesDestructed = 0;
+
     GlobalClassEnum globalClassEnumValue = GlobalClassEnum::Value3;
 
     int globalPropertyGetter()
@@ -134,6 +136,16 @@ namespace UnitTest
             , m_dataReadOnly(3)
         {
             g_globalData = 1020;
+            g_globalTestClassesConstructed++;
+        }
+
+        BehaviorTestClass(const BehaviorTestClass& other)
+            : m_data(other.m_data)
+            , m_data1(other.m_data1)
+            , m_dataReadOnly(other.m_dataReadOnly)
+        {
+            g_globalData = 1025;
+            g_globalTestClassesConstructed++;
         }
 
         BehaviorTestClass(int data)
@@ -142,11 +154,13 @@ namespace UnitTest
             , m_dataReadOnly(4)
         {
             g_globalData = 1030;
+            g_globalTestClassesConstructed++;
         }
 
         virtual ~BehaviorTestClass()
         {
             g_globalData = 1040;
+            g_globalTestClassesDestructed++;
         }
 
         enum MyEnum
@@ -298,6 +312,8 @@ namespace UnitTest
         virtual AZStd::string OnEventWithDefaultValueAndStringResult(AZStd::string_view view1, AZStd::string_view) { return AZStd::string::format("Default Value: %s", view1.data()); }
 
         virtual void OnEventConst() const {};
+
+        virtual BehaviorTestClass OnEventResultWithBehaviorClassParameter(BehaviorTestClass data) { return BehaviorTestClass(); };
     };
 
     typedef AZ::EBus<BehaviorTestBusEvents> BehaviorTestBus;
@@ -314,6 +330,7 @@ namespace UnitTest
             , OnEventWithStringResult
             , OnEventWithClassResult
             , OnEventWithDefaultValueAndStringResult
+            , OnEventResultWithBehaviorClassParameter
         );
         
         // User code
@@ -363,6 +380,13 @@ namespace UnitTest
         AZStd::string OnEventWithDefaultValueAndStringResult(AZStd::string_view view1, AZStd::string_view view2) override
         {
             return BehaviorTestBus::Handler::OnEventWithDefaultValueAndStringResult(view1, view2);
+        }
+
+
+        BehaviorTestClass OnEventResultWithBehaviorClassParameter(BehaviorTestClass data) override
+        {
+            BehaviorTestClass result = data;
+            return result;
         }
     };
 
@@ -664,6 +688,8 @@ namespace UnitTest
             // EBus
             const AZStd::string_view defaultStringViewValue = "DEFAULT!!!!";
             AZStd::string expectedDefaultValueAndStringResult = AZStd::string::format("Default Value: %s", defaultStringViewValue.data());
+            BehaviorDefaultValuePtr defaultStringViewBehaviorValue = aznew BehaviorDefaultValue(defaultStringViewValue);
+            BehaviorDefaultValuePtr superDefaultStringViewBehaviorValue = aznew BehaviorDefaultValue(AZStd::string_view("SUPER DEFAULT!!!!"));
 
             behaviorContext.EBus<BehaviorTestBus>("TestBus")
                     ->Attribute("EBusAttr", 40)
@@ -675,9 +701,10 @@ namespace UnitTest
                 ->Event("OnEventWithResultContainer", &BehaviorTestBus::Events::OnEventWithResultContainer)
                 ->Event("OnEventWithClassEnumResult", &BehaviorTestBus::Events::OnEventWithClassEnumResult)
                 ->Event("OnEventWithStringResult", &BehaviorTestBus::Events::OnEventWithStringResult)
+                ->Event("OnEventResultWithBehaviorClassParameter", &BehaviorTestBus::Events::OnEventResultWithBehaviorClassParameter)
                 ->Event("OnEventWithDefaultValueAndStringResult", &BehaviorTestBus::Events::OnEventWithDefaultValueAndStringResult,
-                { {{"view1", "string_view without string trait", aznew BehaviorDefaultValue(defaultStringViewValue), AZ::BehaviorParameter::TR_NONE, AZ::BehaviorParameter::TR_STRING},
-                    {"view2", "string_view with string trait", aznew BehaviorDefaultValue(AZStd::string_view("SUPER DEFAULT!!!!"))}} }) // Remove string trait from parameter
+                { {{"view1", "string_view without string trait", defaultStringViewBehaviorValue, AZ::BehaviorParameter::TR_NONE, AZ::BehaviorParameter::TR_STRING},
+                    {"view2", "string_view with string trait", superDefaultStringViewBehaviorValue}} }) // Remove string trait from parameter
                 ->Event("OnEventConst", &BehaviorTestBus::Events::OnEventConst)
                 ;
 
@@ -1073,30 +1100,52 @@ namespace UnitTest
                 sc.Execute("globalMethodSetClassEnum(result2)");
                 AZ_TEST_ASSERT(globalClassEnumValue == GlobalClassEnum::Value1);
 
+                // collect garbage before running next test so any destructors get called
+                sc.Execute(R"LUA(
+                    collectgarbage()
+                )LUA");
+
+                g_globalTestClassesConstructed = 0;
+                g_globalTestClassesDestructed = 0;
+
+                // test whether the behavior parameters that are passed by value have their
+                // constructors/destructors called equally
+                sc.Execute(R"LUA(
+                    local behaviorParameter = BehaviorTestClass();
+                    local result = TestBus.Broadcast.OnEventResultWithBehaviorClassParameter(behaviorParameter);
+                    behaviorParameter = nil;
+                    result = nil;
+                    collectgarbage();
+                )LUA");
+
+                AZ_TEST_ASSERT(g_globalTestClassesConstructed > 0);
+                AZ_TEST_ASSERT(g_globalTestClassesDestructed > 0);
+                AZ_TEST_ASSERT(g_globalTestClassesConstructed == g_globalTestClassesDestructed);
+
                 myTestBusHandler1.BusDisconnect();
                 myTestBusHandler2.BusDisconnect();
                 //////////////////////////////////////////////////////////////////////////
 
                 // create handler
                 sc.Execute(R"LUA(
-testBusHandler = {}
-function testBusHandler:OnEvent(data)
-    globalProperty = data
-    globalProperty = TestBus.GetCurrentBusId()
-end
-function testBusHandler:OnEventWithClassEnumResult()
-    return BehaviorGlobalClassEnumWrapper.VALUE2
-end
-function testBusHandler:OnEventWithStringResult()
-    return 'success';
-end
-function testBusHandler:OnEventWithClassResult()
-    local result = BehaviorTestClass(100);
-    result.data = 100;
-    return result;
-end
-testBusHandler = TestBus.Connect(testBusHandler,1)
-)LUA");
+                    testBusHandler = {}
+                    function testBusHandler:OnEvent(data)
+                        globalProperty = data
+                        globalProperty = TestBus.GetCurrentBusId()
+                    end
+                    function testBusHandler:OnEventWithClassEnumResult()
+                        return BehaviorGlobalClassEnumWrapper.VALUE2
+                    end
+                    function testBusHandler:OnEventWithStringResult()
+                        return 'success';
+                    end
+                    function testBusHandler:OnEventWithClassResult()
+                        local result = BehaviorTestClass(100);
+                        result.data = 100;
+                        return result;
+                    end
+                    testBusHandler = TestBus.Connect(testBusHandler,1)
+                )LUA");
 
                 // check if we can handle event 
                 BehaviorTestBus::Broadcast(&BehaviorTestBus::Events::OnEvent, 101);
@@ -3638,6 +3687,143 @@ namespace UnitTest
         run();
     }
 
+    // RamenRequests 
+    class RamenRequests
+        : public AZ::EBusTraits
+    {
+    public:
+        typedef unsigned int BusIdType;
+        static const AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::Single;
+        static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::ById;
+
+        virtual void AddPepper() = 0;
+    };
+    using RamenRequestBus = AZ::EBus<RamenRequests>;
+
+    class RamenRequestHandler
+        : public RamenRequestBus::Handler
+    {
+    public:
+        void AddPepper() override {  };
+    };
+
+    class RamenRequestBehaviorHandler
+        : public RamenRequestBus::Handler
+        , public BehaviorEBusHandler
+    {
+    public:
+        AZ_EBUS_BEHAVIOR_BINDER(RamenRequestBehaviorHandler, "{EB4E043B-AD1A-4745-A725-91100E191517}", AZ::SystemAllocator, AddPepper);
+
+        void AddPepper() override 
+        {  
+            Call(FN_AddPepper);
+        }
+    };
+    // RamenRequests 
+
+    // RamenShopNotifications
+    class RamenShopNotifications
+        : public AZ::EBusTraits
+    {
+    public:
+        typedef unsigned int BusIdType;
+        static const AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::Single;
+        static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::ById;
+
+        virtual void OnOrderCancelled(int id) = 0;
+    };
+    using RamenShopNotificationBus = AZ::EBus<RamenShopNotifications>;
+
+    class RamenShopNotificationHandler
+        : public RamenShopNotificationBus::MultiHandler
+    {
+    public:
+        void OnOrderCancelled(int /*id*/) override {};
+    };
+
+    class RamenShopNotificationBehaviorHandler
+        : public RamenShopNotificationBus::MultiHandler
+        , public BehaviorEBusHandler
+    {
+    public:
+        AZ_EBUS_BEHAVIOR_BINDER(RamenShopNotificationBehaviorHandler, "{98A0C1B1-0B81-4563-886A-03204DDBE146}", AZ::SystemAllocator, OnOrderCancelled);
+
+        void OnOrderCancelled(int id) override 
+        {
+            Call(FN_OnOrderCancelled, id);
+        }
+    };
+    // RamenShopNotifications
+
+    class ScriptBehaviorHandlerIsConnectedTest
+        : public AllocatorsFixture
+    {
+    public:
+        static void TestAssert(bool check)
+        {
+            AZ_Assert(check, "Script Test assert");
+        }
+
+        void SetUp() override
+        {
+            AllocatorsFixture::SetUp();
+
+            m_behaviorContext = aznew BehaviorContext();
+            m_behaviorContext->Method("TestAssert", &ScriptBehaviorHandlerIsConnectedTest::TestAssert);
+
+            m_behaviorContext->EBus<RamenRequestBus>("RamenRequestBus")->
+                Handler<RamenRequestBehaviorHandler>()->
+                    Event("AddPepper", &RamenRequestBus::Events::AddPepper);
+
+            m_behaviorContext->EBus<RamenShopNotificationBus>("RamenShopNotificationBus")->
+                Handler<RamenShopNotificationBehaviorHandler>()->
+                    Event("OnOrderCancelled", &RamenShopNotificationBus::Events::OnOrderCancelled);
+
+            m_scriptContext = aznew ScriptContext();
+            m_scriptContext->BindTo(m_behaviorContext);
+
+        }
+
+        void TearDown() override
+        {
+            delete m_scriptContext;
+            delete m_behaviorContext;
+
+            AllocatorsFixture::TearDown();
+        }
+
+        ScriptContext* m_scriptContext;
+        BehaviorContext* m_behaviorContext;
+    };
+
+    TEST_F(ScriptBehaviorHandlerIsConnectedTest, IsConnected_UberTest)
+    {
+            const char luaCode[] = R"(
+ramen = {
+    handler1 = nil,
+    handler2 = nil
+}
+ramen.handler1 = RamenRequestBus.Connect(ramen, 1)
+ramen.handler2 = RamenRequestBus.Connect(ramen, 2)
+
+ramenShop = {
+    handler = nil
+}
+ramenShop.handler = RamenShopNotificationBus.CreateHandler(ramenShop)
+ramenShop.handler:Connect(3);
+ramenShop.handler:Connect(4);
+)";
+        m_scriptContext->Execute(luaCode);
+
+        m_scriptContext->Execute("TestAssert(ramen.handler1:IsConnected())");
+        m_scriptContext->Execute("TestAssert(ramen.handler1:IsConnectedId(1))");
+        m_scriptContext->Execute("TestAssert(ramen.handler2:IsConnectedId(2))");
+
+        m_scriptContext->Execute("TestAssert(ramenShop.handler:IsConnected())");
+        m_scriptContext->Execute("TestAssert(ramenShop.handler:IsConnectedId(3))");
+        m_scriptContext->Execute("TestAssert(ramenShop.handler:IsConnectedId(4))");
+    }
+
     //-----------------------------------------------------------------------------
     // Ebus script with bus id test
     //-----------------------------------------------------------------------------
@@ -3817,7 +4003,6 @@ namespace UnitTest
             s_wasCalled = false;
 
             m_behavior = aznew BehaviorContext();
-            AzStdReflectionComponent::Reflect(m_behavior);
 
             m_behavior->Class<DataContainer>("DataContainer")
                 ->Constructor<int>()
@@ -3844,7 +4029,7 @@ namespace UnitTest
     };
     bool AnyScriptBindTest::s_wasCalled = false;
 
-    TEST_F(AnyScriptBindTest, ScriptContextAny_AnyToLua)
+    TEST_F(AnyScriptBindTest, ScriptContextAny_AnyFromLua)
     {
         m_script->Execute("TestThatDataIs10(DataContainer(10))");
         EXPECT_TRUE(s_wasCalled);

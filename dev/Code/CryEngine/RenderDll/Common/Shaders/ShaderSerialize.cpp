@@ -345,7 +345,7 @@ bool CShaderSerialize::ExportShader(CShader* pSH, CShaderManBin& binShaderMgr)
     {
         SSShaderParam PR;
         SShaderParam& P = params.m_PublicParams[i];
-        PR.m_nameIdx = SC.AddString(P.m_Name);
+        PR.m_nameIdx = SC.AddString(P.m_Name.c_str());
         PR.m_Type = P.m_Type;
         PR.m_Value = P.m_Value;
         PR.m_nScriptOffs = SC.AddString(P.m_Script.c_str());
@@ -493,11 +493,7 @@ bool CShaderSerialize::ExportShader(CShader* pSH, CShaderManBin& binShaderMgr)
     int nLen = Data.Num();
     SDirEntry de;
     char sName[128];
-#if defined(__GNUC__)
-    sprintf_s(sName, "(%llx)", pSH->m_nMaskGenFX);
-#else
-    sprintf_s(sName, "(%I64x)", pSH->m_nMaskGenFX);
-#endif
+    sprintf_s(sName, "(%llx)(%llx)", pSH->m_nMaskGenFX, pSH->m_maskGenStatic);
     de.Name = CCryNameTSCRC(sName);
     de.size = nLen;
 
@@ -530,11 +526,7 @@ bool CShaderSerialize::CheckFXBExists(CShader* pSH)
     }
 
     char sName[128];
-#if defined(__GNUC__)
-    sprintf_s(sName, "(%llx)", pSH->m_nMaskGenFX);
-#else
-    sprintf_s(sName, "(%I64x)", pSH->m_nMaskGenFX);
-#endif
+    sprintf_s(sName, "(%llx)(%llx)", pSH->m_nMaskGenFX, pSH->m_maskGenStatic);
 
     CCryNameTSCRC CName = CCryNameTSCRC(sName);
     SDirEntry* pDE = NULL;
@@ -572,11 +564,7 @@ bool CShaderSerialize::ImportShader(CShader* pSH, CShaderManBin& binShaderMgr)
     uint32 i;
     int j;
     char sName[128];
-#if defined(__GNUC__)
-    sprintf_s(sName, "(%llx)", pSH->m_nMaskGenFX);
-#else
-    sprintf_s(sName, "(%I64x)", pSH->m_nMaskGenFX);
-#endif
+    sprintf_s(sName, "(%llx)(%llx)", pSH->m_nMaskGenFX, pSH->m_maskGenStatic);
     CCryNameTSCRC CName = CCryNameTSCRC(sName);
     SDirEntry* pDE = NULL;
     CResFile* pRes = NULL;
@@ -798,7 +786,7 @@ bool CShaderSerialize::ImportShader(CShader* pSH, CShaderManBin& binShaderMgr)
         SSShaderParam& PR = SC.Params[i];
         SShaderParam P;
         const char* pName = sString(PR.m_nameIdx, SC.Strings);
-        cry_strcpy(P.m_Name, pName);
+        P.m_Name = pName;
         P.m_Type = PR.m_Type;
         P.m_Value = PR.m_Value;
         P.m_Script = sString(PR.m_nScriptOffs, SC.Strings);

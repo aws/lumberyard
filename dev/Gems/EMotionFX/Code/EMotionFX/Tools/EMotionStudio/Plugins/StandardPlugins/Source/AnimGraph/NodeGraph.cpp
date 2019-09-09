@@ -10,295 +10,624 @@
 *
 */
 
-// include the required headers
-#include "NodeGraph.h"
-#include "GraphNode.h"
-#include "NodeConnection.h"
-#include "BlendGraphWidget.h"
-#include "NodeGraphWidget.h"
-#include <MCore/Source/LogManager.h>
-#include <MCore/Source/Vector.h>
+#include <AzQtComponents/Utilities/Conversions.h>
+#include <EMotionFX/Source/AnimGraphNodeGroup.h>
+#include <EMotionFX/Source/AnimGraphReferenceNode.h>
+#include <EMotionFX/Source/AnimGraphStateMachine.h>
+#include <EMotionFX/Source/BlendTreeBlend2Node.h>
+#include <EMotionFX/Source/BlendTreeBlendNNode.h>
+#include <EMotionStudio/Plugins/StandardPlugins/Source/AnimGraph/AnimGraphPlugin.h>
+#include <EMotionStudio/Plugins/StandardPlugins/Source/AnimGraph/BlendTreeVisualNode.h>
+#include <EMotionStudio/Plugins/StandardPlugins/Source/AnimGraph/GraphNode.h>
+#include <EMotionStudio/Plugins/StandardPlugins/Source/AnimGraph/GraphNodeFactory.h>
+#include <EMotionStudio/Plugins/StandardPlugins/Source/AnimGraph/NodeConnection.h>
+#include <EMotionStudio/Plugins/StandardPlugins/Source/AnimGraph/NodeGraph.h>
+#include <EMotionStudio/Plugins/StandardPlugins/Source/AnimGraph/NodeGraphWidget.h>
 
 
 namespace EMStudio
 {
-    // constructor
-    NodeGraph::NodeGraph(NodeGraphWidget* graphWidget)
-        : QObject()
-    {
-        mNodes.SetMemoryCategory(MEMCATEGORY_STANDARDPLUGINS_ANIMGRAPH);
+    float NodeGraph::sLowestScale = 0.15f;
 
+    NodeGraph::NodeGraph(const QModelIndex& modelIndex, NodeGraphWidget* graphWidget)
+        : QObject()
+        , m_graphWidget(graphWidget)
+        , m_currentModelIndex(modelIndex)
+    {
+        QModelIndex parent = m_currentModelIndex;
+        while (parent.isValid())
+        {
+            if (parent.data(AnimGraphModel::ROLE_RTTI_TYPE_ID).value<AZ::TypeId>() == azrtti_typeid<EMotionFX::AnimGraphReferenceNode>())
+            {
+                m_parentReferenceNode = parent;
+                break;
+            }
+            parent = parent.parent();
+        }
+ 
         mErrorBlinkOffset = 0.0f;
-        mUseAnimation   = true;
-        mDashOffset     = 0.0f;
-        mScale          = 1.0f;
-        mScrollOffset   = QPoint(0.0f, 0.0f);
-        mScalePivot     = QPoint(0.0f, 0.0f);
-        mGraphWidget    = graphWidget;
-        mLowestScale    = 0.15f;
-        mMinStepSize    = 1;
-        mMaxStepSize    = 75;
-        mSlowRenderTime = 0.0f;
-        mFastRenderTime = 0.0f;
+        mUseAnimation = true;
+        mDashOffset = 0.0f;
+        mScale = 1.0f;
+        mScrollOffset = QPoint(0.0f, 0.0f);
+        mScalePivot = QPoint(0.0f, 0.0f);
+        mMinStepSize = 1;
+        mMaxStepSize = 75;
         mEntryNode      = nullptr;
-        mRenderNodeGroupsCallback = nullptr;
-        mStartFitHappened = false;
 
         // init connection creation
-        mConPortNr          = MCORE_INVALIDINDEX32;
-        mConIsInputPort     = true;
-        mConNode            = nullptr;  // nullptr when no connection is being created
-        mConPort            = nullptr;
-        mConIsValid         = false;
-        mTargetPort         = nullptr;
-        mRelinkConnection   = nullptr;
+        mConStartOffset = QPoint(0.0f, 0.0f);
+        mConEndOffset = QPoint(0.0f, 0.0f);
+        mConPortNr = MCORE_INVALIDINDEX32;
+        mConIsInputPort = true;
+        mConNode = nullptr;  // nullptr when no connection is being created
+        mConPort = nullptr;
+        mConIsValid = false;
+        mTargetPort = nullptr;
+        mRelinkConnection = nullptr;
         mReplaceTransitionHead = nullptr;
         mReplaceTransitionTail = nullptr;
         mReplaceTransitionSourceNode = nullptr;
         mReplaceTransitionTargetNode = nullptr;
-
+        mReplaceTransitionStartOffset = QPoint(0.0f, 0.0f);
+        mReplaceTransitionEndOffset = QPoint(0.0f, 0.0f);
+        
         // setup scroll interpolator
-        mStartScrollOffset          = QPointF(0.0f, 0.0f);
-        mTargetScrollOffset         = QPointF(0.0f, 0.0f);
+        mStartScrollOffset = QPointF(0.0f, 0.0f);
+        mTargetScrollOffset = QPointF(0.0f, 0.0f);
         mScrollTimer.setSingleShot(false);
-        connect(&mScrollTimer, SIGNAL(timeout()), this, SLOT(UpdateAnimatedScrollOffset()));
+        connect(&mScrollTimer, &QTimer::timeout, this, &NodeGraph::UpdateAnimatedScrollOffset);
 
         // setup scale interpolator
-        mStartScale                 = 1.0f;
-        mTargetScale                = 1.0f;
+        mStartScale = 1.0f;
+        mTargetScale = 1.0f;
         mScaleTimer.setSingleShot(false);
-        connect(&mScaleTimer, SIGNAL(timeout()), this, SLOT(UpdateAnimatedScale()));
+        connect(&mScaleTimer, &QTimer::timeout, this, &NodeGraph::UpdateAnimatedScale);
+
+        mReplaceTransitionValid = false;
+
+        // Overlay
+        mFont.setPixelSize(12);
+        mTextOptions.setAlignment(Qt::AlignCenter);
+        mFontMetrics = new QFontMetrics(mFont);
+
+        // Group nodes
+        m_groupFont.setPixelSize(18);
+        m_groupFontMetrics = new QFontMetrics(mFont);
     }
 
 
     // destructor
     NodeGraph::~NodeGraph()
     {
-        RemoveAllNodes();
+        m_graphNodeByModelIndex.clear();
+
+        delete mFontMetrics;
     }
 
-
-    // add a node to the graph
-    void NodeGraph::AddNode(GraphNode* node)
+    AZStd::vector<GraphNode*> NodeGraph::GetSelectedGraphNodes() const
     {
-    #ifdef MCORE_DEBUG
-        // check if the node with the given node id already is part of the graph
-        const uint32 numNodes = mNodes.GetLength();
-        for (uint32 i = 0; i < numNodes; ++i)
+        AZStd::vector<GraphNode*> nodes;
+        for (const GraphNodeByModelIndex::value_type& indexAndGraphNode : m_graphNodeByModelIndex)
         {
-            if (mNodes[i]->GetId() == node->GetId())
+            GraphNode* graphNode = indexAndGraphNode.second.get();
+            if (graphNode->GetIsSelected())
             {
-                // this should never happen!
-                MCORE_ASSERT(false);
-                delete node;
-                //MCore::LogInfo( "Node '%s' has already been added the graph", node->GetName() );
-                return;
+                nodes.emplace_back(graphNode);
             }
         }
-    #endif
-
-        //MCore::LogInfo( "#### Adding node '%s' to graph '%s'", node->GetName(), "???" );
-        mNodes.Add(node);
-        node->SetParentGraph(this);
+        return nodes;
     }
 
-
-    // remove all nodes
-    void NodeGraph::RemoveAllNodes()
+    AZStd::vector<EMotionFX::AnimGraphNode*> NodeGraph::GetSelectedAnimGraphNodes() const
     {
-        const uint32 numNodes = mNodes.GetLength();
-        for (uint32 i = 0; i < numNodes; ++i)
+        AZStd::vector<EMotionFX::AnimGraphNode*> result;
+        for (const GraphNodeByModelIndex::value_type& indexAndGraphNode : m_graphNodeByModelIndex)
         {
-            delete mNodes[i];
+            GraphNode* graphNode = indexAndGraphNode.second.get();
+            if (graphNode->GetIsSelected())
+            {
+                result.push_back(graphNode->GetModelIndex().data(AnimGraphModel::ROLE_NODE_POINTER).value<EMotionFX::AnimGraphNode*>());
+            }
         }
-
-        mNodes.Clear();
+        return result;
     }
 
-
-    // check if a rect intersects this smoothed line
-    bool NodeGraph::RectIntersectsSmoothedLine(const QRect& rect, int32 x1, int32 y1, int32 x2, int32 y2)
+    AZStd::vector<NodeConnection*> NodeGraph::GetSelectedNodeConnections() const
     {
-        if (x2 >= x1)
+        AZStd::vector<NodeConnection*> connections;
+        for (const GraphNodeByModelIndex::value_type& indexAndGraphNode : m_graphNodeByModelIndex)
         {
-            // find the min and max points
-            int32 minX, maxX, startY, endY;
-            if (x1 <= x2)
+            GraphNode* graphNode = indexAndGraphNode.second.get();
+            
+            // get the number of connections and iterate through them
+            const uint32 numConnections = graphNode->GetNumConnections();
+            for (uint32 c = 0; c < numConnections; ++c)
             {
-                minX    = x1;
-                maxX    = x2;
-                startY  = y1;
-                endY    = y2;
-            }
-            else
-            {
-                minX    = x2;
-                maxX    = x1;
-                startY  = y2;
-                endY    = y1;
-            }
-
-            // draw the lines
-            int32 lastX = minX;
-            int32 lastY = startY;
-
-            if (minX != maxX)
-            {
-                for (int32 x = minX; x <= maxX; x++)
+                NodeConnection* connection = graphNode->GetConnection(c);
+                if (connection->GetIsSelected())
                 {
-                    const float t = MCore::CalcCosineInterpolationWeight((x - minX) / (float)(maxX - minX)); // calculate the smooth interpolated value
-                    const int32 y = startY + (endY - startY) * t; // calculate the y coordinate
-                    if (LineIntersectsRect(rect, lastX, lastY, x, y))
-                    {
-                        return true;
-                    }
-                    lastX = x;
-                    lastY = y;
+                    connections.emplace_back(connection);
                 }
             }
-            else // special case where there is just one line up
-            {
-                return LineIntersectsRect(rect, x1, y1, x2, y2);
-            }
         }
-        else
-        {
-            // find the min and max points
-            int32 minY, maxY, startX, endX;
-            if (y1 <= y2)
-            {
-                minY    = y1;
-                maxY    = y2;
-                startX  = x1;
-                endX    = x2;
-            }
-            else
-            {
-                minY    = y2;
-                maxY    = y1;
-                startX  = x2;
-                endX    = x1;
-            }
-
-            // draw the lines
-            int32 lastY = minY;
-            int32 lastX = startX;
-
-            if (minY != maxY)
-            {
-                for (int32 y = minY; y <= maxY; y++)
-                {
-                    const float t = MCore::CalcCosineInterpolationWeight((y - minY) / (float)(maxY - minY)); // calculate the smooth interpolated value
-                    const int32 x = startX + (endX - startX) * t; // calculate the y coordinate
-                    if (LineIntersectsRect(rect, lastX, lastY, x, y))
-                    {
-                        return true;
-                    }
-                    lastX = x;
-                    lastY = y;
-                }
-            }
-            else // special case where there is just one line up
-            {
-                return LineIntersectsRect(rect, x1, y1, x2, y2);
-            }
-        }
-
-        return false;
+        return connections;
     }
 
 
-    // check if a point is close to a given smoothed line
-    bool NodeGraph::PointCloseToSmoothedLine(int32 x1, int32 y1, int32 x2, int32 y2, int32 px, int32 py)
+    //    // check if a rect intersects this smoothed line
+    //    bool NodeGraph::RectIntersectsSmoothedLine(const QRect& rect, int32 x1, int32 y1, int32 x2, int32 y2)
+    //    {
+    //        if (x2 >= x1)
+    //        {
+    //            // find the min and max points
+    //            int32 minX, maxX, startY, endY;
+    //            if (x1 <= x2)
+    //            {
+    //                minX    = x1;
+    //                maxX    = x2;
+    //                startY  = y1;
+    //                endY    = y2;
+    //            }
+    //            else
+    //            {
+    //                minX    = x2;
+    //                maxX    = x1;
+    //                startY  = y2;
+    //                endY    = y1;
+    //            }
+    //
+    //            // draw the lines
+    //            int32 lastX = minX;
+    //            int32 lastY = startY;
+    //
+    //            if (minX != maxX)
+    //            {
+    //                for (int32 x = minX; x <= maxX; x++)
+    //                {
+    //                    const float t = MCore::CalcCosineInterpolationWeight((x - minX) / (float)(maxX - minX)); // calculate the smooth interpolated value
+    //                    const int32 y = startY + (endY - startY) * t; // calculate the y coordinate
+    //                    if (LineIntersectsRect(rect, lastX, lastY, x, y))
+    //                    {
+    //                        return true;
+    //                    }
+    //                    lastX = x;
+    //                    lastY = y;
+    //                }
+    //            }
+    //            else // special case where there is just one line up
+    //            {
+    //                return LineIntersectsRect(rect, x1, y1, x2, y2);
+    //            }
+    //        }
+    //        else
+    //        {
+    //            // find the min and max points
+    //            int32 minY, maxY, startX, endX;
+    //            if (y1 <= y2)
+    //            {
+    //                minY    = y1;
+    //                maxY    = y2;
+    //                startX  = x1;
+    //                endX    = x2;
+    //            }
+    //            else
+    //            {
+    //                minY    = y2;
+    //                maxY    = y1;
+    //                startX  = x2;
+    //                endX    = x1;
+    //            }
+    //
+    //            // draw the lines
+    //            int32 lastY = minY;
+    //            int32 lastX = startX;
+    //
+    //            if (minY != maxY)
+    //            {
+    //                for (int32 y = minY; y <= maxY; y++)
+    //                {
+    //                    const float t = MCore::CalcCosineInterpolationWeight((y - minY) / (float)(maxY - minY)); // calculate the smooth interpolated value
+    //                    const int32 x = startX + (endX - startX) * t; // calculate the y coordinate
+    //                    if (LineIntersectsRect(rect, lastX, lastY, x, y))
+    //                    {
+    //                        return true;
+    //                    }
+    //                    lastX = x;
+    //                    lastY = y;
+    //                }
+    //            }
+    //            else // special case where there is just one line up
+    //            {
+    //                return LineIntersectsRect(rect, x1, y1, x2, y2);
+    //            }
+    //        }
+    //
+    //        return false;
+    //    }
+    //
+    //
+    //    // check if a point is close to a given smoothed line
+    //    bool NodeGraph::PointCloseToSmoothedLine(int32 x1, int32 y1, int32 x2, int32 y2, int32 px, int32 py)
+    //    {
+    //        if (x2 >= x1)
+    //        {
+    //            // find the min and max points
+    //            int32 minX, maxX, startY, endY;
+    //            if (x1 <= x2)
+    //            {
+    //                minX    = x1;
+    //                maxX    = x2;
+    //                startY  = y1;
+    //                endY    = y2;
+    //            }
+    //            else
+    //            {
+    //                minX    = x2;
+    //                maxX    = x1;
+    //                startY  = y2;
+    //                endY    = y1;
+    //            }
+    //
+    //            // draw the lines
+    //            int32 lastX = minX;
+    //            int32 lastY = startY;
+    //
+    //            if (minX != maxX)
+    //            {
+    //                for (int32 x = minX; x <= maxX; x++)
+    //                {
+    //                    const float t = MCore::CalcCosineInterpolationWeight((x - minX) / (float)(maxX - minX)); // calculate the smooth interpolated value
+    //                    const int32 y = startY + (endY - startY) * t; // calculate the y coordinate
+    //                    if (DistanceToLine(lastX, lastY, x, y, px, py) <= 5.0f)
+    //                    {
+    //                        return true;
+    //                    }
+    //                    lastX = x;
+    //                    lastY = y;
+    //                }
+    //            }
+    //            else // special case where there is just one line up
+    //            {
+    //                return (DistanceToLine(x1, y1, x2, y2, px, py) <= 5.0f);
+    //            }
+    //        }
+    //        else
+    //        {
+    //            // find the min and max points
+    //            int32 minY, maxY, startX, endX;
+    //            if (y1 <= y2)
+    //            {
+    //                minY    = y1;
+    //                maxY    = y2;
+    //                startX  = x1;
+    //                endX    = x2;
+    //            }
+    //            else
+    //            {
+    //                minY    = y2;
+    //                maxY    = y1;
+    //                startX  = x2;
+    //                endX    = x1;
+    //            }
+    //
+    //            // draw the lines
+    //            int32 lastY = minY;
+    //            int32 lastX = startX;
+    //
+    //            if (minY != maxY)
+    //            {
+    //                for (int32 y = minY; y <= maxY; y++)
+    //                {
+    //                    const float t = MCore::CalcCosineInterpolationWeight((y - minY) / (float)(maxY - minY)); // calculate the smooth interpolated value
+    //                    const int32 x = startX + (endX - startX) * t; // calculate the y coordinate
+    //                    if (DistanceToLine(lastX, lastY, x, y, px, py) <= 5.0f)
+    //                    {
+    //                        return true;
+    //                    }
+    //                    lastX = x;
+    //                    lastY = y;
+    //                }
+    //            }
+    //            else // special case where there is just one line up
+    //            {
+    //                return (DistanceToLine(x1, y1, x2, y2, px, py) <= 5.0f);
+    //            }
+    //        }
+    //
+    //        return false;
+    //    }
+
+
+    void NodeGraph::DrawOverlay(QPainter& painter)
     {
-        if (x2 >= x1)
+        EMotionFX::AnimGraphInstance* animGraphInstance = m_currentModelIndex.data(AnimGraphModel::ROLE_ANIM_GRAPH_INSTANCE).value<EMotionFX::AnimGraphInstance*>();
+        if (!animGraphInstance)
         {
-            // find the min and max points
-            int32 minX, maxX, startY, endY;
-            if (x1 <= x2)
-            {
-                minX    = x1;
-                maxX    = x2;
-                startY  = y1;
-                endY    = y2;
-            }
-            else
-            {
-                minX    = x2;
-                maxX    = x1;
-                startY  = y2;
-                endY    = y1;
-            }
-
-            // draw the lines
-            int32 lastX = minX;
-            int32 lastY = startY;
-
-            if (minX != maxX)
-            {
-                for (int32 x = minX; x <= maxX; x++)
-                {
-                    const float t = MCore::CalcCosineInterpolationWeight((x - minX) / (float)(maxX - minX)); // calculate the smooth interpolated value
-                    const int32 y = startY + (endY - startY) * t; // calculate the y coordinate
-                    if (DistanceToLine(lastX, lastY, x, y, px, py) <= 5.0f)
-                    {
-                        return true;
-                    }
-                    lastX = x;
-                    lastY = y;
-                }
-            }
-            else // special case where there is just one line up
-            {
-                return (DistanceToLine(x1, y1, x2, y2, px, py) <= 5.0f);
-            }
-        }
-        else
-        {
-            // find the min and max points
-            int32 minY, maxY, startX, endX;
-            if (y1 <= y2)
-            {
-                minY    = y1;
-                maxY    = y2;
-                startX  = x1;
-                endX    = x2;
-            }
-            else
-            {
-                minY    = y2;
-                maxY    = y1;
-                startX  = x2;
-                endX    = x1;
-            }
-
-            // draw the lines
-            int32 lastY = minY;
-            int32 lastX = startX;
-
-            if (minY != maxY)
-            {
-                for (int32 y = minY; y <= maxY; y++)
-                {
-                    const float t = MCore::CalcCosineInterpolationWeight((y - minY) / (float)(maxY - minY)); // calculate the smooth interpolated value
-                    const int32 x = startX + (endX - startX) * t; // calculate the y coordinate
-                    if (DistanceToLine(lastX, lastY, x, y, px, py) <= 5.0f)
-                    {
-                        return true;
-                    }
-                    lastX = x;
-                    lastY = y;
-                }
-            }
-            else // special case where there is just one line up
-            {
-                return (DistanceToLine(x1, y1, x2, y2, px, py) <= 5.0f);
-            }
+            return;
         }
 
-        return false;
+        AnimGraphPlugin* plugin = m_graphWidget->GetPlugin();
+        if (plugin->GetDisplayFlags())
+        {
+            // Go through each node
+            for (const GraphNodeByModelIndex::value_type& indexAndGraphNode : m_graphNodeByModelIndex)
+            {
+                GraphNode* graphNode = indexAndGraphNode.second.get();
+                EMotionFX::AnimGraphNode* emfxNode = indexAndGraphNode.first.data(AnimGraphModel::ROLE_NODE_POINTER).value<EMotionFX::AnimGraphNode*>();
+                AZ_Assert(emfxNode, "Expecting a valid emfx node");
+
+                if (!graphNode->GetIsVisible())
+                {
+                    continue;
+                }
+
+                // skip non-processed nodes and nodes that have no output pose
+                if (!emfxNode->GetHasOutputPose() || !graphNode->GetIsProcessed() || graphNode->GetIsHighlighted())
+                {
+                    continue;
+                }
+
+                // get the unique data
+                EMotionFX::AnimGraphNodeData* uniqueData = emfxNode->FindUniqueNodeData(animGraphInstance);
+
+                // draw the background darkened rect
+                uint32 requiredHeight = 5;
+                const uint32 rectWidth = 155;
+                const uint32 heightSpacing = 11;
+                if (plugin->GetIsDisplayFlagEnabled(AnimGraphPlugin::DISPLAYFLAG_PLAYSPEED))
+                {
+                    requiredHeight += heightSpacing;
+                }
+                if (plugin->GetIsDisplayFlagEnabled(AnimGraphPlugin::DISPLAYFLAG_GLOBALWEIGHT))
+                {
+                    requiredHeight += heightSpacing;
+                }
+                if (plugin->GetIsDisplayFlagEnabled(AnimGraphPlugin::DISPLAYFLAG_SYNCSTATUS))
+                {
+                    requiredHeight += heightSpacing;
+                }
+                if (plugin->GetIsDisplayFlagEnabled(AnimGraphPlugin::DISPLAYFLAG_PLAYPOSITION))
+                {
+                    requiredHeight += heightSpacing;
+                }
+                const QRect& nodeRect = graphNode->GetFinalRect();
+                const QRect textRect(nodeRect.center().x() - rectWidth / 2, nodeRect.center().y() - requiredHeight / 2, rectWidth, requiredHeight);
+                const uint32 alpha = (graphNode->GetIsHighlighted()) ? 225 : 175;
+                const QColor backgroundColor(0, 0, 0, alpha);
+                painter.setBrush(backgroundColor);
+                painter.setPen(Qt::black);
+                painter.drawRect(textRect);
+
+                const QColor textColor = graphNode->GetIsHighlighted() ? QColor(0, 255, 0) : QColor(255, 255, 0);
+                painter.setPen(textColor);
+                painter.setFont(mFont);
+
+                QPoint textPosition = textRect.topLeft();
+                textPosition.setX(textPosition.x() + 3);
+                textPosition.setY(textPosition.y() + 11);
+
+                // add the playspeed
+                if (plugin->GetIsDisplayFlagEnabled(AnimGraphPlugin::DISPLAYFLAG_PLAYSPEED))
+                {
+                    mQtTempString.sprintf("Play Speed = %.2f", emfxNode->GetPlaySpeed(animGraphInstance));
+                    painter.drawText(textPosition, mQtTempString);
+                    textPosition.setY(textPosition.y() + heightSpacing);
+                }
+
+                // add the global weight
+                if (plugin->GetIsDisplayFlagEnabled(AnimGraphPlugin::DISPLAYFLAG_GLOBALWEIGHT))
+                {
+                    mQtTempString.sprintf("Global Weight = %.2f", uniqueData->GetGlobalWeight());
+                    painter.drawText(textPosition, mQtTempString);
+                    textPosition.setY(textPosition.y() + heightSpacing);
+                }
+
+                // add the sync
+                if (plugin->GetIsDisplayFlagEnabled(AnimGraphPlugin::DISPLAYFLAG_SYNCSTATUS))
+                {
+                    mQtTempString.sprintf("Synced = %s", animGraphInstance->GetIsSynced(emfxNode->GetObjectIndex()) ? "Yes" : "No");
+                    painter.drawText(textPosition, mQtTempString);
+                    textPosition.setY(textPosition.y() + heightSpacing);
+                }
+
+                // add the play position
+                if (plugin->GetIsDisplayFlagEnabled(AnimGraphPlugin::DISPLAYFLAG_PLAYPOSITION))
+                {
+                    mQtTempString.sprintf("Play Time = %.3f / %.3f", uniqueData->GetCurrentPlayTime(), uniqueData->GetDuration());
+                    painter.drawText(textPosition, mQtTempString);
+                    textPosition.setY(textPosition.y() + heightSpacing);
+                }
+            }
+        }
+
+        if (GetScale() < 0.5f)
+        {
+            return;
+        }
+
+        // get the active graph and the corresponding emfx node and return if they are invalid or in case the opened node is no blend tree
+        EMotionFX::AnimGraphNode* currentNode = m_currentModelIndex.data(AnimGraphModel::ROLE_NODE_POINTER).value<EMotionFX::AnimGraphNode*>();
+        if (azrtti_typeid(currentNode) == azrtti_typeid<EMotionFX::BlendTree>())
+        {
+            // iterate through the nodes
+            for (const GraphNodeByModelIndex::value_type& indexAndGraphNode : m_graphNodeByModelIndex)
+            {
+                GraphNode* graphNode = indexAndGraphNode.second.get();
+
+                // All the connections are stored in the downstream node, so the target node is constant
+                // across all connections
+                GraphNode* targetNode = graphNode;
+                EMotionFX::AnimGraphNode* emfxTargetNode = indexAndGraphNode.first.data(AnimGraphModel::ROLE_NODE_POINTER).value<EMotionFX::AnimGraphNode*>();
+
+                // iterate through all connections connected to this node
+                const uint32 numConnections = graphNode->GetNumConnections();
+                for (uint32 c = 0; c < numConnections; ++c)
+                {
+                    NodeConnection*             visualConnection = graphNode->GetConnection(c);
+
+                    // get the source and target nodes
+                    GraphNode*                  sourceNode = visualConnection->GetSourceNode();
+                    EMotionFX::AnimGraphNode*   emfxSourceNode = sourceNode->GetModelIndex().data(AnimGraphModel::ROLE_NODE_POINTER).value<EMotionFX::AnimGraphNode*>();
+
+                    // only show values for connections that are processed
+                    if (visualConnection->GetIsProcessed() == false)
+                    {
+                        continue;
+                    }
+
+                    const uint32 inputPortNr = visualConnection->GetInputPortNr();
+                    const uint32 outputPortNr = visualConnection->GetOutputPortNr();
+                    MCore::Attribute* attribute = emfxSourceNode->GetOutputValue(animGraphInstance, outputPortNr);
+
+                    // fill the string with data
+                    m_tempStringA.clear();
+                    switch (attribute->GetType())
+                    {
+                        // float attributes
+                    case MCore::AttributeFloat::TYPE_ID:
+                    {
+                        MCore::AttributeFloat* floatAttribute = static_cast<MCore::AttributeFloat*>(attribute);
+                        m_tempStringA = AZStd::string::format("%.2f", floatAttribute->GetValue());
+                        break;
+                    }
+
+                    // vector 2 attributes
+                    case MCore::AttributeVector2::TYPE_ID:
+                    {
+                        MCore::AttributeVector2* vecAttribute = static_cast<MCore::AttributeVector2*>(attribute);
+                        const AZ::Vector2& vec = vecAttribute->GetValue();
+                        m_tempStringA = AZStd::string::format("(%.2f, %.2f)", static_cast<float>(vec.GetX()), static_cast<float>(vec.GetY()));
+                        break;
+                    }
+
+                    // vector 3 attributes
+                    case MCore::AttributeVector3::TYPE_ID:
+                    {
+                        MCore::AttributeVector3* vecAttribute = static_cast<MCore::AttributeVector3*>(attribute);
+                        const AZ::PackedVector3f& vec = vecAttribute->GetValue();
+                        m_tempStringA = AZStd::string::format("(%.2f, %.2f, %.2f)", static_cast<float>(vec.GetX()), static_cast<float>(vec.GetY()), static_cast<float>(vec.GetZ()));
+                        break;
+                    }
+
+                    // vector 4 attributes
+                    case MCore::AttributeVector4::TYPE_ID:
+                    {
+                        MCore::AttributeVector4* vecAttribute = static_cast<MCore::AttributeVector4*>(attribute);
+                        const AZ::Vector4& vec = vecAttribute->GetValue();
+                        m_tempStringA = AZStd::string::format("(%.2f, %.2f, %.2f, %.2f)", static_cast<float>(vec.GetX()), static_cast<float>(vec.GetY()), static_cast<float>(vec.GetZ()), static_cast<float>(vec.GetW()));
+                        break;
+                    }
+
+                    // boolean attributes
+                    case MCore::AttributeBool::TYPE_ID:
+                    {
+                        MCore::AttributeBool* boolAttribute = static_cast<MCore::AttributeBool*>(attribute);
+                        m_tempStringA = AZStd::string::format("%s", AZStd::to_string(boolAttribute->GetValue()).c_str());
+                        break;
+                    }
+
+                    // rotation attributes
+                    case MCore::AttributeQuaternion::TYPE_ID:
+                    {
+                        MCore::AttributeQuaternion* quatAttribute = static_cast<MCore::AttributeQuaternion*>(attribute);
+                        const AZ::Vector3 eulerAngles = quatAttribute->GetValue().ToEuler();
+                        m_tempStringA = AZStd::string::format("(%.2f, %.2f, %.2f)", static_cast<float>(eulerAngles.GetX()), static_cast<float>(eulerAngles.GetY()), static_cast<float>(eulerAngles.GetZ()));
+                        break;
+                    }
+
+
+                    // pose attribute
+                    case EMotionFX::AttributePose::TYPE_ID:
+                    {
+                        // handle blend 2 nodes
+                        if (azrtti_typeid(emfxTargetNode) == azrtti_typeid<EMotionFX::BlendTreeBlend2Node>())
+                        {
+                            // type-cast the target node to our blend node
+                            EMotionFX::BlendTreeBlend2Node* blendNode = static_cast<EMotionFX::BlendTreeBlend2Node*>(emfxTargetNode);
+
+                            // get the weight from the input port
+                            float weight = blendNode->GetInputNumberAsFloat(animGraphInstance, EMotionFX::BlendTreeBlend2Node::INPUTPORT_WEIGHT);
+                            weight = MCore::Clamp<float>(weight, 0.0f, 1.0f);
+
+                            // map the weight to the connection
+                            if (inputPortNr == 0)
+                            {
+                                m_tempStringA = AZStd::string::format("%.2f", 1.0f - weight);
+                            }
+                            else
+                            {
+                                m_tempStringA = AZStd::string::format("%.2f", weight);
+                            }
+                        }
+                        // handle blend N nodes
+                        else if (azrtti_typeid(emfxTargetNode) == azrtti_typeid<EMotionFX::BlendTreeBlendNNode>())
+                        {
+                            // type-cast the target node to our blend node
+                            EMotionFX::BlendTreeBlendNNode* blendNode = static_cast<EMotionFX::BlendTreeBlendNNode*>(emfxTargetNode);
+
+                            // get two nodes that we receive input poses from, and get the blend weight
+                            float weight;
+                            EMotionFX::AnimGraphNode* nodeA;
+                            EMotionFX::AnimGraphNode* nodeB;
+                            uint32 poseIndexA;
+                            uint32 poseIndexB;
+                            blendNode->FindBlendNodes(animGraphInstance, &nodeA, &nodeB, &poseIndexA, &poseIndexB, &weight);
+
+                            // map the weight to the connection
+                            if (inputPortNr == poseIndexA)
+                            {
+                                m_tempStringA = AZStd::string::format("%.2f", 1.0f - weight);
+                            }
+                            else
+                            {
+                                m_tempStringA = AZStd::string::format("%.2f", weight);
+                            }
+                        }
+                        break;
+                    }
+
+                    default:
+                    {
+                        attribute->ConvertToString(m_mcoreTempString);
+                        m_tempStringA = m_mcoreTempString.c_str();
+                    }
+                    }
+
+                    // only display the value in case it is not empty
+                    if (!m_tempStringA.empty())
+                    {
+                        QPoint connectionAttachPoint = visualConnection->CalcFinalRect().center();
+
+                        const int halfTextHeight = 6;
+                        const int textWidth = mFontMetrics->width(m_tempStringA.c_str());
+                        const int halfTextWidth = textWidth / 2;
+
+                        const QRect textRect(connectionAttachPoint.x() - halfTextWidth - 1, connectionAttachPoint.y() - halfTextHeight, textWidth + 4, halfTextHeight * 2);
+                        QPoint textPosition = textRect.bottomLeft();
+                        textPosition.setY(textPosition.y() - 1);
+                        textPosition.setX(textPosition.x() + 2);
+
+                        const QColor backgroundColor(30, 30, 30);
+
+                        // draw the background rect for the text
+                        painter.setBrush(backgroundColor);
+                        painter.setPen(Qt::black);
+                        painter.drawRect(textRect);
+
+                        // draw the text
+                        const QColor& color = visualConnection->GetTargetNode()->GetInputPort(visualConnection->GetInputPortNr())->GetColor();
+                        painter.setPen(color);
+                        painter.setFont(mFont);
+                        // OLD:
+                        //painter.drawText( textPosition, mTempString.c_str() );
+                        // NEW:
+                        GraphNode::RenderText(painter, m_tempStringA.c_str(), color, mFont, *mFontMetrics, Qt::AlignCenter, textRect);
+                    }
+                }
+            }
+        }
     }
-
 
     void NodeGraph::RenderEntryPoint(QPainter& painter, GraphNode* node)
     {
@@ -351,145 +680,145 @@ namespace EMStudio
     }
 
 
-    // draw a smoothed line
-    void NodeGraph::DrawSmoothedLine(QPainter& painter, int32 x1, int32 y1, int32 x2, int32 y2, int32 stepSize, const QRect& visibleRect)
-    {
-        if (x2 >= x1)
-        {
-            // find the min and max points
-            int32 minX, maxX, startY, endY;
-            if (x1 <= x2)
-            {
-                minX    = x1;
-                maxX    = x2;
-                startY  = y1;
-                endY    = y2;
-            }
-            else
-            {
-                minX    = x2;
-                maxX    = x1;
-                startY  = y2;
-                endY    = y1;
-            }
-
-            // draw the lines
-            int32 lastX = minX;
-            int32 lastY = startY;
-
-            int32 realStepSize = stepSize;
-
-            if (minX != maxX)
-            {
-                bool lastInside = true;
-                int32 x = minX;
-                while (x < maxX)
-                {
-                    const float t = MCore::CalcCosineInterpolationWeight((x - minX) / (float)(maxX - minX)); // calculate the smooth interpolated value
-                    const int32 y = startY + (endY - startY) * t; // calculate the y coordinate
-
-                    if (NodeGraph::LineIntersectsRect(visibleRect, lastX, lastY, x, y))
-                    {
-                        painter.drawLine(lastX, lastY, x, y);       // draw the line
-                        lastInside = true;
-                    }
-                    else
-                    {
-                        lastInside = false;
-                    }
-
-                    if (lastInside == false && realStepSize < 40)
-                    {
-                        realStepSize = 40;
-                    }
-                    else
-                    {
-                        realStepSize = stepSize;
-                    }
-
-                    lastX = x;
-                    lastY = y;
-                    x += realStepSize;
-                }
-
-                const float t = MCore::CalcCosineInterpolationWeight(1.0f); // calculate the smooth interpolated value
-                const int32 y = startY + (endY - startY) * t; // calculate the y coordinate
-                painter.drawLine(lastX, lastY, maxX, y);        // draw the line
-            }
-            else // special case where there is just one line up
-            {
-                painter.drawLine(x1, y1, x2, y2);
-            }
-        }
-        else
-        {
-            // find the min and max points
-            int32 minY, maxY, startX, endX;
-            if (y1 <= y2)
-            {
-                minY    = y1;
-                maxY    = y2;
-                startX  = x1;
-                endX    = x2;
-            }
-            else
-            {
-                minY    = y2;
-                maxY    = y1;
-                startX  = x2;
-                endX    = x1;
-            }
-
-            // draw the lines
-            int32 lastY = minY;
-            int32 lastX = startX;
-            int32 realStepSize = stepSize;
-
-            if (minY != maxY)
-            {
-                int32 y = minY;
-                bool lastInside = true;
-                while (y < maxY)
-                {
-                    const float t = MCore::CalcCosineInterpolationWeight((y - minY) / (float)(maxY - minY)); // calculate the smooth interpolated value
-                    const int32 x = startX + (endX - startX) * t; // calculate the y coordinate
-
-                    if (NodeGraph::LineIntersectsRect(visibleRect, lastX, lastY, x, y))
-                    {
-                        painter.drawLine(lastX, lastY, x, y);       // draw the line
-                        lastInside = true;
-                    }
-                    else
-                    {
-                        lastInside = false;
-                    }
-
-                    lastX = x;
-                    lastY = y;
-
-                    if (lastInside == false && realStepSize < 40)
-                    {
-                        realStepSize = 40;
-                    }
-                    else
-                    {
-                        realStepSize = stepSize;
-                    }
-
-                    y += realStepSize;
-                }
-
-                const float t = MCore::CalcCosineInterpolationWeight(1.0f); // calculate the smooth interpolated value
-                const int32 x = startX + (endX - startX) * t; // calculate the y coordinate
-                painter.drawLine(lastX, lastY, x, maxY);        // draw the line
-            }
-            else // special case where there is just one line up
-            {
-                painter.drawLine(x1, y1, x2, y2);
-            }
-        }
-    }
-
+//    // draw a smoothed line
+//    void NodeGraph::DrawSmoothedLine(QPainter& painter, int32 x1, int32 y1, int32 x2, int32 y2, int32 stepSize, const QRect& visibleRect)
+//    {
+//        if (x2 >= x1)
+//        {
+//            // find the min and max points
+//            int32 minX, maxX, startY, endY;
+//            if (x1 <= x2)
+//            {
+//                minX    = x1;
+//                maxX    = x2;
+//                startY  = y1;
+//                endY    = y2;
+//            }
+//            else
+//            {
+//                minX    = x2;
+//                maxX    = x1;
+//                startY  = y2;
+//                endY    = y1;
+//            }
+//
+//            // draw the lines
+//            int32 lastX = minX;
+//            int32 lastY = startY;
+//
+//            int32 realStepSize = stepSize;
+//
+//            if (minX != maxX)
+//            {
+//                bool lastInside = true;
+//                int32 x = minX;
+//                while (x < maxX)
+//                {
+//                    const float t = MCore::CalcCosineInterpolationWeight((x - minX) / (float)(maxX - minX)); // calculate the smooth interpolated value
+//                    const int32 y = startY + (endY - startY) * t; // calculate the y coordinate
+//
+//                    if (NodeGraph::LineIntersectsRect(visibleRect, lastX, lastY, x, y))
+//                    {
+//                        painter.drawLine(lastX, lastY, x, y);       // draw the line
+//                        lastInside = true;
+//                    }
+//                    else
+//                    {
+//                        lastInside = false;
+//                    }
+//
+//                    if (lastInside == false && realStepSize < 40)
+//                    {
+//                        realStepSize = 40;
+//                    }
+//                    else
+//                    {
+//                        realStepSize = stepSize;
+//                    }
+//
+//                    lastX = x;
+//                    lastY = y;
+//                    x += realStepSize;
+//                }
+//
+//                const float t = MCore::CalcCosineInterpolationWeight(1.0f); // calculate the smooth interpolated value
+//                const int32 y = startY + (endY - startY) * t; // calculate the y coordinate
+//                painter.drawLine(lastX, lastY, maxX, y);        // draw the line
+//            }
+//            else // special case where there is just one line up
+//            {
+//                painter.drawLine(x1, y1, x2, y2);
+//            }
+//        }
+//        else
+//        {
+//            // find the min and max points
+//            int32 minY, maxY, startX, endX;
+//            if (y1 <= y2)
+//            {
+//                minY    = y1;
+//                maxY    = y2;
+//                startX  = x1;
+//                endX    = x2;
+//            }
+//            else
+//            {
+//                minY    = y2;
+//                maxY    = y1;
+//                startX  = x2;
+//                endX    = x1;
+//            }
+//
+//            // draw the lines
+//            int32 lastY = minY;
+//            int32 lastX = startX;
+//            int32 realStepSize = stepSize;
+//
+//            if (minY != maxY)
+//            {
+//                int32 y = minY;
+//                bool lastInside = true;
+//                while (y < maxY)
+//                {
+//                    const float t = MCore::CalcCosineInterpolationWeight((y - minY) / (float)(maxY - minY)); // calculate the smooth interpolated value
+//                    const int32 x = startX + (endX - startX) * t; // calculate the y coordinate
+//
+//                    if (NodeGraph::LineIntersectsRect(visibleRect, lastX, lastY, x, y))
+//                    {
+//                        painter.drawLine(lastX, lastY, x, y);       // draw the line
+//                        lastInside = true;
+//                    }
+//                    else
+//                    {
+//                        lastInside = false;
+//                    }
+//
+//                    lastX = x;
+//                    lastY = y;
+//
+//                    if (lastInside == false && realStepSize < 40)
+//                    {
+//                        realStepSize = 40;
+//                    }
+//                    else
+//                    {
+//                        realStepSize = stepSize;
+//                    }
+//
+//                    y += realStepSize;
+//                }
+//
+//                const float t = MCore::CalcCosineInterpolationWeight(1.0f); // calculate the smooth interpolated value
+//                const int32 x = startX + (endX - startX) * t; // calculate the y coordinate
+//                painter.drawLine(lastX, lastY, x, maxY);        // draw the line
+//            }
+//            else // special case where there is just one line up
+//            {
+//                painter.drawLine(x1, y1, x2, y2);
+//            }
+//        }
+//    }
+//
 
 
     // draw a smoothed line
@@ -590,40 +919,24 @@ namespace EMStudio
 
     void NodeGraph::UpdateNodesAndConnections(int32 width, int32 height, const QPoint& mousePos)
     {
-        uint32 i;
-
         // calculate the visible rect
-        QRect visibleRect;
-        visibleRect = QRect(0, 0, width, height);
+        const QRect visibleRect(0, 0, width, height);
 
         // update the nodes
-        const uint32 numNodes = mNodes.GetLength();
-        for (i = 0; i < numNodes; ++i)
+        for (const AZStd::pair<QPersistentModelIndex, AZStd::unique_ptr<GraphNode>>& modelIndexAndGraphNode : m_graphNodeByModelIndex)
         {
-            mNodes[i]->Update(visibleRect, mousePos);
+            modelIndexAndGraphNode.second->Update(visibleRect, mousePos);
         }
-
-        // update the connections
-        for (i = 0; i < numNodes; ++i)
-        {
-            GraphNode* node = mNodes[i];
-            const uint32 numConnections = node->GetNumConnections();
-            for (uint32 c = 0; c < numConnections; ++c)
-            {
-                node->GetConnection(c)->Update(visibleRect, mousePos);
-            }
-        }
-    }
+   }
 
 
     // find the connection at the given mouse position
     NodeConnection* NodeGraph::FindConnection(const QPoint& mousePos)
     {
         // for all nodes in the graph
-        const uint32 numNodes = GetNumNodes();
-        for (uint32 i = 0; i < numNodes; ++i)
+        for (const GraphNodeByModelIndex::value_type& indexAndGraphNode : m_graphNodeByModelIndex)
         {
-            GraphNode* graphNode = GetNode(i);
+            GraphNode* graphNode = indexAndGraphNode.second.get();
 
             // iterate over all connections
             const uint32 numConnections = graphNode->GetNumConnections();
@@ -642,47 +955,14 @@ namespace EMStudio
     }
 
 
-    NodeConnection* NodeGraph::FindConnectionByID(uint32 connectionID)
-    {
-        // for all nodes in the graph
-        const uint32 numNodes = GetNumNodes();
-        for (uint32 i = 0; i < numNodes; ++i)
-        {
-            GraphNode* graphNode = GetNode(i);
-
-            // iterate over all connections
-            const uint32 numConnections = graphNode->GetNumConnections();
-            for (uint32 c = 0; c < numConnections; ++c)
-            {
-                NodeConnection* connection  = graphNode->GetConnection(c);
-                if (connection->GetID() == connectionID)
-                {
-                    return connection;
-                }
-            }
-        }
-
-        // failure, there is no connection at the given mouse position
-        return nullptr;
-    }
-
-
     void NodeGraph::UpdateHighlightConnectionFlags(const QPoint& mousePos)
     {
-        // get the node graph
-        EMStudio::NodeGraph* graph = mGraphWidget->GetActiveGraph();
-        if (graph == nullptr)
-        {
-            return;
-        }
-
         bool highlightedConnectionFound = false;
 
         // for all nodes in the graph
-        const uint32 numNodes = graph->GetNumNodes();
-        for (uint32 i = 0; i < numNodes; ++i)
+        for (const GraphNodeByModelIndex::value_type& indexAndGraphNode : m_graphNodeByModelIndex)
         {
-            GraphNode* graphNode = graph->GetNode(i);
+            GraphNode* graphNode = indexAndGraphNode.second.get();
 
             // iterate over all connections
             const uint32 numConnections = graphNode->GetNumConnections();
@@ -718,7 +998,7 @@ namespace EMStudio
                     connection->SetIsTailHighlighted(true);
                 }
 
-                // enable higlighting if either the source or the target node is selected
+                // enable highlighting if either the source or the target node is selected
                 if (sourceNode && sourceNode->GetIsSelected())
                 {
                     connection->SetIsConnectedHighlighted(true);
@@ -742,11 +1022,8 @@ namespace EMStudio
     //#define GRAPH_PERFORMANCE_INFO
     //#define GRAPH_PERFORMANCE_FRAMEDURATION
 
-    // render the graph
     void NodeGraph::Render(QPainter& painter, int32 width, int32 height, const QPoint& mousePos, float timePassedInSeconds)
     {
-        uint32 i;
-
         // control the scroll speed of the dashed blend tree connections etc
         mDashOffset -= 7.5f * timePassedInSeconds;
         mErrorBlinkOffset += 5.0f * timePassedInSeconds;
@@ -795,10 +1072,7 @@ namespace EMStudio
 #ifdef GRAPH_PERFORMANCE_INFO
         MCore::Timer groupsTimer;
 #endif
-        if (mRenderNodeGroupsCallback)
-        {
-            mRenderNodeGroupsCallback->RenderNodeGroups(painter, this);
-        }
+        RenderNodeGroups(painter);
 #ifdef GRAPH_PERFORMANCE_INFO
         MCore::LogInfo("   Groups: %.2f ms", groupsTimer.GetTime() * 1000);
 #endif
@@ -822,10 +1096,10 @@ namespace EMStudio
 #endif
         QPen connectionsPen;
         QBrush connectionsBrush;
-        const uint32 numNodes = mNodes.GetLength();
-        for (i = 0; i < numNodes; ++i)
+        for (const GraphNodeByModelIndex::value_type& indexAndGraphNode : m_graphNodeByModelIndex)
         {
-            GraphNode::RenderConnections(mNodes[i], painter, &connectionsPen, &connectionsBrush, scaledVisibleRect, stepSize);
+            GraphNode* graphNode = indexAndGraphNode.second.get();
+            graphNode->RenderConnections(painter, &connectionsPen, &connectionsBrush, scaledVisibleRect, stepSize);
         }
 #ifdef GRAPH_PERFORMANCE_INFO
         MCore::LogInfo("   Connections: %.2f ms", connectionsTimer.GetTime() * 1000);
@@ -836,9 +1110,10 @@ namespace EMStudio
         MCore::Timer nodesTimer;
 #endif
         QPen nodesPen;
-        for (i = 0; i < numNodes; ++i)
+        for (const GraphNodeByModelIndex::value_type& indexAndGraphNode : m_graphNodeByModelIndex)
         {
-            mNodes[i]->Render(painter, &nodesPen, renderShadow);
+            GraphNode* graphNode = indexAndGraphNode.second.get();
+            graphNode->Render(painter, &nodesPen, renderShadow);
         }
 #ifdef GRAPH_PERFORMANCE_INFO
         MCore::LogInfo("   Nodes: %.2f ms", nodesTimer.GetTime() * 1000);
@@ -852,49 +1127,11 @@ namespace EMStudio
         // render the entry state arrow
         RenderEntryPoint(painter, mEntryNode);
 
-        //----------
-        /*
-            // adapt the connection subdivision detail based on how fast or slow things are running
-            float renderTime = timer.GetTimeDelta();
-            if (renderTime > 1.0f / 60.0f)
-            {
-                mSlowRenderTime += renderTime;
-                mFastRenderTime = 0.0f;
-            }
-            else
-            {
-                mFastRenderTime += renderTime;
-                mSlowRenderTime = 0.0f;
-            }
-
-            // if we're rendering slowly already for over a given amount of seconds
-            if (mSlowRenderTime > 1.0f)
-            {
-                mMinStepSize += 2;  // increase the min step size
-                if (mMinStepSize > 100)
-                    mMinStepSize = 100;
-
-                mMaxStepSize += 2;
-                if (mMaxStepSize > 100)
-                    mMaxStepSize = 100;
-            }
-            else
-            {
-                if (mFastRenderTime > 1.0f)
-                {
-                    mMinStepSize -= 2;
-                    if (mMinStepSize < 1)
-                        mMinStepSize = 1;
-
-                    mMaxStepSize -= 2;
-                    if (mMaxStepSize < mMinStepSize)
-                        mMaxStepSize = mMinStepSize;
-                }
-            }
-        */
 #ifdef GRAPH_PERFORMANCE_FRAMEDURATION
         MCore::LogInfo("GraphRenderingTime: %.2f ms.", timer.GetTime() * 1000);
 #endif
+
+        RenderTitlebar(painter, width);
 
         // render FPS counter
         //#ifdef GRAPH_PERFORMANCE_FRAMEDURATION
@@ -919,31 +1156,58 @@ namespace EMStudio
         //#endif
     }
 
+    void NodeGraph::RenderTitlebar(QPainter& painter, int32 width)
+    {
+        if (m_parentReferenceNode.isValid())
+        {
+            painter.save();
+            painter.resetTransform();
+
+            painter.setPen(Qt::NoPen);
+            painter.setBrush(QColor(0, 0, 0));
+            painter.setOpacity(0.25f);
+            const QPoint upperLeft(0, 0);
+            const QPoint bottomRight(width, 24);
+            const QRect titleRect = QRect(upperLeft, bottomRight);
+            painter.drawRect(titleRect);
+
+            EMotionFX::AnimGraphNode* node = m_parentReferenceNode.data(AnimGraphModel::ROLE_NODE_POINTER).value<EMotionFX::AnimGraphNode*>();
+            EMotionFX::AnimGraphReferenceNode* referenceNode = static_cast<EMotionFX::AnimGraphReferenceNode*>(node);
+            EMotionFX::AnimGraph* referencedAnimGraph = referenceNode->GetReferencedAnimGraph();
+            QString titleLabel;
+            // If the reference anim graph is in an error state ( probably due to circular dependency ), we should show some error message.
+            if (referenceNode->GetHasCycles())
+            {
+                titleLabel = QString("Can't show the reference anim graph because cicular dependency.");
+            }
+            else
+            {
+                AZStd::string filename;
+                AzFramework::StringFunc::Path::GetFullFileName(referencedAnimGraph->GetFileName(), filename);
+                titleLabel = QString("Referenced graph: '%1' (read-only)").arg(filename.c_str());
+            }
+            painter.setOpacity(1.0f);
+            painter.setPen(QColor(233, 233, 233));
+            painter.setFont(mFont);
+            painter.drawText(titleRect, titleLabel, QTextOption(Qt::AlignCenter));
+
+            painter.restore();
+        }
+    }
+
 
     // select all nodes within a given rect
     void NodeGraph::SelectNodesInRect(const QRect& rect, bool overwriteCurSelection, bool select, bool toggleMode)
     {
-        const uint32 numNodes = mNodes.GetLength();
-        for (uint32 i = 0; i < numNodes; ++i)
+        QItemSelection selection;
+
+        for (const GraphNodeByModelIndex::value_type& indexAndGraphNode : m_graphNodeByModelIndex)
         {
-            GraphNode* node = mNodes[i];
+            const QModelIndex& modelIndex = indexAndGraphNode.first;
+            GraphNode* node = indexAndGraphNode.second.get();
             if (node->GetRect().intersects(rect))
             {
-                if (toggleMode)
-                {
-                    node->SetIsSelected(!node->GetIsSelected());
-                }
-                else
-                {
-                    node->SetIsSelected(select);
-                }
-            }
-            else
-            {
-                if (overwriteCurSelection)
-                {
-                    node->SetIsSelected(false);
-                }
+                selection.select(modelIndex, modelIndex);
             }
 
             // check the connections of this node
@@ -953,63 +1217,49 @@ namespace EMStudio
                 NodeConnection* connection = node->GetConnection(c);
                 if (connection->Intersects(rect))
                 {
-                    if (toggleMode)
-                    {
-                        connection->SetIsSelected(!connection->GetIsSelected());
-                    }
-                    else
-                    {
-                        connection->SetIsSelected(select);
-                    }
-                }
-                else
-                {
-                    if (overwriteCurSelection)
-                    {
-                        connection->SetIsSelected(false);
-                    }
+                    selection.select(connection->GetModelIndex(), connection->GetModelIndex());
                 }
             }
         }
 
-        // trigger the selection change callback
-        mGraphWidget->OnSelectionChanged();
+        unsigned int selectionFlag = QItemSelectionModel::Current | QItemSelectionModel::Rows;
+        if (overwriteCurSelection)
+        {
+            selectionFlag |= QItemSelectionModel::Clear;
+        }
+        if (toggleMode)
+        {
+            selectionFlag |= QItemSelectionModel::Toggle;
+        }
+        else
+        {
+            selectionFlag |= (select ? QItemSelectionModel::Select : QItemSelectionModel::Deselect);
+        }
+        m_graphWidget->GetPlugin()->GetAnimGraphModel().GetSelectionModel().select(selection, static_cast<QItemSelectionModel::SelectionFlag>(selectionFlag));
     }
 
 
     // select all nodes
-    void NodeGraph::SelectAllNodes(bool selectConnectionsToo)
+    void NodeGraph::SelectAllNodes()
     {
-        // compute the actual selected nodes
-        const uint32 numSelectedBefore = CalcNumSelectedNodes();
-
-        // select all nodes and connections
-        const uint32 numNodes = mNodes.GetLength();
-        for (uint32 i = 0; i < numNodes; ++i)
+        QItemSelection selection;
+        for (const GraphNodeByModelIndex::value_type& indexAndGraphNode : m_graphNodeByModelIndex)
         {
-            // get the node
-            GraphNode* node = mNodes[i];
+            selection.select(indexAndGraphNode.first, indexAndGraphNode.first);
+        }
 
-            // set the node selected
-            node->SetIsSelected(true);
-
-            // set each connection selected if needed
-            if (selectConnectionsToo)
+        for (const GraphNodeByModelIndex::value_type& indexAndGraphNode : m_graphNodeByModelIndex)
+        {
+            const QModelIndex& modelIndex = indexAndGraphNode.first;
+            const int rows = modelIndex.model()->rowCount(modelIndex);
+            for (int row = 0; row < rows; ++row)
             {
-                const uint32 numConnections = node->GetNumConnections();
-                for (uint32 c = 0; c < numConnections; ++c)
-                {
-                    NodeConnection* connection = node->GetConnection(c);
-                    connection->SetIsSelected(true);
-                }
+                const QModelIndex childConnection = modelIndex.child(row, 0);
+                selection.select(childConnection, childConnection);
             }
         }
 
-        // trigger the selection change callback
-        if (numSelectedBefore != CalcNumSelectedNodes())
-        {
-            mGraphWidget->OnSelectionChanged();
-        }
+        m_graphWidget->GetPlugin()->GetAnimGraphModel().GetSelectionModel().select(selection, QItemSelectionModel::Current | QItemSelectionModel::ClearAndSelect | QItemSelectionModel::Rows);
     }
 
 
@@ -1017,13 +1267,13 @@ namespace EMStudio
     GraphNode* NodeGraph::FindNode(const QPoint& globalPoint)
     {
         // for all nodes
-        const uint32 numNodes = mNodes.GetLength();
-        for (uint32 i = 0; i < numNodes; ++i)
+        for (const GraphNodeByModelIndex::value_type& indexAndGraphNode : m_graphNodeByModelIndex)
         {
+            GraphNode* node = indexAndGraphNode.second.get();
             // check if the point is inside the node rect
-            if (mNodes[i]->GetIsInside(globalPoint))
+            if (node->GetIsInside(globalPoint))
             {
-                return mNodes[i];
+                return node;
             }
         }
 
@@ -1033,52 +1283,20 @@ namespace EMStudio
 
 
     // unselect all nodes
-    void NodeGraph::UnselectAllNodes(bool unselectConnectionsToo)
+    void NodeGraph::UnselectAllNodes()
     {
-        // compute the actual selected nodes
-        const uint32 numBefore = CalcNumSelectedNodes();
-
-        // unselect all nodes and connection if needed
-        const uint32 numNodes = mNodes.GetLength();
-        for (uint32 i = 0; i < numNodes; ++i)
-        {
-            mNodes[i]->SetIsSelected(false);
-
-            if (unselectConnectionsToo)
-            {
-                const uint32 numConnections = mNodes[i]->GetNumConnections();
-                for (uint32 c = 0; c < numConnections; ++c)
-                {
-                    mNodes[i]->GetConnection(c)->SetIsSelected(false);
-                }
-            }
-        }
-
-        // trigger the selection change callback
-        if (numBefore != CalcNumSelectedNodes())
-        {
-            mGraphWidget->OnSelectionChanged();
-        }
-    }
-
-
-    // add a connection
-    NodeConnection* NodeGraph::AddConnection(GraphNode* sourceNode, uint32 outputPortNr, GraphNode* targetNode, uint32 inputPortNr)
-    {
-        NodeConnection* connection = new NodeConnection(targetNode, inputPortNr, sourceNode, outputPortNr);
-        targetNode->AddConnection(connection);
-        return connection;
+        m_graphWidget->GetPlugin()->GetAnimGraphModel().GetSelectionModel().clearSelection();
     }
 
 
     // select connections close to a given point
     NodeConnection* NodeGraph::SelectConnectionCloseTo(const QPoint& point, bool overwriteCurSelection, bool toggle)
     {
-        // for all nodes
-        const uint32 numNodes = mNodes.GetLength();
-        for (uint32 i = 0; i < numNodes; ++i)
+        QItemSelection selection;
+        NodeConnection* selectedConnection = nullptr;
+        for (const GraphNodeByModelIndex::value_type& indexAndGraphNode : m_graphNodeByModelIndex)
         {
-            GraphNode* node = mNodes[i];
+            GraphNode* node = indexAndGraphNode.second.get();
 
             // check the connections of this node
             const uint32 numConnections = node->GetNumConnections();
@@ -1088,96 +1306,78 @@ namespace EMStudio
                 NodeConnection* connection = node->GetConnection(c);
                 if (connection->CheckIfIsCloseTo(point))
                 {
-                    // unselect all connections in all nodes
-                    if (overwriteCurSelection)
-                    {
-                        for (uint32 n = 0; n < numNodes; ++n)
-                        {
-                            for (uint32 a = 0; a < mNodes[n]->GetNumConnections(); ++a)
-                            {
-                                mNodes[n]->GetConnection(a)->SetIsSelected(false);
-                            }
-                        }
-                    }
-
-                    // select the current node
-                    if (toggle)
-                    {
-                        mNodes[i]->GetConnection(c)->ToggleSelected();
-                    }
-                    else
-                    {
-                        mNodes[i]->GetConnection(c)->SetIsSelected(true);
-                    }
-
-                    // trigger the selection change callback
-                    mGraphWidget->OnSelectionChanged();
-
-                    return connection;
-                }
-                else
-                {
-                    // disable the selection of this connection if we are replacing the selection
-                    if (overwriteCurSelection)
-                    {
-                        connection->SetIsSelected(false);
-                    }
+                    selection.select(connection->GetModelIndex(), connection->GetModelIndex());
+                    selectedConnection = connection;
+                    break;
                 }
             }
-        }
-
-        // trigger the selection change callback
-        mGraphWidget->OnSelectionChanged();
-
-        // no connection found
-        return nullptr;
-    }
-
-
-    // render a small grid
-    void NodeGraph::RenderSubGrid(QPainter& painter, int32 startX, int32 startY)
-    {
-        // setup spacing and size of the grid
-        const int32 endX = startX + 300; // 300 units
-        const int32 endY = startY + 300;
-        const int32 spacing = 50;       // grid cell size of 50
-        /*
-            // draw vertical lines
-            for (int32 x=startX; x<=endX; x+=spacing)
-                painter.drawLine(x, startY, x, endY);
-
-            // draw horizontal lines
-            for (int32 y=startY; y<=endY; y+=spacing)
-                painter.drawLine(startX, y, endX, y);
-        */
-
-        // calculate the alpha
-        float scale = mScale * mScale * 1.5f;
-        scale = MCore::Clamp<float>(scale, 0.0f, 1.0f);
-        const int32 alpha = MCore::CalcCosineInterpolationWeight(scale) * 255;
-
-        // draw the checkerboard
-        painter.setPen(Qt::NoPen);
-        painter.setBrush(QColor(35, 35, 35, alpha));
-        bool even = true;
-        for (int32 x = startX; x < endX; x += spacing)
-        {
-            int32 nr = even ? 0 : 1;
-            for (int32 y = startY; y < endY; y += spacing)
+            if (selectedConnection)
             {
-                if (nr % 2 == 0 && alpha > 5)
-                {
-                    painter.drawRect(x, y, spacing, spacing);
-                }
-
-                nr++;
+                break;
             }
-            even ^= true;
         }
+
+        if (selectedConnection)
+        {
+            uint selectionFlags = QItemSelectionModel::Current | QItemSelectionModel::Rows;
+            if (overwriteCurSelection)
+            {
+                selectionFlags |= QItemSelectionModel::Clear;
+            }
+            selectionFlags |= (toggle ? QItemSelectionModel::Toggle : QItemSelectionModel::Select);
+
+            m_graphWidget->GetPlugin()->GetAnimGraphModel().GetSelectionModel().select(selection, static_cast<QItemSelectionModel::SelectionFlags>(selectionFlags));
+
+        }
+        
+        return selectedConnection;
     }
 
 
-    // render the background
+//    // render a small grid
+//    void NodeGraph::RenderSubGrid(QPainter& painter, int32 startX, int32 startY)
+//    {
+//        // setup spacing and size of the grid
+//        const int32 endX = startX + 300; // 300 units
+//        const int32 endY = startY + 300;
+//        const int32 spacing = 50;       // grid cell size of 50
+//        /*
+//            // draw vertical lines
+//            for (int32 x=startX; x<=endX; x+=spacing)
+//                painter.drawLine(x, startY, x, endY);
+//
+//            // draw horizontal lines
+//            for (int32 y=startY; y<=endY; y+=spacing)
+//                painter.drawLine(startX, y, endX, y);
+//        */
+//
+//        // calculate the alpha
+//        float scale = mScale * mScale * 1.5f;
+//        scale = MCore::Clamp<float>(scale, 0.0f, 1.0f);
+//        const int32 alpha = MCore::CalcCosineInterpolationWeight(scale) * 255;
+//
+//        // draw the checkerboard
+//        painter.setPen(Qt::NoPen);
+//        painter.setBrush(QColor(35, 35, 35, alpha));
+//        bool even = true;
+//        for (int32 x = startX; x < endX; x += spacing)
+//        {
+//            int32 nr = even ? 0 : 1;
+//            for (int32 y = startY; y < endY; y += spacing)
+//            {
+//                if (nr % 2 == 0 && alpha > 5)
+//                {
+//                    painter.drawRect(x, y, spacing, spacing);
+//                }
+//
+//                nr++;
+//            }
+//            even ^= true;
+//        }
+//    }
+//
+//
+//    // render the background
     void NodeGraph::RenderBackground(QPainter& painter, int32 width, int32 height)
     {
         // grid line color
@@ -1263,59 +1463,59 @@ namespace EMStudio
 
 
 
-    // render a small grid
-    void NodeGraph::RenderLinesSubGrid(QPainter& painter, int32 startX, int32 startY)
-    {
-        // calculate the alpha
-        float scale = mScale * mScale * 1.5f;
-        scale = MCore::Clamp<float>(scale, 0.0f, 1.0f);
-        const int32 alpha = MCore::CalcCosineInterpolationWeight(scale) * 255;
-
-        if (alpha < 10)
-        {
-            return;
-        }
-
-        painter.setPen(QColor(58, 58, 58, alpha));
-
-        // setup spacing and size of the grid
-        const int32 endX = startX + 100; // 300 units
-        const int32 endY = startY + 100;
-        const int32 spacing = 20;       // grid cell size of 20
-
-        // draw vertical lines
-        for (int32 x = startX; x < endX; x += spacing)
-        {
-            if (x != startX)
-            {
-                painter.setPen(QColor(55, 55, 55, alpha));
-            }
-            else
-            {
-                painter.setPen(QColor(58, 58, 58, alpha));
-            }
-            //          painter.setPen( QColor(43, 43, 43, alpha) );
-
-            painter.drawLine(x, startY, x, endY);
-        }
-
-        // draw horizontal lines
-        for (int32 y = startY; y < endY; y += spacing)
-        {
-            if (y != startY)
-            {
-                painter.setPen(QColor(55, 55, 55, alpha));
-            }
-            else
-            {
-                painter.setPen(QColor(58, 58, 58, alpha));
-            }
-            //painter.setPen( QColor(43, 43, 43, alpha) );
-
-            painter.drawLine(startX, y, endX, y);
-        }
-    }
-
+//    // render a small grid
+//    void NodeGraph::RenderLinesSubGrid(QPainter& painter, int32 startX, int32 startY)
+//    {
+//        // calculate the alpha
+//        float scale = mScale * mScale * 1.5f;
+//        scale = MCore::Clamp<float>(scale, 0.0f, 1.0f);
+//        const int32 alpha = MCore::CalcCosineInterpolationWeight(scale) * 255;
+//
+//        if (alpha < 10)
+//        {
+//            return;
+//        }
+//
+//        painter.setPen(QColor(58, 58, 58, alpha));
+//
+//        // setup spacing and size of the grid
+//        const int32 endX = startX + 100; // 300 units
+//        const int32 endY = startY + 100;
+//        const int32 spacing = 20;       // grid cell size of 20
+//
+//        // draw vertical lines
+//        for (int32 x = startX; x < endX; x += spacing)
+//        {
+//            if (x != startX)
+//            {
+//                painter.setPen(QColor(55, 55, 55, alpha));
+//            }
+//            else
+//            {
+//                painter.setPen(QColor(58, 58, 58, alpha));
+//            }
+//            //          painter.setPen( QColor(43, 43, 43, alpha) );
+//
+//            painter.drawLine(x, startY, x, endY);
+//        }
+//
+//        // draw horizontal lines
+//        for (int32 y = startY; y < endY; y += spacing)
+//        {
+//            if (y != startY)
+//            {
+//                painter.setPen(QColor(55, 55, 55, alpha));
+//            }
+//            else
+//            {
+//                painter.setPen(QColor(58, 58, 58, alpha));
+//            }
+//            //painter.setPen( QColor(43, 43, 43, alpha) );
+//
+//            painter.drawLine(startX, y, endX, y);
+//        }
+//    }
+//
 
 
     // NOTE: Based on code from: http://alienryderflex.com/intersect/
@@ -1472,10 +1672,10 @@ namespace EMStudio
     {
         uint32 result = 0;
 
-        const uint32 numNodes = mNodes.GetLength();
-        for (uint32 i = 0; i < numNodes; ++i)
+        for (const GraphNodeByModelIndex::value_type& indexAndGraphNode : m_graphNodeByModelIndex)
         {
-            if (mNodes[i]->GetIsSelected())
+            GraphNode* node = indexAndGraphNode.second.get();
+            if (node->GetIsSelected())
             {
                 result++;
             }
@@ -1485,109 +1685,15 @@ namespace EMStudio
     }
 
 
-    // calc the number of selected connections
-    uint32 NodeGraph::CalcNumSelectedConnections() const
-    {
-        uint32 result = 0;
-
-        const uint32 numNodes = mNodes.GetLength();
-        for (uint32 i = 0; i < numNodes; ++i)
-        {
-            GraphNode* node = mNodes[i];
-
-            const uint32 numConnections = node->GetNumConnections();
-            for (uint32 c = 0; c < numConnections; ++c)
-            {
-                if (node->GetConnection(c)->GetIsSelected())
-                {
-                    result++;
-                }
-            }
-        }
-
-        return result;
-    }
-
-
-
-    GraphNode* NodeGraph::FindFirstSelectedGraphNode() const
-    {
-        // get the number of nodes and iterate through them
-        const uint32 numNodes = GetNumNodes();
-        for (uint32 i = 0; i < numNodes; ++i)
-        {
-            // check if the node is selected, if so, delete it
-            GraphNode* node = mNodes[i];
-            if (node->GetIsSelected())
-            {
-                // take the first selected node
-                return node;
-            }
-        }
-
-        return nullptr;
-    }
-
-
-    MCore::Array<GraphNode*> NodeGraph::GetSelectedNodes() const
-    {
-        MCore::Array<GraphNode*> result;
-
-        // get the number of nodes and iterate through them
-        const uint32 numNodes = GetNumNodes();
-        for (uint32 i = 0; i < numNodes; ++i)
-        {
-            // check if the node is selected, if so, add it to the array
-            GraphNode* node = mNodes[i];
-
-            if (node->GetIsSelected())
-            {
-                result.Add(node);
-            }
-        }
-
-        return result;
-    }
-
-
-    NodeConnection* NodeGraph::FindFirstSelectedConnection() const
-    {
-        const uint32 numNodes = mNodes.GetLength();
-        for (uint32 i = 0; i < numNodes; ++i)
-        {
-            GraphNode* node = mNodes[i];
-
-            const uint32 numConnections = node->GetNumConnections();
-            for (uint32 c = 0; c < numConnections; ++c)
-            {
-                if (node->GetConnection(c)->GetIsSelected())
-                {
-                    return node->GetConnection(c);
-                }
-            }
-        }
-
-        return nullptr;
-    }
-
-
-    // calc the number of selected nodes and connections together
-    uint32 NodeGraph::CalcNumSelectedItems() const
-    {
-        return CalcNumSelectedConnections() + CalcNumSelectedNodes();
-    }
-
-
     // calc the selection rect
     QRect NodeGraph::CalcRectFromSelection(bool includeConnections) const
     {
         QRect result;
 
         // for all nodes
-        const uint32 numNodes = mNodes.GetLength();
-        for (uint32 i = 0; i < numNodes; ++i)
+        for (const GraphNodeByModelIndex::value_type& indexAndGraphNode : m_graphNodeByModelIndex)
         {
-            GraphNode* node = mNodes[i];
+            GraphNode* node = indexAndGraphNode.second.get();;
 
             // add the rect
             if (node->GetIsSelected())
@@ -1620,19 +1726,18 @@ namespace EMStudio
         QRect result;
 
         // for all nodes
-        const uint32 numNodes = mNodes.GetLength();
-        for (uint32 i = 0; i < numNodes; ++i)
+        for (const AZStd::pair<QPersistentModelIndex, AZStd::unique_ptr<GraphNode>>& modelIndexAndGraphNode : m_graphNodeByModelIndex)
         {
-            GraphNode* node = mNodes[i];
+            GraphNode* graphNode = modelIndexAndGraphNode.second.get();
 
             // add the rect
-            result = result.united(node->GetRect());
+            result |= graphNode->GetRect();
 
             // for all connections
-            const uint32 numConnections = node->GetNumConnections();
+            const uint32 numConnections = graphNode->GetNumConnections();
             for (uint32 c = 0; c < numConnections; ++c)
             {
-                result = result.united(node->GetConnection(c)->CalcRect());
+                result |= graphNode->GetConnection(c)->CalcRect();
             }
         }
 
@@ -1776,7 +1881,7 @@ namespace EMStudio
         //float newScale = 1/(1+exp(-t)) * 2;
 
         float newScale = mScale + 0.35f;
-        newScale = MCore::Clamp<float>(newScale, mLowestScale, 1.0f);
+        newScale = MCore::Clamp<float>(newScale, sLowestScale, 1.0f);
         ZoomTo(newScale);
     }
 
@@ -1793,7 +1898,7 @@ namespace EMStudio
         //  float t = -6 + (6 * scaleExp);
         //float newScale = 1/(1+exp(-t)) * 2;
         //MCore::LogDebug("%f", newScale);
-        newScale = MCore::Clamp<float>(newScale, mLowestScale, 1.0f);
+        newScale = MCore::Clamp<float>(newScale, sLowestScale, 1.0f);
         ZoomTo(newScale);
     }
 
@@ -1805,9 +1910,9 @@ namespace EMStudio
         mTargetScale    = scale;
         mScaleTimer.start(1000 / 60);
         mScalePreciseTimer.Stamp();
-        if (scale < mLowestScale)
+        if (scale < sLowestScale)
         {
-            mLowestScale = scale;
+            sLowestScale = scale;
         }
     }
 
@@ -1827,10 +1932,8 @@ namespace EMStudio
 
 
     // fit the graph on the screen
-    void NodeGraph::FitGraphOnScreen(int32 width, int32 height, const QPoint& mousePos, bool autoUpdate, bool animate)
+    void NodeGraph::FitGraphOnScreen(int32 width, int32 height, const QPoint& mousePos, bool animate)
     {
-        MCORE_UNUSED(autoUpdate);
-
         // fit the entire graph in the view
         UpdateNodesAndConnections(width, height, mousePos);
         QRect sceneRect = CalcRectFromGraph();
@@ -1843,27 +1946,6 @@ namespace EMStudio
             sceneRect.adjust(-border, -border, border, border);
             ZoomOnRect(sceneRect, width, height, animate);
         }
-
-        mStartFitHappened = true;
-
-        //if (autoUpdate)
-        //  mGraphWidget->update();
-    }
-
-
-    // remove a given node
-    void NodeGraph::RemoveNode(GraphNode* node, bool delFromMem)
-    {
-        if (mEntryNode == node)
-        {
-            mEntryNode = nullptr;
-        }
-
-        mNodes.RemoveByValue(node);
-        if (delFromMem)
-        {
-            delete node;
-        }
     }
 
 
@@ -1871,11 +1953,9 @@ namespace EMStudio
     NodePort* NodeGraph::FindPort(int32 x, int32 y, GraphNode** outNode, uint32* outPortNr, bool* outIsInputPort, bool includeInputPorts)
     {
         // get the number of nodes in the graph and iterate through them
-        const uint32 numNodes = mNodes.GetLength();
-        for (uint32 n = 0; n < numNodes; ++n)
+        for (const GraphNodeByModelIndex::value_type& indexAndGraphNode : m_graphNodeByModelIndex)
         {
-            // get a pointer to the graph node
-            GraphNode* graphNode = mNodes[n];
+            GraphNode* graphNode = indexAndGraphNode.second.get();
 
             // skip the node in case it is collapsed
             if (graphNode->GetIsCollapsed())
@@ -1941,21 +2021,21 @@ namespace EMStudio
     }
 
 
-    void NodeGraph::GetReplaceTransitionInfo(NodeConnection** outConnection, QPoint* outStartOffset, QPoint* outEndOffset, GraphNode** outSourceNode, GraphNode** outTargetNode)
+    void NodeGraph::GetReplaceTransitionInfo(NodeConnection** outOldConnection, QPoint* outOldStartOffset, QPoint* outOldEndOffset, GraphNode** outOldSourceNode, GraphNode** outOldTargetNode)
     {
         if (mReplaceTransitionHead)
         {
-            *outConnection = mReplaceTransitionHead;
+            *outOldConnection = mReplaceTransitionHead;
         }
         if (mReplaceTransitionTail)
         {
-            *outConnection = mReplaceTransitionTail;
+            *outOldConnection = mReplaceTransitionTail;
         }
 
-        *outStartOffset = mReplaceTransitionStartOffset;
-        *outEndOffset   = mReplaceTransitionEndOffset;
-        *outSourceNode  = mReplaceTransitionSourceNode;
-        *outTargetNode  = mReplaceTransitionTargetNode;
+        *outOldStartOffset = mReplaceTransitionStartOffset;
+        *outOldEndOffset   = mReplaceTransitionEndOffset;
+        *outOldSourceNode  = mReplaceTransitionSourceNode;
+        *outOldTargetNode  = mReplaceTransitionTargetNode;
     }
 
 
@@ -2006,10 +2086,9 @@ namespace EMStudio
         const uint32 circleRadius = 4;
 
         // get the number of nodes and iterate through them
-        const uint32 numNodes = mNodes.GetLength();
-        for (uint32 i = 0; i < numNodes; ++i)
+        for (const GraphNodeByModelIndex::value_type& indexAndGraphNode : m_graphNodeByModelIndex)
         {
-            GraphNode* graphNode = mNodes[i];
+            GraphNode* graphNode = indexAndGraphNode.second.get();
 
             // get the number of connections and iterate through them
             const uint32 numConnections = graphNode->GetNumConnections();
@@ -2048,7 +2127,7 @@ namespace EMStudio
             //uint32            sourcePortNr    = connection->GetOutputPortNr();
             //NodePort*     port            = sourceNode->GetOutputPort( connection->GetOutputPortNr() );
             QPoint          start           = connection->GetSourceRect().center();
-            QPoint          end             = mGraphWidget->GetMousePos();
+            QPoint          end             = m_graphWidget->GetMousePos();
 
             QPen pen;
             pen.setColor(QColor(100, 100, 100));
@@ -2057,10 +2136,9 @@ namespace EMStudio
             painter.setBrush(Qt::NoBrush);
 
             QRect areaRect(end.x() - 150, end.y() - 150, 300, 300);
-            const uint32 numNodes = mNodes.GetLength();
-            for (uint32 n = 0; n < numNodes; ++n)
+            for (const GraphNodeByModelIndex::value_type& indexAndGraphNode : m_graphNodeByModelIndex)
             {
-                GraphNode* node = mNodes[n];
+                GraphNode* node = indexAndGraphNode.second.get();
 
                 if (node->GetIsCollapsed())
                 {
@@ -2077,7 +2155,7 @@ namespace EMStudio
                 const uint32 numInputPorts = node->GetNumInputPorts();
                 for (uint32 i = 0; i < numInputPorts; ++i)
                 {
-                    if (BlendGraphWidget::CheckIfIsRelinkConnectionValid(mRelinkConnection, node, i, true))
+                    if (CheckIfIsRelinkConnectionValid(mRelinkConnection, node, i, true))
                     {
                         QPoint tempStart = end;
                         QPoint tempEnd = node->GetInputPort(i)->GetRect().center();
@@ -2110,26 +2188,7 @@ namespace EMStudio
             // render the smooth line towards the mouse cursor
             painter.setBrush(Qt::NoBrush);
 
-            //if (mGraphWidget->CreateConnectionMustBeCurved())
             DrawSmoothedLineFast(painter, start.x(), start.y(), end.x(), end.y(), 1);
-            /*else
-            {
-                QRect sourceRect = GetCreateConnectionNode()->GetRect();
-                sourceRect.adjust(-2,-2,2,2);
-
-                if (sourceRect.contains(end))
-                    return;
-
-                // calc the real start point
-                double realX, realY;
-                if (NodeGraph::LineIntersectsRect(sourceRect, start.x(), start.y(), end.x(), end.y(), &realX, &realY))
-                {
-                    start.setX( realX );
-                    start.setY( realY );
-                }
-
-                painter.drawLine( start, end );
-            }*/
         }
 
 
@@ -2142,7 +2201,7 @@ namespace EMStudio
         //------------------------------------------
         // draw the suggested valid connections
         //------------------------------------------
-        QPoint start = mGraphWidget->GetMousePos();
+        QPoint start = m_graphWidget->GetMousePos();
         QPoint end;
 
         QPen pen;
@@ -2151,13 +2210,12 @@ namespace EMStudio
         painter.setPen(pen);
         painter.setBrush(Qt::NoBrush);
 
-        if (mGraphWidget->CreateConnectionShowsHelpers())
+        if (m_graphWidget->CreateConnectionShowsHelpers())
         {
             QRect areaRect(start.x() - 150, start.y() - 150, 300, 300);
-            const uint32 numNodes = mNodes.GetLength();
-            for (uint32 n = 0; n < numNodes; ++n)
+            for (const GraphNodeByModelIndex::value_type& indexAndGraphNode : m_graphNodeByModelIndex)
             {
-                GraphNode* node = mNodes[n];
+                GraphNode* node = indexAndGraphNode.second.get();
 
                 if (node->GetIsCollapsed())
                 {
@@ -2174,7 +2232,7 @@ namespace EMStudio
                 const uint32 numInputPorts = node->GetNumInputPorts();
                 for (uint32 i = 0; i < numInputPorts; ++i)
                 {
-                    if (mGraphWidget->CheckIfIsCreateConnectionValid(i, node, node->GetInputPort(i), true))
+                    if (m_graphWidget->CheckIfIsCreateConnectionValid(i, node, node->GetInputPort(i), true))
                     {
                         end = node->GetInputPort(i)->GetRect().center();
 
@@ -2189,7 +2247,7 @@ namespace EMStudio
                 const uint32 numOutputPorts = node->GetNumOutputPorts();
                 for (uint32 a = 0; a < numOutputPorts; ++a)
                 {
-                    if (mGraphWidget->CheckIfIsCreateConnectionValid(a, node, node->GetOutputPort(a), false))
+                    if (m_graphWidget->CheckIfIsCreateConnectionValid(a, node, node->GetOutputPort(a), false))
                     {
                         end = node->GetOutputPort(a)->GetRect().center();
 
@@ -2207,7 +2265,7 @@ namespace EMStudio
         // update the end point
         //start = mConPort->GetRect().center();
         start = GetCreateConnectionNode()->GetRect().topLeft() + GetCreateConnectionStartOffset();
-        end   = mGraphWidget->GetMousePos();
+        end   = m_graphWidget->GetMousePos();
 
         // figure out the color of the connection line
         if (mTargetPort)
@@ -2229,7 +2287,7 @@ namespace EMStudio
         // render the smooth line towards the mouse cursor
         painter.setBrush(Qt::NoBrush);
 
-        if (mGraphWidget->CreateConnectionMustBeCurved())
+        if (m_graphWidget->CreateConnectionMustBeCurved())
         {
             DrawSmoothedLineFast(painter, start.x(), start.y(), end.x(), end.y(), 1);
         }
@@ -2304,19 +2362,714 @@ namespace EMStudio
     }
 
 
-    GraphNode* NodeGraph::FindNodeById(EMotionFX::AnimGraphNodeId id)
+    void NodeGraph::OnRowsInserted(const QModelIndexList& modelIndexes)
     {
-        const uint32 numNodes = mNodes.GetLength();
-        for (uint32 i = 0; i < numNodes; ++i)
+        GraphNodeFactory* graphNodeFactory = m_graphWidget->GetPlugin()->GetGraphNodeFactory();
+
+        for (const QModelIndex& modelIndex : modelIndexes)
         {
-            if (mNodes[i]->GetId() == id)
+            if (modelIndex.data(AnimGraphModel::ROLE_MODEL_ITEM_TYPE).value<AnimGraphModel::ModelItemType>() == AnimGraphModel::ModelItemType::NODE)
             {
-                return mNodes[i];
+                EMotionFX::AnimGraphNode* childNode = modelIndex.data(AnimGraphModel::ROLE_NODE_POINTER).value<EMotionFX::AnimGraphNode*>();
+                GraphNode* graphNode = graphNodeFactory->CreateGraphNode(modelIndex, m_graphWidget->GetPlugin(), childNode);
+                AZ_Assert(graphNode, "Expected valid graph node");
+
+                // Set properties that dont change ever
+                graphNode->SetParentGraph(this);
+
+                AZStd::unique_ptr<GraphNode> graphNodePtr(graphNode);
+                m_graphNodeByModelIndex.emplace(modelIndex, AZStd::move(graphNodePtr));
+            }
+        }
+
+        // Add all the connections for the inserted nodes, we need to do it in a different iteration pass because
+        // the upstream node could have just been inserted
+        for (const QModelIndex& modelIndex : modelIndexes)
+        {
+            const AnimGraphModel::ModelItemType itemType = modelIndex.data(AnimGraphModel::ROLE_MODEL_ITEM_TYPE).value<AnimGraphModel::ModelItemType>();
+            switch (itemType)
+            {
+            case AnimGraphModel::ModelItemType::NODE:
+            {
+                GraphNode* graphNode = FindGraphNode(modelIndex);
+                graphNode->Sync();
+                break;
+            }
+            case AnimGraphModel::ModelItemType::TRANSITION:
+            {
+                EMotionFX::AnimGraphStateTransition* transition = modelIndex.data(AnimGraphModel::ROLE_TRANSITION_POINTER).value<EMotionFX::AnimGraphStateTransition*>();
+                // get the source and target nodes
+                GraphNode* source = nullptr;
+                if (transition->GetSourceNode())
+                {
+                    source = FindGraphNode(transition->GetSourceNode());
+                }
+                GraphNode* target = FindGraphNode(transition->GetTargetNode());
+                StateConnection* connection = new StateConnection(modelIndex, source, target, transition->GetIsWildcardTransition());
+                connection->SetIsDisabled(transition->GetIsDisabled());
+                connection->SetIsSynced(transition->GetSyncMode() != EMotionFX::AnimGraphObject::SYNCMODE_DISABLED);
+                target->AddConnection(connection);
+                break;
+            }
+            case AnimGraphModel::ModelItemType::CONNECTION:
+            {
+                EMotionFX::BlendTreeConnection* connection = modelIndex.data(AnimGraphModel::ROLE_CONNECTION_POINTER).value<EMotionFX::BlendTreeConnection*>();
+                GraphNode* source = FindGraphNode(connection->GetSourceNode());
+                const QModelIndex parentModelIndex = modelIndex.model()->parent(modelIndex);
+                EMotionFX::AnimGraphNode* parentNode = parentModelIndex.data(AnimGraphModel::ROLE_NODE_POINTER).value<EMotionFX::AnimGraphNode*>();
+                GraphNode* target = FindGraphNode(parentNode);
+                const uint32 sourcePort = connection->GetSourcePort();
+                const uint32 targetPort = connection->GetTargetPort();
+                NodeConnection* visualConnection = new NodeConnection(modelIndex, target, targetPort, source, sourcePort);
+                target->AddConnection(visualConnection);
+                break;
+            }
+            }
+        }   
+    }
+
+    void NodeGraph::SyncTransition(StateConnection* visualStateConnection, const EMotionFX::AnimGraphStateTransition* transition, GraphNode* targetGraphNode)
+    {
+        visualStateConnection->SetIsDisabled(transition->GetIsDisabled());
+
+        GraphNode* newSourceNode = FindGraphNode(transition->GetSourceNode());
+        visualStateConnection->SetSourceNode(newSourceNode);
+
+        visualStateConnection->SetTargetNode(targetGraphNode);
+    }
+
+    void NodeGraph::OnRowsAboutToBeRemoved(const QModelIndexList& modelIndexes)
+    {
+        for (const QModelIndex& modelIndex : modelIndexes)
+        {
+            const AnimGraphModel::ModelItemType itemType = modelIndex.data(AnimGraphModel::ROLE_MODEL_ITEM_TYPE).value<AnimGraphModel::ModelItemType>();
+            switch (itemType)
+            {
+            case AnimGraphModel::ModelItemType::NODE:
+            {
+                GraphNodeByModelIndex::const_iterator it = m_graphNodeByModelIndex.find(modelIndex);
+                if (it != m_graphNodeByModelIndex.end())
+                {
+                    if (it->second.get() == mEntryNode)
+                    {
+                        mEntryNode = nullptr;
+                    }
+                    m_graphNodeByModelIndex.erase(it);
+                }
+                break;
+            }
+            case AnimGraphModel::ModelItemType::TRANSITION:
+            {
+                // We need to locate the transition in the view (which is in the target node), but the transition is already removed.
+                // So we have to rely on the UI data.
+                for (const GraphNodeByModelIndex::value_type& target : m_graphNodeByModelIndex)
+                {
+                    MCore::Array<NodeConnection*>& connections = target.second->GetConnections();
+                    const uint32 connectionsCount = connections.GetLength();
+                    for (uint32 i = 0; i < connectionsCount; ++i)
+                    {
+                        if (connections[i]->GetType() == StateConnection::TYPE_ID)
+                        {
+                            StateConnection* visualStateConnection = static_cast<StateConnection*>(connections[i]);
+                            if (visualStateConnection->GetModelIndex() == modelIndex)
+                            {
+                                delete connections[i];
+                                connections.Remove(i);
+                                break;
+                            }
+                        }
+                    }
+                }
+                break;
+            }
+            case AnimGraphModel::ModelItemType::CONNECTION:
+            {
+                const QModelIndex parentModelIndex = modelIndex.model()->parent(modelIndex);
+                GraphNode* target = FindGraphNode(parentModelIndex); 
+                
+                const EMotionFX::BlendTreeConnection* connection = modelIndex.data(AnimGraphModel::ROLE_CONNECTION_POINTER).value<EMotionFX::BlendTreeConnection*>();
+                target->RemoveConnection(connection);
+                break;
+            }
+            default:
+                break;
+            }
+        }
+    }
+
+    void NodeGraph::OnDataChanged(const QModelIndex& modelIndex, const QVector<int>& roles)
+    {
+        const AnimGraphModel::ModelItemType itemType = modelIndex.data(AnimGraphModel::ROLE_MODEL_ITEM_TYPE).value<AnimGraphModel::ModelItemType>();
+        switch (itemType)
+        {
+        case AnimGraphModel::ModelItemType::NODE:
+        {
+            GraphNodeByModelIndex::const_iterator it = m_graphNodeByModelIndex.find(modelIndex);
+            if (it != m_graphNodeByModelIndex.end())
+            {
+                if (roles.empty())
+                {
+                    it->second->Sync();
+                }
+                else 
+                {
+                    for (const int role : roles)
+                    {
+                        switch (role)
+                        {
+                        case AnimGraphModel::ROLE_NODE_ENTRY_STATE:
+                            SetEntryNode(it->second.get());
+                            break;
+                        default:
+                            AZ_Warning("EMotionFX", false, "NodeGraph::OnDataChanged, unknown role received: %d", role);
+                            it->second->Sync();
+                        }
+                    }
+                }
+            }
+            break;
+        }
+        case AnimGraphModel::ModelItemType::TRANSITION:
+        {
+            const EMotionFX::AnimGraphStateTransition* transition = modelIndex.data(AnimGraphModel::ROLE_TRANSITION_POINTER).value<EMotionFX::AnimGraphStateTransition*>();
+
+            EMotionFX::AnimGraphNode* targetNode = transition->GetTargetNode();
+            if (targetNode)
+            {
+                GraphNode* targetGraphNode = FindGraphNode(targetNode);
+
+                bool foundConnection = false;
+                MCore::Array<NodeConnection*>& connections = targetGraphNode->GetConnections();
+                const uint32 connectionsCount = connections.GetLength();
+                for (uint32 i = 0; i < connectionsCount; ++i)
+                {
+                    if (connections[i]->GetType() == StateConnection::TYPE_ID)
+                    {
+                        StateConnection* visualStateConnection = static_cast<StateConnection*>(connections[i]);
+                        if (visualStateConnection->GetModelIndex() == modelIndex)
+                        {
+                            SyncTransition(visualStateConnection, transition, targetGraphNode);
+                            foundConnection = true;
+                            break;
+                        }
+                    }
+                }
+
+                // Fallback method in case the connection was not found as part of the target graph node's connections,
+                // which means we adjusted the transition's head.
+                if (!foundConnection)
+                {
+                    for (const GraphNodeByModelIndex::value_type& indexAndGraphNode : m_graphNodeByModelIndex)
+                    {
+                        GraphNode* visualNode = indexAndGraphNode.second.get();
+
+                        MCore::Array<NodeConnection*>& connections = visualNode->GetConnections();
+                        const uint32 connectionsCount = connections.GetLength();
+                        for (uint32 i = 0; i < connectionsCount; ++i)
+                        {
+                            if (connections[i]->GetType() == StateConnection::TYPE_ID)
+                            {
+                                StateConnection* visualStateConnection = static_cast<StateConnection*>(connections[i]);
+                                if (visualStateConnection->GetModelIndex() == modelIndex)
+                                {
+                                    // Transfer ownership from the previous visual node to where we relinked the transition to.
+                                    const bool connectionRemoveResult = visualNode->RemoveConnection(transition, false);
+                                    AZ_Error("EMotionFX", connectionRemoveResult, "Removing connection failed.");
+                                    targetGraphNode->AddConnection(visualStateConnection);
+
+                                    SyncTransition(visualStateConnection, transition, targetGraphNode);
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            break;
+        }
+        case AnimGraphModel::ModelItemType::CONNECTION:
+        {
+            // there is no command to edit connections, we remove and add them again. The command that adjusts connections only
+            // works for transitions
+            break;
+        }
+        default:
+            break;
+        }
+    }
+
+    void NodeGraph::OnSelectionModelChanged(const QModelIndexList& selected, const QModelIndexList& deselected)
+    {
+        for (const QModelIndex& selectedIndex : selected)
+        {
+            const AnimGraphModel::ModelItemType itemType = selectedIndex.data(AnimGraphModel::ROLE_MODEL_ITEM_TYPE).value<AnimGraphModel::ModelItemType>();
+            switch (itemType)
+            {
+            case AnimGraphModel::ModelItemType::NODE:
+            {
+                GraphNodeByModelIndex::const_iterator it = m_graphNodeByModelIndex.find(selectedIndex);
+                if (it != m_graphNodeByModelIndex.end())
+                {
+                    it->second->SetIsSelected(true);
+                }
+                break;
+            }
+            case AnimGraphModel::ModelItemType::TRANSITION:
+            {
+                StateConnection* visualStateConnection = FindStateConnection(selectedIndex);
+                if (visualStateConnection)
+                {
+                    visualStateConnection->SetIsSelected(true);
+                }
+                break;
+            }
+            case AnimGraphModel::ModelItemType::CONNECTION:
+            {
+                NodeConnection* visualNodeConnection = FindNodeConnection(selectedIndex);
+                if (visualNodeConnection)
+                {
+                    visualNodeConnection->SetIsSelected(true);
+                }
+                break;
+            }
+            default:
+                break;
+            }
+        }
+        for (const QModelIndex& deselectedIndex : deselected)
+        {
+            const AnimGraphModel::ModelItemType itemType = deselectedIndex.data(AnimGraphModel::ROLE_MODEL_ITEM_TYPE).value<AnimGraphModel::ModelItemType>();
+            switch (itemType)
+            {
+            case AnimGraphModel::ModelItemType::NODE:
+            {
+                GraphNodeByModelIndex::const_iterator it = m_graphNodeByModelIndex.find(deselectedIndex);
+                if (it != m_graphNodeByModelIndex.end())
+                {
+                    it->second->SetIsSelected(false);
+                }
+                break;
+            }
+            case AnimGraphModel::ModelItemType::TRANSITION:
+            {
+                StateConnection* visualStateConnection = FindStateConnection(deselectedIndex);
+                if (visualStateConnection)
+                {
+                    visualStateConnection->SetIsSelected(false);
+                }
+                break;
+            }
+            case AnimGraphModel::ModelItemType::CONNECTION:
+            {
+                NodeConnection* visualNodeConnection = FindNodeConnection(deselectedIndex);
+                if (visualNodeConnection)
+                {
+                    visualNodeConnection->SetIsSelected(false);
+                }
+                break;
+            }
+            default:
+                break;
+            }
+        }
+    }
+
+    GraphNode* NodeGraph::FindGraphNode(const QModelIndex& modelIndex)
+    {
+        GraphNodeByModelIndex::iterator it = m_graphNodeByModelIndex.find(modelIndex);
+        if (it != m_graphNodeByModelIndex.end())
+        {
+            return it->second.get();
+        }
+
+        return nullptr;
+    }
+
+    GraphNode* NodeGraph::FindGraphNode(const EMotionFX::AnimGraphNode* node)
+    {
+        for (const AZStd::pair<QPersistentModelIndex, AZStd::unique_ptr<GraphNode>>& modelIndexAndGraphNode : m_graphNodeByModelIndex)
+        {
+            // Since the OS wont allocate different objects on the same address, we can use the pointer to
+            // locate the object
+            if (modelIndexAndGraphNode.first.data(AnimGraphModel::ROLE_POINTER).value<void*>() == node)
+            {
+                return modelIndexAndGraphNode.second.get();
+            }
+        }
+        return nullptr;
+    }
+
+    StateConnection* NodeGraph::FindStateConnection(const QModelIndex& modelIndex)
+    {
+        const AnimGraphModel::ModelItemType itemType = modelIndex.data(AnimGraphModel::ROLE_MODEL_ITEM_TYPE).value<AnimGraphModel::ModelItemType>();
+        if (itemType == AnimGraphModel::ModelItemType::TRANSITION)
+        {
+            const EMotionFX::AnimGraphStateTransition* transition = modelIndex.data(AnimGraphModel::ROLE_TRANSITION_POINTER).value<EMotionFX::AnimGraphStateTransition*>();
+
+            GraphNode* target = FindGraphNode(transition->GetTargetNode());
+            if (target)
+            {
+                MCore::Array<NodeConnection*>& connections = target->GetConnections();
+                const uint32 connectionsCount = connections.GetLength();
+                for (uint32 i = 0; i < connectionsCount; ++i)
+                {
+                    if (connections[i]->GetType() == StateConnection::TYPE_ID)
+                    {
+                        StateConnection* visualStateConnection = static_cast<StateConnection*>(connections[i]);
+                        if (visualStateConnection->GetModelIndex() == modelIndex)
+                        {
+                            return visualStateConnection;
+                        }
+                    }
+                }
             }
         }
 
         return nullptr;
     }
-}   // namespace EMotionFX
+
+    NodeConnection* NodeGraph::FindNodeConnection(const QModelIndex& modelIndex)
+    {
+        const AnimGraphModel::ModelItemType itemType = modelIndex.data(AnimGraphModel::ROLE_MODEL_ITEM_TYPE).value<AnimGraphModel::ModelItemType>();
+        if (itemType == AnimGraphModel::ModelItemType::CONNECTION)
+        {
+            const QModelIndex parentModelIndex = modelIndex.model()->parent(modelIndex);
+            if (parentModelIndex.isValid())
+            {
+                GraphNode* target = FindGraphNode(parentModelIndex);
+                if (target)
+                {
+                    const EMotionFX::BlendTreeConnection* connection = modelIndex.data(AnimGraphModel::ROLE_CONNECTION_POINTER).value<EMotionFX::BlendTreeConnection*>();
+                    MCore::Array<NodeConnection*>& connections = target->GetConnections();
+                    const uint32 connectionsCount = connections.GetLength();
+                    for (uint32 i = 0; i < connectionsCount; ++i)
+                    {
+                        if (connections[i]->GetType() == NodeConnection::TYPE_ID)
+                        {
+                            NodeConnection* visualNodeConnection = static_cast<NodeConnection*>(connections[i]);
+                            if (visualNodeConnection->GetModelIndex() == modelIndex)
+                            {
+                                return visualNodeConnection;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        return nullptr;
+    }
+
+    void NodeGraph::UpdateVisualGraphFlags()
+    {
+        // for all nodes in the graph
+        for (const GraphNodeByModelIndex::value_type& nodes : m_graphNodeByModelIndex)
+        {
+            GraphNode* graphNode = nodes.second.get();
+            const EMotionFX::AnimGraphNode* emfxNode = nodes.first.data(AnimGraphModel::ROLE_NODE_POINTER).value<EMotionFX::AnimGraphNode*>();
+            const EMotionFX::AnimGraphInstance* graphNodeAnimGraphInstance = nodes.first.data(AnimGraphModel::ROLE_ANIM_GRAPH_INSTANCE).value<EMotionFX::AnimGraphInstance*>();
+
+            if (graphNodeAnimGraphInstance)
+            {
+                graphNode->SetIsProcessed(graphNodeAnimGraphInstance->GetIsOutputReady(emfxNode->GetObjectIndex()));
+                graphNode->SetIsUpdated(graphNodeAnimGraphInstance->GetIsUpdateReady(emfxNode->GetObjectIndex()));
+
+                const uint32 numConnections = graphNode->GetNumConnections();
+                for (uint32 c = 0; c < numConnections; ++c)
+                {
+                    NodeConnection* connection = graphNode->GetConnection(c);
+                    if (connection->GetType() == NodeConnection::TYPE_ID)
+                    {
+                        const EMotionFX::BlendTreeConnection* emfxConnection = connection->GetModelIndex().data(AnimGraphModel::ROLE_CONNECTION_POINTER).value<EMotionFX::BlendTreeConnection*>();
+                        connection->SetIsProcessed(emfxConnection->GetIsVisited());
+                    }
+                }
+            }
+            else
+            {
+                graphNode->SetIsProcessed(false);
+                graphNode->SetIsUpdated(false);
+
+                const uint32 numConnections = graphNode->GetNumConnections();
+                for (uint32 c = 0; c < numConnections; ++c)
+                {
+                    NodeConnection* connection = graphNode->GetConnection(c);
+                    if (connection->GetType() == NodeConnection::TYPE_ID)
+                    {
+                        connection->SetIsProcessed(false);
+                    }
+                }
+            }
+
+            const uint32 numConnections = graphNode->GetNumConnections();
+            for (uint32 c = 0; c < numConnections; ++c)
+            {
+                NodeConnection* connection = graphNode->GetConnection(c);
+                if (connection->GetType() == NodeConnection::TYPE_ID)
+                {
+                    const EMotionFX::BlendTreeConnection* emfxConnection = connection->GetModelIndex().data(AnimGraphModel::ROLE_CONNECTION_POINTER).value<EMotionFX::BlendTreeConnection*>();
+                    if (graphNodeAnimGraphInstance)
+                    {
+                        connection->SetIsProcessed(emfxConnection->GetIsVisited());
+                    }
+                    else
+                    {
+                        connection->SetIsProcessed(false);
+                    }
+                }
+            }
+        }
+    }
+    
+    // check if a connection is valid or not
+    bool NodeGraph::CheckIfIsRelinkConnectionValid(NodeConnection* connection, GraphNode* newTargetNode, uint32 newTargetPortNr, bool isTargetInput)
+    {
+        GraphNode* targetNode = connection->GetSourceNode();
+        GraphNode* sourceNode = newTargetNode;
+        uint32 sourcePortNr = connection->GetOutputPortNr();
+        uint32 targetPortNr = newTargetPortNr;
+
+        // don't allow connection to itself
+        if (sourceNode == targetNode)
+        {
+            return false;
+        }
+
+        // if we're not dealing with state nodes
+        if (sourceNode->GetType() != StateGraphNode::TYPE_ID || targetNode->GetType() != StateGraphNode::TYPE_ID)
+        {
+            if (isTargetInput == false)
+            {
+                return false;
+            }
+        }
+
+        // if this were states, it's all fine
+        if (sourceNode->GetType() == StateGraphNode::TYPE_ID || targetNode->GetType() == StateGraphNode::TYPE_ID)
+        {
+            return true;
+        }
+
+        // check if there is already a connection in the port
+        AZ_Assert(sourceNode->GetType() == BlendTreeVisualNode::TYPE_ID, "Expected blend tree node");
+        AZ_Assert(targetNode->GetType() == BlendTreeVisualNode::TYPE_ID, "Expected blend tree node");
+        BlendTreeVisualNode* targetBlendNode = static_cast<BlendTreeVisualNode*>(sourceNode);
+        BlendTreeVisualNode* sourceBlendNode = static_cast<BlendTreeVisualNode*>(targetNode);
+
+        EMotionFX::AnimGraphNode* emfxSourceNode = sourceBlendNode->GetEMFXNode();
+        EMotionFX::AnimGraphNode* emfxTargetNode = targetBlendNode->GetEMFXNode();
+        EMotionFX::AnimGraphNode::Port& sourcePort = emfxSourceNode->GetOutputPort(sourcePortNr);
+        EMotionFX::AnimGraphNode::Port& targetPort = emfxTargetNode->GetInputPort(targetPortNr);
+
+        // if the port data types are not compatible, don't allow the connection
+        if (targetPort.CheckIfIsCompatibleWith(sourcePort) == false)
+        {
+            return false;
+        }
+
+        return true;
+    }
+
+    void NodeGraph::RecursiveSetOpacity(EMotionFX::AnimGraphNode* startNode, float opacity)
+    {
+        GraphNode* graphNode = FindGraphNode(startNode);
+        AZ_Assert(graphNode, "Expected graph node");
+        graphNode->SetOpacity(opacity);
+        graphNode->ResetBorderColor();
+
+        // recurse through the inputs
+        const uint32 numConnections = startNode->GetNumConnections();
+        for (uint32 i = 0; i < numConnections; ++i)
+        {
+            EMotionFX::BlendTreeConnection* connection = startNode->GetConnection(i);
+            RecursiveSetOpacity(connection->GetSourceNode(), opacity);
+        }
+    }
+
+    void NodeGraph::Reinit()
+    {
+        AZ_Assert(m_currentModelIndex.isValid(), "Expected valid model index");
+        AZ_Assert(m_graphNodeByModelIndex.empty(), "Expected empty node graph");
+        
+        GraphNodeFactory* graphNodeFactory = m_graphWidget->GetPlugin()->GetGraphNodeFactory();
+
+        // Add all the nodes
+        AZStd::vector<GraphNodeByModelIndex::iterator> nodeModelIterators;
+        const int rows = m_currentModelIndex.model()->rowCount(m_currentModelIndex);
+        for (int row = 0; row < rows; ++row)
+        {
+            const QModelIndex modelIndex = m_currentModelIndex.child(row, 0);
+            const AnimGraphModel::ModelItemType itemType = modelIndex.data(AnimGraphModel::ROLE_MODEL_ITEM_TYPE).value<AnimGraphModel::ModelItemType>();
+            if (itemType == AnimGraphModel::ModelItemType::NODE)
+            {
+                EMotionFX::AnimGraphNode* childNode = modelIndex.data(AnimGraphModel::ROLE_NODE_POINTER).value<EMotionFX::AnimGraphNode*>();
+                GraphNode* graphNode = graphNodeFactory->CreateGraphNode(modelIndex, m_graphWidget->GetPlugin(), childNode);
+                AZ_Assert(graphNode, "Expected valid graph node");
+
+                // Set properties that dont change ever
+                graphNode->SetParentGraph(this);
+
+                AZStd::unique_ptr<GraphNode> graphNodePtr(graphNode);
+                AZStd::pair<GraphNodeByModelIndex::iterator, bool> it = m_graphNodeByModelIndex.emplace(modelIndex, AZStd::move(graphNodePtr));
+                nodeModelIterators.emplace_back(it.first);
+            }
+        }
+        
+        // Now sync. Connections are added during sync, we need the step above first to create all the nodes.
+        for (const GraphNodeByModelIndex::iterator& nodeModelIt : nodeModelIterators)
+        {
+            nodeModelIt->second->Sync();
+        }
+
+        // do another iteration over the element's rows to create the transitions
+        for (int row = 0; row < rows; ++row)
+        {
+            const QModelIndex modelIndex = m_currentModelIndex.child(row, 0);
+            const AnimGraphModel::ModelItemType itemType = modelIndex.data(AnimGraphModel::ROLE_MODEL_ITEM_TYPE).value<AnimGraphModel::ModelItemType>();
+            if (itemType == AnimGraphModel::ModelItemType::TRANSITION)
+            {
+                EMotionFX::AnimGraphStateTransition* transition = modelIndex.data(AnimGraphModel::ROLE_TRANSITION_POINTER).value<EMotionFX::AnimGraphStateTransition*>();
+                // get the source and target nodes
+                GraphNode* source = nullptr;
+                if (transition->GetSourceNode())
+                {
+                    source = FindGraphNode(transition->GetSourceNode());
+                }
+                GraphNode* target = FindGraphNode(transition->GetTargetNode());
+                StateConnection* connection = new StateConnection(modelIndex, source, target, transition->GetIsWildcardTransition());
+                connection->SetIsDisabled(transition->GetIsDisabled());
+                connection->SetIsSynced(transition->GetSyncMode() != EMotionFX::AnimGraphObject::SYNCMODE_DISABLED);
+                target->AddConnection(connection);
+            }
+        }
+        
+        EMotionFX::AnimGraphObject* currentGraphObject = m_currentModelIndex.data(AnimGraphModel::ROLE_ANIM_GRAPH_OBJECT_PTR).value<EMotionFX::AnimGraphObject*>();
+        if (azrtti_typeid(currentGraphObject) == azrtti_typeid<EMotionFX::AnimGraphStateMachine>())
+        {
+            EMotionFX::AnimGraphStateMachine* stateMachine = static_cast<EMotionFX::AnimGraphStateMachine*>(currentGraphObject);
+
+            // set the entry state
+            EMotionFX::AnimGraphNode* entryNode = stateMachine->GetEntryState();
+            if (!entryNode)
+            {
+                SetEntryNode(nullptr);
+            }
+            else
+            {
+                GraphNode* entryGraphNode = FindGraphNode(entryNode);
+                SetEntryNode(entryGraphNode);
+            }
+        }
+        else if (azrtti_typeid(currentGraphObject) == azrtti_typeid<EMotionFX::BlendTree>())
+        {
+            EMotionFX::BlendTree* blendTree = static_cast<EMotionFX::BlendTree*>(currentGraphObject);
+            EMotionFX::AnimGraphNode* virtualFinalNode = blendTree->GetVirtualFinalNode();
+            if (virtualFinalNode)
+            {
+                RecursiveSetOpacity(blendTree->GetFinalNode(), 0.065f);
+                RecursiveSetOpacity(virtualFinalNode, 1.0f);
+
+                if (virtualFinalNode != blendTree->GetFinalNode())
+                {
+                    GraphNode* virtualFinalGraphNode = FindGraphNode(virtualFinalNode);
+                    virtualFinalGraphNode->SetBorderColor(QColor(0, 255, 0));
+                }
+            }
+        }
+
+        // Update the selection
+        AnimGraphModel& animGraphModel = m_graphWidget->GetPlugin()->GetAnimGraphModel();
+        QModelIndexList selectedIndexes = animGraphModel.GetSelectionModel().selectedRows();
+        OnSelectionModelChanged(selectedIndexes, QModelIndexList());
+
+        const QRect& graphWidgetRect = m_graphWidget->geometry();
+        SetScalePivot(QPoint(graphWidgetRect.width() / 2, graphWidgetRect.height() / 2));
+        FitGraphOnScreen(graphWidgetRect.width(), graphWidgetRect.height(), QPoint(0, 0), false);
+    }
+
+    void NodeGraph::RenderNodeGroups(QPainter& painter)
+    {
+        EMotionFX::AnimGraphNode* currentNode = m_currentModelIndex.data(AnimGraphModel::ROLE_NODE_POINTER).value<EMotionFX::AnimGraphNode*>();
+        EMotionFX::AnimGraph* animGraph = currentNode->GetAnimGraph();
+
+        // get the number of node groups and iterate through them
+        QRect nodeRect;
+        QRect groupRect;
+        const uint32 numNodeGroups = animGraph->GetNumNodeGroups();
+        for (uint32 i = 0; i < numNodeGroups; ++i)
+        {
+            // get the current node group
+            EMotionFX::AnimGraphNodeGroup* nodeGroup = animGraph->GetNodeGroup(i);
+
+            // skip the node group if it isn't visible
+            if (nodeGroup->GetIsVisible() == false)
+            {
+                continue;
+            }
+
+            // get the number of nodes inside the node group and skip the group in case there are no nodes in
+            const uint32 numNodes = nodeGroup->GetNumNodes();
+            if (numNodes == 0)
+            {
+                continue;
+            }
+
+            int32 top = std::numeric_limits<int32>::max();
+            int32 bottom = std::numeric_limits<int32>::lowest();
+            int32 left = std::numeric_limits<int32>::max();
+            int32 right = std::numeric_limits<int32>::lowest();
+
+            bool nodesInGroupDisplayed = false;
+            for (uint32 j = 0; j < numNodes; ++j)
+            {
+                // get the graph node by the id and skip it if the node is not inside the currently visible node graph
+                const EMotionFX::AnimGraphNodeId nodeId = nodeGroup->GetNode(j);
+                EMotionFX::AnimGraphNode* node = currentNode->RecursiveFindNodeById(nodeId);
+                GraphNode* graphNode = FindGraphNode(node);
+                if (graphNode)
+                {
+                    nodesInGroupDisplayed = true;
+                    nodeRect = graphNode->GetRect();
+                    top = MCore::Min3<int32>(top, nodeRect.top(), nodeRect.bottom());
+                    bottom = MCore::Max3<int32>(bottom, nodeRect.top(), nodeRect.bottom());
+                    left = MCore::Min3<int32>(left, nodeRect.left(), nodeRect.right());
+                    right = MCore::Max3<int32>(right, nodeRect.left(), nodeRect.right());
+                }
+            }
+
+            if (nodesInGroupDisplayed)
+            {
+                // get the color from the node group and set it to the painter
+                AZ::Color azColor;
+                azColor.FromU32(nodeGroup->GetColor());
+                QColor color = AzQtComponents::ToQColor(azColor);
+                color.setAlpha(150);
+                painter.setPen(color);
+                color.setAlpha(40);
+                painter.setBrush(color);
+
+                const int32 border = 10;
+                groupRect.setTop(top - (border + 15));
+                groupRect.setBottom(bottom + border);
+                groupRect.setLeft(left - border);
+                groupRect.setRight(right + border);
+                painter.drawRoundedRect(groupRect, 7, 7);
+
+                QRect textRect = groupRect;
+                textRect.setHeight(m_groupFontMetrics->height());
+                textRect.setLeft(textRect.left() + border);
+
+                // draw the name on top
+                color.setAlpha(255);
+                //painter.setPen( color );
+                //mTempString = nodeGroup->GetName();
+                //painter.setFont( m_groupFont );
+                GraphNode::RenderText(painter, nodeGroup->GetName(), color, m_groupFont, *m_groupFontMetrics, Qt::AlignLeft, textRect);
+                //painter.drawText( left - 7, top - 7, mTempString );
+            }
+        }   // for all node groups
+    }
+
+}   // namespace EMotionStudio
 
 #include <EMotionFX/Tools/EMotionStudio/Plugins/StandardPlugins/Source/AnimGraph/NodeGraph.moc>

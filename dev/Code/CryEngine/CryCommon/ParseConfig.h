@@ -16,6 +16,8 @@
 #include <stdio.h>
 #include "platform.h"
 
+#include <AzCore/Memory/OSAllocator.h>
+
 #if defined(AZ_PLATFORM_ANDROID)
 #include <android/asset_manager.h>
 #include <android/asset_manager_jni.h>
@@ -106,7 +108,7 @@ protected:
             if (pAsset != nullptr)
             {
                 length = AAsset_getLength(pAsset);
-                sAllText = new char[length + textBufferOverflowGuard];
+                sAllText =  reinterpret_cast<char*>(AZ_OS_MALLOC(length + textBufferOverflowGuard, sizeof(void*)));
                 AAsset_read(pAsset, sAllText, length);
                 AAsset_close(pAsset);
                 sAllText[length] = '\0';
@@ -128,7 +130,7 @@ protected:
             length = ftell(file);
             fseek(file, 0, SEEK_SET);
 
-            sAllText = new char[length + textBufferOverflowGuard];
+            sAllText = reinterpret_cast<char*>(AZ_OS_MALLOC(length + textBufferOverflowGuard, sizeof(void*)));
 
             fread(sAllText, 1, length, file);
 
@@ -260,8 +262,7 @@ protected:
                 }
             }
         }
-        delete[] sAllText;
-
+        AZ_OS_FREE(sAllText);
 
         return true;
     }

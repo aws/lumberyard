@@ -13,7 +13,9 @@
 
 #include "EditorCommon.h"
 #include <AzToolsFramework/Slice/SliceUtilities.h>
+#include <AzToolsFramework/ToolsComponents/EditorOnlyEntityComponentBus.h>
 #include "SliceMenuHelpers.h"
+#include "QtHelpers.h"
 
 // Define for enabling/disabling the UI Slice system
 #define ENABLE_UI_SLICE_MENU_ITEMS 1
@@ -21,7 +23,6 @@
 HierarchyMenu::HierarchyMenu(HierarchyWidget* hierarchy,
     size_t showMask,
     bool addMenuForNewElement,
-    AZ::Component* componentToRemove,
     const QPoint* optionalPos)
     : QMenu()
 {
@@ -82,9 +83,16 @@ HierarchyMenu::HierarchyMenu(HierarchyWidget* hierarchy,
 
     addSeparator();
 
-    if (showMask & Show::kRemoveComponents)
+    if (showMask & Show::kFindElements)
     {
-        RemoveComponents(hierarchy, selectedItems, componentToRemove);
+        FindElements(hierarchy, selectedItems);
+    }
+
+    addSeparator();
+
+    if (showMask & Show::kEditorOnly)
+    {
+        EditorOnly(hierarchy, selectedItems);
     }
 }
 
@@ -218,16 +226,16 @@ void HierarchyMenu::SliceMenuItems(HierarchyWidget* hierarchy,
     AZStd::vector<AZ::SliceComponent::SliceInstanceAddress> sliceInstances;
     for (const AZ::EntityId& entityId : selectedEntities)
     {
-        AZ::SliceComponent::SliceInstanceAddress sliceAddress(nullptr, nullptr);
+        AZ::SliceComponent::SliceInstanceAddress sliceAddress;
         EBUS_EVENT_ID_RESULT(sliceAddress, entityId, AzFramework::EntityIdContextQueryBus, GetOwningSlice);
 
-        if (sliceAddress.first)
+        if (sliceAddress.IsValid())
         {
             if (sliceInstances.end() == AZStd::find(sliceInstances.begin(), sliceInstances.end(), sliceAddress))
             {
                 if (sliceInstances.empty())
                 {
-                    sliceAddress.first->GetInstanceEntityAncestry(entityId, referenceAncestors);
+                    sliceAddress.GetReference()->GetInstanceEntityAncestry(entityId, referenceAncestors);
                 }
 
                 sliceInstances.push_back(sliceAddress);
@@ -241,10 +249,17 @@ void HierarchyMenu::SliceMenuItems(HierarchyWidget* hierarchy,
     {
         if (showMask & Show::kPushToSlice)
         {
+            // Push slice action currently acts on entities and all descendants, so include those as part of the selection
+            AzToolsFramework::EntityIdSet selectedTransformHierarchyEntities =
+                hierarchy->GetEditorWindow()->GetSliceManager()->GatherEntitiesAndAllDescendents(selectedEntities);
+
+            AzToolsFramework::EntityIdList selectedPushEntities;
+            selectedPushEntities.insert(selectedPushEntities.begin(), selectedTransformHierarchyEntities.begin(), selectedTransformHierarchyEntities.end());
+
             QAction* action = addAction(QObject::tr("&Push to Slice..."));
-            QObject::connect(action, &QAction::triggered, hierarchy, [hierarchy, selectedEntities]
+            QObject::connect(action, &QAction::triggered, hierarchy, [hierarchy, selectedPushEntities]
                 {
-                    hierarchy->GetEditorWindow()->GetSliceManager()->PushEntitiesModal(selectedEntities, nullptr);
+                    hierarchy->GetEditorWindow()->GetSliceManager()->PushEntitiesModal(selectedPushEntities, nullptr);
                 }
             );
         }
@@ -288,9 +303,10 @@ void HierarchyMenu::SliceMenuItems(HierarchyWidget* hierarchy,
                 }
                 QAction* action = addAction(detachEntitiesActionText);
                 QObject::connect(action, &QAction::triggered, hierarchy, [hierarchy, selectedDetachEntities]
-                {
-                    hierarchy->GetEditorWindow()->GetSliceManager()->DetachSliceEntities(selectedDetachEntities);
-                }
+                    {
+                        hierarchy->GetEditorWindow()->GetSliceManager()->DetachSliceEntities(selectedDetachEntities);
+                        hierarchy->UpdateSliceInfo();
+                    }
                 );
             }
 
@@ -307,11 +323,54 @@ void HierarchyMenu::SliceMenuItems(HierarchyWidget* hierarchy,
                 }
                 QAction* action = addAction(detachSlicesActionText);
                 QObject::connect(action, &QAction::triggered, hierarchy, [hierarchy, selectedEntities]
-
-                {
-                    hierarchy->GetEditorWindow()->GetSliceManager()->DetachSliceInstances(selectedEntities);
-                }
+                    {
+                        hierarchy->GetEditorWindow()->GetSliceManager()->DetachSliceInstances(selectedEntities);
+                        hierarchy->UpdateSliceInfo();
+                    }
                 );
+            }
+
+            // Edit slice in new tab
+            {
+                QMenu* menu = addMenu("Edit slice in new tab");
+
+                // Catalog all unique slices to which any of the selected entities are associated (anywhere in their ancestry).
+                // This is used to make a menu allowing any of them to be edited in a new tab
+                AZStd::vector<AZ::Data::AssetId> slicesAddedToMenu;
+                AZ::SliceComponent::EntityAncestorList tempAncestors;
+
+                for (AZ::EntityId entityId : selectedEntities)
+                {
+                    AZ::SliceComponent::SliceInstanceAddress sliceAddress;
+                    AzFramework::EntityIdContextQueryBus::EventResult(sliceAddress, entityId, &AzFramework::EntityIdContextQueryBus::Events::GetOwningSlice);
+
+                    if (sliceAddress.IsValid())
+                    {
+                        tempAncestors.clear();
+                        sliceAddress.GetReference()->GetInstanceEntityAncestry(entityId, tempAncestors);
+
+                        for (const AZ::SliceComponent::Ancestor& ancestor : tempAncestors)
+                        {
+                            const AZ::Data::Asset<AZ::SliceAsset>& sliceAsset = ancestor.m_sliceAddress.GetReference()->GetSliceAsset();
+
+                            // If this slice has not already been added to the menu then add it.
+                            if (slicesAddedToMenu.end() == AZStd::find(slicesAddedToMenu.begin(), slicesAddedToMenu.end(), sliceAsset.GetId()))
+                            {
+                                const AZStd::string& assetPath = sliceAsset.GetHint();
+                                slicesAddedToMenu.push_back(sliceAsset.GetId());
+
+                                QAction* action = menu->addAction(assetPath.c_str());
+                                QObject::connect(action, &QAction::triggered, [this, hierarchy, sliceAsset]
+                                    {
+                                        hierarchy->GetEditorWindow()->EditSliceInNewTab(sliceAsset.GetId());
+                                    }
+                                );
+                            }
+                        }
+                    }
+                }
+
+
             }
         }
 
@@ -371,7 +430,7 @@ void HierarchyMenu::New_ElementFromSlice(HierarchyWidget* hierarchy,
     AZ::Vector2 viewportPosition(-1.0f,-1.0f); // indicates no viewport position specified
     if (optionalPos)
     {
-        viewportPosition = EntityHelpers::QPointFToVec2(*optionalPos);
+        viewportPosition = QtHelpers::QPointFToVector2(*optionalPos);
     }
 
     SliceMenuHelpers::CreateInstantiateSliceMenu(hierarchy,
@@ -389,7 +448,7 @@ void HierarchyMenu::New_ElementFromSlice(HierarchyWidget* hierarchy,
             AZ::Vector2 viewportPosition(-1.0f,-1.0f); // indicates no viewport position specified
             if (optionalPos)
             {
-                viewportPosition = EntityHelpers::QPointFToVec2(*optionalPos);
+                viewportPosition = QtHelpers::QPointFToVector2(*optionalPos);
             }
             hierarchy->GetEditorWindow()->GetSliceManager()->InstantiateSliceUsingBrowser(hierarchy, viewportPosition);
         }
@@ -433,13 +492,71 @@ void HierarchyMenu::DeleteElement(HierarchyWidget* hierarchy,
     }
 }
 
-void HierarchyMenu::RemoveComponents(HierarchyWidget* hierarchy,
-    QTreeWidgetItemRawPtrQList& selectedItems,
-    const AZ::Component* optionalOnlyThisComponentType)
+void HierarchyMenu::FindElements(HierarchyWidget* hierarchy,
+    QTreeWidgetItemRawPtrQList& selectedItems)
 {
-    addActions(ComponentHelpers::CreateRemoveComponentActions(hierarchy,
-            selectedItems,
-            optionalOnlyThisComponentType));
+    QAction* action;
+
+    // Find elements
+    {
+        action = new QAction("Find Elements...", this);
+        action->setShortcut(QKeySequence::Find);
+        action->setShortcutContext(Qt::WidgetWithChildrenShortcut);
+        QObject::connect(action,
+            &QAction::triggered,
+            hierarchy,
+            [ hierarchy ](bool checked)
+            {
+                hierarchy->GetEditorWindow()->ShowEntitySearchModal();
+            });
+        addAction(action);
+    }
+}
+
+void HierarchyMenu::EditorOnly(HierarchyWidget* hierarchy,
+    QTreeWidgetItemRawPtrQList& selectedItems)
+{
+    QAction* action;
+
+    // Toggle editor only state.
+    {
+        action = new QAction("Editor Only", this);
+        action->setCheckable(true);
+        
+        if (selectedItems.empty())
+        {
+            action->setChecked(false);
+            action->setEnabled(false);
+        }
+        else
+        {
+            EntityHelpers::EntityIdList entityIds = SelectionHelpers::GetSelectedElementIds(hierarchy, selectedItems, false);
+
+            bool checked = true;
+            for (auto entityId : entityIds)
+            {
+                bool isEditorOnly = false;
+                AzToolsFramework::EditorOnlyEntityComponentRequestBus::EventResult(isEditorOnly, entityId, &AzToolsFramework::EditorOnlyEntityComponentRequests::IsEditorOnlyEntity);
+            
+                if (!isEditorOnly)
+                {
+                    checked = false;
+                    break;
+                }
+            }
+
+            action->setChecked(checked);
+            action->setEnabled(true);
+        }
+
+        QObject::connect(action,
+            &QAction::triggered,
+            [hierarchy](bool checked)
+        {
+            QMetaObject::invokeMethod(hierarchy, "SetEditorOnlyForSelectedItems", Qt::QueuedConnection, Q_ARG(bool, checked));
+        });
+        addAction(action);
+    }
 }
 
 #include <HierarchyMenu.moc>

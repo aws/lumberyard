@@ -1,10 +1,10 @@
+import util
+import datetime
 
 class KeyParts(object):
 
     def __init__(self, key, sep):        
-        self.__key = key            
-        if self.__key.index("/") == 0:
-            self.__key =  self.__key[1:]
+        self.__key = util.get_path_without_leading_seperator(key)
         self.__parts = self.__key.split(sep)
 
     @property
@@ -22,6 +22,10 @@ class KeyParts(object):
     @property
     def datetime(self):
         return self.raw_split(self.key_datetime)
+
+    @property
+    def datetime_format(self):
+        return self.raw_split(self.key_datetime, 0)
 
     @property
     def year(self):
@@ -46,6 +50,14 @@ class KeyParts(object):
     @property
     def filename(self):
         return self.__parts[11]
+
+    @property
+    def filename_timestamp(self):
+        return datetime.datetime.strptime(self.filename.split("_")[0], util.path_date_format())    
+
+    @property
+    def extension(self):
+        return self.raw_split(self.__parts[11],1,".")
 
     @property
     def schema(self):
@@ -95,6 +107,11 @@ class KeyParts(object):
     def path(self):
         return self.__key.replace(self.filename, "") 
 
-    def raw_split(self, value):        
-        return value.split("=")[1]
+    @property
+    def raw(self):
+        return self.__parts
+
+    def raw_split(self, value, idx=1, split_on="="):        
+        return value.split(split_on)[idx]
+
     

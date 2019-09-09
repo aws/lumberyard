@@ -10,10 +10,8 @@
 *
 */
 #include "LmbrCentral_precompiled.h"
-#include "LmbrCentralEditor.h"
 #include "LmbrCentralReflectionTest.h"
 #include "Shape/EditorBoxShapeComponent.h"
-#include <AzToolsFramework/Application/ToolsApplication.h>
 
 namespace LmbrCentral
 {
@@ -33,32 +31,10 @@ namespace LmbrCentral
     </ObjectStream>)DELIMITER";
 
     class LoadEditorBoxShapeComponentFromVersion1
-        : public LoadReflectedObjectTest<AZ::ComponentApplication, LmbrCentralEditorModule, EditorBoxShapeComponent>
+        : public LoadEditorComponentTest<EditorBoxShapeComponent>
     {
     protected:
         const char* GetSourceDataBuffer() const override { return kEditorBoxComponentVersion1; }
-
-        void SetUp() override
-        {
-            LoadReflectedObjectTest::SetUp();
-
-            if (m_object)
-            {
-                m_editorBoxShapeComponent = m_object.get();
-                m_entity.Init();
-                m_entity.AddComponent(m_editorBoxShapeComponent);
-                m_entity.Activate();
-            }
-        }
-
-        void TearDown() override
-        {
-            m_entity.Deactivate();
-            LoadReflectedObjectTest::TearDown();
-        }
-
-        AZ::Entity m_entity;
-        EditorBoxShapeComponent* m_editorBoxShapeComponent = nullptr;
     };
 
     TEST_F(LoadEditorBoxShapeComponentFromVersion1, Application_IsRunning)
@@ -73,14 +49,15 @@ namespace LmbrCentral
 
     TEST_F(LoadEditorBoxShapeComponentFromVersion1, EditorComponent_Found)
     {
-       EXPECT_NE(m_editorBoxShapeComponent, nullptr);
+        EXPECT_EQ(m_entity->GetComponents().size(), 2);
+        EXPECT_NE(m_entity->FindComponent(m_object->GetId()), nullptr);
     }
 
     TEST_F(LoadEditorBoxShapeComponentFromVersion1, Dimensions_MatchesSourceData)
     {
         AZ::Vector3 dimensions = AZ::Vector3::CreateZero();
         BoxShapeComponentRequestsBus::EventResult(
-            dimensions, m_entity.GetId(), &BoxShapeComponentRequests::GetBoxDimensions);
+            dimensions, m_entity->GetId(), &BoxShapeComponentRequests::GetBoxDimensions);
 
        EXPECT_EQ(dimensions, AZ::Vector3(0.37, 0.57, 0.66));
     }

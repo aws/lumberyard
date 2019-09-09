@@ -1,3 +1,14 @@
+/*
+* All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates, or 
+* a third party where indicated.
+*
+* For complete copyright and license terms please see the LICENSE at the root of this
+* distribution (the "License"). All use of this software is governed by the License,  
+* or, if provided, by the license below or the license accompanying this file. Do not
+* remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.  
+*
+*/
 #ifndef AZ_CORE_GUID_H
 #define AZ_CORE_GUID_H 1
 
@@ -13,24 +24,7 @@ typedef struct _GUID {
             Data4[it - d4.begin()] = *it;
     }
 
-#ifdef QUUID_H
-    _GUID(const QUuid& guid = QUuid())
-    {
-        *this = guid;
-    }
-    _GUID& operator=(const QUuid& id)
-    {
-        *this = _GUID({id.data1, id.data2, id.data3, {id.data4[0], id.data4[1], id.data4[2], id.data4[3], id.data4[4], id.data4[5], id.data4[6], id.data4[7] }});
-        return *this;
-    }
-    
-    operator QUuid() const
-    {
-        return QUuid(Data1, Data2, Data3, Data4[0], Data4[1], Data4[2], Data4[3], Data4[4], Data4[5], Data4[6], Data4[7]);
-    }
-#else
     _GUID() = default;
-#endif // QUUID_H
 
     uint32_t       Data1;
     unsigned short Data2;

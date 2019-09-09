@@ -18,100 +18,108 @@
 #include "Motion.h"
 //#include <MCore/Source/LogManager.h>
 
+#include <AzCore/Serialization/SerializeContext.h>
+#include <AzCore/Serialization/EditContext.h>
+#include <AzCore/std/iterator.h>
+#include <algorithm>
 
 namespace EMotionFX
 {
-    // constructor
-    AnimGraphSyncTrack::AnimGraphSyncTrack()
+    AZ_CLASS_ALLOCATOR_IMPL(AnimGraphSyncTrack, MotionEventAllocator, 0);
+
+    /**
+    * @brief: Advances an iterator +1 or -1, wrapping to the beginning when the
+    *         end is reached, and wrapping to the beginning when the end is
+    *         reached
+    *
+    * @param[in] in A bidirectional iterator
+    * @param[in] direction True to increment the iterator, false to decrement
+    * @param[in] Iterator& begin The begin() of the container
+    * @param[in] Iterator& end The end() of the container
+    */
+    template<class Iterator>
+    static Iterator AdvanceAndWrapIterator(Iterator in, bool direction, const Iterator& begin, const Iterator& end)
     {
-        mDuration   = 0.0f;
-        mEvents.SetMemoryCategory(EMFX_MEMCATEGORY_ANIMGRAPH_SYNCTRACK);
+        if (in == begin && !direction)
+        {
+            in = AZStd::next(end, -1);
+        }
+        else
+        {
+            direction ? ++in : --in;
+            if (in == end)
+            {
+                in = begin;
+            }
+        }
+        return in;
     }
 
+    AnimGraphSyncTrack::AnimGraphSyncTrack() = default;
 
-    // destructor
+    AnimGraphSyncTrack::AnimGraphSyncTrack(Motion* motion)
+        : MotionEventTrack(motion)
+    {
+    }
+
+    AnimGraphSyncTrack::AnimGraphSyncTrack(const char* name, Motion* motion)
+        : MotionEventTrack(name, motion)
+    {
+    }
+
     AnimGraphSyncTrack::~AnimGraphSyncTrack()
     {
     }
 
-
-    // copy constructor
-    AnimGraphSyncTrack::AnimGraphSyncTrack(const AnimGraphSyncTrack& track)
+    AnimGraphSyncTrack::AnimGraphSyncTrack(const AnimGraphSyncTrack& other)
+        : MotionEventTrack(other)
     {
-        mEvents     = track.mEvents;
-        mDuration   = track.mDuration;
     }
 
-
-    // clear all events
-    void AnimGraphSyncTrack::Clear()
+    AnimGraphSyncTrack& AnimGraphSyncTrack::operator=(const AnimGraphSyncTrack& other)
     {
-        mDuration   = 0.0f;
-        mEvents.Clear(false); // false to keep memory for later reuse
-    }
-
-
-    // init the synctrack from a given event track
-    void AnimGraphSyncTrack::InitFromEventTrack(const MotionEventTrack* track)
-    {
-        // just iterate over all events in the track and store them as sync events
-        const uint32 numEvents = track->GetNumEvents();
-        mEvents.Resize(numEvents);
-        for (uint32 i = 0; i < numEvents; ++i)
+        if (this == &other)
         {
-            const MotionEvent& motionEvent = track->GetEvent(i);
-            mEvents[i].mID          = motionEvent.GetEventTypeID();
-            mEvents[i].mMirrorID    = motionEvent.GetMirrorEventID();
-            mEvents[i].mTime        = motionEvent.GetStartTime();
+            return *this;
+        }
+        MotionEventTrack::operator=(other);
+        return *this;
+    }
+
+    void AnimGraphSyncTrack::Reflect(AZ::ReflectContext* context)
+    {
+        AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
+        if (!serializeContext)
+        {
+            return;
         }
 
-        // store the duration of the motion in the synctrack as well
-        mDuration = track->GetMotion()->GetMaxTime();
-    }
+        serializeContext->Class<AnimGraphSyncTrack, MotionEventTrack>()
+            ;
 
-
-    // init the synctrack from a given event track, in a mirrored way
-    void AnimGraphSyncTrack::InitFromEventTrackMirrored(const MotionEventTrack* track)
-    {
-        const uint32 numEvents = track->GetNumEvents();
-        mEvents.Resize(numEvents);
-        for (uint32 i = 0; i < numEvents; ++i)
+        AZ::EditContext* editContext = serializeContext->GetEditContext();
+        if (!editContext)
         {
-            const MotionEvent& motionEvent = track->GetEvent(i);
-
-            mEvents[i].mID          = motionEvent.GetMirrorEventID();
-            mEvents[i].mMirrorID    = motionEvent.GetEventTypeID();
-            mEvents[i].mTime        = motionEvent.GetStartTime();
+            return;
         }
 
-        // store the duration of the motion in the synctrack as well
-        mDuration = track->GetMotion()->GetMaxTime();
-    }
-
-
-    // init the synctrack from another sync track, but in a mirrored way
-    void AnimGraphSyncTrack::InitFromSyncTrackMirrored(const AnimGraphSyncTrack& track)
-    {
-        MCORE_ASSERT(this != &track);
-        *this = track;
-        const uint32 numEvents = track.GetNumEvents();
-        for (uint32 i = 0; i < numEvents; ++i)
-        {
-            mEvents[i].mID          = track.mEvents[i].mMirrorID;
-            mEvents[i].mMirrorID    = track.mEvents[i].mID;
-        }
+        editContext->Class<AnimGraphSyncTrack>("AnimGraphSyncTrack", "")
+            ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
+                ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
+                ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
+            ;
     }
 
 
     // find the event indices
-    bool AnimGraphSyncTrack::FindEventIndices(float timeInSeconds, uint32* outIndexA, uint32* outIndexB) const
+    bool AnimGraphSyncTrack::FindEventIndices(float timeInSeconds, size_t* outIndexA, size_t* outIndexB) const
     {
         // if we have no events at all, or if we provide some incorrect time value
-        const uint32 numEvents = mEvents.GetLength();
-        if (numEvents == 0 || timeInSeconds > mDuration || timeInSeconds < 0.0f)
+        const size_t numEvents = m_events.size();
+        if (numEvents == 0 || timeInSeconds > GetDuration() || timeInSeconds < 0.0f)
         {
-            *outIndexA      = MCORE_INVALIDINDEX32;
-            *outIndexB      = MCORE_INVALIDINDEX32;
+            *outIndexA = MCORE_INVALIDINDEX32;
+            *outIndexB = MCORE_INVALIDINDEX32;
             return false;
         }
 
@@ -119,46 +127,28 @@ namespace EMotionFX
         // "..t..[x]..."
         if (numEvents == 1)
         {
-            *outIndexA      = 0;
-            *outIndexB      = 0;
+            *outIndexA = 0;
+            *outIndexB = 0;
             return true;
         }
 
-        // special case
-        // handle the first event: ".t..[x].....[y].t."
-        // where t is the timeInSeconds
-        // in this case we have to return [y] and [x] as found events
-        if (mEvents[0].mTime > timeInSeconds || mEvents.GetLast().mTime <= timeInSeconds)
+        // Use a binary search to find the event on the right
+        // If there are multiple events with the same start time, only the last
+        // one is considered
+        EventIterator right = AZStd::upper_bound(m_events.cbegin(), m_events.cend(), timeInSeconds, [](const float timeInSeconds, const EMotionFX::MotionEvent& event)
         {
-            *outIndexA      = mEvents.GetLength() - 1;
-            *outIndexB      = 0;
-            return true;
-        }
-
-        // we have more than one event
-        // iterate over all events to find the right one
-        // in case of "...[x]....t...[y]....[z]...." we return [x] and [y]
-        for (uint32 i = 0; i < numEvents - 1; ++i)
-        {
-            // if our timeInSeconds is between the previous and current event
-            if (mEvents[i].mTime <= timeInSeconds && mEvents[i + 1].mTime > timeInSeconds)
-            {
-                *outIndexA      = i;
-                *outIndexB      = i + 1;
-                return true;
-            }
-        }
-
-        // this should never happen
-        *outIndexA      = MCORE_INVALIDINDEX32;
-        *outIndexB      = MCORE_INVALIDINDEX32;
-        return false;
+            return timeInSeconds < event.GetStartTime();
+        });
+        EventIterator left = AdvanceAndWrapIterator(right, false, m_events.cbegin(), m_events.cend());
+        *outIndexA = AZStd::distance(m_events.cbegin(), left);
+        *outIndexB = right == m_events.cend() ? 0 : AZStd::distance(m_events.cbegin(), right);
+        return true;
     }
 
 
     // calculate the occurrence of a given index combination
     // the occurrence is basically the n-th time the combination shows up
-    uint32 AnimGraphSyncTrack::CalcOccurrence(uint32 indexA, uint32 indexB) const
+    size_t AnimGraphSyncTrack::CalcOccurrence(size_t indexA, size_t indexB, bool mirror) const
     {
         // if we wrapped around when looping or this is the only event (then both indexA and indexB are equal)
         if (indexA > indexB || indexA == indexB)
@@ -166,15 +156,14 @@ namespace EMotionFX
             return 0;
         }
 
-        // get the event IDs
-        const uint32 eventA = mEvents[indexA].mID;
-        const uint32 eventB = mEvents[indexB].mID;
+        const MotionEvent& eventA = m_events[indexA];
+        const MotionEvent& eventB = m_events[indexB];
 
         // check the looping section, which is occurence 0
-        uint32 occurrence = 0;
-        if (mEvents.GetLast().mID == eventA && mEvents[0].mID == eventB)
+        size_t occurrence = 0;
+        if (AreEventsSyncable(m_events.back(), eventA, mirror) && AreEventsSyncable(m_events[0], eventB, mirror))
         {
-            if ((mEvents.GetLength() - 1) == indexA && eventB == 0)
+            if ((m_events.size() - 1) == indexA && indexB == 0)
             {
                 return occurrence;
             }
@@ -185,11 +174,11 @@ namespace EMotionFX
         }
 
         // iterate over all events
-        const uint32 numEvents = mEvents.GetLength();
-        for (uint32 i = 0; i < numEvents - 1; ++i)
+        const size_t numEvents = m_events.size();
+        for (size_t i = 0; i < numEvents - 1; ++i)
         {
             // if we have an event type ID match
-            if (mEvents[i].mID == eventA && mEvents[i + 1].mID == eventB)
+            if (AreEventsSyncable(m_events[i], eventA, mirror) && AreEventsSyncable(m_events[i + 1], eventB, mirror))
             {
                 // if this is the event we search for, return the current occurrence
                 if (i == indexA && (i + 1) == indexB)
@@ -209,10 +198,10 @@ namespace EMotionFX
 
 
     // extract the n-th occurring given event combination
-    bool AnimGraphSyncTrack::ExtractOccurrence(uint32 occurrence, uint32 firstEventID, uint32 secondEventID, uint32* outIndexA, uint32* outIndexB) const
+    bool AnimGraphSyncTrack::ExtractOccurrence(size_t occurrence, size_t firstEventID, size_t secondEventID, size_t* outIndexA, size_t* outIndexB, bool mirror) const
     {
         // if there are no events
-        const uint32 numEvents = mEvents.GetLength();
+        const size_t numEvents = m_events.size();
         if (numEvents == 0)
         {
             *outIndexA = MCORE_INVALIDINDEX32;
@@ -224,7 +213,7 @@ namespace EMotionFX
         if (numEvents == 1)
         {
             // if the given event is a match
-            if (firstEventID == mEvents[0].mID && secondEventID == mEvents[0].mID)
+            if (firstEventID == m_events[0].HashForSyncing(mirror) && secondEventID == m_events[0].HashForSyncing(mirror))
             {
                 *outIndexA = 0;
                 *outIndexB = 0;
@@ -239,19 +228,19 @@ namespace EMotionFX
         }
 
         // we have multiple events
-        uint32 currentOccurrence = 0;
+        size_t currentOccurrence = 0;
         bool found = false;
 
         // continue while we're not done yet
         while (currentOccurrence <= occurrence)
         {
             // first check the looping special case
-            if (mEvents.GetLast().mID == firstEventID && mEvents[0].mID == secondEventID)
+            if (m_events.back().HashForSyncing(mirror) == firstEventID && m_events[0].HashForSyncing(mirror) == secondEventID)
             {
                 // if it's the given occurrence we need
                 if (currentOccurrence == occurrence)
                 {
-                    *outIndexA = mEvents.GetLength() - 1;
+                    *outIndexA = m_events.size() - 1;
                     *outIndexB = 0;
                     return true;
                 }
@@ -263,10 +252,10 @@ namespace EMotionFX
             }
 
             // iterate over all event segments
-            for (uint32 i = 0; i < numEvents - 1; ++i)
+            for (size_t i = 0; i < numEvents - 1; ++i)
             {
                 // if this event segment/combo is the one we're looking for
-                if (mEvents[i].mID == firstEventID && mEvents[i + 1].mID == secondEventID)
+                if (m_events[i].HashForSyncing(mirror) == firstEventID && m_events[i + 1].HashForSyncing(mirror) == secondEventID)
                 {
                     // if it's the given occurrence we need
                     if (currentOccurrence == occurrence)
@@ -298,34 +287,45 @@ namespace EMotionFX
         return false;
     }
 
+    bool AnimGraphSyncTrack::FindMatchingEvents(EventIterator start, size_t firstEventID, size_t secondEventID, size_t* outIndexA, size_t* outIndexB, bool forward, bool mirror) const
+    {
+        EventIterator current = start;
+
+        do
+        {
+            // Note that, even when playing backward (forward==false), event
+            // pairs are recognized by (current, current+1). Event pairs are
+            // not played in reverse when playing backward.
+            // If the track has events L--R--L--R, and the ids being searched
+            // for are L--R, and current index is 2 (the last L), the result LR
+            // pair found will be indexes (2,3), not (2,1), even when playing
+            // backwards.
+            EventIterator next = AdvanceAndWrapIterator(current, true, m_events.cbegin(), m_events.cend());
+            if ((*current).HashForSyncing(mirror) == firstEventID && (*next).HashForSyncing(mirror) == secondEventID)
+            {
+                *outIndexA = AZStd::distance(m_events.cbegin(), current);
+                *outIndexB = AZStd::distance(m_events.cbegin(), next);
+                return true;
+            }
+
+            current = AdvanceAndWrapIterator(current, forward, m_events.cbegin(), m_events.cend());
+        } while (current != start);
+
+        *outIndexA = MCORE_INVALIDINDEX32;
+        *outIndexB = MCORE_INVALIDINDEX32;
+        return false;
+    };
 
     // try to find a matching event combination
-    bool AnimGraphSyncTrack::FindMatchingEvents(uint32 syncIndex, uint32 firstEventID, uint32 secondEventID, uint32* outIndexA, uint32* outIndexB, bool forward) const
+    bool AnimGraphSyncTrack::FindMatchingEvents(size_t syncIndex, size_t firstEventID, size_t secondEventID, size_t* outIndexA, size_t* outIndexB, bool forward, bool mirror) const
     {
         // if the number of events is zero, we certainly don't have a match
-        const uint32 numEvents = mEvents.GetLength();
+        const size_t numEvents = m_events.size();
         if (numEvents == 0)
         {
             *outIndexA = MCORE_INVALIDINDEX32;
             *outIndexB = MCORE_INVALIDINDEX32;
             return false;
-        }
-
-        // if there is just one event
-        if (numEvents == 1)
-        {
-            if (firstEventID == mEvents[0].mID && secondEventID == mEvents[0].mID)
-            {
-                *outIndexA = 0;
-                *outIndexB = 0;
-                return true;
-            }
-            else
-            {
-                *outIndexA = MCORE_INVALIDINDEX32;
-                *outIndexB = MCORE_INVALIDINDEX32;
-                return false;
-            }
         }
 
         // if the sync index is not set, start at the first pair (which starts from the last sync key)
@@ -341,270 +341,40 @@ namespace EMotionFX
             }
         }
 
-        if (forward)
+        EventIterator it = AZStd::next(m_events.cbegin(), syncIndex);
+        if (!forward)
         {
-            // check all segments starting from the syncIndex, till the end
-            for (uint32 i = syncIndex; i < numEvents; ++i)
-            {
-                // if this isn't the last looping segment
-                if (i + 1 < numEvents)
-                {
-                    if (mEvents[i].mID == firstEventID && mEvents[i + 1].mID == secondEventID)
-                    {
-                        *outIndexA = i;
-                        *outIndexB = i + 1;
-                        return true;
-                    }
-                }
-                else // the looping case
-                {
-                    if (mEvents.GetLast().mID == firstEventID && mEvents[0].mID == secondEventID)
-                    {
-                        *outIndexA = mEvents.GetLength() - 1;
-                        *outIndexB = 0;
-                        return true;
-                    }
-                }
-            }
-
-            // check everything before
-            for (uint32 i = 0; i < syncIndex; ++i)
-            {
-                if (mEvents[i].mID == firstEventID && mEvents[i + 1].mID == secondEventID)
-                {
-                    *outIndexA = i;
-                    *outIndexB = i + 1;
-                    return true;
-                }
-            }
+            // When playing in reverse, we do not match the initial position
+            // provided by the syncIndex, even if it would match. Instead we
+            // start with initial position - 1.
+            it = AdvanceAndWrapIterator(it, false, m_events.cbegin(), m_events.cend());
         }
-        else // backward playback
-        {
-            // check all segments starting from the syncIndex, till the start
-            for (int32 i = syncIndex; i >= 0; --i)
-            {
-                // if this isn't the last looping segment
-                if (i - 1 >= 0)
-                {
-                    if (mEvents[i - 1].mID == firstEventID && mEvents[i].mID == secondEventID)
-                    {
-                        *outIndexA = i - 1;
-                        *outIndexB = i;
-                        return true;
-                    }
-                }
-                else // the looping case
-                {
-                    if (mEvents[numEvents - 1].mID == firstEventID && mEvents[0].mID == secondEventID)
-                    {
-                        *outIndexA = numEvents - 1;
-                        *outIndexB = 0;
-                        return true;
-                    }
-                }
-            }
-
-            // check everything after
-            for (uint32 i = numEvents - 1; i > syncIndex; --i)
-            {
-                if (mEvents[i - 1].mID == firstEventID && mEvents[i].mID == secondEventID)
-                {
-                    *outIndexA = i - 1;
-                    *outIndexB = i;
-                    return true;
-                }
-            }
-        }
-
-        // shouldn't be reached
-        *outIndexA = MCORE_INVALIDINDEX32;
-        *outIndexB = MCORE_INVALIDINDEX32;
-        return false;
+        return FindMatchingEvents(it, firstEventID, secondEventID, outIndexA, outIndexB, forward, mirror);
     }
 
 
     // calculate the segment length in seconds
-    float AnimGraphSyncTrack::CalcSegmentLength(uint32 indexA, uint32 indexB) const
+    float AnimGraphSyncTrack::CalcSegmentLength(size_t indexA, size_t indexB) const
     {
         if (indexA < indexB) // this is normal, the first event comes before the second
         {
-            return mEvents[indexB].mTime - mEvents[indexA].mTime;
+            return m_events[indexB].GetStartTime() - m_events[indexA].GetStartTime();
         }
         else // looping case
         {
-            return mDuration - mEvents[indexA].mTime + mEvents[indexB].mTime;
+            return GetDuration() - m_events[indexA].GetStartTime() + m_events[indexB].GetStartTime();
         }
     }
 
-
-    void AnimGraphSyncTrack::SetDuration(float seconds)
+    float AnimGraphSyncTrack::GetDuration() const
     {
-        mDuration = seconds;
+        return mMotion->GetMaxTime();
     }
 
 
-    /*
-    // blend the two tracks
-    void AnimGraphSyncTrack::Blend(const AnimGraphSyncTrack* dest, float weight)
+    bool AnimGraphSyncTrack::AreEventsSyncable(const MotionEvent& eventA, const MotionEvent& eventB, bool isMirror) const
     {
-        MCORE_UNUSED(dest);
-        MCORE_UNUSED(weight);
-        // TODO: remove?
-
-        // find the event track which has most events
-        const uint32 numSourceEvents = mSyncPoints.GetLength();
-        const uint32 numDestEvents   = dest->mSyncPoints.GetLength();
-
-        if (numSourceEvents > 0 && numDestEvents == 0)  // keep the current track
-            return;
-
-        // handle cases where there is only one track with events
-        if (numSourceEvents == 0 && numDestEvents > 0)
-        {
-            mSyncPoints = dest->mSyncPoints;
-            mDuration   = dest->mDuration;
-            return;
-        }
-
-        // get the source and dest duration
-        const float sourceDuration  = mDuration;
-        const float destDuration    = dest->mDuration;
-
-        // if the source has more (or equal) amount of events, then we have to repeat/tile/wrap/loop the dest
-        if (numSourceEvents >= numDestEvents)
-        {
-            // for all source events
-            float destEventTime = 0.0f;
-            for (uint32 i=0; i<numSourceEvents; ++i)
-            {
-                // get the source event time
-                const float sourceEventTime = mSyncPoints[i];
-
-                // find the dest event time
-                if (i >= numDestEvents)
-                {
-                    const uint32 eventIndex = i % numDestEvents;
-                    destEventTime += CalcTimeDeltaToPreviousEvent( dest, eventIndex );
-                }
-                else
-                    destEventTime = dest->mSyncPoints[i];
-
-                // store the interpolated time
-                mSyncPoints[i]  = MCore::LinearInterpolate<float>(sourceEventTime, destEventTime, weight);
-            }
-        }
-        else    // the dest track has more keys
-        {
-            mSyncPoints.Resize( numDestEvents );
-
-            // for all dest events
-            float sourceEventTime = 0.0f;
-            for (uint32 i=0; i<numDestEvents; ++i)
-            {
-                // get the dest event time
-                const float destEventTime = dest->mSyncPoints[i];
-
-                // find the source event time
-                if (i >= numSourceEvents)
-                {
-                    const uint32 eventIndex = i % numSourceEvents;
-                    sourceEventTime += CalcTimeDeltaToPreviousEvent( this, eventIndex );
-                }
-                else
-                    sourceEventTime = mSyncPoints[i];
-
-                // store the interpolated time
-                mSyncPoints[i]  = MCore::LinearInterpolate<float>(sourceEventTime, destEventTime, weight);
-            }
-        }
-
-        // interpolate the duration
-        mDuration = MCore::LinearInterpolate<float>(sourceDuration, destDuration, weight);
-
-        //AZStd::string finalString;
-        //for (uint32 i=0; i<mSyncPoints.GetLength(); ++i)
-    //      finalString += AZStd::string::format("%.3f ", mSyncPoints[i]);
-    //  finalString += AZStd::string::format(" [duration=%f, weight=%f]", mDuration, weight);
-    //  MCore::LogInfo( finalString );
-
+        return eventA.HashForSyncing(isMirror) == eventB.HashForSyncing(isMirror);
     }
-    */
-    /*
-    void AnimGraphSyncTrack::Match(AnimGraphSyncTrack* dest)
-    {
-        // find the event track which has most events
-        const uint32 numSourceEvents = mSyncPoints.GetLength();
-        const uint32 numDestEvents   = dest->mSyncPoints.GetLength();
 
-        if (numSourceEvents > 0 && numDestEvents == 0)  // keep the current track
-            return;
-
-        // handle cases where there is only one track with events
-        if (numSourceEvents == 0 && numDestEvents > 0)
-        {
-            //mSyncPoints   = dest->mSyncPoints;
-            //mDuration = dest->mDuration;
-            return;
-        }
-
-        // get the source and dest duration
-        //const float sourceDuration  = mDuration;
-        //const float destDuration  = dest->mDuration;
-
-        // if the source has more (or equal) amount of events, then we have to repeat/tile/wrap/loop the dest
-        if (numSourceEvents >= numDestEvents)
-        {
-            // make sure we have enough points
-            dest->mSyncPoints.Resize( numSourceEvents );
-
-            // for all source events
-            float destEventTime = 0.0f;
-            for (uint32 i=0; i<numSourceEvents; ++i)
-            {
-                // get the source event time
-                //const float sourceEventTime = mSyncPoints[i];
-
-                // find the dest event time
-                if (i >= numDestEvents)
-                {
-                    const uint32 eventIndex = i % numDestEvents;
-                    destEventTime += CalcTimeDeltaToPreviousEvent( dest, eventIndex );
-                }
-                else
-                    destEventTime = dest->mSyncPoints[i];
-
-                // store the matched event time in dest
-                dest->mSyncPoints[i] = destEventTime;
-            }
-        }
-        else    // the dest track has more keys
-        {
-            mSyncPoints.Resize( numDestEvents );
-
-            // for all dest events
-            float sourceEventTime = 0.0f;
-            for (uint32 i=0; i<numDestEvents; ++i)
-            {
-                // get the dest event time
-                //const float destEventTime = dest->mSyncPoints[i];
-
-                // find the source event time
-                if (i >= numSourceEvents)
-                {
-                    const uint32 eventIndex = i % numSourceEvents;
-                    sourceEventTime += CalcTimeDeltaToPreviousEvent( this, eventIndex );
-                }
-                else
-                    sourceEventTime = mSyncPoints[i];
-
-                // store the interpolated time
-                mSyncPoints[i]  = sourceEventTime;
-            }
-        }
-
-        // interpolate the duration
-        //mDuration = MCore::LinearInterpolate<float>(sourceDuration, destDuration, weight);
-    }
-    */
-}   // namespace EMotionFX
-
+} // namespace EMotionFX

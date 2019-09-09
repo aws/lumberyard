@@ -324,8 +324,12 @@ using namespace AZ;
 
 //////////////////////////////////////////////////////////////////////////
 // Statics
-Sfmt Sfmt::s_default;
 //////////////////////////////////////////////////////////////////////////
+Sfmt& Sfmt::GetInstance()
+{
+    static AZStd::static_storage<Sfmt, AZStd::no_delete<Sfmt>> s_default;  ///< A Global default random number generator, init with time(NULL) seed!
+    return s_default;
+}
 
 //=========================================================================
 // Sfmt

@@ -15,7 +15,6 @@
 #define CRYINCLUDE_CRYENGINE_RENDERDLL_COMMON_SHADERS_SHADERALLOCATOR_H
 #pragma once
 
-#include "BucketAllocator.h"
 #include "CryMemoryAllocator.h"
 #include "IMemory.h"
 
@@ -59,8 +58,6 @@ public:
 
     pointer allocate(size_type n = 1, const void* hint = 0)
     {
-        MEMREPLAY_SCOPE(EMemReplayAllocClass::C_UserPointer, EMemReplayUserPointerClass::C_STL);
-
         pointer ret = NULL;
 
         (void)hint;
@@ -74,15 +71,11 @@ public:
             ret = static_cast<pointer>(g_shaderGeneralHeap->Malloc(sz, NULL));
         }
 
-        MEMREPLAY_SCOPE_ALLOC(ret, n * sizeof(T), 0);
-
         return ret;
     }
 
     void deallocate(pointer p, size_type n = 1)
     {
-        MEMREPLAY_SCOPE(EMemReplayAllocClass::C_UserPointer, EMemReplayUserPointerClass::C_STL);
-
         (void)n;
         if (p)
         {
@@ -91,8 +84,6 @@ public:
                 g_shaderBucketAllocator.deallocate(p);
             }
         }
-
-        MEMREPLAY_SCOPE_FREE(p);
     }
 
     size_type max_size() const throw()
@@ -131,8 +122,8 @@ public:
         deallocate(p);
     }
 
-    bool operator==(const STLShaderAllocator&) {return true; }
-    bool operator!=(const STLShaderAllocator&) {return false; }
+    bool operator==(const STLShaderAllocator&) const {return true; }
+    bool operator!=(const STLShaderAllocator&) const {return false; }
 
     static void GetMemoryUsage(ICrySizer* pSizer) { }
 };

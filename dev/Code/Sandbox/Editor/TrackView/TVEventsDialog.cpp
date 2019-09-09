@@ -68,29 +68,16 @@ public:
         CTrackViewSequence* sequence = GetIEditor()->GetAnimation()->GetSequence();
         assert(sequence);
 
-        if (sequence->GetSequenceType() != SequenceType::Legacy)
-        {
-            AzToolsFramework::ScopedUndoBatch undo("Remove Track Event");
+        AzToolsFramework::ScopedUndoBatch undo("Remove Track Event");
 
-            for (int r = row; r < row + count; ++r)
-            {
-                const QString eventName = index(r, 0).data().toString();
-                beginRemoveRows(QModelIndex(), r, r);
-                result &= sequence->RemoveTrackEvent(eventName.toUtf8().data());
-                endRemoveRows();
-
-                undo.MarkEntityDirty(sequence->GetSequenceComponentEntityId());
-            }
-        }
-        else
+        for (int r = row; r < row + count; ++r)
         {
-            for (int r = row; r < row + count; ++r)
-            {
-                const QString eventName = index(r, 0).data().toString();
-                beginRemoveRows(QModelIndex(), r, r);
-                result &= sequence->RemoveTrackEvent(eventName.toUtf8().data());
-                endRemoveRows();
-            }
+            const QString eventName = index(r, 0).data().toString();
+            beginRemoveRows(QModelIndex(), r, r);
+            result &= sequence->RemoveTrackEvent(eventName.toUtf8().data());
+            endRemoveRows();
+
+            undo.MarkEntityDirty(sequence->GetSequenceComponentEntityId());
         }
 
         return result;
@@ -104,16 +91,9 @@ public:
         beginInsertRows(QModelIndex(), index, index);
         bool result = false;
 
-        if (sequence->GetSequenceType() != SequenceType::Legacy)
-        {
-            AzToolsFramework::ScopedUndoBatch undo("Add Track Event");
-            result = sequence->AddTrackEvent(name.toUtf8().data());
-            undo.MarkEntityDirty(sequence->GetSequenceComponentEntityId());
-        }
-        else
-        {
-            result = sequence->AddTrackEvent(name.toUtf8().data());
-        }
+        AzToolsFramework::ScopedUndoBatch undo("Add Track Event");
+        result = sequence->AddTrackEvent(name.toUtf8().data());
+        undo.MarkEntityDirty(sequence->GetSequenceComponentEntityId());
 
         endInsertRows();
         if (!result)
@@ -135,34 +115,18 @@ public:
 
         bool result = false;
 
-        if (sequence->GetSequenceType() != SequenceType::Legacy)
+        AzToolsFramework::ScopedUndoBatch undo("Move Track Event");
+        if (up)
         {
-            AzToolsFramework::ScopedUndoBatch undo("Move Track Event");
-            if (up)
-            {
-                beginMoveRows(QModelIndex(), index.row(), index.row(), QModelIndex(), index.row() - 1);
-                result = sequence->MoveUpTrackEvent(index.sibling(index.row(), 0).data().toString().toUtf8().data());
-            }
-            else
-            {
-                beginMoveRows(QModelIndex(), index.row() + 1, index.row() + 1, QModelIndex(), index.row());
-                result = sequence->MoveDownTrackEvent(index.sibling(index.row(), 0).data().toString().toUtf8().data());
-            }
-            undo.MarkEntityDirty(sequence->GetSequenceComponentEntityId());
+            beginMoveRows(QModelIndex(), index.row(), index.row(), QModelIndex(), index.row() - 1);
+            result = sequence->MoveUpTrackEvent(index.sibling(index.row(), 0).data().toString().toUtf8().data());
         }
         else
         {
-            if (up)
-            {
-                beginMoveRows(QModelIndex(), index.row(), index.row(), QModelIndex(), index.row() - 1);
-                result = sequence->MoveUpTrackEvent(index.sibling(index.row(), 0).data().toString().toUtf8().data());
-            }
-            else
-            {
-                beginMoveRows(QModelIndex(), index.row() + 1, index.row() + 1, QModelIndex(), index.row());
-                result = sequence->MoveDownTrackEvent(index.sibling(index.row(), 0).data().toString().toUtf8().data());
-            }
+            beginMoveRows(QModelIndex(), index.row() + 1, index.row() + 1, QModelIndex(), index.row());
+            result = sequence->MoveDownTrackEvent(index.sibling(index.row(), 0).data().toString().toUtf8().data());
         }
+        undo.MarkEntityDirty(sequence->GetSequenceComponentEntityId());
 
         endMoveRows();
 
@@ -212,16 +176,10 @@ public:
         const QString oldName = index.data().toString();
         const QString newName = value.toString();
 
-        if (sequence->GetSequenceType() != SequenceType::Legacy)
-        {
-            AzToolsFramework::ScopedUndoBatch undo("Set Track Event Data");
-            result = sequence->RenameTrackEvent(oldName.toUtf8().data(), newName.toUtf8().data());
-            undo.MarkEntityDirty(sequence->GetSequenceComponentEntityId());
-        }
-        else
-        {
-            result = sequence->RenameTrackEvent(oldName.toUtf8().data(), newName.toUtf8().data());
-        }
+        AzToolsFramework::ScopedUndoBatch undo("Set Track Event Data");
+        result = sequence->RenameTrackEvent(oldName.toUtf8().data(), newName.toUtf8().data());
+        undo.MarkEntityDirty(sequence->GetSequenceComponentEntityId());
+
         emit dataChanged(index, index);
         return result;
     }

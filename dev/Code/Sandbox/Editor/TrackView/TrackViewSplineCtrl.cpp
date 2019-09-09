@@ -16,7 +16,6 @@
 #include "TrackViewSplineCtrl.h"
 #include "TrackViewSequence.h"
 #include "TrackViewDialog.h"
-#include "TrackViewUndo.h"
 #include "TrackViewTrack.h"
 
 #include <QMouseEvent>
@@ -24,11 +23,9 @@
 
 class CUndoTrackViewSplineCtrl
     : public ISplineCtrlUndo
-    , public CUndoAnimKeySelection
 {
 public:
     CUndoTrackViewSplineCtrl(CTrackViewSplineCtrl* pCtrl, std::vector<ISplineInterpolator*>& splineContainer)
-        : CUndoAnimKeySelection(GetIEditor()->GetAnimation()->GetSequence())
     {
         if (GetIEditor()->GetAnimation()->GetSequence())
         {
@@ -56,7 +53,7 @@ protected:
             if (pTrack->GetSpline() == pSpline)
             {
                 CSplineEntry entry;
-                entry.m_pTrack = pTrack;
+                entry.m_trackId = pTrack->GetId();
                 m_splineEntries.push_back(entry);
             }
         }
@@ -73,28 +70,28 @@ protected:
             pCtrl->SendNotifyEvent(SPLN_BEFORE_CHANGE);
         }
 
-        const CTrackViewSequenceManager* pSequenceManager = GetIEditor()->GetSequenceManager();
-        CTrackViewSequence* pSequence = pSequenceManager->GetSequenceByEntityId(m_sequenceEntityId);
+        const CTrackViewSequenceManager* sequenceManager = GetIEditor()->GetSequenceManager();
+        CTrackViewSequence* sequence = sequenceManager->GetSequenceByEntityId(m_sequenceEntityId);
 
-        assert(pSequence);
-        if (!pSequence)
+        AZ_Assert(sequence, "Expected valid sequence.");
+        if (!sequence)
         {
             return;
         }
 
-        CTrackViewSequenceNotificationContext context(pSequence);
+        CTrackViewSequenceNotificationContext context(sequence);
 
         if (bUndo)
         {
             // Save key selection states for redo if necessary
-            m_redoKeyStates = SaveKeyStates(pSequence);
+            m_redoKeyStates = sequence->SaveKeyStates();
             SerializeSplines(&CSplineEntry::m_redo, false);
         }
 
         SerializeSplines(&CSplineEntry::m_undo, true);
 
         // Undo key selection state
-        RestoreKeyStates(pSequence, m_undoKeyStates);
+        sequence->RestoreKeyStates(m_undoKeyStates);
 
         if (pCtrl && bUndo)
         {
@@ -105,21 +102,21 @@ protected:
 
         if (bUndo)
         {
-            pSequence->OnKeySelectionChanged();
+            sequence->OnKeySelectionChanged();
         }
     }
 
     virtual void Redo()
     {
         const CTrackViewSequenceManager* pSequenceManager = GetIEditor()->GetSequenceManager();
-        CTrackViewSequence* pSequence = pSequenceManager->GetSequenceByEntityId(m_sequenceEntityId);
-        assert(pSequence);
-        if (!pSequence)
+        CTrackViewSequence* sequence = pSequenceManager->GetSequenceByEntityId(m_sequenceEntityId);
+        AZ_Assert(sequence, "Expected valid sequence.");
+        if (!sequence)
         {
             return;
         }
 
-        CTrackViewSequenceNotificationContext context(pSequence);
+        CTrackViewSequenceNotificationContext context(sequence);
 
         CTrackViewSplineCtrl* pCtrl = FindControl(m_pCtrl);
 
@@ -130,7 +127,7 @@ protected:
         SerializeSplines(&CSplineEntry::m_redo, true);
 
         // Redo key selection state
-        RestoreKeyStates(pSequence, m_redoKeyStates);
+        sequence->RestoreKeyStates(m_redoKeyStates);
 
         if (pCtrl)
         {
@@ -139,12 +136,21 @@ protected:
             pCtrl->update();
         }
 
-        pSequence->OnKeySelectionChanged();
+        sequence->OnKeySelectionChanged();
     }
 
     virtual bool IsSelectionChanged() const
     {
-        return CUndoAnimKeySelection::IsSelectionChanged();
+        const CTrackViewSequenceManager* sequenceManager = GetIEditor()->GetSequenceManager();
+        CTrackViewSequence* sequence = sequenceManager->GetSequenceByEntityId(m_sequenceEntityId);
+        AZ_Assert(sequence, "Expected valid sequence.");
+        if (!sequence)
+        {
+            return false;
+        }
+
+        const std::vector<bool> currentKeyState = sequence->SaveKeyStates();
+        return m_undoKeyStates != currentKeyState;
     }
 
 public:
@@ -190,24 +196,36 @@ private:
     public:
         _smart_ptr<ISplineBackup> m_undo;
         _smart_ptr<ISplineBackup> m_redo;
-        CTrackViewTrack* m_pTrack;
+        unsigned int m_trackId;
     };
 
     void SerializeSplines(_smart_ptr<ISplineBackup> CSplineEntry::* backup, bool bLoading)
     {
+        const CTrackViewSequenceManager* sequenceManager = GetIEditor()->GetSequenceManager();
+        CTrackViewSequence* sequence = sequenceManager->GetSequenceByEntityId(m_sequenceEntityId);
+        AZ_Assert(sequence, "Expected valid sequence");
+        if (!sequence)
+        {
+            return;
+        }
+
         CTrackViewSplineCtrl* pCtrl = FindControl(m_pCtrl);
         for (auto it = m_splineEntries.begin(); it != m_splineEntries.end(); ++it)
         {
             CSplineEntry& entry = *it;
-            ISplineInterpolator* pSpline = entry.m_pTrack->GetSpline();
+            CTrackViewTrack* track = sequence->FindTrackById(entry.m_trackId);
+            if (track)
+            {
+                ISplineInterpolator* pSpline = track->GetSpline();
 
-            if (pSpline && bLoading)
-            {
-                pSpline->Restore(entry.*backup);
-            }
-            else if (pSpline)
-            {
-                (entry.*backup) = pSpline->Backup();
+                if (pSpline && bLoading)
+                {
+                    pSpline->Restore(entry.*backup);
+                }
+                else if (pSpline)
+                {
+                    (entry.*backup) = pSpline->Backup();
+                }
             }
         }
     }
@@ -216,6 +234,8 @@ private:
     CTrackViewSplineCtrl* m_pCtrl;
     std::vector<CSplineEntry> m_splineEntries;
     std::vector<float> m_keyTimes;
+    std::vector<bool> m_undoKeyStates;
+    std::vector<bool> m_redoKeyStates;
 };
 
 CUndoTrackViewSplineCtrl::CTrackViewSplineCtrls CUndoTrackViewSplineCtrl::s_activeCtrls;

@@ -200,7 +200,6 @@ struct IResourceCompiler
     // Get the app root that the resource 
     virtual const char* GetAppRoot() const = 0;
 
-    virtual struct SSystemGlobalEnvironment* GetSystemEnvironment() = 0;
 };
 
 

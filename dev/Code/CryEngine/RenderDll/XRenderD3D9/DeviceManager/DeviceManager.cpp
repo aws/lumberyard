@@ -41,7 +41,11 @@
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION DEVICEMANAGER_CPP_SECTION_1
-#include AZ_RESTRICTED_FILE(DeviceManager_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/DeviceManager_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/DeviceManager_cpp_provo.inl"
+    #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
 #undef AZ_RESTRICTED_SECTION_IMPLEMENTED
@@ -74,7 +78,11 @@ void CDeviceManager::Init()
 {
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION DEVICEMANAGER_CPP_SECTION_3
-#include AZ_RESTRICTED_FILE(DeviceManager_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/DeviceManager_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/DeviceManager_cpp_provo.inl"
+    #endif
 #endif
 #if !DEVICE_MANAGER_IMMEDIATE_STATE_WRITE
     memset(m_CB, 0x0, sizeof(m_CB));
@@ -98,7 +106,11 @@ void CDeviceManager::RT_Tick()
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION DEVICEMANAGER_CPP_SECTION_4
-#include AZ_RESTRICTED_FILE(DeviceManager_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/DeviceManager_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/DeviceManager_cpp_provo.inl"
+    #endif
 #endif
 }
 
@@ -186,7 +198,11 @@ void* CDeviceManager::GetBackingStorage(D3DBuffer* buffer)
 {
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION DEVICEMANAGER_CPP_SECTION_5
-#include AZ_RESTRICTED_FILE(DeviceManager_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/DeviceManager_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/DeviceManager_cpp_provo.inl"
+    #endif
 # endif
     return NULL;
 }
@@ -195,7 +211,11 @@ void CDeviceManager::FreebackingStorage(void* base_ptr)
     FUNCTION_PROFILER(gEnv->pSystem, PROFILE_RENDERER);
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION DEVICEMANAGER_CPP_SECTION_6
-#include AZ_RESTRICTED_FILE(DeviceManager_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/DeviceManager_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/DeviceManager_cpp_provo.inl"
+    #endif
 # endif
 }
 
@@ -208,7 +228,11 @@ HRESULT CDeviceManager::CreateFence(DeviceFenceHandle& query)
 #   define AZ_RESTRICTED_SECTION_IMPLEMENTED
 #elif defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION DEVICEMANAGER_CPP_SECTION_7
-#include AZ_RESTRICTED_FILE(DeviceManager_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/DeviceManager_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/DeviceManager_cpp_provo.inl"
+    #endif
 # endif
 # if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
 #   undef AZ_RESTRICTED_SECTION_IMPLEMENTED
@@ -238,7 +262,11 @@ HRESULT CDeviceManager::ReleaseFence(DeviceFenceHandle query)
 #   define AZ_RESTRICTED_SECTION_IMPLEMENTED
 #elif defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION DEVICEMANAGER_CPP_SECTION_8
-#include AZ_RESTRICTED_FILE(DeviceManager_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/DeviceManager_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/DeviceManager_cpp_provo.inl"
+    #endif
 # endif
 # if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
 #   undef AZ_RESTRICTED_SECTION_IMPLEMENTED
@@ -262,7 +290,11 @@ HRESULT CDeviceManager::IssueFence(DeviceFenceHandle query)
 #   define AZ_RESTRICTED_SECTION_IMPLEMENTED
 #elif defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION DEVICEMANAGER_CPP_SECTION_9
-#include AZ_RESTRICTED_FILE(DeviceManager_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/DeviceManager_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/DeviceManager_cpp_provo.inl"
+    #endif
 # endif
 # if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
 #   undef AZ_RESTRICTED_SECTION_IMPLEMENTED
@@ -302,7 +334,11 @@ HRESULT CDeviceManager::SyncFence(DeviceFenceHandle query, bool block, bool flus
 #   define AZ_RESTRICTED_SECTION_IMPLEMENTED
 #elif defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION DEVICEMANAGER_CPP_SECTION_10
-#include AZ_RESTRICTED_FILE(DeviceManager_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/DeviceManager_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/DeviceManager_cpp_provo.inl"
+    #endif
 # endif
 # if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
 #   undef AZ_RESTRICTED_SECTION_IMPLEMENTED
@@ -330,7 +366,11 @@ HRESULT CDeviceManager::InvalidateCpuCache(void* buffer_ptr, size_t size, size_t
 {
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION DEVICEMANAGER_CPP_SECTION_11
-#include AZ_RESTRICTED_FILE(DeviceManager_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/DeviceManager_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/DeviceManager_cpp_provo.inl"
+    #endif
 # endif
     return S_OK;
 }
@@ -339,7 +379,11 @@ HRESULT CDeviceManager::InvalidateGpuCache(D3DBuffer* buffer, void* buffer_ptr, 
 {
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION DEVICEMANAGER_CPP_SECTION_12
-#include AZ_RESTRICTED_FILE(DeviceManager_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/DeviceManager_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/DeviceManager_cpp_provo.inl"
+    #endif
 # endif
     return S_OK;
 }
@@ -364,7 +408,11 @@ HRESULT CDeviceManager::CreateDirectAccessBuffer(uint32 nSize, uint32 elemSize, 
 #endif
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION DEVICEMANAGER_CPP_SECTION_13
-#include AZ_RESTRICTED_FILE(DeviceManager_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/DeviceManager_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/DeviceManager_cpp_provo.inl"
+    #endif
 #endif
 
     HRESULT result = CreateBuffer(nSize, elemSize, nUsage, nBindFlags, ppBuff);
@@ -423,7 +471,11 @@ void CDeviceManager::InvalidateBuffer(D3DBuffer* buffer, void* base_ptr, size_t 
 {
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION DEVICEMANAGER_CPP_SECTION_14
-#include AZ_RESTRICTED_FILE(DeviceManager_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/DeviceManager_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/DeviceManager_cpp_provo.inl"
+    #endif
 # endif
 }
 
@@ -627,6 +679,28 @@ void CDeviceManager::UnbindConstantBuffer(AzRHI::ConstantBuffer* constantBuffer)
 
     // Commit device state to immediately unbind the resource because we may be deleting it
     CommitDeviceStates();
+}
+
+
+void CDeviceManager::UnbindSRV(D3DShaderResourceView* shaderResourceView)
+{
+# if !DEVICE_MANAGER_IMMEDIATE_STATE_WRITE
+    if (!shaderResourceView)
+    {
+        return;
+    }
+
+    for (int type = 0; type < EHWShaderClass::eHWSC_Num; ++type)
+    {
+        for (uint32 slot = 0; slot < MAX_BOUND_SRVS; ++slot)
+        {
+            if (m_SRV[type].views[slot] == shaderResourceView)
+            {
+                BindSRV(static_cast<EHWShaderClass>(type), nullptr, slot);
+            }
+        }
+    }
+#endif
 }
 
 void CDeviceManager::BindConstantBuffer(
@@ -1023,7 +1097,11 @@ int CDeviceTexture::Cleanup()
     {
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION DEVICEMANAGER_CPP_SECTION_15
-#include AZ_RESTRICTED_FILE(DeviceManager_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/DeviceManager_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/DeviceManager_cpp_provo.inl"
+    #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
 #undef AZ_RESTRICTED_SECTION_IMPLEMENTED
@@ -1034,7 +1112,11 @@ int CDeviceTexture::Cleanup()
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION DEVICEMANAGER_CPP_SECTION_18
-#include AZ_RESTRICTED_FILE(DeviceManager_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/DeviceManager_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/DeviceManager_cpp_provo.inl"
+    #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
 #undef AZ_RESTRICTED_SECTION_IMPLEMENTED
@@ -1060,7 +1142,11 @@ int CDeviceTexture::Cleanup()
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION DEVICEMANAGER_CPP_SECTION_16
-#include AZ_RESTRICTED_FILE(DeviceManager_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/DeviceManager_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/DeviceManager_cpp_provo.inl"
+    #endif
 #endif
 
 #if defined(USE_NV_API)
@@ -1077,7 +1163,11 @@ CDeviceTexture::~CDeviceTexture()
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION DEVICEMANAGER_CPP_SECTION_17
-#include AZ_RESTRICTED_FILE(DeviceManager_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/DeviceManager_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/DeviceManager_cpp_provo.inl"
+    #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
 #undef AZ_RESTRICTED_SECTION_IMPLEMENTED

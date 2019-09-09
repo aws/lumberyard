@@ -19,7 +19,9 @@
 #include <Integration/Components/ActorComponent.h>
 #include <Integration/Components/AnimAudioComponent.h>
 #include <Integration/Components/AnimGraphComponent.h>
+#include <Integration/Components/AnimGraphNetSyncComponent.h>
 #include <Integration/Components/SimpleMotionComponent.h>
+#include <Integration/Components/SimpleLODComponent.h>
 #include <AzCore/Module/DynamicModuleHandle.h>
 
 #include <IGem.h>
@@ -30,12 +32,14 @@
 #   include <Integration/Editor/Components/EditorAnimAudioComponent.h>
 #   include <Integration/Editor/Components/EditorAnimGraphComponent.h>
 #   include <Integration/Editor/Components/EditorSimpleMotionComponent.h>
+#   include <Integration/Editor/Components/EditorSimpleLODComponent.h>
 #   include <SceneAPIExt/Behaviors/ActorGroupBehavior.h>
 #   include <SceneAPIExt/Behaviors/MeshRuleBehavior.h>
 #   include <SceneAPIExt/Behaviors/MotionGroupBehavior.h>
 #   include <SceneAPIExt/Behaviors/MotionRangeRuleBehavior.h>
 #   include <SceneAPIExt/Behaviors/SkinRuleBehavior.h>
 #   include <SceneAPIExt/Behaviors/MorphTargetRuleBehavior.h>
+#   include <SceneAPIExt/Behaviors/LodRuleBehavior.h>
 #   include <RCExt/Actor/ActorExporter.h>
 #   include <RCExt/Actor/ActorGroupExporter.h>
 #   include <RCExt/Actor/ActorBuilder.h>
@@ -71,6 +75,9 @@ namespace EMotionFX
                     AnimAudioComponent::CreateDescriptor(),
                     AnimGraphComponent::CreateDescriptor(),
                     SimpleMotionComponent::CreateDescriptor(),
+                    SimpleLODComponent::CreateDescriptor(),
+                    
+                    Network::AnimGraphNetSyncComponent::CreateDescriptor(),
 
     #if defined(EMOTIONFXANIMATION_EDITOR)
                     // Pipeline components
@@ -81,11 +88,13 @@ namespace EMotionFX
                     EditorAnimAudioComponent::CreateDescriptor(),
                     EditorAnimGraphComponent::CreateDescriptor(),
                     EditorSimpleMotionComponent::CreateDescriptor(),
+                    EditorSimpleLODComponent::CreateDescriptor(),
 
                     // Actor
                     EMotionFX::Pipeline::Behavior::ActorGroupBehavior::CreateDescriptor(),
                     EMotionFX::Pipeline::Behavior::MeshRuleBehavior::CreateDescriptor(),
                     EMotionFX::Pipeline::Behavior::MorphTargetRuleBehavior::CreateDescriptor(),
+                    EMotionFX::Pipeline::Behavior::LodRuleBehavior::CreateDescriptor(),
                     EMotionFX::Pipeline::ActorExporter::CreateDescriptor(),
                     EMotionFX::Pipeline::ActorGroupExporter::CreateDescriptor(),
                     EMotionFX::Pipeline::ActorBuilder::CreateDescriptor(),

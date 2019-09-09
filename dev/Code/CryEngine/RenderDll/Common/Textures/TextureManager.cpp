@@ -39,16 +39,19 @@ void CTextureManager::ReleaseTextures()
     // Remove fixed default textures
     for (auto& iter : m_DefaultTextures)
     {
-        SAFE_RELEASE_FORCE(iter.second);
+        SAFE_RELEASE(iter.second);
     }
     m_DefaultTextures.clear();
 
     // Remove fixed engine textures
     for (auto& iter : m_EngineTextures)
     {
-        SAFE_RELEASE_FORCE(iter.second);
+        SAFE_RELEASE(iter.second);
     }
     m_EngineTextures.clear();
+
+    // Remove references to static engine textures
+    m_StaticEngineTextureReferences.clear();
 
     // Material textures should be released by releasing the materials themselves.
     m_MaterialTextures.clear();
@@ -189,6 +192,146 @@ void CTextureManager::LoadMaterialTexturesSemantics()
     }
 }
 
+void CTextureManager::CreateStaticEngineTextureReferences()
+{
+    struct textureReferenceEntry {
+        const char* textureName;
+        CTexture** staticTextureReference;
+    };
+
+    textureReferenceEntry staticTextureReferences[] =
+    {
+        { "$HDRTarget",                     &CTexture::s_ptexHDRTarget },
+        { "$HDRTargetPrev",                 &CTexture::s_ptexHDRTargetPrev },
+        // alias for shaders that use $HDR_TargetPrev see ShaderTemplate.cpp
+        { "$HDR_TargetPrev",                &CTexture::s_ptexHDRTargetPrev },
+        { "$SceneTarget",                   &CTexture::s_ptexSceneTarget },
+        { "$CurrSceneTarget",               &CTexture::s_ptexCurrSceneTarget },
+        { "$SceneNormalsMapMS",             &CTexture::s_ptexSceneNormalsMapMS},
+        { "$SceneDiffuseAccMS",             &CTexture::s_ptexSceneDiffuseAccMapMS },
+        { "$SceneSpecularAccMS",            &CTexture::s_ptexSceneSpecularAccMapMS },
+        { "$SceneTargetR11G11B10F_0",       &CTexture::s_ptexSceneTargetR11G11B10F[0] },
+        { "$SceneTargetR11G11B10F_1",       &CTexture::s_ptexSceneTargetR11G11B10F[1] },
+        { "$SceneTargetScaled0R11G11B10F",  &CTexture::s_ptexSceneTargetScaledR11G11B10F[0] },
+        { "$SceneTargetScaled1R11G11B10F",  &CTexture::s_ptexSceneTargetScaledR11G11B10F[1] },
+        { "$SceneTargetScaled2R11G11B10F",  &CTexture::s_ptexSceneTargetScaledR11G11B10F[2] },
+        { "$SceneTargetScaled3R11G11B10F",  &CTexture::s_ptexSceneTargetScaledR11G11B10F[3] },
+        { "$SceneNormalsMap",               &CTexture::s_ptexSceneNormalsMap },
+        { "$SceneNormalsBent",              &CTexture::s_ptexSceneNormalsBent },
+        { "$SceneDiffuse",                  &CTexture::s_ptexSceneDiffuse },
+        { "$SceneSpecular",                 &CTexture::s_ptexSceneSpecular },
+        { "$SceneDiffuseAcc",               &CTexture::s_ptexSceneDiffuseAccMap },
+        { "$SceneSpecularAcc",              &CTexture::s_ptexSceneSpecularAccMap },
+        { "$MipColors_Diffuse",             &CTexture::s_ptexMipColors_Diffuse },
+        { "$MipColors_Bump",                &CTexture::s_ptexMipColors_Bump },
+        { "$RT_2D",                         &CTexture::s_ptexRT_2D },
+        { "$RainOcclusion",                 &CTexture::s_ptexRainOcclusion },
+        { "$RainSSOcclusion0",              &CTexture::s_ptexRainSSOcclusion[0] },
+        { "$RainSSOcclusion1",              &CTexture::s_ptexRainSSOcclusion[1] },
+        { "$RainDropsAccumRT_0",            &CTexture::s_ptexRainDropsRT[0] },
+        { "$RainDropsAccumRT_1",            &CTexture::s_ptexRainDropsRT[1] },
+        { "FromObj",                        &CTexture::s_ptexFromObj },
+        { "SvoTree",                        &CTexture::s_ptexSvoTree },
+        { "SvoTris",                        &CTexture::s_ptexSvoTris },
+        { "SvoGlobalCM",                    &CTexture::s_ptexSvoGlobalCM },
+        { "SvoRgbs",                        &CTexture::s_ptexSvoRgbs },
+        { "SvoNorm",                        &CTexture::s_ptexSvoNorm },
+        { "SvoOpac",                        &CTexture::s_ptexSvoOpac },
+        { "$FromObjCM",                     &CTexture::s_ptexFromObjCM },
+        { "$RT_ShadowPool",                 &CTexture::s_ptexRT_ShadowPool },
+        { "$RT_ShadowStub",                 &CTexture::s_ptexRT_ShadowStub },
+        { "$ModelHud",                      &CTexture::s_ptexModelHudBuffer },
+        { "$Velocity",                      &CTexture::s_ptexVelocity },
+        { "$VelocityTilesTmp0",             &CTexture::s_ptexVelocityTiles[0] },
+        { "$VelocityTilesTmp1",             &CTexture::s_ptexVelocityTiles[1] },
+        { "$VelocityTiles",                 &CTexture::s_ptexVelocityTiles[2] },
+        { "$VelocityObjects",               &CTexture::s_ptexVelocityObjects[0] },
+        { "$VelocityObjects_R",             &CTexture::s_ptexVelocityObjects[1] },
+        { "$WaterRipplesDDN_0",             &CTexture::s_ptexWaterRipplesDDN },
+        { "$WaterOceanMap",                 &CTexture::s_ptexWaterOcean },
+        { "$WaterVolumeTemp",               &CTexture::s_ptexWaterVolumeTemp },
+        { "$WaterVolumeDDN",                &CTexture::s_ptexWaterVolumeDDN },
+        { "$WaterVolumeRefl",               &CTexture::s_ptexWaterVolumeRefl[0] },
+        { "$WaterVolumeReflPrev",           &CTexture::s_ptexWaterVolumeRefl[1] },
+        { "$WaterVolumeCaustics",           &CTexture::s_ptexWaterCaustics[0] },
+        { "$WaterVolumeCausticsTemp",       &CTexture::s_ptexWaterCaustics[0] },
+        { "$BackBuffer",                    &CTexture::s_ptexBackBuffer },
+        { "$PrevFrameScale",                &CTexture::s_ptexPrevFrameScaled },
+        { "$BackBufferScaled_d2",           &CTexture::s_ptexBackBufferScaled[0] },
+        { "$BackBufferScaled_d4",           &CTexture::s_ptexBackBufferScaled[1] },
+        { "$BackBufferScaled_d8",           &CTexture::s_ptexBackBufferScaled[2] },
+        { "$BackBufferScaledTemp_d2",       &CTexture::s_ptexBackBufferScaledTemp[0] },
+        { "$BackBufferScaledTemp_d4",       &CTexture::s_ptexBackBufferScaledTemp[1] },
+        { "$AmbientLookup",                 &CTexture::s_ptexAmbientLookup },
+        { "$ShadowMask",                    &CTexture::s_ptexShadowMask },
+        { "$FlaresGather",                  &CTexture::s_ptexFlaresGather },
+        { "$DepthBufferQuarter",            &CTexture::s_ptexDepthBufferQuarter },
+        { "$ZTarget",                       &CTexture::s_ptexZTarget },
+        { "$ZTargetDownSample0",            &CTexture::s_ptexZTargetDownSample[0]},
+        { "$ZTargetDownSample1",            &CTexture::s_ptexZTargetDownSample[1]},
+        { "$ZTargetDownSample2",            &CTexture::s_ptexZTargetDownSample[2]},
+        { "$ZTargetDownSample3",            &CTexture::s_ptexZTargetDownSample[3]},
+        { "$FurZTarget",                    &CTexture::s_ptexFurZTarget },
+        { "$ZTargetScaled",                 &CTexture::s_ptexZTargetScaled },
+        { "$ZTargetScaled2",                &CTexture::s_ptexZTargetScaled2 },
+        { "$CloudsLM",                      &CTexture::s_ptexCloudsLM },
+        { "$VolObj_Density",                &CTexture::s_ptexVolObj_Density },
+        { "$VolObj_Shadow",                 &CTexture::s_ptexVolObj_Shadow },
+        { "$ColorChart",                    &CTexture::s_ptexColorChart },
+        { "$SkyDomeMie",                    &CTexture::s_ptexSkyDomeMie },
+        { "$SkyDomeRayleigh",               &CTexture::s_ptexSkyDomeRayleigh },
+        { "$SkyDomeMoon",                   &CTexture::s_ptexSkyDomeMoon },
+        { "$VolumetricInscattering",        &CTexture::s_ptexVolumetricFog },
+        { "$DensityColorVolume",            &CTexture::s_ptexVolumetricFogDensityColor },
+        { "$DensityVolume",                 &CTexture::s_ptexVolumetricFogDensity },
+        { "$ClipVolumeStencilVolume",       &CTexture::s_ptexVolumetricClipVolumeStencil },
+        { "$DefaultEnvironmentProbe",       &CTexture::s_defaultEnvironmentProbeDummy },
+#if defined(OPENGL_ES) || defined(CRY_USE_METAL)
+        { "$GmemStenLinDepth",              &CTexture::s_ptexGmemStenLinDepth },
+#endif
+    };
+
+    for (textureReferenceEntry& entry : staticTextureReferences)
+    {
+        CCryNameTSCRC   hashEntry(entry.textureName);
+        m_StaticEngineTextureReferences[hashEntry] = entry.staticTextureReference;
+    }
+
+    char textureName[256];
+    int i;
+
+    for ( i = 0; i < MAX_OCCLUSION_READBACK_TEXTURES; i++)
+    {
+        azsprintf(textureName, "$FlaresOcclusion_%d", i);
+        CCryNameTSCRC   hashEntry(textureName);
+        m_StaticEngineTextureReferences[hashEntry] = &CTexture::s_ptexFlaresOcclusionRing[i];
+    }
+
+    for (i = 0; i < AZ_ARRAY_SIZE(CTexture::s_ptexFromRE); i++)
+    {
+        azsprintf(textureName, "$FromRE_%d", i);
+        CCryNameTSCRC   hashEntry(textureName);
+        m_StaticEngineTextureReferences[hashEntry] = &CTexture::s_ptexFromRE[i];
+    }
+
+    // The shader parser also accetps $FromRE as a valid alias for $FromRE_0
+    m_StaticEngineTextureReferences[CCryNameTSCRC("$FromRE")] = &CTexture::s_ptexFromRE[0];
+
+    for (i = 0; i < 8; i++)
+    {
+        azsprintf(textureName, "$ShadowID_%d", i);
+        CCryNameTSCRC   hashEntry(textureName);
+        m_StaticEngineTextureReferences[hashEntry] = &CTexture::s_ptexShadowID[i];
+    }
+
+    for (i = 0; i < 2; i++)
+    {
+        azsprintf(textureName, "$FromRE%d_FromContainer", i);
+        CCryNameTSCRC   hashEntry(textureName);
+        m_StaticEngineTextureReferences[hashEntry] = &CTexture::s_ptexFromRE_FromContainer[i];
+    }
+}
+
 /*
 //==============================================================================
 // The following two method should be implemented in order to finish rip off the rest
@@ -232,7 +375,7 @@ void CTextureManager::LoadDefaultTexturesFromFile()
             XmlString   fileName;
             if (textureEntry->getAttr("FileName", fileName))
             {
-                EBUS_EVENT(AzFramework::AssetSystemRequestBus, GetAssetStatus, fileName.c_str() );
+                EBUS_EVENT(AzFramework::AssetSystemRequestBus, GetAssetStatus, fileName.c_str(), false );
             }
         }
 

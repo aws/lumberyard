@@ -19,6 +19,7 @@
 
 #if defined(AZ_TESTS_ENABLED)
 #include <AzTest/AzTest.h>
+#include <native/tests/BaseAssetProcessorTest.h>
 #endif
 
 #if defined(AZ_TESTS_ENABLED)
@@ -46,7 +47,8 @@ int main(int argc, char* argv[])
 #if defined(AZ_TESTS_ENABLED)
     // If "--unittest" is present on the command line, run unit testing
     // and return immediately. Otherwise, continue as normal.
-    INVOKE_AZ_UNIT_TEST_MAIN();
+    AZ::Test::addTestEnvironment(new BaseAssetProcessorTestEnvironment());
+    INVOKE_AZ_UNIT_TEST_MAIN(nullptr);  // nullptr turns off default test environment used to catch stray asserts
 #endif
 
 #if defined(BATCH_MODE)

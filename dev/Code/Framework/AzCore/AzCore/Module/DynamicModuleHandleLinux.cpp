@@ -12,10 +12,12 @@
 #ifndef AZ_UNITY_BUILD
 
 #include <AzCore/Module/DynamicModuleHandle.h>
+#include <AzCore/IO/SystemFile.h> // for AZ_MAX_PATH_LEN
 
 #if defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_ANDROID) || defined(AZ_PLATFORM_APPLE_OSX)
 #include <AzCore/Memory/OSAllocator.h>
 #include <dlfcn.h>
+#include <libgen.h>
 
 #if defined(AZ_PLATFORM_ANDROID) || defined(AZ_PLATFORM_LINUX)
 const char* modulePrefix = "lib";
@@ -25,7 +27,6 @@ const char* modulePrefix = "lib";
 const char* moduleExtension = ".dylib";
 
 #include <mach-o/dyld.h>
-#include <libgen.h>
 #endif
 
 namespace AZ
@@ -55,14 +56,29 @@ namespace AZ
             {
                 // If no slash found, assume empty path, only file name
                 path = "";
-#ifdef AZ_PLATFORM_APPLE
-                uint32_t bufsize = 1024;
+#if defined(AZ_PLATFORM_APPLE)
+                uint32_t bufsize = AZ_MAX_PATH_LEN;
                 char exePath[bufsize];
                 if (_NSGetExecutablePath(exePath, &bufsize) == 0)
                 {
                     path = dirname(exePath);
                     path += "/";
                 }
+#elif defined(AZ_PLATFORM_LINUX)
+                char exePath[AZ_MAX_PATH_LEN] = { 0 };
+                const char* modulePath = ::getenv("MODULE_PATH");
+                if (!modulePath)
+                {
+                    modulePath = ".";
+                    int len = ::readlink("/proc/self/exe", exePath, AZ_MAX_PATH_LEN);
+                    if (len != -1)
+                    {
+                        exePath[len] = 0;
+                        modulePath = ::dirname(exePath);
+                    }
+                }
+                path = modulePath;
+                path += '/';
 #endif
                 fileName = m_fileName;
             }

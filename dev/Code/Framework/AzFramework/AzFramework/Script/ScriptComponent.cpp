@@ -36,6 +36,7 @@ extern "C" {
 #   include <Lua/lualib.h>
 #   include <Lua/lauxlib.h>
 }
+
 namespace AzFramework
 {
     //  We generally have the following data types which we can use for editor properties
@@ -250,36 +251,34 @@ namespace AzFramework
         //=========================================================================
         static int Properties__NewIndex(lua_State* lua)
         {
-            LSV_BEGIN(lua, 0);
+            LSV_BEGIN_VARIABLE(lua);
 
             // calling format __newindex(table,key,value)
             ScriptNetBindingTable* netBindingTable = reinterpret_cast<ScriptNetBindingTable*>(lua_touserdata(lua, lua_upvalueindex(1)));
-
-            bool assignedValue = false;
-
             if (netBindingTable != nullptr)
             {
                 AZ_Error("ScriptContext",netBindingTable->GetScriptContext() != nullptr,"ScriptNetBindingTable is missing ScriptContext.");
                 AZ_Error("ScriptContext",netBindingTable->GetScriptContext() == nullptr || netBindingTable->GetScriptContext()->NativeContext() == lua,"Trying to use a NetBindingTable in wrong lua context");
 
                 AZ::ScriptContext* scriptContext = netBindingTable->GetScriptContext();
-
                 if (scriptContext)
                 {
                     AZ::ScriptDataContext stackContext;
                     scriptContext->ReadStack(stackContext);
 
-                    assignedValue = netBindingTable->AssignTableValue(stackContext);
+                    const bool assignedValue = netBindingTable->AssignTableValue(stackContext);
+                    if (assignedValue)
+                    {
+                        LSV_END_VARIABLE(0);
+                        return 0;
+                    }
                 }
             }
 
-            // If we didn't assign the value, we want
+            // If we didn't assign the value above, we want
             // to raw set the value to avoid coming back in here.
-            if (!assignedValue)
-            {
-                lua_rawset(lua, 1);
-            }
-
+            lua_rawset(lua, 1);
+            LSV_END_VARIABLE(-2);
             return 0;
         }
     } // namespace Internal
@@ -298,7 +297,7 @@ namespace AzFramework
     ScriptComponent::ScriptComponent()
         : m_context(nullptr)
         , m_contextId(AZ::ScriptContextIds::DefaultScriptContextId)
-        , m_script(static_cast<AZ::u8>(AZ::Data::AssetFlags::OBJECTSTREAM_PRE_LOAD))
+        , m_script(AZ::Data::AssetLoadBehavior::PreLoad)
         , m_table(LUA_NOREF)
         , m_netBindingTable(nullptr)
     {
@@ -452,6 +451,8 @@ namespace AzFramework
     //=========================================================================
     void ScriptComponent::LoadScript()
     {
+        AZ_PROFILE_SCOPE_DYNAMIC(AZ::Debug::ProfileCategory::Script, "Load: %s", m_script.GetHint().c_str());
+
         // Load the script, find the base table, create the entity table
         // find the Activate/Deactivate functions in the script and call them
         if (LoadInContext())
@@ -465,6 +466,8 @@ namespace AzFramework
     //=========================================================================
     void ScriptComponent::UnloadScript()
     {
+        AZ_PROFILE_SCOPE_DYNAMIC(AZ::Debug::ProfileCategory::Script, "Unload: %s", m_script.GetHint().c_str());
+
         DestroyEntityTable();
 
         if (m_netBindingTable)
@@ -663,6 +666,7 @@ namespace AzFramework
         lua_rawget(lua, baseTableIndex); // ScriptTable[OnActivate]
         if (lua_isfunction(lua, -1))
         {
+            AZ_PROFILE_SCOPE(AZ::Debug::ProfileCategory::Script, "OnActivate");
             lua_rawgeti(lua, LUA_REGISTRYINDEX, m_table); // push the entity table as the only argument
             AZ::Internal::LuaSafeCall(lua, 1, 0); // Call OnActivate
         }
@@ -696,6 +700,8 @@ namespace AzFramework
             lua_rawget(lua, -2); // ScriptTable[OnDeactivte]
             if (lua_isfunction(lua, -1))
             {
+                AZ_PROFILE_SCOPE(AZ::Debug::ProfileCategory::Script, "OnDeactivate");
+
                 lua_pushvalue(lua, -3); // push the entity table as the only argument
                 AZ::Internal::LuaSafeCall(lua, 1, 0); // Call OnDeactivate
             }

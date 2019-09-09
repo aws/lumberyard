@@ -23,3 +23,9 @@ int main(int argc, char* argv[])
     [pool release];
     return 0;
 }
+
+
+
+#if defined(AZ_MONOLITHIC_BUILD)
+#include <StaticModules.inl>
+#endif

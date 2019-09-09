@@ -116,10 +116,11 @@ enum EOcclusionObjectType
 #define ERF_NO_PHYSICS                  BIT(17)
 #define ERF_NO_DECALNODE_DECALS         BIT(18)
 #define ERF_REGISTER_BY_POSITION        BIT(19)
-// UNUSED                               BIT(20)
+#define ERF_COMPONENT_ENTITY            BIT(20)
 #define ERF_RECVWIND                    BIT(21)
 #define ERF_COLLISION_PROXY             BIT(22) // Collision proxy is a special object that is only visible in editor
 // and used for physical collisions with player and vehicles.
+#define ERF_LOD_BBOX_BASED              BIT(23) // Lod changes based on bounding boxes.
 #define ERF_SPEC_BIT0                   BIT(24) // Bit0 of min config specification.
 #define ERF_SPEC_BIT1                   BIT(25) // Bit1 of min config specification.
 #define ERF_SPEC_BIT2                   BIT(26) // Bit2 of min config specification.
@@ -317,6 +318,18 @@ struct IRenderNode
     //   Queries override material of this instance.
     virtual _smart_ptr<IMaterial> GetMaterial(Vec3* pHitPos = NULL) = 0;
     virtual _smart_ptr<IMaterial> GetMaterialOverride() = 0;
+    virtual void GetMaterials(AZStd::vector<_smart_ptr<IMaterial>>& materials)
+    {
+        _smart_ptr<IMaterial> currentMaterial = GetMaterialOverride();
+        if (!currentMaterial)
+        {
+            currentMaterial = GetMaterial();
+        }
+        if (currentMaterial)
+        {
+            materials.push_back(currentMaterial);
+        }
+    }
 
     // Used by the editor during export
     virtual void SetCollisionClassIndex(int tableIndex) {}
@@ -556,7 +569,11 @@ inline IStatObj* IRenderNode::GetEntityStatObj(unsigned int nPartId, unsigned in
 struct IVegetation
     : public IRenderNode
 {
-    virtual float GetScale(void) const = 0;
+    virtual float GetScale() const = 0;
+    virtual void SetUniformScale(float fScale) = 0;
+    virtual void SetPosition(const Vec3& pos) = 0;
+    virtual void SetRotation(const Ang3& rotation) = 0;
+    virtual void PrepareBBox() = 0;
 };
 
 struct IBrush
@@ -624,6 +641,8 @@ struct IRoadRenderNode
     bool m_hasToBeSerialised = true;
     // Whether or not ends of the road should be faded out
     bool m_bAlphaBlendRoadEnds = true;
+    // Whether or not the road segments should be extended to overlap at the point where roads are split
+    bool m_addOverlapBetweenSectors = false;
 };
 
 // Summary:
@@ -741,6 +760,7 @@ struct SDecalProperties
         m_radius = 1.0f;
         m_depth = 1.0f;
         m_opacity = 1.0f;
+        m_angleAttenuation = 1.0f;
         m_maxViewDist = 8000.0f;
         m_minSpec = EngineSpec::Low;
     }
@@ -762,6 +782,7 @@ struct SDecalProperties
     float m_depth;
     const char* m_pMaterialName;
     float m_opacity;
+    float m_angleAttenuation;
     float m_maxViewDist;
     EngineSpec m_minSpec;
 };

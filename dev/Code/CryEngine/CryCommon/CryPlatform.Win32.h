@@ -45,11 +45,6 @@
 #define RESOLVE_MACRO(x) x
 
 ////////////////////////////////////////////////////////////////////////////
-#define __DETAIL__LINK_THIRD_PARTY_LIBRARY(name)                                                                     \
-    __pragma(message(__FILE__ "(" CRY_CREATE_STRING(__LINE__) "): Including SDK Library: " CRY_CREATE_STRING(name))) \
-    __pragma(comment(lib, RESOLVE_MACRO(CODE_BASE_FOLDER) CRY_CREATE_STRING(name)))
-
-////////////////////////////////////////////////////////////////////////////
 #define __DETAIL__LINK_SYSTEM_PARTY_LIBRARY(name)                                                                       \
     __pragma(message(__FILE__ "(" CRY_CREATE_STRING(__LINE__) "): Including System Library: " CRY_CREATE_STRING(name))) \
     __pragma(comment(lib, CRY_CREATE_STRING(name)))

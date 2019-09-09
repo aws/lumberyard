@@ -30,7 +30,7 @@ struct Array2d
         pSizer->AddObject (m_pData, m_nSize * m_nSize * sizeof(T));
     }
 
-    int GetSize() { return m_nSize; }
+    int GetSize() const { return m_nSize; }
     int GetDataSize() { return m_nSize * m_nSize * sizeof(T); }
 
     T* GetData() { return m_pData; }

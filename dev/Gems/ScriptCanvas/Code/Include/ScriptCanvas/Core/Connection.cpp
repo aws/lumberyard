@@ -10,7 +10,6 @@
 *
 */
 
-#include "precompiled.h"
 
 #include "Connection.h"
 #include "Slot.h"
@@ -60,10 +59,12 @@ namespace ScriptCanvas
     void Connection::Reflect(AZ::ReflectContext* reflection)
     {
         Endpoint::Reflect(reflection);
+        NamedEndpoint::Reflect(reflection);
+
         AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(reflection);
         if (serializeContext)
         {
-            serializeContext->Class<Connection>()
+            serializeContext->Class<Connection, AZ::Component>()
                 ->Version(0)
                 ->Field("sourceEndpoint", &Connection::m_sourceEndpoint)
                 ->Field("targetEndpoint", &Connection::m_targetEndpoint)
@@ -100,6 +101,14 @@ namespace ScriptCanvas
         if (!targetSlot)
         {
             return AZ::Failure(AZStd::string("Target slot does not exist."));
+        }
+
+        if (sourceSlot->IsData())
+        {
+            if (!sourceSlot->IsTypeMatchFor((*targetSlot)))
+            {
+                return AZ::Failure(AZStd::string("Slots are not a type match for each other"));
+            }
         }
 
         auto connectionSourceToTarget = MatchContracts(*sourceSlot, *targetSlot);
@@ -155,5 +164,4 @@ namespace ScriptCanvas
             GraphRequestBus::Event(*GraphNotificationBus::GetCurrentBusId(), &GraphRequests::DisconnectById, GetEntityId());
         }
     }
-
 }

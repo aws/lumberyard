@@ -52,7 +52,7 @@ namespace RoadsAndRivers
         void SetMaterial(_smart_ptr<IMaterial> material) override;
         _smart_ptr<IMaterial> GetMaterial() override;
 
-        void SetMaterialHandle(LmbrCentral::MaterialHandle handle) override;
+        void SetMaterialHandle(const LmbrCentral::MaterialHandle& materialHandle) override;
         LmbrCentral::MaterialHandle GetMaterialHandle() override;
 
         // RiverRequestsBus handler
@@ -94,6 +94,8 @@ namespace RoadsAndRivers
 
         void SetWaterStreamSpeed(float waterStreamSpeed) override;
         float GetWaterStreamSpeed() override;
+
+        AZ::Plane GetWaterSurfacePlane() override;
 
         /**
          * Triggers full rebuild of the river object, including geometry and render node generation
@@ -143,6 +145,7 @@ namespace RoadsAndRivers
         void RenderingPropertyModified() override;
 
         void MaterialChanged();
+        void WaterVolumeDepthModified();
         void PhysicsPropertyModified();
         void TilingPropertyModified();
 

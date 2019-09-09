@@ -1,0 +1,14 @@
+
+{
+    "none": {
+        "Source": [
+            "Source/AWSLambdaLanguageDemo_precompiled.cpp",
+            "Source/AWSLambdaLanguageDemo_precompiled.h"
+        ]
+    },
+    "auto": {
+        "Implementation": [
+            "Source/ComponentStub.cpp"
+        ]
+    }
+}

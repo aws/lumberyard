@@ -18,7 +18,7 @@ namespace LyViewPane
     static const char* const CategoryOther = "Other";
     static const char* const CategoryPlugIns = "Plug-Ins";
     static const char* const CategoryAnimation = "LegacyAnimation";
-    //---- 
+    //----
     static const char* const CategoryEditor = "Editor";
     static const char* const CategoryViewport = "Viewport";
     static const char* const CategoryCloudCanvas = "Cloud Canvas";
@@ -32,7 +32,9 @@ namespace LyViewPane
     static const char* const EntityOutliner = "Entity Outliner";
     static const char* const EntityInspector = "Entity Inspector";
     static const char* const EntityInspectorPinned = "Pinned Entity Inspector";
+    static const char* const LevelInspector = "Level Inspector";
     static const char* const DeploymentTool = "Deployment Tool";
+    static const char* const ProjectSettingsTool = "Project Settings Tool";
     static const char* const ErrorReport = "Error Report";
     static const char* const Console = "Console";
     static const char* const ConsoleMenuName = "&Console";
@@ -50,7 +52,10 @@ namespace LyViewPane
     static const char* const AudioControlsEditor = "Audio Controls Editor";
     static const char* const SubstanceEditor = "Substance Editor";
     static const char* const VegetationEditor = "Vegetation Editor";
+    static const char* const LandscapeCanvas = "Landscape Canvas";
     static const char* const AnimationEditor = "EMotion FX Animation Editor (PREVIEW)";
+    static const char* const PhysXConfigurationEditor = "PhysX Configuration (PREVIEW)";
+    static const char* const PhysXVehiclesConfigurationEditor = "PhysX Vehicles Configuration (PREVIEW)";
 
     static const char* const LegacyAssetBrowser = "Asset Browser (LEGACY)";
     static const char* const LegacyFlowGraph = "Flow Graph (LEGACY)";
@@ -59,7 +64,7 @@ namespace LyViewPane
     static const char* const LegacyRollupBar = "RollupBar (LEGACY)";
     static const char* const LegacyRollupBarMenuName = "&RollupBar (LEGACY)";
 
-    static const char* const SliceRelationships = "Slice Relationship View";
+    static const char* const SliceRelationships = "Slice Relationship View (PREVIEW)";
     static const char* const LegacyGeppetto = "Geppetto Editor (LEGACY)";
     static const char* const LegacyMannequin = "Mannequin Editor (LEGACY)";
 

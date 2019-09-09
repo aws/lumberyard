@@ -15,9 +15,14 @@
 #include <platform.h>
 #include <StlUtils.h>
 
+#include "TextureAtlas/TextureAtlas.h"
+#include "TextureAtlas/TextureAtlasBus.h"
+#include "TextureAtlas/TextureAtlasNotificationBus.h"
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 class CSprite
     : public ISprite
+    , public TextureAtlasNamespace::TextureAtlasNotificationBus::Handler
 {
 public: // member functions
 
@@ -45,7 +50,8 @@ public: // member functions
     void ClearSpriteSheetCells() override;
     void AddSpriteSheetCell(const SpriteSheetCell& spriteSheetCell) override;
     AZ::Vector2 GetCellUvSize(int cellIndex) const override;
-    const UiTransformInterface::RectPoints& GetCellUvCoords(int cellIndex) const override;
+    UiTransformInterface::RectPoints GetCellUvCoords(int cellIndex) const override;
+    UiTransformInterface::RectPoints GetSourceCellUvCoords(int cellIndex) const override;
     Borders GetCellUvBorders(int cellIndex) const override;
     Borders GetTextureSpaceCellUvBorders(int cellIndex) const override;
     const AZStd::string& GetCellAlias(int cellIndex) const override;
@@ -55,15 +61,26 @@ public: // member functions
 
     // ~ISprite
 
+    // TextureAtlasNotifications
+
+    void OnAtlasLoaded(const TextureAtlasNamespace::TextureAtlas* atlas) override;
+    void OnAtlasUnloaded(const TextureAtlasNamespace::TextureAtlas* atlas) override;
+
+    // ~TextureAtlasNotifications
+
 public: // static member functions
 
     static void Initialize();
     static void Shutdown();
     static CSprite* LoadSprite(const string& pathname);
     static CSprite* CreateSprite(const string& renderTargetName);
+    static bool DoesSpriteTextureAssetExist(const AZStd::string& pathname);
 
     //! Replaces baseSprite with newSprite with proper ref-count handling and null-checks.
     static void ReplaceSprite(ISprite** baseSprite, ISprite* newSprite);
+
+private:
+    static bool LoadTexture(const string& texturePathname, const string& pathname, ITexture*& texture);
 
 protected: // member functions
 
@@ -74,6 +91,8 @@ private: // types
 
 private: // member functions
     bool LoadFromXmlFile();
+
+    void NotifyChanged();
 
     AZ_DISABLE_COPY_MOVE(CSprite);
 
@@ -86,6 +105,10 @@ private: // data
     Borders m_borders;
     ITexture* m_texture;
     int m_numSpriteSheetCellTags;                       //!< Number of Cell child-tags in sprite XML; unfortunately needed to help with serialization.
+
+    //! Texture atlas data
+    const TextureAtlasNamespace::TextureAtlas* m_atlas;
+    TextureAtlasNamespace::AtlasCoordinates m_atlasCoordinates;
 
 private: // static data
 

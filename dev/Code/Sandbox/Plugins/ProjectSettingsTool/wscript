@@ -1,0 +1,50 @@
+########################################################################################
+# All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
+# its licensors.
+#
+# For complete copyright and license terms please see the LICENSE at the root of this
+# distribution (the "License"). All use of this software is governed by the License,
+# or, if provided, by the license below or the license accompanying this file. Do not
+# remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#
+########################################################################################
+
+def build(bld):
+    
+
+    bld.CryStandAlonePlugin(
+        # Settings
+        target                      = 'ProjectSettingsTool',
+        vs_filter                   = 'Sandbox/Plugins',
+        file_list                   = 'projectsettingstool.waf_files',
+        platforms                   = ['win', 'darwin'],
+        configurations              = ['debug', 'debug_test', 'profile', 'profile_test'],
+        pch                         = "ProjectSettingsTool_precompiled.cpp",
+        use                         = ['AzToolsFramework',
+                                       'AzQtComponents',
+                                       'EditorLib',
+                                       'EditorCommon'
+                                       ],
+        uselib                      = ['QT5CORE',
+                                       'QT5GUI',
+                                       'QT5NETWORK', # this lib depends on EditorLib, which depends on NewsShared, which depends on Qt5Network
+                                       'QT5WIDGETS'],
+        features                    = ['qt5'],
+        defines                     = ['EDITOR_COMMON_IMPORTS'],
+
+        win_file_list    = ['projectsettingstool_win.waf_files'],
+
+
+        darwin_file_list = ['projectsettingstool_darwin.waf_files'],
+        # For the macOS we require the AWS libs in order to link the editor
+        # because there are implicit dependencies on LyMetrics/LyIdentity
+        # and those libraries use AWS. Not including them here results in
+        # a failure to build the gem due to missing symbols
+        darwin_uselib   = ['AWS_CPP_SDK_CORE',
+                           'AWS_CPP_SDK_COGNITO_IDENTITY',
+                           'AWS_CPP_SDK_MOBILEANALYTICS',
+                           'AWS_CPP_SDK_IDENTITY_MANAGEMENT'],
+
+        test_all_file_list = ['projectsettingstool_tests.waf_files'],
+    )

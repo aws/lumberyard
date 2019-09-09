@@ -7,8 +7,9 @@
             "base.cpp",
             "Docs.h",
             "PlatformDef.h",
-            "PlatformRestrictedFileDef.h",
-            "PlatformIncl.h"
+            "PlatformIncl.h",
+            "AzCoreModule.h",
+            "AzCoreModule.cpp"
         ],
         "Asset":
         [
@@ -43,12 +44,15 @@
             "Component/ComponentApplicationBus.h",
             "Component/ComponentBus.cpp",
             "Component/ComponentBus.h",
+            "Component/ComponentExport.h",
             "Component/Entity.cpp",
             "Component/Entity.h",
             "Component/EntityBus.h",
             "Component/EntityId.h",
             "Component/EntityUtils.cpp",
             "Component/EntityUtils.h",
+            "Component/NamedEntityId.cpp",
+            "Component/NamedEntityId.h",
             "Component/TickBus.h",
             "Component/TransformBus.h"
         ],
@@ -205,8 +209,7 @@
             "Jobs/MultipleDependentJob.h",
             "Jobs/task_group.h"
         ],
-        "Math":
-        [
+        "Math": [
             "Math/Aabb.cpp",
             "Math/Aabb.h",
             "Math/Crc.cpp",
@@ -275,16 +278,18 @@
             "Math/PackedVector3.h",
             "Math/Color.h",
             "Math/VectorFloat.cpp",
-            "Math/VectorFloat.h"
+            "Math/VectorFloat.h",
+            "Math/ToString.h",
+            "Math/ToString.cpp"
         ],
-        "Memory":
-        [
+      "Memory": [
             "Memory/AllocationRecords.cpp",
             "Memory/AllocationRecords.h",
             "Memory/AllocatorBase.cpp",
             "Memory/AllocatorBase.h",
             "Memory/AllocatorManager.cpp",
             "Memory/AllocatorManager.h",
+            "Memory/AllocatorScope.h",
             "Memory/BestFitExternalMapAllocator.cpp",
             "Memory/BestFitExternalMapAllocator.h",
             "Memory/BestFitExternalMapSchema.cpp",
@@ -293,6 +298,8 @@
             "Memory/HeapSchema.h",
             "Memory/HphaSchema.cpp",
             "Memory/HphaSchema.h",
+            "Memory/MallocSchema.cpp",
+            "Memory/MallocSchema.h",
             "Memory/Memory.cpp",
             "Memory/Memory.h",
             "Memory/MemoryComponent.cpp",
@@ -301,6 +308,7 @@
             "Memory/MemoryDriller.h",
             "Memory/MemoryDrillerBus.h",
             "Memory/nedmalloc.inl",
+            "Memory/NewAndDelete.inl",
             "Memory/OSAllocator.cpp",
             "Memory/OSAllocator.h",
             "Memory/PoolAllocator.cpp",
@@ -350,9 +358,8 @@
             "RTTI/ReflectionManager.h",
             "RTTI/ReflectionManager.cpp",
             "RTTI/AttributeReader.h",
+            "RTTI/AzStdOnDemandPrettyName.inl",
             "RTTI/AzStdOnDemandReflection.inl",
-            "RTTI/AzStdReflectionComponent.h",
-            "RTTI/AzStdReflectionComponent.cpp",
             "RTTI/BehaviorContext.cpp",
             "RTTI/BehaviorContext.h",
             "RTTI/BehaviorObjectSignals.h"
@@ -378,6 +385,12 @@
             "Script/ScriptPropertyWatcherBus.h",
             "Script/ScriptDebug.cpp",
             "Script/ScriptDebug.h"
+        ],
+        "ScriptCanvas":
+        [
+            "ScriptCanvas/ScriptCanvasAttributes.h",
+            "ScriptCanvas/ScriptCanvasOnDemandNames.cpp",
+            "ScriptCanvas/ScriptCanvasOnDemandNames.h"
         ],
         "Serialization":
         [
@@ -413,7 +426,8 @@
         ],
         "UnitTest":
         [
-            "UnitTest/UnitTest.h"
+            "UnitTest/UnitTest.h",
+            "UnitTest/TestTypes.h"
         ],
         "UserSettings":
         [

@@ -140,8 +140,8 @@ namespace StarterGameGem
         void Deactivate() override;
         ////////////////////////////////////////////////////////////////////////
 
-		//////////////////////////////////////////////////////////////////////////
-		// AZ::TickBus interface implementation
+        //////////////////////////////////////////////////////////////////////////
+        // AZ::TickBus interface implementation
         void OnTick(float deltaTime, AZ::ScriptTimePoint time) override;
         //////////////////////////////////////////////////////////////////////////
 
@@ -156,6 +156,5 @@ namespace StarterGameGem
         AZStd::string m_broadcastSoundEventName;
 
         AZStd::list<SoundPropertiesDebug> m_debugSounds;
-
     };
 } // namespace StarterGameGem

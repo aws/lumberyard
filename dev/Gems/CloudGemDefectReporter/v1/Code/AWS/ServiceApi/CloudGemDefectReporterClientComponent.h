@@ -42,13 +42,19 @@
 namespace CloudGemDefectReporter {
 namespace ServiceAPI {
     
+    extern const char* LmbrAWS_CodeGen_ResponseStatus_UUID;
+    
+    extern const char* LmbrAWS_CodeGen_EncryptedPresignedPostFields_UUID;
+    
+    extern const char* LmbrAWS_CodeGen_ProjectKeys_UUID;
+    
     extern const char* LmbrAWS_CodeGen_ClientConfiguration_UUID;
     
     extern const char* LmbrAWS_CodeGen_UploadRequestResults_UUID;
     
     extern const char* LmbrAWS_CodeGen_Component_UUID;
     
-    extern const char* LmbrAWS_CodeGen_ReportComments_UUID;
+    extern const char* LmbrAWS_CodeGen_IssueTypes_UUID;
     
     extern const char* LmbrAWS_CodeGen_SearchEntry_UUID;
     
@@ -60,6 +66,8 @@ namespace ServiceAPI {
     
     extern const char* LmbrAWS_CodeGen_RequestBus1_UUID;
     
+    extern const char* LmbrAWS_CodeGen_Credentials_UUID;
+    
     extern const char* LmbrAWS_CodeGen_UnencryptedPresignedPostFields_UUID;
     
     extern const char* LmbrAWS_CodeGen_ServiceStatus_UUID;
@@ -68,7 +76,11 @@ namespace ServiceAPI {
     
     extern const char* LmbrAWS_CodeGen_CustomField_UUID;
     
-    extern const char* LmbrAWS_CodeGen_EncryptedPresignedPostFields_UUID;
+    extern const char* LmbrAWS_CodeGen_ReportComments_UUID;
+    
+    extern const char* LmbrAWS_CodeGen_JiraIntegrationSettings_UUID;
+    
+    extern const char* LmbrAWS_CodeGen_ObjectFieldProperty_UUID;
     
 
     // redefs
@@ -88,6 +100,41 @@ namespace ServiceAPI {
     
     
     
+    struct ObjectFieldProperty
+    {
+
+        AZ_TYPE_INFO(ObjectFieldProperty, LmbrAWS_CodeGen_ObjectFieldProperty_UUID)
+        AZ_CLASS_ALLOCATOR(ObjectFieldProperty, AZ::SystemAllocator, 0)
+
+        
+        AZStd::string title;
+        
+        int maxChars{0};
+        
+        AZStd::string defaultValue;
+        
+        StringList predefines;
+        
+        bool multipleSelect{false};
+        
+        AZStd::string type;
+        
+
+        bool OnJsonKey(const char* key, CloudGemFramework::JsonReader& reader);
+
+        static void Reflect(AZ::ReflectContext* reflection);
+    };
+
+    bool WriteJson(CloudGemFramework::JsonWriter& writer, const ObjectFieldProperty& item);
+    
+    
+    
+    using CustomFieldPropertyProperties = AZStd::vector<ObjectFieldProperty>;
+
+    bool WriteJson(CloudGemFramework::JsonWriter& writer, const CustomFieldPropertyProperties& list);
+    
+    
+    
     struct CustomField
     {
 
@@ -95,15 +142,19 @@ namespace ServiceAPI {
         AZ_CLASS_ALLOCATOR(CustomField, AZ::SystemAllocator, 0)
 
         
-        int maxChars;
+        AZStd::string title;
         
-        bool multipleSelect;
+        int maxChars{0};
+        
+        AZStd::string defaultValue;
         
         StringList predefines;
         
+        bool multipleSelect{false};
+        
         AZStd::string type;
         
-        AZStd::string title;
+        CustomFieldPropertyProperties properties;
         
 
         bool OnJsonKey(const char* key, CloudGemFramework::JsonReader& reader);
@@ -159,6 +210,67 @@ namespace ServiceAPI {
     
     
     
+    struct IssueTypes
+    {
+
+        AZ_TYPE_INFO(IssueTypes, LmbrAWS_CodeGen_IssueTypes_UUID)
+        AZ_CLASS_ALLOCATOR(IssueTypes, AZ::SystemAllocator, 0)
+
+        
+        StringList issueTypes;
+        
+
+        bool OnJsonKey(const char* key, CloudGemFramework::JsonReader& reader);
+
+        static void Reflect(AZ::ReflectContext* reflection);
+    };
+
+    bool WriteJson(CloudGemFramework::JsonWriter& writer, const IssueTypes& item);
+    
+    
+    
+    struct JiraIntegrationSettings
+    {
+
+        AZ_TYPE_INFO(JiraIntegrationSettings, LmbrAWS_CodeGen_JiraIntegrationSettings_UUID)
+        AZ_CLASS_ALLOCATOR(JiraIntegrationSettings, AZ::SystemAllocator, 0)
+
+        
+        AZStd::string project;
+        
+        AZStd::string issuetype;
+        
+        AZStd::string submitMode;
+        
+
+        bool OnJsonKey(const char* key, CloudGemFramework::JsonReader& reader);
+
+        static void Reflect(AZ::ReflectContext* reflection);
+    };
+
+    bool WriteJson(CloudGemFramework::JsonWriter& writer, const JiraIntegrationSettings& item);
+    
+    
+    
+    struct ProjectKeys
+    {
+
+        AZ_TYPE_INFO(ProjectKeys, LmbrAWS_CodeGen_ProjectKeys_UUID)
+        AZ_CLASS_ALLOCATOR(ProjectKeys, AZ::SystemAllocator, 0)
+
+        
+        StringList projectKeys;
+        
+
+        bool OnJsonKey(const char* key, CloudGemFramework::JsonReader& reader);
+
+        static void Reflect(AZ::ReflectContext* reflection);
+    };
+
+    bool WriteJson(CloudGemFramework::JsonWriter& writer, const ProjectKeys& item);
+    
+    
+    
     struct ReportComments
     {
 
@@ -180,31 +292,6 @@ namespace ServiceAPI {
     
     
     
-    struct SearchEntry
-    {
-
-        AZ_TYPE_INFO(SearchEntry, LmbrAWS_CodeGen_SearchEntry_UUID)
-        AZ_CLASS_ALLOCATOR(SearchEntry, AZ::SystemAllocator, 0)
-
-        
-        AZStd::string query_params;
-        
-        AZStd::string sql_id;
-        
-        AZStd::string user_id;
-        
-        AZStd::string timestamp;
-        
-
-        bool OnJsonKey(const char* key, CloudGemFramework::JsonReader& reader);
-
-        static void Reflect(AZ::ReflectContext* reflection);
-    };
-
-    bool WriteJson(CloudGemFramework::JsonWriter& writer, const SearchEntry& item);
-    
-    
-    
     struct UploadRequest
     {
 
@@ -212,9 +299,9 @@ namespace ServiceAPI {
         AZ_CLASS_ALLOCATOR(UploadRequest, AZ::SystemAllocator, 0)
 
         
-        int NumberOfEncryptedPosts;
+        int NumberOfEncryptedPosts{0};
         
-        int NumberOfUnencryptedPosts;
+        int NumberOfUnencryptedPosts{0};
         
 
         bool OnJsonKey(const char* key, CloudGemFramework::JsonReader& reader);
@@ -325,6 +412,73 @@ namespace ServiceAPI {
     
     
     
+    struct Credentials
+    {
+
+        AZ_TYPE_INFO(Credentials, LmbrAWS_CodeGen_Credentials_UUID)
+        AZ_CLASS_ALLOCATOR(Credentials, AZ::SystemAllocator, 0)
+
+        
+        AZStd::string userName;
+        
+        AZStd::string password;
+        
+        AZStd::string server;
+        
+
+        bool OnJsonKey(const char* key, CloudGemFramework::JsonReader& reader);
+
+        static void Reflect(AZ::ReflectContext* reflection);
+    };
+
+    bool WriteJson(CloudGemFramework::JsonWriter& writer, const Credentials& item);
+    
+    
+    
+    struct ResponseStatus
+    {
+
+        AZ_TYPE_INFO(ResponseStatus, LmbrAWS_CodeGen_ResponseStatus_UUID)
+        AZ_CLASS_ALLOCATOR(ResponseStatus, AZ::SystemAllocator, 0)
+
+        
+        AZStd::string status;
+        
+
+        bool OnJsonKey(const char* key, CloudGemFramework::JsonReader& reader);
+
+        static void Reflect(AZ::ReflectContext* reflection);
+    };
+
+    bool WriteJson(CloudGemFramework::JsonWriter& writer, const ResponseStatus& item);
+    
+    
+    
+    struct SearchEntry
+    {
+
+        AZ_TYPE_INFO(SearchEntry, LmbrAWS_CodeGen_SearchEntry_UUID)
+        AZ_CLASS_ALLOCATOR(SearchEntry, AZ::SystemAllocator, 0)
+
+        
+        AZStd::string query_params;
+        
+        AZStd::string sql_id;
+        
+        AZStd::string user_id;
+        
+        AZStd::string timestamp;
+        
+
+        bool OnJsonKey(const char* key, CloudGemFramework::JsonReader& reader);
+
+        static void Reflect(AZ::ReflectContext* reflection);
+    };
+
+    bool WriteJson(CloudGemFramework::JsonWriter& writer, const SearchEntry& item);
+    
+    
+    
     struct ReportHeader
     {
 
@@ -332,7 +486,7 @@ namespace ServiceAPI {
         AZ_CLASS_ALLOCATOR(ReportHeader, AZ::SystemAllocator, 0)
 
         
-        double bookmark;
+        double bookmark{0.0};
         
         AZStd::string read_status;
         
@@ -406,6 +560,33 @@ namespace ServiceAPI {
 
     using GetClientconfigurationRequestJob = CloudGemFramework::ServiceRequestJob<GetClientconfigurationRequest>;
     
+    class GetJiraintegrationIssuetypesRequest
+        : public CloudGemFramework::ServiceRequest
+    {
+    public:
+        SERVICE_REQUEST(CloudGemDefectReporter, HttpMethod::HTTP_GET, "/jiraintegration/issuetypes/{project_key}");
+
+        struct Parameters
+        {
+            
+            AZStd::string project_key;
+            
+
+            bool BuildRequest(CloudGemFramework::RequestBuilder& request);
+
+            bool WriteJson(CloudGemFramework::JsonWriter& writer) const;
+        };
+
+        
+        IssueTypes result;
+        
+
+        Parameters parameters;
+    };
+
+
+    using GetJiraintegrationIssuetypesRequestJob = CloudGemFramework::ServiceRequestJob<GetJiraintegrationIssuetypesRequest>;
+    
     class GetServiceStatusRequest
         : public CloudGemFramework::ServiceRequest
     {
@@ -430,6 +611,56 @@ namespace ServiceAPI {
 
 
     using GetServiceStatusRequestJob = CloudGemFramework::ServiceRequestJob<GetServiceStatusRequest>;
+    
+    class GetJiraintegrationSettingsRequest
+        : public CloudGemFramework::ServiceRequest
+    {
+    public:
+        SERVICE_REQUEST(CloudGemDefectReporter, HttpMethod::HTTP_GET, "/jiraintegration/settings");
+
+        struct Parameters
+        {
+            
+
+            bool BuildRequest(CloudGemFramework::RequestBuilder& request);
+
+            bool WriteJson(CloudGemFramework::JsonWriter& writer) const;
+        };
+
+        
+        JiraIntegrationSettings result;
+        
+
+        Parameters parameters;
+    };
+
+
+    using GetJiraintegrationSettingsRequestJob = CloudGemFramework::ServiceRequestJob<GetJiraintegrationSettingsRequest>;
+    
+    class GetJiraintegrationProjectkeysRequest
+        : public CloudGemFramework::ServiceRequest
+    {
+    public:
+        SERVICE_REQUEST(CloudGemDefectReporter, HttpMethod::HTTP_GET, "/jiraintegration/projectkeys");
+
+        struct Parameters
+        {
+            
+
+            bool BuildRequest(CloudGemFramework::RequestBuilder& request);
+
+            bool WriteJson(CloudGemFramework::JsonWriter& writer) const;
+        };
+
+        
+        ProjectKeys result;
+        
+
+        Parameters parameters;
+    };
+
+
+    using GetJiraintegrationProjectkeysRequestJob = CloudGemFramework::ServiceRequestJob<GetJiraintegrationProjectkeysRequest>;
     
     class GetCommentRequest
         : public CloudGemFramework::ServiceRequest
@@ -458,16 +689,16 @@ namespace ServiceAPI {
 
     using GetCommentRequestJob = CloudGemFramework::ServiceRequestJob<GetCommentRequest>;
     
-    class PutRecentsearchRequest
+    class PostServiceUploadRequest
         : public CloudGemFramework::ServiceRequest
     {
     public:
-        SERVICE_REQUEST(CloudGemDefectReporter, HttpMethod::HTTP_PUT, "/recentsearch");
+        SERVICE_REQUEST(CloudGemDefectReporter, HttpMethod::HTTP_POST, "/service/upload");
 
         struct Parameters
         {
             
-            SearchEntry search;
+            UploadRequest request_content;
             
 
             bool BuildRequest(CloudGemFramework::RequestBuilder& request);
@@ -476,14 +707,66 @@ namespace ServiceAPI {
         };
 
         
-        ServiceStatus result;
+        UploadRequestResults result;
         
 
         Parameters parameters;
     };
 
 
-    using PutRecentsearchRequestJob = CloudGemFramework::ServiceRequestJob<PutRecentsearchRequest>;
+    using PostServiceUploadRequestJob = CloudGemFramework::ServiceRequestJob<PostServiceUploadRequest>;
+    
+    class PutJiraintegrationCredentialsRequest
+        : public CloudGemFramework::ServiceRequest
+    {
+    public:
+        SERVICE_REQUEST(CloudGemDefectReporter, HttpMethod::HTTP_PUT, "/jiraintegration/credentials");
+
+        struct Parameters
+        {
+            
+            Credentials credentials;
+            
+
+            bool BuildRequest(CloudGemFramework::RequestBuilder& request);
+
+            bool WriteJson(CloudGemFramework::JsonWriter& writer) const;
+        };
+
+        
+        ResponseStatus result;
+        
+
+        Parameters parameters;
+    };
+
+
+    using PutJiraintegrationCredentialsRequestJob = CloudGemFramework::ServiceRequestJob<PutJiraintegrationCredentialsRequest>;
+    
+    class GetJiraintegrationCredentialsRequest
+        : public CloudGemFramework::ServiceRequest
+    {
+    public:
+        SERVICE_REQUEST(CloudGemDefectReporter, HttpMethod::HTTP_GET, "/jiraintegration/credentials");
+
+        struct Parameters
+        {
+            
+
+            bool BuildRequest(CloudGemFramework::RequestBuilder& request);
+
+            bool WriteJson(CloudGemFramework::JsonWriter& writer) const;
+        };
+
+        
+        Credentials result;
+        
+
+        Parameters parameters;
+    };
+
+
+    using GetJiraintegrationCredentialsRequestJob = CloudGemFramework::ServiceRequestJob<GetJiraintegrationCredentialsRequest>;
     
     class PutCommentRequest
         : public CloudGemFramework::ServiceRequest
@@ -512,16 +795,16 @@ namespace ServiceAPI {
 
     using PutCommentRequestJob = CloudGemFramework::ServiceRequestJob<PutCommentRequest>;
     
-    class PostServiceUploadRequest
+    class PutRecentsearchRequest
         : public CloudGemFramework::ServiceRequest
     {
     public:
-        SERVICE_REQUEST(CloudGemDefectReporter, HttpMethod::HTTP_POST, "/service/upload");
+        SERVICE_REQUEST(CloudGemDefectReporter, HttpMethod::HTTP_PUT, "/recentsearch");
 
         struct Parameters
         {
             
-            UploadRequest request_content;
+            SearchEntry search;
             
 
             bool BuildRequest(CloudGemFramework::RequestBuilder& request);
@@ -530,14 +813,14 @@ namespace ServiceAPI {
         };
 
         
-        UploadRequestResults result;
+        ServiceStatus result;
         
 
         Parameters parameters;
     };
 
 
-    using PostServiceUploadRequestJob = CloudGemFramework::ServiceRequestJob<PostServiceUploadRequest>;
+    using PutRecentsearchRequestJob = CloudGemFramework::ServiceRequestJob<PutRecentsearchRequest>;
     
     class PutHeaderRequest
         : public CloudGemFramework::ServiceRequest
@@ -624,6 +907,27 @@ namespace ServiceAPI {
          *    request:          The AWS Lambda request object
          */
         
+        virtual void OnGetJiraintegrationIssuetypesRequestSuccess(const IssueTypes response);
+        
+
+        /**
+         * Sent when the request fails
+         *
+         * Params:
+         *    error:           The output receieved from the lambda call,
+         *                     could be function error or an issue with the request
+         *    request:         The AWS Lambda request object
+         */
+        virtual void OnGetJiraintegrationIssuetypesRequestError(const CloudGemFramework::Error error);
+        
+        /**
+         * Sent when the request is a success
+         *
+         * Params:
+         *    jsonOutput:       The output receieved from the lambda call
+         *    request:          The AWS Lambda request object
+         */
+        
         virtual void OnGetServiceStatusRequestSuccess(const ServiceStatus response);
         
 
@@ -636,6 +940,48 @@ namespace ServiceAPI {
          *    request:         The AWS Lambda request object
          */
         virtual void OnGetServiceStatusRequestError(const CloudGemFramework::Error error);
+        
+        /**
+         * Sent when the request is a success
+         *
+         * Params:
+         *    jsonOutput:       The output receieved from the lambda call
+         *    request:          The AWS Lambda request object
+         */
+        
+        virtual void OnGetJiraintegrationSettingsRequestSuccess(const JiraIntegrationSettings response);
+        
+
+        /**
+         * Sent when the request fails
+         *
+         * Params:
+         *    error:           The output receieved from the lambda call,
+         *                     could be function error or an issue with the request
+         *    request:         The AWS Lambda request object
+         */
+        virtual void OnGetJiraintegrationSettingsRequestError(const CloudGemFramework::Error error);
+        
+        /**
+         * Sent when the request is a success
+         *
+         * Params:
+         *    jsonOutput:       The output receieved from the lambda call
+         *    request:          The AWS Lambda request object
+         */
+        
+        virtual void OnGetJiraintegrationProjectkeysRequestSuccess(const ProjectKeys response);
+        
+
+        /**
+         * Sent when the request fails
+         *
+         * Params:
+         *    error:           The output receieved from the lambda call,
+         *                     could be function error or an issue with the request
+         *    request:         The AWS Lambda request object
+         */
+        virtual void OnGetJiraintegrationProjectkeysRequestError(const CloudGemFramework::Error error);
         
         /**
          * Sent when the request is a success
@@ -666,7 +1012,7 @@ namespace ServiceAPI {
          *    request:          The AWS Lambda request object
          */
         
-        virtual void OnPutRecentsearchRequestSuccess(const ServiceStatus response);
+        virtual void OnPostServiceUploadRequestSuccess(const UploadRequestResults response);
         
 
         /**
@@ -677,7 +1023,49 @@ namespace ServiceAPI {
          *                     could be function error or an issue with the request
          *    request:         The AWS Lambda request object
          */
-        virtual void OnPutRecentsearchRequestError(const CloudGemFramework::Error error);
+        virtual void OnPostServiceUploadRequestError(const CloudGemFramework::Error error);
+        
+        /**
+         * Sent when the request is a success
+         *
+         * Params:
+         *    jsonOutput:       The output receieved from the lambda call
+         *    request:          The AWS Lambda request object
+         */
+        
+        virtual void OnPutJiraintegrationCredentialsRequestSuccess(const ResponseStatus response);
+        
+
+        /**
+         * Sent when the request fails
+         *
+         * Params:
+         *    error:           The output receieved from the lambda call,
+         *                     could be function error or an issue with the request
+         *    request:         The AWS Lambda request object
+         */
+        virtual void OnPutJiraintegrationCredentialsRequestError(const CloudGemFramework::Error error);
+        
+        /**
+         * Sent when the request is a success
+         *
+         * Params:
+         *    jsonOutput:       The output receieved from the lambda call
+         *    request:          The AWS Lambda request object
+         */
+        
+        virtual void OnGetJiraintegrationCredentialsRequestSuccess(const Credentials response);
+        
+
+        /**
+         * Sent when the request fails
+         *
+         * Params:
+         *    error:           The output receieved from the lambda call,
+         *                     could be function error or an issue with the request
+         *    request:         The AWS Lambda request object
+         */
+        virtual void OnGetJiraintegrationCredentialsRequestError(const CloudGemFramework::Error error);
         
         /**
          * Sent when the request is a success
@@ -708,7 +1096,7 @@ namespace ServiceAPI {
          *    request:          The AWS Lambda request object
          */
         
-        virtual void OnPostServiceUploadRequestSuccess(const UploadRequestResults response);
+        virtual void OnPutRecentsearchRequestSuccess(const ServiceStatus response);
         
 
         /**
@@ -719,7 +1107,7 @@ namespace ServiceAPI {
          *                     could be function error or an issue with the request
          *    request:         The AWS Lambda request object
          */
-        virtual void OnPostServiceUploadRequestError(const CloudGemFramework::Error error);
+        virtual void OnPutRecentsearchRequestError(const CloudGemFramework::Error error);
         
         /**
          * Sent when the request is a success
@@ -758,20 +1146,35 @@ namespace ServiceAPI {
         , OnGetClientconfigurationRequestSuccess
         , OnGetClientconfigurationRequestError
         
+        , OnGetJiraintegrationIssuetypesRequestSuccess
+        , OnGetJiraintegrationIssuetypesRequestError
+        
         , OnGetServiceStatusRequestSuccess
         , OnGetServiceStatusRequestError
+        
+        , OnGetJiraintegrationSettingsRequestSuccess
+        , OnGetJiraintegrationSettingsRequestError
+        
+        , OnGetJiraintegrationProjectkeysRequestSuccess
+        , OnGetJiraintegrationProjectkeysRequestError
         
         , OnGetCommentRequestSuccess
         , OnGetCommentRequestError
         
-        , OnPutRecentsearchRequestSuccess
-        , OnPutRecentsearchRequestError
+        , OnPostServiceUploadRequestSuccess
+        , OnPostServiceUploadRequestError
+        
+        , OnPutJiraintegrationCredentialsRequestSuccess
+        , OnPutJiraintegrationCredentialsRequestError
+        
+        , OnGetJiraintegrationCredentialsRequestSuccess
+        , OnGetJiraintegrationCredentialsRequestError
         
         , OnPutCommentRequestSuccess
         , OnPutCommentRequestError
         
-        , OnPostServiceUploadRequestSuccess
-        , OnPostServiceUploadRequestError
+        , OnPutRecentsearchRequestSuccess
+        , OnPutRecentsearchRequestError
         
         , OnPutHeaderRequestSuccess
         , OnPutHeaderRequestError
@@ -789,9 +1192,24 @@ namespace ServiceAPI {
         void OnGetClientconfigurationRequestError(const CloudGemFramework::Error error) override;
         
         
+        void OnGetJiraintegrationIssuetypesRequestSuccess(const IssueTypes response) override;
+        
+        void OnGetJiraintegrationIssuetypesRequestError(const CloudGemFramework::Error error) override;
+        
+        
         void OnGetServiceStatusRequestSuccess(const ServiceStatus response) override;
         
         void OnGetServiceStatusRequestError(const CloudGemFramework::Error error) override;
+        
+        
+        void OnGetJiraintegrationSettingsRequestSuccess(const JiraIntegrationSettings response) override;
+        
+        void OnGetJiraintegrationSettingsRequestError(const CloudGemFramework::Error error) override;
+        
+        
+        void OnGetJiraintegrationProjectkeysRequestSuccess(const ProjectKeys response) override;
+        
+        void OnGetJiraintegrationProjectkeysRequestError(const CloudGemFramework::Error error) override;
         
         
         void OnGetCommentRequestSuccess(const ReportComments response) override;
@@ -799,9 +1217,19 @@ namespace ServiceAPI {
         void OnGetCommentRequestError(const CloudGemFramework::Error error) override;
         
         
-        void OnPutRecentsearchRequestSuccess(const ServiceStatus response) override;
+        void OnPostServiceUploadRequestSuccess(const UploadRequestResults response) override;
         
-        void OnPutRecentsearchRequestError(const CloudGemFramework::Error error) override;
+        void OnPostServiceUploadRequestError(const CloudGemFramework::Error error) override;
+        
+        
+        void OnPutJiraintegrationCredentialsRequestSuccess(const ResponseStatus response) override;
+        
+        void OnPutJiraintegrationCredentialsRequestError(const CloudGemFramework::Error error) override;
+        
+        
+        void OnGetJiraintegrationCredentialsRequestSuccess(const Credentials response) override;
+        
+        void OnGetJiraintegrationCredentialsRequestError(const CloudGemFramework::Error error) override;
         
         
         void OnPutCommentRequestSuccess(const ServiceStatus response) override;
@@ -809,9 +1237,9 @@ namespace ServiceAPI {
         void OnPutCommentRequestError(const CloudGemFramework::Error error) override;
         
         
-        void OnPostServiceUploadRequestSuccess(const UploadRequestResults response) override;
+        void OnPutRecentsearchRequestSuccess(const ServiceStatus response) override;
         
-        void OnPostServiceUploadRequestError(const CloudGemFramework::Error error) override;
+        void OnPutRecentsearchRequestError(const CloudGemFramework::Error error) override;
         
         
         void OnPutHeaderRequestSuccess(const ServiceStatus response) override;
@@ -837,7 +1265,19 @@ namespace ServiceAPI {
         
         
         
+        virtual void GetJiraintegrationIssuetypes(const AZStd::string& project_key, CloudGemDefectReporterResponseHandler* responseHandler);
+        
+        
+        
         virtual void GetServiceStatus(CloudGemDefectReporterResponseHandler* responseHandler);
+        
+        
+        
+        virtual void GetJiraintegrationSettings(CloudGemDefectReporterResponseHandler* responseHandler);
+        
+        
+        
+        virtual void GetJiraintegrationProjectkeys(CloudGemDefectReporterResponseHandler* responseHandler);
         
         
         
@@ -845,7 +1285,15 @@ namespace ServiceAPI {
         
         
         
-        virtual void PutRecentsearch(const SearchEntry& search, CloudGemDefectReporterResponseHandler* responseHandler);
+        virtual void PostServiceUpload(const UploadRequest& request_content, CloudGemDefectReporterResponseHandler* responseHandler);
+        
+        
+        
+        virtual void PutJiraintegrationCredentials(const Credentials& credentials, CloudGemDefectReporterResponseHandler* responseHandler);
+        
+        
+        
+        virtual void GetJiraintegrationCredentials(CloudGemDefectReporterResponseHandler* responseHandler);
         
         
         
@@ -853,7 +1301,7 @@ namespace ServiceAPI {
         
         
         
-        virtual void PostServiceUpload(const UploadRequest& request_content, CloudGemDefectReporterResponseHandler* responseHandler);
+        virtual void PutRecentsearch(const SearchEntry& search, CloudGemDefectReporterResponseHandler* responseHandler);
         
         
         
@@ -880,20 +1328,35 @@ namespace ServiceAPI {
         virtual void HandleGetClientconfigurationSuccess(GetClientconfigurationRequestJob* job, AZ::EntityId entityId);
         virtual void HandleGetClientconfigurationError(GetClientconfigurationRequestJob* job, AZ::EntityId entityId);
         
+        virtual void HandleGetJiraintegrationIssuetypesSuccess(GetJiraintegrationIssuetypesRequestJob* job, AZ::EntityId entityId);
+        virtual void HandleGetJiraintegrationIssuetypesError(GetJiraintegrationIssuetypesRequestJob* job, AZ::EntityId entityId);
+        
         virtual void HandleGetServiceStatusSuccess(GetServiceStatusRequestJob* job, AZ::EntityId entityId);
         virtual void HandleGetServiceStatusError(GetServiceStatusRequestJob* job, AZ::EntityId entityId);
+        
+        virtual void HandleGetJiraintegrationSettingsSuccess(GetJiraintegrationSettingsRequestJob* job, AZ::EntityId entityId);
+        virtual void HandleGetJiraintegrationSettingsError(GetJiraintegrationSettingsRequestJob* job, AZ::EntityId entityId);
+        
+        virtual void HandleGetJiraintegrationProjectkeysSuccess(GetJiraintegrationProjectkeysRequestJob* job, AZ::EntityId entityId);
+        virtual void HandleGetJiraintegrationProjectkeysError(GetJiraintegrationProjectkeysRequestJob* job, AZ::EntityId entityId);
         
         virtual void HandleGetCommentSuccess(GetCommentRequestJob* job, AZ::EntityId entityId);
         virtual void HandleGetCommentError(GetCommentRequestJob* job, AZ::EntityId entityId);
         
-        virtual void HandlePutRecentsearchSuccess(PutRecentsearchRequestJob* job, AZ::EntityId entityId);
-        virtual void HandlePutRecentsearchError(PutRecentsearchRequestJob* job, AZ::EntityId entityId);
+        virtual void HandlePostServiceUploadSuccess(PostServiceUploadRequestJob* job, AZ::EntityId entityId);
+        virtual void HandlePostServiceUploadError(PostServiceUploadRequestJob* job, AZ::EntityId entityId);
+        
+        virtual void HandlePutJiraintegrationCredentialsSuccess(PutJiraintegrationCredentialsRequestJob* job, AZ::EntityId entityId);
+        virtual void HandlePutJiraintegrationCredentialsError(PutJiraintegrationCredentialsRequestJob* job, AZ::EntityId entityId);
+        
+        virtual void HandleGetJiraintegrationCredentialsSuccess(GetJiraintegrationCredentialsRequestJob* job, AZ::EntityId entityId);
+        virtual void HandleGetJiraintegrationCredentialsError(GetJiraintegrationCredentialsRequestJob* job, AZ::EntityId entityId);
         
         virtual void HandlePutCommentSuccess(PutCommentRequestJob* job, AZ::EntityId entityId);
         virtual void HandlePutCommentError(PutCommentRequestJob* job, AZ::EntityId entityId);
         
-        virtual void HandlePostServiceUploadSuccess(PostServiceUploadRequestJob* job, AZ::EntityId entityId);
-        virtual void HandlePostServiceUploadError(PostServiceUploadRequestJob* job, AZ::EntityId entityId);
+        virtual void HandlePutRecentsearchSuccess(PutRecentsearchRequestJob* job, AZ::EntityId entityId);
+        virtual void HandlePutRecentsearchError(PutRecentsearchRequestJob* job, AZ::EntityId entityId);
         
         virtual void HandlePutHeaderSuccess(PutHeaderRequestJob* job, AZ::EntityId entityId);
         virtual void HandlePutHeaderError(PutHeaderRequestJob* job, AZ::EntityId entityId);
@@ -922,6 +1385,12 @@ namespace ServiceAPI {
             
             
             
+            ObjectFieldProperty::Reflect(reflection);
+            
+            
+            
+            
+            
             CustomField::Reflect(reflection);
             
             
@@ -936,11 +1405,19 @@ namespace ServiceAPI {
             
             
             
+            IssueTypes::Reflect(reflection);
+            
+            
+            
+            JiraIntegrationSettings::Reflect(reflection);
+            
+            
+            
+            ProjectKeys::Reflect(reflection);
+            
+            
+            
             ReportComments::Reflect(reflection);
-            
-            
-            
-            SearchEntry::Reflect(reflection);
             
             
             
@@ -964,6 +1441,18 @@ namespace ServiceAPI {
             
             
             
+            Credentials::Reflect(reflection);
+            
+            
+            
+            ResponseStatus::Reflect(reflection);
+            
+            
+            
+            SearchEntry::Reflect(reflection);
+            
+            
+            
             ReportHeader::Reflect(reflection);
             
             
@@ -972,7 +1461,7 @@ namespace ServiceAPI {
             if (serializeContext)
             {
                 // we must include any fields we want to expose to the editor or lua in the serialize context
-                serializeContext->Class<CloudGemDefectReporterClientComponent>()
+                serializeContext->Class<CloudGemDefectReporterClientComponent, AZ::Component>()
                     ->Version(1);
 
                 AZ::EditContext* editContext = serializeContext->GetEditContext();
@@ -995,15 +1484,25 @@ namespace ServiceAPI {
                     
                     ->Event("GetClientconfiguration", &CloudGemDefectReporterRequestBus::Events::GetClientconfiguration)
                     
+                    ->Event("GetJiraintegrationIssuetypes", &CloudGemDefectReporterRequestBus::Events::GetJiraintegrationIssuetypes)
+                    
                     ->Event("GetServiceStatus", &CloudGemDefectReporterRequestBus::Events::GetServiceStatus)
+                    
+                    ->Event("GetJiraintegrationSettings", &CloudGemDefectReporterRequestBus::Events::GetJiraintegrationSettings)
+                    
+                    ->Event("GetJiraintegrationProjectkeys", &CloudGemDefectReporterRequestBus::Events::GetJiraintegrationProjectkeys)
                     
                     ->Event("GetComment", &CloudGemDefectReporterRequestBus::Events::GetComment)
                     
-                    ->Event("PutRecentsearch", &CloudGemDefectReporterRequestBus::Events::PutRecentsearch)
+                    ->Event("PostServiceUpload", &CloudGemDefectReporterRequestBus::Events::PostServiceUpload)
+                    
+                    ->Event("PutJiraintegrationCredentials", &CloudGemDefectReporterRequestBus::Events::PutJiraintegrationCredentials)
+                    
+                    ->Event("GetJiraintegrationCredentials", &CloudGemDefectReporterRequestBus::Events::GetJiraintegrationCredentials)
                     
                     ->Event("PutComment", &CloudGemDefectReporterRequestBus::Events::PutComment)
                     
-                    ->Event("PostServiceUpload", &CloudGemDefectReporterRequestBus::Events::PostServiceUpload)
+                    ->Event("PutRecentsearch", &CloudGemDefectReporterRequestBus::Events::PutRecentsearch)
                     
                     ->Event("PutHeader", &CloudGemDefectReporterRequestBus::Events::PutHeader)
                     
@@ -1025,7 +1524,19 @@ namespace ServiceAPI {
         
         
         
+        void GetJiraintegrationIssuetypes(const AZStd::string& project_key, CloudGemDefectReporterResponseHandler* responseHandler) override;
+        
+        
+        
         void GetServiceStatus(CloudGemDefectReporterResponseHandler* responseHandler) override;
+        
+        
+        
+        void GetJiraintegrationSettings(CloudGemDefectReporterResponseHandler* responseHandler) override;
+        
+        
+        
+        void GetJiraintegrationProjectkeys(CloudGemDefectReporterResponseHandler* responseHandler) override;
         
         
         
@@ -1033,7 +1544,15 @@ namespace ServiceAPI {
         
         
         
-        void PutRecentsearch(const SearchEntry& search, CloudGemDefectReporterResponseHandler* responseHandler) override;
+        void PostServiceUpload(const UploadRequest& request_content, CloudGemDefectReporterResponseHandler* responseHandler) override;
+        
+        
+        
+        void PutJiraintegrationCredentials(const Credentials& credentials, CloudGemDefectReporterResponseHandler* responseHandler) override;
+        
+        
+        
+        void GetJiraintegrationCredentials(CloudGemDefectReporterResponseHandler* responseHandler) override;
         
         
         
@@ -1041,7 +1560,7 @@ namespace ServiceAPI {
         
         
         
-        void PostServiceUpload(const UploadRequest& request_content, CloudGemDefectReporterResponseHandler* responseHandler) override;
+        void PutRecentsearch(const SearchEntry& search, CloudGemDefectReporterResponseHandler* responseHandler) override;
         
         
         

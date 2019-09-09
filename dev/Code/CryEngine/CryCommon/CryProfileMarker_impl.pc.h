@@ -22,16 +22,13 @@
 #if defined(CRY_PROFILE_MARKERS_USE_GPA)
 #	include <ittnotify.h>
 
-#	if defined(WIN64)
-	LINK_THIRD_PARTY_LIBRARY(SDKs/GPA/lib64/libittnotify.lib)
-	LINK_THIRD_PARTY_LIBRARY(SDKs/GPA/lib64/jitprofiling.lib)
-#	elif defined(WIN32)
-	LINK_THIRD_PARTY_LIBRARY(SDKs/GPA/lib32/libittnotify.lib)
-	LINK_THIRD_PARTY_LIBRARY(SDKs/GPA/lib32/jitprofiling.lib)
-#	else
-#		error Unknown Platform
-#	endif
-#endif
+    // Note: If CRY_PROFILE_MARKERS_USE_GPA is enabled, then the following libs need to be linked in statically through t
+    // the build scripts: 
+    //
+    //          libittnotify.lib
+    //          jitprofiling.lib
+
+#endif // #if defined(CRY_PROFILE_MARKERS_USE_GPA)
 // Enable Uncrustify: *INDENT-ON*
 
 #include "VectorMap.h"

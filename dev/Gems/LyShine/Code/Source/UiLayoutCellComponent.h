@@ -73,8 +73,8 @@ protected: // member functions
 
     AZ_DISABLE_COPY_MOVE(UiLayoutCellComponent);
 
-    //! Invalidate the parent's layout. Called when a layout cell property has changed
-    void InvalidateParentLayout();
+    //! Invalidate the layouts affected by layout cell properties. Called when a layout cell property has changed
+    void InvalidateLayout();
 
 protected: // data
 

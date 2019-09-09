@@ -32,7 +32,7 @@ namespace LmbrCentral
     {
     public:
         AZ_EBUS_BEHAVIOR_BINDER(BehaviorSpawnerComponentNotificationBusHandler, "{AC202871-2522-48A6-9B62-5FDAABB302CD}", AZ::SystemAllocator,
-            OnSpawnBegin, OnSpawnEnd, OnEntitySpawned, OnSpawnedSliceDestroyed);
+            OnSpawnBegin, OnSpawnEnd, OnEntitySpawned, OnSpawnedSliceDestroyed, OnEntitiesSpawned);
 
         void OnSpawnBegin(const AzFramework::SliceInstantiationTicket& ticket) override
         {
@@ -53,6 +53,13 @@ namespace LmbrCentral
         {
             Call(FN_OnSpawnedSliceDestroyed, ticket);
         }
+
+        //! Single event notification for an entire slice spawn, providing a list of all resulting entity Ids.
+        void OnEntitiesSpawned(const AzFramework::SliceInstantiationTicket& ticket, const AZStd::vector<AZ::EntityId>& spawnedEntities) override
+        {
+            Call(FN_OnEntitiesSpawned, ticket, spawnedEntities);
+        }
+
     };
 
     // Convert any instances of the old SampleComponent data into the appropriate
@@ -176,7 +183,7 @@ namespace LmbrCentral
     SpawnerComponent::SpawnerComponent()
     {
         // Slice asset should load purely on-demand.
-        m_sliceAsset.SetFlags(static_cast<AZ::u8>(AZ::Data::AssetFlags::OBJECTSTREAM_NO_LOAD));
+        m_sliceAsset.SetAutoLoadBehavior(AZ::Data::AssetLoadBehavior::NoLoad);
     }
 
     //=========================================================================
@@ -432,7 +439,7 @@ namespace LmbrCentral
         // Stop listening for this ticket (since it's done). We can have have multiple tickets in flight.
         AzFramework::SliceInstantiationResultBus::MultiHandler::BusDisconnect(ticket);
 
-        const AZ::SliceComponent::EntityList& entities = sliceAddress.second->GetInstantiated()->m_entities;
+        const AZ::SliceComponent::EntityList& entities = sliceAddress.GetInstance()->GetInstantiated()->m_entities;
 
         AZStd::vector<AZ::EntityId> entityIds;
         entityIds.reserve(entities.size());
@@ -465,7 +472,7 @@ namespace LmbrCentral
     }
 
     //=========================================================================
-    void SpawnerComponent::OnSliceInstantiationFailed(const AZ::Data::AssetId& sliceAssetId)
+    void SpawnerComponent::OnSliceInstantiationFailedOrCanceled(const AZ::Data::AssetId& sliceAssetId, bool canceled)
     {
         const AzFramework::SliceInstantiationTicket ticket = *AzFramework::SliceInstantiationResultBus::GetCurrentBusId();
 
@@ -474,14 +481,17 @@ namespace LmbrCentral
         // clean it up
         DestroySpawnedSlice(ticket);
 
-        // error msg
-        if (sliceAssetId == m_sliceAsset.GetId())
+        if (!canceled)
         {
-            AZ_Error("SpawnerComponent", false, "Slice %s failed to instantiate", m_sliceAsset.ToString<AZStd::string>().c_str());
-        }
-        else
-        {
-            AZ_Error("SpawnerComponent", false, "Slice [id:'%s'] failed to instantiate", sliceAssetId.ToString<AZStd::string>().c_str());
+            // error msg
+            if (sliceAssetId == m_sliceAsset.GetId())
+            {
+                AZ_Error("SpawnerComponent", false, "Slice %s failed to instantiate", m_sliceAsset.ToString<AZStd::string>().c_str());
+            }
+            else
+            {
+                AZ_Error("SpawnerComponent", false, "Slice [id:'%s'] failed to instantiate", sliceAssetId.ToString<AZStd::string>().c_str());
+            }
         }
     }
 

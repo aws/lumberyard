@@ -13,8 +13,6 @@
 
 // This file should only be included Once in DLL module.
 
-#ifndef CRYINCLUDE_TOOLS_RC_RESOURCECOMPILER_PLATFORM_IMPLRC_H
-#define CRYINCLUDE_TOOLS_RC_RESOURCECOMPILER_PLATFORM_IMPLRC_H
 #pragma once
 
 #include <platform.h>
@@ -43,7 +41,7 @@
 #define TLSGET(k)		pthread_getspecific(k)
 #define TLSSET(k, a)	pthread_setspecific(k, a)
 #else
-#error Not supported!!
+#error TLS Not supported!!
 #endif
 
 CRndGen CryRandom_Internal::g_random_generator;
@@ -66,6 +64,21 @@ extern "C" DLL_EXPORT void ModuleInitISystem(ISystem* pSystem, const char* modul
     {
         gEnv = pSystem->GetGlobalEnvironment();
     }
+}
+
+extern "C" DLL_EXPORT void InjectEnvironment(void* env)
+{
+    static bool injected = false;
+    if (!injected)
+    {
+        AZ::Environment::Attach(reinterpret_cast<AZ::EnvironmentInstance>(env));
+        injected = true;
+    }
+}
+
+extern "C" DLL_EXPORT void DetachEnvironment()
+{
+    AZ::Environment::Detach();
 }
 
 //These functions are defined in WinBase.cpp for other platforms
@@ -213,7 +226,6 @@ void __stl_debug_message(const char* format_str, ...)
 #endif //_STLP_DEBUG_MESSAGE
 
 //Indices for a box side used for culling
-#if !defined(AZ_MONOLITHIC_BUILD)
 _MS_ALIGN(64) uint32  BoxSides[0x40 * 8] = {
     0, 0, 0, 0, 0, 0, 0, 0, //00
     0, 4, 6, 2, 0, 0, 0, 4, //01
@@ -280,5 +292,3 @@ _MS_ALIGN(64) uint32  BoxSides[0x40 * 8] = {
     0, 0, 0, 0, 0, 0, 0, 0, //3e
     0, 0, 0, 0, 0, 0, 0, 0, //3f
 };
-#endif // !AZ_MONOLITHIC_BUILD 
-#endif // CRYINCLUDE_TOOLS_RC_RESOURCECOMPILER_PLATFORM_IMPLRC_H

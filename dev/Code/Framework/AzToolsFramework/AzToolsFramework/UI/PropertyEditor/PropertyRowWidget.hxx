@@ -16,6 +16,9 @@
 #include <AzCore/base.h>
 #include <AzCore/Memory/SystemAllocator.h>
 #include <AzCore/Serialization/EditContext.h>
+#include <QtWidgets/QWidget>
+#include <QtWidgets/QLabel>
+#include <QtWidgets/QLayout>
 #include <QtWidgets/QPushButton>
 #include <QtCore/QPointer>
 #include <QtCore/QElapsedTimer>
@@ -23,17 +26,9 @@
 
 #pragma once
 
-class QHBoxLayout;
-class QSpacerItem;
-class QWidget;
-
-namespace AzQtComponents
-{
-    class ElidingLabel;
-}
-
 namespace AzToolsFramework
 {
+
     class PropertyHandlerBase;
     class PropertyAttributeReader;
     // the purpose of a Property Row Widget is to house the user's property GUI
@@ -55,6 +50,7 @@ namespace AzToolsFramework
         virtual AZ::u32 GetIdentifier() const; // retrieve a stable identifier that identifies this node (note: Does not include heirarchy).  Use only for attempts to restore state.
 
         bool IsForbidExpansion() const; 
+        bool ForceAutoExpand() const;
         bool AutoExpand() const { return m_autoExpand; }
         bool IsContainer() const { return m_isContainer; }
         bool IsContainerEditable() const { return m_isContainer && m_containerEditable; }
@@ -63,7 +59,7 @@ namespace AzToolsFramework
 
         virtual void AddedChild(PropertyRowWidget* child);
 
-        virtual void SetExpanded(bool expanded, bool fromUserInteraction = false);
+        virtual void SetExpanded(bool expanded);
         virtual bool IsExpanded() const { return m_expanded; }
 
         void DoExpandOrContract(bool expand, bool includeDescendents = false);
@@ -81,7 +77,7 @@ namespace AzToolsFramework
         bool HasChildRows() const;
 
         // check if theres a notification function.
-        PropertyModificationRefreshLevel DoPropertyNotify();
+        PropertyModificationRefreshLevel DoPropertyNotify(size_t optionalIndex = 0);
         void DoEditingCompleteNotify();
 
         // validate a change if there are validation functions specified
@@ -90,6 +86,8 @@ namespace AzToolsFramework
 
         void RefreshAttributesFromNode(bool initial);
         void ConsumeAttribute(AZ::u32 attributeName, PropertyAttributeReader& reader, bool initial, QString* descriptionOut=nullptr, bool* foundDescriptionOut=nullptr);
+
+        void SetReadOnlyQueryFunction(const ReadOnlyQueryFunction& readOnlyQueryFunction);
 
         /// Repaint the control style, which is required any time object properties used
         /// by .qss are modified.
@@ -120,6 +118,13 @@ namespace AzToolsFramework
 
         void HideContent();
 
+        void SetNameLabel(const char* text);
+
+        void UpdateIndicator(const char* imagePath);
+
+        void SetFilterString(const AZStd::string& str);
+
+        static QString MakeFilterHighlightedName(const QString& name, const QString& filter);
     protected:
         int CalculateLabelWidth() const;
 
@@ -142,9 +147,12 @@ namespace AzToolsFramework
 
         QWidget* m_leftAreaContainer;
 
-        AzQtComponents::ElidingLabel* m_nameLabel;
-        AzQtComponents::ElidingLabel* m_defaultLabel; // if there is no handler, we use a m_defaultLabel label
-        InstanceDataNode* m_sourceNode = nullptr;
+        QLabel* m_indicatorLabel;
+        QLabel* m_nameLabel;
+        QLabel* m_defaultLabel; // if there is no handler, we use a m_defaultLabel label
+        InstanceDataNode* m_sourceNode;
+
+        QString m_currentFilterString;
 
         struct ChangeNotification
         {
@@ -168,6 +176,7 @@ namespace AzToolsFramework
         QWidget* m_childWidget = nullptr;
 
         bool m_forbidExpansion = false;
+        bool m_forceAutoExpand = false;
         bool m_autoExpand = false;
         bool m_expanded = false;
         bool m_containerEditable = false;
@@ -178,7 +187,10 @@ namespace AzToolsFramework
 
         bool m_isSelected = false;
         bool m_selectionEnabled = false;
-        bool m_readOnly = false; //holds whether the ReadOnly attribute was set
+        bool m_readOnly = false; // whether widget is currently read-only
+        bool m_readOnlyDueToAttribute = false; // holds whether the ReadOnly attribute was set
+        bool m_readOnlyDueToFunction = false; // holds whether m_readOnlyQueryFunction evaluates to true
+        ReadOnlyQueryFunction m_readOnlyQueryFunction; // customizable function that can say a property is read-only
 
         QElapsedTimer m_clickStartTimer;
         QPoint m_clickPos;
@@ -196,9 +208,6 @@ namespace AzToolsFramework
         QIcon m_iconOpen;
         QIcon m_iconClosed;
 
-        void SetNameLabel(const char* text);
-
-
         /// Marks the field to be visualized as "overridden".
         void SetOverridden(bool overridden);
 
@@ -210,10 +219,11 @@ namespace AzToolsFramework
 
         void createContainerButtons();
 
+        void UpdateReadOnlyState();
         void UpdateEnabledState();
 
     signals:
-        void onExpandedOrContracted(InstanceDataNode* node, bool expanded, bool fromUserInteraction = false);
+        void onUserExpandedOrContracted(InstanceDataNode* node, bool expanded);
         void onRequestedContainerClear(InstanceDataNode* node);
         void onRequestedContainerElementRemove(InstanceDataNode* node);
         void onRequestedContainerAdd(InstanceDataNode* node);

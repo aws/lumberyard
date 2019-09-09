@@ -13,8 +13,9 @@
 #include <Tests/TestTypes.h>
 
 #include <AzCore/Component/ComponentApplication.h>
-#include <AzFramework/Network/NetBindingSystemComponent.h>
+#include <AzFramework/Network/NetBindingSystemImpl.h>
 #include <AzFramework/Network/NetBindable.h>
+#include <AzFramework/Network/NetBindingSystemComponent.h>
 
 #include <AzCore/Asset/AssetManagerComponent.h>
 #include <AzCore/Memory/AllocationRecords.h>
@@ -37,20 +38,9 @@ namespace UnitTest
     using namespace GridMate;
 
     class NetBindingWithSlicesTest
-        : public AllocatorsFixture
+        : public ScopedAllocatorSetupFixture
     {
     public:
-        NetBindingWithSlicesTest()
-            : AllocatorsFixture(15, false)
-        {
-           
-        }
-
-        ~NetBindingWithSlicesTest()
-        {
-            
-        }
-
         const NetBindingContextSequence k_fakeContextSeq = 1;
         const AZ::SliceComponent::SliceInstanceId k_fakeSliceInstanceId = Uuid::CreateRandom();
         const AZ::SliceComponent::SliceInstanceId k_fakeSliceInstanceId_Another = Uuid::CreateRandom();
@@ -63,13 +53,15 @@ namespace UnitTest
         const EntityId k_fakeEntityId_Two = EntityId(9002);
         const ReplicaId k_repId_Two = 1002;
 
-        AZStd::unique_ptr<Entity> m_system;
+        AZStd::unique_ptr<NetBindingSystemImpl> m_netBindingImpl;
         AZStd::unique_ptr<MockComponentApplication> m_componentApplication;
         AZStd::unique_ptr<SerializeContext> m_applicationContext;
 
         AZStd::unique_ptr<MockGameEntityContext> m_gameEntityMock;
         AZStd::unique_ptr<MockReplicaManager> m_replicaManagerMock;
         ReplicaPtr m_replicaMock;
+
+        ComponentDescriptor* m_netBindingSystemComponentDescriptor = nullptr;
 
         AZStd::intrusive_ptr<MockNetBindingSystemContextData> m_contextChunkMock;
 
@@ -106,8 +98,6 @@ namespace UnitTest
 
         void SetUp() override
         {
-            AllocatorsFixture::SetUp();
-
             m_applicationContext.reset(aznew SerializeContext());
 
             AllocatorInstance<GridMateAllocatorMP>::Create();
@@ -127,8 +117,7 @@ namespace UnitTest
             ON_CALL(*m_gameEntityMock, GetGameEntityContextId())
                 .WillByDefault(Return(EntityContextId::CreateRandom()));
 
-            m_system = AZStd::make_unique<Entity>();
-            m_system->CreateComponent<NetBindingSystemComponent>();
+            m_netBindingSystemComponentDescriptor = NetBindingSystemComponent::CreateDescriptor();
 
             ReplicaChunkDescriptorTable::Get().RegisterChunkType<MockNetBindingSystemContextData>();
             m_contextChunkMock.reset(CreateReplicaChunk<NiceMock<MockNetBindingSystemContextData>>());
@@ -156,8 +145,8 @@ namespace UnitTest
             ON_CALL(*m_contextChunkMock, OnReplicaActivate(_))
                 .WillByDefault(Invoke(m_contextChunkMock.get(), &MockNetBindingSystemContextData::Base_OnReplicaActivate));
 
-            m_system->Init();
-            m_system->Activate();
+            m_netBindingImpl = AZStd::make_unique<AzFramework::NetBindingSystemImpl>();
+            m_netBindingImpl->Init();
 
             m_contextChunkMock->OnReplicaActivate(ReplicaContext(nullptr, TimeContext()));
 
@@ -173,11 +162,12 @@ namespace UnitTest
             m_contextChunkMock.reset();
 
             m_fakeAsset.reset();
-
-            m_system->Deactivate();
-            m_system.reset();
+            m_netBindingImpl->Shutdown();
+            m_netBindingImpl.reset();
 
             ReplicaChunkDescriptorTable::Get().UnregisterReplicaChunkDescriptor(ReplicaChunkClassId(MockNetBindingSystemContextData::GetChunkName()));
+
+            m_netBindingSystemComponentDescriptor->ReleaseDescriptor();
 
             m_componentApplication.reset();
             m_gameEntityMock.reset();
@@ -186,8 +176,6 @@ namespace UnitTest
             AllocatorInstance<ThreadPoolAllocator>::Destroy();
 
             m_applicationContext.reset();
-
-            AllocatorsFixture::TearDown();
         }
     };
 

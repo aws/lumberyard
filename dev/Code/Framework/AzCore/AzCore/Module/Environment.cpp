@@ -113,7 +113,7 @@ namespace AZ
                 }
 
 #ifdef AZ_ENVIRONMENT_VALIDATE_ON_EXIT
-                AZ_Assert(m_numAttached == 0, "We should not delete an evironment while there are %d modules attached! Unload all DLLs first!", m_numAttached);
+                AZ_Assert(m_numAttached == 0, "We should not delete an environment while there are %d modules attached! Unload all DLLs first!", m_numAttached);
 #endif
                 
                 for (auto variableIt : m_variableMap)

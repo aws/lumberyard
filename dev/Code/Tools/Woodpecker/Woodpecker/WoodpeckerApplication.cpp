@@ -138,6 +138,27 @@ namespace Woodpecker
 
         return ::CreateProcess(discoveryServiceExe, L"-fail_silently", nullptr, nullptr, FALSE, 0, nullptr, workingDir, &si, &pi) == TRUE;
 #else
+        AZStd::string applicationFilePath;
+        AzFramework::StringFunc::Path::Join(GetExecutableFolder(), "GridHub.app/Contents/MacOS/GridHub", applicationFilePath);
+        if (AZ::IO::SystemFile::Exists(applicationFilePath.c_str()))
+        {
+            if (fork() == 0)
+            {
+                char *args[] = { const_cast<char*>(applicationFilePath.c_str()), nullptr };
+                execv(applicationFilePath.c_str(), args);
+            }
+            return true;
+        }
+        AzFramework::StringFunc::Path::Join(GetExecutableFolder(), "GridHub", applicationFilePath);
+        if (AZ::IO::SystemFile::Exists(applicationFilePath.c_str()))
+        {
+            if (fork() == 0)
+            {
+                char *args[] = { const_cast<char*>(applicationFilePath.c_str()), nullptr };
+                execv(applicationFilePath.c_str(), args);
+            }
+            return true;
+        }
         return false;
 #endif
     }

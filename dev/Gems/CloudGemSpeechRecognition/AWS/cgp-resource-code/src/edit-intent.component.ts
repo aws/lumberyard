@@ -3,7 +3,7 @@ import { ViewChild, ElementRef, Input, Output, Component, EventEmitter, ViewCont
 import { ModalComponent } from 'app/shared/component/index';
 import { AwsService } from "app/aws/aws.service";
 import { BotEntry, IntentEntry, SlotTypeEntry, SpeechToTextApi } from './index'
-import { Subscription } from 'rxjs/rx';
+import { Subscription } from 'rxjs/Subscription';
 import { AbstractCloudGemIndexComponent } from 'app/view/game/module/cloudgems/class/index';
 import { ToastsManager } from 'ng2-toastr/ng2-toastr';
 import { PaginationComponent } from 'app/view/game/module/shared/component/index';

@@ -16,6 +16,7 @@
 #include <GridMate/Carrier/SocketDriver.h>
 #include <GridMate/Carrier/SecureSocketDriver.h>
 #include <GridMate/Carrier/DefaultHandshake.h>
+#include <AzCore/std/string/memorytoascii.h>
 
 #if defined(AZ_PLATFORM_WINDOWS)
 #define TEST_WITH_SECURE_SOCKET_DRIVER
@@ -43,14 +44,14 @@ public:
 #if defined(TEST_WITH_SECURE_SOCKET_DRIVER)
 
 /*
-* SecureDriverTest
+* SecureDriverProvider
 * Applies SecureSocketDriver to tests
 */
-template<class Test>
-class SecureDriverTest : public Test
+template<class ClientDriver = SecureSocketDriver, class HostDriver = SecureSocketDriver>
+class SecureDriverProvider : public SocketDriverProvider
 {
 public:
-    virtual ~SecureDriverTest()
+    virtual ~SecureDriverProvider()
     {
         // Cleaning up
         while (!m_drivers.empty())
@@ -65,7 +66,7 @@ public:
     {
         SecureSocketDesc secDescJoin;
         secDescJoin.m_certificateAuthorityPEM = Certificates::g_untrustedCertPEM;
-        m_drivers.push_back(aznew SecureSocketDriver(secDescJoin));
+        m_drivers.push_back(aznew ClientDriver(secDescJoin));
         return m_drivers.back();
     }
 
@@ -74,11 +75,11 @@ public:
         SecureSocketDesc secDescHost;
         secDescHost.m_certificatePEM = Certificates::g_untrustedCertPEM;
         secDescHost.m_privateKeyPEM = Certificates::g_untrustedPrivateKeyPEM;
-        m_drivers.push_back(aznew SecureSocketDriver(secDescHost));
+        m_drivers.push_back(aznew HostDriver(secDescHost));
         return m_drivers.back();
     }
 
-private:
+protected:
     AZStd::vector<SecureSocketDriver*> m_drivers;
 };
 
@@ -120,6 +121,15 @@ public:
         {
             return;     // not for us
         }
+
+        CarrierEventsBase  cdrToString;
+
+        AZ_TracePrintf("CarrierTest", "OnFailedToConnect: Carrier:0x%p ConnectionID:0x%p Reason Code:%d (0x%02x) ReasonDef:%s\n",
+            carrier,
+            id,
+            reason, reason,
+            cdrToString.ReasonToString(reason).c_str() );
+
         AZ_TEST_ASSERT(false);
     }
 
@@ -174,19 +184,15 @@ namespace UnitTest
     //static const unsigned int k_serverCarrier = 0;
     //static const unsigned int k_clientCarrier = 1;
 
-    class CarrierBasicTest
+    template<class SocketProvider = SocketDriverProvider, int ticksBeforeCheck = 50>
+    class CarrierBasicTestTemplate
         : public GridMateMPTestFixture
-        , protected SocketDriverProvider
+        , public SocketProvider
     {
     public:
         void run()
         {
-#ifdef AZ_SOCKET_IPV6_SUPPORT
-            bool useIpv6 = true;
-#else
-            bool useIpv6 = false;
-#endif // AZ_SOCKET_IPV6_SUPPORT
-
+            AZ_TracePrintf("CarrierTest", "Initlizing test run \"%s\"\n", ::testing::UnitTest::GetInstance()->current_test_info()->name());
             CarrierCallbacksHandler clientCB, serverCB;
             TestCarrierDesc serverCarrierDesc, clientCarrierDesc;
 
@@ -194,12 +200,11 @@ namespace UnitTest
 
             const char* targetAddress = "127.0.0.1";
 
-            if (useIpv6)
-            {
-                clientCarrierDesc.m_familyType = Driver::BSD_AF_INET6;
-                serverCarrierDesc.m_familyType = Driver::BSD_AF_INET6;
-                targetAddress = "::1";
-            }
+#ifdef AZ_SOCKET_IPV6_SUPPORT
+            clientCarrierDesc.m_familyType = Driver::BSD_AF_INET6;
+            serverCarrierDesc.m_familyType = Driver::BSD_AF_INET6;
+            targetAddress = "::1";
+#endif
 
             clientCarrierDesc.m_enableDisconnectDetection = false;
             serverCarrierDesc.m_enableDisconnectDetection = false;
@@ -216,6 +221,7 @@ namespace UnitTest
             Carrier* serverCarrier = DefaultCarrier::Create(serverCarrierDesc, m_gridMate);
             serverCB.Activate(serverCarrier);
 
+            AZ_TracePrintf("CarrierTest", "Starting test run \"%s\"\n", ::testing::UnitTest::GetInstance()->current_test_info()->name());
             //////////////////////////////////////////////////////////////////////////
             // Test carriers [0 is server, 1 is client]
             bool isClientDone = false;
@@ -252,7 +258,7 @@ namespace UnitTest
                             if (receiveResult.m_state == Carrier::ReceiveResult::RECEIVED)
                             {
                                 AZ_TEST_ASSERT(memcmp(str.c_str(), clientBuffer, str.length()) == 0)
-                                isClientDone = true;
+                                    isClientDone = true;
                             }
                         }
                     }
@@ -283,7 +289,7 @@ namespace UnitTest
                     break;
                 }
 
-                if (!isDisconnect && isClientDone && isServerDone && numUpdates > 50 /* we need 1 sec to update statistics */)
+                if (!isDisconnect && isClientDone && isServerDone && numUpdates > ticksBeforeCheck /* give enough time to close handshake */)
                 {
                     // check statistics
                     Carrier::Statistics clientStats, clientStatsLifeTime, clientStatsLastSecond;
@@ -321,14 +327,18 @@ namespace UnitTest
             }
             DefaultCarrier::Destroy(clientCarrier);
             DefaultCarrier::Destroy(serverCarrier);
+
+            AZ_TracePrintf("CarrierTest", "Completed test run \"%s\"\n", ::testing::UnitTest::GetInstance()->current_test_info()->name());
+
             //////////////////////////////////////////////////////////////////////////
             AZ_TEST_ASSERT(isServerDone && isClientDone);
         }
     };
 
-    class Integ_CarrierAsyncHandshakeTest
+    template<class SocketProvider = SocketDriverProvider>
+    class Integ_CarrierAsyncHandshakeTestTemplate
         : public GridMateMPTestFixture
-        , protected SocketDriverProvider
+        , protected SocketProvider
     {
     public:
 
@@ -451,9 +461,10 @@ namespace UnitTest
         }
     };
 
-    class CarrierStressTest
+    template<class SocketProvider = SocketDriverProvider>
+    class CarrierStressTestTemplate
         : public GridMateMPTestFixture
-        , protected SocketDriverProvider
+        , protected SocketProvider
     {
     public:
         void run()
@@ -565,9 +576,10 @@ namespace UnitTest
         }
     };
 
-    class CarrierTest
+    template<class SocketProvider = SocketDriverProvider>
+    class CarrierTestTemplate
         : public GridMateMPTestFixture
-        , protected SocketDriverProvider
+        , protected SocketProvider
     {
     public:
         void run()
@@ -751,9 +763,10 @@ namespace UnitTest
         }
     };
 
-    class Integ_CarrierDisconnectDetectionTest
+    template<class SocketProvider = SocketDriverProvider>
+    class Integ_CarrierDisconnectDetectionTestTemplate
         : public GridMateMPTestFixture
-        , protected SocketDriverProvider
+        , protected SocketProvider
     {
     public:
         void run()
@@ -813,7 +826,7 @@ namespace UnitTest
                     if (!(numUpdates % 100) && serverCarrier->GetNumConnections() == 1)
                     {
                         TrafficControl::Statistics stats;
-                        serverCarrier->QueryStatistics(serverCarrier->GetConnectionId(0), nullptr, &stats);
+                        serverCarrier->QueryStatistics(serverCarrier->DebugGetConnectionId(0), nullptr, &stats);
                         AZ_TracePrintf("GridMate", "  Server -> Client: rtt=%.0f msec, packetLoss=%.0f%%\n", stats.m_rtt, stats.m_packetLoss  * 100.f);
                     }
 
@@ -835,9 +848,10 @@ namespace UnitTest
     /*
      * Sends reliable messages across different channels to each other
      */
-    class Integ_CarrierMultiChannelTest
+    template<class SocketProvider = SocketDriverProvider>
+    class Integ_CarrierMultiChannelTestTemplate
         : public GridMateMPTestFixture
-        , protected SocketDriverProvider
+        , protected SocketProvider
     {
     public:
         void run()
@@ -888,7 +902,7 @@ namespace UnitTest
                         //AZ_TracePrintf("GridMate", "Updating carrier %d...\n", iCarrier);
                         for (unsigned int iConn = 0; iConn < carriers[iCarrier]->GetNumConnections(); ++iConn)
                         {
-                            ConnectionID connId = carriers[iCarrier]->GetConnectionId(iConn);
+                            ConnectionID connId = carriers[iCarrier]->DebugGetConnectionId(iConn);
                             for (unsigned char iChannel = 0; iChannel < 3; ++iChannel)
                             {
                                 char buf[1500];
@@ -938,9 +952,10 @@ namespace UnitTest
     /**
     * Stress tests multiple simultaneous Carriers
     */
-    class Integ_CarrierMultiStressTest
+    template<class SocketProvider = SocketDriverProvider>
+    class Integ_CarrierMultiStressTestTemplate
         : public GridMateMPTestFixture
-        , protected SocketDriverProvider
+        , protected SocketProvider
     {
 #define ThousandByteString "01234567890123456789012345678901234567890123456789"\
                                             "01234567890123456789012345678901234567890123456789"\
@@ -970,9 +985,9 @@ namespace UnitTest
             // initialize transport
             const int k_numChannels = 1;
             const int basePort = 8080;  //Server port
-            const int nCarriers = 301;  //0 is the server
-            const int k_connectionTime = 10;    //Do not send for connection time at the start
-            const int k_cleanupTime = 10;       //Do not send for cleanup time at the end
+            const int nCarriers = 101;  //0 is the server
+            const int k_connectionTime = 50;    //Do not send for connection time at the start
+            const int k_cleanupTime = 50;       //Do not send for cleanup time at the end
             const int maxNumUpdates = 100 + k_connectionTime + k_cleanupTime;
             const int k_numMessagesPerUpdate = 2;
             const int k_maxMsgSize = 1024;       //Shortens the raw application data
@@ -1025,7 +1040,7 @@ namespace UnitTest
                         //AZ_TracePrintf("GridMate", "Updating carrier %d...\n", iCarrier);
                         for (unsigned int iConn = 0; iConn < carriers[iCarrier]->GetNumConnections(); ++iConn)
                         {
-                            ConnectionID connId = carriers[iCarrier]->GetConnectionId(iConn);
+                            ConnectionID connId = carriers[iCarrier]->DebugGetConnectionId(iConn);
                             for (unsigned char iChannel = 0; iChannel < k_numChannels; ++iChannel)
                             {
                                 // receive
@@ -1086,19 +1101,20 @@ namespace UnitTest
             AZ_Printf("GridMate", "App MBytes sent/rcvd %.2f / %.2f dur %.2fS Mbps %.2f / %.2f\n",
                 float(nSentBytes) / 1000000, float(nReceivedBytes) / 1000000, float(testDurationUS) / 1000000, float(nSentBytes * 8) / testDurationUS, float(nReceivedBytes * 8) / testDurationUS);
 #if !defined(AZ_DEBUG_BUILD)
-            AZ_TEST_ASSERT(testDurationUS < 5000000);       //Expected duration 4000000uS + margin
-#else
             AZ_TEST_ASSERT(testDurationUS < 8000000);       //Expected duration 6000000uS + margin
+#else
+            AZ_TEST_ASSERT(testDurationUS < 10000000);       //Expected duration 8000000uS + margin
 #endif
             AZ_TEST_ASSERT(nSentBytes == nReceivedBytes);   //Nothing lost
-                                                            //AZ_TEST_ASSERT(nSentBytes % (k_numChannels * (nCarriers - 1)) == 0);   //All carriers sent/recvd. Currently seeing last 6 only send 2 packets (taking longer to connect?).
         }
     };
 
     /*** Congestion control back pressure test */
-    class Integ_CarrierBackpressureTest
+    template<class SocketProvider = SocketDriverProvider>
+    class Integ_CarrierBackpressureTestTemplate
         : public GridMateMPTestFixture
-        , protected SocketDriverProvider, public CarrierEventBus::Handler
+        , protected SocketProvider
+        , public CarrierEventBus::Handler
     {
         // Test parameters
         static const AZ::u32 packetLossInterval = 2;  ///< Interval for lost packets (1 in X)
@@ -1158,8 +1174,8 @@ namespace UnitTest
                 }
                 AZ_TEST_ASSERT(serverCarrier->GetNumConnections() == 1); // Must have connected
 
-                ConnectionID clientId = clientCarrier->GetConnectionId(0);
-                ConnectionID serverId = serverCarrier->GetConnectionId(0);
+                ConnectionID clientId = clientCarrier->DebugGetConnectionId(0);
+                ConnectionID serverId = serverCarrier->DebugGetConnectionId(0);
 
                 //clientSimulator.Enable(); // After connecting enable bad traffic conditions
                 static const int updatesPerSecond = 100;
@@ -1200,7 +1216,7 @@ namespace UnitTest
                     {
                         TrafficControl::Statistics stats, sessionStats;
                         Carrier::FlowInformation flowInfo;
-                        serverCarrier->QueryStatistics(serverCarrier->GetConnectionId(0), &stats, &sessionStats, nullptr, nullptr, &flowInfo);
+                        serverCarrier->QueryStatistics(serverCarrier->DebugGetConnectionId(0), &stats, &sessionStats, nullptr, nullptr, &flowInfo);
                         AZ_TracePrintf("GridMate", "  Server -> Client: rtt=%.0f msec, packetLoss=%.0f%%/%.0f%%, cwnd=%u\n",
                             stats.m_rtt, stats.m_packetLoss  * 100.f, sessionStats.m_packetLoss  * 100.f, static_cast<AZ::u32>(flowInfo.m_congestionWindow));
                     }
@@ -1208,7 +1224,7 @@ namespace UnitTest
                     {
                         TrafficControl::Statistics stats, sessionStats;
                         Carrier::FlowInformation flowInfo;
-                        clientCarrier->QueryStatistics(clientCarrier->GetConnectionId(0), &stats, &sessionStats, nullptr, nullptr, &flowInfo);
+                        clientCarrier->QueryStatistics(clientCarrier->DebugGetConnectionId(0), &stats, &sessionStats, nullptr, nullptr, &flowInfo);
                         AZ_TracePrintf("GridMate", "  Client -> Server: rtt=%.0f msec, packetLoss=%.0f%%/%.0f%%, cwnd=%u\n",
                             stats.m_rtt, stats.m_packetLoss  * 100.f, sessionStats.m_packetLoss  * 100.f, static_cast<AZ::u32>(flowInfo.m_congestionWindow));
                     }
@@ -1366,9 +1382,10 @@ namespace UnitTest
 
     };
 
-    class Integ_CarrierACKTest
+    template<class SocketProvider = SocketDriverProvider>
+    class Integ_CarrierACKTestTemplate
         : public GridMateMPTestFixture
-        , protected SocketDriverProvider
+        , protected SocketProvider
     {
     public:
         void run()
@@ -1526,72 +1543,172 @@ namespace UnitTest
         unsigned int m_targetStamp = 2;
         //AZStd::shared_ptr<ACKCallback> m_callback;
     };
+
+    //Create specific tests
+    using CarrierBasicTest = CarrierBasicTestTemplate<>;
+    using CarrierTest = CarrierTestTemplate<>;
+    using Integ_CarrierDisconnectDetectionTest = Integ_CarrierDisconnectDetectionTestTemplate<>;
+    using Integ_CarrierAsyncHandshakeTest = Integ_CarrierAsyncHandshakeTestTemplate<>;
+    using Integ_CarrierStressTest = CarrierStressTestTemplate<>;
+    using Integ_CarrierMultiChannelTest = Integ_CarrierMultiChannelTestTemplate<>;
+    using Integ_CarrierMultiStressTest = Integ_CarrierMultiStressTestTemplate<>;
+    using Integ_CarrierBackpressureTest = Integ_CarrierBackpressureTestTemplate<>;
+    using Integ_CarrierACKTest = Integ_CarrierACKTestTemplate<>;
+
+#if defined(TEST_WITH_SECURE_SOCKET_DRIVER)
+
+    /** Drops DTLS messages in handshake sequence order
+     */
+    template<bool isClient>
+    class SecureSocketHandshakeDrop : public SecureSocketDriver
+    {
+    public:
+        SecureSocketHandshakeDrop(SecureSocketDesc desc)
+            : SecureSocketDriver(desc)
+            , m_handshakeSeqToDiscard(0)
+            , m_discardChangeCipherSpec(true)
+            , m_finishedCookieExchange(false)
+            , m_discardFinish(true)
+            , m_isClient(isClient)
+        {}
+        void ProcessIncoming() override
+        {
+            SecureSocketDriver::ProcessIncoming();
+        }
+        void ProcessOutgoing() override
+        {
+            //Replaces call to FlushConnectionBuffersToSocket() with identical code that drops the specific handshake messages
+            for (AZStd::pair<SocketDriverAddress, Connection*>& addrConn : m_connections)
+            {
+                Connection* connection = addrConn.second;
+                connection->FlushOutgoingDTLSDgrams();
+                int packetsToDrop = 1;  //only drop 1 packet per flight
+                while (CanSend())
+                {
+                    AZ::s32 bytesRead = connection->GetDTLSDgram(m_tempSocketWriteBuffer, m_maxTempBufferSize);
+                    if (bytesRead <= 0)
+                    {
+                        break;
+                    }
+
+                    ////Drop check
+                    if (ConnectionSecurity::IsHandshake(m_tempSocketWriteBuffer, bytesRead))
+                    {
+                        AZ::u16 sequenceNum = *(reinterpret_cast<AZ::u16*>(m_tempSocketWriteBuffer + 17)); //Sequence # in header offset by 17
+#if !defined(AZ_BIG_ENDIAN)
+                        AZStd::endian_swap<AZ::u16>(sequenceNum);
+#endif
+                        const char* type = "";
+                        if (sequenceNum < 6)
+                        {
+                            type = ConnectionSecurity::TypeToString(m_tempSocketWriteBuffer, bytesRead);
+                        }
+
+                        if (packetsToDrop > 0)
+                        {
+                            if (sequenceNum == m_handshakeSeqToDiscard)
+                            {
+                                AZ_TracePrintf("GridMate", "[%08x] HShake Seq %d %s (DROPPED)\n", this, sequenceNum, type);
+
+                                ++m_handshakeSeqToDiscard;
+                                //Move back to 0 after cookie exchange
+                                if (m_isClient && !m_finishedCookieExchange && sequenceNum == 1)
+                                {
+                                    m_finishedCookieExchange = true;
+                                    m_handshakeSeqToDiscard = 0;
+                                }
+                                --packetsToDrop;
+                                continue;
+                            }
+                            else if (m_discardFinish && sequenceNum > 5)    //Finish message
+                            {
+                                AZ_TracePrintf("GridMate", "[%08x] HShake Seq %d %s (DROPPED)\n", this, sequenceNum, type);
+                                m_discardFinish = false;
+                                --packetsToDrop;
+                                continue;
+                            }
+                        }
+
+                        AZ_TracePrintf("GridMate", "[%08x] HShake Seq %d %s\n", this, sequenceNum, type);
+                        //AZ_TracePrintf("GridMate", "%s\n", AZStd::MemoryToASCII::ToString(m_tempSocketWriteBuffer, bytesRead, 64).c_str());
+                    }
+                    else if (ConnectionSecurity::IsChangeCipherSpec(m_tempSocketWriteBuffer, bytesRead))
+                    {
+                        if (packetsToDrop > 0 && m_discardChangeCipherSpec)
+                        {
+                            AZ_TracePrintf("GridMate", "[%08x] ChangeCipherSpec (DROPPED) \n", this, m_port);
+                            m_discardChangeCipherSpec = false;
+                            --packetsToDrop;
+                            continue;
+                        }
+                        AZ_TracePrintf("GridMate", "[%08x] ChangeCipherSpec\n", this, m_port);
+                    }
+                    ////END Drop check
+
+                    DriverAddress* addr = static_cast<DriverAddress*>(&addrConn.first);
+                    SocketDriver::Send(addr, m_tempSocketWriteBuffer, bytesRead);
+                    connection->m_dbgDgramsSent++;
+                }
+            }
+        }
+    private:
+        int     m_handshakeSeqToDiscard;
+        bool    m_discardChangeCipherSpec;
+        bool    m_discardFinish;
+        bool    m_finishedCookieExchange;
+        bool    m_isClient;
+    };
+
+    using SecureProviderBadClient = SecureDriverProvider<SecureSocketHandshakeDrop<true>>;
+    using SecureProviderBadHost = SecureDriverProvider<SecureSocketDriver, SecureSocketHandshakeDrop<false>>;
+    using SecureProviderBadBoth = SecureDriverProvider<SecureSocketHandshakeDrop<true>, SecureSocketHandshakeDrop<false>>;
+
+    using Integ_CarrierSecureSocketHandshakeTestClient = CarrierBasicTestTemplate<SecureProviderBadClient, 200>;
+    using Integ_CarrierSecureSocketHandshakeTestHost = CarrierBasicTestTemplate<SecureProviderBadHost, 200>;
+    using Integ_CarrierSecureSocketHandshakeTestBoth = CarrierBasicTestTemplate<SecureProviderBadBoth, 200>;
+
+    //Create secure socket variants of tests
+    using CarrierBasicTestSecure = CarrierBasicTestTemplate<SecureDriverProvider<>>;
+    using CarrierTestSecure = CarrierTestTemplate<SecureDriverProvider<>>;
+    using Integ_CarrierDisconnectDetectionTestSecure = Integ_CarrierDisconnectDetectionTestTemplate<SecureDriverProvider<>>;
+    using Integ_CarrierAsyncHandshakeTestSecure = Integ_CarrierAsyncHandshakeTestTemplate<SecureDriverProvider<>>;
+    using Integ_CarrierStressTestSecure = CarrierStressTestTemplate<SecureDriverProvider<>>;
+    using Integ_CarrierMultiChannelTestSecure = Integ_CarrierMultiChannelTestTemplate<SecureDriverProvider<>>;
+    using Integ_CarrierMultiStressTestSecure = Integ_CarrierMultiStressTestTemplate<SecureDriverProvider<>>;
+    using Integ_CarrierBackpressureTestSecure = Integ_CarrierBackpressureTestTemplate<SecureDriverProvider<>>;
+    using Integ_CarrierACKTestSecure = Integ_CarrierACKTestTemplate<SecureDriverProvider<>>;
+
+#endif //defined(TEST_WITH_SECURE_SOCKET_DRIVER)
 }
 
 GM_TEST_SUITE(CarrierSuite)
 GM_TEST(CarrierBasicTest)
 GM_TEST(CarrierTest)
-GM_TEST(Integ_CarrierDisconnectDetectionTest)
 GM_TEST(Integ_CarrierAsyncHandshakeTest)
 #if !defined(AZ_DEBUG_BUILD) // this test is a little slow for debug
-//GM_TEST(CarrierStressTest)
+GM_TEST(Integ_CarrierStressTest)
+GM_TEST(Integ_CarrierMultiStressTest)
 #endif
 GM_TEST(Integ_CarrierMultiChannelTest)
-GM_TEST(Integ_CarrierMultiStressTest)
 GM_TEST(Integ_CarrierBackpressureTest)
 GM_TEST(Integ_CarrierACKTest)
 
 
-#if defined(AZ_TESTS_ENABLED)
+#if defined(AZ_TESTS_ENABLED) && defined(TEST_WITH_SECURE_SOCKET_DRIVER)
+GM_TEST(CarrierBasicTestSecure)
+GM_TEST(Integ_CarrierSecureSocketHandshakeTestClient)
+GM_TEST(Integ_CarrierSecureSocketHandshakeTestHost)
+GM_TEST(Integ_CarrierSecureSocketHandshakeTestBoth)
+GM_TEST(CarrierTestSecure)
+GM_TEST(Integ_CarrierAsyncHandshakeTestSecure)
+#if !defined(AZ_DEBUG_BUILD) // this test is a little slow for debug
+GM_TEST(Integ_CarrierStressTestSecure)
+GM_TEST(Integ_CarrierMultiStressTestSecure)
+#endif
+GM_TEST(Integ_CarrierMultiChannelTestSecure)
+GM_TEST(Integ_CarrierBackpressureTestSecure)
+GM_TEST(Integ_CarrierACKTestSecure)
 
-#if defined(TEST_WITH_SECURE_SOCKET_DRIVER)
-template <class T>
-T* CreateSecureDriverTest();
-
-template <class T>
-class Integ_SecureDriverTester : public testing::Test
-{
-protected:
-    Integ_SecureDriverTester() : m_runner()
-    {
-        m_runner = new SecureDriverTest<T>();
-    }
-
-    virtual ~Integ_SecureDriverTester() { delete m_runner; }
-    void Test()
-    {
-        reinterpret_cast<T*>(m_runner)->run();
-    }
-    SecureDriverTest<T>* m_runner;
-};
-
-#define GM_TEST_FACTORY_SECUREDRIVER(testname) template <> ::UnitTest::testname* CreateSecureDriverTest<::UnitTest::testname>() { return new ::UnitTest::testname(); }
-
-    GM_TEST_FACTORY_SECUREDRIVER(CarrierBasicTest)
-    GM_TEST_FACTORY_SECUREDRIVER(CarrierTest)
-    GM_TEST_FACTORY_SECUREDRIVER(Integ_CarrierDisconnectDetectionTest)
-    GM_TEST_FACTORY_SECUREDRIVER(Integ_CarrierAsyncHandshakeTest)
-    GM_TEST_FACTORY_SECUREDRIVER(Integ_CarrierMultiChannelTest)
-    #if !defined(AZ_DEBUG_BUILD)
-        GM_TEST_FACTORY_SECUREDRIVER(CarrierStressTest)
-        typedef testing::Types<
-            ::UnitTest::CarrierBasicTest,
-            ::UnitTest::CarrierTest,
-            ::UnitTest::Integ_CarrierDisconnectDetectionTest,
-            ::UnitTest::Integ_CarrierAsyncHandshakeTest,
-            ::UnitTest::Integ_CarrierMultiChannelTest> Integ_CarrierTests;
-    #else
-        typedef testing::Types<
-            ::UnitTest::CarrierBasicTest,
-            ::UnitTest::CarrierTest,
-            ::UnitTest::Integ_CarrierDisconnectDetectionTest,
-            ::UnitTest::Integ_CarrierAsyncHandshakeTest,
-            ::UnitTest::Integ_CarrierMultiChannelTest> Integ_CarrierTests;
-    #endif
-    TYPED_TEST_CASE(Integ_SecureDriverTester, Integ_CarrierTests);
-    TYPED_TEST(Integ_SecureDriverTester, Integ_CarrierTests) { this->Test(); }
-#endif // TEST_WITH_SECURE_SOCKET_DRIVER
-
-#endif // defined(AZ_TESTS_ENABLED)
+#endif
 
 GM_TEST_SUITE_END()

@@ -26,7 +26,7 @@
 #define RC_EXECUTABLE "rc"
 
 //////////////////////////////////////////////////////////////////////////
-// Standart includes.
+// Standard includes.
 //////////////////////////////////////////////////////////////////////////
 #include <stdlib.h>
 #include <stdint.h>
@@ -42,7 +42,7 @@
 #include <errno.h>
 #include <malloc/malloc.h>
 #include <Availability.h>
-// Atomict operations , guaranteed to work across all apple platforms
+// Atomic operations , guaranteed to work across all apple platforms
 #include <libkern/OSAtomic.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -364,6 +364,7 @@ enum
 
 #define VK_OEM_COMMA    0xBC   // ',' any country
 #define VK_OEM_PERIOD   0xBE   // '.' any country
+#define VK_OEM_3        0xC0   // '`~' for US
 #define VK_OEM_4        0xDB  //  '[{' for US
 #define VK_OEM_6        0xDD  //  ']}' for US
 

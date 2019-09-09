@@ -166,8 +166,8 @@ public slots:
     void OnCreateProjectStack();
     void OnMenuCloudCanvasHelp();
 
-    void SourceUpdatedCreateResourceGroup(const QString& resourceGroupName, bool includeExample);
-    void SourceChangedCreateResourceGroup(const QString& resourceGroupName, bool includeExample);
+    void SourceUpdatedCreateResourceGroup(const QString& resourceGroupName, const QString& startCode);
+    void SourceChangedCreateResourceGroup(const QString& resourceGroupName, const QString& startCode);
 
     void OnProfileModelReset();
     void OnDeploymentModelReset();
@@ -251,8 +251,8 @@ private:
     };
     void SetSourceControlState(SourceControlState newState, const QString& tooltipOverride = {});
 
-    void ValidateSourceCreateResourceGroup(const QString& resourceGroupName, bool includeExample);
-    void DoCreateResourceGroup(const QString& resourceGroupName, bool includeExample);
+    void ValidateSourceCreateResourceGroup(const QString& resourceGroupName, const QString& startCode);
+    void DoCreateResourceGroup(const QString& resourceGroupName, const QString& startCode);
 
     void AddServiceApi();
 

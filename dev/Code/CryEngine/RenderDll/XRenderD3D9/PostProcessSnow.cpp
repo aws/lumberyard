@@ -297,7 +297,7 @@ void CSceneSnow::Render()
     PROFILE_LABEL_PUSH("SCENE_SNOW_FLAKES");
 
     // Render to HDR and velocity.
-    gcpRendD3D->FX_PushRenderTarget(0, pSceneSrc, CRenderer::CV_r_snow_halfres ? NULL : PostProcessUtils().m_pCurDepthSurface);
+    gcpRendD3D->FX_PushRenderTarget(0, pSceneSrc, CRenderer::CV_r_snow_halfres ? NULL : &gcpRendD3D->m_DepthBufferOrig);
     gcpRendD3D->FX_PushRenderTarget(1, pVelocitySrc, NULL);
 
     gcpRendD3D->FX_SetColorDontCareActions(0, false, false);

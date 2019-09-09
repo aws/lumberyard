@@ -115,7 +115,7 @@ namespace MCommon
         }
 
         /**
-         * Unproject screen coordinates to a ray in global space.
+         * Unproject screen coordinates to a ray in world space.
          * @param screenX The mouse position x value or another horizontal screen coordinate in range [0, screenWidth].
          * @param screenY The mouse position y value or another vertical screen coordinate in range [0, screenHeight].
          * @return The unprojected ray.

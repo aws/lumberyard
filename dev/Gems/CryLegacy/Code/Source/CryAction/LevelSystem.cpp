@@ -725,8 +725,6 @@ bool CLevelInfo::ReadInfo()
 
             if ((gameTypesNode != 0) && (gameTypesNode->getChildCount() > 0))
             {
-                // I can't be certain from looking at the code that these aren't used outside of a level, so better put them on the global heap
-                ScopedSwitchToGlobalHeap useGlobalHeap;
                 m_gameTypes.clear();
                 //m_musicLibs.clear();
 
@@ -918,7 +916,7 @@ const ILevelInfo::TGameTypeInfo* CLevelInfo::GetDefaultGameType() const
 struct SLevelNameAutoComplete
     : public IConsoleArgumentAutoComplete
 {
-    std::vector<string> levels;
+    AZStd::vector<string, AZ::StdLegacyAllocator> levels;
     virtual int GetCount() const { return levels.size(); };
     virtual const char* GetValue(int nIndex) const { return levels[nIndex].c_str(); };
 };
@@ -1274,8 +1272,6 @@ ILevel* CLevelSystem::LoadLevelInternal(const char* _levelName)
 {
     gEnv->pSystem->SetSystemGlobalState(ESYSTEM_GLOBAL_STATE_LEVEL_LOAD_START);
 
-    MEMSTAT_CONTEXT_FMT(EMemStatContextTypes::MSC_Other, 0, "Level load (%s)", _levelName);
-
     CryLog ("Level system is loading \"%s\"", _levelName);
     INDENT_LOG_DURING_SCOPE();
 
@@ -1522,14 +1518,14 @@ ILevel* CLevelSystem::LoadLevelInternal(const char* _levelName)
         }
 
         //////////////////////////////////////////////////////////////////////////
-        // Movie system must be loaded after entities.
+        // Movie system must be reset after entities.
         //////////////////////////////////////////////////////////////////////////
-        string movieXml = pLevelInfo->GetPath() + string("/moviedata.xml");
         IMovieSystem* movieSys = gEnv->pMovieSystem;
         if (movieSys != NULL)
         {
-            movieSys->Load(movieXml, pLevelInfo->GetDefaultGameType()->name);
-            movieSys->Reset(true, false); // bSeekAllToStart needs to be false here as it's only of interest in the editor (double checked with Timur Davidenko)
+            // bSeekAllToStart needs to be false here as it's only of interest in the
+            // editor (double checked with Timur Davidenko)
+            movieSys->Reset(true, false);
         }
 
         if (CCryAction::GetCryAction()->GetIMaterialEffects())
@@ -1571,10 +1567,6 @@ ILevel* CLevelSystem::LoadLevelInternal(const char* _levelName)
         {
             pSpamDelay->Set(spamDelay);
         }
-
-#if CAPTURE_REPLAY_LOG
-        CryGetIMemReplay()->AddLabelFmt("loadEnd%d_%s", s_loadCount++, levelName);
-#endif
 
         m_bLevelLoaded = true;
         gEnv->pSystem->SetSystemGlobalState(ESYSTEM_GLOBAL_STATE_LEVEL_LOAD_END);
@@ -1692,9 +1684,6 @@ void CLevelSystem::PrepareNextLevel(const char* levelName)
         {
             gEnv->pScriptSystem->ForceGarbageCollection();
         }
-
-        // swap to the level heap
-        CCryAction::GetCryAction()->SwitchToLevelHeap(levelName);
 
         // Open pak file for a new level.
         pLevelInfo->OpenLevelPak();

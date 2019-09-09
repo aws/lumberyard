@@ -46,7 +46,7 @@
 
 #define ASSET_BROWSER_BYTES_TO_MBYTES(nBytes) ((float)nBytes / 1024.0f / 1024.0f)
 
-namespace AssetBrowser
+namespace AssetBrowserDialogInternal
 {
     const QColor kListViewOddRowColor = QColor(235, 235, 235);
     const QColor kListViewSelectedRowColor = QColor(215, 215, 0);
@@ -298,7 +298,7 @@ CAssetBrowserDialog::CAssetBrowserDialog(QWidget* parent)
     , m_ui(new Ui::AssetBrowserDialog)
 {
     m_ui->setupUi(this);
-    m_ui->m_searchDlg->setFixedHeight(AssetBrowser::kSearchEditDialogHeight);
+    m_ui->m_searchDlg->setFixedHeight(AssetBrowserDialogInternal::kSearchEditDialogHeight);
 
     m_bSelectAssetsFromListView = false;
     s_pCurrentInstance = this;
@@ -606,9 +606,9 @@ void CAssetBrowserDialog::OnChangeStatusBarInfo(UINT nSelectedItems, UINT nVisib
         QString strTotal;
 
         // if under a megabyte
-        if (fTotalSize < AssetBrowser::kOneMegaByte)
+        if (fTotalSize < AssetBrowserDialogInternal::kOneMegaByte)
         {
-            strTotal = tr("%1 KB").arg(fTotalSize / AssetBrowser::kOneKiloByte, 1, 'f');
+            strTotal = tr("%1 KB").arg(fTotalSize / AssetBrowserDialogInternal::kOneKiloByte, 1, 'f');
         }
         else
         {

@@ -29,7 +29,11 @@
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION CRYACTION_CPP_SECTION_1
-#include AZ_RESTRICTED_FILE(CryAction_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/CryAction_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/CryAction_cpp_provo.inl"
+    #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
 #undef AZ_RESTRICTED_SECTION_IMPLEMENTED
@@ -47,7 +51,11 @@
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION CRYACTION_CPP_SECTION_2
-#include AZ_RESTRICTED_FILE(CryAction_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/CryAction_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/CryAction_cpp_provo.inl"
+    #endif
 #elif defined(WIN32) || defined(WIN64)
 #include <CryWindows.h>
 #include <ShellApi.h>
@@ -57,7 +65,7 @@
 #include <platform_impl.h>
 
 #include <AzCore/IO/FileIO.h> // for FileIOBase::GetInstance();
-
+#include <AzCore/Jobs/LegacyJobExecutor.h>
 
 #include "AIDebugRenderer.h"
 #include "GameRulesSystem.h"
@@ -85,6 +93,7 @@
 #include <IStatoscope.h>
 #include <IStreamEngine.h>
 #include <ITimeOfDay.h>
+#include <IRenderer.h>
 #include <CryProfileMarker.h>
 
 #include "Serialization/GameSerialize.h"
@@ -199,6 +208,8 @@
 #include <AzCore/Module/Environment.h>
 #include <AzCore/Component/ComponentApplication.h>
 
+#include <AzFramework/Entity/EntityDebugDisplayBus.h>
+
 #include "Prefabs/PrefabManager.h"
 #include "Prefabs/ScriptBind_PrefabManager.h"
 #include <Graphics/ColorGradientManager.h>
@@ -269,21 +280,6 @@ public:
     }
 };
 static CSystemEventListner_Action g_system_event_listener_action;
-
-void CCryAction::DumpMemInfo(const char* format, ...)
-{
-    CryModuleMemoryInfo memInfo;
-    CryGetMemoryInfoForModule(&memInfo);
-
-    va_list args;
-    va_start(args, format);
-    gEnv->pLog->LogV(ILog::eAlways, format, args);
-    va_end(args);
-
-    gEnv->pLog->LogWithType(ILog::eAlways, "Alloc=%llud kb  String=%llud kb  STL-alloc=%llud kb  STL-wasted=%llud kb", (memInfo.allocated - memInfo.freed) >> 10, memInfo.CryString_allocated >> 10, memInfo.STL_allocated >> 10, memInfo.STL_wasted >> 10);
-    // gEnv->pLog->LogV( ILog::eAlways, "%s alloc=%llu kb  instring=%llu kb  stl-alloc=%llu kb  stl-wasted=%llu kb", text, memInfo.allocated >> 10 , memInfo.CryString_allocated >> 10, memInfo.STL_allocated >> 10 , memInfo.STL_wasted >> 10);
-}
-
 
 // no dot use iterators in first part because of calls of some listners may modify array of listeners (add new)
 #define CALL_FRAMEWORK_LISTENERS(func)                                        \
@@ -476,14 +472,27 @@ void CCryAction::UnloadCmd(IConsoleCmdArgs* args)
     }
 }
 
+string ArgsToString(IConsoleCmdArgs* args)
+{
+    string str;
+    for (int idx = 0, count = args->GetArgCount(); idx < count; ++idx)
+    {
+        if (idx > 0)
+        {
+            str += " ";
+        }
+        const char* arg = args->GetArg(idx);
+        str += arg;
+    }
+    return str;
+}
+
 //------------------------------------------------------------------------
 void CCryAction::MapCmd(IConsoleCmdArgs* args)
 {
     SLICE_SCOPE_DEFINE();
 
     LOADING_TIME_PROFILE_SECTION;
-    MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_Other, 0, "MapCmd");
-
     uint32 flags = 0;
 
     // If we're are client in an MP session and running the map cmd, leave the session.
@@ -558,6 +567,7 @@ void CCryAction::MapCmd(IConsoleCmdArgs* args)
 
     IConsole* pConsole = gEnv->pConsole;
 
+    // Find the map name
     CryStackStringT<char, 256> currentMapName;
     {
         string mapname;
@@ -589,11 +599,24 @@ void CCryAction::MapCmd(IConsoleCmdArgs* args)
                 }
             }
 
-            pConsole->GetCVar("sv_map")->Set(mapname);
-
             currentMapName = mapname;
         }
     }
+
+    // If there is not already a deferred map command, defer this command. If multiple
+    // map commands are executed in the same frame (often at startup), then the last one
+    // will win. Note that we add "deferred" as an argument to the map command so that multiple
+    // successive map commands with the same contents don't accidentally cause immediate execution
+    CCryAction* cryAction = GetCryAction();
+    const string& deferredMapCmd = *cryAction->m_nextFrameCommand;
+    string newMapCmd = ArgsToString(args);
+    if (newMapCmd != deferredMapCmd)
+    {
+        *cryAction->m_nextFrameCommand = newMapCmd + " deferred";
+        return;
+    }
+
+    pConsole->GetCVar("sv_map")->Set(currentMapName);
 
     const char* tempGameRules = pConsole->GetCVar("sv_gamerules")->GetString();
 
@@ -651,6 +674,7 @@ void CCryAction::MapCmd(IConsoleCmdArgs* args)
         paramCheck.AddParam("nonblocking");
         paramCheck.AddParam("nb");
         paramCheck.AddParam("x");
+        paramCheck.AddParam("deferred");
         //
         for (int i = 2; i < args->GetArgCount(); i++)
         {
@@ -698,6 +722,10 @@ void CCryAction::MapCmd(IConsoleCmdArgs* args)
             else if (!strcmp(arg, "x"))
             {
                 flags |= eGSF_ImmersiveMultiplayer;
+            }
+            else if (!strcmp(arg, "deferred"))
+            {
+                continue; // no-op, this is just a marker token
             }
             else
             {
@@ -955,8 +983,6 @@ static inline void InlineInitializationProcessing(const char* sDescription)
 //------------------------------------------------------------------------
 bool CCryAction::Init(SSystemInitParams& startupParams)
 {
-    MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_Other, 0, "CryAction Init");
-
     m_pSystem = startupParams.pSystem;
 
     if (!startupParams.pSystem)
@@ -1010,10 +1036,6 @@ bool CCryAction::Init(SSystemInitParams& startupParams)
     m_pEntitySystem = gEnv->pEntitySystem;
     m_pTimer = gEnv->pTimer;
     m_pLog = gEnv->pLog;
-
-#ifdef CRYACTION_DEBUG_MEM
-    DumpMemInfo("CryAction::Init Start");
-#endif
 
     InitCVars();
     InitCommands();
@@ -1111,7 +1133,11 @@ bool CCryAction::Init(SSystemInitParams& startupParams)
  #else
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION CRYACTION_CPP_SECTION_3
-#include AZ_RESTRICTED_FILE(CryAction_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/CryAction_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/CryAction_cpp_provo.inl"
+    #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
 #undef AZ_RESTRICTED_SECTION_IMPLEMENTED
@@ -1183,10 +1209,6 @@ bool CCryAction::Init(SSystemInitParams& startupParams)
         }
     }
 
-#ifdef CRYACTION_DEBUG_MEM
-    DumpMemInfo("CryAction::Init End");
-#endif
-
     m_pGFListeners = new TGameFrameworkListeners();
 
     // These vectors must have enough space allocated up-front so as to guarantee no further allocs
@@ -1212,8 +1234,6 @@ bool CCryAction::Init(SSystemInitParams& startupParams)
     }
 
     XMLCPB::CDebugUtils::Create();
-
-    CryGetIMemoryManager()->InitialiseLevelHeap();
 
     if (!gEnv->IsDedicated())
     {
@@ -1294,23 +1314,20 @@ void CCryAction::InitGameType(bool multiplayer, bool fromInit)
     }
 }
 
-static std::vector<const char*> gs_lipSyncExtensionNamesForExposureToEditor;
+static AZStd::fixed_vector<const char*, 2> gs_lipSyncExtensionNamesForExposureToEditor = {
+    "LipSync_TransitionQueue",
+    "LipSync_FacialInstance"
+};
 
 //------------------------------------------------------------------------
 bool CCryAction::CompleteInit()
 {
     LOADING_TIME_PROFILE_SECTION;
-#ifdef CRYACTION_DEBUG_MEM
-    DumpMemInfo("CryAction::CompleteInit Start");
-#endif
 
     InlineInitializationProcessing("CCryAction::CompleteInit");
 
     REGISTER_FACTORY((IGameFramework*)this, "AnimatedCharacter", CAnimatedCharacter, false);
 
-    gs_lipSyncExtensionNamesForExposureToEditor.clear();
-    gs_lipSyncExtensionNamesForExposureToEditor.push_back("LipSync_TransitionQueue");
-    gs_lipSyncExtensionNamesForExposureToEditor.push_back("LipSync_FacialInstance");
 
     EndGameContext(false);
 
@@ -1408,10 +1425,6 @@ bool CCryAction::CompleteInit()
     m_pScriptSystem->EndCall();
 
     InlineInitializationProcessing("CCryAction::CompleteInit RunMainScript");
-
-#ifdef CRYACTION_DEBUG_MEM
-    DumpMemInfo("CryAction::CompleteInit End");
-#endif
 
     if (gEnv->pAISystem)
     {
@@ -1688,6 +1701,8 @@ bool CCryAction::PreUpdate(bool haveFocus, unsigned int updateFlags)
         }
     }
 
+    CALL_FRAMEWORK_LISTENERS(OnPreUpdate());
+    
     bool bRetRun = true;
 
     if (!(updateFlags & ESYSUPDATE_EDITOR))
@@ -1951,6 +1966,9 @@ bool CCryAction::PostUpdate(bool haveFocus, unsigned int updateFlags)
 
     CALL_FRAMEWORK_LISTENERS(OnPreRender());
 
+    // Also broadcast for anyone else that needs to draw global debug to do so now
+    AzFramework::DebugDisplayEventBus::Broadcast(&AzFramework::DebugDisplayEvents::DrawGlobalDebugInfo);
+
     m_pSystem->Render();
 
     gEnv->p3DEngine->EndOcclusion();
@@ -2031,6 +2049,10 @@ bool CCryAction::PostUpdate(bool haveFocus, unsigned int updateFlags)
         m_pSystem->DoWorkDuringOcclusionChecks();
     }
     FeatureTests::Update();
+    // Sync the work that must be done in the main thread by the end of frame.
+    gEnv->pRenderer->GetGenerateShadowRendItemJobExecutor()->WaitForCompletion();
+    gEnv->pRenderer->GetGenerateRendItemJobExecutor()->WaitForCompletion();
+        
 
     return bRetRun;
 }
@@ -2135,11 +2157,11 @@ bool CCryAction::IsGameStarted()
     return bStarted;
 }
 
-void CCryAction::MarkGameStarted()
+void CCryAction::MarkGameStarted(bool started)
 {
     if (m_pGame && m_pGame->GetGameContext())
     {
-        m_pGame->GetGameContext()->SetGameStarted(true);
+        m_pGame->GetGameContext()->SetGameStarted(started);
     }
 }
 
@@ -2153,53 +2175,9 @@ void CCryAction::SetLevelPrecachingDone(bool bValue)
     m_levelPrecachingDone = bValue;
 }
 
-void CCryAction::SwitchToLevelHeap(const char* acLevelName)
-{
-#if CAPTURE_REPLAY_LOG
-    static int loadCount = 0;
-    if (acLevelName)
-    {
-        CryGetIMemReplay()->AddLabelFmt("loadStart%d_%s", loadCount++, acLevelName);
-    }
-    else
-    {
-        CryGetIMemReplay()->AddLabelFmt("loadStart%d", loadCount++);
-    }
-#endif
-
-    if (m_usingLevelHeap == false)
-    {
-        CryLog ("[MEM] Switching to level heap");
-        INDENT_LOG_DURING_SCOPE();
-
-        ISystem* pSystem = GetISystem();
-        ISystemEventDispatcher* pSystemEventDispatcher = pSystem ? pSystem->GetISystemEventDispatcher() : nullptr;
-
-        m_usingLevelHeap = true;
-
-        if (pSystemEventDispatcher)
-        {
-            pSystemEventDispatcher->OnSystemEvent(ESYSTEM_EVENT_SWITCHING_TO_LEVEL_HEAP, 0, 0);
-        }
-
-        CryGetIMemoryManager()->SwitchToLevelHeap();
-
-        if (pSystemEventDispatcher)
-        {
-            pSystemEventDispatcher->OnSystemEvent(ESYSTEM_EVENT_SWITCHED_TO_LEVEL_HEAP, 0, 0);
-        }
-    }
-
-#ifdef SHUTDOWN_RENDERER_BETWEEN_LEVELS
-    // Free render resources that may have been allocated in frontend
-    gEnv->pRenderer->FreeResources(FRR_SYSTEM_RESOURCES);
-#endif
-}
-
 bool CCryAction::StartGameContext(const SGameStartParams* pGameStartParams)
 {
     LOADING_TIME_PROFILE_SECTION;
-    MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_Other, 0, "StartGameContext");
 
     // Clear the load failed flag
     GetILevelSystem()->SetLevelLoadFailed(false);
@@ -2320,21 +2298,6 @@ void CCryAction::EndGameContext(bool loadEmptyLevel)
     // BEFORE the destructor of CActionGame is invoked (Craig)
     _smart_ptr<CActionGame> pGame = m_pGame;
 
-#if CAPTURE_REPLAY_LOG
-    static int unloadCount = 0;
-    CryStackStringT<char, 128> levelName;
-    bool addedUnloadLabel = false;
-    if (auto* levelSystem = GetILevelSystem())
-    {
-        if (auto* levelInfo = levelSystem->GetCurrentLevel() ? levelSystem->GetCurrentLevel()->GetLevelInfo() : nullptr)
-        {
-            levelName = levelInfo->GetName();
-            addedUnloadLabel = true;
-            MEMSTAT_LABEL_FMT("unloadStart%d_%s", unloadCount, levelName.c_str());
-        }
-    }
-#endif
-
     // Flush core buses. We're about to unload Cry modules and need to ensure we don't have module-owned functions left behind.
     AZ::Data::AssetBus::ExecuteQueuedEvents();
     AZ::TickBus::ExecuteQueuedEvents();
@@ -2386,47 +2349,6 @@ void CCryAction::EndGameContext(bool loadEmptyLevel)
         stl::free_container(m_pLocalAllocs->m_checkPointName);
         stl::free_container(m_pLocalAllocs->m_nextLevelToLoad);
         m_pLocalAllocs->m_clearRenderBufferToBlackOnUnload = true;
-    }
-
-
-#if CAPTURE_REPLAY_LOG
-    if (addedUnloadLabel)
-    {
-        if (!levelName.empty())
-        {
-            MEMSTAT_LABEL_FMT("unloadEnd%d_%s", unloadCount++, levelName.c_str());
-        }
-        else
-        {
-            MEMSTAT_LABEL_FMT("unloadEnd%d", unloadCount++);
-        }
-    }
-#endif
-
-    if (!gEnv->IsEditor())
-    {
-        if (m_usingLevelHeap == true)
-        {
-            CryLog ("[MEM] Switching to global heap");
-            INDENT_LOG_DURING_SCOPE();
-
-            ISystem* pSystem = GetISystem();
-            ISystemEventDispatcher* pSystemEventDispatcher = pSystem ? pSystem->GetISystemEventDispatcher() : nullptr;
-
-            m_usingLevelHeap = false;
-
-            if (pSystemEventDispatcher)
-            {
-                pSystemEventDispatcher->OnSystemEvent(ESYSTEM_EVENT_SWITCHING_TO_GLOBAL_HEAP, 0, 0);
-            }
-
-            CryGetIMemoryManager()->SwitchToGlobalHeap();
-
-            if (pSystemEventDispatcher)
-            {
-                pSystemEventDispatcher->OnSystemEvent(ESYSTEM_EVENT_SWITCHED_TO_GLOBAL_HEAP, 0, 0);
-            }
-        }
     }
 
     if (gEnv && gEnv->pSystem)
@@ -2627,8 +2549,6 @@ bool CCryAction::SaveGame(const char* path, bool bQuick, bool bForceImmediate, E
 
     LOADING_TIME_PROFILE_SECTION(gEnv->pSystem);
 
-    MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_Other, 0, "Saving game");
-
     if (gEnv->bMultiplayer)
     {
         return false;
@@ -2810,8 +2730,6 @@ ELoadGameResult CCryAction::LoadGame(const char* path, bool quick, bool ignoreDe
 {
     CryLog ("[LOAD GAME] %s saved game '%s'%s", quick ? "Quick-loading" : "Loading", path, ignoreDelay ? " ignoring delay" : "");
     INDENT_LOG_DURING_SCOPE();
-
-    MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_Other, 0, "Loading game");
 
     if (gEnv->bMultiplayer)
     {
@@ -3954,20 +3872,6 @@ IDebugHistoryManager* CCryAction::CreateDebugHistoryManager()
 
 void CCryAction::GetMemoryUsage(ICrySizer* s) const
 {
-#ifndef AZ_MONOLITHIC_BUILD // Only when compiling as dynamic library
-    {
-        //SIZER_COMPONENT_NAME(pSizer,"Strings");
-        //pSizer->AddObject( (this+1),string::_usedMemory(0) );
-    }
-    {
-        SIZER_COMPONENT_NAME(s, "STL Allocator Waste");
-        CryModuleMemoryInfo meminfo;
-        ZeroStruct(meminfo);
-        CryGetMemoryInfoForModule(&meminfo);
-        s->AddObject((this + 2), (size_t)meminfo.STL_wasted);
-    }
-#endif // AZ_MONOLITHIC_BUILD
-
     //s->Add(*this);
 #define CHILD_STATISTICS(x) if (x) (x)->GetMemoryStatistics(s)
     s->AddObject(m_pGame);
@@ -4179,7 +4083,7 @@ void CCryAction::StartNetworkStallTicker(bool includeMinimalUpdate)
         }
 
         // Spawn thread to tick needed tasks
-        ScopedSwitchToGlobalHeap useGlobalHeap;
+        
         m_pNetworkStallTickerThread = new CNetworkStallTickerThread();
         m_pNetworkStallTickerThread->Start(0, "NetStallTicker");
     }
@@ -4329,7 +4233,11 @@ void CCryAction::SetupLocalView()
     STRUCT_INFO_T_INSTANTIATE(Color_tpl, <uint8>)
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION CRYACTION_CPP_SECTION_4
-#include AZ_RESTRICTED_FILE(CryAction_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/CryAction_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/CryAction_cpp_provo.inl"
+    #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
 #undef AZ_RESTRICTED_SECTION_IMPLEMENTED

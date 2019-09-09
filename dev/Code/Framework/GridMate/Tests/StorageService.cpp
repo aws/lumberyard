@@ -26,25 +26,41 @@
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION STORAGESERVICE_CPP_SECTION_1
-#include AZ_RESTRICTED_FILE(StorageService_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/StorageService_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/StorageService_cpp_provo.inl"
+    #endif
 #endif
 
 using namespace GridMate;
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION STORAGESERVICE_CPP_SECTION_2
-#include AZ_RESTRICTED_FILE(StorageService_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/StorageService_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/StorageService_cpp_provo.inl"
+    #endif
 #endif
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION STORAGESERVICE_CPP_SECTION_3
-#include AZ_RESTRICTED_FILE(StorageService_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/StorageService_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/StorageService_cpp_provo.inl"
+    #endif
 #endif
 
 AZ_TEST_SUITE(StorageSuite)
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION STORAGESERVICE_CPP_SECTION_4
-#include AZ_RESTRICTED_FILE(StorageService_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/StorageService_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/StorageService_cpp_provo.inl"
+    #endif
 #endif
 AZ_TEST_SUITE_END

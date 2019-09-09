@@ -69,7 +69,6 @@ struct ITrackViewSequenceManagerListener
 {
     virtual void OnSequenceAdded(CTrackViewSequence* pSequence) {}
     virtual void OnSequenceRemoved(CTrackViewSequence* pSequence) {}
-    virtual void OnLegacySequencePostLoad(CTrackViewSequence* sequence, bool undo) {}
 };
 
 ////////////////////////////////////////////////////////////////////////////
@@ -93,12 +92,9 @@ class CTrackViewSequence
     friend class CTrackViewSequenceNoNotificationContext;
 
     // Undo friends
-    friend class CAbstractUndoTrackTransaction;
-    friend class CAbstractUndoAnimNodeTransaction;
     friend class CUndoAnimNodeReparent;
     friend class CUndoTrackObject;
     friend class CUndoComponentEntityTrackObject;
-    friend class CAbstractUndoSequenceTransaction;
 
 public:
     CTrackViewSequence(IAnimSequence* pSequence);
@@ -213,9 +209,6 @@ public:
     // The root sequence node is always an active director
     virtual bool IsActiveDirector() const override { return true; }
 
-    // Stores track undo objects for tracks with selected keys
-    void StoreUndoForTracksWithSelectedKeys();
-
     // Copy keys to clipboard (in XML form)
     void CopyKeysToClipboard(const bool bOnlySelectedKeys, const bool bOnlyFromSelectedTracks);
 
@@ -298,6 +291,11 @@ public:
     void OnEntityComponentPropertyChanged(AZ::ComponentId /*changedComponentId*/) override;
     /////////////////////////////////////////////////////////////////////////////////////////////////////
 
+    CTrackViewTrack* FindTrackById(unsigned int trackId);
+
+    std::vector<bool> SaveKeyStates() const;
+    void RestoreKeyStates(const std::vector<bool>& keyStates);
+
     // Helper function to find a sequence by entity id
     static CTrackViewSequence* LookUpSequenceByEntityId(const AZ::EntityId& sequenceId);
 
@@ -308,6 +306,8 @@ private:
     // Only when the counter reaches 0 again SubmitPendingListenerNotifcations
     // will submit the notifications
     void QueueNotifications();
+    // Used to cancel a previously queued notification.
+    void DequeueNotifications();
     void SubmitPendingNotifcations(bool force = false);
 
     /////////////////////////////////////////////////////////////////////////
@@ -375,6 +375,15 @@ public:
         {
             m_pSequence->SubmitPendingNotifcations();
         }
+    }
+
+    void Cancel()
+    {
+        if (m_pSequence)
+        {
+            m_pSequence->DequeueNotifications();
+        }        
+        m_pSequence = nullptr;
     }
 
 private:

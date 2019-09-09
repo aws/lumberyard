@@ -9,7 +9,6 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#if defined(UNIT_TEST)
 #include "AssetRequestHandlerUnitTests.h"
 
 #include "native/utilities/assetUtils.h"
@@ -325,6 +324,3 @@ void AssetRequestHandlerUnitTests::StartTest()
 }
 
 #include <native/unittests/AssetRequestHandlerUnitTests.moc>
-
-#endif // UNIT_TEST
-

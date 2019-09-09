@@ -13,6 +13,8 @@
 #include "VideoPlayback_precompiled.h"
 
 #include "Decoder.h"
+
+#if AZ_VIDEOPLAYBACK_GEM_TRAIT_ENABLE_DECODER
 #include <AzCore/std/functional.h>
 #include <Include/VideoPlayback/VideoPlaybackBus.h>
 
@@ -498,3 +500,4 @@ namespace AZ
         }
     } //namespace VideoPlayback
 }//namespace AZ
+#endif

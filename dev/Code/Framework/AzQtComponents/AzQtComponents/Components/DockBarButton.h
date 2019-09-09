@@ -14,8 +14,6 @@
 
 #include <AzQtComponents/AzQtComponentsAPI.h>
 
-#include <QWidget>
-#include <QPixmap>
 #include <QPushButton>
 
 class QEvent;
@@ -40,21 +38,20 @@ namespace AzQtComponents
 
         explicit DockBarButton(DockBarButton::WindowDecorationButton buttonType, QWidget* parent = nullptr, bool darkStyle = false);
 
+        DockBarButton::WindowDecorationButton buttonType() const { return m_buttonType; }
+
         /*
         * Expose the button type using a QT property so that test automation can read it
         */
         Q_PROPERTY(WindowDecorationButton buttonType MEMBER m_buttonType CONSTANT)
-    protected:
-        void enterEvent(QEvent*) override;
-        void leaveEvent(QEvent*) override;
-        void mousePressEvent(QMouseEvent* event) override;
-        void mouseReleaseEvent(QMouseEvent* event) override;
 
     Q_SIGNALS:
         void buttonPressed(const DockBarButton::WindowDecorationButton type);
 
+    protected:
+        void paintEvent(QPaintEvent* event) override;
+
     private:
-        QPixmap pixmapForButton(bool pressed = false, bool hovered = false) const;
         void handleButtonClick();
         const DockBarButton::WindowDecorationButton m_buttonType;
         bool m_isDarkStyle;

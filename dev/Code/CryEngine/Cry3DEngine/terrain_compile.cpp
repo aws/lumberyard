@@ -23,6 +23,9 @@
 #include "VisAreas.h"
 #include "ObjectsTree.h"
 
+#include <StatObjBus.h>
+#include <HeightmapUpdateNotificationBus.h>
+
 #define SIGC_ALIGNTOTERRAIN       BIT(0) // Deprecated
 #define SIGC_USETERRAINCOLOR      BIT(1)
 #define SIGC_HIDEABILITY          BIT(3)
@@ -612,7 +615,6 @@ bool CTerrain::Load_T(T& f, int& nDataSize, STerrainChunkHeader* pTerrainChunkHe
         PodArray<StatInstGroupChunk> lstStatInstGroupChunkFileChunks;
 
         { // get vegetation objects count
-            MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_Terrain, 0, "Vegetation");
             LOADING_TIME_PROFILE_SECTION_NAMED("Vegetation");
 
             int nObjectsCount = 0;
@@ -639,7 +641,8 @@ bool CTerrain::Load_T(T& f, int& nDataSize, STerrainChunkHeader* pTerrainChunkHe
             {
                 // preallocate real array
                 PodArray<StatInstGroup>& rTable = GetObjManager()->GetListStaticTypes()[DEFAULT_SID];
-                rTable.resize(nObjectsCount);//,nObjectsCount);
+                rTable.resize(nObjectsCount);
+                StatInstGroupEventBus::Broadcast(&StatInstGroupEventBus::Events::ReserveStatInstGroupIdRange, StatInstGroupId(0), StatInstGroupId(nObjectsCount));
 
                 // init struct values and load cgf's
                 for (uint32 i = 0; i < rTable.size(); i++)
@@ -652,7 +655,6 @@ bool CTerrain::Load_T(T& f, int& nDataSize, STerrainChunkHeader* pTerrainChunkHe
         pStatObjTable = new std::vector < IStatObj* >;
 
         { // get brush objects count
-            MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_Terrain, 0, "Brushes");
             LOADING_TIME_PROFILE_SECTION_NAMED("Brushes");
 
             int nObjectsCount = 0;
@@ -842,6 +844,7 @@ bool CTerrain::Load_T(T& f, int& nDataSize, STerrainChunkHeader* pTerrainChunkHe
 
     int numTiles = CTerrain::m_NodePyramid[0].GetSize();
     SendLegacyTerrainUpdateNotifications(0, 0, numTiles, numTiles);
+    AZ::HeightmapUpdateNotificationBus::Broadcast(&AZ::HeightmapUpdateNotificationBus::Events::HeightmapModified, AZ::Aabb::CreateNull());
 
     assert(nNodesLoaded && nDataSize == 0);
     return (nNodesLoaded && nDataSize == 0);

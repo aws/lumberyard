@@ -1,5 +1,5 @@
 import retry
-import boto3
+import boto3_util
 import metric_constant as c
 import math
 import uuid
@@ -13,7 +13,7 @@ from botocore.exceptions import ClientError
 class Glue(object):
 
     def __init__(self):                   
-        self.__client = boto3.client('glue',region_name=os.environ[c.ENV_REGION], api_version='2017-03-31')                
+        self.__client = boto3_util.client('glue', api_version='2017-03-31')
   
     def get_crawler_name(self, arn):
         return self.__name("{}".format(util.get_stack_prefix(arn)).replace("-","_").lower())

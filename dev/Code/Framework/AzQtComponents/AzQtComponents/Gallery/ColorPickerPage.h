@@ -31,7 +31,7 @@ private Q_SLOTS:
     void onColorPickWithPalettesButtonClicked();
 
 private:
-    void pickColor(AzQtComponents::ColorPicker::Configuration configuration);
+    void pickColor(AzQtComponents::ColorPicker::Configuration configuration, const QString& context = QString());
 
     QScopedPointer<Ui::ColorPickerPage> ui;
     AZ::Color m_lastColor;

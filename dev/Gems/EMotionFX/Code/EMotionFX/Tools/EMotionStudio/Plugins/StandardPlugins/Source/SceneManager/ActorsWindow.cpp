@@ -92,12 +92,12 @@ namespace EMStudio
 
         // connect
         connect(mLoadActorsButton,     &QPushButton::clicked, GetMainWindow(), &MainWindow::OnFileOpenActor);
-        connect(mCreateInstanceButton, SIGNAL(clicked()), this, SLOT(OnCreateInstanceButtonClicked()));
-        connect(mRemoveButton,         SIGNAL(clicked()), this, SLOT(OnRemoveButtonClicked()));
-        connect(mClearButton,          SIGNAL(clicked()), this, SLOT(OnClearButtonClicked()));
-        connect(mSaveButton,           SIGNAL(clicked()), GetMainWindow(), SLOT(OnFileSaveSelectedActors()));
-        connect(mTreeWidget,           SIGNAL(itemChanged(QTreeWidgetItem*, int)), this, SLOT(OnVisibleChanged(QTreeWidgetItem*, int)));
-        connect(mTreeWidget,           SIGNAL(itemSelectionChanged()), this, SLOT(OnSelectionChanged()));
+        connect(mCreateInstanceButton, &QPushButton::clicked, this, &ActorsWindow::OnCreateInstanceButtonClicked);
+        connect(mRemoveButton,         &QPushButton::clicked, this, &ActorsWindow::OnRemoveButtonClicked);
+        connect(mClearButton,          &QPushButton::clicked, this, &ActorsWindow::OnClearButtonClicked);
+        connect(mSaveButton,           &QPushButton::clicked, GetMainWindow(), &MainWindow::OnFileSaveSelectedActors);
+        connect(mTreeWidget,           &QTreeWidget::itemChanged, this, &ActorsWindow::OnVisibleChanged);
+        connect(mTreeWidget,           &QTreeWidget::itemSelectionChanged, this, &ActorsWindow::OnSelectionChanged);
 
         // set the layout
         setLayout(vLayout);
@@ -191,18 +191,14 @@ namespace EMStudio
         const uint32 numTopLevelItems = mTreeWidget->topLevelItemCount();
         for (uint32 i = 0; i < numTopLevelItems; ++i)
         {
-            bool allInstancesVisible = true;
+            bool                atLeastOneInstanceVisible   = false;
+            QTreeWidgetItem*    item                        = mTreeWidget->topLevelItem(i);
+            const uint32        actorID                     = GetIDFromTreeItem(item);
+            EMotionFX::Actor*   actor                       = EMotionFX::GetActorManager().FindActorByID(actorID);
+            const bool          actorSelected               = selection.CheckIfHasActor(actor);
 
-            // update the actor items
-            QTreeWidgetItem*    item            = mTreeWidget->topLevelItem(i);
-            const uint32        actorID         = GetIDFromTreeItem(item);
-            EMotionFX::Actor*   actor           = EMotionFX::GetActorManager().FindActorByID(actorID);
-            bool                actorSelected   = selection.CheckIfHasActor(actor);
-
-            // set the item selected
             item->setSelected(actorSelected);
 
-            // loop trough all children and adjust selection and checkboxes
             const uint32 numChildren = item->childCount();
             for (uint32 j = 0; j < numChildren; ++j)
             {
@@ -210,19 +206,19 @@ namespace EMStudio
                 EMotionFX::ActorInstance* actorInstance = EMotionFX::GetActorManager().FindActorInstanceByID(GetIDFromTreeItem(child));
                 if (actorInstance)
                 {
-                    bool actorInstSelected  = selection.CheckIfHasActorInstance(actorInstance);
-                    bool actorInstVisible   = (actorInstance->GetRender());
+                    const bool actorInstSelected  = selection.CheckIfHasActorInstance(actorInstance);
+                    const bool actorInstVisible   = (actorInstance->GetRender());
                     child->setSelected(actorInstSelected);
                     child->setCheckState(0, actorInstVisible ? Qt::Checked : Qt::Unchecked);
 
-                    if (actorInstVisible == false)
+                    if (actorInstVisible)
                     {
-                        allInstancesVisible = false;
+                        atLeastOneInstanceVisible = true;
                     }
                 }
             }
 
-            item->setCheckState(0, allInstancesVisible ? Qt::Checked : Qt::Unchecked);
+            item->setCheckState(0, atLeastOneInstanceVisible ? Qt::Checked : Qt::Unchecked);
         }
 
         // enable signals
@@ -235,52 +231,49 @@ namespace EMStudio
 
     void ActorsWindow::OnRemoveButtonClicked()
     {
-        // get the selected items
-        const QList<QTreeWidgetItem*> items = mTreeWidget->selectedItems();
-
-        // create the group
         MCore::CommandGroup commandGroup("Remove Actors/ActorInstances");
 
-        // iterate trough all selected items
+        AZStd::vector<EMotionFX::Actor*> toBeRemovedActors;
+
+        const QList<QTreeWidgetItem*> items = mTreeWidget->selectedItems();
         const uint32 numItems = items.length();
         for (uint32 i = 0; i < numItems; ++i)
         {
-            // get the item
             QTreeWidgetItem* item = items[i];
-            if (item == nullptr)
+            if (!item)
             {
                 continue;
             }
 
-            // get the parent
-            QTreeWidgetItem* parent = item->parent();
-
             // check if the parent is not valid, on this case it's not an instance
-            if (parent == nullptr)
+            QTreeWidgetItem* parent = item->parent();
+            if (!parent)
             {
-                // ask to save if dirty
-                const uint32 actorID = GetIDFromTreeItem(item);
-                EMotionFX::Actor* actor = EMotionFX::GetActorManager().FindActorByID(actorID);
-                mPlugin->SaveDirtyActor(actor, &commandGroup, true, false);
-
-                // remove actor instances
-                const uint32 numChildren = item->childCount();
-                for (uint32 j = 0; j < numChildren; ++j)
+                const uint32 actorId = GetIDFromTreeItem(item);
+                EMotionFX::Actor* actor = EMotionFX::GetActorManager().FindActorByID(actorId);
+                if (actor)
                 {
-                    QTreeWidgetItem* child = item->child(j);
+                    // remove actor instances
+                    const uint32 numChildren = item->childCount();
+                    for (uint32 j = 0; j < numChildren; ++j)
+                    {
+                        QTreeWidgetItem* child = item->child(j);
 
-                    mTempString = AZStd::string::format("RemoveActorInstance -actorInstanceID %i", GetIDFromTreeItem(child));
+                        mTempString = AZStd::string::format("RemoveActorInstance -actorInstanceID %i", GetIDFromTreeItem(child));
+                        commandGroup.AddCommandString(mTempString);
+                    }
+
+                    // remove the actor
+                    mTempString = AZStd::string::format("RemoveActor -actorID %i", actorId);
                     commandGroup.AddCommandString(mTempString);
+                
+                    toBeRemovedActors.emplace_back(actor);
                 }
-
-                // remove the actor
-                mTempString = AZStd::string::format("RemoveActor -actorID %i", GetIDFromTreeItem(item));
-                commandGroup.AddCommandString(mTempString);
             }
             else
             {
                 // remove the actor instance
-                if (parent->isSelected() == false)
+                if (!parent->isSelected())
                 {
                     mTempString = AZStd::string::format("RemoveActorInstance -actorInstanceID %i", GetIDFromTreeItem(item));
                     commandGroup.AddCommandString(mTempString);
@@ -288,14 +281,18 @@ namespace EMStudio
             }
         }
 
-        // execute the group command
+        // Ask the user if he wants to save the actor in case it got modified and is about to be removed.
+        for (EMotionFX::Actor* actor : toBeRemovedActors)
+        {
+            mPlugin->SaveDirtyActor(actor, &commandGroup, true, false);
+        }
+
         AZStd::string result;
         if (!EMStudio::GetCommandManager()->ExecuteCommandGroup(commandGroup, result))
         {
             AZ_Error("EMotionFX", false, result.c_str());
         }
 
-        // reinit the window
         mPlugin->ReInit();
     }
 
@@ -351,7 +348,7 @@ namespace EMStudio
         }
 
         // clear the current selection
-        commandGroup.AddCommandString("ClearSelection");
+        commandGroup.AddCommandString("Unselect -actorInstanceID SELECT_ALL -actorID SELECT_ALL");
 
         // create instances for all selected actors
         AZStd::string command;
@@ -378,18 +375,15 @@ namespace EMStudio
     {
         MCORE_UNUSED(column);
 
-        // create the command group
-        MCore::CommandGroup commandGroup("Adjust actor instances");
-
-        if (item == nullptr)
+        if (!item)
         {
             return;
         }
 
-        // adjust visibility
-        if (item->parent() == nullptr)
+        MCore::CommandGroup commandGroup("Adjust actor instances");
+
+        if (!item->parent())
         {
-            // loop trough all children and set check state
             const uint32 numChildren = item->childCount();
             for (uint32 i = 0; i < numChildren; ++i)
             {
@@ -405,14 +399,12 @@ namespace EMStudio
             commandGroup.AddCommandString(mTempString);
         }
 
-        // execute the command group
         AZStd::string result;
         if (!EMStudio::GetCommandManager()->ExecuteCommandGroup(commandGroup, result))
         {
             AZ_Error("EMotionFX", false, result.c_str());
         }
 
-        // update the interface
         mPlugin->UpdateInterface();
     }
 
@@ -531,15 +523,15 @@ namespace EMStudio
             if (instanceSelected)
             {
                 QAction* resetTransformationAction = menu.addAction("Reset Transforms");
-                connect(resetTransformationAction, SIGNAL(triggered()), this, SLOT(OnResetTransformationOfSelectedActorInstances()));
+                connect(resetTransformationAction, &QAction::triggered, this, &ActorsWindow::OnResetTransformationOfSelectedActorInstances);
 
                 menu.addSeparator();
 
                 QAction* hideAction = menu.addAction("Hide Selected Actor Instances");
-                connect(hideAction, SIGNAL(triggered()), this, SLOT(OnHideSelected()));
+                connect(hideAction, &QAction::triggered, this, &ActorsWindow::OnHideSelected);
 
                 QAction* unhideAction = menu.addAction("Unhide Selected Actor Instances");
-                connect(unhideAction, SIGNAL(triggered()), this, SLOT(OnUnhideSelected()));
+                connect(unhideAction, &QAction::triggered, this, &ActorsWindow::OnUnhideSelected);
 
                 menu.addSeparator();
             }
@@ -548,26 +540,26 @@ namespace EMStudio
             {
                 QAction* addAction = menu.addAction("Create New Actor Instances");
                 addAction->setIcon(MysticQt::GetMysticQt()->FindIcon("Images/Icons/Plus.png"));
-                connect(addAction, SIGNAL(triggered()), this, SLOT(OnCreateInstanceButtonClicked()));
+                connect(addAction, &QAction::triggered, this, &ActorsWindow::OnCreateInstanceButtonClicked);
             }
 
             if (instanceSelected)
             {
                 QAction* cloneAction = menu.addAction("Clone Selected Actor Instances");
                 cloneAction->setIcon(MysticQt::GetMysticQt()->FindIcon("Images/Icons/Plus.png"));
-                connect(cloneAction, SIGNAL(triggered()), this, SLOT(OnCloneSelected()));
+                connect(cloneAction, &QAction::triggered, this, &ActorsWindow::OnCloneSelected);
             }
 
             QAction* removeAction = menu.addAction("Remove Selected Actors/Actor Instances");
             removeAction->setIcon(MysticQt::GetMysticQt()->FindIcon("Images/Icons/Minus.png"));
-            connect(removeAction, SIGNAL(triggered()), this, SLOT(OnRemoveButtonClicked()));
+            connect(removeAction, &QAction::triggered, this, &ActorsWindow::OnRemoveButtonClicked);
         }
 
         if (numTopItems > 0)
         {
             QAction* clearAction = menu.addAction("Remove All Actors/Actor Instances");
             clearAction->setIcon(MysticQt::GetMysticQt()->FindIcon("Images/Icons/Clear.png"));
-            connect(clearAction, SIGNAL(triggered()), this, SLOT(OnClearButtonClicked()));
+            connect(clearAction, &QAction::triggered, this, &ActorsWindow::OnClearButtonClicked);
 
             menu.addSeparator();
         }
@@ -580,7 +572,7 @@ namespace EMStudio
         {
             QAction* saveAction = menu.addAction("Save Selected Actors");
             saveAction->setIcon(MysticQt::GetMysticQt()->FindIcon("/Images/Menu/FileSave.png"));
-            connect(saveAction, SIGNAL(triggered()), GetMainWindow(), SLOT(OnFileSaveSelectedActors()));
+            connect(saveAction, &QAction::triggered, GetMainWindow(), &MainWindow::OnFileSaveSelectedActors);
         }
 
         // show the menu at the given position

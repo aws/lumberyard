@@ -1,3 +1,14 @@
+/*
+* All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates, or 
+* a third party where indicated.
+*
+* For complete copyright and license terms please see the LICENSE at the root of this
+* distribution (the "License"). All use of this software is governed by the License,  
+* or, if provided, by the license below or the license accompanying this file. Do not
+* remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.  
+*
+*/
 #include "LegacyAnimGraphNodeParser.h"
 #include <MCore/Source/FastMath.h>
 #include <MCore/Source/AzCoreConversions.h>
@@ -64,6 +75,7 @@
 #include "../BlendTreeVector2ComposeNode.h"
 #include "../BlendTreeVector3ComposeNode.h"
 #include "../BlendTreeVector4ComposeNode.h"
+#include "../TwoStringEventData.h"
 
 
 namespace EMotionFX
@@ -858,7 +870,14 @@ bool LegacyAnimGraphNodeParser::InitializeNodeGeneralData(const char* nodeName, 
 
     node->SetVisualPos(nodeHeader.mVisualPosX, nodeHeader.mVisualPosY);
     node->SetIsCollapsed(nodeHeader.mFlags & FileFormat::ANIMGRAPH_NODEFLAG_COLLAPSED);
-    node->SetVisualizeColor(nodeHeader.mVisualizeColor);
+
+    const AZ::Color color(
+        MCore::ExtractRed(nodeHeader.mVisualizeColor)/255.0f,
+        MCore::ExtractGreen(nodeHeader.mVisualizeColor)/255.0f,
+        MCore::ExtractBlue(nodeHeader.mVisualizeColor)/255.0f,
+        1.0f);
+    node->SetVisualizeColor(color);
+
     if (importParams.mAnimGraphSettings->mDisableNodeVisualization == false)
     {
         node->SetVisualization((nodeHeader.mFlags & FileFormat::ANIMGRAPH_NODEFLAG_VISUALIZED) != 0);
@@ -2299,6 +2318,7 @@ bool LegacyAnimGraphNodeParser::ParseTransitionConditionChunk(MCore::File* file,
             AZ_Error("EMotionFX", false, "Unable to parse AnimGraphParameterCondition");
             return false;
         }
+        transitionCondition->SetAnimGraph(importParams.mAnimGraph);
     }
     else if (conditionType == azrtti_typeid<AnimGraphPlayTimeCondition>())
     {
@@ -3163,6 +3183,10 @@ bool LegacyAnimGraphNodeParser::ParseLegacyAttributes<AnimGraphMotionCondition>(
      AnimGraphObject& animGraphObject)
 {
     AnimGraphMotionCondition& animGraphMotionCondition = static_cast<AnimGraphMotionCondition&>(animGraphObject);
+
+    AZStd::string eventType;
+    AZStd::string eventParameter;
+
     // For all attributes
     for (uint32 parsedAttributeCount = 0; parsedAttributeCount < numAttributes; ++parsedAttributeCount)
     {
@@ -3230,7 +3254,7 @@ bool LegacyAnimGraphNodeParser::ParseLegacyAttributes<AnimGraphMotionCondition>(
                 {
                     return false;
                 }
-                animGraphMotionCondition.SetEventType(legacyAttribute.GetValue());
+                eventType = legacyAttribute.GetValue();
             }
             break;
             case 5: // ATTRIB_EVENTPARAMETER
@@ -3240,7 +3264,7 @@ bool LegacyAnimGraphNodeParser::ParseLegacyAttributes<AnimGraphMotionCondition>(
                 {
                     return false;
                 }
-                animGraphMotionCondition.SetEventParameter(legacyAttribute.GetValue());
+                eventParameter = legacyAttribute.GetValue();
             }
             break;
             default:
@@ -3252,6 +3276,10 @@ bool LegacyAnimGraphNodeParser::ParseLegacyAttributes<AnimGraphMotionCondition>(
             }
         }
     }
+
+    AZStd::shared_ptr<const EventData> eventData = EMotionFX::GetEventManager().FindOrCreateEventData<TwoStringEventData>(eventType, eventParameter);
+    animGraphMotionCondition.SetEventDatas({eventData});
+
     return true;
 }
 

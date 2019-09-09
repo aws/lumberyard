@@ -33,7 +33,7 @@ namespace EMotionFX
 
         serializeContext->Class<ValueParameter, Parameter>()
             ->Version(1)
-        ;
+            ;
 
         AZ::EditContext* editContext = serializeContext->GetEditContext();
         if (!editContext)
@@ -45,7 +45,7 @@ namespace EMotionFX
             ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
                 ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
                 ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
-        ;
+            ;
     }
 
 }   // namespace EMotionFX

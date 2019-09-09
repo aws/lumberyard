@@ -20,6 +20,7 @@
 // Include basic multithread primitives.
 #include "MultiThread.h"
 #include "BitFiddling.h"
+#include <AzCore/std/string/string.h>
 //////////////////////////////////////////////////////////////////////////
 // Lock types:
 //
@@ -202,7 +203,7 @@ struct CryThreadInfo
     //
     // You may set this name directly or through the SetName() method of
     // CrySimpleThread (or derived class).
-    string m_Name;
+    AZStd::string m_Name;
 
 
     // A thread identification number.
@@ -258,7 +259,11 @@ class CryThread;
 #include <CryThread_windows.h>
 #define AZ_RESTRICTED_SECTION_IMPLEMENTED
 #elif defined(AZ_RESTRICTED_PLATFORM)
-#include AZ_RESTRICTED_FILE(CryThread_h, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/CryThread_h_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/CryThread_h_provo.inl"
+    #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
 #undef AZ_RESTRICTED_SECTION_IMPLEMENTED
@@ -615,6 +620,9 @@ namespace CryMT
 
         void Push(const T& rObj);
         void Pop(T* pResult);
+        uint32 Size() { return (m_nProducerIndex - m_nComsumerIndex); }
+        uint32 BufferSize() { return m_nBufferSize;  }
+        uint32 FreeCount() { return (m_nBufferSize - (m_nProducerIndex - m_nComsumerIndex)); }
 
     private:
         T* m_arrBuffer;
@@ -698,6 +706,10 @@ namespace CryMT
         // to correctly track when the queue is empty(and no new jobs will be added), refcount the producer
         void AddProducer();
         void RemoveProducer();
+
+        uint32 Size() { return (m_nProducerIndex - m_nComsumerIndex); }
+        uint32 BufferSize() { return m_nBufferSize; }
+        uint32 FreeCount() { return (m_nBufferSize - (m_nProducerIndex - m_nComsumerIndex)); }
 
     private:
         T*                              m_arrBuffer;

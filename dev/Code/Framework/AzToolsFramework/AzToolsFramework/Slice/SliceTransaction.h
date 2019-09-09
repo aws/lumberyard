@@ -59,6 +59,7 @@ namespace AzToolsFramework
              */
             enum SliceCreationFlags
             {
+                CreateAsDynamic                 = (1<<0),
             };
 
             /**
@@ -81,6 +82,7 @@ namespace AzToolsFramework
              */
             enum SliceCommitFlags
             {
+                DisableUndoCapture              = (1<<0),       ///< Disables undo batches from being created within the transaction
             };
 
             ~SliceTransaction();
@@ -96,6 +98,15 @@ namespace AzToolsFramework
              * \return Always returns a valid pointer to the new transaction.
              */
             static TransactionPtr BeginNewSlice(const char* name, AZ::SerializeContext* serializeContext = nullptr, AZ::u32 sliceCreationFlags = 0);
+
+            /**
+            * Begin a transaction for overwriting a slice with another slice component
+            * \param asset - Pointer to Slice asset being overwritten
+            * \param overwriteComponent - Slice component containing overwrite data
+            * \param serializeContext - Optional serialize context instance. Global serialize context will be used if none is provided.
+            * \return pointer to the new transaction, is null if the specified asset is invalid.
+            */
+            static TransactionPtr BeginSliceOverwrite(const SliceAssetPtr& asset, const AZ::SliceComponent& overwriteComponent, AZ::SerializeContext* serializeContext = nullptr);
 
             /**
              * Begin a transaction for pushing changes to an existing slice asset.
@@ -197,7 +208,7 @@ namespace AzToolsFramework
             * \param sliceCommitFlags - \ref SliceCommitFlags
             * \return Result, AZ::Success if successful, otherwise AZ::Failure. Use GetError() to retrieve string describing error.
             */
-            Result Commit(const AZ::Data::AssetId& targetAssetId, PreSaveCallback preSaveCallback, PostSaveCallback postSaveCallback, AZ::u32 sliceCommitFlags = 0);
+            Result Commit(const AZ::Data::AssetId& targetAssetId, PreSaveCallback preSaveCallback, PostSaveCallback postSaveCallback, AZ::u32 sliceCommitFlags = SliceCommitFlags::DisableUndoCapture);
 
             /**
              * Retrieves an EntityId->EntityId map from the live entities that were added to the slice individually or as instances,
@@ -207,11 +218,16 @@ namespace AzToolsFramework
              */
             const AZ::SliceComponent::EntityIdToEntityIdMap& GetLiveToAssetEntityIdMap() const;
 
+            /**
+             * Retrieves a pointer to the target asset. This is a modified clone of the original target asset that shares the correct asset id.
+             */
+            const SliceAssetPtr& GetTargetAsset() const { return m_targetAsset; }
+
         private:
     
             SliceTransaction(AZ::SerializeContext* serializeContext = nullptr);
 
-            /// Clone asset in prepation for final write. PreSave operations will be applied to the clone.
+            /// Clone asset in preparation for final write. PreSave operations will be applied to the clone.
             SliceAssetPtr CloneAssetForSave();
 
             /// Applies enabled pre-save behavior, and invokes user pre-save callback.
@@ -228,6 +244,9 @@ namespace AzToolsFramework
             void add_ref();
             void release();
 
+            /// Update any entity references for entities that were added to the slice through this transaction
+            void UpdateEntityReferences();
+
         private:
 
             SliceTransaction(const SliceTransaction&) = delete;
@@ -238,6 +257,7 @@ namespace AzToolsFramework
                 None,
                 NewSlice,
                 UpdateSlice,
+                OverwriteSlice,
             };
 
             struct EntityToPush
@@ -268,11 +288,14 @@ namespace AzToolsFramework
 
             TransactionType                                             m_transactionType;
             AZ::SerializeContext*                                       m_serializeContext;
-            SliceAssetPtr                                               m_targetAsset;
+            SliceAssetPtr                                               m_originalTargetAsset;  ///< For Slice Pushes, the original in-memory asset passed to BeginSlicePush
+            SliceAssetPtr                                               m_targetAsset;          ///< The asset in-memory that the transaction is making changes to (for creation, new one, for pushes, clone of assetToReplace)
             SliceInstancesToPushMap                                     m_addedSliceInstances;
             AZStd::vector<EntityToPush>                                 m_entitiesToPush;
             AZStd::vector<AZ::EntityId>                                 m_entitiesToRemove;
             AZ::SliceComponent::EntityIdToEntityIdMap                   m_liveToAssetIdMap;
+            bool                                                        m_hasEntityAdds = false;///< Whether entities have been added as part of this transaction
+            AZStd::unordered_map<AZ::EntityId, AZ::EntityId>            m_addedEntityIdRemaps;
 
             AZStd::atomic_int                                           m_refCount; // intrusive_ptr
         };

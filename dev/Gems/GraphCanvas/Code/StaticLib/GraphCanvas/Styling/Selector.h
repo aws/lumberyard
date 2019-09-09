@@ -79,6 +79,9 @@ namespace GraphCanvas
             void MakeDefault();
 
         private:
+
+            void MakeNull();
+
             AZStd::unique_ptr<SelectorImplementation> m_actual;
         };
 

@@ -12,9 +12,9 @@
 
 #pragma once
 
-// include the required headers
+#include <AzCore/std/containers/vector.h>
+
 #include "EMotionFXConfig.h"
-#include <MCore/Source/Array.h>
 #include "EventInfo.h"
 
 
@@ -36,16 +36,23 @@ namespace EMotionFX
 
     public:
         AnimGraphEventBuffer();
-        ~AnimGraphEventBuffer();
+        ~AnimGraphEventBuffer() = default;
 
         void Reserve(uint32 numEvents);
         void Resize(uint32 numEvents);
         void AddEvent(const EventInfo& newEvent);
+
+        template<typename... Args>
+        void AddEvent(Args&&... args)
+        {
+            m_events.emplace_back(AZStd::forward<Args>(args)...);
+        }
+
         void SetEvent(uint32 index, const EventInfo& eventInfo);
         void Clear();
 
-        MCORE_INLINE uint32 GetNumEvents() const                    { return mEvents.GetLength(); }
-        MCORE_INLINE const EventInfo& GetEvent(uint32 index) const  { return mEvents[index]; }
+        MCORE_INLINE uint32 GetNumEvents() const                    { return static_cast<uint32>(m_events.size()); }
+        MCORE_INLINE const EventInfo& GetEvent(uint32 index) const  { return m_events[index]; }
 
         void TriggerEvents() const;
         void UpdateWeights(AnimGraphInstance* animGraphInstance);
@@ -53,6 +60,6 @@ namespace EMotionFX
         void Log() const;
 
     private:
-        MCore::Array<EventInfo>     mEvents;    /**< The collection of events inside this buffer. */
+        AZStd::vector<EventInfo> m_events;    /**< The collection of events inside this buffer. */
     };
 }   // namespace EMotionFX

@@ -345,12 +345,12 @@ public:
     {
         if (bDeleteBuf)
         {
-            free(m_pBuf);
+            CryModuleFree(m_pBuf);
         }
     }
     virtual void Prealloc()
     {
-        m_pBuf = (char*)malloc(m_nSize = 0x1000);
+        m_pBuf = (char*)CryModuleMalloc(m_nSize = 0x1000);
     }
 
     ILINE void* GetBuf() { return m_pBuf; }
@@ -382,9 +382,9 @@ public:
     {
         int prevsz = m_nSize;
         char* prevbuf = m_pBuf;
-        m_pBuf = (char*)malloc(m_nSize = (m_iPos + sz - 1 & ~0xFFF) + 0x1000);
+        m_pBuf = (char*)CryModuleMalloc(m_nSize = (m_iPos + sz - 1 & ~0xFFF) + 0x1000);
         memcpy(m_pBuf, prevbuf, (unsigned int)prevsz);
-        free(prevbuf);
+        CryModuleFree(prevbuf);
     }
 
     template<class ftype>
@@ -1300,7 +1300,9 @@ struct pe_params_rope
     pe_params_rope()
     {
         type = type_id;
-        MARK_UNUSED length, mass, collDist, surface_idx, friction, nSegments, pPoints.data, pVelocities.data;
+        //START: Per bone UDP for stiffness, damping and thickness for touch bending vegetation
+        MARK_UNUSED length, mass, collDist, surface_idx, friction, nSegments, pPoints.data, pVelocities.data, pDamping, pStiffness, pThickness;
+        //END: Per bone UDP for stiffness, damping and thickness for touch bending vegetation
         MARK_UNUSED pEntTiedTo[0], ptTiedTo[0], idPartTiedTo[0], pEntTiedTo[1], ptTiedTo[1], idPartTiedTo[1], stiffnessAnim, maxForce,
                     flagsCollider, nMaxSubVtx, stiffnessDecayAnim, dampingAnim, bTargetPoseActive, wind, windVariance, airResistance, waterResistance, density, collTypes,
                     jointLimit, jointLimitDecay, sensorRadius, frictionPull, stiffness, collisionBBox[0], penaltyScale, maxIters, attachmentZone, minSegLen, unprojLimit, noCollDist, hingeAxis;
@@ -1349,6 +1351,11 @@ struct pe_params_rope
     int bLocalPtTied;   // ptTiedTo is in tied part's local coordinates
     Vec3 ptTiedTo[2];
     int idPartTiedTo[2];
+    //START: Per bone UDP for stiffness, damping and thickness for touch bending vegetation
+    float* pDamping;
+    float* pStiffness;
+    float* pThickness;
+    //END: Per bone UDP for stiffness, damping and thickness for touch bending vegetation
 };
 
 ////////// soft entity params

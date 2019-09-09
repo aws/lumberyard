@@ -15,8 +15,8 @@
 #include <AzCore/RTTI/ReflectContext.h>
 #include <AzCore/std/containers/vector.h>
 #include <AzCore/std/string/string.h>
+#include <EMotionFX/Source/AnimGraphObjectIds.h>
 #include <EMotionFX/Source/EMotionFXConfig.h>
-#include <EMotionFX/Source/AnimGraphNodeId.h>
 
 
 namespace EMotionFX

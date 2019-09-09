@@ -21,7 +21,11 @@
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION RANDOM_CPP_SECTION_1
-#include AZ_RESTRICTED_FILE(Random_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/Random_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/Random_cpp_provo.inl"
+    #endif
 #elif defined(AZ_PLATFORM_WINDOWS)
 #   include <AzCore/PlatformIncl.h>
 #   include <Wincrypt.h>
@@ -36,7 +40,7 @@ using namespace AZ;
 BetterPseudoRandom::BetterPseudoRandom()
 { 
 #if defined(AZ_PLATFORM_WINDOWS)
-    if (!::CryptAcquireContext(&m_generatorHandle, 0, 0, PROV_RSA_FULL, CRYPT_VERIFYCONTEXT | CRYPT_SILENT))
+    if (!CryptAcquireContext(&m_generatorHandle, 0, 0, PROV_RSA_FULL, CRYPT_VERIFYCONTEXT | CRYPT_SILENT))
     {
         AZ_Warning("System", false, "CryptAcquireContext failed with 0x%08x\n", GetLastError());
         m_generatorHandle = 0;
@@ -76,7 +80,7 @@ bool BetterPseudoRandom::GetRandom(void* data, size_t dataSize)
     {
         return false;
     }
-    if (!::CryptGenRandom(m_generatorHandle, static_cast<DWORD>(dataSize), static_cast<PBYTE>(data)))
+    if (!CryptGenRandom(m_generatorHandle, static_cast<DWORD>(dataSize), static_cast<PBYTE>(data)))
     {
         AZ_TracePrintf("System", "Failed to call CryptGenRandom!");
         return false;
@@ -96,7 +100,11 @@ bool BetterPseudoRandom::GetRandom(void* data, size_t dataSize)
     }
 #elif defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION RANDOM_CPP_SECTION_2
-#include AZ_RESTRICTED_FILE(Random_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/Random_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/Random_cpp_provo.inl"
+    #endif
 #endif
     return true;
 }

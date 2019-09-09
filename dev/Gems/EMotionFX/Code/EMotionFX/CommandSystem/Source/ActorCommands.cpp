@@ -548,7 +548,7 @@ namespace CommandSystem
         // Undo command.
         const AZStd::string command = AZStd::string::format("ActorSetCollisionMeshes -actorID %i -lod %i -nodeList %s", actorID, lod, mOldNodeList.c_str());
         GetCommandManager()->ExecuteCommandInsideCommand(command, outResult);
-        
+
         // Set the dirty flag back to the old value
         actor->SetDirtyFlag(mOldDirtyFlag);
         return true;
@@ -590,9 +590,9 @@ namespace CommandSystem
             EMotionFX::ActorInstance* actorInstance = GetCommandManager()->GetCurrentSelection().GetActorInstance(i);
 
             actorInstance->GetTransformData()->ResetToBindPoseTransformations();
-            actorInstance->SetLocalPosition(AZ::Vector3::CreateZero());
-            actorInstance->SetLocalRotation(MCore::Quaternion(0.0f, 0.0f, 0.0f, 1.0f));
-            actorInstance->SetLocalScale(AZ::Vector3(1.0f, 1.0f, 1.0f));
+            actorInstance->SetLocalSpacePosition(AZ::Vector3::CreateZero());
+            actorInstance->SetLocalSpaceRotation(MCore::Quaternion(0.0f, 0.0f, 0.0f, 1.0f));
+            actorInstance->SetLocalSpaceScale(AZ::Vector3(1.0f, 1.0f, 1.0f));
         }
 
         return true;

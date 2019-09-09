@@ -41,7 +41,6 @@ public:
         DrawMeshTriList();
     }
 };
-static ScreenTile screenTile;
 
 #if defined(FLARES_SUPPORT_EDITING)
 #define MFPtr(FUNC_NAME) (Optics_MFPtr)(&CameraOrbs::FUNC_NAME)
@@ -324,6 +323,8 @@ void CameraOrbs::ApplyAdvancedShadingParams(CShader* shader, const ColorF& ambDi
 
 void CameraOrbs::Render(CShader* shader, Vec3 vSrcWorldPos, Vec3 vSrcProjPos, SAuxParams& aux)
 {
+    static ScreenTile screenTile;
+
     if (!IsVisible())
     {
         return;

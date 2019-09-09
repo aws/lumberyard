@@ -237,7 +237,7 @@ QString DeploymentStatusModel::GetExportMappingButtonText() const
 QString DeploymentStatusModel::GetExportMappingToolTipText() const
 {
     return tr("Makes a copy of the AWS resource mappings to a file that can be"
-        "used by the launcher to work with the selected deployment.");
+        " used by the launcher to work with the selected deployment.");
 }
 
 QString DeploymentStatusModel::GetProtectedMappingCheckboxText() const

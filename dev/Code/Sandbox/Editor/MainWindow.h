@@ -25,7 +25,6 @@
 #include <QAbstractNativeEventFilter>
 
 #include "Include/SandboxAPI.h"
-#include "ActionManager.h"
 #include <AzQtComponents/Components/ToolButtonComboBox.h>
 #include <AzToolsFramework/SourceControl/SourceControlAPI.h>
 #include <QAbstractNativeEventFilter>
@@ -50,6 +49,8 @@ class QRollupCtrl;
 class ToolbarManager;
 class ToolbarCustomizationDialog;
 class QWidgetAction;
+class ActionManager;
+class ShortcutDispatcher;
 
 namespace AzToolsFramework
 {
@@ -119,7 +120,7 @@ public:
 #endif // #ifdef Q_OS_WIN
 
     ActionManager* GetActionManager() const;
-    
+
     void Initialize();
 
     // Returns the old and original main frame which we're porting away from.
@@ -173,6 +174,8 @@ public:
     int ViewPaneVersion() const;
     void MatEditSend(int param);
 
+    void SetSelectedEntity(AZ::EntityId& id);
+
     LevelEditorMenuHandler* GetLevelEditorMenuHandler() { return m_levelEditorMenuHandler; }
 
 #ifdef Q_OS_WIN
@@ -180,6 +183,7 @@ public:
 #endif
     bool event(QEvent* event) override;
 
+    void OnGotoSliceRoot();
 Q_SIGNALS:
     void ToggleRefCoordSys();
     void UpdateRefCoordSys();
@@ -202,6 +206,7 @@ private:
     QWidget* CreateToolbarWidget(int id);
     void ShowCustomizeToolbarDialog();
     void OnGotoSelected();
+
     void ToggleConsole();
     void ToggleRollupBar();
     void RegisterOpenWndCommands();
@@ -224,15 +229,14 @@ private:
     void ConnectivityStateChanged(const AzToolsFramework::SourceControlState state) override;
 
     QToolButton* CreateLayerSelectButton();
-    QToolButton* CreateSnapToGridButton();
-    QToolButton* CreateSnapToAngleButton();
+    QWidget* CreateSnapToGridWidget();
+    QWidget* CreateSnapToAngleWidget();
 
     QComboBox* CreateSelectionMaskComboBox();
     QComboBox* CreateRefCoordComboBox();
     QWidget* CreateSelectObjectComboBox();
 
     QToolButton* CreateUndoRedoButton(int command);
-
 private Q_SLOTS:
     void ShowKeyboardCustomization();
     void ExportKeyboardShortcuts();
@@ -247,7 +251,7 @@ private Q_SLOTS:
     void OnConnectionStatusClicked();
     void OnUpdateConnectionStatus();
     void ShowConnectionDisconnectedDialog();
-	void CGPMenuClicked();
+    void CGPMenuClicked();
     void OnEscapeAction();
 
     // When signal is sent from ActionManager and MainWindow receives it, call this function as slot to send metrics event
@@ -265,7 +269,8 @@ private:
     void RegisterStdViewClasses();
     CMainFrame* m_oldMainFrame;
     QtViewPaneManager* m_viewPaneManager;
-    ActionManager* m_actionManager;
+    ShortcutDispatcher* m_shortcutDispatcher = nullptr;
+    ActionManager* m_actionManager = nullptr;
     UndoStackStateAdapter* m_undoStateAdapter;
 
     KeyboardCustomizationSettings* m_keyboardCustomization;
@@ -300,6 +305,7 @@ private:
     bool m_connectedToAssetProcessor = false;
     bool m_showAPDisconnectDialog = false;
     bool m_projectExternal = false;
+    bool m_selectedEntityHasRoot = false;
 
     friend class ToolbarManager;
     friend class WidgetAction;

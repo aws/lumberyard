@@ -16,7 +16,7 @@ def build(bld):
 
     #Create a file list that is needed for the exported symbols in the dylib in a non-monolithic build
     darwinExportedSymbolFileList=[]
-    if not bld.is_monolithic_build():
+    if not bld.is_build_monolithic():
         darwinExportedSymbolFileList.append('resourcecompilerscene_darwin.waf_files');
 
 
@@ -26,7 +26,8 @@ def build(bld):
         vs_filter               = 'RC',
         file_list               = 'resourcecompilerscene.waf_files',
         platforms               = ['win', 'darwin'],
-        configurations          = ['debug', 'debug_test', 'profile', 'profile_test'],
+        client_only             = True,
+        exclude_monolithic      = True,
         includes                = ['.',
                                    bld.Path('Code/CryEngine/Cry3DEngine'),
                                    bld.Path('Code/Tools'),

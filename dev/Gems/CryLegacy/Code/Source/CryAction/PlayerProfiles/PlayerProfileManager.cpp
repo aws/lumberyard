@@ -436,7 +436,11 @@ bool CPlayerProfileManager::LogoutUser(const char* userId)
     }
 
 #if defined(AZ_RESTRICTED_PLATFORM)
-#include AZ_RESTRICTED_FILE(PlayerProfileManager_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/PlayerProfileManager_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/PlayerProfileManager_cpp_provo.inl"
+    #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
 #undef AZ_RESTRICTED_SECTION_IMPLEMENTED
@@ -749,8 +753,6 @@ bool CPlayerProfileManager::SaveProfile(const char* userId, IPlayerProfileManage
 
     result = ePOR_Success;
 
-    ScopedSwitchToGlobalHeap useGlobalHeap;
-
     // notify game systems that the profile is about to be saved
     const int listenerSize = m_listeners.size();
     for (int i = 0; i < listenerSize; i++)
@@ -804,9 +806,7 @@ bool CPlayerProfileManager::SaveInactiveProfile(const char* userId, const char* 
     }
 
     result = ePOR_Success;
-
-    ScopedSwitchToGlobalHeap useGlobalHeap;
-
+    
     // notify game systems that the profile is about to be saved
     const int listenerSize = m_listeners.size();
     for (int i = 0; i < listenerSize; i++)

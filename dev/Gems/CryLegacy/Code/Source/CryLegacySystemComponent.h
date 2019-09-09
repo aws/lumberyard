@@ -14,6 +14,7 @@
 #include <AzCore/Component/Component.h>
 #include <AzCore/Module/DynamicModuleHandle.h>
 #include <CryLegacy/CryLegacyBus.h>
+#include <AzCore/Memory/AllocatorScope.h>
 
 #include <IGameFramework.h>
 #include <IWindowMessageHandler.h>
@@ -26,6 +27,11 @@
 
 namespace CryLegacy
 {
+    // CryLegacy gem will always require AZ::LegacyAllocator and CryStringAllocator
+    // This gets added to the CryLegacySystemComponent to ensure that these allocators
+    // are available for the duration that cry legacy code is running
+    using CryLegacyAllocatorScope = AZ::AllocatorScope<AZ::LegacyAllocator, CryStringAllocator>;
+
     class CryLegacySystemComponent
         : public AZ::Component
         , protected CryLegacyRequestBus::Handler
@@ -35,6 +41,7 @@ namespace CryLegacy
         , protected CryLegacyAnimationRequestBus::Handler
         , protected CryLegacyEntitySystemRequestBus::Handler
         , protected CryLegacyScriptSystemRequestBus::Handler
+        , protected CryLegacyAllocatorScope
     {
     public:
         AZ_COMPONENT(CryLegacySystemComponent, "{D2051F81-6B46-4B23-A7F6-C19F814E63F0}");
@@ -52,6 +59,7 @@ namespace CryLegacy
         IGameFramework* CreateFramework() override;
         IGameFramework* InitFramework(SSystemInitParams& startupParams) override;
         void ShutdownFramework() override;
+
         ////////////////////////////////////////////////////////////////////////
 
         ////////////////////////////////////////////////////////////////////////

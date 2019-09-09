@@ -29,8 +29,7 @@ CCharInstance::CCharInstance(const string& strFileName, _smart_ptr<CDefaultSkele
     , m_skinningTransformationsMovement(0)
 {
     LOADING_TIME_PROFILE_SECTION(g_pISystem);
-    MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_Other, 0, "Character Instance");
-
+    
     g_pCharacterManager->RegisterInstanceSkel(pDefaultSkeleton, this);
     m_pDefaultSkeleton = pDefaultSkeleton;
     m_strFilePath = strFileName;
@@ -632,8 +631,6 @@ void CCharInstance::Serialize(TSerialize ser)
 {
     if (ser.GetSerializationTarget() != eST_Network)
     {
-        MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_Other, 0, "Character instance serialization");
-
         ser.BeginGroup("CCharInstance");
         ser.Value("fPlaybackScale", (float&)(m_fPlaybackScale));
         ser.EndGroup();

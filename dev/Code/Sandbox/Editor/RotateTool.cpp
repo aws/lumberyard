@@ -13,12 +13,16 @@
 #include "RotateTool.h"
 #include "Objects/DisplayContext.h"
 #include "IDisplayViewport.h"
+#include "NullEditTool.h"
 #include "Viewport.h"
 #include "functor.h"
 #include "Settings.h"
 #include "Grid.h"
 #include "ViewManager.h"
 #include "ISystem.h"
+
+#include <AzToolsFramework/API/ToolsApplicationAPI.h>
+#include <AzToolsFramework/Entity/EditorEntityTransformBus.h>
 
 // This constant is used with GetScreenScaleFactor and was found experimentally.
 static const float kViewDistanceScaleFactor = 0.06f;
@@ -97,6 +101,17 @@ void CRotateTool::Display(DisplayContext& dc)
 {
     if (!m_object)
     {
+        return;
+    }
+
+    const bool visible =
+            !m_object->IsHidden() 
+        &&  !m_object->IsFrozen() 
+        &&  m_object->IsSelected();
+
+    if (!visible)
+    {
+        GetIEditor()->SetEditTool(new NullEditTool());
         return;
     }
 
@@ -386,6 +401,15 @@ bool CRotateTool::OnLButtonDown(CViewport* view, int nFlags, const QPoint& p)
 
         m_mouseDownPosition = point;
 
+        AzToolsFramework::EntityIdList selectedEntities;
+        AzToolsFramework::ToolsApplicationRequests::Bus::BroadcastResult(
+            selectedEntities,
+            &AzToolsFramework::ToolsApplicationRequests::Bus::Events::GetSelectedEntities);
+
+        AzToolsFramework::EditorTransformChangeNotificationBus::Broadcast(
+            &AzToolsFramework::EditorTransformChangeNotificationBus::Events::OnEntityTransformChanging,
+            selectedEntities);
+
         return true;
     }
 
@@ -407,6 +431,9 @@ bool CRotateTool::OnLButtonUp(CViewport* view, int nFlags, const QPoint& p)
     if (m_draggingMouse)
     {
         // We are no longer dragging the mouse, so we will release it and reset any state variables.
+        {
+            AzToolsFramework::ScopedUndoBatch undo("Rotate");
+        }
         view->AcceptUndo("Rotate Selection");
         view->ReleaseMouse();
         view->SetCurrentCursor(STD_CURSOR_DEFAULT);
@@ -433,6 +460,15 @@ bool CRotateTool::OnLButtonUp(CViewport* view, int nFlags, const QPoint& p)
             // Reset selected rectangle.
             view->SetSelectionRectangle(QRect());
             view->SetAxisConstrain(GetIEditor()->GetAxisConstrains());
+
+            AzToolsFramework::EntityIdList selectedEntities;
+            AzToolsFramework::ToolsApplicationRequests::Bus::BroadcastResult(
+                selectedEntities,
+                &AzToolsFramework::ToolsApplicationRequests::Bus::Events::GetSelectedEntities);
+
+            AzToolsFramework::EditorTransformChangeNotificationBus::Broadcast(
+                &AzToolsFramework::EditorTransformChangeNotificationBus::Events::OnEntityTransformChanged,
+                selectedEntities);
         }
     }
 

@@ -32,6 +32,7 @@
 #include "RenderBus.h"
 
 #include <LoadScreenBus.h>
+#include <ThermalInfo.h>
 
 struct IConsoleCmdArgs;
 class CServerThrottle;
@@ -69,7 +70,11 @@ namespace minigui
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION SYSTEM_H_SECTION_1
-#include AZ_RESTRICTED_FILE(System_h, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/System_h_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/System_h_provo.inl"
+    #endif
 #else
 #if defined(WIN32) || defined(LINUX) || defined(APPLE)
 #define AZ_LEGACY_CRYSYSTEM_TRAIT_ALLOW_CREATE_BACKUP_LOG_FILE 1
@@ -99,13 +104,6 @@ namespace minigui
 #endif
 #if defined(WIN32)
 #define AZ_LEGACY_CRYSYSTEM_TRAIT_HASAFFINITYMASK 1
-#endif
-
-#if defined(ANDROID)
-#define AZ_LEGACY_CRYSYSTEM_TRAIT_SIZET_MEM 1
-#endif
-#if defined(WIN32) || defined(WIN64)
-#define AZ_LEGACY_CRYSYSTEM_TRAIT_USE_MSIZE 1
 #endif
 
 #if defined(LINUX) || defined(APPLE)
@@ -319,7 +317,11 @@ struct SSystemCVars
     int sys_display_threads;
 #elif defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION SYSTEM_H_SECTION_2
-#include AZ_RESTRICTED_FILE(System_h, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/System_h_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/System_h_provo.inl"
+    #endif
 #endif
 };
 extern SSystemCVars g_cvars;
@@ -570,7 +572,7 @@ public:
     void    SetIVisualLog(IVisualLog* pVisualLog) { m_env.pVisualLog = pVisualLog; }
     void        DetectGameFolderAccessRights();
 
-    virtual void ExecuteCommandLine();
+    virtual void ExecuteCommandLine(bool deferred=true);
 
     virtual void GetUpdateStats(SSystemUpdateStats& stats);
 
@@ -603,11 +605,15 @@ public:
         }
         if (m_pCpu->hasSSE2())
         {
-            Flags |= CPUF_SSE;
+            Flags |= CPUF_SSE2;
         }
         if (m_pCpu->has3DNow())
         {
             Flags |= CPUF_3DNOW;
+        }
+        if (m_pCpu->hasF16C())
+        {
+            Flags |= CPUF_F16C;
         }
 
         return Flags;
@@ -663,8 +669,6 @@ public:
     virtual ESystemConfigSpec GetMaxConfigSpec() const;
     virtual ESystemConfigPlatform GetConfigPlatform() const;
     virtual void SetConfigPlatform(const ESystemConfigPlatform platform);
-    virtual AZStd::unordered_map<AZStd::string, CVarInfo>* GetGraphicsSettingsMap() const;
-    virtual void SetGraphicsSettingsMap(AZStd::unordered_map<AZStd::string, CVarInfo>* map);
     //////////////////////////////////////////////////////////////////////////
 
     virtual int SetThreadState(ESubsystem subsys, bool bActive);
@@ -813,7 +817,11 @@ private:
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION SYSTEM_H_SECTION_3
-#include AZ_RESTRICTED_FILE(System_h, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/System_h_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/System_h_provo.inl"
+    #endif
 #elif defined(WIN32)
     bool GetWinGameFolder(char* szMyDocumentsPath, int maxPathSize);
 #endif
@@ -849,6 +857,8 @@ public:
         cryAsyncMemcpyDelegate(dst, src, size, nFlags, sync);
 #endif
     }
+    virtual void SetConsoleDrawEnabled(bool enabled) { m_bDrawConsole = enabled; }
+    virtual void SetUIDrawEnabled(bool enabled) { m_bDrawUI = enabled; }
 
     // -------------------------------------------------------------
 
@@ -880,6 +890,7 @@ public:
     // Gets the dimensions (in pixels) of the primary physical display.
     // Returns true if this info is available, returns false otherwise.
     bool GetPrimaryPhysicalDisplayDimensions(int& o_widthPixels, int& o_heightPixels);
+    bool IsTablet();
 
 private: // ------------------------------------------------------
 
@@ -919,6 +930,8 @@ private: // ------------------------------------------------------
     bool                                    m_hasJustResumed;           // Has resume game just been called
     bool                                    m_expectingMapCommand;
 #endif
+    bool                                    m_bDrawConsole;              //!< Set to true if OK to draw the console.
+    bool                                    m_bDrawUI;                   //!< Set to true if OK to draw UI.
 
     std::map<CCryNameCRC, WIN_HMODULE> m_moduleDLLHandles;
 
@@ -1013,6 +1026,7 @@ private: // ------------------------------------------------------
     ICVar* m_rWidth;
     ICVar* m_rHeight;
     ICVar* m_rWidthAndHeightAsFractionOfScreenSize;
+    ICVar* m_rTabletWidthAndHeightAsFractionOfScreenSize;
     ICVar* m_rHDRDolby;
     ICVar* m_rMaxWidth;
     ICVar* m_rMaxHeight;
@@ -1061,7 +1075,11 @@ private: // ------------------------------------------------------
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION SYSTEM_H_SECTION_4
-#include AZ_RESTRICTED_FILE(System_h, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/System_h_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/System_h_provo.inl"
+    #endif
 #endif
 
     ICVar* m_sys_audio_disable;
@@ -1129,8 +1147,6 @@ private: // ------------------------------------------------------
     ESystemConfigSpec m_nMaxConfigSpec;
     ESystemConfigPlatform m_ConfigPlatform;
 
-    AZStd::unordered_map<AZStd::string, CVarInfo>* m_GraphicsSettingsMap;
-
     std::unique_ptr<CServerThrottle> m_pServerThrottle;
 
     CProfilingSystem m_ProfilingSystem;
@@ -1145,6 +1161,8 @@ private: // ------------------------------------------------------
     uint64 m_nUpdateCounter;
 
     int sys_ProfileLevelLoading, sys_ProfileLevelLoadingDump;
+
+    bool m_executedCommandLine = false;
 
 public:
     //! Pointer to the download manager
@@ -1286,6 +1304,8 @@ protected: // -------------------------------------------------------------
     std::vector<IWindowMessageHandler*> m_windowMessageHandlers;
     bool m_initedOSAllocator = false;
     bool m_initedSysAllocator = false;
+
+    AZStd::unique_ptr<ThermalInfoHandler> m_thermalInfoHandler;
 };
 
 /*extern static */ bool QueryModuleMemoryInfo(SCryEngineStatsModuleInfo& moduleInfo, int index);

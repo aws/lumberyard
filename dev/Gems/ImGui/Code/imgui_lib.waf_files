@@ -1,0 +1,8 @@
+{
+    "auto": {
+        "ImGuiLibSrc": [
+            "../External/ImGui/v1.53/imgui/imgui.cpp",
+            "../External/ImGui/v1.53/imgui/imgui_draw.cpp"
+        ]
+    }
+}

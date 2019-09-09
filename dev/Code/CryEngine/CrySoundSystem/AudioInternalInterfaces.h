@@ -692,6 +692,21 @@ namespace Audio
         const TAudioSourceId m_sourceId;
     };
 
+    ///////////////////////////////////////////////////////////////////////////////////////////////////
+    template<>
+    struct SAudioObjectRequestDataInternal<eAORT_SET_MULTI_POSITIONS>
+        : public SAudioObjectRequestDataInternalBase
+    {
+        explicit SAudioObjectRequestDataInternal(const SAudioObjectRequestData<eAORT_SET_MULTI_POSITIONS>* const pAORData)
+            : SAudioObjectRequestDataInternalBase(pAORData->eType)
+            , m_params(pAORData->m_params)
+        {}
+
+        ~SAudioObjectRequestDataInternal<eAORT_SET_MULTI_POSITIONS>() override {}
+
+        MultiPositionParams m_params;
+    };
+
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
     // Audio Listener Requests (Internal)
@@ -920,6 +935,8 @@ namespace Audio
         eADDF_SHOW_ACTIVE_EVENTS            = BIT(27),// v
         eADDF_SHOW_ACTIVE_OBJECTS           = BIT(28),// w
         eADDF_SHOW_FILECACHE_MANAGER_INFO   = BIT(29),// x
+
+        eADDF_SHOW_IMPL_MEMORY_POOL_USAGE   = BIT(30),// y
     };
 #endif // INCLUDE_AUDIO_PRODUCTION_CODE
 

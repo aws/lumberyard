@@ -27,13 +27,19 @@ namespace CloudGemDefectReporter {
 namespace ServiceAPI {
 
     
+    const char* LmbrAWS_CodeGen_ResponseStatus_UUID= "{58c0d242-22ee-47d7-88cc-17327aee9504}";
+    
+    const char* LmbrAWS_CodeGen_EncryptedPresignedPostFields_UUID= "{48a7b3b3-1445-48d1-a20e-0f395bd97880}";
+    
+    const char* LmbrAWS_CodeGen_ProjectKeys_UUID= "{a0b3a3b5-75f2-4235-941b-5bf5ca243307}";
+    
     const char* LmbrAWS_CodeGen_ClientConfiguration_UUID= "{e926ee4e-47b9-43dd-bb03-11aead2f1f20}";
     
     const char* LmbrAWS_CodeGen_UploadRequestResults_UUID= "{d3f9d029-35b2-487f-a372-4a91604cc7f7}";
     
     const char* LmbrAWS_CodeGen_Component_UUID= "{1359e9a0-9d48-4e87-bc13-1b8c392ca2c2}";
     
-    const char* LmbrAWS_CodeGen_ReportComments_UUID= "{29474136-196a-41a6-bd20-1365378401d3}";
+    const char* LmbrAWS_CodeGen_IssueTypes_UUID= "{0e20baeb-b599-47d3-b4ca-13d9cf2e9c86}";
     
     const char* LmbrAWS_CodeGen_SearchEntry_UUID= "{e6c7dbc9-24bd-4c07-84bf-46329d557662}";
     
@@ -45,15 +51,21 @@ namespace ServiceAPI {
     
     const char* LmbrAWS_CodeGen_RequestBus1_UUID= "{9192d80c-229a-475c-b9e8-d41c62f80025}";
     
+    const char* LmbrAWS_CodeGen_Credentials_UUID= "{793bc832-749c-40a5-a5b0-697f65737d4c}";
+    
     const char* LmbrAWS_CodeGen_UnencryptedPresignedPostFields_UUID= "{abf3b3e4-d64c-4e1e-95f9-cbd643d64aab}";
     
     const char* LmbrAWS_CodeGen_ServiceStatus_UUID= "{fbaa352a-e063-4a62-8c93-5948d0fb5ee2}";
     
     const char* LmbrAWS_CodeGen_UploadRequest_UUID= "{eec92e6e-3099-41e7-8694-11b524a4b269}";
     
-    const char* LmbrAWS_CodeGen_CustomField_UUID= "{f838e2ab-de6d-46ad-bbaa-69da9299a2dc}";
+    const char* LmbrAWS_CodeGen_CustomField_UUID= "{8db257e0-b885-4ec9-9bd1-8315e335b395}";
     
-    const char* LmbrAWS_CodeGen_EncryptedPresignedPostFields_UUID= "{48a7b3b3-1445-48d1-a20e-0f395bd97880}";
+    const char* LmbrAWS_CodeGen_ReportComments_UUID= "{29474136-196a-41a6-bd20-1365378401d3}";
+    
+    const char* LmbrAWS_CodeGen_JiraIntegrationSettings_UUID= "{aaa1600d-3d38-4ca7-a135-ef5014e723ac}";
+    
+    const char* LmbrAWS_CodeGen_ObjectFieldProperty_UUID= "{560fe822-aa72-4f7d-a728-55f19177fb6b}";
     
 
     void Configure()
@@ -93,25 +105,74 @@ namespace ServiceAPI {
     
     
     
+    bool WriteJson(CloudGemFramework::JsonWriter& writer, const ObjectFieldProperty& item)
+    {
+            bool ok = true;
+            ok = ok && writer.StartObject();
+            
+            ok = ok && writer.Key("title");
+            ok = ok && WriteJson(writer, item.title);
+            
+            ok = ok && writer.Key("maxChars");
+            ok = ok && WriteJson(writer, item.maxChars);
+            
+            ok = ok && writer.Key("defaultValue");
+            ok = ok && WriteJson(writer, item.defaultValue);
+            
+            ok = ok && writer.Key("predefines");
+            ok = ok && WriteJson(writer, item.predefines);
+            
+            ok = ok && writer.Key("multipleSelect");
+            ok = ok && WriteJson(writer, item.multipleSelect);
+            
+            ok = ok && writer.Key("type");
+            ok = ok && WriteJson(writer, item.type);
+            
+            ok = ok && writer.EndObject();
+            return ok;
+    }
+    
+    
+    
+    bool WriteJson(CloudGemFramework::JsonWriter& writer, const CustomFieldPropertyProperties& list)
+    {
+        bool ok = true;
+        ok = ok && writer.StartArray();
+        for (auto item : list)
+        {
+            ok = ok && WriteJson(writer, item);
+        }
+        ok = ok && writer.EndArray();
+        return ok;
+    }
+    
+    
+    
     bool WriteJson(CloudGemFramework::JsonWriter& writer, const CustomField& item)
     {
             bool ok = true;
             ok = ok && writer.StartObject();
             
+            ok = ok && writer.Key("title");
+            ok = ok && WriteJson(writer, item.title);
+            
             ok = ok && writer.Key("maxChars");
             ok = ok && WriteJson(writer, item.maxChars);
             
-            ok = ok && writer.Key("multipleSelect");
-            ok = ok && WriteJson(writer, item.multipleSelect);
+            ok = ok && writer.Key("defaultValue");
+            ok = ok && WriteJson(writer, item.defaultValue);
             
             ok = ok && writer.Key("predefines");
             ok = ok && WriteJson(writer, item.predefines);
             
+            ok = ok && writer.Key("multipleSelect");
+            ok = ok && WriteJson(writer, item.multipleSelect);
+            
             ok = ok && writer.Key("type");
             ok = ok && WriteJson(writer, item.type);
             
-            ok = ok && writer.Key("title");
-            ok = ok && WriteJson(writer, item.title);
+            ok = ok && writer.Key("properties");
+            ok = ok && WriteJson(writer, item.properties);
             
             ok = ok && writer.EndObject();
             return ok;
@@ -161,6 +222,54 @@ namespace ServiceAPI {
     
     
     
+    bool WriteJson(CloudGemFramework::JsonWriter& writer, const IssueTypes& item)
+    {
+            bool ok = true;
+            ok = ok && writer.StartObject();
+            
+            ok = ok && writer.Key("issueTypes");
+            ok = ok && WriteJson(writer, item.issueTypes);
+            
+            ok = ok && writer.EndObject();
+            return ok;
+    }
+    
+    
+    
+    bool WriteJson(CloudGemFramework::JsonWriter& writer, const JiraIntegrationSettings& item)
+    {
+            bool ok = true;
+            ok = ok && writer.StartObject();
+            
+            ok = ok && writer.Key("project");
+            ok = ok && WriteJson(writer, item.project);
+            
+            ok = ok && writer.Key("issuetype");
+            ok = ok && WriteJson(writer, item.issuetype);
+            
+            ok = ok && writer.Key("submitMode");
+            ok = ok && WriteJson(writer, item.submitMode);
+            
+            ok = ok && writer.EndObject();
+            return ok;
+    }
+    
+    
+    
+    bool WriteJson(CloudGemFramework::JsonWriter& writer, const ProjectKeys& item)
+    {
+            bool ok = true;
+            ok = ok && writer.StartObject();
+            
+            ok = ok && writer.Key("projectKeys");
+            ok = ok && WriteJson(writer, item.projectKeys);
+            
+            ok = ok && writer.EndObject();
+            return ok;
+    }
+    
+    
+    
     bool WriteJson(CloudGemFramework::JsonWriter& writer, const ReportComments& item)
     {
             bool ok = true;
@@ -171,29 +280,6 @@ namespace ServiceAPI {
             
             ok = ok && writer.Key("comments");
             ok = ok && WriteJson(writer, item.comments);
-            
-            ok = ok && writer.EndObject();
-            return ok;
-    }
-    
-    
-    
-    bool WriteJson(CloudGemFramework::JsonWriter& writer, const SearchEntry& item)
-    {
-            bool ok = true;
-            ok = ok && writer.StartObject();
-            
-            ok = ok && writer.Key("query_params");
-            ok = ok && WriteJson(writer, item.query_params);
-            
-            ok = ok && writer.Key("sql_id");
-            ok = ok && WriteJson(writer, item.sql_id);
-            
-            ok = ok && writer.Key("user_id");
-            ok = ok && WriteJson(writer, item.user_id);
-            
-            ok = ok && writer.Key("timestamp");
-            ok = ok && WriteJson(writer, item.timestamp);
             
             ok = ok && writer.EndObject();
             return ok;
@@ -333,6 +419,63 @@ namespace ServiceAPI {
     
     
     
+    bool WriteJson(CloudGemFramework::JsonWriter& writer, const Credentials& item)
+    {
+            bool ok = true;
+            ok = ok && writer.StartObject();
+            
+            ok = ok && writer.Key("userName");
+            ok = ok && WriteJson(writer, item.userName);
+            
+            ok = ok && writer.Key("password");
+            ok = ok && WriteJson(writer, item.password);
+            
+            ok = ok && writer.Key("server");
+            ok = ok && WriteJson(writer, item.server);
+            
+            ok = ok && writer.EndObject();
+            return ok;
+    }
+    
+    
+    
+    bool WriteJson(CloudGemFramework::JsonWriter& writer, const ResponseStatus& item)
+    {
+            bool ok = true;
+            ok = ok && writer.StartObject();
+            
+            ok = ok && writer.Key("status");
+            ok = ok && WriteJson(writer, item.status);
+            
+            ok = ok && writer.EndObject();
+            return ok;
+    }
+    
+    
+    
+    bool WriteJson(CloudGemFramework::JsonWriter& writer, const SearchEntry& item)
+    {
+            bool ok = true;
+            ok = ok && writer.StartObject();
+            
+            ok = ok && writer.Key("query_params");
+            ok = ok && WriteJson(writer, item.query_params);
+            
+            ok = ok && writer.Key("sql_id");
+            ok = ok && WriteJson(writer, item.sql_id);
+            
+            ok = ok && writer.Key("user_id");
+            ok = ok && WriteJson(writer, item.user_id);
+            
+            ok = ok && writer.Key("timestamp");
+            ok = ok && WriteJson(writer, item.timestamp);
+            
+            ok = ok && writer.EndObject();
+            return ok;
+    }
+    
+    
+    
     bool WriteJson(CloudGemFramework::JsonWriter& writer, const ReportHeader& item)
     {
             bool ok = true;
@@ -389,6 +532,24 @@ namespace ServiceAPI {
         return ok;
     }
     
+    bool GetJiraintegrationIssuetypesRequest::Parameters::BuildRequest(CloudGemFramework::RequestBuilder& request)
+    {
+                bool ok = true;
+                
+                ok = ok && request.SetPathParameter("{""project_key""}", project_key);
+                
+                
+                ok = ok && request.WriteJsonBodyParameter(*this);
+                return ok;
+    }
+
+    bool GetJiraintegrationIssuetypesRequest::Parameters::WriteJson(CloudGemFramework::JsonWriter& writer) const
+    {
+        bool ok = true;
+        
+        return ok;
+    }
+    
     bool GetServiceStatusRequest::Parameters::BuildRequest(CloudGemFramework::RequestBuilder& request)
     {
                 bool ok = true;
@@ -399,6 +560,38 @@ namespace ServiceAPI {
     }
 
     bool GetServiceStatusRequest::Parameters::WriteJson(CloudGemFramework::JsonWriter& writer) const
+    {
+        bool ok = true;
+        
+        return ok;
+    }
+    
+    bool GetJiraintegrationSettingsRequest::Parameters::BuildRequest(CloudGemFramework::RequestBuilder& request)
+    {
+                bool ok = true;
+                
+                
+                ok = ok && request.WriteJsonBodyParameter(*this);
+                return ok;
+    }
+
+    bool GetJiraintegrationSettingsRequest::Parameters::WriteJson(CloudGemFramework::JsonWriter& writer) const
+    {
+        bool ok = true;
+        
+        return ok;
+    }
+    
+    bool GetJiraintegrationProjectkeysRequest::Parameters::BuildRequest(CloudGemFramework::RequestBuilder& request)
+    {
+                bool ok = true;
+                
+                
+                ok = ok && request.WriteJsonBodyParameter(*this);
+                return ok;
+    }
+
+    bool GetJiraintegrationProjectkeysRequest::Parameters::WriteJson(CloudGemFramework::JsonWriter& writer) const
     {
         bool ok = true;
         
@@ -423,7 +616,7 @@ namespace ServiceAPI {
         return ok;
     }
     
-    bool PutRecentsearchRequest::Parameters::BuildRequest(CloudGemFramework::RequestBuilder& request)
+    bool PostServiceUploadRequest::Parameters::BuildRequest(CloudGemFramework::RequestBuilder& request)
     {
                 bool ok = true;
                 
@@ -432,11 +625,45 @@ namespace ServiceAPI {
                 return ok;
     }
 
-    bool PutRecentsearchRequest::Parameters::WriteJson(CloudGemFramework::JsonWriter& writer) const
+    bool PostServiceUploadRequest::Parameters::WriteJson(CloudGemFramework::JsonWriter& writer) const
     {
         bool ok = true;
         
-        ok = ok && CloudGemDefectReporter::ServiceAPI::WriteJson(writer, search);
+        ok = ok && CloudGemDefectReporter::ServiceAPI::WriteJson(writer, request_content);
+        
+        return ok;
+    }
+    
+    bool PutJiraintegrationCredentialsRequest::Parameters::BuildRequest(CloudGemFramework::RequestBuilder& request)
+    {
+                bool ok = true;
+                
+                
+                ok = ok && request.WriteJsonBodyParameter(*this);
+                return ok;
+    }
+
+    bool PutJiraintegrationCredentialsRequest::Parameters::WriteJson(CloudGemFramework::JsonWriter& writer) const
+    {
+        bool ok = true;
+        
+        ok = ok && CloudGemDefectReporter::ServiceAPI::WriteJson(writer, credentials);
+        
+        return ok;
+    }
+    
+    bool GetJiraintegrationCredentialsRequest::Parameters::BuildRequest(CloudGemFramework::RequestBuilder& request)
+    {
+                bool ok = true;
+                
+                
+                ok = ok && request.WriteJsonBodyParameter(*this);
+                return ok;
+    }
+
+    bool GetJiraintegrationCredentialsRequest::Parameters::WriteJson(CloudGemFramework::JsonWriter& writer) const
+    {
+        bool ok = true;
         
         return ok;
     }
@@ -459,7 +686,7 @@ namespace ServiceAPI {
         return ok;
     }
     
-    bool PostServiceUploadRequest::Parameters::BuildRequest(CloudGemFramework::RequestBuilder& request)
+    bool PutRecentsearchRequest::Parameters::BuildRequest(CloudGemFramework::RequestBuilder& request)
     {
                 bool ok = true;
                 
@@ -468,11 +695,11 @@ namespace ServiceAPI {
                 return ok;
     }
 
-    bool PostServiceUploadRequest::Parameters::WriteJson(CloudGemFramework::JsonWriter& writer) const
+    bool PutRecentsearchRequest::Parameters::WriteJson(CloudGemFramework::JsonWriter& writer) const
     {
         bool ok = true;
         
-        ok = ok && CloudGemDefectReporter::ServiceAPI::WriteJson(writer, request_content);
+        ok = ok && CloudGemDefectReporter::ServiceAPI::WriteJson(writer, search);
         
         return ok;
     }
@@ -512,9 +739,24 @@ namespace ServiceAPI {
     void CloudGemDefectReporterNotifications::OnGetClientconfigurationRequestError(const CloudGemFramework::Error error) { }
     
     
+    void CloudGemDefectReporterNotifications::OnGetJiraintegrationIssuetypesRequestSuccess(const IssueTypes response) { }
+    
+    void CloudGemDefectReporterNotifications::OnGetJiraintegrationIssuetypesRequestError(const CloudGemFramework::Error error) { }
+    
+    
     void CloudGemDefectReporterNotifications::OnGetServiceStatusRequestSuccess(const ServiceStatus response) { }
     
     void CloudGemDefectReporterNotifications::OnGetServiceStatusRequestError(const CloudGemFramework::Error error) { }
+    
+    
+    void CloudGemDefectReporterNotifications::OnGetJiraintegrationSettingsRequestSuccess(const JiraIntegrationSettings response) { }
+    
+    void CloudGemDefectReporterNotifications::OnGetJiraintegrationSettingsRequestError(const CloudGemFramework::Error error) { }
+    
+    
+    void CloudGemDefectReporterNotifications::OnGetJiraintegrationProjectkeysRequestSuccess(const ProjectKeys response) { }
+    
+    void CloudGemDefectReporterNotifications::OnGetJiraintegrationProjectkeysRequestError(const CloudGemFramework::Error error) { }
     
     
     void CloudGemDefectReporterNotifications::OnGetCommentRequestSuccess(const ReportComments response) { }
@@ -522,9 +764,19 @@ namespace ServiceAPI {
     void CloudGemDefectReporterNotifications::OnGetCommentRequestError(const CloudGemFramework::Error error) { }
     
     
-    void CloudGemDefectReporterNotifications::OnPutRecentsearchRequestSuccess(const ServiceStatus response) { }
+    void CloudGemDefectReporterNotifications::OnPostServiceUploadRequestSuccess(const UploadRequestResults response) { }
     
-    void CloudGemDefectReporterNotifications::OnPutRecentsearchRequestError(const CloudGemFramework::Error error) { }
+    void CloudGemDefectReporterNotifications::OnPostServiceUploadRequestError(const CloudGemFramework::Error error) { }
+    
+    
+    void CloudGemDefectReporterNotifications::OnPutJiraintegrationCredentialsRequestSuccess(const ResponseStatus response) { }
+    
+    void CloudGemDefectReporterNotifications::OnPutJiraintegrationCredentialsRequestError(const CloudGemFramework::Error error) { }
+    
+    
+    void CloudGemDefectReporterNotifications::OnGetJiraintegrationCredentialsRequestSuccess(const Credentials response) { }
+    
+    void CloudGemDefectReporterNotifications::OnGetJiraintegrationCredentialsRequestError(const CloudGemFramework::Error error) { }
     
     
     void CloudGemDefectReporterNotifications::OnPutCommentRequestSuccess(const ServiceStatus response) { }
@@ -532,9 +784,9 @@ namespace ServiceAPI {
     void CloudGemDefectReporterNotifications::OnPutCommentRequestError(const CloudGemFramework::Error error) { }
     
     
-    void CloudGemDefectReporterNotifications::OnPostServiceUploadRequestSuccess(const UploadRequestResults response) { }
+    void CloudGemDefectReporterNotifications::OnPutRecentsearchRequestSuccess(const ServiceStatus response) { }
     
-    void CloudGemDefectReporterNotifications::OnPostServiceUploadRequestError(const CloudGemFramework::Error error) { }
+    void CloudGemDefectReporterNotifications::OnPutRecentsearchRequestError(const CloudGemFramework::Error error) { }
     
     
     void CloudGemDefectReporterNotifications::OnPutHeaderRequestSuccess(const ServiceStatus response) { }
@@ -568,6 +820,17 @@ namespace ServiceAPI {
     }
     
     
+    void BehaviorCloudGemDefectReporterNotificationBusHandler::OnGetJiraintegrationIssuetypesRequestSuccess(const IssueTypes response)
+    {
+        Call(FN_OnGetJiraintegrationIssuetypesRequestSuccess, response);
+    }
+    
+    void BehaviorCloudGemDefectReporterNotificationBusHandler::OnGetJiraintegrationIssuetypesRequestError(const CloudGemFramework::Error error)
+    {
+        Call(FN_OnGetJiraintegrationIssuetypesRequestError, error);
+    }
+    
+    
     void BehaviorCloudGemDefectReporterNotificationBusHandler::OnGetServiceStatusRequestSuccess(const ServiceStatus response)
     {
         Call(FN_OnGetServiceStatusRequestSuccess, response);
@@ -576,6 +839,28 @@ namespace ServiceAPI {
     void BehaviorCloudGemDefectReporterNotificationBusHandler::OnGetServiceStatusRequestError(const CloudGemFramework::Error error)
     {
         Call(FN_OnGetServiceStatusRequestError, error);
+    }
+    
+    
+    void BehaviorCloudGemDefectReporterNotificationBusHandler::OnGetJiraintegrationSettingsRequestSuccess(const JiraIntegrationSettings response)
+    {
+        Call(FN_OnGetJiraintegrationSettingsRequestSuccess, response);
+    }
+    
+    void BehaviorCloudGemDefectReporterNotificationBusHandler::OnGetJiraintegrationSettingsRequestError(const CloudGemFramework::Error error)
+    {
+        Call(FN_OnGetJiraintegrationSettingsRequestError, error);
+    }
+    
+    
+    void BehaviorCloudGemDefectReporterNotificationBusHandler::OnGetJiraintegrationProjectkeysRequestSuccess(const ProjectKeys response)
+    {
+        Call(FN_OnGetJiraintegrationProjectkeysRequestSuccess, response);
+    }
+    
+    void BehaviorCloudGemDefectReporterNotificationBusHandler::OnGetJiraintegrationProjectkeysRequestError(const CloudGemFramework::Error error)
+    {
+        Call(FN_OnGetJiraintegrationProjectkeysRequestError, error);
     }
     
     
@@ -590,14 +875,36 @@ namespace ServiceAPI {
     }
     
     
-    void BehaviorCloudGemDefectReporterNotificationBusHandler::OnPutRecentsearchRequestSuccess(const ServiceStatus response)
+    void BehaviorCloudGemDefectReporterNotificationBusHandler::OnPostServiceUploadRequestSuccess(const UploadRequestResults response)
     {
-        Call(FN_OnPutRecentsearchRequestSuccess, response);
+        Call(FN_OnPostServiceUploadRequestSuccess, response);
     }
     
-    void BehaviorCloudGemDefectReporterNotificationBusHandler::OnPutRecentsearchRequestError(const CloudGemFramework::Error error)
+    void BehaviorCloudGemDefectReporterNotificationBusHandler::OnPostServiceUploadRequestError(const CloudGemFramework::Error error)
     {
-        Call(FN_OnPutRecentsearchRequestError, error);
+        Call(FN_OnPostServiceUploadRequestError, error);
+    }
+    
+    
+    void BehaviorCloudGemDefectReporterNotificationBusHandler::OnPutJiraintegrationCredentialsRequestSuccess(const ResponseStatus response)
+    {
+        Call(FN_OnPutJiraintegrationCredentialsRequestSuccess, response);
+    }
+    
+    void BehaviorCloudGemDefectReporterNotificationBusHandler::OnPutJiraintegrationCredentialsRequestError(const CloudGemFramework::Error error)
+    {
+        Call(FN_OnPutJiraintegrationCredentialsRequestError, error);
+    }
+    
+    
+    void BehaviorCloudGemDefectReporterNotificationBusHandler::OnGetJiraintegrationCredentialsRequestSuccess(const Credentials response)
+    {
+        Call(FN_OnGetJiraintegrationCredentialsRequestSuccess, response);
+    }
+    
+    void BehaviorCloudGemDefectReporterNotificationBusHandler::OnGetJiraintegrationCredentialsRequestError(const CloudGemFramework::Error error)
+    {
+        Call(FN_OnGetJiraintegrationCredentialsRequestError, error);
     }
     
     
@@ -612,14 +919,14 @@ namespace ServiceAPI {
     }
     
     
-    void BehaviorCloudGemDefectReporterNotificationBusHandler::OnPostServiceUploadRequestSuccess(const UploadRequestResults response)
+    void BehaviorCloudGemDefectReporterNotificationBusHandler::OnPutRecentsearchRequestSuccess(const ServiceStatus response)
     {
-        Call(FN_OnPostServiceUploadRequestSuccess, response);
+        Call(FN_OnPutRecentsearchRequestSuccess, response);
     }
     
-    void BehaviorCloudGemDefectReporterNotificationBusHandler::OnPostServiceUploadRequestError(const CloudGemFramework::Error error)
+    void BehaviorCloudGemDefectReporterNotificationBusHandler::OnPutRecentsearchRequestError(const CloudGemFramework::Error error)
     {
-        Call(FN_OnPostServiceUploadRequestError, error);
+        Call(FN_OnPutRecentsearchRequestError, error);
     }
     
     
@@ -645,7 +952,19 @@ namespace ServiceAPI {
     
     
     
+    void CloudGemDefectReporterRequests::GetJiraintegrationIssuetypes(const AZStd::string& project_key, CloudGemDefectReporterResponseHandler* responseHandler) { }
+    
+    
+    
     void CloudGemDefectReporterRequests::GetServiceStatus(CloudGemDefectReporterResponseHandler* responseHandler) { }
+    
+    
+    
+    void CloudGemDefectReporterRequests::GetJiraintegrationSettings(CloudGemDefectReporterResponseHandler* responseHandler) { }
+    
+    
+    
+    void CloudGemDefectReporterRequests::GetJiraintegrationProjectkeys(CloudGemDefectReporterResponseHandler* responseHandler) { }
     
     
     
@@ -653,7 +972,15 @@ namespace ServiceAPI {
     
     
     
-    void CloudGemDefectReporterRequests::PutRecentsearch(const SearchEntry& search, CloudGemDefectReporterResponseHandler* responseHandler) { }
+    void CloudGemDefectReporterRequests::PostServiceUpload(const UploadRequest& request_content, CloudGemDefectReporterResponseHandler* responseHandler) { }
+    
+    
+    
+    void CloudGemDefectReporterRequests::PutJiraintegrationCredentials(const Credentials& credentials, CloudGemDefectReporterResponseHandler* responseHandler) { }
+    
+    
+    
+    void CloudGemDefectReporterRequests::GetJiraintegrationCredentials(CloudGemDefectReporterResponseHandler* responseHandler) { }
     
     
     
@@ -661,7 +988,7 @@ namespace ServiceAPI {
     
     
     
-    void CloudGemDefectReporterRequests::PostServiceUpload(const UploadRequest& request_content, CloudGemDefectReporterResponseHandler* responseHandler) { }
+    void CloudGemDefectReporterRequests::PutRecentsearch(const SearchEntry& search, CloudGemDefectReporterResponseHandler* responseHandler) { }
     
     
     
@@ -695,6 +1022,18 @@ namespace ServiceAPI {
         EBUS_EVENT_ID(entityId, CloudGemDefectReporterNotificationBus, OnGetClientconfigurationRequestError, job->error);
     }
     
+    void CloudGemDefectReporterResponseHandler::HandleGetJiraintegrationIssuetypesSuccess(GetJiraintegrationIssuetypesRequestJob* job, AZ::EntityId entityId)
+    {
+        
+        EBUS_EVENT_ID(entityId, CloudGemDefectReporterNotificationBus, OnGetJiraintegrationIssuetypesRequestSuccess, job->result);
+        
+    }
+
+    void CloudGemDefectReporterResponseHandler::HandleGetJiraintegrationIssuetypesError(GetJiraintegrationIssuetypesRequestJob* job, AZ::EntityId entityId)
+    {
+        EBUS_EVENT_ID(entityId, CloudGemDefectReporterNotificationBus, OnGetJiraintegrationIssuetypesRequestError, job->error);
+    }
+    
     void CloudGemDefectReporterResponseHandler::HandleGetServiceStatusSuccess(GetServiceStatusRequestJob* job, AZ::EntityId entityId)
     {
         
@@ -705,6 +1044,30 @@ namespace ServiceAPI {
     void CloudGemDefectReporterResponseHandler::HandleGetServiceStatusError(GetServiceStatusRequestJob* job, AZ::EntityId entityId)
     {
         EBUS_EVENT_ID(entityId, CloudGemDefectReporterNotificationBus, OnGetServiceStatusRequestError, job->error);
+    }
+    
+    void CloudGemDefectReporterResponseHandler::HandleGetJiraintegrationSettingsSuccess(GetJiraintegrationSettingsRequestJob* job, AZ::EntityId entityId)
+    {
+        
+        EBUS_EVENT_ID(entityId, CloudGemDefectReporterNotificationBus, OnGetJiraintegrationSettingsRequestSuccess, job->result);
+        
+    }
+
+    void CloudGemDefectReporterResponseHandler::HandleGetJiraintegrationSettingsError(GetJiraintegrationSettingsRequestJob* job, AZ::EntityId entityId)
+    {
+        EBUS_EVENT_ID(entityId, CloudGemDefectReporterNotificationBus, OnGetJiraintegrationSettingsRequestError, job->error);
+    }
+    
+    void CloudGemDefectReporterResponseHandler::HandleGetJiraintegrationProjectkeysSuccess(GetJiraintegrationProjectkeysRequestJob* job, AZ::EntityId entityId)
+    {
+        
+        EBUS_EVENT_ID(entityId, CloudGemDefectReporterNotificationBus, OnGetJiraintegrationProjectkeysRequestSuccess, job->result);
+        
+    }
+
+    void CloudGemDefectReporterResponseHandler::HandleGetJiraintegrationProjectkeysError(GetJiraintegrationProjectkeysRequestJob* job, AZ::EntityId entityId)
+    {
+        EBUS_EVENT_ID(entityId, CloudGemDefectReporterNotificationBus, OnGetJiraintegrationProjectkeysRequestError, job->error);
     }
     
     void CloudGemDefectReporterResponseHandler::HandleGetCommentSuccess(GetCommentRequestJob* job, AZ::EntityId entityId)
@@ -719,16 +1082,40 @@ namespace ServiceAPI {
         EBUS_EVENT_ID(entityId, CloudGemDefectReporterNotificationBus, OnGetCommentRequestError, job->error);
     }
     
-    void CloudGemDefectReporterResponseHandler::HandlePutRecentsearchSuccess(PutRecentsearchRequestJob* job, AZ::EntityId entityId)
+    void CloudGemDefectReporterResponseHandler::HandlePostServiceUploadSuccess(PostServiceUploadRequestJob* job, AZ::EntityId entityId)
     {
         
-        EBUS_EVENT_ID(entityId, CloudGemDefectReporterNotificationBus, OnPutRecentsearchRequestSuccess, job->result);
+        EBUS_EVENT_ID(entityId, CloudGemDefectReporterNotificationBus, OnPostServiceUploadRequestSuccess, job->result);
         
     }
 
-    void CloudGemDefectReporterResponseHandler::HandlePutRecentsearchError(PutRecentsearchRequestJob* job, AZ::EntityId entityId)
+    void CloudGemDefectReporterResponseHandler::HandlePostServiceUploadError(PostServiceUploadRequestJob* job, AZ::EntityId entityId)
     {
-        EBUS_EVENT_ID(entityId, CloudGemDefectReporterNotificationBus, OnPutRecentsearchRequestError, job->error);
+        EBUS_EVENT_ID(entityId, CloudGemDefectReporterNotificationBus, OnPostServiceUploadRequestError, job->error);
+    }
+    
+    void CloudGemDefectReporterResponseHandler::HandlePutJiraintegrationCredentialsSuccess(PutJiraintegrationCredentialsRequestJob* job, AZ::EntityId entityId)
+    {
+        
+        EBUS_EVENT_ID(entityId, CloudGemDefectReporterNotificationBus, OnPutJiraintegrationCredentialsRequestSuccess, job->result);
+        
+    }
+
+    void CloudGemDefectReporterResponseHandler::HandlePutJiraintegrationCredentialsError(PutJiraintegrationCredentialsRequestJob* job, AZ::EntityId entityId)
+    {
+        EBUS_EVENT_ID(entityId, CloudGemDefectReporterNotificationBus, OnPutJiraintegrationCredentialsRequestError, job->error);
+    }
+    
+    void CloudGemDefectReporterResponseHandler::HandleGetJiraintegrationCredentialsSuccess(GetJiraintegrationCredentialsRequestJob* job, AZ::EntityId entityId)
+    {
+        
+        EBUS_EVENT_ID(entityId, CloudGemDefectReporterNotificationBus, OnGetJiraintegrationCredentialsRequestSuccess, job->result);
+        
+    }
+
+    void CloudGemDefectReporterResponseHandler::HandleGetJiraintegrationCredentialsError(GetJiraintegrationCredentialsRequestJob* job, AZ::EntityId entityId)
+    {
+        EBUS_EVENT_ID(entityId, CloudGemDefectReporterNotificationBus, OnGetJiraintegrationCredentialsRequestError, job->error);
     }
     
     void CloudGemDefectReporterResponseHandler::HandlePutCommentSuccess(PutCommentRequestJob* job, AZ::EntityId entityId)
@@ -743,16 +1130,16 @@ namespace ServiceAPI {
         EBUS_EVENT_ID(entityId, CloudGemDefectReporterNotificationBus, OnPutCommentRequestError, job->error);
     }
     
-    void CloudGemDefectReporterResponseHandler::HandlePostServiceUploadSuccess(PostServiceUploadRequestJob* job, AZ::EntityId entityId)
+    void CloudGemDefectReporterResponseHandler::HandlePutRecentsearchSuccess(PutRecentsearchRequestJob* job, AZ::EntityId entityId)
     {
         
-        EBUS_EVENT_ID(entityId, CloudGemDefectReporterNotificationBus, OnPostServiceUploadRequestSuccess, job->result);
+        EBUS_EVENT_ID(entityId, CloudGemDefectReporterNotificationBus, OnPutRecentsearchRequestSuccess, job->result);
         
     }
 
-    void CloudGemDefectReporterResponseHandler::HandlePostServiceUploadError(PostServiceUploadRequestJob* job, AZ::EntityId entityId)
+    void CloudGemDefectReporterResponseHandler::HandlePutRecentsearchError(PutRecentsearchRequestJob* job, AZ::EntityId entityId)
     {
-        EBUS_EVENT_ID(entityId, CloudGemDefectReporterNotificationBus, OnPostServiceUploadRequestError, job->error);
+        EBUS_EVENT_ID(entityId, CloudGemDefectReporterNotificationBus, OnPutRecentsearchRequestError, job->error);
     }
     
     void CloudGemDefectReporterResponseHandler::HandlePutHeaderSuccess(PutHeaderRequestJob* job, AZ::EntityId entityId)
@@ -872,6 +1259,49 @@ namespace ServiceAPI {
     }
     
     
+    void CloudGemDefectReporterClientComponent::GetJiraintegrationIssuetypes(const AZStd::string& project_key, CloudGemDefectReporterResponseHandler* responseHandler)
+    
+    {
+        // Cache our entityId in case the entity goes away
+        AZ::EntityId entityId;
+        if (m_entity)
+        {
+            entityId = m_entity->GetId();
+        }
+
+        // Cache our default response handler in case this component goes away
+        AZStd::shared_ptr < CloudGemDefectReporterResponseHandler > defaultResponseHandler = m_defaultResponseHandler;
+
+        // Create job
+        GetJiraintegrationIssuetypesRequestJob* requestJob = GetJiraintegrationIssuetypesRequestJob::Create(
+            [responseHandler, defaultResponseHandler, entityId](GetJiraintegrationIssuetypesRequestJob* successJob)
+            {
+                // handle success
+                CloudGemDefectReporterResponseHandler* successHandler = responseHandler ? responseHandler : defaultResponseHandler.get();
+                if (successHandler)
+                {
+                    successHandler->HandleGetJiraintegrationIssuetypesSuccess(successJob, entityId);
+                }
+            },
+            [responseHandler, defaultResponseHandler, entityId](GetJiraintegrationIssuetypesRequestJob* failedJob)
+            {
+                // handle error
+                CloudGemDefectReporterResponseHandler* failureHandler = responseHandler ? responseHandler : defaultResponseHandler.get();
+                if (failureHandler)
+                {
+                    failureHandler->HandleGetJiraintegrationIssuetypesError(failedJob, entityId);
+                }
+            }
+        );
+        
+        
+        requestJob->parameters.project_key = project_key;
+        
+        
+        requestJob->Start();
+    }
+    
+    
     void CloudGemDefectReporterClientComponent::GetServiceStatus(CloudGemDefectReporterResponseHandler* responseHandler)
     
     {
@@ -903,6 +1333,88 @@ namespace ServiceAPI {
                 if (failureHandler)
                 {
                     failureHandler->HandleGetServiceStatusError(failedJob, entityId);
+                }
+            }
+        );
+        
+        
+        
+        requestJob->Start();
+    }
+    
+    
+    void CloudGemDefectReporterClientComponent::GetJiraintegrationSettings(CloudGemDefectReporterResponseHandler* responseHandler)
+    
+    {
+        // Cache our entityId in case the entity goes away
+        AZ::EntityId entityId;
+        if (m_entity)
+        {
+            entityId = m_entity->GetId();
+        }
+
+        // Cache our default response handler in case this component goes away
+        AZStd::shared_ptr < CloudGemDefectReporterResponseHandler > defaultResponseHandler = m_defaultResponseHandler;
+
+        // Create job
+        GetJiraintegrationSettingsRequestJob* requestJob = GetJiraintegrationSettingsRequestJob::Create(
+            [responseHandler, defaultResponseHandler, entityId](GetJiraintegrationSettingsRequestJob* successJob)
+            {
+                // handle success
+                CloudGemDefectReporterResponseHandler* successHandler = responseHandler ? responseHandler : defaultResponseHandler.get();
+                if (successHandler)
+                {
+                    successHandler->HandleGetJiraintegrationSettingsSuccess(successJob, entityId);
+                }
+            },
+            [responseHandler, defaultResponseHandler, entityId](GetJiraintegrationSettingsRequestJob* failedJob)
+            {
+                // handle error
+                CloudGemDefectReporterResponseHandler* failureHandler = responseHandler ? responseHandler : defaultResponseHandler.get();
+                if (failureHandler)
+                {
+                    failureHandler->HandleGetJiraintegrationSettingsError(failedJob, entityId);
+                }
+            }
+        );
+        
+        
+        
+        requestJob->Start();
+    }
+    
+    
+    void CloudGemDefectReporterClientComponent::GetJiraintegrationProjectkeys(CloudGemDefectReporterResponseHandler* responseHandler)
+    
+    {
+        // Cache our entityId in case the entity goes away
+        AZ::EntityId entityId;
+        if (m_entity)
+        {
+            entityId = m_entity->GetId();
+        }
+
+        // Cache our default response handler in case this component goes away
+        AZStd::shared_ptr < CloudGemDefectReporterResponseHandler > defaultResponseHandler = m_defaultResponseHandler;
+
+        // Create job
+        GetJiraintegrationProjectkeysRequestJob* requestJob = GetJiraintegrationProjectkeysRequestJob::Create(
+            [responseHandler, defaultResponseHandler, entityId](GetJiraintegrationProjectkeysRequestJob* successJob)
+            {
+                // handle success
+                CloudGemDefectReporterResponseHandler* successHandler = responseHandler ? responseHandler : defaultResponseHandler.get();
+                if (successHandler)
+                {
+                    successHandler->HandleGetJiraintegrationProjectkeysSuccess(successJob, entityId);
+                }
+            },
+            [responseHandler, defaultResponseHandler, entityId](GetJiraintegrationProjectkeysRequestJob* failedJob)
+            {
+                // handle error
+                CloudGemDefectReporterResponseHandler* failureHandler = responseHandler ? responseHandler : defaultResponseHandler.get();
+                if (failureHandler)
+                {
+                    failureHandler->HandleGetJiraintegrationProjectkeysError(failedJob, entityId);
                 }
             }
         );
@@ -956,7 +1468,7 @@ namespace ServiceAPI {
     }
     
     
-    void CloudGemDefectReporterClientComponent::PutRecentsearch(const SearchEntry& search, CloudGemDefectReporterResponseHandler* responseHandler)
+    void CloudGemDefectReporterClientComponent::PostServiceUpload(const UploadRequest& request_content, CloudGemDefectReporterResponseHandler* responseHandler)
     
     {
         // Cache our entityId in case the entity goes away
@@ -970,28 +1482,112 @@ namespace ServiceAPI {
         AZStd::shared_ptr < CloudGemDefectReporterResponseHandler > defaultResponseHandler = m_defaultResponseHandler;
 
         // Create job
-        PutRecentsearchRequestJob* requestJob = PutRecentsearchRequestJob::Create(
-            [responseHandler, defaultResponseHandler, entityId](PutRecentsearchRequestJob* successJob)
+        PostServiceUploadRequestJob* requestJob = PostServiceUploadRequestJob::Create(
+            [responseHandler, defaultResponseHandler, entityId](PostServiceUploadRequestJob* successJob)
             {
                 // handle success
                 CloudGemDefectReporterResponseHandler* successHandler = responseHandler ? responseHandler : defaultResponseHandler.get();
                 if (successHandler)
                 {
-                    successHandler->HandlePutRecentsearchSuccess(successJob, entityId);
+                    successHandler->HandlePostServiceUploadSuccess(successJob, entityId);
                 }
             },
-            [responseHandler, defaultResponseHandler, entityId](PutRecentsearchRequestJob* failedJob)
+            [responseHandler, defaultResponseHandler, entityId](PostServiceUploadRequestJob* failedJob)
             {
                 // handle error
                 CloudGemDefectReporterResponseHandler* failureHandler = responseHandler ? responseHandler : defaultResponseHandler.get();
                 if (failureHandler)
                 {
-                    failureHandler->HandlePutRecentsearchError(failedJob, entityId);
+                    failureHandler->HandlePostServiceUploadError(failedJob, entityId);
                 }
             }
         );
         
-        requestJob->parameters.search = search;
+        requestJob->parameters.request_content = request_content;
+        
+        
+        
+        requestJob->Start();
+    }
+    
+    
+    void CloudGemDefectReporterClientComponent::PutJiraintegrationCredentials(const Credentials& credentials, CloudGemDefectReporterResponseHandler* responseHandler)
+    
+    {
+        // Cache our entityId in case the entity goes away
+        AZ::EntityId entityId;
+        if (m_entity)
+        {
+            entityId = m_entity->GetId();
+        }
+
+        // Cache our default response handler in case this component goes away
+        AZStd::shared_ptr < CloudGemDefectReporterResponseHandler > defaultResponseHandler = m_defaultResponseHandler;
+
+        // Create job
+        PutJiraintegrationCredentialsRequestJob* requestJob = PutJiraintegrationCredentialsRequestJob::Create(
+            [responseHandler, defaultResponseHandler, entityId](PutJiraintegrationCredentialsRequestJob* successJob)
+            {
+                // handle success
+                CloudGemDefectReporterResponseHandler* successHandler = responseHandler ? responseHandler : defaultResponseHandler.get();
+                if (successHandler)
+                {
+                    successHandler->HandlePutJiraintegrationCredentialsSuccess(successJob, entityId);
+                }
+            },
+            [responseHandler, defaultResponseHandler, entityId](PutJiraintegrationCredentialsRequestJob* failedJob)
+            {
+                // handle error
+                CloudGemDefectReporterResponseHandler* failureHandler = responseHandler ? responseHandler : defaultResponseHandler.get();
+                if (failureHandler)
+                {
+                    failureHandler->HandlePutJiraintegrationCredentialsError(failedJob, entityId);
+                }
+            }
+        );
+        
+        requestJob->parameters.credentials = credentials;
+        
+        
+        
+        requestJob->Start();
+    }
+    
+    
+    void CloudGemDefectReporterClientComponent::GetJiraintegrationCredentials(CloudGemDefectReporterResponseHandler* responseHandler)
+    
+    {
+        // Cache our entityId in case the entity goes away
+        AZ::EntityId entityId;
+        if (m_entity)
+        {
+            entityId = m_entity->GetId();
+        }
+
+        // Cache our default response handler in case this component goes away
+        AZStd::shared_ptr < CloudGemDefectReporterResponseHandler > defaultResponseHandler = m_defaultResponseHandler;
+
+        // Create job
+        GetJiraintegrationCredentialsRequestJob* requestJob = GetJiraintegrationCredentialsRequestJob::Create(
+            [responseHandler, defaultResponseHandler, entityId](GetJiraintegrationCredentialsRequestJob* successJob)
+            {
+                // handle success
+                CloudGemDefectReporterResponseHandler* successHandler = responseHandler ? responseHandler : defaultResponseHandler.get();
+                if (successHandler)
+                {
+                    successHandler->HandleGetJiraintegrationCredentialsSuccess(successJob, entityId);
+                }
+            },
+            [responseHandler, defaultResponseHandler, entityId](GetJiraintegrationCredentialsRequestJob* failedJob)
+            {
+                // handle error
+                CloudGemDefectReporterResponseHandler* failureHandler = responseHandler ? responseHandler : defaultResponseHandler.get();
+                if (failureHandler)
+                {
+                    failureHandler->HandleGetJiraintegrationCredentialsError(failedJob, entityId);
+                }
+            }
+        );
         
         
         
@@ -1042,7 +1638,7 @@ namespace ServiceAPI {
     }
     
     
-    void CloudGemDefectReporterClientComponent::PostServiceUpload(const UploadRequest& request_content, CloudGemDefectReporterResponseHandler* responseHandler)
+    void CloudGemDefectReporterClientComponent::PutRecentsearch(const SearchEntry& search, CloudGemDefectReporterResponseHandler* responseHandler)
     
     {
         // Cache our entityId in case the entity goes away
@@ -1056,28 +1652,28 @@ namespace ServiceAPI {
         AZStd::shared_ptr < CloudGemDefectReporterResponseHandler > defaultResponseHandler = m_defaultResponseHandler;
 
         // Create job
-        PostServiceUploadRequestJob* requestJob = PostServiceUploadRequestJob::Create(
-            [responseHandler, defaultResponseHandler, entityId](PostServiceUploadRequestJob* successJob)
+        PutRecentsearchRequestJob* requestJob = PutRecentsearchRequestJob::Create(
+            [responseHandler, defaultResponseHandler, entityId](PutRecentsearchRequestJob* successJob)
             {
                 // handle success
                 CloudGemDefectReporterResponseHandler* successHandler = responseHandler ? responseHandler : defaultResponseHandler.get();
                 if (successHandler)
                 {
-                    successHandler->HandlePostServiceUploadSuccess(successJob, entityId);
+                    successHandler->HandlePutRecentsearchSuccess(successJob, entityId);
                 }
             },
-            [responseHandler, defaultResponseHandler, entityId](PostServiceUploadRequestJob* failedJob)
+            [responseHandler, defaultResponseHandler, entityId](PutRecentsearchRequestJob* failedJob)
             {
                 // handle error
                 CloudGemDefectReporterResponseHandler* failureHandler = responseHandler ? responseHandler : defaultResponseHandler.get();
                 if (failureHandler)
                 {
-                    failureHandler->HandlePostServiceUploadError(failedJob, entityId);
+                    failureHandler->HandlePutRecentsearchError(failedJob, entityId);
                 }
             }
         );
         
-        requestJob->parameters.request_content = request_content;
+        requestJob->parameters.search = search;
         
         
         
@@ -1132,18 +1728,76 @@ namespace ServiceAPI {
     
     
     
-    bool CustomField::OnJsonKey(const char* key, CloudGemFramework::JsonReader& reader)
+    bool ObjectFieldProperty::OnJsonKey(const char* key, CloudGemFramework::JsonReader& reader)
     {
+        
+        if (strcmp(key, "title") == 0) return reader.Accept(title);
         
         if (strcmp(key, "maxChars") == 0) return reader.Accept(maxChars);
         
-        if (strcmp(key, "multipleSelect") == 0) return reader.Accept(multipleSelect);
+        if (strcmp(key, "defaultValue") == 0) return reader.Accept(defaultValue);
         
         if (strcmp(key, "predefines") == 0) return reader.Accept(predefines);
         
+        if (strcmp(key, "multipleSelect") == 0) return reader.Accept(multipleSelect);
+        
         if (strcmp(key, "type") == 0) return reader.Accept(type);
         
+        return reader.Ignore();
+    }
+
+    void ObjectFieldProperty::Reflect(AZ::ReflectContext* reflection)
+    {
+        AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(reflection);
+
+        if (serializeContext)
+        {
+            serializeContext->Class<ObjectFieldProperty>()
+                ->Version(1);
+        }
+
+        AZ::BehaviorContext* behaviorContext = azrtti_cast<AZ::BehaviorContext*>(reflection);
+        if (behaviorContext)
+        {
+            behaviorContext->Class<ObjectFieldProperty>("CloudGemDefectReporter_ObjectFieldProperty")
+                ->Attribute(AZ::Script::Attributes::Storage, AZ::Script::Attributes::StorageType::Value)
+            
+                ->Property("title", BehaviorValueProperty(&ObjectFieldProperty::title))
+            
+                ->Property("maxChars", BehaviorValueProperty(&ObjectFieldProperty::maxChars))
+            
+                ->Property("defaultValue", BehaviorValueProperty(&ObjectFieldProperty::defaultValue))
+            
+                ->Property("predefines", BehaviorValueProperty(&ObjectFieldProperty::predefines))
+            
+                ->Property("multipleSelect", BehaviorValueProperty(&ObjectFieldProperty::multipleSelect))
+            
+                ->Property("type", BehaviorValueProperty(&ObjectFieldProperty::type))
+            
+            ;
+        }
+    }
+    
+    
+    
+    
+    
+    bool CustomField::OnJsonKey(const char* key, CloudGemFramework::JsonReader& reader)
+    {
+        
         if (strcmp(key, "title") == 0) return reader.Accept(title);
+        
+        if (strcmp(key, "maxChars") == 0) return reader.Accept(maxChars);
+        
+        if (strcmp(key, "defaultValue") == 0) return reader.Accept(defaultValue);
+        
+        if (strcmp(key, "predefines") == 0) return reader.Accept(predefines);
+        
+        if (strcmp(key, "multipleSelect") == 0) return reader.Accept(multipleSelect);
+        
+        if (strcmp(key, "type") == 0) return reader.Accept(type);
+        
+        if (strcmp(key, "properties") == 0) return reader.Accept(properties);
         
         return reader.Ignore();
     }
@@ -1164,15 +1818,19 @@ namespace ServiceAPI {
             behaviorContext->Class<CustomField>("CloudGemDefectReporter_CustomField")
                 ->Attribute(AZ::Script::Attributes::Storage, AZ::Script::Attributes::StorageType::Value)
             
+                ->Property("title", BehaviorValueProperty(&CustomField::title))
+            
                 ->Property("maxChars", BehaviorValueProperty(&CustomField::maxChars))
             
-                ->Property("multipleSelect", BehaviorValueProperty(&CustomField::multipleSelect))
+                ->Property("defaultValue", BehaviorValueProperty(&CustomField::defaultValue))
             
                 ->Property("predefines", BehaviorValueProperty(&CustomField::predefines))
             
+                ->Property("multipleSelect", BehaviorValueProperty(&CustomField::multipleSelect))
+            
                 ->Property("type", BehaviorValueProperty(&CustomField::type))
             
-                ->Property("title", BehaviorValueProperty(&CustomField::title))
+                ->Property("properties", BehaviorValueProperty(&CustomField::properties))
             
             ;
         }
@@ -1246,6 +1904,110 @@ namespace ServiceAPI {
     
     
     
+    bool IssueTypes::OnJsonKey(const char* key, CloudGemFramework::JsonReader& reader)
+    {
+        
+        if (strcmp(key, "issueTypes") == 0) return reader.Accept(issueTypes);
+        
+        return reader.Ignore();
+    }
+
+    void IssueTypes::Reflect(AZ::ReflectContext* reflection)
+    {
+        AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(reflection);
+
+        if (serializeContext)
+        {
+            serializeContext->Class<IssueTypes>()
+                ->Version(1);
+        }
+
+        AZ::BehaviorContext* behaviorContext = azrtti_cast<AZ::BehaviorContext*>(reflection);
+        if (behaviorContext)
+        {
+            behaviorContext->Class<IssueTypes>("CloudGemDefectReporter_IssueTypes")
+                ->Attribute(AZ::Script::Attributes::Storage, AZ::Script::Attributes::StorageType::Value)
+            
+                ->Property("issueTypes", BehaviorValueProperty(&IssueTypes::issueTypes))
+            
+            ;
+        }
+    }
+    
+    
+    
+    bool JiraIntegrationSettings::OnJsonKey(const char* key, CloudGemFramework::JsonReader& reader)
+    {
+        
+        if (strcmp(key, "project") == 0) return reader.Accept(project);
+        
+        if (strcmp(key, "issuetype") == 0) return reader.Accept(issuetype);
+        
+        if (strcmp(key, "submitMode") == 0) return reader.Accept(submitMode);
+        
+        return reader.Ignore();
+    }
+
+    void JiraIntegrationSettings::Reflect(AZ::ReflectContext* reflection)
+    {
+        AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(reflection);
+
+        if (serializeContext)
+        {
+            serializeContext->Class<JiraIntegrationSettings>()
+                ->Version(1);
+        }
+
+        AZ::BehaviorContext* behaviorContext = azrtti_cast<AZ::BehaviorContext*>(reflection);
+        if (behaviorContext)
+        {
+            behaviorContext->Class<JiraIntegrationSettings>("CloudGemDefectReporter_JiraIntegrationSettings")
+                ->Attribute(AZ::Script::Attributes::Storage, AZ::Script::Attributes::StorageType::Value)
+            
+                ->Property("project", BehaviorValueProperty(&JiraIntegrationSettings::project))
+            
+                ->Property("issuetype", BehaviorValueProperty(&JiraIntegrationSettings::issuetype))
+            
+                ->Property("submitMode", BehaviorValueProperty(&JiraIntegrationSettings::submitMode))
+            
+            ;
+        }
+    }
+    
+    
+    
+    bool ProjectKeys::OnJsonKey(const char* key, CloudGemFramework::JsonReader& reader)
+    {
+        
+        if (strcmp(key, "projectKeys") == 0) return reader.Accept(projectKeys);
+        
+        return reader.Ignore();
+    }
+
+    void ProjectKeys::Reflect(AZ::ReflectContext* reflection)
+    {
+        AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(reflection);
+
+        if (serializeContext)
+        {
+            serializeContext->Class<ProjectKeys>()
+                ->Version(1);
+        }
+
+        AZ::BehaviorContext* behaviorContext = azrtti_cast<AZ::BehaviorContext*>(reflection);
+        if (behaviorContext)
+        {
+            behaviorContext->Class<ProjectKeys>("CloudGemDefectReporter_ProjectKeys")
+                ->Attribute(AZ::Script::Attributes::Storage, AZ::Script::Attributes::StorageType::Value)
+            
+                ->Property("projectKeys", BehaviorValueProperty(&ProjectKeys::projectKeys))
+            
+            ;
+        }
+    }
+    
+    
+    
     bool ReportComments::OnJsonKey(const char* key, CloudGemFramework::JsonReader& reader)
     {
         
@@ -1275,50 +2037,6 @@ namespace ServiceAPI {
                 ->Property("universal_unique_identifier", BehaviorValueProperty(&ReportComments::universal_unique_identifier))
             
                 ->Property("comments", BehaviorValueProperty(&ReportComments::comments))
-            
-            ;
-        }
-    }
-    
-    
-    
-    bool SearchEntry::OnJsonKey(const char* key, CloudGemFramework::JsonReader& reader)
-    {
-        
-        if (strcmp(key, "query_params") == 0) return reader.Accept(query_params);
-        
-        if (strcmp(key, "sql_id") == 0) return reader.Accept(sql_id);
-        
-        if (strcmp(key, "user_id") == 0) return reader.Accept(user_id);
-        
-        if (strcmp(key, "timestamp") == 0) return reader.Accept(timestamp);
-        
-        return reader.Ignore();
-    }
-
-    void SearchEntry::Reflect(AZ::ReflectContext* reflection)
-    {
-        AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(reflection);
-
-        if (serializeContext)
-        {
-            serializeContext->Class<SearchEntry>()
-                ->Version(1);
-        }
-
-        AZ::BehaviorContext* behaviorContext = azrtti_cast<AZ::BehaviorContext*>(reflection);
-        if (behaviorContext)
-        {
-            behaviorContext->Class<SearchEntry>("CloudGemDefectReporter_SearchEntry")
-                ->Attribute(AZ::Script::Attributes::Storage, AZ::Script::Attributes::StorageType::Value)
-            
-                ->Property("query_params", BehaviorValueProperty(&SearchEntry::query_params))
-            
-                ->Property("sql_id", BehaviorValueProperty(&SearchEntry::sql_id))
-            
-                ->Property("user_id", BehaviorValueProperty(&SearchEntry::user_id))
-            
-                ->Property("timestamp", BehaviorValueProperty(&SearchEntry::timestamp))
             
             ;
         }
@@ -1515,6 +2233,122 @@ namespace ServiceAPI {
                 ->Property("EncryptedPresignedPostFieldsArray", BehaviorValueProperty(&UploadRequestResults::EncryptedPresignedPostFieldsArray))
             
                 ->Property("UnencryptedPresignedPostFieldsArray", BehaviorValueProperty(&UploadRequestResults::UnencryptedPresignedPostFieldsArray))
+            
+            ;
+        }
+    }
+    
+    
+    
+    bool Credentials::OnJsonKey(const char* key, CloudGemFramework::JsonReader& reader)
+    {
+        
+        if (strcmp(key, "userName") == 0) return reader.Accept(userName);
+        
+        if (strcmp(key, "password") == 0) return reader.Accept(password);
+        
+        if (strcmp(key, "server") == 0) return reader.Accept(server);
+        
+        return reader.Ignore();
+    }
+
+    void Credentials::Reflect(AZ::ReflectContext* reflection)
+    {
+        AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(reflection);
+
+        if (serializeContext)
+        {
+            serializeContext->Class<Credentials>()
+                ->Version(1);
+        }
+
+        AZ::BehaviorContext* behaviorContext = azrtti_cast<AZ::BehaviorContext*>(reflection);
+        if (behaviorContext)
+        {
+            behaviorContext->Class<Credentials>("CloudGemDefectReporter_Credentials")
+                ->Attribute(AZ::Script::Attributes::Storage, AZ::Script::Attributes::StorageType::Value)
+            
+                ->Property("userName", BehaviorValueProperty(&Credentials::userName))
+            
+                ->Property("password", BehaviorValueProperty(&Credentials::password))
+            
+                ->Property("server", BehaviorValueProperty(&Credentials::server))
+            
+            ;
+        }
+    }
+    
+    
+    
+    bool ResponseStatus::OnJsonKey(const char* key, CloudGemFramework::JsonReader& reader)
+    {
+        
+        if (strcmp(key, "status") == 0) return reader.Accept(status);
+        
+        return reader.Ignore();
+    }
+
+    void ResponseStatus::Reflect(AZ::ReflectContext* reflection)
+    {
+        AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(reflection);
+
+        if (serializeContext)
+        {
+            serializeContext->Class<ResponseStatus>()
+                ->Version(1);
+        }
+
+        AZ::BehaviorContext* behaviorContext = azrtti_cast<AZ::BehaviorContext*>(reflection);
+        if (behaviorContext)
+        {
+            behaviorContext->Class<ResponseStatus>("CloudGemDefectReporter_ResponseStatus")
+                ->Attribute(AZ::Script::Attributes::Storage, AZ::Script::Attributes::StorageType::Value)
+            
+                ->Property("status", BehaviorValueProperty(&ResponseStatus::status))
+            
+            ;
+        }
+    }
+    
+    
+    
+    bool SearchEntry::OnJsonKey(const char* key, CloudGemFramework::JsonReader& reader)
+    {
+        
+        if (strcmp(key, "query_params") == 0) return reader.Accept(query_params);
+        
+        if (strcmp(key, "sql_id") == 0) return reader.Accept(sql_id);
+        
+        if (strcmp(key, "user_id") == 0) return reader.Accept(user_id);
+        
+        if (strcmp(key, "timestamp") == 0) return reader.Accept(timestamp);
+        
+        return reader.Ignore();
+    }
+
+    void SearchEntry::Reflect(AZ::ReflectContext* reflection)
+    {
+        AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(reflection);
+
+        if (serializeContext)
+        {
+            serializeContext->Class<SearchEntry>()
+                ->Version(1);
+        }
+
+        AZ::BehaviorContext* behaviorContext = azrtti_cast<AZ::BehaviorContext*>(reflection);
+        if (behaviorContext)
+        {
+            behaviorContext->Class<SearchEntry>("CloudGemDefectReporter_SearchEntry")
+                ->Attribute(AZ::Script::Attributes::Storage, AZ::Script::Attributes::StorageType::Value)
+            
+                ->Property("query_params", BehaviorValueProperty(&SearchEntry::query_params))
+            
+                ->Property("sql_id", BehaviorValueProperty(&SearchEntry::sql_id))
+            
+                ->Property("user_id", BehaviorValueProperty(&SearchEntry::user_id))
+            
+                ->Property("timestamp", BehaviorValueProperty(&SearchEntry::timestamp))
             
             ;
         }

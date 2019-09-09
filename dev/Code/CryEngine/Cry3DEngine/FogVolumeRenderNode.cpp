@@ -24,8 +24,8 @@
 
 
 AABB CFogVolumeRenderNode::s_tracableFogVolumeArea(Vec3(0, 0, 0), Vec3(0, 0, 0));
-CFogVolumeRenderNode::CachedFogVolumes CFogVolumeRenderNode::s_cachedFogVolumes;
-CFogVolumeRenderNode::GlobalFogVolumeMap CFogVolumeRenderNode::s_globalFogVolumeMap;
+StaticInstance<CFogVolumeRenderNode::CachedFogVolumes> CFogVolumeRenderNode::s_cachedFogVolumes;
+StaticInstance<CFogVolumeRenderNode::GlobalFogVolumeMap> CFogVolumeRenderNode::s_globalFogVolumeMap;
 bool CFogVolumeRenderNode::s_forceTraceableAreaUpdate(false);
 
 void CFogVolumeRenderNode::StaticReset()
@@ -444,7 +444,13 @@ void CFogVolumeRenderNode::Render(const SRendParams& rParam, const SRenderingPas
     m_cachedFogColor = GetFogColor();
     m_cachedSoftEdgesLerp = GetSoftEdgeLerp(viewerPosOS);
 
+#if AZ_RENDER_TO_TEXTURE_GEM_ENABLED
+    // volumetric fog is not supported in the render scene to texture pass
+    bool bVolFog = (GetCVars()->e_VolumetricFog != 0) && !passInfo.IsRenderSceneToTexturePass();
+#else
     bool bVolFog = (GetCVars()->e_VolumetricFog != 0);
+#endif // if AZ_RENDER_TO_TEXTURE_GEM_ENABLED
+
 
     // reset elapsed time for noise when FogVolume stayed out of viewport for 30 frames.
     // this prevents the time from being too large number.

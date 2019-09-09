@@ -100,7 +100,7 @@ export class CreateHeatmapComponent implements OnInit {
     private isLoadingEventAttributes: boolean;
     private isLoadingEvents: boolean;
     private isSaving: boolean;
-    private limit: string = "1000";    
+    private limit = { text: "1000" };    
 
     @ViewChild(ModalComponent) modalRef: ModalComponent;
 
@@ -235,20 +235,10 @@ export class CreateHeatmapComponent implements OnInit {
         this.getMetricEventData();
     }
 
-    getMetricEventData = () => {
-        if (this.heatmap.event === undefined || this.heatmap.event == "Select")
-            return
-
-        if (this.heatmap.xCoordinateMetric === undefined || this.heatmap.xCoordinateMetric == "Select")
-            return
-
-        if (this.heatmap.yCoordinateMetric === undefined || this.heatmap.yCoordinateMetric == "Select")
-            return
-
-        // Form query for getting heat coodrinates        
-        let from =  "${database}.${table}"
+    generateSQL = () => {
+        let from = "${database}.${table}"
         let x = this.heatmap.xCoordinateMetric;
-        let y =  this.heatmap.yCoordinateMetric;
+        let y = this.heatmap.yCoordinateMetric;
         let event = this.heatmap.event;
         let query = `SELECT distinct ${x}, ${y}
             from ${from} where 1 = 1`;
@@ -261,9 +251,22 @@ export class CreateHeatmapComponent implements OnInit {
 
         this.metricQuery.tablename = event
 
+        return this.metricQuery.toString(query)
+    }
+
+    getMetricEventData = () => {
+        if (this.heatmap.event === undefined || this.heatmap.event == "Select")
+            return
+
+        if (this.heatmap.xCoordinateMetric === undefined || this.heatmap.xCoordinateMetric == "Select")
+            return
+
+        if (this.heatmap.yCoordinateMetric === undefined || this.heatmap.yCoordinateMetric == "Select")
+            return
+
         // Submit the query
         this.isSaving = true;
-        this.metricsApiHandler.postQuery(this.metricQuery.toString(query))
+        this.metricsApiHandler.postQuery(this.generateSQL())
         .subscribe(res => {
             let heatmapArr = res.Result;
             // Remove column header
@@ -320,7 +323,7 @@ export class CreateHeatmapComponent implements OnInit {
                     this.toastr.success("The heatmap visualization has been updated.");
                 } catch (err) {
                     console.log("Unable to update heatmap layer: " + err);
-                    this.toastr.error("The heatmap visualization failed to update.  Please refer to your browser console log. ");
+                    this.toastr.error(`The heatmap visualization failed to update.  ${err}`);
                 }
                 this.isSaving = false                
             } else {
@@ -365,7 +368,9 @@ export class CreateHeatmapComponent implements OnInit {
     }
 
     appendLimit = (query) => {
-        return query + ` LIMIT ${this.limit}`
+        if (this.limit['text'].toLowerCase() !== "all")
+            return query + ` LIMIT ${this.limit['text']}`
+        return query
     }
 
     setLimit = (limit) => {
@@ -414,10 +419,28 @@ export class CreateHeatmapComponent implements OnInit {
             heatmapData['customFilter'] = this.heatmap.customFilter
 
         this.mode = this.isUpdatingExistingHeatmap ? "Update" : "Save"
-        if (!this.isUpdatingExistingHeatmap) {
-            this.submitHeatmap(heatmapData);
-        } else {
-            this.submitUpdatedHeatmap(heatmapData);
+        if (this.heatmap.event !== "Select") {
+            //ensure the SQL is valid before saving.
+            let query = this.generateSQL();
+            this.isSaving = true   
+            this.metricsApiHandler.postQuery(query)
+                .subscribe(res => {
+                    if (!this.isUpdatingExistingHeatmap) {
+                        this.submitHeatmap(heatmapData);
+                    } else {
+                        this.submitUpdatedHeatmap(heatmapData);
+                    }
+                }, err => {
+                    this.toastr.error(`Please review the SQL parameters. The SQL '${query}' failed to execute.`, err);
+                    console.error("Failed SQL: " + query);
+                    this.isSaving = false   
+                });
+        } else {            
+            if (!this.isUpdatingExistingHeatmap) {
+                this.submitHeatmap(heatmapData);
+            } else {
+                this.submitUpdatedHeatmap(heatmapData);
+            }
         }
     }
 

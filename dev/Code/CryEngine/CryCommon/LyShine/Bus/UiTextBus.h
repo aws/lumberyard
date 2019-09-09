@@ -28,13 +28,11 @@ public: // types
     typedef AZStd::function<AZStd::string(const AZStd::string&)> DisplayedTextFunction;
 
     //! Determines how text overflow should behave
-    //!
-    //! OverflowText: text contents have no impact on element size (and vice versa)
-    //! ClipText: clips text contents to fit width of element
     enum class OverflowMode
     {
-        OverflowText,
-        ClipText
+        OverflowText,   //!< text contents aren't impacted by element size (and vice versa)
+        ClipText,       //!< clips text contents to fit width of element
+        Ellipsis        //!< truncates displayed text to fit element and appends ellipsis to the text
     };
 
     //! Provides values for determining whether text is wrapped or not
@@ -42,6 +40,16 @@ public: // types
     {
         NoWrap,
         Wrap
+    };
+
+    //! Controls whether text should shrink (scale down) to prevent overflowing.
+    //!
+    //! The amount of scale applied to text can be limited by minimum shrink scale.
+    enum class ShrinkToFit
+    {
+        None,       //!< No shrinking is applied to text
+        Uniform,    //!< Shrink text uniformly along X/Y dimension (maintains aspect ratio)
+        WidthOnly   //!< Only scales text along X axis (width)
     };
 
     //! Determines what processing should be performed on text before returning
@@ -80,6 +88,9 @@ public: // member functions
 
     virtual int GetFontEffect() = 0;
     virtual void SetFontEffect(int effectIndex) = 0;
+
+    virtual AZStd::string GetFontEffectName(int effectIndex) = 0;
+    virtual void SetFontEffectByName(const AZStd::string& effectName) = 0;
 
     virtual float GetFontSize() = 0;
     virtual void SetFontSize(float size) = 0;
@@ -147,6 +158,12 @@ public: // member functions
     //! Get the width and height of the text
     virtual AZ::Vector2 GetTextSize() = 0;
 
+    //! Get the width of the text
+    virtual float GetTextWidth() = 0;
+
+    //! Get the height of the text
+    virtual float GetTextHeight() = 0;
+
     //! Get the bounding box (in viewport space, so it can be rotated) of the given text range
     //! If startIndex and endIndex are the same then a rect is still returned that is one pixel wide
     //! \param startIndex 0 means starting at the first character
@@ -178,8 +195,26 @@ public: // member functions
     //! Sets the text wrapping setting of this component
     virtual void SetWrapText(WrapTextSetting wrapSetting) = 0;
 
+    //! Gets the "shrink-to-fit" value of this component
+    virtual ShrinkToFit GetShrinkToFit() = 0;
+
+    //! Sets the "shrink-to-fit" value of this component
+    virtual void SetShrinkToFit(ShrinkToFit shrinkToFit) = 0;
+
     //! Typically triggered when input mechanism (keyboard vs. mouse) changes/alternates.
     virtual void ResetCursorLineHint() = 0;
+
+    //! Get whether markup is enabled. If true then the text string is parsed for XML markup.
+    virtual bool GetIsMarkupEnabled() = 0;
+
+    //! Set whether markup is enabled. If true then the text string is parsed for XML markup.
+    virtual void SetIsMarkupEnabled(bool isEnabled) = 0;
+
+    //! Gets the minimum shrink scale when using ShrinkToFit.
+    virtual float GetMinimumShrinkScale() = 0;
+
+    //! Sets the minimum shrink scale when using ShrinkToFit.
+    virtual void SetMinimumShrinkScale(float minShrinkScale) = 0;
 
 public: // static member data
 
@@ -188,4 +223,74 @@ public: // static member data
 };
 
 typedef AZ::EBus<UiTextInterface> UiTextBus;
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+//! Interface that describes "clickable" areas of text for a text component.
+//!
+//! Text components can contain anchor tags that allow user interaction with text.
+//! These anchor tags define clickable areas that can be stylized (via color) and
+//! provide information to listeners regarding the text.
+class UiClickableTextInterface
+    : public AZ::ComponentBus
+{
+public: // types
+
+    //! Defines an area of interaction for clickable text, along with metadata.
+    struct ClickableTextRect
+    {
+        UiTransformInterface::Rect rect; //!< "Click area" for text.
+
+        AZStd::string action; //!< "action" string from markup.
+
+        AZStd::string data; //!< "data" string from markup.
+
+        int id; //!< Identifier that uniquely identifies clickable text from
+                //!< a single anchor tag. The clickable text from markup can
+                //!< be word-wrapped to subsequent lines, in which case the
+                //!< identifier will identify all clickable text coming from
+                //!< a single anchor tag. This allows word-wrapped clickable
+                //!< text to be treated as a single clickable link, 
+                //!< especially useful for hover/color styling.
+    };
+
+    using ClickableTextRects = AZStd::vector<ClickableTextRect>;
+
+public: // member functions
+
+    virtual ~UiClickableTextInterface() {}
+
+    //! Populates given clickable text rects for a text component.
+    virtual void GetClickableTextRects(UiClickableTextInterface::ClickableTextRects& clickableTextRects) = 0;
+
+    //! Sets the drawbatch color for clickable text, given by the ID.
+    virtual void SetClickableTextColor(int id, const AZ::Color& color) = 0;
+
+public: // static member data
+
+    //! Only one component on an entity can implement the events
+    static const AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::Single;
+};
+
+typedef AZ::EBus<UiClickableTextInterface> UiClickableTextBus;
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+class UiClickableTextNotifications
+    : public AZ::ComponentBus
+{
+public:
+
+    //////////////////////////////////////////////////////////////////////////
+    // EBusTraits overrides
+    static const bool EnableEventQueue = true;
+    //////////////////////////////////////////////////////////////////////////
+
+public: // member functions
+
+    virtual ~UiClickableTextNotifications() {}
+
+    //! Notify listeners that the text has been prepared for render.
+    virtual void OnClickableTextChanged() {}
+};
+
+typedef AZ::EBus<UiClickableTextNotifications> UiClickableTextNotificationsBus;
 

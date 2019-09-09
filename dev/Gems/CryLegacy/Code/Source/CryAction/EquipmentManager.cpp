@@ -79,7 +79,8 @@ CEquipmentManager::~CEquipmentManager()
 
 void CEquipmentManager::Reset()
 {
-    stl::free_container(m_listeners);
+    std::for_each(m_listeners.begin(), m_listeners.end(), stl::container_object_deleter());
+    m_listeners.clear();
 }
 
 // Clear all equipment packs
@@ -92,8 +93,6 @@ void CEquipmentManager::DeleteAllEquipmentPacks()
 // Loads equipment packs from rootNode
 void CEquipmentManager::LoadEquipmentPacks(const XmlNodeRef& rootNode)
 {
-    MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_Other, 0, "Equipment Packs");
-
     if (rootNode->isTag("EquipPacks") == false)
     {
         return;
@@ -110,8 +109,6 @@ void CEquipmentManager::LoadEquipmentPacks(const XmlNodeRef& rootNode)
 // Load all equipment packs from a certain folder
 void CEquipmentManager::LoadEquipmentPacksFromPath(const char* path)
 {
-    MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_Other, 0, "Equipment Packs");
-
     ICryPak* pCryPak = gEnv->pCryPak;
     _finddata_t fd;
     string realPath (path);
@@ -128,8 +125,6 @@ void CEquipmentManager::LoadEquipmentPacksFromPath(const char* path)
             string filename = path;
             filename += "/";
             filename += fd.name;
-
-            MEMSTAT_CONTEXT_FMT(EMemStatContextTypes::MSC_Other, 0, "EquipmentPack XML (%s)", filename.c_str());
 
             XmlNodeRef rootNode = gEnv->pSystem->LoadXmlFromFile(filename.c_str());
 

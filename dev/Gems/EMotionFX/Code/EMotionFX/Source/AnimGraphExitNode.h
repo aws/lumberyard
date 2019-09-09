@@ -68,16 +68,16 @@ namespace EMotionFX
 
         void OnUpdateUniqueData(AnimGraphInstance* animGraphInstance) override;
 
-        uint32 GetVisualColor() const override                      { return MCore::RGBA(255, 0, 0); }
+        AZ::Color GetVisualColor() const override                   { return AZ::Color(1.0f, 0.0f, 0.0f, 1.0f); }
         bool GetCanActAsState() const override                      { return true; }
         bool GetSupportsVisualization() const override              { return true; }
 
         AnimGraphPose* GetMainOutputPose(AnimGraphInstance* animGraphInstance) const override     { return GetOutputPose(animGraphInstance, OUTPUTPORT_RESULT)->GetValue(); }
 
         bool GetHasOutputPose() const override                      { return true; }
-        bool GetIsDeletable() const override                        { return true; }
         bool GetIsLastInstanceDeletable() const override            { return true; }
         bool GetHasVisualOutputPorts() const override               { return false; }
+        bool GetCanBeInsideChildStateMachineOnly() const override   { return true; }
         bool GetCanHaveOnlyOneInsideParent() const override         { return true; }
 
         const char* GetPaletteName() const override;

@@ -67,7 +67,7 @@ namespace
         fireMode.Add("BurstOnce",        FIREMODE_BURST_ONCE);
     }
 
-    FireModeDictionary g_fireModeDictionary;
+    StaticInstance<FireModeDictionary> g_fireModeDictionary;
 
     CPipeUser* GetPipeUser(const BehaviorTree::UpdateContext& context)
     {
@@ -447,7 +447,7 @@ namespace BehaviorTree
             }
         };
 
-        static Dictionaries s_dictionaries;
+        static StaticInstance<Dictionaries> s_dictionaries;
 
     public:
         struct RuntimeData
@@ -518,7 +518,7 @@ namespace BehaviorTree
             m_movementStyle.ReadFromXml(xml);
 
             // Destination? Target/Cover/ReferencePoint
-            s_dictionaries.to.Get(xml, "to", m_destination, true);
+            s_dictionaries->to.Get(xml, "to", m_destination, true);
             m_movementStyle.SetMovingToCover(m_destination == Cover);
 
             xml->getAttr("stopWithinDistance", m_stopWithinDistance);
@@ -527,7 +527,7 @@ namespace BehaviorTree
                 xml->getAttr("stopDistanceVariation", m_stopDistanceVariation);
             }
 
-            g_fireModeDictionary.fireMode.Get(xml, "fireMode", m_fireMode);
+            g_fireModeDictionary->fireMode.Get(xml, "fireMode", m_fireMode);
 
             bool avoidDangers = true;
             xml->getAttr("avoidDangers", avoidDangers);
@@ -809,7 +809,7 @@ namespace BehaviorTree
         }
     };
 
-    Move::Dictionaries Move::s_dictionaries;
+    StaticInstance<Move::Dictionaries> Move::s_dictionaries;
 
     //////////////////////////////////////////////////////////////////////////
 
@@ -846,7 +846,7 @@ namespace BehaviorTree
             }
         };
 
-        static Dictionaries s_dictionaries;
+        static StaticInstance<Dictionaries> s_dictionaries;
 
         virtual LoadResult LoadFromXml(const XmlNodeRef& xml, const LoadContext& context) override
         {
@@ -867,7 +867,7 @@ namespace BehaviorTree
             m_tpsQueryName = queryName;
 #endif
 
-            if (!s_dictionaries.reg.Get(xml, "register", m_register))
+            if (!s_dictionaries->reg.Get(xml, "register", m_register))
             {
                 gEnv->pLog->LogError("QueryTPS behavior tree node: Missing 'register' attribute, line %d.", xml->getLine());
                 return LoadFailure;
@@ -1001,7 +1001,7 @@ namespace BehaviorTree
 #endif
     };
 
-    QueryTPS::Dictionaries QueryTPS::s_dictionaries;
+    StaticInstance<QueryTPS::Dictionaries> QueryTPS::s_dictionaries;
 
     //////////////////////////////////////////////////////////////////////////
 
@@ -1656,7 +1656,7 @@ namespace BehaviorTree
             }
         };
 
-        static Dictionaries s_signalDictionaries;
+        static StaticInstance<Dictionaries> s_signalDictionaries;
 
     public:
         struct RuntimeData
@@ -1676,7 +1676,7 @@ namespace BehaviorTree
             }
 
             m_signalName = xml->getAttr("name");
-            s_signalDictionaries.filters.Get(xml, "filter", m_filter);
+            s_signalDictionaries->filters.Get(xml, "filter", m_filter);
             return LoadSuccess;
         }
 
@@ -1716,7 +1716,7 @@ namespace BehaviorTree
         ESignalFilter m_filter;
     };
 
-    Signal::Dictionaries Signal::s_signalDictionaries;
+    StaticInstance<Signal::Dictionaries> Signal::s_signalDictionaries;
 
     //////////////////////////////////////////////////////////////////////////
 
@@ -1746,7 +1746,7 @@ namespace BehaviorTree
         }
     };
 
-    Dictionaries s_stanceDictionary;
+    StaticInstance<Dictionaries> s_stanceDictionary;
 
     class Stance
         : public Action
@@ -1765,13 +1765,13 @@ namespace BehaviorTree
 
         virtual LoadResult LoadFromXml(const XmlNodeRef& xml, const LoadContext& context) override
         {
-            s_stanceDictionary.stances.Get(xml, "name", m_stance);
+            s_stanceDictionary->stances.Get(xml, "name", m_stance);
 
             float degrees = 90.0f;
             xml->getAttr("allowedSlopeNormalDeviationFromUpInDegrees", degrees);
             m_allowedSlopeNormalDeviationFromUpInRadians = DEG2RAD(degrees);
 
-            s_stanceDictionary.stances.Get(xml, "stanceToUseIfSlopeIsTooSteep", m_stanceToUseIfSlopeIsTooSteep);
+            s_stanceDictionary->stances.Get(xml, "stanceToUseIfSlopeIsTooSteep", m_stanceToUseIfSlopeIsTooSteep);
 
             return LoadSuccess;
         }
@@ -2685,9 +2685,9 @@ namespace BehaviorTree
 
             m_alignWithTarget = false;
             m_turnTarget = TurnTarget_Invalid;
-            s_turnBodyDictionary.turnTarget.Get(xml, "towards", m_turnTarget);
+            s_turnBodyDictionary->turnTarget.Get(xml, "towards", m_turnTarget);
             TurnTarget alignTurnTarget = TurnTarget_Invalid;
-            s_turnBodyDictionary.turnTarget.Get(xml, "alignWith", alignTurnTarget);
+            s_turnBodyDictionary->turnTarget.Get(xml, "alignWith", alignTurnTarget);
             if (m_turnTarget == TurnTarget_Invalid)
             {
                 m_turnTarget = alignTurnTarget;
@@ -2936,7 +2936,7 @@ namespace BehaviorTree
             }
         };
 
-        static TurnBodyDictionary s_turnBodyDictionary;
+        static StaticInstance<TurnBodyDictionary> s_turnBodyDictionary;
 
 
     private:
@@ -2962,7 +2962,7 @@ namespace BehaviorTree
         float m_randomTurnRightChance;
     };
 
-    BehaviorTree::TurnBody::TurnBodyDictionary BehaviorTree::TurnBody::s_turnBodyDictionary;
+    StaticInstance<BehaviorTree::TurnBody::TurnBodyDictionary> BehaviorTree::TurnBody::s_turnBodyDictionary;
 
     //////////////////////////////////////////////////////////////////////////
 
@@ -3627,7 +3627,7 @@ namespace BehaviorTree
 
             if (xml->haveAttr("fireMode"))
             {
-                IF_UNLIKELY (!g_fireModeDictionary.fireMode.Get(xml, "fireMode", m_fireMode))
+                IF_UNLIKELY (!g_fireModeDictionary->fireMode.Get(xml, "fireMode", m_fireMode))
                 {
                     ErrorReporter(*this, context).LogError("Invalid 'fireMode' attribute.");
                     return LoadFailure;
@@ -3836,7 +3836,7 @@ namespace BehaviorTree
         shootAt.Add("LocalSpacePosition", LocalSpacePosition);
     }
 
-    ShootDictionary g_shootDictionary;
+    StaticInstance<ShootDictionary> g_shootDictionary;
 
     class Shoot
         : public Action
@@ -3880,19 +3880,19 @@ namespace BehaviorTree
                 return LoadFailure;
             }
 
-            IF_UNLIKELY (!g_shootDictionary.shootAt.Get(xml, "at", m_shootAt))
+            IF_UNLIKELY (!g_shootDictionary->shootAt.Get(xml, "at", m_shootAt))
             {
                 ErrorReporter(*this, context).LogError("Missing or invalid 'at' attribute.");
                 return LoadFailure;
             }
 
-            IF_UNLIKELY (!g_fireModeDictionary.fireMode.Get(xml, "fireMode", m_fireMode))
+            IF_UNLIKELY (!g_fireModeDictionary->fireMode.Get(xml, "fireMode", m_fireMode))
             {
                 ErrorReporter(*this, context).LogError("Missing or invalid 'fireMode' attribute.");
                 return LoadFailure;
             }
 
-            IF_UNLIKELY (!s_stanceDictionary.stances.Get(xml, "stance", m_stance))
+            IF_UNLIKELY (!s_stanceDictionary->stances.Get(xml, "stance", m_stance))
             {
                 ErrorReporter(*this, context).LogError("Missing or invalid 'stance' attribute.");
                 return LoadFailure;
@@ -3911,7 +3911,7 @@ namespace BehaviorTree
             xml->getAttr("allowedSlopeNormalDeviationFromUpInDegrees", degrees);
             m_allowedSlopeNormalDeviationFromUpInRadians = DEG2RAD(degrees);
 
-            s_stanceDictionary.stances.Get(xml, "stanceToUseIfSlopeIsTooSteep", m_stanceToUseIfSlopeIsTooSteep);
+            s_stanceDictionary->stances.Get(xml, "stanceToUseIfSlopeIsTooSteep", m_stanceToUseIfSlopeIsTooSteep);
             xml->getAttr("aimObstructedTimeout", m_aimObstructedTimeout);
 
             return LoadSuccess;

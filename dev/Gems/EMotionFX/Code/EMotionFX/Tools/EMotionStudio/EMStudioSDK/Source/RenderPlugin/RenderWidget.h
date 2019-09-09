@@ -48,19 +48,6 @@ namespace EMStudio
             CAMMODE_BOTTOM      = 7
         };
 
-        struct Line
-        {
-            AZ::Vector3  mPosA;
-            AZ::Vector3  mPosB;
-            uint32          mColor;
-
-            Line() {}
-            MCORE_INLINE Line(const AZ::Vector3& posA, const AZ::Vector3& posB, uint32 color)
-                : mPosA(posA)
-                , mPosB(posB)
-                , mColor(color) {}
-        };
-
         struct Triangle
         {
             AZ::Vector3  mPosA;
@@ -96,7 +83,7 @@ namespace EMStudio
             ~EventHandler() {}
 
             // overloaded
-            MCORE_INLINE void OnDrawLine(const AZ::Vector3& posA, const AZ::Vector3& posB, uint32 color)                                                                                                                                      { mWidget->AddLine(posA, posB, color); }
+            const AZStd::vector<EMotionFX::EventTypes> GetHandledEventTypes() const override { return { EMotionFX::EVENT_TYPE_ON_DRAW_LINE, EMotionFX::EVENT_TYPE_ON_DRAW_TRIANGLE, EMotionFX::EVENT_TYPE_ON_DRAW_TRIANGLES }; }
             MCORE_INLINE void OnDrawTriangle(const AZ::Vector3& posA, const AZ::Vector3& posB, const AZ::Vector3& posC, const AZ::Vector3& normalA, const AZ::Vector3& normalB, const AZ::Vector3& normalC, uint32 color)         { mWidget->AddTriangle(posA, posB, posC, normalA, normalB, normalC, color); }
             MCORE_INLINE void OnDrawTriangles()                                                                                                                                                                                                     { mWidget->RenderTriangles(); }
 
@@ -112,14 +99,9 @@ namespace EMStudio
         virtual void Update() = 0;
 
         // line rendering helper functions
-        MCORE_INLINE void AddLine(const AZ::Vector3& posA, const AZ::Vector3& posB, uint32 color)     { mLines.Add(Line(posA, posB, color)); }
         MCORE_INLINE void AddTriangle(const AZ::Vector3& posA, const AZ::Vector3& posB, const AZ::Vector3& posC, const AZ::Vector3& normalA, const AZ::Vector3& normalB, const AZ::Vector3& normalC, uint32 color)        { mTriangles.Add(Triangle(posA, posB, posC, normalA, normalB, normalC, color)); }
-        MCORE_INLINE void ClearLines()                                                                      { mLines.Clear(false); }
         MCORE_INLINE void ClearTriangles()                                                                  { mTriangles.Clear(false); }
         void RenderTriangles();
-
-        // event handler
-        MCORE_INLINE EventHandler* GetEventHandler() const                                                  { return mEventHandler; }
 
         // helper rendering functions
         void RenderActorInstances();
@@ -128,6 +110,7 @@ namespace EMStudio
         void RenderAxis();
         void RenderNodeFilterString();
         void RenderManipulators();
+        void RenderDebugDraw();
         void UpdateCamera();
 
         // camera helper functions
@@ -135,6 +118,7 @@ namespace EMStudio
         MCORE_INLINE CameraMode GetCameraMode() const                                                       { return mCameraMode; }
         MCORE_INLINE void SetSkipFollowCalcs(bool skipFollowCalcs)                                          { mSkipFollowCalcs = skipFollowCalcs; }
         void ViewCloseup(const MCore::AABB& aabb, float flightTime, uint32 viewCloseupWaiting = 5);
+        void ViewCloseup(bool selectedInstancesOnly, float flightTime, uint32 viewCloseupWaiting = 5);
         void SwitchCamera(CameraMode mode);
 
         // render bugger dimensions
@@ -158,9 +142,8 @@ namespace EMStudio
 
         RenderPlugin*                           mPlugin;
         RenderViewWidget*                       mViewWidget;
-        MCore::Array<Line>                      mLines;
         MCore::Array<Triangle>                  mTriangles;
-        EventHandler*                           mEventHandler;
+        EventHandler                            mEventHandler;
 
         MCore::Array<EMotionFX::ActorInstance*> mSelectedActorInstances;
 

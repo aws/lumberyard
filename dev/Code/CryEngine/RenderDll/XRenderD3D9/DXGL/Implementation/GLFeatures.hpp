@@ -26,20 +26,20 @@
 #if defined(DXGL_USE_LOADER_GLAD)
 #   define DXGL_EXTENSION_LOADER 1
 #   if DXGLES && !defined(DXGL_ES_SUBSET)
-#       include <glad/glad_gles.h>
+#       include <glad/gles2.h>
 #   else
-#       include <glad/glad_gl.h>
+#       include <glad/gl.h>
 #   endif
 #   define DXGL_GL_EXTENSION_SUPPORTED(_Extension) (GLAD_GL_ ## _Extension == 1)
 #   define DXGL_GL_LOADER_FUNCTION_PTR(_Func) (glad_ ## _Func)
 #   define DXGL_GL_LOADER_FUNCTION_PTR_PREFIX(_Func) DXGL_GL_LOADER_FUNCTION_PTR(gl ## _Func)
 #   if defined(DXGL_USE_WGL)
-#       include <glad/glad_wgl.h>
+#       include <glad/wgl.h>
 #       define DXGL_WGL_EXTENSION_SUPPORTED(_Extension) (GLAD_WGL_ ## _Extension == 1)
 #   elif defined(DXGL_USE_EGL)
-#       include <glad/glad_egl.h>
+#       include <glad/egl.h>
 #   elif defined(DXGL_USE_GLX)
-#       include <glad/glad_glx.h>
+#       include <glad/glx.h>
 #   endif
 #elif defined(DXGL_USE_LOADER_GLEW)
 #   define DXGL_EXTENSION_LOADER 1
@@ -76,7 +76,6 @@
 #define DXGL_SUPPORT_INDEXED_FLOAT_STATE            !DXGLES
 #define DXGL_SUPPORT_VIEWPORT_ARRAY                 !DXGLES
 #define DXGL_SUPPORT_SCISSOR_RECT_ARRAY             !DXGLES
-#define DXGL_SUPPORT_INDEPENDENT_BLEND_STATES       !DXGLES
 #define DXGL_SUPPORT_DRAW_WITH_BASE_VERTEX          (DXGL_REQUIRED_VERSION >= DXGL_VERSION_42 && !DXGLES)
 #define DXGL_SUPPORT_GETTEXIMAGE                    !DXGLES
 #define DXGL_SUPPORT_DEPTH_CLAMP                    !DXGLES
@@ -106,7 +105,6 @@
 #define DXGL_SUPPORT_VERTEX_ATTRIB_BINDING          (DXGL_REQUIRED_VERSION >= DXGL_VERSION_43 || DXGLES_REQUIRED_VERSION >= DXGLES_VERSION_30)
 #define DXGL_SUPPORT_TEXTURE_VIEWS                  (DXGL_REQUIRED_VERSION >= DXGL_VERSION_43 || DXGLES_REQUIRED_VERSION >= DXGLES_VERSION_30)
 #define DXGL_SUPPORT_QUERY_INTERNAL_FORMAT_SUPPORT  (DXGL_REQUIRED_VERSION >= DXGL_VERSION_43 && !DXGL_SUPPORT_NSIGHT_SINCE(3_0) && !DXGL_SUPPORT_VOGL)
-#define DXGL_SUPPORT_COPY_IMAGE                     (DXGL_REQUIRED_VERSION >= DXGL_VERSION_43 && !DXGL_SUPPORT_NSIGHT_SINCE(4_1))
 #define DXGL_SUPPORT_BUFFER_STORAGE                 (DXGL_REQUIRED_VERSION >= DXGL_VERSION_44 && !DXGL_SUPPORT_NSIGHT_SINCE(4_5))
 #define DXGL_SUPPORT_ETC2_EAC_COMPRESSION           (DXGL_REQUIRED_VERSION >= DXGL_VERSION_43 || DXGLES_REQUIRED_VERSION >= DXGLES_VERSION_30)
 
@@ -144,11 +142,7 @@ enum
 #else
     DXGL_NUM_SUPPORTED_SCISSOR_RECTS = 1,
 #endif
-#if DXGL_SUPPORT_INDEPENDENT_BLEND_STATES
     DXGL_NUM_SUPPORTED_BLEND_STATES = D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT,
-#else
-    DXGL_NUM_SUPPORTED_BLEND_STATES = 1,
-#endif
 };
 
 
@@ -776,46 +770,5 @@ inline void glNamedBufferStorageEXT(GLuint uBuffer, GLsizeiptr iSize, const GLvo
 #if defined(ANDROID) && !defined(EGL_OPENGL_API)
 #define EGL_OPENGL_API 0x30A2
 #endif
-
-#if DXGLES && defined(GL_EXT_separate_shader_objects)
-#define DXGLES_LOAD_EXTENSIONS
-#endif
-
-#if defined(DXGLES_LOAD_EXTENSIONS)
-#if !defined(GL_VERTEX_SHADER_BIT)
-#   define GL_VERTEX_SHADER_BIT GL_VERTEX_SHADER_BIT_EXT
-#endif
-
-#if !defined(GL_FRAGMENT_SHADER_BIT)
-#   define GL_FRAGMENT_SHADER_BIT GL_FRAGMENT_SHADER_BIT_EXT
-#endif
-
-#if !defined(GL_ALL_SHADER_BITS)
-#   define GL_ALL_SHADER_BITS GL_ALL_SHADER_BITS_EXT
-#endif
-
-#if !defined(GL_PROGRAM_SEPARABLE)
-#   define GL_PROGRAM_SEPARABLE GL_PROGRAM_SEPARABLE_EXT
-#endif
-
-#if !defined(GL_ACTIVE_PROGRAM)
-#   define GL_PROGRAM_SEPARABLE GL_ACTIVE_PROGRAM_EXT
-#endif
-
-#if !defined(GL_PROGRAM_PIPELINE_BINDING)
-#   define GL_PROGRAM_PIPELINE_BINDING GL_PROGRAM_PIPELINE_BINDING_EXT
-#endif
-
-// We create a function pointer that we assign to the "real" function at runtime.
-// The "real" function is the extension or the standard one, depending
-// on the device capabilities at runtime.
-#define DXGL_EXT_FUNCPTR(func) DXGL_ ## func
-#define EXTENSION_FUNC(func, extFunc, ret, ...)         \
-        typedef ret (* FunctPtr ## func)(__VA_ARGS__);  \
-        extern FunctPtr ## func DXGL_EXT_FUNCPTR(func);
-
-#include "GLExtensionFunctions.inl"
-
-#endif // defined(DXGLES_LOAD_EXTENSIONS)
 
 #endif //__GLFEATURES__

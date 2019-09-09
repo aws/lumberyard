@@ -118,4 +118,20 @@ namespace ScriptCanvasEditor
                 ;
         }
     }
+
+    /////////////////////////////
+    // MultiCreateNodeMimeEvent
+    /////////////////////////////
+
+    void MultiCreateNodeMimeEvent::Reflect(AZ::ReflectContext* reflectContext)
+    {
+        AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(reflectContext);
+
+        if (serializeContext)
+        {
+            serializeContext->Class<MultiCreateNodeMimeEvent, SpecializedCreateNodeMimeEvent>()
+                ->Version(0)
+                ;
+        }
+    }
 }

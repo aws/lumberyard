@@ -581,7 +581,6 @@ bool CEntityLoadManager::ExtractEntityLoadParams(XmlNodeRef& entityNode, SEntity
         const char* sArchetypeName = entityNode->getAttr("Archetype");
         if (sArchetypeName && sArchetypeName[0])
         {
-            MEMSTAT_CONTEXT_FMT(EMemStatContextTypes::MSC_Other, 0, "%s", sArchetypeName);
             spawnParams.pArchetype = m_pEntitySystem->LoadEntityArchetype(sArchetypeName);
 
             if (!spawnParams.pArchetype)
@@ -639,8 +638,6 @@ bool CEntityLoadManager::CreateEntity(XmlNodeRef& entityNode, SEntitySpawnParams
 //////////////////////////////////////////////////////////////////////////
 bool CEntityLoadManager::CreateEntity(SEntityLoadParams& loadParams, EntityId& outUsingId, bool bIsLoadingLevellFile)
 {
-    MEMSTAT_CONTEXT_FMT(EMemStatContextTypes::MSC_Entity, 0, "Entity %s", loadParams.spawnParams.pClass->GetName());
-
     bool bResult = true;
     outUsingId = 0;
 

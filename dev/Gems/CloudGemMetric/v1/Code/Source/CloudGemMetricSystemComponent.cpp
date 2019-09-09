@@ -1,3 +1,14 @@
+/*
+* All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates, or 
+* a third party where indicated.
+*
+* For complete copyright and license terms please see the LICENSE at the root of this
+* distribution (the "License"). All use of this software is governed by the License,  
+* or, if provided, by the license below or the license accompanying this file. Do not
+* remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.  
+*
+*/
 
 #include "StdAfx.h"
 
@@ -141,25 +152,33 @@ namespace CloudGemMetric
     {
     }
 
-    void CloudGemMetricSystemComponent::OnCrySystemInitialized(ISystem& system, const SSystemInitParams& params)
-    {
-        m_metricManager.Init();
-    }
-
     void CloudGemMetricSystemComponent::Activate()
     {       
         CloudGemMetricRequestBus::Handler::BusConnect();
         AZ::TickBus::Handler::BusConnect();
-        CloudGemFramework::CloudCanvasPlayerIdentityNotificationBus::Handler::BusConnect();     
+        CloudGemFramework::CloudCanvasPlayerIdentityNotificationBus::Handler::BusConnect();
         CrySystemEventBus::Handler::BusConnect();
     }
 
     void CloudGemMetricSystemComponent::Deactivate()
     {
-        CloudGemMetricRequestBus::Handler::BusDisconnect();
-        AZ::TickBus::Handler::BusDisconnect();
-        CloudGemFramework::CloudCanvasPlayerIdentityNotificationBus::Handler::BusDisconnect();
         CrySystemEventBus::Handler::BusDisconnect();
+        CloudGemFramework::CloudCanvasPlayerIdentityNotificationBus::Handler::BusDisconnect();
+        AZ::TickBus::Handler::BusDisconnect();
+        CloudGemMetricRequestBus::Handler::BusDisconnect();
+    }
+
+    void CloudGemMetricSystemComponent::OnCrySystemInitialized(ISystem& system, const SSystemInitParams& params)
+    {
+        AZ_UNUSED(system);
+        AZ_UNUSED(params);
+        m_metricManager.Init();
+    }
+
+    void CloudGemMetricSystemComponent::OnCrySystemShutdown(ISystem& system)
+    {
+        AZ_UNUSED(system);
+        m_metricManager.Shutdown();
     }
 
     bool CloudGemMetricSystemComponent::SubmitMetrics(const char* eventName, const AZStd::vector<MetricsAttribute>& metricsAttributes, const AZStd::vector<MetricsEventParameter>& metricsParameters)

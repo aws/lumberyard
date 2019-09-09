@@ -21,6 +21,7 @@
 using namespace GridMate;
 
 //#define GRIDMATE_FIXED_RATE_BYTES 1000000
+//#define VERBOSE_DISCONNECT_DEBUGGING
 
 //////////////////////////////////////////////////////////////////////////
 // TCP Cubic parameters
@@ -199,11 +200,11 @@ DefaultTrafficControl::OnAck(TrafficControlConnectionId id, DataGramControlData&
     if (info.m_time >= cd->m_handshakeDone)   // we measure after the handshake is done \ref OnHandshakeComplete
     {
         // compute the packet rtt
-        AZStd::chrono::milliseconds rtt =  m_currentTime - info.m_time;
-        cd->m_sdCurrentSecond.m_rtt = (cd->m_sdCurrentSecond.m_rtt + static_cast<float>(rtt.count())) * 0.5f;
+        AZStd::chrono::microseconds rtt =  m_currentTime - info.m_time;
+        cd->m_sdCurrentSecond.m_rtt = (cd->m_sdCurrentSecond.m_rtt + .001f * rtt.count()) * 0.5f;
         if (info.m_effectiveSize)
         {
-            cd->m_sdEffectiveCurrentSecond.m_rtt = (cd->m_sdEffectiveCurrentSecond.m_rtt + static_cast<float>(rtt.count())) * 0.5f;
+            cd->m_sdEffectiveCurrentSecond.m_rtt = (cd->m_sdEffectiveCurrentSecond.m_rtt + .001f * rtt.count()) * 0.5f;
         }
     }
 
@@ -343,16 +344,22 @@ DefaultTrafficControl::IsSendAck(TrafficControlConnectionId id)
 }
 
 //=========================================================================
-// GetMaxPacketSize
+// GetAvailableWindowSize
 // [10/6/2010]
 //=========================================================================
 unsigned int
-DefaultTrafficControl::GetMaxPacketSize(TrafficControlConnectionId id) const
+DefaultTrafficControl::GetAvailableWindowSize(TrafficControlConnectionId id) const
 {
-    (void)id;
-    return m_maxPacketSize;
+    ConnectionData* cd = reinterpret_cast<ConnectionData*>(id->m_trafficData);
+    return cd->m_congestionWindow - cd->m_inTransfer;
 }
 
+TimeStamp
+DefaultTrafficControl::GetResendTime(TrafficControlConnectionId id, const DataGramControlData& info)
+{
+    (void)id;
+    return info.m_time + AZStd::chrono::milliseconds(m_lostPacketTimeoutMS + 1);
+}
 //=========================================================================
 // IsResend
 // [10/5/2010]
@@ -431,7 +438,9 @@ DefaultTrafficControl::IsDisconnect(TrafficControlConnectionId id, float conditi
 
     if (cd->m_sdLifetime.m_connectionFactor >= conditionThreshold)
     {
-        AZ_TracePrintf("GridMate", "Connection %p rtt %.2f ms (max. %.2f) and packetLoss %.2f (max. %.2f). Disconnecting...\n", id, cd->m_sdLifetime.m_rtt, m_rttConnectionThreshold * conditionThreshold, cd->m_sdLifetime.m_packetLoss, m_packetLossThreshold * conditionThreshold);
+#ifdef VERBOSE_DISCONNECT_DEBUGGING
+        AZ_TracePrintf("GridMate", "Connection %p rtt %.2f ms (max. %.2f) and packetLoss %.2f (max. %.2f).\n", id, cd->m_sdLifetime.m_rtt, m_rttConnectionThreshold * conditionThreshold, cd->m_sdLifetime.m_packetLoss, m_packetLossThreshold * conditionThreshold);
+#endif
         return true;
     }
 
@@ -455,7 +464,7 @@ DefaultTrafficControl::IsSendACKOnly(TrafficControlConnectionId id) const
 
     // if we have received any data after the last send (which contains an ACK)
     // we need to send an ACK only packet to confirm receiving the data.
-    if (cd->m_isReceivedDataAfterLastSend)
+    if (cd->m_isReceivedDataAfterLastSend || m_currentTime - cd->m_lastAckSend > AZStd::chrono::milliseconds(m_lostPacketTimeoutMS / 10))
     {
         return true;
     }
@@ -498,7 +507,6 @@ DefaultTrafficControl::Update()
         //////////////////////////////////////////////////////////////////////////
         // all data
         cd.m_sdLastSecond = cd.m_sdCurrentSecond;
-        // WRONG WRONG WRONG -
 
         // update the lifetime stats
         cd.m_sdLifetime.m_dataSend += cd.m_sdLastSecond.m_dataSend;
@@ -530,7 +538,7 @@ DefaultTrafficControl::Update()
             {
                 // we don't really know what the RTT is, it's technically infinity. But that's why we have packetLoss too, so keep it the same
                 cd.m_sdLastSecond.m_rtt = cd.m_sdLifetime.m_rtt /*blockedConnectionRTT*/;
-                AZ_TracePrintf("GridMate", "Traffic control: We did not received any packets for the last second %llu!\n\n", AZStd::GetTimeUTCMilliSecond());
+                //AZ_TracePrintf("GridMate", "Traffic control: We did not received any packets for the last second %llu!\n\n", AZStd::GetTimeUTCMilliSecond());
             }
         }
 

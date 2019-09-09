@@ -24,6 +24,7 @@
 
 #include "../Editor/Objects/EntityObject.h"
 #include <LmbrCentral/Rendering/MeshComponentBus.h>
+#include <LmbrCentral/Rendering/RenderBoundsBus.h>
 
 class QMenu;
 
@@ -37,6 +38,7 @@ class CComponentEntityObject
     , private AzToolsFramework::EditorVisibilityNotificationBus::Handler
     , private AzToolsFramework::EditorEntityIconComponentNotificationBus::Handler
     , private AZ::TransformNotificationBus::Handler
+    , private LmbrCentral::RenderBoundsNotificationBus::Handler
     , private LmbrCentral::MeshComponentNotificationBus::Handler
     , private AzToolsFramework::ComponentEntityEditorRequestBus::Handler
     , private AzToolsFramework::ComponentEntityObjectRequestBus::Handler
@@ -83,6 +85,10 @@ public:
     void DrawDefault(DisplayContext& dc, const QColor& labelColor = QColor(255, 255, 255)) override;
     IStatObj* GetIStatObj() override;
     bool IsIsolated() const override;
+    bool IsSelected() const override;
+    bool IsSelectable() const override;
+
+    void SetWorldPos(const Vec3& pos, int flags = 0) override;
 
     // Always returns false as Component entity highlighting (accenting) is taken care of elsewhere
     bool IsHighlighted() { return false; }
@@ -95,6 +101,8 @@ public:
 
     // For now, dont allow Component entities to be grouped
     bool IsGroupable() override { return false; }
+
+    IPhysicalEntity* GetCollisionEntity() const override;
 
 
     //////////////////////////////////////////////////////////////////////////
@@ -134,7 +142,11 @@ public:
     //////////////////////////////////////////////////////////////////////////
     //! MeshComponentNotificationBus
     void OnMeshCreated(const AZ::Data::Asset<AZ::Data::AssetData>& asset) override;
-    void OnBoundsReset() override;
+    //////////////////////////////////////////////////////////////////////////
+
+    //////////////////////////////////////////////////////////////////////////
+    //! RenderBoundsNotificationBus
+    void OnRenderBoundsReset() override;
     //////////////////////////////////////////////////////////////////////////
 
     //////////////////////////////////////////////////////////////////////////
@@ -144,11 +156,14 @@ public:
     void SetSandboxObjectAccent(AzToolsFramework::EntityAccentType accent) override;
     void SetSandBoxObjectIsolated(bool isIsolated) override;
     bool IsSandBoxObjectIsolated() override;
+
+    void RefreshVisibilityAndLock() override;
     //////////////////////////////////////////////////////////////////////////
 
     //////////////////////////////////////////////////////////////////////////
     //! ComponentEntityObjectRequestBus
     AZ::EntityId GetAssociatedEntityId() override { return m_entityId; }
+    void UpdatePreemptiveUndoCache() override;
     //////////////////////////////////////////////////////////////////////////
 
     void AssignEntity(AZ::Entity* entity, bool destroyOld = true);
@@ -176,7 +191,8 @@ protected:
 
     void DeleteThis() { delete this; };
 
-    bool IsAncestorSelected() const;
+    bool IsNonLayerAncestorSelected() const;
+    bool IsLayer() const;
 
     bool IsAncestorIconDrawingAtSameLocation() const;
 
@@ -186,32 +202,7 @@ protected:
 
     void DrawAccent(DisplayContext& dc);
 
-    //! Whether we have have a valid icon path in \ref m_icon
-    bool m_hasIcon;
-
-    //! Path to component entity icon for this object
-    AZStd::string m_icon;
-    ITexture* m_iconTexture;
-
-    //! Whether this component entity icon is visible
-    bool m_entityIconVisible;
-
-    //! Whether to only use this object's icon for hit tests. When enabled, we ignore hit tests
-    //! against the geometry of the object
-    bool m_iconOnlyHitTest;
-
-    //! Whether to draw accents for this object (accents include selection wireframe bounding boxes)
-    bool m_drawAccents;
-
-    //! Indicate if an entity is isolated when the editor is in Isolation Mode.
-    bool m_isIsolated;
-
-    //! Displays viewport icon for this entity.
-    //! \returns whether an icon is being displayed
-    bool DisplayEntityIcon(DisplayContext& dc);
-
-    //! EntityId that this editor object represents/is tied to
-    AZ::EntityId m_entityId;
+    void ValidateMeshStatObject();
 
     class EditorActionGuard
     {
@@ -261,6 +252,34 @@ protected:
     EditorActionGuard m_parentingReentryGuard;
 
     AzToolsFramework::EntityAccentType m_accentType;
+
+    //! Whether we have have a valid icon path in \ref m_icon
+    bool m_hasIcon;
+
+    //! Whether this component entity icon is visible
+    bool m_entityIconVisible;
+
+    //! Whether to only use this object's icon for hit tests. When enabled, we ignore hit tests
+    //! against the geometry of the object
+    bool m_iconOnlyHitTest;
+
+    //! Whether to draw accents for this object (accents include selection wireframe bounding boxes)
+    bool m_drawAccents;
+
+    //! Indicate if an entity is isolated when the editor is in Isolation Mode.
+    bool m_isIsolated;
+
+    //! EntityId that this editor object represents/is tied to
+    AZ::EntityId m_entityId;
+
+    //! Path to component entity icon for this object
+    AZStd::string m_icon;
+    ITexture* m_iconTexture;
+
+    //! Displays viewport icon for this entity.
+    //! \returns whether an icon is being displayed
+    bool DisplayEntityIcon(
+        DisplayContext& dc, AzFramework::DebugDisplayRequests& debugDisplay);
 };
 
 #endif // CRYINCLUDE_COMPONENTENTITYEDITORPLUGIN_COMPONENTENTITYOBJECT_H

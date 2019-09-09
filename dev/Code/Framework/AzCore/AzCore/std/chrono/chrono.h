@@ -1,3 +1,4 @@
+
 /*
 * All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
 * its licensors.
@@ -9,11 +10,17 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#ifndef AZSTD_CHRONO_H
-#define AZSTD_CHRONO_H
+
+#pragma once
+
+#pragma push_macro("min")
+#pragma push_macro("max")
+#undef min
+#undef max
 
 #include <AzCore/std/chrono/types.h>
 #include <AzCore/std/chrono/clocks.h>
 
-#endif // AZSTD_CHRONO_H
-#pragma once
+
+#pragma pop_macro("max")
+#pragma pop_macro("min")

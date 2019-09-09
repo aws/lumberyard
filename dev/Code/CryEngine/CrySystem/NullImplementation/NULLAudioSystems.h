@@ -40,6 +40,7 @@ namespace Audio
         void SetObstructionCalcType(const EAudioObjectObstructionCalcType) override {}
         void SetPosition(const SATLWorldPosition&) override {}
         void SetPosition(const Vec3&) override {}
+        void SetMultiplePositions(const MultiPositionParams& positions) override {}
         void SetEnvironmentAmount(const TAudioEnvironmentID, const float) override {}
         void SetCurrentEnvironments(const EntityId nEntityToIgnore = 0) override {}
         void SetLipSyncProvider(ILipSyncProvider* const) override {}
@@ -54,17 +55,13 @@ namespace Audio
     public:
         CNULLAudioSystem()
         {
-        #if defined(DEDICATED_SERVER)
             AudioSystemRequestBus::Handler::BusConnect();
             AudioSystemThreadSafeRequestBus::Handler::BusConnect();
-        #endif // DEDICATED_SERVER
         }
         ~CNULLAudioSystem() override
         {
-        #if defined(DEDICATED_SERVER)
             AudioSystemRequestBus::Handler::BusDisconnect();
             AudioSystemThreadSafeRequestBus::Handler::BusDisconnect();
-        #endif // DEDICATED_SERVER
         }
 
         bool Initialize() override { return true; }

@@ -19,7 +19,11 @@
 #include "StringHelpers.h"
 #include "Util.h"
 
+#include "PropertyHelpers.h"
+#include "AzFramework/StringFunc/StringFunc.h"
+
 static const char* const s_consolesLod0MarkerStr = "consoles_lod0";
+static const uint8 s_maxSkinningWeight = 0xFF;
 
 static bool NodeHasProperty(const CNodeCGF* pNode, const char* property)
 {
@@ -322,12 +326,15 @@ void CStaticObjectCompiler::ValidateBreakableJoints(const CContentCGF* pCGF)
 //////////////////////////////////////////////////////////////////////////
 void CStaticObjectCompiler::CompileDeformablePhysData(CContentCGF* pCompiledCGF)
 {
-    for (int i = 0; i < pCompiledCGF->GetNodeCount(); ++i)
+    if (!pCompiledCGF->GetExportInfo()->bSkinnedCGF)
     {
-        if (pCompiledCGF->GetNode(i)->type == CNodeCGF::NODE_MESH)
+        for (int i = 0; i < pCompiledCGF->GetNodeCount(); ++i)
         {
-            AnalyzeFoliage(pCompiledCGF, pCompiledCGF->GetNode(i));
-            break;
+            if (pCompiledCGF->GetNode(i)->type == CNodeCGF::NODE_MESH)
+            {
+                AnalyzeFoliage(pCompiledCGF, pCompiledCGF->GetNode(i));
+                break;
+            }
         }
     }
 
@@ -630,7 +637,8 @@ struct SBranch
 
 void CStaticObjectCompiler::AnalyzeFoliage(CContentCGF* pCGF, CNodeCGF* pNodeCGF)
 {
-    if (!pCGF || !pNodeCGF)
+    //Prevent reprocessing skinning data for skinned CGF
+    if (!pCGF || (pCGF->GetExportInfo()->bSkinnedCGF && pCGF->GetExportInfo()->bCompiledCGF)) // Skip regenerate foliage info if source is compiled skinned CGF
     {
         return;
     }
@@ -649,6 +657,7 @@ void CStaticObjectCompiler::AnalyzeFoliage(CContentCGF* pCGF, CNodeCGF* pNodeCGF
 
     int i, j;
 
+    // Clear spine and bone IDs.
     SFoliageInfoCGF& fi = *pCGF->GetFoliageInfo();
 
     if (fi.nSpines)
@@ -657,14 +666,85 @@ void CStaticObjectCompiler::AnalyzeFoliage(CContentCGF* pCGF, CNodeCGF* pNodeCGF
         {
             fi.pSpines[i].pVtx = 0;
             fi.pSpines[i].pSegDim = 0;
+            fi.pSpines[i].pStiffness = 0;
+            fi.pSpines[i].pDamping = 0;
+            fi.pSpines[i].pThickness = 0;
         }
         SAFE_DELETE_ARRAY(fi.pSpines);
-        SAFE_DELETE_ARRAY(fi.pBoneMapping);
         fi.nSpines = 0;
     }
     fi.chunkBoneIds.clear();
 
-    const CMesh& mesh = *pNodeCGF->pMesh;
+    CSkinningInfo* pSkinningInfo = pCGF->GetSkinningInfo();
+    if (pSkinningInfo  && pSkinningInfo->m_arrBonesDesc.size())
+    {
+        // Delete old bone mappings
+        AZStd::unordered_map<AZStd::string, SMeshBoneMappingInfo_uint8*>::iterator iter = fi.boneMappings.begin();
+        while (iter != fi.boneMappings.end())
+        {
+            if (iter->second != nullptr)
+            {
+                SAFE_DELETE_ARRAY(iter->second);
+            }
+            iter++;
+        }
+        fi.boneMappings.clear();
+        // Initialize new bone mappings. Create place holder bone mapping for main and each LOD mesh
+        for (int CGFNodeIndex = 0; CGFNodeIndex < pCGF->GetNodeCount(); CGFNodeIndex++)
+        {
+            const CNodeCGF* pCGFNode = pCGF->GetNode(CGFNodeIndex);
+
+            if ((pCGFNode->type == CNodeCGF::NODE_MESH ||
+                (pCGFNode->type == CNodeCGF::NODE_HELPER && pCGFNode->helperType == HP_GEOMETRY && !pCGFNode->bPhysicsProxy)))
+            {
+                const CMesh* pMesh = pCGFNode->pMesh;
+
+                if (pMesh && pMesh->m_pBoneMapping)
+                {
+                    const int nMeshVtx = pMesh->GetVertexCount();
+
+                    SMeshBoneMappingInfo_uint8* pBoneMappingEntry = new SMeshBoneMappingInfo_uint8(nMeshVtx);
+                    memset(pBoneMappingEntry->pBoneMapping, 0, nMeshVtx * sizeof(pBoneMappingEntry->pBoneMapping[0]));
+                    for (i = 0; i < nMeshVtx; i++)
+                    {
+                        pBoneMappingEntry->pBoneMapping[i].weights[0] = s_maxSkinningWeight;
+                    }
+                    fi.boneMappings[pCGFNode->name] = pBoneMappingEntry;
+                }
+            }
+        }
+
+        // Generate foliage with skeleton data
+        BuildFoliageInfoFromSkinningInfo(fi, pSkinningInfo, pCGF);
+        // Delete skinning data and bone mapping so the resulting CFG won't be treated as skinned mesh
+        pSkinningInfo->m_arrBonesDesc.clear();
+        pSkinningInfo->m_arrBoneEntities.clear();
+
+        for (int CGFNodeIndex = 0; CGFNodeIndex < pCGF->GetNodeCount(); CGFNodeIndex++)
+        {
+            CNodeCGF* pCGFNode = pCGF->GetNode(CGFNodeIndex);
+
+            if (fi.boneMappings.find(pCGFNode->name) != fi.boneMappings.end())
+            {
+                CMesh* pMesh = pCGFNode->pMesh;
+
+                if (pMesh->m_pBoneMapping)
+                {
+                    delete[] pMesh->m_pBoneMapping;
+                    pMesh->m_pBoneMapping = nullptr;
+                    delete[] pMesh->m_pExtraBoneMapping;
+                    pMesh->m_pExtraBoneMapping = nullptr;
+                }
+            }
+        }
+
+        //Mark this file as skinned cgf. Prevent reprocessing skinning data for skinned CGF
+        pCGF->GetExportInfo()->bSkinnedCGF = true;
+        return;
+    }
+
+    // Continue with legacy way
+    CMesh& mesh = *pNodeCGF->pMesh;
 
     assert(mesh.m_pPositionsF16 == 0);
 
@@ -675,6 +755,13 @@ void CStaticObjectCompiler::AnalyzeFoliage(CContentCGF* pCGF, CNodeCGF* pNodeCGF
     const vtx_idx* const pMeshIdx = mesh.m_pIndices;
 
     const SMeshTexCoord* const pMeshTex = mesh.m_pTexCoord;
+
+    fi.pBoneMapping = new SMeshBoneMapping_uint8[fi.nSkinnedVtx = nMeshVtx];
+    memset(fi.pBoneMapping, 0, nMeshVtx * sizeof(fi.pBoneMapping[0]));
+    for (i = 0; i < nMeshVtx; i++)
+    {
+        fi.pBoneMapping[i].weights[0] = s_maxSkinningWeight;
+    }
 
     char sname[128];
     char* pname;
@@ -795,7 +882,7 @@ void CStaticObjectCompiler::AnalyzeFoliage(CContentCGF* pCGF, CNodeCGF* pNodeCGF
     memset(fi.pBoneMapping, 0, nMeshVtx * sizeof(fi.pBoneMapping[0]));
     for (i = 0; i < nMeshVtx; i++)
     {
-        fi.pBoneMapping[i].weights[0] = 255;
+        fi.pBoneMapping[i].weights[0] = s_maxSkinningWeight;
     }
 
     int* const pIdxSorted = new int[nMeshVtx];
@@ -998,7 +1085,18 @@ foundtri:
                     // output phys vtx
                     if (!spine.pVtx)
                     {
-                        spine.pVtx = new Vec3[pBranches[ibran].npt];
+                        //Fix for Per bone UDP for stiffness, damping and thickness for touch bending vegetation
+                        int nVtx = pBranches[ibran].npt;
+                        spine.pVtx = new Vec3[nVtx];
+                        spine.pStiffness = new float[nVtx];
+                        spine.pDamping = new float[nVtx];
+                        spine.pThickness = new float[nVtx];
+                        for (int i = 0; i < nVtx; i++)
+                        {
+                            spine.pStiffness[i] = SSpineRC::GetDefaultStiffness();
+                            spine.pDamping[i] = SSpineRC::GetDefaultDamping();
+                            spine.pThickness[i] = SSpineRC::GetDefaultThickness();
+                        }
                     }
                     const float denom = 1.0f / (tex[1] - tex[0] ^ tex[2] - tex[0]);
                     tex[3] = pBranches[ibran].pt[ivtx].tex;
@@ -1115,9 +1213,9 @@ foundtri:
 
                     fi.pBoneMapping[pIdxSorted[i]].boneIds[0] = nBones + Util::getMin(spine.nVtx - 2, ivtx + j);
                     fi.pBoneMapping[pIdxSorted[i]].boneIds[1] = nBones + Util::getMax(0, ivtx - 1 + j);
-                    const uint8 weight = Util::getClamped(FtoI(t * 255), 1, 254);
+                    const uint8 weight = Util::getClamped(FtoI(t * s_maxSkinningWeight), 1, s_maxSkinningWeight - 1);
                     fi.pBoneMapping[pIdxSorted[i]].weights[j] = weight;
-                    fi.pBoneMapping[pIdxSorted[i]].weights[j ^ 1] = 255 - weight;
+                    fi.pBoneMapping[pIdxSorted[i]].weights[j ^ 1] = s_maxSkinningWeight - weight;
 
                     j = pIdxSorted[ivtx0];
                     pIdxSorted[ivtx0++] = pIdxSorted[i];
@@ -1129,7 +1227,7 @@ foundtri:
             for (i = ivtx0; i < nVtx; i++)
             {
                 fi.pBoneMapping[pIdxSorted[i]].boneIds[0] = nBones + spine.nVtx - 2;
-                fi.pBoneMapping[pIdxSorted[i]].weights[0] = 255;
+                fi.pBoneMapping[pIdxSorted[i]].weights[0] = s_maxSkinningWeight;
             }
 
             if ((fi.nSpines & 7) == 0)
@@ -1141,6 +1239,9 @@ foundtri:
                 {
                     pSpines[j].pVtx = 0;
                     pSpines[j].pSegDim = 0;
+                    pSpines[j].pStiffness = 0;
+                    pSpines[j].pDamping = 0;
+                    pSpines[j].pThickness = 0;
                 }
                 if (pSpines)
                 {
@@ -1200,6 +1301,11 @@ foundtri:
 
     spine.pVtx = 0;
     spine.pSegDim = 0;
+    //START: Fix for Per bone UDP for stiffness, damping and thickness for touch bending vegetation
+    spine.pStiffness = 0;
+    spine.pDamping = 0;
+    spine.pThickness = 0;
+    //START: Fix for Per bone UDP for stiffness, damping and thickness for touch bending vegetation
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -2090,6 +2196,7 @@ CContentCGF* CStaticObjectCompiler::MakeLOD(int lodIndex, const CContentCGF* pCG
     *pCompiledCGF->GetPhysicalizeInfo() = *pCGF->GetPhysicalizeInfo();
     pCompiledCGF->GetExportInfo()->bCompiledCGF = true;
     pCompiledCGF->GetUsedMaterialIDs() = pCGF->GetUsedMaterialIDs();
+    *pCompiledCGF->GetSkinningInfo() = *pCGF->GetSkinningInfo();
 
     if (lodIndex > 0 && m_pLODs[0])
     {
@@ -2261,3 +2368,386 @@ int CStaticObjectCompiler::GetJointCount(const CContentCGF* pCGF)
     }
     return jointCount;
 }
+
+// Skinned Geometry (.CGF) export type (for touch bending vegetation)
+void CStaticObjectCompiler::BuildFoliageInfoFromSkinningInfo(SFoliageInfoCGF& foliageInfo, const CSkinningInfo* pSkinningInfo, CContentCGF* pCGF)
+{
+    //Build spines
+    //Use first mesh (LOD 0) to build spine and bone IDs.
+    const CMesh& mesh = *pCGF->GetNode(0)->pMesh;
+
+    CreateSpinesFromSkinningData(&foliageInfo.pSpines, foliageInfo.nSpines, pSkinningInfo, mesh, pCGF);
+
+    //Build spine bone IDs and create skinning bone ID to spine bone ID mapping
+    std::map<uint, uint> boneToSpineBoneMapping;
+    // Bone 0 is default, no vertex should map to it
+    int boneCount = 0;
+    for (int spineIndex = 0; spineIndex < foliageInfo.nSpines; spineIndex++)
+    {
+        int boneindex = 0;
+        // Tip bone doesn't count for rope simulation and foliage skinning, skip it.
+        for (; boneindex < foliageInfo.pSpines[spineIndex].nVtx - 1; boneindex++)
+        {
+            boneToSpineBoneMapping[foliageInfo.pSpines[spineIndex].pBoneIDs[boneindex]] = ++boneCount;
+        }
+        //Tip bone is not used and should remap to its parent
+        boneToSpineBoneMapping[foliageInfo.pSpines[spineIndex].pBoneIDs[boneindex]] = boneCount;
+    }
+
+
+    //Save bone mappings for main and each LOD mesh.
+    for (int nodeIndex = 0; nodeIndex < pCGF->GetNodeCount(); nodeIndex++)
+    {
+        CNodeCGF *pNode = pCGF->GetNode(nodeIndex);
+
+        if (foliageInfo.boneMappings.find(pNode->name) != foliageInfo.boneMappings.end())
+        {
+            SMeshBoneMapping_uint8* pFoliageBoneMapping = foliageInfo.boneMappings[pNode->name]->pBoneMapping;
+            const CMesh& mesh = *pNode->pMesh;
+
+            for (int islandIndex = 0; islandIndex < mesh.GetSubSetCount(); islandIndex++)
+            {
+                //Remap bone mapping to foliage data
+                for (int vertexIndex = mesh.m_subsets[islandIndex].nFirstVertId; vertexIndex < mesh.m_subsets[islandIndex].nFirstVertId + mesh.m_subsets[islandIndex].nNumVerts; vertexIndex++)
+                {
+                    const SMeshBoneMapping_uint16 boneMapping = mesh.m_pBoneMapping[vertexIndex];
+
+                    pFoliageBoneMapping[vertexIndex].boneIds[0] = boneToSpineBoneMapping[boneMapping.boneIds[0]];
+                    pFoliageBoneMapping[vertexIndex].weights[0] = Util::getMin((uint)boneMapping.weights[0], (uint)s_maxSkinningWeight);
+                    pFoliageBoneMapping[vertexIndex].boneIds[1] = boneToSpineBoneMapping[boneMapping.boneIds[1]];
+
+                    // Merge bone weights and remove 0 weight bone, if necessary
+                    if (boneMapping.boneIds[1] == 0 ||
+                        pFoliageBoneMapping[vertexIndex].boneIds[0] == pFoliageBoneMapping[vertexIndex].boneIds[1])
+                    {
+                        pFoliageBoneMapping[vertexIndex].weights[0] = s_maxSkinningWeight;
+                        pFoliageBoneMapping[vertexIndex].weights[1] = 0;
+                        pFoliageBoneMapping[vertexIndex].boneIds[1] = 0;
+                    }
+                    else
+                    {
+                        pFoliageBoneMapping[vertexIndex].weights[1] = Util::getMax((uint)boneMapping.weights[1], (uint)1);
+                    }
+
+                    //Fix up weight, make sure total weight is s_maxSkinningWeight
+                    if (pFoliageBoneMapping[vertexIndex].weights[1] + pFoliageBoneMapping[vertexIndex].weights[0] != s_maxSkinningWeight)
+                    {
+                        pFoliageBoneMapping[vertexIndex].weights[0] = s_maxSkinningWeight - pFoliageBoneMapping[vertexIndex].weights[1];
+                    }
+                }
+            }
+        }
+    }
+}
+
+void CStaticObjectCompiler::CreateSpinesFromSkinningData(SSpineRC** pSpines, int& spineCount, const CSkinningInfo* pSkinningInfo, const CMesh &mesh, CContentCGF* pCGF)
+{
+    SSpineRC spine;
+    Vec3* pBonePositions = nullptr;
+    float spineLength = 0.0f;
+    const char* pBoneName = nullptr;
+    const char* underscore = nullptr;
+    __int64 prefixLen = 0;
+
+    auto completeNewSpine = [&]() {
+        if (spine.nVtx > 2)
+        {
+            // Copy bone positions
+            spine.pVtx = new Vec3[spine.nVtx];
+            for (int i = 0; i < spine.nVtx; i++)
+            {
+                spine.pVtx[i] = pBonePositions[i];
+            }
+            spine.pSegDim = new Vec4[spine.nVtx];
+            memset(spine.pSegDim, 0, sizeof(Vec4) * spine.nVtx);
+
+            // Increase spine capacity
+            if ((spineCount & 7) == 0)
+            {
+                SSpineRC* const pSpinesTemp = *pSpines;
+                *pSpines = new SSpineRC[spineCount + 8];
+                if (pSpinesTemp)
+                {
+                    memcpy(*pSpines, pSpinesTemp, spineCount * sizeof(SSpineRC));
+                    // The allocated memory will be owned by new array so set them to nullptr to prevent them from deleted
+                    for (int spineIndex = 0; spineIndex < spineCount; spineIndex++)
+                    {
+                        pSpinesTemp[spineIndex].pVtx = nullptr;
+                        pSpinesTemp[spineIndex].pSegDim = nullptr;
+                        pSpinesTemp[spineIndex].pBoneIDs = nullptr;
+                        pSpinesTemp[spineIndex].pStiffness = nullptr;
+                        pSpinesTemp[spineIndex].pDamping = nullptr;
+                        pSpinesTemp[spineIndex].pThickness = nullptr;
+                    }
+                    delete[] pSpinesTemp;
+                }
+            }
+            spine.len = spineLength;
+            // Add new spine
+            (*pSpines)[spineCount++] = spine;
+        }
+
+        // Initialize new spine
+        spine.nVtx = 0;
+        spine.pVtx = nullptr;
+        spineLength = 0.0f;
+        spine.pBoneIDs = nullptr;
+        spine.pSegDim = nullptr;
+
+        //Per bone UDP for stiffness, damping and thickness for touch bending vegetation
+        spine.pStiffness = nullptr;
+        spine.pDamping = nullptr;
+        spine.pThickness = nullptr;
+
+        spine.iAttachSpine = -1;
+        spine.iAttachSeg = -1;
+        free(pBonePositions);
+        pBonePositions = nullptr;
+    };
+
+    for (int boneID = 0; boneID < pSkinningInfo->m_arrBonesDesc.size(); boneID++)
+    {
+        //If end of current, finish current spine and start a new one
+        if (pBoneName == nullptr || prefixLen == 0 || strncmp(pSkinningInfo->m_arrBonesDesc[boneID].m_arrBoneName, pBoneName, prefixLen) != 0)
+        {
+            completeNewSpine();
+
+            // Find new bone name prefix
+            pBoneName = pSkinningInfo->m_arrBonesDesc[boneID].m_arrBoneName;
+            underscore = strchr(pBoneName, '_');
+            // If the bone name doesn't have '_', skip it
+            if (underscore == nullptr)
+            {
+                continue;
+            }
+            prefixLen = underscore - pBoneName;
+        }
+
+        // Add bone and position
+        if ((spine.nVtx & 15) == 0)
+        {
+            pBonePositions = (Vec3*)realloc(pBonePositions, (spine.nVtx + 16) * sizeof(Vec3));
+
+            int* tempIntPtr = spine.pBoneIDs;
+            spine.pBoneIDs = new int[spine.nVtx + 16];
+            memcpy(spine.pBoneIDs, tempIntPtr, sizeof(int)*spine.nVtx);
+            delete[] tempIntPtr;
+
+            float* pTempPtr = spine.pStiffness;
+            spine.pStiffness = new float[spine.nVtx + 16];
+            memcpy(spine.pStiffness, pTempPtr, sizeof(float)*spine.nVtx);
+            delete[] pTempPtr;
+
+            pTempPtr = spine.pDamping;
+            spine.pDamping = new float[spine.nVtx + 16];
+            memcpy(spine.pDamping, pTempPtr, sizeof(float)*spine.nVtx);
+            delete[] pTempPtr;
+
+            pTempPtr = spine.pThickness;
+            spine.pThickness = new float[spine.nVtx + 16];
+            memcpy(spine.pThickness, pTempPtr, sizeof(float)*spine.nVtx);
+            delete[] pTempPtr;
+
+        }
+
+        // Make sure we have this node
+        int i;
+        for (i = pCGF->GetNodeCount() - 1; i >= 0 && _stricmp((const char*)pCGF->GetNode(i)->name, pSkinningInfo->m_arrBonesDesc[boneID].m_arrBoneName); i--)
+        {
+            ;
+        }
+
+        if (i >= 0)
+        {
+            pBonePositions[spine.nVtx] = pSkinningInfo->m_arrBonesDesc[boneID].m_DefaultB2W.GetColumn3();
+            spineLength += (pBonePositions[spine.nVtx] - pBonePositions[Util::getMax(0, spine.nVtx - 2)]).len();
+            spine.pBoneIDs[spine.nVtx] = boneID;
+
+            // Save per-bone stiffness, damping and thickness
+            string nodeProperties = pCGF->GetNode(i)->properties;
+            if (PropertyHelpers::HasProperty(nodeProperties, NODE_PROPERTY_STIFFNESS))
+            {
+                string stiffnessString;
+                PropertyHelpers::GetPropertyValue(nodeProperties, NODE_PROPERTY_STIFFNESS, stiffnessString);
+                spine.pStiffness[spine.nVtx] = AzFramework::StringFunc::ToFloat(stiffnessString.c_str());
+            }
+            else
+            {
+                if (spine.nVtx == 0)
+                {
+                    spine.pStiffness[spine.nVtx] = SSpineRC::GetDefaultStiffness();
+                }
+                else
+                {
+                    spine.pStiffness[spine.nVtx] = spine.pStiffness[spine.nVtx - 1];
+                }
+            }
+            if (PropertyHelpers::HasProperty(nodeProperties, NODE_PROPERTY_DAMPING))
+            {
+                string dampingString;
+                PropertyHelpers::GetPropertyValue(nodeProperties, NODE_PROPERTY_DAMPING, dampingString);
+                spine.pDamping[spine.nVtx] = AzFramework::StringFunc::ToFloat(dampingString.c_str());
+            }
+            else
+            {
+                if (spine.nVtx == 0)
+                {
+                    spine.pDamping[spine.nVtx] = SSpineRC::GetDefaultDamping();
+                }
+                else
+                {
+                    spine.pDamping[spine.nVtx] = spine.pDamping[spine.nVtx - 1];
+                }
+            }
+            if (PropertyHelpers::HasProperty(nodeProperties, NODE_PROPERTY_THICKNESS))
+            {
+                string thicknessString;
+                PropertyHelpers::GetPropertyValue(nodeProperties, NODE_PROPERTY_THICKNESS, thicknessString);
+                spine.pThickness[spine.nVtx] = AzFramework::StringFunc::ToFloat(thicknessString.c_str());
+            }
+            else
+            {
+                if (spine.nVtx == 0)
+                {
+                    spine.pThickness[spine.nVtx] = SSpineRC::GetDefaultThickness();
+                }
+                else
+                {
+                    spine.pThickness[spine.nVtx] = spine.pThickness[spine.nVtx - 1];
+                }
+            }
+
+            // Save parent bone ID for the first bone so we can attach the new spine to its parent later
+            if (spine.nVtx == 0)
+            {
+                for (int i = 0; i < pSkinningInfo->m_arrBoneEntities.size(); i++)
+                {
+                    if (pSkinningInfo->m_arrBoneEntities[i].BoneID == boneID)
+                    {
+                        spine.parentBoneID = pSkinningInfo->m_arrBoneEntities[i].ParentID;
+                        break;
+                    }
+                }
+            }
+            spine.nVtx++;
+        }
+    }
+
+    completeNewSpine();
+
+    //Connect spines to their parent 
+    ConnectSpines(*pSpines, pSkinningInfo, spineCount);
+
+    SetupPhysData(*pSpines, spineCount, pSkinningInfo, mesh);
+}
+
+void CStaticObjectCompiler::ConnectSpines(SSpineRC* pSpine, const CSkinningInfo* pSkinningInfo, int spineCount)
+{
+    bool foundParentSpine = false;
+    for (int i = 0; i < spineCount; i++)
+    {
+        if (pSpine[i].parentBoneID >= 0)
+        {
+            foundParentSpine = false;
+            for (int j = 0; j < spineCount; j++)
+            {
+                if (i != j)
+                {
+                    for (int boneIndex = 0; boneIndex < pSpine[j].nVtx; boneIndex++)
+                    {
+                        if (pSpine[j].pBoneIDs[boneIndex] == pSpine[i].parentBoneID)
+                        {
+                            pSpine[i].iAttachSpine = j;
+                            pSpine[i].iAttachSeg = boneIndex;
+                            foundParentSpine = true;
+                            break;
+                        }
+                    }
+                }
+                if (foundParentSpine)
+                {
+                    break;
+                }
+            }
+        }
+    }
+}
+
+// This is to keep the foliage data consistent with old one generated by using locators and UV mapping. Not sure if this is really needed for the new pipeline. 
+// The SegDim and average normal seems used by breakable branches and for rope simulation hit detection. Further investigation needed.
+void CStaticObjectCompiler::SetupPhysData(SSpineRC* pSpines, int spineCount, const CSkinningInfo* pSkinningInfo, const CMesh& mesh)
+{
+    // Calculate average normal for branch triangles
+    bool foundTriangle = false;
+    int i;
+    uint* const pUsedVertices = new uint[i = ((mesh.GetVertexCount() - 1) >> 5) + 1];
+    memset(pUsedVertices, 0, i * sizeof(int));
+    std::map<int, std::vector<int>> spineVertexMap;
+
+    for (int spineIndex = 0; spineIndex < spineCount; spineIndex++)
+    {
+        int spineBoneCount = pSpines[spineIndex].nVtx;
+        Vec3 spintFaceNormalAverage(0.0f);
+        spineVertexMap[spineIndex] = std::vector<int>();
+
+        for (int vertexIndex = 0; vertexIndex < mesh.GetVertexCount(); vertexIndex++)
+        {
+            if (!check_mask(pUsedVertices, vertexIndex))
+            {
+                foundTriangle = false;
+                SMeshBoneMapping_uint16 meshBoneMapping = mesh.m_pBoneMapping[vertexIndex];
+                for (int boneIndex = 0; boneIndex < spineBoneCount; boneIndex++)
+                {
+                    if (meshBoneMapping.boneIds[0] == pSpines[spineIndex].pBoneIDs[boneIndex] ||
+                        meshBoneMapping.boneIds[1] == pSpines[spineIndex].pBoneIDs[boneIndex])
+                    {
+                        set_mask(pUsedVertices, vertexIndex);
+                        foundTriangle = true;
+                        break;
+                    }
+                }
+
+                if (foundTriangle == false)
+                {
+                    continue;
+                }
+
+                //Found a face belong to this spine, calculate its normal and add to spine face normal
+                spineVertexMap[spineIndex].push_back(vertexIndex);
+                spintFaceNormalAverage += mesh.m_pNorms[vertexIndex].GetN() * float(sgnnz(mesh.m_pNorms[vertexIndex].GetN().z));
+            }
+        }
+
+        pSpines[spineIndex].navg = spintFaceNormalAverage.normalize();
+    }
+
+    // Set SegDim for all bones
+    for (int spineIndex = 0; spineIndex < spineCount; spineIndex++)
+    {
+        SSpineRC& pSpine = pSpines[spineIndex];
+        for (int boneIndex = 0; boneIndex < pSpine.nVtx - 1; boneIndex++)
+        {
+            const Vec3 edge = pSpine.pVtx[boneIndex + 1] - pSpine.pVtx[boneIndex];
+            Vec3 n = edge;
+            const Vec3 axisx = (n ^ pSpine.navg).normalized();
+            const Vec3 axisy = axisx ^ n;
+            if (boneIndex < pSpine.nVtx - 2)
+            {
+                n += pSpine.pVtx[boneIndex + 2] - pSpine.pVtx[boneIndex + 1];
+            }
+
+            for (std::vector<int>::iterator iter = spineVertexMap[spineIndex].begin(); iter != spineVertexMap[spineIndex].end(); iter++)
+            {
+
+                Vec3 vertexToBone = mesh.m_pPositions[*iter].sub(pSpine.pVtx[boneIndex]);
+                float t = vertexToBone * axisx;
+                pSpine.pSegDim[boneIndex].x = Util::getMin(t, pSpine.pSegDim[boneIndex].x);
+                pSpine.pSegDim[boneIndex].y = Util::getMax(t, pSpine.pSegDim[boneIndex].y);
+                t = vertexToBone * axisy;
+                pSpine.pSegDim[boneIndex].z = Util::getMin(t, pSpine.pSegDim[boneIndex].z);
+                pSpine.pSegDim[boneIndex].w = Util::getMax(t, pSpine.pSegDim[boneIndex].w);
+            }
+        }
+    }
+}
+

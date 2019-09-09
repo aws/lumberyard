@@ -26,10 +26,13 @@
 #include <AzFramework/Entity/EntityContextBus.h>
 
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
+#include <AzToolsFramework/Entity/EditorEntityContextBus.h>
 #include <AzToolsFramework/Slice/SliceTransaction.h>
+#include <AzToolsFramework/Slice/SliceUtilities.h>
 #include <AzToolsFramework/UI/UICore/ProgressShield.hxx>
 #include <AzToolsFramework/SourceControl/SourceControlAPI.h>
 #include <AzToolsFramework/API/EditorAssetSystemAPI.h>
+#include <AzToolsFramework/Undo/UndoSystem.h>
 
 namespace AzToolsFramework
 {
@@ -39,21 +42,146 @@ namespace AzToolsFramework
         namespace Internal
         {
             AZStd::string MakeTemporaryFilePathForSave(const char* fullPath);
-            SliceTransaction::Result SaveSliceToDisk(const SliceTransaction::SliceAssetPtr& asset, const char* targetPath, AZ::SerializeContext* serializeContext);
+            SliceTransaction::Result SaveSliceToDisk(const char* targetPath, AZStd::vector<AZ::u8>& sliceAssetEntityMemoryBuffer, AZ::SerializeContext* serializeContext = nullptr);
+
+            class SaveSliceToDiskCommand
+                : public UndoSystem::URSequencePoint
+            {
+                using ByteBuffer = AZStd::vector<AZ::u8>;
+            public:
+                AZ_RTTI(SaveSliceToDiskCommand, "{F036A88D-7487-4BE9-BD2C-41B80B86ACC5}", UndoSystem::URSequencePoint);
+                AZ_CLASS_ALLOCATOR(SaveSliceToDiskCommand, AZ::SystemAllocator, 0);
+
+                SaveSliceToDiskCommand(const char* friendlyName = nullptr)
+                    : UndoSystem::URSequencePoint(friendlyName)
+                    , m_isNewAsset(false)
+                    , m_redoResult(AZ::Failure(AZStd::string("No redo run.")))
+                    , m_hasEntityAdds(false)
+                {
+                }
+
+                ~SaveSliceToDiskCommand() override
+                {
+                }
+
+                void Capture(const SliceTransaction::SliceAssetPtr& before, const SliceTransaction::SliceAssetPtr& after, const char* sliceAssetPath, bool hasEntityAdds)
+                {
+                    AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
+
+                    m_sliceAssetPath = sliceAssetPath;
+                    m_isNewAsset = !before.GetId().IsValid();
+                    m_hasEntityAdds = hasEntityAdds;
+
+                    AZ::SerializeContext* serializeContext = nullptr;
+                    AZ::ComponentApplicationBus::BroadcastResult(serializeContext, &AZ::ComponentApplicationBus::Events::GetSerializeContext);
+                    AZ_Assert(serializeContext, "Failed to retrieve serialize context.");
+
+                    if (!m_isNewAsset)
+                    {
+                        AZ_PROFILE_SCOPE(AZ::Debug::ProfileCategory::AzToolsFramework, "SliceUtilities::Internal::SaveSliceToDiskCommand::Capture:SaveBefore");
+                        AZ::SliceAsset* sliceBefore = before.Get();
+                        AZ::Entity* sliceEntityBefore = sliceBefore->GetEntity();
+                        AZ::IO::ByteContainerStream<ByteBuffer> beforeStream(&m_sliceAssetBeforeBuffer);
+                        AZ::Utils::SaveObjectToStream(beforeStream, GetSliceStreamFormat(), sliceEntityBefore, serializeContext);
+                    }
+
+                    {
+                        AZ_PROFILE_SCOPE(AZ::Debug::ProfileCategory::AzToolsFramework, "SliceUtilities::Internal::SaveSliceToDiskCommand::Capture:SaveAfter");
+                        AZ::SliceAsset* sliceAfter = after.Get();
+                        AZ::Entity* sliceEntityAfter = sliceAfter->GetEntity();
+                        AZ::IO::ByteContainerStream<ByteBuffer> afterStream(&m_sliceAssetAfterBuffer);
+                        AZ::Utils::SaveObjectToStream(afterStream, GetSliceStreamFormat(), sliceEntityAfter, serializeContext);
+                    }
+                }
+
+                bool Changed() const override
+                {
+                    // If the undo/redo buffer becomes full of no-op slice pushes, then
+                    // this should be implemented. For now, it's assumed that the slice system
+                    // will prevent users from creating no-op slice pushes in the first place.
+                    return true;
+                }
+
+                SliceTransaction::Result GetRedoResult()
+                {
+                    return m_redoResult;
+                }
+
+                void Redo() override
+                {
+                    AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
+                    m_redoResult = Internal::SaveSliceToDisk(m_sliceAssetPath.c_str(), m_sliceAssetAfterBuffer);
+
+                    // Current limitation: Slice push/slice create can be undone and redone, but we prevent from doing further Redo operations when
+                    // new entities have been added as part of a push -
+                    // Example where it breaks:
+                    // - Add Entity5 to slice
+                    // - All instances of slice get reloaded, "there's a new Entity5 - generate new random ID for it in this instance (say ID = 500)"
+                    // - Further actions done on the new entities (so we serialize data for Entity 500)
+                    // - Now Undo the slice push and Redo it. All instances of slice get reloaded, and new entity added gets NEW random id (say ID = 600)
+                    // - So any further saved Redo actions that acted on Entity 500 are wrong. 
+                    // We COULD expect all Undo/redo actions that act on entities to be able to handle IDs having remapping in slices, but that puts the 
+                    // burden of the nondeterminism of the slice system on everyone else. For now we just prevent further Redo operations, until
+                    // deterministic slice instance entity ids gets implemented or another solution. We implement this by clearing the redo stack of both
+                    // legacy undo system and AZ undo system after Redoing a slice save.
+                    if (m_isNewAsset || m_hasEntityAdds)
+                    {
+                        EditorRequestBus::Broadcast(&EditorRequestBus::Events::ClearRedoStack);
+                    }
+                }
+
+                void Undo() override
+                {
+                    AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
+                    if (m_isNewAsset)
+                    {
+                        // New asset means we didn't have an existing asset, so we should instead remove the newly created asset as our undo
+                        AZ::IO::FileIOBase* fileIO = AZ::IO::FileIOBase::GetInstance();
+                        AZ_Assert(fileIO, "File IO is not initialized.");
+
+                        if (fileIO->Exists(m_sliceAssetPath.c_str()))
+                        {
+                            fileIO->Remove(m_sliceAssetPath.c_str());
+                        }
+                    }
+                    else
+                    {
+                        Internal::SaveSliceToDisk(m_sliceAssetPath.c_str(), m_sliceAssetBeforeBuffer);
+                    }
+                }
+
+            protected:
+
+                bool m_isNewAsset;                          ///< True if this SaveSliceToDisk command is creating a new asset (meaning Undo will remove the created file)
+                AZStd::string m_sliceAssetPath;
+                ByteBuffer m_sliceAssetBeforeBuffer;
+                ByteBuffer m_sliceAssetAfterBuffer;
+                SliceTransaction::Result m_redoResult;
+                bool m_hasEntityAdds;                       ///< True if the Redo of this action adds entities to a slice
+
+                // DISABLE COPY
+                SaveSliceToDiskCommand(const SaveSliceToDiskCommand& other) = delete;
+                const SaveSliceToDiskCommand& operator= (const SaveSliceToDiskCommand& other) = delete;
+            };
 
         } // namespace Internal
 
         //=========================================================================
         SliceTransaction::TransactionPtr SliceTransaction::BeginNewSlice(const char* name,
             AZ::SerializeContext* serializeContext,
-            AZ::u32 /*sliceCreationFlags*/)
+            AZ::u32 sliceCreationFlags)
         {
             AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
 
             if (!serializeContext)
             {
                 AZ::ComponentApplicationBus::BroadcastResult(serializeContext, &AZ::ComponentApplicationBus::Events::GetSerializeContext);
-                AZ_Assert(serializeContext, "Failed to retrieve serialize context.");
+
+                if (!serializeContext)
+                {
+                    AZ_Assert(false, "Failed to retrieve serialize context.");
+                    return TransactionPtr();
+                }
             }
 
             TransactionPtr newTransaction = aznew SliceTransaction(serializeContext);
@@ -63,6 +191,7 @@ namespace AzToolsFramework
             // Create new empty slice asset.
             newTransaction->m_targetAsset = AZ::Data::AssetManager::Instance().CreateAsset<AZ::SliceAsset>(AZ::Data::AssetId(AZ::Uuid::CreateRandom()));
             AZ::SliceComponent* component = entity->CreateComponent<AZ::SliceComponent>();
+            component->SetIsDynamic(sliceCreationFlags & CreateAsDynamic);
             newTransaction->m_targetAsset.Get()->SetData(entity, component);
 
             newTransaction->m_transactionType = TransactionType::NewSlice;
@@ -70,6 +199,36 @@ namespace AzToolsFramework
             return newTransaction;
         }
 
+        SliceTransaction::TransactionPtr SliceTransaction::BeginSliceOverwrite(const SliceAssetPtr& asset,  const AZ::SliceComponent& overwriteComponent, AZ::SerializeContext* serializeContext)
+        {
+            AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
+
+            if (!serializeContext)
+            {
+                AZ::ComponentApplicationBus::BroadcastResult(serializeContext, &AZ::ComponentApplicationBus::Events::GetSerializeContext);
+                AZ_Assert(serializeContext, "Failed to retrieve serialize context");
+            }
+
+            if (!asset || !asset.Get()->GetEntity() || !asset.Get()->GetComponent())
+            {
+                AZ_Error("SliceTransaction", false, "Target asset is not loaded. Ensure the asset is loaded before attempting a push transaction.");
+                return TransactionPtr();
+            }
+
+            AZ::SliceAssetSerializationNotificationBus::Broadcast(&AZ::SliceAssetSerializationNotificationBus::Events::OnBeginSlicePush, asset.Get()->GetId());
+            TransactionPtr newTransaction = aznew SliceTransaction(serializeContext);
+
+            AZ::Entity* entity = aznew AZ::Entity(asset.Get()->GetEntity()->GetId(), asset.Get()->GetEntity()->GetName().c_str());
+
+            newTransaction->m_originalTargetAsset = asset;
+            newTransaction->m_targetAsset = aznew AZ::SliceAsset(asset.GetId());
+            newTransaction->m_transactionType = TransactionType::OverwriteSlice;
+            entity->AddComponent(overwriteComponent.Clone(*serializeContext));
+
+            newTransaction->m_targetAsset.Get()->SetData(entity, entity->FindComponent<AZ::SliceComponent>());
+
+            return newTransaction;
+        }
         //=========================================================================
         SliceTransaction::TransactionPtr SliceTransaction::BeginSlicePush(const SliceAssetPtr& asset,
             AZ::SerializeContext* serializeContext,
@@ -83,17 +242,19 @@ namespace AzToolsFramework
                 AZ_Assert(serializeContext, "Failed to retrieve serialize context.");
             }
 
-            if (!asset)
+            if (!asset || !asset.Get()->GetEntity() || !asset.Get()->GetComponent())
             {
                 AZ_Error("SliceTransaction", false, "Target asset is not loaded. Ensure the asset is loaded before attempting a push transaction.");
                 return TransactionPtr();
             }
 
+            AZ::SliceAssetSerializationNotificationBus::Broadcast(&AZ::SliceAssetSerializationNotificationBus::Events::OnBeginSlicePush, asset.Get()->GetId());
             TransactionPtr newTransaction = aznew SliceTransaction(serializeContext);
 
             // Clone the asset in-memory for manipulation.
-            AZ::Entity* entity = aznew AZ::Entity();
+            AZ::Entity* entity = aznew AZ::Entity(asset.Get()->GetEntity()->GetId(), asset.Get()->GetEntity()->GetName().c_str());
             entity->AddComponent(asset.Get()->GetComponent()->Clone(*serializeContext));
+            newTransaction->m_originalTargetAsset = asset;
             newTransaction->m_targetAsset = aznew AZ::SliceAsset(asset.GetId());
             newTransaction->m_targetAsset.Get()->SetData(entity, entity->FindComponent<AZ::SliceComponent>());
 
@@ -189,7 +350,7 @@ namespace AzToolsFramework
                 return AZ::Failure(AZStd::string::format("AddEntity() is only valid during during a transaction. This transaction may've already been committed."));
             }
 
-            AZ::SliceComponent::SliceInstanceAddress sliceAddress(nullptr, nullptr);
+            AZ::SliceComponent::SliceInstanceAddress sliceAddress;
             AzFramework::EntityIdContextQueryBus::EventResult(sliceAddress, entity->GetId(), &AzFramework::EntityIdContextQueryBus::Events::GetOwningSlice);
 
             // When adding entities to existing slices, we need to resolve to the asset's entity Ids.
@@ -226,7 +387,7 @@ namespace AzToolsFramework
                 }
             }
 
-            if (sliceAddress.first && !(addEntityFlags & SliceAddEntityFlags::DiscardSliceAncestry))
+            if (sliceAddress.IsValid() && !(addEntityFlags & SliceAddEntityFlags::DiscardSliceAncestry) && m_transactionType != TransactionType::OverwriteSlice)
             {
                 // Add entity with its slice ancestry
                 auto addedSliceInstanceIt = m_addedSliceInstances.find(sliceAddress);
@@ -238,7 +399,7 @@ namespace AzToolsFramework
                     instanceToPush.m_instanceAddress = sliceAddress;
                     instanceToPush.m_entitiesToInclude.insert(entity->GetId());
 
-                    for (const auto& mapPair : sliceAddress.second->GetEntityIdMap())
+                    for (const auto& mapPair : sliceAddress.GetInstance()->GetEntityIdMap())
                     {
                         // We keep the entity ids in the source instances, so our live Id will match the one we write to the asset.
                         m_liveToAssetIdMap[mapPair.second] = mapPair.second;
@@ -265,9 +426,12 @@ namespace AzToolsFramework
                 AZ::Entity* clonedEntity = m_serializeContext->CloneObject(entity);
                 clonedEntity->SetId(AZ::Entity::MakeId());
                 m_liveToAssetIdMap[entity->GetId()] = clonedEntity->GetId();
+                m_addedEntityIdRemaps[entity->GetId()] = clonedEntity->GetId();
 
                 m_targetAsset.Get()->GetComponent()->AddEntity(clonedEntity);
             }
+
+            m_hasEntityAdds = true;
 
             return AZ::Success();
         }
@@ -283,7 +447,7 @@ namespace AzToolsFramework
         //=========================================================================
         SliceTransaction::Result SliceTransaction::AddSliceInstance(const AZ::SliceComponent::SliceInstanceAddress& sliceAddress)
         {
-            if (!sliceAddress.first)
+            if (!sliceAddress.IsValid())
             {
                 return AZ::Failure(AZStd::string::format("Invalid slice instance address passed to AddSliceInstance()."));
             }
@@ -316,11 +480,13 @@ namespace AzToolsFramework
                 }
             }
 
-            for (const auto& mapPair : sliceAddress.second->GetEntityIdMap())
+            for (const auto& mapPair : sliceAddress.GetInstance()->GetEntityIdMap())
             {
                 // We keep the entity ids in the source instances, so our live Id will match the one we write to the asset.
                 m_liveToAssetIdMap[mapPair.second] = mapPair.second;
             }
+
+            m_hasEntityAdds = true;
 
             return AZ::Success();
         }
@@ -373,7 +539,7 @@ namespace AzToolsFramework
                 using ApplicationBus = AzToolsFramework::ToolsApplicationRequestBus;
 
                 bool checkedOutSuccessfully = false;
-                ApplicationBus::BroadcastResult(checkedOutSuccessfully, &ApplicationBus::Events::RequestEditForFileBlocking,
+                ApplicationBus::BroadcastResult(checkedOutSuccessfully, &ApplicationBus::Events::CheckSourceControlConnectionAndRequestEditForFileBlocking,
                     fullPath, "Checking out for edit...", ApplicationBus::Events::RequestEditProgressCallback());
 
                 if (!checkedOutSuccessfully)
@@ -386,6 +552,7 @@ namespace AzToolsFramework
             switch (m_transactionType)
             {
             case TransactionType::NewSlice:
+            case TransactionType::OverwriteSlice:
             {
                 // No additional work required; slice asset is populated.
             }
@@ -455,7 +622,7 @@ namespace AzToolsFramework
                         {
                             // Element exists in the source, but not the target. We want to add it to the target.
                             elementAddress = entityToPush.m_fieldNodeAddress;
-							
+
                             // Recurse up trying to find the first matching source/target node
                             // This is necessary anytime we're trying to push a node that requires more than just a leaf node be added
                             while (sourceNode && !targetNode)
@@ -507,7 +674,24 @@ namespace AzToolsFramework
                 return AZ::Failure(AZStd::string::format("Pre-save callback reported failure:\n%s", result.TakeError().c_str()));
             }
 
-            result = Internal::SaveSliceToDisk(finalAsset, fullPath, m_serializeContext);
+            // Save slice to disk
+            if (sliceCommitFlags & SliceCommitFlags::DisableUndoCapture)
+            {
+                AZStd::vector<AZ::u8> sliceBuffer;
+                AZ::IO::ByteContainerStream<AZStd::vector<AZ::u8> > sliceStream(&sliceBuffer);
+                AZ::Utils::SaveObjectToStream(sliceStream, GetSliceStreamFormat(), finalAsset.Get()->GetEntity());
+                result = Internal::SaveSliceToDisk(fullPath, sliceBuffer, m_serializeContext);
+            }
+            else
+            {
+                ScopedUndoBatch undoBatch("SliceTransaction SaveSliceToDisk");
+
+                Internal::SaveSliceToDiskCommand* saveCommand = aznew Internal::SaveSliceToDiskCommand("SaveSliceToDisk");
+                saveCommand->SetParent(undoBatch.GetUndoBatch());
+                saveCommand->Capture(m_originalTargetAsset, finalAsset, fullPath, m_hasEntityAdds);
+                saveCommand->RunRedo();
+                result = saveCommand->GetRedoResult();
+            }
             if (!result)
             {
                 return AZ::Failure(AZStd::string::format("Slice asset could not be saved to disk.\n\nAsset path: %s \n\nDetails: %s", fullPath, result.TakeError().c_str()));
@@ -518,9 +702,12 @@ namespace AzToolsFramework
                 postSaveCallback(TransactionPtr(this), fullPath, finalAsset);
             }
 
+
+            UpdateEntityReferences();
+
+            AZ::SliceAssetSerializationNotificationBus::Broadcast(&AZ::SliceAssetSerializationNotificationBus::Events::OnEndSlicePush, m_originalTargetAsset.Get()->GetId(), finalAsset.Get()->GetId());
             // Reset the transaction.
             Reset();
-
             return AZ::Success();
         }
 
@@ -586,11 +773,11 @@ namespace AzToolsFramework
             for (auto& addedSliceInstanceIt : m_addedSliceInstances)
             {
                 SliceTransaction::SliceInstanceToPush& instanceToPush = addedSliceInstanceIt.second;
-                instanceToPush.m_instanceAddress = m_targetAsset.Get()->GetComponent()->AddSliceInstance(instanceToPush.m_instanceAddress.first, instanceToPush.m_instanceAddress.second);
+                instanceToPush.m_instanceAddress = m_targetAsset.Get()->GetComponent()->AddSliceInstance(instanceToPush.m_instanceAddress.GetReference(), instanceToPush.m_instanceAddress.GetInstance());
             }
             
             // Clone the asset.
-            AZ::Entity* finalSliceEntity = aznew AZ::Entity();
+            AZ::Entity* finalSliceEntity = aznew AZ::Entity(m_targetAsset.Get()->GetEntity()->GetId(), m_targetAsset.Get()->GetEntity()->GetName().c_str());
             AZ::SliceComponent::SliceInstanceToSliceInstanceMap sourceToCloneSliceInstanceMap;
             finalSliceEntity->AddComponent(m_targetAsset.Get()->GetComponent()->Clone(*m_serializeContext, &sourceToCloneSliceInstanceMap));
             AZ::Data::Asset<AZ::SliceAsset> finalAsset = AZ::Data::AssetManager::Instance().CreateAsset<AZ::SliceAsset>(AZ::Data::AssetId(AZ::Uuid::CreateRandom()));
@@ -604,7 +791,7 @@ namespace AzToolsFramework
                 if (!instanceToPush.m_includeEntireInstance)
                 {
                     AZ::SliceComponent::SliceInstanceAddress& finalAssetSliceInstance = sourceToCloneSliceInstanceMap[instanceToPush.m_instanceAddress];
-                    const AZ::SliceComponent::InstantiatedContainer* finalAssetInstantiatedContainer = finalAssetSliceInstance.second->GetInstantiated();
+                    const AZ::SliceComponent::InstantiatedContainer* finalAssetInstantiatedContainer = finalAssetSliceInstance.GetInstance()->GetInstantiated();
                     for (AZ::Entity* finalAssetEntity : finalAssetInstantiatedContainer->m_entities)
                     {
                         AZ::EntityId finalAssetEntityId = finalAssetEntity->GetId();
@@ -629,10 +816,10 @@ namespace AzToolsFramework
             {
                 using namespace AzFramework;
 
-                for (const auto& addedSliceInstanceIt : m_addedSliceInstances)
+                for (auto& addedSliceInstanceIt : m_addedSliceInstances)
                 {
-                    const SliceTransaction::SliceInstanceToPush& instanceToPush = addedSliceInstanceIt.second;
-                    const AZ::SliceComponent::InstantiatedContainer* instantiated = instanceToPush.m_instanceAddress.second->GetInstantiated();
+                    SliceTransaction::SliceInstanceToPush& instanceToPush = addedSliceInstanceIt.second;
+                    const AZ::SliceComponent::InstantiatedContainer* instantiated = instanceToPush.m_instanceAddress.GetInstance()->GetInstantiated();
                     if (instantiated && !instantiated->m_entities.empty())
                     {
                         // Get the entity context owning this entity, and give back the slice instance.
@@ -644,10 +831,17 @@ namespace AzToolsFramework
                             EntityContextRequestBus::EventResult(rootSlice, owningContextId, &EntityContextRequestBus::Events::GetRootSlice);
                             if (rootSlice)
                             {
-                                rootSlice->AddSliceInstance(instanceToPush.m_instanceAddress.first, instanceToPush.m_instanceAddress.second);
+                                rootSlice->AddSliceInstance(instanceToPush.m_instanceAddress.GetReference(), instanceToPush.m_instanceAddress.GetInstance());
+                            }
+                            else
+                            {
+                                AZ_Error("SliceTransaction", false, "Failed to get root slice of context for entity being added, slice instance will be lost.");
                             }
                         }
-
+                        else
+                        {
+                            AZ_Error("SliceTransaction", false, "Failed to get owning context id for entity being added, slice instance will be lost.");
+                        }
                     }
                 }
             }
@@ -703,19 +897,19 @@ namespace AzToolsFramework
             }
 
             // Entity is live entity, and we need to resolve the appropriate ancestor target.
-            AZ::SliceComponent::SliceInstanceAddress instanceAddr(nullptr, nullptr);
+            AZ::SliceComponent::SliceInstanceAddress instanceAddr;
             AzFramework::EntityIdContextQueryBus::EventResult(instanceAddr, entityId, &AzFramework::EntityIdContextQueryBus::Events::GetOwningSlice);
-            if (!instanceAddr.first) // entityId here could be a newly added loose entity, hence doesn't belong to any slice instance.
+            if (!instanceAddr.IsValid()) // entityId here could be a newly added loose entity, hence doesn't belong to any slice instance.
             {   
                 return AZ::EntityId();
             }
 
-            const bool entityIsFromIgnoredSliceInstance = ignoreSliceInstance && ignoreSliceInstance->first && ignoreSliceInstance->first->GetSliceAsset().GetId() == instanceAddr.first->GetSliceAsset().GetId();
+            const bool entityIsFromIgnoredSliceInstance = ignoreSliceInstance && ignoreSliceInstance->IsValid() && ignoreSliceInstance->GetReference()->GetSliceAsset().GetId() == instanceAddr.GetReference()->GetSliceAsset().GetId();
             if (!entityIsFromIgnoredSliceInstance)
             {
                 bool foundTargetAncestor = false;
 
-                const AZ::SliceComponent::EntityList& entitiesInInstance = instanceAddr.second->GetInstantiated()->m_entities;
+                const AZ::SliceComponent::EntityList& entitiesInInstance = instanceAddr.GetInstance()->GetInstantiated()->m_entities;
 
                 // For every entity in the instance, get ancestry, and walk up the chain until we find
                 // the ancestor corresponding to the target asset, building a fully resolved id map along the way.
@@ -723,10 +917,10 @@ namespace AzToolsFramework
                 for (const AZ::Entity* entityInInstance : entitiesInInstance)
                 {
                     ancestors.clear();
-                    instanceAddr.first->GetInstanceEntityAncestry(entityInInstance->GetId(), ancestors, std::numeric_limits<AZ::u32>::max());
+                    instanceAddr.GetReference()->GetInstanceEntityAncestry(entityInInstance->GetId(), ancestors, std::numeric_limits<AZ::u32>::max());
                     for (const AZ::SliceComponent::Ancestor& ancestor : ancestors)
                     {
-                        auto& reverseIdMap = ancestor.m_sliceAddress.second->GetEntityIdToBaseMap();
+                        auto& reverseIdMap = ancestor.m_sliceAddress.GetInstance()->GetEntityIdToBaseMap();
                         auto idIter = liveToAssetIdMap.find(entityInInstance->GetId());
                         if (idIter != liveToAssetIdMap.end())
                         {
@@ -745,7 +939,7 @@ namespace AzToolsFramework
                             }
                         }
 
-                        if (ancestor.m_sliceAddress.first->GetSliceAsset().GetId() == m_targetAsset.GetId())
+                        if (ancestor.m_sliceAddress.GetReference()->GetSliceAsset().GetId() == m_targetAsset.GetId())
                         {
                             // Found the target asset, so we've resolved the final target Id for this entity.
                             foundTargetAncestor = true;
@@ -780,6 +974,7 @@ namespace AzToolsFramework
             m_liveToAssetIdMap.clear();
             m_entitiesToPush.clear();
             m_entitiesToRemove.clear();
+            m_addedEntityIdRemaps.clear();
         }
 
         //=========================================================================
@@ -794,6 +989,68 @@ namespace AzToolsFramework
             if (--m_refCount == 0)
             {
                 delete this;
+            }
+        }
+
+        void SliceTransaction::UpdateEntityReferences()
+        {
+            if (m_addedEntityIdRemaps.size() == 0)
+            {
+                return;
+            }
+
+            AZ::SerializeContext* serializeContext = nullptr;
+            EBUS_EVENT_RESULT(serializeContext, AZ::ComponentApplicationBus, GetSerializeContext);
+
+            // Remap references from any entity to the new slice entities (so that other entities don't get into a broken state due to slice pushes)
+            {
+                AZ_PROFILE_SCOPE(AZ::Debug::ProfileCategory::AzToolsFramework, "SlicePushWidget::UpdateEntityReferences");
+                AZ::SliceComponent* editorRootSlice;
+                AzToolsFramework::EditorEntityContextRequestBus::BroadcastResult(editorRootSlice, &AzToolsFramework::EditorEntityContextRequestBus::Events::GetEditorRootSlice);
+                AZ_Assert(editorRootSlice != nullptr, "Editor root slice not found!");
+
+                AZ::SliceComponent::EntityList editorRootSliceEntities;
+                editorRootSlice->GetEntities(editorRootSliceEntities);
+
+                for (AZ::Entity* entity : editorRootSliceEntities)
+                {
+                    bool needsReferenceUpdates = false;
+
+                    // Deactivating and re-activating an entity is expensive - much more expensive than this check, so we first make sure we need to do
+                    // any remapping before going through the act of remapping
+                    AZ::EntityUtils::EnumerateEntityIds(entity,
+                        [&needsReferenceUpdates, this](const AZ::EntityId& id, bool isEntityId, const AZ::SerializeContext::ClassElement* /*elementData*/) -> void
+                    {
+                        if (!isEntityId && id.IsValid())
+                        {
+                            if (m_addedEntityIdRemaps.find(id) != m_addedEntityIdRemaps.end())
+                            {
+                                needsReferenceUpdates = true;
+                            }
+                        }
+                    }, serializeContext);
+
+                    if (needsReferenceUpdates)
+                    {
+                        entity->Deactivate();
+
+                        AZ::IdUtils::Remapper<AZ::EntityId>::RemapIds(entity,
+                            [this](const AZ::EntityId& originalId, bool /*isEntityId*/, const AZStd::function<AZ::EntityId()>& /*idGenerator*/) -> AZ::EntityId
+                        {
+                            auto remapIterator = m_addedEntityIdRemaps.find(originalId);
+                            if (remapIterator != m_addedEntityIdRemaps.end())
+                            {
+                                return remapIterator->second;
+                            }
+
+                            return originalId;
+                        }, serializeContext, false);
+
+                        entity->Activate();
+
+                        AzToolsFramework::ToolsApplicationRequestBus::Broadcast(&AzToolsFramework::ToolsApplicationRequests::AddDirtyEntity, entity->GetId());
+                    }
+                }
             }
         }
 
@@ -820,19 +1077,17 @@ namespace AzToolsFramework
             }
 
             //=========================================================================
-            SliceTransaction::Result SaveSliceToDisk(const SliceTransaction::SliceAssetPtr& asset, const char* targetPath, AZ::SerializeContext* serializeContext)
+            SliceTransaction::Result SaveSliceToDisk(const char* targetPath, AZStd::vector<AZ::u8>& sliceAssetEntityMemoryBuffer, AZ::SerializeContext* serializeContext)
             {
                 AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
-
-                AZ_Assert(asset.Get(), "Invalid asset provided, or asset is not created.");
 
                 AZ::IO::FileIOBase* fileIO = AZ::IO::FileIOBase::GetInstance();
                 AZ_Assert(fileIO, "File IO is not initialized.");
 
                 if (!serializeContext)
                 {
-                    EBUS_EVENT_RESULT(serializeContext, AZ::ComponentApplicationBus, GetSerializeContext);
-                    AZ_Assert(serializeContext, "Failed to retrieve application serialize context.");
+                    AZ::ComponentApplicationBus::BroadcastResult(serializeContext, &AZ::ComponentApplicationBus::Events::GetSerializeContext);
+                    AZ_Assert(serializeContext, "Failed to retrieve serialize context.");
                 }
 
                 // Write to a temporary location, and later move to the target location.
@@ -841,71 +1096,54 @@ namespace AzToolsFramework
                 AZ::IO::FileIOStream fileStream(tempFilePath.c_str(), AZ::IO::OpenMode::ModeWrite | AZ::IO::OpenMode::ModeBinary);
                 if (fileStream.IsOpen())
                 {
-                    // First save slice asset to memory (in the desired file format)
-                    AZStd::vector<char> memoryBuffer;
-                    AZ::IO::ByteContainerStream<AZStd::vector<char> > memoryStream(&memoryBuffer);
+                    AZ::IO::ByteContainerStream<AZStd::vector<AZ::u8> > memoryStream(&sliceAssetEntityMemoryBuffer);
 
-                    bool savedToMemory;
+                    // Write the in-memory copy to file
+                    bool savedToFile;
                     {
-                        AZ_PROFILE_SCOPE(AZ::Debug::ProfileCategory::AzToolsFramework, "SliceUtilities::Internal::SaveSliceToDisk:SaveToMemoryStream");
-                        savedToMemory = AZ::Utils::SaveObjectToStream(memoryStream, AZ::DataStream::ST_XML, asset.Get()->GetEntity(), serializeContext);
+                        AZ_PROFILE_SCOPE(AZ::Debug::ProfileCategory::AzToolsFramework, "SliceUtilities::Internal::SaveSliceToDisk:SaveToFileStream");
+                        memoryStream.Seek(0, AZ::IO::GenericStream::ST_SEEK_BEGIN);
+                        savedToFile = fileStream.Write(memoryStream.GetLength(), memoryStream.GetData()->data());
                     }
+                    fileStream.Close();
 
-                    if (savedToMemory)
+                    if (savedToFile)
                     {
-                        // Now that we have the desired file written in memory, write the in-memory copy to file (done as two separate steps 
-                        // as an optimization - writing out XML to FileStream directly has significant overhead)
-                        bool savedToFile;
+                        AZ_PROFILE_SCOPE(AZ::Debug::ProfileCategory::AzToolsFramework, "SliceUtilities::Internal::SaveSliceToDisk:TempToTargetFileReplacement");
+
+                        // Copy scratch file to target location.
+                        const bool targetFileExists = fileIO->Exists(targetPath);
+
+                        bool removedTargetFile;
                         {
-                            AZ_PROFILE_SCOPE(AZ::Debug::ProfileCategory::AzToolsFramework, "SliceUtilities::Internal::SaveSliceToDisk:SaveToFileStream");
-                            memoryStream.Seek(0, AZ::IO::GenericStream::ST_SEEK_BEGIN);
-                            savedToFile = fileStream.Write(memoryStream.GetLength(), memoryStream.GetData()->data());
+                            AZ_PROFILE_SCOPE(AZ::Debug::ProfileCategory::AzToolsFramework, "SliceUtilities::Internal::SaveSliceToDisk:TempToTargetFileReplacement:RemoveTarget");
+                            removedTargetFile = fileIO->Remove(targetPath);
                         }
-                        fileStream.Close();
 
-                        if (savedToFile)
+                        if (targetFileExists && !removedTargetFile)
                         {
-                            AZ_PROFILE_SCOPE(AZ::Debug::ProfileCategory::AzToolsFramework, "SliceUtilities::Internal::SaveSliceToDisk:TempToTargetFileReplacement");
-
-                            // Copy scratch file to target location.
-                            const bool targetFileExists = fileIO->Exists(targetPath);
-
-                            bool removedTargetFile;
-                            {
-                                AZ_PROFILE_SCOPE(AZ::Debug::ProfileCategory::AzToolsFramework, "SliceUtilities::Internal::SaveSliceToDisk:TempToTargetFileReplacement:RemoveTarget");
-                                removedTargetFile = fileIO->Remove(targetPath);
-                            }
-
-                            if (targetFileExists && !removedTargetFile)
-                            {
-                                return AZ::Failure(AZStd::string::format("Unable to modify existing target slice file. Please make the slice writeable and try again."));
-                            }
-
-                            {
-                                AZ_PROFILE_SCOPE(AZ::Debug::ProfileCategory::AzToolsFramework, "SliceUtilities::Internal::SaveSliceToDisk:TempToTargetFileReplacement:RenameTempFile");
-                                AZ::IO::Result renameResult = fileIO->Rename(tempFilePath.c_str(), targetPath);
-                                if (!renameResult)
-                                {
-                                    return AZ::Failure(AZStd::string::format("Unable to move temporary slice file \"%s\" to target location.", tempFilePath.c_str()));
-                                }
-                            }
-
-                            // Bump the slice asset up in the asset processor's queue.
-                            {
-                                AZ_PROFILE_SCOPE(AZ::Debug::ProfileCategory::AzToolsFramework, "SliceUtilities::Internal::SaveSliceToDisk:TempToTargetFileReplacement:GetAssetStatus");
-                                EBUS_EVENT(AzFramework::AssetSystemRequestBus, GetAssetStatus, targetPath);
-                            }
-                            return AZ::Success();
+                            return AZ::Failure(AZStd::string::format("Unable to modify existing target slice file. Please make the slice writeable and try again."));
                         }
-                        else
+
                         {
-                            return AZ::Failure(AZStd::string::format("Unable to save slice to a temporary file at location: \"%s\".", tempFilePath.c_str()));
+                            AZ_PROFILE_SCOPE(AZ::Debug::ProfileCategory::AzToolsFramework, "SliceUtilities::Internal::SaveSliceToDisk:TempToTargetFileReplacement:RenameTempFile");
+                            AZ::IO::Result renameResult = fileIO->Rename(tempFilePath.c_str(), targetPath);
+                            if (!renameResult)
+                            {
+                                return AZ::Failure(AZStd::string::format("Unable to move temporary slice file \"%s\" to target location.", tempFilePath.c_str()));
+                            }
                         }
+
+                        // Bump the slice asset up in the asset processor's queue.
+                        {
+                            AZ_PROFILE_SCOPE(AZ::Debug::ProfileCategory::AzToolsFramework, "SliceUtilities::Internal::SaveSliceToDisk:TempToTargetFileReplacement:GetAssetStatus");
+                            EBUS_EVENT(AzFramework::AssetSystemRequestBus, GetAssetStatus, targetPath);
+                        }
+                        return AZ::Success();
                     }
                     else
                     {
-                        fileStream.Close();
-                        return AZ::Failure(AZStd::string::format("Unable to save slice to memory before saving to a temporary file at location: \"%s\".", tempFilePath.c_str()));
+                        return AZ::Failure(AZStd::string::format("Unable to save slice to a temporary file at location: \"%s\".", tempFilePath.c_str()));
                     }
                 }
                 else

@@ -116,7 +116,10 @@ public: // member functions
     virtual AZ::Vector2 GetCellUvSize(int cellIndex) const = 0;
 
     //! Gets the UV coords associated for a given cell in a sprite-sheet.
-    virtual const UiTransformInterface::RectPoints& GetCellUvCoords(int cellIndex) const = 0;
+    virtual UiTransformInterface::RectPoints GetCellUvCoords(int cellIndex) const = 0;
+
+    //! Gets the UV coords associated for a given cell in a sprite-sheet in a way that ignores texture atlases
+    virtual UiTransformInterface::RectPoints GetSourceCellUvCoords(int cellIndex) const = 0;
 
     //! Gets the sliced border info for a given cell within a sprite-sheet.
     //!

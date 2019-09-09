@@ -37,9 +37,6 @@
 #endif
 #include "../Cry3DEngine/Environment/OceanEnvironmentBus.h"
 
-#define MAX_PF_TEXTURES     (32)
-#define MAX_PF_SAMPLERS     (4)
-
 #ifdef WIN64
     #pragma warning(disable: 4244)
 #endif
@@ -52,12 +49,12 @@ CHWShader_D3D::SHWSInstance *CHWShader_D3D::s_pCurInstVS; bool CHWShader_D3D::s_
 CHWShader_D3D::SHWSInstance *CHWShader_D3D::s_pCurInstPS; bool CHWShader_D3D::s_bFirstPS = true;
 
 #if !defined(_RELEASE)
-std::set<uint32_t> CHWShader_D3D::s_ErrorsLogged;
+AZStd::unordered_set<uint32_t, AZStd::hash<uint32_t>, AZStd::equal_to<uint32_t>, AZ::StdLegacyAllocator> CHWShader_D3D::s_ErrorsLogged;
 #endif
 
 int CHWShader_D3D::s_nActivationFailMask = 0;
 
-std::vector<SShaderTechniqueStat> g_SelectedTechs;
+AZStd::vector<SShaderTechniqueStat, AZ::StdLegacyAllocator> g_SelectedTechs;
 
 bool CHWShader_D3D::s_bInitShaders = true;
 
@@ -78,8 +75,8 @@ FXShaderCacheNames CHWShader::m_ShaderCacheList;
 //  Everything in the block should be pulled into its own file once stablized back to mainline.
 #pragma region ShaderConstants
 
-std::vector<SCGTexture> CHWShader_D3D::s_PF_Textures;        // Per-frame textures
-std::vector<STexSamplerRT> CHWShader_D3D::s_PF_Samplers;     // Per-frame samplers
+CHWShader_D3D::SCGTextures CHWShader_D3D::s_PF_Textures;     // Per-frame textures
+CHWShader_D3D::SCGSamplers CHWShader_D3D::s_PF_Samplers;     // Per-frame samplers
 
 namespace
 {
@@ -196,8 +193,8 @@ namespace
 }
 
 DynArray<SCGParamPool> CGParamManager::s_Pools;
-std::vector<SCGParamsGroup> CGParamManager::s_Groups;
-std::vector<uint32, stl::STLGlobalAllocator<uint32> > CGParamManager::s_FreeGroups;
+AZStd::vector<SCGParamsGroup, AZ::StdLegacyAllocator> CGParamManager::s_Groups;
+AZStd::vector<uint32, AZ::StdLegacyAllocator> CGParamManager::s_FreeGroups;
 
 SCGParamPool::SCGParamPool(int nEntries)
     : m_Params(new SCGParam[nEntries], nEntries)
@@ -545,7 +542,13 @@ namespace
         {
             float* pData;
 
+#if AZ_RENDER_TO_TEXTURE_GEM_ENABLED
+            // render to texture uses custom data as a double buffer to prevent flicker
+            // in the terrain texture base
+            if (r->m_pRT->GetThreadList() == 0)
+#else
             if (SRendItem::m_RecurseLevel[r->m_RP.m_nProcessThreadID] <= 0)
+#endif // if AZ_RENDER_TO_TEXTURE_GEM_ENABLED
             {
                 pData = (float*)pRE->GetCustomData();
             }
@@ -1624,14 +1627,39 @@ namespace
             sData[0].f[3] = 1.0f;
             return;
         }
-
-        ColorF contrib;
-        r->GetFogVolumeContribution(pOD->m_FogVolumeContribIdx[rRP.m_nProcessThreadID], contrib);
+        SFogVolumeData fogVolData;
+        ColorF& contrib = fogVolData.fogColor;
+        r->GetFogVolumeContribution(pOD->m_FogVolumeContribIdx[rRP.m_nProcessThreadID], fogVolData);
         // Pre-multiply alpha (saves 1 instruction in pixel shader)
         sData[0].f[0] = contrib.r * (1 - contrib.a);
         sData[0].f[1] = contrib.g * (1 - contrib.a);
         sData[0].f[2] = contrib.b * (1 - contrib.a);
         sData[0].f[3] = contrib.a;
+        // Pass min & max of the aabb and cvar value.
+        sData[1].f[0] = fogVolData.avgAABBox.min.x;
+        sData[1].f[1] = fogVolData.avgAABBox.min.y;
+        sData[1].f[2] = fogVolData.avgAABBox.min.z;
+        static ICVar* pCVarFogVolumeShadingQuality = gEnv->pConsole->GetCVar("e_FogVolumeShadingQuality");
+
+        sData[1].f[3] = (pCVarFogVolumeShadingQuality->GetIVal() && fogVolData.avgAABBox.GetRadius() > 0.001f) ? 1.0f : 0.0f;
+
+        sData[2].f[0] = fogVolData.avgAABBox.max.x;
+        sData[2].f[1] = fogVolData.avgAABBox.max.y;
+        sData[2].f[2] = fogVolData.avgAABBox.max.z;
+        sData[2].f[3] = (fogVolData.avgAABBox.GetRadius() > 0.001f) ? 1.0f : 0.0f;
+
+        sData[3].f[0] = fogVolData.m_heightFallOffBasePoint.x;
+        sData[3].f[1] = fogVolData.m_heightFallOffBasePoint.y;
+        sData[3].f[2] = fogVolData.m_heightFallOffBasePoint.z;
+        sData[3].f[3] = fogVolData.m_densityOffset;
+        
+        sData[4].f[0] = fogVolData.m_heightFallOffDirScaled.x;
+        sData[4].f[1] = fogVolData.m_heightFallOffDirScaled.y;
+        sData[4].f[2] = fogVolData.m_heightFallOffDirScaled.z;
+        sData[4].f[3] = fogVolData.m_globalDensity;
+
+        sData[5].f[0] = Overlap::Point_AABB(r->GetViewParameters().vOrigin, fogVolData.avgAABBox);
+
     }
 
     NO_INLINE void sDLightsInfo(UFloat4* sData)
@@ -1753,7 +1781,6 @@ namespace
         }
 
         CD3D9Renderer* r = gcpRendD3D;
-        PerFrameParameters& PF = r->m_cEF.m_PF;
         SRenderPipeline& rRP = r->m_RP;
         CRenderObject* renderObject = rRP.m_pCurObject;
         CShaderResources* shaderResources = rRP.m_pShaderResources;
@@ -1829,7 +1856,12 @@ namespace
                     if (gcpRendD3D->FX_GetEnabledGmemPath(nullptr))
                     {
                         uint32 stencilRef = CRenderer::CV_r_VisAreaClipLightsPerPixel ? 0 : (rRP.m_RIs[0][0]->nStencRef | BIT_STENCIL_INSIDE_CLIPVOLUME);
-                        stencilRef |= (!(rRP.m_pCurObject->m_ObjFlags & FOB_DYNAMIC_OBJECT) | CRenderer::CV_r_deferredDecalsOnDynamicObjects ? BIT_STENCIL_RESERVED : 0);
+                        // Here we check if an object can receive decals.
+                        bool bObjectAcceptsDecals = !(rRP.m_pCurObject->m_NoDecalReceiver);
+                        if (bObjectAcceptsDecals)
+                        {
+                             stencilRef |= (!(rRP.m_pCurObject->m_ObjFlags & FOB_DYNAMIC_OBJECT) || CRenderer::CV_r_deferredDecalsOnDynamicObjects ? BIT_STENCIL_RESERVED : 0);
+                        }
                         result[0].f[0] = azlossy_caster(stencilRef);
                         result[0].f[1] = 0.0f;
                         result[0].f[2] = 0.0f;
@@ -1976,7 +2008,6 @@ void CHWShader_D3D::UpdatePerInstanceConstants(
     DETAILED_PROFILE_MARKER("UpdatePerInstanceConstants");
 
     CD3D9Renderer* const __restrict r = gcpRendD3D;
-    PerFrameParameters& RESTRICT_REFERENCE PF = r->m_cEF.m_PF;
     SRenderPipeline& RESTRICT_REFERENCE rRP = r->m_RP;
     CRenderObject* const __restrict pObj = rRP.m_pCurObject;
     CShaderResources* shaderResources = rRP.m_pShaderResources;
@@ -2247,8 +2278,8 @@ void CD3D9Renderer::UpdatePerFrameParameters()
 {
     // Per frame - hardcoded/fast - update of commonly used data - feel free to improve this
     int nThreadID = m_RP.m_nFillThreadID;
-    PerFrameParameters& PF = gRenDev->m_cEF.m_PF;
     uint32 nFrameID = gRenDev->m_RP.m_TI[nThreadID].m_nFrameUpdateID;
+    PerFrameParameters& PF = gRenDev->m_RP.m_TI[nThreadID].m_perFrameParameters;
     if (PF.m_FrameID == nFrameID || SRendItem::m_RecurseLevel[nThreadID] > 0)
     {
         return;
@@ -2353,10 +2384,14 @@ void CD3D9Renderer::ForceUpdateGlobalShaderParameters()
 
 void CHWShader_D3D::UpdatePerFrameResourceGroup()
 {
-    mfSetTextures(s_PF_Textures, eHWSC_Pixel);
-    mfSetSamplers_Old(s_PF_Samplers, eHWSC_Pixel);
+    static std::vector<SCGTexture> s_textures;
+    static std::vector<STexSamplerRT> s_samplers;
+    s_textures.assign(s_PF_Textures.begin(), s_PF_Textures.end());
+    s_samplers.assign(s_PF_Samplers.begin(), s_PF_Samplers.end());
+    mfSetTextures(s_textures, eHWSC_Pixel);
+    mfSetSamplers_Old(s_samplers, eHWSC_Pixel);
 
-    const PerFrameParameters& PF = gRenDev->m_cEF.m_PF;
+    const PerFrameParameters& PF = gcpRendD3D->m_RP.m_TI[gcpRendD3D->m_RP.m_nProcessThreadID].m_perFrameParameters;
     CD3D9Renderer* const __restrict rd = gcpRendD3D;
     CDeviceManager& deviceManager = rd->m_DevMan;
     rd->GetGraphicsPipeline().UpdatePerFrameConstantBuffer(PF);
@@ -2963,9 +2998,9 @@ bool CHWShader_D3D::mfSetSamplers_Old(const std::vector<STexSamplerRT>& Samplers
 
         ++i;
 
-        if (tx >= &CTexture::s_ShaderTemplates[0] && tx <= &CTexture::s_ShaderTemplates[EFTT_MAX - 1])
+        if (tx >= &(*CTexture::s_ShaderTemplates)[0] && tx <= &(*CTexture::s_ShaderTemplates)[EFTT_MAX - 1])
         {
-            nTexMaterialSlot = (int)(tx - &CTexture::s_ShaderTemplates[0]);
+            nTexMaterialSlot = (int)(tx - &(*CTexture::s_ShaderTemplates)[0]);
 
             SEfResTexture*      pTextureRes = pSR ? pSR->GetTextureResource(nTexMaterialSlot) : nullptr;
             if (!pTextureRes)
@@ -3328,7 +3363,11 @@ bool CHWShader_D3D::mfSetSamplers_Old(const std::vector<STexSamplerRT>& Samplers
 
                 case TO_WATERVOLUMEREFLMAP:
                 {
+#if AZ_RENDER_TO_TEXTURE_GEM_ENABLED
+                    const uint32 nCurrWaterVolID = gRenDev->GetCameraFrameID() % 2;
+#else
                     const uint32 nCurrWaterVolID = gRenDev->GetFrameID(false) % 2;
+#endif // if AZ_RENDER_TO_TEXTURE_GEM_ENABLED
                     CTexture* pTex = CTexture::s_ptexWaterVolumeRefl[nCurrWaterVolID] ? CTexture::s_ptexWaterVolumeRefl[nCurrWaterVolID] : CTextureManager::Instance()->GetBlackTexture();
                     pTex->Apply(nTUnit, CTexture::GetTexState(STexState(FILTER_ANISO16X, true)), nTexMaterialSlot, nSUnit, SResourceView::DefaultView, eSHClass);
                 }
@@ -3336,7 +3375,12 @@ bool CHWShader_D3D::mfSetSamplers_Old(const std::vector<STexSamplerRT>& Samplers
 
                 case TO_WATERVOLUMEREFLMAPPREV:
                 {
+#if AZ_RENDER_TO_TEXTURE_GEM_ENABLED
+                    const uint32 nPrevWaterVolID = (gRenDev->GetCameraFrameID() + 1) % 2;
+#else
                     const uint32 nPrevWaterVolID = (gRenDev->GetFrameID(false) + 1) % 2;
+#endif // if AZ_RENDER_TO_TEXTURE_GEM_ENABLED
+
                     CTexture* pTex = CTexture::s_ptexWaterVolumeRefl[nPrevWaterVolID] ? CTexture::s_ptexWaterVolumeRefl[nPrevWaterVolID] : CTextureManager::Instance()->GetBlackTexture();
                     pTex->Apply(nTUnit, nTState, nTexMaterialSlot, nSUnit, SResourceView::DefaultView, eSHClass);
                 }
@@ -3344,7 +3388,11 @@ bool CHWShader_D3D::mfSetSamplers_Old(const std::vector<STexSamplerRT>& Samplers
 
                 case TO_WATERVOLUMECAUSTICSMAP:
                 {
+#if AZ_RENDER_TO_TEXTURE_GEM_ENABLED
+                    const uint32 nCurrWaterVolID = gRenDev->GetCameraFrameID() % 2;
+#else
                     const uint32 nCurrWaterVolID = gRenDev->GetFrameID(false) % 2;
+#endif // if AZ_RENDER_TO_TEXTURE_GEM_ENABLED
                     CTexture* pTex = CTexture::s_ptexWaterCaustics[nCurrWaterVolID];
                     pTex->Apply(nTUnit, nTState, nTexMaterialSlot, nSUnit, SResourceView::DefaultView, eSHClass);
                 }
@@ -3352,7 +3400,11 @@ bool CHWShader_D3D::mfSetSamplers_Old(const std::vector<STexSamplerRT>& Samplers
 
                 case TO_WATERVOLUMECAUSTICSMAPTEMP:
                 {
+#if AZ_RENDER_TO_TEXTURE_GEM_ENABLED
+                    const uint32 nPrevWaterVolID = (gRenDev->GetCameraFrameID() + 1) % 2;
+#else
                     const uint32 nPrevWaterVolID = (gRenDev->GetFrameID(false) + 1) % 2;
+#endif // if AZ_RENDER_TO_TEXTURE_GEM_ENABLED
                     CTexture* pTex = CTexture::s_ptexWaterCaustics[nPrevWaterVolID];
                     pTex->Apply(nTUnit, nTState, nTexMaterialSlot, nSUnit, SResourceView::DefaultView, eSHClass);
                 }
@@ -3648,9 +3700,9 @@ bool CHWShader_D3D::mfUpdateSamplers(CShader* shader)
             }
 
             //  [Shader System TO DO] - replace with proper data driven code reflected from the shaders 
-            if (tx >= &CTexture::s_ShaderTemplates[0] && tx <= &CTexture::s_ShaderTemplates[EFTT_MAX - 1])
+            if (tx >= &(*CTexture::s_ShaderTemplates)[0] && tx <= &(*CTexture::s_ShaderTemplates)[EFTT_MAX - 1])
             {
-                int             nSlot = (int)(tx - &CTexture::s_ShaderTemplates[0]);
+                int             nSlot = (int)(tx - &(*CTexture::s_ShaderTemplates)[0]);
                 int16           replacementSlot = -1;
                 SEfResTexture*  pTextureRes = pSRes->GetTextureResource(nSlot);
 
@@ -3742,7 +3794,6 @@ bool CHWShader_D3D::mfAddGlobalTexture(SCGTexture& Texture)
     if (i == s_PF_Textures.size())
     {
         s_PF_Textures.push_back(Texture);
-        assert(s_PF_Textures.size() <= MAX_PF_TEXTURES);
         return true;
     }
     return false;
@@ -4047,11 +4098,64 @@ void CHWShader_D3D::SHWSInstance::GetInstancingAttribInfo(uint8 Attributes[32], 
     }
 }
 
-void CHWShader_D3D::InitialiseContainers()
+
+#if AZ_RENDER_TO_TEXTURE_GEM_ENABLED
+void CHWShader_D3D::UpdateSamplerEngineTextures()
 {
-    s_PF_Textures.reserve(MAX_PF_TEXTURES);
-    s_PF_Samplers.reserve(MAX_PF_SAMPLERS);
+    // get all pixel shaders and update all the sampler textures that point to engine render targets
+    CCryNameTSCRC className = CHWShader::mfGetClassName(eHWSC_Pixel);
+    SResourceContainer* pRL = CBaseResource::GetResourcesForClass(className);
+    if (!pRL)
+    {
+        return;
+    }
+
+    for (auto iter : pRL->m_RMap)
+    {
+        CHWShader_D3D* shader = static_cast<CHWShader_D3D*>(iter.second);
+        if (!shader)
+        {
+            continue;
+        }
+
+        for (CHWShader_D3D::SHWSInstance* shaderInstance : shader->m_Insts)
+        {
+            if (!shaderInstance || shaderInstance->m_bDeleted || shaderInstance->m_pSamplers.empty())
+            {
+                continue;
+            }
+
+            for (STexSamplerRT& sampler : shaderInstance->m_pSamplers)
+            {
+                CTexture* texture = sampler.m_pTex;
+                if (!texture || !(texture->GetFlags() & FT_USAGE_RENDERTARGET))
+                {
+                    continue;
+                }
+
+                const char* name = texture->GetName();
+                if (name == nullptr || name[0] != '$')
+                {
+                    continue;
+                }
+
+                CTexture* engineTexture = CTextureManager::Instance()->GetEngineTexture(CCryNameTSCRC(sampler.m_nCrc));
+                if (engineTexture && sampler.m_pTex != engineTexture)
+                {
+                    sampler.m_pTex->Release();
+                    sampler.m_pTex = engineTexture;
+
+                    // don't add a reference to texture we can't Release()
+                    if (!(engineTexture->GetFlags() & FT_DONT_RELEASE))
+                    {
+                        engineTexture->AddRef();
+                    }
+                }
+            }
+        }
+    }
 }
+#endif // if AZ_RENDER_TO_TEXTURE_GEM_ENABLED
 
 void CHWShader_D3D::ShutDown()
 {
@@ -4153,8 +4257,6 @@ CHWShader* CHWShader::mfForName(const char* name, const char* nameSource, uint32
         return NULL;
     }
 
-    MEMSTAT_CONTEXT_FMT(EMemStatContextTypes::MSC_Shader, 0, "%s", name);
-
     CHWShader_D3D* pSH = NULL;
     stack_string strName = name;
     CCryNameTSCRC className = mfGetClassName(eClass);
@@ -4162,11 +4264,12 @@ CHWShader* CHWShader::mfForName(const char* name, const char* nameSource, uint32
 
     if (nMaskGen)
     {
-#ifdef __GNUC__
-        strName += AddStr.Format("(%llx)", nMaskGen);
-#else
-        strName += AddStr.Format("(%I64x)", nMaskGen);
-#endif
+        strName += AddStr.Format("(GL_%llx)", nMaskGen);
+    }
+
+    if (pFX->m_maskGenStatic)
+    {
+        strName += AddStr.Format("(ST_%llx)", pFX->m_maskGenStatic);
     }
 
     strName += AddStr.Format( GetShaderLanguageResourceName() );
@@ -4219,6 +4322,7 @@ CHWShader* CHWShader::mfForName(const char* name, const char* nameSource, uint32
     pSH->m_eSHClass = eClass;
     pSH->m_nMaskGenShader = nMaskGen;
     pSH->m_nMaskGenFX = nMaskGenFX;
+    pSH->m_maskGenStatic = pFX->m_maskGenStatic;
     pSH->m_CRC32 = CRC32;
 
     pSH->mfConstructFX(pTable, &SHData);
@@ -4241,7 +4345,11 @@ void CHWShader_D3D::SetTokenFlags(uint32 nToken)
         m_Flags |= HWSG_SUPPORTS_MULTILIGHTS;
         break;
     case eT__TT_TEXCOORD_MATRIX:
-    case eT__TT_TEXCOORD_GEN_OBJECT_LINEAR:
+    case eT__TT_TEXCOORD_GEN_OBJECT_LINEAR_DIFFUSE:
+    case eT__TT_TEXCOORD_GEN_OBJECT_LINEAR_EMITTANCE:
+    case eT__TT_TEXCOORD_GEN_OBJECT_LINEAR_EMITTANCE_MULT:
+    case eT__TT_TEXCOORD_GEN_OBJECT_LINEAR_DETAIL:
+    case eT__TT_TEXCOORD_GEN_OBJECT_LINEAR_CUSTOM:
         m_Flags |= HWSG_SUPPORTS_MODIF;
         break;
     case eT__VT_TYPE:
@@ -4490,6 +4598,7 @@ bool CHWShader_D3D::mfPrecache(SShaderCombination& cmb, bool bForce, bool bFallb
         Ident.m_LightMask = 1;
     }
     Ident.m_GLMask = m_nMaskGenShader;
+    Ident.m_STMask = m_maskGenStatic;
     uint32 nFlags = HWSF_PRECACHE;
     if (m_eSHClass == eHWSC_Pixel && pRes)
     {
@@ -4751,7 +4860,7 @@ CHWShader_D3D::SHWSInstance* CHWShader_D3D::mfGetInstance(CShader* pSH, SShaderC
 
         const SShaderCombIdent& other = cgi->m_Ident;
         // other will have been through PostCreate, and so won't have the platform mask set anymore
-        if ((Ident.m_MDVMask & ~SF_PLATFORM) == other.m_MDVMask && Ident.m_RTMask == other.m_RTMask && Ident.m_GLMask == other.m_GLMask && Ident.m_FastCompare1 == other.m_FastCompare1 && Ident.m_pipelineState.opaque == other.m_pipelineState.opaque)
+        if ((Ident.m_MDVMask & ~SF_PLATFORM) == other.m_MDVMask && Ident.m_RTMask == other.m_RTMask && Ident.m_GLMask == other.m_GLMask && Ident.m_FastCompare1 == other.m_FastCompare1 && Ident.m_pipelineState.opaque == other.m_pipelineState.opaque && Ident.m_STMask == other.m_STMask)
         {
             return cgi;
         }
@@ -4762,7 +4871,7 @@ CHWShader_D3D::SHWSInstance* CHWShader_D3D::mfGetInstance(CShader* pSH, SShaderC
     uint32 identHash = Ident.PostCreate();
     if (m_bUseLookUpTable)
     {
-        uint64 uiKey = Ident.m_RTMask + Ident.m_GLMask + Ident.m_LightMask + Ident.m_MDMask + Ident.m_MDVMask + Ident.m_pipelineState.opaque;
+        uint64 uiKey = Ident.m_RTMask + Ident.m_GLMask + Ident.m_LightMask + Ident.m_MDMask + Ident.m_MDVMask + Ident.m_pipelineState.opaque + Ident.m_STMask;
 
         std::pair<THWInstanceLookupMap::iterator, THWInstanceLookupMap::iterator> itp = pInstMap->equal_range(uiKey);
         for (THWInstanceLookupMap::iterator it = itp.first; it != itp.second; ++it)
@@ -4817,7 +4926,7 @@ CHWShader_D3D::SHWSInstance* CHWShader_D3D::mfGetInstance(CShader* pSH, SShaderC
                 const SShaderCombIdent& other = (*it)->m_Ident;
                 if ((Ident.m_MDVMask & ~SF_PLATFORM) == other.m_MDVMask && Ident.m_RTMask == other.m_RTMask
                     && Ident.m_GLMask == other.m_GLMask && Ident.m_FastCompare1 == other.m_FastCompare1
-                    && Ident.m_pipelineState.opaque == other.m_pipelineState.opaque)
+                    && Ident.m_pipelineState.opaque == other.m_pipelineState.opaque && Ident.m_STMask == other.m_STMask)
                 {
                     cgi = *it;
                     break;
@@ -4929,6 +5038,7 @@ bool CHWShader_D3D::mfSetVS(int nFlags)
     Ident.m_MDMask = rRP.m_FlagsShader_MD;
     Ident.m_MDVMask = rRP.m_FlagsShader_MDV | CParserBin::m_nPlatform;
     Ident.m_GLMask = m_nMaskGenShader;
+    Ident.m_STMask = m_maskGenStatic;
 
     ModifyLTMask(Ident.m_LightMask);
 
@@ -4952,11 +5062,7 @@ bool CHWShader_D3D::mfSetVS(int nFlags)
 #ifdef DO_RENDERLOG
     if (CRenderer::CV_r_log >= 3)
     {
-#if defined(__GNUC__)
-        rd->Logv(SRendItem::m_RecurseLevel[rRP.m_nProcessThreadID], "--- Set FX VShader \"%s\" (%d instr), LTMask: 0x%x, GLMask: 0x%llx, RTMask: 0x%llx, MDMask: 0x%x, MDVMask: 0x%x, PSS: 0x%llx\n", GetName(), pInst->m_nInstructions, Ident.m_LightMask, Ident.m_GLMask, Ident.m_RTMask, Ident.m_MDMask, Ident.m_MDVMask, Ident.m_pipelineState.opaque);
-#else
-        rd->Logv(SRendItem::m_RecurseLevel[rRP.m_nProcessThreadID], "--- Set FX VShader \"%s\" (%d instr), LTMask: 0x%x, GLMask: 0x%I64x, RTMask: 0x%I64x, MDMask: 0x%x, MDVMask: 0x%x, PSS: 0x%llx\n", GetName(), pInst->m_nInstructions, Ident.m_LightMask, Ident.m_GLMask, Ident.m_RTMask, Ident.m_MDMask, Ident.m_MDVMask, Ident.m_pipelineState.opaque);
-#endif
+        rd->Logv(SRendItem::m_RecurseLevel[rRP.m_nProcessThreadID], "--- Set FX VShader \"%s\" (%d instr), LTMask: 0x%x, GLMask: 0x%llx, RTMask: 0x%llx, MDMask: 0x%x, MDVMask: 0x%x, PSS: 0x%llx, STMask: 0x%llx\n", GetName(), pInst->m_nInstructions, Ident.m_LightMask, Ident.m_GLMask, Ident.m_RTMask, Ident.m_MDMask, Ident.m_MDVMask, Ident.m_pipelineState.opaque, Ident.m_STMask);
     }
 #endif
     if (m_nFrame != rTI.m_nFrameUpdateID)
@@ -5018,6 +5124,7 @@ bool CHWShader_D3D::mfSetPS(int nFlags)
     Ident.m_MDMask = rRP.m_FlagsShader_MD & ~HWMD_TEXCOORD_FLAG_MASK;
     Ident.m_MDVMask = CParserBin::m_nPlatform;
     Ident.m_GLMask = m_nMaskGenShader;
+    Ident.m_STMask = m_maskGenStatic;
 
     ModifyLTMask(Ident.m_LightMask);
 
@@ -5064,11 +5171,7 @@ bool CHWShader_D3D::mfSetPS(int nFlags)
 #ifdef DO_RENDERLOG
     if (CRenderer::CV_r_log >= 3)
     {
-#if defined(__GNUC__)
-        rd->Logv(SRendItem::m_RecurseLevel[rRP.m_nProcessThreadID], "--- Set FX PShader \"%s\" (%d instr) LTMask: 0x%x, GLMask: 0x%llx, RTMask: 0x%llx, MDMask: 0x%x, MDVMask: 0x%x, PSS: 0x%llx\n", GetName(), pInst->m_nInstructions, Ident.m_LightMask, Ident.m_GLMask, Ident.m_RTMask, Ident.m_MDMask, Ident.m_MDVMask & 0x0fffffff, Ident.m_pipelineState.opaque);
-#else
-        rd->Logv(SRendItem::m_RecurseLevel[rRP.m_nProcessThreadID], "--- Set FX PShader \"%s\" (%d instr) LTMask: 0x%x, GLMask: 0x%I64x, RTMask: 0x%I64x, MDMask: 0x%x, MDVMask: 0x%x, PSS: 0x%llx\n", GetName(), pInst->m_nInstructions, Ident.m_LightMask, Ident.m_GLMask, Ident.m_RTMask, Ident.m_MDMask, Ident.m_MDVMask & 0x0fffffff, Ident.m_pipelineState.opaque);
-#endif
+        rd->Logv(SRendItem::m_RecurseLevel[rRP.m_nProcessThreadID], "--- Set FX PShader \"%s\" (%d instr) LTMask: 0x%x, GLMask: 0x%llx, RTMask: 0x%llx, MDMask: 0x%x, MDVMask: 0x%x, PSS: 0x%llx, STMask: 0x%llx\n", GetName(), pInst->m_nInstructions, Ident.m_LightMask, Ident.m_GLMask, Ident.m_RTMask, Ident.m_MDMask, Ident.m_MDVMask & 0x0fffffff, Ident.m_pipelineState.opaque, Ident.m_STMask);
     }
 #endif
 
@@ -5122,6 +5225,7 @@ bool CHWShader_D3D::mfSetGS(int nFlags)
     Ident.m_MDMask = rRP.m_FlagsShader_MD;
     Ident.m_MDVMask = rRP.m_FlagsShader_MDV | CParserBin::m_nPlatform;
     Ident.m_GLMask = m_nMaskGenShader;
+    Ident.m_STMask = m_maskGenStatic;
 
     ModifyLTMask(Ident.m_LightMask);
 
@@ -5138,11 +5242,7 @@ bool CHWShader_D3D::mfSetGS(int nFlags)
 #ifdef DO_RENDERLOG
     if (CRenderer::CV_r_log >= 3)
     {
-#if defined(__GNUC__)
-        rd->Logv(SRendItem::m_RecurseLevel[rRP.m_nProcessThreadID], "--- Set FX GShader \"%s\" (%d instr), LTMask: 0x%x, GLMask: 0x%llx, RTMask: 0x%llx, MDMask: 0x%x, MDVMask: 0x%x, PSS: 0x%llx\n", GetName(), pInst->m_nInstructions, Ident.m_LightMask, Ident.m_GLMask, Ident.m_RTMask, Ident.m_MDMask, Ident.m_MDVMask, Ident.m_pipelineState.opaque);
-#else
-        rd->Logv(SRendItem::m_RecurseLevel[rRP.m_nProcessThreadID], "--- Set FX GShader \"%s\" (%d instr), LTMask: 0x%x, GLMask: 0x%I64x, RTMask: 0x%I64x, MDMask: 0x%x, MDVMask: 0x%x, PSS: 0x%llx\n", GetName(), pInst->m_nInstructions, Ident.m_LightMask, Ident.m_GLMask, Ident.m_RTMask, Ident.m_MDMask, Ident.m_MDVMask, Ident.m_pipelineState.opaque);
-#endif
+        rd->Logv(SRendItem::m_RecurseLevel[rRP.m_nProcessThreadID], "--- Set FX GShader \"%s\" (%d instr), LTMask: 0x%x, GLMask: 0x%llx, RTMask: 0x%llx, MDMask: 0x%x, MDVMask: 0x%x, PSS: 0x%llx, STMask: 0x%llx\n", GetName(), pInst->m_nInstructions, Ident.m_LightMask, Ident.m_GLMask, Ident.m_RTMask, Ident.m_MDMask, Ident.m_MDVMask, Ident.m_pipelineState.opaque, Ident.m_STMask);
     }
 #endif
 
@@ -5182,6 +5282,7 @@ bool CHWShader_D3D::mfSetHS(int nFlags)
     Ident.m_MDMask = rRP.m_FlagsShader_MD;
     Ident.m_MDVMask = rRP.m_FlagsShader_MDV | CParserBin::m_nPlatform;
     Ident.m_GLMask = m_nMaskGenShader;
+    Ident.m_STMask = m_maskGenStatic;
     ModifyLTMask(Ident.m_LightMask);
 
     SHWSInstance* pInst = mfGetInstance(rRP.m_pShader, Ident, nFlags);
@@ -5197,11 +5298,7 @@ bool CHWShader_D3D::mfSetHS(int nFlags)
 #ifdef DO_RENDERLOG
     if (CRenderer::CV_r_log >= 3)
     {
-#if defined(__GNUC__)
-        rd->Logv(SRendItem::m_RecurseLevel[rRP.m_nProcessThreadID], "--- Set FX HShader \"%s\" (%d instr), LTMask: 0x%x, GLMask: 0x%llx, RTMask: 0x%llx, MDMask: 0x%x, MDVMask: 0x%x, PSS: 0x%llx\n", GetName(), pInst->m_nInstructions, Ident.m_LightMask, Ident.m_GLMask, Ident.m_RTMask, Ident.m_MDMask, Ident.m_MDVMask, Ident.m_pipelineState.opaque);
-#else
-        rd->Logv(SRendItem::m_RecurseLevel[rRP.m_nProcessThreadID], "--- Set FX HShader \"%s\" (%d instr), LTMask: 0x%x, GLMask: 0x%I64x, RTMask: 0x%I64x, MDMask: 0x%x, MDVMask: 0x%x, PSS: 0x%llx\n", GetName(), pInst->m_nInstructions, Ident.m_LightMask, Ident.m_GLMask, Ident.m_RTMask, Ident.m_MDMask, Ident.m_MDVMask, Ident.m_pipelineState.opaque);
-#endif
+        rd->Logv(SRendItem::m_RecurseLevel[rRP.m_nProcessThreadID], "--- Set FX HShader \"%s\" (%d instr), LTMask: 0x%x, GLMask: 0x%llx, RTMask: 0x%llx, MDMask: 0x%x, MDVMask: 0x%x, PSS: 0x%llx, STMask: 0x%llx\n", GetName(), pInst->m_nInstructions, Ident.m_LightMask, Ident.m_GLMask, Ident.m_RTMask, Ident.m_MDMask, Ident.m_MDVMask, Ident.m_pipelineState.opaque, Ident.m_STMask);
     }
 #endif
 
@@ -5214,7 +5311,11 @@ bool CHWShader_D3D::mfSetHS(int nFlags)
     {
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION D3DHWSHADER_CPP_SECTION_1
-#include AZ_RESTRICTED_FILE(D3DHWShader_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/D3DHWShader_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/D3DHWShader_cpp_provo.inl"
+    #endif
 #endif
 
         mfBindHS(pInst->m_Handle.m_pShader, pInst->m_Handle.m_pShader->m_pHandle);
@@ -5241,6 +5342,7 @@ bool CHWShader_D3D::mfSetDS(int nFlags)
     Ident.m_MDMask = rRP.m_FlagsShader_MD;
     Ident.m_MDVMask = rRP.m_FlagsShader_MDV | CParserBin::m_nPlatform;
     Ident.m_GLMask = m_nMaskGenShader;
+    Ident.m_STMask = m_maskGenStatic;
 
     ModifyLTMask(Ident.m_LightMask);
 
@@ -5257,11 +5359,7 @@ bool CHWShader_D3D::mfSetDS(int nFlags)
 #ifdef DO_RENDERLOG
     if (CRenderer::CV_r_log >= 3)
     {
-#if defined(__GNUC__)
-        rd->Logv(SRendItem::m_RecurseLevel[rRP.m_nProcessThreadID], "--- Set FX CShader \"%s\" (%d instr), LTMask: 0x%x, GLMask: 0x%llx, RTMask: 0x%llx, MDMask: 0x%x, MDVMask: 0x%x, PSS: 0x%llx\n", GetName(), pInst->m_nInstructions, Ident.m_LightMask, Ident.m_GLMask, Ident.m_RTMask, Ident.m_MDMask, Ident.m_MDVMask, Ident.m_pipelineState.opaque);
-#else
-        rd->Logv(SRendItem::m_RecurseLevel[rRP.m_nProcessThreadID], "--- Set FX CShader \"%s\" (%d instr), LTMask: 0x%x, GLMask: 0x%I64x, RTMask: 0x%I64x, MDMask: 0x%x, MDVMask: 0x%x, PSS: 0x%llx\n", GetName(), pInst->m_nInstructions, Ident.m_LightMask, Ident.m_GLMask, Ident.m_RTMask, Ident.m_MDMask, Ident.m_MDVMask, Ident.m_pipelineState.opaque);
-#endif
+        rd->Logv(SRendItem::m_RecurseLevel[rRP.m_nProcessThreadID], "--- Set FX CShader \"%s\" (%d instr), LTMask: 0x%x, GLMask: 0x%llx, RTMask: 0x%llx, MDMask: 0x%x, MDVMask: 0x%x, PSS: 0x%llx, STMask: 0x%llx\n", GetName(), pInst->m_nInstructions, Ident.m_LightMask, Ident.m_GLMask, Ident.m_RTMask, Ident.m_MDMask, Ident.m_MDVMask, Ident.m_pipelineState.opaque, Ident.m_STMask);
     }
 #endif
 
@@ -5274,7 +5372,11 @@ bool CHWShader_D3D::mfSetDS(int nFlags)
     {
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION D3DHWSHADER_CPP_SECTION_2
-#include AZ_RESTRICTED_FILE(D3DHWShader_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/D3DHWShader_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/D3DHWShader_cpp_provo.inl"
+    #endif
 #endif
 
         mfBindDS(pInst->m_Handle.m_pShader, pInst->m_Handle.m_pShader->m_pHandle);
@@ -5306,6 +5408,7 @@ bool CHWShader_D3D::mfSetCS(int nFlags)
     Ident.m_MDMask = rRP.m_FlagsShader_MD;
     Ident.m_MDVMask = rRP.m_FlagsShader_MDV | CParserBin::m_nPlatform;
     Ident.m_GLMask = m_nMaskGenShader;
+    Ident.m_STMask = m_maskGenStatic;
 
     if (Ident.m_LightMask)
     {
@@ -5337,11 +5440,7 @@ bool CHWShader_D3D::mfSetCS(int nFlags)
 #ifdef DO_RENDERLOG
     if (CRenderer::CV_r_log >= 3)
     {
-#if defined(__GNUC__)
-        rd->Logv(SRendItem::m_RecurseLevel[rRP.m_nProcessThreadID], "--- Set FX CShader \"%s\" (%d instr), LTMask: 0x%x, GLMask: 0x%llx, RTMask: 0x%llx, MDMask: 0x%x, MDVMask: 0x%x\n", GetName(), pInst->m_nInstructions, Ident.m_LightMask, Ident.m_GLMask, Ident.m_RTMask, Ident.m_MDMask, Ident.m_MDVMask);
-#else
-        rd->Logv(SRendItem::m_RecurseLevel[rRP.m_nProcessThreadID], "--- Set FX CShader \"%s\" (%d instr), LTMask: 0x%x, GLMask: 0x%I64x, RTMask: 0x%I64x, MDMask: 0x%x, MDVMask: 0x%x\n", GetName(), pInst->m_nInstructions, Ident.m_LightMask, Ident.m_GLMask, Ident.m_RTMask, Ident.m_MDMask, Ident.m_MDVMask);
-#endif
+        rd->Logv(SRendItem::m_RecurseLevel[rRP.m_nProcessThreadID], "--- Set FX CShader \"%s\" (%d instr), LTMask: 0x%x, GLMask: 0x%llx, RTMask: 0x%llx, MDMask: 0x%x, MDVMask: 0x%x, STMask: 0x%llx\n", GetName(), pInst->m_nInstructions, Ident.m_LightMask, Ident.m_GLMask, Ident.m_RTMask, Ident.m_MDMask, Ident.m_MDVMask, Ident.m_STMask);
     }
 #endif
 

@@ -13,6 +13,8 @@ import util
 import sqs
 import logging
 import metric_schema
+import os
+import json
 
 
 class Aggregator(object):
@@ -28,6 +30,7 @@ class Aggregator(object):
         self.__info[c.INFO_TOTAL_BYTES] = 0
         self.__info[c.INFO_TOTAL_ROWS] = 0
         self.__info[c.INFO_TOTAL_MESSAGES] = 0        
+        self.__info[c.INFO_EVENTS] = {}          
         self.__logger = logging.getLogger()
         self.__logger.setLevel(logging.ERROR)     
 
@@ -44,6 +47,10 @@ class Aggregator(object):
         return self.__info[c.INFO_TOTAL_MESSAGES] 
 
     @property
+    def events(self):                
+        return self.__info[c.INFO_EVENTS]
+
+    @property
     def info(self):                
         return self.__info
           
@@ -51,14 +58,13 @@ class Aggregator(object):
         length = len(messages)
         util.debug_print(("Processing {} messages.").format(length))
         self.increment(self.__info, c.INFO_TOTAL_MESSAGES, length)        
-        for x in xrange(0,length):
+        for x in range(0,length):
            message = messages[x]   
            self.process_message(message)
 
-    def process_message(self, message):        
-        util.debug_print(("Processing message:\n{}").format(message))                 
+    def process_message(self, message):                
         compression_mode = CompressionClassFactory.instance(message[c.SQS_PARAM_MESSAGE_ATTRIBUTES][c.SQS_PARAM_COMPRESSION_TYPE]['StringValue'])        
-        body = compression_mode.extract_message_body(message)        
+        body = compression_mode.extract_message_body(message)
         attempts = int(message['Attributes']['ApproximateReceiveCount'])               
         sensitivity_type = SensitivityClassFactory.instance(message[c.SQS_PARAM_MESSAGE_ATTRIBUTES][c.SQS_PARAM_SENSITIVITY_TYPE]['StringValue'])                
         payload_type = PayloadClassFactory.instance( self.__context, message[c.SQS_PARAM_MESSAGE_ATTRIBUTES][c.SQS_PARAM_PAYLOAD_TYPE]['StringValue'], compression_mode, sensitivity_type)        
@@ -68,16 +74,22 @@ class Aggregator(object):
             self.__logger.error("The message with message Id {} has been processed {} times.".format(msg_token, attempts))
         self.increment(self.__info, c.INFO_TOTAL_BYTES, len(body))      
         
-        payload_type.to_partitions(msg_token, body, self.partition, sensitivity_type, self.__partitioner.partitions)                    
+        payload_type.to_partitions(msg_token, body, self.partition, sensitivity_type, self.__partitioner.partitions)
 
     def partition(self, token, row, sensitivity_type):        
-        #schema hash                                   
-        schema_hash = hash(str(row.keys()))  
-        
+        #schema hash      
+        columns = row.keys()
+        columns = [i.decode('UTF-8') if isinstance(i, basestring) else i for i in columns]
+        columns.sort()   
+        rows_as_string = str(columns)                       
+        schema_hash = hash(rows_as_string)         
+        event_name = row[metric_schema.EVENT.id] 
         uuid_key = "{}{}{}".format(row[metric_schema.UUID.id], row[metric_schema.EVENT.id], row[metric_schema.SERVER_TIMESTAMP.id])               
         #create the key here as the partition my remove attributes if the attribute is created as a partition        
         tablename, partition = self.__partitioner.extract(schema_hash, row, sensitivity_type)         
-        columns, row = self.order_and_map_to_long_name(row)         
+        columns, row = self.order_and_map_to_long_name(row)
+
+        self.increment_detailed_cloudwatch_event_information(event_name)
         
         if partition is None:
             self.__logger.error("Dropping metric\n{}".format(row))
@@ -98,6 +110,10 @@ class Aggregator(object):
         partition_dict[schema_hash][c.KEY_SET][uuid_key] = row            
         
         self.register_processed_message(partition_dict[schema_hash], token)         
+
+    def increment_detailed_cloudwatch_event_information(self, event_name):
+        if self.__context.get(c.KEY_WRITE_DETAILED_CLOUDWATCH_EVENTS, False):
+            self.increment(self.events, event_name, 1)            
 
     def register_processed_message(self, schema_dict, msg_token):        
         #track which messages have been processed
@@ -134,4 +150,6 @@ class Aggregator(object):
                 ordered_dict[field] = value
                 ordered_columns_long_name.append(field)
         
-        return ordered_columns_long_name, ordered_dict        
+        return ordered_columns_long_name, ordered_dict   
+    
+

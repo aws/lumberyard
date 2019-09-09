@@ -72,7 +72,7 @@ namespace RoadsAndRivers
                 editContext->Class<River>("River", "River data")
                     ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
                     ->DataElement(AZ::Edit::UIHandlers::Slider, &River::m_waterVolumeDepth, "Depth", "Specifies the Depth of the River.")
-                        ->Attribute(AZ::Edit::Attributes::ChangeNotify, &River::PhysicsPropertyModified)
+                        ->Attribute(AZ::Edit::Attributes::ChangeNotify, &River::WaterVolumeDepthModified)
                         ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
                         ->Attribute(AZ::Edit::Attributes::Max, 250.0f)
                         ->Attribute(AZ::Edit::Attributes::Step, 0.1f)
@@ -236,9 +236,9 @@ namespace RoadsAndRivers
         return nullptr;
     }
 
-    void River::SetMaterialHandle(LmbrCentral::MaterialHandle handle)
+    void River::SetMaterialHandle(const LmbrCentral::MaterialHandle& materialHandle)
     {
-        SetMaterial(handle.m_material);
+        SetMaterial(materialHandle.m_material);
     }
 
     LmbrCentral::MaterialHandle River::GetMaterialHandle()
@@ -251,7 +251,7 @@ namespace RoadsAndRivers
     void River::SetWaterVolumeDepth(float waterVolumeDepth)
     {
         m_waterVolumeDepth = waterVolumeDepth;
-        PhysicsPropertyModified();
+        WaterVolumeDepthModified();
     }
 
     float River::GetWaterVolumeDepth()
@@ -391,6 +391,11 @@ namespace RoadsAndRivers
         return m_waterStreamSpeed;
     }
 
+    AZ::Plane River::GetWaterSurfacePlane()
+    {
+        return m_fogPlane;
+    }
+
     void River::Rebuild()
     {
         AZ_Assert(m_entityId.IsValid(), "[River::Rebuild()] Entity id is invalid");
@@ -430,6 +435,13 @@ namespace RoadsAndRivers
         UpdateRenderNodeWithAssetMaterial();
     }
 
+    void River::WaterVolumeDepthModified()
+    {
+        RiverNotificationBus::Event(GetEntityId(), &RiverNotificationBus::Events::OnWaterVolumeDepthChanged, m_waterVolumeDepth);
+        SetPhysicalProperties();
+    }
+
+
     void River::PhysicsPropertyModified()
     {
         SetPhysicalProperties();
@@ -445,7 +457,7 @@ namespace RoadsAndRivers
         for (const auto& node : m_renderNodes)
         {
             auto renderingNode = node.GetRenderNode();
-            renderingNode->SetRndFlags(0);
+            renderingNode->SetRndFlags(ERF_COMPONENT_ENTITY);
             renderingNode->SetViewDistanceMultiplier(m_viewDistanceMultiplier);
             renderingNode->SetMinSpec(static_cast<int>(m_minSpec));
             renderingNode->SetFogDensity(m_waterFogDensity);
@@ -467,7 +479,7 @@ namespace RoadsAndRivers
         _smart_ptr<IMaterial> material = nullptr;
         if (!m_material.GetAssetPath().empty())
         {
-            material = gEnv->p3DEngine->GetMaterialManager()->LoadMaterial(m_material.GetAssetPath().c_str());
+            material = GetISystem()->GetI3DEngine()->GetMaterialManager()->LoadMaterial(m_material.GetAssetPath().c_str());
             if (!IsMaterialGoodForRiver(material))
             {
                 return;
@@ -506,22 +518,26 @@ namespace RoadsAndRivers
 
         m_fogPlane = AZ::Plane::CreateFromNormalAndPoint(transform.GetColumn(2).GetNormalized(), transform * geometrySectors[0].points[0]);
 
-        for (const auto& sector : geometrySectors)
+        if (GetISystem() && GetISystem()->GetI3DEngine())
         {
-            if (NoDegenerateTriangles(sector))
+            for (const auto& sector : geometrySectors)
             {
-                RiverRenderNode riverNode;
-                riverNode.SetRenderNode(static_cast<IWaterVolumeRenderNode*>(gEnv->p3DEngine->CreateRenderNode(eERType_WaterVolume)));
-                riverNode.GetRenderNode()->CreateRiver(static_cast<uint64>(m_entityId), sector.points, transform, sector.t0, sector.t1, AZ::Vector2(1.0f, m_tileWidth), m_fogPlane, true);
-                riverNode.GetRenderNode()->m_hasToBeSerialised = false;
+                if (NoDegenerateTriangles(sector))
+                {
+                    RiverRenderNode riverNode;
+                    riverNode.SetRenderNode(static_cast<IWaterVolumeRenderNode*>(GetISystem()->GetI3DEngine()->CreateRenderNode(eERType_WaterVolume)));
+                    riverNode.GetRenderNode()->CreateRiver(static_cast<uint64>(m_entityId), sector.points, transform, sector.t0, sector.t1, AZ::Vector2(1.0f, m_tileWidth), m_fogPlane, true);
+                    riverNode.GetRenderNode()->m_hasToBeSerialised = false;
 
-                m_renderNodes.push_back(riverNode);
+                    m_renderNodes.push_back(riverNode);
+                }
             }
+
+            UpdateRenderNodeWithAssetMaterial();
+            SetRenderProperties();
+            SetPhysicalProperties();
         }
 
-        UpdateRenderNodeWithAssetMaterial();
-        SetRenderProperties();
-        SetPhysicalProperties();
     }
 
     void River::SetPhysicalProperties()
@@ -532,10 +548,7 @@ namespace RoadsAndRivers
             sector.GetRenderNode()->SetStreamSpeed(m_waterStreamSpeed);
         }
 
-        if (m_physicalize)
-        {
-            BindWithPhysics();
-        }
+        BindWithPhysics();
     }
 
     void River::BindWithPhysics()
@@ -543,31 +556,36 @@ namespace RoadsAndRivers
         auto& geometrySectors = GetGeometrySectors();
         if (!m_renderNodes.empty())
         {
+            // Remove any existing physics representation
             const auto& firstNode = m_renderNodes.front();
             firstNode.GetRenderNode()->Dephysicalize();
 
-            auto numRiverSegments = geometrySectors.size();
-            AZStd::vector<AZ::Vector3> outline;
-            outline.reserve(numRiverSegments * 2 + 2);
-
-            for (const auto& riverSegment : geometrySectors)
+            // If we should be physicalized, build a new physics representation
+            if (m_physicalize)
             {
-                outline.push_back(riverSegment.points[1]);
+                auto numRiverSegments = geometrySectors.size();
+                AZStd::vector<AZ::Vector3> outline;
+                outline.reserve(numRiverSegments * 2 + 2);
+
+                for (const auto& riverSegment : geometrySectors)
+                {
+                    outline.push_back(riverSegment.points[1]);
+                }
+
+                outline.push_back(geometrySectors.back().points[3]);
+                outline.push_back(geometrySectors.back().points[2]);
+
+                for (int i = numRiverSegments - 1; i >= 0; --i)
+                {
+                    outline.push_back(geometrySectors[i].points[0]);
+                }
+
+                AZ::Transform transform = AZ::Transform::CreateIdentity();
+                AZ::TransformBus::EventResult(transform, m_entityId, &AZ::TransformBus::Events::GetWorldTM);
+
+                firstNode.GetRenderNode()->SetRiverPhysicsArea(outline, transform, true);
+                firstNode.GetRenderNode()->Physicalize();
             }
-
-            outline.push_back(geometrySectors.back().points[3]);
-            outline.push_back(geometrySectors.back().points[2]);
-
-            for (int i = numRiverSegments - 1; i >= 0; --i)
-            {
-                outline.push_back(geometrySectors[i].points[0]);
-            }
-
-            AZ::Transform transform = AZ::Transform::CreateIdentity();
-            AZ::TransformBus::EventResult(transform, m_entityId, &AZ::TransformBus::Events::GetWorldTM);
-
-            firstNode.GetRenderNode()->SetRiverPhysicsArea(outline, transform, true);
-            firstNode.GetRenderNode()->Physicalize();
         }
     }
 

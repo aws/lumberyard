@@ -17,6 +17,7 @@
 #include <AzCore/Asset/AssetTypeInfoBus.h>
 
 #include <AzCore/std/smart_ptr/unique_ptr.h>
+#include <AzCore/std/functional.h>
 
 #include <CrySystemBus.h>
 
@@ -90,5 +91,6 @@ namespace LmbrCentral
 
         AZStd::vector<AZStd::unique_ptr<AZ::Data::AssetHandler> > m_assetHandlers;
         AZStd::vector<AZStd::unique_ptr<AZ::AssetTypeInfoBus::Handler> > m_unhandledAssetInfo;
+        AZStd::vector<AZStd::function<void()>> m_allocatorShutdowns;
     };
 } // namespace LmbrCentral

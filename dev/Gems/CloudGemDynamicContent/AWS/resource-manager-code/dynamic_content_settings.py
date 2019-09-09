@@ -18,6 +18,12 @@ def get_default_staging_table_name():
 def get_default_bucket_name():
     return 'ContentBucket'
 
+def get_access_bucket_name():
+    return 'AccessBucket'
+
+def get_access_bucket_key_dir():
+    return 'CDN'
+
 def get_default_resource_group():
     return 'CloudGemDynamicContent'
     

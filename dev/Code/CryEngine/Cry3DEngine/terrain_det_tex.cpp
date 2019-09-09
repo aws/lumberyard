@@ -54,8 +54,6 @@ void CTerrain::LoadSurfaceTypesFromXML(XmlNodeRef pDoc)
 {
     LOADING_TIME_PROFILE_SECTION;
 
-    MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_Terrain, 0, "Surface types");
-
     if (!pDoc)
     {
         return;

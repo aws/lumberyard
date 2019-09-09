@@ -126,7 +126,7 @@ public:
 
 CTerrainUpdateDispatcher::CTerrainUpdateDispatcher()
 {
-    m_pHeapStorage = CryGetIMemoryManager()->AllocPages(TempPoolSize);
+    m_pHeapStorage = CryMemory::AllocPages(TempPoolSize);
     m_pHeap = CryGetIMemoryManager()->CreateGeneralMemoryHeap(m_pHeapStorage, TempPoolSize, "Terrain temp pool");
 }
 
@@ -141,7 +141,7 @@ CTerrainUpdateDispatcher::~CTerrainUpdateDispatcher()
     }
 
     m_pHeap = NULL;
-    CryGetIMemoryManager()->FreePages(m_pHeapStorage, TempPoolSize);
+    CryMemory::FreePages(m_pHeapStorage, TempPoolSize);
 }
 
 void CTerrainUpdateDispatcher::QueueJob(CTerrainNode* pNode, const SRenderingPassInfo& passInfo)
@@ -215,8 +215,6 @@ bool CTerrainUpdateDispatcher::AddJob(CTerrainNode* pNode, bool executeAsJob, co
 
         if (executeAsJob)
         {
-            ScopedSwitchToGlobalHeap useGlobalHeap;
-
             meshData->m_jobExecutor.Reset();
             meshData->m_jobExecutor.StartJob([pNode, passInfo]() { pNode->BuildIndices_Wrapper(passInfo); });
             meshData->m_jobExecutor.StartJob([pNode]() { pNode->BuildVertices_Wrapper(); });
@@ -327,7 +325,7 @@ void CTerrainUpdateDispatcher::RemoveJob(CTerrainNode* pNode)
     }
 }
 
-PodArray<vtx_idx> CTerrainNode::m_SurfaceIndices[SurfaceTile::MaxSurfaceCount][4];
+PodArray<vtx_idx> CTerrainNode::s_SurfaceIndices[SurfaceTile::MaxSurfaceCount][4];
 
 void CTerrainNode::ResetStaticData()
 {
@@ -335,7 +333,7 @@ void CTerrainNode::ResetStaticData()
     {
         for (int p = 0; p < 4; p++)
         {
-            stl::free_container(m_SurfaceIndices[s][p]);
+            s_SurfaceIndices[s][p].Free();
         }
     }
 }
@@ -347,7 +345,7 @@ void CTerrainNode::GetStaticMemoryUsage(ICrySizer* sizer)
     {
         for (int j = 0; j < 4; ++j)
         {
-            sizer->AddObject(CTerrainNode::m_SurfaceIndices[i][j]);
+            sizer->AddObject(CTerrainNode::s_SurfaceIndices[i][j]);
         }
     }
 }
@@ -520,7 +518,19 @@ void CTerrainNode::ReleaseHeightMapGeometry(bool bRecursive, const AABB* pBox)
     if (GetLeafData() && GetLeafData()->m_pRenderMesh)
     {
         _smart_ptr<IRenderMesh>& pRenderMesh = GetLeafData()->m_pRenderMesh;
-        pRenderMesh = NULL;
+
+        // Terrain nodes have leaf data, which have render meshes, which have render elements.  It's possible
+        // that the m_CustomData field on the render element is pointing directly back at the leaf data.  
+        // (See CTerrainNode::SetupTexturing)  If the render element is already currently queued to render,
+        // then it's possible for the render thread to reference the m_CustomData field (and consequently the m_LeafData
+        // pointer) while we're in the process of deleting it here.  (See sGetTerrainBase in D3DHWShader.cpp)
+        // So, we'll clear out the reference to the leaf data prior to deleting the leaf data.  We need to clear it
+        // out here, because the path to the render element is through the render mesh, which we're also about to delete.
+        if (pRenderMesh->GetChunks()[0].pRE)
+        {
+            pRenderMesh->GetChunks()[0].pRE->m_CustomData = nullptr;
+        }
+        pRenderMesh = nullptr;
 
         if (GetCVars()->e_TerrainLog == 1)
         {
@@ -529,7 +539,7 @@ void CTerrainNode::ReleaseHeightMapGeometry(bool bRecursive, const AABB* pBox)
     }
 
     delete m_pLeafData;
-    m_pLeafData = NULL;
+    m_pLeafData = nullptr;
 
     if (bRecursive && m_Children)
     {
@@ -917,7 +927,7 @@ void CTerrainNode::RenderSectorUpdate_Finish(const SRenderingPassInfo& passInfo)
                     if (b3D || surfaceType->GetMaterialOfProjection(szProj[p]))
                     {
                         int nProjId = b3D ? p : 3;
-                        PodArray<vtx_idx>& lstIndices = m_SurfaceIndices[surfaceType->ucThisSurfaceTypeId][nProjId];
+                        PodArray<vtx_idx>& lstIndices = s_SurfaceIndices[surfaceType->ucThisSurfaceTypeId][nProjId];
 
                         if (m_DetailLayers[i].triplanarMeshes[p] && (lstIndices.Count() != m_DetailLayers[i].triplanarMeshes[p]->GetIndicesCount()))
                         {
@@ -1041,7 +1051,7 @@ void CTerrainNode::GenerateIndicesForAllSurfaces(IRenderMesh* mesh, int surfaceA
     {
         for (int axis = 0; axis < 4; axis++)
         {
-            m_SurfaceIndices[surfaceId][axis].Clear();
+            s_SurfaceIndices[surfaceId][axis].Clear();
             surfaceAxisIndexCount[surfaceId][axis] = -1;
         }
 
@@ -1122,7 +1132,7 @@ void CTerrainNode::GenerateIndicesForAllSurfaces(IRenderMesh* mesh, int surfaceA
             }
 
             assert(projectionAxis >= 0 && projectionAxis < 4);
-            m_SurfaceIndices[surfaceId][projectionAxis].AddList(triangle, 3);
+            s_SurfaceIndices[surfaceId][projectionAxis].AddList(triangle, 3);
         }
 
         // Reset counters for next triangle

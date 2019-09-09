@@ -713,7 +713,7 @@ struct SAnimationContext
 
     const SControllerDef& controllerDef;
     CTagState             state;
-    DynArray<CTagState>   subStates;
+    LegacyDynArray<CTagState>   subStates;
     CMTRand_int32         randGenerator;
 };
 

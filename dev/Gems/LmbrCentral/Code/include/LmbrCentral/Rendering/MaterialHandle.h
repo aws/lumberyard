@@ -35,7 +35,20 @@ namespace LmbrCentral
         {
             AZ::RenderNotificationsBus::Handler::BusConnect();
         }
-        ~MaterialHandle()
+
+        MaterialHandle(const MaterialHandle& handle)
+            : m_material(handle.m_material)
+        {
+            AZ::RenderNotificationsBus::Handler::BusConnect();
+        }
+
+        MaterialHandle& operator=(const MaterialHandle& rhs)
+        {
+            m_material = rhs.m_material;
+            return *this;
+        }
+
+        ~MaterialHandle() override
         {
             AZ::RenderNotificationsBus::Handler::BusDisconnect();
         }
@@ -43,7 +56,7 @@ namespace LmbrCentral
         //! Handle the renderer's free resources event by nullifying m_material.
         //! This is used to prevent material handles that may have been queued for release in the next frame
         //! from having dangling pointers after the renderer has already shut down.
-        void OnRendererFreeResources() override
+        void OnRendererFreeResources(int flags) override
         {
             m_material = nullptr;
         }

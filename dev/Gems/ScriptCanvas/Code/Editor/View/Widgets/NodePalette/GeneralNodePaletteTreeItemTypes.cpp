@@ -69,10 +69,10 @@ namespace ScriptCanvasEditor
     // ClassMethodEventPaletteTreeItem
     ////////////////////////////////////
 
-    ClassMethodEventPaletteTreeItem::ClassMethodEventPaletteTreeItem(const QString& className, const QString& methodName)
+    ClassMethodEventPaletteTreeItem::ClassMethodEventPaletteTreeItem(AZStd::string_view className, AZStd::string_view methodName)
         : DraggableNodePaletteTreeItem(methodName, ScriptCanvasEditor::AssetEditorId)
-        , m_className(className)
-        , m_methodName(methodName)
+        , m_className(className.data())
+        , m_methodName(methodName.data())
     {
         AZStd::string displayMethodName = TranslationHelper::GetKeyTranslation(TranslationContextGroup::ClassMethod, m_className.toUtf8().data(), m_methodName.toUtf8().data(), TranslationItemType::Node, TranslationKeyId::Name);
 
@@ -98,6 +98,16 @@ namespace ScriptCanvasEditor
     GraphCanvas::GraphCanvasMimeEvent* ClassMethodEventPaletteTreeItem::CreateMimeEvent() const
     {
         return aznew CreateClassMethodMimeEvent(m_className, m_methodName);
+    }
+
+    AZStd::string ClassMethodEventPaletteTreeItem::GetClassMethodName() const
+    {
+        return m_className.toUtf8().data();
+    }
+
+    AZStd::string ClassMethodEventPaletteTreeItem::GetMethodName() const
+    {
+        return m_methodName.toUtf8().data();
     }
 
     //////////////////////////////
@@ -146,7 +156,7 @@ namespace ScriptCanvasEditor
     // CustomNodePaletteTreeItem
     //////////////////////////////
 
-    CustomNodePaletteTreeItem::CustomNodePaletteTreeItem(const AZ::Uuid& typeId, const QString& nodeName, const QString& iconPath)
+    CustomNodePaletteTreeItem::CustomNodePaletteTreeItem(const AZ::Uuid& typeId, AZStd::string_view nodeName)
         : DraggableNodePaletteTreeItem(nodeName, ScriptCanvasEditor::AssetEditorId)
         , m_typeId(typeId)
     {
@@ -155,5 +165,10 @@ namespace ScriptCanvasEditor
     GraphCanvas::GraphCanvasMimeEvent* CustomNodePaletteTreeItem::CreateMimeEvent() const
     {
         return aznew CreateCustomNodeMimeEvent(m_typeId, GetStyleOverride(), GetTitlePalette());
+    }
+
+    AZ::Uuid CustomNodePaletteTreeItem::GetTypeId() const
+    {
+        return m_typeId;
     }
 }

@@ -15,7 +15,8 @@
 #include <AzFramework/StringFunc/StringFunc.h>
 
 #include <AzToolsFramework/AssetBrowser/Search/Filter.h>
-#include <AzToolsFramework/AssetBrowser/AssetBrowserEntry.h>
+#include <AzToolsFramework/AssetBrowser/Entries/AssetBrowserEntry.h>
+#include <AzToolsFramework/AssetBrowser/Entries/ProductAssetBrowserEntry.h>
 #include <AzToolsFramework/AssetBrowser/AssetBrowserBus.h>
 #include <AzToolsFramework/AssetBrowser/EBusFindAssetTypeByName.h>
 
@@ -246,7 +247,7 @@ namespace AzToolsFramework
             }
 
             // entry's name matches search pattern
-            if (StringMatch(m_filterString, entry->GetDisplayName().c_str()))
+            if (StringMatch(m_filterString, entry->GetDisplayName()))
             {
                 return true;
             }

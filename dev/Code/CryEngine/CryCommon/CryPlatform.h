@@ -23,7 +23,6 @@
 // this file can't include azcore since it is included by tools that use ancient compilers
 
 #if defined(AZ_RESTRICTED_PLATFORM)
-#include <AzCore/PlatformRestrictedFileDef.h>
 #undef AZ_RESTRICTED_SECTION
 #define CRYPLATFORM_H_SECTION_1 1
 #define CRYPLATFORM_H_SECTION_2 2
@@ -43,7 +42,11 @@
 #define AZ_RESTRICTED_SECTION_IMPLEMENTED
 #elif defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION CRYPLATFORM_H_SECTION_1
-#include AZ_RESTRICTED_FILE(CryPlatform_h, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/CryPlatform_h_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/CryPlatform_h_provo.inl"
+    #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
 #undef AZ_RESTRICTED_SECTION_IMPLEMENTED
@@ -62,7 +65,11 @@
 #define AZ_RESTRICTED_SECTION_IMPLEMENTED
 #elif defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION CRYPLATFORM_H_SECTION_2
-#include AZ_RESTRICTED_FILE(CryPlatform_h, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/CryPlatform_h_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/CryPlatform_h_provo.inl"
+    #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
 #undef AZ_RESTRICTED_SECTION_IMPLEMENTED
@@ -97,10 +104,6 @@
 
 #if !defined(CRYPLATFORM_INTERLOCKEDSLIST_ELEMENT_ALIGNMENT)
 #   error CRYPLATFORM_INTERLOCKEDSLIST_ELEMENT_ALIGNMENT not defined for current platform
-#endif
-
-#if !defined(__DETAIL__LINK_THIRD_PARTY_LIBRARY)
-#   error __DETAIL__LINK_THIRD_PARTY_LIBRARY not defined for current platform
 #endif
 
 #if !defined(__DETAIL__LINK_SYSTEM_PARTY_LIBRARY)
@@ -160,13 +163,6 @@ inline CryMT::SInterlockedSListElement* CryMT::InterlockedSListPop(CryMT::SInter
 {
     return CryMT::detail::InterlockedSListPop(pHeader);
 }
-
-////////////////////////////////////////////////////////////////////////////
-// Include a third party library. The path has to be specificed
-// relative to the Code/ folder. In addition the path has to be specified
-// as a liternal, not as a string, and forward slashes have to be used eg:
-// LINK_THIRD_PARTY_LIBRARY(SDK/MyLib/lib/MyLib.a)
-#define LINK_THIRD_PARTY_LIBRARY(name) __DETAIL__LINK_THIRD_PARTY_LIBRARY(name)
 
 ////////////////////////////////////////////////////////////////////////////
 // Include a platform library.

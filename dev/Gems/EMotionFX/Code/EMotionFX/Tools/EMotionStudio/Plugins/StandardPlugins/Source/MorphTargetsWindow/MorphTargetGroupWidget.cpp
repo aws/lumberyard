@@ -40,12 +40,12 @@ namespace EMStudio
         // checkbox to enable/disable manual mode for all morph targets
         mSelectAll = new QCheckBox("Select All");
         mSelectAll->setSizePolicy(QSizePolicy::Maximum, QSizePolicy::Fixed);
-        connect(mSelectAll, SIGNAL(stateChanged(int)), this, SLOT(SetManualModeForAll(int)));
+        connect(mSelectAll, &QCheckBox::stateChanged, this, &MorphTargetGroupWidget::SetManualModeForAll);
 
         // button for resetting all morph targets
         QPushButton* resetAll = new QPushButton("Reset All");
         resetAll->setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::Fixed);
-        connect(resetAll, SIGNAL(clicked()), this, SLOT(ResetAll()));
+        connect(resetAll, &QPushButton::clicked, this, &MorphTargetGroupWidget::ResetAll);
 
         // add controls to the top layout
         QHBoxLayout* topControlLayout = new QHBoxLayout();
@@ -82,7 +82,7 @@ namespace EMStudio
             mMorphTargets[i].mManualMode->setProperty("MorphTargetIndex", intIndex);
             mMorphTargets[i].mManualMode->setStyleSheet("QCheckBox{ spacing: 0px; }");
             gridLayout->addWidget(mMorphTargets[i].mManualMode, intIndex, 1);
-            connect(mMorphTargets[i].mManualMode, SIGNAL(clicked()), this, SLOT(ManualModeClicked()));
+            connect(mMorphTargets[i].mManualMode, &QCheckBox::clicked, this, &MorphTargetGroupWidget::ManualModeClicked);
 
             // create slider to adjust the morph target
             mMorphTargets[i].mSliderWeight = new MysticQt::FloatSlider();
@@ -92,8 +92,8 @@ namespace EMStudio
             mMorphTargets[i].mSliderWeight->GetSpinBox()->setMinimumWidth(40);
             mMorphTargets[i].mSliderWeight->GetSpinBox()->setMaximumWidth(40);
             gridLayout->addWidget(mMorphTargets[i].mSliderWeight, intIndex, 2);
-            connect(mMorphTargets[i].mSliderWeight, SIGNAL(ValueChanged(float)), this, SLOT(SliderWeightMoved(float)));
-            connect(mMorphTargets[i].mSliderWeight, SIGNAL(FinishedValueChange(float)), this, SLOT(SliderWeightReleased(float)));
+            connect(mMorphTargets[i].mSliderWeight, static_cast<void (MysticQt::FloatSlider::*)(float)>(&MysticQt::FloatSlider::ValueChanged), this, &MorphTargetGroupWidget::SliderWeightMoved);
+            connect(mMorphTargets[i].mSliderWeight, &MysticQt::FloatSlider::FinishedValueChange, this, &MorphTargetGroupWidget::SliderWeightReleased);
 
             // create the name label
             QLabel* nameLabel = new QLabel(morphTargets[i]->GetName());
@@ -103,7 +103,7 @@ namespace EMStudio
             QPushButton* edit = new QPushButton("Edit");
             edit->setProperty("MorphTargetIndex", intIndex);
             gridLayout->addWidget(edit, intIndex, 4);
-            connect(edit, SIGNAL(clicked()), this, SLOT(EditClicked()));
+            connect(edit, &QPushButton::clicked, this, &MorphTargetGroupWidget::EditClicked);
         }
 
         // add the grid layout in the main layout

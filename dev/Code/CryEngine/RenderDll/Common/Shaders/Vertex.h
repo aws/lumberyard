@@ -168,8 +168,8 @@ namespace AZ
             {
                 m_vertexAttributes = attributes;
                 m_enum = eVF_Unknown;
-                PadFormatForBufferAlignment();
-                CalculateStride();
+                UpdateStride();
+                PadFormatForBufferAlignment();           
                 GenerateName();
                 GenerateCrc();
             }
@@ -339,13 +339,23 @@ namespace AZ
                     };
                     m_enum = eVF_P3F_C4B_T2S;
                     break;
+                case eVF_P2F_C4B_T2F_F4B:
+                    m_vertexAttributes =
+                    {
+                        Attribute(AttributeUsage::Position, AttributeType::Float32_2),
+                        Attribute(AttributeUsage::Color, AttributeType::Byte_4),
+                        Attribute(AttributeUsage::TexCoord, AttributeType::Float32_2),
+                        Attribute(AttributeUsage::Indices, AttributeType::UInt16_2)
+                    };
+                    m_enum = eVF_P2F_C4B_T2F_F4B;
+                    break;
                 case eVF_Max:
                 default:
                     AZ_Assert(false, "Invalid vertex format");
                     m_enum = eVF_Unknown;
                 }
-                PadFormatForBufferAlignment();
-                CalculateStride();
+                UpdateStride();
+                PadFormatForBufferAlignment();               
                 GenerateName();
                 GenerateCrc();
             }
@@ -506,7 +516,7 @@ namespace AZ
             }
         private:
             //! Calculates the sum of the size in bytes of all attributes that make up this format
-            void CalculateStride()
+            void UpdateStride()
             {
                 m_stride = 0;
                 for (Attribute attribute : m_vertexAttributes)
@@ -543,6 +553,9 @@ namespace AZ
                 default:
                     break;
                 }
+
+                //re-calculate and update the stride
+                UpdateStride();
             }
 
             void GenerateName(void)

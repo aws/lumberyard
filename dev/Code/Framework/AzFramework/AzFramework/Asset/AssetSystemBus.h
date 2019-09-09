@@ -74,7 +74,9 @@ namespace AzFramework
         public:
             static const AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::Single;   // single listener
             static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::Single;   // single bus
+            
             using MutexType = AZStd::recursive_mutex;
+            static const bool LocklessDispatch = true; // no reason to block other threads when a thread is waiting for a response from AP.
 
             virtual ~AssetSystemRequests() = default;
 
@@ -84,14 +86,31 @@ namespace AzFramework
             virtual bool Connect(const char* identifier) = 0;
             //! Disconnect from the underlying socket connection to the Asset processor if connected, otherwise this function does nothing.
             virtual bool Disconnect() = 0;
-            //! Compile an asset synchronously
+            /** CompileAssetSync
+             * Compile an asset synchronously.  This will only return after compilation, and also escalates it so that it builds immediately.
+             * Note that the asset path will be heuristically matched like a search term, so things missing an extension or things that
+             * are just a folder name will cause all assets which match that search term to be escalated and compiled.
+             * PERFORMANCE WARNING: Only use the FlushIO version if you have just written an asset file you wish to immediately compile,
+             *     potentially before the operating system's disk IO queue is finished writing it.
+             *     It will force a flush of the OS file monitoring queue before considering the request.
+            **/
             virtual AssetStatus CompileAssetSync(const AZStd::string& assetPath) = 0;
-            //! Retrieve the status of an asset synchronously
+            virtual AssetStatus CompileAssetSync_FlushIO(const AZStd::string& assetPath) = 0;
+
+            /** GetAssetStatus
+             * Retrieve the status of an asset synchronously and  also escalate it so that it builds sooner than others that are not escalated.
+             * @param assetPath - a relpath to a product in the cache, or a relpath to a source file, or a full path to either
+             * PERFORMANCE WARNING: Only use the FlushIO version if you have just written an asset file you wish to immediately query the status of,
+             *     potentially before the operating system's disk IO queue is finished writing it.
+             *     It will force a flush of the OS file monitoring queue before considering the request.
+            **/
             virtual AssetStatus GetAssetStatus(const AZStd::string& assetPath) = 0;
-            //! Send out queued events
-            virtual void UpdateQueuedEvents() = 0;
+            virtual AssetStatus GetAssetStatus_FlushIO(const AZStd::string& assetPath) = 0;
+
             //! Show the AssetProcessor App
             virtual void ShowAssetProcessor() = 0;
+            //! Show an asset in the AssetProcessor App
+            virtual void ShowInAssetProcessor(const AZStd::string& assetPath) = 0;
             //! Sets the asset processor port to use when connecting
             virtual void SetAssetProcessorPort(AZ::u16 port) = 0;
             //! Sets the asset processor IP to use when connecting
@@ -122,6 +141,12 @@ namespace AzFramework
             //! Notifies listeners that connection to the Asset Processor failed
             virtual void ConnectionFailed() {};
         };
+
+        namespace ConnectionIdentifiers
+        {
+            static const char* Editor = "EDITOR";
+            static const char* Game = "GAME";
+        }
     } // namespace AssetSystem
     using AssetSystemBus = AZ::EBus<AssetSystem::AssetSystemNotifications>;
     using AssetSystemInfoBus = AZ::EBus<AssetSystem::AssetSystemInfoNotifications>;

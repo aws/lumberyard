@@ -17,6 +17,7 @@
 #include "ViewportTitleDlg.h"
 
 #include "StyleGallery/ui_ViewportTitleDlg.h"
+#include <QAction>
 
 ViewportTitleDlg::ViewportTitleDlg(QWidget* pParent)
 	: QWidget(pParent),

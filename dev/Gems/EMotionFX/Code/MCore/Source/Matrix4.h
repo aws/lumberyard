@@ -51,7 +51,7 @@ namespace MCore
      * But, does it first rotate and then translate in the rotated space? Or does it first translate and then rotate?
      * For example if you want to rotate a planet, while it's moving, you want to rotate it in it's local coordinate system. Like when you spin
      * a globe you can have on your desk. So where it spins around it's own center. However, if the planet is at location (10,10,10) in 3D space for example
-     * it is also possible that rotates around the origin in global space (0,0,0). The order of multiplication between matrices matters.
+     * it is also possible that rotates around the origin in world space (0,0,0). The order of multiplication between matrices matters.
      * This means that (matrixA * matrixB) does not have to not result in the same as (matrixB * matrixA).
      *
      * Here is some information about how the matrices are stored internally:
@@ -242,6 +242,7 @@ namespace MCore
 
         MCORE_INLINE void Skin(const AZ::Vector3* inPos, const AZ::Vector3* inNormal, AZ::Vector3* outPos, AZ::Vector3* outNormal, float weight);
         MCORE_INLINE void Skin(const AZ::Vector3* inPos, const AZ::Vector3* inNormal, const AZ::Vector4* inTangent, AZ::Vector3* outPos, AZ::Vector3* outNormal, AZ::Vector4* outTangent, float weight);
+        MCORE_INLINE void Skin(const AZ::Vector3* inPos, const AZ::Vector3* inNormal, const AZ::Vector4* inTangent, const AZ::Vector3* inBitangent, AZ::Vector3* outPos, AZ::Vector3* outNormal, AZ::Vector4* outTangent, AZ::Vector3* outBitangent, float weight);
 
         /**
          * Perform skinning on an input vertex, and add the result to the output, weighted by a weight value.

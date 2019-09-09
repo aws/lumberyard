@@ -1,9 +1,12 @@
 {
    "none":
     {
-        "Tests":
+        "Tests": 
         [
-            "Tests/AzQtComponentTests.cpp"
+            "Tests/AzQtComponentTests.cpp",
+            "Tests/ColorControllerTests.cpp",
+            "Tests/FloatToStringConversionTests.cpp",
+            "Tests/HexParsingTests.cpp"
         ]
     }
 }

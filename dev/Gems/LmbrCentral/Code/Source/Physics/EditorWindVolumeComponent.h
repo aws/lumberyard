@@ -56,12 +56,14 @@ namespace LmbrCentral
         }
 
     private:
-        // EditorComponentBase
-        void DisplayEntity(bool& handled) override;
+        // AzFramework::EntityDebugDisplayEventBus
+        void DisplayEntityViewport(
+            const AzFramework::ViewportInfo& viewportInfo,
+            AzFramework::DebugDisplayRequests& debugDisplay) override;
 
-        void DrawBox(AzFramework::EntityDebugDisplayRequests* displayContext);
-        void DrawSphere(AzFramework::EntityDebugDisplayRequests* displayContext);
-        void DrawArrow(AzFramework::EntityDebugDisplayRequests* displayContext, const AZ::Vector3& point);
+        void DrawBox(AzFramework::DebugDisplayRequests& debugDisplay);
+        void DrawSphere(AzFramework::DebugDisplayRequests& debugDisplay);
+        void DrawArrow(AzFramework::DebugDisplayRequests& debugDisplay, const AZ::Vector3& point);
         void OnConfigurationChanged();
         AZ::Vector3 GetLocalWindDirection(const AZ::Vector3& point) const;
 

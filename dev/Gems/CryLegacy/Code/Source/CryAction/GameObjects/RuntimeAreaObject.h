@@ -37,7 +37,7 @@ public:
 
     typedef std::map<TSurfaceCRC, SAudioControls> TAudioControlMap;
 
-    static TAudioControlMap m_cAudioControls;
+    static StaticInstance<TAudioControlMap> m_cAudioControls;
 
     CRuntimeAreaObject();
     virtual ~CRuntimeAreaObject() override;

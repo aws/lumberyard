@@ -183,7 +183,7 @@ private:
 
     bool m_bAttachmentChanged;
 
-    static CFacialDisplaceInfo s_boneInfoBlending;
+    static StaticInstance<CFacialDisplaceInfo> s_boneInfoBlending;
 };
 
 #endif // CRYINCLUDE_CRYANIMATION_FACIALANIMATION_FACIALMODEL_H

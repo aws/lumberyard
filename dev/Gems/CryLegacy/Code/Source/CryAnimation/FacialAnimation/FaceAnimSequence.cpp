@@ -532,7 +532,7 @@ void CFacialAnimSequence::Animate(const QuatTS& rAnimLocationNext, CFacialAnimSe
         CFacialSentence::OverridesMap overriddenPhonemes;
         if (bHasBakedLipsynch)
         {
-            std::vector<CFaceIdentifierHandle> foundChannels;
+            AZStd::vector<CFaceIdentifierHandle, AZ::AZStdAlloc<AZ::LegacyAllocator>> foundChannels;
             foundChannels.reserve(200);
 
             CFaceIdentifierHandle bakedLipSyncHandle = m_pFaceAnim->CreateIdentifierHandle("BakedLipSync");
@@ -1070,9 +1070,6 @@ void CFacialAnimSequence::MergeSequence(IFacialAnimSequence* pMergeSequence, con
 
 void CFacialAnimSequence::StreamAsyncOnComplete(IReadStream* pStream, unsigned nError)
 {
-    //  MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_FSQ, 0, GetName());
-    //  FUNCTION_PROFILER(GetISystem(), PROFILE_ANIMATION);
-
     if (pStream->IsError())
     {
         return;

@@ -531,7 +531,7 @@ struct IScriptSystem
     //      m_ScriptSystem->PushParam(pObj);
     //      m_ScriptSystem->PushParam(nTime);
     //      m_ScriptSystem->EndCall();
-    virtual int BeginCall(HSCRIPTFUNCTION hFunc) = 0;                        // Márcio: changed the return type .
+    virtual int BeginCall(HSCRIPTFUNCTION hFunc) = 0;                        // Marcio: changed the return type .
     // Summary:
     //   Calls a named method inside specified table.
     virtual int BeginCall(const char* sFuncName) = 0;                        // From void to int for error checking.

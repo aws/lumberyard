@@ -26,6 +26,25 @@ SWAGGER_TO_CPP_TYPE = {
     "number": "double"
 }
 
+SWAGGER_TO_CPP_INITIALIZERS = {
+    "boolean": "{false}",
+    "integer": "{0}",
+    "number": "{0.0}"
+}
+
+SWAGGER_TO_CS_TYPE = {
+    "boolean": "bool",
+    "integer" : "int",
+    "string" : "string",
+    "number": "double"
+}
+
+SWAGGER_TO_CS_INITIALIZERS = {
+    "boolean": " = false",
+    "integer": " = 0",
+    "number": " = 0.0"
+}
+
 VALID_HTTP_METHODS = [
     "GET",
     "PUT",
@@ -71,18 +90,31 @@ def get_UUIDs(source_file, jinja_json):
 def generate_component_json(resource_group, swagger):
     return ComponentJsonBuilder(resource_group, swagger).generate_component_json()
 
+def generate_cs_json(resource_group, swagger):
+    return CSJsonBuilder(resource_group, swagger).generate_component_json()
+
 class ComponentJsonBuilder:
     def __init__(self, resource_group, swagger):
         self._swagger = swagger
         self._resource_group_name = resource_group
         self._component_json = {}
+        self._swagger_type_map = SWAGGER_TO_CPP_TYPE
+        self._swagger_initializer_map = SWAGGER_TO_CPP_INITIALIZERS
 
+    def get_symbol_type(self, swagger_type, default_type):
+        return self._swagger_type_map.get(swagger_type, default_type)
 
+    def get_symbol_initializer(self, swagger_type, default_type):
+        return self._swagger_initializer_map.get(swagger_type, default_type)
+
+    def get_namespace(self):
+        return self._resource_group_name
+        
     def generate_component_json(self):
-        self.__add_def_to_struct_type_conversions()
-        self._component_json["namespace"] = self._resource_group_name
+        self.add_def_to_struct_type_conversions()
+        self._component_json["namespace"] = self.get_namespace()
         self._component_json["componentClass"] = "{}ClientComponent".format(self._resource_group_name)
-
+        self._component_json["resourceGroup"] = self._resource_group_name
         self._component_json["redefinitions"] = []
         self._component_json["otherClasses"] = []
         self._component_json["functions"] = []
@@ -132,12 +164,14 @@ class ComponentJsonBuilder:
         if not response_type in [item["name"] for item in self._component_json["otherClasses"]]:
             raise HandledError("{} does not have a object reponse type. The lmbr_aws swagger client generator only supports object response types".format(path))
         if [item for item in self._component_json["otherClasses"] if item["name"] == response_type and item["isArray"]]:
-            raise HandledError("{} has an array reponse type. The lmbr_aws swagger client generator only supports object response types".format(path))
+           print "WARNING - {} has an array reponse type. The lmbr_aws swagger client generator only supports object response types".format(path)
 
     def __read_functions(self, paths):
         for path in paths.values():
             for method in path.values():
                 if not method.selector.upper() in VALID_HTTP_METHODS:
+                    continue
+                if method.get("x-amazon-cloud-canvas-client-generation", {}).get("no-client", False).value == True:
                     continue
                 func_def = {}
 
@@ -156,8 +190,8 @@ class ComponentJsonBuilder:
                     if not param.get("in", ""):
                         raise HandledError("{} has no 'in' property".format(param))
                     param_type = self.__get_param_type(function_name, param)
-                    param_list.append("{} {}".format(SWAGGER_TO_CPP_TYPE.get(param_type, param_type), param.get("name").value))
-                    signature_params.append("const {}& {}".format(SWAGGER_TO_CPP_TYPE.get(param_type, param_type), param.get("name").value))
+                    param_list.append("{} {}".format(self.get_symbol_type(param_type, param_type), param.get("name").value))
+                    signature_params.append("const {}& {}".format(self.get_symbol_type(param_type, param_type), param.get("name").value))
 
                     if param.get("in").value == "body":
                         param_name_list.append(param.get("name").value)
@@ -178,7 +212,7 @@ class ComponentJsonBuilder:
                 response_type = self.__get_response_type(function_name, method.get("responses"))
                 if response_type:
                     self.__check_supported_response_type(path, response_type)
-                    func_def["responseType"] = SWAGGER_TO_CPP_TYPE.get(response_type, response_type)
+                    func_def["responseType"] = self.get_symbol_type(response_type, response_type)
 
                 self._component_json["functions"].append(func_def)
 
@@ -286,12 +320,6 @@ class ComponentJsonBuilder:
         raise HandledError("No definition found for {}".format(name))
 
 
-    def __add_def_to_struct_type_conversions(self):
-        for def_name in self._swagger.get("definitions", {}):
-            struct = self._swagger["definitions"][def_name]
-            SWAGGER_TO_CPP_TYPE["#/definitions/{}".format(def_name)] = def_name
-
-
     def __get_type(self, schema):
         if "type" in schema:
             return schema["type"]
@@ -333,8 +361,11 @@ class ComponentJsonBuilder:
                 auto_generated_name = "{}Property{}".format(obj_name[0].upper() + obj_name[1:], prop_name[0].upper() + prop_name[1:])
                 self.__generate_from_schema(auto_generated_name, properties.get(prop_name))
                 prop["type"] = auto_generated_name
+                prop["init"] = ""
             else:
-                prop["type"] = SWAGGER_TO_CPP_TYPE.get(def_type, def_type)
+                prop["type"] = self.get_symbol_type(def_type, def_type)
+                prop["init"] = self.get_symbol_initializer(def_type, "")
+
         elif "$ref" in properties.get(prop_name).value: # must be a ref
             item = properties.get(prop_name)
             ref_path = item.value['$ref']
@@ -367,13 +398,13 @@ class ComponentJsonBuilder:
         else:
             elements = items.get("type").value
 
-        array_def["elements"] = SWAGGER_TO_CPP_TYPE.get(elements, elements)
+        array_def["elements"] = self.get_symbol_type(elements, elements)
         self._component_json["otherClasses"].append(array_def)
 
 
     def __generate_redef(self, name, def_type):
         redef = {}
-        redef["primitiveType"] = SWAGGER_TO_CPP_TYPE.get(def_type, def_type)
+        redef["primitiveType"] = self.get_symbol_type(def_type, def_type)
         redef["name"] = name
         self._component_json["redefinitions"].append(redef)
 
@@ -398,3 +429,24 @@ class ComponentJsonBuilder:
             if not char in string.letters + string.digits + "_":
                 return False
         return True
+
+    def add_def_to_struct_type_conversions(self):
+        for def_name, info in self._swagger.get("definitions", {}).iteritems():
+            this_type = info.get("type", "")
+            if this_type in ["string", "boolean", "integer", "number"]:
+                self._swagger_type_map[def_name] = self._swagger_type_map[this_type]
+                self._swagger_type_map["#/definitions/{}".format(def_name)] = self._swagger_type_map[this_type]
+            else:
+                self._swagger_type_map["#/definitions/{}".format(def_name)] = def_name
+
+class CSJsonBuilder(ComponentJsonBuilder):
+
+    def __init__(self, resource_group, swagger):
+        self._swagger = swagger
+        self._resource_group_name = resource_group
+        self._component_json = {}
+        self._swagger_type_map = SWAGGER_TO_CS_TYPE
+        self._swagger_initializer_map = SWAGGER_TO_CS_INITIALIZERS
+
+    def get_namespace(self):
+        return self._resource_group_name.replace('CloudGem','CloudCanvas.')

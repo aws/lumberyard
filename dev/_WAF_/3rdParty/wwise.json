@@ -10,8 +10,8 @@
             "AkMemoryMgr",
             "AkMusicEngine",
             "AkSoundEngine",
-            "AkStreamMgr",
-            "AkSpatialAudio"
+            "AkSpatialAudio",
+            "AkStreamMgr"
         ],
         "ak_effect_libs": [
             "AkCompressorFX",
@@ -35,24 +35,30 @@
         "ak_source_libs": [
             "AkAudioInputSource",
             "AkMotionGeneratorSource",
+            "AkMotionSourceSource",
             "AkSilenceSource",
             "AkSineSource",
             "AkSynthOneSource",
             "AkToneSource"
         ],
-        "ak_extra_effect_libs": [
+        "ak_codec_libs": [
+            "AkOpusDecoder",
+            "AkVorbisDecoder"
+        ],
+        "ak_extra_plugin_libs": [
             "AkConvolutionReverbFX",
             "AkReflectFX",
+            "AkRouterMixerFX",
+            "ResonanceAudioFX"
+        ],
+        "ak_soundseed_libs": [
             "AkSoundSeedImpactFX",
+            "AkSoundSeedGrainSource",
             "AkSoundSeedWindSource",
             "AkSoundSeedWooshSource"
         ],
-        "ak_vorbis_libs": [
-            "AkVorbisDecoder"
-        ],
         "auro_libs": [
-            "AuroHeadphoneFX",
-            "AuroPannerMixer"
+            "AuroHeadphoneFX"
         ],
         "crankcase_libs": [
             "CrankcaseAudioREVModelPlayerFX"
@@ -70,31 +76,58 @@
             "McDSPFutzBoxFX",
             "McDSPLimiterFX"
         ],
-        "communication_libs": [
+        "non_release_libs": [
             "CommunicationCentral"
         ],
         "common_libs": [
             "${ak_core_libs}",
-            "AkMotionSink",
             "${ak_effect_libs}",
-            "${ak_vorbis_libs}",
+            "${ak_codec_libs}",
             "${ak_source_libs}"
         ],
-        "common_libs_nix": [
-            "${ak_core_libs}",
-            "${ak_effect_libs}",
-            "${ak_vorbis_libs}",
-            "${ak_source_libs}"
-        ],
-        "extra_libs": [
-            "${ak_extra_effect_libs}",
+        "common_extra_libs": [
+            "${ak_extra_plugin_libs}",
+            "${ak_soundseed_libs}",
             "${auro_libs}",
             "${crankcase_libs}",
             "${mcdsp_libs}"
+        ],
+        "android_libs": [
+            "AkMotionSink"
+        ],
+        "ios_libs": [
+            "AkAACDecoder"
+        ],
+        "linux_libs": [
+            "${izotope_libs}"
+        ],
+        "mac_libs": [
+            "AkAACDecoder",
+            "AkAutobahn"
+        ],
+        "provo_libs": [
+            "AkMotionSink",
+            "${izotope_libs}"
+        ],
+        "tvos_libs": [
+            "AkAACDecoder"
+        ],
+        "win_libs": [
+            "ASIOSourceSink",
+            "AkAutobahn",
+            "AkMotionSink",
+            "MSSpatialSink",
+            "SFLib",
+            "${izotope_libs}"
+        ],
+        "xenia_libs": [
+            "AkMotionSink",
+            "MSSpatialSink",
+            "${izotope_libs}"
         ]
     },
-    "suppress_warning": "True",
-    "lib_required": "True",
+    "suppress_warning": "False",
+    "lib_required": "False",
     "engine_configs": "True",
     "defines_debug": [
         "WWISE_FOR_DEBUG"
@@ -111,44 +144,6 @@
         "AK_OPTIMIZED"
     ],
     "platform": {
-        "win_x64_vs2013": {
-            "libpath_debug": [
-                "SDK/x64_vc120/Debug/lib"
-            ],
-            "libpath_profile": [
-                "SDK/x64_vc120/Profile/lib"
-            ],
-            "libpath_performance": [
-                "SDK/x64_vc120/Release/lib"
-            ],
-            "libpath_release": [
-                "SDK/x64_vc120/Release/lib"
-            ],
-            "lib_debug": [
-                "${communication_libs}.lib",
-                "${common_libs}.lib",
-                "${extra_libs}.lib",
-                "${izotope_libs}.lib",
-                "SFLib.lib"
-            ],
-            "lib_profile": [
-                "${communication_libs}.lib",
-                "${common_libs}.lib",
-                "${extra_libs}.lib",
-                "${izotope_libs}.lib",
-                "SFLib.lib"
-            ],
-            "lib_performance": [
-                "${common_libs}.lib",
-                "${extra_libs}.lib",
-                "${izotope_libs}.lib"
-            ],
-            "lib_release": [
-                "${common_libs}.lib",
-                "${extra_libs}.lib",
-                "${izotope_libs}.lib"
-            ]
-        },
         "win_x64_vs2015": {
             "libpath_debug": [
                 "SDK/x64_vc140/Debug/lib"
@@ -163,32 +158,26 @@
                 "SDK/x64_vc140/Release/lib"
             ],
             "lib_debug": [
-                "${communication_libs}.lib",
+                "${non_release_libs}.lib",
                 "${common_libs}.lib",
-                "${extra_libs}.lib",
-                "${izotope_libs}.lib",
-                "SFLib.lib",
-                "MSSpatialSink.lib"
+                "${win_libs}.lib",
+                "${common_extra_libs}.lib"
             ],
             "lib_profile": [
-                "${communication_libs}.lib",
+                "${non_release_libs}.lib",
                 "${common_libs}.lib",
-                "${extra_libs}.lib",
-                "${izotope_libs}.lib",
-                "SFLib.lib",
-                "MSSpatialSink.lib"
+                "${win_libs}.lib",
+                "${common_extra_libs}.lib"
             ],
             "lib_performance": [
                 "${common_libs}.lib",
-                "${extra_libs}.lib",
-                "${izotope_libs}.lib",
-                "MSSpatialSink.lib"
+                "${win_libs}.lib",
+                "${common_extra_libs}.lib"
             ],
             "lib_release": [
                 "${common_libs}.lib",
-                "${extra_libs}.lib",
-                "${izotope_libs}.lib",
-                "MSSpatialSink.lib"
+                "${win_libs}.lib",
+                "${common_extra_libs}.lib"
             ]
         },
         "win_x64_vs2017": {
@@ -205,32 +194,26 @@
                 "SDK/x64_vc150/Release/lib"
             ],
             "lib_debug": [
-                "${communication_libs}.lib",
+                "${non_release_libs}.lib",
                 "${common_libs}.lib",
-                "${extra_libs}.lib",
-                "${izotope_libs}.lib",
-                "SFLib.lib",
-                "MSSpatialSink.lib"
+                "${win_libs}.lib",
+                "${common_extra_libs}.lib"
             ],
             "lib_profile": [
-                "${communication_libs}.lib",
+                "${non_release_libs}.lib",
                 "${common_libs}.lib",
-                "${extra_libs}.lib",
-                "${izotope_libs}.lib",
-                "SFLib.lib",
-                "MSSpatialSink.lib"
+                "${win_libs}.lib",
+                "${common_extra_libs}.lib"
             ],
             "lib_performance": [
                 "${common_libs}.lib",
-                "${extra_libs}.lib",
-                "${izotope_libs}.lib",
-                "MSSpatialSink.lib"
+                "${win_libs}.lib",
+                "${common_extra_libs}.lib"
             ],
             "lib_release": [
                 "${common_libs}.lib",
-                "${extra_libs}.lib",
-                "${izotope_libs}.lib",
-                "MSSpatialSink.lib"
+                "${win_libs}.lib",
+                "${common_extra_libs}.lib"
             ]
         },
         "durango_vs2015": {
@@ -247,30 +230,26 @@
                 "SDK/XboxOne_vc140/Release/lib"
             ],
             "lib_debug": [
-                "${communication_libs}.lib",
+                "${non_release_libs}.lib",
                 "${common_libs}.lib",
-                "${extra_libs}.lib",
-                "${izotope_libs}.lib",
-                "MSSpatialSink.lib"
+                "${xenia_libs}.lib",
+                "${common_extra_libs}.lib"
             ],
             "lib_profile": [
-                "${communication_libs}.lib",
+                "${non_release_libs}.lib",
                 "${common_libs}.lib",
-                "${extra_libs}.lib",
-                "${izotope_libs}.lib",
-                "MSSpatialSink.lib"
+                "${xenia_libs}.lib",
+                "${common_extra_libs}.lib"
             ],
             "lib_performance": [
                 "${common_libs}.lib",
-                "${extra_libs}.lib",
-                "${izotope_libs}.lib",
-                "MSSpatialSink.lib"
+                "${xenia_libs}.lib",
+                "${common_extra_libs}.lib"
             ],
             "lib_release": [
                 "${common_libs}.lib",
-                "${extra_libs}.lib",
-                "${izotope_libs}.lib",
-                "MSSpatialSink.lib"
+                "${xenia_libs}.lib",
+                "${common_extra_libs}.lib"
             ]
         },
         "durango_vs2017": {
@@ -287,30 +266,26 @@
                 "SDK/XboxOne_vc150/Release/lib"
             ],
             "lib_debug": [
-                "${communication_libs}.lib",
+                "${non_release_libs}.lib",
                 "${common_libs}.lib",
-                "${extra_libs}.lib",
-                "${izotope_libs}.lib",
-                "MSSpatialSink.lib"
+                "${xenia_libs}.lib",
+                "${common_extra_libs}.lib"
             ],
             "lib_profile": [
-                "${communication_libs}.lib",
+                "${non_release_libs}.lib",
                 "${common_libs}.lib",
-                "${extra_libs}.lib",
-                "${izotope_libs}.lib",
-                "MSSpatialSink.lib"
+                "${xenia_libs}.lib",
+                "${common_extra_libs}.lib"
             ],
             "lib_performance": [
                 "${common_libs}.lib",
-                "${extra_libs}.lib",
-                "${izotope_libs}.lib",
-                "MSSpatialSink.lib"
+                "${xenia_libs}.lib",
+                "${common_extra_libs}.lib"
             ],
             "lib_release": [
                 "${common_libs}.lib",
-                "${extra_libs}.lib",
-                "${izotope_libs}.lib",
-                "MSSpatialSink.lib"
+                "${xenia_libs}.lib",
+                "${common_extra_libs}.lib"
             ]
         },
         "orbis_vs2015": {
@@ -327,26 +302,26 @@
                 "SDK/PS4/Release/lib"
             ],
             "lib_debug": [
-                "lib${communication_libs}.a",
+                "lib${non_release_libs}.a",
                 "lib${common_libs}.a",
-                "lib${extra_libs}.a",
-                "lib${izotope_libs}.a"
+                "lib${provo_libs}.a",
+                "lib${common_extra_libs}.a"
             ],
             "lib_profile": [
-                "lib${communication_libs}.a",
+                "lib${non_release_libs}.a",
                 "lib${common_libs}.a",
-                "lib${extra_libs}.a",
-                "lib${izotope_libs}.a"
+                "lib${provo_libs}.a",
+                "lib${common_extra_libs}.a"
             ],
             "lib_performance": [
                 "lib${common_libs}.a",
-                "lib${extra_libs}.a",
-                "lib${izotope_libs}.a"
+                "lib${provo_libs}.a",
+                "lib${common_extra_libs}.a"
             ],
             "lib_release": [
                 "lib${common_libs}.a",
-                "lib${extra_libs}.a",
-                "lib${izotope_libs}.a"
+                "lib${provo_libs}.a",
+                "lib${common_extra_libs}.a"
             ]
         },
         "orbis_vs2017": "@orbis_vs2015",
@@ -364,22 +339,26 @@
                 "SDK/Mac/Release/lib"
             ],
             "lib_debug": [
-                "lib${communication_libs}.a",
-                "lib${common_libs_nix}.a",
-                "lib${extra_libs}.a"
+                "lib${non_release_libs}.a",
+                "lib${common_libs}.a",
+                "lib${mac_libs}.a",
+                "lib${common_extra_libs}.a"
             ],
             "lib_profile": [
-                "lib${communication_libs}.a",
-                "lib${common_libs_nix}.a",
-                "lib${extra_libs}.a"
+                "lib${non_release_libs}.a",
+                "lib${common_libs}.a",
+                "lib${mac_libs}.a",
+                "lib${common_extra_libs}.a"
             ],
             "lib_performance": [
-                "lib${common_libs_nix}.a",
-                "lib${extra_libs}.a"
+                "lib${common_libs}.a",
+                "lib${mac_libs}.a",
+                "lib${common_extra_libs}.a"
             ],
             "lib_release": [
-                "lib${common_libs_nix}.a",
-                "lib${extra_libs}.a"
+                "lib${common_libs}.a",
+                "lib${mac_libs}.a",
+                "lib${common_extra_libs}.a"
             ]
         },
         "ios": {
@@ -396,22 +375,26 @@
                 "SDK/iOS/Release-iphoneos/lib"
             ],
             "lib_debug": [
-                "lib${communication_libs}.a",
-                "lib${common_libs_nix}.a",
-                "lib${extra_libs}.a"
+                "lib${non_release_libs}.a",
+                "lib${common_libs}.a",
+                "lib${ios_libs}.a",
+                "lib${common_extra_libs}.a"
             ],
             "lib_profile": [
-                "lib${communication_libs}.a",
-                "lib${common_libs_nix}.a",
-                "lib${extra_libs}.a"
+                "lib${non_release_libs}.a",
+                "lib${common_libs}.a",
+                "lib${ios_libs}.a",
+                "lib${common_extra_libs}.a"
             ],
             "lib_performance": [
-                "lib${common_libs_nix}.a",
-                "lib${extra_libs}.a"
+                "lib${common_libs}.a",
+                "lib${ios_libs}.a",
+                "lib${common_extra_libs}.a"
             ],
             "lib_release": [
-                "lib${common_libs_nix}.a",
-                "lib${extra_libs}.a"
+                "lib${common_libs}.a",
+                "lib${ios_libs}.a",
+                "lib${common_extra_libs}.a"
             ]
         },
         "appletv": {
@@ -428,22 +411,26 @@
                 "SDK/tvOS/Release-appletvos/lib"
             ],
             "lib_debug": [
-                "lib${communication_libs}.a",
-                "lib${common_libs_nix}.a",
-                "lib${extra_libs}.a"
+                "lib${non_release_libs}.a",
+                "lib${common_libs}.a",
+                "lib${tvos_libs}.a",
+                "lib${common_extra_libs}.a"
             ],
             "lib_profile": [
-                "lib${communication_libs}.a",
-                "lib${common_libs_nix}.a",
-                "lib${extra_libs}.a"
+                "lib${non_release_libs}.a",
+                "lib${common_libs}.a",
+                "lib${tvos_libs}.a",
+                "lib${common_extra_libs}.a"
             ],
             "lib_performance": [
-                "lib${common_libs_nix}.a",
-                "lib${extra_libs}.a"
+                "lib${common_libs}.a",
+                "lib${tvos_libs}.a",
+                "lib${common_extra_libs}.a"
             ],
             "lib_release": [
-                "lib${common_libs_nix}.a",
-                "lib${extra_libs}.a"
+                "lib${common_libs}.a",
+                "lib${tvos_libs}.a",
+                "lib${common_extra_libs}.a"
             ]
         },
         "android_armv7_clang": {
@@ -460,22 +447,26 @@
                 "SDK/Android_armeabi-v7a/Release/lib"
             ],
             "lib_debug": [
-                "lib${communication_libs}.a",
+                "lib${non_release_libs}.a",
                 "lib${common_libs}.a",
-                "lib${extra_libs}.a"
+                "lib${android_libs}.a",
+                "lib${common_extra_libs}.a"
             ],
             "lib_profile": [
-                "lib${communication_libs}.a",
+                "lib${non_release_libs}.a",
                 "lib${common_libs}.a",
-                "lib${extra_libs}.a"
+                "lib${android_libs}.a",
+                "lib${common_extra_libs}.a"
             ],
             "lib_performance": [
                 "lib${common_libs}.a",
-                "lib${extra_libs}.a"
+                "lib${android_libs}.a",
+                "lib${common_extra_libs}.a"
             ],
             "lib_release": [
                 "lib${common_libs}.a",
-                "lib${extra_libs}.a"
+                "lib${android_libs}.a",
+                "lib${common_extra_libs}.a"
             ]
         },
         "android_armv8_clang": {
@@ -492,22 +483,26 @@
                 "SDK/Android_arm64-v8a/Release/lib"
             ],
             "lib_debug": [
-                "lib${communication_libs}.a",
+                "lib${non_release_libs}.a",
                 "lib${common_libs}.a",
-                "lib${extra_libs}.a"
+                "lib${android_libs}.a",
+                "lib${common_extra_libs}.a"
             ],
             "lib_profile": [
-                "lib${communication_libs}.a",
+                "lib${non_release_libs}.a",
                 "lib${common_libs}.a",
-                "lib${extra_libs}.a"
+                "lib${android_libs}.a",
+                "lib${common_extra_libs}.a"
             ],
             "lib_performance": [
                 "lib${common_libs}.a",
-                "lib${extra_libs}.a"
+                "lib${android_libs}.a",
+                "lib${common_extra_libs}.a"
             ],
             "lib_release": [
                 "lib${common_libs}.a",
-                "lib${extra_libs}.a"
+                "lib${android_libs}.a",
+                "lib${common_extra_libs}.a"
             ]
         },
         "linux_x64": {
@@ -524,26 +519,26 @@
                 "SDK/Linux_x64/Release/lib"
             ],
             "lib_debug": [
-                "lib${communication_libs}.a",
-                "lib${common_libs_nix}.a",
-                "lib${extra_libs}.a",
-                "lib${izotope_libs}.a"
+                "lib${non_release_libs}.a",
+                "lib${common_libs}.a",
+                "lib${linux_libs}.a",
+                "lib${common_extra_libs}.a"
             ],
             "lib_profile": [
-                "lib${communication_libs}.a",
-                "lib${common_libs_nix}.a",
-                "lib${extra_libs}.a",
-                "lib${izotope_libs}.a"
+                "lib${non_release_libs}.a",
+                "lib${common_libs}.a",
+                "lib${linux_libs}.a",
+                "lib${common_extra_libs}.a"
             ],
             "lib_performance": [
-                "lib${common_libs_nix}.a",
-                "lib${extra_libs}.a",
-                "lib${izotope_libs}.a"
+                "lib${common_libs}.a",
+                "lib${linux_libs}.a",
+                "lib${common_extra_libs}.a"
             ],
             "lib_release": [
-                "lib${common_libs_nix}.a",
-                "lib${extra_libs}.a",
-                "lib${izotope_libs}.a"
+                "lib${common_libs}.a",
+                "lib${linux_libs}.a",
+                "lib${common_extra_libs}.a"
             ]
         }
     }

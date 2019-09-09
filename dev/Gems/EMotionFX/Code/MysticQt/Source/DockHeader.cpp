@@ -62,12 +62,12 @@ namespace MysticQt
 
         mDockButton = new QPushButton();
         MakeHeaderButton(mDockButton,  "/Images/Icons/DockUndock.png", "Dock or undock this window");
-        connect(mDockButton, SIGNAL(clicked()), this, SLOT(OnDockButton()));
+        connect(mDockButton, &QPushButton::clicked, this, &MysticQt::DockHeader::OnDockButton);
         layout->addWidget(mDockButton);
 
         mMaximizeButton = new QPushButton();
         MakeHeaderButton(mMaximizeButton,  "/Images/Icons/DockMaximize.png",   "Maximize the window");
-        connect(mMaximizeButton, SIGNAL(clicked()), this, SLOT(OnMaximizeButton()));
+        connect(mMaximizeButton, &QPushButton::clicked, this, &MysticQt::DockHeader::OnMaximizeButton);
         layout->addWidget(mMaximizeButton);
         if (mDockWidget->isFloating() == false)
         {
@@ -76,7 +76,7 @@ namespace MysticQt
 
         mPinButton = new QPushButton();
         MakeHeaderButton(mPinButton,   "/Images/Icons/DockPin.png",    "Enables or disables docking of the window");
-        connect(mPinButton, SIGNAL(clicked()), this, SLOT(OnPinButton()));
+        connect(mPinButton, &QPushButton::clicked, this, &MysticQt::DockHeader::OnPinButton);
         layout->addWidget(mPinButton);
         if (mDockWidget->isFloating() == false)
         {
@@ -85,10 +85,10 @@ namespace MysticQt
 
         mCloseButton = new QPushButton();
         MakeHeaderButton(mCloseButton, "/Images/Icons/DockClose.png",  "Close this dock window");
-        connect(mCloseButton, SIGNAL(clicked()), this, SLOT(OnCloseButton()));
+        connect(mCloseButton, &QPushButton::clicked, this, &MysticQt::DockHeader::OnCloseButton);
         layout->addWidget(mCloseButton);
 
-        connect(mDockWidget, SIGNAL(topLevelChanged(bool)), this, SLOT(OnTopLevelChanged(bool)));
+        connect(mDockWidget, &QDockWidget::topLevelChanged, this, &MysticQt::DockHeader::OnTopLevelChanged);
 
         UpdateIcons();
 

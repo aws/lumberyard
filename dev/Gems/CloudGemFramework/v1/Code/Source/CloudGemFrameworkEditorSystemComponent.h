@@ -20,6 +20,7 @@ namespace CloudGemFramework
     class CloudGemFrameworkEditorSystemComponent
         : public AZ::Component
         , protected CloudCanvas::CloudCanvasEditorRequestBus::Handler
+        , public CrySystemEventBus::Handler
     {
     public:
         static const char* COMPONENT_DISPLAY_NAME;
@@ -43,6 +44,8 @@ namespace CloudGemFramework
 
         virtual bool ApplyConfiguration() override;
 
+        // CrySystemEventBus Handlers
+        void OnCrySystemInitialized(ISystem& system, const SSystemInitParams&) override;
     protected:
         ////////////////////////////////////////////////////////////////////////
         // AZ::Component interface implementation

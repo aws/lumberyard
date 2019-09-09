@@ -38,12 +38,20 @@
 #ifndef GRIDMATE_FOR_TOOLS
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION GRIDMATE_CPP_SECTION_1
-#include AZ_RESTRICTED_FILE(GridMate_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/GridMate_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/GridMate_cpp_provo.inl"
+    #endif
 #   endif
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION GRIDMATE_CPP_SECTION_2
-#include AZ_RESTRICTED_FILE(GridMate_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/GridMate_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/GridMate_cpp_provo.inl"
+    #endif
 #   endif
 #endif
 
@@ -202,12 +210,6 @@ GridMateImpl::GridMateImpl(const GridMateDesc& desc)
 
     m_storageService = nullptr;
     m_isCustomStorageService = false;
-
-    AZ_TracePrintf("GridMate", "\n");
-    AZ_TracePrintf("GridMate", "================================================\n");
-    AZ_TracePrintf("GridMate", "= GridMate initialized: Version %02d.%02d.%04d     =\n", GM_BUILD_VERSION / 100, GM_BUILD_VERSION % 100, GM_BUILD_NUMBER);
-    AZ_TracePrintf("GridMate", "= Build on: %14s %11s         =\n", GM_BUILD_DATE, GM_BUILD_TIME);
-    AZ_TracePrintf("GridMate", "================================================\n\n");
 }
 
 //=========================================================================
@@ -240,12 +242,6 @@ GridMateImpl::~GridMateImpl()
             delete registeredService.m_service;
         }
     }
-
-    AZ_TracePrintf("GridMate", "\n");
-    AZ_TracePrintf("GridMate", "================================================\n");
-    AZ_TracePrintf("GridMate", "= GridMate destroyed: Version %02d.%02d.%04d       =\n", GM_BUILD_VERSION / 100, GM_BUILD_VERSION % 100, GM_BUILD_NUMBER);
-    AZ_TracePrintf("GridMate", "= Build on: %14s %11s         =\n", GM_BUILD_DATE, GM_BUILD_TIME);
-    AZ_TracePrintf("GridMate", "================================================\n\n");
 }
 
 void GridMateImpl::RegisterService(GridMateServiceId id, GridMateService* service, bool delegateOwnership)
@@ -365,7 +361,11 @@ bool GridMateImpl::StartLeaderboardService(ServiceType type)
         serviceName = "  XLive"; // ACCEPTED_USE
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION GRIDMATE_CPP_SECTION_3
-#include AZ_RESTRICTED_FILE(GridMate_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/GridMate_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/GridMate_cpp_provo.inl"
+    #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
 #undef AZ_RESTRICTED_SECTION_IMPLEMENTED
@@ -379,7 +379,11 @@ bool GridMateImpl::StartLeaderboardService(ServiceType type)
         serviceName = "  PSN"; // ACCEPTED_USE
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION GRIDMATE_CPP_SECTION_4
-#include AZ_RESTRICTED_FILE(GridMate_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/GridMate_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/GridMate_cpp_provo.inl"
+    #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
 #undef AZ_RESTRICTED_SECTION_IMPLEMENTED
@@ -485,7 +489,11 @@ bool GridMateImpl::StartAchievementService(ServiceType type, const AchievementSe
     case ST_XLIVE: // ACCEPTED_USE
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION GRIDMATE_CPP_SECTION_5
-#include AZ_RESTRICTED_FILE(GridMate_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/GridMate_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/GridMate_cpp_provo.inl"
+    #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
 #undef AZ_RESTRICTED_SECTION_IMPLEMENTED
@@ -497,7 +505,11 @@ bool GridMateImpl::StartAchievementService(ServiceType type, const AchievementSe
     case ST_PSN: // ACCEPTED_USE
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION GRIDMATE_CPP_SECTION_6
-#include AZ_RESTRICTED_FILE(GridMate_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/GridMate_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/GridMate_cpp_provo.inl"
+    #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
 #undef AZ_RESTRICTED_SECTION_IMPLEMENTED
@@ -600,7 +612,11 @@ bool GridMateImpl::StartStorageService(ServiceType type, const GridStorageServic
 #ifndef GRIDMATE_FOR_TOOLS
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION GRIDMATE_CPP_SECTION_7
-#include AZ_RESTRICTED_FILE(GridMate_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/GridMate_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/GridMate_cpp_provo.inl"
+    #endif
 #endif
 #endif // GRIDMATE_FOR_TOOLS
     default:

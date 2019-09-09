@@ -1,0 +1,507 @@
+{
+    "CloudGemDefectReporter": {
+        "Resources:AccessControl:DependsOn": {
+            "EditType": "Replace",
+            "TemplateData": [
+                "AttachmentBucket",
+                "ServiceApi",
+                "ServiceLambda",
+                "SanitizationLambda",
+                "SanitizedBucket",
+                "AdditionalReportInfo",
+                "RecentSearches",
+                "ClientConfiguration",
+                "JiraIntegrationSettings",
+                "JiraTicketOccuranceCount",
+                "DeduppingLambda",
+                "JiraCredentialsLambda"
+            ]
+        },
+        "Outputs:JiraIntegrationEnabled:Value": {
+            "EditType": "Replace",
+            "TemplateData": "enabled"
+        },
+        "Parameters:JiraIntegrationSettingsReadCapacityUnits": {
+            "EditType": "Add",
+            "TemplateData": {
+                "Default": "1",
+                "Description": "Number of reads per second.",
+                "Type": "Number"
+            }
+        },
+        "Parameters:JiraIntegrationSettingsWriteCapacityUnits": {
+            "EditType": "Add",
+            "TemplateData": {
+                "Default": "1",
+                "Description": "Number of writes per second.",
+                "Type": "Number"
+            }
+        },
+        "Parameters:JiraTicketOccuranceCountReadCapacityUnits": {
+            "EditType": "Add",
+            "TemplateData": {
+                "Default": "1",
+                "Description": "Number of reads per second.",
+                "Type": "Number"
+            }
+        },
+        "Parameters:JiraTicketOccuranceCountWriteCapacityUnits": {
+            "EditType": "Add",
+            "TemplateData": {
+                "Default": "1",
+                "Description": "Number of writes per second.",
+                "Type": "Number"
+            }
+        },
+        "Resources:ServiceLambdaConfiguration:Properties:Settings:DeduppingLambda": {
+            "EditType": "Add",
+            "TemplateData": { "Ref": "DeduppingLambda" }
+        },
+        "Resources:ServiceLambdaConfiguration:Properties:Settings:JiraCredentialsLambda": {
+            "EditType": "Add",
+            "TemplateData": { "Ref": "JiraCredentialsLambda" }
+        },
+        "Resources:ServiceLambdaConfiguration:Properties:Settings:KmsKey": {
+            "EditType": "Add",
+            "TemplateData": { "Ref": "KmsKey" }
+        },
+        "Resources:ServiceLambdaConfiguration:Properties:Settings:JiraIntegrationSettings": {
+            "EditType": "Add",
+            "TemplateData": { "Ref": "JiraIntegrationSettings" }
+        },
+        "Resources:ServiceLambdaConfiguration:Properties:Settings:JiraTicketOccuranceCount": {
+            "EditType": "Add",
+            "TemplateData": { "Ref": "JiraTicketOccuranceCount" }
+        },
+        "Resources:ServiceLambda:Properties:VpcConfig": {
+            "EditType": "Add",
+            "TemplateData": {
+                "SecurityGroupIds": [ { "Fn::GetAtt": [ "VPC", "DefaultSecurityGroup" ] } ],
+                "SubnetIds": [ { "Ref": "PrivateSubnet" } ]
+            }
+        },
+        "Resources:ServiceLambda:Properties:KmsKeyArn": {
+            "EditType": "Add",
+            "TemplateData": { "Fn::GetAtt": [ "KmsKey", "Arn" ] }
+        },
+        "Resources:DeduppingLambda": {
+            "EditType": "Add",
+            "TemplateData": {
+                "Metadata": {
+                    "CloudCanvas": {
+                        "Permissions": [
+                            {
+                                "AbstractRole": "ServiceLambda",
+                                "Action": "lambda:InvokeFunction"
+                            }
+                        ]
+                    }
+                },
+                "Properties": {
+                    "Code": {
+                        "S3Bucket": {
+                            "Fn::GetAtt": [
+                                "DeduppingLambdaConfiguration",
+                                "ConfigurationBucket"
+                            ]
+                        },
+                        "S3Key": {
+                            "Fn::GetAtt": [
+                                "DeduppingLambdaConfiguration",
+                                "ConfigurationKey"
+                            ]
+                        }
+                    },
+                    "Handler": "dedupping.main",
+                    "Role": {
+                        "Fn::GetAtt": [
+                            "DeduppingLambdaConfiguration",
+                            "Role"
+                        ]
+                    },
+                    "Runtime": {
+                        "Fn::GetAtt": [
+                            "DeduppingLambdaConfiguration",
+                            "Runtime"
+                        ]
+                    },
+                    "Timeout": 10
+                },
+                "Type": "AWS::Lambda::Function"
+            }
+        },
+        "Resources:DeduppingLambdaConfiguration": {
+            "EditType": "Add",
+            "TemplateData": {
+                "Properties": {
+                    "ConfigurationBucket": {
+                        "Ref": "ConfigurationBucket"
+                    },
+                    "ConfigurationKey": {
+                        "Ref": "ConfigurationKey"
+                    },
+                    "FunctionName": "DeduppingLambda",
+                    "Runtime": "python2.7",
+                    "ServiceToken": {
+                        "Ref": "ProjectResourceHandler"
+                    },
+                    "Settings": {
+                    }
+                },
+                "Type": "Custom::LambdaConfiguration"
+            }
+        },
+        "Resources:JiraCredentialsLambda": {
+            "EditType": "Add",
+            "TemplateData": {
+                "Metadata": {
+                    "CloudCanvas": {
+                        "Permissions": [
+                            {
+                                "AbstractRole": "ServiceLambda",
+                                "Action": "lambda:InvokeFunction"
+                            },
+                            {
+                                "AbstractRole": "JiraCredentialsLambda",
+                                "Action": "lambda:UpdateFunctionConfiguration"
+                            }
+                        ]
+                    }
+                },
+                "Properties": {
+                    "Code": {
+                        "S3Bucket": {
+                            "Fn::GetAtt": [
+                                "JiraCredentialsLambdaConfiguration",
+                                "ConfigurationBucket"
+                            ]
+                        },
+                        "S3Key": {
+                            "Fn::GetAtt": [
+                                "JiraCredentialsLambdaConfiguration",
+                                "ConfigurationKey"
+                            ]
+                        }
+                    },
+                    "Handler": "credentials.main",
+                    "Role": {
+                        "Fn::GetAtt": [
+                            "JiraCredentialsLambdaConfiguration",
+                            "Role"
+                        ]
+                    },
+                    "Runtime": {
+                        "Fn::GetAtt": [
+                            "JiraCredentialsLambdaConfiguration",
+                            "Runtime"
+                        ]
+                    },
+                    "Timeout": 10
+                },
+                "Type": "AWS::Lambda::Function"
+            }
+        },
+        "Resources:JiraCredentialsLambdaConfiguration": {
+            "EditType": "Add",
+            "TemplateData": {
+                "Properties": {
+                    "ConfigurationBucket": {
+                        "Ref": "ConfigurationBucket"
+                    },
+                    "ConfigurationKey": {
+                        "Ref": "ConfigurationKey"
+                    },
+                    "FunctionName": "JiraCredentialsLambda",
+                    "Runtime": "python2.7",
+                    "ServiceToken": {
+                        "Ref": "ProjectResourceHandler"
+                    },
+                    "Settings": {
+                    }
+                },
+                "Type": "Custom::LambdaConfiguration"
+            }
+        },
+        "Resources:KmsKey": {
+            "EditType": "Add",
+            "TemplateData": {
+                "Type": "AWS::KMS::Key",
+                "Properties": {
+                    "KeyPolicy": {
+                        "Version": "2012-10-17",
+                        "Id": "key-consolepolicy-3",
+                        "Statement": [
+                            {
+                                "Sid": "Enable IAM User Permissions",
+                                "Effect": "Allow",
+                                "Principal": {
+                                    "AWS": {
+                                        "Fn::Join": [
+                                            "",
+                                            [
+                                                "arn:aws:iam::",
+                                                { "Ref": "AWS::AccountId" },
+                                                ":root"
+                                            ]
+                                        ]
+                                    }
+                                },
+                                "Action": "kms:*",
+                                "Resource": "*"
+                            },
+                            {
+                                "Sid": "Enable JIRA credentials lambda User Permissions",
+                                "Effect": "Allow",
+                                "Principal": {
+                                    "AWS": {
+                                        "Fn::GetAtt": [
+                                            "JiraCredentialsLambdaConfiguration",
+                                            "Role"
+                                        ]
+                                    }
+                                },
+                                "Action": "kms:*",
+                                "Resource": "*"
+                            }
+                        ]
+                    }
+                }
+            }
+        },
+        "Resources:VPC": {
+            "EditType": "Add",
+            "TemplateData": {
+                "Type": "AWS::EC2::VPC",
+                "Properties": {
+                    "CidrBlock": "10.0.0.0/16"
+                }
+            }
+        },
+        "Resources:PublicSubnet": {
+            "EditType": "Add",
+            "TemplateData": {
+                "Type": "AWS::EC2::Subnet",
+                "Properties": {
+                    "CidrBlock": "10.0.0.0/24",
+                    "AvailabilityZone": {
+                        "Fn::Join": [
+                            "",
+                            [
+                                { "Ref": "AWS::Region" },
+                                "a"
+                            ]
+                        ]
+                    },
+                    "VpcId": { "Ref": "VPC" }
+                }
+            }
+        },
+        "Resources:PrivateSubnet": {
+            "EditType": "Add",
+            "TemplateData": {
+                "Type": "AWS::EC2::Subnet",
+                "Properties": {
+                    "CidrBlock": "10.0.1.0/24",
+                    "AvailabilityZone": {
+                        "Fn::Join": [
+                            "",
+                            [
+                                { "Ref": "AWS::Region" },
+                                "a"
+                            ]
+                        ]
+                    },
+                    "VpcId": { "Ref": "VPC" }
+                }
+            }
+        },
+        "Resources:InternetGateway": {
+            "EditType": "Add",
+            "TemplateData": {
+                "Type": "AWS::EC2::InternetGateway",
+                "Properties": {
+                }
+            }
+        },
+        "Resources:VPCGatewayAttachment": {
+            "EditType": "Add",
+            "TemplateData": {
+                "Type": "AWS::EC2::VPCGatewayAttachment",
+                "Properties": {
+                    "InternetGatewayId": { "Ref": "InternetGateway" },
+                    "VpcId": { "Ref": "VPC" }
+                }
+            }
+        },
+        "Resources:PublicRouteTable": {
+            "EditType": "Add",
+            "TemplateData": {
+                "Type": "AWS::EC2::RouteTable",
+                "Properties": {
+                    "VpcId": { "Ref": "VPC" }
+                }
+            }
+        },
+        "Resources:PublicRoute": {
+            "EditType": "Add",
+            "TemplateData": {
+                "Type": "AWS::EC2::Route",
+                "Properties": {
+                    "DestinationCidrBlock": "0.0.0.0/0",
+                    "GatewayId": { "Ref": "InternetGateway" },
+                    "RouteTableId": { "Ref": "PublicRouteTable" }
+                }
+            }
+        },
+        "Resources:PublicRouteTableAssociation": {
+            "EditType": "Add",
+            "TemplateData": {
+                "Type": "AWS::EC2::SubnetRouteTableAssociation",
+                "Properties": {
+                    "RouteTableId": { "Ref": "PublicRouteTable" },
+                    "SubnetId": { "Ref": "PublicSubnet" }
+                }
+            }
+        },
+        "Resources:EIP": {
+            "EditType": "Add",
+            "TemplateData": {
+                "Type": "AWS::EC2::EIP",
+                "Properties": {
+                    "Domain": "vpc"
+                }
+            }
+        },
+        "Resources:NatGateway": {
+            "EditType": "Add",
+            "TemplateData": {
+                "Type": "AWS::EC2::NatGateway",
+                "Properties": {
+                    "AllocationId": { "Fn::GetAtt": [ "EIP", "AllocationId" ] },
+                    "SubnetId": { "Ref": "PublicSubnet" }
+                }
+            }
+        },
+        "Resources:PrivateRouteTable": {
+            "EditType": "Add",
+            "TemplateData": {
+                "Type": "AWS::EC2::RouteTable",
+                "Properties": {
+                    "VpcId": { "Ref": "VPC" }
+                }
+            }
+        },
+        "Resources:PrivateRoute": {
+            "EditType": "Add",
+            "TemplateData": {
+                "Type": "AWS::EC2::Route",
+                "Properties": {
+                    "DestinationCidrBlock": "0.0.0.0/0",
+                    "NatGatewayId": { "Ref": "NatGateway" },
+                    "RouteTableId": { "Ref": "PrivateRouteTable" }
+                }
+            }
+        },
+        "Resources:PrivateRouteTableAssociation": {
+            "EditType": "Add",
+            "TemplateData": {
+                "Type": "AWS::EC2::SubnetRouteTableAssociation",
+                "Properties": {
+                    "RouteTableId": { "Ref": "PrivateRouteTable" },
+                    "SubnetId": { "Ref": "PrivateSubnet" }
+                }
+            }
+        },
+        "Resources:JiraTicketOccuranceCount": {
+            "EditType": "Add",
+            "TemplateData": {
+                "Metadata": {
+                    "CloudCanvas": {
+                        "Permissions": [
+                            {
+                                "AbstractRole": "ServiceLambda",
+                                "Action": [
+                                    "dynamodb:GetItem",
+                                    "dynamodb:PutItem"
+                                ]
+                            }
+                        ]
+                    }
+                },
+                "Properties": {
+                    "AttributeDefinitions": [
+                        {
+                            "AttributeName": "issue_id",
+                            "AttributeType": "S"
+                        }
+                    ],
+                    "KeySchema": [
+                        {
+                            "AttributeName": "issue_id",
+                            "KeyType": "HASH"
+                        }
+                    ],
+                    "ProvisionedThroughput": {
+                        "ReadCapacityUnits": {
+                            "Ref": "JiraTicketOccuranceCountReadCapacityUnits"
+                        },
+                        "WriteCapacityUnits": {
+                            "Ref": "JiraTicketOccuranceCountWriteCapacityUnits"
+                        }
+                    },
+                    "ServiceToken": {
+                        "Ref": "ProjectResourceHandler"
+                    }
+                },
+                "Type": "Custom::DynamoDBTable"
+            }
+        },
+        "Resources:JiraIntegrationSettings": {
+            "EditType": "Add",
+            "TemplateData": {
+                "Metadata": {
+                    "CloudCanvas": {
+                        "Permissions": [
+                            {
+                                "AbstractRole": "ServiceLambda",
+                                "Action": [
+                                    "dynamodb:GetItem",
+                                    "dynamodb:PutItem",
+                                    "dynamodb:DeleteItem",
+                                    "dynamodb:Scan",
+                                    "dynamodb:Query"
+                                ]
+                            }
+                        ]
+                    }
+                },
+                "Properties": {
+                    "AttributeDefinitions": [
+                        {
+                            "AttributeName": "id",
+                            "AttributeType": "S"
+                        }
+                    ],
+                    "KeySchema": [
+                        {
+                            "AttributeName": "id",
+                            "KeyType": "HASH"
+                        }
+                    ],
+                    "ProvisionedThroughput": {
+                        "ReadCapacityUnits": {
+                            "Ref": "JiraIntegrationSettingsReadCapacityUnits"
+                        },
+                        "WriteCapacityUnits": {
+                            "Ref": "JiraIntegrationSettingsWriteCapacityUnits"
+                        }
+                    },
+                    "ServiceToken": {
+                        "Ref": "ProjectResourceHandler"
+                    }
+                },
+                "Type": "Custom::DynamoDBTable"
+            }
+        }
+    }
+}

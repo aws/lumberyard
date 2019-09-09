@@ -1,3 +1,14 @@
+/*
+* All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates, or 
+* a third party where indicated.
+*
+* For complete copyright and license terms please see the LICENSE at the root of this
+* distribution (the "License"). All use of this software is governed by the License,  
+* or, if provided, by the license below or the license accompanying this file. Do not
+* remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.  
+*
+*/
 #include "StdAfx.h"
 
 #include "PropertyMotionCtrl.h"
@@ -48,7 +59,7 @@ MotionPropertyCtrl::~MotionPropertyCtrl()
 void MotionPropertyCtrl::SetValue(const CReflectedVarMotion &motion)
 {
     m_motion = motion;
-    m_motionLabel->setText(motion.m_motion.c_str());
+    SetLabelText(motion.m_motion);
 }
 
 CReflectedVarMotion MotionPropertyCtrl::value() const
@@ -72,7 +83,7 @@ void MotionPropertyCtrl::OnBrowseClicked()
         {
             m_motion.m_motion = product->GetRelativePath();
             m_motion.m_assetId = product->GetAssetId();
-            m_motionLabel->setText(m_motion.m_motion.c_str());
+            SetLabelText(m_motion.m_motion);
             emit ValueChanged(m_motion);
         }
     }
@@ -97,7 +108,7 @@ void MotionPropertyCtrl::OnApplyClicked()
         if (!rstrCurrentAnimAction.isEmpty())
         {
             m_motion.m_motion = rstrCurrentAnimAction.toLatin1().data();
-            m_motionLabel->setText(m_motion.m_motion.c_str());
+            SetLabelText(m_motion.m_motion);
             emit ValueChanged(m_motion);
         }
     }
@@ -116,6 +127,26 @@ QWidget* MotionPropertyCtrl::GetLastInTabOrder()
 void MotionPropertyCtrl::UpdateTabOrder()
 {
     setTabOrder(m_pBrowseButton, m_pApplyButton);
+}
+
+void MotionPropertyCtrl::SetLabelText(const AZStd::string& motion)
+{
+    if (!motion.empty())
+    {
+        AZStd::string filename;
+        if (AzFramework::StringFunc::Path::GetFileName(motion.c_str(), filename))
+        {
+            m_motionLabel->setText(filename.c_str());
+        }
+        else
+        {
+            m_motionLabel->setText(motion.c_str());
+        }
+    }
+    else
+    {
+        m_motionLabel->setText("");
+    }
 }
 
 

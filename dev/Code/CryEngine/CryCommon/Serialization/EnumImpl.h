@@ -49,6 +49,7 @@ namespace Serialization {
 
     inline bool CEnumDescription::Serialize(IArchive& ar, int& value, const char* name, const char* label) const
     {
+        lazyRegister();
         if (!ar.IsInPlace())
         {
             if (count() == 0)
@@ -90,6 +91,7 @@ namespace Serialization {
 
     inline bool CEnumDescription::serializeBitVector(IArchive& ar, int& value, const char* name, const char* label) const
     {
+        lazyRegister();
         if (ar.IsOutput())
         {
             StringListStatic names = nameCombination(value);
@@ -122,12 +124,14 @@ namespace Serialization {
 
     inline const char* CEnumDescription::name(int value) const
     {
+        lazyRegister();
         ValueToName::const_iterator it = valueToName_.find(value);
         YASLI_ESCAPE(it != valueToName_.end(), return "");
         return it->second;
     }
     inline const char* CEnumDescription::label(int value) const
     {
+        lazyRegister();
         ValueToLabel::const_iterator it = valueToLabel_.find(value);
         YASLI_ESCAPE(it != valueToLabel_.end(), return "");
         return it->second;
@@ -135,6 +139,7 @@ namespace Serialization {
 
     inline StringListStatic CEnumDescription::nameCombination(int bitVector) const
     {
+        lazyRegister();
         StringListStatic strings;
         for (ValueToName::const_iterator i = valueToName_.begin(); i != valueToName_.end(); ++i)
         {
@@ -150,6 +155,7 @@ namespace Serialization {
 
     inline StringListStatic CEnumDescription::labelCombination(int bitVector) const
     {
+        lazyRegister();
         StringListStatic strings;
         for (ValueToLabel::const_iterator i = valueToLabel_.begin(); i != valueToLabel_.end(); ++i)
         {
@@ -166,6 +172,7 @@ namespace Serialization {
 
     inline int CEnumDescription::indexByValue(int value) const
     {
+        lazyRegister();
         ValueToIndex::const_iterator it = valueToIndex_.find(value);
         if (it == valueToIndex_.end())
         {
@@ -179,6 +186,7 @@ namespace Serialization {
 
     inline int CEnumDescription::valueByIndex(int index) const
     {
+        lazyRegister();
         if (size_t(index) < values_.size())
         {
             return values_[index];
@@ -188,6 +196,7 @@ namespace Serialization {
 
     inline const char* CEnumDescription::nameByIndex(int index) const
     {
+        lazyRegister();
         if (size_t(index) < size_t(names_.size()))
         {
             return names_[size_t(index)];
@@ -197,6 +206,7 @@ namespace Serialization {
 
     inline const char* CEnumDescription::labelByIndex(int index) const
     {
+        lazyRegister();
         if (size_t(index) < size_t(labels_.size()))
         {
             return labels_[size_t(index)];
@@ -206,15 +216,31 @@ namespace Serialization {
 
     inline int CEnumDescription::value(const char* name) const
     {
+        lazyRegister();
         NameToValue::const_iterator it = nameToValue_.find(name);
         YASLI_ESCAPE(it != nameToValue_.end(), return 0);
         return it->second;
     }
     inline int CEnumDescription::valueByLabel(const char* label) const
     {
+        lazyRegister();
         LabelToValue::const_iterator it = labelToValue_.find(label);
         YASLI_ESCAPE(it != labelToValue_.end(), return 0);
         return it->second;
+    }
+
+    inline void CEnumDescription::lazyRegister() const
+    {
+        if (m_regListHead)
+        {
+            NameValue* val = m_regListHead;
+            while (val)
+            {
+                const_cast<CEnumDescription*>(this)->add(val->m_value, val->m_name, val->m_label);
+                val = val->m_next;
+            }
+            const_cast<CEnumDescription*>(this)->m_regListHead = nullptr;
+        }
     }
 }
 // vim:ts=4 sw=4:

@@ -16,12 +16,15 @@
 #include "Common/GraphicsPipelinePass.h"
 #include "Common/FullscreenPass.h"
 #include "Common/PostProcess/PostEffects.h"
+#include <RenderBus.h>
 
 class PostAAPass
     : public GraphicsPipelinePass
+    , AZ::RenderNotificationsBus::Handler
 {
 public:
-    virtual ~PostAAPass() {}
+    PostAAPass();
+    virtual ~PostAAPass();
 
     void Init() override;
     void Shutdown() override;
@@ -32,10 +35,10 @@ public:
     void RenderTemporalAA(CTexture* sourceTexture, CTexture* outputTarget, const DepthOfFieldParameters& depthOfFieldParameters);
 
 private:
-    void RenderSMAA(CTexture* sourceTexture, CTexture** outputTexture);
-    void RenderFXAA(CTexture* sourceTexture, CTexture** outputTexture);
+    void RenderSMAA(CTexture* sourceTexture, CTexture** outputTexture, bool useCurrentRT);
+    void RenderFXAA(CTexture* sourceTexture, CTexture** outputTexture, bool useCurrentRT);
     void RenderComposites(CTexture* sourceTexture);
-
+    void OnRendererFreeResources(int flags) override;
 private:
     CTexture*  m_TextureAreaSMAA;
     CTexture*  m_TextureSearchSMAA;

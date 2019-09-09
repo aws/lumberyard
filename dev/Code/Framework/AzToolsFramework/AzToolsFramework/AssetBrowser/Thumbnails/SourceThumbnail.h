@@ -66,7 +66,7 @@ namespace AzToolsFramework
                     {
                         return 0;
                     }
-                    return AZStd::hash<AZStd::string>()(sourceThumbnailKey->GetExtension());
+                    return AZStd::hash<AZStd::string>()(sourceThumbnailKey->GetFileName());
                 }
             };
 
@@ -81,8 +81,7 @@ namespace AzToolsFramework
                     {
                         return false;
                     }
-                    //! SourceThumbnailKeys only care about file extension, if multiple different files have same extension, they only need 1 thumbnail
-                    return sourceThumbnailKey1->GetExtension() == sourceThumbnailKey2->GetExtension();
+                    return sourceThumbnailKey1->GetFileName() == sourceThumbnailKey2->GetFileName();
                 }
             };
         }

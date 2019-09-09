@@ -186,7 +186,10 @@ CShaderResources::~CShaderResources()
 
 CShaderResources::CShaderResources()
 {
+    // Only do expensive DX12 resource set building for PC DX12
+#if defined(CRY_USE_DX12)
     m_pipelineStateCache = AZStd::make_shared<CGraphicsPipelineStateLocalCache>();
+#endif
     Reset();
 }
 
@@ -195,7 +198,10 @@ CShaderResources::CShaderResources(SInputShaderResources* pSrc)
     assert(pSrc);
     PREFAST_ASSUME(pSrc);
 
+    // Only do expensive DX12 resource set building for PC DX12
+#if defined(CRY_USE_DX12)
     m_pipelineStateCache = AZStd::make_shared<CGraphicsPipelineStateLocalCache>();
+#endif
     Reset();
 
     if (!pSrc)
@@ -215,16 +221,15 @@ CShaderResources::CShaderResources(SInputShaderResources* pSrc)
         *m_pDeformInfo = pSrc->m_DeformInfo;
     }
 
-    for (const auto& it : pSrc->m_TexturesResourcesMap)
+    for (auto it = pSrc->m_TexturesResourcesMap.begin(), end = pSrc->m_TexturesResourcesMap.end(); it != end; ++it)
     {
-        const SEfResTexture& texture = it.second;
+        const SEfResTexture& texture = it->second;
         // Omit any resources with no texture present
         if (!texture.m_Name.empty() || texture.m_Sampler.m_pTex)
         {
-            m_TexturesResourcesMap[it.first] = texture;
+            m_TexturesResourcesMap[it->first] = texture;
         }
     }
-    
 
     SetInputLM(pSrc->m_LMaterial);
 }
@@ -261,7 +266,6 @@ CShaderResources* CShaderResources::Clone() const
         return CShader::s_ShaderResources_known[1];
     }
     pSR->m_Id = CShader::s_ShaderResources_known.Num();
-    ScopedSwitchToGlobalHeap globalHeap;
     CShader::s_ShaderResources_known.AddElem(pSR);
 
     return pSR;
@@ -526,8 +530,8 @@ namespace
                     outParameters.push_back(parameter);
                     parameter->m_OffsetStageSetter = shaderClass;
                     parameter->m_StagesUsage = ((0x1 << shaderClass) & 0xff);
-                    minSlotOffset = std::min(minSlotOffset, static_cast<AZ::s32>(parameter->m_Register[shaderClass]));
-                    maxSlotOffset = std::max(maxSlotOffset, static_cast<AZ::s32>(parameter->m_Register[shaderClass] + parameter->m_RegisterCount));
+                    minSlotOffset = AZStd::GetMin(minSlotOffset, static_cast<AZ::s32>(parameter->m_Register[shaderClass]));
+                    maxSlotOffset = AZStd::GetMax(maxSlotOffset, static_cast<AZ::s32>(parameter->m_Register[shaderClass] + parameter->m_RegisterCount));
                 }
             }
         }
@@ -604,7 +608,7 @@ void CShaderResources::Rebuild(IShader* abstractShader, AzRHI::ConstantBufferUsa
                     for (AZ::u32 j = 0; j < publicParameters.size(); j++)
                     {
                         SShaderParam& outParameter = publicParameters[j];
-                        if (!strcmp(outParameter.m_Name, tweakable.m_Name))
+                        if (outParameter.m_Name == tweakable.m_Name)
                         {
                             tweakable.CopyType(outParameter);
                             outParameter.CopyValueNoString(tweakable); // there should not be 'string' values set to shader
@@ -695,6 +699,8 @@ void CShaderResources::Rebuild(IShader* abstractShader, AzRHI::ConstantBufferUsa
 
         m_ConstantBuffer->UpdateBuffer(&m_Constants[0], m_Constants.size() * sizeof(Vec4));
 
+    // Only do expensive DX12 resource set building for PC DX12
+#if defined(CRY_USE_DX12)
         if (!m_pCompiledResourceSet)
         {
             m_pCompiledResourceSet = CDeviceObjectFactory::GetInstance().CreateResourceSet();
@@ -703,6 +709,7 @@ void CShaderResources::Rebuild(IShader* abstractShader, AzRHI::ConstantBufferUsa
         m_pCompiledResourceSet->Clear();
         m_pCompiledResourceSet->Fill(shader, this, EShaderStage_AllWithoutCompute);
         m_pCompiledResourceSet->Build();
+#endif
     }
 }
 

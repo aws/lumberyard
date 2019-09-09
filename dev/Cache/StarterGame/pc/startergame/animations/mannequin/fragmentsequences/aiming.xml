@@ -1,0 +1,10 @@
+<History StartTime="0" EndTime="101">
+ <Item Time="0.1" ParamName="BlendWeight" Type="Location">
+  <Value x="0" y="0" z="0" qx="3.5" qy="0" qz="0" qw="1"/>
+ </Item>
+ <Item Time="0.1" ScopeMask="FullBody" FragmentID="Moving" OptionIdx="4294967294"/>
+ <Item Time="0.1" ScopeMask="UpperBody" FragmentID="Aiming" OptionIdx="4294967294"/>
+ <Item Time="0.30000001" ParamName="BlendWeight2" Type="Location">
+  <Value x="0" y="0" z="0" qx="0" qy="0" qz="0" qw="1"/>
+ </Item>
+</History>

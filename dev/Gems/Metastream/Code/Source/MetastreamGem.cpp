@@ -81,6 +81,7 @@ namespace Metastream
         : m_serverEnabled(0)
         , m_serverOptionsCVar(nullptr)
     {
+        MetastreamAllocatorScope::ActivateAllocators();
         m_descriptors.push_back(MetastreamReflectComponent::CreateDescriptor());
 
         // Initialise the cache
@@ -91,6 +92,7 @@ namespace Metastream
     MetastreamGem::~MetastreamGem()
     {
         MetastreamRequestBus::Handler::BusDisconnect();
+        MetastreamAllocatorScope::DeactivateAllocators();
     }
 
     void MetastreamGem::OnSystemEvent(ESystemEvent event, UINT_PTR wparam, UINT_PTR lparam)

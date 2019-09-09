@@ -107,7 +107,8 @@ namespace AZ
 
                 // Create and use a unified subset if the mesh is chosen to be physicalized
                 if (physicalizeType == PHYS_GEOM_TYPE_DEFAULT_PROXY ||
-                    physicalizeType == PHYS_GEOM_TYPE_OBSTRUCT)
+                    physicalizeType == PHYS_GEOM_TYPE_OBSTRUCT ||
+                    physicalizeType == PHYS_GEOM_TYPE_NO_COLLIDE)
                 {
                     mesh.m_pFaces[i].nSubset = 0;
                     if (mesh.m_subsets.empty())

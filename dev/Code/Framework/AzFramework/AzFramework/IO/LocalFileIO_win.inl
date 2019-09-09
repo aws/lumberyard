@@ -39,7 +39,11 @@ namespace AZ
             ResolvePath(destinationFilePath, resolvedDestPath, AZ_MAX_PATH_LEN);
 
 #if defined(AZ_RESTRICTED_PLATFORM)
-#include AZ_RESTRICTED_FILE(LocalFileIO_win_inl, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/LocalFileIO_win_inl_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/LocalFileIO_win_inl_provo.inl"
+    #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
 #undef AZ_RESTRICTED_SECTION_IMPLEMENTED

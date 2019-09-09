@@ -122,12 +122,10 @@ void ShaderCompilerManager::OnShaderCompilerJobComplete(QByteArray payload, unsi
     }
 }
 
-#if !defined(UNIT_TEST)
 void ShaderCompilerManager::sendResponse(unsigned int connId, unsigned int type, unsigned int serial, QByteArray payload)
 {
     EBUS_EVENT_ID(connId, AssetProcessor::ConnectionBus, SendRaw, AssetUtilities::ComputeCRC32Lowercase("ShaderCompilerProxyResponse"), 0, payload);
 }
-#endif
 
 void ShaderCompilerManager::shaderCompilerError(QString errorMessage, QString server, QString timestamp, QString payload)
 {

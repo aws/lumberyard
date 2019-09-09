@@ -45,6 +45,7 @@ namespace AzToolsFramework
         m_pSpinBox->setFocusPolicy(Qt::StrongFocus);
 
         connect(m_pSpinBox, SIGNAL(valueChanged(int)), this, SLOT(onChildSpinboxValueChange(int)));
+        connect(m_pSpinBox, &QSpinBox::editingFinished, this, &PropertyIntSpinCtrl::editingFinished);
     };
 
     QWidget* PropertyIntSpinCtrl::GetFirstInTabOrder()
@@ -260,6 +261,10 @@ namespace AzToolsFramework
             {
                 EBUS_EVENT(PropertyEditorGUIMessages::Bus, RequestWrite, newCtrl);
             });
+        connect(newCtrl, &PropertyIntSpinCtrl::editingFinished, this, [newCtrl]()
+        {
+            AzToolsFramework::PropertyEditorGUIMessages::Bus::Broadcast(&PropertyEditorGUIMessages::Bus::Handler::OnEditingFinished, newCtrl);
+        });
         // note:  Qt automatically disconnects objects from each other when either end is destroyed, no need to worry about delete.
 
         // set defaults:
@@ -277,6 +282,10 @@ namespace AzToolsFramework
             {
                 EBUS_EVENT(PropertyEditorGUIMessages::Bus, RequestWrite, newCtrl);
             });
+        connect(newCtrl, &PropertyIntSpinCtrl::editingFinished, this, [newCtrl]()
+        {
+            AzToolsFramework::PropertyEditorGUIMessages::Bus::Broadcast(&PropertyEditorGUIMessages::Bus::Handler::OnEditingFinished, newCtrl);
+        });
         // note:  Qt automatically disconnects objects from each other when either end is destroyed, no need to worry about delete.
 
         newCtrl->setMinimum(0);
@@ -293,6 +302,10 @@ namespace AzToolsFramework
             {
                 EBUS_EVENT(PropertyEditorGUIMessages::Bus, RequestWrite, newCtrl);
             });
+        connect(newCtrl, &PropertyIntSpinCtrl::editingFinished, this, [newCtrl]()
+        {
+            AzToolsFramework::PropertyEditorGUIMessages::Bus::Broadcast(&PropertyEditorGUIMessages::Bus::Handler::OnEditingFinished, newCtrl);
+        });
         // note:  Qt automatically disconnects objects from each other when either end is destroyed, no need to worry about delete.
 
         newCtrl->setMinimum(0);
@@ -308,6 +321,10 @@ namespace AzToolsFramework
             {
                 EBUS_EVENT(PropertyEditorGUIMessages::Bus, RequestWrite, newCtrl);
             });
+        connect(newCtrl, &PropertyIntSpinCtrl::editingFinished, this, [newCtrl]()
+        {
+            AzToolsFramework::PropertyEditorGUIMessages::Bus::Broadcast(&PropertyEditorGUIMessages::Bus::Handler::OnEditingFinished, newCtrl);
+        });
         // note:  Qt automatically disconnects objects from each other when either end is destroyed, no need to worry about delete.
 
         newCtrl->setMinimum(INT_MIN);

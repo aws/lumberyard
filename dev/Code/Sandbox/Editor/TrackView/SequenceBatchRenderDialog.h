@@ -18,6 +18,7 @@
 #define CRYINCLUDE_EDITOR_TRACKVIEW_SEQUENCEBATCHRENDERDIALOG_H
 #pragma once
 
+#include <AzFramework/StringFunc/StringFunc.h>
 
 class CMFCButton;
 
@@ -172,6 +173,20 @@ protected:
             , captureState(CaptureState::Idle) {}
     };
     SRenderContext m_renderContext;
+
+    // Custom validator to make sure the prefix is a valid part of a filename.
+    class CPrefixValidator : public QValidator
+    {
+    public:
+        CPrefixValidator(QObject* parent) : QValidator(parent) {}
+
+        QValidator::State validate(QString& input, int& pos) const override
+        {
+            bool valid = input.isEmpty() || AzFramework::StringFunc::Path::IsValid(input.toUtf8().data());
+            return valid ? QValidator::State::Acceptable : QValidator::State::Invalid;
+        }
+    };
+
     // Custom values from resolution/FPS combo boxes
     int m_customResW, m_customResH;
     int m_customFPS;
@@ -212,6 +227,7 @@ private:
     QTimer m_renderTimer;
     bool m_editorIdleProcessingEnabled;
     int32 CV_TrackViewRenderOutputCapturing;
+    QScopedPointer<CPrefixValidator> m_prefixValidator;
 };
 
 #endif // CRYINCLUDE_EDITOR_TRACKVIEW_SEQUENCEBATCHRENDERDIALOG_H

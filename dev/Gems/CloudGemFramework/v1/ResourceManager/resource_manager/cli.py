@@ -25,6 +25,9 @@ import player_identity
 import profile
 import importer
 import gem
+import log_finder
+import backup
+
 from resource_manager_common import constant
 import security
 import function
@@ -190,7 +193,8 @@ COMMON_ARG_KEYS = set([
     'user_directory',
     'verbose',
     'no_prompt',
-    'region_override'
+    'region_override',
+    'only_cloud_gems'
     ])
 
 
@@ -213,6 +217,7 @@ def __add_bootstrap_args(parser):
     parser.add_argument('--verbose', action='store_true', help='Show additional output when executing commands.')
     parser.add_argument('--no-prompt', action='store_true', help='Special flag set automatically when entering from tests - calls which would raise an option for user input will instead raise an error')
     parser.add_argument('--region-override', help='An override to manually indicate which region to use in your local-project-setting.json other than the default.')
+    parser.add_argument('--only-cloud-gems', nargs="+", help='Only modify the following cloud gems.')
 
 
 def __add_project_stack_commands(stack_subparser):
@@ -225,6 +230,7 @@ def __add_project_stack_commands(stack_subparser):
     subparser.add_argument('--confirm-security-change', '-S', action='store_true', help='Confirms that you know this command will make security changes.')
     subparser.add_argument('--files-only', action='store_true', help='Initializes the {game}\AWS directory and exit. If this option is given the project stack is not created. If the directory already exists and contains any files, no new files are created.')
     subparser.add_argument('--region', required=True, help='The AWS region where the project stack will be located.')
+    subparser.add_argument('--record-cognito-pools', action='store_true', help='Record the cognito pools that are stood up during deployment access updates')
     __add_common_args(subparser, no_assume_role = True)
     subparser.set_defaults(func=project.create_stack)
 
@@ -259,22 +265,14 @@ def __add_project_stack_commands(stack_subparser):
     __add_common_args(subparser)
     subparser.set_defaults(func=project.update_framework_version)
 
+    subparser = subparsers.add_parser('clean-custom-resources', help='Deletes unreferenced versions of custom resource lambdas.')
+    __add_common_args(subparser)
+    subparser.set_defaults(func=project.clean_custom_resource_handlers)
+
 
 def __add_resource_group_commands(group_subparser):
     group_subparser.register('action', 'parsers', AliasedSubParsersAction)
     subparsers = group_subparser.add_subparsers(dest='subparser_name', metavar='COMMAND')
-
-    subparser = subparsers.add_parser('add') # deprecated (no help= to hide)
-    subparser.add_argument('--resource-group', '-r', required=True, metavar='GROUP', help='The name of the resource group.')
-    subparser.add_argument('--include-example-resources', action='store_true', help='Include "Hello World" example resources.')
-    subparser.add_argument('--gem', const='', default=None, action='store', nargs='?', metavar='GEM-PATH', help='Looks for resource group definition at Gems\GROUP\AWS or GEM-PATH\AWS if the optional GEM-PATH value is provided.')
-    __add_common_args(subparser)
-    subparser.set_defaults(func=resource_group.add)
-
-    subparser = subparsers.add_parser('remove') # deprecated (no help= to hide)
-    subparser.add_argument('--resource-group', '-r', required=True, metavar='GROUP', help='The name of the resource group to remove.')
-    __add_common_args(subparser)
-    subparser.set_defaults(func=resource_group.remove)
 
     subparser = subparsers.add_parser('disable', help='Disable a resource group. Disabled resource groups are not be included in deployments.')
     subparser.add_argument('--resource-group', '-r', required=True, metavar='GROUP', help='The name of the resource group.')
@@ -305,6 +303,7 @@ def __add_resource_group_commands(group_subparser):
     subparser.add_argument('--confirm-aws-usage', '-C', action='store_true', help='Confirms that you know this command will create AWS resources for which you may be charged and that it may perform actions that can affect permissions in your AWS account.')
     subparser.add_argument('--confirm-resource-deletion', '-D', action='store_true', help='Confirms that you know this command will permanently delete resources.')
     subparser.add_argument('--confirm-security-change', '-S', action='store_true', help='Confirms that you know this command will make security related changes.')
+    subparser.add_argument('--record-cognito-pools', action='store_true', help='Record the cognito pools that are stood up during deployment access updates')
     __add_common_args(subparser)
     subparser.set_defaults(func=deployment.upload_resources)
 
@@ -328,12 +327,15 @@ def __add_deployment_commands(deployment_subparser):
     subparser.add_argument('--make-project-default', action='store_true', help='After creation, the deployment will be set as the default deployment for the development builds of the project')
     subparser.add_argument('--make-release-deployment', action='store_true', help='After creation, the deployment will be set as the deployment for the release builds of the project')
     subparser.add_argument('--tags', nargs='+', required=False, help='Deployment tags, to allow per-deployment overrides')
+    subparser.add_argument('--parallel', action='store_true', help='Deploy resource groups in parallel instead of one-at-a-time. (More likely to encounter resource limits.)')
+    subparser.add_argument('--record-cognito-pools', action='store_true', help='Record the cognito pools that are stood up during deployment access updates')
     __add_common_args(subparser)
     subparser.set_defaults(func=deployment.create_stack)
 
     subparser = subparsers.add_parser('delete', help='Delete a complete and independent copy of all the resources needed by the Lumberyard project.')
     subparser.add_argument('--deployment', '-d', required=True, metavar='DEPLOYMENT', help='The name of the deployment to delete.')
     subparser.add_argument('--confirm-resource-deletion', '-D', action='store_true', help='Confirms that you know this command will permanently delete resources.')
+    subparser.add_argument('--parallel', action='store_true', help='Delete resource groups in parallel instead of one-at-a-time. (More likely to encounter resource limits.)')
     __add_common_args(subparser)
     subparser.set_defaults(func=deployment.delete_stack)
 
@@ -379,6 +381,9 @@ def __add_deployment_commands(deployment_subparser):
     subparser.add_argument('--confirm-aws-usage', '-C', action='store_true', help='Confirms that you know this command will create AWS resources for which you may be charged and that it may perform actions that can affect permissions in your AWS account.')
     subparser.add_argument('--confirm-resource-deletion', '-D', action='store_true', help='Confirms that you know this command will permanently delete resources.')
     subparser.add_argument('--confirm-security-change', '-S', action='store_true', help='Confirms that you know this command will make security changes.')
+    subparser.add_argument('--parallel', action='store_true', help='Update resource groups in parallel instead of one-at-a-time. (More likely to encounter resource limits.)')
+    subparser.add_argument('--record-cognito-pools', action='store_true', help='Record the cognito pools that are stood up during deployment access updates')
+
     __add_common_args(subparser)
     subparser.set_defaults(func=deployment.upload_resources)
 
@@ -397,7 +402,6 @@ def __add_deployment_commands(deployment_subparser):
     subparser.add_argument('--clear', action='store_true', required=False, help='Clear all tags for the deployment')
     subparser.add_argument('--list', action='store_true', required=False, help='List all tags on a deployment')
     subparser.set_defaults(func=deployment.tags)
-
 
 
 def __add_profile_commands(profile_subparser):
@@ -529,7 +533,7 @@ def __add_mappings_commands(mappings_subparser):
     group = subparser.add_mutually_exclusive_group()
     group.add_argument('--release', required=False, action='store_true', help='Causes the release mappings to be updated. By default the mappings used during development are updated.')
     group.add_argument('--deployment', '-d', metavar='DEPLOYMENT', required=False, help='Updates the launcher mappings to use the selected deployment')
-    group.add_argument('--ignore-cache', required=False, action='store_true', help="Ignores the cached mappings stored in the s3 configuration bucket, forcing a rebuild")
+    subparser.add_argument('--ignore-cache', required=False, action='store_true', help="Ignores the cached mappings stored in the s3 configuration bucket, forcing a rebuild")
     __add_common_args(subparser)
     subparser.set_defaults(func=mappings.force_update)
 
@@ -566,6 +570,24 @@ def __add_function_commands(function_subparser):
     subparser.add_argument("--force", required=False, action='store_true', help='Skips checks for existence of resource and type of resource. Used when creating folders for to-be-created functions.')
     subparser.set_defaults(func=resource_group.create_function_folder)
 
+
+def __add_log_finder_commands(log_subparser):
+    log_subparser.add_argument('--deployment', '-d', required=False, metavar='DEPLOYMENT',
+                               help='The deployment to search logs in. If not specified the default deployment is used')
+    log_subparser.add_argument('--function', '-f', required=True, help="The logical name of the function you want to read the logs for. in the form <ResourceGroup>.<LogicalFunctionName>")
+    log_subparser.add_argument('--request', required=True, help='The aws_request_id of the call you are looking for')
+    log_subparser.set_defaults(func=log_finder.get_logs)
+
+def __add_backup_commands(backup_subparser):
+    backup_subparser.add_argument('--deployment', '-d', required=False, metavar='DEPLOYMENT',
+                               help='The deployment to search logs in. If not specified the default deployment is used')
+    backup_subparser.add_argument('--resource', '-r', required=False,
+                                  help='The resource to backup, in <group>.<resource> format')
+    backup_subparser.add_argument(
+        '--type', '-t', required=False, help='The type of the resource.', choices=['ddb', 's3'])
+    backup_subparser.add_argument(
+        '--backup-name', '-b', required=False, help='The name of the backup.')
+    backup_subparser.set_defaults(func=backup.backup_resource)
 
 
 def __add_deprecated_commands(context, subparsers):
@@ -652,25 +674,13 @@ def __add_deprecated_commands(context, subparsers):
     group = subparser.add_mutually_exclusive_group()
     group.add_argument('--release', required=False, action='store_true', help='Causes the release mappings to be updated. By default the mappings used during development are updated.')
     group.add_argument('--deployment', '-d', metavar='DEPLOYMENT', required=False, help='Updates the launcher mappings to use the selected deployment')
-    group.add_argument('--ignore-cache', required=False, action='store_true', help="Ignores the cached mappings stored in the s3 configuration bucket, forcing a rebuild")
+    subparser.add_argument('--ignore-cache', required=False, action='store_true', help="Ignores the cached mappings stored in the s3 configuration bucket, forcing a rebuild")
     __add_common_args(subparser)
     subparser.set_defaults(func=mappings.force_update)
 
     subparser = subparsers.add_parser('list-mappings')
     __add_common_args(subparser)
     subparser.set_defaults(func=mappings.list)
-
-    subparser = subparsers.add_parser('add-resource-group')
-    subparser.add_argument('--resource-group', '-r', required=True, metavar='GROUP', help='The name of the resource group.')
-    subparser.add_argument('--include-example-resources', action='store_true', help='Include "Hello World" example resources.')
-    subparser.add_argument('--gem', const='', default=None, action='store', nargs='?', metavar='GEM-PATH', help='Looks for resource group definition at Gems\GROUP\AWS or GEM-PATH\AWS if the optional GEM-PATH value is provided.')
-    __add_common_args(subparser)
-    subparser.set_defaults(func=resource_group.add)
-
-    subparser = subparsers.add_parser('remove-resource-group')
-    subparser.add_argument('--resource-group', '-r', required=True, metavar='GROUP', help='The name of the resource group to remove.')
-    __add_common_args(subparser)
-    subparser.set_defaults(func=resource_group.remove)
 
     subparser = subparsers.add_parser('list-resource-groups')
     subparser.add_argument('--deployment', '-d', metavar='DEPLOYMENT', help='The name of the deployment used when determining the resource group status. If not specified, the default deployment is used.')
@@ -845,6 +855,25 @@ def __add_built_in_commands(context, subparsers):
     # function commands
     subparser = subparsers.add_parser('function', aliases=['f'], help='Upload lambda function code, or fetch logs from an AWS Lambda function')
     __add_function_commands(subparser)
+
+    # log finder commands
+    subparser = subparsers.add_parser('logfind', aliases=[
+                                      'lf'], help='Find cloudwatch logs associated with a specific request')
+    __add_log_finder_commands(subparser)
+
+    # backup commands
+    subparser = subparsers.add_parser('backup', help='Backup dynamodb and s3 resources')
+    __add_backup_commands(subparser)
+
+    # restore s3 bucket
+    subparser = subparsers.add_parser('restores3', help="Transfer the contents from one s3 bucket to another, to be used with lmbr_aws backup")
+    subparser.add_argument('--deployment', '-d', required=False, metavar='DEPLOYMENT',
+                                    help='The deployment to search logs in. If not specified the default deployment is used')
+    subparser.add_argument('--resource', '-r', required=True,
+                                  help='The resource to backup, in <group>.<resource> format')
+    subparser.add_argument(
+        '--backup-name', '-b', required=False, help='The name of the backup.')
+    subparser.set_defaults(func=backup.restore_bucket)
 
     # security commands
     security.add_cli_commands(subparsers, __add_common_args)

@@ -18,11 +18,17 @@
 // Suppress warning in pymath.h where a conflict with round exists with VS 12.0 math.h ::  pymath.h(22) : warning C4273: 'round' : inconsistent dll linkage
 #pragma warning(disable: 4273)
 #pragma warning(disable: 4068) // Disable unknown pragma, it's worthless
+// Suppress warning in boost/python/opaque_pointer_converter.hpp, boost/python/return_opaque_pointer.hpp and python/detail/dealloc.hpp
+// for non UTF-8 characters.
+#pragma warning(disable: 4828)
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wunused-local-typedef"
 #include <boost/python.hpp>
 #pragma clang diagnostic pop
+#pragma warning( default: 4828)
 #pragma warning( default: 4273)
+
+#include <AzCore/std/containers/fixed_vector.h>
 
 // Forward Declarations
 class CBaseObject;
@@ -112,15 +118,18 @@ public:
 
     struct SModule
     {
-        string name;
+        const char* name;
         void (* initFunc)();
 
         bool operator == (const SModule& other) const
         {
-            return name == other.name;
+            return name == other.name || (strcmp(name, other.name) == 0);
         }
     };
-    typedef std::vector<SModule> ModuleList;
+    // No one should be adding to this, as it's deprecated, and there are 13 modules
+    // If for some reason we need to, just increase the size of this vector
+    // It must not allocate, as it is filled at static init time
+    typedef AZStd::fixed_vector<SModule, 16> ModuleList;
     static ModuleList s_modules;
 };
 

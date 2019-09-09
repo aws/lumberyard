@@ -646,18 +646,17 @@ protected:
     QString m_humanName;
     QString m_description;
 
+    //! Optional userdata pointer
+    QVariant m_userData;
+
     //! Extended data (Extended data is never copied, it's always private to this variable).
     WiredList m_wiredVars;
     OnSetCallbackList m_onSetFuncs;
     OnSetEnumCallbackList m_onSetEnumFuncs;
 
-
     uint16 m_flags;
     //! Limited to 8 flags.
     unsigned char m_dataType;
-
-    //! Optional userdata pointer
-    QVariant m_userData;
 
     bool m_boUpdateCallbacksEnabled;
 
@@ -1321,13 +1320,12 @@ protected:
 
 protected:
     T m_valueDef;
-
-    // Min/Max value.
-    float m_valueMin, m_valueMax, m_valueStep;
-    unsigned char m_bHardMin : 1;
-    unsigned char m_bHardMax : 1;
     bool m_customLimits;
     bool m_bResolving;
+    unsigned char m_bHardMin : 1;
+    unsigned char m_bHardMax : 1;
+    // Min/Max value.
+    float m_valueMin, m_valueMax, m_valueStep;
 };
 
 //////////////////////////////////////////////////////////////////////////

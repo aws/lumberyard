@@ -13,8 +13,10 @@
 
 #include <AzCore/Component/Entity.h>
 #include <AzCore/Component/EntityBus.h>
+#include <AzCore/Component/EntityUtils.h>
 #include <AzCore/Component/ComponentApplicationBus.h>
 #include <AzCore/Component/TransformBus.h>
+#include <AzCore/Component/NamedEntityId.h>
 
 #include <AzCore/Casting/lossy_cast.h>
 
@@ -24,7 +26,7 @@
 #include <AzCore/RTTI/BehaviorContext.h>
 
 #include <AzCore/Math/Crc.h>
-
+#include <AzCore/std/algorithm.h>
 #include <AzCore/std/chrono/chrono.h>
 #include <AzCore/std/parallel/thread.h>
 #include <AzCore/std/string/conversions.h>
@@ -128,7 +130,7 @@ namespace AZ
 #else // !AZ_PLATFORM_WINDOWS
     static const char* kTimeVariableName = "TimeIntervalStamp";
     static AZ::EnvironmentVariable<AZ::u64> g_sharedTimeStorage;
-    
+
     class TimeIntervalStamper
     {
     public:
@@ -137,7 +139,7 @@ namespace AZ
             , m_timeInterval(timeInterval)
         {
             AZ_Assert(m_timeInterval > 0, "You can't have 0 time interval!");
-            
+
             const bool isConstruct = true;
             const bool isTransferOwnership = false;
 
@@ -374,17 +376,11 @@ namespace AZ
 
         AZ_Assert(m_state == ES_INIT, "Entity should be in Init state to be Activated!");
 
-        const DependencySortResult dependencySortResult = EvaluateDependencies();
-        switch (dependencySortResult)
+        const DependencySortOutcome sortOutcome = EvaluateDependenciesGetDetails();
+        if (!sortOutcome.IsSuccess())
         {
-        case DSR_MISSING_REQUIRED:
-            AZ_Error("Entity", false, "Entity '%s' [0x%llx] has missing required services and cannot be activated.\n", m_name.c_str(), m_id);
+            AZ_Error("Entity", false, "Entity '%s' %s cannot be activated. %s", m_name.c_str(), m_id.ToString().c_str(), sortOutcome.GetError().m_message.c_str());
             return;
-        case DSR_CYCLIC_DEPENDENCY:
-            AZ_Error("Entity", false, "Entity '%s' [0x%llx] components order have cyclic dependency and cannot be activated.\n", m_name.c_str(), m_id);
-            return;
-        case DSR_OK:
-            break;
         }
 
         m_state = ES_ACTIVATING;
@@ -434,15 +430,22 @@ namespace AZ
     //=========================================================================
     Entity::DependencySortResult Entity::EvaluateDependencies()
     {
-        DependencySortResult result = DSR_OK;
+        DependencySortOutcome outcome = EvaluateDependenciesGetDetails();
+        return outcome.IsSuccess() ? DependencySortResult::Success : outcome.GetError().m_code;
+    }
+
+    //=========================================================================
+    Entity::DependencySortOutcome Entity::EvaluateDependenciesGetDetails()
+    {
+        DependencySortOutcome outcome = AZ::Success();
 
         if (!m_isDependencyReady)
         {
-            result = DependencySort(m_components);
-            m_isDependencyReady = (result == DSR_OK);
+            outcome = DependencySort(m_components);
+            m_isDependencyReady = outcome.IsSuccess();
         }
 
-        return result;
+        return outcome;
     }
 
     //=========================================================================
@@ -543,7 +546,7 @@ namespace AZ
         {
             component->Init();
         }
-        
+
         InvalidateDependencies(); // We need to re-evaluate dependencies
         return true;
     }
@@ -579,6 +582,7 @@ namespace AZ
                 subComponentDescriptor->GetProvidedServices(provided, (*componentIt));
                 for (auto providedIt = provided.begin(); providedIt != provided.end(); ++providedIt)
                 {
+                    EntityUtils::RemoveDuplicateServicesOfAndAfterIterator(providedIt, provided, this);
                     for (auto incompatibleIt = incompatible.begin(); incompatibleIt != incompatible.end(); ++incompatibleIt)
                     {
                         if (*providedIt == *incompatibleIt)
@@ -1000,9 +1004,13 @@ namespace AZ
                 ->Version(1, &EntityIdConverter)
                 ->Field("id", &EntityId::m_id);
 
+            NamedEntityId::Reflect(reflection);
+
             serializeContext->Class<ComponentConfig>()
                 ->Version(1)
             ;
+
+            EntityComponentIdPair::Reflect(reflection);
 
             EditContext* ec = serializeContext->GetEditContext();
             if (ec)
@@ -1051,158 +1059,436 @@ namespace AZ
     }
 
     //=========================================================================
-    // DependencySort
-    // [8/31/2012]
-    //=========================================================================
-    Entity::DependencySortResult
-    Entity::DependencySort(ComponentArrayType& components)
+    // Internal structures used by DependencySort algorithm
+    namespace DependencySortInternal
     {
-        AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzCore);
-
-        //////////////////////////////////////////////////////////////////////////
-        //////////////////////////////////////////////////////////////////////////
-        // Sorting algorithm that organizes the components in topological order.
-        //////////////////////////////////////////////////////////////////////////
-        //////////////////////////////////////////////////////////////////////////
-
-        if (components.size() <= 1)
+        struct ComponentInfo
         {
-            return DSR_OK;
+            Component* m_component = nullptr;
+
+            // Number of other components providing services that this component depends on.
+            // This number is decremented as components are sorted.
+            size_t m_dependencyCount = 0;
+
+            // these could be queried during core sort loop, but performance is improved if we cache the data here
+            ComponentDescriptor* m_descriptor = nullptr;
+            ComponentId m_componentId = InvalidComponentId;
+            TypeId m_underlyingTypeId;
+            bool m_providesAnyServices = false;
+        };
+
+        // When storing an index into a vector, this indicates an invalid index
+        constexpr size_t InvalidEntry = SIZE_MAX;
+
+        struct IncompatibleServiceInfo
+        {
+            size_t m_componentsIncompatibleWithServiceCount = 0;
+            ComponentInfo* m_anyComponentIncompatibleWithService = nullptr;
+        };
+
+        struct ProvidedServiceInfo
+        {
+            // Number of components providing this service
+            size_t m_componentsProvidingServiceCount = 0;
+            ComponentInfo* m_anyComponentProvidingService = nullptr;
+
+            // Maintain a linked-list of components which depend upon this service.
+            // The DependentComponentEntry class serves as nodes of this linked-list.
+            // All ProvidedServiceInfos store their nodes in a single buffer.
+            // These could be replaced by a simple vector<ComponentInfo*> per ProvidedServiceInfo,
+            // but performance tests showed the linked-lists-in-a-buffer approach to be faster.
+            size_t m_firstDependentComponentEntry = InvalidEntry;
+            size_t m_lastDependentComponentEntry = InvalidEntry;
+        };
+
+        // An entry in the linked-list of components that depend upon a given service.
+        struct DependentComponentEntry
+        {
+            ComponentInfo* m_dependentComponentInfo = nullptr;
+            size_t m_nextEntry = InvalidEntry; // index of the next entry in this list
+        };
+
+        // A stable sort of candidates is not technically necessary,
+        // any candidate could be chosen next for the final sorted vector.
+        // But a stable sort is desirable so that devs get reproducible results.
+        // Stable sort also prevents components stored in a file from arbitrarily shuffling around.
+        static bool StableSortCandidates(const ComponentInfo* a, const ComponentInfo* b)
+        {
+            // Return whether B should sort before A.
+
+            // Components that provide no services should be sorted towards the end.
+            // We do this because ScriptComponents can't currently declare
+            // dependencies that the scripts might have.
+            if (a->m_providesAnyServices != b->m_providesAnyServices)
+            {
+                return b->m_providesAnyServices;
+            }
+
+            // For stability, sort next by type ID
+            if (a->m_underlyingTypeId != b->m_underlyingTypeId)
+            {
+                return a->m_underlyingTypeId > b->m_underlyingTypeId;
+            }
+
+            // For stability, sort next by component ID.
+            return a->m_componentId > b->m_componentId;
         }
 
-        // Graph structure for topological sort
-        using GraphNode = AZStd::pair<Component*, int>;
-        using GraphNodes = AZStd::list<GraphNode>;
-        AZStd::vector<AZStd::pair<GraphNodes::iterator, GraphNodes::iterator>> graphLinks;
-        graphLinks.reserve(128);
-        GraphNodes graphNodes;
-        AZStd::vector<Component*> consumerComponents; /// List of components where order doesn't matter and they should be placed at the end of the sort
-        consumerComponents.reserve(32);
-
-        // map all provided services to the components
-        AZStd::unordered_map<ComponentServiceType, GraphNodes::iterator> providedServiceToComponentMap(37);
-        ComponentDescriptor::DependencyArrayType services;
-        for (Component* component : components)
+        static void PushCandidate(AZStd::vector<ComponentInfo*>& candidates, ComponentInfo& componentInfo)
         {
-            ComponentDescriptor* componentDescriptor = nullptr;
-            EBUS_EVENT_ID_RESULT(componentDescriptor, component->RTTI_GetType(), ComponentDescriptorBus, GetDescriptor);
-            AZ_Assert(componentDescriptor, "Component class %s descriptor is not created! It must be before you can use it!", component->RTTI_GetTypeName());
-            services.clear();
-            componentDescriptor->GetProvidedServices(services, component);
-
-            if (services.empty())
-            {
-                // this component only consumes services, no need to topo sort it
-                consumerComponents.push_back(component);
-            }
-            else
-            {
-                graphNodes.push_front(GraphNode(component, 0));
-                GraphNodes::iterator currentNode = graphNodes.begin();
-
-                for (ComponentServiceType service : services)
-                {
-                    providedServiceToComponentMap.insert(AZStd::make_pair(service, currentNode));
-                }
-            }
+            candidates.push_back(&componentInfo);
+            AZStd::push_heap(candidates.begin(), candidates.end(), StableSortCandidates);
         }
 
-        components.clear(); // clear input in preparation for sorted list
-
-        // build graph connections - build directional links between graph nodes based on dependencies (dependent
-        // and required services), from current node/component toward dependent node/component.
-        for (auto nodeIt = graphNodes.begin(); nodeIt != graphNodes.end(); ++nodeIt)
+        static ComponentInfo* PopCandidate(AZStd::vector<ComponentInfo*>& candidates)
         {
-            ComponentDescriptor* componentDescriptor = nullptr;
-            EBUS_EVENT_ID_RESULT(componentDescriptor, nodeIt->first->RTTI_GetType(), ComponentDescriptorBus, GetDescriptor);
-            AZ_Assert(componentDescriptor, "Component class %s descriptor is not created! It must be before you can use it!", nodeIt->first->RTTI_GetTypeName());
+            AZStd::pop_heap(candidates.begin(), candidates.end(), StableSortCandidates);
+            ComponentInfo* candidateInfo = candidates.back();
+            candidates.pop_back();
+            return candidateInfo;
+        }
 
-            // process dependent services
-            services.clear();
-            componentDescriptor->GetDependentServices(services, nodeIt->first);
-            for (ComponentServiceType service : services)
-            {
-                auto mapIter = providedServiceToComponentMap.find(service);
-                if (mapIter != providedServiceToComponentMap.end())
-                {
-                    ++nodeIt->second; // increment dependency counter
-                    graphLinks.push_back(AZStd::make_pair(nodeIt, mapIter->second));
-                }
-                // it's ok if dependent service is not found. Dependent only indicates that if present it would be initialized before the component itself.
-            }
+        // Shortcut for returning a FailedSortDetails as an AZ::Failure.
+        static FailureValue<Entity::FailedSortDetails> FailureCode(Entity::DependencySortResult code, const char* formatMessage, ...)
+        {
+            va_list args;
+            va_start(args, formatMessage);
 
-            // process required services
-            services.clear();
-            componentDescriptor->GetRequiredServices(services, nodeIt->first);
-            for (ComponentServiceType service : services)
+            return Failure(Entity::FailedSortDetails{ code, AZStd::string::format_arg(formatMessage, args) });
+        }
+
+        // Function that creates a nice error message when incompatible components are found.
+        static AZStd::string CreateIncompatibilityMessage(ComponentServiceType service, const IncompatibleServiceInfo& incompatibleServiceInfo, const ProvidedServiceInfo& providedServiceInfo, const AZStd::vector<ComponentInfo>& componentInfos)
+        {
+            const ComponentInfo* componentProvidingService = providedServiceInfo.m_anyComponentProvidingService;
+            const ComponentInfo* componentIncompatibleWithService = incompatibleServiceInfo.m_anyComponentIncompatibleWithService;
+
+            // find two different components that we can report are incompatible with each other.
+            //
+            // we currently know one component which provides this service,
+            // and one component which is incompatible with this service,
+            // but these might be the same component.
+            if (componentProvidingService == componentIncompatibleWithService)
             {
-                auto mapIter = providedServiceToComponentMap.find(service);
-                if (mapIter != providedServiceToComponentMap.end())
+                ComponentDescriptor::DependencyArrayType servicesTmp;
+
+                if (incompatibleServiceInfo.m_componentsIncompatibleWithServiceCount > 1)
                 {
-                    ++nodeIt->second; // increment dependency counter
-                    graphLinks.push_back(AZStd::make_pair(nodeIt, mapIter->second));
+                    // multiple components are incompatible with this service,
+                    // find one that's different from the component providing this service.
+                    for (const ComponentInfo& componentInfo : componentInfos)
+                    {
+                        if (&componentInfo == componentProvidingService)
+                        {
+                            continue;
+                        }
+
+                        componentInfo.m_descriptor->GetIncompatibleServices(servicesTmp, componentInfo.m_component);
+                        if (AZStd::find(servicesTmp.begin(), servicesTmp.end(), service) != servicesTmp.end())
+                        {
+                            componentProvidingService = &componentInfo;
+                            break;
+                        }
+                    }
                 }
                 else
                 {
-                    AZ_Error("Entity", false, "Component %s is missing required service 0x%08x!\n", nodeIt->first->RTTI_GetTypeName(), service);
-                    return DSR_MISSING_REQUIRED;
+                    // multiple components are providing this service,
+                    // find one that different from the component incompatible with this service.
+                    for (const ComponentInfo& componentInfo : componentInfos)
+                    {
+                        if (&componentInfo == componentIncompatibleWithService)
+                        {
+                            continue;
+                        }
+
+                        componentInfo.m_descriptor->GetProvidedServices(servicesTmp, componentInfo.m_component);
+                        if (AZStd::find(servicesTmp.begin(), servicesTmp.end(), service) != servicesTmp.end())
+                        {
+                            componentIncompatibleWithService = &componentInfo;
+                            break;
+                        }
+                    }
+                }
+            }
+
+            // different error message for multiple components of the same type
+            if (componentProvidingService->m_underlyingTypeId == componentIncompatibleWithService->m_underlyingTypeId)
+            {
+                return AZStd::string::format("Multiple '%s' found, but this component is incompatible with others of the same type.",
+                    componentProvidingService->m_component->RTTI_GetTypeName());
+            }
+
+            return AZStd::string::format("Components '%s' and '%s' are incompatible.",
+                componentIncompatibleWithService->m_component->RTTI_GetTypeName(),
+                componentProvidingService->m_component->RTTI_GetTypeName());
+        }
+    }
+
+    //=========================================================================
+    Entity::DependencySortOutcome Entity::DependencySort(ComponentArrayType& inOutComponents)
+    {
+        AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzCore);
+
+        using DependencySortInternal::ComponentInfo;
+        using DependencySortInternal::InvalidEntry;
+        using DependencySortInternal::IncompatibleServiceInfo;
+        using DependencySortInternal::ProvidedServiceInfo;
+        using DependencySortInternal::DependentComponentEntry;
+        using DependencySortInternal::PushCandidate;
+        using DependencySortInternal::PopCandidate;
+        using DependencySortInternal::FailureCode;
+        using DependencySortInternal::CreateIncompatibilityMessage;
+
+        // Conceptually, this is a topological sort where components
+        // are the nodes and dependent services are the links between nodes.
+        //
+        // Be sure to benchmark before and after making changes to this algorithm (see BM_ComponentDependencySort)
+
+        // Info about each component
+        AZStd::vector<ComponentInfo> componentInfos;
+
+        // All incompatible services
+        AZStd::unordered_map<ComponentServiceType, IncompatibleServiceInfo> incompatibleServiceInfos;
+
+        // Info about each provided services
+        AZStd::unordered_map<ComponentServiceType, ProvidedServiceInfo> providedServiceInfos;
+
+        // Buffer to hold nodes for multiple linked lists.
+        // These lists represent the components that depend upon particular services.
+        AZStd::vector<DependentComponentEntry> dependentComponentBuffer;
+
+        // Candidates for the next component that could be put into sortedComponents.
+        // A component is put into candidatesComponents when all components it depends on
+        // have been placed in sortedComponents.
+        AZStd::vector<ComponentInfo*> candidateComponents;
+
+        // Components in final sorted order
+        AZStd::vector<Component*> sortedComponents;
+
+        // Tmp vectors to re-use when querying services
+        ComponentDescriptor::DependencyArrayType servicesTmp;
+
+        // reserve capacity
+        componentInfos.reserve(inOutComponents.size());
+        dependentComponentBuffer.reserve(inOutComponents.size() * 2);
+        candidateComponents.reserve(inOutComponents.size());
+        sortedComponents.reserve(inOutComponents.size());
+
+        // create all ComponentInfos
+        // after this loop, we can safely use pointers to ComponentInfo
+        for (Component* component : inOutComponents)
+        {
+            if (!component)
+            {
+                continue;
+            }
+
+            ComponentDescriptor* componentDescriptor = nullptr;
+            ComponentDescriptorBus::EventResult(componentDescriptor, azrtti_typeid(component), &ComponentDescriptorBus::Events::GetDescriptor);
+            if (!componentDescriptor)
+            {
+                return FailureCode(DependencySortResult::MissingDescriptor, "No descriptor found for Component class '%s'.", component->RTTI_GetTypeName());
+            }
+
+            componentInfos.push_back();
+            ComponentInfo& componentInfo = componentInfos.back();
+            componentInfo.m_component = component;
+            componentInfo.m_componentId = component->GetId();
+            componentInfo.m_descriptor = componentDescriptor;
+            componentInfo.m_underlyingTypeId = component->GetUnderlyingComponentType();
+        }
+
+        // create all IncompatibleServiceInfos
+        // create all ProvidedServiceInfos
+        for (ComponentInfo& componentInfo : componentInfos)
+        {
+            // incompatible services
+            servicesTmp.clear();
+            componentInfo.m_descriptor->GetIncompatibleServices(servicesTmp, componentInfo.m_component);
+            for (ComponentServiceType incompatible : servicesTmp)
+            {
+                IncompatibleServiceInfo& incompatibleInfo = incompatibleServiceInfos[incompatible]; // creates entry if not already there
+
+                // protect against a component listing the same incompatibility multiple times
+                if (incompatibleInfo.m_anyComponentIncompatibleWithService != &componentInfo)
+                {
+                    ++incompatibleInfo.m_componentsIncompatibleWithServiceCount;
+                    incompatibleInfo.m_anyComponentIncompatibleWithService = &componentInfo;
+                }
+            }
+
+            // provided services
+            servicesTmp.clear();
+            componentInfo.m_descriptor->GetProvidedServices(servicesTmp, componentInfo.m_component);
+            componentInfo.m_providesAnyServices |= !servicesTmp.empty();
+            for (AZ::ComponentDescriptor::DependencyArrayType::iterator providedService = servicesTmp.begin();
+                providedService != servicesTmp.end(); ++providedService)
+            {
+                AZ::EntityUtils::RemoveDuplicateServicesOfAndAfterIterator(
+                    providedService, 
+                    servicesTmp, 
+                    componentInfo.m_component->GetEntity());
+                ProvidedServiceInfo& serviceInfo = providedServiceInfos[*providedService]; // intentionally creates entry if not already there
+                ++serviceInfo.m_componentsProvidingServiceCount;
+                serviceInfo.m_anyComponentProvidingService = &componentInfo;
+            }
+        }
+
+        // check for any overlaps in incompatible & provided services
+        for (const auto& incompatible : incompatibleServiceInfos)
+        {
+            const auto foundProvidedService = providedServiceInfos.find(incompatible.first);
+            if (foundProvidedService != providedServiceInfos.end())
+            {
+                // the same component is allowed to both provide, and be incompatible with, the same service.
+                // but it's an error if more than one component is involved in the service overlap
+                const IncompatibleServiceInfo& incompatibleInfo = incompatible.second;
+                const ProvidedServiceInfo& providedInfo = foundProvidedService->second;
+
+                if (incompatibleInfo.m_componentsIncompatibleWithServiceCount > 1
+                    || providedInfo.m_componentsProvidingServiceCount > 1
+                    || incompatibleInfo.m_anyComponentIncompatibleWithService != providedInfo.m_anyComponentProvidingService)
+                {
+                    // We know there's an incompatibility, but we don't have enough data to give a super useful error message.
+                    // Tracking more data slows down this algorithm in the common case, when nothing is going wrong.
+                    // CreateIncompatibilityMessage() gathers more data so we can provide a better message in the uncommon case that things go wrong.
+                    return FailureCode(DependencySortResult::HasIncompatibleServices, CreateIncompatibilityMessage(incompatible.first, incompatibleInfo, providedInfo, componentInfos).c_str());
                 }
             }
         }
 
-        // topological sort
-        for (auto graphNodeIt = graphNodes.begin(); graphNodeIt != graphNodes.end(); )
+        // process required services
+        // process dependent services
+        for (ComponentInfo& componentInfo : componentInfos)
         {
-            if (graphNodeIt->second == 0) // check if this node's dependencies are met
+            // code for processing required and dependent services is similar,
+            // process required then dependent within this loop
+            for (int loopType = 0; loopType < 2; ++loopType)
             {
-                // remove links
-                for (auto linkIt = graphLinks.begin(); linkIt != graphLinks.end(); )
-                {
-                    AZ_Assert(linkIt->first != graphNodeIt, "If the use count is 0, we should not have any 'exit' links!");
-                    if (linkIt->second == graphNodeIt)
-                    {
-                        if (--linkIt->first->second == 0) // decrement dependency count
-                        {
-                            // this dependent node is ready for processing, move it after us for processing
-                            graphNodes.splice(AZStd::next(graphNodeIt), graphNodes, linkIt->first);
-                        }
+                bool processingRequiredServices = (loopType == 0);
 
-                        linkIt = graphLinks.erase(linkIt);
+                servicesTmp.clear();
+                if (processingRequiredServices)
+                {
+                    componentInfo.m_descriptor->GetRequiredServices(servicesTmp, componentInfo.m_component);
+                }
+                else
+                {
+                    componentInfo.m_descriptor->GetDependentServices(servicesTmp, componentInfo.m_component);
+                }
+
+                for (ComponentServiceType service : servicesTmp)
+                {
+                    auto providedServiceIt = providedServiceInfos.find(service);
+                    if (providedServiceIt == providedServiceInfos.end())
+                    {
+                        if (processingRequiredServices)
+                        {
+                            return FailureCode(DependencySortResult::MissingRequiredService, "Component '%s' is missing another required component.",
+                                componentInfo.m_component->RTTI_GetTypeName());
+                        }
+                        else
+                        {
+                            continue;
+                        }
+                    }
+
+                    ProvidedServiceInfo& serviceInfo = providedServiceIt->second;
+                    componentInfo.m_dependencyCount += serviceInfo.m_componentsProvidingServiceCount;
+
+                    // put new entry into "linked-list" of components that depend upon this service
+                    size_t newEntryIndex = dependentComponentBuffer.size();
+                    dependentComponentBuffer.push_back();
+                    DependentComponentEntry& dependentEntry = dependentComponentBuffer.back();
+                    dependentEntry.m_dependentComponentInfo = &componentInfo;
+
+                    if (serviceInfo.m_firstDependentComponentEntry == InvalidEntry)
+                    {
+                        serviceInfo.m_firstDependentComponentEntry = newEntryIndex;
+                    }
+                    if (serviceInfo.m_lastDependentComponentEntry != InvalidEntry)
+                    {
+                        dependentComponentBuffer[serviceInfo.m_lastDependentComponentEntry].m_nextEntry = newEntryIndex;
+                    }
+                    serviceInfo.m_lastDependentComponentEntry = newEntryIndex;
+                }
+            }
+
+            // if this component is not dependent upon any other components, add to candidates
+            if (componentInfo.m_dependencyCount == 0)
+            {
+                PushCandidate(candidateComponents, componentInfo);
+            }
+        }
+
+        // do sort
+        while (!candidateComponents.empty())
+        {
+            // grab next candidate and add it to final sorted vector
+            ComponentInfo& candidateInfo = *PopCandidate(candidateComponents);
+
+            sortedComponents.push_back(candidateInfo.m_component);
+
+            // for each service provided by candidate
+            // inform components that depend on the service that they're waiting on one less component.
+            servicesTmp.clear();
+            candidateInfo.m_descriptor->GetProvidedServices(servicesTmp, candidateInfo.m_component);
+            for (ComponentServiceType providedService : servicesTmp)
+            {
+                ProvidedServiceInfo& providedServiceInfo = providedServiceInfos[providedService];
+
+                // traverse the "linked list"
+                size_t dependentEntry = providedServiceInfo.m_firstDependentComponentEntry;
+                while(dependentEntry != InvalidEntry)
+                {
+                    DependentComponentEntry& dependent = dependentComponentBuffer[dependentEntry];
+                    if (--dependent.m_dependentComponentInfo->m_dependencyCount == 0)
+                    {
+                        // if dependent component is no longer waiting for anyone, add to candidates
+                        PushCandidate(candidateComponents, *dependent.m_dependentComponentInfo);
+                    }
+
+                    dependentEntry = dependent.m_nextEntry;
+                }
+            }
+        }
+
+        // if we failed to sort every component, there must be a cyclic dependency
+        if (sortedComponents.size() != componentInfos.size())
+        {
+            // Format message like: "Cycle exists amongst: ComponentA, ComponentB, ComponentC, ..."
+            AZStd::string message = "Infinite loop of service dependencies amongst components: ";
+            size_t foundUnsorted = 0;
+            for (ComponentInfo& componentInfo : componentInfos)
+            {
+                if (AZStd::find(sortedComponents.begin(), sortedComponents.end(), componentInfo.m_component) == sortedComponents.end())
+                {
+                    if (foundUnsorted > 0)
+                    {
+                        message += ", ";
+                    }
+
+                    if (foundUnsorted == 3)
+                    {
+                        message += "...";
+                        break;
                     }
                     else
                     {
-                        ++linkIt;
+                        message += componentInfo.m_component->RTTI_GetTypeName();
                     }
+
+                    foundUnsorted++;
                 }
+            }
 
-                // move the component to the sorted list and remove from the graph
-                components.push_back(graphNodeIt->first);
-                graphNodeIt = graphNodes.erase(graphNodeIt);
-            }
-            else
-            {
-                ++graphNodeIt;
-            }
+            return FailureCode(DependencySortResult::HasCyclicDependency, message.c_str());
         }
 
-        // Add consumer components
-        components.insert(components.end(), consumerComponents.begin(), consumerComponents.end());
-
-        // If we have any nodes left on the graph, they form a cyclic dependency.
-        if (!graphNodes.empty())
-        {
-            AZ_Error("Entity", false, "The following components have a cyclic dependency:\n");
-
-            for (const GraphNode& node : graphNodes)
-            {
-                (void)node;
-                AZ_Error("Entity", false, "Component: %s\n", node.first->RTTI_GetTypeName());
-            }
-
-            return DSR_CYCLIC_DEPENDENCY;
-        }
-
-        return DSR_OK;
+        // success!
+        inOutComponents = sortedComponents;
+        return Success();
     }
 
     //32 bit crc of machine ID, process ID, and process start time

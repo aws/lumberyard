@@ -80,6 +80,8 @@ namespace RenderCapabilities
     bool SupportsDualSourceBlending();
 
     bool SupportsStructuredBuffer(EShaderStage stage);
+
+    bool SupportsIndependentBlending();
 }
 
 #endif // CRYINCLUDE_CRYENGINE_RENDERDLL_COMMON_RENDERCAPABILITIES_H

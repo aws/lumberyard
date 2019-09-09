@@ -1,16 +1,17 @@
 {
     "none":
     {
-      "Tests": [
-        "Tests/EditorRigidPhysicsComponentTest.cpp",
-        "Tests/EditorStaticPhysicsComponentTest.cpp",
-        "Tests/LmbrCentralReflectionTest.h",
-        "Tests/LmbrCentralReflectionTest.cpp",
-        "Tests/EditorBoxShapeComponentTests.cpp",
-        "Tests/EditorSphereShapeComponentTests.cpp",
-        "Tests/EditorCapsuleShapeComponentTests.cpp",
-        "Tests/EditorCylinderShapeComponentTests.cpp",
-        "Tests/EditorPolygonPrismShapeComponentTests.cpp"
-      ]
+        "Tests": [
+            "Tests/EditorRigidPhysicsComponentTest.cpp",
+            "Tests/EditorStaticPhysicsComponentTest.cpp",
+            "Tests/LmbrCentralReflectionTest.h",
+            "Tests/LmbrCentralReflectionTest.cpp",
+            "Tests/EditorBoxShapeComponentTests.cpp",
+            "Tests/EditorSphereShapeComponentTests.cpp",
+            "Tests/EditorCapsuleShapeComponentTests.cpp",
+            "Tests/EditorCompoundShapeComponentTests.cpp",
+            "Tests/EditorCylinderShapeComponentTests.cpp",
+            "Tests/EditorPolygonPrismShapeComponentTests.cpp"
+        ]
     }
 }

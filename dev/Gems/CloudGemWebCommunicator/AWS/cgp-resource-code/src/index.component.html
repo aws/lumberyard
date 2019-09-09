@@ -1,7 +1,7 @@
 ﻿<facet-generator [context]="context"
                  [tabs]="['Users', 'Channel List']"
                  (tabClicked)="getSubNavItem($event)" [metricIdentifier]="context.identifier"></facet-generator>
-<div *ngIf="subNavActiveIndex == 0">
+<div *ngIf="subNavActiveIndex === 0">
     <div *ngIf="!isListeningToUser">
         <button class="btn l-primary" (click)="createOPENSSLUser()">
             Create OPENSSL User
@@ -18,7 +18,7 @@
                 </div>
             </div>
             <div class="content-container" *ngSwitchCase="false">
-                <div *ngIf="!users || users.length == 0">
+                <div *ngIf="!users || users.length === 0">
                     No user
                 </div>
                 <div *ngIf="users.length > 0">
@@ -41,7 +41,7 @@
                                 <td *ngIf="!user.CertificateARN" class="connection-type-column" (click)="initializeListeningToUserPage(user)">WEBSOCKET</td>
                                 <td class="user-status-column" (click)="initializeListeningToUserPage(user)">{{user.RegistrationStatus}}</td>
                                 <td>
-                                    <action-stub-items class="float-right" [model]="user" [custom]="user.RegistrationStatus == 'BANNED' ? bannedUserActions : registeredUserActions"></action-stub-items>
+                                    <action-stub-items class="float-right" [model]="user" [custom]="user.RegistrationStatus === 'BANNED' ? bannedUserActions : registeredUserActions"></action-stub-items>
                                 </td>
                             </tr>
                         </tbody>
@@ -55,7 +55,7 @@
     </div>
     <div *ngIf="isListeningToUser">
         <div class="row asb-container">
-            <action-stub-basic class="col-6 client-asb" [model]="currentUser" [custom]="currentUser.RegistrationStatus == 'BANNED' ? bannedUserActions : registeredUserProfileActions">
+            <action-stub-basic class="col-6 client-asb" [model]="currentUser" [custom]="currentUser.RegistrationStatus === 'BANNED' ? bannedUserActions : registeredUserProfileActions">
                 <div>
                     {{currentUser.ClientID}}
                 </div>
@@ -76,7 +76,7 @@
         </div>
     </div>
 </div>
-<div *ngIf="subNavActiveIndex == 1">
+<div *ngIf="subNavActiveIndex === 1">
     <div *ngIf="!isListeningToChannel">
         <div [ngSwitch]="isLoadingChannels || isRegisteringClient">
             <div *ngSwitchCase="true">
@@ -85,7 +85,7 @@
                 </div>
             </div>
             <div class="content-container" *ngSwitchCase="false">
-                <div *ngIf="!simplifiedChannels || simplifiedChannels.length == 0">
+                <div *ngIf="!simplifiedChannels || simplifiedChannels.length === 0">
                     No channels
                 </div>
                 <div *ngIf="simplifiedChannels.length > 0">
@@ -130,7 +130,7 @@
 </div>
 
 <!-- SendMessageViaChannel modal -->
-<modal *ngIf="mode == webCommunicatorModes.SendMessageViaChannel"
+<modal *ngIf="mode === webCommunicatorModes.SendMessageViaChannel"
        title="Send message"
        [autoOpen]="true"
        [metricIdentifier]="context.identifier"
@@ -147,7 +147,7 @@
                     <option *ngIf="getChannelCommunicationType(selectedChannel) != 'PRIVATE'" [value]="'allClients'">All Clients</option>
                     <option *ngFor="let user of users" [value]="user.ClientID">{{user.ClientID}}</option>
                 </select>
-                <span *ngIf="getChannelCommunicationType(selectedChannel) == 'BROADCAST'">All Clients</span>
+                <span *ngIf="getChannelCommunicationType(selectedChannel) === 'BROADCAST'">All Clients</span>
             </div>
         </div>
         <div class="form-group row">
@@ -166,7 +166,7 @@
 </modal>
 
 <!-- SendMessageToUser modal -->
-<modal *ngIf="mode == webCommunicatorModes.SendMessageToUser"
+<modal *ngIf="mode === webCommunicatorModes.SendMessageToUser"
        title="Send message"
        [autoOpen]="true"
        [metricIdentifier]="context.identifier"
@@ -202,7 +202,7 @@
 </modal>
 
 <!-- BanUser modal -->
-<modal *ngIf="mode == webCommunicatorModes.BanUser"
+<modal *ngIf="mode === webCommunicatorModes.BanUser"
        title="Ban User"
        [autoOpen]="true"
        [hasSubmit]="true"

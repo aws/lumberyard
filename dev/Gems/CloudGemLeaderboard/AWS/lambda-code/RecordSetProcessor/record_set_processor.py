@@ -63,7 +63,6 @@ class ShardReader:
         end = self.shard["SequenceNumberRange"].get("EndingSequenceNumber", "")
 
         if start == end:
-            print("start == end, returning early")
             return []
         if end:
             print("reading from {} to {} for shard {}".format(start, end, self.shard["ShardId"]))

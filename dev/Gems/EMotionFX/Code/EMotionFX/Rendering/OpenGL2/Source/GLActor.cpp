@@ -195,10 +195,10 @@ namespace RenderGL
                     Primitive newPrimitive;
                     newPrimitive.mNodeIndex     = n;
                     newPrimitive.mNumVertices   = subMesh->GetNumVertices();
-                    newPrimitive.mNumTriangles  = subMesh->CalcNumTriangles();//subMesh->GetNumIndices() / 3;
+                    newPrimitive.mNumTriangles  = subMesh->CalcNumTriangles();  // subMesh->GetNumIndices() / 3;
                     newPrimitive.mIndexOffset   = totalNumIndices[ meshType ];
                     newPrimitive.mVertexOffset  = totalNumVerts[ meshType ];
-                    newPrimitive.mMaterialIndex = subMesh->GetMaterial();
+                    newPrimitive.mMaterialIndex = 0;                            // Since GL actor only uses the default material, we should only pass in 0.
 
                     // copy over the used bones from the submesh
                     if (subMesh->GetNumBones() > 0)
@@ -509,10 +509,10 @@ namespace RenderGL
             }
 
             // get the mesh data buffers
-            AZ::PackedVector3f* positions   = (AZ::PackedVector3f*)mesh->FindVertexData(EMotionFX::Mesh::ATTRIB_POSITIONS);
-            AZ::PackedVector3f* normals     = (AZ::PackedVector3f*)mesh->FindVertexData(EMotionFX::Mesh::ATTRIB_NORMALS);
-            AZ::Vector4* tangents       = static_cast<AZ::Vector4*>(mesh->FindVertexData(EMotionFX::Mesh::ATTRIB_TANGENTS));
-            AZ::Vector2* uvsA           = (AZ::Vector2*)mesh->FindOriginalVertexData(EMotionFX::Mesh::ATTRIB_UVCOORDS, 0);  // first UV set
+            const AZ::PackedVector3f* positions   = static_cast<const AZ::PackedVector3f*>(mesh->FindVertexData(EMotionFX::Mesh::ATTRIB_POSITIONS));
+            const AZ::PackedVector3f* normals     = static_cast<const AZ::PackedVector3f*>(mesh->FindVertexData(EMotionFX::Mesh::ATTRIB_NORMALS));
+            const AZ::Vector4*        tangents    = static_cast<const AZ::Vector4*>(mesh->FindVertexData(EMotionFX::Mesh::ATTRIB_TANGENTS));
+            const AZ::Vector2*        uvsA        = static_cast<const AZ::Vector2*>(mesh->FindOriginalVertexData(EMotionFX::Mesh::ATTRIB_UVCOORDS, 0));  // first UV set
 
             const uint32 numVertices = mesh->GetNumVertices();
             if (uvsA)
@@ -757,10 +757,10 @@ namespace RenderGL
             }
 
             // get the mesh data buffers
-            AZ::PackedVector3f* positions   = (AZ::PackedVector3f*)mesh->FindOriginalVertexData(EMotionFX::Mesh::ATTRIB_POSITIONS);
-            AZ::PackedVector3f* normals     = (AZ::PackedVector3f*)mesh->FindOriginalVertexData(EMotionFX::Mesh::ATTRIB_NORMALS);
-            AZ::Vector4* tangents       = static_cast<AZ::Vector4*>(mesh->FindOriginalVertexData(EMotionFX::Mesh::ATTRIB_TANGENTS));
-            AZ::Vector2* uvsA           = (AZ::Vector2*)mesh->FindOriginalVertexData(EMotionFX::Mesh::ATTRIB_UVCOORDS, 0);  // first UV set
+            const AZ::PackedVector3f* positions   = static_cast<const AZ::PackedVector3f*>(mesh->FindOriginalVertexData(EMotionFX::Mesh::ATTRIB_POSITIONS));
+            const AZ::PackedVector3f* normals     = static_cast<const AZ::PackedVector3f*>(mesh->FindOriginalVertexData(EMotionFX::Mesh::ATTRIB_NORMALS));
+            const AZ::Vector4*        tangents    = static_cast<const AZ::Vector4*>(mesh->FindOriginalVertexData(EMotionFX::Mesh::ATTRIB_TANGENTS));
+            const AZ::Vector2*        uvsA        = static_cast<const AZ::Vector2*>(mesh->FindOriginalVertexData(EMotionFX::Mesh::ATTRIB_UVCOORDS, 0));  // first UV set
 
             if (uvsA)
             {
@@ -847,11 +847,11 @@ namespace RenderGL
             }
 
             // get the mesh data buffers
-            AZ::PackedVector3f* positions   = (AZ::PackedVector3f*)mesh->FindOriginalVertexData(EMotionFX::Mesh::ATTRIB_POSITIONS);
-            AZ::PackedVector3f* normals     = (AZ::PackedVector3f*)mesh->FindOriginalVertexData(EMotionFX::Mesh::ATTRIB_NORMALS);
-            uint32*         orgVerts    = (uint32*)mesh->FindOriginalVertexData(EMotionFX::Mesh::ATTRIB_ORGVTXNUMBERS);
-            AZ::Vector4* tangents       = static_cast<AZ::Vector4*>(mesh->FindOriginalVertexData(EMotionFX::Mesh::ATTRIB_TANGENTS));
-            AZ::Vector2* uvsA           = (AZ::Vector2*)mesh->FindOriginalVertexData(EMotionFX::Mesh::ATTRIB_UVCOORDS, 0);  // first UV set
+            const AZ::PackedVector3f* positions   = static_cast<const AZ::PackedVector3f*>(mesh->FindOriginalVertexData(EMotionFX::Mesh::ATTRIB_POSITIONS));
+            const AZ::PackedVector3f* normals     = static_cast<const AZ::PackedVector3f*>(mesh->FindOriginalVertexData(EMotionFX::Mesh::ATTRIB_NORMALS));
+            const AZ::Vector4*        tangents    = static_cast<const AZ::Vector4*>(mesh->FindOriginalVertexData(EMotionFX::Mesh::ATTRIB_TANGENTS));
+            const AZ::Vector2*        uvsA        = static_cast<const AZ::Vector2*>(mesh->FindOriginalVertexData(EMotionFX::Mesh::ATTRIB_UVCOORDS, 0));  // first UV set
+            const AZ::u32*            orgVerts    = static_cast<const AZ::u32*>(mesh->FindOriginalVertexData(EMotionFX::Mesh::ATTRIB_ORGVTXNUMBERS));
 
             // find the skinning layer
             EMotionFX::SkinningInfoVertexAttributeLayer* skinningInfo = (EMotionFX::SkinningInfoVertexAttributeLayer*)mesh->FindSharedVertexAttributeLayer(EMotionFX::SkinningInfoVertexAttributeLayer::TYPE_ID);

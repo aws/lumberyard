@@ -13,7 +13,6 @@
 // include required headers
 #include "Attribute.h"
 #include "AttributeFactory.h"
-#include "AttributePool.h"
 #include "AttributeString.h"
 #include "StringConversions.h"
 
@@ -29,20 +28,6 @@ namespace MCore
     // destructor
     Attribute::~Attribute()
     {
-    }
-
-
-    // destroy the attribute
-    void Attribute::Destroy(bool lock)
-    {
-        if (lock)
-        {
-            GetAttributePool().Free(this);
-        }
-        else
-        {
-            GetAttributePool().FreeWithoutLock(this);
-        }
     }
 
 

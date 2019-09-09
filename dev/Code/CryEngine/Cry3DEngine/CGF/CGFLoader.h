@@ -19,7 +19,7 @@
 #include "ChunkFile.h"
 #include "CGFContent.h"
 
-#if defined(RESOURCE_COMPILER)
+#if defined(RESOURCE_COMPILER) || defined(ENABLE_NON_COMPILED_CGF)
 #include "../../../Tools/CryCommonTools/Export/MeshUtils.h"
 #endif
 
@@ -129,7 +129,7 @@ private:
     std::vector<uint32> m_arrIdToIndex;     // the mapping BoneID -> BineIndex
     std::vector<string> m_arrBoneNameTable; // names of bones
     std::vector<Matrix34> m_arrInitPose34;
-#if defined(RESOURCE_COMPILER)
+#if defined(RESOURCE_COMPILER) || defined(ENABLE_NON_COMPILED_CGF)
     std::vector<MeshUtils::VertexLinks> m_arrLinksTmp;
     std::vector<int> m_vertexOldToNew;      // used to re-map uncompiled Morph Target vertices right after reading them
 #endif

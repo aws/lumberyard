@@ -24,9 +24,7 @@ namespace AZ
 
 namespace AzFramework
 {
-    /**
-     * Flags representing the various types of physical entities.
-     */
+    /// Flags representing the various types of physical entities.
     enum PhysicalEntityTypes
     {
         Static      = 1 << 0,   ///< Static entities
@@ -38,29 +36,22 @@ namespace AzFramework
         All = Static | Dynamic | Living | Independent | Terrain,  ///< Represents all entities
     };
 
-    /*!
-     * Requests for the physics system
-     */
+    /// Requests for the physics system.
     class PhysicsSystemRequests
         : public AZ::EBusTraits
     {
     public:
-        ////////////////////////////////////////////////////////////////////////
         // EBusTraits
         // singleton pattern
         static const AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::Single;
         static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::Single;
-        ////////////////////////////////////////////////////////////////////////
 
         virtual ~PhysicsSystemRequests() = default;
 
-        ////////////////////////////////////////////////////////////////////////
         // RayCast
 
-        /**
-         * A \ref RayCast hit.
-         * If no hit occurred then IsValid() returns false.
-         */
+        /// A \ref RayCast hit.
+        /// If no hit occurred then IsValid() returns false.
         struct RayCastHit
         {
             AZ_TYPE_INFO(RayCastHit, "{3D8FA68C-A145-44B4-BA18-F3405D83A9DF}");
@@ -75,10 +66,8 @@ namespace AzFramework
             AZ::EntityId m_entityId; ///< The id of the AZ::Entity hit, or AZ::InvalidEntityId if hit object is not an AZ::Entity
         };
 
-        /**
-         * Configuration for performing a \ref RayCast.
-         * Default configuration tells RayCast to report only the first hit.
-         */
+        /// Configuration for performing a \ref RayCast.
+        /// Default configuration tells RayCast to report only the first hit.
         struct RayCastConfiguration
         {
             AZ_TYPE_INFO(RayCastConfiguration, "{FC4E13C6-33D7-4015-91C4-ECBE08F7C5BE}");
@@ -115,11 +104,9 @@ namespace AzFramework
             int m_physicalEntityTypes = PhysicalEntityTypes::All;
         };
 
-        /**
-         * Results of a \ref RayCast.
-         * A blocking hit is one that stops the ray from searching any further.
-         * A piercing hit is one whose surface pierceability allowed the ray to pass through.
-         */
+        /// Results of a \ref RayCast.
+        /// A blocking hit is one that stops the ray from searching any further.
+        /// A piercing hit is one whose surface pierceability allowed the ray to pass through.
         class RayCastResult
         {
         public:
@@ -147,39 +134,26 @@ namespace AzFramework
             AZStd::vector<RayCastHit> m_piercingHits;
         };
 
-        /**
-         * Cast a ray, and retrieve all hits.
-         *
-         * \param rayCastConfiguration  A \ref RayCastConfiguration controlling how the ray is cast.
-         *
-         * \return                      A \ref RayCastResult describing what was hit.
-         */
+        /// Cast a ray, and retrieve all hits.
+        /// \param rayCastConfiguration A \ref RayCastConfiguration controlling how the ray is cast.
+        /// \return A \ref RayCastResult describing what was hit.
         virtual RayCastResult RayCast(const RayCastConfiguration& rayCastConfiguration) { return RayCastResult(); }
 
-        /**
-         * Gather entities within a specified AABB.
-         *
-         * \param aabb          The world space axis-aligned box in which to gather entities
-         * \param query         The physical entity types to gather (see \ref PhysicalEntityTypes)
-         */
+        /// Gather entities within a specified AABB.
+        /// \param aabb The world space axis-aligned box in which to gather entities.
+        /// \param query The physical entity types to gather (see \ref PhysicalEntityTypes).
         virtual AZStd::vector<AZ::EntityId> GatherPhysicalEntitiesInAABB(const AZ::Aabb& aabb, AZ::u32 query) { return AZStd::vector<AZ::EntityId>(); }
 
-        /**
-         * Gather entities within a radius around a specified point.
-         *
-         * \param center        World-space point around which to gather entities
-         * \param radius        Radius (in meters) around center in which entities will be considered
-         * \param query         The physical entity types to gather (see \ref PhysicalEntityTypes)
-         */
+        /// Gather entities within a radius around a specified point.
+        /// \param center World-space point around which to gather entities.
+        /// \param radius Radius (in meters) around center in which entities will be considered.
+        /// \param query The physical entity types to gather (see \ref PhysicalEntityTypes).
         virtual AZStd::vector<AZ::EntityId> GatherPhysicalEntitiesAroundPoint(const AZ::Vector3& center, float radius, AZ::u32 query) { return AZStd::vector<AZ::EntityId>(); }
-        ////////////////////////////////////////////////////////////////////////
     };
 
     using PhysicsSystemRequestBus = AZ::EBus<PhysicsSystemRequests>;
 
-    /*!
-     * Broadcast physics system events.
-     */
+    /// Broadcast physics system events.
     class PhysicsSystemEvents
         : public AZ::EBusTraits
     {

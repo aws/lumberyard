@@ -698,7 +698,7 @@ void ImageToProcess::ConvertFormatWithSpecifiedCompressor(const CImageProperties
     // convert to CTX1 format
     if (fmtDst == ePixelFormat_CTX1)
     {
-        RCLogError("Failed to convert image to CTX1 format because this version of RC doesn't support Xbox 360 platform"); // ACCEPTED_USE
+        RCLogError("Failed to convert image to CTX1 because that format is not supported.");
         set(0);
         return;
     }

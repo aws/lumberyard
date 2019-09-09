@@ -17,55 +17,55 @@
 #include <AzCore/Serialization/EditContext.h>
 #include <AzCore/Serialization/SerializeContext.h>
 
-#include "VisualisePathSystemComponent.h"
+#include "VisualizePathSystemComponent.h"
 
 
 namespace StarterGameGem
 {
     typedef StarterGameNavigationComponentNotifications::StarterGameNavPath StarterGameNavPath;
 
-	// Behavior Context forwarder for StarterGameNavigationComponentNotificationBus
-	class StarterGameBehaviorNavigationComponentNotificationBusHandler
-		: public StarterGameNavigationComponentNotificationBus::Handler
-		, public AZ::BehaviorEBusHandler
-	{
-	public:
-		AZ_EBUS_BEHAVIOR_BINDER(StarterGameBehaviorNavigationComponentNotificationBusHandler,"{467912F0-F099-442A-ADC8-EAE8CDE29633}", AZ::SystemAllocator,
+    // Behavior Context forwarder for StarterGameNavigationComponentNotificationBus
+    class StarterGameBehaviorNavigationComponentNotificationBusHandler
+        : public StarterGameNavigationComponentNotificationBus::Handler
+        , public AZ::BehaviorEBusHandler
+    {
+    public:
+        AZ_EBUS_BEHAVIOR_BINDER(StarterGameBehaviorNavigationComponentNotificationBusHandler, "{467912F0-F099-442A-ADC8-EAE8CDE29633}", AZ::SystemAllocator,
             OnPathFoundFirstPoint);
 
-		bool OnPathFoundFirstPoint(LmbrCentral::PathfindRequest::NavigationRequestId requestId, StarterGameNavPath path) override
-		{
-			bool traverse = true;
-			CallResult(traverse, FN_OnPathFoundFirstPoint, requestId, path);
-			return traverse;
-		}
+        bool OnPathFoundFirstPoint(LmbrCentral::PathfindRequest::NavigationRequestId requestId, StarterGameNavPath path) override
+        {
+            bool traverse = true;
+            CallResult(traverse, FN_OnPathFoundFirstPoint, requestId, path);
+            return traverse;
+        }
+    };
 
-	};
 
+    void StarterGameNavigationComponent::Init()
+    {
+    }
 
-	void StarterGameNavigationComponent::Init()
-	{
+    void StarterGameNavigationComponent::Activate()
+    {
+        LmbrCentral::NavigationComponentNotificationBus::Handler::BusConnect(GetEntityId());
+    }
 
-	}
-
-	void StarterGameNavigationComponent::Activate()
-	{
-		LmbrCentral::NavigationComponentNotificationBus::Handler::BusConnect(GetEntityId());
-	}
-
-	void StarterGameNavigationComponent::Deactivate()
-	{
+    void StarterGameNavigationComponent::Deactivate()
+    {
         LmbrCentral::NavigationComponentNotificationBus::Handler::BusDisconnect();
 
-		VisualisePathSystemComponent::GetInstance()->ClearPath(GetEntityId());
-	}
+        VisualizePathSystemComponent::GetInstance()->ClearPath(GetEntityId());
+    }
 
-	bool StarterGameNavigationComponent::OnPathFound(LmbrCentral::PathfindRequest::NavigationRequestId requestId, AZStd::shared_ptr<const INavPath> currentPath)
-	{
-		if (currentPath == nullptr || currentPath->Empty())
-			return false;
+    bool StarterGameNavigationComponent::OnPathFound(LmbrCentral::PathfindRequest::NavigationRequestId requestId, AZStd::shared_ptr<const INavPath> currentPath)
+    {
+        if (currentPath == nullptr || currentPath->Empty())
+        {
+            return false;
+        }
 
-		bool traverse = true;
+        bool traverse = true;
         size_t pathSize = currentPath->GetPath().size();
         StarterGameNavPath path;
         path.m_points.reserve(pathSize);
@@ -74,38 +74,38 @@ namespace StarterGameGem
             path.m_points.push_back(LYVec3ToAZVec3(it->vPos));
         }
 
-		EBUS_EVENT_ID_RESULT(traverse, GetEntityId(), StarterGameNavigationComponentNotificationBus, OnPathFoundFirstPoint, requestId, path);
+        EBUS_EVENT_ID_RESULT(traverse, GetEntityId(), StarterGameNavigationComponentNotificationBus, OnPathFoundFirstPoint, requestId, path);
 
-		return traverse;
-	}
+        return traverse;
+    }
 
-	void StarterGameNavigationComponent::Reflect(AZ::ReflectContext* reflection)
-	{
-		AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(reflection);
-		if (serializeContext)
-		{
-			serializeContext->Class<StarterGameNavigationComponent, AZ::Component>()
-				->Version(2)
-			;
+    void StarterGameNavigationComponent::Reflect(AZ::ReflectContext* reflection)
+    {
+        AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(reflection);
+        if (serializeContext)
+        {
+            serializeContext->Class<StarterGameNavigationComponent, AZ::Component>()
+                ->Version(2)
+            ;
 
-			AZ::EditContext* editContext = serializeContext->GetEditContext();
-			if (editContext)
-			{
-				editContext->Class<StarterGameNavigationComponent>("Navigation (StarterGame)", "Exposes a Lua callback to see the first pathing point")
-					->ClassElement(AZ::Edit::ClassElements::EditorData, "")
-						->Attribute(AZ::Edit::Attributes::Category, "AI")
-						->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/SG_Icon.png")
-						->Attribute(AZ::Edit::Attributes::ViewportIcon, "Editor/Icons/Components/Viewport/SG_Icon.png")
-						->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("Game", 0x232b318c))
-				;
-			}
-		}
+            AZ::EditContext* editContext = serializeContext->GetEditContext();
+            if (editContext)
+            {
+                editContext->Class<StarterGameNavigationComponent>("Navigation (StarterGame)", "Exposes a Lua callback to see the first pathing point")
+                    ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
+                    ->Attribute(AZ::Edit::Attributes::Category, "AI")
+                    ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/SG_Icon.png")
+                    ->Attribute(AZ::Edit::Attributes::ViewportIcon, "Editor/Icons/Components/Viewport/SG_Icon.png")
+                    ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("Game", 0x232b318c))
+                ;
+            }
+        }
 
-		AZ::BehaviorContext* behaviorContext = azrtti_cast<AZ::BehaviorContext*>(reflection);
-		if (behaviorContext)
-		{
-			behaviorContext->EBus<StarterGameNavigationComponentNotificationBus>("StarterGameNavigationComponentNotificationBus")
-				->Handler<StarterGameBehaviorNavigationComponentNotificationBusHandler>()
+        AZ::BehaviorContext* behaviorContext = azrtti_cast<AZ::BehaviorContext*>(reflection);
+        if (behaviorContext)
+        {
+            behaviorContext->EBus<StarterGameNavigationComponentNotificationBus>("StarterGameNavigationComponentNotificationBus")
+                ->Handler<StarterGameBehaviorNavigationComponentNotificationBusHandler>()
             ;
 
             behaviorContext->Class<StarterGameNavPath>("StarterGameNavPath")
@@ -115,7 +115,6 @@ namespace StarterGameGem
                 ->Method("GetCurrentPoint", &StarterGameNavPath::GetCurrentPoint)
                 ->Method("ProgressToNextPoint", &StarterGameNavPath::ProgressToNextPoint)
             ;
-		}
-	}
-
+        }
+    }
 }

@@ -23,7 +23,6 @@
 
 #include <math.h>
 
-
 // constant definitions (all heights & radii given in km or km^-1 )
 const f64 c_maxAtmosphereHeight(100.0);
 const f64 c_earthRadius(6368.0);
@@ -36,11 +35,14 @@ const f64 c_opticalDepthWhenHittingEarth(1e10);
 const f64 c_pi(3.1415926535897932384626433832795);
 const f32 c_pif(3.1415926535897932384626433832795f);
 
+// Machine epsilon is too small to catch rounding error asserts here. We use a large enough number to prevent rounding errors, but small
+// enough to still catch invalid conditions (10^-6).
+static const float floatDiffFactor = 0.000001;
+
 // constants for optical LUT serialization
 const uint32 c_lutFileTag(0x4C594B53);                  // "SKYL"
 const uint32 c_lutFileVersion(0x00010002);
 const char c_lutFileName[] = "engineassets/sky/optical.lut";
-
 
 static inline f64 MapSaveExpArg(f64 arg)
 {
@@ -218,10 +220,10 @@ void CSkyLightNishita::SamplePartialInScatteringAtHeight(const SOpticalScaleLUTE
     const f32 outScatteringConstMie, const Vec3& outScatteringConstRayleigh, const SOpticalDepthLUTEntry& odAtHeightSky,
     const SOpticalDepthLUTEntry& odAtViewerSky, const SOpticalDepthLUTEntry& odAtHeightSun,
     Vec3& partialInScatteringMie, Vec3& partialInScatteringRayleigh) const
-{
-    assert(odAtHeightSky.mie >= 0.0  && odAtHeightSky.mie <= odAtViewerSky.mie);
+{   
+    assert(odAtHeightSky.mie >= 0.0 && (odAtHeightSky.mie - floatDiffFactor) <= odAtViewerSky.mie);
     assert(odAtHeightSun.mie >= 0.0);
-    assert(odAtHeightSky.rayleigh >= 0.0  && odAtHeightSky.rayleigh <= odAtViewerSky.rayleigh);
+    assert(odAtHeightSky.rayleigh >= 0.0 && (odAtHeightSky.rayleigh - floatDiffFactor) <= odAtViewerSky.rayleigh);
     assert(odAtHeightSun.rayleigh >= 0.0);
 
     // mie out-scattering
@@ -279,7 +281,7 @@ void CSkyLightNishita::ComputeInScatteringNoPremul(const f32 outScatteringConstM
 
         f32 C(Cpart - (c_earthRadiusf + osAtHeight.atmosphereLayerHeight) * (c_earthRadiusf + osAtHeight.atmosphereLayerHeight));
         f32 det(Bsq - 4.0f * C);
-        assert(det >= 0.0f && (0.5f * (-B - sqrtf(det)) <= 0.0f) && (0.5f * (-B + sqrtf(det)) >= 0.0f));
+        assert(det >= 0.0f && (0.5f * (-B - sqrtf(det)) <= 0.0f) && (((int)(0.5f * (-B + sqrtf(det)))*100.0) / 100.0f >= 0.0f));
 
         f32 t(0.5f * (-B + sqrtf(det)));
 

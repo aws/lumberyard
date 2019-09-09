@@ -584,14 +584,21 @@ void CParticleEmitter::AddEffect(CParticleContainer* pParentContainer, const CPa
             }
             if (pContainer == pParentContainer)
             {
-                // Add new container
-                if (void* pMem = pNext ? m_Containers.insert_new(pNext) : m_Containers.push_back_new())
+                if (pNext)
                 {
-                    pContainer = new(pMem) CParticleContainer(pParentContainer, this, pEffect, _startLod, _endLod);
+                    // Destroy it properly before reusing it as the new container
+                    pNext->Reset();
+                    pNext->~CParticleContainer();
+                    pContainer = pNext;
                 }
                 else
                 {
-                    return;
+                    // Add new container
+                    pContainer = static_cast<CParticleContainer*>(m_Containers.push_back_new());
+                }
+                if (pContainer)
+                {
+                    new(pContainer) CParticleContainer(pParentContainer, this, pEffect, _startLod, _endLod);
                 }
             }
         }
@@ -1239,9 +1246,21 @@ void CParticleEmitter::Render(SRendParams const& RenParams, const SRenderingPass
     SPartRenderParams PartParams;
     ZeroStruct(PartParams);
 
-    ColorF fogVolumeContrib;
-    CFogVolumeRenderNode::TraceFogVolumes(GetPos(), fogVolumeContrib, passInfo);
-    PartParams.m_nFogVolumeContribIdx = GetRenderer()->PushFogVolumeContribution(fogVolumeContrib, passInfo);
+    // Pass the bounding box and the high quality option 
+    // That has been set in the particle editor.
+    bool fogVolumeShadingQuality = false;
+  
+    static ICVar* pCVarFogVolumeShadingQuality = gEnv->pConsole->GetCVar("e_FogVolumeShadingQuality");
+    if ((pCVarFogVolumeShadingQuality->GetIVal() > 0) && (m_Containers.size() > 0))
+    {
+        const ResourceParticleParams& params = m_Containers.front().GetParams();
+        fogVolumeShadingQuality = params.FogVolumeShadingQualityHigh;
+    }
+   
+    SFogVolumeData fogVolData;
+    CFogVolumeRenderNode::TraceFogVolumes(GetPos(), GetBBox(), fogVolData, passInfo, fogVolumeShadingQuality);
+   
+    PartParams.m_nFogVolumeContribIdx = GetRenderer()->PushFogVolumeContribution(fogVolData, passInfo);
 
     // Compute camera distance with top effect's SortBoundsScale.
     PartParams.m_fMainBoundsScale = m_pTopEffect->IsEnabled() ? +m_pTopEffect->GetParams().fSortBoundsScale : 1.f;

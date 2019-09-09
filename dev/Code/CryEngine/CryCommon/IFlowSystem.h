@@ -1808,6 +1808,16 @@ public:
         return !isEqual(*this, rhs);
     }
 
+    void* __cdecl operator new[](size_t size)
+    {
+        return AZ::AllocatorInstance<AZ::LegacyAllocator>::Get().Allocate(size, 0, 0, "AZ::LegacyAllocator");
+    }
+
+    void __cdecl operator delete[](void* p) throw()
+    {
+        AZ::AllocatorInstance<AZ::LegacyAllocator>::Get().DeAllocate(p);
+    }
+
     bool SetDefaultForTag(int tag)
     {
         DefaultInitializedForTag<boost::mpl::begin<TFlowSystemDataTypes>::type> set;
@@ -1920,8 +1930,6 @@ public:
 
     void Serialize(TSerialize ser)
     {
-        MEMSTAT_CONTEXT(EMemStatContextTypes::MSC_Other, 0, "Configurable variant serialization");
-
         if (ser.IsWriting())
         {
             WriteType visitor(ser, IsUserFlagSet());
@@ -2146,7 +2154,6 @@ struct SFlowNodeConfig
 template <class T>
 ILINE SOutputPortConfig OutputPortConfig(const char* name, const char* description = NULL, const char* humanName = NULL)
 {
-    ScopedSwitchToGlobalHeap useGlobalHeap;
     SOutputPortConfig result = {name, humanName, description, boost::mpl::find<TFlowSystemDataTypes, T>::type::pos::value};
     return result;
 }
@@ -2154,21 +2161,18 @@ ILINE SOutputPortConfig OutputPortConfig(const char* name, const char* descripti
 template <>
 ILINE SOutputPortConfig OutputPortConfig<AZ::Vector3>(const char* name, const char* description, const char* humanName)
 {
-    ScopedSwitchToGlobalHeap useGlobalHeap;
     SOutputPortConfig result = { name, humanName, description, boost::mpl::find<TFlowSystemDataTypes, Vec3>::type::pos::value };
     return result;
 }
 
 ILINE SOutputPortConfig OutputPortConfig_AnyType(const char* name, const char* description = NULL, const char* humanName = NULL)
 {
-    ScopedSwitchToGlobalHeap useGlobalHeap;
     SOutputPortConfig result = {name, humanName, description, eFDT_Any};
     return result;
 }
 
 ILINE SOutputPortConfig OutputPortConfig_Void(const char* name, const char* description = NULL, const char* humanName = NULL)
-{
-    ScopedSwitchToGlobalHeap useGlobalHeap;
+{    
     SOutputPortConfig result = {name, humanName, description, eFDT_Void};
     return result;
 }
@@ -2176,76 +2180,66 @@ ILINE SOutputPortConfig OutputPortConfig_Void(const char* name, const char* desc
 template <typename ValueType>
 // ValueType is not currently used
 ILINE SOutputPortConfig OutputPortConfig_CustomData(const char* name, const char* description = nullptr, const char* humanName = nullptr)
-{
-    ScopedSwitchToGlobalHeap useGlobalHeap;
+{    
     SOutputPortConfig result = { name, humanName, description, eFDT_CustomData };
     return result;
 }
 
 ILINE SOutputPortConfig OutputPortConfig_Pointer(const char* name, const char* description = NULL, const char* humanName = NULL)
-{
-    ScopedSwitchToGlobalHeap useGlobalHeap;
+{    
     SOutputPortConfig result = {name, humanName, description, eFDT_Pointer};
     return result;
 }
 
 template <class T>
 ILINE SInputPortConfig InputPortConfig(const char* name, const char* description = NULL, const char* humanName = NULL, const char* sUIConfig = NULL)
-{
-    ScopedSwitchToGlobalHeap useGlobalHeap;
+{    
     SInputPortConfig result = {name, humanName, description, sUIConfig, TFlowInputData::CreateDefaultInitialized<T>(true)};
     return result;
 }
 
 template <>
 ILINE SInputPortConfig InputPortConfig<AZ::Vector3>(const char* name, const char* description, const char* humanName, const char* sUIConfig)
-{
-    ScopedSwitchToGlobalHeap useGlobalHeap;
+{    
     SInputPortConfig result = { name, humanName, description, sUIConfig, TFlowInputData::CreateDefaultInitialized<Vec3>(true) };
     return result;
 }
 
 template <class T, class ValueT>
 ILINE SInputPortConfig InputPortConfig(const char* name, const ValueT& value, const char* description = NULL, const char* humanName = NULL, const char* sUIConfig = NULL)
-{
-    ScopedSwitchToGlobalHeap useGlobalHeap;
+{    
     SInputPortConfig result = {name, humanName, description, sUIConfig, TFlowInputData(T(value), true)};
     return result;
 }
 
 ILINE SInputPortConfig InputPortConfig_AnyType(const char* name, const char* description = NULL, const char* humanName = NULL, const char* sUIConfig = NULL)
-{
-    ScopedSwitchToGlobalHeap useGlobalHeap;
+{    
     SInputPortConfig result = {name, humanName, description, sUIConfig, TFlowInputData(0, false)};
     return result;
 }
 
 ILINE SInputPortConfig InputPortConfig_Void(const char* name, const char* description = NULL, const char* humanName = NULL, const char* sUIConfig = NULL)
-{
-    ScopedSwitchToGlobalHeap useGlobalHeap;
+{    
     SInputPortConfig result = {name, humanName, description, sUIConfig, TFlowInputData(SFlowSystemVoid(), false)};
     return result;
 }
 
 template<typename ValueType>
 ILINE SInputPortConfig InputPortConfig_CustomData(const char* name, const ValueType& value, const char* description = NULL, const char* humanName = NULL)
-{
-    ScopedSwitchToGlobalHeap useGlobalHeap;
+{    
     SInputPortConfig result = { name, humanName, description, NULL, TFlowInputData(FlowCustomData(value), true) };
     return result;
 }
 
 template<typename ValueType>
 ILINE SInputPortConfig InputPortConfig_CustomData(const char* name, ValueType&& value, const char* description = nullptr, const char* humanName = nullptr)
-{
-    ScopedSwitchToGlobalHeap useGlobalHeap;
+{    
     SInputPortConfig result = { name, humanName, description, nullptr, TFlowInputData(FlowCustomData(std::forward<ValueType>(value)), true) };
     return result;
 }
 
 ILINE SInputPortConfig InputPortConfig_Pointer(const char* name, const char* description = NULL, const char* humanName = NULL, const char* sUIConfig = NULL)
-{
-    ScopedSwitchToGlobalHeap useGlobalHeap;
+{    
     SInputPortConfig result = {name, humanName, description, sUIConfig, TFlowInputData(SFlowSystemPointer(), false)};
     return result;
 }

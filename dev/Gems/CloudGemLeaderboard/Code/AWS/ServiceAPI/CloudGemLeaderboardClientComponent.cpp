@@ -16,7 +16,9 @@
 /////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////
 
+
 #include "CloudGemLeaderboard_precompiled.h"
+
 
 
 #include "AWS/ServiceAPI/CloudGemLeaderboardClientComponent.h"
@@ -27,6 +29,8 @@ namespace ServiceAPI {
     
     const char* LmbrAWS_CodeGen_StatList_UUID= "{cbfa6f0e-abea-4688-ab88-b576cf8f07e7}";
     
+    const char* LmbrAWS_CodeGen_StatDefinition_UUID= "{b9dd7706-7ea4-40fd-a717-32ac5f3a03a8}";
+    
     const char* LmbrAWS_CodeGen_BannedPlayerList_UUID= "{828a9b54-7c05-4b85-a3e9-42412093fbb6}";
     
     const char* LmbrAWS_CodeGen_Component_UUID= "{77cbb34f-d776-11e6-ab64-e4a7a07157ef}";
@@ -35,15 +39,13 @@ namespace ServiceAPI {
     
     const char* LmbrAWS_CodeGen_NotificationBus1_UUID= "{f6aba68a-53e3-4082-9ea5-aef3177f3f0a}";
     
-    const char* LmbrAWS_CodeGen_StatDefinition_UUID= "{b9dd7706-7ea4-40fd-a717-32ac5f3a03a8}";
+    const char* LmbrAWS_CodeGen_RequestBus1_UUID= "{c2d64746-7474-4af9-9f47-336a43e06241}";
     
     const char* LmbrAWS_CodeGen_BanOutcome_UUID= "{f10a551c-afbc-4826-8fac-637ddad92bec}";
     
     const char* LmbrAWS_CodeGen_SingleScore_UUID= "{0fbc5a42-f8cf-4e3b-8b06-8e065ceec002}";
     
     const char* LmbrAWS_CodeGen_ServiceStatus_UUID= "{17be675c-d9a9-4f87-8de5-5a046f99768e}";
-    
-    const char* LmbrAWS_CodeGen_RequestBus1_UUID= "{c2d64746-7474-4af9-9f47-336a43e06241}";
     
     const char* LmbrAWS_CodeGen_ScoreData_UUID= "{93db6dc6-d758-4052-b516-f25afdb150fc}";
     
@@ -94,6 +96,97 @@ namespace ServiceAPI {
             
             ok = ok && writer.Key("players");
             ok = ok && WriteJson(writer, item.players);
+            
+            ok = ok && writer.EndObject();
+            return ok;
+    }
+    
+    
+    
+    bool WriteJson(CloudGemFramework::JsonWriter& writer, const SingleScore& item)
+    {
+            bool ok = true;
+            ok = ok && writer.StartObject();
+            
+            ok = ok && writer.Key("stat");
+            ok = ok && WriteJson(writer, item.stat);
+            
+            ok = ok && writer.Key("user");
+            ok = ok && WriteJson(writer, item.user);
+            
+            ok = ok && writer.Key("value");
+            ok = ok && WriteJson(writer, item.value);
+            
+            ok = ok && writer.Key("estimated_rank");
+            ok = ok && WriteJson(writer, item.estimated_rank);
+            
+            ok = ok && writer.EndObject();
+            return ok;
+    }
+    
+    
+    
+    bool WriteJson(CloudGemFramework::JsonWriter& writer, const ServiceStatus& item)
+    {
+            bool ok = true;
+            ok = ok && writer.StartObject();
+            
+            ok = ok && writer.Key("status");
+            ok = ok && WriteJson(writer, item.status);
+            
+            ok = ok && writer.EndObject();
+            return ok;
+    }
+    
+    
+    
+    bool WriteJson(CloudGemFramework::JsonWriter& writer, const AdditionalLeaderboardRequestData& item)
+    {
+            bool ok = true;
+            ok = ok && writer.StartObject();
+            
+            ok = ok && writer.Key("users");
+            ok = ok && WriteJson(writer, item.users);
+            
+            ok = ok && writer.Key("page_size");
+            ok = ok && WriteJson(writer, item.page_size);
+            
+            ok = ok && writer.Key("page");
+            ok = ok && WriteJson(writer, item.page);
+            
+            ok = ok && writer.EndObject();
+            return ok;
+    }
+    
+    
+    
+    bool WriteJson(CloudGemFramework::JsonWriter& writer, const ScoreList& list)
+    {
+        bool ok = true;
+        ok = ok && writer.StartArray();
+        for (auto item : list)
+        {
+            ok = ok && WriteJson(writer, item);
+        }
+        ok = ok && writer.EndArray();
+        return ok;
+    }
+    
+    
+    
+    bool WriteJson(CloudGemFramework::JsonWriter& writer, const ScoreData& item)
+    {
+            bool ok = true;
+            ok = ok && writer.StartObject();
+            
+            ok = ok && writer.Key("current_page");
+            ok = ok && WriteJson(writer, item.current_page);
+            
+            ok = ok && writer.Key("total_pages");
+            ok = ok && WriteJson(writer, item.total_pages);
+            
+            ok = ok && writer.Key("scores");
+            ok = ok && WriteJson(writer, item.scores);
             
             ok = ok && writer.EndObject();
             return ok;
@@ -155,77 +248,6 @@ namespace ServiceAPI {
     
     
     
-    bool WriteJson(CloudGemFramework::JsonWriter& writer, const ServiceStatus& item)
-    {
-            bool ok = true;
-            ok = ok && writer.StartObject();
-            
-            ok = ok && writer.Key("status");
-            ok = ok && WriteJson(writer, item.status);
-            
-            ok = ok && writer.EndObject();
-            return ok;
-    }
-    
-    
-    
-    bool WriteJson(CloudGemFramework::JsonWriter& writer, const SingleScore& item)
-    {
-            bool ok = true;
-            ok = ok && writer.StartObject();
-            
-            ok = ok && writer.Key("stat");
-            ok = ok && WriteJson(writer, item.stat);
-            
-            ok = ok && writer.Key("user");
-            ok = ok && WriteJson(writer, item.user);
-            
-            ok = ok && writer.Key("value");
-            ok = ok && WriteJson(writer, item.value);
-            
-            ok = ok && writer.Key("estimated_rank");
-            ok = ok && WriteJson(writer, item.estimated_rank);
-            
-            ok = ok && writer.EndObject();
-            return ok;
-    }
-    
-    
-    
-    bool WriteJson(CloudGemFramework::JsonWriter& writer, const ScoreList& list)
-    {
-        bool ok = true;
-        ok = ok && writer.StartArray();
-        for (auto item : list)
-        {
-            ok = ok && WriteJson(writer, item);
-        }
-        ok = ok && writer.EndArray();
-        return ok;
-    }
-    
-    
-    
-    bool WriteJson(CloudGemFramework::JsonWriter& writer, const ScoreData& item)
-    {
-            bool ok = true;
-            ok = ok && writer.StartObject();
-            
-            ok = ok && writer.Key("current_page");
-            ok = ok && WriteJson(writer, item.current_page);
-            
-            ok = ok && writer.Key("total_pages");
-            ok = ok && WriteJson(writer, item.total_pages);
-            
-            ok = ok && writer.Key("scores");
-            ok = ok && WriteJson(writer, item.scores);
-            
-            ok = ok && writer.EndObject();
-            return ok;
-    }
-    
-    
-    
     bool WriteJson(CloudGemFramework::JsonWriter& writer, const BanOutcome& item)
     {
             bool ok = true;
@@ -233,26 +255,6 @@ namespace ServiceAPI {
             
             ok = ok && writer.Key("status");
             ok = ok && WriteJson(writer, item.status);
-            
-            ok = ok && writer.EndObject();
-            return ok;
-    }
-    
-    
-    
-    bool WriteJson(CloudGemFramework::JsonWriter& writer, const AdditionalLeaderboardRequestData& item)
-    {
-            bool ok = true;
-            ok = ok && writer.StartObject();
-            
-            ok = ok && writer.Key("users");
-            ok = ok && WriteJson(writer, item.users);
-            
-            ok = ok && writer.Key("page_size");
-            ok = ok && WriteJson(writer, item.page_size);
-            
-            ok = ok && writer.Key("page");
-            ok = ok && WriteJson(writer, item.page);
             
             ok = ok && writer.EndObject();
             return ok;
@@ -278,20 +280,20 @@ namespace ServiceAPI {
         return ok;
     }
     
-    bool DeleteStatsRequest::Parameters::BuildRequest(CloudGemFramework::RequestBuilder& request)
+    bool PostScoreDedicatedRequest::Parameters::BuildRequest(CloudGemFramework::RequestBuilder& request)
     {
                 bool ok = true;
-                
-                ok = ok && request.SetPathParameter("{""stat_name""}", stat_name);
                 
                 
                 ok = ok && request.WriteJsonBodyParameter(*this);
                 return ok;
     }
 
-    bool DeleteStatsRequest::Parameters::WriteJson(CloudGemFramework::JsonWriter& writer) const
+    bool PostScoreDedicatedRequest::Parameters::WriteJson(CloudGemFramework::JsonWriter& writer) const
     {
         bool ok = true;
+        
+        ok = ok && CloudGemLeaderboard::ServiceAPI::WriteJson(writer, score_entry);
         
         return ok;
     }
@@ -308,6 +310,26 @@ namespace ServiceAPI {
     bool get_service_statusRequest::Parameters::WriteJson(CloudGemFramework::JsonWriter& writer) const
     {
         bool ok = true;
+        
+        return ok;
+    }
+    
+    bool PostLeaderboardRequest::Parameters::BuildRequest(CloudGemFramework::RequestBuilder& request)
+    {
+                bool ok = true;
+                
+                ok = ok && request.SetPathParameter("{""stat""}", stat);
+                
+                
+                ok = ok && request.WriteJsonBodyParameter(*this);
+                return ok;
+    }
+
+    bool PostLeaderboardRequest::Parameters::WriteJson(CloudGemFramework::JsonWriter& writer) const
+    {
+        bool ok = true;
+        
+        ok = ok && CloudGemLeaderboard::ServiceAPI::WriteJson(writer, additional_data);
         
         return ok;
     }
@@ -474,22 +496,20 @@ namespace ServiceAPI {
         return ok;
     }
     
-    bool PostLeaderboardRequest::Parameters::BuildRequest(CloudGemFramework::RequestBuilder& request)
+    bool DeleteStatsRequest::Parameters::BuildRequest(CloudGemFramework::RequestBuilder& request)
     {
                 bool ok = true;
                 
-                ok = ok && request.SetPathParameter("{""stat""}", stat);
+                ok = ok && request.SetPathParameter("{""stat_name""}", stat_name);
                 
                 
                 ok = ok && request.WriteJsonBodyParameter(*this);
                 return ok;
     }
 
-    bool PostLeaderboardRequest::Parameters::WriteJson(CloudGemFramework::JsonWriter& writer) const
+    bool DeleteStatsRequest::Parameters::WriteJson(CloudGemFramework::JsonWriter& writer) const
     {
         bool ok = true;
-        
-        ok = ok && CloudGemLeaderboard::ServiceAPI::WriteJson(writer, additional_data);
         
         return ok;
     }
@@ -506,14 +526,19 @@ namespace ServiceAPI {
     void CloudGemLeaderboardNotifications::OnGetPlayerBan_listRequestError(const CloudGemFramework::Error error) { }
     
     
-    void CloudGemLeaderboardNotifications::OnDeleteStatsRequestSuccess(const StatList response) { }
+    void CloudGemLeaderboardNotifications::OnPostScoreDedicatedRequestSuccess(const SingleScore response) { }
     
-    void CloudGemLeaderboardNotifications::OnDeleteStatsRequestError(const CloudGemFramework::Error error) { }
+    void CloudGemLeaderboardNotifications::OnPostScoreDedicatedRequestError(const CloudGemFramework::Error error) { }
     
     
     void CloudGemLeaderboardNotifications::Onget_service_statusRequestSuccess(const ServiceStatus response) { }
     
     void CloudGemLeaderboardNotifications::Onget_service_statusRequestError(const CloudGemFramework::Error error) { }
+    
+    
+    void CloudGemLeaderboardNotifications::OnPostLeaderboardRequestSuccess(const ScoreData response) { }
+    
+    void CloudGemLeaderboardNotifications::OnPostLeaderboardRequestError(const CloudGemFramework::Error error) { }
     
     
     void CloudGemLeaderboardNotifications::OnGetScoresRequestSuccess(const ScoreData response) { }
@@ -561,9 +586,9 @@ namespace ServiceAPI {
     void CloudGemLeaderboardNotifications::OnGetScoreRequestError(const CloudGemFramework::Error error) { }
     
     
-    void CloudGemLeaderboardNotifications::OnPostLeaderboardRequestSuccess(const ScoreData response) { }
+    void CloudGemLeaderboardNotifications::OnDeleteStatsRequestSuccess(const StatList response) { }
     
-    void CloudGemLeaderboardNotifications::OnPostLeaderboardRequestError(const CloudGemFramework::Error error) { }
+    void CloudGemLeaderboardNotifications::OnDeleteStatsRequestError(const CloudGemFramework::Error error) { }
     
 
 
@@ -581,14 +606,14 @@ namespace ServiceAPI {
     }
     
     
-    void BehaviorCloudGemLeaderboardNotificationBusHandler::OnDeleteStatsRequestSuccess(const StatList response)
+    void BehaviorCloudGemLeaderboardNotificationBusHandler::OnPostScoreDedicatedRequestSuccess(const SingleScore response)
     {
-        Call(FN_OnDeleteStatsRequestSuccess, response);
+        Call(FN_OnPostScoreDedicatedRequestSuccess, response);
     }
     
-    void BehaviorCloudGemLeaderboardNotificationBusHandler::OnDeleteStatsRequestError(const CloudGemFramework::Error error)
+    void BehaviorCloudGemLeaderboardNotificationBusHandler::OnPostScoreDedicatedRequestError(const CloudGemFramework::Error error)
     {
-        Call(FN_OnDeleteStatsRequestError, error);
+        Call(FN_OnPostScoreDedicatedRequestError, error);
     }
     
     
@@ -600,6 +625,17 @@ namespace ServiceAPI {
     void BehaviorCloudGemLeaderboardNotificationBusHandler::Onget_service_statusRequestError(const CloudGemFramework::Error error)
     {
         Call(FN_Onget_service_statusRequestError, error);
+    }
+    
+    
+    void BehaviorCloudGemLeaderboardNotificationBusHandler::OnPostLeaderboardRequestSuccess(const ScoreData response)
+    {
+        Call(FN_OnPostLeaderboardRequestSuccess, response);
+    }
+    
+    void BehaviorCloudGemLeaderboardNotificationBusHandler::OnPostLeaderboardRequestError(const CloudGemFramework::Error error)
+    {
+        Call(FN_OnPostLeaderboardRequestError, error);
     }
     
     
@@ -702,14 +738,14 @@ namespace ServiceAPI {
     }
     
     
-    void BehaviorCloudGemLeaderboardNotificationBusHandler::OnPostLeaderboardRequestSuccess(const ScoreData response)
+    void BehaviorCloudGemLeaderboardNotificationBusHandler::OnDeleteStatsRequestSuccess(const StatList response)
     {
-        Call(FN_OnPostLeaderboardRequestSuccess, response);
+        Call(FN_OnDeleteStatsRequestSuccess, response);
     }
     
-    void BehaviorCloudGemLeaderboardNotificationBusHandler::OnPostLeaderboardRequestError(const CloudGemFramework::Error error)
+    void BehaviorCloudGemLeaderboardNotificationBusHandler::OnDeleteStatsRequestError(const CloudGemFramework::Error error)
     {
-        Call(FN_OnPostLeaderboardRequestError, error);
+        Call(FN_OnDeleteStatsRequestError, error);
     }
     
 
@@ -720,11 +756,15 @@ namespace ServiceAPI {
     
     
     
-    void CloudGemLeaderboardRequests::DeleteStats(const AZStd::string& stat_name, CloudGemLeaderboardResponseHandler* responseHandler) { }
+    void CloudGemLeaderboardRequests::PostScoreDedicated(const SingleScore& score_entry, CloudGemLeaderboardResponseHandler* responseHandler) { }
     
     
     
     void CloudGemLeaderboardRequests::get_service_status(CloudGemLeaderboardResponseHandler* responseHandler) { }
+    
+    
+    
+    void CloudGemLeaderboardRequests::PostLeaderboard(const AZStd::string& stat, const AdditionalLeaderboardRequestData& additional_data, CloudGemLeaderboardResponseHandler* responseHandler) { }
     
     
     
@@ -764,7 +804,7 @@ namespace ServiceAPI {
     
     
     
-    void CloudGemLeaderboardRequests::PostLeaderboard(const AZStd::string& stat, const AdditionalLeaderboardRequestData& additional_data, CloudGemLeaderboardResponseHandler* responseHandler) { }
+    void CloudGemLeaderboardRequests::DeleteStats(const AZStd::string& stat_name, CloudGemLeaderboardResponseHandler* responseHandler) { }
     
     
 
@@ -782,16 +822,16 @@ namespace ServiceAPI {
         EBUS_EVENT_ID(entityId, CloudGemLeaderboardNotificationBus, OnGetPlayerBan_listRequestError, job->error);
     }
     
-    void CloudGemLeaderboardResponseHandler::HandleDeleteStatsSuccess(DeleteStatsRequestJob* job, AZ::EntityId entityId)
+    void CloudGemLeaderboardResponseHandler::HandlePostScoreDedicatedSuccess(PostScoreDedicatedRequestJob* job, AZ::EntityId entityId)
     {
         
-        EBUS_EVENT_ID(entityId, CloudGemLeaderboardNotificationBus, OnDeleteStatsRequestSuccess, job->result);
+        EBUS_EVENT_ID(entityId, CloudGemLeaderboardNotificationBus, OnPostScoreDedicatedRequestSuccess, job->result);
         
     }
 
-    void CloudGemLeaderboardResponseHandler::HandleDeleteStatsError(DeleteStatsRequestJob* job, AZ::EntityId entityId)
+    void CloudGemLeaderboardResponseHandler::HandlePostScoreDedicatedError(PostScoreDedicatedRequestJob* job, AZ::EntityId entityId)
     {
-        EBUS_EVENT_ID(entityId, CloudGemLeaderboardNotificationBus, OnDeleteStatsRequestError, job->error);
+        EBUS_EVENT_ID(entityId, CloudGemLeaderboardNotificationBus, OnPostScoreDedicatedRequestError, job->error);
     }
     
     void CloudGemLeaderboardResponseHandler::Handleget_service_statusSuccess(get_service_statusRequestJob* job, AZ::EntityId entityId)
@@ -804,6 +844,18 @@ namespace ServiceAPI {
     void CloudGemLeaderboardResponseHandler::Handleget_service_statusError(get_service_statusRequestJob* job, AZ::EntityId entityId)
     {
         EBUS_EVENT_ID(entityId, CloudGemLeaderboardNotificationBus, Onget_service_statusRequestError, job->error);
+    }
+    
+    void CloudGemLeaderboardResponseHandler::HandlePostLeaderboardSuccess(PostLeaderboardRequestJob* job, AZ::EntityId entityId)
+    {
+        
+        EBUS_EVENT_ID(entityId, CloudGemLeaderboardNotificationBus, OnPostLeaderboardRequestSuccess, job->result);
+        
+    }
+
+    void CloudGemLeaderboardResponseHandler::HandlePostLeaderboardError(PostLeaderboardRequestJob* job, AZ::EntityId entityId)
+    {
+        EBUS_EVENT_ID(entityId, CloudGemLeaderboardNotificationBus, OnPostLeaderboardRequestError, job->error);
     }
     
     void CloudGemLeaderboardResponseHandler::HandleGetScoresSuccess(GetScoresRequestJob* job, AZ::EntityId entityId)
@@ -914,16 +966,16 @@ namespace ServiceAPI {
         EBUS_EVENT_ID(entityId, CloudGemLeaderboardNotificationBus, OnGetScoreRequestError, job->error);
     }
     
-    void CloudGemLeaderboardResponseHandler::HandlePostLeaderboardSuccess(PostLeaderboardRequestJob* job, AZ::EntityId entityId)
+    void CloudGemLeaderboardResponseHandler::HandleDeleteStatsSuccess(DeleteStatsRequestJob* job, AZ::EntityId entityId)
     {
         
-        EBUS_EVENT_ID(entityId, CloudGemLeaderboardNotificationBus, OnPostLeaderboardRequestSuccess, job->result);
+        EBUS_EVENT_ID(entityId, CloudGemLeaderboardNotificationBus, OnDeleteStatsRequestSuccess, job->result);
         
     }
 
-    void CloudGemLeaderboardResponseHandler::HandlePostLeaderboardError(PostLeaderboardRequestJob* job, AZ::EntityId entityId)
+    void CloudGemLeaderboardResponseHandler::HandleDeleteStatsError(DeleteStatsRequestJob* job, AZ::EntityId entityId)
     {
-        EBUS_EVENT_ID(entityId, CloudGemLeaderboardNotificationBus, OnPostLeaderboardRequestError, job->error);
+        EBUS_EVENT_ID(entityId, CloudGemLeaderboardNotificationBus, OnDeleteStatsRequestError, job->error);
     }
     
 
@@ -988,7 +1040,7 @@ namespace ServiceAPI {
     }
     
     
-    void CloudGemLeaderboardClientComponent::DeleteStats(const AZStd::string& stat_name, CloudGemLeaderboardResponseHandler* responseHandler)
+    void CloudGemLeaderboardClientComponent::PostScoreDedicated(const SingleScore& score_entry, CloudGemLeaderboardResponseHandler* responseHandler)
     
     {
         // Cache our entityId in case the entity goes away
@@ -1002,29 +1054,29 @@ namespace ServiceAPI {
         AZStd::shared_ptr < CloudGemLeaderboardResponseHandler > defaultResponseHandler = m_defaultResponseHandler;
 
         // Create job
-        DeleteStatsRequestJob* requestJob = DeleteStatsRequestJob::Create(
-            [responseHandler, defaultResponseHandler, entityId](DeleteStatsRequestJob* successJob)
+        PostScoreDedicatedRequestJob* requestJob = PostScoreDedicatedRequestJob::Create(
+            [responseHandler, defaultResponseHandler, entityId](PostScoreDedicatedRequestJob* successJob)
             {
                 // handle success
                 CloudGemLeaderboardResponseHandler* successHandler = responseHandler ? responseHandler : defaultResponseHandler.get();
                 if (successHandler)
                 {
-                    successHandler->HandleDeleteStatsSuccess(successJob, entityId);
+                    successHandler->HandlePostScoreDedicatedSuccess(successJob, entityId);
                 }
             },
-            [responseHandler, defaultResponseHandler, entityId](DeleteStatsRequestJob* failedJob)
+            [responseHandler, defaultResponseHandler, entityId](PostScoreDedicatedRequestJob* failedJob)
             {
                 // handle error
                 CloudGemLeaderboardResponseHandler* failureHandler = responseHandler ? responseHandler : defaultResponseHandler.get();
                 if (failureHandler)
                 {
-                    failureHandler->HandleDeleteStatsError(failedJob, entityId);
+                    failureHandler->HandlePostScoreDedicatedError(failedJob, entityId);
                 }
             }
         );
         
+        requestJob->parameters.score_entry = score_entry;
         
-        requestJob->parameters.stat_name = stat_name;
         
         
         requestJob->Start();
@@ -1066,6 +1118,51 @@ namespace ServiceAPI {
             }
         );
         
+        
+        
+        requestJob->Start();
+    }
+    
+    
+    void CloudGemLeaderboardClientComponent::PostLeaderboard(const AZStd::string& stat, const AdditionalLeaderboardRequestData& additional_data, CloudGemLeaderboardResponseHandler* responseHandler)
+    
+    {
+        // Cache our entityId in case the entity goes away
+        AZ::EntityId entityId;
+        if (m_entity)
+        {
+            entityId = m_entity->GetId();
+        }
+
+        // Cache our default response handler in case this component goes away
+        AZStd::shared_ptr < CloudGemLeaderboardResponseHandler > defaultResponseHandler = m_defaultResponseHandler;
+
+        // Create job
+        PostLeaderboardRequestJob* requestJob = PostLeaderboardRequestJob::Create(
+            [responseHandler, defaultResponseHandler, entityId](PostLeaderboardRequestJob* successJob)
+            {
+                // handle success
+                CloudGemLeaderboardResponseHandler* successHandler = responseHandler ? responseHandler : defaultResponseHandler.get();
+                if (successHandler)
+                {
+                    successHandler->HandlePostLeaderboardSuccess(successJob, entityId);
+                }
+            },
+            [responseHandler, defaultResponseHandler, entityId](PostLeaderboardRequestJob* failedJob)
+            {
+                // handle error
+                CloudGemLeaderboardResponseHandler* failureHandler = responseHandler ? responseHandler : defaultResponseHandler.get();
+                if (failureHandler)
+                {
+                    failureHandler->HandlePostLeaderboardError(failedJob, entityId);
+                }
+            }
+        );
+        
+        requestJob->parameters.additional_data = additional_data;
+        
+        
+        requestJob->parameters.stat = stat;
         
         
         requestJob->Start();
@@ -1459,7 +1556,7 @@ namespace ServiceAPI {
     }
     
     
-    void CloudGemLeaderboardClientComponent::PostLeaderboard(const AZStd::string& stat, const AdditionalLeaderboardRequestData& additional_data, CloudGemLeaderboardResponseHandler* responseHandler)
+    void CloudGemLeaderboardClientComponent::DeleteStats(const AZStd::string& stat_name, CloudGemLeaderboardResponseHandler* responseHandler)
     
     {
         // Cache our entityId in case the entity goes away
@@ -1473,31 +1570,29 @@ namespace ServiceAPI {
         AZStd::shared_ptr < CloudGemLeaderboardResponseHandler > defaultResponseHandler = m_defaultResponseHandler;
 
         // Create job
-        PostLeaderboardRequestJob* requestJob = PostLeaderboardRequestJob::Create(
-            [responseHandler, defaultResponseHandler, entityId](PostLeaderboardRequestJob* successJob)
+        DeleteStatsRequestJob* requestJob = DeleteStatsRequestJob::Create(
+            [responseHandler, defaultResponseHandler, entityId](DeleteStatsRequestJob* successJob)
             {
                 // handle success
                 CloudGemLeaderboardResponseHandler* successHandler = responseHandler ? responseHandler : defaultResponseHandler.get();
                 if (successHandler)
                 {
-                    successHandler->HandlePostLeaderboardSuccess(successJob, entityId);
+                    successHandler->HandleDeleteStatsSuccess(successJob, entityId);
                 }
             },
-            [responseHandler, defaultResponseHandler, entityId](PostLeaderboardRequestJob* failedJob)
+            [responseHandler, defaultResponseHandler, entityId](DeleteStatsRequestJob* failedJob)
             {
                 // handle error
                 CloudGemLeaderboardResponseHandler* failureHandler = responseHandler ? responseHandler : defaultResponseHandler.get();
                 if (failureHandler)
                 {
-                    failureHandler->HandlePostLeaderboardError(failedJob, entityId);
+                    failureHandler->HandleDeleteStatsError(failedJob, entityId);
                 }
             }
         );
         
-        requestJob->parameters.additional_data = additional_data;
         
-        
-        requestJob->parameters.stat = stat;
+        requestJob->parameters.stat_name = stat_name;
         
         
         requestJob->Start();
@@ -1533,6 +1628,164 @@ namespace ServiceAPI {
                 ->Attribute(AZ::Script::Attributes::Storage, AZ::Script::Attributes::StorageType::Value)
             
                 ->Property("players", BehaviorValueProperty(&BannedPlayerList::players))
+            
+            ;
+        }
+    }
+    
+    
+    
+    bool SingleScore::OnJsonKey(const char* key, CloudGemFramework::JsonReader& reader)
+    {
+        
+        if (strcmp(key, "stat") == 0) return reader.Accept(stat);
+        
+        if (strcmp(key, "user") == 0) return reader.Accept(user);
+        
+        if (strcmp(key, "value") == 0) return reader.Accept(value);
+        
+        if (strcmp(key, "estimated_rank") == 0) return reader.Accept(estimated_rank);
+        
+        return reader.Ignore();
+    }
+
+    void SingleScore::Reflect(AZ::ReflectContext* reflection)
+    {
+        AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(reflection);
+
+        if (serializeContext)
+        {
+            serializeContext->Class<SingleScore>()
+                ->Version(1);
+        }
+
+        AZ::BehaviorContext* behaviorContext = azrtti_cast<AZ::BehaviorContext*>(reflection);
+        if (behaviorContext)
+        {
+            behaviorContext->Class<SingleScore>("CloudGemLeaderboard_SingleScore")
+                ->Attribute(AZ::Script::Attributes::Storage, AZ::Script::Attributes::StorageType::Value)
+            
+                ->Property("stat", BehaviorValueProperty(&SingleScore::stat))
+            
+                ->Property("user", BehaviorValueProperty(&SingleScore::user))
+            
+                ->Property("value", BehaviorValueProperty(&SingleScore::value))
+            
+                ->Property("estimated_rank", BehaviorValueProperty(&SingleScore::estimated_rank))
+            
+            ;
+        }
+    }
+    
+    
+    
+    bool ServiceStatus::OnJsonKey(const char* key, CloudGemFramework::JsonReader& reader)
+    {
+        
+        if (strcmp(key, "status") == 0) return reader.Accept(status);
+        
+        return reader.Ignore();
+    }
+
+    void ServiceStatus::Reflect(AZ::ReflectContext* reflection)
+    {
+        AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(reflection);
+
+        if (serializeContext)
+        {
+            serializeContext->Class<ServiceStatus>()
+                ->Version(1);
+        }
+
+        AZ::BehaviorContext* behaviorContext = azrtti_cast<AZ::BehaviorContext*>(reflection);
+        if (behaviorContext)
+        {
+            behaviorContext->Class<ServiceStatus>("CloudGemLeaderboard_ServiceStatus")
+                ->Attribute(AZ::Script::Attributes::Storage, AZ::Script::Attributes::StorageType::Value)
+            
+                ->Property("status", BehaviorValueProperty(&ServiceStatus::status))
+            
+            ;
+        }
+    }
+    
+    
+    
+    bool AdditionalLeaderboardRequestData::OnJsonKey(const char* key, CloudGemFramework::JsonReader& reader)
+    {
+        
+        if (strcmp(key, "users") == 0) return reader.Accept(users);
+        
+        if (strcmp(key, "page_size") == 0) return reader.Accept(page_size);
+        
+        if (strcmp(key, "page") == 0) return reader.Accept(page);
+        
+        return reader.Ignore();
+    }
+
+    void AdditionalLeaderboardRequestData::Reflect(AZ::ReflectContext* reflection)
+    {
+        AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(reflection);
+
+        if (serializeContext)
+        {
+            serializeContext->Class<AdditionalLeaderboardRequestData>()
+                ->Version(1);
+        }
+
+        AZ::BehaviorContext* behaviorContext = azrtti_cast<AZ::BehaviorContext*>(reflection);
+        if (behaviorContext)
+        {
+            behaviorContext->Class<AdditionalLeaderboardRequestData>("CloudGemLeaderboard_AdditionalLeaderboardRequestData")
+                ->Attribute(AZ::Script::Attributes::Storage, AZ::Script::Attributes::StorageType::Value)
+            
+                ->Property("users", BehaviorValueProperty(&AdditionalLeaderboardRequestData::users))
+            
+                ->Property("page_size", BehaviorValueProperty(&AdditionalLeaderboardRequestData::page_size))
+            
+                ->Property("page", BehaviorValueProperty(&AdditionalLeaderboardRequestData::page))
+            
+            ;
+        }
+    }
+    
+    
+    
+    
+    
+    bool ScoreData::OnJsonKey(const char* key, CloudGemFramework::JsonReader& reader)
+    {
+        
+        if (strcmp(key, "current_page") == 0) return reader.Accept(current_page);
+        
+        if (strcmp(key, "total_pages") == 0) return reader.Accept(total_pages);
+        
+        if (strcmp(key, "scores") == 0) return reader.Accept(scores);
+        
+        return reader.Ignore();
+    }
+
+    void ScoreData::Reflect(AZ::ReflectContext* reflection)
+    {
+        AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(reflection);
+
+        if (serializeContext)
+        {
+            serializeContext->Class<ScoreData>()
+                ->Version(1);
+        }
+
+        AZ::BehaviorContext* behaviorContext = azrtti_cast<AZ::BehaviorContext*>(reflection);
+        if (behaviorContext)
+        {
+            behaviorContext->Class<ScoreData>("CloudGemLeaderboard_ScoreData")
+                ->Attribute(AZ::Script::Attributes::Storage, AZ::Script::Attributes::StorageType::Value)
+            
+                ->Property("current_page", BehaviorValueProperty(&ScoreData::current_page))
+            
+                ->Property("total_pages", BehaviorValueProperty(&ScoreData::total_pages))
+            
+                ->Property("scores", BehaviorValueProperty(&ScoreData::scores))
             
             ;
         }
@@ -1622,124 +1875,6 @@ namespace ServiceAPI {
     
     
     
-    bool ServiceStatus::OnJsonKey(const char* key, CloudGemFramework::JsonReader& reader)
-    {
-        
-        if (strcmp(key, "status") == 0) return reader.Accept(status);
-        
-        return reader.Ignore();
-    }
-
-    void ServiceStatus::Reflect(AZ::ReflectContext* reflection)
-    {
-        AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(reflection);
-
-        if (serializeContext)
-        {
-            serializeContext->Class<ServiceStatus>()
-                ->Version(1);
-        }
-
-        AZ::BehaviorContext* behaviorContext = azrtti_cast<AZ::BehaviorContext*>(reflection);
-        if (behaviorContext)
-        {
-            behaviorContext->Class<ServiceStatus>("CloudGemLeaderboard_ServiceStatus")
-                ->Attribute(AZ::Script::Attributes::Storage, AZ::Script::Attributes::StorageType::Value)
-            
-                ->Property("status", BehaviorValueProperty(&ServiceStatus::status))
-            
-            ;
-        }
-    }
-    
-    
-    
-    bool SingleScore::OnJsonKey(const char* key, CloudGemFramework::JsonReader& reader)
-    {
-        
-        if (strcmp(key, "stat") == 0) return reader.Accept(stat);
-        
-        if (strcmp(key, "user") == 0) return reader.Accept(user);
-        
-        if (strcmp(key, "value") == 0) return reader.Accept(value);
-        
-        if (strcmp(key, "estimated_rank") == 0) return reader.Accept(estimated_rank);
-        
-        return reader.Ignore();
-    }
-
-    void SingleScore::Reflect(AZ::ReflectContext* reflection)
-    {
-        AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(reflection);
-
-        if (serializeContext)
-        {
-            serializeContext->Class<SingleScore>()
-                ->Version(1);
-        }
-
-        AZ::BehaviorContext* behaviorContext = azrtti_cast<AZ::BehaviorContext*>(reflection);
-        if (behaviorContext)
-        {
-            behaviorContext->Class<SingleScore>("CloudGemLeaderboard_SingleScore")
-                ->Attribute(AZ::Script::Attributes::Storage, AZ::Script::Attributes::StorageType::Value)
-            
-                ->Property("stat", BehaviorValueProperty(&SingleScore::stat))
-            
-                ->Property("user", BehaviorValueProperty(&SingleScore::user))
-            
-                ->Property("value", BehaviorValueProperty(&SingleScore::value))
-            
-                ->Property("estimated_rank", BehaviorValueProperty(&SingleScore::estimated_rank))
-            
-            ;
-        }
-    }
-    
-    
-    
-    
-    
-    bool ScoreData::OnJsonKey(const char* key, CloudGemFramework::JsonReader& reader)
-    {
-        
-        if (strcmp(key, "current_page") == 0) return reader.Accept(current_page);
-        
-        if (strcmp(key, "total_pages") == 0) return reader.Accept(total_pages);
-        
-        if (strcmp(key, "scores") == 0) return reader.Accept(scores);
-        
-        return reader.Ignore();
-    }
-
-    void ScoreData::Reflect(AZ::ReflectContext* reflection)
-    {
-        AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(reflection);
-
-        if (serializeContext)
-        {
-            serializeContext->Class<ScoreData>()
-                ->Version(1);
-        }
-
-        AZ::BehaviorContext* behaviorContext = azrtti_cast<AZ::BehaviorContext*>(reflection);
-        if (behaviorContext)
-        {
-            behaviorContext->Class<ScoreData>("CloudGemLeaderboard_ScoreData")
-                ->Attribute(AZ::Script::Attributes::Storage, AZ::Script::Attributes::StorageType::Value)
-            
-                ->Property("current_page", BehaviorValueProperty(&ScoreData::current_page))
-            
-                ->Property("total_pages", BehaviorValueProperty(&ScoreData::total_pages))
-            
-                ->Property("scores", BehaviorValueProperty(&ScoreData::scores))
-            
-            ;
-        }
-    }
-    
-    
-    
     bool BanOutcome::OnJsonKey(const char* key, CloudGemFramework::JsonReader& reader)
     {
         
@@ -1765,46 +1900,6 @@ namespace ServiceAPI {
                 ->Attribute(AZ::Script::Attributes::Storage, AZ::Script::Attributes::StorageType::Value)
             
                 ->Property("status", BehaviorValueProperty(&BanOutcome::status))
-            
-            ;
-        }
-    }
-    
-    
-    
-    bool AdditionalLeaderboardRequestData::OnJsonKey(const char* key, CloudGemFramework::JsonReader& reader)
-    {
-        
-        if (strcmp(key, "users") == 0) return reader.Accept(users);
-        
-        if (strcmp(key, "page_size") == 0) return reader.Accept(page_size);
-        
-        if (strcmp(key, "page") == 0) return reader.Accept(page);
-        
-        return reader.Ignore();
-    }
-
-    void AdditionalLeaderboardRequestData::Reflect(AZ::ReflectContext* reflection)
-    {
-        AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(reflection);
-
-        if (serializeContext)
-        {
-            serializeContext->Class<AdditionalLeaderboardRequestData>()
-                ->Version(1);
-        }
-
-        AZ::BehaviorContext* behaviorContext = azrtti_cast<AZ::BehaviorContext*>(reflection);
-        if (behaviorContext)
-        {
-            behaviorContext->Class<AdditionalLeaderboardRequestData>("CloudGemLeaderboard_AdditionalLeaderboardRequestData")
-                ->Attribute(AZ::Script::Attributes::Storage, AZ::Script::Attributes::StorageType::Value)
-            
-                ->Property("users", BehaviorValueProperty(&AdditionalLeaderboardRequestData::users))
-            
-                ->Property("page_size", BehaviorValueProperty(&AdditionalLeaderboardRequestData::page_size))
-            
-                ->Property("page", BehaviorValueProperty(&AdditionalLeaderboardRequestData::page))
             
             ;
         }

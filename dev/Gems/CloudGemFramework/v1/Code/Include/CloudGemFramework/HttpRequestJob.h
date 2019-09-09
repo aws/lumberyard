@@ -104,6 +104,9 @@ namespace CloudGemFramework
             return s_configHolder.GetConfig(AwsApiJob::GetDefaultConfig());
         }
 
+        static void StaticInit();
+        static void StaticShutdown();
+
     public:
 
         HttpRequestJob(bool isAutoDelete, IConfig* config)

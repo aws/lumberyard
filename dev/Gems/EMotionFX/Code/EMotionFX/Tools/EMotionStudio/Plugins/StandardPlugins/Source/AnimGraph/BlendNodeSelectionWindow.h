@@ -10,19 +10,19 @@
 *
 */
 
-#ifndef __EMSTUDIO_BLENDNODESELECTIONWINDOW_H
-#define __EMSTUDIO_BLENDNODESELECTIONWINDOW_H
+#pragma once
 
-// include MCore
+#include <EMotionStudio/Plugins/StandardPlugins/Source/StandardPluginsConfig.h>
 #include <MCore/Source/StandardHeaders.h>
-#include "../StandardPluginsConfig.h"
-#include "AnimGraphHierarchyWidget.h"
 #include <QDialog>
 
-
+struct AnimGraphSelectionItem;
 
 namespace EMStudio
 {
+    class AnimGraphHierarchyWidget;
+    class AnimGraphPlugin;
+
     /*
      * How to use this dialog?
      * 1. Use the rejected() signal to catch when the X on the window or the cancel button is pressed.
@@ -40,22 +40,19 @@ namespace EMStudio
                  MCORE_MEMORYOBJECTCATEGORY(BlendNodeSelectionWindow, MCore::MCORE_DEFAULT_ALIGNMENT, MEMCATEGORY_STANDARDPLUGINS_ANIMGRAPH)
 
     public:
-        BlendNodeSelectionWindow(QWidget* parent, bool useSingleSelection, CommandSystem::SelectionList* selectionList = nullptr, const AZ::TypeId& visibilityFilterNode = AZ::TypeId::CreateNull(), bool showStatesOnly = false);
+        BlendNodeSelectionWindow(QWidget* parent = nullptr);
         virtual ~BlendNodeSelectionWindow();
 
-        MCORE_INLINE AnimGraphHierarchyWidget* GetAnimGraphHierarchyWidget()                                          { return mHierarchyWidget; }
-        void Update(uint32 animGraphID, CommandSystem::SelectionList* selectionList = nullptr)                             { mHierarchyWidget->Update(animGraphID, selectionList); }
+        AnimGraphHierarchyWidget& GetAnimGraphHierarchyWidget() { return *mHierarchyWidget; }
 
     public slots:
-        void OnAccept();
-        void OnNodeSelected(MCore::Array<AnimGraphSelectionItem> selection);
+        void OnNodeSelected();
+        void OnSelectionChanged(const QItemSelection& selected, const QItemSelection& deselected);
 
     private:
-        AnimGraphHierarchyWidget*          mHierarchyWidget;
+        AnimGraphHierarchyWidget*           mHierarchyWidget;
         QPushButton*                        mOKButton;
         QPushButton*                        mCancelButton;
         bool                                mUseSingleSelection;
     };
 } // namespace EMStudio
-
-#endif

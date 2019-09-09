@@ -11,6 +11,7 @@
 */
 #include "StdAfx.h"
 #include <AzTest/AzTest.h>
+#include <Tests/TestTypes.h>
 #include "Common/Shaders/Vertex.h"
 #include "DriverD3D.h"
 // General vertex stream stride
@@ -36,7 +37,8 @@ int32 m_cSizeVF[eVF_Max] =
     0, //sizeof(SVF_P2F_T4F_T4F_C4F)
 
     sizeof(SVF_P2S_N4B_C4B_T1F),
-    sizeof(SVF_P3F_C4B_T2S)
+    sizeof(SVF_P3F_C4B_T2S),
+    sizeof(SVF_P2F_C4B_T2F_F4B)
 };
 
 // Legacy table copied from RenderMesh.cpp
@@ -122,7 +124,12 @@ SBufInfoTable m_cBufInfoTable[eVF_Max] =
         OOFS(SVF_P3F_C4B_T2S, st),
         OOFS(SVF_P3F_C4B_T2S, color.dcolor),
         -1
-    }
+    },
+    {     // SVF_P2F_C4B_T2F_F4B
+        OOFS(SVF_P2F_C4B_T2F_F4B, st),
+        OOFS(SVF_P2F_C4B_T2F_F4B, color.dcolor),
+        -1
+    },
 };
 #undef OOFS
 
@@ -313,7 +320,18 @@ bool DeclarationsAreEqual(AZStd::vector<D3D11_INPUT_ELEMENT_DESC>& declarationA,
 
 class VertexFormatTest
     : public ::testing::TestWithParam < int >
+    , public UnitTest::AllocatorsBase
 {
+public:
+    void SetUp() override
+    {
+        UnitTest::AllocatorsBase::SetupAllocator();
+    }
+
+    void TearDown() override
+    {
+        UnitTest::AllocatorsBase::TeardownAllocator();
+    }
 };
 
 TEST_P(VertexFormatTest, GetStride_MatchesExpected)
@@ -372,7 +390,7 @@ TEST_P(VertexFormatTest, CalculateOffset_MatchesExpected)
     }
 }
 
-TEST(VertexFormatTest, CalculateOffsetMultipleUVs_MatchesExpected)
+TEST_F(VertexFormatTest, CalculateOffsetMultipleUVs_MatchesExpected)
 {
     AZ::Vertex::Format vertexFormat(eVF_P3F_T2F_T3F);
     uint offset = 0;
@@ -402,7 +420,7 @@ TEST_P(VertexFormatTest, D3DVertexDeclarations_MatchesLegacy)
     // eVF_P2F_T4F_T4F_C4F doesn't actually exist in the engine anymore
     // ignore these cases
     // Also ignore eVF_P2S_N4B_C4B_T1F: the T1F attribute has a POSITION semantic name in the legacy declaration, even though both the engine and shader treat it as a TEXCOORD (despite the fact that it is eventually used for a position)
-    if (eVF != eVF_W4B_I4S && eVF != eVF_C4B_C4B && eVF != eVF_P3F_P3F_I4B && eVF != eVF_P2F_T4F_T4F_C4F && eVF != eVF_P2S_N4B_C4B_T1F)
+    if (eVF != eVF_W4B_I4S && eVF != eVF_C4B_C4B && eVF != eVF_P3F_P3F_I4B && eVF != eVF_P2F_T4F_T4F_C4F && eVF != eVF_P2S_N4B_C4B_T1F && eVF != eVF_P2F_C4B_T2F_F4B)
     {
         AZStd::vector<D3D11_INPUT_ELEMENT_DESC> actual = GetD3D11Declaration(AZ::Vertex::Format(eVF));
         matchesLegacy = DeclarationsAreEqual(actual, expected);
@@ -413,3 +431,36 @@ TEST_P(VertexFormatTest, D3DVertexDeclarations_MatchesLegacy)
 // Instantiate tests
 // Start with 1 to skip eVF_Unknown
 INSTANTIATE_TEST_CASE_P(EVertexFormatValues, VertexFormatTest, ::testing::Range<int>(1, eVF_Max));
+
+
+//Tests to check 4 byte alignment padding
+class VertexFormat4ByteAlignedTest
+    : public ::testing::TestWithParam < int >
+    , public UnitTest::AllocatorsBase
+{
+    public:
+        void SetUp() override
+        {
+            UnitTest::AllocatorsBase::SetupAllocator();
+        }
+
+        void TearDown() override
+        {
+            UnitTest::AllocatorsBase::TeardownAllocator();
+        }
+};
+
+TEST_P(VertexFormat4ByteAlignedTest, GetStride_4ByteAligned)
+{
+    const AZ::Vertex::Format g_PaddingTestCaseFormats[] =
+    {
+        { AZ::Vertex::Format({ AZ::Vertex::Attribute(AZ::Vertex::AttributeUsage::Position, AZ::Vertex::AttributeType::Byte_1) }) },
+        { AZ::Vertex::Format({ AZ::Vertex::Attribute(AZ::Vertex::AttributeUsage::Position, AZ::Vertex::AttributeType::Byte_2) }) },
+        { AZ::Vertex::Format({ AZ::Vertex::Attribute(AZ::Vertex::AttributeUsage::Position, AZ::Vertex::AttributeType::Byte_1), AZ::Vertex::Attribute(AZ::Vertex::AttributeUsage::Position, AZ::Vertex::AttributeType::Byte_2) }) }
+    };
+
+    AZ::Vertex::Format format = g_PaddingTestCaseFormats[GetParam()];
+    ASSERT_EQ(format.GetStride() % AZ::Vertex::VERTEX_BUFFER_ALIGNMENT, 0);
+}
+
+INSTANTIATE_TEST_CASE_P(EVertexFormatStride4ByteAligned, VertexFormat4ByteAlignedTest, ::testing::Range<int>(0, 3));

@@ -47,7 +47,6 @@ namespace EMotionFX
             AZ_CLASS_ALLOCATOR_DECL
 
             MotionSetAsset();
-            ~MotionSetAsset() override;
 
             // AZ::Data::AssetBus::MultiHandler
             void OnAssetReloaded(AZ::Data::Asset<AZ::Data::AssetData> asset) override;
@@ -71,6 +70,7 @@ namespace EMotionFX
             AZ::Data::AssetType GetAssetType() const override;
             void GetAssetTypeExtensions(AZStd::vector<AZStd::string>& extensions) override;
             const char* GetAssetTypeDisplayName() const override;
+            const char* GetBrowserIcon() const override;
         };
     } // namespace Integration
 } // namespace EMotionFX

@@ -26,7 +26,6 @@ def build(bld):
         export_includes = ['include'],
         use             = ['AzFramework'],
         win_lib         = ['shlwapi'],
-        features        = ['copy_to_lmbrsetup'],
 
         # Testing
         test_all_file_list = ['gemregistry_test.waf_files'],

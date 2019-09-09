@@ -20,6 +20,7 @@
 #include "native/utilities/AssetUtilEBusHelper.h"
 #include <AzCore/std/containers/unordered_map.h>
 #include "native/assetprocessor.h"
+class RCcontrollerUnitTests;
 
 namespace AssetProcessor
 {
@@ -40,6 +41,7 @@ namespace AssetProcessor
         , protected AssetProcessorPlatformBus::Handler
     {
         Q_OBJECT
+        friend class ::RCcontrollerUnitTests;
     public:
         explicit RCQueueSortModel(QObject* parent = 0);
 

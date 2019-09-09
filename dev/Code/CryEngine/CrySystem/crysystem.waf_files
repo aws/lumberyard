@@ -16,13 +16,13 @@
             "CryAsyncMemcpy.cpp",
             "CryPak.cpp",
             "CrySizerStats.cpp",
+            "CryTomcrypt.cpp",
             "DebugCallStack.cpp",
             "DllMain.cpp",
             "GeneralMemoryHeap.cpp",
             "HandlerBase.cpp",
             "IDebugCallStack.cpp",
             "AsyncPakManager.cpp",
-            "LevelHeap.cpp",
             "Log.cpp",
             "BootProfiler.cpp",
             "../CryCommon/EngineSettingsManager.cpp",
@@ -68,7 +68,8 @@
             "ServerThrottle.h",
             "SyncLock.h",
             "SystemScheduler.h",
-            "UnixConsole.h"
+            "UnixConsole.h",
+            "../CryCommon/ThermalInfo.h"
         ],
         "Header Files": [
             "SystemInit.h",
@@ -92,6 +93,7 @@
             "CryPak.h",
             "CryPakHandleCache.h",
             "CrySizerStats.h",
+            "CryTomcrypt.h",
             "CryWaterMark.h",
             "DebugCallStack.h",
             "GeneralMemoryHeap.h",
@@ -133,7 +135,6 @@
             "DefragAllocator.cpp",
             "MemoryAddressRange.cpp",
             "PageMappingHeap.cpp",
-            "CryMemoryManager.cpp",
             "CustomMemoryHeap.cpp",
             "MemoryManager.cpp",
             "MTSafeAllocator.cpp",
@@ -310,7 +311,9 @@
         ],
         "RemoteConsole": [
             "RemoteConsole/RemoteConsole.cpp",
-            "RemoteConsole/RemoteConsole.h"
+            "RemoteConsole/RemoteConsole.h",
+            "RemoteConsole/RemoteConsole_impl.inl",
+            "RemoteConsole/RemoteConsole_none.inl"
         ],
         "Services": [
             "ServiceNetwork.cpp",
@@ -357,7 +360,7 @@
             "Serialization/XmlOArchive.cpp",
             "Serialization/XmlOArchive.h"
         ],
-        "VR": 
+        "VR":
         [
             "HMDCVars.h",
             "HMDCVars.cpp"
@@ -389,7 +392,7 @@
             "TestSystemLegacy.h",
             "VisRegTest.h"
         ]
-    },    
+    },
     "none":
     {
         "Root":
@@ -407,8 +410,6 @@
             "CPUDetect.cpp",
             "CPUDetect.h",
             "CryDLMalloc.c",
-            "MemReplay.cpp",
-            "MemReplay.h",
             "CrySizerImpl.cpp",
             "CrySizerImpl.h"
         ],

@@ -15,187 +15,132 @@
 #include "MotionEventTrack.h"
 #include "EventManager.h"
 #include "EventHandler.h"
+#include "TwoStringEventData.h"
 
 #include <MCore/Source/Compare.h>
 
+#include <AzCore/Serialization/SerializeContext.h>
+#include <AzCore/Serialization/EditContext.h>
 
 namespace EMotionFX
 {
-    // default constructor
+    AZ_CLASS_ALLOCATOR_IMPL(MotionEvent, MotionEventAllocator, 0)
+
     MotionEvent::MotionEvent()
-    {
-        mStartTime      = 0.0f;
-        mEndTime        = 0.0f;
-        mParameterIndex = MCORE_INVALIDINDEX16;
-        mEventTypeID    = MCORE_INVALIDINDEX32;
-        mMirrorTypeID   = MCORE_INVALIDINDEX32;
-    }
-
-
-    // extended constructor
-    MotionEvent::MotionEvent(float timeValue, uint32 eventTypeID, uint32 parameterIndex, uint32 mirrorTypeID)
-    {
-        mStartTime      = timeValue;
-        mEndTime        = timeValue;
-        mParameterIndex = static_cast<uint16>(parameterIndex);
-        mEventTypeID    = eventTypeID;
-        mMirrorTypeID   = mirrorTypeID;
-    }
-
-
-    // extended constructor
-    MotionEvent::MotionEvent(float startTimeValue, float endTimeValue, uint32 eventTypeID, uint32 parameterIndex, uint32 mirrorTypeID)
-    {
-        mStartTime          = startTimeValue;
-        mEndTime            = endTimeValue;
-        mParameterIndex     = static_cast<uint16>(parameterIndex);
-        mEventTypeID        = eventTypeID;
-        mMirrorTypeID       = mirrorTypeID;
-    }
-
-
-
-    // destructor
-    MotionEvent::~MotionEvent()
+        : Event()
+        , m_startTime(0.0f)
+        , m_endTime(0.0f)
+        , m_isSyncEvent(false)
     {
     }
 
-
-    // retrieve the event type string
-    const char* MotionEvent::GetEventTypeString() const
+    MotionEvent::MotionEvent(float timeValue, EventDataPtr&& data)
+        : Event(AZStd::move(data))
+        , m_startTime(timeValue)
+        , m_endTime(timeValue)
+        , m_isSyncEvent(false)
     {
-        // check if we use a registered event type
-        if (mEventTypeID == MCORE_INVALIDINDEX32)
+    }
+
+    MotionEvent::MotionEvent(float startTimeValue, float endTimeValue, EventDataPtr&& data)
+        : Event(AZStd::move(data))
+        , m_startTime(startTimeValue)
+        , m_endTime(endTimeValue)
+        , m_isSyncEvent(false)
+    {
+    }
+
+    MotionEvent::MotionEvent(float timeValue, EventDataSet&& datas)
+        : Event(AZStd::move(datas))
+        , m_startTime(timeValue)
+        , m_endTime(timeValue)
+        , m_isSyncEvent(false)
+    {
+    }
+
+    MotionEvent::MotionEvent(float startTimeValue, float endTimeValue, EventDataSet&& datas)
+        : Event(AZStd::move(datas))
+        , m_startTime(startTimeValue)
+        , m_endTime(endTimeValue)
+        , m_isSyncEvent(false)
+    {
+    }
+
+    void MotionEvent::Reflect(AZ::ReflectContext* context)
+    {
+        AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
+        if (!serializeContext)
         {
-            return "";
+            return;
         }
 
-        // try to locate the registered event type index
-        uint32 eventIndex = GetEventManager().FindEventTypeIndex(mEventTypeID);
-        if (eventIndex == MCORE_INVALIDINDEX32)
+        serializeContext->Class<MotionEvent, Event>()
+            ->Version(1)
+            ->Field("startTime", &MotionEvent::m_startTime)
+            ->Field("endTime", &MotionEvent::m_endTime)
+            ->Field("isSyncEvent", &MotionEvent::m_isSyncEvent)
+            ;
+
+        AZ::EditContext* editContext = serializeContext->GetEditContext();
+        if (!editContext)
         {
-            return "";
+            return;
         }
 
-        // return the string linked to this registered event type
-        return GetEventManager().GetEventTypeString(eventIndex);
+        editContext->Class<MotionEvent>("MotionEvent", "")
+            ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
+                ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
+                ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
+            ->DataElement(AZ::Edit::UIHandlers::Default, &MotionEvent::m_startTime, "Start time", "")
+                ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
+            ->DataElement(AZ::Edit::UIHandlers::Default, &MotionEvent::m_endTime, "End time", "")
+                ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
+            ;
     }
-
-
-    // retrieve the mirror event type string
-    const char* MotionEvent::GetMirrorEventTypeString() const
-    {
-        // check if we use a registered event type
-        if (mMirrorTypeID == MCORE_INVALIDINDEX32)
-        {
-            return "";
-        }
-
-        // try to locate the registered event type index
-        uint32 eventIndex = GetEventManager().FindEventTypeIndex(mMirrorTypeID);
-        if (eventIndex == MCORE_INVALIDINDEX32)
-        {
-            return "";
-        }
-
-        // return the string linked to this registered event type
-        return GetEventManager().GetEventTypeString(eventIndex);
-    }
-
-
-    // get the mirror type ID
-    uint32 MotionEvent::GetMirrorEventID() const
-    {
-        return mMirrorTypeID;
-    }
-
-
-    // get the event index
-    uint32 MotionEvent::GetMirrorEventIndex() const
-    {
-        if (mMirrorTypeID != MCORE_INVALIDINDEX32)
-        {
-            return GetEventManager().FindEventTypeIndex(mMirrorTypeID);
-        }
-
-        return MCORE_INVALIDINDEX32;
-    }
-
-
-    // set the mirror event ID
-    void MotionEvent::SetMirrorEventID(uint32 id)
-    {
-        mMirrorTypeID = id;
-    }
-
-
-    // retrieve the parameter string
-    const AZStd::string& MotionEvent::GetParameterString(MotionEventTrack* eventTrack) const
-    {
-        return eventTrack->GetParameterString(mParameterIndex);
-    }
-
-
-    // get the event type index
-    uint32 MotionEvent::GetEventTypeID() const
-    {
-        return mEventTypeID;
-    }
-
-
-    // get the parameter index
-    uint16 MotionEvent::GetParameterIndex() const
-    {
-        return mParameterIndex;
-    }
-
 
     // set the start time value
     void MotionEvent::SetStartTime(float timeValue)
     {
-        mStartTime = timeValue;
+        m_startTime = timeValue;
     }
 
 
     // set the end time value
     void MotionEvent::SetEndTime(float timeValue)
     {
-        mEndTime = timeValue;
-    }
-
-
-    // set the event type index
-    void MotionEvent::SetEventTypeID(uint32 eventID)
-    {
-        mEventTypeID = eventID;
-    }
-
-
-    // set the parameter index
-    void MotionEvent::SetParameterIndex(uint16 index)
-    {
-        mParameterIndex = index;
-    }
-
-
-    // update the mEventTypeID value
-    void MotionEvent::UpdateEventTypeID(const char* eventTypeString)
-    {
-        mEventTypeID = GetEventManager().FindEventID(eventTypeString);
-        MCORE_ASSERT(mEventTypeID != MCORE_INVALIDINDEX32);
+        m_endTime = timeValue;
     }
 
 
     // is this a tick event?
     bool MotionEvent::GetIsTickEvent() const
     {
-        return MCore::Compare<float>::CheckIfIsClose(mStartTime, mEndTime, MCore::Math::epsilon);
+        return AZ::IsClose(m_startTime, m_endTime, MCore::Math::epsilon);
     }
 
 
     // toggle tick event on or off
     void MotionEvent::ConvertToTickEvent()
     {
-        mEndTime = mStartTime;
+        m_endTime = m_startTime;
     }
+
+    void MotionEvent::SetIsSyncEvent(bool newValue)
+    {
+        m_isSyncEvent = newValue;
+    }
+
+    size_t MotionEvent::HashForSyncing(bool isMirror) const
+    {
+        if (m_eventDatas.size())
+        {
+            if (const AZStd::shared_ptr<const EventDataSyncable> syncable = AZStd::rtti_pointer_cast<const EventDataSyncable>(m_eventDatas[0]))
+            {
+                return syncable->HashForSyncing(isMirror);
+            }
+        }
+        return 0;
+    }
+
+
 }   // namespace EMotionFX

@@ -40,12 +40,12 @@ namespace Serialization {
     MemoryWriter::~MemoryWriter()
     {
         position_ = 0;
-        free(memory_);
+        CryModuleFree(memory_);
     }
 
     void MemoryWriter::allocate(std::size_t initialSize)
     {
-        memory_ = (char*)malloc(initialSize + 1);
+        memory_ = (char*)CryModuleMalloc(initialSize + 1);
         position_ = memory_;
     }
 
@@ -55,7 +55,7 @@ namespace Serialization {
         std::size_t pos = position();
         // Supressing the warning as we generally don't handle malloc errors.
         // cppcheck-suppress memleakOnRealloc
-        memory_ = (char*)realloc(memory_, newSize + 1);
+        memory_ = (char*)CryModuleRealloc(memory_, newSize + 1);
         YASLI_ASSERT(memory_ != 0);
         position_ = memory_ + pos;
         size_ = newSize;

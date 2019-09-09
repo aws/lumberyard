@@ -6,8 +6,8 @@ import { ModalComponent } from 'app/shared/component/index';
 import { ToastsManager } from 'ng2-toastr';
 import { ActionItem } from "app/view/game/module/shared/class/index";
 import { LyMetricService } from 'app/shared/service/index';
-import { FormBuilder, FormGroup, FormArray, Validators } from '@angular/forms';
-import { CloudGemDefectReporterApi } from './index';
+import { FormBuilder, FormGroup, FormArray, Validators, FormControl } from '@angular/forms';
+import { CloudGemDefectReporterApi, ValidationUtil } from './index';
 
 enum EditMode {
     List,
@@ -28,31 +28,29 @@ export class CloudGemDefectReporterClientConfigurationComponent {
     private EditMode = EditMode;
     private editMode: EditMode;
     private _apiHandler: CloudGemDefectReporterApi;
+    private isFormFieldNotPositiveNum = ValidationUtil.isFormFieldNotPositiveNum;
 
     private customFields = [];
+    private curFields = [];
     private isLoadingClientConfiguration: boolean;
     private curEditingField: Object;
+    private currentField: Object;
     private curFieldIndex: number;
     private fieldTitleForm: FormGroup;
     private predefinedFieldForm: FormGroup;
     private textFieldForm: FormGroup;
+    private objectFieldForm: FormGroup;
 
     private fieldTypes = [
         { 'typeinfo': { 'type': 'predefined', 'multipleSelect': true }, 'displayText': 'Multiple Choice (Checkboxes)' },
         { 'typeinfo': { 'type': 'predefined', 'multipleSelect': false }, 'displayText': 'Single Choice (Radio Buttons)' },
-        { 'typeinfo': { 'type': 'text' }, 'displayText': 'Text' }
+        { 'typeinfo': { 'type': 'text' }, 'displayText': 'Text' },
+        { 'typeinfo': { 'type': 'object' }, 'displayText': 'Object' }
     ]
-
-    private dummyRadioButtonForm: FormGroup;
-    private dummyTextAreaModels: string[];
 
     @ViewChild(ModalComponent) modalRef: ModalComponent;
 
     constructor(private fb: FormBuilder, private http: Http, private aws: AwsService, private toastr: ToastsManager, private vcr: ViewContainerRef, private metric: LyMetricService) {
-        // dummy radio button form group for the radio buttons to work in preview
-        this.dummyRadioButtonForm = fb.group({
-            'dummy': 'dummy'
-        })
     }
 
     ngOnInit() {
@@ -72,10 +70,8 @@ export class CloudGemDefectReporterClientConfigurationComponent {
             response => {
                 let obj = JSON.parse(response.body.text());
                 this.customFields = obj.result.clientConfiguration;
-                this.dummyTextAreaModels = [];
-
                 for (let customField of this.customFields) {
-                    this.dummyTextAreaModels.push("");
+                    this.deserializeCustomFieldDefaultValue(customField);
                 }
 
                 this.isLoadingClientConfiguration = false;
@@ -85,6 +81,22 @@ export class CloudGemDefectReporterClientConfigurationComponent {
                 this.isLoadingClientConfiguration = false;
             }
         );
+    }
+
+    /**
+    * Deserialize the default value of the custom field
+    * @param customField the customField to deserialize
+    **/
+    private deserializeCustomFieldDefaultValue(customField): void {
+        if (customField['type'] === "predefined" && customField["multipleSelect"]) {
+            customField["defaultValue"] = JSON.parse(customField["defaultValue"]);
+        }
+        else if (customField['type'] === "object") {
+            for (let property of customField['properties']) {
+                this.deserializeCustomFieldDefaultValue(property);
+            }
+            customField["defaultValue"] = JSON.parse(customField["defaultValue"]);
+        }
     }
 
     /**
@@ -101,8 +113,20 @@ export class CloudGemDefectReporterClientConfigurationComponent {
     **/
     private createFieldTitleForm(): void {
         this.fieldTitleForm = this.fb.group({
-            'title': [this.curEditingField["title"], Validators.compose([Validators.required])]
+            'title': [this.curEditingField["title"], Validators.compose([Validators.required, this.duplicate])]
         });
+    }
+
+    /**
+    * Check if the title already exists
+    **/
+    private duplicate = (control: FormControl) =>{
+        for (let field of this.curFields) {
+            if (this.curEditingField["title"] !== field['title'] && field['title'] === control.value) {
+                return { duplicate: true };
+            }
+        }
+        return null;
     }
 
     /**
@@ -130,7 +154,7 @@ export class CloudGemDefectReporterClientConfigurationComponent {
     **/
     private createTextFieldForm(): void {
         this.textFieldForm = this.fb.group({
-            'maxChars': [this.curEditingField["maxChars"], Validators.compose([Validators.required])]
+            'maxChars': [this.curEditingField["maxChars"], Validators.compose([Validators.required, ValidationUtil.positiveNumberValidator])]
         });
     }
 
@@ -164,6 +188,16 @@ export class CloudGemDefectReporterClientConfigurationComponent {
     **/
     private isFormFieldRequiredEmpty(form: any, item: string): boolean {
         return (form.controls[item].hasError('required') && form.controls[item].touched)
+    }
+
+    /**
+    * Check whether the required form field is duplicate
+    * @param form the form to check
+    * @param item the form field to check
+    * @returns {boolean} whether the required form field is empty
+    **/
+    private isFormFieldTitleDuplicate(form: any, item: string): boolean {
+        return (form.controls[item].hasError('duplicate') && form.controls[item].touched)
     }
 
     /**
@@ -206,8 +240,16 @@ export class CloudGemDefectReporterClientConfigurationComponent {
         }
 
         this.extractFieldForm();
-        this.customFields[this.curFieldIndex] = JSON.parse(JSON.stringify(this.curEditingField));
-        this.updateClientConfiguration();
+        if (this.curEditingField['type'] === 'object') {
+            this.curEditingField['properties'] = [];
+        }
+        else if (this.curEditingField['properties']) {
+            delete this.curEditingField['properties'];
+        }
+
+        delete this.curEditingField['defaultValue'];
+
+        this.curFields[this.curFieldIndex] = this.curEditingField;
 
         this.modalRef.close();
     }
@@ -221,10 +263,10 @@ export class CloudGemDefectReporterClientConfigurationComponent {
         }
 
         this.extractFieldForm();
-
-        this.customFields.push(this.curEditingField);
-        this.dummyTextAreaModels.push("");
-        this.updateClientConfiguration();
+        if (this.curEditingField['type'] === 'object') {
+            this.curEditingField['properties'] = [];
+        }
+        this.curFields.push(this.curEditingField);
 
         this.modalRef.close();
     }
@@ -233,7 +275,13 @@ export class CloudGemDefectReporterClientConfigurationComponent {
     * Save the client configuration
     **/
     private updateClientConfiguration(): void{
-        let body = { "clientConfiguration": this.customFields };
+        let customFieldsCopy = JSON.parse(JSON.stringify(this.customFields));
+        for (let customField of customFieldsCopy) {
+            this.serializeCustomFieldDefaultValue(customField);
+        }
+
+        let body = { "clientConfiguration": customFieldsCopy };
+
         this._apiHandler.updateClientConfiguration(body).subscribe(
             response => {
                 this.toastr.success("The client configuration was saved successfully.")
@@ -242,6 +290,34 @@ export class CloudGemDefectReporterClientConfigurationComponent {
                 this.toastr.error("Failed to update the client configuration. ", err);
             }
         );
+    }
+
+    /**
+    * Serialize the default value of the custom field
+    * @param customField the customField to serialize
+    **/
+    private serializeCustomFieldDefaultValue(customField): void {
+        if (customField['type'] === "predefined" && customField["multipleSelect"]) {
+            let selections = [];
+            for (let i = 0; i < customField["defaultValue"].length; i++) {
+                if (customField["defaultValue"][i]) {
+                    selections.push(customField["predefines"][i])
+                }
+            }
+            customField["defaultValue"] = JSON.stringify(selections);
+        }
+        else if (customField['type'] === "object") {
+            for (let property of customField['properties']) {
+                this.serializeCustomFieldDefaultValue(property);
+                if (property['type'] === "predefined" && property["multipleSelect"]) {
+                    customField["defaultValue"][property['title']] = JSON.parse(property["defaultValue"]);
+                }
+                else {
+                    customField["defaultValue"][property['title']] = property["defaultValue"];
+                }
+            }
+            customField["defaultValue"] = JSON.stringify(customField["defaultValue"]);
+        }
     }
 
     /**
@@ -314,7 +390,7 @@ export class CloudGemDefectReporterClientConfigurationComponent {
                 this.curEditingField["predefines"] = predefines;
                 break;
             case "text":
-                this.curEditingField["maxChars"] = this.textFieldForm.value.maxChars;
+                this.curEditingField["maxChars"] = +this.textFieldForm.value.maxChars;
                 break;
         }
     }
@@ -326,6 +402,8 @@ export class CloudGemDefectReporterClientConfigurationComponent {
         switch (this.curEditingField["type"]) {
             case "text":
                 return 'Text';
+            case "object":
+                return 'Object';
             case "predefined":
                 if (this.curEditingField["multipleSelect"]) {
                     return "Multiple Choice (Checkboxes)";
@@ -341,9 +419,7 @@ export class CloudGemDefectReporterClientConfigurationComponent {
     * Delete the current custom field
     **/
     private onDeleteField(): void {
-        this.customFields.splice(this.curFieldIndex, 1);
-        this.dummyTextAreaModels.splice(this.curFieldIndex, 1);
-        this.updateClientConfiguration();
+        this.curFields.splice(this.curFieldIndex, 1);
 
         this.modalRef.close();
     }
@@ -351,31 +427,66 @@ export class CloudGemDefectReporterClientConfigurationComponent {
     /**
     * Define all the modals
     **/
-    private onShowModifyFieldModal(field: Object, fieldIndex: number): void {
-        this.curEditingField = JSON.parse(JSON.stringify(field));
-        if (!this.curEditingField["predefines"] || this.curEditingField["predefines"].length == 0) {
-            this.curEditingField["predefines"] = [''];
-        }
-
+    private onModifyFieldModal(fields: Object[], field: Object, fieldIndex: number): void {
+        this.curFields = fields;
+        this.curEditingField = JSON.parse(JSON.stringify(field))
         this.createFieldForms();
         this.editMode = EditMode.EditField;
         this.curFieldIndex = fieldIndex;
     }
 
-    private onShowAddNewFieldModal = () => {
-        this.curEditingField = this.createDefaultField();
-        this.createFieldForms();
-
-        this.editMode = EditMode.CreateField;
-    }
-
-    private onShowDeleteFieldModal = (field: any, index: number) => {
-        this.curEditingField = field;
+    private onDeleteFieldModal = (fields: Object[], field: Object, index: number) => {
+        this.curFields = fields;
         this.curFieldIndex = index;
+        this.curEditingField = field;
         this.editMode = EditMode.DeleteField;
     }
 
     private onDismissModal = () => {
         this.editMode = EditMode.List;
+    }
+
+    private onAddNewFieldModal = (fields: Object[]) => {
+        this.curEditingField = this.createDefaultField();
+        this.curFields = fields;
+        this.createFieldForms();
+
+        this.editMode = EditMode.CreateField;
+    }
+
+    private getModalName = () => {
+        if (this.editMode == EditMode.EditField) {
+            return 'Edit Field';
+        }
+        else if (this.editMode == EditMode.CreateField) {
+            return 'Add New Field';
+        }
+        else if (this.editMode == EditMode.DeleteField) {
+            return 'Delete Field';
+        }
+    }
+
+    private getSubmitButtonText = () => {
+        if (this.editMode == EditMode.EditField) {
+            return 'Save Changes';
+        }
+        else if (this.editMode == EditMode.CreateField) {
+            return 'Add Field';
+        }
+        else if (this.editMode == EditMode.DeleteField) {
+            return 'Delete Field';
+        }
+    }
+
+    private onModalSubmit = () => {
+        if (this.editMode == EditMode.EditField) {
+            this.onModifyField();
+        }
+        else if (this.editMode == EditMode.CreateField) {
+            this.onAddField();
+        }
+        else if (this.editMode == EditMode.DeleteField) {
+            this.onDeleteField();
+        }
     }
 }

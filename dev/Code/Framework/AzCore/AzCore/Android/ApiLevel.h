@@ -16,7 +16,7 @@
 #include <AzCore/Android/Utils.h>
 
 
-// the following defines provide cross compatibily between NDK and header versions as they
+// the following defines provide cross compatibility between NDK and header versions as they
 // were only officially added to the unified headers in NDK r14
 #ifndef __ANDROID_API_K__
     #define __ANDROID_API_K__ 19
@@ -50,6 +50,10 @@
     #define __ANDROID_API_O_MR1__ 27
 #endif
 
+#ifndef __ANDROID_API_P__
+    #define __ANDROID_API_P__ 28
+#endif
+
 
 namespace AZ
 {
@@ -66,6 +70,7 @@ namespace AZ
             Nougat_mr1      = __ANDROID_API_N_MR1__,
             Oreo            = __ANDROID_API_O__,
             Oreo_mr1        = __ANDROID_API_O_MR1__,
+            Pie             = __ANDROID_API_P__,
         };
 
         //! Request the OS runtime API level of the device

@@ -16,7 +16,7 @@
 #include <AssetBuilderSDK/AssetBuilderBusses.h>
 #include <LyShine/UiComponentTypes.h>
 #include <LyShine/UiAssetTypes.h>
-#include <AzToolsFramework/ToolsComponents/GenericComponentWrapper.h>
+#include <AzToolsFramework/Entity/EditorEntityFixupComponent.h>
 
 void BuilderOnInit()
 {
@@ -43,8 +43,8 @@ void BuilderAddComponents(AZ::Entity* entity)
         entity->CreateComponent(LyShine::lyShineSystemComponentUuid);
     }
 
-    // Add the GenericComponentUnwrapper for slice processing
-    entity->CreateComponent(azrtti_typeid<AzToolsFramework::Components::GenericComponentUnwrapper>());
+    // Add the EditorEntityFixupComponent for slice processing
+    entity->CreateComponent(azrtti_typeid<AzToolsFramework::EditorEntityFixupComponent>());
 }
 
 // we must use this macro to register this as an assetbuilder

@@ -14,6 +14,8 @@
 #include "StdAfx.h"
 #include <AzTest/AzTest.h>
 
+#include <AzCore/Memory/AllocatorScope.h>
+
 #include "ArchiveHost.h"
 #include <Serialization/STL.h>
 #include <Serialization/IArchive.h>
@@ -385,61 +387,109 @@ namespace Serialization
         SMember array[5];
     };
 
-    SERIALIZATION_CLASS_NAME(CPolyBase, CPolyBase, "base", "Base")
-    SERIALIZATION_CLASS_NAME(CPolyBase, CPolyDerivedA, "derived_a", "Derived A")
-    SERIALIZATION_CLASS_NAME(CPolyBase, CPolyDerivedB, "derived_b", "Derived B")
+    using ArchiveHostTestsAllocatorScope = AZ::AllocatorScope<AZ::LegacyAllocator, CryStringAllocator>;
+    struct ArchiveHostTestsMemory
+        : private ArchiveHostTestsAllocatorScope
+    {
+        ArchiveHostTestsMemory()
+        {
+            ArchiveHostTestsAllocatorScope::ActivateAllocators();
+
+            m_classFactoryRTTI = AZStd::make_unique<ClassFactoryRTTI>();
+        }
+
+        ~ArchiveHostTestsMemory()
+        {
+            m_classFactoryRTTI.reset();
+            
+            ArchiveHostTestsAllocatorScope::DeactivateAllocators();
+        }
+
+        struct ClassFactoryRTTI
+        {
+            ClassFactoryRTTI()
+                : CPolyBaseCPolyBase_DerivedDescription("base", "Base")
+                , CPolyBaseCPolyBase_Creator(&CPolyBaseCPolyBase_DerivedDescription)
+                , TypeCPolyBase_DerivedDescription("derived_a", "Derived A")
+                , TypeCPolyBase_Creator(&TypeCPolyBase_DerivedDescription)
+                , CPolyDerivedBCPolyBase_DerivedDescription("derived_b", "Derived B")
+                , CPolyDerivedBCPolyBase_Creator(&CPolyDerivedBCPolyBase_DerivedDescription)
+            {}
+
+            ~ClassFactoryRTTI()
+            {
+                Serialization::ClassFactory<CPolyBase>::destroy();
+            }
+
+            const Serialization::TypeDescription CPolyBaseCPolyBase_DerivedDescription;
+            Serialization::ClassFactory<CPolyBase>::Creator<CPolyBase> CPolyBaseCPolyBase_Creator;
+
+            const Serialization::TypeDescription TypeCPolyBase_DerivedDescription;
+            Serialization::ClassFactory<CPolyBase>::Creator<CPolyDerivedA> TypeCPolyBase_Creator;
+
+            const Serialization::TypeDescription CPolyDerivedBCPolyBase_DerivedDescription;
+            Serialization::ClassFactory<CPolyBase>::Creator<CPolyDerivedB> CPolyDerivedBCPolyBase_Creator;
+        };
+        AZStd::unique_ptr<ClassFactoryRTTI> m_classFactoryRTTI;
+    };
 
     TEST(ArchiveHostTests, JsonBasicTypes)
     {
-        std::unique_ptr<IArchiveHost> host(CreateArchiveHost());
-
-        DynArray<char> bufChanged;
-        CComplexClass objChanged;
-        objChanged.Change();
-        host->SaveJsonBuffer(bufChanged, SStruct(objChanged));
-        EXPECT_TRUE(!bufChanged.empty());
-
-        DynArray<char> bufResaved;
+        ArchiveHostTestsMemory memory;
         {
-            CComplexClass obj;
+            std::unique_ptr<IArchiveHost> host(CreateArchiveHost());
 
-            EXPECT_TRUE(host->LoadJsonBuffer(SStruct(obj), bufChanged.data(), bufChanged.size()));
-            EXPECT_TRUE(host->SaveJsonBuffer(bufResaved, SStruct(obj)));
-            EXPECT_TRUE(!bufResaved.empty());
+            DynArray<char> bufChanged;
+            CComplexClass objChanged;
+            objChanged.Change();
+            host->SaveJsonBuffer(bufChanged, SStruct(objChanged));
+            EXPECT_TRUE(!bufChanged.empty());
 
-            obj.CheckEquality(objChanged);
-        }
-        EXPECT_TRUE(bufChanged.size() == bufResaved.size());
-        for (size_t i = 0; i < bufChanged.size(); ++i)
-        {
-            EXPECT_TRUE(bufChanged[i] == bufResaved[i]);
+            DynArray<char> bufResaved;
+            {
+                CComplexClass obj;
+
+                EXPECT_TRUE(host->LoadJsonBuffer(SStruct(obj), bufChanged.data(), bufChanged.size()));
+                EXPECT_TRUE(host->SaveJsonBuffer(bufResaved, SStruct(obj)));
+                EXPECT_TRUE(!bufResaved.empty());
+
+                obj.CheckEquality(objChanged);
+            }
+            EXPECT_TRUE(bufChanged.size() == bufResaved.size());
+            for (size_t i = 0; i < bufChanged.size(); ++i)
+            {
+                EXPECT_TRUE(bufChanged[i] == bufResaved[i]);
+            }
         }
     }
 
     TEST(ArchiveHostTests, BinBasicTypes)
     {
-        std::unique_ptr<IArchiveHost> host(CreateArchiveHost());
-
-        DynArray<char> bufChanged;
-        CComplexClass objChanged;
-        objChanged.Change();
-        host->SaveBinaryBuffer(bufChanged, SStruct(objChanged));
-        EXPECT_TRUE(!bufChanged.empty());
-
-        DynArray<char> bufResaved;
+        ArchiveHostTestsMemory memory;
         {
-            CComplexClass obj;
+            std::unique_ptr<IArchiveHost> host(CreateArchiveHost());
 
-            EXPECT_TRUE(host->LoadBinaryBuffer(SStruct(obj), bufChanged.data(), bufChanged.size()));
-            EXPECT_TRUE(host->SaveBinaryBuffer(bufResaved, SStruct(obj)));
-            EXPECT_TRUE(!bufResaved.empty());
+            DynArray<char> bufChanged;
+            CComplexClass objChanged;
+            objChanged.Change();
+            host->SaveBinaryBuffer(bufChanged, SStruct(objChanged));
+            EXPECT_TRUE(!bufChanged.empty());
 
-            obj.CheckEquality(objChanged);
-        }
-        EXPECT_TRUE(bufChanged.size() == bufResaved.size());
-        for (size_t i = 0; i < bufChanged.size(); ++i)
-        {
-            EXPECT_TRUE(bufChanged[i] == bufResaved[i]);
+            DynArray<char> bufResaved;
+            {
+                CComplexClass obj;
+
+                EXPECT_TRUE(host->LoadBinaryBuffer(SStruct(obj), bufChanged.data(), bufChanged.size()));
+                EXPECT_TRUE(host->SaveBinaryBuffer(bufResaved, SStruct(obj)));
+                EXPECT_TRUE(!bufResaved.empty());
+
+                obj.CheckEquality(objChanged);
+            }
+            EXPECT_TRUE(bufChanged.size() == bufResaved.size());
+            for (size_t i = 0; i < bufChanged.size(); ++i)
+            {
+                EXPECT_TRUE(bufChanged[i] == bufResaved[i]);
+            }
         }
     }
 }

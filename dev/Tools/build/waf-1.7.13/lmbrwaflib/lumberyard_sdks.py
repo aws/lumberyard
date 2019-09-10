@@ -452,6 +452,7 @@ def enable_embedded_python(self):
 
         self.includes += [python_include_dir]
         self.env['LIBPATH'] += [python_libs_dir]
+        self.env['SHAREDLIBPATH'] += [python_home]
 
         # Save off the python home for use from within code (BoostPythonHelpers.cpp).  This allows us to control exactly which version of
         # python the editor uses.

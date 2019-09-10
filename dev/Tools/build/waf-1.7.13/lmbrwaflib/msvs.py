@@ -480,12 +480,27 @@ ${endif}$
 
 PROJECT_USER_TEMPLATE = '''<?xml version="1.0" encoding="UTF-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-	${for b in project.build_properties}$
-		<!--
-		-->
-		<!--
-		-->
-	${endfor}$
+${for b in project.build_properties}$
+${  if not hasattr(b, 'output_type')}$
+${      py:continue}$
+${  endif}$
+${  if not b.output_type == 'exe'}$
+${      py:continue}$
+${  endif}$
+    <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='${b.configuration_name}$|${b.platform.split()[0]}$'">
+        <LocalDebuggerEnvironment>PATH=${b.sharedlibs_search_path}$;%PATH%
+${  if hasattr(b, 'env_var')}$
+${      for key, value in b.env_var.items()}$
+${key}$=${value}$
+${      endfor}$
+${  endif}$            
+        </LocalDebuggerEnvironment>
+        <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
+        <LocalDebuggerCommand>$(TargetPath)</LocalDebuggerCommand>
+        <LocalDebuggerCommandArguments></LocalDebuggerCommandArguments>
+        <LocalDebuggerWorkingDirectory>$(OutDir)</LocalDebuggerWorkingDirectory>
+    </PropertyGroup>
+${endfor}$
 </Project>
 '''
 
@@ -1529,6 +1544,10 @@ class vsnode_target(vsnode_project):
                 include_files.extend(lst)
         """
 
+        uber_file_lookup=[]
+        if hasattr(tg, 'uber_file_lookup'):
+            uber_file_lookup=tg.uber_file_lookup
+
         #need to remove test files so that they are only included in test builds
         test_file_lists=getattr(tg, 'test_all_file_list', None)
         if test_file_lists:
@@ -1543,6 +1562,19 @@ class vsnode_target(vsnode_project):
 
                     source_files.remove(test_file)
                     self.test_source.append(test_file)
+
+                    #going to have to check it against the uber files as if the file is in
+                    #an uber file need to remove it as well, here is to hoping test files
+                    #and regular files are not mixed
+                    for uber_file, files in uber_file_lookup.items():
+                        if test_file in files:
+                            uber_node=tg.to_nodes([uber_file])[0]
+                            #remove the uber file if it is in the source files
+                            if uber_node in source_files:
+                                source_files.remove(uber_node)
+                            #add uber file if not in test sources
+                            if not uber_node in self.test_source: 
+                                self.test_source.append(uber_node)
 
         # remove duplicates
         self.source.extend(list(set(source_files + include_files)))
@@ -1820,7 +1852,7 @@ class vsnode_target(vsnode_project):
 
 
     # Method to recurse a taskgen item's use dependencies and build up a unique include_list for include paths
-    def recurse_use_includes_and_defines(self, waf_platform, waf_configuration, cur_tg, include_list, defines_list, libpath_list, lib_list, uselib_cache):
+    def recurse_use_includes_and_defines(self, waf_platform, waf_configuration, cur_tg, include_list, defines_list, libpath_list, lib_list, sharedlibpath_list, uselib_cache):
         """
         Method to recurse a taskgen item's use dependencies and build up a unique include_list for include paths
 
@@ -1861,7 +1893,7 @@ class vsnode_target(vsnode_project):
                         append_to_unique_list(defines_list, export_define)
 
             # Perform additional includes and defines analysis on uselibs
-            self.process_uselib_include_and_defines(waf_platform, waf_configuration, cur_tg, include_list, defines_list, libpath_list, lib_list, uselib_cache)
+            self.process_uselib_include_and_defines(waf_platform, waf_configuration, cur_tg, include_list, defines_list, libpath_list, lib_list, sharedlibpath_list, uselib_cache)
 
             # Recurse into the 'use' for this taskgen if possible
             if not hasattr(tg, 'use') or len(tg.use) == 0:
@@ -1886,7 +1918,7 @@ class vsnode_target(vsnode_project):
 
         _recurse(cur_tg, True, self.tg_dependencies)
 
-    def process_uselib_include_and_defines(self, waf_platform, waf_configuration, cur_tg, include_list, defines_list, libpath_list, lib_list, uselib_cache):
+    def process_uselib_include_and_defines(self, waf_platform, waf_configuration, cur_tg, include_list, defines_list, libpath_list, lib_list, sharedlibpath_list, uselib_cache):
         """
         Perform inspection of a taskgen's uselib for additional includes and defines
 
@@ -1920,6 +1952,12 @@ class vsnode_target(vsnode_project):
                 tg_uselib_lib_value = uselib_cache[tg_uselib][3]
                 if tg_uselib_lib_value is not None and len(tg_uselib_lib_value) > 0:
                     append_to_unique_list(lib_list, tg_uselib_lib_value)
+
+                # Get the cached sharedlibpath value if any
+                tg_uselib_sharedlibpath_value = uselib_cache[tg_uselib][4]
+                if tg_uselib_sharedlibpath_value is not None and len(tg_uselib_sharedlibpath_value) > 0:
+                    append_to_unique_list(sharedlibpath_list, tg_uselib_sharedlibpath_value)
+
             else:
                 # Using the platform and configuration, get the env table to track down the includes and defines for the uselib name
                 platform_config_key = waf_platform + '_' + waf_configuration
@@ -1951,7 +1989,8 @@ class vsnode_target(vsnode_project):
                 if platform_config_uselib_defines_value is not None:
                     append_to_unique_list(defines_list, platform_config_uselib_defines_value)
 
-                for lib_type in ['', 'SHARED', 'ST']:
+                #for lib_type in ['', 'SHARED', 'ST']:
+                for lib_type in ['', 'ST']:
                     platform_config_uselib_libpath_value = None
                     libpath_variable_name = '{}LIBPATH_{}'.format(lib_type, tg_uselib)
                     libpath_variable_name_debug = '{}LIBPATH_{}D'.format(lib_type, tg_uselib)
@@ -1980,12 +2019,24 @@ class vsnode_target(vsnode_project):
                                 remove_libs.append(lib)
                         for lib in remove_libs:
                             platform_config_uselib_lib_value.remove(lib)
-#                        for i, lib in enumerate(platform_config_uselib_lib_value):
-#                            platform_config_uselib_lib_value[i]=re.sub(r'\.dll', '', lib, re.I)
                         append_to_unique_list(lib_list, platform_config_uselib_lib_value)
 
+                #get dll folders for debug path
+                platform_config_uselib_sharedlibpath_value = None
+                sharedlibpath_variable_name = 'SHAREDLIBPATH_{}'.format(tg_uselib)
+                sharedlibpath_variable_name_debug = 'SHAREDLIBPATH_{}D'.format(tg_uselib)
+
+                if sharedlibpath_variable_name in platform_config_env:
+                    platform_config_uselib_sharedlibpath_value = platform_config_env[sharedlibpath_variable_name]
+                elif sharedlibpath_variable_name_debug in platform_config_env:
+                    platform_config_uselib_sharedlibpath_value = platform_config_env[sharedlibpath_variable_name_debug]
+
+                if platform_config_uselib_sharedlibpath_value is not None:
+                    append_to_unique_list(sharedlibpath_list, platform_config_uselib_sharedlibpath_value)
+
                 # Cache the results
-                uselib_cache[tg_uselib] = (platform_config_uselib_includes_value, platform_config_uselib_defines_value, platform_config_uselib_libpath_value, platform_config_uselib_lib_value)
+                uselib_cache[tg_uselib] = (platform_config_uselib_includes_value, platform_config_uselib_defines_value, 
+                    platform_config_uselib_libpath_value, platform_config_uselib_lib_value, platform_config_uselib_sharedlibpath_value)
 
     def collect_properties(self):
 
@@ -2004,6 +2055,9 @@ class vsnode_target(vsnode_project):
         env_libpaths=[]
         if 'LIBPATH' in self.tg.env:
             env_libpaths=self.tg.env['LIBPATH']
+        env_sharedlibpaths=[]
+        if 'SHAREDLIBPATH' in self.tg.env:
+            env_sharedlibpaths=self.tg.env['SHAREDLIBPATH']
 
         super(vsnode_target, self).collect_properties()
         for x in self.build_properties:
@@ -2017,6 +2071,7 @@ class vsnode_target(vsnode_project):
             x.link_flags = ''
             x.target_spec = ''
             x.target_config = ''
+            x.env_var = {}
 
             if not hasattr(self.tg ,'link_task') and 'create_static_library' not in self.tg.features:
                 continue
@@ -2151,6 +2206,7 @@ class vsnode_target(vsnode_project):
             lib_list = list(current_env['LIB'])
             lib_list += self.GetPlatformSettings( waf_platform, waf_configuration, 'lib', self.tg )
 
+            sharedlibpath_list = env_sharedlibpaths
             # make sure we only have absolute path for intellisense
             # If we don't have a absolute path, assume a relative one, hence prefix the path with the taskgen path and comvert it into an absolute one
             for i in range(len(include_list)):
@@ -2162,7 +2218,7 @@ class vsnode_target(vsnode_project):
 
             # Do a depth-first recursion into the use dependencies to collect any additional include paths
             uselib_include_cache = {}
-            self.recurse_use_includes_and_defines(waf_platform, waf_configuration, self.tg, include_list, define_list, libpath_list, lib_list, uselib_include_cache)
+            self.recurse_use_includes_and_defines(waf_platform, waf_configuration, self.tg, include_list, define_list, libpath_list, lib_list, sharedlibpath_list, uselib_include_cache)
 
             # For generate header files that need to be included, the include path during project generation will
             # be $ROOT\BinTemp\project_generator\... because the task is generated based on files that are to be
@@ -2190,6 +2246,12 @@ class vsnode_target(vsnode_project):
                                                             '{}.{}'.format(self.name, self.tg.target_uid))
                 include_list.append(qt_intermediate_include_path)
 
+                #QT_PLUGIN_PATH
+                if waf_platform in self.ctx.all_envs:
+                    platform_env = self.ctx.all_envs[waf_platform]
+                    if 'QT_PLUGINS_DIR' in platform_env:#add plugin folder to sharedlib path as needed for runtime
+                        x.env_var['QT_PLUGIN_PATH']=platform_env['QT_PLUGINS_DIR']
+
             #need to remove any refference to NetFxSDK as the IValidator will conflict
 #            for directory in include_list:
 #                if 'NETFXSDK' in directory:
@@ -2204,6 +2266,7 @@ class vsnode_target(vsnode_project):
             x.includes_search_path = ';'.join(include_list)
             x.preprocessor_definitions = ';'.join(define_list)
             x.libs_search_path = ';'.join(libpath_list)
+            x.sharedlibs_search_path = ';'.join(sharedlibpath_list)
 
             lib_list=[lib+'.lib' for lib in lib_list] #add .lib to lib name
             x.libs = ';'.join(lib_list)
@@ -2754,11 +2817,29 @@ class msvs_generator(BuildContext):
                 continue
             project_dict[p.name]=p
 
+        required_gems=self.get_required_gems()
+
         #build project dependencies
         for project in self.all_projects:
             if isinstance(project, vsnode_project) and not project == self.waf_project: #add _WAF_ project as dependency
                 project.dependencies.append(self.waf_project.uuid)
 
+            if hasattr(project, 'tg'):
+                if hasattr(project.tg, 'use_required_gems'):
+                    if project.tg.use_required_gems:
+                        #add required gems as dependency of the project
+
+                        for gem in required_gems:
+                            if gem.name == project.name:
+                                continue
+    
+                            dependency=project_dict.get(gem.name, None)
+                    
+                            if dependency is None:
+                                continue
+                            
+                            project.dependencies.append(dependency.uuid)
+                        
             if not hasattr(project, 'tg_dependencies'):
                 continue
 

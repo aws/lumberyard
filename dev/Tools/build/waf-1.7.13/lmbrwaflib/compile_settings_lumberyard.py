@@ -46,8 +46,7 @@ def set_editor_flags(self, kw):
                                     self.CreateRootRelativePath('Code/Sandbox/Editor'),
                                     self.CreateRootRelativePath('Code/Sandbox/Editor/Include'),
                                     self.CreateRootRelativePath('Code/Sandbox/Plugins/EditorCommon'),
-                                    self.CreateRootRelativePath('Code/CryEngine/CryCommon'),
-                                    self.ThirdPartyPath('boost')])
+                                    self.CreateRootRelativePath('Code/CryEngine/CryCommon')])
 
     if 'priority_includes' in kw:
         prepend_kw_entry(kw,'includes',kw['priority_includes'])
@@ -66,7 +65,6 @@ def set_rc_flags(self, kw, ctx):
 
     prepend_kw_entry(kw,'includes',['.',
                                     self.CreateRootRelativePath('Code/CryEngine/CryCommon'),
-                                    self.ThirdPartyPath('boost'),
                                     self.CreateRootRelativePath('Code/Sandbox/Plugins/EditorCommon')])
     rc_defines = ['RESOURCE_COMPILER',
                   'FORCE_STANDARD_ASSERT',

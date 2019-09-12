@@ -25,16 +25,10 @@
 
 #include <GridMate/Carrier/DefaultSimulator.h>
 #include <GridMate/Session/LANSession.h>
+#include <Multiplayer_Traits_Platform.h>
 
 namespace Multiplayer
 {
-
-#if defined(AZ_RESTRICTED_PLATFORM)
-#undef AZ_RESTRICTED_SECTION
-#define MULTIPLAYERCVARS_CPP_SECTION_1 1
-#define MULTIPLAYERCVARS_CPP_SECTION_2 2
-#define MULTIPLAYERCVARS_CPP_SECTION_3 3
-#endif
 
 #if BUILD_GAMELIFT_SERVER
     static void StartGameLiftServer(IConsoleCmdArgs *args)
@@ -452,30 +446,14 @@ namespace Multiplayer
 
             REGISTER_INT("gm_maxSearchResults", GridMate::SearchParams::s_defaultMaxSessions, VF_NULL, "Maximum number of search results to be returned from a session search.");
             REGISTER_STRING("gm_ipversion", "IPv4", 0, "IP protocol version. (Can be 'IPv4' or 'IPv6')");
-#if defined(AZ_RESTRICTED_PLATFORM)
-#define AZ_RESTRICTED_SECTION MULTIPLAYERCVARS_CPP_SECTION_1
-    #if defined(AZ_PLATFORM_XENIA)
-        #include "Xenia/MultiplayerCVars_cpp_xenia.inl"
-    #elif defined(AZ_PLATFORM_PROVO)
-        #include "Provo/MultiplayerCVars_cpp_provo.inl"
-    #endif
-#endif
-#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
-#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
-#else
-            REGISTER_STRING("gm_securityData", "", 0, "Security data for session.");
-#endif
+            REGISTER_STRING("gm_securityData", "", 0, AZ_TRAIT_MULTIPLAYER_REGISTER_CVAR_SECURITY_DATA_DESC);
             REGISTER_INT_CB("gm_replicasSendTime", 0, VF_NULL, "Time interval between replicas sends (in milliseconds), 0 will bound sends to GridMate tick rate", OnReplicasSendTimeChanged);
             REGISTER_INT_CB("gm_replicasSendLimit", 0, VF_DEV_ONLY, "Replica data send limit in bytes per second. 0 - limiter turned off. (Dev build only)", OnReplicasSendLimitChanged);
             REGISTER_FLOAT_CB("gm_burstTimeLimit", 10.f, VF_DEV_ONLY, "Burst in bandwidth will be allowed for the given amount of time(in seconds). Burst will only be allowed if bandwidth is not capped at the time of burst. (Dev build only)", OnReplicasBurstRangeChanged);
 
-#if defined(AZ_RESTRICTED_PLATFORM)
-#define AZ_RESTRICTED_SECTION MULTIPLAYERCVARS_CPP_SECTION_2
-    #if defined(AZ_PLATFORM_XENIA)
-        #include "Xenia/MultiplayerCVars_cpp_xenia.inl"
-    #elif defined(AZ_PLATFORM_PROVO)
-        #include "Provo/MultiplayerCVars_cpp_provo.inl"
-    #endif
+#if AZ_TRAIT_MULTIPLAYER_USE_MATCH_MAKER_CVARS
+            REGISTER_STRING(AZ_TRAIT_MULTIPLAYER_CVAR_MATCH_MAKER_SESSION_TEMPLATE, "GroupBuildingLobby", 0, AZ_TRAIT_MULTIPLAYER_CVAR_MATCH_MAKER_SESSION_TEMPLATE_DESC);
+            REGISTER_STRING(AZ_TRAIT_MULTIPLAYER_CVAR_MATCH_MAKER_ID, "DefaultHopper", 0, AZ_TRAIT_MULTIPLAYER_CVAR_MATCH_MAKER_ID_DESC);
 #endif
 
 #if !defined(BUILD_GAMELIFT_SERVER) && defined(BUILD_GAMELIFT_CLIENT)
@@ -526,16 +504,10 @@ namespace Multiplayer
             UNREGISTER_COMMAND("gamelift_start_server");
 #endif
 
-#if defined(AZ_RESTRICTED_PLATFORM)
-#define AZ_RESTRICTED_SECTION MULTIPLAYERCVARS_CPP_SECTION_3
-    #if defined(AZ_PLATFORM_XENIA)
-        #include "Xenia/MultiplayerCVars_cpp_xenia.inl"
-    #elif defined(AZ_PLATFORM_PROVO)
-        #include "Provo/MultiplayerCVars_cpp_provo.inl"
-    #endif
+#if AZ_TRAIT_MULTIPLAYER_USE_MATCH_MAKER_CVARS
+            UNREGISTER_CVAR(AZ_TRAIT_MULTIPLAYER_CVAR_MATCH_MAKER_ID);
+            UNREGISTER_CVAR(AZ_TRAIT_MULTIPLAYER_CVAR_MATCH_MAKER_SESSION_TEMPLATE);
 #endif
-
-
             UNREGISTER_CVAR("gm_burstTimeLimit");
             UNREGISTER_CVAR("gm_replicasSendLimit");
             UNREGISTER_CVAR("gm_replicasSendTime");

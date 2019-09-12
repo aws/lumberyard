@@ -426,7 +426,7 @@ namespace NCryMetal
         };
 
         CRingBuffer             m_RingBufferShared; //This ring buffer uses CPU/GPU shared memory
-#if defined(AZ_PLATFORM_APPLE_OSX)
+#if defined(AZ_PLATFORM_MAC)
         CRingBuffer             m_RingBufferManaged; //This ring buffer uses Managed memory.
 #endif
         CRingBuffer             m_QueryRingBuffer;

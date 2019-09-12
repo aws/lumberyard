@@ -30,6 +30,7 @@
 #include <Components/StylingComponent.h>
 #include <GraphCanvas/Components/GeometryBus.h>
 #include <GraphCanvas/Components/Slots/SlotBus.h>
+#include <GraphCanvas/Components/VisualBus.h>
 #include <GraphCanvas/Editor/GraphModelBus.h>
 #include <GraphCanvas/tools.h>
 #include <GraphCanvas/Styling/StyleHelper.h>
@@ -308,8 +309,8 @@ namespace GraphCanvas
     WrapperNodeLayoutComponent::~WrapperNodeLayoutComponent()
     {
     }
-	
-	void WrapperNodeLayoutComponent::Init()
+
+    void WrapperNodeLayoutComponent::Init()
     {
         NodeLayoutComponent::Init();
 
@@ -377,6 +378,11 @@ namespace GraphCanvas
 
             NodeUIRequestBus::Event(GetEntityId(), &NodeUIRequests::AdjustSize);
 
+            RootGraphicsItemEnabledState enabledState = RootGraphicsItemEnabledState::ES_Enabled;
+            RootGraphicsItemRequestBus::EventResult(enabledState, GetEntityId(), &RootGraphicsItemRequests::GetEnabledState);
+
+            RootGraphicsItemRequestBus::Event(nodeId, &RootGraphicsItemRequests::SetEnabledState, enabledState);
+
             RefreshActionStyle();
         }
     }
@@ -398,6 +404,9 @@ namespace GraphCanvas
             m_wrappedNodeLayout->RefreshLayout();
 
             NodeUIRequestBus::Event(GetEntityId(), &NodeUIRequests::AdjustSize);
+
+            // If we unwrap something just set it to enabled.
+            RootGraphicsItemRequestBus::Event(nodeId, &RootGraphicsItemRequests::SetEnabledState, RootGraphicsItemEnabledState::ES_Enabled);
 
             RefreshActionStyle();
         }
@@ -535,7 +544,7 @@ namespace GraphCanvas
         m_wrapperNodeActionWidget->RefreshStyle();
 
         RefreshDisplay();
-    }
+    }    
 
     void WrapperNodeLayoutComponent::RefreshActionStyle()
     {

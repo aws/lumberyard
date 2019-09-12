@@ -460,7 +460,6 @@ namespace AZ
             return *this;
         }
 
-#if defined(AZ_HAS_RVALUE_REFS)
         EnvironmentVariable(EnvironmentVariable&& rhs)
             : m_data(rhs.m_data)
         {
@@ -471,7 +470,7 @@ namespace AZ
             EnvironmentVariable(static_cast< EnvironmentVariable && >(rhs)).Swap(*this);
             return *this;
         }
-#endif
+
         EnvironmentVariable& operator=(EnvironmentVariable const& rhs)
         {
             EnvironmentVariable(rhs).Swap(*this);

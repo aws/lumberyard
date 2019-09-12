@@ -20,7 +20,7 @@
 #include <d3d9types.h>               // D3DFORMAT
 #include <dxgiformat.h>              // DX10+ formats
 #endif
-#if defined(AZ_PLATFORM_APPLE)
+#if AZ_TRAIT_OS_PLATFORM_APPLE
 #include <AzDXGIFormat.h>
 #endif
 #include "platform.h"                // uint32
@@ -28,7 +28,7 @@
 #include <ImageExtensionHelper.h>
 
 
-#if defined(AZ_PLATFORM_APPLE)
+#if AZ_TRAIT_OS_PLATFORM_APPLE
 //These enums are needed to build DDS textures on Mac
 enum
 {

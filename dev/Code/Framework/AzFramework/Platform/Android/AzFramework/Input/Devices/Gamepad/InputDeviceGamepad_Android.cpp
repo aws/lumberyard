@@ -11,7 +11,7 @@
 */
 
 #include <AzFramework/Input/Devices/Gamepad/InputDeviceGamepad.h>
-#include <AzFramework/Input/Buses/Notifications/RawInputNotificationBus_android.h>
+#include <AzFramework/Input/Buses/Notifications/RawInputNotificationBus_Platform.h>
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 namespace AzFramework

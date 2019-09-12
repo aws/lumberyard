@@ -19,6 +19,7 @@
 #include <AzCore/IO/SystemFile.h>
 #include <AzCore/Slice/SliceAsset.h>
 #include <AzCore/XML/rapidxml_print.h>
+#include <AzCore/Asset/AssetManager.h>
 
 #include <AzFramework/StringFunc/StringFunc.h>
 #include <AzFramework/API/BootstrapReaderBus.h>
@@ -55,7 +56,24 @@ namespace SliceFavorites
         Reset();
     }
 
-    int FavoriteData::LoadFromXML(AZ::rapidxml::xml_node<char>* node)
+    bool FavoriteData::IsAssetUnique(AZ::Data::AssetId assetId, const FavoriteData* root)
+    {
+        if (root->m_assetId == assetId)
+        {
+            return false;
+        }
+
+        for (auto favoriteData : root->m_children)
+        {
+            if (favoriteData->m_assetId == assetId || !IsAssetUnique(assetId, favoriteData))
+            {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    int FavoriteData::LoadFromXML(AZ::rapidxml::xml_node<char>* node, const FavoriteData* root)
     {
         int numFavoritesLoaded = 0;
 
@@ -65,13 +83,16 @@ namespace SliceFavorites
             {
                 // We have a child!
                 FavoriteData* childData = new FavoriteData();
-                numFavoritesLoaded += childData->LoadFromXML(childNode);
-                m_children.push_back(childData);
+                int numLoaded = childData->LoadFromXML(childNode, root);
+                if (numLoaded)
+                {
+                    numFavoritesLoaded += numLoaded;
+                    m_children.push_back(childData);
+                }
             }
             else if (!azstricmp(childNode->name(), NameXMLTag))
             {
                 m_name = childNode->value();
-                numFavoritesLoaded++;
             }
             else if (!azstricmp(childNode->name(), TypeXMLTag))
             {
@@ -80,6 +101,10 @@ namespace SliceFavorites
             else if (!azstricmp(childNode->name(), AssetIdXMLTag))
             {
                 m_assetId = AZ::Data::AssetId::CreateString(childNode->value());
+                if (IsAssetUnique(m_assetId, root))
+                {
+                    ++numFavoritesLoaded;
+                }
             }
             else if (!azstricmp(childNode->name(), SubTypeXMLTag))
             {
@@ -256,12 +281,11 @@ namespace SliceFavorites
         m_rootItem = AZStd::make_unique<FavoriteData>(FavoriteData::DataType_Folder);
         m_favoritesMenu = AZStd::make_unique<QMenu>(QObject::tr("Slice favorites"));
 
-        SetupModelData();
-
         AzToolsFramework::EditorEvents::Bus::Handler::BusConnect();
         AzToolsFramework::AssetBrowser::AssetBrowserInteractionNotificationBus::Handler::BusConnect();
         AzFramework::AssetCatalogEventBus::Handler::BusConnect();
         AzQtComponents::DragAndDropEventsBus::Handler::BusConnect(AzQtComponents::DragAndDropContexts::EditorViewport);
+        AzToolsFramework::AssetBrowser::AssetBrowserComponentNotificationBus::Handler::BusConnect();
     }
 
     FavoriteDataModel::~FavoriteDataModel()
@@ -270,6 +294,7 @@ namespace SliceFavorites
         AzToolsFramework::AssetBrowser::AssetBrowserInteractionNotificationBus::Handler::BusDisconnect();
         AzFramework::AssetCatalogEventBus::Handler::BusDisconnect();
         AzQtComponents::DragAndDropEventsBus::Handler::BusDisconnect();
+        AzToolsFramework::AssetBrowser::AssetBrowserComponentNotificationBus::Handler::BusDisconnect();
 
         AzToolsFramework::UnregisterViewPane(SliceFavorites::ManageSliceFavorites);
     }
@@ -390,11 +415,6 @@ namespace SliceFavorites
         return 1;
     }
 
-    void FavoriteDataModel::SetupModelData()
-    {
-        LoadFavorites();
-    }
-
     void FavoriteDataModel::LoadFavorites()
     {
         if (!m_rootItem)
@@ -502,9 +522,15 @@ namespace SliceFavorites
             current->m_type = (FavoriteData::FavoriteType)settings.value("type").toInt();
             current->m_subType = (FavoriteData::FavoriteSubType)settings.value("subType").toInt();
 
+            // Check if asset still exists
+            AZ::Data::AssetInfo checkAsset;
+            AZ::Data::AssetCatalogRequestBus::BroadcastResult(checkAsset, &AZ::Data::AssetCatalogRequests::GetAssetInfoById, current->m_assetId);
             if (current->m_type == FavoriteData::DataType_Favorite)
             {
-                m_favoriteMap.insert(AZStd::make_pair(assetIdString.toUtf8().data(), current));
+                if (checkAsset.m_sizeBytes > 0)
+                {
+                    m_favoriteMap.insert(AZStd::make_pair(assetIdString.toUtf8().data(), current));
+                }
             }
 
             if (current->m_type == FavoriteData::DataType_Folder)
@@ -512,7 +538,10 @@ namespace SliceFavorites
                 ReadChildren(settings, current->m_children);
             }
 
-            currentList.push_back(current);
+            if (checkAsset.m_sizeBytes > 0)
+            {
+                currentList.push_back(current);
+            }
         }
 
         settings.endArray();
@@ -1333,8 +1362,12 @@ namespace SliceFavorites
                 if (!azstricmp(childNode->name(), FavoriteDataXMLTag))
                 {
                     FavoriteData* newFavorite = new FavoriteData();
-                    numFavoritesImported += newFavorite->LoadFromXML(childNode);
-                    m_rootItem->m_children.push_back(newFavorite);
+                    int numFavorites = newFavorite->LoadFromXML(childNode, m_rootItem.get());
+                    if (numFavorites)
+                    {
+                        numFavoritesImported += numFavorites;
+                        m_rootItem->m_children.push_back(newFavorite);
+                    }
                 }
             }
 
@@ -1376,6 +1409,11 @@ namespace SliceFavorites
         {
             RemoveFavorite(assetId);
         }
+    }
+
+    void FavoriteDataModel::OnAssetBrowserComponentReady()
+    {
+        LoadFavorites();
     }
 
     void FavoriteDataModel::RemoveFavorite(const AZ::Data::AssetId& assetId)

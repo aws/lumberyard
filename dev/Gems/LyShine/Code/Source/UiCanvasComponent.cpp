@@ -281,7 +281,7 @@ UiCanvasComponent::UiCanvasComponent()
     , m_drawOrder(0)
     , m_canvasSize(UiCanvasComponent::s_defaultCanvasSize)
     , m_targetCanvasSize(m_canvasSize)
-    , m_uniformDeviceScale(1.0f)
+    , m_deviceScale(1.0f, 1.0f)
     , m_isLoadedInGame(false)
     , m_keepLoadedOnLevelUnload(false)
     , m_enabled(true)
@@ -1013,9 +1013,9 @@ void UiCanvasComponent::SetTargetCanvasSize(bool isInGame, const AZ::Vector2& ta
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-float UiCanvasComponent::GetUniformDeviceScale()
+AZ::Vector2 UiCanvasComponent::GetDeviceScale()
 {
-    return m_uniformDeviceScale;
+    return m_deviceScale;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -3369,26 +3369,16 @@ AZStd::vector<AZ::EntityId> UiCanvasComponent::GetEntityIdsOfElementAndDescendan
 void UiCanvasComponent::SetTargetCanvasSizeAndUniformScale(bool isInGame, AZ::Vector2 canvasSize)
 {
     AZ::Vector2 oldTargetCanvasSize = m_targetCanvasSize;
-    float oldUniformDeviceScale = m_uniformDeviceScale;
+    AZ::Vector2 oldDeviceScale = m_deviceScale;
 
     if (isInGame)
     {
         // Set the target canvas size to the canvas size specified by the caller
         m_targetCanvasSize = canvasSize;
 
-        // set the uniform scale
-        float viewportAspectRatio = m_targetCanvasSize.GetX() / m_targetCanvasSize.GetY();
-        float canvasAspectRatio = m_canvasSize.GetX() / m_canvasSize.GetY();
-        if (viewportAspectRatio > canvasAspectRatio)
-        {
-            // viewport is more wide-screen that the canvas. So scale so that the y dimensions fit
-            m_uniformDeviceScale = m_targetCanvasSize.GetY() / m_canvasSize.GetY();
-        }
-        else
-        {
-            // viewport is less wide-screen that the canvas. So scale so that the x dimensions fit
-            m_uniformDeviceScale = m_targetCanvasSize.GetX() / m_canvasSize.GetX();
-        }
+        // set the device scale
+        m_deviceScale.SetX(m_targetCanvasSize.GetX() / m_canvasSize.GetX());
+        m_deviceScale.SetY(m_targetCanvasSize.GetY() / m_canvasSize.GetY());
     }
     else
     {
@@ -3399,12 +3389,12 @@ void UiCanvasComponent::SetTargetCanvasSizeAndUniformScale(bool isInGame, AZ::Ve
 
     // if the target canvas size or the uniform device scale changed then this will affect the
     // element transforms so force them to recompute
-    if (oldTargetCanvasSize != m_targetCanvasSize || oldUniformDeviceScale != m_uniformDeviceScale)
+    if (oldTargetCanvasSize != m_targetCanvasSize || oldDeviceScale != m_deviceScale)
     {
         UiTransformInterface::Recompute recompute;
         if (oldTargetCanvasSize != m_targetCanvasSize)
         {
-            recompute = (oldUniformDeviceScale != m_uniformDeviceScale) ? UiTransformInterface::Recompute::RectAndTransform : UiTransformInterface::Recompute::RectOnly;
+            recompute = (oldDeviceScale != m_deviceScale) ? UiTransformInterface::Recompute::RectAndTransform : UiTransformInterface::Recompute::RectOnly;
         }
         else
         {

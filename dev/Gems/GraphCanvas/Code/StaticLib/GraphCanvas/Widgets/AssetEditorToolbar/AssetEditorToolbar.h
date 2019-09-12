@@ -23,7 +23,11 @@ namespace Ui
 }
 
 namespace GraphCanvas
-{
+{    
+    class CommentPresetsMenuActionGroup;
+    class EditorContextMenu;
+    class NodeGroupPresetsMenuActionGroup;
+
     class AssetEditorToolbar
         : public QWidget
         , public AssetEditorNotificationBus::Handler
@@ -47,18 +51,26 @@ namespace GraphCanvas
         ////
 
     public Q_SLOTS:
+
+        void AddComment(bool checked);
+        void GroupSelection(bool checked);
+        void UngroupSelection(bool checked);
     
         // Alignment Tooling
         void AlignSelectedTop(bool checked);
         void AlignSelectedBottom(bool checked);
         
         void AlignSelectedLeft(bool checked);
-        void AlignSelectedRight(bool checked);
+        void AlignSelectedRight(bool checked);        
 
         // Organization Tooling
         void OrganizeTopLeft(bool checked);
         void OrganizeCentered(bool checked);
         void OrganizeBottomRight(bool checked);
+
+        // Context Menus
+        void OnCommentPresetsContextMenu(const QPoint& pos);
+        void OnNodeGroupPresetsContextMenu(const QPoint& pos);
         
     private:
 
@@ -66,6 +78,16 @@ namespace GraphCanvas
         void OrganizeSelected(const AlignConfig& alignConfig);
         
         void UpdateButtonStates();
+
+        void OnCommentMenuAboutToShow();
+        void OnNodeGroupMenuAboutToShow();
+        void OnPresetActionTriggered(QAction* action);        
+
+        EditorContextMenu*              m_commentPresetsMenu;
+        CommentPresetsMenuActionGroup*  m_commentPresetActionGroup;
+
+        EditorContextMenu*                  m_nodeGroupPresetsMenu;
+        NodeGroupPresetsMenuActionGroup*    m_nodeGroupPresetActionGroup;
         
         EditorId m_editorId;
         GraphId m_activeGraphId;

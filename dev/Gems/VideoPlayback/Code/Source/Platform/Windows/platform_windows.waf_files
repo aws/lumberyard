@@ -1,0 +1,10 @@
+{
+    "auto":
+    {
+        "Platform/Windows":
+        [
+            "VideoPlayback_Traits_Platform.h",
+            "VideoPlayback_Traits_Windows.h"
+        ]
+    }
+}

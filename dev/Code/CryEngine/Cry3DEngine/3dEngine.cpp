@@ -755,6 +755,8 @@ void C3DEngine::Tick()
 
     AZ::MainThreadRenderRequestBus::ExecuteQueuedEvents();
 
+    AZ::MaterialNotificationEventBus::ExecuteQueuedEvents();
+
     // clear stored cameras from last frame
     m_RenderingPassCameras[nThreadID].resize(0);
 }
@@ -1358,20 +1360,23 @@ void C3DEngine::EndOcclusion()
 #pragma warning( pop )                                  //AMD Port
 #endif
 
-IStatObj* C3DEngine::LoadStatObjUnsafeManualRef(const char* szFileName, const char* szGeomName /*= NULL*/, /*[Out]*/ IStatObj::SSubObject** ppSubObject /*= NULL*/, bool bUseStreaming /*= true*/, unsigned long nLoadingFlags /*= 0*/)
+IStatObj* C3DEngine::LoadStatObjUnsafeManualRef(const char* fileName, const char* geomName, IStatObj::SSubObject** subObject,
+    bool useStreaming, unsigned long loadingFlags, const void* data, int dataSize)
 {
-    return LoadStatObjInternal(szFileName, szGeomName, ppSubObject, bUseStreaming, nLoadingFlags, &CObjManager::LoadStatObjUnsafeManualRef);
+    return LoadStatObjInternal(fileName, geomName, subObject, useStreaming, loadingFlags, &CObjManager::LoadStatObjUnsafeManualRef, data, dataSize);
 }
 
-_smart_ptr<IStatObj> C3DEngine::LoadStatObjAutoRef(const char* szFileName, const char* szGeomName /*= NULL*/, /*[Out]*/ IStatObj::SSubObject** ppSubObject /*= NULL*/, bool bUseStreaming /*= true*/, unsigned long nLoadingFlags /*= 0*/)
+_smart_ptr<IStatObj> C3DEngine::LoadStatObjAutoRef(const char* fileName, const char* geomName, IStatObj::SSubObject** subObject,
+    bool useStreaming, unsigned long loadingFlags, const void* data, int dataSize)
 {
-    return LoadStatObjInternal(szFileName, szGeomName, ppSubObject, bUseStreaming, nLoadingFlags, &CObjManager::LoadStatObjAutoRef);
+    return LoadStatObjInternal(fileName, geomName, subObject, useStreaming, loadingFlags, &CObjManager::LoadStatObjAutoRef, data, dataSize);
 }
 
 template<typename TReturn>
-TReturn C3DEngine::LoadStatObjInternal(const char* szFileName, const char* szGeomName, IStatObj::SSubObject** ppSubObject, bool bUseStreaming, unsigned long nLoadingFlags, LoadStatObjFunc<TReturn> loadStatObjFunc)
+TReturn C3DEngine::LoadStatObjInternal(const char* fileName, const char* geomName, IStatObj::SSubObject** subObject, bool useStreaming,
+    unsigned long loadingFlags, LoadStatObjFunc<TReturn> loadStatObjFunc, const void* data, int dataSize)
 {
-    if (!szFileName || !szFileName[0])
+    if (!fileName || !fileName[0])
     {
         m_pSystem->Warning(VALIDATOR_MODULE_3DENGINE, VALIDATOR_ERROR, 0, 0, "I3DEngine::LoadStatObj: filename is not specified");
         return nullptr;
@@ -1382,8 +1387,8 @@ TReturn C3DEngine::LoadStatObjInternal(const char* szFileName, const char* szGeo
         m_pObjManager = CryAlignedNew<CObjManager>();
     }
 
-    CObjManager* pObjManager = (CObjManager*)m_pObjManager;
-    return (pObjManager->*loadStatObjFunc)(szFileName, szGeomName, ppSubObject, bUseStreaming, nLoadingFlags, nullptr, 0, nullptr);
+    CObjManager* pObjManager = static_cast<CObjManager*>(m_pObjManager);
+    return (pObjManager->*loadStatObjFunc)(fileName, geomName, subObject, useStreaming, loadingFlags, data, dataSize, nullptr);
 }
 
 void C3DEngine::LoadStatObjAsync(I3DEngine::LoadStaticObjectAsyncResult resultCallback, const char* szFileName, const char* szGeomName, bool bUseStreaming, unsigned long nLoadingFlags)
@@ -1754,11 +1759,11 @@ void C3DEngine::RemoveAllStaticObjects(int nSID)
     }
 }
 
-void C3DEngine::SetTerrainSectorTexture(const int nTexSectorX, const int nTexSectorY, unsigned int textureId)
+void C3DEngine::SetTerrainSectorTexture(const int nTexSectorX, const int nTexSectorY, unsigned int textureId, unsigned int textureSizeX, unsigned int textureSizeY)
 {
     if (m_pTerrain)
     {
-        m_pTerrain->SetTerrainSectorTexture(nTexSectorX, nTexSectorY, textureId, true);
+        m_pTerrain->SetTerrainSectorTexture(nTexSectorX, nTexSectorY, textureId, textureSizeX, textureSizeY, true);
     }
 }
 

@@ -1091,7 +1091,7 @@ TEST_F(ImageProcessingTest, EditorTextureSettingTest)
             }
             setting.m_settingsMap["pc"].m_sizeReduceLevel += 1;
             auto reducedResolutions = setting.GetResolutionInfoForMipmap("pc");
-            ASSERT_TRUE(resolutions.size() == reducedResolutions.size() + 1);
+            ASSERT_TRUE(resolutions.size() >= reducedResolutions.size());
         }
     };
     

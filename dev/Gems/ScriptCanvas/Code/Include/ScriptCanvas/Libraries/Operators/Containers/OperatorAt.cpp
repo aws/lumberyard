@@ -37,60 +37,97 @@ namespace ScriptCanvas
                 if (Data::IsVectorContainerType(GetSourceAZType()))
                 {
                     // Add the INDEX as the INPUT slot
-                    m_inputSlots.insert(AddInputDatumSlot("Index", "", Data::Type::Number(), Datum::eOriginality::Original, false));
+                    {
+                        DataSlotConfiguration slotConfiguration;
+
+                        slotConfiguration.m_name = "Index";
+                        slotConfiguration.m_displayGroup = GetSourceDisplayGroup();
+                        slotConfiguration.SetType(Data::Type::Number());
+                        slotConfiguration.SetConnectionType(ConnectionType::Input);
+
+                        m_inputSlots.insert(AddSlot(slotConfiguration));
+                    }
 
                     // Add the OUTPUT slots, most of the time there will only be one
-                    Data::Type type = Data::FromAZType(m_sourceTypes[0]);
-                    m_outputSlots.insert(AddOutputTypeSlot(Data::GetName(type), "The value at the specified index", type, Node::OutputStorage::Required, false));
+                    {
+                        Data::Type type = Data::FromAZType(m_sourceTypes[0]);
+
+                        DataSlotConfiguration slotConfiguration;
+
+                        slotConfiguration.m_name = Data::GetName(type);
+                        slotConfiguration.m_displayGroup = GetSourceDisplayGroup();
+                        slotConfiguration.SetType(type);
+                        slotConfiguration.SetConnectionType(ConnectionType::Output);
+
+                        m_outputSlots.insert(AddSlot(slotConfiguration));
+                    }
                 }
                 else if (Data::IsMapContainerType(GetSourceAZType()))
                 {
                     AZStd::vector<AZ::Uuid> types = ScriptCanvas::Data::GetContainedTypes(GetSourceAZType());
 
                     // Only add the KEY as INPUT slot
-                    m_inputSlots.insert(AddInputDatumSlot(Data::GetName(Data::FromAZType(types[0])), "", Data::FromAZType(types[0]), Datum::eOriginality::Original, false));
+                    {
+                        ScriptCanvas::Data::Type dataType = Data::FromAZType(types[0]);
+
+                        DataSlotConfiguration slotConfiguration;
+
+                        slotConfiguration.m_name = Data::GetName(dataType);
+                        slotConfiguration.SetType(dataType);
+                        slotConfiguration.SetConnectionType(ConnectionType::Input);
+
+                        m_inputSlots.insert(AddSlot(slotConfiguration));
+                    }
 
                     // Only add the VALUE as the OUTPUT slot
-                    Data::Type type = Data::FromAZType(types[1]);
-                    m_outputSlots.insert(AddOutputTypeSlot(Data::GetName(type), "The value at the specified index", type, Node::OutputStorage::Required, false));
+                    {
+                        Data::Type type = Data::FromAZType(types[1]);
+
+                        DataSlotConfiguration slotConfiguration;
+
+                        slotConfiguration.m_name = Data::GetName(type);
+                        slotConfiguration.m_toolTip = "The value at the specified index";
+                        slotConfiguration.SetType(type);
+                        slotConfiguration.SetConnectionType(ConnectionType::Output);
+
+                        m_outputSlots.insert(AddSlot(slotConfiguration));
+                    }
                 }
             }
 
             void OperatorAt::InvokeOperator()
             {
-                const SlotSet& slotSets = GetSourceSlots();
+                Slot* inputSlot = GetFirstInputSourceSlot();                
 
-                if (!slotSets.empty())
+                if (inputSlot)
                 {
-                    SlotId sourceSlotId = (*slotSets.begin());
-
-                    if (const Datum* containerDatum = GetInput(sourceSlotId))
+                    SlotId sourceSlotId = inputSlot->GetId();
+                    const Datum* containerDatum = GetInput(sourceSlotId);
+                    
+                    if (Datum::IsValidDatum(containerDatum))
                     {
-                        if (containerDatum && !containerDatum->Empty())
+                        const Datum* inputKeyDatum = GetInput(*m_inputSlots.begin());
+                        AZ::Outcome<Datum, AZStd::string> valueOutcome = BehaviorContextMethodHelper::CallMethodOnDatumUnpackOutcomeSuccess(*containerDatum, "At", *inputKeyDatum);
+                        if (!valueOutcome.IsSuccess())
                         {
-                            const Datum* inputKeyDatum = GetInput(*m_inputSlots.begin());
-                            AZ::Outcome<Datum, AZStd::string> valueOutcome = BehaviorContextMethodHelper::CallMethodOnDatumUnpackOutcomeSuccess(*containerDatum, "At", *inputKeyDatum);
-                            if (!valueOutcome.IsSuccess())
+                            SCRIPTCANVAS_REPORT_ERROR((*this), "Failed to get key in container: %s", valueOutcome.GetError().c_str());
+                            return;
+                        }
+
+                        if (Data::IsVectorContainerType(containerDatum->GetType()))
+                        {
+                            PushOutput(valueOutcome.TakeValue(), *GetSlot(*m_outputSlots.begin()));
+                        }
+                        else if (Data::IsSetContainerType(containerDatum->GetType()) || Data::IsMapContainerType(containerDatum->GetType()))
+                        {
+                            Datum keyDatum = valueOutcome.TakeValue();
+                            if (keyDatum.Empty())
                             {
-                                SCRIPTCANVAS_REPORT_ERROR((*this), "Failed to get key in container: %s", valueOutcome.GetError().c_str());
+                                SCRIPTCANVAS_REPORT_ERROR((*this), "Behavior Context call failed; unable to retrieve element from container.");
                                 return;
                             }
 
-                            if (Data::IsVectorContainerType(containerDatum->GetType()))
-                            {
-                                PushOutput(valueOutcome.TakeValue(), *GetSlot(*m_outputSlots.begin()));
-                            }
-                            else if (Data::IsSetContainerType(containerDatum->GetType()) || Data::IsMapContainerType(containerDatum->GetType()))
-                            {
-                                Datum keyDatum = valueOutcome.TakeValue();
-                                if (keyDatum.Empty())
-                                {
-                                    SCRIPTCANVAS_REPORT_ERROR((*this), "Behavior Context call failed; unable to retrieve element from container.");
-                                    return;
-                                }
-
-                                PushOutput(keyDatum, *GetSlot(*m_outputSlots.begin()));
-                            }
+                            PushOutput(keyDatum, *GetSlot(*m_outputSlots.begin()));
                         }
                     }
                 }

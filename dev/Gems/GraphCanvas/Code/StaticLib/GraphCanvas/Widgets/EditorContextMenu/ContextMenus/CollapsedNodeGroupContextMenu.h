@@ -23,7 +23,7 @@ namespace GraphCanvas
         : public EditorContextMenu
     {
     public:
-        CollapsedNodeGroupContextMenu(QWidget* parent = nullptr);
+        CollapsedNodeGroupContextMenu(EditorId editorId, QWidget* parent = nullptr);
         ~CollapsedNodeGroupContextMenu() override = default;
         
     protected:

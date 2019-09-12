@@ -9,11 +9,10 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#ifndef AZSTD_SEMAPHORE_APPLE_H
-#define AZSTD_SEMAPHORE_APPLE_H
+#pragma once
 
+#include "time_Apple.h"
 #include <AzCore/std/algorithm.h>
-#include <AzCore/std/parallel/internal/time_linux.h>
 #include <mach/kern_return.h>
 #include <unistd.h>
 
@@ -113,6 +112,3 @@ namespace AZStd
         return &m_semaphore;
     }
 }
-
-#endif // AZSTD_SEMAPHORE_APPLE_H
-#pragma once

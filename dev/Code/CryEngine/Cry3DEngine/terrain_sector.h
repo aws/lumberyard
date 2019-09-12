@@ -424,6 +424,8 @@ public:
         , m_pProcObjPoolPtr(0)
         , m_nGSMFrameId(0)
         , m_pRNTmpData(0)
+        , m_nEditorDiffuseTex(0)
+        , m_nEditorDiffuseTexSize(0)
     {
         memset(&m_DistanceToCamera, 0, sizeof(m_DistanceToCamera));
     }
@@ -443,7 +445,7 @@ public:
 
     bool CheckVis(bool bAllIN, bool bAllowRenderIntoCBuffer, const SRenderingPassInfo& passInfo);
 
-    void SetSectorTexture(unsigned int textureId);
+    void SetSectorTexture(unsigned int textureId, unsigned int textureSizeX, unsigned int textureSizeY);
 
     void CheckNodeGeomUnload(const SRenderingPassInfo& passInfo);
 
@@ -510,6 +512,7 @@ public:
     uint8 m_QueuedLOD, m_CurrentLOD, m_TextureLOD;
     uint8 m_nTreeLevel;
 
+    uint16 m_nEditorDiffuseTexSize;
     uint32 m_nEditorDiffuseTex;
 
     uint16 m_nOriginX, m_nOriginY;
@@ -595,7 +598,6 @@ private:
 
     static void GenerateIndicesForAllSurfaces(IRenderMesh * mesh, int surfaceAxisIndexCount[SurfaceTile::MaxSurfaceCount][4], BuildMeshData * meshData);
 };
-
 
 // Container to manager temp memory as well as running update jobs
 class CTerrainUpdateDispatcher

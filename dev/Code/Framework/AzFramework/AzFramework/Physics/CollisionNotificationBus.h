@@ -27,18 +27,19 @@ namespace Physics
     public:
         // Ebus Traits. ID'd on body1 entity Id
         static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::ById;
+        static const bool EnableEventQueue = true;
         using BusIdType = AZ::EntityId;
 
         virtual ~CollisionNotifications() {}
 
         /// Dispatched when two shapes start colliding.
-        virtual void OnCollisionBegin(const CollisionEvent& collisionEvent) {}
+        virtual void OnCollisionBegin(const CollisionEvent& /*collisionEvent*/) {}
 
         /// Dispatched when two shapes continue colliding.
-        virtual void OnCollisionPersist(const CollisionEvent& collisionEvent) {}
+        virtual void OnCollisionPersist(const CollisionEvent& /*collisionEvent*/) {}
 
         /// Dispatched when two shapes stop colliding.
-        virtual void OnCollisionEnd(const CollisionEvent& collisionEvent) {}
+        virtual void OnCollisionEnd(const CollisionEvent& /*collisionEvent*/) {}
     };
 
     /// Bus to service the PhysX Trigger Area Component event group.

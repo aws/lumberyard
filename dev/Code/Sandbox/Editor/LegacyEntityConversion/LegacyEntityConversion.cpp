@@ -421,7 +421,7 @@ namespace LegacyConversionInternal
 
         if (!objectIsProjectorLight && !objectIsPointLight && !objectIsAreaLight)
         {
-            AZ_Warning("Legacy Entity Converter", "Conversion failed for %s. Unknown type of Light", entityObject->GetName().toUtf8().data());
+            AZ_Warning("Legacy Entity Converter", false, "Conversion failed for %s. Unknown type of Light", entityObject->GetName().toUtf8().data());
             return LegacyConversionResult::Ignored;
         }
 
@@ -1693,5 +1693,6 @@ namespace AZ
         {
             return true;
         }
+
     }
 }

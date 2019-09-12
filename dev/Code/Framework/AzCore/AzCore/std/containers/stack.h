@@ -50,7 +50,6 @@ namespace AZStd
         AZ_FORCE_INLINE void pop()                      { m_container.pop_back(); }
         AZ_FORCE_INLINE void push()                     { m_container.push_back(); }
 
-#if defined(AZ_HAS_RVALUE_REFS)
         AZ_FORCE_INLINE stack(this_type&& rhs)
             : m_container(AZStd::move(rhs.m_container)) {}
         AZ_FORCE_INLINE explicit stack(Container&& container)
@@ -60,7 +59,6 @@ namespace AZStd
         template<class Args>
         void emplace(Args&& args)                   { m_container.emplace_back(AZStd::forward<Args>(args)); }
         void swap(this_type&& rhs)                  { m_container.swap(AZStd::move(rhs.m_container)); }
-#endif // AZ_HAS_RVALUE_REFS
 
         void swap(this_type& rhs)                   { AZStd::swap(m_container, rhs.m_container); }
 

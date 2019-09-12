@@ -10,6 +10,9 @@
 *
 */
 
+#include <Launcher_precompiled.h>
+#include <Launcher.h>
+
 #import <UIKit/UIKit.h>
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -18,14 +21,8 @@ int main(int argc, char* argv[])
     NSAutoreleasePool* pool = [[NSAutoreleasePool alloc] init];
     UIApplicationMain(argc,
                       argv,
-                      @"AppleTVLumberyardApplication",
-                      @"AppleTVLumberyardApplicationDelegate");
+                      @"LumberyardApplication_AppleTV",
+                      @"LumberyardApplicationDelegate_AppleTV");
     [pool release];
     return 0;
 }
-
-
-
-#if defined(AZ_MONOLITHIC_BUILD)
-#include <StaticModules.inl>
-#endif

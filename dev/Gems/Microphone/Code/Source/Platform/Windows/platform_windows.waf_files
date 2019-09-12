@@ -1,13 +1,9 @@
 {
     "auto":
     {
-        "Root":
+        "Platform/Windows":
         [
-        ],
-        "Source":
-        [
-            "Source/MicrophoneSystemComponent_windows.inl",
-            "Source/SimpleDownsample.cpp"
+            "MicrophoneSystemComponent_Windows.cpp"
         ]
     }
 }

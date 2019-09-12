@@ -10,9 +10,9 @@
 *
 */
 
-#include <AzFramework/API/ApplicationAPI_darwin.h>
+#include <AzFramework/API/ApplicationAPI_Platform.h>
 #include <AzFramework/Application/Application.h>
-#include <AzFramework/Input/Buses/Notifications/RawInputNotificationBus_darwin.h>
+#include <AzFramework/Input/Buses/Notifications/RawInputNotificationBus_Platform.h>
 
 #include <AppKit/NSApplication.h>
 #include <AppKit/NSEvent.h>
@@ -23,15 +23,15 @@
 namespace AzFramework
 {
     ////////////////////////////////////////////////////////////////////////////////////////////////
-    class ApplicationDarwin
+    class ApplicationMac
         : public Application::Implementation
         , public DarwinLifecycleEvents::Bus::Handler
     {
     public:
         ////////////////////////////////////////////////////////////////////////////////////////////
-        AZ_CLASS_ALLOCATOR(ApplicationDarwin, AZ::SystemAllocator, 0);
-        ApplicationDarwin();
-        ~ApplicationDarwin() override;
+        AZ_CLASS_ALLOCATOR(ApplicationMac, AZ::SystemAllocator, 0);
+        ApplicationMac();
+        ~ApplicationMac() override;
 
         ////////////////////////////////////////////////////////////////////////////////////////////
         // DarwinLifecycleEvents
@@ -119,17 +119,19 @@ namespace AzFramework
     ////////////////////////////////////////////////////////////////////////////////////////////////
     Application::Implementation* Application::Implementation::Create()
     {
-        return aznew ApplicationDarwin();
+        return aznew ApplicationMac();
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
     const char* Application::Implementation::GetAppRootPath()
     {
+        // We're returning nullptr here because certain tools applications currently depend on the
+        // app root path being determined by the fall-through case in Application::CalculateAppRoot
         return nullptr;
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
-    ApplicationDarwin::ApplicationDarwin()
+    ApplicationMac::ApplicationMac()
         : m_lastEvent(ApplicationLifecycleEvents::Event::None)
     {
         DarwinLifecycleEvents::Bus::Handler::BusConnect();
@@ -138,7 +140,7 @@ namespace AzFramework
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
-    ApplicationDarwin::~ApplicationDarwin()
+    ApplicationMac::~ApplicationMac()
     {
         ApplicationNotificationObserver::DeregisterForNotifications(m_notificationObserver);
         [m_notificationObserver release];
@@ -147,41 +149,41 @@ namespace AzFramework
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
-    void ApplicationDarwin::OnDidResignActive()
+    void ApplicationMac::OnDidResignActive()
     {
         EBUS_EVENT(ApplicationLifecycleEvents::Bus, OnApplicationConstrained, m_lastEvent);
         m_lastEvent = ApplicationLifecycleEvents::Event::Constrain;
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
-    void ApplicationDarwin::OnDidBecomeActive()
+    void ApplicationMac::OnDidBecomeActive()
     {
         EBUS_EVENT(ApplicationLifecycleEvents::Bus, OnApplicationUnconstrained, m_lastEvent);
         m_lastEvent = ApplicationLifecycleEvents::Event::Unconstrain;
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
-    void ApplicationDarwin::OnDidHide()
+    void ApplicationMac::OnDidHide()
     {
         EBUS_EVENT(ApplicationLifecycleEvents::Bus, OnApplicationSuspended, m_lastEvent);
         m_lastEvent = ApplicationLifecycleEvents::Event::Suspend;
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
-    void ApplicationDarwin::OnDidUnhide()
+    void ApplicationMac::OnDidUnhide()
     {
         EBUS_EVENT(ApplicationLifecycleEvents::Bus, OnApplicationResumed, m_lastEvent);
         m_lastEvent = ApplicationLifecycleEvents::Event::Resume;
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
-    void ApplicationDarwin::PumpSystemEventLoopOnce()
+    void ApplicationMac::PumpSystemEventLoopOnce()
     {
         ProcessNextSystemEvent();
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
-    void ApplicationDarwin::PumpSystemEventLoopUntilEmpty()
+    void ApplicationMac::PumpSystemEventLoopUntilEmpty()
     {
         bool eventProcessed = false;
         do
@@ -192,7 +194,7 @@ namespace AzFramework
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
-    bool ApplicationDarwin::ProcessNextSystemEvent()
+    bool ApplicationMac::ProcessNextSystemEvent()
     {
         @autoreleasepool
         {
@@ -202,7 +204,7 @@ namespace AzFramework
                                     dequeue: YES];
             if (event != nil)
             {
-                RawInputNotificationBusOsx::Broadcast(&RawInputNotificationsOsx::OnRawInputEvent, event);
+                RawInputNotificationBusMac::Broadcast(&RawInputNotificationsMac::OnRawInputEvent, event);
                 [NSApp sendEvent: event];
                 return true;
             }

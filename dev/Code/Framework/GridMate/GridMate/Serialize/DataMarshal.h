@@ -31,15 +31,10 @@ namespace GridMate
         switch (endianType)
         {
         case EndianType::BigEndian:
-                #if !defined(AZ_BIG_ENDIAN)
             AZStd::endian_swap(data);
-                #endif
             break;
 
         case EndianType::LittleEndian:
-                #if defined(AZ_BIG_ENDIAN)
-            AZStd::endian_swap(data);
-                #endif
             break;
 
         case EndianType::IgnoreEndian:

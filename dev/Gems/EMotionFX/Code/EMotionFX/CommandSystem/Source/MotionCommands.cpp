@@ -1208,8 +1208,6 @@ namespace CommandSystem
         for (size_t i = 0; i < numInst; ++i)
         {
             EMotionFX::AnimGraphInstance* animGraphInstance = EMotionFX::GetAnimGraphManager().GetAnimGraphInstance(i);
-            EMotionFX::AnimGraph* animGraph = animGraphInstance->GetAnimGraph();
-            EMotionFX::MotionSet* motionSet = animGraphInstance->GetMotionSet();
 
             animGraphInstance->UpdateUniqueData();
         }

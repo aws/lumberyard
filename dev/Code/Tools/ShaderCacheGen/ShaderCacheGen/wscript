@@ -24,5 +24,7 @@ def build(bld):
         client_only         = True,
         exclude_monolithic  = True,
         use            = ['AzGameFramework'],
-        defines        = ['_LAUNCHER', 'USE_CRY_NEW_AND_DELETE']
+        defines        = ['_LAUNCHER', 'USE_CRY_NEW_AND_DELETE'],
+        includes       = [bld.Path('Code/CryEngine/CryCommon')
+                         ]
     )

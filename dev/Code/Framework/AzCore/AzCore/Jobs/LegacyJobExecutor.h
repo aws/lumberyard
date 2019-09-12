@@ -16,7 +16,7 @@
 
 #include <AzCore/Debug/Profiler.h>
 #include <AzCore/Jobs/JobFunction.h>
-#include <AzCore/std/parallel/conditional_variable.h>
+#include <AzCore/std/parallel/condition_variable.h>
 #include <AzCore/std/smart_ptr/unique_ptr.h>
 
 namespace AZ

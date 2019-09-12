@@ -13,7 +13,6 @@
 
 #pragma once
 
-#include <BoostHelpers.h>
 #include <Serialization/Serializer.h>
 
 #include "ClassFactory.h"

@@ -14,10 +14,9 @@
 
 #include <AzCore/Component/Component.h>
 
-#include "EditorAssetRegistry.h"
-#include "RuntimeAssetRegistry.h"
 #include "EditorAssetConversionBus.h"
 #include <AzToolsFramework/AssetBrowser/AssetBrowserBus.h>
+#include <ScriptCanvas/Asset/AssetRegistry.h>
 
 namespace ScriptCanvasEditor
 {
@@ -54,11 +53,11 @@ namespace ScriptCanvasEditor
         AZ::Outcome<AZ::Data::Asset<ScriptCanvas::RuntimeAsset>, AZStd::string> CreateRuntimeAsset(AZStd::string_view graphPath) override;
         //////////////////////////////////////////////////////////////////////////
         
-        EditorAssetRegistry& GetAssetRegistry();
+        ScriptCanvas::AssetRegistry& GetAssetRegistry();
 
     private:
         EditorAssetSystemComponent(const EditorAssetSystemComponent&) = delete;
 
-        EditorAssetRegistry m_editorAssetRegistry;
+        ScriptCanvas::AssetRegistry m_editorAssetRegistry;
     };
 }

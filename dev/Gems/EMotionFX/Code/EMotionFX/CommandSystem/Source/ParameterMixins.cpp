@@ -41,6 +41,11 @@ namespace EMotionFX
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+    ParameterMixinActorId::ParameterMixinActorId(AZ::u32 actorId)
+        : m_actorId(actorId)
+    {
+    }
+
     void ParameterMixinActorId::Reflect(AZ::ReflectContext* context)
     {
         AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
@@ -74,7 +79,7 @@ namespace EMotionFX
         return true;
     }
 
-    Actor* ParameterMixinActorId::GetActor(MCore::Command* command, AZStd::string& outResult) const
+    Actor* ParameterMixinActorId::GetActor(const MCore::Command* command, AZStd::string& outResult) const
     {
         Actor* result = GetEMotionFX().GetActorManager()->FindActorByID(m_actorId);
         if (!result)
@@ -86,6 +91,11 @@ namespace EMotionFX
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    ParameterMixinJointName::ParameterMixinJointName(const AZStd::string& jointName)
+        : m_jointName(jointName)
+    {
+    }
 
     void ParameterMixinJointName::Reflect(AZ::ReflectContext* context)
     {
@@ -157,6 +167,7 @@ namespace EMotionFX
 
     AnimGraph* ParameterMixinAnimGraphId::GetAnimGraph(MCore::Command* command, AZStd::string& outResult) const
     {
+        AZ_UNUSED(command);
         EMotionFX::AnimGraph* animGraph = EMotionFX::GetAnimGraphManager().FindAnimGraphByID(m_animGraphId);
         if (!animGraph)
         {
@@ -215,6 +226,7 @@ namespace EMotionFX
 
     AnimGraphStateTransition* ParameterMixinTransitionId::GetTransition(const AnimGraph* animGraph, const MCore::Command* command, AZStd::string& outResult) const
     {
+        AZ_UNUSED(command);
         if (!animGraph)
         {
             outResult = "Cannot get transition. Anim graph is invalid.";
@@ -285,6 +297,7 @@ namespace EMotionFX
 
     AnimGraphNode* ParameterMixinAnimGraphNodeId::GetNode(const AnimGraph* animGraph, const MCore::Command* command, AZStd::string& outResult) const
     {
+        AZ_UNUSED(command);
         if (!animGraph)
         {
             outResult = "Cannot get node. Anim graph is invalid.";

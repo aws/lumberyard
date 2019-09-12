@@ -125,7 +125,9 @@ namespace AzQtComponents
         //! new location.
         void insertColorsIgnoringDuplicates(int index, QVector<AZ::Color>::const_iterator first, QVector<AZ::Color>::const_iterator last);
 
+        AZ_PUSH_DISABLE_WARNING(4251, "-Wunknown-warning-option") // 4251: 'AzQtComponents::Palette::m_colors': class 'QVector<AZ::Color>' needs to have dll-interface to be used by clients of class 'AzQtComponents::Palette'
         QVector<AZ::Color> m_colors;
+        AZ_POP_DISABLE_WARNING
     };
 
     QDataStream& operator<<(QDataStream& out, const Palette& palette);

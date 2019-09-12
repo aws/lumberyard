@@ -72,7 +72,7 @@ namespace LmbrCentral
                 .SetKeySequence(QKeySequence(Qt::Key_R))
                 .SetTitle(s_resetRadiiTitle)
                 .SetTip(s_resetRadiiDesc)
-                .SetEntityComponentIdPair(AZ::EntityComponentIdPair(GetEntityId(), GetComponentId()))
+                .SetEntityComponentIdPair(GetEntityComponentIdPair())
                 .SetCallback([this]()
             {
                 const AZ::EntityId entityId = GetEntityId();
@@ -88,6 +88,8 @@ namespace LmbrCentral
 
                 EditorTubeShapeComponentRequestBus::Event(
                     entityId, &EditorTubeShapeComponentRequests::GenerateVertices);
+
+                AzToolsFramework::OnEntityComponentPropertyChanged(GetEntityComponentIdPair());
 
                 // ensure property grid values are refreshed
                 AzToolsFramework::ToolsApplicationNotificationBus::Broadcast(
@@ -129,7 +131,7 @@ namespace LmbrCentral
                 radius, entityId, &TubeShapeComponentRequests::GetTotalRadius, tubeManipulatorState.m_splineAddress);
 
             auto linearManipulator = AzToolsFramework::LinearManipulator::MakeShared(m_currentTransform);
-            linearManipulator->AddEntityId(entityId);
+            linearManipulator->AddEntityComponentIdPair(GetEntityComponentIdPair());
             linearManipulator->SetLocalTransform(AZ::Transform::CreateTranslation(position + normal * radius));
             linearManipulator->SetAxis(normal);
 
@@ -155,7 +157,7 @@ namespace LmbrCentral
                 float variableRadius = 0.0f;
                 TubeShapeComponentRequestsBus::EventResult(
                     variableRadius, entityId,
-                    &TubeShapeComponentRequests::GetVariableRadius, tubeManipulatorState.m_vertIndex);
+                    &TubeShapeComponentRequests::GetVariableRadius, static_cast<int>(tubeManipulatorState.m_vertIndex));
 
                 // the base radius of the tube (when no variable radii are applied)
                 float fixedRadius = 0.0f;
@@ -171,13 +173,12 @@ namespace LmbrCentral
                 (const AzToolsFramework::LinearManipulator::Action& action)
             {
                 const AZ::EntityId entityId = GetEntityId();
-
                 const AZ::VectorFloat axisDisplacement = action.LocalPositionOffset().Dot(action.m_fixed.m_axis);
 
                 // set clamped variable radius, it can be no more than the inverse
                 // of the base/fixed radius of the tube
                 TubeShapeComponentRequestsBus::Event(
-                    entityId, &TubeShapeComponentRequests::SetVariableRadius, tubeManipulatorState.m_vertIndex,
+                    entityId, &TubeShapeComponentRequests::SetVariableRadius, static_cast<int>(tubeManipulatorState.m_vertIndex),
                     (sharedState->m_startingVariableRadius + axisDisplacement).GetMax(-sharedState->m_startingFixedRadius));
 
                 bool found = false;
@@ -201,11 +202,6 @@ namespace LmbrCentral
 
                 EditorTubeShapeComponentRequestBus::Event(
                     entityId, &EditorTubeShapeComponentRequests::GenerateVertices);
-
-                // ensure property grid values are refreshed
-                AzToolsFramework::ToolsApplicationNotificationBus::Broadcast(
-                    &AzToolsFramework::ToolsApplicationNotificationBus::Events::InvalidatePropertyDisplay,
-                    AzToolsFramework::Refresh_Values);
             });
 
             m_radiusManipulators.emplace_back(std::move(linearManipulator));

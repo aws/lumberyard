@@ -10,7 +10,7 @@
 *
 */
 
-#include <AzFramework/API/ApplicationAPI_win.h>
+#include <AzFramework/API/ApplicationAPI_Platform.h>
 #include <AzFramework/Application/Application.h>
 
 #include <Windows.h>

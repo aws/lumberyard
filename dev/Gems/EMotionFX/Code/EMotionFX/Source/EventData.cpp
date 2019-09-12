@@ -10,7 +10,12 @@
 *
 */
 
-#include "Allocators.h"
+#include <AzCore/PlatformDef.h>
+#if defined(AZ_COMPILER_MSVC)
+    #pragma warning(push)
+    #pragma warning(disable : 4714)
+#endif
+
 #include "EventData.h"
 
 #include <AzCore/Serialization/SerializeContext.h>
@@ -48,5 +53,15 @@ namespace EMotionFX
                 ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
             ;
     }
+
+    AZStd::string EventData::ToString() const
+    {
+        AZ::Outcome<AZStd::string> eventDataString = MCore::ReflectionSerializer::SerializeIntoCommandLine(this);
+        return eventDataString.GetValueOr("");
+    }
 } // end namespace EMotionFX
+
+#if defined(AZ_COMPILER_MSVC)
+    #pragma warning(pop)
+#endif
 

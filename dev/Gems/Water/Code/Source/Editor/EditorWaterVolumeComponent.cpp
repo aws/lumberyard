@@ -277,7 +277,7 @@ namespace Water
                 editContext->Class<EditorWaterVolumeComponent>("Water Volume", "A volume that represents a small body of water.")
                     ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
                     ->Attribute(AZ::Edit::Attributes::Category, "Environment")
-                    ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/WaterVolume.png")
+                    ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/WaterVolume.svg")
                     ->Attribute(AZ::Edit::Attributes::ViewportIcon, "Editor/Icons/Components/Viewport/WaterVolume.png")
                     ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
                     ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("Game", 0x232b318c))

@@ -135,7 +135,7 @@ namespace LmbrCentral
 
     const char* LensFlareAssetHandler::GetBrowserIcon() const
     {
-        return "Editor/Icons/Components/LensFlare.png";
+        return "Editor/Icons/Components/LensFlare.svg";
     }
 
     AZ::Uuid LensFlareAssetHandler::GetComponentTypeId() const

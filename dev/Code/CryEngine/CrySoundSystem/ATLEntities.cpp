@@ -14,39 +14,12 @@
 #include "StdAfx.h"
 #include "ATLEntities.h"
 
+#include <AzCore/AzCore_Traits_Platform.h>
+
 namespace Audio
 {
     ///////////////////////////////////////////////////////////////////////////////////////////////////
-    #if defined(AZ_PLATFORM_WINDOWS)
-    const char* const SATLXmlTags::sPlatform = "Windows";
-#define AZ_RESTRICTED_SECTION_IMPLEMENTED
-    #elif defined(AZ_PLATFORM_APPLE_OSX)
-    const char* const SATLXmlTags::sPlatform = "Mac";
-#define AZ_RESTRICTED_SECTION_IMPLEMENTED
-    #elif defined(AZ_PLATFORM_LINUX_X64)
-    const char* const SATLXmlTags::sPlatform = "Linux";
-#define AZ_RESTRICTED_SECTION_IMPLEMENTED
-    #elif defined(AZ_PLATFORM_ANDROID)
-    const char* const SATLXmlTags::sPlatform = "Android";
-#define AZ_RESTRICTED_SECTION_IMPLEMENTED
-    #elif defined(AZ_PLATFORM_APPLE_IOS)
-    const char* const SATLXmlTags::sPlatform = "iOS";
-#define AZ_RESTRICTED_SECTION_IMPLEMENTED
-    #elif defined(AZ_PLATFORM_APPLE_TV)
-    const char* const SATLXmlTags::sPlatform = "AppleTV";
-#define AZ_RESTRICTED_SECTION_IMPLEMENTED
-#elif defined(AZ_RESTRICTED_PLATFORM)
-    #if defined(AZ_PLATFORM_XENIA)
-        #include "Xenia/ATLEntities_cpp_xenia.inl"
-    #elif defined(AZ_PLATFORM_PROVO)
-        #include "Provo/ATLEntities_cpp_provo.inl"
-    #endif
-#endif
-#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
-#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
-    #else
-    #error "Unsupported platform."
-    #endif
+    const char* const SATLXmlTags::sPlatform = AZ_TRAIT_OS_PLATFORM_NAME;
 
     const char* const SATLXmlTags::sRootNodeTag = "ATLConfig";
     const char* const SATLXmlTags::sTriggersNodeTag = "AudioTriggers";

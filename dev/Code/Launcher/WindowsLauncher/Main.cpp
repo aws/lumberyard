@@ -130,7 +130,6 @@ int RunGame(const char* commandLine, CEngineConfig& engineCfg, const char* szExe
 
     engineCfg.CopyToStartupParams(startupParams);
 
-#if defined(AZ_PLATFORM_WINDOWS)
     char root[AZ_MAX_PATH_LEN];
     // Override the branch token to be the actual running branch instead of the one in the file:
     if (_fullpath(root, engineCfg.m_rootFolder.c_str(), AZ_MAX_PATH_LEN))
@@ -141,7 +140,6 @@ int RunGame(const char* commandLine, CEngineConfig& engineCfg, const char* szExe
         AZ::Crc32 branchTokenCrc(devRoot.c_str(), devRoot.size(), false);
         azsnprintf(startupParams.branchToken, 12, "0x%08X", static_cast<AZ::u32>(branchTokenCrc));
     }
-#endif
 
     // on PC, we also might have access to the asset cache directly, in which case, go look there.
     // if we don't have access to the asset cache, default back to the original behavior.
@@ -296,7 +294,6 @@ int RunGame(const char* commandLine, CEngineConfig& engineCfg, const char* szExe
 //////////////////////////////////////////////////////////////////////////
 // Support relaunching for windows media center edition.
 //////////////////////////////////////////////////////////////////////////
-#if defined(WIN32)
 #if (_WIN32_WINNT < 0x0501)
 #define SM_MEDIACENTER          87
 #endif
@@ -325,12 +322,10 @@ bool ReLaunchMediaCenter()
     INT_PTR result = (INT_PTR)ShellExecute(NULL, TEXT("open"), szExpandedPath, NULL, NULL, SW_SHOWNORMAL);
     return (result > 32);
 }
-#endif //defined(WIN32)
 
 
 //////////////////////////////////////////////
 
-#if defined(AZ_PLATFORM_WINDOWS)
 //Due to some laptops not autoswitching to the discrete gpu correctly we are adding these 
 //dllspecs as defined in the amd and nvidia white papers to 'force on' the use of the 
 //discrete chips.  This will be overriden by users setting application profiles 
@@ -346,7 +341,7 @@ extern "C"
     __declspec(dllexport) int AmdPowerXpressRequestHighPerformance = 1;
     __declspec(dllexport) DWORD NvOptimusEnablement = 0x00000001;
 }
-#endif
+
 int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
 {
     char szExeFileName[AZ_MAX_PATH_LEN];
@@ -433,12 +428,10 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
         //////////////////////////////////////////////////////////////////////////
         // Support relaunching for windows media center edition.
         //////////////////////////////////////////////////////////////////////////
-#if defined(WIN32)
         if (strstr(lpCmdLine, "ReLaunchMediaCenter") != 0)
         {
             ReLaunchMediaCenter();
         }
-#endif // win32
         //////////////////////////////////////////////////////////////////////////
     } // scoped to get rid of any stack (and any heap they allocated) before we tear down gameapp and thus memory management.
 

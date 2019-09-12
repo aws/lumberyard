@@ -46,6 +46,11 @@ namespace ScriptEvents
 
         Parameter(AZ::ScriptDataContext& dc)
         {
+            FromScript(dc);
+        }
+
+        void FromScript(AZ::ScriptDataContext& dc)
+        {
             if (dc.GetNumArguments() > 0)
             {
                 AZStd::string name;

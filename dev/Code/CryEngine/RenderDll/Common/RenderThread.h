@@ -377,7 +377,7 @@ struct SRenderThread
         if (m_pThread != NULL)
         {
             int32 renderThreadPriority = RENDER_THREAD_PRIORITY;
-#if defined(AZ_PLATFORM_APPLE_IOS) || defined(AZ_PLATFORM_APPLE_OSX)
+#if defined(AZ_PLATFORM_IOS) || defined(AZ_PLATFORM_MAC)
             //Apple recommends to never use 0 as a render thread priority.
             //In this case we are getting the max thread priority and going 2 levels below for ideal performance.
             int thread_policy;

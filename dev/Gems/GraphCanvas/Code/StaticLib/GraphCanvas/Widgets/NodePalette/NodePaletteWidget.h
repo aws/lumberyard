@@ -42,7 +42,7 @@ namespace GraphCanvas
     class GraphCanvasMimeEvent;
     class NodePaletteSortFilterProxyModel;
     class NodePaletteDockWidget;
-
+    
     class NodePaletteTreeDelegate : public IconDecoratedNameDelegate
     {
     public:
@@ -63,6 +63,8 @@ namespace GraphCanvas
 
         bool m_isInContextMenu = false;
         bool m_clearSelectionOnSceneChange = true;
+
+        bool m_allowArrowKeyNavigation = true;
     };
 
     class NodePaletteWidget
@@ -110,6 +112,10 @@ namespace GraphCanvas
         QTreeView* GetTreeView() const;
         ////
 
+        // QWidget
+        bool eventFilter(QObject* object, QEvent* event) override;
+        ////
+
     protected:        
 
         // This method here is to help facilitate resetting the model. This will not be called during
@@ -144,6 +150,7 @@ namespace GraphCanvas
         AZStd::string m_saveIdentifier;
 
         bool m_isInContextMenu;
+        bool m_searchFieldSelectionChange;
 
         AZStd::unique_ptr<Ui::NodePaletteWidget> m_ui;
         NodePaletteTreeDelegate* m_itemDelegate;

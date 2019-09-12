@@ -10,13 +10,12 @@
 *
 */
 #include <fstream>
-#include <sys/time.h>
 #include <sys/stat.h>
-#include <utime.h>
-#include <fcntl.h>
 #include <dirent.h>
-#include <AzCore/std/string/osstring.h>
 #include <unistd.h>
+#include <AzFramework/IO/LocalFileIO.h>
+#include <AzCore/IO/SystemFile.h>
+#include <AzCore/std/functional.h>
 
 namespace AZ
 {
@@ -69,7 +68,7 @@ namespace AZ
             AZ::OSString withoutSlash = RemoveTrailingSlash(resolvedPath);
             DIR* dir = opendir(withoutSlash.c_str());
 
-            if (dir != NULL)
+            if (dir != nullptr)
             {
                 // because the absolute path might actually be SHORTER than the alias ("c:/r/dev" -> "@devroot@"), we need to
                 // use a static buffer here.

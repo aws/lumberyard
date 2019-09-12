@@ -1,0 +1,16 @@
+{
+  "auto": {
+    "Source/BehaviorContext/Platform/iOS": [
+      "../Common/Multiplayer/BehaviorContext/GridSystemContext_Unimplemented.cpp"
+    ],
+    "Source/MultiplayerLobbyServiceWrapper/Platform/iOS": [
+      "../Common/Multiplayer/MultiplayerLobbyComponent_Unimplemented.cpp"
+    ],
+    "Platform/iOS": [
+      "Multiplayer_GridMateServiceWrapper_Platform.h",
+      "Multiplayer_GridMateServiceWrapper_iOS.h",
+      "Multiplayer_Traits_Platform.h",
+      "Multiplayer_Traits_iOS.h"
+    ]
+  }
+}

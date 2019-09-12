@@ -22,8 +22,8 @@ namespace ScriptCanvas
         // RandomColor
         AZ_INLINE void SetRandomColorDefaults(Node& node)
         {
-            Node::SetDefaultValuesByIndex<0>::_(node, Data::ColorType(0.f, 0.f, 0.f, 1.0f));
-            Node::SetDefaultValuesByIndex<1>::_(node, Data::ColorType(1.f, 1.f, 1.f, 1.0f));
+            SetDefaultValuesByIndex<0>::_(node, Data::ColorType(0.f, 0.f, 0.f, 1.0f));
+            SetDefaultValuesByIndex<1>::_(node, Data::ColorType(1.f, 1.f, 1.f, 1.0f));
         }
 
         AZ_INLINE Data::ColorType RandomColor(Data::ColorType minValue, Data::ColorType maxValue)
@@ -39,12 +39,13 @@ namespace ScriptCanvas
         // RandomGrayscale
         AZ_INLINE void SetRandomGrayscaleDefaults(Node& node)
         {
-            Node::SetDefaultValuesByIndex<1>::_(node, Data::NumberType(1.));
+            SetDefaultValuesByIndex<0>::_(node, Data::NumberType(0.f));
+            SetDefaultValuesByIndex<1>::_(node, Data::NumberType(255.f));
         }
 
         AZ_INLINE Data::ColorType RandomGrayscale(Data::NumberType minValue, Data::NumberType maxValue)
         {
-            float rgb = MathNodeUtilities::GetRandomReal<float>(aznumeric_cast<float>(minValue), aznumeric_cast<float>(maxValue));
+            float rgb = MathNodeUtilities::GetRandomReal<float>(aznumeric_cast<float>(minValue) / 255.f, aznumeric_cast<float>(maxValue) / 255.f);
             return Data::ColorType(rgb, rgb, rgb, 1.f);
         }
         SCRIPT_CANVAS_GENERIC_FUNCTION_NODE_WITH_DEFAULTS(RandomGrayscale, SetRandomGrayscaleDefaults, "Math/Random", "{0488EFC7-3291-483E-A087-81DE0C29B9B9}", "Returns a random grayscale color between [Min, Max] intensities", "Min", "Max");
@@ -52,7 +53,7 @@ namespace ScriptCanvas
         // RandomInteger
         AZ_INLINE void SetRandomIntegerDefaults(Node& node)
         {
-            Node::SetDefaultValuesByIndex<1>::_(node, Data::NumberType(1.));
+            SetDefaultValuesByIndex<1>::_(node, Data::NumberType(1.));
         }
 
         AZ_INLINE Data::NumberType RandomInteger(Data::NumberType minValue, Data::NumberType maxValue)
@@ -64,7 +65,7 @@ namespace ScriptCanvas
         // RandomNumber
         AZ_INLINE void SetRandomNumberDefaults(Node& node)
         {
-            Node::SetDefaultValuesByIndex<1>::_(node, Data::NumberType(1.));
+            SetDefaultValuesByIndex<1>::_(node, Data::NumberType(1.));
         }
 
         AZ_INLINE Data::NumberType RandomNumber(Data::NumberType minValue, Data::NumberType maxValue)
@@ -76,7 +77,7 @@ namespace ScriptCanvas
         // RandomPointInBox
         AZ_INLINE void SetRandomPointInBoxDefaults(Node& node)
         {
-            Node::SetDefaultValuesByIndex<0>::_(node, Data::Vector3Type(1.f, 1.f, 1.f));
+            SetDefaultValuesByIndex<0>::_(node, Data::Vector3Type(1.f, 1.f, 1.f));
         }
 
         AZ_INLINE Data::Vector3Type RandomPointInBox(Data::Vector3Type dimensions)
@@ -92,7 +93,7 @@ namespace ScriptCanvas
         // RandomPointOnCircle
         AZ_INLINE void SetRandomPointOnCircleDefaults(Node& node)
         {
-            Node::SetDefaultValuesByIndex<0>::_(node, Data::NumberType(1.));
+            SetDefaultValuesByIndex<0>::_(node, Data::NumberType(1.));
         }
 
         AZ_INLINE Data::Vector3Type RandomPointOnCircle(Data::NumberType radius)
@@ -110,8 +111,8 @@ namespace ScriptCanvas
         // RandomPointInCone
         AZ_INLINE void SetRandomPointInConeDefaults(Node& node)
         {
-            Node::SetDefaultValuesByIndex<0>::_(node, Data::NumberType(1.));
-            Node::SetDefaultValuesByIndex<1>::_(node, Data::NumberType(45.));
+            SetDefaultValuesByIndex<0>::_(node, Data::NumberType(1.));
+            SetDefaultValuesByIndex<1>::_(node, Data::NumberType(45.));
         }
 
         AZ_INLINE Data::Vector3Type RandomPointInCone(Data::NumberType radius, Data::NumberType angleInDegrees)
@@ -138,8 +139,8 @@ namespace ScriptCanvas
         // RandomPointInCylinder
         AZ_INLINE void SetRandomPointInCylinderDefaults(Node& node)
         {
-            Node::SetDefaultValuesByIndex<0>::_(node, Data::NumberType(1.));
-            Node::SetDefaultValuesByIndex<1>::_(node, Data::NumberType(1.));
+            SetDefaultValuesByIndex<0>::_(node, Data::NumberType(1.));
+            SetDefaultValuesByIndex<1>::_(node, Data::NumberType(1.));
         }
 
         AZ_INLINE Data::Vector3Type RandomPointInCylinder(Data::NumberType radius, Data::NumberType height)
@@ -161,7 +162,7 @@ namespace ScriptCanvas
         // RandomPointInCircle
         AZ_INLINE void SetRandomPointInCircleDefaults(Node& node)
         {
-            Node::SetDefaultValuesByIndex<0>::_(node, Data::NumberType(1.));
+            SetDefaultValuesByIndex<0>::_(node, Data::NumberType(1.));
         }
 
         AZ_INLINE Data::Vector3Type RandomPointInCircle(Data::NumberType radius)
@@ -179,7 +180,7 @@ namespace ScriptCanvas
         // RandomPointInEllipsoid
         AZ_INLINE void SetRandomPointInEllipsoidDefaults(Node& node)
         {
-            Node::SetDefaultValuesByIndex<0>::_(node, Data::Vector3Type(1.f, 1.f, 1.f));
+            SetDefaultValuesByIndex<0>::_(node, Data::Vector3Type(1.f, 1.f, 1.f));
         }
 
         AZ_INLINE Data::Vector3Type RandomPointInEllipsoid(Data::Vector3Type dimensions)
@@ -204,7 +205,7 @@ namespace ScriptCanvas
         // RandomPointInSphere
         AZ_INLINE void SetRandomPointInSphereDefaults(Node& node)
         {
-            Node::SetDefaultValuesByIndex<0>::_(node, Data::NumberType(1.));
+            SetDefaultValuesByIndex<0>::_(node, Data::NumberType(1.));
         }
 
         AZ_INLINE Data::Vector3Type RandomPointInSphere(Data::NumberType radius)
@@ -229,7 +230,7 @@ namespace ScriptCanvas
         // RandomPointInSquare
         AZ_INLINE void SetRandomPointInSquareDefaults(Node& node)
         {
-            Node::SetDefaultValuesByIndex<0>::_(node, Data::Vector2Type(1.f, 1.f));
+            SetDefaultValuesByIndex<0>::_(node, Data::Vector2Type(1.f, 1.f));
         }
 
         AZ_INLINE Data::Vector3Type RandomPointInSquare(Data::Vector2Type dimensions)
@@ -245,7 +246,7 @@ namespace ScriptCanvas
         // RandomPointOnSphere
         AZ_INLINE void SetRandomPointOnSphereDefaults(Node& node)
         {
-            Node::SetDefaultValuesByIndex<0>::_(node, Data::NumberType(1.));
+            SetDefaultValuesByIndex<0>::_(node, Data::NumberType(1.));
         }
 
         AZ_INLINE Data::Vector3Type RandomPointOnSphere(Data::NumberType radius)
@@ -270,7 +271,7 @@ namespace ScriptCanvas
         // RandomQuaternion
         AZ_INLINE void SetRandomQuaternionDefaults(Node& node)
         {
-            Node::SetDefaultValuesByIndex<1>::_(node, Data::NumberType(AZ::Constants::TwoPi));
+            SetDefaultValuesByIndex<1>::_(node, Data::NumberType(AZ::Constants::TwoPi));
         }
 
         AZ_INLINE Data::QuaternionType RandomQuaternion(Data::NumberType minValue, Data::NumberType maxValue)
@@ -320,7 +321,7 @@ namespace ScriptCanvas
         // RandomVector2
         AZ_INLINE void SetRandomVector2Defaults(Node& node)
         {
-            Node::SetDefaultValuesByIndex<1>::_(node, Data::Vector2Type(1.f, 1.f));
+            SetDefaultValuesByIndex<1>::_(node, Data::Vector2Type(1.f, 1.f));
         }
 
         AZ_INLINE Data::Vector2Type RandomVector2(Data::Vector2Type minValue, Data::Vector2Type maxValue)
@@ -333,7 +334,7 @@ namespace ScriptCanvas
         // RandomVector3
         AZ_INLINE void SetRandomVector3Defaults(Node& node)
         {
-            Node::SetDefaultValuesByIndex<1>::_(node, Data::Vector3Type(1.f, 1.f, 1.f));
+            SetDefaultValuesByIndex<1>::_(node, Data::Vector3Type(1.f, 1.f, 1.f));
         }
 
         AZ_INLINE Data::Vector3Type RandomVector3(Data::Vector3Type minValue, Data::Vector3Type maxValue)
@@ -347,7 +348,7 @@ namespace ScriptCanvas
         // RandomVector4
         AZ_INLINE void SetRandomVector4Defaults(Node& node)
         {
-            Node::SetDefaultValuesByIndex<1>::_(node, Data::Vector4Type(1.f, 1.f, 1.f, 1.f));
+            SetDefaultValuesByIndex<1>::_(node, Data::Vector4Type(1.f, 1.f, 1.f, 1.f));
         }
 
         AZ_INLINE Data::Vector4Type RandomVector4(Data::Vector4Type minValue, Data::Vector4Type maxValue)

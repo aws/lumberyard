@@ -201,6 +201,10 @@ namespace AzToolsFramework
             bool IsSubsliceEntity() const override;
             bool IsSliceRoot() const override;
             bool IsSubsliceRoot() const override;
+            //Does this entity have any children added or deleted. Ignore any other kind of change.
+            bool HasSliceEntityAnyChildrenAddedOrDeleted() const override;
+            // Does the entity have any property changes in its top level. Ignore any changes in children.
+            bool HasSliceEntityPropertyOverridesInTopLevel() const override;
             bool HasSliceEntityOverrides() const override;
             bool HasSliceChildrenOverrides() const override;
             bool HasSliceAnyOverrides() const override;
@@ -258,16 +262,18 @@ namespace AzToolsFramework
 
             enum SliceFlags
             {
-                SliceFlag_None     = 0,
-                SliceFlag_Entity   = 1 << 0,
-                SliceFlag_Root     = 1 << 1,
+                SliceFlag_None = 0,
+                SliceFlag_Entity = 1 << 0,
+                SliceFlag_Root = 1 << 1,
                 SliceFlag_Subslice = 1 << 2,
 
-                SliceFlag_EntityNameOverridden          = 1 << 3, // special case since it's not saved in a component
-                SliceFlag_EntityActivationOverridden    = 1 << 4, // special case since it's not saved in a component
-                SliceFlag_EntityComponentsOverridden    = 1 << 5,
+                SliceFlag_EntityNameOverridden = 1 << 3, // special case since it's not saved in a component
+                SliceFlag_EntityActivationOverridden = 1 << 4, // special case since it's not saved in a component
+                SliceFlag_EntityComponentsOverridden = 1 << 5,
+                SliceFlag_EntityHasAdditionsDeletions = 1 << 6, 
 
-                SliceFlag_EntityHasOverrides    = (SliceFlag_EntityNameOverridden | SliceFlag_EntityActivationOverridden | SliceFlag_EntityComponentsOverridden),
+                SliceFlag_EntityHasNonChildOverrides = (SliceFlag_EntityNameOverridden | SliceFlag_EntityActivationOverridden | SliceFlag_EntityComponentsOverridden),
+                SliceFlag_EntityHasOverrides    = (SliceFlag_EntityNameOverridden | SliceFlag_EntityActivationOverridden | SliceFlag_EntityComponentsOverridden | SliceFlag_EntityHasAdditionsDeletions),
 
                 SliceFlag_SliceRoot       = (SliceFlag_Entity | SliceFlag_Root),
                 SliceFlag_SubsliceRoot    = (SliceFlag_Entity | SliceFlag_Root | SliceFlag_Subslice),
@@ -284,6 +290,8 @@ namespace AzToolsFramework
 
             bool CanProcessOverrides() const;
 
+            void AddChildAddedDeleted(AZ::ComponentId componentId);
+            void RemoveChildAddedDeleted(AZ::ComponentId componentId);
             void AddOverriddenComponent(AZ::ComponentId componentId);
             void RemoveOverriddenComponent(AZ::ComponentId componentId);
 
@@ -318,6 +326,8 @@ namespace AzToolsFramework
             AZStd::set<AZ::ComponentId> m_overriddenComponents;
 
             AZStd::unordered_map<AZ::ComponentId, bool> m_componentExpansionStateMap;
+
+            AZStd::set<AZ::ComponentId> m_addedRemovedComponents;
         };
 
         EditorEntityModelEntry& GetInfo(const AZ::EntityId& entityId);

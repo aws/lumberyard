@@ -9,8 +9,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#ifndef AZSTD_MUTEX_WINDOWS_H
-#define AZSTD_MUTEX_WINDOWS_H
+#pragma once
 
 /**
  * This file is to be included from the mutex.h only. It should NOT be included by the user.
@@ -100,7 +99,3 @@ namespace AZStd
 #undef AZ_STD_MUTEX_CAST
 }
 
-
-
-#endif // AZSTD_MUTEX_WINDOWS_H
-#pragma once

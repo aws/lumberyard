@@ -51,22 +51,22 @@ namespace EMotionFX
          * Called whenever something inside an object changes that influences the visual graph or any other UI element.
          * @param[in] object The object that changed and requests the UI sync.
          */
-        virtual void OnSyncVisualObject(AnimGraphObject* object) {}
+        virtual void OnSyncVisualObject(AnimGraphObject* object) { AZ_UNUSED(object); }
 
         /**
         * Called whenever an attribute changes that influences the visual graph or any other UI element.
         */
-        virtual void OnParameterActionTriggered(const ValueParameter* valueParameter) {}
+        virtual void OnParameterActionTriggered(const ValueParameter* valueParameter) { AZ_UNUSED(valueParameter); }
 
         /**
         * Called whenever the virtual final node is set on a blend tree.
         */
-        virtual void OnVirtualFinalNodeSet(BlendTree* blendTree) {}
+        virtual void OnVirtualFinalNodeSet(BlendTree* blendTree) { AZ_UNUSED(blendTree); }
 
         /**
         * Called whenever the anim graph in a reference node changed.
         */
-        virtual void OnReferenceAnimGraphChanged(AnimGraphReferenceNode* referenceNode) {}
+        virtual void OnReferenceAnimGraphChanged(AnimGraphReferenceNode* referenceNode) { AZ_UNUSED(referenceNode); }
  
     };
 

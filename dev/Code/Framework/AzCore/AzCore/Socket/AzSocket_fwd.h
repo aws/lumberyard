@@ -21,19 +21,7 @@
 #define SOCKET_ERROR (-1)
 #define AZ_SOCKET_INVALID (-1)
 
-#if defined(AZ_RESTRICTED_PLATFORM)
-    #if defined(AZ_PLATFORM_XENIA)
-        #include "Xenia/AzSocket_fwd_h_xenia.inl"
-    #elif defined(AZ_PLATFORM_PROVO)
-        #include "Provo/AzSocket_fwd_h_provo.inl"
-    #endif
-#endif
-#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
-#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
-#else
-struct sockaddr;
-struct sockaddr_in;
-#endif
+#include <AzCore/Socket/AzSocket_fwd_Platform.h>
 
 // Type wrappers for sockets
 typedef sockaddr    AZSOCKADDR;
@@ -47,5 +35,5 @@ namespace AZ
         enum class AzSockError : AZ::s32;
         enum class AZSocketOption : AZ::s32;
         class AzSocketAddress;
-    }; // namespace AzSock
-}; // namespace AZ
+    }
+}

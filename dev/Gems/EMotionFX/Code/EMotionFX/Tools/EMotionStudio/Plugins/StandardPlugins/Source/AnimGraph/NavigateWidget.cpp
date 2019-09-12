@@ -118,19 +118,23 @@ namespace EMStudio
             QModelIndex sourceIndex = m_filterProxyModel->mapToSource(index);
             if (sourceIndex.isValid())
             {
-                // TODO: we need some re-writting of BlendGraphWidget::OnContextMenuEvent and to move it to AnimGraphActionManager or use ContextMenu directly
-                const QPoint globalPoint = m_treeView->mapToGlobal(point);
-                EMotionFX::AnimGraphNode* node = sourceIndex.data(AnimGraphModel::ROLE_NODE_POINTER).value<EMotionFX::AnimGraphNode*>();
-                AZStd::vector<EMotionFX::AnimGraphNode*> nodes;
-                nodes.push_back(node);
-                m_plugin->GetGraphWidget()->OnContextMenuEvent(m_treeView,
-                    point,
-                    globalPoint,
-                    m_plugin,
-                    nodes,
-                    false,
-                    m_plugin->GetAnimGraphModel().CheckAnySelectedNodeBelongsToReferenceGraph(),
-                    m_plugin->GetActionFilter());
+                const AnimGraphModel::ModelItemType itemType = sourceIndex.data(AnimGraphModel::ROLE_MODEL_ITEM_TYPE).value<AnimGraphModel::ModelItemType>();
+                if (itemType == AnimGraphModel::ModelItemType::NODE)
+                {
+                    // TODO: we need some re-writting of BlendGraphWidget::OnContextMenuEvent and to move it to AnimGraphActionManager or use ContextMenu directly
+                    EMotionFX::AnimGraphNode* node = sourceIndex.data(AnimGraphModel::ROLE_NODE_POINTER).value<EMotionFX::AnimGraphNode*>();
+                    const QPoint globalPoint = m_treeView->mapToGlobal(point);
+
+                    m_plugin->GetGraphWidget()->OnContextMenuEvent(
+                        m_treeView,
+                        point,
+                        globalPoint,
+                        m_plugin,
+                        { node },
+                        false,
+                        m_plugin->GetAnimGraphModel().CheckAnySelectedNodeBelongsToReferenceGraph(),
+                        m_plugin->GetActionFilter());
+                }
             }
         }
     }

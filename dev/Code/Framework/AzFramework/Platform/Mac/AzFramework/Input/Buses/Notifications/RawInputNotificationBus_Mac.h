@@ -20,18 +20,18 @@
 namespace AzFramework
 {
     ////////////////////////////////////////////////////////////////////////////////////////////////
-    //! EBus interface used to listen for raw osx input events broadcast by the system. Applications
-    //! that want raw osx events to be processed by the AzFramework input system must broadcast all
+    //! EBus interface used to listen for raw Mac input events broadcast by the system. Applications
+    //! that want raw Mac events to be processed by the AzFramework input system must broadcast all
     //! events received when pumping the NSEvent loop, which is the lowest level we can access input.
     //!
     //! It's possible to receive multiple events per button/key per frame and (depending on how the
     //! NSEvent event loop is pumped) it is also possible that events could be sent from any thread,
     //! however it is assumed they'll always be dispatched on the main thread which is the standard.
     //!
-    //! This EBus is intended primarily for the AzFramework input system to process osx input events.
+    //! This EBus is intended primarily for the AzFramework input system to process Mac input events.
     //! Most systems that need to process input should use the generic AzFramework input interfaces,
-    //! but if necessary it is perfectly valid to connect directly to this EBus for raw osx events.
-    class RawInputNotificationsOsx : public AZ::EBusTraits
+    //! but if necessary it is perfectly valid to connect directly to this EBus for raw Mac events.
+    class RawInputNotificationsMac : public AZ::EBusTraits
     {
     public:
         ////////////////////////////////////////////////////////////////////////////////////////////
@@ -44,12 +44,12 @@ namespace AzFramework
 
         ////////////////////////////////////////////////////////////////////////////////////////////
         //! Default destructor
-        virtual ~RawInputNotificationsOsx() = default;
+        virtual ~RawInputNotificationsMac() = default;
 
         ////////////////////////////////////////////////////////////////////////////////////////////
         //! Process raw input events (assumed to be dispatched on the main thread)
         //! \param[in] nsEvent The raw event data
         virtual void OnRawInputEvent(const NSEvent* /*nsEvent*/) = 0;
     };
-    using RawInputNotificationBusOsx = AZ::EBus<RawInputNotificationsOsx>;
+    using RawInputNotificationBusMac = AZ::EBus<RawInputNotificationsMac>;
 } // namespace AzFramework

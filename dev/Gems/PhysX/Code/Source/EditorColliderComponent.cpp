@@ -37,6 +37,9 @@
 #include <Source/Utils.h>
 #include <Source/World.h>
 
+#include <LyViewPaneNames.h>
+#include <Editor/ConfigurationWindowBus.h>
+
 namespace PhysX
 {
     const AZ::u32 MaxTriangles = 16384 * 3;
@@ -129,10 +132,15 @@ namespace PhysX
                 ->Field("ShapeConfiguration", &EditorColliderComponent::m_shapeConfiguration)
                 ->Field("MeshAsset", &EditorColliderComponent::m_meshColliderAsset)
                 ->Field("ComponentMode", &EditorColliderComponent::m_componentModeDelegate)
-                ;
+                ->Field("DebugDraw", &EditorColliderComponent::m_debugDraw)
+                ->Field("DebugDrawButtonState", &EditorColliderComponent::m_debugDrawButtonState)
+            ;
 
             if (auto editContext = serializeContext->GetEditContext())
             {
+                using GlobalCollisionDebugState = EditorConfiguration::GlobalCollisionDebugState;
+                using VisibilityFunc = bool(*)();
+                
                 editContext->Class<EditorColliderComponent>(
                     "PhysX Collider", "PhysX shape collider")
                     ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
@@ -153,6 +161,15 @@ namespace PhysX
                         ->Attribute(AZ::Edit::Attributes::ChangeNotify, &EditorColliderComponent::OnConfigurationChanged)
                     ->DataElement(AZ::Edit::UIHandlers::Default, &EditorColliderComponent::m_componentModeDelegate, "Component Mode", "Collider Component Mode")
                         ->Attribute(AZ::Edit::Attributes::Visibility, &EditorColliderComponent::ShouldShowBoxComponentModeButton)
+                     ->DataElement(AZ::Edit::UIHandlers::CheckBox, &EditorColliderComponent::m_debugDraw, "Draw Collider", "Shows a collider for the specified shape in the viewport")
+                        ->Attribute(AZ::Edit::Attributes::CheckboxTooltip, "If set colliders for this entity are visible in the viewport.")
+                        ->Attribute(AZ::Edit::Attributes::Visibility, VisibilityFunc{[]() { return IsGlobalColliderDebugCheck(GlobalCollisionDebugState::Manual); }})
+                     ->DataElement(AZ::Edit::UIHandlers::Button, &EditorColliderComponent::m_debugDrawButtonState, "Draw Collider",
+                         "Shows a collider for the specified shape in the viewport")
+                        ->Attribute(AZ::Edit::Attributes::ButtonText, "Global override")
+                        ->Attribute(AZ::Edit::Attributes::ButtonTooltip, "A global setting is overriding this property. To disable the override, set the Global Collision Debug setting as \"Manual\" in the PhysX Configuration.")
+                        ->Attribute(AZ::Edit::Attributes::Visibility, VisibilityFunc{[]() { return !IsGlobalColliderDebugCheck(GlobalCollisionDebugState::Manual); }})
+                        ->Attribute(AZ::Edit::Attributes::ChangeNotify, &EditorColliderComponent::OpenPhysXSettingsWindow)
                         ;
             }
         }
@@ -276,6 +293,7 @@ namespace PhysX
         AzToolsFramework::EntitySelectionEvents::Bus::Handler::BusDisconnect();
         AzFramework::EntityDebugDisplayEventBus::Handler::BusDisconnect();
         AzToolsFramework::Components::EditorComponentBase::Deactivate();
+        Physics::EditorWorldBus::Broadcast(&Physics::EditorWorldRequests::MarkEditorWorldDirty);
 
         m_componentModeDelegate.Disconnect();
 
@@ -471,26 +489,8 @@ namespace PhysX
 
     void EditorColliderComponent::UpdateMaterialSlotsFromMeshAsset()
     {
-        Physics::MaterialSelection::SlotsArray materialSlots;
-        if (m_meshColliderAsset.GetId().IsValid())
-        {
-            if (m_meshColliderAsset.IsReady())
-            {
-                if (auto meshAsset = m_meshColliderAsset.Get())
-                {
-                    m_configuration.m_materialSelection.SetMaterialSlots(meshAsset->GetMaterialSlots());
-                }
-                else
-                {
-                    m_configuration.m_materialSelection.SetMaterialSlots(Physics::MaterialSelection::SlotsArray());
-                    AZ_Warning("PhysX", false, "EditorColliderComponent: MeshAsset is invalid");
-                }
-            }
-        }
-        else
-        {
-            m_configuration.m_materialSelection.SetMaterialSlots(Physics::MaterialSelection::SlotsArray());
-        }
+        Physics::SystemRequestBus::Broadcast(&Physics::SystemRequests::UpdateMaterialSelection,
+            m_shapeConfiguration.GetCurrent(), m_configuration);
     }
 
     void EditorColliderComponent::OnAssetReady(AZ::Data::Asset<AZ::Data::AssetData> asset)
@@ -526,14 +526,20 @@ namespace PhysX
         PhysX::Configuration globalConfiguration;
         PhysX::ConfigurationRequestBus::BroadcastResult(globalConfiguration, &ConfigurationRequests::GetConfiguration);
         PhysX::Settings::ColliderProximityVisualization& colliderProximityVisualization = globalConfiguration.m_settings.m_colliderProximityVisualization;
-        float distance = colliderProximityVisualization.m_cameraPosition.GetDistance(entityWorldTransformWithoutScale.GetPosition());
-        bool colliderIsInRange = distance < colliderProximityVisualization.m_radius;
+        const float distanceSq = colliderProximityVisualization.m_cameraPosition.GetDistanceSq(entityWorldTransformWithoutScale.GetPosition());
+        const bool colliderIsInRange = distanceSq < (colliderProximityVisualization.m_radius * colliderProximityVisualization.m_radius);
 
-        if (m_configuration.m_visible || (colliderProximityVisualization.m_enabled && colliderIsInRange))
+        PhysX::EditorConfiguration::GlobalCollisionDebugState globalCollisionDebugDraw = globalConfiguration.m_editorConfiguration.m_globalCollisionDebugDraw;
+        if (globalCollisionDebugDraw != PhysX::EditorConfiguration::GlobalCollisionDebugState::AlwaysOff)
         {
-            debugDisplay.PushMatrix(entityWorldTransformWithoutScale);
-            Display(debugDisplay);
-            debugDisplay.PopMatrix();
+            if (globalCollisionDebugDraw == PhysX::EditorConfiguration::GlobalCollisionDebugState::AlwaysOn
+                || m_debugDraw
+                || (colliderProximityVisualization.m_enabled && colliderIsInRange))
+            {
+                debugDisplay.PushMatrix(entityWorldTransformWithoutScale);
+                Display(debugDisplay);
+                debugDisplay.PopMatrix();
+            }
         }
     }
 
@@ -560,7 +566,7 @@ namespace PhysX
 
     void EditorColliderComponent::DrawSphere(AzFramework::DebugDisplayRequests& debugDisplay, const Physics::SphereShapeConfiguration& config)
     {
-        AZ::Transform scaleMatrix = AZ::Transform::CreateScale(AZ::Vector3(GetUniformScale()));
+        const AZ::Transform scaleMatrix = AZ::Transform::CreateScale(AZ::Vector3(GetUniformScale()));
         debugDisplay.PushMatrix(GetColliderTransform() * scaleMatrix);
         debugDisplay.SetColor(AzFramework::ViewportColors::DeselectedColor);
         debugDisplay.DrawBall(AZ::Vector3::CreateZero(), config.m_radius);
@@ -571,7 +577,7 @@ namespace PhysX
 
     void EditorColliderComponent::DrawBox(AzFramework::DebugDisplayRequests& debugDisplay, const Physics::BoxShapeConfiguration& config)
     {
-        AZ::Transform scaleMatrix = AZ::Transform::CreateScale(GetNonUniformScale());
+        const AZ::Transform scaleMatrix = AZ::Transform::CreateScale(GetNonUniformScale());
         debugDisplay.PushMatrix(GetColliderTransform() * scaleMatrix);
         debugDisplay.SetColor(AzFramework::ViewportColors::DeselectedColor);
         debugDisplay.DrawSolidBox(-config.m_dimensions * 0.5f, config.m_dimensions * 0.5f);
@@ -605,11 +611,11 @@ namespace PhysX
     {
         if (triangleCount > MaxTriangles)
         {
-            float curTime = m_time;
-            int icurTime = (int)curTime;
+            const float curTime = static_cast<float>(m_time);
+            const int icurTime = static_cast<int>(curTime);
             float alpha = sinf(((icurTime & 1) + (curTime - icurTime) * (1 - (icurTime & 1) * 2)) * AZ::Constants::Pi * 0.5f);
-            alpha *= AZStd::GetMin((float)MaxTrianglesRange, AZStd::GetMax(0.0f, (float)triangleCount - MaxTriangles)) / (float)MaxTriangles;
-            baseColor = m_triangleCollisionMeshColor * (1.0f - alpha) + AZ::Color((float)m_warningColor.GetR(), 0.0f, 0.0f, (float)m_triangleCollisionMeshColor.GetR()) * alpha;
+            alpha *= AZStd::GetMin(static_cast<float>(MaxTrianglesRange), AZStd::GetMax(0.0f, static_cast<float>(triangleCount) - MaxTriangles)) / static_cast<float>(MaxTriangles);
+            baseColor = m_triangleCollisionMeshColor * (1.0f - alpha) + AZ::Color(static_cast<float>(m_warningColor.GetR()), 0.0f, 0.0f, static_cast<float>(m_triangleCollisionMeshColor.GetR())) * alpha;
         }
     }
 
@@ -617,7 +623,7 @@ namespace PhysX
     {
         if (!m_verts.empty())
         {
-            AZ::u64 triangleCount = m_indices.size() / 3;
+            const AZ::u32 triangleCount = static_cast<AZ::u32>(m_indices.size() / 3);
             UpdateColliderMeshColor(m_convexCollisionMeshColor, triangleCount);
             debugDisplay.DrawTrianglesIndexed(m_verts, m_indices, m_convexCollisionMeshColor);
             debugDisplay.DrawLines(m_points, m_wireFrameColor);
@@ -628,7 +634,7 @@ namespace PhysX
     {
         if (!m_verts.empty())
         {
-            AZ::u64 triangleCount = m_verts.size() / 3;
+            const AZ::u32 triangleCount = static_cast<AZ::u32>(m_verts.size() / 3);
             UpdateColliderMeshColor(m_triangleCollisionMeshColor, triangleCount);
             debugDisplay.DrawTriangles(m_verts, m_triangleCollisionMeshColor);
             debugDisplay.DrawLines(m_points, m_wireFrameColor);
@@ -639,7 +645,7 @@ namespace PhysX
     {
         if (m_meshColliderAsset && m_meshColliderAsset.IsReady())
         {
-            AZ::Transform scaleMatrix = AZ::Transform::CreateScale(GetNonUniformScale() * m_shapeConfiguration.m_physicsAsset.m_assetScale);
+            const AZ::Transform scaleMatrix = AZ::Transform::CreateScale(GetNonUniformScale() * m_shapeConfiguration.m_physicsAsset.m_assetScale);
             debugDisplay.PushMatrix(GetColliderTransform() * scaleMatrix);
 
             physx::PxBase* meshData = m_meshColliderAsset.Get()->GetMeshData();
@@ -886,6 +892,22 @@ namespace PhysX
                 index2 = index3++;
             }
         }
+    }
+
+    bool EditorColliderComponent::IsGlobalColliderDebugCheck(PhysX::EditorConfiguration::GlobalCollisionDebugState requiredState)
+    {
+        PhysX::Configuration configuration{};
+        PhysX::ConfigurationRequestBus::BroadcastResult(configuration, &PhysX::ConfigurationRequests::GetConfiguration);
+        return configuration.m_editorConfiguration.m_globalCollisionDebugDraw == requiredState;
+    }
+
+    void EditorColliderComponent::OpenPhysXSettingsWindow()
+    {
+        // Open configuration window
+        AzToolsFramework::EditorRequestBus::Broadcast(&AzToolsFramework::EditorRequests::OpenViewPane, LyViewPane::PhysXConfigurationEditor);
+
+        // Set to Global Settings configuration tab
+        Editor::ConfigurationWindowRequestBus::Broadcast(&Editor::ConfigurationWindowRequests::ShowGlobalSettingsTab);
     }
 
     bool EditorColliderComponent::IsAssetConfig() const

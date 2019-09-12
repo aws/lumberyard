@@ -16,67 +16,56 @@
 #include <ScriptCanvas/Libraries/Core/MethodUtility.h>
 #include <ScriptCanvas/Core/Core.h>
 
+#include <ScriptCanvas/Utils/SerializationUtils.h>
+
 namespace ScriptCanvas
 {
     namespace Nodes
     {
         namespace Operators
         {
-            void OperatorClear::ConfigureContracts(SourceType sourceType, AZStd::vector<ContractDescriptor>& contractDescs)
+            bool OperatorClear::OperatorClearVersionConverter(AZ::SerializeContext& serializeContext, AZ::SerializeContext::DataElementNode& rootElement)
             {
-                if (sourceType == SourceType::SourceInput)
+                if (rootElement.GetVersion() < Version::RemoveOperatorBase)
                 {
-                    ContractDescriptor supportsMethodContract;
-                    supportsMethodContract.m_createFunc = [this]() -> SupportsMethodContract* { return aznew SupportsMethodContract("Clear"); };
-                    contractDescs.push_back(AZStd::move(supportsMethodContract));
-                }
-            }
-
-            void OperatorClear::OnSourceTypeChanged()
-            {
-                m_outputSlots.insert(AddOutputTypeSlot("Container", "", GetSourceType(), Node::OutputStorage::Required, false));
-            }
-
-            void OperatorClear::InvokeOperator()
-            {
-                const SlotSet& slotSets = GetSourceSlots();
-
-                if (!slotSets.empty())
-                {
-                    SlotId sourceSlotId = (*slotSets.begin());
-
-                    if (const Datum* containerDatum = GetInput(sourceSlotId))
+                    // Remove OperatorBase
+                    if (!SerializationUtils::RemoveBaseClass(serializeContext, rootElement))
                     {
-                        if (containerDatum && !containerDatum->Empty())
-                        {
-                            AZ::Outcome<Datum, AZStd::string> clearOutcome = BehaviorContextMethodHelper::CallMethodOnDatum(*containerDatum, "Clear");
-                            if (!clearOutcome.IsSuccess())
-                            {
-                                SCRIPTCANVAS_REPORT_ERROR((*this), "Failed to call Clear on container: %s", clearOutcome.GetError().c_str());
-                                return;
-                            }
-
-                            if (Data::IsVectorContainerType(containerDatum->GetType()))
-                            {
-                                PushOutput(clearOutcome.TakeValue(), *GetSlot(*m_outputSlots.begin()));
-                            }
-
-                            // Push the source container as an output to support chaining
-                            PushOutput(*containerDatum, *GetSlot(*m_outputSlots.begin()));
-                        }
+                        return false;
                     }
                 }
 
-                SignalOutput(GetSlotId("Out"));
+                return true;
             }
 
             void OperatorClear::OnInputSignal(const SlotId& slotId)
             {
                 const SlotId inSlotId = OperatorBaseProperty::GetInSlotId(this);
-                if (slotId == inSlotId)
+
+                if (slotId != inSlotId)
                 {
-                    InvokeOperator();
+                    return;
                 }
+
+                SlotId sourceSlotId = OperatorClearProperty::GetSourceSlotId(this);
+
+                if (const Datum* containerDatum = GetInput(sourceSlotId))
+                {
+                    if (Datum::IsValidDatum(containerDatum))
+                    {
+                        AZ::Outcome<Datum, AZStd::string> clearOutcome = BehaviorContextMethodHelper::CallMethodOnDatum(*containerDatum, "Clear");
+                        if (!clearOutcome.IsSuccess())
+                        {
+                            SCRIPTCANVAS_REPORT_ERROR((*this), "Failed to call Clear on container: %s", clearOutcome.GetError().c_str());
+                            return;
+                        }
+
+                        // Push the source container as an output to support chaining
+                        PushOutput(*containerDatum, *OperatorClearProperty::GetContainerSlot(this));
+                    }
+                }
+
+                SignalOutput(GetSlotId("Out"));
             }
         }
     }

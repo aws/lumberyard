@@ -17,6 +17,7 @@
 #include "StdAfx.h"
 #include "System.h"
 #include <time.h>
+#include <AzCore/IO/Streamer.h>
 #include <AzCore/IO/SystemFile.h>
 #include "CryLibrary.h"
 #include "IGemManager.h"
@@ -24,7 +25,7 @@
 #include <CrySystemBus.h>
 #include <ITimeDemoRecorder.h>
 #include <AzFramework/API/ApplicationAPI.h>
-#include <AzFramework/API/ApplicationAPI_win.h>
+#include <AzFramework/API/ApplicationAPI_Platform.h>
 #include <AzFramework/Input/Devices/Keyboard/InputDeviceKeyboard.h>
 
 
@@ -37,6 +38,7 @@
 #define SYSTEM_CPP_SECTION_5 5
 #define SYSTEM_CPP_SECTION_6 6
 #define SYSTEM_CPP_SECTION_7 7
+#define SYSTEM_CPP_SECTION_8 8
 #endif
 
 #if defined(_RELEASE) && AZ_LEGACY_CRYSYSTEM_TRAIT_USE_EXCLUDEUPDATE_ON_CONSOLE
@@ -180,6 +182,7 @@ static LRESULT WINAPI WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam
 #include "IZLibCompressor.h"
 #include "IZlibDecompressor.h"
 #include "ILZ4Decompressor.h"
+#include "IZStdDecompressor.h"
 #include "zlib.h"
 #include "RemoteConsole/RemoteConsole.h"
 #include "BootProfiler.h"
@@ -199,7 +202,7 @@ WATERMARKDATA(_m);
 
 #ifdef WIN32
 
-#include <AzFramework/Input/Buses/Notifications/RawInputNotificationBus_win.h>
+#include <AzFramework/Input/Buses/Notifications/RawInputNotificationBus_Platform.h>
 
 // To enable profiling with vtune (https://software.intel.com/en-us/intel-vtune-amplifier-xe), make sure the line below is not commented out
 //#define  PROFILE_WITH_VTUNE
@@ -429,6 +432,7 @@ CSystem::CSystem(SharedEnvironmentInstance* pSharedEnvironment)
     m_pIZLibCompressor = NULL;
     m_pIZLibDecompressor = NULL;
     m_pILZ4Decompressor = NULL;
+    m_pIZStdDecompressor = nullptr;
     m_pLocalizationManager = NULL;
     m_pGemManager = nullptr;
     m_crypto = nullptr;
@@ -824,6 +828,7 @@ void CSystem::ShutDown()
     SAFE_RELEASE(m_pIZLibCompressor);
     SAFE_RELEASE(m_pIZLibDecompressor);
     SAFE_RELEASE(m_pILZ4Decompressor);
+    SAFE_RELEASE(m_pIZStdDecompressor);
     SAFE_RELEASE(m_pIBudgetingSystem);
     SAFE_RELEASE(m_pViewSystem);
     SAFE_RELEASE(m_pLevelSystem);
@@ -1656,6 +1661,57 @@ bool CSystem::UpdatePreTickBus(int updateFlags, int nPauseMode)
     {
         FRAME_PROFILER("StreamEngine::Update()", this, PROFILE_SYSTEM);
         m_pStreamEngine->Update();
+    }
+
+    if (g_cvars.az_streaming_stats)
+    {
+        SDrawTextInfo ti;
+        ti.flags = eDrawText_FixedSize | eDrawText_2D | eDrawText_Monospace;
+        ti.xscale = ti.yscale = 1.2f;
+
+        const int viewportHeight = GetViewCamera().GetViewSurfaceZ();
+        
+#if defined(AZ_RESTRICTED_PLATFORM)
+    #define AZ_RESTRICTED_SECTION SYSTEM_CPP_SECTION_8
+    #if defined(AZ_PLATFORM_XENIA)
+    #include "Xenia/System_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+    #include "Provo/System_cpp_provo.inl"
+    #endif
+#else
+    float y = static_cast<float>(viewportHeight) - 30.0f;
+#endif
+
+        AZStd::vector<AZ::IO::Statistic> stats;
+        AZ::IO::Streamer::Instance().CollectStatistics(stats);
+
+        for (AZ::IO::Statistic& stat : stats)
+        {
+            switch (stat.GetType())
+            {
+            case AZ::IO::Statistic::Type::FloatingPoint:
+                gEnv->pRenderer->DrawTextQueued(Vec3(10, y, 1.0f), ti, 
+                    AZStd::string::format("%s/%s: %.3f", stat.GetOwner().data(), stat.GetName().data(), stat.GetFloatValue()).c_str());
+                break;
+            case AZ::IO::Statistic::Type::Integer:
+                gEnv->pRenderer->DrawTextQueued(Vec3(10, y, 1.0f), ti,
+                    AZStd::string::format("%s/%s: %lli", stat.GetOwner().data(), stat.GetName().data(), stat.GetIntegerValue()).c_str());
+                break;
+            case AZ::IO::Statistic::Type::Percentage:
+                gEnv->pRenderer->DrawTextQueued(Vec3(10, y, 1.0f), ti,
+                    AZStd::string::format("%s/%s: %.2f (percent)", stat.GetOwner().data(), stat.GetName().data(), stat.GetPercentage()).c_str());
+                break;
+            default:
+                gEnv->pRenderer->DrawTextQueued(Vec3(10, y, 1.0f), ti, AZStd::string::format("Unsupported stat type: %i", stat.GetType()).c_str());
+                break;
+            }
+            y -= 12.0f;
+            if (y < 0.0f)
+            {
+                //Exit the loop because there's no purpose on rendering text outside of the visible area.
+                break;
+            }
+        }
     }
 
 #ifndef EXCLUDE_UPDATE_ON_CONSOLE
@@ -3315,7 +3371,7 @@ bool CSystem::HandleMessage(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam, 
         RAWINPUT* rawInput = (RAWINPUT*)rawInputBytes;
         CRY_ASSERT(rawInput);
 
-        EBUS_EVENT(AzFramework::RawInputNotificationBusWin, OnRawInputEvent, *rawInput);
+        AzFramework::RawInputNotificationBusWindows::Broadcast(&AzFramework::RawInputNotificationsWindows::OnRawInputEvent, *rawInput);
 
         return false;
     }
@@ -3323,14 +3379,14 @@ bool CSystem::HandleMessage(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam, 
     {
         if (wParam == 0x0007) // DBT_DEVNODES_CHANGED
         {
-            EBUS_EVENT(AzFramework::RawInputNotificationBusWin, OnRawInputDeviceChangeEvent);
+            AzFramework::RawInputNotificationBusWindows::Broadcast(&AzFramework::RawInputNotificationsWindows::OnRawInputDeviceChangeEvent);
         }
         return true;
     }
     case WM_CHAR:
     {
         const unsigned short codeUnitUTF16 = static_cast<unsigned short>(wParam);
-        EBUS_EVENT(AzFramework::RawInputNotificationBusWin, OnRawInputCodeUnitUTF16Event, codeUnitUTF16);
+        AzFramework::RawInputNotificationBusWindows::Broadcast(&AzFramework::RawInputNotificationsWindows::OnRawInputCodeUnitUTF16Event, codeUnitUTF16);
         return true;
     }
 

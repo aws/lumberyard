@@ -46,6 +46,8 @@ namespace ScriptCanvas
 
         static AZ::Outcome<void, AZStd::string> ValidateEndpoints(const Endpoint& sourceEndpoint, const Endpoint& targetEndpoint);
 
+        bool ContainsEndpoint(const Endpoint& endpoint);
+
         // ConnectionRequestBus
         const SlotId& GetSourceSlot() const override;
         const SlotId& GetTargetSlot() const override;

@@ -16,6 +16,11 @@
 #include <AzCore/std/smart_ptr/shared_ptr.h>
 #include <AzToolsFramework/Manipulators/HoverSelection.h>
 
+namespace AZ
+{
+    class EntityComponentIdPair;
+}
+
 namespace AzToolsFramework
 {
     class LineSegmentSelectionManipulator;
@@ -29,7 +34,8 @@ namespace AzToolsFramework
     {
     public:
         explicit LineSegmentHoverSelection(
-            AZ::EntityId entityId, ManipulatorManagerId managerId);
+            const AZ::EntityComponentIdPair& entityComponentIdPair,
+            ManipulatorManagerId managerId);
         LineSegmentHoverSelection(const LineSegmentHoverSelection&) = delete;
         LineSegmentHoverSelection& operator=(const LineSegmentHoverSelection&) = delete;
         ~LineSegmentHoverSelection();

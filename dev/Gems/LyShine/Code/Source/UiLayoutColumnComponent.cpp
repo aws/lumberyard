@@ -236,7 +236,7 @@ float UiLayoutColumnComponent::GetMinHeight()
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-float UiLayoutColumnComponent::GetTargetWidth()
+float UiLayoutColumnComponent::GetTargetWidth(float /*maxWidth*/)
 {
     float width = 0.0f;
 
@@ -261,7 +261,7 @@ float UiLayoutColumnComponent::GetTargetWidth()
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-float UiLayoutColumnComponent::GetTargetHeight()
+float UiLayoutColumnComponent::GetTargetHeight(float /*maxHeight*/)
 {
     float height = 0.0f;
 

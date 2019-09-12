@@ -350,8 +350,9 @@ ZipDir::ErrorEnum ZipDir::Cache::ReadFile (FileEntry* pFileEntry, void* pCompres
         }
         else
         {
-            if (Z_OK != DecompressFile(pFileEntry, pBuffer, pUncompressed, m_pCacheData->m_csCacheIOLock))
+            if (Z_OK != DecompressFile(pFileEntry, pBuffer, pUncompressed))
             {
+                AZ_Warning("ZipDirCache", false, "Failed to decompress file:[%s]", GetFileEntryName(pFileEntry));
                 return ZD_ERROR_CORRUPTED_DATA;
             }
         }
@@ -433,19 +434,40 @@ ZipDir::ErrorEnum ZipDir::Cache::ReadFileStreaming (FileEntry* pFileEntry, void*
 
             ptrdiff_t nBufferOffs = -(ptrdiff_t)nSectorPad;
 
+            if ((reinterpret_cast<intptr_t>(m_zipFile.m_pReadTarget) & (m_zipFile.m_nSectorSize - 1)) != 0)
+            {
+                CryWarning(VALIDATOR_MODULE_SYSTEM, VALIDATOR_ERROR_DBGBRK, "ZipDir::ReadFileStreaming Storage target 0x%p is not a multiple of the sector size %i.", 
+                    m_zipFile.m_pReadTarget, m_zipFile.m_nSectorSize);
+                return ZD_ERROR_IO_FAILED;
+            }
+            
             while (nBufferOffs < (ptrdiff_t)nDataReadSize)
             {
                 DWORD nToRead = (DWORD)min(128LL * 1024LL, nSectorReadSize);
+                if ((nToRead & (m_zipFile.m_nSectorSize - 1)) != 0)
+                {
+                    CryWarning(VALIDATOR_MODULE_SYSTEM, VALIDATOR_ERROR_DBGBRK, "ZipDir::ReadFileStreaming Requested size %i is not a multiple of the sector size %i (%i in %s).",
+                        nToRead, m_zipFile.m_nSectorSize, pFileEntry->desc.lCRC32, m_zipFile.m_szFilename ? m_zipFile.m_szFilename : "<unknown>");
+                    return ZD_ERROR_IO_FAILED;
+                }
+
                 DWORD nRead = 0;
                 if (!::ReadFile(m_zipFile.m_unbufferedFile, m_zipFile.m_pReadTarget, nToRead, &nRead, NULL))
                 {
-                    CryWarning(VALIDATOR_MODULE_SYSTEM, VALIDATOR_ERROR_DBGBRK, "ZipDir::ReadFileStreaming failed (%p %p) = %i",
-                        &m_zipFile, pFileEntry, GetLastError());
+                    CryWarning(VALIDATOR_MODULE_SYSTEM, VALIDATOR_ERROR_DBGBRK, "ZipDir::ReadFileStreaming failed reading '%i' from pak '%s' (code: %i).", 
+                        pFileEntry->desc.lCRC32, m_zipFile.m_szFilename ? m_zipFile.m_szFilename : "<unknown>", GetLastError());
+                    return ZD_ERROR_IO_FAILED;
+                }
+
+                // Below is a check that should avoid continuing to read after the end of the file has been reached.
+                if (nRead == 0)
+                {
+                    CryWarning(VALIDATOR_MODULE_SYSTEM, VALIDATOR_ERROR_DBGBRK, "ZipDir::ReadFileStreaming read past the end of pak '%s'.", 
+                        m_zipFile.m_szFilename ? m_zipFile.m_szFilename : "<unknown>");
                     return ZD_ERROR_IO_FAILED;
                 }
 
                 ptrdiff_t srcLeft = 0;
-                ptrdiff_t srcRight = nRead;
                 ptrdiff_t dstLeft = nBufferOffs;
                 ptrdiff_t dstRight = (ptrdiff_t)(nBufferOffs + nRead);
 
@@ -456,7 +478,6 @@ ZipDir::ErrorEnum ZipDir::Cache::ReadFileStreaming (FileEntry* pFileEntry, void*
                 }
                 if (dstRight > nDataReadSize)
                 {
-                    dstRight -= dstRight - (ptrdiff_t)nDataReadSize;
                     dstRight = (ptrdiff_t)nDataReadSize;
                 }
 
@@ -464,6 +485,14 @@ ZipDir::ErrorEnum ZipDir::Cache::ReadFileStreaming (FileEntry* pFileEntry, void*
 
                 nSectorReadSize -= nRead;
                 nBufferOffs += nRead;
+
+                // Check to see if end of file has been reached. Due to caching sometimes more than the file size can be requested and without this check that would
+                // end in a endless loop.
+                if (nSectorOffset + nBufferOffs + nSectorPad >= m_zipFile.m_nSize)
+                {
+                    CryWarning(VALIDATOR_MODULE_SYSTEM, VALIDATOR_ERROR_DBGBRK, "ZipDir::ReadFileStreaming TEST %s.", m_zipFile.m_szFilename ? m_zipFile.m_szFilename : "<unknown>");
+                    return ZD_ERROR_SUCCESS;
+                }
             }
 
             bRead = true;
@@ -480,7 +509,7 @@ ZipDir::ErrorEnum ZipDir::Cache::ReadFileStreaming (FileEntry* pFileEntry, void*
 }
 
 // decompress compressed file
-ZipDir::ErrorEnum ZipDir::Cache::DecompressFile (FileEntry* pFileEntry, void* pCompressed, void* pUncompressed, CryCriticalSection& csDecmopressLock)
+ZipDir::ErrorEnum ZipDir::Cache::DecompressFile (FileEntry* pFileEntry, void* pCompressed, void* pUncompressed)
 {
     FUNCTION_PROFILER(gEnv->pSystem, PROFILE_SYSTEM);
     if (pUncompressed == NULL)
@@ -501,7 +530,8 @@ ZipDir::ErrorEnum ZipDir::Cache::DecompressFile (FileEntry* pFileEntry, void* pC
         memcpy (pBuffer, pCompressed, pFileEntry->desc.lSizeCompressed);
     }
 
-    AUTO_LOCK_CS(csDecmopressLock);
+    CryCriticalSection& lock = m_pCacheData->m_csCacheIOLock;
+    AUTO_LOCK_CS(lock);
     if (Z_OK != ZipRawUncompress(m_pCacheData->m_pHeap, pUncompressed, &nSizeUncompressed, pBuffer, pFileEntry->desc.lSizeCompressed))
     {
         return ZD_ERROR_CORRUPTED_DATA;

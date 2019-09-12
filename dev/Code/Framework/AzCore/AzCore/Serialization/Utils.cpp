@@ -9,7 +9,6 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#ifndef AZ_UNITY_BUILD
 
 #include <AzCore/Serialization/Utils.h>
 #include <AzCore/Serialization/ObjectStream.h>
@@ -465,5 +464,3 @@ namespace AZ
 
     } // namespace Utils
 } // namespace AZ
-
-#endif // #ifndef AZ_UNITY_BUILD

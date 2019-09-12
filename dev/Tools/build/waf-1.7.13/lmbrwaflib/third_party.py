@@ -48,7 +48,7 @@ PLATFORM_TO_3RD_PARTY_SUBPATH = {
                                     'appletv'    : 'osx/appletv-clang-703.0.31',
 
                                     # linux host platform
-                                    'linux_x64'  : 'linux/clang-3.7'}
+                                    'linux_x64'  : 'linux/clang-3.8'}
 
 CONFIGURATION_TO_3RD_PARTY_NAME = {'debug'  : 'debug',
                                    'profile': 'release',
@@ -1412,7 +1412,8 @@ def generate_3p_config(ctx):
             ordered_config['platform'] = OrderedDict(sorted(config_platforms.items(), key=lambda t: _get_config_key_weight(t[0])))
             for config_platform_name in ordered_config['platform']:
                 config_platform_def = ordered_config['platform'][config_platform_name]
-                ordered_config['platform'][config_platform_name] = OrderedDict(sorted(config_platform_def.items(), key=lambda t: _get_config_key_weight(t[0])))
+                if isinstance(config_platform_def, dict):
+                    ordered_config['platform'][config_platform_name] = OrderedDict(sorted(config_platform_def.items(), key=lambda t: _get_config_key_weight(t[0])))
 
         config_content = json.dumps(ordered_config, indent=4, separators=(',', ': '))
         try:
@@ -1488,7 +1489,7 @@ class ThirdPartySettings:
 
         self.content = None
 
-        available_platforms = [base_target_platform.name() for base_target_platform in self.ctx.get_enabled_target_platforms(reset_cache=True, apply_validated_platforms=False)]
+        available_platforms = [base_target_platform.name() for base_target_platform in self.ctx.get_enabled_target_platforms(reset_cache=True, apply_validated_platforms=True)]
         available_platforms_hash = calculate_string_hash(','.join(available_platforms))
 
         if not os.path.exists(self.file_path_abs):

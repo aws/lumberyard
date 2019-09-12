@@ -40,11 +40,7 @@
 
 #define AZ_SERIALIZE_BINARY_STACK_BUFFER 4096
 
-#if defined(AZ_BIG_ENDIAN)
-#   define AZ_SERIALIZE_SWAP_ENDIAN(_value, _isSwap)  (void)(_isSwap); (void)(_value)
-#else
-#   define AZ_SERIALIZE_SWAP_ENDIAN(_value, _isSwap)  if (_isSwap) AZStd::endian_swap(_value)
-#endif
+#define AZ_SERIALIZE_SWAP_ENDIAN(_value, _isSwap)  if (_isSwap) AZStd::endian_swap(_value)
 
 namespace AZ
 {
@@ -136,6 +132,10 @@ namespace AZ
         /// If registerIntegralTypes is true we will register the default serializer for all integral types.
         SerializeContext(bool registerIntegralTypes = true, bool createEditContext = false);
         virtual ~SerializeContext();
+
+        /// Deleting copy ctor because we own unique_ptr's of IDataContainers
+        SerializeContext(const SerializeContext&) = delete;
+        SerializeContext& operator =(const SerializeContext&) = delete;
 
         bool IsTypeReflected(AZ::Uuid typeId) const override;
 
@@ -502,7 +502,7 @@ namespace AZ
                     return KeyPtr(AllocateKey(), KeyPtrDeleter(this));
                 }
                 /// Get an element's address by its key. Not used for serialization.
-                virtual void*   GetElementByKey(void* instance, const ClassElement* classElement, void* key) = 0;
+                virtual void*   GetElementByKey(void* instance, const ClassElement* classElement, const void* key) = 0;
                 /// Populates element with key (for associative containers). Not used for serialization.
                 virtual void    SetElementKey(void* element, void* key) = 0;
             };
@@ -645,10 +645,9 @@ namespace AZ
             ~DataElement();
             DataElement(const DataElement& rhs);
             DataElement& operator = (const DataElement& rhs);
-#ifdef AZ_HAS_RVALUE_REFS
             DataElement(DataElement&& rhs);
             DataElement& operator = (DataElement&& rhs);
-#endif
+
             enum DataType
             {
                 DT_TEXT,        ///< data points to a string representation of the data
@@ -823,6 +822,8 @@ namespace AZ
         template<class T>
         T Cast(void* instance, const Uuid& instanceClassId) const;
 
+        void RegisterDataContainer(AZStd::unique_ptr<IDataContainer> dataContainer);
+
     private:
         /**
          * Generic enumerate function can can take both 'const void*' and 'void*' data pointer types.
@@ -975,6 +976,7 @@ namespace AZ
         AZStd::unordered_multimap<Uuid, GenericClassInfo*>  m_uuidGenericMap;      ///< Uuid to ClassData map of reflected classes with GenericTypeInfo
         AZStd::unordered_multimap<Uuid, Uuid> m_legacySpecializeTypeIdToTypeIdMap; ///< Keep a map of old legacy specialized typeids of template classes to new specialized typeids
         AZStd::unordered_map<Uuid, CreateAnyFunc>  m_uuidAnyCreationMap;      ///< Uuid to Any creation function map
+        AZStd::vector<AZStd::unique_ptr<IDataContainer>> m_dataContainers; ///< Takes care of all related IDataContainer's lifetimes
 
         class PerModuleGenericClassInfo;
         AZStd::unordered_set<PerModuleGenericClassInfo*>  m_perModuleSet; ///< Stores the static PerModuleGenericClass structures keeps track of reflected GenericClassInfo per module

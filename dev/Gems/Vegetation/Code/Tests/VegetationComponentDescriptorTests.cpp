@@ -16,7 +16,7 @@
 
 #include <AzCore/Component/Entity.h>
 #include <AzTest/AzTest.h>
-#include <Tests/TestTypes.h>
+#include <AzCore/UnitTest/TestTypes.h>
 
 #include <Source/Components/DescriptorListCombinerComponent.h>
 #include <Source/Components/DescriptorListComponent.h>

@@ -1,0 +1,10 @@
+{
+    "auto":
+    {
+        "Platform/iOS":
+        [
+            "RemoteConsole_Traits_Platform.h",
+            "RemoteConsole_Traits_iOS.h"
+        ]
+    }
+}

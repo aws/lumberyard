@@ -15,14 +15,7 @@
 #include <AzCore/base.h>
 #include <AzCore/Jobs/JobManagerDesc.h>
 #include <AzCore/Memory/Memory.h>
-
-// Other job manager implementation could be chosen here on a per-platform basis.  The work stealing implementation requires thread local storage and atomics (pointer-sized, 32-bit)
-#if defined(AZ_THREAD_LOCAL)
-#   define AZCORE_JOBS_IMPL_WORK_STEALING
-#   include <AzCore/Jobs/Internal/JobManagerWorkStealing.h>
-#else
-#   error Thread local storage support required for JobManagerWorkStealing
-#endif
+#include <AzCore/Jobs/Internal/JobManagerWorkStealing.h>
 
 //#define JOBMANAGER_ENABLE_STATS
 
@@ -104,13 +97,7 @@ namespace AZ
         //called internally by Job class to start a job and then assist in processing until it is complete
         AZ_FORCE_INLINE void StartJobAndAssistUntilComplete(Job* job) { m_impl.StartJobAndAssistUntilComplete(job); }
 
-#if defined(AZCORE_JOBS_IMPL_WORK_STEALING)
         Internal::JobManagerWorkStealing m_impl;
-#elif defined(AZCORE_JOBS_IMPL_DEFAULT)
-        Internal::JobManagerDefault m_impl;
-#elif defined(AZCORE_JOBS_IMPL_SYNCHRONOUS)
-        Internal::JobManagerSynchronous m_impl;
-#endif
     };
 }
 

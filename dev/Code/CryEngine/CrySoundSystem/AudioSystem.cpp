@@ -19,6 +19,7 @@
 
 #include <AzCore/std/bind/bind.h>
 #include <AzFramework/StringFunc/StringFunc.h>
+#include <CrySoundSystem_Traits_Platform.h>
 
 namespace Audio
 {
@@ -50,14 +51,7 @@ namespace Audio
 
         AZStd::thread_desc threadDesc;
         threadDesc.m_name = "Audio Thread";
-
-#if defined(AZ_RESTRICTED_PLATFORM)
-    #if defined(AZ_PLATFORM_XENIA)
-        #include "Xenia/AudioSystem_cpp_xenia.inl"
-    #elif defined(AZ_PLATFORM_PROVO)
-        #include "Provo/AudioSystem_cpp_provo.inl"
-    #endif
-    #endif
+        threadDesc.m_cpuId = AZ_TRAIT_CRYSOUNDSYSTEM_AUDIO_THREAD_AFFINITY;
 
         auto threadFunc = AZStd::bind(&CAudioThread::Run, this);
         m_thread = AZStd::thread(threadFunc, &threadDesc);

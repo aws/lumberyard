@@ -61,7 +61,7 @@
 extern CMTSafeHeap* g_pPakHeap;
 #if defined(AZ_PLATFORM_ANDROID)
 #include <AzCore/Android/Utils.h>
-#elif defined(AZ_PLATFORM_APPLE_IOS) || defined(AZ_PLATFORM_APPLE_TV)
+#elif defined(AZ_PLATFORM_IOS) || defined(AZ_PLATFORM_APPLE_TV)
 extern bool UIKitGetPrimaryPhysicalDisplayDimensions(int& o_widthPixels, int& o_heightPixels);
 extern bool UIDeviceIsTablet();
 #endif
@@ -88,7 +88,7 @@ bool CSystem::GetPrimaryPhysicalDisplayDimensions(int& o_widthPixels, int& o_hei
     return true;
 #elif defined(AZ_PLATFORM_ANDROID)
     return AZ::Android::Utils::GetWindowSize(o_widthPixels, o_heightPixels);
-#elif defined(AZ_PLATFORM_APPLE_IOS) || defined(AZ_PLATFORM_APPLE_TV)
+#elif defined(AZ_PLATFORM_IOS) || defined(AZ_PLATFORM_APPLE_TV)
     return UIKitGetPrimaryPhysicalDisplayDimensions(o_widthPixels, o_heightPixels);
 #else
     return false;
@@ -98,7 +98,7 @@ bool CSystem::GetPrimaryPhysicalDisplayDimensions(int& o_widthPixels, int& o_hei
 bool CSystem::IsTablet()
 {
 //TODO: Add support for Android tablets
-#if defined(AZ_PLATFORM_APPLE_IOS) || defined(AZ_PLATFORM_APPLE_TV)
+#if defined(AZ_PLATFORM_IOS) || defined(AZ_PLATFORM_APPLE_TV)
     return UIDeviceIsTablet();
 #else
     return false;
@@ -112,7 +112,7 @@ void CSystem::CreateRendererVars(const SSystemInitParams& startupParams)
     int iDisplayInfoDefault = 0;
     int iWidthDefault = 1280;
     int iHeightDefault = 720;
-#if defined(AZ_PLATFORM_ANDROID) || defined(AZ_PLATFORM_APPLE_IOS) || defined(AZ_PLATFORM_APPLE_TV)
+#if defined(AZ_PLATFORM_ANDROID) || defined(AZ_PLATFORM_IOS) || defined(AZ_PLATFORM_APPLE_TV)
     GetPrimaryPhysicalDisplayDimensions(iWidthDefault, iHeightDefault);
 #elif defined(WIN32) || defined(WIN64)
     iFullScreenDefault = 0;

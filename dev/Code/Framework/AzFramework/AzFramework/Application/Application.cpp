@@ -66,10 +66,6 @@ static const char* s_engineConfigFileName = "engine.json";
 static const char* s_engineConfigExternalEnginePathKey = "ExternalEnginePath";
 static const char* s_engineConfigEngineVersionKey = "LumberyardVersion";
 
-#if defined(AZ_PLATFORM_ANDROID) || defined(AZ_PLATFORM_APPLE)
-    #include <unistd.h>
-#endif //AZ_PLATFORM_ANDROID  ||  AZ_PLATFORM_APPLE
-
 namespace AzFramework
 {
     namespace ApplicationInternal
@@ -321,15 +317,7 @@ namespace AzFramework
 
         m_pimpl.reset(Implementation::Create());
 
-        if ((m_argC) && (m_argV))
-        {
-            m_commandLine.Parse(*m_argC, *m_argV);
-        }
-        else
-        {
-            m_commandLine.Parse();
-        }
-        
+        m_commandLine.Parse(*m_argC, *m_argV);
 
         systemEntity->Init();
         systemEntity->Activate();
@@ -570,10 +558,6 @@ namespace AzFramework
 
     void Application::CalculateAppRoot(const char* appRootOverride) // = nullptr
     {
-    #if defined(AZ_PLATFORM_APPLE_IOS) || defined(AZ_PLATFORM_APPLE_TV)
-        AZ_Assert(appRootOverride != nullptr, "App root must be set explicitly for apple platforms.");
-    #endif // defined(AZ_PLATFORM_APPLE_IOS) || defined(AZ_PLATFORM_APPLE_TV)
-
         const char* platformSpecificAppRootPath = Implementation::GetAppRootPath();
         if (appRootOverride)
         {
@@ -802,7 +786,7 @@ namespace AzFramework
         AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzFramework);
 
         AZStd::thread_desc newThreadDesc;
-        newThreadDesc.m_cpuId = AFFINITY_MASK_USERTHREADS;
+        newThreadDesc.m_cpuId = AZ_TRAIT_THREAD_WORKERTHREAD_AFFINITY_MASK;
         newThreadDesc.m_name = newThreadName;
         AZStd::binary_semaphore binarySemaphore;
         AZStd::thread newThread([&workForNewThread, &binarySemaphore, &newThreadName]

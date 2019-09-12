@@ -26,8 +26,9 @@
 #include "VideoPlaybackAsset.h"
 #include <Include/VideoPlayback/VideoPlaybackBus.h>
 #include "Decoder.h"
+#include <VideoPlayback_Traits_Platform.h>
 
-#if AZ_VIDEOPLAYBACK_GEM_TRAIT_ENABLE_DECODER
+#if AZ_TRAIT_VIDEOPLAYBACK_ENABLE_DECODER
 
 namespace AZ 
 {

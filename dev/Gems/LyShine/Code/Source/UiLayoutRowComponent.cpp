@@ -236,7 +236,7 @@ float UiLayoutRowComponent::GetMinHeight()
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-float UiLayoutRowComponent::GetTargetWidth()
+float UiLayoutRowComponent::GetTargetWidth(float /*maxWidth*/)
 {
     float width = 0.0f;
 
@@ -256,7 +256,7 @@ float UiLayoutRowComponent::GetTargetWidth()
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-float UiLayoutRowComponent::GetTargetHeight()
+float UiLayoutRowComponent::GetTargetHeight(float /*maxHeight*/)
 {
     float height = 0.0f;
 

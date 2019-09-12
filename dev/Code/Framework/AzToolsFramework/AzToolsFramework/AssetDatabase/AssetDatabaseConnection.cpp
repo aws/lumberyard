@@ -878,8 +878,7 @@ namespace AzToolsFramework
             const char* portableKey,
             const char* outputPrefix,
             int isRoot)
-            : m_scanFolderID(-1)
-            , m_outputPrefix(outputPrefix)
+            : m_outputPrefix(outputPrefix)
             , m_isRoot(isRoot)
         {
             if (scanFolder)
@@ -983,8 +982,7 @@ namespace AzToolsFramework
         }
 
         SourceDatabaseEntry::SourceDatabaseEntry(AZ::s64 scanFolderPK, const char* sourceName, AZ::Uuid sourceGuid, const char* analysisFingerprint)
-            : m_sourceID(-1)
-            , m_scanFolderPK(scanFolderPK)
+            : m_scanFolderPK(scanFolderPK)
             , m_sourceGuid(sourceGuid)
         {
             if (sourceName)
@@ -1104,8 +1102,7 @@ namespace AzToolsFramework
         }
 
         JobDatabaseEntry::JobDatabaseEntry(AZ::s64 sourcePK, const char* jobKey, AZ::u32 fingerprint, const char* platform, AZ::Uuid builderGuid, AssetSystem::JobStatus status, AZ::u64 jobRunKey, AZ::s64 firstFailLogTime, const char* firstFailLogFile, AZ::s64 lastFailLogTime, const char* lastFailLogFile, AZ::s64 lastLogTime, const char* lastLogFile)
-            : m_jobID(-1)
-            , m_sourcePK(sourcePK)
+            : m_sourcePK(sourcePK)
             , m_fingerprint(fingerprint)
             , m_builderGuid(builderGuid)
             , m_status(status)
@@ -1262,8 +1259,7 @@ namespace AzToolsFramework
 
         ProductDatabaseEntry::ProductDatabaseEntry(AZ::s64 jobPK, AZ::u32 subID, const char* productName,
             AZ::Data::AssetType assetType, AZ::Uuid legacyGuid)
-            : m_productID(-1)
-            , m_jobPK(jobPK)
+            : m_jobPK(jobPK)
             , m_subID(subID)
             , m_assetType(assetType)
             , m_legacyGuid(legacyGuid)
@@ -1356,6 +1352,12 @@ namespace AzToolsFramework
         {
         }
 
+        bool LegacySubIDsEntry::operator==(const LegacySubIDsEntry& other) const
+        {
+            return m_productPK == other.m_productPK
+                && m_subID == other.m_subID;
+        }
+
         auto LegacySubIDsEntry::GetColumns()
         {
             return MakeColumns(
@@ -1380,8 +1382,7 @@ namespace AzToolsFramework
         }
 
         ProductDependencyDatabaseEntry::ProductDependencyDatabaseEntry(AZ::s64 productPK, AZ::Uuid dependencySourceGuid, AZ::u32 dependencySubID, AZStd::bitset<64> dependencyFlags, const AZStd::string& platform, const AZStd::string& unresolvedPath, DependencyType dependencyType)
-            : m_productDependencyID(-1)
-            , m_productPK(productPK)
+            : m_productPK(productPK)
             , m_dependencySourceGuid(dependencySourceGuid)
             , m_dependencySubID(dependencySubID)
             , m_dependencyFlags(dependencyFlags)
@@ -2025,8 +2026,10 @@ namespace AzToolsFramework
 
         bool AssetDatabaseConnection::QueryCombined(combinedHandler handler, AZ::Uuid builderGuid, const char* jobKey, const char* platform, AssetSystem::JobStatus status, bool includeLegacySubIDs)
         {
-            using namespace AZStd::placeholders;
-            auto callback = AZStd::bind(&AssetDatabaseConnection::GetCombinedResult, this, _1, _2, _3, builderGuid, jobKey, status, includeLegacySubIDs);
+            auto callback = [this, builderGuid, jobKey, status, includeLegacySubIDs](const char* callName, SQLite::Statement* statement, AssetDatabaseConnection::combinedHandler handler)
+            {
+                return this->GetCombinedResult(callName, statement, handler, builderGuid, jobKey, status, includeLegacySubIDs);
+            };
 
             if (platform && strlen(platform))
             {
@@ -2485,6 +2488,7 @@ namespace AzToolsFramework
                     result = statement->Step();
                 }
                 validResult = true;
+                combined.m_legacySubIDs.clear();
             }
 
             if (result == Statement::SqlError)

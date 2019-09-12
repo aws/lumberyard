@@ -38,13 +38,7 @@
 
 #include <AzCore/Serialization/SerializeContext.h>
 
-namespace AZ
-{
-    void PrintTo(const Vector3& vector, ::std::ostream* os)
-    {
-        *os << vector.GetX() << ' ' << vector.GetY() << ' ' << vector.GetZ();
-    }
-}
+#include <Tests/Printers.h>
 
 namespace EMotionFX
 {

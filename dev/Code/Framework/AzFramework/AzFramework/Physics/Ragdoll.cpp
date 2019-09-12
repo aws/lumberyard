@@ -26,7 +26,8 @@ namespace Physics
             PropertyVisibility::SleepOptions |
             PropertyVisibility::Interpolation |
             PropertyVisibility::Gravity |
-            PropertyVisibility::ContinuousCollisionDetection;
+            PropertyVisibility::ContinuousCollisionDetection |
+            PropertyVisibility::MaxVelocities;
     }
 
     void RagdollNodeConfiguration::Reflect(AZ::ReflectContext* context)

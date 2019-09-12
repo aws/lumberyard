@@ -63,7 +63,38 @@ namespace ScriptCanvas
                 }
             };
 
-            void OperatorSub::Operator(Data::eType type, const OperatorOperands& operands, Datum& result)
+            template <>
+            struct OperatorSubImpl<Data::Matrix3x3Type>
+            {
+                Data::Matrix3x3Type operator()(const Data::Matrix3x3Type& lhs, const Datum& rhs)
+                {
+                    const AZ::Matrix3x3* dataRhs = rhs.GetAs<AZ::Matrix3x3>();
+
+                    if (dataRhs)
+                    {
+                        return AZ::Matrix3x3::CreateFromColumns(lhs.GetColumn(0) - dataRhs->GetColumn(0), lhs.GetColumn(1) - dataRhs->GetColumn(1), lhs.GetColumn(2) - dataRhs->GetColumn(2));
+                    }
+
+                    return lhs;
+                }
+            };
+
+            template <>
+            struct OperatorSubImpl<Data::Matrix4x4Type>
+            {
+                Data::Matrix4x4Type operator()(const Data::Matrix4x4Type& lhs, const Datum& rhs)
+                {
+                    const AZ::Matrix4x4* dataRhs = rhs.GetAs<AZ::Matrix4x4>();
+                    if (dataRhs)
+                    {
+                        return AZ::Matrix4x4::CreateFromColumns(lhs.GetColumn(0) - dataRhs->GetColumn(0), lhs.GetColumn(1) - dataRhs->GetColumn(1), lhs.GetColumn(2) - dataRhs->GetColumn(2), lhs.GetColumn(3) - dataRhs->GetColumn(3));
+                    }
+
+                    return lhs;
+                }
+            };
+
+            void OperatorSub::Operator(Data::eType type, const ArithmeticOperands& operands, Datum& result)
             {
                 switch (type)
                 {
@@ -81,6 +112,12 @@ namespace ScriptCanvas
                     break;
                 case Data::eType::Vector4:
                     OperatorEvaluator::Evaluate<Data::Vector4Type>(OperatorSubImpl<Data::Vector4Type>(), operands, result);
+                    break;
+                case Data::eType::Matrix3x3:
+                    OperatorEvaluator::Evaluate<Data::Matrix3x3Type>(OperatorSubImpl<Data::Matrix3x3Type>(), operands, result);
+                    break;
+                case Data::eType::Matrix4x4:
+                    OperatorEvaluator::Evaluate<Data::Matrix4x4Type>(OperatorSubImpl<Data::Matrix4x4Type>(), operands, result);
                     break;
                 default:
                     AZ_Assert(false, "Subtraction operator not defined for type: %s", Data::ToAZType(type).ToString<AZStd::string>().c_str());

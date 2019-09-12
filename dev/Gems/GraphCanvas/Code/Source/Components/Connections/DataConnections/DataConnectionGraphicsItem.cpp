@@ -169,11 +169,21 @@ namespace GraphCanvas
         UpdatePen();
     }
 
+    Styling::ConnectionCurveType DataConnectionGraphicsItem::GetCurveStyle() const
+    {
+        Styling::ConnectionCurveType curveStyle = Styling::ConnectionCurveType::Straight;
+        AssetEditorSettingsRequestBus::EventResult(curveStyle, GetEditorId(), &AssetEditorSettingsRequests::GetDataConnectionCurveType);
+        return curveStyle;
+    }
+
     void DataConnectionGraphicsItem::UpdatePen()
     {
         ConnectionGraphicsItem::UpdatePen();
 
-        if (!isSelected() && GetDisplayState() == RootGraphicsItemDisplayState::Neutral)
+        if (!isSelected()
+            && (GetDisplayState() == RootGraphicsItemDisplayState::Neutral
+                || GetDisplayState() == RootGraphicsItemDisplayState::PartialDisabled
+                || GetDisplayState() == RootGraphicsItemDisplayState::Disabled))
         {
             QLinearGradient gradient(path().pointAtPercent(0), path().pointAtPercent(1));
 
@@ -186,7 +196,7 @@ namespace GraphCanvas
             setPen(m_pen);
         }
     }
-	
+
     void DataConnectionGraphicsItem::OnPathChanged()
     {
         UpdatePen();

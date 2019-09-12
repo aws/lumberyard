@@ -186,6 +186,6 @@ protected:
     float m_audioObstructionMultiplier;
 };
 
-DECLARE_COMPONENT_POINTERS(CComponentPhysics);
+DECLARE_SMART_POINTERS(CComponentPhysics);
 
 #endif // CRYINCLUDE_CRYENTITYSYSTEM_COMPONENTS_COMPONENTPHYSICS_H

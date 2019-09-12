@@ -9,7 +9,6 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#ifndef AZ_UNITY_BUILD
 
 #include <AzCore/Math/Obb.h>
 
@@ -80,5 +79,3 @@ bool Obb::operator!=(const Obb& rhs) const
 {
     return !(*this == rhs);
 }
-
-#endif // #ifndef AZ_UNITY_BUILD

@@ -13,10 +13,9 @@
 #ifndef __EMSTUDIO_PLUGINMANAGER_H
 #define __EMSTUDIO_PLUGINMANAGER_H
 
-// include MCore
-#include <MCore/Source/Array.h>
 #include "EMStudioConfig.h"
 #include "EMStudioPlugin.h"
+#include <AzCore/PlatformIncl.h>
 
 namespace EMStudio
 {
@@ -60,7 +59,7 @@ namespace EMStudio
     private:
         PluginVector mPlugins;
 
-        #if defined(MCORE_PLATFORM_WINDOWS)
+        #if defined(AZ_PLATFORM_WINDOWS)
         AZStd::vector<HMODULE>       mPluginLibs;
         #else
         AZStd::vector<void*>         mPluginLibs;

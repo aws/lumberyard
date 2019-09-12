@@ -31,14 +31,14 @@ void ColorButton::paintEvent(QPaintEvent* event)
     painter.drawRect(rect().adjusted(0, 0, -1, -1));
 }
 
-#ifdef AZ_PLATFORM_APPLE
+#if AZ_TRAIT_OS_PLATFORM_APPLE
 void macRaiseWindowDelayed(QWidget* window);
 #endif
 
 void ColorButton::OnClick()
 {
     QColor color = QColorDialog::getColor(m_color, this, tr("Select Color"));
-#ifdef AZ_PLATFORM_APPLE
+#if AZ_TRAIT_OS_PLATFORM_APPLE
     macRaiseWindowDelayed(window());
 #endif
 

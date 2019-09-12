@@ -9,10 +9,10 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#include "TestTypes.h"
 #include <AzCore/Component/TickBus.h>
 #include <AzCore/Math/Random.h>
 #include <AzCore/std/sort.h>
+#include <AzCore/UnitTest/TestTypes.h>
 
 using namespace AZ;
 

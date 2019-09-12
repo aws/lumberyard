@@ -15,7 +15,6 @@
 
 #pragma once
 
-#include <BoostHelpers.h>
 #include <CryFixedString.h>
 #include <ILocalizationManager.h>
 

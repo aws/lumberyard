@@ -48,7 +48,7 @@ const char* FOCUSED_VIEW_PANE_ATTRIBUTE_NAME = "FocusedViewPaneName"; //Name of 
 
 static QPointer<QWidget> s_lastFocus;
 
-#ifdef AZ_PLATFORM_APPLE
+#if AZ_TRAIT_OS_PLATFORM_APPLE
 class MacNativeShortcutFilter : public QObject
 {
     /* mac's native toolbar doesn't generate shortcut events, it calls the action directly.
@@ -334,7 +334,7 @@ ShortcutDispatcher::ShortcutDispatcher(QObject* parent)
     , m_currentlyHandlingShortcut(false)
 {
     qApp->installEventFilter(this);
-#ifdef AZ_PLATFORM_APPLE
+#if AZ_TRAIT_OS_PLATFORM_APPLE
     new MacNativeShortcutFilter(this);
 #endif
 }

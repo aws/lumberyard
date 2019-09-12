@@ -14,7 +14,9 @@
       "Source/Editor/EditorOceanSurfaceDataComponent.cpp",
       "Source/Editor/EditorOceanSurfaceDataComponent.h",
       "Source/Editor/EditorWaterVolumeSurfaceDataComponent.cpp",
-      "Source/Editor/EditorWaterVolumeSurfaceDataComponent.h"
+      "Source/Editor/EditorWaterVolumeSurfaceDataComponent.h",
+      "Source/Editor/EditorWaterRippleGeneratorComponent.h",
+      "Source/Editor/EditorWaterRippleGeneratorComponent.cpp"
     ]
   }
 }

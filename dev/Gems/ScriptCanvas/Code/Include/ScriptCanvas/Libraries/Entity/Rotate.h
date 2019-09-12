@@ -12,9 +12,12 @@
 
 #pragma once
 
-#include <Libraries/Entity/Entity.h>
-#include <AzCore/Math/Vector3.h>
+#include <ScriptCanvas/CodeGen/CodeGen.h>
 #include <ScriptCanvas/Core/Node.h>
+
+#include <AzCore/Math/Vector3.h>
+
+#include <Include/ScriptCanvas/Libraries/Entity/Rotate.generated.h>
 
 namespace ScriptCanvas
 {
@@ -24,20 +27,36 @@ namespace ScriptCanvas
         {
             class Rotate 
                 : public Node
-            {
+            {            
+                ScriptCanvas_Node(Rotate,
+                    ScriptCanvas_Node::Uuid("{6F802B53-E726-430D-9F41-63CFC783F91D}")
+                    ScriptCanvas_Node::Description("Rotates the given entity by the specified amount.")
+                    ScriptCanvas_Node::Category("Entity/Transform")
+                    ScriptCanvas_Node::EditAttributes(AZ::Edit::Attributes::CategoryStyle(".method"), ScriptCanvas::Attributes::Node::TitlePaletteOverride("MethodNodeTitlePalette"))
+                    ScriptCanvas_Node::Version(4)
+                );
+
             public:
-
-                AZ_COMPONENT(Rotate, "{6F802B53-E726-430D-9F41-63CFC783F91D}", Node);
-
-                static void Reflect(AZ::ReflectContext*);
-
-                void OnInit() override;
+                
                 void OnInputSignal(const SlotId&) override;
-                void Visit(NodeVisitor& visitor) const override { visitor.Visit(*this); }
 
             protected:
-                static const char* k_setEntityName;
-                static const char* k_setAnglesName;
+                // Inputs
+                ScriptCanvas_In(ScriptCanvas_In::Name("In", ""));
+
+                // Outputs
+                ScriptCanvas_Out(ScriptCanvas_Out::Name("Out", ""));
+
+                // Data Inputs
+                ScriptCanvas_PropertyWithDefaults(AZ::EntityId, ScriptCanvas::GraphOwnerId,
+                    ScriptCanvas_Property::Name("Entity", "The entity to apply the rotation on.")
+                    ScriptCanvas_Property::Input
+                );
+
+                ScriptCanvas_Property(AZ::Vector3,
+                    ScriptCanvas_Property::Name("Euler Angles", "Euler angles, Pitch/Yaw/Roll.")
+                    ScriptCanvas_Property::Input
+                );
             };
         }
     }

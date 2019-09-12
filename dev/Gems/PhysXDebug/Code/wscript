@@ -10,19 +10,30 @@
 #
 ########################################################################################
 def build(bld):
+    # PhysX has global pointers for referencing the PhysX SDK. These pointers need to exist in a single memory
+    # space so different Gems can get copies of them. Monolithic builds will use the static version of PhysX SDK libraries,
+    # which results in a single memory space. Non-monolithic builds will use the dynamic version of PhysX SDK libraries,
+    # which also works because different Gems will be using the shared library's memory space.
+    if bld.is_build_monolithic():
+        physx_sdk_lib = 'PHYSX_SDK'
+    else:
+        physx_sdk_lib = 'PHYSX_SDK_SHARED'
 
     bld.DefineGem(
         file_list         = ['physxdebug.waf_files'],
         defines           = ['IMGUI_ENABLED'],
         pch               = "Source/PhysXDebug_precompiled.cpp",
         use               = ['ImGui'],
-        uselib            = ['PHYSX_SDK'],
+        includes          = [bld.Path('Code/CryEngine/CryCommon')
+                            ],
+        uselib            = [physx_sdk_lib],
             editor = dict(
                 platforms         = ['win','darwin'],
                 defines           = ['PHYSXDEBUG_GEM_EDITOR', 'IMGUI_ENABLED'],
-                includes          = [bld.Path('Code/Sandbox/Plugins/EditorCommon'),
+                includes          = [bld.Path('Code/CryEngine/CryCommon'),
+                                     bld.Path('Code/Sandbox/Plugins/EditorCommon'),
                                      bld.Path('Code/Sandbox/Editor')],
                 use               = ['ImGui'],
-                uselib            = ['PHYSX_SDK']
+                uselib            = [physx_sdk_lib]
             )
     )

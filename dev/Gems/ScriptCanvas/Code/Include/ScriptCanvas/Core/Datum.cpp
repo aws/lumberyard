@@ -1348,6 +1348,7 @@ namespace ScriptCanvas
     Datum::Datum()
         : m_isOverloadedStorage(true)
         , m_originality(eOriginality::Copy)
+        , m_isDefaultConstructed(true)
     {
     }
 
@@ -1395,6 +1396,24 @@ namespace ScriptCanvas
             !(value.m_traits & (AZ::BehaviorParameter::TR_POINTER | AZ::BehaviorParameter::TR_REFERENCE)) ? eOriginality::Original : eOriginality::Copy,
             value.m_value)
     {
+    }
+
+    void Datum::ReconfigureDatumTo(Datum&& datum)        
+    {
+        bool isOverloadedStorage = datum.m_isOverloadedStorage;
+
+        const_cast<bool&>(m_isOverloadedStorage) = true;
+        (*this) = AZStd::move(datum);
+        const_cast<bool&>(m_isOverloadedStorage) = isOverloadedStorage;
+    }
+
+    void Datum::ReconfigureDatumTo(const Datum& datum)
+    {
+        bool isOverloadedStorage = datum.m_isOverloadedStorage;
+
+        const_cast<bool&>(m_isOverloadedStorage) = true;
+        (*this) = datum;
+        const_cast<bool&>(m_isOverloadedStorage) = isOverloadedStorage;
     }
 
     ComparisonOutcome Datum::CallComparisonOperator(AZ::Script::Attributes::OperatorType operatorType, const AZ::BehaviorClass& behaviorClass, const Datum& lhs, const Datum& rhs)
@@ -1850,6 +1869,25 @@ namespace ScriptCanvas
         return (source && FromBehaviorContextVector4(sourceTypeID, source, m_storage)) || true;
     }
 
+    void Datum::SetType(const Data::Type& dataType)
+    {
+        if (!GetType().IsValid() && m_isDefaultConstructed)
+        {
+            if (dataType.IsValid())
+            {
+                m_isDefaultConstructed = false;
+                                
+                Datum tempDatum(dataType, ScriptCanvas::Datum::eOriginality::Original);
+                ReconfigureDatumTo(AZStd::move(tempDatum));
+            }
+            else
+            {
+                m_isDefaultConstructed = true;
+                (*this) = AZStd::move(Datum());                
+            }
+        }
+    }
+
     bool Datum::IsConvertibleTo(const AZ::BehaviorParameter& parameterDesc) const
     {
         if (AZ::BehaviorContextHelper::IsStringParameter(parameterDesc) && Data::IsString(GetType()))
@@ -2146,7 +2184,7 @@ namespace ScriptCanvas
         AZ::SerializeContext* serializeContext{};
         AZ::ComponentApplicationBus::BroadcastResult(serializeContext, &AZ::ComponentApplicationRequests::GetSerializeContext);
         AZStd::unordered_map<AZ::EntityId, AZ::EntityId> uniqueIdMap;
-        uniqueIdMap.emplace(ScriptCanvas::SelfReferenceId, graphOwnerId);
+        uniqueIdMap.emplace(ScriptCanvas::GraphOwnerId, graphOwnerId);
         AZ::IdUtils::Remapper<AZ::EntityId>::RemapIds(this, [&uniqueIdMap](AZ::EntityId sourceId, bool, const AZ::IdUtils::Remapper<AZ::EntityId>::IdGenerator&) -> AZ::EntityId
         {
             auto findIt = uniqueIdMap.find(sourceId);
@@ -2627,7 +2665,7 @@ namespace ScriptCanvas
             , static_cast<float>(source.GetW()));
     }
 
-    AZ::Outcome<void, AZStd::string> Datum::CallBehaviorContextMethod(AZ::BehaviorMethod* method, AZ::BehaviorValueParameter* params, unsigned int numExpectedArgs)
+    AZ::Outcome<void, AZStd::string> Datum::CallBehaviorContextMethod(const AZ::BehaviorMethod* method, AZ::BehaviorValueParameter* params, unsigned int numExpectedArgs)
     {
         AZ_Assert(method, "AZ::BehaviorMethod* method == nullptr in Datum");
         if (method->Call(params, numExpectedArgs))
@@ -2640,7 +2678,7 @@ namespace ScriptCanvas
         }
     }
 
-    AZ::Outcome<Datum, AZStd::string> Datum::CallBehaviorContextMethodResult(AZ::BehaviorMethod* method, const AZ::BehaviorParameter* resultType, AZ::BehaviorValueParameter* params, unsigned int numExpectedArgs)
+    AZ::Outcome<Datum, AZStd::string> Datum::CallBehaviorContextMethodResult(const AZ::BehaviorMethod* method, const AZ::BehaviorParameter* resultType, AZ::BehaviorValueParameter* params, unsigned int numExpectedArgs)
     {
         AZ_Assert(resultType, "const AZ::BehaviorParameter* resultType == nullptr in Datum");
         AZ_Assert(method, "AZ::BehaviorMethod* method == nullptr in Datum");
@@ -2667,6 +2705,11 @@ namespace ScriptCanvas
             // parameter conversion failed
             return AZ::Failure(parameter.GetError());
         }
+    }
+
+    bool Datum::IsValidDatum(const Datum* datum)
+    {
+        return datum != nullptr && !datum->Empty();
     }
 
 } // namespace ScriptCanvas

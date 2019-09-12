@@ -253,6 +253,7 @@ extern VTuneFunction VTPause;
 
 struct SSystemCVars
 {
+    int az_streaming_stats;
     int sys_streaming_requests_grouping_time_period;
     int sys_streaming_sleep;
     int sys_streaming_memory_budget;
@@ -546,6 +547,7 @@ public:
     IZLibCompressor* GetIZLibCompressor() { return m_pIZLibCompressor; }
     IZLibDecompressor* GetIZLibDecompressor() { return m_pIZLibDecompressor; }
     ILZ4Decompressor* GetLZ4Decompressor() { return m_pILZ4Decompressor; }
+    IZStdDecompressor* GetZStdDecompressor() { return m_pIZStdDecompressor; }
     WIN_HWND GetHWND(){ return m_hWnd; }
     IGemManager* GetGemManager() override { return m_pGemManager; }
     ICrypto* GetCrypto() { return m_crypto; }
@@ -983,6 +985,9 @@ private: // ------------------------------------------------------
 
     //! System to access lz4 hc decompressor
     ILZ4Decompressor* m_pILZ4Decompressor;
+
+    //! System access to zstd decompressor
+    IZStdDecompressor* m_pIZStdDecompressor;
 
     //! System to load and access gems
     IGemManager* m_pGemManager;

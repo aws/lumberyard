@@ -15,9 +15,11 @@ def build(bld):
     bld.DefineGem(
         # Add custom build options here
         use             = ['GridMate', 'AWSNativeSDKInit'],
-        includes        = [bld.Path('Code/CryEngine/CryAction'),
+        includes        = [bld.Path('Code/CryEngine/CryCommon'),
+                           bld.Path('Code/CryEngine/CryAction'),
                            bld.Path('Code/CryEngine/CryNetwork'),
-                           bld.Path('Gems/Multiplayer/Code/Include')],
+                           bld.Path('Gems/Multiplayer/Code/Include')
+                          ],
         pch             = '',
         file_list       = ['GameLift.waf_files'],
 

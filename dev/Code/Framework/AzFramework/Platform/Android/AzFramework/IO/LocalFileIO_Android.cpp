@@ -10,10 +10,14 @@
 *
 */
 #include <dirent.h>
+#include <sys/stat.h>
 #include <fstream>
-
+#include <AzFramework/IO/LocalFileIO.h>
 #include <AzCore/Android/APKFileHandler.h>
 #include <AzCore/Android/Utils.h>
+#include <AzCore/IO/IOUtils.h>
+#include <AzCore/IO/SystemFile.h>
+#include <AzCore/std/functional.h>
 
 #include <android/api-level.h>
 
@@ -39,255 +43,6 @@ namespace AZ
 {
     namespace IO
     {
-        Result LocalFileIO::Open(const char* filePath, OpenMode mode, HandleType& fileHandle)
-        {
-            ANDROID_IO_PROFILE_SECTION_ARGS("%s", filePath);
-
-            char resolvedPath[AZ_MAX_PATH_LEN];
-            ResolvePath(filePath, resolvedPath, AZ_MAX_PATH_LEN);
-            FILE* filePointer;
-            bool readingAPK = false;
-            AZ::u64 size = 0;
-
-            if (!AZ::Android::Utils::IsApkPath(resolvedPath))
-            {
-                filePointer = fopen(resolvedPath, GetStringModeFromOpenMode(mode));
-            }
-            else
-            {
-                //try opening the file in the APK
-                readingAPK = true;
-                filePointer = AZ::Android::APKFileHandler::Open(resolvedPath, GetStringModeFromOpenMode(mode), size);
-            }
-
-            if (filePointer != nullptr)
-            {
-                fileHandle = GetNextHandle();
-                {
-                    AZStd::lock_guard<AZStd::recursive_mutex> lock(m_openFileGuard);
-                    FileDescriptor file;
-                    file.m_filename = resolvedPath;
-                    file.m_handle = filePointer;
-                    file.m_isPackaged = readingAPK;
-                    file.m_size = size;
-                    m_openFiles[fileHandle] = file;
-                }
-                return ResultCode::Success;
-            }
-
-            // On failure, ensure the fileHandle returned is invalid
-            //  some code does not check return but handle value (equivalent to checking for nullptr FILE*)
-            fileHandle = InvalidHandle;
-            return ResultCode::Error;
-        }
-
-        Result LocalFileIO::Close(HandleType fileHandle)
-        {
-            auto filePointer = GetFilePointerFromHandle(fileHandle);
-            if (!filePointer)
-            {
-                return ResultCode::Error_HandleInvalid;
-            }
-
-            if (fclose(filePointer))
-            {
-                return ResultCode::Error;
-            }
-
-            {
-                AZStd::lock_guard<AZStd::recursive_mutex> lock(m_openFileGuard);
-                m_openFiles.erase(fileHandle);
-            }
-            return ResultCode::Success;
-        }
-
-        Result LocalFileIO::Read(HandleType fileHandle, void* buffer, AZ::u64 size, bool failOnFewerThanSizeBytesRead, AZ::u64* bytesRead)
-        {
-            ANDROID_IO_PROFILE_SECTION;
-
-        #if defined(AZ_DEBUG_BUILD)
-            // detect portability issues in debug (only)
-            // so that the static_cast below doesn't trap us.
-            if ((size > static_cast<uint64_t>(UINT32_MAX)) && (sizeof(size_t) < 8))
-            {
-                // file read too large for platform!
-                return ResultCode::Error;
-            }
-        #endif
-            auto filePointer = GetFilePointerFromHandle(fileHandle);
-            if (!filePointer)
-            {
-                return ResultCode::Error_HandleInvalid;
-            }
-
-            AZ::Android::APKFileHandler::SetNumBytesToRead(static_cast<size_t>(size));
-            size_t readResult = fread(buffer, 1, static_cast<size_t>(size), filePointer);
-            if (static_cast<uint64_t>(readResult) != size)
-            {
-                if (ferror(filePointer) || failOnFewerThanSizeBytesRead)
-                {
-                    return ResultCode::Error;
-                }
-
-                // Reading less than desired is valid if ferror is not set
-                AZ_Assert(feof(filePointer), "End of file unexpectedly reached before all data was read");
-            }
-
-            if (bytesRead)
-            {
-                *bytesRead = static_cast<uint64_t>(readResult);
-            }
-            return ResultCode::Success;
-        }
-
-        Result LocalFileIO::Write(HandleType fileHandle, const void* buffer, AZ::u64 size, AZ::u64* bytesWritten)
-        {
-            ANDROID_IO_PROFILE_SECTION;
-
-        #if defined(AZ_DEBUG_BUILD)
-            // detect portability issues in debug (only)
-            // so that the static_cast below doesn't trap us.
-            if ((size > static_cast<uint64_t>(UINT32_MAX)) && (sizeof(size_t) < 8))
-            {
-                // file read too large for platform!
-                return ResultCode::Error;
-            }
-        #endif
-
-            auto filePointer = GetFilePointerFromHandle(fileHandle);
-            if (!filePointer)
-            {
-                return ResultCode::Error_HandleInvalid;
-            }
-
-            size_t writeResult = fwrite(buffer, 1, static_cast<size_t>(size), filePointer);
-
-            if (bytesWritten)
-            {
-                *bytesWritten = writeResult;
-            }
-
-            if (static_cast<uint64_t>(writeResult) != size)
-            {
-                return ResultCode::Error;
-            }
-
-            return ResultCode::Success;
-        }
-
-        Result LocalFileIO::Tell(HandleType fileHandle, AZ::u64& offset)
-        {
-            ANDROID_IO_PROFILE_SECTION;
-
-            auto filePointer = GetFilePointerFromHandle(fileHandle);
-            if (!filePointer)
-            {
-                return ResultCode::Error_HandleInvalid;
-            }
-
-            offset = static_cast<AZ::u64>(ftello(filePointer));
-            return ResultCode::Success;
-        }
-
-        bool LocalFileIO::Eof(HandleType fileHandle)
-        {
-            ANDROID_IO_PROFILE_SECTION;
-
-            auto filePointer = GetFilePointerFromHandle(fileHandle);
-            if (!filePointer)
-            {
-                return false;
-            }
-
-            return feof(filePointer) != 0;
-        }
-
-        Result LocalFileIO::Seek(HandleType fileHandle, AZ::s64 offset, SeekType type)
-        {
-            ANDROID_IO_PROFILE_SECTION;
-
-            auto filePointer = GetFilePointerFromHandle(fileHandle);
-            if (!filePointer)
-            {
-                return ResultCode::Error_HandleInvalid;
-            }
-
-            int operatingSystemSeekType = GetFSeekModeFromSeekType(type);
-            int ret = fseeko(filePointer, static_cast<off_t>(offset), operatingSystemSeekType);
-
-            if (ret == -1)
-            {
-                return ResultCode::Error;
-            }
-
-            return ResultCode::Success;
-        }
-
-        Result LocalFileIO::Size(HandleType fileHandle, AZ::u64& size)
-        {
-            ANDROID_IO_PROFILE_SECTION;
-
-            auto fileDescriptor = GetFileDescriptorFromHandle(fileHandle);
-            if (fileDescriptor == nullptr)
-            {
-                return ResultCode::Error_HandleInvalid;
-            }
-
-            auto filePointer = fileDescriptor->m_handle;
-
-            if (!fileDescriptor->m_isPackaged)
-            {
-                if (!filePointer)
-                {
-                    return ResultCode::Error_HandleInvalid;
-                }
-
-                struct stat64 statResult;
-                if (fstat64(fileno(filePointer), &statResult) != 0)
-                {
-                    return ResultCode::Error;
-                }
-
-                size = static_cast<AZ::u64>(statResult.st_size);
-            }
-            else
-            {
-                size = fileDescriptor->m_size;
-            }
-
-            return ResultCode::Success;
-        }
-
-
-        Result LocalFileIO::Size(const char* filePath, AZ::u64& size)
-        {
-            ANDROID_IO_PROFILE_SECTION;
-
-            char resolvedPath[AZ_MAX_PATH_LEN];
-            ResolvePath(filePath, resolvedPath, AZ_MAX_PATH_LEN);
-
-            if (AZ::Android::Utils::IsApkPath(resolvedPath))
-            {
-                size = AZ::Android::APKFileHandler::FileLength(resolvedPath);
-                if (!size)
-                {
-                    return Exists(resolvedPath) ? ResultCode::Success : ResultCode::Error;
-                }
-            }
-            else
-            {
-                struct stat64 statResult;
-                if (stat64(resolvedPath, &statResult) != 0)
-                {
-                    return ResultCode::Error;
-                }
-
-                size = static_cast<AZ::u64>(statResult.st_size);
-            }
-
-            return ResultCode::Success;
-        }
-
         bool LocalFileIO::IsDirectory(const char* filePath)
         {
             ANDROID_IO_PROFILE_SECTION_ARGS("IsDir:%s", filePath);
@@ -306,20 +61,6 @@ namespace AZ
                 return S_ISDIR(result.st_mode);
             }
             return false;
-        }
-
-        bool LocalFileIO::IsReadOnly(const char* filePath)
-        {
-            ANDROID_IO_PROFILE_SECTION_ARGS("IsReadOnly:%s", filePath);
-            char resolvedPath[AZ_MAX_PATH_LEN];
-            ResolvePath(filePath, resolvedPath, AZ_MAX_PATH_LEN);
-
-            if (AZ::Android::Utils::IsApkPath(filePath))
-            {
-                return true;
-            }
-
-            return access(resolvedPath, W_OK) != 0;
         }
 
         Result LocalFileIO::Copy(const char* sourceFilePath, const char* destinationFilePath)
@@ -439,35 +180,6 @@ namespace AZ
             return ResultCode::Success;
         }
 
-        AZ::u64 LocalFileIO::ModificationTime(const char* filePath)
-        {
-            char resolvedPath[AZ_MAX_PATH_LEN];
-            ResolvePath(filePath, resolvedPath, AZ_MAX_PATH_LEN);
-
-            struct stat result;
-            if (stat(resolvedPath, &result))
-            {
-                return 0;
-            }
-            return static_cast<AZ::u64>(result.st_mtime);
-        }
-
-        AZ::u64 LocalFileIO::ModificationTime(HandleType fileHandle)
-        {
-            auto filePointer = GetFilePointerFromHandle(fileHandle);
-            if (!filePointer)
-            {
-                return 0;
-            }
-            struct stat64 statResult;
-            if (fstat64(fileno(filePointer), &statResult) != 0)
-            {
-                return 0;
-            }
-            return static_cast<AZ::u64>(statResult.st_mtime);
-        }
-
-
         Result LocalFileIO::CreatePath(const char* filePath)
         {
             char resolvedPath[AZ_MAX_PATH_LEN];
@@ -535,47 +247,6 @@ namespace AZ
             }
             azstrcpy(absolutePath, maxLength, path);
             return IsAbsolutePath(absolutePath);
-        }
-
-        bool LocalFileIO::Exists(const char* filePath)
-        {
-            ANDROID_IO_PROFILE_SECTION_ARGS("Exists:%s", filePath);
-
-            char resolvedPath[AZ_MAX_PATH_LEN];
-            ResolvePath(filePath, resolvedPath, AZ_MAX_PATH_LEN);
-            if (AZ::Android::Utils::IsApkPath(resolvedPath))
-            {
-                return AZ::Android::APKFileHandler::DirectoryOrFileExists(resolvedPath);
-            }
-            return SystemFile::Exists(resolvedPath);
-        }
-
-        bool LocalFileIO::GetFilename(HandleType fileHandle, char* filename, AZ::u64 filenameSize) const
-        {
-            AZStd::lock_guard<AZStd::recursive_mutex> lock(m_openFileGuard);
-            auto fileIt = m_openFiles.find(fileHandle);
-            if (fileIt != m_openFiles.end())
-            {
-                azstrncpy(filename, filenameSize, fileIt->second.m_filename.c_str(), filenameSize);
-                return true;
-            }
-            return false;
-        }
-
-        Result LocalFileIO::Flush(HandleType fileHandle)
-        {
-            auto filePointer = GetFilePointerFromHandle(fileHandle);
-            if (!filePointer)
-            {
-                return ResultCode::Error_HandleInvalid;
-            }
-
-            if (fflush(filePointer))
-            {
-                return ResultCode::Error;
-            }
-
-            return ResultCode::Success;
         }
     } // namespace IO
 }//namespace AZ

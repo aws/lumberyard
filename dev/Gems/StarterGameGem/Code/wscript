@@ -13,35 +13,37 @@
 def build(bld):
     bld.DefineGem(
         # Add custom build options here
-		use	        	= [ 'AzGameFramework', 'EMotionFXStaticLib'],
-		
-        includes    	= [ bld.Path('Code/CryEngine/CryAction'),
-							bld.Path('Gems/LmbrCentral/Code/Source'),
-							bld.Path('Gems/LyShine/Code/Source'),
-							bld.Path('Gems/TextureAtlas/Code/Include'),
-							bld.Path('Gems/Camera/Code/Source'),
-							bld.Path('Gems/EMotionFX/Code'),
-							bld.Path('Gems/EMotionFX/Code/Source'),
-							],
-		
-		editor = dict(
-			defines		= [ 'STARTER_GAME_EDITOR' ],
-			use	        = [ 'AzToolsFramework', 'EMotionFXStaticLib', 'SceneCore', 'SceneData' ],
-			uselib		= [ 'QT5CORE',
-							'QT5GUI',
-							'QT5WIDGETS',
-							],
-			includes	= [ './Include',
-							bld.Path('Code/CryEngine/CryAction'),
-							bld.Path('Gems/LmbrCentral/Code/Source'),
-							bld.Path('Gems/LyShine/Code/Source'),
-							bld.Path('Gems/TextureAtlas/Code/Include'),
-							bld.Path('Gems/Camera/Code/Source'),
-							bld.Path('Gems/EMotionFX/Code'),
-							bld.Path('Gems/EMotionFX/Code/Source'),
-							bld.Path('Code/Sandbox/Plugins/EditorCommon'),
-							bld.Path('Code/Sandbox/Editor'),
-							bld.Path('Code/Sandbox/Editor/Include'),
-							],
-		)
+        use             = [ 'AzGameFramework', 'EMotionFXStaticLib'],
+
+        includes        = [ bld.Path('Code/CryEngine/CryAction'),
+                            bld.Path('Gems/LmbrCentral/Code/Source'),
+                            bld.Path('Gems/LyShine/Code/Source'),
+                            bld.Path('Gems/TextureAtlas/Code/Include'),
+                            bld.Path('Gems/Camera/Code/Source'),
+                            bld.Path('Gems/EMotionFX/Code'),
+                            bld.Path('Gems/EMotionFX/Code/Source'),
+                            bld.Path('Code/CryEngine/CryCommon')
+                          ],
+
+        editor = dict(
+            defines     = [ 'STARTER_GAME_EDITOR' ],
+            use         = [ 'AzToolsFramework', 'EMotionFXStaticLib', 'SceneCore', 'SceneData' ],
+            uselib      = [ 'QT5CORE',
+                            'QT5GUI',
+                            'QT5WIDGETS',
+                            ],
+            includes    = [ './Include',
+                            bld.Path('Code/CryEngine/CryAction'),
+                            bld.Path('Gems/LmbrCentral/Code/Source'),
+                            bld.Path('Gems/LyShine/Code/Source'),
+                            bld.Path('Gems/TextureAtlas/Code/Include'),
+                            bld.Path('Gems/Camera/Code/Source'),
+                            bld.Path('Gems/EMotionFX/Code'),
+                            bld.Path('Gems/EMotionFX/Code/Source'),
+                            bld.Path('Code/Sandbox/Plugins/EditorCommon'),
+                            bld.Path('Code/Sandbox/Editor'),
+                            bld.Path('Code/Sandbox/Editor/Include'),
+                            bld.Path('Code/CryEngine/CryCommon')
+                            ],
+        )
     )

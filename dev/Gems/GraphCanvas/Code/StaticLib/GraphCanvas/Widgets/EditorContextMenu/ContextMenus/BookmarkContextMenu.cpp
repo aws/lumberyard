@@ -17,8 +17,8 @@ namespace GraphCanvas
     // BookmarkContextMenu
     ////////////////////////
 
-    BookmarkContextMenu::BookmarkContextMenu(QWidget* parent)
-        : GraphCanvas::EditorContextMenu(parent)
+    BookmarkContextMenu::BookmarkContextMenu(EditorId editorId, QWidget* parent)
+        : GraphCanvas::EditorContextMenu(editorId, parent)
     {
         m_editActionMenuGroup.PopulateMenu(this);
     }

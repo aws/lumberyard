@@ -76,7 +76,7 @@ namespace InAppPurchases
         const AZStd::string& GetProductId() const { return m_productId; }
         const AZStd::string& GetOrderId() const { return m_orderId; }
         const AZStd::string& GetDeveloperPayload() const { return m_developerPayload; }
-        AZ::u64 GetPurchaseTime() const { return m_purchaseTime; }
+        virtual AZ::u64 GetPurchaseTime() const { return m_purchaseTime; }
         PurchaseState GetPurchaseState() const { return m_purchaseState; }
         
         void SetProductId(const AZStd::string& productId) { m_productId = productId; }
@@ -154,6 +154,7 @@ namespace InAppPurchases
         InAppPurchasesCache m_cache;
 
     private:
+        static InAppPurchasesInterface* CreateInstance();
         static InAppPurchasesInterface* iapInstance;
     };
 }

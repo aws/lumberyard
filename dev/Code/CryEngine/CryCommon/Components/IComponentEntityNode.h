@@ -33,6 +33,6 @@ struct IComponentEntityNode
     // </interfuscator:shuffle>
 };
 
-DECLARE_COMPONENT_POINTERS(IComponentEntityNode);
+DECLARE_SMART_POINTERS(IComponentEntityNode);
 
 #endif // CRYINCLUDE_CRYCOMMON_COMPONENTS_ICOMPONENTENTITYNODE_H

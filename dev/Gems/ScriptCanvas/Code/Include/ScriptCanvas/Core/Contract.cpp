@@ -14,6 +14,8 @@
 #include "ContractBus.h"
 #include "Slot.h"
 
+#include <ScriptCanvas/Data/Data.h>
+
 namespace ScriptCanvas
 {
     void Contract::Reflect(AZ::ReflectContext* reflection)
@@ -29,18 +31,16 @@ namespace ScriptCanvas
     
     AZ::Outcome<void, AZStd::string> Contract::Evaluate(const Slot& sourceSlot, const Slot& targetSlot) const
     {
-        AZStd::string errorMessage;
-        
-        auto outcome = OnEvaluate(sourceSlot, targetSlot);
-        if (outcome.IsSuccess())
-        {
-            ContractEventBus::Broadcast(&ContractEvents::OnValidContract, this, sourceSlot, targetSlot);
-            return AZ::Success();
+        return OnEvaluate(sourceSlot, targetSlot);
+    }
+
+    AZ::Outcome<void, AZStd::string> Contract::EvaluateForType(const Data::Type& dataType) const
+    {
+        if (!dataType.IsValid())
+        {            
+            return AZ::Failure<AZStd::string>("No valid contract match for Invalid Data Type");
         }
-        else
-        {
-            ContractEventBus::Broadcast(&ContractEvents::OnInvalidContract, this, sourceSlot, targetSlot);
-            return outcome;
-        }
+
+        return OnEvaluateForType(dataType);
     }
 }

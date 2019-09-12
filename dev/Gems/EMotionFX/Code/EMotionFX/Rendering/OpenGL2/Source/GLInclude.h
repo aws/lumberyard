@@ -11,18 +11,17 @@
 */
 
 
+#include <AzCore/PlatformDef.h>
+
 #include <GL/glew.h>
 
-#ifdef MCORE_PLATFORM_WINDOWS
-    #include <GL/wglew.h>
-#endif
-
-#ifdef __APPLE__
+#ifdef AZ_PLATFORM_APPLE
     #include <OpenGL/gl.h>
     #include <OpenGL/glu.h>
 #else
-#ifdef _WIN32
-    #include <AzCore/PlatformIncl.h>
+
+#ifdef AZ_PLATFORM_WINDOWS
+    #include <GL/wglew.h>
 #endif
     #include <GL/gl.h>
     #include <GL/glu.h>

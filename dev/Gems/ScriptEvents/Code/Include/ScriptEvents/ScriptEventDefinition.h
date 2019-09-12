@@ -83,7 +83,7 @@ namespace ScriptEvents
         void AddMethod(AZ::ScriptDataContext& dc)
         {
             Method& method = NewMethod();
-            method = Method(dc);
+            method.FromScript(dc);
             dc.PushResult(method);
         }
 
@@ -93,7 +93,7 @@ namespace ScriptEvents
 
         Method& NewMethod()
         {
-            m_methods.push_back();
+            m_methods.emplace_back();
             return m_methods.back();
         }
 
@@ -146,6 +146,8 @@ namespace ScriptEvents
         AZStd::string GetCategory() const { return m_category.Get<AZStd::string>() ? *m_category.Get<AZStd::string>() : ""; }
         AZStd::string GetTooltip() const { return m_tooltip.Get<AZStd::string>() ? *m_tooltip.Get<AZStd::string>() : ""; }
         AZ::Uuid GetAddressType() const { return m_addressType.Get<AZ::Uuid>() ? *m_addressType.Get<AZ::Uuid>() : AZ::Uuid::CreateNull(); }
+        AZStd::string GetBehaviorContextName() const { return CreateBehaviorContextName(GetVersion()); }
+        AZStd::string CreateBehaviorContextName(AZ::u32 versionNumber) const { return AZStd::string::format("%s_%i", GetName().c_str(), GetVersion()); }
         
         const AZStd::vector<Method>& GetMethods() const { return m_methods; }
 

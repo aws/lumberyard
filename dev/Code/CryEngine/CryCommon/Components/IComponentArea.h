@@ -218,6 +218,6 @@ struct IComponentArea
     // </interfuscator:shuffle>
 };
 
-DECLARE_COMPONENT_POINTERS(IComponentArea);
+DECLARE_SMART_POINTERS(IComponentArea);
 
 #endif // CRYINCLUDE_CRYCOMMON_COMPONENTS_ICOMPONENTAREA_H

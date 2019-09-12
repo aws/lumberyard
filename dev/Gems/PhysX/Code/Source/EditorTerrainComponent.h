@@ -90,7 +90,7 @@ namespace PhysX
         void UnregisterForEditorEvents();
         void OnEditorNotifyEvent(EEditorNotifyEvent event) override;
         void CreateEditorTerrain();
-
+        bool ShouldUpdateTerrain(const char* commandName) const;
         AZStd::string GetExportPath();
 
         AZ::Data::Asset<Pipeline::HeightFieldAsset> CreateHeightFieldAsset();

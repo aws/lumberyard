@@ -12,8 +12,10 @@
 #ifndef AZSTD_ALGORITHM_H
 #define AZSTD_ALGORITHM_H 1
 
+#include <AzCore/std/createdestroy.h>
 #include <AzCore/std/iterator.h>
 #include <AzCore/std/functional_basic.h>
+#include <AzCore/std/typetraits/remove_cvref.h>
 
 namespace AZStd
 {
@@ -905,6 +907,56 @@ namespace AZStd
             ++first1;
         }
         return last1;
+    }
+
+    template <class ForwardIterator>
+    bool is_sorted(ForwardIterator first, ForwardIterator last)
+    {
+        return is_sorted(first, last, AZStd::less<AZStd::remove_cvref_t<decltype(*first)>>());
+    }
+
+    template <class ForwardIterator, class Compare>
+    bool is_sorted(ForwardIterator first, ForwardIterator last, Compare comp)
+    {
+        if (first == last)
+        {
+            return true;
+        }
+        ForwardIterator next = first;
+        while (++next != last)
+        {
+            if (comp(*next, *first))
+            {
+                return false;
+            }
+            ++first;
+        }
+        return true;
+    }
+
+    template<class ForwardIterator>
+    ForwardIterator unique(ForwardIterator first, ForwardIterator last)
+    {
+        return unique(first, last, AZStd::equal_to<AZStd::remove_cvref_t<decltype(*first)>>());
+    }
+
+    template<class ForwardIterator, class BinaryPredicate>
+    ForwardIterator unique(ForwardIterator first, ForwardIterator last, BinaryPredicate pred)
+    {
+        if (first == last)
+        {
+            return last;
+        }
+
+        ForwardIterator result = first;
+        while (++first != last)
+        {
+            if (!pred(*result, *first) && ++result != first)
+            {
+                *result = AZStd::move(*first);
+            }
+        }
+        return ++result;
     }
 
     // todo search_n

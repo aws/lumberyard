@@ -20,8 +20,8 @@
 
 #include <AzCore/RTTI/ReflectContext.h>
 #include <AzCore/Serialization/SerializeContext.h>
+#include <AzCore/UnitTest/TestTypes.h>
 
-#include "TestTypes.h"
 #include "ModuleTestBus.h"
 
 class ReflectedClass

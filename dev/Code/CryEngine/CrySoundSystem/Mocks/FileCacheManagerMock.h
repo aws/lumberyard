@@ -37,13 +37,15 @@ namespace Audio
         MOCK_METHOD1(UnloadDataByScope, EAudioRequestStatus(const EATLDataScope));
 
     private:
-        MOCK_METHOD2(StreamAsyncOnComplete, void(IReadStream*, unsigned int));
-        MOCK_METHOD2(StreamOnComplete, void(IReadStream*, unsigned int));
 
         MOCK_METHOD2(AllocateHeap, void(const size_t, const char* const));
         MOCK_METHOD3(UncacheFileCacheEntryInternal, bool(CATLAudioFileEntry* const, const bool, const bool));
         MOCK_METHOD1(DoesRequestFitInternal, bool(const size_t));
-        MOCK_METHOD2(FinishStreamInternal, bool(const IReadStreamPtr, const unsigned int));
+        MOCK_METHOD3(FinishCachingFileInternal, bool(CATLAudioFileEntry* const, AZ::IO::SizeType, AZ::IO::Request::StateType));
+
+        MOCK_METHOD1(FinishAsyncStreamRequest, void(FileStreamCompletionState));
+        MOCK_METHOD4(OnAsyncStreamFinished, void(AZ::IO::RequestHandle, AZ::IO::SizeType, void*, AZ::IO::Request::StateType));
+
         MOCK_METHOD1(AllocateMemoryBlockInternal, bool(CATLAudioFileEntry* const __restrict));
         MOCK_METHOD1(UncacheFile, void(CATLAudioFileEntry* const));
         MOCK_METHOD0(TryToUncacheFiles, void());

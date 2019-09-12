@@ -33,6 +33,7 @@
 #include <AzToolsFramework/Slice/SliceCompilation.h>
 #include <AzToolsFramework/ToolsComponents/EditorOnlyEntityComponent.h>
 
+#include <AzToolsFramework/API/EntityCompositionRequestBus.h>
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
 
 #include <LyShine/Bus/UiElementBus.h>
@@ -42,6 +43,62 @@
 
 #include "UiEditorEntityContext.h"
 
+namespace Internal
+{
+    void RemoveIncompatibleComponents(AZ::Entity* entity)
+    {
+        const AZ::Entity::ComponentArrayType components = entity->GetComponents();
+        AZ::Entity::ComponentArrayType validComponents;
+        AZ::Entity::ComponentArrayType incompatibleComponents;
+        AZ::ComponentDescriptor::DependencyArrayType incompatibleServices;
+        AZ::ComponentDescriptor::DependencyArrayType providedServices;
+        AZStd::string incompatibleNames;
+        for (auto component : components)
+        {
+            AZ::ComponentDescriptor* testComponentDesc = nullptr;
+            AZ::ComponentDescriptorBus::EventResult(testComponentDesc, azrtti_typeid(component), &AZ::ComponentDescriptorBus::Events::GetDescriptor);
+            providedServices.clear();
+            testComponentDesc->GetProvidedServices(providedServices, component);
+
+            bool isIncompatible = false;
+            for (auto validComponent : validComponents)
+            {
+                AZ::ComponentDescriptor* validComponentDesc = nullptr;
+                AZ::ComponentDescriptorBus::EventResult(validComponentDesc, azrtti_typeid(validComponent), &AZ::ComponentDescriptorBus::Events::GetDescriptor);
+
+                incompatibleServices.clear();
+                validComponentDesc->GetIncompatibleServices(incompatibleServices, validComponent);
+
+                auto foundItr = AZStd::find_first_of(incompatibleServices.begin(), incompatibleServices.end(), providedServices.begin(), providedServices.end());
+                if (foundItr != incompatibleServices.end())
+                {
+                    isIncompatible = true;
+                    break;
+                }
+            }
+
+            if (isIncompatible)
+            {
+                incompatibleComponents.push_back(component);
+
+                incompatibleNames.append(testComponentDesc->GetName());
+                incompatibleNames += '\n';
+            }
+            else
+            {
+                validComponents.push_back(component);
+            }
+        }
+
+        // Should be safe to remove components, because the entity hasn't been activated.
+        for (auto componentToRemove : incompatibleComponents)
+        {
+            entity->RemoveComponent(componentToRemove);
+        }
+
+        AZ_Error("UiCanvas", incompatibleComponents.empty(), "The following incompatible component(s) are removed from the entity %s:\n%s", entity->GetName().c_str(), incompatibleNames.c_str());
+    }
+}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 UiEditorEntityContext::UiEditorEntityContext(EditorWindow* editorWindow)
@@ -869,6 +926,14 @@ void UiEditorEntityContext::InitializeEntities(const AzFramework::EntityContext:
                     delete duplicateComponent;
                 }
             }
+
+            // This is a temporary solution to remove incompatible components so that the entity can 
+            // activate properly, otherwise all sorts of bad things will happen.
+            // 
+            // We do have formal way to handle invalid components for Editor entities (see EditorEntityActionComponent::ScrubEntities()).
+            // But it requires components being derived from EditorComponentBase. UiCanvas doesn't seem to distinguish between game-time 
+            // and editor-time components, so we can't use the existing scrubbing method.
+            Internal::RemoveIncompatibleComponents(entity);
 
             entity->Activate();
         }

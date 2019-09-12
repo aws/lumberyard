@@ -200,6 +200,10 @@ namespace AzToolsFramework
 
         void TearDown() override
         {
+            if (m_layerEntity.m_entity)
+            {
+                m_layerEntity.m_layer->CleanupLoadedLayer();
+            }
             m_editorLayerComponentTestHelperDescriptor->ReleaseDescriptor();
             m_app.Stop();
             AZ::Debug::TraceMessageBus::Handler::BusDisconnect();
@@ -1427,6 +1431,8 @@ namespace AzToolsFramework
         EXPECT_EQ(uniqueChildEntities.begin()->first, childEntity->GetId());
         EXPECT_NE(uniqueChildEntities.begin()->second, nullptr);
         EXPECT_EQ(uniqueChildEntities.begin()->second->GetId(), childEntity->GetId());
+
+        childLayerEntityAndComponent.m_layer->CleanupLoadedLayer();
     }
 
     TEST_F(EditorLayerComponentTest, LayerTests_SliceInstanceAddedToLayer_LayerHasUnsavedChanges)

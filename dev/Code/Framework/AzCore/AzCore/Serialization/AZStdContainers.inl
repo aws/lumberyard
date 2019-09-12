@@ -748,11 +748,11 @@ namespace AZ
             }
 
             /// Get an element's address by its key. Not used for serialization.
-            virtual void*   GetElementByKey(void* instance, const SerializeContext::ClassElement* classElement, void* key) override
+            virtual void*   GetElementByKey(void* instance, const SerializeContext::ClassElement* classElement, const void* key) override
             {
                 (void)classElement;
                 T* containerPtr = reinterpret_cast<T*>(instance);
-                auto elementIterator = containerPtr->find(*reinterpret_cast<KeyType*>(key));
+                auto elementIterator = containerPtr->find(*reinterpret_cast<const KeyType*>(key));
                 return (elementIterator != containerPtr->end()) ? &(*elementIterator) : nullptr;
             }
 
@@ -772,20 +772,23 @@ namespace AZ
                 T* containerPtr = reinterpret_cast<T*>(instance);
                 // this container can be a multi container so key is NOT enough, but a good start
                 const auto& key = T::traits_type::key_from_value(*reinterpret_cast<const ValueType*>(element));
-                typename T::iterator it = containerPtr->find(key);
-                while (it != containerPtr->end()) // in a case of multi key support iterate over all elements with that key until we find the one
-                {
-                    void* containerElement = &(*it);
-                    if (containerElement == element)
+                AZStd::pair<typename T::iterator, typename T::iterator> valueRange = containerPtr->equal_range(key);
+                while (valueRange.first != valueRange.second) // in a case of multi key support iterate over all elements with that key until we find the one
+                { 
+                    if (&(*valueRange.first) == element)
                     {
+                        // Extracts the node from the associative container without deleting it
+                        // The T::node_type destructor takes care of cleaning up the memory of the extracted node
+                        typename T::node_type removeNode = containerPtr->extract(valueRange.first);
                         if (deletePointerDataContext)
                         {
-                            DeletePointerData(deletePointerDataContext, &m_classElement, containerElement);
+                            // The following call will invoke the AZStdPairContainer::ClearElements function which will delete any elements
+                            // of pointer type stored by the pair and reset the pair itself back to a default constructed value
+                            DeletePointerData(deletePointerDataContext, &m_classElement, element);
                         }
-                        containerPtr->erase(it);
                         return true;
                     }
-                    ++it;
+                    ++valueRange.first;
                 }
                 return false;
             }

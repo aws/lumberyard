@@ -1,7 +1,7 @@
 {
     "auto": {
-        "Mac": [
-            "Platform_osx.cpp"
+        "Platform/Mac": [
+            "Platform_Mac.cpp"
         ]
     }
 }

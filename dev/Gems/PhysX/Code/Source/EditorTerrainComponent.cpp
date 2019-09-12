@@ -34,7 +34,6 @@ namespace PhysX
 {
     static const float s_maxCryTerrainHeight = 1024.f;
     static const float s_maxPhysxTerrainHeight = 32767.0f;
-    static const AZStd::string s_modifyTerrainCommand = "Modify Terrain";
 
     namespace TerrainUtils
     {
@@ -51,14 +50,23 @@ namespace PhysX
             return static_cast<int>(mapping.size()) - 1;
         }
 
+        AZStd::string GetRelativePath(const AZStd::string& fullPath, const AZStd::string& subPath)
+        {
+            return fullPath.substr(subPath.size(), fullPath.size() - subPath.size());
+        }
+
         AZStd::string GetLevelFolder()
         {
             IEditor* editor = nullptr;
             AzToolsFramework::EditorRequests::Bus::BroadcastResult(editor, &AzToolsFramework::EditorRequests::GetEditor);
             if (editor)
             {
-                AZStd::string levelFolder = editor->GetLevelName().toStdString().c_str();
-                AzFramework::StringFunc::Path::Join("Levels", levelFolder.c_str(), levelFolder);
+                
+                char projectPath[AZ_MAX_PATH_LEN];
+                AZ::IO::FileIOBase::GetInstance()->ResolvePath("@devassets@", projectPath, AZ_MAX_PATH_LEN);
+                AZStd::string absoluteFolderPath = editor->Get3DEngine()->GetLevelFilePath("");
+
+                AZStd::string levelFolder = GetRelativePath(absoluteFolderPath, projectPath);
                 return levelFolder;
             }
             else
@@ -163,15 +171,17 @@ namespace PhysX
             "EditorTerrainComponent", 
             "Multiple EditorTerrainComponents found in the editor scene on these entities:");
 
-        // If this component is newly created, it won't have an asset id assigned yet, so export immediately.
+        
         if (!m_configuration.m_heightFieldAsset.GetId().IsValid())
         {
+            // If this component is newly created, it won't have an asset id assigned yet. 
+            // So create a heightfield asset in memory. The asset will be written to disk on the first save.
             m_configuration.m_heightFieldAsset = CreateHeightFieldAsset();
             UpdateHeightFieldAsset();
-            SaveHeightFieldAsset();
         }
         else
         {
+            // Otherwise, load the heightfield asset from disk.
             LoadHeightFieldAsset();
         }
 
@@ -205,8 +215,8 @@ namespace PhysX
         {
             // Here we check for when a terrain command was undone/redone (on ctrl-z)
             // and then update the in-memory asset.
-            if (s_modifyTerrainCommand == stack->GetUndoName() ||
-                s_modifyTerrainCommand == stack->GetRedoName())
+            if (ShouldUpdateTerrain(stack->GetUndoName()) || 
+                ShouldUpdateTerrain(stack->GetRedoName()))
             {
                 UpdateHeightFieldAsset();
             }
@@ -216,7 +226,7 @@ namespace PhysX
     void EditorTerrainComponent::OnEndUndo(const char* label, bool changed)
     {
         // This gets fired at the end of a terrain modification (on mouse up)
-        if (s_modifyTerrainCommand == label && changed)
+        if (ShouldUpdateTerrain(label) && changed)
         {
             UpdateHeightFieldAsset();
         }
@@ -255,15 +265,14 @@ namespace PhysX
         AZ::Data::AssetCatalogRequestBus::BroadcastResult(generatedAssetId, &AZ::Data::AssetCatalogRequests::GenerateAssetIdTEMP, GetExportPath().c_str());
 
         AZ::Data::Asset<Pipeline::HeightFieldAsset> asset = AZ::Data::AssetManager::Instance().FindAsset(generatedAssetId);
-        if (asset.GetId().IsValid())
+        if (!asset.GetId().IsValid())
         {
-            return asset;
+            asset = AZ::Data::AssetManager::Instance().CreateAsset<PhysX::Pipeline::HeightFieldAsset>(generatedAssetId);
         }
-        else
-        {
-            AZ::Data::Asset<PhysX::Pipeline::HeightFieldAsset> heightFieldAsset(AZ::Data::AssetManager::Instance().CreateAsset<PhysX::Pipeline::HeightFieldAsset>(generatedAssetId));
-            return heightFieldAsset;
-        }
+
+        // Listen for changes to new asset
+        AZ::Data::AssetBus::Handler::BusConnect(asset.GetId());
+        return asset;
     }
 
     void EditorTerrainComponent::LoadHeightFieldAsset()
@@ -444,6 +453,20 @@ namespace PhysX
         }
 
         Physics::EditorWorldBus::Broadcast(&Physics::EditorWorldRequests::MarkEditorWorldDirty);
+    }
+
+    bool EditorTerrainComponent::ShouldUpdateTerrain(const char* commandName) const
+    {
+        // The terrain needs to be updated if one of these undo/redo commands is executed.
+        // Note that these commands will only be raised from the new undo system. Legacy cry commands
+        // need to be wrapped inside LegacyCommand objects.
+        static const AZStd::unordered_set<AZStd::string> modifyTerrainCommands =
+        {
+            "Modify Terrain",
+            "Texture Layer Painting"
+        };
+
+        return modifyTerrainCommands.count(commandName) > 0;
     }
 
     void EditorTerrainComponent::SetMaterialSelectionForSurfaceId(int surfaceId, const Physics::MaterialSelection& selection)

@@ -14,7 +14,7 @@
 
 //  include required headers
 #include "StandardHeaders.h"
-
+#include <AzCore/Math/Internal/MathTypes.h>
 
 namespace MCore
 {

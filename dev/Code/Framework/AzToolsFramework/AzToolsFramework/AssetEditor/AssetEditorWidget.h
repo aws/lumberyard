@@ -122,6 +122,7 @@ namespace AzToolsFramework
             void PopulateRecentMenu();
 
             AZStd::vector<AZ::Data::AssetType> m_genericAssetTypes;
+            AZ::Data::AssetId                    m_sourceAssetId;
             AZ::Data::Asset<AZ::Data::AssetData> m_inMemoryAsset;
             ReflectedPropertyEditor* m_propertyEditor;
             AZ::SerializeContext* m_serializeContext = nullptr;
@@ -134,7 +135,6 @@ namespace AzToolsFramework
             AZStd::string m_recentlyAddedAssetPath;
 
             bool m_dirty = false;
-            bool m_isNewAsset = false;
             
             QString m_currentAsset;
 

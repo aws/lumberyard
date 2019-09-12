@@ -54,6 +54,7 @@ namespace ScriptCanvas
 
                 ScriptCanvas_EditPropertyWithDefaults(int, m_numericPrecision, 4,
                     EditProperty::Name("Precision", "The precision with which to print any numeric values.")
+                    EditProperty::EditAttributes(AZ::Edit::Attributes::Min(0) AZ::Edit::Attributes::Max(24))
                 );
 
                 // This is a map that binds the index into m_unresolvedString to the SlotId that needs to be checked for a valid datum.

@@ -138,7 +138,9 @@ namespace AzQtComponents
         void enableSaveRestoreGeometry(QSettings* settings, const QString& key, bool autoRestoreOnShow);
 
         bool m_initialized = false;
+        AZ_PUSH_DISABLE_WARNING(4251, "-Wunknown-warning-option") // 4251: 'AzQtComponents::WindowDecorationWrapper::m_options': class 'QFlags<AzQtComponents::WindowDecorationWrapper::Option>' needs to have dll-interface to be used by clients of class 'AzQtComponents::WindowDecorationWrapper'
         Options m_options = OptionNone;
+        AZ_POP_DISABLE_WARNING
         TitleBar* const m_titleBar;
         QWidget* m_guestWidget = nullptr;
         QSettings* m_settings = nullptr;

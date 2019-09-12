@@ -26,6 +26,7 @@
 #include "CryVersion.h"
 #include "IProgress.h"
 #include <ISystem.h>
+#include "Codec.h"
 
 #include <map>                 // stl multimap<>
 #include <AzCore/std/parallel/mutex.h>
@@ -130,6 +131,11 @@ public:
         return m_verbosityLevel;
     }
 
+    virtual bool UseFastestDecompressionCodec() const
+    {
+        return m_bUseFastestDecompressionCodec;
+    }
+
     virtual const SFileVersion& GetFileVersion() const
     {
         return m_fileVersion;
@@ -217,7 +223,21 @@ public:
 private:
     void FilterExcludedFiles(std::vector<RcFile>& files);
 
-    void CopyFiles(const std::vector<RcFile>& files, bool bNoOverwrite = false);
+    void CopyFiles(const std::vector<RcFile>& files, bool bNoOverwrite = false, bool recompress = false);
+    /*!
+      Files discovered at the \p directory node will be added to \p filenames with full path, if other
+      directories are found inside \p directory then more files will be added recursively.
+      \param directory The input directory node
+      \param directoryName Full directory name of \p directory starting from the root directory.
+                           It is expected that only for the root directory this string is "".
+                           This function assumes that if this string is NOT empty, it includes the trailing "\\".
+      \param filenames Output vector where filepaths will be added as files are recursively discovered.
+      \returns void
+    */
+    void GetFileListRecursively(const ZipDir::FileEntryTree* directory, const AZStd::string& directoryName, AZStd::vector<AZStd::string>& filenames) const;
+    bool RecompressFiles(const string& sourceFileName, const string& destinationFileName);
+
+    bool    m_bUseFastestDecompressionCodec;
 
     void ExtractJobDefaultProperties(std::vector<string>& properties, const XmlNodeRef& jobNode);
     int  EvaluateJobXmlNode(CPropertyVars& properties, XmlNodeRef& jobNode, bool runJobs);

@@ -117,6 +117,7 @@ namespace PhysX
         void UpdateComputedCenterOfMass();
         void ComputeInertia();
         void SetInertia(const AZ::Matrix3x3& inertia);
+        void SetZeroCenterOfMass();
 
         void CreatePhysXActor(const Physics::RigidBodyConfiguration& configuration);
         void ReleasePhysXActor();

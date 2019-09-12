@@ -18,6 +18,7 @@
 #include "VideoPlaybackGameComponent.h"
 
 #include <IGem.h>
+#include <VideoPlayback_Traits_Platform.h>
 
 namespace AZ
 {
@@ -32,7 +33,7 @@ namespace AZ
             VideoPlaybackModule()
                 : CryHooksModule()
             {
-#if AZ_VIDEOPLAYBACK_GEM_TRAIT_ENABLE_DECODER
+#if AZ_TRAIT_VIDEOPLAYBACK_ENABLE_DECODER
                 // Push results of [MyComponent]::CreateDescriptor() into m_descriptors here.
                 m_descriptors.insert(m_descriptors.end(), {
                     VideoPlaybackSystemComponent::CreateDescriptor(),

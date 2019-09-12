@@ -20,21 +20,14 @@ def build(bld):
             version = '1.0'
         )
 
-    # on Android we need to copy the billing AIDL file into the project for processing
-    java_src_root = bld.path.make_node(os.path.join('Source', 'Android', 'java'))
-
     bld.DefineGem(
         # Add custom build options here
-        includes        = [bld.Path('Code/CryEngine/CryAction')],
+        includes        = [bld.Path('Code/CryEngine/CryCommon'),
+                           bld.Path('Code/CryEngine/CryAction')
+                          ],
         file_list       = ['inapppurchases.waf_files'],
-        use             = ['AZCore'],
+        use             = ['AzCore'],
 
-        ios_file_list     = ['inapppurchases_ios.waf_files'],
-        ios_cxxflags      = ['-x', 'objective-c++'],
-        ios_framework     = ['StoreKit'],
-        ios_uselib        = ['OPENSSL', 'ASN1'],
-
-        android_use           = ['billing'],
-        android_file_list     = [ 'inapppurchases_android.waf_files' ],
-        android_java_src_path = [ java_src_root.abspath() ],
+        # Platform Specific
+        platform_roots  = [{'root': 'Source/Platform', 'export_includes': False}]
     )

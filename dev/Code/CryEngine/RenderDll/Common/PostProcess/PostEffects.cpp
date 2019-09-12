@@ -693,8 +693,8 @@ void CPost3DRenderer::Reset(bool bOnSpecChange)
 
 //////////////////////////////////////////////////////////////////////////
 
-// Boost visitor class to resolve the effect parameter into the appropriate type
-class FetchVisitor : public boost::static_visitor<>
+// AZStd visitor class to resolve the effect parameter into the appropriate type
+class FetchVisitor
 {
 public:
 
@@ -728,7 +728,7 @@ void SetEffectParamFromVisitor( IPostEffectGroup* group, FetchVisitor& fetchVisi
 {
     PostEffectGroupParam* groupParam = group->GetParam(paramName);
     fetchVisitor.SetEffectParam( effectParam );
-    groupParam->apply_visitor( fetchVisitor );
+    AZStd::visit(fetchVisitor, *groupParam);
 }
 
 bool ScreenFader::Preprocess()

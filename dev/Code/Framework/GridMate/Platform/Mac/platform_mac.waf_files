@@ -1,0 +1,27 @@
+{
+  "auto": {
+    "Achievements/Platform/Mac": [
+      "../Common/Unimplemented/GridMate/Achievements/AchievementMgr_Unimplemented.cpp"
+    ],
+    "Carrier/Platform/Mac": [
+      "../Common/UnixLike/GridMate/Carrier/Utils_UnixLike.cpp",
+      "../Common/UnixLike/GridMate/Carrier/SocketDriver_UnixLike.cpp",
+      "GridMate/Carrier/SocketDriver_Platform.h"
+    ],
+    "Leaderboard/Platform/Mac": [
+      "../Common/Unimplemented/GridMate/Leaderboard/Leaderboard_Unimplemented.cpp"
+    ],
+    "Session/Platform/Mac": [
+      "GridMate/Session/LANSession_Mac.cpp",
+      "GridMate/Session/Session_Platform.h",
+      "GridMate/Session/Session_Mac.h"
+    ],
+    "Storage/Platform/Mac": [
+      "../Common/Unimplemented/GridMate/Storage/StorageService_Unimplemented.cpp"
+    ],
+    "Platform/Mac": [
+      "GridMate_Traits_Platform.h",
+      "GridMate_Traits_Mac.h"
+    ]
+  }
+}

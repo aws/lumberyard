@@ -9,7 +9,6 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#ifndef AZ_UNITY_BUILD
 
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/Serialization/EditContext.h>
@@ -882,7 +881,6 @@ namespace AZ
         return *this;
     }
 
-#ifdef AZ_HAS_RVALUE_REFS
     //=========================================================================
     // DataElement
     //=========================================================================
@@ -968,7 +966,6 @@ namespace AZ
 
         return *this;
     }
-#endif //
 
     //=========================================================================
     // Convert
@@ -2288,6 +2285,11 @@ namespace AZ
         }
     }
 
+    void SerializeContext::RegisterDataContainer(AZStd::unique_ptr<IDataContainer> dataContainer)
+    {
+        m_dataContainers.push_back(AZStd::move(dataContainer));
+    } 
+    
     //=========================================================================
     // EnumerateBaseRTTIEnumCallback
     // [11/13/2012]
@@ -2920,5 +2922,3 @@ namespace AZ
 
 
 } // namespace AZ
-
-#endif // #ifndef AZ_UNITY_BUILD

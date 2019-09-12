@@ -22,7 +22,7 @@
 
 namespace Serialization
 {
-    // Allows to have boost::shared_ptr<TPointer> but serialize it by
+    // Allows to have AZStd::shared_ptr<TPointer> but serialize it by
     // interface-casting to TSerializable, i.e. implementing Serialization through
     // separate interface.
     template<class TPointer, class TSerializable = TPointer>

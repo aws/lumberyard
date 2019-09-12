@@ -15,7 +15,7 @@
 
 #include <AzCore/PlatformDef.h>
 
-#if defined(AZ_PLATFORM_APPLE)
+#if AZ_TRAIT_OS_PLATFORM_APPLE
 #include <QUuid>
 #include "AzCore/Math/Guid.h"
 #endif

@@ -184,21 +184,21 @@ namespace AzFramework
 {
     ////////////////////////////////////////////////////////////////////////////////////////////////
     //! Platform specific implementation for ios virtual keyboard input devices
-    class InputDeviceVirtualKeyboardIos : public InputDeviceVirtualKeyboard::Implementation
+    class InputDeviceVirtualKeyboardApple : public InputDeviceVirtualKeyboard::Implementation
     {
     public:
         ////////////////////////////////////////////////////////////////////////////////////////////
         // Allocator
-        AZ_CLASS_ALLOCATOR(InputDeviceVirtualKeyboardIos, AZ::SystemAllocator, 0);
+        AZ_CLASS_ALLOCATOR(InputDeviceVirtualKeyboardApple, AZ::SystemAllocator, 0);
 
         ////////////////////////////////////////////////////////////////////////////////////////////
         //! Constructor
         //! \param[in] inputDevice Reference to the input device being implemented
-        InputDeviceVirtualKeyboardIos(InputDeviceVirtualKeyboard& inputDevice);
+        InputDeviceVirtualKeyboardApple(InputDeviceVirtualKeyboard& inputDevice);
 
         ////////////////////////////////////////////////////////////////////////////////////////////
         //! Destructor
-        ~InputDeviceVirtualKeyboardIos() override;
+        ~InputDeviceVirtualKeyboardApple() override;
 
     private:
         ////////////////////////////////////////////////////////////////////////////////////////////
@@ -232,11 +232,11 @@ namespace AzFramework
     InputDeviceVirtualKeyboard::Implementation* InputDeviceVirtualKeyboard::Implementation::Create(
         InputDeviceVirtualKeyboard& inputDevice)
     {
-        return aznew InputDeviceVirtualKeyboardIos(inputDevice);
+        return aznew InputDeviceVirtualKeyboardApple(inputDevice);
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
-    InputDeviceVirtualKeyboardIos::InputDeviceVirtualKeyboardIos(
+    InputDeviceVirtualKeyboardApple::InputDeviceVirtualKeyboardApple(
         InputDeviceVirtualKeyboard& inputDevice)
         : InputDeviceVirtualKeyboard::Implementation(inputDevice)
         , m_textField(nullptr)
@@ -265,7 +265,7 @@ namespace AzFramework
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
-    InputDeviceVirtualKeyboardIos::~InputDeviceVirtualKeyboardIos()
+    InputDeviceVirtualKeyboardApple::~InputDeviceVirtualKeyboardApple()
     {
         if (m_textField)
         {
@@ -280,20 +280,20 @@ namespace AzFramework
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
-    bool InputDeviceVirtualKeyboardIos::IsConnected() const
+    bool InputDeviceVirtualKeyboardApple::IsConnected() const
     {
         // Virtual keyboard input is always available
         return true;
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
-    bool InputDeviceVirtualKeyboardIos::HasTextEntryStarted() const
+    bool InputDeviceVirtualKeyboardApple::HasTextEntryStarted() const
     {
         return m_textField ? m_textField.isFirstResponder : false;
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
-    void InputDeviceVirtualKeyboardIos::TextEntryStart(const InputTextEntryRequests::VirtualKeyboardOptions& options)
+    void InputDeviceVirtualKeyboardApple::TextEntryStart(const InputTextEntryRequests::VirtualKeyboardOptions& options)
     {
         // Get the application's root view.
         UIWindow* window = [[UIApplication sharedApplication] keyWindow];
@@ -322,7 +322,7 @@ namespace AzFramework
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
-    void InputDeviceVirtualKeyboardIos::TextEntryStop()
+    void InputDeviceVirtualKeyboardApple::TextEntryStop()
     {
 #if defined(AZ_PLATFORM_APPLE_TV)
         // On AppleTV we can now destroy the event sink and clear any text that has been entered.
@@ -339,7 +339,7 @@ namespace AzFramework
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
-    void InputDeviceVirtualKeyboardIos::TickInputDevice()
+    void InputDeviceVirtualKeyboardApple::TickInputDevice()
     {
         // The ios event loop has just been pumped in InputSystemComponentIos::PreTickInputDevices,
         // so we now just need to process any raw events that have been queued since the last frame

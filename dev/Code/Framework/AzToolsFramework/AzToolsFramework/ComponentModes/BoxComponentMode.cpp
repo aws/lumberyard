@@ -59,7 +59,7 @@ namespace AzToolsFramework
             {
                 linearManipulator = LinearManipulator::MakeShared(worldFromLocal);
 
-                linearManipulator->AddEntityId(entityComponentIdPair.GetEntityId());
+                linearManipulator->AddEntityComponentIdPair(entityComponentIdPair);
                 linearManipulator->SetAxis(s_boxAxes[manipulatorIndex]);
 
                 ManipulatorViews views;
@@ -95,10 +95,6 @@ namespace AzToolsFramework
                         (NotAxis(action.m_fixed.m_axis) * boxDimensions).GetMax(scaledAxisDisplacement));
 
                     Refresh();
-
-                    ToolsApplicationNotificationBus::Broadcast(
-                        &ToolsApplicationNotificationBus::Events::InvalidatePropertyDisplay,
-                        Refresh_Values);
                 });
             }
 
@@ -124,15 +120,15 @@ namespace AzToolsFramework
     {
         AZ::Transform boxWorldFromLocal = AZ::Transform::CreateIdentity();
         BoxManipulatorRequestBus::EventResult(
-            boxWorldFromLocal, GetComponentEntityIdPair(), &BoxManipulatorRequests::GetCurrentTransform);
+            boxWorldFromLocal, GetEntityComponentIdPair(), &BoxManipulatorRequests::GetCurrentTransform);
 
         AZ::Vector3 boxScale = AZ::Vector3::CreateOne();
         BoxManipulatorRequestBus::EventResult(
-            boxScale, GetComponentEntityIdPair(), &BoxManipulatorRequests::GetBoxScale);
+            boxScale, GetEntityComponentIdPair(), &BoxManipulatorRequests::GetBoxScale);
 
         AZ::Vector3 boxDimensions = AZ::Vector3::CreateZero();
         BoxManipulatorRequestBus::EventResult(
-            boxDimensions, GetComponentEntityIdPair(), &BoxManipulatorRequests::GetDimensions);
+            boxDimensions, GetEntityComponentIdPair(), &BoxManipulatorRequests::GetDimensions);
 
         // ensure we apply the entity scale to the box dimensions so
         // the manipulators appear in the correct location

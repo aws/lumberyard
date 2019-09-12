@@ -76,8 +76,8 @@ public: // member functions
     // UiLayoutCellDefaultInterface
     float GetMinWidth() override;
     float GetMinHeight() override;
-    float GetTargetWidth() override;
-    float GetTargetHeight() override;
+    float GetTargetWidth(float maxWidth) override;
+    float GetTargetHeight(float maxHeight) override;
     float GetExtraWidthRatio() override;
     float GetExtraHeightRatio() override;
     // ~UiLayoutCellDefaultInterface

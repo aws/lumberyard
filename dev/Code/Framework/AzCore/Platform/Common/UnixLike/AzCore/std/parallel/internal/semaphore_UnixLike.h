@@ -9,9 +9,10 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#ifndef AZSTD_SEMAPHORE_LINUX_H
-#define AZSTD_SEMAPHORE_LINUX_H
-#include <AzCore/std/parallel/internal/time_linux.h>
+#pragma once
+
+#include "time_UnixLike.h"
+
 /**
 * This file is to be included from the semaphore.h only. It should NOT be included by the user.
 */
@@ -75,17 +76,6 @@ namespace AZStd
         AZ_Assert(result == 0 || errno == ETIMEDOUT, "sem_timedwait error %s\n", strerror(errno));
         return result == 0;
     }
-    /*template <class Clock, class Duration>
-    AZ_FORCE_INLINE bool semaphore::try_acquire_until(const chrono::time_point<Clock, Duration>& abs_time)
-    {
-        chrono::milliseconds now = chrono::system_clock::now().time_since_epoch();
-        if(now<abs_time)
-        {
-            chrono::milliseconds timeToTry = abs_time - now;
-            return try_acquire_for(timeToTry);
-        }
-        return false;
-    }*/
 
     AZ_FORCE_INLINE void semaphore::release(unsigned int releaseCount)
     {
@@ -111,6 +101,3 @@ namespace AZStd
         return &m_semaphore;
     }
 }
-
-#endif // AZSTD_SEMAPHORE_WINDOWS_H
-#pragma once

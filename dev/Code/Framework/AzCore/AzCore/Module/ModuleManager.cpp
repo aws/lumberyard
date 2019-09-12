@@ -9,7 +9,6 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  *
  */
-#ifndef AZ_UNITY_BUILD
 
 #include <AzCore/Module/ModuleManager.h>
 
@@ -780,4 +779,3 @@ namespace AZ
         m_systemComponents.insert(m_systemComponents.end(), componentsToActivate.begin(), componentsToActivate.end());
     }
 } // namespace AZ
-#endif // #ifndef AZ_UNITY_BUILD

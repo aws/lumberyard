@@ -29,6 +29,7 @@ def build(bld):
         platforms = ['all'],
         uselib = ['AWS_CPP_SDK_CORE'],
 
-        use = ['CloudGemFramework.StaticLibrary']
-
+        use = ['CloudGemFramework.StaticLibrary'],
+        includes = [bld.Path('Code/CryEngine/CryCommon')
+                   ],
     )

@@ -11,11 +11,16 @@
 ########################################################################################
 
 def build(bld):
-    bld.DefineGem(
-        # General
+
+    kw_dict = dict(
         disable_pch             = True,
         file_list               = ['gamestatesamples.waf_files'],
-        
-        # Testing
+        includes                = [bld.Path('Code/CryEngine/CryCommon')
+                                  ],
         test_all_file_list      = ['gamestatesamples_tests.waf_files'],
+        platform_roots          = [bld.PlatformRoot('Include/Platform', export_includes=True)]
+    )
+
+    bld.DefineGem(
+        **kw_dict
     )

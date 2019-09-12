@@ -380,6 +380,8 @@ void CGeomManager::SavePhysGeometry(CMemStream& stm, phys_geometry* pgeom)
 phys_geometry* CGeomManager::LoadPhysGeometry(CMemStream& stm, strided_pointer<const Vec3> pVertices,
     strided_pointer<unsigned short> pIndices, char* pIds)
 {
+    WriteLock lock(m_lockGeoman);
+
     int ver;
     stm.Read(ver);
     if (ver != PHYS_GEOM_VER)

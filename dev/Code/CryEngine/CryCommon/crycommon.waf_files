@@ -184,6 +184,7 @@
             "IXml.h",
             "IZLibCompressor.h",
             "IZlibDecompressor.h",
+            "IZStdDecompressor.h",
             "INetworkingState.h",
             "IProximityTriggerSystem.h",
             "MicrophoneBus.h",
@@ -309,7 +310,6 @@
             "BitFiddling.h",
             "BitMask.h",
             "BitmapDilation.h",
-            "BoostHelpers.h",
             "branchmask.h",
             "CGFContent.h",
             "CGFContent_info.h",
@@ -401,6 +401,7 @@
             "SerializeBuffer.h",
             "SerializeFwd.h",
             "SimpleSerialize.h",
+            "SmartPointersHelpers.h",
             "smartptr.h",
             "StackContainer.h",
             "StaticInstanceList.h",
@@ -449,7 +450,8 @@
             "ManualResetEvent.h",
             "UniqueManualEvent.h",
             "CryCommonReflection.h",
-            "OceanConstants.h"
+            "OceanConstants.h",
+            "Codec.h"
         ],
         "Common_h/RenderElements":
         [
@@ -681,6 +683,7 @@
             "LyShine/UiComponentTypes.h",
             "LyShine/UiBase.h",
             "LyShine/UiEntityContext.h",
+            "LyShine/UiLayoutCellBase.h",
             "LyShine/UiSerializeHelpers.h"
         ],
         "LyShine/Animation":

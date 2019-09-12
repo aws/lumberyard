@@ -12,8 +12,10 @@
 #pragma once
 #include <AzCore/EBus/EBus.h>
 #include <AzCore/std/parallel/mutex.h>
+#include <AzCore/std/string/string.h>
 #include <AzCore/IO/FileIO.h>
 #include <AzCore/IO/StreamerRequest.h>
+#include <AzCore/IO/Streamer/FileRange.h>
 
 namespace AZStd
 {
@@ -26,25 +28,23 @@ namespace AZ
     namespace IO
     {
         class Request;
-        class VirtualStream;
-
+        
         class DeviceRequest : public EBusTraits
         {
         public:
             static const bool EnableEventQueue = true;
             static const EBusAddressPolicy AddressPolicy = EBusAddressPolicy::Single;
-            using MutexType = AZStd::recursive_mutex;
-            using EventQueueMutexType = ::AZStd::recursive_mutex;
+            using MutexType = AZStd::recursive_mutex; // requests can be sent from any thread
+            using EventQueueMutexType = AZStd::recursive_mutex; // requests can also be queued from any thread
 
             virtual ~DeviceRequest() = default;
 
-            virtual void RegisterFileStreamRequest(Request* request, const char* filename, OpenMode flags, bool isLimited = false, AZStd::semaphore* sync = nullptr) = 0;
-            virtual void UnRegisterFileStreamRequest(Request* request, const char* filename, AZStd::semaphore* sync = nullptr) = 0;
-            virtual void RegisterStreamRequest(Request* request, VirtualStream* stream, OpenMode flags = OpenMode::Invalid, bool isLimited = false, AZStd::semaphore* sync = nullptr) = 0;
-            virtual void UnRegisterStreamRequest(Request* request, VirtualStream* stream, AZStd::semaphore* sync = nullptr) = 0;
-            virtual void ReadRequest(Request* request, VirtualStream* stream, const char* filename, AZStd::semaphore* sync = nullptr) = 0;
-            virtual void WriteRequest(Request* request, VirtualStream* stream, const char* filenName, AZStd::semaphore* sync = nullptr) = 0;
-            virtual void CancelRequest(Request* request, ::AZStd::semaphore* sync = nullptr) = 0;
+            virtual void ReadRequest(AZStd::shared_ptr<Request> request) = 0;
+            virtual void CancelRequest(AZStd::shared_ptr<Request> request, ::AZStd::semaphore* sync = nullptr) = 0;
+            virtual void CreateDedicatedCacheRequest(RequestPath filename, FileRange range, AZStd::semaphore* sync = nullptr) = 0;
+            virtual void DestroyDedicatedCacheRequest(RequestPath filename, FileRange range, AZStd::semaphore* sync = nullptr) = 0;
+            virtual void FlushCacheRequest(RequestPath filename, AZStd::semaphore* sync) = 0;
+            virtual void FlushCachesRequest(AZStd::semaphore* sync) = 0;
         };
 
         using DeviceRequestBus = ::AZ::EBus<DeviceRequest>;

@@ -1,13 +1,9 @@
 {
     "auto":
     {
-        "Root":
+        "Platform/Android":
         [
-        ],
-        "Source":
-        [
-            "Source/MicrophoneSystemComponent_android.inl",
-            "Source/SimpleDownsample.cpp"
+            "MicrophoneSystemComponent_Android.cpp"
         ]
     }
 }

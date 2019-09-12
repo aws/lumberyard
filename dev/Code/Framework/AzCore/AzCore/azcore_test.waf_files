@@ -4,8 +4,7 @@
         "UnitTest": 
         [
             "UnitTest/UnitTest.h",
-            "UnitTest/TestTypes.h",
-            "UnitTest/StandaloneUnitTest.h"
+            "UnitTest/TestTypes.h"
         ],
         "UnitTest/Mocks": 
         [

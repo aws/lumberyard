@@ -97,6 +97,7 @@ namespace AssetProcessor
         bool GetAssetSafeFolders(AZStd::vector<AZStd::string>& assetSafeFolders) override;
         bool IsAssetPlatformEnabled(const char* platform) override;
         int GetPendingAssetsForPlatform(const char* platform) override;
+        bool GetAssetsProducedBySourceUUID(const AZ::Uuid& sourceUuid, AZStd::vector<AZ::Data::AssetInfo>& productsAssetInfo) override;
         ////////////////////////////////////////////////////////////////////////////////
 
         ///////////////////////////////////////////////////////////////////////////

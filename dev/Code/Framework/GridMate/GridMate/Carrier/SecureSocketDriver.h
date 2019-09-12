@@ -31,7 +31,7 @@
 //    this->m_dbgLog += line;\
 //}
 
-#if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_LINUX)
+#if AZ_TRAIT_GRIDMATE_SECURE_SOCKET_DRIVER_HOOK_ENABLED
 struct ssl_st;
 struct ssl_ctx_st;
 struct dh_st;

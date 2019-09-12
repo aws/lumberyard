@@ -1,0 +1,16 @@
+{
+  "auto": {
+    "Source/BehaviorContext/Platform/Mac": [
+      "../Common/Multiplayer/BehaviorContext/GridSystemContext_Unimplemented.cpp"
+    ],
+    "Source/MultiplayerLobbyServiceWrapper/Platform/Mac": [
+      "../Common/Multiplayer/MultiplayerLobbyComponent_Unimplemented.cpp"
+    ],
+    "Platform/Mac": [
+      "Multiplayer_GridMateServiceWrapper_Platform.h",
+      "Multiplayer_GridMateServiceWrapper_Mac.h",
+      "Multiplayer_Traits_Platform.h",
+      "Multiplayer_Traits_Mac.h"
+    ]
+  }
+}

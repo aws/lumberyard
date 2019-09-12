@@ -14,7 +14,7 @@ namespace AzToolsFramework
 {
     namespace SliceUIConstants
     {
-        static const float opacity = 0.9;
+        static const float opacity = 0.9f;
         static const int roundedRectXRadius = 10;
         static const int roundedRectYRadius = 10;
         static const int animationDuration = 500;

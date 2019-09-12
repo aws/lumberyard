@@ -38,7 +38,7 @@ namespace Serialization
     };
 
 
-    typedef boost::shared_ptr< IXmlArchive > IXmlArchivePtr;
+    typedef AZStd::shared_ptr< IXmlArchive > IXmlArchivePtr;
 
 
     inline IXmlArchivePtr CreateXmlInputArchive()

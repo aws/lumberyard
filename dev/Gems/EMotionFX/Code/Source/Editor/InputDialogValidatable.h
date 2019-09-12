@@ -1,0 +1,44 @@
+/*
+* All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
+* its licensors.
+*
+* For complete copyright and license terms please see the LICENSE at the root of this
+* distribution (the "License"). All use of this software is governed by the License,
+* or, if provided, by the license below or the license accompanying this file. Do not
+* remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+*
+*/
+
+#pragma once
+
+#include <Editor/LineEditValidatable.h>
+#include <QDialog>
+
+QT_FORWARD_DECLARE_CLASS(QDialogButtonBox)
+
+namespace EMStudio
+{
+    class InputDialogValidatable
+        : public QDialog
+    {
+        Q_OBJECT //AUTOMOC
+    public:
+        AZ_CLASS_ALLOCATOR_DECL
+
+        InputDialogValidatable(QWidget* parent, const QString& labelText, const QRegExp regExp = LineEditValidatable::s_defaultRegExp);
+        ~InputDialogValidatable() = default;
+
+        void SetText(const QString& text);
+        QString GetText() const;
+
+        void SetValidatorFunc(const AZStd::function<bool()>& func);
+
+    private slots:
+        void OnAccepted();
+
+    private:
+        LineEditValidatable* m_lineEdit = nullptr;
+        QDialogButtonBox* m_buttonBox = nullptr;
+    };
+} // namespace EMStudio

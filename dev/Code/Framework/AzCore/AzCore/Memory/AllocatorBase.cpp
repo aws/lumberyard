@@ -9,7 +9,6 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#ifndef AZ_UNITY_BUILD
 
 #include <AzCore/Memory/AllocatorBase.h>
 #include <AzCore/Memory/AllocatorManager.h>
@@ -74,5 +73,3 @@ IAllocator::OnOutOfMemory(size_type byteSize, size_type alignment, int flags, co
     }
     return false;
 }
-
-#endif // #ifndef AZ_UNITY_BUILD

@@ -60,10 +60,10 @@ namespace ScriptCanvas
 
         AZ_INLINE void OnOutputChanged(const Datum& output) const
         { 
-            auto slotNameIter = m_slotNameMap.find(GetOutputDataName());
-            if (slotNameIter != m_slotNameMap.end())
+            Slot* slot = GetSlotByName(GetOutputDataName());
+            if (slot)
             {
-                OnOutputChanged(output, *slotNameIter->second);
+                OnOutputChanged(output, (*slot));
             }
         }
         
@@ -95,8 +95,6 @@ namespace ScriptCanvas
         void SetProperty(const Datum& input, const SlotId& id);
         void CallGetter(const SlotId& getterSlotId);
         bool IsConfigured() { return m_configured; }
-
-        void Visit(NodeVisitor& visitor) const override { visitor.Visit(*this); }
 
         PropertyAccount m_propertyAccount;
         bool m_configured = false;

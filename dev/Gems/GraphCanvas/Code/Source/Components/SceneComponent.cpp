@@ -1,3 +1,4 @@
+
 /*
 * All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
 * its licensors.
@@ -56,8 +57,8 @@
 #include <GraphCanvas/Widgets/GraphCanvasGraphicsView/GraphCanvasGraphicsView.h>
 #include <GraphCanvas/Widgets/GraphCanvasMimeContainer.h>
 #include <GraphCanvas/Widgets/MimeEvents/CreateSplicingNodeMimeEvent.h>
+#include <GraphCanvas/Utils/ConversionUtils.h>
 #include <GraphCanvas/Utils/QtVectorMath.h>
-#include <Utils/ConversionUtils.h>
 
 namespace GraphCanvas
 {
@@ -1087,6 +1088,11 @@ namespace GraphCanvas
         SceneMemberRequestBus::Event(m_grid, &SceneMemberRequests::ClearScene, GetEntityId());
     }
 
+    void SceneComponent::OnSystemTick()
+    {
+        ProcessEnableDisableQueue();
+    }
+
     void SceneComponent::OnEntityExists(const AZ::EntityId& entityId)
     {
         AZ::Entity* entity = GetEntity();
@@ -1115,12 +1121,12 @@ namespace GraphCanvas
             if (GraphUtils::IsComment(currentEntity->GetId()))
             {
                 constructSaveData = aznew GraphCanvasConstructSaveData();
-                constructSaveData->m_constructType = GraphCanvasConstructSaveData::ConstructType::CommentNode;
+                constructSaveData->m_constructType = ConstructType::CommentNode;
             }
             else if (GraphUtils::IsNodeGroup(currentEntity->GetId()))
             {
                 constructSaveData = aznew GraphCanvasConstructSaveData();
-                constructSaveData->m_constructType = GraphCanvasConstructSaveData::ConstructType::NodeGroup;
+                constructSaveData->m_constructType = ConstructType::NodeGroup;
             }
 
             if (constructSaveData)
@@ -1136,7 +1142,7 @@ namespace GraphCanvas
         {
             GraphCanvasConstructSaveData* constructSaveData = aznew GraphCanvasConstructSaveData();
 
-            constructSaveData->m_constructType = GraphCanvasConstructSaveData::ConstructType::BookmarkAnchor;
+            constructSaveData->m_constructType = ConstructType::BookmarkAnchor;
             EntitySaveDataRequestBus::Event(currentEntity->GetId(), &EntitySaveDataRequests::WriteSaveData, constructSaveData->m_saveDataContainer);
 
             saveData->m_constructs.push_back(constructSaveData);
@@ -1156,13 +1162,13 @@ namespace GraphCanvas
             AZ::Entity* constructEntity = nullptr;
             switch (currentConstruct->m_constructType)
             {
-            case GraphCanvasConstructSaveData::ConstructType::CommentNode:
+            case ConstructType::CommentNode:
                 GraphCanvasRequestBus::BroadcastResult(constructEntity, &GraphCanvasRequests::CreateCommentNode);
                 break;
-            case GraphCanvasConstructSaveData::ConstructType::NodeGroup:
+            case ConstructType::NodeGroup:
                 GraphCanvasRequestBus::BroadcastResult(constructEntity, &GraphCanvasRequests::CreateNodeGroup);
                 break;
-            case GraphCanvasConstructSaveData::ConstructType::BookmarkAnchor:
+            case ConstructType::BookmarkAnchor:
                 GraphCanvasRequestBus::BroadcastResult(constructEntity, &GraphCanvasRequests::CreateBookmarkAnchor);
                 break;
             default:
@@ -1222,8 +1228,10 @@ namespace GraphCanvas
     {
         GRAPH_CANVAS_DETAILED_PROFILE_FUNCTION();
         AnimatedPulse* animatedPulse = aznew AnimatedPulse(pulseConfiguration);
-        m_graphicsSceneUi->addItem(animatedPulse);
-        return animatedPulse->GetId();
+
+        ConfigureAndAddGraphicsEffect(animatedPulse);
+
+        return animatedPulse->GetEffectId();
     }
 
     GraphicsEffectId SceneComponent::CreatePulseAroundArea(const QRectF& area, int gridSteps, AnimatedPulseConfiguration& pulseConfiguration)
@@ -1305,16 +1313,20 @@ namespace GraphCanvas
     {
         GRAPH_CANVAS_DETAILED_PROFILE_FUNCTION();
         Occluder* occluder = aznew Occluder(occluderConfiguration);
-        m_graphicsSceneUi->addItem(occluder);
-        return occluder->GetId();
+
+        ConfigureAndAddGraphicsEffect(occluder);
+
+        return occluder->GetEffectId();
     }
 
     GraphicsEffectId SceneComponent::CreateGlow(const FixedGlowOutlineConfiguration& configuration)
     {
         GRAPH_CANVAS_DETAILED_PROFILE_FUNCTION();
         GlowOutlineGraphicsItem* outlineGraphicsItem = aznew GlowOutlineGraphicsItem(configuration);
-        m_graphicsSceneUi->addItem(outlineGraphicsItem);
-        return outlineGraphicsItem->GetId();
+
+        ConfigureAndAddGraphicsEffect(outlineGraphicsItem);
+
+        return outlineGraphicsItem->GetEffectId();
     }
 
     GraphicsEffectId SceneComponent::CreateGlowOnSceneMember(const SceneMemberGlowOutlineConfiguration& configuration)
@@ -1327,8 +1339,10 @@ namespace GraphCanvas
         if (m_hiddenElements.count(graphicsItem) == 0)
         {
             GlowOutlineGraphicsItem* outlineGraphicsItem = aznew GlowOutlineGraphicsItem(configuration);
-            m_graphicsSceneUi->addItem(outlineGraphicsItem);
-            return outlineGraphicsItem->GetId();
+
+            ConfigureAndAddGraphicsEffect(outlineGraphicsItem);
+
+            return outlineGraphicsItem->GetEffectId();
         }
         else
         {
@@ -1341,8 +1355,10 @@ namespace GraphCanvas
         GRAPH_CANVAS_DETAILED_PROFILE_FUNCTION();
 
         ParticleGraphicsItem* particleGraphicsItem = aznew ParticleGraphicsItem(configuration);
-        m_graphicsSceneUi->addItem(particleGraphicsItem);
-        return particleGraphicsItem->GetId();
+
+        ConfigureAndAddGraphicsEffect(particleGraphicsItem);
+
+        return particleGraphicsItem->GetEffectId();
     }
 
     AZStd::vector< GraphicsEffectId > SceneComponent::ExplodeSceneMember(const AZ::EntityId& memberId, float fillPercent)
@@ -1454,12 +1470,7 @@ namespace GraphCanvas
         QGraphicsItem* graphicsItem = nullptr;
         GraphicsEffectRequestBus::EventResult(graphicsItem, effectId, &GraphicsEffectRequests::AsQGraphicsItem);
 
-        if (graphicsItem)
-        {
-            GraphicsEffectRequestBus::Event(effectId, &GraphicsEffectRequests::OnGraphicsEffectCancelled);
-            m_graphicsSceneUi->removeItem(graphicsItem);
-            delete graphicsItem;
-        }
+        DestroyGraphicsItem(effectId, graphicsItem);
     }
 
     bool SceneComponent::AddNode(const AZ::EntityId& nodeId, const AZ::Vector2& position)
@@ -1507,6 +1518,8 @@ namespace GraphCanvas
             VisualNotificationBus::MultiHandler::BusDisconnect(nodeId);
             GeometryNotificationBus::MultiHandler::BusDisconnect(nodeId);
             m_graphData.m_nodes.erase(foundIt);
+
+            SceneMemberNotificationBus::Event(nodeId, &SceneMemberNotifications::PreOnRemovedFromScene, GetEntityId());
 
             QGraphicsItem* item = nullptr;
             SceneMemberUIRequestBus::EventResult(item, nodeId, &SceneMemberUIRequests::GetRootGraphicsItem);
@@ -2051,11 +2064,18 @@ namespace GraphCanvas
 
                         SceneMemberNotificationBus::Event(graphMember, &SceneMemberNotifications::OnSceneMemberShown);
 
+                        m_hiddenElements.erase(hiddenIter);
+
                         return true;
                     }
                 }
                 else
                 {
+                    if (hiddenIter != m_hiddenElements.end())
+                    {
+                        m_hiddenElements.erase(hiddenIter);
+                    }
+
                     graphicsItem->show();
                     return true;
                 }
@@ -2099,6 +2119,84 @@ namespace GraphCanvas
         }
 
         return false;
+    }
+
+    bool SceneComponent::Enable(const NodeId& nodeId)
+    {
+        if (!AZ::SystemTickBus::Handler::BusIsConnected())
+        {
+            AZ::SystemTickBus::Handler::BusConnect();
+        }              
+
+        m_queuedDisable.erase(nodeId);
+
+        auto insertResult = m_queuedEnable.insert(nodeId);
+        
+        return insertResult.second;
+    }
+
+    void SceneComponent::EnableSelection()
+    {
+        AZStd::vector< NodeId > selectedNodes = GetSelectedNodes();
+
+        for (NodeId nodeId : selectedNodes)
+        {
+            Enable(nodeId);
+        }
+    }
+
+    bool SceneComponent::Disable(const NodeId& nodeId)
+    {
+        if (!AZ::SystemTickBus::Handler::BusIsConnected())
+        {
+            AZ::SystemTickBus::Handler::BusConnect();
+        }
+
+        m_queuedEnable.erase(nodeId);
+
+        auto insertResult = m_queuedDisable.insert(nodeId);
+
+        return insertResult.second;
+    }
+
+    void SceneComponent::DisableSelection()
+    {
+        AZStd::vector< NodeId > selectedNodes = GetSelectedNodes();
+
+        for (NodeId nodeId : selectedNodes)
+        {
+            Disable(nodeId);
+        }
+    }
+
+    void SceneComponent::ProcessEnableDisableQueue()
+    {
+        if (!m_queuedDisable.empty())
+        {
+            bool disabledNodes = false;
+            GraphModelRequestBus::EventResult(disabledNodes, GetEntityId(), &GraphModelRequests::DisableNodes, m_queuedDisable);
+
+            if (disabledNodes)
+            {
+                GraphUtils::SetNodesEnabledState(m_queuedDisable, RootGraphicsItemEnabledState::ES_Disabled);
+            }
+            m_queuedDisable.clear();
+        }
+
+        if (!m_queuedEnable.empty())
+        {
+            bool enabledNodes = false;
+            GraphModelRequestBus::EventResult(enabledNodes, GetEntityId(), &GraphModelRequests::EnableNodes, m_queuedEnable);
+
+            if (enabledNodes)
+            {
+                GraphUtils::SetNodesEnabledState(m_queuedEnable, RootGraphicsItemEnabledState::ES_Enabled);
+            }
+
+            m_queuedEnable.clear();
+        }
+
+        AZ::SystemTickBus::Handler::BusDisconnect();
     }
 
     void SceneComponent::ClearSelection()
@@ -2300,17 +2398,9 @@ namespace GraphCanvas
     void SceneComponent::Paste()
     {
         GRAPH_CANVAS_DETAILED_PROFILE_FUNCTION();
-        m_allowReset = false;
-        QPointF pasteCenter = GetViewCenterScenePoint() + m_pasteOffset;
+        QPointF pasteCenter = SignalGenericAddPositionUseBegin();
         PasteAt(pasteCenter);
-
-        AZ::Vector2 minorPitch;
-        GridRequestBus::EventResult(minorPitch, m_grid, &GridRequests::GetMinorPitch);
-
-        // Don't want to shift it diagonally, because we also shift things diagonally when we drag/drop in stuff
-        // So we'll just move it straight down.
-        m_pasteOffset += QPointF(0, minorPitch.GetY() * 2);
-        m_allowReset = true;
+        SignalGenericAddPositionUseEnd();
     }
 
     void SceneComponent::PasteAt(const QPointF& scenePos)
@@ -2505,15 +2595,9 @@ namespace GraphCanvas
     void SceneComponent::Duplicate(const AZStd::vector<AZ::EntityId>& itemIds)
     {
         GRAPH_CANVAS_DETAILED_PROFILE_FUNCTION();
-        QPointF duplicateCenter = GetViewCenterScenePoint() + m_pasteOffset;
+        QPointF duplicateCenter = SignalGenericAddPositionUseBegin();
         DuplicateAt(itemIds, duplicateCenter);
-
-        AZ::Vector2 minorPitch;
-        GridRequestBus::EventResult(minorPitch, m_grid, &GridRequests::GetMinorPitch);
-
-        // Don't want to shift it diagonally, because we also shift things diagonally when we drag/drop in stuff
-        // So we'll just move it straight down.
-        m_pasteOffset += QPointF(0, minorPitch.GetY() * 2);
+        SignalGenericAddPositionUseEnd();
     }
 
     void SceneComponent::DuplicateAt(const AZStd::vector<AZ::EntityId>& itemIds, const QPointF& scenePos)
@@ -2651,6 +2735,28 @@ namespace GraphCanvas
     void SceneComponent::ClearScene()
     {
         DeleteGraphData(m_graphData);
+
+        AZStd::unordered_map<GraphicsEffectId, QGraphicsItem*> removalPair;
+
+        auto enumerationCallback = [&removalPair](GraphicsEffectRequests* graphicsInterface) -> bool
+        {            
+            QGraphicsItem* graphicsItem = graphicsInterface->AsQGraphicsItem();
+
+            if (graphicsItem)
+            {
+                removalPair[graphicsInterface->GetEffectId()] = graphicsItem;
+            }
+
+            // Enumerate over all handlers
+            return true;
+        };
+
+        GraphicsEffectRequestBus::EnumerateHandlers(enumerationCallback);
+
+        for (auto effectPair : removalPair)
+        {
+            DestroyGraphicsItem(effectPair.first, effectPair.second);
+        }
     }
 
     void SceneComponent::SuppressNextContextMenu()
@@ -3130,6 +3236,23 @@ namespace GraphCanvas
         }
     }
 
+    QPointF SceneComponent::SignalGenericAddPositionUseBegin()
+    {
+        m_allowReset = false;
+        return GetViewCenterScenePoint() + m_genericAddOffset;
+    }
+
+    void SceneComponent::SignalGenericAddPositionUseEnd()
+    {
+        AZ::Vector2 minorPitch;
+        GridRequestBus::EventResult(minorPitch, m_grid, &GridRequests::GetMinorPitch);
+
+        // Don't want to shift it diagonally, because we also shift things diagonally when we drag/drop in stuff
+        // So we'll just move it straight down.
+        m_genericAddOffset += QPointF(0, minorPitch.GetY() * 2);
+        m_allowReset = true;
+    }
+
     bool SceneComponent::OnMousePress(const AZ::EntityId& sourceId, const QGraphicsSceneMouseEvent* event)
     {
         if (event->button() == Qt::LeftButton && sourceId != m_grid)
@@ -3313,8 +3436,8 @@ namespace GraphCanvas
 
             if (m_allowReset)
             {
-                m_pasteOffset.setX(0);
-                m_pasteOffset.setY(0);
+                m_genericAddOffset.setX(0);
+                m_genericAddOffset.setY(0);
             }
         }
 
@@ -3327,8 +3450,8 @@ namespace GraphCanvas
 
     void SceneComponent::OnViewParamsChanged(const ViewParams& viewParams)
     {
-        m_pasteOffset.setX(0);
-        m_pasteOffset.setY(0);
+        m_genericAddOffset.setX(0);
+        m_genericAddOffset.setY(0);
         
         m_viewParams = viewParams;
     }
@@ -3351,6 +3474,15 @@ namespace GraphCanvas
     void SceneComponent::OnStylesLoaded()
     {
         SceneNotificationBus::Event(GetEntityId(), &SceneNotifications::OnStylesChanged);
+    }
+
+    void SceneComponent::ConfigureAndAddGraphicsEffect(GraphicsEffectInterface* graphicsEffect)
+    {
+        graphicsEffect->SetGraphId(GetEntityId());
+        graphicsEffect->SetEditorId(GetEditorId());
+
+        QGraphicsItem* graphicsItem = graphicsEffect->AsQGraphicsItem();
+        m_graphicsSceneUi->addItem(graphicsItem);
     }
 
     void SceneComponent::OnSceneDragEnter(const QMimeData* mimeData)
@@ -3487,6 +3619,17 @@ namespace GraphCanvas
         for (auto& entityRef : entities)
         {
             delete entityRef;
+        }
+    }
+
+
+    void SceneComponent::DestroyGraphicsItem(const GraphicsEffectId& effectId, QGraphicsItem* graphicsItem)
+    {
+        if (graphicsItem)
+        {
+            GraphicsEffectRequestBus::Event(effectId, &GraphicsEffectRequests::OnGraphicsEffectCancelled);
+            m_graphicsSceneUi->removeItem(graphicsItem);
+            delete graphicsItem;
         }
     }
 
@@ -4162,6 +4305,10 @@ namespace GraphCanvas
                     else if (GraphUtils::IsBookmarkAnchor(memberId))
                     {
                         AssetEditorRequestBus::EventResult(reaction, m_scene.GetEditorId(), &AssetEditorRequests::ShowBookmarkContextMenu, memberId, screenPos, scenePos);
+                    }
+                    else if (GraphUtils::IsComment(memberId))
+                    {
+                        AssetEditorRequestBus::EventResult(reaction, m_scene.GetEditorId(), &AssetEditorRequests::ShowCommentContextMenu, memberId, screenPos, scenePos);
                     }
                     else
                     {

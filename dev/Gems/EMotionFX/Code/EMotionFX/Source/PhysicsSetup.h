@@ -48,9 +48,11 @@ namespace EMotionFX
             HitDetection = 0,
             Ragdoll = 1,
             Cloth = 2,
-            Unknown = 3
+            SimulatedObjectCollider = 3,
+            Unknown = 4
         };
         static const char* GetStringForColliderConfigType(ColliderConfigType configType);
+        static const char* GetVisualNameForColliderConfigType(ColliderConfigType configType);
         static ColliderConfigType GetColliderConfigTypeFromString(const AZStd::string& configTypeString);
         Physics::CharacterColliderConfiguration* GetColliderConfigByType(ColliderConfigType configType);
 
@@ -60,6 +62,8 @@ namespace EMotionFX
 
         Physics::CharacterColliderConfiguration& GetClothConfig();
         const Physics::CharacterColliderConfiguration& GetClothConfig() const;
+        Physics::CharacterColliderConfiguration& GetSimulatedObjectColliderConfig();
+        const Physics::CharacterColliderConfiguration& GetSimulatedObjectColliderConfig() const;
 
         void LogRagdollConfig(Actor* actor, const char* title);
 
@@ -71,6 +75,8 @@ namespace EMotionFX
 
     private:
         static bool VersionConverter(AZ::SerializeContext& context, AZ::SerializeContext::DataElementNode& classElement);
+
+        static const char* s_colliderConfigTypeVisualNames[5];
 
         Physics::AnimationConfiguration m_config;
     };

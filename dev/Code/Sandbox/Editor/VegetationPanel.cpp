@@ -759,7 +759,7 @@ void CVegetationPanel::UpdateUI()
     if (bPainting)
     {
         m_ui->paintObjectsButton->setChecked(true);
-#ifdef AZ_PLATFORM_APPLE
+#if AZ_TRAIT_OS_PLATFORM_APPLE
         GetIEditor()->SetStatusText(tr("Hold ⌘ to Remove Vegetation"));
 #else
         GetIEditor()->SetStatusText(tr("Hold Ctrl to Remove Vegetation"));

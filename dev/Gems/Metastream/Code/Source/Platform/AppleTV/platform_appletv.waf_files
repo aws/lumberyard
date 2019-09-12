@@ -1,0 +1,8 @@
+{
+  "auto": {
+    "Platform/AppleTV": [
+      "Metastream_Traits_Platform.h",
+      "Metastream_Traits_AppleTV.h"
+    ]
+  }
+}

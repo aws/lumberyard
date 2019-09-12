@@ -82,18 +82,6 @@ namespace Maestro
 
     using SequenceAgentComponentRequestBus = AZ::EBus<SequenceAgentComponentRequests>;
 
-    class SequenceAgentExternalRequests
-        : public AZ::EBusTraits
-    {
-    public:
-        static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::Single;
-        static const AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::Single;
-
-        virtual AZ::EntityId AddToEntity(AZ::EntityId entityId) = 0;
-    };
-
-    using SequenceAgentExternalBus = AZ::EBus<SequenceAgentExternalRequests>;
-
 } // namespace Maestro
 
 namespace AZStd

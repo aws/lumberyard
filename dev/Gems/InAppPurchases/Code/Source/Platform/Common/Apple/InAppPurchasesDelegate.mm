@@ -11,9 +11,8 @@
 */
 
 #include "InAppPurchasesDelegate.h"
+#include "InAppPurchasesApple.h"
 #include <InAppPurchases/InAppPurchasesInterface.h>
-#include <Apple/InAppPurchasesApple.h>
-#include "InAppPurchasesModule.h"
 #include <InAppPurchases/InAppPurchasesResponseBus.h>
 
 #include <CommonCrypto/CommonCrypto.h>

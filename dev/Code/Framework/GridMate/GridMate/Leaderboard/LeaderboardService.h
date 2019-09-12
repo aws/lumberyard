@@ -89,14 +89,7 @@ namespace GridMate
         StorageType     m_storageType;      // Specifies C++ data type for this field
         int             m_infoType;         // OBSOLETE PLATFORM ONLY?
         int             m_columnId;         // OBSOLETE PLATFORM ONLY?
-#if defined(AZ_RESTRICTED_PLATFORM)
-    #if defined(AZ_PLATFORM_XENIA)
-        #include "Xenia/LeaderboardService_h_xenia.inl"
-    #elif defined(AZ_PLATFORM_PROVO)
-        #include "Provo/LeaderboardService_h_provo.inl"
-    #endif
-#endif
-        gridmate_string m_dataSource;
+        gridmate_string m_dataSource;       // used on Xenia to retrieve additional columns
     };
 
     /*

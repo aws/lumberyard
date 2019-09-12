@@ -15,49 +15,84 @@
 #include <ScriptCanvas/Core/Contracts/MathOperatorContract.h>
 #include <AzCore/Math/MathUtils.h>
 
+#include <ScriptCanvas/Utils/SerializationUtils.h>
+
 namespace ScriptCanvas
 {
     namespace Nodes
     {
         namespace Operators
         {
-            void OperatorLength::ConfigureContracts(SourceType sourceType, AZStd::vector<ContractDescriptor>& contractDescs)
+            bool OperatorLength::OperatorLengthConverter(AZ::SerializeContext& serializeContext, AZ::SerializeContext::DataElementNode& rootElement)
             {
-                if (sourceType == SourceType::SourceInput
-                    || sourceType == SourceType::SourceOutput)
+                if (rootElement.GetVersion() < Version::RemoveOperatorBase)
                 {
-                    ContractDescriptor vectorTypeMethodContract;
-                    vectorTypeMethodContract.m_createFunc = [this]() -> RestrictedTypeContract* { return aznew RestrictedTypeContract({ Data::Type::Vector2(), Data::Type::Vector3(), Data::Type::Vector4(), Data::Type::Quaternion() });
-                    };
-                    contractDescs.push_back(AZStd::move(vectorTypeMethodContract));
+                    if (!SerializationUtils::RemoveBaseClass(serializeContext, rootElement))
+                    {
+                        return false;
+                    }
+
+                    if (!SerializationUtils::RemoveBaseClass(serializeContext, rootElement))
+                    {
+                        return false;
+                    }
+
+                    rootElement.RemoveElementByName(AZ::Crc32("BaseClass2"));
+                }
+
+                return true;
+            }
+
+            void OperatorLength::OnInit()
+            {
+                Slot* slot = GetSlotByName("Length");
+
+                if (slot == nullptr)
+                {
+                    ConfigureSlots();
                 }
             }
 
-            void OperatorLength::Operator(Data::eType type, const OperatorOperands& operands, Datum& result)
+            void OperatorLength::OnInputSignal(const SlotId& slotId)
             {
-                switch (type)
+                if (slotId != OperatorLengthProperty::GetInSlotId(this))
+                {
+                    return;
+                }
+
+                Data::Type type = GetDisplayType(AZ::Crc32("SourceGroup"));
+
+                if (!type.IsValid())
+                {
+                    return;
+                }
+
+                Datum result;
+                const Datum* operand = GetInput(OperatorLengthProperty::GetSourceSlotId(this));                
+
+                switch (type.GetType())
                 {
                 case Data::eType::Vector2:
                 {
-                    const AZ::Vector2* vector = operands.front()->GetAs<AZ::Vector2>();
+                    const AZ::Vector2* vector = operand->GetAs<AZ::Vector2>();
                     result = Datum(vector->GetLength());
-                }   
+                }
                 break;
                 case Data::eType::Vector3:
                 {
-                    const AZ::Vector3* vector = operands.front()->GetAs<AZ::Vector3>();
+                    const AZ::Vector3* vector = operand->GetAs<AZ::Vector3>();
                     result = Datum(vector->GetLength());
                 }
                 break;
                 case Data::eType::Vector4:
                 {
-                    const AZ::Vector4* vector = operands.front()->GetAs<AZ::Vector4>();
+                    const AZ::Vector4* vector = operand->GetAs<AZ::Vector4>();
                     result = Datum(vector->GetLength());
                 }
                 break;
                 case Data::eType::Quaternion:
                 {
-                    const AZ::Quaternion* vector = operands.front()->GetAs<AZ::Quaternion>();
+                    const AZ::Quaternion* vector = operand->GetAs<AZ::Quaternion>();
                     result = Datum(vector->GetLength());
                 }
                 break;
@@ -65,6 +100,9 @@ namespace ScriptCanvas
                     AZ_Assert(false, "Length operator not defined for type: %s", Data::ToAZType(type).ToString<AZStd::string>().c_str());
                     break;
                 }
+
+                PushOutput(result, (*OperatorLengthProperty::GetLengthSlot(this)));
+                SignalOutput(OperatorLengthProperty::GetOutSlotId(this));
             }
         }
     }

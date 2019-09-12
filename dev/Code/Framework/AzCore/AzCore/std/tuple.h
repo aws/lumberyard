@@ -417,38 +417,30 @@ namespace AZStd
 //template< class T1, class T2 >
 //struct tuple_element<1, std::pair<T1,T2> >;
 
-// Some platforms use a non-standard "class std::tuple_size<std::pair>" and "class std::tuple_element<std::pair>" instead of struct
-// so if it is an apple platform use class to silence compiler warnings
-#if defined(AZ_PLATFORM_APPLE) || defined(AZ_PLATFORM_ANDROID) || defined(AZ_PLATFORM_LINUX)
-#define tuple_size_element_pair_class_or_struct class
-#else
-#define tuple_size_element_pair_class_or_struct struct
-#endif
-
 namespace std
 {
     template<class T1, class T2>
-    tuple_size_element_pair_class_or_struct tuple_size<AZStd::pair<T1, T2>> : public AZStd::integral_constant<size_t, 2> {};
+    AZ_TRAIT_TUPLE_SIZE_ELEMENT_PAIR_CLASS_OR_STRUCT tuple_size<AZStd::pair<T1, T2>> : public AZStd::integral_constant<size_t, 2> {};
 
     template<class T1, class T2>
-    tuple_size_element_pair_class_or_struct tuple_element<0, AZStd::pair<T1, T2>>
+    AZ_TRAIT_TUPLE_SIZE_ELEMENT_PAIR_CLASS_OR_STRUCT tuple_element<0, AZStd::pair<T1, T2>>
     {
     public:
         using type = T1;
     };
 
     template<class T1, class T2>
-    tuple_size_element_pair_class_or_struct tuple_element<1, AZStd::pair<T1, T2>>
+    AZ_TRAIT_TUPLE_SIZE_ELEMENT_PAIR_CLASS_OR_STRUCT tuple_element<1, AZStd::pair<T1, T2>>
     {
     public:
         using type = T2;
     };
 
     template<class T, size_t N>
-    tuple_size_element_pair_class_or_struct tuple_size<AZStd::array<T, N>> : public AZStd::integral_constant<size_t, N> {};
+    AZ_TRAIT_TUPLE_SIZE_ELEMENT_PAIR_CLASS_OR_STRUCT tuple_size<AZStd::array<T, N>> : public AZStd::integral_constant<size_t, N> {};
 
     template<size_t I, class T, size_t N>
-    tuple_size_element_pair_class_or_struct tuple_element<I, AZStd::array<T, N>>
+    AZ_TRAIT_TUPLE_SIZE_ELEMENT_PAIR_CLASS_OR_STRUCT tuple_element<I, AZStd::array<T, N>>
     {
         AZ_STATIC_ASSERT(I < N, "AZStd::tuple_element has been called on array with an index that is out of bounds");
         using type = T;

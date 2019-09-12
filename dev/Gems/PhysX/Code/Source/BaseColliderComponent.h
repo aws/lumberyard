@@ -82,7 +82,6 @@ namespace PhysX
         static void GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided)
         {
             provided.push_back(AZ_CRC("PhysXColliderService", 0x4ff43f7c));
-            provided.push_back(AZ_CRC("ProximityTriggerService", 0x561f262c)); // Cry, legacy trigger service
             provided.push_back(AZ_CRC("PhysXTriggerService", 0x3a117d7b)); // PhysX trigger service (not cry, non-legacy)
         }
         static void GetRequiredServices(AZ::ComponentDescriptor::DependencyArrayType& required)

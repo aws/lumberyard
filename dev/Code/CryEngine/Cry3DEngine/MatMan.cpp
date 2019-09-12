@@ -45,7 +45,7 @@ int CMatMan::e_texeldensity = 0;
 // Default textures declarations
 //------------------------------------------------------------------------------
 #if !defined(_RELEASE)
-	// Texture names to be used for error / process loading indications
+    // Texture names to be used for error / process loading indications
     static const char* szReplaceMe = "EngineAssets/TextureMsg/ReplaceMe.tif";
     static const char* szTextureCompiling = "EngineAssets/TextureMsg/TextureCompiling.tif";
     static const char* szShaderCompiling = "EngineAssets/TextureMsg/ShaderCompiling.tif";

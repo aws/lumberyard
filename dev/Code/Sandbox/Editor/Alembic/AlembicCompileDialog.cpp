@@ -51,7 +51,7 @@ void CAlembicCompileDialog::OnInitDialog()
     m_ui->m_blockCompressionFormatCombo->addItem(QStringLiteral("store"));
     m_ui->m_blockCompressionFormatCombo->addItem(QStringLiteral("deflate"));
     m_ui->m_blockCompressionFormatCombo->addItem(QStringLiteral("lz4hc"));
-
+    m_ui->m_blockCompressionFormatCombo->addItem(QStringLiteral("zstd"));
     std::vector<string> presetFiles;
     const char* const filePattern = "*.cbc";
 
@@ -83,6 +83,10 @@ void CAlembicCompileDialog::SetFromConfig(const SConfig& config)
     else if (QString::compare(config.m_blockCompressionFormat, QLatin1String("lz4hc"), Qt::CaseInsensitive) == 0)
     {
         m_ui->m_blockCompressionFormatCombo->setCurrentIndex(2);
+    }
+    else if (QString::compare(config.m_blockCompressionFormat, QLatin1String("zstd"), Qt::CaseInsensitive) == 0)
+    {
+        m_ui->m_blockCompressionFormatCombo->setCurrentIndex(3);
     }
     else
     {

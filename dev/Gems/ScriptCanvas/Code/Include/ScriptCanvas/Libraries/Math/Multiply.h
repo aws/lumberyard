@@ -50,11 +50,6 @@ namespace ScriptCanvas
                     }
                 }
                 
-                void Visit(NodeVisitor& visitor) const override
-                {
-                    visitor.Visit(*this);
-                }
-
             protected:
                 Datum Evaluate(const Datum& lhs, const Datum& rhs) override
                 {
@@ -74,7 +69,7 @@ namespace ScriptCanvas
                 static const char* GetOperatorDesc() { return "Perform multiplication between two numbers"; }
                 static const char* GetIconPath() { return "Editor/Icons/ScriptCanvas/Multiply.png"; }
 
-                void Visit(NodeVisitor& visitor) const override { visitor.Visit(*this); }
+                
 
             };
 #endif // #if defined(EXPRESSION_TEMPLATES_ENABLED)

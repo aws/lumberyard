@@ -9,7 +9,6 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#ifndef AZ_UNITY_BUILD
 
 #include <GridMate/Carrier/DefaultSimulator.h>
 #include <GridMate/Carrier/Driver.h>
@@ -721,5 +720,3 @@ void DefaultSimulator::GetIncomingPacketDrop(unsigned int& minDropInterval, unsi
     minDropPeriod = m_minInPacketDropPeriod;
     maxDropPeriod = m_maxInPacketDropPeriod;
 }
-
-#endif // #ifndef AZ_UNITY_BUILD

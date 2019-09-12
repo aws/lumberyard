@@ -45,8 +45,10 @@ def build(bld):
                            bld.Path('Code/Sandbox/Plugins/EditorCommon'),
                            bld.Path('Code/CryEngine/CryCommon'),
                            bld.Path('Code/Sandbox/Plugins/EditorUI_QT'),
-                           bld.Path('Code/CryEngine/CryAction')],
-
+                           bld.Path('Code/CryEngine/CryAction'),
+                           bld.ThirdPartyPath('boost')
+                           ],
+        export_includes = [bld.ThirdPartyPath('boost')],
         defines         = ['QT_NO_DEBUG',
                            'QT_NO_EMIT',
                            'EDITOR_COMMON_IMPORTS'],

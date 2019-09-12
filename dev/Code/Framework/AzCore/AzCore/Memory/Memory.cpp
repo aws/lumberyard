@@ -9,7 +9,6 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#ifndef AZ_UNITY_BUILD
 
 #include <AzCore/Memory/Memory.h>
 #include <AzCore/Memory/OSAllocator.h>
@@ -18,7 +17,7 @@
 
 // On dlopen/unix platforms, our new/delete can get put into the dynamic symbol table at any time
 // As such, the OS fallback is required, because we cannot guarantee that our allocators are up
-#if defined(AZ_MONOLITHIC_BUILD) || defined(AZ_PLATFORM_APPLE) || defined(AZ_PLATFORM_LINUX)
+#if defined(AZ_MONOLITHIC_BUILD) || AZ_TRAIT_OS_MEMORY_ALWAYS_USE_OS_FALLBACK
 #define AZ_MEMORY_USE_OS_FALLBACK
 #endif
 
@@ -142,7 +141,7 @@ namespace AZ
 
 // In monolithic builds, our new and delete become the global new and delete
 // As such, we must support array new/delete
-#if defined(AZ_MEMORY_USE_OS_FALLBACK) || defined(AZ_PLATFORM_APPLE)
+#if defined(AZ_MEMORY_USE_OS_FALLBACK) || AZ_TRAIT_OS_MEMORY_ALWAYS_NEW_DELETE_SUPPORT_ARRAYS
 #define AZ_NEW_DELETE_SUPPORT_ARRAYS
 #endif
 
@@ -198,5 +197,3 @@ void AZ::OperatorDeleteArray(void* ptr)
                     Use AZStd::vector,AZStd::array,AZStd::fixed_vector or placement new and it's your responsibility!");
 #endif
 }
-
-#endif // #ifndef AZ_UNITY_BUILD

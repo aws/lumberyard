@@ -128,6 +128,7 @@ struct ISoftCodeMgr;
 struct IZLibCompressor;
 struct IZLibDecompressor;
 struct ILZ4Decompressor;
+class IZStdDecompressor;
 struct IOutputPrintSink;
 struct IPhysicsDebugRenderer;
 struct IPhysRenderer;
@@ -853,13 +854,13 @@ struct SSystemInitParams
 
     bool UseAssetCache() const
     {
-#if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_APPLE_OSX) || defined(AZ_PLATFORM_LINUX)
+#if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_MAC) || defined(AZ_PLATFORM_LINUX)
         char checkPath[AZ_MAX_PATH_LEN] = { 0 };
         azsnprintf(checkPath, AZ_MAX_PATH_LEN, "%s/engine.json", rootPathCache);
         return AZ::IO::SystemFile::Exists(checkPath);
 #else
         return false;
-#endif // defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_APPLE)
+#endif // defined(AZ_PLATFORM_WINDOWS) || AZ_TRAIT_OS_PLATFORM_APPLE
     }
 };
 
@@ -1389,6 +1390,7 @@ struct ISystem
     virtual IZLibCompressor* GetIZLibCompressor() = 0;
     virtual IZLibDecompressor* GetIZLibDecompressor() = 0;
     virtual ILZ4Decompressor* GetLZ4Decompressor() = 0;
+    virtual IZStdDecompressor* GetZStdDecompressor() = 0;
     virtual ICryPerfHUD* GetPerfHUD() = 0;
     virtual IPlatformOS* GetPlatformOS() = 0;
     virtual INotificationNetwork* GetINotificationNetwork() = 0;

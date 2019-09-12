@@ -96,6 +96,9 @@ namespace EMotionFX
         ESyncMode                           m_syncMode;
         EEventMode                          m_eventMode;
         EExtractionMode                     m_extractionMode;
+
+    private:
+        AZStd::string GetNodeMaskNodeName(int index) const;
     };
 
 }   // namespace EMotionFX

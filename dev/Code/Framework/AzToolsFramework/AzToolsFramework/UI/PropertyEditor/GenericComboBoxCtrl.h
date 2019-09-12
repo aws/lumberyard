@@ -23,7 +23,7 @@
 #include <QPushButton>
 
 class QComboBox;
-
+class QLabel;
 
 namespace AzToolsFramework
 {
@@ -74,6 +74,8 @@ namespace AzToolsFramework
         void addElement(const AZStd::pair<T, AZStd::string>& genericValue);
         void setElements(const AZStd::vector<AZStd::pair<T, AZStd::string>>& genericValues);
 
+        void SetWarning(const AZStd::string& warningText);
+
     protected:
         QWidget* GetFirstInTabOrder() override;
         QWidget* GetLastInTabOrder() override;
@@ -83,12 +85,14 @@ namespace AzToolsFramework
 
     private:
 
+        void PrepareWarningLabel();
+
         void addElementImpl(const AZStd::pair<T, AZStd::string>& genericValue);
 
+        QLabel*    m_warningLabel = nullptr;
         QComboBox* m_pComboBox;
         AZStd::vector<AZStd::pair<T, AZStd::string>> m_values;
         AZ::AttributeFunction <void(const T&)>* m_postChangeNotifyCB{};
-
     };
 
     template<typename T>

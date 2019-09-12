@@ -1,0 +1,8 @@
+{
+  "auto": {
+    "Platform/Windows": [
+      "CloudCanvasCommon_Traits_Platform.h", 
+      "CloudCanvasCommon_Traits_Windows.h"
+    ]
+  }
+}

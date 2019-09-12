@@ -20,7 +20,7 @@
 #define AZSTD_DEBUG_HEAP_IMPLEMENTATION
 #endif
 
-#include "../TestTypes.h"
+#include <AzCore/UnitTest/TestTypes.h>
 #include <AzCore/std/base.h>
 #include <AzCore/std/typetraits/typetraits.h>
 
@@ -48,13 +48,11 @@ namespace UnitTestInternal
         MyClass(const MyClass& rhs)
             : m_data(rhs.m_data)
             , m_isMoved(false)  {}
-#if defined(AZ_HAS_RVALUE_REFS)
         MyClass(MyClass&& rhs)
         {
             m_isMoved = true;
             m_data = rhs.m_data;
         }
-#endif // AZ_HAS_RVALUE_REFS
         virtual ~MyClass() {}
         virtual void make_polymorphic() {}
 

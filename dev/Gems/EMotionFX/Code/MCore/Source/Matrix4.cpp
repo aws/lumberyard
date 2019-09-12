@@ -87,7 +87,7 @@ namespace MCore
     {
         Matrix r;
 
-    #if (defined(MCORE_SSE_ENABLED) && defined(MCORE_MATRIX_ROWMAJOR))
+    #if (AZ_TRAIT_USE_PLATFORM_SIMD && defined(MCORE_MATRIX_ROWMAJOR))
         const float* m = right.m16;
         const float* n = m16;
         float* t = r.m16;
@@ -212,7 +212,7 @@ namespace MCore
 
     Matrix& Matrix::operator *= (const Matrix& right)
     {
-    #if (defined(MCORE_SSE_ENABLED) && defined(MCORE_MATRIX_ROWMAJOR))
+    #if (AZ_TRAIT_USE_PLATFORM_SIMD && defined(MCORE_MATRIX_ROWMAJOR))
         const float* m = right.m16;
         const float* n = m16;
         float* t = this->m16;
@@ -674,7 +674,7 @@ namespace MCore
 
     void Matrix::MultMatrix(const Matrix& right)
     {
-    #if (defined(MCORE_SSE_ENABLED) && defined(MCORE_MATRIX_ROWMAJOR))
+    #if (AZ_TRAIT_USE_PLATFORM_SIMD && defined(MCORE_MATRIX_ROWMAJOR))
         const float* m = right.m16;
         const float* n = m16;
         float* t = this->m16;
@@ -1233,7 +1233,7 @@ namespace MCore
 
     void Matrix::MultMatrix4x3(const Matrix& right)
     {
-    #if (defined(MCORE_SSE_ENABLED) && defined(MCORE_MATRIX_ROWMAJOR))
+    #if (AZ_TRAIT_USE_PLATFORM_SIMD && defined(MCORE_MATRIX_ROWMAJOR))
         const float* m = right.m16;
         const float* n = m16;
         float* t = this->m16;
@@ -1323,7 +1323,7 @@ namespace MCore
     // *this = left * right
     void Matrix::MultMatrix(const Matrix& left, const Matrix& right)
     {
-    #if (defined(MCORE_SSE_ENABLED) && defined(MCORE_MATRIX_ROWMAJOR))
+    #if (AZ_TRAIT_USE_PLATFORM_SIMD && defined(MCORE_MATRIX_ROWMAJOR))
         const float* m = right.m16;
         const float* n = left.m16;
         float* t = this->m16;
@@ -1410,7 +1410,7 @@ namespace MCore
 
     void Matrix::MultMatrix4x3(const Matrix& left, const Matrix& right)
     {
-    #if (defined(MCORE_SSE_ENABLED) && defined(MCORE_MATRIX_ROWMAJOR))
+    #if (AZ_TRAIT_USE_PLATFORM_SIMD && defined(MCORE_MATRIX_ROWMAJOR))
         const float* m = right.m16;
         const float* n = left.m16;
         float* t = this->m16;

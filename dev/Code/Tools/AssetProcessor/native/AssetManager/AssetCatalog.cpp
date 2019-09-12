@@ -295,6 +295,9 @@ namespace AssetProcessor
         m_catalogIsDirty = true;
         m_registryBuiltOnce = true;
 
+        AZStd::lock_guard<AZStd::mutex> lock(m_databaseMutex);
+        QMutexLocker locker(&m_registriesMutex);
+
         for (QString platform : m_platforms)
         {
             auto inserted = m_registries.insert(platform, AzFramework::AssetRegistry());
@@ -348,8 +351,6 @@ namespace AssetProcessor
 
                     return true;//see them all
                 };
-
-            AZStd::lock_guard<AZStd::mutex> lock(m_databaseMutex);
 
             m_db->QueryCombined(
                 databaseQueryCallback, AZ::Uuid::CreateNull(),
@@ -622,6 +623,33 @@ namespace AssetProcessor
             return true;
         }
         // failed!
+        return false;
+    }
+
+    bool AssetCatalog::GetAssetsProducedBySourceUUID(const AZ::Uuid& sourceUuid, AZStd::vector<AZ::Data::AssetInfo>& productsAssetInfo)
+    {
+        AZStd::lock_guard<AZStd::mutex> lock(m_databaseMutex);
+
+        AzToolsFramework::AssetDatabase::SourceDatabaseEntry entry;
+
+        if (m_db->GetSourceBySourceGuid(sourceUuid, entry))
+        {
+            AzToolsFramework::AssetDatabase::ProductDatabaseEntryContainer products;
+
+            if (m_db->GetProductsBySourceID(entry.m_sourceID, products))
+            {
+                for (const AzToolsFramework::AssetDatabase::ProductDatabaseEntry& product : products)
+                {
+                    AZ::Data::AssetInfo assetInfo;
+                    assetInfo.m_assetId = AZ::Data::AssetId(sourceUuid, product.m_subID);
+                    assetInfo.m_assetType = product.m_assetType;
+                    productsAssetInfo.emplace_back(assetInfo);
+                }
+            }
+
+            return true;
+        }
+
         return false;
     }
 

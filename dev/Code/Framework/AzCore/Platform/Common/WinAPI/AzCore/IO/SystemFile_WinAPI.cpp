@@ -9,7 +9,6 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#ifndef AZ_UNITY_BUILD
 
 #include <AzCore/IO/SystemFile.h>
 #include <AzCore/IO/FileIO.h>
@@ -17,47 +16,9 @@
 #include <AzCore/Casting/numeric_cast.h>
 
 #include <AzCore/PlatformIncl.h>
-#include <AzCore/std/functional.h>
 #include <AzCore/Utils/Utils.h>
-#include <AzCore/std/containers/vector.h>
 
 #include <stdio.h>
-
-#if defined(AZ_RESTRICTED_PLATFORM)
-#undef AZ_RESTRICTED_SECTION
-#define SYSTEMFILE_CPP_SECTION_1 1
-#define SYSTEMFILE_CPP_SECTION_2 2
-#define SYSTEMFILE_CPP_SECTION_3 3
-#define SYSTEMFILE_CPP_SECTION_4 4
-#define SYSTEMFILE_CPP_SECTION_5 5
-#define SYSTEMFILE_CPP_SECTION_6 6
-#define SYSTEMFILE_CPP_SECTION_7 7
-#define SYSTEMFILE_CPP_SECTION_8 8
-#define SYSTEMFILE_CPP_SECTION_9 9
-#define SYSTEMFILE_CPP_SECTION_10 10
-#define SYSTEMFILE_CPP_SECTION_11 11
-#define SYSTEMFILE_CPP_SECTION_13 13
-#define SYSTEMFILE_CPP_SECTION_14 14
-#define SYSTEMFILE_CPP_SECTION_15 15
-#define SYSTEMFILE_CPP_SECTION_16 16
-#define SYSTEMFILE_CPP_SECTION_17 17
-#define SYSTEMFILE_CPP_SECTION_18 18
-#define SYSTEMFILE_CPP_SECTION_19 19
-#endif
-
-#if defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_ANDROID) || defined(AZ_PLATFORM_APPLE)
-    #include <fcntl.h>
-    #include <unistd.h>
-    #include <sys/types.h>
-    #include <sys/stat.h>
-    #include <errno.h>
-    #include <dirent.h>
-#endif
-
-#if defined(AZ_PLATFORM_ANDROID)
-    #include <AzCore/Android/APKFileHandler.h>
-    #include <AzCore/Android/Utils.h>
-#endif 
 
 using namespace AZ::IO;
 
@@ -65,15 +26,12 @@ namespace
 {
     //=========================================================================
     // GetAttributes
-    // [1/16/2013]
     //  Internal utility to avoid code duplication. Returns result of win32
     //  GetFileAttributes
     //=========================================================================
-#if AZ_TRAIT_USE_WINDOWS_FILE_API
-    DWORD
-    GetAttributes(const char* fileName)
+    DWORD GetAttributes(const char* fileName)
     {
-#   ifdef _UNICODE
+#ifdef _UNICODE
         wchar_t fileNameW[AZ_MAX_PATH_LEN];
         size_t numCharsConverted;
         if (mbstowcs_s(&numCharsConverted, fileNameW, fileName, AZ_ARRAY_SIZE(fileNameW) - 1) == 0)
@@ -84,23 +42,19 @@ namespace
         {
             return INVALID_FILE_ATTRIBUTES;
         }
-#   else //!_UNICODE
+#else //!_UNICODE
         return GetFileAttributes(fileName);
-#   endif // !_UNICODE
+#endif // !_UNICODE
     }
-#endif
 
     //=========================================================================
     // SetAttributes
-    // [1/20/2013]
     //  Internal utility to avoid code duplication. Returns result of win32
     //  SetFileAttributes
     //=========================================================================
-#if AZ_TRAIT_USE_WINDOWS_FILE_API
-    BOOL
-    SetAttributes(const char* fileName, DWORD fileAttributes)
+    BOOL SetAttributes(const char* fileName, DWORD fileAttributes)
     {
-#   ifdef _UNICODE
+#ifdef _UNICODE
         wchar_t fileNameW[AZ_MAX_PATH_LEN];
         size_t numCharsConverted;
         if (mbstowcs_s(&numCharsConverted, fileNameW, fileName, AZ_ARRAY_SIZE(fileNameW) - 1) == 0)
@@ -111,11 +65,10 @@ namespace
         {
             return FALSE;
         }
-#   else //!_UNICODE
+#else //!_UNICODE
         return SetFileAttributes(fileName, fileAttributes);
-#   endif // !_UNICODE
+#endif // !_UNICODE
     }
-#endif
 
     //=========================================================================
     // CreateDirRecursive
@@ -126,10 +79,8 @@ namespace
     //   * GetLastError() on Windows-like platforms
     //   * errno on Unix platforms
     //=========================================================================
-#if AZ_TRAIT_USE_WINDOWS_FILE_API
-#   if defined(_UNICODE)
-    bool
-    CreateDirRecursive(wchar_t* dirPath)
+#if defined(_UNICODE)
+    bool CreateDirRecursive(wchar_t* dirPath)
     {
         if (CreateDirectoryW(dirPath, nullptr))
         {
@@ -164,9 +115,8 @@ namespace
         }
         return false;
     }
-#   else
-    bool
-    CreateDirRecursive(char* dirPath)
+#else
+    bool CreateDirRecursive(char* dirPath)
     {
         if (CreateDirectory(dirPath, nullptr))
         {
@@ -211,126 +161,14 @@ namespace
         }
         return false;
     }
-#   endif
-#elif defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_ANDROID) || defined(AZ_PLATFORM_APPLE)
-    bool CreateDirRecursive(char* dirPath)
-    {
-    #if defined(AZ_PLATFORM_ANDROID)
-        if (AZ::Android::Utils::IsApkPath(dirPath))
-        {
-            return false;
-        }
-    #endif // defined(AZ_PLATFORM_ANDROID)
-
-        int result = mkdir(dirPath, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
-        if (result == 0)
-        {
-            return true;    // Created without error
-        }
-        else if (result == -1)
-        {
-            // If result == -1, the error is stored in errno
-            // http://pubs.opengroup.org/onlinepubs/007908799/xsh/mkdir.html
-            result = errno;
-        }
-
-        if (result == ENOTDIR || result == ENOENT)
-        {
-            // try to create our parent hierarchy
-            for (size_t i = strlen(dirPath); i > 0; --i)
-            {
-                if (dirPath[i] == '/' || dirPath[i] == '\\')
-                {
-                    char delimiter = dirPath[i];
-                    dirPath[i] = 0; // null-terminate at the previous slash
-                    bool ret = CreateDirRecursive(dirPath);
-                    dirPath[i] = delimiter; // restore slash
-                    if (ret)
-                    {
-                        // now that our parent is created, try to create again
-                        return mkdir(dirPath, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH) == 0;
-                    }
-                    return false;
-                }
-            }
-            // if we reach here then there was no parent folder to create, so we failed for other reasons
-        }
-        else if (result == EEXIST)
-        {
-            struct stat s;
-            if (stat(dirPath, &s) == 0)
-            {
-                return s.st_mode & S_IFDIR;
-            }
-        }
-        return false;
-    }
 #endif
 
-#if AZ_TRAIT_USE_WINDOWS_FILE_API
     static const SystemFile::FileHandleType PlatformSpecificInvalidHandle = INVALID_HANDLE_VALUE;
-#elif AZ_TRAIT_USE_SYSTEMFILE_HANDLE
-    static const SystemFile::FileHandleType PlatformSpecificInvalidHandle = (SystemFile::FileHandleType) -1;
-#elif defined(AZ_PLATFORM_ANDROID)
-    static const SystemFile::FileHandleType PlatformSpecificInvalidHandle = nullptr;
-#endif
 }
 
-//=========================================================================
-// SystemFile
-// [9/30/2009]
-//=========================================================================
-SystemFile::SystemFile()
+
+bool SystemFile::PlatformOpen(int mode, int platformFlags)
 {
-    m_fileName[0] = '\0';
-    m_handle = PlatformSpecificInvalidHandle;
-}
-
-//=========================================================================
-// ~SystemFile
-// [9/30/2009]
-//=========================================================================
-SystemFile::~SystemFile()
-{
-    if (IsOpen())
-    {
-        Close();
-    }
-}
-
-//=========================================================================
-// Open
-// [9/30/2009]
-//=========================================================================
-bool
-SystemFile::Open(const char* fileName, int mode, int platformFlags)
-{
-    if (fileName)       // If we reopen the file we are allowed to have NULL file name
-    {
-        if (strlen(fileName) > AZ_ARRAY_SIZE(m_fileName) - 1)
-        {
-            EBUS_EVENT(FileIOEventBus, OnError, this, nullptr, 0);
-            return false;
-        }
-
-        // store the filename
-        azsnprintf(m_fileName, AZ_ARRAY_SIZE(m_fileName), "%s", fileName);
-    }
-
-    if (FileIOBus::HasHandlers())
-    {
-        bool isOpen = false;
-        bool isHandled = false;
-        EBUS_EVENT_RESULT(isHandled, FileIOBus, OnOpen, *this, m_fileName, mode, platformFlags, isOpen);
-        if (isHandled)
-        {
-            return isOpen;
-        }
-    }
-
-    AZ_Assert(!IsOpen(), "This file (%s) is already open!", m_fileName);
-
-#if AZ_TRAIT_USE_WINDOWS_FILE_API
     DWORD dwDesiredAccess = 0;
     DWORD dwShareMode = FILE_SHARE_READ;
     DWORD dwFlagsAndAttributes = platformFlags;
@@ -370,18 +208,7 @@ SystemFile::Open(const char* fileName, int mode, int platformFlags)
 
     if (createPath)
     {
-        char folderPath[AZ_MAX_PATH_LEN] = { 0 };
-        const char* delimiter1 = strrchr(m_fileName, '\\');
-        const char* delimiter2 = strrchr(m_fileName, '/');
-        const char* delimiter = delimiter2 > delimiter1 ? delimiter2 : delimiter1;
-        if (delimiter > m_fileName)
-        {
-            azstrncpy(folderPath, m_fileName, delimiter - m_fileName);
-            if (!Exists(folderPath))
-            {
-                CreateDir(folderPath);
-            }
-        }
+        CreatePath(m_fileName);
     }
 
 #   ifdef _UNICODE
@@ -408,210 +235,12 @@ SystemFile::Open(const char* fileName, int mode, int platformFlags)
             SetFilePointer(m_handle, 0, NULL, FILE_END);
         }
     }
-#define AZ_RESTRICTED_SECTION_IMPLEMENTED
-#elif defined(AZ_RESTRICTED_PLATFORM)
-#define AZ_RESTRICTED_SECTION SYSTEMFILE_CPP_SECTION_1
-    #if defined(AZ_PLATFORM_XENIA)
-        #include "Xenia/SystemFile_cpp_xenia.inl"
-    #elif defined(AZ_PLATFORM_PROVO)
-        #include "Provo/SystemFile_cpp_provo.inl"
-    #endif
-#endif
-#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
-#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
-#elif defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_APPLE)
-    int desiredAccess = 0;
-    int permissions = S_IRWXU | S_IRGRP | S_IROTH;
-
-    bool createPath = false;
-    if ((mode & SF_OPEN_READ_WRITE) == SF_OPEN_READ_WRITE)
-    {
-        desiredAccess = O_RDWR;
-    }
-    else if ((mode & SF_OPEN_READ_ONLY) == SF_OPEN_READ_ONLY)
-    {
-        desiredAccess = O_RDONLY;
-    }
-    else if ((mode & SF_OPEN_WRITE_ONLY) == SF_OPEN_WRITE_ONLY || (mode & SF_OPEN_APPEND))
-    {
-        desiredAccess = O_WRONLY;
-    }
-    else
-    {
-        EBUS_EVENT(FileIOEventBus, OnError, this, nullptr, 0);
-        return false;
-    }
-
-    if ((mode & SF_OPEN_CREATE_NEW) == SF_OPEN_CREATE_NEW)
-    {
-        desiredAccess |= O_CREAT | O_EXCL;
-        createPath = (mode & SF_OPEN_CREATE_PATH) == SF_OPEN_CREATE_PATH;
-    }
-    else if ((mode & SF_OPEN_CREATE) ==  SF_OPEN_CREATE)
-    {
-        desiredAccess |= O_CREAT | O_TRUNC;
-        createPath = (mode & SF_OPEN_CREATE_PATH) == SF_OPEN_CREATE_PATH;
-    }
-    else if ((mode & SF_OPEN_TRUNCATE))
-    {
-        desiredAccess |= O_TRUNC;
-    }
-
-    if (createPath)
-    {
-        char folderPath[AZ_MAX_PATH_LEN] = {0};
-        const char* delimiter1 = strrchr(m_fileName, '\\');
-        const char* delimiter2 = strrchr(m_fileName, '/');
-        const char* delimiter = delimiter2 > delimiter1 ? delimiter2 : delimiter1;
-        if (delimiter > m_fileName)
-        {
-            azstrncpy(folderPath, AZ_ARRAY_SIZE(folderPath), m_fileName, delimiter - m_fileName);
-            if (!Exists(folderPath))
-            {
-                CreateDir(folderPath);
-            }
-        }
-    }
-    m_handle = open(m_fileName, desiredAccess, permissions);
-
-    if (m_handle == PlatformSpecificInvalidHandle)
-    {
-        EBUS_EVENT(FileIOEventBus, OnError, this, nullptr, errno);
-        return false;
-    }
-    else
-    {
-        if (mode & SF_OPEN_APPEND)
-        {
-            lseek(m_handle, 0, SEEK_END);
-        }
-    }
-#elif defined(AZ_PLATFORM_ANDROID)
-    const char* openMode = nullptr;
-    if ((mode & SF_OPEN_READ_ONLY) == SF_OPEN_READ_ONLY)
-    {
-        openMode = "r";
-    }
-    else if ((mode & SF_OPEN_WRITE_ONLY) == SF_OPEN_WRITE_ONLY)
-    {
-        if ((mode & SF_OPEN_APPEND) == SF_OPEN_APPEND)
-        {
-            openMode = "a+";
-        }
-        else if (mode & (SF_OPEN_TRUNCATE | SF_OPEN_CREATE_NEW | SF_OPEN_CREATE))
-        {
-            openMode = "w+";
-        }
-        else
-        {
-            openMode = "w";
-        }
-    }
-    else if ((mode & SF_OPEN_READ_WRITE) == SF_OPEN_READ_WRITE)
-    {
-        if ((mode & SF_OPEN_APPEND) == SF_OPEN_APPEND)
-        {
-            openMode = "a+";
-        }
-        else if (mode & (SF_OPEN_TRUNCATE | SF_OPEN_CREATE_NEW | SF_OPEN_CREATE))
-        {
-            openMode = "w+";
-        }
-        else
-        {
-            openMode = "r+";
-        }
-    }
-    else
-    {
-        EBUS_EVENT(FileIOEventBus, OnError, this, nullptr, EINVAL);
-        return false;
-    }
-
-    bool createPath = false;
-    if (mode & (SF_OPEN_CREATE_NEW | SF_OPEN_CREATE))
-    {
-        createPath = (mode & SF_OPEN_CREATE_PATH) == SF_OPEN_CREATE_PATH;
-    }
-
-    bool isApkFile = AZ::Android::Utils::IsApkPath(m_fileName);
-
-    if (createPath)
-    {
-        if (isApkFile)
-        {
-            EBUS_EVENT(FileIOEventBus, OnError, this, nullptr, ENOSPC);
-            return false;
-        }
-
-        char folderPath[AZ_MAX_PATH_LEN] = {0};
-        const char* delimiter1 = strrchr(m_fileName, '\\');
-        const char* delimiter2 = strrchr(m_fileName, '/');
-        const char* delimiter = delimiter2 > delimiter1 ? delimiter2 : delimiter1;
-        if (delimiter > m_fileName)
-        {
-            azstrncpy(folderPath, AZ_ARRAY_SIZE(folderPath), m_fileName, delimiter - m_fileName);
-            if (!Exists(folderPath))
-            {
-                CreateDir(folderPath);
-            }
-        }
-    }
-
-    int errorCode = 0;
-    if (isApkFile)
-    {
-        AZ::u64 size = 0;
-        m_handle = AZ::Android::APKFileHandler::Open(m_fileName, openMode, size);
-        errorCode = EACCES; // general error when a file can't be opened from inside the APK
-    }
-    else
-    {
-        m_handle = fopen(m_fileName, openMode);
-        errorCode = errno;
-    }
-
-    if (m_handle == PlatformSpecificInvalidHandle)
-    {
-        EBUS_EVENT(FileIOEventBus, OnError, this, nullptr, errorCode);
-        return false;
-    }
-#else
-    return false;
-#endif
 
     return true;
 }
 
-//=========================================================================
-// Reopen
-// [9/30/2009]
-//=========================================================================
-bool
-SystemFile::ReOpen(int mode, int platformFlags)
+void SystemFile::PlatformClose()
 {
-    AZ_Assert(strlen(m_fileName) > 0, "Missing filename. You must call open first!");
-    return Open(0, mode, platformFlags);
-}
-
-//=========================================================================
-// Close
-// [9/30/2009]
-//=========================================================================
-void
-SystemFile::Close()
-{
-    if (FileIOBus::HasHandlers())
-    {
-        bool isHandled = false;
-        EBUS_EVENT_RESULT(isHandled, FileIOBus, OnClose, *this);
-        if (isHandled)
-        {
-            return;
-        }
-    }
-
-#if AZ_TRAIT_USE_WINDOWS_FILE_API
     if (m_handle != PlatformSpecificInvalidHandle)
     {
         if (!CloseHandle(m_handle))
@@ -620,1167 +249,426 @@ SystemFile::Close()
         }
         m_handle = INVALID_HANDLE_VALUE;
     }
-#elif defined(AZ_RESTRICTED_PLATFORM)
-#define AZ_RESTRICTED_SECTION SYSTEMFILE_CPP_SECTION_2
-    #if defined(AZ_PLATFORM_XENIA)
-        #include "Xenia/SystemFile_cpp_xenia.inl"
-    #elif defined(AZ_PLATFORM_PROVO)
-        #include "Provo/SystemFile_cpp_provo.inl"
-    #endif
-#elif defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_APPLE)
-    if (m_handle != PlatformSpecificInvalidHandle)
-    {
-        close(m_handle);
-        m_handle = PlatformSpecificInvalidHandle;
-    }
-#elif defined(AZ_PLATFORM_ANDROID)
-    if (m_handle != PlatformSpecificInvalidHandle)
-    {
-        fclose(m_handle);
-        m_handle = PlatformSpecificInvalidHandle;
-    }
-#endif
 }
 
-//=========================================================================
-// Seek
-// [9/30/2009]
-//=========================================================================
-void
-SystemFile::Seek(SizeType offset, SeekMode mode)
+namespace Platform
 {
-    if (FileIOBus::HasHandlers())
+    using FileHandleType = AZ::IO::SystemFile::FileHandleType;
+
+    void Seek(FileHandleType handle, const SystemFile* systemFile, SizeType offset, SystemFile::SeekMode mode)
     {
-        bool isHandled = false;
-        EBUS_EVENT_RESULT(isHandled, FileIOBus, OnSeek, *this, offset, mode);
-        if (isHandled)
+        if (handle != PlatformSpecificInvalidHandle)
         {
-            return;
-        }
-    }
+            DWORD dwMoveMethod = mode;
+            LARGE_INTEGER distToMove;
+            distToMove.QuadPart = offset;
 
-#if AZ_TRAIT_USE_WINDOWS_FILE_API
-    if (m_handle != PlatformSpecificInvalidHandle)
-    {
-        DWORD dwMoveMethod = mode;
-        LARGE_INTEGER distToMove;
-        distToMove.QuadPart = offset;
-
-        if (!SetFilePointerEx(m_handle, distToMove, 0, dwMoveMethod))
-        {
-            EBUS_EVENT(FileIOEventBus, OnError, this, nullptr, (int)GetLastError());
-        }
-    }
-#elif defined(AZ_RESTRICTED_PLATFORM)
-#define AZ_RESTRICTED_SECTION SYSTEMFILE_CPP_SECTION_3
-    #if defined(AZ_PLATFORM_XENIA)
-        #include "Xenia/SystemFile_cpp_xenia.inl"
-    #elif defined(AZ_PLATFORM_PROVO)
-        #include "Provo/SystemFile_cpp_provo.inl"
-    #endif
-#elif defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_APPLE)
-    if (m_handle != PlatformSpecificInvalidHandle)
-    {
-        int result = lseek(m_handle, offset, mode);
-        if (result == -1)
-        {
-            EBUS_EVENT(FileIOEventBus, OnError, this, nullptr, errno);
-        }
-    }
-#elif defined(AZ_PLATFORM_ANDROID)
-    if (m_handle != PlatformSpecificInvalidHandle)
-    {
-        off_t result = fseeko(m_handle, static_cast<off_t>(offset), mode);
-        if (result != 0)
-        {
-            EBUS_EVENT(FileIOEventBus, OnError, this, nullptr, errno);
-        }
-    }
-#endif
-}
-
-//=========================================================================
-// Tell
-//=========================================================================
-SystemFile::SizeType SystemFile::Tell()
-{
-#if AZ_TRAIT_USE_WINDOWS_FILE_API
-    if (m_handle != PlatformSpecificInvalidHandle)
-    {
-        LARGE_INTEGER distToMove;
-        distToMove.QuadPart = 0;
-
-        LARGE_INTEGER newFilePtr;
-        if (!SetFilePointerEx(m_handle, distToMove, &newFilePtr, FILE_CURRENT))
-        {
-            EBUS_EVENT(FileIOEventBus, OnError, this, nullptr, (int)GetLastError());
-            return 0;
-        }
-
-        return aznumeric_cast<SizeType>(newFilePtr.QuadPart);
-    }
-#elif defined(AZ_RESTRICTED_PLATFORM)
-#define AZ_RESTRICTED_SECTION SYSTEMFILE_CPP_SECTION_4
-    #if defined(AZ_PLATFORM_XENIA)
-        #include "Xenia/SystemFile_cpp_xenia.inl"
-    #elif defined(AZ_PLATFORM_PROVO)
-        #include "Provo/SystemFile_cpp_provo.inl"
-    #endif
-#elif defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_APPLE)
-    if (m_handle != PlatformSpecificInvalidHandle)
-    {
-        off_t result = lseek(m_handle, 0, SEEK_CUR);
-        if (result == (off_t) -1)
-        {
-            EBUS_EVENT(FileIOEventBus, OnError, this, nullptr, errno);
-        }
-        return aznumeric_cast<SizeType>(result);
-    }
-#elif defined(AZ_PLATFORM_ANDROID)
-    if (m_handle != PlatformSpecificInvalidHandle)
-    {
-        off_t result = ftello(m_handle);
-        if (result != -1)
-        {
-            EBUS_EVENT(FileIOEventBus, OnError, this, nullptr, errno);
-            return 0;
-        }
-        return aznumeric_cast<SizeType>(result);
-    }
-#endif
-
-    return 0;
-}
-
-//=========================================================================
-// Eof
-//=========================================================================
-bool SystemFile::Eof()
-{
-#if AZ_TRAIT_USE_WINDOWS_FILE_API
-    if (m_handle != PlatformSpecificInvalidHandle)
-    {
-        LARGE_INTEGER zero;
-        zero.QuadPart = 0;
-
-        LARGE_INTEGER currentFilePtr;
-        if (!SetFilePointerEx(m_handle, zero, &currentFilePtr, FILE_CURRENT))
-        {
-            EBUS_EVENT(FileIOEventBus, OnError, this, nullptr, (int)GetLastError());
-            return false;
-        }
-
-        FILE_STANDARD_INFO fileInfo;
-        if (!GetFileInformationByHandleEx(m_handle, FileStandardInfo, &fileInfo, sizeof(fileInfo)))
-        {
-            EBUS_EVENT(FileIOEventBus, OnError, this, nullptr, (int)GetLastError());
-            return false;
-        }
-
-        return currentFilePtr.QuadPart == fileInfo.EndOfFile.QuadPart;
-    }
-#elif defined(AZ_RESTRICTED_PLATFORM)
-#define AZ_RESTRICTED_SECTION SYSTEMFILE_CPP_SECTION_5
-    #if defined(AZ_PLATFORM_XENIA)
-        #include "Xenia/SystemFile_cpp_xenia.inl"
-    #elif defined(AZ_PLATFORM_PROVO)
-        #include "Provo/SystemFile_cpp_provo.inl"
-    #endif
-#elif defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_APPLE)
-    if (m_handle != PlatformSpecificInvalidHandle)
-    {
-        off_t current = lseek(m_handle, 0, SEEK_CUR);
-        if (current == (off_t)-1)
-        {
-            EBUS_EVENT(FileIOEventBus, OnError, this, nullptr, current);
-            return false;
-        }
-
-        off_t end = lseek(m_handle, 0, SEEK_END);
-        if (end == (off_t)-1)
-        {
-            EBUS_EVENT(FileIOEventBus, OnError, this, nullptr, end);
-            return false;
-        }
-
-        // Reset file pointer back to from whence it came
-        lseek(m_handle, current, SEEK_SET);
-
-        return current == end;
-    }
-#elif defined(AZ_PLATFORM_ANDROID)
-    if (m_handle != PlatformSpecificInvalidHandle)
-    {
-        return (feof(m_handle) != 0);
-    }
-#endif
-
-    return false;
-}
-
-//=========================================================================
-// ModificationTime
-//=========================================================================
-AZ::u64 SystemFile::ModificationTime()
-{
-#if AZ_TRAIT_USE_WINDOWS_FILE_API
-    if (m_handle != PlatformSpecificInvalidHandle)
-    {
-        FILE_BASIC_INFO fileInfo;
-        if (!GetFileInformationByHandleEx(m_handle, FileBasicInfo, &fileInfo, sizeof(fileInfo)))
-        {
-            EBUS_EVENT(FileIOEventBus, OnError, this, nullptr, (int)GetLastError());
-            return 0;
-        }
-
-        return aznumeric_cast<AZ::u64>(fileInfo.ChangeTime.QuadPart);
-    }
-#elif defined(AZ_RESTRICTED_PLATFORM)
-#define AZ_RESTRICTED_SECTION SYSTEMFILE_CPP_SECTION_6
-    #if defined(AZ_PLATFORM_XENIA)
-        #include "Xenia/SystemFile_cpp_xenia.inl"
-    #elif defined(AZ_PLATFORM_PROVO)
-        #include "Provo/SystemFile_cpp_provo.inl"
-    #endif
-#elif defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_APPLE)
-    if (m_handle != PlatformSpecificInvalidHandle)
-    {
-        struct stat statResult;
-        if (fstat(m_handle, &statResult) != 0)
-        {
-            return 0;
-        }
-        return aznumeric_cast<AZ::u64>(statResult.st_mtime);
-    }
-#elif defined(AZ_PLATFORM_ANDROID)
-    if (m_handle != PlatformSpecificInvalidHandle)
-    {
-        struct stat statResult;
-        if (stat(m_fileName, &statResult) != 0)
-        {
-            return 0;
-        }
-        return aznumeric_cast<AZ::u64>(statResult.st_mtime);
-    }
-#endif
-
-    return 0;
-}
-
-//=========================================================================
-// Read
-// [9/30/2009]
-//=========================================================================
-SystemFile::SizeType
-SystemFile::Read(SizeType byteSize, void* buffer)
-{
-    if (FileIOBus::HasHandlers())
-    {
-        SizeType numRead = 0;
-        bool isHandled = false;
-        EBUS_EVENT_RESULT(isHandled, FileIOBus, OnRead, *this, byteSize, buffer, numRead);
-        if (isHandled)
-        {
-            return numRead;
-        }
-    }
-
-#if AZ_TRAIT_USE_WINDOWS_FILE_API
-    if (m_handle != PlatformSpecificInvalidHandle)
-    {
-        DWORD dwNumBytesRead = 0;
-        DWORD nNumberOfBytesToRead = (DWORD)byteSize;
-        if (!ReadFile(m_handle, buffer, nNumberOfBytesToRead, &dwNumBytesRead, 0))
-        {
-            EBUS_EVENT(FileIOEventBus, OnError, this, nullptr, (int)GetLastError());
-            return 0;
-        }
-        return static_cast<SizeType>(dwNumBytesRead);
-    }
-#elif defined(AZ_RESTRICTED_PLATFORM)
-#define AZ_RESTRICTED_SECTION SYSTEMFILE_CPP_SECTION_7
-    #if defined(AZ_PLATFORM_XENIA)
-        #include "Xenia/SystemFile_cpp_xenia.inl"
-    #elif defined(AZ_PLATFORM_PROVO)
-        #include "Provo/SystemFile_cpp_provo.inl"
-    #endif
-#elif defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_APPLE)
-    if (m_handle != PlatformSpecificInvalidHandle)
-    {
-        ssize_t bytesRead = read(m_handle, buffer, byteSize);
-        if (bytesRead == -1)
-        {
-            EBUS_EVENT(FileIOEventBus, OnError, this, nullptr, errno);
-            return 0;
-        }
-        return bytesRead;
-    }
-#elif defined(AZ_PLATFORM_ANDROID)
-    if (m_handle != PlatformSpecificInvalidHandle)
-    {
-        size_t bytesToRead = static_cast<size_t>(byteSize);
-        AZ::Android::APKFileHandler::SetNumBytesToRead(bytesToRead);
-        size_t bytesRead = fread(buffer, 1, bytesToRead, m_handle);
-
-        if (bytesRead != bytesToRead && ferror(m_handle))
-        {
-            EBUS_EVENT(FileIOEventBus, OnError, this, nullptr, errno);
-            return 0;
-        }
-
-        return bytesRead;
-    }
-#endif
-
-    return 0;
-}
-
-//=========================================================================
-// Write
-// [9/30/2009]
-//=========================================================================
-SystemFile::SizeType
-SystemFile::Write(const void* buffer, SizeType byteSize)
-{
-    if (FileIOBus::HasHandlers())
-    {
-        SizeType numWritten = 0;
-        bool isHandled = false;
-        EBUS_EVENT_RESULT(isHandled, FileIOBus, OnWrite, *this, buffer, byteSize, numWritten);
-        if (isHandled)
-        {
-            return numWritten;
-        }
-    }
-
-#if AZ_TRAIT_USE_WINDOWS_FILE_API
-    if (m_handle != PlatformSpecificInvalidHandle)
-    {
-        DWORD dwNumBytesWritten = 0;
-        DWORD nNumberOfBytesToWrite = (DWORD)byteSize;
-        if (!WriteFile(m_handle, buffer, nNumberOfBytesToWrite, &dwNumBytesWritten, 0))
-        {
-            EBUS_EVENT(FileIOEventBus, OnError, this, nullptr, (int)GetLastError());
-            return 0;
-        }
-        return static_cast<SizeType>(dwNumBytesWritten);
-    }
-#elif defined(AZ_RESTRICTED_PLATFORM)
-#define AZ_RESTRICTED_SECTION SYSTEMFILE_CPP_SECTION_8
-    #if defined(AZ_PLATFORM_XENIA)
-        #include "Xenia/SystemFile_cpp_xenia.inl"
-    #elif defined(AZ_PLATFORM_PROVO)
-        #include "Provo/SystemFile_cpp_provo.inl"
-    #endif
-#elif defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_APPLE)
-    if (m_handle != PlatformSpecificInvalidHandle)
-    {
-        ssize_t result = write(m_handle, buffer, byteSize);
-        if (result == -1)
-        {
-            EBUS_EVENT(FileIOEventBus, OnError, this, nullptr, errno);
-            return 0;
-        }
-        return result;
-    }
-#elif defined(AZ_PLATFORM_ANDROID)
-    if (m_handle != PlatformSpecificInvalidHandle)
-    {
-        size_t bytesToWrite = static_cast<size_t>(byteSize);
-        size_t bytesWritten = fwrite(buffer, 1, bytesToWrite, m_handle);
-
-        if (bytesWritten != bytesToWrite && ferror(m_handle))
-        {
-            EBUS_EVENT(FileIOEventBus, OnError, this, nullptr, errno);
-            return 0;
-        }
-
-        return bytesWritten;
-    }
-#endif
-
-    return 0;
-}
-
-//=========================================================================
-// Flush
-//=========================================================================
-void SystemFile::Flush()
-{
-#if AZ_TRAIT_USE_WINDOWS_FILE_API
-    if (m_handle != PlatformSpecificInvalidHandle)
-    {
-        if (!FlushFileBuffers(m_handle))
-        {
-            EBUS_EVENT(FileIOEventBus, OnError, this, nullptr, (int)GetLastError());
-        }
-    }
-#elif defined(AZ_RESTRICTED_PLATFORM)
-#define AZ_RESTRICTED_SECTION SYSTEMFILE_CPP_SECTION_9
-    #if defined(AZ_PLATFORM_XENIA)
-        #include "Xenia/SystemFile_cpp_xenia.inl"
-    #elif defined(AZ_PLATFORM_PROVO)
-        #include "Provo/SystemFile_cpp_provo.inl"
-    #endif
-#elif defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_APPLE)
-    if (m_handle != PlatformSpecificInvalidHandle)
-    {
-        if (fsync(m_handle) != 0)
-        {
-            EBUS_EVENT(FileIOEventBus, OnError, this, nullptr, errno);
-        }
-    }
-#elif defined(AZ_PLATFORM_ANDROID)
-    if (m_handle != PlatformSpecificInvalidHandle)
-    {
-        if (fflush(m_handle) != 0)
-        {
-            EBUS_EVENT(FileIOEventBus, OnError, this, nullptr, errno);
-        }
-    }
-#endif
-}
-
-//=========================================================================
-// Length
-// [9/30/2009]
-//=========================================================================
-SystemFile::SizeType
-SystemFile::Length() const
-{
-#if AZ_TRAIT_USE_WINDOWS_FILE_API
-    if (m_handle != PlatformSpecificInvalidHandle)
-    {
-        LARGE_INTEGER size;
-        if (!GetFileSizeEx(m_handle, &size))
-        {
-            EBUS_EVENT(FileIOEventBus, OnError, this, nullptr, (int)GetLastError());
-            return 0;
-        }
-
-        return static_cast<SizeType>(size.QuadPart);
-    }
-#elif defined(AZ_RESTRICTED_PLATFORM)
-#define AZ_RESTRICTED_SECTION SYSTEMFILE_CPP_SECTION_10
-    #if defined(AZ_PLATFORM_XENIA)
-        #include "Xenia/SystemFile_cpp_xenia.inl"
-    #elif defined(AZ_PLATFORM_PROVO)
-        #include "Provo/SystemFile_cpp_provo.inl"
-    #endif
-#elif defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_APPLE)
-    if (m_handle != PlatformSpecificInvalidHandle)
-    {
-        struct stat stat;
-        if (fstat(m_handle, &stat) < 0)
-        {
-            EBUS_EVENT(FileIOEventBus, OnError, this, nullptr, 0);
-            return 0;
-        }
-        return stat.st_size;
-    }
-#elif defined(AZ_PLATFORM_ANDROID)
-    if (m_handle != PlatformSpecificInvalidHandle)
-    {
-        if (AZ::Android::Utils::IsApkPath(m_fileName))
-        {
-            int fileSize = AZ::Android::APKFileHandler::FileLength(m_fileName);
-            return static_cast<SizeType>(fileSize);
-        }
-        else
-        {
-            struct stat fileStat;
-            if (stat(m_fileName, &fileStat) < 0)
+            if (!SetFilePointerEx(handle, distToMove, 0, dwMoveMethod))
             {
-                EBUS_EVENT(FileIOEventBus, OnError, this, nullptr, 0);
+                EBUS_EVENT(FileIOEventBus, OnError, systemFile, nullptr, (int)GetLastError());
+            }
+        }
+    }
+
+    SystemFile::SizeType Tell(FileHandleType handle, const SystemFile* systemFile)
+    {
+        if (handle != PlatformSpecificInvalidHandle)
+        {
+            LARGE_INTEGER distToMove;
+            distToMove.QuadPart = 0;
+
+            LARGE_INTEGER newFilePtr;
+            if (!SetFilePointerEx(handle, distToMove, &newFilePtr, FILE_CURRENT))
+            {
+                EBUS_EVENT(FileIOEventBus, OnError, systemFile, nullptr, (int)GetLastError());
                 return 0;
             }
-            return static_cast<SizeType>(fileStat.st_size);
+
+            return aznumeric_cast<SizeType>(newFilePtr.QuadPart);
+        }
+
+        return 0;
+    }
+
+    bool Eof(FileHandleType handle, const SystemFile* systemFile)
+    {
+        if (handle != PlatformSpecificInvalidHandle)
+        {
+            LARGE_INTEGER zero;
+            zero.QuadPart = 0;
+
+            LARGE_INTEGER currentFilePtr;
+            if (!SetFilePointerEx(handle, zero, &currentFilePtr, FILE_CURRENT))
+            {
+                EBUS_EVENT(FileIOEventBus, OnError, systemFile, nullptr, (int)GetLastError());
+                return false;
+            }
+
+            FILE_STANDARD_INFO fileInfo;
+            if (!GetFileInformationByHandleEx(handle, FileStandardInfo, &fileInfo, sizeof(fileInfo)))
+            {
+                EBUS_EVENT(FileIOEventBus, OnError, systemFile, nullptr, (int)GetLastError());
+                return false;
+            }
+
+            return currentFilePtr.QuadPart == fileInfo.EndOfFile.QuadPart;
+        }
+
+        return false;
+    }
+
+    AZ::u64 ModificationTime(FileHandleType handle, const SystemFile* systemFile)
+    {
+        if (handle != PlatformSpecificInvalidHandle)
+        {
+            FILE_BASIC_INFO fileInfo;
+            if (!GetFileInformationByHandleEx(handle, FileBasicInfo, &fileInfo, sizeof(fileInfo)))
+            {
+                EBUS_EVENT(FileIOEventBus, OnError, systemFile, nullptr, (int)GetLastError());
+                return 0;
+            }
+
+            return aznumeric_cast<AZ::u64>(fileInfo.ChangeTime.QuadPart);
+        }
+
+        return 0;
+    }
+
+    SystemFile::SizeType Read(FileHandleType handle, const SystemFile* systemFile, SizeType byteSize, void* buffer)
+    {
+        if (handle != PlatformSpecificInvalidHandle)
+        {
+            DWORD dwNumBytesRead = 0;
+            DWORD nNumberOfBytesToRead = (DWORD)byteSize;
+            if (!ReadFile(handle, buffer, nNumberOfBytesToRead, &dwNumBytesRead, 0))
+            {
+                EBUS_EVENT(FileIOEventBus, OnError, systemFile, nullptr, (int)GetLastError());
+                return 0;
+            }
+            return static_cast<SizeType>(dwNumBytesRead);
+        }
+
+        return 0;
+    }
+
+    SystemFile::SizeType Write(FileHandleType handle, const SystemFile* systemFile, const void* buffer, SizeType byteSize)
+    {
+        if (handle != PlatformSpecificInvalidHandle)
+        {
+            DWORD dwNumBytesWritten = 0;
+            DWORD nNumberOfBytesToWrite = (DWORD)byteSize;
+            if (!WriteFile(handle, buffer, nNumberOfBytesToWrite, &dwNumBytesWritten, 0))
+            {
+                EBUS_EVENT(FileIOEventBus, OnError, systemFile, nullptr, (int)GetLastError());
+                return 0;
+            }
+            return static_cast<SizeType>(dwNumBytesWritten);
+        }
+
+        return 0;
+    }
+
+    void Flush(FileHandleType handle, const SystemFile* systemFile)
+    {
+        if (handle != PlatformSpecificInvalidHandle)
+        {
+            if (!FlushFileBuffers(handle))
+            {
+                EBUS_EVENT(FileIOEventBus, OnError, systemFile, nullptr, (int)GetLastError());
+            }
         }
     }
-#endif
 
-    return 0;
-}
-
-//=========================================================================
-// IsOpen
-// [9/30/2009]
-//=========================================================================
-bool
-SystemFile::IsOpen() const
-{
-    return m_handle != PlatformSpecificInvalidHandle;
-}
-
-//=========================================================================
-// DiskOffset
-// [9/30/2009]
-//=========================================================================
-SystemFile::SizeType
-SystemFile::DiskOffset() const
-{
-#if AZ_TRAIT_DOES_NOT_SUPPORT_FILE_DISK_OFFSET
-    #pragma message("--- File Disk Offset is not available ---")
-#endif
-    return 0;
-}
-
-//=========================================================================
-// Exists
-// [9/30/2009]
-//=========================================================================
-bool
-SystemFile::Exists(const char* fileName)
-{
-#if AZ_TRAIT_USE_WINDOWS_FILE_API
-    return GetAttributes(fileName) != INVALID_FILE_ATTRIBUTES;
-#define AZ_RESTRICTED_SECTION_IMPLEMENTED
-#elif defined(AZ_RESTRICTED_PLATFORM)
-#define AZ_RESTRICTED_SECTION SYSTEMFILE_CPP_SECTION_11
-    #if defined(AZ_PLATFORM_XENIA)
-        #include "Xenia/SystemFile_cpp_xenia.inl"
-    #elif defined(AZ_PLATFORM_PROVO)
-        #include "Provo/SystemFile_cpp_provo.inl"
-    #endif
-#endif
-#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
-#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
-#elif defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_APPLE)
-    return access(fileName, F_OK) == 0;
-#elif defined(AZ_PLATFORM_ANDROID)
-    if (AZ::Android::Utils::IsApkPath(fileName))
+    SystemFile::SizeType Length(FileHandleType handle, const SystemFile* systemFile)
     {
-        return AZ::Android::APKFileHandler::DirectoryOrFileExists(fileName);
-    }
-    else
-    {
-        return access(fileName, F_OK) == 0;
-    }
-#else
-    return false;
-#endif
-}
-
-#if !AZ_TRAIT_USE_WINDOWS_FILE_API
-//=========================================================================
-// FormatAndPeelOffWildCardExtension
-// [11/22/2011]
-//=========================================================================
-void FormatAndPeelOffWildCardExtension(const char* sourcePath, char* filePath, char* extensionPath)
-{
-    const char* pSrcPath = sourcePath;
-    char*       pDestPath = filePath;
-    unsigned    numFileChars = 0;
-    unsigned    numExtensionChars = 0;
-    unsigned*   pNumDestChars = &numFileChars;
-    bool        bIsWildcardExtension = false;
-    while (*pSrcPath)
-    {
-        char srcChar = *pSrcPath++;
-
-        // Skip '*' and '.'
-        if ((!bIsWildcardExtension && srcChar != '*') || (bIsWildcardExtension && srcChar != '.' && srcChar != '*'))
+        if (handle != PlatformSpecificInvalidHandle)
         {
-            unsigned numChars = *pNumDestChars;
-            pDestPath[ numChars++ ] = srcChar;
-            *pNumDestChars = numChars;
+            LARGE_INTEGER size;
+            if (!GetFileSizeEx(handle, &size))
+            {
+                EBUS_EVENT(FileIOEventBus, OnError, systemFile, nullptr, (int)GetLastError());
+                return 0;
+            }
+
+            return static_cast<SizeType>(size.QuadPart);
         }
-        // Wild-card extension is separate
-        if (srcChar == '*')
-        {
-            bIsWildcardExtension = true;
-            pDestPath = extensionPath;
-            pNumDestChars = &numExtensionChars;
-        }
+
+        return 0;
     }
-    // Close strings
-    filePath[ numFileChars ] = 0;
-    extensionPath[ numExtensionChars ] = 0;
-}
-#endif //!AZ_TRAIT_USE_WINDOWS_FILE_API
 
-
-//=========================================================================
-// FindFiles
-// [9/30/2009]
-//=========================================================================
-void
-SystemFile::FindFiles(const char* filter, FindFileCB cb)
-{
-#if AZ_TRAIT_USE_WINDOWS_FILE_API
-    WIN32_FIND_DATA fd;
-    HANDLE hFile;
-    int lastError;
-
-#   ifdef _UNICODE
-    wchar_t filterW[AZ_MAX_PATH_LEN];
-    size_t numCharsConverted;
-    hFile = INVALID_HANDLE_VALUE;
-    if (mbstowcs_s(&numCharsConverted, filterW, filter, AZ_ARRAY_SIZE(filterW) - 1) == 0)
+    bool Exists(const char* fileName)
     {
-        hFile = FindFirstFile(filterW, &fd);
+        return GetAttributes(fileName) != INVALID_FILE_ATTRIBUTES;
     }
-#   else // !_UNICODE
-    hFile = FindFirstFile(filter, &fd);
-#   endif // !_UNICODE
 
-    if (hFile != INVALID_HANDLE_VALUE)
+
+    void FindFiles(const char* filter, SystemFile::FindFileCB cb)
     {
-        const char* fileName;
+        WIN32_FIND_DATA fd;
+        HANDLE hFile;
+        int lastError;
 
-#   ifdef _UNICODE
-        char fileNameA[AZ_MAX_PATH_LEN];
-        fileName = NULL;
-        if (wcstombs_s(&numCharsConverted, fileNameA, fd.cFileName, AZ_ARRAY_SIZE(fileNameA) - 1) == 0)
+#ifdef _UNICODE
+        wchar_t filterW[AZ_MAX_PATH_LEN];
+        size_t numCharsConverted;
+        hFile = INVALID_HANDLE_VALUE;
+        if (mbstowcs_s(&numCharsConverted, filterW, filter, AZ_ARRAY_SIZE(filterW) - 1) == 0)
         {
-            fileName = fileNameA;
+            hFile = FindFirstFile(filterW, &fd);
         }
-#   else // !_UNICODE
-        fileName = fd.cFileName;
-#   endif // !_UNICODE
+#else // !_UNICODE
+        hFile = FindFirstFile(filter, &fd);
+#endif // !_UNICODE
 
-        cb(fileName, (fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) == 0);
-
-        // List all the other files in the directory.
-        while (FindNextFile(hFile, &fd) != 0)
+        if (hFile != INVALID_HANDLE_VALUE)
         {
-#   ifdef _UNICODE
+            const char* fileName;
+
+#ifdef _UNICODE
+            char fileNameA[AZ_MAX_PATH_LEN];
             fileName = NULL;
             if (wcstombs_s(&numCharsConverted, fileNameA, fd.cFileName, AZ_ARRAY_SIZE(fileNameA) - 1) == 0)
             {
                 fileName = fileNameA;
             }
-#   else // !_UNICODE
+#else // !_UNICODE
             fileName = fd.cFileName;
-#   endif // !_UNICODE
+#endif // !_UNICODE
 
             cb(fileName, (fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) == 0);
-        }
 
-        lastError = (int)GetLastError();
-        FindClose(hFile);
-        if (lastError != ERROR_NO_MORE_FILES)
-        {
-            EBUS_EVENT(FileIOEventBus, OnError, nullptr, fileName, lastError);
-        }
-    }
-    else
-    {
-        lastError = (int)GetLastError();
-        if (lastError != ERROR_FILE_NOT_FOUND)
-        {
-            EBUS_EVENT(FileIOEventBus, OnError, nullptr, filter, lastError);
-        }
-    }
-#elif defined(AZ_RESTRICTED_PLATFORM)
-#define AZ_RESTRICTED_SECTION SYSTEMFILE_CPP_SECTION_13
-    #if defined(AZ_PLATFORM_XENIA)
-        #include "Xenia/SystemFile_cpp_xenia.inl"
-    #elif defined(AZ_PLATFORM_PROVO)
-        #include "Provo/SystemFile_cpp_provo.inl"
-    #endif
-#elif defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_ANDROID) || defined(AZ_PLATFORM_APPLE)
-    // If we have wildcards, peel off
-    char    filePath[AZ_MAX_PATH_LEN];
-    char    extensionPath[AZ_MAX_PATH_LEN];
-
-    FormatAndPeelOffWildCardExtension(filter, filePath, extensionPath);
-
-    DIR* dir = opendir(filePath);
-
-    if (dir != NULL)
-    {
-        // clear the errno state so we can distinguish between real errors and end of stream
-        errno = 0;
-        struct dirent* entry = readdir(dir);
-
-        // List all the other files in the directory.
-        while (entry != NULL)
-        {
-            if (NameMatchesFilter(entry->d_name, extensionPath))
+            // List all the other files in the directory.
+            while (FindNextFile(hFile, &fd) != 0)
             {
-                cb(entry->d_name, (entry->d_type & DT_DIR) == 0);
+#ifdef _UNICODE
+                fileName = NULL;
+                if (wcstombs_s(&numCharsConverted, fileNameA, fd.cFileName, AZ_ARRAY_SIZE(fileNameA) - 1) == 0)
+                {
+                    fileName = fileNameA;
+                }
+#else // !_UNICODE
+                fileName = fd.cFileName;
+#endif // !_UNICODE
+
+                cb(fileName, (fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) == 0);
             }
-            entry = readdir(dir);
-        }
 
-        int lastError = errno;
-        if (lastError != 0)
+            lastError = (int)GetLastError();
+            FindClose(hFile);
+            if (lastError != ERROR_NO_MORE_FILES)
+            {
+                EBUS_EVENT(FileIOEventBus, OnError, nullptr, fileName, lastError);
+            }
+        }
+        else
         {
-            EBUS_EVENT(FileIOEventBus, OnError, nullptr, filter, lastError);
+            lastError = (int)GetLastError();
+            if (lastError != ERROR_FILE_NOT_FOUND)
+            {
+                EBUS_EVENT(FileIOEventBus, OnError, nullptr, filter, lastError);
+            }
         }
-
-        closedir(dir);
     }
-    else
+
+    AZ::u64 ModificationTime(const char* fileName)
     {
-        int lastError = errno;
-        if (lastError != ENOENT)
+        HANDLE handle = nullptr;
+
+#ifdef _UNICODE
+        wchar_t fileNameW[AZ_MAX_PATH_LEN];
+        size_t numCharsConverted;
+        if (mbstowcs_s(&numCharsConverted, fileNameW, fileName, AZ_ARRAY_SIZE(fileNameW) - 1) == 0)
         {
-            EBUS_EVENT(FileIOEventBus, OnError, nullptr, filter, 0);
+            handle = CreateFileW(fileNameW, 0, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, 0, NULL);
         }
-    }
-#endif
-}
+#else // !_UNICODE
+        handle = CreateFileA(fileName, 0, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, 0, NULL);
+#endif // !_UNICODE
 
-//=========================================================================
-// ModificationTime
-//=========================================================================
-AZ::u64 SystemFile::ModificationTime(const char* fileName)
-{
-#if AZ_TRAIT_USE_WINDOWS_FILE_API
-    HANDLE handle = nullptr;
-
-#   ifdef _UNICODE
-    wchar_t fileNameW[AZ_MAX_PATH_LEN];
-    size_t numCharsConverted;
-    if (mbstowcs_s(&numCharsConverted, fileNameW, fileName, AZ_ARRAY_SIZE(fileNameW) - 1) == 0)
-    {
-        handle = CreateFileW(fileNameW, 0, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, 0, NULL);
-    }
-#   else // !_UNICODE
-    handle = CreateFileA(fileName, 0, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, 0, NULL);
-#   endif // !_UNICODE
-
-    if (handle == INVALID_HANDLE_VALUE)
-    {
-        EBUS_EVENT(FileIOEventBus, OnError, nullptr, fileName, (int)GetLastError());
-        return 0;
-    }
-
-    FILE_BASIC_INFO fileInfo;
-    fileInfo.ChangeTime.QuadPart = 0;
-    if (!GetFileInformationByHandleEx(handle, FileBasicInfo, &fileInfo, sizeof(fileInfo)))
-    {
-        EBUS_EVENT(FileIOEventBus, OnError, nullptr, fileName, (int)GetLastError());
-    }
-
-    CloseHandle(handle);
-
-    return aznumeric_cast<AZ::u64>(fileInfo.ChangeTime.QuadPart);
-#define AZ_RESTRICTED_SECTION_IMPLEMENTED
-#elif defined(AZ_RESTRICTED_PLATFORM)
-#define AZ_RESTRICTED_SECTION SYSTEMFILE_CPP_SECTION_14
-    #if defined(AZ_PLATFORM_XENIA)
-        #include "Xenia/SystemFile_cpp_xenia.inl"
-    #elif defined(AZ_PLATFORM_PROVO)
-        #include "Provo/SystemFile_cpp_provo.inl"
-    #endif
-#endif
-#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
-#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
-#elif defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_ANDROID) || defined(AZ_PLATFORM_APPLE)
-    struct stat statResult;
-    if (stat(fileName, &statResult) != 0)
-    {
-        return 0;
-    }
-    return aznumeric_cast<AZ::u64>(statResult.st_mtime);
-#else
-    AZ::u64 time = 0;
-    SystemFile f;
-    if (f.Open(fileName, SF_OPEN_READ_ONLY))
-    {
-        time = f.ModificationTime();
-        f.Close();
-    }
-    return time;
-#endif
-}
-
-//=========================================================================
-// Length
-// [9/30/2009]
-//=========================================================================
-SystemFile::SizeType
-SystemFile::Length(const char* fileName)
-{
-    SizeType len = 0;
-#if AZ_TRAIT_USE_WINDOWS_FILE_API
-    WIN32_FILE_ATTRIBUTE_DATA data = { 0 };
-    BOOL result = FALSE;
-
-#   ifdef _UNICODE
-    wchar_t fileNameW[AZ_MAX_PATH_LEN];
-    size_t numCharsConverted;
-    if (mbstowcs_s(&numCharsConverted, fileNameW, fileName, AZ_ARRAY_SIZE(fileNameW) - 1) == 0)
-    {
-        result = GetFileAttributesExW(fileNameW, GetFileExInfoStandard, &data);
-    }
-#   else // !_UNICODE
-    result = GetFileAttributesExA(fileName, GetFileExInfoStandard, &data);
-#   endif // !_UNICODE
-
-    if (result)
-    {
-        // Convert hi/lo parts to a SizeType
-        LARGE_INTEGER fileSize;
-        fileSize.LowPart = data.nFileSizeLow;
-        fileSize.HighPart = data.nFileSizeHigh;
-        len = aznumeric_cast<SizeType>(fileSize.QuadPart);
-    }
-    else
-    {
-        EBUS_EVENT(FileIOEventBus, OnError, nullptr, fileName, (int)GetLastError());
-    }
-#define AZ_RESTRICTED_SECTION_IMPLEMENTED
-#elif defined(AZ_RESTRICTED_PLATFORM)
-#define AZ_RESTRICTED_SECTION SYSTEMFILE_CPP_SECTION_15
-    #if defined(AZ_PLATFORM_XENIA)
-        #include "Xenia/SystemFile_cpp_xenia.inl"
-    #elif defined(AZ_PLATFORM_PROVO)
-        #include "Provo/SystemFile_cpp_provo.inl"
-    #endif
-#endif
-#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
-#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
-#else
-    // generic solution
-    SystemFile f;
-    if (f.Open(fileName, SF_OPEN_READ_ONLY))
-    {
-        len = f.Length();
-        f.Close();
-    }
-#endif
-    return len;
-}
-
-//=========================================================================
-// Read
-// [9/30/2009]
-//=========================================================================
-SystemFile::SizeType
-SystemFile::Read(const char* fileName, void* buffer, SizeType byteSize, SizeType byteOffset)
-{
-    SizeType numBytesRead = 0;
-    SystemFile f;
-    if (f.Open(fileName, SF_OPEN_READ_ONLY))
-    {
-        if (byteSize == 0)
+        if (handle == INVALID_HANDLE_VALUE)
         {
-            byteSize = f.Length(); // read the entire file
+            EBUS_EVENT(FileIOEventBus, OnError, nullptr, fileName, (int)GetLastError());
+            return 0;
         }
-        if (byteOffset != 0)
+
+        FILE_BASIC_INFO fileInfo;
+        fileInfo.ChangeTime.QuadPart = 0;
+        if (!GetFileInformationByHandleEx(handle, FileBasicInfo, &fileInfo, sizeof(fileInfo)))
         {
-            f.Seek(byteOffset, SF_SEEK_BEGIN);
+            EBUS_EVENT(FileIOEventBus, OnError, nullptr, fileName, (int)GetLastError());
         }
 
-        numBytesRead = f.Read(byteSize, buffer);
-        f.Close();
+        CloseHandle(handle);
+
+        return aznumeric_cast<AZ::u64>(fileInfo.ChangeTime.QuadPart);
     }
 
-    return numBytesRead;
-}
-
-//=========================================================================
-// Delete
-// [11/5/2012]
-//=========================================================================
-bool
-SystemFile::Delete(const char* fileName)
-{
-    if (!Exists(fileName))
+    SystemFile::SizeType Length(const char* fileName)
     {
-        return false;
+        SizeType len = 0;
+        WIN32_FILE_ATTRIBUTE_DATA data = { 0 };
+        BOOL result = FALSE;
+
+#ifdef _UNICODE
+        wchar_t fileNameW[AZ_MAX_PATH_LEN];
+        size_t numCharsConverted;
+        if (mbstowcs_s(&numCharsConverted, fileNameW, fileName, AZ_ARRAY_SIZE(fileNameW) - 1) == 0)
+        {
+            result = GetFileAttributesExW(fileNameW, GetFileExInfoStandard, &data);
+        }
+#else // !_UNICODE
+        result = GetFileAttributesExA(fileName, GetFileExInfoStandard, &data);
+#endif // !_UNICODE
+
+        if (result)
+        {
+            // Convert hi/lo parts to a SizeType
+            LARGE_INTEGER fileSize;
+            fileSize.LowPart = data.nFileSizeLow;
+            fileSize.HighPart = data.nFileSizeHigh;
+            len = aznumeric_cast<SizeType>(fileSize.QuadPart);
+        }
+        else
+        {
+            EBUS_EVENT(FileIOEventBus, OnError, nullptr, fileName, (int)GetLastError());
+        }
+
+        return len;
     }
 
-#if AZ_TRAIT_USE_WINDOWS_FILE_API
-
-#   ifdef _UNICODE
-    wchar_t fileNameW[AZ_MAX_PATH_LEN];
-    size_t numCharsConverted;
-    if (mbstowcs_s(&numCharsConverted, fileNameW, fileName, AZ_ARRAY_SIZE(fileNameW) - 1) == 0)
+    bool Delete(const char* fileName)
     {
-        if (DeleteFileW(fileNameW) == 0)
+#ifdef _UNICODE
+        wchar_t fileNameW[AZ_MAX_PATH_LEN];
+        size_t numCharsConverted;
+        if (mbstowcs_s(&numCharsConverted, fileNameW, fileName, AZ_ARRAY_SIZE(fileNameW) - 1) == 0)
+        {
+            if (DeleteFileW(fileNameW) == 0)
+            {
+                EBUS_EVENT(FileIOEventBus, OnError, nullptr, fileName, (int)GetLastError());
+                return false;
+            }
+        }
+        else
+        {
+            return false;
+        }
+#else // !_UNICODE
+        if (DeleteFile(fileName) == 0)
         {
             EBUS_EVENT(FileIOEventBus, OnError, nullptr, fileName, (int)GetLastError());
             return false;
         }
-    }
-    else
-    {
-        return false;
-    }
-#   else // !_UNICODE
-    if (DeleteFile(fileName) == 0)
-    {
-        EBUS_EVENT(FileIOEventBus, OnError, nullptr, fileName, (int)GetLastError());
-        return false;
-    }
-#   endif // !_UNICODE
+#endif // !_UNICODE
 
-#define AZ_RESTRICTED_SECTION_IMPLEMENTED
-#elif defined(AZ_RESTRICTED_PLATFORM)
-#define AZ_RESTRICTED_SECTION SYSTEMFILE_CPP_SECTION_16
-    #if defined(AZ_PLATFORM_XENIA)
-        #include "Xenia/SystemFile_cpp_xenia.inl"
-    #elif defined(AZ_PLATFORM_PROVO)
-        #include "Provo/SystemFile_cpp_provo.inl"
-    #endif
-#endif
-#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
-#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
-#elif defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_ANDROID) || defined(AZ_PLATFORM_APPLE)
-    int result = remove(fileName);
-    if (result != 0)
-    {
-        EBUS_EVENT(FileIOEventBus, OnError, nullptr, fileName, result);
-        return false;
-    }
-#else
-    return false;
-#endif
-    return true;
-}
-
-//=========================================================================
-// Delete
-// [11/5/2012]
-//=========================================================================
-bool
-SystemFile::Rename(const char* sourceFileName, const char* targetFileName, bool overwrite)
-{
-    if (!Exists(sourceFileName))
-    {
-        return false;
+        return true;
     }
 
-#if AZ_TRAIT_USE_WINDOWS_FILE_API
-
-#   ifdef _UNICODE
-    wchar_t sourceFileNameW[AZ_MAX_PATH_LEN];
-    wchar_t targetFileNameW[AZ_MAX_PATH_LEN];
-    size_t numCharsConverted;
-    if (mbstowcs_s(&numCharsConverted, sourceFileNameW, sourceFileName, AZ_ARRAY_SIZE(sourceFileNameW) - 1) == 0 &&
-        mbstowcs_s(&numCharsConverted, targetFileNameW, targetFileName, AZ_ARRAY_SIZE(targetFileNameW) - 1) == 0)
+    bool Rename(const char* sourceFileName, const char* targetFileName, bool overwrite)
     {
-        if (MoveFileExW(sourceFileNameW, targetFileNameW, overwrite ? MOVEFILE_REPLACE_EXISTING : 0) == 0)
+#ifdef _UNICODE
+        wchar_t sourceFileNameW[AZ_MAX_PATH_LEN];
+        wchar_t targetFileNameW[AZ_MAX_PATH_LEN];
+        size_t numCharsConverted;
+        if (mbstowcs_s(&numCharsConverted, sourceFileNameW, sourceFileName, AZ_ARRAY_SIZE(sourceFileNameW) - 1) == 0 &&
+            mbstowcs_s(&numCharsConverted, targetFileNameW, targetFileName, AZ_ARRAY_SIZE(targetFileNameW) - 1) == 0)
+        {
+            if (MoveFileExW(sourceFileNameW, targetFileNameW, overwrite ? MOVEFILE_REPLACE_EXISTING : 0) == 0)
+            {
+                EBUS_EVENT(FileIOEventBus, OnError, nullptr, sourceFileName, (int)GetLastError());
+                return false;
+            }
+        }
+        else
+        {
+            return false;
+        }
+#else // !_UNICODE
+        if (MoveFileEx(sourceFileName, targetFileName, overwrite ? MOVEFILE_REPLACE_EXISTING : 0) == 0)
         {
             EBUS_EVENT(FileIOEventBus, OnError, nullptr, sourceFileName, (int)GetLastError());
             return false;
         }
-    }
-    else
-    {
-        return false;
-    }
-#   else // !_UNICODE
-    if (MoveFileEx(sourceFileName, targetFileName, overwrite ? MOVEFILE_REPLACE_EXISTING : 0) == 0)
-    {
-        EBUS_EVENT(FileIOEventBus, OnError, nullptr, sourceFileName, (int)GetLastError());
-        return false;
-    }
-#   endif // !_UNICODE
+#endif // !_UNICODE
 
-#define AZ_RESTRICTED_SECTION_IMPLEMENTED
-#elif defined(AZ_RESTRICTED_PLATFORM)
-#define AZ_RESTRICTED_SECTION SYSTEMFILE_CPP_SECTION_17
-    #if defined(AZ_PLATFORM_XENIA)
-        #include "Xenia/SystemFile_cpp_xenia.inl"
-    #elif defined(AZ_PLATFORM_PROVO)
-        #include "Provo/SystemFile_cpp_provo.inl"
-    #endif
-#endif
-#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
-#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
-#elif defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_ANDROID) || defined(AZ_PLATFORM_APPLE)
-    int result = rename(sourceFileName, targetFileName);
-    if (result)
-    {
-        EBUS_EVENT(FileIOEventBus, OnError, nullptr, sourceFileName, result);
-        return false;
-    }
-#else
-    return false;
-#endif
-    return true;
-}
-
-//=========================================================================
-// IsWritable
-// [1/16/2014]
-//=========================================================================
-bool
-SystemFile::IsWritable(const char* sourceFileName)
-{
-#if AZ_TRAIT_USE_WINDOWS_FILE_API
-    auto fileAttr = GetAttributes(sourceFileName);
-    return !((fileAttr == INVALID_FILE_ATTRIBUTES) || (fileAttr & FILE_ATTRIBUTE_DIRECTORY) || (fileAttr & FILE_ATTRIBUTE_READONLY));
-#define AZ_RESTRICTED_SECTION_IMPLEMENTED
-#elif defined(AZ_RESTRICTED_PLATFORM)
-#define AZ_RESTRICTED_SECTION SYSTEMFILE_CPP_SECTION_18
-    #if defined(AZ_PLATFORM_XENIA)
-        #include "Xenia/SystemFile_cpp_xenia.inl"
-    #elif defined(AZ_PLATFORM_PROVO)
-        #include "Provo/SystemFile_cpp_provo.inl"
-    #endif
-#endif
-#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
-#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
-#elif defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_ANDROID) || defined(AZ_PLATFORM_APPLE)
-    return (access (sourceFileName, W_OK) == 0);
-#else
-    return false;
-#endif
-}
-
-//=========================================================================
-// SetWritable
-// [1/20/2014]
-//=========================================================================
-bool
-SystemFile::SetWritable(const char* sourceFileName, bool writable)
-{
-#if AZ_TRAIT_USE_WINDOWS_FILE_API
-    auto fileAttr = GetAttributes(sourceFileName);
-    if ((fileAttr == INVALID_FILE_ATTRIBUTES) || (fileAttr & FILE_ATTRIBUTE_DIRECTORY))
-    {
-        return false;
+        return true;
     }
 
-    if (writable)
+    bool IsWritable(const char* sourceFileName)
     {
-        fileAttr = fileAttr & (~FILE_ATTRIBUTE_READONLY);
+        auto fileAttr = GetAttributes(sourceFileName);
+        return !((fileAttr == INVALID_FILE_ATTRIBUTES) || (fileAttr & FILE_ATTRIBUTE_DIRECTORY) || (fileAttr & FILE_ATTRIBUTE_READONLY));
     }
-    else
-    {
-        fileAttr = fileAttr | (FILE_ATTRIBUTE_READONLY);
-    }
-    auto success = SetAttributes(sourceFileName, fileAttr);
-    return success != FALSE;
-#define AZ_RESTRICTED_SECTION_IMPLEMENTED
-#elif defined(AZ_RESTRICTED_PLATFORM)
-#define AZ_RESTRICTED_SECTION SYSTEMFILE_CPP_SECTION_19
-    #if defined(AZ_PLATFORM_XENIA)
-        #include "Xenia/SystemFile_cpp_xenia.inl"
-    #elif defined(AZ_PLATFORM_PROVO)
-        #include "Provo/SystemFile_cpp_provo.inl"
-    #endif
-#endif
-#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
-#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
-#elif  defined(AZ_PLATFORM_APPLE)
-    struct stat s;
-    if (stat(sourceFileName, &s) == 0)
-    {
-        int permissions = (s.st_mode & S_IRWXU) | (s.st_mode & S_IRWXO) | (s.st_mode & S_IRWXG);
-        if (writable)
-        {
-            if (s.st_mode & S_IWUSR)
-            {
-                return true;
-            }
-            return chmod(sourceFileName,  permissions | S_IWUSR) == 0;
-        }
-        else
-        {
-            if (s.st_mode & S_IRUSR)
-            {
-                return true;
-            }
-            return chmod(sourceFileName,  permissions | S_IRUSR) == 0;
-        }
-    }
-    return false;
-#elif defined(AZ_PLATFORM_ANDROID) || defined(AZ_PLATFORM_LINUX)
-    AZ_Assert(false, "SetWritable is not supported on Linux");
-    struct stat s;
-    if (stat(sourceFileName, &s) == 0)
-    {
-        int permissions = (s.st_mode & S_IRWXU) | (s.st_mode & S_IRWXO) | (s.st_mode & S_IRWXG);
-        if (s.st_mode & S_IWUSR)
-        {
-            return true;
-        }
-        return chmod(sourceFileName,  permissions | S_IWUSR) == 0;
-    }
-    return false;
-#else
-    return false;
-#endif
-}
 
-//=========================================================================
-// CreateDir
-// [2/3/2014]
-//=========================================================================
-bool
-SystemFile::CreateDir(const char* dirName)
-{
-    if (dirName)
+    bool SetWritable(const char* sourceFileName, bool writable)
     {
-#if AZ_TRAIT_USE_WINDOWS_FILE_API
-#   if defined(_UNICODE)
-        wchar_t dirPath[AZ_MAX_PATH_LEN];
-        size_t numCharsConverted;
-        if (mbstowcs_s(&numCharsConverted, dirPath, dirName, AZ_ARRAY_SIZE(dirPath) - 1) == 0)
-        {
-            bool success = CreateDirRecursive(dirPath);
-            if (!success)
-            {
-                EBUS_EVENT(FileIOEventBus, OnError, nullptr, dirName, (int)GetLastError());
-            }
-            return success;
-        }
-#   else
-        char dirPath[AZ_MAX_PATH_LEN];
-        if (azstrcpy(dirPath, AZ_ARRAY_SIZE(dirPath), dirName) == 0)
-        {
-            bool success = CreateDirRecursive(dirPath);
-            if (!success)
-            {
-                EBUS_EVENT(FileIOEventBus, OnError, nullptr, dirName, (int)GetLastError());
-            }
-            return success;
-        }
-#   endif
-#elif defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_ANDROID) || defined(AZ_PLATFORM_APPLE)
-        char dirPath[AZ_MAX_PATH_LEN];
-        if (strlen(dirName) > AZ_MAX_PATH_LEN)
+        auto fileAttr = GetAttributes(sourceFileName);
+        if ((fileAttr == INVALID_FILE_ATTRIBUTES) || (fileAttr & FILE_ATTRIBUTE_DIRECTORY))
         {
             return false;
         }
-        azstrcpy(dirPath, AZ_MAX_PATH_LEN, dirName);
-        bool success = CreateDirRecursive(dirPath);
-        if (!success)
-        {
-            EBUS_EVENT(FileIOEventBus, OnError, nullptr, dirName, errno);
-        }
-        return success;
-#else
-        AZ_Assert(false, "CreateDir not implemented on this platform!");
-#endif
-    }
-    return false;
-}
-//=========================================================================
-// DeleteDir
-// [2/3/2014]
-//=========================================================================
-bool
-SystemFile::DeleteDir(const char* dirName)
-{
-    if (dirName)
-    {
-#if defined(AZ_PLATFORM_WINDOWS)
-#   if defined(_UNICODE)
-        wchar_t dirNameW[AZ_MAX_PATH_LEN];
-        size_t numCharsConverted;
-        if (mbstowcs_s(&numCharsConverted, dirNameW, dirName, AZ_ARRAY_SIZE(dirNameW) - 1) == 0)
-        {
-            return RemoveDirectory(dirNameW) != 0;
-        }
-#   else
-        return RemoveDirectory(dirName) != 0;
-#   endif
-#elif defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_ANDROID) || defined(AZ_PLATFORM_APPLE)
-        return rmdir(dirName) == 0;
-#else
-        AZ_Assert(false, "CreateDir not implemented on this platform!");
-#endif
-    }
-    return false;
-}
 
-#endif // #ifndef AZ_UNITY_BUILD
+        if (writable)
+        {
+            fileAttr = fileAttr & (~FILE_ATTRIBUTE_READONLY);
+        }
+        else
+        {
+            fileAttr = fileAttr | (FILE_ATTRIBUTE_READONLY);
+        }
+        auto success = SetAttributes(sourceFileName, fileAttr);
+        return success != FALSE;
+    }
+
+    bool CreateDir(const char* dirName)
+    {
+        if (dirName)
+        {
+#if defined(_UNICODE)
+            wchar_t dirPath[AZ_MAX_PATH_LEN];
+            size_t numCharsConverted;
+            if (mbstowcs_s(&numCharsConverted, dirPath, dirName, AZ_ARRAY_SIZE(dirPath) - 1) == 0)
+            {
+                bool success = CreateDirRecursive(dirPath);
+                if (!success)
+                {
+                    EBUS_EVENT(FileIOEventBus, OnError, nullptr, dirName, (int)GetLastError());
+                }
+                return success;
+            }
+#else
+            char dirPath[AZ_MAX_PATH_LEN];
+            if (azstrcpy(dirPath, AZ_ARRAY_SIZE(dirPath), dirName) == 0)
+            {
+                bool success = CreateDirRecursive(dirPath);
+                if (!success)
+                {
+                    EBUS_EVENT(FileIOEventBus, OnError, nullptr, dirName, (int)GetLastError());
+                }
+                return success;
+            }
+#endif
+        }
+        return false;
+    }
+
+    bool DeleteDir(const char* dirName)
+    {
+        if (dirName)
+        {
+#if defined(_UNICODE)
+            wchar_t dirNameW[AZ_MAX_PATH_LEN];
+            size_t numCharsConverted;
+            if (mbstowcs_s(&numCharsConverted, dirNameW, dirName, AZ_ARRAY_SIZE(dirNameW) - 1) == 0)
+            {
+                return RemoveDirectory(dirNameW) != 0;
+            }
+#else
+            return RemoveDirectory(dirName) != 0;
+#endif
+        }
+
+        return false;
+    }
+
+}

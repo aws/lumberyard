@@ -27,9 +27,7 @@ namespace ScriptCanvas
                 AZ_COMPONENT(Error, "{C6928F30-87BA-4FFE-A3C0-B6096C161DD0}", Node);
                 
                 static void Reflect(AZ::ReflectContext* reflection);
-                
-                void Visit(NodeVisitor& visitor) const override { visitor.Visit(*this); }
-
+              
             protected:
                 void OnInit() override;
                 void OnInputSignal(const SlotId&) override;

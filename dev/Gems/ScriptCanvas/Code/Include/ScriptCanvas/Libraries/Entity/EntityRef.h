@@ -74,11 +74,7 @@ namespace ScriptCanvas
 
                     return retVal;
                 }
-                                
-                void Visit(NodeVisitor& visitor) const override
-                {
-                    visitor.Visit(*this);
-                }
+                
             };
         }
     }

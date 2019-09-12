@@ -192,7 +192,7 @@ namespace ProjectSettingsTool
         // Android
         if (group <= ImageGroup::AndroidPortrait)
         {
-            root = GetDevRoot() + "/Code/Launcher/AndroidLauncher/ProjectBuilder/app_";
+            root = GetDevRoot() + "/Code/Tools/Android/ProjectBuilder/app_";
         }
         //Ios
         else

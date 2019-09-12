@@ -66,13 +66,6 @@
     <property name="title">
      <string>&amp;Edit</string>
     </property>
-    <widget class="QMenu" name="menuSettings">
-     <property name="title">
-      <string>Settings</string>
-     </property>
-     <addaction name="action_GlobalPreferences"/>
-     <addaction name="action_GraphPreferences"/>
-    </widget>
     <widget class="QMenu" name="menuRemove_Unused">
      <property name="title">
       <string>Remove Unused</string>
@@ -80,6 +73,24 @@
      <addaction name="action_RemoveUnusedVariables"/>
      <addaction name="action_RemoveUnusedNodes"/>
      <addaction name="action_RemoveUnusedElements"/>
+    </widget>
+    <widget class="QMenu" name="menuAlign">
+     <property name="title">
+      <string>Align</string>
+     </property>
+     <addaction name="action_AlignTop"/>
+     <addaction name="action_AlignBottom"/>
+     <addaction name="action_AlignLeft"/>
+     <addaction name="action_AlignRight"/>
+    </widget>
+    <widget class="QMenu" name="menuSelect">
+     <property name="title">
+      <string>Select</string>
+     </property>
+     <addaction name="action_SelectAll"/>
+     <addaction name="action_SelectInputs"/>
+     <addaction name="action_SelectOutputs"/>
+     <addaction name="action_SelectConnected"/>
     </widget>
     <addaction name="action_Undo"/>
     <addaction name="action_Redo"/>
@@ -90,15 +101,21 @@
     <addaction name="action_Duplicate"/>
     <addaction name="action_Delete"/>
     <addaction name="separator"/>
+    <addaction name="action_Screenshot"/>
+    <addaction name="separator"/>
+    <addaction name="menuSelect"/>
+    <addaction name="action_ClearSelection"/>
+    <addaction name="separator"/>
+    <addaction name="action_EnableSelection"/>
+    <addaction name="action_DisableSelection"/>
+    <addaction name="separator"/>
+    <addaction name="menuAlign"/>
+    <addaction name="separator"/>
     <addaction name="menuRemove_Unused"/>
-    <addaction name="separator"/>
-    <addaction name="menuSettings"/>
-    <addaction name="separator"/>
-    <addaction name="action_BatchConversion"/>
    </widget>
    <widget class="QMenu" name="menuView">
     <property name="title">
-     <string>&amp;View</string>
+     <string>Tools</string>
     </property>
     <addaction name="action_ViewNodePalette"/>
     <addaction name="action_ViewOutline"/>
@@ -114,12 +131,47 @@
     <addaction name="action_Debugging"/>
     <addaction name="separator"/>
     <addaction name="action_NodeStatistics"/>
+    <addaction name="action_PresetsEditor"/>
     <addaction name="separator"/>
     <addaction name="action_ViewRestoreDefaultLayout"/>
    </widget>
+   <widget class="QMenu" name="menuTools">
+    <property name="title">
+     <string>Utilities</string>
+    </property>
+    <addaction name="action_BatchConversion"/>
+   </widget>
+   <widget class="QMenu" name="menuSettings_2">
+    <property name="title">
+     <string>Settings</string>
+    </property>
+    <addaction name="action_GlobalPreferences"/>
+    <addaction name="action_GraphPreferences"/>
+   </widget>
+   <widget class="QMenu" name="menuView_2">
+    <property name="title">
+     <string>View</string>
+    </property>
+    <widget class="QMenu" name="menuGo_To">
+     <property name="title">
+      <string>Go To</string>
+     </property>
+     <addaction name="action_GotoStartOfChain"/>
+     <addaction name="action_GotoEndOfChain"/>
+    </widget>
+    <addaction name="action_ZoomIn"/>
+    <addaction name="action_ZoomOut"/>
+    <addaction name="action_ZoomSelection"/>
+    <addaction name="action_ShowEntireGraph"/>
+    <addaction name="separator"/>
+    <addaction name="menuGo_To"/>
+   </widget>
    <addaction name="menuFile"/>
    <addaction name="menuEdit"/>
+   <addaction name="menuView_2"/>
    <addaction name="menuView"/>
+   <addaction name="menuTools"/>
+   <addaction name="menuSettings_2"/>
   </widget>
   <widget class="QStatusBar" name="statusBar"/>
   <action name="action_New_Script">
@@ -369,11 +421,6 @@
     <string>Graph Preferences</string>
    </property>
   </action>
-  <action name="action_BatchConversion">
-   <property name="text">
-    <string>Batch Conversion</string>
-   </property>
-  </action>
   <action name="action_ViewBookmarks">
    <property name="checkable">
     <bool>true</bool>
@@ -496,6 +543,190 @@
    </property>
    <property name="toolTip">
     <string>Removes all unused elements from the active graph</string>
+   </property>
+  </action>
+  <action name="action_PresetsEditor">
+   <property name="text">
+    <string>Presets Editor</string>
+   </property>
+  </action>
+  <action name="action_BatchConversion">
+   <property name="text">
+    <string>Batch Conversion</string>
+   </property>
+   <property name="toolTip">
+    <string>Opens and saves all of the ScriptCanvas files contained within a specific directory.</string>
+   </property>
+  </action>
+  <action name="action_GraphRecreator">
+   <property name="text">
+    <string>Graph Recreator</string>
+   </property>
+   <property name="toolTip">
+    <string>Will recreate the specified directory of graphs in a new target location.</string>
+   </property>
+  </action>
+  <action name="action_Screenshot">
+   <property name="text">
+    <string>Screenshot</string>
+   </property>
+   <property name="toolTip">
+    <string>Takes a picture of the current selection in the active graph, or the entire graph if there is no selection.</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+Shift+P</string>
+   </property>
+  </action>
+  <action name="action_SelectInputs">
+   <property name="text">
+    <string>Inputs</string>
+   </property>
+   <property name="toolTip">
+    <string>Selects all of the nodes that are connected to the current selection via input connections</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+Left</string>
+   </property>
+  </action>
+  <action name="action_SelectOutputs">
+   <property name="text">
+    <string>Outputs</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+Right</string>
+   </property>
+  </action>
+  <action name="action_SelectConnected">
+   <property name="text">
+    <string>Connected</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+Up</string>
+   </property>
+  </action>
+  <action name="action_ShowEntireGraph">
+   <property name="text">
+    <string>Show Entire Graph</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+Shift+Down</string>
+   </property>
+  </action>
+  <action name="action_ZoomIn">
+   <property name="text">
+    <string>Zoom In</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl++</string>
+   </property>
+  </action>
+  <action name="action_ZoomOut">
+   <property name="text">
+    <string>Zoom Out</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+-</string>
+   </property>
+  </action>
+  <action name="action_AlignLeft">
+   <property name="text">
+    <string>Align Left</string>
+   </property>
+   <property name="shortcut">
+    <string>Shift+Left</string>
+   </property>
+  </action>
+  <action name="action_AlignRight">
+   <property name="text">
+    <string>Align Right</string>
+   </property>
+   <property name="shortcut">
+    <string>Shift+Right</string>
+   </property>
+  </action>
+  <action name="action_AlignTop">
+   <property name="text">
+    <string>Align Top</string>
+   </property>
+   <property name="shortcut">
+    <string>Shift+Up</string>
+   </property>
+  </action>
+  <action name="action_AlignBottom">
+   <property name="text">
+    <string>Align Bottom</string>
+   </property>
+   <property name="shortcut">
+    <string>Shift+Down</string>
+   </property>
+  </action>
+  <action name="action_SelectAll">
+   <property name="text">
+    <string>All</string>
+   </property>
+   <property name="toolTip">
+    <string>Select All of the Nodes in the currently active graph</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+A</string>
+   </property>
+  </action>
+  <action name="actionNone">
+   <property name="text">
+    <string>None</string>
+   </property>
+  </action>
+  <action name="action_ClearSelection">
+   <property name="text">
+    <string>Clear Selection</string>
+   </property>
+   <property name="shortcut">
+    <string>Esc</string>
+   </property>
+  </action>
+  <action name="action_GotoStartOfChain">
+   <property name="text">
+    <string>Start of Chain</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+Shift+Left</string>
+   </property>
+  </action>
+  <action name="action_GotoEndOfChain">
+   <property name="text">
+    <string>End of Chain</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+Shift+Right</string>
+   </property>
+  </action>
+  <action name="actionZoom_To">
+   <property name="text">
+    <string>Zoom Selection</string>
+   </property>
+  </action>
+  <action name="action_ZoomSelection">
+   <property name="text">
+    <string>Zoom To Selection</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+Shift+Up</string>
+   </property>
+  </action>
+  <action name="action_EnableSelection">
+   <property name="text">
+    <string>Enable Selection</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+K, Ctrl+U</string>
+   </property>
+  </action>
+  <action name="action_DisableSelection">
+   <property name="text">
+    <string>Disable Selection</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+K, Ctrl+C</string>
    </property>
   </action>
   <addaction name="action_ViewNodePalette"/>

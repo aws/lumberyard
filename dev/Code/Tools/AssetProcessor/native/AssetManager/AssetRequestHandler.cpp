@@ -137,6 +137,35 @@ bool AssetRequestHandler::InvokeHandler(AzFramework::AssetSystem::BaseAssetProce
         AssetProcessor::ConnectionBus::Event(key.first, &AssetProcessor::ConnectionBusTraits::SendResponse, key.second, response);
         return true;
     }
+    else if (message->GetMessageType() == AzToolsFramework::AssetSystem::SourceAssetProductsInfoRequest::MessageType())
+    {
+        AzToolsFramework::AssetSystem::SourceAssetProductsInfoRequest* request = 
+            azrtti_cast<AzToolsFramework::AssetSystem::SourceAssetProductsInfoRequest*>(message);
+
+        if (!request)
+        {
+            AZ_TracePrintf(AssetProcessor::DebugChannel, 
+                "Invalid Message Type: Message is not of type %d.  Incoming message type is %d.\n", 
+                AzToolsFramework::AssetSystem::SourceAssetProductsInfoRequest::MessageType(), message->GetMessageType());
+            return true;
+        }
+
+        AzToolsFramework::AssetSystem::SourceAssetProductsInfoResponse response;
+        if (request->m_assetId.IsValid())
+        {
+            AzToolsFramework::AssetSystemRequestBus::BroadcastResult(response.m_found, 
+                &AzToolsFramework::AssetSystem::AssetSystemRequest::GetAssetsProducedBySourceUUID, 
+                request->m_assetId.m_guid, response.m_productsAssetInfo);
+
+            AssetProcessor::ConnectionBus::Event(key.first, &AssetProcessor::ConnectionBusTraits::SendResponse, key.second, response);
+        }
+
+        // note that in the case of an invalid request, response is defaulted to false for m_found, so there is no need to
+        // populate the response in that case.
+
+        AssetProcessor::ConnectionBus::Event(key.first, &AssetProcessor::ConnectionBusTraits::SendResponse, key.second, response);
+        return true;
+    }
     else if (message->GetMessageType() == AzToolsFramework::AssetSystem::GetScanFoldersRequest::MessageType())
     {
         AzToolsFramework::AssetSystem::GetScanFoldersRequest* request = azrtti_cast<AzToolsFramework::AssetSystem::GetScanFoldersRequest*>(message);

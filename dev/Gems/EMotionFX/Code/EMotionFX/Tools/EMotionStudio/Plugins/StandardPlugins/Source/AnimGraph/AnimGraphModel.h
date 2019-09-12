@@ -176,7 +176,7 @@ namespace EMStudio
         void Reset();
 
         // Method to control the anim graph instance stored in the model. These methods are called during activation
-        void SetAnimGraphInstance(EMotionFX::AnimGraph* animGraph, EMotionFX::AnimGraphInstance* currentAnimGraphInstance, EMotionFX::AnimGraphInstance* newAnimGraphInstance);
+        void SetAnimGraphInstance(EMotionFX::AnimGraph* currentAnimGraph, EMotionFX::AnimGraphInstance* currentAnimGraphInstance, EMotionFX::AnimGraphInstance* newAnimGraphInstance);
 
         // We want to be able to represent the model even when we dont have an AnimGraphInstance. In those
         // cases we are going to populate the model with a null AnimGraphInstance. If the graph is activated

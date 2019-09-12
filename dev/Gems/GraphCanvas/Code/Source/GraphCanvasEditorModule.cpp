@@ -54,6 +54,8 @@
 #include <Components/Slots/Default/DefaultSlotLayoutComponent.h>
 #include <Components/Slots/Execution/ExecutionSlotComponent.h>
 #include <Components/Slots/Execution/ExecutionSlotLayoutComponent.h>
+#include <Components/Slots/Extender/ExtenderSlotComponent.h>
+#include <Components/Slots/Extender/ExtenderSlotLayoutComponent.h>
 #include <Components/Slots/Property/PropertySlotComponent.h>
 #include <Components/Slots/Property/PropertySlotLayoutComponent.h>
 
@@ -140,6 +142,10 @@ namespace GraphCanvas
             // Execution Slots
             ExecutionSlotComponent::CreateDescriptor(),
             ExecutionSlotLayoutComponent::CreateDescriptor(),
+
+            // Extender Slots
+            ExtenderSlotComponent::CreateDescriptor(),
+            ExtenderSlotLayoutComponent::CreateDescriptor(),
 
             // Property Slots
             PropertySlotComponent::CreateDescriptor(),

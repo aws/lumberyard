@@ -590,7 +590,7 @@ namespace AzToolsFramework
                         if (it != node->m_children.end())
                         {
                             //if there is element data matching the previous entry, place the UI element after it
-                            m_childIndexOverride = AZStd::distance(node->m_children.begin(), it) + 1;
+                            m_childIndexOverride = static_cast<int>(AZStd::distance(node->m_children.begin(), it)) + 1;
                         }
                     }
 
@@ -794,7 +794,7 @@ namespace AzToolsFramework
             
             if (!showAsKeyValue)
             {
-                label = GetDisplayLabel(node);
+                label = GetDisplayLabel(node, siblingIdx);
             }
 
             // Grab a copy of our instances if we might need to move them to a key/value attribute.

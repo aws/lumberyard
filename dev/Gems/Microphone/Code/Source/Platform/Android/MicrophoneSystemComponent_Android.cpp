@@ -55,12 +55,11 @@ namespace Audio
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////
-    class MicrophoneSystemComponent::Pimpl
-        : public MicrophoneRequestBus::Handler
-        , public MicrophoneSystemEventsAndroidBus::Handler
+    class MicrophoneSystemComponentAndroid : public MicrophoneSystemComponent::Implementation
+                                           , public MicrophoneSystemEventsAndroidBus::Handler
     {
     public:
-        AZ_CLASS_ALLOCATOR(Pimpl, AZ::SystemAllocator, 0);
+        AZ_CLASS_ALLOCATOR(MicrophoneSystemComponentAndroid, AZ::SystemAllocator, 0);
 
         bool InitializeDevice() override
         {
@@ -188,4 +187,10 @@ namespace Audio
         Audio::SAudioInputConfig m_config; 
         AZStd::unique_ptr<Audio::RingBufferBase> m_captureData = nullptr;
     };
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+    MicrophoneSystemComponent::Implementation* MicrophoneSystemComponent::Implementation::Create()
+    {
+        return aznew MicrophoneSystemComponentAndroid();
+    }
 }

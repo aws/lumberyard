@@ -35,9 +35,10 @@ def build(bld):
 
     bld.DefineGem(
         use    = [ 'AzFramework', 'ScriptCanvas' ],
-        includes = [ bld.Path('Code/CryEngine/CryAction'),
+        includes = [ bld.Path('Code/CryEngine/CryCommon'),
+                     bld.Path('Code/CryEngine/CryAction'),
                      bld.Path('Code/CryEngine')
-                      ],
+                   ],
         export_includes = [bld.Path('Code/CryEngine')],
 
         # Suppressing level 1 warning C4351 on windows
@@ -58,6 +59,8 @@ def build(bld):
 
             az_code_gen = AZ_CODEGEN_ARGS,
             file_list = [ 'startingpointinput_editor.waf_files' ],
+            includes  = [bld.Path('Code/CryEngine/CryCommon')
+                        ],
 
         )
 

@@ -18,6 +18,7 @@
 #include <AzCore/std/containers/vector.h>
 #include <AzCore/std/containers/forward_list.h>
 #include <AzCore/std/typetraits/is_signed.h>
+#include <AzCore/std/typetraits/is_pod.h>
 
 #include <AzCore/IO/SystemFile.h> // for the Driller direct file stream
 
@@ -575,16 +576,14 @@ namespace AZ
                 template<class T>
                 inline void Read(T& t) const
                 {
-                    AZ_Assert(sizeof(t) >= m_dataSize, "You are about to loose some data, this is wrong.");
+                    static_assert(AZStd::is_pod<T>::value, "T must be plain-old-data");
+
+                    AZ_Assert(sizeof(t) >= m_dataSize, "You are about to lose some data, this is wrong.");
                     if (m_dataSize == sizeof(t))
                     {
-#if defined(AZ_PLATFORM_WINDOWS)
-                        t = *reinterpret_cast<T*>(m_data);
-#else // !AZ_PLATFORM_WINDOWS
-                        // do a memcopy as alignment might be required for some data types! This is not performance critical as we usually load drill files on x86/x64
+                        // do a memcpy as alignment might be required for some data types! This is not performance critical as we usually load drill files on x86/x64
                         // which doesn't care about alignment.
                         memcpy(&t, m_data, m_dataSize);
-#endif // AZ_PLATFORM_WINDOWS
                     }
                     else
                     {

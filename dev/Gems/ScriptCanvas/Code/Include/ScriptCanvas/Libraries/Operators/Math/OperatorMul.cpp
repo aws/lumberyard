@@ -75,7 +75,7 @@ namespace ScriptCanvas
                 };
             }
 
-            void OperatorMul::Operator(Data::eType type, const OperatorOperands& operands, Datum& result)
+            void OperatorMul::Operator(Data::eType type, const ArithmeticOperands& operands, Datum& result)
             {
                 AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::ScriptCanvas);
 
@@ -102,7 +102,7 @@ namespace ScriptCanvas
                 }
             }
 
-            void OperatorMul::InitializeDatum(Datum* datum, ScriptCanvas::Data::Type dataType)
+            void OperatorMul::InitializeDatum(Datum* datum, const ScriptCanvas::Data::Type& dataType)
             {
                 switch (dataType.GetType())
                 {
@@ -130,33 +130,7 @@ namespace ScriptCanvas
                 default:
                     break;
                 };
-            }
-
-            void OperatorMul::OnDisplayTypeChanged(ScriptCanvas::Data::Type dataType)
-            {
-                for (const SlotId& sourceSlotId : GetSourceSlots())
-                {
-                    Slot* sourceSlot = GetSlot(sourceSlotId);
-
-                    if (sourceSlot && sourceSlot->GetType() == SlotType::DataIn)
-                    {
-                        Datum* newDatum = ModInput(sourceSlotId);
-                        InitializeDatum(newDatum, dataType);
-                    }
-                }
-            }
-
-            void OperatorMul::OnInputSlotAdded(const SlotId& slotId)
-            {
-                Slot* newSlot = GetSlot(slotId);
-
-                if (newSlot)
-                {
-                    Datum* newDatum = ModInput(slotId);
-
-                    InitializeDatum(newDatum, newSlot->GetDataType());
-                }
-            }
+            }            
 
             bool OperatorMul::IsValidArithmeticSlot(const SlotId& slotId) const
             {
@@ -170,10 +144,22 @@ namespace ScriptCanvas
                         return !AZ::IsClose((*datum->GetAs<Data::NumberType>()), Data::NumberType(1.0), ScriptCanvas::Data::ToleranceEpsilon());
                     case Data::eType::Quaternion:
                         return !datum->GetAs<Data::QuaternionType>()->IsIdentity();
+                    default:
+                        break;
                     }
                 }
 
-                return true;
+                return (datum != nullptr);
+            }
+
+            void OperatorMul::OnResetDatumToDefaultValue(Datum* datum)
+            {
+                Data::Type displayType = GetDisplayType(GetArithmeticDynamicTypeGroup());
+                
+                if (displayType.IsValid())
+                {
+                    InitializeDatum(datum, displayType);
+                }
             }
         }
     }

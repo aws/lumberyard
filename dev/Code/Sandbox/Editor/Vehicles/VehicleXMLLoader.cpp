@@ -62,7 +62,6 @@ private:
     IVariablePtr CurNode() { assert(!m_nodeStack.empty()); return m_nodeStack.top(); }
 
     class SSetValueVisitor
-        : public boost::static_visitor<void>
     {
     public:
         SSetValueVisitor(IVariablePtr parent, const char* name, const XmlNodeRef& definition, IReadXMLSink* sink)
@@ -104,7 +103,6 @@ private:
     };
 
     class SSetValueAtVisitor
-        : public boost::static_visitor<void>
     {
     public:
         SSetValueAtVisitor(IVariablePtr parent, int elem, const XmlNodeRef& definition, IReadXMLSink* sink)
@@ -201,7 +199,7 @@ IReadXMLSinkPtr CVehicleDataLoader::BeginTableAt(int elem, const XmlNodeRef& def
 bool CVehicleDataLoader::SetValue(const char* name, const TValue& value, const XmlNodeRef& definition)
 {
     SSetValueVisitor visitor(CurNode(), name, definition, this);
-    boost::apply_visitor(visitor, value);
+    AZStd::visit(visitor, value);
     return true;
 }
 
@@ -232,7 +230,7 @@ IReadXMLSinkPtr CVehicleDataLoader::BeginArray(const char* name, const XmlNodeRe
 bool CVehicleDataLoader::SetAt(int elem, const TValue& value, const XmlNodeRef& definition)
 {
     SSetValueAtVisitor visitor(CurNode(), elem, definition, this);
-    boost::apply_visitor(visitor, value);
+    AZStd::visit(visitor, value);
     return true;
 }
 

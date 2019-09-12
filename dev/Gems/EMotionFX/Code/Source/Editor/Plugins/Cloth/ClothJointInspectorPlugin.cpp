@@ -58,7 +58,6 @@ namespace EMotionFX
             scrollArea->setWidgetResizable(true);
 
             mDock->SetContents(scrollArea);
-            connect(mDock, &QDockWidget::visibilityChanged, this, &ClothJointInspectorPlugin::OnVisibilityChanged);
 
             EMotionFX::SkeletonOutlinerNotificationBus::Handler::BusConnect();
         }
@@ -110,33 +109,13 @@ namespace EMotionFX
             connect(addSphereAction, &QAction::triggered, this, &ClothJointInspectorPlugin::OnAddCollider);
 
 
-            QMenu* copyFromColliderMenu = contextMenu->addMenu("Copy from");
-
-            QAction* copyFromAction = copyFromColliderMenu->addAction(PhysicsSetup::GetStringForColliderConfigType(PhysicsSetup::HitDetection));
-            connect(copyFromAction, &QAction::triggered, this, [=]
-                {
-                    ColliderHelpers::CopyColliders(selectedRowIndices, PhysicsSetup::HitDetection, PhysicsSetup::Cloth);
-                });
-
-            copyFromAction = copyFromColliderMenu->addAction(PhysicsSetup::GetStringForColliderConfigType(PhysicsSetup::Ragdoll));
-            connect(copyFromAction, &QAction::triggered, this, [=]
-                {
-                    ColliderHelpers::CopyColliders(selectedRowIndices, PhysicsSetup::Ragdoll, PhysicsSetup::Cloth);
-                });
+            ColliderHelpers::AddCopyFromMenu(this, contextMenu, PhysicsSetup::ColliderConfigType::Cloth, selectedRowIndices);
         }
 
         if (numJointsWithColliders > 0)
         {
             QAction* removeCollidersAction = contextMenu->addAction("Remove colliders");
             connect(removeCollidersAction, &QAction::triggered, this, &ClothJointInspectorPlugin::OnClearColliders);
-        }
-    }
-
-    void ClothJointInspectorPlugin::OnVisibilityChanged(bool visible)
-    {
-        if (m_jointWidget)
-        {
-            m_jointWidget->SetIsVisible(visible);
         }
     }
 

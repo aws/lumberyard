@@ -38,7 +38,6 @@ namespace MCore
          */
         static bool SaveToFileSecured(const char* filename, const AZStd::function<bool()>& saveFunction, CommandManager* commandManager = nullptr);
 
-        static const char       mFolderSeparatorChar;   /**< The folder separator slash type used on the different supported platforms. */
         static StaticString     mSecureSavePath;        /**< The folder path used to keep a backup in SaveToFileSecured. */
     };
 } // namespace MCore

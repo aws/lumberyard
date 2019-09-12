@@ -708,6 +708,54 @@
                 "lib${aws_cpp_sdk_identity_metrics}.a"
             ]
         }, 
+        "appletv": {
+            "libpath_debug": [
+                "lib/appletv/Debug"
+            ], 
+            "libpath_release": [
+                "lib/appletv/Release"
+            ], 
+            "aws_cpp_sdk_all/lib": [
+                "lib${aws_cpp_sdk_all}.a"
+            ], 
+            "aws_cpp_sdk_core/lib": [
+                "lib${aws_cpp_sdk_core}.a", 
+                "libcurl.a"
+            ], 
+            "aws_cpp_sdk_gamelift/lib": [
+                "lib${aws_cpp_sdk_gamelift}.a"
+            ], 
+            "aws_cpp_sdk_s3/lib": [
+                "lib${aws_cpp_sdk_s3}.a"
+            ], 
+            "aws_cpp_sdk_sts/lib": [
+                "lib${aws_cpp_sdk_sts}.a"
+            ], 
+            "aws_cpp_sdk_mobileanalytics/lib": [
+                "lib${aws_cpp_sdk_mobileanalytics}.a"
+            ], 
+            "aws_cpp_sdk_identity_management/lib": [
+                "lib${aws_cpp_sdk_identity_management}.a"
+            ], 
+            "aws_cpp_sdk_cognito_identity/lib": [
+                "lib${aws_cpp_sdk_cognito_identity}.a"
+            ], 
+            "aws_cpp_sdk_cognito_idp/lib": [
+                "lib${aws_cpp_sdk_cognito_idp}.a"
+            ], 
+            "aws_cpp_sdk_kinesis/lib": [
+                "lib${aws_cpp_sdk_kinesis}.a"
+            ], 
+            "aws_cpp_sdk_lambda/lib": [
+                "lib${aws_cpp_sdk_lambda}.a"
+            ], 
+            "aws_cpp_sdk_identity_lambda/lib": [
+                "lib${aws_cpp_sdk_identity_lambda}.a"
+            ], 
+            "aws_cpp_sdk_identity_metrics/lib": [
+                "lib${aws_cpp_sdk_identity_metrics}.a"
+            ]
+        }, 
         "linux_x64": {
             "libpath_debug": [
                 "lib/linux/intel64/Debug"

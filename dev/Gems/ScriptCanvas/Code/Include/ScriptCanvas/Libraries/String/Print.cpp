@@ -32,9 +32,9 @@ namespace ScriptCanvas
                 LogNotificationBus::Event(GetGraphId(), &LogNotifications::LogMessage, text);
 
                 AZ::EntityId assetNodeId{};
-                ScriptCanvas::RuntimeRequestBus::EventResult(assetNodeId, m_executionUniqueId, &ScriptCanvas::RuntimeRequests::FindAssetNodeIdByRuntimeNodeId, GetEntityId());
+                ScriptCanvas::RuntimeRequestBus::EventResult(assetNodeId, GetGraphId(), &ScriptCanvas::RuntimeRequests::FindAssetNodeIdByRuntimeNodeId, GetEntityId());
 
-                SC_EXECUTION_TRACE_ANNOTATE_NODE((*this), (AnnotateNodeSignal(CreateGraphInfo(m_executionUniqueId, GetGraphIdentifier()), AnnotateNodeSignal::AnnotationLevel::Info, text, AZ::NamedEntityId(assetNodeId, GetNodeName()))));
+                SC_EXECUTION_TRACE_ANNOTATE_NODE((*this), (AnnotateNodeSignal(CreateGraphInfo(GetGraphId(), GetGraphIdentifier()), AnnotateNodeSignal::AnnotationLevel::Info, text, AZ::NamedEntityId(assetNodeId, GetNodeName()))));
 #endif
                 SignalOutput(GetSlotId("Out"));
 

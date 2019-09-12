@@ -13,4 +13,6 @@
 def build(bld):
     bld.DefineGem(
         # Add custom build options here
+        includes = [bld.Path('Code/CryEngine/CryCommon')
+                   ],
     )

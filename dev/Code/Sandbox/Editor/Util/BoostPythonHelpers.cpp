@@ -394,7 +394,7 @@ PyGameSubMaterial::PyGameSubMaterial(void* pMat, int id)
     SInputShaderResources&      sr = pMaterial->GetShaderResources();
     for (auto &iter : sr.m_TexturesResourcesMap )
     {
-        SEfResTexture*  	pTextureRes = &(iter.second);
+        SEfResTexture* pTextureRes = &(iter.second);
         if (!pTextureRes->m_Name.empty())
         {
             ResourceSlotIndex  nSlot = iter.first;
@@ -1494,6 +1494,27 @@ namespace {
 namespace PyScript
 {
     CListenerSet<IPyScriptListener*> s_listeners(2);
+
+    class DefaultScriptListener : public IPyScriptListener
+    {
+        void OnStdOut(const char* message) override
+        {
+            if (message)
+            {
+                AZ_TracePrintf("Python", "%s", message);
+            }
+        }
+
+        void OnStdErr(const char* error) override
+        {
+            if (error)
+            {
+                AZ_Error("Python", false, "%s", error);
+            }
+        }
+    };
+
+    DefaultScriptListener s_defaultListener;
 
     template <typename T>
     T GetPyValue(const char* varName)
@@ -2846,6 +2867,8 @@ namespace PyScript
         InitCppModules();
         InitializePyConverters();
 
+        PyScript::RegisterListener(&s_defaultListener);
+
         PyScript::SetStdOutCallback(&PrintMessage);
         PyScript::SetStdErrCallback(&PrintError);
 
@@ -2860,6 +2883,8 @@ namespace PyScript
 
         PyScript::RemoveStdOutCallback();
         PyScript::RemoveStdErrCallback();
+
+        PyScript::RemoveListener(&s_defaultListener);
 
         Py_Finalize();
     }
@@ -2896,6 +2921,7 @@ namespace PyScript
     {
         s_listeners.Remove(pListener);
     }
+
 }
 
 // A place to declare python modules.
@@ -2912,4 +2938,5 @@ DECLARE_PYTHON_MODULE(prefab);
 DECLARE_PYTHON_MODULE(vegetation);
 DECLARE_PYTHON_MODULE(shape);
 DECLARE_PYTHON_MODULE(checkout_dialog);
+DECLARE_PYTHON_MODULE(settings);
 

@@ -46,11 +46,11 @@ namespace ScriptCanvas
                 Data::AABBType operator()(const Data::AABBType& lhs, const Datum& rhs)
                 {
                     Data::AABBType retVal = lhs;
-                    const AZ::Aabb* dataB = rhs.GetAs<AZ::Aabb>();
+                    const AZ::Aabb* dataRhs = rhs.GetAs<AZ::Aabb>();
 
-                    if (dataB)
+                    if (dataRhs)
                     {
-                        retVal.AddAabb((*dataB));
+                        retVal.AddAabb((*dataRhs));
                     }
 
                     return retVal;
@@ -62,14 +62,14 @@ namespace ScriptCanvas
             {
                 Data::ColorType operator()(const Data::ColorType& lhs, const Datum& rhs)
                 {
-                    const AZ::Color* dataB = rhs.GetAs<AZ::Color>();
+                    const AZ::Color* dataRhs = rhs.GetAs<AZ::Color>();
 
-                    if (dataB)
+                    if (dataRhs)
                     {
-                        float a = AZ::GetClamp<float>(lhs.GetA(), 0.f, 1.f) + AZ::GetClamp<float>(dataB->GetA(), 0.f, 1.f);
-                        float r = AZ::GetClamp<float>(lhs.GetR(), 0.f, 1.f) + AZ::GetClamp<float>(dataB->GetR(), 0.f, 1.f);
-                        float g = AZ::GetClamp<float>(lhs.GetG(), 0.f, 1.f) + AZ::GetClamp<float>(dataB->GetG(), 0.f, 1.f);
-                        float b = AZ::GetClamp<float>(lhs.GetB(), 0.f, 1.f) + AZ::GetClamp<float>(dataB->GetB(), 0.f, 1.f);
+                        float a = AZ::GetClamp<float>(lhs.GetA(), 0.f, 1.f) + AZ::GetClamp<float>(dataRhs->GetA(), 0.f, 1.f);
+                        float r = AZ::GetClamp<float>(lhs.GetR(), 0.f, 1.f) + AZ::GetClamp<float>(dataRhs->GetR(), 0.f, 1.f);
+                        float g = AZ::GetClamp<float>(lhs.GetG(), 0.f, 1.f) + AZ::GetClamp<float>(dataRhs->GetG(), 0.f, 1.f);
+                        float b = AZ::GetClamp<float>(lhs.GetB(), 0.f, 1.f) + AZ::GetClamp<float>(dataRhs->GetB(), 0.f, 1.f);
 
                         return AZ::Color(r, g, b, a);
                     }
@@ -80,7 +80,37 @@ namespace ScriptCanvas
                 }
             };
 
-            void OperatorAdd::Operator(Data::eType type, const OperatorOperands& operands, Datum& result)
+            template <>
+            struct OperatorAddImpl<Data::Matrix3x3Type>
+            {
+                Data::Matrix3x3Type operator()(const Data::Matrix3x3Type& lhs, const Datum& rhs)
+                {
+                    const AZ::Matrix3x3* dataRhs = rhs.GetAs<AZ::Matrix3x3>();
+                    if (dataRhs)
+                    {
+                        return AZ::Matrix3x3::CreateFromColumns(dataRhs->GetColumn(0) + lhs.GetColumn(0), dataRhs->GetColumn(1) + lhs.GetColumn(1), dataRhs->GetColumn(2) + lhs.GetColumn(2));
+                    }
+
+                    return lhs;
+                }
+            };
+
+            template <>
+            struct OperatorAddImpl<Data::Matrix4x4Type>
+            {
+                Data::Matrix4x4Type operator()(const Data::Matrix4x4Type& lhs, const Datum& rhs)
+                {
+                    const AZ::Matrix4x4* dataRhs = rhs.GetAs<AZ::Matrix4x4>();
+                    if (dataRhs)
+                    {
+                        return AZ::Matrix4x4::CreateFromColumns(dataRhs->GetColumn(0) + lhs.GetColumn(0), dataRhs->GetColumn(1) + lhs.GetColumn(1), dataRhs->GetColumn(2) + lhs.GetColumn(2), dataRhs->GetColumn(3) + lhs.GetColumn(3));
+                    }
+
+                    return lhs;
+                }
+            };
+
+            void OperatorAdd::Operator(Data::eType type, const ArithmeticOperands& operands, Datum& result)
             {
                 switch (type)
                 {
@@ -107,7 +137,13 @@ namespace ScriptCanvas
                     break;
                 case Data::eType::AABB:
                     OperatorEvaluator::Evaluate<Data::AABBType>(OperatorAddImpl<Data::AABBType>(), operands, result);
-                    break;                    
+                    break;
+                case Data::eType::Matrix3x3:
+                    OperatorEvaluator::Evaluate<Data::Matrix3x3Type>(OperatorAddImpl<Data::Matrix3x3Type>(), operands, result);
+                    break;
+                case Data::eType::Matrix4x4:
+                    OperatorEvaluator::Evaluate<Data::Matrix4x4Type>(OperatorAddImpl<Data::Matrix4x4Type>(), operands, result);
+                    break;
                 default:
                     AZ_Assert(false, "Addition operator not defined for type: %s", Data::ToAZType(type).ToString<AZStd::string>().c_str());
                     break;
@@ -123,7 +159,9 @@ namespace ScriptCanvas
                     Data::Type::Vector4(),
                     Data::Type::Color(),
                     Data::Type::Quaternion(),
-                    Data::Type::AABB()
+                    Data::Type::AABB(),
+                    Data::Type::Matrix3x3(),
+                    Data::Type::Matrix4x4()
                 };
             }
 
@@ -141,10 +179,16 @@ namespace ScriptCanvas
                         return !datum->GetAs<Data::QuaternionType>()->IsIdentity();
                     case Data::eType::String:
                         return !datum->GetAs<Data::StringType>()->empty();
+                    case Data::eType::Matrix3x3:
+                        return !datum->GetAs<Data::Matrix3x3Type>()->IsClose(Data::Matrix3x3Type::CreateIdentity());
+                    case Data::eType::Matrix4x4:
+                        return !datum->GetAs<Data::Matrix4x4Type>()->IsClose(Data::Matrix4x4Type::CreateIdentity());
+                    default:
+                        break;
                     }
                 }
 
-                return true;
+                return (datum != nullptr);
             }
         }
     }

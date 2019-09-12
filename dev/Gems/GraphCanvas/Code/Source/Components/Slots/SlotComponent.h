@@ -114,10 +114,10 @@ namespace GraphCanvas
         bool CanDisplayConnectionTo(const Endpoint& endpoint) const override;
         bool CanCreateConnectionTo(const Endpoint& endpoint) const override;
 
-        AZ::EntityId CreateConnectionWithEndpoint(const Endpoint& endpoint) const override;
+        AZ::EntityId CreateConnectionWithEndpoint(const Endpoint& endpoint) override;
 
-        AZ::EntityId DisplayConnection() const override;
-        AZ::EntityId DisplayConnectionWithEndpoint(const Endpoint& endpoint) const override;
+        AZ::EntityId DisplayConnection() override;
+        AZ::EntityId DisplayConnectionWithEndpoint(const Endpoint& endpoint) override;
 
         AZStd::any* GetUserData() override;
 
@@ -143,14 +143,14 @@ namespace GraphCanvas
 
         void PopulateSlotConfiguration(SlotConfiguration& slotConfiguration) const;
 
-        AZ::EntityId CreateConnectionHelper(const Endpoint& otherEndpoint, bool createConnection) const;
+        AZ::EntityId CreateConnectionHelper(const Endpoint& otherEndpoint, bool createConnection);
 
         // VS2013 Fixes
         SlotComponent(const SlotComponent&) = delete;
         const SlotComponent& operator=(const SlotComponent&) = delete;
         ////
 
-        virtual AZ::Entity* ConstructConnectionEntity(const Endpoint& sourceEndpoint, const Endpoint& targetEndpoint, bool createModelConnection) const;
+        virtual AZ::Entity* ConstructConnectionEntity(const Endpoint& sourceEndpoint, const Endpoint& targetEndpoint, bool createModelConnection);
 
         void FinalizeDisplay();
         virtual void OnFinalizeDisplay();

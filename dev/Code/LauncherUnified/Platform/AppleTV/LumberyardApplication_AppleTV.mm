@@ -10,12 +10,15 @@
 *
 */
 
+#include <Launcher_precompiled.h>
+#include <Launcher.h>
+
 #import <UIKit/UIKit.h>
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-@interface AppleTVLumberyardApplication : UIApplication {}
-@end    // AppleTVLumberyardApplication Interface
+@interface LumberyardApplication_AppleTV : UIApplication {}
+@end    // LumberyardApplication_AppleTV Interface
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-@implementation AppleTVLumberyardApplication
-@end // AppleTVLumberyardApplication Implementation
+@implementation LumberyardApplication_AppleTV
+@end // LumberyardApplication_AppleTV Implementation

@@ -9,7 +9,6 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#ifndef AZ_UNITY_BUILD
 
 #include <AzCore/IO/StreamerLayoutHelper.h>
 #include <AzCore/IO/Device.h>
@@ -312,5 +311,3 @@ StreamerLayoutHelper::GenerateOptimalTransferDeviceReadLayout(AZStd::vector<AZSt
         layer1.push_back(sortedLayer1[i]->m_name);
     }
 }
-
-#endif // #ifndef AZ_UNITY_BUILD

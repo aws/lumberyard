@@ -22,87 +22,43 @@ namespace ScriptCanvas
 {
     namespace Nodes
     {
-        auto CreateLerpableTypesContract()
-        {
-            return []() -> RestrictedTypeContract* { return aznew RestrictedTypeContract({ Data::Type::Number(), Data::Type::Vector2(), Data::Type::Vector3(), Data::Type::Vector4() }); };
-        }
-        
         void LerpBetween::OnInit()
         {
-            // Input Configuration
-            {
-                DataSlotConfiguration startConfiguration;
-                
-                startConfiguration.m_name = "Start";
-                startConfiguration.m_toolTip = "The value to start lerping from.";
-                startConfiguration.m_slotType = SlotType::DataIn;                
+            SetupInternalSlotReferences();
 
-                startConfiguration.m_contractDescs.emplace_back(CreateLerpableTypesContract());
-                
-                startConfiguration.m_dynamicDataType = DynamicDataType::Value;                
-                startConfiguration.m_displayType = m_displayType;
-                
-                m_startSlotId = AddInputDatumSlot(startConfiguration, Datum());
+            ///////// Version Conversion to Dynamic Grouped based operators
+            SlotId stepId = LerpBetweenProperty::GetStepSlotId(this);
+
+            if (stepId.IsValid())
+            {                
+                for (const SlotId& slotId : { m_startSlotId, m_stopSlotId, m_speedSlotId, stepId })
+                {
+                    Slot* slot = GetSlot(slotId);
+
+                    if (slot->IsDynamicSlot() && slot->GetDynamicGroup() == AZ::Crc32())
+                    {
+                        SetDynamicGroup(slotId, AZ::Crc32("LerpGroup"));
+                    }
+                }                
             }
-            
-            {
-                DataSlotConfiguration stopConfiguration;
-                
-                stopConfiguration.m_name = "Stop";
-                stopConfiguration.m_toolTip = "The value to stop lerping at.";
-                stopConfiguration.m_slotType = SlotType::DataIn;                
+            ////////
 
-                stopConfiguration.m_contractDescs.emplace_back(CreateLerpableTypesContract());
-                
-                stopConfiguration.m_dynamicDataType = DynamicDataType::Value;
-                stopConfiguration.m_displayType = m_displayType;
-                
-                m_stopSlotId = AddInputDatumSlot(stopConfiguration, Datum());
+            //////// Version Conversion will remove the Display type in a few revisions
+            if (m_displayType.IsValid())
+            {
+                Data::Type displayType = GetDisplayType(AZ::Crc32("LerpGroup"));
+
+                if (!displayType.IsValid())
+                {
+                    SetDisplayType(AZ::Crc32("LerpGroup"), displayType);
+                }
             }
-            
-            {
-                DataSlotConfiguration speedConfiguration;
-                
-                speedConfiguration.m_name = "Speed";
-                speedConfiguration.m_toolTip = "The speed at which to lerp between the start and stop.";
-                speedConfiguration.m_slotType = SlotType::DataIn;                
+            ////////
+        }
 
-                speedConfiguration.m_contractDescs.emplace_back(CreateLerpableTypesContract());
-                
-                speedConfiguration.m_dynamicDataType = DynamicDataType::Value;                
-                speedConfiguration.m_displayType = m_displayType;
-                
-                m_speedSlotId = AddInputDatumSlot(speedConfiguration, Datum());
-            }
-            
-            m_maximumTimeSlotId = AddInputDatumSlot("Maximum Duration", "The maximum amount of time it will take to complete the specified lerp. Negative value implies no limit, 0 implies instant.", Datum::eOriginality::Original, int(-1));
-            ////
-            
-            // Output Configuration
-            {
-                DataSlotConfiguration stepConfiguration;
-                
-                stepConfiguration.m_name = "Step";
-                stepConfiguration.m_toolTip = "The value of the current step of the lerp.";
-                stepConfiguration.m_slotType = SlotType::DataOut;                
-
-                stepConfiguration.m_contractDescs.emplace_back(CreateLerpableTypesContract());
-                
-                stepConfiguration.m_dynamicDataType = DynamicDataType::Value;                
-                stepConfiguration.m_displayType = m_displayType;
-                
-                m_stepSlotId = AddDataSlot(stepConfiguration);
-            }            
-            
-            m_percentSlotId = AddOutputTypeSlot("Percent", "The perctange of the way through the lerp this tick is on.", Data::Type::Number(), ScriptCanvas::Node::OutputStorage::Optional);
-            ////
-            
-            m_groupedSlotIds = { m_startSlotId, m_stopSlotId, m_speedSlotId, m_stepSlotId };
-
-            for (const SlotId& slotId : m_groupedSlotIds)
-            {
-                EndpointNotificationBus::MultiHandler::BusConnect(Endpoint(GetEntityId(), slotId));
-            }
+        void LerpBetween::OnConfigured()
+        {
+            SetupInternalSlotReferences();
         }
         
         void LerpBetween::OnSystemTick()
@@ -152,9 +108,11 @@ namespace ScriptCanvas
                     maxDuration = static_cast<float>((*durationDatum->GetAs<Data::NumberType>()));
                 }
 
-                if (m_displayType == Data::Type::Number())
+                Data::Type displayType = GetDisplayType(AZ::Crc32("LerpGroup"));
+
+                if (displayType == Data::Type::Number())
                 {
-                    SetupStartStop<Data::NumberType>();
+                    SetupStartStop<Data::NumberType>(displayType);
 
                     if (!m_differenceDatum.GetType().IsValid())
                     {
@@ -173,19 +131,19 @@ namespace ScriptCanvas
                         speedOnlyTime = fabsf(static_cast<float>(difference)/static_cast<float>(speed));
                     }                        
                 }
-                else if (m_displayType == Data::Type::Vector2())
+                else if (displayType == Data::Type::Vector2())
                 {
-                    SetupStartStop<Data::Vector2Type>();
+                    SetupStartStop<Data::Vector2Type>(displayType);
                     speedOnlyTime = CalculateVectorSpeedTime<Data::Vector2Type>(speedDatum);
                 }
-                else if (m_displayType == Data::Type::Vector3())
+                else if (displayType == Data::Type::Vector3())
                 {
-                    SetupStartStop<Data::Vector3Type>();
+                    SetupStartStop<Data::Vector3Type>(displayType);
                     speedOnlyTime = CalculateVectorSpeedTime<Data::Vector3Type>(speedDatum);
                 }
-                else if (m_displayType == Data::Type::Vector4())
+                else if (displayType == Data::Type::Vector4())
                 {
-                    SetupStartStop<Data::Vector4Type>();
+                    SetupStartStop<Data::Vector4Type>(displayType);
                     speedOnlyTime = CalculateVectorSpeedTime<Data::Vector4Type>(speedDatum);
                 }
                 
@@ -225,44 +183,17 @@ namespace ScriptCanvas
                 
                 SignalOutput(LerpBetweenProperty::GetOutSlotId(this));
             }
-        }
-        
-        void LerpBetween::OnEndpointConnected(const Endpoint& endpoint)
-        {
-            const SlotId& currentSlotId = EndpointNotificationBus::GetCurrentBusId()->GetSlotId();
-            
-            if (IsInGroup(currentSlotId))
-            {
-                if (m_displayType.IsValid())
-                {
-                    return;
-                }
-                
-                auto node = AZ::EntityUtils::FindFirstDerivedComponent<Node>(endpoint.GetNodeId());
-                
-                if (node)
-                {
-                    Slot* slot = node->GetSlot(endpoint.GetSlotId());
+        }        
 
-                    if (slot && (!slot->IsDynamicSlot() || slot->HasDisplayType()))
-                    {
-                        SetDisplayType(slot->GetDataType());
-                    }
-                }
-            }
-        }
-        
-        void LerpBetween::OnEndpointDisconnected(const Endpoint& endpoint)
+        void LerpBetween::SetupInternalSlotReferences()
         {
-            const SlotId& currentSlotId = EndpointNotificationBus::GetCurrentBusId()->GetSlotId();
-            
-            if (IsInGroup(currentSlotId))
-            {
-                if (!IsGroupConnected())
-                {
-                    SetDisplayType(Data::Type::Invalid());
-                }
-            }
+            m_startSlotId = LerpBetweenProperty::GetStartSlotId(this);
+            m_stopSlotId = LerpBetweenProperty::GetStopSlotId(this);
+            m_maximumTimeSlotId = LerpBetweenProperty::GetMaximumDurationSlotId(this);
+            m_speedSlotId = LerpBetweenProperty::GetSpeedSlotId(this);
+
+            m_stepSlotId = LerpBetweenProperty::GetStepSlotId(this);
+            m_percentSlotId = LerpBetweenProperty::GetPercentSlotId(this);
         }
         
         void LerpBetween::CancelLerp()
@@ -271,42 +202,26 @@ namespace ScriptCanvas
             AZ::TickBus::Handler::BusDisconnect();            
         }
         
-        void LerpBetween::SetDisplayType(ScriptCanvas::Data::Type dataType)
-        {
-            if (m_displayType != dataType)
-            {
-                m_displayType = dataType;
-                
-                for (const SlotId& slotId : m_groupedSlotIds)
-                {
-                    Slot* groupedSlot = GetSlot(slotId);
-                    
-                    if (groupedSlot)
-                    {
-                        groupedSlot->SetDisplayType(m_displayType);
-                    }
-                }
-            }
-        }
-        
         void LerpBetween::SignalLerpStep(float percent)
         {
-            Datum stepDatum(m_displayType, Datum::eOriginality::Original);
+            Data::Type displayType = GetDisplayType(AZ::Crc32("LerpGroup"));
+
+            Datum stepDatum(displayType, Datum::eOriginality::Original);
             stepDatum.SetToDefaultValueOfType();
             
-            if (m_displayType == Data::Type::Number())
+            if (displayType == Data::Type::Number())
             {
                 CalculateLerpStep<Data::NumberType>(percent, stepDatum);
             }
-            else if (m_displayType == Data::Type::Vector2())
+            else if (displayType == Data::Type::Vector2())
             {
                 CalculateLerpStep<Data::Vector2Type>(percent, stepDatum);
             }
-            else if (m_displayType == Data::Type::Vector3())
+            else if (displayType == Data::Type::Vector3())
             {
                 CalculateLerpStep<Data::Vector3Type>(percent, stepDatum);
             }
-            else if (m_displayType == Data::Type::Vector4())
+            else if (displayType == Data::Type::Vector4())
             {
                 CalculateLerpStep<Data::Vector4Type>(percent, stepDatum);
             }

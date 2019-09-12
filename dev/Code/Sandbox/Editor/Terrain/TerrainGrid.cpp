@@ -161,7 +161,7 @@ int CTerrainGrid::LockSectorTexture(const QPoint& sector, const uint32 dwTexture
                 pRenderer->RemoveTexture(st->textureId);
                 pTex = 0;
 
-                p3Engine->SetTerrainSectorTexture(sector.y(), sector.x(), 0);
+                p3Engine->SetTerrainSectorTexture(sector.y(), sector.x(), 0, 0, 0);
                 st->textureId = 0;
                 bTextureWasRecreated = true;
             }
@@ -173,7 +173,7 @@ int CTerrainGrid::LockSectorTexture(const QPoint& sector, const uint32 dwTexture
         st->textureId = pRenderer->DownLoadToVideoMemory(0, dwTextureResolution, dwTextureResolution,
                 eTF_B8G8R8A8, eTF_B8G8R8A8, 0, false, FILTER_LINEAR, 0, 0, FT_USAGE_ALLOWREADSRGB);
 
-        p3Engine->SetTerrainSectorTexture(sector.y(), sector.x(), st->textureId);
+        p3Engine->SetTerrainSectorTexture(sector.y(), sector.x(), st->textureId, dwTextureResolution, dwTextureResolution);
     }
 
     return st->textureId;
@@ -193,7 +193,7 @@ void CTerrainGrid::UnlockSectorTexture(const QPoint& sector)
         pRenderer->RemoveTexture(st->textureId);
         pTex = 0;
 
-        p3Engine->SetTerrainSectorTexture(sector.y(), sector.x(), 0);
+        p3Engine->SetTerrainSectorTexture(sector.y(), sector.x(), 0, 0, 0);
         st->textureId = 0;
     }
 }

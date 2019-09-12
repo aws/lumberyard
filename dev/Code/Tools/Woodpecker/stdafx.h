@@ -83,6 +83,7 @@ typedef struct _FILETIME
 #pragma warning(disable : 4512)
 #pragma warning(disable : 4189)
 #pragma warning(disable : 4718) // warning C4718: 'QMapNode<int,bool>::destroySubTree' : recursive call has no side effects, deleting
+#pragma warning(disable : 4127) // conditional expression is constant in QVector and QMap
 #include <QtWidgets/QtWidgets>
 #include <QtWidgets/QApplication>
 #include <QtCore/QDir>

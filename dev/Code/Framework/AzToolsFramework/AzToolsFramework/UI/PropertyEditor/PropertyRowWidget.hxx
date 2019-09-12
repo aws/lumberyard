@@ -18,7 +18,9 @@
 #include <AzCore/Serialization/EditContext.h>
 #include <QtWidgets/QWidget>
 #include <QtWidgets/QLabel>
+AZ_PUSH_DISABLE_WARNING(4251, "-Wunknown-warning-option") // 'QLayoutItem::align': class 'QFlags<Qt::AlignmentFlag>' needs to have dll-interface to be used by clients of class 'QLayoutItem'
 #include <QtWidgets/QLayout>
+AZ_POP_DISABLE_WARNING
 #include <QtWidgets/QPushButton>
 #include <QtCore/QPointer>
 #include <QtCore/QElapsedTimer>

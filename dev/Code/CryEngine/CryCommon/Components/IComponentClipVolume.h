@@ -30,6 +30,6 @@ struct IComponentClipVolume
     virtual IBSPTree3D* GetBspTree() const = 0;
 };
 
-DECLARE_COMPONENT_POINTERS(IComponentClipVolume);
+DECLARE_SMART_POINTERS(IComponentClipVolume);
 
 #endif // CRYINCLUDE_CRYCOMMON_COMPONENTS_ICOMPONENTCLIPVOLUME_H

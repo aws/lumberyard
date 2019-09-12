@@ -62,62 +62,7 @@ namespace ScriptCanvasEditor
         NodeDescriptorComponent::Activate();
 
         SetVersionedNodeId(GetEntityId());
-
-        GraphCanvas::NodeNotificationBus::Handler::BusConnect(GetEntityId());
-
         AZ::Data::AssetBus::Handler::BusConnect(m_assetId);
-    }
-
-    void ScriptEventSenderNodeDescriptorComponent::Deactivate()
-    {
-        GraphCanvas::NodeNotificationBus::Handler::BusDisconnect();
-    }
-
-    void ScriptEventSenderNodeDescriptorComponent::OnAddedToScene(const AZ::EntityId& sceneId)
-    {
-        AZStd::any* userData = nullptr;
-        GraphCanvas::NodeRequestBus::EventResult(userData, GetEntityId(), &GraphCanvas::NodeRequests::GetUserData);
-
-        if (userData
-            && userData->is<AZ::EntityId>())
-        {
-            m_scriptCanvasId = (*AZStd::any_cast<AZ::EntityId>(userData));
-
-            ScriptCanvas::Nodes::Core::Method* method = AZ::EntityUtils::FindFirstDerivedComponent<ScriptCanvas::Nodes::Core::Method>(m_scriptCanvasId);
-
-            if (method)
-            {
-                if (method->HasBusID())
-                {
-                    ScriptCanvas::SlotId slotId = method->GetBusSlotId();
-
-                    AZStd::vector< AZ::EntityId > graphCanvasSlots;
-                    GraphCanvas::NodeRequestBus::EventResult(graphCanvasSlots, GetEntityId(), &GraphCanvas::NodeRequests::GetSlotIds);
-
-                    for (const AZ::EntityId& graphCanvasId : graphCanvasSlots)
-                    {
-                        AZStd::any* slotData = nullptr;
-                        GraphCanvas::SlotRequestBus::EventResult(slotData, graphCanvasId, &GraphCanvas::SlotRequests::GetUserData);
-
-                        if (slotData
-                            && slotData->is< ScriptCanvas::SlotId >())
-                        {
-                            ScriptCanvas::SlotId currentSlotId = (*AZStd::any_cast<ScriptCanvas::SlotId>(slotData));
-
-                            if (currentSlotId == slotId)
-                            {
-                                GraphCanvas::SlotRequestBus::Event(graphCanvasId, &GraphCanvas::SlotRequests::SetTranslationKeyedName, TranslationHelper::GetEBusSenderBusIdNameKey());
-                                GraphCanvas::SlotRequestBus::Event(graphCanvasId, &GraphCanvas::SlotRequests::SetTranslationKeyedTooltip, TranslationHelper::GetEBusSenderBusIdTooltipKey());
-
-                                break;
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        UpdateTitles();
     }
 
     void ScriptEventSenderNodeDescriptorComponent::OnAssetReloaded(AZ::Data::Asset<AZ::Data::AssetData> asset)
@@ -192,6 +137,47 @@ namespace ScriptCanvasEditor
         }
     }
 
+
+    void ScriptEventSenderNodeDescriptorComponent::OnAddedToGraphCanvasGraph(const GraphCanvas::GraphId& graphId, const AZ::EntityId& scriptCanvasNodeId)
+    {
+        m_scriptCanvasId = scriptCanvasNodeId;
+
+        ScriptCanvas::Nodes::Core::Method* method = AZ::EntityUtils::FindFirstDerivedComponent<ScriptCanvas::Nodes::Core::Method>(m_scriptCanvasId);
+
+        if (method)
+        {
+            if (method->HasBusID())
+            {
+                ScriptCanvas::SlotId slotId = method->GetBusSlotId();
+
+                AZStd::vector< AZ::EntityId > graphCanvasSlots;
+                GraphCanvas::NodeRequestBus::EventResult(graphCanvasSlots, GetEntityId(), &GraphCanvas::NodeRequests::GetSlotIds);
+
+                for (const AZ::EntityId& graphCanvasId : graphCanvasSlots)
+                {
+                    AZStd::any* slotData = nullptr;
+                    GraphCanvas::SlotRequestBus::EventResult(slotData, graphCanvasId, &GraphCanvas::SlotRequests::GetUserData);
+
+                    if (slotData
+                        && slotData->is< ScriptCanvas::SlotId >())
+                    {
+                        ScriptCanvas::SlotId currentSlotId = (*AZStd::any_cast<ScriptCanvas::SlotId>(slotData));
+
+                        if (currentSlotId == slotId)
+                        {
+                            GraphCanvas::SlotRequestBus::Event(graphCanvasId, &GraphCanvas::SlotRequests::SetTranslationKeyedName, TranslationHelper::GetEBusSenderBusIdNameKey());
+                            GraphCanvas::SlotRequestBus::Event(graphCanvasId, &GraphCanvas::SlotRequests::SetTranslationKeyedTooltip, TranslationHelper::GetEBusSenderBusIdTooltipKey());
+
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
+        UpdateTitles();
+    }
+
     void ScriptEventSenderNodeDescriptorComponent::UpdateTitles()
     {
         AZ::Data::Asset<ScriptEvents::ScriptEventsAsset> asset = AZ::Data::AssetManager::Instance().GetAsset<ScriptEvents::ScriptEventsAsset>(m_assetId, true, nullptr, true);
@@ -201,12 +187,12 @@ namespace ScriptCanvasEditor
             const ScriptEvents::ScriptEvent& definition = asset.Get()->m_definition;
 
             GraphCanvas::NodeTitleRequestBus::Event(GetEntityId(), &GraphCanvas::NodeTitleRequests::SetSubTitle, definition.GetName());
-            GraphCanvas::NodeRequestBus::Event(GetEntityId(), &GraphCanvas::NodeRequests::SetTooltip, definition.GetTooltip());
 
             for (auto eventDefinition : definition.GetMethods())
             {
                 if (eventDefinition.GetEventId() == m_eventId)
                 {
+                    GraphCanvas::NodeRequestBus::Event(GetEntityId(), &GraphCanvas::NodeRequests::SetTooltip, eventDefinition.GetTooltip());
                     GraphCanvas::NodeTitleRequestBus::Event(GetEntityId(), &GraphCanvas::NodeTitleRequests::SetTitle, eventDefinition.GetName());
                 }
             }

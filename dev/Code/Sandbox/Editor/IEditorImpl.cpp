@@ -1911,7 +1911,7 @@ bool CEditorImpl::ExecuteConsoleApp(const QString& CommandLine, QString& OutputT
     {
 #if defined(AZ_PLATFORM_WINDOWS)
         process.start(QString("cmd.exe /C %1").arg(CommandLine));
-#elif defined(AZ_PLATFORM_APPLE_OSX)
+#elif defined(AZ_PLATFORM_MAC)
         process.start(QString("/usr/bin/osascript -e 'tell application \"Terminal\" to do script \"%1\"'").arg(QString(CommandLine).replace("\"", "\\\"")));
 #else
 #error "Needs to be implemented"

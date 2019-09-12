@@ -1,0 +1,8 @@
+{
+  "auto": {
+    "Platform/Mac": [
+      "LegacyTime_Traits_Platform.h",
+      "LegacyTime_Traits_Mac.h"
+    ]
+  }
+}

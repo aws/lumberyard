@@ -167,16 +167,16 @@ namespace ScriptCanvas
         AzFramework::EntityIdContextQueryBus::EventResult(owningContextId, GetEntityId(), &AzFramework::EntityIdContextQueries::GetOwningContextId);
         if (!owningContextId.IsNull())
         {
-            // Add a mapping for the SelfReferenceId to the execution component entity id
+            // Add a mapping for the GraphOwnerId to the execution component entity id
             AzFramework::EntityContextRequestBus::EventResult(loadedGameEntityIdMap, owningContextId, &AzFramework::EntityContextRequests::GetLoadedEntityIdMap);
         }
 
 
-        // Added in mapping of SelfReferenceId Sentinel value to this component's EntityId
+        // Added in mapping of GraphOwnerId Sentinel value to this component's EntityId
         // as well as an identity mapping for the EntityId and the UniqueId
         AZStd::unordered_map<AZ::EntityId, AZ::EntityId> editorToRuntimeEntityIdMap{
-            { ScriptCanvas::SelfReferenceId, GetEntityId() },
-            { ScriptCanvas::InvalidUniqueRuntimeId, GetUniqueId() },
+            { ScriptCanvas::GraphOwnerId, GetEntityId() },
+            { ScriptCanvas::UniqueId, GetUniqueId() },
             { GetEntityId(), GetEntityId() },
             { GetUniqueId(), GetUniqueId() },
             { AZ::EntityId(), AZ::EntityId() }
@@ -407,6 +407,12 @@ namespace ScriptCanvas
     void Graph::ValidateVariables(ValidationResults& validationResults)
     {
         const VariableData* variableData = GetVariableData();
+        
+        if (!variableData)
+        {
+            return;
+        }
+
         for (const auto& variable : variableData->GetVariables())
         {
             const VariableId& variableId = variable.first;
@@ -773,9 +779,15 @@ namespace ScriptCanvas
             return AZ::Failure(ValidationStruct());
         }
 
+        // If the node is disabled. Just ignore any validation issues that it might throw.
+        if (!nodeComponent->IsNodeEnabled())
+        {
+            return AZ::Success();
+        }
+
         if (!nodeComponent->IsEntryPoint())
         {
-            if (nodeComponent->GetConnectedNodesByType(SlotType::ExecutionIn).empty())
+            if (nodeComponent->FindConnectedNodesByDescriptor(SlotDescriptors::ExecutionIn()).empty())
             {
                 ValidationStruct validationStruct;
                 validationStruct.m_validationEventId = ExecutionValidationIds::UnusedNodeCrc;
@@ -843,7 +855,7 @@ namespace ScriptCanvas
             return AZ::Failure(validationStruct);
         }
 
-        if (ScriptCanvas::SlotUtils::IsData(sourceSlot->GetType()))
+        if (sourceSlot->IsData())
         {
             return ValidateDataConnection((*sourceNode), (*sourceSlot), (*targetNode), (*targetSlot));
         }
@@ -861,11 +873,11 @@ namespace ScriptCanvas
 
     AZ::Outcome<void, Graph::ValidationStruct> Graph::ValidateDataConnection(const Node& sourceNode, const Slot& sourceSlot, const Node& targetNode, const Slot& targetSlot) const
     {
-        if (SlotUtils::CanDataConnect(sourceSlot.GetType(), targetSlot.GetType()))
+        if (sourceSlot.IsData() && sourceSlot.GetDescriptor().CanConnectTo(targetSlot.GetDescriptor()))
         {
             bool isInDataFlow = false;
 
-            if (sourceSlot.GetType() == SlotType::DataIn)
+            if (sourceSlot.IsInput())
             {
                 isInDataFlow = IsInDataFlowPath(&targetNode, &sourceNode);
             }

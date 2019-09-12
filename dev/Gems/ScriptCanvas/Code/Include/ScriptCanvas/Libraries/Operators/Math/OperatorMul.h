@@ -33,25 +33,19 @@ namespace ScriptCanvas
                     ScriptCanvas_Node::Category("Math")
                 );
 
-                OperatorMul()
-                    : OperatorArithmetic(GeneralMathOperatorConfiguration())
-                {
-                }
+                OperatorMul() = default;
 
                 AZStd::string_view OperatorFunction() const override { return "Multiply"; }
 
                 AZStd::unordered_set< Data::Type > GetSupportedNativeDataTypes() const override;
-
-                void Operator(Data::eType type, const OperatorOperands& operands, Datum& result) override;
+                void Operator(Data::eType type, const ArithmeticOperands& operands, Datum& result) override;
    
             protected:
 
-                void InitializeDatum(Datum* datum, ScriptCanvas::Data::Type dataType);
-
-                void OnDisplayTypeChanged(ScriptCanvas::Data::Type dataType) override;
-
-                void OnInputSlotAdded(const SlotId& slotId);
+                void InitializeDatum(Datum* datum, const ScriptCanvas::Data::Type& dataType) override;
                 bool IsValidArithmeticSlot(const SlotId& slotId) const override;
+
+                void OnResetDatumToDefaultValue(Datum* datum) override;
             };
         }
     }

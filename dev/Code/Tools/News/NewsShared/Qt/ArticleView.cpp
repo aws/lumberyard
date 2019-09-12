@@ -14,7 +14,9 @@
 
 #include "ArticleView.h"
 #include "NewsShared/ResourceManagement/ArticleDescriptor.h"
+AZ_PUSH_DISABLE_WARNING(4251, "-Wunknown-warning-option") // 4251: 'QVariant::d': struct 'QVariant::Private' needs to have dll-interface to be used by clients of class 'QVariant'
 #include "NewsShared/Qt/ui_ArticleView.h"
+AZ_POP_DISABLE_WARNING
 #include "NewsShared/Qt/ui_PinnedArticleView.h"
 #include "NewsShared/ResourceManagement/ResourceManifest.h"
 #include "NewsShared/ResourceManagement/Resource.h"

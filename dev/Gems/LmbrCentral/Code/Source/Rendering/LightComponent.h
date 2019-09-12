@@ -16,6 +16,7 @@
 #include <AzCore/Component/Component.h>
 #include <AzCore/Component/ComponentBus.h>
 #include <AzCore/Math/Color.h>
+#include <AzCore/Math/Uuid.h>
 #include <AzFramework/Asset/SimpleAsset.h>
 
 #include <LmbrCentral/Rendering/LightComponentBus.h>
@@ -132,6 +133,9 @@ namespace LmbrCentral
         float m_shadowResScale;
         float m_shadowUpdateMinRadius;
         float m_shadowUpdateRatio;
+
+        // Need to keep a unique Id to use as cubemap name
+        AZ::Uuid m_cubemapId;
 
         // \todo clip bounds - artists aren't using it. Includes fade dimensions.
 

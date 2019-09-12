@@ -10,8 +10,6 @@
 *
 */
 
-#include <Tests/TestTypes.h>
-
 #include <AzCore/Math/Uuid.h>
 #include <AzCore/Component/ComponentApplication.h>
 #include <AzCore/Component/Entity.h>
@@ -20,6 +18,7 @@
 #include <AzCore/Slice/SliceAssetHandler.h>
 #include <AzCore/Asset/AssetManager.h>
 #include <AzCore/Memory/PoolAllocator.h>
+#include <AzCore/UnitTest/TestTypes.h>
 #include <AzFramework/Entity/EntityContext.h>
 
 namespace UnitTest

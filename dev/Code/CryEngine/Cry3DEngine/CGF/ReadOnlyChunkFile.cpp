@@ -15,6 +15,8 @@
 #include "ReadOnlyChunkFile.h"
 #include "ChunkFileComponents.h"
 #include "ChunkFileReaders.h"
+#include <AzCore/Casting/numeric_cast.h>
+#include <AzCore/IO/FileIO.h>
 
 #define MAX_CHUNKS_NUM 10000000
 
@@ -37,24 +39,11 @@ CReadOnlyChunkFile::CReadOnlyChunkFile(bool bCopyFileData, bool bNoWarningMode)
     m_bOwnFileBuffer = false;
     m_bLoaded = false;
     m_bCopyFileData = bCopyFileData;
-
-    m_fileHandle = AZ::IO::InvalidHandle;
 }
 
 CReadOnlyChunkFile::~CReadOnlyChunkFile()
 {
-    CloseFile();
     FreeBuffer();
-}
-
-//////////////////////////////////////////////////////////////////////////
-void CReadOnlyChunkFile::CloseFile()
-{
-    if (m_fileHandle != AZ::IO::InvalidHandle)
-    {
-        gEnv->pCryPak->FClose(m_fileHandle);
-        m_fileHandle = AZ::IO::InvalidHandle;
-    }
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -120,7 +109,6 @@ CReadOnlyChunkFile::ChunkDesc* CReadOnlyChunkFile::FindChunkById(int id)
 //////////////////////////////////////////////////////////////////////////
 bool CReadOnlyChunkFile::ReadChunkTableFromBuffer()
 {
-    FUNCTION_PROFILER_3DENGINE;
     LOADING_TIME_PROFILE_SECTION;
 
     if (m_pFileBuffer == 0)
@@ -177,45 +165,40 @@ bool CReadOnlyChunkFile::ReadChunkTableFromBuffer()
 //////////////////////////////////////////////////////////////////////////
 bool CReadOnlyChunkFile::Read(const char* filename)
 {
-    FUNCTION_PROFILER_3DENGINE;
     LOADING_TIME_PROFILE_SECTION;
 
-    CloseFile();
     FreeBuffer();
 
-    m_fileHandle = gEnv->pCryPak->FOpen(filename, "rb", (m_bNoWarningMode ? ICryPak::FOPEN_HINT_QUIET : 0));
-    if (m_fileHandle == AZ::IO::InvalidHandle)
+    if (!AZ::IO::FileIOBase::GetInstance())
     {
-        m_LastError.Format("Failed to open file '%s'", filename);
+        m_LastError = "File system not ready yet.";
         return false;
     }
 
-    size_t nFileSize = 0;
-
-    if (m_bCopyFileData)
+    if (!AZ::IO::FileIOBase::GetInstance()->Exists(filename))
     {
-        nFileSize = gEnv->pCryPak->FGetSize(m_fileHandle);
-        m_pFileBuffer = new char[nFileSize];
-        m_bOwnFileBuffer = true;
-        if (gEnv->pCryPak->FReadRawAll(m_pFileBuffer, nFileSize, m_fileHandle) != nFileSize)
-        {
-            m_LastError.Format("Failed to read %u bytes from file '%s'", (uint)nFileSize, filename);
-            return false;
-        }
-    }
-    else
-    {
-        m_pFileBuffer = (char*)gEnv->pCryPak->FGetCachedFileData(m_fileHandle, nFileSize);
-        m_bOwnFileBuffer = false;
-    }
-
-    if (!m_pFileBuffer)
-    {
-        m_LastError.Format("Failed to get memory for file '%s'", filename);
+        m_LastError.Format("File '%s' not found", filename);
         return false;
     }
 
-    m_nBufferSize = nFileSize;
+    AZ::u64 fileSize;
+    if (!AZ::IO::FileIOBase::GetInstance()->Size(filename, fileSize))
+    {
+        m_LastError.Format("Failed to retrieve file size for '%s'", filename);
+        return false;
+    }
+
+    m_pFileBuffer = new char[fileSize];
+    m_bOwnFileBuffer = true;
+
+    AZ::IO::FileIOStream stream(filename, AZ::IO::OpenMode::ModeRead);
+    if (stream.Read(fileSize, m_pFileBuffer) != fileSize)
+    {
+        m_LastError.Format("Failed to read %u bytes from file '%s'", fileSize, filename);
+        return false;
+    }
+
+    m_nBufferSize = aznumeric_caster(fileSize);
 
     if (!ReadChunkTableFromBuffer())
     {
@@ -230,10 +213,8 @@ bool CReadOnlyChunkFile::Read(const char* filename)
 //////////////////////////////////////////////////////////////////////////
 bool CReadOnlyChunkFile::ReadFromMemory(const void* pData, int nDataSize)
 {
-    FUNCTION_PROFILER_3DENGINE;
     LOADING_TIME_PROFILE_SECTION;
 
-    CloseFile();
     FreeBuffer();
 
     m_pFileBuffer = (char*)pData;

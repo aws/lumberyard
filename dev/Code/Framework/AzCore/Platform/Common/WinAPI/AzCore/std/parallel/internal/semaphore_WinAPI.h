@@ -11,14 +11,6 @@
 */
 #pragma once
 
-#if defined(AZ_RESTRICTED_PLATFORM)
-    #if defined(AZ_PLATFORM_XENIA)
-        #include "Xenia/semaphore_win_h_xenia.inl"
-    #elif defined(AZ_PLATFORM_PROVO)
-        #include "Provo/semaphore_win_h_provo.inl"
-    #endif
-#endif
-
 /**
 * This file is to be included from the semaphore.h only. It should NOT be included by the user.
 */
@@ -56,17 +48,6 @@ namespace AZStd
         chrono::milliseconds timeToTry = rel_time;
         return (WaitForSingleObject(m_semaphore, static_cast<DWORD>(timeToTry.count())) == AZ_WAIT_OBJECT_0);
     }
-    /*template <class Clock, class Duration>
-    AZ_FORCE_INLINE bool semaphore::try_acquire_until(const chrono::time_point<Clock, Duration>& abs_time)
-    {
-        chrono::milliseconds now = chrono::system_clock::now().time_since_epoch();
-        if(now<abs_time)
-        {
-            chrono::milliseconds timeToTry = abs_time - now;
-            return try_acquire_for(timeToTry);
-        }
-        return false;
-    }*/
 
     AZ_FORCE_INLINE void semaphore::release(unsigned int releaseCount)
     {

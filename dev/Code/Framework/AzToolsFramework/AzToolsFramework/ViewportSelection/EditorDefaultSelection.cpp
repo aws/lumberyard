@@ -21,7 +21,7 @@ namespace AzToolsFramework
     AZ_CLASS_ALLOCATOR_IMPL(EditorDefaultSelection, AZ::SystemAllocator, 0)
 
     EditorDefaultSelection::EditorDefaultSelection(const EditorVisibleEntityDataCache* entityDataCache)
-        : m_overrideWidget(nullptr)
+        : m_phantomWidget(nullptr)
         , m_entityDataCache(entityDataCache)
     {
         ActionOverrideRequestBus::Handler::BusConnect(GetEntityContextId());
@@ -40,6 +40,23 @@ namespace AzToolsFramework
     {
         ComponentModeFramework::ComponentModeSystemRequestBus::Handler::BusDisconnect();
         ActionOverrideRequestBus::Handler::BusDisconnect();
+    }
+
+    void EditorDefaultSelection::SetOverridePhantomWidget(QWidget* phantomOverrideWidget)
+    {
+        m_phantomOverrideWidget = phantomOverrideWidget;
+    }
+
+    QWidget& EditorDefaultSelection::PhantomWidget()
+    {
+        if (m_phantomOverrideWidget)
+        {
+            return *m_phantomOverrideWidget;
+        }
+        else
+        {
+            return m_phantomWidget;
+        }
     }
 
     void EditorDefaultSelection::BeginComponentMode(
@@ -75,7 +92,7 @@ namespace AzToolsFramework
         // attach widget to store ComponentMode specific actions
         EditorActionRequestBus::Broadcast(
             &EditorActionRequests::AttachOverride,
-            &m_overrideWidget);
+            &PhantomWidget());
 
         if (m_transformComponentSelection)
         {
@@ -144,19 +161,34 @@ namespace AzToolsFramework
         TransitionToComponentMode();
     }
 
-    void EditorDefaultSelection::SelectNextActiveComponentMode()
+    bool EditorDefaultSelection::SelectNextActiveComponentMode()
     {
-        m_componentModeCollection.SelectNextActiveComponentMode();
+        return m_componentModeCollection.SelectNextActiveComponentMode();
     }
 
-    void EditorDefaultSelection::SelectPreviousActiveComponentMode()
+    bool EditorDefaultSelection::SelectPreviousActiveComponentMode()
     {
-        m_componentModeCollection.SelectPreviousActiveComponentMode();
+        return m_componentModeCollection.SelectPreviousActiveComponentMode();
     }
 
-    void EditorDefaultSelection::SelectActiveComponentMode(const AZ::Uuid& componentType)
+    bool EditorDefaultSelection::SelectActiveComponentMode(const AZ::Uuid& componentType)
     {
-        m_componentModeCollection.SelectActiveComponentMode(componentType);
+        return m_componentModeCollection.SelectActiveComponentMode(componentType);
+    }
+
+    AZ::Uuid EditorDefaultSelection::ActiveComponentMode()
+    {
+        return m_componentModeCollection.ActiveComponentMode();
+    }
+
+    bool EditorDefaultSelection::ComponentModeInstantiated(const AZ::EntityComponentIdPair& entityComponentIdPair)
+    {
+        return m_componentModeCollection.ComponentModeInstantiated(entityComponentIdPair);
+    }
+
+    bool EditorDefaultSelection::HasMultipleComponentTypes()
+    {
+        return m_componentModeCollection.HasMultipleComponentTypes();
     }
 
     void EditorDefaultSelection::RefreshActions()
@@ -253,15 +285,15 @@ namespace AzToolsFramework
 
     void EditorDefaultSelection::SetupActionOverrideHandler(QWidget* parent)
     {
-        m_overrideWidget.setParent(parent);
+        PhantomWidget().setParent(parent);
         // note: widget must be 'visible' for actions to fire
         // hide by setting size to zero dimensions
-        m_overrideWidget.setFixedSize(0, 0);
+        PhantomWidget().setFixedSize(0, 0);
     }
 
     void EditorDefaultSelection::TeardownActionOverrideHandler()
     {
-        m_overrideWidget.setParent(nullptr);
+        PhantomWidget().setParent(nullptr);
     }
 
     void EditorDefaultSelection::AddActionOverride(const ActionOverride& actionOverride)
@@ -281,7 +313,7 @@ namespace AzToolsFramework
         else
         {
             // create a new action with the override widget as the parent
-            AZStd::unique_ptr<QAction> action = AZStd::make_unique<QAction>(&m_overrideWidget);
+            AZStd::unique_ptr<QAction> action = AZStd::make_unique<QAction>(&PhantomWidget());
 
             // setup action specific data for the editor
             action->setShortcut(actionOverride.m_keySequence);
@@ -289,7 +321,7 @@ namespace AzToolsFramework
             action->setText(actionOverride.m_title);
 
             // bind action to widget
-            m_overrideWidget.addAction(action.get());
+            PhantomWidget().addAction(action.get());
 
             // set callbacks that should happen when this action is triggered
             auto index = static_cast<int>(m_actions.size());
@@ -318,7 +350,7 @@ namespace AzToolsFramework
         AZStd::for_each(m_actions.begin(), m_actions.end(),
             [this](const AZStd::shared_ptr<ActionOverrideMapping>& actionMapping)
         {
-            m_overrideWidget.removeAction(actionMapping->m_action.get());
+            PhantomWidget().removeAction(actionMapping->m_action.get());
         });
 
         m_actions.clear();
@@ -334,7 +366,7 @@ namespace AzToolsFramework
 
         if (it != m_actions.end())
         {
-            m_overrideWidget.removeAction((*it)->m_action.get());
+            PhantomWidget().removeAction((*it)->m_action.get());
             m_actions.erase(it);
         }
     }

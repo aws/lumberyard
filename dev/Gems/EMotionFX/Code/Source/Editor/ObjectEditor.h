@@ -24,27 +24,27 @@ namespace AzToolsFramework
 {
     class ReflectedPropertyEditor;
     class IPropertyEditorNotify;
-}
+} // namespace AzToolsFramework
 
 namespace EMotionFX
 {
     class ObjectEditor
         : public QFrame
     {
-        Q_OBJECT
+        Q_OBJECT // AUTOMOC
 
     public:
-        ObjectEditor(AZ::SerializeContext* serializeContext, QWidget* parent = nullptr);
+        explicit ObjectEditor(AZ::SerializeContext* serializeContext, QWidget* parent = nullptr);
         ObjectEditor(AZ::SerializeContext* serializeContext, AzToolsFramework::IPropertyEditorNotify* notify, QWidget* parent = nullptr);
-        ~ObjectEditor();
 
-        void AddInstance(void* object, const AZ::TypeId& objectTypeId);
+        void AddInstance(void* object, const AZ::TypeId& objectTypeId, void* aggregateInstance = nullptr, void* compareInstance = nullptr);
         void ClearInstances(bool invalidateImmediately);
 
+        void* GetObject() { return m_object; }
+
+    public slots:
         void InvalidateAll();
         void InvalidateValues();
-
-        void* GetObject() { return m_object; }
 
     private:
         void*                                       m_object;

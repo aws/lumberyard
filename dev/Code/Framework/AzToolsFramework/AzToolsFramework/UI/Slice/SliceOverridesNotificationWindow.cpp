@@ -10,15 +10,23 @@
 *
 */
 #include "StdAfx.h"
+AZ_PUSH_DISABLE_WARNING(4251, "-Wunknown-warning-option") // 4251: 'QLayoutItem::align': class 'QFlags<Qt::AlignmentFlag>' needs to have dll-interface to be used by clients of class 'QLayoutItem'
 #include "UI/Slice/ui_NotificationWindow.h"
+AZ_POP_DISABLE_WARNING
 #include "UI/Slice/Constants.h"
 
+AZ_PUSH_DISABLE_WARNING(4251, "-Wunknown-warning-option") // 4251: 'QLayoutItem::align': class 'QFlags<Qt::AlignmentFlag>' needs to have dll-interface to be used by clients of class 'QLayoutItem'
 #include <AzToolsFramework/UI/Slice/SliceOverridesNotificationWindow.hxx>
+AZ_POP_DISABLE_WARNING
 #include <QGraphicsOpacityEffect>
 #include <QPropertyAnimation>
+AZ_PUSH_DISABLE_WARNING(4244 4251 4800, "-Wunknown-warning-option") // 4244: conversion from 'int' to 'float', possible loss of data
+                                                                    // 4251: 'QInputEvent::modState': class 'QFlags<Qt::KeyboardModifier>' needs to have dll-interface to be used by clients of class 'QInputEvent'
+                                                                    // 4800: 'QFlags<QPainter::RenderHint>::Int': forcing value to bool 'true' or 'false' (performance warning)
 #include <QHBoxLayout>
 #include <QMouseEvent>
 #include <QPainter>
+AZ_POP_DISABLE_WARNING
 #include <QTimer>
 
 
@@ -164,7 +172,7 @@ namespace AzToolsFramework
     void SliceOverridesNotificationWindow::OpacityChanged(qreal newOpacity)
     {
         // set the new opacity for the paint of the window
-        m_opacity = newOpacity;
+        m_opacity = static_cast<float>(newOpacity);
 
         // update the window
         update();

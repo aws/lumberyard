@@ -34,7 +34,7 @@ namespace LmbrCentral
                 editContext->Class<EditorAudioEnvironmentComponent>("Audio Environment", "The Audio Environment component provides access to features of the Audio Translation Layer (ATL) environments to apply environmental effects such as reverb or echo")
                     ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
                         ->Attribute(AZ::Edit::Attributes::Category, "Audio")
-                        ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/AudioEnvironment.png")
+                        ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/AudioEnvironment.svg")
                         ->Attribute(AZ::Edit::Attributes::ViewportIcon, "Editor/Icons/Components/Viewport/AudioEnvironment.png")
                         ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("Game", 0x232b318c))
                         ->Attribute(AZ::Edit::Attributes::AutoExpand, true)

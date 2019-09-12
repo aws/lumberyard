@@ -24,6 +24,8 @@ namespace EMotionFX
         AZ_CLASS_ALLOCATOR(SimulatedJoint, AZ::SystemAllocator, 0)
         AZ_TYPE_INFO(SimulatedJoint, "{4434F175-2A60-4F54-9A7D-243DAAD8C811}");
 
+        using AutoExcludeMode = ::EMotionFX::SimulatedJoint::AutoExcludeMode;
+
         SimulatedJoint() = default;
         SimulatedJoint(const SimulatedJoint& simulatedJoint) {}
 
@@ -36,7 +38,6 @@ namespace EMotionFX
         MOCK_METHOD1(SetGravityFactor, void (float factor));
         MOCK_METHOD1(SetFriction, void (float friction));
         MOCK_METHOD1(SetPinned, void (bool pinned));
-        MOCK_METHOD1(SetStretchable, void (bool allowStretch));
         MOCK_METHOD1(InitAfterLoading, bool (SimulatedObject* object));
 
         MOCK_CONST_METHOD0(GetSkeletonJointIndex, AZ::u32());
@@ -47,7 +48,15 @@ namespace EMotionFX
         MOCK_CONST_METHOD0(GetGravityFactor, float());
         MOCK_CONST_METHOD0(GetFriction, float());
         MOCK_CONST_METHOD0(IsPinned, bool());
-        MOCK_CONST_METHOD0(IsStretchable, bool());
+
+        MOCK_CONST_METHOD0(GetColliderExclusionTags, AZStd::vector<AZStd::string>& ());
+        MOCK_METHOD1(SetColliderExclusionTags, void(const AZStd::vector<AZStd::string>&));
+
+        MOCK_CONST_METHOD0(GetAutoExcludeMode, AutoExcludeMode());
+        MOCK_METHOD1(SetAutoExcludeMode, void(AutoExcludeMode mode));
+
+        MOCK_CONST_METHOD0(IsGeometricAutoExclusion, bool());
+        MOCK_METHOD1(SetGeometricAutoExclusion, void(bool enabled));
 
         MOCK_CONST_METHOD0(CalculateNumChildSimulatedJoints, size_t());
         MOCK_CONST_METHOD1(FindChildSimulatedJoint, SimulatedJoint*(size_t childIndex));

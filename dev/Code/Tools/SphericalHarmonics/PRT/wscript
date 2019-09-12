@@ -33,7 +33,8 @@ def build(bld):
         includes        = ['.',
                            '..',
                            bld.Path('Code/Tools'),
-                           bld.Path('Code/CryEngine/CryCommon') ],
+                           bld.Path('Code/CryEngine/CryCommon')
+                          ],
         use             = ['AzCore'],
         uselib          = ['TIFF'],
         win_defines     = ['_VC80_UPGRADE=0x0710']

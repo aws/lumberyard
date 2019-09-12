@@ -23,7 +23,7 @@ namespace ScriptCanvas
         Data::Type targetType;
         NodeRequestBus::EventResult(targetType, targetSlot.GetNodeId(), &NodeRequests::GetSlotDataType, targetSlot.GetId());
 
-        if (!Data::IsValueType(targetType))
+        if (EvaluateForType(targetType))
         {
             return AZ::Success();
         }
@@ -32,6 +32,20 @@ namespace ScriptCanvas
             , sourceSlot.GetName().data()
             , targetSlot.GetName().data()
             , Data::GetName(targetType).c_str()
+        );
+
+        return AZ::Failure(errorMessage);
+    }
+
+    AZ::Outcome<void, AZStd::string> IsReferenceTypeContract::OnEvaluateForType(const Data::Type& dataType) const
+    {
+        if (!Data::IsValueType(dataType))
+        {
+            return AZ::Success();
+        }
+
+        AZStd::string errorMessage = AZStd::string::format("Type %s is not a reference type."
+            , Data::GetName(dataType).c_str()
         );
 
         return AZ::Failure(errorMessage);

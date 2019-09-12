@@ -10,25 +10,17 @@
 *
 */
 
-#pragma once
-
 #include "Microphone_precompiled.h"
 #include <MicrophoneSystemComponent.h>
 
 namespace Audio
 {
-// This gets around a redefinition issue on uber builds so we don't have to add all the
-// platform-specific waf_files yet.  We can include this file in the main waf_files and
-// exclude the definition on Windows because there's already a real Windows impl.
-// When we add more platform implementations, we can add waf_files for all platforms.
-#if !defined(AZ_PLATFORM_WINDOWS)
     ///////////////////////////////////////////////////////////////////////////////////////////////
     // Null Implementation of a Microphone
-    class MicrophoneSystemComponent::Pimpl
-        : protected MicrophoneRequestBus::Handler
+    class MicrophoneSystemComponentNone : public MicrophoneSystemComponent::Implementation
     {
     public:
-        AZ_CLASS_ALLOCATOR(Pimpl, AZ::SystemAllocator, 0);
+        AZ_CLASS_ALLOCATOR(MicrophoneSystemComponentNone, AZ::SystemAllocator, 0);
 
         bool InitializeDevice() override
         {
@@ -66,5 +58,10 @@ namespace Audio
     private:
         SAudioInputConfig m_config;
     };
-#endif // AZ_PLATFORM_*
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+    MicrophoneSystemComponent::Implementation* MicrophoneSystemComponent::Implementation::Create()
+    {
+        return aznew MicrophoneSystemComponentNone();
+    }
 } // namespace Audio

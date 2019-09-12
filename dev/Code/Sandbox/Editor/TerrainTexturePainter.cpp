@@ -35,6 +35,8 @@
 #include <InitGuid.h>
 #endif
 
+#include <AzToolsFramework/Commands/LegacyCommand.h>
+
 // {C3EE67BE-F167-4E48-93B6-47D184DC06F8}
 DEFINE_GUID(TERRAIN_PAINTER_TOOL_GUID, 0xc3ee67be, 0xf167, 0x4e48, 0x93, 0xb6, 0x47, 0xd1, 0x84, 0xdc, 0x6, 0xf8);
 
@@ -524,7 +526,7 @@ bool CTerrainTexturePainter::MouseCallback(CViewport* view, EMouseEvent event, Q
         }
     }
 
-#ifdef AZ_PLATFORM_APPLE
+#if AZ_TRAIT_OS_PLATFORM_APPLE
     GetIEditor()->SetStatusText(tr("L-Mouse:Paint   [ ]: Change Brush Radius  Shift+[ ]:Change Brush Hardness   ⌘L-Mouse:Pick LayerId"));
 #else
     GetIEditor()->SetStatusText(tr("L-Mouse:Paint   [ ]: Change Brush Radius  Shift+[ ]:Change Brush Hardness   CTRL+L-Mouse:Pick LayerId"));
@@ -669,11 +671,6 @@ void CTerrainTexturePainter::Action_Flood()
         return;
     }
 
-    float oldRadius = m_brush.radius;
-    float fRadius = m_3DEngine->GetTerrainSize() * 0.5f;
-    m_brush.radius = fRadius;
-    Vec3 center(fRadius, fRadius, 0);
-
     static bool bPaintLock = false;
     if (bPaintLock)
     {
@@ -682,13 +679,12 @@ void CTerrainTexturePainter::Action_Flood()
 
     bPaintLock = true;
 
-    PaintLayer(pLayer, center, true);
+    PaintLayer(pLayer, Vec3(0.0f), true);
 
     GetIEditor()->GetDocument()->SetModifiedFlag(TRUE);
     GetIEditor()->SetModifiedModule(eModifiedTerrain);
     GetIEditor()->UpdateViews(eUpdateHeightmap);
 
-    m_brush.radius = oldRadius;
     bPaintLock = false;
 }
 
@@ -697,11 +693,16 @@ void CTerrainTexturePainter::PaintLayer(CLayer* pLayer, const Vec3& center, bool
 {
     float fTerrainSize = (float)m_3DEngine->GetTerrainSize();                                                                           // in m
 
+    // If we're doing a flood fill, set our paint brush to the center of the terrain with a radius that covers the entire terrain
+    // regardless of what's been passed in.
+    float radius = bFlood ? m_3DEngine->GetTerrainSize() * 0.5f : m_brush.radius;
+    Vec3 brushCenter = bFlood ? Vec3(radius, radius, 0.0f) : center;
+
     SEditorPaintBrush br(*GetIEditor()->GetHeightmap(), *pLayer, m_brush.bMaskByLayerSettings, m_brush.m_dwMaskLayerId, bFlood);
 
     br.m_cFilterColor = m_brush.m_cFilterColor * m_brush.m_fBrightness;
     br.m_cFilterColor.rgb2srgb();
-    br.fRadius = m_brush.radius / fTerrainSize;
+    br.fRadius = radius / fTerrainSize;
     br.color = m_brush.value;
     if (m_brush.bErase)
     {
@@ -710,8 +711,8 @@ void CTerrainTexturePainter::PaintLayer(CLayer* pLayer, const Vec3& center, bool
 
     // Paint spot on layer mask.
     {
-        float fX = center.y / fTerrainSize;                         // 0..1
-        float fY = center.x / fTerrainSize;                         // 0..1
+        float fX = brushCenter.y / fTerrainSize;                         // 0..1
+        float fY = brushCenter.x / fTerrainSize;                         // 0..1
 
         // change terrain texture
         if (m_brush.colorHardness > 0.0f)
@@ -744,13 +745,19 @@ void CTerrainTexturePainter::PaintLayer(CLayer* pLayer, const Vec3& center, bool
     }
 
 
-    Vec3 vMin = center - Vec3(m_brush.radius, m_brush.radius, 0);
-    Vec3 vMax = center + Vec3(m_brush.radius, m_brush.radius, 0);
-
     //////////////////////////////////////////////////////////////////////////
     // Update Terrain textures.
     //////////////////////////////////////////////////////////////////////////
     {
+        // For updating our runtime terrain textures, we adjust our minimum "affected" pixel values to 
+        // be one up and to the left from where we've painted.  This is because our runtime textures
+        // use bilinear filtering, which puts a copy of the first pixel in a sector into the last pixel 
+        // in the previous sector.  So if we modified the first pixel of a sector, subtracting
+        // one will cause us to properly update the runtime texture for the previous sector as well.
+        const Vec3 bilinearOffset = Vec3(1.0f, 1.0f, 0.0f);
+        Vec3 vMin = brushCenter - Vec3(radius, radius, 0.0f) - bilinearOffset;
+        Vec3 vMax = brushCenter + Vec3(radius, radius, 0.0f);
+
         int iTerrainSize = m_3DEngine->GetTerrainSize();                                                // in meters
         int iTexSectorSize = m_3DEngine->GetTerrainTextureNodeSizeMeters();         // in meters
 
@@ -760,6 +767,8 @@ void CTerrainTexturePainter::PaintLayer(CLayer* pLayer, const Vec3& center, bool
             return;                             // you need to calculated the surface texture first
         }
 
+        // Get the range of sectors that have been modified so that we can update the runtime textures
+        // currently in use.
         int iMinSecX = (int)floor(vMin.x / (float)iTexSectorSize);
         int iMinSecY = (int)floor(vMin.y / (float)iTexSectorSize);
         int iMaxSecX = (int)ceil (vMax.x / (float)iTexSectorSize);
@@ -773,7 +782,7 @@ void CTerrainTexturePainter::PaintLayer(CLayer* pLayer, const Vec3& center, bool
         float fTerrainSize = (float)m_3DEngine->GetTerrainSize();                                                                           // in m
 
         // update rectangle in 0..1 range
-        float fGlobalMinX = vMin.x / fTerrainSize, fGlobalMinY = vMin.y / fTerrainSize;
+        float fGlobalMinX = max(vMin.x / fTerrainSize, 0.0f), fGlobalMinY = max(vMin.y / fTerrainSize, 0.0f);
         float fGlobalMaxX = vMax.x / fTerrainSize, fGlobalMaxY = vMax.y / fTerrainSize;
 
         for (int iY = iMinSecY; iY < iMaxSecY; ++iY)
@@ -795,21 +804,20 @@ void CTerrainTexturePainter::PaintLayer(CLayer* pLayer, const Vec3& center, bool
         int hmapWidth = m_heightmap->GetWidth();
         int hmapHeight = m_heightmap->GetHeight();
 
-        float fX = center.y * hmapWidth / fTerrainSize;
-        float fY = center.x * hmapHeight / fTerrainSize;
+        float fX = brushCenter.y * hmapWidth / fTerrainSize;
+        float fY = brushCenter.x * hmapHeight / fTerrainSize;
 
         int unitSize = m_heightmap->GetUnitSize();
-        float fHMRadius = m_brush.radius / unitSize;
-        QRect hmaprc;
+        float fHMRadius = radius / unitSize;
 
         // clip against heightmap borders
-        hmaprc.setLeft(max((int)floor(fX - fHMRadius), 0));
-        hmaprc.setTop(max((int)floor(fY - fHMRadius), 0));
-        hmaprc.setRight(min((int)ceil(fX + fHMRadius), hmapWidth));
-        hmaprc.setBottom(min((int)ceil(fY + fHMRadius), hmapHeight));
+        int left = max((int)floor(fX - fHMRadius), 0);
+        int top = max((int)floor(fY - fHMRadius), 0);
+        int width = min((int)ceil(fX + fHMRadius), hmapWidth);
+        int height = min((int)ceil(fY + fHMRadius), hmapHeight);
 
         // Update surface types at 3d engine terrain.
-        m_heightmap->UpdateEngineTerrain(hmaprc.left(), hmaprc.top(), hmaprc.width(), hmaprc.height(), false, true);
+        m_heightmap->UpdateEngineTerrain(left, top, width, height, false, true);
     }
 }
 
@@ -862,14 +870,16 @@ void CTerrainTexturePainter::Action_StopUndo()
         return;
     }
 
-    GetIEditor()->BeginUndo();
+    AzToolsFramework::UndoSystem::URSequencePoint* undoOperation = nullptr;
+    AzToolsFramework::ToolsApplicationRequests::Bus::BroadcastResult(undoOperation, &AzToolsFramework::ToolsApplicationRequests::BeginUndoBatch, "Texture Layer Painting");
 
-    if (CUndo::IsRecording())
+    if (undoOperation)
     {
-        CUndo::Record(new CUndoTexturePainter(this));
+        auto undoCommand = aznew AzToolsFramework::LegacyCommand<IUndoObject>("Texture Layer Painting Command", AZStd::make_unique<CUndoTexturePainter>(this));
+        undoCommand->SetParent(undoOperation); // This transfers ownership to undoOperation object who will delete undoCommand.
     }
 
-    GetIEditor()->AcceptUndo("Texture Layer Painting");
+    AzToolsFramework::ToolsApplicationRequests::Bus::Broadcast(&AzToolsFramework::ToolsApplicationRequests::EndUndoBatch);
 
     m_bIsPainting = false;
 }
@@ -907,5 +917,234 @@ void CTerrainTexturePainter::RegisterTool(CRegistrationContext& rc)
 
     CommandManagerHelper::RegisterCommand(rc.pCommandManager, "edit_tool", "terrain_painter_activate", "", "", functor(CTerrainTexturePainter::Command_Activate));
 }
+
+
+float CTerrainTexturePainter::PyGetBrushRadius()
+{
+    return m_brush.radius;
+}
+
+void CTerrainTexturePainter::PySetBrushRadius(float radius)
+{
+    m_brush.radius = radius;
+    RefreshUI();
+}
+
+
+float CTerrainTexturePainter::PyGetBrushColorHardness()
+{
+    return m_brush.colorHardness;
+}
+
+void CTerrainTexturePainter::PySetBrushColorHardness(float colorHardness)
+{
+    m_brush.colorHardness = colorHardness;
+    RefreshUI();
+}
+
+float CTerrainTexturePainter::PyGetBrushDetailHardness()
+{
+    return m_brush.detailHardness;
+}
+
+void CTerrainTexturePainter::PySetBrushDetailHardness(float detailHardness)
+{
+    m_brush.detailHardness = detailHardness;
+    RefreshUI();
+}
+
+bool CTerrainTexturePainter::PyGetBrushMaskByLayerSettings()
+{
+    return m_brush.bMaskByLayerSettings;
+}
+
+void CTerrainTexturePainter::PySetBrushMaskByLayerSettings(bool maskByLayerSettings)
+{
+    m_brush.bMaskByLayerSettings = maskByLayerSettings;
+    RefreshUI();
+}
+
+QString CTerrainTexturePainter::PyGetBrushMaskLayer()
+{
+    IEditor *editor = GetIEditor();
+    AZ_Assert(editor, "Editor instance doesn't exist!");
+    if (editor)
+    {
+        CTerrainManager *terrainManager = editor->GetTerrainManager();
+        AZ_Assert(terrainManager, "Terrain Manager instance doesn't exist!");
+        if (terrainManager)
+        {
+            CLayer* layer = terrainManager->FindLayerByLayerId(m_brush.m_dwMaskLayerId);
+            return layer ? layer->GetLayerName() : "";
+        }
+    }
+
+    return "";
+}
+
+void CTerrainTexturePainter::PySetBrushMaskLayer(const char *layerName)
+{
+    CLayer* layer = FindLayer(layerName);
+    m_brush.m_dwMaskLayerId = layer ? layer->GetCurrentLayerId() : CTextureBrush::sInvalidMaskId;
+    RefreshUI();
+}
+
+
+boost::python::tuple  CTerrainTexturePainter::PyGetLayerBrushColor(const char *layerName)
+{
+    CLayer* layer = FindLayer(layerName);
+    if (layer)
+    {
+        ColorF color = layer->GetLayerFilterColor();
+        return boost::python::make_tuple(color.r, color.g, color.b);
+    }
+    
+    return boost::python::make_tuple(0.0f, 0.0f, 0.0f);
+}
+
+void CTerrainTexturePainter::PySetLayerBrushColor(const char *layerName, float red, float green, float blue)
+{
+    CLayer* layer = FindLayer(layerName);
+    if (layer)
+    {
+        layer->SetLayerFilterColor(ColorF(red, green, blue));
+    }
+    RefreshUI();
+}
+
+float CTerrainTexturePainter::PyGetLayerBrushColorBrightness(const char *layerName)
+{
+    CLayer* layer = FindLayer(layerName);
+    return layer ? layer->GetLayerBrightness() : 0.0f;
+}
+
+void CTerrainTexturePainter::PySetLayerBrushColorBrightness(const char *layerName, float colorBrightness)
+{
+    CLayer* layer = FindLayer(layerName);
+    if (layer)
+    {
+        layer->SetLayerBrightness(colorBrightness);
+    }
+    RefreshUI();
+}
+
+void CTerrainTexturePainter::PyPaintLayer(const char *layerName, float centerX, float centerY, float centerZ, bool floodFill)
+{
+    CLayer *brushLayer = nullptr;
+
+    IEditor *editor = GetIEditor();
+    AZ_Assert(editor, "Editor instance doesn't exist!");
+    if (!editor)
+    {
+        return;
+    }
+
+    CTerrainManager *terrainManager = editor->GetTerrainManager();
+    AZ_Assert(terrainManager, "Terrain Manager instance doesn't exist!");
+    if (!terrainManager)
+    {
+        return;
+    }
+
+    // Select the given layer, deselect the rest.  If more than one layer has the same name,
+    // the first one will be selected.
+    for (int i = 0; i < terrainManager->GetLayerCount(); i++)
+    {
+        CLayer *layer = terrainManager->GetLayer(i);
+        if ((!brushLayer) && (QString::compare(layer->GetLayerName(), layerName) == 0))
+        {
+            layer->SetSelected(true);
+            brushLayer = layer;
+        }
+        else
+        {
+            layer->SetSelected(false);
+        }
+    }
+
+    if (!brushLayer)
+    {
+        return;
+    }
+
+    Command_Activate();
+    RefreshUI();
+
+    CEditTool* editTool = editor->GetEditTool();
+    if (editTool && qobject_cast<CTerrainTexturePainter*>(editTool))
+    {
+        CTerrainTexturePainter* paintTool = reinterpret_cast<CTerrainTexturePainter*>(editTool);
+
+        paintTool->PaintLayer(brushLayer, Vec3(centerX, centerY, centerZ), floodFill);
+
+        editor->GetDocument()->SetModifiedFlag(TRUE);
+        editor->SetModifiedModule(eModifiedTerrain);
+        editor->UpdateViews(eUpdateHeightmap);
+    }
+}
+
+CLayer* CTerrainTexturePainter::FindLayer(const char *layerName)
+{
+    IEditor *editor = GetIEditor();
+    AZ_Assert(editor, "Editor instance doesn't exist!");
+    if (editor)
+    {
+        AZ_Assert(editor->GetTerrainManager(), "Terrain Mananger doesn't exist!");
+        if (editor->GetTerrainManager())
+        {
+            return editor->GetTerrainManager()->FindLayer(layerName);
+        }
+    }
+
+    return nullptr;
+}
+
+void CTerrainTexturePainter::RefreshUI()
+{
+    if (s_toolPanel)
+    {
+        s_toolPanel->SetBrush(m_brush);
+        IEditor *editor = GetIEditor();
+        AZ_Assert(editor, "Editor instance doesn't exist!");
+        if (editor)
+        {
+            editor->Notify(eNotify_OnInvalidateControls);
+        }
+    }
+}
+
+REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(CTerrainTexturePainter::PyGetBrushRadius, terrain, get_layer_painter_brush_radius, 
+    "Get the terrain layer painter brush radius.", "terrain.get_layer_painter_brush_radius()");
+REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(CTerrainTexturePainter::PySetBrushRadius, terrain, set_layer_painter_brush_radius,
+    "Set the terrain layer painter brush radius.", "terrain.set_layer_painter_brush_radius(float radius)");
+REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(CTerrainTexturePainter::PyGetBrushColorHardness, terrain, get_layer_painter_brush_color_opacity,
+    "Get the terrain layer painter brush color opacity.", "terrain.get_layer_painter_brush_color_opacity()");
+REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(CTerrainTexturePainter::PySetBrushColorHardness, terrain, set_layer_painter_brush_color_opacity,
+    "Set the terrain layer painter brush color opacity.", "terrain.set_layer_painter_brush_color_opacity(float opacity)");
+REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(CTerrainTexturePainter::PyGetBrushDetailHardness, terrain, get_layer_painter_brush_detail_intensity,
+    "Get the terrain layer painter brush detail intensity.", "terrain.get_layer_painter_brush_detail_intensity()");
+REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(CTerrainTexturePainter::PySetBrushDetailHardness, terrain, set_layer_painter_brush_detail_intensity,
+    "Set the terrain layer painter brush detail intensity.", "terrain.set_layer_painter_brush_detail_intensity(float intensity)");
+REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(CTerrainTexturePainter::PyGetBrushMaskByLayerSettings, terrain, get_layer_painter_brush_mask_by_layer_settings,
+    "Get the terrain layer painter brush setting for masking by layer settings (altitude, slope).", "terrain.get_layer_painter_brush_mask_by_layer_settings()");
+REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(CTerrainTexturePainter::PySetBrushMaskByLayerSettings, terrain, set_layer_painter_brush_mask_by_layer_settings,
+    "Set the terrain layer painter brush setting for masking by layer settings (altitude, slope).", "terrain.set_layer_painter_brush_mask_by_layer_settings(bool enable)");
+REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(CTerrainTexturePainter::PyGetBrushMaskLayer, terrain, get_layer_painter_brush_mask_layer_name,
+    "Get the terrain layer painter brush 'mask by layer' layer name.", "terrain.get_layer_painter_brush_mask_layer_name()");
+REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(CTerrainTexturePainter::PySetBrushMaskLayer, terrain, set_layer_painter_brush_mask_layer_name,
+    "Set the terrain layer painter brush 'mask by layer' layer name.", "terrain.set_layer_painter_brush_mask_layer_name(string layer)");
+
+REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(CTerrainTexturePainter::PyGetLayerBrushColor, terrain, get_layer_brush_color,
+    "Get the specific terrain layer's brush color.", "terrain.get_layer_brush_color(string layer)");
+REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(CTerrainTexturePainter::PySetLayerBrushColor, terrain, set_layer_brush_color,
+    "Set the specific terrain layer's brush color.", "terrain.set_layer_brush_color(string layer, float red, float green, float blue)");
+REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(CTerrainTexturePainter::PyGetLayerBrushColorBrightness, terrain, get_layer_brush_color_brightness,
+    "Get the specific terrain layer's brush color brightness setting.", "terrain.get_layer_brush_color_brightness(string layer)");
+REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(CTerrainTexturePainter::PySetLayerBrushColorBrightness, terrain, set_layer_brush_color_brightness,
+    "Set the specific terrain layer's brush color brightness setting.", "terrain.set_layer_brush_color_brightness(string layer, float brightness)");
+REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(CTerrainTexturePainter::PyPaintLayer, terrain, paint_layer,
+    "Paint the terrain using the brush settings from the given layer and the terrain layer painter.", 
+    "terrain.paint_layer(string layer, float center_x, float center_y, float center_z, bool flood_fill)");
+
 
 #include <TerrainTexturePainter.moc>

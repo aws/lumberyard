@@ -90,7 +90,7 @@ namespace NCryMetal
     
     inline int GetAvailableMRTbpp()
     {
-#if defined(AZ_PLATFORM_APPLE_OSX)
+#if defined(AZ_PLATFORM_MAC)
         // Mac doesn't support Gmem
         return 0;
 #else
@@ -134,9 +134,9 @@ namespace NCryMetal
     //Cache the OS version which can then be used to query if certain API calls are enabled/disabled.
     inline void CacheMinOSVersionInfo()
     {
-#if defined(AZ_PLATFORM_APPLE_OSX)
+#if defined(AZ_PLATFORM_MAC)
         s_isOsxMinVersion10_11 = [[NSProcessInfo processInfo] isOperatingSystemAtLeastVersion:(NSOperatingSystemVersion){10, 11, 0}];
-#elif defined(AZ_PLATFORM_APPLE_IOS)
+#elif defined(AZ_PLATFORM_IOS)
         s_isIosMinVersion9_0 = [[NSProcessInfo processInfo] isOperatingSystemAtLeastVersion:(NSOperatingSystemVersion){9, 0, 0}];
         s_isIosMinVersion11_0 = [[NSProcessInfo processInfo] isOperatingSystemAtLeastVersion:(NSOperatingSystemVersion){11, 0, 0}];
 #endif
@@ -145,7 +145,7 @@ namespace NCryMetal
     //Cache the GPU family which can then be used to query if certain API calls are enabled/disabled.
     inline void CacheGPUFamilyFeaturSetInfo(id<MTLDevice> device)
     {
-#if defined(AZ_PLATFORM_APPLE_IOS)
+#if defined(AZ_PLATFORM_IOS)
         s_isIOSGPUFamily3 = [device supportsFeatureSet:MTLFeatureSet_iOS_GPUFamily3_v1];
 #endif
     }

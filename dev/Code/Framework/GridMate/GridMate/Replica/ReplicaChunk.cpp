@@ -9,7 +9,6 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#ifndef AZ_UNITY_BUILD
 
 #include <AzCore/Debug/Profiler.h>
 
@@ -766,5 +765,3 @@ namespace GridMate
         ClearPendingRPCs();
     }
 } // namespace GridMate
-
-#endif // #ifndef AZ_UNITY_BUILD

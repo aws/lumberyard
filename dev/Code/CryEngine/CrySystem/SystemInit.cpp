@@ -47,10 +47,13 @@
 #include <AzFramework/Input/Devices/Mouse/InputDeviceMouse.h>
 #include <AzFramework/IO/LocalFileIO.h>
 #include "RemoteFileIO.h"
+#include "RemoteStorageDrive.h"
 
 #include <IEngineModule.h>
 #include <CryExtension/CryCreateClassInstance.h>
 #include <AzCore/IO/SystemFile.h> // for AZ_MAX_PATH_LEN
+#include <AzCore/IO/Streamer.h>
+#include <AzCore/IO/StreamerComponent.h>
 #include <AzCore/Component/ComponentApplicationBus.h>
 #include <AzFramework/StringFunc/StringFunc.h>
 #include <AzFramework/Asset/AssetProcessorMessages.h>
@@ -135,6 +138,7 @@
 #include "SoftCode/SoftCodeMgr.h"
 #include "ZLibCompressor.h"
 #include "ZLibDecompressor.h"
+#include "ZStdDecompressor.h"
 #include "LZ4Decompressor.h"
 #include "OverloadSceneManager/OverloadSceneManager.h"
 #include "ServiceNetwork.h"
@@ -175,7 +179,7 @@
 #endif // !defined(AZ_RELEASE_BUILD)
 #endif
 
-#if defined(AZ_PLATFORM_ANDROID) || defined(AZ_PLATFORM_APPLE_IOS)
+#if defined(AZ_PLATFORM_ANDROID) || defined(AZ_PLATFORM_IOS)
 #include "MobileDetectSpec.h"
 #endif
 
@@ -205,12 +209,16 @@
 extern LONG WINAPI CryEngineExceptionFilterWER(struct _EXCEPTION_POINTERS* pExceptionPointers);
 #endif
 
-#if defined(AZ_RESTRICTED_PLATFORM) && defined(AZ_PLATFORM_PROVO)
+#if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION SYSTEMINIT_CPP_SECTION_14
-    #include "Provo/SystemInit_cpp_provo.inl"
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/SystemInit_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/SystemInit_cpp_provo.inl"
+    #endif
 #endif
 
-#ifdef AZ_PLATFORM_APPLE
+#if AZ_TRAIT_OS_PLATFORM_APPLE
 
 #include <execinfo.h>
 #include <signal.h>
@@ -245,7 +253,7 @@ void CryEngineSignalHandler(int signal)
     abort();
 }
 
-#endif // #ifdef AZ_PLATFORM_APPLE
+#endif // AZ_TRAIT_OS_PLATFORM_APPLE
 
 #if defined(USE_UNIXCONSOLE)
 #if defined(LINUX) && !defined(ANDROID)
@@ -362,7 +370,7 @@ static inline void InlineInitializationProcessing(const char* sDescription)
 }
 
 #pragma warning(push)
-#pragma warning(disable:4723) // Allow divide by zero warnings so we can test the exception
+#pragma warning (disable:4723)  //This is the lowest scope that Visual Studio will allow for this warning. It's for case 2, divide by zero, below.
 //////////////////////////////////////////////////////////////////////////
 static void CmdCrashTest(IConsoleCmdArgs* pArgs)
 {
@@ -538,7 +546,7 @@ struct SysSpecOverrideSinkConsole
 
 static ESystemConfigPlatform GetDevicePlatform()
 {
-#if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_WINDOWS_X64) || defined(AZ_PLATFORM_LINUX)
+#if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_LINUX)
     return CONFIG_PC;
 #define AZ_RESTRICTED_SECTION_IMPLEMENTED
 #elif defined(AZ_RESTRICTED_PLATFORM)
@@ -553,11 +561,11 @@ static ESystemConfigPlatform GetDevicePlatform()
 #undef AZ_RESTRICTED_SECTION_IMPLEMENTED
 #elif defined(AZ_PLATFORM_ANDROID)
     return CONFIG_ANDROID;
-#elif defined(AZ_PLATFORM_APPLE_IOS)
+#elif defined(AZ_PLATFORM_IOS)
     return CONFIG_IOS;
 #elif defined(AZ_PLATFORM_APPLE_TV)
     return CONFIG_APPLETV;
-#elif defined(AZ_PLATFORM_APPLE_OSX)
+#elif defined(AZ_PLATFORM_MAC)
     return CONFIG_OSX_METAL;
 #else
     AZ_Assert(false, "Platform not supported");
@@ -742,7 +750,7 @@ static void LoadDetectedSpec(ICVar* pVar)
         }
         case CONFIG_IOS:
         {
-#if defined(AZ_PLATFORM_APPLE_IOS)
+#if defined(AZ_PLATFORM_IOS)
             AZStd::string file;
             if (MobileSysInspect::GetAutoDetectedSpecName(file))
             {
@@ -1580,7 +1588,7 @@ bool CSystem::InitRenderer(WIN_HINSTANCE hinst, WIN_HWND hwnd, const SSystemInit
         return false;
     }
 
-#if defined(AZ_PLATFORM_APPLE_IOS) || defined(AZ_PLATFORM_ANDROID)
+#if defined(AZ_PLATFORM_IOS) || defined(AZ_PLATFORM_ANDROID)
     if (m_rWidthAndHeightAsFractionOfScreenSize->GetFlags() & VF_WASINCONFIG)
     {
         int displayWidth = 0;
@@ -1623,7 +1631,7 @@ bool CSystem::InitRenderer(WIN_HINSTANCE hinst, WIN_HWND hwnd, const SSystemInit
             m_rHeight->Set(displayHeight);
         }
     }
-#endif // defined(AZ_PLATFORM_APPLE_IOS) || defined(AZ_PLATFORM_ANDROID)
+#endif // defined(AZ_PLATFORM_IOS) || defined(AZ_PLATFORM_ANDROID)
 
     if (m_env.pRenderer)
     {
@@ -2259,7 +2267,7 @@ bool CSystem::LaunchAssetProcessor()
 
 #if defined(AZ_PLATFORM_WINDOWS)
     static const char* asset_processor_ext = ".exe";
-#elif defined(AZ_PLATFORM_APPLE_OSX)
+#elif defined(AZ_PLATFORM_MAC)
     static const char* asset_processor_ext = ".app";
 #else
     static const char* asset_processor_ext = "";
@@ -2320,7 +2328,7 @@ bool CSystem::LaunchAssetProcessor()
     }
 
     return true;
-#elif defined(AZ_PLATFORM_APPLE_OSX)
+#elif defined(AZ_PLATFORM_MAC)
     char full_launch_command[AZ_MAX_PATH_LEN] = { 0 };
     if (appRoot != nullptr)
     {
@@ -2333,7 +2341,7 @@ bool CSystem::LaunchAssetProcessor()
 
     int error = system(full_launch_command);
     return (error == 0);
-#endif // AZ_PLATFORM_APPLE_OSX
+#endif // AZ_PLATFORM_MAC
 #endif // REMOTE_ASSET_PROCESSOR
     AZ_Assert(false, "Could not start Asset Processor; platform not supported");
     return false;
@@ -2406,7 +2414,7 @@ bool CSystem::ConnectToAssetProcessor(const SSystemInitParams& initParams, bool 
             AZStd::chrono::system_clock::time_point start, last;
             start = last = AZStd::chrono::system_clock::now();
             bool isAssetProcessorLaunched = false;
-#if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_APPLE)
+#if defined(AZ_PLATFORM_WINDOWS) || AZ_TRAIT_OS_PLATFORM_APPLE
             //poll, wait for either connection or failure/timeout
             //we don't care if we actually connected and the negotiation failed until
             //the last check. This will give the user the maximum amount of time to
@@ -2691,8 +2699,32 @@ bool CSystem::InitFileSystem(const SSystemInitParams& initParams)
 
         if (allowedRemoteIO)
         {
-            delete m_env.pFileIO;
-            m_env.pFileIO = new AZ::IO::RemoteFileIO();
+            m_env.pFileIO = new AZ::IO::RemoteFileIO(m_env.pFileIO); //use the local file io for exclusion io
+            
+            const AZ::IO::StreamStack::Preferences* preferences = nullptr;
+            AZ::StreamerComponentRequests::Bus::BroadcastResult(preferences, &AZ::StreamerComponentRequests::GetPreferences);
+            AZ_Assert(preferences, "Unable to retrieve AZ::IO::Streamer configuration preferences.");
+            if (preferences)
+            {
+                AZ::u32 fileHandleCacheSize;
+                switch (preferences->m_fileHandleCache)
+                {
+                case AZ::IO::StreamStack::FileHandleCache::Small:
+                    fileHandleCacheSize = 1;
+                    break;
+                case AZ::IO::StreamStack::FileHandleCache::Balanced:
+                    fileHandleCacheSize = 32;
+                    break;
+                case AZ::IO::StreamStack::FileHandleCache::Large:
+                    fileHandleCacheSize = 1024;
+                    break;
+                default:
+                    AZ_Assert(false, "Unsupported FileHandleCache type %i.", preferences->m_fileHandleCache);
+                    return false;
+                }
+                auto remoteDrive = AZStd::make_shared<AZ::IO::RemoteStorageDrive>(fileHandleCacheSize);
+                AZ::IO::Streamer::Instance().ReplaceStreamStackEntry("Virtual File System", remoteDrive);
+            }
         }
 
         if (engineConnection->IsConnected())
@@ -3283,10 +3315,14 @@ void CSystem::OpenBasicPaks()
     // After game paks to have same search order as with files on disk
     m_env.pCryPak->OpenPack(assetsDir, "Engine.pak");
 
-    #if defined(AZ_RESTRICTED_PLATFORM) && defined(AZ_PLATFORM_PROVO)
-        #define AZ_RESTRICTED_SECTION SYSTEMINIT_CPP_SECTION_15
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION SYSTEMINIT_CPP_SECTION_15
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/SystemInit_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/SystemInit_cpp_provo.inl"
     #endif
+#endif
 
     m_env.pCryPak->OpenPack(assetsDir, shaderCachePakDir);
     m_env.pCryPak->OpenPack(assetsDir, shaderCacheStartupPakDir);
@@ -3541,11 +3577,11 @@ static bool CheckCPURequirements(CCpuFeatures* pCpu, CSystem* pSystem)
 /////////////////////////////////////////////////////////////////////////////////
 bool CSystem::Init(const SSystemInitParams& startupParams)
 {
-#ifdef AZ_PLATFORM_APPLE
+#if AZ_TRAIT_OS_PLATFORM_APPLE
     signal(SIGSEGV, CryEngineSignalHandler);
     signal(SIGTRAP, CryEngineSignalHandler);
     signal(SIGILL, CryEngineSignalHandler);
-#endif // #ifdef AZ_PLATFORM_APPLE
+#endif // AZ_TRAIT_OS_PLATFORM_APPLE
 
     LOADING_TIME_PROFILE_SECTION;
 
@@ -3970,7 +4006,7 @@ bool CSystem::Init(const SSystemInitParams& startupParams)
 
         // Need to load the engine.pak that includes the config files needed during initialization
         m_env.pCryPak->OpenPack("@assets@", "Engine.pak");
-#if defined(AZ_PLATFORM_ANDROID) || defined(AZ_PLATFORM_APPLE_IOS)
+#if defined(AZ_PLATFORM_ANDROID) || defined(AZ_PLATFORM_IOS)
         MobileSysInspect::LoadDeviceSpecMapping();
 #endif    
 
@@ -4258,7 +4294,7 @@ bool CSystem::Init(const SSystemInitParams& startupParams)
                         m_env.pRenderer->EndFrame();
                     }
 
-#if defined(AZ_PLATFORM_APPLE_IOS) || defined(AZ_PLATFORM_APPLE_TV) || defined(AZ_PLATFORM_APPLE_OSX)
+#if defined(AZ_PLATFORM_IOS) || defined(AZ_PLATFORM_APPLE_TV) || defined(AZ_PLATFORM_MAC)
                     // Pump system events in order to update the screen
                     AzFramework::ApplicationRequests::Bus::Broadcast(&AzFramework::ApplicationRequests::PumpSystemEventLoopUntilEmpty);
 #endif
@@ -4775,11 +4811,16 @@ bool CSystem::Init(const SSystemInitParams& startupParams)
         InlineInitializationProcessing("CSystem::Init ZLibDecompressor");
 
         //////////////////////////////////////////////////////////////////////////
-        // Zlib decompressor
+        // LZ4 decompressor
         m_pILZ4Decompressor = new CLZ4Decompressor();
 
         InlineInitializationProcessing("CSystem::Init LZ4Decompressor");
 
+        //////////////////////////////////////////////////////////////////////////
+        // ZStd decompressor
+        m_pIZStdDecompressor = new CZStdDecompressor();
+
+        InlineInitializationProcessing("CSystem::Init ZStdDecompressor");
         //////////////////////////////////////////////////////////////////////////
         // Create PerfHUD
         //////////////////////////////////////////////////////////////////////////
@@ -6347,6 +6388,10 @@ void CSystem::CreateSystemVars()
     REGISTER_CVAR2("sys_streaming_max_finalize_per_frame", &g_cvars.sys_streaming_max_finalize_per_frame, 0, VF_NULL,
         "Maximum stream finalizing calls per frame to reduce the CPU impact on main thread (0 to disable)");
     REGISTER_CVAR2("sys_streaming_max_bandwidth", &g_cvars.sys_streaming_max_bandwidth, 0, VF_NULL, "Enables capping of max streaming bandwidth in MB/s");
+    REGISTER_CVAR2("az_streaming_stats", &g_cvars.az_streaming_stats, 0, VF_NULL, "Show stats from AZ::IO::Streamer\n"
+        "0=off\n"
+        "1=on\n"
+    );
     REGISTER_CVAR2("sys_streaming_debug", &g_cvars.sys_streaming_debug, 0, VF_NULL, "Enable streaming debug information\n"
         "0=off\n"
         "1=Streaming Stats\n"

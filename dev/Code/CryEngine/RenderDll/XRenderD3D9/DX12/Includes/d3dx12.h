@@ -3,9 +3,9 @@
 * its licensors.
 *
 * For complete copyright and license terms please see the LICENSE at the root of this
-* distribution(the "License").All use of this software is governed by the License,
-* or, if provided, by the license below or the license accompanying this file.Do not
-* remove or modify any license notices.This file is distributed on an "AS IS" BASIS,
+* distribution (the "License"). All use of this software is governed by the License,
+* or, if provided, by the license below or the license accompanying this file. Do not
+* remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
@@ -1464,11 +1464,11 @@ inline void MemcpySubresource(
         const BYTE* pSrcSlice = reinterpret_cast<const BYTE*>(pSrc->pData) + pSrc->SlicePitch * z;
         for (UINT y = 0; y < NumRows; ++y)
         {
-			// CryDX12 Integrate: Replace last parameter RowSizeInBytes with RowPitch, RowSizeInBytes is Dest memory pitch, RowPitch is Src memory pitch,
-			// Copying with RowSizeInBytes would have read beyond the memory boundary and wasted bandwidth.
+            // CryDX12 Integrate: Replace last parameter RowSizeInBytes with RowPitch, RowSizeInBytes is Dest memory pitch, RowPitch is Src memory pitch,
+            // Copying with RowSizeInBytes would have read beyond the memory boundary and wasted bandwidth.
             memcpy(pDestSlice + pDest->RowPitch * y,
                 pSrcSlice + pSrc->RowPitch * y,
-				pSrc->RowPitch); 
+                pSrc->RowPitch); 
         }
     }
 }

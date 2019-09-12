@@ -162,6 +162,10 @@ namespace InAppPurchases
         { "nativePurchaseConsumed", "(Ljava/lang/String;)V", (void*)PurchaseConsumed }
     };
 
+    InAppPurchasesInterface* InAppPurchasesInterface::CreateInstance()
+    {
+        return new InAppPurchasesAndroid();
+    }
 
     void InAppPurchasesAndroid::Initialize()
     {

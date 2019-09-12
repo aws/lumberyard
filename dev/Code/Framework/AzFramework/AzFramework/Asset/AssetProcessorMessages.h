@@ -81,7 +81,7 @@ namespace AzFramework
 
             NegotiationMessage() = default;
             unsigned int GetMessageType() const override;
-            int m_apiVersion = 6; // Changing the value will cause negotiation to fail between incompatible versions
+            int m_apiVersion = 7; // Changing the value will cause negotiation to fail between incompatible versions
             AZ::OSString m_identifier;
             typedef AZStd::unordered_map<unsigned int, AZ::OSString> NegotiationInfoMap;
             NegotiationInfoMap m_negotiationInfoMap;
@@ -417,12 +417,15 @@ namespace AzFramework
         public:
             enum NotificationType : unsigned int
             {
-                AssetChanged,
-                AssetRemoved,
-                JobStarted,
-                JobCompleted,
-                JobFailed,
-                JobCount,
+                AssetChanged, //< Indicates an asset (product) has been changed.
+                AssetRemoved, //< Indicates an asset (product) is no longer available.
+                JobFileClaimed, //< Indicates the Asset Processor is claiming full ownership of a file as it's about
+                                //< to update it, which can mean creating, overwriting or deleting it.
+                JobFileReleased, //< Indicates the Asset Processor releases the claim it previous requested with JobFileClaim
+                JobStarted, //< Indicates processing of a source file has started.
+                JobCompleted, //< Indicates processing of a source file has completed.
+                JobFailed, //< Indicates processing of a source file has failed.
+                JobCount, //< Returns the number of jobs that are pending. The count will be returned as a string.
             };
 
             AZ_CLASS_ALLOCATOR(AssetNotificationMessage, AZ::OSAllocator, 0);

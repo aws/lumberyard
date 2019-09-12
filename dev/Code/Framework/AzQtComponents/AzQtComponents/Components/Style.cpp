@@ -54,12 +54,17 @@
 #include <QLineEdit>
 #include <QHeaderView>
 #include <QComboBox>
+AZ_PUSH_DISABLE_WARNING(4251 4800, "-Wunknown-warning-option") // 4251: 'QTextStream::d_ptr': class 'QScopedPointer<QTextStreamPrivate,QScopedPointerDeleter<T>>' needs to have dll-interface to be used by clients of class 'QTextStream'
+                                                               // 4800: 'int': forcing value to bool 'true' or 'false' (performance warning)
 #include <QDebug>
+AZ_POP_DISABLE_WARNING
 #include <QKeyEvent>
 #include <QTextEdit>
 #include <QKeySequenceEdit>
 
+AZ_PUSH_DISABLE_WARNING(4251, "-Wunknown-warning-option") // 4251: 'QCss::Declaration::d': class 'QExplicitlySharedDataPointer<QCss::Declaration::DeclarationData>' needs to have dll-interface to be used by clients of struct 'QCss::Declaration'
 #include <QtWidgets/private/qstylesheetstyle_p.h>
+AZ_POP_DISABLE_WARNING
 
 namespace AzQtComponents
 {

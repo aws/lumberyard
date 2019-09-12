@@ -80,6 +80,7 @@ namespace ScriptEvents
         // ScriptEvents::ScriptEventBus::Handler
         AZStd::intrusive_ptr<Internal::ScriptEvent> RegisterScriptEvent(const AZ::Data::AssetId& assetId, AZ::u32 version) override;
         void RegisterScriptEventFromDefinition(const ScriptEvents::ScriptEvent& definition) override;
+        void UnregisterScriptEventFromDefinition(const ScriptEvents::ScriptEvent& definition) override;
         AZStd::intrusive_ptr<Internal::ScriptEvent> GetScriptEvent(const AZ::Data::AssetId& assetId, AZ::u32 version) override;
         const FundamentalTypes* GetFundamentalTypes() override { return &m_fundamentalTypes; }
         ////////////////////////////////////////////////////////////////////////

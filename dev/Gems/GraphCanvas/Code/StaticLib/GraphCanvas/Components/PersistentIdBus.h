@@ -15,6 +15,7 @@
 #include <AzCore/std/containers/unordered_map.h>
 
 #include <GraphCanvas/Editor/EditorTypes.h>
+#include <GraphCanvas/Types/SceneMemberComponentSaveData.h>
 
 namespace GraphCanvas
 {
@@ -58,4 +59,32 @@ namespace GraphCanvas
     };
     
     using PersistentMemberRequestBus = AZ::EBus<PersistentMemberRequests>;
+
+    class PersistentIdComponentSaveData
+        : public SceneMemberComponentSaveData<PersistentIdComponentSaveData>
+    {
+        friend class PersistentIdComponent;
+    public:
+        AZ_RTTI(PersistentIdComponentSaveData, "{B1F49A35-8408-40DA-B79E-F1E3B64322CE}", SceneMemberComponentSaveData<PersistentIdComponentSaveData>);
+        AZ_CLASS_ALLOCATOR(PersistentIdComponentSaveData, AZ::SystemAllocator, 0);
+
+        PersistentIdComponentSaveData()
+            : m_persistentId(PersistentGraphMemberId::CreateRandom())
+        {
+        }
+
+        bool RequiresSave() const override
+        {
+            return true;
+        }
+
+        PersistentGraphMemberId m_persistentId;
+
+    private:
+        void RemapId()
+        {
+            m_persistentId = PersistentGraphMemberId::CreateRandom();
+            SignalDirty();
+        }
+    };
 }

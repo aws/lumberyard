@@ -9,7 +9,6 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#ifndef AZ_UNITY_BUILD
 
 #include <GridMate/Replica/Replica.h>
 #include <GridMate/Replica/ReplicaStatus.h>
@@ -85,5 +84,3 @@ namespace GridMate
         return m_options.Get().IsUpstreamSuspended();
     }
 } // namespace GridMate
-
-#endif // #ifndef AZ_UNITY_BUILD

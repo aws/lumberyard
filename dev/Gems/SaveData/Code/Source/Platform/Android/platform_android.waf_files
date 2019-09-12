@@ -1,0 +1,9 @@
+{
+    "none":
+    {
+        "Source/Platform/Android":
+        [
+            "SaveData_SystemComponent_Android.cpp"
+        ]
+    }
+}

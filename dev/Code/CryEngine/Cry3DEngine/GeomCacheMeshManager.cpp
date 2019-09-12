@@ -28,7 +28,6 @@ void CGeomCacheMeshManager::Reset()
 
 bool CGeomCacheMeshManager::ReadMeshStaticData(CGeomCacheStreamReader& reader, const GeomCacheFile::SMeshInfo& meshInfo, SGeomCacheStaticMeshData& staticMeshData) const
 {
-    FUNCTION_PROFILER_3DENGINE;
     LOADING_TIME_PROFILE_SECTION;
 
     if (staticMeshData.m_constantStreams & GeomCacheFile::eStream_Indices)
@@ -106,7 +105,6 @@ bool CGeomCacheMeshManager::ReadMeshStaticData(CGeomCacheStreamReader& reader, c
 _smart_ptr<IRenderMesh> CGeomCacheMeshManager::ConstructStaticRenderMesh(CGeomCacheStreamReader& reader,
     const GeomCacheFile::SMeshInfo& meshInfo, SGeomCacheStaticMeshData& staticMeshData, const char* pFileName)
 {
-    FUNCTION_PROFILER_3DENGINE;
     LOADING_TIME_PROFILE_SECTION;
 
     std::vector<char> vertexData(staticMeshData.m_numVertices * sizeof(SVF_P3F_C4B_T2F), 0);

@@ -14,17 +14,16 @@
 
 #include <AzCore/RTTI/RTTI.h>
 #include <AzCore/RTTI/TypeInfo.h>
-#include <AzCore/std/typetraits/function_traits.h>
-#include <AzCore/std/typetraits/add_pointer.h>
-#include <ScriptCanvas/Libraries/Libraries.h>
 #include <AzCore/std/tuple.h>
+#include <AzCore/std/typetraits/add_pointer.h>
+#include <AzCore/std/typetraits/function_traits.h>
+#include <ScriptCanvas/Libraries/Libraries.h>
+
 #include "Node.h"
 #include "Attributes.h"
 
 #pragma warning( push )
 #pragma warning( disable : 5046) // 'function' : Symbol involving type with internal linkage not defined
-
-
 
 /**
  * NodeFunctionGeneric.h
@@ -137,6 +136,25 @@ namespace ScriptCanvas
 
 namespace ScriptCanvas
 {
+    template<size_t... inputDatumIndices>
+    struct SetDefaultValuesByIndex
+    {
+        template<typename... t_Args>
+        AZ_INLINE static void _(Node& node, t_Args&&... args)
+        {
+            Help(node, AZStd::make_index_sequence<sizeof...(t_Args)>(), AZStd::forward<t_Args>(args)...);
+        }
+
+    private:
+        template<AZStd::size_t... Is, typename... t_Args>
+        AZ_INLINE static void Help(Node& node, AZStd::index_sequence<Is...>, t_Args&&... args)
+        {
+            static int indices[] = { inputDatumIndices... };
+            AZ_STATIC_ASSERT(sizeof...(Is) == AZ_ARRAY_SIZE(indices), "size of default values doesn't match input datum indices for them");
+            SCRIPT_CANVAS_CALL_ON_INDEX_SEQUENCE(*node.ModDatumByIndex(indices[Is])->template ModAs<AZStd::decay_t<t_Args>>() = AZStd::forward<t_Args>(args));
+        }
+    };
+
     // a no-op for generic function nodes that have no overrides for default input
     AZ_INLINE void NoDefaultArguments(Node&) {}
 
@@ -167,8 +185,9 @@ namespace ScriptCanvas
             if (AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(reflectContext))
             {
                 serializeContext->Class<NodeFunctionGenericMultiReturn, Node>()
-                    ->Version(0)
+                    ->Version(1, &VersionConverter)
                     ->Attribute(AZ::Script::Attributes::Deprecated, t_Traits::IsDeprecated())
+                    ->Field("Initialized", &NodeFunctionGenericMultiReturn::m_initialized)
                     ;
 
                 if (AZ::EditContext* editContext = serializeContext->GetEditContext())
@@ -195,20 +214,50 @@ namespace ScriptCanvas
         }
 
     protected:
+
+        template<typename ArgType, size_t Index>
+        void CreateDataSlot(const ConnectionType& connectionType)
+        {
+            DataSlotConfiguration slotConfiguration;
+
+            slotConfiguration.m_name = AZStd::string::format("%s: %s", Data::Traits<ArgType>::GetName().data(), t_Traits::GetArgName(Index));
+            slotConfiguration.ConfigureDatum(AZStd::move(Datum(Data::FromAZType(Data::Traits<ArgType>::GetAZType()), Datum::eOriginality::Copy)));
+
+            slotConfiguration.SetConnectionType(connectionType);
+            AddSlot(slotConfiguration);
+        }
+
         template<typename... t_Args, AZStd::size_t... Is>
         void AddInputDatumSlotHelper(AZStd::Internal::pack_traits_arg_sequence<t_Args...>, AZStd::index_sequence<Is...>)
         {
             static_assert(sizeof...(t_Args) == sizeof...(Is), "Argument size mismatch in NodeFunctionGenericMultiReturn");
             static_assert(sizeof...(t_Args) == t_Traits::s_numArgs, "Number of arguments does not match number of argument names in NodeFunctionGenericMultiReturn");
-            SCRIPT_CANVAS_CALL_ON_INDEX_SEQUENCE(AddInputDatumSlot(AZStd::string::format("%s: %s", Data::Traits<t_Args>::GetName().data(), t_Traits::GetArgName(Is)).c_str(), "", Data::FromAZType(Data::Traits<t_Args>::GetAZType()), Datum::eOriginality::Copy));
+
+            SCRIPT_CANVAS_CALL_ON_INDEX_SEQUENCE(
+                (CreateDataSlot<t_Args, Is>(ConnectionType::Input))
+            );
         } 
 
         void ConfigureSlots() override
         {
-            AddSlot("In", "", SlotType::ExecutionIn);
-            AddSlot("Out", "", SlotType::ExecutionOut);
+            {
+                ExecutionSlotConfiguration slotConfiguration("In", ConnectionType::Input);
+                AddSlot(slotConfiguration);
+            }
+
+            {
+                ExecutionSlotConfiguration slotConfiguration("Out", ConnectionType::Output);
+                AddSlot(slotConfiguration);
+            }
+            
             AddInputDatumSlotHelper(typename AZStd::function_traits<t_Func>::arg_sequence{}, AZStd::make_index_sequence<AZStd::function_traits<t_Func>::arity>{});
-            defaultsFunction(*this);
+
+            if (!m_initialized)
+            {
+                m_initialized = true;
+                defaultsFunction(*this);
+            }
+
             MultipleOutputInvoker<t_Func, function, t_Traits>::Add(*this);
         }
 
@@ -218,9 +267,13 @@ namespace ScriptCanvas
             SignalOutput(GetSlotId("Out"));
         }
 
-        void Visit(NodeVisitor& visitor) const override { visitor.Visit(*this); }
 
+        static bool VersionConverter(AZ::SerializeContext& serializeContext, AZ::SerializeContext::DataElementNode& rootElement);
         static bool ConvertOldNodeGeneric(AZ::SerializeContext& serializeContext, AZ::SerializeContext::DataElementNode& rootElement);
+
+    private:
+
+        bool m_initialized = false;
     }; // class NodeFunctionGenericMultiReturn
     
     template<typename... t_Node>
@@ -262,6 +315,17 @@ namespace ScriptCanvas
         {
             AZ_Error("Script Canvas", false, "Unable to add base class node element to %s", RTTI_TypeName());
             return false;
+        }
+
+        return true;
+    }
+
+    template<typename t_Func, typename t_Traits, t_Func function, typename t_DefaultFunc, t_DefaultFunc defaultsFunction>
+    bool NodeFunctionGenericMultiReturn<t_Func, t_Traits, function, t_DefaultFunc, defaultsFunction>::VersionConverter(AZ::SerializeContext& serializeContext, AZ::SerializeContext::DataElementNode& rootElement)
+    {
+        if (rootElement.GetVersion() < 1)
+        {
+            rootElement.AddElementWithData(serializeContext, "Initialized", true);
         }
 
         return true;

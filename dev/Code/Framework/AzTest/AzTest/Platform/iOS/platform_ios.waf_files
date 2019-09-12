@@ -1,0 +1,7 @@
+{
+    "auto": {
+        "Platform/iOS": [
+            "../Common/Unimplemented/Platform_Unimplemented.cpp"
+        ]
+    }
+}

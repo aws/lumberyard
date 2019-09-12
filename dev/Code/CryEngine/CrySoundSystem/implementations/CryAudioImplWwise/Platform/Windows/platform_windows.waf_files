@@ -1,0 +1,12 @@
+{
+    "auto":
+    {
+        "Platform/Windows":
+        [
+            "../Common/Unimplemented/CryAudioImplWwise_Unimplemented.cpp",
+            "AudioSystemImpl_wwise_Windows.cpp",
+            "CryAudioImplWwise_Traits_Platform.h",
+            "CryAudioImplWwise_Traits_Windows.h"
+        ]
+    }
+}

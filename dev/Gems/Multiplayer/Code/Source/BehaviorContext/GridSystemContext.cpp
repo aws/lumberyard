@@ -17,26 +17,15 @@
 
 #include "Multiplayer/GridMateServiceWrapper/GridMateLANServiceWrapper.h"
 
-#if defined(AZ_RESTRICTED_PLATFORM) || defined(AZ_TOOLS_EXPAND_FOR_RESTRICTED_PLATFORMS)
-#undef AZ_RESTRICTED_SECTION
-#define GRIDSYSTEMCONTEXT_CPP_SECTION_1 1
-#define GRIDSYSTEMCONTEXT_CPP_SECTION_2 2
-#define GRIDSYSTEMCONTEXT_CPP_SECTION_3 3
-#define GRIDSYSTEMCONTEXT_CPP_SECTION_4 4
-#define GRIDSYSTEMCONTEXT_CPP_SECTION_5 5
-#define GRIDSYSTEMCONTEXT_CPP_SECTION_6 6
-#define GRIDSYSTEMCONTEXT_CPP_SECTION_7 7
-#define GRIDSYSTEMCONTEXT_CPP_SECTION_8 8
-#endif
+#include <Multiplayer_Traits_Platform.h>
+#include <Multiplayer_GridMateServiceWrapper_Platform.h>
 
-#if defined(AZ_RESTRICTED_PLATFORM)
-#define AZ_RESTRICTED_SECTION GRIDSYSTEMCONTEXT_CPP_SECTION_1
-    #if defined(AZ_PLATFORM_XENIA)
-        #include "Xenia/GridSystemContext_cpp_xenia.inl"
-    #elif defined(AZ_PLATFORM_PROVO)
-        #include "Provo/GridSystemContext_cpp_provo.inl"
-    #endif
-#endif
+// Forward declarations for platform operations
+namespace Platform
+{
+    bool FetchParam(const char* key, const Multiplayer::SessionDesc& sessionDesc, GridMate::GridSessionParam& p);
+}
+
 #include "Multiplayer/MultiplayerUtils.h"
 
 namespace Multiplayer
@@ -188,13 +177,12 @@ namespace Multiplayer
             carrierDesc.m_disconnectDetectionRttThreshold = gridMateServiceParams.FetchValueOrDefault<float>("gm_disconnectDetectionRttThreshold", 500.0f);
             carrierDesc.m_disconnectDetectionPacketLossThreshold = gridMateServiceParams.FetchValueOrDefault<float>("gm_disconnectDetectionPacketLossThreshold", 0.3f);
 
-#if defined(AZ_RESTRICTED_PLATFORM)
-#define AZ_RESTRICTED_SECTION GRIDSYSTEMCONTEXT_CPP_SECTION_2
-    #if defined(AZ_PLATFORM_XENIA)
-        #include "Xenia/GridSystemContext_cpp_xenia.inl"
-    #elif defined(AZ_PLATFORM_PROVO)
-        #include "Provo/GridSystemContext_cpp_provo.inl"
-    #endif
+#if AZ_TRAIT_MULTIPLAYER_ASSIGN_NETWORK_FAMILY
+ #if AZ_TRAIT_MULTIPLAYER_GRID_SYSTEM_CHECK_SECURITY_DATA_ENABLE
+        AZ_TRAIT_MULTIPLAYER_GRID_SYSTEM_CHECK_SECURITY_DATA(AZ_TRAIT_MULTIPLAYER_SESSION_NAME, AZ_TRAIT_MULTIPLAYER_GRID_SYSTEM_CHECK_SECURITY_DATA_MESSAGE);
+ #endif
+        AZ_Error(AZ_TRAIT_MULTIPLAYER_SESSION_NAME, carrierDesc.m_familyType == AZ_TRAIT_MULTIPLAYER_ADDRESS_TYPE, AZ_TRAIT_MULTIPLAYER_DRIVER_MESSAGE);
+        carrierDesc.m_familyType = AZ_TRAIT_MULTIPLAYER_ADDRESS_TYPE;
 #endif
         }
 
@@ -235,19 +223,7 @@ namespace Multiplayer
                     }
                     else if (!strcmp(param, "gm_ipversion"))
                     {
-#if defined(AZ_RESTRICTED_PLATFORM)
-#define AZ_RESTRICTED_SECTION GRIDSYSTEMCONTEXT_CPP_SECTION_3
-    #if defined(AZ_PLATFORM_XENIA)
-        #include "Xenia/GridSystemContext_cpp_xenia.inl"
-    #elif defined(AZ_PLATFORM_PROVO)
-        #include "Provo/GridSystemContext_cpp_provo.inl"
-    #endif
-#endif
-#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
-#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
-#else
-                        p.SetValue(GridMate::Driver::BSD_AF_INET);
-#endif
+                        p.SetValue(AZ_TRAIT_MULTIPLAYER_ADDRESS_TYPE);
                     }
                     return p;
                 };
@@ -318,15 +294,13 @@ namespace Multiplayer
                 behaviorContext->Class<GridMate::ServiceType>("GridServiceType")
                     ->Enum<(int)GridMate::ST_LAN>("LAN")
 #if defined(AZ_TOOLS_EXPAND_FOR_RESTRICTED_PLATFORMS)
-#if defined(TOOLS_SUPPORT_XENIA)
-#define AZ_RESTRICTED_SECTION GRIDSYSTEMCONTEXT_CPP_SECTION_8
-    #include "Xenia/GridSystemContext_cpp_xenia.inl"
+    #define AZ_RESTRICTED_PLATFORM_EXPANSION(CodeName, CODENAME, codename, PrivateName, PRIVATENAME, privatename, PublicName, PUBLICNAME, publicname, PublicAuxName1, PublicAuxName2, PublicAuxName3)\
+        ->Enum<GridMate::ST_##CODENAME>(PublicAuxName2)
+
+        AZ_TOOLS_EXPAND_FOR_RESTRICTED_PLATFORMS
+#undef AZ_RESTRICTED_PLATFORM_EXPANSION
 #endif
-#if defined(TOOLS_SUPPORT_PROVO)
-#define AZ_RESTRICTED_SECTION GRIDSYSTEMCONTEXT_CPP_SECTION_8
-    #include "Provo/GridSystemContext_cpp_provo.inl"
-#endif
-#endif
+                    ->Enum<(int)GridMate::ST_STEAM>("Steam")
                     ;
 
                 // expose the parameters for a GridSession
@@ -370,19 +344,7 @@ namespace Multiplayer
             }
             else if (!strcmp(key, "gm_ipversion"))
             {
-#if defined(AZ_RESTRICTED_PLATFORM)
-#define AZ_RESTRICTED_SECTION GRIDSYSTEMCONTEXT_CPP_SECTION_4
-    #if defined(AZ_PLATFORM_XENIA)
-        #include "Xenia/GridSystemContext_cpp_xenia.inl"
-    #elif defined(AZ_PLATFORM_PROVO)
-        #include "Provo/GridSystemContext_cpp_provo.inl"
-    #endif
-#endif
-#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
-#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
-#else
-                p.SetValue(GridMate::Driver::BSD_AF_INET);
-#endif
+                p.SetValue(AZ_TRAIT_MULTIPLAYER_ADDRESS_TYPE);
             }
             else if (!strcmp(key, "gm_disconnectDetection"))
             {
@@ -402,14 +364,10 @@ namespace Multiplayer
                     p.SetValue(gEnv->pConsole->GetCVar("gm_disconnectDetectionPacketLossThreshold")->GetFVal());
                 }
             }
-#if defined(AZ_RESTRICTED_PLATFORM)
-#define AZ_RESTRICTED_SECTION GRIDSYSTEMCONTEXT_CPP_SECTION_5
-    #if defined(AZ_PLATFORM_XENIA)
-        #include "Xenia/GridSystemContext_cpp_xenia.inl"
-    #elif defined(AZ_PLATFORM_PROVO)
-        #include "Provo/GridSystemContext_cpp_provo.inl"
-    #endif
-#endif
+            else if (Platform::FetchParam(key, sessionDesc, p))
+            {
+                return true;
+            }
             return !p.m_value.empty();
         }
 
@@ -436,13 +394,12 @@ namespace Multiplayer
                 carrierDesc.m_disconnectDetectionPacketLossThreshold = gridMateServiceParams.FetchValueOrDefault<float>("gm_disconnectDetectionPacketLossThreshold", 0.3f);
             }
 
-#if defined(AZ_RESTRICTED_PLATFORM)
-#define AZ_RESTRICTED_SECTION GRIDSYSTEMCONTEXT_CPP_SECTION_6
-    #if defined(AZ_PLATFORM_XENIA)
-        #include "Xenia/GridSystemContext_cpp_xenia.inl"
-    #elif defined(AZ_PLATFORM_PROVO)
-        #include "Provo/GridSystemContext_cpp_provo.inl"
-    #endif
+#if AZ_TRAIT_MULTIPLAYER_ASSIGN_NETWORK_FAMILY
+ #if AZ_TRAIT_MULTIPLAYER_GRID_SYSTEM_CHECK_SECURITY_DATA_ENABLE
+            AZ_TRAIT_MULTIPLAYER_GRID_SYSTEM_CHECK_SECURITY_DATA(AZ_TRAIT_MULTIPLAYER_SESSION_NAME, AZ_TRAIT_MULTIPLAYER_GRID_SYSTEM_CHECK_SECURITY_DATA_MESSAGE);
+ #endif
+            AZ_Error(AZ_TRAIT_MULTIPLAYER_SESSION_NAME, carrierDesc.m_familyType == AZ_TRAIT_MULTIPLAYER_ADDRESS_TYPE, AZ_TRAIT_MULTIPLAYER_DRIVER_MESSAGE);
+            carrierDesc.m_familyType = AZ_TRAIT_MULTIPLAYER_ADDRESS_TYPE;
 #endif
         }
 
@@ -455,13 +412,9 @@ namespace Multiplayer
             {
             case GridMate::ST_LAN:
                 return aznew GridMateLANServiceWrapper();
-#if defined(AZ_RESTRICTED_PLATFORM)
-#define AZ_RESTRICTED_SECTION GRIDSYSTEMCONTEXT_CPP_SECTION_7
-    #if defined(AZ_PLATFORM_XENIA)
-        #include "Xenia/GridSystemContext_cpp_xenia.inl"
-    #elif defined(AZ_PLATFORM_PROVO)
-        #include "Provo/GridSystemContext_cpp_provo.inl"
-    #endif
+#if AZ_TRAIT_MULTIPLAYER_GRID_SYSTEM_HAS_PLATFORM_SERVICE_WRAPPER
+            case GridMate::AZ_TRAIT_MULTIPLAYER_GRIDMATE_SERVICE_TYPE_ENUM:
+                return aznew AZ_TRAIT_MULTIPLAYER_GRID_SYSTEM_HAS_PLATFORM_SERVICE_TYPE_CLASS();
 #endif
             default:
                 AZ_Assert(false, "Unsupported GridMate::ServiceType of %d", gridServiceType);

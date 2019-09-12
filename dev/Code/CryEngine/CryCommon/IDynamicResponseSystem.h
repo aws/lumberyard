@@ -34,7 +34,7 @@ struct IComponentDynamicResponse
     virtual DRS::IVariableCollection* GetLocalVariableCollection() const = 0;
 };
 
-DECLARE_COMPONENT_POINTERS(IComponentDynamicResponse);
+DECLARE_SMART_POINTERS(IComponentDynamicResponse);
 
 
 namespace DRS

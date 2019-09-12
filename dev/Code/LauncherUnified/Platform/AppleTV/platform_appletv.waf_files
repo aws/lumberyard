@@ -1,13 +1,18 @@
 {
-   "none":{
-      "Header Files":[
-         "../AppleLaunchersCommon/AppleLauncher.h"
-      ],
-      "Source Files":[
-         "../AppleLaunchersCommon/AppleLauncher.cpp",
-         "AppleTVLumberyardApplication.mm",
-         "AppleTVLumberyardApplicationDelegate.mm",
-         "main.cpp"
+   "none":
+   {
+      "Source/Platform/AppleTV":
+      [
+            "Launcher_AppleTV.mm",
+            "Launcher_Traits_AppleTV.h",
+            "Launcher_Traits_Platform.h",
+            "LumberyardApplication_AppleTV.mm",
+            "LumberyardApplicationDelegate_AppleTV.mm",
+            "../Common/Apple/Launcher_Apple.mm",
+            "../Common/Apple/Launcher_Apple.h",
+            "../Common/UnixLike/Launcher_UnixLike.cpp",
+            "../Common/UnixLike/Launcher_UnixLike.h"
+
       ]
    }
 }

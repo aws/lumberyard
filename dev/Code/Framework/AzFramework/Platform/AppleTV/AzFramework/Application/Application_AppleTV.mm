@@ -10,7 +10,7 @@
 *
 */
 
-#include <AzFramework/API/ApplicationAPI_appletv.h>
+#include <AzFramework/API/ApplicationAPI_Platform.h>
 #include <AzFramework/Application/Application.h>
 
 #include <UIKit/UIKit.h>
@@ -56,7 +56,13 @@ namespace AzFramework
     ////////////////////////////////////////////////////////////////////////////////////////////////
     const char* Application::Implementation::GetAppRootPath()
     {
-        return nullptr;
+        static char pathToAssets[AZ_MAX_PATH_LEN] = { 0 };
+        if (*pathToAssets == 0)
+        {
+            const char* pathToResources = [[[NSBundle mainBundle] resourcePath] UTF8String];
+            azsnprintf(pathToAssets, AZ_MAX_PATH_LEN, "%s/assets", pathToResources);
+        }
+        return pathToAssets;
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////

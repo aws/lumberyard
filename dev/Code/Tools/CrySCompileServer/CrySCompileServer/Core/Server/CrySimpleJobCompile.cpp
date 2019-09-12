@@ -36,7 +36,7 @@
 #include <fstream>
 #include <sstream>
 
-#if defined(AZ_RESTRICTED_PLATFORM)
+#if defined(AZ_TOOLS_EXPAND_FOR_RESTRICTED_PLATFORMS)
 #undef AZ_RESTRICTED_SECTION
 #define CRYSIMPLEJOBCOMPILE_CPP_SECTION_1 1
 #endif
@@ -380,7 +380,7 @@ bool CCrySimpleJobCompile::Compile(const TiXmlElement* pElement, std::vector<uin
 
         AZStd::string commandStringToFormat = compilerPath + compilerExecutable;
         
-#if defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_APPLE_OSX)
+#if defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_MAC)
         // Surrounding compiler path+executable with quotes to support spaces in the path.
         // NOTE: Executable has a space at the end on purpose, inserting quote before.
         commandStringToFormat.insert(0, "\"");
@@ -462,10 +462,16 @@ bool CCrySimpleJobCompile::Compile(const TiXmlElement* pElement, std::vector<uin
 
     AZStd::string hardwareTarget;
 
-    #if defined(AZ_RESTRICTED_PLATFORM) && defined(AZ_PLATFORM_PROVO)
+#if defined(AZ_TOOLS_EXPAND_FOR_RESTRICTED_PLATFORMS)
+    #if defined(TOOLS_SUPPORT_XENIA)
+        #define AZ_RESTRICTED_SECTION CRYSIMPLEJOBCOMPILE_CPP_SECTION_1
+        #include "Xenia/CrySimpleJobCompile_cpp_xenia.inl"
+    #endif
+    #if defined(TOOLS_SUPPORT_PROVO)
         #define AZ_RESTRICTED_SECTION CRYSIMPLEJOBCOMPILE_CPP_SECTION_1
         #include "Provo/CrySimpleJobCompile_cpp_provo.inl"
     #endif
+#endif
 
     int64_t t0 = g_Timer.GetTime();
 

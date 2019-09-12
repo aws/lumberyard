@@ -393,6 +393,7 @@ class package_task(Task):
 
     color = 'CYAN'
     optional = False
+    nocache = True
 
     def __init__(self, *k, **kw):
         """
@@ -750,6 +751,8 @@ class PackageContext(LmbrInstallContext):
         """
         Creates a package task using the old feature method
         """
+        self.process_restricted_settings(kw)
+
         if self.is_platform_and_config_valid(**kw):
             self(features='package_{}'.format(self.platform), group='packaging')
 
@@ -926,6 +929,14 @@ class PackageContext(LmbrInstallContext):
                     # the glob again to see if we pick up the dependent library
                     Logs.debug('package: Processing AWS lib so changing name to lib*{}*.dylib'.format(dependency.replace('_','-')))
                     depend_nodes = source_location.ant_glob('lib*' + dependency.replace('_','-') + '*.dylib', ignorecase=True)
+                    if depend_nodes and len(depend_nodes) > 0:
+                        source_node = source_location
+                        break
+
+                elif 'PHYSX_SDK_SHARED' == dependency:
+                    # This is a special dependency that requests all PhysX SDK libraries to be dependencies.
+                    Logs.debug('package: Processing PHYSX_SDK. Getting all PhysX SDK libs...')
+                    depend_nodes = source_location.ant_glob("libPhysX*.dylib", ignorecase=True) 
                     if depend_nodes and len(depend_nodes) > 0:
                         source_node = source_location
                         break

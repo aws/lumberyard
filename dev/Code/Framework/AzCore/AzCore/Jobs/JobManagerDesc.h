@@ -29,22 +29,9 @@ namespace AZ
         int     m_cpuId;
 
         /**
-         *  Windows: One of the following values:
-         *      THREAD_PRIORITY_IDLE
-         *      THREAD_PRIORITY_LOWEST
-         *      THREAD_PRIORITY_BELOW_NORMAL
-         *      THREAD_PRIORITY_NORMAL  (This is the default)
-         *      THREAD_PRIORITY_ABOVE_NORMAL
-         *      THREAD_PRIORITY_TIME_CRITICAL
+         *  Thread priority.
+         *  Defaults to the current platform's default priority
          */
-#if defined(AZ_RESTRICTED_PLATFORM)
-    #if defined(AZ_PLATFORM_XENIA)
-        #include "Xenia/JobManagerDesc_h_xenia.inl"
-    #elif defined(AZ_PLATFORM_PROVO)
-        #include "Provo/JobManagerDesc_h_provo.inl"
-    #endif
-#endif
-
         int     m_priority;
 
         /**

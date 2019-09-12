@@ -19,6 +19,8 @@
 #include <IGameFramework.h>
 #include <MainThreadRenderRequestBus.h>
 
+#include <IMaterial.h>
+
 #ifndef NULL_RENDERER
 #include "DriverD3D.h"
 #endif
@@ -1204,4 +1206,6 @@ void CShaderMan::RT_ParseShader(CShader* pSH, uint64 nMaskGen, uint32 flags, CSh
         }
     }
     pSH->m_Flags |= EF_LOADED;
+
+    EBUS_QUEUE_EVENT(AZ::MaterialNotificationEventBus, OnShaderLoaded, pSH);
 }

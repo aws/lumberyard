@@ -20,8 +20,7 @@
 namespace ScriptCanvasEditor
 {
     class EBusHandlerEventNodeDescriptorComponent
-        : public NodeDescriptorComponent
-        , protected GraphCanvas::NodeNotificationBus::Handler
+        : public NodeDescriptorComponent        
         , public EBusHandlerEventNodeDescriptorRequestBus::Handler
         , public GraphCanvas::ForcedWrappedNodeRequestBus::Handler
         , public GraphCanvas::SceneMemberNotificationBus::Handler
@@ -44,8 +43,7 @@ namespace ScriptCanvasEditor
         ScriptCanvas::EBusEventId GetEventId() const override;
         ////
 
-        // NodeNotificationBus::Handler
-        void OnAddedToScene(const AZ::EntityId& sceneId) override;        
+        // NodeNotificationBus::Handler          
         void OnNodeWrapped(const AZ::EntityId& wrappingNode) override;
         ////
 
@@ -60,7 +58,11 @@ namespace ScriptCanvasEditor
         AZ::EntityId CreateWrapperNode(const AZ::EntityId& sceneId, const AZ::Vector2& nodePosition) override;
         ////
 
-    private:
+    protected:
+
+        void OnAddedToGraphCanvasGraph(const GraphCanvas::GraphId& sceneId, const AZ::EntityId& scriptCanvasNodeId) override;
+
+    private:        
 
         NodeIdPair    m_ebusWrapper;
     

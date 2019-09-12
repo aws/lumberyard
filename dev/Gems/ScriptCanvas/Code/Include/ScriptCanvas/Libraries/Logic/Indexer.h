@@ -30,11 +30,13 @@ namespace ScriptCanvas
                 ScriptCanvas_Node(Indexer,
                     ScriptCanvas_Node::Uuid("{61E2CDC6-5CFA-47A2-8936-6A4332511E28}")
                     ScriptCanvas_Node::Description("An execution flow gate that activates each input flow in sequential order")
+                    ScriptCanvas_Node::Deprecated("This node has been deprecated due to incomplete implementation and ambiguous use case")
+                    ScriptCanvas_Node::Category("Logic/Deprecated")
                 );
 
             public:
 
-                Indexer();
+                Indexer() = default;
 
             protected:
 
@@ -52,13 +54,6 @@ namespace ScriptCanvas
 
                 // Outputs
                 ScriptCanvas_Out(ScriptCanvas_Out::Name("Out", "Signaled when the node is triggered."));
-
-                // Data
-                ScriptCanvas_Property(int, 
-                    ScriptCanvas_Property::Name("ActiveIndex", "Index of the input port which was triggered (0-7)")
-                    ScriptCanvas_Property::Output
-                    ScriptCanvas_Property::OutputStorageSpec
-                );
 
             protected:
                 void OnInputSignal(const SlotId& slot) override;

@@ -143,6 +143,11 @@ void CRGBLayer::GetSubImageStretched(const float fSrcLeft, const float fSrcTop, 
     uint32 dwDestWidth = rOutImage.GetWidth();
     uint32 dwDestHeight = rOutImage.GetHeight();
 
+    // If we're using bilinear filtering, scale our source image down by 1 pixel when filling out the destination
+    // image.  The right border and bottom border on the image will then get one pixel that matches the left and 
+    // top of the next subimage.
+    // See also InitSectorTextureSet() in terrain_sector_tex.cpp, which maps 0 to (texture size - 1) to UVs of 0-1,
+    // which accounts for that 1-pixel border on the right and bottom.
     int iBorderIncluded = bFiltered ? 1 : 0;
 
     float fScaleX = (fSrcRight - fSrcLeft) / (float)(dwDestWidth - iBorderIncluded);
@@ -186,7 +191,7 @@ bool CRGBLayer::ChangeTileResolution(const uint32 dwTileX, const uint32 dwTileY,
         return false;
     }
 
-    assert(tile->m_pTileImage);
+    AZ_Assert(tile->m_pTileImage, "Missing tile image, even after loading tile.");
 
     CImageEx newImage;
 
@@ -209,116 +214,123 @@ bool CRGBLayer::ChangeTileResolution(const uint32 dwTileX, const uint32 dwTileY,
     GetSubImageStretched((float)dwTileX / (float)m_dwTileCountX + fBorderX, (float)dwTileY / (float)m_dwTileCountY + fBorderY,
         (float)(dwTileX + 1) / (float)m_dwTileCountX - fBorderX, (float)(dwTileY + 1) / (float)m_dwTileCountY - fBorderY, newImage, true);
 
+    // Make sure to reload the tile if necessary.  It's possible for it to get evicted from memory during the call 
+    // to GetSubImageStretched if we're in tight memory conditions.
+    tile = LoadTileIfNeeded(dwTileX, dwTileY);
+    AZ_Assert(tile->m_pTileImage, "Missing tile image, even after reloading tile.");
+
+    // Set the tile to the new image, and adjust our memory tracking to account for the new size.
+    m_dwCurrentTileMemory -= tile->m_pTileImage->GetSize();
     tile->m_pTileImage->Attach(newImage);
+    tile->m_dwSize = dwNewSize;
+    m_dwCurrentTileMemory += tile->m_pTileImage->GetSize();
+
     tile->m_bDirty = true;
     m_NeedExportTexture = true;
-
-    tile->m_dwSize = dwNewSize;
 
     return true;
 }
 
-
-uint32 CRGBLayer::GetValueAt(const float fpx, const float fpy)
+inline void CRGBLayer::ConvertWorldToTileLookups(const double xPercent, const double yPercent, uint32& xTileIndex, uint32& yTileIndex, double& xTilePercent, double& yTilePercent)
 {
-    assert(fpx >= 0.0f && fpx <= 1.0f);
-    assert(fpy >= 0.0f && fpy <= 1.0f);
+    AZ_Assert(xPercent >= 0.0 && xPercent <= 1.0, "Percent value is expected to be 0.0 - 1.0 inclusive");
+    AZ_Assert(yPercent >= 0.0 && yPercent <= 1.0, "Percent value is expected to be 0.0 - 1.0 inclusive");
 
-    uint32 dwTileX = (uint32)(fpx * m_dwTileCountX);
-    uint32 dwTileY = (uint32)(fpy * m_dwTileCountY);
+    // Get the tile indices.  Make sure to clamp at the max valid tile value for the case that we're passed in 1.0.
+    xTileIndex = AZStd::GetMin(static_cast<uint32>(xPercent * m_dwTileCountX), m_dwTileCountX - 1);
+    yTileIndex = AZStd::GetMin(static_cast<uint32>(yPercent * m_dwTileCountY), m_dwTileCountY - 1);
 
-    CTerrainTextureTiles* tile = LoadTileIfNeeded(dwTileX, dwTileY);
-    assert(tile);
-
-    if (!tile)
-    {
-        return false;
-    }
-
-    assert(tile->m_pTileImage);
-
-    uint32 dwTileSize = tile->m_pTileImage->GetWidth();
-    uint32 dwTileOffsetX = dwTileX * dwTileSize;
-    uint32 dwTileOffsetY = dwTileY * dwTileSize;
-
-    float fX = fpx * (dwTileSize * m_dwTileCountX), fY = fpy * (dwTileSize * m_dwTileCountY);
-
-    uint32 dwLocalX = (uint32)(fX - dwTileOffsetX);
-    uint32 dwLocalY = (uint32)(fY - dwTileOffsetY);
-
-    // no bilinear filter ------------------------
-    assert(dwLocalX < tile->m_pTileImage->GetWidth());
-    assert(dwLocalY < tile->m_pTileImage->GetHeight());
-
-    return tile->m_pTileImage->ValueAt(dwLocalX, dwLocalY);
+    // Get the % offset into the tile.  Note that on the edge of the image, this can equal 1.0 due to 
+    // the tile index clamping above.
+    xTilePercent = (xPercent * m_dwTileCountX - xTileIndex);
+    yTilePercent = (yPercent * m_dwTileCountY - yTileIndex);
 }
 
-
-uint32 CRGBLayer::GetFilteredValueAt(const float fpx, const float fpy)
+uint32 CRGBLayer::GetValueAt(const double xPercent, const double yPercent)
 {
-    assert(fpx >= 0.0f && fpx <= 1.0f);
-    assert(fpy >= 0.0f && fpy <= 1.0f);
+    uint32 xTileIndex, yTileIndex;
+    double xTilePercent, yTilePercent;
 
-    uint32 dwTileX = (uint32)(fpx * m_dwTileCountX);
-    uint32 dwTileY = (uint32)(fpy * m_dwTileCountY);
+    ConvertWorldToTileLookups(xPercent, yPercent, xTileIndex, yTileIndex, xTilePercent, yTilePercent);
 
-    float fX = (fpx * m_dwTileCountX - dwTileX), fY = (fpy * m_dwTileCountY - dwTileY);
-
-    // adjust lookup to keep as few tiles in memory as possible
-    if (dwTileX != 0 && fX <= 0.000001f)
+    CTerrainTextureTiles* tile = LoadTileIfNeeded(xTileIndex, yTileIndex);
+    AZ_Assert(tile, "Invalid tile pointer");
+    if (!tile)
     {
-        --dwTileX;
-        fX = 0.99999f;
+        return 0;
     }
 
-    if (dwTileY != 0 && fY <= 0.000001f)
+    uint32 tileWidth = tile->GetWidth();
+    uint32 tileHeight = tile->GetHeight();
+
+    // Convert percentage values to integer pixel indices, clamped to the tile pixel bounds
+    uint32 xTilePixel = AZStd::GetMin(static_cast<uint32>(xTilePercent * tileWidth), tileWidth - 1);
+    uint32 yTilePixel = AZStd::GetMin(static_cast<uint32>(yTilePercent * tileHeight), tileHeight - 1);
+
+    return tile->m_pTileImage->ValueAt(xTilePixel, yTilePixel);
+}
+
+uint32 CRGBLayer::GetFilteredValueAt(const double xPercent, const double yPercent)
+{
+    // This method uses a 2x2 sampling kernel to get an interpolated pixel value.
+    ColorF pixelColor[2][2];
+
+    uint32 xTileIndex, yTileIndex, xTilePixel, yTilePixel;
+    double xTilePercent, yTilePercent;
+    ConvertWorldToTileLookups(xPercent, yPercent, xTileIndex, yTileIndex, xTilePercent, yTilePercent);
+
+    // Load the starting tile
+    CTerrainTextureTiles* tile = LoadTileIfNeeded(xTileIndex, yTileIndex);
+    AZ_Assert(tile, "Invalid tile pointer");
+    uint32 tileWidth = tile->GetWidth();
+    uint32 tileHeight = tile->GetHeight();
+
+    // Convert tile-relative percentage values to integer pixel indices, clamped to the tile pixel bounds
+    xTilePixel = AZStd::GetMin(static_cast<uint32>(xTilePercent * tileWidth), tileWidth - 1);
+    yTilePixel = AZStd::GetMin(static_cast<uint32>(yTilePercent * tileHeight), tileHeight - 1);
+
+    // The lerp factors are the fractional part of the pixel values, describing how much to move into the next pixel
+    float xLerp = (xTilePercent * tileWidth) - xTilePixel; // 0..1
+    float yLerp = (yTilePercent * tileHeight) - yTilePixel; // 0..1
+
+    // To find the correct locations of each adjacent pixel, we'll increment by world percentages,
+    // based on the resolution of our starting tile.  We work in percentages instead of pixel values
+    // because adjacent tiles might have different resolutions, which would make pixel-based math harder. 
+    double xPercentIncrement = 1.0 / (tileWidth * m_dwTileCountX);
+    double yPercentIncrement = 1.0 / (tileHeight * m_dwTileCountY);
+
+    // Sample our pixels.
+    for (int y = 0; y < 2; y++)
     {
-        --dwTileY;
-        fY = 0.99999f;
+        for (int x = 0; x < 2; x++)
+        {
+            // Calculate the world percentage for each pixel and look up the pixel value.
+            // (We use doubles instead of floats to avoid precision loss for large terrain texture resolutions)
+            double worldXPercent = AZStd::GetMin(xPercent + (xPercentIncrement * static_cast<double>(x)), 1.0);
+            double worldYPercent = AZStd::GetMin(yPercent + (yPercentIncrement * static_cast<double>(y)), 1.0);
+            pixelColor[x][y] = GetValueAt(worldXPercent, worldYPercent);
+        }
     }
+    // Perform the bilinear filter of our 4 color values
 
-    CTerrainTextureTiles* tile = LoadTileIfNeeded(dwTileX, dwTileY);
-    assert(tile);
-    assert(tile->m_pTileImage);
+    ColorF topColor, bottomColor, finalColor;
 
-    uint32 dwTileSize = tile->m_pTileImage->GetWidth();
+    // lerp between left and right for the top pixels
+    topColor.lerpFloat(pixelColor[0][0], pixelColor[1][0], xLerp);
+    // lerp between left and right for the bottom pixels
+    bottomColor.lerpFloat(pixelColor[0][1], pixelColor[1][1], xLerp);
 
-    fX *= (dwTileSize - 1);
-    fY *= (dwTileSize - 1);
+    // lerp bewteen the lerped top and bottom pixels
+    finalColor.lerpFloat(topColor, bottomColor, yLerp);
 
-    uint32 dwLocalX = (uint32)(fX);
-    uint32 dwLocalY = (uint32)(fY);
-
-    float fLerpX = fX - dwLocalX; // 0..1
-    float fLerpY = fY - dwLocalY; // 0..1
-
-    // bilinear filter ----------------------
-    assert(dwLocalX < tile->m_pTileImage->GetWidth() - 1);
-    assert(dwLocalY < tile->m_pTileImage->GetHeight() - 1);
-
-    ColorF colS[4];
-
-    colS[0] = tile->m_pTileImage->ValueAt(dwLocalX, dwLocalY);
-    colS[1] = tile->m_pTileImage->ValueAt(dwLocalX + 1, dwLocalY);
-    colS[2] = tile->m_pTileImage->ValueAt(dwLocalX, dwLocalY + 1);
-    colS[3] = tile->m_pTileImage->ValueAt(dwLocalX + 1, dwLocalY + 1);
-
-    ColorF colTop, colBottom;
-
-    colTop.lerpFloat(colS[0], colS[1], fLerpX);
-    colBottom.lerpFloat(colS[2], colS[3], fLerpX);
-
-    ColorF colRet;
-
-    colRet.lerpFloat(colTop, colBottom, fLerpY);
-
-    return colRet.pack_abgr8888();
+    return finalColor.pack_abgr8888();
 }
 
 void CRGBLayer::FreeTile(CTerrainTextureTiles& rTile)
 {
     if (rTile.m_pTileImage)
     {
+        AZ_Assert(m_dwCurrentTileMemory >= rTile.m_pTileImage->GetSize(), "Terrain tile memory tracking is out of sync with tile memory usage.");
         m_dwCurrentTileMemory -= rTile.m_pTileImage->GetSize();
     }
 
@@ -359,6 +371,8 @@ void CRGBLayer::FreeData()
 
         FreeTile(ref);
     }
+
+    AZ_Assert(m_dwCurrentTileMemory == 0, "Non-zero terrain tile memory, a leak has occurred.");
 
     m_TerrainTextureTiles.clear();
 
@@ -767,6 +781,8 @@ bool CRGBLayer::SaveAndFreeMemory(const bool bForceFileCreation)
         }
     }
 
+    AZ_Assert(m_dwCurrentTileMemory == 0, "Terrain tile memory is non-zero, a memory leak has occurred.");
+
     pakFile.Close();
 
     return true;
@@ -818,10 +834,11 @@ void CRGBLayer::PaintBrushWithPatternTiled(const float fpx, const float fpy, SEd
 
     CImagePainter painter;
 
-    // Qt rect bottom right is width, height - 1, need to add 1
-    for (uint32 dwTileY = recTiles.top(); dwTileY < (recTiles.bottom() + 1); ++dwTileY)
+    // In Qt, the rect's bottom and right values are inclusive, not exclusive, which is why we use
+    // <= in the loops instead of just <
+    for (uint32 dwTileY = recTiles.top(); dwTileY <= recTiles.bottom(); ++dwTileY)
     {
-        for (uint32 dwTileX = recTiles.left(); dwTileX < (recTiles.right() + 1); ++dwTileX)
+        for (uint32 dwTileX = recTiles.left(); dwTileX <= recTiles.right(); ++dwTileX)
         {
             CTerrainTextureTiles* tile = LoadTileIfNeeded(dwTileX, dwTileY);
             assert(tile);
@@ -830,77 +847,18 @@ void CRGBLayer::PaintBrushWithPatternTiled(const float fpx, const float fpy, SEd
 
             tile->m_bDirty = true;
 
-            uint32 dwTileSize = tile->m_pTileImage->GetWidth();
-            uint32 dwTileSizeReduced = dwTileSize - 1;      // usable area in tile is limited because of bilinear filtering
-            uint32 dwTileOffsetX = dwTileX * dwTileSizeReduced;
-            uint32 dwTileOffsetY = dwTileY * dwTileSizeReduced;
+            uint32 tileWidth = tile->m_pTileImage->GetWidth();
+            uint32 tileHeight = tile->m_pTileImage->GetHeight();
+            uint32 dwTileOffsetX = dwTileX * tileWidth;
+            uint32 dwTileOffsetY = dwTileY * tileHeight;
 
-            float fScaleX = (dwTileSizeReduced * m_dwTileCountX), fScaleY = (dwTileSizeReduced * m_dwTileCountY);
+            float fScaleX = (tileWidth * m_dwTileCountX), fScaleY = (tileHeight * m_dwTileCountY);
 
-            brush.fRadius = fOldRadius * (dwTileSize * m_dwTileCountX);
+            // NOTE: If tile width is ever different from tile height, we would need to revisit the logic
+            // for how to calculate the brush radius
+            AZ_Assert(tileWidth == tileHeight, "Tile width and height are different.  If this is valid, the RGB layer painting logic will need to be adjusted.");
+            brush.fRadius = fOldRadius * (tileWidth * m_dwTileCountX);
             painter.PaintBrushWithPattern(fpx, fpy, *tile->m_pTileImage, dwTileOffsetX, dwTileOffsetY, fScaleX, fScaleY, brush, imgPattern);
-        }
-    }
-
-    // fix borders - minor quality improvement (can be optimized)
-    // Qt rect bottom right is width, height - 1, need to add 1
-    for (uint32 dwTileY = recTiles.top(); dwTileY < (recTiles.bottom() + 1); ++dwTileY)
-    {
-        for (uint32 dwTileX = recTiles.left(); dwTileX < (recTiles.right() + 1); ++dwTileX)
-        {
-            assert(dwTileX < m_dwTileCountX);
-            assert(dwTileY < m_dwTileCountY);
-
-            CTerrainTextureTiles* tile1 = LoadTileIfNeeded(dwTileX, dwTileY);
-            assert(tile1);
-            assert(tile1->m_pTileImage);
-            assert(tile1->m_bDirty);
-
-            uint32 dwTileSize1 = tile1->m_pTileImage->GetWidth();
-
-            if (dwTileX != recTiles.left())   // vertical border between tile2 and tile 1
-            {
-                CTerrainTextureTiles* tile2 = LoadTileIfNeeded(dwTileX - 1, dwTileY);
-                assert(tile2);
-                assert(tile2->m_pTileImage);
-                assert(tile2->m_bDirty);
-
-                uint32 dwTileSize2 = tile2->m_pTileImage->GetWidth();
-                uint32 dwTileSizeMax = max(dwTileSize1, dwTileSize2);
-
-                for (uint32 dwI = 0; dwI < dwTileSizeMax; ++dwI)
-                {
-                    uint32& dwC2 = tile2->m_pTileImage->ValueAt(dwTileSize2 - 1, (dwI * (dwTileSize2 - 1)) / (dwTileSizeMax - 1));
-                    uint32& dwC1 = tile1->m_pTileImage->ValueAt(0, (dwI * (dwTileSize1 - 1)) / (dwTileSizeMax - 1));
-
-                    uint32 dwAvg = ColorB::ComputeAvgCol_Fast(dwC1, dwC2);
-
-                    dwC1 = dwAvg;
-                    dwC2 = dwAvg;
-                }
-            }
-
-            if (dwTileY != recTiles.top())    // horizontal border between tile2 and tile 1
-            {
-                CTerrainTextureTiles* tile2 = LoadTileIfNeeded(dwTileX, dwTileY - 1);
-                assert(tile2);
-                assert(tile2->m_pTileImage);
-                assert(tile2->m_bDirty);
-
-                uint32 dwTileSize2 = tile2->m_pTileImage->GetWidth();
-                uint32 dwTileSizeMax = max(dwTileSize1, dwTileSize2);
-
-                for (uint32 dwI = 0; dwI < dwTileSizeMax; ++dwI)
-                {
-                    uint32& dwC2 = tile2->m_pTileImage->ValueAt((dwI * (dwTileSize2 - 1)) / (dwTileSizeMax - 1), dwTileSize2 - 1);
-                    uint32& dwC1 = tile1->m_pTileImage->ValueAt((dwI * (dwTileSize1 - 1)) / (dwTileSizeMax - 1), 0);
-
-                    uint32 dwAvg = ColorB::ComputeAvgCol_Fast(dwC1, dwC2);
-
-                    dwC1 = dwAvg;
-                    dwC2 = dwAvg;
-                }
-            }
         }
     }
 
@@ -1067,7 +1025,7 @@ void CRGBLayer::AllocateTiles(const uint32 dwTileCountX, const uint32 dwTileCoun
     assert(dwTileCountY);
 
     // free
-    m_TerrainTextureTiles.clear();
+    FreeData();
     m_TerrainTextureTiles.resize(dwTileCountX * dwTileCountY);
 
     m_dwTileCountX = dwTileCountX;
@@ -1150,6 +1108,7 @@ bool CRGBLayer::RefineTiles()
                 pOutTile->m_pTileImage->Allocate(pOutTile->m_dwSize, pOutTile->m_dwSize);
                 pOutTile->m_timeLastUsed = GetIEditor()->GetSystem()->GetITimer()->GetAsyncCurTime();
                 pOutTile->m_bDirty = true;
+                out.m_dwCurrentTileMemory += pOutTile->m_pTileImage->GetSize();
                 m_bInfoDirty = true;
 
                 float fSrcLeft = (float)(dwTileX * 2 + dwX) / (float)(m_dwTileCountX * 2);

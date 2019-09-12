@@ -22,10 +22,6 @@
 #include <AzCore/std/string/string.h>
 #include <AzCore/std/string/string_view.h>
 
-#if defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_ANDROID) || defined(AZ_PLATFORM_APPLE)
-#   include <stdio.h> // for snprintf
-#endif
-
 namespace AZ
 {
     class AssetSerializer;
@@ -209,10 +205,8 @@ namespace AZ
             template<typename U>
             Asset(const Asset<U>& rhs);
 
-#if defined(AZ_HAS_RVALUE_REFS)
             Asset(Asset&& rhs);
             Asset& operator=(Asset&& rhs);
-#endif
             ~Asset();
 
             Asset& operator=(const Asset& rhs);
@@ -633,7 +627,6 @@ namespace AZ
             SetData(rhs.m_assetData);
         }
 
-#if defined(AZ_HAS_RVALUE_REFS)
         //=========================================================================
         template<class T>
         Asset<T>::Asset(Asset&& rhs)
@@ -677,7 +670,7 @@ namespace AZ
             }
             return *this;
         }
-#endif
+
         //=========================================================================
         template<class T>
         Asset<T>::~Asset()

@@ -92,7 +92,7 @@ namespace SliceFavorites
 
             QString outputString = QStringLiteral("Are you sure you want to remove the following?\n%1 folders\n%2 favorites").arg(numFoldersToRemove).arg(numFavoritesToRemove);
 
-            QMessageBox msgBox;
+            QMessageBox msgBox(this);
             msgBox.setText(tr("Confirm removal"));
             msgBox.setInformativeText(outputString);
             msgBox.setStandardButtons(QMessageBox::Ok | QMessageBox::Cancel);
@@ -157,7 +157,7 @@ namespace SliceFavorites
 
         QAction* clearAction = contextMenu->addAction("Remove all", contextMenu, [this]()
         {
-            QMessageBox msgBox;
+            QMessageBox msgBox(this);
             msgBox.setText(tr("Confirm removal"));
             msgBox.setInformativeText(tr("Remove all favorites?"));
             msgBox.setStandardButtons(QMessageBox::Ok | QMessageBox::Cancel);

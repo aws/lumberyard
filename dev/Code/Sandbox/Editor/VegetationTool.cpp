@@ -400,7 +400,7 @@ bool CVegetationTool::MouseCallback(CViewport* view, EMouseEvent event, QPoint& 
     }
     else
     {
-#ifdef AZ_PLATFORM_APPLE
+#if AZ_TRAIT_OS_PLATFORM_APPLE
         GetIEditor()->SetStatusText("Shift: Place New  ⌘: Add To Selection  ⌥: Scale Selected  ⌥⌘: Rotate Selected DEL: Delete Selected");
 #else
         GetIEditor()->SetStatusText("Shift: Place New  Ctrl: Add To Selection  Alt: Scale Selected  Alt+Ctrl: Rotate Selected DEL: Delete Selected");

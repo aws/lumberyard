@@ -39,6 +39,7 @@ class FakeContext(object):
             self.bintemp_node = self.srcnode.make_node('BinTemp')
             self.path = self.srcnode.make_node('Code')
             self.bldnode = self.bintemp_node
+            self.launch_node = self.srcnode
             if generate_engine_json:
                 default_engine_json = {
                         "FileVersion": 1,
@@ -65,3 +66,12 @@ class FakeContext(object):
 
     def parse_json_file(self, node):
         return utils.parse_json_file(node.abspath())
+
+    def get_output_target_folder(self, platform_name, configuration_name):
+        output_folder = ''
+        
+        if platform_name == 'win_x64_vs2017':
+            if configuration_name == 'profile':
+                output_folder = 'Bin64vc141'
+
+        return os.path.join(self.base_node.abspath(), output_folder)

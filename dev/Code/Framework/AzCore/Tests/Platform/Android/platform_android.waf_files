@@ -1,0 +1,9 @@
+{
+    "none":
+    {
+        "AzCore/Platform/Android":
+        [
+            "Tests/UtilsTests_Android.cpp"
+        ]
+    }
+}

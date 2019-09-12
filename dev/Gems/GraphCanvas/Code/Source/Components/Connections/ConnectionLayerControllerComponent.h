@@ -31,7 +31,7 @@ namespace GraphCanvas
 
         // ConnecitonNotificationBus
         void OnMoveBegin() override;
-        void OnMoveComplete() override;
+        void OnMoveFinalized(bool isValidConnection) override;
         ////
     };
 }

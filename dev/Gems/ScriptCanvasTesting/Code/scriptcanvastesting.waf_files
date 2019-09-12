@@ -1,9 +1,12 @@
 {
     "auto": {
-        "Source": [
-            "Source/ScriptCanvasTestingModule.cpp",
-            "Source/ScriptCanvasTestingSystemComponent.cpp",
-            "Source/ScriptCanvasTestingSystemComponent.h"
-        ]
+      "Source": [
+        "Source/ScriptCanvasTestingModule.cpp",
+        "Source/ScriptCanvasTestingSystemComponent.cpp",
+        "Source/ScriptCanvasTestingSystemComponent.h"
+      ],
+      "Source/Nodes": [
+        "Source/Nodes/BehaviorContextObjectTestNode.h"
+      ]
     }
 }

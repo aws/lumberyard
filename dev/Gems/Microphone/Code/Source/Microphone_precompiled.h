@@ -13,10 +13,3 @@
 #pragma once
 
 #include <platform.h> // Many CryCommon files require that this is included first.
-
-#if defined(AZ_PLATFORM_WINDOWS)
-    #include <audioclient.h>
-    #include <mmdeviceapi.h>
-#else
-    // other platform-specific headers
-#endif // AZ_PLATFORM_*

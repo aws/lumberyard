@@ -1,5 +1,6 @@
 # external modules/dependencies
 av(codec|device|filter|format|resample|util).*
+astcenc\.exe
 (lib)?aws-cpp-sdk.*
 boost_.*
 D3D.*
@@ -18,12 +19,7 @@ nvToolsExt64.*\.(dll|dylib|so)
 opengl.*
 openvr_api.*
 osvr.*
-PhysX3CharacterKinematic.*\.(dll|dylib|so)
-PhysX3Common.*\.(dll|dylib|so)
-PhysX3Cooking.*\.(dll|dylib|so)
-PhysX3.*\.(dll|dylib|so)
-PhysX3Gpu.*\.(dll|dylib|so)
-PhysXDevice.*\.(dll|dylib|so)
+(lib)?PhysX.*
 PxFoundation.*\.(dll|dylib|so)
 PxPvdSDK.*\.(dll|dylib|so)
 (lib)?PVRTexLib.*

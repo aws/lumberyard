@@ -140,11 +140,11 @@ namespace MCommon
         const uint32 screenHeight   = camera->GetScreenHeight();
 
         // set color for the axes, depending on the selection
-        MCore::RGBAColor grey               = MCore::RGBAColor(0.5, 0.5, 0.5);
-        MCore::RGBAColor redTransparent     = MCore::RGBAColor(0.781, 0.0, 0.0, 0.2f);
-        MCore::RGBAColor greenTransparent   = MCore::RGBAColor(0.0, 0.609, 0.0, 0.2f);
-        MCore::RGBAColor blueTransparent    = MCore::RGBAColor(0.0, 0.0, 0.762, 0.2f);
-        MCore::RGBAColor greyTransparent    = MCore::RGBAColor(0.5, 0.5, 0.5, 0.3f);
+        MCore::RGBAColor grey               = MCore::RGBAColor(0.5f, 0.5f, 0.5f);
+        MCore::RGBAColor redTransparent     = MCore::RGBAColor(0.781f, 0.0, 0.0, 0.2f);
+        MCore::RGBAColor greenTransparent   = MCore::RGBAColor(0.0, 0.609f, 0.0, 0.2f);
+        MCore::RGBAColor blueTransparent    = MCore::RGBAColor(0.0, 0.0, 0.762f, 0.2f);
+        MCore::RGBAColor greyTransparent    = MCore::RGBAColor(0.5f, 0.5f, 0.5f, 0.3f);
 
         MCore::RGBAColor xAxisColor         = (mMode == ROTATE_X)           ?   ManipulatorColors::mSelectionColor : ManipulatorColors::mRed;
         MCore::RGBAColor yAxisColor         = (mMode == ROTATE_Y)           ?   ManipulatorColors::mSelectionColor : ManipulatorColors::mGreen;

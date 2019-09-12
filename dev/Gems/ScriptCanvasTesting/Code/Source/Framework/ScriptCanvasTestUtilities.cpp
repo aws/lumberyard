@@ -391,21 +391,35 @@ namespace ScriptCanvasTests
         return node;
     }
 
-    const char* SlotTypeToString(ScriptCanvas::SlotType type)
+    AZStd::string SlotDescriptorToString(ScriptCanvas::SlotDescriptor descriptor)
     {
-        switch (type)
+        AZStd::string name;
+
+        switch (descriptor.m_slotType)
         {
-        case ScriptCanvas::SlotType::ExecutionIn:
-            return "ExecutionIn";
-        case ScriptCanvas::SlotType::ExecutionOut:
-            return "ExecutionOut";
-        case ScriptCanvas::SlotType::DataIn:
-            return "DataIn";
-        case ScriptCanvas::SlotType::DataOut:
-            return "DataOut";
+        case SlotTypeDescriptor::Data:
+            name.append("Data");
+            break;
+        case SlotTypeDescriptor::Execution:
+            name.append("Execution");
+            break;
         default:
-            return "invalid";
+            break;
         }
+
+        switch (descriptor.m_connectionType)
+        {
+        case ConnectionType::Input:
+            name.append("In");
+            break;
+        case ConnectionType::Output:
+            name.append("Out");
+            break;
+        default:
+            break;
+        }
+
+        return name;
     }
 
     void DumpSlots(const ScriptCanvas::Node& node)
@@ -414,7 +428,7 @@ namespace ScriptCanvasTests
 
         for (const auto& nodeslot : nodeslots)
         {
-            AZ_TracePrintf("ScriptCanvasTest", "'%s':%s\n", nodeslot.GetName().data(), SlotTypeToString(nodeslot.GetType()));
+            AZ_TracePrintf("ScriptCanvasTest", "'%s':%s\n", nodeslot.GetName().data(), SlotDescriptorToString(nodeslot.GetDescriptor()));
         }
     }
 
@@ -458,7 +472,7 @@ namespace ScriptCanvasTests
 
         AZ::SerializeContext* serializeContext = AZ::EntityUtils::GetApplicationSerializeContext();
         serializeContext->CloneObjectInplace(runtimeAsset.Get()->GetData().m_graphData, graph->GetGraphDataConst());
-        AZStd::unordered_map<AZ::EntityId, AZ::EntityId> graphToAssetEntityIdMap{ { graph->GetUniqueId(), ScriptCanvas::InvalidUniqueRuntimeId } };
+        AZStd::unordered_map<AZ::EntityId, AZ::EntityId> graphToAssetEntityIdMap{ { graph->GetUniqueId(), ScriptCanvas::UniqueId } };
         AZ::IdUtils::Remapper<AZ::EntityId>::GenerateNewIdsAndFixRefs(&runtimeAsset.Get()->GetData().m_graphData, graphToAssetEntityIdMap, serializeContext);
 
         return runtimeAsset;

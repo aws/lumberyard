@@ -73,6 +73,8 @@ public:
     friend class GTEST_TEST_CLASS_NAME_(AssetProcessorManagerTest, UpdateSourceFileDependenciesDatabase_WithOutputPrefix_MissingFiles_ByUuid_UpdatesWhenTheyAppear);
     friend class GTEST_TEST_CLASS_NAME_(AssetProcessorManagerTest, UpdateSourceFileDependenciesDatabase_WithOutputPrefix_MissingFiles_ByName_UpdatesWhenTheyAppear);
 
+    friend class GTEST_TEST_CLASS_NAME_(AssetProcessorManagerTest, SourceFileProcessFailure_ClearsFingerprint);
+
     friend class GTEST_TEST_CLASS_NAME_(ModtimeScanningTest, ModtimeSkipping_FileUnchanged_WithoutModtimeSkipping);
     friend class GTEST_TEST_CLASS_NAME_(ModtimeScanningTest, ModtimeSkipping_FileUnchanged);
     friend class GTEST_TEST_CLASS_NAME_(ModtimeScanningTest, ModtimeSkipping_EnablePlatform_ShouldProcessFilesForPlatform);
@@ -769,19 +771,19 @@ TEST_F(AssetProcessorManagerTest, QueryAbsolutePathDependenciesRecursive_BasicTe
     UnitTestUtils::CreateDummyFile(tempPath.absoluteFilePath("subfolder1/d.txt"), QString("tempdata\n"));
 
     SourceFileDependencyEntry newEntry1;  // a depends on B
-    newEntry1.m_sourceDependencyID = -1;
+    newEntry1.m_sourceDependencyID = AzToolsFramework::AssetDatabase::InvalidEntryId;
     newEntry1.m_builderGuid = AZ::Uuid::CreateRandom();
     newEntry1.m_source = "a.txt";
     newEntry1.m_dependsOnSource = "b.txt";
 
     SourceFileDependencyEntry newEntry2; // b depends on C
-    newEntry2.m_sourceDependencyID = -1;
+    newEntry2.m_sourceDependencyID = AzToolsFramework::AssetDatabase::InvalidEntryId;
     newEntry2.m_builderGuid = AZ::Uuid::CreateRandom();
     newEntry2.m_source = "b.txt";
     newEntry2.m_dependsOnSource = "c.txt";
 
     SourceFileDependencyEntry newEntry3;  // b also depends on D
-    newEntry3.m_sourceDependencyID = -1;
+    newEntry3.m_sourceDependencyID = AzToolsFramework::AssetDatabase::InvalidEntryId;
     newEntry3.m_builderGuid = AZ::Uuid::CreateRandom();
     newEntry3.m_source = "b.txt";
     newEntry3.m_dependsOnSource = "d.txt";
@@ -836,21 +838,21 @@ TEST_F(AssetProcessorManagerTest, QueryAbsolutePathDependenciesRecursive_WithDif
     UnitTestUtils::CreateDummyFile(tempPath.absoluteFilePath("subfolder1/d.txt"), QString("tempdata\n"));
 
     SourceFileDependencyEntry newEntry1;  // a depends on B as a SOURCE dependency.
-    newEntry1.m_sourceDependencyID = -1;
+    newEntry1.m_sourceDependencyID = AzToolsFramework::AssetDatabase::InvalidEntryId;
     newEntry1.m_builderGuid = AZ::Uuid::CreateRandom();
     newEntry1.m_source = "a.txt";
     newEntry1.m_dependsOnSource = "b.txt";
     newEntry1.m_typeOfDependency = SourceFileDependencyEntry::DEP_SourceToSource;
 
     SourceFileDependencyEntry newEntry2; // b depends on C as a JOB dependency
-    newEntry2.m_sourceDependencyID = -1;
+    newEntry2.m_sourceDependencyID = AzToolsFramework::AssetDatabase::InvalidEntryId;
     newEntry2.m_builderGuid = AZ::Uuid::CreateRandom();
     newEntry2.m_source = "b.txt";
     newEntry2.m_dependsOnSource = "c.txt";
     newEntry2.m_typeOfDependency = SourceFileDependencyEntry::DEP_JobToJob;
 
     SourceFileDependencyEntry newEntry3;  // b also depends on D as a SOURCE dependency
-    newEntry3.m_sourceDependencyID = -1;
+    newEntry3.m_sourceDependencyID = AzToolsFramework::AssetDatabase::InvalidEntryId;
     newEntry3.m_builderGuid = AZ::Uuid::CreateRandom();
     newEntry3.m_source = "b.txt";
     newEntry3.m_dependsOnSource = "d.txt";
@@ -905,19 +907,19 @@ TEST_F(AssetProcessorManagerTest, QueryAbsolutePathDependenciesRecursive_Reverse
     UnitTestUtils::CreateDummyFile(tempPath.absoluteFilePath("subfolder1/d.txt"), QString("tempdata\n"));
 
     SourceFileDependencyEntry newEntry1;  // a depends on B
-    newEntry1.m_sourceDependencyID = -1;
+    newEntry1.m_sourceDependencyID = AzToolsFramework::AssetDatabase::InvalidEntryId;
     newEntry1.m_builderGuid = AZ::Uuid::CreateRandom();
     newEntry1.m_source = "a.txt";
     newEntry1.m_dependsOnSource = "b.txt";
 
     SourceFileDependencyEntry newEntry2; // b depends on C
-    newEntry2.m_sourceDependencyID = -1;
+    newEntry2.m_sourceDependencyID = AzToolsFramework::AssetDatabase::InvalidEntryId;
     newEntry2.m_builderGuid = AZ::Uuid::CreateRandom();
     newEntry2.m_source = "b.txt";
     newEntry2.m_dependsOnSource = "c.txt";
 
     SourceFileDependencyEntry newEntry3;  // b also depends on D
-    newEntry3.m_sourceDependencyID = -1;
+    newEntry3.m_sourceDependencyID = AzToolsFramework::AssetDatabase::InvalidEntryId;
     newEntry3.m_builderGuid = AZ::Uuid::CreateRandom();
     newEntry3.m_source = "b.txt";
     newEntry3.m_dependsOnSource = "d.txt";
@@ -973,19 +975,19 @@ TEST_F(AssetProcessorManagerTest, QueryAbsolutePathDependenciesRecursive_Missing
     // note that we don't actually create b and c here, they are missing.
 
     SourceFileDependencyEntry newEntry1;  // a depends on B
-    newEntry1.m_sourceDependencyID = -1;
+    newEntry1.m_sourceDependencyID = AzToolsFramework::AssetDatabase::InvalidEntryId;
     newEntry1.m_builderGuid = AZ::Uuid::CreateRandom();
     newEntry1.m_source = "a.txt";
     newEntry1.m_dependsOnSource = "b.txt";
 
     SourceFileDependencyEntry newEntry2; // b depends on C
-    newEntry2.m_sourceDependencyID = -1;
+    newEntry2.m_sourceDependencyID = AzToolsFramework::AssetDatabase::InvalidEntryId;
     newEntry2.m_builderGuid = AZ::Uuid::CreateRandom();
     newEntry2.m_source = "b.txt";
     newEntry2.m_dependsOnSource = "c.txt";
 
     SourceFileDependencyEntry newEntry3;  // b also depends on D
-    newEntry3.m_sourceDependencyID = -1;
+    newEntry3.m_sourceDependencyID = AzToolsFramework::AssetDatabase::InvalidEntryId;
     newEntry3.m_builderGuid = AZ::Uuid::CreateRandom();
     newEntry3.m_source = "b.txt";
     newEntry3.m_dependsOnSource = "d.txt";
@@ -1634,7 +1636,7 @@ TEST_F(AssetProcessorManagerTest, AssessDeletedFile_OnJobInFlight_IsIgnored)
         JobProduct product(filePathToGenerate.toUtf8().constData(), AZ::Uuid::CreateRandom(), static_cast<AZ::u32>(outputIdx));
         response.m_outputProducts.push_back(product);
 
-        AssetProcessor::ProcessingJobInfoBus::Broadcast(&AssetProcessor::ProcessingJobInfoBus::Events::BeginIgnoringCacheFileDelete, filePathToGenerate.toUtf8().data());
+        AssetProcessor::ProcessingJobInfoBus::Broadcast(&AssetProcessor::ProcessingJobInfoBus::Events::BeginCacheFileUpdate, filePathToGenerate.toUtf8().data());
 
         AZ::IO::SystemFile::Delete(filePathToGenerate.toUtf8().constData());
 
@@ -1658,7 +1660,7 @@ TEST_F(AssetProcessorManagerTest, AssessDeletedFile_OnJobInFlight_IsIgnored)
         ASSERT_FALSE(gotUnexpectedAssetToProcess);
         
         // now tell it to stop ignoring the cache delete and let it do the next one.
-        EBUS_EVENT(AssetProcessor::ProcessingJobInfoBus, StopIgnoringCacheFileDelete, filePathToGenerate.toUtf8().data(), false);
+        EBUS_EVENT(AssetProcessor::ProcessingJobInfoBus, EndCacheFileUpdate, filePathToGenerate.toUtf8().data(), false);
 
         // simulate a "late" deletion notify coming from the file monitor that it outside the "ignore delete" section.  This should STILL not generate additional
         // deletion notifies as it should ignore these if the file in fact actually there when it gets around to checking it
@@ -2823,7 +2825,7 @@ TEST_F(AssetProcessorManagerTest, SourceFile_With_NonASCII_Characters_Fail_Job_O
     const ScanFolderInfo* scanFolder = m_config->GetScanFolderByPath(watchFolderPath);
     ASSERT_NE(scanFolder, nullptr);
 
-    QString folderPath(tempPath.absoluteFilePath("subfolder1/Test�"));
+    QString folderPath(tempPath.absoluteFilePath("subfolder1/Test\xD0"));
     QDir folderPathDir(folderPath);
     QString absPath(folderPathDir.absoluteFilePath("Test.txt"));
     ASSERT_TRUE(UnitTestUtils::CreateDummyFile(absPath, QString("test\n")));
@@ -2839,7 +2841,95 @@ TEST_F(AssetProcessorManagerTest, SourceFile_With_NonASCII_Characters_Fail_Job_O
     folderPathDir.removeRecursively();
     m_assetProcessorManager.get()->AssessDeletedFile(folderPath);
     ASSERT_TRUE(BlockUntilIdle(5000));
-    EXPECT_EQ(deletedFolderPath, "Test�");
+    EXPECT_EQ(deletedFolderPath, "Test\xD0");
+}
+
+TEST_F(AssetProcessorManagerTest, SourceFileProcessFailure_ClearsFingerprint)
+{
+    constexpr int idleWaitTime = 5000;
+    using namespace AzToolsFramework::AssetDatabase;
+
+    QList<AssetProcessor::JobDetails> processResults;
+
+    auto assetConnection = QObject::connect(m_assetProcessorManager.get(), &AssetProcessorManager::AssetToProcess, [&processResults](JobDetails details)
+    {
+        processResults.push_back(AZStd::move(details));
+    });
+
+    QDir tempPath(m_tempDir.path());
+
+    const ScanFolderInfo* scanFolder = m_config->GetScanFolderByPath(tempPath.absoluteFilePath("subfolder1"));
+    ASSERT_NE(scanFolder, nullptr);
+
+    QString absPath = tempPath.absoluteFilePath("subfolder1/test.txt");
+    ASSERT_TRUE(UnitTestUtils::CreateDummyFile(absPath, QString("test\n")));
+
+    //////////////////////////////////////////////////////////////////////////
+
+    // Add a file and signal a successful process event
+
+    m_assetProcessorManager.get()->AssessAddedFile(absPath);
+    ASSERT_TRUE(BlockUntilIdle(idleWaitTime));
+
+    for(const auto& processResult : processResults)
+    {
+        auto file = QDir(processResult.m_destinationPath).absoluteFilePath(processResult.m_jobEntry.m_databaseSourceName + ".arc1");
+
+        // Create the file on disk
+        ASSERT_TRUE(UnitTestUtils::CreateDummyFile(file, "products."));
+
+        AssetBuilderSDK::ProcessJobResponse response;
+        response.m_resultCode = AssetBuilderSDK::ProcessJobResult_Success;
+        response.m_outputProducts.push_back(AssetBuilderSDK::JobProduct(file.toUtf8().constData(), AZ::Uuid::CreateNull(), 1));
+
+        m_assetProcessorManager->AssetProcessed(processResult.m_jobEntry, response);
+    }
+
+    ASSERT_TRUE(BlockUntilIdle(idleWaitTime));
+
+    bool found = false;
+    SourceDatabaseEntry source;
+
+    auto queryFunc = [&](SourceDatabaseEntry& sourceData)
+    {
+        source = AZStd::move(sourceData);
+        found = true;
+        return false; // stop iterating after the first one.  There should actually only be one entry anyway.
+    };
+
+    m_assetProcessorManager->m_stateData->QuerySourceBySourceNameScanFolderID("test.txt", scanFolder->ScanFolderID(), queryFunc);
+
+    ASSERT_TRUE(found);
+    ASSERT_NE(source.m_analysisFingerprint, "");
+    
+    // Modify the file and run it through AP again, but this time signal a failure
+
+    {
+        QFile writer(absPath);
+        ASSERT_TRUE(writer.open(QFile::WriteOnly));
+
+        QTextStream ts(&writer);
+        ts.setCodec("UTF-8");
+        ts << "Hello World";
+    }
+
+    processResults.clear();
+    m_assetProcessorManager.get()->AssessModifiedFile(absPath);
+    ASSERT_TRUE(BlockUntilIdle(idleWaitTime));
+
+    for (const auto& processResult : processResults)
+    {
+        m_assetProcessorManager->AssetFailed(processResult.m_jobEntry);
+    }
+
+    ASSERT_TRUE(BlockUntilIdle(idleWaitTime));
+
+    // Check the database, the fingerprint should be erased since the file failed
+    found = false;
+    m_assetProcessorManager->m_stateData->QuerySourceBySourceNameScanFolderID("test.txt", scanFolder->ScanFolderID(), queryFunc);
+
+    ASSERT_TRUE(found);
+    ASSERT_EQ(source.m_analysisFingerprint, "");
 }
 
 void ModtimeScanningTest::SetUp()
@@ -2894,7 +2984,7 @@ void ModtimeScanningTest::SetUp()
         fileEntry.m_scanFolderPK = scanFolder.ScanFolderID();
         ASSERT_TRUE(connection.InsertFile(fileEntry));
 
-        fileEntry.m_fileID = -1; // Reset the id so we make a new entry
+        fileEntry.m_fileID = AzToolsFramework::AssetDatabase::InvalidEntryId; // Reset the id so we make a new entry
         fileEntry.m_fileName = m_relativePathFromWatchFolder[1].toUtf8().data();
         ASSERT_TRUE(connection.InsertFile(fileEntry));
     }

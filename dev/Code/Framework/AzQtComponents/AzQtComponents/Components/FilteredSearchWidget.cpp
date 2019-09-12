@@ -545,6 +545,8 @@ namespace AzQtComponents
         SetTypeFilterVisible(false);
         UpdateTextFilterWidth();
 
+        m_ui->textSearch->setContextMenuPolicy(Qt::CustomContextMenu);
+
         connect(m_ui->filteredLayout, &QWidget::customContextMenuRequested, this, &FilteredSearchWidget::OnClearFilterContextMenu);
         connect(m_ui->textSearch, &QLineEdit::textChanged, this, &FilteredSearchWidget::OnTextChanged);
         // QLineEdit's clearButton only triggers a textEdited, not a textChanged, so we special case that
@@ -560,6 +562,7 @@ namespace AzQtComponents
         {
             m_ui->filteredParent->setVisible(!activeTypeFilters.isEmpty());
         });
+        connect(m_ui->textSearch, &QWidget::customContextMenuRequested, this, &FilteredSearchWidget::OnSearchContextMenu);
 
         if (!willUseOwnSelector)
         {
@@ -670,7 +673,7 @@ namespace AzQtComponents
 
     void FilteredSearchWidget::SetFilterInputInterval(AZStd::chrono::milliseconds milliseconds)
     {
-        m_inputTimer.setInterval(milliseconds.count());
+        m_inputTimer.setInterval(static_cast<int>(milliseconds.count()));
     }
 
     void FilteredSearchWidget::SetFilterState(const QString& category, const QString& displayName, bool enabled)
@@ -899,6 +902,14 @@ namespace AzQtComponents
         m_ui->horizontalLayout_2->addWidget(w);
     }
 
+    void FilteredSearchWidget::OnSearchContextMenu(const QPoint& pos)
+    {
+        QMenu* menu = m_ui->textSearch->createStandardContextMenu();
+        menu->setStyleSheet("background-color: #333333");
+        menu->exec(m_ui->textSearch->mapToGlobal(pos));
+        delete menu;
+    }
+    
     void FilteredSearchWidget::OnClearFilterContextMenu(const QPoint& pos)
     {
         QMenu contextMenu(this);

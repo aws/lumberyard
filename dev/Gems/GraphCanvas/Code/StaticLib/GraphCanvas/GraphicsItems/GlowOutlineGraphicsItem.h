@@ -23,6 +23,7 @@
 #include <GraphCanvas/Components/GeometryBus.h>
 #include <GraphCanvas/Components/ViewBus.h>
 #include <GraphCanvas/GraphicsItems/GraphicsEffect.h>
+#include <GraphCanvas/Editor/AssetEditorBus.h>
 
 namespace GraphCanvas
 {
@@ -60,6 +61,7 @@ namespace GraphCanvas
         , public GeometryNotificationBus::Handler
         , public AZ::TickBus::Handler
         , public GraphCanvas::ViewNotificationBus::Handler
+        , public AssetEditorSettingsNotificationBus::Handler
     {
     public:
         AZ_CLASS_ALLOCATOR(GlowOutlineGraphicsItem, AZ::SystemAllocator, 0);
@@ -86,6 +88,16 @@ namespace GraphCanvas
         void OnZoomChanged(qreal zoomLevel) override;
         ////
 
+        // AssetEditorSettingsNotificationBus
+        void OnSettingsChanged() override;
+        ////
+
+    protected:
+
+        // GraphicsEffectInterface
+        void OnEditorIdSet() override;
+        ////
+
     private:
 
         void ConfigureGlowOutline(const GlowOutlineConfiguration& outlineConfiguration);
@@ -101,6 +113,6 @@ namespace GraphCanvas
         qreal m_opacityEnd;
 
         QPainterPath m_painterPath;        
-        AZ::EntityId m_trackingSceneMember;        
+        AZ::EntityId m_trackingSceneMember;
     };
 }

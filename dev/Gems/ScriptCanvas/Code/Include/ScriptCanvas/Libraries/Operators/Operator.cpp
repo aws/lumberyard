@@ -79,21 +79,199 @@ namespace ScriptCanvas
                 }
                 else
                 {
+                    bool groupedSourceSlots = false;
+
                     for (auto sourceSlotId : m_sourceSlots)
                     {
+                        ///////// Version Conversion to Dynamic Grouped based operators
+                        Slot* slot = GetSlot(sourceSlotId);
+
+                        if (slot->IsDynamicSlot() && slot->GetDynamicGroup() == AZ::Crc32())
+                        {
+                            groupedSourceSlots = true;
+                            SetDynamicGroup(sourceSlotId, GetSourceDynamicTypeGroup());
+                        }
+
+                        if (slot->GetDisplayGroup() == AZ::Crc32())
+                        {
+                            slot->SetDisplayGroup(GetSourceDisplayGroup());
+                        }
+                        ////////
+
                         EndpointNotificationBus::MultiHandler::BusConnect({ GetEntityId(), sourceSlotId });
+                    }
+
+                    if (groupedSourceSlots && m_sourceDisplayType.IsValid())
+                    {
+                        SetDisplayType(GetSourceDynamicTypeGroup(), m_sourceDisplayType);
                     }
                 }
 
                 for (const SlotId& inputSlot : m_inputSlots)
                 {
+                    ///////// Version Conversion to Dynamic Grouped based operators
+                    Slot* slot = GetSlot(inputSlot);
+
+                    if (slot->IsDynamicSlot() && slot->GetDynamicGroup() == AZ::Crc32())
+                    {
+                        SetDynamicGroup(inputSlot, GetSourceDynamicTypeGroup());
+                    }
+
+                    if (slot->GetDisplayGroup() == AZ::Crc32())
+                    {
+                        slot->SetDisplayGroup(GetSourceDisplayGroup());
+                    }
+                    ////////
+
                     EndpointNotificationBus::MultiHandler::BusConnect({ GetEntityId(), inputSlot });
                 }
 
                 for (const SlotId& outputSlot : m_outputSlots)
                 {
+                    ///////// Version Conversion to Dynamic Grouped based operators
+                    Slot* slot = GetSlot(outputSlot);
+
+                    if (slot->IsDynamicSlot() && slot->GetDynamicGroup() == AZ::Crc32())
+                    {
+                        SetDynamicGroup(outputSlot, GetSourceDynamicTypeGroup());
+                    }
+
+                    if (slot->GetDisplayGroup() == AZ::Crc32())
+                    {
+                        slot->SetDisplayGroup(GetSourceDisplayGroup());
+                    }
+                    ////////
+
                     EndpointNotificationBus::MultiHandler::BusConnect({ GetEntityId(), outputSlot });
                 }
+
+                // Version Conversion for the differing source slots will be removed in a future revision
+                // Certain container operators would dynamically add the container output pin and store that in the
+                // m_input/m_output pins so we need to re-scour the input/output pins to see if theres a matching pin we
+                // can pull over.
+                if (m_operatorConfiguration.m_sourceSlotConfigurations.size() != m_sourceSlots.size())
+                {
+                    AZStd::vector<SourceSlotConfiguration> unhandledConfigurations = m_operatorConfiguration.m_sourceSlotConfigurations;
+
+                    SlotSet explorableSourceSlots = m_sourceSlots;
+
+                    auto configurationIter = unhandledConfigurations.begin();
+
+                    while (configurationIter != unhandledConfigurations.end())
+                    {
+                        const SourceSlotConfiguration& configuration = (*configurationIter);
+                        bool handledConfiguration = false;
+
+                        for (SlotId slotId : explorableSourceSlots)
+                        {
+                            Slot* slot = GetSlot(slotId);
+
+                            if (slot == nullptr)
+                            {
+                                continue;
+                            }
+
+                            if (configuration.m_sourceType == SourceType::SourceInput
+                                && slot->IsInput())
+                            {
+                                if (!slot->IsDynamicSlot())
+                                {
+                                    AZ_Error("ScriptCanvas", false, "Operator Source Slot is not Dynamic Data Type");
+                                    continue;
+                                }
+
+                                if (configuration.m_dynamicDataType == slot->GetDynamicDataType())
+                                {
+                                    handledConfiguration = true;
+                                    explorableSourceSlots.erase(slotId);
+                                    break;
+                                }
+                            }
+                        }                        
+
+                        if (!handledConfiguration)
+                        {
+                            if (configuration.m_sourceType == SourceType::SourceInput)
+                            {
+                                for (SlotId inputId : m_inputSlots)
+                                {
+                                    Slot* inputSlot = GetSlot(inputId);
+
+                                    if (inputSlot)
+                                    {
+                                        // If its not a dynamic slot we can't do anything with it.
+                                        if (!inputSlot->IsDynamicSlot())
+                                        {
+                                            continue;
+                                        }
+
+                                        // Pass the ownership into the source slots if we match the dynamic data types.
+                                        if (inputSlot->GetDynamicDataType() == configuration.m_dynamicDataType)
+                                        {
+                                            handledConfiguration = true;
+                                            m_sourceSlots.insert(inputId);
+                                            m_inputSlots.erase(inputId);
+                                            break;
+                                        }
+                                    }
+                                }
+                            }
+                            else
+                            {
+                                for (SlotId outputId : m_outputSlots)
+                                {
+                                    Slot* outputSlot = GetSlot(outputId);
+
+                                    if (outputSlot)
+                                    {
+                                        if (outputSlot->IsDynamicSlot())
+                                        {
+                                            // Pass the ownership into the source slots if we match the dynamic data types.
+                                            if (outputSlot->GetDynamicDataType() == configuration.m_dynamicDataType)
+                                            {
+                                                handledConfiguration = true;
+                                                m_sourceSlots.insert(outputId);
+                                                m_outputSlots.erase(outputId);
+                                                break;
+                                            }
+                                        }
+                                        // Otherwise if we had a valid source type. We'll convert the output slot to a dynamic slot in an attempt
+                                        // to maintain the old container nodes
+                                        else if (m_sourceType.IsValid() && m_sourceType == outputSlot->GetDataType())
+                                        {
+                                            handledConfiguration = true;
+
+                                            outputSlot->SetDynamicDataType(configuration.m_dynamicDataType);
+                                            SetDynamicGroup(outputSlot->GetId(), GetSourceDynamicTypeGroup());
+
+                                            m_sourceSlots.insert(outputId);
+                                            m_outputSlots.erase(outputId);
+                                            break;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        if (handledConfiguration)
+                        {
+                            configurationIter = unhandledConfigurations.erase(configurationIter);                            
+                        }
+                        else
+                        {
+                            ++configurationIter;
+                        }
+                    }
+
+                    if (!unhandledConfigurations.empty())
+                    {
+                        for (const auto& sourceConfiguration : unhandledConfigurations)
+                        {
+                            AddSourceSlot(sourceConfiguration);
+                        }
+                    }
+                }
+                ////
 
                 if (m_sourceType.IsValid())
                 {
@@ -101,10 +279,71 @@ namespace ScriptCanvas
                 }
             }
 
+            void OperatorBase::OnDynamicGroupDisplayTypeChanged(const AZ::Crc32& dynamicGroup, const Data::Type& dataType)
+            {
+                if (dynamicGroup == GetSourceDynamicTypeGroup())
+                {
+                    if (m_sourceType != dataType
+                        && dataType.IsValid())
+                    {
+                        RemoveInputs();
+                        RemoveOutputs();
+
+                        m_sourceType = dataType;
+
+                        PopulateAZTypes(m_sourceType);
+
+                        OnSourceTypeChanged();
+                    }
+
+                    if (m_sourceDisplayType != dataType)
+                    {
+                        m_sourceDisplayType = dataType;
+                        OnDisplayTypeChanged(dataType);
+                    }
+                }                
+            }
+
+            void OperatorBase::OnSlotRemoved(const SlotId& slotId)
+            {
+                m_inputSlots.erase(slotId);
+                m_outputSlots.erase(slotId);
+            }
+
+            Slot* OperatorBase::GetFirstInputSourceSlot() const
+            {
+                for (const SlotId& slotId : m_sourceSlots)
+                {
+                    Slot* slot = GetSlot(slotId);
+
+                    if (slot && slot->IsInput())
+                    {
+                        return slot;
+                    }
+                }
+
+                return nullptr;
+            }
+            
+            Slot* OperatorBase::GetFirstOutputSourceSlot() const
+            {
+                for (const SlotId& slotId : m_sourceSlots)
+                {
+                    Slot* slot = GetSlot(slotId);
+
+                    if (slot && slot->IsOutput())
+                    {
+                        return slot;
+                    }
+                }
+
+                return nullptr;
+            }
+
             ScriptCanvas::SlotId OperatorBase::AddSourceSlot(SourceSlotConfiguration sourceConfiguration)
             {
                 SlotId sourceSlotId;
-                DataSlotConfiguration slotConfiguration;
+                DynamicDataSlotConfiguration slotConfiguration;
 
                 if (sourceConfiguration.m_sourceType == SourceType::SourceInput)
                 {
@@ -117,17 +356,19 @@ namespace ScriptCanvas
                 slotConfiguration.m_toolTip = sourceConfiguration.m_tooltip;
                 slotConfiguration.m_addUniqueSlotByNameAndType = true;
                 slotConfiguration.m_dynamicDataType = sourceConfiguration.m_dynamicDataType;
+                slotConfiguration.m_dynamicGroup = GetSourceDynamicTypeGroup();
+                slotConfiguration.m_displayGroup = GetSourceDisplayGroup();
 
                 if (sourceConfiguration.m_sourceType == SourceType::SourceInput)
                 {
-                    slotConfiguration.m_slotType = SlotType::DataIn;
-                    sourceSlotId = AddInputDatumSlot(slotConfiguration, Datum());
+                    slotConfiguration.SetConnectionType(ConnectionType::Input);
                 }
                 else if (sourceConfiguration.m_sourceType == SourceType::SourceOutput)
                 {
-                    slotConfiguration.m_slotType = SlotType::DataOut;
-                    sourceSlotId = AddDataSlot(slotConfiguration);
+                    slotConfiguration.SetConnectionType(ConnectionType::Output);
                 }
+
+                sourceSlotId = AddSlot(slotConfiguration);
 
                 m_sourceSlots.insert(sourceSlotId);
 
@@ -154,16 +395,18 @@ namespace ScriptCanvas
 
             void OperatorBase::RemoveInputs()
             {
-                for (SlotId slotId : m_inputSlots)
+                SlotSet inputSlots = m_inputSlots;
+
+                for (SlotId slotId : inputSlots)
                 {
                     RemoveSlot(slotId);
                 }
-
-                m_inputSlots.clear();
             }
 
             void OperatorBase::OnEndpointConnected(const Endpoint& endpoint)
             {
+                Node::OnEndpointConnected(endpoint);
+
                 const SlotId& currentSlotId = EndpointNotificationBus::GetCurrentBusId()->GetSlotId();
 
                 bool isInBatchAdd = false;
@@ -174,21 +417,6 @@ namespace ScriptCanvas
                     auto node = AZ::EntityUtils::FindFirstDerivedComponent<Node>(endpoint.GetNodeId());
                     if (node)
                     {
-                        // If we are connecting to a dyanmic slot. We only want to update our typing
-                        // If it has a display type(as we will adopt its display type)
-                        Slot* slot = node->GetSlot(endpoint.GetSlotId());
-
-                        if (!slot->IsDynamicSlot() || slot->HasDisplayType())
-                        {
-                            auto dataType = node->GetSlotDataType(endpoint.GetSlotId());
-                            if (dataType != Data::Type::Invalid())
-                            {
-                                SetSourceType(dataType);
-                            }
-
-                            DisplaySourceType(dataType);
-                        }
-
                         if (m_sourceType.IsValid())
                         {
                             OnSourceConnected(currentSlotId);
@@ -198,7 +426,7 @@ namespace ScriptCanvas
                 else if (!isInBatchAdd)
                 {
                     Slot* slot = GetSlot(currentSlotId);
-                    if (slot && slot->GetType() == SlotType::DataIn)
+                    if (slot && slot->GetDescriptor() == SlotDescriptors::DataIn())
                     {
                         OnDataInputSlotConnected(currentSlotId, endpoint);
                         return;
@@ -208,21 +436,18 @@ namespace ScriptCanvas
 
             void OperatorBase::OnEndpointDisconnected(const Endpoint& endpoint)
             {
+                Node::OnEndpointDisconnected(endpoint);
+
                 const SlotId& currentSlotId = EndpointNotificationBus::GetCurrentBusId()->GetSlotId();
 
                 if (IsSourceSlotId(currentSlotId))
                 {
                     OnSourceDisconnected(currentSlotId);
-
-                    if (!HasSourceConnection())
-                    {
-                        DisplaySourceType(Data::Type::Invalid());
-                    }
                 }
                 else
                 {
                     Slot* slot = GetSlot(currentSlotId);
-                    if (slot && slot->GetType() == SlotType::DataIn)
+                    if (slot && slot->GetDescriptor() == SlotDescriptors::DataIn())
                     {
                         OnDataInputSlotDisconnected(currentSlotId, endpoint);
                         EndpointNotificationBus::MultiHandler::BusDisconnect({ GetEntityId(), slot->GetId() });
@@ -250,52 +475,47 @@ namespace ScriptCanvas
             }
 
             SlotId OperatorBase::AddSlotWithSourceType()
-            {
-                Data::Type type = Data::FromAZType(m_sourceTypes[0]);
-                SlotId inputSlotId = AddInputDatumSlot(Data::GetName(type), "", type, Datum::eOriginality::Original, false);
-                m_inputSlots.insert(inputSlotId);
-                EndpointNotificationBus::MultiHandler::BusConnect({ GetEntityId(), inputSlotId });
+            {                
+                Data::Type type = Data::Type::Invalid();
 
-                OnInputSlotAdded(inputSlotId);
+                if (!m_sourceTypes.empty())
+                {
+                    type = Data::FromAZType(m_sourceTypes[0]);
+                }
+
+                SlotId inputSlotId;
+
+                {
+                    DynamicDataSlotConfiguration slotConfiguration;
+
+                    if (type.IsValid())
+                    {
+                        slotConfiguration.m_name = Data::GetName(type);
+                    }
+                    else
+                    {
+                        slotConfiguration.m_name = "Value";
+                    }
+
+                    slotConfiguration.m_displayType = type;
+                    slotConfiguration.m_dynamicDataType = DynamicDataType::Any;
+                    slotConfiguration.SetConnectionType(ConnectionType::Input);
+                    slotConfiguration.m_addUniqueSlotByNameAndType = false;
+                    slotConfiguration.m_dynamicGroup = GetSourceDynamicTypeGroup();
+                    slotConfiguration.m_displayGroup = GetSourceDisplayGroup();
+
+                    inputSlotId = AddSlot(slotConfiguration);
+                }
+
+                if (inputSlotId.IsValid())
+                {
+                    m_inputSlots.insert(inputSlotId);
+                    EndpointNotificationBus::MultiHandler::BusConnect({ GetEntityId(), inputSlotId });
+
+                    OnInputSlotAdded(inputSlotId);
+                }
 
                 return inputSlotId;
-            }
-
-            void OperatorBase::SetSourceType(ScriptCanvas::Data::Type dataType)
-            {
-                if (dataType != m_sourceType)
-                {
-                    RemoveInputs();
-                    RemoveOutputs();
-
-                    m_sourceType = dataType;
-
-                    PopulateAZTypes(m_sourceType);
-
-                    OnSourceTypeChanged();
-                }
-
-                DisplaySourceType(dataType);
-            }
-
-            void OperatorBase::DisplaySourceType(ScriptCanvas::Data::Type dataType)
-            {
-                if (m_sourceDisplayType != dataType)
-                {
-                    m_sourceDisplayType = dataType;
-
-                    OnDisplayTypeChanged(dataType);
-
-                    for (auto sourceSlotId : m_sourceSlots)
-                    {
-                        auto sourceSlot = GetSlot(sourceSlotId);
-
-                        if (sourceSlot)
-                        {
-                            sourceSlot->SetDisplayType(dataType);
-                        }
-                    }
-                }
             }
 
             bool OperatorBase::HasSourceConnection() const
@@ -318,16 +538,21 @@ namespace ScriptCanvas
                 {
                     auto sourceSlot = GetSlot(sourceSlotId);
 
+                    if (!sourceSlot->IsData())
+                    {
+                        continue;
+                    }
+
                     switch (sourceType)
                     {
                     case SourceType::SourceInput:
-                        if (sourceSlot->GetType() == SlotType::DataIn)
+                        if (sourceSlot->IsData() && sourceSlot->IsInput())
                         {
                             isFull = IsConnected(sourceSlotId);
                         }
                         break;
                     case SourceType::SourceOutput:
-                        if (sourceSlot->GetType() == SlotType::DataOut)
+                        if (sourceSlot->GetDescriptor() == SlotDescriptors::DataOut())
                         {
                             isFull = IsConnected(sourceSlotId);
                         }
@@ -368,12 +593,11 @@ namespace ScriptCanvas
 
             void OperatorBase::RemoveOutputs()
             {
-                for (SlotId slotId : m_outputSlots)
+                SlotSet outputSlots = m_outputSlots;
+                for (SlotId slotId : outputSlots)
                 {
                     RemoveSlot(slotId);
                 }
-
-                m_outputSlots.clear();
             }
 
         }

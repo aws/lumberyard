@@ -3709,7 +3709,7 @@ void CParserBin::SetupFeatureDefines()
         AddMacro(CParserBin::GetCRC32("FEATURE_DUAL_SOURCE_BLENDING"), nEnable, 1, 0, m_StaticMacros);
     }
 
-#if defined(AZ_PLATFORM_APPLE_OSX)
+#if defined(AZ_PLATFORM_MAC)
     const bool isMacOpenGl = true;
 #else
     const bool isMacOpenGl = false;

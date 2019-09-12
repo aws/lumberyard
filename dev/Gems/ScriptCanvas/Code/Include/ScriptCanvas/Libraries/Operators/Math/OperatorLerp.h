@@ -21,17 +21,19 @@
 #include <ScriptCanvas/Core/Node.h>
 #include <ScriptCanvas/Core/GraphBus.h>
 
+
 #include <Include/ScriptCanvas/Libraries/Operators/Math/OperatorLerp.generated.h>
 
 namespace ScriptCanvas
 {
     namespace Nodes
     {
+#define LERPABLE_TYPES { Data::Type::Number(), Data::Type::Vector2(), Data::Type::Vector3(), Data::Type::Vector4() }
+
         class LerpBetween 
             : public Node
             , public AZ::SystemTickBus::Handler
             , public AZ::TickBus::Handler
-            , public EndpointNotificationBus::MultiHandler
         {
         public:
 
@@ -39,7 +41,7 @@ namespace ScriptCanvas
                 ScriptCanvas_Node::Name("Lerp Between")
                 ScriptCanvas_Node::Uuid("{58AF538D-021A-4D0C-A3F1-866C2FFF382E}")
                 ScriptCanvas_Node::Description("Performs a lerp between the two specified sources using the speed specified or in the amount of time specified, or the minimum of the two")
-                ScriptCanvas_Node::Version(0)
+                ScriptCanvas_Node::Version(1)
                 ScriptCanvas_Node::Category("Math")
             );
             
@@ -51,20 +53,61 @@ namespace ScriptCanvas
             ScriptCanvas_OutLatent(ScriptCanvas_Out::Name("Tick", "Signalled at each step of the lerp"));
             ScriptCanvas_OutLatent(ScriptCanvas_Out::Name("Lerp Complete", "Output signal"));
             ////
+
+            // DataInput
+
+            // Because all of the data slots are grouped together. We only need one of them to have
+            // the restricted type contract and all of them will get it.
+            ScriptCanvas_DynamicDataSlot(ScriptCanvas::DynamicDataType::Value,
+                                         ScriptCanvas::ConnectionType::Input,
+                                         ScriptCanvas_DynamicDataSlot::Name("Start", "The value to start lerping from.")
+                                         ScriptCanvas_DynamicDataSlot::DynamicGroup("LerpGroup")
+                                         ScriptCanvas_DynamicDataSlot::RestrictedTypeContractTag(LERPABLE_TYPES)
+                                        );
+
+            ScriptCanvas_DynamicDataSlot(ScriptCanvas::DynamicDataType::Value,
+                                         ScriptCanvas::ConnectionType::Input,
+                                         ScriptCanvas_DynamicDataSlot::Name("Stop", "The value to stop lerping at.")
+                                         ScriptCanvas_DynamicDataSlot::DynamicGroup("LerpGroup")
+                                        );
+
+            ScriptCanvas_DynamicDataSlot(ScriptCanvas::DynamicDataType::Value,
+                                         ScriptCanvas::ConnectionType::Input,
+                                         ScriptCanvas_DynamicDataSlot::Name("Speed", "The speed at which to lerp between the start and stop.")
+                                         ScriptCanvas_DynamicDataSlot::DynamicGroup("LerpGroup")
+                                        );
+
+            ScriptCanvas_PropertyWithDefaults(int, -1,
+                                                ScriptCanvas_Property::Name("Maximum Duration", "The maximum amount of time it will take to complete the specified lerp. Negative value implies no limit, 0 implies instant.")
+                                                ScriptCanvas_Property::Input
+                                            );
+            ////
+
+            // DataOutput
+            ScriptCanvas_DynamicDataSlot(ScriptCanvas::DynamicDataType::Value,
+                                         ScriptCanvas::ConnectionType::Output,
+                                         ScriptCanvas_DynamicDataSlot::Name("Step", "The value of the current step of the lerp.")
+                                         ScriptCanvas_DynamicDataSlot::DynamicGroup("LerpGroup")
+                                        );
+
+            ScriptCanvas_Property(float,
+                                  ScriptCanvas_Property::Name("Percent", "The perctange of the way through the lerp this tick is on.")
+                                  ScriptCanvas_Property::Output
+                                 );
             
             // Serialize Properties
             ScriptCanvas_SerializeProperty(Data::Type, m_displayType);
 
             // Data Input SlotIds
-            ScriptCanvas_SerializeProperty(SlotId, m_startSlotId);
-            ScriptCanvas_SerializeProperty(SlotId, m_stopSlotId);
-            ScriptCanvas_SerializeProperty(SlotId, m_speedSlotId);
-            ScriptCanvas_SerializeProperty(SlotId, m_maximumTimeSlotId);
+            SlotId m_startSlotId;
+            SlotId m_stopSlotId;
+            SlotId m_speedSlotId;
+            SlotId m_maximumTimeSlotId;
             ////
 
             // Data Output SlotIds
-            ScriptCanvas_SerializeProperty(SlotId, m_stepSlotId);
-            ScriptCanvas_SerializeProperty(SlotId, m_percentSlotId);
+            SlotId m_stepSlotId;
+            SlotId m_percentSlotId;
             ////
 
             ////
@@ -73,6 +116,7 @@ namespace ScriptCanvas
             ~LerpBetween() override = default;
             
             void OnInit() override;
+            void OnConfigured() override;
             
             // SystemTickBus
             void OnSystemTick() override;
@@ -84,15 +128,13 @@ namespace ScriptCanvas
             
             // Node
             void OnInputSignal(const SlotId& slotId) override;
-            
-            void OnEndpointConnected(const Endpoint& endpoint) override;
-            void OnEndpointDisconnected(const Endpoint& endpoint) override;
             ////
             
         private:
+
+            void SetupInternalSlotReferences();
         
             void CancelLerp();
-            void SetDisplayType(Data::Type dataType);            
 
             void SignalLerpStep(float percent);
             
@@ -115,13 +157,13 @@ namespace ScriptCanvas
             }
             
             template<typename DataType>
-            void SetupStartStop()
+            void SetupStartStop(Data::Type displayType)
             {
                 const Datum* startDatum = GetInput(m_startSlotId);
                 const Datum* endDatum = GetInput(m_stopSlotId);
                 
                 m_startDatum = (*startDatum);
-                m_differenceDatum = Datum(m_displayType, Datum::eOriginality::Original);
+                m_differenceDatum = Datum(displayType, Datum::eOriginality::Original);
                 
                 const DataType* startValue = startDatum->GetAs<DataType>();
                 const DataType* endValue = endDatum->GetAs<DataType>();
@@ -165,7 +207,7 @@ namespace ScriptCanvas
                 return fabsf(static_cast<float>(differenceLength/speedLength));
             }            
             
-            AZStd::unordered_set< SlotId > m_groupedSlotIds;            
+            AZStd::unordered_set< SlotId > m_groupedSlotIds;
         
             float m_duration;
             float m_counter;
@@ -173,5 +215,7 @@ namespace ScriptCanvas
             Datum m_startDatum;
             Datum m_differenceDatum;
         };
+
+#undef LERPABLE_TYPES
     }
 }

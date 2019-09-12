@@ -10,7 +10,7 @@
 *
 */
 
-#include <AzFramework/Input/Buses/Notifications/RawInputNotificationBus_ios.h>
+#include <AzFramework/Input/Buses/Notifications/RawInputNotificationBus_Platform.h>
 
 #import <UIKit/UIKit.h>
 

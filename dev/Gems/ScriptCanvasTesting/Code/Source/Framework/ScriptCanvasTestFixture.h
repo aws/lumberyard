@@ -16,6 +16,8 @@
 #include "ScriptCanvasTestNodes.h"
 #include "EntityRefTests.h"
 #include "ScriptCanvasTestUtilities.h"
+#include <ScriptCanvas/Core/Graph.h>
+#include <ScriptCanvas/Core/SlotConfigurationDefaults.h>
 
 #include <AzTest/AzTest.h>
 #include <AzCore/IO/FileIO.h>
@@ -29,6 +31,9 @@
 #include <AzCore/UnitTest/TestTypes.h>
 #include <ScriptCanvas/SystemComponent.h>
 #include <AzFramework/IO/LocalFileIO.h>
+#include <AzCore/std/containers/vector.h>
+
+#include <AzCore/Component/ComponentApplicationBus.h>
 
 #define SC_EXPECT_DOUBLE_EQ(candidate, reference) EXPECT_NEAR(candidate, reference, 0.001)
 #define SC_EXPECT_FLOAT_EQ(candidate, reference) EXPECT_NEAR(candidate, reference, 0.001f)
@@ -131,18 +136,29 @@ namespace ScriptCanvasTests
             AZ_Assert(AZ::IO::FileIOBase::GetInstance(), "File IO was not properly installed");
 
             RegisterComponentDescriptor<TestNodes::TestResult>();
-            RegisterComponentDescriptor<TestNodes::ConfigurableNode>();
+            RegisterComponentDescriptor<TestNodes::ConfigurableUnitTestNode>();
 
             m_numericVectorType = ScriptCanvas::Data::Type::BehaviorContextObject(azrtti_typeid<AZStd::vector<ScriptCanvas::Data::NumberType>>());
             m_stringToNumberMapType = ScriptCanvas::Data::Type::BehaviorContextObject(azrtti_typeid<AZStd::unordered_map<ScriptCanvas::Data::StringType, ScriptCanvas::Data::NumberType>>());
-            m_entityIdSetType = ScriptCanvas::Data::Type::BehaviorContextObject(azrtti_typeid<AZStd::unordered_set<ScriptCanvas::Data::EntityIDType>>());
 
             m_dataSlotConfigurationType = ScriptCanvas::Data::Type::BehaviorContextObject(azrtti_typeid<ScriptCanvas::DataSlotConfiguration>());
+
+            ScriptUnitTestEventHandler::Reflect(m_serializeContext);
+            ScriptUnitTestEventHandler::Reflect(m_behaviorContext);
         }
 
         void TearDown() override
         {
             ASSERT_TRUE(s_setupSucceeded) << "ScriptCanvasTestFixture set up failed, unit tests can't work properly";
+
+            m_serializeContext->EnableRemoveReflection();
+            m_behaviorContext->EnableRemoveReflection();
+
+            ScriptUnitTestEventHandler::Reflect(m_serializeContext);
+            ScriptUnitTestEventHandler::Reflect(m_behaviorContext);
+
+            m_serializeContext->DisableRemoveReflection();
+            m_behaviorContext->DisableRemoveReflection();
 
             for (AZ::ComponentDescriptor* componentDescriptor : m_descriptors)
             {
@@ -151,23 +167,99 @@ namespace ScriptCanvasTests
 
             m_descriptors.clear();
 
-            m_configurableEntityNodes.clear();
+            delete m_graph;
+            m_graph = nullptr;
         }
 
-        TestNodes::ConfigurableNode* CreateConfigurableNode(AZStd::string entityName = "ConfigurableNodeEntity")
+        ScriptCanvas::Graph* CreateGraph()
         {
-            AZStd::unique_ptr<AZ::Entity> configurableNodeEntity = AZStd::make_unique<AZ::Entity>(entityName.c_str());
-            auto configurableNode = configurableNodeEntity->CreateComponent<TestNodes::ConfigurableNode>();
-            configurableNode->Init();
+            if (m_graph == nullptr)
+        {
+                m_graph = aznew ScriptCanvas::Graph();
+                m_graph->Init();
+            }
 
-            m_configurableEntityNodes.emplace_back(AZStd::move(configurableNodeEntity));
+            return m_graph;
+        }
+
+        TestNodes::ConfigurableUnitTestNode* CreateConfigurableNode(AZStd::string entityName = "ConfigurableNodeEntity")
+        {
+            AZ::Entity* configurableNodeEntity = new AZ::Entity(entityName.c_str());         
+            auto configurableNode = configurableNodeEntity->CreateComponent<TestNodes::ConfigurableUnitTestNode>();
+
+            configurableNodeEntity->Init();
+            configurableNodeEntity->Activate();
+
+            if (m_graph == nullptr)
+            {
+                CreateGraph();
+            }
+
+            m_graph->AddNode(configurableNodeEntity->GetId());
 
             return configurableNode;
         }
 
+        void ReportErrors(ScriptCanvas::Graph* graph, bool expectErrors = false, bool expectIrrecoverableErrors = false)
+        {
+            EXPECT_EQ(graph->IsInErrorState(), expectErrors);
+            EXPECT_EQ(graph->IsInIrrecoverableErrorState(), expectIrrecoverableErrors);
+
+            if (graph->IsInErrorState())
+            {
+                AZ_TracePrintf("UnitTest", "%s\n", AZStd::string(graph->GetLastErrorDescription()).c_str());
+            }
+        }
+
+        void TestConnectionBetween(ScriptCanvas::Endpoint sourceEndpoint, ScriptCanvas::Endpoint targetEndpoint, bool isValid = true)
+        {
+            EXPECT_EQ(m_graph->CanConnectionExistBetween(sourceEndpoint, targetEndpoint).IsSuccess(), isValid);
+            EXPECT_EQ(m_graph->CanConnectionExistBetween(targetEndpoint, sourceEndpoint).IsSuccess(), isValid);
+
+            EXPECT_EQ(m_graph->CanCreateConnectionBetween(sourceEndpoint, targetEndpoint).IsSuccess(), isValid);
+            EXPECT_EQ(m_graph->CanCreateConnectionBetween(targetEndpoint, sourceEndpoint).IsSuccess(), isValid);
+
+            if (isValid)
+            {
+                EXPECT_TRUE(m_graph->ConnectByEndpoint(sourceEndpoint, targetEndpoint));
+            }
+        }
+
+        void TestIsConnectionPossible(ScriptCanvas::Endpoint sourceEndpoint, ScriptCanvas::Endpoint targetEndpoint, bool isValid = true)
+        {
+            EXPECT_EQ(m_graph->CanConnectionExistBetween(sourceEndpoint, targetEndpoint).IsSuccess(), isValid);
+            EXPECT_EQ(m_graph->CanConnectionExistBetween(targetEndpoint, sourceEndpoint).IsSuccess(), isValid);
+
+            EXPECT_EQ(m_graph->CanCreateConnectionBetween(sourceEndpoint, targetEndpoint).IsSuccess(), isValid);
+            EXPECT_EQ(m_graph->CanCreateConnectionBetween(targetEndpoint, sourceEndpoint).IsSuccess(), isValid);
+        }
+
+        void CreateExecutionFlowBetween(AZStd::vector<TestNodes::ConfigurableUnitTestNode*> unitTestNodes)
+        {
+            ScriptCanvas::Slot* previousOutSlot = nullptr;
+
+            for (TestNodes::ConfigurableUnitTestNode* testNode : unitTestNodes)
+            {
+                {
+                    ScriptCanvas::ExecutionSlotConfiguration inputSlot = ScriptCanvas::CommonSlots::GeneralInSlot();
+                    ScriptCanvas::Slot* slot = testNode->AddTestingSlot(inputSlot);
+
+                    if (slot && previousOutSlot)
+                    {
+                        TestConnectionBetween(previousOutSlot->GetEndpoint(), slot->GetEndpoint());
+                    }
+                }
+
+                {
+                    ScriptCanvas::ExecutionSlotConfiguration outputSlot = ScriptCanvas::CommonSlots::GeneralOutSlot();
+                    previousOutSlot = testNode->AddTestingSlot(outputSlot);
+                }
+            }
+        }
+
         AZStd::vector< ScriptCanvas::Data::Type > GetContainerDataTypes() const
         {
-            return { m_numericVectorType, m_stringToNumberMapType, m_entityIdSetType };
+            return { m_numericVectorType, m_stringToNumberMapType };
         }
 
         ScriptCanvas::Data::Type GetRandomContainerType() const
@@ -296,13 +388,14 @@ namespace ScriptCanvasTests
         // Really big(visually) data types just storing here for ease of use in situations.
         ScriptCanvas::Data::Type m_numericVectorType;
         ScriptCanvas::Data::Type m_stringToNumberMapType;
-        ScriptCanvas::Data::Type m_entityIdSetType;
 
         ScriptCanvas::Data::Type m_dataSlotConfigurationType;
 
-        AZStd::vector< AZStd::unique_ptr<AZ::Entity> > m_configurableEntityNodes;
+        ScriptCanvas::Graph* m_graph = nullptr;
 
         int m_slotCounter = 0;
+
+        AZStd::unordered_map< AZ::EntityId, AZ::Entity* > m_entityMap;
 
     protected:
         static ScriptCanvasTests::Application* GetApplication() { return s_application; }

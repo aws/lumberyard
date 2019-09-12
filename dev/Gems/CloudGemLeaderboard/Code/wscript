@@ -32,4 +32,6 @@ def build(bld):
         shared_settings = ['awsgem.json'],
 
         restricted_script = 'update_restricted_parameters',
+        includes = [bld.Path('Code/CryEngine/CryCommon')
+                   ],
     )

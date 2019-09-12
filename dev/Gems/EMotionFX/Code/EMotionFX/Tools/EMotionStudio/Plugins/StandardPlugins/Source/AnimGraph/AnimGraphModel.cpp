@@ -568,6 +568,11 @@ namespace EMStudio
 
     QModelIndex AnimGraphModel::FindFirstModelIndex(EMotionFX::AnimGraphObject* animGraphObject)
     {
+        if (!animGraphObject)
+        {
+            return {};
+        }
+
         EMotionFX::AnimGraph* animGraph = animGraphObject->GetAnimGraph();
         const size_t animGraphInstanceCount = animGraph->GetNumAnimGraphInstances();
 
@@ -705,7 +710,7 @@ namespace EMStudio
         endResetModel();
     }
 
-    void AnimGraphModel::SetAnimGraphInstance(EMotionFX::AnimGraph* animGraph, EMotionFX::AnimGraphInstance* currentAnimGraphInstance, EMotionFX::AnimGraphInstance* newAnimGraphInstance)
+    void AnimGraphModel::SetAnimGraphInstance(EMotionFX::AnimGraph* currentAnimGraph, EMotionFX::AnimGraphInstance* currentAnimGraphInstance, EMotionFX::AnimGraphInstance* newAnimGraphInstance)
     {
         AZ_Assert(currentAnimGraphInstance != newAnimGraphInstance, "newAnimGraphInstance should be different than currentAnimGraphInstance");
 
@@ -713,7 +718,7 @@ namespace EMStudio
         for (; itRootModelItemData != m_rootModelItemData.end(); ++itRootModelItemData)
         {
             ModelItemData* modelItemData = *itRootModelItemData;
-            if (modelItemData->m_animGraphInstance == currentAnimGraphInstance && modelItemData->m_object.m_node->GetAnimGraph() == animGraph)
+            if (modelItemData->m_animGraphInstance == currentAnimGraphInstance && modelItemData->m_object.m_node->GetAnimGraph() == currentAnimGraph)
             {
                 // Since the anim graph instance changes how elements get hashed, we need to take them out of m_modelItemDataSet
                 // patch them and add them again. Since the index won't get affected, there is no need to notify the UI.

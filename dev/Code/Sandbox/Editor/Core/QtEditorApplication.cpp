@@ -53,7 +53,7 @@
 #include <AzToolsFramework/Metrics/LyEditorMetricsBus.h>
 
 #if defined(AZ_PLATFORM_WINDOWS)
-#   include <AzFramework/Input/Buses/Notifications/RawInputNotificationBus_win.h>
+#   include <AzFramework/Input/Buses/Notifications/RawInputNotificationBus_Platform.h>
 #endif // defined(AZ_PLATFORM_WINDOWS)
 
 enum
@@ -178,7 +178,7 @@ namespace
                 case QEvent::MouseButtonDblClick:
                 case QEvent::MouseMove:
                 {
-#ifdef AZ_PLATFORM_APPLE
+#if AZ_TRAIT_OS_PLATFORM_APPLE
                     auto widget = qobject_cast<QWidget*>(obj);
                     if (widget && widget->graphicsProxyWidget() != nullptr)
                     {
@@ -542,7 +542,7 @@ namespace Editor
             RAWINPUT* rawInput = (RAWINPUT*)rawInputBytes;
             CRY_ASSERT(rawInput);
 
-            AzFramework::RawInputNotificationBusWin::Broadcast(&AzFramework::RawInputNotificationsWin::OnRawInputEvent, *rawInput);
+            AzFramework::RawInputNotificationBusWindows::Broadcast(&AzFramework::RawInputNotificationsWindows::OnRawInputEvent, *rawInput);
 
             return false;
         }
@@ -550,7 +550,7 @@ namespace Editor
         {
             if (msg->wParam == 0x0007) // DBT_DEVNODES_CHANGED
             {
-                AzFramework::RawInputNotificationBusWin::Broadcast(&AzFramework::RawInputNotificationsWin::OnRawInputDeviceChangeEvent);
+                AzFramework::RawInputNotificationBusWindows::Broadcast(&AzFramework::RawInputNotificationsWindows::OnRawInputDeviceChangeEvent);
             }
             return true;
         }
@@ -743,6 +743,16 @@ namespace Editor
         {
             m_idleTimer->stop();
         }
+    }
+
+    bool EditorQtApplication::OnIdleEnabled() const
+    {
+        if (m_idleTimer->interval() == UninitializedFrequency)
+        {
+            return false;
+        }
+
+        return m_idleTimer->isActive();
     }
 
     void EditorQtApplication::ResetIdleTimerInterval(TimerResetFlag flag)

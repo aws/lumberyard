@@ -12,30 +12,107 @@
 
 #include "precompiled.h"
 
+#include <AzCore/UserSettings/UserSettingsProvider.h>
+
+#include <GraphCanvas/Components/Nodes/Comment/CommentBus.h>
+
 #include "Settings.h"
 
 #include <ScriptCanvas/Data/Data.h>
 
+#include <Editor/GraphCanvas/GraphCanvasEditorNotificationBusId.h>
 #include <Editor/View/Widgets/VariablePanel/GraphVariablesTableView.h>
 
 namespace ScriptCanvasEditor
 {
     namespace EditorSettings
     {
-        void WindowSavedState::Reflect(AZ::ReflectContext* context)
+        /////////////////////////////////
+        // ScriptCanvasConstructPresets
+        /////////////////////////////////
+
+        ScriptCanvasConstructPresets::ScriptCanvasConstructPresets()
+        {
+        }
+
+        void ScriptCanvasConstructPresets::InitializeConstructType(GraphCanvas::ConstructType constructType)
+        {
+            if (constructType == GraphCanvas::ConstructType::NodeGroup)
+            {
+                GraphCanvas::NodeGroupPresetBucket* nodeGroupPresetBucket = static_cast<GraphCanvas::NodeGroupPresetBucket*>(ModPresetBuckket(GraphCanvas::ConstructType::NodeGroup));
+
+                if (nodeGroupPresetBucket)
+                {
+                    nodeGroupPresetBucket->ClearPresets();
+
+                    AZStd::vector< AZStd::pair< AZStd::string, AZ::Color > >  defaultGroupPresets = {
+                        { "Initialization", AZ::Color(0.188f, 0.972f, 0.243f, 1.0f) },
+                        { "UI", AZ::Color(0.741f, 0.372f, 0.545f, 1.0f) },
+                        { "AI", AZ::Color(0.396f, 0.788f, 0.788f, 1.0f) },
+                        { "Physics", AZ::Color(0.866f, 0.498f, 0.427f, 1.0f) },
+                        { "Input", AZ::Color(0.396f, 0.788f, 0.549f, 1.0f) }
+                    };
+
+                    for (auto groupPairing : defaultGroupPresets)
+                    {
+                        AZStd::shared_ptr< GraphCanvas::ConstructPreset > initializaitonGroupPreset = nodeGroupPresetBucket->CreateNewPreset(groupPairing.first);
+
+                        if (initializaitonGroupPreset)
+                        {
+                            const auto& presetSaveData = initializaitonGroupPreset->GetPresetData();
+
+                            GraphCanvas::CommentNodeTextSaveData* saveData = presetSaveData.FindSaveDataAs<GraphCanvas::CommentNodeTextSaveData>();
+
+                            if (saveData)
+                            {
+                                saveData->m_backgroundColor = groupPairing.second;
+                            }
+                        }
+                    }
+                }
+            }
+            else if (constructType == GraphCanvas::ConstructType::CommentNode)
+            {
+                GraphCanvas::CommentPresetBucket* commentPresetBucket = static_cast<GraphCanvas::CommentPresetBucket*>(ModPresetBuckket(GraphCanvas::ConstructType::CommentNode));
+                commentPresetBucket->ClearPresets();
+            }
+        }
+
+        ////////////////////
+        // EditorWorkspace
+        ////////////////////
+        void EditorWorkspace::Reflect(AZ::ReflectContext* context)
         {
             AZ::SerializeContext* serialize = azrtti_cast<AZ::SerializeContext*>(context);
             if (serialize)
             {
-                serialize->Class<WindowSavedState>()
-                    ->Version(1)
-                    ->Field("m_storedWindowState", &WindowSavedState::m_storedWindowState)
-                    ->Field("m_windowGeometry", &WindowSavedState::m_windowGeometry)
+                serialize->Class<EditorWorkspace>()
+                    ->Version(2)
+                    ->Field("m_storedWindowState", &EditorWorkspace::m_storedWindowState)
+                    ->Field("m_windowGeometry", &EditorWorkspace::m_windowGeometry)
+                    ->Field("FocusedAssetId", &EditorWorkspace::m_focusedAssetId)
+                    ->Field("ActiveAssetIds", &EditorWorkspace::m_activeAssetIds)
                     ;
             }
         }
 
-        void WindowSavedState::Init(const QByteArray& windowState, const QByteArray& windowGeometry)
+        void EditorWorkspace::ConfigureActiveAssets(AZ::Data::AssetId focussedAssetId, const AZStd::vector< AZ::Data::AssetId >& activeAssetIds)
+        {
+            m_focusedAssetId = focussedAssetId;
+            m_activeAssetIds = activeAssetIds;
+        }
+
+        AZ::Data::AssetId EditorWorkspace::GetFocusedAssetId() const
+        {
+            return m_focusedAssetId;
+        }
+
+        AZStd::vector< AZ::Data::AssetId > EditorWorkspace::GetActiveAssetIds() const
+        {
+            return m_activeAssetIds;
+        }
+
+        void EditorWorkspace::Init(const QByteArray& windowState, const QByteArray& windowGeometry)
         {
             m_storedWindowState.clear();
 
@@ -45,7 +122,7 @@ namespace ScriptCanvasEditor
             m_storedWindowState.assign((AZ::u8*)windowState.begin(), (AZ::u8*)windowState.end());
         }
 
-        void WindowSavedState::Restore(QMainWindow* window)
+        void EditorWorkspace::Restore(QMainWindow* window)
         {
             AZ_Assert(window, "A valid window must be provided to restore its state.");
 
@@ -53,11 +130,44 @@ namespace ScriptCanvasEditor
             window->restoreState(windowStateData);
         }
 
-        const AZStd::vector<AZ::u8>&  WindowSavedState::GetWindowState()
+        const AZStd::vector<AZ::u8>&  EditorWorkspace::GetWindowState()
         {
             m_windowState.clear();
             m_windowState.assign(m_storedWindowState.begin(), m_storedWindowState.end());
             return m_windowState;
+        }
+
+        ////////////////////
+        // StylingSettings
+        ////////////////////
+
+        void StylingSettings::Reflect(AZ::ReflectContext* reflectContext)
+        {
+            AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(reflectContext);
+
+            if (serializeContext)
+            {
+                serializeContext->Class<StylingSettings>()
+                    ->Version(1)
+                    ->Field("ConnectionCurveType", &StylingSettings::m_connectionCurveType)
+                    ->Field("DataConnectionCurveType", &StylingSettings::m_dataConnectionCurveType)
+                ;
+
+                AZ::EditContext* editContext = serializeContext->GetEditContext();
+                if (editContext)
+                {
+                    editContext->Class<StylingSettings>("StylingSettings", "All of the styling configurations that can be customized per user.")
+                        ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
+                            ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
+                        ->DataElement(AZ::Edit::UIHandlers::ComboBox, &StylingSettings::m_connectionCurveType, "Connection Curve Type", "Controls the curve style of general connections.")
+                            ->EnumAttribute(GraphCanvas::Styling::ConnectionCurveType::Straight, "Straight")
+                            ->EnumAttribute(GraphCanvas::Styling::ConnectionCurveType::Curved, "Curved")
+                        ->DataElement(AZ::Edit::UIHandlers::ComboBox, &StylingSettings::m_dataConnectionCurveType, "Data Connection Curve Type", "Controls the curve style of data connections.")
+                            ->EnumAttribute(GraphCanvas::Styling::ConnectionCurveType::Straight, "Straight")
+                            ->EnumAttribute(GraphCanvas::Styling::ConnectionCurveType::Curved, "Curved")
+                    ;
+                }
+            }
         }
 
         ///////////////////////////////
@@ -143,14 +253,25 @@ namespace ScriptCanvasEditor
                 classElement.AddElementWithData(context, "DropSplicingConfiguration", dropSplicingConfiguration);
             }
 
+            if (classElement.GetVersion() == 11)
+            {
+                classElement.RemoveElementByName(AZ::Crc32("ConstructPresets"));
+            }
+
             return true;
         }
 
         void ScriptCanvasEditorSettings::Reflect(AZ::ReflectContext* context)
         {
+            StylingSettings::Reflect(context);
+
             AZ::SerializeContext* serialize = azrtti_cast<AZ::SerializeContext*>(context);
             if (serialize)
             {
+                serialize->Class<ScriptCanvasConstructPresets, GraphCanvas::EditorConstructPresets>()
+                    ->Version(1)
+                ;
+
                 serialize->Class<ToggleableConfiguration>()
                     ->Version(1)
                     ->Field("Enabled", &ToggleableConfiguration::m_enabled)
@@ -173,8 +294,13 @@ namespace ScriptCanvasEditor
                     ->Field("ScrollSpeed", &EdgePanningSettings::m_edgeScrollSpeed)
                 ;
 
+                serialize->Class<ZoomSettings>()
+                    ->Version(2)
+                    ->Field("MinZoom", &ZoomSettings::m_zoomInSetting)
+                ;
+
                 serialize->Class<ScriptCanvasEditorSettings>()
-                    ->Version(10, ScriptCanvasEditorSettings::VersionConverter)
+                    ->Version(14, ScriptCanvasEditorSettings::VersionConverter)
                     ->Field("m_showPreviewMessage", &ScriptCanvasEditorSettings::m_showPreviewMessage)
                     ->Field("m_snapDistance", &ScriptCanvasEditorSettings::m_snapDistance)
                     ->Field("m_showExcludedNodes", &ScriptCanvasEditorSettings::m_showExcludedNodes)
@@ -191,6 +317,10 @@ namespace ScriptCanvasEditor
                     ->Field("AllowNodeNudging", &ScriptCanvasEditorSettings::m_allowNodeNudgingOnSplice)
                     ->Field("AlignmentTime", &ScriptCanvasEditorSettings::m_alignmentTimeMS)
                     ->Field("EdgePanningSettings", &ScriptCanvasEditorSettings::m_edgePanningSettings)
+                    ->Field("ConstructPresets", &ScriptCanvasEditorSettings::m_constructPresets)
+                    ->Field("StylingSettings", &ScriptCanvasEditorSettings::m_stylingSettings)
+                    ->Field("RememberOpenCanvases", &ScriptCanvasEditorSettings::m_rememberOpenCanvases)
+                    ->Field("ZoomSettings", &ScriptCanvasEditorSettings::m_zoomSettings)
                     ;
 
                 AZ::EditContext* editContext = serialize->GetEditContext();
@@ -238,13 +368,23 @@ namespace ScriptCanvasEditor
                             ->Attribute(AZ::Edit::Attributes::Min, 1.0)
                         ;
 
+                    editContext->Class<ZoomSettings>("Zoom Settings", "Settings that control the degree to which the scene can be zoomed in or out.")
+                        ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
+                        ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
+                        ->DataElement(AZ::Edit::UIHandlers::Slider, &ZoomSettings::m_zoomInSetting, "Maximum Zoom In", "Controls the maximum magnification for zooming in")
+                            ->Attribute(AZ::Edit::Attributes::Min, 1.0)
+                            ->Attribute(AZ::Edit::Attributes::Max, 5.0)
+                            ->Attribute(AZ::Edit::Attributes::Step, 0.1)
+                            ->Attribute(AZ::Edit::Attributes::Suffix, "X")
+                        ;
+
                     editContext->Class<ScriptCanvasEditorSettings>("Script Canvas Editor Preferences", "Preferences relating to the Script Canvas editor.")
                         ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
-                            ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
-                            ->Attribute(AZ::Edit::Attributes::Visibility, AZ_CRC("PropertyVisibility_ShowChildrenOnly", 0xef428f20))
+                        ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
+                        ->Attribute(AZ::Edit::Attributes::Visibility, AZ_CRC("PropertyVisibility_ShowChildrenOnly", 0xef428f20))
                         ->DataElement(AZ::Edit::UIHandlers::Default, &ScriptCanvasEditorSettings::m_showPreviewMessage, "Show Preview Message", "Show the Script Canvas (PREVIEW) welcome message.")
                         ->DataElement(AZ::Edit::UIHandlers::Default, &ScriptCanvasEditorSettings::m_snapDistance, "Connection Snap Distance", "The distance from a slot under which connections will snap to it.")
-                            ->Attribute(AZ::Edit::Attributes::Min, 10.0)
+                        ->Attribute(AZ::Edit::Attributes::Min, 10.0)
                         ->DataElement(AZ::Edit::UIHandlers::Default, &ScriptCanvasEditorSettings::m_showExcludedNodes, "Show nodes excluded from preview", "Show nodes that have been excluded from preview because they may not work correctly in Script Canvas yet.")
                         ->DataElement(AZ::Edit::UIHandlers::Default, &ScriptCanvasEditorSettings::m_allowBookmarkViewpointControl, "Bookmark Zooming", "Will cause the bookmarks to force the viewport into the state determined by the bookmark type\nBookmark Anchors - The viewport that exists when the bookmark is created.\nNode Groups - The area the Node Group covers")
                         ->DataElement(AZ::Edit::UIHandlers::Default, &ScriptCanvasEditorSettings::m_dragNodeCouplingConfig, "Node Coupling Configuration", "Controls for managing Node Coupling.\nNode Coupling is when you are dragging a node and leave it hovered over another Node, we will try to connect the sides you overlapped with each other.")
@@ -254,8 +394,12 @@ namespace ScriptCanvasEditor
                         ->DataElement(AZ::Edit::UIHandlers::Default, &ScriptCanvasEditorSettings::m_shakeDespliceConfig, "Shake To Desplice", "Settings that controls various parameters of the Shake to Desplice feature")
                         ->DataElement(AZ::Edit::UIHandlers::Default, &ScriptCanvasEditorSettings::m_allowNodeNudgingOnSplice, "Allow Node Nudging On Splice", "Controls whether or not nodes that are spliced onto connections will nudge other nodes out of the way to make room for the spliced node.")
                         ->DataElement(AZ::Edit::UIHandlers::Default, &ScriptCanvasEditorSettings::m_alignmentTimeMS, "Alignment Time", "Controls the amount of time nodes will take to slide into place when performing alignment commands")
-                            ->Attribute(AZ::Edit::Attributes::Min, 0.0)
+                        ->Attribute(AZ::Edit::Attributes::Min, 0)
                         ->DataElement(AZ::Edit::UIHandlers::Default, &ScriptCanvasEditorSettings::m_edgePanningSettings, "Edge Panning Settings", "Settings that control how the panning at the edge of the scene will be handled.")
+                        ->DataElement(AZ::Edit::UIHandlers::Default, &ScriptCanvasEditorSettings::m_zoomSettings, "Zoom Settings", "Settings that will control the boundaries of the zoom settings")
+                        ->DataElement(AZ::Edit::UIHandlers::Default, &ScriptCanvasEditorSettings::m_rememberOpenCanvases, "Remember Open Canvases", "Determines whether or ScriptCanvses that were open when the editor is closed will be re-opened on the next open.")
+                        ->DataElement(AZ::Edit::UIHandlers::Default, &ScriptCanvasEditorSettings::m_stylingSettings, "Styling Settings", "Settings that will control various visual styling aspects of the Script Canvas Scene")
+                        
                         ;
                 }
             }
@@ -267,6 +411,7 @@ namespace ScriptCanvasEditor
             , m_showExcludedNodes(true)
             , m_allowBookmarkViewpointControl(true)
             , m_allowNodeNudgingOnSplice(true)
+            , m_rememberOpenCanvases(true)
             , m_dragNodeCouplingConfig(true, 750)
             , m_dragNodeSplicingConfig(true, 1000)
             , m_dropNodeSplicingConfig(true, 1000)
@@ -287,7 +432,12 @@ namespace ScriptCanvasEditor
             , m_showValidationErrors(true)
             , m_alignmentTimeMS(250)
         {
+            GraphCanvas::AssetEditorPresetNotificationBus::Handler::BusConnect(ScriptCanvasEditor::AssetEditorId);
+        }
 
+        void ScriptCanvasEditorSettings::OnConstructPresetsChanged(GraphCanvas::ConstructType constructType)
+        {
+            AZ::UserSettingsOwnerRequestBus::Event(AZ::UserSettings::CT_LOCAL, &AZ::UserSettingsOwnerRequests::SaveSettings);
         }
     }
 }

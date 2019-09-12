@@ -52,6 +52,8 @@ namespace GraphCanvas
 
         static const SlotType ExecutionSlot = AZ_CRC("SlotType_Execution", 0xfe5e03a7);
 
+        static const SlotType ExtenderSlot = AZ_CRC("SlotType_Extender", 0x9635d575);
+
         static const SlotType PropertySlot = AZ_CRC("SlotType_Property", 0xccaefd85);
 
         static const SlotType VariableReferenceSlot = AZ_CRC("SlotType_Variable", 0x8b1166d6);
@@ -69,6 +71,9 @@ namespace GraphCanvas
 
         // Slot Group used by default for Execution Slots
         static const SlotGroup ExecutionGroup = AZ_CRC("SlotGroup_Execution", 0x51524cd3);
+
+        // Slot Group used by default for Extender Slots
+        static const SlotGroup ExtenderGroup = AZ_CRC("SlotGroup_Extender", 0x9061eddc);
 
         // Slot Group used by default for Property Slots
         static const SlotGroup PropertyGroup = AZ_CRC("SlotGroup_Property", 0xcafac52c);
@@ -116,6 +121,13 @@ namespace GraphCanvas
         AZ_TYPE_INFO(SlotGroupConfiguration, "{88F7AB93-9F26-4059-BD37-FFBD41E38AF6}");
         AZ_CLASS_ALLOCATOR(SlotGroupConfiguration, AZ::SystemAllocator, 0);
 
+        struct ExtendabilityConfig
+        {
+            bool          m_isExtendable;
+            AZStd::string m_name;
+            AZStd::string m_tooltip;
+        };
+
         SlotGroupConfiguration()
             : m_layoutOrder(0)
         {
@@ -126,8 +138,20 @@ namespace GraphCanvas
         {
         }
 
+        void SetInputExtendable(const ExtendabilityConfig& configuration)
+        {
+            m_extendability[ConnectionType::CT_Input] = configuration;
+        }
+
+        void SetOutputExtendable(const ExtendabilityConfig& configuration)
+        {
+            m_extendability[ConnectionType::CT_Output] = configuration;
+        }
+
         int m_layoutOrder = 0;
         bool m_visible = true;
+
+        AZStd::unordered_map< ConnectionType, ExtendabilityConfig > m_extendability;
     };
 
     typedef AZStd::unordered_map< SlotGroup, SlotGroupConfiguration > SlotGroupConfigurationMap;
@@ -234,19 +258,19 @@ namespace GraphCanvas
 
         //! Returns the connection to be used when trying to create a connection from this object.
         //! Will create a connection with the underlying data model.
-        virtual AZ::EntityId CreateConnectionWithEndpoint(const Endpoint& endpoint) const = 0;
+        virtual AZ::EntityId CreateConnectionWithEndpoint(const Endpoint& endpoint) = 0;
 
-        AZ_DEPRECATED(AZ::EntityId CreateConnection() const, "Renamed CreateConnection to DisplayConnection for logical consistency (create implies interaction with the model, which display implies interaction with the view)")
+        AZ_DEPRECATED(AZ::EntityId CreateConnection(), "Renamed CreateConnection to DisplayConnection for logical consistency (create implies interaction with the model, which display implies interaction with the view)")
         {
             return DisplayConnection();
         }
 
         //! Returns the connection to be used when trying to create a connection from this object.
-        virtual AZ::EntityId DisplayConnection() const = 0;
+        virtual AZ::EntityId DisplayConnection() = 0;
 
         //! Returns the connection to be used when trying to create a connection from this object.
         //! Will not create a connection with the underlying data model.
-        virtual AZ::EntityId DisplayConnectionWithEndpoint(const Endpoint& endpoint) const = 0;
+        virtual AZ::EntityId DisplayConnectionWithEndpoint(const Endpoint& endpoint) = 0;
 
         //! Displays the proposed connection on the slot
         virtual void DisplayProposedConnection(const AZ::EntityId& connectionId, const Endpoint& endpoint) = 0;
@@ -297,9 +321,26 @@ namespace GraphCanvas
 
         // Returns the list of slot remapping
         virtual AZStd::vector< Endpoint > GetRemappedModelEndpoints() const = 0;
+        
+        // Returns the layout priority of the slot. Higher priority means higher up on the list.
+        virtual int GetLayoutPriority() const {
+            return 10;
+        }
     };
 
-    using SlotRequestBus = AZ::EBus<SlotRequests>;
+    using SlotRequestBus = AZ::EBus<SlotRequests>;    
+    
+    struct SlotLayoutInfo
+    {
+        SlotLayoutInfo(SlotId slotId)
+            : m_slotId(slotId)
+        {
+            SlotRequestBus::EventResult(m_priority, slotId, &SlotRequests::GetLayoutPriority);
+        }
+
+        SlotId m_slotId;
+        int m_priority;
+    };
 
     class SlotUIRequests
         : public AZ::EBusTraits

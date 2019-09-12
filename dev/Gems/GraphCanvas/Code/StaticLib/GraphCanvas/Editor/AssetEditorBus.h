@@ -17,6 +17,7 @@
 
 #include <GraphCanvas/Editor/EditorTypes.h>
 #include <GraphCanvas/Widgets/EditorContextMenu/ContextMenuActions/ContextMenuAction.h>
+#include <GraphCanvas/Types/Types.h>
 
 namespace AZ
 {
@@ -25,7 +26,9 @@ namespace AZ
 
 namespace GraphCanvas
 {
+    class ConstructTypePresetBucket;
     class EditorContextMenu;
+    class EditorConstructPresets;    
 
     class AssetEditorSettingsRequests
         : public AZ::EBusTraits
@@ -72,9 +75,27 @@ namespace GraphCanvas
         // Alignment
         virtual AZStd::chrono::milliseconds GetAlignmentTime() const { return AZStd::chrono::milliseconds(250); }
 
+        // Zoom Configuration
+        //
+        // These are scale values, so they are specifying the largest and smallest scale to be applied
+        // to the individual objects. MinZoom implies the smallest element size, so the maximum amount you can zoom out to.
+        // While MaxZoom represents the largest element size, so the maximum amount you can zoom in to.
+        virtual float GetMaxZoom() const { return 2.0f; }
+
         // Edge of Screen Pan Configurations
         virtual float GetEdgePanningPercentage() const { return 0.1f; }
-        virtual float GetEdgePanningScrollSpeed() const { return 100.0f; }
+        virtual float GetEdgePanningScrollSpeed() const { return 100.0f; }        
+
+        // Construct Presets
+        virtual EditorConstructPresets* GetConstructPresets() const { return nullptr; }
+        virtual const ConstructTypePresetBucket* GetConstructTypePresetBucket(ConstructType constructType) const { return nullptr; }
+
+        // Styling
+        virtual Styling::ConnectionCurveType GetConnectionCurveType() const { return Styling::ConnectionCurveType::Straight; }
+        virtual Styling::ConnectionCurveType GetDataConnectionCurveType() const { return Styling::ConnectionCurveType::Straight; }
+
+        // Enable Node Disabling
+        virtual bool AllowNodeDisabling() const { return false; }
     };
 
     using AssetEditorSettingsRequestBus = AZ::EBus<AssetEditorSettingsRequests>;
@@ -112,9 +133,16 @@ namespace GraphCanvas
             AZ_UNUSED(connectionEntity);
         }
 
+        virtual void ShowAssetPresetsMenu(ConstructType constructType)
+        {
+            AZ_UNUSED(constructType);
+        }
+
         virtual ContextMenuAction::SceneReaction ShowSceneContextMenu(const QPoint& screenPoint, const QPointF& scenePoint) = 0;
 
         virtual ContextMenuAction::SceneReaction ShowNodeContextMenu(const AZ::EntityId& nodeId, const QPoint& screenPoint, const QPointF& scenePoint) = 0;
+
+        virtual ContextMenuAction::SceneReaction ShowCommentContextMenu(const AZ::EntityId& nodeId, const QPoint& screenPoint, const QPointF& scenePoint) = 0;
 
         virtual ContextMenuAction::SceneReaction ShowNodeGroupContextMenu(const AZ::EntityId& groupId, const QPoint& screenPoint, const QPointF& scenePoint) = 0;
         virtual ContextMenuAction::SceneReaction ShowCollapsedNodeGroupContextMenu(const AZ::EntityId& nodeId, const QPoint& screenPoint, const QPointF& scenePoint) = 0;
@@ -144,4 +172,21 @@ namespace GraphCanvas
     };
 
     using AssetEditorNotificationBus = AZ::EBus<AssetEditorNotifications>;
+
+    // This one will use the same id'ing pattern but will be controlled by the EditorConstructPresets object.
+    // For the creation through context menu.
+    //
+    // One off and Editor driven creations can be signalled when the changes are finalized in that Dialog.
+    class AssetEditorPresetNotifications : public AZ::EBusTraits
+    {
+    public:
+        static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::ById;
+        using BusIdType = EditorId;
+
+        virtual void OnPresetsChanged() {};
+        virtual void OnConstructPresetsChanged(ConstructType constructType) {};
+    };
+
+    using AssetEditorPresetNotificationBus = AZ::EBus<AssetEditorPresetNotifications>;
+
 }

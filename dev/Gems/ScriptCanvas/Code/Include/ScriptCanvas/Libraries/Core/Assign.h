@@ -37,7 +37,7 @@ namespace ScriptCanvas
                 void OnInit() override;
                 void OnInputSignal(const SlotId&) override;
                 bool SlotAcceptsType(const SlotId&, const Data::Type&) const override;
-                void Visit(NodeVisitor& visitor) const override { visitor.Visit(*this); }
+                
             };
         }
     }

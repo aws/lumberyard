@@ -13,15 +13,7 @@
 #include <stdio.h>
 #include "DiskFile.h"
 
-#if defined(AZ_RESTRICTED_PLATFORM)
-    #if defined(AZ_PLATFORM_XENIA)
-        #include "Xenia/DiskFile_cpp_xenia.inl"
-    #elif defined(AZ_PLATFORM_PROVO)
-        #include "Provo/DiskFile_cpp_provo.inl"
-    #endif
-#else
-#define DISKFILE_CPP_TRAIT_USE_POSIX 1
-#endif
+
 namespace MCore
 {
     // constructor
@@ -137,7 +129,6 @@ namespace MCore
     }
 
 
-
     // return true when we have reached the end of the file
     bool DiskFile::GetIsEOF() const
     {
@@ -155,25 +146,6 @@ namespace MCore
     }
 
 
-    // returns the position (offset) in the file in bytes
-    size_t DiskFile::GetPos() const
-    {
-        MCORE_ASSERT(mFile);
-
-    #ifdef MCORE_PLATFORM_WINDOWS
-        #ifdef MCORE_ARCHITECTURE_64BIT
-        return _ftelli64(mFile);
-        #else
-        return ftell(mFile);
-        #endif
-    #elif defined(MCORE_PLATFORM_POSIX) && DISKFILE_CPP_TRAIT_USE_POSIX
-        return ftello(mFile);
-    #else
-        return ftell(mFile);
-    #endif
-    }
-
-
     // write a given byte to the file
     bool DiskFile::WriteByte(uint8 value)
     {
@@ -184,72 +156,6 @@ namespace MCore
         {
             return false;
         }
-
-        return true;
-    }
-
-
-    // seek a given number of bytes ahead from it's current position
-    bool DiskFile::Forward(size_t numBytes)
-    {
-        MCORE_ASSERT(mFile);
-
-    #ifdef MCORE_PLATFORM_WINDOWS
-        #ifdef MCORE_ARCHITECTURE_64BIT
-        if (_fseeki64(mFile, numBytes, SEEK_CUR) != 0)
-        {
-            return false;
-        }
-        #else
-        if (fseek(mFile, numBytes, SEEK_CUR) != 0)
-        {
-            return false;
-        }
-        #endif
-    #elif defined(MCORE_PLATFORM_POSIX) && DISKFILE_CPP_TRAIT_USE_POSIX
-        if (fseeko(mFile, numBytes, SEEK_CUR) != 0)
-        {
-            return false;
-        }
-    #else
-        if (fseek(mFile, (long)numBytes, SEEK_CUR) != 0)
-        {
-            return false;
-        }
-    #endif
-
-        return true;
-    }
-
-
-    // seek to an absolute position in the file (offset in bytes)
-    bool DiskFile::Seek(size_t offset)
-    {
-        MCORE_ASSERT(mFile);
-
-    #if defined(MCORE_PLATFORM_WINDOWS)
-        #ifdef MCORE_ARCHITECTURE_64BIT
-        if (_fseeki64(mFile, offset, SEEK_SET) != 0)
-        {
-            return false;
-        }
-        #else
-        if (fseek(mFile, offset, SEEK_SET) != 0)
-        {
-            return false;
-        }
-        #endif
-    #elif defined(MCORE_PLATFORM_POSIX) && DISKFILE_CPP_TRAIT_USE_POSIX
-        if (fseeko(mFile, offset, SEEK_SET) != 0)
-        {
-            return false;
-        }
-    #else
-        if (fseek(mFile, (long)offset, SEEK_SET) != 0)
-        {
-            return false;
-        }
-    #endif
 
         return true;
     }
@@ -282,52 +188,6 @@ namespace MCore
         }
 
         return length;
-    }
-
-
-    // returns the filesize in bytes
-    size_t DiskFile::GetFileSize() const
-    {
-        MCORE_ASSERT(mFile);
-        if (mFile == nullptr)
-        {
-            return 0;
-        }
-
-        // get the current file position
-        size_t curPos = GetPos();
-
-        // seek to the end of the file
-    #if defined(MCORE_PLATFORM_WINDOWS)
-        #ifdef MCORE_ARCHITECTURE_64BIT
-        _fseeki64(mFile, 0, SEEK_END);
-        #else
-        fseek(mFile, 0, SEEK_END);
-        #endif
-    #elif defined(MCORE_PLATFORM_POSIX) && DISKFILE_CPP_TRAIT_USE_POSIX
-        fseeko(mFile, 0, SEEK_END);
-    #else
-        fseek(mFile, 0, SEEK_END);
-    #endif
-
-        // get the position, whis is the size of the file
-        size_t fileSize = GetPos();
-
-        // seek back to the original position
-    #if defined(MCORE_PLATFORM_WINDOWS)
-        #ifdef MCORE_ARCHITECTURE_64BIT
-        _fseeki64(mFile, curPos, SEEK_SET);
-        #else
-        fseek(mFile, (long)curPos, SEEK_SET);
-        #endif
-    #elif defined(MCORE_PLATFORM_POSIX) && DISKFILE_CPP_TRAIT_USE_POSIX
-        fseeko(mFile, curPos, SEEK_SET);
-    #else
-        fseek(mFile, (long)curPos, SEEK_SET);
-    #endif
-
-        // return the size of the file
-        return fileSize;
     }
 
 

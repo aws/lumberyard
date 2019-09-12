@@ -52,6 +52,7 @@ namespace EMotionFX
 
     void PoseDataRagdoll::LinkToActor(Actor* actor)
     {
+        AZ_UNUSED(actor);
         Clear();
     }
 

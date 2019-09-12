@@ -30,7 +30,7 @@ namespace EMotionFX
         namespace Rule
         {
             template<class RuleClass, class ReflectableData>
-            bool LoadGromGroup(const AZ::SceneAPI::DataTypes::IGroup& group, ReflectableData& outData)
+            bool LoadFromGroup(const AZ::SceneAPI::DataTypes::IGroup& group, ReflectableData& outData)
             {
                 AZStd::shared_ptr<RuleClass> rule = group.GetRuleContainerConst().FindFirstByType<RuleClass>();
                 if (!rule)
@@ -80,7 +80,6 @@ namespace EMotionFX
                 {
                     rules.RemoveRule(rule);
                     SceneEvents::ManifestMetaInfoBus::Broadcast(&SceneEvents::ManifestMetaInfoBus::Events::ObjectUpdated, scene, &group, nullptr);
-
                 }
             }
         } // Rule

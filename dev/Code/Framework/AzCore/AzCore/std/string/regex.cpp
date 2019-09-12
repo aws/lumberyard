@@ -10,8 +10,6 @@
 *
 */
 
-#ifndef AZ_UNITY_BUILD
-
 #include <AzCore/std/string/regex.h>
 
 namespace AZStd
@@ -62,5 +60,3 @@ namespace AZStd
     };
     #undef AZ_REGEX_CHAR_CLASS_NAME
 } // namespace AZStd
-
-#endif // AZ_UNITY_BUILD

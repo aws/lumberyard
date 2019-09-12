@@ -19,7 +19,7 @@
             "../Assets/Editor/Resources.qrc",
             "../Assets/Editor/Backward.png",
             "../Assets/Editor/Forward.png",
-            "../Assets/Editor/Reset.png"
+            "../Assets/Editor/reset.png"
         ],
         "Source": [
             "Source/ImageProcessingModule.cpp",

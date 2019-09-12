@@ -9,35 +9,29 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#ifndef AZ_UNITY_BUILD
 
 #include <AzCore/Module/DynamicModuleHandle.h>
 #include <AzCore/IO/SystemFile.h> // for AZ_MAX_PATH_LEN
 
-#if defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_ANDROID) || defined(AZ_PLATFORM_APPLE_OSX)
 #include <AzCore/Memory/OSAllocator.h>
 #include <dlfcn.h>
 #include <libgen.h>
 
-#if defined(AZ_PLATFORM_ANDROID) || defined(AZ_PLATFORM_LINUX)
-const char* modulePrefix = "lib";
-const char* moduleExtension = ".so";
-#elif defined(AZ_PLATFORM_APPLE_OSX)
-const char* modulePrefix = "lib";
-const char* moduleExtension = ".dylib";
-
-#include <mach-o/dyld.h>
-#endif
-
 namespace AZ
 {
-    class DynamicModuleHandleLinux
+    namespace Platform
+    {
+        void GetModulePath(AZ::OSString& path);
+        void* OpenModule(const AZ::OSString& fileName, bool& alreadyOpen);
+    }
+
+    class DynamicModuleHandleUnixLike
         : public DynamicModuleHandle
     {
     public:
-        AZ_CLASS_ALLOCATOR(DynamicModuleHandleLinux, OSAllocator, 0)
+        AZ_CLASS_ALLOCATOR(DynamicModuleHandleUnixLike, OSAllocator, 0)
 
-        DynamicModuleHandleLinux(const char* fullFileName)
+        DynamicModuleHandleUnixLike(const char* fullFileName)
             : DynamicModuleHandle(fullFileName)
             , m_handle(nullptr)
         {
@@ -56,48 +50,25 @@ namespace AZ
             {
                 // If no slash found, assume empty path, only file name
                 path = "";
-#if defined(AZ_PLATFORM_APPLE)
-                uint32_t bufsize = AZ_MAX_PATH_LEN;
-                char exePath[bufsize];
-                if (_NSGetExecutablePath(exePath, &bufsize) == 0)
-                {
-                    path = dirname(exePath);
-                    path += "/";
-                }
-#elif defined(AZ_PLATFORM_LINUX)
-                char exePath[AZ_MAX_PATH_LEN] = { 0 };
-                const char* modulePath = ::getenv("MODULE_PATH");
-                if (!modulePath)
-                {
-                    modulePath = ".";
-                    int len = ::readlink("/proc/self/exe", exePath, AZ_MAX_PATH_LEN);
-                    if (len != -1)
-                    {
-                        exePath[len] = 0;
-                        modulePath = ::dirname(exePath);
-                    }
-                }
-                path = modulePath;
-                path += '/';
-#endif
+                Platform::GetModulePath(path);
                 fileName = m_fileName;
             }
 
-            if (fileName.substr(0, 3) != modulePrefix)
+            if (fileName.substr(0, 3) != AZ_TRAIT_OS_DYNAMIC_LIBRARY_PREFIX)
             {
-                fileName = modulePrefix + fileName;
+                fileName = AZ_TRAIT_OS_DYNAMIC_LIBRARY_PREFIX + fileName;
             }
 
-            size_t extensionLen = strlen(moduleExtension);
-            if (fileName.substr(fileName.length() - extensionLen, extensionLen) != moduleExtension)
+            size_t extensionLen = strlen(AZ_TRAIT_OS_DYNAMIC_LIBRARY_EXTENSION);
+            if (fileName.substr(fileName.length() - extensionLen, extensionLen) != AZ_TRAIT_OS_DYNAMIC_LIBRARY_EXTENSION)
             {
-                fileName = fileName + moduleExtension;
+                fileName = fileName + AZ_TRAIT_OS_DYNAMIC_LIBRARY_EXTENSION;
             }
 
             m_fileName = path + fileName;
         }
 
-        ~DynamicModuleHandleLinux() override
+        ~DynamicModuleHandleUnixLike() override
         {
             Unload();
         }
@@ -107,20 +78,7 @@ namespace AZ
             AZ::Debug::Trace::Printf("Module", "Attempting to load module:%s\n", m_fileName.c_str());
             bool alreadyOpen = false;
             
-#ifndef AZ_PLATFORM_ANDROID
-            // note that if it was already open, RTLD_NOLOAD actualy increments
-            // the refcount on the handle.  It only has no effect if the module
-            // was not loaded
-            m_handle = dlopen(m_fileName.c_str(), RTLD_NOLOAD);
-            alreadyOpen = (m_handle != nullptr);
-            if (!alreadyOpen)
-            {
-                m_handle = dlopen (m_fileName.c_str(), RTLD_NOW);
-            }
-#else
-            // Android 19 does not have RTLD_NOLOAD but it should be OK since only the Editor expects to reopen modules
-            m_handle = dlopen (m_fileName.c_str(), RTLD_NOW);
-#endif
+            m_handle = Platform::OpenModule(m_fileName, alreadyOpen);
            
             if(m_handle)
             {
@@ -176,10 +134,6 @@ namespace AZ
     // Implement the module creation function
     AZStd::unique_ptr<DynamicModuleHandle> DynamicModuleHandle::Create(const char* fullFileName)
     {
-        return AZStd::unique_ptr<DynamicModuleHandle>(aznew DynamicModuleHandleLinux(fullFileName));
+        return AZStd::unique_ptr<DynamicModuleHandle>(aznew DynamicModuleHandleUnixLike(fullFileName));
     }
 } // namespace AZ
-
-#endif //defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_ANDROID)
-
-#endif // #ifndef AZ_UNITY_BUILD

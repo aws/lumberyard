@@ -121,12 +121,16 @@ namespace GameStateSamples
         UiSliderBus::Event(ambientVolumeSliderElementId,
                            &UiSliderInterface::SetValue,
                            m_gameOptions->GetAmbientVolume());
-        UiSliderBus::Event(ambientVolumeSliderElementId,
-                           &UiSliderInterface::SetValueChangingCallback,
-                           [gameOptions = m_gameOptions](AZ::EntityId entityId, float value)
+        auto setAmbientVolume = [gameOptions = m_gameOptions](AZ::EntityId entityId, float value)
         {
             gameOptions->SetAmbientVolume(value);
-        });
+        };
+        UiSliderBus::Event(ambientVolumeSliderElementId,
+                           &UiSliderInterface::SetValueChangingCallback,
+                           setAmbientVolume);
+        UiSliderBus::Event(ambientVolumeSliderElementId,
+                           &UiSliderInterface::SetValueChangedCallback,
+                           setAmbientVolume);
 
         // Refresh the effects volume slider
         AZ::EntityId effectsVolumeSliderElementId;
@@ -137,12 +141,16 @@ namespace GameStateSamples
         UiSliderBus::Event(effectsVolumeSliderElementId,
                            &UiSliderInterface::SetValue,
                            m_gameOptions->GetEffectsVolume());
-        UiSliderBus::Event(effectsVolumeSliderElementId,
-                           &UiSliderInterface::SetValueChangingCallback,
-                           [gameOptions = m_gameOptions](AZ::EntityId entityId, float value)
+        auto setEffectsVolume = [gameOptions = m_gameOptions](AZ::EntityId entityId, float value)
         {
             gameOptions->SetEffectsVolume(value);
-        });
+        };
+        UiSliderBus::Event(effectsVolumeSliderElementId,
+                           &UiSliderInterface::SetValueChangingCallback,
+                           setEffectsVolume);
+        UiSliderBus::Event(effectsVolumeSliderElementId,
+                           &UiSliderInterface::SetValueChangedCallback,
+                           setEffectsVolume);
 
         // Refresh the master volume slider
         AZ::EntityId masterVolumeSliderElementId;
@@ -153,12 +161,16 @@ namespace GameStateSamples
         UiSliderBus::Event(masterVolumeSliderElementId,
                            &UiSliderInterface::SetValue,
                            m_gameOptions->GetMasterVolume());
-        UiSliderBus::Event(masterVolumeSliderElementId,
-                           &UiSliderInterface::SetValueChangingCallback,
-                           [gameOptions = m_gameOptions](AZ::EntityId entityId, float value)
+        auto setMasterVolume = [gameOptions = m_gameOptions](AZ::EntityId entityId, float value)
         {
             gameOptions->SetMasterVolume(value);
-        });
+        };
+        UiSliderBus::Event(masterVolumeSliderElementId,
+                           &UiSliderInterface::SetValueChangingCallback,
+                           setMasterVolume);
+        UiSliderBus::Event(masterVolumeSliderElementId,
+                           &UiSliderInterface::SetValueChangedCallback,
+                           setMasterVolume);
 
         // Refresh the music volume slider
         AZ::EntityId musicVolumeSliderElementId;
@@ -169,12 +181,16 @@ namespace GameStateSamples
         UiSliderBus::Event(musicVolumeSliderElementId,
                            &UiSliderInterface::SetValue,
                            m_gameOptions->GetMusicVolume());
-        UiSliderBus::Event(musicVolumeSliderElementId,
-                           &UiSliderInterface::SetValueChangingCallback,
-                           [gameOptions = m_gameOptions](AZ::EntityId entityId, float value)
+        auto setMusicVolume = [gameOptions = m_gameOptions](AZ::EntityId entityId, float value)
         {
             gameOptions->SetMusicVolume(value);
-        });
+        };
+        UiSliderBus::Event(musicVolumeSliderElementId,
+                           &UiSliderInterface::SetValueChangingCallback,
+                           setMusicVolume);
+        UiSliderBus::Event(musicVolumeSliderElementId,
+                           &UiSliderInterface::SetValueChangedCallback,
+                           setMusicVolume);
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////

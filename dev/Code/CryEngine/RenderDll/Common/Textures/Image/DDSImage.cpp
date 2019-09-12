@@ -24,7 +24,9 @@
 #include "ILog.h"
 #include "../TextureHelpers.h"
 
-//#pragma optimize("",off)
+#ifdef DDS_USE_AZ_STREAMER
+#include <AzCore/IO/StreamerUtil.h>
+#endif
 
 CImageDDSFile::CImageDDSFile(const string& filename)
     : CImageFile(filename)
@@ -99,14 +101,19 @@ bool CImageDDSFile::Load(const string& filename, uint32 nFlags)
     DDSSplitted::TPath adjustedFileName;
     AdjustFirstFileName(nFlags, filename.c_str(), adjustedFileName);
 
-    // load file content
-    CDebugAllowFileAccess dafa;
-    CCryFile file(adjustedFileName.c_str(), "rb");
-
     DDSSplitted::RequestInfo otherMips[64];
     size_t nOtherMips = 0;
 
+#ifdef DDS_USE_AZ_STREAMER
+    // Read the file into memory regardless of split or un-split Mips
+    DDSSplitted::FileWrapper filew(adjustedFileName.c_str(), true);
+#else
+    // load file content
+    CDebugAllowFileAccess dafa;
+    CCryFile file(adjustedFileName.c_str(), "rb");
     DDSSplitted::FileWrapper filew(file);
+#endif
+
     if (!LoadFromFile(filew, nFlags, otherMips, nOtherMips, 64))
     {
         return false;
@@ -114,6 +121,7 @@ bool CImageDDSFile::Load(const string& filename, uint32 nFlags)
 
     if (nOtherMips && !DDSSplitted::LoadMipsFromRequests(otherMips, nOtherMips))
     {
+        AZ_Error("Render", false, "Failed to load mips for DDS asset %s", adjustedFileName.c_str());
         return false;
     }
 
@@ -633,6 +641,8 @@ bool CImageDDSFile::PostLoad()
 
 void CImageDDSFile::AdjustFirstFileName(uint32& nFlags, const char* pFileName, DDSSplitted::TPath& adjustedFileName)
 {
+    LOADING_TIME_PROFILE_SECTION;
+
     const bool bIsAttachedAlpha = (nFlags & FIM_ALPHA) != 0;
     adjustedFileName = pFileName;
 
@@ -656,8 +666,12 @@ void CImageDDSFile::AdjustFirstFileName(uint32& nFlags, const char* pFileName, D
     // Otherwise we check the .dds header which always works, but is slower (two reads from .dds and .dds.a on load)
     CImageExtensionHelper::DDS_FILE_DESC ddsFileDesc;
 
+#ifdef DDS_USE_AZ_STREAMER
+    if (AZ::IO::GetStreamer()->Read(pFileName, 0, sizeof(ddsFileDesc), &ddsFileDesc) == sizeof(ddsFileDesc))
+#else
     CCryFile file;
     if (file.Open(pFileName, "rb") && file.ReadRaw(&ddsFileDesc, sizeof(ddsFileDesc)) == sizeof(ddsFileDesc))
+#endif
     {
         const uint32 imageFlags = CImageExtensionHelper::GetImageFlags(&ddsFileDesc.header);
         if ((imageFlags& CImageExtensionHelper::EIF_Splitted) != 0)
@@ -1041,11 +1055,14 @@ namespace DDSSplitted
         return nReqs;
     }
 
-    size_t LoadMipsFromRequests(const RequestInfo* pReqs, size_t nReqs)
+    bool LoadMipsFromRequests(const RequestInfo* pReqs, size_t nReqs)
     {
+        LOADING_TIME_PROFILE_SECTION;
+#ifdef DDS_USE_AZ_STREAMER
+        AZ::IO::SyncRequestCallback asyncBlockingCallback;
+#else
         CCryFile file;
-
-        size_t size = 0;
+#endif
 
         // load files
         for (size_t i = 0; i < nReqs; ++i)
@@ -1054,40 +1071,65 @@ namespace DDSSplitted
 
             if (i == 0 || req.fileName != pReqs[i - 1].fileName)
             {
+#ifndef DDS_USE_AZ_STREAMER
                 if (!file.Open(req.fileName, "rb"))
                 {
-                    iLog->Log("Can't open Mip request %s\n", req.fileName.c_str());
-                    return 0;
+                    AZ_Error("Render", false, "Can't open Mip request %s\n", req.fileName.c_str());
+                    return false;
                 }
+#endif
             }
 
+            size_t readBytes = 0;
+#ifdef DDS_USE_AZ_STREAMER
+            bool readQueued = AZ::IO::GetStreamer()->ReadAsync(req.fileName.c_str(), req.nOffs, req.nRead, req.pOut, asyncBlockingCallback, AZ::IO::ExecuteWhenIdle, AZ::IO::Request::PriorityType::DR_PRIORITY_NORMAL, "DDSRead", false);
+            if (!readQueued)
+            {
+                AZ_Error("Render", false, "Couldn't read Mip request %s\n", req.fileName.c_str());
+
+                // Failed to read, collect our in progress mips and early out
+                asyncBlockingCallback.Wait();
+                return false;
+            }
+#else
             file.Seek(req.nOffs, SEEK_SET);
-            size_t readBytes = file.ReadRaw(req.pOut, req.nRead);
-            size += readBytes;
+            readBytes = file.ReadRaw(req.pOut, req.nRead);
 
             if (readBytes == 0)
             {
                 iLog->Log("Couldn't read Mip request %s\n", req.fileName.c_str());
-                return 0;
+                return false;
             }
+#endif
         }
 
-        return size;
+#ifdef DDS_USE_AZ_STREAMER
+        // Wait for all mips to finish loading
+        asyncBlockingCallback.Wait();
+
+        if (asyncBlockingCallback.m_readFailed)
+        {
+            AZ_Error("Render", false ,"Couldn't read one or more mip requests during async mip load");
+            return false;
+        }
+#endif
+
+        return true;
     }
 
-    size_t LoadMips(byte* pBuffer, const DDSDesc& desc, uint32 nStartMip, uint32 nEndMip)
+    bool LoadMips(byte* pBuffer, const DDSDesc& desc, uint32 nStartMip, uint32 nEndMip)
     {
-        size_t bytesRead = 0;
+        bool success = 0;
 
         RequestInfo reqs[64];
         size_t nReqs = LoadMipRequests(reqs, 64, desc, pBuffer, nStartMip, nEndMip);
 
         if (nReqs)
         {
-            bytesRead = LoadMipsFromRequests(reqs, nReqs);
+            success = LoadMipsFromRequests(reqs, nReqs);
         }
 
-        return bytesRead;
+        return success;
     }
 
     int GetNumLastMips(const int nWidth, const int nHeight, const int nNumMips, const int nSides, ETEX_Format eTF, const uint32 nFlags)

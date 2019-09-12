@@ -19,12 +19,6 @@
 #include <EMotionFX/Tools/EMotionStudio/EMStudioSDK/Source/Commands.h>
 #include <EMotionStudio/EMStudioSDK/Source/Allocators.h>
 
-#ifdef MCORE_PLATFORM_WINDOWS
-    #include <shlobj.h>
-#else
-    #include <sys/stat.h>
-#endif
-
 // include MCore related
 #include <MCore/Source/LogManager.h>
 #include <MCore/Source/CommandManager.h>
@@ -324,29 +318,15 @@ namespace EMStudio
     }
 
 
-    void EMStudioManager::SetVisibleJointIndices(const MCore::Array<uint32>& visibleJointIndices)
+    void EMStudioManager::SetVisibleJointIndices(const AZStd::unordered_set<AZ::u32>& visibleJointIndices)
     {
-        m_visibleJointIndices.clear();
-
-        const AZ::u32 jointCount = visibleJointIndices.GetLength();
-        for (AZ::u32 i = 0; i < jointCount; ++i)
-        {
-            m_visibleJointIndices.emplace(visibleJointIndices[i]);
-        }
+        m_visibleJointIndices = visibleJointIndices;
     }
 
-
-    void EMStudioManager::SetSelectedJointIndices(const MCore::Array<uint32>& selectedJointIndices)
+    void EMStudioManager::SetSelectedJointIndices(const AZStd::unordered_set<AZ::u32>& selectedJointIndices)
     {
-        m_selectedJointIndices.clear();
-
-        const AZ::u32 jointCount = selectedJointIndices.GetLength();
-        for (AZ::u32 i = 0; i < jointCount; ++i)
-        {
-            m_selectedJointIndices.emplace(selectedJointIndices[i]);
-        }
+        m_selectedJointIndices = selectedJointIndices;
     }
-
 
     void EMStudioManager::JointSelectionChanged()
     {
@@ -415,7 +395,7 @@ namespace EMStudio
     AZStd::string EMStudioManager::GetRecoverFolder() const
     {
         // Set the recover path
-        const AZStd::string recoverPath = GetAppDataFolder() + "Recover" + MCore::FileSystem::mFolderSeparatorChar;
+        const AZStd::string recoverPath = GetAppDataFolder() + "Recover" + AZ_CORRECT_FILESYSTEM_SEPARATOR;
 
         // create all folders needed
         QDir dir;
@@ -429,7 +409,7 @@ namespace EMStudio
     AZStd::string EMStudioManager::GetAutosavesFolder() const
     {
         // Set the autosaves path
-        const AZStd::string autosavesPath = GetAppDataFolder() + "Autosaves" + MCore::FileSystem::mFolderSeparatorChar;
+        const AZStd::string autosavesPath = GetAppDataFolder() + "Autosaves" + AZ_CORRECT_FILESYSTEM_SEPARATOR;
 
         // create all folders needed
         QDir dir;

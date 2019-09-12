@@ -11,7 +11,7 @@
 */
 
 #include <AzFramework/Input/Devices/Mouse/InputDeviceMouse.h>
-#include <AzFramework/Input/Buses/Notifications/RawInputNotificationBus_win.h>
+#include <AzFramework/Input/Buses/Notifications/RawInputNotificationBus_Platform.h>
 #include <AzFramework/Input/Buses/Requests/InputSystemCursorRequestBus.h>
 
 #include <Windows.h>
@@ -42,9 +42,9 @@ namespace
 namespace AzFramework
 {
     ////////////////////////////////////////////////////////////////////////////////////////////////
-    //! Platform specific implementation for windows mouse input devices
-    class InputDeviceMouseWin : public InputDeviceMouse::Implementation
-                              , public RawInputNotificationBusWin::Handler
+    //! Platform specific implementation for Windows mouse input devices
+    class InputDeviceMouseWindows : public InputDeviceMouse::Implementation
+                                  , public RawInputNotificationBusWindows::Handler
     {
         ////////////////////////////////////////////////////////////////////////////////////////////
         //! Count of the number instances of this class that have been created
@@ -53,16 +53,16 @@ namespace AzFramework
     public:
         ////////////////////////////////////////////////////////////////////////////////////////////
         // Allocator
-        AZ_CLASS_ALLOCATOR(InputDeviceMouseWin, AZ::SystemAllocator, 0);
+        AZ_CLASS_ALLOCATOR(InputDeviceMouseWindows, AZ::SystemAllocator, 0);
 
         ////////////////////////////////////////////////////////////////////////////////////////////
         //! Constructor
         //! \param[in] inputDevice Reference to the input device being implemented
-        InputDeviceMouseWin(InputDeviceMouse& inputDevice);
+        InputDeviceMouseWindows(InputDeviceMouse& inputDevice);
 
         ////////////////////////////////////////////////////////////////////////////////////////////
         //! Destructor
-        ~InputDeviceMouseWin() override;
+        ~InputDeviceMouseWindows() override;
 
     private:
         ////////////////////////////////////////////////////////////////////////////////////////////
@@ -90,7 +90,7 @@ namespace AzFramework
         void TickInputDevice() override;
 
         ////////////////////////////////////////////////////////////////////////////////////////////
-        //! \ref AzFramework::RawInputNotificationsWin::OnRawInputEvent
+        //! \ref AzFramework::RawInputNotificationsWindows::OnRawInputEvent
         void OnRawInputEvent(const RAWINPUT& rawInput) override;
 
         ////////////////////////////////////////////////////////////////////////////////////////////
@@ -122,14 +122,14 @@ namespace AzFramework
     ////////////////////////////////////////////////////////////////////////////////////////////////
     InputDeviceMouse::Implementation* InputDeviceMouse::Implementation::Create(InputDeviceMouse& inputDevice)
     {
-        return aznew InputDeviceMouseWin(inputDevice);
+        return aznew InputDeviceMouseWindows(inputDevice);
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
-    int InputDeviceMouseWin::s_instanceCount = 0;
+    int InputDeviceMouseWindows::s_instanceCount = 0;
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
-    InputDeviceMouseWin::InputDeviceMouseWin(InputDeviceMouse& inputDevice)
+    InputDeviceMouseWindows::InputDeviceMouseWindows(InputDeviceMouse& inputDevice)
         : InputDeviceMouse::Implementation(inputDevice)
         , m_systemCursorState(SystemCursorState::Unknown)
         , m_hasFocus(false)
@@ -149,13 +149,13 @@ namespace AzFramework
             AZ_UNUSED(result);
         }
 
-        RawInputNotificationBusWin::Handler::BusConnect();
+        RawInputNotificationBusWindows::Handler::BusConnect();
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
-    InputDeviceMouseWin::~InputDeviceMouseWin()
+    InputDeviceMouseWindows::~InputDeviceMouseWindows()
     {
-        RawInputNotificationBusWin::Handler::BusDisconnect();
+        RawInputNotificationBusWindows::Handler::BusDisconnect();
 
         // Cleanup system cursor visibility and constraint
         SetSystemCursorState(SystemCursorState::Unknown);
@@ -175,11 +175,11 @@ namespace AzFramework
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
-    bool InputDeviceMouseWin::IsConnected() const
+    bool InputDeviceMouseWindows::IsConnected() const
     {
         // If necessary, we can register raw input devices using RIDEV_DEVNOTIFY in order to receive
-        // WM_INPUT_DEVICE_CHANGE windows messages in the WndProc function. These could then be sent
-        // using an EBus (RawInputNotificationBusWin?) and used to keep track of the connected state.
+        // WM_INPUT_DEVICE_CHANGE Windows messages in the WndProc function. These could then be sent
+        // using an EBus (RawInputNotificationBusWindows?) and used to keep track of connected state.
         //
         // Doing this would allow (in one respect force) us to distinguish between multiple physical
         // devices of the same type. But given that support for multiple mice is a fairly niche need
@@ -194,12 +194,12 @@ namespace AzFramework
         // Note that doing so will require modifying how we create and manage mouse input devices in
         // InputSystemComponent/InputSystemComponentWin in order to create multiple InputDeviceMouse
         // instances (somehow associating each with a RID_DEVICE_INFO_MOUSE), and also modifying the
-        // InputDeviceMouseWin::OnRawInputEvent function to filter incoming events by raw device id.
+        // InputDeviceMouseWindows::OnRawInputEvent function to filter incoming events by device id.
         return true;
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
-    void InputDeviceMouseWin::SetSystemCursorState(SystemCursorState systemCursorState)
+    void InputDeviceMouseWindows::SetSystemCursorState(SystemCursorState systemCursorState)
     {
         if (systemCursorState != m_systemCursorState)
         {
@@ -210,13 +210,13 @@ namespace AzFramework
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
-    SystemCursorState InputDeviceMouseWin::GetSystemCursorState() const
+    SystemCursorState InputDeviceMouseWindows::GetSystemCursorState() const
     {
         return m_systemCursorState;
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
-    void InputDeviceMouseWin::SetSystemCursorPositionNormalized(AZ::Vector2 positionNormalized)
+    void InputDeviceMouseWindows::SetSystemCursorPositionNormalized(AZ::Vector2 positionNormalized)
     {
         HWND focusWindow = GetSystemCursorFocusWindow();
         if (!focusWindow)
@@ -239,7 +239,7 @@ namespace AzFramework
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
-    AZ::Vector2 InputDeviceMouseWin::GetSystemCursorPositionNormalized() const
+    AZ::Vector2 InputDeviceMouseWindows::GetSystemCursorPositionNormalized() const
     {
         HWND focusWindow = GetSystemCursorFocusWindow();
         if (!focusWindow)
@@ -266,9 +266,9 @@ namespace AzFramework
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
-    void InputDeviceMouseWin::TickInputDevice()
+    void InputDeviceMouseWindows::TickInputDevice()
     {
-        // The input event loop is pumped by the system on windows so all raw input events for this
+        // The input event loop is pumped by the system on Windows so all raw input events for this
         // frame have already been dispatched. But they are all queued until ProcessRawEventQueues
         // is called below so that all raw input events are processed at the same time every frame.
 
@@ -295,7 +295,7 @@ namespace AzFramework
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
-    void InputDeviceMouseWin::OnRawInputEvent(const RAWINPUT& rawInput)
+    void InputDeviceMouseWindows::OnRawInputEvent(const RAWINPUT& rawInput)
     {
         if (rawInput.header.dwType != RIM_TYPEMOUSE || !::GetFocus())
         {
@@ -392,7 +392,7 @@ namespace AzFramework
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
-    void InputDeviceMouseWin::RefreshSystemCursorClippingConstraint()
+    void InputDeviceMouseWindows::RefreshSystemCursorClippingConstraint()
     {
         HWND focusWindow = GetSystemCursorFocusWindow();
         if (!focusWindow)
@@ -418,12 +418,12 @@ namespace AzFramework
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
-    void InputDeviceMouseWin::RefreshSystemCursorVisibility()
+    void InputDeviceMouseWindows::RefreshSystemCursorVisibility()
     {
         const bool shouldBeHidden = (m_systemCursorState == SystemCursorState::ConstrainedAndHidden) ||
                                     (m_systemCursorState == SystemCursorState::UnconstrainedAndHidden);
 
-        // The windows system ShowCursor function stores and returns an application specific display
+        // The Windows system ShowCursor function stores and returns an application specific display
         // counter, and the cursor is displayed only when the display count is greater than or equal
         // to zero: https://msdn.microsoft.com/en-us/library/windows/desktop/ms648396(v=vs.85).aspx
         if (shouldBeHidden)

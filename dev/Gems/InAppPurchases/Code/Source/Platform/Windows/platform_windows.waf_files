@@ -1,0 +1,9 @@
+{
+    "none":
+    {
+        "Source/Platform/Windows":
+        [
+            "../Common/Unimplemented/InAppPurchases_Unimplemented.cpp"
+        ]
+    }
+}

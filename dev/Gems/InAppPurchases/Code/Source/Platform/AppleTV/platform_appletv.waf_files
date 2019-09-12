@@ -1,0 +1,9 @@
+{
+    "none":
+    {
+        "Source/Platform/AppleTV":
+        [
+            "../Common/Unimplemented/InAppPurchases_Unimplemented.cpp"
+        ]
+    }
+}

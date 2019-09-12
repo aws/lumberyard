@@ -1,0 +1,8 @@
+{
+  "auto": {
+    "Platform/AppleTV": [
+      "LegacyTime_Traits_Platform.h",
+      "LegacyTime_Traits_AppleTV.h"
+    ]
+  }
+}

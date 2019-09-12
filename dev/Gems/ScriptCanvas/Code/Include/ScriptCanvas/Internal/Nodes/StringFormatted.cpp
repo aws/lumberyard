@@ -90,8 +90,17 @@ namespace ScriptCanvas
                     AZStd::string tooltip = AZStd::string::format("Value which replaces instances of {%s} in the resulting string.", match[1].str().c_str());
 
                     // If the slot has never existed, create it
-                    auto pair = m_formatSlotMap.emplace(AZStd::make_pair(name, AddInputDatumOverloadedSlot(name, tooltip)));
+                    DynamicDataSlotConfiguration dataSlotConfiguration;
 
+                    dataSlotConfiguration.m_name = name;
+                    dataSlotConfiguration.m_toolTip = tooltip;
+
+                    dataSlotConfiguration.SetConnectionType(ConnectionType::Input);
+                    dataSlotConfiguration.m_dynamicDataType = DynamicDataType::Any;
+
+                    dataSlotConfiguration.m_addUniqueSlotByNameAndType = true;
+
+                    auto pair = m_formatSlotMap.emplace(AZStd::make_pair(name, AddSlot(dataSlotConfiguration)));
                     const auto& slotId = pair.first->second;
 
                     m_arrayBindingMap.emplace(AZStd::make_pair(m_unresolvedString.size(), slotId));

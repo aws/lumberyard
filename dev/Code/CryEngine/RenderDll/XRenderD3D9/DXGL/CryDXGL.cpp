@@ -334,7 +334,7 @@ DXGL_API void DXGLProfileLabelPush(const char* szName)
     }
     //  Confetti End: Igor Lobanchikov
 #endif //DXGL_PROFILE_USE_KHR_DEBUG && DXGL_SUPPORT_DEBUG_OUTPUT
-#if defined(AZ_PLATFORM_APPLE_OSX)
+#if defined(AZ_PLATFORM_MAC)
     glPushGroupMarkerEXT(0, szName);
 #endif
 }
@@ -363,7 +363,7 @@ DXGL_API void DXGLProfileLabelPop(const char* szName)
     }
     //  Confetti End: Igor Lobanchikov
 #endif //DXGL_PROFILE_USE_KHR_DEBUG && DXGL_SUPPORT_DEBUG_OUTPUT
-#if defined(AZ_PLATFORM_APPLE_OSX)
+#if defined(AZ_PLATFORM_MAC)
     glPopGroupMarkerEXT();
 #endif
 }

@@ -13,6 +13,7 @@
 #include "stdafx.h"
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/UserSettings/UserSettings.h>
+#include <AzCore/IO/FileIO.h>
 #include <AzCore/IO/SystemFile.h>
 #include <AzCore/IO/GenericStreams.h>
 #include <AzCore/Component/ComponentApplicationBus.h>
@@ -52,7 +53,7 @@ namespace Driller
         AZ_Assert(sc, "Can't retrieve application's serialization context!");
 
         WorkspaceSettingsProvider* resultItem = NULL;
-        IO::StreamerStream readStream(filename.c_str(), AZ::IO::OpenMode::ModeRead);
+        IO::FileIOStream readStream(filename.c_str(), AZ::IO::OpenMode::ModeRead);
         if (readStream.IsOpen())
         {
             ObjectStream::ClassReadyCB readyCB(AZStd::bind(&OnObjectLoaded, AZStd::placeholders::_1, AZStd::placeholders::_2, AZStd::placeholders::_3, &resultItem));
@@ -80,7 +81,7 @@ namespace Driller
         AZ_Assert(sc, "Can't retrieve application's serialization context!");
 
         /// note:  Will probably throw an error if it fails.  Should check all these things before we call in here.
-        IO::StreamerStream writeStream(filename.c_str(), AZ::IO::OpenMode::ModeWrite);
+        IO::FileIOStream writeStream(filename.c_str(), AZ::IO::OpenMode::ModeWrite);
 
         if (!writeStream.IsOpen())
         {

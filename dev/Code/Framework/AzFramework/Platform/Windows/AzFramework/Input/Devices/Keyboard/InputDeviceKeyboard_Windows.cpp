@@ -10,8 +10,8 @@
 *
 */
 
-#include <AzFramework/Input/Devices/Keyboard/InputDeviceKeyboard_win_common.inl>
-#include <AzFramework/Input/Buses/Notifications/RawInputNotificationBus_win.h>
+#include <../Common/WinAPI/AzFramework/Input/Devices/Keyboard/InputDeviceKeyboard_WinAPI.h>
+#include <AzFramework/Input/Buses/Notifications/RawInputNotificationBus_Platform.h>
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 namespace
@@ -27,9 +27,9 @@ namespace
 namespace AzFramework
 {
     ////////////////////////////////////////////////////////////////////////////////////////////////
-    //! Platform specific implementation for windows keyboard input devices
-    class InputDeviceKeyboardWin : public InputDeviceKeyboard::Implementation
-                                 , public RawInputNotificationBusWin::Handler
+    //! Platform specific implementation for Windows keyboard input devices
+    class InputDeviceKeyboardWindows : public InputDeviceKeyboard::Implementation
+                                     , public RawInputNotificationBusWindows::Handler
     {
         ////////////////////////////////////////////////////////////////////////////////////////////
         //! Count of the number instances of this class that have been created
@@ -38,16 +38,16 @@ namespace AzFramework
     public:
         ////////////////////////////////////////////////////////////////////////////////////////////
         // Allocator
-        AZ_CLASS_ALLOCATOR(InputDeviceKeyboardWin, AZ::SystemAllocator, 0);
+        AZ_CLASS_ALLOCATOR(InputDeviceKeyboardWindows, AZ::SystemAllocator, 0);
 
         ////////////////////////////////////////////////////////////////////////////////////////////
         //! Constructor
         //! \param[in] inputDevice Reference to the input device being implemented
-        InputDeviceKeyboardWin(InputDeviceKeyboard& inputDevice);
+        InputDeviceKeyboardWindows(InputDeviceKeyboard& inputDevice);
 
         ////////////////////////////////////////////////////////////////////////////////////////////
         //! Destructor
-        ~InputDeviceKeyboardWin() override;
+        ~InputDeviceKeyboardWindows() override;
 
     private:
         ////////////////////////////////////////////////////////////////////////////////////////////
@@ -76,11 +76,11 @@ namespace AzFramework
                                         AZStd::string& o_keyOrButtonText) const override;
 
         ////////////////////////////////////////////////////////////////////////////////////////////
-        //! \ref AzFramework::RawInputNotificationsWin::OnRawInputEvent
+        //! \ref AzFramework::RawInputNotificationsWindows::OnRawInputEvent
         void OnRawInputEvent(const RAWINPUT& rawInput) override;
 
         ////////////////////////////////////////////////////////////////////////////////////////////
-        //! \ref AzFramework::RawInputNotificationsWin::OnRawInputCodeUnitUTF16Event
+        //! \ref AzFramework::RawInputNotificationsWindows::OnRawInputCodeUnitUTF16Event
         void OnRawInputCodeUnitUTF16Event(uint16_t codeUnitUTF16) override;
 
         ////////////////////////////////////////////////////////////////////////////////////////////
@@ -106,14 +106,14 @@ namespace AzFramework
     ////////////////////////////////////////////////////////////////////////////////////////////////
     InputDeviceKeyboard::Implementation* InputDeviceKeyboard::Implementation::Create(InputDeviceKeyboard& inputDevice)
     {
-        return aznew InputDeviceKeyboardWin(inputDevice);
+        return aznew InputDeviceKeyboardWindows(inputDevice);
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
-    int InputDeviceKeyboardWin::s_instanceCount = 0;
+    int InputDeviceKeyboardWindows::s_instanceCount = 0;
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
-    InputDeviceKeyboardWin::InputDeviceKeyboardWin(InputDeviceKeyboard& inputDevice)
+    InputDeviceKeyboardWindows::InputDeviceKeyboardWindows(InputDeviceKeyboard& inputDevice)
         : InputDeviceKeyboard::Implementation(inputDevice)
         , m_UTF16ToUTF8Converter()
         , m_scanCodesByInputChannelId(ConstructScanCodeByInputChannelIdMap())
@@ -133,13 +133,13 @@ namespace AzFramework
             AZ_UNUSED(result);
         }
 
-        RawInputNotificationBusWin::Handler::BusConnect();
+        RawInputNotificationBusWindows::Handler::BusConnect();
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
-    InputDeviceKeyboardWin::~InputDeviceKeyboardWin()
+    InputDeviceKeyboardWindows::~InputDeviceKeyboardWindows()
     {
-        RawInputNotificationBusWin::Handler::BusDisconnect();
+        RawInputNotificationBusWindows::Handler::BusDisconnect();
 
         if (--s_instanceCount == 0)
         {
@@ -156,11 +156,11 @@ namespace AzFramework
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
-    bool InputDeviceKeyboardWin::IsConnected() const
+    bool InputDeviceKeyboardWindows::IsConnected() const
     {
         // If necessary, we can register raw input devices using RIDEV_DEVNOTIFY in order to receive
-        // WM_INPUT_DEVICE_CHANGE windows messages in the WndProc function. These could then be sent
-        // using an EBus (RawInputNotificationBusWin?) and used to keep track of the connected state.
+        // WM_INPUT_DEVICE_CHANGE Windows messages in the WndProc function. These could then be sent
+        // using an EBus (RawInputNotificationBusWindows?) and used to keep track of connected state.
         //
         // Doing this would allow (in one respect force) us to distinguish between multiple physical
         // devices of the same type. But given support for multiple keyboards is a fairly niche need
@@ -175,32 +175,32 @@ namespace AzFramework
         // Note that doing so will require modifying how we create and manage keyboard input devices
         // in InputSystemComponent/InputSystemComponentWin so we create multiple InputDeviceKeyboard
         // instances (somehow associating each with a raw input device id), along with modifying the
-        // InputDeviceKeyboardWin::OnRawInputEvent function to filter incoming events by this raw id.
+        // InputDeviceKeyboardWindows::OnRawInputEvent function to filter incoming events by raw id.
         return true;
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
-    bool InputDeviceKeyboardWin::HasTextEntryStarted() const
+    bool InputDeviceKeyboardWindows::HasTextEntryStarted() const
     {
         return m_hasTextEntryStarted;
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
-    void InputDeviceKeyboardWin::TextEntryStart(const InputTextEntryRequests::VirtualKeyboardOptions&)
+    void InputDeviceKeyboardWindows::TextEntryStart(const InputTextEntryRequests::VirtualKeyboardOptions&)
     {
         m_hasTextEntryStarted = true;
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
-    void InputDeviceKeyboardWin::TextEntryStop()
+    void InputDeviceKeyboardWindows::TextEntryStop()
     {
         m_hasTextEntryStarted = false;
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
-    void InputDeviceKeyboardWin::TickInputDevice()
+    void InputDeviceKeyboardWindows::TickInputDevice()
     {
-        // The input event loop is pumped by the system on windows so all raw input events for this
+        // The input event loop is pumped by the system on Windows so all raw input events for this
         // frame have already been dispatched. But they are all queued until ProcessRawEventQueues
         // is called below so that all raw input events are processed at the same time every frame.
 
@@ -226,8 +226,8 @@ namespace AzFramework
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
-    void InputDeviceKeyboardWin::GetPhysicalKeyOrButtonText(const InputChannelId& inputChannelId,
-                                                            AZStd::string& o_keyOrButtonText) const
+    void InputDeviceKeyboardWindows::GetPhysicalKeyOrButtonText(const InputChannelId& inputChannelId,
+                                                                AZStd::string& o_keyOrButtonText) const
     {
         const auto& it = m_scanCodesByInputChannelId.find(inputChannelId);
         if (it == m_scanCodesByInputChannelId.end())
@@ -248,7 +248,7 @@ namespace AzFramework
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
-    void InputDeviceKeyboardWin::OnRawInputEvent(const RAWINPUT& rawInput)
+    void InputDeviceKeyboardWindows::OnRawInputEvent(const RAWINPUT& rawInput)
     {
         if (rawInput.header.dwType != RIM_TYPEKEYBOARD || !::GetFocus())
         {
@@ -270,7 +270,7 @@ namespace AzFramework
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
-    void InputDeviceKeyboardWin::OnRawInputCodeUnitUTF16Event(uint16_t codeUnitUTF16)
+    void InputDeviceKeyboardWindows::OnRawInputCodeUnitUTF16Event(uint16_t codeUnitUTF16)
     {
         const AZStd::string codePointUTF8 = m_UTF16ToUTF8Converter.FeedCodeUnitUTF16(codeUnitUTF16);
 

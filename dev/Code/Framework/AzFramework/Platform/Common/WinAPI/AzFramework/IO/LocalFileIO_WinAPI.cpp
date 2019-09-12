@@ -10,8 +10,9 @@
 *
 */
 #include <windows.h>
-#include <direct.h> // directory manipulation
-#include <share.h> // sharing flags
+#include <AzFramework/IO/LocalFileIO.h>
+#include <AzCore/IO/SystemFile.h>
+#include <AzCore/std/functional.h>
 
 namespace AZ
 {
@@ -29,32 +30,6 @@ namespace AZ
             }
 
             return (fileAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0;
-        }
-
-        Result LocalFileIO::Copy(const char* sourceFilePath, const char* destinationFilePath)
-        {
-            char resolvedSourcePath[AZ_MAX_PATH_LEN];
-            ResolvePath(sourceFilePath, resolvedSourcePath, AZ_MAX_PATH_LEN);
-            char resolvedDestPath[AZ_MAX_PATH_LEN];
-            ResolvePath(destinationFilePath, resolvedDestPath, AZ_MAX_PATH_LEN);
-
-#if defined(AZ_RESTRICTED_PLATFORM)
-    #if defined(AZ_PLATFORM_XENIA)
-        #include "Xenia/LocalFileIO_win_inl_xenia.inl"
-    #elif defined(AZ_PLATFORM_PROVO)
-        #include "Provo/LocalFileIO_win_inl_provo.inl"
-    #endif
-#endif
-#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
-#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
-#else
-            if (::CopyFileA(resolvedSourcePath, resolvedDestPath, true) == 0)
-#endif
-            {
-                return ResultCode::Error;
-            }
-
-            return ResultCode::Success;
         }
 
         Result LocalFileIO::FindFiles(const char* filePath, const char* filter, FindFilesCallbackType callback)

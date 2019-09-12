@@ -98,7 +98,10 @@ namespace EMotionFX
             << "There should be exactly one transition action.";
 
         // 2. Remove the whole transition including the action.
-        CommandSystem::DeleteStateTransition(&commandGroup, m_transition, AZStd::vector<EMotionFX::AnimGraphStateTransition*>());
+        {
+            AZStd::vector<EMotionFX::AnimGraphStateTransition*> transitionList;
+            CommandSystem::DeleteStateTransition(&commandGroup, m_transition, transitionList);
+        }
         EXPECT_TRUE(commandManager.ExecuteCommandGroup(commandGroup, result));
         commandGroup.RemoveAllCommands();
         EXPECT_EQ(0, m_rootStateMachine->GetNumTransitions()) << "The transition A->B should be gone.";

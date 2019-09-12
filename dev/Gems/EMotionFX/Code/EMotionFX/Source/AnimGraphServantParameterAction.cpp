@@ -89,7 +89,7 @@ namespace EMotionFX
                 }
                 default:
                 {
-                    AZ_Assert(false, "Type %d of attribute %s are not supported", attribute->GetType(), m_parameterName);
+                    AZ_Assert(false, "Type %d of attribute %s are not supported", attribute->GetType(), m_parameterName.c_str());
                     break;
                 }
                 }

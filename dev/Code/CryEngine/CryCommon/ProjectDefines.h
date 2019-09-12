@@ -203,13 +203,13 @@ typedef uint32 vtx_idx;
 #endif
 
 // Reflect texture slot information - only used in the editor
-#if defined(WIN32) || defined(WIN64) || defined(AZ_PLATFORM_APPLE_OSX)
+#if defined(WIN32) || defined(WIN64) || defined(AZ_PLATFORM_MAC)
 #define SHADER_REFLECT_TEXTURE_SLOTS 1
 #else
 #define SHADER_REFLECT_TEXTURE_SLOTS 0
 #endif
 
-#if (defined(WIN32) || defined(WIN64) || defined(AZ_PLATFORM_APPLE_OSX)) && (!defined(_RELEASE) || defined(RESOURCE_COMPILER))
+#if (defined(WIN32) || defined(WIN64) || defined(AZ_PLATFORM_MAC)) && (!defined(_RELEASE) || defined(RESOURCE_COMPILER))
 #define CRY_ENABLE_RC_HELPER 1
 #endif
 

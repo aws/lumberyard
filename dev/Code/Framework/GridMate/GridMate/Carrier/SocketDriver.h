@@ -9,71 +9,22 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
+#pragma once
 
-#if defined(AZ_RESTRICTED_PLATFORM)
-#undef AZ_RESTRICTED_SECTION
-#define SOCKETDRIVER_H_SECTION_1 1
-#define SOCKETDRIVER_H_SECTION_2 2
-#endif
-
-#ifndef GM_SOCKET_DRIVER_H
-#define GM_SOCKET_DRIVER_H
-
+#include <GridMate/Memory.h>
 #include <AzCore/std/functional_basic.h>
 #include <AzCore/std/containers/unordered_set.h>
-#include <GridMate/Carrier/Driver.h>
 #include <AzCore/PlatformIncl.h>
 #include <AzCore/std/smart_ptr/unique_ptr.h>
 #include <AzCore/std/parallel/thread.h>
 #include <AzCore/std/parallel/atomic.h>
-#include <AzCore/std/parallel/conditional_variable.h>
+#include <AzCore/std/parallel/condition_variable.h>
 
-#if defined(AZ_PLATFORM_WINDOWS)
-#   include <WinSock2.h>
-#   include <ws2tcpip.h>
-#   include <Mswsock.h>
-#   ifdef WSAID_MULTIPLE_RIO
-#       define AZ_SOCKET_RIO_SUPPORT
-#   endif
-#define AZ_RESTRICTED_SECTION_IMPLEMENTED
-#elif defined(AZ_RESTRICTED_PLATFORM)
-#define AZ_RESTRICTED_SECTION SOCKETDRIVER_H_SECTION_1
-    #if defined(AZ_PLATFORM_XENIA)
-        #include "Xenia/SocketDriver_h_xenia.inl"
-    #elif defined(AZ_PLATFORM_PROVO)
-        #include "Provo/SocketDriver_h_provo.inl"
-    #endif
-#endif
-#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
-#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
-#elif defined(AZ_PLATFORM_ANDROID)
-#   include <netinet/in.h>
-#   include <android/api-level.h>
-#   if __ANDROID_API__ <= 19
-#       include <sys/socket.h> // wasn't included in the API 19 version of <netinet/in.h>
-#   endif
-#elif defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_APPLE)
-#   include <netinet/in.h>
-#else
-#error Platform not supported.
-#endif
+#include <GridMate_Traits_Platform.h>
+#include <GridMate/Carrier/SocketDriver_Platform.h>
+#include <GridMate/Carrier/Driver.h>
 
-#if defined(AZ_RESTRICTED_PLATFORM)
-#define AZ_RESTRICTED_SECTION SOCKETDRIVER_H_SECTION_2
-    #if defined(AZ_PLATFORM_XENIA)
-        #include "Xenia/SocketDriver_h_xenia.inl"
-    #elif defined(AZ_PLATFORM_PROVO)
-        #include "Provo/SocketDriver_h_provo.inl"
-    #endif
-#endif
-#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
-#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
-#else
-struct sockaddr_in;
-struct sockaddr;
-#endif
-
-#if !defined(AZ_SOCKET_IPV6_SUPPORT) && !defined(AZ_PLATFORM_APPLE)
+#if AZ_TRAIT_GRIDMATE_SOCKET_IPV6_SUPPORT_EXTENSION
 
 namespace GridMate
 {
@@ -121,6 +72,8 @@ namespace GridMate
 
 namespace GridMate
 {
+    using SockerErrorBuffer = AZStd::array<char, 32>;
+
     class SocketDriverAddress
         : public DriverAddress
     {
@@ -161,13 +114,7 @@ namespace GridMate
         : public Driver
     {
     public:
-#if AZ_TRAIT_OS_USE_WINDOWS_SOCKETS
-        typedef AZStd::size_t SocketType;
-#elif AZ_TRAIT_OS_USE_POSIX_SOCKETS
-        typedef int SocketType;
-#else
-#       error SocketType undefined
-#endif
+        using SocketType = Platform::SocketType_Platform;
         SocketDriverCommon(bool isFullPackets = false, bool isCrossPlatform = false, bool isHighPerformance = false);
         virtual ~SocketDriverCommon();
 
@@ -468,4 +415,4 @@ namespace GridMate
     };
 }
 
-#endif // GM_SOCKET_DRIVER_H
+

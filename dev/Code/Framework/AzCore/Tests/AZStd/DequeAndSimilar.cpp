@@ -244,30 +244,30 @@ namespace UnitTest
 
         //////////////////////////////////////////////////////////////////////////////////////////
         // Test asserts (which don't cause throw exceptions)
-        //AZ_TEST_START_ASSERTTEST;
+        //AZ_TEST_START_TRACE_SUPPRESSION;
         //int_deque10.resize(1000000);  // too many elements, 1 assert on too many, 1 assert on allocator returning NULL
-        //AZ_TEST_STOP_ASSERTTEST(2);
+        //AZ_TEST_STOP_TRACE_SUPPRESSION(2);
 
 #ifdef AZSTD_HAS_CHECKED_ITERATORS
         int_deque.clear();
         int_deque_type::iterator iter = int_deque.end();
         // We have exeption when we access the map.
-        //AZ_TEST_START_ASSERTTEST;
+        //AZ_TEST_START_TRACE_SUPPRESSION;
         //int b = *iter; // the end if is valid but can not dereferenced
         //int_deque.validate_iterator(iter);
         //(void)b;
-        //AZ_TEST_STOP_ASSERTTEST(1);
+        //AZ_TEST_STOP_TRACE_SUPPRESSION(1);
 
         int_deque.push_back(1);
-        AZ_TEST_START_ASSERTTEST;
+        AZ_TEST_START_TRACE_SUPPRESSION;
         int_deque.validate_iterator(iter); // The push back should make the end iterator invalid.
-        AZ_TEST_STOP_ASSERTTEST(1);
+        AZ_TEST_STOP_TRACE_SUPPRESSION(1);
 
         iter = int_deque.begin();
         int_deque.clear();
-        AZ_TEST_START_ASSERTTEST;
+        AZ_TEST_START_TRACE_SUPPRESSION;
         int_deque.validate_iterator(iter); // The clear should invalidate all iterators
-        AZ_TEST_STOP_ASSERTTEST(1);
+        AZ_TEST_STOP_TRACE_SUPPRESSION(1);
 #endif
 
         aligned_deque.emplace_back(10, true, 2.0f);

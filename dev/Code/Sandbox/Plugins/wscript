@@ -33,7 +33,7 @@ SUBFOLDERS = [
     'UiCanvasEditor',
     'DeploymentTool',
     'ProjectSettingsTool',
-    'Legacy',
+    #'Legacy',
     #'_ExampleQMLViewPane',
     #'_ExampleQtViewPane',
     ]

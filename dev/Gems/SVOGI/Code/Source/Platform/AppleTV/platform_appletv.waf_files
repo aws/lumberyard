@@ -1,0 +1,10 @@
+{
+    "auto":
+    {
+        "Platform/AppleTV":
+        [
+            "SVOGI_Traits_Platform.h",
+            "SVOGI_Traits_AppleTV.h"
+        ]
+    }
+}

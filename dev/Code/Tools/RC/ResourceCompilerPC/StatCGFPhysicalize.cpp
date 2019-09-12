@@ -17,7 +17,7 @@
 #include "Util.h"
 #include <AzCore/IO/SystemFile.h> // for AZ_MAX_PATH_LEN
 
-#if defined(AZ_PLATFORM_APPLE)
+#if AZ_TRAIT_OS_PLATFORM_APPLE
 #include <mach-o/dyld.h>  // Needed for _NSGetExecutablePath
 #endif
 
@@ -502,7 +502,7 @@ void CPhysicsInterface::ProcessBreakablePhysics(CContentCGF* pCompiledCGF, CCont
         return;
     }
     strcpy(ch, "\\netgen\\");
-#elif defined(AZ_PLATFORM_APPLE)
+#elif AZ_TRAIT_OS_PLATFORM_APPLE
     
     if (_NSGetExecutablePath(path,&pathLength))
     {
@@ -655,7 +655,7 @@ void CPhysicsInterface::ProcessBreakablePhysics(CContentCGF* pCompiledCGF, CCont
     {
         return;
     }
-#elif defined(AZ_PLATFORM_APPLE)
+#elif AZ_TRAIT_OS_PLATFORM_APPLE
     //Needs cross platform support
     CRY_ASSERT(0);
 #endif

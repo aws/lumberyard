@@ -10,7 +10,6 @@
 *
 */
 
-// include the required headers
 #include <EMotionFX/CommandSystem/Source/ActorCommands.h>
 #include <EMotionFX/CommandSystem/Source/ActorInstanceCommands.h>
 #include <EMotionFX/CommandSystem/Source/AnimGraphCommands.h>
@@ -35,6 +34,7 @@
 #include <EMotionFX/CommandSystem/Source/NodeGroupCommands.h>
 #include <EMotionFX/CommandSystem/Source/RagdollCommands.h>
 #include <EMotionFX/CommandSystem/Source/SelectionCommands.h>
+#include <EMotionFX/CommandSystem/Source/SimulatedObjectCommands.h>
 
 
 namespace CommandSystem
@@ -42,21 +42,14 @@ namespace CommandSystem
     // the global command manager object
     CommandManager* gCommandManager = nullptr;
 
-    // get the command manager
     CommandManager* GetCommandManager()
     {
         return gCommandManager;
     }
 
-
-    // constructor
     CommandManager::CommandManager()
         : MCore::CommandManager()
     {
-        // reserve some memory for the command objects
-        mCommands.Reserve(128);
-
-        // register actor commands
         RegisterCommand(new CommandImportActor());
         RegisterCommand(new CommandRemoveActor());
         RegisterCommand(new CommandScaleActorData());
@@ -76,9 +69,18 @@ namespace CommandSystem
         RegisterCommand(new CommandAddLOD());
         RegisterCommand(new CommandRemoveLOD());
         RegisterCommand(aznew EMotionFX::CommandAddCollider());
+        RegisterCommand(aznew EMotionFX::CommandAdjustCollider());
         RegisterCommand(aznew EMotionFX::CommandRemoveCollider());
         RegisterCommand(aznew EMotionFX::CommandAddRagdollJoint());
         RegisterCommand(aznew EMotionFX::CommandRemoveRagdollJoint());
+
+        // register simulated object related commands.
+        RegisterCommand(aznew EMotionFX::CommandAddSimulatedObject());
+        RegisterCommand(aznew EMotionFX::CommandAdjustSimulatedObject());
+        RegisterCommand(aznew EMotionFX::CommandAddSimulatedJoints());
+        RegisterCommand(aznew EMotionFX::CommandRemoveSimulatedObject());
+        RegisterCommand(aznew EMotionFX::CommandRemoveSimulatedJoints());
+        RegisterCommand(aznew EMotionFX::CommandAdjustSimulatedJoint());
 
         // register motion commands
         RegisterCommand(new CommandImportMotion());
@@ -162,8 +164,6 @@ namespace CommandSystem
         mWorkspaceDirtyFlag = false;
     }
 
-
-    // destructor
     CommandManager::~CommandManager()
     {
     }

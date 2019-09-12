@@ -21,6 +21,7 @@
             "StaticLib/GraphCanvas/Components/PersistentIdBus.h",
             "StaticLib/GraphCanvas/Components/SceneBus.h",
             "StaticLib/GraphCanvas/Components/StyleBus.h",
+            "StaticLib/GraphCanvas/Components/ToastBus.h",
             "StaticLib/GraphCanvas/Components/ViewBus.h",
             "StaticLib/GraphCanvas/Components/VisualBus.h"
         ],
@@ -53,10 +54,10 @@
         "StaticLib/GraphCanvas/Components/NodePropertyDisplay":
         [
             "StaticLib/GraphCanvas/Components/NodePropertyDisplay/BooleanDataInterface.h",
+            "StaticLib/GraphCanvas/Components/NodePropertyDisplay/ComboBoxDataInterface.h",
             "StaticLib/GraphCanvas/Components/NodePropertyDisplay/DataInterface.h",       
             "StaticLib/GraphCanvas/Components/NodePropertyDisplay/DoubleDataInterface.h",
             "StaticLib/GraphCanvas/Components/NodePropertyDisplay/EntityIdDataInterface.h",
-            "StaticLib/GraphCanvas/Components/NodePropertyDisplay/ItemModelDataInterface.h",
             "StaticLib/GraphCanvas/Components/NodePropertyDisplay/NodePropertyDisplay.h",
             "StaticLib/GraphCanvas/Components/NodePropertyDisplay/NumericDataInterface.h",
             "StaticLib/GraphCanvas/Components/NodePropertyDisplay/ReadOnlyDataInterface.h",
@@ -94,7 +95,7 @@
         "StaticLib/GraphCanvas/Components/Slots/Property":
         [
             "StaticLib/GraphCanvas/Components/Slots/Property/PropertySlotBus.h"
-        ],
+        ],        
         "StaticLib/GraphCanvas/Editor":
         [
             "StaticLib/GraphCanvas/Editor/AssetEditorBus.h",
@@ -123,12 +124,15 @@
         ],
         "StaticLib/GraphCanvas/Types":
         [
+            "StaticLib/GraphCanvas/Types/ConstructPresets.cpp",
+            "StaticLib/GraphCanvas/Types/ConstructPresets.h",
             "StaticLib/GraphCanvas/Types/EntitySaveData.h",
             "StaticLib/GraphCanvas/Types/Endpoint.h",
             "StaticLib/GraphCanvas/Types/GraphCanvasGraphData.cpp",
             "StaticLib/GraphCanvas/Types/GraphCanvasGraphData.h",
             "StaticLib/GraphCanvas/Types/GraphCanvasGraphSerialization.cpp",
             "StaticLib/GraphCanvas/Types/GraphCanvasGraphSerialization.h",
+            "StaticLib/GraphCanvas/Types/SceneMemberComponentSaveData.h",
             "StaticLib/GraphCanvas/Types/TranslationTypes.h",
             "StaticLib/GraphCanvas/Types/Types.h",            
             "StaticLib/GraphCanvas/Types/QtMetaTypes.h"
@@ -137,11 +141,10 @@
         [
             "StaticLib/GraphCanvas/Widgets/Resources/default_style.json"
         ],
-        "StaticLib/GraphCanvas/Widgets"
-        :
+        "StaticLib/GraphCanvas/Widgets":
         [
             "StaticLib/GraphCanvas/Widgets/AutoElidingLabel.cpp",
-            "StaticLib/GraphCanvas/Widgets/AutoElidingLabel.h",
+            "StaticLib/GraphCanvas/Widgets/AutoElidingLabel.h",            
             "StaticLib/GraphCanvas/Widgets/GraphCanvasMimeContainer.cpp",
             "StaticLib/GraphCanvas/Widgets/GraphCanvasMimeContainer.h",
             "StaticLib/GraphCanvas/Widgets/GraphCanvasMimeEvent.cpp",
@@ -168,6 +171,17 @@
             "StaticLib/GraphCanvas/Widgets/Bookmarks/BookmarkTableModel.cpp",
             "StaticLib/GraphCanvas/Widgets/Bookmarks/BookmarkTableModel.h"
         ],
+        "StaticLib/GraphCanvas/Widgets/ComboBox":
+        [
+            "StaticLib/GraphCanvas/Widgets/ComboBox/ComboBoxModel.cpp",
+            "StaticLib/GraphCanvas/Widgets/ComboBox/ComboBoxModel.h"
+        ],
+        "StaticLib/GraphCanvas/Widgets/ConstructPresetDialog":
+        [
+            "StaticLib/GraphCanvas/Widgets/ConstructPresetDialog/ConstructPresetDialog.cpp",
+            "StaticLib/GraphCanvas/Widgets/ConstructPresetDialog/ConstructPresetDialog.h",
+            "StaticLib/GraphCanvas/Widgets/ConstructPresetDialog/ConstructPresetDialog.ui"
+        ],
         "StaticLib/GraphCanvas/Widgets/EditorContextMenu":
         [
             "StaticLib/GraphCanvas/Widgets/EditorContextMenu/EditorContextMenu.cpp",
@@ -179,6 +193,8 @@
             "StaticLib/GraphCanvas/Widgets/EditorContextMenu/ContextMenus/BookmarkContextMenu.h",
             "StaticLib/GraphCanvas/Widgets/EditorContextMenu/ContextMenus/CollapsedNodeGroupContextMenu.cpp",
             "StaticLib/GraphCanvas/Widgets/EditorContextMenu/ContextMenus/CollapsedNodeGroupContextMenu.h",
+            "StaticLib/GraphCanvas/Widgets/EditorContextMenu/ContextMenus/CommentContextMenu.cpp",
+            "StaticLib/GraphCanvas/Widgets/EditorContextMenu/ContextMenus/CommentContextMenu.h",
             "StaticLib/GraphCanvas/Widgets/EditorContextMenu/ContextMenus/ConnectionContextMenu.cpp",
             "StaticLib/GraphCanvas/Widgets/EditorContextMenu/ContextMenus/ConnectionContextMenu.h",
             "StaticLib/GraphCanvas/Widgets/EditorContextMenu/ContextMenus/NodeContextMenu.cpp",
@@ -210,8 +226,18 @@
             "StaticLib/GraphCanvas/Widgets/EditorContextMenu/ContextMenuActions/ConstructMenuActions/CommentConstructMenuActions.cpp",
             "StaticLib/GraphCanvas/Widgets/EditorContextMenu/ContextMenuActions/ConstructMenuActions/CommentConstructMenuActions.h",
             "StaticLib/GraphCanvas/Widgets/EditorContextMenu/ContextMenuActions/ConstructMenuActions/ConstructContextMenuAction.h",
+            "StaticLib/GraphCanvas/Widgets/EditorContextMenu/ContextMenuActions/ConstructMenuActions/ConstructPresetMenuActions.cpp",
+            "StaticLib/GraphCanvas/Widgets/EditorContextMenu/ContextMenuActions/ConstructMenuActions/ConstructPresetMenuActions.h",
             "StaticLib/GraphCanvas/Widgets/EditorContextMenu/ContextMenuActions/ConstructMenuActions/GraphCanvasConstructActionsMenuGroup.cpp",
             "StaticLib/GraphCanvas/Widgets/EditorContextMenu/ContextMenuActions/ConstructMenuActions/GraphCanvasConstructActionsMenuGroup.h"
+        ],
+        "StaticLib/GraphCanvas/Widgets/EditorContextMenu/ContextMenuActions/DisableMenuActions":
+        [
+            "StaticLib/GraphCanvas/Widgets/EditorContextMenu/ContextMenuActions/DisableMenuActions/DisableActionsMenuGroup.cpp",
+            "StaticLib/GraphCanvas/Widgets/EditorContextMenu/ContextMenuActions/DisableMenuActions/DisableActionsMenuGroup.h",
+            "StaticLib/GraphCanvas/Widgets/EditorContextMenu/ContextMenuActions/DisableMenuActions/DisableMenuActions.cpp",
+            "StaticLib/GraphCanvas/Widgets/EditorContextMenu/ContextMenuActions/DisableMenuActions/DisableMenuActions.h",
+            "StaticLib/GraphCanvas/Widgets/EditorContextMenu/ContextMenuActions/DisableMenuActions/DisableMenuAction.h"
         ],
         "StaticLib/GraphCanvas/Widgets/EditorContextMenu/ContextMenuActions/EditMenuActions":
         [
@@ -261,6 +287,7 @@
         ],
         "StaticLib/GraphCanvas/Widgets/MimeEvents":
         [
+            "StaticLib/GraphCanvas/Widgets/MimeEvents/CreateSplicingNodeMimeEvent.cpp",
             "StaticLib/GraphCanvas/Widgets/MimeEvents/CreateSplicingNodeMimeEvent.h"
         ],
         "StaticLib/GraphCanvas/Widgets/MiniMapGraphicsView":
@@ -298,8 +325,16 @@
             "StaticLib/GraphCanvas/Widgets/StyledItemDelegates/IconDecoratedNameDelegate.cpp",
             "StaticLib/GraphCanvas/Widgets/StyledItemDelegates/IconDecoratedNameDelegate.h"
         ],
+        "StaticLib/GraphCanvas/Widgets/ToastNotification":
+        [
+            "StaticLib/GraphCanvas/Widgets/ToastNotification/ToastNotification.cpp",
+            "StaticLib/GraphCanvas/Widgets/ToastNotification/ToastNotification.h",
+            "StaticLib/GraphCanvas/Widgets/ToastNotification/ToastNotification.ui"            
+        ],
         "StaticLib/GraphCanvas/Utils":
         [
+            "StaticLib/GraphCanvas/Utils/ColorUtils.h",
+            "StaticLib/GraphCanvas/Utils/ConversionUtils.h",
             "StaticLib/GraphCanvas/Utils/GraphUtils.cpp",
             "StaticLib/GraphCanvas/Utils/GraphUtils.h",
             "StaticLib/GraphCanvas/Utils/NodeNudgingController.cpp",

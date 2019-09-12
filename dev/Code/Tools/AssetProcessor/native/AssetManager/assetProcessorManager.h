@@ -167,8 +167,8 @@ namespace AssetProcessor
 
         //////////////////////////////////////////////////////////////////////////
         // ProcessingJobInfoBus::Handler overrides
-        void BeginIgnoringCacheFileDelete(const char* productPath) override;
-        void StopIgnoringCacheFileDelete(const char* productPath, bool queueAgainForProcessing) override;
+        void BeginCacheFileUpdate(const char* productPath) override;
+        void EndCacheFileUpdate(const char* productPath, bool queueAgainForDeletion) override;
         AZ::u32 GetJobFingerprint(const AssetProcessor::JobIndentifier& jobIndentifier) override;
         //////////////////////////////////////////////////////////////////////////
 

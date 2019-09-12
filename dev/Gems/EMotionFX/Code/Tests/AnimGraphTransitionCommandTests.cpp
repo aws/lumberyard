@@ -114,7 +114,10 @@ namespace EMotionFX
 
         // 2. Remove the middle transition that was part of the can be interrupted by transition ids list and make sure it got removed from there
         commandGroup.RemoveAllCommands();
-        CommandSystem::DeleteStateTransition(&commandGroup, m_transitionMiddle, /*transitionList*/AZStd::vector<EMotionFX::AnimGraphStateTransition*>());
+        {
+            AZStd::vector<EMotionFX::AnimGraphStateTransition*> transitionList;
+            CommandSystem::DeleteStateTransition(&commandGroup, m_transitionMiddle, transitionList);
+        }
 
         EXPECT_TRUE(commandManager.ExecuteCommandGroup(commandGroup, result));
         EXPECT_EQ(m_transitionLeft->GetCanBeInterruptedByTransitionIds(), onlyRightId)
@@ -122,7 +125,10 @@ namespace EMotionFX
 
         // 3. Same for the right transition
         commandGroup.RemoveAllCommands();
-            CommandSystem::DeleteStateTransition(&commandGroup, m_transitionRight, AZStd::vector<EMotionFX::AnimGraphStateTransition*>());
+        {
+            AZStd::vector<EMotionFX::AnimGraphStateTransition*> transitionList;
+            CommandSystem::DeleteStateTransition(&commandGroup, m_transitionRight, transitionList);
+        }
 
         EXPECT_TRUE(commandManager.ExecuteCommandGroup(commandGroup, result));
         EXPECT_EQ(m_transitionLeft->GetCanBeInterruptedByTransitionIds().empty(), true)
@@ -177,7 +183,10 @@ namespace EMotionFX
 
         // 2. Remove the transition that we just modified
         commandGroup.RemoveAllCommands();
-        CommandSystem::DeleteStateTransition(&commandGroup, m_transitionLeft, /*transitionList*/AZStd::vector<EMotionFX::AnimGraphStateTransition*>());
+        {
+            AZStd::vector<EMotionFX::AnimGraphStateTransition*> transitionList;
+            CommandSystem::DeleteStateTransition(&commandGroup, m_transitionLeft, transitionList);
+        }
 
         EXPECT_TRUE(commandManager.ExecuteCommandGroup(commandGroup, result));
 

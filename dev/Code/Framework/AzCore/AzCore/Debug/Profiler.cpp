@@ -9,7 +9,6 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#ifndef AZ_UNITY_BUILD
 
 #include <AzCore/Debug/Profiler.h>
 #include <AzCore/Debug/ProfilerDrillerBus.h>
@@ -375,26 +374,6 @@ namespace AZ
 
             if (threadData)
             {
-#   if defined(AZ_PROFILER_NO_THREAD_LOCAL)
-                // remove all reference to the registers, so we can delete them
-                for (size_t i = 0; i < numThreads; ++i)
-                {
-                    ProfilerThreadData& data = m_data->m_threads[i];
-                    if (&data != threadData)
-                    {
-                        ProfilerThreadData::ProfilerRegisterList::iterator it = data.m_registers.begin();
-                        ProfilerThreadData::ProfilerRegisterList::iterator end = data.m_registers.end();
-                        for (; it != end; ++it)
-                        {
-                            ProfilerRegister& reg = *it;
-                            if (reg.m_nextThread && reg.m_nextThread->m_threadData == threadData)
-                            {
-                                reg.m_nextThread = reg.m_nextThread->m_nextThread; // unlink the register
-                            }
-                        }
-                    }
-                }
-#endif
                 // delete all registers, we can remove the thread data too, but we will need to switch the structure to list
                 // so far this is super minimal overhead, registers are more.
                 threadData->m_registers.clear();
@@ -463,92 +442,12 @@ namespace AZ
         }
 
         //=========================================================================
-        // CreateRegister - version that takes a systemId
-        // [6/10/2015]
-        //=========================================================================
-#       if defined(AZ_PROFILER_NO_THREAD_LOCAL)
-        ProfilerRegister*
-        ProfilerRegister::CreateRegister(AZ::u32 systemId, const char* name, const char* function, int line, ProfilerRegister::Type type, ProfilerRegister* siblingReg)
-        {
-            AZStd::thread::id threadId = AZStd::this_thread::get_id();
-            ProfilerThreadData* threadData = NULL;
-            {
-                AZStd::shared_lock<AZStd::shared_spin_mutex> readLock(Profiler::s_instance->m_data->m_threadDataMutex);
-                size_t numThreads = Profiler::s_instance->m_data->m_threads.size();
-                for (size_t i = 0; i < numThreads; ++i) // for small number of threads it's faster to go brute force
-                {
-                    if (Profiler::s_instance->m_data->m_threads[i].m_id == threadId)
-                    {
-                        threadData = &Profiler::s_instance->m_data->m_threads[i];
-                        break;
-                    }
-                }
-            }
-            ProfilerRegister* reg;
-            {
-                AZStd::unique_lock<AZStd::shared_spin_mutex> writeLock(Profiler::s_instance->m_data->m_threadDataMutex);
-
-                if (threadData == nullptr)  // if this is a new thread add the data
-                {
-                    Profiler::s_instance->m_data->m_threads.push_back();
-                    threadData = &Profiler::s_instance->m_data->m_threads.back();
-                    threadData->m_id = threadId;
-                }
-                threadData->m_registers.push_back();
-                reg = &threadData->m_registers.back();
-                reg->m_name = name;
-                reg->m_function = function;
-                reg->m_line = line;
-                reg->m_systemId = systemId;
-                reg->m_isActive = Profiler::s_instance->IsSystemActive(systemId) ? 1 : 0;
-                reg->m_type = type;
-                reg->m_threadData = threadData;
-
-                if (siblingReg)
-                {
-                    while (siblingReg->m_nextThread != NULL)
-                    {
-                        siblingReg = siblingReg->m_nextThread;
-                    }
-                    siblingReg->m_nextThread = reg;
-                }
-                reg->Reset();
-            }
-            // Make sure we triggest driller message when the m_threadDataMutex is NOT locked
-            // as we lock them in reverse order when we update the profile driller.
-            EBUS_DBG_EVENT(ProfilerDrillerBus, OnNewRegister, *reg, threadData->m_id);
-
-            return reg;
-        }
-#   endif // AZ_PROFILER_NO_THREAD_LOCAL
-
-        //=========================================================================
         // CreateRegister
         // [6/28/2013]
         //=========================================================================
         ProfilerRegister*
-#       if defined(AZ_PROFILER_NO_THREAD_LOCAL)
-        ProfilerRegister::CreateRegister(const char* systemName, const char* name, const char* function, int line, ProfilerRegister::Type type, ProfilerRegister* siblingReg)
-#       else
         ProfilerRegister::CreateRegister(const char* systemName, const char* name, const char* function, int line, ProfilerRegister::Type type)
-#       endif // AZ_THREAD_LOCAL
         {
-#       if defined(AZ_PROFILER_NO_THREAD_LOCAL)
-            AZStd::thread::id threadId = AZStd::this_thread::get_id();
-            ProfilerThreadData* threadData = NULL;
-            {
-                AZStd::shared_lock<AZStd::shared_spin_mutex> readLock(Profiler::s_instance->m_data->m_threadDataMutex);
-                size_t numThreads = Profiler::s_instance->m_data->m_threads.size();
-                for (size_t i = 0; i < numThreads; ++i) // for small number of threads it's faster to go brute force
-                {
-                    if (Profiler::s_instance->m_data->m_threads[i].m_id == threadId)
-                    {
-                        threadData = &Profiler::s_instance->m_data->m_threads[i];
-                        break;
-                    }
-                }
-            }
-#else
             static AZ_THREAD_LOCAL ProfilerThreadData* threadData = nullptr;
             static AZ_THREAD_LOCAL u64 profilerId = 0;
             if (profilerId != Profiler::s_id)
@@ -556,7 +455,6 @@ namespace AZ
                 threadData = nullptr; // profiler has changed
                 profilerId = Profiler::s_id;
             }
-#endif
             AZ::u32 systemId = AZ::Crc32(systemName);
             ProfilerRegister* reg;
             {
@@ -570,9 +468,7 @@ namespace AZ
 
                 if (threadData == nullptr)  // if this is a new thread add the data
                 {
-#       if !defined(AZ_PROFILER_NO_THREAD_LOCAL)
                     AZStd::thread::id threadId = AZStd::this_thread::get_id();
-#       endif // !AZ_PROFILER_NO_THREAD_LOCAL
                     Profiler::s_instance->m_data->m_threads.push_back();
                     threadData = &Profiler::s_instance->m_data->m_threads.back();
                     threadData->m_id = threadId;
@@ -587,16 +483,6 @@ namespace AZ
                 reg->m_type = type;
                 reg->m_threadData = threadData;
 
-#       if defined(AZ_PROFILER_NO_THREAD_LOCAL)
-                if (siblingReg)
-                {
-                    while (siblingReg->m_nextThread != NULL)
-                    {
-                        siblingReg = siblingReg->m_nextThread;
-                    }
-                    siblingReg->m_nextThread = reg;
-                }
-#       endif // AZ_PROFILER_NO_THREAD_LOCAL
                 reg->Reset();
             }
             // Make sure we triggest driller message when the m_threadDataMutex is NOT locked
@@ -607,56 +493,14 @@ namespace AZ
         }
 
         //=========================================================================
-        // TimerCreateAndStart - version that takes a systemId
-        // [06/10/2015]
-        //=========================================================================
-#   if defined(AZ_PROFILER_NO_THREAD_LOCAL)
-        ProfilerRegister*
-        ProfilerRegister::TimerCreateAndStart(AZ::u32 systemId, const char* name, ProfilerSection* section, const char* function, int line, ProfilerRegister* siblingReg)
-        {
-            AZStd::chrono::system_clock::time_point start = AZStd::chrono::system_clock::now();
-            ProfilerRegister* reg = CreateRegister(systemId, name, function, line, ProfilerRegister::PRT_TIME, siblingReg);
-            AZStd::chrono::system_clock::time_point end = AZStd::chrono::system_clock::now();
-
-            // adjust the parent timer with the overhead we incur during timer operations. (TODO with TLS this is so fast that we might not need to do it)
-            if (!reg->m_threadData->m_stack.empty())  // if we are not he last element
-            {
-                AZStd::chrono::microseconds elapsed = end - start;
-                reg->m_threadData->m_stack.back()->m_childTime += elapsed; // no need to check if we go in the future as this will happen on Stop
-            }
-
-            if (reg->m_isActive)
-            {
-                section->m_register = reg;
-                section->m_start = end;
-                reg->m_threadData->m_stack.push_back(section);
-            }
-            else
-            {
-                section->m_register = nullptr;
-            }
-
-            return reg;
-        }
-#   endif
-
-        //=========================================================================
         // TimerCreateAndStart
         // [11/30/2012]
         //=========================================================================
         ProfilerRegister*
-#   if defined(AZ_PROFILER_NO_THREAD_LOCAL)
-        ProfilerRegister::TimerCreateAndStart(const char* systemName, const char* name, ProfilerSection* section, const char* function, int line, ProfilerRegister* siblingReg)
-    #else
         ProfilerRegister::TimerCreateAndStart(const char* systemName, const char* name, ProfilerSection * section, const char* function, int line)
-#   endif // AZ_THREAD_LOCAL
         {
             AZStd::chrono::system_clock::time_point start = AZStd::chrono::system_clock::now();
-#   if defined(AZ_PROFILER_NO_THREAD_LOCAL)
-            ProfilerRegister* reg = CreateRegister(systemName, name, function, line, ProfilerRegister::PRT_TIME, siblingReg);
-#   else
             ProfilerRegister* reg = CreateRegister(systemName, name, function, line, ProfilerRegister::PRT_TIME);
-#   endif // AZ_PROFILER_NO_THREAD_LOCAL
             AZStd::chrono::system_clock::time_point end = AZStd::chrono::system_clock::now();
 
             // adjust the parent timer with the overhead we incur during timer operations. (TODO with TLS this is so fast that we might not need to do it)
@@ -685,17 +529,10 @@ namespace AZ
         // [6/28/2013]
         //=========================================================================
         ProfilerRegister*
-#   if defined(AZ_PROFILER_NO_THREAD_LOCAL)
-        ProfilerRegister::ValueCreate(const char* systemName, const char* name, const char* function, int line, ProfilerRegister* siblingReg)
-        {
-            return CreateRegister(systemName, name, function, line, ProfilerRegister::PRT_VALUE, siblingReg);
-        }
-#   else
         ProfilerRegister::ValueCreate(const char* systemName, const char* name, const char* function, int line)
         {
             return CreateRegister(systemName, name, function, line, ProfilerRegister::PRT_VALUE);
         }
-#   endif // AZ_PROFILER_NO_THREAD_LOCAL
 
         //=========================================================================
         // TimerStart
@@ -704,26 +541,6 @@ namespace AZ
         void ProfilerRegister::TimerStart(ProfilerSection* section)
         {
             ProfilerRegister* reg = this;
-#           if defined(AZ_PROFILER_NO_THREAD_LOCAL)
-            AZStd::thread::id threadId = AZStd::this_thread::get_id();
-            if (reg->m_threadData->m_id != threadId)
-            {
-                {
-                    AZStd::shared_lock<AZStd::shared_spin_mutex> readLock(Profiler::s_instance->m_data->m_threadDataMutex); // lock for read
-                    reg = m_nextThread;
-                    while (reg != NULL && reg->m_threadData->m_id != threadId)
-                    {
-                        reg = reg->m_nextThread;
-                    }
-                }
-                if (reg == NULL)
-                {
-                    reg = TimerCreateAndStart(m_systemId, m_name, section, m_function, m_line, this);
-                    reg->m_systemId = m_systemId;
-                    return;
-                }
-            }
-#           endif // AZ_PROFILER_NO_THREAD_LOCAL
             if (reg->m_isActive)
             {
                 section->m_register = reg;
@@ -846,32 +663,5 @@ namespace AZ
             //AZ_TracePrintf("Profiler","Overhead %d microseconds per 1000 profile calls!\n",TimeData::s_startStopOverheadPer1000Calls.count());
         }
 
-#       if defined(AZ_PROFILER_NO_THREAD_LOCAL)
-        ProfilerRegister*   ProfilerRegister::GetValueRegisterForThisThread()
-        {
-            ProfilerRegister* reg = this;
-            AZStd::thread::id threadId = AZStd::this_thread::get_id();
-            if (reg->m_threadData->m_id != threadId)
-            {
-                {
-                    AZStd::shared_lock<AZStd::shared_spin_mutex> readLock(Profiler::s_instance->m_data->m_threadDataMutex); // lock for read
-                    reg = m_nextThread;
-                    while (reg != NULL && reg->m_threadData->m_id != threadId)
-                    {
-                        reg = reg->m_nextThread;
-                    }
-                }
-
-                if (reg == NULL)
-                {
-                    reg = CreateRegister(m_systemId, m_name, m_function, m_line, ProfilerRegister::PRT_VALUE, this);
-                    reg->m_systemId = m_systemId;
-                }
-            }
-            return reg;
-        }
-#       endif // AZ_PROFILER_NO_THREAD_LOCAL
     }
 } // namespace AZ
-
-#endif // #ifndef AZ_UNITY_BUILD

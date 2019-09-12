@@ -32,6 +32,10 @@ from utils import is_value_true, parse_json_file
 from compile_settings_test import load_test_settings
 from compile_settings_dedicated import load_dedicated_settings
 
+from cry_utils import append_kw_entry
+from lmbr_install_context import LmbrInstallContext
+from runpy import run_path
+
 WAF_TOOL_ROOT_DIR = os.path.join(LUMBERYARD_ENGINE_PATH, "Tools", "build","waf-1.7.13")
 LMBR_WAF_TOOL_DIR = os.path.join(WAF_TOOL_ROOT_DIR, "lmbrwaflib")
 
@@ -1082,6 +1086,42 @@ def is_valid_configuration_request(ctx, debug_tag='lumberyard', **kw):
         return False
 
     return True
+
+
+@conf
+def process_restricted_settings(ctx, kw):
+
+    is_install_ctx = isinstance(ctx, LmbrInstallContext)
+    target = kw['target']
+
+    for p0, p1, p2, p3 in ctx.env['RESTRICTED_PLATFORMS']:
+
+        # the install context has no used for the file list so don't search for it specifically
+        if not is_install_ctx:
+            restricted_filelist_kw = '{}_file_list'.format(p3)
+
+            # Unless the caller has overridden, look to see if we can automatically attach any waf_files for the platform
+            if restricted_filelist_kw not in kw:
+                waf_file = os.path.join(p0, '{0}_{1}.waf_files'.format(target.lower(), p1))
+                script_dir = os.path.dirname(ctx.cur_script.abspath())
+                if os.path.exists(os.path.join(script_dir, waf_file)):
+                    append_kw_entry(kw, restricted_filelist_kw, waf_file)
+
+        # If a restricted script is specified, try and open a platform-specific version of the base calling script
+        if 'restricted_script' in kw:
+            script_dir, script_base = os.path.split(ctx.cur_script.abspath())
+            script_root, script_ext = os.path.splitext(script_base)
+            restricted_script_filename = ''
+            if len(script_ext) > 0:
+                restricted_script_filename = os.path.join(script_dir, p0, '{0}_{1}.{2}'.format(script_root, p1, script_ext))
+            else:
+                restricted_script_filename = os.path.join(script_dir, p0, '{0}_{1}'.format(script_root, p1))
+            if os.path.exists(restricted_script_filename):
+
+                # Open the script and look for the specific function name passed in. If we find it, call it with our parameters
+                restricted_script = run_path(restricted_script_filename)
+                if kw['restricted_script'] in restricted_script:
+                    restricted_script[kw['restricted_script']](ctx, kw)
 
 
 def initialize_common_compiler_settings(ctx):

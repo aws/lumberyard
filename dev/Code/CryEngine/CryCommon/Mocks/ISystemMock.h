@@ -105,6 +105,8 @@ public:
         IZLibDecompressor * ());
     MOCK_METHOD0(GetLZ4Decompressor,
         ILZ4Decompressor * ());
+    MOCK_METHOD0(GetZStdDecompressor,
+        IZStdDecompressor * ());
     MOCK_METHOD0(GetPerfHUD,
         ICryPerfHUD * ());
     MOCK_METHOD0(GetPlatformOS,

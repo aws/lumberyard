@@ -61,7 +61,7 @@ class LmbrInstallContext(Build.InstallContext):
         try:
             self.recurse([self.run_dir])
         except Exception as the_error:
-            Logs.warn("[WARN] Could not run the {} command: {}.".format(self.fun, the_error))
+            self.fatal("Could not run the {} command: {}.".format(self.fun, the_error))
             return
 
         if hasattr(self, 'preprocess_tasks'):

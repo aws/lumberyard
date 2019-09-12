@@ -92,6 +92,8 @@ namespace Physics
         : public AZ::EBusTraits
     {
     public:
+        using MutexType = AZStd::mutex;
+
         /// Returns the Default world managed by a relevant system.
         virtual AZStd::shared_ptr<World> GetDefaultWorld() = 0;
     };
@@ -165,6 +167,15 @@ namespace Physics
             AZStd::vector<AZ::u32>& indexBufferOut,
             AZStd::vector<AZ::Vector3>& lineBufferOut,
             AZStd::vector<bool>& lineValidityBufferOut) = 0;
+
+        /// Loads the project wide material library asset
+        virtual bool LoadDefaultMaterialLibrary() = 0;
+
+        /// Updates the collider material selection from the physics asset or sets it to default if there's no asset provided.
+        /// @param shapeConfiguration The shape information
+        /// @param colliderConfiguration The collider information
+        virtual bool UpdateMaterialSelection(const Physics::ShapeConfiguration& shapeConfiguration,
+            Physics::ColliderConfiguration& colliderConfiguration) = 0;
 
         /// Computes parameters such as joint limit local rotations to give the desired initial joint limit orientation.
         /// @param jointLimitTypeId The type ID used to identify the particular kind of joint limit configuration to be created.

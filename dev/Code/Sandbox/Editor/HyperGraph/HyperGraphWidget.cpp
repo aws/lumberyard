@@ -3929,7 +3929,7 @@ void QHyperGraphWidget::PopulateClassMenu(SClassMenuGroup& classMenu, QStringLis
 {
     NodeFilter filter(m_componentViewMask);
     std::vector<_smart_ptr<CHyperNode> > prototypes;
-    m_pGraph->GetManager()->GetPrototypesEx(prototypes, true, functor_ret(filter, &NodeFilter::Visit));
+    m_pGraph->GetManager()->GetPrototypesEx(prototypes, true, functor(filter, &NodeFilter::Visit));
     classes.clear();
     for (std::vector<_smart_ptr<CHyperNode> >::iterator iter = prototypes.begin();
          iter != prototypes.end(); ++iter)
@@ -5184,7 +5184,7 @@ void QHyperGraphWidget::OnSearchNodes(const QString& text)
 
     NodeFilter filter(m_componentViewMask);
     std::vector<_smart_ptr<CHyperNode> > prototypes;
-    m_pGraph->GetManager()->GetPrototypesEx(prototypes, true, functor_ret(filter, &NodeFilter::Visit));
+    m_pGraph->GetManager()->GetPrototypesEx(prototypes, true, functor(filter, &NodeFilter::Visit));
 
     m_SearchResults.clear();
     m_sCurrentSearchSelection = "";

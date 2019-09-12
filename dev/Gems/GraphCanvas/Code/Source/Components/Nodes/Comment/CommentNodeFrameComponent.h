@@ -15,6 +15,7 @@
 
 #include <Components/Nodes/General/GeneralNodeFrameComponent.h>
 #include <Components/Nodes/NodeFrameGraphicsWidget.h>
+#include <GraphCanvas/Components/Nodes/Comment/CommentBus.h>
 #include <GraphCanvas/Components/Nodes/NodeBus.h>
 #include <GraphCanvas/Components/Nodes/NodeLayoutBus.h>
 #include <GraphCanvas/Components/Nodes/NodeUIBus.h>
@@ -84,6 +85,7 @@ namespace GraphCanvas
     //! The QGraphicsItem for the generic frame.
     class CommentNodeFrameGraphicsWidget
         : public GeneralNodeFrameGraphicsWidget
+        , public CommentNotificationBus::Handler
     {
     public:
         AZ_TYPE_INFO(CommentNodeFrameGraphicsWidget, "{99343103-C8EF-44D0-BD6C-EF44ACDBD69B}", GeneralNodeFrameGraphicsWidget);
@@ -94,6 +96,10 @@ namespace GraphCanvas
 
         CommentNodeFrameGraphicsWidget(const AZ::EntityId& nodeVisual);
         ~CommentNodeFrameGraphicsWidget() override = default;
+
+        // CommentNotificationBus
+        void OnBackgroundColorChanged(const AZ::Color& color) override;
+        ////
 
         // QGraphicsWidget
         void mouseDoubleClickEvent(QGraphicsSceneMouseEvent* mouseEvent) override;

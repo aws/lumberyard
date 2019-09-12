@@ -157,14 +157,6 @@ namespace AzToolsFramework
         /// Delegate to either translation or orientation reset/clear depending on the state we're in.
         void DelegateClearManipulatorOverride();
 
-        void CopyTranslationToSelectedEntitiesIndividual(const AZ::Vector3& translation);
-        void CopyTranslationToSelectedEntitiesGroup(const AZ::Vector3& translation);
-        void CopyOrientationToSelectedEntitiesIndividual(const AZ::Quaternion& orientation);
-        void CopyOrientationToSelectedEntitiesGroup(const AZ::Quaternion& orientation);
-        void ResetOrientationForSelectedEntitiesLocal();
-        void ResetTranslationForSelectedEntitiesLocal();
-        void CopyScaleToSelectedEntitiesIndividualWorld(const AZ::Vector3& scale);
-        void CopyScaleToSelectedEntitiesIndividualLocal(const AZ::Vector3& scale);
         void ToggleCenterPivotSelection();
 
         bool IsEntitySelected(AZ::EntityId entityId) const;
@@ -199,40 +191,48 @@ namespace AzToolsFramework
         // can be returned to its previous state after an undo/redo operation
         void CreateEntityManipulatorDeselectCommand(ScopedUndoBatch& undoBatch);
 
-        // EditorTransformComponentSelectionRequestBus
+        // EditorTransformComponentSelectionRequestBus ...
         Mode GetTransformMode() override;
         void SetTransformMode(Mode mode) override;
         void RefreshManipulators(RefreshType refreshType) override;
         AZStd::optional<AZ::Transform> GetManipulatorTransform() override;
         void OverrideManipulatorOrientation(const AZ::Quaternion& orientation) override;
         void OverrideManipulatorTranslation(const AZ::Vector3& translation) override;
+        void CopyTranslationToSelectedEntitiesIndividual(const AZ::Vector3& translation);
+        void CopyTranslationToSelectedEntitiesGroup(const AZ::Vector3& translation);
+        void ResetTranslationForSelectedEntitiesLocal();
+        void CopyOrientationToSelectedEntitiesIndividual(const AZ::Quaternion& orientation);
+        void CopyOrientationToSelectedEntitiesGroup(const AZ::Quaternion& orientation);
+        void ResetOrientationForSelectedEntitiesLocal();
+        void CopyScaleToSelectedEntitiesIndividualLocal(const AZ::Vector3& scale);
+        void CopyScaleToSelectedEntitiesIndividualWorld(const AZ::Vector3& scale);
 
-        // EditorManipulatorCommandUndoRedoRequestBus
+        // EditorManipulatorCommandUndoRedoRequestBus ...
         void UndoRedoEntityManipulatorCommand(
             AZ::u8 pivotOverride, const AZ::Transform& transform, AZ::EntityId entityId) override;
 
-        // AzToolsFramework::EditorEvents
+        // EditorEventsBus ...
         void PopulateEditorGlobalContextMenu(QMenu *menu, const AZ::Vector2& point, int flags) override;
         void OnEscape() override;
 
-        // ToolsApplicationNotificationBus
+        // ToolsApplicationNotificationBus ...
         void BeforeEntitySelectionChanged() override;
         void AfterEntitySelectionChanged(
             const EntityIdList& newlySelectedEntities, const EntityIdList& newlyDeselectedEntities) override;
 
-        // AzToolsFramework::PropertyEditorChangeNotificationBus
+        // AzToolsFramework::PropertyEditorChangeNotificationBus ...
         void OnComponentPropertyChanged(AZ::Uuid componentType) override;
 
-        // Camera::EditorCameraNotificationBus
+        // Camera::EditorCameraNotificationBus ...
         void OnViewportViewEntityChanged(const AZ::EntityId& newViewId) override;
 
-        // EditorContextVisibilityNotificationBus
+        // EditorContextVisibilityNotificationBus ...
         void OnEntityVisibilityChanged(AZ::EntityId entityId, bool visibility) override;
 
-        // EditorContextLockComponentNotificationBus
+        // EditorContextLockComponentNotificationBus ...
         void OnEntityLockChanged(AZ::EntityId entityId, bool locked) override;
 
-        // EditorComponentModeNotificationBus
+        // EditorComponentModeNotificationBus ...
         void EnteredComponentMode(const AZStd::vector<AZ::Uuid>& componentModeTypes) override;
         void LeftComponentMode(const AZStd::vector<AZ::Uuid>& componentModeTypes) override;
 

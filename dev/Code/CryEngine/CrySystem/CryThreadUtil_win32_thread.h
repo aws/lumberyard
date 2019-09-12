@@ -434,11 +434,7 @@ namespace CryThreadUtil
     {
         uint temp = 0;
         _clearfp();
-#ifdef AZ_OS32
-        const unsigned int kAllowedBits = _MCW_DN | _MCW_EM | _MCW_RC | _MCW_IC | _MCW_PC;
-#else
         const unsigned int kAllowedBits = _MCW_DN | _MCW_EM | _MCW_RC;
-#endif
         _controlfp_s(&temp, nMask, kAllowedBits);
     }
 }

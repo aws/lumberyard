@@ -1204,7 +1204,7 @@ namespace AssetProcessor
     {
         ScanFolderDatabaseEntry existingEntry;
 
-        if (entry.m_scanFolderID == -1)
+        if (entry.m_scanFolderID == InvalidEntryId)
         {
             //they didn't supply an id, add to database!
 
@@ -1268,7 +1268,7 @@ namespace AssetProcessor
             succeeded &= RemoveScanFolder(entry.m_scanFolderID);
             if (succeeded)
             {
-                entry.m_scanFolderID = -1;//set it to default -1 as this is no longer exists
+                entry.m_scanFolderID = InvalidEntryId;//set it to default InvalidEntryId as this is no longer exists
             }
         }
         return succeeded;
@@ -1418,7 +1418,7 @@ namespace AssetProcessor
 
     bool AssetDatabaseConnection::SetSource(SourceDatabaseEntry& entry)
     {
-        if (entry.m_sourceID == -1)
+        if (entry.m_sourceID == InvalidEntryId)
         {
             //they didn't supply an id, add to database
 
@@ -1497,7 +1497,7 @@ namespace AssetProcessor
             succeeded &= RemoveSource(entry.m_sourceID);
             if (succeeded)
             {
-                entry.m_sourceID = -1;//set it to -1 as it no longer exists
+                entry.m_sourceID = InvalidEntryId;//set it to InvalidEntryId as it no longer exists
             }
         }
         return succeeded;
@@ -1702,7 +1702,7 @@ namespace AssetProcessor
             return false;
         }
 
-        if (entry.m_jobID == -1)
+        if (entry.m_jobID == InvalidEntryId)
         {
             //they didn't supply an id, add to database
 
@@ -1793,7 +1793,7 @@ namespace AssetProcessor
             succeeded &= RemoveJob(entry.m_jobID);
             if (succeeded)
             {
-                entry.m_jobID = -1; //set it to -1 as the id is no longer valid
+                entry.m_jobID = InvalidEntryId; //set it to InvalidEntryId as the id is no longer valid
             }
         }
 
@@ -1972,7 +1972,7 @@ namespace AssetProcessor
         bool wasAlreadyInDatabase = false;
         ProductDatabaseEntry existingProductInDatabase;
 
-        if (entry.m_productID == -1)
+        if (entry.m_productID == InvalidEntryId)
         {
             // they didn't set an id, add to database
             // but make sure its not already in the database before doing so:
@@ -2093,7 +2093,7 @@ namespace AssetProcessor
             succeeded &= RemoveProduct(entry.m_productID);
             if (succeeded)
             {
-                entry.m_productID = -1;
+                entry.m_productID = InvalidEntryId;
             }
         }
         return succeeded;
@@ -2334,7 +2334,7 @@ namespace AssetProcessor
 
         const char* statementName = INSERT_NEW_LEGACYSUBID;
 
-        bool creatingNew = entry.m_subIDsEntryID == -1;
+        bool creatingNew = entry.m_subIDsEntryID == InvalidEntryId;
 
         if (!creatingNew)
         {
@@ -2487,7 +2487,7 @@ namespace AssetProcessor
 
     bool AssetDatabaseConnection::SetProductDependency(ProductDependencyDatabaseEntry& entry)
     {
-        if (entry.m_productDependencyID == -1)
+        if (entry.m_productDependencyID == InvalidEntryId)
         {
             //they didn't set an id, add to database
 
@@ -2685,7 +2685,7 @@ namespace AssetProcessor
     bool AssetDatabaseConnection::InsertFile(FileDatabaseEntry& entry)
     {
         //they didn't supply an id, add to database
-        if (entry.m_fileID == -1)
+        if (entry.m_fileID == InvalidEntryId)
         {
             //first make sure its not already in the database
             FileDatabaseEntry existingEntry;

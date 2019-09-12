@@ -9,7 +9,6 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#ifndef AZ_UNITY_BUILD
 
 #include <AzCore/RTTI/BehaviorContext.h>
 #include <AzCore/Component/EntityBus.h>
@@ -532,5 +531,3 @@ namespace AZ
     }
  
 } // namespace AZ
-
-#endif // AZ_UNITY_BUILD

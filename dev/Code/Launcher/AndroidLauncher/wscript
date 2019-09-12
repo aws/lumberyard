@@ -75,7 +75,8 @@ def build(bld):
 
         android_file_list       = 'android_launcher.waf_files',
         android_use             = ['AzGameFramework', 'NativeActivityGlue'],
-        android_includes        = [bld.Path('Code/Launcher')],
+        android_includes        = [bld.Path('Code/CryEngine/CryCommon'),
+                                   bld.Path('Code/Launcher')],
 
         # Force the native app glue entry point to be defined.  This is an alternative method to
         # calling app_dummy in android_main that works with newer NDKs which have deprecated
@@ -85,8 +86,8 @@ def build(bld):
         android_debug_linkflags     = ['-shared'],
         android_profile_linkflags   = ['-shared'],
 
-        android_java_src_path   = [bld.Path('Code/Launcher/AndroidLauncher/java')],
-        android_java_libs       = bld.Path('Code/Launcher/AndroidLauncher/ProjectBuilder/android_libraries.json'),
+        android_java_src_path   = [bld.Path('Code/Framework/AzAndroid/java')],
+        android_java_libs       = bld.Path('Code/Tools/Android/ProjectBuilder/android_libraries.json'),
     )
 
 

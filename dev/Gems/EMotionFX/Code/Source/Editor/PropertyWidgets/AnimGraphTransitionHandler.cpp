@@ -24,6 +24,7 @@
 #include <Editor/AnimGraphEditorBus.h>
 #include <Editor/PropertyWidgets/AnimGraphTransitionHandler.h>
 #include <QHBoxLayout>
+#include <QLineEdit>
 #include <QMessageBox>
 #include <QMouseEvent>
 

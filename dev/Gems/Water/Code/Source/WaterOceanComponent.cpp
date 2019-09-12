@@ -50,9 +50,15 @@ namespace Water
                 ->Event("SetFogColor", &AZ::OceanEnvironmentBus::Events::SetFogColor)
                 ->VirtualProperty("FogColor", "GetFogColor", "SetFogColor")
 
-                ->Event("GetFogColorMulitplier", &AZ::OceanEnvironmentBus::Events::GetFogColorMulitplier)
-                ->Event("SetFogColorMulitplier", &AZ::OceanEnvironmentBus::Events::SetFogColorMulitplier)
-                ->VirtualProperty("FogColorMulitplier", "GetFogColorMulitplier", "SetFogColorMulitplier")
+                ->Event("GetFogColorMultiplier", &AZ::OceanEnvironmentBus::Events::GetFogColorMultiplier)
+                ->Event("SetFogColorMultiplier", &AZ::OceanEnvironmentBus::Events::SetFogColorMultiplier)
+                ->VirtualProperty("FogColorMultiplier", "GetFogColorMultiplier", "SetFogColorMultiplier")
+
+                ->Event("GetFogColorMulitplier", &AZ::OceanEnvironmentBus::Events::GetFogColorMultiplier) // Deprecated
+                    ->Attribute(AZ::Script::Attributes::Deprecated, true)
+                ->Event("SetFogColorMulitplier", &AZ::OceanEnvironmentBus::Events::SetFogColorMultiplier) // Deprecated
+                    ->Attribute(AZ::Script::Attributes::Deprecated, true)
+                ->VirtualProperty("FogColorMulitplier", "GetFogColorMulitplier", "SetFogColorMulitplier") // Deprecated
 
                 ->Event("GetFogColorPremultiplied", &AZ::OceanEnvironmentBus::Events::GetFogColorPremultiplied)
 

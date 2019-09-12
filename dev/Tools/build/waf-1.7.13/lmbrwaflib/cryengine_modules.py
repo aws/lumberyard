@@ -24,8 +24,8 @@ from gems import Gem
 from settings_manager import LUMBERYARD_SETTINGS
 from build_configurations import ALIAS_TO_PLATFORMS_MAP
 from utils import is_value_true
-import os, stat, errno, json, re, threading, inspect
-from runpy import run_path
+import os, stat, errno, json, re, threading, inspect, copy
+from lumberyard import add_platform_root
 
 COMMON_INPUTS = [
     'additional_settings',
@@ -482,7 +482,10 @@ def LoadFileLists(ctx, kw, file_lists):
     # Compute final source list based on platform
     if platform == 'project_generator' or ctx.options.file_filter != "":
         # Collect all files plus uber files for project generators and when doing a single file compilation
-        kw['source'] = uber_files | source_files | qt_source_files | objc_source_files | header_files | resource_files | other_files
+        if ctx.cmd == 'info':
+            kw['source'] = source_files | qt_source_files | objc_source_files | header_files | resource_files | other_files
+        else:
+            kw['source'] = uber_files | source_files | qt_source_files | objc_source_files | header_files | resource_files | other_files
         kw['mac_plist'] = list(plist_files)
 
         if platform == 'project_generator' and pch_file != '':
@@ -629,7 +632,7 @@ def apply_cryengine_module_defines(ctx, kw):
 
     additional_defines = []
     ctx.add_aws_native_sdk_platform_defines(additional_defines)
-    additional_defines.append('LY_BUILD={}'.format(ctx.get_lumberyard_build()))
+    #additional_defines.append('LY_BUILD={}'.format(ctx.get_lumberyard_build()))
     append_kw_entry(kw, 'defines', additional_defines)
 
 
@@ -725,32 +728,23 @@ def ConfigureTaskGenerator(ctx, kw):
     if 'name' not in kw:
         kw['name'] = target
 
+    # Process any platform roots
+    platform_roots = kw.get('platform_roots', [])
+    if platform_roots:
+        if not isinstance(platform_roots, list):
+            platform_roots = [platform_roots]
+        for platform_root_param in platform_roots:
+            if not isinstance(platform_root_param,dict):
+                raise Errors.WafError("Invalid keyword value for 'platform_roots' for target '{}'. Expecting a list of "
+                                      "dictionary entries for 'root' (path) and 'export_includes' (boolean)".format(target))
+            platform_root = platform_root_param['root']
+            export_platform_includes = platform_root_param['export_includes']
+            ctx.add_platform_root(kw=kw,
+                                  root=platform_root,
+                                  export=export_platform_includes)
+
     # Deal with restricted platforms
-    for p0, p1, p2, p3 in ctx.env['RESTRICTED_PLATFORMS']:
-        restricted_filelist_kw = '{}_file_list'.format(p3)
-
-        # Unless the caller has overridden, look to see if we can automatically attach any waf_files for the platform
-        if restricted_filelist_kw not in kw:
-            waf_file = os.path.join(p0, '{0}_{1}.waf_files'.format(target.lower(), p1))
-            script_dir = os.path.dirname(ctx.cur_script.abspath())
-            if os.path.exists(os.path.join(script_dir, waf_file)):
-                append_kw_entry(kw, restricted_filelist_kw, waf_file)
-
-        # If a restricted script is specified, try and open a platform-specific version of the base calling script
-        if 'restricted_script' in kw:
-            script_dir, script_base = os.path.split(ctx.cur_script.abspath())
-            script_root, script_ext = os.path.splitext(script_base)
-            restricted_script_filename = ''
-            if len(script_ext) > 0:
-                restricted_script_filename = os.path.join(script_dir, p0, '{0}_{1}.{2}'.format(script_root, p1, script_ext))
-            else:
-                restricted_script_filename = os.path.join(script_dir, p0, '{0}_{1}'.format(script_root, p1))
-            if os.path.exists(restricted_script_filename):
-
-                # Open the script and look for the specific function name passed in. If we find it, call it with our parameters
-                restricted_script = run_path(restricted_script_filename)
-                if kw['restricted_script'] in restricted_script:
-                    restricted_script[kw['restricted_script']](ctx, kw)
+    ctx.process_restricted_settings(kw)
 
     # Determine if this is a build command (vs a platform generator)
     is_configure_cmd = isinstance(ctx, ConfigurationContext)
@@ -1148,14 +1142,6 @@ def tg_apply_additional_settings(self):
                 t.env['INCPATHS'] += [ self.path.make_node(inc).abspath() ]
 
 ###############################################################################
-def set_cryengine_flags(ctx, kw):
-
-    prepend_kw_entry(kw,'includes',['.',
-                                    ctx.ThirdPartyPath('boost'),
-                                    ctx.CreateRootRelativePath('Code/CryEngine/CryCommon')])
-
-
-###############################################################################
 def find_file_in_content_dict(content_dict, file_name):
     """
     Check if a file exists in the content dictionary
@@ -1201,7 +1187,6 @@ def CryEngineModule(ctx, *k, **kw):
     AppendCommonModules(ctx,kw)
 
     # Setup TaskGenerator specific settings
-    set_cryengine_flags(ctx, kw)
     apply_cryengine_module_defines(ctx, kw)
 
     SetupRunTimeLibraries(ctx, kw)
@@ -1253,7 +1238,6 @@ def CryEngineSharedLibrary(ctx, *k, **kw):
     AppendCommonModules(ctx,kw)
 
     # Setup TaskGenerator specific settings
-    set_cryengine_flags(ctx, kw)
     apply_cryengine_module_defines(ctx, kw)
 
     SetupRunTimeLibraries(ctx,kw)
@@ -1287,7 +1271,6 @@ def CryEngineStaticLibrary(ctx, *k, **kw):
     if not InitializeTaskGenerator(ctx, kw):
         return
 
-    set_cryengine_flags(ctx, kw)
     apply_cryengine_module_defines(ctx, kw)
 
     SetupRunTimeLibraries(ctx, kw)
@@ -1322,7 +1305,6 @@ def CryEngine3rdPartyStaticLibrary(ctx, *k, **kw):
     # Initialize the Task Generator
     if not InitializeTaskGenerator(ctx, kw):
         return
-    set_cryengine_flags(ctx, kw)
     apply_cryengine_module_defines(ctx, kw)
 
     SetupRunTimeLibraries(ctx, kw)
@@ -1380,13 +1362,8 @@ def CryLauncher(ctx, *k, **kw):
     active_projects = ctx.get_enabled_game_project_list()
     for project in active_projects:
 
-        kw_per_launcher = dict(kw)
+        kw_per_launcher = copy.deepcopy(kw)
         kw_per_launcher['target'] = project + kw['target'] # rename the target!
-
-        # If there are multiple active projects, the 'use' kw needs to be its own instance
-        if 'use' in kw:
-            kw_per_launcher['use'] = []
-            kw_per_launcher['use'] += kw['use']
 
         CryLauncher_Impl(ctx, project, *k, **kw_per_launcher)
 
@@ -1513,7 +1490,6 @@ def CryLauncher_Impl(ctx, project, *k, **kw_per_launcher):
     AppendCommonModules(ctx, kw_per_launcher)
 
     # Setup TaskGenerator specific settings
-    set_cryengine_flags(ctx, kw_per_launcher)
     SetupRunTimeLibraries(ctx, kw_per_launcher)
 
     LoadSharedSettings(ctx,k,kw_per_launcher)
@@ -1584,13 +1560,8 @@ def CryDedicatedServer(ctx, *k, **kw):
     kw.setdefault('use_aslr', True)
 
     for project in active_projects:
-        kw_per_launcher = dict(kw)
+        kw_per_launcher = copy.deepcopy(kw)
         kw_per_launcher['target'] = project + kw['target'] # rename the target!
-
-        # If there are multiple active projects, the 'use' kw needs to be its own instance
-        if 'use' in kw:
-            kw_per_launcher['use'] = []
-            kw_per_launcher['use'] += kw['use']
 
         CryDedicatedserver_Impl(ctx, project, *k, **kw_per_launcher)
 
@@ -1606,7 +1577,6 @@ def CryDedicatedserver_Impl(ctx, project, *k, **kw_per_launcher):
     AppendCommonModules(ctx,kw_per_launcher)
 
     # Setup TaskGenerator specific settings
-    set_cryengine_flags(ctx, kw_per_launcher)
     SetupRunTimeLibraries(ctx,kw_per_launcher)
 
     append_kw_entry(kw_per_launcher,'win_linkflags',[ '/SUBSYSTEM:WINDOWS' ])
@@ -1642,8 +1612,6 @@ def CryDedicatedserver_Impl(ctx, project, *k, **kw_per_launcher):
 
     append_kw_entry(kw_per_launcher, 'features', ['copy_3rd_party_binaries'])
 
-    append_kw_entry(kw_per_launcher, 'features', ['copy_3rd_party_binaries'])
-
     # Make sure that we are actually building a server configuration
     if not isinstance(ctx, ConfigurationContext) and ctx.env['PLATFORM'] != 'project_generator':
 
@@ -1674,7 +1642,6 @@ def CryConsoleApplication(ctx, *k, **kw):
     AppendCommonModules(ctx,kw)
 
     # Setup TaskGenerator specific settings
-    set_cryengine_flags(ctx, kw)
     apply_cryengine_module_defines(ctx, kw)
     SetupRunTimeLibraries(ctx, kw)
 
@@ -1713,7 +1680,6 @@ def LyLauncherApplication(ctx, *k, **kw):
     AppendCommonModules(ctx, kw)
 
     # Setup TaskGenerator specific settings
-    set_cryengine_flags(ctx, kw)
     apply_cryengine_module_defines(ctx, kw)
     SetupRunTimeLibraries(ctx, kw)
 
@@ -1758,12 +1724,9 @@ def LyLauncherApplication(ctx, *k, **kw):
             active_projects = ctx.get_enabled_game_project_list()
             for project in active_projects:
 
-                kw_per_console_app = dict(kw)
+                kw_per_console_app = copy.deepcopy(kw)
                 kw_per_console_app['target'] = project + kw['target']  # rename the target!
-                # If there are multiple active projects, the 'use' kw needs to be its own instance
-                if 'use' in kw:
-                    kw_per_console_app['use'] = []
-                    kw_per_console_app['use'] += kw['use']
+
                 ctx.apply_gems_to_context(project, k, kw_per_console_app)
                 RunTaskGenerator(ctx, *k, **kw_per_console_app)
             return None
@@ -2364,8 +2327,6 @@ def CryQtApplication(ctx, *k, **kw):
     apply_cryengine_module_defines(ctx, kw)
 
     # Setup TaskGenerator specific settings
-    set_cryengine_flags(ctx, kw)
-
     SetupRunTimeLibraries(ctx,kw)
 
     append_kw_entry(kw,'win_linkflags',[ '/SUBSYSTEM:WINDOWS' ])
@@ -2394,7 +2355,6 @@ def CryQtConsoleApplication(ctx, *k, **kw):
     apply_cryengine_module_defines(ctx, kw)
 
     # Setup TaskGenerator specific settings
-    set_cryengine_flags(ctx, kw)
     SetupRunTimeLibraries(ctx,kw)
 
     append_kw_entry(kw,'win_linkflags',[ '/SUBSYSTEM:CONSOLE' ])
@@ -2970,9 +2930,11 @@ def set_link_outputs(self):
     is_secondary_copy_install = getattr(self, 'is_secondary_copy_install', False)
     if is_msvc:
         # add the import library to the output list.  Only add if secondary_copy_install is set
-        if self._type == 'shlib' and is_secondary_copy_install:
+        if self._type == 'shlib' and (self.bld.artifacts_cache or is_secondary_copy_install):
             import_lib_node = output_node.make_node(name + '.lib')
+            import_lib_exp_node = output_node.make_node(name + '.exp')
             self.link_task.set_outputs(import_lib_node)
+            self.link_task.set_outputs(import_lib_exp_node)
 
         # create map files
         if self.bld.is_option_true('generate_map_file'):

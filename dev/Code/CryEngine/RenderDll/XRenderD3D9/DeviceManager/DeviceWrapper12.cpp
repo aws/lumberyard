@@ -3,9 +3,9 @@
 * its licensors.
 *
 * For complete copyright and license terms please see the LICENSE at the root of this
-* distribution(the "License").All use of this software is governed by the License,
-* or, if provided, by the license below or the license accompanying this file.Do not
-* remove or modify any license notices.This file is distributed on an "AS IS" BASIS,
+* distribution (the "License"). All use of this software is governed by the License,
+* or, if provided, by the license below or the license accompanying this file. Do not
+* remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
@@ -610,10 +610,10 @@ bool CDeviceResourceSet::Fill(CShader* pShader, CShaderResources* pResources, ES
         SetTexture(bindSlot, pTex, SResourceView::DefaultView, shaderStages);
     }
 /*
-	[Shader System TO DO] - replace with the following optimized slots set code 
+    [Shader System TO DO] - replace with the following optimized slots set code 
     for (auto iter = pResources->m_TexturesResourcesMap.begin(); iter != pResources->m_TexturesResourcesMap.end(); ++iter)
     {
-        SEfResTexture*  	    pTexture = &iter->second;
+        SEfResTexture*          pTexture = &iter->second;
         CTexture*               pTex = pTexture->m_Sampler.m_pTex;
         uint16                  texSlot = iter->first;
         const STexSamplerRT&    smp = pTexture->m_Sampler;

@@ -100,7 +100,6 @@ namespace EMotionFX
 
     void BlendTreeGetTransformNode::Output(AnimGraphInstance* animGraphInstance)
     {
-        ActorInstance* actorInstance = animGraphInstance->GetActorInstance();
         AnimGraphPose* inputPose = nullptr;
 
         // get the unique
@@ -176,9 +175,6 @@ namespace EMotionFX
         // update the unique data if needed
         if (uniqueData->m_mustUpdate || uniqueData->m_nodeIndex == MCORE_INVALIDINDEX32)
         {
-            ActorInstance* actorInstance = animGraphInstance->GetActorInstance();
-            Actor* actor = actorInstance->GetActor();
-
             uniqueData->m_mustUpdate = false;
             uniqueData->m_nodeIndex  = MCORE_INVALIDINDEX32;
 

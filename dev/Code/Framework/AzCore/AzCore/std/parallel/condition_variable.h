@@ -92,20 +92,5 @@ namespace AZStd
     };
 }
 
-#if AZ_TRAIT_USE_WINDOWS_CONDITIONAL_VARIABLE
-    #include <AzCore/std/parallel/internal/conditional_variable_win.h>
-#define AZ_RESTRICTED_SECTION_IMPLEMENTED
-#elif defined(AZ_RESTRICTED_PLATFORM)
-    #if defined(AZ_PLATFORM_XENIA)
-        #include "Xenia/conditional_variable_h_xenia.inl"
-    #elif defined(AZ_PLATFORM_PROVO)
-        #include "Provo/conditional_variable_h_provo.inl"
-    #endif
-#endif
-#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
-#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
-#elif defined (AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_ANDROID) || defined(AZ_PLATFORM_APPLE)
-    #include <AzCore/std/parallel/internal/conditional_variable_linux.h>
-#else
-    #error Platform not supported
-#endif
+#include <AzCore/std/parallel/internal/condition_variable_Platform.h>
+

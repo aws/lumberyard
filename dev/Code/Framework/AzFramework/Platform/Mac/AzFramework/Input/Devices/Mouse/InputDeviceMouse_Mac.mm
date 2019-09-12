@@ -11,7 +11,7 @@
 */
 
 #include <AzFramework/Input/Devices/Mouse/InputDeviceMouse.h>
-#include <AzFramework/Input/Buses/Notifications/RawInputNotificationBus_darwin.h>
+#include <AzFramework/Input/Buses/Notifications/RawInputNotificationBus_Platform.h>
 #include <AzFramework/Input/Buses/Requests/InputSystemCursorRequestBus.h>
 
 #include <AzCore/Debug/Trace.h>
@@ -130,23 +130,23 @@ namespace
 namespace AzFramework
 {
     ////////////////////////////////////////////////////////////////////////////////////////////////
-    //! Platform specific implementation for osx mouse input devices
-    class InputDeviceMouseOsx : public InputDeviceMouse::Implementation
-                              , public RawInputNotificationBusOsx::Handler
+    //! Platform specific implementation for Mac mouse input devices
+    class InputDeviceMouseMac : public InputDeviceMouse::Implementation
+                              , public RawInputNotificationBusMac::Handler
     {
     public:
         ////////////////////////////////////////////////////////////////////////////////////////////
         // Allocator
-        AZ_CLASS_ALLOCATOR(InputDeviceMouseOsx, AZ::SystemAllocator, 0);
+        AZ_CLASS_ALLOCATOR(InputDeviceMouseMac, AZ::SystemAllocator, 0);
 
         ////////////////////////////////////////////////////////////////////////////////////////////
         //! Constructor
         //! \param[in] inputDevice Reference to the input device being implemented
-        InputDeviceMouseOsx(InputDeviceMouse& inputDevice);
+        InputDeviceMouseMac(InputDeviceMouse& inputDevice);
 
         ////////////////////////////////////////////////////////////////////////////////////////////
         //! Destructor
-        ~InputDeviceMouseOsx() override;
+        ~InputDeviceMouseMac() override;
 
         ////////////////////////////////////////////////////////////////////////////////////////////
         //! Access to the event tap that exists while the cursor is constrained
@@ -182,7 +182,7 @@ namespace AzFramework
         void TickInputDevice() override;
 
         ////////////////////////////////////////////////////////////////////////////////////////////
-        //! \ref AzFramework::RawInputNotificationsOsx::OnRawInputEvent
+        //! \ref AzFramework::RawInputNotificationsMac::OnRawInputEvent
         void OnRawInputEvent(const NSEvent* nsEvent) override;
 
         ////////////////////////////////////////////////////////////////////////////////////////////
@@ -212,11 +212,11 @@ namespace AzFramework
     ////////////////////////////////////////////////////////////////////////////////////////////////
     InputDeviceMouse::Implementation* InputDeviceMouse::Implementation::Create(InputDeviceMouse& inputDevice)
     {
-        return aznew InputDeviceMouseOsx(inputDevice);
+        return aznew InputDeviceMouseMac(inputDevice);
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
-    InputDeviceMouseOsx::InputDeviceMouseOsx(InputDeviceMouse& inputDevice)
+    InputDeviceMouseMac::InputDeviceMouseMac(InputDeviceMouse& inputDevice)
         : InputDeviceMouse::Implementation(inputDevice)
         , m_disabledSystemCursorRunLoopSource(nullptr)
         , m_disabledSystemCursorEventTap(nullptr)
@@ -224,20 +224,20 @@ namespace AzFramework
         , m_systemCursorState(SystemCursorState::Unknown)
         , m_hasFocus(false)
     {
-        RawInputNotificationBusOsx::Handler::BusConnect();
+        RawInputNotificationBusMac::Handler::BusConnect();
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
-    InputDeviceMouseOsx::~InputDeviceMouseOsx()
+    InputDeviceMouseMac::~InputDeviceMouseMac()
     {
-        RawInputNotificationBusOsx::Handler::BusDisconnect();
+        RawInputNotificationBusMac::Handler::BusDisconnect();
 
         // Cleanup system cursor visibility and constraint
         DestroyDisabledSystemCursorEventTap();
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
-    bool InputDeviceMouseOsx::IsConnected() const
+    bool InputDeviceMouseMac::IsConnected() const
     {
         // If necessary we may be able to determine the connected state using the I/O Kit HIDManager:
         // https://developer.apple.com/library/content/documentation/DeviceDrivers/Conceptual/HID/new_api_10_5/tn2187.html
@@ -253,31 +253,31 @@ namespace AzFramework
         // call BroadcastInputDeviceConnectedEvent/BroadcastInputDeviceDisconnectedEvent when needed.
         //
         // Note that doing so will require modifying how we create and manage mouse input devices in
-        // InputSystemComponent/InputSystemComponentOsX in order to create multiple InputDeviceMouse
+        // InputSystemComponent/InputSystemComponentMac in order to create multiple InputDeviceMouse
         // instances (somehow associating each with a raw mouse device id), along with modifying the
-        // InputDeviceMouseOsx::OnRawInputEvent function to filter incoming events by raw device id.
+        // InputDeviceMouseMac::OnRawInputEvent function to filter incoming events by raw device id.
         return true;
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
-    void InputDeviceMouseOsx::SetSystemCursorState(SystemCursorState systemCursorState)
+    void InputDeviceMouseMac::SetSystemCursorState(SystemCursorState systemCursorState)
     {
-        // Because osx does not provide a way to properly constrain the system cursor inside of a
+        // Because Mac does not provide a way to properly constrain the system cursor inside of a
         // window, when it's constrained we're actually just hiding it and modifying the location
         // of all incoming mouse events so they can't cause the applications window to lose focus.
         // This works fine when the cursor is hidden, provided we normalize its position relative
-        // to the entire screen (see InputDeviceMouseOsx::GetSystemCursorPositionNormalized). But
+        // to the entire screen (see InputDeviceMouseMac::GetSystemCursorPositionNormalized). But
         // when the cursor is constrained and visible, we must manually hide the cursor when it's
-        // outside the active window (see InputDeviceMouseOsx::UpdateSystemCursorVisibility), and
+        // outside the active window (see InputDeviceMouseMac::UpdateSystemCursorVisibility), and
         // we must normalize it relative to the active window or else the position will not match
         // that of the cursor while it is visible inside the active window. Long story short, the
-        // ConstrainedAndVisible state on osx results in a 'dead-zone' where the system is moving
+        // ConstrainedAndVisible state on Mac results in a 'dead-zone' where the system is moving
         // the cursor outside of the active window, but the position is clamped within the border
         // of the active window. This is fine when running in full screen on a single monitor but
         // may not provide the greatest user experience in windowed mode or a multi-monitor setup.
-        AZ_Warning("InputDeviceMouseOsx",
+        AZ_Warning("InputDeviceMouseMac",
                    systemCursorState != SystemCursorState::ConstrainedAndVisible,
-                   "ConstrainedAndVisible does not work entirely as might be expected on osx when "
+                   "ConstrainedAndVisible does not work entirely as might be expected on Mac when "
                    "running in windowed mode or with a multi-monitor setup. If your game needs to "
                    "support either of these it is recommended you use another system cursor state.");
 
@@ -299,28 +299,28 @@ namespace AzFramework
         const bool isDisabled = CreateDisabledSystemCursorEventTap();
         if (!isDisabled)
         {
-            AZ_Warning("InputDeviceMouseOsx", false, "Failed create event tap; cursor cannot be constrained as requested");
+            AZ_Warning("InputDeviceMouseMac", false, "Failed create event tap; cursor cannot be constrained as requested");
             m_systemCursorState = SystemCursorState::UnconstrainedAndVisible;
         }
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
-    SystemCursorState InputDeviceMouseOsx::GetSystemCursorState() const
+    SystemCursorState InputDeviceMouseMac::GetSystemCursorState() const
     {
         return m_systemCursorState;
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
-    void InputDeviceMouseOsx::SetSystemCursorPositionNormalized(AZ::Vector2 positionNormalized)
+    void InputDeviceMouseMac::SetSystemCursorPositionNormalized(AZ::Vector2 positionNormalized)
     {
         CGPoint newPositionInScreenSpace;
         if (m_systemCursorState == SystemCursorState::ConstrainedAndHidden)
         {
-            // Because osx does not provide a way to properly constrain the system cursor inside of
+            // Because Mac does not provide a way to properly constrain the system cursor inside of
             // a window, when it is constrained we are actually just modifying the locations of all
             // incoming mouse events so they cannot cause the application window to lose focus. So
             // if the cursor is also hidden we simply need to de-normalize the position relative to
-            // the entire screen. See comment in InputDeviceMouseOsx::SetSystemCursorState for more.
+            // the entire screen. See comment in InputDeviceMouseMac::SetSystemCursorState for more.
             NSSize cursorFrameSize = NSScreen.mainScreen.frame.size;
             newPositionInScreenSpace.x = positionNormalized.GetX() * cursorFrameSize.width;
             newPositionInScreenSpace.y = positionNormalized.GetY() * cursorFrameSize.height;
@@ -342,9 +342,9 @@ namespace AzFramework
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
-    AZ::Vector2 InputDeviceMouseOsx::GetSystemCursorPositionNormalized() const
+    AZ::Vector2 InputDeviceMouseMac::GetSystemCursorPositionNormalized() const
     {
-        // Because osx does not provide a way to properly constrain the system cursor inside of a
+        // Because Mac does not provide a way to properly constrain the system cursor inside of a
         // window, when it's constrained we are actually just disabling it by modifying locations
         // of all incoming mouse events so they cannot cause the application window to lose focus.
         //
@@ -375,9 +375,9 @@ namespace AzFramework
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
-    void InputDeviceMouseOsx::TickInputDevice()
+    void InputDeviceMouseMac::TickInputDevice()
     {
-        // The osx event loop has just been pumped in InputSystemComponentOsx::PreTickInputDevices,
+        // The event loop has just been pumped in ApplicationRequests::PumpSystemEventLoopUntilEmpty,
         // so we now just need to process any raw events that have been queued since the last frame
         const bool hadFocus = m_hasFocus;
         m_hasFocus = NSApplication.sharedApplication.active;
@@ -400,7 +400,7 @@ namespace AzFramework
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
-    void InputDeviceMouseOsx::OnRawInputEvent(const NSEvent* nsEvent)
+    void InputDeviceMouseMac::OnRawInputEvent(const NSEvent* nsEvent)
     {
         switch (nsEvent.type)
         {
@@ -477,7 +477,7 @@ namespace AzFramework
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
-    void InputDeviceMouseOsx::UpdateSystemCursorVisibility()
+    void InputDeviceMouseMac::UpdateSystemCursorVisibility()
     {
         bool shouldCursorBeVisible = true;
         switch (m_systemCursorState)
@@ -530,7 +530,7 @@ namespace AzFramework
                                                        CGEventRef eventRef,
                                                        void* userInfo)
     {
-        InputDeviceMouseOsx* inputDeviceMouse = static_cast<InputDeviceMouseOsx*>(userInfo);
+        InputDeviceMouseMac* inputDeviceMouse = static_cast<InputDeviceMouseMac*>(userInfo);
         switch (eventType)
         {
             case kCGEventTapDisabledByTimeout:
@@ -592,7 +592,7 @@ namespace AzFramework
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
-    bool InputDeviceMouseOsx::CreateDisabledSystemCursorEventTap()
+    bool InputDeviceMouseMac::CreateDisabledSystemCursorEventTap()
     {
         if (m_disabledSystemCursorEventTap != nullptr)
         {
@@ -643,7 +643,7 @@ namespace AzFramework
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
-    void InputDeviceMouseOsx::DestroyDisabledSystemCursorEventTap()
+    void InputDeviceMouseMac::DestroyDisabledSystemCursorEventTap()
     {
         if (m_disabledSystemCursorEventTap == nullptr)
         {

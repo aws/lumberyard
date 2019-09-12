@@ -9,7 +9,6 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#ifndef AZ_UNITY_BUILD
 
 #include <AzCore/Math/Transform.h>
 #include <AzCore/Math/Quaternion.h>
@@ -385,5 +384,3 @@ AZ::Transform AZ::ConvertEulerDegreesToTransformPrecise(const AZ::Vector3& euler
     finalRotation.SetFromEulerDegreesPrecise(eulerDegrees);
     return finalRotation;
 }
-
-#endif // #ifndef AZ_UNITY_BUILD

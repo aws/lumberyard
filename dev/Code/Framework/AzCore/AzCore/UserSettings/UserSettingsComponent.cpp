@@ -9,7 +9,6 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#ifndef AZ_UNITY_BUILD
 
 #include <AzCore/UserSettings/UserSettingsComponent.h>
 #include <AzCore/Component/ComponentApplicationBus.h>
@@ -134,8 +133,3 @@ namespace AZ
     }
     //-----------------------------------------------------------------------------
 }   // namespace AZ
-
-using namespace AZ;
-
-
-#endif  // AZ_UNITY_BUILD

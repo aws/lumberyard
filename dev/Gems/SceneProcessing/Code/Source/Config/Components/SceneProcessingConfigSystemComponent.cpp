@@ -101,7 +101,7 @@ namespace AZ
                 //First check whether an item with the same CRC value already exists.
                 if (newHash == softName->GetVirtualTypeHash())
                 {
-                    AZ_Error("SceneProcessing", "newSoftname(%s) and existing softName(%s) have the same hash: 0x%X",
+                    AZ_Error("SceneProcessing", false, "newSoftname(%s) and existing softName(%s) have the same hash: 0x%X",
                              newSoftname->GetVirtualType().c_str(), softName->GetVirtualType().c_str(), newHash);
                     success = false;
                     break;

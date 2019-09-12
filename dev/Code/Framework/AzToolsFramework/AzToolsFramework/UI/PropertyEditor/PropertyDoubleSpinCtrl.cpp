@@ -15,12 +15,17 @@
 #include "PropertyQTConstants.h"
 #include <QSlider>
 #include <QLineEdit>
+AZ_PUSH_DISABLE_WARNING(4251, "-Wunknown-warning-option") // 4251: 'QLayoutItem::align': class 'QFlags<Qt::AlignmentFlag>' needs to have dll-interface to be used by clients of class 'QLayoutItem'
 #include <QHBoxLayout>
+AZ_POP_DISABLE_WARNING
 #include <QTimer>
 #include <cfloat>
 #include <AzCore/Math/MathUtils.h>
 #include <AzCore/Math/VectorFloat.h>
+AZ_PUSH_DISABLE_WARNING(4244 4251, "-Wunknown-warning-option") // 4244: conversion from 'int' to 'float', possible loss of data
+                                                               // 4251: 'QInputEvent::modState': class 'QFlags<Qt::KeyboardModifier>' needs to have dll-interface to be used by clients of class 'QInputEvent'
 #include <QFocusEvent>
+AZ_POP_DISABLE_WARNING
 
 namespace AzToolsFramework
 {
@@ -87,7 +92,7 @@ namespace AzToolsFramework
 
         if (notifyLater)
         {
-            float newValue = m_pSpinBox->value();
+            float newValue = static_cast<float>(m_pSpinBox->value());
             // queue an invocation of value changed next tick after everything is good.)
             QTimer::singleShot(0, this, [this, newValue]() { Q_EMIT valueChanged(newValue); });
         }

@@ -45,7 +45,7 @@ IMemoryManager* CryGetIMemoryManager()
 // will be linked into that module instead of the default CRT version
 // On Mac/Linux, RC/editor DLLs must not override operator new, because new/delete are forced public symbols
 // and any conflict between new/delete will result in mismatched memory management and thus crashes
-#if defined(USE_CRY_NEW_AND_DELETE) && !defined(NEW_OVERRIDEN) && !defined(AZ_TESTS_ENABLED) && !defined(AZ_PLATFORM_APPLE_OSX) && !defined(AZ_PLATFORM_LINUX)
+#if defined(USE_CRY_NEW_AND_DELETE) && !defined(NEW_OVERRIDEN) && !defined(AZ_TESTS_ENABLED) && !defined(AZ_PLATFORM_MAC) && !defined(AZ_PLATFORM_LINUX)
 
 #if defined(CRY_FORCE_MALLOC_NEW_ALIGN)
 #    define ModuleMalloc(size) CryModuleMemalign(size, TARGET_DEFAULT_ALIGN)

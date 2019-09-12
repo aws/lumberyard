@@ -1,4 +1,4 @@
-﻿/*
+/*
 * All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
 * its licensors.
 *
@@ -29,14 +29,6 @@
 #include <AK/SoundEngine/Common/AkModule.h>             // Default memory and stream managers
 
 #include <PluginRegistration_wwise.h>                   // Registration of default set of plugins, customize this header to your needs.
-
-#if defined(AZ_RESTRICTED_PLATFORM)
-#undef AZ_RESTRICTED_SECTION
-#define AUDIOSYSTEMIMPL_WWISE_CPP_SECTION_1 1
-#define AUDIOSYSTEMIMPL_WWISE_CPP_SECTION_2 2
-#define AUDIOSYSTEMIMPL_WWISE_CPP_SECTION_3 3
-#define AUDIOSYSTEMIMPL_WWISE_CPP_SECTION_4 4
-#endif
 
 #if !defined(WWISE_FOR_RELEASE)
     #include <AK/Comm/AkCommunication.h>    // Communication between Wwise and the game (excluded in release build)
@@ -83,21 +75,16 @@ namespace AK
         //VirtualFree(in_pMemAddress, in_size, in_dwFreeType);
         azfree(in_pMemAddress, Audio::AudioImplAllocator);
     }
-
-#if defined(AZ_RESTRICTED_PLATFORM)
-#define AZ_RESTRICTED_SECTION AUDIOSYSTEMIMPL_WWISE_CPP_SECTION_1
-    #if defined(AZ_PLATFORM_XENIA)
-        #include "Xenia/AudioSystemImpl_wwise_cpp_xenia.inl"
-    #elif defined(AZ_PLATFORM_PROVO)
-        #include "Provo/AudioSystemImpl_wwise_cpp_provo.inl"
-    #endif
-#endif
 }
-
 
 
 namespace Audio
 {
+    namespace Platform
+    {
+        void SetupAkSoundEngine(AkPlatformInitSettings& platformInitSettings);
+    }
+
     const char* const CAudioSystemImpl_wwise::sWwiseImplSubPath = "wwise/";
     const char* const CAudioSystemImpl_wwise::sWwiseEventTag = "WwiseEvent";
     const char* const CAudioSystemImpl_wwise::sWwiseRtpcTag = "WwiseRtpc";
@@ -293,46 +280,32 @@ namespace Audio
     }
 
 
-
     ///////////////////////////////////////////////////////////////////////////////////////////////////
     // AudioSystemImplementationNotificationBus
     ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    #if defined(AZ_RESTRICTED_PLATFORM)
-        #define AZ_RESTRICTED_SECTION AUDIOSYSTEMIMPL_WWISE_CPP_SECTION_4
-        #if defined(AZ_PLATFORM_XENIA)
-            #include "Xenia/AudioSystemImpl_wwise_cpp_xenia.inl"
-        #elif defined(AZ_PLATFORM_PROVO)
-            #include "Provo/AudioSystemImpl_wwise_cpp_provo.inl"
-        #endif
-    #elif !defined(INCLUDE_WWISE_IMPL_PRODUCTION_CODE)
-        #define AUDIOSYSTEMIMPL_WWISE_CPP_TRAIT_USE_SUSPEND
-    #elif defined(AZ_PLATFORM_ANDROID) || defined(AZ_PLATFORM_APPLE_IOS)
-        #define AUDIOSYSTEMIMPL_WWISE_CPP_TRAIT_USE_SUSPEND
-    #endif
-
     ///////////////////////////////////////////////////////////////////////////////////////////////////
     void CAudioSystemImpl_wwise::OnAudioSystemLoseFocus()
     {
-    #if defined(AUDIOSYSTEMIMPL_WWISE_CPP_TRAIT_USE_SUSPEND)
+    #if AZ_TRAIT_CRYAUDIOIMPLWWISE_AUDIOSYSTEMIMPL_USE_SUSPEND
         AKRESULT akResult = AK::SoundEngine::Suspend();
         if (!IS_WWISE_OK(akResult))
         {
             g_audioImplLogger_wwise.Log(eALT_ERROR, "Wwise failed to Suspend, AKRESULT = %d\n", akResult);
         }
-    #endif // AUDIOSYSTEMIMPL_WWISE_CPP_TRAIT_USE_SUSPEND
+    #endif // AZ_TRAIT_CRYAUDIOIMPLWWISE_AUDIOSYSTEMIMPL_USE_SUSPEND
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
     void CAudioSystemImpl_wwise::OnAudioSystemGetFocus()
     {
-    #if defined(AUDIOSYSTEMIMPL_WWISE_CPP_TRAIT_USE_SUSPEND)
+    #if AZ_TRAIT_CRYAUDIOIMPLWWISE_AUDIOSYSTEMIMPL_USE_SUSPEND
         AKRESULT akResult = AK::SoundEngine::WakeupFromSuspend();
         if (!IS_WWISE_OK(akResult))
         {
             g_audioImplLogger_wwise.Log(eALT_ERROR, "Wwise failed to WakeupFromSuspend, AKRESULT = %d\n", akResult);
         }
-    #endif // AUDIOSYSTEMIMPL_WWISE_CPP_TRAIT_USE_SUSPEND
+    #endif // AZ_TRAIT_CRYAUDIOIMPLWWISE_AUDIOSYSTEMIMPL_USE_SUSPEND
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -476,20 +449,8 @@ namespace Audio
             return eARS_FAILURE;
         }
 
-        AkDeviceSettings oDeviceSettings;
-        AK::StreamMgr::GetDefaultDeviceSettings(oDeviceSettings);
-        oDeviceSettings.uIOMemorySize = g_audioImplCVars_wwise.m_nStreamDeviceMemoryPoolSize << 10; // 2 MiB is the default value!
+        eResult = m_oFileIOHandler.Init(g_audioImplCVars_wwise.m_nStreamDeviceMemoryPoolSize << 10); // 2 MiB is the default value!
 
-#if defined(AZ_RESTRICTED_PLATFORM)
-    #define AZ_RESTRICTED_SECTION AUDIOSYSTEMIMPL_WWISE_CPP_SECTION_2
-    #if defined(AZ_PLATFORM_XENIA)
-        #include "Xenia/AudioSystemImpl_wwise_cpp_xenia.inl"
-    #elif defined(AZ_PLATFORM_PROVO)
-        #include "Provo/AudioSystemImpl_wwise_cpp_provo.inl"
-    #endif
-#endif
-
-        eResult = m_oFileIOHandler.Init(oDeviceSettings);
 
         if (!IS_WWISE_OK(eResult))
         {
@@ -518,44 +479,7 @@ namespace Audio
         AK::SoundEngine::GetDefaultPlatformInitSettings(oPlatformInitSettings);
         oPlatformInitSettings.uLEngineDefaultPoolSize = g_audioImplCVars_wwise.m_nLowerEngineDefaultPoolSize << 10;
 
-#if defined(AZ_PLATFORM_WINDOWS)
-        // Turn off XAudio2 output type due to rare startup crashes.  Prefers WASAPI or DirectSound.
-        oPlatformInitSettings.eAudioAPI = static_cast<AkAudioAPI>(oPlatformInitSettings.eAudioAPI & ~AkAPI_XAudio2);
-        oPlatformInitSettings.threadBankManager.dwAffinityMask = 0;
-        oPlatformInitSettings.threadLEngine.dwAffinityMask = 0;
-        oPlatformInitSettings.threadMonitor.dwAffinityMask = 0;
-#define AZ_RESTRICTED_SECTION_IMPLEMENTED
-#elif defined(AZ_RESTRICTED_PLATFORM)
-#define AZ_RESTRICTED_SECTION AUDIOSYSTEMIMPL_WWISE_CPP_SECTION_3
-    #if defined(AZ_PLATFORM_XENIA)
-        #include "Xenia/AudioSystemImpl_wwise_cpp_xenia.inl"
-    #elif defined(AZ_PLATFORM_PROVO)
-        #include "Provo/AudioSystemImpl_wwise_cpp_provo.inl"
-    #endif
-#endif
-#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
-#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
-#elif defined(AZ_PLATFORM_APPLE_OSX)
-#elif defined(AZ_PLATFORM_APPLE_IOS) || defined(AZ_PLATFORM_APPLE_TV)
-        oInitSettings.uDefaultPoolSize = 1.5 * 1024 * 1024;
-        oPlatformInitSettings.uLEngineDefaultPoolSize = 1.5 * 1024 * 1024;
-#elif defined(AZ_PLATFORM_ANDROID)
-
-        JNIEnv* jniEnv = AZ::Android::AndroidEnv::Get()->GetJniEnv();
-        jobject javaActivity = AZ::Android::AndroidEnv::Get()->GetActivityRef();
-        JavaVM* javaVM = nullptr;
-        if (jniEnv)
-        {
-            jniEnv->GetJavaVM(&javaVM);
-        }
-
-        oPlatformInitSettings.pJavaVM = javaVM;
-        oPlatformInitSettings.jNativeActivity = javaActivity;
-
-#elif defined(AZ_PLATFORM_LINUX_X64)
-#else
-    #error "Unsupported platform."
-#endif
+        Platform::SetupAkSoundEngine(oPlatformInitSettings);
 
         eResult = AK::SoundEngine::Init(&oInitSettings, &oPlatformInitSettings);
 
@@ -1841,7 +1765,7 @@ namespace Audio
         oMemoryInfo.nPrimaryPoolUsedSize = AZ::AllocatorInstance<Audio::AudioImplAllocator>::Get().NumAllocatedBytes();
         oMemoryInfo.nPrimaryPoolAllocations = 0;
 
-    #if defined(PROVIDE_WWISE_IMPL_SECONDARY_POOL)
+    #if AZ_TRAIT_CRYAUDIOIMPLWWISE_PROVIDE_IMPL_SECONDARY_POOL
         oMemoryInfo.nSecondaryPoolSize = g_audioImplMemoryPoolSecondary_wwise.MemSize();
         oMemoryInfo.nSecondaryPoolUsedSize = oMemoryInfo.nSecondaryPoolSize - g_audioImplMemoryPoolSecondary_wwise.MemFree();
         oMemoryInfo.nSecondaryPoolAllocations = g_audioImplMemoryPoolSecondary_wwise.FragmentCount();
@@ -1849,7 +1773,7 @@ namespace Audio
         oMemoryInfo.nSecondaryPoolSize = 0;
         oMemoryInfo.nSecondaryPoolUsedSize = 0;
         oMemoryInfo.nSecondaryPoolAllocations = 0;
-    #endif // PROVIDE_WWISE_IMPL_SECONDARY_POOL
+    #endif // AZ_TRAIT_CRYAUDIOIMPLWWISE_PROVIDE_IMPL_SECONDARY_POOL
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////

@@ -9,7 +9,6 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#ifndef AZ_UNITY_BUILD
 
 #include <AzCore/PlatformDef.h>
 #include <AzCore/Casting/numeric_cast.h>
@@ -18,9 +17,11 @@
 #include <GridMate/Serialize/Buffer.h>
 #include <GridMate/Serialize/DataMarshal.h>
 
+#include <GridMate_Traits_Platform.h>
+
 //#define PRINT_IPADDRESS
 
-#if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_LINUX)
+#if AZ_TRAIT_GRIDMATE_SECURE_SOCKET_DRIVER_HOOK_ENABLED
 #include <openssl/ossl_typ.h>
 #include <openssl/ssl.h>
 #include <openssl/err.h>
@@ -1144,9 +1145,7 @@ namespace GridMate
 
             // The fields in a DTLS record are stored in big-endian format so perform
             // an endian swap on little-endian machines.
-#if !defined(AZ_BIG_ENDIAN)
             AZStd::endian_swap<AZ::u16>(recordLength);
-#endif
             recordEnd += recordLength;
                             if (recordEnd > tempBuffer.size())
             {
@@ -1940,6 +1939,4 @@ namespace GridMate
         }
     }
 }
-#endif // defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_LINUX)
-
-#endif // AZ_UNITY_BUILD
+#endif

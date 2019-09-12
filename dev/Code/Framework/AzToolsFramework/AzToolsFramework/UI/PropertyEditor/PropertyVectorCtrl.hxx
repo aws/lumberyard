@@ -344,7 +344,7 @@ Q_SIGNALS:
             {
                 if (elements[idx]->WasValueEditedByUser())
                 {
-                    actualValue.SetElement(idx, elements[idx]->GetValue());
+                    actualValue.SetElement(idx, static_cast<float>(elements[idx]->GetValue()));
                 }
             }
             instance = actualValue;

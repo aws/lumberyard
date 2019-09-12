@@ -11,9 +11,13 @@
 */
 
 
+#include <AzCore/PlatformDef.h>
+#if defined(AZ_COMPILER_MSVC)
+    #pragma warning(push)
+    #pragma warning(disable : 4714)
+#endif
+
 #include "EMotionFX_precompiled.h"
-#include <MathConversion.h>
-#include <IRenderAuxGeom.h>
 
 #include <AzCore/Component/Entity.h>
 #include <AzCore/Serialization/SerializeContext.h>
@@ -23,6 +27,16 @@
 #include <Integration/Components/SimpleLODComponent.h>
 #include <MCore/Source/AttributeString.h>
 
+#if defined(AZ_COMPILER_MSVC)
+    #pragma warning(push, 0)
+#endif
+
+#include <MathConversion.h>
+#include <IRenderAuxGeom.h>
+
+#if defined(AZ_COMPILER_MSVC)
+    #pragma warning(pop)
+#endif
 
 namespace EMotionFX
 {
@@ -105,11 +119,14 @@ namespace EMotionFX
 
         void SimpleLODComponent::OnActorInstanceDestroyed(EMotionFX::ActorInstance* actorInstance)
         {
+            AZ_UNUSED(actorInstance);
             m_actorInstance = nullptr;
         }
 
         void SimpleLODComponent::OnTick(float deltaTime, AZ::ScriptTimePoint time)
         {
+            AZ_UNUSED(deltaTime);
+            AZ_UNUSED(time);
             UpdateLODLevelByDistance(m_actorInstance, m_configuration.m_lodDistances, GetEntityId());
         }
 
@@ -121,11 +138,11 @@ namespace EMotionFX
                 const float rDistance = distances[i];
                 if (distance < rDistance)
                 {
-                    return i;
+                    return static_cast<AZ::u32>(i);
                 }
             }
 
-            return max - 1;
+            return static_cast<AZ::u32>(max - 1);
         }
 
         void SimpleLODComponent::UpdateLODLevelByDistance(EMotionFX::ActorInstance * actorInstance, const AZStd::vector<float>& distances, AZ::EntityId entityId)
@@ -150,3 +167,7 @@ namespace EMotionFX
     } // namespace integration
 } // namespace EMotionFX
 
+
+#if defined(AZ_COMPILER_MSVC)
+    #pragma warning(pop)
+#endif

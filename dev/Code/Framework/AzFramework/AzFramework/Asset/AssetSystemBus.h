@@ -54,6 +54,12 @@ namespace AzFramework
 
             virtual ~AssetSystemInfoNotifications() = default;
 
+            //! Notifies listeners that the Asset Processor has claimed a file in the cache for updating.
+            //! The absolute path is provided. This call will be followed by AssetFileReleased.
+            virtual void AssetFileClaimed(const AZStd::string& /*assetPath*/) {}
+            //! Notifies listeners that the Asset Processor has released a file in the cache it previously 
+            // exclusively claimed with AssetFileClaim. The absolute path is provided.
+            virtual void AssetFileReleased(const AZStd::string& /*assetPath*/) {}
             //! Notifies listeners the compilation of an asset has started.
             virtual void AssetCompilationStarted(const AZStd::string& /*assetPath*/) {}
             //! Notifies listeners the compilation of an asset has succeeded.

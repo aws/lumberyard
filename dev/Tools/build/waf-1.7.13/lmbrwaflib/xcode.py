@@ -66,7 +66,7 @@ MAP_EXT = {
 LMBR_WAF_SCRIPT_REL_PATH = 'Tools/build/waf-1.7.13/lmbr_waf'
 
 XCTEST_WRAPPER_TARGETS = ('ios', )
-XCTEST_WRAPPER_REL_PATH = 'Code/Launcher/AppleLaunchersCommon/XCTestWrapper'
+XCTEST_WRAPPER_REL_PATH = 'Code/Tools/Apple/XCTestWrapper'
 XCTEST_WRAPPER_SOURCE = [
     'LumberyardXCTestWrapperTests.mm',
 ]
@@ -312,7 +312,7 @@ class PBXNativeTarget(XCodeNode):
 
         # For the launchers they do not have the plist info files, but the game project does.
         # Search for the game project and grab its plist info file.
-        launcher_name = ctx.get_default_platform_launcher_name(platform_name)
+        launcher_name = ctx.get_launcher_name(platform_name)
         if launcher_name and target.endswith(launcher_name):
             task_gen_for_plist = ctx.get_tgen_by_name(target[:-len(launcher_name)])
 
@@ -592,6 +592,12 @@ class PBXProject(XCodeNode):
 
 class xcode(Build.BuildContext):
 
+    def get_launcher_name(self, platform_name):
+        if self.is_option_true('use_unified_launcher'):
+            return 'ClientLauncher'
+        else:
+            return self.get_default_platform_launcher_name(platform_name)
+
     def get_settings(self):
         settings = {}
         return settings
@@ -748,7 +754,7 @@ class xcode(Build.BuildContext):
             game_resources_group.children.append(xcode_assets_folder_ref)
 
             for target in project.targets:
-                launcher_name = self.get_default_platform_launcher_name(platform_name) or ''
+                launcher_name = self.get_launcher_name(platform_name) or ''
                 if isinstance(target, PBXNativeTarget) and target.name == game_project + launcher_name:
                     target.add_remove_embedded_provisioning_build_phase_to_target()
                     target.add_resources_build_phase_to_target([xcode_assets_folder_ref])

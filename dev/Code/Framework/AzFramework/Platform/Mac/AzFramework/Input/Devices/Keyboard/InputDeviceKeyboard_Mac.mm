@@ -11,7 +11,7 @@
 */
 
 #include <AzFramework/Input/Devices/Keyboard/InputDeviceKeyboard.h>
-#include <AzFramework/Input/Buses/Notifications/RawInputNotificationBus_darwin.h>
+#include <AzFramework/Input/Buses/Notifications/RawInputNotificationBus_Platform.h>
 
 #include <AppKit/NSEvent.h>
 #include <AppKit/NSView.h>
@@ -28,7 +28,7 @@
 // "Class X is implemented in both A and B. One of the two will be used. Which one is undefined."
 //
 // To get around this absurdity we're using method swizzling to hook into two NSResponder methods we
-// can then customize by using EBus to forward them to our InputDeviceKeyboardOsx instance, which in
+// can then customize by using EBus to forward them to our InputDeviceKeyboardMac instance, which in
 // turn will either intercept the calls to implement our custom logic if it owns the NSResponder, or
 // return false if it does not own the NSResponder so that we'll invoke the original implementation.
 //
@@ -254,7 +254,7 @@ namespace
     using namespace AzFramework;
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
-    // Table of key ids indexed by their osx key code
+    // Table of key ids indexed by their Mac key code
     const AZStd::array<const InputChannelId*, 128> InputChannelIdByKeyCodeTable =
     {{
         &InputDeviceKeyboard::Key::AlphanumericA,         // 0x00 kVK_ANSI_A
@@ -410,9 +410,9 @@ namespace
 namespace AzFramework
 {
     ////////////////////////////////////////////////////////////////////////////////////////////////
-    //! Platform specific implementation for osx keyboard input devices
-    class InputDeviceKeyboardOsx : public InputDeviceKeyboard::Implementation
-                                 , public RawInputNotificationBusOsx::Handler
+    //! Platform specific implementation for Mac keyboard input devices
+    class InputDeviceKeyboardMac : public InputDeviceKeyboard::Implementation
+                                 , public RawInputNotificationBusMac::Handler
                                  , public NSResponderMethodHookNotificationBus::Handler
     {
         ////////////////////////////////////////////////////////////////////////////////////////////
@@ -422,16 +422,16 @@ namespace AzFramework
     public:
         ////////////////////////////////////////////////////////////////////////////////////////////
         // Allocator
-        AZ_CLASS_ALLOCATOR(InputDeviceKeyboardOsx, AZ::SystemAllocator, 0);
+        AZ_CLASS_ALLOCATOR(InputDeviceKeyboardMac, AZ::SystemAllocator, 0);
 
         ////////////////////////////////////////////////////////////////////////////////////////////
         //! Constructor
         //! \param[in] inputDevice Reference to the input device being implemented
-        InputDeviceKeyboardOsx(InputDeviceKeyboard& inputDevice);
+        InputDeviceKeyboardMac(InputDeviceKeyboard& inputDevice);
 
         ////////////////////////////////////////////////////////////////////////////////////////////
         //! Destructor
-        ~InputDeviceKeyboardOsx() override;
+        ~InputDeviceKeyboardMac() override;
 
     private:
         ////////////////////////////////////////////////////////////////////////////////////////////
@@ -455,7 +455,7 @@ namespace AzFramework
         void TickInputDevice() override;
 
         ////////////////////////////////////////////////////////////////////////////////////////////
-        //! \ref AzFramework::RawInputNotificationsOsx::OnRawInputEvent
+        //! \ref AzFramework::RawInputNotificationsMac::OnRawInputEvent
         void OnRawInputEvent(const NSEvent* nsEvent) override;
 
         ////////////////////////////////////////////////////////////////////////////////////////////
@@ -472,13 +472,13 @@ namespace AzFramework
 
         ////////////////////////////////////////////////////////////////////////////////////////////
         //! Convenience function to queue standard key events processed in OnRawInputEvent
-        //! \param[in] keyCode The darwin specific key code
+        //! \param[in] keyCode The Mac specific key code
         //! \param[in] keyState The key state (down or up)
         void QueueRawStandardKeyEvent(AZ::u32 keyCode, bool keyState);
 
         ////////////////////////////////////////////////////////////////////////////////////////////
         //! Convenience function to queue modifier key events processed in OnRawInputEvent
-        //! \param[in] keyCode The darwin specific key code
+        //! \param[in] keyCode The Mac specific key code
         //! \param[in] modifierFlags The event's modifier flags
         void QueueRawModifierKeyEvent(AZ::u32 keyCode, AZ::u32 modifierFlags);
 
@@ -498,14 +498,14 @@ namespace AzFramework
     ////////////////////////////////////////////////////////////////////////////////////////////////
     InputDeviceKeyboard::Implementation* InputDeviceKeyboard::Implementation::Create(InputDeviceKeyboard& inputDevice)
     {
-        return aznew InputDeviceKeyboardOsx(inputDevice);
+        return aznew InputDeviceKeyboardMac(inputDevice);
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
-    int InputDeviceKeyboardOsx::s_instanceCount = 0;
+    int InputDeviceKeyboardMac::s_instanceCount = 0;
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
-    InputDeviceKeyboardOsx::InputDeviceKeyboardOsx(InputDeviceKeyboard& inputDevice)
+    InputDeviceKeyboardMac::InputDeviceKeyboardMac(InputDeviceKeyboard& inputDevice)
         : InputDeviceKeyboard::Implementation(inputDevice)
         , m_textInterpreterView(nullptr)
         , m_hasTextEntryStarted(false)
@@ -519,15 +519,15 @@ namespace AzFramework
         // Create an NSView that we can call interpretKeyEvents on to process text input.
         m_textInterpreterView = [[NSView alloc] initWithFrame: CGRectZero];
 
-        RawInputNotificationBusOsx::Handler::BusConnect();
+        RawInputNotificationBusMac::Handler::BusConnect();
         NSResponderMethodHookNotificationBus::Handler::BusConnect();
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
-    InputDeviceKeyboardOsx::~InputDeviceKeyboardOsx()
+    InputDeviceKeyboardMac::~InputDeviceKeyboardMac()
     {
         NSResponderMethodHookNotificationBus::Handler::BusDisconnect();
-        RawInputNotificationBusOsx::Handler::BusDisconnect();
+        RawInputNotificationBusMac::Handler::BusDisconnect();
 
         if (m_textInterpreterView)
         {
@@ -542,7 +542,7 @@ namespace AzFramework
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
-    bool InputDeviceKeyboardOsx::IsConnected() const
+    bool InputDeviceKeyboardMac::IsConnected() const
     {
         // If necessary we may be able to determine the connected state using the I/O Kit HIDManager:
         // https://developer.apple.com/library/content/documentation/DeviceDrivers/Conceptual/HID/new_api_10_5/tn2187.html
@@ -560,32 +560,32 @@ namespace AzFramework
         // Note that doing so will require modifying how we create and manage keyboard input devices
         // in InputSystemComponent/InputSystemComponentWin so we create multiple InputDeviceKeyboard
         // instances (somehow associating each with a raw input device id), along with modifying the
-        // InputDeviceKeyboardOsx::OnRawInputEvent function to filter incoming events by this raw id.
+        // InputDeviceKeyboardMac::OnRawInputEvent function to filter incoming events by this raw id.
         return true;
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
-    bool InputDeviceKeyboardOsx::HasTextEntryStarted() const
+    bool InputDeviceKeyboardMac::HasTextEntryStarted() const
     {
         return m_hasTextEntryStarted;
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
-    void InputDeviceKeyboardOsx::TextEntryStart(const InputTextEntryRequests::VirtualKeyboardOptions&)
+    void InputDeviceKeyboardMac::TextEntryStart(const InputTextEntryRequests::VirtualKeyboardOptions&)
     {
         m_hasTextEntryStarted = true;
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
-    void InputDeviceKeyboardOsx::TextEntryStop()
+    void InputDeviceKeyboardMac::TextEntryStop()
     {
         m_hasTextEntryStarted = false;
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
-    void InputDeviceKeyboardOsx::TickInputDevice()
+    void InputDeviceKeyboardMac::TickInputDevice()
     {
-        // The osx event loop has just been pumped in InputSystemComponentOsx::PreTickInputDevices,
+        // The event loop has just been pumped in ApplicationRequests::PumpSystemEventLoopUntilEmpty,
         // so we now just need to process any raw events that have been queued since the last frame
         const bool hadFocus = m_hasFocus;
         m_hasFocus = NSApplication.sharedApplication.active;
@@ -604,7 +604,7 @@ namespace AzFramework
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
-    void InputDeviceKeyboardOsx::OnRawInputEvent(const NSEvent* nsEvent)
+    void InputDeviceKeyboardMac::OnRawInputEvent(const NSEvent* nsEvent)
     {
         if (!NSApplication.sharedApplication.active)
         {
@@ -661,7 +661,7 @@ namespace AzFramework
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
-    bool InputDeviceKeyboardOsx::InsertText(NSResponder* responder, id textString)
+    bool InputDeviceKeyboardMac::InsertText(NSResponder* responder, id textString)
     {
         if (responder != m_textInterpreterView)
         {
@@ -685,7 +685,7 @@ namespace AzFramework
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
-    bool InputDeviceKeyboardOsx::NoResponderFor(NSResponder* /*responder*/, SEL /*eventSelector*/)
+    bool InputDeviceKeyboardMac::NoResponderFor(NSResponder* /*responder*/, SEL /*eventSelector*/)
     {
         // Do nothing, but return true so we don't invoke the default behavior that calls NSBeep.
         // This method is only ever called on the main NSWindow object, so while it is not ideal
@@ -695,7 +695,7 @@ namespace AzFramework
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
-    bool InputDeviceKeyboardOsx::DoCommandBySelector(NSResponder* responder, SEL /*commandSelector*/)
+    bool InputDeviceKeyboardMac::DoCommandBySelector(NSResponder* responder, SEL /*commandSelector*/)
     {
         // If we own the responder that this method was invoked on return
         // true so we don't invoke the default behavior that calls NSBeep
@@ -703,12 +703,12 @@ namespace AzFramework
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
-    void InputDeviceKeyboardOsx::QueueRawStandardKeyEvent(AZ::u32 keyCode, bool keyState)
+    void InputDeviceKeyboardMac::QueueRawStandardKeyEvent(AZ::u32 keyCode, bool keyState)
     {
         if ((keyCode == kVK_ISO_Section || keyCode == kVK_ANSI_Grave) &&
             KBGetLayoutType(LMGetKbdType()) == kKeyboardISO)
         {
-            // osx swaps these two key codes for keyboards that use an ISO mechanical layout,
+            // Mac swaps these two key codes for keyboards that use an ISO mechanical layout,
             // so we have to swap them back.
             keyCode = (kVK_ISO_Section + kVK_ANSI_Grave) - keyCode;
         }
@@ -722,7 +722,7 @@ namespace AzFramework
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
-    void InputDeviceKeyboardOsx::QueueRawModifierKeyEvent(AZ::u32 keyCode, AZ::u32 modifierFlags)
+    void InputDeviceKeyboardMac::QueueRawModifierKeyEvent(AZ::u32 keyCode, AZ::u32 modifierFlags)
     {
         const InputChannelId* channelId = (keyCode < InputChannelIdByKeyCodeTable.size()) ?
                                           InputChannelIdByKeyCodeTable[keyCode] : nullptr;

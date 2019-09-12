@@ -12,6 +12,7 @@
 
 #include "LineHoverSelection.h"
 
+#include <AzCore/Component/ComponentBus.h>
 #include <AzCore/Math/Vector2.h>
 #include <AzCore/Math/Vector3.h>
 #include <AzCore/Math/VertexContainerInterface.h>
@@ -61,32 +62,35 @@ namespace AzToolsFramework
 
     template<typename Vertex>
     LineSegmentHoverSelection<Vertex>::LineSegmentHoverSelection(
-        const AZ::EntityId entityId, const ManipulatorManagerId managerId)
-        : m_entityId(entityId)
+        const AZ::EntityComponentIdPair& entityComponentIdPair, const ManipulatorManagerId managerId)
+        : m_entityId(entityComponentIdPair.GetEntityId())
     {
         // create a line segment manipulator from vertex positions and setup its callback
-        auto setupLineSegment =
-            [this](const AZ::EntityId entityId, const ManipulatorManagerId managerId, const size_t vertIndex)
+        auto setupLineSegment = [this] (
+            const AZ::EntityComponentIdPair& entityComponentIdPair,
+            const ManipulatorManagerId managerId, const size_t vertIndex)
         {
             m_lineSegmentManipulators.push_back(LineSegmentSelectionManipulator::MakeShared());
             AZStd::shared_ptr<LineSegmentSelectionManipulator>& lineSegmentManipulator = m_lineSegmentManipulators.back();
             lineSegmentManipulator->Register(managerId);
-            lineSegmentManipulator->AddEntityId(entityId);
-            lineSegmentManipulator->SetSpace(WorldFromLocalWithUniformScale(entityId));
+            lineSegmentManipulator->AddEntityComponentIdPair(entityComponentIdPair);
+            lineSegmentManipulator->SetSpace(WorldFromLocalWithUniformScale(entityComponentIdPair.GetEntityId()));
 
-            UpdateLineSegmentPosition<Vertex>(vertIndex, entityId, *lineSegmentManipulator);
+            UpdateLineSegmentPosition<Vertex>(vertIndex, entityComponentIdPair.GetEntityId(), *lineSegmentManipulator);
 
             lineSegmentManipulator->InstallLeftMouseUpCallback(
-                [vertIndex, entityId](const LineSegmentSelectionManipulator::Action& action)
+                [vertIndex, entityComponentIdPair](const LineSegmentSelectionManipulator::Action& action)
             {
-                InsertVertexAfter<Vertex>(entityId, vertIndex, AZ::AdaptVertexIn<Vertex>(action.m_localLineHitPosition));
+                InsertVertexAfter<Vertex>(
+                    entityComponentIdPair, vertIndex,
+                    AZ::AdaptVertexIn<Vertex>(action.m_localLineHitPosition));
             });
         };
 
         // create all line segment manipulators for the polygon prism (used for selection bounds)
         size_t vertexCount = 0;
         AZ::FixedVerticesRequestBus<Vertex>::EventResult(
-            vertexCount, entityId, &AZ::FixedVerticesRequestBus<Vertex>::Handler::Size);
+            vertexCount, entityComponentIdPair.GetEntityId(), &AZ::FixedVerticesRequestBus<Vertex>::Handler::Size);
 
         if (vertexCount > 1)
         {
@@ -94,14 +98,14 @@ namespace AzToolsFramework
             if (vertexCount == 2)
             {
                 m_lineSegmentManipulators.reserve(vertexCount - 1);
-                setupLineSegment(entityId, managerId, 0);
+                setupLineSegment(entityComponentIdPair, managerId, 0);
             }
             else
             {
                 m_lineSegmentManipulators.reserve(vertexCount);
                 for (size_t vertIndex = 0; vertIndex < vertexCount; ++vertIndex)
                 {
-                    setupLineSegment(entityId, managerId, vertIndex);
+                    setupLineSegment(entityComponentIdPair, managerId, vertIndex);
                 }
             }
         }

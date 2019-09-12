@@ -73,9 +73,6 @@
 
 #include "../Cry3DEngine/Environment/OceanEnvironmentBus.h"
 
-//#pragma optimize("", off)
-//#pragma inline_depth(0)
-
 // AI Object filters: define them as one-bit binary masks (1,2,4,8 etc..)
 #define AIOBJECTFILTER_SAMEFACTION      1 // AI objects of the same species of the querying object.
 #define AIOBJECTFILTER_SAMEGROUP        2 // AI objects of the same group of the querying object or with no group.
@@ -595,7 +592,11 @@ CScriptBind_AI::CScriptBind_AI()
     SCRIPT_REG_FUNC(CheckVehicleColision);
     SCRIPT_REG_FUNC(GetFlyingVehicleFlockingPos);
     SCRIPT_REG_FUNC(SetPFBlockerRadius);
-    SCRIPT_REG_FUNC(AssignPFPropertiesToPathType);
+#pragma push_macro("SCRIPT_REG_CLASSNAME")
+#undef SCRIPT_REG_CLASSNAME
+#define SCRIPT_REG_CLASSNAME
+    SCRIPT_REG_FUNC_WITH_NAME("AssignPFPropertiesToPathType", static_cast<int(CScriptBind_AI::*)(IFunctionHandler*)>(&CScriptBind_AI::AssignPFPropertiesToPathType));
+#pragma pop_macro("SCRIPT_REG_CLASSNAME")
     SCRIPT_REG_FUNC(AssignPathTypeToSOUser);
     SCRIPT_REG_FUNC(SetPFProperties);
     SCRIPT_REG_FUNC(GetGroupTarget);

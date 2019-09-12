@@ -13,6 +13,7 @@
 
 #include <qgraphicswidget.h>
 #include <qgraphicssceneevent.h>
+#include <QTimer>
 
 #include <AzCore/Component/Component.h>
 #include <AzCore/Component/EntityBus.h>
@@ -76,6 +77,12 @@ namespace GraphCanvas
             DeleteConnection,
             ConnectionMove,
             NodeCreation
+        };
+
+        struct ConnectionCandidate
+        {
+            Endpoint m_connectableTarget;
+            Endpoint m_testedTarget;
         };
 
     public:
@@ -181,10 +188,16 @@ namespace GraphCanvas
 
         bool UpdateProposal(Endpoint& activePoint, const Endpoint& proposedEndpoint, AZStd::function< void(const AZ::EntityId&, const AZ::EntityId&)> endpointChangedFunctor);
 
-        Endpoint FindConnectionCandidateAt(const QPointF& scenePos) const;
+        ConnectionCandidate FindConnectionCandidateAt(const QPointF& scenePos) const;
 
         void UpdateMovePosition(const QPointF& scenePos);
         void FinalizeMove(const QPointF& scenePos, const QPoint& screenPos, bool chainAddition);
+
+        void DisplayConnectionToolTip(const QPointF& scenePos, const Endpoint& connectionTarget);
+
+        ConnectionValidationTooltip m_validationResult;
+        Endpoint m_endpointTooltip;
+        ToastId  m_toastId;
 
         //! The Id of the graph this connection belongs to.
         GraphId m_graphId;

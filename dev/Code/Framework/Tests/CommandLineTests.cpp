@@ -10,7 +10,7 @@
 *
 */
 
-#include <Tests/TestTypes.h>
+#include <AzCore/UnitTest/TestTypes.h>
 #include <AzFramework/CommandLine/CommandLine.h>
 
 using namespace AzFramework;
@@ -31,9 +31,9 @@ namespace UnitTest
         EXPECT_EQ(cmd.GetSwitchValue("haha", 0), AZStd::string());
         EXPECT_EQ(cmd.GetNumMiscValues(), 0);
 
-        AZ_TEST_START_ASSERTTEST;
+        AZ_TEST_START_TRACE_SUPPRESSION;
         EXPECT_EQ(cmd.GetMiscValue(1), AZStd::string());
-        AZ_TEST_STOP_ASSERTTEST(1);
+        AZ_TEST_STOP_TRACE_SUPPRESSION(1);
     }
 
     TEST_F(CommandLineTests, CommandLineParser_Switches_Simple)
@@ -58,11 +58,11 @@ namespace UnitTest
         EXPECT_EQ(cmd.GetSwitchValue("switch2", 0), "test2");
         EXPECT_EQ(cmd.GetSwitchValue("switch3", 0), "tEST3"); // retain case in values.
 
-        AZ_TEST_START_ASSERTTEST;
+        AZ_TEST_START_TRACE_SUPPRESSION;
         EXPECT_EQ(cmd.GetSwitchValue("switch1", 1), AZStd::string());
         EXPECT_EQ(cmd.GetSwitchValue("switch2", 1), AZStd::string());
         EXPECT_EQ(cmd.GetSwitchValue("switch3", 1), AZStd::string());
-        AZ_TEST_STOP_ASSERTTEST(3);
+        AZ_TEST_STOP_TRACE_SUPPRESSION(3);
     }
 
     TEST_F(CommandLineTests, CommandLineParser_MiscValues_Simple)

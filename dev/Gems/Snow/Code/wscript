@@ -18,7 +18,8 @@ def build(bld):
         #==============================
         includes    = [ 'Include' ,
                         bld.Path('Code/CryEngine/CryCommon'),
-                        bld.Path('Code/CryEngine/CryAction')],
+                        bld.Path('Code/CryEngine/CryAction')
+                      ],
         
         editor = dict(
             defines     = ['SNOW_EDITOR'],

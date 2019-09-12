@@ -30,12 +30,12 @@
 #include <CryLibrary.h>
 #include <IConsole.h>
 
-#if defined(AZ_RESTRICTED_PLATFORM)
+#if defined(AZ_TOOLS_EXPAND_FOR_RESTRICTED_PLATFORMS)
 #undef AZ_RESTRICTED_SECTION
 #define SHADERCACHEGEN_CPP_SECTION_1 1
 #endif
 
-#if defined(AZ_PLATFORM_APPLE_OSX)
+#if defined(AZ_PLATFORM_MAC)
 #include <fcntl.h>
 #include <errno.h>
 #include <semaphore.h>
@@ -53,7 +53,7 @@ struct COutputPrintSink
     }
 };
 
-#if defined(AZ_PLATFORM_APPLE_OSX)
+#if defined(AZ_PLATFORM_MAC)
 CFOptionFlags MessageBox(const char* title, const char* message, CFStringRef defaultButton, CFStringRef alternateButton)
 {
     CFStringRef strHeader = CFStringCreateWithCString(NULL, title, kCFStringEncodingMacRoman);
@@ -85,7 +85,7 @@ CFOptionFlags MessageBox(const char* title, const char* message, CFStringRef def
     }
     return result;
 }
-#endif // defined(AZ_PLATFORM_APPLE_OSX)
+#endif // defined(AZ_PLATFORM_MAC)
 
 bool DisplayYesNoMessageBox(const char* title, const char* message)
 {
@@ -96,7 +96,7 @@ bool DisplayYesNoMessageBox(const char* title, const char* message)
 
 #if defined(AZ_PLATFORM_WINDOWS)
     return MessageBox(0, message, title, MB_YESNO) == IDYES;
-#elif defined(AZ_PLATFORM_APPLE_OSX)
+#elif defined(AZ_PLATFORM_MAC)
     return MessageBox(title, message, CFSTR("Yes"), CFSTR("No")) == kCFUserNotificationDefaultResponse;
 #endif
     return false;
@@ -112,7 +112,7 @@ void DisplayErrorMessageBox(const char* message)
 
 #if defined(AZ_PLATFORM_WINDOWS)
     MessageBox(0, message, "Error", MB_OK | MB_DEFAULT_DESKTOP_ONLY);
-#elif defined(AZ_PLATFORM_APPLE_OSX)
+#elif defined(AZ_PLATFORM_MAC)
     MessageBox("Error", message, NULL, NULL);
 #endif
 }
@@ -138,7 +138,7 @@ bool IsLumberyardRunning()
     {
         CloseHandle(mutex);
     }
-#elif defined(AZ_PLATFORM_APPLE_OSX)
+#elif defined(AZ_PLATFORM_MAC)
     sem_t* mutex = sem_open(mutexName, O_CREAT | O_EXCL);
     if (mutex == SEM_FAILED && errno == EEXIST)
     {
@@ -404,10 +404,17 @@ int main_wrapped(int argc, char* argv[])
 
         pISystem->GetIConsole()->ExecuteString(shaderTypeCommand.c_str());
 
-        #if defined(AZ_RESTRICTED_PLATFORM) && defined(AZ_PLATFORM_PROVO)
-            #define AZ_RESTRICTED_SECTION SHADERCACHEGEN_CPP_SECTION_1
-            #include "Provo/ShaderCacheGen_cpp_provo.inl"
-        #endif
+#if defined(AZ_TOOLS_EXPAND_FOR_RESTRICTED_PLATFORMS)
+    #if defined(TOOLS_SUPPORT_XENIA)
+        #define AZ_RESTRICTED_SECTION SHADERCACHEGEN_CPP_SECTION_1
+        #include "Xenia/ShaderCacheGen_cpp_xenia.inl"
+    #endif
+    #if defined(TOOLS_SUPPORT_PROVO)
+        #define AZ_RESTRICTED_SECTION SHADERCACHEGEN_CPP_SECTION_1
+        #include "Provo/ShaderCacheGen_cpp_provo.inl"
+    #endif
+#endif
+
     }
 
     // Set the target platform

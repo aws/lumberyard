@@ -49,7 +49,11 @@ namespace AzToolsFramework
             AZ::EntityId GetEntityId() const { return m_entityComponentIdPair.GetEntityId(); }
             /// The combined Entity and Component Id to uniquely identify a specific Component on a given Entity.
             /// Note: This is required when more than one Component of the same type can exists on an Entity at a time.
+            AZ_DEPRECATED(, "GetComponentEntityIdPair() is deprecated, please use GetEntityComponentIdPair()")
             AZ::EntityComponentIdPair GetComponentEntityIdPair() const { return m_entityComponentIdPair; }
+            /// The combined Entity and Component Id to uniquely identify a specific Component on a given Entity.
+            /// Note: This is required when more than one Component of the same type can exists on an Entity at a time.
+            AZ::EntityComponentIdPair GetEntityComponentIdPair() const { return m_entityComponentIdPair; }
 
             /// The ComponentId this ComponentMode instance is associated with.
             AZ::ComponentId GetComponentId() const final { return m_entityComponentIdPair.GetComponentId(); }

@@ -83,8 +83,7 @@ namespace ScriptCanvasEditor
     {
         NodeDescriptorComponent::Activate();
 
-        EBusHandlerEventNodeDescriptorRequestBus::Handler::BusConnect(GetEntityId());
-        GraphCanvas::NodeNotificationBus::Handler::BusConnect(GetEntityId());
+        EBusHandlerEventNodeDescriptorRequestBus::Handler::BusConnect(GetEntityId());        
         GraphCanvas::ForcedWrappedNodeRequestBus::Handler::BusConnect(GetEntityId());
         GraphCanvas::SceneMemberNotificationBus::Handler::BusConnect(GetEntityId());
     }
@@ -95,7 +94,6 @@ namespace ScriptCanvasEditor
 
         GraphCanvas::SceneMemberNotificationBus::Handler::BusDisconnect();
         GraphCanvas::ForcedWrappedNodeRequestBus::Handler::BusDisconnect();
-        GraphCanvas::NodeNotificationBus::Handler::BusDisconnect();
         EBusHandlerEventNodeDescriptorRequestBus::Handler::BusDisconnect();
     }
 
@@ -112,33 +110,7 @@ namespace ScriptCanvasEditor
     ScriptCanvas::EBusEventId EBusHandlerEventNodeDescriptorComponent::GetEventId() const
     {
         return m_eventId;
-    }
-
-    void EBusHandlerEventNodeDescriptorComponent::OnAddedToScene(const AZ::EntityId&)
-    {
-        AZStd::vector< AZ::EntityId > slotIds;
-        GraphCanvas::NodeRequestBus::EventResult(slotIds, GetEntityId(), &GraphCanvas::NodeRequests::GetSlotIds);
-
-        for (const auto& slotId : slotIds)
-        {
-            GraphCanvas::SlotType slotType;
-            GraphCanvas::SlotRequestBus::EventResult(slotType, slotId, &GraphCanvas::SlotRequests::GetSlotType);
-
-            if (slotType == GraphCanvas::SlotTypes::ExecutionSlot)
-            {
-                GraphCanvas::ConnectionType connectionType = GraphCanvas::ConnectionType::CT_None;
-                GraphCanvas::SlotRequestBus::EventResult(connectionType, slotId, &GraphCanvas::SlotRequests::GetConnectionType);
-
-                if (connectionType == GraphCanvas::ConnectionType::CT_Output)
-                {
-                    GraphCanvas::SlotRequestBus::Event(slotId, &GraphCanvas::SlotRequests::SetTranslationKeyedName, TranslationHelper::GetEBusHandlerOnEventTriggeredNameKey());
-                    GraphCanvas::SlotRequestBus::Event(slotId, &GraphCanvas::SlotRequests::SetTranslationKeyedTooltip, TranslationHelper::GetEBusHandlerOnEventTriggeredTooltipKey());
-
-                    break;
-                }
-            }
-        }
-    }
+    }    
 
     void EBusHandlerEventNodeDescriptorComponent::OnNodeWrapped(const AZ::EntityId& wrappingNode)
     {
@@ -220,7 +192,7 @@ namespace ScriptCanvasEditor
                             {
                                 AZ::EntityId graphCanvasSlotId = Nodes::DisplayScriptCanvasSlot(GetEntityId(), (*scriptCanvasSlot));
 
-                                TranslationItemType itemType = TranslationHelper::GetItemType(scriptCanvasSlot->GetType());
+                                TranslationItemType itemType = TranslationHelper::GetItemType(scriptCanvasSlot->GetDescriptor());
 
                                 GraphCanvas::TranslationKeyedString slotNameKeyedString(scriptCanvasSlot->GetName());
                                 slotNameKeyedString.m_context = ebusContextName;
@@ -231,7 +203,7 @@ namespace ScriptCanvasEditor
                                 slotNameKeyedString.SetFallback(scriptCanvasSlot->GetName());
                                 slotTooltipKeyedString.SetFallback(scriptCanvasSlot->GetToolTip());
 
-                                if (scriptCanvasSlot->GetType() == ScriptCanvas::SlotType::DataOut)
+                                if (scriptCanvasSlot->GetDescriptor() == ScriptCanvas::SlotDescriptors::DataOut())
                                 {
                                     slotNameKeyedString.m_key = TranslationHelper::GetEBusHandlerSlotKey(m_busName, m_eventName, itemType, TranslationKeyId::Name, outputCount);
                                     slotTooltipKeyedString.m_key = TranslationHelper::GetEBusHandlerSlotKey(m_busName, m_eventName, itemType, TranslationKeyId::Tooltip, outputCount);
@@ -257,7 +229,7 @@ namespace ScriptCanvasEditor
                             {
                                 AZ::EntityId graphCanvasSlotId = Nodes::DisplayScriptCanvasSlot(GetEntityId(), (*scriptCanvasSlot));
 
-                                TranslationItemType itemType = TranslationHelper::GetItemType(scriptCanvasSlot->GetType());
+                                TranslationItemType itemType = TranslationHelper::GetItemType(scriptCanvasSlot->GetDescriptor());
 
                                 GraphCanvas::TranslationKeyedString slotNameKeyedString(scriptCanvasSlot->GetName(), ebusContextName);
                                 slotNameKeyedString.m_key = slotNameKeyedString.m_key = TranslationHelper::GetKey(TranslationContextGroup::EbusHandler, m_busName, m_eventName, itemType, TranslationKeyId::Name);
@@ -331,5 +303,31 @@ namespace ScriptCanvasEditor
         }
 
         return wrapperNode;
+    }
+
+    void EBusHandlerEventNodeDescriptorComponent::OnAddedToGraphCanvasGraph(const GraphCanvas::GraphId&, const AZ::EntityId&)
+    {
+        AZStd::vector< AZ::EntityId > slotIds;
+        GraphCanvas::NodeRequestBus::EventResult(slotIds, GetEntityId(), &GraphCanvas::NodeRequests::GetSlotIds);
+
+        for (const auto& slotId : slotIds)
+        {
+            GraphCanvas::SlotType slotType;
+            GraphCanvas::SlotRequestBus::EventResult(slotType, slotId, &GraphCanvas::SlotRequests::GetSlotType);
+
+            if (slotType == GraphCanvas::SlotTypes::ExecutionSlot)
+            {
+                GraphCanvas::ConnectionType connectionType = GraphCanvas::ConnectionType::CT_None;
+                GraphCanvas::SlotRequestBus::EventResult(connectionType, slotId, &GraphCanvas::SlotRequests::GetConnectionType);
+
+                if (connectionType == GraphCanvas::ConnectionType::CT_Output)
+                {
+                    GraphCanvas::SlotRequestBus::Event(slotId, &GraphCanvas::SlotRequests::SetTranslationKeyedName, TranslationHelper::GetEBusHandlerOnEventTriggeredNameKey());
+                    GraphCanvas::SlotRequestBus::Event(slotId, &GraphCanvas::SlotRequests::SetTranslationKeyedTooltip, TranslationHelper::GetEBusHandlerOnEventTriggeredTooltipKey());
+
+                    break;
+                }
+            }
+        }
     }
 }

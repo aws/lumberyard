@@ -208,11 +208,11 @@ namespace EMotionFX
     {
     }
 
-    CommandAddRagdollJoint::CommandAddRagdollJoint(AZ::u32 actorId, const AZStd::string& jointName)
-        : CommandAddRagdollJoint(nullptr)
+    CommandAddRagdollJoint::CommandAddRagdollJoint(AZ::u32 actorId, const AZStd::string& jointName, MCore::Command* orgCommand)
+        : MCore::Command(s_commandName, orgCommand)
+        , ParameterMixinActorId(actorId)
+        , ParameterMixinJointName(jointName)
     {
-        m_actorId = actorId;
-        m_jointName = jointName;
     }
 
     void CommandAddRagdollJoint::Reflect(AZ::ReflectContext* context)
@@ -330,11 +330,11 @@ namespace EMotionFX
     {
     }
 
-    CommandRemoveRagdollJoint::CommandRemoveRagdollJoint(AZ::u32 actorId, const AZStd::string& jointName)
-        : CommandRemoveRagdollJoint(nullptr)
+    CommandRemoveRagdollJoint::CommandRemoveRagdollJoint(AZ::u32 actorId, const AZStd::string& jointName, MCore::Command* orgCommand)
+        : MCore::Command(s_commandName, orgCommand)
+        , ParameterMixinActorId(actorId)
+        , ParameterMixinJointName(jointName)
     {
-        m_actorId = actorId;
-        m_jointName = jointName;
     }
 
     void CommandRemoveRagdollJoint::Reflect(AZ::ReflectContext* context)

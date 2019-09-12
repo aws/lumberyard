@@ -294,7 +294,8 @@ protected:
 
 
 #define SCRIPT_REG_CLASSNAME
-#define SCRIPT_REG_FUNC(func) RegisterFunction( #func, functor_ret(*this, SCRIPT_REG_CLASSNAME func));
+#define SCRIPT_REG_FUNC(func) RegisterFunction( #func, functor(*this, SCRIPT_REG_CLASSNAME func));
+#define SCRIPT_REG_FUNC_WITH_NAME(name, func) RegisterFunction( name, functor(*this, SCRIPT_REG_CLASSNAME func));
 #define SCRIPT_REG_GLOBAL(var) RegisterGlobal( #var, var);
 #define SCRIPT_REG_TEMPLFUNC(func, sFuncParams) RegisterTemplateFunction( #func, sFuncParams, *this, SCRIPT_REG_CLASSNAME func);
 

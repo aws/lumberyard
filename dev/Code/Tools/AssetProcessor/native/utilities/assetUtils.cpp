@@ -67,7 +67,7 @@
 #   include <QFile>
 #endif
 
-#if defined(AZ_PLATFORM_APPLE)
+#if AZ_TRAIT_OS_PLATFORM_APPLE
 #include <fcntl.h>
 #endif
 
@@ -1491,7 +1491,7 @@ to ensure that the address is correct. Asset Processor won't be running in serve
         // normalize the input string:
         relativePathFromRoot = NormalizeFilePath(relativePathFromRoot);
 
-#if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_APPLE_OSX)
+#if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_MAC)
         // these operating systems use File Systems which are generally not case sensitive, and so we can make this function "early out" a lot faster.
         // by quickly determining the case where it does not exist at all.  Without this assumption, it can be hundreds of times slower.
         if (!QFile::exists(QDir(rootPath).absoluteFilePath(relativePathFromRoot)))

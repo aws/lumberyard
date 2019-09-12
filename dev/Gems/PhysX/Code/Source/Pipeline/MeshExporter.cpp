@@ -34,7 +34,10 @@
 #include <PxPhysicsAPI.h>
 
 #include <Cry_Math.h>
+#include <AzCore/IO/SystemFile.h>
 #include <AzCore/Math/Matrix3x3.h>
+#include <AzCore/XML/rapidxml.h>
+#include <GFxFramework/MaterialIO/Material.h>
 
 // A utility macro helping set/clear bits in a single line
 #define SET_BITS(flags, condition, bits) flags = (condition) ? ((flags) | (bits)) : ((flags) & ~(bits))
@@ -50,6 +53,7 @@ namespace PhysX
         namespace SceneUtil = AZ::SceneAPI::Utilities;
 
         static physx::PxDefaultAllocator pxDefaultAllocatorCallback;
+        static const char* const s_defaultSurfaceType = "mat_default";
 
         /// Implementation of the PhysX error callback interface directing errors to ErrorWindow output.
         ///
@@ -73,7 +77,7 @@ namespace PhysX
             AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
             if (serializeContext)
             {
-                serializeContext->Class<MeshExporter, AZ::SceneAPI::SceneCore::ExportingComponent>()->Version(1);
+                serializeContext->Class<MeshExporter, AZ::SceneAPI::SceneCore::ExportingComponent>()->Version(2);
             }
         }
 
@@ -97,8 +101,70 @@ namespace PhysX
                 return materials.size() - 1;
             }
 
-            void ResolveMaterialSlotsSoftNamingConvention(AZStd::vector<Physics::MaterialConfiguration>& originalMaterials, AZStd::vector<AZStd::string>& outSlots)
+            void BuildMaterialToSurfaceTypeMap(const AZStd::string& materialFilename,
+                AZStd::unordered_map<AZStd::string, AZStd::string>& materialToSurfaceTypeMap)
             {
+                AZ::IO::SystemFile mtlFile;
+                bool fileOpened = mtlFile.Open(materialFilename.c_str(), AZ::IO::SystemFile::SF_OPEN_READ_ONLY);
+                if (fileOpened && mtlFile.Length() != 0)
+                {
+                    //Read material override file into a buffer
+                    AZStd::vector<char> buffer(mtlFile.Length());
+                    mtlFile.Read(mtlFile.Length(), buffer.data());
+                    mtlFile.Close();
+
+                    //Apparently in rapidxml if 'parse_no_data_nodes' isn't set it creates both value and data nodes 
+                    //with the data nodes having precedence such that updating values doesn't work. 
+                    AZ::rapidxml::xml_document<char>  document;
+                    document.parse<AZ::rapidxml::parse_no_data_nodes>(buffer.data());
+
+                    //Parse MTL file for materials and/or submaterials. 
+                    AZ::rapidxml::xml_node<char>* rootMaterialNode = document.first_node(AZ::GFxFramework::MaterialExport::g_materialString);
+
+                    AZ::rapidxml::xml_node<char>* subMaterialNode = rootMaterialNode->first_node(AZ::GFxFramework::MaterialExport::g_subMaterialString);
+
+                    if (subMaterialNode)
+                    {
+                        for (AZ::rapidxml::xml_node<char>* materialNode = subMaterialNode->first_node(AZ::GFxFramework::MaterialExport::g_materialString);
+                            materialNode;
+                            materialNode = materialNode->next_sibling(AZ::GFxFramework::MaterialExport::g_materialString))
+                        {
+                            AZ::rapidxml::xml_attribute<char>* nameAttribute = materialNode->first_attribute(AZ::GFxFramework::MaterialExport::g_nameString);
+                            if (nameAttribute)
+                            {
+                                AZStd::string materialName = nameAttribute->value();
+                                AZStd::string surfaceTypeName = s_defaultSurfaceType;
+
+                                AZ::rapidxml::xml_attribute<char>* surfaceTypeNode = materialNode->first_attribute("SurfaceType");
+                                if (surfaceTypeNode && surfaceTypeNode->value_size() != 0)
+                                {
+                                    surfaceTypeName = surfaceTypeNode->value();
+                                }
+
+                                materialToSurfaceTypeMap[materialName] = surfaceTypeName;
+                            }
+                            else
+                            {
+                                AZ_TracePrintf(AZ::SceneAPI::Utilities::ErrorWindow, "A SubMaterial without Name found in the .mtl file: %s", materialFilename.c_str());
+                            }
+                        }
+                    }
+                    else
+                    {
+                        AZ_TracePrintf(AZ::SceneAPI::Utilities::ErrorWindow, "No SubMaterial node in the .mtl file: %s", materialFilename.c_str());
+                    }
+                }
+                else
+                {
+                    AZ_TracePrintf(AZ::SceneAPI::Utilities::ErrorWindow, "Unable to open .mtl file: %s", materialFilename.c_str());
+                }
+            }
+
+            void ResolveMaterialSlotsSoftNamingConvention(AZStd::vector<Physics::MaterialConfiguration>& originalMaterials, 
+                AZStd::vector<AZStd::string>& outSlots, 
+                const AZStd::unordered_map<AZStd::string, AZStd::string>& materialToSurfaceTypeMap)
+            {
+
                 outSlots.clear();
                 outSlots.reserve(originalMaterials.size());
 
@@ -106,32 +172,27 @@ namespace PhysX
 
                 for (auto& materialConfiguration : originalMaterials)
                 {
-                    // soft naming convention: slot_surfaceType. If there's no _ slot name is equal to surface type name
-                    auto delimiter = materialConfiguration.m_surfaceType.find('_');
+                    // MaterialConfiguration::surfaceType stores the material name assigned in DCC initially
+                    AZStd::string materialName = materialConfiguration.m_surfaceType;
 
-                    AZStd::string slotName, surfaceType;
-
-                    if (delimiter != AZStd::string::npos)
+                    AZStd::string surfaceType = s_defaultSurfaceType;
+                    
+                    // Here we assign the actual engine surface type based on the material name
+                    auto materialToSurfaceIt = materialToSurfaceTypeMap.find(materialName);
+                    if (materialToSurfaceIt != materialToSurfaceTypeMap.end())
                     {
-                        slotName = materialConfiguration.m_surfaceType.substr(0, delimiter);
-                        surfaceType = materialConfiguration.m_surfaceType.substr(delimiter + 1);
-                    }
-                    else
-                    {
-                        slotName = surfaceType = materialConfiguration.m_surfaceType;
+                        surfaceType = materialToSurfaceIt->second;
                     }
 
-                    if (slotName.empty())
+                    outSlots.emplace_back(materialName);
+
+                    // Remove the mat_ prefix since the material library generated from surface types doesn't have it.
+                    if (surfaceType.find("mat_") == 0)
                     {
-                        slotName = AZStd::string::format("Slot %d", slotCounter);
+                        surfaceType = surfaceType.substr(4);
                     }
 
-                    if (surfaceType.empty())
-                    {
-                        surfaceType = "Default";
-                    }
-
-                    outSlots.emplace_back(slotName);
+                    // Save the actual surface type now
                     materialConfiguration.m_surfaceType = surfaceType;
 
                     slotCounter++;
@@ -256,7 +317,7 @@ namespace PhysX
             }
             else
             {
-                pxCookingParams.midphaseDesc.mBVH34Desc.numTrisPerLeaf = meshGroup.GetNumTrisPerLeaf();
+                pxCookingParams.midphaseDesc.mBVH34Desc.numPrimsPerLeaf = meshGroup.GetNumTrisPerLeaf();
                 pxCookingParams.meshWeldTolerance = meshGroup.GetMeshWeldTolerance();
                 pxCookingParams.buildTriangleAdjacencies = meshGroup.GetBuildTriangleAdjacencies();
                 pxCookingParams.suppressTriangleMeshRemapTable = meshGroup.GetSuppressTriangleMeshRemapTable();
@@ -378,9 +439,15 @@ namespace PhysX
             AZStd::string filename = SceneUtil::FileUtilities::CreateOutputFileName(assetName, context.GetOutputDirectory(), MeshAssetHandler::s_assetFileExtension);
 
             bool canStartWritingToFile = !filename.empty() && SceneUtil::FileUtilities::EnsureTargetFolderExists(filename);
-
+            
             if (canStartWritingToFile)
             {
+                const AZ::SceneAPI::Events::ExportProductList& exportProductList = context.GetProductList();
+                const AZ::SceneAPI::Containers::Scene& scene = context.GetScene();
+
+                AZStd::string materialFilename = scene.GetSourceFilename();
+                AzFramework::StringFunc::Path::ReplaceExtension(materialFilename, ".mtl");
+
                 result = SceneEvents::ProcessingResult::Success;
 
                 MeshAssetCookedData cookedData;
@@ -390,7 +457,13 @@ namespace PhysX
                 if (!cookedData.m_isConvexMesh)
                 {
                     cookedData.m_materialsData = materials;
-                    Utils::ResolveMaterialSlotsSoftNamingConvention(cookedData.m_materialsData, cookedData.m_materialSlots);
+
+                    // Read the information about surface type for each material from the .mtl file
+                    AZStd::unordered_map<AZStd::string, AZStd::string> materialToSurfaceTypeMap;
+                    Utils::BuildMaterialToSurfaceTypeMap(materialFilename, materialToSurfaceTypeMap);
+                    
+                    // Assign the surface types into the materials data
+                    Utils::ResolveMaterialSlotsSoftNamingConvention(cookedData.m_materialsData, cookedData.m_materialSlots, materialToSurfaceTypeMap);
                 }
 
                 if (PhysX::Utils::WriteCookedMeshToFile(filename, cookedData))

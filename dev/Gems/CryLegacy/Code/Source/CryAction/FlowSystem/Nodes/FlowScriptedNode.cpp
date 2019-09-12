@@ -54,7 +54,6 @@ namespace
 }
 
 class CFlowDataToScriptDataVisitor
-    : public boost::static_visitor<void>
 {
 public:
     CFlowDataToScriptDataVisitor(IScriptTable* pTable, const char* name)
@@ -101,7 +100,6 @@ private:
 };
 
 class CFlowDataToScriptParamVisitor
-    : public boost::static_visitor<void>
 {
 public:
     CFlowDataToScriptParamVisitor(IScriptSystem* pSS)

@@ -20,44 +20,24 @@ namespace ScriptCanvas
     {
         namespace Logic
         {
-            Any::Any()
+            bool Any::AnyNodeVersionConverter(AZ::SerializeContext& serializeContext, AZ::SerializeContext::DataElementNode& rootElement)
             {
+                if (rootElement.GetVersion() < Version::RemoveInputsContainers)
+                {
+                    rootElement.RemoveElementByName(AZ::Crc32("m_inputs"));
+                }
+
+                return true;
             }
 
             void Any::OnInit()
             {
-                if (m_inputSlots.empty())
-                {
-                    AZStd::vector< const Slot* > slots = GetSlotsByType(ScriptCanvas::SlotType::ExecutionIn);
-                    
-                    for (const Slot* slot : slots)
-                    {
-                        m_inputSlots.emplace_back(slot->GetId());
-                    }
+                AZStd::vector< const Slot* > slots = GetAllSlotsByDescriptor(ScriptCanvas::SlotDescriptors::ExecutionIn());
 
-                    if (m_inputSlots.empty())
-                    {
-                        AddInputSlot();
-                    }
-                    else
-                    {
-                        // Here to deal with old any nodes that didn't have the dynamic
-                        // slot addition.
-                        for (const SlotId& slotId : m_inputSlots)
-                        {
-                            EndpointNotificationBus::MultiHandler::BusConnect({ GetEntityId(), slotId });
-                        }
-                    }
-                }
-                else
+                if (slots.empty())
                 {
-                    for (const SlotId& slotId : m_inputSlots)
-                    {
-                        EndpointNotificationBus::MultiHandler::BusConnect({ GetEntityId(), slotId });
-                    }
+                    AddInputSlot();
                 }
-
-                
             }
             
             void Any::OnInputSignal(const SlotId& slotId)
@@ -66,23 +46,51 @@ namespace ScriptCanvas
                 SignalOutput(outSlotId);
             }
 
-            void Any::OnEndpointConnected(const Endpoint& endpoint)
+            bool Any::IsNodeExtendable() const
             {
-                if (AllInputSlotsFilled())
-                {
-                    AddInputSlot();
-                }
+                return true;
             }
 
-            void Any::OnEndpointDisconnected(const Endpoint& endpoint)
+            int Any::GetNumberOfExtensions() const
             {
-                if (m_inputSlots.size() > 1)
+                return 1;
+            }
+
+            ExtendableSlotConfiguration Any::GetExtensionConfiguration(int extensionIndex) const
+            {
+                ExtendableSlotConfiguration extendableConfiguration;
+
+                extendableConfiguration.m_name = "Add Input";
+                extendableConfiguration.m_tooltip = "Adds a new input to the Any Node";
+
+                // DisplayGroup Taken from GraphCanvas
+                extendableConfiguration.m_displayGroup = "SlotGroup_Execution";
+
+                extendableConfiguration.m_connectionType = ConnectionType::Input;
+                extendableConfiguration.m_identifier = GetInputExtensionId();
+
+                return extendableConfiguration;
+            }
+
+            SlotId Any::HandleExtension(AZ::Crc32 extensionId)
+            {
+                if (extensionId == GetInputExtensionId())
                 {
-                    if (!AllInputSlotsFilled())
-                    {
-                        CleanUpInputSlots();
-                    }
+                    return AddInputSlot();
                 }
+
+                return SlotId();
+            }
+
+            bool Any::CanDeleteSlot(const SlotId& slotId) const
+            {
+                auto slots = GetAllSlotsByDescriptor(SlotDescriptors::ExecutionIn());
+                return slots.size() > 1;
+            }
+
+            void Any::OnSlotRemoved(const SlotId& slotId)
+            {
+                FixupStateNames();
             }
 
             AZStd::string Any::GenerateInputName(int counter)
@@ -90,86 +98,21 @@ namespace ScriptCanvas
                 return AZStd::string::format("Input %i", counter);
             }
 
-            bool Any::AllInputSlotsFilled() const
+            SlotId Any::AddInputSlot()
             {
-                bool slotsFilled = true;
+                auto inputSlots = GetAllSlotsByDescriptor(SlotDescriptors::ExecutionIn());
+                int inputCount = static_cast<int>(inputSlots.size());
 
-                for (const SlotId& slotId : m_inputSlots)
-                {
-                    if (!IsConnected(slotId))
-                    {
-                        slotsFilled = false;
-                        break;
-                    }
-                }
-
-                return slotsFilled;
-            }
-
-            void Any::AddInputSlot()
-            {
-                int inputCount = static_cast<int>(m_inputSlots.size());
-
-                SlotConfiguration  slotConfiguration;
-
-                slotConfiguration.m_name = GenerateInputName(inputCount);
-                slotConfiguration.m_addUniqueSlotByNameAndType = false;
-                slotConfiguration.m_slotType = SlotType::ExecutionIn;
-
-                SlotId inputSlot = AddSlot(slotConfiguration);
-
-                auto inputIter = AZStd::find(m_inputSlots.begin(), m_inputSlots.end(), inputSlot);
-
-                if (inputIter == m_inputSlots.end())
-                {
-                    EndpointNotificationBus::MultiHandler::BusConnect({ GetEntityId(), inputSlot });
-                    m_inputSlots.emplace_back(inputSlot);
-                }
-            }
-
-            void Any::CleanUpInputSlots()
-            {
-                if (m_inputSlots.size() <= 1)
-                {
-                    return;
-                }
-
-                bool removedSlot = false;
-                bool removeEmptySlot = false;
-
-                for (int counter = static_cast<int>(m_inputSlots.size()) - 1; counter >= 0; --counter)
-                {
-                    SlotId slotId = m_inputSlots[counter];
-
-                    if (!IsConnected(slotId))
-                    {
-                        if (removeEmptySlot)
-                        {
-                            EndpointNotificationBus::MultiHandler::BusDisconnect({ GetEntityId(), slotId });
-                            RemoveSlot(slotId);
-
-                            m_inputSlots.erase(m_inputSlots.begin() + counter);
-
-                            removedSlot = true;
-                        }
-                        else
-                        {
-                            removeEmptySlot = true;
-                        }
-                    }
-                }
-
-                if (removedSlot)
-                {
-                    FixupStateNames();
-                }
+                ExecutionSlotConfiguration  slotConfiguration(GenerateInputName(inputCount), ConnectionType::Input);
+                return AddSlot(slotConfiguration);
             }
 
             void Any::FixupStateNames()
             {
-                for (int i = 0; i < m_inputSlots.size(); ++i)
+                auto inputSlots = GetAllSlotsByDescriptor(SlotDescriptors::ExecutionIn());
+                for (int i = 0; i < inputSlots.size(); ++i)
                 {
-                    Slot* slot = GetSlot(m_inputSlots[i]);
+                    Slot* slot = GetSlot(inputSlots[i]->GetId());
 
                     if (slot)
                     {

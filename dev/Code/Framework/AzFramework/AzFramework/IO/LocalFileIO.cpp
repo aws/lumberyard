@@ -11,27 +11,13 @@
 */
 #include <AzFramework/IO/LocalFileIO.h>
 #include <sys/stat.h>
-#include <AzCore/std/functional.h>
 #include <AzCore/IO/SystemFile.h>
 #include <AzCore/IO/IOUtils.h>
 #include <AzCore/Casting/numeric_cast.h>
 #include <AzCore/Casting/lossy_cast.h>
+#include <AzCore/std/functional.h>
 #include <AzCore/std/string/conversions.h>
 #include <cctype>
-
-#if defined(AZ_RESTRICTED_PLATFORM)
-    #if defined(AZ_PLATFORM_XENIA)
-        #include "Xenia/LocalFileIO_cpp_xenia.inl"
-    #elif defined(AZ_PLATFORM_PROVO)
-        #include "Provo/LocalFileIO_cpp_provo.inl"
-    #endif
-#elif defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_WINDOWS_X64)
-#include "LocalFileIO_win.inl"
-#elif defined(AZ_PLATFORM_ANDROID)
-#include "LocalFileIO_android.inl"
-#elif defined(AZ_PLATFORM_APPLE_IOS) || defined(AZ_PLATFORM_APPLE_TV) || defined(AZ_PLATFORM_APPLE_OSX) || defined(AZ_PLATFORM_LINUX)
-#include "LocalFileIO_posix.inl"
-#endif
 
 namespace AZ
 {
@@ -56,9 +42,6 @@ namespace AZ
             AZ_Assert(m_openFiles.empty(), "Trying to shutdown filing system with files still open");
         }
 
-        // Android uses PAKs, which SystemFile doesn't support yet
-        // Android implementation is in LocalFileIO_android.inl
-#if !defined(AZ_PLATFORM_ANDROID)
         Result LocalFileIO::Open(const char* filePath, OpenMode mode, HandleType& fileHandle)
         {
             char resolvedPath[AZ_MAX_PATH_LEN];
@@ -123,15 +106,6 @@ namespace AZ
 
         Result LocalFileIO::Read(HandleType fileHandle, void* buffer, AZ::u64 size, bool failOnFewerThanSizeBytesRead, AZ::u64* bytesRead)
         {
-#if defined(AZ_DEBUG_BUILD)
-            // detect portability issues in debug (only)
-            // so that the static_cast below doesn't trap us.
-            if ((size > static_cast<AZ::u64>(UINT32_MAX)) && (sizeof(size_t) < 8))
-            {
-                // file read too large for platform!
-                return ResultCode::Error;
-            }
-#endif
             auto filePointer = GetFilePointerFromHandle(fileHandle);
             if (!filePointer)
             {
@@ -161,16 +135,6 @@ namespace AZ
 
         Result LocalFileIO::Write(HandleType fileHandle, const void* buffer, AZ::u64 size, AZ::u64* bytesWritten)
         {
-#if defined(AZ_DEBUG_BUILD)
-            // detect portability issues in debug (only)
-            // so that the static_cast below doesn't trap us.
-            if ((size > static_cast<AZ::u64>(UINT32_MAX)) && (sizeof(size_t) < 8))
-            {
-                // file read too large for platform!
-                return ResultCode::Error;
-            }
-#endif
-
             auto filePointer = GetFilePointerFromHandle(fileHandle);
             if (!filePointer)
             {
@@ -317,7 +281,6 @@ namespace AZ
 
             return SystemFile::Exists(resolvedPath);
         }
-#endif
 
         void LocalFileIO::CheckInvalidWrite(const char* path)
         {
@@ -368,37 +331,16 @@ namespace AZ
             return ResultCode::Success;
         }
 
-#if defined(AZ_PLATFORM_ANDROID)
-        OSHandleType LocalFileIO::GetFilePointerFromHandle(HandleType fileHandle)
-#else
         SystemFile* LocalFileIO::GetFilePointerFromHandle(HandleType fileHandle)
-#endif
         {
             AZStd::lock_guard<AZStd::recursive_mutex> lock(m_openFileGuard);
             auto openFileIterator = m_openFiles.find(fileHandle);
             if (openFileIterator != m_openFiles.end())
             {
-                FileDescriptor& file = openFileIterator->second;
-#if defined(AZ_PLATFORM_ANDROID)
-                return file.m_handle;
-#else
+                SystemFile& file = openFileIterator->second;
                 return &file;
-#endif
             }
             return nullptr;
-        }
-
-        const FileDescriptor* LocalFileIO::GetFileDescriptorFromHandle(HandleType fileHandle)
-        {
-            AZStd::lock_guard<AZStd::recursive_mutex> lock(m_openFileGuard);
-            auto openFileIterator = m_openFiles.find(fileHandle);
-            const FileDescriptor* file = nullptr;
-            if (openFileIterator != m_openFiles.end())
-            {
-                file = &(openFileIterator->second);
-            }
-            AZ_Assert(file != nullptr, "Can't find valid file descriptor from handle");
-            return file;
         }
 
         HandleType LocalFileIO::GetNextHandle()
@@ -466,7 +408,7 @@ namespace AZ
             return DestroyPath_Recurse(this, resolvedPath);
         }
 
-        static void toUnixSlashes(char *path, AZ::u64 size)
+        static void ToUnixSlashes(char *path, AZ::u64 size)
         {
             for (AZ::u64 i = 0; i < size && path[i] != '\0'; i++)
             {
@@ -497,7 +439,7 @@ namespace AZ
                         LowerIfBeginsWith(resolvedPath, resolvedPathSize, GetAlias("@root@"));
                     }
 
-                    toUnixSlashes(resolvedPath, resolvedPathSize);
+                    ToUnixSlashes(resolvedPath, resolvedPathSize);
                     return true;
                 }
                 else
@@ -538,7 +480,7 @@ namespace AZ
 
             if (ResolveAliases(rootedPath, resolvedPath, resolvedPathSize))
             {
-                toUnixSlashes(resolvedPath, resolvedPathSize);
+                ToUnixSlashes(resolvedPath, resolvedPathSize);
                 return true;
             }
 
@@ -705,7 +647,6 @@ namespace AZ
             return false;
         }
 
-#if !defined(AZ_PLATFORM_ANDROID)
         bool LocalFileIO::GetFilename(HandleType fileHandle, char* filename, AZ::u64 filenameSize) const
         {
             AZStd::lock_guard<AZStd::recursive_mutex> lock(m_openFileGuard);
@@ -717,7 +658,6 @@ namespace AZ
             }
             return false;
         }
-#endif // ANDROID
 
         bool LocalFileIO::LowerIfBeginsWith(char* inOutBuffer, AZ::u64 bufferLen, const char* alias) const
         {

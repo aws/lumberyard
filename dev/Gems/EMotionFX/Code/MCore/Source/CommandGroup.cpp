@@ -10,167 +10,130 @@
 *
 */
 
-// include the required headers
 #include "CommandGroup.h"
 
 
 namespace MCore
 {
-    // default constructor
     CommandGroup::CommandGroup()
     {
-        mCommands.SetMemoryCategory(MCore::MCORE_MEMCATEGORY_COMMANDSYSTEM);
         ReserveCommands(5);
         SetContinueAfterError(true);
         SetReturnFalseAfterError(false);
     }
 
-
-    // extended constructor
-    CommandGroup::CommandGroup(const AZStd::string& groupName, uint32 numCommandsToReserve)
+    CommandGroup::CommandGroup(const AZStd::string& groupName, size_t numCommandsToReserve)
     {
-        mCommands.SetMemoryCategory(MCore::MCORE_MEMCATEGORY_COMMANDSYSTEM);
         SetGroupName(groupName);
         ReserveCommands(numCommandsToReserve);
         SetContinueAfterError(true);
         SetAddToHistoryAfterError(true);
     }
 
-
-    // the destructor
     CommandGroup::~CommandGroup()
     {
-        RemoveAllCommands();
+        RemoveAllCommands(true);
     }
 
-
-    // reserve memory
-    void CommandGroup::ReserveCommands(uint32 numToReserve)
+    void CommandGroup::ReserveCommands(size_t numToReserve)
     {
         if (numToReserve > 0)
         {
-            mCommands.Reserve(numToReserve);
+            mCommands.reserve(numToReserve);
         }
     }
 
-
-    // add a command string to the group
     void CommandGroup::AddCommandString(const char* commandString)
     {
-        mCommands.AddEmpty();
-        mCommands.GetLast().mCommandString = commandString;
+        mCommands.emplace_back(CommandEntry());
+        mCommands.back().mCommandString = commandString;
     }
 
-
-    // add a command string to the group
     void CommandGroup::AddCommandString(const AZStd::string& commandString)
     {
-        mCommands.AddEmpty();
-        mCommands.GetLast().mCommandString = commandString;
+        mCommands.emplace_back(CommandEntry());
+        mCommands.back().mCommandString = commandString;
     }
 
+    void CommandGroup::AddCommand(MCore::Command* command)
+    {
+        mCommands.emplace_back(CommandEntry());
+        mCommands.back().mCommand = command;
+    }
 
-    // get the command string for a given command
-    const char* CommandGroup::GetCommandString(uint32 index) const
+    const char* CommandGroup::GetCommandString(size_t index) const
     {
         return mCommands[index].mCommandString.c_str();
     }
 
-
-    // get the command string for a given command
-    const AZStd::string& CommandGroup::GetCommandStringAsString(uint32 index)   const
+    const AZStd::string& CommandGroup::GetCommandStringAsString(size_t index)   const
     {
         return mCommands[index].mCommandString;
     }
 
-
-    // get a given command
-    Command* CommandGroup::GetCommand(uint32 index)
+    Command* CommandGroup::GetCommand(size_t index)
     {
         return mCommands[index].mCommand;
     }
 
-
-    // get the parameter list for a given command
-    const CommandLine& CommandGroup::GetParameters(uint32 index) const
+    const CommandLine& CommandGroup::GetParameters(size_t index) const
     {
         return mCommands[index].mCommandLine;
     }
 
-
-    // get the name of the group
     const char* CommandGroup::GetGroupName() const
     {
         return mGroupName.c_str();
     }
 
-
-    // get the name of the group
     const AZStd::string& CommandGroup::GetGroupNameString() const
     {
         return mGroupName;
     }
 
-
-    // set the name of the group
     void CommandGroup::SetGroupName(const char* groupName)
     {
         mGroupName = groupName;
     }
 
-
-    // set the name of the group
     void CommandGroup::SetGroupName(const AZStd::string& groupName)
     {
         mGroupName = groupName;
     }
 
-
-    // set the command string for a given command
-    void CommandGroup::SetCommandString(uint32 index, const char* commandString)
+    void CommandGroup::SetCommandString(size_t index, const char* commandString)
     {
         mCommands[index].mCommandString = commandString;
     }
 
-
-    // set the parameters for a given command
-    void CommandGroup::SetParameters(uint32 index, const CommandLine& params)
+    void CommandGroup::SetParameters(size_t index, const CommandLine& params)
     {
         mCommands[index].mCommandLine = params;
     }
 
-
-    // set the command pointer for a given command
-    void CommandGroup::SetCommand(uint32 index, Command* command)
+    void CommandGroup::SetCommand(size_t index, Command* command)
     {
         mCommands[index].mCommand = command;
     }
 
-
-    // get the number of commands
-    uint32 CommandGroup::GetNumCommands() const
+    size_t CommandGroup::GetNumCommands() const
     {
-        return mCommands.GetLength();
+        return mCommands.size();
     }
 
-
-    // remove all commands from the group
     void CommandGroup::RemoveAllCommands(bool delFromMem)
     {
         if (delFromMem)
         {
-            const uint32 numCommands = mCommands.GetLength();
-            for (uint32 i = 0; i < numCommands; ++i)
+            for (CommandEntry& commandEntry : mCommands)
             {
-                delete mCommands[i].mCommand;
+                delete commandEntry.mCommand;
             }
         }
 
-        mCommands.Clear();
+        mCommands.clear();
     }
 
-
-    // clone the command group
     CommandGroup* CommandGroup::Clone() const
     {
         CommandGroup* newGroup          = new CommandGroup(mGroupName, 0);
@@ -181,13 +144,11 @@ namespace MCore
         return newGroup;
     }
 
-
     // continue execution of the remaining commands after one fails to execute?
     void CommandGroup::SetContinueAfterError(bool continueAfter)
     {
         mContinueAfterError = continueAfter;
     }
-
 
     // add group to the history even when one internal command failed to execute?
     void CommandGroup::SetAddToHistoryAfterError(bool addAfterError)
@@ -195,13 +156,11 @@ namespace MCore
         mHistoryAfterError = addAfterError;
     }
 
-
     // check to see if we continue executing internal commands even if one failed
     bool CommandGroup::GetContinueAfterError() const
     {
         return mContinueAfterError;
     }
-
 
     // check if we add this group to the history, even if one internal command failed
     bool CommandGroup::GetAddToHistoryAfterError() const
@@ -209,13 +168,11 @@ namespace MCore
         return mHistoryAfterError;
     }
 
-
-    // set if the command group shall return false after an error occured or not
+    // set if the command group shall return false after an error occurred or not
     void CommandGroup::SetReturnFalseAfterError(bool returnAfterError)
     {
         mReturnFalseAfterError = returnAfterError;
     }
-
 
     // returns true in case the group returns false when executing it
     bool CommandGroup::GetReturnFalseAfterError() const

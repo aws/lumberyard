@@ -35,8 +35,9 @@
 #define PLATFORM_IMPL_H_SECTION_CRYLOWLATENCYSLEEP 2
 #define PLATFORM_IMPL_H_SECTION_CRYGETFILEATTRIBUTES 3
 #define PLATFORM_IMPL_H_SECTION_CRYSETFILEATTRIBUTES 4
-#define PLATFORM_IMPL_H_SECTION_CRY_SYSTEM_FUNCTIONS 5
-#define PLATFORM_IMPL_H_SECTION_VIRTUAL_ALLOCATORS 6
+#define PLATFORM_IMPL_H_SECTION_CRY_FILE_ATTRIBUTE_STUBS 5
+#define PLATFORM_IMPL_H_SECTION_CRY_SYSTEM_FUNCTIONS 6
+#define PLATFORM_IMPL_H_SECTION_VIRTUAL_ALLOCATORS 7
 #endif
 
 #if !defined(AZ_MONOLITHIC_BUILD)
@@ -526,23 +527,14 @@ threadID CryGetCurrentThreadId()
 
 #endif // _WIN32
 
-#if defined(AZ_RESTRICTED_PLATFORM) && defined(AZ_PLATFORM_PROVO)
-
-//////////////////////////////////////////////////////////////////////////
-uint32 CryGetFileAttributes(const char* lpFileName)
-{
-    assert(0);
-    return -1;
-}
-
-
-//////////////////////////////////////////////////////////////////////////
-bool CrySetFileAttributes(const char* lpFileName, uint32 dwFileAttributes)
-{
-    assert(0);
-    return false;
-}
-#endif // defined(AZ_RESTRICTED_PLATFORM) && defined(AZ_PLATFORM_PROVO)
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION PLATFORM_IMPL_H_SECTION_CRY_FILE_ATTRIBUTE_STUBS
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/platform_impl_h_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/platform_impl_h_provo.inl"
+    #endif
+#endif
 
 #endif //AZ_MONOLITHIC_BUILD
 

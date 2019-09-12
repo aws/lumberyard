@@ -9,7 +9,6 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#ifndef AZ_UNITY_BUILD
 
 #include <AzCore/Math/Uuid.h>
 #include <AzCore/Math/Sfmt.h>
@@ -357,7 +356,7 @@ namespace AZ
         return CreateData(&mergedData, AZ_ARRAY_SIZE(mergedData));
     }
 
-#if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_APPLE_OSX)
+#if AZ_TRAIT_UUID_SUPPORTS_GUID_CONVERSION
     //=========================================================================
     // Uuid
     // [4/10/2012]
@@ -388,5 +387,3 @@ namespace AZ
 
 #endif // AZ_PLATFORM_WINDOWS
 } // namespace AZ
-
-#endif // #ifndef AZ_UNITY_BUILD

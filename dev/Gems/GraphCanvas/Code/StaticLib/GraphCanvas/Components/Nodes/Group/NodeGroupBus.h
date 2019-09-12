@@ -15,6 +15,7 @@
 
 #include <GraphCanvas/Components/Nodes/NodeConfiguration.h>
 #include <GraphCanvas/Types/Endpoint.h>
+#include <GraphCanvas/Utils/StateControllers/StateController.h>
 
 namespace GraphCanvas
 {
@@ -72,8 +73,7 @@ namespace GraphCanvas
     public:
         static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::ById;
         using BusIdType = AZ::EntityId;
-
-        virtual void OnColorChanged(const AZ::Color& color) {}
+        
         virtual void OnCollapsed(const NodeId& collapsedNodeId) {}
     };
 

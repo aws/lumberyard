@@ -15,6 +15,7 @@
 #include <GridMate/Session/Session.h>
 #include <GridMate/Session/LANSessionServiceBus.h>
 #include <GridMate/Session/LANSessionServiceTypes.h>
+#include <GridMate/GridMateService.h>
 
 namespace GridMate
 {

@@ -67,33 +67,16 @@ namespace EMotionFX
         layout->setAlignment(Qt::AlignTop);
         result->setLayout(layout);
 
-        QHBoxLayout* copyFromLayout = new QHBoxLayout();
-        copyFromLayout->setMargin(0);
-
-        QPushButton* copyFromHitDetectionButton = new QPushButton("Copy from hit detection", result);
-        connect(copyFromHitDetectionButton, &QPushButton::clicked, this, [=]
+        QLayout* copyFromLayout = ColliderHelpers::CreateCopyFromButtonLayout(this, PhysicsSetup::ColliderConfigType::Cloth,
+            [=](PhysicsSetup::ColliderConfigType copyFrom, PhysicsSetup::ColliderConfigType copyTo)
             {
                 SkeletonModel* skeletonModel = nullptr;
                 SkeletonOutlinerRequestBus::BroadcastResult(skeletonModel, &SkeletonOutlinerRequests::GetModel);
                 if (skeletonModel)
                 {
-                    ColliderHelpers::CopyColliders(skeletonModel->GetModelIndicesForFullSkeleton(), PhysicsSetup::HitDetection, PhysicsSetup::Cloth);
+                    ColliderHelpers::CopyColliders(skeletonModel->GetModelIndicesForFullSkeleton(), copyFrom, copyTo);
                 }
             });
-        copyFromLayout->addWidget(copyFromHitDetectionButton);
-
-        QPushButton* copyFromRagdollButton = new QPushButton("Copy from ragdoll", result);
-        connect(copyFromRagdollButton, &QPushButton::clicked, this, [=]
-            {
-                SkeletonModel* skeletonModel = nullptr;
-                SkeletonOutlinerRequestBus::BroadcastResult(skeletonModel, &SkeletonOutlinerRequests::GetModel);
-                if (skeletonModel)
-                {
-                    ColliderHelpers::CopyColliders(skeletonModel->GetModelIndicesForFullSkeleton(), PhysicsSetup::Ragdoll, PhysicsSetup::Cloth);
-                }
-            });
-        copyFromLayout->addWidget(copyFromRagdollButton);
-
         layout->addLayout(copyFromLayout);
 
         QLabel* noSelectionLabel = new QLabel("Select a joint from the Skeleton Outliner", result);
@@ -114,17 +97,17 @@ namespace EMotionFX
                 AZ::ComponentApplicationBus::BroadcastResult(serializeContext, &AZ::ComponentApplicationBus::Events::GetSerializeContext);
                 AZ_Error("EMotionFX", serializeContext, "Can't get serialize context from component application.");
 
-                m_collidersWidget->Update(nodeConfig->m_shapes, serializeContext);
+                m_collidersWidget->Update(actor, joint, PhysicsSetup::ColliderConfigType::Cloth, nodeConfig->m_shapes, serializeContext);
                 m_collidersWidget->show();
             }
             else
             {
-                m_collidersWidget->Update(Physics::ShapeConfigurationList(), nullptr);
+                m_collidersWidget->Reset();
             }
         }
         else
         {
-            m_collidersWidget->Update(Physics::ShapeConfigurationList(), nullptr);
+            m_collidersWidget->Reset();
         }
     }
 

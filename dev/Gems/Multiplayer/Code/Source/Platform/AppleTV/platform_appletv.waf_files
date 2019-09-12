@@ -1,0 +1,16 @@
+{
+  "auto": {
+    "Source/BehaviorContext/Platform/AppleTV": [
+      "../Common/Multiplayer/BehaviorContext/GridSystemContext_Unimplemented.cpp"
+    ],
+    "Source/MultiplayerLobbyServiceWrapper/Platform/AppleTV": [
+      "../Common/Multiplayer/MultiplayerLobbyComponent_Unimplemented.cpp"
+    ],
+    "Platform/AppleTV": [
+      "Multiplayer_GridMateServiceWrapper_Platform.h",
+      "Multiplayer_GridMateServiceWrapper_AppleTV.h",
+      "Multiplayer_Traits_Platform.h",
+      "Multiplayer_Traits_AppleTV.h"
+    ]
+  }
+}

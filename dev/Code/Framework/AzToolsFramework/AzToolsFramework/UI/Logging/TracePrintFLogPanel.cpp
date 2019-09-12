@@ -14,7 +14,9 @@
 #include "TracePrintFLogPanel.h"
 
 #include <QAction>
+AZ_PUSH_DISABLE_WARNING(4251, "-Wunknown-warning-option") // 4251: 'QDateTime::d': class 'QSharedDataPointer<QDateTimePrivate>' needs to have dll-interface to be used by clients of class 'QDateTime'
 #include <QDateTime>
+AZ_POP_DISABLE_WARNING
 #include <QTimer>
 #include <QTableView>
 #include <AzCore/std/parallel/lock.h>

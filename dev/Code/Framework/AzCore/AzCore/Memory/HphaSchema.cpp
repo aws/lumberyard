@@ -9,7 +9,6 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#ifndef AZ_UNITY_BUILD
 
 #include <AzCore/PlatformIncl.h>
 #include <AzCore/Memory/HphaSchema.h>
@@ -328,14 +327,7 @@ namespace AZ {
             block_header* mPrev;
             // 16 bits of tag, 46 bits of size, 2 bits of flags (used or not)
             uint64_t mSizeAndFlags;
-#if defined(_MSC_VER)
-#pragma warning(push)
-#pragma warning (disable : 4200) // zero sized array
-#endif
-            unsigned char _padding[DEFAULT_ALIGNMENT <= sizeof(block_header*) + sizeof(uint64_t) ? 0 : DEFAULT_ALIGNMENT - sizeof(block_header*) - sizeof(uint64_t)];
-#if defined(_MSC_VER)
-#pragma warning(pop)
-#endif
+
         public:
             typedef block_header* block_ptr;
             size_t size() const { return mSizeAndFlags & ~(BL_FLAG_MASK|BL_TAG_MASK); }
@@ -361,7 +353,6 @@ namespace AZ {
             }
             void size(size_t size)
             {
-                (void)_padding;
                 HPPA_ASSERT((size & BL_FLAG_MASK) == 0);
                 HPPA_ASSERT((size & BL_TAG_MASK) == 0);
                 mSizeAndFlags = (mSizeAndFlags & BL_TAG_MASK) | (mSizeAndFlags & BL_FLAG_MASK) | size;
@@ -1043,20 +1034,14 @@ namespace AZ {
     //////////////////////////////////////////////////////////////////////////
     // Prevent SystemAllocator from growing in small chunks
     HpAllocator::HpAllocator(HphaSchema::Descriptor desc)
-#if AZ_TRAIT_OS_ALLOW_DIRECT_ALLOCATIONS
         // We will use the os for direct allocations if memoryBlock == NULL
         // If m_systemChunkSize is specified, use that size for allocating tree blocks from the OS
         // m_treePageAlignment should be OS_VIRTUAL_PAGE_SIZE in all cases with this trait as we work 
         // with virtual memory addresses when the tree grows and we cannot specify an alignment in all cases
         : m_treePageSize(desc.m_fixedMemoryBlock != NULL ? desc.m_pageSize :
             desc.m_systemChunkSize != 0 ? desc.m_systemChunkSize : OS_VIRTUAL_PAGE_SIZE)
-        , m_treePageAlignment(OS_VIRTUAL_PAGE_SIZE)
-        , m_poolPageSize(desc.m_fixedMemoryBlock != NULL ? desc.m_poolPageSize : OS_VIRTUAL_PAGE_SIZE)
-#else
-        : m_treePageSize(desc.m_pageSize)
         , m_treePageAlignment(desc.m_pageSize)
-        , m_poolPageSize(desc.m_poolPageSize)
-#endif
+        , m_poolPageSize(desc.m_fixedMemoryBlock != NULL ? desc.m_poolPageSize : OS_VIRTUAL_PAGE_SIZE)
         , m_subAllocator(desc.m_subAllocator)
     {
 #ifdef DEBUG_ALLOCATOR
@@ -1135,11 +1120,7 @@ namespace AZ {
 #endif // AZ_TRAIT_OS_HAS_CRITICAL_SECTION_SPIN_COUNT
 
         // Use the global AZ random generator.
-#ifdef AZ_OS32
-        mMarker = AZ::Sfmt::GetInstance().Rand32();
-#else
         mMarker = AZ::Sfmt::GetInstance().Rand64();
-#endif
 
         (void)_padding;
     }
@@ -2158,18 +2139,8 @@ namespace AZ {
         {
             return m_subAllocator->Allocate(size, align, 0, "HphaSchema sub allocation", __FILE__, __LINE__);
         }
-#if AZ_TRAIT_OS_ALLOW_DIRECT_ALLOCATIONS
-#   if AZ_TRAIT_OS_ENFORCE_STRICT_VIRTUAL_ALLOC_ALIGNMENT
         AZ_Assert(align % OS_VIRTUAL_PAGE_SIZE == 0, "Invalid allocation/page alignment %d should be a multiple of %d!", size, OS_VIRTUAL_PAGE_SIZE);
         return AZ_OS_MALLOC(size, align);
-#   else
-        (void)align;
-        size = AZ::SizeAlignUp(size, OS_VIRTUAL_PAGE_SIZE);
-        return VirtualAlloc(NULL, size, MEM_COMMIT, PAGE_READWRITE);
-#   endif
-#else
-        return memalign(align, size);
-#endif
     }
 
     //=========================================================================
@@ -2184,23 +2155,7 @@ namespace AZ {
             m_subAllocator->DeAllocate(ptr);
             return;
         }
-#if defined(AZ_PLATFORM_WINDOWS)
-        BOOL ret = VirtualFree(ptr, 0, MEM_RELEASE);
-        (void)ret;
-        AZ_Assert(ret, "Failed to free memory!");
-#define AZ_RESTRICTED_SECTION_IMPLEMENTED
-#elif defined(AZ_RESTRICTED_PLATFORM)
-    #if defined(AZ_PLATFORM_XENIA)
-        #include "Xenia/HphaSchema_cpp_xenia.inl"
-    #elif defined(AZ_PLATFORM_PROVO)
-        #include "Provo/HphaSchema_cpp_provo.inl"
-    #endif
-#endif
-#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
-#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
-#else
-        ::free(ptr);
-#endif
+        AZ_OS_FREE(ptr);
     }
 
 #ifdef DEBUG_ALLOCATOR
@@ -2209,7 +2164,7 @@ namespace AZ {
     {
         AZ::Debug::SymbolStorage::StackLine stackLines[MAX_CALLSTACK_DEPTH];
         AZ::Debug::SymbolStorage::DecodeFrames(mCallStack, MAX_CALLSTACK_DEPTH, stackLines);
-#ifdef AZ_TRAIT_COMPILER_USE_OUTPUT_DEBUG_STRING
+#if AZ_TRAIT_COMPILER_USE_OUTPUT_DEBUG_STRING
         for (int i = 0; i < MAX_CALLSTACK_DEPTH; ++i)
         {
             OutputDebugString(stackLines[i]);
@@ -2382,9 +2337,7 @@ namespace AZ {
     //=========================================================================
     HphaSchema::HphaSchema(const Descriptor& desc)
     {
-#if defined(AZ_OS64)
-        (void)m_pad;
-#endif // AZ_OS64
+        (void)m_pad; 
         m_capacity = 0;
 
         m_desc = desc;
@@ -2552,5 +2505,3 @@ namespace AZ {
         m_allocator->purge();
     }
 } // namspace AZ
-
-#endif // #ifndef AZ_UNITY_BUILD

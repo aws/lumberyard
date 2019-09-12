@@ -494,7 +494,10 @@ namespace EMotionFX
 
             if (numPasses >= s_maxNumPasses)
             {
-                AZ_Assert(false, "Breaking out of state transition loop. We kept transitioning for %d times in a row already.", s_maxNumPasses);
+                AZ_Warning("EMotionFX", false, "%d state switches happened within a single frame. "
+                    "This either means that the time delta of the update is too large or the blend times for several transitions are short and conditions are all set to trigger. "
+                    "Please check the anim graph for transitions with small blend times and why they could transit so fastly or why the time delta is significantly bigger than the blend times. "
+                    "Alternatively, you can increase the number of allowed passes within a frame by changing s_maxNumPasses (not recommended).", s_maxNumPasses);
                 break;
             }
             numPasses++;
@@ -540,7 +543,7 @@ namespace EMotionFX
                         }
                         else
                         {
-                            const AnimGraphNodeData* masterUniqueData = sourceState->FindUniqueNodeData(animGraphInstance);
+                            // const AnimGraphNodeData* masterUniqueData = sourceState->FindUniqueNodeData(animGraphInstance);
                             const AnimGraphNodeData* servantUniqueData = targetState->FindUniqueNodeData(animGraphInstance);
 
                             // Interpolate the in-between factor from the previous iteration with the interpolated factor from the given transition.
@@ -564,6 +567,8 @@ namespace EMotionFX
 
     void AnimGraphStateMachine::UpdateExitStateReachedFlag(AnimGraphInstance* animGraphInstance, UniqueData* uniqueData)
     {
+        AZ_UNUSED(animGraphInstance);
+
         // TODO: Should we only check the most recent transition on the stack or does it count already when any of the currently active transitions is blending to a exit state?
         const AZStd::vector<AnimGraphNode*>& activeStates = uniqueData->GetActiveStates();
         for (const AnimGraphNode* activeState : activeStates)

@@ -21,13 +21,6 @@
 
 namespace MCore
 {
-    // Specifies the folder separator slash type used on the different supported platforms.
-#if defined(MCORE_PLATFORM_POSIX)
-    const char FileSystem::mFolderSeparatorChar = '/';
-#else
-    const char FileSystem::mFolderSeparatorChar = '\\';
-#endif
-
     // The folder path used to keep a backup in SaveToFileSecured.
     StaticString FileSystem::mSecureSavePath;
 

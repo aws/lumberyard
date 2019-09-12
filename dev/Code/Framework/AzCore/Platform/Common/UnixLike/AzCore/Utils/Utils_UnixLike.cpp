@@ -10,6 +10,8 @@
 *
 */
 
+#include <AzCore/Utils/Utils.h>
+
 #include <stdlib.h>
 
 namespace AZ

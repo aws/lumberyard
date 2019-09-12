@@ -268,10 +268,10 @@
 #include <Engines/EnginesAPI.h> // For LyzardSDK
 
 #if defined(AZ_PLATFORM_WINDOWS)
-#include <AzFramework/API/ApplicationAPI_win.h>
+#include <AzFramework/API/ApplicationAPI_Platform.h>
 #endif
 
-#ifdef AZ_PLATFORM_APPLE
+#if AZ_TRAIT_OS_PLATFORM_APPLE
 #include "WindowObserver_mac.h"
 #endif
 
@@ -427,16 +427,24 @@ namespace
         return result;
     }
 
-    void PyOpenLevelNoPrompt(const char* pLevelName)
+    bool PyOpenLevelNoPrompt(const char* pLevelName)
     {
         GetIEditor()->GetDocument()->SetModifiedFlag(false);
-        PyOpenLevel(pLevelName);
+        return PyOpenLevel(pLevelName);
     }
 
     int PyCreateLevel(const char* levelName, int resolution, int unitSize, bool bUseTerrain)
     {
         QString qualifiedName;
-        return CCryEditApp::instance()->CreateLevel(levelName, resolution, unitSize, bUseTerrain, qualifiedName);
+        return CCryEditApp::instance()->CreateLevel(levelName, resolution, unitSize, bUseTerrain, qualifiedName,
+                                                    CCryEditApp::TerrainTextureExportSettings(CCryEditApp::TerrainTextureExportTechnique::PromptUser));
+    }
+
+    int PyCreateLevelNoPrompt(const char* levelName, int heightmapResolution, int heightmapUnitSize, int terrainExportTextureSize, bool useTerrain)
+    {
+        QString qualifiedName;
+        CCryEditApp::TerrainTextureExportSettings exportSettings(CCryEditApp::TerrainTextureExportTechnique::UseDefault, terrainExportTextureSize);
+        return CCryEditApp::instance()->CreateLevel(levelName, heightmapResolution, heightmapUnitSize, useTerrain, qualifiedName, exportSettings);
     }
 
     QString PyGetCurrentLevelName()
@@ -508,6 +516,9 @@ REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(PyOpenLevelNoPrompt, general, open_level_no
 REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(PyCreateLevel, general, create_level,
     "Creates a level with the parameters of 'levelName', 'resolution', 'unitSize' and 'bUseTerrain'.",
     "general.create_level(str levelName, int resolution, int unitSize, bool useTerrain)");
+REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(PyCreateLevelNoPrompt, general, create_level_no_prompt,
+    "Creates a level named 'levelName' with the given terrain settings.",
+    "general.create_level(str levelName, int heightmapResolution, int heightmapUnitSize, int terrainTextureExportSize, bool useTerrain)");
 REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(PyGetGameFolder, general, get_game_folder,
     "Gets the path to the Game folder of current project.",
     "general.get_game_folder()");
@@ -673,7 +684,7 @@ void CCryEditApp::RegisterActionHandlers()
     ON_COMMAND(ID_TERRAIN_TEXTURE_EXPORT, TerrainTextureExport)
     ON_COMMAND(ID_TERRAIN_REFINETERRAINTEXTURETILES, RefineTerrainTextureTiles)
     ON_COMMAND(ID_GENERATORS_TEXTURE, ToolTexture)
-    ON_COMMAND(ID_FILE_GENERATETERRAINTEXTURE, GenerateTerrainTexture)
+    ON_COMMAND(ID_FILE_GENERATETERRAINTEXTURE, GenerateTerrainTextureWithPrompts)
     ON_COMMAND(ID_FILE_GENERATETERRAIN, GenerateTerrain)
     ON_COMMAND(ID_FILE_EXPORT_SELECTEDOBJECTS, OnExportSelectedObjects)
     ON_COMMAND(ID_FILE_EXPORT_TERRAINAREA, OnExportTerrainArea)
@@ -1017,8 +1028,10 @@ public:
     bool m_bRunPythonScript = false;
     bool m_bShowVersionInfo = false;
     QString m_exportFile;
-    QString m_gameCmdLine; // This variable was already unused in the MFC port.
     QString m_strFileName;
+    QString m_appRoot;
+    QString m_logFile;
+    QString m_pythonArgs;
 
     bool m_bSkipWelcomeScreenDialog = false;
 
@@ -1026,6 +1039,13 @@ public:
     bool m_bBootstrapPluginTests = false;
     std::vector<std::string> m_testArgs;
 #endif
+
+    struct CommandLineStringOption
+    {
+        QString name;
+        QString description;
+        QString valueName;
+    };
 
     CEditCommandLineInfo()
     {
@@ -1060,13 +1080,23 @@ public:
             { "skipWelcomeScreenDialog", m_bSkipWelcomeScreenDialog},
         };
 
+        const std::vector<std::pair<CommandLineStringOption, QString&> > stringOptions = {
+            {{"app-root", "Application Root path override", "app-root"}, m_appRoot},
+            {{"logfile", "File name of the log file to write out to.", "logfile"}, m_logFile},
+            {{"runpythonargs", "Command-line argument string to pass to the python script if --runpython was used.", "runpythonargs"}, m_pythonArgs},
+        };
+
+
         parser.addPositionalArgument("file", QCoreApplication::translate("main", "file to open"));
         for (const auto& option : options)
         {
             parser.addOption(QCommandLineOption(option.first));
         }
-        parser.addOption(QCommandLineOption("app-root", "Application Root path override", "app-root"));
-        parser.addOption(QCommandLineOption("logfile", "File name of the log file to write out to.", "logfile"));
+
+        for (const auto& option : stringOptions)
+        {
+            parser.addOption(QCommandLineOption(option.first.name, option.first.description, option.first.valueName));
+        }
 
         QStringList args = qApp->arguments();
 
@@ -1103,18 +1133,20 @@ public:
 
         parser.process(args);
 
+        // Get boolean options
         const int numOptions = options.size();
         for (int i = 0; i < numOptions; ++i)
         {
             options[i].second = parser.isSet(options[i].first);
         }
 
-        m_bExport = m_bExport | m_bExportTexture | m_bExportAI;
-
-        if (parser.isSet("VTUNE"))
+        // Get string options
+        for (auto& option : stringOptions)
         {
-            m_gameCmdLine += " -VTUNE";
+            option.second = parser.value(option.first.valueName);
         }
+
+        m_bExport = m_bExport | m_bExportTexture | m_bExportAI;
 
         const QStringList positionalArgs = parser.positionalArguments();
 
@@ -2606,7 +2638,14 @@ void CCryEditApp::RunInitPythonScript(CEditCommandLineInfo& cmdInfo)
 {
     if (cmdInfo.m_bRunPythonScript)
     {
-        GetIEditor()->ExecuteCommand(QStringLiteral("general.run_file '%1'").arg(cmdInfo.m_strFileName));
+        if (cmdInfo.m_pythonArgs.length() > 0)
+        {
+            GetIEditor()->ExecuteCommand(QStringLiteral("general.run_file_parameters '%1' '%2'").arg(cmdInfo.m_strFileName, cmdInfo.m_pythonArgs));
+        }
+        else
+        {
+            GetIEditor()->ExecuteCommand(QStringLiteral("general.run_file '%1'").arg(cmdInfo.m_strFileName));
+        }
     }
 }
 
@@ -2834,7 +2873,7 @@ BOOL CCryEditApp::InitInstance()
             MainWindow::instance()->update();
             MainWindow::instance()->setFocus();
 
-#ifdef AZ_PLATFORM_APPLE
+#if AZ_TRAIT_OS_PLATFORM_APPLE
             QWindow* window = mainWindowWrapper->windowHandle();
             if (window)
             {
@@ -3181,7 +3220,7 @@ void CCryEditApp::OnDocumentationGettingStartedGuide()
 
 void CCryEditApp::OnDocumentationTutorials()
 {
-    QString webLink = tr("https://gamedev.amazon.com/forums/tutorials");
+    QString webLink = tr("https://www.youtube.com/amazonlumberyardtutorials");
     QDesktopServices::openUrl(QUrl(webLink));
 }
 
@@ -3276,7 +3315,7 @@ void CCryEditApp::OnAWSGameliftConsole()
 
 void CCryEditApp::OnAWSGameliftGetStarted()
 {
-    QString webLink = tr("https://gamedev.amazon.com/forums/tutorials#gamelift");
+    QString webLink = tr("https://www.youtube.com/amazonlumberyardtutorials");
     QDesktopServices::openUrl(QUrl(webLink));
 }
 
@@ -3851,7 +3890,7 @@ void CCryEditApp::OnEditFetch()
 
 
 //////////////////////////////////////////////////////////////////////////
-bool CCryEditApp::UserExportToGame(bool bExportTexture, bool bReloadTerrain, bool bShowText, bool bNoMsgBox)
+bool CCryEditApp::UserExportToGame(const TerrainTextureExportSettings& exportSettings, bool bReloadTerrain, bool bNoMsgBox)
 {
     if (!GetIEditor()->GetGameEngine()->IsLevelLoaded())
     {
@@ -3887,45 +3926,48 @@ bool CCryEditApp::UserExportToGame(bool bExportTexture, bool bReloadTerrain, boo
 
         CGameExporter gameExporter;
 
-        if (bExportTexture)
-        {
-            static UINT iWidth = 4096; // 4096x4096 is default
-            CDimensionsDialog   dimensionDialog;
-            dimensionDialog.SetDimensions(iWidth);
-
-            // Query the size of the preview
-            dimensionDialog.exec();
-            iWidth = dimensionDialog.GetDimensions();
-
-            SGameExporterSettings& settings = gameExporter.GetSettings();
-            settings.iExportTexWidth = dimensionDialog.GetDimensions();
-        }
-
-        // Change the cursor to show that we're busy.
-        QWaitCursor wait;
-
         unsigned int flags = eExp_CoverSurfaces;
-        if (bExportTexture)
-        {
-            flags |= eExp_SurfaceTexture;
-        }
+
         if (bReloadTerrain)
         {
             flags |= eExp_ReloadTerrain;
         }
 
+        if (exportSettings.m_exportType != TerrainTextureExportTechnique::NoExport)
+        {
+            uint32 textureResolution = exportSettings.m_defaultResolution;
+
+            if (exportSettings.m_exportType == TerrainTextureExportTechnique::PromptUser)
+            {
+                CDimensionsDialog   dimensionDialog;
+                dimensionDialog.SetDimensions(textureResolution);
+
+                // Query the size of the preview
+                dimensionDialog.exec();
+                textureResolution = dimensionDialog.GetDimensions();
+            }
+
+            SGameExporterSettings& settings = gameExporter.GetSettings();
+            settings.iExportTexWidth = textureResolution;
+
+            flags |= eExp_SurfaceTexture;
+        }
+
+        // Change the cursor to show that we're busy.
+        QWaitCursor wait;
+
         if (gameExporter.Export(flags, eLittleEndian, "."))
         {
             if (bNoMsgBox == false)
             {
-                if (bExportTexture)
-                {
-                    QMessageBox::information(AzToolsFramework::GetActiveWindow(), QString(), QObject::tr("The terrain texture was successfully generated"));
-                }
-                else
+                if (exportSettings.m_exportType == TerrainTextureExportTechnique::NoExport)
                 {
                     CLogFile::WriteLine("$3Export to the game was successfully done.");
                     QMessageBox::information(AzToolsFramework::GetActiveWindow(), QString(), QObject::tr("The level was successfully exported"));
+                }
+                else
+                {
+                    QMessageBox::information(AzToolsFramework::GetActiveWindow(), QString(), QObject::tr("The terrain texture was successfully generated"));
                 }
             }
             return true;
@@ -3934,7 +3976,7 @@ bool CCryEditApp::UserExportToGame(bool bExportTexture, bool bReloadTerrain, boo
     }
 }
 
-void CCryEditApp::ExportToGame(bool bShowText, bool bNoMsgBox)
+void CCryEditApp::ExportToGame(const TerrainTextureExportSettings& exportSettings, bool bNoMsgBox)
 {
     CGameEngine* pGameEngine = GetIEditor()->GetGameEngine();
     if (!pGameEngine->IsLevelLoaded())
@@ -3952,14 +3994,18 @@ void CCryEditApp::ExportToGame(bool bShowText, bool bNoMsgBox)
     }
 
     {
-        UserExportToGame(true, true, bShowText, bNoMsgBox);
+        UserExportToGame(exportSettings, true, bNoMsgBox);
     }
 }
 
-
-void CCryEditApp::GenerateTerrainTexture()
+void CCryEditApp::GenerateTerrainTextureWithPrompts()
 {
-    ExportToGame(false, true);
+    ExportToGame(TerrainTextureExportSettings(TerrainTextureExportTechnique::PromptUser), true);
+}
+
+void CCryEditApp::GenerateTerrainTexture(const TerrainTextureExportSettings& exportSettings)
+{
+    ExportToGame(exportSettings, true);
 }
 
 void CCryEditApp::OnUpdateGenerateTerrainTexture(QAction* action)
@@ -4012,7 +4058,7 @@ void CCryEditApp::GenerateTerrain()
 
         GetIEditor()->Notify(eNotify_OnEndTerrainCreate);
 
-        GenerateTerrainTexture();
+        GenerateTerrainTexture(TerrainTextureExportSettings(TerrainTextureExportTechnique::PromptUser));
     }
 }
 
@@ -4025,7 +4071,7 @@ void CCryEditApp::OnUpdateGenerateTerrain(QAction* action)
 
 void CCryEditApp::OnFileExportToGameNoSurfaceTexture()
 {
-    UserExportToGame(false, false, false, false);
+    UserExportToGame(TerrainTextureExportSettings(TerrainTextureExportTechnique::NoExport), false, false);
 }
 
 void CCryEditApp::ToolTerrain()
@@ -6146,7 +6192,7 @@ void CCryEditApp::OnUpdateNonGameMode(QAction* action)
 }
 
 //////////////////////////////////////////////////////////////////////////
-CCryEditApp::ECreateLevelResult CCryEditApp::CreateLevel(const QString& levelName, int resolution, int unitSize, bool bUseTerrain, QString& fullyQualifiedLevelName /* ={} */)
+CCryEditApp::ECreateLevelResult CCryEditApp::CreateLevel(const QString& levelName, int resolution, int unitSize, bool bUseTerrain, QString& fullyQualifiedLevelName /* ={} */, const TerrainTextureExportSettings& terrainTextureSettings)
 {
     const QScopedValueRollback<bool> rollback(m_creatingNewLevel);
     m_creatingNewLevel = true;
@@ -6253,7 +6299,7 @@ CCryEditApp::ECreateLevelResult CCryEditApp::CreateLevel(const QString& levelNam
 
     if (bUseTerrain)
     {
-        GenerateTerrainTexture();
+        GenerateTerrainTexture(terrainTextureSettings);
     }
 
     GetIEditor()->GetDocument()->CreateDefaultLevelAssets(resolution, unitSize);
@@ -6380,7 +6426,8 @@ bool CCryEditApp::CreateLevel(bool& wasCreateLevelOperationCancelled)
     }
 
     QString fullyQualifiedLevelName;
-    ECreateLevelResult result = CreateLevel(levelNameWithPath, resolution, unitSize, bUseTerrain, fullyQualifiedLevelName);
+    ECreateLevelResult result = CreateLevel(levelNameWithPath, resolution, unitSize, bUseTerrain, 
+                                            fullyQualifiedLevelName, TerrainTextureExportSettings(TerrainTextureExportTechnique::PromptUser));
 
     if (result == ECLR_ALREADY_EXISTS)
     {
@@ -7644,7 +7691,7 @@ void CCryEditApp::OnTerrainResizeterrain()
     if (resolution != pHeightmap->GetWidth() || unitSize != pHeightmap->GetUnitSize())
     {
         pHeightmap->Resize(resolution, resolution, unitSize, false);
-        UserExportToGame(true, false, false);
+        UserExportToGame(TerrainTextureExportSettings(TerrainTextureExportTechnique::PromptUser), false);
     }
 
     GetIEditor()->Notify(eNotify_OnTerrainRebuild);
@@ -8562,6 +8609,23 @@ namespace
         g_runScriptResult = false;
     }
 
+    void PyIdleEnable(bool enable)
+    {
+        if (Editor::EditorQtApplication::instance())
+        {
+            Editor::EditorQtApplication::instance()->EnableOnIdle(enable);
+        }
+    }
+
+    bool PyIdleIsEnabled()
+    {
+        if (!Editor::EditorQtApplication::instance())
+        {
+            return false;
+        }
+        return Editor::EditorQtApplication::instance()->OnIdleEnabled();
+    }
+
     void PyIdleWait(double timeInSec)
     {
         clock_t start = clock();
@@ -8576,7 +8640,7 @@ namespace
 
 bool CCryEditApp::Command_ExportToEngine()
 {
-    return CCryEditApp::instance()->UserExportToGame(false, false, false, true);
+    return CCryEditApp::instance()->UserExportToGame(TerrainTextureExportSettings(TerrainTextureExportTechnique::NoExport), false, true);
 }
 
 
@@ -8692,6 +8756,12 @@ REGISTER_ONLY_PYTHON_COMMAND_WITH_EXAMPLE(PySetResultToSuccess, general, set_res
 REGISTER_ONLY_PYTHON_COMMAND_WITH_EXAMPLE(PySetResultToFailure, general, set_result_to_failure,
     "Sets the result of a script execution to failure. Used only for Sandbox AutoTests.",
     "general.set_result_to_failure()");
+REGISTER_ONLY_PYTHON_COMMAND_WITH_EXAMPLE(PyIdleEnable, general, idle_enable,
+    "Enables/Disables idle processing for the Editor. Primarily used for auto-testing.",
+    "general.idle_enable(bool enable)");
+REGISTER_ONLY_PYTHON_COMMAND_WITH_EXAMPLE(PyIdleIsEnabled, general, idle_is_enabled,
+    "Returns whether or not idle processing is enabled for the Editor. Primarily used for auto-testing.",
+    "general.idle_is_enabled()");
 REGISTER_ONLY_PYTHON_COMMAND_WITH_EXAMPLE(PyIdleWait, general, idle_wait,
     "Waits idling for a given seconds. Primarily used for auto-testing.",
     "general.idle_wait(double time)");
@@ -9060,7 +9130,7 @@ int SANDBOX_API CryEditMain(int argc, char* argv[])
 
         AzToolsFramework::EditorEvents::Bus::Broadcast(&AzToolsFramework::EditorEvents::NotifyQtApplicationAvailable, &app);
 
-    #if defined(AZ_PLATFORM_APPLE_OSX)
+    #if defined(AZ_PLATFORM_MAC)
         // Native menu bars do not work on macOS due to all the tool dialogs
         QCoreApplication::setAttribute(Qt::AA_DontUseNativeMenuBar);
     #endif

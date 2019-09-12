@@ -9,7 +9,6 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#ifndef AZ_UNITY_BUILD
 
 #include <AzCore/Module/Environment.h>
 
@@ -503,5 +502,3 @@ namespace AZ
         }
     } // namespace Environment
 } // namespace AZ
-
-#endif // #ifndef AZ_UNITY_BUILD

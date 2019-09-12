@@ -1,7 +1,7 @@
 {
     "auto": {
-        "Win": [
-            "Platform_linux.cpp"
+        "Platform/Linux": [
+            "Platform_Linux.cpp"
         ]
     }
 }

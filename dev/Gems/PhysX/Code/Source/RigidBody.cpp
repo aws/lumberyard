@@ -242,21 +242,36 @@ namespace PhysX
     {
         if (m_pxRigidActor)
         {
-            const physx::PxU32 numShapes = m_pxRigidActor->getNbShapes();
-            if (numShapes > 0)
+            physx::PxU32 shapeCount = m_pxRigidActor->getNbShapes();
+            if (shapeCount > 0)
             {
                 AZStd::vector<physx::PxShape*> shapes;
-                shapes.resize(numShapes);
+                shapes.resize(shapeCount);
 
-                m_pxRigidActor->getShapes(&shapes[0], numShapes);
+                m_pxRigidActor->getShapes(&shapes[0], shapeCount);
 
-                const auto properties = physx::PxRigidBodyExt::computeMassPropertiesFromShapes(&shapes[0], numShapes);
+                shapes.erase(AZStd::remove_if(shapes.begin()
+                    , shapes.end()
+                    , [](const physx::PxShape* shape)
+                      { 
+                        return shape->getFlags() & physx::PxShapeFlag::eTRIGGER_SHAPE;
+                      })
+                    , shapes.end());
+                shapeCount = static_cast<physx::PxU32>(shapes.size());
+
+                if (shapeCount == 0)
+                {
+                    SetZeroCenterOfMass();
+                    return;
+                }
+
+                const auto properties = physx::PxRigidBodyExt::computeMassPropertiesFromShapes(&shapes[0], shapeCount);
                 const physx::PxTransform computedCenterOfMass(properties.centerOfMass);
                 m_pxRigidActor->setCMassLocalPose(computedCenterOfMass);
             }
             else
             {
-                m_pxRigidActor->setCMassLocalPose(physx::PxTransform(PxMathConvert(AZ::Vector3::CreateZero())));
+                SetZeroCenterOfMass();
             }
         }
     }
@@ -601,5 +616,13 @@ namespace PhysX
     const AZStd::string& RigidBody::GetName() const
     {
         return m_name;
+    }
+
+    void RigidBody::SetZeroCenterOfMass()
+    {
+        if (m_pxRigidActor)
+        {
+            m_pxRigidActor->setCMassLocalPose(physx::PxTransform(PxMathConvert(AZ::Vector3::CreateZero())));
+        }
     }
 }

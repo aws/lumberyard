@@ -1,0 +1,155 @@
+{
+    "none":
+    {
+        "std/parallel/internal/Platform/Android": 
+        [
+            "../Common/UnixLike/AzCore/std/parallel/internal/condition_variable_UnixLike.h",
+            "../Common/UnixLike/AzCore/std/parallel/internal/mutex_UnixLike.h",
+            "../Common/UnixLike/AzCore/std/parallel/internal/semaphore_UnixLike.h",
+            "../Common/UnixLike/AzCore/std/parallel/internal/thread_UnixLike.cpp",
+            "../Common/UnixLike/AzCore/std/parallel/internal/thread_UnixLike.h",
+            "../Common/UnixLike/AzCore/std/parallel/internal/time_UnixLike.h",
+            "AzCore/std/parallel/internal/condition_variable_Platform.h",
+            "AzCore/std/parallel/internal/mutex_Platform.h",
+            "AzCore/std/parallel/internal/semaphore_Platform.h",
+            "AzCore/std/parallel/internal/thread_Android.cpp",
+            "AzCore/std/parallel/internal/thread_Platform.h"
+        ],
+        "std/parallel/Platform/Android":
+        [
+            "AzCore/std/parallel/config_Android.h",
+            "AzCore/std/parallel/config_Platform.h"
+        ]
+    },
+    "auto":
+    {
+        "Platform/Android":
+        [
+            "AzCore/AzCore_Traits_Platform.h",
+            "AzCore/AzCore_Traits_Android.h",
+            "AzCore/base_Platform.h",
+            "AzCore/base_Android.h"
+        ],
+
+        "Component/Platform/Android":
+        [
+            "../Common/Default/AzCore/Component/ComponentApplication_Default.cpp",
+            "AzCore/Component/ComponentApplication_Android.cpp"
+        ],
+
+        "Debug/Platform/Android":
+        [
+            "../Common/Unimplemented/AzCore/Debug/StackTracer_Unimplemented.cpp",
+            "../Common/UnixLike/AzCore/Debug/Trace_UnixLike.cpp",
+            "AzCore/Debug/Trace_Android.cpp"
+        ],
+
+        "IO/Platform/Android":
+        [
+            "../Common/UnixLike/AzCore/IO/Streamer_UnixLike.cpp",
+            "../Common/UnixLike/AzCore/IO/SystemFile_UnixLike.cpp",
+            "../Common/UnixLike/AzCore/IO/Internal/SystemFileUtils_UnixLike.h",
+            "../Common/UnixLike/AzCore/IO/Internal/SystemFileUtils_UnixLike.cpp",
+            "AzCore/IO/SystemFile_Android.cpp",
+            "AzCore/IO/SystemFile_Android.h",
+            "AzCore/IO/SystemFile_Platform.h"
+        ],
+
+        "IPC/Platform/Android":
+        [
+            "AzCore/IPC/SharedMemory_Platform.h"
+        ],
+
+        "Memory/Platform/Android":
+        [
+            "../Common/UnixLike/AzCore/Memory/OSAllocator_UnixLike.h",
+            "AzCore/Memory/HeapSchema_Android.cpp",
+            "AzCore/Memory/OSAllocator_Platform.h"
+        ],
+
+        "Math/Internal/Platform/Android":
+        [
+            "AzCore/Math/Internal/MathTypes_Android.h",
+            "../Common/FPU/AzCore/Math/Internal/MathTypes_FPU.h",
+            "../Common/SIMD/AzCore/Math/Internal/MathTypes_SIMD.h"
+        ],
+
+        "Math/Platform/Android":
+        [
+            "AzCore/Math/Random_Platform.h",
+            "../Common/UnixLike/AzCore/Math/Random_UnixLike.cpp",
+            "../Common/UnixLike/AzCore/Math/Random_UnixLike.h"
+        ],
+
+        "Module/Platform/Android":
+        [
+            "../Common/UnixLike/AzCore/Module/DynamicModuleHandle_UnixLike.cpp",
+            "AzCore/Module/DynamicModuleHandle_Android.cpp"
+        ],
+
+        "NativeUI/Platform/Android":
+        [
+            "AzCore/NativeUI/NativeUISystemComponent_Android.cpp"
+        ],
+
+        "Platform/Android":
+        [
+            "../Common/Unimplemented/AzCore/PlatformIncl_Unimplemented.h",
+            "../Common/UnixLike/AzCore/Platform_UnixLike.cpp",
+            "AzCore/PlatformIncl_Platform.h"
+        ],
+
+        "Socket/Platform/Android":
+        [
+            "../Common/UnixLike/AzCore/Socket/AzSocket_fwd_UnixLike.h",
+            "../Common/UnixLike/AzCore/Socket/AzSocket_UnixLike.cpp",
+            "../Common/UnixLike/AzCore/Socket/AzSocket_UnixLike.h",
+            "AzCore/Socket/AzSocket_fwd_Platform.h",
+            "AzCore/Socket/AzSocket_Platform.h"
+        ],
+
+        "std/Platform/Android":
+        [
+            "../Common/UnixLike/AzCore/std/time_UnixLike.cpp"
+        ],
+
+        "Utils/Platform/Android":
+        [
+            "AzCore/Utils/Utils_Android.cpp",
+            "../Common/UnixLike/AzCore/Utils/Utils_UnixLike.cpp"
+        ],
+
+        "Android" :
+        [
+            "../../AzCore/Android/AndroidEnv.cpp",
+            "../../AzCore/Android/AndroidEnv.h",
+            "../../AzCore/Android/APKFileHandler.cpp",
+            "../../AzCore/Android/APKFileHandler.h",
+            "../../AzCore/Android/ApiLevel.h",
+            "../../AzCore/Android/Utils.cpp",
+            "../../AzCore/Android/Utils.h"
+        ],
+        "Android/JNI" :
+        [
+            "../../AzCore/Android/JNI/JNI.cpp",
+            "../../AzCore/Android/JNI/JNI.h",
+            "../../AzCore/Android/JNI/Object.h",
+            "../../AzCore/Android/JNI/Object_fwd.h",
+            "../../AzCore/Android/JNI/scoped_ref.h",
+            "../../AzCore/Android/JNI/shared_ref.h",
+            "../../AzCore/Android/JNI/Signature.h"
+        ],
+        "Android/JNI/Internal" :
+        [
+            "../../AzCore/Android/JNI/Internal/ClassName.h",
+            "../../AzCore/Android/JNI/Internal/JStringUtils.h",
+            "../../AzCore/Android/JNI/Internal/JStringUtils_impl.h",
+            "../../AzCore/Android/JNI/Internal/Object_impl.h",
+            "../../AzCore/Android/JNI/Internal/Signature_impl.h"
+        ],
+        "IO/Streamer" :
+        [
+            "../../AzCore/IO/Streamer/StreamStackPreferences.cpp"
+        ]
+    }
+}

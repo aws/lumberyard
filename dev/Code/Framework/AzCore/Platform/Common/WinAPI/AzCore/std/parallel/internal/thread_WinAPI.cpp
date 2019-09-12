@@ -10,28 +10,21 @@
 *
 */
 
-#if defined(AZ_RESTRICTED_PLATFORM)
-#undef AZ_RESTRICTED_SECTION
-#define THREAD_WIN_CPP_SECTION_1 1
-#define THREAD_WIN_CPP_SECTION_2 2
-#define THREAD_WIN_CPP_SECTION_3 3
-#define THREAD_WIN_CPP_SECTION_4 4
-#endif
-
-#ifndef AZ_UNITY_BUILD
-
 #include <AzCore/PlatformIncl.h>
 #include <AzCore/std/parallel/thread.h>
 
-#if AZ_TRAIT_OS_USE_WINDOWS_THREADS
-
 #include <AzCore/std/parallel/threadbus.h>
-
-#include <process.h>
 
 namespace AZStd
 {
-    // Since we avoid including windows.h in header files in the code, we are declaring storage for CRITICAL_SECTION and CONDITIONAL_VARIABLE
+    namespace Platform
+    {
+        void PostThreadRun();
+        HANDLE CreateThread(unsigned stackSize, unsigned (__stdcall* threadRunFunction)(void*), AZStd::Internal::thread_info* ti, unsigned int* id);
+        unsigned HardwareConcurrency();
+    }
+
+    // Since we avoid including windows.h in header files in the code, we are declaring storage for CRITICAL_SECTION and CONDITION_VARIABLE
     // Make sure at compile that that the storage is enough to store the variables
     AZ_STATIC_ASSERT(sizeof(native_mutex_data_type) >= sizeof(CRITICAL_SECTION), "native_mutex_data_type is used to store CRITICAL_SECTION, it should be big enough!");
     AZ_STATIC_ASSERT(sizeof(native_cond_var_data_type) >= sizeof(CONDITION_VARIABLE), "native_mutex_data_type is used to store CONDITION_VARIABLE, it should be big enough!");
@@ -41,7 +34,7 @@ namespace AZStd
         /**
          * Thread run function
          */
-        unsigned __stdcall      thread_run_function(void* param)
+        unsigned __stdcall thread_run_function(void* param)
         {
             thread_info* ti = reinterpret_cast<thread_info*>(param);
             ti->execute();
@@ -49,20 +42,9 @@ namespace AZStd
 
             EBUS_EVENT(ThreadEventBus, OnThreadExit, this_thread::get_id());
 
-#if defined(AZ_RESTRICTED_PLATFORM)
-#define AZ_RESTRICTED_SECTION THREAD_WIN_CPP_SECTION_1
-    #if defined(AZ_PLATFORM_XENIA)
-        #include "Xenia/thread_win_cpp_xenia.inl"
-    #elif defined(AZ_PLATFORM_PROVO)
-        #include "Provo/thread_win_cpp_provo.inl"
-    #endif
-#endif
-#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
-#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
-#else
-            _endthreadex(0);
+            Platform::PostThreadRun();
+
             return 0;
-#endif
         }
 
         /**
@@ -78,19 +60,7 @@ namespace AZStd
                 stackSize = desc->m_stackSize;
             }
 
-#if defined(AZ_RESTRICTED_PLATFORM)
-#define AZ_RESTRICTED_SECTION THREAD_WIN_CPP_SECTION_2
-    #if defined(AZ_PLATFORM_XENIA)
-        #include "Xenia/thread_win_cpp_xenia.inl"
-    #elif defined(AZ_PLATFORM_PROVO)
-        #include "Provo/thread_win_cpp_provo.inl"
-    #endif
-#endif
-#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
-#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
-#else
-            hThread = (HANDLE)_beginthreadex(0, stackSize, &thread_run_function, ti, CREATE_SUSPENDED, id);
-#endif
+            hThread = Platform::CreateThread(stackSize, &thread_run_function, ti, id);
             if (hThread == NULL)
             {
                 return hThread;
@@ -101,22 +71,10 @@ namespace AZStd
                 ::SetThreadPriority(hThread, desc->m_priority);
             }
 
-#if defined(AZ_RESTRICTED_PLATFORM)
-#define AZ_RESTRICTED_SECTION THREAD_WIN_CPP_SECTION_3
-    #if defined(AZ_PLATFORM_XENIA)
-        #include "Xenia/thread_win_cpp_xenia.inl"
-    #elif defined(AZ_PLATFORM_PROVO)
-        #include "Provo/thread_win_cpp_provo.inl"
-    #endif
-#endif
-#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
-#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
-#else
             if (desc && desc->m_cpuId != -1)
             {
                 SetThreadAffinityMask(hThread, DWORD_PTR(desc->m_cpuId));
             }
-#endif
 
             EBUS_EVENT(ThreadEventBus, OnThreadEnter, thread::id(*id), desc);
 
@@ -160,12 +118,6 @@ namespace AZStd
         m_thread.m_id = native_thread_invalid_id;
     }
 
-    /*thread::thread(AZStd::delegate<void ()> d,const thread_desc* desc)
-    {
-        Internal::thread_info* ti = Internal::create_thread_info(d);
-        m_thread.m_handle = Internal::create_thread(desc,ti,&m_thread.m_id);
-    }*/
-
     thread::thread(Internal::thread_move_t<thread> rhs)
     {
         m_thread.m_handle = rhs->m_thread.m_handle;
@@ -200,25 +152,7 @@ namespace AZStd
     /// Return number of physical processors
     unsigned thread::hardware_concurrency()
     {
-#if defined(AZ_RESTRICTED_PLATFORM)
-#define AZ_RESTRICTED_SECTION THREAD_WIN_CPP_SECTION_4
-    #if defined(AZ_PLATFORM_XENIA)
-        #include "Xenia/thread_win_cpp_xenia.inl"
-    #elif defined(AZ_PLATFORM_PROVO)
-        #include "Provo/thread_win_cpp_provo.inl"
-    #endif
-#endif
-#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
-#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
-#else
-        SYSTEM_INFO info = {};
-        GetSystemInfo(&info);
-        return info.dwNumberOfProcessors;
-#endif
+        return Platform::HardwareConcurrency();
     }
     //////////////////////////////////////////////////////////////////////////
 }
-
-#endif // AZ_TRAIT_OS_USE_WINDOWS_THREADS
-
-#endif // #ifndef AZ_UNITY_BUILD

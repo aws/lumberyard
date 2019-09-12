@@ -15,6 +15,8 @@ namespace EMotionFX
     class Parameter
     {
     public:
+        virtual ~Parameter() = default;
+        
         AZ_RTTI(Parameter, "{4AF0BAFC-98F8-4EA3-8946-4AD87D7F2A6C}")
         MOCK_CONST_METHOD0(GetTypeDisplayName, const AZStd::string&());
         

@@ -1,0 +1,10 @@
+{
+    "auto":
+    {
+        "Platform/Mac":
+        [
+            "Twitch_Traits_Platform.h",
+            "Twitch_Traits_Mac.h"
+        ]
+    }
+}

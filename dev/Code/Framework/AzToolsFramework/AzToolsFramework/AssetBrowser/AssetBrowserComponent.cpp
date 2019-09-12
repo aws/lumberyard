@@ -147,9 +147,19 @@ namespace AzToolsFramework
             return m_assetBrowserModel.get();
         }
 
+        bool AssetBrowserComponent::AreEntriesReady()
+        {
+            return m_entriesReady;
+        }
+
         void AssetBrowserComponent::OnTick(float /*deltaTime*/, AZ::ScriptTimePoint /*time*/)
         {
             m_changeset->Synchronize();
+            if (!m_entriesReady)
+            {
+                m_entriesReady = true;
+                AssetBrowserComponentNotificationBus::Broadcast(&AssetBrowserComponentNotifications::OnAssetBrowserComponentReady);
+            }
         }
 
         // We listen to this bus so that a file that wasn't previously a 'source file' (just a file) can become a source file

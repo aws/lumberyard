@@ -16,6 +16,8 @@
 
 #pragma once
 
+#include "Util/BoostPythonHelpers.h"
+
 class CHeightmap;
 class CLayer;
 
@@ -37,7 +39,6 @@ struct CTextureBrush
     float                               value;                  //
     bool                                bErase;                 //
 
-    bool                                bMask_Altitude;         //
     bool                                bMaskByLayerSettings;   //
 
     float                               minRadius;              //
@@ -57,10 +58,12 @@ struct CTextureBrush
         minRadius = 0.01f;
         maxRadius = 256.0f;
         bMaskByLayerSettings = true;
-        m_dwMaskLayerId = 0xffffffff;
+        m_dwMaskLayerId = sInvalidMaskId;
         m_cFilterColor = ColorF(1, 1, 1);
         m_fBrightness = 1.0f;
     }
+
+    static constexpr uint32 sInvalidMaskId = 0xffffffff;
 };
 
 //////////////////////////////////////////////////////////////////////////
@@ -102,11 +105,38 @@ public:
     static const GUID& GetClassID();
     static void RegisterTool(CRegistrationContext& rc);
 
+    // Python Bindings
+    static float PyGetBrushRadius();
+    static void PySetBrushRadius(float radius);
+
+    static float PyGetBrushColorHardness();
+    static void PySetBrushColorHardness(float colorHardness);
+
+    static float PyGetBrushDetailHardness();
+    static void PySetBrushDetailHardness(float detailHardness);
+
+    static bool PyGetBrushMaskByLayerSettings();
+    static void PySetBrushMaskByLayerSettings(bool maskByLayerSettings);
+
+    static QString PyGetBrushMaskLayer();
+    static void PySetBrushMaskLayer(const char *layerName);
+
+    static boost::python::tuple  PyGetLayerBrushColor(const char *layerName);
+    static void PySetLayerBrushColor(const char *layerName, float red, float green, float blue);
+
+    static float PyGetLayerBrushColorBrightness(const char *layerName);
+    static void PySetLayerBrushColorBrightness(const char *layerName, float colorBrightness);
+
+    static void PyPaintLayer(const char *layerName, float centerX, float centerY, float centerZ, bool floodFill);
+
+    static void RefreshUI();
+    static CLayer* FindLayer(const char *layerName);
 
 private:
     void PaintLayer(CLayer* pLayer, const Vec3& center, bool bFlood);
     CLayer* GetSelectedLayer() const;
     static void Command_Activate();
+
 
 
 private:

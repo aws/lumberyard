@@ -13,9 +13,13 @@
 
 #include <AzCore/Component/TickBus.h>
 
+AZ_PUSH_DISABLE_WARNING(4127 4251 4800, "-Wunknown-warning-option") // 4127: conditional expression is constant
+                                                                    // 4251: 'QLocale::d': class 'QSharedDataPointer<QLocalePrivate>' needs to have dll-interface to be used by clients of class 'QLocale'
+                                                                    // 4800: 'int': forcing value to bool 'true' or 'false' (performance warning)
 #include <QObject>
 #include <QPixmap>
 #include <QFutureWatcher>
+AZ_POP_DISABLE_WARNING
 
 namespace AzToolsFramework
 {

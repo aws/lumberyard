@@ -37,7 +37,9 @@ namespace CodeGenerator
 
         // Access via g_enableVerboseOutput elsewhere (extern in configuration.h)
         bool g_enableVerboseOutput = false;
+        std::string g_inputPath = "";
         static cl::opt<bool, true> verboseOutput("v", cl::desc("Output verbose debug information"), cl::cat(CodeGeneratorCategory), cl::location(g_enableVerboseOutput), cl::init(false));
+        static cl::opt<std::string, true> inputPath("input-path", cl::desc("Absolute path to input folder, all input-file paths must be relative to this folder"), cl::cat(CodeGeneratorCategory), cl::location(g_inputPath), cl::Required);
     }
 
     namespace Configuration
@@ -54,7 +56,6 @@ namespace CodeGenerator
 
         // Code parsing settings
         static cl::OptionCategory codeParserCategory("Code Parsing Options");
-        static cl::opt<std::string> inputPath("input-path", cl::desc("Absolute path to input folder, all input-file paths must be relative to this folder"), cl::cat(codeParserCategory), cl::Required);
         static cl::opt<std::string> outputPath("output-path", cl::desc("Absolute path to output folder"), cl::cat(codeParserCategory), cl::Required);
         static cl::list<std::string> inputFiles("input-file", cl::desc("Path to input file relative to the input-path"), cl::cat(codeParserCategory), cl::OneOrMore);
 
@@ -339,7 +340,7 @@ int main(int argc, char** argv)
             }    
         }
 
-        std::string inputPath = Configuration::inputPath;
+        std::string inputPath = GlobalConfiguration::g_inputPath;
         std::replace(inputPath.begin(), inputPath.end(), '\\', '/');
         if (inputPath[inputPath.length() - 1] != '/')
         {
@@ -355,7 +356,7 @@ int main(int argc, char** argv)
 
         if (GlobalConfiguration::verboseOutput)
         {
-            Output::Print("Processing files in %s:\n", Configuration::inputPath.c_str());
+            Output::Print("Processing files in %s:\n", GlobalConfiguration::g_inputPath.c_str());
         }
         for (unsigned long processFileIndex = 0; processFileIndex < processFileCount; ++processFileIndex)
         {

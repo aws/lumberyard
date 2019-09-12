@@ -120,6 +120,9 @@ namespace ScriptCanvasEditor
         void TriggerUndo() override;
         void TriggerRedo() override;
 
+        bool EnableNodes(const AZStd::unordered_set< GraphCanvas::NodeId >& nodeIds) override;
+        bool DisableNodes(const AZStd::unordered_set< GraphCanvas::NodeId >& nodeIds) override;
+
         GraphCanvas::NodePropertyDisplay* CreateDataSlotPropertyDisplay(const AZ::Uuid& dataType, const AZ::EntityId& nodeId, const AZ::EntityId& slotId) const override;
         GraphCanvas::NodePropertyDisplay* CreateDataSlotVariablePropertyDisplay(const AZ::Uuid& dataType, const AZ::EntityId& nodeId, const AZ::EntityId& slotId) const override;
         GraphCanvas::NodePropertyDisplay* CreatePropertySlotPropertyDisplay(const AZ::Crc32& propertyId, const AZ::EntityId& nodeId, const AZ::EntityId& slotId) const override;
@@ -128,17 +131,27 @@ namespace ScriptCanvasEditor
         bool CreateConnection(const GraphCanvas::ConnectionId& connectionId, const GraphCanvas::Endpoint& sourcePoint, const GraphCanvas::Endpoint& targetPoint) override;
 
         bool IsValidConnection(const GraphCanvas::Endpoint& sourcePoint, const GraphCanvas::Endpoint& targetPoint) const override;
-        bool IsValidVariableAssignment(const AZ::EntityId& variableId, const GraphCanvas::Endpoint& targetPoint) const override;       
+        GraphCanvas::ConnectionValidationTooltip GetConnectionValidityTooltip(const GraphCanvas::Endpoint& sourcePoint, const GraphCanvas::Endpoint& targetPoint) const override;
+
+        bool IsValidVariableAssignment(const AZ::EntityId& variableId, const GraphCanvas::Endpoint& targetPoint) const override;
+        GraphCanvas::ConnectionValidationTooltip GetVariableAssignmentValidityTooltip(const AZ::EntityId& variableId, const GraphCanvas::Endpoint& targetPoint) const override;
 
         AZStd::string GetDataTypeString(const AZ::Uuid& typeId) override;
 
         void OnRemoveUnusedNodes() override;
         void OnRemoveUnusedElements() override;
 
+        void ResetSlotToDefaultValue(const GraphCanvas::NodeId& nodeId, const GraphCanvas::SlotId& slotId) override;
+
+        void RemoveSlot(const GraphCanvas::NodeId& nodeId, const GraphCanvas::SlotId& slotId) override;
+        bool IsSlotRemovable(const GraphCanvas::NodeId& nodeId, const GraphCanvas::SlotId& slotId) const override;
+
+        GraphCanvas::SlotId RequestExtension(const GraphCanvas::NodeId& nodeId, const GraphCanvas::ExtenderId& extenderId) override;
+
         bool ShouldWrapperAcceptDrop(const GraphCanvas::NodeId& wrapperNode, const QMimeData* mimeData) const override;
 
         void AddWrapperDropTarget(const GraphCanvas::NodeId& wrapperNode) override;
-        void RemoveWrapperDropTarget(const GraphCanvas::NodeId& wrapperNode) override;        
+        void RemoveWrapperDropTarget(const GraphCanvas::NodeId& wrapperNode) override;
         ////
 
         // SceneNotificationBus
@@ -235,8 +248,6 @@ namespace ScriptCanvasEditor
         bool IsNodeVersionConverting(const AZ::EntityId& graphCanvasNodeId) const;
 
         //// Version Update code
-        AZ::Outcome<void, AZStd::string> ConvertPureDataToVariables();
-
         AZStd::unordered_set< AZ::EntityId > m_queuedConvertingNodes;
         AZStd::unordered_set< AZ::EntityId > m_convertingNodes;
 
@@ -258,9 +269,6 @@ namespace ScriptCanvasEditor
         GraphStatisticsHelper m_statisticsHelper;
 
         bool m_ignoreSaveRequests;
-
-        //! Defaults to true to signal that the all PureData nodes have been converted to variables
-        bool m_pureDataNodesConverted = true;
 
         //! Defaults to true to signal that this graph does not have the GraphCanvas stuff intermingled
         bool m_saveFormatConverted = true;

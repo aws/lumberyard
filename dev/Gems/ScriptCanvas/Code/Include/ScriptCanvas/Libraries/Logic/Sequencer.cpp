@@ -44,7 +44,7 @@ namespace ScriptCanvas
                 } 
                 else if (slot == nextSlot)
                 {
-                    int step = m_order == Order::forward ? 1 : -1;
+                    int step = m_order == Order::Forward ? 1 : -1;
 
                     m_outputIsValid = false;
                     int startIndex = m_currentIndex;

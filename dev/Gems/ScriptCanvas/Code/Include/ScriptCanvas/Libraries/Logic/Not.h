@@ -54,7 +54,7 @@ namespace ScriptCanvas
                     return Datum(boolValue && (!(*boolValue)));
                 }
 
-                void Visit(NodeVisitor& visitor) const override { visitor.Visit(*this); }
+                
             }; 
 
 #if defined(EXPRESSION_TEMPLATES_ENABLED)
@@ -77,7 +77,7 @@ namespace ScriptCanvas
                     return contractDescs;
                 }
 
-                void Visit(NodeVisitor& visitor) const override { visitor.Visit(*this); }
+                
             };
 #endif // #if defined(EXPRESSION_TEMPLATES_ENABLED)
         }

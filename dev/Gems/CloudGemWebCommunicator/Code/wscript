@@ -30,7 +30,8 @@ def build(bld):
     bld.DefineGem(
         uselib          = ['AWS_CPP_SDK_COGNITO_IDENTITY','AWS_CPP_SDK_IDENTITY_MANAGEMENT','AWS_IOT_DEVICE', 'AWS_CPP_SDK_CORE'],
         win_lib         = ['gdi32','crypt32','ws2_32'],
-        includes        = ['3rdParty/IoTDevice',
+        includes        = [bld.Path('Code/CryEngine/CryCommon'),
+                           '3rdParty/IoTDevice',
                            '3rdParty/IoTDevice/network/WebSocket/wslay',
                            '3rdParty/IoTDevice/network/OpenSSL'
         ],

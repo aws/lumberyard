@@ -22,7 +22,7 @@ namespace ScriptEvents
 {
     DefaultBehaviorHandler::~DefaultBehaviorHandler()
     {
-        Internal::BindingRequestBus::Event(m_busNameId, &Internal::BindingRequest::RemoveHandler, this);
+        Disconnect();
     }
 
     DefaultBehaviorHandler::DefaultBehaviorHandler(AZ::BehaviorEBus* ebus, const ScriptEvents::ScriptEvent* scriptEventDefinition)
@@ -143,9 +143,10 @@ namespace ScriptEvents
 
         if (m_address.m_value)
         {
-            AZStd::string_view busName = m_ebus->m_name;
             const AZ::BehaviorClass* behaviorClass = AZ::BehaviorContextHelper::GetClass(m_address.m_typeId);
-            AZ_Assert(behaviorClass, "Did not find class %s when disconnecting DefaultBehaviorHandler", busName.data());
+            AZ_Assert(behaviorClass, "Did not find class %s when disconnecting DefaultBehaviorHandler", m_ebus->m_name.c_str());
+
+            behaviorClass->m_destructor(m_address.m_value, behaviorClass->m_userData);
 
             behaviorClass->Deallocate(m_address.m_value);
             m_address.m_value = nullptr;

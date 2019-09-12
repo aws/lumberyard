@@ -1298,6 +1298,7 @@ namespace CommandSystem
     void CopyAnimGraphNodeCommand(MCore::CommandGroup* commandGroup, EMotionFX::AnimGraph* targetAnimGraph, EMotionFX::AnimGraphNode* targetNode, EMotionFX::AnimGraphNode* node,
         bool cutMode, AZStd::unordered_map<AZ::u64, AZ::u64>& convertedIds, AnimGraphCopyPasteData& copyPasteData, AZStd::unordered_set<AZStd::string>& generatedNames)
     {
+        AZ_UNUSED(targetNode);
         if (!node)
         {
             return;
@@ -1351,7 +1352,7 @@ namespace CommandSystem
                 commandString = AZStd::string::format("AnimGraphAdjustNode -animGraphID %d -name \"%s\" -attributesString {%s}",
                     targetAnimGraph->GetID(),
                     nodeName.c_str(),
-                    attributesString);
+                    attributesString.c_str());
                 commandGroup->AddCommandString(commandString);
             }
         }

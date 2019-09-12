@@ -13,10 +13,15 @@
 #include <AzToolsFramework/UI/Logging/LogTableModel.h>
 #include <AzToolsFramework/UI/Logging/LogLine.h>
 
+AZ_PUSH_DISABLE_WARNING(4251, "-Wunknown-warning-option") // 4251: 'QDateTime::d': class 'QSharedDataPointer<QDateTimePrivate>' needs to have dll-interface to be used by clients of class 'QDateTime'
 #include <QDateTime>
+AZ_POP_DISABLE_WARNING
 #include <QPixmap>
 
+AZ_PUSH_DISABLE_WARNING(4800 4251, "-Wunknown-warning-option") // 4800: 'int': forcing value to bool 'true' or 'false' (performance warning)
+                                                               // 4251: class 'QScopedPointer<QDebugStateSaverPrivate,QScopedPointerDeleter<T>>' needs to have dll-interface to be used by clients of class 'QDebugStateSaver'
 #include <QDebug>
+AZ_POP_DISABLE_WARNING
 
 namespace AzToolsFramework
 {
@@ -183,7 +188,9 @@ namespace AzToolsFramework
             if (!m_lines.isEmpty())
             {
                 beginResetModel();
+                AZ_PUSH_DISABLE_WARNING(4800, "-Wunknown-warning-option")
                 m_lines.clear();
+                AZ_POP_DISABLE_WARNING
                 m_details.clear();
                 m_tmpDetails.clear();
                 m_pendingLines = 0;

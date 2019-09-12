@@ -736,7 +736,7 @@ extern const char* g_KeyTokens[];
 
 struct SMacroBinFX
 {
-    std::vector<uint32> m_Macro;
+    AZStd::vector<uint32, AZ::StdLegacyAllocator> m_Macro;
     uint64 m_nMask;
 };
 

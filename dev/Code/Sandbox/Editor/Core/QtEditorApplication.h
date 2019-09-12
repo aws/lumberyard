@@ -19,7 +19,6 @@
 #include <QSet>
 #include "IEventLoopHook.h"
 #include <unordered_map>
-#include "BoostHelpers.h"
 
 #include <AzCore/PlatformDef.h>
 #include <AzCore/UserSettings/UserSettingsProvider.h>
@@ -98,6 +97,7 @@ namespace Editor
         const QColor& GetColorByName(const QString& colorName);
 
         void EnableOnIdle(bool enable = true);
+        bool OnIdleEnabled() const;
 
         bool eventFilter(QObject* object, QEvent* event) override;
 

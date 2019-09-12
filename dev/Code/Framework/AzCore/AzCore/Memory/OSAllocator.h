@@ -15,9 +15,8 @@
 #include <AzCore/Memory/Memory.h>
 #include <AzCore/std/allocator.h>
 
-#if defined(AZ_PLATFORM_LINUX)
-#include <malloc.h>
-#endif
+// OS Allocations macros AZ_OS_MALLOC/AZ_OS_FREE
+#include <AzCore/Memory/OSAllocator_Platform.h>
 
 namespace AZ
 {
@@ -76,38 +75,6 @@ namespace AZ
 
     typedef AZStdAlloc<OSAllocator> OSStdAllocator;
 }
-
-////////////////////////////////////////////////////////////////////////////////////////////
-// OS Allocations macros
-#if AZ_TRAIT_OS_USE_WINDOWS_ALIGNED_MALLOC
-#   define AZ_OS_MALLOC(byteSize, alignment) _aligned_malloc(byteSize, alignment)
-#   define AZ_OS_FREE(pointer) _aligned_free(pointer)
-#elif AZ_TRAIT_OS_USE_CUSTOM_ALLOCATOR_FOR_MALLOC
-namespace AZ 
-{
-    void* OnionAlloc(size_t size, size_t alignment);
-    void OnionFree(void* ptr);
-}
-#   define AZ_OS_MALLOC(size, alignment) AZ::OnionAlloc(size, alignment)
-#   define AZ_OS_FREE(ptr) AZ::OnionFree(ptr)
-#else
-#   if defined(AZ_PLATFORM_APPLE)
-inline void* memalign(size_t blocksize, size_t bytes)
-{
-    void* ptr = nullptr;
-    int result = posix_memalign(&ptr, blocksize < sizeof(void*) ? sizeof(void*) : blocksize, bytes);
-    AZ_Assert(result == 0, "Posix memalign failed %d", result);
-    (void)result;   // avoid unused variable warning
-    return ptr;
-}
-
-#       define AZ_OS_MALLOC(byteSize, alignment) memalign(alignment, byteSize)
-#   else
-#       define AZ_OS_MALLOC(byteSize, alignment) memalign(alignment, byteSize)
-#   endif
-#   define AZ_OS_FREE(pointer) free(pointer)
-#endif
-/////////////////////////////////////////////////////////////////////////////////////////////
 
 #endif // AZCORE_OS_ALLOCATOR_H
 #pragma once

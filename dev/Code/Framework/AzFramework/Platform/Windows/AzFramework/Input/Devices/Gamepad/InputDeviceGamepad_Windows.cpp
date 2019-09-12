@@ -11,7 +11,7 @@
 */
 
 #include <AzFramework/Input/Devices/Gamepad/InputDeviceGamepad.h>
-#include <AzFramework/Input/Buses/Notifications/RawInputNotificationBus_win.h>
+#include <AzFramework/Input/Buses/Notifications/RawInputNotificationBus_Platform.h>
 
 #include <AzCore/Debug/Trace.h>
 #include <AzCore/Module/DynamicModuleHandle.h>
@@ -150,25 +150,25 @@ namespace XInput
 namespace AzFramework
 {
     ////////////////////////////////////////////////////////////////////////////////////////////////
-    //! Platform specific implementation for windows game-pad input devices
-    class InputDeviceGamepadWin : public InputDeviceGamepad::Implementation
-                                , public RawInputNotificationBusWin::Handler
+    //! Platform specific implementation for Windows game-pad input devices
+    class InputDeviceGamepadWindows : public InputDeviceGamepad::Implementation
+                                    , public RawInputNotificationBusWindows::Handler
     {
     public:
         ////////////////////////////////////////////////////////////////////////////////////////////
         // Allocator
-        AZ_CLASS_ALLOCATOR(InputDeviceGamepadWin, AZ::SystemAllocator, 0);
+        AZ_CLASS_ALLOCATOR(InputDeviceGamepadWindows, AZ::SystemAllocator, 0);
 
         ////////////////////////////////////////////////////////////////////////////////////////////
         //! Constructor
         //! \param[in] inputDevice Reference to the input device being implemented
         //! \param[in] xinputModuleHandle Shared pointer to the xinput dynamic module
-        InputDeviceGamepadWin(InputDeviceGamepad& inputDevice,
-                              AZStd::shared_ptr<AZ::DynamicModuleHandle> xinputModuleHandle);
+        InputDeviceGamepadWindows(InputDeviceGamepad& inputDevice,
+                                  AZStd::shared_ptr<AZ::DynamicModuleHandle> xinputModuleHandle);
 
         ////////////////////////////////////////////////////////////////////////////////////////////
         //! Destructor
-        ~InputDeviceGamepadWin() override;
+        ~InputDeviceGamepadWindows() override;
 
     private:
         ////////////////////////////////////////////////////////////////////////////////////////////
@@ -189,7 +189,7 @@ namespace AzFramework
         void TickInputDevice() override;
 
         ////////////////////////////////////////////////////////////////////////////////////////////
-        //! \ref AzFramework::RawInputNotificationsWin::OnRawInputDeviceChangeEvent
+        //! \ref AzFramework::RawInputNotificationsWindows::OnRawInputDeviceChangeEvent
         void OnRawInputDeviceChangeEvent() override;
 
         ////////////////////////////////////////////////////////////////////////////////////////////
@@ -210,7 +210,7 @@ namespace AzFramework
     InputDeviceGamepad::Implementation* InputDeviceGamepad::Implementation::Create(
         InputDeviceGamepad& inputDevice)
     {
-        // Before creating any instances of InputDeviceGamepadWin, ensure that XInput is loaded
+        // Before creating any instances of InputDeviceGamepadWindows, ensure that XInput is loaded
         AZStd::shared_ptr<AZ::DynamicModuleHandle> xinputModuleHandle = XInput::LoadDynamicModule();
         if (!xinputModuleHandle)
         {
@@ -219,21 +219,21 @@ namespace AzFramework
             return nullptr;
         }
 
-        return aznew InputDeviceGamepadWin(inputDevice, xinputModuleHandle);
+        return aznew InputDeviceGamepadWindows(inputDevice, xinputModuleHandle);
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
-    InputDeviceGamepadWin::InputDeviceGamepadWin(InputDeviceGamepad& inputDevice,
-                                                 AZStd::shared_ptr<AZ::DynamicModuleHandle> xinputModuleHandle)
+    InputDeviceGamepadWindows::InputDeviceGamepadWindows(InputDeviceGamepad& inputDevice,
+                                                         AZStd::shared_ptr<AZ::DynamicModuleHandle> xinputModuleHandle)
         : InputDeviceGamepad::Implementation(inputDevice)
         , m_xinputModuleHandle(xinputModuleHandle)
         , m_rawGamepadState(GetDigitalButtonIdByBitMaskMap())
         , m_isConnected(false)
         , m_tryConnect(true)
     {
-        AZ_Assert(m_xinputModuleHandle, "Creating instance of InputDeviceGamepadWin with a null XInput handle.");
+        AZ_Assert(m_xinputModuleHandle, "Creating instance of InputDeviceGamepadWindows with a null XInput handle.");
         AZ_Assert(inputDevice.GetInputDeviceId().GetIndex() < InputDeviceGamepad::GetMaxSupportedGamepads(),
-                  "Creating InputDeviceGamepadWin with index %d that is greater than the max supported by xinput: %d",
+                  "Creating InputDeviceGamepadWindows with index %d that is greater than the max supported by xinput: %d",
                   inputDevice.GetInputDeviceId().GetIndex(), InputDeviceGamepad::GetMaxSupportedGamepads());
 
         m_rawGamepadState.m_triggerMaximumValue = AnalogTriggerMaxValue;
@@ -242,13 +242,13 @@ namespace AzFramework
         m_rawGamepadState.m_thumbStickLeftDeadZone = ThumbStickLeftDeadZone;
         m_rawGamepadState.m_thumbStickRightDeadZone = ThumbStickRightDeadZone;
 
-        RawInputNotificationBusWin::Handler::BusConnect();
+        RawInputNotificationBusWindows::Handler::BusConnect();
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
-    InputDeviceGamepadWin::~InputDeviceGamepadWin()
+    InputDeviceGamepadWindows::~InputDeviceGamepadWindows()
     {
-        RawInputNotificationBusWin::Handler::BusDisconnect();
+        RawInputNotificationBusWindows::Handler::BusDisconnect();
 
         // This basically defeats the purpose of using a weak_ptr in the first place, but we must
         // explicitly call reset on it before the application shuts down so that the shared count
@@ -261,14 +261,14 @@ namespace AzFramework
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
-    bool InputDeviceGamepadWin::IsConnected() const
+    bool InputDeviceGamepadWindows::IsConnected() const
     {
         return m_isConnected;
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
-    void InputDeviceGamepadWin::SetVibration(float leftMotorSpeedNormalized,
-                                             float rightMotorSpeedNormalized)
+    void InputDeviceGamepadWindows::SetVibration(float leftMotorSpeedNormalized,
+                                                 float rightMotorSpeedNormalized)
     {
         if (m_isConnected)
         {
@@ -280,8 +280,8 @@ namespace AzFramework
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
-    bool InputDeviceGamepadWin::GetPhysicalKeyOrButtonText(const InputChannelId& inputChannelId,
-                                                           AZStd::string& o_keyOrButtonText) const
+    bool InputDeviceGamepadWindows::GetPhysicalKeyOrButtonText(const InputChannelId& inputChannelId,
+                                                               AZStd::string& o_keyOrButtonText) const
     {
         if (inputChannelId == InputDeviceGamepad::Button::Select)
         {
@@ -292,7 +292,7 @@ namespace AzFramework
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
-    void InputDeviceGamepadWin::TickInputDevice()
+    void InputDeviceGamepadWindows::TickInputDevice()
     {
         // Only process gamepad input while this thread's message queue has focus to
         // keep the behaviour consistent with the mouse and keyboard implementations.
@@ -350,7 +350,7 @@ namespace AzFramework
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
-    void InputDeviceGamepadWin::OnRawInputDeviceChangeEvent()
+    void InputDeviceGamepadWindows::OnRawInputDeviceChangeEvent()
     {
         // Calling XInputGetState every frame for unconnected gamepad devices is extremely slow, but
         // calling XInputGetState every frame for a device that is already connected is much faster.

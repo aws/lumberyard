@@ -9,7 +9,6 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#ifndef AZ_UNITY_BUILD
 
 #include <AzCore/RTTI/AttributeReader.h>
 #include <AzCore/Serialization/ObjectStream.h>
@@ -50,7 +49,7 @@
 
 
 #include <AzCore/std/parallel/atomic.h>
-#include <AzCore/std/parallel/conditional_variable.h>
+#include <AzCore/std/parallel/condition_variable.h>
 #include <AzCore/std/parallel/lock.h>
 #include <AzCore/std/parallel/mutex.h>
 #include <AzCore/IO/ByteContainerStream.h>
@@ -1269,9 +1268,7 @@ namespace AZ
                     u32 nameCrc;
                     nBytesRead = m_stream->Read(sizeof(nameCrc), &nameCrc);
                     AZ_Assert(nBytesRead == sizeof(nameCrc), "Failed trying to read binary element nameCrc!");
-#if !defined(AZ_BIG_ENDIAN)
                     AZStd::endian_swap(nameCrc);
-#endif
                     element.m_nameCrc = nameCrc;
                 }
 
@@ -1354,9 +1351,7 @@ namespace AZ
                             u16 size;
                             nBytesRead = m_stream->Read(sizeof(u16), &size);
                             AZ_Assert(nBytesRead == sizeof(u16), "Failed trying to read extra size field!");
-#if !defined(AZ_BIG_ENDIAN)
                             AZStd::endian_swap(size);
-#endif
                             valueBytes = size;
                             break;
                         }
@@ -1365,9 +1360,7 @@ namespace AZ
                             u32 size;
                             nBytesRead = m_stream->Read(sizeof(u32), &size);
                             AZ_Assert(nBytesRead == sizeof(u32), "Failed trying to read extra size field!");
-#if !defined(AZ_BIG_ENDIAN)
                             AZStd::endian_swap(size);
-#endif
                             valueBytes = size;
                             break;
                         }
@@ -1464,9 +1457,7 @@ namespace AZ
                                     u16 size;
                                     nBytesRead = m_stream->Read(sizeof(u16), &size);
                                     AZ_Assert(nBytesRead == sizeof(u16), "Failed trying to read extra size field!");
-#if !defined(AZ_BIG_ENDIAN)
                                     AZStd::endian_swap(size);
-#endif
                                     bytesToSkip = size;
                                     break;
                                 }
@@ -1475,9 +1466,7 @@ namespace AZ
                                     u32 size;
                                     nBytesRead = m_stream->Read(sizeof(u32), &size);
                                     AZ_Assert(nBytesRead == sizeof(u32), "Failed trying to read extra size field!");
-#if !defined(AZ_BIG_ENDIAN)
                                     AZStd::endian_swap(size);
-#endif
                                     bytesToSkip = size;
                                     break;
                                 }
@@ -1822,9 +1811,7 @@ namespace AZ
                 if (element.m_nameCrc)
                 {
                     u32 nameCrc = element.m_nameCrc;
-#if !defined(AZ_BIG_ENDIAN)
                     AZStd::endian_swap(nameCrc);
-#endif
                     m_stream->Write(sizeof(nameCrc), &nameCrc);
                 }
 
@@ -1857,18 +1844,14 @@ namespace AZ
                         case sizeof(u16):
                         {
                             u16 size = static_cast<u16>(element.m_dataSize);
-#if !defined(AZ_BIG_ENDIAN)
                             AZStd::endian_swap(size);
-#endif
                             m_stream->Write(sizeBytes, &size);
                             break;
                         }
                         case sizeof(u32):
                         {
                             u32 size = static_cast<u32>(element.m_dataSize);
-#if !defined(AZ_BIG_ENDIAN)
                             AZStd::endian_swap(size);
-#endif
                             m_stream->Write(sizeBytes, &size);
                             break;
                         }
@@ -1970,10 +1953,8 @@ namespace AZ
                 {
                     u8 binaryTag = s_binaryStreamTag;
                     u32 version = static_cast<u32>(m_version);
-#if !defined(AZ_BIG_ENDIAN)
                     AZStd::endian_swap(binaryTag);
                     AZStd::endian_swap(version);
-#endif
                     m_stream->Write(sizeof(binaryTag), &binaryTag);
                     m_stream->Write(sizeof(version), &version);
                 }
@@ -1995,9 +1976,7 @@ namespace AZ
 
                         u32 version = 0;
                         m_stream->Read(sizeof(m_version), &version);
-#if !defined(AZ_BIG_ENDIAN)
                         AZStd::endian_swap(version);
-#endif
                         m_version = version;
 
                         if (m_version <= s_objectStreamVersion)
@@ -2253,4 +2232,3 @@ namespace AZ
 
 } // namespace AZ
 
-#endif // #ifndef AZ_UNITY_BUILD

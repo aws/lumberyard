@@ -46,13 +46,13 @@ namespace ScriptCanvas
         };
 
         template<typename t_Call, typename t_Slots>
-        static CallResult CallGeneric(Node& node, AZ::BehaviorMethod* method, AZ::BehaviorValueParameter* paramBegin, AZ::BehaviorValueParameter* paramEnd, t_Call attempt, t_Slots& slots);
+        static CallResult CallGeneric(Node& node, const AZ::BehaviorMethod* method, AZ::BehaviorValueParameter* paramBegin, AZ::BehaviorValueParameter* paramEnd, t_Call attempt, t_Slots& slots);
         
-        static CallResult Call(Node& node, bool isExpectingMultipleResults, AZ::BehaviorMethod* method, AZ::BehaviorValueParameter* paramBegin, AZ::BehaviorValueParameter* paramEnd, AZStd::vector<SlotId>& resultSlotIds);
-        static CallResult Call(Node& node, AZ::BehaviorMethod* method, AZ::BehaviorValueParameter* paramBegin, AZ::BehaviorValueParameter* paramEnd, SlotId resultSlotId);
-        static CallResult Call(Node& node, AZ::BehaviorMethod* method, AZ::BehaviorValueParameter* paramBegin, AZ::BehaviorValueParameter* paramEnd, AZStd::vector<SlotId>& resultSlotIds);
-        static AZ::Outcome<CallResult, AZStd::string> AttemptCallWithResults(Node& node, AZ::BehaviorMethod* method, AZ::BehaviorValueParameter* params, unsigned int numExpectedArgs, SlotId resultSlotId);
-        static AZ::Outcome<CallResult, AZStd::string> AttemptCallWithTupleResults(Node& node, AZ::BehaviorMethod* method, AZ::BehaviorValueParameter* params, unsigned int numExpectedArgs, AZStd::vector<SlotId> resultSlotIds);
+        static CallResult Call(Node& node, bool isExpectingMultipleResults, const AZ::BehaviorMethod* method, AZ::BehaviorValueParameter* paramBegin, AZ::BehaviorValueParameter* paramEnd, AZStd::vector<SlotId>& resultSlotIds);
+        static CallResult Call(Node& node, const AZ::BehaviorMethod* method, AZ::BehaviorValueParameter* paramBegin, AZ::BehaviorValueParameter* paramEnd, SlotId resultSlotId);
+        static CallResult Call(Node& node, const AZ::BehaviorMethod* method, AZ::BehaviorValueParameter* paramBegin, AZ::BehaviorValueParameter* paramEnd, AZStd::vector<SlotId>& resultSlotIds);
+        static AZ::Outcome<CallResult, AZStd::string> AttemptCallWithResults(Node& node, const AZ::BehaviorMethod* method, AZ::BehaviorValueParameter* params, unsigned int numExpectedArgs, SlotId resultSlotId);
+        static AZ::Outcome<CallResult, AZStd::string> AttemptCallWithTupleResults(Node& node, const AZ::BehaviorMethod* method, AZ::BehaviorValueParameter* params, unsigned int numExpectedArgs, AZStd::vector<SlotId> resultSlotIds);
         
         template<typename ... Args>
         static AZ::Outcome<Datum, AZStd::string> CallMethodOnDatum(const Datum& input, AZStd::string_view methodName, Args&& ... args);
@@ -63,7 +63,7 @@ namespace ScriptCanvas
         template<typename ... Args>
         static AZStd::vector<AZ::BehaviorValueParameter> CreateParameterList(const AZ::BehaviorMethod* method, Args&&... args);
 
-        static AZ::Outcome<Datum, AZStd::string> CallTupleGetMethod(AZ::BehaviorMethod* method, Datum& thisPointer);
+        static AZ::Outcome<Datum, AZStd::string> CallTupleGetMethod(const AZ::BehaviorMethod* method, Datum& thisPointer);
 
     private:
         static AZ::Outcome<CallResult, AZStd::string> CallOutcomeTupleMethod(Node& node, const SlotId& resultSlotId, Datum& outcomeDatum, size_t index, AZStd::string outSlotName);
@@ -76,11 +76,11 @@ namespace ScriptCanvas
         static AZStd::vector<AZ::BehaviorValueParameter> CreateParameterListInternal(const AZ::BehaviorMethod* method, AZStd::index_sequence<Indices...>, Args&&... args);
     }; // struct BehaviorContextMethodHelper    
 
-    AZStd::map<size_t, AZ::BehaviorMethod*> GetTupleGetMethods(const AZ::TypeId& typeId);
-    AZ::Outcome<AZ::BehaviorMethod*, void> GetTupleGetMethod(const AZ::TypeId& typeID, size_t index);
+    AZStd::map<size_t, const AZ::BehaviorMethod*> GetTupleGetMethods(const AZ::TypeId& typeId);
+    AZ::Outcome<const AZ::BehaviorMethod*, void> GetTupleGetMethod(const AZ::TypeId& typeID, size_t index);
 
     template<typename t_Call, typename t_Slots>
-    BehaviorContextMethodHelper::CallResult BehaviorContextMethodHelper::CallGeneric(Node& node, AZ::BehaviorMethod* method, AZ::BehaviorValueParameter* paramBegin, AZ::BehaviorValueParameter* paramEnd, t_Call attempt, t_Slots& slots)
+    BehaviorContextMethodHelper::CallResult BehaviorContextMethodHelper::CallGeneric(Node& node, const AZ::BehaviorMethod* method, AZ::BehaviorValueParameter* paramBegin, AZ::BehaviorValueParameter* paramEnd, t_Call attempt, t_Slots& slots)
     {
         const auto numExpectedArgs(static_cast<unsigned int>(method->GetNumArguments()));
         if ((paramEnd - paramBegin) == numExpectedArgs)

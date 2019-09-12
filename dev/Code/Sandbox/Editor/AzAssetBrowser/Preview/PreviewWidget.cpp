@@ -214,7 +214,7 @@ QString PreviewWidget::GetFileSize(const char* path)
         static QString mbStr = "MB";
         static QString gbStr = "GB";
 
-#if defined(AZ_PLATFORM_APPLE)
+#if AZ_TRAIT_OS_PLATFORM_APPLE
         kb = 1000.0;
         mb = kb * 1000.0;
         gb = mb * 1000.0;
@@ -222,7 +222,7 @@ QString PreviewWidget::GetFileSize(const char* path)
         kbStr = "kB";
         mbStr = "mB";
         gbStr = "gB";
-#endif //AZ_PLATFORM_APPLE
+#endif // AZ_TRAIT_OS_PLATFORM_APPLE
 
         if (fileSizeResult < kb)
         {

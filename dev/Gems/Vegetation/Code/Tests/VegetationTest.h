@@ -16,7 +16,7 @@
 #include <AzCore/Component/ComponentApplication.h>
 #include <AzCore/Asset/AssetManagerComponent.h>
 #include <AzCore/Memory/MemoryComponent.h>
-#include <Tests/TestTypes.h>
+#include <AzCore/UnitTest/TestTypes.h>
 #include <AzCore/std/functional.h>
 
 /*

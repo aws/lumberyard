@@ -328,6 +328,16 @@ def get_output_folders(self, platform, configuration, ctx=None, target=None):
 
     output_nodes = []
     for path in output_paths:
+        # Ensure output casing matches project configuration to prevent case-sensitive WAF methods from evicting nodes
+        parent_path,dir_name = os.path.split(os.path.abspath(path))
+        if os.path.exists(path) and dir_name not in os.listdir(parent_path):
+            try:
+                os.rename(path, path)
+            except:                
+                warning = '[WARN] Unable to modify output path (possibly due to an output file being open). ' \
+                          'This warning can be ignored if displayed output path casing matches what is on disk: {0}'.format(path)
+                Logs.warn_once(warning)
+
         # Correct handling for absolute paths
         if os.path.isabs(path):
             output_nodes.append(self.root.make_node(path))
@@ -336,6 +346,7 @@ def get_output_folders(self, platform, configuration, ctx=None, target=None):
             output_nodes.append(self.launch_node().make_node(path))
 
     return output_nodes
+
 
 @conf
 def get_standard_host_output_folders(self):

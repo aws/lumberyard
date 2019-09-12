@@ -836,7 +836,7 @@ namespace AssetProcessor
                     newProductName = AssetUtilities::NormalizeFilePath(newProductName);
                     if (!newProductName.startsWith(m_normalizedCacheRootPath, Qt::CaseInsensitive))
                     {
-                        AZ_Error(AssetProcessor::ConsoleChannel, "AssetProcessed(\" << %s << \", \" << %s << \" ... ) cache file \"  %s << \" does not appear to be within the cache!.\n",
+                        AZ_Error(AssetProcessor::ConsoleChannel, false, "AssetProcessed(\" << %s << \", \" << %s << \" ... ) cache file \"  %s << \" does not appear to be within the cache!.\n",
                             itProcessedAsset->m_entry.m_pathRelativeToWatchFolder.toUtf8().constData(),
                             itProcessedAsset->m_entry.m_platformInfo.m_identifier.c_str(),
                             newProductName.toUtf8().constData());
@@ -1058,7 +1058,7 @@ namespace AssetProcessor
                 newProductName = AssetUtilities::NormalizeFilePath(newProductName);
                 if (!newProductName.startsWith(m_normalizedCacheRootPath, Qt::CaseInsensitive))
                 {
-                    AZ_Error(AssetProcessor::ConsoleChannel, "AssetProcessed(\" << %s << \", \" << %s << \" ... ) cache file \"  %s << \" does not appear to be within the cache!.\n",
+                    AZ_Error(AssetProcessor::ConsoleChannel, false, "AssetProcessed(\" << %s << \", \" << %s << \" ... ) cache file \"  %s << \" does not appear to be within the cache!.\n",
                         processedAsset.m_entry.m_pathRelativeToWatchFolder.toUtf8().constData(),
                         processedAsset.m_entry.m_platformInfo.m_identifier.c_str(),
                         newProductName.toUtf8().constData());
@@ -1158,16 +1158,21 @@ namespace AssetProcessor
 
                         Q_EMIT AssetMessage(processedAsset.m_entry.m_platformInfo.m_identifier.c_str(), message); // we notify that we are aware of a missing product either way.
                     }
-                    else if (!QFile::remove(fullProductPath))
-                    {
-                        AZ_TracePrintf(AssetProcessor::ConsoleChannel, "Was unable to delete file %s will retry next time...\n", fullProductPath.toUtf8().constData());
-                        continue; // do not update database
-                    }
                     else
                     {
-                        AZ_TracePrintf(AssetProcessor::ConsoleChannel, "Deleting file %s because the recompiled input file no longer emitted that product.\n", fullProductPath.toUtf8().constData());
-
-                        Q_EMIT AssetMessage(QString(processedAsset.m_entry.m_platformInfo.m_identifier.c_str()), message); // we notify that we are aware of a missing product either way.
+                        AssetProcessor::ProcessingJobInfoBus::Broadcast(&AssetProcessor::ProcessingJobInfoBus::Events::BeginCacheFileUpdate, fullProductPath.toUtf8().data());
+                        bool wasRemoved = QFile::remove(fullProductPath);
+                        AssetProcessor::ProcessingJobInfoBus::Broadcast(&AssetProcessor::ProcessingJobInfoBus::Events::EndCacheFileUpdate, fullProductPath.toUtf8().data(), false);
+                        if (!wasRemoved)
+                        {
+                            AZ_TracePrintf(AssetProcessor::ConsoleChannel, "Was unable to delete file %s will retry next time...\n", fullProductPath.toUtf8().constData());
+                            continue; // do not update database
+                        }
+                        else
+                        {
+                            AZ_TracePrintf(AssetProcessor::ConsoleChannel, "Deleting file %s because the recompiled input file no longer emitted that product.\n", fullProductPath.toUtf8().constData());
+                            Q_EMIT AssetMessage(QString(processedAsset.m_entry.m_platformInfo.m_identifier.c_str()), message); // we notify that we are aware of a missing product either way.
+                        }
                     }
                 }
                 else
@@ -1430,8 +1435,8 @@ namespace AssetProcessor
                 entry.m_platform = dependencyInfo->m_platform;
 
                 // There's only 1 database entry for this dependency, which we'll update with the first entry.
-                // If this is a source dependency that resolves to multiple products, we'll need to add new entries for the rest of them (which happens when ID = -1)
-                dependencyId = -1;
+                // If this is a source dependency that resolves to multiple products, we'll need to add new entries for the rest of them (which happens when ID = AzToolsFramework::AssetDatabase::InvalidEntryId)
+                dependencyId = AzToolsFramework::AssetDatabase::InvalidEntryId;
             }
 
             if (!m_stateData->UpdateProductDependencies(dependencyContainer))
@@ -1814,7 +1819,9 @@ namespace AssetProcessor
             {
                 AZ_TracePrintf(AssetProcessor::ConsoleChannel, "Deleting file %s because either its source file %s was removed or the builder did not emit this job.\n", fullProductPath.toUtf8().constData(), source.m_sourceName.c_str());
 
+                AssetProcessor::ProcessingJobInfoBus::Broadcast(&AssetProcessor::ProcessingJobInfoBus::Events::BeginCacheFileUpdate, fullProductPath.toUtf8().data());
                 successfullyRemoved &= QFile::remove(fullProductPath);
+                AssetProcessor::ProcessingJobInfoBus::Broadcast(&AssetProcessor::ProcessingJobInfoBus::Events::EndCacheFileUpdate, fullProductPath.toUtf8().data(), false);
 
                 if (successfullyRemoved)
                 {
@@ -2475,7 +2482,7 @@ namespace AssetProcessor
 
             // if its in the cache root then its a product file:
             bool isProductFile = examineFile.m_fileName.startsWith(m_normalizedCacheRootPath, Qt::CaseInsensitive);
-#if defined(AZ_PLATFORM_APPLE)
+#if AZ_TRAIT_OS_PLATFORM_APPLE
             // a case can occur on apple platforms in the temp folders
             // where there is a symlink and /var/folders/.../ is also known
             // as just /private/var/folders/...
@@ -2495,7 +2502,7 @@ namespace AssetProcessor
                     normalizedPath = AssetUtilities::NormalizeFilePath(m_cacheRootDir.absoluteFilePath(withoutCachePath));
                 }
             }
-#endif // AZ_PLATFORM_APPLE
+#endif // AZ_TRAIT_OS_PLATFORM_APPLE
             // strip the engine off it so that its a "normalized asset path" with appropriate slashes and such:
             if (isProductFile)
             {
@@ -3510,7 +3517,7 @@ namespace AssetProcessor
                 {
                     if ((builderInfo.m_flags & AssetBuilderSDK::AssetBuilderDesc::BF_EmitsNoDependencies) != 0)
                     {
-                        AZ_WarningOnce(ConsoleChannel, "Asset builder '%s' registered itself using BF_EmitsNoDependencies flag, but actually emitted dependencies.  This will cause rebuilds to be inconsistent.\n", builderInfo.m_name.c_str());
+                        AZ_WarningOnce(ConsoleChannel, false, "Asset builder '%s' registered itself using BF_EmitsNoDependencies flag, but actually emitted dependencies.  This will cause rebuilds to be inconsistent.\n", builderInfo.m_name.c_str());
                     }
 
                     // remember which builder emitted each dependency:
@@ -3750,20 +3757,26 @@ namespace AssetProcessor
         return m_stateData;
     }
 
-    void AssetProcessorManager::BeginIgnoringCacheFileDelete(const char* productPath)
+    void AssetProcessorManager::BeginCacheFileUpdate(const char* productPath)
     {
         QMutexLocker locker(&m_processingJobMutex);
         m_processingProductInfoList.insert(productPath);
+
+        AssetNotificationMessage message(productPath, AssetNotificationMessage::JobFileClaimed, AZ::Data::s_invalidAssetType);
+        AssetProcessor::ConnectionBus::Broadcast(&AssetProcessor::ConnectionBus::Events::Send, 0, message);
     }
 
-    void AssetProcessorManager::StopIgnoringCacheFileDelete(const char* productPath, bool queueAgainForProcessing)
+    void AssetProcessorManager::EndCacheFileUpdate(const char* productPath, bool queueAgainForDeletion)
     {
         QMutexLocker locker(&m_processingJobMutex);
         m_processingProductInfoList.erase(productPath);
-        if (queueAgainForProcessing)
+        if (queueAgainForDeletion)
         {
             QMetaObject::invokeMethod(this, "AssessDeletedFile", Qt::QueuedConnection, Q_ARG(QString, QString::fromUtf8(productPath)));
         }
+
+        AssetNotificationMessage message(productPath, AssetNotificationMessage::JobFileReleased, AZ::Data::s_invalidAssetType);
+        AssetProcessor::ConnectionBus::Broadcast(&AssetProcessor::ConnectionBus::Events::Send, 0, message);
     }
 
     AZ::u32 AssetProcessorManager::GetJobFingerprint(const AssetProcessor::JobIndentifier& jobIndentifier)
@@ -4086,7 +4099,7 @@ namespace AssetProcessor
                     newAnalysisFingerprint.ToString<AZStd::string>().c_str(),
                     newPatternFingerprint.ToString<AZStd::string>().c_str());
 
-            newBuilders.push_back(BuilderInfoEntry(-1, currentBuilder.m_busId, finalFingerprintString.c_str()));
+            newBuilders.push_back(BuilderInfoEntry(AzToolsFramework::AssetDatabase::InvalidEntryId, currentBuilder.m_busId, finalFingerprintString.c_str()));
             BuilderData newBuilderData;
             newBuilderData.m_fingerprint = AZ::Uuid::CreateName(finalFingerprintString.c_str());
             newBuilderData.m_flags = currentBuilder.m_flags;
@@ -4210,6 +4223,25 @@ namespace AssetProcessor
 
         if (analysisTracker->failedStatus)
         {
+            // We need to clear the analysis fingerprint if it exists.  Since this file failed we can't skip processing until it succeeds again
+            bool found = false;
+            SourceDatabaseEntry source;
+
+            m_stateData->QuerySourceBySourceNameScanFolderID(analysisTracker->m_databaseSourceName.c_str(),
+                analysisTracker->m_databaseScanFolderId,
+                [&](SourceDatabaseEntry& sourceData)
+            {
+                source = AZStd::move(sourceData);
+                found = true;
+                return false; // stop iterating after the first one.  There should actually only be one entry anyway.
+            });
+
+            if (found)
+            {
+                source.m_analysisFingerprint = "";
+                m_stateData->SetSource(source);
+            }
+
             // if the job failed, we need to wipe the tracking column so that the next time we start the app we will try it again.
             // it may not be necessary to actually alter the database here.
             m_remainingJobsForEachSourceFile.erase(foundTrackingInfo);

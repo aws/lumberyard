@@ -10,6 +10,7 @@
  *
  */
 #include <AzFramework/Components/BootstrapReaderComponent.h>
+#include <AzFramework/AzFramework_Traits_Platform.h>
 
 #include <AzCore/Component/ComponentApplicationBus.h>
 #include <AzCore/IO/FileIO.h>
@@ -20,40 +21,15 @@
 #include <AzFramework/Application/Application.h>
 
 #include <AzCore/std/string/regex.h>
-#if defined(AZ_PLATFORM_ANDROID)
-#include <AzCore/Android/Utils.h>
-#endif
 
 namespace AzFramework
 {
-#if defined(AZ_PLATFORM_APPLE_IOS)
-    const char* const CURRENT_PLATFORM = "ios";
-#define AZ_RESTRICTED_SECTION_IMPLEMENTED
-#elif defined(AZ_PLATFORM_APPLE_TV)
-    const char* const CURRENT_PLATFORM = "appletv";
-#define AZ_RESTRICTED_SECTION_IMPLEMENTED
-#elif defined(AZ_PLATFORM_APPLE_OSX)
-    const char* const CURRENT_PLATFORM = "osx";
-#define AZ_RESTRICTED_SECTION_IMPLEMENTED
-#elif defined(AZ_PLATFORM_LINUX)
-    const char* const CURRENT_PLATFORM = "linux";
-#define AZ_RESTRICTED_SECTION_IMPLEMENTED
-#elif defined(AZ_RESTRICTED_PLATFORM)
-    #if defined(AZ_PLATFORM_XENIA)
-        #include "Xenia/BootstrapReaderComponent_cpp_xenia.inl"
-    #elif defined(AZ_PLATFORM_PROVO)
-        #include "Provo/BootstrapReaderComponent_cpp_provo.inl"
-    #endif
-#endif
-#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
-#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
-#elif defined(AZ_PLATFORM_WINDOWS)
-    const char* const CURRENT_PLATFORM = "windows";
-#elif defined(AZ_PLATFORM_ANDROID)
-    const char* const CURRENT_PLATFORM = "android";
-#else
-#error Unknown or unsupported platform!
-#endif
+    namespace Platform
+    {
+        const char* FindAssetsDirectory();
+    }
+
+    const char* const CURRENT_PLATFORM = AZ_TRAIT_AZFRAMEWORK_BOOTSTRAP_CFG_CURRENT_PLATFORM;
 
     void BootstrapReaderComponent::Reflect(AZ::ReflectContext* context)
     {
@@ -116,9 +92,7 @@ namespace AzFramework
         }
         else
         {
-#if defined AZ_PLATFORM_ANDROID
-            path = AZ::Android::Utils::FindAssetsDirectory();
-#endif
+            path = Platform::FindAssetsDirectory();
         }
 
         AZStd::string fullPath;

@@ -1,10 +1,12 @@
 {
-    "none": {
-        "Implementation": [
-            "Source/Apple/InAppPurchasesApple.h",
-            "Source/Apple/InAppPurchasesApple.mm",
-            "Source/Apple/InAppPurchasesDelegate.h",
-            "Source/Apple/InAppPurchasesDelegate.mm"
+    "none":
+    {
+        "Source/Platform/iOS":
+        [
+            "../Common/Apple/InAppPurchasesApple.h",
+            "../Common/Apple/InAppPurchasesApple.mm",
+            "../Common/Apple/InAppPurchasesDelegate.h",
+            "../Common/Apple/InAppPurchasesDelegate.mm"
         ]
     }
 }

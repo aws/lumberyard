@@ -778,7 +778,7 @@ private:
     IEntity* m_pEntity;
 };
 
-DECLARE_COMPONENT_POINTERS(IGameObjectExtension);
+DECLARE_SMART_POINTERS(IGameObjectExtension);
 
 #define CHANGED_NETWORK_STATE(object, aspects)       do { /* IEntity * pEntity = object->GetGameObject()->GetEntity(); CryLogAlways("%s changed aspect %x (%s %d)", pEntity ? pEntity->GetName() : "NULL", aspects, __FILE__, __LINE__); */ object->GetGameObject()->ChangedNetworkState(aspects); } while (0)
 #define CHANGED_NETWORK_STATE_GO(object, aspects)        do { /* IEntity * pEntity = object->GetEntity(); CryLogAlways("%s changed aspect %x (%s %d)", pEntity ? pEntity->GetName() : "NULL", aspects, __FILE__, __LINE__); */ object->ChangedNetworkState(aspects); } while (0)

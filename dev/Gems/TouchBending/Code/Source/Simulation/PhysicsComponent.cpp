@@ -122,31 +122,6 @@ namespace TouchBending
         {
             m_isRunningJob = false;
 
-            // PhysX has a global "PxGetPhysics()" call that's used to access the SDK.  When the entire application is 
-            // statically linked, this call works correctly across Gems.  On platforms like PC where the PhysX SDK is
-            // loaded via DLL, this call *also* works correctly across Gems.  However, on platforms where each Gem is
-            // in a separate DLL and the PhysX SDK only offers static libs, each Gem needs to create their own instance
-            // of the SDK accessors via PxCreateFoundation / PxCreatePhysics.  Everything else works correctly because
-            // there's a single physics world that we pass around to the SDK, regardless of how many SDK instances we have.
-            // (Note - this code is *stable* in all situations, but will generate an error on the PxCreateFoundation call
-            // in the shared memory case, which is why we choose to compile this code out instead of letting it run)
-#if PHYSX_USES_SINGLE_MEMORY_SPACE == 0
-            {
-                physx::PxAllocatorCallback* azAllocator = nullptr;
-                physx::PxErrorCallback* azErrorCallback = nullptr;
-
-                PhysX::SystemRequestsBus::BroadcastResult(azAllocator, &PhysX::SystemRequests::GetPhysXAllocatorCallback);
-                PhysX::SystemRequestsBus::BroadcastResult(azErrorCallback, &PhysX::SystemRequests::GetPhysXErrorCallback);
-
-                AZ_Assert(azAllocator, "Failed to get PhysX Allocator for TouchBending.");
-                AZ_Assert(azErrorCallback, "Failed to get PhysX Error Callback for TouchBending.");
-
-                // create PhysX basis
-                m_foundation = PxCreateFoundation(PX_FOUNDATION_VERSION, *azAllocator, *azErrorCallback);
-                m_physics = PxCreatePhysics(PX_PHYSICS_VERSION, *m_foundation, physx::PxTolerancesScale(), true);
-            }
-#endif
-
             PxPhysics& physics = PxGetPhysics();
 
             m_dummyMaterialForTriggers = physics.createMaterial(0, 0, 0);

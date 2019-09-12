@@ -3,9 +3,9 @@
 * its licensors.
 *
 * For complete copyright and license terms please see the LICENSE at the root of this
-* distribution(the "License").All use of this software is governed by the License,
-*or, if provided, by the license below or the license accompanying this file.Do not
-* remove or modify any license notices.This file is distributed on an "AS IS" BASIS,
+* distribution (the "License"). All use of this software is governed by the License,
+*or, if provided, by the license below or the license accompanying this file. Do not
+* remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
 *WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
@@ -38,7 +38,7 @@
 
 #if defined (AZ_PLATFORM_WINDOWS)
 #define LEGACY_RC_RELATIVE_PATH "/rc/rc.exe"    // Location of the legacy RC compiler relative to the BinXX folder the asset processor resides in
-#elif defined (AZ_PLATFORM_APPLE_OSX)
+#elif defined (AZ_PLATFORM_MAC)
 #define LEGACY_RC_RELATIVE_PATH "/rc/rc"    // Location of the legacy RC compiler relative to the BinXX folder the asset processor resides in
 #else
 #error Unsupported Platform for RC
@@ -63,10 +63,10 @@ namespace AssetProcessor
     //! Special ini configuration keyword to mark a asset pattern for copying
     const QString ASSET_PROCESSOR_CONFIG_KEYWORD_COPY = "copy";
 
-#if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_APPLE)
+#if defined(AZ_PLATFORM_WINDOWS) || AZ_TRAIT_OS_PLATFORM_APPLE
     // remove the above IFDEF as soon as the AzToolsFramework ProcessCommunicator functions on OSX, along with the rest of the similar IFDEFs in this file.
 
-#endif // AZ_PLATFORM_WINDOWS || AZ_PLATFORM_APPLE
+#endif // defined(AZ_PLATFORM_WINDOWS) || AZ_TRAIT_OS_PLATFORM_APPLE
 
     namespace Internal
     {
@@ -150,7 +150,7 @@ namespace AssetProcessor
             return false;
         }
 
-#if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_APPLE)
+#if defined(AZ_PLATFORM_WINDOWS) || AZ_TRAIT_OS_PLATFORM_APPLE
 
         if (!AZ::IO::SystemFile::Exists(rcExecutableFullPath.toUtf8().data()))
         {
@@ -161,16 +161,16 @@ namespace AssetProcessor
         this->m_rcExecutableFullPath = rcExecutableFullPath;
         this->m_resourceCompilerInitialized = true;
         return true;
-#else // defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_APPLE)
+#else // defined(AZ_PLATFORM_WINDOWS) || AZ_TRAIT_OS_PLATFORM_APPLE
         AZ_TracePrintf(AssetProcessor::DebugChannel, "There is no implementation for how to compile assets on this platform");
         return false;
-#endif // defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_APPLE)
+#endif // defined(AZ_PLATFORM_WINDOWS) || AZ_TRAIT_OS_PLATFORM_APPLE
     }
 
     bool NativeLegacyRCCompiler::Execute(const QString& inputFile, const QString& watchFolder, const QString& platformIdentifier, 
         const QString& params, const QString& dest, const AssetBuilderSDK::JobCancelListener* jobCancelListener, Result& result) const
     {
-#if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_APPLE)
+#if defined(AZ_PLATFORM_WINDOWS) || AZ_TRAIT_OS_PLATFORM_APPLE
         if (!this->m_resourceCompilerInitialized)
         {
             result.m_exitCode = JobExitCode_RCCouldNotBeLaunched;
@@ -270,12 +270,12 @@ namespace AssetProcessor
 
         return finishedOK;
 
-#else // AZ_PLATFORM_WINDOWS || AZ_PLATFORM_APPLE
+#else // defined(AZ_PLATFORM_WINDOWS) || AZ_TRAIT_OS_PLATFORM_APPLE
         result.m_exitCode = JobExitCode_RCCouldNotBeLaunched;
         result.m_crashed = false;
         AZ_Error("RC Builder", false, "There is no implementation for how to compile assets via RC on this platform");
         return false;
-#endif // AZ_PLATFORM_WINDOWS || AZ_PLATFORM_APPLE
+#endif // defined(AZ_PLATFORM_WINDOWS) || AZ_TRAIT_OS_PLATFORM_APPLE
     }
 
     QString NativeLegacyRCCompiler::BuildCommand(const QString& inputFile, const QString& watchFolder, const QString& platformIdentifier, const QString& params, const QString& dest)
@@ -557,7 +557,7 @@ namespace AssetProcessor
                 if (internalAssetRecognizer->m_platformSpecsByPlatform.size() == 0)
                 {
                     delete internalAssetRecognizer;
-                    AZ_Warning(AssetProcessor::DebugChannel, "Skipping recognizer %s, no platforms supported\n", builderName.toUtf8().data());
+                    AZ_Warning(AssetProcessor::DebugChannel, false, "Skipping recognizer %s, no platforms supported\n", builderName.toUtf8().data());
                     continue;
                 }
 

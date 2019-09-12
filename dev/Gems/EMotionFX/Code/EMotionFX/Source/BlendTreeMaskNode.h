@@ -97,6 +97,11 @@ namespace EMotionFX
         void Update(AnimGraphInstance* animGraphInstance, float timePassedInSeconds) override;
         void PostUpdate(AnimGraphInstance* animGraphInstance, float timePassedInSeconds) override;
 
+        AZStd::string GetMask0JointName(int index) const;
+        AZStd::string GetMask1JointName(int index) const;
+        AZStd::string GetMask2JointName(int index) const;
+        AZStd::string GetMask3JointName(int index) const;
+
         AZStd::vector<AZStd::string>        m_mask0;
         AZStd::vector<AZStd::string>        m_mask1;
         AZStd::vector<AZStd::string>        m_mask2;

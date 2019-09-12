@@ -16,6 +16,7 @@
 #include <AzCore/std/allocator_static.h>
 #include <AzCore/std/allocator_ref.h>
 #include <AzCore/std/allocator_stack.h>
+#include <AzCore/std/allocator_traits.h>
 
 #include <AzCore/Memory/SystemAllocator.h>
 
@@ -62,6 +63,81 @@ namespace UnitTest
     TEST_F(AllocatorDefaultTest, Test)
     {
         run();
+    }
+
+    TEST_F(AllocatorDefaultTest, AllocatorTraitsExistForAZStdAllocator)
+    {
+        using AZStdAllocatorTraits = AZStd::allocator_traits<AZStd::allocator>;
+        static_assert(AZStd::is_same<AZStdAllocatorTraits::allocator_type, AZStd::allocator>::value, "Allocator trait allocator_type is not the same as AZStd::allocator");
+        static_assert(AZStd::is_same<AZStdAllocatorTraits::value_type, uint8_t>::value, "Allocator trait value_type is not the same as uint8_t");
+        static_assert(AZStd::is_same<AZStdAllocatorTraits::pointer, void*>::value, "Allocator trait pointer is not the same as void*");
+        static_assert(AZStd::is_same<AZStdAllocatorTraits::const_pointer, const uint8_t*>::value, "Allocator trait const_pointer is not the same as const uint8_t*");
+        static_assert(AZStd::is_same<AZStdAllocatorTraits::void_pointer, void*>::value, "Allocator trait void_pointer is not the same as void*");
+        static_assert(AZStd::is_same<AZStdAllocatorTraits::const_void_pointer, const void*>::value, "Allocator trait const_void_pointer is not the same as void*");
+        static_assert(AZStd::is_same<AZStdAllocatorTraits::difference_type, ptrdiff_t>::value, "Allocator trait difference_type is not the same as ptrdiff_t");
+        static_assert(AZStd::is_same<AZStdAllocatorTraits::size_type, size_t>::value, "Allocator trait size_type is not the same as size_t");
+        static_assert(AZStd::is_same<AZStdAllocatorTraits::propagate_on_container_copy_assignment, false_type>::value, "Allocator trait propagate_on_container_copy_assignment is not the same as false_type");
+        static_assert(AZStd::is_same<AZStdAllocatorTraits::propagate_on_container_move_assignment, false_type>::value, "Allocator trait propagate_on_container_move_assignment is not the same as false_type");
+        static_assert(AZStd::is_same<AZStdAllocatorTraits::propagate_on_container_swap, false_type>::value, "Allocator trait propagate_on_container_swap is not the same as false_type");
+        static_assert(AZStd::is_same<AZStdAllocatorTraits::is_always_equal, false_type>::value, "Allocator trait is_always_equal is not the same as false_type");
+        static_assert(AZStd::is_same<typename AZStdAllocatorTraits::template rebind_alloc<int32_t>, AZStd::allocator>::value, "Rebind alloc for AZStd::allocator should return AZStd::allocator");
+        static_assert(AZStd::is_same<typename AZStdAllocatorTraits::template rebind_traits<int32_t>::allocator_type, AZStd::allocator>::value, "Rebind traits allocator_type should still be AZStd::allocator");
+    }
+
+    TEST_F(AllocatorDefaultTest, AllocatorTraitsAllocateAndDeallocateSucceeds)
+    {
+        using AZStdAllocatorTraits = AZStd::allocator_traits<AZStd::allocator>;
+        AZStd::allocator testAllocator("trait allocator");
+        typename AZStdAllocatorTraits::pointer data = AZStdAllocatorTraits::allocate(testAllocator, 50, 128);
+        EXPECT_NE(nullptr, data);
+        AZStdAllocatorTraits::deallocate(testAllocator, data, 50, 128);
+    }
+
+    TEST_F(AllocatorDefaultTest, AllocatorTraitsConstructAndDestroySucceeds)
+    {
+        static int32_t constructedCount;
+        struct TestAllocated
+        {
+            TestAllocated(int32_t value)
+                : m_value(value)
+            {
+                ++constructedCount;
+            }
+            ~TestAllocated()
+            {
+                --constructedCount;
+            }
+
+            int32_t m_value{};
+        };
+
+        using AZStdAllocatorTraits = AZStd::allocator_traits<AZStd::allocator>;
+        AZStd::allocator testAllocator("trait allocator");
+        typename AZStdAllocatorTraits::pointer data = AZStdAllocatorTraits::allocate(testAllocator, sizeof(TestAllocated), alignof(TestAllocated));
+        EXPECT_NE(nullptr, data);
+        auto testPtr = static_cast<TestAllocated*>(data);
+        AZStdAllocatorTraits::construct(testAllocator, testPtr, 42);
+        EXPECT_EQ(1, constructedCount);
+        EXPECT_EQ(42, testPtr->m_value);
+        AZStdAllocatorTraits::destroy(testAllocator, testPtr);
+        EXPECT_EQ(0, constructedCount);
+        AZStdAllocatorTraits::deallocate(testAllocator, data, sizeof(TestAllocated), alignof(TestAllocated));
+    }
+
+    TEST_F(AllocatorDefaultTest, AllocatorTraitsMaxSizeCompilesWithoutErrors)
+    {
+        using AZStdAllocatorTraits = AZStd::allocator_traits<AZStd::allocator>;
+        AZStd::allocator testAllocator("trait allocator");
+        typename AZStdAllocatorTraits::size_type maxSize = AZStdAllocatorTraits::max_size(testAllocator);
+        EXPECT_EQ(testAllocator.get_max_size(), maxSize);
+    }
+
+    TEST_F(AllocatorDefaultTest, AllocatorTraitsSelectOnContainerCopyConstructionCompilesWithoutErrors)
+    {
+        using AZStdAllocatorTraits = AZStd::allocator_traits<AZStd::allocator>;
+        AZStd::allocator testAllocator("trait allocator");
+        AZStd::allocator copiedAllocator = AZStdAllocatorTraits::select_on_container_copy_construction(testAllocator);
+        EXPECT_EQ(testAllocator, copiedAllocator);
     }
 
     /// Static buffer allocator.

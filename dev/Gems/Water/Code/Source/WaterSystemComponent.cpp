@@ -53,6 +53,7 @@ namespace Water
 
     void WaterSystemComponent::Activate()
     {
+        WaterEffectsRequestBus::Handler::BusConnect();
         AZ::OceanFeatureToggleBus::Handler::BusConnect();
         SurfaceData::SurfaceDataTagProviderRequestBus::Handler::BusConnect();
     }
@@ -61,6 +62,7 @@ namespace Water
     {
         SurfaceData::SurfaceDataTagProviderRequestBus::Handler::BusDisconnect();
         AZ::OceanFeatureToggleBus::Handler::BusDisconnect();
+        WaterEffectsRequestBus::Handler::BusDisconnect();
     }
 
     void WaterSystemComponent::GetRegisteredSurfaceTagNames(SurfaceData::SurfaceTagNameSet& names) const
@@ -69,5 +71,10 @@ namespace Water
         names.insert(Constants::s_waterTagName);
         names.insert(Constants::s_underWaterTagName);
         names.insert(Constants::s_oceanTagName);
+    }
+
+    void WaterSystemComponent::GenerateWaterRipple(const AZ::Vector3& position, const float scale, const float strength)
+    {
+        gEnv->pRenderer->EF_AddWaterSimHit(Vec3(position), scale, strength);
     }
 }

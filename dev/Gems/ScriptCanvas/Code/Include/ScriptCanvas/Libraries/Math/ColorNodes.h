@@ -46,7 +46,7 @@ namespace ScriptCanvas
 
             return source / ToVectorFloat(divisor);
         }
-        SCRIPT_CANVAS_GENERIC_FUNCTION_NODE(DivideByNumber, "Math/Color", "{1B8EBAAF-FEFE-4D1E-896D-4CAFD2D6426B}", "returns Source with each element divided by Divisor", "Source", "Divisor");
+        SCRIPT_CANVAS_GENERIC_FUNCTION_NODE_DEPRECATED(DivideByNumber, "Math/Color", "{1B8EBAAF-FEFE-4D1E-896D-4CAFD2D6426B}", "returns Source with each element divided by Divisor", "Source", "Divisor");
 
         AZ_INLINE NumberType Dot(ColorType a, ColorType b)
         {

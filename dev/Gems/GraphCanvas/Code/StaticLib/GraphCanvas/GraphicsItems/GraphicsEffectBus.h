@@ -21,11 +21,14 @@ namespace GraphCanvas
     {
     public:
         static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::ById;
-        using BusIdType = AZ::EntityId;
+        using BusIdType = GraphicsEffectId;
         
         virtual QGraphicsItem* AsQGraphicsItem() = 0;
         
         virtual void OnGraphicsEffectCancelled() = 0;
+
+        // Mainly used in clearing the scene which enumerates over these interfaces.
+        virtual GraphicsEffectId GetEffectId() const = 0;
     };
     
     using GraphicsEffectRequestBus = AZ::EBus<GraphicsEffectRequests>;

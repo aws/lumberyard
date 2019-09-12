@@ -1675,10 +1675,14 @@ void CShaderMan::mfInit (void)
             const char* shaderPakDir = "@assets@";
             const char* shaderPakPath = "shaderCache.pak";
 
-            #if defined(AZ_RESTRICTED_PLATFORM) && defined(AZ_PLATFORM_PROVO)
-                #define AZ_RESTRICTED_SECTION SHADERCORE_CPP_SECTION_1
-                #include "Provo/ShaderCore_cpp_provo.inl"
-            #endif
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION SHADERCORE_CPP_SECTION_1
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/ShaderCore_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/ShaderCore_cpp_provo.inl"
+    #endif
+#endif
 
             if (CRenderer::CV_r_shaderspreactivate == 3)
             {
@@ -1739,10 +1743,14 @@ bool CShaderMan::LoadShaderStartupCache()
 {
     const char* shaderPakDir = "@assets@/ShaderCacheStartup.pak";
 
-    #if defined(AZ_RESTRICTED_PLATFORM) && defined(AZ_PLATFORM_PROVO)
-        #define AZ_RESTRICTED_SECTION SHADERCORE_CPP_SECTION_2
+#if defined(AZ_RESTRICTED_PLATFORM)
+#define AZ_RESTRICTED_SECTION SHADERCORE_CPP_SECTION_2
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/ShaderCore_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/ShaderCore_cpp_provo.inl"
     #endif
+#endif
     
     return gEnv->pCryPak->OpenPack("@assets@", shaderPakDir, ICryPak::FLAGS_PAK_IN_MEMORY | ICryPak::FLAGS_PATH_REAL);
 }

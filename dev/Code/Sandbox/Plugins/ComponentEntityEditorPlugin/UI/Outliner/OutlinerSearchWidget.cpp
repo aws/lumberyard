@@ -84,7 +84,6 @@ namespace AzQtComponents
             AddTypeFilter(filter.category, filter.displayName, QVariant::fromValue<AZ::Uuid>(AZ::Uuid::Create()), value);
             ++value;
         }
-        m_selector->GetTree()->setItemDelegate(new OutlinerSearchItemDelegate(m_selector->GetTree()));
     }
 
     FilterCriteriaButton* OutlinerSearchWidget::createCriteriaButton(const SearchTypeFilter& filter, int filterIndex)
@@ -96,12 +95,29 @@ namespace AzQtComponents
     {
     }
 
+    void OutlinerSearchItemDelegate::PaintRichText(QPainter* painter, QStyleOptionViewItemV4& opt, QString& text) const
+    {
+        int textDocDrawYOffset = 3;
+        QPoint paintertextDocRenderOffset = QPoint(1, 4);
+
+        QTextDocument textDoc;
+        textDoc.setDefaultFont(opt.font);
+        opt.palette.color(QPalette::Text);
+        textDoc.setDefaultStyleSheet("body {color: " + opt.palette.color(QPalette::Text).name() + "}");
+        textDoc.setHtml("<body>" + text + "</body>");
+        QRect textRect = opt.widget->style()->proxy()->subElementRect(QStyle::SE_ItemViewItemText, &opt);
+        painter->translate(textRect.topLeft() - paintertextDocRenderOffset);
+        textDoc.setTextWidth(textRect.width());
+        textDoc.drawContents(painter, QRectF(0, textDocDrawYOffset, textRect.width(), textRect.height() + textDocDrawYOffset));
+    }
+
     void OutlinerSearchItemDelegate::paint(QPainter* painter, const QStyleOptionViewItem& option,
                                            const QModelIndex& index) const
     {
+        bool isGlobalOption = false;
         painter->save();
 
-        QStyleOptionViewItem opt = option;
+        QStyleOptionViewItemV4 opt = option;
         initStyleOption(&opt, index);
 
         const QWidget* widget = option.widget;
@@ -117,6 +133,7 @@ namespace AzQtComponents
 
             opt.icon = QIcon();
             opt.decorationSize = QSize(0, 0);
+            isGlobalOption = true;
         }
 
         // Handle the seperator
@@ -127,7 +144,35 @@ namespace AzQtComponents
         }
         else
         {
-            style->drawControl(QStyle::CE_ItemViewItem, &opt, painter, widget);
+            if (m_selector->GetFilterString().length() > 0 && !isGlobalOption && opt.features & QStyleOptionViewItemV4::ViewItemFeature::HasCheckIndicator)
+            {
+                // Create rich text menu text to show filterstring
+                QString label{ opt.text };
+                opt.text = "";
+
+                style->drawControl(QStyle::CE_ItemViewItem, &opt, painter, widget);
+
+                int highlightTextIndex = 0;
+                do
+                {
+                    highlightTextIndex = label.lastIndexOf(m_selector->GetFilterString(), highlightTextIndex - 1, Qt::CaseInsensitive);
+                    if (highlightTextIndex >= 0)
+                    {
+                        static const QColor outlinerHighlightColor(GetIEditor()->GetColorByName("OutlinerSelectionColor"));
+                        const QString BACKGROUND_COLOR{ outlinerHighlightColor.name() };
+                        label.insert(highlightTextIndex + m_selector->GetFilterString().length(), "</span>");
+                        label.insert(highlightTextIndex, "<span style=\"background-color: " + BACKGROUND_COLOR + "\">");
+                    }
+                } while (highlightTextIndex > 0);
+                PaintRichText(painter, opt, label);  
+            }
+            else
+            {          
+                QString label = opt.text;
+                opt.text = "";
+                style->drawControl(QStyle::CE_ItemViewItem, &opt, painter, widget);
+                PaintRichText(painter, opt, label);
+            }
         }
 
         painter->restore();

@@ -1,7 +1,8 @@
 {
     "auto": {
         "Tests": [
-            "Tests/ImageProcessing_Test.cpp"
+            "Tests/ImageProcessing_Test.cpp",
+            "Tests/AtlasBuilderTest.cpp"
         ]
     }
 }

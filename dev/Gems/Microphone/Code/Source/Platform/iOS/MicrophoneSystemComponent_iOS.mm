@@ -15,8 +15,6 @@
 #import <Foundation/Foundation.h>
 #import <AudioToolbox/AudioToolbox.h>
 
-
-#include "MicrophoneSystemComponent_ios.inl"
 #include "MicrophoneSystemComponent.h"
 #include "SimpleDownsample.h"
 
@@ -33,7 +31,7 @@
 namespace Audio
 {
 
-class MicrophoneSystemComponent_iOS : public MicrophoneSystemComponent_Wrapper
+class MicrophoneSystemComponentIOS : public MicrophoneSystemComponent::Implementation
 {
 public:
     bool InitializeDevice() override
@@ -260,7 +258,7 @@ private:
 		AZ::u32 inNumberFrames, 
 		AudioBufferList* ioData) {
 		
-		auto impl = reinterpret_cast<MicrophoneSystemComponent_iOS*>(inRefCon);
+		auto impl = reinterpret_cast<MicrophoneSystemComponentIOS*>(inRefCon);
 
 		// Samples are 16 bits = 2 bytes.
 		// 1 frame includes only 1 sample
@@ -306,9 +304,9 @@ private:
 
 };
 
-void MicrophoneSystemComponent::Pimpl::Construct()
+///////////////////////////////////////////////////////////////////////////////////////////////
+MicrophoneSystemComponent::Implementation* MicrophoneSystemComponent::Implementation::Create()
 {
-	m_wrapper.reset(new MicrophoneSystemComponent_iOS());
+    return aznew MicrophoneSystemComponentIOS();
 }
-
 }

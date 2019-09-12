@@ -498,7 +498,6 @@ namespace EMotionFX
             }
             else
             {
-                const Parameter* param = *it;
                 m_childParameters.erase(it);
                 return true;
             }

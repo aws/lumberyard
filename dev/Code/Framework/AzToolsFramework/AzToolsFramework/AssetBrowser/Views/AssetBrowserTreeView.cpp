@@ -25,10 +25,14 @@
 
 #include <QMenu>
 #include <QHeaderView>
+AZ_PUSH_DISABLE_WARNING(4244, "-Wunknown-warning-option") // conversion from 'int' to 'float', possible loss of data
 #include <QMouseEvent>
+AZ_POP_DISABLE_WARNING
 #include <QCoreApplication>
 #include <QPen>
+AZ_PUSH_DISABLE_WARNING(4800, "-Wunknown-warning-option") // 'QFlags<QPainter::RenderHint>::Int': forcing value to bool 'true' or 'false' (performance warning)
 #include <QPainter>
+AZ_POP_DISABLE_WARNING
 #include <QTimer>
 
 namespace AzToolsFramework

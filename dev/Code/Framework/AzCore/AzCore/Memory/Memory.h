@@ -729,15 +729,5 @@ namespace AZ
 #define AZ_DEFAULT_ALIGNMENT (sizeof(void*))
 
 // define unlimited allocator limits (scaled to real number when we check if there is enough memory to allocate)
-#if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_ANDROID) || defined(AZ_PLATFORM_APPLE_IOS) || defined(AZ_PLATFORM_APPLE_TV)
-#   define AZ_CORE_MAX_ALLOCATOR_SIZE ((size_t)2 * 1024 * 1024 * 1024)
-#elif defined(AZ_PLATFORM_WINDOWS_X64) || defined(AZ_PLATFORM_APPLE_OSX)
-#   define AZ_CORE_MAX_ALLOCATOR_SIZE ((size_t)8 * 1024 * 1024 * 1024)
-#elif defined(AZ_PLATFORM_LINUX)
-#   define AZ_CORE_MAX_ALLOCATOR_SIZE ((size_t)8 * 1024 * 1024 * 1024)
-#elif AZ_TRAIT_MAX_ALLOCATOR_SIZE_4GB
-#   define AZ_CORE_MAX_ALLOCATOR_SIZE ((size_t)4 * 1024 * 1024 * 1024)
-#else
-#   define AZ_CORE_MAX_ALLOCATOR_SIZE ((size_t)10 * 1024 * 1024)
-#endif
+#define AZ_CORE_MAX_ALLOCATOR_SIZE AZ_TRAIT_OS_MEMORY_MAX_ALLOCATOR_SIZE
 

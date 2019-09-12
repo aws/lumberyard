@@ -288,7 +288,7 @@ namespace EMStudio
 
         if (ctrl)
         {
-            #if defined(AZ_PLATFORM_APPLE)
+            #if AZ_TRAIT_OS_PLATFORM_APPLE
                 keyText += "COMMAND + ";
             #else
                 keyText += "CTRL + ";

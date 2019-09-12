@@ -31,12 +31,6 @@ def build(bld):
         includes         = ['..'],
         export_includes  = ['..'],
 
-        uselib           = ['GMOCK'],
-
-        restricted_script   = 'update_restricted_parameters',
-
-        win_file_list               = ['aztest_win.waf_files'],
-        darwin_file_list            = ['aztest_osx.waf_files'],
-        android_file_list           = ['aztest_android.waf_files'],
-        linux_file_list             = ['aztest_linux.waf_files'],
+        # Platform Roots
+        platform_roots  = [bld.PlatformRoot('Platform', export_includes=True)],
     )

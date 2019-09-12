@@ -11,7 +11,7 @@
 */
 
 #include <AzFramework/Input/Devices/Touch/InputDeviceTouch.h>
-#include <AzFramework/Input/Buses/Notifications/RawInputNotificationBus_ios.h>
+#include <AzFramework/Input/Buses/Notifications/RawInputNotificationBus_Platform.h>
 
 #include <UIKit/UIKit.h>
 

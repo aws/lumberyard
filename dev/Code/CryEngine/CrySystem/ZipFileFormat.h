@@ -26,6 +26,8 @@
 
 namespace ZipFile
 {
+    using HeaderType = uint32;
+
     // General-purpose bit field flags
     enum
     {

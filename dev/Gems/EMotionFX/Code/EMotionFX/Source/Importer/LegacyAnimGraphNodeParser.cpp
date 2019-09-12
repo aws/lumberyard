@@ -82,62 +82,57 @@ namespace EMotionFX
 {
     const AZ::TypeId GetNewTypeIdByOldNodeTypeId(uint32 oldNodeTypeId)
     {
-        static const AZStd::unordered_map<uint32, AZ::TypeId> newTypeIdByOldNodeTypeId =
+        switch (oldNodeTypeId)
         {
-            { 0x00000017, azrtti_typeid<AnimGraphBindPoseNode>()         },
-            { 0x00000005, azrtti_typeid<AnimGraphStateMachine>()         },
-            { 0x00000002, azrtti_typeid<AnimGraphMotionNode>()           },
-            { 0x38658581, azrtti_typeid<AnimGraphHubNode>()              },
-            { 0x32521069, azrtti_typeid<AnimGraphExitNode>()             },
-            { 0x38020071, azrtti_typeid<AnimGraphEntryNode>()            },
-            { 0x00000006, azrtti_typeid<BlendTree>()                     },
-            { 0x00000001, azrtti_typeid<BlendTreeFinalNode>()            },
-            { 0x00022100, azrtti_typeid<BlendSpace1DNode>()              },
-            { 0x00022200, azrtti_typeid<BlendSpace2DNode>()              },
-            { 0x00000004, azrtti_typeid<BlendTreeBlend2LegacyNode>()     },
-            { 0x00000013, azrtti_typeid<BlendTreeBlendNNode>()           },
-            { 0x00000007, azrtti_typeid<BlendTreeParameterNode>()        },
-            { 0x00000008, azrtti_typeid<BlendTreeFloatMath1Node>()       },
-            { 0x00000009, azrtti_typeid<BlendTreeFloatMath2Node>()       },
-            { 0x00000010, azrtti_typeid<BlendTreeFloatConditionNode>()   },
-            { 0x00000148, azrtti_typeid<BlendTreeFloatConstantNode>()    },
-            { 0x00000012, azrtti_typeid<BlendTreeFloatSwitchNode>()      },
-            { 0x00000011, azrtti_typeid<BlendTreeBoolLogicNode>()        },
-            { 0x00000014, azrtti_typeid<BlendTreePoseSwitchNode>()       },
-            { 0x00000016, azrtti_typeid<BlendTreeMaskNode>()             },
-            { 0x00002445, azrtti_typeid<BlendTreeMorphTargetNode>()      },
-            { 0x00000018, azrtti_typeid<BlendTreeMotionFrameNode>()      },
-            { 0x00000020, azrtti_typeid<BlendTreeVector3Math1Node>()     },
-            { 0x00000021, azrtti_typeid<BlendTreeVector3Math2Node>()     },
-            { 0x00000126, azrtti_typeid<BlendTreeVector2DecomposeNode>() },
-            { 0x00000227, azrtti_typeid<BlendTreeVector3DecomposeNode>() },
-            { 0x00000129, azrtti_typeid<BlendTreeVector4DecomposeNode>() },
-            { 0x00000228, azrtti_typeid<BlendTreeVector2ComposeNode>()   },
-            { 0x00000128, azrtti_typeid<BlendTreeVector3ComposeNode>()   },
-            { 0x00000229, azrtti_typeid<BlendTreeVector4ComposeNode>()   },
-            { 0x00000456, azrtti_typeid<BlendTreeSmoothingNode>()        },
-            { 0x02094017, azrtti_typeid<BlendTreeRangeRemapperNode>()    },
-            { 0x38427080, azrtti_typeid<BlendTreeDirectionToWeightNode>()},
-            { 0x00000214, azrtti_typeid<BlendTreeMirrorPoseNode>()       },
-            { 0x00001286, azrtti_typeid<BlendTreeTwoLinkIKNode>()        },
-            { 0x00040360, azrtti_typeid<BlendTreeLookAtNode>()           },
-            { 0x00012345, azrtti_typeid<BlendTreeTransformNode>()        },
-            { 0x00012346, azrtti_typeid<BlendTreeAccumTransformNode>()   },
-            { 0x00001000, azrtti_typeid<AnimGraphStateTransition>()      },
-            { 0x00002000, azrtti_typeid<AnimGraphParameterCondition>()   },
-            { 0x00002123, azrtti_typeid<AnimGraphVector2Condition>()     },
-            { 0x00002001, azrtti_typeid<AnimGraphMotionCondition>()      },
-            { 0x09502005, azrtti_typeid<AnimGraphStateCondition>()       },
-            { 0x00005210, azrtti_typeid<AnimGraphTimeCondition>()        },
-            { 0x00029610, azrtti_typeid<AnimGraphPlayTimeCondition>()    },
-            { 0x00005321, azrtti_typeid<AnimGraphTagCondition>()         }
+            case 0x00000017: return azrtti_typeid<AnimGraphBindPoseNode>(); break;
+            case 0x00000005: return azrtti_typeid<AnimGraphStateMachine>(); break;
+            case 0x00000002: return azrtti_typeid<AnimGraphMotionNode>(); break;
+            case 0x38658581: return azrtti_typeid<AnimGraphHubNode>(); break;
+            case 0x32521069: return azrtti_typeid<AnimGraphExitNode>(); break;
+            case 0x38020071: return azrtti_typeid<AnimGraphEntryNode>(); break;
+            case 0x00000006: return azrtti_typeid<BlendTree>(); break;
+            case 0x00000001: return azrtti_typeid<BlendTreeFinalNode>(); break;
+            case 0x00022100: return azrtti_typeid<BlendSpace1DNode>(); break;
+            case 0x00022200: return azrtti_typeid<BlendSpace2DNode>(); break;
+            case 0x00000004: return azrtti_typeid<BlendTreeBlend2LegacyNode>(); break;
+            case 0x00000013: return azrtti_typeid<BlendTreeBlendNNode>(); break;
+            case 0x00000007: return azrtti_typeid<BlendTreeParameterNode>(); break;
+            case 0x00000008: return azrtti_typeid<BlendTreeFloatMath1Node>(); break;
+            case 0x00000009: return azrtti_typeid<BlendTreeFloatMath2Node>(); break;
+            case 0x00000010: return azrtti_typeid<BlendTreeFloatConditionNode>(); break;
+            case 0x00000148: return azrtti_typeid<BlendTreeFloatConstantNode>(); break;
+            case 0x00000012: return azrtti_typeid<BlendTreeFloatSwitchNode>(); break;
+            case 0x00000011: return azrtti_typeid<BlendTreeBoolLogicNode>(); break;
+            case 0x00000014: return azrtti_typeid<BlendTreePoseSwitchNode>(); break;
+            case 0x00000016: return azrtti_typeid<BlendTreeMaskNode>(); break;
+            case 0x00002445: return azrtti_typeid<BlendTreeMorphTargetNode>(); break;
+            case 0x00000018: return azrtti_typeid<BlendTreeMotionFrameNode>(); break;
+            case 0x00000020: return azrtti_typeid<BlendTreeVector3Math1Node>(); break;
+            case 0x00000021: return azrtti_typeid<BlendTreeVector3Math2Node>(); break;
+            case 0x00000126: return azrtti_typeid<BlendTreeVector2DecomposeNode>(); break;
+            case 0x00000227: return azrtti_typeid<BlendTreeVector3DecomposeNode>(); break;
+            case 0x00000129: return azrtti_typeid<BlendTreeVector4DecomposeNode>(); break;
+            case 0x00000228: return azrtti_typeid<BlendTreeVector2ComposeNode>(); break;
+            case 0x00000128: return azrtti_typeid<BlendTreeVector3ComposeNode>(); break;
+            case 0x00000229: return azrtti_typeid<BlendTreeVector4ComposeNode>(); break;
+            case 0x00000456: return azrtti_typeid<BlendTreeSmoothingNode>(); break;
+            case 0x02094017: return azrtti_typeid<BlendTreeRangeRemapperNode>(); break;
+            case 0x38427080: return azrtti_typeid<BlendTreeDirectionToWeightNode>(); break;
+            case 0x00000214: return azrtti_typeid<BlendTreeMirrorPoseNode>(); break;
+            case 0x00001286: return azrtti_typeid<BlendTreeTwoLinkIKNode>(); break;
+            case 0x00040360: return azrtti_typeid<BlendTreeLookAtNode>(); break;
+            case 0x00012345: return azrtti_typeid<BlendTreeTransformNode>(); break;
+            case 0x00012346: return azrtti_typeid<BlendTreeAccumTransformNode>(); break;
+            case 0x00001000: return azrtti_typeid<AnimGraphStateTransition>(); break;
+            case 0x00002000: return azrtti_typeid<AnimGraphParameterCondition>(); break;
+            case 0x00002123: return azrtti_typeid<AnimGraphVector2Condition>(); break;
+            case 0x00002001: return azrtti_typeid<AnimGraphMotionCondition>(); break;
+            case 0x09502005: return azrtti_typeid<AnimGraphStateCondition>(); break;
+            case 0x00005210: return azrtti_typeid<AnimGraphTimeCondition>(); break;
+            case 0x00029610: return azrtti_typeid<AnimGraphPlayTimeCondition>(); break;
+            case 0x00005321: return azrtti_typeid<AnimGraphTagCondition>(); break;
+            default: return AZ::TypeId::CreateNull();
         };
-        auto it = newTypeIdByOldNodeTypeId.find(oldNodeTypeId);
-        if (it != newTypeIdByOldNodeTypeId.end())
-        {
-            return it->second;
-        }
-        return AZ::TypeId::CreateNull();
     }
 
     class LegacyAttributeRotation
@@ -495,6 +490,7 @@ bool LegacyAttribute<AZ::PackedVector3f>::Parse(MCore::File* stream, MCore::Endi
 template<>
 bool LegacyAttribute<bool>::Parse(MCore::File* stream, MCore::Endian::EEndianType endianType)
 {
+    AZ_UNUSED(endianType);
     // Skip the version (not used byt this legacy attribute)
     if (!LegacyAnimGraphNodeParser::Forward(stream, sizeof(uint8)))
     {
@@ -974,6 +970,11 @@ bool LegacyAnimGraphNodeParser::ParseLegacyAttributes<BlendTreeVector4ComposeNod
     Importer::ImportParameters& importParams,
     AnimGraphObject& animGraphObject)
 {
+    AZ_UNUSED(stream);
+    AZ_UNUSED(numAttributes);
+    AZ_UNUSED(endianType);
+    AZ_UNUSED(importParams);
+    AZ_UNUSED(animGraphObject);
     // Do nothing
     return true;
 }
@@ -985,6 +986,11 @@ bool LegacyAnimGraphNodeParser::ParseLegacyAttributes<BlendTreeVector3ComposeNod
     Importer::ImportParameters& importParams,
     AnimGraphObject& animGraphObject)
 {
+    AZ_UNUSED(stream);
+    AZ_UNUSED(numAttributes);
+    AZ_UNUSED(endianType);
+    AZ_UNUSED(importParams);
+    AZ_UNUSED(animGraphObject);
     // Do nothing
     return true;
 }
@@ -996,6 +1002,11 @@ bool LegacyAnimGraphNodeParser::ParseLegacyAttributes<BlendTreeVector2ComposeNod
     Importer::ImportParameters& importParams,
     AnimGraphObject& animGraphObject)
 {
+    AZ_UNUSED(stream);
+    AZ_UNUSED(numAttributes);
+    AZ_UNUSED(endianType);
+    AZ_UNUSED(importParams);
+    AZ_UNUSED(animGraphObject);
     // Do nothing
     return true;
 }
@@ -1008,6 +1019,7 @@ bool LegacyAnimGraphNodeParser::ParseLegacyAttributes<BlendTreeMorphTargetNode>(
     Importer::ImportParameters& importParams,
     AnimGraphObject& animGraphObject)
 {
+    AZ_UNUSED(importParams);
     BlendTreeMorphTargetNode& blendTreeMorphTargetNode = static_cast<BlendTreeMorphTargetNode&>(animGraphObject);
     // For all attributes
     for (uint32 parsedAttributeCount = 0; parsedAttributeCount < numAttributes; ++parsedAttributeCount)
@@ -1060,6 +1072,7 @@ bool LegacyAnimGraphNodeParser::ParseLegacyAttributes<BlendTreeFloatConstantNode
     Importer::ImportParameters& importParams,
     AnimGraphObject& animGraphObject)
 {
+    AZ_UNUSED(importParams);
     BlendTreeFloatConstantNode& blendTreeFloatConstantNode = static_cast<BlendTreeFloatConstantNode&>(animGraphObject);
     // For all attributes
     for (uint32 parsedAttributeCount = 0; parsedAttributeCount < numAttributes; ++parsedAttributeCount)
@@ -1104,6 +1117,7 @@ bool LegacyAnimGraphNodeParser::ParseLegacyAttributes<BlendTreeLookAtNode>(MCore
      Importer::ImportParameters& importParams,
      AnimGraphObject& animGraphObject)
 {
+    AZ_UNUSED(importParams);
     BlendTreeLookAtNode& blendTreeLookAtNode = static_cast<BlendTreeLookAtNode&>(animGraphObject);
     // For all attributes
     for (uint32 parsedAttributeCount = 0; parsedAttributeCount < numAttributes; ++parsedAttributeCount)
@@ -1222,6 +1236,7 @@ bool LegacyAnimGraphNodeParser::ParseLegacyAttributes<BlendTreeTwoLinkIKNode>(MC
      Importer::ImportParameters& importParams,
      AnimGraphObject& animGraphObject)
 {
+    AZ_UNUSED(importParams);
     BlendTreeTwoLinkIKNode& blendTreeTwoLinkIKNode = static_cast<BlendTreeTwoLinkIKNode&>(animGraphObject);
     // For all attributes
     for (uint32 parsedAttributeCount = 0; parsedAttributeCount < numAttributes; ++parsedAttributeCount)
@@ -1330,6 +1345,7 @@ bool LegacyAnimGraphNodeParser::ParseLegacyAttributes<BlendTreeFloatMath1Node>(M
      Importer::ImportParameters& importParams,
      AnimGraphObject& animGraphObject)
 {
+    AZ_UNUSED(importParams);
     BlendTreeFloatMath1Node& blendTreeFloatMath1Node = static_cast<BlendTreeFloatMath1Node&>(animGraphObject);
     // For all attributes
     for (uint32 parsedAttributeCount = 0; parsedAttributeCount < numAttributes; ++parsedAttributeCount)
@@ -1566,6 +1582,7 @@ bool LegacyAnimGraphNodeParser::ParseLegacyAttributes<AnimGraphStateMachine>(MCo
      Importer::ImportParameters& importParams,
      AnimGraphObject& animGraphObject)
 {
+    AZ_UNUSED(importParams);
     AnimGraphStateMachine& animGraphStateMachine = static_cast<AnimGraphStateMachine&>(animGraphObject);
     // For all attributes
     for (uint32 parsedAttributeCount = 0; parsedAttributeCount < numAttributes; ++parsedAttributeCount)
@@ -1611,6 +1628,7 @@ bool LegacyAnimGraphNodeParser::ParseLegacyAttributes<BlendTreeRangeRemapperNode
      Importer::ImportParameters& importParams,
      AnimGraphObject& animGraphObject)
 {
+    AZ_UNUSED(importParams);
     BlendTreeRangeRemapperNode& blendTreeRangeRemapperNode = static_cast<BlendTreeRangeRemapperNode&>(animGraphObject);
     // For all attributes
     for (uint32 parsedAttributeCount = 0; parsedAttributeCount < numAttributes; ++parsedAttributeCount)
@@ -1685,6 +1703,7 @@ bool LegacyAnimGraphNodeParser::ParseLegacyAttributes<BlendTreeSmoothingNode>(MC
      Importer::ImportParameters& importParams,
      AnimGraphObject& animGraphObject)
 {
+    AZ_UNUSED(importParams);
     BlendTreeSmoothingNode& blendTreeSmoothingNode = static_cast<BlendTreeSmoothingNode&>(animGraphObject);
     // For all attributes
     for (uint32 parsedAttributeCount = 0; parsedAttributeCount < numAttributes; ++parsedAttributeCount)
@@ -1750,6 +1769,7 @@ bool LegacyAnimGraphNodeParser::ParseLegacyAttributes<BlendTreeVector3Math2Node>
      Importer::ImportParameters& importParams,
      AnimGraphObject& animGraphObject)
 {
+    AZ_UNUSED(importParams);
     BlendTreeVector3Math2Node& blendTreeVector3Math2Node = static_cast<BlendTreeVector3Math2Node&>(animGraphObject);
     // For all attributes
     for (uint32 parsedAttributeCount = 0; parsedAttributeCount < numAttributes; ++parsedAttributeCount)
@@ -1805,6 +1825,7 @@ bool LegacyAnimGraphNodeParser::ParseLegacyAttributes<BlendTreeVector3Math1Node>
      Importer::ImportParameters& importParams,
      AnimGraphObject& animGraphObject)
 {
+    AZ_UNUSED(importParams);
     BlendTreeVector3Math1Node& blendTreeVector3Math1Node = static_cast<BlendTreeVector3Math1Node&>(animGraphObject);
     // For all attributes
     for (uint32 parsedAttributeCount = 0; parsedAttributeCount < numAttributes; ++parsedAttributeCount)
@@ -1850,6 +1871,7 @@ bool LegacyAnimGraphNodeParser::ParseLegacyAttributes<BlendTreeFloatMath2Node>(M
      Importer::ImportParameters& importParams,
      AnimGraphObject& animGraphObject)
 {
+    AZ_UNUSED(importParams);
     BlendTreeFloatMath2Node& blendTreeFloatMath2Node = static_cast<BlendTreeFloatMath2Node&>(animGraphObject);
     // For all attributes
     for (uint32 parsedAttributeCount = 0; parsedAttributeCount < numAttributes; ++parsedAttributeCount)
@@ -1905,6 +1927,7 @@ bool LegacyAnimGraphNodeParser::ParseLegacyAttributes<BlendTreeBlend2LegacyNode>
      Importer::ImportParameters& importParams,
      AnimGraphObject& animGraphObject)
 {
+    AZ_UNUSED(importParams);
     BlendTreeBlend2LegacyNode& blendTreeBlend2Node = static_cast<BlendTreeBlend2LegacyNode&>(animGraphObject);
     // For all attributes
     for (uint32 parsedAttributeCount = 0; parsedAttributeCount < numAttributes; ++parsedAttributeCount)
@@ -2722,6 +2745,7 @@ bool LegacyAnimGraphNodeParser::ParseLegacyAttributes<AnimGraphVector2Condition>
     Importer::ImportParameters& importParams,
     AnimGraphObject& animGraphObject)
 {
+    AZ_UNUSED(importParams);
     AnimGraphVector2Condition& animGraphVector2Condition = static_cast<AnimGraphVector2Condition&>(animGraphObject);
     // For all attributes
     for (uint32 parsedAttributeCount = 0; parsedAttributeCount < numAttributes; ++parsedAttributeCount)
@@ -2809,6 +2833,7 @@ bool LegacyAnimGraphNodeParser::ParseLegacyAttributes<AnimGraphTimeCondition>(MC
     Importer::ImportParameters& importParams,
     AnimGraphObject& animGraphObject)
 {
+    AZ_UNUSED(importParams);
     AnimGraphTimeCondition& animGraphTimeCondition = static_cast<AnimGraphTimeCondition&>(animGraphObject);
     // For all attributes
     for (uint32 parsedAttributeCount = 0; parsedAttributeCount < numAttributes; ++parsedAttributeCount)
@@ -2884,6 +2909,7 @@ bool LegacyAnimGraphNodeParser::ParseLegacyAttributes<AnimGraphTagCondition>(MCo
     Importer::ImportParameters& importParams,
     AnimGraphObject& animGraphObject)
 {
+    AZ_UNUSED(importParams);
     AnimGraphTagCondition& animGraphTagCondition = static_cast<AnimGraphTagCondition&>(animGraphObject);
     // For all attributes
     for (uint32 parsedAttributeCount = 0; parsedAttributeCount < numAttributes; ++parsedAttributeCount)
@@ -3085,6 +3111,7 @@ bool LegacyAnimGraphNodeParser::ParseLegacyAttributes<AnimGraphParameterConditio
     Importer::ImportParameters& importParams,
     AnimGraphObject& animGraphObject)
 {
+    AZ_UNUSED(importParams);
     AnimGraphParameterCondition& animGraphParameterCondition = static_cast<AnimGraphParameterCondition&>(animGraphObject);
     // For all attributes
     for (uint32 parsedAttributeCount = 0; parsedAttributeCount < numAttributes; ++parsedAttributeCount)
@@ -3290,6 +3317,7 @@ bool LegacyAnimGraphNodeParser::ParseLegacyAttributes<BlendTreeBlendNNode>(MCore
      Importer::ImportParameters& importParams,
      AnimGraphObject& animGraphObject)
 {
+    AZ_UNUSED(importParams);
     BlendTreeBlendNNode& blendTreeBlendNNode = static_cast<BlendTreeBlendNNode&>(animGraphObject);
     // For all attributes
     for (uint32 parsedAttributeCount = 0; parsedAttributeCount < numAttributes; ++parsedAttributeCount)
@@ -3346,6 +3374,7 @@ bool LegacyAnimGraphNodeParser::ParseLegacyAttributes<BlendTreeMaskNode>(MCore::
      Importer::ImportParameters& importParams,
      AnimGraphObject& animGraphObject)
 {
+    AZ_UNUSED(importParams);
     BlendTreeMaskNode& blendTreeMaskNode = static_cast<BlendTreeMaskNode&>(animGraphObject);
     for (uint32 parsedAttributeCount = 0; parsedAttributeCount < numAttributes; ++parsedAttributeCount)
     {
@@ -3367,7 +3396,6 @@ bool LegacyAnimGraphNodeParser::ParseLegacyAttributes<BlendTreeMaskNode>(MCore::
                     return false;
                 }
                 AZStd::vector<AZStd::string> maskStrings(legacyAttribute.GetValue().size());
-                const AZStd::vector<BlendTreeBlend2LegacyNode::WeightedMaskEntry>& pairs = legacyAttribute.GetValue();
                 for(int i = 0; i < legacyAttribute.GetValue().size(); i++)
                 {
                     maskStrings[i] = legacyAttribute.GetValue()[i].first;
@@ -3484,6 +3512,7 @@ bool LegacyAnimGraphNodeParser::ParseLegacyAttributes<BlendTreeTransformNode>(MC
      Importer::ImportParameters& importParams,
      AnimGraphObject& animGraphObject)
 {
+    AZ_UNUSED(importParams);
     BlendTreeTransformNode& blendTreeTransformNode = static_cast<BlendTreeTransformNode&>(animGraphObject);
     for (uint32 parsedAttributeCount = 0; parsedAttributeCount < numAttributes; ++parsedAttributeCount)
     {
@@ -3586,6 +3615,7 @@ bool LegacyAnimGraphNodeParser::ParseLegacyAttributes<BlendTreeAccumTransformNod
      Importer::ImportParameters& importParams,
      AnimGraphObject& animGraphObject)
 {
+    AZ_UNUSED(importParams);
     BlendTreeAccumTransformNode& blendTreeAccumTransformNode = static_cast<BlendTreeAccumTransformNode&>(animGraphObject);
     for (uint32 parsedAttributeCount = 0; parsedAttributeCount < numAttributes; ++parsedAttributeCount)
     {
@@ -3725,6 +3755,7 @@ bool LegacyAnimGraphNodeParser::ParseLegacyAttributes<AnimGraphMotionNode>(MCore
      Importer::ImportParameters& importParams,
      AnimGraphObject& animGraphObject)
 {
+    AZ_UNUSED(importParams);
     AnimGraphMotionNode& animGraphMotionNode = static_cast<AnimGraphMotionNode&>(animGraphObject);
     for (uint32 parsedAttributeCount = 0; parsedAttributeCount < numAttributes; ++parsedAttributeCount)
     {
@@ -3882,6 +3913,11 @@ bool LegacyAnimGraphNodeParser::ParseLegacyAttributes<BlendTreeVector4DecomposeN
      Importer::ImportParameters& importParams,
      AnimGraphObject& animGraphObject)
 {
+    AZ_UNUSED(stream);
+    AZ_UNUSED(numAttributes);
+    AZ_UNUSED(endianType);
+    AZ_UNUSED(importParams);
+    AZ_UNUSED(animGraphObject);
     // Do nothing
     return true;
 }
@@ -3893,6 +3929,11 @@ bool LegacyAnimGraphNodeParser::ParseLegacyAttributes<BlendTreeVector3DecomposeN
      Importer::ImportParameters& importParams,
      AnimGraphObject& animGraphObject)
 {
+    AZ_UNUSED(stream);
+    AZ_UNUSED(numAttributes);
+    AZ_UNUSED(endianType);
+    AZ_UNUSED(importParams);
+    AZ_UNUSED(animGraphObject);
     // Do nothing
     return true;
 }
@@ -3904,6 +3945,11 @@ bool LegacyAnimGraphNodeParser::ParseLegacyAttributes<BlendTreeVector2DecomposeN
      Importer::ImportParameters& importParams,
      AnimGraphObject& animGraphObject)
 {
+    AZ_UNUSED(stream);
+    AZ_UNUSED(numAttributes);
+    AZ_UNUSED(endianType);
+    AZ_UNUSED(importParams);
+    AZ_UNUSED(animGraphObject);
     // Do nothing
     return true;
 }
@@ -3915,6 +3961,11 @@ bool LegacyAnimGraphNodeParser::ParseLegacyAttributes<BlendTree>(MCore::File* st
      Importer::ImportParameters& importParams,
      AnimGraphObject& animGraphObject)
 {
+    AZ_UNUSED(stream);
+    AZ_UNUSED(numAttributes);
+    AZ_UNUSED(endianType);
+    AZ_UNUSED(importParams);
+    AZ_UNUSED(animGraphObject);
     // Do nothing
     return true;
 }
@@ -3926,6 +3977,11 @@ bool LegacyAnimGraphNodeParser::ParseLegacyAttributes<BlendTreePoseSwitchNode>(M
      Importer::ImportParameters& importParams,
      AnimGraphObject& animGraphObject)
 {
+    AZ_UNUSED(stream);
+    AZ_UNUSED(numAttributes);
+    AZ_UNUSED(endianType);
+    AZ_UNUSED(importParams);
+    AZ_UNUSED(animGraphObject);
     // Do nothing
     return true;
 }
@@ -3937,6 +3993,7 @@ bool LegacyAnimGraphNodeParser::ParseLegacyAttributes<BlendSpace2DNode>(MCore::F
      Importer::ImportParameters& importParams,
      AnimGraphObject& animGraphObject)
 {
+    AZ_UNUSED(importParams);
     BlendSpace2DNode& blendSpace2DNode = static_cast<BlendSpace2DNode&>(animGraphObject);
     // For all attributes
     for (uint32 parsedAttributeCount = 0; parsedAttributeCount < numAttributes; ++parsedAttributeCount)
@@ -4076,6 +4133,7 @@ bool LegacyAnimGraphNodeParser::ParseLegacyAttributes<BlendSpace1DNode>(MCore::F
      Importer::ImportParameters& importParams,
      AnimGraphObject& animGraphObject)
 {
+    AZ_UNUSED(importParams);
     BlendSpace1DNode& blendSpace1DNode = static_cast<BlendSpace1DNode&>(animGraphObject);
     // For all attributes
     for (uint32 parsedAttributeCount = 0; parsedAttributeCount < numAttributes; ++parsedAttributeCount)
@@ -4260,6 +4318,11 @@ bool LegacyAnimGraphNodeParser::ParseLegacyAttributes<AnimGraphExitNode>(MCore::
      Importer::ImportParameters& importParams,
      AnimGraphObject& animGraphObject)
 {
+    AZ_UNUSED(stream);
+    AZ_UNUSED(numAttributes);
+    AZ_UNUSED(endianType);
+    AZ_UNUSED(importParams);
+    AZ_UNUSED(animGraphObject);
     // Do nothing
     return true;
 }
@@ -4271,6 +4334,11 @@ bool LegacyAnimGraphNodeParser::ParseLegacyAttributes<AnimGraphEntryNode>(MCore:
      Importer::ImportParameters& importParams,
      AnimGraphObject& animGraphObject)
 {
+    AZ_UNUSED(stream);
+    AZ_UNUSED(numAttributes);
+    AZ_UNUSED(endianType);
+    AZ_UNUSED(importParams);
+    AZ_UNUSED(animGraphObject);
     // Do nothing
     return true;
 }
@@ -4282,6 +4350,11 @@ bool LegacyAnimGraphNodeParser::ParseLegacyAttributes<BlendTreeMirrorPoseNode>(M
      Importer::ImportParameters& importParams,
      AnimGraphObject& animGraphObject)
 {
+    AZ_UNUSED(stream);
+    AZ_UNUSED(numAttributes);
+    AZ_UNUSED(endianType);
+    AZ_UNUSED(importParams);
+    AZ_UNUSED(animGraphObject);
     // Do nothing
     return true;
 }
@@ -4293,6 +4366,11 @@ bool LegacyAnimGraphNodeParser::ParseLegacyAttributes<BlendTreeDirectionToWeight
      Importer::ImportParameters& importParams,
      AnimGraphObject& animGraphObject)
 {
+    AZ_UNUSED(stream);
+    AZ_UNUSED(numAttributes);
+    AZ_UNUSED(endianType);
+    AZ_UNUSED(importParams);
+    AZ_UNUSED(animGraphObject);
     // Do nothing
     return true;
 }
@@ -4304,6 +4382,11 @@ bool LegacyAnimGraphNodeParser::ParseLegacyAttributes<AnimGraphBindPoseNode>(MCo
      Importer::ImportParameters& importParams,
      AnimGraphObject& animGraphObject)
 {
+    AZ_UNUSED(stream);
+    AZ_UNUSED(numAttributes);
+    AZ_UNUSED(endianType);
+    AZ_UNUSED(importParams);
+    AZ_UNUSED(animGraphObject);
     // Do nothing
     return true;
 }
@@ -4315,6 +4398,11 @@ bool LegacyAnimGraphNodeParser::ParseLegacyAttributes<BlendTreeFinalNode>(MCore:
      Importer::ImportParameters& importParams,
      AnimGraphObject& animGraphObject)
 {
+    AZ_UNUSED(stream);
+    AZ_UNUSED(numAttributes);
+    AZ_UNUSED(endianType);
+    AZ_UNUSED(importParams);
+    AZ_UNUSED(animGraphObject);
     // Do nothing
     return true;
 }
@@ -4326,6 +4414,11 @@ bool LegacyAnimGraphNodeParser::ParseLegacyAttributes<AnimGraphNode>(MCore::File
      Importer::ImportParameters& importParams,
      AnimGraphObject& animGraphObject)
 {
+    AZ_UNUSED(stream);
+    AZ_UNUSED(numAttributes);
+    AZ_UNUSED(endianType);
+    AZ_UNUSED(importParams);
+    AZ_UNUSED(animGraphObject);
     // Do nothing
     return true;
 }
@@ -4337,6 +4430,7 @@ bool LegacyAnimGraphNodeParser::ParseLegacyAttributes<BlendTreeMotionFrameNode>(
      Importer::ImportParameters& importParams,
      AnimGraphObject& animGraphObject)
 {
+    AZ_UNUSED(importParams);
     BlendTreeMotionFrameNode& blendTreeFloatConditionNode = static_cast<BlendTreeMotionFrameNode&>(animGraphObject);
     for (uint32 parsedAttributeCount = 0; parsedAttributeCount < numAttributes; ++parsedAttributeCount)
     {
@@ -4376,6 +4470,7 @@ bool LegacyAnimGraphNodeParser::ParseLegacyAttributes<BlendTreeFloatConditionNod
      Importer::ImportParameters& importParams,
      AnimGraphObject& animGraphObject)
 {
+    AZ_UNUSED(importParams);
     BlendTreeFloatConditionNode& blendTreeFloatConditionNode = static_cast<BlendTreeFloatConditionNode&>(animGraphObject);
     // For all attributes
     for (uint32 parsedAttributeCount = 0; parsedAttributeCount < numAttributes; ++parsedAttributeCount)
@@ -4521,6 +4616,7 @@ bool LegacyAnimGraphNodeParser::ParseLegacyAttributes<BlendTreeFloatSwitchNode>(
      Importer::ImportParameters& importParams,
      AnimGraphObject& animGraphObject)
 {
+    AZ_UNUSED(importParams);
     BlendTreeFloatSwitchNode& blendTreeFloatSwitchNode = static_cast<BlendTreeFloatSwitchNode&>(animGraphObject);
     // For all attributes
     for (uint32 parsedAttributeCount = 0; parsedAttributeCount < numAttributes; ++parsedAttributeCount)
@@ -4605,6 +4701,7 @@ bool LegacyAnimGraphNodeParser::ParseLegacyAttributes<BlendTreeBoolLogicNode>(MC
      Importer::ImportParameters& importParams,
      AnimGraphObject& animGraphObject)
 {
+    AZ_UNUSED(importParams);
     BlendTreeBoolLogicNode& blendTreeBoolLogicNode = static_cast<BlendTreeBoolLogicNode&>(animGraphObject);
     // For all attributes
     for (uint32 parsedAttributeCount = 0; parsedAttributeCount < numAttributes; ++parsedAttributeCount)

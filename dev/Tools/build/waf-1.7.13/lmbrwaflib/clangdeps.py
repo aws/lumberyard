@@ -148,6 +148,7 @@ class pch_clang(waflib.Task.Task):
     run_str = '${CXX} -x c++-header ${ARCH_ST:ARCH} ${CXXFLAGS} ${CPPFLAGS} ${FRAMEWORKPATH_ST:FRAMEWORKPATH} ${CPPPATH_ST:INCPATHS} ${DEFINES_ST:DEFINES} ${SRC} -o ${TGT}'
     scan = c_preproc.scan
     color = 'BLUE'
+    nocache = True
 
     # bindings to our executor, allows us to filter the dependencies from the output
 
@@ -441,17 +442,10 @@ def wrap_compiled_task_clang(classname):
 
         return ret
 
-    def can_retrieve_cache(self):
-        # msvcdeps and netcaching are incompatible, so disable the cache
-        if self.env.CC_NAME not in supported_compilers:
-            return super(derived_class, self).can_retrieve_cache()
-        self.nocache = True  # Disable sending the file to the cache
-        return False
 
     derived_class.post_run = post_run
     derived_class.scan = scan
     derived_class.exec_command = exec_command
-    derived_class.can_retrieve_cache = can_retrieve_cache
 
 
 #############################################################################

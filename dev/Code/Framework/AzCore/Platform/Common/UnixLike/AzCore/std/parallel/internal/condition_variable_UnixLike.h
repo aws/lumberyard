@@ -9,10 +9,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#ifndef AZSTD_CONDITIONAL_VARIABLE_LINUX_H
-#define AZSTD_CONDITIONAL_VARIABLE_LINUX_H
-
-#include <AzCore/std/parallel/internal/time_linux.h>
+#pragma once
 
 /**
  * This file is to be included from the mutex.h only. It should NOT be included by the user.
@@ -215,8 +212,3 @@ namespace AZStd
     }
     //////////////////////////////////////////////////////////////////////////
 }
-
-
-
-#endif // AZSTD_MUTEX_LINUX_H
-#pragma once

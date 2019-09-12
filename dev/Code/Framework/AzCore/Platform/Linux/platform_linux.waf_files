@@ -1,0 +1,126 @@
+{
+    "none":
+    {
+        "Platform/Linux":
+        [
+            "AzCore/AzCore_Traits_Platform.h",
+            "AzCore/AzCore_Traits_Linux.h",
+            "AzCore/base_Platform.h",
+            "AzCore/base_Linux.h"
+        ],
+        "std/parallel/internal/Platform/Linux": 
+        [
+            "../Common/UnixLike/AzCore/std/parallel/internal/condition_variable_UnixLike.h",
+            "../Common/UnixLike/AzCore/std/parallel/internal/mutex_UnixLike.h",
+            "../Common/UnixLike/AzCore/std/parallel/internal/semaphore_UnixLike.h",
+            "../Common/UnixLike/AzCore/std/parallel/internal/thread_UnixLike.cpp",
+            "../Common/UnixLike/AzCore/std/parallel/internal/thread_UnixLike.h",
+            "../Common/UnixLike/AzCore/std/parallel/internal/time_UnixLike.h",
+            "AzCore/std/parallel/internal/condition_variable_Platform.h",
+            "AzCore/std/parallel/internal/mutex_Platform.h",
+            "AzCore/std/parallel/internal/semaphore_Platform.h",
+            "AzCore/std/parallel/internal/thread_Linux.cpp",
+            "AzCore/std/parallel/internal/thread_Platform.h"
+        ],
+        "std/parallel/Platform/Linux":
+        [
+            "AzCore/std/parallel/config_Linux.h",
+            "AzCore/std/parallel/config_Platform.h"
+        ]
+    },
+    "AzCore_uber_linux.cpp":
+    {
+        "Component/Platform/Linux":
+        [
+            "../Common/Desktop/AzCore/Component/ComponentApplication_Desktop.cpp",
+            "AzCore/Component/ComponentApplication_Linux.cpp"
+        ],
+
+        "Debug/Platform/Linux":
+        [
+            "../Common/UnixLike/AzCore/Debug/StackTracer_UnixLike.cpp",
+            "../Common/UnixLike/AzCore/Debug/Trace_UnixLike.cpp",
+            "AzCore/Debug/Trace_Linux.cpp"
+        ],
+
+        "IO/Platform/Linux":
+        [
+            "../Common/UnixLike/AzCore/IO/Streamer_UnixLike.cpp",
+            "../Common/UnixLike/AzCore/IO/SystemFile_UnixLike.cpp",
+            "../Common/UnixLike/AzCore/IO/SystemFile_UnixLike.h",
+            "../Common/UnixLike/AzCore/IO/Internal/SystemFileUtils_UnixLike.h",
+            "../Common/UnixLike/AzCore/IO/Internal/SystemFileUtils_UnixLike.cpp",
+            "../Common/UnixLikeDefault/AzCore/IO/SystemFile_UnixLikeDefault.cpp",
+            "AzCore/IO/SystemFile_Platform.h"
+        ],
+
+        "IPC/Platform/Linux":
+        [
+            "AzCore/IPC/SharedMemory_Platform.h"
+        ],
+
+        "Memory/Platform/Linux":
+        [
+            "../Common/UnixLike/AzCore/Memory/OSAllocator_UnixLike.h",
+            "AzCore/Memory/HeapSchema_Linux.cpp",
+            "AzCore/Memory/OSAllocator_Platform.h"
+        ],
+
+        "Math/Internal/Platform/Linux":
+        [
+            "AzCore/Math/Internal/MathTypes_Linux.h",
+            "../Common/FPU/AzCore/Math/Internal/MathTypes_FPU.h",
+            "../Common/SIMD/AzCore/Math/Internal/MathTypes_SIMD.h"
+        ],
+
+        "Math/Platform/Linux":
+        [
+            "AzCore/Math/Random_Platform.h",
+            "../Common/UnixLike/AzCore/Math/Random_UnixLike.cpp",
+            "../Common/UnixLike/AzCore/Math/Random_UnixLike.h"
+        ],
+
+        "Module/Platform/Linux":
+        [
+            "../Common/UnixLike/AzCore/Module/DynamicModuleHandle_UnixLike.cpp",
+            "AzCore/Module/DynamicModuleHandle_Linux.cpp"
+        ],
+
+        "NativeUI/Platform/Linux":
+        [
+            "../Common/Unimplemented/AzCore/NativeUI/NativeUISystemComponent_Unimplemented.cpp"
+        ],
+
+        "Platform/Mac":
+        [
+            "../Common/Unimplemented/AzCore/PlatformIncl_Unimplemented.h",
+            "../Common/UnixLike/AzCore/Platform_UnixLike.cpp",
+            "AzCore/PlatformIncl_Platform.h"
+        ],
+
+        "Socket/Platform/Linux":
+        [
+            "../Common/UnixLike/AzCore/Socket/AzSocket_fwd_UnixLike.h",
+            "../Common/UnixLike/AzCore/Socket/AzSocket_UnixLike.cpp",
+            "../Common/UnixLike/AzCore/Socket/AzSocket_UnixLike.h",
+            "AzCore/Socket/AzSocket_fwd_Platform.h",
+            "AzCore/Socket/AzSocket_Platform.h"
+        ],
+
+        "std/Platform/Linux":
+        [
+            "../Common/UnixLike/AzCore/std/time_UnixLike.cpp"
+        ],
+
+        "Utils/Platform/Linux":
+        [
+            "AzCore/Utils/Utils_Linux.cpp",
+            "../Common/UnixLike/AzCore/Utils/Utils_UnixLike.cpp"
+        ],
+
+        "IO/Streamer" :
+        [
+            "../../AzCore/IO/Streamer/StreamStackPreferences.cpp"
+        ]
+    }
+}

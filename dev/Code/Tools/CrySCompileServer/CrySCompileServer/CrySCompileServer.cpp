@@ -28,7 +28,7 @@
 #include <string>
 #include <regex>
 
-#if defined(AZ_PLATFORM_APPLE)
+#if AZ_TRAIT_OS_PLATFORM_APPLE
 // Needed for geteuid()
 #include <sys/types.h>
 #include <unistd.h>

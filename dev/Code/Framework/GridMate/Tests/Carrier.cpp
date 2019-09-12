@@ -18,10 +18,6 @@
 #include <GridMate/Carrier/DefaultHandshake.h>
 #include <AzCore/std/string/memorytoascii.h>
 
-#if defined(AZ_PLATFORM_WINDOWS)
-#define TEST_WITH_SECURE_SOCKET_DRIVER
-#endif
-
 using namespace GridMate;
 
 namespace Certificates
@@ -41,7 +37,7 @@ public:
     virtual SocketDriver* CreateDriverForHost() { return nullptr; }
 };
 
-#if defined(TEST_WITH_SECURE_SOCKET_DRIVER)
+#if AZ_TRAIT_GRIDMATE_TEST_WITH_SECURE_SOCKET_DRIVER
 
 /*
 * SecureDriverProvider
@@ -200,7 +196,7 @@ namespace UnitTest
 
             const char* targetAddress = "127.0.0.1";
 
-#ifdef AZ_SOCKET_IPV6_SUPPORT
+#if AZ_TRAIT_GRIDMATE_TEST_SOCKET_IPV6_SUPPORT_ENABLED
             clientCarrierDesc.m_familyType = Driver::BSD_AF_INET6;
             serverCarrierDesc.m_familyType = Driver::BSD_AF_INET6;
             targetAddress = "::1";
@@ -209,8 +205,8 @@ namespace UnitTest
             clientCarrierDesc.m_enableDisconnectDetection = false;
             serverCarrierDesc.m_enableDisconnectDetection = false;
 
-            clientCarrierDesc.m_driver = CreateDriverForJoin();
-            serverCarrierDesc.m_driver = CreateDriverForHost();
+            clientCarrierDesc.m_driver = SocketProvider::CreateDriverForJoin();
+            serverCarrierDesc.m_driver = SocketProvider::CreateDriverForHost();
 
             clientCarrierDesc.m_port = 4427;
             serverCarrierDesc.m_port = 4428;
@@ -381,8 +377,8 @@ namespace UnitTest
             TestCarrierDesc serverCarrierDesc, clientCarrierDesc;
 
             string str("Hello this is a carrier test!");
-            clientCarrierDesc.m_driver = CreateDriverForJoin();
-            serverCarrierDesc.m_driver = CreateDriverForHost();
+            clientCarrierDesc.m_driver = SocketProvider::CreateDriverForJoin();
+            serverCarrierDesc.m_driver = SocketProvider::CreateDriverForHost();
 
             clientCarrierDesc.m_port = 4427;
             serverCarrierDesc.m_port = 4428;
@@ -483,8 +479,8 @@ namespace UnitTest
             clientCarrierDesc.m_port = 4427;
             serverCarrierDesc.m_port = 4428;
 
-            clientCarrierDesc.m_driver = CreateDriverForJoin();
-            serverCarrierDesc.m_driver = CreateDriverForHost();
+            clientCarrierDesc.m_driver = SocketProvider::CreateDriverForJoin();
+            serverCarrierDesc.m_driver = SocketProvider::CreateDriverForHost();
 
             Carrier* clientCarrier = DefaultCarrier::Create(clientCarrierDesc, m_gridMate);
             clientCB.Activate(clientCarrier);
@@ -602,10 +598,10 @@ namespace UnitTest
             TestCarrierDesc serverCarrierDesc, clientCarrierDesc;
 
             clientCarrierDesc.m_port = 4427;
-            clientCarrierDesc.m_driver = CreateDriverForJoin();
+            clientCarrierDesc.m_driver = SocketProvider::CreateDriverForJoin();
             //clientCarrierDesc.m_simulator = &clientSimulator;
             serverCarrierDesc.m_port = 4428;
-            serverCarrierDesc.m_driver = CreateDriverForHost();
+            serverCarrierDesc.m_driver = SocketProvider::CreateDriverForHost();
 
             Carrier* clientCarrier = DefaultCarrier::Create(clientCarrierDesc, m_gridMate);
             clientCB.Activate(clientCarrier);
@@ -780,12 +776,12 @@ namespace UnitTest
             serverCarrierDesc.m_enableDisconnectDetection = true;
             serverCarrierDesc.m_disconnectDetectionPacketLossThreshold = 0.4f; // disconnect once hit 40% loss
             serverCarrierDesc.m_disconnectDetectionRttThreshold = 50; // disconnect once hit 50 msec rtt
-            serverCarrierDesc.m_driver = CreateDriverForHost();
+            serverCarrierDesc.m_driver = SocketProvider::CreateDriverForHost();
 
             TestCarrierDesc clientCarrierDesc = serverCarrierDesc;
             clientCarrierDesc.m_port = 4427;
             clientCarrierDesc.m_simulator = &clientSimulator;
-            clientCarrierDesc.m_driver = CreateDriverForJoin();
+            clientCarrierDesc.m_driver = SocketProvider::CreateDriverForJoin();
 
             Carrier* clientCarrier = DefaultCarrier::Create(clientCarrierDesc, m_gridMate);
             Carrier* serverCarrier = DefaultCarrier::Create(serverCarrierDesc, m_gridMate);
@@ -877,7 +873,7 @@ namespace UnitTest
                 // Create carriers
                 TestCarrierDesc desc;
                 desc.m_port = basePort + i;
-                desc.m_driver = i == c1 ? CreateDriverForHost() : CreateDriverForJoin();
+                desc.m_driver = i == c1 ? SocketProvider::CreateDriverForHost() : SocketProvider::CreateDriverForJoin();
                 desc.m_enableDisconnectDetection = true;
                 carriers[i] = DefaultCarrier::Create(desc, m_gridMate);
                 carrierHandlers[i].Activate(carriers[i]);
@@ -1009,7 +1005,7 @@ namespace UnitTest
                     desc.m_enableDisconnectDetection = false;
                 }
                 desc.m_port = basePort + i;
-                desc.m_driver = (i == 0) ? CreateDriverForHost() : CreateDriverForJoin();
+                desc.m_driver = (i == 0) ? SocketProvider::CreateDriverForHost() : SocketProvider::CreateDriverForJoin();
                 AZ_TracePrintf("GridMate", "Opening %d\n", basePort + i);
 
                 carriers[i] = DefaultCarrier::Create(desc, m_gridMate);
@@ -1142,14 +1138,14 @@ namespace UnitTest
             serverCarrierDesc.m_port = 4428;
             serverCarrierDesc.m_enableDisconnectDetection = true;
             serverCarrierDesc.m_disconnectDetectionPacketLossThreshold = 0.9f; // disconnect once hit 90% loss
-            serverCarrierDesc.m_driver = CreateDriverForHost();
+            serverCarrierDesc.m_driver = SocketProvider::CreateDriverForHost();
 
             TestCarrierDesc clientCarrierDesc = serverCarrierDesc;
             //clientCarrierDesc.m_threadInstantResponse = true;
             clientCarrierDesc.m_port = 4427;
             clientCarrierDesc.m_simulator = &clientSimulator;
             clientCarrierDesc.m_disconnectDetectionPacketLossThreshold = 0.9f; // disconnect once hit 90% loss
-            clientCarrierDesc.m_driver = CreateDriverForJoin();
+            clientCarrierDesc.m_driver = SocketProvider::CreateDriverForJoin();
 
             carriers[0].carrier = DefaultCarrier::Create(clientCarrierDesc, m_gridMate);
             carriers[0].isClient = true;
@@ -1395,11 +1391,11 @@ namespace UnitTest
                 return;
             }
 
-#ifdef AZ_SOCKET_IPV6_SUPPORT
+#if AZ_TRAIT_GRIDMATE_TEST_SOCKET_IPV6_SUPPORT_ENABLED
             bool useIpv6 = true;
 #else
             bool useIpv6 = false;
-#endif // AZ_SOCKET_IPV6_SUPPORT
+#endif
 
             CarrierCallbacksHandler clientCB, serverCB;
             CarrierDesc serverCarrierDesc, clientCarrierDesc;
@@ -1418,8 +1414,8 @@ namespace UnitTest
             clientCarrierDesc.m_enableDisconnectDetection = false;
             serverCarrierDesc.m_enableDisconnectDetection = false;
 
-            clientCarrierDesc.m_driver = CreateDriverForJoin();
-            serverCarrierDesc.m_driver = CreateDriverForHost();
+            clientCarrierDesc.m_driver = SocketProvider::CreateDriverForJoin();
+            serverCarrierDesc.m_driver = SocketProvider::CreateDriverForHost();
 
             clientCarrierDesc.m_port = 4427;
             serverCarrierDesc.m_port = 4428;
@@ -1555,7 +1551,7 @@ namespace UnitTest
     using Integ_CarrierBackpressureTest = Integ_CarrierBackpressureTestTemplate<>;
     using Integ_CarrierACKTest = Integ_CarrierACKTestTemplate<>;
 
-#if defined(TEST_WITH_SECURE_SOCKET_DRIVER)
+#if AZ_TRAIT_GRIDMATE_TEST_WITH_SECURE_SOCKET_DRIVER
 
     /** Drops DTLS messages in handshake sequence order
      */
@@ -1595,9 +1591,7 @@ namespace UnitTest
                     if (ConnectionSecurity::IsHandshake(m_tempSocketWriteBuffer, bytesRead))
                     {
                         AZ::u16 sequenceNum = *(reinterpret_cast<AZ::u16*>(m_tempSocketWriteBuffer + 17)); //Sequence # in header offset by 17
-#if !defined(AZ_BIG_ENDIAN)
                         AZStd::endian_swap<AZ::u16>(sequenceNum);
-#endif
                         const char* type = "";
                         if (sequenceNum < 6)
                         {
@@ -1678,7 +1672,30 @@ namespace UnitTest
     using Integ_CarrierBackpressureTestSecure = Integ_CarrierBackpressureTestTemplate<SecureDriverProvider<>>;
     using Integ_CarrierACKTestSecure = Integ_CarrierACKTestTemplate<SecureDriverProvider<>>;
 
-#endif //defined(TEST_WITH_SECURE_SOCKET_DRIVER)
+#endif
+}
+
+struct GridMateCarrierTestFixture 
+    : public ::testing::Test
+    , public UnitTest::GridMateMPTestFixture
+{
+};
+
+namespace GridMate
+{
+    namespace Platform
+    {
+        const char* GetSocketErrorString(int error, SockerErrorBuffer& array);
+    }
+}
+
+TEST_F(GridMateCarrierTestFixture, Test_GetSocketErrorString)
+{
+    SockerErrorBuffer buffer;
+    GridMate::Platform::GetSocketErrorString(AZ_EWOULDBLOCK, buffer);
+    char stringValue[32];
+    sprintf_s(stringValue, AZ_ARRAY_SIZE(stringValue), "%d", AZ_EWOULDBLOCK);
+    EXPECT_STREQ(stringValue, buffer.data());
 }
 
 GM_TEST_SUITE(CarrierSuite)
@@ -1694,7 +1711,7 @@ GM_TEST(Integ_CarrierBackpressureTest)
 GM_TEST(Integ_CarrierACKTest)
 
 
-#if defined(AZ_TESTS_ENABLED) && defined(TEST_WITH_SECURE_SOCKET_DRIVER)
+#if defined(AZ_TESTS_ENABLED) && AZ_TRAIT_GRIDMATE_TEST_WITH_SECURE_SOCKET_DRIVER
 GM_TEST(CarrierBasicTestSecure)
 GM_TEST(Integ_CarrierSecureSocketHandshakeTestClient)
 GM_TEST(Integ_CarrierSecureSocketHandshakeTestHost)

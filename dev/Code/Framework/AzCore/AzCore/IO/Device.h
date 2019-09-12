@@ -10,17 +10,23 @@
 *
 */
 #pragma once
-#ifndef AZCORE_DEVICE_H
-#define AZCORE_DEVICE_H
 
+#include <AzCore/Component/TickBus.h>
 #include <AzCore/IO/DeviceEventBus.h>
 #include <AzCore/IO/StreamerRequest.h>
+#include <AzCore/IO/Streamer/FileRange.h>
+#include <AzCore/IO/Streamer/Statistics.h>
+#include <AzCore/IO/Streamer/StreamerConfiguration.h>
+#include <AzCore/IO/Streamer/StreamerContext.h>
+#include <AzCore/Memory/Memory.h>
 #include <AzCore/std/functional.h>
-#include <AzCore/std/containers/unordered_map.h>
+#include <AzCore/std/chrono/chrono.h>
+#include <AzCore/std/containers/deque.h>
+#include <AzCore/std/containers/forward_list.h>
 #include <AzCore/std/parallel/mutex.h>
 #include <AzCore/std/parallel/thread.h>
 #include <AzCore/std/parallel/semaphore.h>
-#include <AzCore/std/parallel/conditional_variable.h>
+#include <AzCore/std/parallel/condition_variable.h>
 #include <AzCore/std/smart_ptr/shared_ptr.h>
 
 namespace AZ
@@ -28,70 +34,78 @@ namespace AZ
     namespace IO
     {
         class ReadCache;
-        class WriteCache;
-        class Compressor;
-        class VirtualStream;
         class FileIOBase;
+        class FileRequest;
+        class StreamStackEntry;
+
+        struct DeviceSpecifications
+        {
+            enum class DeviceType
+            {
+                Unknown,
+                Fixed, //< Internal storage devices such as hdd or ssd
+                Network //< Network storage
+            };
+
+            AZStd::vector<AZStd::string> m_pathIdentifiers; //< List of prefixes from the path that can be used to find the device from a path.
+            AZStd::string m_deviceName; //< String that uniquely identifies this device.
+            DeviceType m_deviceType = DeviceType::Unknown; //< Type of device
+            size_t m_sectorSize = 4 * 1024; //< The size of sectors used by the device.
+            size_t m_recommendedCacheSize = 512 * 1024; //< The read cache size as recommended by the OS.
+            bool m_hasSeekPenalty = true; //< True is there's a physical operations that needs to take place before reading non-continguous data.
+        };
+
         /**
          * Interface for interacting with a device.
          */
         class Device
             : public DeviceRequestBus::Handler
+            , public TickBus::Handler
         {
             friend class ReadCache;
 
         public:
+            AZ_CLASS_ALLOCATOR(Device, SystemAllocator, 0)
+            
             using SizeType = AZ::u64;
-
-            enum Type
-            {
-                DT_OPTICAL_MEDIA,
-                DT_MAGNETIC_DRIVE,
-                DT_FLASH_DRIVE,
-                DT_MEMORY_DRIVE,
-                DT_NETWORK_DRIVE,
-            };
 
             /**
              * \param threadSleepTimeMS use with EXTREME caution, it will if != -1 it will insert a sleep after every read
              * to the device. This is used for internal performance tweaking in rare cases.
              */
-            Device(const AZStd::string& name, FileIOBase* ioBase,  const AZStd::thread_desc* threadDesc = nullptr, int threadSleepTimeMS = -1);
+            Device(const DeviceSpecifications& specifications, const AZStd::shared_ptr<StreamStackEntry>& streamStack, 
+                StreamerContext& streamerContext, const AZStd::thread_desc* threadDesc = nullptr);
             virtual ~Device();
 
-            const AZStd::string&    GetName() const             { return m_name; }
+            const AZStd::string&    GetPhysicalName() const { return m_physicalName; }
+            //! Adds a path identifying prefix (such as "C:" on Windows) to list of known identifiers. This function is not thread safe and should be
+            //! called when locked through a mutex.
+            void AddPathIdentifier(AZStd::string path) { m_pathIdentifiers.push_back(AZStd::move(path)); }
+            //! Uses the known path identifiers to determine if this device should load the file at the provided path. This function is not thread safe 
+            //! and should be called when locked through a mutex.
+            bool IsDeviceForPath(const char* path) const;
 
-            SizeType                GetSectorSize() const       { return m_sectorSize; }
+            bool CompleteFileRequests();
+            /*@{ Implementation of DeviceRequestBus. Note that these functions take the request by-value instead of by-reference
+                so the EBus will keep a local copy. This copy is needed because the Streamer thread might not process any of these
+                functions before the calling function continues*/
+            void ReadRequest(AZStd::shared_ptr<Request> request) override;
+            void CancelRequest(AZStd::shared_ptr<Request> request, AZStd::semaphore* sync) override;
+            void CreateDedicatedCacheRequest(RequestPath filename, FileRange range, AZStd::semaphore* sync) override;
+            void DestroyDedicatedCacheRequest(RequestPath filename, FileRange range, AZStd::semaphore* sync) override;
+            void FlushCacheRequest(RequestPath filename, AZStd::semaphore* sync) override;
+            void FlushCachesRequest(AZStd::semaphore* sync) override;
+            //@}
+            //! Collects various metrics that are recorded by streamer and its stream stack.
+            // This function is not done through the queued EBus it doesn't require any timing and collecting metrics is thread safe.
+            void CollectStatistics(AZStd::vector<Statistic>& statistics);
 
-            ReadCache*              GetReadCache() const { return m_readCache; } //> Retrieves the ReadCache
-
-            /**
-             * Register a compressor for the device. Compressor will be called/used from a
-             * thread so the user should not use it or make it thread safe. The device assumes
-             * ownership of the compressor (it will be deleted automatically if not Unregistered)
-             * \returns true if compressor was registered, otherwise false (if compressor of this type Compressor::TypeId
-             * was already registered.
-             */
-            bool                    RegisterCompressor(Compressor* compressor);
-            /// Unregisters compressor (so it will not be automatically deleted). Returns false if compressor can't be found, otherwise true.
-            bool                    UnRegisterCompressor(Compressor* compressor);
-            /// Find compressor by id.
-            Compressor*             FindCompressor(AZ::u32 compressorId);
-            /// Return number of registered compressors.
-            inline unsigned int     GetNumCompressors()
-            {
-                AZStd::lock_guard<AZStd::recursive_mutex> lock(m_lock);
-                return static_cast<unsigned int>(m_compressors.size());
-            }
-
-            /// Implementation of DeviceRequestBus
-            void RegisterFileStreamRequest(Request* request, const char* filename, OpenMode flags, bool isLimited, AZStd::semaphore* sync) override;
-            void UnRegisterFileStreamRequest(Request* request, const char* filename, AZStd::semaphore* sync) override;
-            void RegisterStreamRequest(Request* request, VirtualStream* stream, OpenMode flags, bool isLimited, AZStd::semaphore* sync) override;
-            void UnRegisterStreamRequest(Request* request, VirtualStream* stream, AZStd::semaphore* sync) override;
-            void ReadRequest(Request* request, VirtualStream* stream, const char* filename, AZStd::semaphore* sync) override;
-            void WriteRequest(Request* request, VirtualStream* stream, const char* filename, AZStd::semaphore* sync) override;
-            void CancelRequest(Request* request, AZStd::semaphore* sync) override;
+            //! Suspend the processing of requests. Requests are still queued.
+            // This function is not done through the queued EBus because queuing it would mean the call to re-enable would get stuck in the queue.
+            void SuspendProcessing();
+            //! Resumes the processing of requests after it was suspended with SuspendProcessing.
+            // This function is not done through the queued EBus because queuing it would mean the call to re-enable would get stuck in the queue.
+            void ResumeProcessing();
 
             /// Invokes completed request callbacks and clears the completed callback list
             void InvokeCompletedCallbacks();
@@ -101,160 +115,93 @@ namespace AZ
             {
                 //Need to create AZStd::result_of and AZStd::declval type trait
                 AZ_STATIC_ASSERT((AZStd::is_void<typename std::result_of<decltype(func)(DeviceRequest*, Args...)>::type>::value), "Argument cannot be bound to supplied device function argument");
-                AZStd::lock_guard<AZStd::recursive_mutex> lock(m_lock);
-                DeviceRequestBus::QueueBroadcast(func, AZStd::forward<Args>(args)...);
-                m_addReqCond.notify_all();
+                {
+                    AZStd::lock_guard<AZStd::mutex> lock(m_streamerContext.GetThreadSleepLock());
+                    DeviceRequestBus::QueueBroadcast(func, AZStd::forward<Args>(args)...);
+                }
+                m_streamerContext.WakeUpMainStreamThread();
             }
 
         protected:
-            struct StreamData;
-            /// Creates the device caches. Should be called before the device thread has started.
-            void CreateCache(unsigned int cacheBlockSize, unsigned int numCacheBlocks);
-            /// Add command for the device thread. This function is thread safe.
+            //! Cached information about the last entry in the stack to speed up sorting.
+            //! Note that this keeps track of the last request sent to the stack, even if it has already completed.
+            //! This is because the next request will follow that last request eventually so caches, etc. will be
+            //! primed to read from the last file.
+            struct
+            {
+                RequestPath m_filePath; //< The path to the active file.
+                SizeType m_offset; //< The offset into the active path.
+            } m_activeRead;
+
+            enum class Priority
+            {
+                FirstRequest, //< The first request is the most important to process next.
+                SecondRequest, //< The second request is the most important to process next.
+                Equal //< Both requests are equally important.
+            };
+            //! Determine which of the two provided requests is more important to process next.
+            Priority PrioritizeRequests(const AZStd::shared_ptr<Request>& first, const AZStd::shared_ptr<Request>& second) const;
+
+            //! The stream stack to access files through.
+            AZStd::shared_ptr<StreamStackEntry> m_streamStack;
+
+            //! General context used by the stream stack.
+            StreamerContext& m_streamerContext;
+
+            // Stats to inform the device request scheduler and for profiling purposes.
+            
+#if AZ_STREAMER_ADD_EXTRA_PROFILING_INFO
+            //! Percentage of reads that didn't read the entire file. These can be sub-optimal if multiple portions of a file
+            //! are read, especially if the file is also compressed.
+            AverageWindow<size_t, double, s_statisticsWindowSize> m_partialReadPercentage;
+            //! By how much time the prediction was off. This mostly covers the latter part of scheduling, which
+            //! gets more precise the closer the request gets to completion.
+            AverageWindow<u64, double, s_statisticsWindowSize> m_mispredictionUS;
+            //! Tracks the percentage of requests that were predicted to complete after the actual completion time
+            //! versus the requests that were predicted to come in earlier than predicted.
+            AverageWindow<u8, double, s_statisticsWindowSize> m_latePredictionsPercentage;
+            //! Percentage of reads that missed their deadline. If percentage is too high it can indicate that there are too
+            //! many file requests or the deadlines of too many files are too tight.
+            AverageWindow<u8, double, s_statisticsWindowSize> m_missedDeadlinePercentage;
+            //! Percentage of reads that come in that are already on their deadline. Requests like this are disruptive
+            //! as they cause the scheduler to prioritize these over the most optimal read layout.
+            AverageWindow<u8, double, s_statisticsWindowSize> m_immediateReadsPercentage;
+#endif
+
+            void OnTick(float deltaTime, AZ::ScriptTimePoint time) override;
 
             //////////////////////////////////////////////////////////////////////////
-            // Commands, called from the device thread with the m_lock locked.
-            VirtualStream*          RegisterFileStream(const char* fileName, OpenMode flags, bool isLimited = false);
-            void                    UnRegisterFileStream(const char* fileName);
-
-
-            void                    RegisterStream(VirtualStream* stream, OpenMode flags = OpenMode::Invalid, bool isLimited = false);
-            void                    UnRegisterStream(VirtualStream* stream);
-            void                    UnRegisterStream(StreamID streamId);
-
-            VirtualStream*          FindStream(StreamID streamId);
-
-            void                    Read(Request* request);
-            void                    Write(Request* request);
+            // Commands, called from the device thread with the thread sleep lock locked.
+            void                    Read(const AZStd::shared_ptr<Request>& request);
             //////////////////////////////////////////////////////////////////////////
 
-            bool                    OpenStream(GenericStream* stream);
-            void                    ReadStream(Request* request);
-            void                    WriteStream(Request* request);
-
+            //! Reads data from a file through the provided cache. If any data has already been stored in the cache
+            //! it's reused. If less than an entire cache block is requested, the full block is read and the entire
+            //! block is stored in the cache. If neither conditions are met, the cache is ignored.
+            void                    ReadStream(const AZStd::shared_ptr<Request>& request);
+            
             //////////////////////////////////////////////////////////////////////////
             /// DEVICE THREAD EXCLUSIVE DATA
 
             /// Schedule all requests.
-            virtual void            ScheduleRequests() = 0;
+            void ScheduleRequests();
 
             /// Device thread "main" function"
             void ProcessRequests();
 
-            /// Complete a request. isLocked refers to m_lock mutex, if true we don't need to lock it inside the function.
-            void CompleteRequest(Request* request, Request::StateType state = Request::StateType::ST_COMPLETED, bool isLocked = false);
-
-
-            struct StreamData
-            {
-                StreamData() : StreamData(nullptr, false) {};
-                StreamData(VirtualStream* stream, bool isLimited) : m_stream(stream), m_isLimited(isLimited), m_refCount(0) {}
-                void add_ref() { m_refCount.fetch_add(1, AZStd::memory_order_acq_rel); }
-                void release() { m_refCount.fetch_sub(1, AZStd::memory_order_acq_rel); }
-                s32 get_ref() const { return m_refCount.load(AZStd::memory_order_acquire); }
-
-                VirtualStream* m_stream;
-                bool m_isLimited;
-                AZStd::atomic<s32> m_refCount;
-            };
-
-            Type                        m_type;
-            AZStd::string               m_name;                     ///< Device name (doesn't change while running so it's safe to read from multiple threads.
-            Request::ListType           m_completed;                ///< List of completed requests for this device. (must be accessed with the m_lock (locked)
-                                                                    // TODO rbbaklov: changed this from AZStd::mutex to support Linux (investigate how it was working before)
-            AZStd::recursive_mutex          m_lock;                     ///< Device lock, used to sync all shared resources in the device.
-            using StreamMap = AZStd::unordered_map<StreamID, AZStd::unique_ptr<StreamData>>; // Stream ID to steam map
-            StreamMap                   m_streams;                  ///< Map with all streams. Used from the Device thread only.
-            AZStd::unordered_set<AZStd::unique_ptr<VirtualStream>>  m_ownedStreams;                  ///< Streams created and owned by this device
-          
-            using StreamMRUList = AZStd::deque<GenericStream*>; // Stream MRU Container that supports queue like behavior of push_back/pop_front as well as delete from front
-            StreamMRUList               m_mruStreams;               ///< MRU (most recently used) streams list array. Used when we specify the stream as resource limited.
-
-            typedef AZStd::vector<Compressor*> CompressorArray;
-            CompressorArray             m_compressors;
-
-            GenericStream*              m_currentStream;            ///< Pointer to current stream.
-            SizeType                    m_currentStreamOffset;      ///< Current stream offset. m_currentStream->m_diskOffset + m_currentStreamOffset will give you the position of head.
-
-            ReadCache*                  m_readCache;                ///< Pointer to optional read cache.
-
-            Request::ListType           m_pending;                  ///< List of pending request for this device.
-
-            // TODO rbbaklov: changed this from AZStd::mutex to support Linux (investigate how it was working before)
-            AZStd::condition_variable_any   m_addReqCond;
+            //! Complete a request. isLocked refers to thread sleep mutex, if true we don't need to lock it inside the function.
+            void CompleteRequest(const AZStd::shared_ptr<Request>& request, Request::StateType state = Request::StateType::ST_COMPLETED, bool isLocked = false);
+            
+            AZStd::vector<AZStd::string>    m_pathIdentifiers;  //< Set of path prefix that identify if a file needs to accessed through this device. Accessing this member requires a lock.
+            AZStd::string                   m_physicalName;     ///< Device name (doesn't change while running so it's safe to read from multiple threads.
+            AZStd::forward_list<FileRequest*> m_queued; //!< The requests queued in the stream stack.
+            AZStd::vector<FileRequest*> m_internalPendingBuffer; //!< To avoid allocating memory every time requests are scheduled, the temporary vector is cached here.
+            AZStd::vector<AZStd::shared_ptr<Request>> m_completed;        ///< List of completed requests for this device. (must be accessed with the m_lock (locked)
+            AZStd::deque<AZStd::shared_ptr<Request>> m_pending;    //< List of pending request for this device.
 
             AZStd::atomic_bool          m_shutdown_thread;
+            AZStd::atomic_bool          m_suspendRequestProcessing; //< Requests are still queued, but not processed.
             AZStd::thread               m_thread;
-            int                         m_threadSleepTimeMS;        ///< Time to sleep after each device request in milliseconds. use -1 (default) to ignore.
-
-            SizeType                    m_eccBlockSize;             ///< ECC (error correction code) block size.
-            SizeType                    m_cacheSize;                ///< Cache size.
-            SizeType                    m_sectorSize;               ///< Sector size in bytes.
-            SizeType                    m_maxOperationSize;         ///< Maximum byte size for a single operation (read or write).
-            bool                        m_isStreamOffsetSupport;    ///< True if streams have diskOffset value set, false otherwise.
-
-            SizeType                    m_layerOffsetLBA;           ///< Layer 1 offset in LBA. SizeType(-1) if not supported.
-            FileIOBase*                 m_ioBase;                   ///< Pointer to FileIOBase instance used for accessing IO
-        };
-
-        /**
-         * Implements a simple read cache, in addition we implement a buffered read.
-         * This ensures a few things:
-         *      - We read data in \ref m_blockSize, which caches small read request (read ahead)
-         *      - We request data (read) from the device on \ref m_blockSize offsets (which is a multiple of the m_sectorSize),
-         *      this allows us to use UNBUFFERED system reads (like: FILE_FLAG_NO_BUFFERING on windows)
-         */
-        class ReadCache
-        {
-        public:
-            AZ_CLASS_ALLOCATOR(ReadCache, SystemAllocator, 0);
-
-            SizeType      m_blockSize;    ///< Cache block size in bytes (must be multiple of the \ref m_sectorSize)
-            SizeType      m_bufferAlignRequire;   ///< Alignment requirement for the destination buffer
-
-            struct BlockInfo
-            {
-                GenericStream*             m_stream;
-                SizeType  m_offset;
-                char*               m_data;
-                size_t              m_dataSize;
-            };
-            AZStd::vector<BlockInfo>    m_blockInfo;
-            size_t                      m_freeIndex;    //< next cache block to grab. we can implement MRU etc.
-            Device*                     m_device;
-
-            ReadCache(SizeType blockSize, size_t numBlocks, Device* device);
-            ~ReadCache();
-
-            void RemoveStream(GenericStream* stream);
-
-            bool IsInCache(Request* request);
-
-            // called from user thread only
-            bool IsInCacheUserThread(GenericStream* stream, SizeType& requestStartStrmOffset, SizeType& requestEndStrmOffset, void* requestDataBuffer);
-
-            /// Return a cache block to be filled for this request if it's needed. Called from the streaming thread only.
-            BlockInfo*  AcquireCacheBlock(Request* request, bool isAlignOffsetToBlockSize);
-
-            inline bool ProcessFilledCacheBlock(BlockInfo* bi, Request* request, SizeType dataTransferred)
-            {
-                AZStd::lock_guard<AZStd::recursive_mutex> lock(m_device->m_lock);
-                bi->m_dataSize = (size_t)dataTransferred;
-                return ProcessCacheBlock(bi, request);
-            }
-
-            // return true if we process from the start or false if we process at the end.
-            bool ProcessCacheBlock(BlockInfo* bi, SizeType requestStartStrmOffset, SizeType requestEndStrmOffset, void* requestDataBuffer, SizeType& requestProcessed);
-            bool ProcessCacheBlock(BlockInfo* bi, Request* request);
-        };
-
-        class WriteCache
-        {
-        public:
-            AZ_CLASS_ALLOCATOR(WriteCache, SystemAllocator, 0);
         };
     }
 }
-
-#endif // AZCORE_DEVICE_H
-AZCORE_DEVICE_H

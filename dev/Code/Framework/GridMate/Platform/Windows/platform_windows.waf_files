@@ -1,0 +1,29 @@
+{
+  "auto": {
+    "Achievements/Platform/Windows": [
+      "../Common/Unimplemented/GridMate/Achievements/AchievementMgr_Unimplemented.cpp"
+    ],
+    "Carrier/Platform/Windows": [
+      "../Common/WinAPI/GridMate/Carrier/SocketDriver_WinAPI.cpp",
+      "../Common/WinAPI/GridMate/Carrier/Utils_WinAPI.cpp",
+      "GridMate/Carrier/SocketDriver_Platform.h",
+      "GridMate/Carrier/SocketDriver_Windows.h",
+      "GridMate/Carrier/Utils_Windows.cpp"
+    ],
+    "Leaderboard/Platform/Windows": [
+      "../Common/Unimplemented/GridMate/Leaderboard/Leaderboard_Unimplemented.cpp"
+    ],
+    "Session/Platform/Windows": [
+      "GridMate/Session/LANSession_Windows.cpp",
+      "GridMate/Session/Session_Platform.h",
+      "GridMate/Session/Session_Windows.h"
+    ],
+    "Storage/Platform/Windows": [
+      "../Common/Unimplemented/GridMate/Storage/StorageService_Unimplemented.cpp"
+    ],
+    "Platform/Windows": [
+      "GridMate_Traits_Platform.h",
+      "GridMate_Traits_Windows.h"
+    ]
+  }
+}

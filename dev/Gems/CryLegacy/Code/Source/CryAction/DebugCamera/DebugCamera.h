@@ -12,11 +12,13 @@
 #ifndef __DEBUG_CAMERA_H__
 #define __DEBUG_CAMERA_H__
 
-#include <IInput.h>
+#include <AzFramework/Debug/DebugCameraBus.h>
+#include <AzFramework/Input/Events/InputChannelEventListener.h>
 
 ///////////////////////////////////////////////////////////////////////////////
 class DebugCamera
-    : public IInputEventListener
+    : public AzFramework::InputChannelEventListener
+    , public AzFramework::DebugCameraBus::Handler
 {
 public:
     enum Mode
@@ -35,19 +37,20 @@ public:
     bool IsFixed();
     bool IsFree();
 
-    // IInputEventListener
-    bool OnInputEvent(const SInputEvent& event) override;
-    // ~IInputEventListener
-
     void OnEnable();
     void OnDisable();
     void OnInvertY();
     void OnNextMode();
-    void UpdatePitch(float amount);
-    void UpdateYaw(float amount);
-    void UpdatePosition(const Vec3& amount);
-    void MovePosition(const Vec3& offset);
-    void MovePositionTo(const Vec3& offset, const Vec3& rotations);
+
+    // AzFramework::InputChannelEventListener
+    bool OnInputChannelEventFiltered(const AzFramework::InputChannel& inputChannel) override;
+
+    // AzFramework::DebugCameraBus
+    void SetMode(AzFramework::DebugCameraInterface::Mode mode) override;
+    AzFramework::DebugCameraInterface::Mode GetMode() const override;
+    void GetPosition(AZ::Vector3& result) const override;
+    void GetView(AZ::Matrix3x3& result) const override;
+    void GetTransform(AZ::Transform& result) const override;
 
     void OnTogglePathRecording();
     void OnTogglePathSaving();
@@ -68,7 +71,20 @@ protected:
     Vec3 m_position;
     Matrix33 m_view;
 
+    //! True if the camera orientation or position has been updated.
+    bool m_hasMoved = false;
 
+    static void ToggleDebugCamera(IConsoleCmdArgs* pArgs);
+    static void ToggleDebugCameraInvertY(IConsoleCmdArgs* pArgs);
+    static void DebugCameraMove(IConsoleCmdArgs* pArgs);
+    static void DebugCameraMoveTo(IConsoleCmdArgs* pArgs);
+
+    void UpdatePitch(float amount);
+    void UpdateYaw(float amount);
+    void UpdatePosition(const Vec3& amount);
+    void MovePosition(const Vec3& offset);
+    void MovePositionTo(const Vec3& offset, const Vec3& rotations);
+    
     // automation
 #if !defined(_RELEASE) && !defined(DEDICATED_SERVER)
     void LoadPath();

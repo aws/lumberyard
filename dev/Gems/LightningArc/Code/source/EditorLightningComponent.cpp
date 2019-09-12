@@ -116,7 +116,7 @@ namespace Lightning
                 editContext->Class<EditorLightningComponent>("Lightning", "Controls timings of other components to produce a lightning bolt effect.")
                     ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
                     ->Attribute(AZ::Edit::Attributes::Category, "Environment")
-                    ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/Lightning.png")
+                    ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/Lightning.svg")
                     ->Attribute(AZ::Edit::Attributes::ViewportIcon, "Editor/Icons/Components/Viewport/Lightning.png")
                     ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
                     ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("Game", 0x232b318c))

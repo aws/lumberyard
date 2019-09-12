@@ -15,8 +15,8 @@
 #include <AzCore/Math/Vector4.h>
 #include <AzCore/Outcome/Outcome.h>
 #include <AzCore/std/string/string.h>
+#include <AzCore/std/containers/vector.h>
 #include "StandardHeaders.h"
-#include "Array.h"
 
 
 namespace MCore
@@ -27,7 +27,8 @@ namespace MCore
     /**
      * A command line parser class.
      * This class makes it very easy to parse values from a command/argument line.
-     * An example of a command line would be "-fullscreen -xres 800 -yres 1024 -threshold 0.145 -culling false".
+     * An example of a command line would be "-fullscreen true -xres 800 -yres 1024 -threshold 0.145 -culling false".
+     * All parameters must have a value.
      * Use the GetValue, GetValueAsInt, GetValueAsFloat and GetValueAsBool methods to quickly extract values for
      * any given parameter in the command line. A parameter here is for example "xres" or "yres". Each parameter
      * can have a value associated with it.
@@ -41,24 +42,13 @@ namespace MCore
          * The default constructor.
          * This does not yet process any command line. You have to use the SetCommandLine method to specify the command line to parse.
          */
-        CommandLine();
+        CommandLine() = default;
 
         /**
          * The extended constructor.
          * @param commandLine The command line to parse. This automatically calls the SetCommandLine function.
          */
-        CommandLine(const char* commandLine);
-
-        /**
-         * The extended constructor.
-         * @param commandLine The command line to parse. This automatically calls the SetCommandLine function.
-         */
-        CommandLine(const AZStd::string& commandLine);
-
-        /**
-         * The destructor.
-         */
-        ~CommandLine();
+        explicit CommandLine(const AZStd::string& commandLine);
 
         /**
          * Get the value for a parameter with a specified name.
@@ -272,15 +262,6 @@ namespace MCore
         void SetCommandLine(const AZStd::string& commandLine);
 
         /**
-         * Specify the command line string that needs to be parsed.
-         * The extended constructor, which takes a command line string as parameter already automatically calls
-         * this method. Before you can use any other methods of this class, you should make a call to this function.
-         * The command line string can be something like "-fullscreen -xres 800 -yres 1024 -threshold 0.145 -culling false".
-         * @param commandLine The command line string to parse.
-         */
-        void SetCommandLine(const char* commandLine);
-
-        /**
          * Logs the contents using MCore::LogInfo.
          * This is useful for debugging sometimes.
          * @param debugName The name of this command line, to make it easier to identify this command line when logging multiple ones.
@@ -298,7 +279,7 @@ namespace MCore
             AZStd::string   mValue;             /**< The parameter value, for example "1024". */
         };
 
-        MCore::Array<Parameter> mParameters;    /**< The parameters that have been detected in the command line string. */
+        AZStd::vector<Parameter> m_parameters;    /**< The parameters that have been detected in the command line string. */
 
         // extract the next parameter, starting from a given offset
         bool ExtractNextParam(const AZStd::string& paramString, AZStd::string& outParamName, AZStd::string& outParamValue, uint32* inOutStartOffset);

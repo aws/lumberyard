@@ -11,7 +11,7 @@
 */
 
 #include <AzFramework/Input/Devices/Touch/InputDeviceTouch.h>
-#include <AzFramework/Input/Buses/Notifications/RawInputNotificationBus_android.h>
+#include <AzFramework/Input/Buses/Notifications/RawInputNotificationBus_Platform.h>
 
 #include <AzCore/Android/Utils.h>
 

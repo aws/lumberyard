@@ -23,6 +23,7 @@ namespace Physics
     float DefaultRigidBodyConfiguration::m_linearDamping = 0.05f;
     float DefaultRigidBodyConfiguration::m_angularDamping = 0.15f;
     float DefaultRigidBodyConfiguration::m_sleepMinEnergy = 0.5f;
+    float DefaultRigidBodyConfiguration::m_maxAngularVelocity = 100.0f;
 
     void RigidBodyConfiguration::Reflect(AZ::ReflectContext* context)
     {
@@ -47,6 +48,7 @@ namespace Physics
                 ->Field("Compute inertia", &RigidBodyConfiguration::m_computeInertiaTensor)
                 ->Field("Inertia tensor", &RigidBodyConfiguration::m_inertiaTensor)
                 ->Field("Property Visibility Flags", &RigidBodyConfiguration::m_propertyVisibilityFlags)
+                ->Field("Maximum Angular Velocity", &RigidBodyConfiguration::m_maxAngularVelocity)
             ;
         }
     }
@@ -118,6 +120,11 @@ namespace Physics
     AZ::Crc32 RigidBodyConfiguration::GetCCDVisibility() const
     {
         return GetPropertyVisibility(PropertyVisibility::ContinuousCollisionDetection);
+    }
+
+    AZ::Crc32 RigidBodyConfiguration::GetMaxVelocitiesVisibility() const
+    {
+        return GetPropertyVisibility(PropertyVisibility::MaxVelocities);
     }
 
     RigidBody::RigidBody(const RigidBodyConfiguration& settings)

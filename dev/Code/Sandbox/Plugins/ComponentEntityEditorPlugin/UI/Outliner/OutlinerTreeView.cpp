@@ -74,7 +74,7 @@ private:
 
 OutlinerTreeView::OutlinerTreeView(QWidget* pParent)
     : QTreeView(pParent)
-    , m_mousePressedQueued(false)
+    , m_queuedMouseEvent(nullptr)
     , m_draggingUnselectedItem(false)
     , m_mousePressedPos()
 {
@@ -93,19 +93,28 @@ void OutlinerTreeView::setAutoExpandDelay(int delay)
     m_expandOnlyDelay = delay;
 }
 
+void OutlinerTreeView::ClearQueuedMouseEvent()
+{
+    if (m_queuedMouseEvent)
+    {
+        delete m_queuedMouseEvent;
+        m_queuedMouseEvent = nullptr;
+    }
+}
+
 void OutlinerTreeView::mousePressEvent(QMouseEvent* event)
 {
     //postponing normal mouse pressed logic until mouse is released or dragged
     //this means selection occurs on mouse released now
     //this is to support drag/drop of non-selected items
-    m_mousePressedQueued = true;
-
+    ClearQueuedMouseEvent();
+    m_queuedMouseEvent = new QMouseEvent(*event);
     m_mousePressedPos = event->pos();
 }
 
 void OutlinerTreeView::mouseReleaseEvent(QMouseEvent* event)
 {
-    if (m_mousePressedQueued && !m_draggingUnselectedItem)
+    if (m_queuedMouseEvent && !m_draggingUnselectedItem)
     {
         // mouseMoveEvent will set the state to be DraggingState, which will make Qt ignore 
         // mousePressEvent in QTreeViewPrivate::expandOrCollapseItemAtPos. So we manually 
@@ -114,11 +123,12 @@ void OutlinerTreeView::mouseReleaseEvent(QMouseEvent* event)
         QAbstractItemView::setState(QAbstractItemView::State::EditingState);
 
         //treat this as a mouse pressed event to process selection etc
-        processQueuedMousePressedEvent(event);
+        processQueuedMousePressedEvent(m_queuedMouseEvent);
+
+        ClearQueuedMouseEvent();
 
         QAbstractItemView::setState(stateBefore);
     }
-    m_mousePressedQueued = false;
     m_draggingUnselectedItem = false;
 
     QTreeView::mouseReleaseEvent(event);
@@ -127,23 +137,25 @@ void OutlinerTreeView::mouseReleaseEvent(QMouseEvent* event)
 void OutlinerTreeView::mouseDoubleClickEvent(QMouseEvent* event)
 {
     //cancel pending mouse press
-    m_mousePressedQueued = false;
+    ClearQueuedMouseEvent();
     QTreeView::mouseDoubleClickEvent(event);
 }
 
 void OutlinerTreeView::mouseMoveEvent(QMouseEvent* event)
 {
-    if (m_mousePressedQueued)
+    if (m_queuedMouseEvent)
     {
         //disable selection for the pending click if the mouse moved so selection is maintained for dragging
         QAbstractItemView::SelectionMode selectionModeBefore = selectionMode();
         setSelectionMode(QAbstractItemView::NoSelection);
 
-        //treat this as a mouse pressed event to process everything but selection
-        processQueuedMousePressedEvent(event);
+        //treat this as a mouse pressed event to process everything but selection, but use the position data from the mousePress message
+        processQueuedMousePressedEvent(m_queuedMouseEvent);
 
         //restore selection state
         setSelectionMode(selectionModeBefore);
+
+        ClearQueuedMouseEvent();
     }
 
     //process mouse movement as normal, potentially triggering drag and drop
@@ -153,14 +165,14 @@ void OutlinerTreeView::mouseMoveEvent(QMouseEvent* event)
 void OutlinerTreeView::focusInEvent(QFocusEvent* event)
 {
     //cancel pending mouse press
-    m_mousePressedQueued = false;
+    ClearQueuedMouseEvent();
     QTreeView::focusInEvent(event);
 }
 
 void OutlinerTreeView::focusOutEvent(QFocusEvent* event)
 {
     //cancel pending mouse press
-    m_mousePressedQueued = false;
+    ClearQueuedMouseEvent();
     QTreeView::focusOutEvent(event);
 }
 

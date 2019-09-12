@@ -21,9 +21,10 @@ namespace AZ
         using ProcessId = AZ::u32;
         using MachineId = AZ::u32;
 
+        extern MachineId s_machineId;
+
         /// Returns the current process id (pid)
         ProcessId GetCurrentProcessId();
-
 
         /// Returns a unique machine id that should be unique per platform (PC, Mac, console, etc)
         MachineId GetLocalMachineId();

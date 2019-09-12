@@ -9,7 +9,6 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#ifndef AZ_UNITY_BUILD
 
 #include <AzCore/Math/Matrix3x3.h>
 #include <AzCore/Math/Quaternion.h>
@@ -136,5 +135,3 @@ bool Matrix3x3::IsOrthogonal(const VectorFloat& tolerance) const
     }
     return true;
 }
-
-#endif // #ifndef AZ_UNITY_BUILD

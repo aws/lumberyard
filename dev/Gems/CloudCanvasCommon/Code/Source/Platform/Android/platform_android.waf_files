@@ -1,0 +1,8 @@
+{
+  "auto": {
+    "Platform/Android": [
+      "CloudCanvasCommon_Traits_Platform.h", 
+      "CloudCanvasCommon_Traits_Android.h"
+    ]
+  }
+}

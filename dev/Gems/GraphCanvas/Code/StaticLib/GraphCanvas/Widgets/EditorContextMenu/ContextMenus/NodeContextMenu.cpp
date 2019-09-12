@@ -17,11 +17,12 @@ namespace GraphCanvas
     // NodeContextMenu
     ////////////////////
     
-    NodeContextMenu::NodeContextMenu(QWidget* parent)
-        : EditorContextMenu(parent)
+    NodeContextMenu::NodeContextMenu(EditorId editorId, QWidget* parent)
+        : EditorContextMenu(editorId, parent)
     {
         m_editActionGroup.PopulateMenu(this);
         m_nodeGroupActionGroup.PopulateMenu(this);
+        m_disableActionGroup.PopulateMenu(this);
         m_alignmentActionGroup.PopulateMenu(this);
     }
     
@@ -31,5 +32,8 @@ namespace GraphCanvas
         AZ_UNUSED(targetMemberId);
 
         m_editActionGroup.SetPasteEnabled(false);
+
+        m_nodeGroupActionGroup.RefreshPresets();
+        m_disableActionGroup.RefreshActions(graphId);
     }
 }

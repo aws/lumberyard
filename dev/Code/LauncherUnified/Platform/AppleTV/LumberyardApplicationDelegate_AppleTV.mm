@@ -10,9 +10,13 @@
 *
 */
 
-#include <AppleLaunchersCommon/AppleLauncher.h>
+#include <Launcher_precompiled.h>
+#include <Launcher.h>
 
-#include <AzFramework/API/ApplicationAPI_appletv.h>
+#include <../Common/Apple/Launcher_Apple.h>
+#include <../Common/UnixLike/Launcher_UnixLike.h>
+
+#include <AzFramework/API/ApplicationAPI_Platform.h>
 
 #include <AzCore/IO/SystemFile.h> // for AZ_MAX_PATH_LEN
 
@@ -21,26 +25,61 @@
 #import <UIKit/UIKit.h>
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-@interface AppleTVLumberyardApplicationDelegate : NSObject<UIApplicationDelegate> {}
-@end    // AppleTVLumberyardApplicationDelegate Interface
+namespace
+{
+    const char* GetAppWriteStoragePath()
+    {
+        static char pathToApplicationPersistentStorage[AZ_MAX_PATH_LEN] = { 0 };
+
+        // Unlike Mac where we have unrestricted access to the filesystem, iOS apps are sandboxed such
+        // that you can only access a pre-defined set of directories. Further restrictions are placed
+        // on AppleTV such that we can only actually write to the "Libraray/Caches" directory, which
+        // unfortunately is not guaranteed to be persisted. Essentially the OS is free to delete it
+        // at any time, although the docs suggest this will never happen while the app is running.
+        // If persistent storage is required it must be done using iCloud.
+        // https://developer.apple.com/library/mac/documentation/FileManagement/Conceptual/FileSystemProgrammingGuide/FileSystemOverview/FileSystemOverview.html
+        SystemUtilsApple::GetPathToUserCachesDirectory(pathToApplicationPersistentStorage, AZ_MAX_PATH_LEN);
+        return pathToApplicationPersistentStorage;
+    }
+}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-@implementation AppleTVLumberyardApplicationDelegate
+@interface LumberyardApplicationDelegate_AppleTV : NSObject<UIApplicationDelegate> {}
+@end    // LumberyardApplicationDelegate_AppleTV Interface
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+@implementation LumberyardApplicationDelegate_AppleTV
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+- (int)runLumberyardApplication
+{
+    using namespace LumberyardLauncher;
+
+    PlatformMainInfo mainInfo;
+    mainInfo.m_updateResourceLimits = IncreaseResourceLimits;
+    mainInfo.m_appResourcesPath = GetAppResourcePath();
+    mainInfo.m_appWriteStoragePath = GetAppWriteStoragePath();
+    mainInfo.m_additionalVfsResolution = "\t- Check that usbmuxconnect is running and not reporting any errors when connecting to localhost";
+
+    NSArray* commandLine = [[NSProcessInfo processInfo] arguments];
+
+    for (size_t argIndex = 0; argIndex < [commandLine count]; ++argIndex)
+    {
+        NSString* arg = commandLine[argIndex];
+        if (!mainInfo.AddArgument([arg UTF8String]))
+        {
+            return static_cast<int>(ReturnCode::ErrCommandLine); 
+        }
+    }
+
+    ReturnCode status = Run(mainInfo);
+    return static_cast<int>(status);
+}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 - (void)launchLumberyardApplication
 {
-    // Unlike Mac where we have unrestricted access to the filesystem, iOS apps are sandboxed such
-    // that you can only access a pre-defined set of directories. Further restrictions are placed
-    // on AppleTV such that we can only actually write to the "Libraray/Caches" directory, which
-    // unfortunately is not guaranteed to be persisted. Essentially the OS is free to delete it
-    // at any time, although the docs suggest this will never happen while the app is running.
-    // If persistent storage is required it must be done using iCloud.
-    // https://developer.apple.com/library/mac/documentation/FileManagement/Conceptual/FileSystemProgrammingGuide/FileSystemOverview/FileSystemOverview.html
-    char pathToApplicationPersistentStorage[AZ_MAX_PATH_LEN] = { 0 };
-    SystemUtilsApple::GetPathToUserCachesDirectory(pathToApplicationPersistentStorage, AZ_MAX_PATH_LEN);
-
-    const int exitCode = AppleLauncher::Launch("", pathToApplicationPersistentStorage);
+    const int exitCode = [self runLumberyardApplication];
     exit(exitCode);
 }
 
@@ -54,37 +93,43 @@
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 - (void)applicationWillResignActive:(UIApplication*)application
 {
-    EBUS_EVENT(AzFramework::AppleTVLifecycleEvents::Bus, OnWillResignActive);
+    AzFramework::AppleTVLifecycleEvents::Bus::Broadcast(
+        &AzFramework::AppleTVLifecycleEvents::Bus::Events::OnWillResignActive);
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 - (void)applicationDidEnterBackground:(UIApplication*)application
 {
-    EBUS_EVENT(AzFramework::AppleTVLifecycleEvents::Bus, OnDidEnterBackground);
+    AzFramework::AppleTVLifecycleEvents::Bus::Broadcast(
+        &AzFramework::AppleTVLifecycleEvents::Bus::Events::OnDidEnterBackground);
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 - (void)applicationWillEnterForeground:(UIApplication*)application
 {
-    EBUS_EVENT(AzFramework::AppleTVLifecycleEvents::Bus, OnWillEnterForeground);
+    AzFramework::AppleTVLifecycleEvents::Bus::Broadcast(
+        &AzFramework::AppleTVLifecycleEvents::Bus::Events::OnWillEnterForeground);
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 - (void)applicationDidBecomeActive:(UIApplication*)application
 {
-    EBUS_EVENT(AzFramework::AppleTVLifecycleEvents::Bus, OnDidBecomeActive);
+    AzFramework::AppleTVLifecycleEvents::Bus::Broadcast(
+        &AzFramework::AppleTVLifecycleEvents::Bus::Events::OnDidBecomeActive);
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 - (void)applicationWillTerminate:(UIApplication *)application
 {
-    EBUS_EVENT(AzFramework::AppleTVLifecycleEvents::Bus, OnWillTerminate);
+    AzFramework::AppleTVLifecycleEvents::Bus::Broadcast(
+        &AzFramework::AppleTVLifecycleEvents::Bus::Events::OnWillTerminate);
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 - (void)applicationDidReceiveMemoryWarning:(UIApplication *)application
 {
-    EBUS_EVENT(AzFramework::AppleTVLifecycleEvents::Bus, OnDidReceiveMemoryWarning);
+    AzFramework::AppleTVLifecycleEvents::Bus::Broadcast(
+        &AzFramework::AppleTVLifecycleEvents::Bus::Events::OnDidReceiveMemoryWarning);
 }
 
-@end // AppleTVLumberyardApplicationDelegate Implementation
+@end // LumberyardApplicationDelegate_AppleTV Implementation

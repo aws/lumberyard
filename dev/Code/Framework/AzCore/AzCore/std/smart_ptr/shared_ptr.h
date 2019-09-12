@@ -309,7 +309,6 @@ namespace AZStd
         }
 #endif // AZ_NO_AUTO_PTR
        // Move support
-#if defined(AZ_HAS_RVALUE_REFS)
         shared_ptr(shared_ptr&& r)
             : px(r.px)
             , pn()                                      // never throws
@@ -350,7 +349,6 @@ namespace AZStd
             : px(r.px)
             , pn(r.pn)
         {}
-#endif //AZ_HAS_RVALUE_REFS
         void reset() // never throws in 1.30+
         {
             this_type().swap(*this);

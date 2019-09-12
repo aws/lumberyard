@@ -14,6 +14,8 @@
 
 #include "MicrophoneSystemComponent.h"
 
+#include <audioclient.h>
+#include <mmdeviceapi.h>
 #include <functiondiscoverykeys_devpkey.h>
 
 #include <AzCore/std/chrono/chrono.h>
@@ -31,11 +33,10 @@
 namespace Audio
 {
     ///////////////////////////////////////////////////////////////////////////////////////////////
-    class MicrophoneSystemComponent::Pimpl
-        : protected MicrophoneRequestBus::Handler
+    class MicrophoneSystemComponentWindows : public MicrophoneSystemComponent::Implementation
     {
     public:
-        AZ_CLASS_ALLOCATOR(Pimpl, AZ::SystemAllocator, 0);
+        AZ_CLASS_ALLOCATOR(MicrophoneSystemComponentWindows, AZ::SystemAllocator, 0);
 
         ///////////////////////////////////////////////////////////////////////////////////////////
         bool InitializeDevice() override
@@ -217,7 +218,7 @@ namespace Audio
             m_capturing = true;
             AZStd::thread_desc threadDesc;
             threadDesc.m_name = "MicrophoneCapture-WASAPI";
-            auto captureFunc = AZStd::bind(&Pimpl::RunAudioCapture, this);
+            auto captureFunc = AZStd::bind(&MicrophoneSystemComponentWindows::RunAudioCapture, this);
             m_captureThread = AZStd::thread(captureFunc, &threadDesc);
 
             return true;
@@ -711,4 +712,9 @@ namespace Audio
     #endif // USE_LIBSAMPLERATE
     };
 
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+    MicrophoneSystemComponent::Implementation* MicrophoneSystemComponent::Implementation::Create()
+    {
+        return aznew MicrophoneSystemComponentWindows();
+    }
 } // namespace Audio

@@ -1,5 +1,5 @@
 {
-    "auto": 
+    "auto":
     {
         "Tests": 
         [
@@ -14,7 +14,6 @@
             "Tests/AnimGraphFixture.h",
             "Tests/AnimGraphFuzzTests.cpp",
             "Tests/AnimGraphMotionConditionTests.cpp",
-            "Tests/AnimGraphParameterCommandsTests.cpp",
             "Tests/AnimGraphRefCountTests.cpp",
             "Tests/AnimGraphReferenceNodeTests.cpp",
             "Tests/AnimGraphStateMachineTests.cpp",
@@ -27,7 +26,11 @@
             "Tests/AnimGraphTransitionFixture.cpp",
             "Tests/AnimGraphTransitionFixture.h",
             "Tests/AnimGraphTransitionTests.cpp",
+            "Tests/BlendTreeFloatConstantNodeTests.cpp",
+            "Tests/BlendTreeFloatConditionNodeTests.cpp",
+            "Tests/BlendTreeFloatMath1NodeTests.cpp",
             "Tests/BlendTreeFootIKNodeTests.cpp",
+            "Tests/BlendTreeMirrorPoseNodeTests.cpp",
             "Tests/BlendTreeRagdollNodeTests.cpp",
             "Tests/BlendTreeRotationMath2NodeTests.cpp",
             "Tests/BlendTreeRotationLimitNodeTests.cpp",
@@ -39,6 +42,8 @@
             "Tests/JackGraphFixture.h",
             "Tests/JackGraphFixture.cpp",
             "Tests/KeyTrackLinearTests.cpp",
+            "Tests/MCoreSystemFixture.h",
+            "Tests/MCoreSystemFixture.cpp",
             "Tests/MorphTargetRuntimeTests.cpp",
             "Tests/MotionEventTrackTests.cpp",
             "Tests/RagdollCommandTests.cpp",
@@ -47,7 +52,19 @@
             "Tests/BlendTreeBlendNNodeTests.cpp",
             "Tests/RandomMotionSelectionTests.cpp",
             "Tests/BoolLogicNodeTests.cpp",
-            "Tests/Vector2ToVector3CompatibilityTests.cpp"
+            "Tests/Vector2ToVector3CompatibilityTests.cpp",
+            "Tests/Printers.cpp",
+            "Tests/SimulatedObjectCommandTests.cpp",
+            "Tests/SimulatedObjectSerializeTests.cpp"
+        ],
+        "Tests/MCore":
+        [
+            "Tests/MCore/CommandManagerTests.cpp",
+            "Tests/MCore/CommandLineTests.cpp"
+        ],
+        "Tests/Prefabs":
+        [
+            "Tests/Prefabs/LeftArmSkeleton.h"
         ],
         "Tests/AssetCode": 
         [
@@ -66,7 +83,9 @@
             "Tests/Mocks/AnimGraphObjectData.h",
             "Tests/Mocks/AnimGraphStateTransition.h",
             "Tests/Mocks/BlendTreeParameterNode.h",
+            "Tests/Mocks/Command.h",
             "Tests/Mocks/CommandManager.h",
+            "Tests/Mocks/CommandManagerCallback.h",
             "Tests/Mocks/CommandSystemCommandManager.h",
             "Tests/Mocks/EMotionFXManager.h",
             "Tests/Mocks/GroupParameter.h",
@@ -76,6 +95,32 @@
             "Tests/Mocks/ParameterFactory.h",
             "Tests/Mocks/Skeleton.h",
             "Tests/Mocks/ValueParameter.h"
+        ],
+        "Tests/Integration":
+        [
+            "Tests/Integration/PoseComparisonFixture.h",
+            "Tests/Integration/PoseComparisonTests.cpp"
+        ]
+    },
+    "AnimGraphParameterCommandsTests.cpp":
+    {
+        "Tests":
+        [
+            "Tests/AnimGraphParameterCommandsTests.cpp"
+        ]
+    },
+    "CommandAdjustSimulatedObjectTests.cpp":
+    {
+        "Tests":
+        [
+            "Tests/CommandAdjustSimulatedObjectTests.cpp"
+        ]
+    },
+    "SimulatedObjectSetupTests.cpp":
+    {
+        "Tests":
+        [
+            "Tests/SimulatedObjectSetupTests.cpp"
         ]
     }
 }

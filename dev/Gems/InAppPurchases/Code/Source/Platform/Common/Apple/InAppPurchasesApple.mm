@@ -132,6 +132,11 @@ namespace
 
 namespace InAppPurchases
 {
+    InAppPurchasesInterface* InAppPurchasesInterface::CreateInstance()
+    {
+        return new InAppPurchasesApple();
+    }
+
     void InAppPurchasesApple::Initialize()
     {
         m_delegate = [[InAppPurchasesDelegate alloc] init];

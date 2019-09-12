@@ -1107,6 +1107,530 @@ namespace UnitTest
 
         EXPECT_EQ(idx, map.size());
     }
+
+    template<typename ContainerType>
+    class HashedSetContainers
+        : public AllocatorsFixture
+    {
+    };
+
+    
+    struct MoveOnlyIntType
+    {
+        MoveOnlyIntType() = default;
+        MoveOnlyIntType(int32_t value)
+            : m_value(value)
+        {}
+        MoveOnlyIntType(const MoveOnlyIntType&) = delete;
+        MoveOnlyIntType& operator=(const MoveOnlyIntType&) = delete;
+        MoveOnlyIntType(MoveOnlyIntType&& other)
+            : m_value(other.m_value)
+        {
+        }
+
+        MoveOnlyIntType& operator=(MoveOnlyIntType&& other)
+        {
+            m_value = other.m_value;
+            other.m_value = {};
+            return *this;
+        }
+
+        explicit operator int32_t()
+        {
+            return m_value;
+        }
+
+        bool operator==(const MoveOnlyIntType& other) const
+        {
+            return m_value == other.m_value;
+        }
+
+        int32_t m_value;
+    };
+
+    struct MoveOnlyIntTypeHasher
+    {
+        size_t operator()(const MoveOnlyIntType& moveOnlyType) const
+        {
+            return AZStd::hash<int32_t>()(moveOnlyType.m_value);
+        }
+    };
+
+    template<typename ContainerType>
+    struct HashedSetConfig
+    {
+        using SetType = ContainerType;
+        static SetType Create()
+        {
+            SetType testSet;
+
+            testSet.emplace(1);
+            testSet.emplace(2);
+            testSet.emplace(84075);
+            testSet.emplace(-73);
+            testSet.emplace(534);
+            testSet.emplace(-845920);
+            testSet.emplace(-42);
+            testSet.emplace(0b1111'0000);
+            return testSet;
+        }
+    };
+
+    using SetContainerConfigs = ::testing::Types<
+        HashedSetConfig<AZStd::unordered_set<int32_t>>
+        , HashedSetConfig<AZStd::unordered_multiset<int32_t>>
+        , HashedSetConfig<AZStd::unordered_set<MoveOnlyIntType, MoveOnlyIntTypeHasher>>
+        , HashedSetConfig<AZStd::unordered_multiset<MoveOnlyIntType, MoveOnlyIntTypeHasher>>
+    >;
+    TYPED_TEST_CASE(HashedSetContainers, SetContainerConfigs);
+
+    TYPED_TEST(HashedSetContainers, ExtractNodeHandleByKeySucceeds)
+    {
+        using SetType = typename TypeParam::SetType;
+        using node_type = typename SetType::node_type;
+
+        SetType testContainer = TypeParam::Create();
+        node_type extractedNode = testContainer.extract(84075);
+
+        EXPECT_EQ(7, testContainer.size());
+        EXPECT_FALSE(extractedNode.empty());
+        EXPECT_EQ(84075, static_cast<int32_t>(extractedNode.value()));
+    }
+
+    TYPED_TEST(HashedSetContainers, ExtractNodeHandleByKeyFails)
+    {
+        using SetType = typename TypeParam::SetType;
+        using node_type = typename SetType::node_type;
+
+        SetType testContainer = TypeParam::Create();
+        node_type extractedNode = testContainer.extract(10000001);
+
+        EXPECT_EQ(8, testContainer.size());
+        EXPECT_TRUE(extractedNode.empty());
+    }
+
+    TYPED_TEST(HashedSetContainers, ExtractNodeHandleByIteratorSucceeds)
+    {
+        using SetType = typename TypeParam::SetType;
+        using node_type = typename SetType::node_type;
+
+        SetType testContainer = TypeParam::Create();
+        auto foundIter = testContainer.find(-73);
+        node_type extractedNode = testContainer.extract(foundIter);
+
+        EXPECT_EQ(7, testContainer.size());
+        EXPECT_FALSE(extractedNode.empty());
+        EXPECT_EQ(-73, static_cast<int32_t>(extractedNode.value()));
+    }
+
+    TYPED_TEST(HashedSetContainers, InsertNodeHandleSucceeds)
+    {
+        using SetType = typename TypeParam::SetType;
+        using node_type = typename SetType::node_type;
+
+        SetType testContainer = TypeParam::Create();
+        node_type extractedNode = testContainer.extract(84075);
+
+        EXPECT_EQ(7, testContainer.size());
+        EXPECT_FALSE(extractedNode.empty());
+        EXPECT_EQ(84075, static_cast<int32_t>(extractedNode.value()));
+
+        extractedNode.value() = 0;
+        testContainer.insert(AZStd::move(extractedNode));
+        EXPECT_NE(0, testContainer.count(0));
+        EXPECT_EQ(8, testContainer.size());
+    }
+
+    TEST_F(HashedContainers, UnorderedSetInsertNodeHandleSucceeds)
+    {
+        using SetType = AZStd::unordered_set<int32_t>;
+        using node_type = typename SetType::node_type;
+        using insert_return_type = typename SetType::insert_return_type;
+
+        SetType testContainer = HashedSetConfig<SetType>::Create();
+        node_type extractedNode = testContainer.extract(84075);
+        EXPECT_EQ(7, testContainer.size());
+        EXPECT_FALSE(extractedNode.empty());
+        EXPECT_EQ(84075, static_cast<int32_t>(extractedNode.value()));
+
+        extractedNode.value() = -60;
+        insert_return_type insertResult = testContainer.insert(AZStd::move(extractedNode));
+        EXPECT_NE(testContainer.end(), insertResult.position);
+        EXPECT_TRUE(insertResult.inserted);
+        EXPECT_TRUE(insertResult.node.empty());
+        
+        EXPECT_NE(0, testContainer.count(-60));
+        EXPECT_EQ(8, testContainer.size());
+    }
+
+    TEST_F(HashedContainers, UnorderedSetInsertNodeHandleWithEmptyNodeHandleFails)
+    {
+        using SetType = AZStd::unordered_set<int32_t>;
+        using node_type = typename SetType::node_type;
+        using insert_return_type = typename SetType::insert_return_type;
+
+        SetType testContainer = HashedSetConfig<SetType>::Create();
+
+        node_type extractedNode;
+        EXPECT_TRUE(extractedNode.empty());
+
+        insert_return_type insertResult = testContainer.insert(AZStd::move(extractedNode));
+        EXPECT_EQ(testContainer.end(), insertResult.position);
+        EXPECT_FALSE(insertResult.inserted);
+        EXPECT_TRUE(insertResult.node.empty());
+        EXPECT_EQ(8, testContainer.size());
+    }
+
+    TEST_F(HashedContainers, UnorderedSetInsertNodeHandleWithDuplicateValueInNodeHandleFails)
+    {
+        using SetType = AZStd::unordered_set<int32_t>;
+        using node_type = typename SetType::node_type;
+        using insert_return_type = typename SetType::insert_return_type;
+
+        SetType testContainer = HashedSetConfig<SetType>::Create();
+        node_type extractedNode = testContainer.extract(2);
+
+        EXPECT_EQ(7, testContainer.size());
+        EXPECT_FALSE(extractedNode.empty());
+        EXPECT_EQ(2, static_cast<int32_t>(extractedNode.value()));
+
+        // Set node handle value to a key that is currently within the container
+        extractedNode.value() = 534;
+        insert_return_type insertResult = testContainer.insert(AZStd::move(extractedNode));
+        EXPECT_NE(testContainer.end(), insertResult.position);
+        EXPECT_FALSE(insertResult.inserted);
+        EXPECT_FALSE(insertResult.node.empty());
+
+        EXPECT_EQ(7, testContainer.size());
+    }
+
+    TEST_F(HashedContainers, UnorderedSetExtractedNodeCanBeInsertedIntoUnorderedMultiset)
+    {
+        using SetType = AZStd::unordered_set<int32_t>;
+        using MultisetType = AZStd::unordered_multiset<int32_t>;
+
+        SetType uniqueSet{ 1, 2, 3 };
+        MultisetType multiSet{ 1, 4, 1 };
+
+        auto extractedNode = uniqueSet.extract(1);
+        EXPECT_EQ(2, uniqueSet.size());
+        EXPECT_FALSE(extractedNode.empty());
+
+        auto insertIt = multiSet.insert(AZStd::move(extractedNode));
+        EXPECT_NE(multiSet.end(), insertIt);
+        EXPECT_EQ(4, multiSet.size());
+        EXPECT_EQ(3, multiSet.count(1));
+    }
+
+    TEST_F(HashedContainers, UnorderedMultisetExtractedNodeCanBeInsertedIntoUnorderedSet)
+    {
+        using SetType = AZStd::unordered_set<int32_t>;
+        using MultisetType = AZStd::unordered_multiset<int32_t>;
+
+        SetType uniqueSet{ 1, 2, 3 };
+        MultisetType multiSet{ 1, 4, 1 };
+
+        auto extractedNode = multiSet.extract(4);
+        EXPECT_EQ(2, multiSet.size());
+        EXPECT_FALSE(extractedNode.empty());
+
+        auto insertResult = uniqueSet.insert(AZStd::move(extractedNode));
+        EXPECT_TRUE(insertResult.inserted);
+        EXPECT_EQ(4, uniqueSet.size());
+        EXPECT_EQ(1, uniqueSet.count(4));
+    }
+
+    template <typename ContainerType>
+    class HashedSetDifferentAllocatorFixture
+        : public AllocatorsFixture
+    {
+    };
+
+    template<template <typename, typename, typename, typename> class ContainerTemplate>
+    struct HashedSetWithCustomAllocatorConfig
+    {
+        using ContainerType = ContainerTemplate<int32_t, AZStd::hash<int32_t>, AZStd::equal_to<int32_t>, AZ::AZStdIAllocator>;
+
+        static ContainerType Create(std::initializer_list<typename ContainerType::value_type> intList, AZ::IAllocatorAllocate* allocatorInstance)
+        {
+            ContainerType allocatorSet(intList, AZStd::hash<int32_t>{}, AZStd::equal_to<int32_t>{}, AZ::AZStdIAllocator{ allocatorInstance });
+            return allocatorSet;
+        }
+    };
+
+    using SetTemplateConfigs = ::testing::Types<
+        HashedSetWithCustomAllocatorConfig<AZStd::unordered_set>
+        , HashedSetWithCustomAllocatorConfig<AZStd::unordered_multiset>
+        >;
+    TYPED_TEST_CASE(HashedSetDifferentAllocatorFixture, SetTemplateConfigs);
+
+    TYPED_TEST(HashedSetDifferentAllocatorFixture, InsertNodeHandleWithDifferentAllocatorsLogsTraceMessages)
+    {
+        using ContainerType = typename TypeParam::ContainerType;
+
+        ContainerType systemAllocatorSet = TypeParam::Create({ {1}, {2}, {3} }, &AZ::AllocatorInstance<AZ::SystemAllocator>::Get());
+        auto extractedNode = systemAllocatorSet.extract(1);
+
+        ContainerType osAllocatorSet = TypeParam::Create({ {2} }, &AZ::AllocatorInstance<AZ::OSAllocator>::Get());
+        // Attempt to insert an extracted node from a container using the AZ::SystemAllocator into a container using the AZ::OSAllocator
+        EXPECT_DEATH(
+            {
+                UnitTest::TestRunner::Instance().StartAssertTests();
+                osAllocatorSet.insert(AZStd::move(extractedNode));
+                if (UnitTest::TestRunner::Instance().StopAssertTests() > 0)
+                {
+                    // AZ_Assert does not cause the application to exit in profile_test configuration
+                    // Therefore an exit with a non-zero error code is invoked to trigger the death condition
+                    exit(1);
+                }
+            }, ".*");
+    }
+    
+    template<typename ContainerType>
+    class HashedMapContainers
+        : public AllocatorsFixture
+    {
+    };
+
+    template<typename ContainerType>
+    struct HashedMapConfig
+    {
+        using MapType = ContainerType;
+        static MapType Create()
+        {
+            MapType testMap;
+            
+            testMap.emplace(8001, 1337);
+            testMap.emplace(-200, 31337);
+            testMap.emplace(-932, 0xbaddf00d);
+            testMap.emplace(73, 0xfee1badd);
+            testMap.emplace(1872, 0xCDCDCDCD);
+            testMap.emplace(0xFF, 7000000);
+            testMap.emplace(0777, 0b00110000010);
+            testMap.emplace(0b11010110110000101, 0xDDDDDDDD);
+            return testMap;
+        }
+    };
+    using MapContainerConfigs = ::testing::Types<
+        HashedMapConfig<AZStd::unordered_map<int32_t, int32_t>>
+        , HashedMapConfig<AZStd::unordered_multimap<int32_t, int32_t>>
+        , HashedMapConfig<AZStd::unordered_map<MoveOnlyIntType, int32_t, MoveOnlyIntTypeHasher>>
+        , HashedMapConfig<AZStd::unordered_multimap<MoveOnlyIntType, int32_t, MoveOnlyIntTypeHasher>>
+    >;
+    TYPED_TEST_CASE(HashedMapContainers, MapContainerConfigs);
+
+    TYPED_TEST(HashedMapContainers, ExtractNodeHandleByKeySucceeds)
+    {
+        using MapType = typename TypeParam::MapType;
+        using node_type = typename MapType::node_type;
+
+        MapType testContainer = TypeParam::Create();
+        node_type extractedNode = testContainer.extract(0777);
+
+        EXPECT_EQ(7, testContainer.size());
+        EXPECT_FALSE(extractedNode.empty());
+        EXPECT_EQ(0777, static_cast<int32_t>(extractedNode.key()));
+        EXPECT_EQ(0b00110000010, extractedNode.mapped());
+    }
+
+    TYPED_TEST(HashedMapContainers, ExtractNodeHandleByKeyFails)
+    {
+        using MapType = typename TypeParam::MapType;
+        using node_type = typename MapType::node_type;
+
+        MapType testContainer = TypeParam::Create();
+        node_type extractedNode = testContainer.extract(3);
+        
+        EXPECT_EQ(8, testContainer.size());
+        EXPECT_TRUE(extractedNode.empty());
+    }
+
+    TYPED_TEST(HashedMapContainers, ExtractNodeHandleByIteratorSucceeds)
+    {
+        using MapType = typename TypeParam::MapType;
+        using node_type = typename MapType::node_type;
+
+        MapType testContainer = TypeParam::Create();
+        auto foundIter = testContainer.find(73);
+        node_type extractedNode = testContainer.extract(foundIter);
+
+        EXPECT_EQ(7, testContainer.size());
+        EXPECT_FALSE(extractedNode.empty());
+        EXPECT_EQ(73, static_cast<int32_t>(extractedNode.key()));
+        EXPECT_EQ(0xfee1badd, extractedNode.mapped());
+    }
+
+    TYPED_TEST(HashedMapContainers, InsertNodeHandleSucceeds)
+    {
+        using MapType = typename TypeParam::MapType;
+        using node_type = typename MapType::node_type;
+
+        MapType testContainer = TypeParam::Create();
+        node_type extractedNode = testContainer.extract(0777);
+
+        EXPECT_EQ(7, testContainer.size());
+        EXPECT_FALSE(extractedNode.empty());
+        EXPECT_EQ(0777, static_cast<int32_t>(extractedNode.key()));
+        extractedNode.key() = 0644;
+        extractedNode.mapped() = 1'212;
+
+        testContainer.insert(AZStd::move(extractedNode));
+        auto foundIt = testContainer.find(0644);
+        EXPECT_NE(testContainer.end(), foundIt);
+        EXPECT_EQ(0644, static_cast<int32_t>(foundIt->first));
+        EXPECT_EQ(1'212, foundIt->second);
+        EXPECT_EQ(8, testContainer.size());
+    }
+
+    TEST_F(HashedContainers, UnorderedMapInsertNodeHandleSucceeds)
+    {
+        using MapType = AZStd::unordered_map<int32_t, int32_t>;
+        using node_type = typename MapType::node_type;
+        using insert_return_type = typename MapType::insert_return_type;
+
+        MapType testContainer = HashedMapConfig<MapType>::Create();
+        node_type extractedNode = testContainer.extract(0b11010110110000101);
+
+        EXPECT_EQ(7, testContainer.size());
+        EXPECT_FALSE(extractedNode.empty());
+        EXPECT_EQ(0b11010110110000101, extractedNode.key());
+        
+        extractedNode.key() = -60;
+        extractedNode.mapped() = -1;
+
+        insert_return_type insertResult = testContainer.insert(AZStd::move(extractedNode));
+        EXPECT_NE(testContainer.end(), insertResult.position);
+        EXPECT_TRUE(insertResult.inserted);
+        EXPECT_TRUE(insertResult.node.empty());
+
+        auto foundIt = testContainer.find(-60);
+        EXPECT_NE(testContainer.end(), foundIt);
+        EXPECT_EQ(-60, foundIt->first);
+        EXPECT_EQ(-1, foundIt->second);
+        EXPECT_EQ(8, testContainer.size());
+    }
+
+    TEST_F(HashedContainers, UnorderedMapInsertNodeHandleWithEmptyNodeHandleFails)
+    {
+        using MapType = AZStd::unordered_map<int32_t, int32_t>;
+        using node_type = typename MapType::node_type;
+        using insert_return_type = typename MapType::insert_return_type;
+
+        MapType testContainer = HashedMapConfig<MapType>::Create();
+
+        node_type extractedNode;
+        EXPECT_TRUE(extractedNode.empty());
+
+        EXPECT_EQ(8, testContainer.size());
+        insert_return_type insertResult = testContainer.insert(AZStd::move(extractedNode));
+        EXPECT_EQ(testContainer.end(), insertResult.position);
+        EXPECT_FALSE(insertResult.inserted);
+        EXPECT_TRUE(insertResult.node.empty());
+        EXPECT_EQ(8, testContainer.size());
+    }
+
+    TEST_F(HashedContainers, UnorderedMapInsertNodeHandleWithDuplicateValueInNodeHandleFails)
+    {
+        using MapType = AZStd::unordered_map<int32_t, int32_t>;
+        using node_type = typename MapType::node_type;
+        using insert_return_type = typename MapType::insert_return_type;
+        MapType testContainer = HashedMapConfig<MapType>::Create();
+
+        node_type extractedNode = testContainer.extract(0xFF);
+        EXPECT_EQ(7, testContainer.size());
+        EXPECT_FALSE(extractedNode.empty());
+        EXPECT_EQ(0xFF, static_cast<int32_t>(extractedNode.key()));
+        // Update the extracted node to have the same key as one of the elements currently within the container
+        extractedNode.key() = -200;
+
+        insert_return_type insertResult = testContainer.insert(AZStd::move(extractedNode));
+        EXPECT_NE(testContainer.end(), insertResult.position);
+        EXPECT_FALSE(insertResult.inserted);
+        EXPECT_FALSE(insertResult.node.empty());
+        EXPECT_EQ(7, testContainer.size());
+    }
+
+    TEST_F(HashedContainers, UnorderedMapExtractedNodeCanBeInsertedIntoUnorderedMultimap)
+    {
+        using MapType = AZStd::unordered_map<int32_t, int32_t>;
+        using MultimapType = AZStd::unordered_multimap<int32_t, int32_t>;
+
+        MapType uniqueMap{ {1, 2}, {2, 4}, {3, 6} };
+        MultimapType multiMap{ {1, 2}, { 4, 8}, {1, 3} };
+
+        auto extractedNode = uniqueMap.extract(1);
+        EXPECT_EQ(2, uniqueMap.size());
+        EXPECT_FALSE(extractedNode.empty());
+
+        auto insertIt = multiMap.insert(AZStd::move(extractedNode));
+        EXPECT_NE(multiMap.end(), insertIt);
+        EXPECT_EQ(4, multiMap.size());
+        EXPECT_EQ(3, multiMap.count(1));
+    }
+
+    TEST_F(HashedContainers, UnorderedMultimapExtractedNodeCanBeInsertedIntoUnorderedMap)
+    {
+        using MapType = AZStd::unordered_map<int32_t, int32_t>;
+        using MultimapType = AZStd::unordered_multimap<int32_t, int32_t>;
+
+        MapType uniqueMap{ {1, 2}, {2, 4}, {3, 6} };
+        MultimapType multiMap{ {1, 2}, { 4, 8}, {1, 3} };
+
+        auto extractedNode = multiMap.extract(4);
+        EXPECT_EQ(2, multiMap.size());
+        EXPECT_FALSE(extractedNode.empty());
+
+        auto insertResult = uniqueMap.insert(AZStd::move(extractedNode));
+        EXPECT_TRUE(insertResult.inserted);
+        EXPECT_EQ(4, uniqueMap.size());
+        EXPECT_EQ(1, uniqueMap.count(4));
+    }
+
+    template <typename ContainerType>
+    class HashedMapDifferentAllocatorFixture
+        : public AllocatorsFixture
+    {
+    };
+
+    template<template <typename, typename, typename, typename, typename> class ContainerTemplate>
+    struct HashedMapWithCustomAllocatorConfig
+    {
+        using ContainerType = ContainerTemplate<int32_t, int32_t, AZStd::hash<int32_t>, AZStd::equal_to<int32_t>, AZ::AZStdIAllocator>;
+
+        static ContainerType Create(std::initializer_list<typename ContainerType::value_type> intList, AZ::IAllocatorAllocate* allocatorInstance)
+        {
+            ContainerType allocatorMap(intList, AZStd::hash<int32_t>{}, AZStd::equal_to<int32_t>{}, AZ::AZStdIAllocator{ allocatorInstance });
+            return allocatorMap;
+        }
+    };
+
+    using MapTemplateConfigs = ::testing::Types<
+        HashedMapWithCustomAllocatorConfig<AZStd::unordered_map>
+        , HashedMapWithCustomAllocatorConfig<AZStd::unordered_multimap>
+    >;
+    TYPED_TEST_CASE(HashedMapDifferentAllocatorFixture, MapTemplateConfigs);
+
+    TYPED_TEST(HashedMapDifferentAllocatorFixture, InsertNodeHandleWithDifferentAllocatorsLogsTraceMessages)
+    {
+        using ContainerType = typename TypeParam::ContainerType;
+
+        ContainerType systemAllocatorMap = TypeParam::Create({ {1, 2}, {2, 4}, {3, 6} }, &AZ::AllocatorInstance<AZ::SystemAllocator>::Get());
+        auto extractedNode = systemAllocatorMap.extract(1);
+
+        ContainerType osAllocatorMap = TypeParam::Create({ {2, 4} }, &AZ::AllocatorInstance<AZ::OSAllocator>::Get());
+        // Attempt to insert an extracted node from a container using the AZ::SystemAllocator into a container using the AZ::OSAllocator
+        EXPECT_DEATH(
+        {
+            UnitTest::TestRunner::Instance().StartAssertTests();
+            osAllocatorMap.insert(AZStd::move(extractedNode));
+            if (UnitTest::TestRunner::Instance().StopAssertTests() > 0)
+            {
+                // AZ_Assert does not cause the application to exit in profile_test configuration
+                // Therefore an exit with a non-zero error code is invoked to trigger the death condition
+                exit(1);
+            }
+        } , ".*");
+    }
             
 #if defined(HAVE_BENCHMARK)
     template <template <typename...> class Hash>

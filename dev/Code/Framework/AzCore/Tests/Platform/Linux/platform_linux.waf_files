@@ -1,0 +1,9 @@
+{
+    "none":
+    {
+        "AzCore/Platform/Linux":
+        [
+            "Tests/UtilsTests_Linux.cpp"
+        ]
+    }
+}

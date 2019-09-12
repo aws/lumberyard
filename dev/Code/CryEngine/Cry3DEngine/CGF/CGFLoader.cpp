@@ -146,7 +146,6 @@ CContentCGF* CLoaderCGF::LoadCGF(const char* filename, IChunkFile& chunkFile, IL
 //////////////////////////////////////////////////////////////////////////
 bool CLoaderCGF::LoadCGF(CContentCGF* pContentCGF, const char* filename, IChunkFile& chunkFile, ILoaderCGFListener* pListener, unsigned long nLoadingFlags)
 {
-    FUNCTION_PROFILER_3DENGINE;
     LOADING_TIME_PROFILE_SECTION;
 
     if (!chunkFile.IsLoaded())
@@ -169,7 +168,6 @@ bool CLoaderCGF::LoadCGF(CContentCGF* pContentCGF, const char* filename, IChunkF
 
 bool CLoaderCGF::LoadCGFFromMem(CContentCGF* pContentCGF, const void* pData, size_t nDataLen, IChunkFile& chunkFile, ILoaderCGFListener* pListener, unsigned long nLoadingFlags)
 {
-    FUNCTION_PROFILER_3DENGINE;
     LOADING_TIME_PROFILE_SECTION;
 
     if (!chunkFile.IsLoaded())
@@ -278,7 +276,6 @@ bool CLoaderCGF::LoadCGFWork(CContentCGF* pContentCGF, const char* filename, ICh
 //////////////////////////////////////////////////////////////////////////
 bool CLoaderCGF::LoadChunks(bool bJustGeometry)
 {
-    FUNCTION_PROFILER_3DENGINE;
     LOADING_TIME_PROFILE_SECTION;
 
     m_CompiledBones = false;
@@ -470,7 +467,6 @@ bool CLoaderCGF::LoadChunks(bool bJustGeometry)
 
 bool CLoaderCGF::ReadBoneInitialPos(IChunkFile::ChunkDesc* pChunkDesc)
 {
-    FUNCTION_PROFILER_3DENGINE;
     LOADING_TIME_PROFILE_SECTION;
 
     if (pChunkDesc->chunkVersion != BONEINITIALPOS_CHUNK_DESC_0001::VERSION)
@@ -515,7 +511,6 @@ bool CLoaderCGF::ReadBoneInitialPos(IChunkFile::ChunkDesc* pChunkDesc)
 
 bool CLoaderCGF::ReadMorphTargets(IChunkFile::ChunkDesc* pChunkDesc)
 {
-    FUNCTION_PROFILER_3DENGINE;
     LOADING_TIME_PROFILE_SECTION;
 
 #if !defined(RESOURCE_COMPILER)
@@ -627,7 +622,6 @@ bool CLoaderCGF::ReadMorphTargets(IChunkFile::ChunkDesc* pChunkDesc)
 //////////////////////////////////////////////////////////////////////////
 bool CLoaderCGF::ReadBoneNameList(IChunkFile::ChunkDesc* pChunkDesc)
 {
-    FUNCTION_PROFILER_3DENGINE;
     LOADING_TIME_PROFILE_SECTION;
 
     if (pChunkDesc->chunkVersion != BONENAMELIST_CHUNK_DESC_0745::VERSION)
@@ -1047,7 +1041,6 @@ bool CLoaderCGF::ReadBoneMesh(IChunkFile::ChunkDesc* pChunkDesc)
 //////////////////////////////////////////////////////////////////////////
 bool CLoaderCGF::ReadCompiledBones(IChunkFile::ChunkDesc* pChunkDesc)
 {
-    FUNCTION_PROFILER_3DENGINE;
     LOADING_TIME_PROFILE_SECTION;
 
     COMPILED_BONE_CHUNK_DESC_0800* const pBIPChunk = (COMPILED_BONE_CHUNK_DESC_0800*)pChunkDesc->data;
@@ -1093,7 +1086,6 @@ bool CLoaderCGF::ReadCompiledBones(IChunkFile::ChunkDesc* pChunkDesc)
 //////////////////////////////////////////////////////////////////////////
 bool CLoaderCGF::ReadCompiledPhysicalBones(IChunkFile::ChunkDesc* pChunkDesc)
 {
-    FUNCTION_PROFILER_3DENGINE;
     LOADING_TIME_PROFILE_SECTION;
 
     COMPILED_PHYSICALBONE_CHUNK_DESC_0800* const pChunk = (COMPILED_PHYSICALBONE_CHUNK_DESC_0800*)pChunkDesc->data;
@@ -1126,7 +1118,6 @@ bool CLoaderCGF::ReadCompiledPhysicalBones(IChunkFile::ChunkDesc* pChunkDesc)
 //////////////////////////////////////////////////////////////////////////
 bool CLoaderCGF::ReadCompiledPhysicalProxies(IChunkFile::ChunkDesc* pChunkDesc)
 {
-    FUNCTION_PROFILER_3DENGINE;
     LOADING_TIME_PROFILE_SECTION;
 
     CSkinningInfo* pSkinningInfo = m_pCGF->GetSkinningInfo();
@@ -1196,7 +1187,6 @@ bool CLoaderCGF::ReadCompiledPhysicalProxies(IChunkFile::ChunkDesc* pChunkDesc)
 //////////////////////////////////////////////////////////////////////////
 bool CLoaderCGF::ReadCompiledMorphTargets(IChunkFile::ChunkDesc* pChunkDesc)
 {
-    FUNCTION_PROFILER_3DENGINE;
     LOADING_TIME_PROFILE_SECTION;
 
     // Note that this chunk type often contains non-aligned data. Because of that
@@ -1269,7 +1259,6 @@ bool CLoaderCGF::ReadCompiledMorphTargets(IChunkFile::ChunkDesc* pChunkDesc)
 //////////////////////////////////////////////////////////////////////////
 bool CLoaderCGF::ReadCompiledIntFaces(IChunkFile::ChunkDesc* pChunkDesc)
 {
-    FUNCTION_PROFILER_3DENGINE;
     LOADING_TIME_PROFILE_SECTION;
 
     const bool bSwapEndianness = pChunkDesc->bSwapEndian;
@@ -1298,7 +1287,6 @@ bool CLoaderCGF::ReadCompiledIntFaces(IChunkFile::ChunkDesc* pChunkDesc)
 //////////////////////////////////////////////////////////////////////////
 bool CLoaderCGF::ReadCompiledIntSkinVertice(IChunkFile::ChunkDesc* pChunkDesc)
 {
-    FUNCTION_PROFILER_3DENGINE;
     LOADING_TIME_PROFILE_SECTION;
 
     COMPILED_INTSKINVERTICES_CHUNK_DESC_0800* const pBIPChunk = (COMPILED_INTSKINVERTICES_CHUNK_DESC_0800*)pChunkDesc->data;
@@ -1329,7 +1317,6 @@ bool CLoaderCGF::ReadCompiledIntSkinVertice(IChunkFile::ChunkDesc* pChunkDesc)
 //////////////////////////////////////////////////////////////////////////
 bool CLoaderCGF::ReadCompiledBonesBoxes(IChunkFile::ChunkDesc* pChunkDesc)
 {
-    FUNCTION_PROFILER_3DENGINE;
     LOADING_TIME_PROFILE_SECTION;
 
     const bool bSwapEndianness = pChunkDesc->bSwapEndian;
@@ -1410,7 +1397,6 @@ bool CLoaderCGF::ReadCompiledBonesBoxes(IChunkFile::ChunkDesc* pChunkDesc)
 //////////////////////////////////////////////////////////////////////////
 bool CLoaderCGF::ReadCompiledExt2IntMap(IChunkFile::ChunkDesc* pChunkDesc)
 {
-    FUNCTION_PROFILER_3DENGINE;
     LOADING_TIME_PROFILE_SECTION;
 
     const bool bSwapEndianness = pChunkDesc->bSwapEndian;
@@ -1438,7 +1424,6 @@ bool CLoaderCGF::ReadCompiledExt2IntMap(IChunkFile::ChunkDesc* pChunkDesc)
 //////////////////////////////////////////////////////////////////////////
 bool CLoaderCGF::ReadCompiledBreakablePhysics(IChunkFile::ChunkDesc* pChunkDesc)
 {
-    FUNCTION_PROFILER_3DENGINE;
     LOADING_TIME_PROFILE_SECTION;
 
     if (pChunkDesc->chunkVersion != BREAKABLE_PHYSICS_CHUNK_DESC::VERSION)
@@ -1685,7 +1670,6 @@ namespace ProcessSkinningHelpers
 
 bool CLoaderCGF::ProcessSkinning()
 {
-    FUNCTION_PROFILER_3DENGINE;
     LOADING_TIME_PROFILE_SECTION;
 
     CSkinningInfo* const pSkinningInfo = m_pCGF->GetSkinningInfo();
@@ -2636,7 +2620,6 @@ bool CLoaderCGF::LoadNodeChunk(IChunkFile::ChunkDesc* pChunkDesc, bool bJustGeom
 //////////////////////////////////////////////////////////////////////////
 bool CLoaderCGF::LoadHelperChunk(CNodeCGF* pNode, IChunkFile::ChunkDesc* pChunkDesc)
 {
-    FUNCTION_PROFILER_3DENGINE;
     LOADING_TIME_PROFILE_SECTION;
 
     if (pChunkDesc->chunkVersion != HELPER_CHUNK_DESC::VERSION)
@@ -2660,7 +2643,6 @@ bool CLoaderCGF::LoadHelperChunk(CNodeCGF* pNode, IChunkFile::ChunkDesc* pChunkD
 //////////////////////////////////////////////////////////////////////////
 void CLoaderCGF::ProcessNodes()
 {
-    FUNCTION_PROFILER_3DENGINE;
     LOADING_TIME_PROFILE_SECTION;
 
     //////////////////////////////////////////////////////////////////////////
@@ -2761,7 +2743,6 @@ void CLoaderCGF::SetupMeshSubsets(CMesh& mesh, CMaterialCGF* pMaterialCGF)
 //////////////////////////////////////////////////////////////////////////
 bool CLoaderCGF::LoadGeomChunk(CNodeCGF* pNode, IChunkFile::ChunkDesc* pChunkDesc)
 {
-    FUNCTION_PROFILER_3DENGINE;
     LOADING_TIME_PROFILE_SECTION;
 
     // First check if this geometry chunk was already loaded by some node.
@@ -3642,7 +3623,6 @@ bool CLoaderCGF::LoadCompiledMeshChunk(CNodeCGF* pNode, IChunkFile::ChunkDesc* p
 template<class MESH_CHUNK_DESC>
 bool CLoaderCGF::LoadCompiledMeshChunk(CNodeCGF* pNode, IChunkFile::ChunkDesc* pChunkDesc, MESH_CHUNK_DESC chunk)
 {
-    FUNCTION_PROFILER_3DENGINE;
     LOADING_TIME_PROFILE_SECTION;
 
     if (pChunkDesc->bSwapEndian)
@@ -3846,7 +3826,6 @@ bool CLoaderCGF::LoadCompiledMeshChunk(CNodeCGF* pNode, IChunkFile::ChunkDesc* p
 //////////////////////////////////////////////////////////////////////////
 bool CLoaderCGF::LoadMeshSubsetsChunk(CMesh& mesh, IChunkFile::ChunkDesc* pChunkDesc, std::vector<std::vector<uint16> >& globalBonesPerSubset)
 {
-    FUNCTION_PROFILER_3DENGINE;
     LOADING_TIME_PROFILE_SECTION;
 
     globalBonesPerSubset.clear();
@@ -3942,7 +3921,6 @@ bool CLoaderCGF::LoadStreamDataChunk(int nChunkId, void*& pStreamData, int& nStr
         return false;
     }
 
-    FUNCTION_PROFILER_3DENGINE;
     LOADING_TIME_PROFILE_SECTION;
     if (pChunkDesc->chunkVersion == STREAM_DATA_CHUNK_DESC_0800::VERSION)
     {
@@ -3996,7 +3974,6 @@ bool CLoaderCGF::LoadPhysicsDataChunk(CNodeCGF* pNode, int nPhysGeomType, int nC
         return false;
     }
 
-    FUNCTION_PROFILER_3DENGINE;
     LOADING_TIME_PROFILE_SECTION;
 
     MESH_PHYSICS_DATA_CHUNK_DESC_0800& chunk = *(MESH_PHYSICS_DATA_CHUNK_DESC_0800*)pChunkDesc->data;
@@ -4169,7 +4146,6 @@ CMaterialCGF* CLoaderCGF::LoadMaterialFromChunk(int nChunkId)
         return 0;
     }
 
-    FUNCTION_PROFILER_3DENGINE;
     LOADING_TIME_PROFILE_SECTION;
 
     if (pChunkDesc->chunkType != ChunkType_MtlName)

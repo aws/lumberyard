@@ -12,5 +12,8 @@ import os
 def build(bld):
 
     bld.DefineGem(
-        file_list = ['nativeui.waf_files'],disable_pch=True
+        file_list   = ['nativeui.waf_files'],
+        disable_pch = True,
+        includes    = [bld.Path('Code/CryEngine/CryCommon')
+                      ],
     )

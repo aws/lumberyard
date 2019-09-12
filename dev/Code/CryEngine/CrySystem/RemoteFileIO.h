@@ -175,7 +175,7 @@ namespace AZ
             AZ_RTTI(RemoteFileIO, "{E2939E15-3B83-402A-A6DA-A436EDAB2ED2}", NetworkFileIO);
             AZ_CLASS_ALLOCATOR(RemoteFileIO, OSAllocator, 0);
 
-            RemoteFileIO();
+            RemoteFileIO(FileIOBase* excludedFileIO = nullptr);
             virtual ~RemoteFileIO();
             
             ////////////////////////////////////////////////////////////////////////////////////////
@@ -189,6 +189,12 @@ namespace AZ
             Result Read(HandleType fileHandle, void* buffer, AZ::u64 size, bool failOnFewerThanSizeBytesRead = false, AZ::u64* bytesRead = nullptr) override;
             Result Write(HandleType fileHandle, const void* buffer, AZ::u64 size, AZ::u64* bytesWritten = nullptr) override;
             bool Eof(HandleType fileHandle) override;
+            Result Size(const char* filePath, AZ::u64& size) override { return NetworkFileIO::Size(filePath, size); }
+            void SetAlias(const char* alias, const char* path) override;
+            const char* GetAlias(const char* alias) override;
+            void ClearAlias(const char* alias) override;
+            AZ::u64 ConvertToAlias(char* inOutBuffer, AZ::u64 bufferLength) const override;
+            bool ResolvePath(const char* path, char* resolvedPath, AZ::u64 resolvedPathSize) override;
 
 #ifdef REMOTEFILEIO_CACHE_FILETREE
             bool Exists(const char* filePath) override;
@@ -210,6 +216,9 @@ namespace AZ
             AZStd::unordered_map<HandleType, RemoteFileCache, AZStd::hash<HandleType>, AZStd::equal_to<HandleType>, AZ::OSStdAllocator> m_remoteFileCache;
             // (assumes you're inside a remote files guard lock already for creation, which is true since we create one on open)
             RemoteFileCache& GetCache(HandleType fileHandle);
+
+        private:
+            FileIOBase* m_excludedFileIO;
         };
 #endif
     } // namespace IO

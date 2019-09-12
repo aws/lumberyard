@@ -13,6 +13,7 @@
 #pragma once
 
 // include the required headers
+#include <AzCore/RTTI/TypeInfo.h>
 #include "StandardHeaders.h"
 #include "Quaternion.h"
 #include "Algorithms.h"
@@ -30,6 +31,8 @@ namespace MCore
     class TCompressedQuaternion
     {
     public:
+        AZ_TYPE_INFO(MCore::TCompressedQuaternion, "{31AD5C7F-A999-40C5-AC3A-E13D150036E3}", StorageType)
+
         /**
          * Default constructor.
          * This sets the quaternion to identity.

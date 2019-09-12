@@ -18,6 +18,9 @@
 #include <QByteArray>
 #include <QMainWindow>
 
+#include <GraphCanvas/Editor/AssetEditorBus.h>
+#include <GraphCanvas/Types/ConstructPresets.h>
+
 namespace AZ
 {
     class ReflectContext;
@@ -27,19 +30,37 @@ namespace ScriptCanvasEditor
 {
     namespace EditorSettings
     {
-        class WindowSavedState
+        class ScriptCanvasConstructPresets
+            : public GraphCanvas::EditorConstructPresets
+        {
+        public:
+            AZ_RTTI(ScriptCanvasConstructPresets, "{191DCCB3-670F-4243-813E-DF23BE838F45}", GraphCanvas::EditorConstructPresets);
+            AZ_CLASS_ALLOCATOR(ScriptCanvasConstructPresets, AZ::SystemAllocator, 0);
+
+            ScriptCanvasConstructPresets();
+            ~ScriptCanvasConstructPresets() override = default;
+
+            void InitializeConstructType(GraphCanvas::ConstructType constructType);            
+        };
+
+        class EditorWorkspace
             : public AZ::UserSettings
         {
         public:
-            AZ_RTTI(WindowSavedState, "{67DACC4D-B92C-4B5A-8884-6AF7C7B74246}", AZ::UserSettings);
-            AZ_CLASS_ALLOCATOR(WindowSavedState, AZ::SystemAllocator, 0);
-
-            WindowSavedState() = default;
-
-            void Init(const QByteArray& windowState, const QByteArray& windowGeometry);
-            void Restore(QMainWindow* window);
+            AZ_RTTI(EditorWorkspace, "{67DACC4D-B92C-4B5A-8884-6AF7C7B74246}", AZ::UserSettings);
+            AZ_CLASS_ALLOCATOR(EditorWorkspace, AZ::SystemAllocator, 0);
 
             static void Reflect(AZ::ReflectContext* context);
+
+            EditorWorkspace() = default;
+
+            void ConfigureActiveAssets(AZ::Data::AssetId focusedAssetId, const AZStd::vector< AZ::Data::AssetId >& activeAssetIds);
+            
+            AZ::Data::AssetId GetFocusedAssetId() const;
+            AZStd::vector< AZ::Data::AssetId > GetActiveAssetIds() const;
+
+            void Init(const QByteArray& windowState, const QByteArray& windowGeometry);
+            void Restore(QMainWindow* window);            
 
         private:
 
@@ -48,6 +69,9 @@ namespace ScriptCanvasEditor
             AZStd::vector<AZ::u8> m_storedWindowState;
             AZStd::vector<AZ::u8> m_windowGeometry;
             AZStd::vector<AZ::u8> m_windowState;
+
+            AZ::Data::AssetId m_focusedAssetId;
+            AZStd::vector< AZ::Data::AssetId > m_activeAssetIds;
 
         };
 
@@ -125,6 +149,29 @@ namespace ScriptCanvasEditor
             float m_straightnessPercent;
         };
 
+        class ZoomSettings
+        {
+            friend class ScriptCanvasEditorSettings;
+        public:
+            AZ_RTTI(ZoomSettings, "{276D3E97-B38C-4A3D-A484-E5A5D0A2D942}");
+            AZ_CLASS_ALLOCATOR(ZoomSettings, AZ::SystemAllocator, 0);
+
+            ZoomSettings()
+                : m_zoomInSetting(2.0f)
+            {
+
+            }            
+
+            float GetMaxZoom() const
+            {
+                return 1.0f * m_zoomInSetting;
+            }
+
+        private:
+
+            float m_zoomInSetting;
+        };
+
         class EdgePanningSettings
         {
             friend class ScriptCanvasEditorSettings;
@@ -156,8 +203,35 @@ namespace ScriptCanvasEditor
             float m_edgeScrollSpeed;
         };
 
+        class StylingSettings
+        {
+        public:
+            AZ_RTTI(StylingSettings, "{2814140B-0679-492F-BE37-F89DA1414E67}");
+            AZ_CLASS_ALLOCATOR(StylingSettings, AZ::SystemAllocator, 0);
+
+            static void Reflect(AZ::ReflectContext* reflectContext);
+
+            StylingSettings() = default;
+
+            GraphCanvas::Styling::ConnectionCurveType GetConnectionCurveType() const
+            {
+                return m_connectionCurveType;
+            }
+
+            GraphCanvas::Styling::ConnectionCurveType GetDataConnectionCurveType() const
+            {
+                return m_dataConnectionCurveType;
+            }
+
+        private:
+
+            GraphCanvas::Styling::ConnectionCurveType m_connectionCurveType = GraphCanvas::Styling::ConnectionCurveType::Straight;
+            GraphCanvas::Styling::ConnectionCurveType m_dataConnectionCurveType = GraphCanvas::Styling::ConnectionCurveType::Straight;
+        };
+
         class ScriptCanvasEditorSettings
             : public AZ::UserSettings
+            , public GraphCanvas::AssetEditorPresetNotificationBus::Handler
         {
         public:
             AZ_RTTI(ScriptCanvasEditorSettings, "{D8D5453C-BFB8-4C71-BBAF-0F10FDD69B3F}", AZ::UserSettings);
@@ -168,6 +242,10 @@ namespace ScriptCanvasEditor
 
             ScriptCanvasEditorSettings();
 
+            // GraphCanvas::AssetEditorPResetNotifications
+            void OnConstructPresetsChanged(GraphCanvas::ConstructType constructType) override;
+            ////
+
             double m_snapDistance;
 
             bool m_showPreviewMessage;
@@ -175,6 +253,8 @@ namespace ScriptCanvasEditor
 
             bool m_allowBookmarkViewpointControl;
             bool m_allowNodeNudgingOnSplice;
+
+            bool m_rememberOpenCanvases;
 
             ToggleableConfiguration m_dragNodeCouplingConfig;
             ToggleableConfiguration m_dragNodeSplicingConfig;
@@ -185,9 +265,12 @@ namespace ScriptCanvasEditor
 
             ShakeToDespliceSettings m_shakeDespliceConfig;
 
+            ZoomSettings            m_zoomSettings;
             EdgePanningSettings     m_edgePanningSettings;
 
             AZStd::unordered_set<AZ::Uuid> m_pinnedDataTypes;
+
+            ScriptCanvasConstructPresets  m_constructPresets;
 
             int m_variablePanelSorting;
 
@@ -195,6 +278,8 @@ namespace ScriptCanvasEditor
             bool m_showValidationErrors;
 
             AZ::u32 m_alignmentTimeMS;
+
+            StylingSettings m_stylingSettings;
         };
     }
 }

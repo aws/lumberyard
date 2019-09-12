@@ -16,7 +16,7 @@
 #if defined(AZ_PLATFORM_WINDOWS)
     #include <WinSock2.h>
     #include <ws2tcpip.h>
-#elif defined(AZ_PLATFORM_APPLE_OSX)
+#elif defined(AZ_PLATFORM_MAC)
     #include <QUuid> // required to be here in order to include CryEdit
 #endif
 

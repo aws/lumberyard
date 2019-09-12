@@ -19,7 +19,7 @@
 #pragma once
 
 #include <IXml.h>
-#include <BoostHelpers.h>
+#include <AzCore/std/containers/variant.h>
 
 struct IReadXMLSink;
 struct IWriteXMLSource;
@@ -41,8 +41,7 @@ struct IReadWriteXMLSink
 
 struct SReadWriteXMLCommon
 {
-    typedef boost::mpl::vector<Vec3, int, float, const char*, bool> TValueTypes;
-    typedef boost::make_variant_over<TValueTypes>::type TValue;
+    typedef AZStd::variant<Vec3, int, float, const char*, bool> TValue;
 };
 
 

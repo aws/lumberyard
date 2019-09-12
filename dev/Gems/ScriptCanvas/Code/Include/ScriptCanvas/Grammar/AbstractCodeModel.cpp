@@ -12,6 +12,8 @@
 
 #include "AbstractCodeModel.h"
 
+#if !defined(_RELEASE)
+
 #include <ScriptCanvas/Core/Graph.h>
 #include <ScriptCanvas/Core/Node.h>
 #include <ScriptCanvas/Variable/VariableData.h>
@@ -65,7 +67,7 @@ namespace ScriptCanvas
                 return false;
             }
 
-            const auto executionInputConnections = node.GetConnectedNodesByType(SlotType::ExecutionIn);
+            const auto executionInputConnections = node.FindConnectedNodesByDescriptor(SlotDescriptors::ExecutionIn());
             const auto size = executionInputConnections.size();
 
             if (size == 0 || size > 1)
@@ -100,50 +102,6 @@ namespace ScriptCanvas
         
         AZ::Outcome<void, AZStd::string> AbstractCodeModel::Parse()
         {
-            /// \todo assert on Graph syntax status. Only perfectly correct graphs will be parsed
-            for (auto& nodeEntity : m_source.m_graphData.m_nodes)
-            {
-                if (nodeEntity)
-                {
-                    if (auto node = AZ::EntityUtils::FindFirstDerivedComponent<Node>(nodeEntity))
-                    {
-                        node->Visit(*this);
-                        
-                        if (!m_outcome.IsSuccess())
-                        {
-                            node->Visit(*this);
-                            return m_outcome;
-                        }
-                    }
-                    else
-                    {
-                        return AZ::Failure(AZStd::string("Null node found in graph data"));
-                    }
-                }
-                else
-                {
-                    return AZ::Failure(AZStd::string("Null node entity found in graph data"));
-                }
-            }
-
-            m_outcome = ProcessFunctions();
-            if (!m_outcome.IsSuccess())
-            {
-                return m_outcome;
-            }
-
-            m_outcome = ProcessHandlers();
-            if (!m_outcome.IsSuccess())
-            {
-                return m_outcome;
-            }
-            
-            m_outcome = ProcessVariables();
-            if (!m_outcome.IsSuccess())
-            {
-                return m_outcome;
-            }
-
             return AZ::Success();
         }
 
@@ -179,27 +137,7 @@ namespace ScriptCanvas
         {
             return AZ::Success();
         }
-
-        void AbstractCodeModel::Visit(const Node& node)
-        {
-            m_outcome = AZ::Success();
-        }
         
-        void AbstractCodeModel::Visit(const Nodes::Core::Start& node)
-        {
-            m_startNode = &node;
-            m_requiresActivation = true;
-            m_outcome = AZ::Success();
-        }
-
-        void AbstractCodeModel::Visit(const Nodes::Debug::Log& node)
-        {
-            // yeah, we're going to need different visitors..
-            // node as function declaration...
-            // node as function call...
-            // node as function implementations...
-        }
-
         Source::Source(const Graph& graph, const GraphData& graphData, const VariableData& variableData, const AZStd::string& name, const AZStd::string& path)
             : m_graph(graph)
             , m_graphData(graphData)
@@ -226,3 +164,5 @@ namespace ScriptCanvas
 
     } // namespace Grammar
 } // namespace ScriptCanvas
+
+#endif

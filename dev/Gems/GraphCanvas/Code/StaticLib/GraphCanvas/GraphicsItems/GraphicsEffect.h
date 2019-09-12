@@ -18,23 +18,59 @@
 
 namespace GraphCanvas
 {
-    template<class GraphicsClass>
-    class GraphicsEffect
-        : public GraphicsClass
-        , public GraphicsEffectRequestBus::Handler
+    class GraphicsEffectInterface
+        : public GraphicsEffectRequestBus::Handler
     {
     public:
-        GraphicsEffect()
+        GraphicsEffectInterface()
             : m_id(AZ::Entity::MakeId())
         {
-            GraphicsEffectRequestBus::Handler::BusConnect(GetId());
+            GraphicsEffectRequestBus::Handler::BusConnect(GetEffectId());
         }
-        
-        GraphicsEffectId GetId() const
+
+        GraphicsEffectId GetEffectId() const override final
         {
             return m_id;
         }
-        
+
+        void SetEditorId(EditorId editorId)
+        {
+            m_editorId = editorId;
+            OnEditorIdSet();
+        }
+
+        EditorId GetEditorId() const
+        {
+            return m_editorId;
+        }
+
+        void SetGraphId(const GraphId& graphId)
+        {
+            m_graphId = graphId;
+        }
+
+        GraphId GetGraphId() const
+        {
+            return m_graphId;
+        }
+
+    protected:
+
+        virtual void OnEditorIdSet() {};
+
+    private:
+
+        GraphId          m_graphId;
+        EditorId         m_editorId;
+        GraphicsEffectId m_id;
+    };
+
+    template<class GraphicsClass>
+    class GraphicsEffect
+        : public GraphicsClass
+        , public GraphicsEffectInterface
+    {
+    public:        
         // GraphicsEffectRequestBus
         virtual QGraphicsItem* AsQGraphicsItem()
         {
@@ -45,8 +81,5 @@ namespace GraphCanvas
         {            
         }
         ////
-        
-    private:
-        GraphicsEffectId m_id;
     };
 }

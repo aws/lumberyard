@@ -12,8 +12,6 @@
 
 #pragma once
 
-#include <PxPhysicsAPI.h>
-
 #include <AzCore/EBus/EBus.h>
 #include <AzFramework/Physics/RigidBody.h>
 #include <AzFramework/Physics/Shape.h>
@@ -23,6 +21,14 @@ namespace physx
 {
     class PxAllocatorCallback;
     class PxErrorCallback;
+    class PxScene;
+    class PxSceneDesc;
+    class PxConvexMesh;
+    class PxTriangleMesh;
+    class PxShape;
+    class PxCooking;
+    class PxControllerManager;
+    struct PxFilterData;
 }
 
 namespace PhysX

@@ -13,9 +13,13 @@
 #pragma once
 
 #include <AzCore/RTTI/TypeInfo.h>
+#include <MCore/Source/CommandGroup.h>
 #include <EMotionFX/Source/PhysicsSetup.h>
 #include <QModelIndexList>
 
+QT_FORWARD_DECLARE_CLASS(QLayout)
+QT_FORWARD_DECLARE_CLASS(QMenu)
+QT_FORWARD_DECLARE_CLASS(QObject)
 
 namespace EMotionFX
 {
@@ -27,5 +31,12 @@ namespace EMotionFX
         static void AddCollider(const QModelIndexList& modelIndices, PhysicsSetup::ColliderConfigType addTo, const AZ::TypeId& colliderType);
         static void ClearColliders(const QModelIndexList& modelIndices, PhysicsSetup::ColliderConfigType removeFrom);
         static bool AreCollidersReflected();
+
+        static void AddCopyFromMenu(QObject* parent, QMenu* parentMenu, PhysicsSetup::ColliderConfigType createForType,
+            const AZStd::function<void(PhysicsSetup::ColliderConfigType copyFrom, PhysicsSetup::ColliderConfigType copyTo)>& copyFunc);
+        static void AddCopyFromMenu(QObject* parent, QMenu* parentMenu, PhysicsSetup::ColliderConfigType createForType, const QModelIndexList& modelIndices);
+
+        static QLayout* CreateCopyFromButtonLayout(QObject* parent, PhysicsSetup::ColliderConfigType createForType,
+            const AZStd::function<void(PhysicsSetup::ColliderConfigType copyFrom, PhysicsSetup::ColliderConfigType copyTo)>& copyFunc);
     };
 } // namespace EMotionFX

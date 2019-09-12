@@ -1,0 +1,8 @@
+{
+  "auto": {
+    "Platform/Linux": [
+      "Metastream_Traits_Platform.h",
+      "Metastream_Traits_Linux.h"
+    ]
+  }
+}

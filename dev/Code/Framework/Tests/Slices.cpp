@@ -10,8 +10,6 @@
 *
 */
 
-#include <Tests/TestTypes.h>
-
 #include <AzCore/base.h>
 
 #include <AzCore/Component/ComponentApplication.h>
@@ -26,6 +24,7 @@
 #include <AzCore/Script/ScriptAsset.h>
 #include <AzCore/std/chrono/chrono.h>
 #include <AzCore/RTTI/TypeInfo.h>
+#include <AzCore/UnitTest/TestTypes.h>
 
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
 #include <AzToolsFramework/Slice/SliceCompilation.h>

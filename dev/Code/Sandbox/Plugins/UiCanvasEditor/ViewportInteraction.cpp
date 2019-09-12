@@ -622,9 +622,10 @@ void ViewportInteraction::MouseReleaseEvent(QMouseEvent* ev,
             m_dragInteraction->EndInteraction(inWidget);
         }
 
-        // Tell the Properties panel to update
+        // Tell the Properties panel to update.
+        // Refresh attributes as well in case this change affects an attribute (ex. anchors affect warning text on scale to device mode)
         const AZ::Uuid& transformComponentType = InitAndGetTransformComponentType();
-        m_editorWindow->GetProperties()->TriggerRefresh(AzToolsFramework::PropertyModificationRefreshLevel::Refresh_Values, &transformComponentType);
+        m_editorWindow->GetProperties()->TriggerRefresh(AzToolsFramework::PropertyModificationRefreshLevel::Refresh_AttributesAndValues, &transformComponentType);
 
         // Tell the Properties panel that the reversible action is complete
         EndReversibleAction();

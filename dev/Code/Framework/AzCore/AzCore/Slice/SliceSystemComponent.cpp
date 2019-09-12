@@ -9,7 +9,6 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#ifndef AZ_UNITY_BUILD
 
 #include "SliceSystemComponent.h"
 #include "SliceAsset.h"
@@ -77,5 +76,3 @@ namespace AZ
     }
 
 } // namespace AZ
-
-#endif // AZ_UNITY_BUILD

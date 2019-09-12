@@ -162,7 +162,7 @@ namespace ScriptEvents
                 // look for exact matches within the hash bucket
 
                 // Handlers may be disconnected as a result of this operation, making a copy here to avoid iterating over removed elements of m_events
-                EventSet events = m_events[addressHash];
+                EventSet events = eventIterator->second;
                 for (ScriptEventsHandler* handler : events)
                 {
                     AZ::BehaviorClass* addressTypeClass = m_context->m_typeToClassMap.at(parameter.m_address->m_typeId);

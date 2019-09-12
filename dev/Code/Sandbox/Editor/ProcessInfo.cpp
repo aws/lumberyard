@@ -14,7 +14,7 @@
 #include "StdAfx.h"
 #include "ProcessInfo.h"
 
-#if defined(AZ_PLATFORM_APPLE)
+#if AZ_TRAIT_OS_PLATFORM_APPLE
 #include <mach/mach.h>
 #endif
 
@@ -85,7 +85,7 @@ void CProcessInfo::QueryMemInfo(ProcessMemInfo& meminfo)
     meminfo.PagefileUsage = pc.PagefileUsage;
     meminfo.PeakPagefileUsage = pc.PeakPagefileUsage;
     meminfo.PageFaultCount = pc.PageFaultCount;
-#elif defined(AZ_PLATFORM_APPLE)
+#elif AZ_TRAIT_OS_PLATFORM_APPLE
     task_basic_info basic_info;
     mach_msg_type_number_t size = sizeof(basic_info);
     kern_return_t kerr = task_info(mach_task_self(), TASK_BASIC_INFO, reinterpret_cast<task_info_t>(&basic_info), &size);

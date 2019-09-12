@@ -450,29 +450,7 @@ void CTerrainTextureExport::OnChangeResolutionBtn()
             m_terrainTexture->update();
 
             // update 3D Engine display
-            I3DEngine* p3DEngine = GetIEditor()->Get3DEngine();
-
-            int nTerrainSize = p3DEngine->GetTerrainSize();
-            int nTexSectorSize = p3DEngine->GetTerrainTextureNodeSizeMeters();
-            uint32 dwCountX = pHeightmap->GetRGBLayer()->GetTileCountX();
-            uint32 dwCountY = pHeightmap->GetRGBLayer()->GetTileCountY();
-
-            if (!nTexSectorSize || !nTerrainSize || !dwCountX)
-            {
-                continue;
-            }
-
-            int numTexSectorsX = nTerrainSize / dwCountX / nTexSectorSize;
-            int numTexSectorsY = nTerrainSize / dwCountY / nTexSectorSize;
-
-            // Updating the progress bar every sector can add a few seconds, update it once per tile
-            for (int iY = 0; iY < numTexSectorsY; ++iY)
-            {
-                for (int iX = 0; iX < numTexSectorsX; ++iX)
-                {
-                    pHeightmap->UpdateSectorTexture(QPoint(iX + dwTileX * numTexSectorsY, iY + dwTileY * numTexSectorsX), 0, 0, 1, 1);
-                }
-            }
+            pHeightmap->RefreshTextureTile(dwTileX, dwTileY);
 
             // update progress bar
             tileResolutionProgress.Step(++tilesProcessed * 100 / totalTiles);

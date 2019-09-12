@@ -104,13 +104,13 @@ namespace AzToolsFramework
                 }
                 else
                 {
-                    // if we do already have an action with this uri, check if the new and existing action both
-                    // have valid entity ids, and if so, if they match - if the entity ids are valid and match,
-                    // keep this action and the previous one (so add/push_back), otherwise we want to override it.
+                    // if we do already have an action with this uri, check if the new and existing
+                    // action both have valid entity ids, and if so, if they match - if the entity
+                    // and component ids are valid and match, keep this action and the previous one
+                    // (so add/push_back), otherwise we want to override it.
                     if (action.m_entityIdComponentPair.GetEntityId().IsValid() &&
                         actionIt->m_actionOverride.m_entityIdComponentPair.GetEntityId().IsValid() &&
-                        action.m_entityIdComponentPair.GetEntityId() !=
-                        actionIt->m_actionOverride.m_entityIdComponentPair.GetEntityId())
+                        action.m_entityIdComponentPair != actionIt->m_actionOverride.m_entityIdComponentPair)
                     {
                         boundActions.push_back({ action.m_uri, action });
                     }
@@ -174,6 +174,18 @@ namespace AzToolsFramework
                 {
                     entityWithComponentBuilder->m_componentModeBuilders.push_back(
                         ComponentModeBuilder(entityComponentIdPair.GetComponentId(), componentType, componentModeBuilder));
+
+                    // if any of the already instantiated Component Modes are the same type as the one we're
+                    // adding now, make sure we instantiate it as well
+                    if (AZStd::any_of(m_entitiesAndComponentModes.begin(), m_entitiesAndComponentModes.end(),
+                        [componentType](const EntityAndComponentMode& entityAndComponentMode)
+                    {
+                        return entityAndComponentMode.m_componentMode->GetComponentType() == componentType;
+                    }))
+                    {
+                        m_entitiesAndComponentModes.emplace_back(
+                            entityComponentIdPair.GetEntityId(), componentModeBuilder());
+                    }
                 }
                 else
                 {
@@ -307,23 +319,29 @@ namespace AzToolsFramework
             }
         }
 
-        void ComponentModeCollection::SelectNextActiveComponentMode()
+        bool ComponentModeCollection::SelectNextActiveComponentMode()
         {
+            const AZ::Uuid previousComponentType =
+                m_activeComponentTypes[m_selectedComponentModeIndex];
+
             m_selectedComponentModeIndex =
                 (m_selectedComponentModeIndex + 1) % m_activeComponentTypes.size();
 
-            ActiveComponentModeChanged();
+            return ActiveComponentModeChanged(previousComponentType);
         }
 
-        void ComponentModeCollection::SelectPreviousActiveComponentMode()
+        bool ComponentModeCollection::SelectPreviousActiveComponentMode()
         {
+            const AZ::Uuid previousComponentType =
+                m_activeComponentTypes[m_selectedComponentModeIndex];
+
             m_selectedComponentModeIndex =
                 (m_selectedComponentModeIndex + m_activeComponentTypes.size() - 1) % m_activeComponentTypes.size();
 
-            ActiveComponentModeChanged();
+            return ActiveComponentModeChanged(previousComponentType);
         }
 
-        void ComponentModeCollection::SelectActiveComponentMode(const AZ::Uuid& componentType)
+        bool ComponentModeCollection::SelectActiveComponentMode(const AZ::Uuid& componentType)
         {
             // is this ComponentMode in the active set
             const auto it = AZStd::find_if(m_activeComponentTypes.begin(), m_activeComponentTypes.end(),
@@ -334,47 +352,81 @@ namespace AzToolsFramework
 
             if (it != m_activeComponentTypes.end())
             {
+                const AZ::Uuid previousComponentType =
+                    m_activeComponentTypes[m_selectedComponentModeIndex];
+
                 // calculate the selected index
                 m_selectedComponentModeIndex = it - m_activeComponentTypes.begin();
 
-                ActiveComponentModeChanged();
+                return ActiveComponentModeChanged(previousComponentType);
             }
+
+            return false;
         }
 
-        void ComponentModeCollection::ActiveComponentModeChanged()
+        AZ::Uuid ComponentModeCollection::ActiveComponentMode() const
         {
-            // for each entity and its 'active' Component Mode
-            for (auto& componentMode : m_entitiesAndComponentModes)
-            {
-                // find the builders for this entity and component
-                const auto builderEntityIt = AZStd::find_if(
-                    m_entitiesAndComponentModeBuilders.begin(), m_entitiesAndComponentModeBuilders.end(),
-                    EntityAndComponentModeBuildersPred(AZ::EntityComponentIdPair(
-                        componentMode.m_entityId, componentMode.m_componentMode->GetComponentId())));
+            return m_activeComponentTypes[m_selectedComponentModeIndex];
+        }
 
-                // find the builder for the active component type
-                const auto& componentModeBuilder = AZStd::find_if(
+        bool ComponentModeCollection::ComponentModeInstantiated(const AZ::EntityComponentIdPair& entityComponentIdPair) const
+        {
+            // search through all instantiated Component Modes to see if we have one
+            // matching the requested Entity/Component pair
+            return AZStd::any_of(m_entitiesAndComponentModes.begin(), m_entitiesAndComponentModes.end(),
+                [entityComponentIdPair](const EntityAndComponentMode& entityAndComponentMode)
+            {
+                return  entityAndComponentMode.m_entityId == entityComponentIdPair.GetEntityId() &&
+                        entityAndComponentMode.m_componentMode->GetComponentId() == entityComponentIdPair.GetComponentId();
+            });
+        }
+
+        bool ComponentModeCollection::HasMultipleComponentTypes() const
+        {
+            return m_activeComponentTypes.size() > 1;
+        }
+
+        bool ComponentModeCollection::ActiveComponentModeChanged(const AZ::Uuid& previousComponentType)
+        {
+            if (m_activeComponentTypes[m_selectedComponentModeIndex] != previousComponentType)
+            {
+                // for each entity and its 'active' Component Mode
+                for (auto& componentMode : m_entitiesAndComponentModes)
+                {
+                    // find the builders for this entity and component
+                    const auto builderEntityIt = AZStd::find_if(
+                        m_entitiesAndComponentModeBuilders.begin(), m_entitiesAndComponentModeBuilders.end(),
+                        EntityAndComponentModeBuildersPred(AZ::EntityComponentIdPair(
+                            componentMode.m_entityId, componentMode.m_componentMode->GetComponentId())));
+
+                    // find the builder for the active component type
+                    const auto& componentModeBuilder = AZStd::find_if(
                         builderEntityIt->m_componentModeBuilders.begin(),
                         builderEntityIt->m_componentModeBuilders.end(),
                         [this](const ComponentModeBuilder& componentModeBuilder)
+                    {
+                        return componentModeBuilder.m_componentType == m_activeComponentTypes[m_selectedComponentModeIndex];
+                    });
+
+                    // replace the current component mode by invoking the builder
+                    // for the new 'active' component mode
+                    componentMode.m_componentMode = componentModeBuilder->m_componentModeBuilder();
+                }
+
+                RefreshActions();
+
+                if (m_selectedComponentModeIndex < m_activeComponentTypes.size())
                 {
-                    return componentModeBuilder.m_componentType == m_activeComponentTypes[m_selectedComponentModeIndex];
-                });
+                    // notify other systems ComponentMode actions have changed
+                    EditorComponentModeNotificationBus::Event(
+                        GetEntityContextId(), &EditorComponentModeNotifications::ActiveComponentModeChanged,
+                        m_activeComponentTypes[m_selectedComponentModeIndex]);
 
-                // replace the current component mode by invoking the builder
-                // for the new 'active' component mode
-                componentMode.m_componentMode = componentModeBuilder->m_componentModeBuilder();
+                    return true;
+                }
             }
 
-            RefreshActions();
-
-            if (m_selectedComponentModeIndex < m_activeComponentTypes.size())
-            {
-                // notify other systems ComponentMode actions have changed
-                EditorComponentModeNotificationBus::Event(
-                    GetEntityContextId(), &EditorComponentModeNotifications::ActiveComponentModeChanged,
-                    m_activeComponentTypes[m_selectedComponentModeIndex]);
-            }
+            return false;
         }
 
         void ComponentModeCollection::RefreshActions()
@@ -382,15 +434,6 @@ namespace AzToolsFramework
             // update actions for new component type
             if (m_selectedComponentModeIndex < m_activeComponentTypes.size())
             {
-                bool hasMultipleComponentModes = false;
-                // iterate over builders (component modes that could be 'active' during this session)
-                // and if there are more than one builder per entity we know there are multiple modes
-                for (auto& entityAndComponentModeBuilder : m_entitiesAndComponentModeBuilders)
-                {
-                    hasMultipleComponentModes =
-                        hasMultipleComponentModes || entityAndComponentModeBuilder.m_componentModeBuilders.size() > 1;
-                }
-
                 AZStd::vector<ActionOverride> allActions;
                 // iterate over all entities and their active Component Mode, populate actions for the new mode
                 for (auto& entityAndComponentMode : m_entitiesAndComponentModes)
@@ -402,7 +445,7 @@ namespace AzToolsFramework
 
                 // we only want to show cycle options if we have multiple Component Modes active
                 AZStd::vector<ActionOverride> baseActions;
-                if (hasMultipleComponentModes)
+                if (HasMultipleComponentTypes())
                 {
                     // cycle to next 'selected' ComponentMode actions
                     const ActionOverride nextComponentModeAction = ActionOverride()

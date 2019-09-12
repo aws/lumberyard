@@ -20,7 +20,9 @@ def build(bld):
         platforms                   = ['win'],
         client_only                 = True,
         file_list                   = 'launcher.waf_files',
-        includes                    = [bld.Path('Code/Launcher')],
+        includes                    = [bld.Path('Code/Launcher'),
+                                       bld.Path('Code/CryEngine/CryCommon')
+                                      ],
 
         lib                         = 'Shell32', 
         additional_manifests        = 'DPIAware.xml',

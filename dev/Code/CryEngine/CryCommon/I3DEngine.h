@@ -1365,28 +1365,32 @@ struct I3DEngine
     // See Also:
     //     IStatObj
     // Arguments:
-    //     szFileName - CGF Filename - should not be 0 or ""
-    //     szGeomName - Optional name of geometry inside CGF.
-    //     ppSubObject - [Out]Optional Out parameter,Pointer to the
-    //      nLoadingFlags - Zero or a bitwise combination of the flags from ELoadingFlags,
-    //                                      defined in IMaterial.h, under the interface IMaterialManager.
+    //     fileName - CGF Filename - should not be 0 or ""
+    //     geomName - Optional name of geometry inside CGF.
+    //     subObject - [Out]Optional Out parameter,Pointer to the
+    //     loadingFlags - Zero or a bitwise combination of the flags from ELoadingFlags, defined in IMaterial.h, under the interface IMaterialManager.
+    //     data - Raw buffer contain CGF data.
+    //     dataSize - Size of the raw data buffer.
     // Return Value:
     //     A pointer to an object derived from IStatObj.
-    virtual IStatObj* LoadStatObjUnsafeManualRef(const char* szFileName, const char* szGeomName = NULL, /*[Out]*/ IStatObj::SSubObject** ppSubObject = NULL, bool bUseStreaming = true, unsigned long nLoadingFlags = 0) = 0;
+    virtual IStatObj* LoadStatObjUnsafeManualRef(const char* fileName, const char* geomName = nullptr, /*[Out]*/ IStatObj::SSubObject** subObject = nullptr, 
+        bool useStreaming = true, unsigned long loadingFlags = 0, const void* data = nullptr, int dataSize = 0) = 0;
 
     // Summary:
     //     Loads a static object from a CGF file.  Increments the static object's reference counter.  This method is threadsafe.  Not suitable for preloading
     // See Also:
     //     IStatObj
     // Arguments:
-    //     szFileName - CGF Filename - should not be 0 or ""
-    //     szGeomName - Optional name of geometry inside CGF.
-    //     ppSubObject - [Out]Optional Out parameter,Pointer to the
-    //      nLoadingFlags - Zero or a bitwise combination of the flags from ELoadingFlags,
-    //                                      defined in IMaterial.h, under the interface IMaterialManager.
+    //     fileName - CGF Filename - should not be 0 or "", even if data is provided.
+    //     geomName - Optional name of geometry inside CGF.
+    //     subObject - [Out]Optional Out parameter,Pointer to the
+    //     loadingFlags - Zero or a bitwise combination of the flags from ELoadingFlags, defined in IMaterial.h, under the interface IMaterialManager.
+    //     data - Raw buffer contain CGF data.
+    //     dataSize - Size of the raw data buffer.
     // Return Value:
     //     A smart pointer to an object derived from IStatObj.
-    virtual _smart_ptr<IStatObj> LoadStatObjAutoRef(const char* szFileName, const char* szGeomName = NULL, /*[Out]*/ IStatObj::SSubObject** ppSubObject = NULL, bool bUseStreaming = true, unsigned long nLoadingFlags = 0) = 0;
+    virtual _smart_ptr<IStatObj> LoadStatObjAutoRef(const char* fileName, const char* geomName = nullptr, /*[Out]*/ IStatObj::SSubObject** subObject = nullptr, 
+        bool useStreaming = true, unsigned long loadingFlags = 0, const void* data = nullptr, int dataSize = 0) = 0;
 
     // Summary:
     //     Flushes queued async mesh loads.
@@ -1833,7 +1837,7 @@ struct I3DEngine
 
     // Summary:
     //        Sets terrain sector texture id, and disable streaming on this sector
-    virtual void SetTerrainSectorTexture(const int nTexSectorX, const int nTexSectorY, unsigned int textureId) = 0;
+    virtual void SetTerrainSectorTexture(const int nTexSectorX, const int nTexSectorY, unsigned int textureId, unsigned int textureSizeX, unsigned int textureSizeY) = 0;
 
     // Summary:
     //        Returns size of smallest terrain texture node (last leaf) in meters

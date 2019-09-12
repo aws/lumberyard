@@ -334,7 +334,7 @@ namespace NCryMetal
     enum MemRingBufferStorage
     {
         MEM_SHARED_RINGBUFFER,  //This is CPU/GPU shared memory. Available to IOS and OSX.
-#if defined(AZ_PLATFORM_APPLE_OSX)
+#if defined(AZ_PLATFORM_MAC)
         MEM_MANAGED_RINGBUFFER,   //OSX supports Managed memory which is faster than shared memory because it creates a seprate copy on the GPU and uses didModifyRange to synchronise with CPU.
 #endif
     };
@@ -360,7 +360,7 @@ namespace NCryMetal
         //  Confetti BEGIN: Igor Lobanchikov
 
         id<MTLBuffer>   m_BufferShared;
-#if defined(AZ_PLATFORM_APPLE_OSX)
+#if defined(AZ_PLATFORM_MAC)
         id<MTLBuffer>   m_BufferManaged; //Pointer to the fast buffer
 #endif
         void*           m_pMappedData;

@@ -171,20 +171,6 @@ namespace PhysXDebug
         RegisterCommands();
         ConfigurePhysXVisualizationParameters();
 
-        m_windowParams.padding = 10;
-        m_windowParams.height = 300;
-
-        // this should probably be at the higher level -- this is for the axis //////
-        m_windowParams.graphParams.maxPoint = ImVec2(1.1, 1.1);
-        m_windowParams.graphParams.minPoint = ImVec2(-0.1, -0.1);
-
-
-        // these should be at a higher level too..
-        m_maxPoints = 8;
-        m_windowParams.graphParams.maximumPoints = m_maxPoints;
-        m_windowParams.graphParams.valueMax = 1.0f;
-        m_windowParams.graphParams.valueMin = 0.0f;
-        //////////////////////////////////////////////////////
     }
 
     void SystemComponent::Reflect(AZ::ReflectContext* context)
@@ -468,14 +454,20 @@ namespace PhysXDebug
 
     void SystemComponent::UpdateColliderVisualizationByProximity()
     {
-        const CCamera& camera = gEnv->pSystem->GetViewCamera();
-        AZ::Vector3 cameraTranslation = LYVec3ToAZVec3(camera.GetPosition());
+        if(gEnv->IsEditing())
+        {
+            if (m_settings.m_visualizeCollidersByProximity)
+            {
+                const CCamera& camera = gEnv->pSystem->GetViewCamera();
+                AZ::Vector3 cameraTranslation = LYVec3ToAZVec3(camera.GetPosition());
 
-        PhysX::SystemRequestsBus::Broadcast(
-            &PhysX::SystemRequests::UpdateColliderProximityVisualization,
-            m_settings.m_visualizeCollidersByProximity,
-            cameraTranslation,
-            m_culling.m_boxSize * 0.5f);
+                PhysX::SystemRequestsBus::Broadcast(
+                    &PhysX::SystemRequests::UpdateColliderProximityVisualization,
+                    m_settings.m_visualizeCollidersByProximity,
+                    cameraTranslation,
+                    m_culling.m_boxSize * 0.5f);
+             }
+        }
     }
 
     void SystemComponent::ClearBuffers()

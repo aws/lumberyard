@@ -21,11 +21,19 @@ SUBFOLDERS = [
     'Sandbox',
     'Tools',
     'Lyzard',
-    'GFXPrefabLab',
-    'Launcher'  # recursing into this subfolder generates launchers for each enabled game project.
+    'GFXPrefabLab'
 ]
 
 def build(bld):
+
+    launcher_dir = 'Launcher'
+    if bld.is_option_true('use_unified_launcher'):
+        launcher_dir = 'LauncherUnified'
+
+    global SUBFOLDERS
+    if launcher_dir not in SUBFOLDERS:
+        SUBFOLDERS.append(launcher_dir)
+
     # do not add game projects here.  They will be added automatically based on what
     # game projects you have enabled in your user settings, from the list defined in projects.json
     bld.recurse(SUBFOLDERS, mandatory=False)

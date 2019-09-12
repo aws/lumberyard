@@ -10,63 +10,18 @@
 *
 */
 
-#include "TestTypes.h"
-
 #include <AzCore/IPC/SharedMemory.h>
-#include <AzCore/IPC/DirectSocket.h>
+#include <AzCore/UnitTest/TestTypes.h>
 
 #include <AzCore/std/parallel/thread.h>
 #include <AzCore/std/functional.h>
 
 using namespace AZ;
 
-#if defined(AZ_PLATFORM_WINDOWS)
+#if AZ_TRAIT_SUPPORT_IPC
 
 namespace UnitTest
 {
-    class IPCEvenOddSocket
-    {
-        const char*  m_target;
-        bool         m_isEven;
-        DirectSocket m_socket;
-    public:
-        IPCEvenOddSocket(const char* name, const char* target, bool isEven)
-            : m_socket(name)
-            , m_target(target)
-            , m_isEven(isEven)
-        {}
-
-        void execute()
-        {
-            int send = m_isEven ? 0 : 1;
-            int receive = m_isEven ? 1 : 0;
-            char from[128];
-            const int numOfElements = 100000;
-            while (send < numOfElements || receive < numOfElements)
-            {
-                if (m_socket.SendTo(&send, sizeof(send), m_target))
-                {
-                    send += 2;
-                }
-                int lastReceive = receive;
-                if (m_socket.Receive(&receive, sizeof(receive), from, AZ_ARRAY_SIZE(from)))
-                {
-                    AZ_TEST_ASSERT(strcmp(from, m_target) == 0);
-                    AZ_TEST_ASSERT(lastReceive == receive);
-                    if (m_isEven)
-                    {
-                        AZ_TEST_ASSERT(receive % 2 == 1);
-                    }
-                    else
-                    {
-                        AZ_TEST_ASSERT(receive % 2 == 0);
-                    }
-                    receive += 2;
-                }
-            }
-        }
-    };
-
     /**
      * Test InterProcessCommunication utils.
      */
@@ -74,18 +29,6 @@ namespace UnitTest
         : public AllocatorsFixture
     {
     };
-
-    TEST_F(IPC, Test)
-    {
-        // DirectSocket (we test inter thread, but functionality is the same).
-        IPCEvenOddSocket even("Even", "Odd", true);
-        IPCEvenOddSocket odd("Odd", "Even", false);
-
-        AZStd::thread tEven(AZStd::bind(&IPCEvenOddSocket::execute, &even));
-        AZStd::thread tOdd(AZStd::bind(&IPCEvenOddSocket::execute, &odd));
-        tEven.join();
-        tOdd.join();
-    }
 
     TEST_F(IPC, SharedMemoryThrash)
     {
@@ -121,7 +64,6 @@ namespace UnitTest
         EXPECT_TRUE(unmapped);
     }
 
-#ifdef AZ_PLATFORM_WINDOWS
     TEST_F(IPC, SharedMemoryMutexAbandonment)
     {
         const char* sharedMemKey = "SharedMemoryUnitTest";
@@ -144,7 +86,7 @@ namespace UnitTest
                 if (i == (int)(*lastThreadId).m_id || sharedMem->IsLockAbandoned())
                 {
                     // Simulate a crash/dead process by cleaning up the handles but not unlocking
-                    HANDLE* mmapHandle = (HANDLE*)(reinterpret_cast<char*>(sharedMem) + 128);
+                    HANDLE* mmapHandle = (HANDLE*)(reinterpret_cast<char*>(sharedMem) + sizeof(SharedMemory_Common));
                     HANDLE* mutexHandle = mmapHandle + 1;
                     bool closedMap = CloseHandle(*mmapHandle) != 0;
                     EXPECT_TRUE(closedMap);
@@ -174,9 +116,8 @@ namespace UnitTest
             thread.join();
         }
     }
-#endif
 }
 
-#endif // AZ_PLATFORM_WINDOWS
+#endif // AZ_TRAIT_SUPPORT_IPC
 
 

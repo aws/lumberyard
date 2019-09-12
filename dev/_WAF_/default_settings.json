@@ -36,9 +36,27 @@
     ], 
     "Build Options": [
         {
+            "long_form": "--artifacts-cache", 
+            "attribute": "artifacts_cache", 
+            "default_value": "", 
+            "description": "Path of artifacts cache, artifacts cache will be disabled if this is empty"
+        }, 
+        {
+            "long_form": "--artifacts-cache-restore", 
+            "attribute": "artifacts_cache_restore", 
+            "default_value": "False", 
+            "description": "Restore artifacts from cache"
+        }, 
+        {
+            "long_form": "--artifacts-cache-upload", 
+            "attribute": "artifacts_cache_upload", 
+            "default_value": "False", 
+            "description": "Upload artifacts to cache"
+        }, 
+        {
             "long_form": "--force-version", 
             "attribute": "version", 
-            "default_value": "1.20.0.0", 
+            "default_value": "1.21.0.0", 
             "description": "Version to embed in final build outputs"
         }, 
         {
@@ -239,6 +257,12 @@
             "attribute": "product_sku", 
             "default_value": "default", 
             "description": "Enables a project wide define PRODUCT_SKU_<this value>, alters where the paks are built to and read from, and which platform resources are used in the gem\\resources\\  Ex. For a demo version of the game you could set product_sku = demo  then PRODUCT_SKU_demo would be defined, and then you could disable systems based on that."
+        }, 
+        {
+            "long_form": "--use-unified-launcher", 
+            "attribute": "use_unified_launcher", 
+            "default_value": "True", 
+            "description": "Use the new unified launcher system"
         }
     ], 
     "Misc Options": [

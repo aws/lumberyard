@@ -46,6 +46,7 @@ namespace
             // if only one is valid then technically they are different
             return (sourceElem || compareElem);
         }
+
         using namespace AzToolsFramework;
 
         InstanceDataHierarchy source;
@@ -57,13 +58,12 @@ namespace
         target.Build(serializeContext, AZ::SerializeContext::ENUM_ACCESS_FOR_READ);
 
         bool hasDifferences = false;
-
-        AZStd::function<void(const InstanceDataNode*)> nodeChanged =
+        const auto nodeChanged =
             [isRoot, &hasDifferences](const InstanceDataNode* rootNode)
         {
             const InstanceDataNode* node = rootNode;
 
-            // If the node has any un-hidden parent, count it as a difference.
+            // if the node has any unhidden parent, count it as a difference.
             while (node)
             {
                 if (!SliceUtilities::IsNodePushable(*node, isRoot))
@@ -82,33 +82,32 @@ namespace
             }
         };
 
-        InstanceDataHierarchy::NewNodeCB newCallback =
-            [&nodeChanged](InstanceDataNode* targetNode, AZStd::vector<AZ::u8>& /*data*/)
+        const auto newCallback = [&nodeChanged](
+            InstanceDataNode* targetNode, AZStd::vector<AZ::u8>& /*data*/)
         {
             nodeChanged(targetNode);
         };
 
-        InstanceDataHierarchy::RemovedNodeCB removedCallback =
-            [&nodeChanged](const InstanceDataNode* sourceNode, InstanceDataNode* /*targetNodeParent*/)
+        const auto removedCallback = [&nodeChanged](
+            const InstanceDataNode* sourceNode, InstanceDataNode* /*targetNodeParent*/)
         {
             nodeChanged(sourceNode);
         };
 
-        InstanceDataHierarchy::ChangedNodeCB changedCallback =
-            [&nodeChanged](const InstanceDataNode* sourceNode, InstanceDataNode* /*targetNode*/, AZStd::vector<AZ::u8>& /*sourceData*/, AZStd::vector<AZ::u8>& /*targetData*/)
+        const auto changedCallback = [&nodeChanged](
+            const InstanceDataNode* sourceNode, InstanceDataNode* /*targetNode*/,
+            AZStd::vector<AZ::u8>& /*sourceData*/, AZStd::vector<AZ::u8>& /*targetData*/)
         {
             nodeChanged(sourceNode);
         };
 
         InstanceDataHierarchy::CompareHierarchies(&source, &target,
             InstanceDataHierarchy::DefaultValueComparisonFunction,
-            serializeContext,
-            newCallback, removedCallback, changedCallback);
+            serializeContext, newCallback, removedCallback, changedCallback);
 
         return hasDifferences;
     }
 }
-
 
 namespace AzToolsFramework
 {
@@ -701,7 +700,9 @@ namespace AzToolsFramework
                 }
             }
 
-            EBUS_EVENT(ToolsApplicationEvents::Bus, InvalidatePropertyDisplay, Refresh_Values);
+            AzToolsFramework::ToolsApplicationEvents::Bus::Broadcast(
+                &AzToolsFramework::ToolsApplicationEvents::Bus::Events::InvalidatePropertyDisplay,
+                AzToolsFramework::Refresh_Values);
 
             UpdateSliceInfoHierarchy(replacedPair.second);
         }
@@ -798,6 +799,8 @@ namespace AzToolsFramework
 
     void EditorEntityModel::OnEntityTransformChanged(const AzToolsFramework::EntityIdList& entityIds)
     {
+        AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
+
         for (const AZ::EntityId& entityId : entityIds)
         {
             EditorEntityModelEntry& entityInfo = GetInfo(entityId);
@@ -1169,6 +1172,16 @@ namespace AzToolsFramework
         return (flags == SliceFlag_SubsliceRoot);
     }
 
+    bool EditorEntityModel::EditorEntityModelEntry::HasSliceEntityAnyChildrenAddedOrDeleted() const
+    {
+        return (m_sliceFlags & SliceFlag_EntityHasAdditionsDeletions) != 0;
+    }
+
+    bool EditorEntityModel::EditorEntityModelEntry::HasSliceEntityPropertyOverridesInTopLevel() const
+    {
+        return (m_sliceFlags & SliceFlag_EntityHasNonChildOverrides) != 0;
+    }
+
     bool EditorEntityModel::EditorEntityModelEntry::HasSliceEntityOverrides() const
     {
         return (m_sliceFlags & SliceFlag_EntityHasOverrides) != 0;
@@ -1176,7 +1189,7 @@ namespace AzToolsFramework
 
     bool EditorEntityModel::EditorEntityModelEntry::HasSliceChildrenOverrides() const
     {
-        return !m_overriddenChildren.empty();
+        return (!m_overriddenChildren.empty()) || HasSliceEntityAnyChildrenAddedOrDeleted();
     }
 
     bool EditorEntityModel::EditorEntityModelEntry::HasSliceAnyOverrides() const
@@ -1355,7 +1368,7 @@ namespace AzToolsFramework
                 AZ::u8 lastFlags = m_sliceFlags;
                 m_sliceFlags = (m_name != m_sourceClone->GetName() ? m_sliceFlags | SliceFlag_EntityNameOverridden
                                                                    : m_sliceFlags & ~SliceFlag_EntityNameOverridden);
-                ModifyParentsOverriddenChildren(m_entityId, lastFlags, m_sliceFlags & SliceFlag_EntityHasOverrides);
+                ModifyParentsOverriddenChildren(m_entityId, lastFlags, (m_sliceFlags & SliceFlag_EntityHasOverrides) != 0);
             }
         }
     }
@@ -1364,6 +1377,8 @@ namespace AzToolsFramework
     {
         if (CanProcessOverrides())
         {
+            AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
+
             using TransformComponent = AzToolsFramework::Components::TransformComponent;
 
             if (AZ::Component* transformComponent = m_entity->FindComponent<TransformComponent>())
@@ -1377,6 +1392,8 @@ namespace AzToolsFramework
     {
         if (CanProcessOverrides())
         {
+            AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
+
             using EditorInspectorComponent = AzToolsFramework::Components::EditorInspectorComponent;
 
             if (AZ::Component* componentOrderComponent = m_entity->FindComponent<EditorInspectorComponent>())
@@ -1427,7 +1444,7 @@ namespace AzToolsFramework
             m_sliceFlags = (activeOnStart != m_sourceClone->IsRuntimeActiveByDefault()
                                 ? m_sliceFlags | SliceFlag_EntityActivationOverridden
                                 : m_sliceFlags & ~SliceFlag_EntityActivationOverridden);
-            ModifyParentsOverriddenChildren(m_entityId, lastFlags, m_sliceFlags & SliceFlag_EntityHasOverrides);
+            ModifyParentsOverriddenChildren(m_entityId, lastFlags, (m_sliceFlags & SliceFlag_EntityHasOverrides) != 0);
         }
     }
 
@@ -1519,16 +1536,17 @@ namespace AzToolsFramework
 
                         if (isDifferent)
                         {
-                            AddOverriddenComponent(componentId);
+                            AddChildAddedDeleted(componentId);
                         }
                         else
                         {
-                            RemoveOverriddenComponent(componentId);
+                            RemoveChildAddedDeleted(componentId);
+
                         }
                     }
                     else
                     {
-                        AddOverriddenComponent(componentId);
+                        AddChildAddedDeleted(componentId);
                     }
                 }
             }
@@ -1540,13 +1558,40 @@ namespace AzToolsFramework
         return (IsSliceEntity() && m_serializeContext && m_entity && m_sourceClone);
     }
 
+    void EditorEntityModel::EditorEntityModelEntry::AddChildAddedDeleted(AZ::ComponentId componentId)
+    {
+        m_addedRemovedComponents.insert(componentId);
+        AZ::u8 lastFlags = m_sliceFlags;
+        m_sliceFlags |= SliceFlag_EntityHasAdditionsDeletions;
+
+        ModifyParentsOverriddenChildren(m_entityId, lastFlags, (m_sliceFlags & SliceFlag_EntityHasOverrides) != 0);
+        AzToolsFramework::ToolsApplicationEvents::Bus::Broadcast(
+            &AzToolsFramework::ToolsApplicationEvents::Bus::Events::InvalidatePropertyDisplay,
+            AzToolsFramework::Refresh_Values);
+    }
+
+    void EditorEntityModel::EditorEntityModelEntry::RemoveChildAddedDeleted(AZ::ComponentId componentId)
+    {
+        m_addedRemovedComponents.erase(componentId);
+        AZ::u8 lastFlags = m_sliceFlags;
+        if (m_addedRemovedComponents.empty())
+        {
+            m_sliceFlags &= ~SliceFlag_EntityHasAdditionsDeletions;
+        }
+
+        ModifyParentsOverriddenChildren(m_entityId, lastFlags, (m_sliceFlags & SliceFlag_EntityHasOverrides) != 0);
+        AzToolsFramework::ToolsApplicationEvents::Bus::Broadcast(
+            &AzToolsFramework::ToolsApplicationEvents::Bus::Events::InvalidatePropertyDisplay,
+            AzToolsFramework::Refresh_Values);
+    }
+
     void EditorEntityModel::EditorEntityModelEntry::AddOverriddenComponent(AZ::ComponentId componentId)
     {
         m_overriddenComponents.insert(componentId);
         AZ::u8 lastFlags = m_sliceFlags;
         m_sliceFlags |= SliceFlag_EntityComponentsOverridden;
 
-        ModifyParentsOverriddenChildren(m_entityId, lastFlags, m_sliceFlags & SliceFlag_EntityHasOverrides);
+        ModifyParentsOverriddenChildren(m_entityId, lastFlags, (m_sliceFlags & SliceFlag_EntityHasOverrides) != 0);
         AzToolsFramework::ToolsApplicationEvents::Bus::Broadcast(
             &AzToolsFramework::ToolsApplicationEvents::Bus::Events::InvalidatePropertyDisplay,
             AzToolsFramework::Refresh_Values);
@@ -1561,7 +1606,7 @@ namespace AzToolsFramework
             m_sliceFlags &= ~SliceFlag_EntityComponentsOverridden;
         }
 
-        ModifyParentsOverriddenChildren(m_entityId, lastFlags, m_sliceFlags & SliceFlag_EntityHasOverrides);
+        ModifyParentsOverriddenChildren(m_entityId, lastFlags, (m_sliceFlags & SliceFlag_EntityHasOverrides) != 0);
         AzToolsFramework::ToolsApplicationEvents::Bus::Broadcast(
             &AzToolsFramework::ToolsApplicationEvents::Bus::Events::InvalidatePropertyDisplay,
             AzToolsFramework::Refresh_Values);
@@ -1587,6 +1632,7 @@ namespace AzToolsFramework
 
         m_sliceFlags &= ~SliceFlag_EntityHasOverrides;
         m_overriddenComponents.clear();
+        m_addedRemovedComponents.clear();
 
         // reset the cached entity name so we can leverage OnEntityNameChanged to detect if the name is overridden and avoid duplicate code
         m_name = "";
@@ -1635,7 +1681,7 @@ namespace AzToolsFramework
             m_sliceFlags |= SliceFlag_EntityComponentsOverridden;
         }
 
-        ModifyParentsOverriddenChildren(m_entityId, lastFlags, m_sliceFlags & SliceFlag_EntityHasOverrides);
+        ModifyParentsOverriddenChildren(m_entityId, lastFlags, (m_sliceFlags & SliceFlag_EntityHasOverrides) != 0);
     }
 
     bool EditorEntityModel::EditorEntityModelEntry::IsComponentExpanded(AZ::ComponentId id) const
@@ -1660,6 +1706,8 @@ namespace AzToolsFramework
     
     void EditorEntityModel::EditorEntityModelEntry::ModifyParentsOverriddenChildren(AZ::EntityId childEntityId, AZ::u8 lastFlags, bool childHasOverrides)
     {
+        AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
+
         if (((lastFlags & SliceFlag_EntityHasOverrides) == 0) != ((m_sliceFlags & SliceFlag_EntityHasOverrides) == 0))
         {
             AZStd::vector<AZ::EntityId> parentsIds;

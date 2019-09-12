@@ -66,7 +66,9 @@ namespace EMStudio
             RENDER_USE_GRADIENTBACKGROUND   = 21,
             RENDER_MOTIONEXTRACTION         = 22,
             RENDER_CLOTH_COLLIDERS          = 23,
-            NUM_RENDER_OPTIONS              = 24
+            RENDER_SIMULATEDOBJECT_COLLIDERS= 24,
+            RENDER_SIMULATEJOINTS           = 25,
+            NUM_RENDER_OPTIONS              = 26
         };
 
         MCORE_INLINE bool GetRenderFlag(ERenderFlag option)     { return mActions[(uint32)option]->isChecked(); }

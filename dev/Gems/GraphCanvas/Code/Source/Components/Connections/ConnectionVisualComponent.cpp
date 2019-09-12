@@ -147,6 +147,7 @@ namespace GraphCanvas
         : RootGraphicsItem(connectionEntityId)
         , m_trackMove(false)
         , m_moveSource(false)
+        , m_curveType(Styling::ConnectionCurveType::Straight)
         , m_offset(0.0)
         , m_connectionEntityId(connectionEntityId)
     {
@@ -380,9 +381,7 @@ namespace GraphCanvas
 
         QPainterPath path = QPainterPath(start);
 
-        Styling::Curves curve = m_style.GetAttribute(Styling::Attribute::LineCurve, Styling::Curves::Curved);
-
-        if (curve == Styling::Curves::Curved)
+        if (m_curveType == Styling::ConnectionCurveType::Curved)
         {
             // Scale the control points based on the length of the line to make sure the curve looks pretty
             QPointF offset = (end - start);
@@ -462,6 +461,22 @@ namespace GraphCanvas
         UpdateConnectionPath();
     }
 
+    void ConnectionGraphicsItem::OnSceneSet(const GraphId& graphId)
+    {
+        m_editorId = EditorId();
+        SceneRequestBus::EventResult(m_editorId, graphId, &SceneRequests::GetEditorId);
+
+        AssetEditorSettingsNotificationBus::Handler::BusDisconnect();
+        AssetEditorSettingsNotificationBus::Handler::BusConnect(m_editorId);
+
+        UpdateCurveStyle();
+    }
+
+    void ConnectionGraphicsItem::OnSettingsChanged()
+    {        
+        UpdateCurveStyle();
+    }
+
     const AZ::EntityId& ConnectionGraphicsItem::GetConnectionEntityId() const
     {
         return m_connectionEntityId;
@@ -483,9 +498,34 @@ namespace GraphCanvas
         return targetId;
     }
 
+    EditorId ConnectionGraphicsItem::GetEditorId() const
+    {
+        return m_editorId;
+    }
+
+    void ConnectionGraphicsItem::UpdateCurveStyle()
+    {
+        Styling::ConnectionCurveType oldType = m_curveType;
+
+        m_curveType = GetCurveStyle();
+
+        if (m_curveType != oldType)
+        {
+            UpdateConnectionPath();
+        }
+    }
+
+    Styling::ConnectionCurveType ConnectionGraphicsItem::GetCurveStyle() const
+    {
+        Styling::ConnectionCurveType curveStyle = Styling::ConnectionCurveType::Straight;
+        AssetEditorSettingsRequestBus::EventResult(curveStyle, GetEditorId(), &AssetEditorSettingsRequests::GetConnectionCurveType);
+        return curveStyle;
+    }
+
     void ConnectionGraphicsItem::UpdatePen()
     {
         QPen pen = m_style.GetPen(Styling::Attribute::LineWidth, Styling::Attribute::LineStyle, Styling::Attribute::LineColor, Styling::Attribute::CapStyle);
+
         setPen(pen);
     }
 
@@ -609,7 +649,6 @@ namespace GraphCanvas
             RootGraphicsItem<QGraphicsPathItem>::mouseReleaseEvent(mouseEvent);
         }
     }
-
 
     void ConnectionGraphicsItem::paint(QPainter* painter, const QStyleOptionGraphicsItem* option, QWidget* widget /*= nullptr*/)
     {

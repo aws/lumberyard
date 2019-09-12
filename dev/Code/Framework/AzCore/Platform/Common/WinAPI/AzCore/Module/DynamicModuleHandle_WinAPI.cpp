@@ -9,18 +9,11 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#ifndef AZ_UNITY_BUILD
 
 #include <AzCore/Module/DynamicModuleHandle.h>
 
-#if AZ_TRAIT_COMPILER_ENABLE_WINDOWS_DLLS
 #include <AzCore/Memory/OSAllocator.h>
 #include <AzCore/PlatformIncl.h>
-
-namespace
-{
-    const char* moduleExtension = ".dll";
-}
 
 namespace AZ
 {
@@ -36,9 +29,9 @@ namespace AZ
         {
             // Ensure filename ends in ".dll"
             // Otherwise filenames like "gem.1.0.0" fail to load (.0 is assumed to be the extension).
-            if (m_fileName.substr(m_fileName.length() - 4) != moduleExtension)
+            if (m_fileName.substr(m_fileName.length() - 4) != AZ_TRAIT_OS_DYNAMIC_LIBRARY_EXTENSION)
             {
-                m_fileName = m_fileName + moduleExtension;
+                m_fileName = m_fileName + AZ_TRAIT_OS_DYNAMIC_LIBRARY_EXTENSION;
             }
         }
 
@@ -124,7 +117,3 @@ namespace AZ
         return AZStd::unique_ptr<DynamicModuleHandle>(aznew DynamicModuleHandleWindows(fullFileName));
     }
 } // namespace AZ
-
-#endif // AZ_TRAIT_COMPILER_ENABLE_WINDOWS_DLLS
-
-#endif // #ifndef AZ_UNITY_BUILD

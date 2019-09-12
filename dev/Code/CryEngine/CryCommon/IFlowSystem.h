@@ -16,7 +16,6 @@
 #pragma once
 
 
-#include <BoostHelpers.h>
 #include <CrySizer.h>
 #include "SerializeFwd.h"
 #include <ISerialize.h>
@@ -26,6 +25,7 @@
 #include <AzCore/Math/Vector3.h>
 #include "MathConversion.h"
 #include <AzCore/Casting/numeric_cast.h>
+#include <AzCore/std/containers/variant.h>
 
 #define _UICONFIG(x) x
 
@@ -409,7 +409,7 @@ private:
     // existing custom port types. Specifically, if the FlowCustomData type
     // were parameterized with ValueType, then the wrapper wouldn't be
     // necessary. But that approach won't work with the existing use of
-    // boost:varient to store port values.
+    // AZStd:variant to store port values.
 
     class WrapperBase
     {
@@ -702,20 +702,19 @@ private:
 //   CFlowData::ConfigureInputPort
 // See also:
 //   CFlowData::ConfigureInputPort
-typedef boost::mpl::vector<
-    SFlowSystemVoid,
-    int,
-    float,
-    EntityId,
-    Vec3,
-    string,
-    bool,
-    FlowCustomData,
-    SFlowSystemPointer,
-    double,
-    FlowEntityId,
+#define TFlowSystemDataTypes \
+    SFlowSystemVoid, \
+    int, \
+    float, \
+    ::EntityId, \
+    Vec3, \
+    string, \
+    bool, \
+    FlowCustomData, \
+    SFlowSystemPointer, \
+    double, \
+    FlowEntityId, \
     AZ::Vector3
-    > TFlowSystemDataTypes;
 
 // Notes:
 //   Default conversion uses C++ rules.
@@ -1441,22 +1440,21 @@ struct SFlowSystemConversion<string, Vec3>
 enum EFlowDataTypes
 {
     eFDT_Any = -1,
-    eFDT_Void = boost::mpl::find<TFlowSystemDataTypes, SFlowSystemVoid>::type::pos::value,
-    eFDT_Int = boost::mpl::find<TFlowSystemDataTypes, int>::type::pos::value,
-    eFDT_Float = boost::mpl::find<TFlowSystemDataTypes, float>::type::pos::value,
-    eFDT_EntityId = boost::mpl::find<TFlowSystemDataTypes, EntityId>::type::pos::value,
-    eFDT_Vec3 = boost::mpl::find<TFlowSystemDataTypes, Vec3>::type::pos::value,
-    eFDT_String = boost::mpl::find<TFlowSystemDataTypes, string>::type::pos::value,
-    eFDT_Bool = boost::mpl::find<TFlowSystemDataTypes, bool>::type::pos::value,
-    eFDT_CustomData = boost::mpl::find<TFlowSystemDataTypes, FlowCustomData>::type::pos::value,
-    eFDT_Pointer = boost::mpl::find<TFlowSystemDataTypes, SFlowSystemPointer>::type::pos::value,
-    eFDT_Double = boost::mpl::find<TFlowSystemDataTypes, double>::type::pos::value,
-    eFDT_FlowEntityId = boost::mpl::find<TFlowSystemDataTypes, FlowEntityId>::type::pos::value,
-    eFDT_AZVector3 = boost::mpl::find<TFlowSystemDataTypes, Vec3>::type::pos::value,
+    eFDT_Void = AZStd::find_exactly_one_alternative_v<SFlowSystemVoid, TFlowSystemDataTypes>,
+    eFDT_Int = AZStd::find_exactly_one_alternative_v<int, TFlowSystemDataTypes>,
+    eFDT_Float = AZStd::find_exactly_one_alternative_v<float, TFlowSystemDataTypes>,
+    eFDT_EntityId = AZStd::find_exactly_one_alternative_v<EntityId, TFlowSystemDataTypes>,
+    eFDT_Vec3 = AZStd::find_exactly_one_alternative_v<Vec3, TFlowSystemDataTypes>,
+    eFDT_String = AZStd::find_exactly_one_alternative_v<string, TFlowSystemDataTypes>,
+    eFDT_Bool = AZStd::find_exactly_one_alternative_v<bool, TFlowSystemDataTypes>,
+    eFDT_CustomData = AZStd::find_exactly_one_alternative_v<FlowCustomData, TFlowSystemDataTypes>,
+    eFDT_Pointer = AZStd::find_exactly_one_alternative_v<SFlowSystemPointer, TFlowSystemDataTypes>,
+    eFDT_Double = AZStd::find_exactly_one_alternative_v<double, TFlowSystemDataTypes>,
+    eFDT_FlowEntityId = AZStd::find_exactly_one_alternative_v<FlowEntityId, TFlowSystemDataTypes>,
+    eFDT_AZVector3 = AZStd::find_exactly_one_alternative_v<AZ::Vector3, TFlowSystemDataTypes>,
 };
 
-
-typedef boost::make_variant_over<TFlowSystemDataTypes>::type TFlowInputDataVariant;
+typedef AZStd::variant<TFlowSystemDataTypes> TFlowInputDataVariant;
 
 template <class T>
 struct DefaultInitialized
@@ -1470,31 +1468,53 @@ struct DefaultInitialized<Vec3>
     Vec3 operator()() const { return Vec3(ZERO); }
 };
 
-template <class Iter>
 struct DefaultInitializedForTag
 {
     bool operator()(int tag, TFlowInputDataVariant& v) const
     {
-        if (tag == boost::mpl::distance<typename boost::mpl::begin<TFlowSystemDataTypes>::type, Iter>::type::value)
+        switch (tag)
         {
-            DefaultInitialized<typename boost::mpl::deref<Iter>::type> create;
-            v = create();
-            return true;
+        case eFDT_Void:
+            v = DefaultInitialized<SFlowSystemVoid>()();
+            break;
+        case eFDT_Int:
+            v = DefaultInitialized<int>()();
+            break;
+        case eFDT_Float:
+            v = DefaultInitialized<float>()();
+            break;
+        case eFDT_EntityId:
+            v = DefaultInitialized<EntityId>()();
+            break;
+        case eFDT_Vec3:
+            v = DefaultInitialized<Vec3>()();
+            break;
+        case eFDT_String:
+            v = DefaultInitialized<string>()();
+            break;
+        case eFDT_Bool:
+            v = DefaultInitialized<bool>()();
+            break;
+        case eFDT_CustomData:
+            v = DefaultInitialized<FlowCustomData>()();
+            break;
+        case eFDT_Pointer:
+            v = DefaultInitialized<SFlowSystemPointer>()();
+            break;
+        case eFDT_Double:
+            v = DefaultInitialized<double>()();
+            break;
+        case eFDT_FlowEntityId:
+            v = DefaultInitialized<FlowEntityId>()();
+            break;
+        case eFDT_AZVector3:
+            v = DefaultInitialized<AZ::Vector3>()();
+            break;
+        default:
+            v = DefaultInitialized<SFlowSystemVoid>()();
+            break;
         }
-        else
-        {
-            DefaultInitializedForTag<typename boost::mpl::next<Iter>::type> create;
-            return create(tag, v);
-        }
-    }
-};
-
-template <>
-struct DefaultInitializedForTag<typename boost::mpl::end<TFlowSystemDataTypes>::type>
-{
-    bool operator()(int tag, TFlowInputDataVariant& v) const
-    {
-        return false;
+        return true;
     }
 };
 
@@ -1510,7 +1530,6 @@ namespace TypeComparison
     class IsSameType
     {
         class StrictlyEqual
-            : public boost::static_visitor<bool>
         {
         public:
             template <typename T, typename U>
@@ -1541,7 +1560,6 @@ namespace TypeComparison
     class IsSameTypeExpl
     {
         class StrictlyEqual
-            : public boost::static_visitor<bool>
         {
         public:
             template <typename T>
@@ -1564,13 +1582,11 @@ namespace TypeComparison
     class IsSameTypeExpl<FlowCustomData>
     {
         class StrictlyEqual
-            : public boost::static_visitor<bool>
         {
         public:
 
             StrictlyEqual(const FlowCustomData& a)
-                : static_visitor()
-                , m_a(a)
+                : m_a(a)
             {
             }
 
@@ -1600,7 +1616,6 @@ class TFlowInputData
     class IsEqual
     {
         class StrictlyEqual
-            : public boost::static_visitor<bool>
         {
         public:
             template <typename T, typename U>
@@ -1619,24 +1634,12 @@ class TFlowInputData
     public:
         bool operator()(const TFlowInputData& a, const TFlowInputData& b) const
         {
-            return boost::apply_visitor(StrictlyEqual(), a.m_variant, b.m_variant);
-        }
-    };
-
-    class ExtractType
-        : public boost::static_visitor<EFlowDataTypes>
-    {
-    public:
-        template <typename T>
-        EFlowDataTypes operator()(const T& value) const
-        {
-            return (EFlowDataTypes) boost::mpl::find<TFlowSystemDataTypes, T>::type::pos::value;
+            return AZStd::visit(StrictlyEqual(), a.m_variant, b.m_variant);
         }
     };
 
     template <typename To>
     class ConvertType_Get
-        : public boost::static_visitor<bool>
     {
     public:
         ConvertType_Get(To& to_)
@@ -1653,7 +1656,6 @@ class TFlowInputData
 
     template <typename From>
     class ConvertType_Set
-        : public boost::static_visitor<bool>
     {
     public:
         ConvertType_Set(const From& from_)
@@ -1669,7 +1671,6 @@ class TFlowInputData
     };
 
     class ConvertType_SetFlexi
-        : public boost::static_visitor<bool>
     {
     public:
         ConvertType_SetFlexi(TFlowInputData& to_)
@@ -1678,14 +1679,13 @@ class TFlowInputData
         template <typename From>
         bool operator()(const From& from) const
         {
-            return boost::apply_visitor(ConvertType_Set<From>(from), to.m_variant);
+            return AZStd::visit(ConvertType_Set<From>(from), to.m_variant);
         }
 
         TFlowInputData& to;
     };
 
     class WriteType
-        : public boost::static_visitor<void>
     {
     public:
         WriteType(TSerialize ser, bool userFlag)
@@ -1695,7 +1695,7 @@ class TFlowInputData
         template <class T>
         void operator()(T& v)
         {
-            int tag = boost::mpl::find<TFlowSystemDataTypes, T>::type::pos::value;
+            int tag = AZStd::find_exactly_one_alternative_v<T, TFlowSystemDataTypes>;
             m_ser.Value("tag", tag);
             m_ser.Value("ud", m_userFlag);
             m_ser.Value("v", v);
@@ -1707,7 +1707,6 @@ class TFlowInputData
     };
 
     class LoadType
-        : public boost::static_visitor<void>
     {
     public:
         LoadType(TSerialize ser)
@@ -1724,7 +1723,6 @@ class TFlowInputData
     };
 
     class MemStatistics
-        : public boost::static_visitor<void>
     {
     public:
         MemStatistics(ICrySizer* pSizer)
@@ -1780,7 +1778,7 @@ public:
     static TFlowInputData CreateDefaultInitializedForTag(int tag, bool locked = false)
     {
         TFlowInputDataVariant v;
-        DefaultInitializedForTag<boost::mpl::begin<TFlowSystemDataTypes>::type> create;
+        DefaultInitializedForTag create;
         create(tag, v);
         return TFlowInputData(v, locked);
     }
@@ -1820,7 +1818,7 @@ public:
 
     bool SetDefaultForTag(int tag)
     {
-        DefaultInitializedForTag<boost::mpl::begin<TFlowSystemDataTypes>::type> set;
+        DefaultInitializedForTag set;
         return set(tag, m_variant);
     }
 
@@ -1859,7 +1857,7 @@ public:
         TypeComparison::IsSameTypeExpl<T> isSameType;
         if (IsLocked() && !isSameType(*this))
         {
-            return boost::apply_visitor(ConvertType_Set<T>(value), m_variant);
+            return AZStd::visit(ConvertType_Set<T>(value), m_variant);
         }
         else
         {
@@ -1873,7 +1871,7 @@ public:
         TypeComparison::IsSameTypeExpl<FlowCustomData> isSameType;
         if (IsLocked() && !isSameType(*this, value))
         {
-            return boost::apply_visitor(ConvertType_Set<FlowCustomData>(value), m_variant);
+            return AZStd::visit(ConvertType_Set<FlowCustomData>(value), m_variant);
         }
         else
         {
@@ -1887,7 +1885,7 @@ public:
         TypeComparison::IsSameType isSameType;
         if (IsLocked() && !isSameType(*this, value))
         {
-            return boost::apply_visitor(ConvertType_SetFlexi(*this), value.m_variant);
+            return AZStd::visit(ConvertType_SetFlexi(*this), value.m_variant);
         }
         else
         {
@@ -1897,9 +1895,9 @@ public:
     }
 
     template<typename T>
-    T* GetPtr() { return boost::get<T>(&m_variant); }
+    T* GetPtr() { return AZStd::get_if<T>(&m_variant); }
     template<typename T>
-    const T* GetPtr() const { return boost::get<const T>(&m_variant); }
+    const T* GetPtr() const { return AZStd::get_if<T>(&m_variant); }
 
     const TFlowInputDataVariant& GetVariant() const { return m_variant; }
 
@@ -1914,11 +1912,11 @@ public:
         }
         else
         {
-            return boost::apply_visitor(ConvertType_Get<T>(value), m_variant);
+            return AZStd::visit(ConvertType_Get<T>(value), m_variant);
         }
     }
 
-    EFlowDataTypes GetType() const { return boost::apply_visitor(ExtractType(), m_variant); }
+    EFlowDataTypes GetType() const { return (EFlowDataTypes)m_variant.index(); }
 
     bool IsUserFlagSet() const { return m_userFlag; }
     void SetUserFlag(bool value) { m_userFlag = value; }
@@ -1933,7 +1931,7 @@ public:
         if (ser.IsWriting())
         {
             WriteType visitor(ser, IsUserFlagSet());
-            boost::apply_visitor(visitor, m_variant);
+            AZStd::visit(visitor, m_variant);
         }
         else
         {
@@ -1947,26 +1945,26 @@ public:
             m_userFlag = ud;
 
             LoadType visitor(ser);
-            boost::apply_visitor(visitor, m_variant);
+            AZStd::visit(visitor, m_variant);
         }
     }
 
     template <class Visitor>
     void Visit(Visitor& visitor)
     {
-        boost::apply_visitor(visitor, m_variant);
+        AZStd::visit(visitor, m_variant);
     }
 
     template <class Visitor>
     void Visit(Visitor& visitor) const
     {
-        boost::apply_visitor(visitor, m_variant);
+        AZStd::visit(visitor, m_variant);
     }
 
     void GetMemoryStatistics(ICrySizer* pSizer) const
     {
         MemStatistics visitor(pSizer);
-        boost::apply_visitor(visitor, m_variant);
+        AZStd::visit(visitor, m_variant);
     }
 
     void GetMemoryUsage(ICrySizer* pSizer) const
@@ -1989,18 +1987,18 @@ namespace TypeComparison
 {
     inline bool IsSameType::operator()(const TFlowInputData& a, const TFlowInputData& b) const
     {
-        return boost::apply_visitor(StrictlyEqual(), a.GetVariant(), b.GetVariant());
+        return a == b;
     }
 
     template <typename Ref>
     inline bool IsSameTypeExpl<Ref>::operator()(const TFlowInputData& a) const
     {
-        return boost::apply_visitor(StrictlyEqual(), a.GetVariant());
+        return AZStd::visit(StrictlyEqual(), a.GetVariant());
     }
 
     inline bool IsSameTypeExpl<FlowCustomData>::operator()(const TFlowInputData& a, const FlowCustomData& other) const
     {
-        return boost::apply_visitor(StrictlyEqual(other), a.GetVariant());
+        return AZStd::visit(StrictlyEqual(other), a.GetVariant());
     }
 }
 
@@ -2154,14 +2152,14 @@ struct SFlowNodeConfig
 template <class T>
 ILINE SOutputPortConfig OutputPortConfig(const char* name, const char* description = NULL, const char* humanName = NULL)
 {
-    SOutputPortConfig result = {name, humanName, description, boost::mpl::find<TFlowSystemDataTypes, T>::type::pos::value};
+    SOutputPortConfig result = {name, humanName, description, AZStd::find_exactly_one_alternative_v<T, TFlowSystemDataTypes>};
     return result;
 }
 
 template <>
 ILINE SOutputPortConfig OutputPortConfig<AZ::Vector3>(const char* name, const char* description, const char* humanName)
 {
-    SOutputPortConfig result = { name, humanName, description, boost::mpl::find<TFlowSystemDataTypes, Vec3>::type::pos::value };
+    SOutputPortConfig result = { name, humanName, description, AZStd::find_exactly_one_alternative_v<Vec3, TFlowSystemDataTypes>};
     return result;
 }
 

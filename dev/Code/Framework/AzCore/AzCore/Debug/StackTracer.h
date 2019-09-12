@@ -9,31 +9,23 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#ifndef AZCORE_STACKTRACER_H
-#define AZCORE_STACKTRACER_H 1
+
+#pragma once
 
 #include <AzCore/base.h>
-#include <stdio.h>
+#include <AzCore/AzCore_Traits_Platform.h>
 
 namespace AZ
 {
     namespace Debug
     {
-#if defined(AZ_PLATFORM_WINDOWS)
-        typedef unsigned __int64 ProgramCounterType;
-#elif defined(AZ_COMPILER_CLANG)
-        typedef uint64_t ProgramCounterType;
-#else
-        typedef void*   ProgramCounterType;
-#endif
-
         struct StackFrame
         {
             StackFrame()
                 : m_programCounter(0)  {}
             AZ_FORCE_INLINE bool IsValid() const { return m_programCounter != 0; }
 
-            ProgramCounterType  m_programCounter;       ///< Currently we store and use only the program counter.
+            uintptr_t  m_programCounter;       ///< Currently we store and use only the program counter.
         };
 
         /**
@@ -104,16 +96,5 @@ namespace AZ
             static void     FindFunctionFromIP(void* address, StackLine* func, StackLine* file, StackLine* module, int& line, void*& baseAddr);
         };
 
-        class StackPrinter
-        {
-        public:
-            /**
-             * Print the callstack to the input FILE
-             **/
-            static void     Print(FILE *const ftrace);
-        };
     } // namespace Debug
 } // namespace AZ
-
-#endif // AZCORE_STACKTRACER_H
-#pragma once

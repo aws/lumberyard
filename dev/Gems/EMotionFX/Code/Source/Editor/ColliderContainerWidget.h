@@ -12,11 +12,15 @@
 
 #pragma once
 
+#include <AzCore/std/smart_ptr/unique_ptr.h>
 #include <AzCore/RTTI/TypeInfo.h>
 #include <AzFramework/Physics/RigidBody.h>
 #include <AzFramework/Physics/Ragdoll.h>
 #include <AzFramework/Physics/Character.h>
+#include <AzToolsFramework/UI/PropertyEditor/PropertyEditorAPI.h>
 #include <MCore/Source/Color.h>
+#include <MCore/Source/Command.h>
+#include <MCore/Source/CommandManager.h>
 #include <AzQtComponents/Components/Widgets/Card.h>
 #include <EMotionFX/Tools/EMotionStudio/EMStudioSDK/Source/EMStudioPlugin.h>
 #include <QPushButton>
@@ -32,9 +36,30 @@ namespace AZ
 
 namespace EMotionFX
 {
+    class Actor;
     class ActorInstance;
     class Node;
     class ObjectEditor;
+    class ColliderWidget;
+
+    class ColliderPropertyNotify
+        : public AzToolsFramework::IPropertyEditorNotify
+    {
+    public:
+        ColliderPropertyNotify(ColliderWidget* colliderWidget);
+
+        void BeforePropertyModified(AzToolsFramework::InstanceDataNode* pNode) override;
+        void AfterPropertyModified(AzToolsFramework::InstanceDataNode* /*pNode*/) override {}
+
+        void SetPropertyEditingActive(AzToolsFramework::InstanceDataNode* /*pNode*/) override {}
+        void SetPropertyEditingComplete(AzToolsFramework::InstanceDataNode* pNode) override;
+
+        void SealUndoStack() override {}
+
+    private:
+        MCore::CommandGroup m_commandGroup;
+        ColliderWidget* m_colliderWidget;
+    };
 
     class ColliderWidget
         : public AzQtComponents::Card
@@ -44,7 +69,14 @@ namespace EMotionFX
     public:
         ColliderWidget(QIcon* icon, QWidget* parent, AZ::SerializeContext* serializeContext);
 
-        void Update(const Physics::ShapeConfigurationPair& collider, int colliderIndex);
+        void Update(Actor* actor, Node* joint, size_t colliderIndex, PhysicsSetup::ColliderConfigType colliderType, const Physics::ShapeConfigurationPair& collider);
+        void Update();
+        void Reset();
+
+        Actor* GetActor() const { return m_actor; };
+        Node* GetJoint() const { return m_joint; }
+        size_t GetColliderIndex() const { return m_colliderIndex; }
+        PhysicsSetup::ColliderConfigType GetColliderType() const { return m_colliderType; }
 
     signals:
         void RemoveCollider(int colliderIndex);
@@ -55,7 +87,14 @@ namespace EMotionFX
 
     private:
         EMotionFX::ObjectEditor* m_editor;
+        AZStd::unique_ptr<ColliderPropertyNotify> m_propertyNotify;
+
+        Actor* m_actor = nullptr;
+        PhysicsSetup::ColliderConfigType m_colliderType = PhysicsSetup::ColliderConfigType::Unknown;
+        Node* m_joint = nullptr;
+        size_t m_colliderIndex = MCORE_INVALIDINDEX32;
         Physics::ShapeConfigurationPair m_collider;
+
         QIcon* m_icon;
     };
 
@@ -69,7 +108,6 @@ namespace EMotionFX
             const AZStd::vector<AZ::TypeId>& supportedColliderTypes = {azrtti_typeid<Physics::BoxShapeConfiguration>(),
             azrtti_typeid<Physics::CapsuleShapeConfiguration>(),
             azrtti_typeid<Physics::SphereShapeConfiguration>()});
-        ~AddColliderButton() = default;
 
     signals:
         void AddCollider(AZ::TypeId colliderType);
@@ -91,11 +129,11 @@ namespace EMotionFX
 
     public:
         ColliderContainerWidget(const QIcon& colliderIcon, QWidget* parent = nullptr);
-        ~ColliderContainerWidget() = default;
+        ~ColliderContainerWidget();
 
-        void Update(const Physics::ShapeConfigurationList& colliders, AZ::SerializeContext* serializeContext);
-
-
+        void Update(Actor* actor, Node* joint, PhysicsSetup::ColliderConfigType colliderType, const Physics::ShapeConfigurationList& colliders, AZ::SerializeContext* serializeContext);
+        void Update();
+        void Reset();
 
         /**
          * Render the given colliders.
@@ -117,7 +155,7 @@ namespace EMotionFX
             EMStudio::RenderPlugin* renderPlugin,
             EMStudio::EMStudioPlugin::RenderInfo* renderInfo);
 
-        static int                      s_layoutSpacing;
+        static int s_layoutSpacing;
 
     signals:
         void RemoveCollider(int index);
@@ -126,8 +164,24 @@ namespace EMotionFX
         void OnRemoveCollider(int colliderIndex);
 
     private:
-        QVBoxLayout*                    m_layout;
-        AZStd::vector<ColliderWidget*>  m_colliderWidgets;
-        QIcon                           m_colliderIcon;
+        Actor* m_actor = nullptr;
+        PhysicsSetup::ColliderConfigType m_colliderType = PhysicsSetup::ColliderConfigType::Unknown;
+        Node* m_joint = nullptr;
+        QVBoxLayout* m_layout = nullptr;
+        AZStd::vector<ColliderWidget*> m_colliderWidgets;
+        QIcon m_colliderIcon;
+
+        class ColliderEditedCallback
+            : public MCore::Command::Callback
+        {
+        public:
+            ColliderEditedCallback(ColliderContainerWidget* parent, bool executePreUndo, bool executePreCommand = false);
+            bool Execute(MCore::Command* command, const MCore::CommandLine& commandLine);
+            bool Undo(MCore::Command* command, const MCore::CommandLine& commandLine);
+
+        private:
+            ColliderContainerWidget* m_widget;
+        };
+        ColliderEditedCallback* m_commandCallback;
     };
 } // namespace EMotionFX

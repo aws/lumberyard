@@ -1,0 +1,9 @@
+{
+    "SaveData_Uber_Windows.cpp":
+    {
+        "Source/Platform/Windows":
+        [
+            "SaveData_SystemComponent_Windows.cpp"
+        ]
+    }
+}

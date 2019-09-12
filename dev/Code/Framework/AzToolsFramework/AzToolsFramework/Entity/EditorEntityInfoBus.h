@@ -52,6 +52,8 @@ namespace AzToolsFramework
         virtual bool IsSubsliceEntity() const = 0;
         virtual bool IsSliceRoot() const = 0;
         virtual bool IsSubsliceRoot() const = 0;
+        virtual bool HasSliceEntityAnyChildrenAddedOrDeleted() const = 0;
+        virtual bool HasSliceEntityPropertyOverridesInTopLevel() const = 0;
         virtual bool HasSliceEntityOverrides() const = 0;
         virtual bool HasSliceChildrenOverrides() const = 0;
         virtual bool HasSliceAnyOverrides() const = 0;

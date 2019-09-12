@@ -1,0 +1,10 @@
+{
+    "auto":
+    {
+        "Platform/Linux":
+        [
+            "AzFrameworkTests_Traits_Platform.h",
+            "AzFrameworkTests_Traits_Linux.h"
+        ]
+    }
+}

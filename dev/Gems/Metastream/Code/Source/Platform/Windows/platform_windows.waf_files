@@ -1,0 +1,8 @@
+{
+  "auto": {
+    "Platform/Windows": [
+      "Metastream_Traits_Platform.h",
+      "Metastream_Traits_Windows.h"
+    ]
+  }
+}

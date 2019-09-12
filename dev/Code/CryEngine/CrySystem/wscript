@@ -34,10 +34,13 @@ def build(bld):
                                    'TOMMATH',
                                    'EXPAT',
                                    'ZLIB',
+                                   'ZSTD',
                                    'MD5'],
-        includes                = [bld.Path('Code/Tools/GemRegistry/include') ],
+        includes                = [bld.Path('Code/Tools/GemRegistry/include'),
+                                   bld.Path('Code/CryEngine/CryCommon')
+                                  ],
         features                = ['link_running_program'],
-        defines                 = ['ENGINE_EXPORTS', 'USE_CRY_NEW_AND_DELETE'],
+        defines                 = ['ENGINE_EXPORTS', 'USE_CRY_NEW_AND_DELETE', 'LY_BUILD={}'.format(bld.get_lumberyard_build())],
 
         # Platform Specific
         win_defines             = ['EXCLUDE_CINEMIZER_SDK'],

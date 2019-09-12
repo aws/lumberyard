@@ -1,0 +1,9 @@
+{
+    "none":
+    {
+        "AzCore/Platform/Windows":
+        [
+            "../Common/WinAPI/Tests/UtilsTests_WinAPI.cpp"
+        ]
+    }
+}

@@ -245,7 +245,7 @@
                     "Ref": "ConfigurationKey"
                 },
                 "FunctionName": "DotnetLambda",
-                "Runtime": "dotnetcore1.0",
+                "Runtime": "dotnetcore2.1",
                 "ServiceToken": {
                     "Ref": "ProjectResourceHandler"
                 }

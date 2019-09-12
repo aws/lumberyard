@@ -40,7 +40,7 @@ namespace ScriptEventsTests
             static bool showTraces = true;
             if (showTraces)
             {
-                AZ_TracePrintf("ScriptTrace", "%s\n", txt);
+                std::cerr << txt << std::endl;
             }
         }
 

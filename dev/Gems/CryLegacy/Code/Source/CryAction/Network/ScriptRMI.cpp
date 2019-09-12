@@ -33,9 +33,6 @@
 #define SERVER_SYNCHED_FIELD "__synched"
 #define HIDDEN_FIELD "__hidden"
 
-//#pragma optimize("",off)
-//#pragma inline_depth(0)
-
 static ICVar* pLogRMIEvents = NULL;
 static ICVar* pDisconnectOnError = NULL;
 
@@ -463,7 +460,7 @@ bool CScriptRMI::BuildSynchTable(SmartScriptTable vars, SmartScriptTable cls, co
 
     // TODO: Improve
     IScriptTable::SUserFunctionDesc fd;
-    fd.pFunctor = functor_ret(SynchedNewIndexFunction);
+    fd.pFunctor = functor(SynchedNewIndexFunction);
     fd.sFunctionName = "__newindex";
     fd.sGlobalName = "<net-dispatch>";
     fd.sFunctionParams = "(...)";

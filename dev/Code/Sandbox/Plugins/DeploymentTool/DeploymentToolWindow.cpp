@@ -34,7 +34,7 @@
 #include "NetworkUtils.h"
 
 #include "DeployWorker_android.h"
-#if defined(AZ_PLATFORM_APPLE_OSX)
+#if defined(AZ_PLATFORM_MAC)
     #include "DeployWorker_ios.h"
 #endif
 #include "DeployWorker_devicefarm.h"
@@ -294,7 +294,7 @@ void DeploymentToolWindow::OnPlatformChanged(const QString& currentplatform)
         hidePlatformOptions = false;
         m_deployWorker.reset(new DeployWorkerAndroid());
     }
-#if defined(AZ_PLATFORM_APPLE_OSX)
+#if defined(AZ_PLATFORM_MAC)
     else if (currentplatform.compare("ios", Qt::CaseInsensitive) == 0)
     {
         m_deploymentCfg.m_platformOption = PlatformOptions::iOS;
@@ -1095,7 +1095,7 @@ void DeploymentToolWindow::InitializeUi()
     m_defaultRemoteDeviceOutputBrush = m_ui->remoteOutputTextBox->currentCharFormat().foreground();
 
     // base options
-#if defined(AZ_PLATFORM_APPLE_OSX)
+#if defined(AZ_PLATFORM_MAC)
     // matching by default is case insensitive unless Qt::MatchCaseSensitive specified
     int index = m_ui->platformComboBox->findText("ios", Qt::MatchExactly);
     if (index == -1)

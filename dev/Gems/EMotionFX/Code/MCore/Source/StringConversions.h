@@ -25,6 +25,7 @@ namespace MCore
     class Matrix;
 
     AZStd::string GenerateUniqueString(const char* prefix, const AZStd::function<bool(const AZStd::string& value)>& validationFunction);
+    AZStd::string ConstructStringSeparatedBySemicolons(const AZStd::vector<AZStd::string>& stringVec);
 
     class CharacterConstants
     {

@@ -1,0 +1,7 @@
+{
+    "auto": {
+        "Platform/AppleTV": [
+            "../Common/Unimplemented/Platform_Unimplemented.cpp"
+        ]
+    }
+}

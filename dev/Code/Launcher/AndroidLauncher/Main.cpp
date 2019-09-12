@@ -24,8 +24,8 @@
 #include <AzCore/Android/AndroidEnv.h>
 #include <AzCore/Android/Utils.h>
 
-#include <AzFramework/API/ApplicationAPI_android.h>
-#include <AzFramework/Input/Buses/Notifications/RawInputNotificationBus_android.h>
+#include <AzFramework/API/ApplicationAPI_Platform.h>
+#include <AzFramework/Input/Buses/Notifications/RawInputNotificationBus_Platform.h>
 #include <AzGameFramework/Application/GameApplication.h>
 
 #include <android/asset_manager_jni.h>

@@ -1,0 +1,7 @@
+{
+  "auto": {
+    "Platform/Linux": [
+        "../Common/Default/AWSNativeSDKInit_Default.cpp"
+    ]
+  }
+}

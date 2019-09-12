@@ -9,46 +9,33 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#ifndef AZ_UNITY_BUILD
+
+#include <AzCore/Debug/Trace.h>
+
 #include <AzCore/base.h>
-#include <AzCore/PlatformIncl.h>
 
 #include <AzCore/Debug/StackTracer.h>
 #include <AzCore/Debug/TraceMessageBus.h>
 #include <AzCore/Debug/TraceMessagesDrillerBus.h>
 
-#include <stdio.h>
 #include <stdarg.h>
 
-#if defined(AZ_RESTRICTED_PLATFORM)
-#undef AZ_RESTRICTED_SECTION
-#define TRACE_CPP_SECTION_1 1
-#define TRACE_CPP_SECTION_2 2
-#define TRACE_CPP_SECTION_3 3
-#define TRACE_CPP_SECTION_4 4
-#define TRACE_CPP_SECTION_5 5
+namespace AZ 
+{
+    namespace Debug
+    {
+        namespace Platform
+        {
+#if defined(AZ_ENABLE_DEBUG_TOOLS)
+            bool IsDebuggerPresent();
+            void HandleExceptions(bool isEnabled);
+            void DebugBreak();
 #endif
+            void Terminate(int exitCode);
+            void OutputToDebugger(const char* window, const char* message);
+        }
+    }
 
-#if defined(AZ_RESTRICTED_PLATFORM)
-#define AZ_RESTRICTED_SECTION TRACE_CPP_SECTION_1
-    #if defined(AZ_PLATFORM_XENIA)
-        #include "Xenia/Trace_cpp_xenia.inl"
-    #elif defined(AZ_PLATFORM_PROVO)
-        #include "Provo/Trace_cpp_provo.inl"
-    #endif
-#elif defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_ANDROID)
-
-#   if defined(AZ_PLATFORM_ANDROID)
-#       include <android/log.h>
-#   endif // AZ_PLATFORM_ANDROID
-
-#   include <AzCore/Debug/TraceCppLinux.inl>
-
-#elif defined(AZ_PLATFORM_APPLE)
-#   include <AzCore/Debug/TraceCppApple.inl>
-#endif
-
-namespace AZ {
     using namespace AZ::Debug;
 
     namespace DebugInternal
@@ -57,7 +44,7 @@ namespace AZ {
         // because its thread local, it does not need to be atomic.
         // its also important that this is inside the cpp file, so that its only in the trace.cpp module and not the header shared by everyone.
         static AZ_THREAD_LOCAL bool g_alreadyHandlingAssertOrFatal = false;
-        static AZ_THREAD_LOCAL bool g_suppressEBusCalls = false; // used when it would be dangerous to use ebus broadcasts.
+        AZ_THREAD_LOCAL bool g_suppressEBusCalls = false; // used when it would be dangerous to use ebus broadcasts.
     }
 
     //////////////////////////////////////////////////////////////////////////
@@ -66,19 +53,6 @@ namespace AZ {
     static const char*    g_dbgSystemWnd = "System";
     Trace Debug::g_tracer;
     void* g_exceptionInfo = NULL;
-#if defined(AZ_ENABLE_DEBUG_TOOLS)
-    #if defined(AZ_PLATFORM_WINDOWS)
-    LONG WINAPI ExceptionHandler(PEXCEPTION_POINTERS ExceptionInfo);
-    LPTOP_LEVEL_EXCEPTION_FILTER g_previousExceptionHandler = NULL;
-#elif defined(AZ_RESTRICTED_PLATFORM)
-#define AZ_RESTRICTED_SECTION TRACE_CPP_SECTION_2
-    #if defined(AZ_PLATFORM_XENIA)
-        #include "Xenia/Trace_cpp_xenia.inl"
-    #elif defined(AZ_PLATFORM_PROVO)
-        #include "Provo/Trace_cpp_provo.inl"
-    #endif
-    #endif
-#endif // defined(AZ_ENABLE_DEBUG_TOOLS)
 
     /**
      * If any listener returns true, store the result so we don't outputs detailed information.
@@ -105,29 +79,10 @@ namespace AZ {
     Trace::IsDebuggerPresent()
     {
 #if defined(AZ_ENABLE_DEBUG_TOOLS)
-#   if defined(AZ_PLATFORM_WINDOWS)
-        return ::IsDebuggerPresent() ? true : false;
-#define AZ_RESTRICTED_SECTION_IMPLEMENTED
-#elif defined(AZ_RESTRICTED_PLATFORM)
-#define AZ_RESTRICTED_SECTION TRACE_CPP_SECTION_3
-    #if defined(AZ_PLATFORM_XENIA)
-        #include "Xenia/Trace_cpp_xenia.inl"
-    #elif defined(AZ_PLATFORM_PROVO)
-        #include "Provo/Trace_cpp_provo.inl"
-    #endif
+        return Platform::IsDebuggerPresent();
+#else
+        return false;
 #endif
-#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
-#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
-#   elif defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_ANDROID)
-        return IsDebuggerAttached();
-#   elif defined(AZ_PLATFORM_APPLE)
-        return AmIBeingDebugged();
-#   else
-        return false;
-#   endif
-#else // else if not defined AZ_ENABLE_DEBUG_TOOLS
-        return false;
-#endif// AZ_ENABLE_DEBUG_TOOLS
     }
 
     //=========================================================================
@@ -137,23 +92,15 @@ namespace AZ {
     void
     Trace::HandleExceptions(bool isEnabled)
     {
-        (void)isEnabled;
+        AZ_UNUSED(isEnabled);
         if (IsDebuggerPresent())
         {
             return;
         }
 
-#if defined(AZ_ENABLE_DEBUG_TOOLS) && AZ_TRAIT_COMPILER_USE_UNHANDLED_EXCEPTION_HANDLER
-        if (isEnabled)
-        {
-            g_previousExceptionHandler = ::SetUnhandledExceptionFilter(&ExceptionHandler);
-        }
-        else
-        {
-            ::SetUnhandledExceptionFilter(g_previousExceptionHandler);
-            g_previousExceptionHandler = NULL;
-        }
-#endif // defined(AZ_ENABLE_DEBUG_TOOLS) && AZ_TRAIT_COMPILER_USE_UNHANDLED_EXCEPTION_HANDLER
+#if defined(AZ_ENABLE_DEBUG_TOOLS)
+        Platform::HandleExceptions(isEnabled);
+#endif
     }
 
     //=========================================================================
@@ -164,55 +111,22 @@ namespace AZ {
     Trace::Break()
     {
 #if defined(AZ_ENABLE_DEBUG_TOOLS)
+
 #   if defined(AZ_TESTS_ENABLED)
         if (!IsDebuggerPresent())
         {
             return; // Do not break when tests are running unless debugger is present
         }
 #   endif
-#   if defined(AZ_PLATFORM_WINDOWS)
-        __debugbreak();
-#define AZ_RESTRICTED_SECTION_IMPLEMENTED
-#elif defined(AZ_RESTRICTED_PLATFORM)
-#define AZ_RESTRICTED_SECTION TRACE_CPP_SECTION_4
-    #if defined(AZ_PLATFORM_XENIA)
-        #include "Xenia/Trace_cpp_xenia.inl"
-    #elif defined(AZ_PLATFORM_PROVO)
-        #include "Provo/Trace_cpp_provo.inl"
-    #endif
-#endif
-#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
-#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
-#   elif defined(AZ_PLATFORM_LINUX)
-        DEBUG_BREAK;
-#   elif defined(AZ_PLATFORM_ANDROID)
-        raise(SIGINT);
-#elif defined(AZ_PLATFORM_APPLE)
-        __builtin_trap();
-#   else
-        (*((int*)0)) = 1;
-#   endif
+
+        Platform::DebugBreak();
+
 #endif // AZ_ENABLE_DEBUG_TOOLS
     }
 
     void Debug::Trace::Terminate(int exitCode)
     {
-#if defined(AZ_PLATFORM_WINDOWS)
-        ::ExitProcess(exitCode);
-#define AZ_RESTRICTED_SECTION_IMPLEMENTED
-#elif defined(AZ_RESTRICTED_PLATFORM)
-#define AZ_RESTRICTED_SECTION TRACE_CPP_SECTION_5
-    #if defined(AZ_PLATFORM_XENIA)
-        #include "Xenia/Trace_cpp_xenia.inl"
-    #elif defined(AZ_PLATFORM_PROVO)
-        #include "Provo/Trace_cpp_provo.inl"
-    #endif
-#endif
-#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
-#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
-#else
-        _exit(exitCode);
-#endif
+        Platform::Terminate(exitCode);
     }
 
     //=========================================================================
@@ -324,16 +238,6 @@ namespace AZ {
             return;
         }
 
-#if defined(AZ_PLATFORM_WINDOWS) && defined(AZ_DEBUG_BUILD)
-        //show error message box
-        char fullMsg[8 * 1024];
-        _snprintf_s(fullMsg, AZ_ARRAY_SIZE(fullMsg), _TRUNCATE, "An error has occurred!\n%s(%d): '%s'\n%s\n\nPress OK to continue, or Cancel to debug\n", fileName, line, funcName, message);
-        if (MessageBox(NULL, fullMsg, "Error!", MB_OKCANCEL | MB_SYSTEMMODAL) == IDCANCEL)
-        {
-            Break();
-        }
-#endif // defined(AZ_PLATFORM_WINDOWS) && defined(AZ_DEBUG_BUILD)
-
         g_alreadyHandlingAssertOrFatal = false;
     }
     //=========================================================================
@@ -414,22 +318,7 @@ namespace AZ {
             window = g_dbgSystemWnd;
         }
 
-#if AZ_TRAIT_COMPILER_USE_OUTPUT_DEBUG_STRING  /// Output to the debugger!
-#   ifdef _UNICODE
-        wchar_t messageW[g_maxMessageLength];
-        size_t numCharsConverted;
-        if (mbstowcs_s(&numCharsConverted, messageW, message, g_maxMessageLength - 1) == 0)
-        {
-            OutputDebugStringW(messageW);
-        }
-#   else // !_UNICODE
-        OutputDebugString(message);
-#   endif // !_UNICODE
-#endif
-
-#if defined(AZ_PLATFORM_ANDROID) && !RELEASE
-        __android_log_print(ANDROID_LOG_INFO, window, message);
-#endif // AZ_PLATFORM_ANDROID
+        Platform::OutputToDebugger(window, message);
         
         if (!DebugInternal::g_suppressEBusCalls)
         {
@@ -494,100 +383,4 @@ namespace AZ {
         return g_exceptionInfo;
     }
 
-#if defined(AZ_ENABLE_DEBUG_TOOLS) && AZ_TRAIT_COMPILER_USE_UNHANDLED_EXCEPTION_HANDLER
-    //=========================================================================
-    // GetExeptionName
-    // [8/3/2011]
-    //=========================================================================
-    const char* GetExeptionName(DWORD code)
-    {
-    #define RETNAME(exc)    case exc: \
-    return (#exc);
-        switch (code)
-        {
-            RETNAME(EXCEPTION_ACCESS_VIOLATION);
-            RETNAME(EXCEPTION_ARRAY_BOUNDS_EXCEEDED);
-            RETNAME(EXCEPTION_BREAKPOINT);
-            RETNAME(EXCEPTION_DATATYPE_MISALIGNMENT);
-            RETNAME(EXCEPTION_FLT_DENORMAL_OPERAND);
-            RETNAME(EXCEPTION_FLT_DIVIDE_BY_ZERO);
-            RETNAME(EXCEPTION_FLT_INEXACT_RESULT);
-            RETNAME(EXCEPTION_FLT_INVALID_OPERATION);
-            RETNAME(EXCEPTION_FLT_OVERFLOW);
-            RETNAME(EXCEPTION_FLT_STACK_CHECK);
-            RETNAME(EXCEPTION_FLT_UNDERFLOW);
-            RETNAME(EXCEPTION_ILLEGAL_INSTRUCTION);
-            RETNAME(EXCEPTION_IN_PAGE_ERROR);
-            RETNAME(EXCEPTION_INT_DIVIDE_BY_ZERO);
-            RETNAME(EXCEPTION_INT_OVERFLOW);
-            RETNAME(EXCEPTION_INVALID_DISPOSITION);
-            RETNAME(EXCEPTION_NONCONTINUABLE_EXCEPTION);
-            RETNAME(EXCEPTION_PRIV_INSTRUCTION);
-            RETNAME(EXCEPTION_SINGLE_STEP);
-            RETNAME(EXCEPTION_STACK_OVERFLOW);
-            RETNAME(EXCEPTION_INVALID_HANDLE);
-        default:
-            return (char*)("Unknown exception");
-        }
-    #undef RETNAME
-    }
-
-    //=========================================================================
-    // ExceptionHandler
-    // [8/3/2011]
-    //=========================================================================
-    LONG WINAPI ExceptionHandler(PEXCEPTION_POINTERS ExceptionInfo)
-    {
-        static bool volatile isInExeption = false;
-        if (isInExeption)
-        {
-            // prevent g_tracer from calling the tracebus:
-            DebugInternal::g_suppressEBusCalls = true;
-            g_tracer.Output(g_dbgSystemWnd, "Exception handler loop!");
-            g_tracer.PrintCallstack(g_dbgSystemWnd, 0, ExceptionInfo->ContextRecord);
-            DebugInternal::g_suppressEBusCalls = false;
-
-            if (g_tracer.IsDebuggerPresent())
-            {
-                g_tracer.Break();
-            }
-            else
-            {
-                _exit(1); // do not proceed any further.  note that _exit(1) is expected to terminate immediately.  exit without the underscore may still execute code.
-            }
-        }
-
-        isInExeption = true;
-        g_exceptionInfo = (void*)ExceptionInfo;
-
-        char message[g_maxMessageLength];
-        g_tracer.Output(g_dbgSystemWnd, "==================================================================\n");
-        azsnprintf(message, g_maxMessageLength, "Exception : 0x%X - '%s' [%p]\n", ExceptionInfo->ExceptionRecord->ExceptionCode, GetExeptionName(ExceptionInfo->ExceptionRecord->ExceptionCode), ExceptionInfo->ExceptionRecord->ExceptionAddress);
-        g_tracer.Output(g_dbgSystemWnd, message);
-
-        EBUS_EVENT(TraceMessageDrillerBus, OnException, message);
-
-        TraceMessageResult result;
-        EBUS_EVENT_RESULT(result, TraceMessageBus, OnException, message);
-        if (result.m_value)
-        {
-            g_tracer.Output(g_dbgSystemWnd, "==================================================================\n");
-            g_exceptionInfo = NULL;
-            // if someone ever returns TRUE we assume that they somehow handled this exception and continue.
-            return EXCEPTION_CONTINUE_EXECUTION;
-        }
-        g_tracer.PrintCallstack(g_dbgSystemWnd, 0, ExceptionInfo->ContextRecord);
-        g_tracer.Output(g_dbgSystemWnd, "==================================================================\n");
-
-        // allowing continue of execution is not valid here.  This handler gets called for serious exceptions.
-        // programs wanting things like a message box can implement them on a case-by-case basis, but we want no such 
-        // default behavior - this code is used in automated build systems and UI applications alike.
-        LONG lReturn = EXCEPTION_CONTINUE_SEARCH;
-        isInExeption = false;
-        g_exceptionInfo = NULL;
-        return lReturn;
-    }
-#endif // defined(AZ_ENABLE_DEBUG_TOOLS) && AZ_TRAIT_COMPILER_USE_UNHANDLED_EXCEPTION_HANDLER
 } // namspace AZ
-
-#endif // #ifndef AZ_UNITY_BUILD

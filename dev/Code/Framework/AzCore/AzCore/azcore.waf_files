@@ -4,8 +4,11 @@
         "Root":
         [
             "base.h",
+            "base_Common.h",
             "base.cpp",
             "Docs.h",
+            "Platform.cpp",
+            "Platform.h",
             "PlatformDef.h",
             "PlatformIncl.h",
             "AzCoreModule.h",
@@ -80,7 +83,9 @@
         "Compression":
         [
             "Compression/compression.cpp",
-            "Compression/Compression.h"
+            "Compression/Compression.h",
+            "Compression/zstd_compression.cpp",
+            "Compression/zstd_compression.h"
         ],
         "Debug":
         [
@@ -96,7 +101,6 @@
             "Debug/ProfilerDriller.cpp",
             "Debug/ProfilerDriller.h",
             "Debug/ProfilerDrillerBus.h",
-            "Debug/StackTracer.cpp",
             "Debug/StackTracer.h",
             "Debug/EventTrace.h",
             "Debug/EventTrace.cpp",
@@ -142,12 +146,16 @@
         "IO":
         [
             "IO/ByteContainerStream.h",
+            "IO/CompressionBus.h",
+            "IO/CompressionBus.cpp",
             "IO/Compressor.cpp",
             "IO/Compressor.h",
             "IO/CompressorStream.cpp",
             "IO/CompressorStream.h",
             "IO/CompressorZLib.cpp",
             "IO/CompressorZLib.h",
+            "IO/CompressorZStd.cpp",
+            "IO/CompressorZStd.h",
             "IO/Device.cpp",
             "IO/Device.h",
             "IO/DeviceEventBus.h",
@@ -158,12 +166,8 @@
             "IO/IOUtils.cpp",
             "IO/GenericStreams.cpp",
             "IO/GenericStreams.h",
-            "IO/MagneticDevice.cpp",
-            "IO/MagneticDevice.h",
-            "IO/NetworkDevice.cpp",
-            "IO/NetworkDevice.h",
-            "IO/OpticalDevice.cpp",
-            "IO/OpticalDevice.h",
+            "IO/RequestPath.h",
+            "IO/RequestPath.cpp",
             "IO/Streamer.cpp",
             "IO/Streamer.h",
             "IO/StreamerComponent.cpp",
@@ -178,14 +182,35 @@
             "IO/StreamerUtil.h",
             "IO/SystemFile.cpp",
             "IO/SystemFile.h",
-            "IO/TextStreamWriters.h",
-            "IO/VirtualStream.cpp",
-            "IO/VirtualStream.h"
+            "IO/TextStreamWriters.h"
+        ],
+        "IO/Streamer": 
+        [
+            "IO/Streamer/BlockCache.h",
+            "IO/Streamer/BlockCache.cpp",
+            "IO/Streamer/DedicatedCache.h",
+            "IO/Streamer/DedicatedCache.cpp",
+            "IO/Streamer/FileRange.h",
+            "IO/Streamer/FileRange.cpp",
+            "IO/Streamer/FileRequest.h",
+            "IO/Streamer/FileRequest.cpp",
+            "IO/Streamer/FullFileDecompressor.h",
+            "IO/Streamer/FullFileDecompressor.cpp",
+            "IO/Streamer/ReadSplitter.h",
+            "IO/Streamer/ReadSplitter.cpp",
+            "IO/Streamer/Statistics.h",
+            "IO/Streamer/Statistics.cpp",
+            "IO/Streamer/StorageDrive.h",
+            "IO/Streamer/StorageDrive.cpp",
+            "IO/Streamer/StreamerConfiguration.h",
+            "IO/Streamer/StreamerContext.h",
+            "IO/Streamer/StreamerContext.cpp",
+            "IO/Streamer/StreamStackEntry.h",
+            "IO/Streamer/StreamStackEntry.cpp",
+            "IO/Streamer/StreamStackPreferences.h"
         ],
         "IPC":
         [
-            "IPC/DirectSocket.cpp",
-            "IPC/DirectSocket.h",
             "IPC/SharedMemory.cpp",
             "IPC/SharedMemory.h"
         ],
@@ -224,8 +249,6 @@
             "Math/FourVector3.h",
             "Math/Guid.h",
             "Math/Internal/MathTypes.h",
-            "Math/Internal/MathTypesFpu.inl",
-            "Math/Internal/MathTypesWin32.inl",
             "Math/Internal/Matrix3x3Fpu.inl",
             "Math/Internal/Matrix3x3Win32.inl",
             "Math/Internal/Matrix4x4Fpu.inl",
@@ -247,6 +270,7 @@
             "Math/IntersectPoint.h",
             "Math/IntersectSegment.cpp",
             "Math/IntersectSegment.h",
+            "Math/MathIntrinsics.h",
             "Math/MathReflection.cpp",
             "Math/MathReflection.h",
             "Math/MathUtils.h",
@@ -261,7 +285,6 @@
             "Math/PolygonPrism.cpp",
             "Math/Quaternion.cpp",
             "Math/Quaternion.h",
-            "Math/Random.cpp",
             "Math/Random.h",
             "Math/Sfmt.cpp",
             "Math/Sfmt.h",
@@ -317,7 +340,6 @@
             "Memory/NewAndDelete.inl",
             "Memory/OSAllocator.cpp",
             "Memory/OSAllocator.h",
-            "Memory/PoolAllocator.cpp",
             "Memory/PoolAllocator.h",
             "Memory/PoolSchema.cpp",
             "Memory/PoolSchema.h",
@@ -350,11 +372,6 @@
         [
             "Outcome/Internal/OutcomeStorage.h",
             "Outcome/Internal/OutcomeImpl.h"
-        ],
-        "Platform":
-        [
-            "Platform/Platform.h",
-            "Platform/Platform.cpp"
         ],
         "Preprocessor":
         [
@@ -483,14 +500,12 @@
             "JSON/error/error.h"
         ],
         "Utils": [
-            "Utils/Utils.h",
-            "Utils/Utils.cpp"
+            "Utils/Utils.h"
         ]
     },
     "none" : {
         "Script/Lua": [
-            "Script/lua/lua.h",
-            "Script/lua/lua.c"
+            "Script/lua/lua.h"
         ],
         "Memory": [
             "Memory/HeapSchema.cpp"

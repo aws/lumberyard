@@ -207,6 +207,23 @@ namespace TestAssetBuilder
                 return;
             }
 
+            // Validate that we get the products for this asset
+            bool result = false;
+            AZStd::vector<AZ::Data::AssetInfo> productsInfo;
+
+            AzToolsFramework::AssetSystemRequestBus::BroadcastResult(result, 
+                &AzToolsFramework::AssetSystemRequestBus::Events::GetAssetsProducedBySourceUUID, 
+                assetId.m_guid, productsInfo);
+
+            if (productsInfo.size() == 0)
+            {
+                AZ_Error("AssetBuilder", false, 
+                    "GetAssetsProducedBySourceUUID - list of products can't be empty. Assetid ( %s ) ( %s )", 
+                    assetId.ToString<AZStd::string>().c_str(), fileName.c_str());
+
+                return;
+            }
+
             AzFramework::StringFunc::Path::ReplaceExtension(fileName, "sourceprocessed");
         }
         else if (AzFramework::StringFunc::Equal(ext.c_str(), "dependent"))

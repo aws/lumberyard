@@ -38,6 +38,6 @@ struct IComponentFlowGraph
     // </interfuscator:shuffle>
 };
 
-DECLARE_COMPONENT_POINTERS(IComponentFlowGraph);
+DECLARE_SMART_POINTERS(IComponentFlowGraph);
 
 #endif // CRYINCLUDE_CRYCOMMON_COMPONENTS_ICOMPONENTFLOWGRAPH_H

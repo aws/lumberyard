@@ -726,4 +726,17 @@ namespace AzToolsFramework
         viewSplineSelect->m_width = width;
         return AZStd::move(viewSplineSelect);
     }
+
+    AZ::Vector3 CalculateViewDirection(
+        const Manipulators& manipulators, const AZ::Vector3& worldViewPosition)
+    {
+        const AZ::Transform worldFromLocalWithTransform =
+            manipulators.GetSpace() * manipulators.GetLocalTransform();
+
+        AZ::Vector3 lookDirection =
+            (worldFromLocalWithTransform.GetTranslation() - worldViewPosition).GetNormalizedExact();
+
+        return TransformDirectionNoScaling(
+            worldFromLocalWithTransform.GetInverseFast(), lookDirection);
+    }
 } // namespace AzToolsFramework

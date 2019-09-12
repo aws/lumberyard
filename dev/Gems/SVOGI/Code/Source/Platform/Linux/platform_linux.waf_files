@@ -1,0 +1,10 @@
+{
+    "auto":
+    {
+        "Platform/Linux":
+        [
+            "SVOGI_Traits_Platform.h",
+            "SVOGI_Traits_Linux.h"
+        ]
+    }
+}

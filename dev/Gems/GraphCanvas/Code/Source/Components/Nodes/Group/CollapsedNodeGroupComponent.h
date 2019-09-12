@@ -41,7 +41,6 @@ namespace GraphCanvas
         , public GeometryNotificationBus::Handler
         , public SceneNotificationBus::Handler
         , public VisualNotificationBus::Handler
-        , public NodeGroupNotificationBus::Handler
         , public CollapsedNodeGroupRequestBus::Handler
     {
     public:
@@ -76,14 +75,11 @@ namespace GraphCanvas
 
         // CommentNotifications
         void OnCommentChanged(const AZStd::string& comment) override;
+        void OnBackgroundColorChanged(const AZ::Color& color) override;
         ////
 
         // VisualNotifications
         bool OnMouseDoubleClick(const QGraphicsSceneMouseEvent* mouseEvent) override;
-        ////
-
-        // NodeGroupNotifications
-        void OnColorChanged(const AZ::Color& color) override;
         ////
 
         // CollapsedNodeGroupRequests

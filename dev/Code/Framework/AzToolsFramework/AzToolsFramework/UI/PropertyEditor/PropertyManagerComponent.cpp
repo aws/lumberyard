@@ -15,6 +15,7 @@
 #include <AzCore/Component/ComponentApplicationBus.h>
 #include <AzToolsFramework/ToolsComponents/EditorEntityIdContainer.h>
 #include <AzToolsFramework/UI/PropertyEditor/PropertyAudioCtrlTypes.h>
+#include <AzToolsFramework/UI/PropertyEditor/GenericComboBoxCtrl.h>
 
 namespace AzToolsFramework
 {
@@ -84,6 +85,7 @@ namespace AzToolsFramework
         {
     #ifdef _DEBUG
             auto it = m_Handlers.find(pHandler->GetHandlerName());
+
             while ((it != m_Handlers.end()) && (it->first == pHandler->GetHandlerName()))
             {
                 const PropertyHandlerBase* currentHandler = it->second;
@@ -161,6 +163,9 @@ namespace AzToolsFramework
             RegisterVectorHandlers();
             RegisterButtonPropertyHandlers();
             RegisterMultiLineEditHandler();
+
+            // GenericComboBoxHandlers
+            RegisterGenericComboBoxHandler<AZ::Crc32>();
         }
 
         PropertyHandlerBase* PropertyManagerComponent::ResolvePropertyHandler(AZ::u32 handlerName, const AZ::Uuid& handlerType)

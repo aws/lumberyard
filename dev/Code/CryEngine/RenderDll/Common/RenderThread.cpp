@@ -3686,7 +3686,7 @@ void SRenderThread::WaitFlushFinishedCond()
 #else
         const int OneHunderdMilliseconds = 100;
         bool timedOut = !(m_FlushFinishedCondition.TimedWait(m_LockFlushNotify, OneHunderdMilliseconds));
-#if defined(AZ_PLATFORM_APPLE_IOS) && !defined(_RELEASE)
+#if defined(AZ_PLATFORM_IOS) && !defined(_RELEASE)
         // When we trigger asserts or warnings from a thread other than the main thread, the dialog box has to be
         // presented from the main thread. So, we need to pump the system event loop while the main thread is waiting.
         // We're using locks for waiting on iOS. This means that once the main thread goes into the wait, it's not
@@ -3709,7 +3709,7 @@ void SRenderThread::WaitFlushFinishedCond()
 #ifdef WIN32
         AzFramework::ApplicationRequests::Bus::Broadcast(&AzFramework::ApplicationRequests::PumpSystemEventLoopUntilEmpty);
         Sleep(0);
-#elif defined(AZ_PLATFORM_APPLE_OSX) && !defined(_RELEASE)
+#elif defined(AZ_PLATFORM_MAC) && !defined(_RELEASE)
         // On MacOS, we display blocking alerts(dialogs) to provide notifications to users(eg: assert failed).
         // These alerts(NSAlert) can be triggered only from the main thread. If we run into an assert on the render thread,
         // this block of code ensures that the alert is displayed on the main thread and we're not deadlocked with render thread.

@@ -10,18 +10,15 @@
 *
 */
 
-#include <stdlib.h>
+#include <AzCore/Utils/Utils.h>
 #include <AzCore/PlatformIncl.h>
+
+#include <stdlib.h>
 
 namespace AZ
 {
     namespace Utils
     {
-        void RequestAbnormalTermination()
-        {
-            abort();
-        }
-
         void NativeErrorMessageBox(const char* title, const char* message)
         {
             ::MessageBox(0, message, title, MB_OK | MB_ICONERROR);

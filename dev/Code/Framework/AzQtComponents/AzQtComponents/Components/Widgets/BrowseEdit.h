@@ -97,7 +97,9 @@ namespace AzQtComponents
 
         static bool drawFrame(const Style* style, const QStyleOption* option, QPainter* painter, const QWidget* widget, const Config& config);
 
+        AZ_PUSH_DISABLE_WARNING(4251, "-Wunknown-warning-option") // 4251: 'AzQtComponents::BrowseEdit::m_data': class 'QScopedPointer<AzQtComponents::BrowseEdit::InternalData,QScopedPointerDeleter<T>>' needs to have dll-interface to be used by clients of class 'AzQtComponents::BrowseEdit'
         QScopedPointer<InternalData> m_data;
+        AZ_POP_DISABLE_WARNING
     };
 
 } // namespace AzQtComponents

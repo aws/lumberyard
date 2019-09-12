@@ -1005,10 +1005,10 @@ void UiCanvasManager::DebugDisplayCanvasData(int setting) const
     float textOpacity = 1.0f;
     float backgroundRectOpacity = 0.75f;
 
-    const AZ::Vector3 white(1,1,1);
-    const AZ::Vector3 grey(.5,.5,.5);
-    const AZ::Vector3 red(1,0.3,0.3);
-    const AZ::Vector3 blue(0.3,0.3,1);
+    const AZ::Vector3 white(1.0f, 1.0f, 1.0f);
+    const AZ::Vector3 grey(0.5f, 0.5f, 0.5f);
+    const AZ::Vector3 red(1.0f, 0.3f, 0.3f);
+    const AZ::Vector3 blue(0.3f, 0.3f, 1.0f);
 
     // If the viewport is narrow then a font size of 16 might be too large, so we use a size between 12 and 16 depending
     // on the viewport width.
@@ -1169,10 +1169,10 @@ void UiCanvasManager::DebugDisplayDrawCallData() const
     const float lineSpacing = 20.0f;
 
     const AZ::Vector3 white(1,1,1);
-    const AZ::Vector3 red(1,0.3,0.3);
-    const AZ::Vector3 blue(0.3,0.3,1);
-    const AZ::Vector3 green(0.3,1,0.3);
-    const AZ::Vector3 yellow(0.7,0.7,0.2);
+    const AZ::Vector3 red(1,0.3f,0.3f);
+    const AZ::Vector3 blue(0.3f,0.3f,1);
+    const AZ::Vector3 green(0.3f,1,0.3f);
+    const AZ::Vector3 yellow(0.7f,0.7f,0.2f);
         
     // local function to write a line of text (with a background rect) and increment Y offset
     AZStd::function<void(const char*, const AZ::Vector3&)> WriteLine = [&](const char* buffer, const AZ::Vector3& color)

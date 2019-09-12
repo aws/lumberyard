@@ -13,6 +13,7 @@
 #include "StdAfx.h"
 #include "MacroTexture.h"
 #include <AzCore/Math/Color.h>
+#include <AzCore/IO/Streamer.h>
 
 const MacroTexture::Region MacroTexture::Region::Unit(0.0f, 0.0f, 1.0f);
 
@@ -191,6 +192,12 @@ MacroTexture::Node* MacroTexture::HashTableLookup(Morton::Key key)
 
 void MacroTexture::FlushTiles()
 {
+    //For efficiency sake the AZ::IO::Streamer API keeps file handles open.
+    //We should close the file handle of the terrain macro texture whenever this
+    //class is shutting down. This is important for example when the Terrain Editor
+    //needs to modify the content of the macro texture file.
+    AZ::IO::Streamer::Instance().FlushCache(m_Filename.c_str());
+
     for (Node* node : m_ActiveNodes)
     {
         DeactivateNode(*node);

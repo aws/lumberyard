@@ -18,8 +18,8 @@
 #pragma once
 
 #include <AzCore/EBus/EBus.h>
-
 #include <AzCore/Math/Aabb.h>
+#include <AzCore/Math/Uuid.h>
 #include <AzCore/Component/Entity.h>
 #include <AzCore/Component/EntityId.h>
 #include <AzCore/Component/ComponentBus.h>
@@ -366,9 +366,9 @@ namespace AzToolsFramework
         virtual void SetSelectedEntities(const EntityIdList& selectedEntities) = 0;
 
         /*!
-         * Returns true if the specified entity is able to be selected (not locked).
-         * \param entityId
-         */
+        * Functionality removed, function call left in to prevent compile issues if anybody's using it.
+        * \param entityId
+        */
         virtual bool IsSelectable(const AZ::EntityId& entityId) = 0;
 
         /*!
@@ -742,6 +742,7 @@ namespace AzToolsFramework
         /// \param cubemapOutputPath path to a image file to generate
         /// \param hideEntity Indicates whether the entity should be hidden during cubemap generation. Controls whether the entity's current cubemap output is baked into the new cubemap.
         virtual void GenerateCubemapForEntity(AZ::EntityId /*entityId*/, AZStd::string* /*cubemapOutputPath*/, bool /*hideEntity*/) {}
+        virtual void GenerateCubemapWithIDForEntity(AZ::EntityId /*entityId*/, AZ::Uuid /*cubemapId*/, AZStd::string* /*cubemapOutputPath*/, bool /*hideEntity*/, bool /*hasCubemapId*/) {}
 
         //! Spawn asset browser for the appropriate asset types.
         virtual void BrowseForAssets(AssetBrowser::AssetSelectionModel& /*selection*/) = 0;

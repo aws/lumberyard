@@ -14,6 +14,7 @@
 #include <QCoreApplication>
 #include <QFont>
 #include <QGraphicsItem>
+#include <QGraphicsSceneEvent>
 #include <QPainter>
 #include <qwidget.h>
 

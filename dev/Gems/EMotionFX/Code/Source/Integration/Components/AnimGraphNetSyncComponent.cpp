@@ -124,7 +124,8 @@ namespace EMotionFX
                             "Replicates anim graph parameters over the network using GridMate")
                             ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
                             ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("Game", 0x232b318c))
-                            ->Attribute(AZ::Edit::Attributes::Category, AZ_CRC("Animation", 0x8d5284dc))
+                            ->Attribute(AZ::Edit::Attributes::Category, "Networking")
+                            ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/AnimGraphNetSync.svg")
                             ->DataElement( AZ::Edit::UIHandlers::Default, &AnimGraphNetSyncComponent::m_syncParameters, "Sync parameters",
                                 "Synchronize parameters of the anim graph on the entity" )
                             ->DataElement( AZ::Edit::UIHandlers::Default, &AnimGraphNetSyncComponent::m_syncActiveNodes, "Sync active nodes",
@@ -232,7 +233,8 @@ namespace EMotionFX
                 float beforeValue,
                 float afterValue)
             {
-                SetParameterOnServer<AnimParameter::Type::Float>(parameterIndex, afterValue);
+                AZ_UNUSED(beforeValue);
+                SetParameterOnServer<AnimParameter::Type::Float>(static_cast<AZ::u8>(parameterIndex), afterValue);
             }
 
             void AnimGraphNetSyncComponent::OnAnimGraphBoolParameterChanged(EMotionFX::AnimGraphInstance*,
@@ -240,7 +242,8 @@ namespace EMotionFX
                 bool beforeValue,
                 bool afterValue)
             {
-                SetParameterOnServer<AnimParameter::Type::Bool>(parameterIndex, afterValue);
+                AZ_UNUSED(beforeValue);
+                SetParameterOnServer<AnimParameter::Type::Bool>(static_cast<AZ::u8>(parameterIndex), afterValue);
             }
 
             void AnimGraphNetSyncComponent::OnAnimGraphStringParameterChanged(EMotionFX::AnimGraphInstance*,
@@ -248,6 +251,9 @@ namespace EMotionFX
                 const char* beforeValue,
                 const char* afterValue)
             {
+                AZ_UNUSED(parameterIndex);
+                AZ_UNUSED(beforeValue);
+                AZ_UNUSED(afterValue);
                 AZ_Warning("EMotionFX", false, "AnimGraphNetSync component does not supported synchronizing string parameters, please consider refactoring your anim graph to replace strings with integers or enum values.");
             }
 
@@ -256,7 +262,8 @@ namespace EMotionFX
                 const AZ::Vector2& beforeValue,
                 const AZ::Vector2& afterValue)
             {
-                SetParameterOnServer<AnimParameter::Type::Vector2>(parameterIndex, afterValue);
+                AZ_UNUSED(beforeValue);
+                SetParameterOnServer<AnimParameter::Type::Vector2>(static_cast<AZ::u8>(parameterIndex), afterValue);
             }
 
             void AnimGraphNetSyncComponent::OnAnimGraphVector3ParameterChanged(EMotionFX::AnimGraphInstance*,
@@ -264,7 +271,8 @@ namespace EMotionFX
                 const AZ::Vector3& beforeValue,
                 const AZ::Vector3& afterValue)
             {
-                SetParameterOnServer<AnimParameter::Type::Vector3>(parameterIndex, afterValue);
+                AZ_UNUSED(beforeValue);
+                SetParameterOnServer<AnimParameter::Type::Vector3>(static_cast<AZ::u8>(parameterIndex), afterValue);
             }
 
             void AnimGraphNetSyncComponent::OnAnimGraphRotationParameterChanged(EMotionFX::AnimGraphInstance*,
@@ -272,7 +280,8 @@ namespace EMotionFX
                 const AZ::Quaternion& beforeValue,
                 const AZ::Quaternion& afterValue)
             {
-                SetParameterOnServer<AnimParameter::Type::Quaternion>(parameterIndex, afterValue);
+                AZ_UNUSED(beforeValue);
+                SetParameterOnServer<AnimParameter::Type::Quaternion>(static_cast<AZ::u8>(parameterIndex), afterValue);
             }
 
             void AnimGraphNetSyncComponent::OnActiveNodesChanged(const NodeIndexContainer& activeNodes, const GridMate::TimeContext& tc)

@@ -13,7 +13,7 @@
 
 #include <GridMate/Carrier/StreamSecureSocketDriver.h>
 
-#if AZ_ENABLE_OPENSSL
+#if AZ_TRAIT_GRIDMATE_ENABLE_OPENSSL
 
 #include <AzCore/Math/Random.h>
 #include <AzCore/State/HSM.h>
@@ -496,4 +496,4 @@ GM_TEST_SUITE(StreamSecureSocketDriverTests)
     GM_TEST(Integ_StreamSecureSocketDriverTestsPingPong);
 GM_TEST_SUITE_END()
 
-#endif // AZ_ENABLE_OPENSSL
+#endif // AZ_TRAIT_GRIDMATE_ENABLE_OPENSSL

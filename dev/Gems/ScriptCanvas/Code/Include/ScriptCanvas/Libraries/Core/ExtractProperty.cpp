@@ -9,7 +9,6 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-
 #include <ScriptCanvas/Libraries/Core/ExtractProperty.h>
 #include <ScriptCanvas/Libraries/Core/BehaviorContextObjectNode.h>
 
@@ -23,18 +22,25 @@ namespace ScriptCanvas
         {
             void ExtractProperty::OnInit()
             {
-                m_sourceAccount.m_slotId = AddInputDatumDynamicTypedSlot("Source");
+                {
+                    DynamicDataSlotConfiguration slotConfiguration;
+
+                    slotConfiguration.m_name = "Source";
+                    slotConfiguration.m_dynamicDataType = DynamicDataType::Value;
+                    slotConfiguration.SetConnectionType(ConnectionType::Input);
+
+                    m_sourceAccount.m_slotId = AddSlot(slotConfiguration);
+                }
 
                 // DYNAMIC_SLOT_VERSION_CONVERTER
                 Slot* sourceSlot = GetSlot(m_sourceAccount.m_slotId);
 
                 if (sourceSlot && !sourceSlot->IsDynamicSlot())
                 {
-                    sourceSlot->SetDynamicDataType(DynamicDataType::Any);
+                    sourceSlot->SetDynamicDataType(DynamicDataType::Value);
                 }
                 ////
 
-                EndpointNotificationBus::Handler::BusConnect({ GetEntityId(), m_sourceAccount.m_slotId });
                 RefreshGetterFunctions();
             }
             
@@ -68,42 +74,31 @@ namespace ScriptCanvas
                 }
             }
 
-            bool ExtractProperty::SlotAcceptsType(const SlotId& slotID, const Data::Type& type) const
+            void ExtractProperty::OnEndpointConnected(const Endpoint& endpoint)
             {
-                if (slotID == m_sourceAccount.m_slotId)
+                Node::OnEndpointConnected(endpoint);
+
+                const SlotId& currentSlotId = EndpointNotificationBus::GetCurrentBusId()->GetSlotId();
+
+                if (currentSlotId == m_sourceAccount.m_slotId)
                 {
-                    if (!type.IsValid())
+                    AZ::Entity* dataOutEntity{};
+                    AZ::ComponentApplicationBus::BroadcastResult(dataOutEntity, &AZ::ComponentApplicationRequests::FindEntity, endpoint.GetNodeId());
+                    auto dataOutNode = dataOutEntity ? AZ::EntityUtils::FindFirstDerivedComponent<Node>(dataOutEntity) : nullptr;
+                    if (dataOutNode)
                     {
-                        return false;
-                    }
-                    Slot* sourceSlot = GetSlot(m_sourceAccount.m_slotId);
-                    return sourceSlot && DynamicSlotInputAcceptsType(sourceSlot->GetId(), type, Node::DynamicTypeArity::Single, *sourceSlot);
-                }
-                return true;
-            }
+                        AZ::TypeId previousType = ScriptCanvas::Data::ToAZType(m_sourceAccount.m_dataType);
 
-            void ExtractProperty::OnEndpointConnected(const Endpoint& dataOutEndpoint)
-            {
-                AZ::Entity* dataOutEntity{};
-                AZ::ComponentApplicationBus::BroadcastResult(dataOutEntity, &AZ::ComponentApplicationRequests::FindEntity, dataOutEndpoint.GetNodeId());
-                auto dataOutNode = dataOutEntity ? AZ::EntityUtils::FindFirstDerivedComponent<Node>(dataOutEntity) : nullptr;
-                if (dataOutNode)
-                {
-                    AZ::TypeId previousType = ScriptCanvas::Data::ToAZType(m_sourceAccount.m_dataType);
+                        // Sets the source metadata data type to be the same as the endpoint
+                        m_sourceAccount.m_dataType = dataOutNode->GetSlotDataType(endpoint.GetSlotId());
 
-                    // Sets the source metadata data type to be the same as the endpoint
-                    m_sourceAccount.m_dataType = dataOutNode->GetSlotDataType(dataOutEndpoint.GetSlotId());
-
-                    if (m_sourceAccount.m_dataType.GetAZType() != previousType)
-                    {
-                        ClearPropertySlots();
-                        AddPropertySlots(m_sourceAccount.m_dataType);
+                        if (m_sourceAccount.m_dataType.GetAZType() != previousType)
+                        {
+                            ClearPropertySlots();
+                            AddPropertySlots(m_sourceAccount.m_dataType);
+                        }
                     }
                 }
-            }
-
-            void ExtractProperty::OnEndpointDisconnected(const Endpoint& targetEndpoint)
-            {
             }
 
             void ExtractProperty::AddPropertySlots(const Data::Type& type)
@@ -124,10 +119,10 @@ namespace ScriptCanvas
                     config.m_name = slotName;
                     config.m_toolTip = "";
 
-                    config.m_dataType = getterWrapper.m_propertyType;
-                    config.m_slotType = SlotType::DataOut;
+                    config.SetType(getterWrapper.m_propertyType);
+                    config.SetConnectionType(ConnectionType::Output);
                     
-                    propertyAccount.m_propertySlotId = AddDataSlot(config);
+                    propertyAccount.m_propertySlotId = AddSlot(config);
                     
                     propertyAccount.m_getterFunction = getterWrapper.m_getterFunction;
                     m_propertyAccounts.push_back(propertyAccount);

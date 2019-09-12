@@ -17,6 +17,7 @@
 #include <IConsole.h>
 #include <MicrophoneBus.h>
 
+#include <CrySoundSystem_Traits_Platform.h>
 
 namespace Audio
 {
@@ -61,44 +62,10 @@ namespace Audio
     ///////////////////////////////////////////////////////////////////////////////////////////////////
     void CSoundCVars::RegisterVariables()
     {
-    #if defined(AZ_PLATFORM_WINDOWS)
-        m_nATLPoolSize                  = 8 << 10;  // 8 MiB on Windows
-        m_nFileCacheManagerSize         = 384 << 10;// 384 MiB on Windows
-        m_nAudioObjectPoolSize          = 1024;
-        m_nAudioEventPoolSize           = 512;
-#define AZ_RESTRICTED_SECTION_IMPLEMENTED
-#elif defined(AZ_RESTRICTED_PLATFORM)
-    #if defined(AZ_PLATFORM_XENIA)
-        #include "Xenia/SoundCVars_cpp_xenia.inl"
-    #elif defined(AZ_PLATFORM_PROVO)
-        #include "Provo/SoundCVars_cpp_provo.inl"
-    #endif
-#endif
-#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
-#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
-    #elif defined(AZ_PLATFORM_APPLE_OSX)
-        m_nATLPoolSize                  = 8 << 10;  // 8 MiB on Mac
-        m_nFileCacheManagerSize         = 384 << 10;// 384 MiB on Mac
-        m_nAudioObjectPoolSize          = 512;
-        m_nAudioEventPoolSize           = 256;
-    #elif defined(AZ_PLATFORM_LINUX_X64)
-        m_nATLPoolSize                  = 8 << 10;  // 8 MiB on Linux
-        m_nFileCacheManagerSize         = 384 << 10;// 384 MiB on Linux
-        m_nAudioObjectPoolSize          = 512;
-        m_nAudioEventPoolSize           = 256;
-    #elif defined(AZ_PLATFORM_APPLE_IOS) || defined(AZ_PLATFORM_APPLE_TV)
-        m_nATLPoolSize                  = 8 << 10;  // 8 MiB on iOS (re-evaluate this size!)
-        m_nFileCacheManagerSize         = 2 << 10;  // 2 MiB on iOS (re-evaluate this size!)
-        m_nAudioObjectPoolSize          = 128;
-        m_nAudioEventPoolSize           = 64;
-    #elif defined(AZ_PLATFORM_ANDROID)
-        m_nATLPoolSize                  = 4 << 10;  // 4 MiB on Android (re-evaluate this size!)
-        m_nFileCacheManagerSize         = 72 << 10; // 72 MiB on Android (re-evaluate this size!)
-        m_nAudioObjectPoolSize          = 256;
-        m_nAudioEventPoolSize           = 128;
-    #else
-        #error "Unsupported platform."
-    #endif
+        m_nATLPoolSize          = AZ_TRAIT_CRYSOUNDSYSTEM_ATL_POOL_SIZE;
+        m_nAudioEventPoolSize   = AZ_TRAIT_CRYSOUNDSYSTEM_AUDIO_EVENT_POOL_SIZE;
+        m_nAudioObjectPoolSize  = AZ_TRAIT_CRYSOUNDSYSTEM_AUDIO_OBJECT_POOL_SIZE;
+        m_nFileCacheManagerSize = AZ_TRAIT_CRYSOUNDSYSTEM_FILE_CACHE_MANAGER_SIZE;     
 
         // Common Cross-Platform Defaults
         m_nAudioProxiesInitType         = 0;
@@ -111,7 +78,22 @@ namespace Audio
         REGISTER_CVAR2("s_ATLPoolSize", &m_nATLPoolSize, m_nATLPoolSize, VF_REQUIRE_APP_RESTART,
             "Specifies the size (in KiB) of the memory pool to be used by the ATL.\n"
             "Usage: s_ATLPoolSize [0/...]\n"
-            "Default Windows: 8192 (8 MiB), Xbox One: 8192 (8 MiB), PS4: 8192 (8 MiB), Mac: 8192 (8 MiB), Linux: 8192 (8 MiB), iOS: 8192 (8 MiB), Android: 4096 (4 MiB)\n");
+            "Default: " AZ_TRAIT_CRYSOUNDSYSTEM_ATL_POOL_SIZE_DEFAULT_TEXT "\n");
+
+        REGISTER_CVAR2("s_AudioEventPoolSize", &m_nAudioEventPoolSize, m_nAudioEventPoolSize, VF_REQUIRE_APP_RESTART,
+            "Sets the number of preallocated audio events.\n"
+            "Usage: s_AudioEventPoolSize [0/...]\n"
+            "Default: " AZ_TRAIT_CRYSOUNDSYSTEM_AUDIO_EVENT_POOL_SIZE_DEFAULT_TEXT "\n");
+
+        REGISTER_CVAR2("s_AudioObjectPoolSize", &m_nAudioObjectPoolSize, m_nAudioObjectPoolSize, VF_REQUIRE_APP_RESTART,
+            "Sets the number of preallocated audio objects and corresponding audio proxies.\n"
+            "Usage: s_AudioObjectPoolSize [0/...]\n"
+            "Default: " AZ_TRAIT_CRYSOUNDSYSTEM_AUDIO_OBJECT_POOL_SIZE_DEFAULT_TEXT "\n");
+
+        REGISTER_CVAR2("s_FileCacheManagerSize", &m_nFileCacheManagerSize, m_nFileCacheManagerSize, VF_REQUIRE_APP_RESTART,
+            "Sets the size in KiB the AFCM will allocate on the heap.\n"
+            "Usage: s_FileCacheManagerSize [0/...]\n"
+            "Default: " AZ_TRAIT_CRYSOUNDSYSTEM_FILE_CACHE_MANAGER_SIZE_DEFAULT_TEXT "\n");
 
         REGISTER_CVAR2("s_OcclusionMaxDistance", &m_fOcclusionMaxDistance, m_fOcclusionMaxDistance, VF_CHEAT | VF_CHEAT_NOCHECK,
             "Obstruction/Occlusion is not calculated for the sounds whose distance to the listener is greater than this value.\n"
@@ -141,21 +123,6 @@ namespace Audio
             "Usage: s_VelocityTrackingThreshold [0/...]\n"
             "Default: 0.1 (10 cm/s)\n");
 
-        REGISTER_CVAR2("s_FileCacheManagerSize", &m_nFileCacheManagerSize, m_nFileCacheManagerSize, VF_REQUIRE_APP_RESTART,
-            "Sets the size in KiB the AFCM will allocate on the heap.\n"
-            "Usage: s_FileCacheManagerSize [0/...]\n"
-            "Default Windows: 393216 (384 MiB), Xbox One: 393216 (384 MiB), PS4: 393216 (384 MiB), Mac: 393216 (384 MiB), Linux: 393216 (384 MiB), iOS: 2048 (2 MiB), Android: 73728 (72 MiB)\n");
-
-        REGISTER_CVAR2("s_AudioObjectPoolSize", &m_nAudioObjectPoolSize, m_nAudioObjectPoolSize, VF_REQUIRE_APP_RESTART,
-            "Sets the number of preallocated audio objects and corresponding audio proxies.\n"
-            "Usage: s_AudioObjectPoolSize [0/...]\n"
-            "Default Windows: 1024, Xbox One: 512, PS4: 512, Mac: 512, Linux: 512, iOS: 128, Android: 256\n");
-
-        REGISTER_CVAR2("s_AudioEventPoolSize", &m_nAudioEventPoolSize, m_nAudioEventPoolSize, VF_REQUIRE_APP_RESTART,
-            "Sets the number of preallocated audio events.\n"
-            "Usage: s_AudioEventPoolSize [0/...]\n"
-            "Default Windows: 512, Xbox One: 256, PS4: 256, Mac: 256, Linux: 256, iOS: 64, Android: 128\n");
-
         REGISTER_CVAR2("s_AudioProxiesInitType", &m_nAudioProxiesInitType, m_nAudioProxiesInitType, VF_NULL,
             "Can override AudioProxies' init type on a global scale.\n"
             "If set it determines whether AudioProxies initialize synchronously or asynchronously.\n"
@@ -167,7 +134,7 @@ namespace Audio
             "1: All AudioProxies initialize synchronously.\n"
             "2: All AudioProxies initialize asynchronously.\n"
             "Usage: s_AudioProxiesInitType [0/1/2]\n"
-            "Default Windows: 0, Xbox One: 0, PS4: 0, Mac: 0, Linux: 0, iOS: 0, Android: 0\n");
+            "Default: 0\n");
 
         REGISTER_CVAR2("s_AudioListenerTranslationZOffset", &m_audioListenerTranslationZOffset, 0.f, VF_NULL,
             "Use this to specify a Z-Offset (\"Up\") for the audio listener's position.\n"

@@ -11,6 +11,7 @@
 */
 
 #include <ImageProcessing_precompiled.h>
+#include <ImageProcessing_Traits_Platform.h>
 #include <Editor/EditorCommon.h>
 #include <Processing/ImageToProcess.h>
 #include <ImageLoader/ImageLoaders.h>
@@ -66,7 +67,7 @@ namespace ImageProcessingEditor
         static AZStd::string mbStr = "MB";
         static AZStd::string gbStr = "GB";
 
-#if defined(AZ_PLATFORM_APPLE)
+#if AZ_TRAIT_IMAGEPROCESSING_USE_BASE10_BYTE_PREFIX
         kb = 1000.0;
         mb = kb * 1000.0;
         gb = mb * 1000.0;
@@ -74,7 +75,7 @@ namespace ImageProcessingEditor
         kbStr = "kB";
         mbStr = "mB";
         gbStr = "gB";
-#endif //AZ_PLATFORM_APPLE
+#endif // AZ_TRAIT_IMAGEPROCESSING_USE_BASE10_BYTE_PREFIX
 
         if (fileSizeInBytes < kb)
         {

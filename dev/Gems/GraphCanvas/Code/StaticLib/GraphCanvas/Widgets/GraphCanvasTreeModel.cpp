@@ -20,8 +20,7 @@ namespace GraphCanvas
     /////////////////////////
 
     void GraphCanvasTreeModel::Reflect(AZ::ReflectContext* reflectContext)
-    {
-        GraphCanvasMimeEvent::Reflect(reflectContext);
+    {        
         GraphCanvasMimeContainer::Reflect(reflectContext);
     }
 
@@ -123,6 +122,11 @@ namespace GraphCanvas
         }
 
         GraphCanvasTreeItem* item = static_cast<GraphCanvasTreeItem*>(index.internalPointer());
+        if (!item)
+        {
+            return QVariant();
+        }
+
         return item->Data(index, role);
     }
 

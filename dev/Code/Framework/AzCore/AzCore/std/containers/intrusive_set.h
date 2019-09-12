@@ -476,43 +476,6 @@ namespace AZStd
             clear();
         }
 
-#ifdef AZ_HAS_RVALUE_REFS
-        // TODO: LY-87175 Add move and swap operations to intrusive_set
-        /*AZ_FORCE_INLINE intrusive_multiset(this_type&& rhs)
-        {
-            assign_rv(AZStd::forward<this_type>(rhs));
-        }
-
-        this_type& operator=(this_type&& rhs)
-        {
-            assign_rv(AZStd::forward<this_type>(rhs));
-            return *this;
-        }
-
-        void assign_rv(this_type&& rhs)
-        {
-            if (this == &rhs) return;
-            node_ptr_type head = get_head();
-            node_ptr_type rhsHead = rhs.get_head();
-            hook_node_ptr_type headHook = Hook::to_node_ptr(head);
-            hook_node_ptr_type rhsHeadHook = Hook::to_node_ptr(rhsHead);
-
-            Hook::to_node_ptr(rhsHeadHook->m_next)->m_prev = head;
-            Hook::to_node_ptr(rhsHeadHook->m_prev)->m_next = head;
-            headHook->m_next = rhsHeadHook->m_next;
-            headHook->m_prev = rhsHeadHook->m_prev;
-            m_numElements = rhs.m_numElements;
-
-            rhsHeadHook->m_next = rhsHeadHook->m_prev = rhsHead;
-            rhs.m_numElements = 0;
-        }
-
-        void swap(this_type&& rhs)
-        {
-            assign_rv(AZStd::forward(rhs));
-        }*/
-#endif // AZ_HAS_RVALUE_REFS
-
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         // We can completely forbid copy/assign operators once we fully switch for containers that require movable only.
         AZ_FORCE_INLINE intrusive_multiset(const this_type& rhs)

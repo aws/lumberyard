@@ -24,30 +24,21 @@
 #include <AudioSystemImpl_wwise.h>
 
 
-#if defined(AZ_RESTRICTED_PLATFORM)
-#undef AZ_RESTRICTED_SECTION
-#define CRYAUDIOIMPLWWISE_CPP_SECTION_1 1
-#define CRYAUDIOIMPLWWISE_CPP_SECTION_2 2
-#endif
-
-#if defined(AZ_RESTRICTED_PLATFORM)
-#define AZ_RESTRICTED_SECTION CRYAUDIOIMPLWWISE_CPP_SECTION_1
-    #if defined(AZ_PLATFORM_XENIA)
-        #include "Xenia/CryAudioImplWwise_cpp_xenia.inl"
-    #elif defined(AZ_PLATFORM_PROVO)
-        #include "Provo/CryAudioImplWwise_cpp_provo.inl"
-    #endif
-#endif
-
 namespace Audio
 {
     // Define global objects.
     CAudioWwiseImplCVars g_audioImplCVars_wwise;
     CAudioLogger g_audioImplLogger_wwise;
 
-#if defined(PROVIDE_WWISE_IMPL_SECONDARY_POOL)
+#if AZ_TRAIT_CRYAUDIOIMPLWWISE_PROVIDE_IMPL_SECONDARY_POOL
     tMemoryPoolReferenced g_audioImplMemoryPoolSecondary_wwise;
-#endif // PROVIDE_AUDIO_IMPL_SECONDARY_POOL
+#endif // AZ_TRAIT_CRYAUDIOIMPLWWISE_PROVIDE_IMPL_SECONDARY_POOL
+
+    namespace Platform
+    {
+        void* InitializeSecondaryMemoryPool(size_t& secondarySize, CAudioWwiseImplCVars& audioImplCVars_wwise);
+    }
+
 } // namespace Audio
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -91,21 +82,12 @@ class CEngineModule_CryAudioImplWwise
             AZ::AllocatorInstance<Audio::AudioImplAllocator>::Create(allocDesc);
         }
 
-    #if defined(PROVIDE_WWISE_IMPL_SECONDARY_POOL)
+    #if AZ_TRAIT_CRYAUDIOIMPLWWISE_PROVIDE_IMPL_SECONDARY_POOL
         size_t nSecondarySize = 0;
-        void* pSecondaryMemory = nullptr;
-
-#if defined(AZ_RESTRICTED_PLATFORM)
-#define AZ_RESTRICTED_SECTION CRYAUDIOIMPLWWISE_CPP_SECTION_2
-    #if defined(AZ_PLATFORM_XENIA)
-        #include "Xenia/CryAudioImplWwise_cpp_xenia.inl"
-    #elif defined(AZ_PLATFORM_PROVO)
-        #include "Provo/CryAudioImplWwise_cpp_provo.inl"
-    #endif
-    #endif
+        void* pSecondaryMemory = Platform::InitializeSecondaryMemoryPool(nSecondarySize, g_audioImplCVars_wwise);
 
         g_audioImplMemoryPoolSecondary_wwise.InitMem(nSecondarySize, (uint8*)pSecondaryMemory);
-    #endif // PROVIDE_AUDIO_IMPL_SECONDARY_POOL
+    #endif // AZ_TRAIT_CRYAUDIOIMPLWWISE_PROVIDE_IMPL_SECONDARY_POOL
 
         auto implComponent = azcreate(CAudioSystemImpl_wwise, (), Audio::AudioImplAllocator, "AudioSystemImpl_wwise");
 

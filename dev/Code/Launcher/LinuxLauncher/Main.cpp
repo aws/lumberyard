@@ -228,7 +228,16 @@ static void SignalHandler(int sig, siginfo_t* info, void* secret)
         ftrace = stderr;
     }
 
-    AZ::Debug::StackPrinter::Print(ftrace);
+    AZ::Debug::StackFrame frames[25];
+    unsigned int frameCount = AZ_ARRAY_SIZE(frames);
+    frameCount = AZ::Debug::StackRecorder::Record(frames, frameCount);
+    AZ::Debug::SymbolStorage::StackLine lines[25];
+    AZ::Debug::SymbolStorage::DecodeFrames(frames, frameCount, lines);
+
+    for (unsigned int frame = 0; frame < frameCount; ++frame)
+    {
+        fprintf(ftrace, "%s", lines[frame]);
+    }
 
     if (ftrace != stderr)
     {

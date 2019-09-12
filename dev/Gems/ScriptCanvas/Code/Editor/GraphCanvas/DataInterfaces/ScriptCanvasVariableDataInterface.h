@@ -12,7 +12,6 @@
 #pragma once
 
 #include <GraphCanvas/Components/Connections/ConnectionBus.h>
-#include <GraphCanvas/Components/NodePropertyDisplay/ItemModelDataInterface.h>
 #include <GraphCanvas/Components/Nodes/NodeTitleBus.h>
 #include <GraphCanvas/Components/Slots/Data/DataSlotBus.h>
 
@@ -27,6 +26,9 @@
 
 namespace ScriptCanvasEditor
 {
+    /* 
+        Going to redo most of this class. Just want to submit in the interim, so just going to comment out this file rather then try to update it.
+
     class ScriptCanvasVariableDataInterface
         : public ScriptCanvasDataInterface<GraphCanvas::ItemModelDataInterface>
         , public ScriptCanvas::VariableNotificationBus::Handler
@@ -103,7 +105,7 @@ namespace ScriptCanvasEditor
             SignalValueChanged();
         }
 
-        void OnVariableRenamed(AZStd::string_view /*newVariableName*/) override
+        void OnVariableRenamed(AZStd::string_view newVariableName) override
         {
             SignalValueChanged();
         }
@@ -120,4 +122,5 @@ namespace ScriptCanvasEditor
 
         AZ::EntityId m_scriptCanvasGraphId;
     };
+    */
 }

@@ -9,7 +9,6 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#ifndef AZ_UNITY_BUILD
 
 #include <AzCore/std/hash.h>
 #include <AzCore/std/algorithm.h>
@@ -34,5 +33,3 @@ namespace AZStd
         return (pos == last ? *(last - 1) : *pos);
     }
 }
-
-#endif // AZ_UNITY_BUILD

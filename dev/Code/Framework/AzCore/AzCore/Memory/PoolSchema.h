@@ -149,7 +149,6 @@ namespace AZ
 
     protected:
 
-#ifdef AZ_THREAD_LOCAL
         static ThreadPoolData* GetThreadPoolData()
         {
             return m_threadData;
@@ -161,23 +160,10 @@ namespace AZ
         }
 
         static AZ_THREAD_LOCAL ThreadPoolData*  m_threadData;
-#else
-        static ThreadPoolData* GetThreadPoolData()
-        {
-            return nullptr;
-        }
-
-        static void SetThreadPoolData(ThreadPoolData* data)
-        {
-            (void)data;
-        }
-#endif // AZ_THREAD_LOCAL
     };
 
-#ifdef AZ_THREAD_LOCAL
     template<class Allocator>
     AZ_THREAD_LOCAL ThreadPoolData* ThreadPoolSchemaHelper<Allocator>::m_threadData = 0;
-#endif // AZ_THREAD_LOCAL
 }
 
 #endif // AZ_POOL_ALLOCATION_SCHEME_H

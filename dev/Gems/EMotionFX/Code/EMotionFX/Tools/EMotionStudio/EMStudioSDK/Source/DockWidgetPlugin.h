@@ -29,7 +29,7 @@ namespace EMStudio
 
     public:
         DockWidgetPlugin();
-        virtual ~DockWidgetPlugin();
+         ~DockWidgetPlugin() override;
 
         EMStudioPlugin::EPluginType GetPluginType() const override              { return EMStudioPlugin::PLUGINTYPE_DOCKWIDGET; }
 

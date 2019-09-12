@@ -33,7 +33,7 @@ namespace GraphCanvas
     //////////////////////////////
     // GeneralNodeTitleComponent
     //////////////////////////////
-	
+
     void GeneralNodeTitleComponent::Reflect(AZ::ReflectContext* context)
     {
         AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
@@ -67,8 +67,8 @@ namespace GraphCanvas
     {
         m_saveData.Activate(GetEntityId());
         SceneMemberNotificationBus::Handler::BusConnect(GetEntityId());
-        NodeTitleRequestBus::Handler::BusConnect(GetEntityId());
-
+        NodeTitleRequestBus::Handler::BusConnect(GetEntityId());        
+        
         if (m_generalNodeTitleWidget)
         {
             m_generalNodeTitleWidget->SetTitle(m_title);
@@ -87,6 +87,7 @@ namespace GraphCanvas
             m_generalNodeTitleWidget->Deactivate();
         }
 
+        SceneMemberNotificationBus::Handler::BusDisconnect();
         NodeTitleRequestBus::Handler::BusDisconnect();
     }
 
@@ -249,6 +250,7 @@ namespace GraphCanvas
     {
         SceneMemberNotificationBus::Handler::BusConnect(GetEntityId());
         NodeNotificationBus::Handler::BusConnect(GetEntityId());
+        RootGraphicsItemNotificationBus::Handler::BusConnect(GetEntityId());
 
         AZ::EntityId scene;
         SceneMemberRequestBus::EventResult(scene, GetEntityId(), &SceneMemberRequests::GetScene);
@@ -260,8 +262,9 @@ namespace GraphCanvas
     }
 
     void GeneralNodeTitleGraphicsWidget::Deactivate()
-    {
+    {        
         SceneMemberNotificationBus::Handler::BusDisconnect();
+        RootGraphicsItemNotificationBus::Handler::BusDisconnect();
         NodeNotificationBus::Handler::BusDisconnect();
         SceneNotificationBus::Handler::BusDisconnect();
     }
@@ -303,7 +306,22 @@ namespace GraphCanvas
 
     void GeneralNodeTitleGraphicsWidget::ConfigureIconConfiguration(PaletteIconConfiguration& paletteConfiguration)
     {
-        if (m_colorOverride)
+        bool isEnabled = false;
+        RootGraphicsItemRequestBus::EventResult(isEnabled, GetEntityId(), &RootGraphicsItemRequests::IsEnabled);
+
+        if (!isEnabled)
+        {
+            if (!m_disabledPalette)
+            {
+                StyleManagerRequestBus::BroadcastResult(m_disabledPalette, &StyleManagerRequests::FindColorPalette, "DisabledColorPalette");
+            }
+
+            if (m_disabledPalette)
+            {
+                m_disabledPalette->PopulatePaletteConfiguration(paletteConfiguration);
+            }
+        }
+        else if (m_colorOverride)
         {
             m_colorOverride->PopulatePaletteConfiguration(paletteConfiguration);
         }
@@ -391,6 +409,9 @@ namespace GraphCanvas
         m_styleHelper.SetStyle(GetEntityId(), Styling::Elements::Title);
         m_titleWidget->SetStyle(GetEntityId(), Styling::Elements::MainTitle);
         m_subTitleWidget->SetStyle(GetEntityId(), Styling::Elements::SubTitle);
+
+        // Just clear our the disabled palette and we'll get it when we need it.
+        m_disabledPalette = nullptr;
     }
 
     void GeneralNodeTitleGraphicsWidget::RefreshDisplay()
@@ -420,6 +441,12 @@ namespace GraphCanvas
     void GeneralNodeTitleGraphicsWidget::OnTooltipChanged(const AZStd::string& tooltip)
     {
         setToolTip(Tools::qStringFromUtf8(tooltip));
+    }
+
+    void GeneralNodeTitleGraphicsWidget::OnEnabledChanged(RootGraphicsItemEnabledState enabledState)
+    {
+        UpdateStyles();
+        RefreshDisplay();        
     }
 
     void GeneralNodeTitleGraphicsWidget::paint(QPainter* painter, const QStyleOptionGraphicsItem* option, QWidget* widget)
@@ -461,7 +488,22 @@ namespace GraphCanvas
         painter->save();
         painter->setClipPath(path);
 
-        if (m_colorOverride)
+        bool isEnabled = false;
+        RootGraphicsItemRequestBus::EventResult(isEnabled, GetEntityId(), &RootGraphicsItemRequests::IsEnabled);
+
+        if (!isEnabled)
+        {
+            if (!m_disabledPalette)
+            {
+                StyleManagerRequestBus::BroadcastResult(m_disabledPalette, &StyleManagerRequests::FindColorPalette, "DisabledColorPalette");
+            }            
+
+            if (m_disabledPalette)
+            {
+                QtDrawingUtils::FillArea((*painter), path.boundingRect(), (*m_disabledPalette));
+            }
+        }
+        else if (m_colorOverride)
         {
             QtDrawingUtils::FillArea((*painter), path.boundingRect(), (*m_colorOverride));
         }

@@ -10,16 +10,16 @@
 *
 */
 
-#include <AzFramework/API/ApplicationAPI_android.h>
+#include <AzFramework/API/ApplicationAPI_Platform.h>
 #include <AzFramework/Application/Application.h>
-#include <AzFramework/Input/Buses/Notifications/RawInputNotificationBus_android.h>
+#include <AzFramework/Input/Buses/Notifications/RawInputNotificationBus_Platform.h>
 
 #include <AzCore/Android/AndroidEnv.h>
 #include <AzCore/Android/JNI/Object.h>
 #include <AzCore/Android/JNI/scoped_ref.h>
 #include <AzCore/Android/Utils.h>
 #include <AzCore/std/parallel/atomic.h>
-#include <AzCore/std/parallel/conditional_variable.h>
+#include <AzCore/std/parallel/condition_variable.h>
 
 #include <android/input.h>
 #include <android/keycodes.h>

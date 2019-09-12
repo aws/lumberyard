@@ -49,10 +49,10 @@ namespace
         return GetLargestFloat(results.values);
     }
 
-    float GetElementDefaultTargetWidth(AZ::EntityId elementId, float defaultValue)
+    float GetElementDefaultTargetWidth(AZ::EntityId elementId, float defaultValue, float maxValue)
     {
         AZ::EBusAggregateResults<float> results;
-        EBUS_EVENT_ID_RESULT(results, elementId, UiLayoutCellDefaultBus, GetTargetWidth);
+        EBUS_EVENT_ID_RESULT(results, elementId, UiLayoutCellDefaultBus, GetTargetWidth, maxValue);
 
         if (results.values.empty())
         {
@@ -88,10 +88,10 @@ namespace
         return GetLargestFloat(results.values);
     }
 
-    float GetElementDefaultTargetHeight(AZ::EntityId elementId, float defaultValue)
+    float GetElementDefaultTargetHeight(AZ::EntityId elementId, float defaultValue, float maxValue)
     {
         AZ::EBusAggregateResults<float> results;
-        EBUS_EVENT_ID_RESULT(results, elementId, UiLayoutCellDefaultBus, GetTargetHeight);
+        EBUS_EVENT_ID_RESULT(results, elementId, UiLayoutCellDefaultBus, GetTargetHeight, maxValue);
 
         if (results.values.empty())
         {
@@ -119,15 +119,18 @@ namespace UiLayoutHelpers
 {
     ////////////////////////////////////////////////////////////////////////////////////////////////////
     LayoutCellSize::LayoutCellSize()
-        : m_minSize(-1.0f)
-        , m_targetSize(-1.0f)
-        , m_extraSizeRatio(-1.0f)
+        : m_minSize(LyShine::UiLayoutCellUnspecifiedSize)
+        , m_targetSize(LyShine::UiLayoutCellUnspecifiedSize)
+        , m_maxSize(LyShine::UiLayoutCellUnspecifiedSize)
+        , m_extraSizeRatio(LyShine::UiLayoutCellUnspecifiedSize)
     {
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////
     void GetLayoutCellWidths(AZ::EntityId elementId, bool ignoreDefaultLayoutCells, LayoutCellSizes& layoutCellsOut)
     {
+        // Helper for ApplyLayoutWidth handler in LayoutRow and LayoutColumn components
+
         AZStd::vector<AZ::EntityId> childEntityIds;
         EBUS_EVENT_ID_RESULT(childEntityIds, elementId, UiElementBus, GetChildEntityIds);
 
@@ -142,11 +145,12 @@ namespace UiLayoutHelpers
             {
                 EBUS_EVENT_ID_RESULT(layoutCell.m_minSize, childEntityId, UiLayoutCellBus, GetMinWidth);
                 EBUS_EVENT_ID_RESULT(layoutCell.m_targetSize, childEntityId, UiLayoutCellBus, GetTargetWidth);
+                EBUS_EVENT_ID_RESULT(layoutCell.m_maxSize, childEntityId, UiLayoutCellBus, GetMaxWidth);
                 EBUS_EVENT_ID_RESULT(layoutCell.m_extraSizeRatio, childEntityId, UiLayoutCellBus, GetExtraWidthRatio);
             }
 
             // If not overridden, get the default cell values
-            if (layoutCell.m_minSize < 0.0f)
+            if (!LyShine::IsUiLayoutCellSizeSpecified(layoutCell.m_minSize))
             {
                 layoutCell.m_minSize = 0.0f;
                 if (!ignoreDefaultLayoutCells)
@@ -154,15 +158,15 @@ namespace UiLayoutHelpers
                     layoutCell.m_minSize = GetElementDefaultMinWidth(childEntityId, layoutCell.m_minSize);
                 }
             }
-            if (layoutCell.m_targetSize < 0.0f)
+            if (!LyShine::IsUiLayoutCellSizeSpecified(layoutCell.m_targetSize))
             {
                 layoutCell.m_targetSize = 0.0f;
                 if (!ignoreDefaultLayoutCells)
                 {
-                    layoutCell.m_targetSize = GetElementDefaultTargetWidth(childEntityId, layoutCell.m_targetSize);
+                    layoutCell.m_targetSize = GetElementDefaultTargetWidth(childEntityId, layoutCell.m_targetSize, layoutCell.m_maxSize);
                 }
             }
-            if (layoutCell.m_extraSizeRatio < 0.0f)
+            if (!LyShine::IsUiLayoutCellSizeSpecified(layoutCell.m_extraSizeRatio))
             {
                 layoutCell.m_extraSizeRatio = 1.0f;
                 if (!ignoreDefaultLayoutCells)
@@ -172,6 +176,10 @@ namespace UiLayoutHelpers
             }
 
             layoutCell.m_targetSize = AZ::GetMax(layoutCell.m_targetSize, layoutCell.m_minSize);
+            if (LyShine::IsUiLayoutCellSizeSpecified(layoutCell.m_maxSize) && layoutCell.m_maxSize < layoutCell.m_targetSize)
+            {
+                layoutCell.m_targetSize = layoutCell.m_maxSize;
+            }
 
             layoutCellsOut.push_back(layoutCell);
         }
@@ -180,6 +188,8 @@ namespace UiLayoutHelpers
     ////////////////////////////////////////////////////////////////////////////////////////////////////
     void GetLayoutCellHeights(AZ::EntityId elementId, bool ignoreDefaultLayoutCells, LayoutCellSizes& layoutCellsOut)
     {
+        // Helper for ApplyLayoutHeight handler in LayoutRow and LayoutColumn components
+
         AZStd::vector<AZ::EntityId> childEntityIds;
         EBUS_EVENT_ID_RESULT(childEntityIds, elementId, UiElementBus, GetChildEntityIds);
 
@@ -194,11 +204,12 @@ namespace UiLayoutHelpers
             {
                 EBUS_EVENT_ID_RESULT(layoutCell.m_minSize, childEntityId, UiLayoutCellBus, GetMinHeight);
                 EBUS_EVENT_ID_RESULT(layoutCell.m_targetSize, childEntityId, UiLayoutCellBus, GetTargetHeight);
+                EBUS_EVENT_ID_RESULT(layoutCell.m_maxSize, childEntityId, UiLayoutCellBus, GetMaxHeight);
                 EBUS_EVENT_ID_RESULT(layoutCell.m_extraSizeRatio, childEntityId, UiLayoutCellBus, GetExtraHeightRatio);
             }
 
             // If not overridden, get the default cell values
-            if (layoutCell.m_minSize < 0.0f)
+            if (!LyShine::IsUiLayoutCellSizeSpecified(layoutCell.m_minSize))
             {
                 layoutCell.m_minSize = 0.0f;
                 if (!ignoreDefaultLayoutCells)
@@ -206,15 +217,15 @@ namespace UiLayoutHelpers
                     layoutCell.m_minSize = GetElementDefaultMinHeight(childEntityId, layoutCell.m_minSize);
                 }
             }
-            if (layoutCell.m_targetSize < 0.0f)
+            if (!LyShine::IsUiLayoutCellSizeSpecified(layoutCell.m_targetSize))
             {
                 layoutCell.m_targetSize = 0.0f;
                 if (!ignoreDefaultLayoutCells)
                 {
-                    layoutCell.m_targetSize = GetElementDefaultTargetHeight(childEntityId, layoutCell.m_targetSize);
+                    layoutCell.m_targetSize = GetElementDefaultTargetHeight(childEntityId, layoutCell.m_targetSize, layoutCell.m_maxSize);
                 }
             }
-            if (layoutCell.m_extraSizeRatio < 0.0f)
+            if (!LyShine::IsUiLayoutCellSizeSpecified(layoutCell.m_extraSizeRatio))
             {
                 layoutCell.m_extraSizeRatio = 1.0f;
                 if (!ignoreDefaultLayoutCells)
@@ -224,6 +235,10 @@ namespace UiLayoutHelpers
             }
 
             layoutCell.m_targetSize = AZ::GetMax(layoutCell.m_targetSize, layoutCell.m_minSize);
+            if (LyShine::IsUiLayoutCellSizeSpecified(layoutCell.m_maxSize) && layoutCell.m_maxSize < layoutCell.m_targetSize)
+            {
+                layoutCell.m_targetSize = layoutCell.m_maxSize;
+            }
 
             layoutCellsOut.push_back(layoutCell);
         }
@@ -239,13 +254,13 @@ namespace UiLayoutHelpers
         int i = 0;
         for (auto childEntityId : childEntityIds)
         {
-            float value = -1.0f;
+            float value = LyShine::UiLayoutCellUnspecifiedSize;
 
             // First check for overridden cell values
             EBUS_EVENT_ID_RESULT(value, childEntityId, UiLayoutCellBus, GetMinWidth);
 
             // If not overridden, get the default cell values
-            if (value < 0.0f)
+            if (!LyShine::IsUiLayoutCellSizeSpecified(value))
             {
                 value = 0.0f;
                 if (!ignoreDefaultLayoutCells)
@@ -263,6 +278,9 @@ namespace UiLayoutHelpers
 
     AZStd::vector<float> GetLayoutCellTargetWidths(AZ::EntityId elementId, bool ignoreDefaultLayoutCells)
     {
+        // Helper for GetTargetWidth handler in LayoutRow and LayoutColumn components.
+        // Used when a LayoutRow/Column wants to know its target size (ex. when a layout element has a LayoutFitterComponent or when layouts are nested)
+
         AZStd::vector<AZ::EntityId> childEntityIds;
         EBUS_EVENT_ID_RESULT(childEntityIds, elementId, UiElementBus, GetChildEntityIds);
 
@@ -271,25 +289,29 @@ namespace UiLayoutHelpers
         int i = 0;
         for (auto childEntityId : childEntityIds)
         {
-            float value = -1.0f;
+            float value = LyShine::UiLayoutCellUnspecifiedSize;
 
             // First check for overridden cell values
             EBUS_EVENT_ID_RESULT(value, childEntityId, UiLayoutCellBus, GetTargetWidth);
 
+            // Get max value
+            float maxValue = LyShine::UiLayoutCellUnspecifiedSize;
+            EBUS_EVENT_ID_RESULT(maxValue, childEntityId, UiLayoutCellBus, GetMaxWidth);
+
             // If not overridden, get the default cell values
-            if (value < 0.0f)
+            if (!LyShine::IsUiLayoutCellSizeSpecified(value))
             {
                 value = 0.0f;
                 if (!ignoreDefaultLayoutCells)
                 {
-                    value = GetElementDefaultTargetWidth(childEntityId, value);
+                    value = GetElementDefaultTargetWidth(childEntityId, value, maxValue);
                 }
             }
 
             // Make sure that min width isn't greater than target width
-            float minValue = -1.0f;
+            float minValue = LyShine::UiLayoutCellUnspecifiedSize;
             EBUS_EVENT_ID_RESULT(minValue, childEntityId, UiLayoutCellBus, GetMinWidth);
-            if (minValue < 0.0f)
+            if (!LyShine::IsUiLayoutCellSizeSpecified(minValue))
             {
                 minValue = 0.0f;
                 if (!ignoreDefaultLayoutCells)
@@ -298,6 +320,12 @@ namespace UiLayoutHelpers
                 }
             }
             value = AZ::GetMax(value, minValue);
+
+            // Make sure that max width isn't less than target width
+            if (LyShine::IsUiLayoutCellSizeSpecified(maxValue) && maxValue < value)
+            {
+                value = maxValue;
+            }
 
             values[i] = value;
             i++;
@@ -316,13 +344,13 @@ namespace UiLayoutHelpers
         int i = 0;
         for (auto childEntityId : childEntityIds)
         {
-            float value = -1.0f;
+            float value = LyShine::UiLayoutCellUnspecifiedSize;
 
             // First check for overridden cell values
             EBUS_EVENT_ID_RESULT(value, childEntityId, UiLayoutCellBus, GetMinHeight);
 
             // If not overridden, get the default cell values
-            if (value < 0.0f)
+            if (!LyShine::IsUiLayoutCellSizeSpecified(value))
             {
                 value = 0.0f;
                 if (!ignoreDefaultLayoutCells)
@@ -340,6 +368,9 @@ namespace UiLayoutHelpers
 
     AZStd::vector<float> GetLayoutCellTargetHeights(AZ::EntityId elementId, bool ignoreDefaultLayoutCells)
     {
+        // Helper for GetTargetHeight handler in LayoutRow and LayoutColumn components.
+        // Used when a LayoutRow/Column wants to know its target size (ex. when a layout element has a LayoutFitterComponent or when layouts are nested)
+
         AZStd::vector<AZ::EntityId> childEntityIds;
         EBUS_EVENT_ID_RESULT(childEntityIds, elementId, UiElementBus, GetChildEntityIds);
 
@@ -348,25 +379,29 @@ namespace UiLayoutHelpers
         int i = 0;
         for (auto childEntityId : childEntityIds)
         {
-            float value = -1.0f;
+            float value = LyShine::UiLayoutCellUnspecifiedSize;
 
             // First check for overridden cell values
             EBUS_EVENT_ID_RESULT(value, childEntityId, UiLayoutCellBus, GetTargetHeight);
 
+            // Get max value
+            float maxValue = LyShine::UiLayoutCellUnspecifiedSize;
+            EBUS_EVENT_ID_RESULT(maxValue, childEntityId, UiLayoutCellBus, GetMaxHeight);
+
             // If not overridden, get the default cell values
-            if (value < 0.0f)
+            if (!LyShine::IsUiLayoutCellSizeSpecified(value))
             {
                 value = 0.0f;
                 if (!ignoreDefaultLayoutCells)
                 {
-                    value = GetElementDefaultTargetHeight(childEntityId, value);
+                    value = GetElementDefaultTargetHeight(childEntityId, value, maxValue);
                 }
             }
 
             // Make sure that min height isn't greater than target height
-            float minValue = -1.0f;
+            float minValue = LyShine::UiLayoutCellUnspecifiedSize;
             EBUS_EVENT_ID_RESULT(minValue, childEntityId, UiLayoutCellBus, GetMinHeight);
-            if (minValue < 0.0f)
+            if (!LyShine::IsUiLayoutCellSizeSpecified(minValue))
             {
                 minValue = 0.0f;
                 if (!ignoreDefaultLayoutCells)
@@ -375,6 +410,12 @@ namespace UiLayoutHelpers
                 }
             }
             value = AZ::GetMax(value, minValue);
+
+            // Make sure that max height isn't less than target height
+            if (LyShine::IsUiLayoutCellSizeSpecified(maxValue) && maxValue < value)
+            {
+                value = maxValue;
+            }
 
             values[i] = value;
             i++;
@@ -455,47 +496,93 @@ namespace UiLayoutHelpers
         // If there is still space left, allocate extra size based on ratios
         if (availableSize > 0.0f)
         {
-            // Make a list of element indexes that need extra size
-            AZStd::vector<int> needExtraSizeIndexes;
-            float smallestRatio = -1.0f;
+            struct CellExtraSizeInfo
+            {
+                int m_cellIndex;
+                float m_normalizedExtraSizeRatio;
+                bool m_reachedMax;
+
+                CellExtraSizeInfo(int cellIndex)
+                {
+                    m_cellIndex = cellIndex;
+                    m_normalizedExtraSizeRatio = 0.0f;
+                    m_reachedMax = false;
+                }
+            };
+
+            // Make a list of cells that accept extra size
+            AZStd::vector<CellExtraSizeInfo> cellsAcceptingExtraSize;
+            cellsAcceptingExtraSize.reserve(numElements);
             for (int i = 0; i < numElements; i++)
             {
                 if (layoutCells[i].m_extraSizeRatio > 0.0f)
                 {
-                    needExtraSizeIndexes.push_back(i);
-
-                    // Track the smallest ratio
-                    if (smallestRatio < 0.0f || smallestRatio > layoutCells[i].m_extraSizeRatio)
-                    {
-                        smallestRatio = layoutCells[i].m_extraSizeRatio;
-                    }
+                    cellsAcceptingExtraSize.push_back(CellExtraSizeInfo(i));
                 }
             }
 
-            if (!needExtraSizeIndexes.empty())
+            // Add extra size to each element
+            while (!cellsAcceptingExtraSize.empty())
             {
-                // Normalize ratios so that the smallest ratio has a value of one
-                AZStd::vector<float> normalizedExtraSizeRatios(needExtraSizeIndexes.size(), 0.0f);
-                int normalizedRatioIndex = 0;
-                float totalUnits = 0.0f;
-                for (auto index : needExtraSizeIndexes)
+                // Find smallest extra size ratio
+                float smallestRatio = -1.0f;
+                for (const auto& cellExtraSizeInfo : cellsAcceptingExtraSize)
                 {
-                    normalizedExtraSizeRatios[normalizedRatioIndex] = layoutCells[index].m_extraSizeRatio / smallestRatio;
-                    totalUnits += normalizedExtraSizeRatios[normalizedRatioIndex];
-                    normalizedRatioIndex++;
+                    const LayoutCellSize& layoutCell = layoutCells[cellExtraSizeInfo.m_cellIndex];
+                    if (smallestRatio < 0.0f || smallestRatio > layoutCell.m_extraSizeRatio)
+                    {
+                        smallestRatio = layoutCell.m_extraSizeRatio;
+                    }
                 }
 
-                if (totalUnits > 0.0f)
+                // Normalize ratios so that the smallest ratio has a value of one
+                float totalUnits = 0.0f;
+                for (auto& cellExtraSizeInfo : cellsAcceptingExtraSize)
                 {
-                    // Add extra size to each element
-                    float sizePerUnit = availableSize / totalUnits;
-                    normalizedRatioIndex = 0;
-                    for (auto index : needExtraSizeIndexes)
+                    const LayoutCellSize& layoutCell = layoutCells[cellExtraSizeInfo.m_cellIndex];
+                    cellExtraSizeInfo.m_normalizedExtraSizeRatio = layoutCell.m_extraSizeRatio / smallestRatio;
+                    totalUnits += cellExtraSizeInfo.m_normalizedExtraSizeRatio;
+                }
+
+                // Track any unused space by a cell due to reaching its maximum size
+                float unusedSpace = 0.0f;
+
+                const float sizePerUnit = availableSize / totalUnits;
+                for (auto& cellExtraSizeInfo : cellsAcceptingExtraSize)
+                {
+                    const LayoutCellSize& layoutCell = layoutCells[cellExtraSizeInfo.m_cellIndex];
+                    const float sizeToAdd = cellExtraSizeInfo.m_normalizedExtraSizeRatio * sizePerUnit;
+                    const float curSize = sizesOut[cellExtraSizeInfo.m_cellIndex];
+                    const float newSize = curSize + sizeToAdd;
+                    if (LyShine::IsUiLayoutCellSizeSpecified(layoutCell.m_maxSize) && layoutCell.m_maxSize < newSize)
                     {
-                        float sizeToAdd = normalizedExtraSizeRatios[normalizedRatioIndex] * sizePerUnit;
-                        sizesOut[index] += sizeToAdd;
-                        normalizedRatioIndex++;
+                        sizesOut[cellExtraSizeInfo.m_cellIndex] = layoutCell.m_maxSize;
+                        cellExtraSizeInfo.m_reachedMax = true;
+                        unusedSpace += newSize - layoutCell.m_maxSize;
                     }
+                    else
+                    {
+                        sizesOut[cellExtraSizeInfo.m_cellIndex] += sizeToAdd;
+                    }
+                }
+
+                if (unusedSpace >= 1.0f)
+                {
+                    // Remove any cells that have reached their max size
+                    cellsAcceptingExtraSize.erase(
+                        AZStd::remove_if(
+                            cellsAcceptingExtraSize.begin(), cellsAcceptingExtraSize.end(),
+                            [](const CellExtraSizeInfo& cellExtraSizeInfo)
+                    {
+                        return cellExtraSizeInfo.m_reachedMax;
+                    }),
+                    cellsAcceptingExtraSize.end());
+
+                    availableSize = unusedSpace;
+                }
+                else
+                {
+                    break;
                 }
             }
         }
@@ -519,6 +606,11 @@ namespace UiLayoutHelpers
             else
             {
                 size = AZ::GetMin(availableSize, layoutCell.m_targetSize);
+            }
+
+            if (LyShine::IsUiLayoutCellSizeSpecified(layoutCell.m_maxSize) && layoutCell.m_maxSize < size)
+            {
+                size = layoutCell.m_maxSize;
             }
         }
 

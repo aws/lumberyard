@@ -99,9 +99,9 @@ public:
 
     bool RefineTiles();
 
-    uint32 GetFilteredValueAt(const float fpx, const float fpy);
+    uint32 GetFilteredValueAt(const double fpx, const double fpy);
 
-    uint32 GetValueAt(const float fpx, const float fpy);
+    uint32 GetValueAt(const double fpx, const double fpy);
 
     bool GetNeedExportTexture() const
     {
@@ -134,6 +134,19 @@ private:
         CTimeValue      m_timeLastUsed;         // needed for "last recently used" strategy
         bool                    m_bDirty;                       // true=tile needs to be written to disk, needed for "last recently used" strategy
         uint32              m_dwSize;                       // only valid if m_dwSize!=0, if not valid you need to call LoadTileIfNeeded()
+
+        uint32 GetWidth()  
+        { 
+            AZ_Assert(m_pTileImage, "Invalid tile image");
+            return m_pTileImage ? m_pTileImage->GetWidth() : 0;
+        }
+
+        uint32 GetHeight() 
+        { 
+            AZ_Assert(m_pTileImage, "Invalid tile image");
+            return m_pTileImage ? m_pTileImage->GetHeight() : 0;
+        }
+
     };
 
     std::vector<CTerrainTextureTiles> m_TerrainTextureTiles; // [x+y*m_dwTileCountX]
@@ -169,6 +182,16 @@ private:
 
     bool IsDirty() const;
 
+    /** Given absolute percentages of 0.0 - 1.0, return the tile index and the relative percent (0.0 - 1.0) within the tile.
+            Both the absolute and relative percentages are inclusive on both sides of the range.  
+        @param xPercent        input: the absolute percentage in the x direction (0.0 is left edge, 1.0 is right edge)
+        @param yPercent        input: the absolute percentage in the y direction (0.0 is top edge, 1.0 is bottom edge)
+        @param xTileIndex      output: the x index of the tile
+        @param yTileIndex      output: the y index of the tile
+        @param xTilePercent    output: the relative percentage within the tile in the x direction 
+        @param yTilePercent    output: the relative percentage within the tile in the y direction
+    */    
+    inline void ConvertWorldToTileLookups(const double xPercent, const double yPercent, uint32& xTileIndex, uint32& yTileIndex, double& xTilePercent, double& yTilePercent);
 };
 
 #endif // CRYINCLUDE_EDITOR_TERRAIN_RGBLAYER_H

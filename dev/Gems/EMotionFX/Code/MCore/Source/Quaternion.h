@@ -13,6 +13,7 @@
 #pragma once
 
 // include required headers
+#include <AzCore/RTTI/TypeInfo.h>
 #include <AzCore/Math/Vector2.h>
 #include "StandardHeaders.h"
 #include "FastMath.h"
@@ -34,6 +35,8 @@ namespace MCore
     class MCORE_API Quaternion
     {
     public:
+        AZ_TYPE_INFO(MCore::Quaternion, "{1807CD22-EBB5-45E8-8113-3B1DABB53F12}")
+
         /**
          * Default constructor. Sets x, y and z to 0 and w to 1.
          */

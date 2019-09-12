@@ -406,7 +406,7 @@ def DefineGem(ctx, *k, **kw):
             cry_utils.append_unique_kw_entry(module_kw, 'use', 'AzTest')
             test_waf_files = "{}_tests.waf_files".format(module_file_list_base)
             if ctx.path.find_node(test_waf_files):
-                cry_utils.append_unique_kw_entry(module_kw, 'file_list', test_waf_files)
+                cry_utils.append_unique_kw_entry(module_kw, 'test_all_file_list', test_waf_files)
 
         # Setup includes
         include_paths = []

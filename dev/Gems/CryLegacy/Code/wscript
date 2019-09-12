@@ -47,6 +47,7 @@ def build(bld):
                                bld.Path('Code/CryEngine')],
 
         use                 = ['CryAction_AutoFlowNode','AzFramework'],
+#        uselib              = ['LUA'],
 
         win_lib             = [ 'Ws2_32', 'Shell32', 'mswsock', 'gdi32', 'wininet', 'Ole32' ],
         win_linkflags       = '/NODEFAULTLIB:libcmt.lib',

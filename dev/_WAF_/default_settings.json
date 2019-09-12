@@ -361,6 +361,12 @@
             "attribute": "msvs_version", 
             "default_value": "14", 
             "description": "Version of the MS Visual Studio Solution to generate"
+        }, 
+        {
+            "long_form": "--msbuild", 
+            "attribute": "msbuild", 
+            "default_value": "False", 
+            "description": "Builds a Visual Studio solution that uses MSBuild instead of waf build"
         }
     ]
 }

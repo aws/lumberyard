@@ -90,7 +90,7 @@ namespace AzToolsFramework
                 }
             }
 
-#if AZ_DEBUG_BUILD
+#ifndef AZ_DEBUG_BUILD
             if (m_changes.size() > 0)
             {
                 AZ_TracePrintf("Asset Browser DEBUG", "%d/%d data changes applied\n", m_changes.size() - changesFailed.size(), m_changes.size());

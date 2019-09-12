@@ -26,7 +26,7 @@ def build(bld):
         exclude_monolithic  = True,
         client_only         = True,
         features            = ['qt5'],
-        use                 = ['EditorCore', 'AzQtComponents'],
+        use                 = ['EditorCore', 'AzToolsFramework', 'AzQtComponents'],
         uselib              = ['QTMAIN',
                                'QTANGLE',
                                'QT5CORE',

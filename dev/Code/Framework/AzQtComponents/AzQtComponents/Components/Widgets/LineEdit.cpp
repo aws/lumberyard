@@ -354,4 +354,5 @@ namespace AzQtComponents
     }
 } // namespace AzQtComponents
 
-#include <Components/Widgets/LineEdit.moc>
+//not a QObject
+//#include <Components/Widgets/LineEdit.moc>

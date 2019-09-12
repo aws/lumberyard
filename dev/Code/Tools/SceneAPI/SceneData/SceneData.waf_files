@@ -12,18 +12,17 @@
             "ReflectionRegistrar.h",
             "ReflectionRegistrar.cpp"
         ],
-        "Behaviors":
-        [
+        "Behaviors": [
             "Behaviors/Registry.h",
             "Behaviors/Registry.cpp",
-            "Behaviors/MeshGroup.h",
-            "Behaviors/MeshGroup.cpp",
-            "Behaviors/SkeletonGroup.h",
-            "Behaviors/SkeletonGroup.cpp",
-            "Behaviors/SkinGroup.h",
-            "Behaviors/SkinGroup.cpp",
-            "Behaviors/AnimationGroup.h",
-            "Behaviors/AnimationGroup.cpp",
+            "Behaviors/MeshGroupBehavior.h",
+            "Behaviors/MeshGroupBehavior.cpp",
+            "Behaviors/SkeletonGroupBehavior.h",
+            "Behaviors/SkeletonGroupBehavior.cpp",
+            "Behaviors/SkinGroupBehavior.h",
+            "Behaviors/SkinGroupBehavior.cpp",
+            "Behaviors/AnimationGroupBehavior.h",
+            "Behaviors/AnimationGroupBehavior.cpp",
             "Behaviors/MeshAdvancedRule.h",
             "Behaviors/MeshAdvancedRule.cpp",
             "Behaviors/PhysicsRuleBehavior.h",

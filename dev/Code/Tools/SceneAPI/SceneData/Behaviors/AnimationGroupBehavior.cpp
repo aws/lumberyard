@@ -22,7 +22,7 @@
 #include <SceneAPI/SceneCore/DataTypes/GraphData/IAnimationData.h>
 #include <SceneAPI/SceneCore/DataTypes/DataTypeUtilities.h>
 #include <SceneAPI/SceneData/Groups/AnimationGroup.h>
-#include <SceneAPI/SceneData/Behaviors/AnimationGroup.h>
+#include <SceneAPI/SceneData/Behaviors/AnimationGroupBehavior.h>
 #include <SceneAPI/SceneData/GraphData/RootBoneData.h>
 
 namespace AZ

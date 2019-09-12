@@ -34,7 +34,7 @@ inline unsigned int lua_tounsigned(lua_State* l, int idx)
 
 #define lua_pushglobaltable(L) lua_pushvalue(L, LUA_GLOBALSINDEX)
 
-inline LUA_API int lua_load(lua_State* L, lua_Reader reader, void* data, const char* chunkname, const char* mode)
+inline int lua_load(lua_State* L, lua_Reader reader, void* data, const char* chunkname, const char* mode)
 {
     (void)mode;
     return lua_load(L, reader, data, chunkname);

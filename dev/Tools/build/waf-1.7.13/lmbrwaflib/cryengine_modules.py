@@ -26,6 +26,7 @@ from build_configurations import ALIAS_TO_PLATFORMS_MAP
 from utils import is_value_true
 import os, stat, errno, json, re, threading, inspect
 from runpy import run_path
+import copy 
 
 COMMON_INPUTS = [
     'additional_settings',
@@ -797,7 +798,7 @@ def ConfigureTaskGenerator(ctx, kw):
     is_engine_project = ctx.path.is_child_of(ctx.engine_node)
 
     # Load all file lists (including additional settings)
-    file_list = kw['file_list']
+    file_list = copy.copy(kw['file_list']) #we don really want to change the file_list, just need to make sure all gets loaded
     for setting in kw['additional_settings']:
         file_list += setting.get('file_list', [])
         file_list += ctx.GetPlatformSpecificSettings(setting, 'file_list', platform, get_configuration(ctx, kw['target']) )

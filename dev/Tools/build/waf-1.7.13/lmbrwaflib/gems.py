@@ -1056,6 +1056,20 @@ def get_game_gems(ctx, game_project):
     return [gem for gem in GemManager.GetInstance(ctx).gems if game_project in gem.games_enabled_in]
 
 @conf
+def get_module_gems(ctx, module_name):
+    gems=GemManager.GetInstance(ctx).gems
+
+    module_gems=[]
+    for gem in gems:
+        for module in gem.modules:
+            if not module.name:
+                continue
+            if module.name == module_name:
+                module_gems.append(gem)
+
+    return module_gems
+
+@conf
 def get_required_gems(ctx):
     return [gem for gem in GemManager.GetInstance(ctx).required_gems if gem.is_required]
 

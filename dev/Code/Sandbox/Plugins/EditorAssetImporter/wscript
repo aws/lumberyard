@@ -45,6 +45,6 @@ def build(bld):
 
 
         # Testing
-        test_all_file_list          = 'editorassetimporter_testing.waf_files',
+        test_all_file_list          = ['editorassetimporter_testing.waf_files'],
 
     )

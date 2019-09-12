@@ -147,7 +147,8 @@ def build(bld):
                                'EMotionFXStaticLib',
                                'SceneCore',
                                'SceneData',
-                               'SceneUI'
+                               'SceneUI',
+                               'GFxFramework' #everyone else that would included this is a shared lib
                               ] + bld.make_aws_library_task_list(['LyMetricsShared', 'LyIdentity', 'LyMetricsProducer']), #Do not change the order of 'LyMetricsShared', 'LyIdentity', 'LyMetricsProducer'
             features        = ['ExternalLyMetrics', 'ExternalLyIdentity'],
             uselib          = ['QT5OPENGL',

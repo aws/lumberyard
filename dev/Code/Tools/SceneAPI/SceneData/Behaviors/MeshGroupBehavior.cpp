@@ -26,7 +26,7 @@
 #include <SceneAPI/SceneCore/Events/GraphMetaInfoBus.h>
 #include <SceneAPI/SceneCore/Utilities/SceneGraphSelector.h>
 #include <SceneAPI/SceneData/Groups/MeshGroup.h>
-#include <SceneAPI/SceneData/Behaviors/MeshGroup.h>
+#include <SceneAPI/SceneData/Behaviors/MeshGroupBehavior.h>
 
 namespace AZ
 {

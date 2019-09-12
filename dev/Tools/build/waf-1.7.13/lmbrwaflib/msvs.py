@@ -2825,21 +2825,30 @@ class msvs_generator(BuildContext):
                 project.dependencies.append(self.waf_project.uuid)
 
             if hasattr(project, 'tg'):
+                #get any gems that have project as a module
+                project_gems = self.get_module_gems(project.name)
+
+                #add required gems as dependency of the project
                 if hasattr(project.tg, 'use_required_gems'):
                     if project.tg.use_required_gems:
-                        #add required gems as dependency of the project
+                        project_gems.extend(required_gems) 
 
-                        for gem in required_gems:
-                            if gem.name == project.name:
+                for gem in project_gems:
+                    if gem.name == project.name:
+                        continue
+
+                    for module in gem.modules:
+                        if module.name:
+                            if not module.name == project.name:
                                 continue
-    
-                            dependency=project_dict.get(gem.name, None)
+
+                        dependency=project_dict.get(module.target_name, None)
+            
+                        if dependency is None:
+                            continue
                     
-                            if dependency is None:
-                                continue
-                            
-                            project.dependencies.append(dependency.uuid)
-                        
+                        project.dependencies.append(dependency.uuid)
+                    
             if not hasattr(project, 'tg_dependencies'):
                 continue
 

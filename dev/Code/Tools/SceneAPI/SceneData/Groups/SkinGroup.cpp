@@ -16,7 +16,7 @@
 #include <SceneAPI/SceneCore/DataTypes/Rules/IRule.h>
 #include <SceneAPI/SceneCore/DataTypes/GraphData/IMeshData.h>
 #include <SceneAPI/SceneCore/DataTypes/GraphData/ISkinWeightData.h>
-#include <SceneAPI/SceneData/Behaviors/SkinGroup.h>
+#include <SceneAPI/SceneData/Behaviors/SkinGroupBehavior.h>
 
 #include <AzCore/Memory/SystemAllocator.h>
 #include <AzCore/RTTI/ReflectContext.h>

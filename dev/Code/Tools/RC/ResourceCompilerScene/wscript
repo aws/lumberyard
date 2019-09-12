@@ -54,5 +54,5 @@ def build(bld):
         darwin_file_list        = darwinExportedSymbolFileList,
 
         # Testing
-        win_test_all_file_list    = 'resourcecompilerscene_tests.waf_files',
+        win_test_all_file_list    = ['resourcecompilerscene_tests.waf_files'],
     )

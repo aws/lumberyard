@@ -24,7 +24,7 @@
 #include <SceneAPI/SceneCore/Utilities/SceneGraphSelector.h>
 #include <SceneAPI/SceneCore/Containers/Utilities/SceneGraphUtilities.h>
 #include <SceneAPI/SceneData/Groups/SkinGroup.h>
-#include <SceneAPI/SceneData/Behaviors/SkinGroup.h>
+#include <SceneAPI/SceneData/Behaviors/SkinGroupBehavior.h>
 
 namespace AZ
 {

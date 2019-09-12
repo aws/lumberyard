@@ -47,7 +47,7 @@ def build(bld):
         darwin_file_list            = darwinExportedSymbolFileList,
 
         # Testing
-        test_all_file_list          = 'SceneData_testing.waf_files',
+        test_all_file_list          = ['SceneData_testing.waf_files'],
     )
 
     for p0, p1, p2, p3 in bld.env['RESTRICTED_PLATFORMS']:

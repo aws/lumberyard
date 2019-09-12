@@ -23,7 +23,7 @@
 #include <SceneAPI/SceneCore/DataTypes/DataTypeUtilities.h>
 #include <SceneAPI/SceneCore/Utilities/SceneGraphSelector.h>
 #include <SceneAPI/SceneData/Groups/SkeletonGroup.h>
-#include <SceneAPI/SceneData/Behaviors/SkeletonGroup.h>
+#include <SceneAPI/SceneData/Behaviors/SkeletonGroupBehavior.h>
 #include <SceneAPI/SceneData/GraphData/RootBoneData.h>
 
 namespace AZ

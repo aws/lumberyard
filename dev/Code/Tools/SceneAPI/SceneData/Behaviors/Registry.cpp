@@ -12,15 +12,15 @@
 
 #include <AzCore/Component/ComponentApplicationBus.h>
 #include <SceneAPI/SceneData/Behaviors/Registry.h>
-#include <SceneAPI/SceneData/Behaviors/AnimationGroup.h>
+#include <SceneAPI/SceneData/Behaviors/AnimationGroupBehavior.h>
 #include <SceneAPI/SceneData/Behaviors/BlendShapeRuleBehavior.h>
 #include <SceneAPI/SceneData/Behaviors/LodRuleBehavior.h>
 #include <SceneAPI/SceneData/Behaviors/MaterialRuleBehavior.h>
 #include <SceneAPI/SceneData/Behaviors/MeshAdvancedRule.h>
-#include <SceneAPI/SceneData/Behaviors/MeshGroup.h>
+#include <SceneAPI/SceneData/Behaviors/MeshGroupBehavior.h>
 #include <SceneAPI/SceneData/Behaviors/PhysicsRuleBehavior.h>
-#include <SceneAPI/SceneData/Behaviors/SkeletonGroup.h>
-#include <SceneAPI/SceneData/Behaviors/SkinGroup.h>
+#include <SceneAPI/SceneData/Behaviors/SkeletonGroupBehavior.h>
+#include <SceneAPI/SceneData/Behaviors/SkinGroupBehavior.h>
 
 namespace AZ
 {

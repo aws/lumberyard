@@ -41,5 +41,5 @@ def build(bld):
         darwin_file_list        = 'fbxscenebuilder_darwin.waf_files',
 
         # Testing
-        test_all_file_list = 'fbxscenebuilder_testing.waf_files',
+        test_all_file_list = ['fbxscenebuilder_testing.waf_files'],
     )

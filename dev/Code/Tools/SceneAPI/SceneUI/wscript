@@ -22,7 +22,7 @@ def build(bld):
         platforms                   = ['win', 'darwin'],
         client_only                 = True,
         exclude_monolithic          = True,
-        test_all_file_list          = 'SceneUI_testing.waf_files',
+        test_all_file_list          = ['SceneUI_testing.waf_files'],
         includes                    = [ bld.Path('Code/Tools') ],
         use                         = ['SceneCore', 'SceneData', 'AzCore', 'AzFramework', 'AzToolsFramework', 'AzQtComponents'],
         defines                     = [ 'SCENE_UI_EXPORTS' ],

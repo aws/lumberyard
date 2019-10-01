@@ -22,9 +22,9 @@
 
 #include <GraphCanvas/Components/NodePropertyDisplay/NodePropertyDisplay.h>
 #include <GraphCanvas/Components/NodePropertyDisplay/BooleanDataInterface.h>
+#include <GraphCanvas/Components/NodePropertyDisplay/ComboBoxDataInterface.h>
 #include <GraphCanvas/Components/NodePropertyDisplay/NumericDataInterface.h>
 #include <GraphCanvas/Components/NodePropertyDisplay/EntityIdDataInterface.h>
-#include <GraphCanvas/Components/NodePropertyDisplay/ItemModelDataInterface.h>
 #include <GraphCanvas/Components/NodePropertyDisplay/ReadOnlyDataInterface.h>
 #include <GraphCanvas/Components/NodePropertyDisplay/StringDataInterface.h>
 #include <GraphCanvas/Components/NodePropertyDisplay/VectorDataInterface.h>
@@ -174,15 +174,15 @@ namespace GraphCanvas
             return CreateNumericNodePropertyDisplay(dataInterface);
         }
 
+        //! Creates a ComboBoxNodePropertyDisplay using the specified ComboBoxInterface
+        //! param: dataInterface is the interface to the local data to be used in the operation of the NodePropertyDisplay.
+        //! The PropertyDisplay will take ownership of the DataInterface
+        virtual NodePropertyDisplay* CreateComboBoxNodePropertyDisplay(ComboBoxDataInterface* dataInterface) const = 0;
+
         //! Creates an EntityIdNodeProperty display using the specified EntityIdDataInterface
         //! param: dataInterface is the interface to local data to be used in the operation of the NodePropertyDisplay.
         //! The PropertyDisplay will take ownership of the DataInterface
         virtual NodePropertyDisplay* CreateEntityIdNodePropertyDisplay(EntityIdDataInterface* dataInterface) const = 0;
-
-        //! Create a TextEdit display that will auto complete using the specified ItemModelDataInterface
-        //! param: dataInterface is the interface to local data to be used in the operation of the NodePropertyDisplay,
-        //! The PropertyDisplay will take ownership of the DataInterface
-        virtual NodePropertyDisplay* CreateItemModelNodePropertyDisplay(ItemModelDataInterface* dataInterface) const = 0;
 
         //! Creates a ReadOnlyNodeProperty display using the specified ReadOnlyDataInterface
         //! param: dataInterface is the interface to local data to be used in the operation of the NodePropertyDisplay.

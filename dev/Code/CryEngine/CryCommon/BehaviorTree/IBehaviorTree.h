@@ -857,15 +857,6 @@ namespace BehaviorTree
     };
 }
 
-namespace boost
-{
-    inline bool Serialize(Serialization::IArchive& ar, BehaviorTree::INodePtr& ptr, const char* name, const char* label)
-    {
-        BehaviorTree::NodePointerSerializer serializer(ptr);
-        return ar(static_cast<Serialization::IPointer&>(serializer), name, label);
-    }
-}
-
 #endif
 
 #endif // CRYINCLUDE_CRYCOMMON_BEHAVIORTREE_IBEHAVIORTREE_H

@@ -897,11 +897,12 @@ namespace
         UiTextComponent::DrawBatchContainer& drawBatches,
         FontFamily* fontFamily,
         const STextDrawContext& ctx,
-        float elementWidth)
+        float elementWidth,
+        bool excludeTrailingSpaceWidth = true)
     {
         InsertNewlinesToWrapText(drawBatches, ctx, elementWidth);
         CreateBatchLines(output, drawBatches, fontFamily);
-        AssignLineSizes(output, fontFamily, ctx);
+        AssignLineSizes(output, fontFamily, ctx, excludeTrailingSpaceWidth);
     }
 
     //! Takes a flat list of draw batches (created by the Draw Batch Builder) that may contain
@@ -913,7 +914,8 @@ namespace
         UiTextComponent::DrawBatchContainer& drawBatches,
         FontFamily* fontFamily,
         const STextDrawContext& ctx,
-        float elementWidth
+        float elementWidth,
+        bool excludeTrailingSpaceWidth = true
     )
     {
         // Create batch lines based on existing newline characters
@@ -933,7 +935,7 @@ namespace
             }
         }
 
-        AssignLineSizes(output, fontFamily, ctx);
+        AssignLineSizes(output, fontFamily, ctx, excludeTrailingSpaceWidth);
     }
 
     //! Returns the maximum scale value along the X and Y axes for the given entity's transform.
@@ -2413,15 +2415,17 @@ void UiTextComponent::SetSelectionRange(int startIndex, int endIndex, const AZ::
     m_selectionEnd = endIndex;
     m_textSelectionColor = textSelectionColor;
 
-    MarkRenderGraphDirty();
-}
+    // The render cache stores positions based on these values so mark it dirty
+    MarkRenderCacheDirty();
+} 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void UiTextComponent::ClearSelectionRange()
 {
     m_selectionStart = m_selectionEnd = -1;
 
-    MarkRenderGraphDirty();
+    // The render cache stores positions based on these values so mark it dirty
+    MarkRenderCacheDirty();
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -2878,11 +2882,23 @@ float UiTextComponent::GetMinHeight()
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-float UiTextComponent::GetTargetWidth()
+float UiTextComponent::GetTargetWidth(float maxWidth)
 {
-    // Calculate draw batch lines without relying on element width (ignoring wrapping)
+    // Calculate draw batch lines based on max width. If unlimited, don't wrap text
+    bool forceNoWrap = !LyShine::IsUiLayoutCellSizeSpecified(maxWidth);
+
+    // Trailing space width needs to be included in the total line width so the element width is
+    // assigned enough space to include the trailing space. Otherwise, when calculating batch lines
+    // for rendering, a new empty line will be added to account for the newline that gets added
+    // due to not having enough room for the trailing space
+    bool excludeTrailingSpaceWidth = false;
+    
     DrawBatchLines drawBatchLines;
-    CalculateDrawBatchLines(drawBatchLines, false, false);
+    CalculateDrawBatchLines(drawBatchLines, forceNoWrap, maxWidth, excludeTrailingSpaceWidth);
+
+    // Since we don't know about max height, we can't return an exact target width when overflow
+    // handling is enabled because font scaling can change the max width of the draw batch lines.
+    // However, the extra width should be minimal
 
     // Calculate the target width based on the draw batch line sizes
     float textWidth = 0.0f;
@@ -2906,11 +2922,71 @@ float UiTextComponent::GetTargetWidth()
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-float UiTextComponent::GetTargetHeight()
+float UiTextComponent::GetTargetHeight(float maxHeight)
 {
     // Since target height is calculated after widths are assigned, it can rely on the element's width
-    AZ::Vector2 textSize = GetTextSize();
-    return textSize.GetY();
+
+    // Check if draw batch lines should be calculated to determine target height, or whether we can
+    // use the existing draw batch lines. Overflow mode and shrink to fit mode are based on available height,
+    // so we can't rely on current draw batch lines if max height is specified
+    const bool haveMaxHeight = LyShine::IsUiLayoutCellSizeSpecified(maxHeight);
+    const bool ellipsis = m_overflowMode == OverflowMode::Ellipsis;
+    const bool shrinkToFit = m_shrinkToFit == ShrinkToFit::Uniform;
+    
+    const bool handleOverflow = haveMaxHeight && (ellipsis || shrinkToFit);
+    const bool handleNoOverflow = !haveMaxHeight && (m_drawBatchLines.fontSizeScale.GetY() != 1.0f);
+
+    bool calculateBatchLines = m_areDrawBatchLinesDirty || handleOverflow || handleNoOverflow;
+    if (!calculateBatchLines)
+    {
+        // Check if the element's size has changed, but we haven't received a callback about it yet to mark
+        // draw batches dirty (typically done by the Layout Manager after ApplyLayoutWidth and before ApplyLayoutHeight)
+        bool canvasSpaceSizeChanged = false;
+        EBUS_EVENT_ID_RESULT(canvasSpaceSizeChanged, GetEntityId(), UiTransformBus, HasCanvasSpaceSizeChanged);
+        calculateBatchLines = canvasSpaceSizeChanged;
+    }
+
+    AZ::Vector2 textSize;
+    if (calculateBatchLines)
+    {
+        // Calculate the draw batch lines
+        DrawBatchLines drawBatchLines;
+        CalculateDrawBatchLines(drawBatchLines);
+
+        if (handleOverflow)
+        {
+            // Handle overflow to get an accurate height after the font scale has been determined.
+            // The font scale is calculated with fixed increments and may end up being a little smaller
+            // than necessary leaving extra height. This step could be eliminated if we can find a more
+            // optimal font scale, but that could come with a performance cost.
+            // Extra height may also be considered acceptable since the same side effect occurs with
+            // fixed height text elements, and there may be extra width as well. However, since we're
+            // calculating an optimal height here, we try to be as accurate as possible
+            HandleShrinkToFit(drawBatchLines, maxHeight);
+            HandleEllipsis(drawBatchLines, maxHeight);
+        }
+
+        textSize = GetTextSizeFromDrawBatchLines(drawBatchLines);
+    }
+    else
+    {
+        textSize = GetTextSizeFromDrawBatchLines(m_drawBatchLines);
+    }
+
+    float textHeight = textSize.GetY();
+
+    if (handleOverflow && m_wrapTextSetting != UiTextInterface::WrapTextSetting::NoWrap)
+    {
+        // In order for the overflow handling to remain the same after the text element is resized to this
+        // new height, the new height must match the height retrieved from GetCanvasSpacePointsNoScaleRotate
+        // exactly. However, there is a slight variation in the value that is used to set the element height
+        // and the height retrieved from GetCanvasSpacePointsNoScaleRotate. To accommodate for this, add a
+        // small value to try and make the overflow handling as close to how it was calculated here as possible
+        const float epsilon = 0.01f;
+        textHeight += epsilon;
+    }
+
+    return textHeight;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -3058,7 +3134,7 @@ void UiTextComponent::Reflect(AZ::ReflectContext* context)
                 ->Attribute(AZ::Edit::Attributes::ChangeNotify, &UiTextComponent::CheckLayoutFitterAndRefreshEditorTransformProperties);
             editInfo->DataElement(AZ::Edit::UIHandlers::SpinBox, &UiTextComponent::m_fontSize, "Font size", "The size of the font in points")
                 ->Attribute(AZ::Edit::Attributes::ChangeNotify, &UiTextComponent::OnFontSizeChange)
-                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &UiTextComponent::CheckLayoutFitterAndRefreshEditorTransformProperties)				
+                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &UiTextComponent::CheckLayoutFitterAndRefreshEditorTransformProperties)
                 ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
                 ->Attribute(AZ::Edit::Attributes::Step, 1.0f);
             editInfo->DataElement(AZ::Edit::UIHandlers::ComboBox, &UiTextComponent::m_textHAlignment, "Horizontal text alignment", "How to align the text within the rect")
@@ -3707,7 +3783,7 @@ const UiTextComponent::DrawBatchLines& UiTextComponent::GetDrawBatchLines()
         // that was calculated based on a previous overflow operation.
         m_drawBatchLines.fontSizeScale = AZ::Vector2(1.0f, 1.0f);
 
-        CalculateDrawBatchLines(m_drawBatchLines, true, true);
+        CalculateDrawBatchLines(m_drawBatchLines);
 
         HandleOverflowText(m_drawBatchLines);
 
@@ -3725,14 +3801,15 @@ const UiTextComponent::DrawBatchLines& UiTextComponent::GetDrawBatchLines()
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void UiTextComponent::CalculateDrawBatchLines(
     UiTextComponent::DrawBatchLines& drawBatchLinesOut,
-    bool useElementWidth,
-    bool excludeTrailingSpace
+    bool forceNoWrap,
+    float availableWidth,
+    bool excludeTrailingSpaceWidth
     )
 {
-    float elementWidth = 0.0f; // only used if useElementWidth is true
-
-    if (useElementWidth)
+    bool wrapText = !forceNoWrap && (m_wrapTextSetting == WrapTextSetting::Wrap);
+    if (wrapText && availableWidth < 0.0f)
     {
+        // Set available width to the width of the text element
         if (UiTransformBus::FindFirstHandler(GetEntityId()))
         {
             // Getting info from the TransformBus could trigger OnCanvasSpaceRectChanged,
@@ -3741,11 +3818,11 @@ void UiTextComponent::CalculateDrawBatchLines(
             // up in a potentially undefined state.
             UiTransformInterface::RectPoints points;
             EBUS_EVENT_ID(GetEntityId(), UiTransformBus, GetCanvasSpacePointsNoScaleRotate, points);
-            elementWidth = points.GetAxisAlignedSize().GetX();
+            availableWidth = points.GetAxisAlignedSize().GetX();
         }
         else
         {
-            elementWidth = 100.0f; // abritrary width to use in unlikely edge case where there is no active transform component
+            availableWidth = 100.0f; // abritrary width to use in unlikely edge case where there is no active transform component
         }
     }
 
@@ -3840,7 +3917,7 @@ void UiTextComponent::CalculateDrawBatchLines(
     prevInlineImages.clear();
     
     // Check if we have any inline images that require us to connect to the texture atlas bus
-    if (m_drawBatchLines.inlineImages.size() > 0)
+    if (drawBatchLinesOut.inlineImages.size() > 0)
     {
         if (!TextureAtlasNamespace::TextureAtlasNotificationBus::Handler::BusIsConnected())
         {
@@ -3867,21 +3944,21 @@ void UiTextComponent::CalculateDrawBatchLines(
         }
     }
 
-    if (useElementWidth && m_wrapTextSetting == WrapTextSetting::Wrap)
+    if (wrapText)
     {
         if (drawBatchLinesOut.inlineImages.empty())
         {
-            BatchAwareWrapText(drawBatchLinesOut, drawBatches, m_fontFamily.get(), fontContext, elementWidth);
+            BatchAwareWrapText(drawBatchLinesOut, drawBatches, m_fontFamily.get(), fontContext, availableWidth, excludeTrailingSpaceWidth);
         }
         else
         {
-            BatchAwareWrapTextWithImages(drawBatchLinesOut, drawBatches, m_fontFamily.get(), fontContext, elementWidth);
+            BatchAwareWrapTextWithImages(drawBatchLinesOut, drawBatches, m_fontFamily.get(), fontContext, availableWidth, excludeTrailingSpaceWidth);
         }
     }
     else
     {
         CreateBatchLines(drawBatchLinesOut, drawBatches, m_fontFamily.get());
-        AssignLineSizes(drawBatchLinesOut, m_fontFamily.get(), fontContext, excludeTrailingSpace);
+        AssignLineSizes(drawBatchLinesOut, m_fontFamily.get(), fontContext, excludeTrailingSpaceWidth);
     }
 }
 
@@ -4243,7 +4320,7 @@ void UiTextComponent::HandleOverflowText(UiTextComponent::DrawBatchLines& drawBa
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-void UiTextComponent::HandleShrinkToFit(UiTextComponent::DrawBatchLines& drawBatchLinesOut)
+void UiTextComponent::HandleShrinkToFit(UiTextComponent::DrawBatchLines& drawBatchLinesOut, float availableHeight)
 {
     const bool useShrinkToFit = m_shrinkToFit != ShrinkToFit::None;
     if (!useShrinkToFit)
@@ -4254,6 +4331,10 @@ void UiTextComponent::HandleShrinkToFit(UiTextComponent::DrawBatchLines& drawBat
     AZ::Vector2 textSize = GetTextSizeFromDrawBatchLines(drawBatchLinesOut);
     AZ::Vector2 currentElementSize;   //  This needs to be computed with the unscaled size. This is because scaling happens after the text is laid out.
     EBUS_EVENT_ID_RESULT(currentElementSize, GetEntityId(), UiTransformBus, GetCanvasSpaceSizeNoScaleRotate);
+    if (availableHeight >= 0.0f)
+    {
+        currentElementSize.SetY(availableHeight);
+    }
     const bool textOverflowsElementBounds = GetTextOverflowsBounds(textSize, currentElementSize);
     const bool textOverflowsElementBoundsX = textSize.GetX() > currentElementSize.GetX();
     const bool shrinkToFitNotNeeded = !textOverflowsElementBounds || (!textOverflowsElementBoundsX && m_shrinkToFit == ShrinkToFit::WidthOnly);
@@ -4289,7 +4370,7 @@ void UiTextComponent::HandleShrinkToFit(UiTextComponent::DrawBatchLines& drawBat
         }
 
         // Draw batches need to be re-populated with new font size scale applied
-        CalculateDrawBatchLines(drawBatchLinesOut, true, true);
+        CalculateDrawBatchLines(drawBatchLinesOut);
     }
     else if (m_shrinkToFit == ShrinkToFit::WidthOnly)
     {
@@ -4298,7 +4379,7 @@ void UiTextComponent::HandleShrinkToFit(UiTextComponent::DrawBatchLines& drawBat
             drawBatchLinesOut.fontSizeScale.SetX(AZ::GetMax<float>(m_minShrinkScale, scaleXy.GetX()));
 
             // Draw batches need to be re-populated with new font size scale applied
-            CalculateDrawBatchLines(drawBatchLinesOut, true, true);
+            CalculateDrawBatchLines(drawBatchLinesOut);
         }
         else
         {
@@ -4402,7 +4483,7 @@ void UiTextComponent::HandleWidthOnlyShrinkToFitWithWrapping(
         drawBatchLinesOut.fontSizeScale.SetX(newShrinkScale);
 
         // Rebuild the draw batches with the new font size scaling
-        CalculateDrawBatchLines(drawBatchLinesOut, true, true);
+        CalculateDrawBatchLines(drawBatchLinesOut);
 
         // Early out if minimum scale was reached or we're at a very small scale
         const bool minScaleThresholdReached = drawBatchLinesOut.fontSizeScale.GetX() < 0.05f;
@@ -4432,10 +4513,30 @@ void UiTextComponent::HandleUniformShrinkToFitWithWrapping(
     const AZ::Vector2& currentElementSize,
     int maxLinesElementCanHold)
 {
+    // First, the font scale is reduced by a fractional multiplier until the text no longer overflows.
+    // Then, the font scale is incremented by a fixed amount until the largest font scale that
+    // does not overflow the text is found
+
+    // Font scale increment value for when the text no longer overflows
+    const float fontScaleIncrement = 0.05f;
+
+    float curFontScale = drawBatchLinesOut.fontSizeScale.GetX();
+
     // This keeps track of the last known largest scale that fits the text
     // to the element bounds with word wrap.
-    AZ::Vector2 bestScaleFoundSoFar = drawBatchLinesOut.fontSizeScale;
+    float bestScaleFoundSoFar = curFontScale;
     
+    // Calculate a default scale multiplier used to reduce the font scale by a percentage
+    // until the text no longer overflows.
+    // The default scale multiplier is the ratio of available height to the required height.
+    // It is made a multiple of fontScaleIncrement so that the final font scale is consistent
+    // with the element's height. Otherwise, the font scale could end up getting bigger when
+    // the element's size becomes smaller
+    const AZ::Vector2 curTextSize = GetTextSizeFromDrawBatchLines(drawBatchLinesOut);
+    const float overflowFactor = curTextSize.GetY() > 0.0f ? (currentElementSize.GetY() / curTextSize.GetY()) : 1.0f;
+    const float defaultScaleMultiplierUnclamped = floorf(overflowFactor / fontScaleIncrement) * fontScaleIncrement;
+    const float defaultScaleMultiplier = AZ::GetClamp<float>(defaultScaleMultiplierUnclamped, fontScaleIncrement, 1.0f - fontScaleIncrement);
+
     // If min shrink scale applies, and it's bigger than the default scale multplier,
     // we set the scale to be half the difference between 1.0f (no scale) and the
     // min shrink scale (a "half step"). This gives a starting point that avoids
@@ -4443,14 +4544,14 @@ void UiTextComponent::HandleUniformShrinkToFitWithWrapping(
     // the element bounds).
     const float minShrinkScaleHalfStep = (1.0f - m_minShrinkScale) * 0.5f + m_minShrinkScale;
     const bool useMinShrinkScale = m_minShrinkScale > 0.0f;
-    int numOverflowingLines = drawBatchLinesOut.batchLines.size() - maxLinesElementCanHold;
-    const float defaultScaleMultiplier = static_cast<float>(numOverflowingLines) / drawBatchLinesOut.batchLines.size();
-    float scaleMultiplier = useMinShrinkScale ? minShrinkScaleHalfStep : defaultScaleMultiplier;
-    scaleMultiplier = AZStd::GetMax<float>(defaultScaleMultiplier, scaleMultiplier);
+
+    const float scaleMultiplierUnclamped = useMinShrinkScale ? minShrinkScaleHalfStep : defaultScaleMultiplier;
+    const float scaleMultiplier = AZStd::GetMax<float>(defaultScaleMultiplier, scaleMultiplierUnclamped);
     
+    // Text always starts out overflowing
     bool textStillOverflows = true;
 
-    // When we've reached a scale multiplier that fits the text within the element
+    // When we've reached a font scale that fits the text within the element
     // bounds, we enter an "adjust phase" where the scale gradually increases until
     // the text overflows once more. As the scale increases, we keep track of the
     // last scale to fit the text within bestScaleFoundSoFar.
@@ -4458,20 +4559,15 @@ void UiTextComponent::HandleUniformShrinkToFitWithWrapping(
 
     while (textStillOverflows || scaleAdjustPhase)
     {
-        // Note that the scale multiplier can change as we iterate
-        drawBatchLinesOut.fontSizeScale *= scaleMultiplier;
+        if (textStillOverflows)
+        {
+            // Decrease current font scale value
+            curFontScale *= scaleMultiplier;
+        }
 
         // Rebuild the draw batches with the new font size scaling
-        CalculateDrawBatchLines(drawBatchLinesOut, true, true);
-
-        // Early out if minimum scale was reached or we're at a very small scale
-        const bool minScaleThresholdReached = drawBatchLinesOut.fontSizeScale.GetX() < 0.05f;
-        const bool minShrinkScaleReached = drawBatchLinesOut.fontSizeScale.GetX() <= m_minShrinkScale;
-        const bool exitDueToSmallScaleApplied = useMinShrinkScale ? minShrinkScaleReached : minScaleThresholdReached;
-        if (exitDueToSmallScaleApplied)
-        {
-            break;
-        }
+        drawBatchLinesOut.fontSizeScale.Set(curFontScale, curFontScale);
+        CalculateDrawBatchLines(drawBatchLinesOut);
 
         maxLinesElementCanHold = GetNumNonOverflowingLinesForElement(drawBatchLinesOut.batchLines, currentElementSize, m_lineSpacing);
 
@@ -4483,28 +4579,47 @@ void UiTextComponent::HandleUniformShrinkToFitWithWrapping(
         // to accommodate space).
         textStillOverflows = drawBatchLinesOut.batchLines.size() > maxLinesElementCanHold;
 
+        if (textStillOverflows && !scaleAdjustPhase)
+        {
+            // Early out if minimum scale was reached or we're at a very small scale
+            const bool minScaleThresholdReached = curFontScale < fontScaleIncrement;
+            const bool minShrinkScaleReached = curFontScale <= m_minShrinkScale;
+            const bool exitDueToSmallScaleApplied = useMinShrinkScale ? minShrinkScaleReached : minScaleThresholdReached;
+            if (exitDueToSmallScaleApplied)
+            {
+                // Set final font scale
+                float minFontScale = useMinShrinkScale ? m_minShrinkScale : fontScaleIncrement;
+                drawBatchLinesOut.fontSizeScale.Set(minFontScale, minFontScale);
+                break;
+            }
+        }
+
         // Text is no longer overflowing, begin scaling the text back up until we find
         // a better fit.
         if (!textStillOverflows)
         {
-            bestScaleFoundSoFar = drawBatchLinesOut.fontSizeScale;
-            // Set multiplier so that it will scale up font size scale by 0.05f
-            scaleMultiplier = 1.0f + (0.05f / drawBatchLinesOut.fontSizeScale.GetX());
+            bestScaleFoundSoFar = curFontScale;
+            // Increment current font scale value by a small fixed amount
+            curFontScale += fontScaleIncrement;
             scaleAdjustPhase = true;
         }
-
         // Text is overflowing. If we're in the "adjust phase", assume that the last known
         // scale that fits the text is the best fit and exit the loop.
         else if (scaleAdjustPhase)
         {
-            drawBatchLinesOut.fontSizeScale = bestScaleFoundSoFar;
+            // Make sure final font scale is within min/max
+            float minFontScale = useMinShrinkScale ? m_minShrinkScale : fontScaleIncrement;
+            bestScaleFoundSoFar = AZ::GetClamp<float>(bestScaleFoundSoFar, minFontScale, 1.0f);
+
+            // Set final font scale
+            drawBatchLinesOut.fontSizeScale.Set(bestScaleFoundSoFar, bestScaleFoundSoFar);
             break;
         }
     }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-void UiTextComponent::HandleEllipsis(UiTextComponent::DrawBatchLines& drawBatchLinesOut)
+void UiTextComponent::HandleEllipsis(UiTextComponent::DrawBatchLines& drawBatchLinesOut, float availableHeight)
 {
     if (m_overflowMode != OverflowMode::Ellipsis)
     {
@@ -4514,10 +4629,14 @@ void UiTextComponent::HandleEllipsis(UiTextComponent::DrawBatchLines& drawBatchL
     AZ::Vector2 textSize = GetTextSizeFromDrawBatchLines(drawBatchLinesOut);
     AZ::Vector2 currentElementSize;   //  This needs to be computed with the unscaled size. This is because scaling happens after the text is laid out.
     EBUS_EVENT_ID_RESULT(currentElementSize, GetEntityId(), UiTransformBus, GetCanvasSpaceSizeNoScaleRotate);
+    if (availableHeight >= 0.0f)
+    {
+        currentElementSize.SetY(availableHeight);
+    }
 
     const bool textOverflowsElementBounds = GetTextOverflowsBounds(textSize, currentElementSize);
     const bool textOverflowsElementBoundsX = textSize.GetX() > currentElementSize.GetX();
-    const bool onlyOneLine = m_drawBatchLines.batchLines.size() == 1;
+    const bool onlyOneLine = drawBatchLinesOut.batchLines.size() == 1;
     const bool noEllipsisNeeded = !textOverflowsElementBoundsX && onlyOneLine;
 
     // No need to handle ellipsis if the text doesn't overflow, OR if the text is ONLY
@@ -4582,7 +4701,7 @@ void UiTextComponent::HandleEllipsis(UiTextComponent::DrawBatchLines& drawBatchL
         }
 
         // Once we've reached the first line of text, we're done (since we're iterating backwards)
-        if (lineToEllipsis == m_drawBatchLines.batchLines.begin())
+        if (lineToEllipsis == drawBatchLinesOut.batchLines.begin())
         {
             break;
         }
@@ -4595,13 +4714,13 @@ void UiTextComponent::HandleEllipsis(UiTextComponent::DrawBatchLines& drawBatchL
 
     // For the case when we've removed every possible line, we'll just clip instead
     // of truncate. Otherwise, we need to truncate lines follow ellipsis.
-    const bool linesFollowingEllipsisNeedTruncating = m_drawBatchLines.batchLines.size() > linesToRemove.size();
+    const bool linesFollowingEllipsisNeedTruncating = drawBatchLinesOut.batchLines.size() > linesToRemove.size();
     if (linesFollowingEllipsisNeedTruncating)
     {
         // Truncate all lines following ellipsis
         for (const auto& drawBatchLineIter : linesToRemove)
         {
-            m_drawBatchLines.batchLines.erase(drawBatchLineIter);
+            drawBatchLinesOut.batchLines.erase(drawBatchLineIter);
         }
     }
     // Line sizes need to be updated to reflect ellipsis text insertion as well as batch
@@ -4640,7 +4759,7 @@ void UiTextComponent::GetLineToEllipsisAndLinesToTruncate(UiTextComponent::DrawB
             
         // Prevent the first line of text from being removed, even if the text
         // is overflowing. With ellipsis enabled, this content will be clipped.
-        const bool firstLine = iter == m_drawBatchLines.batchLines.begin();
+        const bool firstLine = iter == drawBatchLinesOut.batchLines.begin();
         if (lineOverflowsVertically && !firstLine)
         {
             // The line we want to ellipse occurs prior to the
@@ -4848,7 +4967,7 @@ AZ::Vector2 UiTextComponent::GetTextSizeFromDrawBatchLines(const UiTextComponent
 AZStd::string UiTextComponent::GetLocalizedText(const AZStd::string& text)
 {
     string locText;
-    gEnv->pSystem->GetLocalizationManager()->LocalizeString(text.c_str(), locText);
+    LocalizationManagerRequestBus::Broadcast(&LocalizationManagerRequestBus::Events::LocalizeString_ch, m_text.c_str(), locText, false);
     return locText.c_str();
 }
 

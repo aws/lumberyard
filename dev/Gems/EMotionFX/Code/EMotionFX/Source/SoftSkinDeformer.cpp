@@ -83,6 +83,7 @@ namespace EMotionFX
     // the main method where all calculations are done
     void SoftSkinDeformer::Update(ActorInstance* actorInstance, Node* node, float timeDelta)
     {
+        AZ_UNUSED(node);
         MCORE_UNUSED(timeDelta);
 
         // get some vars

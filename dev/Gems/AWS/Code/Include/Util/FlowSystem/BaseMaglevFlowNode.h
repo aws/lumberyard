@@ -49,7 +49,7 @@ namespace LmbrAWS
     inline string _LOC(const string& stringToLocalize)
     {
         string outString;
-        gEnv->pSystem->GetLocalizationManager()->LocalizeString(stringToLocalize, outString);
+        LocalizationManagerRequestBus::Broadcast(&LocalizationManagerRequestBus::Events::LocalizeString_s, stringToLocalize, outString, false);
         return outString;
     }
 

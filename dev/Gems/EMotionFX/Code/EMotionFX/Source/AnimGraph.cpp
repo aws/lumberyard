@@ -977,7 +977,7 @@ namespace EMotionFX
             const float deserializeTimeInMs = loadTimer.StampAndGetDeltaTimeInSeconds() * 1000.0f;
 
             animGraph->InitAfterLoading();
-            animGraph->RemoveInvalidConnections(true);
+            animGraph->RemoveInvalidConnections(true);  // Remove connections that have nullptr source node's, which happens when connections point to unknown nodes.
             const float initTimeInMs = loadTimer.GetDeltaTimeInSeconds() * 1000.0f;
 
             AZ_Printf("EMotionFX", "Loaded anim graph from %s in %.1f ms (Deserialization %.1f ms, Initialization %.1f ms).", filename.c_str(), deserializeTimeInMs + initTimeInMs, deserializeTimeInMs, initTimeInMs);
@@ -997,9 +997,8 @@ namespace EMotionFX
         if (animGraph)
         {
             const float deserializeTimeInMs = loadTimer.StampAndGetDeltaTimeInSeconds() * 1000.0f;
-
             animGraph->InitAfterLoading();
-            animGraph->RemoveInvalidConnections(true);
+            animGraph->RemoveInvalidConnections(true);  // Remove connections that have nullptr source node's, which happens when connections point to unknown nodes.
             const float initTimeInMs = loadTimer.GetDeltaTimeInSeconds() * 1000.0f;
 
             AZ_Printf("EMotionFX", "Loaded anim graph from buffer in %.1f ms (Deserialization %.1f ms, Initialization %.1f ms).", deserializeTimeInMs + initTimeInMs, deserializeTimeInMs, initTimeInMs);

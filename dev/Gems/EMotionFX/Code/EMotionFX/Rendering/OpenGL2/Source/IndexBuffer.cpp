@@ -176,4 +176,14 @@ namespace RenderGL
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mBufferID);
         glUnmapBuffer(GL_ELEMENT_ARRAY_BUFFER);
     }
+
+    bool IndexBuffer::GetIsSuccess() const
+    {
+        return (glGetError() == GL_NO_ERROR);
+    }
+
+    bool IndexBuffer::GetHasError() const
+    {
+        return (glGetError() != GL_NO_ERROR);
+    }
 }

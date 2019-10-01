@@ -503,7 +503,7 @@ namespace GraphCanvas
         }
     }
 
-    AZ::Entity* DataSlotComponent::ConstructConnectionEntity(const Endpoint& sourceEndpoint, const Endpoint& targetEndpoint, bool createModelConnection) const
+    AZ::Entity* DataSlotComponent::ConstructConnectionEntity(const Endpoint& sourceEndpoint, const Endpoint& targetEndpoint, bool createModelConnection)
     {
         const AZStd::string k_connectionSubStyle = ".varFlow";
 

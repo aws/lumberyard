@@ -11,6 +11,8 @@
 */
 #pragma once
 
+#include <AzCore/std/typetraits/integral_constant.h>
+
 namespace AZStd
 {
     namespace Internal

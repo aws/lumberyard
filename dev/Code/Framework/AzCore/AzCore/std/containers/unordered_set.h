@@ -12,6 +12,7 @@
 #ifndef AZSTD_UNORDERED_SET_H
 #define AZSTD_UNORDERED_SET_H 1
 
+#include <AzCore/std/containers/node_handle.h>
 #include <AzCore/std/hash_table.h>
 
 namespace AZStd
@@ -89,6 +90,9 @@ namespace AZStd
         typedef typename base_type::local_iterator              local_iterator;
         typedef typename base_type::const_local_iterator        const_local_iterator;
 
+        using node_type = set_node_handle<set_node_traits<value_type, allocator_type, typename base_type::list_node_type, typename base_type::node_deleter>>;
+        using insert_return_type = insert_return_type<iterator, node_type>;
+
         AZ_FORCE_INLINE unordered_set()
             : base_type(hasher(), key_eq(), allocator_type()) {}
         explicit unordered_set(const allocator_type& alloc)
@@ -164,7 +168,6 @@ namespace AZStd
         }
 #endif // #if defined(AZ_HAS_INITIALIZERS_LIST)
 
-#ifdef AZ_HAS_RVALUE_REFS
         AZ_FORCE_INLINE unordered_set(this_type&& rhs)
             : base_type(AZStd::move(rhs))
         {
@@ -181,7 +184,29 @@ namespace AZStd
             base_type::operator=(rhs);
             return *this;
         }
-#endif // AZ_HAS_RVALUE_REFS
+
+        using base_type::insert;
+        insert_return_type insert(node_type&& nodeHandle)
+        {
+            AZSTD_CONTAINER_ASSERT(nodeHandle.empty() || nodeHandle.get_allocator() == base_type::get_allocator(),
+                "node_type with incompatible allocator passed to unordered_set::insert(node_type&& nodeHandle)");
+            return base_type::template node_handle_insert<insert_return_type>(AZStd::move(nodeHandle));
+        }
+        iterator insert(const_iterator hint, node_type&& nodeHandle)
+        {
+            AZSTD_CONTAINER_ASSERT(nodeHandle.empty() || nodeHandle.get_allocator() == base_type::get_allocator(),
+                "node_type with incompatible allocator passed to unordered_set::insert(const_iterator hint, node_type&& nodeHandle)");
+            return base_type::node_handle_insert(hint, AZStd::move(nodeHandle));
+        }
+
+        node_type extract(const key_type& key)
+        {
+            return base_type::template node_handle_extract<node_type>(key);
+        }
+        node_type extract(const_iterator it)
+        {
+            return base_type::template node_handle_extract<node_type>(it);
+        }
     };
 
     template<class Key, class Hasher, class EqualKey, class Allocator >
@@ -261,6 +286,8 @@ namespace AZStd
         typedef typename base_type::local_iterator              local_iterator;
         typedef typename base_type::const_local_iterator        const_local_iterator;
 
+        using node_type = set_node_handle<set_node_traits<value_type, allocator_type, typename base_type::list_node_type, typename base_type::node_deleter>>;
+
         AZ_FORCE_INLINE unordered_multiset()
             : base_type(hasher(), key_eq(), allocator_type()) {}
         explicit unordered_multiset(const allocator_type& alloc)
@@ -335,7 +362,6 @@ namespace AZStd
             }
         }
 #endif // #if defined(AZ_HAS_INITIALIZERS_LIST)
-#ifdef AZ_HAS_RVALUE_REFS
         AZ_FORCE_INLINE unordered_multiset(this_type&& rhs)
             : base_type(AZStd::move(rhs))
         {
@@ -346,7 +372,30 @@ namespace AZStd
             base_type::operator=(AZStd::move(rhs));
             return *this;
         }
-#endif // AZ_HAS_RVALUE_REFS
+
+        using base_type::insert;
+        iterator insert(node_type&& nodeHandle)
+        {
+            AZSTD_CONTAINER_ASSERT(nodeHandle.empty() || nodeHandle.get_allocator() == base_type::get_allocator(),
+                "node_type with incompatible allocator passed to unordered_multiset::insert(node_type&& nodeHandle)");
+            using insert_return_type = insert_return_type<iterator, node_type>;
+            return base_type::template node_handle_insert<insert_return_type>(AZStd::move(nodeHandle)).position;
+        }
+        iterator insert(const_iterator hint, node_type&& nodeHandle)
+        {
+            AZSTD_CONTAINER_ASSERT(nodeHandle.empty() || nodeHandle.get_allocator() == base_type::get_allocator(),
+                "node_type with incompatible allocator passed to unordered_multiset::insert(const_iterator hint, node_type&& nodeHandle)");
+            return base_type::node_handle_insert(hint, AZStd::move(nodeHandle));
+        }
+
+        node_type extract(const key_type& key)
+        {
+            return base_type::template node_handle_extract<node_type>(key);
+        }
+        node_type extract(const_iterator it)
+        {
+            return base_type::template node_handle_extract<node_type>(it);
+        }
     };
 
     template<class Key, class Hasher, class EqualKey, class Allocator >

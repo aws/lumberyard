@@ -80,7 +80,7 @@ namespace ScriptCanvas
                 static const char* GetOperatorDesc() { return "Generate a random number between two numbers"; }
                 static const char* GetIconPath() { return "Editor/Icons/ScriptCanvas/Random.png"; }
 
-                void Visit(NodeVisitor& visitor) const override { visitor.Visit(*this); }
+                
             };
 #endif//defined(EXPRESSION_TEMPLATES_ENABLED)
         }

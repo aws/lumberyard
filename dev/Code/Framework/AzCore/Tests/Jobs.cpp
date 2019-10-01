@@ -10,8 +10,6 @@
 *
 */
 
-#include "TestTypes.h"
-
 #include <AzCore/Jobs/Job.h>
 #include <AzCore/Jobs/JobCompletion.h>
 #include <AzCore/Jobs/JobCompletionSpin.h>
@@ -34,6 +32,7 @@
 
 #include <AzCore/std/time.h>
 #include <AzCore/std/parallel/thread.h>
+#include <AzCore/UnitTest/TestTypes.h>
 
 #if AZ_TRAIT_SUPPORTS_MICROSOFT_PPL
 // Enable this to test against Microsoft PPL, keep in mind you MUST have Exceptions enabled to use PPL
@@ -89,9 +88,9 @@ namespace UnitTest
 
             JobManagerDesc desc;
             JobManagerThreadDesc threadDesc;
-#if !defined(AZ_PLATFORM_WINDOWS)
+#if AZ_TRAIT_SET_JOB_PROCESSOR_ID
             threadDesc.m_cpuId = 0; // Don't set processors IDs on windows
-#endif // AZ_PLATFORM_WINDOWS
+#endif // AZ_TRAIT_SET_JOB_PROCESSOR_ID
 
             if (m_numWorkerThreads == 0)
             {
@@ -101,9 +100,9 @@ namespace UnitTest
             for (unsigned int i = 0; i < m_numWorkerThreads; ++i)
             {
                 desc.m_workerThreads.push_back(threadDesc);
-#if !defined(AZ_PLATFORM_WINDOWS)
+#if AZ_TRAIT_SET_JOB_PROCESSOR_ID
                 threadDesc.m_cpuId++;
-#endif // #if !defined(AZ_PLATFORM_WINDOWS)
+#endif // AZ_TRAIT_SET_JOB_PROCESSOR_ID
             }
 
             m_jobManager = aznew JobManager(desc);

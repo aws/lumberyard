@@ -174,20 +174,20 @@ namespace UnitTests
 
         // a null callback should fail
         {
-            AZ_TEST_START_ASSERTTEST;
+            AZ_TEST_START_TRACE_SUPPRESSION;
             bool result = false;
             CommandRegistrationBus::BroadcastResult(result, &CommandRegistrationBus::Events::RegisterCommand, "shouldfail", "", 0, nullptr);
             EXPECT_FALSE(result);
-            AZ_TEST_STOP_ASSERTTEST(1);
+            AZ_TEST_STOP_TRACE_SUPPRESSION(1);
         }
 
         // a null identifier should fail
         {
-            AZ_TEST_START_ASSERTTEST;
+            AZ_TEST_START_TRACE_SUPPRESSION;
             bool result = false;
             CommandRegistrationBus::BroadcastResult(result, &CommandRegistrationBus::Events::RegisterCommand, "", "", 0, nullptr);
             EXPECT_FALSE(result);
-            AZ_TEST_STOP_ASSERTTEST(1);
+            AZ_TEST_STOP_TRACE_SUPPRESSION(1);
         }
     }
 

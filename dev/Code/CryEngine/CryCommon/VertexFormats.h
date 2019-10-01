@@ -20,38 +20,40 @@
 // Stream Configuration options
 #define ENABLE_NORMALSTREAM_SUPPORT 1
 
-enum EVertexFormat
+enum EVertexFormat : uint8
 {
-    eVF_Unknown = 0,
+    eVF_Unknown,
 
     // Base stream
-    eVF_P3F_C4B_T2F = 1,
-    eVF_P3S_C4B_T2S = 2,
-    eVF_P3S_N4B_C4B_T2S = 3,
+    eVF_P3F_C4B_T2F,
+    eVF_P3F_C4B_T2F_T2F,
+    eVF_P3S_C4B_T2S,
+    eVF_P3S_C4B_T2S_T2S, // For UV2 support
+    eVF_P3S_N4B_C4B_T2S,
 
-    eVF_P3F_C4B_T4B_N3F2 = 4, // Particles.
-    eVF_TP3F_C4B_T2F = 5, // Fonts (28 bytes).
-    eVF_TP3F_T2F_T3F = 6,  // Miscellaneus.
-    eVF_P3F_T3F = 7,       // Miscellaneus. (AuxGeom)
-    eVF_P3F_T2F_T3F = 8,   // Miscellaneus.
+    eVF_P3F_C4B_T4B_N3F2, // Particles.
+    eVF_TP3F_C4B_T2F, // Fonts (28 bytes).
+    eVF_TP3F_T2F_T3F,  // Miscellaneus.
+    eVF_P3F_T3F,       // Miscellaneus. (AuxGeom)
+    eVF_P3F_T2F_T3F,   // Miscellaneus.
 
     // Additional streams
-    eVF_T2F = 9,           // Light maps TC (8 bytes).
-    eVF_W4B_I4S = 10,  // Skinned weights/indices stream.
-    eVF_C4B_C4B = 11,      // SH coefficients.
-    eVF_P3F_P3F_I4B = 12,  // Shape deformation stream.
-    eVF_P3F = 13,       // Velocity stream.
+    eVF_T2F,           // Light maps TC (8 bytes).
+    eVF_W4B_I4S,  // Skinned weights/indices stream.
+    eVF_C4B_C4B,      // SH coefficients.
+    eVF_P3F_P3F_I4B,  // Shape deformation stream.
+    eVF_P3F,       // Velocity stream.
 
-    eVF_C4B_T2S = 14,     // General (Position is merged with Tangent stream)
+    eVF_C4B_T2S,     // General (Position is merged with Tangent stream)
 
     // Lens effects simulation
-    eVF_P2F_T4F_C4F = 15,  // primary
-    eVF_P2F_T4F_T4F_C4F = 16,
+    eVF_P2F_T4F_C4F,  // primary
+    eVF_P2F_T4F_T4F_C4F,
 
-    eVF_P2S_N4B_C4B_T1F = 17,
-    eVF_P3F_C4B_T2S = 18,
-
-    eVF_P2F_C4B_T2F_F4B = 19,   // UI
+    eVF_P2S_N4B_C4B_T1F,
+    eVF_P3F_C4B_T2S,
+    eVF_P2F_C4B_T2F_F4B, // UI
+    eVF_P3F_C4B,// Auxiliary geometry
 
     eVF_Max,
 };
@@ -172,11 +174,25 @@ struct Vec2f16
 };
 
 
+struct SVF_P3F_C4B
+{
+    Vec3 xyz;
+    UCol color;
+};
+
 struct SVF_P3F_C4B_T2F
 {
     Vec3 xyz;
     UCol color;
     Vec2 st;
+};
+
+struct SVF_P3F_C4B_T2F_T2F
+{
+    Vec3 xyz;
+    UCol color;
+    Vec2 st;
+    Vec2 st2;
 };
 
 struct SVF_P2F_C4B_T2F_F4B
@@ -201,6 +217,16 @@ struct SVF_P3S_C4B_T2S
     Vec3f16 xyz;
     UCol color;
     Vec2f16 st;
+
+    AUTO_STRUCT_INFO
+};
+
+struct SVF_P3S_C4B_T2S_T2S
+{
+    Vec3f16 xyz;
+    UCol color;
+    Vec2f16 st;
+    Vec2f16 st2;
 
     AUTO_STRUCT_INFO
 };
@@ -275,6 +301,15 @@ struct SVF_P2F_T4F_C4F
     Vec4 st;
     Vec4 color;
 };
+
+struct SVF_P2F_T4F_T4F_C4F
+{
+    Vec2 p;
+    Vec4 st;
+    Vec4 st2;
+    Vec4 color;
+};
+
 struct SVF_P3F_C4B_I4B_PS4F // ACCEPTED_USE
 {
     Vec3 xyz;

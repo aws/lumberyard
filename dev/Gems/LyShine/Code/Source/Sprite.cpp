@@ -162,16 +162,7 @@ CSprite::CSprite()
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 CSprite::~CSprite()
 {
-    if (m_texture)
-    {
-        // In order to avoid the texture being deleted while there are still commands on the render
-        // thread command queue that use it, we queue a command to delete the texture onto the
-        // command queue.
-        SResourceAsync* pInfo = new SResourceAsync();
-        pInfo->eClassName = eRCN_Texture;
-        pInfo->pResource = m_texture;
-        gEnv->pRenderer->ReleaseResourceAsync(pInfo);
-    }
+    ReleaseTexture(m_texture);
 
     s_loadedSprites->erase(m_pathname);
     TextureAtlasNamespace::TextureAtlasNotificationBus::Handler::BusDisconnect();
@@ -217,18 +208,24 @@ void CSprite::SetCellBorders(int cellIndex, Borders borders)
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-ITexture* CSprite::GetTexture() const
+ITexture* CSprite::GetTexture()
 {
     // Prioritize usage of an atlas
     if (m_atlas)
     {
         return m_atlas->GetTexture();
     }
-    // If the sprite is associated with a render target, the sprite does not own the texture.
-    // In this case, find the texture by name when it is requested.
+
     if (!m_texture && !m_pathname.empty())
     {
-        return gEnv->pRenderer->EF_GetTextureByName(m_pathname.c_str());
+        // the render target texture may not have existed when the sprite was created
+        m_texture = gEnv->pRenderer->EF_GetTextureByName(m_pathname.c_str());
+        if (m_texture)
+        {
+            // increase the reference count to this texture so it doesn't get removed while
+            // we are using it
+            m_texture->AddRef();
+        }
     }
     return m_texture;
 }
@@ -336,7 +333,7 @@ bool CSprite::AreCellBordersZeroWidth(int cellIndex) const
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-AZ::Vector2 CSprite::GetSize() const
+AZ::Vector2 CSprite::GetSize()
 {
     ITexture* texture = GetTexture();
     if (texture)
@@ -354,7 +351,7 @@ AZ::Vector2 CSprite::GetSize() const
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-AZ::Vector2 CSprite::GetCellSize(int cellIndex) const
+AZ::Vector2 CSprite::GetCellSize(int cellIndex)
 {
     AZ::Vector2 textureSize(GetSize());
 
@@ -543,17 +540,7 @@ void CSprite::OnAtlasLoaded(const TextureAtlasNamespace::TextureAtlas* atlas)
         {
             m_atlas = atlas;
             // Release the non-atlas version of the texture
-            if (m_texture)
-            {
-                // In order to avoid the texture being deleted while there are still commands on the render
-                // thread command queue that use it, we queue a command to delete the texture onto the
-                // command queue.
-                SResourceAsync* pInfo = new SResourceAsync();
-                pInfo->eClassName = eRCN_Texture;
-                pInfo->pResource = m_texture;
-                gEnv->pRenderer->ReleaseResourceAsync(pInfo);
-                m_texture = nullptr;
-            }
+            ReleaseTexture(m_texture);
             NotifyChanged();
         }
     }
@@ -693,7 +680,14 @@ CSprite* CSprite::CreateSprite(const string& renderTargetName)
     // create Sprite object
     CSprite* sprite = new CSprite;
 
-    sprite->m_texture = nullptr;
+    // the render target texture may not exist yet in which case we will need to load it later
+    sprite->m_texture = gEnv->pRenderer->EF_GetTextureByName(renderTargetName.c_str());
+    if (sprite->m_texture)
+    {
+        // increase the reference count on this render target texture so it doesn't get deleted
+        // while we are using it
+        sprite->m_texture->AddRef();
+    }
     sprite->m_pathname = renderTargetName;
     sprite->m_texturePathname.clear();
 
@@ -780,6 +774,23 @@ bool CSprite::LoadTexture(const string& texturePathname, const string& pathname,
     }
     texture->SetFilter(FILTER_LINEAR);
     return true;
+}
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void CSprite::ReleaseTexture(ITexture*& texture)
+{
+    if (texture)
+    {
+        // In order to avoid the texture being deleted while there are still commands on the render
+        // thread command queue that use it, we queue a command to delete the texture onto the
+        // command queue.
+        SResourceAsync* pInfo = new SResourceAsync();
+        pInfo->eClassName = eRCN_Texture;
+        pInfo->pResource = texture;
+        gEnv->pRenderer->ReleaseResourceAsync(pInfo);
+        texture = nullptr;
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////

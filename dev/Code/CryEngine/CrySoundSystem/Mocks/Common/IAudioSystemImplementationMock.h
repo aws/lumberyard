@@ -61,7 +61,7 @@ namespace Audio
 
         MOCK_METHOD3(UnprepareTriggerAsync, EAudioRequestStatus(IATLAudioObjectData* const, const IATLTriggerImplData* const, IATLEventData* const));
 
-        MOCK_METHOD4(ActivateTrigger, EAudioRequestStatus(IATLAudioObjectData* const, const IATLTriggerImplData* const, IATLEventData* const, const TAudioSourceId));
+        MOCK_METHOD4(ActivateTrigger, EAudioRequestStatus(IATLAudioObjectData* const, const IATLTriggerImplData* const, IATLEventData* const, const SATLSourceData* const));
 
         MOCK_METHOD2(StopEvent, EAudioRequestStatus(IATLAudioObjectData* const, const IATLEventData* const));
 

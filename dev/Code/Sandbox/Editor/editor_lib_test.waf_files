@@ -5,7 +5,8 @@
         [
             "Lib/Tests/test_ClickableLabel.cpp",
             "Lib/Tests/test_EditorUtils.cpp",
-            "Lib/Tests/test_Main.cpp"
+            "Lib/Tests/test_Main.cpp",
+            "Terrain/Tests/test_Terrain.cpp"
         ]
     }
 }

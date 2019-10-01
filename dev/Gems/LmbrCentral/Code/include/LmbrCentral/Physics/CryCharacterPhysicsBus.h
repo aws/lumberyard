@@ -34,6 +34,10 @@ namespace LmbrCentral
         /// \param velocity - Requested velocity (direction and magnitude).
         /// \param jump - Controls how velocity is applid within Living Entity. See physinterface.h, \ref pe_action_move::iJump for more details.
         virtual void RequestVelocity(const AZ::Vector3& velocity, int jump) = 0;
+
+        /// Check if there is a Cry Character Physics component present.
+        /// Return true in the request handler implementation in order for things like the animation system to work properly.
+        virtual bool IsCryCharacterControllerPresent() const { return false; }
     };
 
     using CryCharacterPhysicsRequestBus = AZ::EBus<CryCharacterPhysicsRequests>;

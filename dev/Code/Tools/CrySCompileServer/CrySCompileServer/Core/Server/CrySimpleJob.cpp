@@ -163,7 +163,7 @@ bool CCrySimpleJob::ExecuteCommand(const std::string& rCmd, std::string& outErro
     return Ret;
 #endif
 
-#if defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_APPLE_OSX)
+#if defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_MAC)
     std::thread::id threadId = std::this_thread::get_id();
     std::stringstream threadIdStream;
     threadIdStream << threadId;

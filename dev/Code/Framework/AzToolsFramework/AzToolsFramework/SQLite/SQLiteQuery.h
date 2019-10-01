@@ -50,6 +50,39 @@ namespace AzToolsFramework
             bool Bind(Statement* statement, int index, const SqlBlob& value);
         }
 
+        //! Helper object used to provide a query callback that that needs to accept multiple arguments
+        //! This is just a slightly easier-to-use/less verbose (at the callsite) alternative to AZStd::bind'ing the arguments to the callback
+        template<typename T>
+        struct SqlQueryResultRunner
+        {
+            using HandlerFunc = AZStd::function<bool(T&)>;
+
+            SqlQueryResultRunner(bool bindSucceeded, const HandlerFunc& handler, const char* statementName, StatementAutoFinalizer autoFinalizer) :
+                m_bindSucceeded(bindSucceeded),
+                m_handler(handler),
+                m_statementName(statementName),
+                m_autoFinalizer(AZStd::move(autoFinalizer))
+            {
+
+            }
+
+            template<typename TCallback, typename... TArgs>
+            bool Query(const TCallback& callback, TArgs... args)
+            {
+                if (m_bindSucceeded)
+                {
+                    return callback(m_statementName, m_autoFinalizer.Get(), m_handler, args...);
+                }
+
+                return false;
+            }
+
+            const char* m_statementName;
+            StatementAutoFinalizer m_autoFinalizer;
+            const HandlerFunc& m_handler;
+            bool m_bindSucceeded;
+        };
+
         template<typename... T>
         class SqlQuery
         {
@@ -101,6 +134,34 @@ namespace AzToolsFramework
                 }
 
                 return true;
+            }
+
+            //! Similar to Bind, this will prepare and bind the args.  Additionally, it will then call the callback with (statementName, statement, handler)
+            //! The statement will be finalized automatically as part of this call
+            template<typename THandler, typename TCallback>
+            bool BindAndQuery(Connection& connection, THandler&& handler, const TCallback& callback, const T&... args) const
+            {
+                StatementAutoFinalizer autoFinal;
+
+                if (!Bind(connection, autoFinal, args...))
+                {
+                    return false;
+                }
+
+                return callback(m_statementName, autoFinal.Get(), AZStd::forward<THandler>(handler));
+            }
+
+            //! Similar to Bind, this will prepare and bind the args.
+            //! Returns a ResultRunner object that can be passed a callback and any number of arguments to forward to the callback *in addition* to the already supplied (statementName, statement, handler) arguments
+            //! The statement will be finalized automatically when the ResultRunner goes out of scope
+            template<typename TResultEntry>
+            SqlQueryResultRunner<TResultEntry> BindAndThen(Connection& connection, const AZStd::function<bool(TResultEntry&)>& handler, const T&... args) const
+            {
+                StatementAutoFinalizer autoFinal;
+
+                bool result = Bind(connection, autoFinal, args...);
+
+                return SqlQueryResultRunner<TResultEntry>(result, handler, m_statementName, AZStd::move(autoFinal));
             }
 
         private:

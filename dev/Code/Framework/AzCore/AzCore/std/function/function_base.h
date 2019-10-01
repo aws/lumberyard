@@ -19,6 +19,7 @@
 #include <AzCore/std/function/function_fwd.h>
 #include <AzCore/std/typetraits/type_id.h>
 #include <AzCore/std/typetraits/alignment_of.h>
+#include <AzCore/std/typetraits/remove_cvref.h>
 #include <AzCore/std/createdestroy.h>
 
 #if defined(AZ_COMPILER_MSVC)
@@ -43,7 +44,7 @@ namespace AZStd
 
             /**
              * A buffer used to store small function objects in
-             * boost::function. It is a union containing function pointers,
+             * AZStd::function. It is a union containing function pointers,
              * object pointers, and a structure that resembles a bound
              * member function pointer.
              */
@@ -206,7 +207,7 @@ namespace AZStd
             };
 
             /**
-             * Determine if boost::function can use the small-object
+             * Determine if AZStd::function can use the small-object
              * optimization with the function object type F.
              */
             template<typename F>
@@ -220,8 +221,9 @@ namespace AZStd
                 : public F
                 , public A
             {
-                functor_wrapper(F f, A a)
-                    : F(f)
+                template <typename Functor>
+                functor_wrapper(Functor&& f, A a)
+                    : F(AZStd::forward<Functor>(f))
                     , A(a)
                 {}
             };
@@ -233,7 +235,7 @@ namespace AZStd
             template<typename Functor>
             struct functor_manager_common
             {
-                typedef Functor functor_type;
+                typedef AZStd::decay_t<Functor> functor_type;
 
                 // Function pointers
                 static inline void
@@ -256,7 +258,7 @@ namespace AZStd
                     else if (op == check_functor_type_tag)
                     {
                         const type_id& check_type = out_buffer.type.type;
-                        if (aztypeid_cmp(check_type, aztypeid(Functor)))
+                        if (aztypeid_cmp(check_type, aztypeid(functor_type)))
                         {
                             out_buffer.obj_ptr = &in_buffer.func_ptr;
                         }
@@ -267,7 +269,7 @@ namespace AZStd
                     }
                     else /* op == get_functor_type_tag */
                     {
-                        out_buffer.type.type = aztypeid(Functor);
+                        out_buffer.type.type = aztypeid(functor_type);
                         out_buffer.type.const_qualified = false;
                         out_buffer.type.volatile_qualified = false;
                     }
@@ -279,12 +281,16 @@ namespace AZStd
                 {
                     if (op == clone_functor_tag || op == move_functor_tag)
                     {
-                        const functor_type* in_functor =
-                            reinterpret_cast<const functor_type*>(&in_buffer.data);
-                        new ((void*)&out_buffer.data)functor_type(*in_functor);
 
-                        if (op == move_functor_tag)
+                        functor_type* in_functor =
+                            reinterpret_cast<functor_type*>(&in_buffer.data);
+                        if (op == clone_functor_tag)
                         {
+                            new ((void*)&out_buffer.data)functor_type(*in_functor);
+                        }
+                        else if (op == move_functor_tag)
+                        {
+                            new ((void*)&out_buffer.data)functor_type(AZStd::move(*in_functor));
                             // Casting via union to get around compiler warnings (strict type on GCC, unused variable on MSVC)
                             union
                             {
@@ -292,7 +298,7 @@ namespace AZStd
                                 functor_type* cast_functor;
                             };
                             cast_data = &in_buffer.data;
-                            cast_functor->~Functor();
+                            cast_functor->~functor_type();
                         }
                     }
                     else if (op == destroy_functor_tag)
@@ -305,12 +311,12 @@ namespace AZStd
                             functor_type* cast_functor;
                         };
                         cast_data = &out_buffer.data;
-                        cast_functor->~Functor();
+                        cast_functor->~functor_type();
                     }
                     else if (op == check_functor_type_tag)
                     {
                         const type_id& check_type = out_buffer.type.type;
-                        if (aztypeid_cmp(check_type, aztypeid(Functor)))
+                        if (aztypeid_cmp(check_type, aztypeid(functor_type)))
                         {
                             out_buffer.obj_ptr = &in_buffer.data;
                         }
@@ -321,7 +327,7 @@ namespace AZStd
                     }
                     else /* op == get_functor_type_tag */
                     {
-                        out_buffer.type.type = aztypeid(Functor);
+                        out_buffer.type.type = aztypeid(functor_type);
                         out_buffer.type.const_qualified = false;
                         out_buffer.type.volatile_qualified = false;
                     }
@@ -332,20 +338,20 @@ namespace AZStd
             struct functor_manager
             {
             private:
-                typedef Functor functor_type;
+                typedef AZStd::decay_t<Functor> functor_type;
 
                 // Function pointers
                 static inline void
                 manager(const function_buffer& in_buffer, function_buffer& out_buffer, functor_manager_operation_type op, function_ptr_tag)
                 {
-                    functor_manager_common<Functor>::manage_ptr(in_buffer, out_buffer, op);
+                    functor_manager_common<functor_type>::manage_ptr(in_buffer, out_buffer, op);
                 }
 
                 // Function objects that fit in the small-object buffer.
                 static inline void
                 manager(const function_buffer& in_buffer, function_buffer& out_buffer, functor_manager_operation_type op, AZStd::true_type)
                 {
-                    functor_manager_common<Functor>::manage_small(in_buffer, out_buffer, op);
+                    functor_manager_common<functor_type>::manage_small(in_buffer, out_buffer, op);
                 }
 
                 // Function objects that require heap allocation
@@ -380,7 +386,7 @@ namespace AZStd
                     else if (op == check_functor_type_tag)
                     {
                         const type_id& check_type = out_buffer.type.type;
-                        if (aztypeid_cmp(check_type, aztypeid(Functor)))
+                        if (aztypeid_cmp(check_type, aztypeid(functor_type)))
                         {
                             out_buffer.obj_ptr = in_buffer.obj_ptr;
                         }
@@ -391,7 +397,7 @@ namespace AZStd
                     }
                     else /* op == get_functor_type_tag */
                     {
-                        out_buffer.type.type = aztypeid(Functor);
+                        out_buffer.type.type = aztypeid(functor_type);
                         out_buffer.type.const_qualified = false;
                         out_buffer.type.volatile_qualified = false;
                     }
@@ -440,27 +446,27 @@ namespace AZStd
             struct functor_manager_a
             {
             private:
-                typedef Functor functor_type;
+                typedef AZStd::decay_t<Functor> functor_type;
 
                 // Function pointers
                 static inline void
                 manager(const function_buffer& in_buffer, function_buffer& out_buffer, functor_manager_operation_type op, function_ptr_tag)
                 {
-                    functor_manager_common<Functor>::manage_ptr(in_buffer, out_buffer, op);
+                    functor_manager_common<functor_type>::manage_ptr(in_buffer, out_buffer, op);
                 }
 
                 // Function objects that fit in the small-object buffer.
                 static inline void
                 manager(const function_buffer& in_buffer, function_buffer& out_buffer, functor_manager_operation_type op, AZStd::true_type)
                 {
-                    functor_manager_common<Functor>::manage_small(in_buffer, out_buffer, op);
+                    functor_manager_common<functor_type>::manage_small(in_buffer, out_buffer, op);
                 }
 
                 // Function objects that require heap allocation
                 static inline void
                 manager(const function_buffer& in_buffer, function_buffer& out_buffer, functor_manager_operation_type op, AZStd::false_type)
                 {
-                    typedef functor_wrapper<Functor, Allocator> functor_wrapper_type;
+                    typedef functor_wrapper<functor_type, Allocator> functor_wrapper_type;
 
                     if (op == clone_functor_tag)
                     {
@@ -488,7 +494,7 @@ namespace AZStd
                     else if (op == check_functor_type_tag)
                     {
                         const type_id& check_type = out_buffer.type.type;
-                        if (aztypeid_cmp(check_type, aztypeid(Functor)))
+                        if (aztypeid_cmp(check_type, aztypeid(functor_type)))
                         {
                             out_buffer.obj_ptr = in_buffer.obj_ptr;
                         }
@@ -499,7 +505,7 @@ namespace AZStd
                     }
                     else /* op == get_functor_type_tag */
                     {
-                        out_buffer.type.type = aztypeid(Functor);
+                        out_buffer.type.type = aztypeid(functor_type);
                         out_buffer.type.const_qualified = false;
                         out_buffer.type.volatile_qualified = false;
                     }
@@ -542,7 +548,7 @@ namespace AZStd
 
             /**
              * Stores the "manager" portion of the vtable for a
-             * boost::function object.
+             * AZStd::function object.
              */
             struct vtable_base
             {
@@ -669,13 +675,13 @@ namespace AZStd
     };
 
     /**
-     * The bad_function_call exception class is thrown when a boost::function
+     * The bad_function_call exception class is thrown when a AZStd::function
      * object is invoked
      */
     //class bad_function_call : public std::runtime_error
     //{
     //public:
-    //  bad_function_call() : std::runtime_error("call to empty boost::function") {}
+    //  bad_function_call() : std::runtime_error("call to empty AZStd::function") {}
     //};
 
     inline bool operator==(const function_base& f, Internal::function_util::useless_clear_type*)
@@ -762,7 +768,7 @@ namespace AZStd
     {
         if (const Functor* fp = f.template target<Functor>())
         {
-            return fp == g.get_pointer();
+            return fp == &g.get();
         }
         else
         {
@@ -776,7 +782,7 @@ namespace AZStd
     {
         if (const Functor* fp = f.template target<Functor>())
         {
-            return g.get_pointer() == fp;
+            return &g.get() == fp;
         }
         else
         {
@@ -790,7 +796,7 @@ namespace AZStd
     {
         if (const Functor* fp = f.template target<Functor>())
         {
-            return fp != g.get_pointer();
+            return fp != &g.get();
         }
         else
         {
@@ -804,7 +810,7 @@ namespace AZStd
     {
         if (const Functor* fp = f.template target<Functor>())
         {
-            return g.get_pointer() != fp;
+            return &g.get() != fp;
         }
         else
         {

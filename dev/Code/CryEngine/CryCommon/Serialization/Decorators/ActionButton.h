@@ -13,7 +13,7 @@
 
 #pragma once
 
-#include <BoostHelpers.h>
+#include <SmartPointersHelpers.h>
 #include <Serialization/IArchive.h>
 #include <functor.h>
 

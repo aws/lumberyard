@@ -755,7 +755,7 @@ public:
             return;
         }
         int numSrc = fromVar->GetNumVariables();
-        int numTrg = m_vars.size();
+        int numTrg = static_cast<int>(m_vars.size());
         for (int i = 0; i < numSrc && i < numTrg; i++)
         {
             // Copy Every child variable.
@@ -767,7 +767,7 @@ public:
     }
 
     //////////////////////////////////////////////////////////////////////////
-    virtual int GetNumVariables() const { return m_vars.size(); }
+    virtual int GetNumVariables() const { return static_cast<int>(m_vars.size()); }
 
     virtual IVariable* GetVariable(int index) const
     {
@@ -1810,7 +1810,7 @@ public:
     void AddVariable(CVariableBase& var, const char* varName, unsigned char dataType = IVariable::DT_SIMPLE);
 
     //! Returns number of variables in block.
-    virtual int GetNumVariables() const { return m_vars.size(); }
+    virtual int GetNumVariables() const { return static_cast<int>(m_vars.size()); }
 
     //! Get pointer to stored variable by index.
     virtual IVariable* GetVariable(int index) const

@@ -92,7 +92,7 @@ namespace GraphCanvas
     private:
         DataSlotComponent(const DataSlotComponent&) = delete;
         DataSlotComponent& operator=(const DataSlotComponent&) = delete;
-        AZ::Entity* ConstructConnectionEntity(const Endpoint& sourceEndpoint, const Endpoint& targetEndpoint, bool createModelConnection) const override;
+        AZ::Entity* ConstructConnectionEntity(const Endpoint& sourceEndpoint, const Endpoint& targetEndpoint, bool createModelConnection) override;
 
         bool            m_fixedType;
         DataSlotType    m_dataSlotType;

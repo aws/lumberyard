@@ -11,13 +11,12 @@
 */
 #pragma once
 #include <AzCore/Math/Crc.h>
+#include <AzFramework/Input/User/LocalUserId.h>
 
 namespace Input
 {
     // Based on 
-    using ProfileId = AZ::Crc32;
     using RawEventName = AZ::Crc32;
     using ProcessedEventName = AZ::Crc32;
-    static const ProfileId BroadcastProfile = ProfileId("");
     static const RawEventName AllEvents = RawEventName("");
 } // namespace Input

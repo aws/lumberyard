@@ -356,7 +356,7 @@ ActionManager::MenuWrapper ActionManager::FindMenu(const QString& menuId)
             return *menuIt;
         }
 
-        AZ_Warning("ActionManager", "Did not find menu with menuId %s", menuId.toUtf8().data());
+        AZ_Warning("ActionManager", false, "Did not find menu with menuId %s", menuId.toUtf8().data());
         return nullptr;
     }();
 

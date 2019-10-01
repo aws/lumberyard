@@ -857,10 +857,12 @@ namespace AZ
         auto entityIt = AZStd::find_if(instance->m_instantiated->m_entities.begin(), instance->m_instantiated->m_entities.end(), [entityId](Entity* entity) -> bool { return entity->GetId() == entityId; });
         if (entityIt != instance->m_instantiated->m_entities.end())
         {
-            if (isDeleteEntity)
-            {
-                delete *entityIt;
-            }
+            // RemoveEntity will be invoked again recursively if invoked with isDeleteEntity = true as the deleting the found entity
+            // would cause the Entity destructor to send a ComponentApplicationRequests::RemoveEntity event causing the ComponentApplication
+            // to send an ComponentApplicationEvents::OnEntityRemoved event that is handled by the EntityContext::OnEntityRemoved function which finally
+            // calls this function again with isDeleteEntity = false. Therefore the EntityInfoMap and the container of Entities needs to have the 
+            // current entity removed from it before deleting it
+            AZStd::unique_ptr<AZ::Entity> entityToDelete(isDeleteEntity ? *entityIt : nullptr);
             instance->m_instantiated->m_entities.erase(entityIt);
 
             instance->m_dataFlags.ClearEntityDataFlags(entityId);
@@ -2144,10 +2146,12 @@ namespace AZ
                 auto entityIt = AZStd::find_if(m_entities.begin(), m_entities.end(), [entityId](Entity* entity) -> bool { return entity->GetId() == entityId; });
                 if (entityIt != m_entities.end())
                 {
-                    if (isDeleteEntity)
-                    {
-                        delete *entityIt;
-                    }
+                    // RemoveEntity will be invoked again recursively if invoked with isDeleteEntity = true as the deleting the found entity
+                    // would cause the Entity destructor to send a ComponentApplicationRequests::RemoveEntity event causing the ComponentApplication
+                    // to send an ComponentApplicationEvents::OnEntityRemoved event that is handled by the EntityContext::OnEntityRemoved function which finally
+                    // calls this function again with isDeleteEntity = false. Therefore the EntityInfoMap and the container of Entities needs to have the 
+                    // current entity removed from it before deleting it
+                    AZStd::unique_ptr<AZ::Entity> entityToDelete(isDeleteEntity ? *entityIt : nullptr);
                     m_dataFlagsForNewEntities.ClearEntityDataFlags(entityId);
                     m_entityInfoMap.erase(entityInfoMapIt);
                     m_entities.erase(entityIt);

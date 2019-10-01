@@ -1,4 +1,4 @@
-/*
+﻿/*
 * All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
 * its licensors.
 *
@@ -1887,9 +1887,10 @@ namespace Audio
                 rAuxGeom.Draw2dLabel(fPosX, fPosY, 1.6f,
                     pColor,
                     false,
-                    "%s on %s : %llu",
-                    triggerName.c_str(),
+                    "%s (%llu): %s (%llu)",
                     m_pDebugNameStore->LookupAudioObjectName(atlEvent->m_nObjectID),
+                    atlEvent->m_nObjectID,
+                    triggerName.c_str(),
                     atlEvent->GetID());
 
                 fPosY += 16.0f;
@@ -1972,7 +1973,7 @@ namespace Audio
 
             bool bDraw = AudioDebugDrawFilter(audioObjectName, audioObjectFilter);
 
-            bDraw &= (g_audioCVars.m_nShowActiveAudioObjectsOnly == 0 || HasActiveEvents(audioObject));
+            bDraw = bDraw && (g_audioCVars.m_nShowActiveAudioObjectsOnly == 0 || HasActiveEvents(audioObject));
 
             if (bDraw)
             {
@@ -2009,7 +2010,7 @@ namespace Audio
 
             bool bDraw = AudioDebugDrawFilter(audioObjectName, audioObjectFilter);
             bool hasActiveEvents = HasActiveEvents(audioObject);
-            bDraw &= (g_audioCVars.m_nShowActiveAudioObjectsOnly == 0 || hasActiveEvents);
+            bDraw = bDraw && (g_audioCVars.m_nShowActiveAudioObjectsOnly == 0 || hasActiveEvents);
 
             if (bDraw)
             {

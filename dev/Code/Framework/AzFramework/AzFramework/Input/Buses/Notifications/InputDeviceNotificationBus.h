@@ -46,7 +46,8 @@ namespace AzFramework
         ////////////////////////////////////////////////////////////////////////////////////////////
         //! Override to be notified when input devices disconnect from the system
         //! \param[in] inputChannel The input device that disconnected
-        virtual void OnInputDeviceDisonnectedEvent(const InputDevice& /*inputDevice*/) {}
+        virtual void OnInputDeviceDisconnectedEvent(const InputDevice& /*inputDevice*/) {}
+        AZ_DEPRECATED(virtual void OnInputDeviceDisonnectedEvent(const InputDevice& /*inputDevice*/), "Deprecated (typo, missing 'c'), please use OnInputDeviceDisconnectedEvent)") {}
 
         ////////////////////////////////////////////////////////////////////////////////////////////
         //! Access to the priority of the input notification handler (sorted from highest to lowest)

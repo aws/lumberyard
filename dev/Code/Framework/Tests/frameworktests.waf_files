@@ -28,7 +28,8 @@
             "TransformComponent.cpp",
             "GridMocks.h",
             "InterestManagerComponentTests.cpp",
-            "SQLiteConnectionTests.cpp"
+            "SQLiteConnectionTests.cpp",
+            "Application.cpp"
         ]
     }
 }

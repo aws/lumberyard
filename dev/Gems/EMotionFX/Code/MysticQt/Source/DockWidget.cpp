@@ -21,28 +21,15 @@ namespace MysticQt
     DockWidget::DockWidget(QWidget* parent, const QString& name)
         : QDockWidget(name, parent)
     {
-    }
-
-
-    // destructor
-    DockWidget::~DockWidget()
-    {
+        QHBoxLayout* layout = new QHBoxLayout(this);
+        layout->setMargin(1);
     }
 
 
     // set the contents
     void DockWidget::SetContents(QWidget* contents)
     {
-        QWidget* mainWidget = new QWidget();
-        mainWidget->setObjectName("DockMainWidget");
-
-        QHBoxLayout* layout = new QHBoxLayout();
-        layout->addWidget(contents);
-        layout->setMargin(1);
-        //layout->setSpacing(0);
-        mainWidget->setLayout(layout);
-
-        setWidget(mainWidget);
+        setWidget(contents);
     }
 }   // namespace MysticQt
 

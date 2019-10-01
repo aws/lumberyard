@@ -9,7 +9,6 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#ifndef AZ_UNITY_BUILD
 
 #include <GridMate/Carrier/DefaultHandshake.h>
 #include <GridMate/Serialize/UtilityMarshal.h>
@@ -118,5 +117,3 @@ DefaultHandshake::OnDisconnect(ConnectionID id)
 {
     (void)id;
 }
-
-#endif // #ifndef AZ_UNITY_BUILD

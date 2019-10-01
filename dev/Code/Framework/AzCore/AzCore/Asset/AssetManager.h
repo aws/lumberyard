@@ -220,7 +220,7 @@ namespace AZ
             * Gets a pointer to an asset handler for a type.
             * Returns nullptr if a handler for that type does not exist.
             */
-            const AssetHandler* GetHandler(const AssetType& assetType);
+            AssetHandler* GetHandler(const AssetType& assetType);
 
             AssetStreamInfo     GetLoadStreamInfoForAsset(const AssetId& assetId, const AssetType& assetType);
             AssetStreamInfo     GetSaveStreamInfoForAsset(const AssetId& assetId, const AssetType& assetType);

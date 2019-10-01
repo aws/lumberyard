@@ -1293,7 +1293,7 @@ int mspace_mallopt(int, int);
 
 #ifdef WIN32
 #pragma warning( disable : 4146 ) /* no "unsigned" warnings */
-#   ifdef AZ_PLATFORM_WINDOWS_X64
+#   ifdef AZ_PLATFORM_WINDOWS
 #       pragma warning( disable : 4267 )
 #   endif
 #endif /* WIN32 */
@@ -6365,7 +6365,7 @@ postaction:
 
 #ifdef WIN32
 #pragma warning( default : 4146 ) /* no "unsigned" warnings */
-#   ifdef AZ_PLATFORM_WINDOWS_X64
+#   ifdef AZ_PLATFORM_WINDOWS
 #       pragma warning( default : 4267 )
 #   endif
 #endif /* WIN32 */

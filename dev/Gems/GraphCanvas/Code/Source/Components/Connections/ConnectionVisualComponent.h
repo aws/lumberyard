@@ -21,6 +21,7 @@
 #include <GraphCanvas/Components/Connections/ConnectionBus.h>
 #include <GraphCanvas/Components/ViewBus.h>
 #include <GraphCanvas/Components/VisualBus.h>
+#include <GraphCanvas/Editor/AssetEditorBus.h>
 #include <GraphCanvas/Widgets/RootGraphicsItem.h>
 #include <GraphCanvas/Styling/StyleHelper.h>
 
@@ -117,6 +118,7 @@ namespace GraphCanvas
         , public StyleNotificationBus::Handler
         , public AZ::SystemTickBus::Handler
         , public SceneMemberNotificationBus::Handler
+        , public AssetEditorSettingsNotificationBus::Handler        
     {
     public:
         AZ_CLASS_ALLOCATOR(ConnectionGraphicsItem, AZ::SystemAllocator, 0);
@@ -166,6 +168,12 @@ namespace GraphCanvas
         // SceneMemberNotifications
         void OnSceneMemberHidden() override;
         void OnSceneMemberShown() override;
+
+        void OnSceneSet(const GraphId& graphId) override;
+        ////
+
+        // AssetEditorSettingsNotifications
+        void OnSettingsChanged() override;
         ////
 
     protected:
@@ -174,6 +182,12 @@ namespace GraphCanvas
 
         AZ::EntityId GetSourceSlotEntityId() const;
         AZ::EntityId GetTargetSlotEntityId() const;
+
+        EditorId GetEditorId() const;
+
+        void UpdateCurveStyle();
+
+        virtual Styling::ConnectionCurveType GetCurveStyle() const;
 
         virtual void UpdatePen();
         virtual void OnActivate();
@@ -185,7 +199,7 @@ namespace GraphCanvas
 
         void mousePressEvent(QGraphicsSceneMouseEvent* mouseEvent) override;
         void mouseMoveEvent(QGraphicsSceneMouseEvent* mouseEvent) override;
-        void mouseReleaseEvent(QGraphicsSceneMouseEvent* mouseEvent) override;        
+        void mouseReleaseEvent(QGraphicsSceneMouseEvent* mouseEvent) override;
         ////
 
         void paint(QPainter* painter, const QStyleOptionGraphicsItem* option, QWidget* widget = nullptr) override;
@@ -199,14 +213,14 @@ namespace GraphCanvas
         
         QPointF m_initialPoint;
 
+        Styling::ConnectionCurveType m_curveType;
         Styling::StyleHelper m_style;
         QPen m_pen;
 
         AZStd::chrono::milliseconds m_lastUpdate;
         double m_offset;
 
-        AZ::EntityId m_connectionEntityId;
-
-        
+        AZ::EntityId m_connectionEntityId;        
+        EditorId     m_editorId;
     };
 }

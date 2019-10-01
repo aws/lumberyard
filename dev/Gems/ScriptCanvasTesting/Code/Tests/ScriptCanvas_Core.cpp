@@ -26,6 +26,16 @@
 using namespace ScriptCanvasTests;
 using namespace TestNodes;
 
+TEST_F(ScriptCanvasTestFixture, CoreNodeFunction_OwningGraphCheck)
+{
+    using namespace ScriptCanvas;
+
+    Graph* graph = CreateGraph();
+    ConfigurableUnitTestNode* groupedNode = CreateConfigurableNode();
+    
+    EXPECT_EQ(graph, groupedNode->GetGraph());
+}
+
 TEST_F(ScriptCanvasTestFixture, AddRemoveSlot)
 {
     
@@ -62,7 +72,7 @@ TEST_F(ScriptCanvasTestFixture, AddRemoveSlot)
 
     // execute pre remove
     graphEntity->Activate();
-    EXPECT_FALSE(graph->IsInErrorState());
+    ReportErrors(graph);    
     graphEntity->Deactivate();
 
     if (auto result = numberResultNode->GetInput_UNIT_TEST<Data::NumberType>("Set"))
@@ -80,7 +90,7 @@ TEST_F(ScriptCanvasTestFixture, AddRemoveSlot)
 
     // execute post-remove
     graphEntity->Activate();
-    EXPECT_FALSE(graph->IsInErrorState());
+    ReportErrors(graph);
     graphEntity->Deactivate();
 
     if (auto result = numberResultNode->GetInput_UNIT_TEST<Data::NumberType>("Set"))
@@ -102,7 +112,7 @@ TEST_F(ScriptCanvasTestFixture, AddRemoveSlot)
 
     // execute post-add of slot "D" and re-add of slot "A"
     graphEntity->Activate();
-    EXPECT_FALSE(graph->IsInErrorState());
+    ReportErrors(graph);
     graphEntity->Deactivate();
 
     if (auto result = numberResultNode->GetInput_UNIT_TEST<Data::NumberType>("Set"))
@@ -120,7 +130,7 @@ TEST_F(ScriptCanvasTestFixture, AddRemoveSlot)
 
     // execute post-remove of "A" slot
     graphEntity->Activate();
-    EXPECT_FALSE(graph->IsInErrorState());
+    ReportErrors(graph);
     graphEntity->Deactivate();
 
     if (auto result = numberResultNode->GetInput_UNIT_TEST<Data::NumberType>("Set"))
@@ -209,7 +219,7 @@ TEST_F(ScriptCanvasTestFixture, InsertSlot)
     EXPECT_TRUE(graph->Connect(insertSlotConcatNode->GetEntityId(), insertSlotConcatNode->GetSlotId("Result"), setVariableNode->GetEntityId(), setVariableNode->GetDataInSlotId()));
 
     graphEntity->Activate();
-    EXPECT_FALSE(graph->IsInErrorState());
+    ReportErrors(graph);
     graphEntity->Deactivate();
 
     const VariableDatum* resultDatum{};
@@ -225,7 +235,7 @@ TEST_F(ScriptCanvasTestFixture, InsertSlot)
 
     // re-execute the graph
     graphEntity->Activate();
-    EXPECT_FALSE(graph->IsInErrorState());
+    ReportErrors(graph);
     graphEntity->Deactivate();
 
     // the new concatenated string should be in the middle
@@ -293,7 +303,7 @@ TEST_F(ScriptCanvasTestFixture, NativeProperties)
 
     graphEntity->Activate();
 
-    EXPECT_FALSE(graph->IsInErrorState());
+    ReportErrors(graph);
 
     if (auto result = vector3NodeC->GetInput_UNIT_TEST<AZ::Vector3>("Set"))
     {
@@ -413,7 +423,7 @@ TEST_F(ScriptCanvasTestFixture, ExtractPropertiesNativeType)
         ScriptCanvasEditor::ScopedOutputSuppression suppressOutput;
         graphEntity->Activate();
     }
-    EXPECT_FALSE(graph->IsInErrorState());
+    ReportErrors(graph);
     graphEntity->Deactivate();
 
     AZ::Entity* connectionEntity{};
@@ -524,7 +534,8 @@ TEST_F(ScriptCanvasTestFixture, ExtractPropertiesBehaviorType)
         ScriptCanvasEditor::ScopedOutputSuppression suppressOutput;
         graphEntity->Activate();
     }
-    EXPECT_FALSE(graph->IsInErrorState());
+
+    ReportErrors(graph);    
     graphEntity->Deactivate();
 
     AZ::Entity* connectionEntity{};
@@ -628,7 +639,8 @@ TEST_F(ScriptCanvasTestFixture, IsNullCheck)
         ScriptCanvasEditor::ScopedOutputSuppression suppressOutput;
         graphEntity->Activate();
     }
-    EXPECT_FALSE(graph->IsInErrorState());
+
+    ReportErrors(graph);
 
     if (auto vector3 = vector->GetInput_UNIT_TEST<TestBehaviorContextObject>("Set"))
     {
@@ -703,7 +715,9 @@ TEST_F(ScriptCanvasTestFixture, NullThisPointerDoesNotCrash)
         graphEntity->Activate();
     }
     // just don't crash, but be in error
-    EXPECT_TRUE(graph->IsInErrorState());
+    const bool expectError = true;
+    const bool expectIrrecoverableError = true;
+    ReportErrors(graph, expectError, expectIrrecoverableError);
 
     graphEntity->Deactivate();
     delete graphEntity;
@@ -718,86 +732,8 @@ TEST_F(ScriptCanvasTestFixture, NullThisPointerDoesNotCrash)
     m_behaviorContext->DisableRemoveReflection();
 }
 
-TEST_F(ScriptCanvasTestFixture, Assignment)
-{
-    using namespace ScriptCanvas;
-    using namespace ScriptCanvas::Data;
-    using namespace Nodes;
-
-    AZ::Vector3 min(1, 1, 1);
-    AZ::Vector3 max(2, 2, 2);
-
-    AssignTest(AABBType::CreateFromMinMax(min, max), AABBType::CreateFromMinMax(max, min + max));
-    AssignTest(AZ::Color(255.f, 127.f, 0.f, 127.f), AZ::Color(0.f, 127.f, 255.f, 127.f));
-    AssignTest(CRCType("lhs"), CRCType("rhs"));
-    AssignTest(true, false);
-    m_entityContext.AddEntity(AZ::EntityId(1));
-    m_entityContext.AddEntity(AZ::EntityId(2));
-    AssignTest(AZ::EntityId(1), AZ::EntityId(2), &m_entityContext);
-    m_entityContext.RemoveEntity(AZ::EntityId(1));
-    m_entityContext.RemoveEntity(AZ::EntityId(2));
-    AssignTest(3.0, 4.0);
-    AssignTest(Matrix3x3Type::CreateIdentity(), Matrix3x3Type::CreateZero());
-    AssignTest(Matrix4x4Type::CreateIdentity(), Matrix4x4Type::CreateZero());
-    AssignTest(PlaneType::CreateFromNormalAndDistance(min, 10), PlaneType::CreateFromNormalAndDistance(max, -10));
-    AssignTest(OBBType::CreateFromAabb(AABBType::CreateFromMinMax(min, max)), OBBType::CreateFromAabb(AABBType::CreateFromMinMax(max, min + max)));
-    AssignTest(StringType("hello"), StringType("good-bye"));
-    AssignTest(QuaternionType::CreateIdentity(), QuaternionType::CreateZero());
-    AssignTest(TransformType::CreateIdentity(), TransformType::CreateZero());
-    AssignTest(AZ::Vector2(2, 2), AZ::Vector2(1, 1));
-    AssignTest(AZ::Vector3(2, 2, 2), AZ::Vector3(1, 1, 1));
-    AssignTest(AZ::Vector4(2, 2, 2, 2), AZ::Vector4(1, 1, 1, 1));
-
-    AZ::Entity* graphEntity = aznew AZ::Entity("Graph");
-    graphEntity->Init();
-    SystemRequestBus::Broadcast(&SystemRequests::CreateGraphOnEntity, graphEntity);
-    auto graph = graphEntity->FindComponent<Graph>();
-    EXPECT_NE(nullptr, graph);
-
-    const AZ::EntityId& graphEntityId = graph->GetEntityId();
-    const AZ::EntityId& graphUniqueId = graph->GetUniqueId();
-
-    AZ::EntityId startID;
-    CreateTestNode<Nodes::Core::Start>(graphUniqueId, startID);
-    AZ::EntityId operatorID;
-    CreateTestNode<Nodes::Core::Assign>(graphUniqueId, operatorID);
-
-    AZ::EntityId sourceID;
-    Core::BehaviorContextObjectNode* sourceNode = CreateTestNode<Core::BehaviorContextObjectNode>(graphUniqueId, sourceID);
-    sourceNode->InitializeObject(azrtti_typeid<AZ::Vector3>());
-    *sourceNode->ModInput_UNIT_TEST<AZ::Vector3>("Set") = AZ::Vector3(1, 1, 1);
-
-    AZ::EntityId targetID;
-    Core::BehaviorContextObjectNode* targetNode = CreateTestNode<Core::BehaviorContextObjectNode>(graphUniqueId, targetID);
-    targetNode->InitializeObject(azrtti_typeid<AZ::Vector3>());
-    *targetNode->ModInput_UNIT_TEST<AZ::Vector3>("Set") = AZ::Vector3(2, 2, 2);
-
-    EXPECT_TRUE(Connect(*graph, sourceID, "Get", operatorID, "Source"));
-    EXPECT_TRUE(Connect(*graph, targetID, "Set", operatorID, "Target"));
-
-    EXPECT_TRUE(Connect(*graph, startID, "Out", operatorID, "In"));
-
-    graphEntity->Activate();
-
-    EXPECT_FALSE(graph->IsInErrorState());
-
-    if (auto result = targetNode->GetInput_UNIT_TEST<AZ::Vector3>("Set"))
-    {
-        EXPECT_EQ(AZ::Vector3(1, 1, 1), *result);
-    }
-    else
-    {
-        ADD_FAILURE();
-    }
-
-    graphEntity->Deactivate();
-    delete graphEntity;
-}
-
-
 TEST_F(ScriptCanvasTestFixture, ValueTypes)
-{
-    
+{    
     using namespace ScriptCanvas;
 
     Datum number0(Datum(0));
@@ -1009,7 +945,7 @@ TEST_F(ScriptCanvasTestFixture, SerializationSaveTest)
     ScriptCanvasEditor::TraceSuppressionBus::Broadcast(&ScriptCanvasEditor::TraceSuppressionRequests::SuppressPrintf, true);
     graphEntity->Activate();
     ScriptCanvasEditor::TraceSuppressionBus::Broadcast(&ScriptCanvasEditor::TraceSuppressionRequests::SuppressPrintf, false);
-    EXPECT_FALSE(graph->IsInErrorState());
+    ReportErrors(graph);    
 
     vector3C = *vector3NodeC->GetInput_UNIT_TEST<AZ::Vector3>("Set");
     EXPECT_EQ(allThree, vector3C);
@@ -1096,7 +1032,7 @@ TEST_F(ScriptCanvasTestFixture, SerializationLoadTest_Graph)
         // Run the graph component
         graph = graphEntity->FindComponent<Graph>();
         EXPECT_TRUE(graph != nullptr); // "Graph entity did not have the graph component.");
-        EXPECT_FALSE(graph->IsInErrorState());
+        ReportErrors(graph);
 
         const AZ::Vector3 allOne(1, 1, 1);
         const AZ::Vector3 allTwo(2, 2, 2);
@@ -1172,11 +1108,14 @@ TEST_F(ScriptCanvasTestFixture, SerializationLoadTest_RuntimeComponent)
         // Initialize the entity
         executionComponent->SetRuntimeAsset(runtimeAsset);
         executionEntity->Init();
-        ScriptCanvasEditor::TraceSuppressionBus::Broadcast(&ScriptCanvasEditor::TraceSuppressionRequests::SuppressPrintf, true);
-        executionEntity->Activate();
-        // Dispatch the AssetBus events to force onAssetReady event
-        AZ::Data::AssetManager::Instance().DispatchEvents();
-        ScriptCanvasEditor::TraceSuppressionBus::Broadcast(&ScriptCanvasEditor::TraceSuppressionRequests::SuppressPrintf, false);
+
+        {
+            ScriptCanvasEditor::ScopedOutputSuppression suppressOutput;            
+            executionEntity->Activate();
+            // Dispatch the AssetBus events to force onAssetReady event
+            AZ::Data::AssetManager::Instance().DispatchEvents();            
+        }
+
         EXPECT_FALSE(executionComponent->IsInErrorState());
 
         const AZ::Vector3 allOne(1, 1, 1);
@@ -1308,7 +1247,7 @@ TEST_F(ScriptCanvasTestFixture, Contracts)
 
     // Execute it
     graph->GetEntity()->Activate();
-    EXPECT_FALSE(graph->IsInErrorState());
+    ReportErrors(graph);
     graph->GetEntity()->Deactivate();
     delete graph->GetEntity();
 }
@@ -1318,10 +1257,7 @@ TEST_F(ScriptCanvasTestFixture, Contracts)
 TEST_F(ScriptCanvasTestFixture, Error)
 {
     
-    using namespace ScriptCanvas;
-
-    ScriptUnitTestEventHandler::Reflect(m_serializeContext);
-    ScriptUnitTestEventHandler::Reflect(m_behaviorContext);
+    using namespace ScriptCanvas;    
 
     RegisterComponentDescriptor<UnitTestErrorNode>();
     RegisterComponentDescriptor<InfiniteLoopNode>();
@@ -1362,8 +1298,11 @@ TEST_F(ScriptCanvasTestFixture, Error)
         ScriptCanvasEditor::ScopedOutputSuppression suppressOutput;
         graph->GetEntity()->Activate();
     }
-    EXPECT_TRUE(graph->IsInErrorState());
-    EXPECT_TRUE(graph->IsInIrrecoverableErrorState());
+
+    const bool expectErrors = true;
+    const bool expectIrrecoverableErrors = true;
+    ReportErrors(graph, expectErrors, expectIrrecoverableErrors);    
+
     EXPECT_EQ(description, graph->GetLastErrorDescription());
     EXPECT_EQ(unitTestHandler.SideEffectCount(sideFX1), 0);
 
@@ -1424,8 +1363,7 @@ TEST_F(ScriptCanvasTestFixture, ErrorHandled)
         graph->GetEntity()->Activate();
     }
     
-    EXPECT_FALSE(graph->IsInErrorState());
-    EXPECT_FALSE(graph->IsInIrrecoverableErrorState());
+    ReportErrors(graph);
     EXPECT_EQ(unitTestHandler.SideEffectCount(sideFX1), 0);
     EXPECT_EQ(unitTestHandler.SideEffectCount(sideFX2), 1);
 
@@ -1475,8 +1413,11 @@ TEST_F(ScriptCanvasTestFixture, ErrorNode)
         ScriptCanvasEditor::ScopedOutputSuppression suppressOutput;
         graph->GetEntity()->Activate();
     }
-    EXPECT_TRUE(graph->IsInErrorState());
-    EXPECT_TRUE(graph->IsInIrrecoverableErrorState());
+
+    const bool expectErrors = true;
+    const bool expectIrrecoverableErrors = true;
+    ReportErrors(graph, expectErrors, expectIrrecoverableErrors);
+
     EXPECT_EQ(description, graph->GetLastErrorDescription());
     EXPECT_EQ(unitTestHandler.SideEffectCount(sideFX1), 1);
 
@@ -1484,8 +1425,8 @@ TEST_F(ScriptCanvasTestFixture, ErrorNode)
 
     // test to make sure the graph did to retry execution
     graph->GetEntity()->Activate();
-    EXPECT_TRUE(graph->IsInErrorState());
-    EXPECT_TRUE(graph->IsInIrrecoverableErrorState());
+    ReportErrors(graph, expectErrors, expectIrrecoverableErrors);
+
     // if the graph was allowed to execute, the side effect counter should be higher
     EXPECT_EQ(unitTestHandler.SideEffectCount(sideFX1), 1);
 
@@ -1534,15 +1475,13 @@ TEST_F(ScriptCanvasTestFixture, ErrorNodeHandled)
         graph->GetEntity()->Activate();
     }
 
-    EXPECT_FALSE(graph->IsInErrorState());
-    EXPECT_FALSE(graph->IsInIrrecoverableErrorState());
+    ReportErrors(graph);
     EXPECT_EQ(unitTestHandler.SideEffectCount(sideFX1), 1);
 
     graph->GetEntity()->Deactivate();
     graph->GetEntity()->Activate();
 
-    EXPECT_FALSE(graph->IsInErrorState());
-    EXPECT_FALSE(graph->IsInIrrecoverableErrorState());
+    ReportErrors(graph);
     EXPECT_EQ(unitTestHandler.SideEffectCount(sideFX1), 2);
 
     delete graph->GetEntity();
@@ -1597,16 +1536,16 @@ TEST_F(ScriptCanvasTestFixture, InfiniteLoopDetected)
         graph->GetEntity()->Activate();
     }
 
-    EXPECT_TRUE(graph->IsInErrorState());
-    EXPECT_TRUE(graph->IsInIrrecoverableErrorState());
+    const bool expectError = true;
+    const bool expectIrrecoverableError = true;
+    ReportErrors(graph, expectError, expectIrrecoverableError);    
     EXPECT_EQ(0, unitTestHandler.SideEffectCount(sideFXpass));
     EXPECT_EQ(0, unitTestHandler.SideEffectCount(sideFXfail));
 
     graph->GetEntity()->Deactivate();
     graph->GetEntity()->Activate();
 
-    EXPECT_TRUE(graph->IsInErrorState());
-    EXPECT_TRUE(graph->IsInIrrecoverableErrorState());
+    ReportErrors(graph, expectError, expectIrrecoverableError);
     EXPECT_EQ(0, unitTestHandler.SideEffectCount(sideFXpass));
     EXPECT_EQ(0, unitTestHandler.SideEffectCount(sideFXfail));
 
@@ -1846,13 +1785,13 @@ TEST_F(ScriptCanvasTestFixture, EntityRefTest)
     Nodes::Core::Method* nodeB = CreateTestNode<Nodes::Core::Method>(graphUniqueId, eventBid);
     nodeB->InitializeEvent({ {} }, "EntityRefTestEventBus", "TestEvent");
 
-    // Third test: Set the slot's EntityId: 0 to SelfReferenceId, this should result in the same Id as graph->GetEntityId()
+    // Third test: Set the slot's EntityId: 0 to GraphOwnerId, this should result in the same Id as graph->GetEntityId()
     AZ::EntityId eventCid;
     Nodes::Core::Method* nodeC = CreateTestNode<Nodes::Core::Method>(graphUniqueId, eventCid);
     nodeC->InitializeEvent({ {} }, "EntityRefTestEventBus", "TestEvent");
     if (auto entityId = nodeC->ModInput_UNIT_TEST<AZ::EntityId>("EntityID: 0"))
     {
-        *entityId = ScriptCanvas::SelfReferenceId;
+        *entityId = ScriptCanvas::GraphOwnerId;
     }
 
     // True 
@@ -1881,7 +1820,7 @@ TEST_F(ScriptCanvasTestFixture, EntityRefTest)
     EXPECT_TRUE(Connect(*graph, eventBid, "Boolean: 2", falseNodeId, "Get"));
 
     // Start            -> TestEvent
-    //                   -O EntityId: 0  (not connected, slot is set to SelfReferenceId)
+    //                   -O EntityId: 0  (not connected, slot is set to GraphOwnerId)
     // graphEntityIdNode -O EntityId: 1
     // True              -O Boolean: 2
     EXPECT_TRUE(Connect(*graph, startID, "Out", eventCid, "In"));
@@ -1890,10 +1829,12 @@ TEST_F(ScriptCanvasTestFixture, EntityRefTest)
 
     // Execute the graph
 
-    ScriptCanvasEditor::TraceSuppressionBus::Broadcast(&ScriptCanvasEditor::TraceSuppressionRequests::SuppressPrintf, true);
-    graph->GetEntity()->Activate();
-    ScriptCanvasEditor::TraceSuppressionBus::Broadcast(&ScriptCanvasEditor::TraceSuppressionRequests::SuppressPrintf, false);
-    EXPECT_FALSE(graph->IsInErrorState());
+    {
+        ScriptCanvasEditor::ScopedOutputSuppression suppressOutput;
+        graph->GetEntity()->Activate();
+    }
+
+    ReportErrors(graph);
     delete graph->GetEntity();
 
 }
@@ -1928,10 +1869,12 @@ TEST_F(ScriptCanvasTestFixture, ExecutionLength)
     }
 
     AZ::Entity* graphEntity = graph->GetEntity();
-    ScriptCanvasEditor::TraceSuppressionBus::Broadcast(&ScriptCanvasEditor::TraceSuppressionRequests::SuppressPrintf, true);
-    graphEntity->Activate();
-    ScriptCanvasEditor::TraceSuppressionBus::Broadcast(&ScriptCanvasEditor::TraceSuppressionRequests::SuppressPrintf, false);
-    EXPECT_FALSE(graph->IsInErrorState());
+    {
+        ScriptCanvasEditor::ScopedOutputSuppression suppressOutput;
+        graphEntity->Activate();        
+    }
+
+    ReportErrors(graph);
 
     graphEntity->Deactivate();
     delete graphEntity;
@@ -1939,5 +1882,5 @@ TEST_F(ScriptCanvasTestFixture, ExecutionLength)
 
 TEST_F(ScriptCanvasTestFixture, AnyNode)
 {
-	RunUnitTestGraph("LY_SC_UnitTest_Any");
+    RunUnitTestGraph("LY_SC_UnitTest_Any");
 }

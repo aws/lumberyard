@@ -12,11 +12,11 @@
 
 #pragma once
 
-#include "CommandSystemConfig.h"
+#include <EMotionFX/CommandSystem/Source/CommandSystemConfig.h>
 #include <AzCore/std/containers/vector.h>
 #include <MCore/Source/Command.h>
 #include <MCore/Source/StringIdPool.h>
-#include "CommandManager.h"
+#include <EMotionFX/CommandSystem/Source/CommandManager.h>
 
 
 EMFX_FORWARD_DECLARE(AttributeParameterMask);

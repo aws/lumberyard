@@ -27,11 +27,11 @@
 
 namespace
 {
-    class BookmarkContextMenu
+    class DockWidgetBookmarkContextMenu
         : public QMenu
     {
     public:
-        BookmarkContextMenu(const AZ::EntityId& graphCanvasGraphId, const AZ::EntityId& bookmarkId)
+        DockWidgetBookmarkContextMenu(const AZ::EntityId& graphCanvasGraphId, const AZ::EntityId& bookmarkId)
             : QMenu()
         {
             AZStd::string bookmarkName;
@@ -213,7 +213,7 @@ namespace GraphCanvas
 
             AZ::EntityId bookmarkId = m_model->FindBookmarkForIndex(sourceIndex);
 
-            BookmarkContextMenu menu(m_activeGraphCanvasGraphId, bookmarkId);
+            DockWidgetBookmarkContextMenu menu(m_activeGraphCanvasGraphId, bookmarkId);
             menu.exec(m_ui->bookmarkTable->mapToGlobal(pos));
         }
     }

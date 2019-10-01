@@ -45,11 +45,11 @@ namespace AZ
 
             virtual void OnReadCacheHit(GenericStream* stream, AZ::u64 offset, AZ::u64 size, const char* debugName) = 0;
 
-            virtual void OnAddRequest(Request* request) = 0;
-            virtual void OnCompleteRequest(Request* request, Request::StateType state) = 0;
+            virtual void OnAddRequest(const AZStd::shared_ptr<Request>& request) = 0;
+            virtual void OnCompleteRequest(const AZStd::shared_ptr<Request>& request, Request::StateType state) = 0;
 
-            virtual void OnCancelRequest(Request* request)  = 0;
-            virtual void OnRescheduleRequest(Request* request, AZStd::chrono::system_clock::time_point newDeadline, Request::PriorityType newPriority) = 0;
+            virtual void OnCancelRequest(const AZStd::shared_ptr<Request>& request)  = 0;
+            virtual void OnRescheduleRequest(const AZStd::shared_ptr<Request>& request, AZStd::chrono::system_clock::time_point newDeadline, Request::PriorityType newPriority) = 0;
 
             // Lower level events if the stream is NOT compressed this call will represent
             // the physical access. If the stream is compressed monitor OnCompressorXXX events.

@@ -260,17 +260,17 @@ QDataStream& operator>>(QDataStream& in, Qt::AlignmentFlag& alignment)
     return in;
 }
 
-QDataStream& operator<<(QDataStream& out, const GraphCanvas::Styling::Curves& curve)
+QDataStream& operator<<(QDataStream& out, const GraphCanvas::Styling::ConnectionCurveType& curve)
 {
     out << static_cast<int>(curve);
     return out;
 }
 
-QDataStream& operator>>(QDataStream& in, GraphCanvas::Styling::Curves& curve)
+QDataStream& operator>>(QDataStream& in, GraphCanvas::Styling::ConnectionCurveType& curve)
 {
     int holder;
     in >> holder;
-    curve = static_cast<GraphCanvas::Styling::Curves>(holder);
+    curve = static_cast<GraphCanvas::Styling::ConnectionCurveType>(holder);
 
     return in;
 }
@@ -310,7 +310,7 @@ namespace GraphCanvas
             qRegisterMetaTypeStreamOperators<Qt::PenStyle>();
             qRegisterMetaTypeStreamOperators<Qt::PenCapStyle>();
             qRegisterMetaTypeStreamOperators<Qt::AlignmentFlag>();
-            qRegisterMetaTypeStreamOperators<Styling::Curves>();
+            qRegisterMetaTypeStreamOperators<Styling::ConnectionCurveType>();
             qRegisterMetaTypeStreamOperators<Styling::PaletteStyle>();
 
             // Allow QVectors to be serialized

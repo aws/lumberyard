@@ -44,7 +44,7 @@ struct WritePropertyTyped
         {
             return false;
         }
-        T* pValue = boost::get<T>(&vvalue);
+        T* pValue = AZStd::get_if<T>(&vvalue);
         if (!pValue)
         {
             return false;
@@ -59,7 +59,7 @@ struct WritePropertyTyped
         {
             return false;
         }
-        T* pValue = boost::get<T>(&vvalue);
+        T* pValue = AZStd::get_if<T>(&vvalue);
         if (!pValue)
         {
             return false;

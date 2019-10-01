@@ -276,15 +276,13 @@ namespace EMotionFX
 
         // main methods
         /**
-         * Update the transformations of this actor instance.
-         * This will calculate and update all the local transforms, local space matrices and world space matrices that
-         * are stored inside the TransformData object of this actor instance.
-         * This automatically updates all motion timers as well.
+         * Update the transformations of this actor instance. This can be the actor instance transform and can also include the joint transforms.
+         * This automatically updates all motion timers and anim graph nodes as well.
          * @param timePassedInSeconds The time passed in seconds, since the last frame or update.
-         * @param updateMatrices When set to true the node matrices will all be updated.
+         * @param updateJointTransforms When set to true the joint transformations will be calculated by calculating the animation graph output for example.
          * @param sampleMotions When set to true motions will be sampled, or whole anim graphs if using those. When updateMatrices is set to false, motions will never be sampled, even if set to true.
          */
-        void UpdateTransformations(float timePassedInSeconds, bool updateMatrices = true, bool sampleMotions = true);
+        void UpdateTransformations(float timePassedInSeconds, bool updateJointTransforms = true, bool sampleMotions = true);
 
         /**
          * Update/Process the mesh deformers.

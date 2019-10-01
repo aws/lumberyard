@@ -15,6 +15,7 @@
 #include <AzCore/Math/Vector2.h>
 #include <AzCore/Math/Matrix4x4.h>
 #include <AzFramework/Input/Channels/InputChannelDigitalWithSharedModifierKeyStates.h>
+#include <AzFramework/Input/User/LocalUserId.h>
 #include <LyShine/UiBase.h>
 
 // Forward declarations
@@ -209,9 +210,9 @@ public: // member functions
     //! When running in game in full screen mode the target canvas size should be set to the viewport size
     virtual void SetTargetCanvasSize(bool isInGame, const AZ::Vector2& targetCanvasSize) = 0;
 
-    //! Get uniform scale to adjust for the difference between canvas size (authored size)
-    //! and the viewport size when running on current device
-    virtual float GetUniformDeviceScale() = 0;
+    //! Get scale to adjust for the difference between canvas size (authored size)
+    //! and the viewport size (target canvas size) when running on current device
+    virtual AZ::Vector2 GetDeviceScale() = 0;
 
     //! Get flag that indicates whether visual element's vertices should snap to the nearest pixel
     virtual bool GetIsPixelAligned() = 0;
@@ -273,6 +274,30 @@ public: // member functions
 
     //! Set flag that controls whether this canvas automatically handles navigation input (via keyboard/gamepad)
     virtual void SetIsNavigationSupported(bool isSupported) = 0;
+
+    //! Get the analog (eg. thumb-stick) input value that must be exceeded before a navigation command will be processed
+    virtual float GetNavigationThreshold() = 0;
+
+    //! Set the analog (eg. thumb-stick) input value that must be exceeded before a navigation command will be processed
+    virtual void SetNavigationThreshold(float navigationThreshold) = 0;
+
+    //! Get the delay (milliseconds) before a held navigation command will begin repeating
+    virtual AZ::u64 GetNavigationRepeatDelay() = 0;
+
+    //! Set the delay (milliseconds) before a held navigation command will begin repeating
+    virtual void SetNavigationRepeatDelay(AZ::u64 navigationRepeatDelay) = 0;
+
+    //! Get the delay (milliseconds) before a held navigation command will continue repeating
+    virtual AZ::u64 GetNavigationRepeatPeriod() = 0;
+
+    //! Set the delay (milliseconds) before a held navigation command will continue repeating
+    virtual void SetNavigationRepeatPeriod(AZ::u64 navigationRepeatPeriod) = 0;
+
+    //! Get the local user id that is being used to filter incoming input events
+    virtual AzFramework::LocalUserId GetLocalUserIdInputFilter() = 0;
+
+    //! Set the local user id that will be used to filter incoming input events
+    virtual void SetLocalUserIdInputFilter(AzFramework::LocalUserId localUserId) = 0;
 
     //! Handle an input event for the canvas
     virtual bool HandleInputEvent(const AzFramework::InputChannel::Snapshot& inputSnapshot,

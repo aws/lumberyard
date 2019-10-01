@@ -16,6 +16,7 @@
 #include <GraphCanvas/Widgets/EditorContextMenu/ContextMenuActions/AlignmentMenuActions/AlignmentActionsMenuGroup.h>
 #include <GraphCanvas/Widgets/EditorContextMenu/ContextMenuActions/EditMenuActions/EditActionsMenuGroup.h>
 #include <GraphCanvas/Widgets/EditorContextMenu/ContextMenuActions/NodeGroupMenuActions/NodeGroupActionsMenuGroup.h>
+#include <GraphCanvas/Widgets/EditorContextMenu/ContextMenuActions/DisableMenuActions/DisableActionsMenuGroup.h>
 
 namespace GraphCanvas
 {
@@ -23,7 +24,7 @@ namespace GraphCanvas
         : public EditorContextMenu
     {
     public:
-        NodeContextMenu(QWidget* parent = nullptr);
+        NodeContextMenu(EditorId editorId, QWidget* parent = nullptr);
         ~NodeContextMenu() override = default;
         
     protected:
@@ -32,9 +33,9 @@ namespace GraphCanvas
 
     private:
 
-        EditActionsMenuGroup m_editActionGroup;
-        NodeGroupActionsMenuGroup m_nodeGroupActionGroup;
-        AlignmentActionsMenuGroup m_alignmentActionGroup;
-
+        EditActionsMenuGroup        m_editActionGroup;
+        NodeGroupActionsMenuGroup   m_nodeGroupActionGroup;
+        DisableActionsMenuGroup     m_disableActionGroup;
+        AlignmentActionsMenuGroup   m_alignmentActionGroup;
     };
 }

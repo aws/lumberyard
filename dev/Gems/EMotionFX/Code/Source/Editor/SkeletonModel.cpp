@@ -12,13 +12,13 @@
 
 #include <EMotionFX/Source/Skeleton.h>
 #include <Source/Editor/SkeletonModel.h>
-#include <QtGui/QFont>
+#include <EMotionFX/Source/SimulatedObjectSetup.h>
 
 
 namespace EMotionFX
 {
     int SkeletonModel::s_defaultIconSize = 16;
-    int SkeletonModel::s_columnCount = 5;
+    int SkeletonModel::s_columnCount = 6;
 
     SkeletonModel::SkeletonModel()
         : m_selectionModel(this)
@@ -30,6 +30,7 @@ namespace EMotionFX
         , m_hitDetectionColliderIcon(":/EMotionFX/HitDetection_BlueBG.png")
         , m_ragdollColliderIcon(":/EMotionFX/RagdollCollider_OrangeBG.png")
         , m_ragdollJointLimitIcon(":/EMotionFX/RagdollJointLimit_OrangeBG.png")
+        , m_simulatedColliderIcon(":/EMotionFX/SimulatedObjectCollider_BG.png")
     {
         m_selectionModel.setModel(this);
 
@@ -306,6 +307,20 @@ namespace EMotionFX
                 }
                 break;
             }
+            case COLUMN_SIMULATED_COLLIDERS:
+            {
+                const AZStd::shared_ptr<PhysicsSetup>& physicsSetup = m_actor->GetPhysicsSetup();
+                if (physicsSetup)
+                {
+                    const Physics::CharacterColliderConfiguration& simulatedColliderConfig = physicsSetup->GetSimulatedObjectColliderConfig();
+                    Physics::CharacterColliderNodeConfiguration* simulatedColliderNodeConfig = simulatedColliderConfig.FindNodeConfigByName(node->GetName());
+                    if (simulatedColliderNodeConfig && !simulatedColliderNodeConfig->m_shapes.empty())
+                    {
+                        return m_simulatedColliderIcon;
+                    }
+                }
+                break;
+            }
             }
             break;
         }
@@ -349,6 +364,30 @@ namespace EMotionFX
                 const Physics::CharacterColliderConfiguration& clothConfig = physicsSetup->GetClothConfig();
                 Physics::CharacterColliderNodeConfiguration* clothNodeConfig = clothConfig.FindNodeConfigByName(node->GetName());
                 return (clothNodeConfig && !clothNodeConfig->m_shapes.empty());
+            }
+        }
+        case ROLE_SIMULATED_JOINT:
+        {
+            const AZStd::shared_ptr<SimulatedObjectSetup>& simulatedObjectSetup = m_actor->GetSimulatedObjectSetup();
+            if (simulatedObjectSetup)
+            {
+                const AZStd::vector<SimulatedObject*>& objects = simulatedObjectSetup->GetSimulatedObjects();
+                const auto found = AZStd::find_if(objects.begin(), objects.end(), [node](const SimulatedObject* object)
+                {
+                    return object->FindSimulatedJointBySkeletonJointIndex(node->GetNodeIndex());
+                });
+                return found != objects.end();
+            }
+        }
+        case ROLE_SIMULATED_OBJECT_COLLIDER:
+        {
+            const AZStd::shared_ptr<PhysicsSetup>& physicsSetup = m_actor->GetPhysicsSetup();
+            if (physicsSetup)
+            {
+                // TODO: Get the data from simulated collider setup.
+                const Physics::CharacterColliderConfiguration& simulatedObjectConfig = physicsSetup->GetSimulatedObjectColliderConfig();
+                Physics::CharacterColliderNodeConfiguration* simulatedObjectNodeConfig = simulatedObjectConfig.FindNodeConfigByName(node->GetName());
+                return (simulatedObjectNodeConfig && !simulatedObjectNodeConfig->m_shapes.empty());
             }
         }
         default:

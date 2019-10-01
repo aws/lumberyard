@@ -865,9 +865,7 @@ namespace EMotionFX
         SetCurrentPlayTimeNormalized(animGraphInstance, normalizedTime);
     }
 
-
-    // automatically sync
-    void AnimGraphNode::AutoSync(AnimGraphInstance* animGraphInstance, AnimGraphNode* masterNode, float weight, ESyncMode syncMode, bool resync, bool modifyMasterSpeed)
+    void AnimGraphNode::AutoSync(AnimGraphInstance* animGraphInstance, AnimGraphNode* masterNode, float weight, ESyncMode syncMode, bool resync)
     {
         // exit if we don't want to sync or we have no master node to sync to
         if (syncMode == SYNCMODE_DISABLED || masterNode == nullptr)
@@ -885,13 +883,13 @@ namespace EMotionFX
             // if we have sync keys in both nodes, do the track based sync
             if (syncTrackA && syncTrackB && syncTrackA->GetNumEvents() > 0 && syncTrackB->GetNumEvents() > 0)
             {
-                SyncUsingSyncTracks(animGraphInstance, masterNode, syncTrackA, syncTrackB, weight, resync, modifyMasterSpeed);
+                SyncUsingSyncTracks(animGraphInstance, masterNode, syncTrackA, syncTrackB, weight, resync, /*modifyMasterSpeed*/false);
                 return;
             }
         }
 
         // we either have no evens inside the sync tracks in both nodes, or we just want to sync based on full clips
-        SyncFullNode(animGraphInstance, masterNode, weight, modifyMasterSpeed);
+        SyncFullNode(animGraphInstance, masterNode, weight, /*modifyMasterSpeed*/false);
     }
 
 
@@ -932,77 +930,73 @@ namespace EMotionFX
         uniqueDataB->SetPlaySpeed(interpolatedSpeed * factorB);
     }
 
-
-    // calculate the sync factors
-    void AnimGraphNode::CalcSyncFactors(AnimGraphInstance* animGraphInstance, AnimGraphNode* masterNode, AnimGraphNode* slaveNode, ESyncMode syncMode, float weight, float* outMasterFactor, float* outSlaveFactor, float* outPlaySpeed)
+    void AnimGraphNode::CalcSyncFactors(const AnimGraphInstance* animGraphInstance, const AnimGraphNode* masterNode, const AnimGraphNode* servantNode, ESyncMode syncMode, float weight, float* outMasterFactor, float* outServantFactor, float* outPlaySpeed)
     {
-        // get the unique datas
-        AnimGraphNodeData* uniqueDataA = masterNode->FindUniqueNodeData(animGraphInstance);
-        AnimGraphNodeData* uniqueDataB = slaveNode->FindUniqueNodeData(animGraphInstance);
+        const AnimGraphNodeData* masterUniqueData = masterNode->FindUniqueNodeData(animGraphInstance);
+        const AnimGraphNodeData* servantUniqueData = servantNode->FindUniqueNodeData(animGraphInstance);
 
-        // already output the play speed
-        *outPlaySpeed = MCore::LinearInterpolate<float>(uniqueDataA->GetPlaySpeed(), uniqueDataB->GetPlaySpeed(), weight);
+        CalcSyncFactors(masterUniqueData->GetPlaySpeed(), masterUniqueData->GetSyncTrack(), masterUniqueData->GetSyncIndex(), masterUniqueData->GetDuration(),
+            servantUniqueData->GetPlaySpeed(), servantUniqueData->GetSyncTrack(), servantUniqueData->GetSyncIndex(), servantUniqueData->GetDuration(),
+            syncMode, weight, outMasterFactor, outServantFactor, outPlaySpeed);
+    }
+
+    void AnimGraphNode::CalcSyncFactors(float masterPlaySpeed, const AnimGraphSyncTrack* masterSyncTrack, uint32 masterSyncTrackIndex, float masterDuration,
+        float servantPlaySpeed, const AnimGraphSyncTrack* servantSyncTrack, uint32 servantSyncTrackIndex, float servantDuration,
+        ESyncMode syncMode, float weight, float* outMasterFactor, float* outServantFactor, float* outPlaySpeed)
+    {
+        *outPlaySpeed = AZ::Lerp(masterPlaySpeed, servantPlaySpeed, weight);
 
         // exit if we don't want to sync or we have no master node to sync to
         if (syncMode == SYNCMODE_DISABLED)
         {
             *outMasterFactor = 1.0f;
-            *outSlaveFactor  = 1.0f;
+            *outServantFactor = 1.0f;
             return;
         }
 
         // if one of the tracks is empty, sync the full clip
         if (syncMode == SYNCMODE_TRACKBASED)
         {
-            // get the sync tracks
-            const AnimGraphSyncTrack* syncTrackA = uniqueDataA->GetSyncTrack();
-            const AnimGraphSyncTrack* syncTrackB = uniqueDataB->GetSyncTrack();
-
             // if we have sync keys in both nodes, do the track based sync
-            if (syncTrackA && syncTrackB && syncTrackA->GetNumEvents() > 0 && syncTrackB->GetNumEvents() > 0)
+            if (masterSyncTrack && servantSyncTrack && masterSyncTrack->GetNumEvents() > 0 && servantSyncTrack->GetNumEvents() > 0)
             {
-                const uint32 syncIndexA = uniqueDataA->GetSyncIndex();
-                const uint32 syncIndexB = uniqueDataB->GetSyncIndex();
-
                 // if the sync indices are invalid, act like no syncing
-                if (syncIndexA == MCORE_INVALIDINDEX32 || syncIndexB == MCORE_INVALIDINDEX32)
+                if (masterSyncTrackIndex == MCORE_INVALIDINDEX32 || servantSyncTrackIndex == MCORE_INVALIDINDEX32)
                 {
                     *outMasterFactor = 1.0f;
-                    *outSlaveFactor  = 1.0f;
+                    *outServantFactor = 1.0f;
                     return;
                 }
 
                 // get the segment lengths
                 // TODO: handle motion clip start and end
-                uint32 syncIndexA2 = syncIndexA + 1;
-                if (syncIndexA2 >= syncTrackA->GetNumEvents())
+                uint32 masterSyncIndexNext = masterSyncTrackIndex + 1;
+                if (masterSyncIndexNext >= masterSyncTrack->GetNumEvents())
                 {
-                    syncIndexA2 = 0;
+                    masterSyncIndexNext = 0;
                 }
 
-                uint32 syncIndexB2 = syncIndexB + 1;
-                if (syncIndexB2 >= syncTrackB->GetNumEvents())
+                uint32 servantSyncIndexNext = servantSyncTrackIndex + 1;
+                if (servantSyncIndexNext >= servantSyncTrack->GetNumEvents())
                 {
-                    syncIndexB2 = 0;
+                    servantSyncIndexNext = 0;
                 }
 
-                const float durationA = syncTrackA->CalcSegmentLength(syncIndexA, syncIndexA2);
-                const float durationB = syncTrackB->CalcSegmentLength(syncIndexB, syncIndexB2);
-                const float timeRatio   = (durationB > MCore::Math::epsilon) ? durationA / durationB : 0.0f;
-                const float timeRatio2  = (durationA > MCore::Math::epsilon) ? durationB / durationA : 0.0f;
-                *outMasterFactor = MCore::LinearInterpolate<float>(1.0f, timeRatio, weight);
-                *outSlaveFactor = MCore::LinearInterpolate<float>(timeRatio2, 1.0f, weight);
+                const float durationA = masterSyncTrack->CalcSegmentLength(masterSyncTrackIndex, masterSyncIndexNext);
+                const float durationB = servantSyncTrack->CalcSegmentLength(servantSyncTrackIndex, servantSyncIndexNext);
+                const float timeRatio = (durationB > MCore::Math::epsilon) ? durationA / durationB : 0.0f;
+                const float timeRatio2 = (durationA > MCore::Math::epsilon) ? durationB / durationA : 0.0f;
+                *outMasterFactor = AZ::Lerp(1.0f, timeRatio, weight);
+                *outServantFactor = AZ::Lerp(timeRatio2, 1.0f, weight);
                 return;
             }
         }
 
         // calculate the factor based on full clip sync
-        const float durationA   = uniqueDataA->GetDuration();
-        const float durationB   = uniqueDataB->GetDuration();
-        const float timeRatio   = (durationB > MCore::Math::epsilon) ? durationA / durationB : 0.0f;
-        const float timeRatio2  = (durationA > MCore::Math::epsilon) ? durationB / durationA : 0.0f;
-        *outMasterFactor = MCore::LinearInterpolate<float>(1.0f, timeRatio, weight);
-        *outSlaveFactor = MCore::LinearInterpolate<float>(timeRatio2, 1.0f, weight);
+        const float timeRatio = (servantDuration > MCore::Math::epsilon) ? masterDuration / servantDuration : 0.0f;
+        const float timeRatio2 = (masterDuration > MCore::Math::epsilon) ? servantDuration / masterDuration : 0.0f;
+        *outMasterFactor = AZ::Lerp(1.0f, timeRatio, weight);
+        *outServantFactor = AZ::Lerp(timeRatio2, 1.0f, weight);
     }
 
 
@@ -1820,9 +1814,19 @@ namespace EMotionFX
         }
     }
 
+    void AnimGraphNode::FilterEvents(AnimGraphInstance* animGraphInstance, EEventMode eventMode, AnimGraphNode* nodeA, AnimGraphNode* nodeB, float localWeight, AnimGraphRefCountedData* refData)
+    {
+        AnimGraphRefCountedData* refDataA = nullptr;
+        if (nodeA)
+        {
+            refDataA = nodeA->FindUniqueNodeData(animGraphInstance)->GetRefCountedData();
+        }
+
+        FilterEvents(animGraphInstance, eventMode, refDataA, nodeB, localWeight, refData);
+    }
 
     // filter the event based on a given event mode
-    void AnimGraphNode::FilterEvents(AnimGraphInstance* animGraphInstance, EEventMode eventMode, AnimGraphNode* nodeA, AnimGraphNode* nodeB, float localWeight, AnimGraphRefCountedData* refData)
+    void AnimGraphNode::FilterEvents(AnimGraphInstance* animGraphInstance, EEventMode eventMode, AnimGraphRefCountedData* refDataNodeA, AnimGraphNode* nodeB, float localWeight, AnimGraphRefCountedData* refData)
     {
         switch (eventMode)
         {
@@ -1839,67 +1843,56 @@ namespace EMotionFX
         // only the master
         case EVENTMODE_MASTERONLY:
         {
-            if (nodeA)
+            if (refDataNodeA)
             {
-                AnimGraphRefCountedData* refDataA = nodeA->FindUniqueNodeData(animGraphInstance)->GetRefCountedData();
-                if (refDataA)
-                {
-                    refData->SetEventBuffer(refDataA->GetEventBuffer());
-                }
+                refData->SetEventBuffer(refDataNodeA->GetEventBuffer());
             }
         }
         break;
-
 
         // only the slave
         case EVENTMODE_SLAVEONLY:
         {
             if (nodeB)
             {
-                AnimGraphRefCountedData* refDataB = nodeB->FindUniqueNodeData(animGraphInstance)->GetRefCountedData();
-                if (refDataB)
+                AnimGraphRefCountedData* refDataNodeB = nodeB->FindUniqueNodeData(animGraphInstance)->GetRefCountedData();
+                if (refDataNodeB)
                 {
-                    refData->SetEventBuffer(refDataB->GetEventBuffer());
+                    refData->SetEventBuffer(refDataNodeB->GetEventBuffer());
                 }
             }
-            else if (nodeA)
+            else if (refDataNodeA)
             {
-                AnimGraphRefCountedData* refDataA = nodeA->FindUniqueNodeData(animGraphInstance)->GetRefCountedData();
-                if (refDataA)
-                {
-                    refData->SetEventBuffer(refDataA->GetEventBuffer());   // master is also slave
-                }
+                refData->SetEventBuffer(refDataNodeA->GetEventBuffer()); // master is also slave
             }
         }
         break;
 
-
         // both nodes
         case EVENTMODE_BOTHNODES:
         {
-            AnimGraphRefCountedData* refDataA = nodeA ? nodeA->FindUniqueNodeData(animGraphInstance)->GetRefCountedData() : nullptr;
-            AnimGraphRefCountedData* refDataB = nodeB ? nodeB->FindUniqueNodeData(animGraphInstance)->GetRefCountedData() : nullptr;
+            AnimGraphRefCountedData* refDataNodeB = nodeB ? nodeB->FindUniqueNodeData(animGraphInstance)->GetRefCountedData() : nullptr;
 
-            const uint32 numEventsA = refDataA ? refDataA->GetEventBuffer().GetNumEvents() : 0;
-            const uint32 numEventsB = refDataB ? refDataB->GetEventBuffer().GetNumEvents() : 0;
+            const uint32 numEventsA = refDataNodeA ? refDataNodeA->GetEventBuffer().GetNumEvents() : 0;
+            const uint32 numEventsB = refDataNodeB ? refDataNodeB->GetEventBuffer().GetNumEvents() : 0;
 
             // resize to the right number of events already
             AnimGraphEventBuffer& eventBuffer = refData->GetEventBuffer();
             eventBuffer.Resize(numEventsA + numEventsB);
 
             // add the first node's events
-            if (refDataA)
+            if (refDataNodeA)
             {
-                const AnimGraphEventBuffer& eventBufferA = refDataA->GetEventBuffer();
+                const AnimGraphEventBuffer& eventBufferA = refDataNodeA->GetEventBuffer();
                 for (uint32 i = 0; i < numEventsA; ++i)
                 {
                     eventBuffer.SetEvent(i, eventBufferA.GetEvent(i));
                 }
             }
 
-            if (refDataB)
+            if (refDataNodeB)
             {
-                const AnimGraphEventBuffer& eventBufferB = refDataB->GetEventBuffer();
+                const AnimGraphEventBuffer& eventBufferB = refDataNodeB->GetEventBuffer();
                 for (uint32 i = 0; i < numEventsB; ++i)
                 {
                     eventBuffer.SetEvent(numEventsA + i, eventBufferB.GetEvent(i));
@@ -1908,39 +1901,30 @@ namespace EMotionFX
         }
         break;
 
-
         // most active node's events
         case EVENTMODE_MOSTACTIVE:
         {
             // if the weight is lower than half, use the first node's events
             if (localWeight <= 0.5f)
             {
-                if (nodeA)
+                if (refDataNodeA)
                 {
-                    AnimGraphRefCountedData* refDataA = nodeA->FindUniqueNodeData(animGraphInstance)->GetRefCountedData();
-                    if (refDataA)
-                    {
-                        refData->SetEventBuffer(refDataA->GetEventBuffer());
-                    }
+                    refData->SetEventBuffer(refDataNodeA->GetEventBuffer());
                 }
             }
             else // try to use the second node's events
             {
                 if (nodeB)
                 {
-                    AnimGraphRefCountedData* refDataB = nodeB->FindUniqueNodeData(animGraphInstance)->GetRefCountedData();
-                    if (refDataB)
+                    AnimGraphRefCountedData* refDataNodeB = nodeB->FindUniqueNodeData(animGraphInstance)->GetRefCountedData();
+                    if (refDataNodeB)
                     {
-                        refData->SetEventBuffer(refDataB->GetEventBuffer());
+                        refData->SetEventBuffer(refDataNodeB->GetEventBuffer());
                     }
                 }
-                else if (nodeA)
+                else if (refDataNodeA)
                 {
-                    AnimGraphRefCountedData* refDataA = nodeA->FindUniqueNodeData(animGraphInstance)->GetRefCountedData();
-                    if (refDataA)
-                    {
-                        refData->SetEventBuffer(refDataA->GetEventBuffer());   // master is also slave
-                    }
+                       refData->SetEventBuffer(refDataNodeA->GetEventBuffer()); // master is also slave
                 }
             }
         }
@@ -1948,8 +1932,7 @@ namespace EMotionFX
 
         default:
             AZ_Assert(false, "Unknown event filter mode used!");
-        }
-        ;
+        };
     }
 
 
@@ -1960,7 +1943,7 @@ namespace EMotionFX
 
         if (animGraphInstance->GetIsSynced(inputNode->GetObjectIndex()))
         {
-            inputNode->AutoSync(animGraphInstance, this, 0.0f, SYNCMODE_TRACKBASED, false, false);
+            inputNode->AutoSync(animGraphInstance, this, 0.0f, SYNCMODE_TRACKBASED, false);
         }
         else
         {

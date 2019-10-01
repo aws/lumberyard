@@ -1,0 +1,10 @@
+{
+    "auto":
+    {
+        "Platform/Linux":
+        [
+            "VideoPlayback_Traits_Platform.h",
+            "VideoPlayback_Traits_Linux.h"
+        ]
+    }
+}

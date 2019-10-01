@@ -9,7 +9,6 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#ifndef AZ_UNITY_BUILD
 
 #include <GridMate/Carrier/StreamSocketDriver.h>
 #include <AzCore/Socket/AzSocket.h>
@@ -18,10 +17,13 @@
 namespace GridMate
 {
     // defined in SocketDriver.cpp
-    bool IsSocketError(AZ::s64 result);
-    int GetSocketError();
-    SocketDriverCommon::SocketType GetInvalidSocket();
-    bool IsValidSocket(SocketDriverCommon::SocketType s);
+    namespace Platform
+    {
+        bool IsSocketError(AZ::s64 result);
+        int GetSocketError();
+        SocketDriverCommon::SocketType GetInvalidSocket();
+        bool IsValidSocket(SocketDriverCommon::SocketType s);
+    }
 }
 
 #define STREAM_PACKET_LOG 0
@@ -222,7 +224,7 @@ namespace GridMate
     StreamSocketDriver::Connection::Connection(AZ::u32 inboundBufferSize, AZ::u32 outputBufferSize)
         : m_remoteAddress(nullptr)
         , m_initialized(false)
-        , m_socket(GridMate::GetInvalidSocket())
+        , m_socket(Platform::GetInvalidSocket())
         , m_socketErrors()
         , m_sm()
         , m_inboundBuffer(inboundBufferSize)
@@ -270,7 +272,7 @@ namespace GridMate
             SocketOperations::CloseSocket(m_socket);
             m_inboundBuffer.Release();
             m_remoteAddress = nullptr;
-            m_socket = GetInvalidSocket();
+            m_socket = Platform::GetInvalidSocket();
             m_initialized = false;
         }
     }
@@ -298,7 +300,7 @@ namespace GridMate
 
     bool StreamSocketDriver::Connection::SendPacket(const char* data, AZ::u32 dataSize)
     {
-        if (!GridMate::IsValidSocket(m_socket))
+        if (!Platform::IsValidSocket(m_socket))
         {
             return false;
         }
@@ -362,7 +364,7 @@ namespace GridMate
                 }
                 else
                 {
-                    AZ_TracePrintf("GridMate", "Send body failed with:\n", GetSocketError());
+                    AZ_TracePrintf("GridMate", "Send body failed with:\n", Platform::GetSocketError());
                     StoreLastSocketError();
                 }
             }
@@ -386,7 +388,7 @@ namespace GridMate
         }
         else
         {
-            AZ_TracePrintf("GridMate", "Send header failed with:\n", GetSocketError());
+            AZ_TracePrintf("GridMate", "Send header failed with:\n", Platform::GetSocketError());
             StoreLastSocketError();
         }
         return false;
@@ -394,7 +396,7 @@ namespace GridMate
 
     bool StreamSocketDriver::Connection::GetPacket(Packet& packet, char* data, AZ::u32 maxDataSize)
     {
-        if (!GridMate::IsValidSocket(m_socket))
+        if (!Platform::IsValidSocket(m_socket))
         {
             return false;
         }
@@ -468,7 +470,7 @@ namespace GridMate
             return true;
         }
 
-        if (IsValidSocket(m_socket))
+        if (Platform::IsValidSocket(m_socket))
         {
             sm.Transition(static_cast<AZ::HSM::StateId>(ConnectionState::ESTABLISHED));
         }
@@ -496,7 +498,7 @@ namespace GridMate
             return true;
         }
 
-        if (!IsValidSocket(m_socket))
+        if (!Platform::IsValidSocket(m_socket))
         {
             sm.Transition(static_cast<AZ::HSM::StateId>(ConnectionState::IN_ERROR));
             return true;
@@ -537,7 +539,7 @@ namespace GridMate
             return true;
         }
 
-        if (!IsValidSocket(m_socket))
+        if (!Platform::IsValidSocket(m_socket))
         {
             sm.Transition(static_cast<AZ::HSM::StateId>(ConnectionState::IN_ERROR));
             return true;
@@ -709,7 +711,7 @@ namespace GridMate
 
     void StreamSocketDriver::Connection::StoreLastSocketError()
     {
-        m_socketErrors.push_back(GridMate::GetSocketError());
+        m_socketErrors.push_back(Platform::GetSocketError());
     }
 
     void StreamSocketDriver::Connection::ProcessInbound(bool& switchState, RingBuffer& inboundBuffer)
@@ -828,7 +830,7 @@ namespace GridMate
         , m_connections()
     {
         AZ::AzSock::Startup();
-        m_socket = GetInvalidSocket();
+        m_socket = Platform::GetInvalidSocket();
         m_isDatagram = false;
     }
 
@@ -872,7 +874,7 @@ namespace GridMate
                     }
 
                     // if the accpet() would block then EC_OK could come back, thus when the socket in valid AND accept succeeds then make a new Connection
-                    if (IsValidSocket(outSocket))
+                    if (Platform::IsValidSocket(outSocket))
                     {
                         Connection* c = m_connectionFactory(m_incomingBufferSize, m_outgoingBufferSize);
                         if (c->Initialize(ConnectionState::ACCEPT, outSocket, addr))
@@ -893,7 +895,7 @@ namespace GridMate
                 }
                 else
                 {
-                    AZ_Warning("GridMate", false, "Accept() a connection failed with error:%d", GridMate::GetSocketError());
+                    AZ_Warning("GridMate", false, "Accept() a connection failed with error:%d", Platform::GetSocketError());
                     break;
                 }
             }
@@ -919,12 +921,12 @@ namespace GridMate
 
     void StreamSocketDriver::CloseSocket()
     {
-        if (IsValidSocket(m_socket))
+        if (Platform::IsValidSocket(m_socket))
         {
             SocketOperations::CloseSocket(m_socket);
         }
         m_port = 0;
-        m_socket = GetInvalidSocket();
+        m_socket = Platform::GetInvalidSocket();
         for (auto& addrConn : m_connections)
         {
             delete addrConn.second;
@@ -934,28 +936,28 @@ namespace GridMate
 
     Driver::ResultCode StreamSocketDriver::PrepareSocket(AZ::u16 desiredPort, SocketAddressInfo& socketAddressInfo, SocketType& socket)
     {
-        socket = GetInvalidSocket();
+        socket = Platform::GetInvalidSocket();
         if (!socketAddressInfo.Resolve(m_boundAddress.empty() ? nullptr : m_boundAddress.c_str(), desiredPort, m_boundSocketFamily, false, SocketAddressInfo::AdditionalOptionFlags::Passive))
         {
             return EC_SOCKET_CONNECT;
         }
 
         SocketType s = CreateSocket(socketAddressInfo.GetAddressInfo()->ai_family, socketAddressInfo.GetAddressInfo()->ai_socktype, socketAddressInfo.GetAddressInfo()->ai_protocol);
-        if (!GridMate::IsValidSocket(s))
+        if (!Platform::IsValidSocket(s))
         {
             return EC_SOCKET_CONNECT;
         }
 
         if (SocketOperations::SetSocketBlockingMode(s, false) != EC_OK)
         {
-            AZ_TracePrintf("GridMate", "Socket error SetSocketBlockingMode:%d\n", GridMate::GetSocketError());
+            AZ_TracePrintf("GridMate", "Socket error SetSocketBlockingMode:%d\n", Platform::GetSocketError());
             SocketOperations::CloseSocket(s);
             return EC_SOCKET_SOCK_OPT;
         }
 
         if (SocketOperations::EnableTCPNoDelay(s, false) != EC_OK)
         {
-            AZ_TracePrintf("GridMate", "Socket error EnableTCPNoDelay:%d\n", GridMate::GetSocketError());
+            AZ_TracePrintf("GridMate", "Socket error EnableTCPNoDelay:%d\n", Platform::GetSocketError());
             SocketOperations::CloseSocket(s);
             return EC_SOCKET_SOCK_OPT;
         }
@@ -1096,15 +1098,15 @@ namespace GridMate
             return EC_SOCKET_CONNECT;
         }
         
-        AZ_Error("GridMate", IsValidSocket(socket), "Made an invalid socket and still returned EC_OK");
-        if (!IsValidSocket(socket))
+        AZ_Error("GridMate", Platform::IsValidSocket(socket), "Made an invalid socket and still returned EC_OK");
+        if (!Platform::IsValidSocket(socket))
         {
             return EC_SOCKET_CONNECT;
         }
 
         if (SocketOperations::Bind(socket, socketAddressInfo.GetAddressInfo()->ai_addr, socketAddressInfo.GetAddressInfo()->ai_addrlen) != EC_OK)
         {
-            AZ_TracePrintf("GridMate", "StreamSocketDriver::Initialize - bind failed with code %d\n", GridMate::GetSocketError());
+            AZ_TracePrintf("GridMate", "StreamSocketDriver::Initialize - bind failed with code %d\n", Platform::GetSocketError());
             SocketOperations::CloseSocket(socket);
             return EC_SOCKET_BIND;
         }
@@ -1154,9 +1156,9 @@ namespace GridMate
         }
 
         AZ::s32 bindResult = BindSocket(socketAddressInfo.GetAddressInfo()->ai_addr, socketAddressInfo.GetAddressInfo()->ai_addrlen);
-        if (IsSocketError(bindResult))
+        if (Platform::IsSocketError(bindResult))
         {
-            AZ_TracePrintf("GridMate", "StreamSocketDriver::Initialize - bind failed with code %d at port %d\n", GridMate::GetSocketError(), port);
+            AZ_TracePrintf("GridMate", "StreamSocketDriver::Initialize - bind failed with code %d at port %d\n", Platform::GetSocketError(), port);
             CloseSocket();
             return EC_SOCKET_BIND;
         }
@@ -1167,7 +1169,7 @@ namespace GridMate
             m_port = socketAddressInfo.RetrieveSystemAssignedPort(m_socket);
             if (m_port == 0)
             {
-                AZ_TracePrintf("GridMate", "StreamSocketDriver::Initialize - RetrieveSystemAssignedPort() failed with code %d at port %d\n", GridMate::GetSocketError(), port);
+                AZ_TracePrintf("GridMate", "StreamSocketDriver::Initialize - RetrieveSystemAssignedPort() failed with code %d at port %d\n", Platform::GetSocketError(), port);
                 CloseSocket();
                 return EC_SOCKET_BIND;
             }
@@ -1177,9 +1179,9 @@ namespace GridMate
             m_port = AZ::AzSock::NetToHostShort(static_cast<AZ::u16>(port));
         }
 
-        if (IsValidSocket(m_socket))
+        if (Platform::IsValidSocket(m_socket))
         {
-            if (!IsSocketError(SocketOperations::Listen(m_socket, backlog)))
+            if (!Platform::IsSocketError(SocketOperations::Listen(m_socket, backlog)))
             {
                 m_isListening = true;
                 return EC_OK;
@@ -1190,7 +1192,7 @@ namespace GridMate
 
     Driver::ResultCode StreamSocketDriver::StopListen()
     {
-        if (IsValidSocket(m_socket))
+        if (Platform::IsValidSocket(m_socket))
         {
             // signal that all existing Connections to close
             for (auto& conn : m_connections)
@@ -1234,16 +1236,16 @@ namespace GridMate
         (void)isBroadcast; // never true for TCP streaming driver
 
         ResultCode ret = SocketOperations::SetSocketBlockingMode(m_socket, false);
-        if (GridMate::IsSocketError(ret))
+        if (Platform::IsSocketError(ret))
         {
-            AZ_TracePrintf("GridMate", "Socket error SetSocketBlockingMode:%d\n", GridMate::GetSocketError());
+            AZ_TracePrintf("GridMate", "Socket error SetSocketBlockingMode:%d\n", Platform::GetSocketError());
             return EC_SOCKET_MAKE_NONBLOCK;
         }
 
         ret = SocketOperations::EnableTCPNoDelay(m_socket, false);
-        if (GridMate::IsSocketError(ret))
+        if (Platform::IsSocketError(ret))
         {
-            AZ_TracePrintf("GridMate", "Socket error EnableTCPNoDelay:%d\n", GridMate::GetSocketError());
+            AZ_TracePrintf("GridMate", "Socket error EnableTCPNoDelay:%d\n", Platform::GetSocketError());
             return EC_SOCKET_SOCK_OPT;
         }
 
@@ -1251,5 +1253,3 @@ namespace GridMate
     }
 
 } // namespace GridMate
-
-#endif // #ifndef AZ_UNITY_BUILD

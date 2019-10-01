@@ -14,6 +14,7 @@
 
 #include <AzCore/Memory/Memory.h>
 #include <AzCore/std/string/string.h>
+#include <AzCore/std/optional.h>
 #include <MCore/Source/Command.h>
 #include <EMotionFX/Source/AnimGraphObjectIds.h>
 
@@ -36,6 +37,8 @@ namespace EMotionFX
         AZ_RTTI(ParameterMixinActorId, "{EE5FAA4B-FC04-4323-820F-FFE46EFC8038}")
         AZ_CLASS_ALLOCATOR_DECL
 
+        ParameterMixinActorId() = default;
+        explicit ParameterMixinActorId(AZ::u32 actorId);
         virtual ~ParameterMixinActorId() = default;
 
         static void Reflect(AZ::ReflectContext* context);
@@ -47,7 +50,7 @@ namespace EMotionFX
         void SetActorId(AZ::u32 actorId) { m_actorId = actorId; }
         AZ::u32 GetActorId() const { return m_actorId; }
 
-        Actor* GetActor(MCore::Command* command, AZStd::string& outResult) const;
+        Actor* GetActor(const MCore::Command* command, AZStd::string& outResult) const;
     protected:
         AZ::u32 m_actorId = MCORE_INVALIDINDEX32;
     };
@@ -58,6 +61,8 @@ namespace EMotionFX
         AZ_RTTI(ParameterMixinJointName, "{9EFF81B2-4720-449F-8B7E-59C9F437E7E3}")
         AZ_CLASS_ALLOCATOR_DECL
 
+        ParameterMixinJointName() = default;
+        explicit ParameterMixinJointName(const AZStd::string& jointName);
         virtual ~ParameterMixinJointName() = default;
 
         static void Reflect(AZ::ReflectContext* context);
@@ -139,5 +144,49 @@ namespace EMotionFX
 
     protected:
         AnimGraphNodeId m_nodeId;
+    };
+
+    class ParameterMixinAttributesString
+    {
+    public:
+        AZ_RTTI(ParameterMixinAttributesString, "{3A20FAA8-F882-4119-98D9-AA853155EECC}")
+        AZ_CLASS_ALLOCATOR_DECL
+
+        virtual ~ParameterMixinAttributesString() = default;
+
+        static void Reflect(AZ::ReflectContext* context);
+
+        void InitSyntax(MCore::CommandSyntax& syntax, bool isParameterRequired = true);
+        bool SetCommandParameters(const MCore::CommandLine& parameters);
+
+        void SetAttributesString(const AZStd::optional<AZStd::string>& attributesString) { m_attributesString = attributesString; }
+        const AZStd::optional<AZStd::string>& GetAttributesString() const { return m_attributesString; }
+
+        static const char* s_parameterName;
+
+    protected:
+        AZStd::optional<AZStd::string> m_attributesString = AZStd::nullopt;
+    };
+
+    class ParameterMixinSerializedContents
+    {
+    public:
+        AZ_RTTI(ParameterMixinSerializedContents, "{D4B6F9DD-404E-46D3-8AD8-7F3F6A42992B}")
+        AZ_CLASS_ALLOCATOR_DECL
+
+        virtual ~ParameterMixinSerializedContents() = default;
+
+        static void Reflect(AZ::ReflectContext* context);
+
+        void InitSyntax(MCore::CommandSyntax& syntax, bool isParameterRequired = true);
+        bool SetCommandParameters(const MCore::CommandLine& parameters);
+
+        void SetContents(const AZStd::optional<AZStd::string>& contents) { m_contents = contents; }
+        const AZStd::optional<AZStd::string>& GetContents() const { return m_contents; }
+
+        static const char* s_parameterName;
+
+    protected:
+        AZStd::optional<AZStd::string> m_contents = AZStd::nullopt;
     };
 } // namespace EMotionFX

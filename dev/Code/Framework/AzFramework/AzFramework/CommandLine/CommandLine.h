@@ -37,11 +37,6 @@ namespace AzFramework
 
         CommandLine();
 
-        /** 
-        * Construct a command line parser.
-        * It will attempt to load paramters from the process command line.
-        */
-        void Parse();
         /**
         * Construct a command line parser.
         * It will load parameters from the given ARGC/ARGV parameters instead of process command line.

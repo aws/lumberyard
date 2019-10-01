@@ -1,7 +1,0 @@
-{
-    "auto": {
-        "Source": [
-            "Source/Win64/NativeUISystemComponent_win.cpp"
-        ]
-    }
-}

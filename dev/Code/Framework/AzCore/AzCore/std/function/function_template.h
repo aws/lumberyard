@@ -9,120 +9,16 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-// Based on boost 1.39.0
-
-// Note: this header is a header template and must NOT have multiple-inclusion
-// protection.
+#pragma once
 
 #include <AzCore/std/function/function_base.h>
+#include <AzCore/std/function/invoke.h>
+#include <AzCore/std/typetraits/remove_cvref.h>
 
 #if defined(AZ_COMPILER_MSVC)
 #   pragma warning( push )
 #   pragma warning( disable : 4127 ) // "conditional expression is constant"
 #endif
-
-// can't wait for varadic templates.
-#if     (AZSTD_FUNCTION_NUM_ARGS == 0)
-    #define AZSTD_FUNCTION_TEMPLATE_PARMS
-    #define AZSTD_FUNCTION_TEMPLATE_ARGS
-    #define AZSTD_FUNCTION_PARMS
-    #define AZSTD_FUNCTION_ARGS
-    #define AZSTD_FUNCTION_ARG_TYPES
-#elif   (AZSTD_FUNCTION_NUM_ARGS == 1)
-    #define AZSTD_FUNCTION_TEMPLATE_PARMS   typename T0
-#define AZSTD_FUNCTION_TEMPLATE_ARGS    T0
-#define AZSTD_FUNCTION_PARMS            T0 t0
-#define AZSTD_FUNCTION_ARGS             t0
-#define AZSTD_FUNCTION_ARG_TYPES        typedef T0 t0_type;
-#elif   (AZSTD_FUNCTION_NUM_ARGS == 2)
-#define AZSTD_FUNCTION_TEMPLATE_PARMS   typename T0, typename T1
-#define AZSTD_FUNCTION_TEMPLATE_ARGS    T0, T1
-#define AZSTD_FUNCTION_PARMS            T0 t0, T1 t1
-#define AZSTD_FUNCTION_ARGS             t0, t1
-#define AZSTD_FUNCTION_ARG_TYPES        typedef T0 t0_type; typedef T1 t1_type;
-#elif   (AZSTD_FUNCTION_NUM_ARGS == 3)
-#define AZSTD_FUNCTION_TEMPLATE_PARMS   typename T0, typename T1, typename T2
-#define AZSTD_FUNCTION_TEMPLATE_ARGS    T0, T1, T2
-#define AZSTD_FUNCTION_PARMS            T0 t0, T1 t1, T2 t2
-#define AZSTD_FUNCTION_ARGS             t0, t1, t2
-#define AZSTD_FUNCTION_ARG_TYPES        typedef T0 t0_type; typedef T1 t1_type; typedef T2 t2_type;
-#elif   (AZSTD_FUNCTION_NUM_ARGS == 4)
-#define AZSTD_FUNCTION_TEMPLATE_PARMS   typename T0, typename T1, typename T2, typename T3
-#define AZSTD_FUNCTION_TEMPLATE_ARGS    T0, T1, T2, T3
-#define AZSTD_FUNCTION_PARMS            T0 t0, T1 t1, T2 t2, T3 t3
-#define AZSTD_FUNCTION_ARGS             t0, t1, t2, t3
-#define AZSTD_FUNCTION_ARG_TYPES        typedef T0 t0_type; typedef T1 t1_type; typedef T2 t2_type; typedef T3 t3_type;
-#elif   (AZSTD_FUNCTION_NUM_ARGS == 5)
-#define AZSTD_FUNCTION_TEMPLATE_PARMS   typename T0, typename T1, typename T2, typename T3, typename T4
-#define AZSTD_FUNCTION_TEMPLATE_ARGS    T0, T1, T2, T3, T4
-#define AZSTD_FUNCTION_PARMS            T0 t0, T1 t1, T2 t2, T3 t3, T4 t4
-#define AZSTD_FUNCTION_ARGS             t0, t1, t2, t3, t4
-#define AZSTD_FUNCTION_ARG_TYPES        typedef T0 t0_type; typedef T1 t1_type; typedef T2 t2_type; typedef T3 t3_type; typedef T4 t4_type;
-#elif   (AZSTD_FUNCTION_NUM_ARGS == 6)
-#define AZSTD_FUNCTION_TEMPLATE_PARMS   typename T0, typename T1, typename T2, typename T3, typename T4, typename T5
-#define AZSTD_FUNCTION_TEMPLATE_ARGS    T0, T1, T2, T3, T4, T5
-#define AZSTD_FUNCTION_PARMS            T0 t0, T1 t1, T2 t2, T3 t3, T4 t4, T5 t5
-#define AZSTD_FUNCTION_ARGS             t0, t1, t2, t3, t4, t5
-#define AZSTD_FUNCTION_ARG_TYPES        typedef T0 t0_type; typedef T1 t1_type; typedef T2 t2_type; typedef T3 t3_type; typedef T4 t4_type; \
-    typedef T5 t5_type;
-#elif   (AZSTD_FUNCTION_NUM_ARGS == 7)
-#define AZSTD_FUNCTION_TEMPLATE_PARMS   typename T0, typename T1, typename T2, typename T3, typename T4, typename T5, typename T6
-#define AZSTD_FUNCTION_TEMPLATE_ARGS    T0, T1, T2, T3, T4, T5, T6
-#define AZSTD_FUNCTION_PARMS            T0 t0, T1 t1, T2 t2, T3 t3, T4 t4, T5 t5, T6 t6
-#define AZSTD_FUNCTION_ARGS             t0, t1, t2, t3, t4, t5, t6
-#define AZSTD_FUNCTION_ARG_TYPES        typedef T0 t0_type; typedef T1 t1_type; typedef T2 t2_type; typedef T3 t3_type; typedef T4 t4_type; \
-    typedef T5 t5_type; typedef T6 t6_type;
-#elif   (AZSTD_FUNCTION_NUM_ARGS == 8)
-#define AZSTD_FUNCTION_TEMPLATE_PARMS   typename T0, typename T1, typename T2, typename T3, typename T4, typename T5, typename T6, typename T7
-#define AZSTD_FUNCTION_TEMPLATE_ARGS    T0, T1, T2, T3, T4, T5, T6, T7
-#define AZSTD_FUNCTION_PARMS            T0 t0, T1 t1, T2 t2, T3 t3, T4 t4, T5 t5, T6 t6, T7 t7
-#define AZSTD_FUNCTION_ARGS             t0, t1, t2, t3, t4, t5, t6, t7
-#define AZSTD_FUNCTION_ARG_TYPES        typedef T0 t0_type; typedef T1 t1_type; typedef T2 t2_type; typedef T3 t3_type; typedef T4 t4_type; \
-    typedef T5 t5_type; typedef T6 t6_type; typedef T7 t7_type;
-#elif   (AZSTD_FUNCTION_NUM_ARGS == 9)
-#define AZSTD_FUNCTION_TEMPLATE_PARMS   typename T0, typename T1, typename T2, typename T3, typename T4, typename T5, typename T6, typename T7, typename T8
-#define AZSTD_FUNCTION_TEMPLATE_ARGS    T0, T1, T2, T3, T4, T5, T6, T7, T8
-#define AZSTD_FUNCTION_PARMS            T0 t0, T1 t1, T2 t2, T3 t3, T4 t4, T5 t5, T6 t6, T7 t7, T8 t8
-#define AZSTD_FUNCTION_ARGS             t0, t1, t2, t3, t4, t5, t6, t7, t8
-#define AZSTD_FUNCTION_ARG_TYPES        typedef T0 t0_type; typedef T1 t1_type; typedef T2 t2_type; typedef T3 t3_type; typedef T4 t4_type; \
-    typedef T5 t5_type; typedef T6 t6_type; typedef T7 t7_type; typedef T8 t8_type;
-#elif   (AZSTD_FUNCTION_NUM_ARGS == 10)
-#define AZSTD_FUNCTION_TEMPLATE_PARMS   typename T0, typename T1, typename T2, typename T3, typename T4, typename T5, typename T6, typename T7, typename T8, typename T9
-#define AZSTD_FUNCTION_TEMPLATE_ARGS    T0, T1, T2, T3, T4, T5, T6, T7, T8, T9
-#define AZSTD_FUNCTION_PARMS            T0 t0, T1 t1, T2 t2, T3 t3, T4 t4, T5 t5, T6 t6, T7 t7, T8 t8, T9 t9
-#define AZSTD_FUNCTION_ARGS             t0, t1, t2, t3, t4, t5, t6, t7, t8, t9
-#define AZSTD_FUNCTION_ARG_TYPES        typedef T0 t0_type; typedef T1 t1_type; typedef T2 t2_type; typedef T3 t3_type; typedef T4 t4_type; \
-    typedef T5 t5_type; typedef T6 t6_type; typedef T7 t7_type; typedef T8 t8_type; typedef T9 t9_type;
-#else
-#error Too many arguments
-#endif
-
-// Comma if nonzero number of arguments
-#if AZSTD_FUNCTION_NUM_ARGS == 0
-#  define AZSTD_FUNCTION_COMMA
-#else
-#  define AZSTD_FUNCTION_COMMA ,
-#endif // AZSTD_FUNCTION_NUM_ARGS > 0
-
-// Class names used in this version of the code
-#define AZSTD_FUNCTION_FUNCTION AZ_JOIN(function, AZSTD_FUNCTION_NUM_ARGS)
-#define AZSTD_FUNCTION_FUNCTION_INVOKER AZ_JOIN(function_invoker, AZSTD_FUNCTION_NUM_ARGS)
-#define AZSTD_FUNCTION_VOID_FUNCTION_INVOKER AZ_JOIN(void_function_invoker, AZSTD_FUNCTION_NUM_ARGS)
-#define AZSTD_FUNCTION_FUNCTION_OBJ_INVOKER AZ_JOIN(function_obj_invoker, AZSTD_FUNCTION_NUM_ARGS)
-#define AZSTD_FUNCTION_VOID_FUNCTION_OBJ_INVOKER AZ_JOIN(void_function_obj_invoker, AZSTD_FUNCTION_NUM_ARGS)
-#define AZSTD_FUNCTION_FUNCTION_REF_INVOKER AZ_JOIN(function_ref_invoker, AZSTD_FUNCTION_NUM_ARGS)
-#define AZSTD_FUNCTION_VOID_FUNCTION_REF_INVOKER AZ_JOIN(void_function_ref_invoker, AZSTD_FUNCTION_NUM_ARGS)
-#define AZSTD_FUNCTION_MEMBER_INVOKER AZ_JOIN(function_mem_invoker, AZSTD_FUNCTION_NUM_ARGS)
-#define AZSTD_FUNCTION_VOID_MEMBER_INVOKER AZ_JOIN(function_void_mem_invoker, AZSTD_FUNCTION_NUM_ARGS)
-#define AZSTD_FUNCTION_GET_FUNCTION_INVOKER AZ_JOIN(get_function_invoker, AZSTD_FUNCTION_NUM_ARGS)
-#define AZSTD_FUNCTION_GET_FUNCTION_OBJ_INVOKER AZ_JOIN(get_function_obj_invoker, AZSTD_FUNCTION_NUM_ARGS)
-#define AZSTD_FUNCTION_GET_FUNCTION_REF_INVOKER AZ_JOIN(get_function_ref_invoker, AZSTD_FUNCTION_NUM_ARGS)
-#define AZSTD_FUNCTION_GET_MEMBER_INVOKER AZ_JOIN(get_member_invoker, AZSTD_FUNCTION_NUM_ARGS)
-#define AZSTD_FUNCTION_GET_INVOKER AZ_JOIN(get_invoker, AZSTD_FUNCTION_NUM_ARGS)
-#define AZSTD_FUNCTION_VTABLE AZ_JOIN(basic_vtable, AZSTD_FUNCTION_NUM_ARGS)
-
-#define AZSTD_FUNCTION_VOID_RETURN_TYPE void
-#define AZSTD_FUNCTION_RETURN(X) X
 
 namespace AZStd
 {
@@ -130,229 +26,117 @@ namespace AZStd
     {
         namespace function_util
         {
-            template<typename FunctionPtr, typename R AZSTD_FUNCTION_COMMA AZSTD_FUNCTION_TEMPLATE_PARMS >
-            struct AZSTD_FUNCTION_FUNCTION_INVOKER
+            template<typename R, typename... Args>
+            struct basic_vtable;
+
+            template<typename R>
+            struct invoke_void_return_wrapper
             {
-                static R invoke(function_buffer& function_ptr AZSTD_FUNCTION_COMMA AZSTD_FUNCTION_PARMS)
+                template<typename... Args>
+                static R call(Args&&... args)
                 {
-                    FunctionPtr f = reinterpret_cast<FunctionPtr>(function_ptr.func_ptr);
-                    return f(AZSTD_FUNCTION_ARGS);
+                    return AZStd::invoke(AZStd::forward<Args>(args)...);
                 }
             };
-
-            template<typename FunctionPtr, typename R AZSTD_FUNCTION_COMMA AZSTD_FUNCTION_TEMPLATE_PARMS >
-            struct AZSTD_FUNCTION_VOID_FUNCTION_INVOKER
+            template<>
+            struct invoke_void_return_wrapper<void>
             {
-                static AZSTD_FUNCTION_VOID_RETURN_TYPE
-                invoke(function_buffer& function_ptr AZSTD_FUNCTION_COMMA AZSTD_FUNCTION_PARMS)
+                template<typename... Args>
+                static void call(Args&&... args)
                 {
-                    FunctionPtr f = reinterpret_cast<FunctionPtr>(function_ptr.func_ptr);
-                    AZSTD_FUNCTION_RETURN(f(AZSTD_FUNCTION_ARGS));
+                    AZStd::invoke(AZStd::forward<Args>(args)...);
                 }
             };
-
-            template<typename FunctionObj, typename R AZSTD_FUNCTION_COMMA AZSTD_FUNCTION_TEMPLATE_PARMS >
-            struct AZSTD_FUNCTION_FUNCTION_OBJ_INVOKER
-            {
-                static R invoke(function_buffer& function_obj_ptr AZSTD_FUNCTION_COMMA AZSTD_FUNCTION_PARMS)
-                {
-                    FunctionObj* f;
-                    if (function_allows_small_object_optimization<FunctionObj>::value)
-                    {
-                        f = reinterpret_cast<FunctionObj*>(&function_obj_ptr.data);
-                    }
-                    else
-                    {
-                        f = reinterpret_cast<FunctionObj*>(function_obj_ptr.obj_ptr);
-                    }
-                    return (*f)(AZSTD_FUNCTION_ARGS);
-                }
-            };
-
-            template< typename FunctionObj, typename R AZSTD_FUNCTION_COMMA AZSTD_FUNCTION_TEMPLATE_PARMS >
-            struct AZSTD_FUNCTION_VOID_FUNCTION_OBJ_INVOKER
-            {
-                static AZSTD_FUNCTION_VOID_RETURN_TYPE
-                invoke(function_buffer& function_obj_ptr AZSTD_FUNCTION_COMMA AZSTD_FUNCTION_PARMS)
-                {
-                    FunctionObj* f;
-                    if (function_allows_small_object_optimization<FunctionObj>::value)
-                    {
-                        f = reinterpret_cast<FunctionObj*>(&function_obj_ptr.data);
-                    }
-                    else
-                    {
-                        f = reinterpret_cast<FunctionObj*>(function_obj_ptr.obj_ptr);
-                    }
-                    AZSTD_FUNCTION_RETURN((*f)(AZSTD_FUNCTION_ARGS));
-                }
-            };
-
-            template< typename FunctionObj, typename R AZSTD_FUNCTION_COMMA AZSTD_FUNCTION_TEMPLATE_PARMS >
-            struct AZSTD_FUNCTION_FUNCTION_REF_INVOKER
-            {
-                static R invoke(function_buffer& function_obj_ptr AZSTD_FUNCTION_COMMA AZSTD_FUNCTION_PARMS)
-                {
-                    FunctionObj* f = reinterpret_cast<FunctionObj*>(function_obj_ptr.obj_ptr);
-                    return (*f)(AZSTD_FUNCTION_ARGS);
-                }
-            };
-
-            template< typename FunctionObj, typename R AZSTD_FUNCTION_COMMA AZSTD_FUNCTION_TEMPLATE_PARMS >
-            struct AZSTD_FUNCTION_VOID_FUNCTION_REF_INVOKER
-            {
-                static AZSTD_FUNCTION_VOID_RETURN_TYPE
-                invoke(function_buffer& function_obj_ptr AZSTD_FUNCTION_COMMA AZSTD_FUNCTION_PARMS)
-                {
-                    FunctionObj* f = reinterpret_cast<FunctionObj*>(function_obj_ptr.obj_ptr);
-                    AZSTD_FUNCTION_RETURN((*f)(AZSTD_FUNCTION_ARGS));
-                }
-            };
-
-#if AZSTD_FUNCTION_NUM_ARGS > 0
-            /* Handle invocation of member pointers. */
-            template< typename MemberPtr, typename R AZSTD_FUNCTION_COMMA AZSTD_FUNCTION_TEMPLATE_PARMS >
-            struct AZSTD_FUNCTION_MEMBER_INVOKER
-            {
-                static R invoke(function_buffer& function_obj_ptr AZSTD_FUNCTION_COMMA AZSTD_FUNCTION_PARMS)
-                {
-                    MemberPtr* f = reinterpret_cast<MemberPtr*>(&function_obj_ptr.data);
-                    return AZStd::mem_fn(* f)(AZSTD_FUNCTION_ARGS);
-                }
-            };
-
-            template< typename MemberPtr, typename R AZSTD_FUNCTION_COMMA AZSTD_FUNCTION_TEMPLATE_PARMS >
-            struct AZSTD_FUNCTION_VOID_MEMBER_INVOKER
-            {
-                static AZSTD_FUNCTION_VOID_RETURN_TYPE
-                invoke(function_buffer& function_obj_ptr AZSTD_FUNCTION_COMMA AZSTD_FUNCTION_PARMS)
-                {
-                    MemberPtr* f = reinterpret_cast<MemberPtr*>(&function_obj_ptr.data);
-                    AZSTD_FUNCTION_RETURN(AZStd::mem_fn(* f)(AZSTD_FUNCTION_ARGS));
-                }
-            };
-#endif
-
-            template< typename FunctionPtr, typename R AZSTD_FUNCTION_COMMA AZSTD_FUNCTION_TEMPLATE_PARMS >
-            struct AZSTD_FUNCTION_GET_FUNCTION_INVOKER
-            {
-                typedef typename AZStd::Utils::if_c<(is_void<R>::value), AZSTD_FUNCTION_VOID_FUNCTION_INVOKER<FunctionPtr, R AZSTD_FUNCTION_COMMA AZSTD_FUNCTION_TEMPLATE_ARGS >,
-                    AZSTD_FUNCTION_FUNCTION_INVOKER<FunctionPtr, R AZSTD_FUNCTION_COMMA AZSTD_FUNCTION_TEMPLATE_ARGS > >::type type;
-            };
-
-            template< typename FunctionObj, typename R AZSTD_FUNCTION_COMMA AZSTD_FUNCTION_TEMPLATE_PARMS >
-            struct AZSTD_FUNCTION_GET_FUNCTION_OBJ_INVOKER
-            {
-                typedef typename AZStd::Utils::if_c<(is_void<R>::value), AZSTD_FUNCTION_VOID_FUNCTION_OBJ_INVOKER<FunctionObj, R AZSTD_FUNCTION_COMMA AZSTD_FUNCTION_TEMPLATE_ARGS >,
-                    AZSTD_FUNCTION_FUNCTION_OBJ_INVOKER< FunctionObj, R AZSTD_FUNCTION_COMMA AZSTD_FUNCTION_TEMPLATE_ARGS > >::type type;
-            };
-
-            template<typename FunctionObj, typename R AZSTD_FUNCTION_COMMA AZSTD_FUNCTION_TEMPLATE_PARMS >
-            struct AZSTD_FUNCTION_GET_FUNCTION_REF_INVOKER
-            {
-                typedef typename AZStd::Utils::if_c<(is_void<R>::value), AZSTD_FUNCTION_VOID_FUNCTION_REF_INVOKER< FunctionObj, R AZSTD_FUNCTION_COMMA AZSTD_FUNCTION_TEMPLATE_ARGS >,
-                    AZSTD_FUNCTION_FUNCTION_REF_INVOKER<FunctionObj, R AZSTD_FUNCTION_COMMA AZSTD_FUNCTION_TEMPLATE_ARGS > >::type type;
-            };
-
-#if AZSTD_FUNCTION_NUM_ARGS > 0
-            /* Retrieve the appropriate invoker for a member pointer.  */
-            template<typename MemberPtr, typename R AZSTD_FUNCTION_COMMA AZSTD_FUNCTION_TEMPLATE_PARMS
-                >
-            struct AZSTD_FUNCTION_GET_MEMBER_INVOKER
-            {
-                typedef typename AZStd::Utils::if_c<(is_void<R>::value), AZSTD_FUNCTION_VOID_MEMBER_INVOKER< MemberPtr, R AZSTD_FUNCTION_COMMA AZSTD_FUNCTION_TEMPLATE_ARGS >,
-                    AZSTD_FUNCTION_MEMBER_INVOKER<MemberPtr, R AZSTD_FUNCTION_COMMA AZSTD_FUNCTION_TEMPLATE_ARGS > >::type type;
-            };
-#endif
-
             /* Given the tag returned by get_function_tag, retrieve the
             actual invoker that will be used for the given function
             object.
 
-            Each specialization contains an "apply" nested class template
-            that accepts the function object, return type, function
-            argument types, and allocator. The resulting "apply" class
-            contains two typedefs, "invoker_type" and "manager_type",
+            This class contains two typedefs, "invoker_type" and "manager_type",
             which correspond to the invoker and manager types. */
-            template<typename Tag>
-            struct AZSTD_FUNCTION_GET_INVOKER { };
+            template<typename FunctionType, typename Tag>
+            struct get_invoker { };
 
             /* Retrieve the invoker for a function pointer. */
-            template<>
-            struct AZSTD_FUNCTION_GET_INVOKER<function_ptr_tag>
+            template<typename R, typename... Args>
+            struct get_invoker<R(Args...), function_ptr_tag>
             {
-                template<typename FunctionPtr, typename R AZSTD_FUNCTION_COMMA AZSTD_FUNCTION_TEMPLATE_PARMS>
-                struct apply
+                template<typename FunctionPtr>
+                static basic_vtable<R, Args...> create_vtable()
                 {
-                    typedef typename AZSTD_FUNCTION_GET_FUNCTION_INVOKER<FunctionPtr, R AZSTD_FUNCTION_COMMA AZSTD_FUNCTION_TEMPLATE_ARGS >::type invoker_type;
-                    typedef functor_manager<FunctionPtr> manager_type;
-                };
-
-                template<typename FunctionPtr, typename R AZSTD_FUNCTION_COMMA AZSTD_FUNCTION_TEMPLATE_PARMS, typename Allocator>
-                struct apply_a
+                    auto funcPtr = &call<FunctionPtr>;
+                    return { { &functor_manager<FunctionPtr>::manage }, funcPtr };
+                }
+            private:
+                template<typename FunctionPtr>
+                static R call(function_buffer& function_ptr, Args&&... args)
                 {
-                    typedef typename AZSTD_FUNCTION_GET_FUNCTION_INVOKER<FunctionPtr, R AZSTD_FUNCTION_COMMA AZSTD_FUNCTION_TEMPLATE_ARGS >::type invoker_type;
-                    typedef functor_manager<FunctionPtr> manager_type;
-                };
+                    FunctionPtr f = reinterpret_cast<FunctionPtr>(function_ptr.func_ptr);
+                    return invoke_void_return_wrapper<R>::call(f, AZStd::forward<Args>(args)...);
+                }
             };
-
-#if AZSTD_FUNCTION_NUM_ARGS > 0
             /* Retrieve the invoker for a member pointer. */
-            template<>
-            struct AZSTD_FUNCTION_GET_INVOKER<member_ptr_tag>
+            template<typename R, typename... Args>
+            struct get_invoker<R(Args...), member_ptr_tag>
             {
-                template<typename MemberPtr, typename R AZSTD_FUNCTION_COMMA AZSTD_FUNCTION_TEMPLATE_PARMS>
-                struct apply
+                template<typename MemberPtr>
+                static basic_vtable<R, Args...> create_vtable()
                 {
-                    typedef typename AZSTD_FUNCTION_GET_MEMBER_INVOKER<MemberPtr, R AZSTD_FUNCTION_COMMA AZSTD_FUNCTION_TEMPLATE_ARGS >::type     invoker_type;
-                    typedef functor_manager<MemberPtr> manager_type;
-                };
-
-                template<typename MemberPtr, typename R AZSTD_FUNCTION_COMMA AZSTD_FUNCTION_TEMPLATE_PARMS, typename Allocator>
-                struct apply_a
+                    auto funcPtr = &call<MemberPtr>;
+                    return { vtable_base{ &functor_manager<MemberPtr>::manage }, funcPtr };
+                }
+            private:
+                template<typename MemberPtr>
+                static R call(function_buffer& function_obj_ptr, Args&&... args)
                 {
-                    typedef typename AZSTD_FUNCTION_GET_MEMBER_INVOKER<MemberPtr, R AZSTD_FUNCTION_COMMA AZSTD_FUNCTION_TEMPLATE_ARGS >::type     invoker_type;
-                    typedef functor_manager<MemberPtr> manager_type;
-                };
+                    MemberPtr* f = reinterpret_cast<MemberPtr*>(&function_obj_ptr.data);
+                    return invoke_void_return_wrapper<R>::call(*f, AZStd::forward<Args>(args)...);
+                }
             };
-#endif
 
             /* Retrieve the invoker for a function object. */
-            template<>
-            struct AZSTD_FUNCTION_GET_INVOKER<function_obj_tag>
+            template<typename R, typename... Args>
+            struct get_invoker<R(Args...), function_obj_tag>
             {
-                template<typename FunctionObj, typename R AZSTD_FUNCTION_COMMA AZSTD_FUNCTION_TEMPLATE_PARMS>
-                struct apply
+                template<typename FunctionObj>
+                static basic_vtable<R, Args...> create_vtable()
                 {
-                    typedef typename AZSTD_FUNCTION_GET_FUNCTION_OBJ_INVOKER<FunctionObj, R AZSTD_FUNCTION_COMMA AZSTD_FUNCTION_TEMPLATE_ARGS >::type invoker_type;
-                    typedef functor_manager<FunctionObj> manager_type;
-                };
-
-                template<typename FunctionObj, typename R AZSTD_FUNCTION_COMMA AZSTD_FUNCTION_TEMPLATE_PARMS, typename Allocator>
-                struct apply_a
+                    auto funcPtr = &call<FunctionObj>;
+                    return { vtable_base{ &functor_manager<FunctionObj>::manage }, funcPtr };
+                }
+            private:
+                template<typename FunctionObj>
+                static R call(function_buffer& function_obj_ptr, Args&&... args)
                 {
-                    typedef typename AZSTD_FUNCTION_GET_FUNCTION_OBJ_INVOKER<FunctionObj, R AZSTD_FUNCTION_COMMA AZSTD_FUNCTION_TEMPLATE_ARGS >::type  invoker_type;
-                    typedef functor_manager_a<FunctionObj, Allocator> manager_type;
-                };
+                    FunctionObj* f;
+                    if (function_allows_small_object_optimization<FunctionObj>::value)
+                    {
+                        f = reinterpret_cast<FunctionObj*>(&function_obj_ptr.data);
+                    }
+                    else
+                    {
+                        f = reinterpret_cast<FunctionObj*>(function_obj_ptr.obj_ptr);
+                    }
+                    return invoke_void_return_wrapper<R>::call(*f, AZStd::forward<Args>(args)...);
+                }
             };
 
             /* Retrieve the invoker for a reference to a function object. */
-            template<>
-            struct AZSTD_FUNCTION_GET_INVOKER<function_obj_ref_tag>
+            template<typename R, typename... Args>
+            struct get_invoker<R(Args...), function_obj_ref_tag>
             {
-                template<typename RefWrapper, typename R AZSTD_FUNCTION_COMMA AZSTD_FUNCTION_TEMPLATE_PARMS>
-                struct apply
+                template<typename RefWrapper>
+                static basic_vtable<R, Args...> create_vtable()
                 {
-                    typedef typename AZSTD_FUNCTION_GET_FUNCTION_REF_INVOKER<typename RefWrapper::type, R AZSTD_FUNCTION_COMMA AZSTD_FUNCTION_TEMPLATE_ARGS >::type invoker_type;
-                    typedef reference_manager<typename RefWrapper::type> manager_type;
-                };
-
-                template<typename RefWrapper, typename R AZSTD_FUNCTION_COMMA AZSTD_FUNCTION_TEMPLATE_PARMS, typename Allocator>
-                struct apply_a
+                    auto funcPtr = call<typename RefWrapper::type>;
+                    return { vtable_base{ &reference_manager<typename RefWrapper::type>::manage }, funcPtr };
+                }
+            private:
+                template<typename FunctionObj>
+                static R call(function_buffer& function_obj_ptr, Args&&... args)
                 {
-                    typedef typename AZSTD_FUNCTION_GET_FUNCTION_REF_INVOKER< typename RefWrapper::type, R AZSTD_FUNCTION_COMMA AZSTD_FUNCTION_TEMPLATE_ARGS >::type invoker_type;
-                    typedef reference_manager<typename RefWrapper::type> manager_type;
-                };
+                    FunctionObj* f = reinterpret_cast<FunctionObj*>(function_obj_ptr.obj_ptr);
+                    return invoke_void_return_wrapper<R>::call(*f, AZStd::forward<Args>(args)...);
+                }
             };
 
 
@@ -363,23 +147,22 @@ namespace AZStd
             * members. It therefore cannot have any constructors,
             * destructors, base classes, etc.
             */
-            template<typename R AZSTD_FUNCTION_COMMA AZSTD_FUNCTION_TEMPLATE_PARMS>
-            struct AZSTD_FUNCTION_VTABLE
+            template<typename R, typename... Args>
+            struct basic_vtable
             {
-                typedef R         result_type;
-                typedef result_type (* invoker_type)(function_buffer& AZSTD_FUNCTION_COMMA AZSTD_FUNCTION_TEMPLATE_ARGS);
+                using invoker_type = R(*)(function_buffer&, Args&&...);
 
                 template<typename F>
-                bool assign_to(F f, function_buffer& functor)
+                bool assign_to(F&& f, function_buffer& functor)
                 {
                     typedef typename get_function_tag<F>::type tag;
-                    return assign_to(f, functor, tag());
+                    return assign_to(AZStd::forward<F>(f), functor, tag());
                 }
                 template<typename F, typename Allocator>
-                bool assign_to_a(F f, function_buffer& functor, Allocator a)
+                bool assign_to_a(F&& f, function_buffer& functor, Allocator a)
                 {
                     typedef typename get_function_tag<F>::type tag;
-                    return assign_to_a(f, functor, a, tag());
+                    return assign_to_a(AZStd::forward<F>(f), functor, a, tag());
                 }
 
                 void clear(function_buffer& functor)
@@ -416,7 +199,6 @@ namespace AZStd
                 }
 
                 // Member pointers
-#if AZSTD_FUNCTION_NUM_ARGS > 0
                 template<typename MemberPtr>
                 bool assign_to(MemberPtr f, function_buffer& functor, member_ptr_tag)
                 {
@@ -449,46 +231,49 @@ namespace AZStd
                         return false;
                     }
                 }
-#endif // AZSTD_FUNCTION_NUM_ARGS > 0
 
                 // Function objects
                 // Assign to a function object using the small object optimization
                 template<typename FunctionObj>
                 void
-                assign_functor(FunctionObj f, function_buffer& functor, AZStd::true_type)
+                assign_functor(FunctionObj&& f, function_buffer& functor, AZStd::true_type)
                 {
-                    new ((void*)&functor.data)FunctionObj(f);
+                    using RawFunctorObjType = AZStd::decay_t<FunctionObj>;
+                    new ((void*)&functor.data)RawFunctorObjType(AZStd::forward<FunctionObj>(f));
                 }
                 template<typename FunctionObj, typename Allocator>
                 void
-                assign_functor_a(FunctionObj f, function_buffer& functor, Allocator, AZStd::true_type)
+                assign_functor_a(FunctionObj&& f, function_buffer& functor, Allocator, AZStd::true_type)
                 {
-                    assign_functor(f, functor, AZStd::true_type());
+                    assign_functor(AZStd::forward<FunctionObj>(f), functor, AZStd::true_type());
                 }
 
                 // Assign to a function object allocated on the heap.
                 template<typename FunctionObj>
-                void assign_functor(FunctionObj f, function_buffer& functor, AZStd::false_type)
+                void assign_functor(FunctionObj&& f, function_buffer& functor, AZStd::false_type)
                 {
+                    using RawFunctorObjType = AZStd::decay_t<FunctionObj>;
                     AZStd::allocator a;
-                    functor.obj_ptr = new (a.allocate(sizeof(FunctionObj), AZStd::alignment_of<FunctionObj>::value))FunctionObj(f);
+                    functor.obj_ptr = new (a.allocate(sizeof(RawFunctorObjType), AZStd::alignment_of<RawFunctorObjType>::value))RawFunctorObjType(AZStd::forward<FunctionObj>(f));
                 }
                 template<typename FunctionObj, typename Allocator>
                 void
-                assign_functor_a(FunctionObj f, function_buffer& functor, const Allocator& a, AZStd::false_type)
+                assign_functor_a(FunctionObj&& f, function_buffer& functor, const Allocator& a, AZStd::false_type)
                 {
-                    typedef functor_wrapper<FunctionObj, Allocator> functor_wrapper_type;
-                    functor_wrapper_type* new_f = new (const_cast<Allocator&>(a).allocate(sizeof(functor_wrapper_type), AZStd::alignment_of<functor_wrapper_type>::value))functor_wrapper_type(f, a);
+                    using RawFunctorObjType = AZStd::decay_t<FunctionObj>;
+                    typedef functor_wrapper<RawFunctorObjType, Allocator> functor_wrapper_type;
+                    functor_wrapper_type* new_f = new (const_cast<Allocator&>(a).allocate(sizeof(functor_wrapper_type), AZStd::alignment_of<functor_wrapper_type>::value))functor_wrapper_type(AZStd::forward<FunctionObj>(f), a);
                     functor.obj_ptr = new_f;
                 }
 
                 template<typename FunctionObj>
                 bool
-                assign_to(FunctionObj f, function_buffer& functor, function_obj_tag)
+                assign_to(FunctionObj&& f, function_buffer& functor, function_obj_tag)
                 {
+                    using RawFunctorObjType = AZStd::decay_t<FunctionObj>;
                     if (!AZStd::Internal::function_util::has_empty_target(AZStd::addressof(f)))
                     {
-                        assign_functor(f, functor, AZStd::integral_constant<bool, function_allows_small_object_optimization<FunctionObj>::value>());
+                        assign_functor(AZStd::forward<FunctionObj>(f), functor, AZStd::integral_constant<bool, function_allows_small_object_optimization<RawFunctorObjType>::value>());
                         return true;
                     }
                     else
@@ -498,11 +283,12 @@ namespace AZStd
                 }
                 template<typename FunctionObj, typename Allocator>
                 bool
-                assign_to_a(FunctionObj f, function_buffer& functor, Allocator a, function_obj_tag)
+                assign_to_a(FunctionObj&& f, function_buffer& functor, Allocator a, function_obj_tag)
                 {
+                    using RawFunctorObjType = AZStd::decay_t<FunctionObj>;
                     if (!AZStd::Internal::function_util::has_empty_target(AZStd::addressof(f)))
                     {
-                        assign_functor_a(f, functor, a, AZStd::integral_constant<bool, function_allows_small_object_optimization<FunctionObj>::value>());
+                        assign_functor_a(AZStd::forward<FunctionObj>(f), functor, a, AZStd::integral_constant<bool, function_allows_small_object_optimization<RawFunctorObjType>::value>());
                         return true;
                     }
                     else
@@ -517,9 +303,9 @@ namespace AZStd
                 assign_to(const reference_wrapper<FunctionObj>& f,
                     function_buffer& functor, function_obj_ref_tag)
                 {
-                    if (!AZStd::Internal::function_util::has_empty_target(f.get_pointer()))
+                    if (!AZStd::Internal::function_util::has_empty_target(&f.get()))
                     {
-                        functor.obj_ref.obj_ptr = (void*)f.get_pointer();
+                        functor.obj_ref.obj_ptr = (void*)&f.get();
                         functor.obj_ref.is_const_qualified = is_const<FunctionObj>::value;
                         functor.obj_ref.is_volatile_qualified = is_volatile<FunctionObj>::value;
                         return true;
@@ -543,105 +329,76 @@ namespace AZStd
         } // end namespace function_util
     } // end namespace Internal
 
-    template<typename R AZSTD_FUNCTION_COMMA AZSTD_FUNCTION_TEMPLATE_PARMS>
-    class AZSTD_FUNCTION_FUNCTION
+    template<typename R, typename... Args>
+    class function_intermediate
         : public function_base
-#if AZSTD_FUNCTION_NUM_ARGS == 1
-        , public AZStd::unary_function<T0, R>
-#elif AZSTD_FUNCTION_NUM_ARGS == 2
-        , public AZStd::binary_function<T0, T1, R>
-#endif
     {
     public:
-        typedef R         result_type;
+        typedef R result_type;
     private:
-        typedef AZStd::Internal::function_util::AZSTD_FUNCTION_VTABLE< R AZSTD_FUNCTION_COMMA AZSTD_FUNCTION_TEMPLATE_ARGS>  vtable_type;
+        typedef AZStd::Internal::function_util::basic_vtable<R, Args...>  vtable_type;
     public:
-        AZSTD_STATIC_CONSTANT(int, args = AZSTD_FUNCTION_NUM_ARGS);
-        //// add signature for boost::lambda
-        //template<typename Args>
-        //struct sig
-        //{
-        //  typedef result_type type;
-        //};
+        typedef function_intermediate self_type;
 
-#if AZSTD_FUNCTION_NUM_ARGS == 1
-        typedef T0 argument_type;
-#elif AZSTD_FUNCTION_NUM_ARGS == 2
-        typedef T0 first_argument_type;
-        typedef T1 second_argument_type;
-#endif
-        AZSTD_STATIC_CONSTANT(int, arity = AZSTD_FUNCTION_NUM_ARGS);
-        AZSTD_FUNCTION_ARG_TYPES
-
-        typedef AZSTD_FUNCTION_FUNCTION self_type;
-
-        AZSTD_FUNCTION_FUNCTION()
+        function_intermediate()
             : function_base() { }
 
         // MSVC chokes if the following two constructors are collapsed into
         // one with a default parameter.
         template<typename Functor>
-        AZSTD_FUNCTION_FUNCTION(Functor AZSTD_FUNCTION_TARGET_FIX(const &)f, typename Utils::enable_if_c<(AZStd::type_traits::ice_not<(is_integral<Functor>::value)>::value), int>::type = 0)
+        function_intermediate(Functor&& f, enable_if_t<!is_integral<Functor>::value && !is_same<remove_cvref_t<Functor>, function_intermediate>::value, int> = 0)
             : function_base()
         {
-            this->assign_to(f);
+            this->assign_to(AZStd::forward<Functor>(f));
         }
         template<typename Functor, typename Allocator>
-        AZSTD_FUNCTION_FUNCTION(Functor AZSTD_FUNCTION_TARGET_FIX(const &)f, Allocator a, typename Utils::enable_if_c<(AZStd::type_traits::ice_not<(is_integral<Functor>::value)>::value), int>::type = 0)
+        function_intermediate(Functor&& f, Allocator a, enable_if_t<!is_integral<Functor>::value && !is_same<remove_cvref_t<Functor>, function_intermediate>::value, int> = 0)
             : function_base()
         {
-            this->assign_to_a(f, a);
+            this->assign_to_a(AZStd::forward<Functor>(f), a);
         }
 
-        AZSTD_FUNCTION_FUNCTION(nullptr_t)
+        function_intermediate(nullptr_t)
             : function_base() { }
-        AZSTD_FUNCTION_FUNCTION(const AZSTD_FUNCTION_FUNCTION& f)
+        function_intermediate(const function_intermediate& f)
             : function_base()
         {
             this->assign_to_own(f);
         }
 
-#if defined(AZ_HAS_RVALUE_REFS)
-        AZSTD_FUNCTION_FUNCTION(AZSTD_FUNCTION_FUNCTION&& f)
+        function_intermediate(function_intermediate&& f)
             : function_base()
         {
             this->move_assign(f);
         }
-#endif
 
-        ~AZSTD_FUNCTION_FUNCTION() { clear(); }
+        ~function_intermediate() { clear(); }
 
-        result_type operator()(AZSTD_FUNCTION_PARMS) const;
+        R operator()(Args&&... args) const;
 
-        // The distinction between when to use AZSTD_FUNCTION_FUNCTION and
-        // when to use self_type is obnoxious. MSVC cannot handle self_type as
-        // the return type of these assignment operators, but Borland C++ cannot
-        // handle AZSTD_FUNCTION_FUNCTION as the type of the temporary to
-        // construct.
         template<typename Functor>
-        typename Utils::enable_if_c<(AZStd::type_traits::ice_not<(is_integral<Functor>::value)>::value), AZSTD_FUNCTION_FUNCTION&>::type
-        operator=(Functor AZSTD_FUNCTION_TARGET_FIX(const &)f)
+        enable_if_t<!is_integral<Functor>::value && !is_same<remove_cvref_t<Functor>, function_intermediate>::value, function_intermediate&>
+        operator=(Functor&& f)
         {
             this->clear();
-            this->assign_to(f);
+            this->assign_to(AZStd::forward<Functor>(f));
             return *this;
         }
         template<typename Functor, typename Allocator>
-        void assign(Functor AZSTD_FUNCTION_TARGET_FIX(const &)f, Allocator a)
+        void assign(Functor&& f, Allocator a)
         {
             this->clear();
-            this->assign_to_a(f, a);
+            this->assign_to_a(AZStd::forward<Functor>(f), a);
         }
 
-        AZSTD_FUNCTION_FUNCTION& operator=(nullptr_t)
+        function_intermediate& operator=(nullptr_t)
         {
             this->clear();
             return *this;
         }
 
-        // Assignment from another AZSTD_FUNCTION_FUNCTION
-        AZSTD_FUNCTION_FUNCTION& operator=(const AZSTD_FUNCTION_FUNCTION& f)
+        // Assignment from another function_intermediate
+        function_intermediate& operator=(const function_intermediate& f)
         {
             if (&f == this)
             {
@@ -653,9 +410,8 @@ namespace AZStd
             return *this;
         }
 
-#if defined(AZ_HAS_RVALUE_REFS)
         // Move assignment from another AZSTD_FUNCTION_FUNCTION
-        AZSTD_FUNCTION_FUNCTION& operator=(AZSTD_FUNCTION_FUNCTION&& f)
+        function_intermediate& operator=(function_intermediate&& f)
         {
             if (&f == this)
             {
@@ -666,16 +422,15 @@ namespace AZStd
             this->move_assign(f);
             return *this;
         }
-#endif
 
-        void swap(AZSTD_FUNCTION_FUNCTION& other)
+        void swap(function_intermediate& other)
         {
             if (&other == this)
             {
                 return;
             }
 
-            AZSTD_FUNCTION_FUNCTION tmp;
+            function_intermediate tmp;
             tmp.move_assign(*this);
             this->move_assign(other);
             other.move_assign(tmp);
@@ -692,25 +447,19 @@ namespace AZStd
         }
 
     private:
-        struct dummy
-        {
-            void nonnull() {};
-        };
-        typedef void (dummy::* safe_bool)();
-
         using function_base::empty; // hide non-standard empty() function
 
     public:
-        operator safe_bool () const
+        explicit operator bool () const
         {
-            return (this->empty()) ? 0 : &dummy::nonnull;
+            return !this->empty();
         }
 
         bool operator!() const
         { return this->empty(); }
 
     private:
-        void assign_to_own(const AZSTD_FUNCTION_FUNCTION& f)
+        void assign_to_own(const function_intermediate& f)
         {
             if (!f.empty())
             {
@@ -720,24 +469,22 @@ namespace AZStd
         }
 
         template<typename Functor>
-        void assign_to(Functor f)
+        void assign_to(Functor&& f)
         {
             using Internal::function_util::vtable_base;
 
             typedef typename Internal::function_util::get_function_tag<Functor>::type tag;
-            typedef Internal::function_util::AZSTD_FUNCTION_GET_INVOKER<tag> get_invoker;
-            typedef typename get_invoker::template apply<Functor, R AZSTD_FUNCTION_COMMA AZSTD_FUNCTION_TEMPLATE_ARGS> handler_type;
+            typedef Internal::function_util::get_invoker<R(Args...), tag> get_invoker;
 
-            typedef typename handler_type::invoker_type invoker_type;
-            typedef typename handler_type::manager_type manager_type;
+            //! A static vtable is used to avoid the need to dynamically allocate a vtable
+            //! whose purpose is to contain a function ptr that can the manage the function buffer
+            //! i.e performs the copy, move and destruction operations for the function buffer
+            //! as well as to validate if a the stored function can be type_cast to the type supplied in 
+            //! std::function::target
+            //! The vtable other purpose is to store a function ptr that is used to wrap the invocation of the underlying function
+            static vtable_type stored_vtable = get_invoker::template create_vtable<decay_t<Functor>>();
 
-            // Note: it is extremely important that this initialization use
-            // static initialization. Otherwise, we will have a race
-            // condition here in multi-threaded code. See
-            // http://thread.gmane.org/gmane.comp.lib.boost.devel/164902/.
-            static vtable_type stored_vtable = { { &manager_type::manage }, &invoker_type::invoke };
-
-            if (stored_vtable.assign_to(f, functor))
+            if (stored_vtable.assign_to(AZStd::forward<Functor>(f), functor))
             {
                 vtable = &stored_vtable.base;
             }
@@ -748,23 +495,21 @@ namespace AZStd
         }
 
         template<typename Functor, typename Allocator>
-        void assign_to_a(Functor f, const Allocator& a)
+        void assign_to_a(Functor&& f, const Allocator& a)
         {
             using Internal::function_util::vtable_base;
             typedef typename Internal::function_util::get_function_tag<Functor>::type tag;
-            typedef Internal::function_util::AZSTD_FUNCTION_GET_INVOKER<tag> get_invoker;
-            typedef typename get_invoker::template apply_a<Functor, R AZSTD_FUNCTION_COMMA AZSTD_FUNCTION_TEMPLATE_ARGS, Allocator > handler_type;
+            typedef Internal::function_util::get_invoker<R(Args...), tag> get_invoker;
 
-            typedef typename handler_type::invoker_type invoker_type;
-            typedef typename handler_type::manager_type manager_type;
+            //! A static vtable is used to avoid the need to dynamically allocate a vtable
+            //! whose purpose is to contain a function ptr that can the manage the function buffer
+            //! i.e performs the copy, move and destruction operations for the function buffer
+            //! as well as to validate if a the stored function can be type_cast to the type supplied in 
+            //! std::function::target
+            //! The vtable other purpose is to store a function ptr that is used to wrap the invocation of the underlying function
+            static vtable_type stored_vtable = get_invoker::template create_vtable<decay_t<Functor>>();
 
-            // Note: it is extremely important that this initialization use
-            // static initialization. Otherwise, we will have a race
-            // condition here in multi-threaded code. See
-            // http://thread.gmane.org/gmane.comp.lib.boost.devel/164902/.
-            static vtable_type stored_vtable = { { &manager_type::manage }, &invoker_type::invoke };
-
-            if (stored_vtable.assign_to_a(f, functor, a))
+            if (stored_vtable.assign_to_a(AZStd::forward<Functor>(f), functor, a))
             {
                 vtable = &stored_vtable.base;
             }
@@ -778,7 +523,7 @@ namespace AZStd
         // Moves the value from the specified argument to *this. If the argument
         // has its function object allocated on the heap, move_assign will pass
         // its buffer to *this, and set the argument's buffer pointer to NULL.
-        void move_assign(AZSTD_FUNCTION_FUNCTION& f)
+        void move_assign(function_intermediate& f)
         {
             if (&f == this)
             {
@@ -793,53 +538,46 @@ namespace AZStd
         }
     };
 
-    template<typename R AZSTD_FUNCTION_COMMA AZSTD_FUNCTION_TEMPLATE_PARMS>
-    inline void swap(AZSTD_FUNCTION_FUNCTION<R AZSTD_FUNCTION_COMMA AZSTD_FUNCTION_TEMPLATE_ARGS >& f1, AZSTD_FUNCTION_FUNCTION<R AZSTD_FUNCTION_COMMA AZSTD_FUNCTION_TEMPLATE_ARGS >& f2)
+    template<typename R, typename... Args>
+    inline void swap(function_intermediate<R, Args...>& f1, function_intermediate<R, Args...>& f2)
     {
         f1.swap(f2);
     }
 
-    template<typename R AZSTD_FUNCTION_COMMA AZSTD_FUNCTION_TEMPLATE_PARMS>
-    typename AZSTD_FUNCTION_FUNCTION<R AZSTD_FUNCTION_COMMA AZSTD_FUNCTION_TEMPLATE_ARGS>::result_type
-    AZSTD_FUNCTION_FUNCTION<R AZSTD_FUNCTION_COMMA AZSTD_FUNCTION_TEMPLATE_ARGS>
-        ::operator()(AZSTD_FUNCTION_PARMS) const
+    template<typename R, typename... Args>
+    R function_intermediate<R, Args...>::operator()(Args&&... args) const
     {
         AZ_Assert(!this->empty(), "Bad function call!");
-        return reinterpret_cast<const vtable_type*>(vtable)->invoker(this->functor AZSTD_FUNCTION_COMMA AZSTD_FUNCTION_ARGS);
+        return reinterpret_cast<const vtable_type*>(vtable)->invoker(this->functor, AZStd::forward<Args>(args)...);
     }
 
-    // Poison comparisons between boost::function objects of the same type.
-    template<typename R AZSTD_FUNCTION_COMMA AZSTD_FUNCTION_TEMPLATE_PARMS>
-    void operator==(const AZSTD_FUNCTION_FUNCTION<R AZSTD_FUNCTION_COMMA AZSTD_FUNCTION_TEMPLATE_ARGS>&,
-        const AZSTD_FUNCTION_FUNCTION<R AZSTD_FUNCTION_COMMA AZSTD_FUNCTION_TEMPLATE_ARGS>&);
-    template<typename R AZSTD_FUNCTION_COMMA AZSTD_FUNCTION_TEMPLATE_PARMS>
-    void operator!=(const AZSTD_FUNCTION_FUNCTION<R AZSTD_FUNCTION_COMMA AZSTD_FUNCTION_TEMPLATE_ARGS>&,
-        const AZSTD_FUNCTION_FUNCTION<R AZSTD_FUNCTION_COMMA AZSTD_FUNCTION_TEMPLATE_ARGS>&);
+    //! Don't allow comparisons between objects of the same type.
+    //! Comparing the objects stored within two type erased functions does not have a well define way
+    //! to determine if both objects are equality comparable
+    //! This can be illustrated in the following `function_intermediate<WellDefinedSignature>(Functor1) == function_intermediate<WellDefinedSignature>(Functor2)`
+    //! The only way an equality comparison can occur is if Functor1 can compare to Functor2 and that information cannot be known by the function class
+    template<typename R, typename... Args>
+    void operator==(const function_intermediate<R, Args...>&, const function_intermediate<R, Args...>&) = delete;
+    template<typename R, typename... Args>
+    void operator!=(const function_intermediate<R, Args...>&, const function_intermediate<R, Args...>&) = delete;
 
-#if !defined(AZSTD_FUNCTION_NO_FUNCTION_TYPE_SYNTAX)
 
-#if     AZSTD_FUNCTION_NUM_ARGS == 0
-    #define AZSTD_FUNCTION_PARTIAL_SPEC R (void)
-#else
-    #define AZSTD_FUNCTION_PARTIAL_SPEC R (AZSTD_FUNCTION_TEMPLATE_ARGS)
-#endif
-
-    template<typename R AZSTD_FUNCTION_COMMA AZSTD_FUNCTION_TEMPLATE_PARMS>
-    class function<AZSTD_FUNCTION_PARTIAL_SPEC>
-        : public AZSTD_FUNCTION_FUNCTION<R AZSTD_FUNCTION_COMMA AZSTD_FUNCTION_TEMPLATE_ARGS>
+    template<typename R, typename... Args>
+    class function<R(Args...)>
+        : public function_intermediate<R, Args...>
     {
-        typedef AZSTD_FUNCTION_FUNCTION<R AZSTD_FUNCTION_COMMA AZSTD_FUNCTION_TEMPLATE_ARGS> base_type;
+        typedef function_intermediate<R, Args...> base_type;
         typedef function self_type;
     public:
         function()
             : base_type() {}
         template<typename Functor>
-        function(Functor f, typename Utils::enable_if_c<(AZStd::type_traits::ice_not<(is_integral<Functor>::value)>::value), int>::type = 0)
-            : base_type(f)
+        function(Functor&& f, enable_if_t<!is_integral<Functor>::value && !is_same<remove_cvref_t<Functor>, self_type>::value, int> = 0)
+            : base_type(AZStd::forward<Functor>(f))
         {}
         template<typename Functor, typename Allocator>
-        function(Functor f, const Allocator& a, typename Utils::enable_if_c<(AZStd::type_traits::ice_not<(is_integral<Functor>::value)>::value), int>::type = 0)
-            : base_type(f, a)
+        function(Functor&& f, const Allocator& a, enable_if_t<!is_integral<Functor>::value && !is_same<remove_cvref_t<Functor>, self_type>::value, int> = 0)
+            : base_type(AZStd::forward<Functor>(f), a)
         {}
 
         function(nullptr_t)
@@ -848,31 +586,27 @@ namespace AZStd
             : base_type(static_cast<const base_type&>(f)){}
         function(const base_type& f)
             : base_type(static_cast<const base_type&>(f)){}
-#if defined(AZ_HAS_RVALUE_REFS)
         function(self_type&& f)
             : base_type(static_cast<base_type &&>(f)){}
         function(base_type&& f)
             : base_type(static_cast<base_type &&>(f)){}
-#endif // AZ_HAS_RVALUE_REFS
 
         self_type& operator=(const self_type& f)
         {
             self_type(f).swap(*this);
             return *this;
         }
-#if defined(AZ_HAS_RVALUE_REFS)
         self_type& operator=(self_type&& f)
         {
             self_type(static_cast<self_type &&>(f)).swap(*this);
             return *this;
         }
-#endif // AZ_HAS_RVALUE_REFS
 
         template<typename Functor>
-        typename Utils::enable_if_c<(AZStd::type_traits::ice_not<(is_integral<Functor>::value)>::value), self_type&>::type
-        operator=(Functor f)
+        enable_if_t<!is_integral<Functor>::value && !is_same<remove_cvref_t<Functor>, self_type>::value, self_type&>
+        operator=(Functor&& f)
         {
-            self_type(f).swap(*this);
+            self_type(AZStd::forward<Functor>(f)).swap(*this);
             return *this;
         }
 
@@ -886,45 +620,18 @@ namespace AZStd
             self_type(f).swap(*this);
             return *this;
         }
-#if defined(AZ_HAS_RVALUE_REFS)
         self_type& operator=(base_type&& f)
         {
             self_type(static_cast<base_type &&>(f)).swap(*this);
             return *this;
         }
-#endif // AZ_HAS_RVALUE_REFS
+
+        R operator()(Args... args) const 
+        {
+            return base_type::operator()(AZStd::forward<Args>(args)...);
+        }
     };
-
-#undef AZSTD_FUNCTION_PARTIAL_SPEC
-#endif // have partial specialization
 } // end namespace AZStd
-
-// Cleanup after ourselves...
-#undef AZSTD_FUNCTION_VTABLE
-#undef AZSTD_FUNCTION_COMMA
-#undef AZSTD_FUNCTION_FUNCTION
-#undef AZSTD_FUNCTION_FUNCTION_INVOKER
-#undef AZSTD_FUNCTION_VOID_FUNCTION_INVOKER
-#undef AZSTD_FUNCTION_FUNCTION_OBJ_INVOKER
-#undef AZSTD_FUNCTION_VOID_FUNCTION_OBJ_INVOKER
-#undef AZSTD_FUNCTION_FUNCTION_REF_INVOKER
-#undef AZSTD_FUNCTION_VOID_FUNCTION_REF_INVOKER
-#undef AZSTD_FUNCTION_MEMBER_INVOKER
-#undef AZSTD_FUNCTION_VOID_MEMBER_INVOKER
-#undef AZSTD_FUNCTION_GET_FUNCTION_INVOKER
-#undef AZSTD_FUNCTION_GET_FUNCTION_OBJ_INVOKER
-#undef AZSTD_FUNCTION_GET_FUNCTION_REF_INVOKER
-#undef AZSTD_FUNCTION_GET_MEM_FUNCTION_INVOKER
-#undef AZSTD_FUNCTION_GET_INVOKER
-#undef AZSTD_FUNCTION_TEMPLATE_PARMS
-#undef AZSTD_FUNCTION_TEMPLATE_ARGS
-#undef AZSTD_FUNCTION_PARMS
-#undef AZSTD_FUNCTION_PARM
-#undef AZSTD_FUNCTION_ARGS
-#undef AZSTD_FUNCTION_ARG_TYPE
-#undef AZSTD_FUNCTION_ARG_TYPES
-#undef AZSTD_FUNCTION_VOID_RETURN_TYPE
-#undef AZSTD_FUNCTION_RETURN
 
 #if defined(AZ_COMPILER_MSVC)
 #   pragma warning( pop )

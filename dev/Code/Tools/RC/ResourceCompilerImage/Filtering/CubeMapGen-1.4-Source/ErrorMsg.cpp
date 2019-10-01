@@ -12,7 +12,7 @@
 #include "ErrorMsg.h"
 #include <AzCore/base.h>
 
-#if defined(AZ_PLATFORM_APPLE)
+#if AZ_TRAIT_OS_PLATFORM_APPLE
 #define SUCCEEDED(x) ((x) >= 0)
 #define FAILED(x) (!(SUCCEEDED(x)))
 #endif

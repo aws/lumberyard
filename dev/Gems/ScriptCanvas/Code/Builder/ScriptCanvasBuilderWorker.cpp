@@ -3,9 +3,9 @@
 * its licensors.
 *
 * For complete copyright and license terms please see the LICENSE at the root of this
-* distribution(the "License").All use of this software is governed by the License,
-*or, if provided, by the license below or the license accompanying this file.Do not
-* remove or modify any license notices.This file is distributed on an "AS IS" BASIS,
+* distribution (the "License"). All use of this software is governed by the License,
+*or, if provided, by the license below or the license accompanying this file. Do not
+* remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
 *WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
@@ -28,6 +28,8 @@
 #include <ScriptCanvas/Assets/ScriptCanvasAssetHandler.h>
 #include <ScriptCanvas/Components/EditorGraph.h>
 #include <ScriptCanvas/Components/EditorGraphVariableManagerComponent.h>
+#include <ScriptCanvas/Core/Node.h>
+#include <ScriptCanvas/Core/Connection.h>
 
 namespace ScriptCanvasBuilder
 {
@@ -66,7 +68,7 @@ namespace ScriptCanvasBuilder
         AZ::Data::AssetType assetType(azrtti_typeid<ScriptCanvasEditor::ScriptCanvasAsset>());
         // Use AssetCatalog service to register ScriptCanvas asset type and extension
         AZ::Data::AssetCatalogRequestBus::Broadcast(&AZ::Data::AssetCatalogRequests::AddAssetType, assetType);
-		AZ::Data::AssetCatalogRequestBus::Broadcast(&AZ::Data::AssetCatalogRequests::EnableCatalogForAsset, assetType);
+        AZ::Data::AssetCatalogRequestBus::Broadcast(&AZ::Data::AssetCatalogRequests::EnableCatalogForAsset, assetType);
         AZ::Data::AssetCatalogRequestBus::Broadcast(&AZ::Data::AssetCatalogRequests::AddExtension, ScriptCanvasEditor::ScriptCanvasAsset::GetFileExtension());
 
         m_editorAssetHandler = AZStd::make_unique<ScriptCanvasEditor::ScriptCanvasAssetHandler>();
@@ -365,6 +367,8 @@ namespace ScriptCanvasBuilder
 
     AZ::Outcome<ScriptCanvas::GraphData, AZStd::string> CompileGraphData(AZ::Entity* scriptCanvasEntity)
     {
+        typedef AZStd::pair< ScriptCanvas::Node*, AZ::Entity* > NodeEntityPair;
+
         if (!scriptCanvasEntity)
         {
             return AZ::Failure(AZStd::string("Cannot compile graph data from a nullptr Script Canvas Entity"));
@@ -380,6 +384,189 @@ namespace ScriptCanvasBuilder
         ScriptCanvas::GraphData compiledGraphData;
         auto serializeContext = AZ::EntityUtils::GetApplicationSerializeContext();
         serializeContext->CloneObjectInplace(compiledGraphData, &sourceGraphData);
+
+        AZStd::unordered_set<ScriptCanvas::Endpoint> disabledEndpoints;
+        AZStd::unordered_set<AZ::Entity*> disabledNodeEntities;
+
+        AZStd::unordered_map<AZ::EntityId, NodeEntityPair > nodeLookUpMap;
+
+        {
+            auto nodeIter = compiledGraphData.m_nodes.begin();
+
+            while (nodeIter != compiledGraphData.m_nodes.end())
+            {
+                AZ::Entity* nodeEntity = (*nodeIter);
+                auto nodeComponent = AZ::EntityUtils::FindFirstDerivedComponent<ScriptCanvas::Node>(nodeEntity);
+
+                if (nodeComponent == nullptr)
+                {
+                    delete nodeEntity;
+                    nodeIter = compiledGraphData.m_nodes.erase(nodeIter);
+
+                    continue;
+                }
+
+                bool disabledNode = false;
+                
+                if (!nodeComponent->IsNodeEnabled())
+                {
+                    disabledNode = true;
+                    auto nodeSlots = nodeComponent->GetAllSlots();
+
+                    for (const ScriptCanvas::Slot* slot : nodeSlots)
+                    {
+                        disabledEndpoints.insert(slot->GetEndpoint());
+                    }
+                }
+
+                if (disabledNode)
+                {
+                    delete nodeEntity;
+                    nodeIter = compiledGraphData.m_nodes.erase(nodeIter);
+                }
+                else
+                {
+                    // Keep them in the map to make future look-ups easier.
+                    nodeLookUpMap[nodeEntity->GetId()] = AZStd::make_pair(nodeComponent, nodeEntity);
+                    ++nodeIter;
+                }
+            }
+        }
+
+        // Keep track of all the endpoints we've fully removed so we can cleanse out all of the invalid connections
+        AZStd::unordered_set<ScriptCanvas::Endpoint> fullyRemovedEndpoints;
+
+        while (!disabledEndpoints.empty())
+        {
+            // Keep track of the list of all the potentially disabled nodes that are a result of any of the current batch of disabled endpoints
+            AZStd::unordered_set< NodeEntityPair > potentiallyDisabledNodes;
+
+            for (const ScriptCanvas::Endpoint& disabledEndpoint : disabledEndpoints)
+            {
+                fullyRemovedEndpoints.insert(disabledEndpoint);
+
+                AZStd::unordered_set<ScriptCanvas::Endpoint> reversedEndpoints;
+
+                auto mapRange = compiledGraphData.m_endpointMap.equal_range(disabledEndpoint);
+
+                // Start by looking up all of our connected endpoints so we can clean-up this map
+                for (auto endpointIter = mapRange.first; endpointIter != mapRange.second; ++endpointIter)
+                {
+                    reversedEndpoints.insert(endpointIter->second);                    
+                }
+
+                // Remove all of the endpoint entries relating to the currently disabled map.
+                compiledGraphData.m_endpointMap.erase(disabledEndpoint);
+
+                // Go through all of the reversed connections and find all of the corresponding entries that
+                // match our removed connection and remove them as well.
+                for (auto disconnectedEndpoint : reversedEndpoints)
+                {
+                    auto mapRange = compiledGraphData.m_endpointMap.equal_range(disconnectedEndpoint);
+
+                    for (auto endpointIter = mapRange.first; endpointIter != mapRange.second; ++endpointIter)
+                    {
+                        if (endpointIter->second == disabledEndpoint)
+                        {
+                            compiledGraphData.m_endpointMap.erase(endpointIter);
+                            break;
+                        }
+                    }
+
+                    // Look up the node so we can do some introspection on the slot.
+                    auto nodeIter = nodeLookUpMap.find(disconnectedEndpoint.GetNodeId());
+
+                    if (nodeIter != nodeLookUpMap.end())
+                    {
+                        ScriptCanvas::Node* node = nodeIter->second.first;
+
+                        ScriptCanvas::Slot* slot = node->GetSlot(disconnectedEndpoint.GetSlotId());
+
+                        // If the slot is an input, we want to recurse on that as a potentially disabled node. So keep track of it and we'll parse it in the next step.
+                        if (slot && slot->IsExecution() && slot->IsInput())
+                        {
+                            // If we no longer have any active connections. We can also strip out this node to simplify down the graph further.
+                            if (compiledGraphData.m_endpointMap.count(disconnectedEndpoint) == 0)
+                            {
+                                potentiallyDisabledNodes.insert(nodeIter->second);
+                            }
+                        }
+                    }
+                }                
+            }
+
+            disabledEndpoints.clear();
+
+            for (const NodeEntityPair& nodePair : potentiallyDisabledNodes)
+            {
+                ScriptCanvas::Node* node = nodePair.first;
+                auto inputSlots = node->GetAllSlotsByDescriptor(ScriptCanvas::SlotDescriptors::ExecutionIn());
+
+                bool hasExecutionIn = false;
+
+                for (const ScriptCanvas::Slot* slot : inputSlots)
+                {
+                    if (compiledGraphData.m_endpointMap.count(slot->GetEndpoint()) > 0)
+                    {
+                        hasExecutionIn = true;
+                        break;
+                    }
+                }
+
+                // Once here we know the node has no input but was apart of the previous chain so we can just disable the entire node.
+                // Since it will no longer have any incomming data via the disabled checks from above.
+                if (!hasExecutionIn)
+                {
+                    auto disabledSlots = node->GetAllSlots();
+
+                    for (auto disabledSlot : disabledSlots)
+                    {
+                        disabledEndpoints.insert(disabledSlot->GetEndpoint());
+                    }
+
+                    nodeLookUpMap.erase(node->GetEntityId());
+                    size_t eraseCount = compiledGraphData.m_nodes.erase(nodePair.second);
+                    AZ_Assert(eraseCount == 1, "Failed to erase node from compiled graph data");
+
+                    delete node;
+                }
+            }
+
+            potentiallyDisabledNodes.clear();
+        }
+
+        {
+            auto connectionIter = compiledGraphData.m_connections.begin();
+
+            while (connectionIter != compiledGraphData.m_connections.end())
+            {
+                AZ::Entity* connectionEntity = (*connectionIter);
+                auto connection = AZ::EntityUtils::FindFirstDerivedComponent<ScriptCanvas::Connection>(connectionEntity);
+                AZ_Assert(connection, "Connection is missing connection component.");
+
+                if (connection == nullptr)
+                {
+                    delete connectionEntity;
+                    connectionIter = compiledGraphData.m_connections.erase(connectionIter);
+                    continue;
+                }
+
+                ScriptCanvas::Endpoint targetEndpoint = connection->GetTargetEndpoint();
+                ScriptCanvas::Endpoint sourceEndpoint = connection->GetSourceEndpoint();
+
+                if (fullyRemovedEndpoints.count(targetEndpoint) > 0
+                    || fullyRemovedEndpoints.count(sourceEndpoint) > 0)
+                {
+                    delete connectionEntity;
+                    connectionIter = compiledGraphData.m_connections.erase(connectionIter);
+                }
+                else
+                {
+                    ++connectionIter;
+                }
+            }
+        }
+
         return AZ::Success(compiledGraphData);
     }
 

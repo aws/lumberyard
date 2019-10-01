@@ -319,17 +319,9 @@ def wrap_compiled_task(classname):
             # Use base class's version of this method for linker tasks
             return super(derived_class, self).exec_response_command(cmd, **kw)
 
-    def can_retrieve_cache(self):        
-        # msvcdeps and netcaching are incompatible, so disable the cache
-        if self.env.CC_NAME not in supported_compilers:
-            return super(derived_class, self).can_retrieve_cache()
-        self.nocache = True # Disable sending the file to the cache
-        return False
-
     derived_class.post_run = post_run
     derived_class.scan = scan
     derived_class.exec_response_command = exec_response_command
-    derived_class.can_retrieve_cache = can_retrieve_cache
 
 
 for compile_task in ('c', 'cxx','pch_msvc'):

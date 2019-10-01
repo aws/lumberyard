@@ -1,0 +1,10 @@
+{
+    "auto":
+    {
+        "Platform/Android":
+        [
+            "RemoteConsole_Traits_Platform.h",
+            "RemoteConsole_Traits_Android.h"
+        ]
+    }
+}

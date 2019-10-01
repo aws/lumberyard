@@ -457,7 +457,6 @@ struct CVars
     float e_DecalsNeighborMaxLifeTime;
     DeclareConstFloatCVar(e_StreamCgfVisObjPriority);
     int e_ObjectLayersActivation;
-    DeclareConstIntCVar(e_DecalsScissor, 1);
     DeclareConstFloatCVar(e_DissolveDistMax);
     DeclareConstFloatCVar(e_DissolveDistMin);
     DeclareConstFloatCVar(e_DissolveDistband);
@@ -549,6 +548,7 @@ struct CVars
     int e_MergedMeshesDebug;
     int e_MergedMeshesPool;
     int e_MergedMeshesPoolSpines;
+    int e_MergedMeshesMaxVerticesPerSector;
     int e_MergedMeshesTesselationSupport;
     float e_MergedMeshesViewDistRatio;
     float e_MergedMeshesLodRatio;
@@ -584,4 +584,6 @@ struct CVars
     int e_PermanentRenderObjects;
     int e_StaticInstancing;
     int e_StaticInstancingMinInstNum;
+
+    DeclareConstIntCVar(e_MemoryProfiling, 0);
 };

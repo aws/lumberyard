@@ -12,8 +12,10 @@
 #ifndef AZCORE_COMPRESSOR_ZLIB_H
 #define AZCORE_COMPRESSOR_ZLIB_H
 
-#include <AzCore/IO/Compressor.h>
+#include <AzCore/base.h>
+#include <AzCore/std/containers/vector.h>
 
+#include <AzCore/IO/Compressor.h>
 #include <AzCore/Memory/SystemAllocator.h>
 #include <AzCore/Compression/Compression.h>
 

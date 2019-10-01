@@ -16,21 +16,6 @@
 
 namespace AzToolsFramework
 {
-    static void RefreshRotationManipulatorViewAxis(
-        RotationManipulators& rotationManipulator, const AZ::Vector3& worldViewPosition)
-    {
-        if (!rotationManipulator.PerformingActionViewAxis())
-        {
-            AZ::Vector3 lookDirection =
-                (rotationManipulator.GetPosition() - worldViewPosition).GetNormalizedExact();
-
-            lookDirection = TransformDirectionNoScaling(
-                rotationManipulator.GetLocalTransform().GetInverseFast(), lookDirection);
-
-            rotationManipulator.SetViewAxis(lookDirection);
-        }
-    }
-
     RotationManipulators::RotationManipulators(const AZ::Transform& worldFromLocal)
     {
         for (size_t manipulatorIndex = 0; manipulatorIndex < m_localAngularManipulators.size(); ++manipulatorIndex)
@@ -39,6 +24,8 @@ namespace AzToolsFramework
         }
 
         m_viewAngularManipulator = AngularManipulator::MakeShared(worldFromLocal);
+
+        m_space = worldFromLocal;
     }
 
     void RotationManipulators::InstallLeftMouseDownCallback(
@@ -105,13 +92,18 @@ namespace AzToolsFramework
             manipulator->SetLocalOrientation(localOrientation);
         }
 
+        m_viewAngularManipulator->SetLocalOrientation(localOrientation);
+
         m_localTransform = AZ::Transform::CreateFromQuaternionAndTranslation(
             localOrientation, m_localTransform.GetTranslation());
     }
 
     void RotationManipulators::RefreshView(const AZ::Vector3& worldViewPosition)
     {
-        RefreshRotationManipulatorViewAxis(*this, worldViewPosition);
+        if (!PerformingActionViewAxis())
+        {
+            SetViewAxis(CalculateViewDirection(*this, worldViewPosition));
+        }
     }
 
     void RotationManipulators::SetSpace(const AZ::Transform& worldFromLocal)
@@ -122,6 +114,8 @@ namespace AzToolsFramework
         }
 
         m_viewAngularManipulator->SetSpace(worldFromLocal);
+
+        m_space = worldFromLocal;
     }
 
     void RotationManipulators::SetLocalAxes(

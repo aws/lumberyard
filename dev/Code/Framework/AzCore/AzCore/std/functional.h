@@ -21,60 +21,8 @@
 #include <AzCore/std/bind/mem_fn.h>
 #include <AzCore/std/bind/bind.h>
 
-//////////////////////////////////////////////////////////////////////////
-// TR1 function
-//////////////////////////////////////////////////////////////////////////
-/**
-* Function is a tuned version of the boost.function library. It's what TR1 based on.
-* Till we have TR1 support we should have our implementation.
-*/
-#if /*defined(AZSTD_HAS_TYPE_TRAITS_INTRINSICS)*/ 0
-#   ifdef AZ_COMPILER_MSVC
-#       include <functional>
-namespace AZStd
-{
-    // wait for varadic templates too much typing
-    std::tr1::function <
-}
-#   endif
-#else // !AZSTD_HAS_TYPE_TRAITS_INTRINSICS
-    #include <AzCore/std/allocator.h>
-    #include <AzCore/std/function/function_base.h>
-
-    #define AZSTD_FUNCTION_NUM_ARGS 0
-    #include <AzCore/std/function/maybe_include.h>
-    #undef AZSTD_FUNCTION_NUM_ARGS
-    #define AZSTD_FUNCTION_NUM_ARGS 1
-    #include <AzCore/std/function/maybe_include.h>
-    #undef AZSTD_FUNCTION_NUM_ARGS
-    #define AZSTD_FUNCTION_NUM_ARGS 2
-    #include <AzCore/std/function/maybe_include.h>
-    #undef AZSTD_FUNCTION_NUM_ARGS
-    #define AZSTD_FUNCTION_NUM_ARGS 3
-    #include <AzCore/std/function/maybe_include.h>
-    #undef AZSTD_FUNCTION_NUM_ARGS
-    #define AZSTD_FUNCTION_NUM_ARGS 4
-    #include <AzCore/std/function/maybe_include.h>
-    #undef AZSTD_FUNCTION_NUM_ARGS
-    #define AZSTD_FUNCTION_NUM_ARGS 5
-    #include <AzCore/std/function/maybe_include.h>
-    #undef AZSTD_FUNCTION_NUM_ARGS
-    #define AZSTD_FUNCTION_NUM_ARGS 6
-    #include <AzCore/std/function/maybe_include.h>
-    #undef AZSTD_FUNCTION_NUM_ARGS
-    #define AZSTD_FUNCTION_NUM_ARGS 7
-    #include <AzCore/std/function/maybe_include.h>
-    #undef AZSTD_FUNCTION_NUM_ARGS
-    #define AZSTD_FUNCTION_NUM_ARGS 8
-    #include <AzCore/std/function/maybe_include.h>
-    #undef AZSTD_FUNCTION_NUM_ARGS
-    #define AZSTD_FUNCTION_NUM_ARGS 9
-    #include <AzCore/std/function/maybe_include.h>
-    #undef AZSTD_FUNCTION_NUM_ARGS
-    #define AZSTD_FUNCTION_NUM_ARGS 10
-    #include <AzCore/std/function/maybe_include.h>
-    #undef AZSTD_FUNCTION_NUM_ARGS
-#endif
+#include <AzCore/std/allocator.h>
+#include <AzCore/std/function/function_template.h>
 
 #endif // AZSTD_FUNCTIONAL_H
 #pragma once

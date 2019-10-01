@@ -30,9 +30,6 @@
 
 #include <CryProfileMarker.h>
 
-//#pragma optimize("",off)
-//#pragma("control %push O=0")             // to disable optimization
-
 extern CMTSafeHeap* g_pPakHeap;
 
 #if defined(STREAMENGINE_ENABLE_STATS)

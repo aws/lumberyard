@@ -108,26 +108,24 @@ namespace ScriptCanvas
                                 config.m_slotId = remappingIter->second;
                             }
 
-                            if (busId == azrtti_typeid<AZ::EntityId>())
-                            {
-                                config.m_name = c_busIdName;
-                                config.m_toolTip = busToolTip;
-                                config.m_slotType = SlotType::DataIn;
-                                config.m_contractDescs = { { []() { return aznew RestrictedTypeContract({ Data::Type::EntityID() }); } } };                                
+                            config.m_name = c_busIdName;
+                            config.m_toolTip = busToolTip;
+                            config.SetConnectionType(ConnectionType::Input);                            
 
-                                addressSlotId = AddInputDatumSlot(config, Datum(SelfReferenceId));
+                            if (busId == azrtti_typeid<AZ::EntityId>())
+                            {                                
+                                config.SetDefaultValue(GraphOwnerId);
+                                config.m_contractDescs = { { []() { return aznew RestrictedTypeContract({ Data::Type::EntityID() }); } } };
                             }
                             else
                             {
                                 Data::Type busIdType(AZ::BehaviorContextHelper::IsStringParameter(m_ebus->m_idParam) ? Data::Type::String() : Data::FromAZType(busId));                                
-
-                                config.m_name = c_busIdName;
-                                config.m_toolTip = busToolTip;
-                                config.m_slotType = SlotType::DataIn;
+                                
+                                config.ConfigureDatum(AZStd::move(Datum(busIdType, Datum::eOriginality::Original)));
                                 config.m_contractDescs = { { [busIdType]() { return aznew RestrictedTypeContract({ busIdType }); } } };
-
-                                addressSlotId = AddInputDatumSlot(config, Datum(busIdType, Datum::eOriginality::Original));
                             }
+
+                            addressSlotId = AddSlot(config);
 
                             populationMapping[addressId] = addressSlotId;
                         }
@@ -213,8 +211,8 @@ namespace ScriptCanvas
 
                     slotConfiguration.m_name = AZStd::string::format("Result: %s", argumentTypeName.c_str());
 
-                    slotConfiguration.m_slotType = SlotType::DataIn;
-                    slotConfiguration.m_dataType = inputType;
+                    slotConfiguration.SetConnectionType(ConnectionType::Input);
+                    slotConfiguration.ConfigureDatum(AZStd::move(Datum(inputType, Datum::eOriginality::Copy, nullptr, AZ::Uuid::CreateNull())));
                     slotConfiguration.m_addUniqueSlotByNameAndType = false;
 
                     auto remappingIdIter = m_eventSlotMapping.find(resultIdentifier);
@@ -224,7 +222,7 @@ namespace ScriptCanvas
                         slotConfiguration.m_slotId = remappingIdIter->second;
                     }
 
-                    SlotId slotId = AddInputDatumSlot(slotConfiguration, Datum(inputType, Datum::eOriginality::Copy, nullptr, AZ::Uuid::CreateNull()));
+                    SlotId slotId = AddSlot(slotConfiguration);
 
                     populationMapping[resultIdentifier] = slotId;
                     eBusEventEntry.m_resultSlotId = slotId;
@@ -251,7 +249,7 @@ namespace ScriptCanvas
                     DataSlotConfiguration slotConfiguration;
                     slotConfiguration.m_name = argName;
                     slotConfiguration.m_toolTip = argToolTip;
-                    slotConfiguration.m_slotType = SlotType::DataOut;
+                    slotConfiguration.SetConnectionType(ConnectionType::Output);
                     slotConfiguration.m_addUniqueSlotByNameAndType = false;
 
                     auto remappingIdIter = m_eventSlotMapping.find(argIdentifier);
@@ -261,9 +259,9 @@ namespace ScriptCanvas
                         slotConfiguration.m_slotId = remappingIdIter->second;
                     }
 
-                    slotConfiguration.m_dataType = AZStd::move(outputType);
+                    slotConfiguration.SetType(outputType);
 
-                    SlotId slotId = AddDataSlot(slotConfiguration);
+                    SlotId slotId = AddSlot(slotConfiguration);
 
                     AZ_Error("ScriptCanvas", populationMapping.find(argIdentifier) == populationMapping.end(), "Trying to create the same slot twice. Unable to create sane mapping.");
                     
@@ -275,10 +273,10 @@ namespace ScriptCanvas
 
                 {
                     AZ::Uuid outputSlotId = methodDefinition.GetNameProperty().GetId();
-                    SlotConfiguration slotConfiguration;
+                    ExecutionSlotConfiguration slotConfiguration;
 
                     slotConfiguration.m_name = eventID;
-                    slotConfiguration.m_slotType = SlotType::ExecutionOut;
+                    slotConfiguration.SetConnectionType(ConnectionType::Output);                    
                     slotConfiguration.m_addUniqueSlotByNameAndType = true;
 
                     auto remappingIter = m_eventSlotMapping.find(outputSlotId);
@@ -444,9 +442,9 @@ namespace ScriptCanvas
                     {
                         if (auto busEntityId = busIdDatum->GetAs<AZ::EntityId>())
                         {
-                            if (!busEntityId->IsValid() || *busEntityId == ScriptCanvas::SelfReferenceId)
+                            if (!busEntityId->IsValid() || *busEntityId == ScriptCanvas::GraphOwnerId)
                             {
-                                RuntimeRequestBus::EventResult(connectToEntityId, m_executionUniqueId, &RuntimeRequests::GetRuntimeEntityId);
+                                RuntimeRequestBus::EventResult(connectToEntityId, GetGraphId(), &RuntimeRequests::GetRuntimeEntityId);
                                 busIdParameter.m_value = &connectToEntityId;
                             }
                         }
@@ -505,7 +503,7 @@ namespace ScriptCanvas
             {
                 AZStd::vector<SlotId> nonEventSlotIds;
 
-                for (const auto& slot : m_slots)
+                for (const auto& slot : GetSlots())
                 {
                     const SlotId slotId = slot.GetId();
 
@@ -582,23 +580,22 @@ namespace ScriptCanvas
                 {
                     AZ::BehaviorContext* behaviorContext = nullptr;
                     AZ::ComponentApplicationBus::BroadcastResult(behaviorContext, &AZ::ComponentApplicationBus::Events::GetBehaviorContext);
-
-                    const AZStd::string& name = m_definition.GetName();
-                    const auto& ebusIterator = behaviorContext->m_ebuses.find(name);
+                    
+                    const auto& ebusIterator = behaviorContext->m_ebuses.find(m_definition.GetBehaviorContextName());
                     if (ebusIterator == behaviorContext->m_ebuses.end())
                     {
-                        AZ_Error("Script Canvas", false, "ReceiveScriptEvent::CreateHandler - No ebus by name of %s in the behavior context!", name.c_str());
+                        AZ_Error("Script Canvas", false, "ReceiveScriptEvent::CreateHandler - No ebus by name of %s in the behavior context!", m_definition.GetName().c_str());
                         return false;
                     }
 
                     m_ebus = ebusIterator->second;
-                    AZ_Assert(m_ebus, "Behavior Context EBus does not exist: %s", name.c_str());
-                    AZ_Assert(m_ebus->m_createHandler, "The ebus %s has no create handler!", name.c_str());
-                    AZ_Assert(m_ebus->m_destroyHandler, "The ebus %s has no destroy handler!", name.c_str());
+                    AZ_Assert(m_ebus, "Behavior Context EBus does not exist: %s", m_definition.GetName().c_str());
+                    AZ_Assert(m_ebus->m_createHandler, "The ebus %s has no create handler!", m_definition.GetName().c_str());
+                    AZ_Assert(m_ebus->m_destroyHandler, "The ebus %s has no destroy handler!", m_definition.GetName().c_str());
 
-                    AZ_Verify(m_ebus->m_createHandler->InvokeResult(m_handler, &m_definition), "Behavior Context EBus handler creation failed %s", name.c_str());
+                    AZ_Verify(m_ebus->m_createHandler->InvokeResult(m_handler, &m_definition), "Behavior Context EBus handler creation failed %s", m_definition.GetName().c_str());
 
-                    AZ_Assert(m_handler, "Ebus create handler failed %s", name.c_str());
+                    AZ_Assert(m_handler, "Ebus create handler failed %s", m_definition.GetName().c_str());
                 }
 
                 return true;

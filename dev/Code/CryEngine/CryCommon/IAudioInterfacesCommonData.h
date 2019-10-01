@@ -45,6 +45,9 @@ namespace Audio
     typedef TATLIDType TAudioTriggerInstanceID;
     typedef TATLIDType TAudioProxyID;
     typedef TATLIDType TAudioSourceId;
+    typedef TATLIDType TAudioFileId;
+    typedef TATLIDType TAudioFileCollectionId;
+    typedef TATLIDType TAudioFileLanguageId;
 
 #define INVALID_AUDIO_OBJECT_ID (static_cast<Audio::TAudioObjectID>(0))
 #define GLOBAL_AUDIO_OBJECT_ID (static_cast<Audio::TAudioObjectID>(1))
@@ -61,6 +64,9 @@ namespace Audio
 #define INVALID_AUDIO_PROXY_ID (static_cast<Audio::TAudioProxyID>(0))
 #define DEFAULT_AUDIO_PROXY_ID (static_cast<Audio::TAudioProxyID>(1))
 #define INVALID_AUDIO_SOURCE_ID (static_cast<Audio::TAudioSourceId>(0))
+#define INVALID_AUDIO_FILE_ID (static_cast<Audio::TAudioFileId>(0))
+#define INVALID_AUDIO_FILE_COLLECTION_ID (static_cast<Audio::TAudioFileCollectionId>(0))
+#define INVALID_AUDIO_FILE_LANGUAGE_ID (static_cast<Audio::TAudioFileLanguageId>(0))
 
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -131,6 +137,26 @@ namespace Audio
     };
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
+    enum EAudioAssetType : TATLEnumFlagsType
+    {
+        eAAT_STREAM = 1,
+        eAAT_SOURCE = 2,
+        eAAT_NONE = 3,
+    };
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////////
+    enum EAudioCodecType : TATLEnumFlagsType
+    {
+        eACT_PCM        = 1,
+        eACT_ADPCM      = 2,
+        eACT_XMA        = 3,
+        eACT_VORBIS     = 4,
+        eACT_XWMA       = 5,
+        eACT_AAC        = 6,
+        eACT_STREAM_PCM = 7,
+    };
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////////
     enum EAudioRequestFlags : TATLEnumFlagsType
     {
         eARF_NONE                   = 0,        // assumes Lowest priority
@@ -178,6 +204,13 @@ namespace Audio
         SingleRay,
         MultiRay,
         Count,
+    };
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////////
+    enum class PanningMode
+    {
+        Speakers,
+        Headphones,
     };
 
 
@@ -287,7 +320,7 @@ namespace Audio
         AudioStreamData()
         {}
 
-        AudioStreamData(AZStd::size_t numChannels, AZ::u8* buffer, AZStd::size_t dataSize)
+        AudioStreamData(AZ::u8* buffer, AZStd::size_t dataSize)
             : m_data(buffer)
             , m_sizeBytes(dataSize)
         {}
@@ -295,6 +328,21 @@ namespace Audio
         AZ::u8* m_data = nullptr;           // points to start of raw data
         union {
             AZStd::size_t m_sizeBytes = 0;  // in bytes
+            AZStd::size_t m_offsetBytes;    // if using this structure as a read/write bookmark, use this alias
+        };
+    };
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////////
+    struct AudioStreamMultiTrackData
+    {
+        AudioStreamMultiTrackData()
+        {
+            m_data[0] = m_data[1] = m_data[2] = m_data[3] = m_data[4] = m_data[5] = nullptr;
+        }
+
+        const void* m_data[6];              // 6 channels max
+        union {
+            AZStd::size_t m_sizeBytes = 0;  // size in bytes of each track
             AZStd::size_t m_offsetBytes;    // if using this structure as a read/write bookmark, use this alias
         };
     };
@@ -312,6 +360,44 @@ namespace Audio
     };
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
+    struct SAudioSourceInfo
+    {
+        TAudioSourceId m_sourceId;
+        TAudioFileId m_fileId;
+        TAudioFileCollectionId m_languageId;
+        TAudioFileLanguageId m_collectionId;
+        EAudioCodecType m_codecType;
+
+        SAudioSourceInfo()
+            : m_sourceId(INVALID_AUDIO_SOURCE_ID)
+            , m_fileId(INVALID_AUDIO_FILE_ID)
+            , m_languageId(INVALID_AUDIO_FILE_LANGUAGE_ID)
+            , m_collectionId(INVALID_AUDIO_FILE_COLLECTION_ID)
+            , m_codecType(eACT_STREAM_PCM)
+        {}
+
+        SAudioSourceInfo(TAudioSourceId sourceId)
+            : m_sourceId(sourceId)
+            , m_fileId(INVALID_AUDIO_FILE_ID)
+            , m_languageId(INVALID_AUDIO_FILE_LANGUAGE_ID)
+            , m_collectionId(INVALID_AUDIO_FILE_COLLECTION_ID)
+            , m_codecType(eACT_STREAM_PCM)
+        {}
+
+        SAudioSourceInfo(
+            TAudioSourceId sourceId,
+            TAudioFileId fileId,
+            TAudioFileLanguageId languageId,
+            TAudioFileCollectionId collectionId,
+            EAudioCodecType codecType)
+            : m_sourceId(sourceId)
+            , m_fileId(fileId)
+            , m_languageId(languageId)
+            , m_collectionId(collectionId)
+            , m_codecType(codecType)
+        {}
+    };
+
     struct SAudioCallBackInfos
     {
         struct UserData

@@ -18,6 +18,7 @@
 #include <EMotionFX/Source/AnimGraphStateMachine.h>
 #include <EMotionFX/Source/AnimGraphMotionNode.h>
 
+
 namespace EMotionFX
 {
     AnimGraphSnapshot::AnimGraphSnapshot(const AnimGraphInstance& instance, bool networkAuthoritative)
@@ -104,19 +105,17 @@ namespace EMotionFX
     void AnimGraphSnapshot::CollectActiveNodes(AnimGraphInstance& instance)
     {
         m_activeStateNodes.clear();
-        MCore::Array<AnimGraphNode*> tempGraphNodes;
-        instance.CollectActiveAnimGraphNodes(&tempGraphNodes, azrtti_typeid<AnimGraphStateMachine>());
+        MCore::Array<AnimGraphNode*> stateMachineNodes;
+        instance.CollectActiveAnimGraphNodes(&stateMachineNodes, azrtti_typeid<AnimGraphStateMachine>());
 
-        const AZ::u32 tempGraphNodesLength = tempGraphNodes.GetLength();
-        for (AZ::u32 i = 0; i < tempGraphNodesLength; ++i)
+        const AZ::u32 numStateMachines = stateMachineNodes.GetLength();
+        for (AZ::u32 i = 0; i < numStateMachines; ++i)
         {
-            AnimGraphNode* animGraphNode = tempGraphNodes[i];
-            const AnimGraphStateMachine* stateMachine = static_cast<const AnimGraphStateMachine*>(animGraphNode);
-            AnimGraphNode* nodeA = nullptr;
-            AnimGraphNode* nodeB = nullptr; // nodeB is the transition node.
-            stateMachine->GetActiveStates(&instance, &nodeA, &nodeB);
-            AZ_Assert(nodeA, "Node A from a state machine shouldn't be null");
-            m_activeStateNodes.emplace_back(nodeA->GetNodeIndex());
+            AnimGraphStateMachine* stateMachine = static_cast<AnimGraphStateMachine*>(stateMachineNodes[i]);
+            AnimGraphNode* currentState = stateMachine->GetCurrentState(&instance);
+
+            AZ_Assert(currentState, "There should always be a valid current state.");
+            m_activeStateNodes.emplace_back(currentState->GetNodeIndex());
         }
     }
 
@@ -160,15 +159,11 @@ namespace EMotionFX
 
             AnimGraphStateMachine* stateMachine = static_cast<AnimGraphStateMachine*>(parent);
             AnimGraphStateMachine::UniqueData* uniqueData = static_cast<AnimGraphStateMachine::UniqueData*>(stateMachine->FindUniqueNodeData(&instance));
-            if (uniqueData->mCurrentState != node && uniqueData->mTargetState != node)
+            const AZStd::vector<AnimGraphNode*>& activeStates = stateMachine->GetActiveStates(&instance);
+            if (AZStd::find(activeStates.begin(), activeStates.end(), node) == activeStates.end())
             {
-                AZ_Printf("EMotionFX", "Desync detected: changed %d %s to %d %s\n",
-                    uniqueData->mCurrentState ? uniqueData->mCurrentState->GetNodeIndex() : 0,
-                    uniqueData->mCurrentState ? uniqueData->mCurrentState->GetName() : "null", node->GetNodeIndex(), node->GetName());
-
+                stateMachine->EndAllActiveTransitions(&instance);
                 uniqueData->mCurrentState = node;
-                uniqueData->mTransition = nullptr;
-                uniqueData->mTargetState = nullptr;
             }
         }
     }
@@ -223,6 +218,7 @@ namespace EMotionFX
 
     void AnimGraphSnapshot::OnNetworkConnected(AnimGraphInstance& instance)
     {
+        AZ_UNUSED(instance);
         if (!IsNetworkAuthoritative())
         {
             // In this function, we deserialize from the serialzier to retrieve any data that need to be synced initially.

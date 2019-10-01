@@ -764,6 +764,85 @@ namespace AssetProcessor
         EXPECT_TRUE(GetSourceInfoBySourcePath(true, m_customDataMembers->m_assetAFullPath.c_str(), m_customDataMembers->m_assetA.m_guid, m_customDataMembers->m_assetASourceRelPath.c_str(), m_customDataMembers->m_subfolder1AbsolutePath.c_str(), m_customDataMembers->m_assetAType));
     }
 
+    TEST_F(AssetCatalogTest_AssetInfo, FindSource_NotProcessed_NotInQueue_FindsSource)
+    {
+        // Get accurate UUID based on source database name instead of using the one that was randomly generated
+        AZ::Uuid expectedSourceUuid = AssetUtilities::CreateSafeSourceUUIDFromName(m_customDataMembers->m_assetASourceRelPath.c_str());
+
+        // These calls should find the information even though the asset is not in the database and hasn't been queued up yet
+        EXPECT_TRUE(GetSourceInfoBySourcePath(true, m_customDataMembers->m_assetASourceRelPath.c_str(), expectedSourceUuid, m_customDataMembers->m_assetASourceRelPath.c_str(), m_customDataMembers->m_subfolder1AbsolutePath.c_str()));
+        EXPECT_TRUE(GetSourceInfoBySourcePath(true, m_customDataMembers->m_assetAFullPath.c_str(), expectedSourceUuid, m_customDataMembers->m_assetASourceRelPath.c_str(), m_customDataMembers->m_subfolder1AbsolutePath.c_str()));
+    }
+
+    TEST_F(AssetCatalogTest_AssetInfo, FindSource_NotProcessed_NotInQueue_RegisteredAsSourceType_FindsSource)
+    {
+        // Get accurate UUID based on source database name instead of using the one that was randomly generated
+        AZ::Uuid expectedSourceUuid = AssetUtilities::CreateSafeSourceUUIDFromName(m_customDataMembers->m_assetASourceRelPath.c_str());
+
+        // Register as source type
+        AzToolsFramework::ToolsAssetSystemBus::Broadcast(&AzToolsFramework::ToolsAssetSystemRequests::RegisterSourceAssetType, m_customDataMembers->m_assetAType, m_customDataMembers->m_assetAFileFilter.c_str());
+
+        // These calls should find the information even though the asset is not in the database and hasn't been queued up yet
+        EXPECT_TRUE(GetSourceInfoBySourcePath(true, m_customDataMembers->m_assetASourceRelPath.c_str(), expectedSourceUuid, m_customDataMembers->m_assetASourceRelPath.c_str(), m_customDataMembers->m_subfolder1AbsolutePath.c_str(), m_customDataMembers->m_assetAType));
+        EXPECT_TRUE(GetSourceInfoBySourcePath(true, m_customDataMembers->m_assetAFullPath.c_str(), expectedSourceUuid, m_customDataMembers->m_assetASourceRelPath.c_str(), m_customDataMembers->m_subfolder1AbsolutePath.c_str(), m_customDataMembers->m_assetAType));
+    }
+
+    TEST_F(AssetCatalogTest, Multithread_AccessCatalogWhileInitializing_IsThreadSafe)
+    {
+        static constexpr int NumTestAssets = 1000;
+        static constexpr int NumUpdateIterations = 1000;
+
+        using namespace AssetProcessor;
+        using namespace AzFramework::AssetSystem;
+
+        PlatformConfiguration config;
+        
+        config.EnablePlatform(AssetBuilderSDK::PlatformInfo("pc", { "test" }));
+
+        {
+            using namespace AzToolsFramework::AssetDatabase;
+            auto& db = m_data->m_dbConn;
+
+            for (int i = 0; i < NumTestAssets; ++i)
+            {
+                SourceDatabaseEntry sourceEntry;
+                sourceEntry.m_sourceName = AZStd::to_string(i);
+                sourceEntry.m_sourceGuid = AssetUtilities::CreateSafeSourceUUIDFromName(sourceEntry.m_sourceName.c_str());
+                sourceEntry.m_scanFolderPK = 1;
+                db.SetSource(sourceEntry);
+
+                JobDatabaseEntry jobEntry;
+                jobEntry.m_sourcePK = sourceEntry.m_sourceID;
+                jobEntry.m_platform = "pc";
+                jobEntry.m_jobRunKey = i + 1;
+                db.SetJob(jobEntry);
+
+                ProductDatabaseEntry productEntry;
+                productEntry.m_jobPK = jobEntry.m_jobID;
+                productEntry.m_productName = AZStd::to_string(i) + ".product";
+                db.SetProduct(productEntry);
+            }
+        }
+
+        AZStd::thread_desc threadDesc;
+        threadDesc.m_name = "AssetCatalog Thread";
+        AZStd::thread catalogThread([this]()
+            {
+                m_data->m_assetCatalog->BuildRegistry();
+            }, &threadDesc
+        );
+
+        AssetNotificationMessage message("some/path/image.png", AssetNotificationMessage::NotificationType::AssetChanged, AZ::Data::AssetType::CreateRandom());
+        message.m_assetId = { "{C1A73521-E770-475F-8D91-30DF88E4D4C9}" };
+
+        for (int i = 0; i < NumUpdateIterations; ++i)
+        {
+            m_data->m_assetCatalog->OnAssetMessage("pc", message);
+        }
+
+        catalogThread.join();
+    }
+    
 } // namespace AssetProcessor
 
 

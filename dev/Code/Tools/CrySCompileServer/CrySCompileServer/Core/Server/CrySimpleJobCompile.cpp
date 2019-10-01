@@ -36,6 +36,11 @@
 #include <fstream>
 #include <sstream>
 
+#if defined(AZ_TOOLS_EXPAND_FOR_RESTRICTED_PLATFORMS)
+#undef AZ_RESTRICTED_SECTION
+#define CRYSIMPLEJOBCOMPILE_CPP_SECTION_1 1
+#endif
+
 #define MAX_COMPILER_WAIT_TIME (60 * 1000)
 
 volatile AtomicCountType CCrySimpleJobCompile::m_GlobalCompileTasks         = 0;
@@ -375,7 +380,7 @@ bool CCrySimpleJobCompile::Compile(const TiXmlElement* pElement, std::vector<uin
 
         AZStd::string commandStringToFormat = compilerPath + compilerExecutable;
         
-#if defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_APPLE_OSX)
+#if defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_MAC)
         // Surrounding compiler path+executable with quotes to support spaces in the path.
         // NOTE: Executable has a space at the end on purpose, inserting quote before.
         commandStringToFormat.insert(0, "\"");
@@ -455,6 +460,19 @@ bool CCrySimpleJobCompile::Compile(const TiXmlElement* pElement, std::vector<uin
         command = compilerPath + command;
     }
 
+    AZStd::string hardwareTarget;
+
+#if defined(AZ_TOOLS_EXPAND_FOR_RESTRICTED_PLATFORMS)
+    #if defined(TOOLS_SUPPORT_XENIA)
+        #define AZ_RESTRICTED_SECTION CRYSIMPLEJOBCOMPILE_CPP_SECTION_1
+        #include "Xenia/CrySimpleJobCompile_cpp_xenia.inl"
+    #endif
+    #if defined(TOOLS_SUPPORT_PROVO)
+        #define AZ_RESTRICTED_SECTION CRYSIMPLEJOBCOMPILE_CPP_SECTION_1
+        #include "Provo/CrySimpleJobCompile_cpp_provo.inl"
+    #endif
+#endif
+
     int64_t t0 = g_Timer.GetTime();
 
     std::string outError;
@@ -517,10 +535,9 @@ bool CCrySimpleJobCompile::Compile(const TiXmlElement* pElement, std::vector<uin
         char sIP[128];
         sprintf(sIP, "%d.%d.%d.%d", nIP[0], nIP[1], nIP[2], nIP[3]);
 
-        const char* pProject                        = pElement->Attribute("Project");
-        const char* pTags                           = pElement->Attribute("Tags");
-
-        const char* pEmailCCs           = pElement->Attribute("EmailCCs");
+        const char* pProject = pElement->Attribute("Project");
+        const char* pTags = pElement->Attribute("Tags");
+        const char* pEmailCCs = pElement->Attribute("EmailCCs");
 
         std::string project = pProject ? pProject : "Unk/";
         std::string ccs = pEmailCCs ? pEmailCCs : "";
@@ -566,6 +583,15 @@ bool CCrySimpleJobCompile::Compile(const TiXmlElement* pElement, std::vector<uin
     int millis = (int)(g_Timer.TimeToSeconds(dt) * 1000.0);
     int secondsTotal = (int)g_Timer.TimeToSeconds(m_GlobalCompileTime);
     logmessage("Compiled [%5dms|%8ds] (%s - %s - %s - %s) %s\n", millis, secondsTotal, platform.c_str(), compiler.c_str(), language.c_str(), pProfile, pEntry);
+
+    if (hardwareTarget.empty())
+    {
+        logmessage("Compiled [%5dms|%8ds] (% 5s %s) %s\n", millis, secondsTotal, platform.c_str(), pProfile, pEntry);
+    }
+    else
+    {
+        logmessage("Compiled [%5dms|%8ds] (% 5s %s) %s %s\n", millis, secondsTotal, platform.c_str(), pProfile, pEntry, hardwareTarget.c_str());
+    }
 
     return true;
 }

@@ -45,10 +45,8 @@ void UiRenderer::BeginUiFrameRender()
     }
 #endif
     
-#if defined(AZ_PLATFORM_APPLE)
-    // Metal drivers expect all texture slots used in the shader to be bound
+    // Various platform drivers expect all texture slots used in the shader to be bound
     BindNullTexture();
-#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -197,8 +195,8 @@ void UiRenderer::DebugDisplayTextureData(int recordingOption)
         const float lineSpacing = 20.0f;
 
         const AZ::Vector3 white(1,1,1);
-        const AZ::Vector3 red(1,0.3,0.3);
-        const AZ::Vector3 blue(0.3,0.3,1);
+        const AZ::Vector3 red(1,0.3f,0.3f);
+        const AZ::Vector3 blue(0.3f,0.3f,1);
 
         int xDim, yDim;
         if (totalArea > 2048 * 2048)

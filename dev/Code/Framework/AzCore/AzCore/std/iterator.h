@@ -19,14 +19,8 @@
 #include <AzCore/std/typetraits/is_base_of.h> // use by ConstIteratorCast
 
 #ifdef AZSTD_CHECKED_ITERATORS_IN_MULTI_THREADS
-#   if defined(AZ_PLATFORM_WINDOWS)
-// we use internal global lock
-#       include <xutility>
-#       define AZ_GLOBAL_SCOPED_LOCK(_MUTEX)    std::_Lockit    l(_LOCK_DEBUG)
-#   else // !AZ_PLATFORM_WINDOWS
-#       include <AzCore/std/parallel/mutex.h>
-#       define AZ_GLOBAL_SCOPED_LOCK(_MUTEX)    AZStd::lock_guard<AZStd::mutex> l(_MUTEX)
-#   endif
+#   include <AzCore/std/parallel/mutex.h>
+#   define AZ_GLOBAL_SCOPED_LOCK(_MUTEX)    AZStd::lock_guard<AZStd::mutex> l(_MUTEX)
 #endif
 
 namespace AZStd
@@ -218,7 +212,6 @@ namespace AZStd
         return x + offset;
     }
 
-#ifdef AZ_HAS_RVALUE_REFS
     /**
      * Move iterator. (24.4.3)
      */
@@ -381,7 +374,6 @@ namespace AZStd
     {
         return (move_iterator<Iterator>(iter));
     }
-#endif // AZ_HAS_RVALUE_REFS
 
     /**
      *  Back insert iterator. (24.4.2.1)
@@ -862,7 +854,7 @@ namespace AZStd
                 }
             }
 
-#if defined(AZSTD_CHECKED_ITERATORS_IN_MULTI_THREADS) && !defined(AZ_PLATFORM_WINDOWS)
+#if defined(AZSTD_CHECKED_ITERATORS_IN_MULTI_THREADS)
             static AZStd::mutex& get_global_section()
             {
                 static mutex section;

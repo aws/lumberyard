@@ -43,7 +43,6 @@ namespace EMStudio
 
     public:
         NodeSelectionWindow(QWidget* parent, bool useSingleSelection);
-        virtual ~NodeSelectionWindow();
 
         MCORE_INLINE NodeHierarchyWidget* GetNodeHierarchyWidget()                                                                { return mHierarchyWidget; }
         void Update(uint32 actorInstanceID, CommandSystem::SelectionList* selectionList = nullptr)                                { mHierarchyWidget->Update(actorInstanceID, selectionList); }

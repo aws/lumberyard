@@ -20,6 +20,7 @@ namespace EMotionFX
     {
         void AnimGraphSnapshotChunkSerializer::Serialize(MCore::Attribute& attribute, const char* context)
         {
+            AZ_UNUSED(context);
             attribute.NetworkSerialize(*this);
         }
     }

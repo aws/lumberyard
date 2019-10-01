@@ -1762,7 +1762,10 @@ void CGeomCacheManager::DrawDebugInfo()
             {
                 pCompressionMethod = "LZ4 HC";
             }
-
+            else if (pGeomCache->GetBlockCompressionFormat() == GeomCacheFile::eBlockCompressionFormat_ZSTD)
+            {
+                pCompressionMethod = "ZSTD";
+            }
             gEnv->pRenderer->Draw2dLabel(sideOffset + streamInfoSpacing, currentTop - 5.0f, 1.5f, Col_White, false, "%s - %.3gs %s- %.3g MiB/s - %s - %d frames missed",
                 streamInfo.m_pRenderNode->GetName(), pGeomCache->GetDuration(), streamInfo.m_bLooping ? "looping " : "", stats.m_averageAnimationDataRate, pCompressionMethod, streamInfo.m_numFramesMissed);
             gEnv->pRenderer->Draw2dLabel(sideOffset + streamInfoSpacing, streamInfoSpacing + currentTop - 5.0f, 1.5f, Col_White, false,

@@ -12,6 +12,7 @@
 #ifndef AZSTD_HASH_TABLE_H
 #define AZSTD_HASH_TABLE_H 1
 
+#include <AzCore/std/containers/node_handle.h>
 #include <AzCore/std/containers/vector.h>
 #include <AzCore/std/containers/fixed_vector.h>
 #include <AzCore/std/containers/list.h>
@@ -21,17 +22,7 @@
 #include <AzCore/std/utils.h>
 #include <AzCore/std/functional_basic.h>
 #include <AzCore/std/allocator_ref.h>
-
-#if defined(AZ_COMPILER_MSVC) && defined(AZ_PLATFORM_WINDOWS_X64)
-#pragma warning(push)
-#pragma warning (disable: 4985) // Bug with VS2008 on x64
-#endif // AZ_COMPILER_MSVC
-
-#include <math.h>  // user for ceilf
-
-#if defined(AZ_COMPILER_MSVC) && defined(AZ_PLATFORM_WINDOWS_X64)
-#pragma warning(pop)
-#endif // AZ_COMPILER_MSVC
+#include <AzCore/std/allocator_traits.h>
 
 namespace AZStd
 {
@@ -337,6 +328,35 @@ namespace AZStd
         };
     }
 
+
+    template <class Allocator, class NodeType>
+    class hash_node_destructor
+    {
+        using allocator_type = typename AZStd::allocator_traits<Allocator>::template rebind_alloc<NodeType>;
+        using allocator_traits = AZStd::allocator_traits<allocator_type>;
+
+    public:
+
+        explicit hash_node_destructor(allocator_type& allocator)
+            : m_allocator(allocator)
+        {}
+
+        void operator()(NodeType* nodePtr)
+        {
+            if (nodePtr)
+            {
+                allocator_traits::destroy(m_allocator, nodePtr);
+                allocator_traits::deallocate(m_allocator, nodePtr, sizeof(NodeType), alignof(NodeType));
+            }
+        }
+
+    private:
+        hash_node_destructor& operator=(const hash_node_destructor&) = delete;
+        hash_node_destructor(const hash_node_destructor&) = delete;
+
+        allocator_type& m_allocator;
+    };
+
     /**
      * Hash table is internal container used as a base class for all unordered associative containers.
      * It provides functionality for the unordered container in \ref CTR1. (6.3.4). In addition we introduce the following \ref HashExtensions "extensions".
@@ -406,6 +426,7 @@ namespace AZStd
 
         typedef typename list_type::node_type                   list_node_type;
         typedef typename vector_type::node_type                 vector_node_type;
+        typedef hash_node_destructor<allocator_type, list_node_type> node_deleter;
 
         AZ_FORCE_INLINE explicit hash_table(const hasher& hash, const key_eq& keyEqual, const allocator_type& alloc = allocator_type())
             : m_data(alloc)
@@ -430,7 +451,6 @@ namespace AZStd
             copy(rhs);
         }
 
-#if defined(AZ_HAS_RVALUE_REFS)
         AZ_FORCE_INLINE hash_table(this_type&& rhs)
             : m_data(rhs.get_allocator())
             , m_keyEqual(rhs.m_keyEqual)
@@ -447,7 +467,6 @@ namespace AZStd
             }
             return *this;
         }
-#endif // AZ_HAS_RVALUE_REFS
 
         AZ_FORCE_INLINE this_type& operator=(const this_type& rhs)
         {
@@ -513,7 +532,6 @@ namespace AZStd
             // This is a demonstration how customizable is insert_from, you can control the entire process when needed for speed.
             return insert_from(value, ConvertFromValue(), m_hasher, m_keyEqual).first;
         }
-#if defined(AZ_HAS_RVALUE_REFS)
         AZ_FORCE_INLINE pair_iter_bool  insert(value_type&& value)
         {
             return insert_impl(AZStd::forward<value_type>(value));
@@ -528,7 +546,6 @@ namespace AZStd
         {
             return insert_impl_emplace(AZStd::forward<Args>(arguments)...);
         }
-#endif // AZ_HAS_RVALUE_REFS
 
 #if defined(AZ_HAS_INITIALIZERS_LIST)
         AZ_FORCE_INLINE void insert(std::initializer_list<value_type> list)
@@ -568,6 +585,30 @@ namespace AZStd
 
             m_data.rehash_if_needed(this);
         }
+
+        
+        //! Returns an insert_return_type with the members initialized as follows: if nh is empty, inserted is false, position is end(), and node is empty.
+        //! Otherwise if the insertion took place, inserted is true, position points to the inserted element, and node is empty.
+        //! If the insertion failed, inserted is false, node has the previous value of nh, and position points to an element with a key equivalent to nh.key().
+        template <class InsertReturnType, class NodeHandle>
+        InsertReturnType node_handle_insert(NodeHandle&& nodeHandle);
+        template <class NodeHandle>
+        auto node_handle_insert(const iterator hint, NodeHandle&& nodeHandle) -> iterator;
+
+        //! Searches for an element which matches the value of key and extracts it from the hash_table
+        //! @return A NodeHandle which can be used to insert the an element between unique and non-unique containers of the same type
+        //! i.e a NodeHandle from an unordered_map can be used to insert a node into an unordered_multimap, but not a std::map
+        template <class NodeHandle>
+        NodeHandle node_handle_extract(const key_type& key);
+        //! Finds an element within the hash_table that is represented by the supplied iterator and extracts it
+        //! @return A NodeHandle which can be used to insert the an element between unique and non-unique containers of the same type
+        template <class NodeHandle>
+        NodeHandle node_handle_extract(const_iterator it);
+    private:
+        //! Removes an element from the hash_table without deleting it. This allows the element to be extracted and moved to another
+        //! hash_table container with the same key, value and allocator_type
+        auto remove(const_iterator it)->list_node_type*;
+    public:
 
         AZ_FORCE_INLINE void            reserve(size_type numBucketsMin) { rehash((size_type)::ceilf((float)numBucketsMin / max_load_factor())); }
         AZ_FORCE_INLINE void            rehash(size_type numBucketsMin) { m_data.rehash(this, numBucketsMin); }
@@ -982,14 +1023,11 @@ namespace AZStd
             }
         }
 
-#if defined(AZ_HAS_RVALUE_REFS)
         void assign_rv(this_type&& rhs)
         {
             rhs.swap(*this);
             rhs.clear();
         }
-
-#endif // AZ_HAS_RVALUE_REFS
 
         template<class ComparableToKey, class KeyEq>
         bool find_insert_position(const ComparableToKey& keyCmp, const KeyEq& keyEq, iterator& iter, size_type numElements, const true_type& /* is multi elements */)
@@ -1105,6 +1143,88 @@ namespace AZStd
             static AZ_FORCE_INLINE const value_type&    to_value(const value_type& value)   { return value; }
         };
     };
+
+    
+    template <class Traits>
+    template <class InsertReturnType, class NodeHandle>
+    InsertReturnType hash_table<Traits>::node_handle_insert(NodeHandle&& nodeHandle)
+    {
+        if (nodeHandle.empty())
+        {
+            return { end(), false, NodeHandle{} };
+        }
+        
+        const key_type& valueKey = Traits::key_from_value(nodeHandle.m_node->m_value);
+        size_type bucketIndex = bucket_from_hash(m_hasher(valueKey));
+        vector_value_type& bucket = m_data.buckets()[bucketIndex];
+        size_type& numElements = bucket.first;
+
+        iterator insertPos, iter = bucket.second;
+        if (numElements == 0)
+        {
+            insertPos = m_data.m_list.relink(m_data.m_list.begin(), nodeHandle.m_node);
+            bucket.second = insertPos;
+        }
+        else
+        {
+            if (!find_insert_position(valueKey, m_keyEqual, iter, numElements, AZStd::bool_constant<Traits::has_multi_elements>()))
+            {
+                // The element has been found so return an iterator to it with the inserted flag set to false and the supplied node handle forwarded back to the caller
+                return { iter, false, AZStd::move(nodeHandle) };
+            }
+
+            insertPos = m_data.m_list.relink(iter, nodeHandle.m_node);
+            // Clear the supplied node handle now that the node has been relinked into a list
+
+        }
+        nodeHandle.release_node();
+        ++numElements;
+
+        m_data.rehash_if_needed(this);
+
+        // The insertion has succeeded in this case so the node handle is empty
+        return { insertPos, true, NodeHandle{} };
+    }
+    
+    template <class Traits>
+    template <class NodeHandle>
+    inline auto hash_table<Traits>::node_handle_insert(const iterator, NodeHandle&& nodeHandle) -> iterator
+    {
+        return node_handle_insert<insert_return_type<iterator, NodeHandle>>(AZStd::move(nodeHandle)).position;
+    }
+
+    template <class Traits>
+    template <class NodeHandle>
+    inline NodeHandle hash_table<Traits>::node_handle_extract(const key_type& key)
+    {
+        iterator it = find(key);
+        if (it == end())
+        {
+            return {};
+        }
+        return node_handle_extract<NodeHandle>(it);
+    }
+
+    template <class Traits>
+    template <class NodeHandle>
+    inline NodeHandle hash_table<Traits>::node_handle_extract(const_iterator extractPos)
+    {
+        return NodeHandle(remove(extractPos), get_allocator());
+    }
+
+    template <class Traits>
+    inline auto hash_table<Traits>::remove(const_iterator removePos) -> list_node_type*
+    {
+        // erase element at erasePos
+        vector_value_type& bucket = m_data.buckets()[bucket_from_hash(m_hasher(Traits::key_from_value(*removePos)))];
+        --bucket.first;
+        if (removePos == bucket.second)
+        {
+            ++bucket.second;
+        }
+
+        return m_data.m_list.unlink(removePos);
+    }
 }
 
 #endif // AZSTD_HASH_TABLE_H

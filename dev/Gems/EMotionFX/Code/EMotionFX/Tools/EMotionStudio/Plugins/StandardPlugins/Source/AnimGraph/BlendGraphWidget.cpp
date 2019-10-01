@@ -86,7 +86,9 @@ namespace EMStudio
             return;
         }
 
-        if (!mActiveGraph || mActiveGraph->IsInReferencedGraph())
+        if (!mActiveGraph ||
+            !mPlugin->GetActionFilter().m_createNodes ||
+            mActiveGraph->IsInReferencedGraph())
         {
             event->ignore();
             return;
@@ -115,7 +117,7 @@ namespace EMStudio
         if (commandLine.CheckIfHasParameter("window"))
         {
             AZStd::string currentLine;
-            
+
             AZStd::vector<AZStd::string> droppedLines;
             AzFramework::StringFunc::Tokenize(dropText.c_str(), droppedLines, "\n", false, true);
 
@@ -504,8 +506,10 @@ namespace EMStudio
                 }
 
                 CommandSystem::AdjustTransition(transition, !isEnabled,
-                    /*sourceNode*/AZStd::nullopt, /*targetNode*/AZStd::nullopt,
-                    /*startOffsetXY*/AZStd::nullopt, AZStd::nullopt, /*endOffsetXY*/AZStd::nullopt, AZStd::nullopt, &commandGroup);
+                    /*sourceNode=*/AZStd::nullopt, /*targetNode=*/AZStd::nullopt,
+                    /*startOffsetXY=*/AZStd::nullopt, AZStd::nullopt, /*endOffsetXY=*/AZStd::nullopt, AZStd::nullopt,
+                    /*=attributesString*/AZStd::nullopt,
+                    &commandGroup);
             }
 
             AZStd::string resultString;
@@ -517,11 +521,10 @@ namespace EMStudio
                 }
             }
         }
-
     }
 
 
-    void BlendGraphWidget::OnContextMenuEvent(QPoint mousePos, QPoint globalMousePos)
+    void BlendGraphWidget::OnContextMenuEvent(QPoint mousePos, QPoint globalMousePos, const AnimGraphActionFilter& actionFilter)
     {
         if (!mAllowContextMenu)
         {
@@ -537,7 +540,7 @@ namespace EMStudio
         // Early out in case we're adjusting or creating a new connection. Elsewise the user can open the context menu and
         // delete selected nodes while creating a new connection.
         if (nodeGraph->GetIsCreatingConnection() || nodeGraph->GetIsRelinkingConnection() ||
-            nodeGraph->GetRepositionedTransitionHead() || nodeGraph->GetRepositionedTransitionTail()) 
+            nodeGraph->GetRepositionedTransitionHead() || nodeGraph->GetRepositionedTransitionTail())
         {
             return;
         }
@@ -548,9 +551,9 @@ namespace EMStudio
         const AZStd::vector<NodeConnection*> selectedConnections = nodeGraph->GetSelectedNodeConnections();
         const QPoint globalPos = LocalToGlobal(mousePos);
         const bool mouseOverAnySelectedConnection = AZStd::any_of(selectedConnections.begin(), selectedConnections.end(), [globalPos](NodeConnection* connection)
-        {
-            return connection->CheckIfIsCloseTo(globalPos);
-        });
+            {
+                return connection->CheckIfIsCloseTo(globalPos);
+            });
 
         if (selectedAnimGraphNodes.empty() && !selectedConnections.empty() && mouseOverAnySelectedConnection)
         {
@@ -579,19 +582,20 @@ namespace EMStudio
                 }
 
                 // Show enable transitions menu entry in case there is at least one disabled transition in the selected ones.
-                if (hasDisabledConnection)
+                if (actionFilter.m_editNodes && hasDisabledConnection)
                 {
                     QAction* enableConnectionAction = menu.addAction(QString("Enable transition%1").arg(pluralPostfix));
                     connect(enableConnectionAction, &QAction::triggered, this, &BlendGraphWidget::EnableSelectedTransitions);
                 }
 
-                if (hasEnabledConnection)
+                if (actionFilter.m_editNodes && hasEnabledConnection)
                 {
                     QAction* disableConnectionAction = menu.addAction(QString("Disable transition%1").arg(pluralPostfix));
                     connect(disableConnectionAction, &QAction::triggered, this, &BlendGraphWidget::DisableSelectedTransitions);
                 }
 
-                if (selectedConnections.size() == 1)
+                if (actionFilter.m_copyAndPaste &&
+                    selectedConnections.size() == 1)
                 {
                     EMotionFX::AnimGraphStateTransition* transition = FindTransitionForConnection(selectedConnections[0]);
                     if (transition)
@@ -611,7 +615,7 @@ namespace EMStudio
                             QAction* pasteAction = menu.addAction("Paste conditions");
                             pasteAction->setIcon(MysticQt::GetMysticQt()->FindIcon("Images/Icons/Paste.png"));
                             connect(pasteAction, &QAction::triggered, mPlugin->GetAttributesWindow(), &AttributesWindow::OnPasteConditions);
-                            
+
                             QAction* pasteSelectiveAction = menu.addAction("Paste conditions selective");
                             pasteSelectiveAction->setIcon(MysticQt::GetMysticQt()->FindIcon("Images/Icons/Paste.png"));
                             connect(pasteSelectiveAction, &QAction::triggered, mPlugin->GetAttributesWindow(), &AttributesWindow::OnPasteConditionsSelective);
@@ -625,7 +629,8 @@ namespace EMStudio
                 removeConnectionActionName = QString("Remove connection%1").arg(pluralPostfix);
             }
 
-            if (!mActiveGraph->IsInReferencedGraph())
+            if (actionFilter.m_delete &&
+                !mActiveGraph->IsInReferencedGraph())
             {
                 QAction* removeConnectionAction = menu.addAction(removeConnectionActionName);
                 removeConnectionAction->setIcon(MysticQt::GetMysticQt()->FindIcon("Images/Icons/Remove.png"));
@@ -636,7 +641,7 @@ namespace EMStudio
         }
         else
         {
-            OnContextMenuEvent(this, mousePos, globalMousePos, mPlugin, selectedAnimGraphNodes, true, false);
+            OnContextMenuEvent(this, mousePos, globalMousePos, mPlugin, selectedAnimGraphNodes, true, false, actionFilter);
         }
     }
 
@@ -688,7 +693,7 @@ namespace EMStudio
         {
             if (event->button() == Qt::RightButton)
             {
-                OnContextMenuEvent(event->pos(), event->globalPos());
+                OnContextMenuEvent(event->pos(), event->globalPos(), mPlugin->GetActionFilter());
                 //setCursor( Qt::ArrowCursor );
             }
         }
@@ -712,10 +717,10 @@ namespace EMStudio
         // build the command string
         const EMotionFX::AnimGraphNode* animGraphNode = node->GetModelIndex().data(AnimGraphModel::ROLE_NODE_POINTER).value<EMotionFX::AnimGraphNode*>();
 
-        const AZStd::string moveString = AZStd::string::format("AnimGraphAdjustNode -animGraphID %i -name \"%s\" -xPos %d -yPos %d -updateAttributes false", 
+        const AZStd::string moveString = AZStd::string::format("AnimGraphAdjustNode -animGraphID %i -name \"%s\" -xPos %d -yPos %d -updateAttributes false",
             animGraphNode->GetAnimGraph()->GetID(),
             animGraphNode->GetName(),
-            x, 
+            x,
             y);
 
         // add it to the group
@@ -756,7 +761,7 @@ namespace EMStudio
                 QModelIndex parent = selectedIndex.model()->parent(selectedIndex);
                 if (selectedIndex.data(AnimGraphModel::ROLE_MODEL_ITEM_TYPE).value<AnimGraphModel::ModelItemType>() == AnimGraphModel::ModelItemType::CONNECTION)
                 {
-                    // if the item is a connection, we need send it to the graph of the parent of the node that 
+                    // if the item is a connection, we need send it to the graph of the parent of the node that
                     // contains the connection (the parent of the parent)
                     parent = parent.model()->parent(parent);
                 }
@@ -771,7 +776,7 @@ namespace EMStudio
                 QModelIndex parent = deselectedIndex.model()->parent(deselectedIndex);
                 if (deselectedIndex.data(AnimGraphModel::ROLE_MODEL_ITEM_TYPE).value<AnimGraphModel::ModelItemType>() == AnimGraphModel::ModelItemType::CONNECTION)
                 {
-                    // if the item is a connection, we need send it to the graph of the parent of the node that 
+                    // if the item is a connection, we need send it to the graph of the parent of the node that
                     // contains the connection (the parent of the parent)
                     parent = parent.model()->parent(parent);
                 }
@@ -831,7 +836,6 @@ namespace EMStudio
                         graphNode->SetBorderColor(QColor(0, 255, 0));
                     }
                 }
-
             }
         }
     }
@@ -1011,11 +1015,11 @@ namespace EMStudio
                 commandGroup.SetGroupName("Replace blend tree connection");
 
                 command = AZStd::string::format("AnimGraphRemoveConnection -animGraphID %i -sourceNode \"%s\" -sourcePort %d -targetNode \"%s\" -targetPort %d",
-                        targetAnimGraphNode->GetAnimGraph()->GetID(),
-                        existingConnection->GetSourceNode()->GetName(),
-                        existingConnection->GetOutputPortNr(),
-                        existingConnection->GetTargetNode()->GetName(),
-                        existingConnection->GetInputPortNr());
+                    targetAnimGraphNode->GetAnimGraph()->GetID(),
+                    existingConnection->GetSourceNode()->GetName(),
+                    existingConnection->GetOutputPortNr(),
+                    existingConnection->GetTargetNode()->GetName(),
+                    existingConnection->GetInputPortNr());
 
                 commandGroup.AddCommandString(command);
             }
@@ -1028,29 +1032,29 @@ namespace EMStudio
 
         if (transitionType.IsNull())
         {
-            command = AZStd::string::format("AnimGraphCreateConnection -animGraphID %i -sourceNode \"%s\" -targetNode \"%s\" -sourcePort %d -targetPort %d -startOffsetX %d -startOffsetY %d -endOffsetX %d -endOffsetY %d", 
+            command = AZStd::string::format("AnimGraphCreateConnection -animGraphID %i -sourceNode \"%s\" -targetNode \"%s\" -sourcePort %d -targetPort %d -startOffsetX %d -startOffsetY %d -endOffsetX %d -endOffsetY %d",
                 targetAnimGraphNode->GetAnimGraph()->GetID(),
-                realSourceNode->GetName(), 
-                realTargetNode->GetName(), 
-                realOutputPortNr, 
-                realInputPortNr, 
+                realSourceNode->GetName(),
+                realTargetNode->GetName(),
+                realOutputPortNr,
+                realInputPortNr,
                 startOffset.x(),
-                startOffset.y(), 
-                endOffset.x(), 
+                startOffset.y(),
+                endOffset.x(),
                 endOffset.y());
         }
         else
         {
-            command = AZStd::string::format("AnimGraphCreateConnection -animGraphID %i -sourceNode \"%s\" -targetNode \"%s\" -sourcePort %d -targetPort %d -startOffsetX %d -startOffsetY %d -endOffsetX %d -endOffsetY %d -transitionType \"%s\"", 
+            command = AZStd::string::format("AnimGraphCreateConnection -animGraphID %i -sourceNode \"%s\" -targetNode \"%s\" -sourcePort %d -targetPort %d -startOffsetX %d -startOffsetY %d -endOffsetX %d -endOffsetY %d -transitionType \"%s\"",
                 targetAnimGraphNode->GetAnimGraph()->GetID(),
-                realSourceNode->GetName(), 
-                realTargetNode->GetName(), 
-                realOutputPortNr, 
-                realInputPortNr, 
-                startOffset.x(), 
-                startOffset.y(), 
-                endOffset.x(), 
-                endOffset.y(), 
+                realSourceNode->GetName(),
+                realTargetNode->GetName(),
+                realOutputPortNr,
+                realInputPortNr,
+                startOffset.x(),
+                startOffset.y(),
+                endOffset.x(),
+                endOffset.y(),
                 transitionType.ToString<AZStd::string>().c_str());
         }
 
@@ -1118,7 +1122,7 @@ namespace EMStudio
         // Do not allow to delete nodes or connections when creating or relinking connections or transitions.
         // In this case the delete operation will cancel the create or relink operation.
         if (nodeGraph->GetIsCreatingConnection() || nodeGraph->GetIsRelinkingConnection() ||
-            nodeGraph->GetRepositionedTransitionHead() || nodeGraph->GetRepositionedTransitionTail()) 
+            nodeGraph->GetRepositionedTransitionHead() || nodeGraph->GetRepositionedTransitionTail())
         {
             nodeGraph->StopCreateConnection();
             nodeGraph->StopRelinkConnection();
@@ -1573,7 +1577,7 @@ namespace EMStudio
         if (mActiveGraph->GetReplaceTransitionValid())
         {
             CommandSystem::AdjustTransition(transition,
-                /*isDisabled*/AZStd::nullopt,
+                /*.isDisabled=*/AZStd::nullopt,
                 newSourceNodeName, newTargetNodeName,
                 newStartOffsetX, newStartOffsetY,
                 newEndOffsetX, newEndOffsetY);
@@ -1585,6 +1589,7 @@ namespace EMStudio
     void BlendGraphWidget::keyPressEvent(QKeyEvent* event)
     {
         MysticQt::KeyboardShortcutManager* shortcutManager = GetMainWindow()->GetShortcutManager();
+        const AnimGraphActionFilter& actionFilter = mPlugin->GetActionFilter();
 
         if (shortcutManager->Check(event, "Open Parent Node", "Anim Graph Window"))
         {
@@ -1622,37 +1627,42 @@ namespace EMStudio
             return;
         }
 
-        if (mActiveGraph && !mActiveGraph->IsInReferencedGraph())
+        if (mActiveGraph &&
+            !mActiveGraph->IsInReferencedGraph())
         {
-            if (shortcutManager->Check(event, "Align Left", "Anim Graph Window"))
+            if (actionFilter.m_editNodes)
             {
-                mPlugin->GetViewWidget()->AlignLeft();
-                event->accept();
-                return;
+                if (shortcutManager->Check(event, "Align Left", "Anim Graph Window"))
+                {
+                    mPlugin->GetViewWidget()->AlignLeft();
+                    event->accept();
+                    return;
+                }
+
+                if (shortcutManager->Check(event, "Align Right", "Anim Graph Window"))
+                {
+                    mPlugin->GetViewWidget()->AlignRight();
+                    event->accept();
+                    return;
+                }
+
+                if (shortcutManager->Check(event, "Align Top", "Anim Graph Window"))
+                {
+                    mPlugin->GetViewWidget()->AlignTop();
+                    event->accept();
+                    return;
+                }
+
+                if (shortcutManager->Check(event, "Align Bottom", "Anim Graph Window"))
+                {
+                    mPlugin->GetViewWidget()->AlignBottom();
+                    event->accept();
+                    return;
+                }
             }
 
-            if (shortcutManager->Check(event, "Align Right", "Anim Graph Window"))
-            {
-                mPlugin->GetViewWidget()->AlignRight();
-                event->accept();
-                return;
-            }
-
-            if (shortcutManager->Check(event, "Align Top", "Anim Graph Window"))
-            {
-                mPlugin->GetViewWidget()->AlignTop();
-                event->accept();
-                return;
-            }
-
-            if (shortcutManager->Check(event, "Align Bottom", "Anim Graph Window"))
-            {
-                mPlugin->GetViewWidget()->AlignBottom();
-                event->accept();
-                return;
-            }
-
-            if (shortcutManager->Check(event, "Cut", "Anim Graph Window"))
+            if (actionFilter.m_copyAndPaste &&
+                shortcutManager->Check(event, "Cut", "Anim Graph Window"))
             {
                 mPlugin->GetActionManager().Cut();
                 event->accept();
@@ -1660,31 +1670,34 @@ namespace EMStudio
             }
         }
 
-        if (shortcutManager->Check(event, "Copy", "Anim Graph Window"))
+        if (actionFilter.m_copyAndPaste)
         {
-            mPlugin->GetActionManager().Copy();
-            event->accept();
-            return;
-        }
-
-        if (shortcutManager->Check(event, "Paste", "Anim Graph Window"))
-        {
-            if (mActiveGraph && !mActiveGraph->IsInReferencedGraph())
+            if (shortcutManager->Check(event, "Copy", "Anim Graph Window"))
             {
-                if (mPlugin->GetActionManager().GetIsReadyForPaste())
+                mPlugin->GetActionManager().Copy();
+                event->accept();
+                return;
+            }
+
+            if (shortcutManager->Check(event, "Paste", "Anim Graph Window"))
+            {
+                if (mActiveGraph && !mActiveGraph->IsInReferencedGraph())
                 {
-                    QModelIndex modelIndex = GetActiveGraph()->GetModelIndex();
-                    if (modelIndex.isValid())
+                    if (mPlugin->GetActionManager().GetIsReadyForPaste())
                     {
-                        if (rect().contains(mapFromGlobal(QCursor::pos())) == false)
+                        QModelIndex modelIndex = GetActiveGraph()->GetModelIndex();
+                        if (modelIndex.isValid())
                         {
-                            mPlugin->GetActionManager().Paste(modelIndex, GetMousePos());
-                            event->accept();
+                            if (rect().contains(mapFromGlobal(QCursor::pos())) == false)
+                            {
+                                mPlugin->GetActionManager().Paste(modelIndex, GetMousePos());
+                                event->accept();
+                            }
                         }
                     }
                 }
+                return;
             }
-            return;
         }
 
         if (shortcutManager->Check(event, "Select All", "Anim Graph Window"))
@@ -1707,7 +1720,10 @@ namespace EMStudio
             return;
         }
 
-        if (mActiveGraph && !mActiveGraph->IsInReferencedGraph() && shortcutManager->Check(event, "Delete Selected Nodes", "Anim Graph Window"))
+        if (mActiveGraph &&
+            actionFilter.m_delete &&
+            !mActiveGraph->IsInReferencedGraph() &&
+            shortcutManager->Check(event, "Delete Selected Nodes", "Anim Graph Window"))
         {
             DeleteSelectedItems();
             event->accept();
@@ -1722,6 +1738,7 @@ namespace EMStudio
     void BlendGraphWidget::keyReleaseEvent(QKeyEvent* event)
     {
         MysticQt::KeyboardShortcutManager* shortcutManager = GetMainWindow()->GetShortcutManager();
+        const AnimGraphActionFilter& actionFilter = mPlugin->GetActionFilter();
 
         if (shortcutManager->Check(event, "Open Parent Node", "Anim Graph Window"))
         {
@@ -1743,45 +1760,55 @@ namespace EMStudio
             event->accept();
             return;
         }
+
         if (mActiveGraph && !mActiveGraph->IsInReferencedGraph())
         {
-            if (shortcutManager->Check(event, "Align Left", "Anim Graph Window"))
+            if (actionFilter.m_editNodes)
             {
-                event->accept();
-                return;
+                if (shortcutManager->Check(event, "Align Left", "Anim Graph Window"))
+                {
+                    event->accept();
+                    return;
+                }
+                if (shortcutManager->Check(event, "Align Right", "Anim Graph Window"))
+                {
+                    event->accept();
+                    return;
+                }
+                if (shortcutManager->Check(event, "Align Top", "Anim Graph Window"))
+                {
+                    event->accept();
+                    return;
+                }
+                if (shortcutManager->Check(event, "Align Bottom", "Anim Graph Window"))
+                {
+                    event->accept();
+                    return;
+                }
             }
-            if (shortcutManager->Check(event, "Align Right", "Anim Graph Window"))
-            {
-                event->accept();
-                return;
-            }
-            if (shortcutManager->Check(event, "Align Top", "Anim Graph Window"))
-            {
-                event->accept();
-                return;
-            }
-            if (shortcutManager->Check(event, "Align Bottom", "Anim Graph Window"))
-            {
-                event->accept();
-                return;
-            }
-            if (shortcutManager->Check(event, "Cut", "Anim Graph Window"))
+
+            if (actionFilter.m_copyAndPaste &&
+                shortcutManager->Check(event, "Cut", "Anim Graph Window"))
             {
                 event->accept();
                 return;
             }
         }
-        
-        if (shortcutManager->Check(event, "Copy", "Anim Graph Window"))
+
+        if (actionFilter.m_copyAndPaste)
         {
-            event->accept();
-            return;
+            if (shortcutManager->Check(event, "Copy", "Anim Graph Window"))
+            {
+                event->accept();
+                return;
+            }
+            if (mActiveGraph && !mActiveGraph->IsInReferencedGraph() && shortcutManager->Check(event, "Paste", "Anim Graph Window"))
+            {
+                event->accept();
+                return;
+            }
         }
-        if (mActiveGraph && !mActiveGraph->IsInReferencedGraph() && shortcutManager->Check(event, "Paste", "Anim Graph Window"))
-        {
-            event->accept();
-            return;
-        }
+
         if (shortcutManager->Check(event, "Select All", "Anim Graph Window"))
         {
             event->accept();
@@ -1792,7 +1819,11 @@ namespace EMStudio
             event->accept();
             return;
         }
-        if (mActiveGraph && !mActiveGraph->IsInReferencedGraph() && shortcutManager->Check(event, "Delete Selected Nodes", "Anim Graph Window"))
+
+        if (mActiveGraph &&
+            actionFilter.m_delete &&
+            !mActiveGraph->IsInReferencedGraph() &&
+            shortcutManager->Check(event, "Delete Selected Nodes", "Anim Graph Window"))
         {
             event->accept();
             return;
@@ -1802,12 +1833,12 @@ namespace EMStudio
     }
 
 
-    void BlendGraphWidget::OnRowsInserted(const QModelIndex &parent, int first, int last)
+    void BlendGraphWidget::OnRowsInserted(const QModelIndex& parent, int first, int last)
     {
         // Here we could be receiving connections, transitions or nodes being inserted into
         // the model.
         // For nodes, we need to locate the parent NodeGraph and insert elements.
-        // For connections, we need to locate the parent Node. With the parent node, we can 
+        // For connections, we need to locate the parent Node. With the parent node, we can
         //      locate the parent NodeGraph
         // For transitions, the parent index is the state machine therefore we can locate
         //      the parent NodeGraph directly.
@@ -1856,7 +1887,7 @@ namespace EMStudio
         }
     }
 
-    void BlendGraphWidget::OnRowsAboutToBeRemoved(const QModelIndex &parent, int first, int last)
+    void BlendGraphWidget::OnRowsAboutToBeRemoved(const QModelIndex& parent, int first, int last)
     {
         // Remove the graphs, if it is not in our cache, then it is not removed, if it is, its removed
         if (parent.isValid())
@@ -1955,7 +1986,6 @@ namespace EMStudio
             mActiveGraph->ZoomOnRect(graphNode->GetRect(), geometry().width(), geometry().height(), true);
         }
     }
-
 } // namespace EMStudio
 
 #include <EMotionFX/Tools/EMotionStudio/Plugins/StandardPlugins/Source/AnimGraph/BlendGraphWidget.moc>

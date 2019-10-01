@@ -7,8 +7,8 @@
             "AssetCommon.cpp",
             "AssetManager.cpp",
             "BehaviorContext.cpp",
+            "BehaviorContextFixture.h",
             "Components.cpp",
-            "DataStreamer.cpp",
             "Debug.cpp",
             "DLL.cpp",
             "Driller.cpp",
@@ -20,13 +20,13 @@
             "Jobs.cpp",
             "JSON.cpp",
             "Math.cpp",
+            "MathIntrinsicsTest.cpp",
             "IntersectPoint.cpp",
             "Memory.cpp",
             "Module.cpp",
             "ModuleTestBus.h",
             "Outcome.cpp",
             "Patching.cpp",
-            "Performance.cpp",
             "RemappableId.cpp",
             "Rtti.cpp",
             "Script.cpp",
@@ -35,11 +35,18 @@
             "SerializeContextFixture.h",
             "Slice.cpp",
             "State.cpp",
+            "StreamerTests.cpp",
             "SystemFile.cpp",
             "TickBusTest.cpp",
-            "TestTypes.h",
+            "Utils.h",
+            "Utils.cpp",
             "UUIDTests.cpp",
             "XML.cpp"
+        ],
+        "AzCore/Streamer": [
+            "Streamer/BlockCacheTests.cpp",
+            "Streamer/FullDecompressorTests.cpp",
+            "Streamer/StreamStackEntryMock.h"
         ],
         "AzCore/Math": [
             "Math/QuaternionTests.cpp"
@@ -56,6 +63,7 @@
             "AZStd/CreateDestroy.cpp",
             "AZStd/ConcurrentAllocators.cpp",
             "AZStd/ConcurrentContainers.cpp",
+            "AZStd/ChronoTests.cpp",
             "AZStd/DequeAndSimilar.cpp",
             "AZStd/Examples.cpp",
             "AZStd/FunctorsBind.cpp",
@@ -69,6 +77,7 @@
             "AZStd/LockTests.cpp",
             "AZStd/Ordered.cpp",
             "AZStd/Optional.cpp",
+            "AZStd/Pair.cpp",
             "AZStd/Parallel.cpp",
             "AZStd/ScopedLockTests.cpp",
             "AZStd/SetsIntrusive.cpp",
@@ -77,6 +86,8 @@
             "AZStd/TypeTraits.cpp",
             "AZStd/Tuple.cpp",
             "AZStd/UserTypes.h",
+            "AZStd/Variant.cpp",
+            "AZStd/VariantSerialization.cpp",
             "AZStd/VectorAndArray.cpp"
         ]
     }

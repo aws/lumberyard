@@ -12,9 +12,10 @@
 
 #pragma once
 
-#include "StandardHeaders.h"
 #include <AzCore/std/containers/vector.h>
 #include <AzCore/std/containers/unordered_map.h>
+#include "StandardHeaders.h"
+#include <MCore/Source/Array.h>
 #include "Command.h"
 #include "CommandGroup.h"
 
@@ -166,13 +167,13 @@ namespace MCore
          * Get the number of registered callbacks.
          * @result The number of registered callbacks.
          */
-        uint32 GetNumCallbacks() const;
+        size_t GetNumCallbacks() const;
 
         /**
          * Get a given callback.
          * @param index The callback number to get, which must be in range of [0..GetNumCallbacks()-1].
          */
-        CommandManagerCallback* GetCallback(uint32 index);
+        CommandManagerCallback* GetCallback(size_t index);
 
         /**
          * Set the maximum number of history items that the manager should remember.
@@ -186,7 +187,7 @@ namespace MCore
          * On default this value is 100. This means it will remember the last 100 executed commands, which can then be undo-ed and redo-ed.
          * @result The number of maximum history items.
          */
-        uint32 GetMaxHistoryItems() const;
+        size_t GetMaxHistoryItems() const;
 
         /**
          * Get the current history index.
@@ -200,16 +201,16 @@ namespace MCore
          * This is the number of executed commands that are stored in the history right now.
          * @result The number of history items currently stored.
          */
-        uint32 GetNumHistoryItems() const;
+        size_t GetNumHistoryItems() const;
 
-        const CommandHistoryEntry& GetHistoryItem(uint32 index) const;
+        const CommandHistoryEntry& GetHistoryItem(size_t index) const;
 
         /**
          * Get a given command from the command history.
          * @param historyIndex The history index number, which must be in range of [0..GetNumHistoryItems()-1].
          * @result A pointer to the command stored at the given history index.
          */
-        Command* GetHistoryCommand(uint32 historyIndex);
+        Command* GetHistoryCommand(size_t historyIndex);
 
         /**
          * Clear the history.
@@ -227,14 +228,14 @@ namespace MCore
          * Get the total number of registered commands.
          * @result The number of registered commands.
          */
-        uint32 GetNumRegisteredCommands() const;
+        size_t GetNumRegisteredCommands() const;
 
         /**
          * Get a given registered command.
          * @param index The command number, which must be in range of [0..GetNumRegisteredCommands()-1].
          * @result A pointer to the command.
          */
-        Command* GetCommand(uint32 index);
+        Command* GetCommand(size_t index);
 
         /**
          * Remove a given command callback. This automatically finds the command where this callback has been added to and removes it from that.
@@ -293,14 +294,15 @@ namespace MCore
 
     protected:
         AZStd::unordered_map<AZStd::string, Command*>   mRegisteredCommands;    /**< A hash table storing the command objects for fast command object access. */
-        Array<CommandHistoryEntry>                      mCommandHistory;        /**< The command history stack for undo/redo functionality. */
-        Array<CommandManagerCallback*>                  mCallbacks;             /**< The command manager callbacks. */
+        AZStd::vector<CommandHistoryEntry>              mCommandHistory;        /**< The command history stack for undo/redo functionality. */
+        AZStd::vector<CommandManagerCallback*>          mCallbacks;             /**< The command manager callbacks. */
         AZStd::vector<AZStd::string>                    mErrors;                /**< List of errors that happened during command execution. */
-        Array<Command*>                                 mCommands;              /**< A flat array of registered commands, for easy traversal. */
-        uint32                                          mMaxHistoryEntries;     /**< The maximum remembered commands in the command history. */
+        AZStd::vector<Command*>                         mCommands;              /**< A flat array of registered commands, for easy traversal. */
+        size_t                                          mMaxHistoryEntries;     /**< The maximum remembered commands in the command history. */
         int32                                           mHistoryIndex;          /**< The command history iterator. The current position in the undo/redo history. */
         AZ::u32                                         m_totalNumHistoryItems; /**< The number of history items since the application start. This number will neither change depending on the size of the history queue nor with undo/redo. */
         int                                             m_commandsInExecution;  /**< The number of commands currently in execution. */
+
         /**
          * Internal method to execute a command.
          * @param command The registered command object.

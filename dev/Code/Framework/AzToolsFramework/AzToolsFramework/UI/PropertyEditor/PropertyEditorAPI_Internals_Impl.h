@@ -48,8 +48,8 @@ namespace AzToolsFramework
         {
             for (size_t i = 0; i < attributes.size(); ++i)
             {
-                const AZ::Edit::AttributePair& attrPair = attributes[i];
-                PropertyAttributeReader reader(classInstance, attrPair.second);
+                const auto& attrPair = attributes[i];
+                PropertyAttributeReader reader(classInstance, &*attrPair.second);
                 ConsumeAttribute(wid, attrPair.first, &reader, name);
             }
         };

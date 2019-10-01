@@ -58,8 +58,8 @@ namespace GraphCanvas
 
         NodePropertyDisplay* CreateBooleanNodePropertyDisplay(BooleanDataInterface* dataInterface) const override;
         NodePropertyDisplay* CreateNumericNodePropertyDisplay(NumericDataInterface* dataInterface) const override;
+        NodePropertyDisplay* CreateComboBoxNodePropertyDisplay(ComboBoxDataInterface* dataInterface) const override;
         NodePropertyDisplay* CreateEntityIdNodePropertyDisplay(EntityIdDataInterface* dataInterface) const override;
-        NodePropertyDisplay* CreateItemModelNodePropertyDisplay(ItemModelDataInterface* dataInterface) const override;
         NodePropertyDisplay* CreateReadOnlyNodePropertyDisplay(ReadOnlyDataInterface* dataInterface) const override;
         NodePropertyDisplay* CreateStringNodePropertyDisplay(StringDataInterface* dataInterface) const override;
         NodePropertyDisplay* CreateVectorNodePropertyDisplay(VectorDataInterface* dataInterface) const override;

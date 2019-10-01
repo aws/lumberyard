@@ -142,14 +142,12 @@ namespace AZStd
             assign(rhs, 0, npos);
         }
 
-#if defined(AZ_HAS_RVALUE_REFS)
         inline basic_string(this_type&& rhs)
             : m_size(0)
             , m_capacity(SSO_BUF_SIZE - 1)
         {
             assign(AZStd::forward<this_type>(rhs));
         }
-#endif // AZ_HAS_RVALUE_REFS
 
         inline basic_string(const this_type& rhs, size_type rhsOffset, size_type count = npos)
             : m_size(0)
@@ -196,9 +194,7 @@ namespace AZStd
         inline const_reverse_iterator   crend() const       { return const_reverse_iterator(begin()); }
 
         inline this_type& operator=(const this_type& rhs)       { return assign(rhs); }
-#if defined(AZ_HAS_RVALUE_REFS)
         inline this_type& operator=(this_type&& rhs) { return assign(AZStd::forward<this_type>(rhs)); }
-#endif // AZ_HAS_RVALUE_REFS
         inline this_type& operator=(AZStd::basic_string_view<Element, Traits> view) { return assign(view); }
         inline this_type& operator=(const_pointer ptr)          { return assign(ptr); }
         inline this_type& operator=(Element ch)             { return assign(1, ch); }
@@ -299,7 +295,6 @@ namespace AZStd
             return assign(view.data(), view.size());
         }
 
-#if defined(AZ_HAS_RVALUE_REFS)
         inline this_type& assign(this_type&& rhs)
         {
             if (this != &rhs)
@@ -320,7 +315,6 @@ namespace AZStd
             }
             return *this;
         }
-#endif // AZ_HAS_RVALUE_REFS
 
         this_type& assign(const this_type& rhs, size_type rhsOffset, size_type count)
         {   // assign rhs [rhsOffset, rhsOffset + count)
@@ -1405,24 +1399,24 @@ namespace AZStd
         static basic_string<char, char_traits<char>, Allocator> format_arg(const char* format, va_list argList)
         {
             basic_string<char, char_traits<char>, Allocator> result;
-            int len;
 #if defined(AZ_COMPILER_MSVC)
-            len = _vscprintf(format, argList);
+            // On Windows, AZ_TRAIT_USE_SECURE_CRT_FUNCTIONS is set, so
+            // azvsnprintf calls _vsnprintf_s. _vsnprintf_s, unlike vsnprintf,
+            // will fail and return -1 when the size argument is 0.
+            const int len = _vscprintf(format, argList);
+#else
+            va_list argList2;
+            va_copy(argList2, argList);
+            const int len = azvsnprintf(nullptr, static_cast<size_t>(0), format, argList2);
+            va_end(argList2);
+#endif
             if (len > 0)
             {
                 result.resize(len);
-                len = azvsnprintf(result.data(), result.capacity() + 1, format, argList);
-                (void)len;
-                AZ_Assert(len == static_cast<int>(result.size()), "azvsnprintf failed!");
+                const int bytesPrinted = azvsnprintf(result.data(), result.size() + 1, format, argList);
+                AZ_UNUSED(bytesPrinted);
+                AZ_Assert(bytesPrinted == static_cast<int>(result.size()), "azvsnprintf failed!");
             }
-#else
-            const int maxBufferLength = 2048;
-            char buffer[maxBufferLength];
-            len = azvsnprintf(buffer, maxBufferLength, format, argList);
-            (void)len;
-            AZ_Assert(len != -1, "azvsnprintf failed increase the buffer size!");
-            result += buffer;
-#endif
             return result;
         }
 

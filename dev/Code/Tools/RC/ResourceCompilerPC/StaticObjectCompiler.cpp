@@ -421,7 +421,11 @@ bool CStaticObjectCompiler::CompileMeshes(CContentCGF* pCGF)
 
             mesh_compiler::CMeshCompiler meshCompiler;
 
-            int nMeshCompileFlags = mesh_compiler::MESH_COMPILE_TANGENTS | mesh_compiler::MESH_COMPILE_VALIDATE;
+            const bool DegenerateFacesAreErrors = false;    // We need to get this from a CVar properly in order to make this an option, but for now,
+                                                            // always treat this as a warning
+            int nMeshCompileFlags =   mesh_compiler::MESH_COMPILE_TANGENTS
+                                    | ((DegenerateFacesAreErrors) ? mesh_compiler::MESH_COMPILE_VALIDATE_FAIL_ON_DEGENERATE_FACES : 0)
+                                    | mesh_compiler::MESH_COMPILE_VALIDATE;
             if (pCGF->GetExportInfo()->bUseCustomNormals)
             {
                 nMeshCompileFlags |= mesh_compiler::MESH_COMPILE_USECUSTOMNORMALS;
@@ -436,6 +440,16 @@ bool CStaticObjectCompiler::CompileMeshes(CContentCGF* pCGF)
             {
                 RCLogError("Failed to compile geometry in node '%s' in file %s - %s", pNodeCGF->name, pCGF->GetFilename(), meshCompiler.GetLastError());
                 return false;
+            }
+
+            //if we dont pass in MESH_COMPILE_VALIDATE_FAIL_ON_DEGENERATE_FACES during compilation
+            //it will not check for degenerate faces and fail, but we still want to warn on degenerate faces
+            if (!(nMeshCompileFlags & mesh_compiler::MESH_COMPILE_VALIDATE_FAIL_ON_DEGENERATE_FACES))
+            {
+                if (meshCompiler.CheckForDegenerateFaces(*pNodeCGF->pMesh))
+                {
+                    RCLogWarning("Geometry in node '%s' in file %s contains degenerate faces. This mesh is sub optimal and should be fixed!", pNodeCGF->name, pCGF->GetFilename());
+                }
             }
         }
     }

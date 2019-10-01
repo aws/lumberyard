@@ -1,0 +1,10 @@
+{
+    "auto":
+    {
+        "Platform/Linux":
+        [
+            "Twitch_Traits_Platform.h",
+            "Twitch_Traits_Linux.h"
+        ]
+    }
+}

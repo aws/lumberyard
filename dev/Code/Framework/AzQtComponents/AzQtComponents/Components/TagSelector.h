@@ -68,7 +68,9 @@ namespace AzQtComponents
         void TagsChanged();
 
     private:
+        AZ_PUSH_DISABLE_WARNING(4251, "-Wunknown-warning-option") // 4251: 'AzQtComponents::TagWidgetContainer::m_tags': class 'QVector<T>' needs to have dll-interface to be used by clients of class 'AzQtComponents::TagWidgetContainer'
         QVector<QString>    m_tags;     //! List of tags that shall be displayed.
+        AZ_POP_DISABLE_WARNING
         QWidget*            m_widget;
         QVBoxLayout*        m_layout;
         int                 m_width;
@@ -107,7 +109,9 @@ namespace AzQtComponents
     private:
         void Init();
 
+        AZ_PUSH_DISABLE_WARNING(4251, "-Wunknown-warning-option") // 4251: 'AzQtComponents::TagSelector::m_availableTags': class 'QVector<T>' needs to have dll-interface to be used by clients of class 'AzQtComponents::TagSelector'
         QVector<QString>    m_availableTags;    //!  List of available tags to choose from.
+        AZ_POP_DISABLE_WARNING
         TagWidgetContainer* m_tagWidgets;       //!  List of tag widgets. Each tag widget represents one selected tag.
         QComboBox*          m_combo;
     };

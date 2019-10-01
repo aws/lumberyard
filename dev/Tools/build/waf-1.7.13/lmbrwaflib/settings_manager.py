@@ -14,7 +14,7 @@ from waflib.Configure import conf, ConfigurationContext
 from waflib.Build import BuildContext
 from waflib.Utils import unversioned_sys_platform
 
-from cry_utils import append_to_unique_list
+from cry_utils import append_to_unique_list, read_game_name_from_bootstrap
 from mscv_helper import find_valid_wsdk_version
 
 import utils
@@ -266,6 +266,43 @@ def merge_settings_group(settings_include_file, merge_settings_dict, setting_gro
         settings_group.append(remaining_settings_dict)
 
 
+def read_bootstrap_overrides_from_settings_file(engine_user_settings_options_file):
+    """
+    Get the two possible bootstrap overrides (bootstrap_tool_param, bootstrap_third_party_override) from a user_settings.option file
+
+    :param engine_user_settings_options_file:   The absolute path of the user_settings.options file
+    :return: tuple of (bootstrap_tool_param, bootstrap_third_party_override) if set
+    """
+    
+    # For external projects, the attributes set in the engine's user_settings.options based on the configuration set by
+    # setup assistant must be always overwritten since we can't run setup assistant for an external game project
+    
+    if not os.path.exists(engine_user_settings_options_file):
+        raise Errors.WafError(
+            "Unable to locate the engine's settings file. Make sure that the engine at '{} 'is properly configured first".format(
+                engine_user_settings_options_file))
+    
+    override_bootstrap_tool_param = None
+    override_bootstrap_third_party_override = None
+    
+    engine_user_settings_reader = ConfigParser.ConfigParser()
+    engine_user_settings_reader.read(engine_user_settings_options_file)
+    try:
+        override_bootstrap_tool_param = engine_user_settings_reader.get('Misc Options', 'bootstrap_tool_param')
+    except ConfigParser.NoSectionError as e:
+        raise Errors.WafError(
+            "The engine's user_settings.options as '{}' file is corrupt: {}".format(engine_user_settings_options_file,
+                                                                                    e))
+    except ConfigParser.NoOptionError:
+        pass
+    try:
+        override_bootstrap_third_party_override = engine_user_settings_reader.get('Misc Options',
+                                                                                  'bootstrap_third_party_override')
+    except ConfigParser.NoOptionError:
+        pass
+    return override_bootstrap_tool_param, override_bootstrap_third_party_override
+
+
 def process_settings_include_file(settings_include_file, processed_env_dict, processed_settings_dict, processed_attributes_dict, processed_files=[]):
     """
     Process an 'include' settings file and extract/update the following attributes from the 'include' settings file:
@@ -485,11 +522,28 @@ class Settings(object):
 
         # Map of the settings attribute to their default values
         self.default_settings_map = {}
+        
+        # Check the engine.json file to determine where the engine root is so we can look for the default settings file
+        engine_json_path = os.path.join(os.getcwd(), 'engine.json')
+        if not os.path.isfile(engine_json_path):
+            raise Errors.WafError("Missing required engine configuration file: {}".format(engine_json_path))
+        
+        engine_json = utils.parse_json_file(engine_json_path)
+        if 'ExternalEnginePath' in engine_json:
+            external_engine_path = engine_json['ExternalEnginePath']
+            if os.path.isabs(external_engine_path):
+                engine_root_abs = external_engine_path
+            else:
+                engine_root_abs = os.path.normpath(os.path.join(os.getcwd(), external_engine_path))
+        else:
+            engine_root_abs = os.getcwd()
 
-        base_settings_path = os.path.join(os.getcwd(), '_WAF_')
-
-        # Load the required default_settings file
+        is_external_engine = os.path.normcase(os.getcwd()) != os.path.normcase(engine_root_abs)
+        
+        base_settings_path = os.path.join(engine_root_abs, '_WAF_')
         self.default_settings_path = os.path.join(base_settings_path, 'default_settings.json')
+        
+        # Load the required default_settings file
         if not os.path.exists(self.default_settings_path):
             raise Errors.WafError("Missing required default settings file: {}".format(self.default_settings_path))
         self.default_settings = utils.parse_json_file(self.default_settings_path)
@@ -505,22 +559,47 @@ class Settings(object):
         if os.path.isdir(restricted_platforms_path):
             self.load_platform_settings(restricted_platforms_path)
 
-        # Initialize and load the user_settings (if it exists)
+        # Initialize and load the user_settings (if it exists). It will always exist in the current root's _WAF_
+        # folder
         self.override_settings = ConfigParser.ConfigParser()
-        self.user_settings_path = os.path.join(base_settings_path, 'user_settings.options')
+        self.user_settings_path = os.path.join(os.getcwd(), '_WAF_', 'user_settings.options')
         if os.path.exists(self.user_settings_path):
             self.override_settings.read(self.user_settings_path)
+            
+        if is_external_engine:
+            # For external projects, the 'enabled_game_projects' can only be the same as the value in bootstrap.cfg
+            override_enabled_game = read_game_name_from_bootstrap(os.path.join(os.getcwd(), 'bootstrap.cfg'))
+
+            # For external projects, the attributes set in the engine's user_settings.options based on the configuration set by
+            # setup assistant must be always overwritten since we can't run setup assistant for an external game project
+            engine_user_settings_options_file = os.path.join(engine_root_abs, '_WAF_', 'user_settings.options')
+            override_bootstrap_tool_param, override_bootstrap_third_party_override = read_bootstrap_overrides_from_settings_file(engine_user_settings_options_file)
+            if not override_bootstrap_tool_param:
+                raise Errors.WafError("Unable to determine this project's capabilities. Make sure that the engine at '{} 'is properly configured first".format(engine_root_abs))
+        else:
+            override_bootstrap_tool_param = None
+            override_enabled_game = None
+            override_bootstrap_third_party_override = None
 
         # Initialize the settings maps and update the settings override (comments) with the current default values
-        self.update_settings_map()
+        self.update_settings_map(override_enabled_projects=override_enabled_game,
+                                 override_bootstrap_tool_param=override_bootstrap_tool_param,
+                                 override_bootstrap_third_party_override=override_bootstrap_third_party_override)
 
         # Load the configuration settings from _WAF_/settings/build_configurations.json
         build_settings_file = os.path.join(extra_settings_path, 'build_configurations.json')
         self.initialize_configurations(build_settings_file)
 
         # Update the settings map again with any value found in the configuration
-        self.update_settings_map()
-        self.update_settings_file(False)
+        self.update_settings_map(override_enabled_projects=override_enabled_game,
+                                 override_bootstrap_tool_param=override_bootstrap_tool_param,
+                                 override_bootstrap_third_party_override=override_bootstrap_third_party_override)
+        
+        self.update_settings_file(apply_from_command_line=False,
+                                  override_enabled_projects=override_enabled_game,
+                                  override_bootstrap_tool_param=override_bootstrap_tool_param,
+                                  override_bootstrap_third_party_override=override_bootstrap_third_party_override)
+        
 
     def create_config(self):
         """
@@ -875,7 +954,7 @@ class Settings(object):
             arg_index += 1
         return override_value
 
-    def update_settings_map(self):
+    def update_settings_map(self, override_enabled_projects=None, override_bootstrap_tool_param=None, override_bootstrap_third_party_override=None):
         """
         Update the attribute -> settings map. There are potentially three sources of the value for each attribute:
             1. The default_value set in default_settings.json (or any default value callback result)
@@ -917,6 +996,14 @@ class Settings(object):
                 # Check if the default is a callback function
                 value = apply_optional_callback(value, attribute)
 
+                # If there are any of the external project related overrides that are passed in, apply it here
+                if override_enabled_projects and attribute == 'enabled_game_projects':
+                    value = override_enabled_projects
+                elif override_bootstrap_tool_param and attribute == 'bootstrap_tool_param':
+                    value = override_bootstrap_tool_param
+                elif override_bootstrap_third_party_override and attribute == 'bootstrap_third_party_override':
+                    value = override_bootstrap_third_party_override
+
                 # Next Highest Priority is the override value in user_settings.json
                 if self.override_settings.has_option(section_key, attribute):
                     value = self.override_settings.get(section_key, attribute)
@@ -936,7 +1023,7 @@ class Settings(object):
 
                 self.settings_map[attribute] = value
 
-    def update_settings_file(self, apply_from_command_line):
+    def update_settings_file(self, apply_from_command_line, override_enabled_projects=None, override_bootstrap_tool_param=None, override_bootstrap_third_party_override=None):
         """
         Update the user_settings.options if there is a change in any precomputed hash.  If there was any change to the
         default settings or user settings, then the user_settings.options wil be updated
@@ -950,7 +1037,7 @@ class Settings(object):
                 with open(settings_override_file, 'r') as override_settings_file:
                     override_settings_content = override_settings_file.read()
 
-                match = re.match(r';hash=(.+)', override_settings_content)
+                match = re.match(r'; hash=(.+)', override_settings_content)
                 if match:
                     hash_value = match.group(1)
 
@@ -961,8 +1048,9 @@ class Settings(object):
             Build up the user_settings contents based on any current user_settings override and compute the has
             to see if the entire user_settings.options file needs to be udpated
             """
-            user_settings_content = ";To override any of the following items, remove the ';' comment and set the appropriate value.\n"
-            user_settings_content += ";Otherwise the values will be read from default_settings.json.\n\n"
+            user_settings_content = "; This file represents the override for waf settings based on '{}'\n".format(self.default_settings_path)
+            user_settings_content += "; To override any of the following items, remove the ';' comment and set the appropriate value.\n"
+            user_settings_content += "; Otherwise the values will be read from default_settings.json.\n\n"
 
             # Load default settings
             for settings_group, settings_list in default_settings.items():
@@ -980,6 +1068,13 @@ class Settings(object):
                         override_value = override_settings.get(settings_group, option_name)
                     else:
                         override_value = None
+                        
+                    if override_enabled_projects and option_name == 'enabled_game_projects':
+                        override_value = override_enabled_projects
+                    elif override_bootstrap_tool_param and option_name == 'bootstrap_tool_param':
+                        override_value = override_bootstrap_tool_param
+                    elif override_bootstrap_third_party_override and option_name == 'bootstrap_third_party_override':
+                        override_value = override_bootstrap_third_party_override
 
                     has_existing_override = (override_value != default_value and not last_hash)
                     if override_value and (has_existing_override or last_hash):
@@ -1001,7 +1096,7 @@ class Settings(object):
         last_hash = _get_override_hash_from_file(self.user_settings_path)
         content, current_hash = _build_override_contents_and_hash(last_hash, self.default_settings, self.override_settings)
         if current_hash != last_hash:
-            update_contents = ';hash={}\n{}'.format(current_hash, content)
+            update_contents = '; hash={}\n{}'.format(current_hash, content)
             with open(self.user_settings_path, 'w') as user_settings_file:
                 user_settings_file.write(update_contents)
 
@@ -1528,3 +1623,5 @@ def report_settings_generate_sig_debug_output(ctx, is_configure, is_build, attri
     enable_sig_debug = utils.is_value_true(settings_value)
     if enable_sig_debug:
         ctx.print_settings_override_message('Enabling capturing of task signature data ({}={})'.format(attribute, settings_value))
+
+

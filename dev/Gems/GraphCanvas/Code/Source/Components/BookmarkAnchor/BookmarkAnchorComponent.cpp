@@ -18,83 +18,11 @@
 
 #include <Components/BookmarkAnchor/BookmarkAnchorComponent.h>
 #include <GraphCanvas/Editor/AssetEditorBus.h>
-#include <Utils/ConversionUtils.h>
+#include <GraphCanvas/Utils/ConversionUtils.h>
+#include <GraphCanvas/Utils/ColorUtils.h>
 
 namespace GraphCanvas
 {    
-    ////////////////////////////
-    // BookmarkAnchorComponent
-    ////////////////////////////
-
-    AZ::Color GetRandomColor()
-    {
-        return AZ::Color((rand() % 256) / 255.0f, (rand() % 256) / 255.0f, (rand() % 256) / 255.0f, 1.0f);
-    }
-
-    // BookmarkAnchorComponentSaveData
-    BookmarkAnchorComponent::BookmarkAnchorComponentSaveData::BookmarkAnchorComponentSaveData()
-        : m_shortcut(k_findShortcut)
-        , m_color(GetRandomColor())
-        , m_callback(nullptr)
-        , m_position(0,0)
-        , m_dimension(0,0)
-    {
-    }
-
-    BookmarkAnchorComponent::BookmarkAnchorComponentSaveData::BookmarkAnchorComponentSaveData(BookmarkAnchorComponent* component)
-        : BookmarkAnchorComponentSaveData()
-    {
-        m_callback = component;
-    }
-
-    void BookmarkAnchorComponent::BookmarkAnchorComponentSaveData::operator=(const BookmarkAnchorComponentSaveData& other)
-    {
-        // Callbck purposefully skipped
-        m_bookmarkName = other.m_bookmarkName;
-        m_shortcut = other.m_shortcut;
-        m_color = other.m_color;
-        m_position = other.m_position;
-        m_dimension = other.m_dimension;
-    }
-
-    void BookmarkAnchorComponent::BookmarkAnchorComponentSaveData::OnBookmarkNameChanged()
-    {
-        if (m_callback)
-        {
-            m_callback->OnBookmarkNameChanged();
-        }
-    }
-
-    void BookmarkAnchorComponent::BookmarkAnchorComponentSaveData::OnBookmarkColorChanged()
-    {
-        if (m_callback)
-        {
-            m_callback->OnBookmarkColorChanged();
-        }
-    }    
-
-    void BookmarkAnchorComponent::BookmarkAnchorComponentSaveData::SetVisibleArea(QRectF visibleArea)
-    {
-        m_position.SetX(visibleArea.x());
-        m_position.SetY(visibleArea.y());
-
-        m_dimension.SetX(visibleArea.width());
-        m_dimension.SetY(visibleArea.height());
-    }
-
-    QRectF BookmarkAnchorComponent::BookmarkAnchorComponentSaveData::GetVisibleArea(const QPointF& center) const
-    {
-        QRectF displayRect(m_position.GetX(), m_position.GetY(), m_dimension.GetX(), m_dimension.GetY());
-        displayRect.moveCenter(center);
-
-        return displayRect;
-    }
-
-    bool BookmarkAnchorComponent::BookmarkAnchorComponentSaveData::HasVisibleArea() const
-    {
-        return !m_dimension.IsZero();
-    }
-
     ////////////////////////////
     // BookmarkAnchorComponent
     ////////////////////////////
@@ -212,7 +140,7 @@ namespace GraphCanvas
             //
             // This means we will re-randomize the color, assign a new shortcut, and a default name
             m_saveData.m_shortcut = k_findShortcut;
-            m_saveData.m_color = GetRandomColor();
+            m_saveData.m_color = ColorUtils::GetRandomColor();
 
             AZ::u32 bookmarkId = 0;
             SceneBookmarkActionBus::EventResult(bookmarkId, graphId, &SceneBookmarkActions::GetNewBookmarkCounter);

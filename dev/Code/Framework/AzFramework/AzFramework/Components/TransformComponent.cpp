@@ -9,7 +9,6 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#ifndef AZ_UNITY_BUILD
 
 #include <AzFramework/Components/TransformComponent.h>
 #include <AzCore/Serialization/EditContext.h>
@@ -1161,6 +1160,29 @@ namespace AzFramework
 
         m_parentActive = true;
 
+#ifndef _RELEASE
+        AZ::EntityId parentId = m_parentId;
+
+        while (parentId.IsValid())
+        {
+            if (parentId == GetEntityId())
+            {
+                AZ_Error("TransformComponent", false, "Trying to create a circular dependency of parenting. Aborting set parent call.");
+                SetParent(AZ::EntityId());
+                return;
+            }
+
+            auto handler = AZ::TransformBus::FindFirstHandler(parentId);
+
+            if (handler == nullptr)
+            {
+                break;
+            }
+
+            parentId = handler->GetParentId();
+        }
+#endif
+
         AZ::Entity* parentEntity = nullptr;
         EBUS_EVENT_RESULT(parentEntity, AZ::ComponentApplicationBus, FindEntity, parentEntityId);
         AZ_Assert(parentEntity, "We expect to have a parent entity associated with the provided parent's entity Id.");
@@ -1429,5 +1451,3 @@ namespace AzFramework
         }
     }
 } // namespace AZ
-
-#endif  // AZ_UNITY_BUILD

@@ -161,6 +161,33 @@ namespace AZStd
                 temp.m_typeInfo = type_info();
             }
         }
+        //! [Extension] Create an any with a custom typeinfo while forwarding the arguments to ValueType constructor
+        template <typename ValueType, typename... Args>
+        any(const type_info& typeInfo, in_place_type_t<ValueType>, Args&&... args)
+            : m_typeInfo(typeInfo)
+        {
+            static_assert(AZStd::is_constructible<decay_t<ValueType>, Args...>::value,
+                "ValueType must be constructible with Args... and copy constructible.");
+            // Reserve heap space if necessary
+            m_typeInfo.m_handler(Action::Reserve, this, nullptr);
+
+            // forward arguments to ValueType constructor
+            new (get_data()) decay_t<ValueType>(AZStd::forward<Args>(args)...);
+        }
+
+        //! [Extension] Create an any with a custom typeinfo while forwarding the initializer_list and variadic arguments to ValueType constructor
+        template <typename ValueType, typename U, typename... Args>
+        any(const type_info& typeInfo, in_place_type_t<ValueType>, AZStd::initializer_list<U> il, Args&&... args)
+            : m_typeInfo(typeInfo)
+        {
+            static_assert(AZStd::is_constructible<decay_t<ValueType>, AZStd::initializer_list<U>, Args...>::value,
+                "ValueType must be constructible with Args... and copy constructible.");
+            // Reserve heap space if necessary
+            m_typeInfo.m_handler(Action::Reserve, this, nullptr);
+
+            // forward arguments to ValueType constructor
+            new (get_data()) decay_t<ValueType>(il, AZStd::forward<Args>(args)...);
+        }
 
         /// Constructs an object with initial content an object of type decay_t<ValueType>, direct-initialized from forward<ValueType>(val)
         template <typename ValueType, typename = enable_if_t<!is_same<decay_t<ValueType>, any>::value>>
@@ -187,7 +214,7 @@ namespace AZStd
             : any(allocator("AZStd::any"))
         {
             static_assert(AZStd::is_constructible<decay_t<ValueType>, Args...>::value && Internal::template_is_copy_constructible<decay_t<ValueType>>::value,
-                "ValueType must be constructible and copy constructible.");
+                "ValueType must be constructible with Args... and copy constructible.");
 
             // Initialize typeinfo from the type given
             m_typeInfo = create_template_type_info<decay_t<ValueType>>();
@@ -205,7 +232,7 @@ namespace AZStd
             : any(allocator("AZStd::any"))
         {
             static_assert(AZStd::is_constructible<decay_t<ValueType>, AZStd::initializer_list<U>&, Args...>::value && Internal::template_is_copy_constructible<decay_t<ValueType>>::value,
-                "ValueType must be constructible and copy constructible.");
+                "ValueType must be constructible with Args... and copy constructible.");
 
             // Initialize typeinfo from the type given
             m_typeInfo = create_template_type_info<decay_t<ValueType>>();

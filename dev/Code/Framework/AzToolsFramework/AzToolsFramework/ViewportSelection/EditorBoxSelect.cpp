@@ -83,10 +83,10 @@ namespace AzToolsFramework
 
             debugDisplay.DrawWireBox(
                 AZ::Vector3(
-                    m_boxSelectRegion->x(), m_boxSelectRegion->y(), 0.0f),
+                    static_cast<float>(m_boxSelectRegion->x()), static_cast<float>(m_boxSelectRegion->y()), 0.0f),
                 AZ::Vector3(
-                    m_boxSelectRegion->x() + m_boxSelectRegion->width(),
-                    m_boxSelectRegion->y() + m_boxSelectRegion->height(), 0.0f));
+                    static_cast<float>(m_boxSelectRegion->x()) + static_cast<float>(m_boxSelectRegion->width()),
+                    static_cast<float>(m_boxSelectRegion->y()) + static_cast<float>(m_boxSelectRegion->height()), 0.0f));
 
             debugDisplay.DepthTestOn();
 

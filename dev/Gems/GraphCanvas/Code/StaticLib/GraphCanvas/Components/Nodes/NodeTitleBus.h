@@ -18,6 +18,8 @@
 #include <GraphCanvas/Types/TranslationTypes.h>
 #include <GraphCanvas/Components/StyleBus.h>
 
+#include <GraphCanvas/Types/SceneMemberComponentSaveData.h>
+
 class QGraphicsWidget;
 
 namespace GraphCanvas
@@ -84,4 +86,22 @@ namespace GraphCanvas
     };
 
     using NodeTitleNotificationsBus = AZ::EBus<NodeTitleNotifications>;
+
+    class GeneralNodeTitleComponentSaveData
+        : public SceneMemberComponentSaveData<GeneralNodeTitleComponentSaveData>
+    {
+    public:
+        AZ_RTTI(GeneralNodeTitleComponentSaveData, "{328FF15C-C302-458F-A43D-E1794DE0904E}", SceneMemberComponentSaveData<GeneralNodeTitleComponentSaveData>);
+        AZ_CLASS_ALLOCATOR(GeneralNodeTitleComponentSaveData, AZ::SystemAllocator, 0);
+
+        GeneralNodeTitleComponentSaveData() = default;
+        ~GeneralNodeTitleComponentSaveData() = default;
+
+        bool RequiresSave() const override
+        {
+            return !m_paletteOverride.empty();
+        }
+
+        AZStd::string m_paletteOverride;
+    };
 }

@@ -45,10 +45,6 @@ namespace ScriptCanvas
                     }
                 }
 
-                void Visit(NodeVisitor& visitor) const override
-                {
-                    visitor.Visit(*this);
-                }
             };
         }
     }

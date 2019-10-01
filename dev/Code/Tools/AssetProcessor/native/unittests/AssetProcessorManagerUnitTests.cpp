@@ -1385,7 +1385,11 @@ namespace AssetProcessor
         SourceFileNotificationMessage sourceFileRemovedMessage;
         QMetaObject::invokeMethod(&apm, "AssessDeletedFile", Qt::QueuedConnection, Q_ARG(QString, absolutePath));
         UNIT_TEST_EXPECT_TRUE(BlockUntil(idling, 5000));
-        UNIT_TEST_EXPECT_TRUE(payloadList.size() == 1);
+        // 9 messages because there's one source file with 4 products so:
+        //      1 * file remove for the source file.
+        //      4 * file claimed for the produce file to be able to update it safely.
+        //      4 * file released for the produce file so it's free for other tools to use it again.
+        UNIT_TEST_EXPECT_TRUE(payloadList.size() == 9);
         unsigned int messageLoadCount = 0; 
         for (auto payload : payloadList)
         {
@@ -1393,6 +1397,15 @@ namespace AssetProcessor
             {
                 UNIT_TEST_EXPECT_TRUE(AZ::Utils::LoadObjectFromBufferInPlace(payload.second.data(), payload.second.size(), sourceFileRemovedMessage));
                 UNIT_TEST_EXPECT_TRUE(sourceFileRemovedMessage.m_type == SourceFileNotificationMessage::FileRemoved);
+                ++messageLoadCount;
+            }
+            else if (payload.first == AssetNotificationMessage::MessageType())
+            {
+                AssetNotificationMessage message;
+                UNIT_TEST_EXPECT_TRUE(AZ::Utils::LoadObjectFromBufferInPlace(payload.second.data(), payload.second.size(), message));
+                UNIT_TEST_EXPECT_TRUE(
+                    message.m_type == AssetNotificationMessage::NotificationType::JobFileClaimed ||
+                    message.m_type == AssetNotificationMessage::NotificationType::JobFileReleased);
                 ++messageLoadCount;
             }
         }
@@ -2848,6 +2861,7 @@ namespace AssetProcessor
         m_assetBuilderDesc.m_name = "Job Dependency UnitTest";
         m_assetBuilderDesc.m_patterns.push_back(AssetBuilderSDK::AssetBuilderPattern("*.txt", AssetBuilderSDK::AssetBuilderPattern::PatternType::Wildcard));
         m_assetBuilderDesc.m_busId = builderUuid;
+        m_assetBuilderDesc.m_analysisFingerprint = "xyz"; // Normally this would include the same fingerprint info from the job but for the purposes of testing, we just need something here
         m_assetBuilderDesc.m_createJobFunction = [&fileBJobDependentOnFileAJob, &changeJobAFingerprint, &fileCJobDependentOnFileBJob, &sourceFileBUuid]
         (const AssetBuilderSDK::CreateJobsRequest& request, AssetBuilderSDK::CreateJobsResponse& response)
         {

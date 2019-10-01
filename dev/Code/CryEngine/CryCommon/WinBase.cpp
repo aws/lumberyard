@@ -13,6 +13,9 @@
 
 // Description : Linux/Mac port support for Win32API calls
 
+#include<AzCore/PlatformDef.h>
+
+#if !defined(AZ_COMPILER_MSVC)
 
 #include "platform.h" // Note: This should be first to get consistent debugging definitions
 
@@ -1243,8 +1246,14 @@ int CryMessageBox(const char* lpText, const char* lpCaption, unsigned int uType)
         &kResult                           //response flags
     );
 
-    CFRelease(strCaption);
-    CFRelease(strText);
+    if (strCaption)
+    {
+        CFRelease(strCaption);
+    }
+    if (strText)
+    {
+        CFRelease(strText);
+    }
 
     if (kResult == kCFUserNotificationDefaultResponse)
     {
@@ -1702,3 +1711,5 @@ __finddata64_t::~__finddata64_t()
     }
 }
 #endif //defined(APPLE) || defined(LINUX)
+
+#endif // !defined(AZ_COMPILER_MSVC)

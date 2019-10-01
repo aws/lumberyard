@@ -21,7 +21,7 @@ namespace GraphCanvas
         : public EditorContextMenu
     {
     public:
-        BookmarkContextMenu(QWidget* parent = nullptr);
+        BookmarkContextMenu(EditorId editorId, QWidget* parent = nullptr);
         ~BookmarkContextMenu() override = default;
 
     protected:

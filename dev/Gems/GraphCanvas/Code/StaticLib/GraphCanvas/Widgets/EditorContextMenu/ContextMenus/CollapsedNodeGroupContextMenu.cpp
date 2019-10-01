@@ -17,8 +17,8 @@ namespace GraphCanvas
     // CollapsedNodeGroupContextMenu
     //////////////////////////////////
     
-    CollapsedNodeGroupContextMenu::CollapsedNodeGroupContextMenu(QWidget* parent)
-        : EditorContextMenu(parent)
+    CollapsedNodeGroupContextMenu::CollapsedNodeGroupContextMenu(EditorId editorId, QWidget* parent)
+        : EditorContextMenu(editorId, parent)
     {
         m_editActionGroup.PopulateMenu(this);
         m_nodeGroupActionGroup.PopulateMenu(this);
@@ -31,5 +31,7 @@ namespace GraphCanvas
         AZ_UNUSED(targetMemberId);
 
         m_editActionGroup.SetPasteEnabled(false);
+
+        m_nodeGroupActionGroup.RefreshPresets();
     }
 }

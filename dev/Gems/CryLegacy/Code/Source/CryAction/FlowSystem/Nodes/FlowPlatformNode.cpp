@@ -69,7 +69,7 @@ public:
             }
 #if defined(WIN32) || defined(WIN64)
             ActivateOutput(pActInfo, eOutPort_Pc, GetPortAny(pActInfo, eInPort_Get));
-#elif defined(AZ_PLATFORM_APPLE_OSX)
+#elif defined(AZ_PLATFORM_MAC)
             ActivateOutput(pActInfo, eOutPort_Mac, GetPortAny(pActInfo, eInPort_Get));
 #elif defined(ANDROID)
             ActivateOutput(pActInfo, eOutPort_Android, GetPortAny(pActInfo, eInPort_Get));

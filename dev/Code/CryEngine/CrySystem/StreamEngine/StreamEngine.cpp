@@ -16,11 +16,20 @@
 
 #include "StdAfx.h"
 #include "StreamEngine.h"
+
+//CReadStream is 99% unused since the introduction of AZRequestReadStream.
+//In the near future CReadStream will disappear altogether and StreamReadStream cpp/h
+// won't be needed anymore.
 #include "StreamReadStream.h"
+
+#include "AZRequestReadStream.h"
+
+
 #include "../DiskProfiler.h"
 #include "../System.h"
 #include "IPlatformOS.h"
 
+#include <AzCore/IO/Streamer.h>
 #include <AzCore/std/sort.h>
 
 #include <AzFramework/IO/FileOperations.h>
@@ -115,9 +124,43 @@ void CStreamEngine::EndReadGroup()
     }
 }
 
+AZ::IO::Request::PriorityType CStreamEngine::CryStreamPriorityToAZStreamPriority(EStreamTaskPriority cryPriority)
+{
+    switch (cryPriority)
+    {
+    case estpUrgent:
+        return AZ::IO::Request::PriorityType::DR_PRIORITY_CRITICAL;
+    case estpAboveNormal:
+        return AZ::IO::Request::PriorityType::DR_PRIORITY_ABOVE_NORMAL;
+    case estpNormal:
+        return AZ::IO::Request::PriorityType::DR_PRIORITY_NORMAL;
+    }
+    // estpBelowNormal = 4,
+    // estpPreempted = 1, //For internal use only
+    // estpIdle = 5,
+    return AZ::IO::Request::PriorityType::DR_PRIORITY_BELOW_NORMAL;
+}
+
+AZStd::chrono::microseconds CStreamEngine::AZDeadlineFromReadParams(const StreamReadParams& params)
+{
+    AZ::IO::Request::PriorityType azPriority = CryStreamPriorityToAZStreamPriority(params.ePriority);
+    switch (azPriority)
+    {
+    case AZ::IO::Request::PriorityType::DR_PRIORITY_NORMAL:
+        return AZ::IO::ExecuteWhenIdle;
+    case AZ::IO::Request::PriorityType::DR_PRIORITY_CRITICAL:
+        // Fallthrough
+    case AZ::IO::Request::PriorityType::DR_PRIORITY_ABOVE_NORMAL:
+        return AZStd::chrono::microseconds(params.nLoadTime * 1000);
+    default:
+        return AZStd::chrono::microseconds((params.nLoadTime + params.nMaxLoadTime) * 1000);
+    }
+}
+
 //////////////////////////////////////////////////////////////////////////
 // Starts asynchronous read from the specified file
-// MT: Main thread only
+// It is expected that the callbacks are called from Main Thread only when
+// the async data loading is finished.
 IReadStreamPtr CStreamEngine::StartRead (const EStreamTaskType tSource, const char* szFilePath, IStreamCallback* pCallback, const StreamReadParams* pParams)
 {
     if (!szFilePath)
@@ -134,32 +177,40 @@ IReadStreamPtr CStreamEngine::StartRead (const EStreamTaskType tSource, const ch
 
     if (!m_bShutDown)
     {
-        CReadStream_AutoPtr pStream = CReadStream::Allocate(this, tSource, szFilePath, pCallback, pParams);
-
+        AZRequestReadStream* pStream = AZRequestReadStream::Allocate(tSource, szFilePath, pCallback, pParams);
+        if (!pStream)
         {
-            CryAutoLock<CryCriticalSection> lock(m_pausedLock);
-            if ((1 << (uint32)tSource) & m_nPausedDataTypesMask)
-            {
-                // This stream is paused.
-                m_pausedStreams.push_back(pStream);
-                return (CReadStream*)pStream;
-            }
+            CryFatalError("Failed to create Request Stream for %s", szFilePath);
+            return nullptr;
         }
+
+        size_t offset = pParams ? pParams->nOffset : 0;
+        AZStd::chrono::microseconds deadline = pParams ? AZDeadlineFromReadParams(*pParams) : AZStd::chrono::microseconds(0);
+        AZ::IO::Request::PriorityType priority = pParams ? CryStreamPriorityToAZStreamPriority(pParams->ePriority) : AZ::IO::Request::PriorityType::DR_PRIORITY_CRITICAL;
+
+        // Add a ref to stream before binding to the callback. Callback will release the reference when it's invoked.
+        pStream->AddRef();
+        auto callback = [this, pStream](const AZStd::shared_ptr<AZ::IO::Request>&, AZ::IO::SizeType numBytesRead, void* buffer, AZ::IO::Request::StateType state)
+        {
+            QueueRequestCompleteJob(pStream, numBytesRead, buffer, state);
+            // Release reference that was taken above in order to hold onto stream while job is queued
+            pStream->Release();
+        };
 
         // Register stream and start file request.
-        m_streams.insert(pStream);
-        CAsyncIOFileRequest* pFileRequest = pStream->CreateFileRequest();
-        if (!StartFileRequest(pFileRequest))
-        {
-            pFileRequest->Release();
-        }
+        AZStd::shared_ptr<AZ::IO::Request> azRequest = AZ::IO::Streamer::Instance().CreateAsyncRead(szFilePath, offset, pStream->GetFileSize(), pStream->GetFileReadBuffer(),
+            callback, deadline, priority);
+        pStream->SetFileRequest(azRequest);
+        AZ::IO::Streamer::Instance().QueueRequest(azRequest);
 
-        return (CReadStream*)pStream;
+        return static_cast<AZRequestReadStream*>(pStream);
     }
 
     return NULL;
 }
 
+//It is NOT necessary to schedule the callbacks on the main thread.
+//Regular async calls is OK.
 size_t CStreamEngine::StartBatchRead(IReadStreamPtr* pStreamsOut, const StreamReadBatchParams* pReqs, size_t numReqs, AZStd::function<void()>* preRequestCallback)
 {
     FUNCTION_PROFILER(GetISystem(), PROFILE_SYSTEM);
@@ -168,17 +219,12 @@ size_t CStreamEngine::StartBatchRead(IReadStreamPtr* pStreamsOut, const StreamRe
 
     if (!m_bShutDown)
     {
-        uint32 nPausedMask = m_nPausedDataTypesMask;
-        uint32 nPausedRequestTypesMask = 0;
-
         enum
         {
             MaxStreamsPerBatch = 32
         };
-        CReadStream* pStreams[MaxStreamsPerBatch];
-        CReadStream* pPausedStreams[MaxStreamsPerBatch];
+
         size_t nReqIdx = 0;
-        size_t nPaused = 0;
 
         // we have requests to evaluate, call the callback before enqueing the requests
         if (numReqs > 0 && preRequestCallback != nullptr)
@@ -199,84 +245,83 @@ size_t CStreamEngine::StartBatchRead(IReadStreamPtr* pStreamsOut, const StreamRe
                     CryFatalError("Use of the stream engine without a file is deprecated! Use the job system.");
                 }
 
-                CReadStream* pStream;
+                AZRequestReadStream* pStream;
 
                 {
                     FRAME_PROFILER_FAST("CStreamEngine::StartBatchRead_AllocReadStream", gEnv->pSystem, PROFILE_SYSTEM, gEnv->bProfilerEnabled);
-                    pStream = CReadStream::Allocate(this, args.tSource, args.szFile, args.pCallback, &args.params);
+                    pStream = AZRequestReadStream::Allocate(args.tSource, args.szFile, args.pCallback, &args.params);
                 }
 
-                uint32 nRequestTypeMask = (1 << (uint32)args.tSource);
-                if (!(nRequestTypeMask & nPausedMask))
+                if (pStream)
                 {
-                    pStreams[nStreamsInBatch++] = pStream;
+                    pStreamsOut[nValidStreams++] = pStream;
+
+                    // Add a ref to stream before binding to the callback. Callback will release the reference when it's invoked.
+                    pStream->AddRef();
+                    auto callback = [this, pStream](const AZStd::shared_ptr<AZ::IO::Request>&, AZ::IO::SizeType numBytesRead, void* buffer, AZ::IO::Request::StateType state)
+                    {
+                        QueueRequestCompleteJob(pStream, numBytesRead, buffer, state);
+                        // Release reference that was taken above in order to hold onto stream while job is queued
+                        pStream->Release();
+                    };
+
+                    AZStd::shared_ptr<AZ::IO::Request> azRequest = AZ::IO::Streamer::Instance().CreateAsyncRead(args.szFile, args.params.nOffset, pStream->GetFileSize(), pStream->GetFileReadBuffer(),
+                        callback, AZDeadlineFromReadParams(args.params), CryStreamPriorityToAZStreamPriority(args.params.ePriority));
+                    pStream->SetFileRequest(azRequest);
+                    AZ::IO::Streamer::Instance().QueueRequest(azRequest);
                 }
                 else
                 {
-                    nPausedRequestTypesMask |= nRequestTypeMask;
-                    pPausedStreams[nPaused++] = pStream;
-                    if (nPaused == MaxStreamsPerBatch)
-                    {
-                        CryAutoLock<CryCriticalSection> pausedLock(m_pausedLock);
-                        m_pausedStreams.insert(m_pausedStreams.end(), &pPausedStreams[0], &pPausedStreams[nPaused]);
-                        nPaused = 0;
-                    }
+                    CryFatalError("Failed to create Request Stream for %s at mip number %d", args.szFile, (int)nReqIdx);
                 }
-
-                pStreamsOut[nValidStreams++] = pStream;
 
                 --numReqs;
                 ++nReqIdx;
             }
 
-            {
-                FRAME_PROFILER_FAST("CStreamEngine::StartBatchRead_PushStreams", gEnv->pSystem, PROFILE_SYSTEM, gEnv->bProfilerEnabled);
-                CryMT::set<CReadStream_AutoPtr>::AutoLock lock(m_streams.get_lock());
-                for (size_t i = 0; i < nStreamsInBatch; ++i)
-                {
-                    m_streams.insert(pStreams[i]);
-                }
-            }
-
-            CAsyncIOFileRequest* pFileReqs[MaxStreamsPerBatch];
-
-            {
-                FRAME_PROFILER_FAST("CStreamEngine::StartBatchRead_CreateRequests", gEnv->pSystem, PROFILE_SYSTEM, gEnv->bProfilerEnabled);
-                for (size_t i = 0; i < nStreamsInBatch; ++i)
-                {
-                    pFileReqs[i] = pStreams[i]->CreateFileRequest();
-                }
-            }
-
-            {
-                FRAME_PROFILER_FAST("CStreamEngine::StartBatchRead_PushRequests", gEnv->pSystem, PROFILE_SYSTEM, gEnv->bProfilerEnabled);
-                for (size_t i = 0; i < nStreamsInBatch; ++i)
-                {
-                    CAsyncIOFileRequest* pFileRequest = pFileReqs[i];
-                    IF_UNLIKELY (!StartFileRequest(pFileRequest))
-                    {
-                        pFileRequest->Release();
-                    }
-                }
-            }
-        }
-
-        if (nPaused)
-        {
-            CryAutoLock<CryCriticalSection> pausedLock(m_pausedLock);
-            m_pausedStreams.insert(m_pausedStreams.end(), &pPausedStreams[0], &pPausedStreams[nPaused]);
-            nPaused = 0;
-        }
-
-        // If the paused state changed during the queuing, then resume any streams that shouldn't be paused.
-        if ((m_nPausedDataTypesMask & nPausedRequestTypesMask) != nPausedRequestTypesMask)
-        {
-            CryAutoLock<CryCriticalSection> pauseLock(m_pausedLock);
-            ResumePausedStreams_PauseLocked();
         }
     }
 
     return nValidStreams;
+}
+
+void CStreamEngine::QueueRequestCompleteJob(AZRequestReadStream* stream, AZ::IO::SizeType numBytesRead, void* buffer, AZ::IO::Request::StateType requestState)
+{
+    // Some graphics APIs don't support multiple threads instancing resources such as textures. To work around this limitation
+    // the jobs that complete a streaming request are queued and a previous request will kick off the next one. This will cause
+    // only one job that finishes a streaming request to ever be active without causing mutexes to cause stalls in the job system.
+
+    // Add a ref to stream before binding to the callback. Callback will release the reference when it's invoked.
+    stream->AddRef();
+    auto jobFunction = [this, stream, numBytesRead, buffer, requestState]()
+    {
+        stream->OnRequestComplete(numBytesRead, buffer, requestState);
+        // Release reference that was taken above in order to hold onto stream while job is queued
+        stream->Release();
+
+        CryAutoLock<CryCriticalSection> lock(m_pendingRequestCompletionsLock);
+        AZ_Assert(!m_pendingRequestCompletions.empty(), 
+            "CStreamEngine::QueueRequestCompleteJob expects at least one job in the queue as this is this is the job ran from the callback.")
+        // The top request is always the one that's running, so pop that one of the queue and start any other pending jobs.
+        m_pendingRequestCompletions.pop();
+        if (!m_pendingRequestCompletions.empty())
+        {
+            m_pendingRequestCompletions.front()->Start();
+        }
+    };
+
+    AZ::Job* job = AZ::CreateJobFunction(jobFunction, true, AZ::JobContext::GetGlobalContext());
+
+    CryAutoLock<CryCriticalSection> lock(m_pendingRequestCompletionsLock);
+    if (m_pendingRequestCompletions.empty())
+    {
+        m_pendingRequestCompletions.push(job);
+        job->Start();
+    }
+    else
+    {
+        m_pendingRequestCompletions.push(job);
+    }
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -726,20 +771,9 @@ void CStreamEngine::MainThread_FinalizeIOJobs()
             //Check for a certain type of error that we need to handle in a TRC compliant way
             if (pStream->GetError() == ERROR_VERIFICATION_FAIL)
             {
-                //Inform the Platform OS in case any global response is needed and return an error
-                IPlatformOS* pPlatformOS = gEnv->pSystem->GetPlatformOS();
-                if (pPlatformOS != NULL)
-                {
-                    pPlatformOS->HandleArchiveVerificationFailure();
-                }
-                else
-                {
-                    //Notify the POS about the detected corruption so it can handle it
 #if !defined(_RELEASE)
-                    CryWarning(VALIDATOR_MODULE_SYSTEM, VALIDATOR_COMMENT, "Issue detected before PlatformOS has been initialized. Setting a flag so that it can respond when ready.");
+                CryWarning(VALIDATOR_MODULE_SYSTEM, VALIDATOR_COMMENT, "Stream error detected.");
 #endif //!_RELEASE
-                    gEnv->pSystem->AddPlatformOSCreateFlag(( uint8 )IPlatformOS::eCF_EarlyCorruptionDetected);
-                }
             }
 
             pStream->MainThread_Finalize();

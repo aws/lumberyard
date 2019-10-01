@@ -498,23 +498,22 @@ namespace EMStudio
 
     /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    void FileManager::SaveMotion(EMotionFX::Motion* motion)
+    void FileManager::SaveMotion(AZ::u32 motionId)
     {
-        const AZStd::string command = AZStd::string::format("SaveMotionAssetInfo -motionID %i", motion->GetID());
+        const AZStd::string command = AZStd::string::format("SaveMotionAssetInfo -motionID %d", motionId);
 
         AZStd::string result;
         if (EMStudio::GetCommandManager()->ExecuteCommand(command, result))
         {
-            GetNotificationWindowManager()->CreateNotificationWindow(NotificationWindow::TYPE_SUCCESS, 
+            GetNotificationWindowManager()->CreateNotificationWindow(NotificationWindow::TYPE_SUCCESS,
                 "Motion <font color=green>successfully</font> saved");
         }
         else
         {
-            GetNotificationWindowManager()->CreateNotificationWindow(NotificationWindow::TYPE_ERROR, 
+            GetNotificationWindowManager()->CreateNotificationWindow(NotificationWindow::TYPE_ERROR,
                 AZStd::string::format("Motion <font color=red>failed</font> to save<br/><br/>%s", result.c_str()).c_str());
         }
     }
-
 
     AZStd::string FileManager::LoadMotionFileDialog(QWidget* parent)
     {

@@ -112,6 +112,19 @@ namespace AzFramework
         virtual void GetInputDevicesById(InputDeviceByIdMap& o_devicesById) const = 0;
 
         ////////////////////////////////////////////////////////////////////////////////////////////
+        //! Request a map of all currently enabled input devices (keyed by their id) that have been
+        //! assigned to the specified local user id.
+        //!
+        //! Can be called using either:
+        //! - EBus<>::Broadcast (all input devices assigned to localUserId added to o_devicesById)
+        //! - EBus<>::Event(id) (add given input device to o_devicesById if assigned to localUserId)
+        //!
+        //! \param[out] o_devicesById The map of input devices (keyed by their id) to return
+        //! \param[in] localUserId The local user id to check whether input devices are assigned to
+        virtual void GetInputDevicesByIdWithAssignedLocalUserId(InputDeviceByIdMap& o_devicesById,
+                                                                LocalUserId localUserId) const = 0;
+
+        ////////////////////////////////////////////////////////////////////////////////////////////
         //! Request the ids of all input channels associated with an input device.
         //!
         //! Can be called using either:
@@ -130,6 +143,19 @@ namespace AzFramework
         //!
         //! \param[out] o_channelsById The map of input channels (keyed by their id) to return
         virtual void GetInputChannelsById(InputChannelByIdMap& o_channelsById) const = 0;
+
+        ////////////////////////////////////////////////////////////////////////////////////////////
+        //! Request the text displayed on the physical key / button associated with an input channel.
+        //! In the case of keyboard keys, this should take into account the current keyboard layout.
+        //!
+        //! Can be called using either:
+        //! - EBus<>::Broadcast (all input devices will search their channels for inputChannelId)
+        //! - EBus<>::Event(id) (the given device will search its channel for inputChannelId)
+        //!
+        //! \param[in] inputChannelId The input channel id whose key or button text to search for
+        //! \param[out] o_keyOrButtonText The text displayed on the physical key or button if found
+        virtual void GetPhysicalKeyOrButtonText(const InputChannelId& /*inputChannelId*/,
+                                                AZStd::string& /*o_keyOrButtonText*/) const {}
 
         ////////////////////////////////////////////////////////////////////////////////////////////
         //! Tick/update input devices.

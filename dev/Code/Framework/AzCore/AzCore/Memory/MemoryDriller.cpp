@@ -9,7 +9,6 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#ifndef AZ_UNITY_BUILD
 
 #include <AzCore/Memory/MemoryDriller.h>
 #include <AzCore/Math/Crc.h>
@@ -224,5 +223,3 @@ namespace AZ
         }
     }// namespace Debug
 } // namespace AZ
-
-#endif // #ifndef AZ_UNITY_BUILD

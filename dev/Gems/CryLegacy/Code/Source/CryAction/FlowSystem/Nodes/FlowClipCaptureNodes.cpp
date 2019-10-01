@@ -143,7 +143,7 @@ public:
 
                     string localizedToast;
                     wstring wideToast;
-                    gEnv->pSystem->GetLocalizationManager()->LocalizeString(toast, localizedToast);
+                    LocalizationManagerRequestBus::Broadcast(&LocalizationManagerRequestBus::Events::LocalizeString_s, toast, localizedToast, false);
                     Unicode::Convert(wideToast, localizedToast);
 
                     IPlatformOS::IClipCaptureOS::SClipTextInfo clipTextInfo(

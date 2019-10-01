@@ -18,7 +18,7 @@
 #include <AzCore/Math/Random.h>
 #include <AzFramework/Components/TransformComponent.h>
 #include <Shape/BoxShapeComponent.h>
-#include <Tests/TestTypes.h>
+#include <AzCore/UnitTest/TestTypes.h>
 
 using namespace AZ;
 using namespace AzFramework;

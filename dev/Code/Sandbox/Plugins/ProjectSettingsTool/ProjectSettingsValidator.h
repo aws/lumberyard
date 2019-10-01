@@ -14,8 +14,8 @@
 
 #include "FunctorValidator.h"
 
-#include <AZCore/std/string/string.h>
-#include <AZCore/std/containers/unordered_map.h>
+#include <AzCore/std/string/string.h>
+#include <AzCore/std/containers/unordered_map.h>
 
 
 namespace ProjectSettingsTool

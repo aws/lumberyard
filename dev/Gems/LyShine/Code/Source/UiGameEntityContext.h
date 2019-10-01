@@ -86,7 +86,7 @@ protected: // data
         AZ::Entity*                             m_parent;
     };
 
-    AZStd::vector<InstantiatingDynamicSlice> m_instantiatingDynamicSlices;
+    AZStd::unordered_map<AzFramework::SliceInstantiationTicket, InstantiatingDynamicSlice> m_instantiatingDynamicSlices;
 
     AZ::EntityId m_canvasEntityId;
 };

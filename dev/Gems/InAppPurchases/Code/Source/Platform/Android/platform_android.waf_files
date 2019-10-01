@@ -1,0 +1,10 @@
+{
+    "none":
+    {
+        "Source/Platform/Android":
+        [
+            "InAppPurchasesAndroid.h",
+            "InAppPurchasesAndroid.cpp"
+        ]
+    }
+}

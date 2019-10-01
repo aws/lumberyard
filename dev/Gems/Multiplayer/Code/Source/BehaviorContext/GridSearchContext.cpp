@@ -14,10 +14,10 @@
 
 #include <GridMate/NetworkGridMate.h>
 
-#include "Multiplayer/MultiplayerUtils.h"
 #include "Multiplayer/MultiplayerEventsComponent.h"
 #include "Multiplayer/BehaviorContext/GridSystemContext.h"
 #include "Multiplayer/GridMateServiceWrapper/GridMateServiceWrapper.h"
+#include <Multiplayer/MultiplayerUtils.h>
 
 namespace Multiplayer
 {

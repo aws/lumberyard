@@ -44,5 +44,6 @@
         <file>locked.png</file>
         <file>hidden.png</file>
         <file>Slice_Entity.svg</file>
+        <file>trash-small.png</file>
     </qresource>
 </RCC>

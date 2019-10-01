@@ -82,7 +82,7 @@ public:                                                                         
 
 // game object extensions need more information than the generic interface can provide
 struct IGameObjectExtension;
-DECLARE_COMPONENT_POINTERS(IGameObjectExtension);
+DECLARE_SMART_POINTERS(IGameObjectExtension);
 
 struct IGameObjectExtensionCreatorBase
 {

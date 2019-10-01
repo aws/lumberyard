@@ -1,0 +1,9 @@
+{
+  "auto": {
+    "Platform/AppleTV": [
+      "CloudGemSpeechRecognition_Traits_Platform.h", 
+      "CloudGemSpeechRecognition_Traits_AppleTV.h",
+      "../Common/Unimplemented/VoiceRecorderSystemComponent_Unimplemented.cpp"
+    ]
+  }
+}

@@ -276,7 +276,7 @@ class CShaderMan
     //////////////////////////////////////////////////////////////////////////
 
 private:
-	STexAnim* mfReadTexSequence(const char *name, int Flags, bool bFindOnly);
+    STexAnim* mfReadTexSequence(const char *name, int Flags, bool bFindOnly);
     int mfReadTexSequence(STexSamplerRT* smp, const char* name, int Flags, bool bFindOnly);
 
     CShader* mfNewShader(const char* szName);
@@ -428,7 +428,7 @@ public:
     FXShaderCacheCombinations m_ShaderCacheExportCombinations;
     AZ::IO::HandleType m_FPCacheCombinations[2];
 
-    typedef std::vector<CCryNameTSCRC, stl::STLGlobalAllocator<CCryNameTSCRC> > ShaderCacheMissesVec;
+    typedef std::vector<CCryNameTSCRC> ShaderCacheMissesVec;
     ShaderCacheMissesVec m_ShaderCacheMisses;
     string m_ShaderCacheMissPath;
     ShaderCacheMissCallback m_ShaderCacheMissCallback;
@@ -630,6 +630,7 @@ public:
     void AddGLCombination(FXShaderCacheCombinations& CmbsMap, SCacheCombination& cc);
     void FilterShaderCombinations(std::vector<SCacheCombination>& Cmbs, const std::vector<CShaderListFilter>& Filters);
     void mfPrecacheShaders(bool bStatsOnly);
+    void mfGetShaderList();
     void _PrecacheShaderList(bool bStatsOnly);
     void mfOptimiseShaders(const char* szFolder, bool bForce);
     void mfMergeShaders();

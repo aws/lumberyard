@@ -174,16 +174,19 @@ namespace AZStd
         : first(AZStd::forward<Args1>(AZStd::get<I1>(first_args))...)
         , second(AZStd::forward<Args2>(AZStd::get<I2>(second_args))...)
     {
+        // VS2015 triggers an unreferenced formal parameter warning when a variadic argument expands to zero args
+        (void)first_args;
+        (void)second_args;
         AZ_STATIC_ASSERT((AZStd::is_same<TupleType<Args2...>, tuple<Args2...>>::value), "AZStd::pair tuple constructor can be called with AZStd::tuple instances");
     }
 
     // Pair constructor overloads which take in a tuple is implemented here as tuple is not included at the place where pair declares the constructor
     template<class T1, class T2>
     template<template<class...> class TupleType, class... Args1, class... Args2>
-    pair<T1, T2>::pair(piecewise_construct_t,
+    pair<T1, T2>::pair(piecewise_construct_t piecewise_construct,
         TupleType<Args1...> first_args,
         TupleType<Args2...> second_args)
-        : pair(first_args, second_args, AZStd::make_index_sequence<sizeof...(Args1)>{}, AZStd::make_index_sequence<sizeof...(Args2)>{})
+        : pair(piecewise_construct, first_args, second_args, AZStd::make_index_sequence<sizeof...(Args1)>{}, AZStd::make_index_sequence<sizeof...(Args2)>{})
     {
         AZ_STATIC_ASSERT((AZStd::is_same<TupleType<Args1...>, tuple<Args1...>>::value), "AZStd::pair tuple constructor can be called with AZStd::tuple instances");
     }
@@ -414,38 +417,30 @@ namespace AZStd
 //template< class T1, class T2 >
 //struct tuple_element<1, std::pair<T1,T2> >;
 
-// Some platforms use a non-standard "class std::tuple_size<std::pair>" and "class std::tuple_element<std::pair>" instead of struct
-// so if it is an apple platform use class to silence compiler warnings
-#if defined(AZ_PLATFORM_APPLE) || defined(AZ_PLATFORM_ANDROID) || defined(AZ_PLATFORM_LINUX)
-#define tuple_size_element_pair_class_or_struct class
-#else
-#define tuple_size_element_pair_class_or_struct struct
-#endif
-
 namespace std
 {
     template<class T1, class T2>
-    tuple_size_element_pair_class_or_struct tuple_size<AZStd::pair<T1, T2>> : public AZStd::integral_constant<size_t, 2> {};
+    AZ_TRAIT_TUPLE_SIZE_ELEMENT_PAIR_CLASS_OR_STRUCT tuple_size<AZStd::pair<T1, T2>> : public AZStd::integral_constant<size_t, 2> {};
 
     template<class T1, class T2>
-    tuple_size_element_pair_class_or_struct tuple_element<0, AZStd::pair<T1, T2>>
+    AZ_TRAIT_TUPLE_SIZE_ELEMENT_PAIR_CLASS_OR_STRUCT tuple_element<0, AZStd::pair<T1, T2>>
     {
     public:
         using type = T1;
     };
 
     template<class T1, class T2>
-    tuple_size_element_pair_class_or_struct tuple_element<1, AZStd::pair<T1, T2>>
+    AZ_TRAIT_TUPLE_SIZE_ELEMENT_PAIR_CLASS_OR_STRUCT tuple_element<1, AZStd::pair<T1, T2>>
     {
     public:
         using type = T2;
     };
 
     template<class T, size_t N>
-    tuple_size_element_pair_class_or_struct tuple_size<AZStd::array<T, N>> : public AZStd::integral_constant<size_t, N> {};
+    AZ_TRAIT_TUPLE_SIZE_ELEMENT_PAIR_CLASS_OR_STRUCT tuple_size<AZStd::array<T, N>> : public AZStd::integral_constant<size_t, N> {};
 
     template<size_t I, class T, size_t N>
-    tuple_size_element_pair_class_or_struct tuple_element<I, AZStd::array<T, N>>
+    AZ_TRAIT_TUPLE_SIZE_ELEMENT_PAIR_CLASS_OR_STRUCT tuple_element<I, AZStd::array<T, N>>
     {
         AZ_STATIC_ASSERT(I < N, "AZStd::tuple_element has been called on array with an index that is out of bounds");
         using type = T;

@@ -226,12 +226,29 @@ namespace AzToolsFramework
             if (AZ::Intersect::IntersectRayCappedCylinder(
                 rayOrigin, rayDirection, base, axis, minorRadius * 2.0f, majorRadius + minorRadius, t1, t2) > 0)
             {
-                rayIntersectionDistance = AZ::GetMin(t1, t2);
-                const AZ::Vector3 intersection = rayOrigin + rayIntersectionDistance * rayDirection;
-                const float distanceSq = (intersection - center).GetLengthSq();
-
                 const float thresholdSq = powf(majorRadius - minorRadius, 2.0f);
-                return distanceSq > thresholdSq;
+                // util lambda used for distance checks at both 't' values
+                const auto validHolowCylinderHit =
+                    [&rayOrigin, &rayDirection, &center, thresholdSq](const float t)
+                {
+                    // only return a valid intersection if the hit was
+                    // not in the 'hollow' part of the cylinder
+                    const AZ::Vector3 intersection = rayOrigin + rayDirection * t;
+                    const float distanceSq = (intersection - center).GetLengthSq();
+                    return distanceSq > thresholdSq;
+                };
+
+                if (validHolowCylinderHit(t1))
+                {
+                    rayIntersectionDistance = t1;
+                    return true;
+                }
+
+                if (validHolowCylinderHit(t2))
+                {
+                    rayIntersectionDistance = t2;
+                    return true;
+                }
             }
 
             return false;

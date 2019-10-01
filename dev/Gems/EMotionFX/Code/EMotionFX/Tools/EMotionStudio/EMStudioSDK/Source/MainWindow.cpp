@@ -59,12 +59,14 @@
 #include <EMotionFX/Source/Importer/Importer.h>
 #include <EMotionFX/Source/MotionManager.h>
 #include <EMotionFX/Source/MotionSet.h>
+AZ_PUSH_DISABLE_WARNING(4267, "-Wconversion")
 #include <ISystem.h>
+AZ_POP_DISABLE_WARNING
 #include <LyViewPaneNames.h>
 #include <MysticQt/Source/ComboBox.h>
 
 // Include this on windows to detect device remove and insert messages, used for the game controller support.
-#ifdef MCORE_PLATFORM_WINDOWS
+#if defined(AZ_PLATFORM_WINDOWS)
     #include <dbt.h>
 #endif
 
@@ -284,7 +286,7 @@ namespace EMStudio
         delete mUnselectCallback;
         delete m_clearSelectionCallback;
         delete mSaveWorkspaceCallback;
-		
+
         EMotionFX::ActorEditorRequestBus::Handler::BusDisconnect();
 
         if (m_undoMenuCallback)
@@ -311,6 +313,9 @@ namespace EMStudio
         setDockNestingEnabled(true);
 
         setFocusPolicy(Qt::StrongFocus);
+
+        CommandSystem::SelectionList& selectionList = GetCommandManager()->GetCurrentSelection();
+        selectionList.Clear();
 
         // create the menu bar
         QWidget* menuWidget = new QWidget();
@@ -392,7 +397,7 @@ namespace EMStudio
             tr("Redo"),
             this,
             &MainWindow::OnRedo,
-            QKeySequence::Redo
+            QKeySequence(Qt::CTRL + Qt::SHIFT + Qt::Key_Z)
         );
         m_undoAction->setDisabled(true);
         m_redoAction->setDisabled(true);
@@ -527,7 +532,7 @@ namespace EMStudio
 
     bool NativeEventFilter::nativeEventFilter(const QByteArray& /*eventType*/, void* message, long* /*result*/)
     {
-        #ifdef MCORE_PLATFORM_WINDOWS
+        #if defined(AZ_PLATFORM_WINDOWS)
         MSG* msg = static_cast<MSG*>(message);
         if (msg->message == WM_DEVICECHANGE)
         {
@@ -2004,13 +2009,10 @@ namespace EMStudio
         AZStd::vector<AZStd::string> motionSetFilenames;
 
         // get the number of urls and iterate over them
-        AZStd::string filename;
         AZStd::string extension;
-        const uint32 numFiles = filenames.size();
-        for (uint32 i = 0; i < numFiles; ++i)
+        for (const AZStd::string& filename : filenames)
         {
             // get the complete file name and extract the extension
-            filename = filenames[i];
             AzFramework::StringFunc::Path::GetExtension(filename.c_str(), extension, false /* include dot */);
 
             if (AzFramework::StringFunc::Equal(extension.c_str(), "actor"))
@@ -2276,6 +2278,12 @@ namespace EMStudio
     EMotionFX::ActorInstance* MainWindow::GetSelectedActorInstance()
     {
         return GetCommandManager()->GetCurrentSelection().GetSingleActorInstance();
+    }
+
+
+    EMotionFX::Actor* MainWindow::GetSelectedActor()
+    {
+        return GetCommandManager()->GetCurrentSelection().GetSingleActor();
     }
 
 

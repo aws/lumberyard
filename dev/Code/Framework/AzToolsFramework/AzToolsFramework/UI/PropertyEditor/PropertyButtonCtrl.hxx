@@ -35,6 +35,8 @@ namespace AzToolsFramework
         virtual ~PropertyButtonCtrl();
 
         void SetButtonText(const char* text);
+        void SetButtonToolTip(const char* description);
+
         QString GetButtonText() const;
 
 Q_SIGNALS:

@@ -69,7 +69,7 @@ namespace AzFramework
         /// Set the velocity of the entity.
         /// \param velocity World-space velocity.
         virtual void SetVelocity(const AZ::Vector3& /*velocity*/) { }
- 
+
         /// Get the angular velocity of the entity.
         virtual AZ::Vector3 GetAngularVelocity() { return AZ::Vector3::CreateZero(); }
         /// Set the angular velocity of the entity.
@@ -123,11 +123,11 @@ namespace AzFramework
         /// Deprecated.
         /// @deprecated Please use GetLinearDamping and GetAngularDamping instead.
         virtual float GetDamping() { return GetLinearDamping(); }
-        
+
         /// Deprecated.
         /// @deprecated Please use SetLinearDamping and SetAngularDamping instead.
         virtual void SetDamping(float damping) { SetLinearDamping(damping); }
-        
+
         /// Deprecated.
         /// @deprecated Please use GetSleepThreshold instead.
         virtual float GetMinEnergy() { return GetSleepThreshold(); }
@@ -282,7 +282,7 @@ namespace AzFramework
         , public AZ::BehaviorEBusHandler
     {
     public:
-        AZ_EBUS_BEHAVIOR_BINDER_WITH_DOC(PhysicsComponentNotificationBusHandler, "{245B5B85-533C-4A5E-B1DC-F06CAD896D37}", AZ::SystemAllocator, OnPhysicsEnabled, (), OnPhysicsDisabled, (), OnCollision, ({ "Collision", "Structure containing information about Collision" }));
+        AZ_EBUS_BEHAVIOR_BINDER(PhysicsComponentNotificationBusHandler, "{245B5B85-533C-4A5E-B1DC-F06CAD896D37}", AZ::SystemAllocator, OnPhysicsEnabled, OnPhysicsDisabled, OnCollision);
 
         void OnPhysicsEnabled() override
         {

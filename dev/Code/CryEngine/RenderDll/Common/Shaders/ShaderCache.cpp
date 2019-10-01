@@ -231,7 +231,7 @@ static uint64 sGetFlag(char** s, SShaderGen* shaderGenInfo)
 
         if (i == shaderGenInfo->m_BitMask.Num())
         {
-            AZ_Warning("ShaderCache", "Couldn't find runtime flag '%s' (skipped)", name);
+            AZ_Warning("ShaderCache", false, "Couldn't find runtime flag '%s' (skipped)", name);
         }
 
         if (**s == '|')
@@ -433,7 +433,9 @@ void CShaderMan::mfInitShadersCache(byte bForLevel, FXShaderCacheCombinations* C
         }
         if (fileHandle == AZ::IO::InvalidHandle)
         {
-            AZ::IO::HandleType statusdstFileHandle = gEnv->pFileIO->Open(nameComb.c_str(), AZ::IO::OpenMode::ModeRead | AZ::IO::OpenMode::ModeBinary, statusdstFileHandle);
+            AZ::IO::HandleType statusdstFileHandle = AZ::IO::InvalidHandle;
+            gEnv->pFileIO->Open(nameComb.c_str(), AZ::IO::OpenMode::ModeRead | AZ::IO::OpenMode::ModeBinary, statusdstFileHandle);
+
             if (statusdstFileHandle != AZ::IO::InvalidHandle)
             {
                 gEnv->pFileIO->Close(statusdstFileHandle);
@@ -2092,12 +2094,88 @@ void CShaderMan::mfPrecacheShaders(bool bStatsOnly)
 #if defined(AZ_PLATFORM_WINDOWS)
     CRenderer::CV_r_shadersPlatform = AZ::PLATFORM_WINDOWS_64;
     CParserBin::SetupForD3D11();
-#elif defined(AZ_PLATFORM_APPLE_OSX)
+#elif defined(AZ_PLATFORM_MAC)
     CRenderer::CV_r_shadersPlatform = AZ::PLATFORM_APPLE_OSX;
     CParserBin::SetupForMETAL();
 #endif
 
     gRenDev->m_cEF.m_Bin.InvalidateCache();
+}
+
+void CShaderMan::mfGetShaderList()
+{
+    if (CRenderer::CV_r_shadersorbis) // ACCEPTED_USE
+    {
+        CParserBin::m_bShaderCacheGen = true;
+        CParserBin::SetupForOrbis(); // ACCEPTED_USE
+        CryLogAlways("\nGet ShaderList_Provo.txt...");
+    }
+    else
+    if (CRenderer::CV_r_shadersdurango) // ACCEPTED_USE
+    {
+        CParserBin::m_bShaderCacheGen = true;
+        CParserBin::SetupForDurango(); // ACCEPTED_USE
+        CryLogAlways("\nGet ShaderList_Xenia.txt...");
+    }
+    else
+    if (CRenderer::CV_r_shadersdx11)
+    {
+        CParserBin::m_bShaderCacheGen = true;
+        CParserBin::SetupForD3D11();
+        CryLogAlways("\nGet shader list for D3D11...");
+    }
+    else
+    if (CRenderer::CV_r_shadersGL4)
+    {
+        CParserBin::m_bShaderCacheGen = true;
+        CParserBin::SetupForGL4();
+        CryLogAlways("\nGet shader list for GLSL 4...");
+    }
+    else
+    if (CRenderer::CV_r_shadersGLES3)
+    {
+        CParserBin::m_bShaderCacheGen = true;
+        CParserBin::SetupForGLES3();
+        CryLogAlways("\nGet shader list for GLSL-ES 3...");
+    }
+    else
+    if (CRenderer::CV_r_shadersMETAL)
+    {
+        CParserBin::m_bShaderCacheGen = true;
+        CParserBin::SetupForMETAL();
+        CryLogAlways("\nGet shader list for METAL...");
+    }
+
+    std::vector<uint8> Data;
+    if (NRemoteCompiler::ESOK == NRemoteCompiler::CShaderSrv::Instance().GetShaderList(Data))
+    {
+        CryLogAlways("\nGet shader list Succeeded...\nStart Writing shader list to @user@\\cache\\shaders\\shaderlist.txt ...");
+        mfCloseShadersCache(0);
+        mfCloseShadersCache(1);
+        AZ::IO::HandleType fileHandle = gEnv->pCryPak->FOpen("@user@\\cache\\shaders\\shaderlist.txt", "w+b");
+        if (fileHandle != AZ::IO::InvalidHandle)
+        {
+            size_t writtenSoFar = 0;
+            size_t remaining = Data.size();
+            while (remaining)
+            {
+                writtenSoFar += gEnv->pCryPak->FWrite(Data.data() + writtenSoFar, 1, remaining, fileHandle);
+                remaining -= writtenSoFar;
+            }
+            gEnv->pCryPak->FClose(fileHandle);
+            CryLogAlways("\nFinished writing shader list to @user@\\cache\\shaders\\shaderlist.txt ...");
+        }
+        else
+        {
+            CryLogAlways("\nFailed writing shader list to @user@\\cache\\shaders\\shaderlist.txt ...");
+        }
+    }
+    else
+    {
+        CryLogAlways("\nGet shader list Failed...");
+    }
+    
+    CParserBin::SetupForD3D11();
 }
 
 static SResFileLookupData* sStoreLookupData(CResFileLookupDataMan& LevelLookup, CResFile* pRF, uint32 CRC, float fVersion)

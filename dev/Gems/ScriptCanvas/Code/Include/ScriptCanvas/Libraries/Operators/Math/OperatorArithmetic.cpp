@@ -15,78 +15,250 @@
 #include <ScriptCanvas/Core/Contracts/MathOperatorContract.h>
 #include <AzCore/Math/MathUtils.h>
 
+#include <ScriptCanvas/Utils/SerializationUtils.h>
+
 namespace ScriptCanvas
 {
     namespace Nodes
     {
         namespace Operators
         {
-            void OperatorArithmetic::ConfigureContracts(SourceType sourceType, AZStd::vector<ContractDescriptor>& contractDescs)
+            bool OperatorArithmetic::OperatorArithmeticVersionConverter(AZ::SerializeContext& serializeContext, AZ::SerializeContext::DataElementNode& classElement)
             {
-                if (sourceType == SourceType::SourceInput
-                    || sourceType == SourceType::SourceOutput)
+                if (classElement.GetVersion() < Version::RemoveOperatorBase)
                 {
-                    ContractDescriptor operatorMethodContract;
-                    operatorMethodContract.m_createFunc = [this]() -> MathOperatorContract* { 
-                        auto mathContract = aznew MathOperatorContract(OperatorFunction().data());
-                        mathContract->SetSupportedNativeTypes(GetSupportedNativeDataTypes());
-                        return mathContract;
-                    };
-                    contractDescs.push_back(AZStd::move(operatorMethodContract));
-                }
-            }
-
-            void OperatorArithmetic::OnSourceTypeChanged()
-            {
-            }
-
-            void OperatorArithmetic::OnSourceConnected(const SlotId& sourceSlotId)
-            {
-                Data::Type type = Data::FromAZType(m_sourceTypes[0]);
-                AZStd::string dataTypeName = Data::GetName(type);
-
-                SetSourceNames(dataTypeName, "Result");
-
-                HandleDynamicSlots();
-            }
-
-            void OperatorArithmetic::OnSourceDisconnected(const SlotId& sourceSlotId)
-            {
-                if (!HasSourceConnection())
-                {
-                    SetSourceNames("Value", "Result");
-                }
-                else
-                {
-                    Slot* sourceSlot = GetSlot(sourceSlotId);
-
-                    if (sourceSlot->GetType() == SlotType::DataIn)
+                    // Remove OperatorBase
+                    if (!SerializationUtils::RemoveBaseClass(serializeContext, classElement))
                     {
-                        if (!m_inputSlots.empty())
+                        return false;
+                    }
+
+                    classElement.RemoveElementByName(AZ_CRC("m_unary", 0x1ddbd40d));
+                }
+
+                return true;
+            }
+
+            void OperatorArithmetic::OnDynamicGroupDisplayTypeChanged(const AZ::Crc32& dynamicGroup, const Data::Type& dataType)
+            {
+                if (dynamicGroup == GetArithmeticDynamicTypeGroup())
+                {
+                    UpdateArithmeticSlotNames();
+
+                    if (dataType.IsValid())
+                    {
+                        AZStd::vector< Slot* > groupedSlots = GetSlotsWithDynamicGroup(GetArithmeticDynamicTypeGroup());
+
+                        for (Slot* slot : groupedSlots)
                         {
-                            for (auto inputSlotId : m_inputSlots)
+                            if (slot->IsInput())
                             {
-                                if (!IsConnected(inputSlotId))
+                                Datum* newDatum = ModInput(slot->GetId());
+                                InitializeDatum(newDatum, dataType);
+                            }
+                        }
+                    }                    
+                }
+            }
+
+            void OperatorArithmetic::OnInputSignal(const SlotId& slotId)
+            {
+                const SlotId inSlotId = OperatorBaseProperty::GetInSlotId(this);
+                if (slotId == inSlotId)
+                {
+                    if (m_applicableInputSlots.empty())
+                    {
+                        AZStd::vector< Slot* > groupedSlots = GetSlotsWithDynamicGroup(GetArithmeticDynamicTypeGroup());
+
+                        for (Slot* groupedSlot : groupedSlots)
+                        {
+                            if (groupedSlot->IsInput())
+                            {
+                                SlotId groupedSlotId = groupedSlot->GetId();
+
+                                if (IsConnected(groupedSlotId) || IsValidArithmeticSlot(groupedSlotId))
                                 {
-                                    if (RemoveSlot(inputSlotId))
-                                    {
-                                        m_inputSlots.erase(inputSlotId);
-                                        break;
-                                    }
+                                    m_applicableInputSlots.emplace_back(groupedSlotId);
                                 }
                             }
+                            else if (groupedSlot->IsOutput())
+                            {
+                                m_outputSlot = groupedSlot->GetId();                                
+                            }
+                        }
+                    }
+
+                    InvokeOperator();
+                }
+            }
+
+            void OperatorArithmetic::OnConfigured()
+            {
+                auto slotList = GetSlotsWithDynamicGroup(GetArithmeticDynamicTypeGroup());
+
+                // If we have no dynamically grouped slots. Add in our defaults.
+                if (slotList.empty())
+                {
+                    CreateSlot("Value", "An operand to use in performing the specified Operation", ConnectionType::Input);
+                    CreateSlot("Value", "An operand to use in performing the specified Operation", ConnectionType::Input);
+
+                    CreateSlot("Result", "The result of the specified operation", ConnectionType::Output);
+                }
+            }
+
+            void OperatorArithmetic::OnInit()
+            {
+                // Version conversion for previous elements                
+                for (Slot& currentSlot : ModSlots())
+                {                    
+                    if (currentSlot.IsData())
+                    {
+                        auto& contracts = currentSlot.GetContracts();
+
+                        for (auto& currentContract : contracts)
+                        {
+                            MathOperatorContract* contract = azrtti_cast<MathOperatorContract*>(currentContract.get());
+
+                            if (contract)
+                            {
+                                if (contract->HasOperatorFunction())
+                                {
+                                    contract->SetSupportedOperator(OperatorFunction());
+                                    contract->SetSupportedNativeTypes(GetSupportedNativeDataTypes());
+                                }
+                            }                            
+                        }
+
+                        if (!currentSlot.IsDynamicSlot())
+                        {
+                            currentSlot.SetDynamicDataType(DynamicDataType::Value);
+                        }
+
+                        currentSlot.SetDisplayGroup(GetArithmeticDisplayGroup());
+
+                        if (currentSlot.GetDynamicGroup() != GetArithmeticDynamicTypeGroup())
+                        {
+                            SetDynamicGroup(currentSlot.GetId(), GetArithmeticDynamicTypeGroup());
                         }
                     }
                 }
             }
 
-            void OperatorArithmetic::InvokeOperator()
+            bool OperatorArithmetic::IsNodeExtendable() const
             {
-                if (m_sourceTypes.empty())
+                return true;
+            }
+
+            int OperatorArithmetic::GetNumberOfExtensions() const
+            {
+                return 1;
+            }
+
+            ExtendableSlotConfiguration OperatorArithmetic::GetExtensionConfiguration(int extensionIndex) const
+            {
+                ExtendableSlotConfiguration configuration;
+
+                if (extensionIndex == 0)
+                {
+                    configuration.m_name = "Add Operand";
+                    configuration.m_tooltip = "Adds a new operand for the operator";
+
+                    configuration.m_displayGroup = GetArithmeticDisplayGroup();
+                    configuration.m_identifier = GetArithmeticExtensionId();
+
+                    configuration.m_connectionType = ConnectionType::Input;
+                }
+
+                return configuration;
+            }
+
+            SlotId OperatorArithmetic::HandleExtension(AZ::Crc32 extensionId)
+            {
+                if (extensionId == GetArithmeticExtensionId())
+                {
+                    SlotId retVal = CreateSlot("Value", "An operand to use in performing the specified Operation", ConnectionType::Input);
+                    UpdateArithmeticSlotNames();
+
+                    return retVal;
+                }
+
+                return SlotId();
+            }
+
+            bool OperatorArithmetic::CanDeleteSlot(const SlotId& slotId) const
+            {
+                Slot* slot = GetSlot(slotId);            
+
+                if (slot->GetDynamicGroup() == GetArithmeticDynamicTypeGroup())
+                {
+                    if (!slot->IsOutput())
+                    {                        
+                        auto slotList = GetSlotsWithDynamicGroup(GetArithmeticDynamicTypeGroup());
+
+                        int inputCount = 0;
+
+                        for (Slot* slotElement : slotList)
+                        {
+                            if (slotElement->IsInput())
+                            {
+                                ++inputCount;
+                            }
+                        }
+
+                        // Only allow removal if our input count if greater then 2 to maintain our
+                        // visual expectation.
+                        return inputCount > 2;
+                    }
+                }
+
+                return false;
+            }
+
+            void OperatorArithmetic::Evaluate(const ArithmeticOperands& operands, Datum& result)
+            {
+                if (operands.empty())
                 {
                     return;
                 }
-                    
+
+                const Datum* operand = operands.front();
+
+                if (operands.size() == 1)
+                {
+                    result = (*operand);
+                    return;
+                }
+
+                auto type = operand->GetType();
+
+                if (type.GetType() != Data::eType::BehaviorContextObject)
+                {
+                    Operator(type.GetType(), operands, result);
+                }
+            }
+
+            void OperatorArithmetic::Operator(Data::eType type, const ArithmeticOperands& operands, Datum& result)
+            {
+                AZ_UNUSED(type);
+                AZ_UNUSED(operands);
+                AZ_UNUSED(result);
+            }
+
+            void OperatorArithmetic::InitializeDatum(Datum* datum, const Data::Type& dataType)
+            {
+                AZ_UNUSED(datum);
+                AZ_UNUSED(dataType);
+            }
+
+            void OperatorArithmetic::InvokeOperator()
+            {
+                Data::Type displayType = GetDisplayType(GetArithmeticDynamicTypeGroup());
+
+                if (!displayType.IsValid())
+                {
+                    return;
+                }
+
                 AZStd::vector<const Datum*> operands;
 
                 for (const SlotId& inputSlot : m_applicableInputSlots)
@@ -107,158 +279,79 @@ namespace ScriptCanvas
                 SignalOutput(GetSlotId("Out"));
             }
 
-            void OperatorArithmetic::OnDataInputSlotConnected(const SlotId& slotId, const Endpoint& endpoint)
+            SlotId OperatorArithmetic::CreateSlot(AZStd::string_view name, AZStd::string_view toolTip, ConnectionType connectionType)
             {
-                if (!m_unary)
-                {
-                    HandleDynamicSlots();
-                }
+                DynamicDataSlotConfiguration slotConfiguration;
+
+                slotConfiguration.m_name = name;
+                slotConfiguration.m_toolTip = toolTip;
+                slotConfiguration.SetConnectionType(connectionType);
+
+                ContractDescriptor operatorMethodContract;
+                operatorMethodContract.m_createFunc = [this]() -> MathOperatorContract* {
+                    auto mathContract = aznew MathOperatorContract(OperatorFunction().data());
+                    mathContract->SetSupportedNativeTypes(GetSupportedNativeDataTypes());
+                    return mathContract;
+                };
+
+                slotConfiguration.m_contractDescs.push_back(AZStd::move(operatorMethodContract));
+
+                slotConfiguration.m_displayGroup = GetArithmeticDisplayGroup();
+                slotConfiguration.m_dynamicGroup = GetArithmeticDynamicTypeGroup();
+                slotConfiguration.m_dynamicDataType = DynamicDataType::Any;
+
+                slotConfiguration.m_addUniqueSlotByNameAndType = false;
+
+                SlotId slotId = AddSlot(slotConfiguration);
+
+                Datum* newDatum = ModInput(slotId);
+                InitializeDatum(newDatum, GetDisplayType(GetArithmeticDynamicTypeGroup()));
+
+                return slotId;
             }
 
-            void OperatorArithmetic::OnDataInputSlotDisconnected(const SlotId& slotId, const Endpoint& endpoint)
+            void OperatorArithmetic::UpdateArithmeticSlotNames()
             {
-                if (RemoveSlot(slotId))
+                Data::Type displayType = GetDisplayType(GetArithmeticDynamicTypeGroup());
+
+                if (displayType.IsValid())
                 {
-                    m_inputSlots.erase(slotId);
+                    AZStd::string dataTypeName = Data::GetName(displayType);
+                    SetSourceNames(dataTypeName, "Result");
                 }
-            }
-
-            void OperatorArithmetic::OnInputChanged(const Datum& input, const SlotId& slotID)
-            {
-            }
-
-            void OperatorArithmetic::Evaluate(const AZStd::vector<const Datum*>& operands, Datum& result)
-            {
-                if (operands.empty())
+                else
                 {
-                    return;
-                }
-
-                const Datum* operand = operands.front();
-
-                if (operands.size() == 1)
-                {
-                    result = (*operand);
-                    return;
-                }
-                
-                auto type = operand->GetType();
-
-                if (type.GetType() != Data::eType::BehaviorContextObject)
-                {
-                    Operator(type.GetType(), operands, result);
-                }
-            }
-
-            void OperatorArithmetic::Operator(Data::eType type, const AZStd::vector<const Datum*>& operands, Datum& result)
-            {
-                AZ_UNUSED(type);
-                AZ_UNUSED(operands);
-                AZ_UNUSED(result);
-            }
-
-            void OperatorArithmetic::OnInputSignal(const SlotId& slotId)
-            {
-                const SlotId inSlotId = OperatorBaseProperty::GetInSlotId(this);
-                if (slotId == inSlotId)
-                {
-                    if (m_applicableInputSlots.empty())
-                    {
-                        for (const SlotId& sourceSlotId : GetSourceSlots())
-                        {
-                            Slot* slot = GetSlot(sourceSlotId);
-
-                            if (slot->GetType() == SlotType::DataOut)
-                            {
-                                if (!m_outputSlot.IsValid())
-                                {
-                                    m_outputSlot = sourceSlotId;
-                                }
-
-                                continue;
-                            }
-
-                            if (IsConnected(sourceSlotId) || IsValidArithmeticSlot(sourceSlotId))
-                            {
-                                m_applicableInputSlots.emplace_back(sourceSlotId);
-                            }
-                        }
-
-                        for (const SlotId& inputSlot : m_inputSlots)
-                        {
-                            if (IsConnected(inputSlot) || IsValidArithmeticSlot(inputSlot))
-                            {
-                                m_applicableInputSlots.emplace_back(inputSlot);
-                            }
-                        }
-
-                        if (!m_outputSlot.IsValid())
-                        {
-                            for (const SlotId& outputSlotId : m_outputSlots)
-                            {
-                                m_outputSlot = outputSlotId;
-
-                                if (m_outputSlot.IsValid())
-                                {
-                                    break;
-                                }
-                            }
-                        }
-                    }
-
-                    InvokeOperator();
+                    SetSourceNames("Value", "Result");
                 }
             }
 
             void OperatorArithmetic::SetSourceNames(const AZStd::string& inputName, const AZStd::string& outputName)
             {
-                for (const auto& sourceSlotId : GetSourceSlots())
+                AZStd::vector< Slot* > groupedSlots = GetSlotsWithDynamicGroup(GetArithmeticDynamicTypeGroup());
+                for (Slot* slot : groupedSlots)
                 {
-                    Slot* sourceSlot = GetSlot(sourceSlotId);
-
-                    if (sourceSlot)
+                    if (slot)
                     {
-                        switch (sourceSlot->GetType())
+                        if (!slot->IsData())
                         {
-                        case SlotType::DataIn:
-                            sourceSlot->Rename(inputName);
-                            break;
-                        case SlotType::DataOut:
-                            sourceSlot->Rename(outputName);
-                            break;
-                        default:
-                            AZ_Assert("ScriptCanvas", "Unknown Source Slot type for Arithmetic Operator. Cannot perform rename.");
-                            break;
+                            AZ_Assert(false, "%s", "Unknown Source Slot type for Arithmetic Operator. Cannot perform rename.");
                         }
-                    }
-                }
-            }
-
-            void OperatorArithmetic::HandleDynamicSlots()
-            {
-                if (AreSourceSlotsFull(OperatorBase::SourceType::SourceInput) && !m_unary)
-                {
-                    bool inputsFull = true;
-
-                    for (auto inputSlotId : m_inputSlots)
-                    {
-                        if (!IsConnected(inputSlotId))
+                        else if (slot->IsInput())
                         {
-                            inputsFull = false;
-                            break;
+                            slot->Rename(inputName);
                         }
-                    }
-
-                    if (inputsFull)
-                    {
-                        AddSlotWithSourceType();
+                        else if (slot->IsOutput())
+                        {
+                            slot->Rename(outputName);
+                        }
                     }
                 }
             }
 
             bool OperatorArithmetic::IsValidArithmeticSlot(const SlotId& slotId) const
             {
-                return true;
+                const Datum* datum = GetInput(slotId);
+                return (datum != nullptr);
             }
         }
     }

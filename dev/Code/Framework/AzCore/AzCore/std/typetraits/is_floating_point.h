@@ -21,6 +21,8 @@ namespace AZStd
     AZSTD_TYPE_TRAIT_BOOL_CONST_VOLATILE_SPEC1(is_floating_point, float, true)
     AZSTD_TYPE_TRAIT_BOOL_CONST_VOLATILE_SPEC1(is_floating_point, double, true)
     AZSTD_TYPE_TRAIT_BOOL_CONST_VOLATILE_SPEC1(is_floating_point, long double, true)
+    template<class T>
+    constexpr bool is_floating_point_v = is_floating_point<T>::value;
 }
 
 #endif // AZSTD_TYPE_TRAITS_IS_FLOATING_INCLUDED

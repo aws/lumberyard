@@ -110,6 +110,18 @@ indicator = '\x1b[K%s%s%s\r'
 if is_win32 and 'NOCOLOR' in os.environ:
 	indicator = '%s%s%s\r'
 
+def extended_path(path):
+	"""
+	Maximum Path Length Limitation on Windows is 260 characters, use extended-length path to bypass this limitation
+	"""
+	if is_win32 and len(path) >= 260:
+		if path.startswith('\\'):
+			return r'\\?\UNC\{}'.format(path.lstrip('\\'))
+		else:
+			return r'\\?\{}'.format(path)
+	else:
+		return path
+
 def readf(fname, m='r', encoding='ISO8859-1'):
 	"""
 	Read an entire file into a string, use this function instead of os.open() whenever possible.

@@ -9,11 +9,8 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#ifndef AZ_UNITY_BUILD
 
 #include <AzCore/Jobs/JobManager.h>
-
-#ifdef AZCORE_JOBS_IMPL_WORK_STEALING
 
 #include <AzCore/Jobs/Job.h>
 #include <AzCore/Jobs/Internal/JobNotify.h>
@@ -29,7 +26,7 @@
 #endif
 
 using namespace AZ;
-using namespace Internal;
+using namespace AZ::Internal;
 
 
 void WorkQueue::LocalPushBack(Job* job)
@@ -122,7 +119,8 @@ void JobManagerWorkStealing::AddPendingJob(Job* job)
 #endif
 
     AZ_PROFILE_INTERVAL_START(AZ::Debug::ProfileCategory::JobManagerDetailed, job, "AzCore Job Queued Awaiting Execute");
-    if (info && info->m_isWorker)
+    const bool isThisManagersWorkerThread = info ? (info->m_owningManager == this && info->m_isWorker) : false;
+    if (isThisManagersWorkerThread)
     {
         //current thread is a worker, push to the local queue
         info->m_pendingJobs.LocalPushBack(job);
@@ -241,6 +239,34 @@ void JobManagerWorkStealing::PrintStats()
     }
 #endif
 }
+
+
+Job* JobManagerWorkStealing::GetCurrentJob() const
+{
+    const ThreadInfo* info = m_currentThreadInfo;
+#ifndef AZ_MONOLITHIC_BUILD
+    if (!info)
+    {
+        //we could be in a different module where m_currentThreadInfo has not been set yet (on a worker or user thread assisting with jobs)
+        info = FindCurrentThreadInfo();
+    }
+#endif
+    return info ? info->m_currentJob : nullptr;
+}
+
+AZ::u32 JobManagerWorkStealing::GetWorkerThreadId() const
+{
+    const ThreadInfo* info = m_currentThreadInfo;
+#ifndef AZ_MONOLITHIC_BUILD
+    if (!info)
+    {
+        info = CrossModuleFindAndSetWorkerThreadInfo();
+    }
+#endif
+    return info ? info->m_workerId : JobManagerBase::InvalidWorkerThreadId;
+}
+
+
 
 void JobManagerWorkStealing::ProcessJobsWorker(ThreadInfo* info)
 {
@@ -575,6 +601,7 @@ JobManagerWorkStealing::ThreadList JobManagerWorkStealing::CreateWorkerThreads(c
 
         ThreadInfo* info = aznew ThreadInfo;
         info->m_isWorker = true;
+        info->m_owningManager = this;
         info->m_workerId = iThread;
 
         AZStd::thread_desc threadDesc;
@@ -625,6 +652,3 @@ inline void JobManagerWorkStealing::ActivateWorker()
     }
 }
 
-#endif // AZCORE_JOBS_IMPL_WORK_STEALING
-
-#endif // #ifndef AZ_UNITY_BUILD

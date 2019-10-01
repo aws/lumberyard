@@ -347,6 +347,20 @@ namespace Audio
         ~SAudioManagerRequestDataInternal<eAMRT_CHANGE_LANGUAGE>()override {}
     };
 
+    ///////////////////////////////////////////////////////////////////////////////////////////////////
+    template<>
+    struct SAudioManagerRequestDataInternal<eAMRT_SET_AUDIO_PANNING_MODE>
+        : public SAudioManagerRequestDataInternalBase
+    {
+        SAudioManagerRequestDataInternal(const SAudioManagerRequestData<eAMRT_SET_AUDIO_PANNING_MODE>* const pAMRData)
+            : SAudioManagerRequestDataInternalBase(pAMRData->eType)
+            , m_panningMode(pAMRData->m_panningMode)
+        {}
+
+        ~SAudioManagerRequestDataInternal<eAMRT_SET_AUDIO_PANNING_MODE>() override {}
+
+        PanningMode m_panningMode;
+    };
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
     // Audio Callback Manager Requests (Internal)
@@ -683,13 +697,13 @@ namespace Audio
         explicit SAudioObjectRequestDataInternal(const SAudioObjectRequestData<eAORT_EXECUTE_SOURCE_TRIGGER>* const pAORData)
             : SAudioObjectRequestDataInternalBase(pAORData->eType)
             , m_triggerId(pAORData->m_triggerId)
-            , m_sourceId(pAORData->m_sourceId)
+            , m_sourceInfo(pAORData->m_sourceInfo)
         {}
 
         ~SAudioObjectRequestDataInternal<eAORT_EXECUTE_SOURCE_TRIGGER>() override {}
 
         const TAudioControlID m_triggerId;
-        const TAudioSourceId m_sourceId;
+        const SAudioSourceInfo m_sourceInfo;
     };
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -706,7 +720,6 @@ namespace Audio
 
         MultiPositionParams m_params;
     };
-
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
     // Audio Listener Requests (Internal)

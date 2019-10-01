@@ -72,7 +72,7 @@ StringOutcome ReadFile(const AZStd::string& file, AZStd::string& fileContents)
     settingsFile.Read(fileContents.size(), fileContents.data());
 
     settingsFile.Close();
-    return AZ::Success();
+    return AZ::Success(AZStd::string());
 }
 
 ConfigFileContainer::ConfigFileContainer(const AZStd::string& filePath)
@@ -90,7 +90,7 @@ ConfigFileContainer::ConfigFileContainer(const AZStd::string& filePath)
 
 StringOutcome ConfigFileContainer::ApplyConfiguration(const DeploymentConfig&)
 {
-    return AZ::Success();
+    return AZ::Success(AZStd::string());
 }
 
 StringOutcome ConfigFileContainer::Load()
@@ -130,7 +130,7 @@ StringOutcome ConfigFileContainer::Write() const
     }
 
     settingsFile.Close();
-    return AZ::Success();
+    return AZ::Success(AZStd::string());
 }
 
 const AZStd::string& ConfigFileContainer::GetString(const AZStd::string& key, bool includeComments) const

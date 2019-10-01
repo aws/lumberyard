@@ -41,6 +41,7 @@ namespace ScriptCanvasEditor
         , private AzFramework::AssetCatalogEventBus::Handler
         , private EditorScriptCanvasAssetNotificationBus::Handler
         , private EditorScriptCanvasComponentLoggingBus::Handler
+        , private EditorScriptCanvasComponentRequestBus::Handler
     {
     public:
         AZ_COMPONENT(EditorScriptCanvasComponent, "{C28E2D29-0746-451D-A639-7F113ECF5D72}", AzToolsFramework::Components::EditorComponentBase);
@@ -75,6 +76,11 @@ namespace ScriptCanvasEditor
         AZ::EntityId GetEditorEntityId() const { return GetEntity() ? GetEntityId() : AZ::EntityId(); }
         AZ::NamedEntityId GetNamedEditorEntityId() const override { return GetEntity() ? GetNamedEntityId() : AZ::NamedEntityId(); }
         AZ::Data::Asset<ScriptCanvasAsset> GetAsset() const override;        
+        //=====================================================================
+        
+        //=====================================================================
+        // EditorScriptCanvasComponentRequestBus
+        void SetAssetId(const AZ::Data::AssetId& assetId) override;
         //=====================================================================
 
         //=====================================================================

@@ -26,14 +26,28 @@ namespace ScriptCanvas
             
             void ErrorHandler::OnInit()
             {
-                AddSlot("Out", "", SlotType::ExecutionOut);
-                AZStd::vector<ContractDescriptor> contractDescs;
-                // \todo split node abstractions into executable and !executable
-                AZStd::vector<AZ::Uuid> forbiddenTypes{ azrtti_typeid<PureData>() };
-                auto func = [forbiddenTypes]() { return aznew ContractRTTI(forbiddenTypes, ContractRTTI::Flags::Exclusive); };
-                ContractDescriptor descriptor{ AZStd::move(func) };
-                contractDescs.emplace_back(descriptor);
-                AddSlot(k_sourceName, "", SlotType::DataIn, contractDescs);
+                {
+                    ExecutionSlotConfiguration slotConfiguration("Out", ConnectionType::Output);
+                    AddSlot(slotConfiguration);
+                }
+                
+                {
+                    DynamicDataSlotConfiguration slotConfiguration;
+
+                    slotConfiguration.m_name = k_sourceName;                    
+                    slotConfiguration.SetConnectionType(ConnectionType::Input);
+
+                    slotConfiguration.m_dynamicDataType = DynamicDataType::Any;
+
+                    // \todo split node abstractions into executable and !executable
+                    AZStd::vector<AZ::Uuid> forbiddenTypes{ azrtti_typeid<PureData>() };
+                    auto func = [forbiddenTypes]() { return aznew ContractRTTI(forbiddenTypes, ContractRTTI::Flags::Exclusive); };
+                    ContractDescriptor descriptor{ AZStd::move(func) };
+
+                    slotConfiguration.m_contractDescs.emplace_back(descriptor);
+
+                    AddSlot(slotConfiguration);
+                }                
             }
             
             AZStd::vector<AZStd::pair<Node*, const SlotId>> ErrorHandler::GetSources() const

@@ -684,13 +684,8 @@ namespace AZStd
     template<class RandomAccessIterator>
     AZ_FORCE_INLINE AZStd::size_t hash_string(RandomAccessIterator first, AZStd::size_t length)
     {
-#ifdef AZ_OS64
         size_t hash = 14695981039346656037ULL;
         const size_t fnvPrime = 1099511628211ULL;
-#else
-        size_t hash = 2166136261U;
-        const size_t fnvPrime = 16777619U;
-#endif
         const char* cptr = reinterpret_cast<const char*>(&(*first));
         for (; length; --length)
         {

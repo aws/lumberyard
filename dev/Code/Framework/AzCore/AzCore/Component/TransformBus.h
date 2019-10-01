@@ -624,6 +624,14 @@ namespace AZ
         virtual void OnParentChanged(EntityId oldParent, EntityId newParent)    { (void)oldParent; (void)newParent; }
 
         /**
+         * Signals that the transform of the parent of the entity is about to change. Some components will need adjusting before this happens.
+         * To find if an entity ID is valid, use AZ::EntityId::IsValid().
+         * @param oldTransform The transform of the old parent. 
+         * @param newTransform The transform of the new parent. 
+         */
+        virtual void OnParentTransformWillChange(AZ::Transform oldTransform, AZ::Transform newTransform) { (void)oldTransform; (void)newTransform; }
+
+        /**
          * Signals that a child was added to the entity.
          * @param child The entity ID of the added child.
          */

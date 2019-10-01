@@ -76,7 +76,7 @@ namespace LmbrCentral
                     "Fog Volume", "Allows to specify an area with a fog")
                     ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
                         ->Attribute(AZ::Edit::Attributes::Category, "Environment")
-                        ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/FogVolume.png")
+                        ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/FogVolume.svg")
                         ->Attribute(AZ::Edit::Attributes::ViewportIcon, "Editor/Icons/Components/Viewport/FogVolume.png")
                         ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("Game", 0x232b318c))
                         ->Attribute(AZ::Edit::Attributes::HelpPageURL, "http://docs.aws.amazon.com/console/lumberyard/userguide/fog-volume-component")
@@ -114,7 +114,12 @@ namespace LmbrCentral
 
     void EditorFogVolumeComponent::OnTransformChanged(const AZ::Transform& local, const AZ::Transform& world)
     {
-        RefreshFog();
+        // Entities transform component calls OnTransformChanged before this component is activated
+        // This only happens during undo operations so we guard against that in the Editor component
+        if (m_fogVolume.GetRenderNode())
+        {
+            RefreshFog();
+        }
     }
 
     void EditorFogVolumeComponent::OnShapeChanged(ShapeComponentNotifications::ShapeChangeReasons changeReason)

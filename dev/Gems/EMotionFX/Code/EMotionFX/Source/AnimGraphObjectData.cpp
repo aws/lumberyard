@@ -67,4 +67,23 @@ namespace EMotionFX
         return sizeof(*this);
     }
 
-}   // namespace EMotionFX
+    void AnimGraphObjectData::SaveChunk(const uint8* chunkData, uint32 chunkSize, uint8** inOutBuffer, uint32& inOutSize) const
+    {
+        if (*inOutBuffer)
+        {
+            memcpy(*inOutBuffer, chunkData, chunkSize);
+            *inOutBuffer += chunkSize;
+        }
+        inOutSize += chunkSize;
+    }
+
+    void AnimGraphObjectData::LoadChunk(uint8* chunkData, uint32 chunkSize, uint8** inOutBuffer, uint32& inOutSize)
+    {
+        if (*inOutBuffer)
+        {
+            memcpy(chunkData, *inOutBuffer, chunkSize);
+            *inOutBuffer += chunkSize;
+        }
+        inOutSize += chunkSize;
+    }
+} // namespace EMotionFX

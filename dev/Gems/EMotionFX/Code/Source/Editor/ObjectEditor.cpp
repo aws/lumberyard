@@ -45,15 +45,10 @@ namespace EMotionFX
     }
 
 
-    ObjectEditor::~ObjectEditor()
-    {
-    }
-
-
-    void ObjectEditor::AddInstance(void* object, const AZ::TypeId& objectTypeId)
+    void ObjectEditor::AddInstance(void* object, const AZ::TypeId& objectTypeId, void* aggregateInstance, void* compareInstance)
     {
         m_object = object;
-        m_propertyEditor->AddInstance(object, objectTypeId);
+        m_propertyEditor->AddInstance(object, objectTypeId, aggregateInstance, compareInstance);
         m_propertyEditor->InvalidateAll();
     }
 
@@ -81,5 +76,3 @@ namespace EMotionFX
     }
 
 } // namespace EMotionFX
-
-#include <Source/Editor/ObjectEditor.moc>

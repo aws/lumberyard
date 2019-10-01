@@ -58,7 +58,7 @@ namespace ScriptCanvasEditor
             if (object && object->IS_A(ScriptCanvas::Data::Type::EntityID()))
             {
                 const AZ::EntityId* entityId = object->GetAs<AZ::EntityId>();
-                if (entityId && *entityId == ScriptCanvas::SelfReferenceId)
+                if (entityId && *entityId == ScriptCanvas::GraphOwnerId)
                 {
                     return "Self";
                 }
@@ -86,7 +86,7 @@ namespace ScriptCanvasEditor
             {
                 if (selectedItem->data().toInt() == EntityMenuAction::SetToSelf)
                 {
-                    SetEntityId(ScriptCanvas::SelfReferenceId);
+                    SetEntityId(ScriptCanvas::GraphOwnerId);
                 }
             }
         }

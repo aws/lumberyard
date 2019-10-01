@@ -645,7 +645,7 @@ int qhull(strided_pointer<Vec3> _pts, int npts, index_t*& pTris, qhullmalloc qma
                             relocate_ptritem(trnew, diff);
                             if (trdata != trbuf)
                             {
-                                delete trdata;
+                                delete[] trdata;
                             }
                             trdata = trdata_new;
                         }

@@ -9,13 +9,11 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#ifndef AZ_UNITY_BUILD
 
 #include <AzCore/IO/GenericStreams.h>
 #include <AzCore/IO/Streamer.h>
 #include <AzCore/IO/SystemFile.h>
 #include <AzCore/IO/StreamerRequest.h>
-#include <AzCore/IO/VirtualStream.h>
 #include <AzCore/IO/IOUtils.h>
 
 namespace AZ
@@ -112,46 +110,32 @@ namespace AZ
         /*
          * StreamerStream
          */
-        StreamerStream::StreamerStream(const char* filename, OpenMode flags, SizeType baseOffset, SizeType fakeLen)
-            : m_baseOffset(baseOffset)
-            , m_curPos(0)
-            , m_fakeLen(fakeLen)
-            , m_isStreamOwner(true)
-        {
-            m_stream = Streamer::Instance().RegisterFileStream(filename, flags, false);
-        }
-
-        StreamerStream::StreamerStream(VirtualStream* stream, bool ownStream, SizeType baseOffset, SizeType fakeLen)
-            : m_stream(stream)
+        StreamerStream::StreamerStream(const char* filename, OpenMode, SizeType baseOffset, SizeType fakeLen)
+            : m_filename(filename)
             , m_baseOffset(baseOffset)
             , m_curPos(0)
             , m_fakeLen(fakeLen)
-            , m_isStreamOwner(ownStream)
         {
-            AZ_Assert(stream, "Cannot create StreamerStream with stream = NULL!");
-        }
-
-        StreamerStream::~StreamerStream()
-        {
-            if (m_stream && m_isStreamOwner)
-            {
-                Streamer::Instance().UnRegisterStream(m_stream);
-            }
         }
 
         bool StreamerStream::IsOpen() const
         {
-            return m_stream && m_stream->IsOpen();
+            if (m_exists == Availability::NotChecked)
+            {
+                m_exists = FileIOBase::GetInstance()->Exists(m_filename.c_str()) ?
+                    Availability::FileExists : Availability::FileMissing;
+            }
+            return m_exists == Availability::FileExists;
         }
 
         bool StreamerStream::CanRead() const
         {
-            return m_stream && m_stream->CanRead();
+            return true;
         }
 
         bool StreamerStream::CanWrite() const
         {
-            return m_stream && m_stream->CanWrite();
+            return false;
         }
 
         void StreamerStream::Seek(OffsetType bytes, SeekMode mode)
@@ -162,36 +146,31 @@ namespace AZ
         SizeType StreamerStream::Read(SizeType bytes, void* oBuffer)
         {
             AZ_Assert(AZ::IO::Streamer::IsReady(), "AZ::IO::Streamer has not been started!");
-            SizeType bytesRead = 0;
-            if (m_stream)
-            {
-                SizeType len = GetLength();
-                SizeType bytesToRead = bytes + m_curPos > len ? len - m_curPos : bytes;
-                bytesRead = AZ::IO::Streamer::Read(m_stream, m_curPos + m_baseOffset, bytesToRead, oBuffer);
-                m_curPos += bytesRead;
-            }
+            
+            SizeType len = GetLength();
+            SizeType bytesToRead = bytes + m_curPos > len ? len - m_curPos : bytes;
+            SizeType bytesRead = AZ::IO::Streamer::Instance().Read(m_filename.c_str(), m_curPos + m_baseOffset, bytesToRead, oBuffer);
+            m_curPos += bytesRead;
+            
             return bytesRead;
         }
 
-        SizeType StreamerStream::Write(SizeType bytes, const void* iBuffer)
+        SizeType StreamerStream::Write(SizeType, const void*)
         {
-            AZ_Assert(AZ::IO::Streamer::IsReady(), "AZ::IO::Streamer has not been started!");
-            SizeType bytesWritten = 0;
-            if (m_stream)
-            {
-                AZ_Assert(m_stream->CanWrite(), "This stream is not writable!");
-                AZ_Assert(m_fakeLen == static_cast<SizeType>(-1) || bytes + m_curPos <= GetLength(), "Length has been restricted by m_fakeLen and you are trying to write past it!");
-                bytesWritten = AZ::IO::Streamer::Write(m_stream, iBuffer, bytes, Request::PriorityType::DR_PRIORITY_NORMAL, NULL, m_curPos + m_baseOffset);
-                m_curPos += bytesWritten;
-            }
-            return bytesWritten;
+            AZ_Assert(false, "AZ::IO::Streamer does not support writing.");
+            return 0;
         }
 
         SizeType StreamerStream::GetLength() const
         {
-            return m_fakeLen == static_cast<SizeType>(-1)
-                   ? m_stream ? m_stream->GetLength() - m_baseOffset : 0
-                   : m_fakeLen;
+            if (m_fakeLen == static_cast<SizeType>(-1))
+            {
+                if (!FileIOBase::GetInstance()->Size(m_filename.c_str(), m_fakeLen))
+                {
+                    m_fakeLen = 0;
+                }
+            }
+            return m_fakeLen;
         }
 
         /*
@@ -340,5 +319,3 @@ namespace AZ
 
     }   // namespace IO
 }   // namespace AZ
-
-#endif // #ifndef AZ_UNITY_BUILD

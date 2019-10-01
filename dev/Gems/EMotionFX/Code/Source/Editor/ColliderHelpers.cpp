@@ -16,6 +16,11 @@
 #include <EMotionFX/CommandSystem/Source/ColliderCommands.h>
 #include <Editor/ColliderHelpers.h>
 #include <Editor/SkeletonModel.h>
+#include <QAction>
+#include <QGridLayout>
+#include <QMenu>
+#include <QObject>
+#include <QPushButton>
 
 
 namespace EMotionFX
@@ -144,5 +149,77 @@ namespace EMotionFX
         }
 
         return false;
+    }
+
+    void ColliderHelpers::AddCopyFromMenu(QObject* parent, QMenu* parentMenu, PhysicsSetup::ColliderConfigType createForType,
+        const AZStd::function<void(PhysicsSetup::ColliderConfigType copyFrom, PhysicsSetup::ColliderConfigType copyTo)>& copyFunc)
+    {
+        QMenu* copyFromMenu = parentMenu->addMenu("Copy from");
+
+        for (int i = 0; i < PhysicsSetup::ColliderConfigType::Unknown; ++i)
+        {
+            const PhysicsSetup::ColliderConfigType copyFrom = static_cast<PhysicsSetup::ColliderConfigType>(i);
+            if (copyFrom == createForType)
+            {
+                continue;
+            }
+
+            // Disable cloth - not available.
+            if (copyFrom == PhysicsSetup::ColliderConfigType::Cloth)
+            {
+                continue;
+            }
+
+            QAction* action = copyFromMenu->addAction(PhysicsSetup::GetVisualNameForColliderConfigType(copyFrom));
+            QObject::connect(action, &QAction::triggered, parent, [=]
+                {
+                    copyFunc(copyFrom, createForType);
+                });
+        }
+    }
+
+    void ColliderHelpers::AddCopyFromMenu(QObject* parent, QMenu* parentMenu, PhysicsSetup::ColliderConfigType createForType, const QModelIndexList& modelIndices)
+    {
+        AddCopyFromMenu(parent, parentMenu, createForType, [=](PhysicsSetup::ColliderConfigType copyFrom, PhysicsSetup::ColliderConfigType copyTo)
+            {
+                ColliderHelpers::CopyColliders(modelIndices, copyFrom, copyTo);
+            });
+    }
+
+    QLayout* ColliderHelpers::CreateCopyFromButtonLayout(QObject* parent, PhysicsSetup::ColliderConfigType createForType,
+        const AZStd::function<void(PhysicsSetup::ColliderConfigType copyFrom, PhysicsSetup::ColliderConfigType copyTo)>& copyFunc)
+    {
+        QGridLayout* layout = new QGridLayout();
+        layout->setMargin(0);
+
+        int counter = 0;
+        for (int i = 0; i < PhysicsSetup::ColliderConfigType::Unknown; ++i)
+        {
+            const PhysicsSetup::ColliderConfigType copyFrom = static_cast<PhysicsSetup::ColliderConfigType>(i);
+            if (copyFrom == createForType)
+            {
+                continue;
+            }
+
+            // Disable cloth - not available.
+            if (copyFrom == PhysicsSetup::ColliderConfigType::Cloth)
+            {
+                continue;
+            }
+
+            const QString buttonText = QString("Copy from %1").arg(PhysicsSetup::GetVisualNameForColliderConfigType(copyFrom));
+            QPushButton* button = new QPushButton(buttonText);
+            QObject::connect(button, &QPushButton::clicked, parent, [=]
+                {
+                    copyFunc(copyFrom, createForType);
+                });
+
+            const int row = counter / 2;
+            const int column = counter % 2;
+            layout->addWidget(button, row, column, Qt::AlignTop);
+            counter++;
+        }
+
+        return layout;
     }
 } // namespace EMotionFX

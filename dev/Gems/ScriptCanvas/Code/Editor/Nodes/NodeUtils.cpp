@@ -45,6 +45,7 @@
 #include <GraphCanvas/Components/Nodes/NodeTitleBus.h>
 #include <GraphCanvas/Components/Nodes/Wrapper/WrapperNodeBus.h>
 #include <GraphCanvas/Components/Slots/Data/DataSlotBus.h>
+#include <GraphCanvas/Components/Slots/Extender/ExtenderSlotBus.h>
 #include <GraphCanvas/Components/Slots/SlotBus.h>
 #include <GraphCanvas/Components/VisualBus.h>
 #include <GraphCanvas/GraphCanvasBus.h>
@@ -260,7 +261,7 @@ namespace ScriptCanvasEditor
                 GraphCanvas::TranslationKeyedString slotNameKeyedString(slot.GetName(), nodeKeyedString.m_context);
                 GraphCanvas::TranslationKeyedString slotTooltipKeyedString(slot.GetToolTip(), nodeKeyedString.m_context);
 
-                TranslationItemType itemType = TranslationHelper::GetItemType(slot.GetType());
+                TranslationItemType itemType = TranslationHelper::GetItemType(slot.GetDescriptor());
 
                 if (itemType == TranslationItemType::ParamDataSlot || itemType == TranslationItemType::ReturnDataSlot)
                 {
@@ -273,6 +274,16 @@ namespace ScriptCanvasEditor
 
                 GraphCanvas::SlotRequestBus::Event(graphCanvasSlotId, &GraphCanvas::SlotRequests::SetTranslationKeyedName, slotNameKeyedString);
                 GraphCanvas::SlotRequestBus::Event(graphCanvasSlotId, &GraphCanvas::SlotRequests::SetTranslationKeyedTooltip, slotTooltipKeyedString);
+            }
+
+            if (node->IsNodeExtendable())
+            {
+                for (int i = 0; i < node->GetNumberOfExtensions(); ++i)
+                {
+                    ScriptCanvas::ExtendableSlotConfiguration configuration = node->GetExtensionConfiguration(i);
+
+                    DisplayExtensionSlot(graphCanvasEntity->GetId(), configuration);
+                }
             }
 
             GraphCanvas::TranslationKeyedString subtitleKeyedString(nodeConfiguration.m_subtitleFallback, nodeConfiguration.m_translationContext);
@@ -382,7 +393,7 @@ namespace ScriptCanvasEditor
             // Create the GraphCanvas slots
             for (const auto& slot : entityNode->GetSlots())
             {
-                if (slot.GetType() == ScriptCanvas::SlotType::DataOut)
+                if (slot.GetDescriptor() == ScriptCanvas::SlotDescriptors::DataOut())
                 {
                     DisplayScriptCanvasSlot(graphCanvasNodeId, slot);
                 }
@@ -477,14 +488,14 @@ namespace ScriptCanvasEditor
                 GraphCanvas::TranslationKeyedString slotNameKeyedString(slot.GetName(), translationContext);
                 GraphCanvas::TranslationKeyedString slotTooltipKeyedString(slot.GetToolTip(), translationContext);
 
-                if (methodNode->HasBusID() && busId == slot.GetId() && slot.GetType() == ScriptCanvas::SlotType::DataIn)
+                if (methodNode->HasBusID() && busId == slot.GetId() && slot.GetDescriptor() == ScriptCanvas::SlotDescriptors::DataIn())
                 {
                     slotNameKeyedString = TranslationHelper::GetEBusSenderBusIdNameKey();
                     slotTooltipKeyedString = TranslationHelper::GetEBusSenderBusIdTooltipKey();
                 }
                 else
                 {
-                    TranslationItemType itemType = TranslationHelper::GetItemType(slot.GetType());
+                    TranslationItemType itemType = TranslationHelper::GetItemType(slot.GetDescriptor());
 
                     int& index = (itemType == TranslationItemType::ParamDataSlot) ? paramIndex : outputIndex;
 
@@ -556,15 +567,14 @@ namespace ScriptCanvasEditor
 
                 GraphCanvas::SlotGroup group = GraphCanvas::SlotGroups::Invalid;
 
-                if (slot->GetType() == ScriptCanvas::SlotType::ExecutionIn
-                    || slot->GetType() == ScriptCanvas::SlotType::ExecutionOut)
+                if (slot->GetDescriptor().IsExecution())
                 {
                     group = SlotGroups::EBusConnectionSlotGroup;
                 }
 
                 AZ::EntityId gcSlotId = DisplayScriptCanvasSlot(graphCanvasNodeId, (*slot), group);
 
-                if (busNode->IsIDRequired() && slot->GetType() == ScriptCanvas::SlotType::DataIn)
+                if (busNode->IsIDRequired() && slot->GetDescriptor() == ScriptCanvas::SlotDescriptors::DataIn())
                 {
                     GraphCanvas::SlotRequestBus::Event(gcSlotId, &GraphCanvas::SlotRequests::SetTranslationKeyedName, TranslationHelper::GetEBusHandlerBusIdNameKey());
                     GraphCanvas::SlotRequestBus::Event(gcSlotId, &GraphCanvas::SlotRequests::SetTranslationKeyedTooltip, TranslationHelper::GetEBusHandlerBusIdTooltipKey());
@@ -684,15 +694,14 @@ namespace ScriptCanvasEditor
 
                 GraphCanvas::SlotGroup group = GraphCanvas::SlotGroups::Invalid;
 
-                if (slot->GetType() == ScriptCanvas::SlotType::ExecutionIn
-                    || slot->GetType() == ScriptCanvas::SlotType::ExecutionOut)
+                if (slot->GetDescriptor().IsExecution())
                 {
                     group = SlotGroups::EBusConnectionSlotGroup;
                 }
 
                 AZ::EntityId gcSlotId = DisplayScriptCanvasSlot(graphCanvasNodeId, (*slot), group);
 
-                if (busNode->IsIDRequired() && slot->GetType() == ScriptCanvas::SlotType::DataIn)
+                if (busNode->IsIDRequired() && slot->GetDescriptor() == ScriptCanvas::SlotDescriptors::DataIn())
                 {
                     GraphCanvas::SlotRequestBus::Event(gcSlotId, &GraphCanvas::SlotRequests::SetTranslationKeyedName, TranslationHelper::GetEBusHandlerBusIdNameKey());
                     GraphCanvas::SlotRequestBus::Event(gcSlotId, &GraphCanvas::SlotRequests::SetTranslationKeyedTooltip, TranslationHelper::GetEBusHandlerBusIdTooltipKey());
@@ -1242,6 +1251,69 @@ namespace ScriptCanvasEditor
             AZ::Entity* slotEntity = nullptr;
 
             GraphCanvas::GraphCanvasRequestBus::BroadcastResult(slotEntity, &GraphCanvas::GraphCanvasRequests::CreatePropertySlot, graphCanvasNodeId, propertyId, slotConfiguration);
+
+            if (slotEntity)
+            {
+                slotEntity->Init();
+                slotEntity->Activate();
+
+                GraphCanvas::NodeRequestBus::Event(graphCanvasNodeId, &GraphCanvas::NodeRequests::AddSlot, slotEntity->GetId());
+            }
+
+            return slotEntity ? slotEntity->GetId() : AZ::EntityId();
+        }
+
+        AZ::EntityId DisplayExtensionSlot(const AZ::EntityId& graphCanvasNodeId, const ScriptCanvas::ExtendableSlotConfiguration& extenderConfiguration)
+        {
+            AZ_PROFILE_TIMER("ScriptCanvas", __FUNCTION__);
+
+            GraphCanvas::ExtenderSlotConfiguration graphCanvasConfiguration;
+
+            graphCanvasConfiguration.m_name = extenderConfiguration.m_name;
+            graphCanvasConfiguration.m_tooltip = extenderConfiguration.m_tooltip;
+            graphCanvasConfiguration.m_slotGroup = GraphCanvas::SlotGroup(extenderConfiguration.m_displayGroup);
+
+            graphCanvasConfiguration.m_extenderId = extenderConfiguration.m_identifier;
+
+            if (extenderConfiguration.m_connectionType == ScriptCanvas::ConnectionType::Input)
+            {
+                graphCanvasConfiguration.m_connectionType = GraphCanvas::CT_Input;
+            }
+            else if (extenderConfiguration.m_connectionType == ScriptCanvas::ConnectionType::Output)
+            {
+                graphCanvasConfiguration.m_connectionType = GraphCanvas::CT_Output;
+            }
+
+            
+            AZ::Entity* slotEntity = nullptr;
+
+            GraphCanvas::GraphCanvasRequestBus::BroadcastResult(slotEntity, &GraphCanvas::GraphCanvasRequests::CreateSlot, graphCanvasNodeId, graphCanvasConfiguration);
+
+            if (slotEntity)
+            {
+                slotEntity->Init();
+                slotEntity->Activate();
+
+                GraphCanvas::NodeRequestBus::Event(graphCanvasNodeId, &GraphCanvas::NodeRequests::AddSlot, slotEntity->GetId());
+            }
+
+            return slotEntity ? slotEntity->GetId() : AZ::EntityId();
+        }
+
+        AZ::EntityId DisplayExtensionSlot(const AZ::EntityId& graphCanvasNodeId, GraphCanvas::ConnectionType connectionType, const AZStd::string& name, const AZStd::string& toolTip, const AZStd::string& displayGroup, GraphCanvas::ExtenderId extenderId)
+        {
+            GraphCanvas::ExtenderSlotConfiguration graphCanvasConfiguration;
+
+            graphCanvasConfiguration.m_name = name;
+            graphCanvasConfiguration.m_tooltip = toolTip;
+            graphCanvasConfiguration.m_slotGroup = GraphCanvas::SlotGroup(displayGroup);
+
+            graphCanvasConfiguration.m_extenderId = extenderId;
+            graphCanvasConfiguration.m_connectionType = connectionType;
+
+            AZ::Entity* slotEntity = nullptr;
+
+            GraphCanvas::GraphCanvasRequestBus::BroadcastResult(slotEntity, &GraphCanvas::GraphCanvasRequests::CreateSlot, graphCanvasNodeId, graphCanvasConfiguration);
 
             if (slotEntity)
             {

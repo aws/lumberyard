@@ -67,6 +67,7 @@
 #include <AzFramework/IO/FileOperations.h>
 #include <AzFramework/StringFunc/StringFunc.h>
 #include <AzCore/IO/SystemFile.h> // for AZ_MAX_PATH_LEN
+#include "../RenderDll/Common/Memory/VRAMDrillerBus.h"
 
 ////////////////////////////////////////////////////////////////////////////////////////
 // RenderScene
@@ -1132,10 +1133,10 @@ void C3DEngine::WorldStreamUpdate()
                         AZ::IO::Print(resultsFile,
                             "<phase name=\"Streaming_Level_Start_Throughput\">\n"
                             "<metrics name=\"Streaming\">\n"
-                            "<metric name=\"Duration_Sec\"	value=\"%.1f\"/>\n"
+                            "<metric name=\"Duration_Sec\" value=\"%.1f\"/>\n"
                             "<metric name=\"BlockSize_KB\" value=\"%d\"/>\n"
                             "<metric name=\"Throughput_MB_Sec\" value=\"%.1f\"/>\n"
-                            "<metric name=\"Jobs_Num\"	value=\"%d\"/>\n"
+                            "<metric name=\"Jobs_Num\" value=\"%d\"/>\n"
                             "<metric name=\"Read_MB\" value=\"%.1f\"/>\n"
                             "</metrics>\n"
                             "</phase>\n",
@@ -2390,8 +2391,13 @@ void C3DEngine::DisplayInfo(float& fTextPosX, float& fTextPosY, float& fTextStep
     // If stat averaging is on, compute blend amount for current stats.
     float fFPS = GetTimer()->GetFrameRate();
 
-
-    arrFPSforSaveLevelStats.push_back(SATURATEB((int)fFPS));
+    // Limit the FPS history for a single level to ~1 hour.
+    // This vector is cleared on each level load, but during a soak test this continues to grow every frame
+    const AZStd::size_t maxFPSEntries = 60 * 60 * 60; // 60ms * 60s * 60min
+    if (arrFPSforSaveLevelStats.size() < maxFPSEntries)
+    {
+        arrFPSforSaveLevelStats.push_back(SATURATEB((int)fFPS));
+    }
 
     float fBlendTime = GetTimer()->GetCurrTime();
     int iBlendMode = 0;
@@ -3695,6 +3701,54 @@ void C3DEngine::DisplayInfo(float& fTextPosX, float& fTextPosY, float& fTextStep
     if (IAISystem* pAISystem = gEnv->pAISystem)
     {
         pAISystem->ResetFrameTicks();
+    }
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void C3DEngine::DisplayMemoryStatistics()
+{    
+    if (GetCVars()->e_MemoryProfiling > 0)
+    {
+        float memoryXPos = 512.0f;
+        float memoryYPos = 32.0f;
+        float memoryYPosStepSize = 32.0f;
+
+        ColorF headerColor = ColorF(0.4f, 0.9f, 0.3f, 1.0f);
+        ColorF statisticColor = ColorF(0.4f, 0.9f, 0.9f, 1.0f);
+        
+        // Store position for where we want to render the VRAM memory usage header (so we can simply print a total)
+        float gpuHeaderYPos = memoryYPos;
+        memoryYPos += memoryYPosStepSize;
+
+        float totalTrackedGPUAlloc = 0.0f;
+
+        // Print the memory usage of each major VRAM category and each subcategory
+        for (int category = 0; category < Render::Debug::VRAM_CATEGORY_NUMBER_CATEGORIES; ++category)
+        {
+            for (int subcategory = 0; subcategory < Render::Debug::VRAM_SUBCATEGORY_NUMBER_SUBCATEGORIES; ++subcategory)
+            {
+                AZStd::string categoryName, subcategoryName;
+                size_t numberBytesAllocated = 0;
+                size_t numberAllocations = 0;
+                EBUS_EVENT(Render::Debug::VRAMDrillerBus, GetCurrentVRAMStats, static_cast<Render::Debug::VRAMAllocationCategory>(category), 
+                    static_cast<Render::Debug::VRAMAllocationSubcategory>(subcategory), categoryName, subcategoryName, numberBytesAllocated, numberAllocations);
+                
+                if (numberAllocations != 0)
+                {
+                    float numMBallocated = numberBytesAllocated / (1024.0f * 1024.0f);
+                    DrawTextLeftAligned(memoryXPos, memoryYPos, 2.0f, statisticColor,
+                        "%s / %s - Size: %.1fMB - Allocations: %zu", categoryName.c_str(), subcategoryName.c_str(), numMBallocated, numberAllocations);
+
+                    memoryYPos += memoryYPosStepSize;
+                    totalTrackedGPUAlloc += numMBallocated;
+                }
+
+            }
+        }
+
+        // Print our VRAM
+        DrawTextLeftAligned(memoryXPos, gpuHeaderYPos, 2.0f, headerColor, "VRAM Usage: %.1fMB", totalTrackedGPUAlloc);
     }
 }
 

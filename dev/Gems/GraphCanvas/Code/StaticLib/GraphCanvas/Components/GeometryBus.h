@@ -15,6 +15,8 @@
 #include <AzCore/Component/EntityId.h>
 #include <AzCore/Math/Vector2.h>
 
+#include <GraphCanvas/Types/EntitySaveData.h>
+
 namespace GraphCanvas
 {
     //! GeometryRequests
@@ -54,4 +56,22 @@ namespace GraphCanvas
     };
 
     using GeometryNotificationBus = AZ::EBus<GeometryNotifications>;
+
+    class GeometrySaveData
+        : public ComponentSaveData
+    {
+    public:
+        AZ_RTTI(GeometrySaveData, "{7CC444B1-F9B3-41B5-841B-0C4F2179F111}", ComponentSaveData);
+        AZ_CLASS_ALLOCATOR(GeometrySaveData, AZ::SystemAllocator, 0);
+
+        GeometrySaveData()
+            : m_position(0,0)
+        {
+
+        }
+
+        ~GeometrySaveData() = default;
+
+        AZ::Vector2 m_position;
+    };
 }

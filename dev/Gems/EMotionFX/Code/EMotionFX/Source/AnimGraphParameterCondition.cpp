@@ -41,18 +41,12 @@ namespace EMotionFX
     const char* AnimGraphParameterCondition::s_functionNotInRange = "param NOT INRANGE [testValue..rangeValue]";
 
     AZ_CLASS_ALLOCATOR_IMPL(AnimGraphParameterCondition, AnimGraphAllocator, 0)
+    AZ_CLASS_ALLOCATOR_IMPL(AnimGraphParameterCondition::UniqueData, AnimGraphObjectUniqueDataAllocator, 0)
 
-    AnimGraphParameterCondition::AnimGraphParameterCondition()
-        : AnimGraphTransitionCondition()
-        , m_parameterIndex(AZ::Failure())
-        , m_testFunction(TestGreater)
-        , m_stringFunction(STRINGFUNCTION_EQUAL_CASESENSITIVE)
-        , m_function(FUNCTION_GREATER)
-        , m_testValue(0.0f)
-        , m_rangeValue(0.0f)
+    AnimGraphParameterCondition::UniqueData::UniqueData(AnimGraphObject* object, AnimGraphInstance* animGraphInstance)
+        : AnimGraphObjectData(object, animGraphInstance)
     {
     }
-
 
     AnimGraphParameterCondition::AnimGraphParameterCondition(AnimGraph* animGraph)
         : AnimGraphParameterCondition()
@@ -60,19 +54,12 @@ namespace EMotionFX
         InitAfterLoading(animGraph);
     }
 
-
-    AnimGraphParameterCondition::~AnimGraphParameterCondition()
-    {
-    }
-
-
     void AnimGraphParameterCondition::Reinit()
     {
         // Find the parameter index for the given parameter name, to prevent string based lookups every frame
         m_parameterIndex = mAnimGraph->FindValueParameterIndexByName(m_parameterName);
         SetFunction(m_function);
     }
-
 
     bool AnimGraphParameterCondition::InitAfterLoading(AnimGraph* animGraph)
     {
@@ -93,6 +80,15 @@ namespace EMotionFX
         return "Parameter Condition";
     }
 
+    void AnimGraphParameterCondition::OnUpdateUniqueData(AnimGraphInstance* animGraphInstance)
+    {
+        UniqueData* uniqueData = static_cast<UniqueData*>(animGraphInstance->FindUniqueObjectData(this));
+        if (!uniqueData)
+        {
+            uniqueData = aznew UniqueData(this, animGraphInstance);
+            animGraphInstance->RegisterUniqueObjectData(uniqueData);
+        }
+    }
     
     void AnimGraphParameterCondition::SetTestString(const AZStd::string& testString)
     {
@@ -104,7 +100,6 @@ namespace EMotionFX
         return m_testString;
     }
 
-
     void AnimGraphParameterCondition::SetParameterName(const AZStd::string& parameterName)
     {
         m_parameterName = parameterName;
@@ -114,12 +109,10 @@ namespace EMotionFX
         }
     }
 
-
     const AZStd::string& AnimGraphParameterCondition::GetParameterName() const
     {
         return m_parameterName;
     }
-
 
     AZ::TypeId AnimGraphParameterCondition::GetParameterType() const
     {
@@ -135,7 +128,6 @@ namespace EMotionFX
             return AZ::TypeId();
         }
     }
-
 
     bool AnimGraphParameterCondition::IsFloatParameter() const
     {
@@ -160,42 +152,84 @@ namespace EMotionFX
         return false;
     }
 
+    float AnimGraphParameterCondition::GetTimeRequirement() const
+    {
+        return m_timeRequirement;
+    }
+
+    void AnimGraphParameterCondition::SetTimeRequirement(float seconds)
+    {
+        AZ_Assert(seconds >= 0.0f, "Time in seconds should be greater or equal to zero.");
+        m_timeRequirement = seconds;
+    }
+
+    void AnimGraphParameterCondition::Update(AnimGraphInstance* animGraphInstance, float timePassedInSeconds)
+    {
+        UniqueData* uniqueData = static_cast<UniqueData*>(animGraphInstance->FindUniqueObjectData(this));
+        uniqueData->m_timer += timePassedInSeconds;
+    }
+
+    void AnimGraphParameterCondition::Reset(AnimGraphInstance* animGraphInstance)
+    {
+        UniqueData* uniqueData = static_cast<UniqueData*>(animGraphInstance->FindUniqueObjectData(this));
+        uniqueData->m_timer = 0.0f;
+    }
 
     // test the condition
     bool AnimGraphParameterCondition::TestCondition(AnimGraphInstance* animGraphInstance) const
     {
+        UniqueData* uniqueData = static_cast<UniqueData*>(animGraphInstance->FindUniqueObjectData(this));
+
         // allow the transition in case we don't have a valid parameter to test against
         if (!m_parameterIndex.IsSuccess())
         {
+            uniqueData->m_timer = 0.0f;
             return false; // act like this condition failed
         }
+
+        const bool requiredTimeReached = (uniqueData->m_timer >= m_timeRequirement);
+
         // string parameter handling
         const AZ::TypeId parameterType = GetParameterType();
         if (parameterType == azrtti_typeid<StringParameter>())
         {
             const AZStd::string& paramValue = static_cast<MCore::AttributeString*>(animGraphInstance->GetParameterValue(static_cast<uint32>(m_parameterIndex.GetValue())))->GetValue();
 
+            bool stringResult;
             if (m_stringFunction == STRINGFUNCTION_EQUAL_CASESENSITIVE)
             {
-                return paramValue == m_testString;
+                stringResult = (paramValue == m_testString);
             }
             else
             {
-                return paramValue != m_testString;
+                stringResult = (paramValue != m_testString);
             }
+
+            if (!stringResult)
+            {
+                uniqueData->m_timer = 0.0f;
+            }
+
+            return (stringResult && requiredTimeReached);
         }
 
         // try to convert the parameter value into a float
         float parameterValue;
         if (!animGraphInstance->GetParameterValueAsFloat(static_cast<uint32>(m_parameterIndex.GetValue()), &parameterValue))
         {
+            uniqueData->m_timer = 0.0f;
             return false;
         }
 
         // now apply the function
-        return m_testFunction(parameterValue, m_testValue, m_rangeValue);
-    }
+        const bool result = m_testFunction(parameterValue, m_testValue, m_rangeValue);
+        if (!result)
+        {
+            uniqueData->m_timer = 0.0f;
+        }
 
+        return (result && requiredTimeReached);
+    }
 
     void AnimGraphParameterCondition::SetFunction(EFunction func)
     {
@@ -232,48 +266,40 @@ namespace EMotionFX
         }
     }
 
-
     AnimGraphParameterCondition::EFunction AnimGraphParameterCondition::GetFunction() const
     {
         return m_function;
     }
-
 
     void AnimGraphParameterCondition::SetTestValue(float testValue)
     {
         m_testValue = testValue;
     }
 
-
     float AnimGraphParameterCondition::GetTestValue() const
     {
         return m_testValue;
     }
-
 
     void AnimGraphParameterCondition::SetRangeValue(float rangeValue)
     {
         m_rangeValue = rangeValue;
     }
 
-
     float AnimGraphParameterCondition::GetRangeValue() const
     {
         return m_rangeValue;
     }
-
 
     void AnimGraphParameterCondition::SetStringFunction(EStringFunction func)
     {
         m_stringFunction = func;
     }
 
-
     AnimGraphParameterCondition::EStringFunction AnimGraphParameterCondition::GetStringFunction() const
     {
         return m_stringFunction;
     }
-
 
     const char* AnimGraphParameterCondition::GetTestFunctionString(EFunction function)
     {
@@ -318,12 +344,10 @@ namespace EMotionFX
         }
     }
 
-
     const char* AnimGraphParameterCondition::GetTestFunctionString() const
     {
         return GetTestFunctionString(m_function);
     }
-
 
     const char* AnimGraphParameterCondition::GetStringTestFunctionString() const
     {
@@ -335,13 +359,11 @@ namespace EMotionFX
         return "Is Not Equal (case-sensitive)";
     }
 
-
     // construct and output the information summary string for this object
     void AnimGraphParameterCondition::GetSummary(AZStd::string* outResult) const
     {
         *outResult = AZStd::string::format("%s: Parameter Name='%s', Test Function='%s', Test Value=%.2f, String Test Function='%s', String Test Value='%s'", RTTI_GetTypeName(), m_parameterName.c_str(), GetTestFunctionString(), m_testValue, GetStringTestFunctionString(), m_testString.c_str());
     }
-
 
     // construct and output the tooltip for this object
     void AnimGraphParameterCondition::GetTooltip(AZStd::string* outResult) const
@@ -387,7 +409,6 @@ namespace EMotionFX
         }
     }
 
-
     //------------------------------------------------------------------------------------------
     // Test Functions
     //------------------------------------------------------------------------------------------
@@ -409,7 +430,6 @@ namespace EMotionFX
         }
     }
 
-
     AZ::Crc32 AnimGraphParameterCondition::GetStringParameterOptionsVisibility() const
     {
         if (GetParameterType() == azrtti_typeid<StringParameter>())
@@ -419,7 +439,6 @@ namespace EMotionFX
 
         return AZ::Edit::PropertyVisibility::Hide;
     }
-
 
     AZ::Crc32 AnimGraphParameterCondition::GetFloatParameterOptionsVisibility() const
     {
@@ -431,7 +450,6 @@ namespace EMotionFX
         return AZ::Edit::PropertyVisibility::Hide;
     }
 
-
     AZ::Crc32 AnimGraphParameterCondition::GetRangeValueVisibility() const
     {
         if (m_function == AnimGraphParameterCondition::FUNCTION_INRANGE || m_function == AnimGraphParameterCondition::FUNCTION_NOTINRANGE)
@@ -441,7 +459,6 @@ namespace EMotionFX
 
         return AZ::Edit::PropertyVisibility::Hide;
     }
-
 
     bool AnimGraphParameterCondition::TestNotInRange(float paramValue, float testValue, float rangeValue)
     {
@@ -487,6 +504,7 @@ namespace EMotionFX
 
     void AnimGraphParameterCondition::ParameterAdded(size_t newParameterIndex)
     {
+        AZ_UNUSED(newParameterIndex);
         // Just recompute the index in the case the new parameter was inserted before ours
         m_parameterIndex = mAnimGraph->FindValueParameterIndexByName(m_parameterName);
     }
@@ -501,6 +519,8 @@ namespace EMotionFX
 
     void AnimGraphParameterCondition::ParameterOrderChanged(const ValueParameterVector& beforeChange, const ValueParameterVector& afterChange)
     {
+        AZ_UNUSED(beforeChange);
+        AZ_UNUSED(afterChange);
         // Just recompute the index
         m_parameterIndex = mAnimGraph->FindValueParameterIndexByName(m_parameterName);
     }
@@ -523,11 +543,12 @@ namespace EMotionFX
         }
 
         serializeContext->Class<AnimGraphParameterCondition, AnimGraphTransitionCondition>()
-            ->Version(1)
+            ->Version(2)
             ->Field("parameterName", &AnimGraphParameterCondition::m_parameterName)
             ->Field("function", &AnimGraphParameterCondition::m_function)
             ->Field("testValue", &AnimGraphParameterCondition::m_testValue)
             ->Field("rangeValue", &AnimGraphParameterCondition::m_rangeValue)
+            ->Field("timeRequirement", &AnimGraphParameterCondition::m_timeRequirement)
             ->Field("stringFunction", &AnimGraphParameterCondition::m_stringFunction)
             ->Field("testString", &AnimGraphParameterCondition::m_testString)
             ;
@@ -562,21 +583,25 @@ namespace EMotionFX
                 ->Attribute(AZ::Edit::Attributes::Visibility, &AnimGraphParameterCondition::GetFloatParameterOptionsVisibility)
                 ->Attribute(AZ::Edit::Attributes::ChangeNotify, &AnimGraphParameterCondition::Reinit)
                 ->Attribute(AZ::Edit::Attributes::ChangeNotify, AZ::Edit::PropertyRefreshLevels::EntireTree)
-            ->DataElement(AZ::Edit::UIHandlers::Default, &AnimGraphParameterCondition::m_testValue, "Test Value", "The float value to test against the parameter value.")
+            ->DataElement(AZ::Edit::UIHandlers::Default, &AnimGraphParameterCondition::m_testValue, "Test value", "The float value to test against the parameter value.")
                 ->Attribute(AZ::Edit::Attributes::Visibility, &AnimGraphParameterCondition::GetFloatParameterOptionsVisibility)
                 ->Attribute(AZ::Edit::Attributes::Min, -std::numeric_limits<float>::max())
                 ->Attribute(AZ::Edit::Attributes::Max,  std::numeric_limits<float>::max())
-            ->DataElement(AZ::Edit::UIHandlers::Default, &AnimGraphParameterCondition::m_rangeValue, "Range Value", "The range high or low bound value, only used when the function is set to 'In Range' or 'Not in Range'.")
+            ->DataElement(AZ::Edit::UIHandlers::Default, &AnimGraphParameterCondition::m_rangeValue, "Range value", "The range high or low bound value, only used when the function is set to 'In Range' or 'Not in Range'.")
                 ->Attribute(AZ::Edit::Attributes::Visibility, &AnimGraphParameterCondition::GetRangeValueVisibility)
                 ->Attribute(AZ::Edit::Attributes::Min, -std::numeric_limits<float>::max())
                 ->Attribute(AZ::Edit::Attributes::Max,  std::numeric_limits<float>::max())
-            ->DataElement(AZ::Edit::UIHandlers::ComboBox, &AnimGraphParameterCondition::m_stringFunction, "String Test Function", "The type of the string comparison operation.")
+            ->DataElement(AZ::Edit::UIHandlers::Default, &AnimGraphParameterCondition::m_timeRequirement, "Time requirement", "The number of seconds this value this condition has to be true, where 0 means no required amount of time.")
+                ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
+                ->Attribute(AZ::Edit::Attributes::Max, std::numeric_limits<float>::max())
+                ->Attribute(AZ::Edit::Attributes::Step, 0.01f)
+            ->DataElement(AZ::Edit::UIHandlers::ComboBox, &AnimGraphParameterCondition::m_stringFunction, "String test function", "The type of the string comparison operation.")
                 ->Attribute(AZ::Edit::Attributes::Visibility, &AnimGraphParameterCondition::GetStringParameterOptionsVisibility)
                 ->Attribute(AZ::Edit::Attributes::ChangeNotify, &AnimGraphParameterCondition::Reinit)
                 ->Attribute(AZ::Edit::Attributes::ChangeNotify, AZ::Edit::PropertyRefreshLevels::EntireTree)
                 ->EnumAttribute(STRINGFUNCTION_EQUAL_CASESENSITIVE,s_stringFunctionEqual)
                 ->EnumAttribute(STRINGFUNCTION_NOTEQUAL_CASESENSITIVE,  s_stringFunctionNotEqual)
-            ->DataElement(AZ::Edit::UIHandlers::Default, &AnimGraphParameterCondition::m_testString, "Test String", "The string to test against the parameter value.")
+            ->DataElement(AZ::Edit::UIHandlers::Default, &AnimGraphParameterCondition::m_testString, "Test string", "The string to test against the parameter value.")
                 ->Attribute(AZ::Edit::Attributes::Visibility, &AnimGraphParameterCondition::GetStringParameterOptionsVisibility)
             ;
     }

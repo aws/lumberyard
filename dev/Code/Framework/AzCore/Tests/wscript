@@ -35,6 +35,7 @@ def build(bld):
         use                     = ['AzTest', 'AzCore', 'BENCHMARK'],
         win_lib                 = ['shlwapi'],
         msvc_cxxflags           = ['/W4'],
+        platform_roots          = [bld.PlatformRoot('Platform', export_includes=False)]
     )
 
 

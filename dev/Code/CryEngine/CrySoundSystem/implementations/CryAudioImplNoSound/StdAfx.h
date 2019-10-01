@@ -16,75 +16,12 @@
 #include <AzCore/Debug/Trace.h>
 #include <ProjectDefines.h>
 
-
-#if defined(AZ_RESTRICTED_PLATFORM)
-#undef AZ_RESTRICTED_SECTION
-#define STDAFX_H_SECTION_1 1
-#define STDAFX_H_SECTION_2 2
-#endif
-
 #if !defined(_RELEASE)
     // Enable logging for non-Release builds.
     #define ENABLE_AUDIO_LOGGING
     // Production code is enabled in non-Release builds.
     #define INCLUDE_AUDIO_IMPL_PRODUCTION_CODE
 #endif // !_RELEASE
-
-
-#if defined(AZ_PLATFORM_WINDOWS)
-    #include <windows.h>
-    #if defined(AZ_PLATFORM_WINDOWS_X64)
-    ///////////////////////////////////////////////////////////////////////////////////////////////
-    // Windows64
-    #else
-    ///////////////////////////////////////////////////////////////////////////////////////////////
-    // Windows32
-    #endif
-#endif
-
-#if defined(AZ_RESTRICTED_PLATFORM)
-#define AZ_RESTRICTED_SECTION STDAFX_H_SECTION_1
-    #if defined(AZ_PLATFORM_XENIA)
-        #include "Xenia/StdAfx_h_xenia.inl"
-    #elif defined(AZ_PLATFORM_PROVO)
-        #include "Provo/StdAfx_h_provo.inl"
-    #endif
-#endif
-
-#if defined(AZ_RESTRICTED_PLATFORM)
-#define AZ_RESTRICTED_SECTION STDAFX_H_SECTION_2
-    #if defined(AZ_PLATFORM_XENIA)
-        #include "Xenia/StdAfx_h_xenia.inl"
-    #elif defined(AZ_PLATFORM_PROVO)
-        #include "Provo/StdAfx_h_provo.inl"
-    #endif
-#endif
-
-#if defined(AZ_PLATFORM_APPLE_OSX)
-///////////////////////////////////////////////////////////////////////////////////////////////////
-// Mac
-#endif
-
-#if defined(AZ_PLATFORM_APPLE_IOS)
-///////////////////////////////////////////////////////////////////////////////////////////////////
-// iOS
-#endif
-
-#if defined(AZ_PLATFORM_APPLE_TV)
-///////////////////////////////////////////////////////////////////////////////////////////////////
-// AppleTV
-#endif
-
-#if defined(AZ_PLATFORM_ANDROID)
-///////////////////////////////////////////////////////////////////////////////////////////////////
-// Android
-#endif
-
-#if defined(AZ_PLATFORM_LINUX_X64)
-///////////////////////////////////////////////////////////////////////////////////////////////////
-// Linux64
-#endif
-
 
 #include <AudioAllocators.h>
 #include <AudioLogger.h>

@@ -93,11 +93,7 @@ namespace AZ
                 auto uuid = AzTypeInfo<ValueType>::Uuid();
 
                 using ContainerType = AttributeContainerType<AZ::TypeId>;
-                IAllocatorAllocate& moduleAllocator = GetCurrentSerializeContextModule().GetAllocator();
-                void* rawMemory = moduleAllocator.Allocate(sizeof(ContainerType), alignof(ContainerType));
-                new (rawMemory) ContainerType(AZStd::move(uuid));
-                auto uuidAttributeContainer = static_cast<ContainerType*>(rawMemory);
-                classElement.m_attributes.emplace_back(AZ_CRC("EnumType", 0xb177e1b5), uuidAttributeContainer);
+                classElement.m_attributes.emplace_back(AZ_CRC("EnumType", 0xb177e1b5), CreateModuleAttribute<ContainerType>(AZStd::move(uuid)));
             }
         }
 
@@ -148,11 +144,11 @@ namespace AZ
         template<size_t... Digits>
         struct IndexToCStrHelper<0, Digits...>
         {
-            static const char value[];
+            static constexpr char value[] = { 'V', 'a', 'l', 'u', 'e', ('0' + Digits)..., '\0' };
         };
 
         template<size_t... Digits>
-        const char IndexToCStrHelper<0, Digits...>::value[] = { 'V', 'a', 'l', 'u', 'e', ('0' + Digits)..., '\0' };
+        constexpr char IndexToCStrHelper<0, Digits...>::value[];
 
         // Converts an integral index into a string with value = "Value" + #Index, where #Index is the stringification of the Index value
         template<size_t Index>
@@ -171,19 +167,6 @@ namespace AZ
                 m_classElement.m_nameCrc = GetDefaultElementNameCrc();
                 m_classElement.m_offset = 0xbad0ffe0; // bad offset mark
                 SetupClassElementFromType<ValueType>(m_classElement);
-            }
-
-            ~AZStdBasicContainer()
-            {
-                IAllocatorAllocate& moduleAllocator = GetCurrentSerializeContextModule().GetAllocator();
-                for (AZ::AttributePair& attributePair : m_classElement.m_attributes)
-                {
-                    Attribute* attribute = attributePair.second;
-                    attribute->~Attribute();
-                    moduleAllocator.DeAllocate(attribute);
-                }
-
-                m_classElement.m_attributes.clear();
             }
 
             /// Returns the element generic (offsets are mostly invalid 0xbad0ffe0, there are exceptions). Null if element with this name can't be found.
@@ -447,19 +430,6 @@ namespace AZ
                 SetupClassElementFromType<ValueType>(m_classElement);
             }
 
-            ~AZStdArrayContainer()
-            {
-                IAllocatorAllocate& moduleAllocator = GetCurrentSerializeContextModule().GetAllocator();
-                for (AZ::AttributePair& attributePair : m_classElement.m_attributes)
-                {
-                    Attribute* attribute = attributePair.second;
-                    attribute->~Attribute();
-                    moduleAllocator.DeAllocate(attribute);
-                }
-
-                m_classElement.m_attributes.clear();
-            }
-
             /// Returns the element generic (offsets are mostly invalid 0xbad0ffe0, there are exceptions). Null if element with this name can't be found.
             virtual const SerializeContext::ClassElement* GetElement(u32 elementNameCrc) const override
             {
@@ -627,7 +597,7 @@ namespace AZ
 
             template <class T1, class T2>
             struct KeyHelper<AZStd::pair<T1, T2>, false>
-        {
+            {
                 static void SetElementKey(ValueType* element, KeyType&& key)
                 {
                     element->first = AZStd::move(key);
@@ -656,25 +626,7 @@ namespace AZ
                 */
                 m_classElement.m_attributes.set_allocator(AZStdFunctorAllocator([]() -> IAllocatorAllocate& { return GetCurrentSerializeContextModule().GetAllocator(); }));
 
-                IAllocatorAllocate& moduleAllocator = GetCurrentSerializeContextModule().GetAllocator();
-
-                void* rawMemory = moduleAllocator.Allocate(sizeof(ContainerType), alignof(ContainerType));
-                new (rawMemory) ContainerType(AZStd::move(uuid));
-                auto uuidAttributeContainer = static_cast<ContainerType*>(rawMemory);
-                m_classElement.m_attributes.emplace_back(AZ_CRC("KeyType", 0x15bc5303), uuidAttributeContainer);
-            }
-
-            ~AZStdAssociativeContainer()
-            {
-                IAllocatorAllocate& moduleAllocator = GetCurrentSerializeContextModule().GetAllocator();
-                for(AZ::AttributePair& attributePair: m_classElement.m_attributes)
-                {
-                    Attribute* attribute = attributePair.second;
-                    attribute->~Attribute();
-                    moduleAllocator.DeAllocate(attribute);
-                }
-
-                m_classElement.m_attributes.clear();
+                m_classElement.m_attributes.emplace_back(AZ_CRC("KeyType", 0x15bc5303), CreateModuleAttribute<ContainerType>(AZStd::move(uuid)));
             }
 
             // Reflect our wrapped key and value types to serializeContext so that may later be used
@@ -796,11 +748,11 @@ namespace AZ
             }
 
             /// Get an element's address by its key. Not used for serialization.
-            virtual void*   GetElementByKey(void* instance, const SerializeContext::ClassElement* classElement, void* key) override
+            virtual void*   GetElementByKey(void* instance, const SerializeContext::ClassElement* classElement, const void* key) override
             {
                 (void)classElement;
                 T* containerPtr = reinterpret_cast<T*>(instance);
-                auto elementIterator = containerPtr->find(*reinterpret_cast<KeyType*>(key));
+                auto elementIterator = containerPtr->find(*reinterpret_cast<const KeyType*>(key));
                 return (elementIterator != containerPtr->end()) ? &(*elementIterator) : nullptr;
             }
 
@@ -820,20 +772,23 @@ namespace AZ
                 T* containerPtr = reinterpret_cast<T*>(instance);
                 // this container can be a multi container so key is NOT enough, but a good start
                 const auto& key = T::traits_type::key_from_value(*reinterpret_cast<const ValueType*>(element));
-                typename T::iterator it = containerPtr->find(key);
-                while (it != containerPtr->end()) // in a case of multi key support iterate over all elements with that key until we find the one
-                {
-                    void* containerElement = &(*it);
-                    if (containerElement == element)
+                AZStd::pair<typename T::iterator, typename T::iterator> valueRange = containerPtr->equal_range(key);
+                while (valueRange.first != valueRange.second) // in a case of multi key support iterate over all elements with that key until we find the one
+                { 
+                    if (&(*valueRange.first) == element)
                     {
+                        // Extracts the node from the associative container without deleting it
+                        // The T::node_type destructor takes care of cleaning up the memory of the extracted node
+                        typename T::node_type removeNode = containerPtr->extract(valueRange.first);
                         if (deletePointerDataContext)
                         {
-                            DeletePointerData(deletePointerDataContext, &m_classElement, containerElement);
+                            // The following call will invoke the AZStdPairContainer::ClearElements function which will delete any elements
+                            // of pointer type stored by the pair and reset the pair itself back to a default constructed value
+                            DeletePointerData(deletePointerDataContext, &m_classElement, element);
                         }
-                        containerPtr->erase(it);
                         return true;
                     }
-                    ++it;
+                    ++valueRange.first;
                 }
                 return false;
             }
@@ -905,24 +860,6 @@ namespace AZ
                 m_value2ClassElement.m_nameCrc = AZ_CRC("value2", 0x3b7c3de0);
                 m_value2ClassElement.m_offset = sizeof(T1);
                 SetupClassElementFromType<T2>(m_value2ClassElement);
-            }
-
-            ~AZStdPairContainer()
-            {
-                IAllocatorAllocate& moduleAllocator = GetCurrentSerializeContextModule().GetAllocator();
-
-                AZStd::vector<AttributePair, AZStdFunctorAllocator>* attributeContainers[2] = { &m_value1ClassElement.m_attributes, &m_value2ClassElement.m_attributes };
-                for (AZStd::vector<AttributePair, AZStdFunctorAllocator>* attributeContainer : attributeContainers)
-                {
-                    for (AZ::AttributePair& attributePair : *attributeContainer)
-                    {
-                        Attribute* attribute = attributePair.second;
-                        attribute->~Attribute();
-                        moduleAllocator.DeAllocate(attribute);
-                    }
-
-                    attributeContainer->clear();
-                }
             }
 
 
@@ -1126,22 +1063,6 @@ namespace AZ
             AZStdTupleContainer()
             {
                 CreateClassElementArray(AZStd::make_index_sequence<s_tupleSize>{});
-            }
-
-            ~AZStdTupleContainer()
-            {
-                IAllocatorAllocate& moduleAllocator = GetCurrentSerializeContextModule().GetAllocator();
-                for (SerializeContext::ClassElement& classElement : m_valueClassElements)
-                {
-                    for (AZ::AttributePair& attributePair : classElement.m_attributes)
-                    {
-                        Attribute* attribute = attributePair.second;
-                        attribute->~Attribute();
-                        moduleAllocator.DeAllocate(attribute);
-                    }
-
-                    classElement.m_attributes.clear();
-                }
             }
 
 
@@ -1403,19 +1324,6 @@ namespace AZ
                 m_valueClassElement.m_nameCrc = AZ_CRC("value", 0x1d775834);
                 m_valueClassElement.m_offset = 0;
                 SetupClassElementFromType<T>(m_valueClassElement);
-            }
-
-            ~AZRValueContainer()
-            {
-                IAllocatorAllocate& moduleAllocator = GetCurrentSerializeContextModule().GetAllocator();
-                for (AZ::AttributePair& attributePair : m_valueClassElement.m_attributes)
-                {
-                    Attribute* attribute = attributePair.second;
-                    attribute->~Attribute();
-                    moduleAllocator.DeAllocate(attribute);
-                }
-
-                m_valueClassElement.m_attributes.clear();
             }
 
             /// Returns the element generic (offsets are mostly invalid 0xbad0ffe0, there are exceptions). Null if element with this name can't be found.
@@ -3778,7 +3686,8 @@ namespace AZ
             const Uuid& GetGenericTypeId() const override
             {
                 return TYPEINFO_Uuid();
-            };
+            }
+
             void Reflect(SerializeContext* serializeContext)
             {
                 if (serializeContext)

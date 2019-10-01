@@ -22,12 +22,14 @@
 #include <QTimer>
 #include <QWheelEvent>
 
-#include <AzCore/Memory/SystemAllocator.h>
 #include <AzCore/Component/TickBus.h>
+#include <AzCore/std/containers/unordered_map.h>
+#include <AzCore/Memory/SystemAllocator.h>
 
 #include <GraphCanvas/Components/SceneBus.h>
 #include <GraphCanvas/Components/ViewBus.h>
 #include <GraphCanvas/Editor/AssetEditorBus.h>
+#include <GraphCanvas/Widgets/ToastNotification/ToastNotification.h>
 
 namespace GraphCanvas
 {
@@ -60,7 +62,7 @@ namespace GraphCanvas
     public:
         AZ_CLASS_ALLOCATOR(GraphCanvasGraphicsView, AZ::SystemAllocator, 0);
 
-        GraphCanvasGraphicsView(QWidget* parent = nullptr);
+        GraphCanvasGraphicsView(QWidget* parent = nullptr, bool registerShortcuts = true);
         ~GraphCanvasGraphicsView();
 
         const ViewId& GetViewId() const;
@@ -76,14 +78,20 @@ namespace GraphCanvas
 
         AZ::Vector2 GetViewSceneCenter() const override;
 
+        AZ::Vector2 MapToGlobal(const AZ::Vector2& scenePoint) override;
         AZ::Vector2 MapToScene(const AZ::Vector2& view) override;
-        AZ::Vector2 MapFromScene(const AZ::Vector2& scene) override;
+        AZ::Vector2 MapFromScene(const AZ::Vector2& scene) override;        
 
         void SetViewParams(const ViewParams& viewParams) override;
         void DisplayArea(const QRectF& viewArea) override;
         void CenterOnArea(const QRectF& viewArea) override;
 
         void CenterOn(const QPointF& posInSceneCoordinates) override;
+        void CenterOnStartOfChain() override;
+        void CenterOnEndOfChain() override;        
+        void CenterOnSelection() override;        
+
+
         QRectF GetCompleteArea() override;
         void WheelEvent(QWheelEvent* ev) override;
         QRectF GetViewableAreaInSceneCoordinates() override;
@@ -95,9 +103,23 @@ namespace GraphCanvas
 
         qreal GetZoomLevel() const override;
 
-        void PanSceneBy(QPointF repositioning, AZStd::chrono::milliseconds duration) override;
+        void ScreenshotSelection() override;
 
+        void EnableSelection() override;
+        void DisableSelection() override;
+
+        void ShowEntireGraph() override;
+        void ZoomIn() override;
+        void ZoomOut() override;
+
+        void PanSceneBy(QPointF repositioning, AZStd::chrono::milliseconds duration) override;
         void PanSceneTo(QPointF scenePoint, AZStd::chrono::milliseconds duration) override;
+
+        void HideToastNotification(const ToastId& toastId) override;
+
+        ToastId ShowToastNotification(const ToastConfiguration& toastConfiguration) override;
+        ToastId ShowToastAtCursor(const ToastConfiguration& toastConfiguration) override;
+        ToastId ShowToastAtPoint(const QPoint& screenPosition, const QPointF& anchorPoint, const ToastConfiguration& toastConfiguration) override;
         ////
 
         // TickBus
@@ -106,8 +128,9 @@ namespace GraphCanvas
 
         QRectF GetSelectedArea();
         void SelectAll();        
-        void SelectAllRelative(ConnectionType input);
+        void SelectAllRelative(ConnectionType input);        
         void SelectConnectedNodes();
+        void ClearSelection();
 
         // SceneNotificationBus::Handler
         void OnStylesChanged() override;
@@ -145,12 +168,16 @@ namespace GraphCanvas
 
     private:
 
+        void CenterOnSceneMembers(const AZStd::vector<AZ::EntityId>& memberIds);
+
         void ConnectBoundsSignals();
         void DisconnectBoundsSignals();
         void OnBoundsChanged();
 
         void QueueSave();
         void SaveViewParams();
+        void CalculateMinZoomBounds();
+        void ClampScaleBounds();
 
         void OnRubberBandChanged(QRect rubberBandRect, QPointF fromScenePoint, QPointF toScenePoint);
 
@@ -158,6 +185,9 @@ namespace GraphCanvas
         void CalculateInternalRectangle();
 
         void ManageTickState();
+
+        void OnNotificationHidden();
+        void DisplayQueuedNotification();
 
         GraphCanvasGraphicsView(const GraphCanvasGraphicsView&) = delete;
 
@@ -170,6 +200,9 @@ namespace GraphCanvas
         bool   m_checkForEdges;
         float  m_scrollSpeed;
         AZStd::pair<float, float> m_edgePanning;
+
+        qreal m_minZoom;
+        qreal m_maxZoom;
 
         bool   m_checkForDrag;
         QPoint m_initialClick;
@@ -188,6 +221,14 @@ namespace GraphCanvas
         QPointF m_panningAggregator;
 
         AZStd::unique_ptr<FocusQueue> m_queuedFocus;
+
+        // These will display sequentially in a reserved part of the UI
+        ToastId                  m_activeNotification;
+        AZStd::vector< ToastId > m_queuedNotifications;
+
+        // There could be more then the queued list in terms of general notifications
+        // As some systems might want to re-use the systems for their own needs.
+        AZStd::unordered_map< ToastId, ToastNotification* > m_notifications;
 
         bool m_isEditing;
 

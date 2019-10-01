@@ -24,7 +24,6 @@
 #include "FacialAnimation/FaceEffectorLibrary.h"
 #include "AnimEventLoader.h"
 #include "CharacterManager.h"
-#include <IPlatformOS.h>
 #include "StringUtils.h"
 
 //////////////////////////////////////////////////////////////////////////

@@ -781,7 +781,7 @@ bool CMatInfo::SetGetMaterialParamFloat(const char* sParamName, float& v, bool b
             for (int i = 0; i < shaderParams.size(); ++i)
             {
                 SShaderParam& param = shaderParams[i];
-                if (param.m_Name == sParamName )
+                if (azstricmp(param.m_Name.c_str(), sParamName) == 0)
                 {
                     v = 0.0f;
 
@@ -917,7 +917,7 @@ bool CMatInfo::SetGetMaterialParamVec4(const char* sParamName, Vec4& v, bool bGe
             for (int i = 0; i < shaderParams.size(); ++i)
             {
                 SShaderParam& param = shaderParams[i];
-                if (param.m_Name == sParamName)
+                if (azstricmp(param.m_Name.c_str(), sParamName) == 0)
                 {
                     if (param.m_Type == eType_VECTOR)
                     {
@@ -970,14 +970,17 @@ bool CMatInfo::IsDirty() const
     {
         for (int i = 0 ; i <  m_subMtls.size(); i ++)
         {
-            if (m_subMtls[i]->IsMaterialGroup())
+            if (m_subMtls[i])
             {
-                AZ_Assert(!m_subMtls[i]->IsMaterialGroup(), "Sub-material '%s' in material '%s' is a material group. Material groups cannot be sub-materials. This could lead to a cycle and infinite recursion in CMatInfo::IsDirty().", m_subMtls[i]->GetName(), m_sMaterialName.c_str());
-                // Exit early to prevent a possible infinite recursion.
-                // Return true to conservatively indicate that this material should be re-loaded
-                return true;
+                if (m_subMtls[i]->IsMaterialGroup())
+                {
+                    AZ_Assert(!m_subMtls[i]->IsMaterialGroup(), "Sub-material '%s' in material '%s' is a material group. Material groups cannot be sub-materials. This could lead to a cycle and infinite recursion in CMatInfo::IsDirty().", m_subMtls[i]->GetName(), m_sMaterialName.c_str());
+                    // Exit early to prevent a possible infinite recursion.
+                    // Return true to conservatively indicate that this material should be re-loaded
+                    return true;
+                }
+                isChildrenDirty |= m_subMtls[i]->IsDirty();
             }
-            isChildrenDirty |= m_subMtls[i]->IsDirty();
         }
     }
     return m_isDirty | isChildrenDirty;

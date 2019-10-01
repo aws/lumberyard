@@ -28,10 +28,35 @@ namespace AzToolsFramework
         ArchiveCommands::Bus::Handler::BusDisconnect();
     }
 
+    bool NullArchiveComponent::ExtractArchiveBlocking(const AZStd::string& /*archivePath*/, const AZStd::string& /*destinationPath*/, bool /*extractWithRootDirectory*/)
+    {
+        return false;
+    }
+
     void NullArchiveComponent::ExtractArchive(const AZStd::string& /*archivePath*/, const AZStd::string& /*destinationPath*/, AZ::Uuid /*taskHandle*/, const ArchiveResponseCallback& respCallback)
     {
+        AZ::TickBus::QueueFunction(respCallback, false);
+    }
+
+    void NullArchiveComponent::ExtractArchiveOutput(const AZStd::string& /*archivePath*/, const AZStd::string& /*destinationPath*/, AZ::Uuid /*taskHandle*/, const ArchiveResponseOutputCallback& respCallback)
+    {
+        AZ::TickBus::QueueFunction(respCallback, false, AZStd::string());
+    }
+
+    void NullArchiveComponent::ExtractArchiveWithoutRoot(const AZStd::string& /*archivePath*/, const AZStd::string& /*destinationPath*/, AZ::Uuid /*taskHandle*/, const ArchiveResponseOutputCallback& respCallback)
+    {
+        AZ::TickBus::QueueFunction(respCallback, false, AZStd::string());
+    }
+
+    void NullArchiveComponent::CreateArchive(const AZStd::string& /*archivePath*/, const AZStd::string& /*dirToArchive*/, AZ::Uuid /*taskHandle*/, const ArchiveResponseOutputCallback& respCallback)
+    {
         // Always report we failed to extract
-        EBUS_QUEUE_FUNCTION(AZ::TickBus, respCallback, false);
+        AZ::TickBus::QueueFunction(respCallback, false, AZStd::string());
+    }
+
+    bool NullArchiveComponent::CreateArchiveBlocking(const AZStd::string& /*archivePath*/, const AZStd::string& /*dirToArchive*/)
+    {
+        return false;
     }
 
     void NullArchiveComponent::CancelTasks(AZ::Uuid /*taskHandle*/)

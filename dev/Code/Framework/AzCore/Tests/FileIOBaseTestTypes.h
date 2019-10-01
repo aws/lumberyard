@@ -15,6 +15,9 @@
 #include <AzCore/IO/SystemFile.h>
 #include <AzCore/Casting/numeric_cast.h>
 #include <AzCore/std/containers/map.h>
+#include <AzCore/Memory/OSAllocator.h>
+#include <AzCore/std/functional.h>
+#include <AzCore/UnitTest/UnitTest.h>
 
 // This header file and CPP handles the platform specific implementation of code as defined by the FileIOBase interface class.
 // In order to make your code portable and functional with both this and the RemoteFileIO class, use the interface to access
@@ -372,13 +375,24 @@ public:
 
     bool ResolvePath(const char* path, char* resolvedPath, AZ::u64 resolvedPathSize)
     {
+        using namespace testing::internal;
+
         if (path == nullptr)
         {
             return false;
         }
 
-        size_t pathLen = strlen(path) + 1; // account for null
-        azstrncpy(resolvedPath, resolvedPathSize, path, pathLen);
+        FilePath filename = FilePath(path);
+        if (filename.IsAbsolutePath())
+        {
+            azstrncpy(resolvedPath, resolvedPathSize, path, strlen(path) + 1);
+        }
+        else
+        {
+            FilePath prefix = FilePath::GetCurrentDir();
+            FilePath result = FilePath::ConcatPaths(prefix, filename);
+            azstrncpy(resolvedPath, resolvedPathSize, result.c_str(), result.string().length());
+        }
 
         for (AZ::u64 i = 0; i < resolvedPathSize && resolvedPath[i] != '\0'; i++)
         {
@@ -388,7 +402,7 @@ public:
             }
         }
 
-        return false;
+        return true;
     }
 
     void SetAlias(const char*, const char*)

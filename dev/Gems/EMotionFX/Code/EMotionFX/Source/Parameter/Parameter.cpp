@@ -52,4 +52,37 @@ namespace EMotionFX
             ;
     }
 
+    const char Parameter::s_invalidCharacters[] = {'"', '%', '{', '}'};
+
+    bool Parameter::IsNameValid(const AZStd::string& name, AZStd::string* outInvalidCharacters)
+    {
+        for (char c : s_invalidCharacters)
+        {
+            if (name.find(c) != AZStd::string::npos)
+            {
+                if (outInvalidCharacters)
+                {
+                    if (!(*outInvalidCharacters).empty())
+                    {
+                        (*outInvalidCharacters) += ", ";
+                    }
+                    (*outInvalidCharacters) += c;
+                }
+                else
+                {
+                    return false;
+                }
+            }
+        }
+
+        if (outInvalidCharacters)
+        {
+            return (*outInvalidCharacters).empty();
+        }
+        else
+        {
+            return true;
+        }
+    }
+
 }   // namespace EMotionFX

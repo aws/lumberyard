@@ -46,7 +46,7 @@ namespace ScriptCanvas
 
             return source / ToVectorFloat(divisor);
         }
-        SCRIPT_CANVAS_GENERIC_FUNCTION_NODE(DivideByNumber, "Math/Quaternion", "{94C8A813-C20E-4194-98B6-8618CE872BAA}", "returns the Numerator with each element divided by Divisor", "Numerator", "Divisor");
+        SCRIPT_CANVAS_GENERIC_FUNCTION_NODE_DEPRECATED(DivideByNumber, "Math/Quaternion", "{94C8A813-C20E-4194-98B6-8618CE872BAA}", "returns the Numerator with each element divided by Divisor", "Numerator", "Divisor");
 
         AZ_INLINE NumberType Dot(QuaternionType a, QuaternionType b)
         {

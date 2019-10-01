@@ -64,7 +64,8 @@ namespace LyShineExamples
 
         // Create the canvas title
         CreateText("Title", false, foregroundId, UiTransform2dInterface::Anchors(0.5f, 0.1f, 0.5f, 0.1f), UiTransform2dInterface::Offsets(-200, 50, 200, -50),
-            "Canvas created through C++", AZ::Color(0.f, 0.f, 0.f, 1.f), IDraw2d::HAlign::Center, IDraw2d::VAlign::Center, true);
+            "Canvas created through C++", AZ::Color(0.f, 0.f, 0.f, 1.f), IDraw2d::HAlign::Center, IDraw2d::VAlign::Center,
+            UiTransformInterface::ScaleToDeviceMode::UniformScaleToFit);
 
         // Add the elements examples, creating elements from scratch
         CreateElementsExample(foregroundId);
@@ -74,7 +75,8 @@ namespace LyShineExamples
 
         // Create a button to be able to destroy this canvas and keep navigating the UiFeatures examples
         m_destroyButton = CreateButton("DestroyButton", false, foregroundId, UiTransform2dInterface::Anchors(0.15f, 0.9f, 0.15f, 0.9f), UiTransform2dInterface::Offsets(-100, -25, 100, 25),
-                "Destroy canvas", AZ::Color(0.604f, 0.780f, 0.839f, 1.f), AZ::Color(0.380f, 0.745f, 0.871f, 1.f), AZ::Color(0.055f, 0.675f, 0.886f, 1.f), AZ::Color(1.f, 1.f, 1.f, 1.f), true);
+            "Destroy canvas", AZ::Color(0.604f, 0.780f, 0.839f, 1.f), AZ::Color(0.380f, 0.745f, 0.871f, 1.f), AZ::Color(0.055f, 0.675f, 0.886f, 1.f), AZ::Color(1.f, 1.f, 1.f, 1.f),
+            UiTransformInterface::ScaleToDeviceMode::UniformScaleToFit);
         // Connect to the button notification bus so we receive click events from the destroy button
         UiButtonNotificationBus::MultiHandler::BusConnect(m_destroyButton);
     }
@@ -182,19 +184,23 @@ namespace LyShineExamples
     {
         // Create the elements examples section title
         CreateText("ElementExamples", false, foregroundId, UiTransform2dInterface::Anchors(0.1f, 0.25f, 0.1f, 0.25f), UiTransform2dInterface::Offsets(),
-            "Elements examples:", AZ::Color(0.f, 0.f, 0.f, 1.f), IDraw2d::HAlign::Left, IDraw2d::VAlign::Center, true);
+            "Elements examples:", AZ::Color(0.f, 0.f, 0.f, 1.f), IDraw2d::HAlign::Left, IDraw2d::VAlign::Center,
+            UiTransformInterface::ScaleToDeviceMode::UniformScaleToFit);
 
         // Create an example button
         CreateButton("ButtonExample", false, foregroundId, UiTransform2dInterface::Anchors(0.2f, 0.35f, 0.2f, 0.35f), UiTransform2dInterface::Offsets(-100, -25, 100, 25),
-            "Button", AZ::Color(0.604f, 0.780f, 0.839f, 1.f), AZ::Color(0.380f, 0.745f, 0.871f, 1.f), AZ::Color(0.055f, 0.675f, 0.886f, 1.f), AZ::Color(0.f, 0.f, 0.f, 1.f), true);
+            "Button", AZ::Color(0.604f, 0.780f, 0.839f, 1.f), AZ::Color(0.380f, 0.745f, 0.871f, 1.f), AZ::Color(0.055f, 0.675f, 0.886f, 1.f), AZ::Color(0.f, 0.f, 0.f, 1.f),
+            UiTransformInterface::ScaleToDeviceMode::UniformScaleToFit);
 
         // Create an example checkbox
         CreateCheckbox("CheckBoxExample", false, foregroundId, UiTransform2dInterface::Anchors(0.5f, 0.35f, 0.5f, 0.35f), UiTransform2dInterface::Offsets(-25, -25, 25, 25),
-            "Checkbox", AZ::Color(1.f, 1.f, 1.f, 1.f), AZ::Color(0.718f, 0.733f, 0.741f, 1.f), AZ::Color(0.831f, 0.914f, 0.937f, 1.f), AZ::Color(0.2f, 1.f, 0.2f, 1.f), AZ::Color(0.f, 0.f, 0.f, 1.f), true);
+            "Checkbox", AZ::Color(1.f, 1.f, 1.f, 1.f), AZ::Color(0.718f, 0.733f, 0.741f, 1.f), AZ::Color(0.831f, 0.914f, 0.937f, 1.f), AZ::Color(0.2f, 1.f, 0.2f, 1.f), AZ::Color(0.f, 0.f, 0.f, 1.f),
+            UiTransformInterface::ScaleToDeviceMode::UniformScaleToFit);
 
         // Create an example text input
         CreateTextInput("TextInputExample", false, foregroundId, UiTransform2dInterface::Anchors(0.8f, 0.35f, 0.8f, 0.35f), UiTransform2dInterface::Offsets(-100, -25, 100, 25),
-            "", "Type here...", AZ::Color(1.f, 1.f, 1.f, 1.f), AZ::Color(0.616f, 0.792f, 0.851f, 1.0f), AZ::Color(0.616f, 0.792f, 0.851f, 1.0f), AZ::Color(0.f, 0.f, 0.f, 1.f), AZ::Color(0.43f, 0.43f, 0.43f, 1.f), true);
+            "", "Type here...", AZ::Color(1.f, 1.f, 1.f, 1.f), AZ::Color(0.616f, 0.792f, 0.851f, 1.0f), AZ::Color(0.616f, 0.792f, 0.851f, 1.0f), AZ::Color(0.f, 0.f, 0.f, 1.f), AZ::Color(0.43f, 0.43f, 0.43f, 1.f),
+            UiTransformInterface::ScaleToDeviceMode::UniformScaleToFit);
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -202,27 +208,29 @@ namespace LyShineExamples
     {
         // Create the behavior example section title
         CreateText("BehaviorExample", false, foregroundId, UiTransform2dInterface::Anchors(0.1f, 0.5f, 0.1f, 0.5f), UiTransform2dInterface::Offsets(),
-            "Behavior example:", AZ::Color(0.f, 0.f, 0.f, 1.f), IDraw2d::HAlign::Left, IDraw2d::VAlign::Center, true);
+            "Behavior example:", AZ::Color(0.f, 0.f, 0.f, 1.f), IDraw2d::HAlign::Left, IDraw2d::VAlign::Center, UiTransformInterface::ScaleToDeviceMode::UniformScaleToFit);
 
         // Here we set up a very simple health bar example, all piloted from C++
 
         // Create the health bar that we will use to display the health
         // We need a background to show how much of the health has been taken off
         AZ::EntityId healthBarBgId = CreateImage("HealthBarBackground", false, foregroundId, UiTransform2dInterface::Anchors(0.5f, 0.65f, 0.5f, 0.65f), UiTransform2dInterface::Offsets(-400, -50, 400, 50),
-            "Textures/Basic/Button_Sliced_Normal.sprite", UiImageInterface::ImageType::Sliced, AZ::Color(0.2f, 0.2f, 0.2f, 1.f), true);
+            "Textures/Basic/Button_Sliced_Normal.sprite", UiImageInterface::ImageType::Sliced, AZ::Color(0.2f, 0.2f, 0.2f, 1.f), UiTransformInterface::ScaleToDeviceMode::UniformScaleToFit);
         // And then the currently remaining health bar
         m_maxHealthBarOffsets = UiTransform2dInterface::Offsets(10, -40, 790, 40);
         m_healthBar = CreateImage("HealthBar", false, healthBarBgId, UiTransform2dInterface::Anchors(0.0f, 0.5f, 0.0f, 0.5f), m_maxHealthBarOffsets,
-                "Textures/Basic/Button_Sliced_Normal.sprite", UiImageInterface::ImageType::Sliced, AZ::Color(0.7f, 0.f, 0.f, 1.f), false);
+                "Textures/Basic/Button_Sliced_Normal.sprite", UiImageInterface::ImageType::Sliced, AZ::Color(0.7f, 0.f, 0.f, 1.f), UiTransformInterface::ScaleToDeviceMode::None);
         m_health = 10;
 
         // Create a damage button to decrease the health
         m_damageButton = CreateButton("DamageButton", false, foregroundId, UiTransform2dInterface::Anchors(0.35f, 0.8f, 0.35f, 0.8f), UiTransform2dInterface::Offsets(-75, -25, 75, 25),
-                "Damage", AZ::Color(0.604f, 0.780f, 0.839f, 1.f), AZ::Color(0.380f, 0.745f, 0.871f, 1.f), AZ::Color(0.055f, 0.675f, 0.886f, 1.f), AZ::Color(0.f, 0.f, 0.f, 1.f), true);
+            "Damage", AZ::Color(0.604f, 0.780f, 0.839f, 1.f), AZ::Color(0.380f, 0.745f, 0.871f, 1.f), AZ::Color(0.055f, 0.675f, 0.886f, 1.f), AZ::Color(0.f, 0.f, 0.f, 1.f),
+            UiTransformInterface::ScaleToDeviceMode::UniformScaleToFit);
         UiButtonNotificationBus::MultiHandler::BusConnect(m_damageButton);
         // Create a heal button to increase the health
         m_healButton = CreateButton("HealButton", false, foregroundId, UiTransform2dInterface::Anchors(0.65f, 0.8f, 0.65f, 0.8f), UiTransform2dInterface::Offsets(-75, -25, 75, 25),
-                "Heal", AZ::Color(0.604f, 0.780f, 0.839f, 1.f), AZ::Color(0.380f, 0.745f, 0.871f, 1.f), AZ::Color(0.055f, 0.675f, 0.886f, 1.f), AZ::Color(0.f, 0.f, 0.f, 1.f), true);
+            "Heal", AZ::Color(0.604f, 0.780f, 0.839f, 1.f), AZ::Color(0.380f, 0.745f, 0.871f, 1.f), AZ::Color(0.055f, 0.675f, 0.886f, 1.f), AZ::Color(0.f, 0.f, 0.f, 1.f),
+            UiTransformInterface::ScaleToDeviceMode::UniformScaleToFit);
         UiButtonNotificationBus::MultiHandler::BusConnect(m_healButton);
     }
 
@@ -238,7 +246,7 @@ namespace LyShineExamples
     AZ::EntityId LyShineExamplesCppExample::CreateButton(const char* name, bool atRoot, AZ::EntityId parent,
         UiTransform2dInterface::Anchors anchors, UiTransform2dInterface::Offsets offsets,
         const char* text, AZ::Color baseColor, AZ::Color selectedColor, AZ::Color pressedColor, AZ::Color textColor,
-        bool scaleToDevice = false)
+        UiTransformInterface::ScaleToDeviceMode scaleToDeviceMode)
     {
         // Create the button element
         AZ::Entity* button = nullptr;
@@ -261,7 +269,7 @@ namespace LyShineExamples
 
             AZ_Assert(UiTransform2dBus::FindFirstHandler(buttonId), "Transform2d component missing");
 
-            EBUS_EVENT_ID(buttonId, UiTransformBus, SetScaleToDevice, scaleToDevice);
+            EBUS_EVENT_ID(buttonId, UiTransformBus, SetScaleToDeviceMode, scaleToDeviceMode);
             EBUS_EVENT_ID(buttonId, UiTransform2dBus, SetAnchors, anchors, false, false);
             EBUS_EVENT_ID(buttonId, UiTransform2dBus, SetOffsets, offsets);
             EBUS_EVENT_ID(buttonId, UiImageBus, SetColor, baseColor);
@@ -308,7 +316,7 @@ namespace LyShineExamples
     AZ::EntityId LyShineExamplesCppExample::CreateCheckbox(const char* name, bool atRoot, AZ::EntityId parent,
         UiTransform2dInterface::Anchors anchors, UiTransform2dInterface::Offsets offsets, const char* text,
         AZ::Color baseColor, AZ::Color selectedColor, AZ::Color pressedColor, AZ::Color checkColor, AZ::Color textColor,
-        bool scaleToDevice = false)
+        UiTransformInterface::ScaleToDeviceMode scaleToDeviceMode)
     {
         // Create the checkbox element
         AZ::Entity* checkbox = nullptr;
@@ -331,7 +339,7 @@ namespace LyShineExamples
 
             AZ_Assert(UiTransform2dBus::FindFirstHandler(checkboxId), "Transform2d component missing");
 
-            EBUS_EVENT_ID(checkboxId, UiTransformBus, SetScaleToDevice, scaleToDevice);
+            EBUS_EVENT_ID(checkboxId, UiTransformBus, SetScaleToDeviceMode, scaleToDeviceMode);
             EBUS_EVENT_ID(checkboxId, UiTransform2dBus, SetAnchors, anchors, false, false);
             EBUS_EVENT_ID(checkboxId, UiTransform2dBus, SetOffsets, offsets);
             EBUS_EVENT_ID(checkboxId, UiImageBus, SetColor, baseColor);
@@ -377,7 +385,7 @@ namespace LyShineExamples
     AZ::EntityId LyShineExamplesCppExample::CreateText(const char* name, bool atRoot, AZ::EntityId parent,
         UiTransform2dInterface::Anchors anchors, UiTransform2dInterface::Offsets offsets,
         const char* text, AZ::Color textColor, IDraw2d::HAlign hAlign, IDraw2d::VAlign vAlign,
-        bool scaleToDevice = false)
+        UiTransformInterface::ScaleToDeviceMode scaleToDeviceMode)
     {
         // Create the text element
         AZ::Entity* textElem = nullptr;
@@ -399,7 +407,7 @@ namespace LyShineExamples
 
             AZ_Assert(UiTransform2dBus::FindFirstHandler(textId), "Transform component missing");
 
-            EBUS_EVENT_ID(textId, UiTransformBus, SetScaleToDevice, scaleToDevice);
+            EBUS_EVENT_ID(textId, UiTransformBus, SetScaleToDeviceMode, scaleToDeviceMode);
             EBUS_EVENT_ID(textId, UiTransform2dBus, SetAnchors, anchors, false, false);
             EBUS_EVENT_ID(textId, UiTransform2dBus, SetOffsets, offsets);
 
@@ -419,7 +427,8 @@ namespace LyShineExamples
         UiTransform2dInterface::Anchors anchors, UiTransform2dInterface::Offsets offsets,
         const char* text, const char* placeHolderText,
         AZ::Color baseColor, AZ::Color selectedColor, AZ::Color pressedColor,
-        AZ::Color textColor, AZ::Color placeHolderColor, bool scaleToDevice = false)
+        AZ::Color textColor, AZ::Color placeHolderColor,
+        UiTransformInterface::ScaleToDeviceMode scaleToDeviceMode)
     {
         // Create the text input element
         AZ::Entity* textInputElem = nullptr;
@@ -442,7 +451,7 @@ namespace LyShineExamples
 
             AZ_Assert(UiTransform2dBus::FindFirstHandler(textInputId), "Transform2d component missing");
 
-            EBUS_EVENT_ID(textInputId, UiTransformBus, SetScaleToDevice, scaleToDevice);
+            EBUS_EVENT_ID(textInputId, UiTransformBus, SetScaleToDeviceMode, scaleToDeviceMode);
             EBUS_EVENT_ID(textInputId, UiTransform2dBus, SetAnchors, anchors, false, false);
             EBUS_EVENT_ID(textInputId, UiTransform2dBus, SetOffsets, offsets);
             EBUS_EVENT_ID(textInputId, UiImageBus, SetColor, baseColor);
@@ -496,7 +505,8 @@ namespace LyShineExamples
     ////////////////////////////////////////////////////////////////////////////////////////////////////
     AZ::EntityId LyShineExamplesCppExample::CreateImage(const char* name, bool atRoot, AZ::EntityId parent,
         UiTransform2dInterface::Anchors anchors, UiTransform2dInterface::Offsets offsets,
-        AZStd::string spritePath, UiImageInterface::ImageType imageType, AZ::Color color, bool scaleToDevice)
+        AZStd::string spritePath, UiImageInterface::ImageType imageType, AZ::Color color,
+        UiTransformInterface::ScaleToDeviceMode scaleToDeviceMode)
     {
         // Create the image element
         AZ::Entity* image = nullptr;
@@ -518,7 +528,7 @@ namespace LyShineExamples
 
             AZ_Assert(UiTransform2dBus::FindFirstHandler(imageId), "Transform2d component missing");
 
-            EBUS_EVENT_ID(imageId, UiTransformBus, SetScaleToDevice, scaleToDevice);
+            EBUS_EVENT_ID(imageId, UiTransformBus, SetScaleToDeviceMode, scaleToDeviceMode);
             EBUS_EVENT_ID(imageId, UiTransform2dBus, SetAnchors, anchors, false, false);
             EBUS_EVENT_ID(imageId, UiTransform2dBus, SetOffsets, offsets);
 

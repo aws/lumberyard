@@ -110,34 +110,16 @@ namespace EMotionFX
         layout->setAlignment(Qt::AlignTop);
         result->setLayout(layout);
 
-        QHBoxLayout* copyFromLayout = new QHBoxLayout();
-        copyFromLayout->setMargin(0);
-
-        QPushButton* copyFromHitDetectionButton = new QPushButton("Copy from hit detection", result);
-        connect(copyFromHitDetectionButton, &QPushButton::clicked, this, [=]
+        QLayout* copyFromLayout = ColliderHelpers::CreateCopyFromButtonLayout(this, PhysicsSetup::ColliderConfigType::Ragdoll,
+            [=](PhysicsSetup::ColliderConfigType copyFrom, PhysicsSetup::ColliderConfigType copyTo)
             {
                 SkeletonModel* skeletonModel = nullptr;
                 SkeletonOutlinerRequestBus::BroadcastResult(skeletonModel, &SkeletonOutlinerRequests::GetModel);
                 if (skeletonModel)
                 {
-                    RagdollNodeInspectorPlugin::CopyColliders(skeletonModel->GetModelIndicesForFullSkeleton(), PhysicsSetup::HitDetection);
+                    RagdollNodeInspectorPlugin::CopyColliders(skeletonModel->GetModelIndicesForFullSkeleton(), copyFrom);
                 }
             });
-        copyFromLayout->addWidget(copyFromHitDetectionButton);
-
-        // Note: Cloth collider editor is disabled as it is in preview
-        /*QPushButton* copyFromRagdollButton = new QPushButton("Copy from cloth", result);
-        connect(copyFromRagdollButton, &QPushButton::clicked, this, [=]
-            {
-                SkeletonModel* skeletonModel = nullptr;
-                SkeletonOutlinerRequestBus::BroadcastResult(skeletonModel, &SkeletonOutlinerRequests::GetModel);
-                if (skeletonModel)
-                {
-                    RagdollNodeInspectorPlugin::CopyColliders(skeletonModel->GetModelIndicesForFullSkeleton(), PhysicsSetup::Cloth);
-                }
-            });
-        copyFromLayout->addWidget(copyFromRagdollButton);*/
-
         layout->addLayout(copyFromLayout);
 
         QLabel* noSelectionLabel = new QLabel("Select joints from the Skeleton Outliner and add it to the ragdoll using the right-click menu", result);
@@ -168,11 +150,11 @@ namespace EMotionFX
 
                 if (colliderNodeConfig)
                 {
-                    m_collidersWidget->Update(colliderNodeConfig->m_shapes, serializeContext);
+                    m_collidersWidget->Update(actor, joint, PhysicsSetup::ColliderConfigType::Ragdoll, colliderNodeConfig->m_shapes, serializeContext);
                 }
                 else
                 {
-                    m_collidersWidget->Update(Physics::ShapeConfigurationList(), nullptr);
+                    m_collidersWidget->Reset();
                 }
 
                 m_jointLimitWidget->Update(m_modelIndex);
@@ -186,7 +168,7 @@ namespace EMotionFX
             {
                 m_addColliderButton->hide();
                 m_addRemoveButton->setText("Add to ragdoll");
-                m_collidersWidget->Update(Physics::ShapeConfigurationList(), nullptr);
+                m_collidersWidget->Reset();
                 m_ragdollNodeCard->hide();
                 m_jointLimitWidget->Update(QModelIndex());
                 m_jointLimitWidget->hide();
@@ -197,7 +179,7 @@ namespace EMotionFX
         {
             m_ragdollNodeEditor->ClearInstances(true);
             m_jointLimitWidget->Update(QModelIndex());
-            m_collidersWidget->Update(Physics::ShapeConfigurationList(), nullptr);
+            m_collidersWidget->Reset();
         }
     }
 

@@ -701,6 +701,11 @@ public:
         void(int nThreadID));
     MOCK_METHOD0(EndSpawningGeneratingRendItemJobs,
         void());
+    MOCK_METHOD1(StartLoadtimePlayback,
+        void(ILoadtimeCallback* pCallback));
+    MOCK_METHOD0(StopLoadtimePlayback,
+        void());
+
     MOCK_METHOD0(GetGenerateRendItemJobExecutor,
         AZ::LegacyJobExecutor*());
     MOCK_METHOD0(GetGenerateShadowRendItemJobExecutor,

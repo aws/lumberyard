@@ -127,23 +127,18 @@ namespace PhysX
                 return false;
             }
 
+            physx::PxU8* cookedMeshBuffer = cookedMeshAsset.m_cookedPxMeshData.data();
+            physx::PxU32 cookedMeshBufferSize = static_cast<physx::PxU32>(cookedMeshAsset.m_cookedPxMeshData.size());
+            
+            physx::PxDefaultMemoryInputData inpStream(cookedMeshBuffer, cookedMeshBufferSize);
+
             if (cookedMeshAsset.m_isConvexMesh)
             {
-                PhysX::SystemRequestsBus::BroadcastResult(
-                    meshAsset->m_meshData,
-                    &PhysX::SystemRequests::CreateConvexMeshFromCooked, 
-                    static_cast<void*>(cookedMeshAsset.m_cookedPxMeshData.data()),
-                    static_cast<AZ::u32>(cookedMeshAsset.m_cookedPxMeshData.size())
-                );
+                meshAsset->m_meshData = PxGetPhysics().createConvexMesh(inpStream);
             }
             else
             {
-                PhysX::SystemRequestsBus::BroadcastResult(
-                    meshAsset->m_meshData,
-                    &PhysX::SystemRequests::CreateTriangleMeshFromCooked, 
-                    static_cast<void*>(cookedMeshAsset.m_cookedPxMeshData.data()),
-                    static_cast<AZ::u32>(cookedMeshAsset.m_cookedPxMeshData.size())
-                );
+                meshAsset->m_meshData = PxGetPhysics().createTriangleMesh(inpStream);
             }
 
             meshAsset->m_materials = AZStd::move(cookedMeshAsset.m_materialsData);
@@ -187,7 +182,7 @@ namespace PhysX
             if (serializeContext)
             {
                 serializeContext->Class<MeshAssetCookedData>()
-                    ->Version(2)
+                    ->Version(3)
                     ->Field("Convexity", &MeshAssetCookedData::m_isConvexMesh)
                     ->Field("Materials", &MeshAssetCookedData::m_materialsData)
                     ->Field("MaterialSlots", &MeshAssetCookedData::m_materialSlots)

@@ -216,8 +216,6 @@ namespace EMotionFX
         if (numNodes > 0)
         {
             Transform transform;
-            const ActorInstance* actorInstance = animGraphInstance->GetActorInstance();
-            const Pose* bindPose = actorInstance->GetTransformData()->GetBindPose();
             for (size_t n = 0; n < numNodes; ++n)
             {
                 const float finalWeight = blendWeight;// * uniqueData->mWeights[n];
@@ -338,7 +336,7 @@ namespace EMotionFX
             }
 
             // Sync the master to this node.
-            nodeA->AutoSync(animGraphInstance, this, 0.0f, SYNCMODE_TRACKBASED, false, false);
+            nodeA->AutoSync(animGraphInstance, this, 0.0f, SYNCMODE_TRACKBASED, false);
 
             // Sync the motion's to the master.
             for (uint32 i = 0; i < 2; ++i)
@@ -360,7 +358,7 @@ namespace EMotionFX
                     continue;
                 }
 
-                nodeToSync->AutoSync(animGraphInstance, nodeA, 0.0f, m_syncMode, false, false);
+                nodeToSync->AutoSync(animGraphInstance, nodeA, 0.0f, m_syncMode, false);
             }
         }
         else

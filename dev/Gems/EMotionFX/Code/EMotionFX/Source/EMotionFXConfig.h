@@ -45,3 +45,15 @@
 #else
     #define EMFX_SCALECODE(x)
 #endif
+
+// Invalid index values, used in things like Find functions that return indices.
+// When something cannot be found it will return one of these.
+constexpr AZ::u64 InvalidIndex64 = 0xffffffffffffffff;
+constexpr AZ::u32 InvalidIndex32 = 0xffffffff;
+constexpr AZ::u16 InvalidIndex16 = 0xffff;
+constexpr AZ::u8 InvalidIndex8 = 0xff;
+#if defined(AZ_OS64)
+    constexpr size_t InvalidIndex = 0xffffffffffffffff;
+#else
+    constexpr size_t InvalidIndex = 0xffffffff;
+#endif

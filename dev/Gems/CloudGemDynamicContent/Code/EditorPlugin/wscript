@@ -28,7 +28,6 @@ def build(bld):
         defines         = ['DYNAMIC_CONTENT_EDITOR',
                            'EDITOR_COMMON_IMPORTS'],
         uselib          = ['AWS_CPP_SDK_ALL',
-                           'BOOSTPYTHON',
                            'QTANGLE',
                            'QT5CORE',
                            'QT5GUI',

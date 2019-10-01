@@ -39,26 +39,11 @@ def host_platform():
     else:
         return 'osx_gl'
 
-def remove_dir(dirPath):
-    try:
-        if os.path.isdir(dirPath):
-            # shutil.rmtree sometimes fails on the build node, so using the system call instead.
-            if is_windows():
-                os.system('rmdir /S /Q \"{}\"'.format(dirPath))
-            else:
-                os.system('rm -rf \"{}\"'.format(dirPath))
-
-        if os.path.isdir(dirPath):
-            raise
-    except:
-        error("Failed to delete directory {}".format(dirPath))
-
 def gen_shaders(game_name, shader_type, platform, compiler, shader_list, bin_folder, game_path, engine_path):
     """
     Generates the shaders for a specific platform and shader type using a list of shaders using ShaderCacheGen.
     The generated shaders will be output at Cache/<game_name>/<host_platform>/user/cache/Shaders/Cache/<shader_type>
     """
-    shader_list_path = shader_list
     cache_shader_list = os.path.join(game_path, 'Cache', game_name, platform, 'user', 'cache', 'shaders', 'shaderlist.txt')
 
     if shader_list is None:
@@ -72,8 +57,13 @@ def gen_shaders(game_name, shader_type, platform, compiler, shader_list, bin_fol
             shader_list_path = cache_shader_list
 
         print "Source Shader List not specified, using {} by default".format(shader_list_path)
+    else:
+        shader_list_path = os.path.join(game_path, shader_list)
 
-    if os.path.realpath(shader_list_path) != os.path.realpath(cache_shader_list):
+    normalized_shaderlist_path = os.path.normpath(os.path.normcase(os.path.realpath(shader_list_path)))
+    normalized_cache_shader_list = os.path.normpath(os.path.normcase(os.path.realpath(cache_shader_list)))
+
+    if normalized_shaderlist_path != normalized_cache_shader_list:
         cache_shader_list_basename = os.path.split(cache_shader_list)[0]
         if not os.path.exists(cache_shader_list_basename):
             os.makedirs(cache_shader_list_basename)
@@ -81,7 +71,7 @@ def gen_shaders(game_name, shader_type, platform, compiler, shader_list, bin_fol
         shutil.copy2(shader_list_path, cache_shader_list)
 
     platform_shader_cache_path = os.path.join(game_path, 'Cache', game_name, platform, 'user', 'cache', 'shaders', 'cache', shader_type.lower())
-    remove_dir(platform_shader_cache_path)
+    shutil.rmtree(platform_shader_cache_path, ignore_errors=True)
 
     shadergen_path = os.path.join(game_path, bin_folder, 'ShaderCacheGen')
     if is_windows():

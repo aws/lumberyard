@@ -56,8 +56,10 @@ namespace Audio
     ///////////////////////////////////////////////////////////////////////////////////////////////////
     CAudioProxy::~CAudioProxy()
     {
-        // Just in case the callback was never recieved...
-        AudioSystemRequestBus::Broadcast(&AudioSystemRequestBus::Events::RemoveRequestListener, &CAudioProxy::OnAudioEvent, this);
+        if ((m_nFlags & eAPF_WAITING_FOR_ID) != 0)
+        {
+            AudioSystemRequestBus::Broadcast(&AudioSystemRequestBus::Events::RemoveRequestListener, &CAudioProxy::OnAudioEvent, this);
+        }
 
         AZ_Assert(m_nAudioObjectID == INVALID_AUDIO_OBJECT_ID, "Expected AudioObjectID [%d] to be invalid when the audio proxy is destructed.", m_nAudioObjectID);
         stl::free_container(m_aQueuedAudioCommands);
@@ -70,10 +72,10 @@ namespace Audio
         {
             if ((m_nFlags & eAPF_WAITING_FOR_ID) == 0)
             {
-                m_nFlags |= eAPF_WAITING_FOR_ID;
-
-                // Add the request listener to receive callback when the audio object has been created...
+                // Add the request listener to receive callback when the audio object ID has been registered with middleware...
                 AudioSystemRequestBus::Broadcast(&AudioSystemRequestBus::Events::AddRequestListener, &CAudioProxy::OnAudioEvent, this, eART_AUDIO_MANAGER_REQUEST, eAMRT_RESERVE_AUDIO_OBJECT_ID);
+
+                m_nFlags |= eAPF_WAITING_FOR_ID;
 
                 SAudioRequest oRequest;
                 SAudioManagerRequestData<eAMRT_RESERVE_AUDIO_OBJECT_ID> oRequestData(&m_nAudioObjectID, sObjectName);
@@ -94,7 +96,7 @@ namespace Audio
         {
             SAudioRequest oRequest;
             SAudioManagerRequestData<eAMRT_RESERVE_AUDIO_OBJECT_ID> oRequestData(&m_nAudioObjectID, sObjectName);
-            oRequest.nFlags = eARF_PRIORITY_HIGH | eARF_EXECUTE_BLOCKING;
+            oRequest.nFlags = (eARF_PRIORITY_HIGH | eARF_EXECUTE_BLOCKING);
             oRequest.pData = &oRequestData;
 
             AudioSystemRequestBus::Broadcast(&AudioSystemRequestBus::Events::PushRequestBlocking, oRequest);
@@ -109,9 +111,10 @@ namespace Audio
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
-    void CAudioProxy::ExecuteSourceTrigger(const TAudioControlID nTriggerID,
-        const Audio::TAudioControlID& sourceId,
-        const SAudioCallBackInfos & rCallbackInfos  /* = SAudioCallBackInfos::GetEmptyObject() */)
+    void CAudioProxy::ExecuteSourceTrigger(
+        TAudioControlID nTriggerID,
+        const SAudioSourceInfo& rSourceInfo,
+        const SAudioCallBackInfos& rCallbackInfos /* = SAudioCallBackInfos::GetEmptyObject() */)
     {
         if ((m_nFlags & eAPF_WAITING_FOR_ID) == 0)
         {
@@ -121,13 +124,11 @@ namespace Audio
             oRequest.nAudioObjectID = m_nAudioObjectID;
             oRequest.nFlags = rCallbackInfos.nRequestFlags;
 
-            SAudioObjectRequestData<eAORT_EXECUTE_SOURCE_TRIGGER> oRequestData(nTriggerID, sourceId);
-
+            SAudioObjectRequestData<eAORT_EXECUTE_SOURCE_TRIGGER> oRequestData(nTriggerID, rSourceInfo);
             oRequest.pOwner = (rCallbackInfos.pObjectToNotify != nullptr) ? rCallbackInfos.pObjectToNotify : this;
             oRequest.pUserData = rCallbackInfos.pUserData;
             oRequest.pUserDataOwner = rCallbackInfos.pUserDataOwner;
             oRequest.pData = &oRequestData;
-
             AudioSystemRequestBus::Broadcast(&AudioSystemRequestBus::Events::PushRequest, oRequest);
         }
         else
@@ -138,7 +139,7 @@ namespace Audio
             oQueuedCommand.pUserData = rCallbackInfos.pUserData;
             oQueuedCommand.pUserDataOwner = rCallbackInfos.pUserDataOwner;
             oQueuedCommand.nRequestFlags = rCallbackInfos.nRequestFlags;
-            oQueuedCommand.nSourceID = sourceId;
+            oQueuedCommand.rSourceInfo = rSourceInfo;
             TryAddQueuedCommand(oQueuedCommand);
         }
     }
@@ -552,6 +553,9 @@ namespace Audio
     ///////////////////////////////////////////////////////////////////////////////////////////////////
     void CAudioProxy::ExecuteQueuedCommands()
     {
+        // Remove the request listener once the audio system has properly reserved the audio object ID for this proxy.
+        AudioSystemRequestBus::Broadcast(&AudioSystemRequestBus::Events::RemoveRequestListener, &CAudioProxy::OnAudioEvent, this);
+
         m_nFlags &= ~eAPF_WAITING_FOR_ID;
 
         if (!m_aQueuedAudioCommands.empty())
@@ -574,7 +578,7 @@ namespace Audio
                     case eQACT_EXECUTE_SOURCE_TRIGGER:
                     {
                         const SAudioCallBackInfos callbackInfos(refCommand.pOwnerOverride, refCommand.pUserData, refCommand.pUserDataOwner, refCommand.nRequestFlags);
-                        ExecuteSourceTrigger(refCommand.nTriggerID, refCommand.nSourceID, callbackInfos);
+                        ExecuteSourceTrigger(refCommand.nTriggerID, refCommand.rSourceInfo, callbackInfos);
                         break;
                     }
                     case eQACT_STOP_TRIGGER:
@@ -825,8 +829,6 @@ namespace Audio
 
                 if (pAudioProxy)
                 {
-                    // Remove the request listener once the audio manager has reserved the audio object for this proxy.
-                    AudioSystemRequestBus::Broadcast(&AudioSystemRequestBus::Events::RemoveRequestListener, &CAudioProxy::OnAudioEvent, pAudioProxy);
                     pAudioProxy->ExecuteQueuedCommands();
                 }
             }

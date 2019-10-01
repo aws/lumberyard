@@ -15,9 +15,7 @@
 #include <AzCore/Math/Uuid.h>
 #include <AzCore/std/containers/unordered_map.h>
 
-#include <GraphCanvas/Components/EntitySaveDataBus.h>
 #include <GraphCanvas/Editor/GraphModelBus.h>
-#include <GraphCanvas/Components/SceneBus.h>
 
 namespace GraphCanvas
 {
@@ -82,6 +80,12 @@ namespace GraphCanvas
         AZ_TYPE_INFO(EntitySaveDataContainer, "{DCCDA882-AF72-49C3-9AAD-BA601322BFBC}");
         AZ_CLASS_ALLOCATOR(EntitySaveDataContainer, AZ::SystemAllocator, 0);
 
+        template<class DataType>
+        static AZ::Uuid GetDataTypeKey()
+        {
+            return azrtti_typeid<DataType>();
+        }
+
         enum VersionInformation
         {
             NoVersion = -1,
@@ -114,7 +118,7 @@ namespace GraphCanvas
         DataType* CreateSaveData()
         {
             DataType* retVal = nullptr;
-            AZ::Uuid typeId = azrtti_typeid<DataType>();
+            AZ::Uuid typeId = GetDataTypeKey<DataType>();
 
             auto mapIter = m_entityData.find(typeId);
 
@@ -134,7 +138,7 @@ namespace GraphCanvas
         template<class DataType>
         void RemoveSaveData()
         {
-            AZ::Uuid typeId = azrtti_typeid<DataType>();
+            AZ::Uuid typeId = GetDataTypeKey<DataType>();
 
             auto mapIter = m_entityData.find(typeId);
 
@@ -148,7 +152,7 @@ namespace GraphCanvas
         template<class DataType>
         DataType* FindSaveData() const
         {
-            auto mapIter = m_entityData.find(azrtti_typeid<DataType>());
+            auto mapIter = m_entityData.find(GetDataTypeKey<DataType>());
             
             if (mapIter != m_entityData.end())
             {
@@ -176,81 +180,31 @@ namespace GraphCanvas
 
             return dataType;
         }
+
+        bool IsEmpty() const
+        {
+            return m_entityData.empty();
+        }
+
+        void RemoveAll(const AZStd::unordered_set<AZ::Uuid>& exceptionTypes)
+        {
+            auto mapIter = m_entityData.begin();
+            
+            while (mapIter != m_entityData.end())
+            {
+                if (exceptionTypes.find(mapIter->first) == exceptionTypes.end())
+                {
+                    delete mapIter->second;
+                    mapIter = m_entityData.erase(mapIter);
+                }
+                else
+                {
+                    ++mapIter;
+                }
+            }
+        }
         
     private:
         AZStd::unordered_map< AZ::Uuid, ComponentSaveData* > m_entityData;
-    };
-
-    template<class DataType>
-    class SceneMemberComponentSaveData
-        : public ComponentSaveData
-        , public SceneMemberNotificationBus::Handler
-        , public EntitySaveDataRequestBus::Handler
-    {
-    public:
-        AZ_RTTI(ComponentSaveData, "{2DF9A652-DF5D-43B1-932F-B6A838E36E97}");
-        AZ_CLASS_ALLOCATOR(ComponentSaveData, AZ::SystemAllocator, 0);
-
-        SceneMemberComponentSaveData()
-        {
-        }
-
-        ~SceneMemberComponentSaveData() = default;
-
-        void Activate(const AZ::EntityId& memberId)
-        {
-            SceneMemberNotificationBus::Handler::BusConnect(memberId);
-            EntitySaveDataRequestBus::Handler::BusConnect(memberId);
-        }
-
-        // SceneMemberNotificationBus::Handler
-        void OnSceneSet(const AZ::EntityId& graphId)
-        {
-            const AZ::EntityId* ownerId = SceneMemberNotificationBus::GetCurrentBusId();
-
-            if (ownerId)
-            {
-                RegisterIds((*ownerId), graphId);
-            }
-
-            SceneMemberNotificationBus::Handler::BusDisconnect();
-        }
-        ////
-
-        // EntitySaveDataRequestBus
-        void WriteSaveData(EntitySaveDataContainer& saveDataContainer) const override
-        {
-            AZ_Assert(azrtti_cast<const DataType*>(this) != nullptr, "Cannot automatically read/write to non-derived type in SceneMemberComponentSaveData");
-
-            if (RequiresSave())
-            {
-                DataType* saveData = saveDataContainer.FindCreateSaveData<DataType>();
-
-                if (saveData)
-                {
-                    (*saveData) = (*azrtti_cast<const DataType*>(this));
-                }
-            }
-            else
-            {
-                saveDataContainer.RemoveSaveData<DataType>();
-            }
-        }
-
-        void ReadSaveData(const EntitySaveDataContainer& saveDataContainer) override
-        {
-            AZ_Assert(azrtti_cast<DataType*>(this) != nullptr, "Cannot automatically read/write to non-derived type in SceneMemberComponentSaveData");
-
-            DataType* saveData = saveDataContainer.FindSaveDataAs<DataType>();
-
-            if (saveData)
-            {
-                (*azrtti_cast<DataType*>(this)) = (*saveData);
-            }
-        }
-        ////
-
-    protected:
-        virtual bool RequiresSave() const = 0;
     };
 } // namespace GraphCanvas

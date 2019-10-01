@@ -33,8 +33,10 @@ namespace ScriptCanvas
                     ScriptCanvas_Node::Category("Containers")
                 );
 
+
+
                 OperatorInsert()
-                    : OperatorBase(DefaultContainerOperatorConfiguration())
+                    : OperatorBase(DefaultContainerManipulationOperatorConfiguration())
                 {
                 }
 

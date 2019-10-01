@@ -377,4 +377,10 @@ namespace AzToolsFramework
     AZStd::unique_ptr<ManipulatorView> CreateManipulatorViewSplineSelect(
         const SplineSelectionManipulator& splineManipulator, const AZ::Color& color,
         float width);
+
+    /// Returns the vector between the view (camera) and the manipulator in the space
+    /// of the Manipulator (manipulator space + local transform).
+    AZ::Vector3 CalculateViewDirection(
+        const Manipulators& manipulators, const AZ::Vector3& worldViewPosition);
+
 } // namespace AzToolsFramework

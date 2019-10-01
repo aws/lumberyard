@@ -10,8 +10,6 @@
 *
 */
 
-#include "TestTypes.h"
-
 #include <AzCore/Debug/Timer.h>
 #include <AzCore/Debug/StackTracer.h>
 #include <AzCore/Debug/TraceMessagesDrillerBus.h>
@@ -20,6 +18,8 @@
 #include <AzCore/Math/Crc.h>
 #include <AzCore/std/time.h>
 #include <AzCore/std/chrono/clocks.h>
+#include <AzCore/std/string/conversions.h>
+#include <AzCore/UnitTest/TestTypes.h>
 
 using namespace AZ;
 using namespace AZ::Debug;
@@ -42,7 +42,7 @@ namespace UnitTest
                 }
             }
             AZ_TEST_ASSERT(numValidFrames == numFrames);
-#if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_ANDROID) || defined(AZ_PLATFORM_APPLE)
+#if AZ_TRAIT_OS_STACK_FRAMES_VALID
             // We have:
             // StackTracer::run
             // DebugSuite::run
@@ -54,13 +54,17 @@ namespace UnitTest
             AZ_TEST_ASSERT(numValidFrames == 0);
 #endif
 
-#ifdef AZ_PLATFORM_WINDOWS  // Symbols are available only on windows.
+#if AZ_TRAIT_OS_STACK_FRAMES_TRACE  // Symbols are available only on windows.
             {
                 //// We should have loaded at least AZCore_tests.exe module
                 int isFoundModule = 0;
                 for (u32 i = 0; i < SymbolStorage::GetNumLoadedModules(); ++i)
                 {
-                    if (strstr(SymbolStorage::GetModuleInfo(i)->m_fileName, "AzCoreTests.dll"))
+                    char nameBuffer[AZ_ARRAY_SIZE(SymbolStorage::ModuleInfo::m_modName)];
+                    azstrncpy(nameBuffer, SymbolStorage::GetModuleInfo(i)->m_fileName, AZ_ARRAY_SIZE(nameBuffer));
+                    AZStd::to_lower(nameBuffer, nameBuffer + AZ_ARRAY_SIZE(nameBuffer));
+
+                    if (strstr(nameBuffer, "azcoretests.dll"))
                     {
                         isFoundModule = 1;
                         break;
@@ -79,7 +83,7 @@ namespace UnitTest
                 }
                 AZ_TracePrintf("StackTracer", "====================================\n");
             }
-#elif defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_APPLE)
+#elif AZ_TRAIT_OS_STACK_FRAMES_PRINT
             {
                 SymbolStorage::StackLine stackLines[AZ_ARRAY_SIZE(frames)];
                 printf("\n====================================\n");

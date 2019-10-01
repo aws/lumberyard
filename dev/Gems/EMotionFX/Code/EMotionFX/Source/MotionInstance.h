@@ -13,6 +13,7 @@
 #pragma once
 
 // include the required headers
+#include <AzCore/PlatformIncl.h>
 #include "EMotionFXConfig.h"
 #include "BaseObject.h"
 #include "Motion.h"

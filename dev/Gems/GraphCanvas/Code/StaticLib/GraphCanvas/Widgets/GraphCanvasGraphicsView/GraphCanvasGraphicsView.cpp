@@ -9,8 +9,10 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#include <QMessageBox>
+#include <QBoxLayout>
 #include <QClipboard>
+#include <QDialog>
+#include <QMessageBox>
 
 #include <AzCore/Component/ComponentApplicationBus.h>
 #include <AzCore/Component/Entity.h>
@@ -23,8 +25,7 @@
 #include <GraphCanvas/Components/VisualBus.h>
 #include <GraphCanvas/Editor/GraphModelBus.h>
 
-#include <qdialog.h>
-#include <qboxlayout.h>
+#include <GraphCanvas/Utils/ConversionUtils.h>
 
 namespace GraphCanvas
 {
@@ -32,12 +33,14 @@ namespace GraphCanvas
     // GraphCanvasGraphicsView
     ////////////////////////////
     
-    GraphCanvasGraphicsView::GraphCanvasGraphicsView(QWidget* parent)
+    GraphCanvasGraphicsView::GraphCanvasGraphicsView(QWidget* parent, bool registerShortcuts)
         : QGraphicsView(parent)
         , m_isDragSelecting(false)
         , m_checkForEdges(false)
         , m_scrollSpeed(0.0f)
         , m_edgePanning(0.0f, 0.0f)
+        , m_minZoom(0.1f)
+        , m_maxZoom(2.0f)
         , m_checkForDrag(false)
         , m_ignoreValueChange(false)
         , m_reapplyViewParams(false)
@@ -69,65 +72,194 @@ namespace GraphCanvas
 
         ViewRequestBus::Handler::BusConnect(GetViewId());
 
-        QAction* centerAction = new QAction(this);
-        centerAction->setShortcut(QKeySequence(Qt::Key_Z));
+        if (registerShortcuts)
+        {
+            QAction* centerAction = new QAction(this);
+            centerAction->setShortcut(QKeySequence(Qt::CTRL + Qt::SHIFT + Qt::DownArrow));
 
-        connect(centerAction, &QAction::triggered, [this]()
+            connect(centerAction, &QAction::triggered, [this]()
             {
-                if (rubberBandRect().isNull() && !QApplication::mouseButtons() && !m_isEditing)
+                ShowEntireGraph();
+            });
+
+            addAction(centerAction);
+
+            QAction* selectAllAction = new QAction(this);
+            selectAllAction->setShortcut(QKeySequence(QKeySequence::SelectAll));
+
+            connect(selectAllAction, &QAction::triggered, [this]()
+            {
+                SelectAll();
+            });
+
+            addAction(selectAllAction);
+
+            {
+                QAction* selectAllInputAction = new QAction(this);
+                selectAllInputAction->setShortcut(QKeySequence(Qt::CTRL + Qt::Key_Left));
+
+                connect(selectAllInputAction, &QAction::triggered, [this]()
                 {
-                    CenterOnArea(GetSelectedArea());
+                    SelectAllRelative(ConnectionType::CT_Input);
+                });
+
+                addAction(selectAllInputAction);
+            }
+
+            {
+                QAction* selectAllOutputAction = new QAction(this);
+                selectAllOutputAction->setShortcut(QKeySequence(Qt::CTRL + Qt::Key_Right));
+
+                connect(selectAllOutputAction, &QAction::triggered, [this]()
+                {
+                    SelectAllRelative(ConnectionType::CT_Output);
+                });
+
+                addAction(selectAllOutputAction);
+            }
+
+            {
+                QAction* selectAllOutputAction = new QAction(this);
+                selectAllOutputAction->setShortcut(QKeySequence(Qt::CTRL + Qt::Key_Up));
+
+                connect(selectAllOutputAction, &QAction::triggered, [this]()
+                {
+                    SelectConnectedNodes();
+                });
+
+                addAction(selectAllOutputAction);
+            }
+
+            {
+                QAction* clearSelectionAction = new QAction(this);
+                clearSelectionAction->setShortcut(QKeySequence(Qt::Key_Escape));
+
+                connect(clearSelectionAction, &QAction::triggered, [this]()
+                {
+                    ClearSelection();
+                });
+            }
+
+            {
+                QAction* gotoStartAction = new QAction(this);
+                gotoStartAction->setShortcut(QKeySequence(Qt::CTRL + Qt::SHIFT + Qt::Key_Left));
+
+                connect(gotoStartAction, &QAction::triggered, [this]()
+                {
+                    CenterOnStartOfChain();
+                });
+            }
+
+            {
+                QAction* gotoStartAction = new QAction(this);
+                gotoStartAction->setShortcut(QKeySequence(Qt::CTRL + Qt::SHIFT + Qt::Key_Right));
+
+                connect(gotoStartAction, &QAction::triggered, [this]()
+                {
+                    CenterOnEndOfChain();
+                });
+            }
+
+            {
+                QAction* gotoStartAction = new QAction(this);
+                gotoStartAction->setShortcut(QKeySequence(Qt::CTRL + Qt::SHIFT + Qt::Key_Up));
+
+                connect(gotoStartAction, &QAction::triggered, [this]()
+                {
+                    CenterOnSelection();
+                });
+            }
+
+            // Ctrl+"0" overview shortcut.
+            {
+                QAction* keyAction = new QAction(this);
+                keyAction->setShortcut(QKeySequence(Qt::CTRL + Qt::Key_0));
+
+                connect(keyAction, &QAction::triggered, [this]()
+                {
+                    if (!m_sceneId.IsValid())
+                    {
+                        // There's no scene.
+                        return;
+                    }
+
+                    CenterOnArea(GetCompleteArea());
+                });
+
+                addAction(keyAction);
+            }
+
+            // Ctrl+"+" zoom-in shortcut.
+            {
+                QAction* keyAction = new QAction(this);
+                keyAction->setShortcuts({ QKeySequence(Qt::CTRL + Qt::Key_Plus),
+                    QKeySequence(Qt::CTRL + Qt::Key_Equal) });
+
+                connect(keyAction, &QAction::triggered, [this]()
+                {
+                    ZoomIn();
+                });
+                addAction(keyAction);
+            }
+
+            // Ctrl+"-" zoom-out shortcut.
+            {
+                QAction* keyAction = new QAction(this);
+                keyAction->setShortcut(QKeySequence(Qt::CTRL + Qt::Key_Minus));
+
+                connect(keyAction, &QAction::triggered, [this]()
+                {
+                    ZoomOut();
+                });
+
+                addAction(keyAction);
+            }
+
+            // Ctrl+shift+'p' screenshot graph shortcut
+            {
+                QAction* keyAction = new QAction(this);
+                keyAction->setShortcut(QKeySequence(Qt::CTRL + Qt::SHIFT + Qt::Key_P));
+
+                connect(keyAction, &QAction::triggered, [this]()
+                {
+                    ScreenshotSelection();
+                });
+
+                addAction(keyAction);
+            }
+
+            bool enableDisabling = false;
+            AssetEditorSettingsRequestBus::EventResult(enableDisabling, m_editorId, &AssetEditorSettingsRequests::AllowNodeDisabling);
+
+            if (enableDisabling)
+            {
+
+                // ctrl+k, ctrl+u enable selection
+                {
+                    QAction* keyAction = new QAction(this);
+                    keyAction->setShortcut(QKeySequence(Qt::CTRL + Qt::Key_K, Qt::CTRL + Qt::Key_U));
+
+                    connect(keyAction, &QAction::triggered, [this]()
+                    {
+                        EnableSelection();
+                    });
                 }
-            });
 
-        addAction(centerAction);
+                // Ctrl+k, ctrl+c disable selection
+                {
+                    QAction* keyAction = new QAction(this);
+                    keyAction->setShortcut(QKeySequence(Qt::CTRL + Qt::Key_K, Qt::CTRL + Qt::Key_C));
 
-        QAction* selectAllAction = new QAction(this);
-        selectAllAction->setShortcut(QKeySequence(QKeySequence::SelectAll));
+                    connect(keyAction, &QAction::triggered, [this]()
+                    {
+                        DisableSelection();
+                    });
+                }
 
-        connect(selectAllAction, &QAction::triggered, [this]()
-        {
-            SelectAll();
-        });
-
-        addAction(selectAllAction);
-
-        {
-            QAction* selectAllInputAction = new QAction(this);
-            selectAllInputAction->setShortcut(QKeySequence(Qt::CTRL + Qt::Key_Left));
-
-            connect(selectAllInputAction, &QAction::triggered, [this]()
-            {
-                SelectAllRelative(ConnectionType::CT_Input);
-            });
-
-            addAction(selectAllInputAction);
+            }
         }
 
-        {
-            QAction* selectAllOutputAction = new QAction(this);
-            selectAllOutputAction->setShortcut(QKeySequence(Qt::CTRL + Qt::Key_Right));
-
-            connect(selectAllOutputAction, &QAction::triggered, [this]()
-            {
-                SelectAllRelative(ConnectionType::CT_Output);
-            });
-
-            addAction(selectAllOutputAction);
-        }
-
-        {
-            QAction* selectAllOutputAction = new QAction(this);
-            selectAllOutputAction->setShortcut(QKeySequence(Qt::CTRL + Qt::Key_Up));
-
-            connect(selectAllOutputAction, &QAction::triggered, [this]()
-            {
-                SelectConnectedNodes();
-            });
-
-            addAction(selectAllOutputAction);
-        }
-
+        // Keep the bookmarks outside of bookmarks for now.
         AZStd::vector< Qt::Key > keyIndexes = { Qt::Key_1, Qt::Key_2, Qt::Key_3, Qt::Key_4, Qt::Key_5, Qt::Key_6, Qt::Key_7, Qt::Key_8, Qt::Key_9 };
 
         for (int i = 0; i < keyIndexes.size(); ++i)
@@ -159,115 +291,7 @@ namespace GraphCanvas
                 });
 
             addAction(activateBookmarkKeyAction);
-        }
-
-        // Ctrl+"0" overview shortcut.
-        {
-            QAction* keyAction = new QAction(this);
-            keyAction->setShortcut(QKeySequence(Qt::CTRL + Qt::Key_0));
-
-            connect(keyAction, &QAction::triggered, [this]()
-                {
-                    if (!m_sceneId.IsValid())
-                    {
-                        // There's no scene.
-                        return;
-                    }
-
-                    CenterOnArea(GetCompleteArea());
-                });
-
-            addAction(keyAction);
-        }
-
-        // Ctrl+"+" zoom-in shortcut.
-        {
-            QAction* keyAction = new QAction(this);
-            keyAction->setShortcuts({QKeySequence(Qt::CTRL + Qt::Key_Plus),
-                                     QKeySequence(Qt::CTRL + Qt::Key_Equal)});
-
-            connect(keyAction, &QAction::triggered, [this]()
-                {
-                    if (!m_sceneId.IsValid())
-                    {
-                        // There's no scene.
-                        return;
-                    }
-
-                    QWheelEvent ev(QPoint(0, 0), WHEEL_ZOOM, Qt::NoButton, Qt::NoModifier);
-                    wheelEvent(&ev);
-                });
-            addAction(keyAction);
-        }
-
-        // Ctrl+"-" zoom-out shortcut.
-        {
-            QAction* keyAction = new QAction(this);
-            keyAction->setShortcut(QKeySequence(Qt::CTRL + Qt::Key_Minus));
-
-            connect(keyAction, &QAction::triggered, [this]()
-                {
-                    if (!m_sceneId.IsValid())
-                    {
-                        // There's no scene.
-                        return;
-                    }
-
-                    QWheelEvent ev(QPoint(0, 0), -WHEEL_ZOOM, Qt::NoButton, Qt::NoModifier);
-                    wheelEvent(&ev);
-                });
-
-            addAction(keyAction);
-        }
-
-        // Ctrl+shift+'p' screenshot graph shortcut
-        {
-            QAction* keyAction = new QAction(this);
-            keyAction->setShortcut(QKeySequence(Qt::CTRL + Qt::SHIFT + Qt::Key_P));
-
-            connect(keyAction, &QAction::triggered, [this]()
-            {
-                if (!m_sceneId.IsValid())
-                {
-                    // There's no scene.
-                    return;
-                }
-
-                bool hasSelection = false;
-                GraphCanvas::SceneRequestBus::EventResult(hasSelection, m_sceneId, &GraphCanvas::SceneRequests::HasSelectedItems);
-
-                QImage* sceneImage = nullptr;
-
-                if (hasSelection)
-                {
-                    QRectF selectedBoundingRect;
-                    GraphCanvas::SceneRequestBus::EventResult(selectedBoundingRect, m_sceneId, &GraphCanvas::SceneRequests::GetSelectedSceneBoundingArea);
-
-                    if (!selectedBoundingRect.isEmpty())
-                    {
-                        sceneImage = CreateImageOfGraphArea(selectedBoundingRect);
-                    }
-                    else
-                    {
-                        sceneImage = CreateImageOfGraph();
-                    }
-                }
-                else
-                {
-                    sceneImage = CreateImageOfGraph();
-                }
-
-                if (sceneImage)
-                {
-                    QClipboard* clipboard = QGuiApplication::clipboard();
-                    clipboard->setImage((*sceneImage));
-
-                    delete sceneImage;
-                }
-            });
-
-            addAction(keyAction);
-        }
+        }        
     }
 
     GraphCanvasGraphicsView::~GraphCanvasGraphicsView()
@@ -325,6 +349,8 @@ namespace GraphCanvas
         SceneRequestBus::EventResult(graphicsScene, m_sceneId, &SceneRequests::AsQGraphicsScene);
         setScene(graphicsScene);
 
+        CalculateMinZoomBounds();
+
         SceneNotificationBus::Handler::BusConnect(m_sceneId);
 
         SceneRequestBus::Event(m_sceneId, &SceneRequests::RegisterView, GetViewId());
@@ -361,16 +387,22 @@ namespace GraphCanvas
         return viewCenter;
     }
 
+    AZ::Vector2 GraphCanvasGraphicsView::MapToGlobal(const AZ::Vector2& scenePoint)
+    {
+        QPoint mapped = mapToGlobal(mapFromScene(ConversionUtils::AZToQPoint(scenePoint)));
+        return ConversionUtils::QPointToVector(mapped);
+    }
+
     AZ::Vector2 GraphCanvasGraphicsView::MapToScene(const AZ::Vector2& view)
     {
-        QPointF mapped = mapToScene(QPoint(view.GetX(), view.GetY()));
-        return AZ::Vector2(mapped.x(), mapped.y());
+        QPointF mapped = mapToScene(ConversionUtils::AZToQPoint(view).toPoint());
+        return ConversionUtils::QPointToVector(mapped);
     }
 
     AZ::Vector2 GraphCanvasGraphicsView::MapFromScene(const AZ::Vector2& scene)
     {
-        QPoint mapped = mapFromScene(QPointF(scene.GetX(), scene.GetY()));
-        return AZ::Vector2(mapped.x(), mapped.y());
+        QPoint mapped = mapFromScene(ConversionUtils::AZToQPoint(scene));
+        return ConversionUtils::QPointToVector(mapped);
     }
 
     void GraphCanvasGraphicsView::SetViewParams(const ViewParams& viewParams)
@@ -433,19 +465,9 @@ namespace GraphCanvas
             // Fit into view.
             fitInView(viewArea, Qt::AspectRatioMode::KeepAspectRatio);
 
-            QTransform xfm = transform();
-
-            // Clamp the scaling factor.
-            m_viewParams.m_scale = AZ::GetClamp(xfm.m11(), ViewLimits::ZOOM_MIN, ViewLimits::ZOOM_MAX);
-
-            // Apply the new scale
-            xfm.setMatrix(m_viewParams.m_scale, xfm.m12(), xfm.m13(),
-                xfm.m21(), m_viewParams.m_scale, xfm.m23(),
-                xfm.m31(), xfm.m32(), xfm.m33());
-            setTransform(xfm);
+            ClampScaleBounds();            
 
             ViewNotificationBus::Event(GetViewId(), &ViewNotifications::OnViewCenteredOnArea);
-            ViewNotificationBus::Event(GetViewId(), &ViewNotifications::OnZoomChanged, m_viewParams.m_scale);
         }
     }
 
@@ -462,6 +484,11 @@ namespace GraphCanvas
     void GraphCanvasGraphicsView::SelectConnectedNodes()
     {
         SceneRequestBus::Event(m_sceneId, &GraphCanvas::SceneRequests::SelectConnectedNodes);
+    }
+
+    void GraphCanvasGraphicsView::ClearSelection()
+    {
+        SceneRequestBus::Event(m_sceneId, &GraphCanvas::SceneRequests::ClearSelection);
     }
 
     void GraphCanvasGraphicsView::CenterOnArea(const QRectF& viewArea)
@@ -487,24 +514,58 @@ namespace GraphCanvas
 
             qreal newZoom = AZ::GetMin(xfm.m11(), originalZoom);
 
-            // Clamp the scaling factor.
-            m_viewParams.m_scale = AZ::GetClamp(newZoom, ViewLimits::ZOOM_MIN, ViewLimits::ZOOM_MAX);
-
             // Apply the new scale.
-            xfm.setMatrix(m_viewParams.m_scale, xfm.m12(), xfm.m13(),
-                xfm.m21(), m_viewParams.m_scale, xfm.m23(),
+            xfm.setMatrix(newZoom, xfm.m12(), xfm.m13(),
+                xfm.m21(), newZoom, xfm.m23(),
                 xfm.m31(), xfm.m32(), xfm.m33());
 
             setTransform(xfm);
 
             ViewNotificationBus::Event(GetViewId(), &ViewNotifications::OnViewCenteredOnArea);
-            ViewNotificationBus::Event(GetViewId(), &ViewNotifications::OnZoomChanged, m_viewParams.m_scale);
+
+            ClampScaleBounds();
         }
     }
 
     void GraphCanvasGraphicsView::CenterOn(const QPointF& posInSceneCoordinates)
     {
         centerOn(posInSceneCoordinates);
+    }
+
+    void GraphCanvasGraphicsView::CenterOnStartOfChain()
+    {        
+        AZStd::vector< AZ::EntityId > selectedEntities;
+        SceneRequestBus::EventResult(selectedEntities, GetScene(), &SceneRequests::GetSelectedNodes);
+
+        AZStd::unordered_set< NodeId > traversedNodes = GraphUtils::FindTerminalForNodeChain(selectedEntities, ConnectionType::CT_Input);
+
+        AZStd::vector< AZ::EntityId > terminalEntities;
+        terminalEntities.reserve(traversedNodes.size());
+        terminalEntities.assign(traversedNodes.begin(), traversedNodes.end());
+
+        CenterOnSceneMembers(terminalEntities);
+    }
+
+    void GraphCanvasGraphicsView::CenterOnEndOfChain()
+    {
+        AZStd::vector< AZ::EntityId > selectedEntities;
+        SceneRequestBus::EventResult(selectedEntities, GetScene(), &SceneRequests::GetSelectedNodes);
+
+        AZStd::unordered_set< NodeId > traversedNodes = GraphUtils::FindTerminalForNodeChain(selectedEntities, ConnectionType::CT_Output);
+
+        AZStd::vector< AZ::EntityId > terminalEntities;
+        terminalEntities.reserve(traversedNodes.size());
+        terminalEntities.assign(traversedNodes.begin(), traversedNodes.end());
+
+        CenterOnSceneMembers(terminalEntities);
+    }
+
+    void GraphCanvasGraphicsView::CenterOnSelection()
+    {
+        AZStd::vector< AZ::EntityId > selectedEntities;
+        SceneRequestBus::EventResult(selectedEntities, GetScene(), &SceneRequests::GetSelectedNodes);
+
+        CenterOnSceneMembers(selectedEntities);
     }
 
     void GraphCanvasGraphicsView::WheelEvent(QWheelEvent* ev)
@@ -601,6 +662,89 @@ namespace GraphCanvas
         return xfm.m11();
     }
 
+    void GraphCanvasGraphicsView::ScreenshotSelection()
+    {
+        if (!m_sceneId.IsValid())
+        {
+            // There's no scene.
+            return;
+        }
+
+        bool hasSelection = false;
+        GraphCanvas::SceneRequestBus::EventResult(hasSelection, m_sceneId, &GraphCanvas::SceneRequests::HasSelectedItems);
+
+        QImage* sceneImage = nullptr;
+
+        if (hasSelection)
+        {
+            QRectF selectedBoundingRect;
+            GraphCanvas::SceneRequestBus::EventResult(selectedBoundingRect, m_sceneId, &GraphCanvas::SceneRequests::GetSelectedSceneBoundingArea);
+
+            if (!selectedBoundingRect.isEmpty())
+            {
+                sceneImage = CreateImageOfGraphArea(selectedBoundingRect);
+            }
+            else
+            {
+                sceneImage = CreateImageOfGraph();
+            }
+        }
+        else
+        {
+            sceneImage = CreateImageOfGraph();
+        }
+
+        if (sceneImage)
+        {
+            QClipboard* clipboard = QGuiApplication::clipboard();
+            clipboard->setImage((*sceneImage));
+
+            delete sceneImage;
+        }
+    }
+
+    void GraphCanvasGraphicsView::EnableSelection()
+    {
+        SceneRequestBus::Event(GetScene(), &SceneRequests::EnableSelection);
+    }
+
+    void GraphCanvasGraphicsView::DisableSelection()
+    {
+        SceneRequestBus::Event(GetScene(), &SceneRequests::DisableSelection);
+    }
+
+    void GraphCanvasGraphicsView::ShowEntireGraph()
+    {
+        if (rubberBandRect().isNull() && !QApplication::mouseButtons() && !m_isEditing)
+        {
+            CenterOnArea(GetCompleteArea());
+        }
+    }
+
+    void GraphCanvasGraphicsView::ZoomIn()
+    {
+        if (!m_sceneId.IsValid())
+        {
+            // There's no scene.
+            return;
+        }
+
+        QWheelEvent ev(QPoint(0, 0), WHEEL_ZOOM, Qt::NoButton, Qt::NoModifier);
+        wheelEvent(&ev);
+    }
+
+    void GraphCanvasGraphicsView::ZoomOut()
+    {
+        if (!m_sceneId.IsValid())
+        {
+            // There's no scene.
+            return;
+        }
+
+        QWheelEvent ev(QPoint(0, 0), -WHEEL_ZOOM, Qt::NoButton, Qt::NoModifier);
+        wheelEvent(&ev);
+    }
+
     void GraphCanvasGraphicsView::PanSceneBy(QPointF repositioning, AZStd::chrono::milliseconds duration)
     {
         if (AZ::IsClose(duration.count(), 0.0, 0.001))
@@ -623,6 +767,66 @@ namespace GraphCanvas
         QPointF centerPoint = mapToScene(rect().center());
 
         PanSceneBy(scenePoint - centerPoint, duration);
+    }
+
+    void GraphCanvasGraphicsView::HideToastNotification(const ToastId& toastId)
+    {
+        auto notificationIter = m_notifications.find(toastId);
+
+        if (notificationIter != m_notifications.end())
+        {
+            auto queuedIter = AZStd::find(m_queuedNotifications.begin(), m_queuedNotifications.end(), toastId);
+
+            if (queuedIter != m_queuedNotifications.end())
+            {
+                m_queuedNotifications.erase(queuedIter);
+            }
+
+            notificationIter->second->reject();
+        }
+    }
+
+    ToastId GraphCanvasGraphicsView::ShowToastNotification(const ToastConfiguration& toastConfiguration)
+    {
+        ToastNotification* notification = aznew ToastNotification(this, toastConfiguration);
+
+        ToastId toastId = notification->GetToastId();
+        m_notifications[toastId] = notification;
+
+        m_queuedNotifications.emplace_back(toastId);
+
+        if (!m_activeNotification.IsValid())
+        {
+            DisplayQueuedNotification();
+        }
+
+        return toastId;
+    }
+
+    ToastId GraphCanvasGraphicsView::ShowToastAtCursor(const ToastConfiguration& toastConfiguration)
+    {
+        ToastNotification* notification = aznew ToastNotification(this, toastConfiguration);
+
+        notification->ShowToastAtCursor();
+
+        ToastId toastId = notification->GetToastId();
+
+        m_notifications[toastId] = notification;
+
+        return toastId;
+    }
+
+    ToastId GraphCanvasGraphicsView::ShowToastAtPoint(const QPoint& screenPosition, const QPointF& anchorPoint, const ToastConfiguration& toastConfiguration)
+    {
+        ToastNotification* notification = aznew ToastNotification(this, toastConfiguration);
+
+        notification->ShowToastAtPoint(screenPosition, anchorPoint);
+
+        ToastId toastId = notification->GetToastId();
+
+        m_notifications[toastId] = notification;
+
+        return toastId;
     }
 
     void GraphCanvasGraphicsView::OnTick(float tick, AZ::ScriptTimePoint timePoint)
@@ -916,15 +1120,15 @@ namespace GraphCanvas
             qreal scaleFactor = 1.0 + (event->delta() * 0.00125);
             qreal newScale = m_viewParams.m_scale * scaleFactor;
 
-            if (newScale < ViewLimits::ZOOM_MIN)
+            if (newScale < m_minZoom)
             {
-                newScale = ViewLimits::ZOOM_MIN;
-                scaleFactor = (ViewLimits::ZOOM_MIN / m_viewParams.m_scale);
+                newScale = m_minZoom;
+                scaleFactor = (m_minZoom / m_viewParams.m_scale);
             }
-            else if (newScale > ViewLimits::ZOOM_MAX)
+            else if (newScale > m_maxZoom)
             {
-                newScale = ViewLimits::ZOOM_MAX;
-                scaleFactor = (ViewLimits::ZOOM_MAX / m_viewParams.m_scale);
+                newScale = m_maxZoom;
+                scaleFactor = (m_maxZoom / m_viewParams.m_scale);
             }
 
             m_viewParams.m_scale = newScale;
@@ -949,6 +1153,12 @@ namespace GraphCanvas
 
         QGraphicsView::resizeEvent(event);
 
+        if (scene())
+        {
+            CalculateMinZoomBounds();
+            ClampScaleBounds();
+        }
+
         CalculateInternalRectangle();
     }
 
@@ -961,9 +1171,16 @@ namespace GraphCanvas
 
     void GraphCanvasGraphicsView::OnSettingsChanged()
     {
-        AssetEditorSettingsRequestBus::EventResult(m_scrollSpeed, GetEditorId(), &AssetEditorSettingsRequests::GetEdgePanningScrollSpeed);
+        auto settingsHandler = AssetEditorSettingsRequestBus::FindFirstHandler(GetEditorId());
 
-        CalculateInternalRectangle();
+        if (settingsHandler)
+        {
+            m_scrollSpeed = settingsHandler->GetEdgePanningScrollSpeed();            
+            m_maxZoom = settingsHandler->GetMaxZoom();
+
+            ClampScaleBounds();
+            CalculateInternalRectangle();
+        }
     }
 
     void GraphCanvasGraphicsView::CreateBookmark(int bookmarkShortcut)
@@ -1036,6 +1253,27 @@ namespace GraphCanvas
     {
         AZ::EntityId sceneId = GetScene();
         BookmarkManagerRequestBus::Event(sceneId, &BookmarkManagerRequests::ActivateShortcut, bookmarkShortcut);
+    }
+
+    void GraphCanvasGraphicsView::CenterOnSceneMembers(const AZStd::vector<AZ::EntityId>& memberIds)
+    {
+        QRectF boundingRect;
+
+        for (auto memberId : memberIds)
+        {
+            QGraphicsItem* graphicsItem = nullptr;
+            SceneMemberUIRequestBus::EventResult(graphicsItem, memberId, &SceneMemberUIRequests::GetRootGraphicsItem);
+
+            if (graphicsItem)
+            {                
+                boundingRect |= graphicsItem->sceneBoundingRect();
+            }
+        }
+
+        if (!boundingRect.isEmpty())
+        {
+            CenterOnArea(boundingRect);
+        }
     }
 
     void GraphCanvasGraphicsView::ConnectBoundsSignals()
@@ -1115,6 +1353,42 @@ namespace GraphCanvas
         m_viewParams.m_anchorPointY = anchorPoint.y();
 
         ViewNotificationBus::Event(GetViewId(), &ViewNotifications::OnViewParamsChanged, m_viewParams);
+    }
+
+    void GraphCanvasGraphicsView::CalculateMinZoomBounds()
+    {
+        if (scene())
+        {
+            QRectF sceneRect = scene()->sceneRect();
+
+            qreal horizontalScale = static_cast<qreal>(width()) / static_cast<qreal>(sceneRect.width());
+            qreal verticalScale = static_cast<qreal>(height()) / static_cast<qreal>(sceneRect.height());
+
+            m_minZoom = AZ::GetMax(horizontalScale, verticalScale);
+        }
+    }
+
+    void GraphCanvasGraphicsView::ClampScaleBounds()
+    {
+        QTransform xfm = transform();
+
+        // Clamp the scaling factor.
+        if (m_minZoom < m_maxZoom)
+        {
+            m_viewParams.m_scale = AZ::GetClamp(xfm.m11(), m_minZoom, m_maxZoom);
+        }
+        else if (m_minZoom < m_maxZoom)
+        {
+            m_viewParams.m_scale = AZ::GetClamp(xfm.m11(), m_maxZoom, m_minZoom);
+        }
+
+        // Apply the new scale
+        xfm.setMatrix(m_viewParams.m_scale, xfm.m12(), xfm.m13(),
+            xfm.m21(), m_viewParams.m_scale, xfm.m23(),
+            xfm.m31(), xfm.m32(), xfm.m33());
+        setTransform(xfm);        
+
+        ViewNotificationBus::Event(GetViewId(), &ViewNotifications::OnZoomChanged, m_viewParams.m_scale);
     }
 
     void GraphCanvasGraphicsView::OnRubberBandChanged(QRect rubberBandRect, QPointF fromScenePoint, QPointF toScenePoint)
@@ -1225,6 +1499,50 @@ namespace GraphCanvas
         else if (AZ::TickBus::Handler::BusIsConnected())
         {
             AZ::TickBus::Handler::BusDisconnect();
+        }
+    }
+
+    void GraphCanvasGraphicsView::OnNotificationHidden()
+    {
+        m_activeNotification.SetInvalid();
+
+        if (!m_queuedNotifications.empty())
+        {
+            DisplayQueuedNotification();
+        }
+    }
+
+    void GraphCanvasGraphicsView::DisplayQueuedNotification()
+    {        
+        if (m_queuedNotifications.empty())
+        {
+            return;
+        }
+
+        ToastId toastId = m_queuedNotifications.front();
+        m_queuedNotifications.erase(m_queuedNotifications.begin());
+
+        auto notificationIter = m_notifications.find(toastId);
+
+        if (notificationIter != m_notifications.end())
+        {
+            m_activeNotification = toastId;
+
+            // Want this to be roughly in the top right corner of the graphics view.
+            QPoint globalPoint = mapToGlobal(QPoint(width() - 10, 10));
+
+            // Anchor point will be top right
+            QPointF anchorPoint = QPointF(1, 0);
+
+            notificationIter->second->ShowToastAtPoint(globalPoint, anchorPoint);
+
+            QObject::connect(notificationIter->second, &ToastNotification::ToastNotificationHidden, this, &GraphCanvasGraphicsView::OnNotificationHidden);
+        }
+
+        // If we didn't actually show something, recurse to avoid things getting stuck in the queue.
+        if (!m_activeNotification.IsValid())
+        {
+            DisplayQueuedNotification();
         }
     }
 }

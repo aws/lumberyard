@@ -83,8 +83,6 @@ namespace
         {
             GraphCanvas::NodePaletteTreeItem* utilitiesRoot = root->GetCategoryNode("Utilities");
 
-            utilitiesRoot->CreateChildNode<ScriptCanvasEditor::CommentNodePaletteTreeItem>("Comment", QString(ScriptCanvasEditor::IconComponent::LookupClassIcon(AZ::Uuid()).c_str()));
-
             root->CreateChildNode<ScriptCanvasEditor::LocalVariablesListNodePaletteTreeItem>("Variables");
 
             // We always want to keep this one around as a place holder
@@ -118,7 +116,6 @@ namespace
             {
                 createdItem = parentItem->CreateChildNode<ScriptCanvasEditor::EBusSendEventPaletteTreeItem>(ebusSenderNodeModelInformation->m_busName, ebusSenderNodeModelInformation->m_eventName, ebusSenderNodeModelInformation->m_busId, ebusSenderNodeModelInformation->m_eventId);
             }
-
 
             if (createdItem)
             {
@@ -295,20 +292,42 @@ namespace ScriptCanvasEditor
             }
         }
 
+        //////////////////////////////////
+        // ScriptCanvasNodePaletteConfig
+        //////////////////////////////////
+
+        ScriptCanvasNodePaletteConfig::ScriptCanvasNodePaletteConfig(const NodePaletteModel& nodePaletteModel, AzToolsFramework::AssetBrowser::AssetBrowserFilterModel* assetModel, bool isInContextMenu)
+            : m_nodePaletteModel(nodePaletteModel)
+            , m_assetModel(assetModel)
+        {
+            m_editorId = ScriptCanvasEditor::AssetEditorId;
+            m_mimeType = NodePaletteDockWidget::GetMimeType();
+            m_isInContextMenu = isInContextMenu;
+            m_allowArrowKeyNavigation = isInContextMenu;
+            m_saveIdentifier = m_isInContextMenu ? "ScriptCanvas" : "ScriptCnavas_ContextMenu";
+
+            m_rootTreeItem = ExternalCreatePaletteRoot(nodePaletteModel, assetModel);
+        }
+
+        ScriptCanvasNodePaletteConfig::~ScriptCanvasNodePaletteConfig()
+        {
+
+        }
+
         //////////////////////////
         // NodePaletteDockWidget
         //////////////////////////
 
-        NodePaletteDockWidget::NodePaletteDockWidget(const NodePaletteModel& nodePaletteModel, const QString& windowLabel, QWidget* parent, AzToolsFramework::AssetBrowser::AssetBrowserFilterModel* assetModel, bool inContextMenu)
-            : GraphCanvas::NodePaletteDockWidget(ExternalCreatePaletteRoot(nodePaletteModel, assetModel), ScriptCanvasEditor::AssetEditorId, windowLabel, parent, GetMimeType(), inContextMenu, inContextMenu ? "ScriptCanvas" : "ScriptCnavas_ContextMenu")
-            , m_assetModel(assetModel)
-            , m_nodePaletteModel(nodePaletteModel)
+        NodePaletteDockWidget::NodePaletteDockWidget(const QString& windowLabel, QWidget* parent, const ScriptCanvasNodePaletteConfig& paletteConfig)
+            : GraphCanvas::NodePaletteDockWidget(parent, windowLabel, paletteConfig)
+            , m_assetModel(paletteConfig.m_assetModel)
+            , m_nodePaletteModel(paletteConfig.m_nodePaletteModel)
             , m_cyclingIdentifier(0)
             , m_nextCycleAction(nullptr)
             , m_previousCycleAction(nullptr)
             , m_ignoreSelectionChanged(false)
         {
-            if (!inContextMenu)
+            if (!paletteConfig.m_isInContextMenu)
             {
                 m_newCustomEvent = new QToolButton(this);
                 m_newCustomEvent->setIcon(QIcon(":/ScriptCanvasEditorResources/Resources/add.png"));

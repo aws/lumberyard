@@ -14,7 +14,6 @@
 -python-debug-path "f:/dev/Systems/dev/Code/SDKs/markupsafe/x64"
 -python-debug-path "f:/dev/Systems/dev/Code/SDKs/jinja2/x64"
 -include-path "f:/dev/Systems/dev/Code/Tools/AzCodeGenerator/AzCodeGeneratorUnitTests"
--include-path "f:/dev/Systems/dev/Code/SDKs/boost"
 -include-path "f:/dev/Systems/dev/Code/CryEngine/CryCommon"
 -include-path "f:/dev/Systems/dev/BinTemp/win_x64_profile_test/Code/Framework/AzCore"
 -include-path "f:/dev/Systems/dev/Code/Framework/AzCore"

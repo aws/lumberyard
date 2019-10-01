@@ -18,7 +18,7 @@
 #include <AzCore/Component/Component.h>
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/std/containers/deque.h>
-#include <AzCore/std/parallel/conditional_variable.h>
+#include <AzCore/std/parallel/condition_variable.h>
 
 //#define ENABLE_COMPRESSION_FOR_REMOTE_DRILLER
 

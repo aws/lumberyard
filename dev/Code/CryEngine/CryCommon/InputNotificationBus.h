@@ -40,7 +40,7 @@ namespace AZ
 
 
         //////////////////////////////////////////////////////////////////////////
-        /// This connection policy will cause OnInputContextActivated to be called if 
+        /// This connection policy will cause OnInputContextActivated to be called if
         /// it is connecting to the currently active context
         template<class Bus>
         struct ConnectionPolicy

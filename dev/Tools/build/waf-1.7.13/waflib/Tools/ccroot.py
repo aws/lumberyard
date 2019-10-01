@@ -225,7 +225,15 @@ def apply_link(self):
 	self.link_task = self.create_task(link, objs)
 
 	self.link_task.add_target(self.output_file_name)
-
+	
+	# Check if there are any stubs that are generated from the link task and if stub outputs are supported
+	if 'STUB_ST' in self.env and hasattr(self, 'output_stub_name'):
+		output_stub_filename = self.env['STUB_ST'] % getattr(self, 'output_stub_name')
+		self.link_task.add_target(output_stub_filename)
+	if 'ALT_STUB_ST' in self.env and hasattr(self, 'output_stub_name'):
+		alt_output_stub_filename = self.env['ALT_STUB_ST'] % getattr(self, 'output_stub_name')
+		self.link_task.add_target(alt_output_stub_filename)
+	
 	# remember that the install paths are given by the task generators
 	try:
 		inst_to = self.install_path
@@ -348,18 +356,27 @@ def process_use(self):
 		var = y.tmp_use_var
 		if var and link_task:
 			if var == 'LIB' or y.tmp_use_stlib or x in names:
-
-				if getattr(y, 'output_file_name', None):
-					# Use the output file name if that override is set
-					libname = y.output_file_name
+				
+				output_stub_name = getattr(y, 'output_stub_name', None)
+				output_file_name = getattr(y, 'output_file_name', y.output_file_name)
+				
+				if output_stub_name:
+					# If we have a stub name attribute, link against that stub instead of the name of the output/target
+					libname = output_stub_name
+					self.env.append_value('STUB', [libname[libname.rfind(os.sep) + 1:]])
+					self.link_task.dep_nodes.extend(y.link_task.outputs)
+					
+				elif output_file_name:
+					# By default, link against the output filename (or target name)
+					libname = output_file_name
+					
+					self.env.append_value(var, [libname[libname.rfind(os.sep) + 1:]])
+					self.link_task.dep_nodes.extend(y.link_task.outputs)
+					tmp_path = y.link_task.outputs[0].parent.path_from(self.bld.bldnode)
+					self.env.append_unique(var + 'PATH', [tmp_path])
 				else:
-					# Use the target as the libname
-					libname = y.target
+					raise Errors.WafError("Unable to determine link file for tg '{}'".format(x))
 
-				self.env.append_value(var, [libname[libname.rfind(os.sep) + 1:]])
-				self.link_task.dep_nodes.extend(y.link_task.outputs)
-				tmp_path = y.link_task.outputs[0].parent.path_from(self.bld.bldnode)
-				self.env.append_unique(var + 'PATH', [tmp_path])
 		else:
 			if y.tmp_use_objects:
 				self.add_objects_from_tgen(y)
@@ -369,7 +386,6 @@ def process_use(self):
 
 		if getattr(y, 'export_defines', None):
 			self.env.append_unique('DEFINES', self.to_list(y.export_defines))
-
 
 	# and finally, add the uselib variables (no recursion needed)
 	for x in names:

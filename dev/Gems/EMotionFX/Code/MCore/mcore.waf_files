@@ -119,7 +119,6 @@
             "Source/PlaneEq.cpp",
             "Source/PlaneEq.h",
             "Source/PlaneEq.inl",
-            "Source/Platform.h",
             "Source/Quaternion.cpp",
             "Source/Quaternion.h",
             "Source/Quaternion.inl",

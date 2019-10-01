@@ -23,7 +23,7 @@ namespace GraphCanvas
         : public EditorContextMenu
     {
     public:
-        NodeGroupContextMenu(QWidget* parent = nullptr);
+        NodeGroupContextMenu(EditorId editorId, QWidget* parent = nullptr);
         ~NodeGroupContextMenu() override = default;
         
     protected:
@@ -35,5 +35,7 @@ namespace GraphCanvas
         EditActionsMenuGroup m_editActionsGroup;
         NodeGroupActionsMenuGroup m_nodeGroupActionsGroup;
         AlignmentActionsMenuGroup m_alignmentActionsGroup;
+
+        ContextMenuAction* m_createPresetFrom;
     };
 }

@@ -930,10 +930,13 @@ namespace mesh_compiler
             return false;
         }
 
-        bool bFoundDegenerateFaces = false;
-        if (flags & MESH_COMPILE_VALIDATE)
+        if (flags & MESH_COMPILE_VALIDATE_FAIL_ON_DEGENERATE_FACES)
         {
-            bFoundDegenerateFaces = CheckForDegenerateFaces(outMesh);
+            if(CheckForDegenerateFaces(outMesh))
+            {
+                m_LastError.Format("Mesh contains degenerate faces.");
+                return false;
+            }
         }
 
         if (flags & MESH_COMPILE_OPTIMIZE)
@@ -968,12 +971,6 @@ namespace mesh_compiler
 
         if (flags & MESH_COMPILE_VALIDATE)
         {
-            if (bFoundDegenerateFaces)
-            {
-                m_LastError.Format("Mesh contains degenerate faces.");
-                return false;
-            }
-
             const char* pErrorDescription = 0;
             if (!mesh.Validate(&pErrorDescription))
             {

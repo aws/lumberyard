@@ -24,7 +24,9 @@
         "link_aws_sdk_statically":  true,
         "default_folder_name"    : "BinIos",
         "lib_prefix"             : "lib",
-        "default_launcher_name"  : "IOSLauncher"
+        "default_launcher_name"  : "IOSLauncher",
+        "platform_folder"        : "iOS",
+        "platform_keyword"       : "ios"
     },
 
     "settings": {

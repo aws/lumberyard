@@ -10,7 +10,6 @@
 *
 */
 #include <AzCore/IO/StreamerRequest.h>
-#include <AzCore/IO/VirtualStream.h>
 
 namespace AZ
 {
@@ -21,8 +20,10 @@ namespace IO
     const AZStd::chrono::microseconds ExecuteWhenIdle = AZStd::chrono::microseconds::max();
 
     //Request
-    Request::Request(SizeType byteOffset, SizeType byteSize, void* buffer, const RequestDoneCB& cb, bool isDeferredCB, PriorityType priority, OperationType op, const char* debugName)
-        : m_stream(nullptr)
+    Request::Request(Device* device, RequestPath filename, SizeType byteOffset, SizeType byteSize, void* buffer, const RequestDoneCB& cb, 
+        bool isDeferredCB, PriorityType priority, OperationType op, const char* debugName)
+        : m_filename(AZStd::move(filename))
+        , m_device(device)
         , m_byteOffset(byteOffset)
         , m_byteSize(byteSize)
         , m_buffer(buffer)
@@ -38,9 +39,16 @@ namespace IO
     {
     }
 
-    Request::~Request()
+    bool Request::HasCompleted() const
     {
+        return m_state >= StateType::ST_COMPLETED;
     }
+
+    bool Request::IsPendingProcessing() const
+    {
+        return m_state < StateType::ST_IN_PROCESS;
+    }
+
     //=========================================================================
     // SetDeadline
     // [8/29/2012]
@@ -63,35 +71,27 @@ namespace IO
         return m_byteOffset;
     }
 
-    bool Request::Sort(Request& left, Request& right)
+    void Request::AddDecompressionInfo(CompressionInfo info)
     {
-        if (left.m_estimatedCompletion <= left.m_deadline)
-        {
-            if (right.m_estimatedCompletion <= right.m_deadline)
-            {
-                return left.m_estimatedCompletion <= right.m_estimatedCompletion; // both request will be done with in the dead line
-            }
-            else
-            {
-                return false;
-            }
-        }
-        else
-        {
-            if (right.m_estimatedCompletion > right.m_deadline)
-            {
-                // well we are missing both deadlines
-                if (left.m_priority != right.m_priority) // sort on priority
-                {
-                    return left.m_priority < right.m_priority;
-                }
-                else
-                {
-                    return left.m_estimatedCompletion <= right.m_estimatedCompletion; // as quick as possible or return left.m_deadline <= right.m_deadline;
-                }
-            }
-        }
-        return true;
+        m_compressionInfo = AZStd::move(info);
+    }
+
+    bool Request::IsReadOperation() const
+    {
+        return m_operation == OperationType::DIRECT_READ || IsReadFromArchiveOperation();
+    }
+
+    bool Request::IsReadFromArchiveOperation() const
+    {
+        return
+            m_operation == OperationType::ARCHIVED_READ ||
+            m_operation == OperationType::FULL_DECOMPRESSED_READ ||
+            m_operation == OperationType::PARTIAL_DECOMPRESSED_READ;
+    }
+
+    bool Request::NeedsDecompression() const
+    {
+        return m_operation == OperationType::FULL_DECOMPRESSED_READ || m_operation == OperationType::PARTIAL_DECOMPRESSED_READ;
     }
 } // namespace IO
 } // namespace AZ

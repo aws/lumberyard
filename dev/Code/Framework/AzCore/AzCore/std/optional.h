@@ -19,8 +19,6 @@
 
 namespace AZStd
 {
-    static constexpr in_place_t in_place{};
-
     // 23.6.4, no-value state indicator
     struct nullopt_t{
         struct UniqueTag {};
@@ -155,20 +153,23 @@ namespace AZStd
             template<class U>
             void assign_from(U&& that)
             {
-                if (this->has_value())
+                if (this->has_value() == that.has_value())
                 {
-                    if (that.has_value())
+                    if (this->has_value())
                     {
                         this->m_object = forward<U>(that).value();
-                    }
-                    else
-                    {
-                        this->reset();
                     }
                 }
                 else
                 {
-                    this->construct(forward<U>(that).value());
+                    if (this->has_value())
+                    {
+                        this->reset();
+                    }
+                    else
+                    {
+                        this->construct(forward<U>(that).value());
+                    }
                 }
             }
         };

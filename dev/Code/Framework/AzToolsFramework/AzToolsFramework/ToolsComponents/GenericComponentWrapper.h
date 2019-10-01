@@ -48,8 +48,8 @@ namespace AzToolsFramework
             GenericComponentWrapper(AZ::Component* templateClass);
             ~GenericComponentWrapper();
 
-            const char* GetDisplayName() const;
-            const char* GetDisplayDescription() const;
+            const char* GetDisplayName();
+            const char* GetDisplayDescription();
 
             // AZ::Component
             void Init() override;

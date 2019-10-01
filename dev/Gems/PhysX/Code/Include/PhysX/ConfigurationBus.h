@@ -15,6 +15,7 @@
 #include <AzCore/EBus/EBus.h>
 #include <AzCore/Math/Color.h>
 #include <AzFramework/Physics/Collision.h>
+#include <AzFramework/Physics/Material.h>
 #include <AzFramework/Physics/World.h>
 
 namespace PhysX
@@ -92,6 +93,15 @@ namespace PhysX
 
         /// Center of Mass Debug Draw Circle Color
         AZ::Color m_centerOfMassDebugColor = AZ::Color((AZ::u8)255, (AZ::u8)0, (AZ::u8)0, (AZ::u8)255);
+
+        /// Enable Global Collision Debug Draw
+        enum class GlobalCollisionDebugState
+        {
+            AlwaysOn,         // Collision draw debug all entites 
+            AlwaysOff,        // Collision debug draw disabled
+            Manual            // Set up in the entity
+        };
+        GlobalCollisionDebugState m_globalCollisionDebugDraw = GlobalCollisionDebugState::Manual;
     };
 
     /// Configuration structure for PhysX.
@@ -108,6 +118,11 @@ namespace PhysX
         Physics::CollisionLayers m_collisionLayers; ///< Collision layers defined in the project.
         Physics::CollisionGroups m_collisionGroups; ///< Collision groups defined in the project.
         EditorConfiguration m_editorConfiguration; ///< Editor configuration for PhysX.
+
+        // Configuration is loaded very early on when the asset system is not yet initialized
+        // We have to set the NoLoad rule here to avoid having a dummy asset with no valid data
+        AZ::Data::Asset<Physics::MaterialLibraryAsset> m_materialLibrary 
+            = AZ::Data::AssetLoadBehavior::NoLoad;  ///< Project-wide Physics Material library.
     };
 
     /// Configuration requests.

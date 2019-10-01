@@ -14,6 +14,7 @@
 #include "EditorImageBuilderComponent.h"
 #include <GradientSignal/ImageAsset.h>
 #include <GradientSignal/ImageSettings.h>
+#include <AzCore/IO/SystemFile.h>
 #include <AzCore/std/string/conversions.h>
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/Serialization/EditContextConstants.inl>

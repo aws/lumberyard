@@ -95,27 +95,7 @@
 
 ILINE bool NumberValid(const float& x)
 {
-    //return ((FloatU32(x) & FloatU32ExpMask) != FloatU32ExpMask);
-
-    uint32 i = FloatU32(x);
-    uint32 expmask = FloatU32ExpMask;
-    uint32 iexp = i & expmask;
-    bool invalid = (iexp == expmask);
-
-    if (invalid)
-    {
-        union f32_u
-        {
-            uint32 uintVal;
-            f32 floatVal;
-        };
-        f32_u u;
-        u.uintVal = 0x7F800001;
-        float fpe = u.floatVal;
-        (void)fpe;
-    }
-
-    return !invalid;
+    return ((FloatU32(x) & FloatU32ExpMask) != FloatU32ExpMask);
 }
 
 ILINE bool NumberNAN(const float& x)

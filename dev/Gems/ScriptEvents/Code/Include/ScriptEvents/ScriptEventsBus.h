@@ -34,6 +34,7 @@ namespace ScriptEvents
 
         virtual AZStd::intrusive_ptr<Internal::ScriptEvent> RegisterScriptEvent(const AZ::Data::AssetId& assetId, AZ::u32 version) { return nullptr; }
         virtual void RegisterScriptEventFromDefinition(const ScriptEvent& definition) {}
+        virtual void UnregisterScriptEventFromDefinition(const ScriptEvent& definition) {}
         virtual AZStd::intrusive_ptr<Internal::ScriptEvent> GetScriptEvent(const AZ::Data::AssetId& assetId, AZ::u32 version) { return {}; }
         virtual const FundamentalTypes* GetFundamentalTypes() = 0;
     };

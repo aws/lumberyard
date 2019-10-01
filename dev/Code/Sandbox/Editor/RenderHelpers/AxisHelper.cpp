@@ -65,13 +65,13 @@ void CAxisHelper::Prepare(const Matrix34& worldTM, const SGizmoParameters& setup
     view->GetPerpendicularAxis(&axis, &b2D);
     switch (axis)
     {
-    case AXIS_X:
+    case static_cast<IDisplayViewport::EAxis>(AXIS_X):
         m_bNeedX = false;
         break;
-    case AXIS_Y:
+    case static_cast<IDisplayViewport::EAxis>(AXIS_Y):
         m_bNeedY = false;
         break;
-    case AXIS_Z:
+    case static_cast<IDisplayViewport::EAxis>(AXIS_Z):
         m_bNeedZ = false;
         break;
     }

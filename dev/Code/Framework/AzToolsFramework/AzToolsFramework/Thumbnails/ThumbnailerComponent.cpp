@@ -11,6 +11,7 @@
 */
 
 #include <AzCore/std/smart_ptr/make_shared.h>
+
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzToolsFramework/Thumbnails/ThumbnailerComponent.h>
 #include <AzToolsFramework/Thumbnails/ThumbnailContext.h>
@@ -81,4 +82,5 @@ namespace AzToolsFramework
 
     } // namespace Thumbnailer
 } // namespace AzToolsFramework
+
 #include <Thumbnails/ThumbnailerComponent.moc>

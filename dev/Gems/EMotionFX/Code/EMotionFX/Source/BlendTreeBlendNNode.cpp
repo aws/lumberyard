@@ -283,7 +283,7 @@ namespace EMotionFX
         }
 
         // sync to the blend node
-        nodeA->AutoSync(animGraphInstance, this, 0.0f, SYNCMODE_TRACKBASED, resync, false);
+        nodeA->AutoSync(animGraphInstance, this, 0.0f, SYNCMODE_TRACKBASED, resync);
 
         // for all input ports (10 motion input poses)
         for (uint32 i = 0; i < 10; ++i)
@@ -313,11 +313,8 @@ namespace EMotionFX
                 nodeToSync->RecursiveSetUniqueDataFlag(animGraphInstance, AnimGraphInstance::OBJECTFLAGS_RESYNC, true);
             }
 
-            // only modify the speed of the master node once
-            bool modifyMasterSpeed = false;
-
             // perform the syncing
-            nodeToSync->AutoSync(animGraphInstance, nodeA, blendWeight, syncMode, resync, modifyMasterSpeed);
+            nodeToSync->AutoSync(animGraphInstance, nodeA, blendWeight, syncMode, resync);
         }
 
         uniqueData->mIndexA     = poseIndexA;

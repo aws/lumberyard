@@ -585,13 +585,6 @@ TEST_F(ScriptCanvasTestFixture, GetVariableNodeTest)
     EXPECT_FALSE(graph->IsInErrorState());
     graphEntity->Deactivate();
 
-    AZ::Entity* connectionEntity{};
-    EXPECT_TRUE(graph->FindConnection(connectionEntity, { getVariableNode->GetEntityId(), variableDataOutSlotId }, { getNormalNode->GetEntityId(), getNormalNode->GetSlotId("Plane: Source") }));
-    getVariableNode->SetId({});
-    EXPECT_FALSE(graph->FindConnection(connectionEntity, { getVariableNode->GetEntityId(), variableDataOutSlotId }, { getNormalNode->GetEntityId(), getNormalNode->GetSlotId("Plane: Source") }));
-    EXPECT_FALSE(getVariableNode->GetId().IsValid());
-    EXPECT_FALSE(getVariableNode->GetDataOutSlotId().IsValid());
-
     VariableDatum* variableDatum{};
     GraphVariableManagerRequestBus::EventResult(variableDatum, graphUniqueId, &GraphVariableManagerRequests::FindVariable, variableName);
     ASSERT_NE(nullptr, variableDatum);
@@ -615,6 +608,13 @@ TEST_F(ScriptCanvasTestFixture, GetVariableNodeTest)
     auto planeDistancePropertyNumber = planeDistanceTestResultNode->GetInput_UNIT_TEST<Data::NumberType>("Value");
     ASSERT_NE(nullptr, planeDistancePropertyNumber);
     EXPECT_EQ(0.0f, *planeDistancePropertyNumber);
+
+    AZ::Entity* connectionEntity{};
+    EXPECT_TRUE(graph->FindConnection(connectionEntity, { getVariableNode->GetEntityId(), variableDataOutSlotId }, { getNormalNode->GetEntityId(), getNormalNode->GetSlotId("Plane: Source") }));
+    getVariableNode->SetId({});
+    EXPECT_FALSE(graph->FindConnection(connectionEntity, { getVariableNode->GetEntityId(), variableDataOutSlotId }, { getNormalNode->GetEntityId(), getNormalNode->GetSlotId("Plane: Source") }));
+    EXPECT_FALSE(getVariableNode->GetId().IsValid());
+    EXPECT_FALSE(getVariableNode->GetDataOutSlotId().IsValid());
 }
 
 TEST_F(ScriptCanvasTestFixture, SetVariableNodeTest)
@@ -709,15 +709,15 @@ TEST_F(ScriptCanvasTestFixture, SetVariableNodeTest)
 
 TEST_F(ScriptCanvasTestFixture, Vector2AllNodes)
 {
-	RunUnitTestGraph("LY_SC_UnitTest_Vector2_AllNodes");
+    RunUnitTestGraph("LY_SC_UnitTest_Vector2_AllNodes");
 }
 
 TEST_F(ScriptCanvasTestFixture, Vector3_GetNode)
 {
-	RunUnitTestGraph("LY_SC_UnitTest_Vector3_Variable_GetNode");
+    RunUnitTestGraph("LY_SC_UnitTest_Vector3_Variable_GetNode");
 }
 
 TEST_F(ScriptCanvasTestFixture, Vector3_SetNode)
 {
-	RunUnitTestGraph("LY_SC_UnitTest_Vector3_Variable_SetNode");
+    RunUnitTestGraph("LY_SC_UnitTest_Vector3_Variable_SetNode");
 }

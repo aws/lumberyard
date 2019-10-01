@@ -12,7 +12,10 @@
 #pragma once
 
 #include <AzCore/Component/Component.h>
+#include <Cry3DEngine/Environment/OceanEnvironmentBus.h>
 #include <SurfaceData/SurfaceDataTagProviderRequestBus.h>
+#include "WaterEffectsBus.h"
+
 
 namespace Water
 {
@@ -29,7 +32,9 @@ namespace Water
     */
     class WaterSystemComponent
         : public AZ::Component
+        , public AZ::OceanFeatureToggleBus::Handler
         , private SurfaceData::SurfaceDataTagProviderRequestBus::Handler
+        , private WaterEffectsRequestBus::Handler
     {
     public:
         AZ_COMPONENT(WaterSystemComponent, "{E77EF0DB-92C1-4490-BABA-DE2894FDEB27}");
@@ -40,13 +45,19 @@ namespace Water
         static void GetIncompatibleServices(AZ::ComponentDescriptor::DependencyArrayType& incompatible);
 
         ////////////////////////////////////////////////////////////////////////
+        // AZ::OceanFeatureToggleBus::Handler implementation
+        bool OceanComponentEnabled() const override { return true; }
+        ////////////////////////////////////////////////////////////////////////
         // SurfaceDataTagProviderRequestBus
         void GetRegisteredSurfaceTagNames(SurfaceData::SurfaceTagNameSet& names) const override;
 
     protected:
-        ////////////////////////////////////////////////////////////////////////
+
         // AZ::Component interface implementation
         void Activate() override;
         void Deactivate() override;
+
+        // WaterEffectsRequestBus interface implementation
+        void GenerateWaterRipple(const AZ::Vector3& position, float scale, float strength) override;
     };
 }

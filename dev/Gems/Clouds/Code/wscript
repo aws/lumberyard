@@ -18,11 +18,12 @@ def build(bld):
         ## Runtime build configuration
         includes =  [
             bld.Path('Code/CryEngine'),
+            bld.Path('Code/CryEngine/CryCommon'),
             bld.Path('Code/CryEngine/Cry3DEngine'),
             bld.Path('Code/CryEngine/RenderDll'),
             bld.Path('Code/CryEngine/RenderDll/XRenderD3D9'),
             bld.Path('Gems/LmbrCentral/Code/include'),
-            bld.Path('Code/Framework/AzToolsFramework'),
+            bld.Path('Code/Framework/AzToolsFramework')
         ],
         disable_tests   = (bld.env['PLATFORM'] != 'project_generator') and ('darwin' in bld.env['PLATFORM']),
         win_features    = ['crcfix'],
@@ -54,6 +55,7 @@ def build(bld):
             includes    = [
                 'Source',
                 bld.Path('Code/CryEngine'),
+                bld.Path('Code/CryEngine/CryCommon'),
                 bld.Path('Code/CryEngine/Cry3DEngine'),
                 bld.Path('Code/CryEngine/RenderDll/XRenderD3D9'),
                 bld.Path('Code/CryEngine/RenderDll'),
@@ -64,7 +66,7 @@ def build(bld):
                 bld.Path('Code/Sandbox'),
                 bld.Path('Code/Sandbox/Editor'),
                 bld.Path('Code/Sandbox/Editor/Include'),
-                bld.Path('Code/Sandbox/Plugins/EditorCommon'),
+                bld.Path('Code/Sandbox/Plugins/EditorCommon')
             ],
             
             uselib  = [

@@ -148,6 +148,7 @@ namespace EMStudio
     private:
         // ActorEditorRequests
         EMotionFX::ActorInstance* GetSelectedActorInstance() override;
+        EMotionFX::Actor* GetSelectedActor() override;
 
         void BroadcastSelectionNotifications();
         EMotionFX::Actor*           m_prevSelectedActor;

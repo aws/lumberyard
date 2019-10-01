@@ -13,10 +13,10 @@
 
 #pragma once
 
+#include <AzCore/EBus/EBus.h>
 #include <AzCore/std/smart_ptr/unique_ptr.h>
 
 #include <ATLEntities.h>
-#include <IStreamEngine.h>
 
 // Forward declarations
 class CCustomMemoryHeap;
@@ -24,19 +24,46 @@ struct IRenderAuxGeom;
 
 namespace Audio
 {
-    ///////////////////////////////////////////////////////////////////////////////////////////////////
-    // Filter for drawing debug info to the screen
-    enum EAudioFileCacheManagerDebugFilter
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+    struct AsyncStreamCompletionState
     {
-        eAFCMDF_ALL              = 0,
-        eAFCMDF_GLOBALS          = BIT(6),// a
-        eAFCMDF_LEVEL_SPECIFICS  = BIT(7),// b
-        eAFCMDF_USE_COUNTED      = BIT(8),// c
+        AZStd::shared_ptr<AZ::IO::Request> m_request;
+        AZ::IO::SizeType m_bytes = 0;
+        void* m_buffer = nullptr;
+        AZ::IO::Request::StateType m_requestState = AZ::IO::Request::StateType::ST_COMPLETED;
+
+        AsyncStreamCompletionState() = default;
+        AsyncStreamCompletionState(const AZStd::shared_ptr<AZ::IO::Request>& request, AZ::IO::SizeType bytes, void* buffer, AZ::IO::Request::StateType requestState)
+            : m_request(request)
+            , m_bytes(bytes)
+            , m_buffer(buffer)
+            , m_requestState(requestState)
+        {}
     };
 
-    ///////////////////////////////////////////////////////////////////////////////////////////////////
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+    class AudioFileCacheManagerNotifications
+        : public AZ::EBusTraits
+    {
+    public:
+        virtual ~AudioFileCacheManagerNotifications() = default;
+
+        ///////////////////////////////////////////////////////////////////////////////////////////
+        // EBusTraits - Single Bus Address, Single Handler, Mutex, Queued
+        static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::Single;
+        static const AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::Single;
+        static const bool EnableEventQueue = true;
+        using MutexType = AZStd::recursive_mutex;
+        ///////////////////////////////////////////////////////////////////////////////////////////
+
+        virtual void FinishAsyncStreamRequest(AsyncStreamCompletionState completionState) = 0;
+    };
+
+    using AudioFileCacheManagerNotficationBus = AZ::EBus<AudioFileCacheManagerNotifications>;
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////
     class CFileCacheManager
-        : public IStreamCallback
+        : public AudioFileCacheManagerNotficationBus::Handler
     {
     public:
         explicit CFileCacheManager(TATLPreloadRequestLookup& preloadRequests);
@@ -65,16 +92,23 @@ namespace Audio
         // Internal type definitions.
         using TAudioFileEntries = ATLMapLookupType<TAudioFileEntryID, CATLAudioFileEntry*>;
 
-        // IStreamCallback
-        void StreamAsyncOnComplete(IReadStream* readStream, unsigned int error) override;
-        void StreamOnComplete(IReadStream* readStream, unsigned int error) override {}
-        // ~IStreamCallback
-
         // Internal methods
         void AllocateHeap(const size_t size, const char* const usage);
         bool UncacheFileCacheEntryInternal(CATLAudioFileEntry* const audioFileEntry, const bool now, const bool ignoreUsedCount = false);
         bool DoesRequestFitInternal(const size_t requestSize);
-        bool FinishStreamInternal(const IReadStreamPtr readStream, const unsigned int error);
+        void UpdatePreloadRequestsStatus();
+        bool FinishCachingFileInternal(CATLAudioFileEntry* const audioFileEntry, AZ::IO::SizeType sizeBytes, AZ::IO::Request::StateType requestState);
+
+        ///////////////////////////////////////////////////////////////////////////////////////////
+        // AudioFileCacheManagerNotficationBus
+        void FinishAsyncStreamRequest(AsyncStreamCompletionState completionState) override;
+        ///////////////////////////////////////////////////////////////////////////////////////////
+
+        ///////////////////////////////////////////////////////////////////////////////////////////
+        // AZ::IO::Request::RequestDoneCB
+        void OnAsyncStreamFinished(const AZStd::shared_ptr<AZ::IO::Request>& request, AZ::IO::SizeType bytesRead, void* buffer, AZ::IO::Request::StateType requestState);
+        ///////////////////////////////////////////////////////////////////////////////////////////
+
         bool AllocateMemoryBlockInternal(CATLAudioFileEntry* const __restrict audioFileEntry);
         void UncacheFile(CATLAudioFileEntry* const audioFileEntry);
         void TryToUncacheFiles();
@@ -89,4 +123,16 @@ namespace Audio
         size_t m_currentByteTotal;
         size_t m_maxByteTotal;
     };
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+    // Filter for drawing debug info to the screen
+    enum EAudioFileCacheManagerDebugFilter
+    {
+        eAFCMDF_ALL = 0,
+        eAFCMDF_GLOBALS         = BIT(6),   // a
+        eAFCMDF_LEVEL_SPECIFICS = BIT(7),   // b
+        eAFCMDF_USE_COUNTED     = BIT(8),   // c
+        eAFCMDF_LOADED           = BIT(9),  // d
+    };
+
 } // namespace Audio

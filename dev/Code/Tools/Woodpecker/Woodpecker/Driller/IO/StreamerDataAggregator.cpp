@@ -36,7 +36,7 @@ namespace Driller
             AZ::SerializeContext* serialize = azrtti_cast<AZ::SerializeContext*>(context);
             if (serialize)
             {
-                serialize->Class<StreamerDataAggregatorSavedState, AZ::UserSettings>()
+                serialize->Class<StreamerDataAggregatorSavedState>()
                     ->Version(1)
                     ;
             }
@@ -64,7 +64,7 @@ namespace Driller
             AZ::SerializeContext* serialize = azrtti_cast<AZ::SerializeContext*>(context);
             if (serialize)
             {
-                serialize->Class<StreamerDataAggregatorWorkspace, AZ::UserSettings>()
+                serialize->Class<StreamerDataAggregatorWorkspace>()
                     ->Field("m_activeViewCount", &StreamerDataAggregatorWorkspace::m_activeViewCount)
                     ->Field("m_activeViewTypes", &StreamerDataAggregatorWorkspace::m_activeViewTypes)
                     ->Version(1);

@@ -55,7 +55,6 @@ namespace Audio
         int m_nShowActiveAudioObjectsOnly;
         ICVar* m_pAudioTriggersDebugFilter;
         ICVar* m_pAudioObjectsDebugFilter;
-#endif // INCLUDE_AUDIO_PRODUCTION_CODE
 
     private:
         static void CmdExecuteTrigger(IConsoleCmdArgs* pCmdArgs);
@@ -64,6 +63,9 @@ namespace Audio
         static void CmdSetSwitchState(IConsoleCmdArgs* pCmdArgs);
         static void CmdPlayFile(IConsoleCmdArgs* pCmdArgs);
         static void CmdMicrophone(IConsoleCmdArgs* pCmdArgs);
+        static void CmdPlayExternalSource(IConsoleCmdArgs* pCmdArgs);
+        static void CmdSetPanningMode(IConsoleCmdArgs* pCmdArgs);
+#endif // INCLUDE_AUDIO_PRODUCTION_CODE
     };
 
     extern CSoundCVars g_audioCVars;

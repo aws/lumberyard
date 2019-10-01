@@ -19,7 +19,7 @@
 
 struct DeploymentConfig;
 
-using StringOutcome = AZ::Outcome<void, AZStd::string>;
+using StringOutcome = AZ::Outcome<AZStd::string, AZStd::string>;
 
 
 StringOutcome ReadFile(const AZStd::string& file, AZStd::string& fileContents);

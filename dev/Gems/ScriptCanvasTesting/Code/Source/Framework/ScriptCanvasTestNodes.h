@@ -33,9 +33,7 @@ namespace TestNodes
         AZ_INLINE const ScriptCanvas::Data::StringType& GetText() const { return m_string; }
 
         void MarkDefaultableInput() override {}
-        
-        void Visit(ScriptCanvas::NodeVisitor& visitor) const override { visitor.Visit(*this); }
-                
+                 
     protected:
 
         void OnInit() override;
@@ -59,7 +57,6 @@ namespace TestNodes
     protected:
 
         void OnInputSignal(const ScriptCanvas::SlotId&) override;
-        void Visit(ScriptCanvas::NodeVisitor& visitor) const override { visitor.Visit(*this); }
     };
 
     //////////////////////////////////////////////////////////////////////////////
@@ -77,7 +74,6 @@ namespace TestNodes
 
         void OnInit() override;
 
-        void Visit(ScriptCanvas::NodeVisitor& visitor) const override { visitor.Visit(*this); }
     };
 
     //////////////////////////////////////////////////////////////////////////////
@@ -95,7 +91,6 @@ namespace TestNodes
 
         void OnInputSignal(const ScriptCanvas::SlotId&) override;
 
-        void Visit(ScriptCanvas::NodeVisitor& visitor) const override { visitor.Visit(*this); }
     };
 
     //////////////////////////////////////////////////////////////////////////////
@@ -115,8 +110,6 @@ namespace TestNodes
 
         void OnInit() override;
 
-        void Visit(ScriptCanvas::NodeVisitor& visitor) const override { visitor.Visit(*this); }
-
         AZStd::vector<ScriptCanvas::SlotId> m_dynamicSlotIds;
         ScriptCanvas::SlotId m_resultSlotId;
     };
@@ -127,8 +120,6 @@ namespace TestNodes
     {
     public:
         AZ_COMPONENT(StringView, "{F47ACD24-79EB-4DBE-B325-8B9DB0839A75}", ScriptCanvas::Node);
-
-        void Visit(ScriptCanvas::NodeVisitor& visitor) const override { visitor.Visit(*this); }
 
     protected:
 
@@ -158,22 +149,25 @@ namespace TestNodes
         void OnInputSignal(const ScriptCanvas::SlotId& slotId) override;
 
         void OnInit() override;
-
-        void Visit(ScriptCanvas::NodeVisitor& visitor) const override { visitor.Visit(*this); }
     };
 
     //////////////////////////////////////////////////////////////////////////////
-    class ConfigurableNode
+    class ConfigurableUnitTestNode
         : public ScriptCanvas::Node
     {
     public:
-        AZ_COMPONENT(ConfigurableNode, "{61BF3D66-809A-4AAE-B20A-DFA2B51BE4EE}", ScriptCanvas::Node);
+        AZ_COMPONENT(ConfigurableUnitTestNode, "{61BF3D66-809A-4AAE-B20A-DFA2B51BE4EE}", ScriptCanvas::Node);
         static void Reflect(AZ::ReflectContext* reflection);
 
-        ScriptCanvas::Slot* AddTestingSlot(const ScriptCanvas::SlotConfiguration& slotConfiguration);
-        ScriptCanvas::Slot* AddTestingDataSlot(const ScriptCanvas::DataSlotConfiguration& dataSlotConfiguration);
+        ScriptCanvas::Slot* AddTestingSlot(ScriptCanvas::SlotConfiguration& slotConfiguration);
+        ScriptCanvas::Datum* FindDatum(const ScriptCanvas::SlotId& slotId);
+
+        void TestClearDisplayType(const AZ::Crc32& dynamicGroup);
+        void TestSetDisplayType(const AZ::Crc32& dynamicGroup, const ScriptCanvas::Data::Type& dataType);
+        bool TestHasConcreteDisplayType(const AZ::Crc32& dynamicGroup) const;
+
+        bool TestIsSlotConnectedToConcreteDisplayType(const ScriptCanvas::Slot& slot, ExploredDynamicGroupCache& exploredGroupCache) const;
 
     protected:
-        void Visit(ScriptCanvas::NodeVisitor& visitor) const override { visitor.Visit(*this); }
     };
 }

@@ -13,6 +13,7 @@
 #include "StdAfx.h"
 #include <AZCrySystemInitLogSink.h>
 
+#include <AzCore/NativeUI/NativeUIRequests.h>
 #include <AzCore/std/string/osstring.h>
 
 #include <ISystem.h>
@@ -23,14 +24,7 @@ namespace AZ
     {
         void CrySystemInitLogSink::SetFatalMessageBox(bool enable)
         {
-            if (enable)
-            {
-                m_msgBoxFlags |= IPlatformOS::eMsgBox_FatalDoNotReturn;
-            }
-            else
-            {
-                m_msgBoxFlags &= ~IPlatformOS::eMsgBox_FatalDoNotReturn;
-            }
+            m_isMessageBoxFatal = enable;
         }
 
         void CrySystemInitLogSink::DisplayCollectedErrorStrings() const
@@ -53,12 +47,7 @@ namespace AZ
             Trace::Output(nullptr, msgBoxMessage.c_str());
             Trace::Output(nullptr, "\n==================================================================\n");
 
-            AZ_Warning("SystemInit", gEnv && gEnv->pSystem, "CrySystemInitLogSink can't display a message box to the user without a valid gEnv->pSystem.");
-            IPlatformOS* pOS = gEnv->pSystem->GetPlatformOS();
-            if (pOS)
-            {
-                pOS->DebugMessageBox(msgBoxMessage.c_str(), "CrySystem Initialization Failed", m_msgBoxFlags);
-            }
+            EBUS_EVENT(AZ::NativeUI::NativeUIRequestBus, DisplayOkDialog, "CrySystem Initialization Failed", msgBoxMessage.c_str(), false);
         }
     } // namespace Debug
 } // namespace AZ

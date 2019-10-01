@@ -50,6 +50,7 @@
             "PostProcessFilters.cpp",
             "PostProcessGame.cpp",
             "PostProcessMisc.cpp",
+            "PostProcessMotionBlur.cpp",
             "PostProcessRain.cpp",
             "PostProcessSunShafts.cpp",
             "PostProcessWater.cpp",

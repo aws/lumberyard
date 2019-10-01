@@ -70,7 +70,7 @@ private:
     int m_playersInCount;
 };
 
-DECLARE_COMPONENT_POINTERS(CComponentBoids);
+DECLARE_SMART_POINTERS(CComponentBoids);
 
 struct CComponentBoidObject
     : public IComponent
@@ -116,6 +116,6 @@ private:
     CBoidObject* m_pBoid;
 };
 
-DECLARE_COMPONENT_POINTERS(CComponentBoidObject);
+DECLARE_SMART_POINTERS(CComponentBoidObject);
 
 #endif // CRYINCLUDE_GAMEDLL_BOIDS_BOIDSCOMPONENT_H

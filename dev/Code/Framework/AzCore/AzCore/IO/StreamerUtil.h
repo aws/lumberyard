@@ -25,7 +25,7 @@ namespace AZ
          * SyncRequestCallback allows you to add request and wait till it's done (by blocking your calling thread).
          * example:
          *      SyncRequestCallback doneCB;
-         *      GetStreamer()->ReadAsync/ReadAsyncDeferred(stream,0,sizeof(toRead),&toRead,doneCB);
+         *      GetStreamer()->ReadAsync(stream,0,sizeof(toRead),&toRead,doneCB);
          *      doneCB.Wait();
          */
         class SyncRequestCallback
@@ -35,15 +35,20 @@ namespace AZ
                 : m_bytesTrasfered(0)
                 , m_state(Request::StateType::ST_COMPLETED)
                 , m_numToComplete(0)
+                , m_readFailed(false)
             {
                 m_wrapper = AZStd::bind(&SyncRequestCallback::operator(), this, AZStd::placeholders::_1, AZStd::placeholders::_2, AZStd::placeholders::_3, AZStd::placeholders::_4);
             }
 
-            void operator()(RequestHandle request, Streamer::SizeType bytesTransfered, void* buffer, Request::StateType state)
+            void operator()(const AZStd::shared_ptr<Request>&, Streamer::SizeType bytesTransfered, void*, Request::StateType state)
             {
-                (void)request;
-                (void)buffer;
                 m_bytesTrasfered = bytesTransfered;
+                if (!m_readFailed && (state == Request::StateType::ST_CANCELLED || 
+                    state == Request::StateType::ST_ERROR_FAILED_TO_OPEN_FILE || 
+                    state == Request::StateType::ST_ERROR_FAILED_IN_OPERATION))
+                {
+                    m_readFailed = true;
+                }
 
                 if (m_state != state)
                 {
@@ -83,8 +88,9 @@ namespace AZ
                 }
             }
 
-            Streamer::SizeType         m_bytesTrasfered;    ///< Number of bytes transfered in the LAST request. (read or write)
-            Request::StateType m_state;             ///< Request state \ref Streamer::RequestStateType. \note If m_bytesTrasfered doesn't match the request num of bytes state ST_ERROR_FAILED_IN_OPEPATION is set.
+            Streamer::SizeType         m_bytesTrasfered; ///< Number of bytes transfered in the LAST request. (read or write)
+            Request::StateType         m_state;          ///< Request state \ref Streamer::RequestStateType. \note If m_bytesTrasfered doesn't match the request num of bytes state ST_ERROR_FAILED_IN_OPEPATION is set.
+            bool                       m_readFailed;     // Is true if any request failed
 
         protected:
             SyncRequestCallback(const SyncRequestCallback&);     // because of the mutex this you can not copy or assign

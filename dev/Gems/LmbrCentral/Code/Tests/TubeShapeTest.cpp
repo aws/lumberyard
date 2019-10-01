@@ -17,7 +17,7 @@
 #include <AzCore/Component/ComponentApplication.h>
 #include <Shape/SplineComponent.h>
 #include <Shape/TubeShapeComponent.h>
-#include <Tests/TestTypes.h>
+#include <AzCore/UnitTest/TestTypes.h>
 
 using namespace AZ;
 using namespace AzFramework;

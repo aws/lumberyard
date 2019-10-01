@@ -98,13 +98,6 @@ namespace EMStudio
         mOKButton->setDefault(true);
     }
 
-
-    // destructor
-    ParameterCreateRenameWindow::~ParameterCreateRenameWindow()
-    {
-    }
-
-
     // check for duplicate names upon editing
     void ParameterCreateRenameWindow::NameEditChanged(const QString& text)
     {
@@ -121,6 +114,14 @@ namespace EMStudio
         }
         else
         {
+            // Check if the name has invalid characters.
+            if (!EMotionFX::Parameter::IsNameValid(convertedNewName, nullptr))
+            {
+                mOKButton->setEnabled(false);
+                GetManager()->SetWidgetAsInvalidInput(mLineEdit);
+                return;
+            }
+
             // Is there a parameter with the given name already?
             if (AZStd::find(mInvalidNames.begin(), mInvalidNames.end(), convertedNewName) != mInvalidNames.end())
             {
@@ -265,14 +266,6 @@ namespace EMStudio
         Reinit();
         EMotionFX::AnimGraphNotificationBus::Handler::BusConnect();
     }
-
-
-    // destructor
-    ParameterWindow::~ParameterWindow()
-    {
-        EMotionFX::AnimGraphNotificationBus::Handler::BusDisconnect();
-    }
-
 
     // check if the gamepad control mode is enabled for the given parameter and if its actually being controlled or not
     void ParameterWindow::GetGamepadState(EMotionFX::AnimGraph* animGraph, const EMotionFX::Parameter* parameter, bool* outIsActuallyControlled, bool* outIsEnabled)

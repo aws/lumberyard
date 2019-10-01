@@ -180,7 +180,7 @@ zipStorePath=wrapper/dists
 distributionUrl=https\://services.gradle.org/distributions/gradle-4.10.1-all.zip
 '''
 
-GRADLE_WRAPPER_DIR = 'Code/Launcher/AndroidLauncher/ProjectBuilder/GradleWrapper'
+GRADLE_WRAPPER_DIR = 'Code/Tools/Android/ProjectBuilder/GradleWrapper'
 #                     Defaults END                             #
 ################################################################
 
@@ -902,7 +902,7 @@ class Module(GradleNode):
                     module_name = tsk_gen.target
 
                     # skip the launchers / same module, those source paths were already added above
-                    if module_name.endswith('AndroidLauncher'):
+                    if module_name.endswith('Launcher'):
                         continue
 
                     if ctx.is_module_for_game_project(module_name, game_project, None):
@@ -1052,7 +1052,7 @@ class Module(GradleNode):
                     module_name = tsk_gen.target
 
                     # skip the launchers / same module, those source paths were already added above
-                    if module_name.endswith('AndroidLauncher'):
+                    if module_name.endswith('Launcher'):
                         continue
 
                     if project.ctx.is_module_for_game_project(module_name, game_project, None):

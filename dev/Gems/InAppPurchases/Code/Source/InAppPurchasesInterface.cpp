@@ -14,12 +14,6 @@
 
 #include <InAppPurchases/InAppPurchasesInterface.h>
 
-#if defined(AZ_PLATFORM_ANDROID)
-#include <Android/InAppPurchasesAndroid.h>
-#elif defined(AZ_PLATFORM_APPLE_IOS)
-#include <Apple/InAppPurchasesApple.h>
-#endif
-
 namespace InAppPurchases
 {
     InAppPurchasesInterface* InAppPurchasesInterface::iapInstance = nullptr;
@@ -28,13 +22,8 @@ namespace InAppPurchases
     {
         if (iapInstance == nullptr)
         {
-            #if defined(AZ_PLATFORM_ANDROID)
-                iapInstance = new InAppPurchasesAndroid();
-            #elif defined(AZ_PLATFORM_APPLE_IOS)
-                iapInstance = new InAppPurchasesApple();
-            #else
-                AZ_Warning("InAppPurchases", false, "Inapp purchases not supported on this platform!");
-            #endif
+            iapInstance = InAppPurchasesInterface::CreateInstance();
+            AZ_Warning("InAppPurchases", iapInstance, "Inapp purchases not supported on this platform!");
         }
 
         return iapInstance;

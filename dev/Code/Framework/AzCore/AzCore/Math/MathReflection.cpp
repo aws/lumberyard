@@ -9,7 +9,6 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#ifndef AZ_UNITY_BUILD
 
 #include <AzCore/Math/MathReflection.h>
 
@@ -204,9 +203,9 @@ namespace AZ
                 (void)textVersion;
 
                 float floats[NumFloats];
-                size_t numRead = FloatArrayTextSerializer::TextToData(text, floats, NumFloats, isDataBigEndian);
+                size_t numBytesRead = FloatArrayTextSerializer::TextToData(text, floats, NumFloats, isDataBigEndian);
                 stream.Seek(0, IO::GenericStream::ST_SEEK_BEGIN);
-                return static_cast<size_t>(stream.Write(numRead * sizeof(float), reinterpret_cast<void*>(&floats)));
+                return static_cast<size_t>(stream.Write(numBytesRead, reinterpret_cast<void*>(&floats)));
             }
 
             bool    Load(void* classPtr, IO::GenericStream& stream, unsigned int /*version*/, bool isDataBigEndian = false) override
@@ -2288,6 +2287,7 @@ namespace AZ
                 ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)
                 ->Attribute(AZ::Script::Attributes::MethodOverride, &Internal::VectorFloatGetSinCosMultipleReturn)
             ->Method<bool(double, double, double)>("IsClose", &AZ::IsClose, context.MakeDefaultValues(static_cast<double>(g_fltEps)))
+            ->Method<float(float)>("Abs", &GetAbs)
              ;
 
         // Vector2
@@ -2312,6 +2312,7 @@ namespace AZ
             Method<const Vector2(Vector2::*)(float) const>("DivideFloat",&Vector2::operator/)->
                 Attribute(AZ::Script::Attributes::MethodOverride, &Internal::Vector2DivideGeneric)->
                 Attribute(AZ::Script::Attributes::Operator, AZ::Script::Attributes::OperatorType::Div)->
+                Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)->
             Method<const Vector2(Vector2::*)(const Vector2&) const>("DivideVector2",&Vector2::operator/)->
                 Attribute(AZ::Script::Attributes::Ignore,0)-> // ignore for script since we already got the generic divide above
             Method("Equal",&Vector2::operator==)->
@@ -2430,6 +2431,7 @@ namespace AZ
             Method<const Vector3(Vector3::*)(const VectorFloat&) const>("DivideFloat",&Vector3::operator/)->
                 Attribute(AZ::Script::Attributes::MethodOverride, &Internal::Vector3DivideGeneric)->
                 Attribute(AZ::Script::Attributes::Operator, AZ::Script::Attributes::OperatorType::Div)->
+                Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)->
             Method<const Vector3(Vector3::*)(const Vector3&) const>("DivideVector3",&Vector3::operator/)->
                 Attribute(AZ::Script::Attributes::Ignore,0)-> // ignore for script since we already got the generic divide above
             Method("Clone", [](const Vector3& rhs) -> Vector3 { return rhs; })->
@@ -2566,6 +2568,7 @@ namespace AZ
             Method<const Vector4(Vector4::*)(const VectorFloat&) const>("DivideFloat", &Vector4::operator/)->
                 Attribute(AZ::Script::Attributes::MethodOverride, &Internal::Vector4DivideGeneric)->
                 Attribute(AZ::Script::Attributes::Operator, AZ::Script::Attributes::OperatorType::Div)->
+            Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)->
             Method<const Vector4(Vector4::*)(const Vector4&) const>("DivideVector4", &Vector4::operator/)->
                 Attribute(AZ::Script::Attributes::Ignore, 0)-> // ignore for script since we already got the generic divide above
             Method("Clone", [](const Vector4& rhs) -> Vector4 { return rhs; })->
@@ -2669,6 +2672,7 @@ namespace AZ
             Method<const Color(Color::*)(const VectorFloat&) const>("DivideFloat", &Color::operator/)->
                 Attribute(AZ::Script::Attributes::MethodOverride, &Internal::ColorDivideGeneric)->
                 Attribute(AZ::Script::Attributes::Operator, AZ::Script::Attributes::OperatorType::Div)->
+                Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)->
             Method<const Color(Color::*)(const Color&) const>("DivideColor", &Color::operator/)->
                 Attribute(AZ::Script::Attributes::Ignore, 0)-> // ignore for script since we already got the generic divide above
                 Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)->
@@ -2755,6 +2759,7 @@ namespace AZ
             Method<const Quaternion(Quaternion::*)(const VectorFloat&) const>("DivideFloat", &Quaternion::operator/)->
                 Attribute(AZ::Script::Attributes::MethodOverride, &Internal::QuaternionDivideGeneric)->
                 Attribute(AZ::Script::Attributes::Operator, AZ::Script::Attributes::OperatorType::Div)->
+                Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)->
             Method("Clone", [](const Quaternion& rhs) -> Quaternion { return rhs; })->
                 Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)->
             Method("Equal", &Quaternion::operator==)->
@@ -2836,6 +2841,7 @@ namespace AZ
             Method<const Matrix3x3(Matrix3x3::*)(const VectorFloat&) const>("DivideFloat", &Matrix3x3::operator/)->
                 Attribute(AZ::Script::Attributes::MethodOverride, &Internal::Matrix3x3DivideGeneric)->
                 Attribute(AZ::Script::Attributes::Operator, AZ::Script::Attributes::OperatorType::Div)->
+                Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)->
             Method("Clone", [](const Matrix3x3& rhs) -> Matrix3x3 { return rhs; })->
                 Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)->
             Method("Equal", &Matrix3x3::operator==)->
@@ -3350,5 +3356,3 @@ namespace AZ
         }
     }
 }
-
-#endif // #ifndef AZ_UNITY_BUILD

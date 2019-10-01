@@ -141,15 +141,32 @@ namespace AzToolsFramework
 
             /// Move to the next active ComponentMode so the Actions for that mode
             /// become available (it is now 'selected').
-            virtual void SelectNextActiveComponentMode() = 0;
+            /// Return true if the mode actually changed - the mode will not change if
+            /// the componentType requested is the same as the current one.
+            virtual bool SelectNextActiveComponentMode() = 0;
 
             /// Move to the previous active ComponentMode so the Actions for that mode
             /// become available (it is now 'selected').
-            virtual void SelectPreviousActiveComponentMode() = 0;
+            /// Return true if the mode actually changed - the mode will not change if
+            /// the componentType requested is the same as the current one.
+            virtual bool SelectPreviousActiveComponentMode() = 0;
 
             /// Pick a specific ComponentMode for a Component (by directly selecting a
             /// Component in the EntityInspector - it is now 'selected').
-            virtual void SelectActiveComponentMode(const AZ::Uuid& componentType) = 0;
+            /// Return true if the mode actually changed - the mode will not change if
+            /// the componentType requested is the same as the current one.
+            virtual bool SelectActiveComponentMode(const AZ::Uuid& componentType) = 0;
+
+            /// Return the Uuid of the Component Type that is currently active in Component Mode.
+            virtual AZ::Uuid ActiveComponentMode() = 0;
+
+            /// Return if the ComponentMode for this specific Entity/Component pair is instantiated.
+            virtual bool ComponentModeInstantiated(const AZ::EntityComponentIdPair& entityComponentIdPair) = 0;
+
+            /// Return if there are more than one Component type in Component Mode.
+            /// There may be two dependent Component Modes that are not 'active' at the same time
+            /// but can be switched between in a Component Mode session (e.g. Tube and Spline Components).
+            virtual bool HasMultipleComponentTypes() = 0;
 
             /// Refresh Actions (shortcuts) for the 'selected' ComponentMode.
             virtual void RefreshActions() = 0;

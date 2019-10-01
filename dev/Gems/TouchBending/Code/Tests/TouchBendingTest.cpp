@@ -26,7 +26,7 @@
 
 #include <AzFramework/Physics/SystemBus.h>
 #include <AzFramework/Physics/World.h>
-#include <AzFramework/Physics/WorldEventHandler.h>
+#include <AzFramework/Physics/WorldEventhandler.h>
 #include <PxPhysicsAPI.h>
 #include <Physics/PhysicsTests.h>
 #include <Physics/PhysicsTests.inl>

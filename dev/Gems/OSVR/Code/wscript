@@ -15,8 +15,13 @@ def build(bld):
     bld.DefineGem(
         # Settings
         includes        = [bld.Path('Code/CryEngine/CryCommon'),
-                           bld.Path('Code/CryEngine/CryAction')],
-
+                           bld.Path('Code/CryEngine/CryAction'),
+                           bld.ThirdPartyPath('boost')
+                          ],
+    
+        # Platform Roots
+        platform_roots  =[bld.PlatformRoot('Source/Platform', export_includes=False)],
+    
         # Compiler Specific
         win_x64_clang_cxxflags = ['-fexceptions', '-frtti', '-Wno-inconsistent-dllimport'],
 

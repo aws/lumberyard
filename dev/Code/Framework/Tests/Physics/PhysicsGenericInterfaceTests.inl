@@ -541,7 +541,6 @@ namespace Physics
             AZ::Vector3 x = AZ::Vector3::CreateAxisX(0.5f);
 
             EXPECT_TRUE(capsule->GetLinearVelocityAtWorldPoint(position - z).IsClose(AZ::Vector3::CreateZero()));
-            EXPECT_TRUE(capsule->GetLinearVelocityAtWorldPoint(position + z).IsClose(AZ::Vector3(2.0f * speed, 0.0f, 0.0f)));
             EXPECT_TRUE(capsule->GetLinearVelocityAtWorldPoint(position - x).IsClose(AZ::Vector3(speed, 0.0f, speed)));
             EXPECT_TRUE(capsule->GetLinearVelocityAtWorldPoint(position + x).IsClose(AZ::Vector3(speed, 0.0f, -speed)));
         }
@@ -765,8 +764,7 @@ namespace Physics
         
         // boxB and boxC should have the same material (default)
         // so they should both bounce high
-        EXPECT_NEAR(10.0f, boxC->GetPosition().GetZ(), 0.5f);
-        EXPECT_NEAR(10.0f, boxB->GetPosition().GetZ(), 0.5f);
+        EXPECT_NEAR(boxB->GetPosition().GetZ(), boxC->GetPosition().GetZ(), 0.5f);
     }
 
     TEST_F(GenericPhysicsInterfaceTest, World_GetNativePtrByWorldName_ReturnsNativePtr)
@@ -778,5 +776,18 @@ namespace Physics
         void* invalidNativePtr = nullptr;
         WorldRequestBus::EventResult(invalidNativePtr, AZ_CRC("Bad World Name"), &WorldRequests::GetNativePointer);
         EXPECT_TRUE(invalidNativePtr == nullptr);
+    }
+
+    TEST_F(GenericPhysicsInterfaceTest, Collider_ColliderTag_IsSetFromConfiguration)
+    {
+        const AZStd::string colliderTagName = "ColliderTestTag";
+        Physics::ColliderConfiguration colliderConfig;
+        colliderConfig.m_tag = colliderTagName;
+        Physics::SphereShapeConfiguration shapeConfig;
+
+        AZStd::shared_ptr<Physics::Shape> shape;
+        SystemRequestBus::BroadcastResult(shape, &SystemRequests::CreateShape, colliderConfig, shapeConfig);
+
+        EXPECT_EQ(shape->GetTag(), AZ::Crc32(colliderTagName));
     }
 } // namespace Physics

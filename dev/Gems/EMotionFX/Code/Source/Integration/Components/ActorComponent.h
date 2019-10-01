@@ -137,7 +137,7 @@ namespace EMotionFX
             void OnDetached(AZ::EntityId targetId) override;
 
             //////////////////////////////////////////////////////////////////////////
-            // ActorComponentNotificationBus::Handler
+            // RenderNodeRequestBus::Handler
             IRenderNode* GetRenderNode() override;
             float GetRenderNodeRequestBusOrder() const override;
             static const float s_renderNodeRequestBusOrder;

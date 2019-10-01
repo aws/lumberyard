@@ -253,8 +253,13 @@ namespace GraphCanvas
     {
         if (m_editable != editable)
         {
-            m_editable = editable;
-            
+            m_editable = editable;            
+
+            if (!m_editable)
+            {
+                SubmitValue();
+            }
+
             (m_editable ? SetupProxyWidget() : CleanupProxyWidget());
             UpdateLayout();
 
@@ -268,6 +273,7 @@ namespace GraphCanvas
                 UpdateSizing();
 
                 StyledEntityRequestBus::Event(GetEntityId(), &StyledEntityRequests::AddSelectorState, Styling::States::Editing);
+
                 m_textEdit->selectAll();
 
                 SceneMemberUIRequestBus::Event(GetEntityId(), &SceneMemberUIRequests::SetSelected, true);
@@ -303,11 +309,11 @@ namespace GraphCanvas
         AZStd::string value = (m_textEdit ? AZStd::string(m_textEdit->toPlainText().toUtf8().data()) : m_commentText);
         m_displayLabel->SetLabel(value);
 
+        prepareGeometryChange();
+
         if (m_textEdit)
         {
             QSizeF oldSize = m_textEdit->minimumSize();
-
-            prepareGeometryChange();
 
             // As we update the label with the new contents, adjust the editable widget size to match
             if (m_commentMode == CommentMode::Comment)
@@ -347,7 +353,11 @@ namespace GraphCanvas
 
     void CommentTextGraphicsWidget::SubmitValue()
     {
-        m_commentText = m_textEdit->toPlainText().toUtf8().data();
+        if (m_textEdit)
+        {
+            m_commentText = m_textEdit->toPlainText().toUtf8().data();
+        }
+
         CommentRequestBus::Event(GetEntityId(), &CommentRequests::SetComment, m_commentText);
         CommentNotificationBus::Event(GetEntityId(), &CommentNotifications::OnCommentChanged, m_commentText);
         UpdateSizing();

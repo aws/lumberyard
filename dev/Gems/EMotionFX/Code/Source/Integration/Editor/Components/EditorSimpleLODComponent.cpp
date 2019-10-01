@@ -10,6 +10,12 @@
 *
 */
 
+#include <AzCore/PlatformDef.h>
+#if defined(AZ_COMPILER_MSVC)
+    #pragma warning(push)
+    #pragma warning(disable : 4714)
+#endif
+
 #include "EMotionFX_precompiled.h"
 #include <MathConversion.h>
 
@@ -45,7 +51,7 @@ namespace EMotionFX
                         "Simple LOD Distance", "The Simple LOD distance component alters the actor LOD level based on ")
                         ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
                         ->Attribute(AZ::Edit::Attributes::Category, "Animation")
-                        ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/Mannequin.png")
+                        ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/SimpleLODDistance.svg")
                         ->Attribute(AZ::Edit::Attributes::ViewportIcon, "Editor/Icons/Components/Viewport/Mannequin.png")
                         ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("Game", 0x232b318c))
                         ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
@@ -144,3 +150,7 @@ namespace EMotionFX
         }
     }
 }
+
+#if defined(AZ_COMPILER_MSVC)
+    #pragma warning(pop)
+#endif

@@ -28,7 +28,7 @@
 #include <GraphCanvas/GraphCanvasBus.h>
 #include <GraphCanvas/Editor/GraphModelBus.h>
 
-#include <Utils/ConversionUtils.h>
+#include <GraphCanvas/Utils/ConversionUtils.h>
 
 namespace GraphCanvas
 {
@@ -142,7 +142,6 @@ namespace GraphCanvas
     {
         GraphCanvasPropertyComponent::Deactivate();
 
-        NodeGroupNotificationBus::Handler::BusDisconnect();
         CommentNotificationBus::Handler::BusDisconnect();
         GeometryNotificationBus::Handler::BusDisconnect();
         SceneMemberNotificationBus::Handler::BusDisconnect();
@@ -166,7 +165,7 @@ namespace GraphCanvas
         AZ::Color color;
         NodeGroupRequestBus::EventResult(color, m_nodeGroupId, &NodeGroupRequests::GetGroupColor);
 
-        OnColorChanged(color);
+        OnBackgroundColorChanged(color);
 
         AZStd::vector< NodeId > groupedElements;
         NodeGroupRequestBus::Event(m_nodeGroupId, &NodeGroupRequests::FindGroupedElements, groupedElements);
@@ -209,8 +208,7 @@ namespace GraphCanvas
         m_ignorePositionChanges = false;
         m_positionDirty = false;
 
-        CommentNotificationBus::Handler::BusConnect(m_nodeGroupId);
-        NodeGroupNotificationBus::Handler::BusConnect(m_nodeGroupId);
+        CommentNotificationBus::Handler::BusConnect(m_nodeGroupId);        
 
         bool isLoading = false;
         SceneRequestBus::EventResult(isLoading, graphId, &SceneRequests::IsLoading);
@@ -229,7 +227,7 @@ namespace GraphCanvas
     {        
         if (m_effectId.IsValid())
         {
-            SceneRequestBus::Event(m_effectId, &SceneRequests::CancelGraphicsEffect, graphId);
+            SceneRequestBus::Event(graphId, &SceneRequests::CancelGraphicsEffect, m_effectId);
             m_effectId.SetInvalid();
         }
 
@@ -297,17 +295,17 @@ namespace GraphCanvas
         NodeUIRequestBus::Event(GetEntityId(), &NodeUIRequests::AdjustSize);
     }
 
-    bool CollapsedNodeGroupComponent::OnMouseDoubleClick(const QGraphicsSceneMouseEvent* mouseEvent)
-    {
-        ExpandGroup();
-        return true;
-    }
-
-    void CollapsedNodeGroupComponent::OnColorChanged(const AZ::Color& color)
+    void CollapsedNodeGroupComponent::OnBackgroundColorChanged(const AZ::Color& color)
     {
         QColor titleColor = ConversionUtils::AZToQColor(color);
 
         NodeTitleRequestBus::Event(GetEntityId(), &NodeTitleRequests::SetColorPaletteOverride, titleColor);
+    }
+
+    bool CollapsedNodeGroupComponent::OnMouseDoubleClick(const QGraphicsSceneMouseEvent* mouseEvent)
+    {
+        ExpandGroup();
+        return true;
     }
 
     void CollapsedNodeGroupComponent::ExpandGroup()

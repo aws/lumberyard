@@ -60,7 +60,7 @@ namespace LmbrCentral
                 editContext->Class<EditorRandomTimedSpawnerComponent>("Random Timed Spawner", "")
                     ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
                     ->Attribute(AZ::Edit::Attributes::Category, "Gameplay")
-                    ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/RandomTimedSpawner.png")
+                    ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/RandomTimedSpawner.svg")
                     ->Attribute(AZ::Edit::Attributes::ViewportIcon, "Editor/Icons/Components/Viewport/RandomTimedSpawner.png")
                     ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
                     ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("Game", 0x232b318c))

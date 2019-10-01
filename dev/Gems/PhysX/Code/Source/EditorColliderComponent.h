@@ -15,18 +15,21 @@
 #include <AzCore/Component/TickBus.h>
 #include <AzCore/Component/TransformBus.h>
 #include <AzCore/Math/Quaternion.h>
+
 #include <AzFramework/Entity/EntityDebugDisplayBus.h>
+#include <AzFramework/Physics/RigidBody.h>
 #include <AzFramework/Physics/Shape.h>
 #include <AzFramework/Physics/ShapeConfiguration.h>
+
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
 #include <AzToolsFramework/ComponentMode/ComponentModeDelegate.h>
 #include <AzToolsFramework/Manipulators/BoxManipulatorRequestBus.h>
 #include <AzToolsFramework/ToolsComponents/EditorComponentBase.h>
+
+#include <PhysX/ColliderShapeBus.h>
 #include <PhysX/ConfigurationBus.h>
 #include <PhysX/MeshAsset.h>
 #include <PhysX/MeshColliderComponentBus.h>
-#include <AzFramework/Physics/RigidBody.h>
-
 
 namespace PhysX
 {
@@ -68,6 +71,7 @@ namespace PhysX
         , private AZ::TransformNotificationBus::Handler
         , public AZ::TickBus::Handler
         , private PhysX::ConfigurationNotificationBus::Handler
+        , private PhysX::ColliderShapeRequestBus::Handler
     {
     public:
         AZ_EDITOR_COMPONENT(EditorColliderComponent, "{FD429282-A075-4966-857F-D0BBF186CFE6}", AzToolsFramework::Components::EditorComponentBase);
@@ -75,7 +79,7 @@ namespace PhysX
         static void GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided)
         {
             provided.push_back(AZ_CRC("PhysXColliderService", 0x4ff43f7c));
-            provided.push_back(AZ_CRC("ProximityTriggerService", 0x561f262c));
+            provided.push_back(AZ_CRC("PhysXTriggerService", 0x3a117d7b));
         }
 
         static void GetRequiredServices(AZ::ComponentDescriptor::DependencyArrayType& required)
@@ -106,7 +110,6 @@ namespace PhysX
 
         // AZ::Component
         void Activate() override;
-
         void Deactivate() override;
 
         /// AzToolsFramework::EntitySelectionEvents
@@ -147,6 +150,10 @@ namespace PhysX
 
         // PhysX::ConfigurationNotificationBus
         virtual void OnConfigurationRefreshed(const Configuration& configuration) override;
+
+        // PhysX::ColliderShapeBus
+        AZ::Aabb GetColliderShapeAabb() override;
+        bool IsTrigger() override;
 
         AZ::Transform GetColliderTransform() const;
         float GetUniformScale() const;
@@ -196,6 +203,17 @@ namespace PhysX
         float m_colliderVisualizationLineWidth = 2.0f;
 
         double m_time = 0.0f;
+
+        /// Determine if the debug draw preference should be visible to the user
+        /// @param requiredState the collider debug state required to check for
+        /// @return true iff global collider debug is enabled.
+        static bool IsGlobalColliderDebugCheck(PhysX::EditorConfiguration::GlobalCollisionDebugState requiredState);
+
+        /// Open the PhysX Settings Window on the Global Settings tab
+        static void OpenPhysXSettingsWindow();
+
+        bool m_debugDrawButtonState = false;
+        bool m_debugDraw = true; ///< Display the collider in editor view.
 
         // Capsule collider
         AZ::Vector3 GetCapsuleScale();

@@ -504,6 +504,12 @@ namespace AzFramework
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
+    LocalUserId InputDeviceKeyboard::GetAssignedLocalUserId() const
+    {
+        return m_pimpl ? m_pimpl->GetAssignedLocalUserId() : InputDevice::GetAssignedLocalUserId();
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////
     const InputDevice::InputChannelByIdMap& InputDeviceKeyboard::GetInputChannelsById() const
     {
         return m_allChannelsById;
@@ -555,6 +561,16 @@ namespace AzFramework
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
+    void InputDeviceKeyboard::GetPhysicalKeyOrButtonText(const InputChannelId& inputChannelId,
+                                                         AZStd::string& o_keyOrButtonText) const
+    {
+        if (m_pimpl)
+        {
+            m_pimpl->GetPhysicalKeyOrButtonText(inputChannelId, o_keyOrButtonText);
+        }
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////
     InputDeviceKeyboard::Implementation::Implementation(InputDeviceKeyboard& inputDevice)
         : m_inputDevice(inputDevice)
         , m_rawKeyEventQueuesById()
@@ -565,6 +581,12 @@ namespace AzFramework
     ////////////////////////////////////////////////////////////////////////////////////////////////
     InputDeviceKeyboard::Implementation::~Implementation()
     {
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    LocalUserId InputDeviceKeyboard::Implementation::GetAssignedLocalUserId() const
+    {
+        return m_inputDevice.GetInputDeviceId().GetIndex();
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////

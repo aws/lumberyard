@@ -20,7 +20,8 @@
 #include <AzCore/UnitTest/UnitTest.h>
 #include <AzCore/Memory/MemoryComponent.h>
 #include <AzCore/Asset/AssetManagerComponent.h>
-#include <Tests/TestTypes.h>
+
+#include <AzCore/UnitTest/TestTypes.h>
 #include <AzFramework/IO/LocalFileIO.h>
 
 namespace Physics

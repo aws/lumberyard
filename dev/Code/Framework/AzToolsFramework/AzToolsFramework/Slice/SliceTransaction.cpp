@@ -34,6 +34,7 @@
 #include <AzToolsFramework/API/EditorAssetSystemAPI.h>
 #include <AzToolsFramework/Undo/UndoSystem.h>
 
+
 namespace AzToolsFramework
 {
     namespace SliceUtilities
@@ -1103,7 +1104,7 @@ namespace AzToolsFramework
                     {
                         AZ_PROFILE_SCOPE(AZ::Debug::ProfileCategory::AzToolsFramework, "SliceUtilities::Internal::SaveSliceToDisk:SaveToFileStream");
                         memoryStream.Seek(0, AZ::IO::GenericStream::ST_SEEK_BEGIN);
-                        savedToFile = fileStream.Write(memoryStream.GetLength(), memoryStream.GetData()->data());
+                        savedToFile = fileStream.Write(memoryStream.GetLength(), memoryStream.GetData()->data()) != 0;
                     }
                     fileStream.Close();
 

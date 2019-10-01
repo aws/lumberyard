@@ -602,22 +602,22 @@ namespace NCryMetal
     MTLLanguageVersion GetMetalLanguage()
     {
 #if defined(AZ_COMPILER_CLANG) && AZ_COMPILER_CLANG >= 9    //@available was added in Xcode 9
-#if defined(__MAC_10_13) || defined(__IPHONE_11_0)
-        if(@available(macOS 10.13, iOS 11.0, *))
+#if defined(__MAC_10_13) || defined(__IPHONE_11_0) || defined(__TVOS_11_0)
+        if(@available(macOS 10.13, iOS 11.0, tvOS 11.0, *))
         {
             return MTLLanguageVersion2_0;
         }
 #endif
         
-#if defined(__MAC_10_12) || defined(__IPHONE_10_0)
-        if (@available(macOS 10.12, iOS 10.0, *))
+#if defined(__MAC_10_12) || defined(__IPHONE_10_0) || defined(__TVOS_10_0)
+        if (@available(macOS 10.12, iOS 10.0, tvOS 10.0, *))
         {
             return MTLLanguageVersion1_2;
         }
 #endif
         
-#if defined(__MAC_10_11) || defined(__IPHONE_9_0)
-        if(@available(macOS 10.11, iOS 9.0, *))
+#if defined(__MAC_10_11) || defined(__IPHONE_9_0) || defined(__TVOS_9_0)
+        if(@available(macOS 10.11, iOS 9.0, tvOS 9.0, *))
         {
             
             return MTLLanguageVersion1_1;

@@ -294,7 +294,7 @@ struct SShaderParam
             {
                 continue;
             }
-            if (sp->m_Name == name)
+            if (azstricmp(sp->m_Name.c_str(), name) == 0)
             {
                 if (sp->m_Type == eType_STRING)
                 {
@@ -778,24 +778,16 @@ struct SRenderObjData
 {
     uintptr_t m_uniqueObjectId;
 
-    IRenderElement* m_pRE;
     SSkinningData* m_pSkinningData;
-    TArray<Vec4>    m_Constants;
 
     float   m_fTempVars[10];                                    // Different useful vars (ObjVal component in shaders)
 
     // using a pointer, the client code has to ensure that the data stays valid
     const DynArray<SShaderParam>* m_pShaderParams;
 
-    uint16 m_nLightID;
-
     uint32  m_nHUDSilhouetteParams;
 
-    uint32  m_pLayerEffectParams; // only used for layer effects
-
     uint64 m_nSubObjHideMask;
-
-    uint64 m_ShadowCasters;          // Mask of shadow casters.
 
     union
     {
@@ -805,16 +797,9 @@ struct SRenderObjData
 
     SBending* m_BendingPrev;
 
-    SSectorTextureSet* m_pTerrainSectorTextureInfo;
-
     uint16  m_FogVolumeContribIdx[2];
-
-    uint16  m_scissorX;
-    uint16  m_scissorY;
-
-    uint16  m_scissorWidth;
-    uint16  m_scissorHeight;
-
+    
+    uint16  m_nLightID;
     uint16  m_LightVolumeId;
 
     uint8 m_screenBounds[4];
@@ -830,20 +815,14 @@ struct SRenderObjData
     void Init()
     {
         m_nSubObjHideMask = 0;
-        m_Constants.Free();
         m_uniqueObjectId = 0;
-        m_pRE = NULL;
-        m_pLayerEffectParams = 0;
         m_nLightID = 0;
         m_LightVolumeId = 0;
         m_pSkinningData = NULL;
-        m_pTerrainSectorTextureInfo = nullptr;
-        m_scissorX = m_scissorY = m_scissorWidth = m_scissorHeight = 0;
         m_screenBounds[0] = m_screenBounds[1] = m_screenBounds[2] = m_screenBounds[3] = 0;
         m_nCustomData = 0;
         m_nCustomFlags = 0;
-        m_pLayerEffectParams = m_nHUDSilhouetteParams = 0;
-        m_ShadowCasters = 0;
+        m_nHUDSilhouetteParams = 0;
         m_pBending = nullptr;
         m_BendingPrev = nullptr;
         m_pShaderParams = nullptr;
@@ -859,14 +838,9 @@ struct SRenderObjData
         m_pShaderParams = pShaderParams;
     }
 
-    void SetRenderElement(IRenderElement* renderElement)
-    {
-        m_pRE = renderElement;
-    }
-
     void GetMemoryUsage(ICrySizer* pSizer) const
     {
-        pSizer->AddObject(m_Constants);
+        AZ_UNUSED(pSizer);
     }
 } _ALIGN(16);
 
@@ -950,6 +924,8 @@ public:
     uint8                       m_DissolveRef;            //!< Dissolve value
     uint8                       m_RState;                 //!< Render state used for object
 
+    bool                        m_NoDecalReceiver;
+
     uint32                      m_nMaterialLayers;        //!< Which mtl layers active and how much to blend them
 
     IRenderNode*                m_pRenderNode;            //!< Will define instance id.
@@ -958,16 +934,9 @@ public:
 
     PerInstanceConstantBufferKey m_PerInstanceConstantBufferKey;
 
-    // Common flags
-    uint32                     m_bWasDeleted : 1; //!< Object was deleted and in unusable state
-    uint32                     m_bHasShadowCasters : 1; //!< Has non-empty list of lights casting shadows in render object data
-    uint32                     m_NoDecalReceiver : 1;
-
     //! Embedded SRenderObjData, optional data carried by CRenderObject
     SRenderObjData             m_data;
 
-private:
-    int16               m_nObjDataId;
 public:
 
     //////////////////////////////////////////////////////////////////////////
@@ -1015,9 +984,6 @@ public:
         m_nRTMask = 0;
         m_pRenderNode = NULL;
 
-        m_pNextSubObject = NULL;
-        m_bWasDeleted = false;
-        m_bHasShadowCasters = false;
         m_NoDecalReceiver = false;
         m_data.Init();
     }
@@ -1034,8 +1000,6 @@ public:
     void SetRE(IRenderElement* re) { m_pRE = re; }
 
 protected:
-    // Next child sub object used for permanent objects
-    CRenderObject*              m_pNextSubObject;
 
     // Disallow copy (potential bugs with PERMANENT objects)
     // alwasy use IRendeer::EF_DuplicateRO if you want a copy
@@ -1044,9 +1008,7 @@ protected:
 
     void CloneObject(CRenderObject* srcObj)
     {
-        CRenderObject* prevObj = m_pNextSubObject;
         *this = *srcObj;
-        m_pNextSubObject = prevObj; // Prevent next render object pointer from copying
     }
 
     friend class CRenderer;

@@ -25,22 +25,19 @@
     tm_api* g_radTmApi;
 #endif
 
-#if defined(AZ_RESTRICTED_PLATFORM)
-    #if defined(AZ_PLATFORM_XENIA)
-        #include "Xenia/ProfileTelemetryComponent_cpp_xenia.inl"
-    #elif defined(AZ_PLATFORM_PROVO)
-        #include "Provo/ProfileTelemetryComponent_cpp_provo.inl"
-    #endif
-#endif
-
-namespace
-{
-    const char * ProfileChannel = "RADTelemetry";
-    const AZ::u32 MaxProfileThreadCount = 128;
-}
-
 namespace RADTelemetry
 {
+    static const char * ProfileChannel = "RADTelemetry";
+    static const AZ::u32 MaxProfileThreadCount = 128;
+
+    static void MessageFrameTickType(AZ::Debug::ProfileFrameAdvanceType type)
+    {
+        const char * frameAdvanceTypeMessage = "Profile tick set to %s";
+        const char* frameAdvanceTypeString = (type == AZ::Debug::ProfileFrameAdvanceType::Game) ? "Game Thread" : "Render Frame";
+        AZ_Printf(ProfileChannel, frameAdvanceTypeMessage, frameAdvanceTypeString);
+        tmMessage(0, TMMF_SEVERITY_LOG, frameAdvanceTypeMessage, frameAdvanceTypeString);
+    }
+
     ProfileTelemetryComponent::ProfileTelemetryComponent()
     {
         // Connecting in the constructor because we need to catch ALL created threads
@@ -63,6 +60,7 @@ namespace RADTelemetry
 
     void ProfileTelemetryComponent::Activate()
     {
+        AZ::Debug::ProfilerRequestBus::Handler::BusConnect();
         ProfileTelemetryRequestBus::Handler::BusConnect();
         AZ::SystemTickBus::Handler::BusConnect();
     }
@@ -71,6 +69,7 @@ namespace RADTelemetry
     {
         AZ::SystemTickBus::Handler::BusDisconnect();
         ProfileTelemetryRequestBus::Handler::BusDisconnect();
+        AZ::Debug::ProfilerRequestBus::Handler::BusDisconnect();
 
         Disable();
     }
@@ -148,14 +147,18 @@ namespace RADTelemetry
 
     void ProfileTelemetryComponent::OnSystemTick()
     {
-        // NOTE: in the Editor, this does not necessarily correlate with
-        // a viewport render end frame.
-        // The rendering can happen in multiple viewports simultaneously, and triggered by different events
-        // besides a SystemTick.
-        tmTick(0);
+        FrameAdvance(AZ::Debug::ProfileFrameAdvanceType::Game);
     }
 
-    bool ProfileTelemetryComponent::IsEnabled()
+    void ProfileTelemetryComponent::FrameAdvance(AZ::Debug::ProfileFrameAdvanceType type)
+    {
+        if (type == m_frameAdvanceType)
+        {
+            tmTick(0);
+        }
+    }
+
+    bool ProfileTelemetryComponent::IsActive()
     {
         return m_running;
     }
@@ -202,19 +205,19 @@ namespace RADTelemetry
             case TM_OK:
             {
                 m_running = true;
-                AZ_Printf(ProfileChannel, "Connected to the Telemetry server!");
+                AZ_Printf(ProfileChannel, "Connected to the Telemetry server at %s:%d", m_address, m_port);
+                MessageFrameTickType(m_frameAdvanceType);
 
 #if AZ_TRAIT_OS_USE_WINDOWS_THREADS
                 ScopedLock lock(m_threadNameLock);
                 for (const auto& threadNameEntry : m_threadNames)
                 {
                     const AZ::u32 newProfiledThreadCount = ++m_profiledThreadCount;
-                    AZ_Assert(newProfiledThreadCount <= MaxProfileThreadCount, "RAD Telemetry profiled threadcount exceeded MaxProfileThreadCount!");
+                    AZ_Assert(newProfiledThreadCount <= MaxProfileThreadCount, "RAD Telemetry profiled thread count exceeded MaxProfileThreadCount!");
                     tmThreadName(0, threadNameEntry.id.m_id, threadNameEntry.name.c_str());
                 }
                 m_threadNames.clear(); // Telemetry caches names so we can clear what we have sent on
 #endif
-
                 break;
             }
 
@@ -295,6 +298,15 @@ namespace RADTelemetry
         if (IsInitialized())
         {
             tmSetCaptureMask(m_captureMask);
+        }
+    }
+
+    void ProfileTelemetryComponent::SetFrameAdvanceType(AZ::Debug::ProfileFrameAdvanceType type)
+    {
+        if (type != m_frameAdvanceType)
+        {
+            MessageFrameTickType(type);
+            m_frameAdvanceType = type;
         }
     }
 

@@ -50,8 +50,10 @@ namespace ScriptCanvas
         };
 
         // calls a function and converts the result to a ScriptCanvas type, if necessary
-        static AZ::Outcome<Datum, AZStd::string> CallBehaviorContextMethodResult(AZ::BehaviorMethod* method, const AZ::BehaviorParameter* resultType, AZ::BehaviorValueParameter* params, unsigned int numExpectedArgs);
-        static AZ::Outcome<void, AZStd::string> CallBehaviorContextMethod(AZ::BehaviorMethod* method, AZ::BehaviorValueParameter* params, unsigned int numExpectedArgs);
+        static AZ::Outcome<Datum, AZStd::string> CallBehaviorContextMethodResult(const AZ::BehaviorMethod* method, const AZ::BehaviorParameter* resultType, AZ::BehaviorValueParameter* params, unsigned int numExpectedArgs);
+        static AZ::Outcome<void, AZStd::string> CallBehaviorContextMethod(const AZ::BehaviorMethod* method, AZ::BehaviorValueParameter* params, unsigned int numExpectedArgs);
+
+        static bool IsValidDatum(const Datum* datum);
 
         static void Reflect(AZ::ReflectContext* reflectContext);
 
@@ -64,6 +66,9 @@ namespace ScriptCanvas
         Datum(BehaviorContextResultTag, const AZ::BehaviorParameter& resultType);
         Datum(const AZStd::string& behaviorClassName, eOriginality originality);
         Datum(const AZ::BehaviorValueParameter& value);
+        
+        void ReconfigureDatumTo(Datum&& object);
+        void ReconfigureDatumTo(const Datum& object);
 
         /// If t_Value is a ScriptCanvas value type, regardless of pointer/reference, this will create datum with a copy of that
         /// value. That is, Datum<AZ::Vector3>(source), Datum<AZ::Vector3&>(source), Datum<AZ::Vector3*>(&source), will all produce
@@ -87,6 +92,13 @@ namespace ScriptCanvas
         AZ_INLINE const void* GetAsDanger() const;
 
         const Data::Type& GetType() const { return m_type; }
+        void SetType(const Data::Type& dataType);
+
+        template<typename T>
+        void SetAZType()
+        {
+            SetType(ScriptCanvas::Data::FromAZType(azrtti_typeid<T>()));
+        }
 
         // checks this datum can be converted to the specified type, including checking for required storage
         AZ_INLINE bool IsConvertibleFrom(const AZ::Uuid& typeID) const;
@@ -233,6 +245,9 @@ namespace ScriptCanvas
 
         // is this storage for nodes that are overloaded, e.g. Log, which takes in any data type
         const bool m_isOverloadedStorage = false;
+
+        bool m_isDefaultConstructed = false;
+
         // eOriginality records the graph source of the object
         eOriginality m_originality = eOriginality::Copy;
         // storage for the datum, regardless of ScriptCanvas::Data::Type

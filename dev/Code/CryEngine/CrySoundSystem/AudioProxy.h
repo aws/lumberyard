@@ -29,7 +29,10 @@ namespace Audio
         void Initialize(const char* const sObjectName, const bool bInitAsync = true) override;
         void Release() override;
         void Reset() override;
-        void ExecuteSourceTrigger(const TAudioControlID nTriggerID, const Audio::TAudioControlID& sourceId, const SAudioCallBackInfos & rCallbackInfos = SAudioCallBackInfos::GetEmptyObject()) override;
+        void ExecuteSourceTrigger(
+            TAudioControlID nTriggerID,
+            const SAudioSourceInfo& rSourceInfo,
+            const SAudioCallBackInfos& rCallbackInfos = SAudioCallBackInfos::GetEmptyObject()) override;
         void ExecuteTrigger(TAudioControlID const nTriggerID, ELipSyncMethod const eLipSyncMethod, SAudioCallBackInfos const& rCallbackInfos = SAudioCallBackInfos::GetEmptyObject()) override;
         void StopAllTriggers() override;
         void StopTrigger(const TAudioControlID nTriggerID) override;
@@ -104,7 +107,6 @@ namespace Audio
                 , pUserData(nullptr)
                 , pUserDataOwner(nullptr)
                 , nRequestFlags(eARF_NONE)
-                , nSourceID(INVALID_AUDIO_SOURCE_ID)
             {}
 
             SQueuedAudioCommand& operator=(const SQueuedAudioCommand& refOther)
@@ -125,7 +127,7 @@ namespace Audio
                 sValue = refOther.sValue;
                 oPosition = refOther.oPosition;
                 oMultiPosParams = refOther.oMultiPosParams;
-                nSourceID = refOther.nSourceID;
+                rSourceInfo = refOther.rSourceInfo;
                 return *this;
             }
 
@@ -145,7 +147,7 @@ namespace Audio
             AZStd::string sValue;
             SATLWorldPosition oPosition;
             MultiPositionParams oMultiPosParams;
-            TAudioSourceId nSourceID;
+            SAudioSourceInfo rSourceInfo;
         };
 
         ///////////////////////////////////////////////////////////////////////////////////////////////

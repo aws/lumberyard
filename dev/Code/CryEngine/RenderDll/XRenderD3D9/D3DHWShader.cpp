@@ -3758,7 +3758,7 @@ bool CHWShader_D3D::mfUpdateSamplers(CShader* shader)
         bool    bNeedsConstantUpdate = false;
         for (auto iter = UpdatedTMap.begin(); iter != UpdatedTMap.end(); ++iter)
         {
-            SEfResTexture*  	pTexture = iter->second;
+            SEfResTexture*  pTexture = iter->second;
 
             pTexture->Update(iter->first);
             bNeedsConstantUpdate |= pTexture->IsNeedTexTransform();
@@ -3929,11 +3929,6 @@ int SD3DShader::Release(EHWShaderClass eSHClass, int nSize)
     if (eSHClass == eHWSC_Vertex)
     {
         return ((ID3D11VertexShader*)pHandle)->Release();
-    }
-    else
-    if (eSHClass == eHWSC_Geometry)
-    {
-        return ((ID3D11GeometryShader*)pHandle)->Release();
     }
     else
     if (eSHClass == eHWSC_Geometry)
@@ -4917,7 +4912,7 @@ CHWShader_D3D::SHWSInstance* CHWShader_D3D::mfGetInstance(CShader* pSH, SShaderC
         if (it != pInstCont->end() && identHash == (*it)->m_Ident.m_nHash)
         {
 #ifdef _RELEASE
-            cgi = *it;		// release - return the first matching shader permutation
+            cgi = *it; // release - return the first matching shader permutation
 #else
 
             // If not release, run over all matching shaders permutations and look for matching CRC hash
@@ -5508,15 +5503,14 @@ void CHWShader_D3D::mfUpdatePreprocessFlags(SShaderTechnique* pTech)
     }
 }
 
-AZ::u32 CHWShader_D3D::SHWSInstance::GenerateVertexDeclarationCacheCRC(const AZ::Vertex::Format& vertexFormat)
+AZ::u32 CHWShader_D3D::SHWSInstance::GenerateVertexDeclarationCacheKey(const AZ::Vertex::Format& vertexFormat)
 {
-    AZ::u32 fetchShaderCRC = vertexFormat.GetCRC();
 
     // We cannot naively use the AZ::Vertex::Format CRC to cache the results of CreateInputLayout.
     // CreateInputLayout compiles a fetch shader to associate the vertex format with the individual vertex shader instance.
     // If the vertex shader does not reference one of the input semantics, then the fetch shader will not
-    fetchShaderCRC |= m_uniqueNameCRC;
+    AZ::u32 fetchShaderKey = ( m_uniqueNameCRC ^ vertexFormat.GetEnum() );
 
-    return fetchShaderCRC;
+    return fetchShaderKey;
 }
 

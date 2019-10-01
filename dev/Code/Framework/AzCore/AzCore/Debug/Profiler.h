@@ -15,13 +15,6 @@
 #include <AzCore/std/chrono/chrono.h>
 #include <AzCore/std/function/function_fwd.h>
 
-#if defined(AZ_THREAD_LOCAL) && !defined(AZ_PROFILE_DISABLE_THREAD_LOCAL)
-#   define AZ_PROFILER_THREAD_LOCAL     AZ_THREAD_LOCAL
-#else // !AZ_THREAD_LOCAL
-#   define AZ_PROFILER_NO_THREAD_LOCAL
-#   define AZ_PROFILER_THREAD_LOCAL
-#endif
-
 namespace AZ
 {
     namespace Debug
@@ -155,7 +148,7 @@ namespace AZ
 #   define AZ_PROFILE_TIMER_3(_1, _2, _3)                                                                                                                     \
     AZ::Debug::ProfilerSection _3;                                                                                                                            \
     if (AZ::u64 profilerId = AZ::Debug::Profiler::GetId()) {                                                                                                  \
-        static AZ_PROFILER_THREAD_LOCAL AZ::Internal::RegisterData AZ_JOIN(azProfileRegister, __LINE__) = {0, 0};                                             \
+        static AZ_THREAD_LOCAL AZ::Internal::RegisterData AZ_JOIN(azProfileRegister, __LINE__) = {0, 0};                                                      \
         if (AZ_JOIN(azProfileRegister, __LINE__).m_profilerId != profilerId) {                                                                                \
             AZ_JOIN(azProfileRegister, __LINE__).m_register = AZ::Debug::ProfilerRegister::TimerCreateAndStart(_1, _2, &_3, AZ_FUNCTION_SIGNATURE, __LINE__); \
             AZ_JOIN(azProfileRegister, __LINE__).m_profilerId = profilerId;                                                                                   \
@@ -190,7 +183,7 @@ namespace AZ
  */
 #   define AZ_PROFILE_VALUE_SET(_SystemName, _RegisterName, ...)                                                                                                     \
     if (AZ::u64 profilerId = AZ::Debug::Profiler::GetId()) {                                                                                                         \
-        static AZ_PROFILER_THREAD_LOCAL AZ::Internal::RegisterData AZ_JOIN(azProfileRegister, __LINE__) = {0, 0};                                                    \
+        static AZ_THREAD_LOCAL AZ::Internal::RegisterData AZ_JOIN(azProfileRegister, __LINE__) = {0, 0};                                                             \
         if (AZ_JOIN(azProfileRegister, __LINE__).m_profilerId != profilerId) {                                                                                       \
             AZ_JOIN(azProfileRegister, __LINE__).m_register = AZ::Debug::ProfilerRegister::ValueCreate(_SystemName, _RegisterName, AZ_FUNCTION_SIGNATURE, __LINE__); \
             AZ_JOIN(azProfileRegister, __LINE__).m_profilerId = profilerId;                                                                                          \
@@ -201,7 +194,7 @@ namespace AZ
 /// Same as AZ_PROFILE_VALUE_SET except is add the values passed in the macro (you can use -(value), to subtract values)
 #   define AZ_PROFILE_VALUE_ADD(_SystemName, _RegisterName, ...)                                                                                                     \
     if (AZ::u64 profilerId = AZ::Debug::Profiler::GetId()) {                                                                                                         \
-        static AZ_PROFILER_THREAD_LOCAL AZ::Internal::RegisterData AZ_JOIN(azProfileRegister, __LINE__) = {0, 0};                                                    \
+        static AZ_THREAD_LOCAL AZ::Internal::RegisterData AZ_JOIN(azProfileRegister, __LINE__) = {0, 0};                                                             \
         if (AZ_JOIN(azProfileRegister, __LINE__).m_profilerId != profilerId) {                                                                                       \
             AZ_JOIN(azProfileRegister, __LINE__).m_register = AZ::Debug::ProfilerRegister::ValueCreate(_SystemName, _RegisterName, AZ_FUNCTION_SIGNATURE, __LINE__); \
             AZ_JOIN(azProfileRegister, __LINE__).m_profilerId = profilerId;                                                                                          \
@@ -216,7 +209,7 @@ namespace AZ
 #   define AZ_PROFILE_VALUE_SET_NAMED(_SystemName, _RegisterName, _RegisterVaribaleName, ...)                                                                        \
     AZ::Debug::ProfilerRegister * _RegisterVaribaleName = nullptr;                                                                                                   \
     if (AZ::u64 profilerId = AZ::Debug::Profiler::GetId()) {                                                                                                         \
-        static AZ_PROFILER_THREAD_LOCAL AZ::Internal::RegisterData AZ_JOIN(azProfileRegister, __LINE__) = {0, 0};                                                    \
+        static AZ_THREAD_LOCAL AZ::Internal::RegisterData AZ_JOIN(azProfileRegister, __LINE__) = {0, 0};                                                             \
         if (AZ_JOIN(azProfileRegister, __LINE__).m_profilerId != profilerId) {                                                                                       \
             AZ_JOIN(azProfileRegister, __LINE__).m_register = AZ::Debug::ProfilerRegister::ValueCreate(_SystemName, _RegisterName, AZ_FUNCTION_SIGNATURE, __LINE__); \
             AZ_JOIN(azProfileRegister, __LINE__).m_profilerId = profilerId;                                                                                          \
@@ -229,7 +222,7 @@ namespace AZ
 #   define AZ_PROFILE_VALUE_ADD_NAMED(_SystemName, _RegisterName, _RegisterVaribaleName, ...)                                                                        \
     AZ::Debug::ProfilerRegister * _RegisterVaribaleName = nullptr;                                                                                                   \
     if (AZ::u64 profilerId = AZ::Debug::Profiler::GetId()) {                                                                                                         \
-        static AZ_PROFILER_THREAD_LOCAL AZ::Internal::RegisterData AZ_JOIN(azProfileRegister, __LINE__) = {0, 0};                                                    \
+        static AZ_THREAD_LOCAL AZ::Internal::RegisterData AZ_JOIN(azProfileRegister, __LINE__) = {0, 0};                                                             \
         if (AZ_JOIN(azProfileRegister, __LINE__).m_profilerId != profilerId) {                                                                                       \
             AZ_JOIN(azProfileRegister, __LINE__).m_register = AZ::Debug::ProfilerRegister::ValueCreate(_SystemName, _RegisterName, AZ_FUNCTION_SIGNATURE, __LINE__); \
             AZ_JOIN(azProfileRegister, __LINE__).m_profilerId = profilerId;                                                                                          \
@@ -267,6 +260,14 @@ namespace AZ
         AZ_INTERNAL_PROF_VERIFY_CAT(category); AZ_PROFILE_TIMER(AZ_INTERNAL_PROF_CAT_NAME(category))
 #endif
 
+#ifndef AZ_PROFILE_EVENT_BEGIN
+// No other profiler has defined the performance markers AZ_PROFILE_EVENT_START/END, fallback to a Driller implementation (currently empty)
+#   define AZ_PROFILE_EVENT_BEGIN(category, name) \
+        AZ_INTERNAL_PROF_VERIFY_CAT(category); (void)(name)
+#   define AZ_PROFILE_EVENT_END(category) \
+        AZ_INTERNAL_PROF_VERIFY_CAT(category)
+#endif
+
 #ifndef AZ_PROFILE_INTERVAL_START
 // No other profiler has defined the performance markers AZ_PROFILE_INTERVAL_START/END, fallback to a Driller implementation (currently empty)
 #   define AZ_INTERNAL_PROF_VERIFY_INTERVAL_ID(id) static_assert(sizeof(id) <= sizeof(AZ::u64), "Interval id must be a unique value no larger than 64-bits")
@@ -274,14 +275,16 @@ namespace AZ
         AZ_INTERNAL_PROF_VERIFY_CAT(category); AZ_INTERNAL_PROF_VERIFY_INTERVAL_ID(id)
 #   define AZ_PROFILE_INTERVAL_END(category, id) \
         AZ_INTERNAL_PROF_VERIFY_CAT(category); AZ_INTERNAL_PROF_VERIFY_INTERVAL_ID(id)
+#   define AZ_PROFILE_INTERVAL_SCOPED(category, id, ...) \
+        AZ_INTERNAL_PROF_VERIFY_CAT(category); AZ_INTERNAL_PROF_VERIFY_INTERVAL_ID(id)
 #endif
 
 #ifndef AZ_PROFILE_DATAPOINT
 // No other profiler has defined the performance markers AZ_PROFILE_DATAPOINT, fallback to a Driller implementation (currently empty)
-#define AZ_PROFILE_DATAPOINT(category, name, value) \
-        AZ_INTERNAL_PROF_VERIFY_CAT(category); (void)(name); (void)value
-#define AZ_PROFILE_DATAPOINT_PERCENT(category, name, value) \
-        AZ_INTERNAL_PROF_VERIFY_CAT(category); (void)(name); (void)value
+#define AZ_PROFILE_DATAPOINT(category, value, ...) \
+        AZ_INTERNAL_PROF_VERIFY_CAT(category); static_cast<double>(value)
+#define AZ_PROFILE_DATAPOINT_PERCENT(category, value, ...) \
+        AZ_INTERNAL_PROF_VERIFY_CAT(category); static_cast<double>(value)
 #endif
 
 #ifndef AZ_PROFILE_MEMORY_ALLOC
@@ -395,9 +398,6 @@ namespace AZ
             friend class Profiler;
         public:
             ProfilerRegister()
-#           if defined(AZ_PROFILER_NO_THREAD_LOCAL)
-                : m_nextThread(nullptr)
-#           endif
             {}
 
             enum Type
@@ -428,15 +428,8 @@ namespace AZ
                 AZ::s64     m_value5;
             };
 
-#if defined(AZ_PROFILER_NO_THREAD_LOCAL)
-            static ProfilerRegister*        TimerCreateAndStart(AZ::u32 systemId, const char* name, ProfilerSection* section, const char* function, int line, ProfilerRegister* siblingRef = nullptr);
-
-            static ProfilerRegister*        TimerCreateAndStart(const char* systemName, const char* name, ProfilerSection* section, const char* function, int line, ProfilerRegister* siblingRef = nullptr);
-            static ProfilerRegister*        ValueCreate(const char* systemName, const char* name, const char* function, int line, ProfilerRegister* siblingRef = nullptr);
-#else
             static ProfilerRegister*        TimerCreateAndStart(const char* systemName, const char* name, ProfilerSection* section, const char* function, int line);
             static ProfilerRegister*        ValueCreate(const char* systemName, const char* name, const char* function, int line);
-#endif
             void                            TimerStart(ProfilerSection* section);
 
             void                            ValueSet(const AZ::s64& v1);
@@ -469,12 +462,7 @@ namespace AZ
         private:
             friend class ProfilerSection;
 
-#           if defined(AZ_PROFILER_NO_THREAD_LOCAL)
-            static ProfilerRegister* CreateRegister(AZ::u32 systemId, const char* name, const char* function, int line, ProfilerRegister::Type type, ProfilerRegister* siblingReg);
-            static ProfilerRegister* CreateRegister(const char* systemName, const char* name, const char* function, int line, ProfilerRegister::Type type, ProfilerRegister* siblingReg);
-#           else
             static ProfilerRegister* CreateRegister(const char* systemName, const char* name, const char* function, int line, ProfilerRegister::Type type);
-#           endif
 
             /// Compute static start/stop overhead approximation. You can call this periodically (or not) to update the overhead.
             static void                     TimerComputeStartStopOverhead();
@@ -486,9 +474,6 @@ namespace AZ
             ProfilerRegister*               GetValueRegisterForThisThread();
 
             ProfilerThreadData*             m_threadData;   ///< Pointer to this entry thread data.
-#           if defined(AZ_PROFILER_NO_THREAD_LOCAL)
-            ProfilerRegister*               m_nextThread;   ///< Pointer to next thread when we don't have thread local storage available.
-#           endif
         };
 
         /**
@@ -531,12 +516,10 @@ namespace AZ
             int                                         m_childCalls;   ///< Number of children calls.
         };
 
-#       if !defined(AZ_PROFILER_NO_THREAD_LOCAL)
         AZ_FORCE_INLINE ProfilerRegister*   ProfilerRegister::GetValueRegisterForThisThread()
         {
             return this;
         }
-#       endif // !AZ_PROFILER_NO_THREAD_LOCAL
 
         AZ_FORCE_INLINE void    ProfilerRegister::ValueSet(const AZ::s64& v1)
         {

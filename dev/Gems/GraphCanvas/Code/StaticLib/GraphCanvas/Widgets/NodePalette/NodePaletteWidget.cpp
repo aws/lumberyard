@@ -11,6 +11,7 @@
 */
 #include <QBoxLayout>
 #include <QEvent>
+#include <QKeyEvent>
 #include <QCompleter>
 #include <QCoreApplication>
 #include <QLineEdit>
@@ -108,6 +109,7 @@ namespace GraphCanvas
         , m_contextMenuCreateEvent(nullptr)
         , m_model(nullptr)
         , m_isInContextMenu(false)
+        , m_searchFieldSelectionChange(false)
     {        
     }
 
@@ -136,8 +138,13 @@ namespace GraphCanvas
 
         m_ui->setupUi(this);
 
-        QObject::connect(m_ui->searchFilter, &QLineEdit::textChanged, this, &NodePaletteWidget::OnFilterTextChanged);
+        QObject::connect(m_ui->searchFilter, &QLineEdit::textChanged, this, &NodePaletteWidget::OnFilterTextChanged);        
         QObject::connect(m_ui->treeView, &QTreeView::doubleClicked, this, &NodePaletteWidget::OnIndexDoubleClicked);
+
+        if (paletteConfig.m_allowArrowKeyNavigation)
+        {
+            m_ui->searchFilter->installEventFilter(this);
+        }
 
         QAction* clearAction = m_ui->searchFilter->addAction(QIcon(":/GraphCanvasEditorResources/lineedit_clear.png"), QLineEdit::TrailingPosition);
         QObject::connect(clearAction, &QAction::triggered, this, &NodePaletteWidget::ClearFilter);
@@ -209,10 +216,12 @@ namespace GraphCanvas
         {
             QSignalBlocker blocker(m_ui->treeView->selectionModel());
             m_ui->treeView->clearSelection();
+            m_ui->treeView->selectionModel()->clearSelection();
+            m_ui->treeView->selectionModel()->setCurrentIndex(QModelIndex(), QItemSelectionModel::SelectionFlag::ClearAndSelect);
         }
 
         m_ui->treeView->collapseAll();
-        m_ui->m_categoryLabel->setFullText("");
+        m_ui->m_categoryLabel->setFullText("");        
 
         setVisible(true);
     }
@@ -302,6 +311,174 @@ namespace GraphCanvas
         return m_ui->treeView;
     }
 
+    bool NodePaletteWidget::eventFilter(QObject* object, QEvent* qEvent)
+    {
+        if (qEvent->type() == QEvent::KeyPress)
+        {            
+            QKeyEvent* keyEvent = static_cast<QKeyEvent*>(qEvent);
+
+            if (keyEvent->key() == Qt::Key_Down)
+            {
+                if (m_model->rowCount() == 0)
+                {
+                    return true;
+                }
+
+                m_searchFieldSelectionChange = true;       
+
+                QModelIndex baseIndex = m_ui->treeView->selectionModel()->currentIndex();
+                QModelIndex searchIndex = baseIndex.parent();
+
+                bool exploreNextIndex = true;
+                int nextRow = baseIndex.row() + 1;
+
+                // If we don't have a selection, select the first item.
+                if (!baseIndex.isValid())
+                {
+                    searchIndex = QModelIndex();
+                    exploreNextIndex = false;
+                    nextRow = 0;
+                }                
+
+                while (exploreNextIndex)
+                {
+                    int rowCount = m_model->rowCount(searchIndex);                    
+
+                    if (nextRow >= rowCount)
+                    {
+                        // If our parent isn't valid this means we reached the top of our list. So we'll want to reset our next row count.
+                        if (!searchIndex.isValid())
+                        {
+                            nextRow = 0;
+                            break;
+                        }
+                        else
+                        {
+                            nextRow = searchIndex.row() + 1;
+                            searchIndex = searchIndex.parent();                            
+                            continue;
+                        }
+                    }
+                    else
+                    {
+                        break;
+                    }
+                }
+
+                QModelIndex childIndex = m_model->index(nextRow, 0, searchIndex);
+
+                bool hasChildren = m_model->hasChildren(childIndex);
+
+                while (hasChildren)
+                {
+                    childIndex = m_model->index(0, 0, childIndex);
+                    hasChildren = m_model->hasChildren(childIndex);
+                }
+
+                AZStd::vector< QModelIndex > expandableIndexes;
+                QModelIndex expandedIndex = childIndex.parent();
+
+                while (expandedIndex.isValid() && !m_ui->treeView->isExpanded(expandedIndex))
+                {
+                    expandableIndexes.push_back(expandedIndex);
+                    expandedIndex = expandedIndex.parent();
+                }
+
+                for (int i = static_cast<int>(expandableIndexes.size()) - 1; i > 0; i--)
+                {
+                    m_ui->treeView->expand(expandableIndexes[i]);
+                }
+
+                m_ui->treeView->selectionModel()->setCurrentIndex(childIndex, QItemSelectionModel::SelectionFlag::ClearAndSelect);
+
+                m_searchFieldSelectionChange = false;
+
+                return true;
+            }
+            else if (keyEvent->key() == Qt::Key_Up)
+            {
+                if (m_model->rowCount() == 0)
+                {
+                    return true;
+                }
+
+                m_searchFieldSelectionChange = true;
+
+                QModelIndex baseIndex = m_ui->treeView->selectionModel()->currentIndex();
+                QModelIndex searchIndex = baseIndex.parent();
+                
+                bool exploreNextIndex = true;
+                int nextRow = baseIndex.row() - 1;
+
+                // If we don't have a selection, select the first item.
+                if (!baseIndex.isValid())
+                {
+                    searchIndex = QModelIndex();
+                    exploreNextIndex = false;
+                    nextRow = m_model->rowCount() - 1;
+                }
+
+                while (exploreNextIndex)
+                {
+                    int rowCount = m_model->rowCount(searchIndex);
+
+                    if (nextRow < 0)
+                    {
+                        // If our parent isn't valid this means we reached the top of our list. So we'll want to reset our next row count.
+                        if (!searchIndex.isValid())
+                        {
+                            nextRow = m_model->rowCount() - 1;
+                            break;
+                        }
+                        else
+                        {
+                            nextRow = searchIndex.row() - 1;
+                            searchIndex = searchIndex.parent();
+                            continue;
+                        }
+                    }
+                    else
+                    {
+                        break;
+                    }
+                }
+
+                QModelIndex childIndex = m_model->index(nextRow, 0, searchIndex);
+
+                bool hasChildren = m_model->hasChildren(childIndex);
+
+                while (hasChildren)
+                {
+                    int rowCount = m_model->rowCount(childIndex) - 1;
+                    childIndex = m_model->index(rowCount, 0, childIndex);
+                    hasChildren = m_model->hasChildren(childIndex);
+                }
+
+                AZStd::vector< QModelIndex > expandableIndexes;
+                QModelIndex expandedIndex = childIndex.parent();
+
+                while (expandedIndex.isValid() && !m_ui->treeView->isExpanded(expandedIndex))
+                {
+                    expandableIndexes.push_back(expandedIndex);
+                    expandedIndex = expandedIndex.parent();
+                }
+
+                for (int i = static_cast<int>(expandableIndexes.size()) - 1; i > 0; i--)
+                {
+                    m_ui->treeView->expand(expandableIndexes[i]);
+                }
+
+                m_ui->treeView->selectionModel()->setCurrentIndex(childIndex, QItemSelectionModel::SelectionFlag::ClearAndSelect);
+                
+                m_searchFieldSelectionChange = false;
+
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     GraphCanvasTreeItem* NodePaletteWidget::CreatePaletteRoot() const
     {
         return nullptr;
@@ -328,6 +505,16 @@ namespace GraphCanvas
         QModelIndex sourceModelIndex = m_model->mapToSource(index);
 
         NodePaletteTreeItem* nodePaletteItem = static_cast<NodePaletteTreeItem*>(sourceModelIndex.internalPointer());
+
+        if (m_searchFieldSelectionChange)
+        {
+            m_ui->searchFilter->setText(nodePaletteItem->GetName());
+            m_ui->searchFilter->selectAll();
+
+            // Cancel the update time just in case there was one queued we don't want to mess with the filtering wihle we are manually scrubbing through the entries.
+            m_filterTimer.stop();
+        }
+
         HandleSelectedItem(nodePaletteItem);
     }
 
@@ -372,8 +559,11 @@ namespace GraphCanvas
 
     void NodePaletteWidget::OnFilterTextChanged()
     {
-        m_filterTimer.stop();
-        m_filterTimer.start();
+        if (!m_searchFieldSelectionChange)
+        {
+            m_filterTimer.stop();
+            m_filterTimer.start();
+        }
     }
 
     void NodePaletteWidget::UpdateFilter()
@@ -423,40 +613,54 @@ namespace GraphCanvas
 
     void NodePaletteWidget::TrySpawnItem()
     {
-        QCompleter* completer = m_ui->searchFilter->completer();
-        QModelIndex modelIndex = completer->currentIndex();
-
-        if (!m_ui->searchFilter->text().isEmpty() && modelIndex.isValid())
+        if (m_ui->treeView->selectionModel()->hasSelection())
         {
-            // The docs say this is fine. So here's hoping.
-            QAbstractProxyModel* proxyModel = qobject_cast<QAbstractProxyModel*>(completer->completionModel());
+            QModelIndex sourceIndex = m_model->mapToSource(m_ui->treeView->selectionModel()->currentIndex());
 
-            if (proxyModel)
+            GraphCanvasTreeItem* treeItem = static_cast<GraphCanvasTreeItem*>(sourceIndex.internalPointer());
+
+            if (treeItem)
             {
-                QModelIndex sourceIndex = proxyModel->mapToSource(modelIndex);
-
-                if (sourceIndex.isValid())
-                {
-                    NodePaletteAutoCompleteModel* autoCompleteModel = qobject_cast<NodePaletteAutoCompleteModel*>(proxyModel->sourceModel());
-
-                    const GraphCanvasTreeItem* treeItem = autoCompleteModel->FindItemForIndex(sourceIndex);
-
-                    if (treeItem)
-                    {
-                        HandleSelectedItem(treeItem);
-                    }
-                }
+                HandleSelectedItem(treeItem);
             }
         }
         else
         {
-            emit OnCreateSelection();
+            QCompleter* completer = m_ui->searchFilter->completer();
+            QModelIndex modelIndex = completer->currentIndex();
+
+            if (!m_ui->searchFilter->text().isEmpty() && modelIndex.isValid())
+            {
+                // The docs say this is fine. So here's hoping.
+                QAbstractProxyModel* proxyModel = qobject_cast<QAbstractProxyModel*>(completer->completionModel());
+
+                if (proxyModel)
+                {
+                    QModelIndex sourceIndex = proxyModel->mapToSource(modelIndex);
+
+                    if (sourceIndex.isValid())
+                    {
+                        NodePaletteAutoCompleteModel* autoCompleteModel = qobject_cast<NodePaletteAutoCompleteModel*>(proxyModel->sourceModel());
+
+                        const GraphCanvasTreeItem* treeItem = autoCompleteModel->FindItemForIndex(sourceIndex);
+
+                        if (treeItem)
+                        {
+                            HandleSelectedItem(treeItem);
+                        }
+                    }
+                }
+            }
+            else
+            {
+                emit OnCreateSelection();
+            }
         }
     }
 
     void NodePaletteWidget::HandleSelectedItem(const GraphCanvasTreeItem* treeItem)
     {
-        if (m_isInContextMenu)
+        if (m_isInContextMenu && !m_searchFieldSelectionChange)
         {
             m_contextMenuCreateEvent = treeItem->CreateMimeEvent();
 

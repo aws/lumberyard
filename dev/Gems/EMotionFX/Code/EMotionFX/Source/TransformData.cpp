@@ -30,7 +30,6 @@ namespace EMotionFX
     {
         mSkinningMatrices   = nullptr;
         mBindPose           = nullptr;
-        mFlags              = nullptr;
         mNumTransforms      = 0;
         mHasUniqueBindPose  = false;
     }
@@ -54,7 +53,6 @@ namespace EMotionFX
     void TransformData::Release()
     {
         MCore::AlignedFree(mSkinningMatrices);
-        MCore::AlignedFree(mFlags);
 
         if (mHasUniqueBindPose)
         {
@@ -62,7 +60,6 @@ namespace EMotionFX
         }
 
         mPose.Clear();
-        mFlags          = nullptr;
         mSkinningMatrices = nullptr;
         mBindPose       = nullptr;
         mNumTransforms  = 0;
@@ -86,7 +83,6 @@ namespace EMotionFX
         }
 
         mSkinningMatrices       = (MCore::Matrix*)MCore::AlignedAllocate(sizeof(MCore::Matrix) * numNodes, 16, EMFX_MEMCATEGORY_TRANSFORMDATA);
-        mFlags                  = (ENodeFlags*)MCore::AlignedAllocate(sizeof(ENodeFlags) * numNodes, 16, EMFX_MEMCATEGORY_TRANSFORMDATA);
         mNumTransforms          = numNodes;
 
         if (mHasUniqueBindPose)
@@ -103,11 +99,6 @@ namespace EMotionFX
         for (uint32 i = 0; i < numNodes; ++i)
         {
             mSkinningMatrices[i].Identity();
-
-            // use all flags
-            uint32 flag = 0;
-            flag |= FLAG_HASSCALE;
-            mFlags[i] = (ENodeFlags)flag;
         }
     }
 
@@ -158,29 +149,6 @@ namespace EMotionFX
             mBindPose->SetLocalSpaceTransform(nodeIndex, newTransform);
         }
     ) // EMFX_SCALECODE
-
-
-    // update the flags
-    void TransformData::UpdateNodeFlags()
-    {
-    #if !defined(EMFX_SCALE_DISABLED)
-        ActorInstance* actorInstance = mPose.GetActorInstance();
-        const uint32 numNodes = actorInstance->GetNumEnabledNodes();
-        for (uint32 i = 0; i < numNodes; ++i)
-        {
-            const uint32 nodeIndex = actorInstance->GetEnabledNode(i);
-            const Transform& transform = mPose.GetLocalSpaceTransform(nodeIndex);
-
-            if (!MCore::Compare<float>::CheckIfIsClose(transform.mScale.GetX(), 1.0f, MCore::Math::epsilon) ||
-                !MCore::Compare<float>::CheckIfIsClose(transform.mScale.GetY(), 1.0f, MCore::Math::epsilon) ||
-                !MCore::Compare<float>::CheckIfIsClose(transform.mScale.GetZ(), 1.0f, MCore::Math::epsilon))
-            {
-                SetNodeFlag(nodeIndex, FLAG_HASSCALE, true);
-            }
-        }
-    #endif
-    }
-
 
     // set the number of morph weights
     void TransformData::SetNumMorphWeights(uint32 numMorphWeights)

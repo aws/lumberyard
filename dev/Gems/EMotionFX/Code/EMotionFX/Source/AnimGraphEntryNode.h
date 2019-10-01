@@ -12,18 +12,12 @@
 
 #pragma once
 
-// include the required headers
 #include "EMotionFXConfig.h"
 #include "AnimGraphNode.h"
 
 
 namespace EMotionFX
 {
-    /**
-     *
-     *
-     *
-     */
     class EMFX_API AnimGraphEntryNode
         : public AnimGraphNode
     {
@@ -31,7 +25,6 @@ namespace EMotionFX
         AZ_RTTI(AnimGraphEntryNode, "{3F02348C-07CC-4303-B1C9-D4585CE04529}", AnimGraphNode)
         AZ_CLASS_ALLOCATOR_DECL
 
-        //
         enum
         {
             OUTPUTPORT_RESULT   = 0
@@ -59,14 +52,14 @@ namespace EMotionFX
         const char* GetPaletteName() const override;
         AnimGraphObject::ECategory GetPaletteCategory() const override;
 
-        AnimGraphNode* FindSourceNode(AnimGraphInstance* animGraphInstance);
-
         static void Reflect(AZ::ReflectContext* context);
 
     private:
+        AnimGraphNode* FindSourceNode(AnimGraphInstance* animGraphInstance) const;
+
         void Output(AnimGraphInstance* animGraphInstance) override;
         void Update(AnimGraphInstance* animGraphInstance, float timePassedInSeconds) override;
         void TopDownUpdate(AnimGraphInstance* animGraphInstance, float timePassedInSeconds) override;
         void PostUpdate(AnimGraphInstance* animGraphInstance, float timePassedInSeconds) override;
     };
-}   // namespace EMotionFX
+} // namespace EMotionFX

@@ -49,7 +49,7 @@ namespace LmbrCentral
         virtual ~TagGlobalNotifications() = default;
 
         /**
-         * When connecting to this bus, your OnEntityTagAdded handler will fire once for 
+         * When connecting to this bus, your OnEntityTagAdded handler will fire once for
          * each entity that already has this tag.
          * After initial connection you will be alerted when ever a new entity gains or loses the given tag
         **/
@@ -109,7 +109,7 @@ namespace LmbrCentral
     using TagComponentRequestBus = AZ::EBus<TagComponentRequests>;
 
     // Notifications regarding Tags on entities.
-    class TagComponentNotifications 
+    class TagComponentNotifications
         : public AZ::ComponentBus
     {
         public:

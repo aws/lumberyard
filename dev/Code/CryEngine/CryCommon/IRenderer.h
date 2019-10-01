@@ -2211,6 +2211,9 @@ struct IRenderer
     virtual void BeginSpawningShadowGeneratingRendItemJobs(int nThreadID) = 0;
     virtual void EndSpawningGeneratingRendItemJobs() = 0;
 
+    virtual void StartLoadtimePlayback(ILoadtimeCallback* pCallback) = 0;
+    virtual void StopLoadtimePlayback() = 0;
+
     // Summary:
     // get the shared job state for SRendItem Generating jobs
     virtual AZ::LegacyJobExecutor* GetGenerateRendItemJobExecutor() = 0;
@@ -2567,8 +2570,6 @@ struct SRendParams
     //  object previous transformations - motion blur specific.
     Matrix34* pPrevMatrix;
     // Summary:
-    //  List of shadow map casters.
-    uint64 m_ShadowMapCasters;
     //  VisArea that contains this object, used for RAM-ambient cube query
     IVisArea*       m_pVisArea;
     // Summary:

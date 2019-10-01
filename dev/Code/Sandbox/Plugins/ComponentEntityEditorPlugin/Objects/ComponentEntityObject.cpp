@@ -926,7 +926,8 @@ void CComponentEntityObject::GetBoundBox(AABB& box)
     const AZ::EntityId entityId = m_entityId;
     if (entityId.IsValid())
     {
-        const int viewportId = GetIEditor()->GetViewManager()->GetGameViewport()->GetViewportId();
+        CViewport *gameViewport = GetIEditor()->GetViewManager()->GetGameViewport();
+        const int viewportId =  gameViewport ? gameViewport->GetViewportId() : -1;
 
         AZ::EBusReduceResult<AZ::Aabb, AzToolsFramework::AabbAggregator> aabbResult(AZ::Aabb::CreateNull());
         AzToolsFramework::EditorComponentSelectionRequestsBus::EventResult(

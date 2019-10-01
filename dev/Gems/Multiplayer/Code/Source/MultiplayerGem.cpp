@@ -14,7 +14,6 @@
 #include "MultiplayerGem.h"
 #include "GameLiftListener.h"
 #include <GridMate/NetworkGridMate.h>
-#include <FlowSystem/Nodes/FlowBaseNode.h>
 #include <GridMate/Carrier/Driver.h>
 #include <CertificateManager/ICertificateManagerGem.h>
 
@@ -95,9 +94,6 @@ namespace Multiplayer
     {
         switch (event)
         {
-            case ESYSTEM_EVENT_FLOW_SYSTEM_REGISTER_EXTERNAL_NODES:
-                RegisterExternalFlowNodes();            
-                break;
 
             case ESYSTEM_EVENT_GAME_POST_INIT:
             {

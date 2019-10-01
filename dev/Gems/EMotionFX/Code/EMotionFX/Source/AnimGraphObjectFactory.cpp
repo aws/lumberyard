@@ -67,6 +67,7 @@
 #include <EMotionFX/Source/BlendTreeRagdollStrengthModifierNode.h>
 #include <EMotionFX/Source/BlendTreeFootIKNode.h>
 #include <EMotionFX/Source/BlendTreeRaycastNode.h>
+#include <EMotionFX/Source/BlendTreeSimulatedObjectNode.h>
 
 #include "AnimGraphBindPoseNode.h"
 #include "AnimGraphMotionNode.h"
@@ -191,6 +192,7 @@ namespace EMotionFX
         BlendTreeRagdollStrenghModifierNode::Reflect(context);
         BlendTreeFootIKNode::Reflect(context);
         BlendTreeRaycastNode::Reflect(context);
+        BlendTreeSimulatedObjectNode::Reflect(context);
     }
 
     AnimGraphObjectFactory::UITypesSet& AnimGraphObjectFactory::GetUITypes()
@@ -243,8 +245,11 @@ namespace EMotionFX
             azrtti_typeid<BlendTreePoseSubtractNode>(),
             azrtti_typeid<BlendTreeRagdollNode>(),
             azrtti_typeid<BlendTreeRagdollStrenghModifierNode>(),
+            azrtti_typeid<BlendTreeRotationLimitNode>(),
+            azrtti_typeid<BlendTreeRotationMath2Node>(),
             azrtti_typeid<BlendTreeFootIKNode>(),
             azrtti_typeid<BlendTreeRaycastNode>(),
+            azrtti_typeid<BlendTreeSimulatedObjectNode>(),
             azrtti_typeid<AnimGraphStateTransition>(),
             azrtti_typeid<AnimGraphParameterCondition>(),
             azrtti_typeid<AnimGraphVector2Condition>(),

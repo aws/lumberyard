@@ -9,7 +9,6 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#ifndef AZ_UNITY_BUILD
 
 #if !defined(AZCORE_EXCLUDE_ZLIB)
 
@@ -86,9 +85,7 @@ namespace AZ
             AcquireDataBuffer();
 
             CompressorZLibHeader* hdr = reinterpret_cast<CompressorZLibHeader*>(data);
-#ifndef AZ_BIG_ENDIAN
             AZStd::endian_swap(hdr->m_numSeekPoints);
-#endif
             dataSize -= sizeof(CompressorZLibHeader);
             data += sizeof(CompressorZLibHeader);
 
@@ -120,13 +117,11 @@ namespace AZ
                 delete zlibData;
                 return false;
             }
-#ifndef AZ_BIG_ENDIAN
             for (size_t i = 0; i < zlibData->m_seekPoints.size(); ++i)
             {
                 AZStd::endian_swap(zlibData->m_seekPoints[i].m_compressedOffset);
                 AZStd::endian_swap(zlibData->m_seekPoints[i].m_uncompressedOffset);
             }
-#endif // !AZ_BIG_ENDIAN
 
             if (m_decompressionCachePerStream)
             {
@@ -156,9 +151,7 @@ namespace AZ
             CompressorZLibData* compressorData = static_cast<CompressorZLibData*>(stream->GetCompressorData());
             CompressorZLibHeader header;
             header.m_numSeekPoints = static_cast<AZ::u32>(compressorData->m_seekPoints.size());
-#ifndef AZ_BIG_ENDIAN
             AZStd::endian_swap(header.m_numSeekPoints);
-#endif
             GenericStream* baseStream = stream->GetWrappedStream();
             if (baseStream->WriteAtOffset(sizeof(header), &header, sizeof(CompressorHeader)) == sizeof(header))
             {
@@ -507,13 +500,11 @@ namespace AZ
                 if (result)
                 {
                     // now write the seek points and the end of the file
-    #ifndef AZ_BIG_ENDIAN
                     for (size_t i = 0; i < zlibData->m_seekPoints.size(); ++i)
                     {
                         AZStd::endian_swap(zlibData->m_seekPoints[i].m_compressedOffset);
                         AZStd::endian_swap(zlibData->m_seekPoints[i].m_uncompressedOffset);
                     }
-    #endif // !AZ_BIG_ENDIAN
                     SizeType dataToWrite = zlibData->m_seekPoints.size() * sizeof(CompressorZLibSeekPoint);
                     baseStream->Seek(0U, GenericStream::SeekMode::ST_SEEK_END);
                     result = (baseStream->Write(dataToWrite, zlibData->m_seekPoints.data()) == dataToWrite);
@@ -574,5 +565,3 @@ namespace AZ
 }   // namespace AZ
 
 #endif // #if !defined(AZCORE_EXCLUDE_ZLIB)
-
-#endif // #ifndef AZ_UNITY_BUILD

@@ -1,0 +1,10 @@
+{
+    "auto":
+    {
+        "Platform/Mac":
+        [
+            "VideoPlayback_Traits_Platform.h",
+            "VideoPlayback_Traits_Mac.h"
+        ]
+    }
+}

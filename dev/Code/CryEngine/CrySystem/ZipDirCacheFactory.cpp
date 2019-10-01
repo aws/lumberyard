@@ -25,7 +25,6 @@
 #include "CryPak.h"
 #include "System.h"
 #include "ZipEncrypt.h"
-#include <IPlatformOS.h>
 #include <AzCore/IO/SystemFile.h> // for AZ_MAX_PATH_LEN
 
 // Defines

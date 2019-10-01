@@ -11,8 +11,6 @@
 */
 #include <time.h>
 
-#include "TestTypes.h"
-
 #include <AzCore/IO/FileIOEventBus.h>
 
 #include <AzCore/Driller/Driller.h>
@@ -25,6 +23,7 @@
 #include <AzCore/Component/ComponentApplication.h>
 #include <AzCore/Memory/MemoryComponent.h>
 #include <AzCore/IO/StreamerComponent.h>
+#include <AzCore/UnitTest/TestTypes.h>
 
 //#define AZ_CORE_DRILLER_COMPARE_TEST
 #if defined(AZ_CORE_DRILLER_COMPARE_TEST)
@@ -33,52 +32,10 @@
 #   include <AzCore/Serialization/SerializeContext.h>
 #endif
 
+#include "Utils.h"
+
 using namespace AZ;
 using namespace AZ::Debug;
-
-#if defined(AZ_RESTRICTED_PLATFORM)
-    #if defined(AZ_PLATFORM_XENIA)
-        #include "Xenia/Driller_cpp_xenia.inl"
-    #elif defined(AZ_PLATFORM_PROVO)
-        #include "Provo/Driller_cpp_provo.inl"
-    #endif
-#endif
-#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
-#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
-#elif defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_APPLE_OSX)
-#   define AZ_ROOT_TEST_FOLDER "./"
-#elif defined(AZ_PLATFORM_ANDROID)
-#   define AZ_ROOT_TEST_FOLDER  "/sdcard/"
-#elif defined(AZ_PLATFORM_APPLE_IOS)
-#   define AZ_ROOT_TEST_FOLDER "/Documents/"
-#elif defined(AZ_PLATFORM_APPLE_TV)
-#   define AZ_ROOT_TEST_FOLDER "/Library/Caches/"
-#else
-#   define AZ_ROOT_TEST_FOLDER ""
-#endif
-
-namespace // anonymous
-{
-#if defined(AZ_PLATFORM_APPLE_IOS) || defined(AZ_PLATFORM_APPLE_TV)
-    AZStd::string GetTestFolderPath()
-    {
-        return AZStd::string(getenv("HOME")) + AZ_ROOT_TEST_FOLDER;
-    }
-    void MakePathFromTestFolder(char* buffer, int bufferLen, const char* fileName)
-    {
-        azsnprintf(buffer, bufferLen, "%s%s%s", getenv("HOME"), AZ_ROOT_TEST_FOLDER, fileName);
-    }
-#else
-    AZStd::string GetTestFolderPath()
-    {
-        return AZ_ROOT_TEST_FOLDER;
-    }
-    void MakePathFromTestFolder(char* buffer, int bufferLen, const char* fileName)
-    {
-        azsnprintf(buffer, bufferLen, "%s%s", AZ_ROOT_TEST_FOLDER, fileName);
-    }
-#endif
-} // anonymous namespace
 
 namespace UnitTest
 {

@@ -242,12 +242,11 @@ namespace EMotionFX
             actorInstance->DrawSkeleton(outputPose, mVisualizeColor);
         }
 
-        bool isActivated = true;
         if (HasConnectionAtInputPort(INPUTPORT_ACTIVATE))
         {
             OutputIncomingNode(animGraphInstance, GetInputNode(INPUTPORT_ACTIVATE));
-            isActivated = GetInputBool(animGraphInstance, INPUTPORT_ACTIVATE)->GetValue();
         }
+        const bool isActivated = IsActivated(animGraphInstance);
 
         RagdollInstance* ragdollInstance = actorInstance->GetRagdollInstance();
         if (isActivated && ragdollInstance && !m_simulatedJointNames.empty())
@@ -259,7 +258,6 @@ namespace EMotionFX
 
             const Actor* actor = actorInstance->GetActor();
             const Skeleton* skeleton = actor->GetSkeleton();
-            const Node* motionExtractionNode = actor->GetMotionExtractionNode();
             const Physics::RagdollState& currentRagdollState = ragdollInstance->GetCurrentState();
             Node* ragdollRootNode = ragdollInstance->GetRagdollRootNode();
             const AZ::Outcome<size_t> ragdollRootNodeIndex = ragdollInstance->GetRootRagdollNodeIndex();
@@ -373,6 +371,16 @@ namespace EMotionFX
 
             ragdollInstance->SetRagdollUsed();
         }
+    }
+
+    bool BlendTreeRagdollNode::IsActivated(AnimGraphInstance* animGraphInstance) const
+    {
+        if (HasConnectionAtInputPort(INPUTPORT_ACTIVATE))
+        {
+            return GetInputNumberAsBool(animGraphInstance, INPUTPORT_ACTIVATE);
+        }
+
+        return true;
     }
 
     void BlendTreeRagdollNode::Reflect(AZ::ReflectContext* context)

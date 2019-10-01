@@ -21,6 +21,18 @@
 #include <native/assetprocessor.h>
 #include <QByteArray>
 
+namespace AssetProcessor
+{
+    struct BuilderParams;
+}
+
+namespace AssetUtilities
+{
+    class QuitListener;
+    class JobLogTraceListener;
+}
+
+
 //This EBUS broadcasts the platform of the connection the AssetProcessor connected or disconnected with
 class AssetProcessorPlaformBusTraits
     : public AZ::EBusTraits
@@ -150,17 +162,13 @@ namespace AssetProcessor
 
         virtual ~ProcessingJobInfoBusTraits() {}
 
-        //! Will notify other systems which old product is just about to get removed from the cache 
-        //! before we copy the new product instead along. 
-        //! this path MUST be in normalized format - that is, forward slashes, correct case, absolute full path
-        //! and on windows, drive letter capital.
-        virtual void BeginIgnoringCacheFileDelete(const char* /*productPath*/) {};
-        
-        // Will notify other systems which product we are trying to copy in the cache 
-        // along with status of whether that copy succeeded or failed.
-        //! this path MUST be in normalized format - that is, forward slashes, correct case, absolute full path
-        //! and on windows, drive letter capital.
-        virtual void StopIgnoringCacheFileDelete(const char* /*productPath*/, bool /*queueAgainForProcessing*/) {};
+        // Will notify other systems a product is about to be updated in the cache. This can mean that 
+        // it will be created, overwritten with new data or deleted. BeginCacheFileUpdate is pared with 
+        // EndCacheFileUpdate.
+        virtual void BeginCacheFileUpdate(const char* /*productPath*/) {};
+        // Will notify other systems that a file in the cache has been updated along with status of whether it
+        // succeeded or failed. EndCacheFileUpdate is paired with BeginCacheFileUpdate.
+        virtual void EndCacheFileUpdate(const char* /*productPath*/, bool /*queueAgainForDeletion*/) {};
         virtual AZ::u32 GetJobFingerprint(const AssetProcessor::JobIndentifier& /*jobIndentifier*/) { return 0; };
     };
 
@@ -213,4 +221,28 @@ namespace AssetProcessor
     };
 
     using DiskSpaceInfoBus = AZ::EBus<DiskSpaceInfoBusTraits>;
+
+    // This EBUS is used to perform Asset Server related tasks.
+    class AssetServerBusTraits
+        : public AZ::EBusTraits
+    {
+    public:
+        static const AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::Single;
+        static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::Single;
+        typedef AZStd::recursive_mutex MutexType;
+        static const bool LocklessDispatch = true;
+        //! This will return true if we were able to verify the server address as being valid, otherwise return false.
+        virtual bool IsServerAddressValid() = 0;
+        //! StoreJobResult should store all the files in the temp folder provided by the builderParams to the server, 
+        //! It should associate those files with the server key provided by the builderParams because
+        //! it will be send the same server key to retrieve these files by the client.
+        //! This will return true if it was able to save all the relevant job data to the server, otherwise return false.
+        virtual bool StoreJobResult(const AssetProcessor::BuilderParams& builderParams) = 0;
+        //! RetrieveJobResult should retrieve all the files associated with the server key provided in the builderParams 
+        //! and put them in the temporary directory provided by the builderParam.
+        //! This will return true if it was able to retrieve all the relevant job data from the server, otherwise return false. 
+        virtual bool RetrieveJobResult(const AssetProcessor::BuilderParams& builderParams) = 0;
+    };
+
+    using AssetServerBus = AZ::EBus<AssetServerBusTraits>;
 } // namespace AssetProcessor

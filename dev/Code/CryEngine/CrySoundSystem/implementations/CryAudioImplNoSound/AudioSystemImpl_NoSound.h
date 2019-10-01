@@ -77,7 +77,7 @@ namespace Audio
             IATLAudioObjectData* const pAudioObjectData,
             const IATLTriggerImplData* const pTriggerData,
             IATLEventData* const pEventData,
-            const TAudioSourceId sourceId) override;
+            const SATLSourceData* const pSourceData) override;
         EAudioRequestStatus StopEvent(
             IATLAudioObjectData* const pAudioObjectData,
             const IATLEventData* const pEventData) override;
@@ -117,7 +117,6 @@ namespace Audio
         EAudioRequestStatus ParseAudioFileEntry(const XmlNodeRef pAudioFileEntryNode, SATLAudioFileEntryInfo* const pFileEntryInfo) override;
         void DeleteAudioFileEntryData(IATLAudioFileEntryData* const pOldAudioFileEntryData) override;
         const char* const GetAudioFileLocation(SATLAudioFileEntryInfo* const pFileEntryInfo) override;
-
         const IATLTriggerImplData* NewAudioTriggerImplData(const XmlNodeRef pAudioTriggerNode) override;
         void DeleteAudioTriggerImplData(const IATLTriggerImplData* const pOldTriggerImplData) override;
 

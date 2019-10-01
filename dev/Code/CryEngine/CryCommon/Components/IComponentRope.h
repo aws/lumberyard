@@ -35,6 +35,6 @@ struct IComponentRope
     // </interfuscator:shuffle>
 };
 
-DECLARE_COMPONENT_POINTERS(IComponentRope);
+DECLARE_SMART_POINTERS(IComponentRope);
 
 #endif // CRYINCLUDE_CRYCOMMON_COMPONENTS_ICOMPONENTROPE_H

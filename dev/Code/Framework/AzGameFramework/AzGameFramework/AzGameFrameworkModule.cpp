@@ -13,7 +13,6 @@
 
 // Component includes
 #include <AzFramework/Driller/RemoteDrillerInterface.h>
-#include <AzFramework/TargetManagement/TargetManagementComponent.h>
 #include <AzFramework/Driller/DrillToFileComponent.h>
 
 namespace AzGameFramework
@@ -22,9 +21,6 @@ namespace AzGameFramework
         : AZ::Module()
     {
         m_descriptors.insert(m_descriptors.end(), {
-        #if !defined(_RELEASE)
-            AzFramework::TargetManagementComponent::CreateDescriptor(),
-        #endif
             AzFramework::DrillToFileComponent::CreateDescriptor(),
         });
     }
@@ -32,9 +28,6 @@ namespace AzGameFramework
     AZ::ComponentTypeList AzGameFrameworkModule::GetRequiredSystemComponents() const
     {
         return AZ::ComponentTypeList{
-        #if !defined(_RELEASE)
-            azrtti_typeid<AzFramework::TargetManagementComponent>(),
-        #endif
             azrtti_typeid<AzFramework::DrillToFileComponent>(),
         };
     }

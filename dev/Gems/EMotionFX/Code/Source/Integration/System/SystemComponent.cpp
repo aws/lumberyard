@@ -28,14 +28,17 @@
 #include <EMotionFX/Source/AnimGraphManager.h>
 #include <EMotionFX/Source/AnimGraphObjectFactory.h>
 #include <EMotionFX/Source/MotionSet.h>
+#include <EMotionFX/Source/Recorder.h>
 #include <EMotionFX/Source/ConstraintTransformRotationAngles.h>
 #include <EMotionFX/Source/Parameter/ParameterFactory.h>
 #include <EMotionFX/Source/TwoStringEventData.h>
 #include <EMotionFX/Source/EventDataFootIK.h>
 
 #include <EMotionFX/Source/PhysicsSetup.h>
+#include <EMotionFX/Source/SimulatedObjectSetup.h>
 #include <MCore/Source/Command.h>
 #include <EMotionFX/CommandSystem/Source/MotionEventCommands.h>
+#include <EMotionFX/CommandSystem/Source/SimulatedObjectCommands.h>
 
 #include <EMotionFX/Source/PoseData.h>
 #include <EMotionFX/Source/PoseDataRagdoll.h>
@@ -81,6 +84,7 @@
 #   include <Editor/Plugins/SkeletonOutliner/SkeletonOutlinerPlugin.h>
 #   include <Editor/Plugins/Ragdoll/RagdollNodeInspectorPlugin.h>
 #   include <Editor/Plugins/Cloth/ClothJointInspectorPlugin.h>
+#   include <Editor/Plugins/SimulatedObject/SimulatedObjectWidget.h>
 #   include <Source/Editor/PropertyWidgets/PropertyTypes.h>
 #endif // EMOTIONFXANIMATION_EDITOR
 
@@ -89,6 +93,8 @@
 // include required AzCore headers
 #include <AzCore/IO/FileIO.h>
 #include <AzFramework/API/ApplicationAPI.h>
+
+#include <EMotionFX_Traits_Platform.h>
 
 namespace EMotionFX
 {
@@ -287,11 +293,13 @@ namespace EMotionFX
 
         void SystemComponent::ReflectEMotionFX(AZ::ReflectContext* context)
         {
+            MCore::ReflectionSerializer::Reflect(context);
             MCore::StringIdPoolIndex::Reflect(context);
             EMotionFX::ConstraintTransformRotationAngles::Reflect(context);
 
             // Actor
             EMotionFX::PhysicsSetup::Reflect(context);
+            EMotionFX::SimulatedObjectSetup::Reflect(context);
 
             EMotionFX::PoseData::Reflect(context);
             EMotionFX::PoseDataRagdoll::Reflect(context);
@@ -322,6 +330,13 @@ namespace EMotionFX
             EMotionFX::TwoStringEventData::Reflect(context);
             EMotionFX::EventDataFootIK::Reflect(context);
 
+            EMotionFX::Recorder::Reflect(context);
+
+            EMotionFX::KeyTrackLinearDynamic<AZ::Vector3>::Reflect(context);
+            EMotionFX::KeyTrackLinearDynamic<AZ::Quaternion>::Reflect(context);
+            EMotionFX::KeyFrame<AZ::Vector3>::Reflect(context);
+            EMotionFX::KeyFrame<AZ::Quaternion>::Reflect(context);
+
             MCore::Command::Reflect(context);
             CommandSystem::MotionIdCommandMixin::Reflect(context);
             CommandSystem::CommandAdjustMotion::Reflect(context);
@@ -330,6 +345,9 @@ namespace EMotionFX
             CommandSystem::CommandAdjustMotionEventTrack::Reflect(context);
             CommandSystem::CommandCreateMotionEvent::Reflect(context);
             CommandSystem::CommandAdjustMotionEvent::Reflect(context);
+
+            EMotionFX::CommandAdjustSimulatedObject::Reflect(context);
+            EMotionFX::CommandAdjustSimulatedJoint::Reflect(context);
         }
 
         //////////////////////////////////////////////////////////////////////////
@@ -660,34 +678,49 @@ namespace EMotionFX
                     if (entity && actor && actor->GetMotionExtractionNode())
                     {
                         const AZ::EntityId entityId = entity->GetId();
-                        const float deltaTimeInv = (timeDelta > 0.0f) ? (1.0f / timeDelta) : 0.0f;
 
-                        // Get the current entity location and calculated motion extracted location.
+                        // Check if we have any physics character controllers.
+                        bool hasPhysicsController = false;
+                        bool hasCryPhysicsController = false;
+                        Physics::CharacterRequestBus::EventResult(hasPhysicsController, entityId, &Physics::CharacterRequests::IsPresent);
+                        LmbrCentral::CryCharacterPhysicsRequestBus::EventResult(hasCryPhysicsController, entityId, &LmbrCentral::CryCharacterPhysicsRequests::IsCryCharacterControllerPresent);
+
+                        // If we have a physics controller.
                         AZ::TransformInterface* entityTransform = entity->GetTransform();
-                        AZ::Transform currentTransform = entityTransform->GetWorldTM();
-                        const AZ::Vector3 actorInstancePosition = actorInstance->GetWorldSpaceTransform().mPosition;
-
-                        // Calculate the delta position and try to move the character controller.
-                        const AZ::Vector3 currentPos = currentTransform.GetPosition();
-                        const AZ::Vector3 positionDelta = actorInstancePosition - currentPos;
-                        Physics::CharacterRequestBus::Event(entityId, &Physics::CharacterRequests::TryRelativeMove, positionDelta, timeDelta);
-
-                        // Legacy Cry character controller
+                        if (hasPhysicsController || hasCryPhysicsController)
                         {
-                            const AZ::Vector3 scale = currentTransform.ExtractScaleExact();
-                            const AZ::Vector3 velocity = positionDelta * scale * deltaTimeInv;
-                            EBUS_EVENT_ID(entityId, LmbrCentral::CryCharacterPhysicsRequestBus, RequestVelocity, velocity, 0);
+                            const float deltaTimeInv = (timeDelta > 0.0f) ? (1.0f / timeDelta) : 0.0f;
+
+                            AZ::Transform currentTransform = entityTransform->GetWorldTM();
+                            const AZ::Vector3 actorInstancePosition = actorInstance->GetWorldSpaceTransform().mPosition;
+
+                            const AZ::Vector3 currentPos = currentTransform.GetPosition();
+                            const AZ::Vector3 positionDelta = actorInstancePosition - currentPos;
+
+                            if (hasPhysicsController)
+                            {
+                                Physics::CharacterRequestBus::Event(entityId, &Physics::CharacterRequests::TryRelativeMove, positionDelta, timeDelta);
+                            }
+                            else if (hasCryPhysicsController)
+                            {
+                                const AZ::Vector3 scale = currentTransform.ExtractScaleExact();
+                                const AZ::Vector3 velocity = positionDelta * scale * deltaTimeInv;
+                                EBUS_EVENT_ID(entityId, LmbrCentral::CryCharacterPhysicsRequestBus, RequestVelocity, velocity, 0);
+                            }
+
+                            // Calculate the difference in rotation and apply that to the entity transform.
+                            const AZ::Quaternion actorInstanceRotation = MCore::EmfxQuatToAzQuat(actorInstance->GetWorldSpaceTransform().mRotation);
+                            const AZ::Quaternion rotationDelta = AZ::Quaternion::CreateFromTransform(currentTransform).GetInverseFull() * actorInstanceRotation;
+                            if (!rotationDelta.IsIdentity(AZ::g_fltEps))
+                            {
+                                currentTransform = currentTransform * AZ::Transform::CreateFromQuaternion(rotationDelta);
+                                entityTransform->SetWorldTM(currentTransform);
+                            }
                         }
-
-                        // Calculate the difference in rotation and apply that to the entity transform.
-                        const AZ::Quaternion actorInstanceRotation = MCore::EmfxQuatToAzQuat(actorInstance->GetWorldSpaceTransform().mRotation);
-                        const AZ::Quaternion rotationDelta = AZ::Quaternion::CreateFromTransform(currentTransform).GetInverseFull() * actorInstanceRotation;
-
-                        if (!rotationDelta.IsIdentity(AZ::g_fltEps))
-                        {
-                            currentTransform = currentTransform * AZ::Transform::CreateFromQuaternion(rotationDelta);
-                            currentTransform.Orthogonalize();
-                            entityTransform->SetWorldTM(currentTransform);
+                        else // There is no physics controller, just use EMotion FX's actor instance transform directly.
+                        {                            
+                            const AZ::Transform newTransform = MCore::EmfxTransformToAzTransform(actorInstance->GetWorldSpaceTransform());
+                            entityTransform->SetWorldTM(newTransform);
                         }
                     }
                 }
@@ -798,7 +831,8 @@ namespace EMotionFX
             pluginManager->RegisterPlugin(new EMotionFX::SkeletonOutlinerPlugin());
             pluginManager->RegisterPlugin(new EMotionFX::RagdollNodeInspectorPlugin());
             // Note: Cloth collider editor is disabled as it is in preview
-            //pluginManager->RegisterPlugin(new EMotionFX::ClothJointInspectorPlugin());
+            pluginManager->RegisterPlugin(new EMotionFX::ClothJointInspectorPlugin());
+            pluginManager->RegisterPlugin(new EMotionFX::SimulatedObjectWidget());
         }
 
         //////////////////////////////////////////////////////////////////////////
@@ -836,7 +870,7 @@ namespace EMotionFX
             emotionFXWindowOptions.isPreview = true;
             emotionFXWindowOptions.isDeletable = true;
             emotionFXWindowOptions.isDockable = false;
-#ifdef AZ_PLATFORM_APPLE
+#if AZ_TRAIT_EMOTIONFX_MAIN_WINDOW_DETACHED
             emotionFXWindowOptions.detachedWindow = true;
 #endif
             emotionFXWindowOptions.optionalMenuText = "Animation Editor (PREVIEW)";

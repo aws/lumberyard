@@ -523,7 +523,9 @@ CScriptSystem::~CScriptSystem()
     {
         m_scriptContext->DisableDebug();
 
-        delete m_scriptContext;
+        EBUS_EVENT(AZ::ScriptSystemRequestBus, RemoveContext, m_scriptContext);
+
+        m_scriptContext = nullptr;
     }
 
     m_pSystem->GetISystemEventDispatcher()->RemoveListener(this);

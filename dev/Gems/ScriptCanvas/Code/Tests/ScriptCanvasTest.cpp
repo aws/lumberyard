@@ -14,22 +14,16 @@
 
 #include <AzTest/AzTest.h>
 
-class ScriptCanvasGemTest
+//! See the ScriptCanvasTesting gem for the Script Canvas testing framework, C++ based tests and Script Canvas tests.
+class ScriptCanvasTestFixture
     : public ::testing::Test
 {
 protected:
-    void SetUp() override
-    {
-
-    }
-
-    void TearDown() override
-    {
-
-    }
+    void SetUp() override {}
+    void TearDown() override {}
 };
 
-TEST_F(ScriptCanvasGemTest, ExampleTest)
+TEST_F(ScriptCanvasTestFixture, EmptyTest)
 {
     ASSERT_TRUE(true);
 }

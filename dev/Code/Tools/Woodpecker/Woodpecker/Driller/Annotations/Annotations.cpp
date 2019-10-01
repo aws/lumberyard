@@ -42,7 +42,7 @@ namespace Driller
             AZ::SerializeContext* serialize = azrtti_cast<AZ::SerializeContext*>(context);
             if (serialize)
             {
-                serialize->Class<AnnotationWorkspaceSettings, AZ::UserSettings>()
+                serialize->Class<AnnotationWorkspaceSettings>()
                     ->Version(2)
                     ->Field("m_ActiveAnnotationChannels", &AnnotationWorkspaceSettings::m_ActiveAnnotationChannels)
                     ->Field("m_ActiveAnnotationChannelCRCs", &AnnotationWorkspaceSettings::m_ActiveAnnotationChannelCRCs);
@@ -95,7 +95,7 @@ namespace Driller
             AZ::SerializeContext* serialize = azrtti_cast<AZ::SerializeContext*>(context);
             if (serialize)
             {
-                serialize->Class<AnnotationUserSettings, AZ::UserSettings>()
+                serialize->Class<AnnotationUserSettings>()
                     ->Version(1)
                     ->Field("m_KnownAnnotationChannels", &AnnotationUserSettings::m_KnownAnnotationChannels)
                     ->Field("m_customizedColors", &AnnotationUserSettings::m_customizedColors);

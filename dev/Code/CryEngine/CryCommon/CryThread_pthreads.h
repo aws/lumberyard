@@ -64,7 +64,7 @@
 #endif
 
 // Define LARGE_THREAD_STACK to use larger than normal per-thread stack
-#if defined(_DEBUG) && (defined(MAC) || defined(LINUX) || defined(AZ_PLATFORM_APPLE_IOS))
+#if defined(_DEBUG) && (defined(MAC) || defined(LINUX) || defined(AZ_PLATFORM_IOS))
 #define LARGE_THREAD_STACK
 #endif
 

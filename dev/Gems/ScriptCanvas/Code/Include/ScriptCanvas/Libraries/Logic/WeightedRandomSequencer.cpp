@@ -21,7 +21,7 @@ namespace ScriptCanvas
 {
     namespace Nodes
     {
-		
+
         namespace Logic
         {
             ////////////////////////////
@@ -114,57 +114,67 @@ namespace ScriptCanvas
                     }
                 }
             }
-            
-            void WeightedRandomSequencer::OnEndpointConnected(const Endpoint& endpoint)
+
+            bool WeightedRandomSequencer::IsNodeExtendable() const
             {
-                if (AllWeightsFilled())
-                {
-                    AddWeightedPair();
-                }                
+                return true;
             }
-            
-            void WeightedRandomSequencer::OnEndpointDisconnected(const Endpoint& endpoint)
+
+            int WeightedRandomSequencer::GetNumberOfExtensions() const
             {
-                // We always want one. So we don't need to do anything else.
-                if (m_weightedPairings.size() == 1)
+                return 2;
+            }
+
+            ExtendableSlotConfiguration WeightedRandomSequencer::GetExtensionConfiguration(int extensionIndex) const
+            {
+                ExtendableSlotConfiguration slotConfiguration;
+
+                slotConfiguration.m_name = "Add State";
+                slotConfiguration.m_tooltip = "Adds a new weighted state to the node.";                
+
+                if (extensionIndex == 0)
                 {
-                    return;
+                    slotConfiguration.m_connectionType = ConnectionType::Input;
+                    slotConfiguration.m_displayGroup = GetDisplayGroup();
+                    slotConfiguration.m_identifier = GetWeightExtensionId();
                 }
-                
-                const SlotId& currentSlotId = EndpointNotificationBus::GetCurrentBusId()->GetSlotId();
-                
-                // If there are still connections. We don't need to do anything.
-                if (IsConnected(currentSlotId))
+                else if (extensionIndex == 1)
                 {
-                    return;
+                    slotConfiguration.m_connectionType = ConnectionType::Output;
+                    slotConfiguration.m_displayGroup = GetDisplayGroup();
+                    slotConfiguration.m_identifier = GetExecutionExtensionId();
                 }
 
-                if (!HasExcessEndpoints())
-                {
-                    return;
-                }                    
-                    
-                for (auto pairIter = m_weightedPairings.begin(); pairIter != m_weightedPairings.end(); ++pairIter)
-                {
-                    if (pairIter->m_executionSlotId == currentSlotId)
-                    {
-                        if (!IsConnected(pairIter->m_weightSlotId))
-                        {
-                            RemoveWeightedPair(currentSlotId);
-                            break;
-                        }
-                    }                    
-                    else if (pairIter->m_weightSlotId == currentSlotId)
-                    {
-                        if (!IsConnected(pairIter->m_executionSlotId))
-                        {
-                            RemoveWeightedPair(currentSlotId);
-                            break;
-                        }
-                    }
-                }
+                return slotConfiguration;
             }
-            
+
+            SlotId WeightedRandomSequencer::HandleExtension(AZ::Crc32 extensionId)
+            {
+                auto weightedPairing = AddWeightedPair();
+
+                if (extensionId == GetWeightExtensionId())
+                {
+                    return weightedPairing.m_weightSlotId;
+                }
+                else if (extensionId == GetExecutionExtensionId())
+                {
+                    return weightedPairing.m_executionSlotId;
+                }
+
+                return SlotId();
+            }
+
+            bool WeightedRandomSequencer::CanDeleteSlot(const SlotId& slotId) const
+            {
+                return m_weightedPairings.size() > 1;
+            }
+
+            void WeightedRandomSequencer::OnSlotRemoved(const SlotId& slotId)
+            {
+                RemoveWeightedPair(slotId);
+                FixupStateNames();
+            }
+
             void WeightedRandomSequencer::RemoveWeightedPair(SlotId slotId)
             {
                 for (auto pairIter = m_weightedPairings.begin(); pairIter != m_weightedPairings.end(); ++pairIter)
@@ -174,13 +184,20 @@ namespace ScriptCanvas
                     if (pairIter->m_executionSlotId == slotId
                         || pairIter->m_weightSlotId == slotId)                        
                     {
-                        EndpointNotificationBus::MultiHandler::BusDisconnect({ GetEntityId(), pairIter->m_executionSlotId});
-                        EndpointNotificationBus::MultiHandler::BusDisconnect({ GetEntityId(), pairIter->m_weightSlotId});
+                        SlotId executionSlot = pairIter->m_executionSlotId;
+                        SlotId weightSlot = pairIter->m_weightSlotId;
 
-                        RemoveSlot(pairIter->m_weightSlotId);
-                        RemoveSlot(pairIter->m_executionSlotId);                        
-                        
                         m_weightedPairings.erase(pairIter);
+
+                        if (slotId == executionSlot)
+                        {
+                            RemoveSlot(weightSlot);
+                        }
+                        else if (slotId == weightSlot)
+                        {
+                            RemoveSlot(executionSlot);
+                        }                        
+                        
                         break;
                     }
                 }
@@ -227,38 +244,37 @@ namespace ScriptCanvas
                 return hasExcess;
             }
             
-            void WeightedRandomSequencer::AddWeightedPair()
+            WeightedRandomSequencer::WeightedPairing WeightedRandomSequencer::AddWeightedPair()
             {
                 int counterWeight = static_cast<int>(m_weightedPairings.size()) + 1;
             
-                WeightedPairing weightedPairing;
-                
+                WeightedPairing weightedPairing;                
+
                 DataSlotConfiguration dataSlotConfiguration;
                 
-                dataSlotConfiguration.m_slotType = SlotType::DataIn;
+                dataSlotConfiguration.SetConnectionType(ConnectionType::Input);
                 dataSlotConfiguration.m_name = GenerateDataName(counterWeight);
                 dataSlotConfiguration.m_toolTip = "The weight associated with the execution state.";
                 dataSlotConfiguration.m_addUniqueSlotByNameAndType = false;
-                dataSlotConfiguration.m_dataType = Data::Type::Number();           
+                dataSlotConfiguration.SetType(Data::Type::Number());
 
-                dataSlotConfiguration.m_displayGroup = "WeightedExecutionGroup";
+                dataSlotConfiguration.m_displayGroup = GetDisplayGroup();
                 
-                weightedPairing.m_weightSlotId = AddInputDatumSlot(dataSlotConfiguration);
+                weightedPairing.m_weightSlotId = AddSlot(dataSlotConfiguration);
                 
-                SlotConfiguration  slotConfiguration;
+                ExecutionSlotConfiguration  slotConfiguration;
                 
                 slotConfiguration.m_name = GenerateOutName(counterWeight);
                 slotConfiguration.m_addUniqueSlotByNameAndType = false;
-                slotConfiguration.m_slotType = SlotType::ExecutionOut;              
+                slotConfiguration.SetConnectionType(ConnectionType::Output);
 
-                slotConfiguration.m_displayGroup = "WeightedExecutionGroup";
+                slotConfiguration.m_displayGroup = GetDisplayGroup();
                 
                 weightedPairing.m_executionSlotId = AddSlot(slotConfiguration);                
                 
                 m_weightedPairings.push_back(weightedPairing);
-                
-                EndpointNotificationBus::MultiHandler::BusConnect({GetEntityId(), weightedPairing.m_weightSlotId });
-                EndpointNotificationBus::MultiHandler::BusConnect({ GetEntityId(), weightedPairing.m_executionSlotId });
+
+                return weightedPairing;
             }
             
             void WeightedRandomSequencer::FixupStateNames()

@@ -326,6 +326,13 @@ namespace
         // render window is cleaned up on macOS.
         QTimer::singleShot(0, qApp, &QApplication::closeAllWindows);
     }
+
+    void PyExitNoPrompt()
+    {
+        // Set the level to "unmodified" so that it doesn't prompt to save on exit.
+        GetIEditor()->GetDocument()->SetModifiedFlag(false);
+        PyExit();
+    }
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -1008,7 +1015,7 @@ void MainWindow::InitActions()
         am->AddAction(i, QString());
     }
 
-#if defined(AZ_PLATFORM_APPLE)
+#if AZ_TRAIT_OS_PLATFORM_APPLE
     const QString appExitText = tr("&Quit");
 #else
     const QString appExitText = tr("E&xit");
@@ -1316,7 +1323,7 @@ void MainWindow::InitActions()
             .SetIcon(EditorProxyStyle::icon("Align_to_grid"))
             .SetApplyHoverEffect();
         am->AddAction(ID_OBJECTMODIFY_ALIGN, tr("Align to object")).SetCheckable(true)
-#ifdef AZ_PLATFORM_APPLE
+#if AZ_TRAIT_OS_PLATFORM_APPLE
             .SetStatusTip(tr("⌘: Align an object to a bounding box, ⌥ : Keep Rotation of the moved object, Shift : Keep Scale of the moved object"))
 #else
             .SetStatusTip(tr("Ctrl: Align an object to a bounding box, Alt : Keep Rotation of the moved object, Shift : Keep Scale of the moved object"))
@@ -1594,6 +1601,11 @@ void MainWindow::InitActions()
         .SetStatusTip(tr("Switch SP/MP gamerules."))
         .SetMetricsIdentifier("MainEditor", "ToggleSP/MPGameRules")
         .RegisterUpdateCallback(cryEdit, &CCryEditApp::OnToggleMultiplayerUpdate);
+    am->AddAction(ID_VIEW_DEPLOY, tr("Deploy"))
+        .SetStatusTip(tr("Open the Deployment tool"))
+        .SetIcon(EditorProxyStyle::icon("Deploy"))
+        .SetMetricsIdentifier("MainEditor", "Deploy")
+        .SetCheckable(false);
 
     // Physics actions
     am->AddAction(ID_PHYSICS_GETPHYSICSSTATE, tr("Get Physics State"))
@@ -1788,12 +1800,14 @@ void MainWindow::InitActions()
         .SetMetricsIdentifier("MainEditor", "GameLiftTrialWizard");
     am->AddAction(ID_AWS_COGNITO_CONSOLE, tr("Cognito"))
         .SetMetricsIdentifier("MainEditor", "CognitoConsole");
+    am->AddAction(ID_AWS_DEVICEFARM_CONSOLE, tr("Device Farm"))
+        .SetMetricsIdentifier("MainEditor", "DeviceFarmConsole");
     am->AddAction(ID_AWS_DYNAMODB_CONSOLE, tr("DynamoDB"))
         .SetMetricsIdentifier("MainEditor", "DynamoDBConsole");
-    am->AddAction(ID_AWS_S3_CONSOLE, tr("S3"))
-        .SetMetricsIdentifier("MainEditor", "S3Console");
     am->AddAction(ID_AWS_LAMBDA_CONSOLE, tr("Lambda"))
         .SetMetricsIdentifier("MainEditor", "LambdaConsole");
+    am->AddAction(ID_AWS_S3_CONSOLE, tr("S3"))
+        .SetMetricsIdentifier("MainEditor", "S3Console");
     am->AddAction(ID_AWS_ACTIVE_DEPLOYMENT, tr("Select a Deployment"))
         .SetMetricsIdentifier("MainEditor", "AWSSelectADeployment");
     am->AddAction(ID_AWS_CREDENTIAL_MGR, tr("Credentials manager"))
@@ -3274,5 +3288,8 @@ REGISTER_ONLY_PYTHON_COMMAND_WITH_EXAMPLE(PyGetViewPaneClassNames, general, get_
 REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(PyExit, general, exit,
     "Exits the editor.",
     "general.exit()");
+REGISTER_PYTHON_COMMAND_WITH_EXAMPLE(PyExitNoPrompt, general, exit_no_prompt,
+    "Exits the editor without prompting to save first.",
+    "general.exit_no_prompt()");
 
 #include <MainWindow.moc>

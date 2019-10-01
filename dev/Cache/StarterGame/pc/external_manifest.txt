@@ -21,8 +21,6 @@ _WAF_/apple/
 _WAF_/msbuild/
 _WAF_/specs/
 _WAF_/settings/
-_WAF_/default_settings.json
-_WAF_/environment.json^
 _WAF_/user_settings.options
 
 

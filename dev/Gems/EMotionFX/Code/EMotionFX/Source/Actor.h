@@ -45,6 +45,7 @@ namespace EMotionFX
     class Material;
     class MorphSetup;
     class NodeGroup;
+    class SimulatedObjectSetup;
     class Skeleton;
     class Mesh;
     class MeshDeformerStack;
@@ -256,11 +257,12 @@ namespace EMotionFX
         void ExtractBoneList(uint32 lodLevel, MCore::Array<uint32>* outBoneList) const;
 
         //------------------------------------------------
-
         void SetPhysicsSetup(const AZStd::shared_ptr<PhysicsSetup>& physicsSetup);
         const AZStd::shared_ptr<PhysicsSetup>& GetPhysicsSetup() const;
 
         //------------------------------------------------
+        void SetSimulatedObjectSetup(const AZStd::shared_ptr<SimulatedObjectSetup>& setup);
+        const AZStd::shared_ptr<SimulatedObjectSetup>& GetSimulatedObjectSetup() const;
 
         /**
          * Pre-allocate space to store a given amount of materials.
@@ -925,16 +927,17 @@ namespace EMotionFX
         };
 
         Skeleton*                                       mSkeleton;                  /**< The skeleton, containing the nodes and bind pose. */
-        MCore::Array<LODLevel>                          mLODs;
+        MCore::Array<LODLevel>                          mLODs;                      /**< The LOD information. */
         MCore::Array<Dependency>                        mDependencies;              /**< The dependencies on other actors (shared meshes and transforms). */
         AZStd::vector<NodeInfo>                         mNodeInfos;                 /**< The per node info, shared between lods. */
         AZStd::string                                   mName;                      /**< The name of the actor. */
         AZStd::string                                   mFileName;                  /**< The filename of the actor. */
         MCore::Array<NodeMirrorInfo>                    mNodeMirrorInfos;           /**< The array of node mirror info. */
         MCore::Array< MCore::Array< Material* > >       mMaterials;                 /**< A collection of materials (for each lod). */
-        MCore::Array< MorphSetup* >                     mMorphSetups;               /**< A  morph setup for each geometry LOD. */
+        MCore::Array< MorphSetup* >                     mMorphSetups;               /**< A morph setup for each geometry LOD. */
         MCore::SmallArray<NodeGroup*>                   mNodeGroups;                /**< The set of node groups. */
         AZStd::shared_ptr<PhysicsSetup>                 m_physicsSetup;             /**< Hit detection, ragdoll and cloth colliders, joint limits and rigid bodies. */
+        AZStd::shared_ptr<SimulatedObjectSetup>         m_simulatedObjectSetup;     /**< Setup for simulated objects */
         MCore::Distance::EUnitType                      mUnitType;                  /**< The unit type used on export. */
         MCore::Distance::EUnitType                      mFileUnitType;              /**< The unit type used on export. */
         AZStd::vector<Transform>                        mInvBindPoseTransforms;     /**< The inverse world space bind pose transforms. */
@@ -942,7 +945,7 @@ namespace EMotionFX
         uint32                                          mMotionExtractionNode;      /**< The motion extraction node. This is the node from which to transfer a filtered part of the motion onto the actor instance. Can also be MCORE_INVALIDINDEX32 when motion extraction is disabled. */
         uint32                                          mRetargetRootNode;          /**< The retarget root node, which controls the height displacement of the character. This is most likely the hip or pelvis node. */
         uint32                                          mID;                        /**< The unique identification number for the actor. */
-        uint32                                          mThreadIndex;
+        uint32                                          mThreadIndex;               /**< The thread number we are running on, which is a value starting at 0, up to the number of threads in the job system. */
         MCore::AABB                                     mStaticAABB;                /**< The static AABB. */
         bool                                            mDirtyFlag;                 /**< The dirty flag which indicates whether the user has made changes to the actor since the last file save operation. */
         bool                                            mUsedForVisualization;      /**< Indicates if the actor is used for visualization specific things and is not used as a normal in-game actor. */

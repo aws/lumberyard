@@ -21,13 +21,9 @@ def rc_file(self, node):
 	if not is_rc_supported_for_platform(self):
 		return
 	
-	# Add the target name to prevent cases where the same project files are shared for different targets
-	if hasattr(self, 'target'):
-		target_name = self.target
-
 	obj_ext = '.' + str(self.target_uid) + '.rc.o'
 	if self.env['WINRC_TGT_F'] == '/fo':
-		obj_ext = '.' + str(self.target_uid) + '.' + target_name + '.res'
+		obj_ext = '.' + str(self.target_uid) + '.res'
 
 	rctask = self.create_task('winrc', node, node.change_ext(obj_ext))
 

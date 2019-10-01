@@ -1,0 +1,10 @@
+{
+    "auto":
+    {
+        "Platform/Android":
+        [
+            "ChatPlay_Traits_Platform.h",
+            "ChatPlay_Traits_Android.h"
+        ]
+    }
+}

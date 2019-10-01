@@ -1,0 +1,9 @@
+{
+    "auto":
+    {
+        "Platform/Mac":
+        [
+            "MicrophoneSystemComponent_Mac.mm"
+        ]
+    }
+}

@@ -902,6 +902,161 @@ namespace UnitTest
         test_call();
     }
 
+    TEST_F(Function, FunctionWithRValueParametersIsCallable)
+    {
+        auto rValuePlusLvalueFunc = [](int&& lhs, int& rhs) -> int
+        {
+            return lhs + rhs;
+        };
+
+        AZStd::function<int(int&&, int&)> testFunction1(rValuePlusLvalueFunc);
+        int testInt1 = 17;
+        EXPECT_EQ(25, testFunction1(8, testInt1));
+        int testInt2 = 21;
+        EXPECT_EQ(38, testFunction1(AZStd::move(testInt2), testInt1));
+
+        auto pureRValueMultiplysLvalueFunc = [](int lhs, int& rhs) -> int
+        {
+            return lhs * rhs;
+        };
+
+        testFunction1 = pureRValueMultiplysLvalueFunc;
+        int testInt3 = 23;
+        EXPECT_EQ(92, testFunction1(4, testInt3));
+        EXPECT_EQ(391, testFunction1(AZStd::move(testInt3), testInt1));
+    }
+
+    TEST_F(Function, FunctionWithValueParametersIsCallableWithRValueArguments)
+    {
+        auto xValueAndConstXValueFunc = [](int&& lhs, const int&& rhs) -> int
+        {
+            return lhs + rhs;
+        };
+
+        AZStd::function<int(int, const int&&)> testFunction1(xValueAndConstXValueFunc);
+        const int testInt1 = 65;
+        const int testInt2 = 13;
+        EXPECT_EQ(78, testFunction1(testInt1, AZStd::move(testInt2)));
+    }
+
+    inline namespace FunctionTestInternal
+    {
+        static int s_functorCopyAssignmentCount;
+        static int s_functorCopyConstructorCount;
+        static int s_functorMoveAssignmentCount;
+        static int s_functorMoveConstructorCount;
+        template<size_t FunctorSize>
+        struct Functor
+        {
+            Functor() = default;
+            Functor(const Functor&)
+            {
+                ++s_functorCopyConstructorCount;
+            };
+            Functor& operator=(const Functor&)
+            {
+                ++s_functorCopyAssignmentCount;
+                return *this;
+            }
+            Functor(Functor&& other)
+            {
+                *this = AZStd::move(other);
+                ++s_functorMoveConstructorCount;
+            }
+            Functor& operator=(Functor&&)
+            {
+                ++s_functorMoveAssignmentCount;
+                return *this;
+            }
+
+            double operator()(int lhs, double rhs)
+            {
+                return static_cast<double>(lhs) + rhs;
+            }
+
+            // Make sure the functor have a specific size so 
+            // that it can be used to test both the AZStd::function small_object_optimization path
+            // and the heap allocated function object path
+            AZStd::aligned_storage_t<FunctorSize, 1> m_functorPadding;
+        };
+    }
+
+    // Fixture for Type Parameter test to test AZStd::function move operations
+    template <typename FunctorType>
+    class FunctionFunctorTestFixture
+        : public AllocatorsFixture
+    {
+    protected:
+        void SetUp() override
+        {
+            AllocatorsFixture::SetUp();
+            FunctionTestInternal::s_functorCopyAssignmentCount = 0;
+            FunctionTestInternal::s_functorCopyConstructorCount = 0;
+            FunctionTestInternal::s_functorMoveAssignmentCount = 0;
+            FunctionTestInternal::s_functorMoveConstructorCount = 0;
+        }
+
+        void TearDown() override
+        {
+            AllocatorsFixture::TearDown();
+        }
+
+    };
+
+    using FunctionFunctorTypes= ::testing::Types<
+        FunctionTestInternal::Functor<1>,
+        FunctionTestInternal::Functor<sizeof(AZStd::Internal::function_util::function_buffer) + 8>
+    >;
+    TYPED_TEST_CASE(FunctionFunctorTestFixture, FunctionFunctorTypes);
+
+
+
+    TYPED_TEST(FunctionFunctorTestFixture, FunctorsCanBeMovedConstructedIntoFunction)
+    {
+        using TestFunctor = TypeParam;
+        AZStd::function<double(int, double)> testFunction1{ TestFunctor() };
+        double testFunc1Result = testFunction1(8, 16.0);
+        EXPECT_GT(s_functorMoveConstructorCount, 0);
+        EXPECT_DOUBLE_EQ(24, testFunc1Result);
+
+        s_functorMoveConstructorCount = 0;
+        s_functorMoveAssignmentCount = 0;
+        TestFunctor testFunctor;
+        AZStd::function<double(int, double)> testFunction2(AZStd::move(testFunctor));
+        EXPECT_GT(s_functorMoveConstructorCount, 0);
+        
+        double testFunc2Result = testFunction2(16, 4.0);
+        EXPECT_DOUBLE_EQ(20, testFunc2Result);
+
+        // Check that only the move operations were invoked
+        EXPECT_EQ(0, s_functorCopyConstructorCount);
+        EXPECT_EQ(0, s_functorCopyAssignmentCount);
+    }
+
+    TYPED_TEST(FunctionFunctorTestFixture, FunctorsCanBeMovedAssignedIntoFunction)
+    {
+        using TestFunctor = TypeParam;
+        AZStd::function<double(int, double)> testFunction1;
+        testFunction1 = TestFunctor();
+        double testFunc1Result = testFunction1(8, 16.0);
+        EXPECT_GT(s_functorMoveConstructorCount + s_functorMoveAssignmentCount, 0);
+        EXPECT_DOUBLE_EQ(24, testFunc1Result);
+
+        s_functorMoveConstructorCount = 0;
+        s_functorMoveAssignmentCount = 0;
+        TestFunctor testFunctor;
+        AZStd::function<double(int, double)> testFunction2;
+        testFunction2 = AZStd::move(testFunctor);
+        EXPECT_GT(s_functorMoveConstructorCount + s_functorMoveAssignmentCount, 0);
+        
+        double testFunc2Result = testFunction2(16, 4.0);
+        EXPECT_DOUBLE_EQ(20, testFunc2Result);
+
+        // Check that only the move operations were invoked
+        EXPECT_EQ(0, s_functorCopyConstructorCount);
+        EXPECT_EQ(0, s_functorCopyAssignmentCount);
+    }
+
     /**
     * Bind
     * We use tuned version of the boost::bind (which is in TR1), so we use the boost::bind tests too
@@ -969,13 +1124,13 @@ namespace UnitTest
 
             int const k = 3;
 
-            AZ_TEST_ASSERT(bind(type<short>(), Y(), ref(i))() == 7);
-            AZ_TEST_ASSERT(bind(type<short>(), Y(), ref(i))() == 8);
-            AZ_TEST_ASSERT(bind(type<int>(), Y(), i, _1)(k) == 38);
-            AZ_TEST_ASSERT(bind(type<long>(), Y(), i, _1, 9)(k) == 938);
+            AZ_TEST_ASSERT(bind<short>(Y(), ref(i))() == 7);
+            AZ_TEST_ASSERT(bind<short>(Y(), ref(i))() == 8);
+            AZ_TEST_ASSERT(bind<int>(Y(), i, _1)(k) == 38);
+            AZ_TEST_ASSERT(bind<long>(Y(), i, _1, 9)(k) == 938);
 
             global_result = 0;
-            bind(type<void>(), Y(), i, _1, 9, 4)(k);
+            bind<void>( Y(), i, _1, 9, 4)(k);
             AZ_TEST_ASSERT(global_result == 4938);
         }
 
@@ -1445,5 +1600,31 @@ namespace UnitTest
         EXPECT_TRUE(AZStd::bind(lambda)());
 
         EXPECT_EQ(5, AZStd::bind([](int shouldBe5) { return shouldBe5; }, 5)());
+    }
+
+    inline double FuncDoubleSelector(double select)
+    {
+        return select * 2.0;
+    }
+
+    inline double FuncWithMultiArgs(int32_t x, int16_t y, double z, AZStd::string&& strValue, AZStd::reference_wrapper<uint64_t>& refTimeStamp)
+    {
+        char* strEnd;
+        int64_t timeStamp{ static_cast<int64_t>(strtoll(strValue.data(), &strEnd, 10)) };
+        double resultTimeStamp = static_cast<double>(timeStamp + x + y + static_cast<int64_t>(z));
+        refTimeStamp.get() = timeStamp;
+        return static_cast<double>(resultTimeStamp);
+    }
+
+    TEST_F(Bind, NestedBind_Success)
+    {
+        auto nestedFunc = AZStd::bind(&FuncWithMultiArgs, AZStd::placeholders::_1, static_cast<int16_t>(16), AZStd::bind(&FuncDoubleSelector, AZStd::placeholders::_3), "512", AZStd::placeholders::_2);
+        uint64_t timeStamp = 128;
+        AZStd::reference_wrapper<uint64_t> refTimeStamp(timeStamp);
+        double result = nestedFunc(32, refTimeStamp, 64.0);
+        EXPECT_EQ(512, timeStamp);
+        
+        constexpr double expectedResult = static_cast<double>(32 + 16 + 128.0 + 512);
+        EXPECT_DOUBLE_EQ(expectedResult, result);
     }
 }

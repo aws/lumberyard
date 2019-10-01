@@ -3,9 +3,9 @@
 * its licensors.
 *
 * For complete copyright and license terms please see the LICENSE at the root of this
-* distribution(the "License").All use of this software is governed by the License,
-*or, if provided, by the license below or the license accompanying this file.Do not
-* remove or modify any license notices.This file is distributed on an "AS IS" BASIS,
+* distribution (the "License"). All use of this software is governed by the License,
+*or, if provided, by the license below or the license accompanying this file. Do not
+* remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
 *WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
@@ -13,6 +13,7 @@
 #pragma once
 #include <AzCore/Math/Color.h>
 #include <AzCore/std/algorithm.h>
+#include <ImageProcessing_Traits_Platform.h>
 
 //! The following defines and constants are extracted from ImageExtensionHelper.h
 //! Please make sure they are always synced with ImageExtensionHelper.h
@@ -30,7 +31,7 @@
 
 
 //Needed to write out DDS files on Mac
-#if defined(AZ_PLATFORM_APPLE)
+#if AZ_TRAIT_IMAGEPROCESSING_DEFINE_DIRECT3D_CONSTANTS
 #define    DDPF_ALPHAPIXELS     0x00000001  // Texture contains alpha data
 #define    DDPF_ALPHA           0x00000002  // For alpha channel only uncompressed data
 #define    DDPF_FOURCC          0x00000004  // Texture contains compressed RGB data

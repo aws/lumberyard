@@ -66,6 +66,54 @@ namespace
 
         mat = moveFromPivotSpaceMat * scaleMat * rotMat * moveToPivotSpaceMat;
     }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    // Helper function to VersionConverter to convert a bool field to an int for ScaleToDevice
+    inline bool ConvertScaleToDeviceFromBoolToEnum(
+        AZ::SerializeContext& context,
+        AZ::SerializeContext::DataElementNode& classElement)
+    {
+        // Note that the name of the new element has to be the same as the name of the old element
+        // because we have no version conversion for data patches. The bool to enum conversion happens
+        // to work out for the data patches because the bool value of 1 maps to the correct int value.
+        const char* scaleToDeviceName = "ScaleToDevice";
+
+        int index = classElement.FindElement(AZ_CRC(scaleToDeviceName));
+        if (index != -1)
+        {
+            AZ::SerializeContext::DataElementNode& elementNode = classElement.GetSubElement(index);
+
+            bool oldData;
+
+            if (!elementNode.GetData(oldData))
+            {
+                // Error, old subElement was not a bool or not valid
+                AZ_Error("Serialization", false, "Cannot get bool data for element %s.", scaleToDeviceName);
+                return false;
+            }
+
+            // Remove old version.
+            classElement.RemoveElement(index);
+
+            // Add a new element for the new data.
+            int newElementIndex = classElement.AddElement<int>(context, scaleToDeviceName);
+            if (newElementIndex == -1)
+            {
+                // Error adding the new sub element
+                AZ_Error("Serialization", false, "AddElement failed for converted element %s", scaleToDeviceName);
+                return false;
+            }
+
+            int newData = (oldData) ?
+                static_cast<int>(UiTransformInterface::ScaleToDeviceMode::UniformScaleToFit) :
+                static_cast<int>(UiTransformInterface::ScaleToDeviceMode::None);
+
+            classElement.GetSubElement(newElementIndex).SetData(context, newData);
+        }
+
+        // if the field did not exist then we do not report an error
+        return true;
+    }
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -77,7 +125,7 @@ UiTransform2dComponent::UiTransform2dComponent()
     : m_pivot(AZ::Vector2(0.5f, 0.5f))
     , m_rotation(0.0f)
     , m_scale(AZ::Vector2(1.0f, 1.0f))
-    , m_scaleToDevice(false)
+    , m_scaleToDeviceMode(ScaleToDeviceMode::None)
     , m_recomputeTransformToViewport(true)
     , m_recomputeTransformToCanvasSpace(true)
     , m_recomputeCanvasSpaceRect(true)
@@ -191,17 +239,17 @@ void UiTransform2dComponent::SetPivotY(float pivot)
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-bool UiTransform2dComponent::GetScaleToDevice()
+UiTransform2dComponent::ScaleToDeviceMode UiTransform2dComponent::GetScaleToDeviceMode()
 {
-    return m_scaleToDevice;
+    return m_scaleToDeviceMode;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-void UiTransform2dComponent::SetScaleToDevice(bool scaleToDevice)
+void UiTransform2dComponent::SetScaleToDeviceMode(ScaleToDeviceMode scaleToDeviceMode)
 {
-    if (m_scaleToDevice != scaleToDevice)
+    if (m_scaleToDeviceMode != scaleToDeviceMode)
     {
-        m_scaleToDevice = scaleToDevice;
+        m_scaleToDeviceMode = scaleToDeviceMode;
         SetRecomputeFlags(UiTransformInterface::Recompute::TransformOnly);
     }
 }
@@ -425,7 +473,7 @@ void UiTransform2dComponent::GetLocalInverseTransform(AZ::Matrix4x4& mat)
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 bool UiTransform2dComponent::HasScaleOrRotation()
 {
-    return (m_scaleToDevice || m_scale.GetX() != 1.0f || m_scale.GetY() != 1.0f || m_rotation != 0.0f);
+    return (m_scaleToDeviceMode != ScaleToDeviceMode::None || m_scale.GetX() != 1.0f || m_scale.GetY() != 1.0f || m_rotation != 0.0f);
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1144,13 +1192,13 @@ void UiTransform2dComponent::Reflect(AZ::ReflectContext* context)
     if (serializeContext)
     {
         serializeContext->Class<UiTransform2dComponent, AZ::Component>()
-            ->Version(2, &VersionConverter)
+            ->Version(3, &VersionConverter)
             ->Field("Anchors", &UiTransform2dComponent::m_anchors)
             ->Field("Offsets", &UiTransform2dComponent::m_offsets)
             ->Field("Pivot", &UiTransform2dComponent::m_pivot)
             ->Field("Rotation", &UiTransform2dComponent::m_rotation)
             ->Field("Scale", &UiTransform2dComponent::m_scale)
-            ->Field("ScaleToDevice", &UiTransform2dComponent::m_scaleToDevice);
+            ->Field("ScaleToDevice", &UiTransform2dComponent::m_scaleToDeviceMode);
 
         // EditContext. Note that the Transform component is unusual in that we want to hide the
         // properties when the transform is controlled by the parent. There is not a standard
@@ -1160,10 +1208,10 @@ void UiTransform2dComponent::Reflect(AZ::ReflectContext* context)
         // Alternatively we could make them all read-only using the "ReadOnly" property. Again this
         // doesn't tell the user why.
         // So the approach we use is:
-        // - Hide all of the properties excepth Anchors using the "Visibility" property
+        // - Hide all of the properties except Anchors using the "Visibility" property
         // - Set the Anchors property to ReadOnly and change the ProertyHandler for Anchors to
         //   display a message in this case (and have a different tooltip)
-        // - Dynanically change the property name of the Anchors property using the
+        // - Dynamically change the property name of the Anchors property using the
         //   "NameLabelOverride" attribute.
         AZ::EditContext* ec = serializeContext->GetEditContext();
         if (ec)
@@ -1184,7 +1232,7 @@ void UiTransform2dComponent::Reflect(AZ::ReflectContext* context)
                 "there is a single anchor point that the element is offset from.\n"
                 "If they are apart, then there are two anchor points and as the parent changes size\n"
                 "this element will change size also")
-                ->Attribute(AZ::Edit::Attributes::ChangeNotify, AZ_CRC("RefreshValues", 0x28e720d4))
+                ->Attribute(AZ::Edit::Attributes::ChangeNotify, AZ_CRC("RefreshAttributesAndValues", 0xcbc2147c)) // Refresh attributes for scale to device mode
                 ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
                 ->Attribute(AZ::Edit::Attributes::Max, 100.0f)
                 ->Attribute(AZ::Edit::Attributes::Step, 1.0f)
@@ -1218,15 +1266,34 @@ void UiTransform2dComponent::Reflect(AZ::ReflectContext* context)
                 "The X and Y scale around the pivot point")
                 ->Attribute(AZ::Edit::Attributes::ChangeNotify, &UiTransform2dComponent::OnTransformPropertyChanged);
 
-            editInfo->DataElement("CheckBox", &UiTransform2dComponent::m_scaleToDevice, "Scale to device",
-                "If checked, at runtime, this element and all its children will be scaled to allow for\n"
-                "the difference between the authored canvas size and the actual viewport size");
+            editInfo->DataElement(AZ::Edit::UIHandlers::ComboBox, &UiTransform2dComponent::m_scaleToDeviceMode, "Scale to device",
+                "Controls how this element and all its children will be scaled to allow for\n"
+                "the difference between the authored canvas size and the actual viewport size")
+                ->EnumAttribute(UiTransformInterface::ScaleToDeviceMode::None, "None")
+                ->EnumAttribute(UiTransformInterface::ScaleToDeviceMode::UniformScaleToFit,  "Scale to fit (uniformly)")
+                ->EnumAttribute(UiTransformInterface::ScaleToDeviceMode::UniformScaleToFill, "Scale to fill (uniformly)")
+                ->EnumAttribute(UiTransformInterface::ScaleToDeviceMode::UniformScaleToFitX, "Scale to fit X (uniformly)")
+                ->EnumAttribute(UiTransformInterface::ScaleToDeviceMode::UniformScaleToFitY, "Scale to fit Y (uniformly)")
+                ->EnumAttribute(UiTransformInterface::ScaleToDeviceMode::NonUniformScale,    "Stretch to fill (non-uniformly)")
+                ->EnumAttribute(UiTransformInterface::ScaleToDeviceMode::ScaleXOnly,         "Stretch to fit X (non-uniformly)")
+                ->EnumAttribute(UiTransformInterface::ScaleToDeviceMode::ScaleYOnly,         "Stretch to fit Y (non-uniformly)")
+                ->Attribute("Warning", &UiTransform2dComponent::GetScaleToDeviceModeWarningTooltipText)
+                ->Attribute(AZ::Edit::Attributes::ChangeNotify, AZ_CRC("RefreshAttributesAndValues", 0xcbc2147c));
         }
     }
 
     AZ::BehaviorContext* behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context);
     if (behaviorContext)
     {
+        behaviorContext->Enum<(int)UiTransformInterface::ScaleToDeviceMode::None>("eUiScaleToDeviceMode_None")
+            ->Enum<(int)UiTransformInterface::ScaleToDeviceMode::UniformScaleToFit>("eUiScaleToDeviceMode_UniformScaleToFit")
+            ->Enum<(int)UiTransformInterface::ScaleToDeviceMode::UniformScaleToFill>("eUiScaleToDeviceMode_UniformScaleToFill")
+            ->Enum<(int)UiTransformInterface::ScaleToDeviceMode::UniformScaleToFitX>("eUiScaleToDeviceMode_UniformScaleToFitX")
+            ->Enum<(int)UiTransformInterface::ScaleToDeviceMode::UniformScaleToFitY>("eUiScaleToDeviceMode_UniformScaleToFitY")
+            ->Enum<(int)UiTransformInterface::ScaleToDeviceMode::NonUniformScale>("eUiScaleToDeviceMode_NonUniformScale")
+            ->Enum<(int)UiTransformInterface::ScaleToDeviceMode::ScaleXOnly>("eUiScaleToDeviceMode_ScaleXOnly")
+            ->Enum<(int)UiTransformInterface::ScaleToDeviceMode::ScaleYOnly>("eUiScaleToDeviceMode_ScaleYOnly");
+
         behaviorContext->EBus<UiTransformBus>("UiTransformBus")
             ->Event("GetZRotation", &UiTransformBus::Events::GetZRotation)
             ->Event("SetZRotation", &UiTransformBus::Events::SetZRotation)
@@ -1242,8 +1309,14 @@ void UiTransform2dComponent::Reflect(AZ::ReflectContext* context)
             ->Event("SetPivotX", &UiTransformBus::Events::SetPivotX)
             ->Event("GetPivotY", &UiTransformBus::Events::GetPivotY)
             ->Event("SetPivotY", &UiTransformBus::Events::SetPivotY)
-            ->Event("GetScaleToDevice", &UiTransformBus::Events::GetScaleToDevice)
-            ->Event("SetScaleToDevice", &UiTransformBus::Events::SetScaleToDevice)
+            ->Event("GetScaleToDevice", &UiTransformBus::Events::Deprecated_GetScaleToDevice)
+                ->Attribute(AZ::Script::Attributes::Deprecated, true)
+                ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)  // Hide from Script Canvas Node Palette
+            ->Event("SetScaleToDevice", &UiTransformBus::Events::Deprecated_SetScaleToDevice)
+                ->Attribute(AZ::Script::Attributes::Deprecated, true)
+                ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)  // Hide from Script Canvas Node Palette
+            ->Event("GetScaleToDeviceMode", &UiTransformBus::Events::GetScaleToDeviceMode)
+            ->Event("SetScaleToDeviceMode", &UiTransformBus::Events::SetScaleToDeviceMode)
             ->Event("GetViewportPosition", &UiTransformBus::Events::GetViewportPosition)
             ->Event("SetViewportPosition", &UiTransformBus::Events::SetViewportPosition)
             ->Event("GetCanvasPosition", &UiTransformBus::Events::GetCanvasPosition)
@@ -1343,6 +1416,151 @@ UiLayoutFitterInterface::FitType UiTransform2dComponent::GetLayoutFitterType() c
 bool UiTransform2dComponent::IsNotControlledByParent() const
 {
     return !IsControlledByParent();
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+AZ::EntityId UiTransform2dComponent::GetAncestorWithSameDimensionScaleToDevice(ScaleToDeviceMode scaleToDeviceMode) const
+{
+    AZ::EntityId ancestor;
+
+    if (IsFullyInitialized())
+    {
+        AZ::EntityId prevParent;
+        AZ::EntityId parent;
+        EBUS_EVENT_ID_RESULT(parent, GetEntityId(), UiElementBus, GetParentEntityId);
+        while (parent.IsValid())
+        {
+            ScaleToDeviceMode parentScaleToDeviceMode = ScaleToDeviceMode::None;
+            EBUS_EVENT_ID_RESULT(parentScaleToDeviceMode, parent, UiTransformBus, GetScaleToDeviceMode);
+            if (parentScaleToDeviceMode != ScaleToDeviceMode::None)
+            {
+                if ((DoesScaleToDeviceModeAffectX(scaleToDeviceMode) && DoesScaleToDeviceModeAffectX(parentScaleToDeviceMode))
+                    || (DoesScaleToDeviceModeAffectY(scaleToDeviceMode) && DoesScaleToDeviceModeAffectY(parentScaleToDeviceMode)))
+                {
+                    ancestor = parent;
+                    break;
+                }
+            }
+
+            prevParent = parent;
+            parent.SetInvalid();
+            EBUS_EVENT_ID_RESULT(parent, prevParent, UiElementBus, GetParentEntityId);
+        }
+    }
+    else
+    {
+        EmitNotInitializedWarning();
+    }
+
+    return ancestor;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+LyShine::EntityArray UiTransform2dComponent::GetDescendantsWithSameDimensionScaleToDevice(ScaleToDeviceMode scaleToDeviceMode) const
+{
+    // Check if any descendants have their scale to device mode set in the same dimension
+    auto HasSameDimensionScaleToDevice = [this, scaleToDeviceMode](const AZ::Entity* entity)
+    {
+        ScaleToDeviceMode descendantScaleToDeviceMode = ScaleToDeviceMode::None;
+        EBUS_EVENT_ID_RESULT(descendantScaleToDeviceMode, entity->GetId(), UiTransformBus, GetScaleToDeviceMode);
+
+        return ((DoesScaleToDeviceModeAffectX(descendantScaleToDeviceMode) && DoesScaleToDeviceModeAffectX(scaleToDeviceMode))
+            || (DoesScaleToDeviceModeAffectY(descendantScaleToDeviceMode) && DoesScaleToDeviceModeAffectY(scaleToDeviceMode)));
+    };
+
+    LyShine::EntityArray descendants;
+    EBUS_EVENT_ID(GetEntityId(), UiElementBus, FindDescendantElements, HasSameDimensionScaleToDevice, descendants);
+
+    return descendants;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+bool UiTransform2dComponent::AreAnchorsApartInSameScaleToDeviceDimension(ScaleToDeviceMode scaleToDeviceMode) const
+{
+    return ((m_anchors.m_left != m_anchors.m_right && DoesScaleToDeviceModeAffectX(scaleToDeviceMode))
+        || (m_anchors.m_top != m_anchors.m_bottom && DoesScaleToDeviceModeAffectY(scaleToDeviceMode)));
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+AZStd::string UiTransform2dComponent::GetScaleToDeviceModeWarningText() const
+{
+    AZStd::string warningText;
+
+    if (m_scaleToDeviceMode != ScaleToDeviceMode::None)
+    {
+        // Check if anchors are apart in the same dimension as the scale to device mode
+        if (AreAnchorsApartInSameScaleToDeviceDimension(m_scaleToDeviceMode))
+        {
+            warningText = AZStd::string::format("Element's anchors are not together");
+        }
+
+        if (warningText.empty())
+        {
+            // Check if any ancestors already have their scale to device mode set in the same dimension
+            AZ::EntityId ancestor = GetAncestorWithSameDimensionScaleToDevice(m_scaleToDeviceMode);
+            if (ancestor.IsValid())
+            {
+                warningText = AZStd::string::format("Element will be double scaled");
+            }
+        }
+
+        if (warningText.empty())
+        {
+            // Check if any descendants have their scale to device mode set in the same dimension
+            LyShine::EntityArray descendants = GetDescendantsWithSameDimensionScaleToDevice(m_scaleToDeviceMode);
+            if (!descendants.empty())
+            {
+                warningText = AZStd::string::format("Descendants will be double scaled");
+            }
+        }
+    }
+
+    return warningText;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+AZStd::string UiTransform2dComponent::GetScaleToDeviceModeWarningTooltipText() const
+{
+    AZStd::string warningTooltipText;
+
+    if (m_scaleToDeviceMode != ScaleToDeviceMode::None)
+    {
+        // Check if anchors are apart in the same dimension as the scale to device mode
+        if (AreAnchorsApartInSameScaleToDeviceDimension(m_scaleToDeviceMode))
+        {
+            warningTooltipText = AZStd::string::format("This scale to device mode affects the same dimension as the element's anchors that are not together. This will result in undesired behavior.");
+        }
+
+        if (warningTooltipText.empty())
+        {
+            // Check if any ancestors already have their scale to device mode set in the same dimension
+            AZ::EntityId ancestor = GetAncestorWithSameDimensionScaleToDevice(m_scaleToDeviceMode);
+            if (ancestor.IsValid())
+            {
+                const char* ancestorName = "";
+                AZ::Entity* ancestorEntity = nullptr;
+                EBUS_EVENT_RESULT(ancestorEntity, AZ::ComponentApplicationBus, FindEntity, ancestor);
+                if (ancestorEntity)
+                {
+                    ancestorName = ancestorEntity->GetName().c_str();
+                }
+
+                warningTooltipText = AZStd::string::format("This element has an ancestor called \"%s\" who's scale to device mode affects the same dimension. This will result in double scaling.", ancestorName);
+            }
+        }
+
+        if (warningTooltipText.empty())
+        {
+            // Check if any descendants have their scale to device mode set in the same dimension
+            LyShine::EntityArray descendants = GetDescendantsWithSameDimensionScaleToDevice(m_scaleToDeviceMode);
+            if (!descendants.empty())
+            {
+                warningTooltipText = AZStd::string::format("This element has at least one descendant who's scale to device mode affects the same dimension. This will result in double scaling for those descendants.");
+            }
+        }
+    }
+
+    return warningTooltipText;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1459,20 +1677,16 @@ AZ::Vector2 UiTransform2dComponent::GetScaleAdjustedForDevice()
 {
     AZ::Vector2 scale = m_scale;
 
-    if (m_scaleToDevice)
+    if (m_scaleToDeviceMode != ScaleToDeviceMode::None)
     {
-        float uniformDeviceScale = 1.0f;
-
         if (IsFullyInitialized())
         {
-            uniformDeviceScale = GetCanvasComponent()->GetUniformDeviceScale();
+            ApplyDeviceScale(scale);
         }
         else
         {
             EmitNotInitializedWarning();
         }
-
-        scale *= AZ::Vector2(uniformDeviceScale, uniformDeviceScale);
     }
 
     return scale;
@@ -1506,7 +1720,7 @@ void UiTransform2dComponent::CalculateCanvasSpaceRect()
     }
     else
     {
-        // this is the root element, it's offset and anchors are ignored
+        // this is the root element, its offset and anchors are ignored
 
         AZ::Vector2 size = UiCanvasComponent::s_defaultCanvasSize;
         if (IsFullyInitialized())
@@ -1635,6 +1849,49 @@ void UiTransform2dComponent::EmitNotInitializedWarning() const
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
+void UiTransform2dComponent::ApplyDeviceScale(AZ::Vector2& scale)
+{
+    AZ::Vector2 deviceScale = GetCanvasComponent()->GetDeviceScale();
+
+    switch (m_scaleToDeviceMode)
+    {
+    case ScaleToDeviceMode::UniformScaleToFit:
+    {
+        float uniformScale = AZStd::min(deviceScale.GetX(), deviceScale.GetY());
+        scale *= uniformScale;
+        break;
+    }
+    case ScaleToDeviceMode::UniformScaleToFill:
+    {
+        float uniformScale = AZStd::max(deviceScale.GetX(), deviceScale.GetY());
+        scale *= uniformScale;
+        break;
+    }
+    case ScaleToDeviceMode::UniformScaleToFitX:
+    {
+        float uniformScale = deviceScale.GetX();
+        scale *= uniformScale;
+        break;
+    }
+    case ScaleToDeviceMode::UniformScaleToFitY:
+    {
+        float uniformScale = deviceScale.GetY();
+        scale *= uniformScale;
+        break;
+    }
+    case ScaleToDeviceMode::NonUniformScale:
+        scale *= deviceScale;
+        break;
+    case ScaleToDeviceMode::ScaleXOnly:
+        scale.SetX(scale.GetX() * deviceScale.GetX());
+        break;
+    case ScaleToDeviceMode::ScaleYOnly:
+        scale.SetY(scale.GetY() * deviceScale.GetY());
+        break;
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
 bool UiTransform2dComponent::VersionConverter(AZ::SerializeContext& context,
     AZ::SerializeContext::DataElementNode& classElement)
 {
@@ -1653,7 +1910,29 @@ bool UiTransform2dComponent::VersionConverter(AZ::SerializeContext& context,
         }
     }
 
+    // conversion from version 2:
+    // - Need to convert ScaleToDevice from a bool to an enum
+    if (classElement.GetVersion() <= 2)
+    {
+        if (!ConvertScaleToDeviceFromBoolToEnum(context, classElement))
+        {
+            return false;
+        }
+    }
+
     return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+bool UiTransform2dComponent::DoesScaleToDeviceModeAffectX(ScaleToDeviceMode scaleToDeviceMode)
+{
+    return (scaleToDeviceMode != ScaleToDeviceMode::None && scaleToDeviceMode != ScaleToDeviceMode::ScaleYOnly);
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+bool UiTransform2dComponent::DoesScaleToDeviceModeAffectY(ScaleToDeviceMode scaleToDeviceMode)
+{
+    return (scaleToDeviceMode != ScaleToDeviceMode::None && scaleToDeviceMode != ScaleToDeviceMode::ScaleXOnly);
 }
 
 #include "Tests/internal/test_UiTransform2dComponent.cpp"

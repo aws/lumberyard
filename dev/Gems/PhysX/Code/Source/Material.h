@@ -14,6 +14,7 @@
 
 #include <PxPhysicsAPI.h>
 #include <AzFramework/Physics/Material.h>
+#include <AzFramework/Physics/MaterialBus.h>
 #include <AzCore/Asset/AssetCommon.h>
 #include <AzCore/std/smart_ptr/enable_shared_from_this.h>
 
@@ -95,19 +96,17 @@ namespace PhysX
     /// Can be used to retrieve material instance from user selection.\n
     /// Refer to MaterialsManager for more details. \n
     class MaterialManagerRequests
-        : public AZ::EBusTraits
+        : public Physics::PhysicsMaterialRequests
     {
     public:
         static const AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::Single;
         static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::Single;
 
-        virtual AZStd::vector<AZStd::shared_ptr<Material>> GetMaterials(const Physics::MaterialSelection& materialSelection) = 0;
         virtual void GetPxMaterials(const Physics::MaterialSelection& materialSelection, AZStd::vector<physx::PxMaterial*>& outMaterials) = 0;
 
         virtual const AZStd::shared_ptr<Material>& GetDefaultMaterial() = 0;
         virtual void ReleaseAllMaterials() = 0;
     };
-
     using MaterialManagerRequestsBus = AZ::EBus<MaterialManagerRequests>;
 
     /// Manages materials created from MaterialLibraryAsset
@@ -117,6 +116,7 @@ namespace PhysX
     /// Also keeps a reference to the default material.
     class MaterialsManager
         : public MaterialManagerRequestsBus::Handler
+        , public Physics::PhysicsMaterialRequestBus::Handler
     {
     public:
         AZ_CLASS_ALLOCATOR(MaterialsManager, AZ::SystemAllocator, 0);
@@ -125,14 +125,16 @@ namespace PhysX
         MaterialsManager();
         ~MaterialsManager() override;
 
-        /// Creates an array of materials for a given Physics::MaterialSelection. If materials were created before, the call returns them instead. \n
-        /// If MaterialSelection is invalid (library is empty, selected MaterialIds are null or don't exist in the library, etc)\n
-        /// PxMaterial properties (restituation, friction, etc) will be reset to values from materialSelection each time the function is invoked,
-        /// even if material was previously cached.
-        /// returns a vector with a single default material.
-        /// @param materialSelection MaterialSelection instance to create or get materials for
-        /// @return vector of references to PhysX::Material instances, newly created or cached.
-        AZStd::vector<AZStd::shared_ptr<Material>> GetMaterials(const Physics::MaterialSelection& materialSelection) override;
+        /// Returns a vector of weak pointers to materials selected. 
+        /// To be notified if the pointers are deleted, connect to PhysicsMaterialNotifications::MaterialsReleased().
+        /// @param materialSelection MaterialSelection instance to create or get materials for.
+        /// @param outMaterials Collection of material weak pointers corresponding to the material selection to be returned.
+        void GetMaterials(const Physics::MaterialSelection& materialSelection
+            , AZStd::vector<AZStd::weak_ptr<Physics::Material>>& outMaterials) override;
+
+        /// Returns index of selected material in its material library. 0 is the Default material.
+        /// @param materialSelection Selection of materials.
+        AZ::u32 GetFirstSelectedMaterialIndex(const Physics::MaterialSelection& materialSelection) override;
 
         /// Slightly faster version of GetMaterials that returns physx::PxMaterial pointers instead. \n
         /// The rest is equivalent to GetMaterials function.
@@ -153,6 +155,8 @@ namespace PhysX
         void Disconnect();
 
     private:
+        void InitializeMaterials(const Physics::MaterialSelection& materialSelection);
+
         AZStd::unordered_map<AZ::Uuid, AZStd::shared_ptr<Material>> m_materialsFromAssets;
         AZStd::shared_ptr<Material> m_defaultMaterial;
     };

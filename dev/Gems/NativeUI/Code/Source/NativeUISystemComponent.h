@@ -11,44 +11,21 @@
  */
 
 #pragma once
-
 #include <AzCore/Component/Component.h>
-
-#include <NativeUIRequests.h>
+#include <AzCore/NativeUI/NativeUIRequests.h>
 
 namespace NativeUI
 {
     class SystemComponent
         : public AZ::Component
-        , public NativeUIRequestBus::Handler
     {
     public:
         AZ_COMPONENT(SystemComponent, "{CD368DEB-6D12-443E-9DDC-2025E34517D4}");
 
         static void Reflect(AZ::ReflectContext* context);
 
-        static void GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided);
-        static void GetIncompatibleServices(AZ::ComponentDescriptor::DependencyArrayType& incompatible);
-        static void GetRequiredServices(AZ::ComponentDescriptor::DependencyArrayType& required);
-        static void GetDependentServices(AZ::ComponentDescriptor::DependencyArrayType& dependent);
-        
-        ////////////////////////////////////////////////////////////////////////
-        // NativeUIRequestBus interface implementation
-
-        ////////////////////////////////////////////////////////////////////////
-
-        AZStd::string DisplayBlockingDialog(const AZStd::string& title, const AZStd::string& message, const AZStd::vector<AZStd::string>& options) const override;
-        AZStd::string DisplayOkDialog(const AZStd::string& title, const AZStd::string& message, bool showCancel) const override;
-        AZStd::string DisplayYesNoDialog(const AZStd::string& title, const AZStd::string& message, bool showCancel) const override;
-        AssertAction DisplayAssertDialog(const AZStd::string& message) const override;
-
-    protected:
-
-        ////////////////////////////////////////////////////////////////////////
-        // AZ::Component interface implementation
-        void Init() override;
-        void Activate() override;
-        void Deactivate() override;
-        ////////////////////////////////////////////////////////////////////////
+        AZ_DEPRECATED(void Init() override, "NativeUI Gem is deprecated. Use AZCore NativeUI Ebus instead.");
+        AZ_DEPRECATED(void Activate() override, "NativeUI Gem is deprecated. Use AZCore NativeUI Ebus instead.");
+        AZ_DEPRECATED(void Deactivate() override, "NativeUI Gem is deprecated. Use AZCore NativeUI Ebus instead.");
     };
 }

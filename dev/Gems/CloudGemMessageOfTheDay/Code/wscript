@@ -32,4 +32,7 @@ def build(bld):
         uselib = ['AWS_CPP_SDK_CORE', 'AWS_CPP_SDK_LAMBDA'],
 
         restricted_script = 'update_restricted_parameters',
+
+        includes = [bld.Path('Code/CryEngine/CryCommon')
+                   ],
     )

@@ -152,7 +152,7 @@ namespace PhysX
         } m_physxSDKGlobals;
 
         physx::PxPvdTransport* m_pvdTransport = nullptr;
-        AzPhysXCpuDispatcher* m_cpuDispatcher = nullptr;
+        physx::PxCpuDispatcher* m_cpuDispatcher = nullptr;
 
         // SystemRequestsBus
         physx::PxScene* CreateScene(physx::PxSceneDesc& sceneDesc) override;
@@ -247,7 +247,15 @@ namespace PhysX
 
         static bool VersionConverter(AZ::SerializeContext& context, AZ::SerializeContext::DataElementNode& classElement);
 
+        bool LoadDefaultMaterialLibrary() override;
+
+        bool UpdateMaterialSelection(const Physics::ShapeConfiguration& shapeConfiguration,
+            Physics::ColliderConfiguration& colliderConfiguration) override;
+
     private:
+        bool UpdateMaterialSelectionFromPhysicsAsset(
+            const Physics::PhysicsAssetShapeConfiguration& assetConfiguration,
+            Physics::ColliderConfiguration& colliderConfiguration);
 
         bool m_enabled; ///< If false, this component will not activate itself in the Activate() function.
         AZStd::string m_configurationPath;

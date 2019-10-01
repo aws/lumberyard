@@ -42,7 +42,7 @@ namespace Water
                 ec->Class<WaterOceanEditor>("Infinite Ocean", "Provides an infinite ocean.")
                     ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
                         ->Attribute(AZ::Edit::Attributes::Category, "Environment")
-                        ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/InfiniteOcean.png")
+                        ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/InfiniteOcean.svg")
                         ->Attribute(AZ::Edit::Attributes::ViewportIcon, "Editor/Icons/Components/Viewport/InfiniteOcean.png")
                         ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("Game", 0x232b318c))
                         ->Attribute(AZ::Edit::Attributes::HelpPageURL, "https://docs.aws.amazon.com/console/lumberyard/userguide/infinite-ocean-component")

@@ -16,7 +16,6 @@
 #include <AzCore/std/containers/unordered_map.h>
 #include <AzCore/std/containers/list.h>
 #include <ScriptedEntityTweener/ScriptedEntityTweenerEnums.h>
-#include <Maestro/Bus/SequenceAgentComponentBus.h>
 #include "ScriptedEntityTweenerSubtask.h"
 
 
@@ -26,7 +25,7 @@ namespace ScriptedEntityTweener
     class ScriptedEntityTweenerTask
     {
     public: // member functions
-        ScriptedEntityTweenerTask(AZ::EntityId id, bool createSequenceAgent = false);
+        ScriptedEntityTweenerTask(AZ::EntityId id);
         ~ScriptedEntityTweenerTask();
 
         void AddAnimation(const AnimationParameters& params, bool overwriteQueued = true);
@@ -62,7 +61,6 @@ namespace ScriptedEntityTweener
 
     private: // member functions
         AZ::EntityId m_entityId;
-        Maestro::SequenceAgentEventBusId m_sequenceAgentBusId;
 
         //! Unique(per address data) active subtasks being updated
         AZStd::unordered_map<AnimationParameterAddressData, ScriptedEntityTweenerSubtask> m_subtasks;
@@ -161,5 +159,6 @@ namespace ScriptedEntityTweener
 
         bool InitializeSubtask(ScriptedEntityTweenerSubtask& subtask, const AZStd::pair<AnimationParameterAddressData, AZStd::any> initData, AnimationParameters params);
         void ExecuteCallbacks(const AZStd::set<CallbackData>& callbacks);
+        void ClearCallbacks(const AnimationProperties& animationProperties);
     };
 }

@@ -13,6 +13,7 @@
 #pragma once
 
 #include "EMotionFXConfig.h"
+#include <AzCore/Math/Quaternion.h>
 #include <AzCore/Math/Uuid.h>
 #include <AzCore/Math/Color.h>
 #include "BaseObject.h"
@@ -21,11 +22,15 @@
 #include <MCore/Source/Array.h>
 #include <MCore/Source/File.h>
 #include <MCore/Source/Vector.h>
-#include <MCore/Source/Quaternion.h>
 #include <MCore/Source/MultiThreadManager.h>
 #include <EMotionFX/Source/AnimGraphObjectIds.h>
 #include "KeyTrackLinearDynamic.h"
 #include "EventInfo.h"
+
+namespace AZ
+{
+    class ReflectContext;
+}
 
 namespace EMotionFX
 {
@@ -46,14 +51,18 @@ namespace EMotionFX
     class EMFX_API Recorder
         : public BaseObject
     {
-        AZ_CLASS_ALLOCATOR_DECL
-
     public:
+        AZ_CLASS_ALLOCATOR_DECL
+        AZ_TYPE_INFO(EMotionFX::Recorder, "{4A398AA0-D7CD-48F5-937A-BECF57887DDD}")
+
         /**
          * The recording settings.
          */
         struct EMFX_API RecordSettings
         {
+            AZ_CLASS_ALLOCATOR_DECL
+            AZ_TYPE_INFO(EMotionFX::Recorder::RecordSettings, "{A3F9D69E-3543-4B9D-B6F1-C0D5BAB1EDB1}");
+
             MCore::Array<ActorInstance*>        mActorInstances;              /**< The actor instances to record, or specify none to record all (default=record all). */
             AZStd::unordered_set<AZ::TypeId>    mNodeHistoryTypes;            /**< The array of type node type IDs to capture. Empty array means everything. */
             AZStd::unordered_set<AZ::TypeId>    mNodeHistoryTypesToIgnore;    /**< The array of type node type IDs to NOT capture. Empty array means nothing to ignore. */
@@ -67,6 +76,7 @@ namespace EMotionFX
             bool    mRecordScale;                   /**< Record scale changes when recording transforms? */
             bool    mRecordEvents;                  /**< Record events (default=false). */
             bool    mRecordMorphs;                  /**< Record morph target weight animation (default=true). */
+            bool    mInterpolate;                   /**< Interpolate playback? (default=false) */
 
             RecordSettings()
             {
@@ -80,26 +90,12 @@ namespace EMotionFX
                 mRecordEvents               = false;
                 mRecordScale                = true;
                 mRecordMorphs               = true;
+                mInterpolate                = false;
             }
+
+            static void Reflect(AZ::ReflectContext* context);
         };
 
-        /**
-         * The settings used when saving the recorded data to a file.
-         */
-        struct EMFX_API SaveSettings
-        {
-            MCore::Array<ActorInstance*>    mActorInstances;    /**< The actor instances to save. Leave empty to save all that where recorded (default=save all). */
-            bool    mCompress;                                  /**< Save to the file using compression? (default=true) */
-            bool    mSaveTransforms;                            /**< Shall we save the transforms? (default=true) */
-            bool    mSaveAnimGraphStates;                      /**< Shall we save the animgraph states? (default=true) */
-
-            SaveSettings()
-            {
-                mCompress               = true;
-                mSaveTransforms         = true;
-                mSaveAnimGraphStates   = true;
-            }
-        };
 
         struct EMFX_API EventHistoryItem
         {
@@ -186,13 +182,17 @@ namespace EMotionFX
             friend bool operator==(const ExtractedNodeHistoryItem& a, const ExtractedNodeHistoryItem& b)    { return (a.mValue == b.mValue); }
         };
 
-        struct EMFX_API TransformTracks
+        struct EMFX_API TransformTracks final
         {
-            KeyTrackLinearDynamic<AZ::PackedVector3f, AZ::PackedVector3f>                   mPositions;
-            KeyTrackLinearDynamic<MCore::Quaternion, MCore::Compressed16BitQuaternion>      mRotations;
+            AZ_TYPE_INFO(EMotionFX::Recorder::TransformTracks, "{1ED907A9-EBA5-4317-86BD-4A05B145E903}");
+
+            static void Reflect(AZ::ReflectContext* context);
+
+            KeyTrackLinearDynamic<AZ::Vector3, AZ::Vector3>                                 mPositions;
+            KeyTrackLinearDynamic<AZ::Quaternion, AZ::Quaternion>                           mRotations;
 
             #ifndef EMFX_SCALE_DISABLED
-            KeyTrackLinearDynamic<AZ::PackedVector3f, AZ::PackedVector3f>                   mScales;
+            KeyTrackLinearDynamic<AZ::Vector3, AZ::Vector3>                                 mScales;
             #endif
         };
 
@@ -251,11 +251,14 @@ namespace EMotionFX
             }
         };
 
-        struct EMFX_API ActorInstanceData
+        struct EMFX_API ActorInstanceData final
         {
+            AZ_TYPE_INFO(EMotionFX::Recorder::ActorInstanceData, "{955A7EF9-5DC6-4548-BB72-10C974CF3886}");
+            AZ_CLASS_ALLOCATOR_DECL
+
             ActorInstance*                          mActorInstance;         // the actor instance this data is about
             AnimGraphInstanceData*                  mAnimGraphData;         // the anim graph instance data
-            MCore::Array<TransformTracks>           mTransformTracks;       // the transformation tracks, one for each node
+            AZStd::vector<TransformTracks>          m_transformTracks;       // the transformation tracks, one for each node
             MCore::Array<NodeHistoryItem*>          mNodeHistoryItems;      // node history items
             MCore::Array<EventHistoryItem*>         mEventHistoryItems;     // event history item
             TransformTracks                         mActorLocalTransform;   // the actor instance's local transformation
@@ -265,7 +268,6 @@ namespace EMotionFX
             {
                 mNodeHistoryItems.SetMemoryCategory(EMFX_MEMCATEGORY_RECORDER);
                 mEventHistoryItems.SetMemoryCategory(EMFX_MEMCATEGORY_RECORDER);
-                mTransformTracks.SetMemoryCategory(EMFX_MEMCATEGORY_RECORDER);
                 mMorphTracks.SetMemoryCategory(EMFX_MEMCATEGORY_RECORDER);
                 mNodeHistoryItems.Reserve(64);
                 mEventHistoryItems.Reserve(1024);
@@ -294,7 +296,14 @@ namespace EMotionFX
 
                 delete mAnimGraphData;
             }
+
+            static void Reflect(AZ::ReflectContext* context);
         };
+
+        Recorder();
+        ~Recorder() override;
+
+        static void Reflect(AZ::ReflectContext* context);
 
         static Recorder* Create();
 
@@ -305,9 +314,8 @@ namespace EMotionFX
         void Update(float timeDelta);
         void StopRecording(bool lock = true);
         void OptimizeRecording();
-        bool SaveToFile(const char* outFile, const SaveSettings& settings);
-        bool SaveToFile(MCore::File& file, const SaveSettings& settings);
-        uint32 CalcMemoryUsage() const;
+        bool SaveToFile(const char* outFile);
+        static Recorder* LoadFromFile(const char* filename);
 
         void RemoveActorInstanceFromRecording(ActorInstance* actorInstance);
         void RemoveAnimGraphFromRecording(AnimGraph* animGraph);
@@ -325,10 +333,11 @@ namespace EMotionFX
         MCORE_INLINE bool GetHasRecorded(ActorInstance* actorInstance)  const                   { return mRecordSettings.mActorInstances.Contains(actorInstance); }
         MCORE_INLINE const RecordSettings& GetRecordSettings() const                            { return mRecordSettings; }
         const AZ::Uuid& GetSessionUuid() const                                                  { return m_sessionUuid; }
+        const AZStd::vector<float>& GetTimeDeltas()                                             { return m_timeDeltas; }
 
-        MCORE_INLINE uint32 GetNumActorInstanceDatas() const                                    { return mActorInstanceDatas.GetLength(); }
-        MCORE_INLINE ActorInstanceData& GetActorInstanceData(uint32 index)                      { return *mActorInstanceDatas[index]; }
-        MCORE_INLINE const ActorInstanceData& GetActorInstanceData(uint32 index) const          { return *mActorInstanceDatas[index]; }
+        MCORE_INLINE size_t GetNumActorInstanceDatas() const                                    { return m_actorInstanceDatas.size(); }
+        MCORE_INLINE ActorInstanceData& GetActorInstanceData(uint32 index)                      { return *m_actorInstanceDatas[index]; }
+        MCORE_INLINE const ActorInstanceData& GetActorInstanceData(uint32 index) const          { return *m_actorInstanceDatas[index]; }
         uint32 FindActorInstanceDataIndex(ActorInstance* actorInstance) const;
 
         uint32 CalcMaxNodeHistoryTrackIndex(const ActorInstanceData& actorInstanceData) const;
@@ -350,7 +359,8 @@ namespace EMotionFX
 
     private:
         RecordSettings                          mRecordSettings;
-        MCore::Array<ActorInstanceData*>        mActorInstanceDatas;
+        AZStd::vector<ActorInstanceData*>       m_actorInstanceDatas;
+        AZStd::vector<float>                    m_timeDeltas; // The value of the time deltas whenever a key is made
         MCore::Array<AnimGraphObject*>          mObjects;
         MCore::Array<AnimGraphNode*>            mActiveNodes;       /**< A temp array to store active animgraph nodes in. */
         MCore::Mutex                            mLock;
@@ -362,20 +372,16 @@ namespace EMotionFX
         bool                                    mIsInPlayMode;
         bool                                    mAutoPlay;
 
-        Recorder();
-        ~Recorder();
-
         void PrepareForRecording();
         void RecordMorphs();
-        void RecordCurrentFrame();
+        void RecordCurrentFrame(float timeDelta);
         void RecordCurrentTransforms();
         bool RecordCurrentAnimGraphStates();
         void RecordMainLocalTransforms();
         void RecordEvents();
         void UpdateNodeHistoryItems();
-        void OptimizeTransforms();
-        void OptimizeAnimGraphStates();
-        void AddTransformKey(TransformTracks& track, const AZ::Vector3& pos, const MCore::Quaternion rot, const AZ::Vector3& scale);
+        void ShrinkTransformTracks();
+        void AddTransformKey(TransformTracks& track, const AZ::Vector3& pos, const AZ::Quaternion& rot, const AZ::Vector3& scale);
         void SampleAndApplyTransforms(float timeInSeconds, uint32 actorInstanceIndex) const;
         void SampleAndApplyMainTransform(float timeInSeconds, uint32 actorInstanceIndex) const;
         void SampleAndApplyAnimGraphStates(float timeInSeconds, const AnimGraphInstanceData& animGraphInstanceData) const;

@@ -70,6 +70,9 @@ namespace ScriptCanvas
 
     void VariableDatumBase::OnValueChanged()
     {
-        VariableNotificationBus::Event(m_id, &VariableNotifications::OnVariableValueChanged);
+        if (m_signalValueChanges)
+        {
+            VariableNotificationBus::Event(m_id, &VariableNotifications::OnVariableValueChanged);
+        }
     }
 }

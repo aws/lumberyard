@@ -9,7 +9,6 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#ifndef AZ_UNITY_BUILD
 
 #include <AzCore/Math/IntersectSegment.h>
 
@@ -2116,5 +2115,3 @@ namespace test
 }
 //////////////////////////////////////////////////////////////////////////
 #endif
-
-#endif // #ifndef AZ_UNITY_BUILD

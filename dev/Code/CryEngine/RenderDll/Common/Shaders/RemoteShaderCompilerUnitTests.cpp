@@ -11,9 +11,9 @@
 */
 #include "StdAfx.h"
 #include <AzTest/AzTest.h>
-#include <AzCore/UnitTest/UnitTest.h>
+#include <AzCore/UnitTest/TestTypes.h>
 #include <AzCore/Memory/AllocatorScope.h>
-#include <Tests/TestTypes.h>
+#include <AzCore/UnitTest/UnitTest.h>
 #include "Mocks/IConsoleMock.h"
 #include "Mocks/ICVarMock.h"
 #include "Mocks/ISystemMock.h"
@@ -125,9 +125,9 @@ namespace NRemoteCompiler
     {
         EXPECT_CALL(m_data->m_cvarMock, GetString());
 
-        AZ_TEST_START_ASSERTTEST;
+        AZ_TEST_START_TRACE_SUPPRESSION;
         ShaderSrvUnitTestAccessor srv;
-        AZ_TEST_STOP_ASSERTTEST(1);
+        AZ_TEST_STOP_TRACE_SUPPRESSION(1);
     }
 
     TEST_F(RemoteCompilerTest, CShaderSrv_Constructor_WithValidGameName_Succeeds)
@@ -150,9 +150,9 @@ namespace NRemoteCompiler
 
         std::vector<uint8> testVector;
 
-        AZ_TEST_START_ASSERTTEST;
+        AZ_TEST_START_TRACE_SUPPRESSION;
         EXPECT_FALSE(srv.EncapsulateRequestInEngineConnectionProtocol(testVector)); // empty vector error condition
-        AZ_TEST_STOP_ASSERTTEST(1); // expect the above to have thrown an AZ_ERROR
+        AZ_TEST_STOP_TRACE_SUPPRESSION(1); // expect the above to have thrown an AZ_ERROR
     }
 
     TEST_F(RemoteCompilerTest, CShaderSrv_EncapsulateRequestInEngineConnectionProtocol_ValidData_EmptyServerList_Fails)
@@ -171,9 +171,9 @@ namespace NRemoteCompiler
         std::string testString("_-=!-");
         testVector.insert(testVector.begin(), testString.begin(), testString.end());
 
-        AZ_TEST_START_ASSERTTEST;
+        AZ_TEST_START_TRACE_SUPPRESSION;
         EXPECT_FALSE(srv.EncapsulateRequestInEngineConnectionProtocol(testVector)); // empty vector error condition
-        AZ_TEST_STOP_ASSERTTEST(1); // expect the above to have thrown an AZ_ERROR
+        AZ_TEST_STOP_TRACE_SUPPRESSION(1); // expect the above to have thrown an AZ_ERROR
     }
 
     TEST_F(RemoteCompilerTest, CShaderSrv_EncapsulateRequestInEngineConnectionProtocol_ValidInputs_Succeeds)
@@ -215,11 +215,11 @@ namespace NRemoteCompiler
         std::string testString("empty");
 
         // test for empty data - recvfailed expected (error emitted)
-        AZ_TEST_START_ASSERTTEST;
+        AZ_TEST_START_TRACE_SUPPRESSION;
         testString = "empty";
         testVector.assign(testString.begin(), testString.end());
         EXPECT_EQ(srv.SendRequestViaEngineConnection(testVector), EServerError::ESRecvFailed);
-        AZ_TEST_STOP_ASSERTTEST(1);
+        AZ_TEST_STOP_TRACE_SUPPRESSION(1);
     }
 
     TEST_F(RemoteCompilerTest, CShaderSrv_SendRequestViaEngineConnection_IncompleteData_Fails)
@@ -241,9 +241,9 @@ namespace NRemoteCompiler
         testVector.assign(testString.begin(), testString.end());
 
         // test for incomplete data - recvfailed expected
-        AZ_TEST_START_ASSERTTEST;
+        AZ_TEST_START_TRACE_SUPPRESSION;
         EXPECT_EQ(srv.SendRequestViaEngineConnection(testVector), EServerError::ESRecvFailed);
-        AZ_TEST_STOP_ASSERTTEST(1);
+        AZ_TEST_STOP_TRACE_SUPPRESSION(1);
     }
 
     TEST_F(RemoteCompilerTest, CShaderSrv_SendRequestViaEngineConnection_CorruptData_Fails)
@@ -265,9 +265,9 @@ namespace NRemoteCompiler
         testVector.assign(testString.begin(), testString.end());
 
         // test for incomplete data - recvfailed expected
-        AZ_TEST_START_ASSERTTEST;
+        AZ_TEST_START_TRACE_SUPPRESSION;
         EXPECT_EQ(srv.SendRequestViaEngineConnection(testVector), EServerError::ESRecvFailed);
-        AZ_TEST_STOP_ASSERTTEST(1);
+        AZ_TEST_STOP_TRACE_SUPPRESSION(1);
     }
 
     TEST_F(RemoteCompilerTest, CShaderSrv_SendRequestViaEngineConnection_CompileError_Fails_ReturnsText)

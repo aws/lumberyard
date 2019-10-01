@@ -12,6 +12,7 @@
 #pragma once
 
 #include <AzCore/Component/ComponentBus.h>
+#include <LyShine/UiLayoutCellBase.h>
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 class UiLayoutCellDefaultInterface
@@ -28,10 +29,12 @@ public: // member functions
     virtual float GetMinHeight() = 0;
 
     //! Get the target width
-    virtual float GetTargetWidth() = 0;
+    //! \param maxWidth A width that the element will not surpass. LyShine::UiLayoutCellUnspecifiedSize means no max 
+    virtual float GetTargetWidth(float maxWidth) = 0;
 
     //! Get the target height
-    virtual float GetTargetHeight() = 0;
+    //! \param maxHeight A height that the element will not surpass. LyShine::UiLayoutCellUnspecifiedSize means no max
+    virtual float GetTargetHeight(float maxHeight) = 0;
 
     //! Get the extra width ratio
     virtual float GetExtraWidthRatio() = 0;

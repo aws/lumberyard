@@ -40,7 +40,7 @@ namespace Driller
             AZ::SerializeContext* serialize = azrtti_cast<AZ::SerializeContext*>(context);
             if (serialize)
             {
-                serialize->Class<MemoryDataAggregatorSavedState, AZ::UserSettings>()
+                serialize->Class<MemoryDataAggregatorSavedState>()
                     ->Field("m_activeViewCount", &MemoryDataAggregatorSavedState::m_activeViewCount)
                     ->Version(2);
             }

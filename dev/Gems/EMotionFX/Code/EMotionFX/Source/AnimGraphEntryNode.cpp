@@ -38,7 +38,6 @@ namespace EMotionFX
     {
     }
 
-
     bool AnimGraphEntryNode::InitAfterLoading(AnimGraph* animGraph)
     {
         if (!AnimGraphNode::InitAfterLoading(animGraph))
@@ -52,103 +51,69 @@ namespace EMotionFX
         return true;
     }
 
-
-    // get the palette name
     const char* AnimGraphEntryNode::GetPaletteName() const
     {
         return "Entry";
     }
 
-
-    // get the category
     AnimGraphObject::ECategory AnimGraphEntryNode::GetPaletteCategory() const
     {
         return AnimGraphObject::CATEGORY_SOURCES;
     }
 
-
-    // a helper function to get the source node
-    AnimGraphNode* AnimGraphEntryNode::FindSourceNode(AnimGraphInstance* animGraphInstance)
+    AnimGraphNode* AnimGraphEntryNode::FindSourceNode(AnimGraphInstance* animGraphInstance) const
     {
-        // get the parent node and check if it is a state machine
-        AnimGraphNode* parentNode = GetParentNode();
-        MCORE_ASSERT(azrtti_typeid(parentNode) == azrtti_typeid<AnimGraphStateMachine>());
-
-        // get the parent of the state machine where this pass-through node is in
-        AnimGraphNode* stateMachineParentNode = parentNode->GetParentNode();
-        if (azrtti_typeid(stateMachineParentNode) == azrtti_typeid<AnimGraphStateMachine>())
+        AnimGraphStateMachine* grandParentStateMachine = AnimGraphStateMachine::GetGrandParentStateMachine(this);
+        if (grandParentStateMachine)
         {
-            // cast the parent of the state machine where this pass-through node is in to a state machine
-            AnimGraphStateMachine* stateMachineParent = static_cast<AnimGraphStateMachine*>(stateMachineParentNode);
-            return stateMachineParent->GetCurrentState(animGraphInstance);
+            return grandParentStateMachine->GetCurrentState(animGraphInstance);
         }
 
         return nullptr;
     }
 
-
-    // perform the calculations / actions
     void AnimGraphEntryNode::Output(AnimGraphInstance* animGraphInstance)
     {
-        AnimGraphPose* outputPose;
+        RequestPoses(animGraphInstance);
+        AnimGraphPose* outputPose = GetOutputPose(animGraphInstance, OUTPUTPORT_RESULT)->GetValue();
 
         // we only need to get the pose from the source node for the cases where the source node is valid (not null) and 
         // is not the parent node (since the source of the parent state machine is the binding pose)
         AnimGraphNode* sourceNode = FindSourceNode(animGraphInstance);
-        if (!sourceNode)
+        if (sourceNode && sourceNode != GetParentNode())
         {
-            RequestPoses(animGraphInstance);
-            outputPose = GetOutputPose(animGraphInstance, OUTPUTPORT_RESULT)->GetValue();
-            outputPose->InitFromBindPose(animGraphInstance->GetActorInstance());
+            if (GetEMotionFX().GetIsInEditorMode())
+            {
+                SetHasError(animGraphInstance, false);
+            }
 
+            OutputIncomingNode(animGraphInstance, sourceNode);
+            *outputPose = *sourceNode->GetMainOutputPose(animGraphInstance);
+        }
+        else
+        {
             if (GetEMotionFX().GetIsInEditorMode())
             {
                 SetHasError(animGraphInstance, true);
             }
-            return;
-        }
-        else if (sourceNode == GetParentNode())
-        {
-            RequestPoses(animGraphInstance);
-            outputPose = GetOutputPose(animGraphInstance, OUTPUTPORT_RESULT)->GetValue();
+
             outputPose->InitFromBindPose(animGraphInstance->GetActorInstance());
-
-            // visualize it
-            if (GetEMotionFX().GetIsInEditorMode() && GetCanVisualize(animGraphInstance))
-            {
-                animGraphInstance->GetActorInstance()->DrawSkeleton(outputPose->GetPose(), mVisualizeColor);
-            }
-            return;
         }
 
-        if (GetEMotionFX().GetIsInEditorMode())
-        {
-            SetHasError(animGraphInstance, false);
-        }
+        // We moved ownership of decreasing the ref to the parent parent state machine as it might happen that within one of the multiple
+        // passes the state machine is doing, the entry node is transitioned over while we never reach the decrease ref point.
+        //sourceNode->DecreaseRef(animGraphInstance);
 
-        OutputIncomingNode(animGraphInstance, sourceNode);
-
-        RequestPoses(animGraphInstance);
-        outputPose = GetOutputPose(animGraphInstance, OUTPUTPORT_RESULT)->GetValue();
-        *outputPose = *sourceNode->GetMainOutputPose(animGraphInstance);
-
-        sourceNode->DecreaseRef(animGraphInstance);
-
-        // visualize it
         if (GetEMotionFX().GetIsInEditorMode() && GetCanVisualize(animGraphInstance))
         {
             animGraphInstance->GetActorInstance()->DrawSkeleton(outputPose->GetPose(), mVisualizeColor);
         }
     }
 
-
-
-    // update
     void AnimGraphEntryNode::Update(AnimGraphInstance* animGraphInstance, float timePassedInSeconds)
     {
         AnimGraphNodeData* uniqueData = FindUniqueNodeData(animGraphInstance);
 
-        // find the source node
         AnimGraphNode* sourceNode = FindSourceNode(animGraphInstance);
         if (!sourceNode || sourceNode == GetParentNode())
         {
@@ -156,14 +121,20 @@ namespace EMotionFX
             return;
         }
 
-        sourceNode->IncreasePoseRefCount(animGraphInstance);
-        sourceNode->IncreaseRefDataRefCount(animGraphInstance);
+        AnimGraphStateMachine* grandParentStateMachine = AnimGraphStateMachine::GetGrandParentStateMachine(this);
+        if (grandParentStateMachine)
+        {
+            // As the entry node passes the transforms from the source node of the currently active transition in the grand parent state machine,
+            // we will transfer ownership of the ref counting to it to make sure it will be decreased properly.
+            AnimGraphStateMachine::UniqueData* parentUniqueData = static_cast<AnimGraphStateMachine::UniqueData*>(grandParentStateMachine->FindUniqueNodeData(animGraphInstance));
+            parentUniqueData->IncreasePoseRefCountForNode(sourceNode, animGraphInstance);
+            parentUniqueData->IncreaseDataRefCountForNode(sourceNode, animGraphInstance);
+        }
+
         UpdateIncomingNode(animGraphInstance, sourceNode, timePassedInSeconds);
         uniqueData->Init(animGraphInstance, sourceNode);
     }
 
-
-    // top down update
     void AnimGraphEntryNode::TopDownUpdate(AnimGraphInstance* animGraphInstance, float timePassedInSeconds)
     {
         // find the source node
@@ -180,11 +151,8 @@ namespace EMotionFX
         sourceNode->PerformTopDownUpdate(animGraphInstance, timePassedInSeconds);
     }
 
-
-    // post update
     void AnimGraphEntryNode::PostUpdate(AnimGraphInstance* animGraphInstance, float timePassedInSeconds)
     {
-        // find the source node
         AnimGraphNode* sourceNode = FindSourceNode(animGraphInstance);
         if (!sourceNode || sourceNode == GetParentNode())
         {
@@ -209,9 +177,10 @@ namespace EMotionFX
         data->SetTrajectoryDelta(sourceData->GetTrajectoryDelta());
         data->SetTrajectoryDeltaMirrored(sourceData->GetTrajectoryDeltaMirrored());
 
-        sourceNode->DecreaseRefDataRef(animGraphInstance);
+        // We moved ownership of decreasing the ref to the parent parent state machine as it might happen that within one of the multiple
+        // passes the state machine is doing, the entry node is transitioned over while we never reach the decrease ref point.
+        //sourceNode->DecreaseRefDataRef(animGraphInstance);
     }
-
 
     void AnimGraphEntryNode::Reflect(AZ::ReflectContext* context)
     {

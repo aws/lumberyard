@@ -56,7 +56,7 @@ namespace LmbrCentral
                 editContext->Class<EditorSkinnedMeshComponent>("Skinned Mesh", "The Skinned Mesh component is the primary way to add animated visual geometry to entities")
                     ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
                         ->Attribute(AZ::Edit::Attributes::Category, "Animation (Legacy)")
-                        ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/SkinnedMesh.png")
+                        ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/SkinnedMesh.svg")
                         ->Attribute(AZ::Edit::Attributes::PrimaryAssetType, AZ::AzTypeInfo<LmbrCentral::CharacterDefinitionAsset>::Uuid())
                         ->Attribute(AZ::Edit::Attributes::ViewportIcon, "Editor/Icons/Components/Viewport/SkinnedMesh.png")
                         ->Attribute(AZ::Edit::Attributes::PreferNoViewportIcon, true)

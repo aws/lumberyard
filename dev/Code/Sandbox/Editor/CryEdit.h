@@ -101,6 +101,35 @@ public:
         ECLR_MAX_PATH_EXCEEDED
     };
 
+    enum class TerrainTextureExportTechnique
+    {
+        NoExport,
+        UseDefault,
+        PromptUser
+    };
+
+    struct TerrainTextureExportSettings
+    {
+        TerrainTextureExportSettings() = default;
+
+        static constexpr uint32 DefaultTextureResolution = 4096;
+
+        TerrainTextureExportSettings(TerrainTextureExportTechnique exportType) :
+            m_exportType(exportType)
+        {
+        }
+
+        TerrainTextureExportSettings(TerrainTextureExportTechnique exportType, uint32 resolution) :
+            m_exportType(exportType),
+            m_defaultResolution(resolution)
+        {
+        }
+
+        TerrainTextureExportTechnique m_exportType = TerrainTextureExportTechnique::PromptUser;
+        uint32 m_defaultResolution = DefaultTextureResolution;
+
+    };
+
     CCryEditApp();
     ~CCryEditApp();
 
@@ -122,13 +151,13 @@ public:
     void EnableAccelerator(bool bEnable);
     void SaveAutoBackup();
     void SaveAutoRemind();
-    void ExportToGame(bool bShowText = false, bool bNoMsgBox = true);
+    void ExportToGame(const TerrainTextureExportSettings& terrainTextureSettings, bool bNoMsgBox = true);
     //! \param sTitleStr overwrites the default title - "Sandbox Editor 3 (tm)"
     void SetEditorWindowTitle(QString sTitleStr = QString(), QString sPreTitleStr = QString(), QString sPostTitleStr = QString());
     BOOL RegDelnodeRecurse(HKEY hKeyRoot, LPTSTR lpSubKey);
     RecentFileList* GetRecentFileList();
     virtual void AddToRecentFileList(const QString& lpszPathName);
-    ECreateLevelResult CreateLevel(const QString& levelName, int resolution, int unitSize, bool bUseTerrain, QString& fullyQualifiedLevelName);
+    ECreateLevelResult CreateLevel(const QString& levelName, int resolution, int unitSize, bool bUseTerrain, QString& fullyQualifiedLevelName, const TerrainTextureExportSettings& terrainTextureSettings);
     void CloseCurrentLevel();
     static void InitDirectory();
     BOOL FirstInstance(bool bForceNewInstance = false);
@@ -201,6 +230,7 @@ public:
     void OnAWSGameliftGetStarted();
     void OnAWSGameliftTrialWizard();
     void OnAWSCognitoConsole();
+    void OnAWSDeviceFarmConsole();
     void OnAWSDynamoDBConsole();
     void OnAWSS3Console();
     void OnAWSLambdaConsole();
@@ -222,7 +252,8 @@ public:
     void TerrainTextureExport();
     void RefineTerrainTextureTiles();
     void ToolTexture();
-    void GenerateTerrainTexture();
+    void GenerateTerrainTextureWithPrompts();
+    void GenerateTerrainTexture(const TerrainTextureExportSettings& exportSettings);
     void OnUpdateGenerateTerrainTexture(QAction* action);
     void GenerateTerrain();
     void OnUpdateGenerateTerrain(QAction* action);
@@ -241,6 +272,7 @@ public:
     void OnFileExportToGameNoSurfaceTexture();
     void OnEditInsertObject();
     void OnViewSwitchToGame();
+    void OnViewDeploy();
     void OnEditSelectAll();
     void OnEditSelectNone();
     void OnEditDelete();
@@ -409,7 +441,7 @@ private:
     void TagLocation(int index);
     void GotoTagLocation(int index);
     void LoadTagLocations();
-    bool UserExportToGame(bool bExportTexture, bool bReloadTerrain, bool bShowText = false, bool bNoMsgBox = true);
+    bool UserExportToGame(const TerrainTextureExportSettings& terrainTextureSettings, bool bReloadTerrain, bool bNoMsgBox = true);
     static UINT LogoThread(LPVOID pParam);
     static void ShowSplashScreen(CCryEditApp* app);
     static void CloseSplashScreen();

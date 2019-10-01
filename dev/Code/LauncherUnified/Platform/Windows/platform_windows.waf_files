@@ -1,0 +1,11 @@
+{
+    "none":
+    {
+        "Source/Platform/Windows":
+        [
+            "Launcher_Windows.cpp",
+            "Launcher_Traits_Windows.h",
+            "Launcher_Traits_Platform.h"
+        ]
+    }
+}

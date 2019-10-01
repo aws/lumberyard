@@ -619,10 +619,10 @@ bool CShaderMan::mfParseFXTexture(
     SCGTexture CGpr;
     if (pr->m_Semantic.empty())
     {   // No texture semantic is assigned - assign textures according to usage ($, # or name)
-		// Semantic is the name text associated with the resource in the shader right after 
-		// the name of the resource.
-		// Example:   
-		//  Texture2D <uint> sceneDepthSampler : TS_ZTarget; - here TS_ZTarget is the semantic
+        // Semantic is the name text associated with the resource in the shader right after 
+        // the name of the resource.
+        // Example:   
+        //  Texture2D <uint> sceneDepthSampler : TS_ZTarget; - here TS_ZTarget is the semantic
         if (pr->m_szTexture.size())
         {
             const char* nameTex = pr->m_szTexture.c_str();
@@ -698,7 +698,7 @@ bool SShaderParam::GetValue(const char* szName, DynArrayRef<SShaderParam>* Param
             continue;
         }
 
-        if (sp->m_Name == szName)
+        if (azstricmp(sp->m_Name.c_str(), szName) == 0)
         {
             bRes = true;
             switch (sp->m_Type)

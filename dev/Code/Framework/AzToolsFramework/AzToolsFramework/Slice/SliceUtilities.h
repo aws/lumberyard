@@ -231,15 +231,17 @@ namespace AzToolsFramework
         /**
         * Get pushable new child entity Ids
         * \param entityIdList input entities
-        * \param unpushableNewChildEntityIds [out] unpushable new child entity Ids from the input entities
+        * \param unpushableEntityIdsPerAsset [out] unpushable new child entity Ids for each potential ancestor
         * \param sliceAncestryMapping [out] mappings from the entity id to the slice ancestry to push to
         * \param newChildEntityIdAncestorPairs [out] Pairs of new child entity Id and the entity ancestor list
+        * \param newEntityIds [out] Set of all added newly entityIds, whether pushable or not
         */
         AZStd::unordered_set<AZ::EntityId> GetPushableNewChildEntityIds(
             const AzToolsFramework::EntityIdList& entityIdList,
-            EntityIdSet& unpushableNewChildEntityIds,
+            AZStd::unordered_map<AZ::Data::AssetId, EntityIdSet>& unpushableEntityIdsPerAsset,
             AZStd::unordered_map<AZ::EntityId, AZ::SliceComponent::EntityAncestorList>& sliceAncestryMapping,
-            AZStd::vector<AZStd::pair<AZ::EntityId, AZ::SliceComponent::EntityAncestorList>>& newChildEntityIdAncestorPairs);
+            AZStd::vector<AZStd::pair<AZ::EntityId, AZ::SliceComponent::EntityAncestorList>>& newChildEntityIdAncestorPairs,
+            EntityIdSet& newEntityIds);
 
         /**
         * Get unique removed entities
@@ -517,13 +519,14 @@ namespace AzToolsFramework
         */
         bool CountPushableChangesToSlice(const AzToolsFramework::EntityIdList& inputEntities,
             const InstanceDataNode::Address* fieldAddress,
-            AZStd::unordered_set<AZ::EntityId>& entitiesToAdd,
+            AZStd::unordered_map<AZ::Data::AssetId, EntityIdSet>& entitiesToAddPerAsset,
             AZStd::unordered_set<AZ::EntityId>& entitiesToRemove,
             size_t& numRelevantEntitiesInSlices,
-            AZStd::unordered_map<AZ::Data::AssetId, int>& pushableChangesPerAsset,
+            AZStd::unordered_map<AZ::Data::AssetId, int>& numPushableChangesPerAsset,
             AZStd::vector<AZ::Data::AssetId>& sliceDisplayOrder,
             AZStd::unordered_map<AZ::Data::AssetId, AZStd::vector<EntityAncestorPair>>& assetEntityAncestorMap,
-            EntityIdSet& unpushableEntityIds);
+            AZStd::unordered_map < AZ::Data::AssetId, AZStd::unordered_set<AZ::EntityId>>& pushableEntityIdsPerAsset,
+            AZStd::unordered_map<AZ::Data::AssetId, EntityIdSet>&unpushableEntityIdsPerAsset);
 
         /**
         * Returns the file extension (including .) used for slices.

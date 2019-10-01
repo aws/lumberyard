@@ -3206,7 +3206,7 @@ TEST_F(Integ_ReplicationSecurityOptionsTest, ReplicationSecurityOptionsTest)
 
             if (tick == 200)
             {
-                AZ_TEST_START_ASSERTTEST;
+                AZ_TEST_START_TRACE_SUPPRESSION;
                 for (int i = 0; i < nSessions; ++i)
                 {
                     sessions[s1].GetReplicaMgr().FindReplica(masters[i]->GetRepId())->FindReplicaChunk<TestChunk>()->ForwardSourcePeerRpcFromS1();
@@ -3219,7 +3219,7 @@ TEST_F(Integ_ReplicationSecurityOptionsTest, ReplicationSecurityOptionsTest)
             {
                 // The previous test should have triggered the following assert twice:
                 // ReplicaChunk.cpp(449): AZ_Assert(false, "Discarding non-authoritative RPC <%s> because s_allowNonAuthoritativeRequestRelay trait is disabled!", GetDescriptor()->GetRpcName(this, rpc));
-                AZ_TEST_STOP_ASSERTTEST(2);
+                AZ_TEST_STOP_TRACE_SUPPRESSION(2);
 
                 // All chunks should have received the call from the host
                 AZ_TEST_ASSERT(masters[s1]->FindReplicaChunk<TestChunk>()->m_nForwardSourcePeerRpcCallsFromS1 == 1);
@@ -3257,7 +3257,7 @@ TEST_F(Integ_ReplicationSecurityOptionsTest, ReplicationSecurityOptionsTest)
 
             if (tick == 400)
             {
-                AZ_TEST_START_ASSERTTEST;
+                AZ_TEST_START_TRACE_SUPPRESSION;
                 for (int i = 0; i < nSessions; ++i)
                 {
                     sessions[s1].GetReplicaMgr().FindReplica(masters[i]->GetRepId())->FindReplicaChunk<TestChunk>()->AuthoritativeOnlyRpcFromS1();
@@ -3270,7 +3270,7 @@ TEST_F(Integ_ReplicationSecurityOptionsTest, ReplicationSecurityOptionsTest)
             {
                 // The previous test should have triggered the following assert six times:
                 // ReplicaChunk.cpp(444): AZ_Assert(false, "Discarding non-authoritative RPC <%s> because s_allowNonAuthoritativeRequests trait is disabled!", GetDescriptor()->GetRpcName(this, rpc));
-                AZ_TEST_STOP_ASSERTTEST(6);
+                AZ_TEST_STOP_TRACE_SUPPRESSION(6);
 
                 // Each chunk should have received their own AuthoritativeOnlyRpc once.
                 AZ_TEST_ASSERT(masters[s1]->FindReplicaChunk<TestChunk>()->m_nAuthoritativeOnlyRpcCallsFromS1 == 1);

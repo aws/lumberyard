@@ -1,0 +1,7 @@
+{
+  "auto": {
+    "Platform/Mac": [
+      "../Common/Unimplemented/DxDiagCollectingComponent_Unimplemented.cpp"
+    ]
+  }
+}

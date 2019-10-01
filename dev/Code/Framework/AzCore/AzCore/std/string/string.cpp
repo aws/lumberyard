@@ -9,7 +9,6 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#ifndef AZ_UNITY_BUILD
 
 #define AZ_STRING_EXPLICIT_SPECIALIZATION
 #include <AzCore/std/string/string.h>
@@ -21,5 +20,3 @@ namespace AZStd
     template class basic_string<char>;
     //template class basic_string<wchar_t>;
 }
-
-#endif // AZ_UNITY_BUILD

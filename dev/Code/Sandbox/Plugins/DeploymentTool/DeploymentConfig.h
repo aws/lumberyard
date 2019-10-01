@@ -59,6 +59,7 @@ struct DeploymentConfig
         , m_useVFS(false)
         , m_shaderCompilerUseAP(false)
         , m_cleanDevice(false)
+        , m_localDevice(true)
     {
     }
 
@@ -82,4 +83,5 @@ struct DeploymentConfig
     bool m_useVFS;
     bool m_shaderCompilerUseAP;
     bool m_cleanDevice;
+    bool m_localDevice;
 };

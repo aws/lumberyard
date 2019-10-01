@@ -24,6 +24,7 @@
 #include <AzCore/IO/FileIO.h>
 #include "SimpleStringPool.h"
 #include "ZipDirStructures.h"
+#include "Codec.h"
 
 #ifndef OPTIMIZED_READONLY_ZIP_ENTRY
 
@@ -47,6 +48,7 @@ namespace ZipDir
         void AddRef();
         void Release();
 
+        static constexpr int compressedBlockHeaderSizeInBytes = 4; //number of bytes we need in front of the compressed block to indicate which compressor was used
 
         CacheRW()
             : m_fileHandle(AZ::IO::InvalidHandle)
@@ -78,7 +80,7 @@ namespace ZipDir
 
         // Adds a new file to the zip or update an existing one
         // adds a directory (creates several nested directories if needed)
-        ErrorEnum UpdateFile(const char* szRelativePath, void* pUncompressed, unsigned nSize, unsigned nCompressionMethod = ZipFile::METHOD_STORE, int nCompressionLevel = -1);
+        ErrorEnum UpdateFile(const char* szRelativePath, void* pUncompressed, unsigned nSize, unsigned nCompressionMethod = ZipFile::METHOD_STORE, int nCompressionLevel = -1, CompressionCodec::Codec codec = CompressionCodec::Codec::ZLIB);
 
         //   Adds a new file to the zip or update an existing one if it is not compressed - just stored  - start a big file
         ErrorEnum StartContinuousFileUpdate(const char* szRelativePath, unsigned nSize);
@@ -160,6 +162,7 @@ namespace ZipDir
 #ifdef SUPPORT_RSA_AND_STREAMCIPHER_PAK_ENCRYPTION
         unsigned char* GetBlockCipherKeyTable(const int index) { return m_block_cipher_keys_table[index]; }
 #endif
+        unsigned int GetCompressedSizeEstimate(unsigned int uncompressedSize, CompressionCodec::Codec codec);
 
     protected:
 

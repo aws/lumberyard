@@ -76,6 +76,7 @@ namespace EMotionFX
             CATEGORY_TRANSITIONCONDITIONS   = 11,
             CATEGORY_TRIGGERACTIONS         = 12
         };
+        static const char* GetCategoryName(ECategory category);
 
         enum ESyncMode : AZ::u8
         {
@@ -145,27 +146,6 @@ namespace EMotionFX
         MCORE_INLINE void SetAnimGraph(AnimGraph* animGraph)                            { mAnimGraph = animGraph; }
 
         virtual uint32 GetAnimGraphSaveVersion() const        { return 1; }
-
-        /**
-         * Get the size in bytes of the custom data which will be saved with the object.
-         * @return The size in bytes of the custom data.
-         */
-        virtual uint32 GetCustomDataSize() const        { return 0; }
-
-        /**
-         * Write the custom data which will be saved with the object.
-         * @param[in] stream A pointer to a stream to which the custom data will be saved to.
-         * @param[in] targetEndianType The endian type in which the custom data should be saved in.
-         */
-        virtual bool WriteCustomData(MCore::Stream* stream, MCore::Endian::EEndianType targetEndianType)            { MCORE_UNUSED(stream); MCORE_UNUSED(targetEndianType); return true; }
-
-        /**
-         * Read the custom data which got saved with the object.
-         * @param[in] stream A pointer to a stream from which the custom data will be read from.
-         * @param[in] version The version of the custom data.
-         * @param[in] endianType The endian type in which the custom data should be saved in.
-         */
-        virtual bool ReadCustomData(MCore::Stream* stream, uint32 version, MCore::Endian::EEndianType endianType)   { MCORE_UNUSED(stream); MCORE_UNUSED(version); MCORE_UNUSED(endianType); return true; }
 
         uint32 SaveUniqueData(const AnimGraphInstance* animGraphInstance, uint8* outputBuffer) const;  // save and return number of bytes written, when outputBuffer is nullptr only return num bytes it would write
         uint32 LoadUniqueData(const AnimGraphInstance* animGraphInstance, const uint8* dataBuffer);    // load and return number of bytes read, when dataBuffer is nullptr, 0 should be returned

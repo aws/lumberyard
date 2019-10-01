@@ -165,6 +165,7 @@ extern  AnimStatisticsInfo g_AnimStatisticsInfo;
 namespace LegacyCryAnimation
 {
     bool InitCharacterManager(const SSystemInitParams& initParams);
+    void ShutdownCharacterManager();
 }
 
 #define ENABLE_GET_MEMORY_USAGE 1

@@ -1,0 +1,10 @@
+{
+    "auto":
+    {
+        "Platform/AppleTV":
+        [
+            "OSVR_Traits_Platform.h",
+            "OSVR_Traits_AppleTV.h"
+        ]
+    }
+}

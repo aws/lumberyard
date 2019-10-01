@@ -302,7 +302,9 @@
             "SQLite/SQLiteConnection.cpp",
             "SQLite/SQLiteConnection.h",
             "SQLite/SQLiteQuery.cpp",
-            "SQLite/SQLiteQuery.h"
+            "SQLite/SQLiteQuery.h",
+            "SQLite/SQLiteBoundColumnSet.h",
+            "SQLite/SQLiteBoundColumnSet.cpp"
         ],
         "ToolsComponents": [
             "ToolsComponents/ComponentAssetMimeDataContainer.cpp",

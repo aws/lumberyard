@@ -92,7 +92,7 @@ namespace LmbrCentral
     };
 
     using MaterialOwnerRequestBus = AZ::EBus<MaterialOwnerRequests>;
-    
+
     /*!
      * Messages sent by components that support materials (e.g. Mesh, Decal).
      * We specifically chose the name "MaterialOwnerNotificationBus" rather than just "MaterialNotificationBus" to communicate

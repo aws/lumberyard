@@ -9,7 +9,6 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  *
  */
-#ifndef AZ_UNITY_BUILD
 
 #include <AzCore/Module/ModuleManager.h>
 
@@ -206,7 +205,11 @@ namespace AZ
             moduleHandlesOpen += modulePtr->GetDebugName();
             moduleHandlesOpen += "\n";
         }
-        AZ_Assert(m_notOwnedModules.empty(), "ModuleManager being destroyed, but module handles are still open:\n%s", moduleHandlesOpen.c_str());
+
+        if (!m_notOwnedModules.empty())
+        {
+            AZ_TracePrintf(s_moduleLoggingScope, "ModuleManager being destroyed, but non-owned module handles are still open:\n%s", moduleHandlesOpen.c_str());
+        }
 #endif // AZ_ENABLE_TRACING
 
         // Clear the weak modules list
@@ -776,4 +779,3 @@ namespace AZ
         m_systemComponents.insert(m_systemComponents.end(), componentsToActivate.begin(), componentsToActivate.end());
     }
 } // namespace AZ
-#endif // #ifndef AZ_UNITY_BUILD

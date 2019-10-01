@@ -1,0 +1,8 @@
+{
+  "auto": {
+    "Platform/Linux": [
+      "LegacyTime_Traits_Platform.h",
+      "LegacyTime_Traits_Linux.h"
+    ]
+  }
+}

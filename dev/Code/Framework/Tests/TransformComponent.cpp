@@ -10,12 +10,11 @@
 *
 */
 
-#include <Tests/TestTypes.h>
-
 #include <AzCore/Component/ComponentApplication.h>
 #include <AzCore/Math/Matrix3x3.h>
 #include <AzCore/Math/Random.h>
 #include <AzCore/Serialization/Utils.h>
+#include <AzCore/UnitTest/TestTypes.h>
 
 #include <AzFramework/Application/Application.h>
 #include <AzFramework/Components/TransformComponent.h>
@@ -238,9 +237,9 @@ namespace UnitTest
             AZ_TEST_ASSERT(t1.GetTranslation() == lookAtEye);
             AZ_TEST_ASSERT(t1.IsOrthogonal());
 
-            AZ_TEST_START_ASSERTTEST;
+            AZ_TEST_START_TRACE_SUPPRESSION;
             t1 = AZ::Transform::CreateLookAt(lookAtEye, lookAtEye); //degenerate direction
-            AZ_TEST_STOP_ASSERTTEST(1);
+            AZ_TEST_STOP_TRACE_SUPPRESSION(1);
             AZ_TEST_ASSERT(t1.IsOrthogonal());
             AZ_TEST_ASSERT(t1 == AZ::Transform::CreateIdentity());
 
@@ -717,7 +716,7 @@ namespace UnitTest
         TransformBus::Event(m_childId, &TransformBus::Events::SetLocalTranslation, childLocalPos);
         AZ::Vector3 expectedChildWorldPos = childLocalPos;
 
-        AZ::Vector3 parentLocalPos(65.24f, 10.65, 37.87f);
+        AZ::Vector3 parentLocalPos(65.24f, 10.65f, 37.87f);
         TransformBus::Event(m_parentId, &TransformBus::Events::SetLocalTranslation, parentLocalPos);
 
         TransformBus::Event(m_childId, &TransformBus::Events::SetParent, m_parentId);
@@ -731,7 +730,7 @@ namespace UnitTest
     {
         AZ::Vector3 expectedChildLocalPos(22.45f, 42.14f, 97.45f);
         TransformBus::Event(m_childId, &TransformBus::Events::SetLocalTranslation, expectedChildLocalPos);
-        AZ::Vector3 parentLocalPos(15.64f, 12.65, 29.87f);
+        AZ::Vector3 parentLocalPos(15.64f, 12.65f, 29.87f);
         TransformBus::Event(m_parentId, &TransformBus::Events::SetLocalTranslation, parentLocalPos);
 
         TransformBus::Event(m_childId, &TransformBus::Events::SetParentRelative, m_parentId);
@@ -745,7 +744,7 @@ namespace UnitTest
     {
         AZ::Vector3 childLocalPos(28.45f, 56.14f, 43.65f);
         TransformBus::Event(m_childId, &TransformBus::Events::SetLocalTranslation, childLocalPos);
-        AZ::Vector3 parentLocalPos(85.24f, 12.65, 33.87f);
+        AZ::Vector3 parentLocalPos(85.24f, 12.65f, 33.87f);
         TransformBus::Event(m_parentId, &TransformBus::Events::SetLocalTranslation, parentLocalPos);
 
         TransformBus::Event(m_childId, &TransformBus::Events::SetParentRelative, m_parentId);
@@ -769,7 +768,7 @@ namespace UnitTest
     {
         AZ::Vector3 childLocalPos(28.45f, 49.14f, 94.65f);
         TransformBus::Event(m_childId, &TransformBus::Events::SetLocalTranslation, childLocalPos);
-        AZ::Vector3 parentLocalPos(66.24f, 19.65, 32.87f);
+        AZ::Vector3 parentLocalPos(66.24f, 19.65f, 32.87f);
         TransformBus::Event(m_parentId, &TransformBus::Events::SetLocalTranslation, parentLocalPos);
 
         TransformBus::Event(m_childId, &TransformBus::Events::SetParent, m_parentId);

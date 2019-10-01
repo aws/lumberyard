@@ -217,8 +217,11 @@ def __send_communicator_broadcast(message):
         return
         
     client = cgf_service_client.for_url(interface_url, verbose=True, session=boto3._get_default_session())
-    result = client.navigate('broadcast').POST({"channel": "CloudGemDynamicContent", "message": message})
-    print 'Got send result {}'.format(result)
+    try:
+        result = client.navigate('broadcast').POST({"channel": "CloudGemDynamicContent", "message": message})
+        print 'Got send result {}'.format(result)
+    except Exception as error:
+        raise errors.ClientError('Failed to broadcast {} due to error: {}'.format(message, error))
 
 def __send_data_updated(pak_name, status):
     data = {}

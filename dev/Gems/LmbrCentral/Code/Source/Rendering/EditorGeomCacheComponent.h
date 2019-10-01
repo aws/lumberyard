@@ -62,7 +62,7 @@ namespace LmbrCentral
 
         void SetUseVisAreas(bool useVisAreas) override;
         bool GetUseVisAreas() override { return m_useVisAreas; }
-
+        void SetMaterial(_smart_ptr<IMaterial> material) override;
     private:
 
         //We want the playOnStart param to reflect playing immediately in the editor

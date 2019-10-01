@@ -53,6 +53,7 @@ enum AmazonToolbarVersions
     ORIGINAL_TOOLBAR_VERSION = 1,
     TOOLBARS_WITH_PLAY_GAME = 2,
     TOOLBARS_WITH_PERSISTENT_VISIBILITY = 3,
+    TOOLBARS_WITH_DEPLOY = 4,
 
     //TOOLBAR_VERSION = 1
     TOOLBAR_VERSION = TOOLBARS_WITH_PERSISTENT_VISIBILITY
@@ -512,6 +513,7 @@ AmazonToolbar ToolbarManager::GetEditModeToolbar() const
     t.AddAction(ID_EDITMODE_SELECTAREA, ORIGINAL_TOOLBAR_VERSION);
 
     t.AddAction(ID_VIEW_SWITCHTOGAME, TOOLBARS_WITH_PLAY_GAME);
+    t.AddAction(ID_VIEW_DEPLOY, TOOLBARS_WITH_DEPLOY);
 
     t.AddAction(ID_TOOLBAR_SEPARATOR, ORIGINAL_TOOLBAR_VERSION);
     t.AddAction(ID_TOOLBAR_WIDGET_REF_COORD, ORIGINAL_TOOLBAR_VERSION);
@@ -1287,7 +1289,7 @@ const bool AmazonToolbar::IsSame(const AmazonToolbar& other) const
         return false;
     }
 
-    bool actionListsSame = std::equal(m_actions.cbegin(), m_actions.cend(), other.m_actions.cbegin(), [](const ActionData& l, const ActionData& r) { return l.actionId == r.actionId; });
+    bool actionListsSame = AZStd::equal(m_actions.cbegin(), m_actions.cend(), other.m_actions.cbegin());
     if (!actionListsSame)
     {
         return false;
@@ -1310,7 +1312,7 @@ void AmazonToolbar::InstantiateToolbar(QMainWindow* mainWindow, ToolbarManager* 
     // So hide if we're hidden by default XOR we've toggled the default visibility
     if ((!m_showByDefault) ^ m_showToggled)
     {
-#ifdef AZ_PLATFORM_APPLE_OSX
+#ifdef AZ_PLATFORM_MAC
         // on macOS, initially hidden tool bars result in a white rectangle when
         // attaching a previously detached toolbar LY-66320
         m_toolbar->show();

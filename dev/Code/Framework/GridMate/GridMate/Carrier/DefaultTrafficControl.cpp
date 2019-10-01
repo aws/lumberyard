@@ -9,7 +9,6 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#ifndef AZ_UNITY_BUILD
 
 #include <GridMate/Carrier/DefaultTrafficControl.h>
 #include <GridMate/Carrier/Carrier.h>
@@ -719,5 +718,3 @@ DefaultTrafficControl::ConnectionData::TCPRenoWindow(double seconds) const
     const double cwnd = (backoffWindow + k_CubicAlpha * seconds / rtt);
     return static_cast<unsigned int>(cwnd);
 }
-
-#endif // #ifndef AZ_UNITY_BUILD

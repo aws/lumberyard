@@ -13,6 +13,7 @@
 #pragma once
 
 #include <AzFramework/Input/Devices/InputDeviceId.h>
+#include <AzFramework/Input/User/LocalUserId.h>
 
 #include <AzCore/EBus/EBus.h>
 #include <AzCore/std/string/string.h>
@@ -34,6 +35,7 @@ namespace AzFramework
             AZStd::string m_initialText;   //!< The virtual keyboard's initial text
             AZStd::string m_titleText;     //!< The virtual keyboard's title text
             float m_normalizedMinY = 0.0f; //!< The virtual keyboard's minimum y position normalized
+            LocalUserId m_localUserId = LocalUserIdAny; //!< The local user to operate the keyboard
         };
 
         ////////////////////////////////////////////////////////////////////////////////////////////

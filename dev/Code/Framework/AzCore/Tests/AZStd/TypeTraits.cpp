@@ -334,10 +334,10 @@ namespace UnitTest
         };
 
         using LambdaType = decltype(lambdaFunction);
-        AZ_TEST_STATIC_ASSERT((AZStd::is_same<typename AZStd::function_traits<decltype(lambdaFunction)>::raw_fp_type, bool(*)(FunctionTestStruct, int)>::value));
-        AZ_TEST_STATIC_ASSERT((AZStd::is_same<typename AZStd::function_traits<decltype(lambdaFunction)>::class_fp_type, bool(LambdaType::*)(FunctionTestStruct, int) const>::value));
-        AZ_TEST_STATIC_ASSERT((AZStd::is_same<typename AZStd::function_traits<decltype(lambdaFunction)>::class_type, LambdaType>::value));
+        AZ_TEST_STATIC_ASSERT((AZStd::is_same<typename AZStd::function_traits<LambdaType>::raw_fp_type, bool(*)(FunctionTestStruct, int)>::value));
+        AZ_TEST_STATIC_ASSERT((AZStd::is_same<typename AZStd::function_traits<LambdaType>::class_fp_type, bool(LambdaType::*)(FunctionTestStruct, int) const>::value));
         AZ_TEST_STATIC_ASSERT((AZStd::function_traits<LambdaType>::arity == 2));
+        static_assert(AZStd::is_same<AZStd::function_traits<LambdaType>::return_type, bool>::value, "Lambda result type should be bool");
 
         AZStd::function<void(LambdaType*, ComplexFunction&)> stdFunction;
         using StdFunctionType = decay_t<decltype(stdFunction)>;
@@ -351,6 +351,52 @@ namespace UnitTest
         void NonConstMethod() { }
     };
 
-    AZ_TEST_STATIC_ASSERT(is_method_t_const<decltype(&ConstMethodTestStruct::ConstMethod)>::value);
-    AZ_TEST_STATIC_ASSERT(!is_method_t_const<decltype(&ConstMethodTestStruct::NonConstMethod)>::value);
+    AZ_TEST_STATIC_ASSERT((static_cast<uint32_t>(function_traits<decltype(&ConstMethodTestStruct::ConstMethod)>::qual_flags) & static_cast<uint32_t>(Internal::qualifier_flags::const_)) != 0);
+    AZ_TEST_STATIC_ASSERT((static_cast<uint32_t>(function_traits<decltype(&ConstMethodTestStruct::NonConstMethod)>::qual_flags) & static_cast<uint32_t>(Internal::qualifier_flags::const_)) == 0);
+}
+
+TEST(TypeTraits, StdRemoveConstCompiles)
+{
+    static_assert(AZStd::is_same_v<int, AZStd::remove_const_t<const int>>, "C++11 std::remove_const_t has failed");
+    static_assert(AZStd::is_same_v<int, AZStd::remove_const_t<int>>, "C++11 std::remove_const_t has failed");
+    static_assert(AZStd::is_same_v<int*, AZStd::remove_const_t<int* const>>, "C++11 std::remove_const_t has failed");
+    static_assert(AZStd::is_same_v<const int*, AZStd::remove_const_t<const int*>>, "C++11 std::remove_const_t has failed");
+    static_assert(AZStd::is_same_v<const volatile int*, AZStd::remove_const_t<const volatile int* const>>, "C++11 std::remove_const_t has failed");
+    static_assert(AZStd::is_same_v<int, AZStd::remove_const_t<AZStd::remove_reference_t<const int&>>>, "C++11 std::remove_const_t has failed");
+}
+
+TEST(TypeTraits, StdRemoveVolatileCompiles)
+{
+    static_assert(AZStd::is_same_v<int, AZStd::remove_volatile_t<volatile int>>, "C++11 std::remove_volatile_t has failed");
+    static_assert(AZStd::is_same_v<int, AZStd::remove_volatile_t<int>>, "C++11 std::remove_volatile_t has failed");
+    static_assert(AZStd::is_same_v<int*, AZStd::remove_volatile_t<int* volatile>>, "C++11 std::remove_volatile_t has failed");
+    static_assert(AZStd::is_same_v<volatile int*, AZStd::remove_volatile_t<volatile int*>>, "C++11 std::remove_volatile_t has failed");
+    static_assert(AZStd::is_same_v<const volatile int*, AZStd::remove_volatile_t<const volatile int*>>, "C++11 std::remove_volatile_t has failed");
+    static_assert(AZStd::is_same_v<const int*, AZStd::remove_volatile_t<const int* volatile>>, "C++11 std::remove_volatile_t has failed");
+    static_assert(AZStd::is_same_v<int, AZStd::remove_volatile_t<AZStd::remove_reference_t<volatile int&>>>, "C++11 std::remove_volatile_t has failed");
+}
+
+TEST(TypeTraits, StdIsConstCompiles)
+{
+    static_assert(!AZStd::is_const_v<int>, "C++11 std::is_const has failed");
+    static_assert(AZStd::is_const_v<const int>, "C++11 std::is_const has failed");
+    // references are never const
+    static_assert(!AZStd::is_const_v<const int&>, "C++11 std::is_const has failed");
+    // pointer checks for constness
+    static_assert(!AZStd::is_const_v<const int*>, "C++11 std::is_const has failed");
+    static_assert(AZStd::is_const_v<const int* const>, "C++11 std::is_const has failed");
+    static_assert(AZStd::is_const_v<int* const>, "C++11 std::is_const has failed");
+}
+
+TEST(TypeTraits, StdIsVolatileCompiles)
+{
+    static_assert(!AZStd::is_volatile_v<int>, "C++11 std::is_volatile has failed");
+    static_assert(AZStd::is_volatile_v<volatile int>, "C++11 std::is_volatile has failed");
+    // references are never volatile
+    static_assert(!AZStd::is_volatile_v<volatile int&>, "C++11 std::is_volatile has failed");
+    // pointer checks for volatile
+    static_assert(!AZStd::is_volatile_v<volatile int*>, "C++11 std::is_volatile has failed");
+    static_assert(AZStd::is_volatile_v<const int* volatile>, "C++11 std::is_volatile has failed");
+    static_assert(!AZStd::is_volatile_v<volatile int* const>, "C++11 std::is_volatile has failed");
+    static_assert(AZStd::is_volatile_v<int* volatile>, "C++11 std::is_volatile has failed");
 }

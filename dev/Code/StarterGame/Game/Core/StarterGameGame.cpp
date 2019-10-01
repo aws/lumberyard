@@ -39,7 +39,6 @@ StarterGameGame::StarterGameGame()
     , m_gameRules(nullptr)
     , m_gameFramework(nullptr)
     , m_defaultActionMap(nullptr)
-    , m_platformInfo()
 {
     g_Game = this;
     GetISystem()->SetIGame(this);
@@ -82,8 +81,6 @@ bool StarterGameGame::Init(IGameFramework* framework)
     REGISTER_FACTORY(framework, "StarterGameGameRules", StarterGameGameRules, false);
     IGameRulesSystem* pGameRulesSystem = g_Game->GetIGameFramework()->GetIGameRulesSystem();
     pGameRulesSystem->RegisterGameRules("DummyRules", "StarterGameGameRules");
-
-    GetISystem()->GetPlatformOS()->UserDoSignIn(0);
 
     // Register procedural clips
     mannequin::RegisterProceduralClipsForModule(gEnv->pGame->GetIGameFramework()->GetMannequinInterface().GetProceduralClipFactory());
@@ -153,102 +150,10 @@ bool StarterGameGame::ReadProfile(const XmlNodeRef& rootNode)
     if (IActionMapManager* actionMapManager = m_gameFramework->GetIActionMapManager())
     {
         actionMapManager->Clear();
-
-        // Load platform information in.
-        XmlNodeRef platforms = rootNode->findChild("platforms");
-        if (!platforms || !ReadProfilePlatform(platforms, GetPlatform()))
-        {
-            AZ_Warning("StarterGame", false, "[Profile] Warning: No platform information specified!");
-        }
-
         successful = actionMapManager->LoadFromXML(rootNode);
     }
 
     return successful;
-}
-
-bool StarterGameGame::ReadProfilePlatform(const XmlNodeRef& platformsNode, LYGame::Platform platformId)
-{
-    bool successful = false;
-
-    if (platformsNode && (platformId > ePlatform_Unknown) && (platformId < ePlatform_Count))
-    {
-        if (XmlNodeRef platform = platformsNode->findChild(s_PlatformNames[platformId]))
-        {
-            // Extract which Devices we want.
-            if (!strcmp(platform->getAttr("keyboard"), "0"))
-            {
-                m_platformInfo.m_devices &= ~eAID_KeyboardMouse;
-            }
-
-            if (!strcmp(platform->getAttr("xboxpad"), "0"))
-            {
-                m_platformInfo.m_devices &= ~eAID_XboxPad;
-            }
-
-            if (!strcmp(platform->getAttr("ps4pad"), "0"))
-            {
-                m_platformInfo.m_devices &= ~eAID_PS4Pad;
-            }
-
-            if (!strcmp(platform->getAttr("androidkey"), "0"))
-            {
-                m_platformInfo.m_devices &= ~eAID_AndroidKey;
-            }
-
-            // Map the Devices we want.
-            IActionMapManager* actionMapManager = m_gameFramework->GetIActionMapManager();
-
-            if (m_platformInfo.m_devices & eAID_KeyboardMouse)
-            {
-                actionMapManager->AddInputDeviceMapping(eAID_KeyboardMouse, "keyboard");
-            }
-
-            if (m_platformInfo.m_devices & eAID_XboxPad)
-            {
-                actionMapManager->AddInputDeviceMapping(eAID_XboxPad, "xboxpad");
-            }
-
-            if (m_platformInfo.m_devices & eAID_PS4Pad)
-            {
-                actionMapManager->AddInputDeviceMapping(eAID_PS4Pad, "ps4pad");
-            }
-
-            if (m_platformInfo.m_devices & eAID_AndroidKey)
-            {
-                actionMapManager->AddInputDeviceMapping(eAID_AndroidKey, "androidkey");
-            }
-
-            successful = true;
-        }
-        else
-        {
-            GameWarning("StarterGameGame::ReadProfilePlatform: Failed to find platform, action mappings loading will fail");
-        }
-    }
-
-    return successful;
-}
-
-LYGame::Platform StarterGameGame::GetPlatform() const
-{
-    LYGame::Platform platform = ePlatform_Unknown;
-
-#if defined(ANDROID)
-    platform = ePlatform_Android;
-#elif defined(IOS)
-    platform = ePlatform_iOS;
-#elif defined(AZ_RESTRICTED_PLATFORM)
-    #if defined(AZ_PLATFORM_XENIA)
-        #include "Xenia/StarterGameGame_cpp_xenia.inl"
-    #elif defined(AZ_PLATFORM_PROVO)
-        #include "Provo/StarterGameGame_cpp_provo.inl"
-    #endif
-#elif defined(WIN32) || defined(WIN64) || defined(APPLE) || defined(LINUX)
-    platform = ePlatform_PC;
-#endif
-
-    return platform;
 }
 
 void StarterGameGame::OnActionEvent(const SActionEvent& event)

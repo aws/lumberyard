@@ -1,0 +1,9 @@
+{
+    "none":
+    {
+        "Source/Platform/Mac":
+        [
+            "../Common/Unimplemented/InAppPurchases_Unimplemented.cpp"
+        ]
+    }
+}

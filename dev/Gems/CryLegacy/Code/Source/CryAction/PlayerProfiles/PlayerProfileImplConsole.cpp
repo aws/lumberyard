@@ -201,8 +201,8 @@ bool CPlayerProfileImplConsole::LoginUser(SUserEntry* pEntry)
     IPlatformOS* os = gEnv->pSystem->GetPlatformOS();
 
     unsigned int userIndex;
-    bool signedIn = os->UserIsSignedIn(pEntry->userId.c_str(), userIndex);
-    CryLogAlways("LoginUser::UserIsSignedIn %d\n", signedIn);
+    bool signedIn = IsUserSignedIn(pEntry->userId.c_str(), userIndex);
+    CryLogAlways("LoginUser::IsUserSignedIn %d\n", signedIn);
 
     if (signedIn)
     {

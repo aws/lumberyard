@@ -16,6 +16,7 @@
 #include <AzCore/Component/ComponentApplicationBus.h>
 #include <AzCore/Slice/SliceBus.h>
 #include <AzCore/Slice/SliceComponent.h>
+#include <AzCore/Math/Uuid.h>
 #include <AzCore/std/string/conversions.h>
 #include <AzFramework/Asset/AssetCatalogBus.h>
 #include <AzFramework/Entity/EntityDebugDisplayBus.h>
@@ -130,7 +131,8 @@ private:
     void BrowseForAssets(AzToolsFramework::AssetBrowser::AssetSelectionModel& selection) override;
     void GenerateAllCubemaps() override;
     void GenerateCubemapForEntity(AZ::EntityId entityId, AZStd::string* cubemapOutputPath, bool hideEntity) override;
-    void HandleObjectModeSelection(const AZ::Vector2& point, int flags, bool& handled) override;    
+    void GenerateCubemapWithIDForEntity(AZ::EntityId entityId, AZ::Uuid cubemapId, AZStd::string* cubemapOutputPath, bool hideEntity, bool hasCubemapId) override;
+    void HandleObjectModeSelection(const AZ::Vector2& point, int flags, bool& handled) override;
     void UpdateObjectModeCursor(AZ::u32& cursorId, AZStd::string& cursorStr) override;
     void CreateEditorRepresentation(AZ::Entity* entity) override;
     bool DestroyEditorRepresentation(AZ::EntityId entityId, bool deleteAZEntity) override;
@@ -268,6 +270,7 @@ private:
     AZ::Outcome<AZ::Entity*, AZ::LegacyConversion::CreateEntityResult> CreateConvertedEntity(CBaseObject* sourceObject, bool failIfParentNotFound, const AZ::ComponentTypeList& componentsToAdd) override;
     AZ::EntityId FindCreatedEntity(const AZ::Uuid& sourceObjectUUID, const char* sourceObjectName) override;
     AZ::EntityId FindCreatedEntityByExistingObject(const CBaseObject* sourceObject) override;
+    bool CreateSurfaceTypeMaterialLibrary(const AZStd::string& targetFilePath) override;
     //////////////////////////////////////////////////////////////////////////
 
     // NewViewportInteractionModelEnabledRequestBus
@@ -374,7 +377,7 @@ private:
     // Tracks new entities that have not yet been saved.
     AZStd::unordered_set<AZ::EntityId> m_unsavedEntities;
 
-    const AZStd::string m_defaultComponentIconLocation = "Editor/Icons/Components/Component_Placeholder.png";
+    const AZStd::string m_defaultComponentIconLocation = "Editor/Icons/Components/Component_Placeholder.svg";
     const AZStd::string m_defaultComponentViewportIconLocation = "Editor/Icons/Components/Viewport/Component_Placeholder.png";
     const AZStd::string m_defaultEntityIconLocation = "Editor/Icons/Components/Viewport/Transform.png";
 };

@@ -599,7 +599,7 @@ void CWaterVolumeRenderNode::CreateRiver(uint64 volumeID, const AZStd::vector<AZ
 
 void CWaterVolumeRenderNode::CreateRiver(uint64 volumeID, const Vec3* pVertices, unsigned int numVertices, float uTexCoordBegin, float uTexCoordEnd, const Vec2& surfUVScale, const Plane& fogPlane, bool keepSerializationParams, int nSID)
 {
-    const float precisionTolerance = 1e-2;
+    const float precisionTolerance = 1e-2f;
 
     assert(fabs(fogPlane.n.GetLengthSquared() - 1.0f) < precisionTolerance && "CWaterVolumeRenderNode::CreateRiver(...) -- Fog plane normal doesn't have unit length!");
     assert(fogPlane.n.Dot(Vec3(0, 0, 1)) > precisionTolerance && "CWaterVolumeRenderNode::CreateRiver(...) -- Invalid fog plane specified!");

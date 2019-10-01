@@ -33,14 +33,9 @@ namespace ScriptCanvas
                     ScriptCanvas_Node::Category("Math")
                 );
 
-                OperatorSub()
-                    : OperatorArithmetic(GeneralMathOperatorConfiguration())
-                {
-                }
+                OperatorSub() = default;
 
-                virtual AZStd::string_view OperatorFunction() const { return "Subtract"; }
-
-                void Operator(Data::eType type, const OperatorOperands& operands, Datum& result) override;
+                void Operator(Data::eType type, const ArithmeticOperands& operands, Datum& result) override;
             };
         }
     }

@@ -20,7 +20,7 @@
 #include <CloudCanvas/ICloudCanvasEditor.h>
 
 #include "CloudGemWebCommunicatorComponent.h"
-#include <AWS/ServiceAPI/CloudGemWebCommunicatorClientComponent.h>
+#include <AWS/ServiceApi/CloudGemWebCommunicatorClientComponent.h>
 
 #include <CloudCanvas/CloudCanvasIdentityBus.h>
 
@@ -459,7 +459,7 @@ namespace CloudGemWebCommunicator
     bool CloudGemWebCommunicatorComponent::ReadCertificate(const AZStd::string& filePath) 
     {
         AZ::IO::HandleType inputFile;
-        AZ::IO::FileIOBase::GetInstance()->Open(filePath.c_str(), AZ::IO::OpenMode::ModeRead | AZ::IO::OpenMode::ModeBinary, inputFile);
+        AZ::IO::FileIOBase::GetDirectInstance()->Open(filePath.c_str(), AZ::IO::OpenMode::ModeRead | AZ::IO::OpenMode::ModeBinary, inputFile);
         if (!inputFile)
         {
             AZ_TracePrintf("CloudCanvas", "CloudGemWebCommunicatorComponent could not open device certificate %s for reading", filePath.c_str());
@@ -467,12 +467,12 @@ namespace CloudGemWebCommunicator
         }
 
         AZ::u64 fileSize{ 0 };
-        AZ::IO::FileIOBase::GetInstance()->Size(inputFile, fileSize);
+        AZ::IO::FileIOBase::GetDirectInstance()->Size(inputFile, fileSize);
         if (fileSize > 0)
         {
             AZStd::string fileBuf;
             fileBuf.resize(fileSize);
-            size_t read = AZ::IO::FileIOBase::GetInstance()->Read(inputFile, fileBuf.data(), fileSize);
+            size_t read = AZ::IO::FileIOBase::GetDirectInstance()->Read(inputFile, fileBuf.data(), fileSize);
 
             X509* certificate;
             BIO* bio;
@@ -497,7 +497,7 @@ namespace CloudGemWebCommunicator
             X509_free(certificate);
             BIO_free(bio);
         }
-        AZ::IO::FileIOBase::GetInstance()->Close(inputFile);
+        AZ::IO::FileIOBase::GetDirectInstance()->Close(inputFile);
         return true;
     }
     bool CloudGemWebCommunicatorComponent::IsConnected() const
@@ -547,6 +547,7 @@ namespace CloudGemWebCommunicator
     {
         m_iotClient = connectionClient;
         SetConnectionStatus(m_iotClient && m_iotClient->IsConnected() ? ConnectionStatus::CONNECTED : ConnectionStatus::NOT_CONNECTED);
+        AZ_Warning("CloudCanvas", responseCode == awsiotsdk::ResponseCode::SUCCESS, "Got connection response %d", static_cast<int>(responseCode));
         EBUS_EVENT(CloudGemWebCommunicatorUpdateBus, ConnectionStatusChanged, GetConnectionStatus());
     }
 
@@ -556,15 +557,45 @@ namespace CloudGemWebCommunicator
 
         if (m_iotClient)
         {
-            returnCode = m_iotClient->Disconnect(cMqttTimeout);
+            AZ_Warning("CloudCanvas", false, "Attempted to disconnect when there is no existing connection.");
+            return returnCode;
         }
-        SetConnectionStatus(ConnectionStatus::NOT_CONNECTED);
-
+        else if (m_connectionStatus == ConnectionStatus::DISCONNECTING)
         {
-            AZStd::lock_guard<AZStd::mutex> channelLock{ m_channelMutex };
-            m_channelList.clear();
+            AZ_Warning("CloudCanvas", false, "Already disconnecting");
+            return returnCode;
         }
+        
+        AZ::EntityId entityId = GetEntityId();
+        auto disconnectLambda = [entityId, this]()
+        {
+            awsiotsdk::ResponseCode disconnectCode { awsiotsdk::ResponseCode::SUCCESS };
+            if (m_iotClient && m_iotClient->IsConnected())
+            {
+                disconnectCode = m_iotClient->Disconnect(cMqttTimeout);
+
+                // we are about to force a disconnect below by destroying the client
+                // in the case where disconnect timed out, or something else was wrong
+                AZ_Error("CloudCanvas", !m_iotClient->IsConnected(), "IOT client failed to disconnect when requested. Will force disconnect.");
+            }
+            
+            {
+                AZStd::lock_guard<AZStd::mutex> channelLock{ m_channelMutex };
+                m_channelList.clear();
+            }
+            
+            // by passing nullptr to GotConnectionResponse we will free the client, shut down all 
+            // the network connection threads and free resources. GotConnectionResponse will also 
+            // update the connection status to be DISCONNECTED
+            std::shared_ptr<awsiotsdk::MqttClient> client{ nullptr };
+            EBUS_QUEUE_EVENT_ID(entityId, CloudGemWebCommunicatorLibraryResponseBus, GotConnectionResponse, disconnectCode, client);
+        };
+        
+        AZ::Job* disconnectJob = AZ::CreateJobFunction(AZStd::bind(disconnectLambda), true, m_jobContext);
+        SetConnectionStatus(ConnectionStatus::DISCONNECTING);
         EBUS_EVENT(CloudGemWebCommunicatorUpdateBus, ConnectionStatusChanged, GetConnectionStatus());
+        disconnectJob->Start();
+
         return returnCode;
     }
 
@@ -725,6 +756,7 @@ namespace CloudGemWebCommunicator
     {
         AZStd::string identityId = GetClientId();
 
+        // RequestChannelList autosubscribes to all channels
         auto requestJob = ServiceAPI::get_client_channelsRequestJob::Create([this, identityId](ServiceAPI::get_client_channelsRequestJob* job)
         {
             auto thisResult = job->result;
@@ -742,12 +774,11 @@ namespace CloudGemWebCommunicator
                 }
                 subscriptionList.push_back(subscriptionChannel);
             }
-            RequestSubscribeChannelList(subscriptionList);
+            Subscribe(subscriptionList);
         },
-            [this](ServiceAPI::get_client_channelsRequestJob* job)
+        [](ServiceAPI::get_client_channelsRequestJob* job)
         {
-            auto thisResult = job->result;
-
+            AZ_UNUSED(job);
             AZ_TracePrintf("CloudCanvas", "Get_client_channelRequest failed %s", job->error.message.c_str());
         }
         );
@@ -762,7 +793,47 @@ namespace CloudGemWebCommunicator
 
     bool CloudGemWebCommunicatorComponent::RequestSubscribeChannelList(const AZStd::vector<AZStd::string>& channelList)
     {
-        return (Subscribe(channelList) == awsiotsdk::ResponseCode::SUCCESS);
+        if (!m_iotClient || !m_iotClient->IsConnected())
+        {
+            AZ_Warning("CloudCanvas", false, "Not connected");
+            return false;
+        }
+
+        // verify the requested channels are valid. if we try to subscribe to an invalid channel the iot SDK creates 
+        // a network connection that cannot be removed until the client is destroyed and will start accumulating SSL 
+        // errors which can lead to instability/crashing on OSX
+        auto requestJob = ServiceAPI::get_client_channelsRequestJob::Create([this, channelList](ServiceAPI::get_client_channelsRequestJob* job)
+        {
+            AZ_Assert(job, "get_client_channelsRequestJob returned invalid job");
+
+            AZStd::string_view searchFor;
+            auto searchPredicate = [&searchFor](const ServiceAPI::ChannelInfo& element)
+            {
+                // topic names are case sensitive
+                // http://docs.oasis-open.org/mqtt/mqtt/v3.1.1/os/mqtt-v3.1.1-os.html#_Toc398718109
+                return element.Subscription == searchFor;
+            };
+
+            const ServiceAPI::ChannelRequestResultArray& validChannels = job->result.Channels;
+            for (AZStd::string_view channel : channelList)
+            {
+                searchFor = channel;
+                if (AZStd::find_if(validChannels.begin(), validChannels.end(), searchPredicate) == validChannels.end())
+                {
+                    AZ_Warning("CloudCanvas", false, "Channel %s is not a valid channel", channel.data());
+                    return;
+                }
+            }
+            Subscribe(channelList);
+        },
+        [](ServiceAPI::get_client_channelsRequestJob* job)
+        {
+            AZ_UNUSED(job);
+            AZ_TracePrintf("CloudCanvas", "RequestSubscribeChannelList failed to get valid channel list %s", job->error.message.c_str());
+        }
+        );
+        requestJob->Start();
+        return true;
     }
 
     bool CloudGemWebCommunicatorComponent::RequestUnsubscribeChannel(const AZStd::string& channelName)
@@ -858,7 +929,6 @@ namespace CloudGemWebCommunicator
             return awsiotsdk::ResponseCode::SUCCESS;
         };
 
-        // VS 2013 requires capture of 'this' for referencing CloudgemWebCommunicatorComponent::CloudGemWebCommunicatorLibraryResponse::GotSubscrbeResponse
         auto subscribeLambda = [entityId, this, messageHandler](AZStd::vector<AZStd::string> channelList)
         {
             awsiotsdk::util::Vector<std::shared_ptr<awsiotsdk::mqtt::Subscription>> topic_vector;
@@ -881,8 +951,8 @@ namespace CloudGemWebCommunicator
                         channelIter = channelList.erase(channelIter);
                         continue;
                     }
-                    std::shared_ptr<awsiotsdk::mqtt::Subscription> p_subscription = awsiotsdk::mqtt::Subscription::Create(awsiotsdk::Utf8String::Create(channelIter->c_str(), channelIter->length()), awsiotsdk::mqtt::QoS::QOS0, messageHandler, nullptr);
-                    topic_vector.push_back(p_subscription);
+                    std::shared_ptr<awsiotsdk::mqtt::Subscription> subscription = awsiotsdk::mqtt::Subscription::Create(awsiotsdk::Utf8String::Create(channelIter->c_str(), channelIter->length()), awsiotsdk::mqtt::QoS::QOS0, messageHandler, nullptr);
+                    topic_vector.push_back(subscription);
                     ++channelIter;
                 }
                 if (!topic_vector.size())
@@ -895,13 +965,13 @@ namespace CloudGemWebCommunicator
                     AZ_Warning("CloudCanvas", false, "Not connected");
                     return;
                 }
-                rc = m_iotClient->Subscribe(topic_vector, subscriptionTimeout);
 
-                // Update our data immediately so additional requests don't subscribe to the same channel
-                AZStd::lock_guard<AZStd::mutex> channelLock{ m_channelMutex };
-                for (auto channelName : channelList)
+                rc = m_iotClient->Subscribe(topic_vector, subscriptionTimeout);
+                if (rc == awsiotsdk::ResponseCode::SUCCESS)
                 {
-                    if (rc == awsiotsdk::ResponseCode::SUCCESS)
+                    // Update our data immediately so additional requests don't subscribe to the same channel
+                    AZStd::lock_guard<AZStd::mutex> channelLock{ m_channelMutex };
+                    for (auto channelName : channelList)
                     {
                         m_channelList.push_back(channelName);
                     }
@@ -973,6 +1043,10 @@ namespace CloudGemWebCommunicator
         if (m_connectionStatus == ConnectionStatus::CONNECTING)
         {
             return "Connecting";
+        }
+        else if (m_connectionStatus == ConnectionStatus::DISCONNECTING)
+        {
+            return "Disconnecting";
         }
 
         return m_iotClient && m_iotClient->IsConnected() ? "Connected" : "Not Connected";

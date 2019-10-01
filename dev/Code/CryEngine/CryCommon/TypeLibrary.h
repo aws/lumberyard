@@ -97,7 +97,7 @@ private:                                                                        
 /*
     Used to expose a class member to SoftCoding (to allow run-time member exchange)
     If SoftCode is disabled this does nothing and simple emits the member.
-    For array types, use SOFT_ARRAY() instead or use boost::array which allows assignment.
+    For array types, use SOFT_ARRAY() instead or use AZStd::array which allows assignment.
     Usage: std::vector<string> SOFT(m_myStrings);
 */
     #define SOFT(member) \
@@ -107,7 +107,7 @@ private:                                                                        
 /*
     Used to expose a primitive array type to SoftCoding.
     Declare it directly after the member.
-    NOTE: It's cleaner to convert the member to boost::array as
+    NOTE: It's cleaner to convert the member to AZStd::array as
     this avoid having to use this special case while preserving semantics.
     Usage:
         ColorB m_colors[20];

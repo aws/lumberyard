@@ -1,0 +1,10 @@
+{
+    "auto":
+    {
+        "Platform/AppleTV":
+        [
+            "GameStateSamples/GameStateSamples_Traits_Platform.h",
+            "GameStateSamples/GameStateSamples_Traits_AppleTV.h"
+        ]
+    }
+}

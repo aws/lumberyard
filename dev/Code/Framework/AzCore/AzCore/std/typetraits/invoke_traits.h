@@ -12,12 +12,15 @@
 
 #pragma once
 
-#include <AzCore/std/utils.h>
-
+#include <AzCore/std/reference_wrapper.h>
+#include <AzCore/std/typetraits/add_reference.h>
+#include <AzCore/std/typetraits/conditional.h>
 #include <AzCore/std/typetraits/is_base_of.h>
+#include <AzCore/std/typetraits/is_convertible.h>
 #include <AzCore/std/typetraits/is_member_function_pointer.h>
 #include <AzCore/std/typetraits/is_member_object_pointer.h>
-#include <AzCore/std/typetraits/void_t.h>
+#include <AzCore/std/typetraits/is_void.h>
+#include <AzCore/std/typetraits/remove_reference.h>
 
 namespace AZStd
 {
@@ -91,6 +94,24 @@ namespace AZStd
         template<class T>
         using member_pointer_class_type_t = typename member_pointer_class_type<T>::type;
 
+        namespace InvokeTraits
+        {
+            template <class T>
+            add_rvalue_reference_t<T> declval();
+
+            template<class T>
+            constexpr inline T && forward(AZStd::remove_reference_t<T>& u)
+            {
+                return static_cast<T &&>(u);
+            }
+
+            template<class T>
+            constexpr inline T && forward(AZStd::remove_reference_t<T>&& u)
+            {
+                return static_cast<T &&>(u);
+            }
+        }
+
         // 23.14.3 [func.require]
         // fallback INVOKE declaration
         // Allows it to be used in unevaluated context such as is_invocable when none of the 7 bullet points apply
@@ -99,56 +120,43 @@ namespace AZStd
 
         // Below are the 7 implementations of INVOKE bullet point
         // 1.1
-        // Have to put the decltype as part of the template arguments instead of the return to workaround VS2013 issue
-        // where it does not properly ignore SFINAE errors in a decltype expression
         template<class Fn, class Arg0, class... Args, typename = AZStd::enable_if_t<
             AZStd::is_member_function_pointer<AZStd::decay_t<Fn>>::value
-            && AZStd::is_base_of<member_pointer_class_type_t<AZStd::decay_t<Fn>>, AZStd::decay_t<Arg0>>::value>,
-            typename RetType = decltype((AZStd::declval<Arg0>().*AZStd::declval<Fn>())(AZStd::declval<Args>()...))>
-            auto INVOKE(Fn&& f, Arg0&& arg0, Args&&... args) -> RetType
+            && AZStd::is_base_of<member_pointer_class_type_t<AZStd::decay_t<Fn>>, AZStd::decay_t<Arg0>>::value>>
+            constexpr auto INVOKE(Fn&& f, Arg0&& arg0, Args&&... args) -> decltype((InvokeTraits::forward<Arg0>(arg0).*f)(InvokeTraits::forward<Args>(args)...))
         {
-            return (AZStd::forward<Arg0>(arg0).*f)(AZStd::forward<Args>(args)...);
+            return (InvokeTraits::forward<Arg0>(arg0).*f)(InvokeTraits::forward<Args>(args)...);
         }
         // 1.2
-        // VS2013 workaround, need to add dummy typename template arguments to have a different number of typed template arguments as visual studio believes that each of these functions
-        // are the same template
         template<class Fn, class Arg0, class... Args, typename = AZStd::enable_if_t<
                 AZStd::is_member_function_pointer<AZStd::decay_t<Fn>>::value
-                && AZStd::is_reference_wrapper<AZStd::decay_t<Arg0>>::value>,
-            typename RetType = decltype((AZStd::declval<Arg0>().get().*AZStd::declval<Fn>())(AZStd::declval<Args>()...)),
-            typename = void>
-            auto INVOKE(Fn&& f, Arg0&& arg0, Args&&... args) -> RetType
+                && AZStd::is_reference_wrapper<AZStd::decay_t<Arg0>>::value>>
+            constexpr auto INVOKE(Fn&& f, Arg0&& arg0, Args&&... args) -> decltype((arg0.get().*f)(InvokeTraits::forward<Args>(args)...))
         {
-            return (arg0.get().*f)(AZStd::forward<Args>(args)...);
+            return (arg0.get().*f)(InvokeTraits::forward<Args>(args)...);
         }
         // 1.3
         template<class Fn, class Arg0, class... Args, typename = AZStd::enable_if_t<
                 AZStd::is_member_function_pointer<AZStd::decay_t<Fn>>::value
                 && !AZStd::is_base_of<member_pointer_class_type_t<AZStd::decay_t<Fn>>, AZStd::decay_t<Arg0>>::value
-                && !AZStd::is_reference_wrapper<AZStd::decay_t<Arg0>>::value>,
-            typename RetType = decltype(((*AZStd::declval<Arg0>()).*AZStd::declval<Fn>())(AZStd::declval<Args>()...)),
-            typename = void,
-            typename = void>
-            auto INVOKE(Fn&& f, Arg0&& arg0, Args&&... args) -> RetType
+                && !AZStd::is_reference_wrapper<AZStd::decay_t<Arg0>>::value>>
+            constexpr auto INVOKE(Fn&& f, Arg0&& arg0, Args&&... args) -> decltype(((*InvokeTraits::forward<Arg0>(arg0)).*f)(InvokeTraits::forward<Args>(args)...))
         {
-            return ((*AZStd::forward<Arg0>(arg0)).*f)(AZStd::forward<Args>(args)...);
+            return ((*InvokeTraits::forward<Arg0>(arg0)).*f)(InvokeTraits::forward<Args>(args)...);
         }
         // 1.4
         template<class Fn, class Arg0, typename = AZStd::enable_if_t<
                 AZStd::is_member_object_pointer<AZStd::decay_t<Fn>>::value
-                && AZStd::is_base_of<member_pointer_class_type_t<AZStd::decay_t<Fn>>, AZStd::decay_t<Arg0>>::value>,
-            typename RetType = decltype(AZStd::declval<Arg0>().*AZStd::declval<Fn>())>
-            auto INVOKE(Fn&& f, Arg0&& arg0) -> RetType
+                && AZStd::is_base_of<member_pointer_class_type_t<AZStd::decay_t<Fn>>, AZStd::decay_t<Arg0>>::value>>
+            constexpr auto INVOKE(Fn&& f, Arg0&& arg0) -> decltype(InvokeTraits::forward<Arg0>(arg0).*f)
         {
-            return AZStd::forward<Arg0>(arg0).*f;
+            return InvokeTraits::forward<Arg0>(arg0).*f;
         }
         // 1.5
         template<class Fn, class Arg0, typename = AZStd::enable_if_t<
                 AZStd::is_member_object_pointer<AZStd::decay_t<Fn>>::value
-                && AZStd::is_reference_wrapper<AZStd::decay_t<Arg0>>::value>,
-            typename RetType = decltype(AZStd::declval<Arg0>().get().*AZStd::declval<Fn>()),
-            typename = void>
-            auto INVOKE(Fn&& f, Arg0&& arg0) -> RetType
+                && AZStd::is_reference_wrapper<AZStd::decay_t<Arg0>>::value>>
+            constexpr auto INVOKE(Fn&& f, Arg0&& arg0) -> decltype(arg0.get().*f)
         {
             return arg0.get().*f;
         }
@@ -156,53 +164,35 @@ namespace AZStd
         template<class Fn, class Arg0, typename = AZStd::enable_if_t<
                 AZStd::is_member_object_pointer<AZStd::decay_t<Fn>>::value
                 && !AZStd::is_base_of<member_pointer_class_type_t<AZStd::decay_t<Fn>>, AZStd::decay_t<Arg0>>::value
-                && !AZStd::is_reference_wrapper<AZStd::decay_t<Arg0>>::value>,
-            typename RetType = decltype((*AZStd::declval<Arg0>()).*AZStd::declval<Fn>()),
-            typename = void,
-            typename = void>
-            auto INVOKE(Fn&& f, Arg0&& arg0) -> RetType
+                && !AZStd::is_reference_wrapper<AZStd::decay_t<Arg0>>::value>>
+            constexpr auto INVOKE(Fn&& f, Arg0&& arg0) -> decltype((*InvokeTraits::forward<Arg0>(arg0)).*f)
         {
-            return (*AZStd::forward<Arg0>(arg0)).*f;
+            return (*InvokeTraits::forward<Arg0>(arg0)).*f;
         }
         // 1.7
-        template<class Fn, class... Args, typename RetType = decltype(AZStd::declval<Fn>()(AZStd::declval<Args>()...))>
-        auto INVOKE(Fn&& f, Args&&... args) -> RetType
+        template<class Fn, class... Args>
+        constexpr auto INVOKE(Fn&& f, Args&&... args) -> decltype(InvokeTraits::forward<Fn>(f)(InvokeTraits::forward<Args>(args)...))
         {
-            return AZStd::forward<Fn>(f)(AZStd::forward<Args>(args)...);
+            return InvokeTraits::forward<Fn>(f)(InvokeTraits::forward<Args>(args)...);
         }
 
         template<class R, class Fn, class... ArgTypes>
         struct invocable_r : private check_complete_type<Fn>
-        {  
-            using result_type = decltype(INVOKE(AZStd::declval<Fn>(), AZStd::declval<ArgTypes>()...));
+        {
+            template<class Func, class ... Args>
+            static auto try_call(int) -> decltype(INVOKE(InvokeTraits::declval<Func>(), InvokeTraits::declval<Args>()...));
+            template<class Func, class... Args>
+            static nat try_call(...);
+
+            using result_type = decltype(try_call<Fn, ArgTypes...>(0));
             using type = AZStd::conditional_t<!AZStd::is_same<result_type, nat>::value,
-                AZStd::conditional_t<!AZStd::is_void<R>::value, AZStd::is_convertible<result_type, R>, AZStd::true_type>, 
+                AZStd::conditional_t<!AZStd::is_void<R>::value, AZStd::is_convertible<result_type, R>, AZStd::true_type>,
                 AZStd::false_type>;
-            static const bool value = type::value;
+            static constexpr bool value = type::value;
         };
 
         template<class Fn, class... ArgTypes>
         using invocable = invocable_r<void, Fn, ArgTypes...>;
     }
 
-    template <class Fn, class... ArgTypes>
-    struct is_invocable : Internal::invocable<Fn, ArgTypes...>::type {};
-
-    template <class R, class Fn, class... ArgTypes>
-    struct is_invocable_r : Internal::invocable_r<R, Fn, ArgTypes...>::type {};
-
-    template <class Fn, class... ArgTypes>
-    constexpr bool is_invocable_v = is_invocable<Fn, ArgTypes...>::value;
-
-    template <class R, class Fn, class ...ArgTypes>
-    constexpr bool is_invocable_r_v = is_invocable_r<R, Fn, ArgTypes...>::value;
-
-    template<class Fn, class... ArgTypes>
-    struct invoke_result
-    {
-        using type = AZStd::enable_if_t<Internal::invocable<Fn, ArgTypes...>::value, typename Internal::invocable<Fn, ArgTypes...>::result_type>;
-    };
-
-    template<class Fn, class... ArgTypes>
-    using invoke_result_t = typename invoke_result<Fn, ArgTypes...>::type;
 }

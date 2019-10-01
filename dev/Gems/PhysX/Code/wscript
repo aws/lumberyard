@@ -11,19 +11,30 @@
 ########################################################################################
 
 def build(bld):
+    # PhysX has global pointers for referencing the PhysX SDK. These pointers need to exist in a single memory
+    # space so different Gems can get copies of them. Monolithic builds will use the static version of PhysX SDK libraries,
+    # which results in a single memory space. Non-monolithic builds will use the dynamic version of PhysX SDK libraries,
+    # which also works because different Gems will be using the shared library's memory space.
+    if bld.is_build_monolithic():
+        physx_sdk_lib = 'PHYSX_SDK'
+    else:
+        physx_sdk_lib = 'PHYSX_SDK_SHARED'
+
     bld.DefineGem(
         file_list         = ['physx.waf_files'],
         disable_tests     = (bld.env['PLATFORM'] != 'project_generator') and ('darwin' in bld.env['PLATFORM']),
         platforms         = ['all'],
+        includes          = [bld.Path('Code/CryEngine/CryCommon')],
         test_all_includes = [bld.Path('Code/Framework/Tests')],
         pch               = "Source/PhysX_precompiled.cpp",
         use               = ['AzFramework',
                              'LmbrCentral'],
-        uselib			  = ['PHYSX_SDK'],
+        uselib            = [physx_sdk_lib],
         test_all_use      = ['AzPhysicsTests'],
         win_features      = ['crcfix'],
 
         win_x64_clang_cxxflags = ['-Wno-return-type-c-linkage'],
+        platform_roots = [bld.PlatformRoot('Source/Platform', export_includes=False)],
 
         editor = dict(
             file_list         = ['physx.waf_files','physx_editor.waf_files'],
@@ -32,7 +43,9 @@ def build(bld):
             includes          = [bld.Path('Code/Tools'),
                                  bld.Path('Code/Sandbox/Editor'),
                                  bld.Path('Code/Sandbox/Editor/Include'),
-                                 bld.Path('Code/Tools/CryCommonTools')],
+                                 bld.Path('Code/Tools/CryCommonTools'),
+                                 bld.Path('Code/CryEngine/CryCommon')
+                                ],
 
             test_all_includes = [bld.Path('Code/Framework/Tests')],
             use               = ['AzFramework',
@@ -42,11 +55,12 @@ def build(bld):
                                  'SceneData',
                                  'AssetBuilderSDK'],
             test_all_use      = ['AzPhysicsTests'],
-            uselib            = ['QT5CORE', 'AWS_CPP_SDK_CORE','PHYSX_SDK'],
+            uselib            = ['QT5CORE', physx_sdk_lib],
 
             # Platform specific
             win_lib           = ['Ws2_32', 'Gdi32', 'Shell32', 'Ole32', 'Rpcrt4', 'Winmm'],
             win_features      = ['crcfix'],
             win_x64_clang_cxxflags = ['-Wno-return-type-c-linkage'],
+            platform_roots = [bld.PlatformRoot('Source/Platform', export_includes=False)]
         ),
     )

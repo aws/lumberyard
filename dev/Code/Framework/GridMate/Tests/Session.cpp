@@ -17,47 +17,12 @@
 #include <GridMate/Carrier/DefaultSimulator.h>
 #include <GridMate/Carrier/Driver.h>
 
+#include <GridMateTests_Traits_Platform.h>
+
 #include <AzCore/std/parallel/thread.h>
 #include <AzCore/std/string/conversions.h>
 
-
-#if defined(AZ_RESTRICTED_PLATFORM)
-#undef AZ_RESTRICTED_SECTION
-#define SESSION_CPP_SECTION_1 1
-#define SESSION_CPP_SECTION_2 2
-#define SESSION_CPP_SECTION_3 3
-#define SESSION_CPP_SECTION_4 4
-#define SESSION_CPP_SECTION_5 5
-#define SESSION_CPP_SECTION_6 6
-#define SESSION_CPP_SECTION_7 7
-#define SESSION_CPP_SECTION_8 8
-#define SESSION_CPP_SECTION_9 9
-#define SESSION_CPP_SECTION_10 10
-#define SESSION_CPP_SECTION_11 11
-#define SESSION_CPP_SECTION_12 12
-#define SESSION_CPP_SECTION_13 13
-#define SESSION_CPP_SECTION_14 14
-#define SESSION_CPP_SECTION_15 15
-#endif
-
-#if defined(AZ_PLATFORM_WINDOWS)
-#include <Winsock2.h>
-#pragma warning(push)
-#pragma warning( disable: 4996 )
-#pragma warning(pop)
-
-#elif defined(AZ_RESTRICTED_PLATFORM)
-#define AZ_RESTRICTED_SECTION SESSION_CPP_SECTION_1
-    #if defined(AZ_PLATFORM_XENIA)
-        #include "Xenia/Session_cpp_xenia.inl"
-    #elif defined(AZ_PLATFORM_PROVO)
-        #include "Provo/Session_cpp_provo.inl"
-    #endif
-#endif
-
 using namespace GridMate;
-
-//#define AZ_TEST_ENABLED_CLIENT_SERVER_MODE
 
 //#define AZ_LAN_TEST_MAIN_THREAD_BLOCKED
 
@@ -585,19 +550,7 @@ namespace UnitTest
             }
         }
 
-#if defined(AZ_RESTRICTED_PLATFORM)
-#define AZ_RESTRICTED_SECTION SESSION_CPP_SECTION_2
-    #if defined(AZ_PLATFORM_XENIA)
-        #include "Xenia/Session_cpp_xenia.inl"
-    #elif defined(AZ_PLATFORM_PROVO)
-        #include "Provo/Session_cpp_provo.inl"
-    #endif
-#endif
-#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
-#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
-#else
-        static const int k_numMachines = 3;
-#endif
+        static const int k_numMachines = AZ_TRAIT_GRIDMATE_TEST_NUM_MACHINES;
         static const int k_host = 0;
         static const int k_hostPort = 5450;
 
@@ -2170,268 +2123,14 @@ namespace UnitTest
         }
     };
 
-#if defined(AZ_RESTRICTED_PLATFORM)
-#define AZ_RESTRICTED_SECTION SESSION_CPP_SECTION_3
-    #if defined(AZ_PLATFORM_XENIA)
-        #include "Xenia/Session_cpp_xenia.inl"
-    #elif defined(AZ_PLATFORM_PROVO)
-        #include "Provo/Session_cpp_provo.inl"
-    #endif
-#endif
-
-#if defined(AZ_RESTRICTED_PLATFORM)
-#define AZ_RESTRICTED_SECTION SESSION_CPP_SECTION_4
-    #if defined(AZ_PLATFORM_XENIA)
-        #include "Xenia/Session_cpp_xenia.inl"
-    #elif defined(AZ_PLATFORM_PROVO)
-        #include "Provo/Session_cpp_provo.inl"
-    #endif
-#endif
-
-#if defined(AZ_TEST_VOICECHAT)
-    // This test requires two consoles to run it
-    // When running test - hold X/Cross to test mute, release X/Cross to test talking
-    class SessionVoiceChatTest
-        : public SessionEventBus::Handler
-        , public GridMateMPTestFixture
-    {
-    public:
-
-        SessionVoiceChatTest()
-            : GridMateMPTestFixture(100 * 1024 * 1024, false)
-        {
-            // User service
-#if defined(AZ_RESTRICTED_PLATFORM)
-#define AZ_RESTRICTED_SECTION SESSION_CPP_SECTION_5
-    #if defined(AZ_PLATFORM_XENIA)
-        #include "Xenia/Session_cpp_xenia.inl"
-    #elif defined(AZ_PLATFORM_PROVO)
-        #include "Provo/Session_cpp_provo.inl"
-    #endif
-#endif
-
-            m_userService->EnableUserSlot(true, 0);
-            while (!m_userService->IsUserSlotEnabled(0))
-            {
-                m_gridMate->Update();
-                Render::Flip();
-                AZStd::this_thread::sleep_for(AZStd::chrono::milliseconds(10));
-            }
-
-            // wait for user 0 sign in
-            if (m_userService->GetSigninState(0) != OLS_SignedInOnline)
-            {
-                m_userService->ShowSigninScreen(0);
-
-                while (m_userService->GetSigninState(0) != OLS_SignedInOnline)
-                {
-                    Render::Flip();
-                    m_gridMate->Update();
-                    AZStd::this_thread::sleep_for(AZStd::chrono::milliseconds(10));
-                }
-            }
-
-#if defined(AZ_RESTRICTED_PLATFORM)
-#define AZ_RESTRICTED_SECTION SESSION_CPP_SECTION_6
-    #if defined(AZ_PLATFORM_XENIA)
-        #include "Xenia/Session_cpp_xenia.inl"
-    #elif defined(AZ_PLATFORM_PROVO)
-        #include "Provo/Session_cpp_provo.inl"
-    #endif
-#endif
-
-#if defined(AZ_RESTRICTED_PLATFORM)
-#define AZ_RESTRICTED_SECTION SESSION_CPP_SECTION_7
-    #if defined(AZ_PLATFORM_XENIA)
-        #include "Xenia/Session_cpp_xenia.inl"
-    #elif defined(AZ_PLATFORM_PROVO)
-        #include "Provo/Session_cpp_provo.inl"
-    #endif
-#endif
-
-            // Hook to session events bus.
-            SessionEventBus::Handler::BusConnect(m_gridMate);
-        }
-
-        ~SessionVoiceChatTest()
-        {
-            // Unhook from session events bus.
-            SessionEventBus::Handler::BusDisconnect();
-
-#if defined(AZ_RESTRICTED_PLATFORM)
-#define AZ_RESTRICTED_SECTION SESSION_CPP_SECTION_8
-    #if defined(AZ_PLATFORM_XENIA)
-        #include "Xenia/Session_cpp_xenia.inl"
-    #elif defined(AZ_PLATFORM_PROVO)
-        #include "Provo/Session_cpp_provo.inl"
-    #endif
-#endif
-
-#if defined(AZ_RESTRICTED_PLATFORM)
-#define AZ_RESTRICTED_SECTION SESSION_CPP_SECTION_9
-    #if defined(AZ_PLATFORM_XENIA)
-        #include "Xenia/Session_cpp_xenia.inl"
-    #elif defined(AZ_PLATFORM_PROVO)
-        #include "Provo/Session_cpp_provo.inl"
-    #endif
-#endif
-        }
-
-        void run()
-        {
-            GridSearch* search = nullptr;
-
-#if defined(AZ_RESTRICTED_PLATFORM)
-#define AZ_RESTRICTED_SECTION SESSION_CPP_SECTION_10
-    #if defined(AZ_PLATFORM_XENIA)
-        #include "Xenia/Session_cpp_xenia.inl"
-    #elif defined(AZ_PLATFORM_PROVO)
-        #include "Provo/Session_cpp_provo.inl"
-    #endif
-#endif
-
-            Gamepad gamepad(m_userService->GetUser(0));
-
-            unsigned int numUpdates = 0;
-            while (!search->IsDone() && numUpdates++ < 10000)
-            {
-                m_gridMate->Update();
-                Update();
-
-                AZStd::this_thread::sleep_for(AZStd::chrono::milliseconds(10));
-            }
-
-            GridSession* session = nullptr;
-            int numResults = search->GetNumResults();
-            if (numResults == 0)
-            {
-#if defined(AZ_RESTRICTED_PLATFORM)
-#define AZ_RESTRICTED_SECTION SESSION_CPP_SECTION_11
-    #if defined(AZ_PLATFORM_XENIA)
-        #include "Xenia/Session_cpp_xenia.inl"
-    #elif defined(AZ_PLATFORM_PROVO)
-        #include "Provo/Session_cpp_provo.inl"
-    #endif
-#endif
-            }
-            else
-            {
-#if defined(AZ_RESTRICTED_PLATFORM)
-#define AZ_RESTRICTED_SECTION SESSION_CPP_SECTION_12
-    #if defined(AZ_PLATFORM_XENIA)
-        #include "Xenia/Session_cpp_xenia.inl"
-    #elif defined(AZ_PLATFORM_PROVO)
-        #include "Provo/Session_cpp_provo.inl"
-    #endif
-#endif
-            }
-
-            AZ_Assert(session, "Invalid session");
-
-            // Waiting second user to join
-            numUpdates = 0;
-            while (session->GetNumberOfMembers() < 2 && numUpdates++ < 10000)
-            {
-                m_gridMate->Update();
-                UpdateReplicaManager(session->GetReplicaMgr());
-                Update();
-                AZStd::this_thread::sleep_for(AZStd::chrono::milliseconds(10));
-            }
-
-            if (session->GetNumberOfMembers() < 2)
-            {
-                AZ_Warning("GridMate", false, "Second user did not join.\n");
-                return;
-            }
-
-            GridMember* me = session->GetMyMember();
-            GridMember* other = session->GetMemberByIndex(0);
-            if (other == me)
-            {
-                other = session->GetMemberByIndex(1);
-            }
-
-            bool talkingWhileMute = false;
-            int muteWaitCounter = 0;
-            bool wasTalking[2] = { 0 };
-
-            const int kMaxUpdates = 10000; // change it to some bigger number if you want to run test longer
-            numUpdates = 0;
-            while (numUpdates++ < kMaxUpdates)
-            {
-                AZ_Assert(session->GetNumberOfMembers() >= 2, "Cannot continue if someone left");
-
-                gamepad.Update();
-
-                if (gamepad.IsXPressed())
-                {
-                    if (!me->IsMuted(other)) // Muting
-                    {
-                        muteWaitCounter = 30; // Waiting ~300 msec for GridMember::IsTalking() to cool down (IsTalking has timeout on when to stop consider user talking)
-                        me->Mute(other);
-                        AZ_Printf("GridMate", "Testing mute. Speak!\n");
-                    }
-                }
-                else
-                {
-                    if (me->IsMuted(other)) // Unmuting
-                    {
-                        muteWaitCounter = 0;
-                        me->Unmute(other);
-                        AZ_Printf("GridMate", "Testing talking. Speak!\n");
-                    }
-                }
-
-                talkingWhileMute |= muteWaitCounter <= 0 && me->IsMuted(other) && other->IsTalking();
-
-                // printing out if anyone is talking
-                for (int i = 0; i < 2; ++i)
-                {
-                    GridMember* member = session->GetMemberByIndex(i);
-                    bool isTalking = member->IsTalking();
-                    if (isTalking && !wasTalking[i]) // user started talking
-                    {
-                        wasTalking[i] = true;
-                        AZ_Printf("GridMate", "User %s(xuid=%s) is talking...\n",
-                            member->GetName().c_str(),
-                            member->GetId().ToString().c_str());
-                    }
-                    else if (!isTalking && wasTalking[i]) // stopped
-                    {
-                        wasTalking[i] = false;
-                        AZ_Printf("GridMate", "User %s(xuid=%s) stopped talking...\n",
-                            member->GetName().c_str(),
-                            member->GetId().ToString().c_str());
-                    }
-                }
-
-                m_gridMate->Update();
-                UpdateReplicaManager(session->GetReplicaMgr());
-                Update();
-                AZStd::this_thread::sleep_for(AZStd::chrono::milliseconds(10));
-            }
-
-            AZ_TEST_ASSERT(!talkingWhileMute);
-        }
-
-#if defined(AZ_RESTRICTED_PLATFORM)
-#define AZ_RESTRICTED_SECTION SESSION_CPP_SECTION_13
-    #if defined(AZ_PLATFORM_XENIA)
-        #include "Xenia/Session_cpp_xenia.inl"
-    #elif defined(AZ_PLATFORM_PROVO)
-        #include "Provo/Session_cpp_provo.inl"
-    #endif
-#endif
-    };
-#endif // AZ_TEST_VOICECHAT
 }
 
 GM_TEST_SUITE(SessionSuite)
 GM_TEST(Integ_LANSessionMatchmakingParamsTest)
 GM_TEST(Integ_LANSessionTest)
-#if defined(AZ_SOCKET_IPV6_SUPPORT)
+#if (AZ_TRAIT_GRIDMATE_TEST_SOCKET_IPV6_SUPPORT_ENABLED)
 GM_TEST(Integ_LANSessionTestIPv6)
-#endif  // AZ_SOCKET_IPV6_SUPPORT
+#endif
 GM_TEST(Integ_LANMultipleSessionTest)
 GM_TEST(Integ_LANLatencySessionTest)
 
@@ -2439,27 +2138,5 @@ GM_TEST(Integ_LANLatencySessionTest)
 //GM_TEST(LANSessionMigarationTestTest)
 //GM_TEST(LANSessionMigarationTestTest2)
 //GM_TEST(LANSessionMigarationTestTest3)
-
-#if defined(AZ_RESTRICTED_PLATFORM)
-#define AZ_RESTRICTED_SECTION SESSION_CPP_SECTION_14
-    #if defined(AZ_PLATFORM_XENIA)
-        #include "Xenia/Session_cpp_xenia.inl"
-    #elif defined(AZ_PLATFORM_PROVO)
-        #include "Provo/Session_cpp_provo.inl"
-    #endif
-#endif
-
-#if defined(AZ_RESTRICTED_PLATFORM)
-#define AZ_RESTRICTED_SECTION SESSION_CPP_SECTION_15
-    #if defined(AZ_PLATFORM_XENIA)
-        #include "Xenia/Session_cpp_xenia.inl"
-    #elif defined(AZ_PLATFORM_PROVO)
-        #include "Provo/Session_cpp_provo.inl"
-    #endif
-#endif
-
-#if defined(AZ_TEST_VOICECHAT)
-GM_TEST(SessionVoiceChatTest)
-#endif
 
 GM_TEST_SUITE_END()

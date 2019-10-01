@@ -17,6 +17,9 @@
 
 #include <AzCore/EBus/EBus.h>
 #include <AzCore/Component/Component.h>
+#include <AzCore/std/chrono/chrono.h>
+#include <AzCore/std/functional.h>
+#include <AzCore/std/parallel/thread.h>
 #include <AzCore/std/string/string.h>
 
 #include <AzFramework/CommandLine/CommandLine.h>
@@ -87,6 +90,11 @@ namespace AzFramework
         /// Pump the system event loop until there are no events left to process.
         virtual void PumpSystemEventLoopUntilEmpty() {}
 
+        /// Execute a function in a new thread and pump the system event loop at the specified frequency until the thread returns.
+        virtual void PumpSystemEventLoopWhileDoingWorkInNewThread(const AZStd::chrono::milliseconds& /*eventPumpFrequency*/,
+                                                                  const AZStd::function<void()>& /*workForNewThread*/,
+                                                                  const char* /*newThreadName*/) {}
+
         /// Run the main loop until ExitMainLoop is called.
         virtual void RunMainLoop() {}
 
@@ -95,6 +103,9 @@ namespace AzFramework
 
         /// Returns true is ExitMainLoop has been called, false otherwise.
         virtual bool WasExitMainLoopRequested() { return false; }
+
+        /// Terminate the application due to an error
+        virtual void TerminateOnError(int errorCode) { exit(errorCode); }
 
         /// Check to see if the application is running against an engine that is external to the application path
         virtual bool IsEngineExternal() const { return false; }

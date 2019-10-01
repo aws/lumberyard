@@ -388,19 +388,19 @@ namespace GraphCanvas
         return isConnectable;
     }
 
-    AZ::EntityId SlotComponent::CreateConnectionWithEndpoint(const Endpoint& otherEndpoint) const
+    AZ::EntityId SlotComponent::CreateConnectionWithEndpoint(const Endpoint& otherEndpoint)
     {
         const bool createConnection = true;
         return CreateConnectionHelper(otherEndpoint, createConnection);
     }
 
-    AZ::EntityId SlotComponent::DisplayConnection() const
+    AZ::EntityId SlotComponent::DisplayConnection()
     {
         Endpoint invalidEndpoint;
         return DisplayConnectionWithEndpoint(invalidEndpoint);
     }
 
-    AZ::EntityId SlotComponent::DisplayConnectionWithEndpoint(const Endpoint& otherEndpoint) const
+    AZ::EntityId SlotComponent::DisplayConnectionWithEndpoint(const Endpoint& otherEndpoint)
     {
         const bool createConnection = false;
         return CreateConnectionHelper(otherEndpoint, createConnection);
@@ -506,7 +506,7 @@ namespace GraphCanvas
         slotConfiguration.m_slotGroup = GetSlotGroup();
     }
 
-    AZ::EntityId SlotComponent::CreateConnectionHelper(const Endpoint& otherEndpoint, bool createConnection) const
+    AZ::EntityId SlotComponent::CreateConnectionHelper(const Endpoint& otherEndpoint, bool createConnection)
     {
         Endpoint sourceEndpoint;
         Endpoint targetEndpoint;
@@ -528,6 +528,13 @@ namespace GraphCanvas
 
         if (connectionEntity)
         {
+            // Tweak to allow Extenders to just return the previously constructed element to help simplify down the
+            // addition process.
+            if (connectionEntity->GetState() == AZ::Entity::State::ES_ACTIVE)
+            {
+                return connectionEntity->GetId();
+            }
+
             GraphId graphId = GetScene();
             EditorId editorId;
 
@@ -545,7 +552,7 @@ namespace GraphCanvas
         return AZ::EntityId();
     }
 
-    AZ::Entity* SlotComponent::ConstructConnectionEntity(const Endpoint& sourceEndpoint, const Endpoint& targetEndpoint, bool createModelConnection) const
+    AZ::Entity* SlotComponent::ConstructConnectionEntity(const Endpoint& sourceEndpoint, const Endpoint& targetEndpoint, bool createModelConnection)
     {
         return ConnectionComponent::CreateGeneralConnection(sourceEndpoint, targetEndpoint, createModelConnection);
     }

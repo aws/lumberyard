@@ -1,0 +1,10 @@
+{
+    "auto":
+    {
+        "Platform/iOS":
+        [
+            "Twitch_Traits_Platform.h",
+            "Twitch_Traits_iOS.h"
+        ]
+    }
+}

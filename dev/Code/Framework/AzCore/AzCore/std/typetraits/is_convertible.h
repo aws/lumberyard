@@ -251,6 +251,7 @@ namespace AZStd
 
 #else
     AZSTD_TYPE_TRAIT_BOOL_DEF2(is_convertible, From, To, AZSTD_IS_CONVERTIBLE(From, To))
+    template<typename From, typename To> constexpr bool is_convertible_v = is_convertible<From, To>::value;
 #endif
 }
 

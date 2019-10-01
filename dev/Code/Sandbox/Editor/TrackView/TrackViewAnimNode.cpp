@@ -2693,3 +2693,16 @@ void CTrackViewAnimNode::OnParentChanged(AZ::EntityId oldParent, AZ::EntityId ne
         sequence->OnNodeChanged(this, ITrackViewSequenceListener::eNodeChangeType_NodeOwnerChanged);
     }
 }
+
+void CTrackViewAnimNode::OnParentTransformWillChange(AZ::Transform oldTransform, AZ::Transform newTransform) 
+{ 
+    // Only used in circumstances where modified keys are required, but OnParentChanged 
+    // message will not be received for some reason, e.g. node being cloned in memory 
+    UpdateKeyDataAfterParentChanged(oldTransform, newTransform);
+
+    CTrackViewSequence* sequence = GetSequence();
+    if (sequence != nullptr)
+    {
+        sequence->OnNodeChanged(this, ITrackViewSequenceListener::eNodeChangeType_NodeOwnerChanged);
+    }
+}

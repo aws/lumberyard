@@ -37,7 +37,7 @@ namespace XMLCPB {
 
         CNodeLiveReaderRef          GetRoot ();
         CNodeLiveReaderRef          CreateNodeRef ();
-        bool                                        ReadBinaryFile(const char* pFileName);
+        bool                                        ReadBinaryFile(const char* pFileName) { return false; }
         bool                                        ReadBinaryMemory(const uint8* pData, uint32 uSize);
         void                                        SaveTestFiles();
         uint32                                  GetTotalDataSize() const { return m_totalSize; }
@@ -57,7 +57,6 @@ namespace XMLCPB {
         template<class T>
         FlatAddr                                        ReadFromBufferEndianAware(FlatAddr addr, T& data);
         FlatAddr                                        ReadFromBuffer(FlatAddr addr, uint8*& rdata, uint32 len);
-        void                                            ReadDataFromFile(IPlatformOS::ISaveReaderPtr& pOSSaveReader, void* pDst, uint32 numBytes);
         void                                            ReadDataFromMemory(const uint8* pData, uint32 dataSize, void* pDst, uint32 numBytes, uint32& outReadLoc);
         FlatAddr                                        GetAddrNode(NodeGlobalID id) const;
         const uint8*                                GetPointerFromFlatAddr(FlatAddr addr) const { return m_buffer.GetPointer(addr); }
@@ -65,13 +64,7 @@ namespace XMLCPB {
     private:
 
         void                                                CheckErrorFlag(IPlatformOS::EFileOperationCode code);
-        void                                            ReadDataFromFileInternal(IPlatformOS::ISaveReaderPtr& pOSSaveReader, void* pSrc, uint32 numBytes);
-        void                                                ReadDataFromZLibBuffer(IPlatformOS::ISaveReaderPtr& pOSSaveReader, uint8*& pDst, uint32& numBytesToRead);
         void                                                CreateNodeAddressTables();
-
-#ifdef XMLCPB_CHECK_FILE_INTEGRITY
-        bool                                                CheckFileCorruption(IPlatformOS::ISaveReaderPtr& pOSSaveReader, const SFileHeader& fileHeader, uint32 totalSize);
-#endif
 
     private:
         typedef DynArray<CNodeLiveReader, int, NArray::SmallDynStorage<NAlloc::GeneralHeapAlloc> > LiveNodesVec;

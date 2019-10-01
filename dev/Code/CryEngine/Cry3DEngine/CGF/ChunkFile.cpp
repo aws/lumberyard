@@ -346,7 +346,6 @@ void CChunkFile::ReleaseMemoryBuffer()
 //////////////////////////////////////////////////////////////////////////
 bool CChunkFile::Read(const char* filename)
 {
-    FUNCTION_PROFILER_3DENGINE;
     LOADING_TIME_PROFILE_SECTION;
 
     ReleaseChunks();

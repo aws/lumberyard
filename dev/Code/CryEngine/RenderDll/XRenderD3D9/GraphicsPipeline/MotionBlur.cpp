@@ -3,9 +3,9 @@
 * its licensors.
 *
 * For complete copyright and license terms please see the LICENSE at the root of this
-* distribution(the "License").All use of this software is governed by the License,
-* or, if provided, by the license below or the license accompanying this file.Do not
-* remove or modify any license notices.This file is distributed on an "AS IS" BASIS,
+* distribution (the "License"). All use of this software is governed by the License,
+* or, if provided, by the license below or the license accompanying this file. Do not
+* remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
@@ -273,7 +273,13 @@ float CMotionBlurPass::ComputeMotionScale()
 
 void CMotionBlurPass::Execute()
 {
-    PROFILE_LABEL_SCOPE("MB");
+    // Added a check to make sure we're only running the new pipeline motion blur while the new pipeline is enabled.
+    if (CRenderer::CV_r_GraphicsPipeline <= 0)
+    {
+        return;
+    }
+
+    PROFILE_LABEL_SCOPE("MOTION_BLUR");
 
     CD3D9Renderer* rd = gcpRendD3D;
     CShader* pShader = CShaderMan::s_shPostMotionBlur;

@@ -26,6 +26,8 @@ namespace EMotionFX
         
         connect(proxyModel, &QAbstractItemModel::rowsInserted, this, &SelectionProxyModel::OnProxyModelRowsInserted);
 
+        connect(this, &QItemSelectionModel::selectionChanged, this, &SelectionProxyModel::OnProxySelectionChanged);
+
         // Find the chain of proxy models
         QAbstractProxyModel* sourceProxyModel = proxyModel;
         while (sourceProxyModel)
@@ -40,9 +42,6 @@ namespace EMotionFX
         const QModelIndex currentModelIndex = mapFromSource(m_sourceSelectionModel->currentIndex());
         QItemSelectionModel::setCurrentIndex(currentModelIndex, QItemSelectionModel::ClearAndSelect);
     }
-
-    SelectionProxyModel::~SelectionProxyModel()
-    {}
 
     void SelectionProxyModel::setCurrentIndex(const QModelIndex &index, QItemSelectionModel::SelectionFlags command)
     {
@@ -92,6 +91,30 @@ namespace EMotionFX
 
         QItemSelectionModel::select(targetSelected, QItemSelectionModel::Select);
         QItemSelectionModel::select(targetDeselected, QItemSelectionModel::Deselect);
+    }
+
+    void SelectionProxyModel::OnProxySelectionChanged(const QItemSelection& selected, const QItemSelection& deselected)
+    {
+        const QItemSelection sourceSelected = mapToSource(selected);
+        const QItemSelection sourceDeselected = mapToSource(deselected);
+
+        // Disconnect from the selectionChanged signal in the source model to
+        // prevent recursion
+        // We could also block the signals of the source selection model, but
+        // someone else may be connected to its signals and expect to get an
+        // update
+        disconnect(m_sourceSelectionModel, &QItemSelectionModel::selectionChanged, this, &SelectionProxyModel::OnSourceSelectionChanged);
+        if (selected.empty() && deselected.empty())
+        {
+            // Force the signal to fire
+            emit m_sourceSelectionModel->selectionChanged({}, {});
+        }
+        else
+        {
+            m_sourceSelectionModel->select(sourceSelected, QItemSelectionModel::Select);
+            m_sourceSelectionModel->select(sourceDeselected, QItemSelectionModel::Deselect);
+        }
+        connect(m_sourceSelectionModel, &QItemSelectionModel::selectionChanged, this, &SelectionProxyModel::OnSourceSelectionChanged);
     }
 
     void SelectionProxyModel::OnProxyModelRowsInserted(const QModelIndex& parent, int first, int last)

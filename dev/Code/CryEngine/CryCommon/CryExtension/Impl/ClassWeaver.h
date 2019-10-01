@@ -20,7 +20,6 @@
 
 #include "TypeList.h"
 #include "Conversion.h"
-#include <BoostHelpers.h>
 #include "RegFactoryNode.h"
 #include "../ICryUnknown.h"
 #include "../ICryFactory.h"

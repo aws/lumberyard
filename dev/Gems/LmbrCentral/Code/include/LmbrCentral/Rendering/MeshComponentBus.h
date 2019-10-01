@@ -18,6 +18,8 @@
 
 struct IStatObj;
 struct ICharacterInstance;
+struct SRenderingPassInfo;
+struct SRendParams;
 
 namespace LmbrCentral
 {
@@ -145,6 +147,11 @@ namespace LmbrCentral
         virtual void OnMeshDestroyed() {}
 
         virtual void OnBoundsReset() {};
+
+        /*
+         * Notifies listeners prior to making the render call 
+         */
+        virtual void OnMeshPreRender(const struct SRendParams& inOutRenderParams, const SRenderingPassInfo& passInfo) {};
 
         /**
          * When connecting to this bus if the asset is ready you will immediately get an OnMeshCreated event

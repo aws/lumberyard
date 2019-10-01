@@ -15,8 +15,7 @@
 #define CRYINCLUDE_CRYCOMMON_ILOCALIZATIONMANAGER_H
 #pragma once
 
-#include <CrySizer.h>
-#include <AzCore/EBus/EBus.h>
+#include "LocalizationManagerBus.h"
 //#include <platform.h> // Needed for LARGE_INTEGER (for consoles).
 
 ////////////////////////////////////////////////////////////////////////////////////////////////
@@ -109,32 +108,37 @@ struct SLocalizedInfoEditor
 // Summary:
 //      Interface to the Localization Manager.
 struct ILocalizationManager
+    : public LocalizationManagerRequestBus::Handler
 {
     //Platform independent language IDs. These are used to map the platform specific language codes to localization pakfiles
     //Please ensure that each entry in this enum has a corresponding entry in the PLATFORM_INDEPENDENT_LANGUAGE_NAMES array which is defined in LocalizedStringManager.cpp currently.
     enum EPlatformIndependentLanguageID
     {
-        ePILID_Japanese,
-        ePILID_English,
-        ePILID_French,
-        ePILID_Spanish,
-        ePILID_German,
-        ePILID_Italian,
-        ePILID_Dutch,
-        ePILID_Portuguese,
-        ePILID_Russian,
-        ePILID_Korean,
-        ePILID_ChineseT,    // Traditional Chinese
-        ePILID_ChineseS,    // Simplified Chinese
-        ePILID_Finnish,
-        ePILID_Swedish,
-        ePILID_Danish,
-        ePILID_Norwegian,
-        ePILID_Polish,
-        ePILID_Arabic,      //Test value for PS3. Not currently supported by Sony on the PS3 as a system language
-        ePILID_Czech,
-        ePILID_Turkish,
-        ePILID_MAX_OR_INVALID   //Not a language, denotes the maximum number of languages or an unknown language
+        ePILID_English_US,
+        ePILID_English_GB,
+        ePILID_German_DE,
+        ePILID_Russian_RU,
+        ePILID_Polish_PL,
+        ePILID_Turkish_TR,
+        ePILID_Spanish_ES,
+        ePILID_Spanish_MX,
+        ePILID_French_FR,
+        ePILID_French_CA,
+        ePILID_Italian_IT,
+        ePILID_Portugese_PT,
+        ePILID_Portugese_BR,
+        ePILID_Japanese_JP,
+        ePILID_Korean_KR,
+        ePILID_Chinese_T,
+        ePILID_Chinese_S,
+        ePILID_Dutch_NL,
+        ePILID_Finnish_FI,
+        ePILID_Swedish_SE,
+        ePILID_Czech_CZ,
+        ePILID_Norwegian_NO,
+        ePILID_Arabic_SA,
+        ePILID_Danish_DK,
+        ePILID_MAX_OR_INVALID,   //Not a language, denotes the maximum number of languages or an unknown language
     };
 
     typedef uint32 TLocalizationBitfield;
@@ -142,11 +146,16 @@ struct ILocalizationManager
     // <interfuscator:shuffle>
     virtual ~ILocalizationManager(){}
     virtual const char* LangNameFromPILID(const ILocalizationManager::EPlatformIndependentLanguageID id) = 0;
+    virtual ILocalizationManager::EPlatformIndependentLanguageID PILIDFromLangName(AZStd::string langName) = 0;
+    virtual ILocalizationManager::EPlatformIndependentLanguageID GetSystemLanguage() { return ILocalizationManager::EPlatformIndependentLanguageID::ePILID_English_US; }
     virtual ILocalizationManager::TLocalizationBitfield MaskSystemLanguagesFromSupportedLocalizations(const ILocalizationManager::TLocalizationBitfield systemLanguages) = 0;
     virtual ILocalizationManager::TLocalizationBitfield IsLanguageSupported(const ILocalizationManager::EPlatformIndependentLanguageID id) = 0;
-    virtual bool SetLanguage(const char* sLanguage) = 0;
-    virtual const char* GetLanguage() = 0;
+    virtual bool SetLanguage(const char* sLanguage) override { return false; }
+    virtual const char* GetLanguage() override { return nullptr; }
 
+    virtual int GetLocalizationFormat() const { return -1; }
+    virtual AZStd::string GetLocalizedSubtitleFilePath(const AZStd::string& localVideoPath, const AZStd::string& subtitleFileExtension) const { return ""; }
+    virtual AZStd::string GetLocalizedLocXMLFilePath(const AZStd::string& localXmlPath) const { return ""; }
     // load the descriptor file with tag information
     virtual bool InitLocalizationData(const char* sFileName, bool bReload = false) = 0;
     // request to load loca data by tag. Actual loading will happen during next level load begin event.
@@ -155,8 +164,9 @@ struct ILocalizationManager
     virtual bool LoadLocalizationDataByTag(const char* sTag, bool bReload = false) = 0;
     virtual bool ReleaseLocalizationDataByTag(const char* sTag) = 0;
 
-    virtual bool LoadExcelXmlSpreadsheet(const char* sFileName, bool bReload = false) = 0;
-    virtual void ReloadData() = 0;
+    virtual bool LoadAllLocalizationData(bool bReload = false) = 0;
+    virtual bool LoadExcelXmlSpreadsheet(const char* sFileName, bool bReload = false) override { return false; }
+    virtual void ReloadData() override {};
 
     // Summary:
     //   Free localization data.
@@ -172,14 +182,29 @@ struct ILocalizationManager
     //   bEnglish            - if true, translates the string into the always present English language.
     // Returns:
     //   true if localization was successful, false otherwise
-    virtual bool LocalizeString(const char* sString, string& outLocalizedString, bool bEnglish = false) = 0;
+    virtual bool LocalizeString_ch(const char* sString, string& outLocalizedString, bool bEnglish = false) override { return false; }
+
+    // Function to be deprecated and replaced by LocalizeString_ch to support eBus interface.
+    // Use LocalizeString_ch instead.
+    AZ_DEPRECATED(virtual bool LocalizeString(const char* sString, string& outLocalizedString, bool bEnglish = false), "Deprecated. Use LocalizeString_ch instead.") 
+    {
+        return LocalizeString_ch(sString, outLocalizedString, bEnglish);
+    }
 
     // Summary:
     //   Same as LocalizeString( const char* sString, string& outLocalizedString, bool bEnglish=false )
     //   but at the moment this is faster.
-    virtual bool LocalizeString(const string& sString, string& outLocalizedString, bool bEnglish = false) = 0;
+    virtual bool LocalizeString_s(const string& sString, string& outLocalizedString, bool bEnglish = false) override { return false; }
+
+    // Function to be deprecated and replaced by LocalizeString_s to support eBus interface.
+    // Use LocalizeString_s instead.
+    AZ_DEPRECATED(virtual bool LocalizeString(const string& sString, string& outLocalizedString, bool bEnglish = false), "Deprecated. Use LocalizeString_s instead.") 
+    { 
+        return LocalizeString_s(sString, outLocalizedString, bEnglish);
+    }
 
     // Summary:
+    virtual void LocalizeAndSubstituteInternal(AZStd::string& locString, const AZStd::vector<AZStd::string>& keys, const AZStd::vector<AZStd::string>& values) override {}
     //   Return the localized version corresponding to a label.
     // Description:
     //   A label has to start with '@' sign.
@@ -189,7 +214,8 @@ struct ILocalizationManager
     //   bEnglish            - if true, returns the always present English version of the label.
     // Returns:
     //   True if localization was successful, false otherwise.
-    virtual bool LocalizeLabel(const char* sLabel, string& outLocalizedString, bool bEnglish = false) = 0;
+    virtual bool LocalizeLabel(const char* sLabel, string& outLocalizedString, bool bEnglish = false) override { return false; }
+    virtual bool IsLocalizedInfoFound(const char* sKey) { return false; }
 
     // Summary:
     //   Get localization info structure corresponding to a key (key=label without the '@' sign).
@@ -216,7 +242,7 @@ struct ILocalizationManager
 
     // Summary:
     //   Return number of localization entries.
-    virtual int  GetLocalizedStringCount() = 0;
+    virtual int  GetLocalizedStringCount() override { return -1; }
 
     // Summary:
     //   Get the localization info structure at index nIndex.
@@ -243,7 +269,7 @@ struct ILocalizationManager
     //   sLocalizedString - Corresponding english language string.
     // Returns:
     //   True if successful, false otherwise (key not found).
-    virtual bool GetEnglishString(const char* sKey, string& sLocalizedString) = 0;
+    virtual bool GetEnglishString(const char* sKey, string& sLocalizedString) override { return false; }
 
     // Summary:
     //   Get Subtitle for Key or Label .
@@ -253,25 +279,32 @@ struct ILocalizationManager
     //   bForceSubtitle - If true, get subtitle (sLocalized or sEnglish) even if not specified in Data file.
     // Returns:
     //   True if subtitle found (and outSubtitle filled in), false otherwise.
-    virtual bool GetSubtitle(const char* sKeyOrLabel, string& outSubtitle, bool bForceSubtitle = false) = 0;
+    virtual bool GetSubtitle(const char* sKeyOrLabel, string& outSubtitle, bool bForceSubtitle = false) override { return false; }
 
     // Description:
     //      These methods format outString depending on sString with ordered arguments
     //      FormatStringMessage(outString, "This is %2 and this is %1", "second", "first");
     // Arguments:
     //      outString - This is first and this is second.
-    virtual void FormatStringMessage(string& outString, const string& sString, const char** sParams, int nParams) = 0;
-    virtual void FormatStringMessage(string& outString, const string& sString, const char* param1, const char* param2 = 0, const char* param3 = 0, const char* param4 = 0) = 0;
+    virtual void FormatStringMessage_List(string& outString, const string& sString, const char** sParams, int nParams) override {}
+    virtual void FormatStringMessage(string& outString, const string& sString, const char* param1, const char* param2 = 0, const char* param3 = 0, const char* param4 = 0) override {}
 
-    virtual void LocalizeTime(time_t t, bool bMakeLocalTime, bool bShowSeconds, string& outTimeString) = 0;
-    virtual void LocalizeDate(time_t t, bool bMakeLocalTime, bool bShort, bool bIncludeWeekday, string& outDateString) = 0;
-    virtual void LocalizeDuration(int seconds, string& outDurationString) = 0;
-    virtual void LocalizeNumber(int number, string& outNumberString) = 0;
-    virtual void LocalizeNumber(float number, int decimals, string& outNumberString) = 0;
+    // Function to be deprecated and replaced by FormatStringMessage_List to support eBus interface.
+    // Use FormatStringMessage_List instead.
+    AZ_DEPRECATED(virtual void FormatStringMessage(string& outString, const string& sString, const char** sParams, int nParams), "Deprecated. Use FormatStringMessage_List instead.") 
+    {
+        FormatStringMessage_List(outString, sString, sParams, nParams);
+    }
+
+    virtual void LocalizeTime(time_t t, bool bMakeLocalTime, bool bShowSeconds, string& outTimeString) override {}
+    virtual void LocalizeDate(time_t t, bool bMakeLocalTime, bool bShort, bool bIncludeWeekday, string& outDateString) override {}
+    virtual void LocalizeDuration(int seconds, string& outDurationString) override {}
+    virtual void LocalizeNumber(int number, string& outNumberString) override {}
+    virtual void LocalizeNumber_Decimal(float number, int decimals, string& outNumberString) override {}
 
     // Summary:
     //   Returns true if the project has localization configured for use, false otherwise.
-    virtual bool ProjectUsesLocalization() const = 0;
+    virtual bool ProjectUsesLocalization() const override { return false; }
     // </interfuscator:shuffle>
 
     static ILINE TLocalizationBitfield LocalizationBitfieldFromPILID(EPlatformIndependentLanguageID pilid)
@@ -283,17 +316,8 @@ struct ILocalizationManager
 
 // Summary:
 //      Simple bus that notifies listeners that the language (g_language) has changed.
-class LanguageChangeNotification
-    : public AZ::EBusTraits
-{
-public:
-    static const AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::Multiple;
 
-    virtual ~LanguageChangeNotification() = default;
 
-    virtual void LanguageChanged() = 0;
-};
 
-using LanguageChangeNotificationBus = AZ::EBus<LanguageChangeNotification>;
 
 #endif // CRYINCLUDE_CRYCOMMON_ILOCALIZATIONMANAGER_H

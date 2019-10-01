@@ -69,7 +69,7 @@ namespace EMStudio
 
             NUM_OPTIONS //automatically gets the next number assigned
         };
-        
+
         BlendGraphViewWidget(AnimGraphPlugin* plugin, QWidget* parentWidget);
         ~BlendGraphViewWidget();
 
@@ -79,6 +79,7 @@ namespace EMStudio
 
         void Init(BlendGraphWidget* blendGraphWidget);
         void UpdateAnimGraphOptions();
+        void UpdateSelection();
 
         // If there is a specific widget to handle this node returns that.
         // Else, returns nullptr.
@@ -111,13 +112,12 @@ namespace EMStudio
 
     protected:
         void UpdateNavigation();
-        void UpdateSelection();
 
         void OpenAnimGraph(EMotionFX::AnimGraph* animGraph);
 
         void CreateEntry(QMenu* menu, QHBoxLayout* toolbarLayout, const char* entryName, const char* toolbarIconFileName, bool addToToolbar, bool checkable, int32 actionIndex, const QKeySequence& shortcut = 0, bool border = true, bool addToMenu = true);
         void BuildOpenMenu();
-        void AddSeparator(QLayout *layout = nullptr);
+        void AddSeparator(QLayout* layout = nullptr);
 
         void AlignNodes(uint32 mode);
 

@@ -10,16 +10,12 @@
 #
 ########################################################################################
 
-SUBFOLDERS = [
-    'GridMate'
-    ]
-
-import os.path
 
 def build(bld):
+    
     bld.recurse('Tests')
 
-    kw = dict(
+    bld.CryEngineStaticLibrary(
         # Settings
         target          = 'GridMate',
         vs_filter       = 'Network',
@@ -31,19 +27,43 @@ def build(bld):
         use             = ['AzCore'],
         uselib          = ['OPENSSL'],
         export_includes = ['.'],
+        clang_cxxflags  = ['-Wno-deprecated-declarations'],
 
+        # Platform Roots
+        platform_roots  = [bld.PlatformRoot('Platform', export_includes=True)],
+    
         # Compiler Specific
         msvc_cxxflags   = [
                            '/W4', # warning level
                           ],
 
         # Platform Specific
-        win_features                = ['crcfix'],
+        win_features      = ['crcfix'],
 
-        restricted_script = 'update_restricted_parameters',
-
-        darwin_enable_rtti          = True,
+        darwin_enable_rtti = True
     )
-    for p0, p1, p2, p3 in bld.env['RESTRICTED_PLATFORMS']:
-        kw['{}_file_list'.format(p3)] = ['GridMate/{0}/gridmate_{1}.waf_files'.format(p0, p1)]
-    bld.CryEngineStaticLibrary(**kw)
+
+    bld.CryEngineStaticLibrary(
+        # Settings
+        target          = 'GridMateForTools',
+        vs_filter       = 'Network',
+        file_list       = ['GridMate/gridmate.waf_files'],
+        platforms       = ['all'],
+        configurations  = ['all'],
+        disable_pch     = True,
+        includes        = ['.'],
+        use             = ['AzCore'],
+        export_includes = ['.'],
+        
+        # Platform Roots
+        platform_roots  = [bld.PlatformRoot('Platform', export_includes=True)],
+    
+        defines         = ['GRIDMATE_FOR_TOOLS'],
+
+        # Platform Specific
+        msvc_cxxflags   = [
+                           '/W4', # warning level
+                          ],
+
+        darwin_enable_rtti = True
+    )

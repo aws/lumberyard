@@ -1,0 +1,6 @@
+obj=Class('Magick::DrawableBase','/usr/include/Magick++/Drawable.h')
+exclude(obj.copy)
+exclude(obj.default_copy)
+exclude(obj.operator['()'])
+declaration_code('#include <Magick++.h>')
+module_code('implicitly_convertible<Magick::DrawableBase,Magick::Drawable>();')

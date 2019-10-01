@@ -142,7 +142,7 @@ namespace Driller
             AZ::SerializeContext* serialize = azrtti_cast<AZ::SerializeContext*>(context);
             if (serialize)
             {
-                serialize->Class<StreamerDrillerDialogLocal, AZ::UserSettings>()
+                serialize->Class<StreamerDrillerDialogLocal>()
                     ->Field("m_tableColumnStorage", &StreamerDrillerDialogLocal::m_tableColumnStorage)
                     ->Version(1);
             }
@@ -186,7 +186,7 @@ namespace Driller
             AZ::SerializeContext* serialize = azrtti_cast<AZ::SerializeContext*>(context);
             if (serialize)
             {
-                serialize->Class<StreamerDrillerDialogSavedState, AZ::UserSettings>()
+                serialize->Class<StreamerDrillerDialogSavedState>()
                     ->Field("m_viewType", &StreamerDrillerDialogSavedState::m_viewType)
                     ->Field("m_autoZoom", &StreamerDrillerDialogSavedState::m_autoZoom)
                     ->Field("m_manualZoomMin", &StreamerDrillerDialogSavedState::m_manualZoomMin)

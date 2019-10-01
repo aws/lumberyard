@@ -1,6 +1,6 @@
 <download name="GSG_01_Orientation" type="Map">
  <index src="filelist.xml" dest="filelist.xml"/>
  <files>
-  <file src="level.pak" dest="level.pak" size="1120604" md5="b02f2e6ee260b3b5b91c325b4b6dee2a"/>
+  <file src="level.pak" dest="level.pak" size="1046485" md5="3bfe96044ca7e9887b7541240ad58124"/>
  </files>
 </download>

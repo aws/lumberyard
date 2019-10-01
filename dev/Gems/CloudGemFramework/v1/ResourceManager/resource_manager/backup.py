@@ -1,3 +1,13 @@
+#
+# All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
+# its licensors.
+#
+# For complete copyright and license terms please see the LICENSE at the root of this
+# distribution (the "License"). All use of this software is governed by the License,
+# or, if provided, by the license below or the license accompanying this file. Do not
+# remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+
 import boto3
 import botocore
 
@@ -34,7 +44,7 @@ def restore_bucket(context, args):
                                         args.deployment, resource_group_name, logical_resource_name)
     client = context.aws.session.client(
         's3', region_name=context.config.project_region, config=Config(signature_version='s3v4'))
-    __restore_s3(client, args.backup_name, resource_name)
+    __restore_s3(client, args.backup_name, resource_name, context.config.project_region)
 
 
 
@@ -75,7 +85,7 @@ def backup_resource(context, args):
                                             args.deployment, resource_group_name, logical_resource_name)
         client = context.aws.session.client(
             's3', region_name=context.config.project_region, config=Config(signature_version='s3v4'))
-        __backup_s3(client, resource_name, args.backup_name)
+        __backup_s3(client, resource_name, args.backup_name, context.config.project_region)
     else:
         raise HandledError(
             "Cannot backup resource of type {}".format(args.type))
@@ -106,7 +116,7 @@ def __backup_deployment(context, args):
                 's3', region_name=context.config.project_region, config=Config(signature_version='s3v4'))
             resource_name = __get_resource_name(context,
                                                 args.deployment, resource_group_name, logical_resource_name)
-            __backup_s3(client, resource_name, backup_name.lower())
+            __backup_s3(client, resource_name, backup_name.lower(), context.config.project_region)
 
 
 def __gather_resource_descriptions(context, deployment):
@@ -135,19 +145,19 @@ def __backup_ddb(client, table_name, backup_name):
         print "Backup {} was created successfully ({})".format(response['BackupDetails']['BackupName'], response['BackupDetails']['BackupArn'])
 
 
-def __backup_s3(client, bucket_name, backup_bucket):
+def __backup_s3(client, bucket_name, backup_bucket, region_name):
     print "Backing up {} to {}".format(bucket_name, backup_bucket.lower())
-    __transfer_s3(client, bucket_name, backup_bucket.lower())
+    __transfer_s3(client, bucket_name, backup_bucket.lower(), region_name)
 
 
-def __restore_s3(client, source_bucket, target_bucket):
+def __restore_s3(client, source_bucket, target_bucket, region_name):
         print "Restoring {} from {}".format(target_bucket, source_bucket)
-        __transfer_s3(client, source_bucket, target_bucket)
+        __transfer_s3(client, source_bucket, target_bucket, region_name)
 
 
-def __transfer_s3(client, source_bucket, target_bucket):
+def __transfer_s3(client, source_bucket, target_bucket, region_name):
     if not __bucket_exists(client, target_bucket):
-        __create_bucket(client, target_bucket)
+        __create_bucket(client, target_bucket, region_name)
     t_mgr = transfer_jobs.TransferJobManager(Pool(THREAD_COUNT))
     start = time.time()
     key_read_response = client.list_objects_v2(
@@ -223,5 +233,15 @@ def __bucket_exists(client, bucket_name):
     return True
 
 
-def __create_bucket(client, bucket_name):
-    client.create_bucket(Bucket=bucket_name)
+def __create_bucket(client, bucket_name, region_name):
+    # do not specify region when the region is us-east-1
+    # https://github.com/boto/boto3/issues/125
+    if region_name == 'us-east-1':
+        client.create_bucket(Bucket=bucket_name)
+    else:
+        client.create_bucket(
+            Bucket=bucket_name,
+            CreateBucketConfiguration={
+                'LocationConstraint': region_name
+            }
+        )

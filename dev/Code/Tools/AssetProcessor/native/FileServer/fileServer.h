@@ -182,6 +182,8 @@ public Q_SLOTS:
     void ProcessRenameRequest(unsigned int connId, unsigned int type, unsigned int serial, QByteArray payload);
     void ProcessFindFileNamesRequest(unsigned int connId, unsigned int type, unsigned int serial, QByteArray payload);
 
+    void ProcessFileTreeRequest(unsigned int connId, unsigned int type, unsigned int serial, QByteArray payload);
+
     void UpdateMetrics();
 
     void ConnectionAdded(unsigned int connId, Connection* connection);

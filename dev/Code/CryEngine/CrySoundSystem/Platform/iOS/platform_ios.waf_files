@@ -1,0 +1,11 @@
+{
+    "auto":
+    {
+        "Platform/iOS":
+        [
+            "CrySoundSystem_Traits_Platform.h",
+            "CrySoundSystem_Traits_iOS.h",
+            "../Common/Unimplemented/CrySoundSystem_Unimplemented.cpp"
+        ]
+    }
+}

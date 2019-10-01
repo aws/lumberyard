@@ -29,10 +29,6 @@
 #include <AzFramework/IO/FileOperations.h>
 #include <HMDBus.h>
 
-#if defined(WIN32)
-#include <CryWindows.h>
-#endif
-
 //////////////////////////////////////////////////////////////////////////
 // Brush Export structures.
 //////////////////////////////////////////////////////////////////////////
@@ -2711,16 +2707,18 @@ void CTimeDemoRecorder::QuitGame()
 //////////////////////////////////////////////////////////////////////////
 void CTimeDemoRecorder::ProcessKeysInput()
 {
-#ifdef WIN32
     if (!gEnv->IsDedicated() && gEnv->pSystem->IsDevMode())
     {
         // Check if special development keys where pressed.
-        bool bAlt = ((CryGetAsyncKeyState(VK_LMENU) & (1 << 15)) != 0) || (CryGetAsyncKeyState(VK_RMENU) & (1 << 15)) != 0;
-        bool bCtrl = (CryGetAsyncKeyState(VK_CONTROL) & (1 << 15)) != 0;
-        bool bShift = (CryGetAsyncKeyState(VK_SHIFT) & (1 << 15)) != 0;
+        // We're not referencing the VK_ constants directly here so the code will compile on non-Windows platforms.
+        // If it wasn't legacy functinoality that will be deleted then we would deal with it in a better way.
+        // See AzFramework\Input\Devices\Keyboard\InputDeviceKeyboardWindowsScanCodes.h for VK_ constant values.
+        bool bAlt = ((CryGetAsyncKeyState(/*VK_LMENU*/0xA4) & (1 << 15)) != 0) || (CryGetAsyncKeyState(/*VK_RMENU*/0xA5) & (1 << 15)) != 0;
+        bool bCtrl = (CryGetAsyncKeyState(/*VK_CONTROL*/0x11) & (1 << 15)) != 0;
+        bool bShift = (CryGetAsyncKeyState(/*VK_SHIFT*/0x10) & (1 << 15)) != 0;
 
-        bool bCancel = CryGetAsyncKeyState(VK_CANCEL) & 1;
-        bool bTimeDemoKey = CryGetAsyncKeyState(VK_SNAPSHOT) & 1;
+        bool bCancel = CryGetAsyncKeyState(/*VK_CANCEL*/0x03) & 1;
+        bool bTimeDemoKey = CryGetAsyncKeyState(/*VK_SNAPSHOT*/0x2C) & 1;
 
         if (bCancel)
         {
@@ -2759,7 +2757,6 @@ void CTimeDemoRecorder::ProcessKeysInput()
             }
         }
     }
-#endif
 
     bool bPaused = false;
     if (m_bRecording || m_bPlaying)

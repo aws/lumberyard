@@ -44,6 +44,16 @@ namespace Audio
         virtual AZStd::size_t AddData(const void* source, AZStd::size_t numFrames, AZStd::size_t numChannels) = 0;
 
         /**
+         * Adds new multi-track/multi-channel data to the ringbuffer in interleaved format.
+         * Not a required interface.
+         * @param source Source buffer to copy from.
+         * @param numFrames Number of sample frames available to copy.
+         * @param numChannels Number of tracks/channels in the source data, numSamples = numFrames * numChannels.
+         * @return Number of sample frames copied.
+         */
+        virtual AZStd::size_t AddMultiTrackDataInterleaved(const void** source, AZStd::size_t numFrames, AZStd::size_t numChannels) { return 0; }
+
+        /**
          * Consumes stored data from the ringbuffer.
          * @param dest Where the data will be written to, typically an array of SampleType pointers.
          * @param numFrames Number of sample frames requested to consume.
@@ -114,7 +124,7 @@ namespace Audio
                 // write operation won't wrap the buffer
                 if (sourceBuffer)
                 {
-                    size_t copySize = numSamples * s_bytesPerSample;
+                    AZStd::size_t copySize = numSamples * s_bytesPerSample;
                     ::memcpy(&m_buffer[m_write], sourceBuffer, copySize);
                 }
                 else
@@ -144,7 +154,112 @@ namespace Audio
             }
 
             return numFrames;
+        }
 
+        ///////////////////////////////////////////////////////////////////////////////////////////
+        AZStd::size_t AddMultiTrackDataInterleaved(const void** source, AZStd::size_t numFrames, AZStd::size_t numChannels) override
+        {
+            AZStd::lock_guard<AZStd::mutex> lock(m_mutex);
+
+            const AZStd::size_t numSamples = numFrames * numChannels;
+            if (numSamples > SamplesUnused())
+            {
+                // Writing this many samples will cross the read index, can't proceed.
+                // Consumption needs to occur first to free up room for input.
+                return 0;
+            }
+
+            if (m_write + numSamples < m_size)
+            {
+                // write operation won't wrap the buffer
+                const SampleType** sourceBufferChannels = reinterpret_cast<const SampleType**>(source);
+                AZ_ErrorOnce("AudioRingBuffer", sourceBufferChannels, "AudioRingBuffer - Multi-track source buffers not found!\n");
+
+                if (sourceBufferChannels)
+                {
+                    for (AZStd::size_t channel = 0; channel < numChannels; ++channel)
+                    {
+                        AZ_ErrorOnce("AudioRingBuffer", sourceBufferChannels[channel], "AudioRingBufffer - Multi-track source contains a null buffer at channel %zu!\n", channel);
+                        const SampleType* sourceBuffer = sourceBufferChannels[channel];
+
+                        if (sourceBuffer)
+                        {
+                            for (AZStd::size_t frame = 0; frame < numFrames; ++frame)
+                            {
+                                m_buffer[m_write + channel + (numChannels * frame)] = *sourceBuffer++;
+                            }
+                        }
+                        else
+                        {
+                            for (AZStd::size_t frame = 0; frame < numFrames; ++frame)
+                            {
+                                m_buffer[m_write + channel + (numChannels * frame)] = 0;
+                            }
+                        }
+                    }
+                }
+                else
+                {
+                    ::memset(&m_buffer[m_write], 0, numSamples * s_bytesPerSample);
+                }
+
+                m_write += numSamples;
+            }
+            else
+            {
+                // split the copy operations to handle wrap-around
+                AZStd::size_t currentToEndSamples = m_size - m_write;
+                AZStd::size_t wraparoundSamples = numSamples - currentToEndSamples;
+
+                const SampleType** sourceBufferChannels = reinterpret_cast<const SampleType**>(source);
+                AZ_ErrorOnce("AudioRingBuffer", sourceBufferChannels, "AudioRingBuffer - Multi-track source buffers not found!\n");
+
+                if (sourceBufferChannels)
+                {
+                    AZStd::size_t currentToEndFrames = (currentToEndSamples) / numChannels;
+                    AZStd::size_t wraparoundFrames = (numFrames - currentToEndFrames);
+
+                    for (AZStd::size_t channel = 0; channel < numChannels; ++channel)
+                    {
+                        AZ_ErrorOnce("AudioRingBuffer", sourceBufferChannels[channel], "AudioRingBufffer - Multi-track source contains a null buffer at channel %zu!\n", channel);
+                        const SampleType* sourceBuffer = sourceBufferChannels[channel];
+
+                        if (sourceBuffer)
+                        {
+                            for (AZStd::size_t frame = 0; frame < currentToEndFrames; ++frame)
+                            {
+                                m_buffer[m_write + channel + (numChannels * frame)] = *sourceBuffer++;
+                            }
+
+                            for (AZStd::size_t frame = 0; frame < wraparoundFrames; ++frame)
+                            {
+                                m_buffer[channel + (numChannels * frame)] = *sourceBuffer++;
+                            }
+                        }
+                        else
+                        {
+                            for (AZStd::size_t frame = 0; frame < currentToEndFrames; ++frame)
+                            {
+                                m_buffer[m_write + channel + (numChannels * frame)] = 0;
+                            }
+
+                            for (AZStd::size_t frame = 0; frame < wraparoundFrames; ++frame)
+                            {
+                                m_buffer[channel + (numChannels * frame)] = 0;
+                            }
+                        }
+                    }
+                }
+                else
+                {
+                    ::memset(&m_buffer[m_write], 0, currentToEndSamples * s_bytesPerSample);
+                    ::memset(m_buffer, 0, wraparoundSamples * s_bytesPerSample);
+                }
+
+                m_write = wraparoundSamples;
+            }
+
+            return numFrames;
         }
 
         ///////////////////////////////////////////////////////////////////////////////////////////
@@ -211,6 +326,65 @@ namespace Audio
                         {
                             destBuffers[0][frame] = m_buffer[m_read++];
                             destBuffers[1][frame] = m_buffer[m_read++];
+                        }
+                    }
+                }
+            }
+            else if (numChannels == 6 && deinterleaveMultichannel)
+            {
+                if (m_write > m_read)
+                {
+                    // do 6ch deinterleaved copy
+                    for (AZ::u32 frame = 0; frame < numFrames; ++frame)
+                    {
+                        destBuffers[0][frame] = m_buffer[m_read++];
+                        destBuffers[1][frame] = m_buffer[m_read++];
+                        destBuffers[2][frame] = m_buffer[m_read++];
+                        destBuffers[3][frame] = m_buffer[m_read++];
+                        destBuffers[4][frame] = m_buffer[m_read++];
+                        destBuffers[5][frame] = m_buffer[m_read++];
+                    }
+                }
+                else
+                {
+                    AZStd::size_t currentToEndFrames = (m_size - m_read) / numChannels;
+                    if (currentToEndFrames > numFrames)
+                    {
+                        // do 6ch deinterleaved copy
+                        for (AZ::u32 frame = 0; frame < numFrames; ++frame)
+                        {
+                            destBuffers[0][frame] = m_buffer[m_read++];
+                            destBuffers[1][frame] = m_buffer[m_read++];
+                            destBuffers[2][frame] = m_buffer[m_read++];
+                            destBuffers[3][frame] = m_buffer[m_read++];
+                            destBuffers[4][frame] = m_buffer[m_read++];
+                            destBuffers[5][frame] = m_buffer[m_read++];
+                        }
+                    }
+                    else
+                    {
+                        // do two partial 6ch deinterleaved copies
+                        AZ::u32 frame = 0;
+                        for (; frame < currentToEndFrames; ++frame)
+                        {
+                            destBuffers[0][frame] = m_buffer[m_read++];
+                            destBuffers[1][frame] = m_buffer[m_read++];
+                            destBuffers[2][frame] = m_buffer[m_read++];
+                            destBuffers[3][frame] = m_buffer[m_read++];
+                            destBuffers[4][frame] = m_buffer[m_read++];
+                            destBuffers[5][frame] = m_buffer[m_read++];
+                        }
+
+                        m_read = 0;
+
+                        for (; frame < numFrames; ++frame)
+                        {
+                            destBuffers[0][frame] = m_buffer[m_read++];
+                            destBuffers[1][frame] = m_buffer[m_read++];
+                            destBuffers[2][frame] = m_buffer[m_read++];
+                            destBuffers[3][frame] = m_buffer[m_read++];
+                            destBuffers[4][frame] = m_buffer[m_read++];
+                            destBuffers[5][frame] = m_buffer[m_read++];
                         }
                     }
                 }

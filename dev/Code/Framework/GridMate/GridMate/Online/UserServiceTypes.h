@@ -26,6 +26,7 @@ namespace GridMate
         OLS_NotSignedIn,        // There is no user signed in
         OLS_SignedInOffline,    // User signed in without online capabilities
         OLS_SignedInOnline,     // User signed in with online capabilities
+        OLS_SigningOut,         // User is in the process of signing out
     };
 
     /**

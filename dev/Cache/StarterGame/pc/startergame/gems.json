@@ -170,12 +170,6 @@
             "_comment": "UserLoginDefault"
         },
         {
-            "Path": "Gems/NativeUI",
-            "Uuid": "d2a325d80a0445dbb64b22f7d2f20960",
-            "Version": "0.1.0",
-            "_comment": "NativeUI"
-        },
-        {
             "Path": "Gems/GameEffectSystem",
             "Uuid": "d378b5a7b47747d0a7aa741945df58f3",
             "Version": "1.0.0",

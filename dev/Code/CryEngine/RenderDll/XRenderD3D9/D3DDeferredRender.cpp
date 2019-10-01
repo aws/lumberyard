@@ -223,11 +223,6 @@ void CD3D9Renderer::FX_DeferredShadowPass(const SRenderLight* pLight, ShadowMapF
         {
             return;
         }
-
-        if (pShadowFrustum->m_castersList.IsEmpty() && pShadowFrustum->m_jobExecutedCastersList.IsEmpty())
-        {
-            return;
-        }
     }
 
     if (pShadowFrustum->m_eFrustumType == ShadowMapFrustum::e_HeightMapAO)

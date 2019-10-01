@@ -18,10 +18,27 @@ namespace GraphCanvas
     // EditorContextMenu
     //////////////////////
     
-    EditorContextMenu::EditorContextMenu(QWidget* parent)
+    EditorContextMenu::EditorContextMenu(EditorId editorId, QWidget* parent)
         : QMenu(parent)
+        , m_editorId(editorId)
         , m_finalized(false)
+        , m_isToolBarMenu(false)
     {
+    }
+
+    void EditorContextMenu::SetIsToolBarMenu(bool isToolBarMenu)
+    {
+        m_isToolBarMenu = isToolBarMenu;
+    }
+
+    bool EditorContextMenu::IsToolBarMenu() const
+    {
+        return m_isToolBarMenu;
+    }
+
+    EditorId EditorContextMenu::GetEditorId() const
+    {
+        return m_editorId;
     }
     
     void EditorContextMenu::AddActionGroup(const ActionGroupId& actionGroup)
@@ -49,6 +66,23 @@ namespace GraphCanvas
         {
             delete contextMenuAction;
         }
+    }
+
+    bool EditorContextMenu::IsFinalized() const
+    {
+        return m_finalized;
+    }
+
+    QMenu* EditorContextMenu::FindSubMenu(AZStd::string_view subMenuPath)
+    {
+        auto subMenuIter = m_subMenuMap.find(subMenuPath);
+
+        if (subMenuIter != m_subMenuMap.end())
+        {
+            return subMenuIter->second;
+        }
+
+        return nullptr;
     }
 
     void EditorContextMenu::RefreshActions(const GraphId& graphId, const AZ::EntityId& targetMemberId)

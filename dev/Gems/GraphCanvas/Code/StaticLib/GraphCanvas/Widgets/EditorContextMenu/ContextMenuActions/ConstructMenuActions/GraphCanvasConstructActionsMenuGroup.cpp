@@ -11,8 +11,14 @@
 */
 #include <GraphCanvas/Widgets/EditorContextMenu/ContextMenuActions/ConstructMenuActions/GraphCanvasConstructActionsMenuGroup.h>
 
+#include <GraphCanvas/Editor/AssetEditorBus.h>
+
 #include <GraphCanvas/Widgets/EditorContextMenu/ContextMenuActions/ConstructMenuActions/BookmarkConstructMenuActions.h>
 #include <GraphCanvas/Widgets/EditorContextMenu/ContextMenuActions/ConstructMenuActions/CommentConstructMenuActions.h>
+#include <GraphCanvas/Widgets/EditorContextMenu/ContextMenuActions/ConstructMenuActions/ConstructContextMenuAction.h>
+#include <GraphCanvas/Widgets/EditorContextMenu/ContextMenuActions/ConstructMenuActions/ConstructPresetMenuActions.h>
+
+#include <GraphCanvas/Types/ConstructPresets.h>
 
 namespace GraphCanvas
 {
@@ -22,7 +28,6 @@ namespace GraphCanvas
 
     GraphCanvasConstructActionsMenuGroup::GraphCanvasConstructActionsMenuGroup()
         : m_createBookmark(nullptr)
-        , m_createComment(nullptr)
     {
     }
 
@@ -37,17 +42,16 @@ namespace GraphCanvas
         m_createBookmark = aznew AddBookmarkMenuAction(contextMenu);
         contextMenu->AddMenuAction(m_createBookmark);
 
-        m_createComment = aznew AddCommentMenuAction(contextMenu);
-        contextMenu->AddMenuAction(m_createComment);
+        m_commentPresets.PopulateMenu(contextMenu);
+    }
+
+    void GraphCanvasConstructActionsMenuGroup::RefreshGroup()
+    {
+        m_commentPresets.RefreshPresets();
     }
 
     void GraphCanvasConstructActionsMenuGroup::DisableBookmark()
     {
         m_createBookmark->setEnabled(false);
-    }
-
-    void GraphCanvasConstructActionsMenuGroup::DisableComment()
-    {
-        m_createComment->setEnabled(false);
     }
 }

@@ -22,6 +22,8 @@ namespace AZStd
     AZSTD_TYPE_TRAIT_BOOL_SPEC1(is_void, void const, true)
     AZSTD_TYPE_TRAIT_BOOL_SPEC1(is_void, void volatile, true)
     AZSTD_TYPE_TRAIT_BOOL_SPEC1(is_void, void const volatile, true)
+
+    template<class T> constexpr bool is_void_v = is_void<T>::value;
 }
 
 #endif // AZSTD_TYPE_TRAITS_IS_VOID_INCLUDED

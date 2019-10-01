@@ -1,0 +1,7 @@
+{
+    "auto": {
+        "Platform/Windows": [
+            "Platform_Windows.cpp"
+        ]
+    }
+}

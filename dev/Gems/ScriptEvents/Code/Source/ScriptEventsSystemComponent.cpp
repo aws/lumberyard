@@ -101,28 +101,11 @@ namespace ScriptEvents
     AZStd::intrusive_ptr<Internal::ScriptEvent> SystemComponent::RegisterScriptEvent(const AZ::Data::AssetId& assetId, AZ::u32 version)
     {
         AZ_Assert(assetId.IsValid(), "Unable to register Script Event with invalid asset Id");
-        ScriptEventKey key(assetId, version);
-
-        // Do we have an older version?
-        for (auto& scriptEvent : m_scriptEvents)
-        {
-            if (scriptEvent.first.m_assetId == assetId)
-            {
-                if (version > scriptEvent.first.m_version)
-                {
-                    // Unload the old version.
-                    ScriptEventKey oldVersionKey(assetId, scriptEvent.first.m_version);
-                    m_scriptEvents[oldVersionKey].reset();
-                    m_scriptEvents.erase(oldVersionKey);
-
-                    break;
-                }
-            }
-        }
+        ScriptEventKey key(assetId, 0);
 
         if (m_scriptEvents.find(key) == m_scriptEvents.end())
         {
-            m_scriptEvents[key] = AZStd::intrusive_ptr<ScriptEvents::Internal::ScriptEvent>(aznew ScriptEvents::Internal::ScriptEvent(assetId, key.m_version));
+            m_scriptEvents[key] = AZStd::intrusive_ptr<ScriptEvents::Internal::ScriptEvent>(aznew ScriptEvents::Internal::ScriptEvent(assetId));
         }
 
         return m_scriptEvents[key];
@@ -143,7 +126,7 @@ namespace ScriptEvents
         }
 
         const AZ::Uuid& assetId = AZ::Uuid::CreateName(busName.c_str());
-        ScriptEventKey key(assetId, definition.GetVersion());
+        ScriptEventKey key(assetId, 0);
         if (m_scriptEvents.find(key) == m_scriptEvents.end())
         {
             AZ::Data::Asset<ScriptEvents::ScriptEventsAsset> assetData = AZ::Data::AssetManager::Instance().CreateAsset<ScriptEvents::ScriptEventsAsset>(assetId);
@@ -152,15 +135,27 @@ namespace ScriptEvents
             ScriptEvents::ScriptEventsAsset* scriptAsset = assetData.Get();
             scriptAsset->m_definition = definition;
 
-            m_scriptEvents[key] = AZStd::intrusive_ptr<ScriptEvents::Internal::ScriptEvent>(aznew ScriptEvents::Internal::ScriptEvent(assetId, definition.GetVersion()));
+            m_scriptEvents[key] = AZStd::intrusive_ptr<ScriptEvents::Internal::ScriptEvent>(aznew ScriptEvents::Internal::ScriptEvent(assetId));
             m_scriptEvents[key]->CompleteRegistration(assetData);
 
         }
     }
 
+    void SystemComponent::UnregisterScriptEventFromDefinition(const ScriptEvents::ScriptEvent& definition)
+    {
+        const AZStd::string& busName = definition.GetName();
+        const AZ::Uuid& assetId = AZ::Uuid::CreateName(busName.c_str());
+
+        AZ::Data::Asset<ScriptEvents::ScriptEventsAsset> assetData = AZ::Data::AssetManager::Instance().FindAsset<ScriptEvents::ScriptEventsAsset>(assetId);
+        if (assetData)
+        {
+            assetData.Release();
+        }
+    }
+
     AZStd::intrusive_ptr<ScriptEvents::Internal::ScriptEvent> SystemComponent::GetScriptEvent(const AZ::Data::AssetId& assetId, AZ::u32 version)
     {
-        ScriptEventKey key(assetId, version);
+        ScriptEventKey key(assetId, 0);
 
         if (m_scriptEvents.find(key) != m_scriptEvents.end())
         {

@@ -14,6 +14,7 @@
 
 #include <AzFramework/Input/Buses/Requests/InputChannelRequestBus.h>
 #include <AzFramework/Input/Devices/InputDeviceId.h>
+#include <AzFramework/Input/User/LocalUserId.h>
 
 #include <AzCore/Math/Vector2.h>
 #include <AzCore/Memory/SystemAllocator.h>
@@ -81,6 +82,7 @@ namespace AzFramework
             State m_state;                   //!< The state of the input channel
             float m_value;                   //!< The value of the input channel
             float m_delta;                   //!< The delta of the input channel
+            LocalUserId m_localUserId;       //!< The local user id assigned to the input device
         };
 
         ////////////////////////////////////////////////////////////////////////////////////////////
@@ -218,7 +220,7 @@ namespace AzFramework
         //! to ensure input channels broadcast no more than one event each frame (at the same time).
         //! \param[in] isChannelActive Whether the input channel is currently active/engaged
         //! \return Whether the update resulted in a state transition (was m_state changed)
-        virtual bool UpdateState(bool isChannelActive);
+        bool UpdateState(bool isChannelActive);
 
         ////////////////////////////////////////////////////////////////////////////////////////////
         //! \ref AzFramework::InputChannelRequests::ResetState

@@ -45,16 +45,16 @@ namespace AzFramework
         AZ_COMPONENT(InputSystemComponent, "{CAF3A025-FAC9-4537-B99E-0A800A9326DF}")
 
         ////////////////////////////////////////////////////////////////////////////////////////////
+        //! \ref AZ::ComponentDescriptor::Reflect
+        static void Reflect(AZ::ReflectContext* reflection);
+
+        ////////////////////////////////////////////////////////////////////////////////////////////
         //! \ref AZ::ComponentDescriptor::GetProvidedServices
         static void GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided);
 
         ////////////////////////////////////////////////////////////////////////////////////////////
         //! \ref AZ::ComponentDescriptor::GetIncompatibleServices
         static void GetIncompatibleServices(AZ::ComponentDescriptor::DependencyArrayType& incompatible);
-
-        ////////////////////////////////////////////////////////////////////////////////////////////
-        //! \ref AZ::ComponentDescriptor::Reflect
-        static void Reflect(AZ::ReflectContext* reflection);
 
         ////////////////////////////////////////////////////////////////////////////////////////////
         //! Constructor

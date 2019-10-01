@@ -49,26 +49,6 @@ uint16 CAttrSetTableReader::GetHeaderAttr(AttrSetID setId, uint32 indAttr) const
     return *pHeader;
 }
 
-
-//////////////////////////////////////////////////////////////////////////
-
-void CAttrSetTableReader::ReadFromFile(CReader& Reader, IPlatformOS::ISaveReaderPtr& pOSSaveReader, const SFileHeader& headerInfo)
-{
-    assert(m_numAttrs.empty() && m_setAddrs.empty());
-
-    m_numAttrs.resize(headerInfo.m_numAttrSets);
-    m_setAddrs.resize(headerInfo.m_numAttrSets);
-
-    uint8* pNumAttrsTable = &(m_numAttrs[0]);
-    Reader.ReadDataFromFile(pOSSaveReader, pNumAttrsTable, sizeof(*pNumAttrsTable) * headerInfo.m_numAttrSets);
-
-    FlatAddr16* pSetAddrsTable = &(m_setAddrs[0]);
-    Reader.ReadDataFromFile(pOSSaveReader, pSetAddrsTable, sizeof(*pSetAddrsTable) * headerInfo.m_numAttrSets);
-
-    m_buffer.ReadFromFile(Reader, pOSSaveReader, headerInfo.m_sizeAttrSets);
-}
-
-
 //////////////////////////////////////////////////////////////////////////
 
 void CAttrSetTableReader::ReadFromMemory(CReader& Reader, const uint8* pData, uint32 dataSize, const SFileHeader& headerInfo, uint32& outReadLoc)

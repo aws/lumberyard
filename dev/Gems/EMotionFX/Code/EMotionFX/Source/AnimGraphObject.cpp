@@ -48,8 +48,25 @@ namespace EMotionFX
     {
     }
 
+    const char* AnimGraphObject::GetCategoryName(ECategory category)
+    {
+        switch (category)
+        {
+            case CATEGORY_SOURCES: { return "Sources"; }
+            case CATEGORY_BLENDING: { return "Blending"; }
+            case CATEGORY_CONTROLLERS: { return "Controllers"; }
+            case CATEGORY_PHYSICS: { return "Physics"; }
+            case CATEGORY_LOGIC: { return "Logic"; }
+            case CATEGORY_MATH: { return "Math"; }
+            case CATEGORY_MISC: { return "Misc"; }
+            case CATEGORY_TRANSITIONS: { return "Transitions"; }
+            case CATEGORY_TRANSITIONCONDITIONS: { return "Transition conditions"; }
+            case CATEGORY_TRIGGERACTIONS: { return "Trigger actions"; }
+        }
 
-    // unregister itself
+        return "Unknown category";
+    }
+
     void AnimGraphObject::Unregister()
     {
     }
@@ -232,19 +249,19 @@ namespace EMotionFX
             {
                 if (hasMotionExtractionNodeInMask)
                 {
-                    if (weight < MCore::Math::epsilon || !targetRefData)     // Weight is 0.
+                    if (weight < MCore::Math::epsilon || !targetRefData) // Weight is 0.
                     {
                         outTransform = sourceRefData->GetTrajectoryDelta();
                         outTransformMirrored = sourceRefData->GetTrajectoryDeltaMirrored();
                     }
-                    else if (weight < 1.0f - MCore::Math::epsilon)     // Weight between 0 and 1.
+                    else if (weight < 1.0f - MCore::Math::epsilon) // Weight between 0 and 1.
                     {
                         outTransform = sourceRefData->GetTrajectoryDelta();
                         outTransform.Blend(targetRefData->GetTrajectoryDelta(), weight);
                         outTransformMirrored = sourceRefData->GetTrajectoryDeltaMirrored();
                         outTransformMirrored.Blend(targetRefData->GetTrajectoryDeltaMirrored(), weight);
                     }
-                    else     // Weight is 1.
+                    else // Weight is 1.
                     {
                         outTransform = targetRefData->GetTrajectoryDelta();
                         outTransformMirrored = targetRefData->GetTrajectoryDeltaMirrored();
@@ -311,12 +328,12 @@ namespace EMotionFX
             // Blend between the source and target.
             case EXTRACTIONMODE_BLEND:
             {
-                if (weight < MCore::Math::epsilon || !targetRefData)     // Weight is 0 or there is no target ref data.
+                if (weight < MCore::Math::epsilon || !targetRefData) // Weight is 0 or there is no target ref data.
                 {
                     outTransform = sourceRefData->GetTrajectoryDelta();
                     outTransformMirrored = sourceRefData->GetTrajectoryDeltaMirrored();
                 }
-                else     // Weight between 0 and 1.
+                else // Weight between 0 and 1.
                 {
                     outTransform = sourceRefData->GetTrajectoryDelta();
                     outTransform.BlendAdditive(targetRefData->GetTrajectoryDelta(), basePoseTransform, weight);
@@ -332,9 +349,9 @@ namespace EMotionFX
                 if (targetRefData)
                 {
                     outTransform = sourceRefData->GetTrajectoryDelta();
-                    outTransform.BlendAdditive(targetRefData->GetTrajectoryDelta(), basePoseTransform, 1.0f);       // TODO: could eliminate the lerp internally
+                    outTransform.BlendAdditive(targetRefData->GetTrajectoryDelta(), basePoseTransform, 1.0f); // TODO: could eliminate the lerp internally
                     outTransformMirrored = sourceRefData->GetTrajectoryDeltaMirrored();
-                    outTransformMirrored.BlendAdditive(targetRefData->GetTrajectoryDeltaMirrored(), basePoseTransform, 1.0f);       // TODO: could eliminate the lerp internally
+                    outTransformMirrored.BlendAdditive(targetRefData->GetTrajectoryDeltaMirrored(), basePoseTransform, 1.0f); // TODO: could eliminate the lerp internally
                 }
                 else
                 {
@@ -376,21 +393,21 @@ namespace EMotionFX
             return;
         }
 
-        editContext->Enum<ESyncMode>("Sync Mode", "The synchronization method to use. Event track based will use event tracks, full clip based will ignore the events and sync as a full clip. If set to Event Track Based while no sync events exist inside the track a full clip based sync will be performed instead.")
+        editContext->Enum<ESyncMode>("Sync mode", "The synchronization method to use. Event track based will use event tracks, full clip based will ignore the events and sync as a full clip. If set to Event Track Based while no sync events exist inside the track a full clip based sync will be performed instead.")
             ->Value("Disabled", SYNCMODE_DISABLED)
-            ->Value("Event Track Based", SYNCMODE_TRACKBASED)
-            ->Value("Full Clip Based", SYNCMODE_CLIPBASED);
+            ->Value("Event track based", SYNCMODE_TRACKBASED)
+            ->Value("Full clip based", SYNCMODE_CLIPBASED);
 
-        editContext->Enum<EEventMode>("Event Filter Mode", "The event filter mode, which controls which events are passed further up the hierarchy.")
-            ->Value("Master Node Only", EVENTMODE_MASTERONLY)
-            ->Value("Servant Node Only", EVENTMODE_SLAVEONLY)
-            ->Value("Both Nodes", EVENTMODE_BOTHNODES)
-            ->Value("Most Active", EVENTMODE_MOSTACTIVE)
+        editContext->Enum<EEventMode>("Event filter mode", "The event filter mode, which controls which events are passed further up the hierarchy.")
+            ->Value("Master node only", EVENTMODE_MASTERONLY)
+            ->Value("Servant node only", EVENTMODE_SLAVEONLY)
+            ->Value("Both nodes", EVENTMODE_BOTHNODES)
+            ->Value("Most active", EVENTMODE_MOSTACTIVE)
             ->Value("None", EVENTMODE_NONE);
 
-        editContext->Enum<EExtractionMode>("Extraction Mode", "The motion extraction blend mode to use.")
+        editContext->Enum<EExtractionMode>("Extraction mode", "The motion extraction blend mode to use.")
             ->Value("Blend", EXTRACTIONMODE_BLEND)
-            ->Value("Target Only", EXTRACTIONMODE_TARGETONLY)
-            ->Value("Source Only", EXTRACTIONMODE_SOURCEONLY);
+            ->Value("Target only", EXTRACTIONMODE_TARGETONLY)
+            ->Value("Source only", EXTRACTIONMODE_SOURCEONLY);
     }
 } // namespace EMotionFX

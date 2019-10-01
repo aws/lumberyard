@@ -17,22 +17,6 @@
 
 using namespace XMLCPB;
 
-
-//////////////////////////////////////////////////////////////////////////
-
-void SBufferReader::ReadFromFile(CReader& Reader, IPlatformOS::ISaveReaderPtr& pOSSaveReader, uint32 readSize)
-{
-    assert(m_bufferSize == 0);
-    assert (!m_pBuffer);
-
-    m_pBuffer = (uint8*)m_pHeap->Malloc(readSize, "");
-
-    m_bufferSize = readSize;
-
-    Reader.ReadDataFromFile(pOSSaveReader, const_cast<uint8*>(GetPointer(0)), readSize);
-}
-
-
 //////////////////////////////////////////////////////////////////////////
 
 void SBufferReader::ReadFromMemory(CReader& Reader, const uint8* pData, uint32 dataSize, uint32 readSize, uint32& outReadLoc)

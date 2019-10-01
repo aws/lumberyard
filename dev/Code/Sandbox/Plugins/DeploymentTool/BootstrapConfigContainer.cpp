@@ -75,11 +75,11 @@ StringOutcome BootstrapConfigContainer::ApplyConfiguration(const DeploymentConfi
             SetBool(androidConnectToRemoteKey, deploymentConfig.m_shaderCompilerUseAP);
             break;
 
-    #if defined(AZ_PLATFORM_APPLE_OSX)
+    #if defined(AZ_PLATFORM_MAC)
         case PlatformOptions::iOS:
             SetBool(iosConnectToRemoteKey, deploymentConfig.m_shaderCompilerUseAP);
             break;
-    #endif // defined(AZ_PLATFORM_APPLE_OSX)
+    #endif // defined(AZ_PLATFORM_MAC)
 
         default:
             break;
@@ -92,7 +92,7 @@ AZStd::string BootstrapConfigContainer::GetHostAssetsType() const
 {
     AZStd::string assetsType = GetString(assetsKey);
 
-#if defined(AZ_PLATFORM_APPLE_OSX)
+#if defined(AZ_PLATFORM_MAC)
     AZStd::string platfromSpecificAssetKey = AZStd::move(AZStd::string::format("osx_%s", assetsKey));
 
     AZStd::string platformAssets = GetString(platfromSpecificAssetKey);
@@ -100,7 +100,7 @@ AZStd::string BootstrapConfigContainer::GetHostAssetsType() const
     {
         assetsType = AZStd::move(platformAssets);
     }
-#endif // defined(AZ_PLATFORM_APPLE_OSX)
+#endif // defined(AZ_PLATFORM_MAC)
 
     return assetsType;
 }
@@ -117,11 +117,11 @@ AZStd::string BootstrapConfigContainer::GetAssetsTypeForPlatform(PlatformOptions
             platfromSpecificAssetKey = AZStd::move(AZStd::string::format("android_%s", assetsKey));
             break;
 
-    #if defined(AZ_PLATFORM_APPLE_OSX)
+    #if defined(AZ_PLATFORM_MAC)
         case PlatformOptions::iOS:
             platfromSpecificAssetKey = AZStd::move(AZStd::string::format("ios_%s", assetsKey));
             break;
-    #endif // defined(AZ_PLATFORM_APPLE_OSX)
+    #endif // defined(AZ_PLATFORM_MAC)
 
         default:
             break;

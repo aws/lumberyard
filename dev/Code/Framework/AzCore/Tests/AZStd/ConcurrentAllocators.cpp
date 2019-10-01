@@ -13,6 +13,7 @@
 #include "UserTypes.h"
 
 #include <AzCore/std/containers/array.h>
+#include <AzCore/std/containers/set.h>
 #include <AzCore/std/parallel/allocator_concurrent_static.h>
 
 
@@ -46,38 +47,38 @@ namespace UnitTest
     TYPED_TEST(ConcurrentAllocatorTestFixture, Name)
     {
         const char name[] = "My test allocator";
-        allocator_type myalloc(name);
+        typename TestFixture::allocator_type myalloc(name);
         EXPECT_EQ(0, strcmp(myalloc.get_name(), name));
         {
             const char newName[] = "My new test allocator";
             myalloc.set_name(newName);
             EXPECT_EQ(0, strcmp(myalloc.get_name(), newName));
-            EXPECT_EQ(sizeof(allocator_type::value_type) * s_allocatorCapacity, myalloc.get_max_size());
+            EXPECT_EQ(sizeof(typename TestFixture::allocator_type::value_type) * s_allocatorCapacity, myalloc.get_max_size());
         }
     }
 
     TYPED_TEST(ConcurrentAllocatorTestFixture, AllocateDeallocate)
     {
-        allocator_type myalloc;
+        typename TestFixture::allocator_type myalloc;
 
         EXPECT_EQ(0, myalloc.get_allocated_size());
-        allocator_type::pointer_type data = myalloc.allocate();
+        typename TestFixture::allocator_type::pointer_type data = myalloc.allocate();
         EXPECT_NE(nullptr, data);
-        EXPECT_EQ(sizeof(allocator_type::value_type), myalloc.get_allocated_size());
-        EXPECT_EQ(sizeof(allocator_type::value_type) * (s_allocatorCapacity - 1), myalloc.get_max_size());
+        EXPECT_EQ(sizeof(typename TestFixture::allocator_type::value_type), myalloc.get_allocated_size());
+        EXPECT_EQ(sizeof(typename TestFixture::allocator_type::value_type) * (s_allocatorCapacity - 1), myalloc.get_max_size());
         myalloc.deallocate(data);
         EXPECT_EQ(0, myalloc.get_allocated_size());
-        EXPECT_EQ(sizeof(allocator_type::value_type) * s_allocatorCapacity, myalloc.get_max_size());
+        EXPECT_EQ(sizeof(typename TestFixture::allocator_type::value_type) * s_allocatorCapacity, myalloc.get_max_size());
     }
 
     TYPED_TEST(ConcurrentAllocatorTestFixture, MultipleAllocateDeallocate)
     {
-        allocator_type myalloc;
+        typename TestFixture::allocator_type myalloc;
 
         // Allocate N (6) and free half (evens)
         constexpr size_t dataSize = 6; // keep this number even
-        allocator_type::pointer_type data[dataSize];
-        AZStd::set<allocator_type::pointer_type> dataSet; // to test for uniqueness
+        typename TestFixture::allocator_type::pointer_type data[dataSize];
+        AZStd::set<typename TestFixture::allocator_type::pointer_type> dataSet; // to test for uniqueness
         for (size_t i = 0; i < dataSize; ++i)
         {
             data[i] = myalloc.allocate();
@@ -86,25 +87,25 @@ namespace UnitTest
         }
         EXPECT_EQ(dataSize, dataSet.size());
         dataSet.clear();
-        EXPECT_EQ(sizeof(allocator_type::value_type) * dataSize, myalloc.get_allocated_size());
-        EXPECT_EQ((s_allocatorCapacity - dataSize) * sizeof(allocator_type::value_type), myalloc.get_max_size());
+        EXPECT_EQ(sizeof(typename TestFixture::allocator_type::value_type) * dataSize, myalloc.get_allocated_size());
+        EXPECT_EQ((s_allocatorCapacity - dataSize) * sizeof(typename TestFixture::allocator_type::value_type), myalloc.get_max_size());
         for (size_t i = 0; i < dataSize; i += 2)
         {
             myalloc.deallocate(data[i]);
         }
-        EXPECT_EQ(sizeof(allocator_type::value_type) * (dataSize / 2), myalloc.get_allocated_size());
-        EXPECT_EQ((s_allocatorCapacity - dataSize / 2) * sizeof(allocator_type::value_type), myalloc.get_max_size());
+        EXPECT_EQ(sizeof(typename TestFixture::allocator_type::value_type) * (dataSize / 2), myalloc.get_allocated_size());
+        EXPECT_EQ((s_allocatorCapacity - dataSize / 2) * sizeof(typename TestFixture::allocator_type::value_type), myalloc.get_max_size());
         for (size_t i = 1; i < dataSize; i += 2)
         {
             myalloc.deallocate(data[i]);
         }
         EXPECT_EQ(0, myalloc.get_allocated_size());
-        EXPECT_EQ(s_allocatorCapacity * sizeof(allocator_type::value_type), myalloc.get_max_size());
+        EXPECT_EQ(s_allocatorCapacity * sizeof(typename TestFixture::allocator_type::value_type), myalloc.get_max_size());
     }
 
     TYPED_TEST(ConcurrentAllocatorTestFixture, ConcurrentAllocateoDeallocate)
     {
-        allocator_type myalloc;
+        typename TestFixture::allocator_type myalloc;
 
         AZStd::atomic<int> failures{ 0 };
         AZStd::array<AZStd::thread, s_numberThreads> threads;
@@ -117,7 +118,7 @@ namespace UnitTest
                 // iteration
                 constexpr size_t numIterations = 100;
                 constexpr size_t numValues = s_allocatorCapacity / s_numberThreads;
-                AZStd::array<allocator_type::pointer_type, numValues> allocations;
+                AZStd::array<typename TestFixture::allocator_type::pointer_type, numValues> allocations;
                 for (int iter = 0; iter < numIterations; ++iter)
                 {
                     // allocate

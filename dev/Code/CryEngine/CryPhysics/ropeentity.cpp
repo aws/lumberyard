@@ -3340,7 +3340,8 @@ int CRopeEntity::Step(float time_interval)
     for (i = 0; i <= m_nSegs; i++)
     {
         //START: Per bone UDP for stiffness, damping and thickness for touch bending vegetation
-        float damping = max(0.0f, 1.0f - (m_damping - m_pDamping[i] * (m_bTargetPoseActive - 1 >> 31)) * time_interval);
+        const float segmentDamping = m_pDamping ? m_pDamping[i] : 0;
+        float damping = max(0.0f, 1.0f - (m_damping - segmentDamping * (m_bTargetPoseActive - 1 >> 31)) * time_interval);
         //START: Per bone UDP for stiffness, damping and thickness for touch bending vegetation
         (m_segs[i].vel += m_segs[i].vel_ext) *= damping;
         m_segs[i].vel_ext.zero();
@@ -4044,7 +4045,8 @@ void CRopeEntity::ApplyVolumetricPressure(const Vec3& epicenter, float kr, float
         {
             r = (m_segs[i].pt + m_segs[i + 1].pt) * 0.5f - epicenter;
             dP += (m_segs[i].dir ^ r).len() / (r.len() * max(r.len2(), rmin * rmin));
-            averageThickness += m_pCollDist[i];
+            const float segmentThickness = m_pCollDist ? m_pCollDist[i] : 0.01f;
+            averageThickness += segmentThickness;
         }
         averageThickness /= m_nSegs;
 

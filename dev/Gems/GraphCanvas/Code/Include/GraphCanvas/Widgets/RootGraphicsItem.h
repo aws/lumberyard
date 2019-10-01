@@ -29,7 +29,7 @@
 #include <GraphCanvas/Styling/definitions.h>
 #include <GraphCanvas/tools.h>
 #include <GraphCanvas/Utils/StateControllers/PrioritizedStateController.h>
-#include <Utils/ConversionUtils.h>
+#include <GraphCanvas/Utils/ConversionUtils.h>
 
 namespace AZ
 {
@@ -65,6 +65,7 @@ namespace GraphCanvas
             , m_currentAnimationTime(0.0f)
             , m_itemId(itemId)
             , m_anchorPoint(0,0)
+            , m_enabledState(RootGraphicsItemEnabledState::ES_Enabled)
             , m_forcedStateDisplayState(RootGraphicsItemDisplayState::Neutral)
             , m_internalDisplayState(RootGraphicsItemDisplayState::Neutral)
             , m_actualDisplayState(RootGraphicsItemDisplayState::Neutral)
@@ -227,6 +228,24 @@ namespace GraphCanvas
         {
             return m_actualDisplayState;
         }
+
+        void SetEnabledState(RootGraphicsItemEnabledState state) override
+        {
+            if (m_enabledState != state)
+            {
+                m_enabledState = state;
+                OnEnabledStateChanged(state);
+
+                UpdateActualDisplayState();
+
+                RootGraphicsItemNotificationBus::Event(GetEntityId(), &RootGraphicsItemNotifications::OnEnabledChanged, m_enabledState);
+            }
+        }
+
+        RootGraphicsItemEnabledState GetEnabledState() const
+        {
+            return m_enabledState;
+        }
         ////
 
     protected:        
@@ -357,6 +376,11 @@ namespace GraphCanvas
             SceneRequestBus::Event(graphId, &SceneRequests::Delete, deleteIds);
         }
 
+        virtual void OnEnabledStateChanged(RootGraphicsItemEnabledState enabledState)
+        {
+            AZ_UNUSED(enabledState);
+        }
+
     private:
 
         void UpdateActualDisplayState()
@@ -367,6 +391,20 @@ namespace GraphCanvas
             {
                 desiredDisplayState = m_forcedStateDisplayState.GetState();
             }
+            else if (m_enabledState != RootGraphicsItemEnabledState::ES_Enabled)
+            {                
+                if (desiredDisplayState <= RootGraphicsItemDisplayState::Disabled)
+                {
+                    if (m_enabledState == RootGraphicsItemEnabledState::ES_Disabled)
+                    {
+                        desiredDisplayState = RootGraphicsItemDisplayState::Disabled;
+                    }
+                    else
+                    {
+                        desiredDisplayState = RootGraphicsItemDisplayState::PartialDisabled;
+                    }
+                }
+            }
 
             if (desiredDisplayState != m_actualDisplayState)
             {
@@ -376,6 +414,12 @@ namespace GraphCanvas
                 {
                 case RootGraphicsItemDisplayState::Deletion:
                     LeaveDeletionState();
+                    break;
+                case RootGraphicsItemDisplayState::Disabled:
+                    LeaveDisabledState();
+                    break;
+                case RootGraphicsItemDisplayState::PartialDisabled:
+                    LeavePartialDisabledState();
                     break;
                 case RootGraphicsItemDisplayState::InspectionTransparent:
                     LeaveInspectionTransparentState();
@@ -402,6 +446,12 @@ namespace GraphCanvas
                 {
                 case RootGraphicsItemDisplayState::Deletion:
                     EnterDeletionState();
+                    break;
+                case RootGraphicsItemDisplayState::Disabled:
+                    EnterDisabledState();
+                    break;
+                case RootGraphicsItemDisplayState::PartialDisabled:
+                    EnterPartialDisabledState();
                     break;
                 case RootGraphicsItemDisplayState::InspectionTransparent:
                     EnterInspectionTransparentState();
@@ -444,6 +494,26 @@ namespace GraphCanvas
         void LeaveDeletionState()
         {
             StyledEntityRequestBus::Event(GetEntityId(), &StyledEntityRequests::RemoveSelectorState, Styling::States::Deletion);
+        }
+
+        void EnterPartialDisabledState()
+        {
+            StyledEntityRequestBus::Event(GetEntityId(), &StyledEntityRequests::AddSelectorState, Styling::States::PartialDisabled);
+        }
+
+        void LeavePartialDisabledState()
+        {
+            StyledEntityRequestBus::Event(GetEntityId(), &StyledEntityRequests::RemoveSelectorState, Styling::States::PartialDisabled);
+        }
+
+        void EnterDisabledState()
+        {
+            StyledEntityRequestBus::Event(GetEntityId(), &StyledEntityRequests::AddSelectorState, Styling::States::Disabled);
+        }
+
+        void LeaveDisabledState()
+        {
+            StyledEntityRequestBus::Event(GetEntityId(), &StyledEntityRequests::RemoveSelectorState, Styling::States::Disabled);
         }
 
         void EnterInspectionState()
@@ -531,7 +601,7 @@ namespace GraphCanvas
         }
 
         bool m_resizeToGrid;
-        bool m_snapToGrid;
+        bool m_snapToGrid;        
 
         unsigned int m_gridX;
         unsigned int m_gridY;
@@ -540,6 +610,8 @@ namespace GraphCanvas
         float m_currentAnimationTime;
         AZ::Vector2 m_targetPoint;
         AZ::Vector2 m_startPoint;
+
+        RootGraphicsItemEnabledState    m_enabledState;
 
         PrioritizedStateController<RootGraphicsItemDisplayState>  m_forcedStateDisplayState;
         RootGraphicsItemDisplayState                           m_internalDisplayState;

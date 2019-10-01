@@ -19,7 +19,9 @@
 #include <AzToolsFramework/AssetBrowser/Entries/AssetBrowserEntryCache.h>
 
 #include <QMimeData>
+AZ_PUSH_DISABLE_WARNING(4251, "-Wunknown-warning-option") // 'QRegularExpression::d': class 'QExplicitlySharedDataPointer<QRegularExpressionPrivate>' needs to have dll-interface to be used by clients of class 'QRegularExpression'
 #include <QRegularExpression>
+AZ_POP_DISABLE_WARNING
 
 namespace AzToolsFramework
 {
@@ -362,7 +364,9 @@ namespace AzToolsFramework
                         QModelIndex index;
                         if (GetEntryIndex(entry, index))
                         {
+                            AZ_PUSH_DISABLE_WARNING(4127, "-Wunknown-warning-option") // conditional expression is constant
                             Q_EMIT dataChanged(index, index, { Roles::EntryRole });
+                            AZ_POP_DISABLE_WARNING
                         }
                     }
                     cache->m_dirtyThumbnailsSet.clear();

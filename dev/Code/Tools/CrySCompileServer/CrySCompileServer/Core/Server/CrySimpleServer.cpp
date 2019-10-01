@@ -21,6 +21,7 @@
 #include "CrySimpleJobCompile1.hpp"
 #include "CrySimpleJobCompile2.hpp"
 #include "CrySimpleJobRequest.hpp"
+#include "CrySimpleJobGetShaderList.hpp"
 #include "CrySimpleCache.hpp"
 #include "CrySimpleErrorLog.hpp"
 #include "ShaderList.hpp"
@@ -43,7 +44,12 @@
 #include <AzCore/std/bind/bind.h>
 #include <AzCore/std/string/string.h>
 
-#if defined(AZ_PLATFORM_APPLE_OSX)
+#if defined(AZ_TOOLS_EXPAND_FOR_RESTRICTED_PLATFORMS)
+#undef AZ_RESTRICTED_SECTION
+#define CRYSIMPLESERVER_CPP_SECTION_1 1
+#endif
+
+#if defined(AZ_PLATFORM_MAC)
 #include <libproc.h>
 #include <sys/stat.h>
 #endif
@@ -167,7 +173,7 @@ bool SEnviropment::IsShaderCompilerValid( const AZStd::string& shaderCompilerID 
     bool validCompiler = (m_ShaderCompilersMap.find(shaderCompilerID) != m_ShaderCompilersMap.end());
     
     // Extra check for Mac: Only GL_LLVM_DXC and METAL_LLVM_DXC compilers are supported.
-    #if defined(AZ_PLATFORM_APPLE_OSX)
+    #if defined(AZ_PLATFORM_MAC)
         if (validCompiler &&
             shaderCompilerID != m_GLSL_LLVM_DXC &&
             shaderCompilerID != m_METAL_LLVM_DXC)
@@ -215,14 +221,14 @@ bool CopyFileOnPlatform(const char* nameOfFileToCopy, const char* copiedFileName
 {
     if (AZ::IO::SystemFile::Exists(copiedFileName) && failIfFileExists)
     {
-        AZ_Warning(0, ("File to copy to, %s, already exists."), copiedFileName);
+        AZ_Warning("CrySimpleServer", false, ("File to copy to, %s, already exists."), copiedFileName);
         return false;
     }
 
     AZ::IO::SystemFile fileToCopy;
     if (fileToCopy.Open(nameOfFileToCopy, AZ::IO::SystemFile::SF_OPEN_READ_ONLY))
     {
-        AZ_Warning(0, ("Unable to open file: %s for copying."), nameOfFileToCopy);
+        AZ_Warning("CrySimpleServer", false, ("Unable to open file: %s for copying."), nameOfFileToCopy);
         return false;
     }
 
@@ -231,7 +237,7 @@ bool CopyFileOnPlatform(const char* nameOfFileToCopy, const char* copiedFileName
     AZ::IO::SystemFile newFile;
     if (newFile.Open(copiedFileName, AZ::IO::SystemFile::SF_OPEN_WRITE_ONLY | AZ::IO::SystemFile::SF_OPEN_CREATE))
     {
-        AZ_Warning(0, ("Unable to open new file: %s for copying."), copiedFileName);
+        AZ_Warning("CrySimpleServer", false, ("Unable to open new file: %s for copying."), copiedFileName);
         return false;
     }
 
@@ -301,7 +307,18 @@ void CompileJob::Process()
                 CrySimple_ERROR("failed to extract First Element of the request");
                 return;
             }
-            const char* pVersion = pElement->Attribute("Version");
+
+            const char* pPing = pElement->Attribute("Identify");
+            if (pPing)
+            {
+                const std::string& rData("ShaderCompilerServer");
+                m_pThreadData->Socket()->Send(rData);
+                return;
+            }
+
+            const char* pVersion        = pElement->Attribute("Version");
+            const char* pPlatform       = pElement->Attribute("Platform");
+            const char* pHardwareTarget = nullptr;
 
             //new request type?
             if (pVersion)
@@ -324,27 +341,51 @@ void CompileJob::Process()
                 }
             }
             
-            if (!ValidatePlatformAttributes(Version, pElement))
+
+            // If the job type is 'GetShaderList', then we dont need to perform a validation on the platform
+            // attributes, since the command doesnt use them, and the incoming request will not have 'compiler' or 'language' 
+            // attributes.
+            const char* pJobType = pElement->Attribute("JobType");
+            if ((!pJobType) || (azstricmp(pJobType,"GetShaderList")!=0))
             {
-                return;
+                if (!ValidatePlatformAttributes(Version, pElement))
+                {
+                    return;
+                }
             }
 
             if (Version >= EPV_V002)
             {
+                const std::string JobType(pJobType);
+
+                if (Version >= EPV_V0023)
+                {
+                    pHardwareTarget = pElement->Attribute("HardwareTarget");
+                }
+
                 if (Version >= EPV_V0021)
                 {
                     m_pThreadData->Socket()->WaitForShutDownEvent(true);
                 }
 
-                const char* pJobType    =   pElement->Attribute("JobType");
+#if defined(AZ_TOOLS_EXPAND_FOR_RESTRICTED_PLATFORMS)
+    #if defined(TOOLS_SUPPORT_XENIA)
+        #define AZ_RESTRICTED_SECTION CRYSIMPLESERVER_CPP_SECTION_1
+        #include "Xenia/CrySimpleJobCompile_cpp_xenia.inl"
+    #endif
+    #if defined(TOOLS_SUPPORT_PROVO)
+        #define AZ_RESTRICTED_SECTION CRYSIMPLESERVER_CPP_SECTION_1
+        #include "Provo/CrySimpleJobCompile_cpp_provo.inl"
+    #endif
+#endif
+
                 if (pJobType)
                 {
-                    const std::string JobType(pJobType);
                     if (JobType == "RequestLine")
                     {
                         Job = std::make_unique<CCrySimpleJobRequest>(Version, m_pThreadData->Socket()->PeerIP());
                         Job->Execute(pElement);
-                        State   =   Job->State();
+                        State = Job->State();
                         Vec.resize(0);
                     }
                     else
@@ -353,6 +394,13 @@ void CompileJob::Process()
                         Job = std::make_unique<CCrySimpleJobCompile2>(Version, m_pThreadData->Socket()->PeerIP(), &Vec);
                         Job->Execute(pElement);
                         State   =   Job->State();
+                    }
+                    else
+                    if (JobType == "GetShaderList")
+                    {
+                        Job = std::make_unique<CCrySimpleJobGetShaderList>(m_pThreadData->Socket()->PeerIP(), &Vec);
+                        Job->Execute(pElement);
+                        State = Job->State();
                     }
                     else
                     {
@@ -427,21 +475,21 @@ bool CompileJob::ValidatePlatformAttributes(EProtocolVersion Version, const TiXm
 {
     if (Version >= EPV_V0023)
     {
-        AZStd::string platform = pElement->Attribute("Platform"); // eg. PC, Mac...
-        AZStd::string compiler = pElement->Attribute("Compiler"); // key to shader compiler executable
-        AZStd::string language = pElement->Attribute("Language"); // eg. D3D11, GL4_1, GL3_1, METAL...
+        const char* platform = pElement->Attribute("Platform"); // eg. PC, Mac...
+        const char* compiler = pElement->Attribute("Compiler"); // key to shader compiler executable
+        const char* language = pElement->Attribute("Language"); // eg. D3D11, GL4_1, GL3_1, METAL...
 
-        if (!SEnviropment::Instance().IsPlatformValid(platform))
+        if (!platform || !SEnviropment::Instance().IsPlatformValid(platform))
         {
             CrySimple_ERROR("invalid Platform attribute from request.");
             return false;
         }
-        if (!SEnviropment::Instance().IsShaderCompilerValid(compiler))
+        if (!compiler || !SEnviropment::Instance().IsShaderCompilerValid(compiler))
         {
             CrySimple_ERROR("invalid Compiler attribute from request.");
             return false;
         }
-        if (!SEnviropment::Instance().IsShaderLanguageValid(language))
+        if (!language || !SEnviropment::Instance().IsShaderLanguageValid(language))
         {
             CrySimple_ERROR("invalid Language attribute from request.");
             return false;
@@ -480,7 +528,7 @@ void TickThread()
             t0 = t1;
             const int maxStringSize = 512;
             char str[maxStringSize] = { 0 };
-            azsnprintf(str, maxStringSize, "Amazon Remote Shader Compiler (%ld compile tasks | %d open sockets | %d exceptions)",
+            azsnprintf(str, maxStringSize, "Amazon Shader Compiler Server (%ld compile tasks | %d open sockets | %d exceptions)",
                 CCrySimpleJobCompile::GlobalCompileTasks(), CCrySimpleSock::GetOpenSockets() + CSMTPMailer::GetOpenSockets(),
                 CCrySimpleServer::GetExceptionCount());
 #if defined(AZ_PLATFORM_WINDOWS)

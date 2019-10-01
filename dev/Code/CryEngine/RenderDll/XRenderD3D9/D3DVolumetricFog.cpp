@@ -660,6 +660,18 @@ void CVolumetricFog::DestroyResources(bool destroyResolutionIndependentResources
     m_LightShadeInfoBuf.Release();
     m_lightGridBuf.Release();
     m_lightCountBuf.Release();
+
+    for (int i = 0; i < RT_COMMAND_BUF_COUNT; ++i)
+    {
+        for (int j = 0; j < MAX_REND_RECURSION_LEVELS; ++j)
+        {
+            for (int k = 0; k < MaxNumFogVolumeType; ++k)
+            {
+                m_fogVolumeInfoArray[i][j][k].clear();
+            }
+        }
+    }
+
     m_fogVolumeCullInfoBuf.Release();
     m_fogVolumeInjectInfoBuf.Release();
 
@@ -2962,9 +2974,10 @@ void CVolumetricFog::RenderDownscaledShadowmap()
             }
 
             int targetWidth = target->GetWidth();
+            int targetHeight = target->GetHeight();
 
             D3dDepthSurface.nWidth = targetWidth;
-            D3dDepthSurface.nHeight = targetWidth;
+            D3dDepthSurface.nHeight = targetHeight;
             D3dDepthSurface.pTex = target;
             D3dDepthSurface.pSurf = (D3DDepthSurface*)target->GetDeviceDepthStencilSurf();
             D3dDepthSurface.pTarget = target->GetDevTexture()->Get2DTexture();
@@ -2981,7 +2994,7 @@ void CVolumetricFog::RenderDownscaledShadowmap()
             };
             rd->m_DevMan.BindSampler(eHWSC_Pixel, pSamplers, 0, 1);
 
-            GetUtils().DrawFullScreenTri(targetWidth, targetWidth);
+            GetUtils().DrawFullScreenTri(targetWidth, targetHeight);
 
             GetUtils().ShEndPass();
 
@@ -2997,8 +3010,10 @@ void CVolumetricFog::RenderDownscaledShadowmap()
             CTexture* target = m_downscaledShadow[i];
 
             int targetWidth = target->GetWidth();
+            int targetHeight = target->GetHeight();
 
             D3dDepthSurface.nWidth = targetWidth;
+            D3dDepthSurface.nHeight = targetHeight;
             D3dDepthSurface.pTex = target;
             D3dDepthSurface.pSurf = target->GetDeviceDepthStencilSurf();
             D3dDepthSurface.pTarget = target->GetDevTexture()->Get2DTexture();
@@ -3021,7 +3036,7 @@ void CVolumetricFog::RenderDownscaledShadowmap()
 
             source->Apply(0, texStatePoint, EFTT_UNKNOWN, -1, SResourceView::DefaultView);
 
-            GetUtils().DrawFullScreenTri(targetWidth, targetWidth);
+            GetUtils().DrawFullScreenTri(targetWidth, targetHeight);
 
             GetUtils().ShEndPass();
 

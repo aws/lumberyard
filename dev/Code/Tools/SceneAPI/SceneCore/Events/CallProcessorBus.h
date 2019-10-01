@@ -34,7 +34,6 @@ namespace AZ
             class SCENE_CORE_CLASS CallProcessor
                 : public AZ::EBusTraits
             {
-                friend struct Internal::BusHandlerCompareDefaultImpl<CallProcessor>;
             public:
                 enum ProcessingPriority : uint8_t
                 {
@@ -60,7 +59,6 @@ namespace AZ
                 //      there will still not be a guarantee which will gets to do work first.
                 SCENE_CORE_API virtual uint8_t GetPriority() const;
 
-            private:
                 SCENE_CORE_API bool Compare(const CallProcessor* rhs) const;
             };
 

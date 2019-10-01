@@ -22,12 +22,6 @@
 #include <AzCore/std/string/string.h>
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-namespace GridMate
-{
-    struct PlayerId;
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////
 namespace AzFramework
 {
     ////////////////////////////////////////////////////////////////////////////////////////////////
@@ -95,9 +89,22 @@ namespace AzFramework
         const InputDeviceId& GetInputDeviceId() const;
 
         ////////////////////////////////////////////////////////////////////////////////////////////
-        //! Access to the input device's currently assigned local player id (if any)
-        //! \return Id of the local player assigned to the input device (nullptr if none)
-        virtual const GridMate::PlayerId* GetAssignedLocalPlayerId() const;
+        //! Access to the input device's currently assigned local user id. By default this returns
+        //! the device index, but can be overridden to return a platform specific user id in order
+        //! to support platforms where input comes from a specific user rather than just an index.
+        //! Values are guaranteed to be unique for the local system, but they are otherwise system
+        //! dependent and a user id may not necessarily persist for the same user between app runs.
+        //! \return Id of the local user currently assigned to the input device
+        virtual LocalUserId GetAssignedLocalUserId() const;
+
+        ////////////////////////////////////////////////////////////////////////////////////////////
+        //! Prompt a platform-specific local user sign-in request from this device. Should be called
+        //! at the appropriate times (eg. start screen, local multiplayer lobby / join screen) where
+        //! input is detected from a specific input device that does not yet have a user id assigned.
+        //!
+        //! Please note that on most platforms this will do nothing, and even on platforms where it
+        //! does it cannot be assumed that the sign-in flow will actually be completed by the user.
+        virtual void PromptLocalUserSignIn() const {}
 
         ////////////////////////////////////////////////////////////////////////////////////////////
         //! Access to all input channels associated with this input device
@@ -147,6 +154,11 @@ namespace AzFramework
         ////////////////////////////////////////////////////////////////////////////////////////////
         //! \ref AzFramework::InputDeviceRequests::GetInputDevicesById
         void GetInputDevicesById(InputDeviceByIdMap& o_devicesById) const final;
+
+        ////////////////////////////////////////////////////////////////////////////////////////////
+        //! \ref AzFramework::InputDeviceRequests::GetInputDevicesByIdWithAssignedLocalUserId
+        void GetInputDevicesByIdWithAssignedLocalUserId(InputDeviceByIdMap& o_devicesById,
+                                                        LocalUserId localUserId) const final;
 
         ////////////////////////////////////////////////////////////////////////////////////////////
         //! \ref AzFramework::InputDeviceRequests::GetInputChannelIds

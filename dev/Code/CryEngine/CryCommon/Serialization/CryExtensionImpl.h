@@ -278,14 +278,4 @@ namespace Serialization {
     };
 }
 
-namespace boost
-{
-    template<class T>
-    bool Serialize(Serialization::IArchive& ar, AZStd::shared_ptr<T>& ptr, const char* name, const char* label)
-    {
-        Serialization::CryExtensionPointer<T, T> serializer(ptr);
-        return ar(static_cast<Serialization::IPointer&>(ptr), name, label);
-    }
-}
-
 #endif // CRYINCLUDE_CRYCOMMON_SERIALIZATION_CRYEXTENSIONIMPL_H

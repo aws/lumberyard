@@ -64,6 +64,7 @@
 #include <AzToolsFramework/ToolsComponents/ToolsAssetCatalogComponent.h>
 #include <AzToolsFramework/AssetBrowser/AssetBrowserComponent.h>
 #include <LyShine/UiAssetTypes.h>
+#include <AzToolsFramework/Archive/SevenZipComponent.h>
 
 namespace AssetProcessor
 {
@@ -155,7 +156,7 @@ AZ::ComponentTypeList AssetProcessorAZApplication::GetRequiredSystemComponents()
         }
     }
 
-
+    components.push_back(azrtti_typeid<AzToolsFramework::SevenZipComponent>());
     return components;
 }
 

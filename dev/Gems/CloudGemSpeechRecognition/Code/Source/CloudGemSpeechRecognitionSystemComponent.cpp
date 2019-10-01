@@ -19,7 +19,7 @@
 #include <AzCore/JSON/document.h>
 
 #include "CloudGemSpeechRecognitionSystemComponent.h"
-#include "AWS/ServiceAPI/CloudGemSpeechRecognitionClientComponent.h"
+#include "AWS/ServiceApi/CloudGemSpeechRecognitionClientComponent.h"
 #include "VoiceRecorderSystemComponent.h"
 
 namespace CloudGemSpeechRecognition

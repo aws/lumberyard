@@ -13,7 +13,7 @@
 #define CRYINCLUDE_CRYCOMMON_IGEM_H
 #pragma once
 
-#include "BoostHelpers.h"
+#include "SmartPointersHelpers.h"
 #include "CryExtension/ICryUnknown.h"
 #include "CryExtension/Impl/ClassWeaver.h"
 #include "platform.h"

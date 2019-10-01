@@ -9,7 +9,6 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#ifndef AZ_UNITY_BUILD
 
 #include <AzCore/Math/Crc.h>
 #include <AzCore/Serialization/SerializeContext.h>
@@ -293,4 +292,3 @@ namespace AZ
             ->Field("Value", &Crc32::m_value);
     }
 }
-#endif // #ifndef AZ_UNITY_BUILD

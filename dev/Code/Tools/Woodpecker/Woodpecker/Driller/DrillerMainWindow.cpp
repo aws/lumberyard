@@ -94,7 +94,7 @@ namespace Driller
             AZ::SerializeContext* serialize = azrtti_cast<AZ::SerializeContext*>(context);
             if (serialize)
             {
-                serialize->Class<DrillerMainWindowWorkspace, AZ::UserSettings>()
+                serialize->Class<DrillerMainWindowWorkspace>()
                     ->Field("m_openDataFileNames", &DrillerMainWindowWorkspace::m_openDataFileNames)
                     ->Version(8);
             }

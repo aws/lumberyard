@@ -149,6 +149,8 @@ CParticleManager::~CParticleManager()
         Get3DEngine()->GetIVisAreaManager()->RemoveListener(this);
     }
     GetPhysicalWorld()->RemoveEventClient(EventPhysAreaChange::id, &StaticOnPhysAreaChange, 0);
+
+    m_bEnabled = false;  // Do this before Reset so it doesn't try to create new shaders before destructing.
     Reset(false);
 
     // Destroy references to shaders.
@@ -251,8 +253,11 @@ void CParticleManager::Reset(bool bIndependentOnly)
 {
     m_bRegisteredListener = false;
 
-    // make sure "no mat" and "simple" material are initialized before level starts
-    CreateLightShader();
+    if (m_bEnabled)
+    {
+        // make sure "no mat" and "simple" material are initialized before level starts
+        CreateLightShader();
+    }
 
     for_all_ptrs (CParticleEmitter, e, m_Emitters)
     {

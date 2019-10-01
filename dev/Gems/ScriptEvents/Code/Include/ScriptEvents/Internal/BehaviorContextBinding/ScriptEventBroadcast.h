@@ -36,7 +36,7 @@ namespace ScriptEvents
 
         ScriptEventBroadcast(AZ::BehaviorContext* behaviorContext, const ScriptEvent& definition, AZStd::string eventName);
 
-        bool Call(AZ::BehaviorValueParameter* params, unsigned int paramCount, AZ::BehaviorValueParameter* returnValue) override;
+        bool Call(AZ::BehaviorValueParameter* params, unsigned int paramCount, AZ::BehaviorValueParameter* returnValue) const override;
         bool HasResult() const override { return !m_returnType.IsNull(); }
         bool IsMember() const override { return false; }
 

@@ -25,6 +25,7 @@
 namespace EMotionFX
 {
     AZ_CLASS_ALLOCATOR_IMPL(CommandAddCollider, EMotionFX::CommandAllocator, 0)
+    AZ_CLASS_ALLOCATOR_IMPL(CommandAdjustCollider, EMotionFX::CommandAllocator, 0)
     AZ_CLASS_ALLOCATOR_IMPL(CommandRemoveCollider, EMotionFX::CommandAllocator, 0)
 
     Physics::CharacterColliderNodeConfiguration* CommandColliderHelpers::GetNodeConfig(const Actor * actor, const AZStd::string& jointName, const Physics::CharacterColliderConfiguration& colliderConfig, AZStd::string& outResult)
@@ -169,7 +170,9 @@ namespace EMotionFX
         return true;
     }
 
-    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    ///////////////////////////////////////////////////////////////////////////
+    // CommandAddCollider
+    ///////////////////////////////////////////////////////////////////////////
 
     const char* CommandAddCollider::s_commandName = "AddCollider";
     const char* CommandAddCollider::s_colliderConfigTypeParameterName = "colliderConfigType";
@@ -183,20 +186,22 @@ namespace EMotionFX
     {
     }
 
-    CommandAddCollider::CommandAddCollider(AZ::u32 actorId, const AZStd::string& jointName, PhysicsSetup::ColliderConfigType configType, const AZ::TypeId& colliderType)
-        : CommandAddCollider(nullptr)
+    CommandAddCollider::CommandAddCollider(AZ::u32 actorId, const AZStd::string& jointName, PhysicsSetup::ColliderConfigType configType, const AZ::TypeId& colliderType, MCore::Command* orgCommand)
+        : MCore::Command(s_commandName, orgCommand)
+        , ParameterMixinActorId(actorId)
+        , ParameterMixinJointName(jointName)
+        , m_oldIsDirty(false)
     {
-        m_actorId = actorId;
-        m_jointName = jointName;
         m_configType = configType;
         m_colliderType = colliderType;
     }
 
-    CommandAddCollider::CommandAddCollider(AZ::u32 actorId, const AZStd::string& jointName, PhysicsSetup::ColliderConfigType configType, const AZStd::string& contents, size_t insertAtIndex)
-        : CommandAddCollider(nullptr)
+    CommandAddCollider::CommandAddCollider(AZ::u32 actorId, const AZStd::string& jointName, PhysicsSetup::ColliderConfigType configType, const AZStd::string& contents, size_t insertAtIndex, MCore::Command* orgCommand)
+        : MCore::Command(s_commandName, orgCommand)
+        , ParameterMixinActorId(actorId)
+        , ParameterMixinJointName(jointName)
+        , m_oldIsDirty(false)
     {
-        m_actorId = actorId;
-        m_jointName = jointName;
         m_configType = configType;
         m_contents = contents;
         m_insertAtIndex = insertAtIndex;
@@ -274,6 +279,9 @@ namespace EMotionFX
             return false;
         }
 
+        // Shared settings
+        newCollider.first->m_visible = true; // In preparation for the case of using the flag.
+
         if (m_configType == PhysicsSetup::HitDetection)
         {
             // Collider needs to be exclusive in order to be movable.
@@ -285,6 +293,13 @@ namespace EMotionFX
             newCollider.first->SetPropertyVisibility(Physics::ColliderConfiguration::CollisionLayer, false);
             newCollider.first->SetPropertyVisibility(Physics::ColliderConfiguration::MaterialSelection, false);
             newCollider.first->SetPropertyVisibility(Physics::ColliderConfiguration::IsTrigger, false);
+        }
+        if (m_configType == PhysicsSetup::SimulatedObjectCollider)
+        {
+            newCollider.first->SetPropertyVisibility(Physics::ColliderConfiguration::CollisionLayer, false);
+            newCollider.first->SetPropertyVisibility(Physics::ColliderConfiguration::MaterialSelection, false);
+            newCollider.first->SetPropertyVisibility(Physics::ColliderConfiguration::IsTrigger, false);
+            newCollider.first->m_tag = m_jointName; // Default the tag name to joint name.
         }
 
         if (m_insertAtIndex)
@@ -390,7 +405,230 @@ namespace EMotionFX
         return "Add collider of the given type.";
     }
 
-    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    ///////////////////////////////////////////////////////////////////////////
+    // CommandAdjustCollider
+    ///////////////////////////////////////////////////////////////////////////
+
+    const char* CommandAdjustCollider::s_commandName = "AdjustCollider";
+
+    CommandAdjustCollider::CommandAdjustCollider(MCore::Command* orgCommand)
+        : MCore::Command(s_commandName, orgCommand)
+        , m_oldIsDirty(false)
+    {
+    }
+
+    CommandAdjustCollider::CommandAdjustCollider(AZ::u32 actorId, const AZStd::string& jointName, PhysicsSetup::ColliderConfigType configType, size_t colliderIndex, MCore::Command* orgCommand)
+        : MCore::Command(s_commandName, orgCommand)
+        , ParameterMixinActorId(actorId)
+        , ParameterMixinJointName(jointName)
+        , m_oldIsDirty(false)
+    {
+        m_configType = configType;
+        m_index = colliderIndex;
+    }
+
+    void CommandAdjustCollider::Reflect(AZ::ReflectContext* context)
+    {
+        AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
+        if (!serializeContext)
+        {
+            return;
+        }
+
+        serializeContext->Class<CommandAdjustCollider, MCore::Command, ParameterMixinActorId, ParameterMixinJointName>()
+            ->Version(1)
+            ->Field("configType", &CommandAdjustCollider::m_configType)
+            ->Field("index", &CommandAdjustCollider::m_index)
+            ->Field("collisionLayer", &CommandAdjustCollider::m_collisionLayer)
+            ->Field("collisionGroupId", &CommandAdjustCollider::m_collisionGroupId)
+            ->Field("isTrigger", &CommandAdjustCollider::m_isTrigger)
+            ->Field("position", &CommandAdjustCollider::m_position)
+            ->Field("rotation", &CommandAdjustCollider::m_rotation)
+            ->Field("material", &CommandAdjustCollider::m_material)
+            ->Field("tag", &CommandAdjustCollider::m_tag)
+            ->Field("radius", &CommandAdjustCollider::m_radius)
+            ->Field("height", &CommandAdjustCollider::m_height)
+            ->Field("dimensions", &CommandAdjustCollider::m_dimensions)
+            ;
+    }
+
+    bool CommandAdjustCollider::Execute(const MCore::CommandLine& parameters, AZStd::string& outResult)
+    {
+        AZ_UNUSED(parameters);
+
+        Actor* actor = nullptr;
+        Physics::ShapeConfigurationPair* shapeConfigPair = GetShapeConfigPair(&actor, outResult);
+        if (!shapeConfigPair)
+        {
+            return false;
+        }
+
+        Physics::ColliderConfiguration* colliderConfig = shapeConfigPair->first.get();
+
+        m_oldIsDirty = actor->GetDirtyFlag();
+
+        // ColliderConfiguration
+        ExecuteParameter<Physics::CollisionLayer>(m_oldCollisionLayer, m_collisionLayer, colliderConfig->m_collisionLayer);
+        ExecuteParameter<Physics::CollisionGroups::Id>(m_oldCollisionGroupId, m_collisionGroupId, colliderConfig->m_collisionGroupId);
+        ExecuteParameter<bool>(m_oldIsTrigger, m_isTrigger, colliderConfig->m_isTrigger);
+        ExecuteParameter<AZ::Vector3>(m_oldPosition, m_position, colliderConfig->m_position);
+        ExecuteParameter<AZ::Quaternion>(m_oldRotation, m_rotation, colliderConfig->m_rotation);
+        ExecuteParameter<Physics::MaterialSelection>(m_oldMaterial, m_material, colliderConfig->m_materialSelection);
+        ExecuteParameter<AZStd::string>(m_oldTag, m_tag, colliderConfig->m_tag);
+
+        // ShapeConfiguration
+        const AZ::TypeId colliderType = shapeConfigPair->second->RTTI_GetType();
+        Physics::ShapeConfiguration* shapeConfig = shapeConfigPair->second.get();
+        if (colliderType == azrtti_typeid<Physics::CapsuleShapeConfiguration>())
+        {
+            Physics::CapsuleShapeConfiguration* capsule = static_cast<Physics::CapsuleShapeConfiguration*>(shapeConfig);
+            ExecuteParameter<float>(m_oldHeight, m_height, capsule->m_height);
+            ExecuteParameter<float>(m_oldRadius, m_radius, capsule->m_radius);
+        }
+        else if (colliderType == azrtti_typeid<Physics::SphereShapeConfiguration>())
+        {
+            Physics::SphereShapeConfiguration* sphere = static_cast<Physics::SphereShapeConfiguration*>(shapeConfig);
+            ExecuteParameter<float>(m_oldRadius, m_radius, sphere->m_radius);
+        }
+        else if (colliderType == azrtti_typeid<Physics::BoxShapeConfiguration>())
+        {
+            Physics::BoxShapeConfiguration* box = static_cast<Physics::BoxShapeConfiguration*>(shapeConfig);
+            ExecuteParameter<AZ::Vector3>(m_oldDimensions, m_dimensions, box->m_dimensions);
+        }
+
+        return true;
+    }
+
+    bool CommandAdjustCollider::Undo(const MCore::CommandLine& parameters, AZStd::string& outResult)
+    {
+        AZ_UNUSED(parameters);
+
+        Actor* actor = nullptr;
+        Physics::ShapeConfigurationPair* shapeConfigPair = GetShapeConfigPair(&actor, outResult);
+        if (!shapeConfigPair)
+        {
+            return false;
+        }
+
+        Physics::ColliderConfiguration* colliderConfig = shapeConfigPair->first.get();
+
+        // ColliderConfiguration
+        if (m_oldCollisionLayer.has_value())
+        {
+            colliderConfig->m_collisionLayer = m_oldCollisionLayer.value();
+        }
+        if (m_oldCollisionGroupId.has_value())
+        {
+            colliderConfig->m_collisionGroupId = m_oldCollisionGroupId.value();
+        }
+        if (m_oldIsTrigger.has_value())
+        {
+            colliderConfig->m_isTrigger = m_oldIsTrigger.value();
+        }
+        if (m_oldPosition.has_value())
+        {
+            colliderConfig->m_position = m_oldPosition.value();
+        }
+        if (m_oldRotation.has_value())
+        {
+            colliderConfig->m_rotation = m_oldRotation.value();
+        }
+        if (m_oldMaterial.has_value())
+        {
+            colliderConfig->m_materialSelection = m_oldMaterial.value();
+        }
+        if (m_oldTag.has_value())
+        {
+            colliderConfig->m_tag = m_oldTag.value();
+        }
+
+        // ShapeConfiguration
+        const AZ::TypeId colliderType = shapeConfigPair->second->RTTI_GetType();
+        Physics::ShapeConfiguration* shapeConfig = shapeConfigPair->second.get();
+        if (colliderType == azrtti_typeid<Physics::CapsuleShapeConfiguration>())
+        {
+            Physics::CapsuleShapeConfiguration* capsule = static_cast<Physics::CapsuleShapeConfiguration*>(shapeConfig);
+
+            if (m_oldHeight.has_value())
+            {
+                capsule->m_height = m_oldHeight.value();
+            }
+            if (m_oldRadius.has_value())
+            {
+                capsule->m_radius = m_oldRadius.value();
+            }
+        }
+        else if (colliderType == azrtti_typeid<Physics::SphereShapeConfiguration>())
+        {
+            Physics::SphereShapeConfiguration* sphere = static_cast<Physics::SphereShapeConfiguration*>(shapeConfig);
+
+            if (m_oldRadius.has_value())
+            {
+                sphere->m_radius = m_oldRadius.value();
+            }
+        }
+        else if (colliderType == azrtti_typeid<Physics::BoxShapeConfiguration>())
+        {
+            Physics::BoxShapeConfiguration* box = static_cast<Physics::BoxShapeConfiguration*>(shapeConfig);
+
+            if (m_oldDimensions.has_value())
+            {
+                box->m_dimensions = m_oldDimensions.value();
+            }
+        }
+
+        actor->SetDirtyFlag(m_oldIsDirty);
+        return true;
+    }
+
+    Physics::ShapeConfigurationPair* CommandAdjustCollider::GetShapeConfigPair(Actor** outActor, AZStd::string& outResult) const
+    {
+        Actor* actor = GetActor(this, outResult);
+        if (!actor)
+        {
+            *outActor = nullptr;
+            return nullptr;
+        }
+        *outActor = actor;
+
+        if (!m_configType.has_value())
+        {
+            outResult = "Cannot get collider configuration. No collider configuration type specified.";
+            return nullptr;
+        }
+
+        const AZStd::shared_ptr<PhysicsSetup>& physicsSetup = actor->GetPhysicsSetup();
+        Physics::CharacterColliderConfiguration* characterColliderConfig = physicsSetup->GetColliderConfigByType(m_configType.value());
+        if (!characterColliderConfig)
+        {
+            outResult = AZStd::string::format("Cannot find collider configuration '%s'.", PhysicsSetup::GetStringForColliderConfigType(m_configType.value()));
+            return nullptr;
+        }
+
+        Physics::CharacterColliderNodeConfiguration* nodeConfig = CommandColliderHelpers::GetNodeConfig(actor, m_jointName, *characterColliderConfig, outResult);
+        if (!nodeConfig)
+        {
+            return nullptr;
+        }
+
+        const size_t shapeCount = nodeConfig->m_shapes.size();
+        if (m_index.value() >= shapeCount)
+        {
+            outResult = AZStd::string::format("Cannot get collider. The joint '%s' is only holding %d %s colliders and the index %d is out of range.",
+                m_jointName.c_str(),
+                shapeCount,
+                PhysicsSetup::GetStringForColliderConfigType(m_configType.value()),
+                m_index.value());
+            return nullptr;
+        }
+
+        Physics::ShapeConfigurationPair& shapeConfigPair = nodeConfig->m_shapes[m_index.value()];
+        return &shapeConfigPair;
+    }
+
+    ///////////////////////////////////////////////////////////////////////////
+    // CommandRemoveCollider
+    ///////////////////////////////////////////////////////////////////////////
 
     const char* CommandRemoveCollider::s_commandName = "RemoveCollider";
     const char* CommandRemoveCollider::s_colliderConfigTypeParameterName = "colliderConfigType";
@@ -402,11 +640,12 @@ namespace EMotionFX
     {
     }
 
-    CommandRemoveCollider::CommandRemoveCollider(AZ::u32 actorId, const AZStd::string& jointName, PhysicsSetup::ColliderConfigType configType, size_t colliderIndex)
-        : CommandRemoveCollider(nullptr)
+    CommandRemoveCollider::CommandRemoveCollider(AZ::u32 actorId, const AZStd::string& jointName, PhysicsSetup::ColliderConfigType configType, size_t colliderIndex, MCore::Command* orgCommand)
+        : MCore::Command(s_commandName, orgCommand)
+        , ParameterMixinActorId(actorId)
+        , ParameterMixinJointName(jointName)
+        , m_oldIsDirty(false)
     {
-        m_actorId = actorId;
-        m_jointName = jointName;
         m_configType = configType;
         m_colliderIndex = colliderIndex;
     }

@@ -100,7 +100,6 @@ bool CGeomCache::LoadGeomCache()
 {
     using namespace GeomCacheFile;
 
-    FUNCTION_PROFILER_3DENGINE;
     LOADING_TIME_PROFILE_SECTION;
 
     CRY_DEFINE_ASSET_SCOPE("GeomCache", m_fileName);
@@ -143,11 +142,12 @@ bool CGeomCache::LoadGeomCache()
 
     if (header.m_blockCompressionFormat != eBlockCompressionFormat_None &&
         header.m_blockCompressionFormat != eBlockCompressionFormat_Deflate &&
-        header.m_blockCompressionFormat != eBlockCompressionFormat_LZ4HC)
-    {
-        m_lastError = "Bad block compression format";
-        return false;
-    }
+        header.m_blockCompressionFormat != eBlockCompressionFormat_LZ4HC &&
+        header.m_blockCompressionFormat != eBlockCompressionFormat_ZSTD)
+        {
+            m_lastError = "Bad block compression format";
+            return false;
+        }
 
     m_bPlaybackFromMemory = (header.m_flags & GeomCacheFile::eFileHeaderFlags_PlaybackFromMemory) != 0;
     m_blockCompressionFormat = static_cast<EBlockCompressionFormat>(header.m_blockCompressionFormat);
@@ -294,7 +294,6 @@ bool CGeomCache::DecompressStaticBlock(GeomCacheFile::EBlockCompressionFormat co
 
 bool CGeomCache::ReadFrameInfos(AZ::IO::HandleType fileHandle, const uint32 numFrames)
 {
-    FUNCTION_PROFILER_3DENGINE;
     LOADING_TIME_PROFILE_SECTION;
 
     size_t bytesRead;
@@ -352,7 +351,6 @@ bool CGeomCache::ReadFrameInfos(AZ::IO::HandleType fileHandle, const uint32 numF
 
 bool CGeomCache::ReadMeshesStaticData(CGeomCacheStreamReader& reader, const char* pFileName)
 {
-    FUNCTION_PROFILER_3DENGINE;
     LOADING_TIME_PROFILE_SECTION;
 
     uint32 numMeshes;
@@ -452,7 +450,6 @@ bool CGeomCache::ReadMeshStaticData(CGeomCacheStreamReader& reader, const GeomCa
 
 bool CGeomCache::ReadNodesStaticDataRec(CGeomCacheStreamReader& reader)
 {
-    FUNCTION_PROFILER_3DENGINE;
     LOADING_TIME_PROFILE_SECTION;
 
     GeomCacheFile::SNodeInfo nodeInfo;

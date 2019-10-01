@@ -385,6 +385,8 @@ namespace AzToolsFramework
 
         virtual void ReadValuesIntoGUI_Internal(QWidget* widget, InstanceDataNode* node) override
         {
+            AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
+
             WidgetType* wid = static_cast<WidgetType*>(widget);
 
             const AZ::Uuid& actualUUID = node->GetClassMetadata()->m_typeId;

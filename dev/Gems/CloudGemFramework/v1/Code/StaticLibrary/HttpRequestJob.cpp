@@ -200,7 +200,7 @@ namespace CloudGemFramework
     {
         bool result = false;
 
-        if (boost::optional<HttpMethod> value = StringToHttpMethod(method))
+        if (AZStd::optional<HttpMethod> value = StringToHttpMethod(method))
         {
             SetMethod(*value);
             result = true;
@@ -336,9 +336,9 @@ namespace CloudGemFramework
         return result;
     }
 
-    boost::optional<HttpRequestJob::HttpMethod> HttpRequestJob::StringToHttpMethod(const AZStd::string& method)
+    AZStd::optional<HttpRequestJob::HttpMethod> HttpRequestJob::StringToHttpMethod(const AZStd::string& method)
     {
-        boost::optional<HttpRequestJob::HttpMethod> result;
+        AZStd::optional<HttpRequestJob::HttpMethod> result;
         const auto& haystack = GetMethodStringReverseLookup();
         auto itr = haystack.find(method);
 

@@ -424,6 +424,9 @@ public:
     virtual IHWMouseCursor* GetIHWMouseCursor() { return NULL; }
 #endif
 
+    virtual void StartLoadtimePlayback(ILoadtimeCallback* pCallback) {}
+    virtual void StopLoadtimePlayback() {}
+
 private:
     CNULLRenderAuxGeom* m_pNULLRenderAuxGeom;
     IColorGradingController* m_pNULLColorGradingController;

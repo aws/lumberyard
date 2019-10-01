@@ -23,6 +23,7 @@
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
 #include <AzToolsFramework/API/EditorAssetSystemAPI.h>
 #include <AzCore/std/sort.h>
+#include <AzCore/Script/ScriptContextDebug.h>
 
 extern "C" {
 #include<Lua/lualib.h>
@@ -585,9 +586,9 @@ namespace AzToolsFramework
                                             // See: AZ::Edit::UIHandlers
                                             if (propertyTable.IsNumber(attrIndex))
                                             {
-                                                int value = 0;
+                                                AZ::u64 value = 0;
                                                 propertyTable.ReadValue(attrIndex, value);
-                                                ei.m_editData.m_elementId = static_cast<AZ::u32>(value);
+                                                ei.m_editData.m_elementId = aznumeric_cast<AZ::u32>(value);
                                             }
                                             else if (propertyTable.IsString(attrIndex))
                                             {
@@ -766,9 +767,23 @@ namespace AzToolsFramework
         {
             LSV_BEGIN(m_scriptComponent.m_context->NativeContext(), 0);
 
+            // At this point we're loading the script to populate the properties.
+            // Disable debugging during this stage as the game is not running yet.
+            bool pausedBreakpoints = false;
+            if (m_scriptComponent.m_context->GetDebugContext())
+            {
+                m_scriptComponent.m_context->GetDebugContext()->DisconnectHook();
+                pausedBreakpoints = true;
+            }
+
             if (m_scriptComponent.LoadInContext())
             {
                 LoadProperties();
+            }
+
+            if (pausedBreakpoints)
+            {
+                m_scriptComponent.m_context->GetDebugContext()->ConnectHook();
             }
 
             EBUS_EVENT(ToolsApplicationEvents::Bus, InvalidatePropertyDisplay, Refresh_EntireTree);
@@ -1009,7 +1024,7 @@ namespace AzToolsFramework
                         ->Attribute(AZ::Edit::Attributes::NameLabelOverride, &ScriptEditorComponent::m_customName)
                         ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
                         ->Attribute(AZ::Edit::Attributes::Category, "Scripting")
-                        ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/LuaScript.png")
+                        ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/LuaScript.svg")
                         ->Attribute(AZ::Edit::Attributes::PrimaryAssetType, AZ::AzTypeInfo<AZ::ScriptAsset>::Uuid())
                         ->Attribute(AZ::Edit::Attributes::ViewportIcon, "Editor/Icons/Components/Viewport/Script.png")
                         ->Attribute(AZ::Edit::Attributes::HelpPageURL, "https://docs.aws.amazon.com/lumberyard/latest/userguide/component-lua-script.html")

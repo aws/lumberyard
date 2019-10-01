@@ -101,7 +101,7 @@ namespace LmbrCentral
 
     const char* BehaviorTreeAssetHandler::GetBrowserIcon() const
     {
-        return "Editor/Icons/Components/BehaviorTree.png";
+        return "Editor/Icons/Components/BehaviorTree.svg";
     }
 
     AZ::Uuid BehaviorTreeAssetHandler::GetComponentTypeId() const

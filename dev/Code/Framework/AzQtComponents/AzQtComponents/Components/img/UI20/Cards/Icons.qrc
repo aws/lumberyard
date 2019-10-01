@@ -25,5 +25,6 @@
         <file>disabled_header.png</file>
         <file>help.png</file>
         <file alias="EntityPicker">eye_dropper.png</file>
+        <file>trash-small.png</file>      
     </qresource>
 </RCC>

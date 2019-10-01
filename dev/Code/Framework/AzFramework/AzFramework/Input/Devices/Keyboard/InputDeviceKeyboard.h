@@ -259,6 +259,9 @@ namespace AzFramework
         ~InputDeviceKeyboard() override;
 
         ////////////////////////////////////////////////////////////////////////////////////////////
+        LocalUserId GetAssignedLocalUserId() const override;
+
+        ////////////////////////////////////////////////////////////////////////////////////////////
         //! \ref AzFramework::InputDevice::GetInputChannelsById
         const InputChannelByIdMap& GetInputChannelsById() const override;
 
@@ -285,6 +288,11 @@ namespace AzFramework
         ////////////////////////////////////////////////////////////////////////////////////////////
         //! \ref AzFramework::InputDeviceRequests::TickInputDevice
         void TickInputDevice() override;
+
+        ////////////////////////////////////////////////////////////////////////////////////////////
+        //! \ref AzFramework::InputDeviceRequests::GetPhysicalKeyOrButtonText
+        void GetPhysicalKeyOrButtonText(const InputChannelId& inputChannelId,
+                                        AZStd::string& o_keyOrButtonText) const override;
 
     protected:
         ////////////////////////////////////////////////////////////////////////////////////////////
@@ -326,6 +334,9 @@ namespace AzFramework
             virtual ~Implementation();
 
             ////////////////////////////////////////////////////////////////////////////////////////
+            virtual LocalUserId GetAssignedLocalUserId() const;
+
+            ////////////////////////////////////////////////////////////////////////////////////////
             //! Query the connected state of the input device
             //! \return True if the input device is currently connected, false otherwise
             virtual bool IsConnected() const = 0;
@@ -347,6 +358,14 @@ namespace AzFramework
             ////////////////////////////////////////////////////////////////////////////////////////
             //! Tick/update the input device to broadcast all input events since the last frame
             virtual void TickInputDevice() = 0;
+
+            ////////////////////////////////////////////////////////////////////////////////////////
+            //! Get the text displayed on the physical key/button associated with an input channel.
+            //! In the case of keyboard keys, we must take into account the current keyboard layout.
+            //! \param[in] inputChannelId The input channel id whose key or button text to return
+            //! \param[out] o_keyOrButtonText The text displayed on the physical key/button if found
+            virtual void GetPhysicalKeyOrButtonText(const InputChannelId& /*inputChannelId*/,
+                                                    AZStd::string& /*o_keyOrButtonText*/) const {}
 
         protected:
             ////////////////////////////////////////////////////////////////////////////////////////

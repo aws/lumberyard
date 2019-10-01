@@ -146,7 +146,7 @@ extern "C" AZ_DLL_EXPORT void Reflect(AZ::SerializeContext* context)
     //      Gems with system components need to do the same in the Project Configurator.
     if (context && (context->IsRemovingReflection() || !context->FindClassData(AZ::SceneAPI::DataTypes::IGroup::TYPEINFO_Uuid())))
     {
-        context->Class<AZ::SceneAPI::DataTypes::IManifestObject>();
+        AZ::SceneAPI::DataTypes::IManifestObject::Reflect(context);
         // Register components
         AZ::SceneAPI::SceneCore::BehaviorComponent::Reflect(context);
         AZ::SceneAPI::SceneCore::LoadingComponent::Reflect(context);

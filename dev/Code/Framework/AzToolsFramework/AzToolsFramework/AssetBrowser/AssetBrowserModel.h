@@ -11,16 +11,24 @@
 */
 #pragma once
 
+#include <AzCore/PlatformDef.h>
+
+AZ_PUSH_DISABLE_WARNING(4127, "-Wunknown-warning-option") // conditional expression is constant
 #include <AzToolsFramework/AssetBrowser/AssetBrowserBus.h>
+AZ_POP_DISABLE_WARNING
 
 #include <AzCore/Memory/SystemAllocator.h>
 #include <AzCore/Asset/AssetCommon.h>
 #include <AzCore/std/smart_ptr/shared_ptr.h>
 #include <AzCore/Component/TickBus.h>
 
+AZ_PUSH_DISABLE_WARNING(4127 4251 4800, "-Wunknown-warning-option") // 4127: conditional expression is constant
+                                                                    // 4251: 'QVariant::d': struct 'QVariant::Private' needs to have dll-interface to be used by clients of class 'QVariant'
+                                                                    // 4800: 'int': forcing value to bool 'true' or 'false' (performance warning)
 #include <QAbstractTableModel>
 #include <QVariant>
 #include <QMimeData>
+AZ_POP_DISABLE_WARNING
 
 namespace AzToolsFramework
 {

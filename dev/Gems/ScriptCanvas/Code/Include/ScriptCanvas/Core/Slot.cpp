@@ -23,8 +23,32 @@
 
 namespace ScriptCanvas
 {
+    /////////
+    // Slot
+    /////////
+
     static bool SlotVersionConverter(AZ::SerializeContext& context, AZ::SerializeContext::DataElementNode& classElement)
     {
+        // SlotName
+        if (classElement.GetVersion() <= 6)
+        {
+            auto slotNameElements = AZ::Utils::FindDescendantElements(context, classElement, AZStd::vector<AZ::Crc32>{AZ_CRC("id", 0xbf396750), AZ_CRC("m_name", 0xc08c4427)});
+            AZStd::string slotName;
+            if (slotNameElements.empty() || !slotNameElements.front()->GetData(slotName))
+            {
+                return false;
+            }
+
+            classElement.AddElementWithData(context, "slotName", slotName);
+        }
+
+        // Index fields
+        if (classElement.GetVersion() <= 8)
+        {
+            classElement.RemoveElementByName(AZ_CRC("index", 0x80736701));
+        }
+
+        // Dynamic Type Fields
         if (classElement.GetVersion() <= 9)
         {
             classElement.AddElementWithData(context, "DynamicTypeOverride", DynamicDataType::None);
@@ -49,37 +73,83 @@ namespace ScriptCanvas
             classElement.RemoveElementByName(AZ_CRC("dataTypeOverride", 0x7f1765d9));
         }
         
-
+        // DisplayDataType
         if (classElement.GetVersion() < 12)
         {
             classElement.AddElementWithData(context, "DisplayDataType", Data::Type::Invalid());
         }
 
-        if (classElement.GetVersion() <= 6)
+        // Descriptor
+        if (classElement.GetVersion() <= 13)
         {
-            auto slotNameElements = AZ::Utils::FindDescendantElements(context, classElement, AZStd::vector<AZ::Crc32>{AZ_CRC("id", 0xbf396750), AZ_CRC("m_name", 0xc08c4427)});
-            AZStd::string slotName;
-            if (slotNameElements.empty() || !slotNameElements.front()->GetData(slotName))
+            AZ::SerializeContext::DataElementNode* subElement = classElement.FindSubElement(AZ_CRC("type", 0x8cde5729));
+
+            int enumValue = 0;
+            if (subElement && subElement->GetData(enumValue))
             {
-                return false;
+                CombinedSlotType combinedSlotType = static_cast<CombinedSlotType>(enumValue);
+
+                SlotDescriptor slotDescriptor = SlotDescriptor(combinedSlotType);
+
+                classElement.AddElementWithData(context, "Descriptor", slotDescriptor);
+
+                bool isLatent = (combinedSlotType == CombinedSlotType::LatentOut);
+                classElement.AddElementWithData(context, "IsLatent", isLatent);
             }
 
-            classElement.AddElementWithData(context, "slotName", slotName);
-        }
-
-        if (classElement.GetVersion() <= 8)
-        {
-            classElement.RemoveElementByName(AZ_CRC("index", 0x80736701));
+            classElement.RemoveElementByName(AZ_CRC("type", 0x8cde5729));
         }
         return true;
     }
 
+    void Slot::Reflect(AZ::ReflectContext* reflection)
+    {
+        SlotId::Reflect(reflection);
+        Contract::Reflect(reflection);
+        RestrictedTypeContract::Reflect(reflection);
+        DynamicTypeContract::Reflect(reflection);
+        SlotTypeContract::Reflect(reflection);
+        ConnectionLimitContract::Reflect(reflection);
+        DisallowReentrantExecutionContract::Reflect(reflection);
+        ContractRTTI::Reflect(reflection);
+        IsReferenceTypeContract::Reflect(reflection);
+        SlotMetadata::Reflect(reflection);
+        SupportsMethodContract::Reflect(reflection);
+        MathOperatorContract::Reflect(reflection);
+
+        AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(reflection);
+        if (serializeContext)
+        {
+            serializeContext->Class<SlotDescriptor>()
+                ->Version(1)
+                ->Field("ConnectionType", &SlotDescriptor::m_connectionType)
+                ->Field("SlotType", &SlotDescriptor::m_slotType)
+            ;
+            serializeContext->Class<Slot>()
+                ->Version(15, &SlotVersionConverter)
+                ->Field("id", &Slot::m_id)
+                ->Field("nodeId", &Slot::m_nodeId)
+                ->Field("DynamicTypeOverride", &Slot::m_dynamicDataType)
+                ->Field("contracts", &Slot::m_contracts)
+                ->Field("slotName", &Slot::m_name)
+                ->Field("toolTip", &Slot::m_toolTip)
+                ->Field("DisplayDataType", &Slot::m_displayDataType)
+                ->Field("DisplayGroup", &Slot::m_displayGroup)
+                ->Field("Descriptor", &Slot::m_descriptor)
+                ->Field("IsLatent", &Slot::m_isLatentSlot)
+                ->Field("DynamicGroup", &Slot::m_dynamicGroup)
+                ;
+        }
+
+    }
+
     Slot::Slot(const SlotConfiguration& slotConfiguration)
         : m_name(slotConfiguration.m_name)
-        , m_toolTip(slotConfiguration.m_toolTip)        
-        , m_type(slotConfiguration.m_slotType)
+        , m_toolTip(slotConfiguration.m_toolTip)
+        , m_isLatentSlot(slotConfiguration.m_isLatent)
+        , m_descriptor(slotConfiguration.GetSlotDescriptor())
         , m_dynamicDataType(DynamicDataType::None)
-        , m_id(slotConfiguration.m_slotId)
+        , m_id(slotConfiguration.m_slotId)       
     {
         if (!slotConfiguration.m_displayGroup.empty())
         {
@@ -90,7 +160,7 @@ namespace ScriptCanvas
         m_contracts.emplace_back(AZStd::make_unique<SlotTypeContract>());
 
         // Every DataIn slot has a contract validating that only 1 connection from any PureData node is allowed
-        if (m_type == SlotType::DataIn)
+        if (IsData() && IsInput())
         {
             AddContract({ []() { return aznew ExclusivePureDataContract(); } });
         }
@@ -100,10 +170,10 @@ namespace ScriptCanvas
             AddContract(contractDesc);
         }
 
-        if (const DataSlotConfiguration* dataSlotConfiguration = azrtti_cast<const DataSlotConfiguration*>(&slotConfiguration))
+        if (const DynamicDataSlotConfiguration* dataSlotConfiguration = azrtti_cast<const DynamicDataSlotConfiguration*>(&slotConfiguration))
         {
-            m_dynamicDataType = dataSlotConfiguration->m_dynamicDataType;
-            m_displayDataType = dataSlotConfiguration->m_displayType;
+            m_dynamicDataType = dataSlotConfiguration->m_dynamicDataType;            
+            m_dynamicGroup = dataSlotConfiguration->m_dynamicGroup;
         }
     }
 
@@ -111,7 +181,8 @@ namespace ScriptCanvas
         : m_name(other.m_name)
         , m_toolTip(other.m_toolTip)
         , m_displayGroup(other.m_displayGroup)
-        , m_type(other.m_type)
+        , m_dynamicGroup(other.m_dynamicGroup)
+        , m_descriptor(other.m_descriptor)
         , m_dynamicDataType(other.m_dynamicDataType)
         , m_id(other.m_id)
         , m_nodeId(other.m_nodeId)
@@ -126,13 +197,15 @@ namespace ScriptCanvas
         : m_name(AZStd::move(slot.m_name))
         , m_toolTip(AZStd::move(slot.m_toolTip))
         , m_displayGroup(AZStd::move(slot.m_displayGroup))
-        , m_type(AZStd::move(slot.m_type))
+        , m_dynamicGroup(AZStd::move(slot.m_dynamicGroup))
+        , m_descriptor(AZStd::move(slot.m_descriptor))        
         , m_dynamicDataType(AZStd::move(slot.m_dynamicDataType))
         , m_displayDataType(AZStd::move(slot.m_displayDataType))
         , m_id(AZStd::move(slot.m_id))
         , m_nodeId(AZStd::move(slot.m_nodeId))
         , m_contracts(AZStd::move(slot.m_contracts))
     {
+        SetDisplayType(slot.m_displayDataType);
     }
 
     Slot& Slot::operator=(const Slot& slot)
@@ -140,15 +213,19 @@ namespace ScriptCanvas
         m_name = slot.m_name;
         m_toolTip = slot.m_toolTip;
         m_displayGroup = slot.m_displayGroup;
-        m_type = slot.m_type;
+        m_dynamicGroup = slot.m_dynamicGroup;
+        m_descriptor = slot.m_descriptor;
         m_dynamicDataType = slot.m_dynamicDataType;
         m_displayDataType = slot.m_displayDataType;
         m_id = slot.m_id;
         m_nodeId = slot.m_nodeId;
+
         for (auto& otherContract : slot.m_contracts)
         {
             m_contracts.emplace_back(AZ::EntityUtils::GetApplicationSerializeContext()->CloneObject(otherContract.get()));
         }
+
+        SetDisplayType(slot.m_displayDataType);
 
         return *this;
     }
@@ -163,13 +240,13 @@ namespace ScriptCanvas
                 m_contracts.emplace_back(newContract);
             }
         }
-    }
+    }    
 
     void Slot::ConvertToLatentExecutionOut()
     {
-        if (m_type == SlotType::ExecutionOut)
+        if (IsExecution() && IsOutput())
         {
-            m_type = SlotType::LatentOut;
+            m_isLatentSlot = true;
         }
     }
 
@@ -183,22 +260,27 @@ namespace ScriptCanvas
 
     bool Slot::IsData() const
     {
-        return SlotUtils::IsData(m_type);
+        return m_descriptor.IsData();        
     }
 
     bool Slot::IsExecution() const
     {
-        return SlotUtils::IsExecution(m_type);
+        return m_descriptor.IsExecution();
     }
 
     bool Slot::IsInput() const
     {
-        return SlotUtils::IsInput(m_type);
+        return m_descriptor.IsInput();
     }
 
     bool Slot::IsOutput() const
     {
-        return SlotUtils::IsOutput(m_type);
+        return m_descriptor.IsOutput();
+    }
+
+    bool Slot::IsLatent() const
+    {
+        return m_isLatentSlot;
     }
 
     void Slot::SetDynamicDataType(DynamicDataType dynamicDataType)
@@ -245,7 +327,7 @@ namespace ScriptCanvas
             //
             // For non-dynamic slots, I don't want to do anything since there might be some specialization
             // going on that I don't want to stomp on.
-            if (IsDynamicSlot() && GetType() == SlotType::DataIn)
+            if (IsDynamicSlot() && IsInput())
             {
                 Datum* datum = nullptr;
                 EditorNodeRequestBus::EventResult(datum, m_nodeId, &EditorNodeRequests::ModInput, GetId());
@@ -257,11 +339,11 @@ namespace ScriptCanvas
                         Datum sourceDatum(m_displayDataType, ScriptCanvas::Datum::eOriginality::Original);
                         sourceDatum.SetToDefaultValueOfType();
 
-                        (*datum) = sourceDatum;
+                        datum->ReconfigureDatumTo(AZStd::move(sourceDatum));
                     }
                     else
                     {
-                        (*datum) = Datum();
+                        datum->ReconfigureDatumTo(AZStd::move(Datum()));
                     }
                 }
             }
@@ -270,10 +352,15 @@ namespace ScriptCanvas
         }
     }
 
+    void Slot::ClearDisplayType()
+    {
+        SetDisplayType(Data::Type::Invalid());
+    }
+
     ScriptCanvas::Data::Type Slot::GetDisplayType() const
     {
         return m_displayDataType;
-    }
+    }    
 
     bool Slot::HasDisplayType() const
     {
@@ -285,10 +372,62 @@ namespace ScriptCanvas
         return m_displayGroup;
     }
 
-    bool Slot::IsTypeMatchFor(const Slot& otherSlot) const
+    void Slot::SetDisplayGroup(AZStd::string displayGroup)
     {
+        m_displayGroup = AZ::Crc32(displayGroup);
+    }
+
+    AZ::Crc32 Slot::GetDynamicGroup() const
+    {
+        return m_dynamicGroup;
+    }
+
+    AZ::Outcome<void, AZStd::string> Slot::IsTypeMatchFor(const Slot& otherSlot) const
+    {
+        AZ::Outcome<void, AZStd::string> matchForOutcome;
+
         ScriptCanvas::Data::Type myType = GetDataType();
         ScriptCanvas::Data::Type otherType = otherSlot.GetDataType();
+
+        if (otherType.IsValid())
+        {
+            if (IsDynamicSlot() && GetDynamicGroup() != AZ::Crc32())
+            {
+                NodeRequestBus::EventResult(matchForOutcome, GetNodeId(), &NodeRequests::IsValidTypeForGroup, GetDynamicGroup(), otherType);
+
+                if (!matchForOutcome.IsSuccess())
+                {
+                    return matchForOutcome;
+                }
+            }
+
+            matchForOutcome = IsTypeMatchFor(otherType);
+
+            if (!matchForOutcome)
+            {
+                return matchForOutcome;
+            }
+        }
+
+        if (myType.IsValid())
+        {
+            if (otherSlot.IsDynamicSlot() && otherSlot.GetDynamicGroup() != AZ::Crc32())
+            {
+                NodeRequestBus::EventResult(matchForOutcome, otherSlot.GetNodeId(), &NodeRequests::IsValidTypeForGroup, otherSlot.GetDynamicGroup(), myType);
+
+                if (!matchForOutcome)
+                {
+                    return matchForOutcome;
+                }
+            }
+
+            matchForOutcome = otherSlot.IsTypeMatchFor(myType);
+
+            if (!matchForOutcome)
+            {
+                return matchForOutcome;
+            }
+        }
 
         // Container check is either based on the concrete type associated with the slot.
         // Or the dynamic display type if no concrete type has been associated.
@@ -302,14 +441,21 @@ namespace ScriptCanvas
             {
                 if (otherSlot.HasDisplayType() || otherSlot.GetDynamicDataType() != DynamicDataType::Any)
                 {
-                    return false;
+                    if (otherType.IsValid())
+                    {
+                        return AZ::Failure(AZStd::string::format("%s is not a valid Container type.", ScriptCanvas::Data::GetName(otherType)));
+                    }
+                    else
+                    {
+                        return AZ::Failure<AZStd::string>("Cannot connect Dynamic Container to Dynamic Value type.");
+                    }
                 }
             }
             else if (GetDynamicDataType() == DynamicDataType::Value && isOtherTypeContainer)
             {
-                return false;
+                return AZ::Failure(AZStd::string::format("%s is a Container type and not a Value type.", ScriptCanvas::Data::GetName(otherType)));
             }
-        }
+        }        
 
         if (otherSlot.IsDynamicSlot())
         {
@@ -317,12 +463,19 @@ namespace ScriptCanvas
             {
                 if (HasDisplayType() || GetDynamicDataType() != DynamicDataType::Any)
                 {
-                    return false;
+                    if (myType.IsValid())
+                    {
+                        return AZ::Failure(AZStd::string::format("%s is not a valid Container type.", ScriptCanvas::Data::GetName(myType)));
+                    }
+                    else
+                    {
+                        return AZ::Failure<AZStd::string>("Cannot connect Dynamic Container to Dynamic Value type.");
+                    }
                 }
             }
             else if (otherSlot.GetDynamicDataType() == DynamicDataType::Value && isMyTypeContainer)
             {
-                return false;
+                return AZ::Failure(AZStd::string::format("%s is a Container type and not a Value type.", ScriptCanvas::Data::GetName(myType)));
             }
         }
 
@@ -331,19 +484,41 @@ namespace ScriptCanvas
         if ((IsDynamicSlot() && !HasDisplayType())
             || (otherSlot.IsDynamicSlot() && !otherSlot.HasDisplayType()))
         {
-            return true;
+            return AZ::Success();
         }
 
         // At this point we need to confirm the types are a match.
-        return myType.IS_A(otherType);
+        if (myType.IS_A(otherType))
+        {
+            return AZ::Success();
+        }
+        
+        return AZ::Failure(AZStd::string::format("%s is not a type match for %s", ScriptCanvas::Data::GetName(myType), ScriptCanvas::Data::GetName(otherType)));
     }
 
-    bool Slot::IsTypeMatchFor(const ScriptCanvas::Data::Type& dataType) const
+    AZ::Outcome<void, AZStd::string> Slot::IsTypeMatchFor(const ScriptCanvas::Data::Type& dataType) const
     {
+        if (IsExecution())
+        {
+            return AZ::Failure<AZStd::string>("Execution slot cannot match Data types.");
+        }
+
+        AZ::Outcome<void, AZStd::string> failureReason;
+        bool contractsAllowType = true;
+
+        for (const auto& contract : m_contracts)
+        {
+            failureReason = contract->EvaluateForType(dataType);
+            if (!failureReason)
+            {
+                return failureReason;
+            }
+        }
+
         if (GetDynamicDataType() == DynamicDataType::Any
             && !HasDisplayType())
         {
-            return true;
+            return AZ::Success();
         }
 
         bool isContainerType = AZ::Utils::IsContainerType(ScriptCanvas::Data::ToAZType(dataType));
@@ -352,19 +527,25 @@ namespace ScriptCanvas
         {
             if (GetDynamicDataType() == DynamicDataType::Container && !isContainerType)
             {
-                return false;
+                return AZ::Failure(AZStd::string::format("%s is not a Container type.", ScriptCanvas::Data::GetName(dataType)));
             }
             else if (GetDynamicDataType() == DynamicDataType::Value && isContainerType)
             {
-                return false;
+                return AZ::Failure(AZStd::string::format("%s is a Container type and cannot be pushed as a value.", ScriptCanvas::Data::GetName(dataType)));
             }
             else if (!HasDisplayType())
             {
-                return true;
+                return AZ::Success();
             }
         }
 
-        return GetDataType().IS_A(dataType);
+        // At this point we need to confirm the types are a match.
+        if (GetDataType().IS_A(dataType))
+        {
+            return AZ::Success();
+        }
+
+        return AZ::Failure(AZStd::string::format("%s is not a type match for %s", ScriptCanvas::Data::GetName(GetDataType()), ScriptCanvas::Data::GetName(dataType)));
     }
 
     void Slot::Rename(AZStd::string_view newName)
@@ -377,37 +558,8 @@ namespace ScriptCanvas
         }
     }
 
-    void Slot::Reflect(AZ::ReflectContext* reflection)
+    void Slot::SetDynamicGroup(const AZ::Crc32& dynamicGroup)
     {
-        SlotId::Reflect(reflection);
-        Contract::Reflect(reflection);
-        RestrictedTypeContract::Reflect(reflection);
-        DynamicTypeContract::Reflect(reflection);
-        SlotTypeContract::Reflect(reflection);
-        ConnectionLimitContract::Reflect(reflection);
-        DisallowReentrantExecutionContract::Reflect(reflection);
-        ContractRTTI::Reflect(reflection);
-        IsReferenceTypeContract::Reflect(reflection);
-        SlotMetadata::Reflect(reflection);
-        SupportsMethodContract::Reflect(reflection);
-        MathOperatorContract::Reflect(reflection);
-
-        AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(reflection);
-        if (serializeContext)
-        {
-            serializeContext->Class<Slot>()
-                ->Version(13, &SlotVersionConverter)
-                ->Field("id", &Slot::m_id)
-                ->Field("nodeId", &Slot::m_nodeId)
-                ->Field("type", &Slot::m_type)
-                ->Field("DynamicTypeOverride", &Slot::m_dynamicDataType)
-                ->Field("contracts", &Slot::m_contracts)
-                ->Field("slotName", &Slot::m_name)
-                ->Field("toolTip", &Slot::m_toolTip)
-                ->Field("DisplayDataType", &Slot::m_displayDataType)
-                ->Field("DisplayGroup", &Slot::m_displayGroup)
-                ;
-        }
-
+        m_dynamicGroup = dynamicGroup;
     }
 }

@@ -1,7 +1,0 @@
-{
-    "auto": {
-        "Source": [
-            "Source/Android/NativeUISystemComponent_Android.cpp"
-        ]
-    }
-}

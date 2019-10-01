@@ -37,6 +37,7 @@
 #define DEVICEMANAGER_CPP_SECTION_16 16
 #define DEVICEMANAGER_CPP_SECTION_17 17
 #define DEVICEMANAGER_CPP_SECTION_18 18
+#define DEVICEMANAGER_CPP_SECTION_20 20
 #endif
 
 #if defined(AZ_RESTRICTED_PLATFORM)
@@ -415,17 +416,7 @@ HRESULT CDeviceManager::CreateDirectAccessBuffer(uint32 nSize, uint32 elemSize, 
     #endif
 #endif
 
-    HRESULT result = CreateBuffer(nSize, elemSize, nUsage, nBindFlags, ppBuff);
-
-    if (result == S_OK)
-    {
-        // Register the allocation with the VRAM driller
-        void* address = static_cast<void*>(*ppBuff);
-        const char* bufferName = "CreateDirectAccessBuffer";
-        EBUS_EVENT(Render::Debug::VRAMDrillerBus, RegisterAllocation, address, nSize * elemSize, bufferName, Render::Debug::VRAM_CATEGORY_BUFFER, Render::Debug::VRAMAllocationSubcategory::VRAM_SUBCATEGORY_BUFFER_OTHER_BUFFER);
-    }
-
-    return result;
+    return CreateBuffer(nSize, elemSize, nUsage, nBindFlags, ppBuff);
 }
 
 HRESULT CDeviceManager::DestroyDirectAccessBuffer(D3DBuffer* ppBuff)
@@ -1086,30 +1077,30 @@ void CDeviceManager::SyncToGPU()
     }
 }
 
-//=============================================================================
-
-int CDeviceTexture::Cleanup()
+void CDeviceManager::DisplayMemoryUsage()
 {
-    Unbind();
-
-    int32 nRef = -1;
-    if (m_pD3DTexture)
-    {
 #if defined(AZ_RESTRICTED_PLATFORM)
-#define AZ_RESTRICTED_SECTION DEVICEMANAGER_CPP_SECTION_15
+#define AZ_RESTRICTED_SECTION DEVICEMANAGER_CPP_SECTION_20
     #if defined(AZ_PLATFORM_XENIA)
         #include "Xenia/DeviceManager_cpp_xenia.inl"
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/DeviceManager_cpp_provo.inl"
     #endif
 #endif
-#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
-#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
-#else
-        // Unregister the VRAM allocation with the VRAM driller
-        EBUS_EVENT(Render::Debug::VRAMDrillerBus, UnregisterAllocation, static_cast<void*>(m_pD3DTexture));
-#endif
+}
 
+//=============================================================================
+
+int CDeviceTexture::Cleanup()
+{
+    Unbind();
+
+    // Unregister the VRAM allocation with the VRAM driller
+    RemoveFromTextureMemoryTracking();
+
+    int32 nRef = -1;
+    if (m_pD3DTexture)
+    {
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION DEVICEMANAGER_CPP_SECTION_18
     #if defined(AZ_PLATFORM_XENIA)
@@ -1316,3 +1307,30 @@ uint32 CDeviceTexture::TextureDataSize(D3DBaseView* pView, const uint numRects, 
 
     return 0;
 }
+
+void CDeviceTexture::TrackTextureMemory(uint32 usageFlags, const char* name)
+{
+    AZ_Warning("Rendering", !m_isTracked, "Texture %s already being tracked by the VRAMDriller", name);
+
+    Render::Debug::VRAMAllocationSubcategory subcategory = Render::Debug::VRAM_SUBCATEGORY_TEXTURE_TEXTURE;
+    if (usageFlags & (CDeviceManager::USAGE_DEPTH_STENCIL | CDeviceManager::USAGE_RENDER_TARGET | CDeviceManager::USAGE_UNORDERED_ACCESS))
+    {
+        subcategory = Render::Debug::VRAM_SUBCATEGORY_TEXTURE_RENDERTARGET;
+    }
+    else if (usageFlags & (CDeviceManager::USAGE_DYNAMIC | CDeviceManager::USAGE_STAGING))
+    {
+        subcategory = Render::Debug::VRAM_SUBCATEGORY_TEXTURE_DYNAMIC;            
+    }
+    EBUS_EVENT(Render::Debug::VRAMDrillerBus, RegisterAllocation, this, m_nBaseAllocatedSize, name, Render::Debug::VRAM_CATEGORY_TEXTURE, subcategory);
+    m_isTracked = true;
+}
+
+void CDeviceTexture::RemoveFromTextureMemoryTracking()
+{
+    // We cannot naively remove the texture from tracking because dummy device textures are created at times that do not have a memory backing
+    if (m_isTracked)
+    {
+        EBUS_EVENT(Render::Debug::VRAMDrillerBus, UnregisterAllocation, static_cast<void*>(this));
+        m_isTracked = false;
+    }
+} 

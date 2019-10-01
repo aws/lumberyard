@@ -426,14 +426,6 @@ bool SPostEffectsUtils::CreateRenderTarget(const char* szTexName, CTexture*& pTe
     if (!CTexture::IsTextureExist(pTex))
     {
         pTex = CTexture::CreateRenderTarget(szTexName, nWidth, nHeight, cClear, eTT_2D, flags, eTF, nCustomID);
-
-        // Following will mess up don't care resolve/restore actions since Fill() sets textures to be cleared on next draw
-#if !defined(CRY_USE_METAL) && !defined(OPENGL_ES)
-        if (pTex)
-        {
-            pTex->Clear();
-        }
-#endif
     }
     else
     {
@@ -442,6 +434,14 @@ bool SPostEffectsUtils::CreateRenderTarget(const char* szTexName, CTexture*& pTe
         pTex->SetHeight(nHeight);
         pTex->CreateRenderTarget(eTF, cClear);
     }
+
+    // Following will mess up don't care resolve/restore actions since Fill() sets textures to be cleared on next draw
+#if !defined(CRY_USE_METAL) && !defined(OPENGL_ES)
+    if (pTex)
+    {
+        pTex->Clear();
+    }
+#endif
 
     return CTexture::IsTextureExist(pTex) ? 1 : 0;
 }

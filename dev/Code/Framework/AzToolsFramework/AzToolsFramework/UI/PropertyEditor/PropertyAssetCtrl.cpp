@@ -18,15 +18,20 @@
 #include <QtWidgets/QLineEdit>
 #include <QtCore/QEvent>
 #include <QtCore/QTimer>
+AZ_PUSH_DISABLE_WARNING(4244 4251, "-Wunknown-warning-option") // 4244: conversion from 'int' to 'float', possible loss of data
+                                                               // 4251: 'QInputEvent::modState': class 'QFlags<Qt::KeyboardModifier>' needs to have dll-interface to be used by clients of class 'QInputEvent'
 #include <QtGui/QMouseEvent>
 #include <QtWidgets/QHBoxLayout>
+AZ_POP_DISABLE_WARNING
 #include <QtWidgets/QPushButton>
 #include <QtWidgets/QLabel>
 #include <QtWidgets/QMenu>
 #include <QClipboard>
 #include <QtGui/QPixmapCache>
 #include <QtCore/QMimeData>
+AZ_PUSH_DISABLE_WARNING(4251, "-Wunknown-warning-option") // 4251: 'QInputEvent::modState': class 'QFlags<Qt::KeyboardModifier>' needs to have dll-interface to be used by clients of class 'QInputEvent'
 #include <QtWidgets/QFileDialog>
+AZ_POP_DISABLE_WARNING
 #include <QtWidgets/QMessageBox>
 
 #include <AzCore/Asset/AssetManager.h>

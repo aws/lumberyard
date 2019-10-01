@@ -18,9 +18,10 @@
 #include "platform_impl.h"
 #include <IPlayerProfiles.h>
 #include <CryLibrary.h>
-#include <IPlatformOS.h>
+#include <ITimer.h>
 
-#define DLL_INITFUNC_CREATEGAME "CreateGameFramework"
+#include <AzCore/std/string/osstring.h>
+#include <AzCore/Component/ComponentApplicationBus.h>
 
 using namespace LYGame;
 
@@ -29,12 +30,12 @@ using namespace LYGame;
 
 extern "C"
 {
-DLL_EXPORT IGameStartup* CreateGameStartup()
+AZ_DLL_EXPORT IGameStartup* CreateGameStartup()
 {
     return GameStartup::Create();
 }
 
-DLL_EXPORT IEditorGame* CreateEditorGame()
+AZ_DLL_EXPORT IEditorGame* CreateEditorGame()
 {
     return new LYGame::EditorGame();
 }
@@ -49,7 +50,6 @@ IGameFramework* CreateGameFramework();
 GameStartup::GameStartup()
     : m_Framework(nullptr)
     , m_Game(nullptr)
-    , m_FrameworkDll(nullptr)
 {
 }
 
@@ -84,8 +84,6 @@ IGameRef GameStartup::Init(SSystemInitParams& startupParams)
                 static_cast<UINT_PTR>(gEnv->pTimer->GetAsyncTime().GetMicroSecondsAsInt64()),
                 0
                 );
-
-            system->GetPlatformOS()->UserDoSignIn(0);
         }
         else
         {
@@ -124,22 +122,17 @@ void GameStartup::Shutdown()
 bool GameStartup::InitFramework(SSystemInitParams& startupParams)
 {
 #if !defined(AZ_MONOLITHIC_BUILD)
-    m_FrameworkDll = CryLoadLibrary(GAME_FRAMEWORK_FILENAME);
 
-    if (!m_FrameworkDll)
-    {
-        return false;
-    }
+    IGameFramework* gameFramework = nullptr;
+    CryGameFrameworkBus::BroadcastResult(gameFramework, &CryGameFrameworkRequests::CreateFramework);
+    AZ_Assert(gameFramework, "Legacy CreateGameFramework function called, but nothing is subscribed to the CryGameFrameworkRequests.\n"
+        "Please use the Project Configurator to enable the CryLegacy gem for your project.");
 
-    IGameFramework::TEntryFunction CreateGameFramework = reinterpret_cast<IGameFramework::TEntryFunction>(CryGetProcAddress(m_FrameworkDll, DLL_INITFUNC_CREATEGAME));
-
-    if (!CreateGameFramework)
-    {
-        return false;
-    }
+    m_Framework = gameFramework;
+#else
+    m_Framework = CreateGameFramework();
 #endif // !AZ_MONOLITHIC_BUILD
 
-    m_Framework = CreateGameFramework();
 
     if (!m_Framework)
     {
@@ -172,10 +165,6 @@ void GameStartup::ShutdownFramework()
     {
         m_Framework->Shutdown();
         m_Framework = nullptr;
-#ifndef AZ_MONOLITHIC_BUILD
-        CryFreeLibrary(m_FrameworkDll);
-#endif
-        m_FrameworkDll = nullptr;
     }
 }
 
@@ -202,43 +191,6 @@ void GameStartup::OnSystemEvent(ESystemEvent event, UINT_PTR wparam, UINT_PTR lp
         break;
     }
 }
-
-
-//////////////////////////////////////////////////////////////////////////
-#ifdef WIN32
-
-bool GameStartup::HandleMessage(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam, LRESULT* pResult)
-{
-    switch (msg)
-    {
-    case WM_SYSCHAR: // Prevent ALT + key combinations from creating 'ding' sounds
-    {
-        const bool bAlt = (lParam & (1 << 29)) != 0;
-        if (bAlt && wParam == VK_F4)
-        {
-            return false;     // Pass though ALT+F4
-        }
-
-        *pResult = 0;
-        return true;
-    }
-    break;
-
-    case WM_SIZE:
-        break;
-
-    case WM_SETFOCUS:
-        // 3.8.1 - set a hasWindowFocus CVar to true
-        break;
-
-    case WM_KILLFOCUS:
-        // 3.8.1 - set a hasWindowFocus CVar to false
-        break;
-    }
-    return false;
-}
-#endif // WIN32
-
 
 GameStartup* GameStartup::Create()
 {

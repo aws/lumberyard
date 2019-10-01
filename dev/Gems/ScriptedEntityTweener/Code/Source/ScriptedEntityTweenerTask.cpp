@@ -23,15 +23,9 @@ namespace ScriptedEntityTweener
     const unsigned int AnimationProperties::InvalidCallbackId = 0;
     const unsigned int AnimationProperties::InvalidTimelineId = 0;
 
-    ScriptedEntityTweenerTask::ScriptedEntityTweenerTask(AZ::EntityId id, bool createSequenceAgent)
+    ScriptedEntityTweenerTask::ScriptedEntityTweenerTask(AZ::EntityId id)
         : m_entityId(id)
     {
-        if (createSequenceAgent)
-        {
-            AZ::EntityId agentId;
-            Maestro::SequenceAgentExternalBus::BroadcastResult(agentId, &Maestro::SequenceAgentExternalBus::Events::AddToEntity, m_entityId);
-            m_sequenceAgentBusId = Maestro::SequenceAgentEventBusId(m_entityId, agentId);
-        }
     }
 
     ScriptedEntityTweenerTask::~ScriptedEntityTweenerTask()
@@ -64,7 +58,7 @@ namespace ScriptedEntityTweener
             if (subtask == m_subtasks.end())
             {
                 //For this property on this entity, an animation isn't already running.
-                ScriptedEntityTweenerSubtask subtaskToAdd(&m_sequenceAgentBusId);
+                ScriptedEntityTweenerSubtask subtaskToAdd(m_entityId);
                 if (params.m_animationProperties.m_timeDuration == 0.0f)
                 {
                     //If the animation is a set animation, immediately initialize, execute, and call callbacks related to it.
@@ -86,7 +80,7 @@ namespace ScriptedEntityTweener
             {
                 //An animation already exists for this virtual property
                 //Cleanup any callbacks it may have registered.
-                subtask->second.ClearCallbacks();
+                ClearCallbacks(subtask->second.GetAnimationProperties());
 
                 //Overwrite any queued animations on this subtask if the animation wasn't started from the queue, as it was user specified.
                 if (overwriteQueued)
@@ -215,6 +209,7 @@ namespace ScriptedEntityTweener
             auto& queuedSubtask = (*it);
             if (timelineId == 0 || queuedSubtask.GetTimelineId() == timelineId)
             {
+                ClearCallbacks(queuedSubtask.GetParameters().m_animationProperties);
                 it = m_queuedSubtasks.erase(it);
             }
             else
@@ -228,6 +223,7 @@ namespace ScriptedEntityTweener
             ScriptedEntityTweenerSubtask& subtask = it->second;
             if (timelineId == 0 || subtask.GetTimelineId() == timelineId)
             {
+                ClearCallbacks(subtask.GetAnimationProperties());
                 it = m_subtasks.erase(it);
             }
             else
@@ -338,7 +334,7 @@ namespace ScriptedEntityTweener
         }
         else
         {
-            ScriptedEntityTweenerSubtask tempSubtask(&m_sequenceAgentBusId);
+            ScriptedEntityTweenerSubtask tempSubtask(m_entityId);
             tempSubtask.GetVirtualPropertyValue(returnVal, addressData);
         }
     }
@@ -380,6 +376,19 @@ namespace ScriptedEntityTweener
             case CallbackTypes::RemoveCallback:
                 ScriptedEntityTweenerNotificationsBus::Broadcast(&ScriptedEntityTweenerNotificationsBus::Events::RemoveCallback, callback.m_callbackId);
                 break;
+            }
+        }
+    }
+
+    void ScriptedEntityTweenerTask::ClearCallbacks(const AnimationProperties& animationProperties)
+    {
+        AZStd::vector<int> callbackIds = { animationProperties.m_onCompleteCallbackId, animationProperties.m_onLoopCallbackId, animationProperties.m_onUpdateCallbackId };
+
+        for (const auto callbackId : callbackIds)
+        {
+            if (callbackId != AnimationProperties::InvalidCallbackId)
+            {
+                ScriptedEntityTweenerNotificationsBus::Broadcast(&ScriptedEntityTweenerNotificationsBus::Events::RemoveCallback, callbackId);
             }
         }
     }

@@ -22,6 +22,8 @@ class LoadScreenInterface
 {
 public:
 
+    using MutexType = AZStd::recursive_mutex;
+
     virtual ~LoadScreenInterface() {}
 
     //! Invoked when the load screen should be updated and rendered.

@@ -10,9 +10,9 @@
 *
 */
 
-#include <Tests/TestTypes.h>
 #include <gtest/gtest-param-test.h>
 
+#include <AzCore/UnitTest/TestTypes.h>
 #include <AzFramework/StringFunc/StringFunc.h>
 
 namespace AzFramework

@@ -55,7 +55,7 @@
             "tooltip" : "runeditorToolTip",
             "tags" : ["runeditor"],
             "categories" : ["role"],
-            "hosts" : [ "windows" ],
+            "hosts" : [ "windows", "macOS" ],
             "default" : true
         },
         {
@@ -421,8 +421,8 @@
         {
             "identifier" : "p4api",
             "name" : "p4apiName",
-            "version" : "2015.2",
-            "source": "p4api/2015.2",
+            "version" : "2019.1",
+            "source": "p4api/2019.1",
             "optional" : 0,
             "description" : "p4apiDescriptionSummary",
             "detailedInstructions" : "p4apiDetailedInstructions",
@@ -431,19 +431,19 @@
             "symlinks" :
             [
                 {
-                    "source" : "p4api/2015.2",
+                    "source" : "p4api/2019.1",
                     "destination" : "$CODEFOLDERNAME$/SDKs/p4api",
                     "exampleFile" : "include/p4/p4tags.h"
                 },
                 {
                     "compilers" : ["vc140", "vc141"],
-                    "source" : "p4api/2015.2",
+                    "source" : "p4api/2019.1",
                     "destination" : "$CODEFOLDERNAME$/SDKs/p4api",
                     "exampleFile" : "vs14/debug/libclient.lib"
                 },
                 {
                     "hostOS" : ["macOS"],
-                    "source" : "p4api/2015.2",
+                    "source" : "p4api/2019.1",
                     "destination" : "$CODEFOLDERNAME$/SDKs/p4api",
                     "exampleFile" : "macos/libclient.a"
                 }
@@ -880,7 +880,7 @@
                     "exampleFile": "clang_64/bin/moc"
                 },
                 {
-                    "hostOS": [ "setuplinux" ],
+                    "hostOS": [ "linux" ],
                     "source": "Qt/5.6.2.7-az",
                     "destination": "$CODEFOLDERNAME$/Sandbox/SDKs/Qt",
                     "exampleFile": "gcc_64/bin/moc"
@@ -940,61 +940,61 @@
         {
             "identifier": "AWSNativeSDK",
             "name": "AWSNativeSDKName",
-            "version": "1.4.34.1",
-            "source": "AWS/AWSNativeSDK/1.4.34.1",
+            "version": "1.4.34.3",
+            "source": "AWS/AWSNativeSDK/1.4.34.3",
             "optional": 0,
             "description": "AWSNativeSDKDescriptionSummary",
             "detailedInstructions": "AWSNativeSDKDetailedInstructions",
             "roles": [ "compilegame", "compileengine", "compilesandbox", "compileios", "compileandroid", "setuplinux" ],
             "symlinks": [
                 {
-                    "source": "AWS/AWSNativeSDK/1.4.34.1",
+                    "source": "AWS/AWSNativeSDK/1.4.34.3",
                     "destination": "$CODEFOLDERNAME$/Sandbox/SDKs/AWSNativeSDK",
                     "exampleFile": "include/aws/core/Aws.h"
                 },
                 {
-                    "source": "AWS/AWSNativeSDK/1.4.34.1",
+                    "source": "AWS/AWSNativeSDK/1.4.34.3",
                     "destination": "$CODEFOLDERNAME$/SDKs/AWSNativeSDK",
                     "exampleFile": "include/aws/core/Aws.h"
                 },
                 {
-                    "source": "AWS/AWSNativeSDK/1.4.34.1",
+                    "source": "AWS/AWSNativeSDK/1.4.34.3",
                     "destination": "$CODEFOLDERNAME$/Tools/SDKs/AWSNativeSDK",
                     "exampleFile": "include/aws/core/Aws.h"
                 },
                 {
                     "compilers" : ["vc140", "vc141"],
-                    "source": "AWS/AWSNativeSDK/1.4.34.1",
+                    "source": "AWS/AWSNativeSDK/1.4.34.3",
                     "destination": "$CODEFOLDERNAME$/Sandbox/SDKs/AWSNativeSDK",
                     "exampleFile": "bin/windows/intel64/vs2015/Release/aws-cpp-sdk-core.lib"
                 },
                 {
                     "compilers" : ["vc140", "vc141"],
-                    "source": "AWS/AWSNativeSDK/1.4.34.1",
+                    "source": "AWS/AWSNativeSDK/1.4.34.3",
                     "destination": "$CODEFOLDERNAME$/SDKs/AWSNativeSDK",
                     "exampleFile": "bin/windows/intel64/vs2015/Release/aws-cpp-sdk-core.lib"
                 },
                 {
                     "compilers" : ["vc140", "vc141"],
-                    "source": "AWS/AWSNativeSDK/1.4.34.1",
+                    "source": "AWS/AWSNativeSDK/1.4.34.3",
                     "destination": "$CODEFOLDERNAME$/Tools/SDKs/AWSNativeSDK",
                     "exampleFile": "bin/windows/intel64/vs2015/Release/aws-cpp-sdk-core.lib"
                 },
                 {
                     "roles" : ["setuplinux"],
-                    "source": "AWS/AWSNativeSDK/1.4.34.1",
+                    "source": "AWS/AWSNativeSDK/1.4.34.3",
                     "destination": "$CODEFOLDERNAME$/Sandbox/SDKs/AWSNativeSDK",
                     "exampleFile": "lib/linux/intel64/Release/libaws-cpp-sdk-cognito-identity.a"
                 },
                 {
                     "roles" : ["setuplinux"],
-                    "source": "AWS/AWSNativeSDK/1.4.34.1",
+                    "source": "AWS/AWSNativeSDK/1.4.34.3",
                     "destination": "$CODEFOLDERNAME$/SDKs/AWSNativeSDK",
                     "exampleFile": "lib/linux/intel64/Release/libaws-cpp-sdk-cognito-identity.a"
                 },
                 {
                     "roles" : ["setuplinux"],
-                    "source": "AWS/AWSNativeSDK/1.4.34.1",
+                    "source": "AWS/AWSNativeSDK/1.4.34.3",
                     "destination": "$CODEFOLDERNAME$/Tools/SDKs/AWSNativeSDK",
                     "exampleFile": "lib/linux/intel64/Release/libaws-cpp-sdk-cognito-identity.a"
                 }
@@ -1057,6 +1057,24 @@
                     "source": "zlib/1.2.8-pkg.2",
                     "destination": "$CODEFOLDERNAME$/Tools/SDKs/Alembic/zlib-common",
                     "exampleFile": "build/linux/clang-3.4/release/libzlib.a"
+                }
+            ]
+        },
+        {
+            "identifier" : "zstd",
+            "name" : "zstdName",
+            "version": "1.35",
+            "source" : "zstd/1.35",
+            "optional" : 0,
+            "description" : "zstandardDescriptionSummary",
+            "detailedInstructions" : "zstandardDetailedInstructions",
+            "roles" : ["compilegame", "compileeditor", "setuplinux"],
+            "symlinks" :
+            [
+                {
+                    "source" : "zstd/1.35",
+                    "destination" : "$CODEFOLDERNAME$/SDKs/zstd",
+                    "exampleFile" : "lib/zstd.h"
                 }
             ]
         },
@@ -1350,22 +1368,58 @@
         {
             "identifier" : "PHYSXSDK",
             "name" : "PHYSXSDKName",
-            "version" : "3.4.23173160-az1",
-            "source" : "PhysX/3.4.23173160-az1",
+            "version" : "4.1.0.25992954",
+            "source" : "PhysX/4.1.0.25992954",
             "description" : "PHYSXSDKDescriptionSummary",
             "detailedInstructions" : "PHYSXSDKDetailedInstructions",
-            "roles" : ["compilegame", "compileengine", "compilesandbox"],
+            "roles" : ["compilegame", "compileengine", "compilesandbox", "compileios", "compileandroid", "setuplinux"],
             "symlinks" :
             [
                 {
-                    "source" : "PhysX/3.4.23173160-az1/PhysX_3.4",
-                    "destination" : "$CODEFOLDERNAME$/SDKs/PhysX/PXSrc",
-                    "exampleFile" : "Include/PxActor.h"
+                    "source" : "PhysX/4.1.0.25992954/physx",
+                    "destination" : "$CODEFOLDERNAME$/SDKs/PhysX/physx",
+                    "exampleFile" : "include/PxActor.h"
                 },
                 {
-                    "source" : "PhysX/3.4.23173160-az1/PxShared",
-                    "destination" : "$CODEFOLDERNAME$/SDKs/PhysX/PxShared",
+                    "source" : "PhysX/4.1.0.25992954/pxshared",
+                    "destination" : "$CODEFOLDERNAME$/SDKs/PhysX/pxshared",
                     "exampleFile" : "include/foundation/Px.h"
+                },
+                {
+                    "compilers" : ["vc140"],
+                    "source": "PhysX/4.1.0.25992954/physx",
+                    "destination": "$CODEFOLDERNAME$/SDKs/PhysX/physx",
+                    "exampleFile": "bin/win.x86_64.vc140.md/release/PhysX_static_64.lib"
+                },
+                {
+                    "compilers" : ["vc141"],
+                    "source": "PhysX/4.1.0.25992954/physx",
+                    "destination": "$CODEFOLDERNAME$/SDKs/PhysX/physx",
+                    "exampleFile": "bin/win.x86_64.vc141.md/release/PhysX_static_64.lib"
+                },
+                {
+                    "hostOS" : ["macOS"],
+                    "source": "PhysX/4.1.0.25992954/physx",
+                    "destination": "$CODEFOLDERNAME$/SDKs/PhysX/physx",
+                    "exampleFile": "bin/mac.x86_64/release/libPhysX_static_64.a"
+                },
+                {
+                    "roles" : ["compileios"],
+                    "source": "PhysX/4.1.0.25992954/physx",
+                    "destination": "$CODEFOLDERNAME$/SDKs/PhysX/physx",
+                    "exampleFile": "bin/ios.arm_64/release/libPhysX_static_64.a"
+                },
+                {
+                    "roles" : ["compileandroid"],
+                    "source": "PhysX/4.1.0.25992954/physx",
+                    "destination": "$CODEFOLDERNAME$/SDKs/PhysX/physx",
+                    "exampleFile": "bin/android.arm64-v8a/release/libPhysX_static.a"
+                },
+                {
+                    "roles" : ["setuplinux"],
+                    "source": "PhysX/4.1.0.25992954/physx",
+                    "destination": "$CODEFOLDERNAME$/SDKs/PhysX/physx",
+                    "exampleFile": "bin/linux.clang/release/libPhysX_static_64.a"
                 }
             ]
         },
@@ -1529,33 +1583,33 @@
         {
             "identifier" : "OpenSSL",
             "name" : "OpenSSLname",
-            "version" : "1.0.2k-noasm.2",
-            "source" : "OpenSSL/1.0.2k-noasm.2",
+            "version" : "1.1.1b-noasm",
+            "source" : "OpenSSL/1.1.1b-noasm",
             "description" : "OpenSSLdescription",
             "detailedInstructions" : "OpenSSLdetailedInstructions",
             "roles" : ["compilegame","compileengine", "compileandroid","compilesandbox", "setuplinux"],
             "symlinks" :
             [
                 {
-                    "source" : "OpenSSL/1.0.2k-noasm.2",
+                    "source" : "OpenSSL/1.1.1b-noasm",
                     "destination" : "$CODEFOLDERNAME$/SDKs/OpenSSL",
                     "exampleFile" : "include/openssl/ssl.h"
                 },
                 {
                     "compilers" : ["vc140", "vc141"],
-                    "source" : "OpenSSL/1.0.2k-noasm.2",
+                    "source" : "OpenSSL/1.1.1b-noasm",
                     "destination" : "$CODEFOLDERNAME$/SDKs/OpenSSL",
-                    "exampleFile" : "lib/vc140_x64_release/libeay32.lib"
+                    "exampleFile" : "lib/vc140_x64_release/libssl.lib"
                 },
                 {
                     "hostOS" : ["macOS"],
-                    "source" : "OpenSSL/1.0.2k-noasm.2",
+                    "source" : "OpenSSL/1.1.1b-noasm",
                     "destination" : "$CODEFOLDERNAME$/SDKs/OpenSSL",
                     "exampleFile" : "lib/darwin-x86_64-release/libssl.a"
                 },
                 {
                     "roles" : ["setuplinux"],
-                    "source" : "OpenSSL/1.0.2k-noasm.2",
+                    "source" : "OpenSSL/1.1.1b-noasm",
                     "destination" : "$CODEFOLDERNAME$/SDKs/OpenSSL",
                     "exampleFile" : "lib/linux-x86_64-clang-release/libssl.a"
                 }
@@ -1745,6 +1799,32 @@
                     "source" : "DirectXShaderCompiler/1.0.1-az.1",
                     "destination" : "$CODEFOLDERNAME$/Tools/SDKs/DirectXShaderCompiler",
                     "exampleFile" : "bin/darwin_x64/release/dxcMetal"
+                }
+           ]
+        },
+        {
+           "identifier" : "astcenc",
+           "name" : "astcencName",
+           "version" : "2017_11_14",
+           "source" : "ASTCEncoder/2017_11_14",
+           "optional" : 0,
+           "description" : "astcencDescriptionSummary",
+           "detailedInstructions" : "astcencDetailedInstructions",
+           "roles": [ "compilegame", "compileengine", "compilesandbox" ],
+           "hostOS": [ "windows", "macOS" ],
+           "symlinks" :
+           [
+                {
+                    "hostOS" : ["windows"],
+                    "source" : "ASTCEncoder/2017_11_14",
+                    "destination" : "$CODEFOLDERNAME$/Tools/SDKs/ASTCEncoder",
+                    "exampleFile" : "Binary/windows-x64/astcenc.exe"
+                },
+                {
+                    "hostOS" : ["macOS"],
+                    "source" : "ASTCEncoder/2017_11_14",
+                    "destination" : "$CODEFOLDERNAME$/Tools/SDKs/ASTCEncoder",
+                    "exampleFile" : "Binary/mac-x64/astcenc"
                 }
            ]
         },

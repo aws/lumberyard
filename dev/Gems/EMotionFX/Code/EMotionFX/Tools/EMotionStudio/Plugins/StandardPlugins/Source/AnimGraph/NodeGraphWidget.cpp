@@ -147,6 +147,14 @@ namespace EMStudio
     // set the active graph
     void NodeGraphWidget::SetActiveGraph(NodeGraph* graph)
     {
+        if (mActiveGraph)
+        {
+            mActiveGraph->StopCreateConnection();
+            mActiveGraph->StopRelinkConnection();
+            mActiveGraph->StopReplaceTransitionHead();
+            mActiveGraph->StopReplaceTransitionTail();
+        }
+
         mActiveGraph = graph;
         mMoveNode = nullptr;
     }
@@ -233,12 +241,19 @@ namespace EMStudio
 
         // draw the border
         QColor borderColor(0, 0, 0);
+        float borderWidth = 2.0f;
         if (hasFocus())
         {
             borderColor = QColor(244, 156, 28);
+            borderWidth = 3.0f;
+        }
+        if (m_borderOverwrite)
+        {
+            borderColor = m_borderOverwriteColor;
+            borderWidth = m_borderOverwriteWidth;
         }
 
-        QPen pen(borderColor, hasFocus() ? 3 : 2);
+        QPen pen(borderColor, borderWidth);
         painter.setPen(pen);
         painter.setBrush(Qt::NoBrush);
 
@@ -376,7 +391,9 @@ namespace EMStudio
         mControlPressed = event->modifiers() & Qt::ControlModifier;
 
         /*GraphNode* node = */ UpdateMouseCursor(mousePos, globalPos);
-        if (mRectSelecting == false && mMoveNode == nullptr && !mActiveGraph->IsInReferencedGraph())
+        if (mRectSelecting == false && mMoveNode == nullptr &&
+            mPlugin->GetActionFilter().m_editConnections &&
+            !mActiveGraph->IsInReferencedGraph())
         {
             // check if we are clicking on a port
             GraphNode*  portNode    = nullptr;
@@ -414,7 +431,7 @@ namespace EMStudio
                             && hoveredNode != stateConnection->GetSourceNode()
                             && CheckIfIsValidTransition(stateConnection->GetSourceNode(), hoveredNode))
                         {
-                            stateConnection->SetTargetNode(hoveredNode); 
+                            stateConnection->SetTargetNode(hoveredNode);
                             mActiveGraph->SetReplaceTransitionValid(true);
                         }
                         else
@@ -563,7 +580,9 @@ namespace EMStudio
         {
             if (mMoveNode)
             {
-                if (mActiveGraph && !mActiveGraph->IsInReferencedGraph())
+                if (mActiveGraph &&
+                    mPlugin->GetActionFilter().m_editNodes &&
+                    !mActiveGraph->IsInReferencedGraph())
                 {
                     const AZStd::vector<GraphNode*> selectedGraphNodes = mActiveGraph->GetSelectedGraphNodes();
                     if (!selectedGraphNodes.empty())
@@ -625,6 +644,7 @@ namespace EMStudio
         mAltPressed     = event->modifiers() & Qt::AltModifier;
         mShiftPressed   = event->modifiers() & Qt::ShiftModifier;
         mControlPressed = event->modifiers() & Qt::ControlModifier;
+        const AnimGraphActionFilter& actionFilter = mPlugin->GetActionFilter();
 
         // check if we can start panning
         if ((event->buttons() & Qt::RightButton && event->buttons() & Qt::LeftButton) || event->button() == Qt::RightButton || event->button() == Qt::MidButton)
@@ -726,7 +746,8 @@ namespace EMStudio
 
                     // relink existing connection
                     NodeConnection* connection = mActiveGraph->FindInputConnection(portNode, portNr);
-                    if (isInputPort && connection && portNode->GetType() != StateGraphNode::TYPE_ID)
+                    if (actionFilter.m_editConnections &&
+                        isInputPort && connection && portNode->GetType() != StateGraphNode::TYPE_ID)
                     {
                         //connection->SetColor();
                         //MCore::LOG("%s(%i)->%s(%i)", connection->GetSourceNode()->GetName(), connection->GetOutputPortNr(), connection->GetTargetNode()->GetName(), connection->GetInputPortNr());
@@ -746,20 +767,22 @@ namespace EMStudio
                     // create new connection
                     if ((isInputPort && portNode->GetCreateConFromOutputOnly() == false) || isInputPort == false)
                     {
-	                    if (CheckIfIsValidTransitionSource(portNode))
-	                    {
-	                        QPoint offset = globalPos - portNode->GetRect().topLeft();
-	                        UpdateMouseCursor(mousePos, globalPos);
-	                        mActiveGraph->StartCreateConnection(portNr, isInputPort, portNode, port, offset);
-	                        //update();
-	                        return;
-						}
+                        if (actionFilter.m_createConnections &&
+                            CheckIfIsValidTransitionSource(portNode))
+                        {
+                            QPoint offset = globalPos - portNode->GetRect().topLeft();
+                            UpdateMouseCursor(mousePos, globalPos);
+                            mActiveGraph->StartCreateConnection(portNr, isInputPort, portNode, port, offset);
+                            //update();
+                            return;
+                        }
                     }
                 }
 
                 // check if we click on an transition arrow head or tail
                 NodeConnection* connection = mActiveGraph->FindConnection(globalPos);
-                if (connection && connection->GetType() == StateConnection::TYPE_ID)
+                if (actionFilter.m_editConnections &&
+                    connection && connection->GetType() == StateConnection::TYPE_ID)
                 {
                     StateConnection* stateConnection = static_cast<StateConnection*>(connection);
                     EMotionFX::AnimGraphStateTransition* transition = connection->GetModelIndex().data(AnimGraphModel::ROLE_TRANSITION_POINTER).value<EMotionFX::AnimGraphStateTransition*>();
@@ -799,7 +822,9 @@ namespace EMStudio
             }
             else
             {
-                if (node && mShiftPressed == false && mControlPressed == false && mAltPressed == false && !mActiveGraph->IsInReferencedGraph())
+                if (node && mShiftPressed == false && mControlPressed == false && mAltPressed == false &&
+                    actionFilter.m_editNodes &&
+                    !mActiveGraph->IsInReferencedGraph())
                 {
                     mMoveNode   = node;
                     mPanning    = false;
@@ -816,24 +841,22 @@ namespace EMStudio
                 }
             }
 
-            // selection handling
             if (mActiveGraph)
             {
+                // shift is used to activate a state, disable all selection behavior in case we press shift!
                 // check if we clicked a node and additionally not clicked its arrow rect
                 bool nodeClicked = false;
-                if (node && node->GetIsInsideArrowRect(globalPos) == false)
+                if (node && !node->GetIsInsideArrowRect(globalPos))
                 {
                     nodeClicked = true;
                 }
-
-                // shift is used to activate a state, disable all selection behavior in case we press shift!
-                if (mShiftPressed == false)
+                if (!mShiftPressed)
                 {
                     // check the node we're clicking on
-                    if (mControlPressed == false)
+                    if (!mControlPressed)
                     {
                         // only reset the selection in case we clicked in empty space or in case the node we clicked on is not part of
-                        if (node == nullptr || (node && node->GetIsSelected() == false))
+                        if (!node || (node && !node->GetIsSelected()))
                         {
                             mPlugin->GetAnimGraphModel().GetSelectionModel().clear();
                         }
@@ -852,7 +875,7 @@ namespace EMStudio
                             QItemSelectionModel::Select | QItemSelectionModel::Rows);
                     }
                     // in case we didn't click on a node, check if we click on a connection
-                    else if (nodeClicked == false)
+                    else if (!nodeClicked)
                     {
                         mActiveGraph->SelectConnectionCloseTo(LocalToGlobal(event->pos()), mControlPressed == false, true);
                     }
@@ -890,6 +913,8 @@ namespace EMStudio
         mAltPressed     = event->modifiers() & Qt::AltModifier;
         mShiftPressed   = event->modifiers() & Qt::ShiftModifier;
         mControlPressed = event->modifiers() & Qt::ControlModifier;
+
+        const AnimGraphActionFilter& actionFilter = mPlugin->GetActionFilter();
 
         // both left and right released at the same time
         if (event->buttons() & Qt::RightButton && event->buttons() & Qt::LeftButton)
@@ -992,6 +1017,7 @@ namespace EMStudio
             // if we were relinking a connection
             if (mActiveGraph->GetIsRelinkingConnection())
             {
+                AZ_Assert(actionFilter.m_editConnections, "Expected edit connections being enabled.");
                 AZ_Assert(!mActiveGraph->IsInReferencedGraph(), "Expected to not be in a referenced graph");
 
                 // get the information from the current mouse position
@@ -1038,11 +1064,11 @@ namespace EMStudio
                             // construct the command
                             AZStd::string commandString;
                             commandString = AZStd::string::format("AnimGraphRemoveConnection -animGraphID %i -sourceNode \"%s\" -sourcePort %d -targetNode \"%s\" -targetPort %d",
-                                animGraph->GetID(),
-                                connection->GetSourceNode()->GetName(),
-                                connection->GetOutputPortNr(),
-                                connection->GetTargetNode()->GetName(),
-                                connection->GetInputPortNr());
+                                    animGraph->GetID(),
+                                    connection->GetSourceNode()->GetName(),
+                                    connection->GetOutputPortNr(),
+                                    connection->GetTargetNode()->GetName(),
+                                    connection->GetInputPortNr());
 
                             // add it to the command group
                             commandGroup.AddCommandString(commandString.c_str());
@@ -1078,6 +1104,7 @@ namespace EMStudio
             // in case we adjusted a transition start or end point
             if (mActiveGraph->GetIsRepositioningTransitionHead() || mActiveGraph->GetIsRepositioningTransitionTail())
             {
+                AZ_Assert(actionFilter.m_editConnections, "Expected edit connections being enabled.");
                 AZ_Assert(!mActiveGraph->IsInReferencedGraph(), "Expected to not be in a referenced graph");
 
                 NodeConnection* connection;
@@ -1109,7 +1136,7 @@ namespace EMStudio
                     {
                         mActiveGraph->StopReplaceTransitionHead();
                     }
-                    else if(mActiveGraph->GetIsRepositioningTransitionTail())
+                    else if (mActiveGraph->GetIsRepositioningTransitionTail())
                     {
                         mActiveGraph->StopReplaceTransitionTail();
                     }
@@ -1118,7 +1145,9 @@ namespace EMStudio
             }
 
             // if we are finished moving, trigger the OnMoveNode callbacks
-            if (mMoveNode && mouseMoved && !mActiveGraph->IsInReferencedGraph())
+            if (mMoveNode && mouseMoved &&
+                actionFilter.m_editNodes &&
+                !mActiveGraph->IsInReferencedGraph())
             {
                 OnMoveStart();
 
@@ -1147,7 +1176,7 @@ namespace EMStudio
             // get the node we click on
             node = UpdateMouseCursor(mousePos, globalPos);
 
-            if (mRectSelecting)
+            if (mRectSelecting && mouseMoved)
             {
                 // calc the selection rect
                 QRect selectRect;
@@ -1162,7 +1191,7 @@ namespace EMStudio
                     if (mAltPressed == false)
                     {
                         const bool overwriteSelection = (mControlPressed == false);
-                        mActiveGraph->SelectNodesInRect(selectRect, overwriteSelection, true, mControlPressed);
+                        mActiveGraph->SelectNodesInRect(selectRect, overwriteSelection, mControlPressed);
                     }
                     else // zoom into the selected rect
                     {
@@ -1171,13 +1200,9 @@ namespace EMStudio
                 }
             }
 
-            mLeftMousePressed   = false;
-            mRectSelecting      = false;
+            mLeftMousePressed = false;
+            mRectSelecting = false;
         }
-
-        // redraw the viewport
-        //UpdateMouseCursor( mousePos, globalPos );
-        //update();
     }
 
 
@@ -1242,10 +1267,10 @@ namespace EMStudio
         }
 
         // get the mouse position, calculate the global mouse position and update the relevant data
-        
+
         // For some reason this call fails to get the correct mouse position
         // It might be relative to the window?  Jira generated.
-//        QPoint mousePos     = event->pos();
+        //        QPoint mousePos     = event->pos();
 
         QPoint globalQtMousePos = event->globalPos();
         QPoint globalQtMousePosInWidget = this->mapFromGlobal(globalQtMousePos);

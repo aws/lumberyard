@@ -42,7 +42,7 @@ namespace Driller
             AZ::SerializeContext* serialize = azrtti_cast<AZ::SerializeContext*>(context);
             if (serialize)
             {
-                serialize->Class<TraceDrillerDialogSavedState, AZ::UserSettings>()
+                serialize->Class<TraceDrillerDialogSavedState>()
                     ->Field("m_windowFilter", &TraceDrillerDialogSavedState::m_windowFilter)
                     ->Field("m_textFilter", &TraceDrillerDialogSavedState::m_textFilter)
                     ->Version(1);

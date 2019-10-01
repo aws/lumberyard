@@ -14,7 +14,7 @@
 
 #include <AzCore/JSON/rapidjson.h>
 
-#if defined(AZ_PLATFORM_WINDOWS) && defined(AZ_COMPILER_CLANG)
+#if AZ_TRAIT_JSON_CLANG_IGNORE_UNKNOWN_WARNING && defined(AZ_COMPILER_CLANG)
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wunknown-warning-option"
 #endif
@@ -22,7 +22,7 @@
 // Make you have available rapidjson/include folder. Currently 3rdParty\rapidjson\rapidjson-1.0.2\include
 #include <rapidjson/prettywriter.h>
 
-#if defined(AZ_PLATFORM_WINDOWS) && defined(AZ_COMPILER_CLANG)
+#if AZ_TRAIT_JSON_CLANG_IGNORE_UNKNOWN_WARNING && defined(AZ_COMPILER_CLANG)
 #pragma clang diagnostic pop
 #endif
 

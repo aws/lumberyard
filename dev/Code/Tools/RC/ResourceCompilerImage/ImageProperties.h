@@ -15,7 +15,7 @@
 #define CRYINCLUDE_TOOLS_RC_RESOURCECOMPILERIMAGE_IMAGEPROPERTIES_H
 #pragma once
 
-#if defined(AZ_PLATFORM_APPLE)
+#if AZ_TRAIT_OS_PLATFORM_APPLE
 #include <AzDXGIFormat.h>
 #endif
 #include "Cry_Math.h"

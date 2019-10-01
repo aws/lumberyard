@@ -20,6 +20,7 @@
 #include <ISystem.h> // <> required for Interfuscator
 #include "IStreamEngineDefs.h"
 #include <AzCore/IO/FileIO.h>
+#include "Codec.h"
 
 struct IResourceList;
 struct _finddata_t;
@@ -127,8 +128,7 @@ struct ICryArchive
     //   METHOD_DEFLATE == METHOD_COMPRESS == 8 (deflate) , compression
     //   level is LEVEL_FASTEST == 0 till LEVEL_BEST == 9 or LEVEL_DEFAULT == -1
     //   for default (like in zlib)
-    virtual int UpdateFile(const char* szRelativePath, void* pUncompressed, unsigned nSize, unsigned nCompressionMethod = 0, int nCompressionLevel = -1) = 0;
-
+    virtual int UpdateFile(const char* szRelativePath, void* pUncompressed, unsigned nSize, unsigned nCompressionMethod = 0, int nCompressionLevel = -1, CompressionCodec::Codec codec = CompressionCodec::Codec::ZLIB) = 0;
 
     // Summary:
     //   Adds a new file to the zip or update an existing one if it is not compressed - just stored  - start a big file
@@ -442,6 +442,7 @@ struct ICryPak
     // Set and Get the localization folder name (Languages, Localization, ...)
     virtual void SetLocalizationFolder(const char* sLocalizationFolder) = 0;
     virtual const char* GetLocalizationFolder() const = 0;
+    virtual const char* GetLocalizationRoot() const = 0;
 
     // Only returns useful results on a dedicated server at present - and only if the pak is already opened
     virtual void GetCachedPakCDROffsetSize(const char* szName, uint32& offset, uint32& size) = 0;

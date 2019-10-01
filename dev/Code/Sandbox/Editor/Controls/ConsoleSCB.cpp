@@ -186,7 +186,7 @@ bool ConsoleLineEdit::event(QEvent* ev)
 
         if (newStr.isEmpty())
         {
-            newStr = GetIEditor()->GetCommandManager()->AutoComplete(newStr.toUtf8().data());
+            newStr = GetIEditor()->GetCommandManager()->AutoComplete(cstring.toUtf8().data());
         }
     }
 

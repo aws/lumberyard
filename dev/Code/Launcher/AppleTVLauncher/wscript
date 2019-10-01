@@ -23,8 +23,10 @@ def build(bld):
                             'FREETYPE2',
                             'TOMCRYPT',
                             'TOMMATH'],
-        includes         = [bld.Path('Code/CryEngine/CrySystem'),
-                            bld.Path('Code/Launcher')],
+        includes         = [bld.Path('Code/CryEngine/CryCommon'),
+                            bld.Path('Code/CryEngine/CrySystem'),
+                            bld.Path('Code/Launcher')
+                           ],
         cxxflags         = ['-x', 'objective-c++'],
     )
 

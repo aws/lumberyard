@@ -1,0 +1,9 @@
+{
+    "none":
+    {
+        "AzCore/Platform/iOS":
+        [
+            "../Common/Apple/Tests/UtilsTests_Apple.cpp"
+        ]
+    }
+}

@@ -48,8 +48,11 @@ namespace GraphCanvas
         SetBaseModifier("editing");
     }
 
-    void ConnectionLayerControllerComponent::OnMoveComplete()
+    void ConnectionLayerControllerComponent::OnMoveFinalized(bool isValidConnection)
     {
-        SetBaseModifier("");
+        if (isValidConnection)
+        {
+            SetBaseModifier("");
+        }
     }
 }

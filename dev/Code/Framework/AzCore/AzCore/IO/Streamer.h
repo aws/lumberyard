@@ -13,11 +13,12 @@
 
 #include <AzCore/base.h>
 #include <AzCore/IO/DeviceEventBus.h>
-#include <AzCore/Memory/PoolAllocator.h>
 #include <AzCore/IO/StreamerRequest.h>
-
+#include <AzCore/IO/Streamer/Statistics.h>
+#include <AzCore/Memory/PoolAllocator.h>
 #include <AzCore/std/chrono/chrono.h>
 #include <AzCore/std/function/function_fwd.h>
+#include <AzCore/std/smart_ptr/shared_ptr.h>
 #include <AzCore/std/string/string.h>
 
 namespace AZStd
@@ -32,6 +33,7 @@ namespace AZ
         class FileIOStream;
         class Streamer;
         struct StreamerData;
+        class StreamStackEntry;
 
         class Device;
 
@@ -53,19 +55,10 @@ namespace AZ
             struct Descriptor
             {
                 Descriptor()
-                    : m_maxNumOpenLimitedStream(64)
-                    , m_fileMountPoint(NULL)
-                    , m_cacheBlockSize(32 * 1024)
-                    , m_numCacheBlocks(4)
-                    , m_deviceThreadSleepTimeMS(-1)
-                    , m_threadDesc(nullptr)
+                    : m_threadDesc(nullptr)
                 {}
-                unsigned int            m_maxNumOpenLimitedStream;      ///< Max number of open streams with limited flag on. \ref Stream::m_isLimited set to true.
-                const char*             m_fileMountPoint;               ///< Pointer to a mount point name, so when you pass a name like "blabla.dat" it will resolve to m_fileMountPoint + "blabla.dat"
-                unsigned int            m_cacheBlockSize;
-                unsigned int            m_numCacheBlocks;
-                int                     m_deviceThreadSleepTimeMS;      ///< Time for the device thread to sleep between each operation. Use with caution.
                 AZStd::thread_desc*    m_threadDesc;    ///< Pointer to optional thread descriptor structure. It will be used for each thread spawned (one for each device).
+                AZStd::shared_ptr<StreamStackEntry> m_streamStack; ///< The stack used for file reads that go directly to the file system and decompress asynchronously.
             };
 
             static bool         Create(const Descriptor& desc);
@@ -73,129 +66,131 @@ namespace AZ
             static bool         IsReady();
             static Streamer&    Instance();
 
-            //@{ File based streams
-            /**
-             * Registers (create or find) a file stream.
-             * \param flags \ref OpenMode
-             */
-            VirtualStream* RegisterFileStream(const char* fileName, OpenMode flags = OpenMode::ModeRead, bool isLimited = false);
-            void    UnRegisterFileStream(const char* fileName);
-            //@}
-
-            /// Create or find stream from a stream name.
-            bool RegisterStream(VirtualStream* stream, OpenMode flags = OpenMode::ModeRead, bool isLimited = false);
-            void    UnRegisterStream(VirtualStream* stream);
-            // @}
-
-
-
-            /**
-             * Read data from a stream in blocking mode.
-             *
-             * \param deadline - duration in microseconds from 'now'(the moment of request) when data must be
-             * ready. Requests will be executed in such order so they don't miss the dead line. In case
-             * two requests are both missing their dead lines, the priority will be used to determine the
-             * execution order.
-             * \param priority - used when we have two requests missing their deadlines.
-             * \returns number of bytes read.
-             */
-            static SizeType Read(VirtualStream* stream, SizeType byteOffset, SizeType byteSize, void* dataBuffer, AZStd::chrono::microseconds deadline = ExecuteWhenIdle, Request::PriorityType priority = Request::PriorityType::DR_PRIORITY_NORMAL, Request::StateType* state = nullptr, const char* debugName = nullptr);
-
-            /**
-             * Read data from a stream in async mode.
-             * IMPORTANT: The callback will be called from the streaming thread. It should be
-             * thread safe and as quick as possible. Otherwise the streaming thread will be locked. This
-             * will degrade performance. In such cases use ReadAsyncDeferred and pump ReceiveRequests.
-             *
-             * \param deadline - duration in microseconds from 'now'(the moment of request) when data must be
-             * ready. Requests will be executed in such order so they don't miss the dead line. In case
-             * two requests are both missing their dead lines, the priority will be used to determine the
-             * execution order.
-             * \param priority - used when we have two requests missing their deadlines.
-             * \returns a request handle.
-             *
-             * \note If file is NOT registered it will be automatically for READING ONLY!
-             */
-            static RequestHandle ReadAsync(VirtualStream* stream, SizeType byteOffset, SizeType byteSize, void* dataBuffer, const Request::RequestDoneCB& callback, AZStd::chrono::microseconds deadline = ExecuteWhenIdle, Request::PriorityType priority = Request::PriorityType::DR_PRIORITY_NORMAL, const char* debugName = nullptr, bool deferCallback = false);
-            /**
-             * Read data from a stream in async mode.
-             * The request callback will be deferred until you call ReceiveRequests. In that
-             * sense the callback doesn't need to be thread safe
-             * \ref ReadAsync
-             */
-            static RequestHandle ReadAsyncDeferred(VirtualStream* stream, SizeType byteOffset, SizeType byteSize, void* dataBuffer, const Request::RequestDoneCB& callback, AZStd::chrono::microseconds deadline = ExecuteWhenIdle, Request::PriorityType priority = Request::PriorityType::DR_PRIORITY_NORMAL, const char* debugName = nullptr);
-
-            //@{ File base versions for reading. Prefer the use of Stream based functions, to avoid the extra CPU hit.
-            SizeType Read(const char* fileName, SizeType byteOffset, SizeType& byteSize, void* dataBuffer, AZStd::chrono::microseconds deadline = ExecuteWhenIdle, Request::PriorityType priority = Request::PriorityType::DR_PRIORITY_NORMAL, Request::StateType* state = NULL, const char* debugName = nullptr);
-            RequestHandle ReadAsync(const char* fileName, SizeType byteOffset, SizeType byteSize, void* dataBuffer, const Request::RequestDoneCB& callback, AZStd::chrono::microseconds deadline = ExecuteWhenIdle, Request::PriorityType priority = Request::PriorityType::DR_PRIORITY_NORMAL, const char* debugName = nullptr, bool deferCallback = false);
-            RequestHandle ReadAsyncDeferred(const char* fileName, SizeType byteOffset, SizeType byteSize, void* dataBuffer, const Request::RequestDoneCB& callback, AZStd::chrono::microseconds deadline = ExecuteWhenIdle, Request::PriorityType priority = Request::PriorityType::DR_PRIORITY_NORMAL, const char* debugName = nullptr);
-            //@}
-
-            /**
-             * Write data to a stream in a blocking mode.
-             *
-             * \param priority - in writing we use the priority only to determine write order between different
-             * streams. For one stream write requests are always executed in order.
-             * \returns number of bytes written
-             *
-             * \note Prefer the use of Stream based function, to avoid the extra CPU hit.
-             * If file is NOT registered it will be automatically for WRITE ONLY! Be careful with reading/writing to the same file, make sure you
-             * register the file data stream yourself with the proper parameters. This is the recommended way anyway.
-             */
-            static SizeType Write(VirtualStream* stream, const void* dataBuffer, SizeType byteSize, Request::PriorityType priority = Request::PriorityType::DR_PRIORITY_NORMAL, Request::StateType* state = NULL, SizeType byteOffset = EndOfStream, const char* debugName = nullptr);
-            /**
-             * Write data to a stream in async mode.
-             * IMPORTANT: The callback will be called from the streaming thread. It should be
-             * thread safe and as quick as possible. Otherwise the streaming thread will be locked. This
-             * will degrade performance. In such cases use WriteAsyncDeferred and pump ReceiveRequests.
-             *
-             * \param priority - in writing we use the priority only to determine write order between different
-             * streams. For one stream write requests are always executed in order.
-             * \return a request handle.
-             * \note If file is NOT registered it will be automatically for WRITE ONLY!
-             */
-            static RequestHandle WriteAsync(VirtualStream* stream, const void* dataBuffer, SizeType byteSize, const Request::RequestDoneCB& callback, Request::PriorityType priority = Request::PriorityType::DR_PRIORITY_NORMAL, SizeType byteOffset = EndOfStream, const char* debugName = nullptr, bool deferCallback = false);
-            /**
-             * Write data from a stream in async mode.
-             * The request callback will be deferred until you call ReceiveRequests. In that
-             * sense the callback doesn't need to be thread safe
-             * \ref WriteAsync
-             */
-            static RequestHandle WriteAsyncDeferred(VirtualStream* stream, const void* dataBuffer, SizeType byteSize, const Request::RequestDoneCB& callback, Request::PriorityType priority = Request::PriorityType::DR_PRIORITY_NORMAL, SizeType byteOffset = EndOfStream, const char* debugName = nullptr);
-
-            //@{ File base versions for writing. Prefer the use of Stream based functions, to avoid the extra CPU hit.
-            SizeType Write(const char* fileName, const void* dataBuffer, SizeType byteSize, Request::PriorityType priority = Request::PriorityType::DR_PRIORITY_NORMAL, Request::StateType* state = NULL, SizeType byteOffset = EndOfStream, const char* debugName = nullptr);
-            RequestHandle WriteAsync(const char* fileName, const void* dataBuffer, SizeType byteSize, const Request::RequestDoneCB& callback, Request::PriorityType priority = Request::PriorityType::DR_PRIORITY_NORMAL, SizeType byteOffset = EndOfStream, const char* debugName = nullptr, bool deferCallback = false);
-            RequestHandle WriteAsyncDeferred(const char* fileName, const void* dataBuffer, SizeType byteSize, const Request::RequestDoneCB& callback, Request::PriorityType priority = Request::PriorityType::DR_PRIORITY_NORMAL, SizeType byteOffset = EndOfStream, const char* debugName = nullptr);
-            //@}
+            //! Asynchronously read data from a file and immediately wait for the results.
+            //! @fileName Relative path to the file to read from.
+            //! @byteOffset Offset in bytes into the file.
+            //! @byteSize The amount of bytes to read. The byteOffset plus byteSize can not exceed the length of the file.
+            //! @databuffer The buffer to read data into. This buffer has to be at least byteSize or larger.
+            //! @deadline The amount of time from the moment the request is queued to complete the request. Or "ExecuteWhenIdle" in case there's no
+            //!           deadline.
+            //! @priority The priority in which requests are ordered that have passed their deadline.
+            //! @state Optional variable to keep track of the state of the request. This is mostly used to help determine if a request was successful or not.
+            //! @debugName A name to help identify the purpose of the request during debugging.
+            //! @return The number of bytes that were read into dataBuffer. If the request fails there may still be partial data available.
+            SizeType Read(const char* fileName, SizeType byteOffset, SizeType byteSize, void* dataBuffer,
+                AZStd::chrono::microseconds deadline = ExecuteWhenIdle, Request::PriorityType priority = Request::PriorityType::DR_PRIORITY_NORMAL, 
+                Request::StateType* state = nullptr, const char* debugName = nullptr);
+            //! Asynchronously read data from a file.
+            //! @fileName Relative path to the file to read from.
+            //! @byteOffset Offset in bytes into the file.
+            //! @byteSize The amount of bytes to read. The byteOffset plus byteSize can not exceed the length of the file.
+            //! @databuffer The buffer to read data into. This buffer has to be at least byteSize or larger.
+            //! @callback Optional callback to call when the request has completed. It's important that the callback happens as quick as possible
+            //!           because it will hold up the Streamer or decompression threads. For long callback it's recommended to have the callback
+            //!           start a job to continue processing.
+            //! @deadline The amount of time from the moment the request is queued to complete the request. Or "ExecuteWhenIdle" in case there's no
+            //!           deadline.
+            //! @priority The priority in which requests are ordered that have passed their deadline.
+            //! @debugName A name to help identify the purpose of the request during debugging.
+            //! @deferCallback Whether or not the callback is delayed and called from the main thread instead.
+            //! @return Whether or not the read request was successfully created and queued.
+            bool ReadAsync(const char* fileName, SizeType byteOffset, SizeType byteSize, void* dataBuffer, const Request::RequestDoneCB& callback, 
+                AZStd::chrono::microseconds deadline = ExecuteWhenIdle, Request::PriorityType priority = Request::PriorityType::DR_PRIORITY_NORMAL, 
+                const char* debugName = nullptr, bool deferCallback = false);
+            
+            //! Creates a read request, but doesn't queue the request for processing. This can be useful if the returned handle is used in the callback or
+            //! needs to be stored before the request can complete. See ReadAsync for arguments.
+            AZStd::shared_ptr<Request> CreateAsyncRead(const char* fileName, SizeType byteOffset, SizeType byteSize, void* dataBuffer, const Request::RequestDoneCB& callback,
+                AZStd::chrono::microseconds deadline = ExecuteWhenIdle, Request::PriorityType priority = Request::PriorityType::DR_PRIORITY_NORMAL,
+                const char* debugName = nullptr, bool deferCallback = false);
+            //! Queue a previously created request for processing. This only applies to the Create* functions, other functions will automatically queue.
+            bool QueueRequest(AZStd::shared_ptr<Request> request);
 
             /// Cancel request in a blocking mode, function will NOT return until cancel is complete. Request callback will be called with Request::StateType == ST_CANCELLED.
-            void CancelRequest(RequestHandle request);
+            void CancelRequest(const AZStd::shared_ptr<Request>& request);
             /// Cancel request in async mode, function returns instantly. Request callback will be called with Request::StateType == ST_CANCELLED. This function takes in an optional semaphore which will be forwared to the Device::CancelRequest method
-            void CancelRequestAsync(RequestHandle request, AZStd::semaphore* sync = nullptr);
+            void CancelRequestAsync(const AZStd::shared_ptr<Request>& request, AZStd::semaphore* sync = nullptr);
 
             /// Changes the scheduling parameters of the request.
-            static void RescheduleRequest(RequestHandle request, Request::PriorityType priority, AZStd::chrono::microseconds deadline);
+            static void RescheduleRequest(const AZStd::shared_ptr<Request>& request, Request::PriorityType priority, AZStd::chrono::microseconds deadline);
 
             /// Returns the estimated completion time from NOW is microseconds.
-            static AZStd::chrono::microseconds EstimateCompletion(RequestHandle request);
+            static AZStd::chrono::microseconds EstimateCompletion(const AZStd::shared_ptr<Request>& request);
+
+            //! Creates a dedicated cache for the provided file. This is useful for files that semi-frequently need to be 
+            //! visited such as video or audio files. Files like that usually read a subsection of the file to do some
+            //! processing with. In between other file requests might flush the file out of the cache. Using a dedicated
+            //! cache will prevent this from happening. Caches created through this call need to be cleared with
+            //! DestroyDedicatedCache
+            //! This function will wait until the request has been processed by Streamer.
+            void CreateDedicatedCache(const char* filename);
+            //! Creates a dedicated cache for the provided file. This is useful for files that semi-frequently need to be 
+            //! visited such as video or audio files. Files like that usually read a subsection of the file to do some
+            //! processing with. In between other file requests might flush the file out of the cache. Using a dedicated
+            //! cache will prevent this from happening. Caches created through this call need to be cleared with
+            //! DestroyDedicatedCache
+            //! This function will immediately return while the file cache is created in the background.
+            void CreateDedicatedCacheAsync(const char* filename, AZStd::semaphore* sync = nullptr);
+            //! Destroy a dedicated cache created by CreateDedicatedCache. See CreateDedicatedCache for more details.
+            //! This function will wait until the request has been processed by Streamer.
+            void DestroyDedicatedCache(const char* filename);
+            //! Destroy a dedicated cache created by CreateDedicatedCache. See CreateDedicatedCache for more details.
+            //! This function will immediately return while the file cache is destroyed in the background.
+            void DestroyDedicatedCacheAsync(const char* filename, AZStd::semaphore* sync = nullptr);
+
+            //! Clears a file from any caches in use by Streamer.
+            //! This function will wait until the request has been processed by Streamer.
+            void FlushCache(const char* filename);
+            //! Clears a file from any caches in use by Streamer.
+            //! This function will immediately return while the file cache is destroyed in the background.
+            void FlushCacheAsync(const char* filename, AZStd::semaphore* sync = nullptr);
+            //! Forcefully clears out all caches internally held by the available devices.
+            //! This function will wait until the request has been processed by Streamer.
+            void FlushCaches();
+            //! Forcefully clears out all caches internally held by the available devices.
+            //! This function will immediately return while the caches are cleared in the background.
+            void FlushCachesAsync();
+
+            //! Blocking call to collect statistics from all the components that make up Streamer. This is thread safe
+            //! in the sense that it won't crash. Data is collected lockless from involved threads and might be slightly
+            //! off in rare cases.
+            void CollectStatistics(AZStd::vector<Statistic>& statistics);
+
+            //! Looks for a StreamStackEntry in the streaming stack by name and replaces it with the 
+            //! provided replacement.
+            //! This call is thread safe, though it's recommended to only be done during engine initialization, because
+            //! results from one requests (such as file size) may not be correct for a replaced entry (such as a file read).
+            bool ReplaceStreamStackEntry(AZStd::string_view entryName, const AZStd::shared_ptr<StreamStackEntry>& replacement);
 
             /**
              * Must be pumped to receive deferred request.
              */
             void ReceiveRequests();
 
-            /// Finds a device that will handle a specific stream. This includes overlay/remap to other devices etc.
-            Device*         FindDevice(const char* streamName);
+            //! Suspend the processing of requests on all devices. Requests are still queued.
+            void SuspendAllDeviceProcessing();
+            //! Resumes the processing of requests on all devices after a call to SuspendAllDeviceProcessing.
+            void ResumeAllDeviceProcessing();
 
-            /// Return the value passed in the descriptor \ref Descriptor::m_maxNumOpenLimitedStream
-            SizeType    GetMaxNumOpenLimitedStream() const;
+            /// Finds a device that will handle a specific stream. This includes overlay/remap to other devices etc.
+            Device*         FindDevice(const char* streamName, bool resolvePath = true);
+
+            /// Releases all currently allocated devices.
+            void ReleaseDevices();
 
         private:
-            Streamer(const Descriptor& desc);
+            explicit Streamer(const Descriptor& desc);
             ~Streamer();
 
-            struct StreamerData*    m_data;
+            //! Resolves the provided to the appropriate request path.
+            //! @resolvedPath The resolved path for the provided filename. This can be the path to a loose file or an archive.
+            //! @isArchivedFile True if resolvedPath point to an archive, otherwise false.
+            //! @foundCompressionInfo If isArchivedFile is true, this will hold the compression info for the file in the archive.
+            //! @fileName The relative path to the file to look up.
+            //! @return True if the path could be resolved or false if a problem was encountered.
+            bool ResolveRequestPath(RequestPath& resolvedPath, bool& isArchivedFile, CompressionInfo& foundCompressionInfo, const char* fileName) const;
+
+            struct StreamerData* m_data;
         };
-    }
-}
+    } // namespace IO
+} // namespace AZ

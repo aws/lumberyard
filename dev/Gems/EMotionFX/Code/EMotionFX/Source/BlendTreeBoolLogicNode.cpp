@@ -204,8 +204,8 @@ namespace EMotionFX
     bool BlendTreeBoolLogicNode::BoolLogicNAND(bool x, bool y)      { return !BoolLogicAND(x,y); }
     bool BlendTreeBoolLogicNode::BoolLogicNOR(bool x, bool y)       { return !BoolLogicOR(x, y); }
     bool BlendTreeBoolLogicNode::BoolLogicXNOR(bool x, bool y)      { return !BoolLogicXOR(x, y); }
-    bool BlendTreeBoolLogicNode::BoolLogicNOTX(bool x, bool y)      { return !x; }
-    bool BlendTreeBoolLogicNode::BoolLogicNOTY(bool x, bool y)      { return !y; }
+    bool BlendTreeBoolLogicNode::BoolLogicNOTX(bool x, bool y)      { AZ_UNUSED(y); return !x; }
+    bool BlendTreeBoolLogicNode::BoolLogicNOTY(bool x, bool y)      { AZ_UNUSED(x); return !y; }
 
     void BlendTreeBoolLogicNode::SetDefaultValue(bool defaultValue)
     {

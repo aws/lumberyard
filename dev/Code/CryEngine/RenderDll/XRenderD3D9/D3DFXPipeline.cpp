@@ -44,19 +44,19 @@ long CD3D9Renderer::FX_SetVertexDeclaration(int StreamMask, const AZ::Vertex::Fo
     // (StreamMask & (0xfe | VSM_MORPHBUDDY)) is the value of StreamMask for most cases. There are a few exceptions:
     // 0xfe = 1111 1110 so the result is 0 in the case of VSM_GENERAL (1), or 0 if the mask bit is greater than 8 bits unless StreamMask happens to be VSM_MORPHBUDDY, in which case the result is again the value of StreamMask
     // At the time of this comment, that means the portion of the cacheID determined by StreamMask will be the same for VSM_GENERAL as it will be for VSM_INSTANCED, or anything that may come after VSM_INSTANCED
-    uint64 cacheID = static_cast<uint64>(StreamMask & (0xfe | VSM_MORPHBUDDY)) ^ (static_cast<uint64>(vertexFormat.GetCRC()) << 32);
+    uint64 cacheID = static_cast<uint64>(StreamMask & (0xfe | VSM_MORPHBUDDY)) ^ (static_cast<uint64>(vertexFormat.GetEnum()) << 32);
     if (CHWShader_D3D::s_pCurInstVS)
     {
         pDeclCache->m_pDeclaration = CHWShader_D3D::s_pCurInstVS->GetCachedInputLayout(cacheID);
     }
 #else
-    AZ::u32 declCacheCRC = vertexFormat.GetCRC();
+    AZ::u32 declCacheKey = vertexFormat.GetEnum();
     if (CHWShader_D3D::s_pCurInstVS)
     {
-        declCacheCRC = CHWShader_D3D::s_pCurInstVS->GenerateVertexDeclarationCacheCRC(vertexFormat);
+        declCacheKey = CHWShader_D3D::s_pCurInstVS->GenerateVertexDeclarationCacheKey(vertexFormat);
     }
 
-    SOnDemandD3DVertexDeclarationCache* pDeclCache = &m_RP.m_D3DVertexDeclarationCache[(StreamMask & 0xff) >> 1][bMorph || bInstanced][declCacheCRC];
+    SOnDemandD3DVertexDeclarationCache* pDeclCache = &m_RP.m_D3DVertexDeclarationCache[(StreamMask & 0xff) >> 1][bMorph || bInstanced][declCacheKey];
 
 #if defined(AZ_RESTRICTED_PLATFORM)
     #if defined(AZ_PLATFORM_XENIA)
@@ -85,6 +85,9 @@ long CD3D9Renderer::FX_SetVertexDeclaration(int StreamMask, const AZ::Vertex::Fo
         void* pVSData = CHWShader_D3D::s_pCurInstVS->m_pShaderData;
         if (FAILED(hr = GetDevice().CreateInputLayout(&Decl.m_Declaration[0], Decl.m_Declaration.size(), pVSData, nSize, &pDeclCache->m_pDeclaration)))
         {
+#ifndef _RELEASE
+            iLog->LogError("Failed to create an input layout for material \"%s\".\nThe shader and the vertex formats may be incompatible.\nVertex format: \"%d\".  Shader expects: \"%d\".\n\n", m_RP.m_pShaderResources->m_szMaterialName, (int)vertexFormat.GetEnum(), (int)CHWShader_D3D::s_pCurInstVS->m_vertexFormat.GetEnum());
+#endif
             return hr;
         }
 #if defined(FEATURE_PER_SHADER_INPUT_LAYOUT_CACHE)
@@ -2486,7 +2489,7 @@ void CD3D9Renderer::FX_DrawInstances(CShader* ef, SShaderPass* slw, int nRE, uin
             }
 
             // Add additional D3D11_INPUT_ELEMENT_DESCs with the TEXCOORD semantic to the end of the vertex declaration to handle the per instance data
-            int texCoordSemanticIndexOffset = rRP.m_CurVFormat.GetAttributesByUsage(AZ::Vertex::AttributeUsage::TexCoord).size();
+            uint32 texCoordSemanticIndexOffset = rRP.m_CurVFormat.GetAttributeUsageCount(AZ::Vertex::AttributeUsage::TexCoord);
             D3D11_INPUT_ELEMENT_DESC elemTC = {"TEXCOORD", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 3, 0, D3D11_INPUT_PER_INSTANCE_DATA, 1}; // texture
             for (i = 0; i < nUsedAttr; i++)
             {
@@ -4182,7 +4185,9 @@ static void sLogFlush(const char* str, CShader* pSH, SShaderTechnique* pTech)
     if (rd->m_logFileHandle != AZ::IO::InvalidHandle)
     {
         SRenderPipeline& RESTRICT_REFERENCE rRP = rd->m_RP;
-        rd->Logv(SRendItem::m_RecurseLevel[rRP.m_nProcessThreadID], "%s: '%s.%s', Id:%d, ResId:%d, Obj:%d, VF:%s\n", str, pSH->GetName(), pTech ? pTech->m_NameStr.c_str() : "Unknown", pSH->GetID(), rRP.m_pShaderResources ? rRP.m_pShaderResources->m_Id : -1, rRP.m_pCurObject->m_Id, rRP.m_CurVFormat.GetName());
+
+        rd->Logv(SRendItem::m_RecurseLevel[rRP.m_nProcessThreadID], "%s: '%s.%s', Id:%d, ResId:%d, VF:%d\n", str, pSH->GetName(), pTech ? pTech->m_NameStr.c_str() : "Unknown", pSH->GetID(), rRP.m_pShaderResources ? rRP.m_pShaderResources->m_Id : -1, (int)rRP.m_CurVFormat.GetEnum());
+
         if (rRP.m_ObjFlags & FOB_SELECTED)
         {
             if (rRP.m_MaterialStateOr & GS_ALPHATEST_MASK)

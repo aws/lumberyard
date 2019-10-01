@@ -22,29 +22,16 @@ namespace AZ
     struct JobManagerThreadDesc
     {
         /**
-         *  The CPU id that this thread will be running on, see \ref AZStd::thread_desc::m_cpuId.
+         *  The CPU ids (as a bitfield) that this thread will be running on, see \ref AZStd::thread_desc::m_cpuId.
          *  Windows: This parameter is ignored.
-         *  On other platforms, this maps directly to the core number [0-n], default is 0
+         *  On other platforms, each bit maps directly to the core numbers [0-n], default is 0
          */
         int     m_cpuId;
 
         /**
-         *  Windows: One of the following values:
-         *      THREAD_PRIORITY_IDLE
-         *      THREAD_PRIORITY_LOWEST
-         *      THREAD_PRIORITY_BELOW_NORMAL
-         *      THREAD_PRIORITY_NORMAL  (This is the default)
-         *      THREAD_PRIORITY_ABOVE_NORMAL
-         *      THREAD_PRIORITY_TIME_CRITICAL
+         *  Thread priority.
+         *  Defaults to the current platform's default priority
          */
-#if defined(AZ_RESTRICTED_PLATFORM)
-    #if defined(AZ_PLATFORM_XENIA)
-        #include "Xenia/JobManagerDesc_h_xenia.inl"
-    #elif defined(AZ_PLATFORM_PROVO)
-        #include "Provo/JobManagerDesc_h_provo.inl"
-    #endif
-#endif
-
         int     m_priority;
 
         /**

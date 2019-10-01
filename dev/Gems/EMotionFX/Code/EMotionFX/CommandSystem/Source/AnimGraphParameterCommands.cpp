@@ -10,9 +10,9 @@
 *
 */
 
-#include "AnimGraphParameterCommands.h"
-#include "AnimGraphConnectionCommands.h"
-#include "CommandManager.h"
+#include <EMotionFX/CommandSystem/Source/AnimGraphParameterCommands.h>
+#include <EMotionFX/CommandSystem/Source/AnimGraphConnectionCommands.h>
+#include <EMotionFX/CommandSystem/Source/CommandManager.h>
 
 #include <AzCore/std/sort.h>
 #include <EMotionFX/Source/ActorInstance.h>
@@ -42,9 +42,7 @@ namespace CommandSystem
     }
 
 
-    CommandAnimGraphCreateParameter::~CommandAnimGraphCreateParameter()
-    {
-    }
+    CommandAnimGraphCreateParameter::~CommandAnimGraphCreateParameter() = default;
 
 
     bool CommandAnimGraphCreateParameter::Execute(const MCore::CommandLine& parameters, AZStd::string& outResult)
@@ -170,6 +168,14 @@ namespace CommandSystem
             const AZ::Outcome<size_t> valueParameterIndex = animGraph->FindValueParameterIndex(static_cast<const EMotionFX::ValueParameter*>(param));
             AZ_Assert(valueParameterIndex.IsSuccess(), "Expected valid value parameter index.");
 
+            // Update all anim graph instances.
+            const size_t numInstances = animGraph->GetNumAnimGraphInstances();
+            for (size_t i = 0; i < numInstances; ++i)
+            {
+                EMotionFX::AnimGraphInstance* animGraphInstance = animGraph->GetAnimGraphInstance(i);
+                animGraphInstance->InsertParameterValue(static_cast<uint32>(valueParameterIndex.GetValue()));
+            }
+
             AZStd::vector<EMotionFX::AnimGraphObject*> affectedObjects;
             animGraph->RecursiveCollectObjectsOfType(azrtti_typeid<EMotionFX::ObjectAffectedByParameterChanges>(), affectedObjects);
             EMotionFX::GetAnimGraphManager().RecursiveCollectObjectsAffectedBy(animGraph, affectedObjects);
@@ -178,14 +184,6 @@ namespace CommandSystem
             {
                 EMotionFX::ObjectAffectedByParameterChanges* affectedObjectByParameterChanges = azdynamic_cast<EMotionFX::ObjectAffectedByParameterChanges*>(affectedObject);
                 affectedObjectByParameterChanges->ParameterAdded(parameterIndex.GetValue());
-            }
-
-            // Update all anim graph instances.
-            const size_t numInstances = animGraph->GetNumAnimGraphInstances();
-            for (size_t i = 0; i < numInstances; ++i)
-            {
-                EMotionFX::AnimGraphInstance* animGraphInstance = animGraph->GetAnimGraphInstance(i);
-                animGraphInstance->InsertParameterValue(static_cast<uint32>(valueParameterIndex.GetValue()));
             }
         }
 
@@ -256,9 +254,7 @@ namespace CommandSystem
     }
 
 
-    CommandAnimGraphRemoveParameter::~CommandAnimGraphRemoveParameter()
-    {
-    }
+    CommandAnimGraphRemoveParameter::~CommandAnimGraphRemoveParameter() = default;
 
 
     bool CommandAnimGraphRemoveParameter::Execute(const MCore::CommandLine& parameters, AZStd::string& outResult)
@@ -395,9 +391,7 @@ namespace CommandSystem
     }
 
 
-    CommandAnimGraphAdjustParameter::~CommandAnimGraphAdjustParameter()
-    {
-    }
+    CommandAnimGraphAdjustParameter::~CommandAnimGraphAdjustParameter() = default;
 
 
     bool CommandAnimGraphAdjustParameter::Execute(const MCore::CommandLine& parameters, AZStd::string& outResult)
@@ -685,9 +679,7 @@ namespace CommandSystem
     }
 
 
-    CommandAnimGraphMoveParameter::~CommandAnimGraphMoveParameter()
-    {
-    }
+    CommandAnimGraphMoveParameter::~CommandAnimGraphMoveParameter() = default;
 
 
     bool CommandAnimGraphMoveParameter::Execute(const MCore::CommandLine& parameters, AZStd::string& outResult)
@@ -1004,4 +996,4 @@ namespace CommandSystem
         return true;
     }
 
-} // namesapce EMotionFX
+} // namespace CommandSystem

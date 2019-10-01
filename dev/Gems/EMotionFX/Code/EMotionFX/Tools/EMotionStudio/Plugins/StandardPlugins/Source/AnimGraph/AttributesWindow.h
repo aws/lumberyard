@@ -12,6 +12,7 @@
 
 #pragma once
 
+#include <AzCore/EBus/EBus.h>
 #include <AzCore/std/containers/vector.h>
 #include <EMotionFX/Tools/EMotionStudio/Plugins/StandardPlugins/Source/StandardPluginsConfig.h>
 #include <Editor/TypeChoiceButton.h>
@@ -39,6 +40,16 @@ namespace EMotionFX
 
 namespace EMStudio
 {
+    class AttributesWindowRequests
+        : public AZ::EBusTraits
+    {
+    public:
+        virtual bool IsLocked() const { return false; }
+        virtual QModelIndex GetModelIndex() const { return {}; }
+    };
+
+    using AttributesWindowRequestBus = AZ::EBus<AttributesWindowRequests>;
+
     // forward declarations
     class AnimGraphPlugin;
     class AttributesWindow;
@@ -49,7 +60,7 @@ namespace EMStudio
         Q_OBJECT //AUTOMOC
 
     public:
-        AddConditionButton(AnimGraphPlugin* plugin, QWidget* parent);    
+        AddConditionButton(AnimGraphPlugin* plugin, QWidget* parent);
     };
 
     class AddActionButton
@@ -65,7 +76,7 @@ namespace EMStudio
         : public QDialog
     {
         Q_OBJECT //AUTOMOC
-        MCORE_MEMORYOBJECTCATEGORY(PasteConditionsWindow, MCore::MCORE_DEFAULT_ALIGNMENT, MEMCATEGORY_STANDARDPLUGINS_ANIMGRAPH)
+                 MCORE_MEMORYOBJECTCATEGORY(PasteConditionsWindow, MCore::MCORE_DEFAULT_ALIGNMENT, MEMCATEGORY_STANDARDPLUGINS_ANIMGRAPH)
 
     public:
         PasteConditionsWindow(AttributesWindow* attributeWindow);
@@ -80,6 +91,7 @@ namespace EMStudio
 
     class AttributesWindow
         : public QWidget
+        , public AttributesWindowRequestBus::Handler
     {
         Q_OBJECT //AUTOMOC
         MCORE_MEMORYOBJECTCATEGORY(AttributesWindow, EMFX_DEFAULT_ALIGNMENT, MEMCATEGORY_STANDARDPLUGINS_ANIMGRAPH);
@@ -99,6 +111,13 @@ namespace EMStudio
         const AZStd::vector<CopyPasteConditionObject>& GetCopyPasteConditionClipboard() const { return m_copyPasteClipboard; }
 
         void Init(const QModelIndex& modelIndex = QModelIndex(), bool forceUpdate = false);
+
+        void Lock() { m_isLocked = true; }
+        void Unlock() { m_isLocked = false; }
+
+        // AttributesWindowRequestBus overrides
+        bool IsLocked() const override { return m_isLocked; }
+        QModelIndex GetModelIndex() const override { return m_displayingModelIndex; }
 
     public slots:
         void OnCopyConditions();
@@ -131,6 +150,7 @@ namespace EMStudio
         AzQtComponents::Card*                   m_objectCard;
         EMotionFX::AnimGraphEditor*             m_animGraphEditor;
         EMotionFX::ObjectEditor*                m_objectEditor;
+        bool                                    m_isLocked = false;
 
         struct CachedWidgets
         {
@@ -154,7 +174,7 @@ namespace EMStudio
         AZStd::vector<CachedWidgets>            m_actionsCachedWidgets;
 
         PasteConditionsWindow*                  mPasteConditionsWindow;
-        
+
         // copy & paste conditions
         AZStd::vector<CopyPasteConditionObject> m_copyPasteClipboard;
 

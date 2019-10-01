@@ -185,6 +185,8 @@ extern "C" DLL_EXPORT void __stdcall RegisterConvertors(IResourceCompiler* const
     pRC->RegisterKey("SplitLODs", "[CGF] Auto split LODs into the separate files");
 
     pRC->RegisterKey("maxWeightsPerVertex", "[CHR] Maximum number of weights per vertex (default is 4)");
+
+    pRC->RegisterKey("DegenerateFacesAreErrors", "If the meshcompiler finds a degenerate face, it is a suboptimal mesh. Should the we treat this as a warning or error.");
 }
 
 #include <Common_TypeInfo.h>

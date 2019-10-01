@@ -13,6 +13,7 @@
 #include "CommandLine.h"
 #include <AzCore/std/string/conversions.h>
 #include <AzFramework/StringFunc/StringFunc.h>
+#include <AzFramework/AzFramework_Traits_Platform.h>
 
 namespace AzFramework
 {
@@ -33,14 +34,6 @@ namespace AzFramework
     {
     }
 
-    void CommandLine::Parse()
-    {
-#ifdef AZ_PLATFORM_WINDOWS
-        // On Windows, the __argc and __argv extensions can be used as defaults
-        Parse(__argc, __argv);
-#endif // AZ_PLATFORM_WINDOWS
-    }
-
     void CommandLine::Parse(int argc, char** argv)
     {
         m_switches.clear();
@@ -55,13 +48,7 @@ namespace AzFramework
                 StringFunc::Strip(currentArg, " ", false, true, true);
                 if (!currentArg.empty())
                 {
-#if defined(AZ_PLATFORM_WINDOWS)
-                    // On windows, either '-' or '/' is accepted
-                    if ((currentArg[0] == '/') || (currentArg[0] == '-'))
-#else
-                    // On non-windows, only '-' is accepted
-                    if (currentArg[0] == '-')
-#endif // AZ_PLATFORM_WINDOWS
+                    if (AZStd::string_view(currentArg.begin(), currentArg.begin() + 1).find_first_of(AZ_TRAIT_AZFRAMEWORK_COMMAND_LINE_OPTION_PREFIX) != AZStd::string_view::npos)
                     {
                         // its possible that its a key-value-pair like /blah=whatever
                         // we support this too, for compatibilty.

@@ -25,7 +25,24 @@
 
 namespace EMStudio
 {
-    // constructor
+    AnimGraphActionFilter AnimGraphActionFilter::CreateDisallowAll()
+    {
+        AnimGraphActionFilter result;
+
+        result.m_createNodes = false;
+        result.m_editNodes = false;
+        result.m_createConnections = false;
+        result.m_editConnections = false;
+        result.m_copyAndPaste = false;
+        result.m_setEntryNode = false;
+        result.m_activateState = false;
+        result.m_delete = false;
+        result.m_editNodeGroups = false;
+
+        return result;
+    }
+
+
     AnimGraphActionManager::AnimGraphActionManager(AnimGraphPlugin* plugin)
         : m_plugin(plugin)
         , m_pasteOperation(PasteOperation::None)
@@ -119,8 +136,8 @@ namespace EMStudio
         {
             MCore::CommandGroup commandGroup(AZStd::string(m_pasteOperation == PasteOperation::Copy ? "Copy" : "Cut") + " and paste nodes");
             
-            AZStd::unordered_map<EMotionFX::AnimGraphNode*, AZStd::string> newNamesByCopiedNodes;
-            CommandSystem::ConstructCopyAnimGraphNodesCommandGroup(&commandGroup, targetParentNode, nodesToCopy, pos.x(), pos.y(), m_pasteOperation == PasteOperation::Cut, newNamesByCopiedNodes, false);
+            CommandSystem::AnimGraphCopyPasteData copyPasteData;
+            CommandSystem::ConstructCopyAnimGraphNodesCommandGroup(&commandGroup, targetParentNode, nodesToCopy, pos.x(), pos.y(), m_pasteOperation == PasteOperation::Cut, copyPasteData, false);
             
             AZStd::string result;
             if (!EMStudio::GetCommandManager()->ExecuteCommandGroup(commandGroup, result))
@@ -157,51 +174,68 @@ namespace EMStudio
     void AnimGraphActionManager::AddWildCardTransition()
     {
         QModelIndexList selectedIndexes = m_plugin->GetAnimGraphModel().GetSelectionModel().selectedRows();
-
-        if (!selectedIndexes.empty())
+        if (selectedIndexes.empty())
         {
-            const QModelIndex firstSelectedNode = selectedIndexes.front();
+            return;
+        }
 
-            EMotionFX::AnimGraphNode* node = firstSelectedNode.data(AnimGraphModel::ROLE_NODE_POINTER).value<EMotionFX::AnimGraphNode*>();
+        MCore::CommandGroup commandGroup;
+
+        for (QModelIndex selectedModelIndex : selectedIndexes)
+        {
+            if (selectedModelIndex.data(AnimGraphModel::ROLE_MODEL_ITEM_TYPE).value<AnimGraphModel::ModelItemType>() != AnimGraphModel::ModelItemType::NODE)
+            {
+                continue;
+            }
+
+            EMotionFX::AnimGraphNode* node = selectedModelIndex.data(AnimGraphModel::ROLE_NODE_POINTER).value<EMotionFX::AnimGraphNode*>();
             
+            // Only handle states, skip blend tree nodes.
+            EMotionFX::AnimGraphNode* parentNode = node->GetParentNode();
+            if (!parentNode || azrtti_typeid(parentNode) != azrtti_typeid<EMotionFX::AnimGraphStateMachine>())
+            {
+                continue;
+            }
+
+            EMotionFX::AnimGraphStateMachine* stateMachine = static_cast<EMotionFX::AnimGraphStateMachine*>(parentNode);
+
+            const uint32 numWildcardTransitions = stateMachine->CalcNumWildcardTransitions(node);
+            const bool isEven = (numWildcardTransitions % 2 == 0);
+            const uint32 evenTransitions = numWildcardTransitions / 2;
+
             // space the wildcard transitions in case we're dealing with multiple ones
             uint32 endOffsetX = 0;
             uint32 endOffsetY = 0;
-            EMotionFX::AnimGraphNode* parentNode = node->GetParentNode();
-            if (parentNode && azrtti_typeid(parentNode) == azrtti_typeid<EMotionFX::AnimGraphStateMachine>())
+
+            // if there is no wildcard transition yet, we can skip directly
+            if (numWildcardTransitions > 0)
             {
-                EMotionFX::AnimGraphStateMachine* stateMachine = static_cast<EMotionFX::AnimGraphStateMachine*>(parentNode);
-
-                const uint32    numWildcardTransitions = stateMachine->CalcNumWildcardTransitions(node);
-                const bool      isEven = (numWildcardTransitions % 2 == 0);
-                const uint32    evenTransitions = numWildcardTransitions / 2;
-
-                // if there is no wildcard transition yet, we can skip directly
-                if (numWildcardTransitions > 0)
+                if (isEven)
                 {
-                    if (isEven)
-                    {
-                        endOffsetY = evenTransitions * 15;
-                    }
-                    else
-                    {
-                        endOffsetX = (evenTransitions + 1) * 15;
-                    }
+                    endOffsetY = evenTransitions * 15;
+                }
+                else
+                {
+                    endOffsetX = (evenTransitions + 1) * 15;
                 }
             }
-           
-            const AZStd::string commandString = AZStd::string::format("AnimGraphCreateConnection -animGraphID %i -sourceNode \"\" -targetNode \"%s\" -sourcePort 0 -targetPort 0 -startOffsetX 0 -startOffsetY 0 -endOffsetX %i -endOffsetY %i -transitionType \"%s\"", 
-                node->GetAnimGraph()->GetID(), 
-                node->GetName(), 
-                endOffsetX, 
-                endOffsetY, 
+
+            const AZStd::string commandString = AZStd::string::format("AnimGraphCreateConnection -animGraphID %i -sourceNode \"\" -targetNode \"%s\" -sourcePort 0 -targetPort 0 -startOffsetX 0 -startOffsetY 0 -endOffsetX %i -endOffsetY %i -transitionType \"%s\"",
+                node->GetAnimGraph()->GetID(),
+                node->GetName(),
+                endOffsetX,
+                endOffsetY,
                 azrtti_typeid<EMotionFX::AnimGraphStateTransition>().ToString<AZStd::string>().c_str());
 
+            commandGroup.AddCommandString(commandString);
+        }
+
+        if (commandGroup.GetNumCommands() > 0)
+        {
+            commandGroup.SetGroupName(AZStd::string::format("Add wildcard transition%s", commandGroup.GetNumCommands() > 1 ? "s" : ""));
+
             AZStd::string commandResult;
-            if (!GetCommandManager()->ExecuteCommand(commandString, commandResult))
-            {
-                MCore::LogError(commandResult.c_str());
-            }
+            AZ_Error("EMotionFX", GetCommandManager()->ExecuteCommandGroup(commandGroup, commandResult), commandResult.c_str());
         }
     }
 

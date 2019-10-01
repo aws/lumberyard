@@ -36,7 +36,8 @@ namespace AzToolsFramework
         return m_interactionRequests->HandleMouseInteraction(mouseInteraction);
     }
 
-    void EditorInteractionSystemComponent::SetHandler(const ViewportSelectionRequestsBuilderFn& interactionRequestsBuilder)
+    void EditorInteractionSystemComponent::SetHandler(
+        const ViewportSelectionRequestsBuilderFn& interactionRequestsBuilder)
     {
         // when setting a handler, make sure we're connected to the ViewportDebugDisplayEventBus so we
         // can forward calls to the specific type implementing ViewportSelectionRequests

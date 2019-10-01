@@ -20,6 +20,11 @@ namespace ScriptCanvas
     class Contract;
     class Slot;
 
+    namespace Data
+    {
+        class Type;
+    }
+
     class ContractEvents : public AZ::EBusTraits
     {
     public:

@@ -105,9 +105,10 @@ namespace ScriptCanvas
 
         if (sourceSlot->IsData())
         {
-            if (!sourceSlot->IsTypeMatchFor((*targetSlot)))
+            auto typeMatchCheck = sourceSlot->IsTypeMatchFor((*targetSlot));
+            if (!typeMatchCheck)
             {
-                return AZ::Failure(AZStd::string("Slots are not a type match for each other"));
+                return typeMatchCheck;
             }
         }
 
@@ -125,6 +126,12 @@ namespace ScriptCanvas
 
         return AZ::Success();
 
+    }
+
+    bool Connection::ContainsEndpoint(const Endpoint& endpoint)
+    {
+        return m_sourceEndpoint == endpoint
+            || m_targetEndpoint == endpoint;
     }
 
     const SlotId& Connection::GetSourceSlot() const

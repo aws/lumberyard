@@ -47,7 +47,9 @@ def build(bld):
                             bld.Path('Code/Sandbox/Editor/Include'),
                             bld.Path('Code/Sandbox/Plugins/EditorCommon'),
                             bld.Path('Code/Sandbox'),
-                            bld.Path('Code/CryEngine') ],
+                            bld.Path('Code/CryEngine'),
+                            bld.Path('Code/CryEngine/CryCommon')
+                          ],
         export_includes = ['.'],
 
         file_list = ['scriptcanvasdiagnosticlibrary_common.waf_files'],

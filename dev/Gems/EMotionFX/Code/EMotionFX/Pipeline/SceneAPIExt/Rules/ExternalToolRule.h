@@ -58,7 +58,7 @@ namespace EMotionFX
             };
 
             template<class RuleClass, class ReflectableData>
-            static bool LoadGromGroup(const AZ::SceneAPI::DataTypes::IGroup& group, ReflectableData& outData);
+            static bool LoadFromGroup(const AZ::SceneAPI::DataTypes::IGroup& group, ReflectableData& outData);
 
             template<class RuleClass, class ReflectableData>
             static void SaveToGroup(AZ::SceneAPI::Containers::Scene& scene, AZ::SceneAPI::DataTypes::IGroup& group, const ReflectableData& data);

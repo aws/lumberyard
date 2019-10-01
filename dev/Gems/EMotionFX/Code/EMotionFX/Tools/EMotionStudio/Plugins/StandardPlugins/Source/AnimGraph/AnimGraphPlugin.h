@@ -32,6 +32,7 @@
 #include <EMotionFX/Source/AnimGraphTransitionCondition.h>
 #include <EMotionFX/Source/Recorder.h>
 #include <EMotionFX/Source/EventHandler.h>
+#include <EMotionFX/Tools/EMotionStudio/Plugins/StandardPlugins/Source/AnimGraph/AnimGraphActionManager.h>
 
 #include <QDockWidget>
 #include <QStackedWidget>
@@ -53,7 +54,6 @@ namespace EMStudio
 {
     // forward declarations
     class AnimGraphModel;
-    class AnimGraphActionManager;
     class BlendGraphWidget;
     class NodeGraph;
     class GraphNode;
@@ -217,7 +217,7 @@ namespace EMStudio
 
         const EMotionFX::AnimGraphObjectFactory* GetAnimGraphObjectFactory() const         { return m_animGraphObjectFactory; }
         GraphNodeFactory* GetGraphNodeFactory()                                            { return mGraphNodeFactory; }
-        
+
         // overloaded main init function
         void Reflect(AZ::ReflectContext* serializeContext) override;
         bool Init() override;
@@ -228,6 +228,9 @@ namespace EMStudio
 
         void SetDisableRendering(bool flag)                                                { mDisableRendering = flag; }
         bool GetDisableRendering() const                                                   { return mDisableRendering; }
+
+        void SetActionFilter(const AnimGraphActionFilter& actionFilter);
+        const AnimGraphActionFilter& GetActionFilter() const;
 
     private:
         enum EDockWindowOptionFlag
@@ -288,7 +291,7 @@ namespace EMStudio
         uint32                                      mDisplayFlags;
 
         AnimGraphOptions                            mOptions;
-        
+
         EMotionFX::AnimGraphObjectFactory*          m_animGraphObjectFactory;
         GraphNodeFactory*                           mGraphNodeFactory;
 
@@ -297,13 +300,13 @@ namespace EMStudio
 
         // Helper class to handle copy/cut/paste
         AnimGraphActionManager*                     m_actionManager;
+        AnimGraphActionFilter                       m_actionFilter;
 
         void InitForAnimGraph(EMotionFX::AnimGraph* setup);
         bool GetOptionFlag(EDockWindowOptionFlag option) { return mDockWindowActions[(uint32)option]->isChecked(); }
         void SetOptionFlag(EDockWindowOptionFlag option, bool isEnabled);
         void SetOptionEnabled(EDockWindowOptionFlag option, bool isEnabled);
     };
-
 }   // namespace EMStudio
 
 

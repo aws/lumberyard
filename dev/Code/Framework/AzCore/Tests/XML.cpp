@@ -10,9 +10,8 @@
 *
 */
 
-#include "TestTypes.h"
-
 #include <AzCore/XML/rapidxml.h>
+#include <AzCore/UnitTest/TestTypes.h>
 
 #include <AzCore/std/string/string.h>
 

@@ -177,12 +177,14 @@ namespace AZ
         {       
             if (auto serializeContext = azrtti_cast<SerializeContext*>(reflectContext))
             {
-                auto *dataContainer =  &Serialize::StaticInstance<AZStdAnyContainer>::s_instance;
+                auto dataContainer = AZStd::make_unique<AZStdAnyContainer>();
                 dataContainer->SetSerializeContext(serializeContext);
                 serializeContext->Class<AZStd::any>()
-                    ->DataContainer(dataContainer)
+                    ->DataContainer(dataContainer.get())
                     ;
-                    // Value data is injected into the hierarchy per-instance, since type is dynamic.
+                // serializeContext owns each dataContainer instance, it is destroyed once serializeContext is destroyed
+                serializeContext->RegisterDataContainer(AZStd::move(dataContainer));
+                // Value data is injected into the hierarchy per-instance, since type is dynamic.
                 if (EditContext* editContext = serializeContext->GetEditContext())
                 {
                     editContext->Class<AZStd::any>("any", "Type safe container which can store a type that specializes the TypeInfo template")

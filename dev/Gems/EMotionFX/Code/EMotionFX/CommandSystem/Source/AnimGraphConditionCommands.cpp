@@ -145,6 +145,7 @@ namespace CommandSystem
 
     bool CommandAddTransitionCondition::Undo(const MCore::CommandLine& parameters, AZStd::string& outResult)
     {
+        AZ_UNUSED(parameters);
         EMotionFX::AnimGraph* animGraph = GetAnimGraph(this, outResult);
         if (!animGraph)
         {
@@ -259,6 +260,7 @@ namespace CommandSystem
 
     bool CommandRemoveTransitionCondition::Undo(const MCore::CommandLine& parameters, AZStd::string& outResult)
     {
+        AZ_UNUSED(parameters);
         EMotionFX::AnimGraph* animGraph = GetAnimGraph(this, outResult);
         if (!animGraph)
         {
@@ -357,6 +359,7 @@ namespace CommandSystem
 
     bool CommandAdjustTransitionCondition::Undo(const MCore::CommandLine& parameters, AZStd::string& outResult)
     {
+        AZ_UNUSED(parameters);
         EMotionFX::AnimGraph* animGraph = GetAnimGraph(this, outResult);
         if (!animGraph)
         {

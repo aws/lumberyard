@@ -12,7 +12,7 @@
 
 #pragma once
 
-#include <boost/optional.hpp>
+#include <AzCore/std/optional.h>
 #include <AzCore/std/functional.h>
 #include <AzCore/std/smart_ptr/unique_ptr.h>
 #include <AzCore/Memory/SystemAllocator.h>
@@ -114,7 +114,7 @@ namespace CloudGemFramework
 
         /// Type used to encapsulate override values.
         template<typename T>
-        using Override = boost::optional<T>;
+        using Override = AZStd::optional<T>;
 
         // TODO: document the individual configuration settings
         Override<AZ::JobContext*> jobContext;
@@ -171,9 +171,9 @@ namespace CloudGemFramework
         template<typename T>
         static void CheckAndSet(const Override<T>& src, T& dst) 
         {
-            if (src.is_initialized())
+            if (src.has_value())
             {
-                dst = src.get();
+                dst = src.value();
             }
         }
 

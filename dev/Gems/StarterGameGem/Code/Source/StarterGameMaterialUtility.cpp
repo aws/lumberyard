@@ -128,7 +128,7 @@ namespace StarterGameGem
                         continue;
                     }
 
-                    if (sp->m_Name == szName)
+                    if (azstricmp(sp->m_Name.c_str(), szName) == 0)
                     {
                         got = true;
                         switch (sp->m_Type)
@@ -165,7 +165,7 @@ namespace StarterGameGem
                         continue;
                     }
 
-                    if (sp->m_Name == szName)
+                    if (azstricmp(sp->m_Name.c_str(), szName) == 0)
                     {
                         got = true;
                         switch (sp->m_Type)

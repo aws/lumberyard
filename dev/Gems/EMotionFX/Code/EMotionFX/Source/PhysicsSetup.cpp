@@ -25,6 +25,15 @@ namespace EMotionFX
 {
     AZ_CLASS_ALLOCATOR_IMPL(PhysicsSetup, EMotionFX::ActorAllocator, 0)
 
+    const char* PhysicsSetup::s_colliderConfigTypeVisualNames[5] =
+    {
+        "Hit Detection",
+        "Ragdoll",
+        "Cloth",
+        "Simulated Object",
+        "Unknown"
+    };
+
     Physics::AnimationConfiguration& PhysicsSetup::GetConfig()
     {
         return m_config;
@@ -47,11 +56,12 @@ namespace EMotionFX
 
     const char* PhysicsSetup::GetStringForColliderConfigType(ColliderConfigType configType)
     {
-        static const char* colliderConfigTypeNames[4] =
+        static const char* colliderConfigTypeNames[5] =
         {
             "HitDetection",
             "Ragdoll",
             "Cloth",
+            "SimulatedObjectCollider",
             "Unknown"
         };
 
@@ -61,6 +71,16 @@ namespace EMotionFX
         }
 
         return colliderConfigTypeNames[Unknown];
+    }
+
+    const char* PhysicsSetup::GetVisualNameForColliderConfigType(ColliderConfigType configType)
+    {
+        if (configType < Unknown)
+        {
+            return s_colliderConfigTypeVisualNames[configType];
+        }
+
+        return s_colliderConfigTypeVisualNames[Unknown];
     }
 
     PhysicsSetup::ColliderConfigType PhysicsSetup::GetColliderConfigTypeFromString(const AZStd::string& configTypeString)
@@ -76,6 +96,10 @@ namespace EMotionFX
         else if (configTypeString == "Cloth")
         {
             return ColliderConfigType::Cloth;
+        }
+        else if (configTypeString == "SimulatedObjectCollider")
+        {
+            return ColliderConfigType::SimulatedObjectCollider;
         }
 
         return ColliderConfigType::Unknown;
@@ -96,6 +120,10 @@ namespace EMotionFX
         case ColliderConfigType::Cloth:
         {
             return &m_config.m_clothConfig;
+        }
+        case ColliderConfigType::SimulatedObjectCollider:
+        {
+            return &m_config.m_simulatedObjectColliderConfig;
         }
         }
 
@@ -147,13 +175,14 @@ namespace EMotionFX
             return nullptr;
         }
 
-        const Node* currentNode = node;
-        while (currentNode = currentNode->GetParentNode())
+        const Node* currentNode = node->GetParentNode();
+        while (currentNode)
         {
             if (m_config.m_ragdollConfig.FindNodeConfigByName(currentNode->GetNameString()))
             {
                 return currentNode;
             }
+            currentNode = currentNode->GetParentNode();
         }
 
         return nullptr;
@@ -167,6 +196,16 @@ namespace EMotionFX
     const Physics::CharacterColliderConfiguration& PhysicsSetup::GetClothConfig() const
     {
         return m_config.m_clothConfig;
+    }
+
+    Physics::CharacterColliderConfiguration& PhysicsSetup::GetSimulatedObjectColliderConfig()
+    {
+        return m_config.m_simulatedObjectColliderConfig;
+    }
+
+    const Physics::CharacterColliderConfiguration& PhysicsSetup::GetSimulatedObjectColliderConfig() const
+    {
+        return m_config.m_simulatedObjectColliderConfig;
     }
 
     AZ::Outcome<Physics::ShapeConfigurationPair> PhysicsSetup::CreateColliderByType(const AZ::TypeId& typeId)
@@ -222,7 +261,6 @@ namespace EMotionFX
 
         const MCore::OBB& nodeOBB = actor->GetNodeOBB(joint->GetNodeIndex());
         const bool nodeOBBValid = nodeOBB.CheckIfIsValid();
-        AZ_Warning("EMotionFX", nodeOBBValid, "Joint %s has invalid OBB and may behave unexpectedly in ragdoll.", joint->GetName());
         const AZ::Vector3& extents = nodeOBBValid ? nodeOBB.GetExtents() : AZ::Vector3::CreateOne();
         const float extent = static_cast<float>(extents.GetLength());
 

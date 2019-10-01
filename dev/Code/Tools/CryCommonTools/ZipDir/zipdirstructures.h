@@ -23,6 +23,8 @@
     #include <ctype.h>
 #endif
 
+#include "Codec.h"
+
 namespace ZipDir
 {
     // possible errors occuring during the method execution
@@ -198,7 +200,23 @@ namespace ZipDir
 
     // compresses the raw data into raw data. The buffer for compressed data itself with the heap passed. Uses method 8 (deflate)
     // returns one of the Z_* errors (Z_OK upon success), and the size in *pDestSize. the pCompressed buffer must be at least nSrcSize*1.001+12 size
+
     extern int ZipRawCompress (const void* pUncompressed, unsigned long* pDestSize, void* pCompressed, unsigned long nSrcSize, int nLevel);
+    extern int ZipRawCompressZSTD(const void* pUncompressed, unsigned long* pDestSize, void* pCompressed, unsigned long nSrcSize, int nLevel);
+    extern int ZipRawCompressLZ4(const void* pUncompressed, unsigned long* pDestSize, void* pCompressed, unsigned long nSrcSize, int nLevel);
+
+    //returns an estimate of the size of the data when compressed
+    extern int GetCompressedSizeEstimate(unsigned long uncompressedSize, CompressionCodec::Codec codec = CompressionCodec::Codec::ZLIB);
+
+    enum class ValidationResult
+    {
+        OK = 0,
+        SIZE_MISMATCH,
+        DATA_CORRUPTED,
+        DATA_NO_MATCH
+    };
+    //decompresses a zstd blob and compares with the original - returns true if original and uncompressed data match
+    ValidationResult ValidateZSTDCompressedDataWithOriginalData(const void* pUncompressed, unsigned long uncompressedSize, const void* pCompressed, unsigned long compressedSize);
 
     //////////////////////////////////////////////////////////////////////////
     struct SExtraZipFileData

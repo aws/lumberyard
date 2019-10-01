@@ -70,7 +70,7 @@ private:
     virtual void OnPrePhysicsUpdate(float elapsedTime);
 };
 
-DECLARE_COMPONENT_POINTERS(CAnimatedCharacterComponent_PrepareAnimatedCharacterForUpdate);
+DECLARE_SMART_POINTERS(CAnimatedCharacterComponent_PrepareAnimatedCharacterForUpdate);
 
 class CAnimatedCharacterComponent_StartAnimProc
     : public CAnimatedCharacterComponent_Base

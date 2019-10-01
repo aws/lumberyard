@@ -103,32 +103,18 @@ namespace Render
                 // Insert and populate the allocation record
                 VRAMAllocationRecordsType::pair_iter_bool iterBool = m_allocations.insert_key(address);
 
-#if defined(AZ_RESTRICTED_PLATFORM)
-#undef AZ_RESTRICTED_SECTION
-#define VRAMDRILLER_CPP_SECTION_1 1
-#define VRAMDRILLER_CPP_SECTION_2 2
-#endif
-
-#if defined(AZ_RESTRICTED_PLATFORM)
-#define AZ_RESTRICTED_SECTION VRAMDRILLER_CPP_SECTION_1
-    #if defined(AZ_PLATFORM_XENIA)
-        #include "Xenia/VRAMDriller_cpp_xenia.inl"
-    #elif defined(AZ_PLATFORM_PROVO)
-        #include "Provo/VRAMDriller_cpp_provo.inl"
-    #endif
-#endif
-#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
-#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
-#else
                 // Turning off the VRAMDriller altogether causes weird allocation errors
                 AZ_Warning("Driller", iterBool.second, "VRAM memory address 0x%p is already allocated and being tracked! VRAM memory reporting may now be inaccurate.", address);
-#endif
 
                 VRAMAllocationInfo& allocationInfo = iterBool.first->second;
                 allocationInfo.m_byteSize =  byteSize;
                 allocationInfo.m_allocationName = allocationName;
                 allocationInfo.m_category = category;
                 allocationInfo.m_subcategory = subcategory;
+                
+                // Update simple tracking statistics
+                m_simpleAllocationStatistics[category][subcategory].m_allocatedBytes += byteSize;
+                m_simpleAllocationStatistics[category][subcategory].m_numberAllocations++;
 
                 return &allocationInfo;
             }
@@ -136,22 +122,17 @@ namespace Render
             void UnregisterAllocation(void* address)
             {
                 VRAMAllocationRecordsType::iterator iter = m_allocations.find(address);
-#if defined(AZ_RESTRICTED_PLATFORM)
-#define AZ_RESTRICTED_SECTION VRAMDRILLER_CPP_SECTION_2
-    #if defined(AZ_PLATFORM_XENIA)
-        #include "Xenia/VRAMDriller_cpp_xenia.inl"
-    #elif defined(AZ_PLATFORM_PROVO)
-        #include "Provo/VRAMDriller_cpp_provo.inl"
-    #endif
-#endif
-#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
-#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
-#else
+
                 // Turning off the VRAMDriller altogether causes weird allocation errors
                 AZ_Warning("Driller", iter != m_allocations.end(), "VRAM memory address 0x%p does not exist in the records. VRAM memory reporting may now be inaccurate.", address);
-#endif
+                
                 if ( iter != m_allocations.end() )
                 {
+                    // Update simple tracking statistics
+                    VRAMAllocationInfo& allocationInfo = iter->second;
+                    m_simpleAllocationStatistics[allocationInfo.m_category][allocationInfo.m_subcategory].m_allocatedBytes -= allocationInfo.m_byteSize;
+                    m_simpleAllocationStatistics[allocationInfo.m_category][allocationInfo.m_subcategory].m_numberAllocations--;
+
                     m_allocations.erase(iter);
                 }
             }
@@ -162,6 +143,14 @@ namespace Render
             }
 
             //=========================================================================
+
+            struct SimpleAllocationStatistics
+            {
+                size_t m_allocatedBytes = 0;
+                size_t m_numberAllocations = 0;
+            };
+
+            SimpleAllocationStatistics m_simpleAllocationStatistics[VRAM_CATEGORY_NUMBER_CATEGORIES][VRAM_SUBCATEGORY_NUMBER_SUBCATEGORIES];
 
         private:
 
@@ -333,5 +322,36 @@ namespace Render
         }
 
         //=========================================================================
+
+        void VRAMDriller::GetCurrentVRAMStats(VRAMAllocationCategory category, VRAMAllocationSubcategory subcategory, AZStd::string& categoryName, AZStd::string& subcategoryName, size_t& numberBytesAllocated, size_t& numberAllocations)
+        {
+            // Verify the category exists
+            const VRAMCategoryType& categoriesMap = m_allocations->GetCategoriesMap();
+            auto categoryIter = categoriesMap.find(category);
+            if (categoryIter != categoriesMap.end())
+            {
+                // Get the category and subcategory names
+                const VRAMCategoryInfo& categoryInfo = categoryIter->second;
+                categoryName = categoryInfo.m_categoryName;
+
+                subcategoryName = "INVALID_SUBCATEGORY";
+                for (int subCat=0; subCat<categoryInfo.m_subcategories.size(); ++subCat)
+                {
+                    if (categoryInfo.m_subcategories[subCat].m_subcategoryId == subcategory)
+                    {
+                        subcategoryName = categoryInfo.m_subcategories[subCat].m_subcategoryName;
+                        break;
+                    }
+                }
+                    
+                // Get the basic allocation statistics
+                VRAMDrillerAllocations::SimpleAllocationStatistics& stats = m_allocations->m_simpleAllocationStatistics[category][subcategory];
+                numberBytesAllocated = stats.m_allocatedBytes;
+                numberAllocations = stats.m_numberAllocations;
+            }
+        }
+
+        //=========================================================================
+
     }// namespace Debug
 } // namespace Render

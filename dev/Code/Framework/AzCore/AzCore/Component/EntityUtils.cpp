@@ -9,7 +9,6 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#ifndef AZ_UNITY_BUILD
 
 #include <AzCore/Component/EntityUtils.h>
 #include <AzCore/Component/ComponentApplicationBus.h>
@@ -118,7 +117,7 @@ namespace AZ
         //=========================================================================
         // FindFirstDerivedComponent
         //=========================================================================
-        Component* FindFirstDerivedComponent(Entity* entity, const Uuid& typeId)
+        Component* FindFirstDerivedComponent(const Entity* entity, const Uuid& typeId)
         {
             for (AZ::Component* component : entity->GetComponents())
             {
@@ -140,7 +139,7 @@ namespace AZ
         //=========================================================================
         // FindDerivedComponents
         //=========================================================================
-        Entity::ComponentArrayType FindDerivedComponents(Entity* entity, const Uuid& typeId)
+        Entity::ComponentArrayType FindDerivedComponents(const Entity* entity, const Uuid& typeId)
         {
             Entity::ComponentArrayType result;
             for (AZ::Component* component : entity->GetComponents())
@@ -254,5 +253,3 @@ namespace AZ
         }
     } // namespace EntityUtils
 }   // namespace AZ
-
-#endif  // AZ_UNITY_BUILD

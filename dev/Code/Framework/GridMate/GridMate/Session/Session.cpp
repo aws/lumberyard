@@ -9,21 +9,16 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#ifndef AZ_UNITY_BUILD
-
 #include <GridMate/Session/Session.h>
 #include <AzCore/std/string/conversions.h>
 #include <AzCore/std/parallel/lock.h>
+#include <AzCore/Platform.h>
 
 #include <GridMate/Carrier/Utils.h>
 
 #include <GridMate/VoiceChat/VoiceChatServiceBus.h>
 
-#ifdef AZ_PLATFORM_WINDOWS
-#   include <AzCore/PlatformIncl.h>
-#elif defined(AZ_PLATFORM_APPLE) || defined(AZ_PLATFORM_LINUX)
-#include <unistd.h>
-#endif
+#include <GridMate/Session/Session_Platform.h>
 
 namespace GridMate
 {
@@ -2294,11 +2289,7 @@ GridMemberStateReplica::GridMemberStateReplica(GridMember* member)
     m_platformId.Set(AZ::g_currentPlatform);
     m_machineName.Set(Utils::GetMachineAddress((m_member) ? m_member->GetSession()->GetCarrierDesc().m_familyType : 0));
     SetPriority(k_replicaPriorityRealTime);
-#if defined(AZ_PLATFORM_WINDOWS)
-    m_processId.Set(GetCurrentProcessId());
-#elif defined(AZ_PLATFORM_APPLE) || defined(AZ_PLATFORM_LINUX)
-    m_processId.Set(getpid());
-#endif
+    m_processId.Set(AZ::Platform::GetCurrentProcessId());
 }
 
 //=========================================================================
@@ -2901,5 +2892,3 @@ void GridSessionHandshake::ReleaseNewConnections()
 {
     m_dataLock.unlock();
 }
-
-#endif // #ifndef AZ_UNITY_BUILD

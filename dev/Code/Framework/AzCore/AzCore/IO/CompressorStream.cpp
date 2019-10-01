@@ -10,12 +10,14 @@
 *
 */
 
+#include <AzCore/std/containers/array.h>
+#include <AzCore/std/containers/vector.h>
 #include <AzCore/IO/CompressorStream.h>
 #include <AzCore/IO/Compressor.h>
 #include <AzCore/IO/CompressorZLib.h>
+#include <AzCore/IO/CompressorZStd.h>
 #include <AzCore/IO/FileIO.h>
 #include <AzCore/Memory/Memory.h>
-#include <AzCore/std/containers/array.h>
 
 namespace AZ
 {
@@ -48,6 +50,11 @@ CompressorStream::CompressorStream(GenericStream* stream, bool ownStream)
 
 CompressorStream::~CompressorStream()
 {
+    if (m_stream->IsOpen() && m_compressorData && m_compressorData->m_compressor)
+    {
+        m_compressorData->m_compressor->Close(this);
+    }
+
     if (m_isStreamOwner)
     {
         delete m_stream;
@@ -200,10 +207,8 @@ bool CompressorStream::ReadCompressedHeader()
         CompressorHeader* hdr = reinterpret_cast<CompressorHeader*>(dataBuffer.data());
         if (hdr->IsValid())
         {
-#ifndef AZ_BIG_ENDIAN
             AZStd::endian_swap(hdr->m_compressorId);
             AZStd::endian_swap(hdr->m_uncompressedSize);
-#endif // not big endian
             AZ::u8* data = dataBuffer.data() + sizeof(CompressorHeader);
             dataSize -= sizeof(CompressorHeader);
 
@@ -283,9 +288,13 @@ CompressorData* CompressorStream::GetCompressorData() const
 Compressor* CompressorStream::CreateCompressor(AZ::u32 compressorId)
 {
     m_compressor.reset(nullptr);
-    if(compressorId == CompressorZLib::TypeId())
+    if (compressorId == CompressorZLib::TypeId())
     {
         m_compressor.reset(aznew CompressorZLib);
+    }
+    else if (compressorId == CompressorZStd::TypeId())
+    {
+        m_compressor.reset(aznew CompressorZStd);
     }
     else
     {

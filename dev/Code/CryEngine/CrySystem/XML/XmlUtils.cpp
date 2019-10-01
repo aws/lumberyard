@@ -359,6 +359,7 @@ public:
     virtual int  GetEstimatedRowCount();
     virtual bool ReadRow(int& rowIndex);
     virtual bool ReadCell(int& columnIndex, const char*& pContent, size_t& contentSize);
+    float GetCurrentRowHeight() override;
 
 private:
     bool m_bExcel;
@@ -367,6 +368,7 @@ private:
 
     XmlNodeRef m_rowNode;
 
+    float m_currentRowHeight;
     int m_rowNodeIndex;
     int m_row;
 
@@ -436,6 +438,7 @@ int CXmlTableReader::GetEstimatedRowCount()
 //////////////////////////////////////////////////////////////////////////
 bool CXmlTableReader::ReadRow(int& rowIndex)
 {
+    m_currentRowHeight = 0.0f;
     if (!m_tableNode)
     {
         return false;
@@ -482,6 +485,11 @@ bool CXmlTableReader::ReadRow(int& rowIndex)
                     return false;
                 }
                 m_row = index;
+            }
+            float height;
+            if (m_rowNode->getAttr("ss:Height", height))
+            {
+                m_currentRowHeight = height;
             }
 
             rowIndex = m_row;
@@ -636,6 +644,10 @@ bool CXmlTableReader::ReadCell(int& columnIndex, const char*& pContent, size_t& 
     }
 }
 
+float CXmlTableReader::GetCurrentRowHeight()
+{
+    return m_currentRowHeight;
+}
 //////////////////////////////////////////////////////////////////////////
 IXmlTableReader* CXmlUtils::CreateXmlTableReader()
 {

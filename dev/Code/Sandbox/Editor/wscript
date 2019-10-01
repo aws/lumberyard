@@ -105,7 +105,8 @@ def build(bld):
                                                bld.Path('Code/Lyzard/Modules/Projects/include'),
                                                bld.Path('Code/Lyzard/Modules/Engines/include')],
 
-        defines                             = ['DONT_BAN_STD_STRING',
+        defines                             = ['LY_BUILD={}'.format(bld.get_lumberyard_build()),
+                                               'DONT_BAN_STD_STRING',
                                                'USE_MEM_ALLOCATOR',
                                                'IS_NEW_AUDIO_BRANCH' ] + additionalDefines,
 
@@ -132,9 +133,10 @@ def build(bld):
                                                'AWS_CPP_SDK_STS',
                                                'AWS_CPP_SDK_CORE',
                                                'AWS_CPP_SDK_COGNITO_IDENTITY',
+                                               'AWS_CPP_SDK_DEVICEFARM',
                                                'AWS_CPP_SDK_MOBILEANALYTICS',
                                                'AWS_CPP_SDK_IDENTITY_MANAGEMENT',
-                                            'AWS_CPP_SDK_IDENTITY_LAMBDA',
+                                               'AWS_CPP_SDK_IDENTITY_LAMBDA',
                                                'AWS_CPP_SDK_IDENTITY_METRICS',
                                                'BOOSTPYTHON',
                                                'ZLIB'],
@@ -193,7 +195,7 @@ def build(bld):
         vs_filter                           = 'Sandbox',
         copyright_org                       = 'Amazon-CryTek',
         file_list                           = 'editor.waf_files',
-        platforms                           = ['win'],
+        platforms                           = ['win', 'darwin'],
         configurations                      = ['all'],
         exclude_monolithic                  = True,
         client_only                         = True,
@@ -245,7 +247,7 @@ def build(bld):
                                                'TIFF',
                                                'ZLIB',
                                                'D3D_COMPILER',
-                                               'SSLEAY',
+                                               'OPENSSL',
                                                'MSVC90',
                                                'LUA_COMPILER',
                                                'FFMPEG_EXE'
@@ -292,3 +294,14 @@ def build(bld):
     if tsk_gen != None:
         # Copy Resource.h for Ribbon UI
         tsk_gen.create_task('copy_outputs', tsk_gen.path.make_node('Resource.h'), bld.srcnode.make_node('Editor/UI/Resource.h') )
+
+
+def package(pkg):
+    build(pkg) # Need to call this to generate our task_generator
+    pkg.package_tool(
+        target           = 'Editor',
+        platforms        = ['darwin'],
+        configurations   = ['debug', 'profile'],
+        include_all_libs = True,
+        dir_resources    = ['qtlibs', 'EditorPlugins'],
+    )

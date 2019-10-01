@@ -244,13 +244,51 @@ namespace UnitTest
 
         // repopulate and remove in reverse order
         myclass_base_set.insert(myclassArray.begin(), myclassArray.end());
-        myclass_base_set_type::const_reverse_iterator rit = myclass_base_set.rbegin();
-        while (rit != myclass_base_set.rend())
+        myclass_base_set_type::const_reverse_iterator rit = myclass_base_set.crbegin();
+        while (rit != myclass_base_set.crend())
         {
             const MySetClass* item = rit.operator->();
             ++rit;
             myclass_base_set.erase(item);
         }
         AZ_TEST_VALIDATE_EMPTY_SET(myclass_base_set);
+    }
+
+    TEST(IntrusiveSetContainers, ReverseIterator)
+    {
+        using myclass_base_set_type = intrusive_multiset<MySetClass, intrusive_multiset_base_hook<MySetClass> >;
+
+        // A static array of MyClass, init with default ctor. Used as source for some of the tests.
+        constexpr size_t arraySize = 20;
+        array<MySetClass, arraySize> myclassArray;
+        myclass_base_set_type      myclass_base_set;
+
+        FillArray(myclassArray);
+
+        myclass_base_set.insert(myclassArray.begin(), myclassArray.end());
+
+        // iterate in reverse order
+        auto myClassReverseBeginIt = myclass_base_set.crbegin();
+        auto myClassReverseEndIt = myclass_base_set.crend();
+        EXPECT_NE(myClassReverseEndIt, myClassReverseBeginIt);
+        // Reverse iterator must be decremented that in order the base() iterator call
+        // to return an iterator to a valid element
+        ++myClassReverseBeginIt;
+        size_t reverseArrayIndex = arraySize - 1;
+        for (; myClassReverseBeginIt != myClassReverseEndIt; ++myClassReverseBeginIt, --reverseArrayIndex)
+        {
+            EXPECT_EQ(reverseArrayIndex * 100 + 101, myClassReverseBeginIt.base()->m_data);
+        }
+        // The crend() element base() call should refer to the first element of the array which
+        // should have a value of 101 + arrayIndex * 100, where arrayIndex is 0.
+        EXPECT_EQ(101, myClassReverseBeginIt.base()->m_data);
+
+        {
+            // Test empty intrusive container case
+            myclass_base_set.clear();
+            auto reverseIterBegin = myclass_base_set.rbegin();
+            auto reverseIterEnd = myclass_base_set.rend();
+            EXPECT_EQ(reverseIterEnd, reverseIterEnd);
+        }
     }
 }

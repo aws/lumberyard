@@ -50,4 +50,12 @@ class GeomCacheLZ4HCBlockCompressor
     ~GeomCacheLZ4HCBlockCompressor() override = default;
     virtual bool Compress(std::vector<char>& input, std::vector<char>& output) override;
 };
+
+// This is the ZStandard compressor
+class GeomCacheZStdBlockCompressor
+    : public IGeomCacheBlockCompressor
+{
+    virtual bool Compress(std::vector<char>& input, std::vector<char>& output) override;
+};
+
 #endif // CRYINCLUDE_TOOLS_RC_RESOURCECOMPILERABC_GEOMCACHEBLOCKCOMPRESSOR_H

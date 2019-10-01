@@ -63,6 +63,7 @@
     <file>img/16x16/Audio.png</file>
     <file>img/16x16/Database_view.png</file>
     <file>img/16x16/Delete_named_selection.png</file>
+    <file>img/16x16/Deploy.png</file>
     <file>img/16x16/Flowgraph.png</file>
     <file>img/16x16/Follow_terrain.png</file>
     <file>img/16x16/Freeze.png</file>
@@ -131,6 +132,7 @@
     <file>img/24x24/Audio.png</file>
     <file>img/24x24/Database_view.png</file>
     <file>img/24x24/Delete_named_selection.png</file>
+    <file>img/24x24/Deploy.png</file>
     <file>img/24x24/Flowgraph.png</file>
     <file>img/24x24/Follow_terrain.png</file>
     <file>img/24x24/Freeze.png</file>
@@ -188,6 +190,7 @@
     <file>img/32x32/Audio.png</file>
     <file>img/32x32/Database_view.png</file>
     <file>img/32x32/Delete_named_selection.png</file>
+    <file>img/32x32/Deploy.png</file>
     <file>img/32x32/Flowgraph.png</file>
     <file>img/32x32/Follow_terrain.png</file>
     <file>img/32x32/Freeze.png</file>
@@ -356,6 +359,7 @@
     <file>img/UI20/Cards/rectangle.png</file>
     <file>img/UI20/Cards/spacer.png</file>
     <file>img/UI20/Cards/eye_dropper.png</file>
+    <file>img/UI20/Cards/trash-small.png</file>
 </qresource>
 <qresource prefix="/AzQtComponents">
     <file>Widgets/BaseStyleSheet.qss</file>

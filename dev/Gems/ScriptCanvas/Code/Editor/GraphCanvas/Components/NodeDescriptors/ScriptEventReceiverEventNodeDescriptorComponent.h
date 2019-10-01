@@ -26,7 +26,6 @@ namespace ScriptCanvasEditor
 {
     class ScriptEventReceiverEventNodeDescriptorComponent
         : public NodeDescriptorComponent
-        , protected GraphCanvas::NodeNotificationBus::Handler
         , protected GraphCanvas::SceneMemberNotificationBus::Handler
         , protected ScriptEventReceiverEventNodeDescriptorBus::Handler
         , public EBusHandlerEventNodeDescriptorRequestBus::Handler
@@ -50,8 +49,7 @@ namespace ScriptCanvasEditor
         ScriptCanvas::EBusEventId GetEventId() const override;
         ////
 
-        // NodeNotificationBus::Handler
-        void OnAddedToScene(const AZ::EntityId& sceneId) override;
+        // NodeNotificationBus::Handler        
         void OnNodeWrapped(const AZ::EntityId& wrappingNode) override;
         ////
 
@@ -82,6 +80,10 @@ namespace ScriptCanvasEditor
         // ScriptEventReceiveNodeDescriptorNotifications
         void OnScriptEventReloaded(const AZ::Data::Asset<ScriptEvents::ScriptEventsAsset>& asset);
         ////
+
+    protected:
+
+        void OnAddedToGraphCanvasGraph(const GraphCanvas::GraphId& grapphId, const AZ::EntityId& scriptCanvasNodeId) override;
 
     private:
 

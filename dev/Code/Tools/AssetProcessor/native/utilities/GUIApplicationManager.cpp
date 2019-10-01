@@ -48,7 +48,7 @@
 #include <ToolsCrashHandler.h>
 #endif
 
-#if defined(AZ_PLATFORM_APPLE_OSX)
+#if defined(AZ_PLATFORM_MAC)
 #include <AppKit/NSRunningApplication.h>
 #include <CoreServices/CoreServices.h>
 
@@ -91,7 +91,7 @@ namespace
 GUIApplicationManager::GUIApplicationManager(int* argc, char*** argv, QObject* parent)
     : BatchApplicationManager(argc, argv, parent)
 {
-#if defined(AZ_PLATFORM_APPLE_OSX)
+#if defined(AZ_PLATFORM_MAC)
     // Since AP is not a proper Mac application yet it will not receive keyboard focus
     // unless we tell the OS specifically to treat it as a foreground application
     ProcessSerialNumber psn = { 0, kCurrentProcess };
@@ -244,7 +244,7 @@ bool GUIApplicationManager::Run()
 #endif
     }
 
-#ifdef AZ_PLATFORM_APPLE_OSX
+#ifdef AZ_PLATFORM_MAC
     connect(new MacDockIconHandler(this), &MacDockIconHandler::dockIconClicked, m_mainWindow, &MainWindow::ShowWindow);
 #endif
 
@@ -274,7 +274,7 @@ bool GUIApplicationManager::Run()
         trayIconMenu->addAction(hideAction);
         trayIconMenu->addSeparator();
 
-#if defined(AZ_PLATFORM_APPLE)
+#if AZ_TRAIT_OS_PLATFORM_APPLE
         QAction* systemTrayQuitAction = new QAction(QObject::tr("Quit"), m_mainWindow);
         systemTrayQuitAction->setMenuRole(QAction::NoRole);
         m_mainWindow->connect(systemTrayQuitAction, SIGNAL(triggered()), this, SLOT(QuitRequested()));
@@ -572,7 +572,11 @@ void GUIApplicationManager::FileChanged(QString path)
 
         // we only have to quit if the actual project name has changed, not if just the bootstrap has changed.
         QString previousGameName = AssetUtilities::ComputeGameName(); // get the cached version
-        QString newGameName = AssetUtilities::ComputeGameName(QString(), true); // force=true!
+
+        // Get the app root for the starting path to search for bootstrap.cfg
+        AZStd::string appRootString;
+        AzFramework::ApplicationRequests::Bus::BroadcastResult(appRootString, &AzFramework::ApplicationRequests::GetAppRoot);
+        QString newGameName = AssetUtilities::ComputeGameName(QString(appRootString.c_str()), true); // force=true!
         
         if (newGameName != previousGameName)
         {
@@ -682,6 +686,9 @@ void GUIApplicationManager::InitConnectionManager()
     m_connectionManager->RegisterService(FileCopyRequest::MessageType(), std::bind(&FileServer::ProcessCopyRequest, m_fileServer, _1, _2, _3, _4));
     m_connectionManager->RegisterService(FileRenameRequest::MessageType(), std::bind(&FileServer::ProcessRenameRequest, m_fileServer, _1, _2, _3, _4));
     m_connectionManager->RegisterService(FindFilesRequest::MessageType(), std::bind(&FileServer::ProcessFindFileNamesRequest, m_fileServer, _1, _2, _3, _4));
+
+    m_connectionManager->RegisterService(FileTreeRequest::MessageType(), std::bind(&FileServer::ProcessFileTreeRequest, m_fileServer, _1, _2, _3, _4));
+
 
     QObject::connect(m_connectionManager, SIGNAL(connectionAdded(uint, Connection*)), m_fileServer, SLOT(ConnectionAdded(unsigned int, Connection*)));
     QObject::connect(m_connectionManager, SIGNAL(ConnectionDisconnected(unsigned int)), m_fileServer, SLOT(ConnectionRemoved(unsigned int)));

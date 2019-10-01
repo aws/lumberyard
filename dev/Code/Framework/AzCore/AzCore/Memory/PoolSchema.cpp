@@ -9,7 +9,6 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#ifndef AZ_UNITY_BUILD
 
 #include <AzCore/PlatformIncl.h>
 #include <AzCore/Memory/PoolSchema.h>
@@ -24,9 +23,7 @@
 #include <AzCore/Memory/AllocationRecords.h>
 #include <AzCore/Math/MathUtils.h>
 
-#ifdef AZ_THREAD_LOCAL
-#   include <AzCore/std/parallel/containers/lock_free_intrusive_stamped_stack.h>
-#endif
+#include <AzCore/std/parallel/containers/lock_free_intrusive_stamped_stack.h>
 
 namespace AZ
 {
@@ -187,7 +184,6 @@ namespace AZ
     public:
         AZ_CLASS_ALLOCATOR(ThreadPoolSchemaImpl, SystemAllocator, 0)
 
-#   ifdef AZ_THREAD_LOCAL
         /**
          * Specialized \ref PoolAllocator::Page page for lock free allocator.
          */
@@ -226,10 +222,6 @@ namespace AZ
             typedef AZStd::intrusive_list<Page, AZStd::list_base_hook<Page> > PageListType;
             PageListType            m_pages;
         };
-    #else
-        typedef PoolSchemaImpl::Page    Page;
-        typedef PoolSchemaImpl::Bucket  Bucket;
-    #endif
 
         ThreadPoolSchemaImpl(const ThreadPoolSchema::Descriptor& desc, ThreadPoolSchema::GetThreadPoolData threadPoolGetter, ThreadPoolSchema::SetThreadPoolData threadPoolSetter);
         ~ThreadPoolSchemaImpl();
@@ -246,7 +238,6 @@ namespace AZ
         AZ_INLINE void  PushFreePage(Page* page);
         inline bool     IsInStaticBlock(Page* page)
         {
-#   ifdef AZ_THREAD_LOCAL
             const char* staticBlockStart = reinterpret_cast<const char*>(m_staticDataBlock);
             const char* staticBlockEnd = staticBlockStart + m_numStaticPages*m_pageSize;
             const char* pageAddress = reinterpret_cast<const char*>(page);
@@ -259,13 +250,9 @@ namespace AZ
             {
                 return false;
             }
-#else
-            return m_allocator.IsInStaticBlock(page);
-#endif //
         }
         inline Page*    ConstructPage(size_t elementSize)
         {
-#   ifdef AZ_THREAD_LOCAL
             AZ_Assert(m_isDynamic, "We run out of static pages (%d) and this is a static allocator!", m_numStaticPages);
             // We store the page struct at the end of the block
             char* memBlock;
@@ -276,28 +263,20 @@ namespace AZ
             page->m_elementSize = static_cast<u32>(elementSize);
             page->m_maxNumElements = static_cast<u32>(pageDataSize / elementSize);
             return page;
-#else
-            return m_allocator.ConstructPage(elementSize);
-#endif
         }
 
         inline void     FreePage(Page* page)
         {
-#   ifdef AZ_THREAD_LOCAL
             // TODO: It's optional if we want to check the guard value for corruption, since we are not going
             // to use this memory. Yet it might be useful to catch bugs.
             // We store the page struct at the end of the block
             char* memBlock = reinterpret_cast<char*>(page) - m_pageSize + sizeof(Page);
             page->~Page();     // destroy the page
             m_pageAllocator->DeAllocate(memBlock);
-#else
-            m_allocator.FreePage(page);
-#endif
         }
 
         inline Page*    PageFromAddress(void* address)
         {
-#   ifdef AZ_THREAD_LOCAL
             char* memBlock = reinterpret_cast<char*>(reinterpret_cast<size_t>(address) & ~static_cast<size_t>(m_pageSize-1));
             memBlock += m_pageSize - sizeof(Page);
             Page* page = reinterpret_cast<Page*>(memBlock);
@@ -306,12 +285,8 @@ namespace AZ
                 return NULL;
             }
             return page;
-#else
-            return m_allocator.PageFromAddress(address);
-#endif
         }
 
-    #   ifdef AZ_THREAD_LOCAL
         // NOTE we allow only one instance of a allocator, you need to subclass it for different versions.
         // so for now it's safe to use static. We use TLS on a static because on some platforms set thread key is available
         // only for pthread lib and we don't use it. I can't find other way to it, otherwise please switch this to
@@ -319,19 +294,8 @@ namespace AZ
         ThreadPoolSchema::GetThreadPoolData m_threadPoolGetter;
         ThreadPoolSchema::SetThreadPoolData m_threadPoolSetter;
 
-#if !defined(AZ_OS64) && (ATOMIC_ADDRESS_LOCK_FREE==2)
-#   define AZ_THREADPOOL_USE_STAMPED_STACK
-#endif //
-
-        // If we don't support lock free used locked page list
-    #       ifdef AZ_THREADPOOL_USE_STAMPED_STACK
-        // We don't have support for stamped lock free stack on X64 (yet we need CAS128), we can implement this using indices and another stack,
-        // but it becomes too complicated for already complicated code.
-        typedef AZStd::lock_free_intrusive_stamped_stack<Page, AZStd::lock_free_intrusive_stack_member_hook<Page, & Page::m_lfStack> > FreePagesType;
-    #       else
         // Fox X64 we push/pop pages using the m_mutex to sync. Pages are
         typedef Bucket::PageListType FreePagesType;
-    #       endif
         FreePagesType               m_freePages;
         AZStd::vector<ThreadPoolData*> m_threads;           ///< Array with all separate thread data. Used to traverse end free elements.
 
@@ -342,14 +306,10 @@ namespace AZ
         size_t                      m_minAllocationSize;
         size_t                      m_maxAllocationSize;
         bool                        m_isDynamic;
-    #   else
-        PoolSchemaImpl              m_allocator;
-    #   endif
         // TODO rbbaklov Changed to recursive_mutex from mutex for Linux support.
         AZStd::recursive_mutex      m_mutex;
     };
 
-#ifdef AZ_THREAD_LOCAL
     struct ThreadPoolData
     {
         AZ_CLASS_ALLOCATOR(ThreadPoolData, SystemAllocator, 0)
@@ -367,7 +327,6 @@ namespace AZ
         AllocatorType           m_allocator;
         FreedElementsStack      m_freedElements;
     };
-#endif
 }
 
 using namespace AZ;
@@ -1031,14 +990,10 @@ ThreadPoolSchema::NumAllocatedBytes() const
     size_type bytesAllocated = 0;
     {
         AZStd::lock_guard<AZStd::recursive_mutex> lock(m_impl->m_mutex);
-#ifdef AZ_THREAD_LOCAL
         for (size_t i = 0; i < m_impl->m_threads.size(); ++i)
         {
             bytesAllocated += m_impl->m_threads[i]->m_allocator.m_numBytesAllocated;
         }
-#else
-        bytesAllocated +=  m_impl->m_allocator.m_allocator.m_numBytesAllocated;
-#endif
     }
     return bytesAllocated;
 }
@@ -1050,11 +1005,7 @@ ThreadPoolSchema::NumAllocatedBytes() const
 ThreadPoolSchema::size_type
 ThreadPoolSchema::Capacity() const
 {
-#ifdef AZ_THREAD_LOCAL
     return m_impl->m_numStaticPages * m_impl->m_pageSize;
-#else
-    return m_impl->m_allocator.m_numStaticPages * m_impl->m_allocator.m_allocator.m_pageSize;
-#endif
 }
 
 //=========================================================================
@@ -1064,11 +1015,7 @@ ThreadPoolSchema::Capacity() const
 IAllocatorAllocate*
 ThreadPoolSchema::GetPageAllocator()
 {
-#ifdef AZ_THREAD_LOCAL
     return m_impl->m_pageAllocator;
-#else
-    return m_impl->m_allocator.m_pageAllocator;
-#endif
 }
 
 
@@ -1077,7 +1024,6 @@ ThreadPoolSchema::GetPageAllocator()
 // [9/15/2009]
 //=========================================================================
 ThreadPoolSchemaImpl::ThreadPoolSchemaImpl(const ThreadPoolSchema::Descriptor& desc, ThreadPoolSchema::GetThreadPoolData threadPoolGetter, ThreadPoolSchema::SetThreadPoolData threadPoolSetter)
-#ifdef AZ_THREAD_LOCAL
     : m_threadPoolGetter(threadPoolGetter)
     , m_threadPoolSetter(threadPoolSetter)
     , m_pageAllocator(desc.m_pageAllocator)
@@ -1087,9 +1033,6 @@ ThreadPoolSchemaImpl::ThreadPoolSchemaImpl(const ThreadPoolSchema::Descriptor& d
     , m_minAllocationSize(desc.m_minAllocationSize)
     , m_maxAllocationSize(desc.m_maxAllocationSize)
     , m_isDynamic(desc.m_isDynamic)
-#else
-    : m_allocator(desc)
-#endif
 {
 #   if AZ_TRAIT_OS_HAS_CRITICAL_SECTION_SPIN_COUNT
     // In memory allocation case (usually tools) we might have high contention,
@@ -1097,7 +1040,6 @@ ThreadPoolSchemaImpl::ThreadPoolSchemaImpl(const ThreadPoolSchema::Descriptor& d
     SetCriticalSectionSpinCount(m_mutex.native_handle(), 4000);
 #   endif
 
-#ifdef AZ_THREAD_LOCAL
     if (m_pageAllocator == 0)
     {
         m_pageAllocator = &AllocatorInstance<SystemAllocator>::Get();  // use the SystemAllocator if no page allocator is provided
@@ -1116,7 +1058,6 @@ ThreadPoolSchemaImpl::ThreadPoolSchemaImpl(const ThreadPoolSchema::Descriptor& d
             memBlock += m_pageSize;
         }
     }
-#endif // AZ_THREAD_LOCAL
 }
 
 //=========================================================================
@@ -1125,7 +1066,6 @@ ThreadPoolSchemaImpl::ThreadPoolSchemaImpl(const ThreadPoolSchema::Descriptor& d
 //=========================================================================
 ThreadPoolSchemaImpl::~ThreadPoolSchemaImpl()
 {
-#ifdef AZ_THREAD_LOCAL
     // clean up all the thread data.
     // IMPORTANT: We assume/rely that all threads (except the calling one) are or will
     // destroyed before you create another instance of the pool allocation.
@@ -1153,13 +1093,6 @@ ThreadPoolSchemaImpl::~ThreadPoolSchemaImpl()
     if (m_staticDataBlock)
     {
         Page* page;
-#   ifdef AZ_THREADPOOL_USE_STAMPED_STACK
-        while ((page = m_freePages.pop())!=NULL)
-        {
-            (void)page;
-            AZ_Assert(IsInStaticBlock(page), "All dynamic pages should be free by now!");
-        }
-#   else
         {
             AZStd::lock_guard<AZStd::recursive_mutex> lock(m_mutex);
             while (!m_freePages.empty())
@@ -1169,7 +1102,6 @@ ThreadPoolSchemaImpl::~ThreadPoolSchemaImpl()
                 AZ_Assert(IsInStaticBlock(page), "All dynamic pages should be free by now!");
             }
         }
-#   endif // AZ_THREADPOOL_USE_STAMPED_STACK
 
         char* memBlock = reinterpret_cast<char*>(m_staticDataBlock);
         size_t pageDataSize = m_pageSize - sizeof(Page);
@@ -1181,9 +1113,6 @@ ThreadPoolSchemaImpl::~ThreadPoolSchemaImpl()
         }
         m_pageAllocator->DeAllocate(m_staticDataBlock);
     }
-#else // !AZ_THREAD_LOCAL
-    m_allocator.m_allocator.GarbageCollect(true);
-#endif // !AZ_THREAD_LOCAL
 }
 
 //=========================================================================
@@ -1193,7 +1122,6 @@ ThreadPoolSchemaImpl::~ThreadPoolSchemaImpl()
 ThreadPoolSchema::pointer_type
 ThreadPoolSchemaImpl::Allocate(ThreadPoolSchema::size_type byteSize, ThreadPoolSchema::size_type alignment, int flags)
 {
-#ifdef AZ_THREAD_LOCAL
     (void)flags;
 
     ThreadPoolData* threadData = m_threadPoolGetter();
@@ -1218,10 +1146,6 @@ ThreadPoolSchemaImpl::Allocate(ThreadPoolSchema::size_type byteSize, ThreadPoolS
     }
 
     return threadData->m_allocator.Allocate(byteSize, alignment);
-#else
-    AZStd::lock_guard<AZStd::recursive_mutex> lock(m_mutex);
-    return m_allocator.Allocate(byteSize, alignment, flags);
-#endif
 }
 
 //=========================================================================
@@ -1231,7 +1155,6 @@ ThreadPoolSchemaImpl::Allocate(ThreadPoolSchema::size_type byteSize, ThreadPoolS
 void
 ThreadPoolSchemaImpl::DeAllocate(ThreadPoolSchema::pointer_type ptr)
 {
-#ifdef AZ_THREAD_LOCAL
     Page* page = PageFromAddress(ptr);
     if (page==NULL)
     {
@@ -1257,10 +1180,6 @@ ThreadPoolSchemaImpl::DeAllocate(ThreadPoolSchema::pointer_type ptr)
 #endif
         page->m_threadData->m_freedElements.push(*fakeLFNode);
     }
-#else
-    AZStd::lock_guard<AZStd::recursive_mutex> lock(m_mutex);
-    m_allocator.DeAllocate(ptr);
-#endif
 }
 
 //=========================================================================
@@ -1270,7 +1189,6 @@ ThreadPoolSchemaImpl::DeAllocate(ThreadPoolSchema::pointer_type ptr)
 ThreadPoolSchema::size_type
 ThreadPoolSchemaImpl::AllocationSize(ThreadPoolSchema::pointer_type ptr)
 {
-#ifdef AZ_THREAD_LOCAL
     Page* page = PageFromAddress(ptr);
     if (page==NULL)
     {
@@ -1278,10 +1196,6 @@ ThreadPoolSchemaImpl::AllocationSize(ThreadPoolSchema::pointer_type ptr)
     }
     AZ_Assert(page->m_threadData!=0, ("We must have valid page thread data for the page!"));
     return page->m_threadData->m_allocator.AllocationSize(ptr);
-#else
-    AZStd::lock_guard<AZStd::recursive_mutex> lock(m_mutex);
-    return m_allocator.AllocationSize(ptr);
-#endif
 }
 
 //=========================================================================
@@ -1291,11 +1205,7 @@ ThreadPoolSchemaImpl::AllocationSize(ThreadPoolSchema::pointer_type ptr)
 AZ_INLINE ThreadPoolSchemaImpl::Page*
 ThreadPoolSchemaImpl::PopFreePage()
 {
-#ifdef AZ_THREAD_LOCAL
     Page* page;
-#ifdef AZ_THREADPOOL_USE_STAMPED_STACK
-    page = m_freePages.pop();
-#   else
     {
         AZStd::lock_guard<AZStd::recursive_mutex> lock(m_mutex);
         if (m_freePages.empty())
@@ -1308,7 +1218,6 @@ ThreadPoolSchemaImpl::PopFreePage()
             m_freePages.pop_front();
         }
     }
-#   endif // AZ_THREADPOOL_USE_STAMPED_STACK
     if (page)
     {
 #   ifdef AZ_DEBUG_BUILD
@@ -1318,10 +1227,6 @@ ThreadPoolSchemaImpl::PopFreePage()
         page->m_threadData = m_threadPoolGetter();
     }
     return page;
-#else
-    AZ_Assert(false, "This code should not be called!");
-    return 0;
-#endif
 }
 
 //=========================================================================
@@ -1331,22 +1236,13 @@ ThreadPoolSchemaImpl::PopFreePage()
 AZ_INLINE void
 ThreadPoolSchemaImpl::PushFreePage(Page* page)
 {
-#ifdef AZ_THREAD_LOCAL
 #ifdef AZ_DEBUG_BUILD
     page->m_threadData = 0;
 #endif
-#ifdef AZ_THREADPOOL_USE_STAMPED_STACK
-    m_freePages.push(*page);
-#   else
     {
         AZStd::lock_guard<AZStd::recursive_mutex> lock(m_mutex);
         m_freePages.push_front(*page);
     }
-#   endif // AZ_THREADPOOL_USE_STAMPED_STACK
-#else
-    (void)page;
-    AZ_Assert(false, "This code should not be called!");
-#endif
 }
 
 //=========================================================================
@@ -1356,62 +1252,34 @@ ThreadPoolSchemaImpl::PushFreePage(Page* page)
 void
 ThreadPoolSchemaImpl::GarbageCollect()
 {
-#ifdef AZ_THREAD_LOCAL
     if (!m_isDynamic)
     {
         return;                // we have the memory statically allocated, can't collect garbage.
     }
-#   ifdef AZ_THREADPOOL_USE_STAMPED_STACK
+
     FreePagesType staticPages;
-    Page* page;
-    while ((page = m_freePages.pop())!=0)
+    AZStd::lock_guard<AZStd::recursive_mutex> lock(m_mutex);
+    while (!m_freePages.empty())
     {
+        Page* page = &m_freePages.front();
+        m_freePages.pop_front();
         if (IsInStaticBlock(page))
         {
-            staticPages.push(*page);
+            staticPages.push_front(*page);
         }
         else
         {
             FreePage(page);
         }
     }
-    while ((page = staticPages.pop())!=0)
+    while (!staticPages.empty())
     {
-        m_freePages.push(*page);
+        Page* page = &staticPages.front();
+        staticPages.pop_front();
+        m_freePages.push_front(*page);
     }
-#   else
-    {
-        FreePagesType staticPages;
-        AZStd::lock_guard<AZStd::recursive_mutex> lock(m_mutex);
-        while (!m_freePages.empty())
-        {
-            Page* page = &m_freePages.front();
-            m_freePages.pop_front();
-            if (IsInStaticBlock(page))
-            {
-                staticPages.push_front(*page);
-            }
-            else
-            {
-                FreePage(page);
-            }
-        }
-        while (!staticPages.empty())
-        {
-            Page* page = &staticPages.front();
-            staticPages.pop_front();
-            m_freePages.push_front(*page);
-        }
-    }
-#   endif // AZ_THREADPOOL_USE_STAMPED_STACK
-
-#else
-    AZStd::lock_guard<AZStd::recursive_mutex> lock(m_mutex);
-    m_allocator.GarbageCollect();
-#endif
 }
 
-#ifdef AZ_THREAD_LOCAL
 //=========================================================================
 // SetupFreeList
 // [9/15/2009]
@@ -1452,6 +1320,3 @@ ThreadPoolData::~ThreadPoolData()
         m_allocator.DeAllocate(fakeLFNode);
     }
 }
-#endif //  AZ_THREAD_LOCAL
-
-#endif // #ifndef AZ_UNITY_BUILD

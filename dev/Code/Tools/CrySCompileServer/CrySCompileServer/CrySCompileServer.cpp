@@ -28,7 +28,7 @@
 #include <string>
 #include <regex>
 
-#if defined(AZ_PLATFORM_APPLE)
+#if AZ_TRAIT_OS_PLATFORM_APPLE
 // Needed for geteuid()
 #include <sys/types.h>
 #include <unistd.h>
@@ -137,6 +137,11 @@ public:
         {
             int runAsRoot = atoi(strValue.c_str());
             SEnviropment::Instance().m_RunAsRoot = (runAsRoot == 1);
+        }
+
+        if (azstricmp(strKey.c_str(), "ProvoHardwareTarget") == 0)
+        {
+            SEnviropment::Instance().m_ProvoHardwareTarget = atoi(strValue.c_str());
         }
     }
 

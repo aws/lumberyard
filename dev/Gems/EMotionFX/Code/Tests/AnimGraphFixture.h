@@ -13,14 +13,19 @@
 #pragma once
 
 #include "SystemComponentFixture.h"
+#include <EMotionFX/Source/MotionSet.h>
+
+
 
 namespace EMotionFX
 {
     class Actor;
     class ActorInstance;
     class AnimGraph;
+    class AnimGraphStateMachine;
+    class AnimGraphStateTransition;
     class AnimGraphInstance;
-    class MotionSet;
+    class AnimGraphTimeCondition;
     class Transform;
 
     class AnimGraphFixture : public SystemComponentFixture
@@ -34,6 +39,8 @@ namespace EMotionFX
         // machine created
         virtual void ConstructGraph();
 
+        AZStd::string SerializeAnimGraph() const;
+
         // Evaluates the graph
         void Evaluate();
 
@@ -41,10 +48,37 @@ namespace EMotionFX
 
         void AddValueParameter(const AZ::TypeId& typeId, const AZStd::string& name);
 
+        // Helper functions for state machine construction (Works on m_rootStateMachine)
+        AnimGraphStateTransition* AddTransition(AnimGraphNode* source, AnimGraphNode* target, float time);
+        AnimGraphTimeCondition* AddTimeCondition(AnimGraphStateTransition* transition, float countDownTime);
+        AnimGraphStateTransition* AddTransitionWithTimeCondition(AnimGraphNode* source, AnimGraphNode* target, float blendTime, float countDownTime);
+
+        // Helper function for motion set construction (Works on m_motionSet)
+        MotionSet::MotionEntry* AddMotionEntry(const AZStd::string& motionId, float motionMaxTime);
+
+
+        using SimulateFrameCallback = std::function<void(AnimGraphInstance*, /*time*/float, /*timeDelta*/float, /*frame*/int)>;
+        using SimulateCallback = std::function<void(AnimGraphInstance*)>;
+
+        /**
+         * Simulation helper with callbacks before and after starting the simulation as well as
+         * callbakcs before and after the anim graph update.
+         * Example: expectedFps = 60, fpsVariance = 10 -> actual framerate = [55, 65]
+         * @param[in] simulationTime Simulation time in seconds.
+         * @param[in] expectedFps is the targeted frame rate
+         * @param[in] fpsVariance is the range in which the instabilities happen.
+         */
+        void Simulate(float simulationTime, float expectedFps, float fpsVariance,
+            SimulateCallback preCallback,
+            SimulateCallback postCallback,
+            SimulateFrameCallback preUpdateCallback,
+            SimulateFrameCallback postUpdateCallback);
+
     protected:
         Actor* m_actor = nullptr;
         ActorInstance* m_actorInstance = nullptr;
         AnimGraph* m_animGraph = nullptr;
+        AnimGraphStateMachine* m_rootStateMachine = nullptr;
         AnimGraphInstance* m_animGraphInstance = nullptr;
         MotionSet* m_motionSet = nullptr;        
     };

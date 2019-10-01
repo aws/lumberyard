@@ -15,14 +15,12 @@
 #include <AzCore/std/containers/vector.h>
 #include <AzCore/std/containers/map.h>
 #include <AzCore/std/utils.h>
-#include <AzCore/std/string/string.h>
+#include <AzCore/std/string/osstring.h>
 #include <AzCore/std/parallel/mutex.h>
 #include <AzCore/std/parallel/atomic.h>
 #include <AzCore/std/parallel/lock.h>
 #include <AzCore/IO/FileIO.h>
-#include <AzCore/IO/SystemFile.h> // for AZ_MAX_PATH_LEN
 #include <AzCore/Memory/OSAllocator.h>
-#include <AzCore/std/string/osstring.h>
 #include <AzCore/RTTI/RTTI.h>
 
 // This header file and CPP handles the platform specific implementation of code as defined by the FileIOBase interface class.
@@ -33,25 +31,12 @@ namespace AZ
 {
     namespace IO
     {
-#if defined(AZ_PLATFORM_ANDROID)
-        typedef FILE* OSHandleType; // Reserve a type so that its easy to convert to CreateFile for example
-        struct FileDescriptor
-        {
-            AZ::OSString m_filename;
-            OSHandleType m_handle;
-            AZ::u64      m_size;
-            bool         m_isPackaged;
-        };
-#else
-        using FileDescriptor = SystemFile;
-#endif
-
-
+        class SystemFile;
         class LocalFileIO
             : public FileIOBase
         {
         public:
-            AZ_RTTI(LocalFileIO, "{87A8D32B-F695-4105-9A4D-D99BE15DFD50}");
+            AZ_RTTI(LocalFileIO, "{87A8D32B-F695-4105-9A4D-D99BE15DFD50}", FileIOBase);
             AZ_CLASS_ALLOCATOR(LocalFileIO, OSAllocator, 0);
 
             LocalFileIO();
@@ -93,12 +78,7 @@ namespace AZ
         private:
             typedef AZStd::pair<AZ::OSString, AZ::OSString> AliasType;
 
-#if defined(AZ_PLATFORM_ANDROID)
-            OSHandleType GetFilePointerFromHandle(HandleType fileHandle);
-#else
             SystemFile* GetFilePointerFromHandle(HandleType fileHandle);
-#endif
-            const FileDescriptor* GetFileDescriptorFromHandle(HandleType fileHandle);
 
             HandleType GetNextHandle();
             
@@ -113,7 +93,7 @@ namespace AZ
 
             mutable AZStd::recursive_mutex m_openFileGuard;
             AZStd::atomic<HandleType> m_nextHandle;
-            AZStd::map<HandleType, FileDescriptor, AZStd::less<HandleType>, AZ::OSStdAllocator> m_openFiles;
+            AZStd::map<HandleType, SystemFile, AZStd::less<HandleType>, AZ::OSStdAllocator> m_openFiles;
             AZStd::vector<AliasType, AZ::OSStdAllocator> m_aliases;
 
             void CheckInvalidWrite(const char* path);

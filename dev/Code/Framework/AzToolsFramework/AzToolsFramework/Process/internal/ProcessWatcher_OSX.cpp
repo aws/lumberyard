@@ -12,7 +12,7 @@
 
 #include "StdAfx.h"
 
-#ifdef AZ_PLATFORM_APPLE
+#if AZ_TRAIT_OS_PLATFORM_APPLE
 
 #include <AzToolsFramework/Process/ProcessWatcher.h>
 #include <AzToolsFramework/Process/ProcessCommunicator.h>
@@ -389,4 +389,4 @@ namespace AzToolsFramework
     }
 } //namespace AzToolsFramework
 
-#endif // AZ_PLATFORM_APPLE
+#endif // AZ_TRAIT_OS_PLATFORM_APPLE

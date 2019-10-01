@@ -144,6 +144,7 @@
 #define ID_EDIT_FETCH                              33465
 #define ID_FILE_EXPORTTOGAMENOSURFACETEXTURE       33473
 #define ID_VIEW_SWITCHTOGAME                       33477
+#define ID_VIEW_DEPLOY                             33478
 #define ID_EDIT_DELETE                             33480
 #define ID_MOVE_OBJECT                             33481
 #define ID_SELECT_OBJECT                           33482
@@ -480,6 +481,7 @@
 #define ID_AWS_ACTIVE_DEPLOYMENT                     36045
 #define ID_AWS_GAMELIFT_CONSOLE                      36046
 #define ID_AWS_COGNITO_CONSOLE                       36048
+#define ID_AWS_DEVICEFARM_CONSOLE                    36049
 #define ID_AWS_DYNAMODB_CONSOLE                      36050
 #define ID_AWS_S3_CONSOLE                            36052
 #define ID_AWS_LAMBDA_CONSOLE                        36054

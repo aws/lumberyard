@@ -1,0 +1,12 @@
+{
+    "auto":
+    {
+        "Platform/Mac":
+        [
+            "../Common/Unimplemented/AudioSystemImpl_wwise_Unimplemented.cpp",
+            "../Common/Unimplemented/CryAudioImplWwise_Unimplemented.cpp",
+            "CryAudioImplWwise_Traits_Mac.h",
+            "CryAudioImplWwise_Traits_Platform.h"
+        ]
+    }
+}

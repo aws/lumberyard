@@ -665,7 +665,7 @@ namespace EMStudio
             {
             case QMessageBox::Save:
             {
-                GetMainWindow()->GetFileManager()->SaveMotion(motion);
+                GetMainWindow()->GetFileManager()->SaveMotion(motion->GetID());
                 break;
             }
             case QMessageBox::Discard:
@@ -683,7 +683,7 @@ namespace EMStudio
         else
         {
             // save without asking first
-            GetMainWindow()->GetFileManager()->SaveMotion(motion);
+            GetMainWindow()->GetFileManager()->SaveMotion(motion->GetID());
         }
 
         return DirtyFileManager::FINISHED;

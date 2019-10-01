@@ -15,9 +15,14 @@
 #include "DHQSpinbox.hxx"
 #include "DHQSlider.hxx"
 #include "PropertyQTConstants.h"
+AZ_PUSH_DISABLE_WARNING(4251, "-Wunknown-warning-option") // 4251: 'QLayoutItem::align': class 'QFlags<Qt::AlignmentFlag>' needs to have dll-interface to be used by clients of class 'QLayoutItem'
 #include <QtWidgets/QHBoxLayout>
+AZ_POP_DISABLE_WARNING
 #include <AzCore/Math/MathUtils.h>
+AZ_PUSH_DISABLE_WARNING(4244 4251, "-Wunknown-warning-option") // 4244: conversion from 'int' to 'float', possible loss of data
+                                                               // 4251: 'QInputEvent::modState': class 'QFlags<Qt::KeyboardModifier>' needs to have dll-interface to be used by clients of class 'QInputEvent'
 #include <QWheelEvent>
+AZ_POP_DISABLE_WARNING
 
 namespace AzToolsFramework
 {
@@ -251,8 +256,8 @@ namespace AzToolsFramework
         }
 
         // Calculate the midpoint value of our slider range based on the normalized midpoint curve value
-        int range = m_sliderMax - m_sliderMin;
-        int sliderMidpoint = m_sliderMin + (m_curveMidpoint * range);
+        double range = m_sliderMax - m_sliderMin;
+        int sliderMidpoint = m_sliderMin + static_cast<int>(m_curveMidpoint * range);
 
         // Power curve variables based on the various slider min, midpoint, and max values
         double a = ((m_sliderMin * m_sliderMax) - (sliderMidpoint * sliderMidpoint)) / (m_sliderMin - (2 * sliderMidpoint) + m_sliderMax);
@@ -263,7 +268,7 @@ namespace AzToolsFramework
         // This part is executed when we get a new value from the user dragging the slider
         if (fromSlider)
         {
-            double normalizedValue = (double)(value - m_sliderMin) / (double)(range);
+            double normalizedValue = (value - static_cast<double>(m_sliderMin)) / range;
             double newSliderValue = a + b * std::exp(c * normalizedValue);
             return newSliderValue;
         }
@@ -274,7 +279,7 @@ namespace AzToolsFramework
         {
             double sliderValue = value / m_singleStep;
             double normalizedValue = std::log((sliderValue - a) / b) / c;
-            double newSliderValue = m_sliderMin + (normalizedValue * (double)(range));
+            double newSliderValue = m_sliderMin + (normalizedValue * range);
             return newSliderValue;
         }
     }
@@ -286,7 +291,7 @@ namespace AzToolsFramework
 
         if (change == SliderValueChange)
         {
-            m_sliderCurrent = round(ConvertToSliderValue(m_value));
+            m_sliderCurrent = static_cast<int>(round(ConvertToSliderValue(m_value)));
             m_pSlider->setValue(m_sliderCurrent);
             m_pSpinBox->setValue(m_value);
         }
@@ -304,7 +309,7 @@ namespace AzToolsFramework
                 m_sliderMax = static_cast<int>(qMin((m_softMaximum / m_singleStep), (double)std::numeric_limits<int>::max()));
             }
 
-            m_sliderCurrent = round(ConvertToSliderValue(m_value));
+            m_sliderCurrent = static_cast<int>(round(ConvertToSliderValue(m_value)));
             m_pSlider->setRange(m_sliderMin, m_sliderMax);
             m_pSlider->setValue(m_sliderCurrent);
             m_pSpinBox->setRange(m_minimum, m_maximum);

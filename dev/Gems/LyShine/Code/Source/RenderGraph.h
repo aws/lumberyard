@@ -17,6 +17,7 @@
 #include <LyShine/IRenderGraph.h>
 #include <AzCore/Memory/PoolAllocator.h>
 #include <AzCore/std/containers/stack.h>
+#include <AzCore/std/containers/set.h>
 #include <AzCore/Math/Color.h>
 
 #ifndef _RELEASE

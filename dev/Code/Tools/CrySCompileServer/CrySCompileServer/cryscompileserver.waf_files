@@ -40,6 +40,8 @@
             "Core/Server/CrySimpleJobCompile2.hpp",
             "Core/Server/CrySimpleJobRequest.cpp",
             "Core/Server/CrySimpleJobRequest.hpp",
+            "Core/Server/CrySimpleJobGetShaderList.cpp",
+            "Core/Server/CrySimpleJobGetShaderList.hpp",
             "Core/Server/CrySimpleMutex.cpp",
             "Core/Server/CrySimpleMutex.hpp",
             "Core/Server/CrySimpleServer.cpp",

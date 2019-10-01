@@ -182,6 +182,12 @@ void PerInstanceConstantBufferPool::Update(CRenderView& renderView, float realTi
                 SRendItem* renderItem = &renderItems[itemIndex];
                 CRenderObject* renderObject = renderItem->pObj;
 
+                if (!renderObject)
+                {
+                    AZ_Assert(false, "Failed to update static inst buffer pool, index %u - the render object is null", nextBufferIdx);
+                    continue;
+                }
+
                 if (renderObject->m_PerInstanceConstantBufferKey.IsValid())
                 {
                     continue;
@@ -203,6 +209,11 @@ void PerInstanceConstantBufferPool::Update(CRenderView& renderView, float realTi
                 if (nextInstanceIdx == 0)
                 {
                     mappedData = constantBuffer->BeginWrite();
+                    if (!mappedData)
+                    {
+                        AZ_Error("Renderer", false, "Failed to update static inst buffer pool, index %u", nextBufferIdx);
+                        return;
+                    }
                 }
 
                 HLSL_PerInstanceConstantBuffer* outputData = reinterpret_cast<HLSL_PerInstanceConstantBuffer*>(mappedData) + nextInstanceIdx;
@@ -277,10 +288,21 @@ void PerInstanceConstantBufferPool::UpdateConstantBuffer(ConstantUpdateCB consta
     AZ_Assert(m_CurrentRenderItem, "current render item is null");
 
     CRenderObject* renderObject = m_CurrentRenderItem->pObj;
+    if (!renderObject)
+    {
+        AZ_Assert(false, "Failed to update static inst buffer - the current render object is null");
+        return;
+    }
 
     float realTimePrev = realTime - CRenderer::GetElapsedTime();
 
-    void* mappedData = m_UpdateConstantBuffer->BeginWrite();
+    void* mappedData = m_UpdateConstantBuffer->BeginWrite();    
+    if (!mappedData)
+    {
+        AZ_Error("Renderer", false, "Failed to update static inst buffer");
+        return;
+    }
+
     BuildPerInstanceConstantBuffer(reinterpret_cast<HLSL_PerInstanceConstantBuffer*>(mappedData), renderObject, realTime, realTimePrev);
 
     constantUpdateCallback(mappedData);

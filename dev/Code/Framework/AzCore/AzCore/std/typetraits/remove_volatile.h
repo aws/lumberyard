@@ -9,44 +9,13 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#ifndef AZSTD_TYPE_TRAITS_REMOVE_VOLATILE_INCLUDED
-#define AZSTD_TYPE_TRAITS_REMOVE_VOLATILE_INCLUDED
+#pragma once
 
-#include <AzCore/std/typetraits/is_const.h>
-#include <AzCore/std/typetraits/internal/cv_traits_impl.h>
-#include <AzCore/std/typetraits/type_trait_def.h>
+#include <AzCore/std/typetraits/config.h>
 
 namespace AZStd
 {
-    namespace Internal
-    {
-        template <typename T, bool is_const>
-        struct remove_volatile_helper
-        {
-            typedef T type;
-        };
-
-        template <typename T>
-        struct remove_volatile_helper<T, true>
-        {
-            typedef T const type;
-        };
-
-        template <typename T>
-        struct remove_volatile_impl
-        {
-            typedef typename remove_volatile_helper<
-                typename cv_traits_imp<T*>::unqualified_type
-                , ::AZStd::is_const<T>::value
-                >::type type;
-        };
-    }
-    // * convert a type T to a non-volatile type - remove_volatile<T>
-    AZSTD_TYPE_TRAIT_DEF1(remove_volatile, T, typename AZStd::Internal::remove_volatile_impl<T>::type)
-    AZSTD_TYPE_TRAIT_PARTIAL_SPEC1_1(typename T, remove_volatile, T &, T &)
-    AZSTD_TYPE_TRAIT_PARTIAL_SPEC1_2(typename T, AZStd::size_t N, remove_volatile, T volatile[N], T type[N])
-    AZSTD_TYPE_TRAIT_PARTIAL_SPEC1_2(typename T, AZStd::size_t N, remove_volatile, T const volatile[N], T const type[N])
+    using std::remove_volatile;
+    template<class T>
+    using remove_volatile_t = std::remove_volatile_t<T>;
 }
-
-#endif // AZSTD_TYPE_TRAITS_REMOVE_VOLATILE_INCLUDED
-#pragma once

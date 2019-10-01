@@ -83,7 +83,7 @@ namespace LmbrCentral
                     "Navigation", "The Navigation component provides basic pathfinding and pathfollowing services to an entity")
                     ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
                         ->Attribute(AZ::Edit::Attributes::Category, "AI")
-                        ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/Navigation.png")
+                        ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/Navigation.svg")
                         ->Attribute(AZ::Edit::Attributes::ViewportIcon, "Editor/Icons/Components/Viewport/Navigation.png")
                         ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("Game", 0x232b318c))
                         ->Attribute(AZ::Edit::Attributes::AutoExpand, true)

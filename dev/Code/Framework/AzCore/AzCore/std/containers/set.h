@@ -12,6 +12,7 @@
 #ifndef AZSTD_ORDERED_SET_H
 #define AZSTD_ORDERED_SET_H 1
 
+#include <AzCore/std/containers/node_handle.h>
 #include <AzCore/std/containers/rbtree.h>
 #include <AzCore/std/functional_basic.h>
 #include <AzCore/std/algorithm.h>
@@ -70,14 +71,23 @@ namespace AZStd
         typedef typename tree_type::reverse_iterator            reverse_iterator;
         typedef typename tree_type::const_reverse_iterator      const_reverse_iterator;
 
+        using node_type = set_node_handle<set_node_traits<value_type, allocator_type, typename tree_type::node_type, typename tree_type::node_deleter>>;
+        using insert_return_type = insert_return_type<iterator, node_type>;
+
         AZ_FORCE_INLINE explicit set(const Compare& comp = Compare(), const Allocator& alloc = Allocator())
             : m_tree(comp, alloc) {}
+        explicit set(const Allocator& alloc)
+            : m_tree(alloc) {}
         template <class InputIterator>
         AZ_FORCE_INLINE set(InputIterator first, InputIterator last, const Compare& comp = Compare(), const Allocator& alloc = Allocator())
             : m_tree(comp, alloc)
         {
             m_tree.insert_unique(first, last);
         }
+        set(const std::initializer_list<value_type>& list, const Compare& comp = Compare(), const Allocator& alloc = Allocator())
+            : set(list.begin(), list.end(), comp, alloc) {}
+        set(const std::initializer_list<value_type>& list, const Allocator& alloc)
+            : set(list, Compare(), alloc) {}
         AZ_FORCE_INLINE set(const this_type& rhs)
             : m_tree(rhs.m_tree)  {}
         AZ_FORCE_INLINE set(const this_type& rhs, const Allocator& alloc)
@@ -105,7 +115,6 @@ namespace AZStd
         AZ_FORCE_INLINE iterator insert(iterator insertPos, const value_type& value)    { return m_tree.insert_unique(insertPos, value); }
         template <class InputIterator>
         AZ_FORCE_INLINE void insert(InputIterator first, InputIterator last)            { m_tree.insert_unique(first, last); }
-#ifdef AZ_HAS_RVALUE_REFS
         set(this_type&& rhs)
             : m_tree(AZStd::move(rhs.m_tree)) {}
         set(this_type&& rhs, const Allocator& alloc)
@@ -137,7 +146,28 @@ namespace AZStd
         {
             return m_tree.emplace_unique(insertPos, AZStd::forward<InputArguments>(arguments) ...);
         }
-#endif
+        insert_return_type insert(node_type&& nodeHandle)
+        {
+            AZSTD_CONTAINER_ASSERT(nodeHandle.empty() || nodeHandle.get_allocator() == get_allocator(),
+                "node_type with incompatible allocator passed to set::insert(node_type&& nodeHandle)");
+            return m_tree.template node_handle_insert_unique<insert_return_type>(AZStd::move(nodeHandle));
+        }
+        iterator insert(const_iterator hint, node_type&& nodeHandle)
+        {
+            AZSTD_CONTAINER_ASSERT(nodeHandle.empty() || nodeHandle.get_allocator() == get_allocator(),
+                "node_type with incompatible allocator passed to set::insert(const_iterator hint, node_type&& nodeHandle)");
+            return m_tree.node_handle_insert_unique(hint, AZStd::move(nodeHandle));
+        }
+
+        node_type extract(const key_type& key)
+        {
+            return m_tree.template node_handle_extract<node_type>(key);
+        }
+        node_type extract(const_iterator it)
+        {
+            return m_tree.template node_handle_extract<node_type>(it);
+        }
+
         AZ_FORCE_INLINE iterator erase(const_iterator erasePos)                         { return m_tree.erase(erasePos); }
         AZ_FORCE_INLINE size_type erase(const key_type& key)                            { return m_tree.erase_unique(key); }
         AZ_FORCE_INLINE iterator erase(const_iterator first, const_iterator last)       { return m_tree.erase(first, last); }
@@ -266,15 +296,23 @@ namespace AZStd
 
         typedef typename tree_type::reverse_iterator            reverse_iterator;
         typedef typename tree_type::const_reverse_iterator      const_reverse_iterator;
+        
+        using node_type = set_node_handle<set_node_traits<value_type, allocator_type, typename tree_type::node_type, typename tree_type::node_deleter>>;
 
         AZ_FORCE_INLINE explicit multiset(const Compare& comp = Compare(), const Allocator& alloc = Allocator())
             : m_tree(comp, alloc) {}
+        explicit multiset(const Allocator& alloc)
+            : m_tree(alloc) {}
         template <class InputIterator>
         AZ_FORCE_INLINE multiset(InputIterator first, InputIterator last, const Compare& comp = Compare(), const Allocator& alloc = Allocator())
             : m_tree(comp, alloc)
         {
             m_tree.insert_equal(first, last);
         }
+        multiset(const std::initializer_list<value_type>& list, const Compare& comp = Compare(), const Allocator& alloc = Allocator())
+            : multiset(list.begin(), list.end(), comp, alloc) {}
+        multiset(const std::initializer_list<value_type>& list, const Allocator& alloc)
+            : multiset(list, Compare(), alloc) {}
         AZ_FORCE_INLINE multiset(const this_type& rhs)
             : m_tree(rhs.m_tree) {}
         AZ_FORCE_INLINE multiset(const this_type& rhs, const Allocator& alloc)
@@ -307,7 +345,6 @@ namespace AZStd
         AZ_FORCE_INLINE iterator erase(const_iterator first, const_iterator last)       { return m_tree.erase(first, last); }
         AZ_FORCE_INLINE void clear() { m_tree.clear(); }
 
-#ifdef AZ_HAS_RVALUE_REFS
         multiset(this_type&& rhs)
             : m_tree(AZStd::move(rhs.m_tree)) {}
         multiset(this_type&& rhs, const Allocator& alloc)
@@ -321,7 +358,7 @@ namespace AZStd
             }
             return *this;
         }
-        AZStd::pair<iterator, bool> insert(value_type&& value)
+        iterator insert(value_type&& value)
         {
             return m_tree.insert_equal(AZStd::forward<value_type>(value));
         }
@@ -340,7 +377,28 @@ namespace AZStd
         {
             return m_tree.emplace_equal(insertPos, AZStd::forward<InputArguments>(arguments) ...);
         }
-#endif
+
+        iterator insert(node_type&& nodeHandle)
+        {
+            AZSTD_CONTAINER_ASSERT(nodeHandle.empty() || nodeHandle.get_allocator() == get_allocator(),
+                "node_type with incompatible allocator passed to multiset::insert(node_type&& nodeHandle)");
+            return m_tree.node_handle_insert_equal(AZStd::move(nodeHandle));
+        }
+        iterator insert(const_iterator hint, node_type&& nodeHandle)
+        {
+            AZSTD_CONTAINER_ASSERT(nodeHandle.empty() || nodeHandle.get_allocator() == get_allocator(),
+                "node_type with incompatible allocator passed to multiset::insert(const_iterator hint, node_type&& nodeHandle)");
+            return m_tree.node_handle_insert_equal(hint, AZStd::move(nodeHandle));
+        }
+
+        node_type extract(const key_type& key)
+        {
+            return m_tree.template node_handle_extract<node_type>(key);
+        }
+        node_type extract(const_iterator it)
+        {
+            return m_tree.template node_handle_extract<node_type>(it);
+        }
 
         // set operations:
         AZ_FORCE_INLINE const_iterator find(const key_type& key) const          { return m_tree.find(key); }

@@ -107,7 +107,7 @@ namespace AzQtComponents
 
     void FancyDockingDropZoneWidget::Stop()
     {
-#ifdef AZ_PLATFORM_APPLE_OSX
+#ifdef AZ_PLATFORM_MAC
         // macOS needs a bit help, WA_TransparentForMouseEvents doesn't always work
         // there's a rare edge case when dragging while a popup is open which leads to events being sent to this window
         // even if it's not visible. As far as I can tell it's not a Qt bug, the OS sends the events to this window.

@@ -12,7 +12,10 @@
 
 def build(bld):
     bld.DefineGem(
-        includes = ['Include', 'Source'],
+        includes = ['Include', 
+                    'Source',
+                    bld.Path('Code/CryEngine/CryCommon')
+                   ],
         editor = dict(
             defines = ['ROADS_RIVERS_EDITOR'],
             features = ['qt5', 'ExternalLyIdentity', 'ExternalLyMetrics'],
@@ -23,6 +26,7 @@ def build(bld):
                         bld.Path('Code/Sandbox'),
                         bld.Path('Code/Sandbox/Editor'),
                         bld.Path('Code/Sandbox/Editor/Include'),
+                        bld.Path('Code/CryEngine/CryCommon')
                         ],
 
             uselib = ['QT5CORE', 'QT5QUICK', 'QT5QML','QT5GUI', 'QT5WIDGETS'],

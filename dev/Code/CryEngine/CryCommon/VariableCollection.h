@@ -716,7 +716,8 @@ namespace Variables
             }
 
             ExpressionOperator(int type, int left, int right)
-                : value(false)
+                : variableID(0)
+                , value(false)
                 , opType((Type)type)
                 , operandLeft((uint8)left)
                 , operandRight((uint8)right)
@@ -727,12 +728,17 @@ namespace Variables
                 : variableID(varID)
                 , value(false)
                 , opType((Type)type)
+                , operandLeft(0)
+                , operandRight(0)
             {
             }
 
             ExpressionOperator(int type, bool val)
-                : value(val)
+                : variableID(0)
+                , value(val)
                 , opType((Type)type)
+                , operandLeft(0)
+                , operandRight(0)
             {
             }
 

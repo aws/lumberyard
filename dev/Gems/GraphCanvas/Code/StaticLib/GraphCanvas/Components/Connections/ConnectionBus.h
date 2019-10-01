@@ -38,7 +38,7 @@ namespace GraphCanvas
             : m_sourceEndpoint(sourceEndpoint)
             , m_targetEndpoint(targetEndpoint)
         {
-        }
+        }        
 
         Endpoint m_sourceEndpoint;
         Endpoint m_targetEndpoint;
@@ -87,6 +87,23 @@ namespace GraphCanvas
             return ConnectionEndpoints(GetSourceEndpoint(), GetTargetEndpoint());
         }
 
+        Endpoint FindOtherEndpoint(const Endpoint& endpoint)
+        {
+            ConnectionEndpoints endpoints = GetEndpoints();
+
+            if (endpoints.m_sourceEndpoint == endpoint)
+            {
+                return endpoints.m_targetEndpoint;
+            }
+            else if (endpoints.m_targetEndpoint == endpoint)
+            {
+                return endpoints.m_sourceEndpoint;
+            }
+
+            AZ_Assert(false, "Unknown endpoint passed into connection");
+            return Endpoint();
+        }
+
         //! Changes the visual target of the connection to the specified endpoint. Will not
         //  modify the underlying model connection.
         virtual void SnapTargetDisplayTo(const Endpoint& endpoint) = 0;
@@ -130,7 +147,20 @@ namespace GraphCanvas
         virtual void OnTooltipChanged(const AZStd::string&) {}
 
         virtual void OnMoveBegin() {}
+
+        virtual void OnMoveFinalized(bool isValidConnection)
+        {
+            if (isValidConnection)
+            {
+                OnMoveComplete();
+            }
+        }
+
+        // ConnectionNotification OnMoveComplete renamed to OnMoveFinalized to allow for additional parameter
+        // Will be removed in a future release. Cannot deprecate method because it generates tons of warnings
+        // for default NotificationBus handler connection.
         virtual void OnMoveComplete() {}
+        
     };
 
     using ConnectionNotificationBus = AZ::EBus<ConnectionNotifications>;

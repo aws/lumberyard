@@ -380,7 +380,7 @@ namespace Audio
             IATLAudioObjectData* const pAudioObjectData,
             const IATLTriggerImplData* const pTriggerData,
             IATLEventData* const pEventData,
-            const TAudioSourceId sourceId) = 0;
+            const SATLSourceData* const pSourceData) = 0;
 
         ///////////////////////////////////////////////////////////////////////////////////////////////
         // <title StopEvent>
@@ -1010,6 +1010,13 @@ namespace Audio
         //      CreateAudioSource
         ///////////////////////////////////////////////////////////////////////////////////////////////
         virtual void DestroyAudioSource(TAudioSourceId sourceId) = 0;
+
+        ///////////////////////////////////////////////////////////////////////////////////////////////
+        // <title SetPanningMode>
+        // Summary:
+        // Arguments:
+        ///////////////////////////////////////////////////////////////////////////////////////////////
+        virtual void SetPanningMode(PanningMode mode) {}
     };
 
     using AudioSystemImplementationRequestBus = AZ::EBus<AudioSystemImplementationRequests>;

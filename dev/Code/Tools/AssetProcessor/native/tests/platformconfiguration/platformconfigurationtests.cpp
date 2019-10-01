@@ -608,3 +608,21 @@ TEST_F(PlatformConfigurationUnitTests, Test_MetaFileTypes)
     ASSERT_TRUE(QString::compare(config.GetMetaDataFileTypeAt(1).first, "yyyy", Qt::CaseInsensitive) == 0);
     ASSERT_TRUE(QString::compare(config.GetMetaDataFileTypeAt(1).second, "zzzz", Qt::CaseInsensitive) == 0);
 }
+
+TEST_F(PlatformConfigurationUnitTests, ReadCheckSever_FromConfig_Valid)
+{
+    using namespace AzToolsFramework::AssetSystem;
+    using namespace AssetProcessor;
+
+    const char* configFileName = ":/testdata/config_regular.ini";
+    UnitTestPlatformConfiguration config;
+    m_absorber.Clear();
+    ASSERT_TRUE(config.InitializeFromConfigFiles(configFileName));
+    ASSERT_EQ(m_absorber.m_numErrorsAbsorbed, 0);
+
+    const AssetProcessor::RecognizerContainer& recogs = config.GetAssetRecognizerContainer();
+
+    // verify that check server flag is set to true for i_caf
+    ASSERT_TRUE(recogs.contains("i_caf"));
+    ASSERT_TRUE(recogs["i_caf"].m_checkServer);
+}

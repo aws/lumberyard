@@ -36,6 +36,7 @@
 #include <SceneAPIExt/Behaviors/SkinRuleBehavior.h>
 #include <SceneAPIExt/Behaviors/LODRuleBehavior.h>
 #include <SceneAPIExt/Rules/ActorPhysicsSetupRule.h>
+#include <SceneAPIExt/Rules/SimulatedObjectSetupRule.h>
 #include <SceneAPIExt/Rules/ActorScaleRule.h>
 #include <SceneAPIExt/Rules/MetaDataRule.h>
 #include <SceneAPIExt/Rules/MeshRule.h>
@@ -56,6 +57,7 @@ namespace EMotionFX
             {
                 Group::ActorGroup::Reflect(context);
                 Rule::ActorPhysicsSetupRule::Reflect(context);
+                Rule::SimulatedObjectSetupRule::Reflect(context);
                 Rule::ActorScaleRule::Reflect(context);
                 Rule::MetaDataRule::Reflect(context);
                 Rule::CoordinateSystemRule::Reflect(context);

@@ -45,7 +45,7 @@ namespace GraphCanvas
         , public RootGraphicsItemNotificationBus::Handler
         , public DataSlotNotificationBus::MultiHandler
     {
-    public:	
+    public:
         AZ_CLASS_ALLOCATOR(DataConnectionGraphicsItem, AZ::SystemAllocator, 0);
         
         DataConnectionGraphicsItem(const AZ::EntityId& connectionEntityId);
@@ -69,6 +69,7 @@ namespace GraphCanvas
         ////
 
     protected:
+        Styling::ConnectionCurveType GetCurveStyle() const override;
         void UpdatePen() override;
         void OnPathChanged() override;
         

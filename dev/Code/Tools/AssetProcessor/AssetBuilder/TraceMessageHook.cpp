@@ -195,16 +195,19 @@ bool TraceMessageHook::OnOutput(const char* window, const char* message)
 
     void TraceMessageHook::DumpTraceContext(FILE* stream)
     {
-        AZStd::shared_ptr<const AzToolsFramework::Debug::TraceContextStack> stack = m_stacks->GetCurrentStack();
-        if (stack)
+        if (m_stacks)
         {
-            AZStd::string line;
-            size_t stackSize = stack->GetStackCount();
-            for (size_t i = 0; i < stackSize; ++i)
+            AZStd::shared_ptr<const AzToolsFramework::Debug::TraceContextStack> stack = m_stacks->GetCurrentStack();
+            if (stack)
             {
-                line.clear();
-                AzToolsFramework::Debug::TraceContextLogFormatter::PrintLine(line, *stack, i);
-                CleanMessage(stream, "C", line.c_str(), false);
+                AZStd::string line;
+                size_t stackSize = stack->GetStackCount();
+                for (size_t i = 0; i < stackSize; ++i)
+                {
+                    line.clear();
+                    AzToolsFramework::Debug::TraceContextLogFormatter::PrintLine(line, *stack, i);
+                    CleanMessage(stream, "C", line.c_str(), false);
+                }
             }
         }
     }

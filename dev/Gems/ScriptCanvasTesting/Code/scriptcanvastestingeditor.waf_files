@@ -8,6 +8,9 @@
     "Source/Framework": [
       "Source/Framework/ScriptCanvasTestVerify.cpp",
       "Source/Framework/ScriptCanvasTestVerify.h"
+    ],
+    "Source/Nodes": [
+      "Source/Nodes/BehaviorContextObjectTestNode.h"
     ]
   }
 }

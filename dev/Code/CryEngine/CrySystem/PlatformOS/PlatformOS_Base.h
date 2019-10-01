@@ -14,39 +14,25 @@
 #include "IPlatformOS.h"
 #include <CryListenerSet.h>
 #include <IGameFramework.h>
-#if defined(AZ_RESTRICTED_PLATFORM)
-    #if defined(AZ_PLATFORM_XENIA)
-        #include "Xenia/PlatformOS_Base_h_xenia.inl"
-    #elif defined(AZ_PLATFORM_PROVO)
-        #include "Provo/PlatformOS_Base_h_provo.inl"
-    #endif
-#endif
+#include <ITimer.h>
 
 class PlatformOS_Base
     : public IPlatformOS
-    , public ISystemEventListener
 {
-public:
-    PlatformOS_Base();
-    ~PlatformOS_Base();
-
-    unsigned int UserGetMaximumSignedInUsers() const override;
-    bool UserIsSignedIn(unsigned int userIndex) const override;
-    bool UserIsSignedIn(const IPlatformOS::TUserName& userName, unsigned int& outUserIndex) const override;
-    bool UserDoSignIn(unsigned int numUsersRequested, unsigned int controllerIndex) override;
-    void UserSignOut(unsigned int user) override;
-    int GetFirstSignedInUser() const override;
-    unsigned int UserGetPlayerIndex(const char* userName) const override { return 0; }
-    bool UserGetName(unsigned int userIndex, IPlatformOS::TUserName& outName) const override;
-    bool UserGetOnlineName(unsigned int userIndex, IPlatformOS::TUserName& outName) const override;
-    bool GetUserProfilePreference(unsigned int user, EUserProfilePreference ePreference, SUserProfileVariant& outResult) const override;
-    bool UserSelectStorageDevice(unsigned int userIndex, bool bForceUI = false) override;
-
 protected:
-    virtual void TrySignIn(unsigned int userId);
-
-    // ISystemEventListener
-    void OnSystemEvent(ESystemEvent event, UINT_PTR wparam, UINT_PTR lparam) override;
-
-    unsigned int m_pendingUserSignIn;
+    class CFileFinderCryPak
+        : public IFileFinder
+    {
+    public:
+        virtual IFileFinder::EFileState FileExists(const char* path) { return gEnv->pCryPak->IsFileExist(path) ? eFS_FileOrDirectory : eFS_NotExist; }
+        virtual intptr_t FindFirst(const char* filePattern, _finddata_t* fd)
+        {
+            return gEnv->pCryPak->FindFirst(filePattern, fd, 0, true);
+        }
+        virtual int FindClose(intptr_t handle) { return gEnv->pCryPak->FindClose(handle); }
+        virtual int FindNext(intptr_t handle, _finddata_t* fd) { return gEnv->pCryPak->FindNext(handle, fd); }
+        virtual void GetMemoryUsage(ICrySizer* pSizer) const { pSizer->Add(*this); }
+    private:
+        CDebugAllowFileAccess m_allowFileAccess;
+    };
 };

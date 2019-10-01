@@ -128,6 +128,7 @@ struct ISoftCodeMgr;
 struct IZLibCompressor;
 struct IZLibDecompressor;
 struct ILZ4Decompressor;
+class IZStdDecompressor;
 struct IOutputPrintSink;
 struct IPhysicsDebugRenderer;
 struct IPhysRenderer;
@@ -853,13 +854,13 @@ struct SSystemInitParams
 
     bool UseAssetCache() const
     {
-#if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_APPLE_OSX) || defined(AZ_PLATFORM_LINUX)
+#if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_MAC) || defined(AZ_PLATFORM_LINUX)
         char checkPath[AZ_MAX_PATH_LEN] = { 0 };
         azsnprintf(checkPath, AZ_MAX_PATH_LEN, "%s/engine.json", rootPathCache);
         return AZ::IO::SystemFile::Exists(checkPath);
 #else
         return false;
-#endif // defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_APPLE)
+#endif // defined(AZ_PLATFORM_WINDOWS) || AZ_TRAIT_OS_PLATFORM_APPLE
     }
 };
 
@@ -1389,6 +1390,7 @@ struct ISystem
     virtual IZLibCompressor* GetIZLibCompressor() = 0;
     virtual IZLibDecompressor* GetIZLibDecompressor() = 0;
     virtual ILZ4Decompressor* GetLZ4Decompressor() = 0;
+    virtual IZStdDecompressor* GetZStdDecompressor() = 0;
     virtual ICryPerfHUD* GetPerfHUD() = 0;
     virtual IPlatformOS* GetPlatformOS() = 0;
     virtual INotificationNetwork* GetINotificationNetwork() = 0;
@@ -1484,7 +1486,7 @@ struct ISystem
 
     // Summary:
     //   Creates new xml node.
-    virtual XmlNodeRef CreateXmlNode(const char* sNodeName = "", bool bReuseStrings = false) = 0;
+    virtual XmlNodeRef CreateXmlNode(const char* sNodeName = "", bool bReuseStrings = false, bool bIsProcessingInstruction = false) = 0;
     // Summary:
     //   Loads xml from memory buffer, returns 0 if load failed.
     virtual XmlNodeRef LoadXmlFromBuffer(const char* buffer, size_t size, bool bReuseStrings = false, bool bSuppressWarnings = false) = 0;
@@ -1778,10 +1780,6 @@ struct ISystem
     virtual void SetSystemGlobalState(const ESystemGlobalState systemGlobalState) = 0;
 
     // Summary:
-    //      Add a PlatformOS create flag
-    virtual void AddPlatformOSCreateFlag(const uint8 createFlag) = 0;
-
-    // Summary:
     //      Asynchronous memcpy
     // Note sync variable will be incremented (in calling thread) before job starts
     // and decremented when job finishes. Multiple async copies can therefore be
@@ -2018,7 +2016,7 @@ inline ISystemScheduler* GetISystemScheduler(void)
 
 // Description:
 //   This function must be called once by each module at the beginning, to setup global pointers.
-extern "C" DLL_EXPORT void ModuleInitISystem(ISystem* pSystem, const char* moduleName);
+extern "C" AZ_DLL_EXPORT void ModuleInitISystem(ISystem* pSystem, const char* moduleName);
 extern bool g_bProfilerEnabled;
 extern int g_iTraceAllocations;
 

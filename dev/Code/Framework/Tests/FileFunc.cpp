@@ -10,8 +10,8 @@
 *
 */
 
-#include <Tests/TestTypes.h>
 #include <AzCore/Outcome/Outcome.h>
+#include <AzCore/UnitTest/TestTypes.h>
 
 namespace AzFramework
 {

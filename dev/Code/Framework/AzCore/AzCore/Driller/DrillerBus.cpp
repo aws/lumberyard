@@ -9,7 +9,6 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#ifndef AZ_UNITY_BUILD
 
 #include <AzCore/Driller/DrillerBus.h>
 
@@ -71,6 +70,3 @@ namespace AZ
         }
     } // namespace Debug
 } // namespace AZ
-
-
-#endif // #ifndef AZ_UNITY_BUILD

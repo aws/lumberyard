@@ -71,6 +71,7 @@ void ConnectionManager::UpdateWhiteListFromBootStrap()
     Q_EMIT SyncWhiteListAndRejectedList(m_whiteListedAddresses, m_rejectedAddresses);
 }
 
+
 ConnectionManager::~ConnectionManager()
 {
     s_singleton = nullptr;
@@ -578,20 +579,31 @@ void ConnectionManager::IsAddressWhiteListed(QHostAddress incominghostaddr, void
     for (const AZStd::string& whitelistaddress : whitelistaddressList)
     {
         //address range matching
-        if (whitelistaddress.find('/') != AZStd::string::npos)
+        size_t maskLocation = whitelistaddress.find('/');
+        if (maskLocation != AZStd::string::npos)
         {
-            //If we successfully convert to an ipv4 address then the incominghostaddr MAY have been in an ipv6 representation of
-            //an ipv4 address. If this is the case the protocol of the incominghostaddr will be ipv6, this will cause the isInSubnet call
-            //to fail even it correctly matches because of mismatching protocols. To get around this create a new host address from the incomingIpAddress
-            //so that if it was an ipv6 representation of ipv4, then creating it directly from the ipv4 will allow the protocol check to pass
-            //and wont fail the subnet check just because the ipv4 was represented in ipv6 format. This is due to an early out check QT does for protocol and in my opinion,
-            //QT should first do a check and see if we are comparing convertible protocols before just early outing.
-            //If it wasn't convertible to ipv4 then we know it is ipv6 in which case the protocols will match which make this unnecessary, but still correct.
-            QHostAddress ha(incomingIpAddress);
-            if(ha.isInSubnet(QHostAddress::parseSubnet(whitelistaddress.c_str())))
+            //x.x.x.x/0 is all addresses
+            int mask = atoi(whitelistaddress.substr(maskLocation + 1).c_str());
+            if (mask == 0)
             {
                 Q_EMIT AddressIsWhiteListed(token, true);
                 return;
+            }
+            else
+            {
+                //If we successfully convert to an ipv4 address then the incominghostaddr MAY have been in an ipv6 representation of
+                //an ipv4 address. If this is the case the protocol of the incominghostaddr will be ipv6, this will cause the isInSubnet call
+                //to fail even it correctly matches because of mismatching protocols. To get around this create a new host address from the incomingIpAddress
+                //so that if it was an ipv6 representation of ipv4, then creating it directly from the ipv4 will allow the protocol check to pass
+                //and wont fail the subnet check just because the ipv4 was represented in ipv6 format. This is due to an early out check QT does for protocol and in my opinion,
+                //QT should first do a check and see if we are comparing convertible protocols before just early outing.
+                //If it wasn't convertible to ipv4 then we know it is ipv6 in which case the protocols will match which make this unnecessary, but still correct.
+                QHostAddress ha(incomingIpAddress);
+                if (ha.isInSubnet(QHostAddress::parseSubnet(whitelistaddress.c_str())))
+                {
+                    Q_EMIT AddressIsWhiteListed(token, true);
+                    return;
+                }
             }
         }
         else//direct address matching

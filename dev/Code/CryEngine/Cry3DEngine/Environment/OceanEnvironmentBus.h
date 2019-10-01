@@ -136,8 +136,8 @@ namespace AZ
         virtual AZ::Color GetFogColorPremultiplied() const = 0;
         virtual AZ::Color GetFogColor() const = 0;
         virtual void SetFogColor(const AZ::Color& fogColor) = 0;
-        virtual float GetFogColorMulitplier() const = 0;
-        virtual void SetFogColorMulitplier(float fogMulitplier) = 0;
+        virtual float GetFogColorMultiplier() const = 0;
+        virtual void SetFogColorMultiplier(float fogMultiplier) = 0;
         virtual AZ::Color GetNearFogColor() const = 0;
         virtual void SetNearFogColor(const AZ::Color& nearColor) = 0;
         virtual float GetFogDensity() const = 0;

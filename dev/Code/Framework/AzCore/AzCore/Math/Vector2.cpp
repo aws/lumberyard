@@ -9,7 +9,6 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#ifndef AZ_UNITY_BUILD
 
 #include <AzCore/Math/Vector2.h>
 #include <AzCore/Math/MathUtils.h>
@@ -31,5 +30,3 @@ const Vector2 Vector2::Slerp(const Vector2& dest, float t) const
     // The final result.
     return (((*this) * cosf(theta)) + (relativeVec * sinf(theta)));
 }
-
-#endif // #ifndef AZ_UNITY_BUILD

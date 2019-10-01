@@ -10,7 +10,6 @@
 *
 */
 
-#include <AzCore/std/smart_ptr/make_shared.h>
 #include "EMotionFXConfig.h"
 #include "Actor.h"
 #include "Motion.h"
@@ -34,12 +33,12 @@
 #include "SoftSkinDeformer.h"
 #include "DualQuatSkinDeformer.h"
 #include "DebugDraw.h"
+#include <EMotionFX/Source/SimulatedObjectSetup.h>
 
 #include <MCore/Source/IDGenerator.h>
 #include <MCore/Source/Compare.h>
 #include <MCore/Source/Quaternion.h>
 #include <MCore/Source/OBB.h>
-
 
 namespace EMotionFX
 {
@@ -101,6 +100,7 @@ namespace EMotionFX
         mDirtyFlag                  = false;
 
         m_physicsSetup              = AZStd::make_shared<PhysicsSetup>();
+        m_simulatedObjectSetup      = AZStd::make_shared<SimulatedObjectSetup>();
 
 #if defined(EMFX_DEVELOPMENT_BUILD)
         mIsOwnedByRuntime           = false;
@@ -238,16 +238,18 @@ namespace EMotionFX
         result->CopyTransformsFrom(this);
 
         result->mNodeMirrorInfos = mNodeMirrorInfos;
-
         result->m_physicsSetup = m_physicsSetup;
+        result->SetSimulatedObjectSetup(m_simulatedObjectSetup->Clone(result));
 
-        // trigger the event
         GetEMotionFX().GetEventManager()->OnPostCreateActor(result);
 
         return result;
     }
 
-
+    void Actor::SetSimulatedObjectSetup(const AZStd::shared_ptr<SimulatedObjectSetup>& setup)
+    {
+        m_simulatedObjectSetup = setup;
+    }
 
     // init node mirror info
     void Actor::AllocateNodeMirrorInfos()
@@ -263,7 +265,6 @@ namespace EMotionFX
             mNodeMirrorInfos[i].mFlags      = 0;
         }
     }
-
 
     // remove the node mirror info
     void Actor::RemoveNodeMirrorInfos()
@@ -845,6 +846,10 @@ namespace EMotionFX
         return m_physicsSetup;
     }
 
+    const AZStd::shared_ptr<SimulatedObjectSetup>& Actor::GetSimulatedObjectSetup() const
+    {
+        return m_simulatedObjectSetup;
+    }
 
     // remove all morph setups
     void Actor::RemoveAllMorphSetups(bool deleteMeshDeformers)
@@ -1473,6 +1478,8 @@ namespace EMotionFX
         {
             AutoDetectMirrorAxes();
         }
+
+        m_simulatedObjectSetup->InitAfterLoad(this);
 
         // build the static axis aligned bounding box by creating an actor instance (needed to perform cpu skinning mesh deforms and mesh scaling etc)
         // then copy it over to the actor

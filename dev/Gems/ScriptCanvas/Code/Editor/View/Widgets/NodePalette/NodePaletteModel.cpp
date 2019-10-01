@@ -164,6 +164,7 @@ namespace
             {
                 ScriptCanvasEditor::CategoryInformation categoryInfo;
 
+                bool isDeprecated = false;
                 AZStd::string categoryPath = classData->m_editData ? classData->m_editData->m_name : classData->m_name;
 
                 if (classData->m_editData)
@@ -193,7 +194,7 @@ namespace
                                 {
                                     categoryInfo.m_paletteOverride = categoryAttributeData->Get(nullptr);
                                 }
-                            }
+                            } 
                         }
                     }
 
@@ -215,16 +216,6 @@ namespace
                     if (classData == nullptr)
                     {
                         continue;
-                    }
-
-                    if (auto isDeprecatedAttributePtr = AZ::FindAttribute(AZ::Script::Attributes::Deprecated, classData->m_attributes))
-                    {
-                        bool isDeprecated = false;
-                        AZ::AttributeReader(nullptr, isDeprecatedAttributePtr).Read<bool>(isDeprecated);
-                        if (isDeprecated)
-                        {
-                            continue;
-                        }
                     }
 
                     // Detect primitive types os we avoid making nodes out of them.
@@ -704,6 +695,7 @@ namespace ScriptCanvasEditor
 
             bool isMissingEntry(false);
             bool isMissingTooltip(false);
+            bool isDeprecated(false);
 
             if (classData && classData->m_editData && classData->m_editData->m_name)
             {
@@ -767,6 +759,15 @@ namespace ScriptCanvasEditor
                         }
                     }
 
+
+                    if (auto deprecatedAttribute = editorDataElement->FindAttribute(AZ::Script::Attributes::Deprecated))
+                    {
+                        if (auto deprecatedAttributeData = azdynamic_cast<const AZ::Edit::AttributeData<bool>*>(deprecatedAttribute))
+                        {
+                            isDeprecated = deprecatedAttributeData->Get(nullptr);
+                        }
+                    }
+
                     if (customNodeInformation->m_toolTip.empty() && classData->m_editData->m_description)
                     {
                         customNodeInformation->m_toolTip = classData->m_editData->m_description;
@@ -774,7 +775,14 @@ namespace ScriptCanvasEditor
                 }
             }
 
-            m_registeredNodes.emplace(AZStd::make_pair(nodeIdentifier, customNodeInformation));
+            if (!isDeprecated)
+            {
+                m_registeredNodes.emplace(AZStd::make_pair(nodeIdentifier, customNodeInformation));
+            }
+            else
+            {
+                delete customNodeInformation;
+            }
         }
     }
 

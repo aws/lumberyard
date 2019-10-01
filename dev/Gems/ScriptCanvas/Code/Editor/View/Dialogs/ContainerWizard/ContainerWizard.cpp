@@ -47,6 +47,7 @@ namespace ScriptCanvasEditor
         m_ui->setupUi(this);
 
         QObject::connect(m_ui->containerTypeBox, static_cast<void(QComboBox::*)(int)>(&QComboBox::currentIndexChanged), this, &ContainerWizard::OnContainerTypeChanged);
+        m_ui->containerTypeBox->setEditable(false);
 
         // Don't want to enable enter triggering through the default mechanism for the create/cancel, since it causes a bunch of accidental triggers
         // of submission while editing. Instead install an event filter and deal with this internally.
@@ -495,12 +496,23 @@ namespace ScriptCanvasEditor
             for (const AZ::Uuid& containedType : containedTypes)
             {
                 DataTypeSet& dataTypeSet = m_containerDataTypeSets[workingCrc];
-                dataTypeSet.insert(containedType);
 
-                workingCrc.Add(containedType.ToString<AZStd::string>().c_str());
+                if (ScriptCanvas::Data::IsNumber(containedType))
+                {
+                    dataTypeSet.insert(azrtti_typeid<ScriptCanvas::Data::NumberType>());
+                    workingCrc.Add(containedType.ToString<AZStd::string>().c_str());
+                }
+                else
+                {
+                    dataTypeSet.insert(containedType);
+                    workingCrc.Add(containedType.ToString<AZStd::string>().c_str());
+                }
             }
 
-            m_finalContainerTypeIds[workingCrc] = containerType;
+            if (m_finalContainerTypeIds.find(workingCrc) == m_finalContainerTypeIds.end())
+            {
+                m_finalContainerTypeIds[workingCrc] = containerType;
+            }
 
             // Need to populate the combo box
             AZ::TypeId genericTypeId = AZ::Utils::GetGenericContainerType(containerType);

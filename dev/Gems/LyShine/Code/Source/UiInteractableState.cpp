@@ -128,7 +128,7 @@ void UiInteractableStateColor::Reflect(AZ::ReflectContext* context)
 
     if (serializeContext)
     {
-        serializeContext->Class<UiInteractableStateColor, UiInteractableStateAction>()
+        serializeContext->Class<UiInteractableStateColor>()
             ->Version(2, &VersionConverter)
             ->Field("TargetEntity", &UiInteractableStateColor::m_targetEntity)
             ->Field("Color", &UiInteractableStateColor::m_color);
@@ -223,7 +223,7 @@ void UiInteractableStateAlpha::Reflect(AZ::ReflectContext* context)
 
     if (serializeContext)
     {
-        serializeContext->Class<UiInteractableStateAlpha, UiInteractableStateAction>()
+        serializeContext->Class<UiInteractableStateAlpha>()
             ->Version(1)
             ->Field("TargetEntity", &UiInteractableStateAlpha::m_targetEntity)
             ->Field("Alpha", &UiInteractableStateAlpha::m_alpha);
@@ -379,7 +379,7 @@ void UiInteractableStateSprite::Reflect(AZ::ReflectContext* context)
 
     if (serializeContext)
     {
-        serializeContext->Class<UiInteractableStateSprite, UiInteractableStateAction>()
+        serializeContext->Class<UiInteractableStateSprite>()
             ->Version(3)
             ->Field("TargetEntity", &UiInteractableStateSprite::m_targetEntity)
             ->Field("Sprite", &UiInteractableStateSprite::m_spritePathname)
@@ -633,7 +633,7 @@ void UiInteractableStateFont::Reflect(AZ::ReflectContext* context)
 
     if (serializeContext)
     {
-        serializeContext->Class<UiInteractableStateFont, UiInteractableStateAction>()
+        serializeContext->Class<UiInteractableStateFont>()
             ->Version(1)
             ->Field("TargetEntity", &UiInteractableStateFont::m_targetEntity)
             ->Field("FontFileName", &UiInteractableStateFont::m_fontFilename)

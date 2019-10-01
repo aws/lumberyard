@@ -166,7 +166,7 @@ void CParticleEditorPlugin::AddSourceFileOpeners(const char* fullSourceFileName,
                 size_t startpos = fullPathName.find("/libs/particles/");
                 if (startpos == AZStd::string::npos)
                 {
-                    AZ_Error("Particle Editor", "Cannot load particle library %s - it needs to be in a /libs/particles/ folder.", fullDetails->GetFullPath().c_str());
+                    AZ_Error("Particle Editor", false, "Cannot load particle library %s - it needs to be in a /libs/particles/ folder.", fullDetails->GetFullPath().c_str());
                     return; // not in the appropriate folder.
                 }
                 // the library system expects the name of the

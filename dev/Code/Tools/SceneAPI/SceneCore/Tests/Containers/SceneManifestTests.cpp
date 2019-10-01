@@ -84,6 +84,7 @@ namespace AZ
                     m_testManifest.AddEntry(m_secondDataObject);
                     m_testManifest.AddEntry(m_testDataObject);
 
+                    DataTypes::IManifestObject::Reflect(&m_context);
                     MockManifestInt::Reflect(&m_context);
                     SceneManifest::Reflect(&m_context);
                 }

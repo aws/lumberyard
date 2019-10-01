@@ -9,7 +9,6 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#ifndef AZ_UNITY_BUILD
 
 #include <AzCore/Serialization/Utils.h>
 #include <AzCore/Serialization/ObjectStream.h>
@@ -48,15 +47,16 @@ namespace AZ
 
             bool foundSuccess = false;
             typedef AZStd::function<void(void**, const SerializeContext::ClassData**, const Uuid&, SerializeContext*)> CreationCallback;
-            auto handler = [&targetPointer, objectClassData, &foundSuccess](void** instance, const SerializeContext::ClassData** classData, const Uuid& classId, SerializeContext*)
+            auto handler = [&targetPointer, objectClassData, &foundSuccess](void** instance, const SerializeContext::ClassData** classData, const Uuid& classId, SerializeContext* context)
                 {
-                    if (classId == objectClassData->m_typeId)
+                    void* convertibleInstance{};
+                    if (objectClassData->ConvertFromType(convertibleInstance, classId, targetPointer, *context))
                     {
                         foundSuccess = true;
                         if (instance)
                         {
                             // The ObjectStream will ask us for the address of the target to load into, so provide it.
-                            *instance = targetPointer;
+                            *instance = convertibleInstance;
                         }
                         if (classData)
                         {
@@ -464,5 +464,3 @@ namespace AZ
 
     } // namespace Utils
 } // namespace AZ
-
-#endif // #ifndef AZ_UNITY_BUILD

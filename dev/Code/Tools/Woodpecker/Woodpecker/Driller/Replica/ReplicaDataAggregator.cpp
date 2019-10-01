@@ -57,7 +57,7 @@ namespace Driller
                     ->Field("FrameRate", &ReplicaDataConfigurationSettings::m_frameRate)
                 ;
 
-                serialize->Class<ReplicaDataAggregatorSavedState, AZ::UserSettings>()
+                serialize->Class<ReplicaDataAggregatorSavedState>()
                     ->Version(2)
                     ->Field("ConfigurationSettings",&ReplicaDataAggregatorSavedState::m_configurationSettings)
                 ;
@@ -88,7 +88,7 @@ namespace Driller
             AZ::SerializeContext* serialize = azrtti_cast<AZ::SerializeContext*>(context);
             if (serialize)
             {
-                serialize->Class<ReplicaDataAggregatorWorkspace, AZ::UserSettings>()
+                serialize->Class<ReplicaDataAggregatorWorkspace>()
                     ->Field("m_activeViewIndexes",&ReplicaDataAggregatorWorkspace::m_activeViewIndexes)
                     ->Version(1);
             }
@@ -132,7 +132,7 @@ namespace Driller
             AZ::SerializeContext* serialize = azrtti_cast<AZ::SerializeContext*>(context);
             if (serialize)
             {
-                serialize->Class<ReplicaExportSettingsSavedState, AZ::UserSettings>()
+                serialize->Class<ReplicaExportSettingsSavedState>()
                     ->Field("m_exportColumnDescriptors",&ReplicaExportSettingsSavedState::m_exportColumnDescriptors)
                     ->Field("m_exportOrdering",&ReplicaExportSettingsSavedState::m_exportOrdering)
                     ->Version(1);

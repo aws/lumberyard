@@ -63,7 +63,7 @@ void CPropertyVars::ExpandProperties(string& str) const
         PropertyMap::const_iterator it = m_properties.find(propName);
         if (it == m_properties.end())
         {
-            RCLogError("Unknown property name ${%s} in input string %s", propName.c_str(), original.c_str());
+            RCLogError("Error: Unknown property name ${%s} in input string %s", propName.c_str(), original.c_str());
             return;
         }
         const string value = it->second;
@@ -74,7 +74,7 @@ void CPropertyVars::ExpandProperties(string& str) const
         // If we did a replacement and the string is still the same we are in an infinite loop.
         if (str.compare(last) == 0)
         {
-            RCLogError("Infinite loop with property ${%s} in input string '%s'. Original string '%s'.", propName.c_str(), last.c_str(), original.c_str());
+            RCLogError("Error: Infinite loop with property ${%s} in input string '%s'. Original string '%s'.", propName.c_str(), last.c_str(), original.c_str());
             return;
         }
     }

@@ -17,6 +17,7 @@
 #include <AzCore/IO/StreamerComponent.h>
 #include <AzCore/Jobs/JobManagerComponent.h>
 #include <AzCore/Memory/MemoryComponent.h>
+#include <AzCore/NativeUI/NativeUISystemComponent.h>
 #include <AzCore/Script/ScriptSystemComponent.h>
 #include <AzCore/Serialization/ObjectStreamComponent.h>
 #include <AzCore/Slice/SliceComponent.h>
@@ -37,6 +38,7 @@ namespace AZ
             ObjectStreamComponent::CreateDescriptor(),
             UserSettingsComponent::CreateDescriptor(),
             Debug::FrameProfilerComponent::CreateDescriptor(),
+            NativeUI::NativeUISystemComponent::CreateDescriptor(),
             SliceComponent::CreateDescriptor(),
             SliceSystemComponent::CreateDescriptor(),
             SliceMetadataInfoComponent::CreateDescriptor(),

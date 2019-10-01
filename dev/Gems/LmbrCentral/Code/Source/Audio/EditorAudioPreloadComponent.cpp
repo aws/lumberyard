@@ -40,11 +40,11 @@ namespace LmbrCentral
                 editContext->Class<EditorAudioPreloadComponent>("Audio Preload", "Loads and unloads ATL Preloads containing soundbanks")
                     ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
                         ->Attribute(AZ::Edit::Attributes::Category, "Audio")
+                        ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/AudioPreload.svg")
                         ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("Game", 0x232b318c))
                         ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
 
                         // Icon todo:
-                        //->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/AudioPreload.png")
                         //->Attribute(AZ::Edit::Attributes::ViewportIcon, "Editor/Icons/Components/Viewport/AudioPreload.png")
 
                         ->Attribute(AZ::Edit::Attributes::HelpPageURL, "https://docs.aws.amazon.com/lumberyard/latest/userguide/component-audio-preload.html")

@@ -12,7 +12,8 @@
 
 #pragma once
 
-#include <AZCore/std/containers/unordered_map.h>
+#include <AzCore/std/containers/unordered_map.h>
+#include <EMotionStudio/Plugins/StandardPlugins/Source/AnimGraph/AnimGraphActionManager.h>
 #include <EMotionStudio/Plugins/StandardPlugins/Source/StandardPluginsConfig.h>
 #include <EMotionStudio/Plugins/StandardPlugins/Source/AnimGraph/AnimGraphModel.h>
 #include <EMotionStudio/Plugins/StandardPlugins/Source/AnimGraph/NodeGraphWidget.h>
@@ -73,17 +74,19 @@ namespace EMStudio
 
         // context menu shared function (definitions in ContextMenu.cpp)
         void AddNodeGroupSubmenu(QMenu* menu, EMotionFX::AnimGraph* animGraph, const AZStd::vector<EMotionFX::AnimGraphNode*>& selectedNodes);
-        void RegisterItems(AnimGraphPlugin* plugin, QMenu* menu, EMotionFX::AnimGraphObject* object, EMotionFX::AnimGraphObject::ECategory category);
-        
+        void AddAnimGraphObjectCategoryMenu(AnimGraphPlugin* plugin, QMenu* parentMenu,
+            EMotionFX::AnimGraphObject::ECategory category, EMotionFX::AnimGraphObject* focusedGraphObject);
+
         void OnContextMenuEvent(QWidget* parentWidget, QPoint localMousePos, QPoint globalMousePos, AnimGraphPlugin* plugin,
-            const AZStd::vector<EMotionFX::AnimGraphNode*>& selectedNodes, bool graphWidgetOnlyMenusEnabled, bool selectingAnyReferenceNodeFromNavigation);
-        
+            const AZStd::vector<EMotionFX::AnimGraphNode*>& selectedNodes, bool graphWidgetOnlyMenusEnabled, bool selectingAnyReferenceNodeFromNavigation,
+            const AnimGraphActionFilter& actionFilter);
+
         void SetSelectedTransitionsEnabled(bool isEnabled);
 
         bool PreparePainting() override;
 
         void ProcessFrame(bool redraw);
-        
+
         void SetVirtualFinalNode(const QModelIndex& nodeModelIndex);
 
     protected:
@@ -96,7 +99,7 @@ namespace EMStudio
         void mousePressEvent(QMouseEvent* event) override;
         void mouseReleaseEvent(QMouseEvent* event) override;
 
-        void OnContextMenuEvent(QPoint mousePos, QPoint globalMousePos);
+        void OnContextMenuEvent(QPoint mousePos, QPoint globalMousePos, const AnimGraphActionFilter& actionFilter);
 
         bool event(QEvent* event) override;
 
@@ -107,8 +110,8 @@ namespace EMStudio
         void EnableSelectedTransitions()                    { SetSelectedTransitionsEnabled(true); }
         void DisableSelectedTransitions()                   { SetSelectedTransitionsEnabled(false); }
 
-        void OnRowsInserted(const QModelIndex &parent, int first, int last);
-        void OnRowsAboutToBeRemoved(const QModelIndex &parent, int first, int last);
+        void OnRowsInserted(const QModelIndex& parent, int first, int last);
+        void OnRowsAboutToBeRemoved(const QModelIndex& parent, int first, int last);
         void OnDataChanged(const QModelIndex& topLeft, const QModelIndex& bottomRight, const QVector<int>& roles);
         void OnFocusChanged(const QModelIndex& newFocusIndex, const QModelIndex& newFocusParent, const QModelIndex& oldFocusIndex, const QModelIndex& oldFocusParent);
         void OnSelectionModelChanged(const QItemSelection& selected, const QItemSelection& deselected);
@@ -119,9 +122,9 @@ namespace EMStudio
 
         EMotionFX::AnimGraphStateTransition* FindTransitionForConnection(NodeConnection* connection) const;
         EMotionFX::BlendTreeConnection* FindBlendTreeConnection(NodeConnection* connection) const;
-        
+
         // We are going to cache the NodeGraph that we have been focusing on
-        // so we can swap them quickly. 
+        // so we can swap them quickly.
         // TODO: investigate if we can avoid the caching
         // TODO: defer updates from graphs we are not showing
         using NodeGraphByModelIndex = AZStd::unordered_map<QPersistentModelIndex, AZStd::unique_ptr<NodeGraph>, QPersistentModelIndexHash>;
@@ -131,5 +134,4 @@ namespace EMStudio
         bool                        mDoubleClickHappened;
         MCore::CommandGroup         mMoveGroup;
     };
-
 }   // namespace EMStudio

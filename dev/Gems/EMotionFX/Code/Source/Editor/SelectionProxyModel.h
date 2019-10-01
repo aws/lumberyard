@@ -33,7 +33,6 @@ namespace EMotionFX
 
     public:
         SelectionProxyModel(QItemSelectionModel* sourceSelectionModel, QAbstractProxyModel* proxyModel, QObject* parent = nullptr);
-        ~SelectionProxyModel() override;
 
         void setCurrentIndex(const QModelIndex &index, QItemSelectionModel::SelectionFlags command) override;
         void select(const QModelIndex &index, QItemSelectionModel::SelectionFlags command) override;
@@ -45,6 +44,7 @@ namespace EMotionFX
     private slots:
         void OnSourceSelectionChanged(const QItemSelection& selected, const QItemSelection& deselected);
         void OnSourceSelectionCurrentChanged(const QModelIndex& current, const QModelIndex& previous);
+        void OnProxySelectionChanged(const QItemSelection& selected, const QItemSelection& deselected);
         void OnProxyModelRowsInserted(const QModelIndex& parent, int first, int last);
         
     private:

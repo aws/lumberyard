@@ -42,6 +42,8 @@
 #include <IGameVolumes.h>
 #include <AzCore/Script/ScriptSystemBus.h>
 
+#include <LyShine/ILyShine.h>
+
 #ifdef WIN32
 #include <CryWindows.h>
 #endif
@@ -2075,11 +2077,6 @@ void CLevelSystem::UnLoadLevel()
         gEnv->pRenderer->FlushPendingTextureTasks();
     }
 
-    // Disable filecaching during level unloading
-    // will be reenabled when we get back to the IIS (frontend directly)
-    // or after level loading is finished (via system event system)
-    gEnv->pSystem->GetPlatformOS()->AllowOpticalDriveUsage(false);
-
     if (gEnv->pScriptSystem)
     {
         gEnv->pScriptSystem->ResetTimers();
@@ -2263,7 +2260,11 @@ void CLevelSystem::UnLoadLevel()
         CryComment("done");
     }
 
-
+    // Perform level unload procedures for the LyShine UI system
+    if (gEnv && gEnv->pLyShine)
+    {
+        gEnv->pLyShine->OnLevelUnload();
+    }
 
     m_bLevelLoaded = false;
 

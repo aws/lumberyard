@@ -9,7 +9,6 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#ifndef AZ_UNITY_BUILD
 
 #include <AzCore/Math/Quaternion.h>
 #include <AzCore/Math/Matrix3x3.h>
@@ -88,9 +87,9 @@ namespace AZ
     // efficient check to determine if a transform has scale applied or not.
     bool IsUnit(const Transform& t)
     {
-        return IsCloseMag<AZ::VectorFloat>(t.GetBasisX().GetLengthSq(), AZ::VectorFloat::CreateOne())
-            && IsCloseMag<AZ::VectorFloat>(t.GetBasisY().GetLengthSq(), AZ::VectorFloat::CreateOne())
-            && IsCloseMag<AZ::VectorFloat>(t.GetBasisZ().GetLengthSq(), AZ::VectorFloat::CreateOne());
+        return IsCloseMag<AZ::VectorFloat>(t.GetBasisX().GetLengthSq(), AZ::VectorFloat::CreateOne(), AZ::g_simdTolerance)
+            && IsCloseMag<AZ::VectorFloat>(t.GetBasisY().GetLengthSq(), AZ::VectorFloat::CreateOne(), AZ::g_simdTolerance)
+            && IsCloseMag<AZ::VectorFloat>(t.GetBasisZ().GetLengthSq(), AZ::VectorFloat::CreateOne(), AZ::g_simdTolerance);
     }
 
     const Quaternion Quaternion::CreateRotationFromScaledTransform(Transform t)
@@ -307,5 +306,3 @@ namespace AZ
         quat.ConvertToAxisAngle(outAxis, outAngle);
     }
 }
-
-#endif // #ifndef AZ_UNITY_BUILD

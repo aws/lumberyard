@@ -79,8 +79,6 @@ namespace LegacyGameInterface
         IGameRulesSystem* pGameRulesSystem = g_Game->GetIGameFramework()->GetIGameRulesSystem();
         pGameRulesSystem->RegisterGameRules("DummyRules", "LegacyGameRules");
 
-        GetISystem()->GetPlatformOS()->UserDoSignIn(0);
-
         return true;
     }
 

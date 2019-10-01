@@ -81,7 +81,7 @@ static void ValidateMeshMaterials(std::vector<SMeshMaterialIssue>* issues, IStat
             if (shaderItem.m_pShader)
             {
                 size_t materialUVs = shaderItem.m_pShader->GetNumberOfUVSets();
-                size_t meshUVs = subset.vertexFormat.GetAttributesByUsage(AZ::Vertex::AttributeUsage::TexCoord).size();
+                size_t meshUVs = subset.vertexFormat.GetAttributeUsageCount(AZ::Vertex::AttributeUsage::TexCoord);
                 if (materialUVs != meshUVs)
                 {
                     const char* meshName = pStatObj->GetRenderMesh() ? pStatObj->GetRenderMesh()->GetSourceName() : "unknown";

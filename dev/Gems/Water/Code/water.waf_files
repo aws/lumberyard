@@ -11,19 +11,22 @@
             "Include/Water/WaterSystemComponent.h",
             "Include/Water/WaterOceanComponent.h",
             "Include/Water/WaterOceanComponentData.h",
-            "Include/Water/WaterVolumeComponentBus.h"
+            "Include/Water/WaterVolumeComponentBus.h",
+            "Include/Water/WaterEffectsBus.h"
         ],
         "Source": [
-          "Source/WaterModule.cpp",
-          "Source/WaterSystemComponent.cpp",
-          "Source/WaterOceanComponent.cpp",
-          "Source/WaterOceanComponentData.cpp",
-          "Source/WaterVolumeComponent.h",
-          "Source/WaterVolumeComponent.cpp",
-          "Source/OceanSurfaceDataComponent.cpp",
-          "Source/OceanSurfaceDataComponent.h",
-          "Source/WaterVolumeSurfaceDataComponent.cpp",
-          "Source/WaterVolumeSurfaceDataComponent.h"
+            "Source/WaterModule.cpp",
+            "Source/WaterSystemComponent.cpp",
+            "Source/WaterOceanComponent.cpp",
+            "Source/WaterOceanComponentData.cpp",
+            "Source/WaterVolumeComponent.h",
+            "Source/WaterVolumeComponent.cpp",
+            "Source/OceanSurfaceDataComponent.cpp",
+            "Source/OceanSurfaceDataComponent.h",
+            "Source/WaterVolumeSurfaceDataComponent.cpp",
+            "Source/WaterVolumeSurfaceDataComponent.h",
+            "Source/WaterRippleGeneratorComponent.h",
+            "Source/WaterRippleGeneratorComponent.cpp"
         ]
     }
 }

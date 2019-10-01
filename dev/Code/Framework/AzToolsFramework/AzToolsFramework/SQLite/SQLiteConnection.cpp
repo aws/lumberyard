@@ -380,7 +380,7 @@ namespace AzToolsFramework
 
             int res = sqlite3_prepare_v2(db, m_parentPrototype->GetSqlText().c_str(), (int)m_parentPrototype->GetSqlText().length() + 1, &m_statement, NULL);
             
-            AZ_Error("SQLiteConnection", res == SQLITE_OK, "Statement::PrepareFirstTime: failed! %s ( prototype is '%s')", sqlite3_errmsg(db), m_parentPrototype->GetSqlText().c_str());
+            AZ_Error("SQLiteConnection", res == SQLITE_OK, "Statement::PrepareFirstTime: failed! %s ( prototype is '%s'). Error code returned is %d.", sqlite3_errmsg(db), m_parentPrototype->GetSqlText().c_str(), res);
             return ((res == SQLITE_OK)&&(m_statement));
         }
 

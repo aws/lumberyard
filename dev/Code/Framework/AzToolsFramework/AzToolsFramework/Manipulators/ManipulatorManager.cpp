@@ -312,9 +312,9 @@ namespace AzToolsFramework
         {
             // set all manipulator bounds on this entity to dirty so we cannot
             // interact with them (bounds will be refreshed when they are redrawn)
-            for (const AZ::EntityId id : pair.second->EntityIds())
+            for (const AZ::EntityComponentIdPair& id : pair.second->EntityComponentIdPairs())
             {
-                if (id == entityId && !visible)
+                if (id.GetEntityId() == entityId && !visible)
                 {
                     pair.second->SetBoundsDirty();
                     break;
@@ -322,4 +322,4 @@ namespace AzToolsFramework
             }
         }
     }
-}
+} // namespace AzToolsFramework

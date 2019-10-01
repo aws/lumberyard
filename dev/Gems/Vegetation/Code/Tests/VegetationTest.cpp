@@ -12,7 +12,7 @@
 #include "Vegetation_precompiled.h"
 
 #include <AzTest/AzTest.h>
-#include <Tests/TestTypes.h>
+#include <AzCore/UnitTest/TestTypes.h>
 #include "VegetationTest.h"
 #include "VegetationMocks.h"
 

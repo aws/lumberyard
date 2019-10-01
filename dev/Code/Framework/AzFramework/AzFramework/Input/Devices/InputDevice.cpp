@@ -33,7 +33,7 @@ namespace AzFramework
             , "{95C1315E-C568-458B-B29F-8FC610B25EF7}"
             , AZ::SystemAllocator
             , OnInputDeviceConnectedEvent
-            , OnInputDeviceDisonnectedEvent
+            , OnInputDeviceDisconnectedEvent
         );
 
         ////////////////////////////////////////////////////////////////////////////////////////////
@@ -43,9 +43,9 @@ namespace AzFramework
         }
 
         ////////////////////////////////////////////////////////////////////////////////////////////
-        void OnInputDeviceDisonnectedEvent(const InputDevice& inputDevice)
+        void OnInputDeviceDisconnectedEvent(const InputDevice& inputDevice)
         {
-            Call(FN_OnInputDeviceDisonnectedEvent, &inputDevice);
+            Call(FN_OnInputDeviceDisconnectedEvent, &inputDevice);
         }
     };
 
@@ -60,6 +60,8 @@ namespace AzFramework
                 ->Attribute(AZ::Script::Attributes::Category, "Input")
                 ->Property("deviceName", [](InputDevice* thisPtr) { return thisPtr->GetInputDeviceId().GetName(); }, nullptr)
                 ->Property("deviceIndex", [](InputDevice* thisPtr) { return thisPtr->GetInputDeviceId().GetIndex(); }, nullptr)
+                ->Property("localUserId", [](InputDevice* thisPtr) { return thisPtr->GetAssignedLocalUserId(); }, nullptr)
+                ->Method("PromptLocalUserSignIn", &InputDevice::PromptLocalUserSignIn)
                 ->Method("IsSupported", &InputDevice::IsSupported)
                 ->Method("IsConnected", &InputDevice::IsConnected)
             ;
@@ -106,9 +108,9 @@ namespace AzFramework
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
-    const GridMate::PlayerId* InputDevice::GetAssignedLocalPlayerId() const
+    LocalUserId InputDevice::GetAssignedLocalUserId() const
     {
-        return nullptr;
+        return GetInputDeviceId().GetIndex();
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
@@ -138,7 +140,7 @@ namespace AzFramework
     void InputDevice::BroadcastInputDeviceDisconnectedEvent() const
     {
         InputDeviceNotificationBus::Broadcast(
-            &InputDeviceNotifications::OnInputDeviceDisonnectedEvent, *this);
+            &InputDeviceNotifications::OnInputDeviceDisconnectedEvent, *this);
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
@@ -165,6 +167,16 @@ namespace AzFramework
     void InputDevice::GetInputDevicesById(InputDeviceByIdMap& o_devicesById) const
     {
         o_devicesById[m_inputDeviceId] = this;
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    void InputDevice::GetInputDevicesByIdWithAssignedLocalUserId(InputDeviceByIdMap& o_devicesById,
+                                                                 LocalUserId localUserId) const
+    {
+        if (localUserId == GetAssignedLocalUserId())
+        {
+            o_devicesById[m_inputDeviceId] = this;
+        }
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////

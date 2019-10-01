@@ -197,13 +197,19 @@ AZStd::string DeployWorkerAndroid::GetWafDeployArgs() const
 
 StringOutcome DeployWorkerAndroid::Prepare()
 {
+    // Check to make sure the selected device is still connected
+    const char* deviceId = m_deploymentConfig.m_deviceId.c_str();
+    if (!DeviceIsConnected(deviceId))
+    {
+        return AZ::Failure<AZStd::string>("Device no longer connected");
+    }
+
     if (m_adbPath.empty())
     {
         return AZ::Failure<AZStd::string>("Failed to locate adb");
     }
 
-    const char* adbPath = m_adbPath.c_str();
-    const char* deviceId = m_deploymentConfig.m_deviceId.c_str();
+    const char* adbPath = m_adbPath.c_str();    
 
     // make sure the device is useable.  Under the following scenarios the device is...
     // command failure  - not authorized for use
@@ -264,7 +270,7 @@ StringOutcome DeployWorkerAndroid::Prepare()
     AZStd::string stopCmd = AZStd::move(AZStd::string::format("%s -s %s shell am force-stop %s", adbPath, deviceId, packageName));
     RunBlockingCommand(stopCmd);
 
-    return AZ::Success();
+    return AZ::Success(AZStd::string());
 }
 
 StringOutcome DeployWorkerAndroid::Launch()
@@ -325,5 +331,5 @@ StringOutcome DeployWorkerAndroid::Launch()
         return AZ::Failure<AZStd::string>("Failed to launch application");
     }
 
-    return AZ::Success();
+    return AZ::Success(AZStd::string());
 }

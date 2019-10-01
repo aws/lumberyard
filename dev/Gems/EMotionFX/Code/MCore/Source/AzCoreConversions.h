@@ -73,4 +73,22 @@ namespace MCore
         quat.SetEuler(eulerAngles.GetX(), eulerAngles.GetZ(), eulerAngles.GetY());
         return quat;
     }
+
+    // TODO: replace in favor of AzFramework::ConvertQuaternionToAxisAngle
+    AZ_FORCE_INLINE void ToAxisAngle(const AZ::Quaternion& q, AZ::Vector3& axis, float& angle)
+    {
+        angle = 2.0f * Math::ACos(q.GetW());
+
+        const float sinHalfAngle = Math::Sin(angle * 0.5f);
+        if (sinHalfAngle > 0.0f)
+        {
+            const float invS = 1.0f / sinHalfAngle;
+            axis.Set(q.GetX() * invS, q.GetY() * invS, q.GetZ() * invS);
+        }
+        else
+        {
+            axis.Set(0.0f, 1.0f, 0.0f);
+            angle = 0.0f;
+        }
+    }
 } // namespace MCore

@@ -232,6 +232,8 @@ namespace ZipDir
     // compresses the raw data into raw data. The buffer for compressed data itself with the heap passed. Uses method 8 (deflate)
     // returns one of the Z_* errors (Z_OK upon success), and the size in *pDestSize. the pCompressed buffer must be at least nSrcSize*1.001+12 size
     extern int ZipRawCompress (CMTSafeHeap* pHeap, const void* pUncompressed, unsigned long* pDestSize, void* pCompressed, unsigned long nSrcSize, int nLevel);
+    extern int ZipRawCompressZSTD(CMTSafeHeap* pHeap, const void* pUncompressed, unsigned long* pDestSize, void* pCompressed, unsigned long nSrcSize, int nLevel);
+    extern int ZipRawCompressLZ4(CMTSafeHeap* pHeap, const void* pUncompressed, unsigned long* pDestSize, void* pCompressed, unsigned long nSrcSize, int nLevel);
 
     // fseek wrapper with memory in file support.
     extern int64 FSeek(CZipFile* zipFile, int64 origin, int command);

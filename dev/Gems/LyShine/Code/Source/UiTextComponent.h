@@ -314,8 +314,8 @@ public: // member functions
     // UiLayoutCellDefaultInterface
     float GetMinWidth() override;
     float GetMinHeight() override;
-    float GetTargetWidth() override;
-    float GetTargetHeight() override;
+    float GetTargetWidth(float maxWidth) override;
+    float GetTargetHeight(float maxHeight) override;
     float GetExtraWidthRatio() override;
     float GetExtraHeightRatio() override;
     // ~UiLayoutCellDefaultInterface
@@ -450,8 +450,9 @@ protected: // member functions
     //! Calculates draw batch lines
     void CalculateDrawBatchLines(
         UiTextComponent::DrawBatchLines& drawBatchLinesOut,
-        bool useElementWidth,
-        bool excludeTrailingSpace
+        bool forceNoWrap = false,
+        float availableWidth = -1.0f,
+        bool excludeTrailingSpaceWidth = true
         );
 
     //! Renders the text to the render cache
@@ -478,7 +479,7 @@ protected: // member functions
     void HandleOverflowText(UiTextComponent::DrawBatchLines& drawBatchLinesOut);
 
     //! Handles shrink-to-fit for text, if applicable. 
-    void HandleShrinkToFit(UiTextComponent::DrawBatchLines& drawBatchLinesOut);
+    void HandleShrinkToFit(UiTextComponent::DrawBatchLines& drawBatchLinesOut, float availableHeight = -1.0f);
 
     //! Handles the "uniform" shrink-to-fit setting.
     void HandleUniformShrinkToFitWithScale(UiTextComponent::DrawBatchLines& drawBatchLinesOut, const AZ::Vector2& scaleVec);
@@ -493,7 +494,7 @@ protected: // member functions
     void HandleUniformShrinkToFitWithWrapping(UiTextComponent::DrawBatchLines& drawBatchLinesOut, const AZ::Vector2& currentElementSize, int maxLinesElementCanHold);
 
     //! Inserts ellipsis into overflowing text
-    void HandleEllipsis(UiTextComponent::DrawBatchLines& drawBatchLinesOut);
+    void HandleEllipsis(UiTextComponent::DrawBatchLines& drawBatchLinesOut, float availableHeight = -1.0f);
 
     using DrawBatchLineIters = AZStd::vector<DrawBatchLineContainer::iterator>;
 

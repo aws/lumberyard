@@ -2034,7 +2034,7 @@ void CHDRPostProcess::Render()
         const bool bSolidModeEnabled = gcpRendD3D->GetWireframeMode() == R_SOLID_MODE;
         const bool bDepthOfFieldEnabled = CRenderer::CV_r_dof >= 1 && bSolidModeEnabled;
         const bool takingScreenShot = (gcpRendD3D->m_screenShotType != 0);
-        const bool bMotionBlurEnabled = CRenderer::CV_r_MotionBlur && bSolidModeEnabled && (!takingScreenShot || CRenderer::CV_r_MotionBlurScreenShot);
+        const bool bMotionBlurEnabled = CRenderer::CV_r_MotionBlur && bSolidModeEnabled && (!takingScreenShot || CRenderer::CV_r_MotionBlurScreenShot) && !CRenderer::CV_r_RenderMotionBlurAfterHDR;
 
         DepthOfFieldParameters depthOfFieldParameters;
 
@@ -2085,7 +2085,21 @@ void CHDRPostProcess::Render()
 
         if (bMotionBlurEnabled)
         {
-            graphicsPipeline.RenderMotionBlur();
+            // Added old pipeline render call here. This lets us do motion blur before the end of HDR processing.
+
+            if (CRenderer::CV_r_GraphicsPipeline > 0)
+            {
+                graphicsPipeline.RenderMotionBlur();
+            }
+            else
+            {
+                CMotionBlur* motionBlurEffect = static_cast<CMotionBlur*>(PostEffectMgr()->GetEffect(ePFX_eMotionBlur));
+
+                if (motionBlurEffect)
+                {
+                  motionBlurEffect->Render();
+                }
+            }
         }
 
         {

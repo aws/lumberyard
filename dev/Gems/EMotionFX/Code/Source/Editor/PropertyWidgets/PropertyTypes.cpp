@@ -17,6 +17,7 @@
 #include <Editor/PropertyWidgets/AnimGraphNodeNameHandler.h>
 #include <Editor/PropertyWidgets/AnimGraphParameterHandler.h>
 #include <Editor/PropertyWidgets/AnimGraphTagHandler.h>
+#include <Editor/PropertyWidgets/AnimGraphTransitionHandler.h>
 #include <Editor/PropertyWidgets/AnimGraphParameterHandler.h>
 #include <Editor/PropertyWidgets/AnimGraphParameterMaskHandler.h>
 #include <Editor/PropertyWidgets/BlendSpaceEvaluatorHandler.h>
@@ -30,18 +31,21 @@
 #include <Editor/PropertyWidgets/TransitionStateFilterLocalHandler.h>
 #include <Editor/PropertyWidgets/BlendNParamWeightsHandler.h>
 #include <Editor/PropertyWidgets/LODTreeSelectionHandler.h>
+#include <Editor/PropertyWidgets/SimulatedObjectColliderTagHandler.h>
+#include <Editor/PropertyWidgets/SimulatedObjectNameHandler.h>
+#include <Editor/PropertyWidgets/SimulatedObjectSelectionHandler.h>
 #include <AzToolsFramework/UI/PropertyEditor/PropertyEditorAPI.h>
 
 
 namespace EMotionFX
 {
-
     AZStd::vector<AzToolsFramework::PropertyHandlerBase*> RegisterPropertyTypes()
     {
 #if defined(EMOTIONFXANIMATION_EDITOR)
         AZStd::vector<AzToolsFramework::PropertyHandlerBase*> propertyHandlers =
         {
             aznew EMotionFX::ActorJointElementHandler(),
+            aznew EMotionFX::ActorWeightedJointElementHandler(),
             aznew EMotionFX::ActorSingleJointHandler(),
             aznew EMotionFX::ActorMultiJointHandler(),
             aznew EMotionFX::ActorMultiWeightedJointHandler(),
@@ -56,6 +60,7 @@ namespace EMotionFX
             aznew EMotionFX::AnimGraphParameterMaskHandler(),
             aznew EMotionFX::AnimGraphStateIdHandler(),
             aznew EMotionFX::AnimGraphTagHandler(),
+            aznew EMotionFX::AnimGraphMultiTransitionIdHandler(),
             aznew EMotionFX::BlendSpaceEvaluatorHandler(),
             aznew EMotionFX::BlendSpaceMotionContainerHandler(),
             aznew EMotionFX::BlendSpaceMotionHandler(),
@@ -69,7 +74,11 @@ namespace EMotionFX
             aznew EMotionFX::BlendTreeRotationLimitContainerHandler(),
             aznew EMotionFX::Pipeline::UI::LODTreeSelectionHandler(),
             aznew EMotionFX::BlendNParamWeightsHandler(),
-            aznew EMotionFX::BlendNParamWeightElementHandler()
+            aznew EMotionFX::BlendNParamWeightElementHandler(),
+            aznew EMotionFX::SimulatedJointColliderExclusionTagHandler(),
+            aznew EMotionFX::SimulatedObjectColliderTagHandler(),
+            aznew EMotionFX::SimulatedObjectNameHandler(),
+            aznew EMotionFX::SimulatedObjectSelectionHandler()
         };
 
         for (const auto handler : propertyHandlers)

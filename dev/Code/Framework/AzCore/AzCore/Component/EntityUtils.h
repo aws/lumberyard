@@ -150,12 +150,12 @@ namespace AZ
 
 
         /// Return the first component that is either of the specified type or derive from the specified type
-        Component* FindFirstDerivedComponent(Entity* entity, const Uuid& typeId);
+        Component* FindFirstDerivedComponent(const Entity* entity, const Uuid& typeId);
         Component* FindFirstDerivedComponent(EntityId entityId, const Uuid& typeId);
 
         /// Return the first component that is either of the specified type or derive from the specified type
         template<class ComponentType>
-        inline ComponentType* FindFirstDerivedComponent(Entity* entity)
+        inline ComponentType* FindFirstDerivedComponent(const Entity* entity)
         {
             return azrtti_cast<ComponentType*>(FindFirstDerivedComponent(entity, AzTypeInfo<ComponentType>::Uuid()));
         }
@@ -169,7 +169,7 @@ namespace AZ
         }
 
         /// Return a vector of all components that are either of the specified type or derive from the specified type
-        Entity::ComponentArrayType FindDerivedComponents(Entity* entity, const Uuid& typeId);
+        Entity::ComponentArrayType FindDerivedComponents(const Entity* entity, const Uuid& typeId);
         Entity::ComponentArrayType FindDerivedComponents(EntityId entityId, const Uuid& typeId);
 
         /// Return a vector of all components that are either of the specified type or derive from the specified type

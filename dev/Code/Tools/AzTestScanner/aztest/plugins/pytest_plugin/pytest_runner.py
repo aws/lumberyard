@@ -11,7 +11,6 @@
 
 import os
 import sys
-import subprocess
 import logging
 import aztest.log as lg
 
@@ -44,13 +43,12 @@ def run_pytest(known_args, extra_args):
 
     try:
         return_code = subprocess_with_timeout(argument_call, timeout_sec)
-    except SubprocessTimeoutException as ste:
+    except SubprocessTimeoutException:
         log.error("Pytest execution timed out after {} seconds".format(timeout_sec))
-
-    if return_code != 0:
-        log.error("Pytest tests failed with exit code: {}".format(return_code))
-        # raise on failure
-        raise subprocess.CalledProcessError(return_code, argument_call)
+    else:
+        if return_code != 0:
+            log.error("Pytest reported failure with exit code: {}".format(return_code))
+            sys.exit(return_code)  # exit on failure instead of raising, to avoid creating a confusing stacktrace
 
 
 def _get_xunit_flags(output_path):

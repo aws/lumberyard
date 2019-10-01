@@ -58,6 +58,8 @@
         <Job sourceroot="${src_game}\levels" targetroot="${trg_paks}\levels" input="*.pak" copyonly="1"/>
         <Job sourceroot="${src_game}\config" targetroot="${trg_paks}\config" input="game.xml" copyonly="1"/>
         <Job sourceroot="${src_game}\config" targetroot="${trg_paks}\config" input="editor.xml" copyonly="1"/>
+        <Job sourceroot="${src_game}\config" targetroot="${trg_paks}\config" input="*.awslogicalmappings.json" copyonly="1"/>
+        <Job sourceroot="${src_game}\config" targetroot="${trg_paks}\config" input="launcher.deployment.json" copyonly="1"/>
         <Job sourceroot="${src}" targetroot="${trg}" input="engine.json" copyonly="1"/>
         <Job sourceroot="${src}" targetroot="${trg}" input="engineroot.txt" copyonly="1"/>
         <Job sourceroot="${src}" targetroot="${trg}" input="*.cfg" copyonly="1" recursive="0"/>

@@ -32,5 +32,6 @@ namespace Physics
         CharacterColliderConfiguration      m_hitDetectionConfig;
         RagdollConfiguration                m_ragdollConfig;
         CharacterColliderConfiguration      m_clothConfig;
+        CharacterColliderConfiguration      m_simulatedObjectColliderConfig;
     };
 } // namespace Physics

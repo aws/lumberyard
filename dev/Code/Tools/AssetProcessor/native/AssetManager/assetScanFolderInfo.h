@@ -17,6 +17,26 @@
 
 namespace AssetProcessor
 {
+    struct AssetFileInfo
+    {
+        AssetFileInfo() = default;
+        AssetFileInfo(QString filePath, AZ::u64 modTime, bool isDirectory) : m_filePath(filePath), m_modTime(modTime), m_isDirectory(isDirectory) {}
+
+        bool operator==(const AssetFileInfo& rhs) const
+        {
+            return m_filePath == rhs.m_filePath && m_modTime == rhs.m_modTime && m_isDirectory == rhs.m_isDirectory;
+        }
+
+        QString m_filePath;
+        AZ::u64 m_modTime;
+        bool m_isDirectory;
+    };
+
+    inline uint qHash(const AssetFileInfo& item)
+    {
+        return qHash(item.m_filePath);
+    }
+
     /** This Class contains information about the folders to be scanned
      * */
     class ScanFolderInfo

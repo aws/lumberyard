@@ -24,7 +24,7 @@
 
 extern "C"
 {
-DLL_EXPORT IGameStartup* CreateGameStartup();
+AZ_DLL_EXPORT IGameStartup* CreateGameStartup();
 };
 
 using namespace LYGame;

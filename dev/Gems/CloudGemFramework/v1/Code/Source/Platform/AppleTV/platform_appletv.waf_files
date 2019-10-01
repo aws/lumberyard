@@ -1,0 +1,8 @@
+{
+  "auto": {
+    "Platform/AppleTV": [
+      "CloudGemFramework_Traits_Platform.h",
+      "CloudGemFramework_Traits_AppleTV.h"
+    ]
+  }
+}

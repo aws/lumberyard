@@ -55,6 +55,6 @@ struct IComponentTrigger
     // </interfuscator:shuffle>
 };
 
-DECLARE_COMPONENT_POINTERS(IComponentTrigger);
+DECLARE_SMART_POINTERS(IComponentTrigger);
 
 #endif // CRYINCLUDE_CRYCOMMON_COMPONENTS_ICOMPONENTTRIGGER_H

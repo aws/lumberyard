@@ -63,43 +63,39 @@ namespace LmbrCentral
     //=========================================================================
     void AudioPreloadComponent::Activate()
     {
+        // Connect to the preload notification bus first, we want to be notified about the default preload (if any).
+        AudioPreloadComponentRequestBus::Handler::BusConnect(GetEntityId());
+
         if (m_loadType == AudioPreloadComponent::LoadType::Auto)
         {
             Load();     // load the default preload (if any)
         }
-
-        AudioPreloadComponentRequestBus::Handler::BusConnect(GetEntityId());
     }
 
     //=========================================================================
     void AudioPreloadComponent::Deactivate()
     {
+        // Don't care about preload notifications while deactivating, disconnect from the bus first.
         AudioPreloadComponentRequestBus::Handler::BusDisconnect(GetEntityId());
+        Audio::AudioPreloadNotificationBus::MultiHandler::BusDisconnect();
 
         if (m_loadType == AudioPreloadComponent::LoadType::Auto)
         {
             Unload();       // unload the default preload (if any)
 
-            // Copy the preloads names first so we can iterate the copy while modifying the real list
-            AZStd::unordered_set<AZStd::string> preloadsToUnload = m_loadedPreloads;
-
-            for (auto& preload : preloadsToUnload)
+            AZStd::lock_guard<AZStd::mutex> lock(m_loadMutex);
+            for (auto preloadId : m_loadedPreloadIds)
             {
-                UnloadPreload(preload.c_str());     // unload any remaining preloads
+                UnloadPreloadById(preloadId);
             }
+            m_loadedPreloadIds.clear();
         }
         else
         {
-            AZStd::string preloadsRemaining;
-            for (auto& preload : m_loadedPreloads)
-            {
-                preloadsRemaining += "\n\t";
-                preloadsRemaining += preload;
-            }
-
-            AZ_Warning("AudioPreloadComponent", m_loadedPreloads.empty(),
-                "A Manual-mode AudioPreloadComponent is Deactivating and has %d remaining loaded preloads:%s\nBe sure to match all manual 'LoadPreload's with an 'UnloadPreload'!",
-                m_loadedPreloads.size(), preloadsRemaining.c_str());
+            AZStd::lock_guard<AZStd::mutex> lock(m_loadMutex);
+            AZ_Warning("AudioPreloadComponent", m_loadedPreloadIds.empty(),
+                "A Manual-mode AudioPreloadComponent is Deactivating and has %d remaining loaded preloads!\nBe sure to match all manual 'LoadPreload's with an 'UnloadPreload'!",
+                m_loadedPreloadIds.size());
         }
     }
 
@@ -129,18 +125,12 @@ namespace LmbrCentral
             return;
         }
 
-        Audio::SAudioRequest request;
         Audio::TAudioPreloadRequestID preloadRequestId = INVALID_AUDIO_PRELOAD_REQUEST_ID;
         Audio::AudioSystemRequestBus::BroadcastResult(preloadRequestId, &Audio::AudioSystemRequestBus::Events::GetAudioPreloadRequestID, preloadName);
 
         if (preloadRequestId != INVALID_AUDIO_PRELOAD_REQUEST_ID)
         {
-            Audio::SAudioManagerRequestData<Audio::eAMRT_PRELOAD_SINGLE_REQUEST> requestData(preloadRequestId);
-            request.nFlags = (Audio::eARF_PRIORITY_NORMAL);
-            request.pData = &requestData;
-            Audio::AudioSystemRequestBus::Broadcast(&Audio::AudioSystemRequestBus::Events::PushRequest, request);
-
-            m_loadedPreloads.insert(AZStd::string(preloadName));
+            LoadPreloadById(preloadRequestId);
         }
     }
 
@@ -152,25 +142,62 @@ namespace LmbrCentral
             return;
         }
 
-        Audio::SAudioRequest request;
         Audio::TAudioPreloadRequestID preloadRequestId = INVALID_AUDIO_PRELOAD_REQUEST_ID;
         Audio::AudioSystemRequestBus::BroadcastResult(preloadRequestId, &Audio::AudioSystemRequestBus::Events::GetAudioPreloadRequestID, preloadName);
 
         if (preloadRequestId != INVALID_AUDIO_PRELOAD_REQUEST_ID)
         {
-            Audio::SAudioManagerRequestData<Audio::eAMRT_UNLOAD_SINGLE_REQUEST> requestData(preloadRequestId);
-            request.nFlags = (Audio::eARF_PRIORITY_NORMAL);
-            request.pData = &requestData;
-            Audio::AudioSystemRequestBus::Broadcast(&Audio::AudioSystemRequestBus::Events::PushRequest, request);
-
-            m_loadedPreloads.erase(AZStd::string(preloadName));
+            UnloadPreloadById(preloadRequestId);
         }
     }
 
     //=========================================================================
     bool AudioPreloadComponent::IsLoaded(const char* preloadName)
     {
-        return (m_loadedPreloads.find(AZStd::string(preloadName)) != m_loadedPreloads.end());
+        AZStd::lock_guard<AZStd::mutex> lock(m_loadMutex);
+        bool loaded = (m_loadedPreloadIds.find(Audio::AudioStringToID<Audio::TAudioPreloadRequestID>(preloadName)) != m_loadedPreloadIds.end());
+        return loaded;
+    }
+
+    //=========================================================================
+    void AudioPreloadComponent::OnAudioPreloadCached()
+    {
+        const Audio::TAudioPreloadRequestID* preloadId = Audio::AudioPreloadNotificationBus::GetCurrentBusId();
+
+        AZStd::lock_guard<AZStd::mutex> lock(m_loadMutex);
+        m_loadedPreloadIds.insert(*preloadId);
+    }
+
+    //=========================================================================
+    void AudioPreloadComponent::OnAudioPreloadUncached()
+    {
+        const Audio::TAudioPreloadRequestID preloadId = *Audio::AudioPreloadNotificationBus::GetCurrentBusId();
+        Audio::AudioPreloadNotificationBus::MultiHandler::BusDisconnect(preloadId);
+
+        AZStd::lock_guard<AZStd::mutex> lock(m_loadMutex);
+        m_loadedPreloadIds.erase(preloadId);
+    }
+
+    //=========================================================================
+    void AudioPreloadComponent::LoadPreloadById(Audio::TAudioPreloadRequestID preloadId)
+    {
+        Audio::AudioPreloadNotificationBus::MultiHandler::BusConnect(preloadId);
+
+        Audio::SAudioRequest request;
+        Audio::SAudioManagerRequestData<Audio::eAMRT_PRELOAD_SINGLE_REQUEST> requestData(preloadId);
+        request.nFlags = (Audio::eARF_PRIORITY_NORMAL);
+        request.pData = &requestData;
+        Audio::AudioSystemRequestBus::Broadcast(&Audio::AudioSystemRequestBus::Events::PushRequest, request);
+    }
+
+    //=========================================================================
+    void AudioPreloadComponent::UnloadPreloadById(Audio::TAudioPreloadRequestID preloadId)
+    {
+        Audio::SAudioRequest request;
+        Audio::SAudioManagerRequestData<Audio::eAMRT_UNLOAD_SINGLE_REQUEST> requestData(preloadId);
+        request.nFlags = (Audio::eARF_PRIORITY_NORMAL);
+        request.pData = &requestData;
+        Audio::AudioSystemRequestBus::Broadcast(&Audio::AudioSystemRequestBus::Events::PushRequest, request);
     }
 
 } // namespace LmbrCentral

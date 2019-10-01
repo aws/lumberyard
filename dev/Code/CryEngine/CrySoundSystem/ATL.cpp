@@ -25,7 +25,7 @@
 #include <IRenderAuxGeom.h>
 
 #if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
-#include <AzCore/Math/Color.h>
+    #include <AzCore/Math/Color.h>
 #endif // INCLUDE_AUDIO_PRODUCTION_CODE
 
 namespace Audio
@@ -513,11 +513,9 @@ namespace Audio
                 }
                 case eAMRT_LOSE_FOCUS:
                 {
-                    if (
-                    #if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
-                        (g_audioCVars.m_nIgnoreWindowFocus == 0) &&
-                    #endif // INCLUDE_AUDIO_PRODUCTION_CODE
-                        (m_nFlags & eAIS_IS_MUTED) == 0)
+                #if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
+                    if (g_audioCVars.m_nIgnoreWindowFocus == 0 && (m_nFlags & eAIS_IS_MUTED) == 0)
+                #endif // INCLUDE_AUDIO_PRODUCTION_CODE
                     {
                         const CATLTrigger* const pTrigger = stl::find_in_map(m_cTriggers, SATLInternalControlIDs::nLoseFocusTriggerID, nullptr);
 
@@ -536,11 +534,9 @@ namespace Audio
                 }
                 case eAMRT_GET_FOCUS:
                 {
-                    if (
-                    #if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
-                        (g_audioCVars.m_nIgnoreWindowFocus == 0) &&
-                    #endif // INCLUDE_AUDIO_PRODUCTION_CODE
-                        (m_nFlags & eAIS_IS_MUTED) == 0)
+                #if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
+                    if (g_audioCVars.m_nIgnoreWindowFocus == 0 && (m_nFlags & eAIS_IS_MUTED) == 0)
+                #endif // INCLUDE_AUDIO_PRODUCTION_CODE
                     {
                         AudioSystemImplementationNotificationBus::Broadcast(&AudioSystemImplementationNotificationBus::Events::OnAudioSystemGetFocus);
 
@@ -651,6 +647,13 @@ namespace Audio
                     SetImplLanguage();
 
                     m_oFileCacheMgr.UpdateLocalizedFileCacheEntries();
+                    eResult = eARS_SUCCESS;
+                    break;
+                }
+                case eAMRT_SET_AUDIO_PANNING_MODE:
+                {
+                    auto const requestData = static_cast<const SAudioManagerRequestDataInternal<eAMRT_SET_AUDIO_PANNING_MODE>*>(rRequest.pData.get());
+                    AudioSystemImplementationRequestBus::Broadcast(&AudioSystemImplementationRequestBus::Events::SetPanningMode, requestData->m_panningMode);
                     eResult = eARS_SUCCESS;
                     break;
                 }
@@ -985,9 +988,9 @@ namespace Audio
                         auto const requestData = static_cast<const SAudioObjectRequestDataInternal<eAORT_EXECUTE_SOURCE_TRIGGER>*>(pPassedRequestData);
 
                         const CATLTrigger* const pTrigger = stl::find_in_map(m_cTriggers, requestData->m_triggerId, nullptr);
-
                         if (pTrigger)
                         {
+                            SATLSourceData sourceData(requestData->m_sourceInfo);
                             eResult = ActivateTrigger(
                                 pObject,
                                 pTrigger,
@@ -996,7 +999,7 @@ namespace Audio
                                 rRequest.pUserData,
                                 rRequest.pUserDataOwner,
                                 rRequest.nFlags,
-                                requestData->m_sourceId
+                                &sourceData
                             );
                         }
                         else
@@ -1139,9 +1142,6 @@ namespace Audio
     {
         EAudioRequestStatus eResult = eARS_FAILURE;
 
-        const char* implementationName = nullptr;
-        AudioSystemImplementationRequestBus::BroadcastResult(implementationName, &AudioSystemImplementationRequestBus::Events::GetImplementationNameString);
-
         AudioSystemImplementationRequestBus::BroadcastResult(eResult, &AudioSystemImplementationRequestBus::Events::Initialize);
         if (eResult == eARS_SUCCESS)
         {
@@ -1161,13 +1161,14 @@ namespace Audio
             // Update the implementation subpath for locating ATL controls...
             AudioSystemImplementationRequestBus::BroadcastResult(m_implSubPath, &AudioSystemImplementationRequestBus::Events::GetImplSubPath);
         }
-        else
-        {
-            g_audioLogger.Log(eALT_ERROR, "Failed to Initialize the AudioSystemImplementationComponent [%s].", implementationName);
-        }
 
 #if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
-        m_sImplementationNameString = implementationName;
+        else
+        {
+            const char* implementationName = nullptr;
+            AudioSystemImplementationRequestBus::BroadcastResult(implementationName, &AudioSystemImplementationRequestBus::Events::GetImplementationNameString);
+            g_audioLogger.Log(eALT_ERROR, "Failed to Initialize the AudioSystemImplementationComponent '%s'\n", implementationName);
+        }
 #endif //INCLUDE_AUDIO_PRODUCTION_CODE
 
         return eResult;
@@ -1316,7 +1317,7 @@ namespace Audio
         void* const pUserData /* = nullptr */,
         void* const pUserDataOwner /* = nullptr */,
         const TATLEnumFlagsType nFlags /* = INVALID_AUDIO_ENUM_FLAG_TYPE */,
-        TAudioSourceId sourceId /* = INVALID_AUDIO_SOURCE_ID */)
+        const SATLSourceData* pSourceData /* = nullptr */)
     {
         EAudioRequestStatus eResult = eARS_FAILURE;
 
@@ -1341,6 +1342,7 @@ namespace Audio
         {
             const EATLSubsystem eReceiver = triggerImpl->GetReceiver();
             CATLEvent* const pEvent = m_oAudioEventMgr.GetEvent(eReceiver);
+            pEvent->m_pImplData->m_triggerId = nATLTriggerID;
 
             EAudioRequestStatus eActivateResult = eARS_FAILURE;
 
@@ -1352,7 +1354,7 @@ namespace Audio
                         pAudioObject->GetImplDataPtr(),
                         triggerImpl->m_pImplData,
                         pEvent->m_pImplData,
-                        sourceId);
+                        pSourceData);
                     break;
                 }
                 case eAS_ATL_INTERNAL:
@@ -2067,7 +2069,9 @@ namespace Audio
             const float fColorGreen[4] = { 0.0f, 1.0f, 0.0f, 0.7f };
             const float fColorBlue[4] = { 0.4f, 0.4f, 1.0f, 1.0f };
 
-            pAuxGeom->Draw2dLabel(fPosX, fPosY, 1.6f, fColorBlue, false, "AudioTranslationLayer with %s", m_sImplementationNameString.c_str());
+            const char* implementationName = nullptr;
+            AudioSystemImplementationRequestBus::BroadcastResult(implementationName, &AudioSystemImplementationRequestBus::Events::GetImplementationNameString);
+            pAuxGeom->Draw2dLabel(fPosX, fPosY, 1.6f, fColorBlue, false, "AudioTranslationLayer with %s", implementationName);
 
             fPosX += 20.0f;
             fPosY += 17.0f;
@@ -2240,12 +2244,10 @@ namespace Audio
                 AZ::Color percentColor;
                 if (percentUsed < 0.5f)
                 {
-                    // This will show up as a javelin fork!  On the next integration, take this version and remove this comment.
                     percentColor = greenColor.Lerp(yellowColor, percentUsed * 2.f);
                 }
                 else
                 {
-                    // This will show up as a javelin fork!  On the next integration, take this version and remove this comment.
                     percentColor = yellowColor.Lerp(redColor, (percentUsed * 2.f) - 1.f);
                 }
                 percentColor.StoreToFloat4(color);

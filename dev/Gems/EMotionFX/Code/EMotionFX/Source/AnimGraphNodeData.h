@@ -127,4 +127,24 @@ namespace EMotionFX
 
         void Delete() override;
     };
-}   // namespace EMotionFX
+
+    /**
+     * This mixin can be used for unique datas on anim graph nodes that manually need to increase pose and data ref counts for nodes a hierarchy level up or
+     * neighbor nodes with a risk of the node not being output. An example would be the state machine where the active nodes can change within the update
+     * method due to ending or newly started transitions. We need some way to keep track of the nodes that increased the data and pose ref counts at a level
+     * up in the hierarchy.
+     */
+    class EMFX_API NodeDataAutoRefCountMixin
+    {
+    public:
+        void IncreaseDataRefCountForNode(AnimGraphNode* node, AnimGraphInstance* animGraphInstance);
+        void DecreaseDataRefCounts(AnimGraphInstance* animGraphInstance);
+
+        void IncreasePoseRefCountForNode(AnimGraphNode* node, AnimGraphInstance* animGraphInstance);
+        void DecreasePoseRefCounts(AnimGraphInstance* animGraphInstance);
+
+    protected:
+        AZStd::vector<AnimGraphNode*> m_dataRefCountIncreasedNodes;
+        AZStd::vector<AnimGraphNode*> m_poseRefCountIncreasedNodes;
+    };
+} // namespace EMotionFX

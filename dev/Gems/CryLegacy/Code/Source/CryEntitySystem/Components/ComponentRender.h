@@ -643,7 +643,7 @@ private:
 extern stl::PoolAllocatorNoMT<sizeof(CComponentRender)>* g_Alloc_ComponentRender;
 
 //////////////////////////////////////////////////////////////////////////
-DECLARE_COMPONENT_POINTERS(CComponentRender);
+DECLARE_SMART_POINTERS(CComponentRender);
 
 //////////////////////////////////////////////////////////////////////////
 inline void* CComponentRender::operator new(size_t nSize)

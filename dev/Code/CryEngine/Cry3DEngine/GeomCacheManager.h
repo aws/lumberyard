@@ -40,6 +40,7 @@ struct SGeomCacheBufferHandle
         m_endFrame = 0;
         m_bufferSize = 0;
         m_pBuffer = NULL;
+        m_pStream = NULL;
         m_numJobReferences = 0;
     }
 

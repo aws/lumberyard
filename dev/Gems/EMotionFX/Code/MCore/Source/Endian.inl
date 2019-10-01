@@ -414,14 +414,14 @@ MCORE_INLINE void Endian::ConvertVector2(AZ::Vector2* value, EEndianType sourceE
 // convert a Vector3 into another endian type
 MCORE_INLINE void Endian::ConvertVector3(AZ::PackedVector3f* value, EEndianType sourceEndianType, EEndianType targetEndianType, uint32 count)
 {
-	// if we don't need to convert anything
-	if (sourceEndianType == targetEndianType)
-	{
-		return;
-	}
+    // if we don't need to convert anything
+    if (sourceEndianType == targetEndianType)
+    {
+        return;
+    }
 
-	// perform conversion
-	ConvertFloat((float*)value, count * 3);
+    // perform conversion
+    ConvertFloat((float*)value, count * 3);
 }
 
 
@@ -528,7 +528,7 @@ MCORE_INLINE void Endian::ConvertRGBAColor(MCore::RGBAColor* value, uint32 count
 MCORE_INLINE void Endian::ConvertFloatTo(float* value, EEndianType targetEndianType, uint32 count)
 {
     // do nothing if we are already in the right endian
-    #ifdef MCORE_LITTLE_ENDIAN
+    #if !defined(AZ_BIG_ENDIAN) // LITTLE_ENDIAN
     if (targetEndianType == MCore::Endian::ENDIAN_LITTLE)
     {
         return;
@@ -549,7 +549,7 @@ MCORE_INLINE void Endian::ConvertFloatTo(float* value, EEndianType targetEndianT
 MCORE_INLINE void Endian::ConvertSignedInt32To(int32* value, EEndianType targetEndianType, uint32 count)
 {
     // do nothing if we are already in the right endian
-    #ifdef MCORE_LITTLE_ENDIAN
+    #if !defined(AZ_BIG_ENDIAN) // LITTLE_ENDIAN
     if (targetEndianType == MCore::Endian::ENDIAN_LITTLE)
     {
         return;
@@ -570,7 +570,7 @@ MCORE_INLINE void Endian::ConvertSignedInt32To(int32* value, EEndianType targetE
 MCORE_INLINE void Endian::ConvertUnsignedInt32To(uint32* value, EEndianType targetEndianType, uint32 count)
 {
     // do nothing if we are already in the right endian
-    #ifdef MCORE_LITTLE_ENDIAN
+    #if !defined(AZ_BIG_ENDIAN) // LITTLE_ENDIAN
     if (targetEndianType == MCore::Endian::ENDIAN_LITTLE)
     {
         return;
@@ -591,7 +591,7 @@ MCORE_INLINE void Endian::ConvertUnsignedInt32To(uint32* value, EEndianType targ
 MCORE_INLINE void Endian::ConvertSignedInt16To(int16* value, EEndianType targetEndianType, uint32 count)
 {
     // do nothing if we are already in the right endian
-    #ifdef MCORE_LITTLE_ENDIAN
+    #if !defined(AZ_BIG_ENDIAN) // LITTLE_ENDIAN
     if (targetEndianType == MCore::Endian::ENDIAN_LITTLE)
     {
         return;
@@ -612,7 +612,7 @@ MCORE_INLINE void Endian::ConvertSignedInt16To(int16* value, EEndianType targetE
 MCORE_INLINE void Endian::ConvertUnsignedInt16To(uint16* value, EEndianType targetEndianType, uint32 count)
 {
     // do nothing if we are already in the right endian
-    #ifdef MCORE_LITTLE_ENDIAN
+    #if !defined(AZ_BIG_ENDIAN) // LITTLE_ENDIAN
     if (targetEndianType == MCore::Endian::ENDIAN_LITTLE)
     {
         return;
@@ -633,7 +633,7 @@ MCORE_INLINE void Endian::ConvertUnsignedInt16To(uint16* value, EEndianType targ
 MCORE_INLINE void Endian::ConvertVector2To(AZ::Vector2* value, EEndianType targetEndianType, uint32 count)
 {
     // do nothing if we are already in the right endian
-    #ifdef MCORE_LITTLE_ENDIAN
+    #if !defined(AZ_BIG_ENDIAN) // LITTLE_ENDIAN
     if (targetEndianType == MCore::Endian::ENDIAN_LITTLE)
     {
         return;
@@ -654,7 +654,7 @@ MCORE_INLINE void Endian::ConvertVector2To(AZ::Vector2* value, EEndianType targe
 MCORE_INLINE void Endian::ConvertVector3To(AZ::PackedVector3f* value, EEndianType targetEndianType, uint32 count)
 {
     // do nothing if we are already in the right endian
-    #ifdef MCORE_LITTLE_ENDIAN
+    #if !defined(AZ_BIG_ENDIAN) // LITTLE_ENDIAN
     if (targetEndianType == MCore::Endian::ENDIAN_LITTLE)
     {
         return;
@@ -675,7 +675,7 @@ MCORE_INLINE void Endian::ConvertVector3To(AZ::PackedVector3f* value, EEndianTyp
 MCORE_INLINE void Endian::ConvertVector4To(AZ::Vector4* value, EEndianType targetEndianType, uint32 count)
 {
     // do nothing if we are already in the right endian
-    #ifdef MCORE_LITTLE_ENDIAN
+    #if !defined(AZ_BIG_ENDIAN) // LITTLE_ENDIAN
     if (targetEndianType == MCore::Endian::ENDIAN_LITTLE)
     {
         return;
@@ -696,7 +696,7 @@ MCORE_INLINE void Endian::ConvertVector4To(AZ::Vector4* value, EEndianType targe
 MCORE_INLINE void Endian::ConvertQuaternionTo(MCore::Quaternion* value, EEndianType targetEndianType, uint32 count)
 {
     // do nothing if we are already in the right endian
-    #ifdef MCORE_LITTLE_ENDIAN
+    #if !defined(AZ_BIG_ENDIAN) // LITTLE_ENDIAN
     if (targetEndianType == MCore::Endian::ENDIAN_LITTLE)
     {
         return;
@@ -717,7 +717,7 @@ MCORE_INLINE void Endian::ConvertQuaternionTo(MCore::Quaternion* value, EEndianT
 MCORE_INLINE void Endian::Convert16BitQuaternionTo(MCore::Compressed16BitQuaternion* value, EEndianType targetEndianType, uint32 count)
 {
     // do nothing if we are already in the right endian
-    #ifdef MCORE_LITTLE_ENDIAN
+    #if !defined(AZ_BIG_ENDIAN) // LITTLE_ENDIAN
     if (targetEndianType == MCore::Endian::ENDIAN_LITTLE)
     {
         return;
@@ -738,7 +738,7 @@ MCORE_INLINE void Endian::Convert16BitQuaternionTo(MCore::Compressed16BitQuatern
 MCORE_INLINE void Endian::ConvertRGBAColorTo(MCore::RGBAColor* value, EEndianType targetEndianType, uint32 count)
 {
     // do nothing if we are already in the right endian
-    #ifdef MCORE_LITTLE_ENDIAN
+    #if !defined(AZ_BIG_ENDIAN) // LITTLE_ENDIAN
     if (targetEndianType == MCore::Endian::ENDIAN_LITTLE)
     {
         return;

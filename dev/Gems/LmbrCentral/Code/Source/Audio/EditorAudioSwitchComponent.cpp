@@ -35,7 +35,7 @@ namespace LmbrCentral
                 editContext->Class<EditorAudioSwitchComponent>("Audio Switch", "The Audio Switch component provides basic Audio Translation Layer (ATL) switch functionality to specify the state of an entity")
                     ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
                         ->Attribute(AZ::Edit::Attributes::Category, "Audio")
-                        ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/AudioSwitch.png")
+                        ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/AudioSwitch.svg")
                         ->Attribute(AZ::Edit::Attributes::ViewportIcon, "Editor/Icons/Components/Viewport/AudioSwitch.png")
                         ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("Game", 0x232b318c))
                         ->Attribute(AZ::Edit::Attributes::AutoExpand, true)

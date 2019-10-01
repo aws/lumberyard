@@ -339,7 +339,7 @@ namespace EMotionFX
                 uniqueData->mSyncTrackNode = nodeA;
             }
 
-            nodeA->AutoSync(animGraphInstance, this, 0.0f, SYNCMODE_TRACKBASED, false, false);
+            nodeA->AutoSync(animGraphInstance, this, 0.0f, SYNCMODE_TRACKBASED, false);
 
             for (uint32 i = 0; i < 2; ++i)
             {
@@ -362,11 +362,11 @@ namespace EMotionFX
 
                 if (!m_additiveBlending)
                 {
-                    nodeToSync->AutoSync(animGraphInstance, nodeA, weight, m_syncMode, false, false);
+                    nodeToSync->AutoSync(animGraphInstance, nodeA, weight, m_syncMode, false);
                 }
                 else
                 {
-                    nodeToSync->AutoSync(animGraphInstance, nodeA, 0.0f, m_syncMode, false, false);
+                    nodeToSync->AutoSync(animGraphInstance, nodeA, 0.0f, m_syncMode, false);
                 }
             }
         }

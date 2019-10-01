@@ -74,6 +74,7 @@ def aws_native_sdk_platforms(bld):
         'win',
         'darwin',
         'ios',
+        'appletv',
         'linux',
         'android_armv7_clang',
         'android_armv8_clang',

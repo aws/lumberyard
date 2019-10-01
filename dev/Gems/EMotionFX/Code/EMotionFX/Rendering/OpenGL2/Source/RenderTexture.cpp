@@ -85,7 +85,7 @@ namespace RenderGL
 
 
     // initialize the render texture
-    bool RenderTexture::Init(int32 format, uint32 width, uint32 height, GLuint depthBuffer)
+    bool RenderTexture::Init(int32 format, uint32 width, uint32 height, AZ::u32 depthBuffer)
     {
         mFormat      = format;
         mWidth       = width;

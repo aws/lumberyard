@@ -11,9 +11,12 @@
 */
 #include <AzCore/PlatformDef.h>
 #include <AzCore/Component/ComponentApplicationBus.h>
+#include <AzCore/std/smart_ptr/make_shared.h>
 
 #include <Source/Framework/ScriptCanvasTestFixture.h>
 #include <Source/Framework/ScriptCanvasTestUtilities.h>
+
+#include <ScriptCanvas/Core/SlotConfigurationDefaults.h>
 
 using namespace ScriptCanvasTests;
 using namespace ScriptCanvasEditor;
@@ -34,6 +37,9 @@ public:
     // EBusTraits overrides
     static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::ById;
     using BusIdType = AZ::EntityId;
+    using MutexType = AZStd::recursive_mutex;
+    static const bool LocklessDispatch = true;
+
     //////////////////////////////////////////////////////////////////////////
 
     virtual void OnAsyncEvent() = 0;
@@ -84,8 +90,8 @@ public:
 
     void ConfigureSlots() override
     {
-        AddSlot("In", "", ScriptCanvas::SlotType::ExecutionIn);
-        AddSlot("Out", "", ScriptCanvas::SlotType::LatentOut);
+        AddSlot(ScriptCanvas::CommonSlots::GeneralInSlot());
+        AddSlot(ScriptCanvas::CommonSlots::GeneralOutSlot());
     }
 
     void OnActivate() override
@@ -95,11 +101,25 @@ public:
         AsyncEventNotificationBus::Handler::BusConnect(GetEntityId());
 
         std::packaged_task<void()> task([this]() { LongRunningProcessSimulator3000::Run(GetEntityId()); }); // wrap the function
-        std::thread(std::move(task)).detach(); // launch on a thread
+
+        m_eventThread = AZStd::make_shared<AZStd::thread>(AZStd::move(task)); // launch on a thread
     }
 
     void OnDeactivate() override
     {
+        if (m_eventThread)
+        {
+            m_eventThread->join();
+            m_eventThread.reset();
+        }
+
+        // We've received the event, no longer need the bus connection
+        AsyncEventNotificationBus::Handler::BusDisconnect();
+
+        // We're done, kick it out.
+        SignalOutput(GetSlotId("Out"));
+
+        // Disconnect from tick bus as well
         AZ::TickBus::Handler::BusDisconnect();
     }
 
@@ -117,15 +137,6 @@ public:
 
     void Shutdown()
     {
-        // We've received the event, no longer need the bus connection
-        AsyncEventNotificationBus::Handler::BusDisconnect();
-
-        // We're done, kick it out.
-        SignalOutput(GetSlotId("Out"));
-
-        // Disconnect from tick bus as well
-        AZ::TickBus::Handler::BusDisconnect();
-
         ScriptCanvasTestFixture::s_asyncOperationActive = false;
     }
 
@@ -135,9 +146,9 @@ public:
         m_duration += deltaTime;
     }
 
-    void Visit(ScriptCanvas::NodeVisitor& visitor) const override { visitor.Visit(*this); }
+protected:
+    AZStd::shared_ptr<AZStd::thread> m_eventThread;
 private:
-
     double m_duration = 0.f;
 };
 
@@ -167,7 +178,7 @@ TEST_F(ScriptCanvasTestFixture, Asynchronous_Behaviors)
     AZ::EntityId asyncNodeId;
     AsyncNode* asyncNode = CreateTestNode<AsyncNode>(graphUniqueId, asyncNodeId);
 
-    EXPECT_TRUE(Connect(*graph, startNodeId, "Out", asyncNodeId, "In"));
+    EXPECT_TRUE(Connect(*graph, startNodeId, ScriptCanvas::CommonSlots::GeneralOutSlot::GetName(), asyncNodeId, ScriptCanvas::CommonSlots::GeneralInSlot::GetName()));
     
     {
         ScopedOutputSuppression supressOutput;
@@ -240,16 +251,11 @@ public:
 
         std::promise<long> p;
         m_computeFuture = p.get_future();
-        std::thread([this, digits](std::promise<long> p)
+        m_eventThread = AZStd::make_shared<AZStd::thread>([this, digits, p = AZStd::move(p)]() mutable
         {
             p.set_value(ComputeFibonacci(digits));
             AsyncEventNotificationBus::Event(GetEntityId(), &AsyncEvent::OnAsyncEvent);
-        }, AZStd::move(p)).detach();
-    }
-
-    void OnDeactivate() override
-    {
-        AZ::TickBus::Handler::BusDisconnect();
+        });
     }
 
     void HandleAsyncEvent() override
@@ -271,7 +277,6 @@ public:
     }
 
 private:
-
     std::future<long> m_computeFuture;
     long m_result = 0;
     double m_duration = 0.f;

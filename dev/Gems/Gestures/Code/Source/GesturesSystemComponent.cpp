@@ -85,6 +85,7 @@ namespace Gestures
         }
 
         InputDeviceGestures::Reflect(context);
+        InputChannelGesture::Type::Reflect(context);
 
         InputChannelGestureClickOrTap::TypeAndConfig::Reflect(context);
         InputChannelGestureDrag::TypeAndConfig::Reflect(context);

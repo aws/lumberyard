@@ -102,7 +102,6 @@ namespace EMotionFX
 
         RequestPoses(animGraphInstance);
         AnimGraphPose* outputPose = GetOutputPose(animGraphInstance, OUTPUTPORT_POSE)->GetValue();
-        ActorInstance* actorInstance = animGraphInstance->GetActorInstance();
 
         // Perform the subtraction
         if (inputNode)
@@ -215,7 +214,7 @@ namespace EMotionFX
             if (inputNode)
             {
                 // Sync the input node to this node.
-                inputNode->AutoSync(animGraphInstance, this, 0.0f, SYNCMODE_TRACKBASED, false, false);
+                inputNode->AutoSync(animGraphInstance, this, 0.0f, SYNCMODE_TRACKBASED, false);
                 if (animGraphInstance->GetIsObjectFlagEnabled(mObjectIndex, AnimGraphInstance::OBJECTFLAGS_SYNCED) == false)
                 {
                     inputNode->RecursiveSetUniqueDataFlag(animGraphInstance, AnimGraphInstance::OBJECTFLAGS_SYNCED, true);
@@ -224,7 +223,7 @@ namespace EMotionFX
                 // Sync the subtract node to the input node.
                 if (subtractNode)
                 {
-                    subtractNode->AutoSync(animGraphInstance, inputNode, 0.0f, m_syncMode, false, false);
+                    subtractNode->AutoSync(animGraphInstance, inputNode, 0.0f, m_syncMode, false);
                 }
             }
         }

@@ -21,7 +21,7 @@
 #include <AzCore/std/smart_ptr/make_shared.h>
 #include <AzCore/std/parallel/mutex.h>
 #include <AzCore/std/parallel/lock.h>
-#include <AzCore/std/parallel/conditional_variable.h>
+#include <AzCore/std/parallel/condition_variable.h>
 #include <AzCore/Math/Uuid.h>
 #include <AzCore/Jobs/JobContext.h>
 #include <AzCore/Jobs/JobFunction.h>
@@ -214,10 +214,13 @@ namespace CloudGemMetric
         auto curMetrics = AZStd::make_shared<MetricsQueue>();
         {
             AZ::u64 fileSize = 0;
-            AZ::IO::Result result = fileIO->Size(GetMetricsFilePath(), fileSize);
-            if (result && fileSize)
+            if (fileIO->Exists(GetMetricsFilePath()))
             {
-                curMetrics->ReadFromJson(GetMetricsFilePath());
+                AZ::IO::Result result = fileIO->Size(GetMetricsFilePath(), fileSize);
+                if (result && fileSize)
+                {
+                    curMetrics->ReadFromJson(GetMetricsFilePath());
+                }
             }
         }
 

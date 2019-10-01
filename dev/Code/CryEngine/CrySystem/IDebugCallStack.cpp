@@ -16,9 +16,9 @@
 
 #include "StdAfx.h"
 #include "IDebugCallStack.h"
-#include <IPlatformOS.h>
 #include "System.h"
 #include <AzFramework/IO/FileOperations.h>
+#include <AzCore/NativeUI/NativeUIRequests.h>
 
 //#if !defined(LINUX)
 
@@ -53,7 +53,7 @@ void IDebugCallStack::FileCreationCallback(void (* postBackupProcess)())
 //////////////////////////////////////////////////////////////////////////
 void IDebugCallStack::LogCallstack()
 {
-	AZ::Debug::Trace::PrintCallstack("", 2);
+    AZ::Debug::Trace::PrintCallstack("", 2);
 }
 
 const char* IDebugCallStack::TranslateExceptionCode(DWORD dwExcept)
@@ -211,15 +211,14 @@ void IDebugCallStack::FatalError(const char* description)
     WriteLineToLog(description);
 
 #ifndef _RELEASE
-    IPlatformOS* pOS = gEnv->pSystem->GetPlatformOS();
-    bool bShowDebugScreen = pOS && g_cvars.sys_no_crash_dialog == 0;
+    bool bShowDebugScreen = g_cvars.sys_no_crash_dialog == 0;
     // showing the debug screen is not safe when not called from mainthread
     // it normally leads to a infinity recursion followed by a stack overflow, preventing
     // useful call stacks, thus they are disabled
     bShowDebugScreen = bShowDebugScreen && gEnv->mMainThreadId == CryGetCurrentThreadId();
     if (bShowDebugScreen)
     {
-        pOS->DebugMessageBox(description, "Lumberyard Fatal Error");
+        EBUS_EVENT(AZ::NativeUI::NativeUIRequestBus, DisplayOkDialog, "Lumberyard Fatal Error", description, false);
     }
 #endif
 

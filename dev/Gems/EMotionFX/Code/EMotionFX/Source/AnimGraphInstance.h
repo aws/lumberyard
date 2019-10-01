@@ -12,6 +12,7 @@
 
 #pragma once
 
+#include <AzCore/PlatformIncl.h>
 #include <AzCore/Outcome/Outcome.h>
 #include <EMotionFX/Source/AnimGraphEventBuffer.h>
 #include <EMotionFX/Source/AnimGraphObject.h>
@@ -75,7 +76,7 @@ namespace EMotionFX
 
         static AnimGraphInstance* Create(AnimGraph* animGraph, ActorInstance* actorInstance, MotionSet* motionSet, const InitSettings* initSettings = nullptr);
 
-        void Output(Pose* outputPose, bool autoFreeAllPoses = true);
+        void Output(Pose* outputPose);
 
         void Start();
         void Stop();
@@ -286,6 +287,11 @@ namespace EMotionFX
         void OnNetworkActiveNodesUpdate(const AZStd::vector<AZ::u32>& activeNodes);
         void OnNetworkMotionNodePlaytimesUpdate(const MotionNodePlaytimeContainer& motionNodePlaytimes);
 
+        void SetAutoReleaseRefDatas(bool automaticallyFreeRefDatas);
+        void SetAutoReleasePoses(bool automaticallyFreePoses);
+        void ReleaseRefDatas();
+        void ReleasePoses();
+
     private:
         AnimGraph*                                          mAnimGraph;
         ActorInstance*                                      mActorInstance;
@@ -305,6 +311,9 @@ namespace EMotionFX
         bool                                                mAutoUnregister;        /**< Specifies whether we will automatically unregister this anim graph instance set from the anim graph manager or not, when deleting this object. */
         bool                                                mEnableVisualization;
         bool                                                mRetarget;              /**< Is retargeting enabled? */
+
+        bool                                                m_autoReleaseAllPoses;
+        bool                                                m_autoReleaseAllRefDatas;
         
         AZStd::vector<AnimGraphInstance*>                   m_servantGraphs;
         AZStd::vector<AnimGraphInstance*>                   m_masterGraphs;

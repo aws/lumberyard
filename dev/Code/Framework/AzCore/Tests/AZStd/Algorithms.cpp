@@ -195,21 +195,21 @@ namespace UnitTest
             {1, 2, 3}
         };
         // we should call make heap before we can sort, push or pop
-        AZ_TEST_START_ASSERTTEST;
+        AZ_TEST_START_TRACE_SUPPRESSION;
         sort_heap(assertHeap.begin(), assertHeap.end());
-        AZ_TEST_STOP_ASSERTTEST(2);
+        AZ_TEST_STOP_TRACE_SUPPRESSION(2);
         assertHeap[0] = 1;
         assertHeap[1] = 2;
         assertHeap[2] = 3;
-        AZ_TEST_START_ASSERTTEST;
+        AZ_TEST_START_TRACE_SUPPRESSION;
         push_heap(assertHeap.begin(), assertHeap.end());
-        AZ_TEST_STOP_ASSERTTEST(1);
+        AZ_TEST_STOP_TRACE_SUPPRESSION(1);
         assertHeap[0] = 1;
         assertHeap[1] = 2;
         assertHeap[2] = 3;
-        AZ_TEST_START_ASSERTTEST;
+        AZ_TEST_START_TRACE_SUPPRESSION;
         pop_heap(assertHeap.begin(), assertHeap.end());
-        AZ_TEST_STOP_ASSERTTEST(2);
+        AZ_TEST_STOP_TRACE_SUPPRESSION(2);
 #endif
     }
 
@@ -451,6 +451,19 @@ namespace UnitTest
         }
     }
 
+    TEST_F(Algorithms, DISABLED_StableSort_AlreadySorted)
+    {
+        AZStd::vector<uint64_t> testVec;
+        for (int i = 0; i < 33; ++i)
+        {
+            testVec.push_back(i);
+        }
+
+        auto expectedResultVec = testVec;
+        AZStd::stable_sort(testVec.begin(), testVec.end(), AZStd::less<uint64_t>(), testVec.get_allocator());
+        EXPECT_EQ(expectedResultVec, testVec);
+    }
+
     TEST_F(Algorithms, PartialSort)
     {
         vector<int> sortTest;
@@ -625,5 +638,229 @@ namespace UnitTest
         EXPECT_EQ(3, dest[0]);
         EXPECT_EQ(2, dest[1]);
         EXPECT_EQ(1, dest[2]);
+    }
+
+    TEST_F(Algorithms, MinMaxElement)
+    {
+        AZStd::initializer_list<uint32_t> emptyData{};
+        AZStd::array<uint32_t, 1> singleElementData{ { 313 } };
+        AZStd::array<uint32_t, 3> unorderedData{ { 5, 3, 2} };
+        AZStd::array<uint32_t, 5> multiMinMaxData{ { 5, 3, 2, 5, 2 } };
+
+        // Empty container test
+        {
+            AZStd::pair<const uint32_t*, const uint32_t*> minMaxPair = AZStd::minmax_element(emptyData.begin(), emptyData.end());
+            EXPECT_EQ(minMaxPair.first, minMaxPair.second);
+            EXPECT_EQ(emptyData.end(), minMaxPair.first);
+        }
+
+        {
+            // Single element container test
+            AZStd::pair<uint32_t*, uint32_t*> minMaxPair = AZStd::minmax_element(singleElementData.begin(), singleElementData.end());
+            EXPECT_EQ(minMaxPair.first, minMaxPair.second);
+            EXPECT_NE(singleElementData.end(), minMaxPair.second);
+            EXPECT_EQ(313, *minMaxPair.first);
+            EXPECT_EQ(313, *minMaxPair.second);
+
+            // Unordered container test
+            minMaxPair = AZStd::minmax_element(unorderedData.begin(), unorderedData.end());
+            EXPECT_NE(unorderedData.end(), minMaxPair.first);
+            EXPECT_NE(unorderedData.end(), minMaxPair.second);
+            EXPECT_EQ(2, *minMaxPair.first);
+            EXPECT_EQ(5, *minMaxPair.second);
+
+            // Multiple min and max elements in same container test
+            minMaxPair = AZStd::minmax_element(multiMinMaxData.begin(), multiMinMaxData.end());
+            EXPECT_NE(multiMinMaxData.end(), minMaxPair.first);
+            EXPECT_NE(multiMinMaxData.end(), minMaxPair.second);
+            // The smallest element should correspond to the first '2' within the multiMinMaxData container
+            EXPECT_EQ(multiMinMaxData.begin() + 2, minMaxPair.first);
+            // The greatest element should correspond to the second '5' within the multiMinMaxData container
+            EXPECT_EQ(multiMinMaxData.begin() + 3, minMaxPair.second);
+            EXPECT_EQ(2, *minMaxPair.first);
+            EXPECT_EQ(5, *minMaxPair.second);
+
+            // Custom comparator test
+            minMaxPair = AZStd::minmax_element(unorderedData.begin(), unorderedData.end(), AZStd::greater<uint32_t>());
+            EXPECT_NE(unorderedData.end(), minMaxPair.first);
+            EXPECT_NE(unorderedData.end(), minMaxPair.second);
+            EXPECT_EQ(5, *minMaxPair.first);
+            EXPECT_EQ(2, *minMaxPair.second);
+        }
+    }
+
+    TEST_F(Algorithms, MinMax)
+    {
+        AZStd::initializer_list<uint32_t> singleElementData{ 908 };
+        AZStd::initializer_list<uint32_t> unorderedData{ 5, 3, 2 };
+        AZStd::initializer_list<uint32_t> multiMinMaxData{ 7, 10, 552, 57234, 224, 57234, 7, 238 };
+
+        // Initializer list test
+        {
+            // Single element container test
+            AZStd::pair<uint32_t, uint32_t> minMaxPair = AZStd::minmax(singleElementData);
+            EXPECT_EQ(908, minMaxPair.first);
+            EXPECT_EQ(908, minMaxPair.second);
+
+            // Unordered container test
+            minMaxPair = AZStd::minmax(unorderedData);
+            EXPECT_EQ(2, minMaxPair.first);
+            EXPECT_EQ(5, minMaxPair.second);
+
+            // Multiple min and max elements in same container test
+            minMaxPair = AZStd::minmax(multiMinMaxData);
+            EXPECT_EQ(7, minMaxPair.first);
+            EXPECT_EQ(57234, minMaxPair.second);
+
+            // Custom comparator test
+            minMaxPair = AZStd::minmax(unorderedData, AZStd::greater<uint32_t>());
+            EXPECT_EQ(5, minMaxPair.first);
+            EXPECT_EQ(2, minMaxPair.second);
+        }
+
+        // Two parameter test
+        {
+            // Sanity test
+            AZStd::pair<uint32_t, uint32_t> minMaxPair = AZStd::minmax(7000, 6999);
+            EXPECT_EQ(6999, minMaxPair.first);
+            EXPECT_EQ(7000, minMaxPair.second);
+
+            // Customer comparator Test
+            minMaxPair = AZStd::minmax(9001, 9000, AZStd::greater<uint32_t>());
+            EXPECT_EQ(9001, minMaxPair.first);
+            EXPECT_EQ(9000, minMaxPair.second);
+        }
+    }
+
+    TEST_F(Algorithms, IsSorted)
+    {
+        AZStd::array<int, 10> container1 = {{ 1, 2, 3, 4, 4, 5, 5, 5, 10, 20 }};
+
+        bool isFullContainer1Sorted = AZStd::is_sorted(container1.begin(), container1.end());
+        EXPECT_TRUE(isFullContainer1Sorted);
+
+        bool isPartialContainer1Sorted = AZStd::is_sorted(container1.begin()+1, container1.begin()+5);
+        EXPECT_TRUE(isPartialContainer1Sorted);
+
+        bool isRangeLengthOneSorted = AZStd::is_sorted(container1.begin(), container1.begin());
+        EXPECT_TRUE(isRangeLengthOneSorted);
+
+        AZStd::array<int, 10> container2 = {{ 1, 2, 3, 4, 4, 5, 5, 5, 10, 9 }};
+
+        bool isFullContainer2Sorted = AZStd::is_sorted(container2.begin(), container2.end());
+        EXPECT_FALSE(isFullContainer2Sorted);
+
+        // this range is container2[1] up to and including container2[8] (range doesn't include element pointed to by last iterator)
+        bool isPartialContainer2Sorted = AZStd::is_sorted(container2.begin()+1, container2.begin()+9);
+        EXPECT_TRUE(isPartialContainer2Sorted);
+
+        // this range is container2[8] up to and including container2[9]
+        bool isVeryEndOfContainer2Sorted = AZStd::is_sorted(container2.begin()+8, container2.end());
+        EXPECT_FALSE(isVeryEndOfContainer2Sorted);
+    }
+
+    TEST_F(Algorithms, IsSorted_Comp)
+    {
+        auto compareLessThan = [](const int& lhs, const int& rhs) -> bool
+        {
+            return lhs < rhs;
+        };
+
+        auto compareGreaterThan = [](const int& lhs, const int& rhs) -> bool
+        {
+            return lhs > rhs;
+        };
+
+        AZStd::array<int, 10> container1 = {{ 1, 2, 3, 4, 4, 5, 5, 5, 10, 20 }};
+
+        bool isFullContainer1SortedLt = AZStd::is_sorted(container1.begin(), container1.end(), compareLessThan);
+        EXPECT_TRUE(isFullContainer1SortedLt);
+
+        bool isFullContainer1SortedGt = AZStd::is_sorted(container1.begin(), container1.end(), compareGreaterThan);
+        EXPECT_FALSE(isFullContainer1SortedGt);
+
+        bool isPartialContainer1SortedLt = AZStd::is_sorted(container1.begin()+1, container1.begin()+5, compareLessThan);
+        EXPECT_TRUE(isPartialContainer1SortedLt);
+
+        bool isRangeLengthOneSortedLt = AZStd::is_sorted(container1.begin(), container1.begin(), compareLessThan);
+        EXPECT_TRUE(isRangeLengthOneSortedLt);
+
+        AZStd::array<int, 10> container2 = {{ 1, 2, 3, 4, 4, 5, 5, 5, 10, 9 }};
+
+        bool isFullContainer2SortedLt = AZStd::is_sorted(container2.begin(), container2.end(), compareLessThan);
+        EXPECT_FALSE(isFullContainer2SortedLt);
+
+        // this range is container2[1] up to and including container2[8] (range doesn't include element pointed to by last iterator)
+        bool isPartialContainer2SortedLt = AZStd::is_sorted(container2.begin()+1, container2.begin()+9, compareLessThan);
+        EXPECT_TRUE(isPartialContainer2SortedLt);
+
+        // this range is container2[8] up to and including container2[9]
+        bool isVeryEndOfContainer2SortedLt = AZStd::is_sorted(container2.begin()+8, container2.end(), compareLessThan);
+        EXPECT_FALSE(isVeryEndOfContainer2SortedLt);
+
+        AZStd::array<int, 10> container3 = {{ 9, 10, 5, 5, 5, 4, 4, 3, 2, 1 }};
+
+        bool isFullContainer3SortedLt = AZStd::is_sorted(container3.begin(), container3.end(), compareLessThan);
+        EXPECT_FALSE(isFullContainer3SortedLt);
+
+        bool isFullContainer3SortedGt = AZStd::is_sorted(container3.begin(), container3.end(), compareGreaterThan);
+        EXPECT_FALSE(isFullContainer3SortedGt);
+
+        // this range is container3[1] up to and including container3[8] (range doesn't include element pointed to by last iterator)
+        bool isPartialContainer3SortedLt = AZStd::is_sorted(container3.begin()+1, container3.begin()+9, compareLessThan);
+        EXPECT_FALSE(isPartialContainer3SortedLt);
+        bool isPartialContainer3SortedGt = AZStd::is_sorted(container3.begin()+1, container3.begin()+9, compareGreaterThan);
+        EXPECT_TRUE(isPartialContainer3SortedGt);
+
+        // this range is container3[0] up to and including container3[1]
+        bool isVeryStartOfContainer3SortedLt = AZStd::is_sorted(container3.begin(), container3.begin()+2, compareLessThan);
+        EXPECT_TRUE(isVeryStartOfContainer3SortedLt);
+        bool isVeryStartOfContainer3SortedGt = AZStd::is_sorted(container3.begin(), container3.begin()+2, compareGreaterThan);
+        EXPECT_FALSE(isVeryStartOfContainer3SortedGt);
+    }
+
+    TEST_F(Algorithms, Unique)
+    {
+        AZStd::vector<int> container1 = {{ 1, 2, 3, 4, 4, 5, 5, 5, 10, 20 }};
+
+        auto iterBeyondEndOfUniques = AZStd::unique(container1.begin(), container1.end());
+
+        size_t numberOfUniques = iterBeyondEndOfUniques - container1.begin();
+        EXPECT_EQ(numberOfUniques, 7);
+
+        container1.erase(iterBeyondEndOfUniques, container1.end());
+        EXPECT_EQ(container1.size(), 7);
+
+        AZStd::vector<int> container2 = {{ 1, 2, 3, 4, 4, 5, 2, 5, 5, 5 }};
+
+        auto iterBeyondEndOfUniques2 = AZStd::unique(container2.begin(), container2.end());
+
+        size_t numberOfUniques2 = iterBeyondEndOfUniques2 - container2.begin();
+        EXPECT_EQ(numberOfUniques2, 7);
+
+        container2.erase(iterBeyondEndOfUniques2, container2.end());
+        EXPECT_EQ(container2.size(), 7);
+    }
+
+    TEST_F(Algorithms, Unique_BinaryPredicate)
+    {
+        auto isEquivalent = [](const int& lhs, const int& rhs) -> bool
+        {
+            return lhs == rhs;
+        };
+
+        AZStd::vector<int> container1 = {{ 1, 2, 3, 4, 4, 5, 5, 5, 10, 20 }};
+
+        auto iterBeyondEndOfUniques = AZStd::unique(container1.begin(), container1.end(), isEquivalent);
+
+        container1.erase(iterBeyondEndOfUniques, container1.end());
+        EXPECT_EQ(container1.size(), 7);
+
+        AZStd::vector<int> container2 = {{ 1, 2, 3, 4, 4, 5, 2, 5, 5, 5 }};
+
+        auto iterBeyondEndOfUniques2 = AZStd::unique(container2.begin(), container2.end(), isEquivalent);
+
+        container2.erase(iterBeyondEndOfUniques2, container2.end());
+        EXPECT_EQ(container2.size(), 7);
     }
 }

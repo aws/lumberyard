@@ -21,15 +21,19 @@ namespace GraphCanvas
     // SceneContextMenu
     /////////////////////
     
-    SceneContextMenu::SceneContextMenu(QWidget* parent)
-        : EditorContextMenu(parent)
+    SceneContextMenu::SceneContextMenu(EditorId editorId, QWidget* parent)
+        : EditorContextMenu(editorId, parent)
     {
         m_editorActionsGroup.PopulateMenu(this);
-        m_graphCanvasConstructGroups.PopulateMenu(this);
-
-        AddActionGroup(NodeGroupContextMenuAction::GetNodeGroupContextMenuActionGroupId());
-        AddMenuAction(aznew CreateNewNodeGroupMenuAction(this));
+        m_graphCanvasConstructGroups.PopulateMenu(this);        
+        m_nodeGroupPresets.PopulateMenu(this);        
 
         m_alignmentActionsGroups.PopulateMenu(this);
+    }
+
+    void SceneContextMenu::OnRefreshActions(const GraphId& graphId, const AZ::EntityId& targetMemberId)
+    {
+        m_graphCanvasConstructGroups.RefreshGroup();
+        m_nodeGroupPresets.RefreshPresets();
     }
 }

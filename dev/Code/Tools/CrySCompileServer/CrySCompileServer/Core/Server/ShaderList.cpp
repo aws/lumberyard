@@ -24,7 +24,7 @@
 #include <process.h>
 #include <direct.h>
 #endif
-#if defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_APPLE_OSX)
+#if defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_MAC)
 #include <pthread.h>
 #include <unistd.h>
 #include <sys/stat.h>

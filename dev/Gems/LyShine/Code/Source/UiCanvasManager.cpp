@@ -86,6 +86,7 @@ namespace
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 UiCanvasManager::UiCanvasManager()
     : m_latestViewportSize(UiCanvasComponent::s_defaultCanvasSize)
+    , m_localUserIdInputFilter(AzFramework::LocalUserIdAny)
 {
     UiCanvasManagerBus::Handler::BusConnect();
     UiCanvasOrderNotificationBus::Handler::BusConnect();
@@ -203,6 +204,16 @@ UiCanvasManager::CanvasEntityList UiCanvasManager::GetLoadedCanvases()
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
+void UiCanvasManager::SetLocalUserIdInputFilterForAllCanvases(AzFramework::LocalUserId localUserId)
+{
+    m_localUserIdInputFilter = localUserId;
+    for (auto canvasComponent : m_loadedCanvases)
+    {
+        canvasComponent->SetLocalUserIdInputFilter(m_localUserIdInputFilter);
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
 void UiCanvasManager::OnCanvasDrawOrderChanged(AZ::EntityId canvasEntityId)
 {
     SortCanvasesByDrawOrder();
@@ -217,6 +228,7 @@ void UiCanvasManager::OnCanvasEnabledStateChanged(AZ::EntityId canvasEntityId, b
         EBUS_EVENT_ID_RESULT(isConsumingAllInputEvents, canvasEntityId, UiCanvasBus, GetIsConsumingAllInputEvents);
         if (isConsumingAllInputEvents)
         {
+            AzFramework::InputChannelRequestBus::Broadcast(&AzFramework::InputChannelRequests::ResetState);
             EBUS_EVENT(UiCanvasBus, ClearAllInteractables);
         }
     }
@@ -413,6 +425,12 @@ AZ::EntityId UiCanvasManager::ReloadCanvasFromXml(const AZStd::string& xmlString
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void UiCanvasManager::ReleaseCanvas(AZ::EntityId canvasEntityId, bool forEditor)
 {
+    if(!canvasEntityId.IsValid())
+    {
+        AZ_Warning("UI", false, "%s has been invoked with an Invalid Canvas Entity ID. No Canvas can be released", AZ_FUNCTION_SIGNATURE);
+        return;
+    }
+
     // if we are currently processing canvases for input handling or update then defer the deletion of the canvas
     if (!forEditor && m_recursionGuardCount > 0)
     {
@@ -453,6 +471,11 @@ void UiCanvasManager::ReleaseCanvas(AZ::EntityId canvasEntityId, bool forEditor)
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void UiCanvasManager::ReleaseCanvasDeferred(AZ::EntityId canvasEntityId)
 {
+    if (!canvasEntityId.IsValid())
+    {
+        AZ_Warning("UI", false, "%s has been invoked with an Invalid Canvas Entity ID. No Canvas can be released", AZ_FUNCTION_SIGNATURE);
+        return;
+    }
     AZ::Entity* canvasEntity = nullptr;
     EBUS_EVENT_RESULT(canvasEntity, AZ::ComponentApplicationBus, FindEntity, canvasEntityId);
     AZ_Assert(canvasEntity, "Canvas entity not found by ID");
@@ -614,18 +637,6 @@ void UiCanvasManager::OnLoadScreenUnloaded()
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 bool UiCanvasManager::HandleInputEventForLoadedCanvases(const AzFramework::InputChannel& inputChannel)
 {
-    // Ignore the individual mouse movement input channels.
-    // X, Y are handled through the SystemCursorPosition input channel.
-    // Z (scroll wheel) functionality is not currently supported on the canvas level
-    const AzFramework::InputChannelId& inputChannelId = inputChannel.GetInputChannelId();
-    if (inputChannelId == AzFramework::InputDeviceMouse::Movement::X
-        || inputChannelId == AzFramework::InputDeviceMouse::Movement::Y
-        || inputChannelId == AzFramework::InputDeviceMouse::Movement::Z
-        )
-    {
-        return false;
-    }
-
     // Take a snapshot of the input channel instead of just passing through the channel itself.
     // This is necessary because UI input is currently simulated in the editor's UI Preview mode
     // by constructing 'fake' input events, which we can do with snapshots but not input channels.
@@ -931,16 +942,18 @@ AZ::EntityId UiCanvasManager::LoadCanvasInternal(const string& assetIdPathname, 
         }
         else
         {
-            m_loadedCanvases.push_back(canvasComponent);
-            SortCanvasesByDrawOrder();
-            if (canvasComponent->GetIsConsumingAllInputEvents())
+            if (canvasComponent->GetEnabled() && canvasComponent->GetIsConsumingAllInputEvents())
             {
+                AzFramework::InputChannelRequestBus::Broadcast(&AzFramework::InputChannelRequests::ResetState);
                 EBUS_EVENT(UiCanvasBus, ClearAllInteractables);
             }
+            m_loadedCanvases.push_back(canvasComponent);
+            SortCanvasesByDrawOrder();
 
             // Update hover state for loaded canvases
             m_generateMousePositionInputEvent = true;
         }
+        canvasComponent->SetLocalUserIdInputFilter(m_localUserIdInputFilter);
     }
 
     return (canvasComponent) ? canvasComponent->GetEntityId() : AZ::EntityId();
@@ -992,10 +1005,10 @@ void UiCanvasManager::DebugDisplayCanvasData(int setting) const
     float textOpacity = 1.0f;
     float backgroundRectOpacity = 0.75f;
 
-    const AZ::Vector3 white(1,1,1);
-    const AZ::Vector3 grey(.5,.5,.5);
-    const AZ::Vector3 red(1,0.3,0.3);
-    const AZ::Vector3 blue(0.3,0.3,1);
+    const AZ::Vector3 white(1.0f, 1.0f, 1.0f);
+    const AZ::Vector3 grey(0.5f, 0.5f, 0.5f);
+    const AZ::Vector3 red(1.0f, 0.3f, 0.3f);
+    const AZ::Vector3 blue(0.3f, 0.3f, 1.0f);
 
     // If the viewport is narrow then a font size of 16 might be too large, so we use a size between 12 and 16 depending
     // on the viewport width.
@@ -1156,10 +1169,10 @@ void UiCanvasManager::DebugDisplayDrawCallData() const
     const float lineSpacing = 20.0f;
 
     const AZ::Vector3 white(1,1,1);
-    const AZ::Vector3 red(1,0.3,0.3);
-    const AZ::Vector3 blue(0.3,0.3,1);
-    const AZ::Vector3 green(0.3,1,0.3);
-    const AZ::Vector3 yellow(0.7,0.7,0.2);
+    const AZ::Vector3 red(1,0.3f,0.3f);
+    const AZ::Vector3 blue(0.3f,0.3f,1);
+    const AZ::Vector3 green(0.3f,1,0.3f);
+    const AZ::Vector3 yellow(0.7f,0.7f,0.2f);
         
     // local function to write a line of text (with a background rect) and increment Y offset
     AZStd::function<void(const char*, const AZ::Vector3&)> WriteLine = [&](const char* buffer, const AZ::Vector3& color)

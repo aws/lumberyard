@@ -112,7 +112,6 @@ namespace PhysX
                 {
                     AssetBuilderSDK::JobDescriptor descriptor;
                     descriptor.m_jobKey = physxGemAssetJobKey;
-                    descriptor.m_additionalFingerprintInfo = "version3"; // arbitrary string to force a downstream job to rebuild
                     descriptor.SetPlatformIdentifier(platformInfo.m_identifier.c_str());
 
                     response.m_createJobOutputs.push_back(descriptor);

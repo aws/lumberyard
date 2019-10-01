@@ -28,28 +28,46 @@ namespace ScriptCanvas
         {
             class Any
                 : public Node
-                , public EndpointNotificationBus::MultiHandler
             {
                 ScriptCanvas_Node(Any,
                     ScriptCanvas_Node::Uuid("{6359C34F-3C34-4784-9FFD-18F1C8E3482D}")
                     ScriptCanvas_Node::Description("Will trigger the Out pin whenever any of the In pins get triggered")
+                    ScriptCanvas_Node::Version(1, AnyNodeVersionConverter)
                 );
+
+                enum Version
+                {
+                    InitialVersion = 0,
+                    RemoveInputsContainers,
+
+                    Current
+                };
                 
             public:
-                Any();
+
+                static bool AnyNodeVersionConverter(AZ::SerializeContext& serializeContext, AZ::SerializeContext::DataElementNode& rootElement);
+
+                Any() = default;
 
                 // Node
                 void OnInit() override;
 
                 void OnInputSignal(const SlotId& slot) override;
-                ////
 
-                // EndpointNotificationBus
-                void OnEndpointConnected(const Endpoint& endpoint) override;
-                void OnEndpointDisconnected(const Endpoint& endpoint) override;
+                bool IsNodeExtendable() const override;
+                int GetNumberOfExtensions() const override;
+                ExtendableSlotConfiguration GetExtensionConfiguration(int extensionIndex) const override;
+
+                SlotId HandleExtension(AZ::Crc32 extensionId) override;
+
+                bool CanDeleteSlot(const SlotId& slotId) const override;
+
+                void OnSlotRemoved(const SlotId& slotId) override;
                 ////
     
             protected:
+
+                AZ::Crc32 GetInputExtensionId() const { return AZ_CRC("Output", 0xccde149e); }
 
                 // Outputs
                 ScriptCanvas_Out(ScriptCanvas_Out::Name("Out", "Signaled when the node receives a signal from the selected index"));
@@ -58,12 +76,8 @@ namespace ScriptCanvas
 
                 AZStd::string GenerateInputName(int counter);
 
-                bool AllInputSlotsFilled() const;
-                void AddInputSlot();
-                void CleanUpInputSlots();
+                SlotId AddInputSlot();
                 void FixupStateNames();
-
-                ScriptCanvas_SerializeProperty(AZStd::vector< SlotId >, m_inputSlots);
             };
         }
     }

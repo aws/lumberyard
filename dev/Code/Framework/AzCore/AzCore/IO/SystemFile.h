@@ -9,20 +9,12 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#ifndef AZCORE_SYSTEM_FILE_H
-#define AZCORE_SYSTEM_FILE_H
+#pragma once
 
 #include <AzCore/base.h>
 #include <AzCore/std/function/function_fwd.h>
 
-#if defined(AZ_PLATFORM_APPLE)
-    #include <sys/syslimits.h>
-#endif
-
-#if defined(AZ_PLATFORM_ANDROID)
-    #include <limits.h>
-    #include <cstdio>
-#endif
+#include <AzCore/IO/SystemFile_Platform.h>
 
 // Establish a consistent size that works across platforms. It's actually larger than this
 // on platforms we support, but this is a good least common denominator
@@ -57,17 +49,8 @@ namespace AZ
                 SF_SEEK_END,
             };
 
-            typedef AZ::u64         SizeType;
-
-            #if AZ_TRAIT_USE_WINDOWS_FILE_API
-            using FileHandleType = void*;
-            #elif AZ_TRAIT_USE_SYSTEMFILE_HANDLE
-            using FileHandleType = int;
-            #elif defined(AZ_PLATFORM_ANDROID)
-            using FileHandleType = FILE*;
-            #else
-                #error Platform not supported!
-            #endif
+            using SizeType = AZ::u64;
+            using FileHandleType = AZ::IO::Internal::FileHandleType;
 
             SystemFile();
             ~SystemFile();
@@ -137,10 +120,13 @@ namespace AZ
             static bool     DeleteDir(const char* dirName);
 
         private:
+            static void CreatePath(const char * fileName);
+            
+            bool PlatformOpen(int mode, int platformFlags);
+            void PlatformClose();
+            
             FileHandleType  m_handle;
             char            m_fileName[AZ_MAX_PATH_LEN];
         };
     }
 }
-#endif // AZCORE_SYSTEM_FILE_H
-#pragma once

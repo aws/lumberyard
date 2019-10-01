@@ -56,7 +56,7 @@ namespace RenderCapabilities
     bool SupportsDepthClipping()
     {
         //https://developer.apple.com/documentation/metal/mtlrendercommandencoder/1516267-setdepthclipmode?language=objc
-#if defined(AZ_PLATFORM_APPLE_OSX)
+#if defined(AZ_PLATFORM_MAC)
         //There is a bug with the drivers where setDepthClipMode: MTLDepthClipModeClamp does not work. 
         //Until that is fixed we are simulating this behavior in the vertex shader
         //return NCryMetal::s_isOsxMinVersion10_11;
@@ -81,7 +81,7 @@ namespace RenderCapabilities
     
     bool SupportsRenderTargets(int numRTs)
     {
-#if defined(AZ_PLATFORM_APPLE_OSX)
+#if defined(AZ_PLATFORM_MAC)
         return true;
 #else
         if (numRTs <= 4)

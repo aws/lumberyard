@@ -257,6 +257,76 @@ namespace UnitTest
             EXPECT_EQ(0, TypeParam::s_copied);
             EXPECT_EQ(any_cast<TypeParam&>(any1).val(), any_cast<TypeParam&>(any2).val());
         }
+
+        template <typename ValueType>
+        void InplaceAnyTypeInfo(AZStd::any::Action action, any* dest, const any*)
+        {
+            switch (action)
+            {
+            case any::Action::Reserve:
+                // If doing small buffer optimization, no need to validate anything
+                if (dest->get_type_info().m_useHeap)
+                {
+                    // Allocate space for object on heap
+                    AZStd::allocator systemAllocator;
+                    *reinterpret_cast<void**>(dest) = systemAllocator.allocate(sizeof(ValueType), alignof(ValueType));
+                }
+                break;
+            case any::Action::Copy:
+            case any::Action::Move:
+                ADD_FAILURE() << "Copy/Move Constructor should not be getting invoke in the InPlace test";
+                break;
+            case any::Action::Destroy:
+
+                // Call the destructor
+                reinterpret_cast<ValueType*>(AZStd::any_cast<void>(dest))->~ValueType();
+
+                // Clear memory
+                if (dest->get_type_info().m_useHeap)
+                {
+                    AZStd::allocator systemAllocator;
+                    systemAllocator.deallocate(AZStd::any_cast<void>(dest), sizeof(ValueType), alignof(ValueType));
+                }
+                break;
+            default:
+                ADD_FAILURE() << "Default case should never get invoked";
+            }
+        }
+
+        TEST_F(AnyTest, Any_CustomTypeInfoConstructorWithInplace_IsValid)
+        {
+            using VectorType = AZStd::vector<int>;
+            AZStd::any::type_info vectorTypeInfo;
+            vectorTypeInfo.m_id = azrtti_typeid<VectorType>();
+            vectorTypeInfo.m_isPointer = false;
+            vectorTypeInfo.m_useHeap = sizeof(VectorType) > AZStd::Internal::ANY_SBO_BUF_SIZE;
+            vectorTypeInfo.m_handler = &InplaceAnyTypeInfo<VectorType>;
+            any vectorAny(vectorTypeInfo, AZStd::in_place_type_t<VectorType>{}, 3, 17);
+            EXPECT_TRUE(vectorAny.is<VectorType>());
+            VectorType& vectorRef = AZStd::any_cast<VectorType&>(vectorAny);
+            EXPECT_EQ(3, vectorRef.size());
+            EXPECT_EQ(17, vectorRef[0]);
+            EXPECT_EQ(17, vectorRef[1]);
+            EXPECT_EQ(17, vectorRef[2]);
+        }
+
+        TEST_F(AnyTest, Any_CustomTypeInfoConstructorWithInitializerListAndInplace_IsValid)
+        {
+            using VectorType = AZStd::vector<int>;
+            AZStd::any::type_info vectorTypeInfo;
+            vectorTypeInfo.m_id = azrtti_typeid<VectorType>();
+            vectorTypeInfo.m_isPointer = false;
+            vectorTypeInfo.m_useHeap = sizeof(VectorType) > AZStd::Internal::ANY_SBO_BUF_SIZE;
+            vectorTypeInfo.m_handler = &InplaceAnyTypeInfo<VectorType>;
+            any vectorAny(vectorTypeInfo, AZStd::in_place_type_t<VectorType>{}, { 1, 2, 3, 4 });
+            EXPECT_TRUE(vectorAny.is<VectorType>());
+            VectorType& vectorRef = AZStd::any_cast<VectorType&>(vectorAny);
+            EXPECT_EQ(4, vectorRef.size());
+            EXPECT_EQ(1, vectorRef[0]);
+            EXPECT_EQ(2, vectorRef[1]);
+            EXPECT_EQ(3, vectorRef[2]);
+            EXPECT_EQ(4, vectorRef[3]);
+        }
     }
 
     //////////////////////////////////////////////////////////////////////////
@@ -807,19 +877,19 @@ namespace UnitTest
                     {
                         // Test assert on signed -> unsigned conversion
                         a = -1;
-                        AZ_TEST_START_ASSERTTEST;
+                        AZ_TEST_START_TRACE_SUPPRESSION;
                         unsigned int v;
                         any_numeric_cast(&a, v);
-                        AZ_TEST_STOP_ASSERTTEST(1);
+                        AZ_TEST_STOP_TRACE_SUPPRESSION(1);
                     }
 
                     {
                         // Test assert on out of range
                         a = std::numeric_limits<int>::max();
-                        AZ_TEST_START_ASSERTTEST;
+                        AZ_TEST_START_TRACE_SUPPRESSION;
                         char v;
                         any_numeric_cast(&a, v);
-                        AZ_TEST_STOP_ASSERTTEST(1);
+                        AZ_TEST_STOP_TRACE_SUPPRESSION(1);
                     }
                 }
 
@@ -855,10 +925,10 @@ namespace UnitTest
 
                     // Test assert on out of range
                     a = DBL_MAX;
-                    AZ_TEST_START_ASSERTTEST;
+                    AZ_TEST_START_TRACE_SUPPRESSION;
                     float f;
                     any_numeric_cast(&a, f);
-                    AZ_TEST_STOP_ASSERTTEST(1);
+                    AZ_TEST_STOP_TRACE_SUPPRESSION(1);
                 }
 
 #undef EXPECT_ANY_IS

@@ -43,7 +43,6 @@ namespace XMLCPB
             }
 
 #endif
-            m_pPlatformOSSaveWriter = gEnv->pSystem->GetPlatformOS()->SaveGetWriter(pFileName, IPlatformOS::Unknown_User);
         }
 
         ~CFile()
@@ -73,8 +72,6 @@ namespace XMLCPB
 
             Write(&m_pCompressor->m_fileHeader, sizeof(m_pCompressor->m_fileHeader));
 
-            m_pPlatformOSSaveWriter->Close();
-
             float finalTime = gEnv->pTimer->GetAsyncTime().GetMilliSeconds();
 
             CryLog("[SAVE GAME] Binary saveload: After writing, result: %s   filesize/uncompressed: %d/%d (%d kb / %d kb)   generation time: %d ms ",
@@ -89,15 +86,6 @@ namespace XMLCPB
                 m_pICompressor->MD5Update(&m_MD5Context, (const char*)pSrc, numBytes);
             }
 #endif
-
-            IPlatformOS::EFileOperationCode code = m_pPlatformOSSaveWriter->AppendBytes(pSrc, numBytes);
-            bool ok = (code == IPlatformOS::eFOC_Success);
-            assert(ok);
-            if (ok)
-            {
-                m_bytesWrittenIntoFile += numBytes;
-                return true;
-            }
             CryWarning(VALIDATOR_MODULE_SYSTEM, VALIDATOR_ERROR, "CCompressorThread::WriteDataIntoFileInternal ERROR: failed to AppendBytes");
             return false;
         }
@@ -118,7 +106,6 @@ namespace XMLCPB
 #endif
         CZLibCompressor *                        m_pCompressor;
         CryEvent&                                       m_event;
-        IPlatformOS::ISaveWriterPtr m_pPlatformOSSaveWriter;
         CryMT::CLocklessPointerQueue<SZLibBlock> m_blocks;
         uint32                                          m_bytesWrittenIntoFile;                         // used for statistics only
         uint32                                          m_bytesWrittenIntoFileUncompressed; // used for statistics only

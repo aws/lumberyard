@@ -14,7 +14,9 @@
 #include <AzQtComponents/AzQtComponentsAPI.h>
 
 #include <QWidget>
+AZ_PUSH_DISABLE_WARNING(4244, "-Wunknown-warning-option") // 4251: conversion from 'int' to 'float', possible loss of data
 #include <QVector3D>
+AZ_POP_DISABLE_WARNING
 #include <QLabel>
 #include <QLineEdit>
 #include <QList>
@@ -107,7 +109,9 @@ namespace AzQtComponents
         void flavorChanged();
 
     private:
+        AZ_PUSH_DISABLE_WARNING(4251, "-Wunknown-warning-option") // 4251: 'AzQtComponents::VectorEdit::m_editElements': class 'QList<AzQtComponents::VectorEditElement *>' needs to have dll-interface to be used by clients of class 'AzQtComponents::VectorEdit'
         QList<VectorEditElement*> m_editElements;
+        AZ_POP_DISABLE_WARNING
         VectorEditElement::Flavor m_flavor;
         QLabel* const m_iconLabel;
     };

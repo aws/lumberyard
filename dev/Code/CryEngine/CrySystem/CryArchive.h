@@ -210,7 +210,7 @@ public:
     // Adds a new file to the zip or update an existing one
     // adds a directory (creates several nested directories if needed)
     // compression methods supported are 0 (store) and 8 (deflate) , compression level is 0..9 or -1 for default (like in zlib)
-    int UpdateFile (const char* szRelativePath, void* pUncompressed, unsigned nSize, unsigned nCompressionMethod = 0, int nCompressionLevel = -1);
+    int UpdateFile (const char* szRelativePath, void* pUncompressed, unsigned nSize, unsigned nCompressionMethod = 0, int nCompressionLevel = -1, CompressionCodec::Codec codec = CompressionCodec::Codec::ZLIB);
 
     //   Adds a new file to the zip or update an existing one if it is not compressed - just stored  - start a big file
     int StartContinuousFileUpdate(const char* szRelativePath, unsigned nSize);
@@ -264,7 +264,8 @@ public:
     // METHOD_DEFLATE == METHOD_COMPRESS == 8 (deflate) , compression
     // level is LEVEL_FASTEST == 0 till LEVEL_BEST == 9 or LEVEL_DEFAULT == -1
     // for default (like in zlib)
-    int UpdateFile (const char* szRelativePath, void* pUncompressed, unsigned nSize, unsigned nCompressionMethod = 0, int nCompressionLevel = -1) {return ZipDir::ZD_ERROR_INVALID_CALL; }
+
+    int UpdateFile (const char* szRelativePath, void* pUncompressed, unsigned nSize, unsigned nCompressionMethod = 0, int nCompressionLevel = -1, CompressionCodec::Codec codec = CompressionCodec::Codec::ZLIB) {return ZipDir::ZD_ERROR_INVALID_CALL; }
 
     //   Adds a new file to the zip or update an existing one if it is not compressed - just stored  - start a big file
     int StartContinuousFileUpdate(const char* szRelativePath, unsigned nSize)  {return ZipDir::ZD_ERROR_INVALID_CALL; }

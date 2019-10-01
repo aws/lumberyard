@@ -12,6 +12,8 @@
 
 #pragma once
 
+#include <Processing/ImageToProcess.h>
+
 namespace ImageProcessing
 {
     // note: lumberyard is right hand Z up coordinate
@@ -38,7 +40,7 @@ namespace ImageProcessing
         DirMirrorHorizontal
     };
 
-    //this class contains information to descript a cubemap layout
+    //this class contains information to describe a cubemap layout
     class CubemapLayoutInfo
     {
     public:
@@ -109,7 +111,7 @@ namespace ImageProcessing
         //private constructor. User should always use CreateCubemapLayout create a layout for an image object
         CubemapLayout();
 
-        //initialize information of all aviliable cubemap layouts
+        //initialize information of all available cubemap layouts
         static void InitCubemapLayoutInfos();
     };
 

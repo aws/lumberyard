@@ -34,7 +34,7 @@ namespace ScriptCanvas
                 );
 
                 OperatorPushBack()
-                    : OperatorBase(DefaultContainerOperatorConfiguration())
+                    : OperatorBase(DefaultContainerManipulationOperatorConfiguration())
                 {
                 }
 

@@ -91,8 +91,9 @@ namespace LmbrCentral
         }
 
         m_vertexSelection.Create(
-            AZ::EntityComponentIdPair(GetEntityId(), GetComponentId()), g_mainManipulatorManagerId,
-            AZStd::make_unique<LineSegmentHoverSelection<AZ::Vector2>>(GetEntityId(), g_mainManipulatorManagerId),
+            GetEntityComponentIdPair(), g_mainManipulatorManagerId,
+            AZStd::make_unique<LineSegmentHoverSelection<AZ::Vector2>>(
+                GetEntityComponentIdPair(), g_mainManipulatorManagerId),
             TranslationManipulators::Dimensions::Two,
             ConfigureTranslationManipulatorAppearance2d);
 
@@ -107,7 +108,7 @@ namespace LmbrCentral
 
         // initialize height manipulator
         m_heightManipulator = LinearManipulator::MakeShared(m_currentTransform);
-        m_heightManipulator->AddEntityId(GetEntityId());
+        m_heightManipulator->AddEntityComponentIdPair(GetEntityComponentIdPair());
         m_heightManipulator->SetLocalTransform(
             AZ::Transform::CreateTranslation(CalculateHeightManipulatorPosition(*polygonPrism)));
         m_heightManipulator->SetAxis(AZ::Vector3::CreateAxisZ());
@@ -135,11 +136,6 @@ namespace LmbrCentral
                 AZ::Transform::CreateTranslation(Vector2ToVector3(Vector3ToVector2(
                     action.LocalPosition()), action.LocalPosition().GetZ().GetMax(AZ::VectorFloat::CreateZero()))));
             m_heightManipulator->SetBoundsDirty();
-
-            // ensure property grid values are refreshed
-            ToolsApplicationNotificationBus::Broadcast(
-                &ToolsApplicationNotificationBus::Events::InvalidatePropertyDisplay,
-                Refresh_Values);
         });
 
         m_heightManipulator->Register(g_mainManipulatorManagerId);
@@ -207,7 +203,7 @@ namespace LmbrCentral
             polygonPrism, GetEntityId(), &PolygonPrismShapeComponentRequests::GetPolygonPrism);
 
         m_vertexSelection.CreateTranslationManipulator(
-            GetEntityId(), AzToolsFramework::g_mainManipulatorManagerId,
+            GetEntityComponentIdPair(), AzToolsFramework::g_mainManipulatorManagerId,
             polygonPrism->m_vertexContainer.GetVertices()[index], index);
     }
 

@@ -76,8 +76,7 @@ namespace GraphCanvas
             ~NodeGroupFrameComponentSaveData() = default;
 
             void operator=(const NodeGroupFrameComponentSaveData& other);
-
-            void OnColorChanged();
+            
             void OnBookmarkStatusChanged();
             void OnCollapsedStatusChanged();
 
@@ -160,6 +159,7 @@ namespace GraphCanvas
         ////
 
         // SceneMemberNotificationBus
+        void PreOnRemovedFromScene(const AZ::EntityId& sceneId) override;
         void OnRemovedFromScene(const AZ::EntityId& sceneId) override;
 
         void OnSceneMemberAboutToSerialize(GraphSerialization& serialziationTarget) override;
@@ -200,6 +200,7 @@ namespace GraphCanvas
 
         // CommentNotificationBus
         void OnCommentChanged(const AZStd::string&) override;
+        void OnBackgroundColorChanged(const AZ::Color& color) override;
         ////
 
         // SceneNotificationBus
@@ -233,7 +234,6 @@ namespace GraphCanvas
         void EnableInteriorHighlight(bool highlight);
         void EnableGroupedDisplayState(bool enabled);
 
-        void OnColorChange();
         void OnBookmarkStatusChanged();
 
         void CacheGroupedElements();
@@ -400,6 +400,8 @@ namespace GraphCanvas
 
         void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget = nullptr) override;
         QPainterPath shape() const override;
+
+        QVariant itemChange(QGraphicsItem::GraphicsItemChange change, const QVariant& value) override;
         ////
 
         // SceneMemberNotificationBus
@@ -407,6 +409,9 @@ namespace GraphCanvas
         ////
 
     protected:
+
+        void UpdateHighlightState();
+        void SetHighlightState(bool highlightState);
 
         void ResizeTo(float height, float width);
 
@@ -433,6 +438,10 @@ namespace GraphCanvas
 
         int m_adjustVertical;
         int m_adjustHorizontal;
+
+        bool m_overTitleWidget;
+        bool m_isSelected;
+        bool m_enableHighlight;
 
         QSizeF m_minimumSize;
 

@@ -62,6 +62,10 @@ namespace PhysX
 
         void* GetNativePointer() override;
 
+        AZ::Crc32 GetTag() const override;
+
+        bool IsTrigger() const;
+
     private:
         void BindMaterialsWithPxShape();
         void ExtractMaterialsFromPxShape();
@@ -73,5 +77,6 @@ namespace PhysX
         AZStd::vector<AZStd::shared_ptr<PhysX::Material>> m_materials;
         Physics::CollisionLayer m_collisionLayer;
         Physics::CollisionGroup m_collisionGroup;
+        AZ::Crc32 m_tag;
     };
 }

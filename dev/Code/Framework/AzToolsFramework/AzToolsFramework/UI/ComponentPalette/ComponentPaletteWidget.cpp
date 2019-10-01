@@ -25,7 +25,9 @@
 #include <AzToolsFramework/Metrics/LyEditorMetricsBus.h>
 
 #include <QAction>
+AZ_PUSH_DISABLE_WARNING(4251, "-Wunknown-warning-option") // 4251: 'QLayoutItem::align': class 'QFlags<Qt::AlignmentFlag>' needs to have dll-interface to be used by clients of class 'QLayoutItem'
 #include <QHBoxLayout>
+AZ_POP_DISABLE_WARNING
 #include <QHeaderView>
 #include <QLineEdit>
 #include <QPushButton>
@@ -35,7 +37,10 @@
 #include <QTimer>
 #include <QTreeView>
 #include <QVBoxLayout>
+AZ_PUSH_DISABLE_WARNING(4244 4251, "-Wunknown-warning-option") // 4244: conversion from 'int' to 'float', possible loss of data
+                                                               // 4251: 'QInputEvent::modState': class 'QFlags<Qt::KeyboardModifier>' needs to have dll-interface to be used by clients of class 'QInputEvent'
 #include <QKeyEvent>
+AZ_POP_DISABLE_WARNING
 
 namespace AzToolsFramework
 {

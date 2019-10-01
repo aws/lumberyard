@@ -15,7 +15,10 @@
 #include <AzQtComponents/AzQtComponentsAPI.h>
 
 #include <QScopedPointer>
+AZ_PUSH_DISABLE_WARNING(4251 4800, "-Wunknown-warning-option") // 4251: 'QBrush::d': class 'QScopedPointer<QBrushData,QBrushDataPointerDeleter>' needs to have dll-interface to be used by clients of class 'QBrush'
+                                                               // 4800: 'uint': forcing value to bool 'true' or 'false' (performance warning)
 #include <QFrame>
+AZ_POP_DISABLE_WARNING
 #include <QMap>
 #include <QVariant>
 #include <QMenu>
@@ -79,6 +82,7 @@ namespace AzQtComponents
         {
         }
     };
+
     using SearchTypeFilterList = QVector<SearchTypeFilter>;
 
     class SearchTypeSelectorTreeView;
@@ -162,7 +166,9 @@ namespace AzQtComponents
         SearchTypeSelectorTreeView* m_tree;
         QStandardItemModel* m_model;
         const SearchTypeFilterList* m_unfilteredData;
+        AZ_PUSH_DISABLE_WARNING(4127 4251, "-Wunknown-warning-option") // conditional expression is constant, needs to have dll-interface to be used by clients of class 'AzQtComponents::SearchTypeSelector'
         QVector<int> m_filteredItemIndices;
+        AZ_POP_DISABLE_WARNING
         QString m_filterString;
         bool m_settingUp = false;
         int m_fixedWidth = 256;
@@ -264,16 +270,21 @@ namespace AzQtComponents
     private slots:
         void UpdateTextFilterWidth();
         void OnClearFilterContextMenu(const QPoint& pos);
+        void OnSearchContextMenu(const QPoint& pos);
 
         void OnTextChanged(const QString& activeTextFilter);
         void UpdateTextFilter();
 
     protected:
+        AZ_PUSH_DISABLE_WARNING(4127 4251, "-Wunknown-warning-option") // conditional expression is constant, needs to have dll-interface to be used by clients of class 'AzQtComponents::FilteredSearchWidget'
         SearchTypeFilterList m_typeFilters;
+        AZ_POP_DISABLE_WARNING
         FlowLayout* m_flowLayout;
         Ui::FilteredSearchWidget* m_ui;
         SearchTypeSelector* m_selector;
+        AZ_PUSH_DISABLE_WARNING(4251, "-Wunknown-warning-option") // needs to have dll-interface to be used by clients of class 'AzQtComponents::FilteredSearchWidget'
         QMap<int, FilterCriteriaButton*> m_typeButtons;
+        AZ_POP_DISABLE_WARNING
         bool m_textFilterFillsWidth;
 
     private:

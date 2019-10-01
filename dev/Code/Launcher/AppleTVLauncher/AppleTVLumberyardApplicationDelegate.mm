@@ -12,7 +12,7 @@
 
 #include <AppleLaunchersCommon/AppleLauncher.h>
 
-#include <AzFramework/API/ApplicationAPI_appletv.h>
+#include <AzFramework/API/ApplicationAPI_Platform.h>
 
 #include <AzCore/IO/SystemFile.h> // for AZ_MAX_PATH_LEN
 

@@ -9,10 +9,9 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#ifndef AZSTD_TYPE_TRAITS_REMOVE_CV_INCLUDED
-#define AZSTD_TYPE_TRAITS_REMOVE_CV_INCLUDED
+#pragma once
 
-#include <AzCore/std/typetraits/internal/cv_traits_impl.h>
+#include <AzCore/std/typetraits/config.h>
 
 namespace AZStd
 {
@@ -20,6 +19,3 @@ namespace AZStd
     template<class T>
     using remove_cv_t = std::remove_cv_t<T>;
 }
-
-#endif // AZSTD_TYPE_TRAITS_REMOVE_CV_INCLUDED
-#pragma once

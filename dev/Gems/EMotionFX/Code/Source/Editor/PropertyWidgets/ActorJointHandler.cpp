@@ -26,28 +26,29 @@ namespace EMotionFX
     AZ_CLASS_ALLOCATOR_IMPL(ActorSingleJointHandler, AZ::SystemAllocator, 0)
     AZ_CLASS_ALLOCATOR_IMPL(ActorMultiJointHandler, AZ::SystemAllocator, 0)
     AZ_CLASS_ALLOCATOR_IMPL(ActorMultiWeightedJointHandler, AZ::SystemAllocator, 0)
-    AZ_CLASS_ALLOCATOR_IMPL(ActorJointElementWidget, AZ::SystemAllocator, 0)
-    AZ_CLASS_ALLOCATOR_IMPL(ActorJointElementHandler, AZ::SystemAllocator, 0)
+    AZ_CLASS_ALLOCATOR_IMPL_TEMPLATE(ActorJointElementHandler, AZ::SystemAllocator, 0)
+    AZ_CLASS_ALLOCATOR_IMPL_TEMPLATE(ActorWeightedJointElementHandler, AZ::SystemAllocator, 0)
 
-    ActorJointPicker::ActorJointPicker(bool singleSelection, const char* dialogTitle, const char* dialogDescriptionLabelText, QWidget* parent)
+    ActorJointPicker::ActorJointPicker(bool singleSelection, const QString& dialogTitle, const QString& dialogDescriptionLabelText, QWidget* parent)
         : QWidget(parent)
         , m_dialogTitle(dialogTitle)
         , m_dialogDescriptionLabelText(dialogDescriptionLabelText)
+        , m_label(new QLabel())
+        , m_pickButton(new QPushButton(QIcon(":/SceneUI/Manifest/TreeIcon.png"), ""))
+        , m_resetButton(new QPushButton())
+        , m_singleSelection(singleSelection)
     {
-        m_singleSelection = singleSelection;
+        connect(m_pickButton, &QPushButton::clicked, this, &ActorJointPicker::OnPickClicked);
+
+        EMStudio::EMStudioManager::MakeTransparentButton(m_resetButton, "/Images/Icons/Clear.png", "Reset selection");
+        connect(m_resetButton, &QPushButton::clicked, this, &ActorJointPicker::OnResetClicked);
 
         QHBoxLayout* hLayout = new QHBoxLayout();
         hLayout->setMargin(0);
-
-        m_pickButton = new QPushButton(this);
-        connect(m_pickButton, &QPushButton::clicked, this, &ActorJointPicker::OnPickClicked);
+        hLayout->addWidget(m_label);
+        hLayout->addStretch();
         hLayout->addWidget(m_pickButton);
-
-        m_resetButton = new QPushButton(this);
-        EMStudio::EMStudioManager::MakeTransparentButton(m_resetButton, "/Images/Icons/Clear.png", "Reset selection");
-        connect(m_resetButton, &QPushButton::clicked, this, &ActorJointPicker::OnResetClicked);
         hLayout->addWidget(m_resetButton);
-
         setLayout(hLayout);
     }
 
@@ -58,11 +59,6 @@ namespace EMotionFX
 
     void ActorJointPicker::OnResetClicked()
     {
-        if (m_weightedJointNames.empty())
-        {
-            return;
-        }
-
         SetWeightedJointNames(AZStd::vector<AZStd::pair<AZStd::string, float> >());
         emit SelectionChanged();
     }
@@ -121,31 +117,9 @@ namespace EMotionFX
 
     void ActorJointPicker::UpdateInterface()
     {
-        // Set the picker button name based on the number of joints.
         const size_t numJoints = m_weightedJointNames.size();
-        if (numJoints == 0)
-        {
-            if (m_singleSelection)
-            {
-                m_pickButton->setText("Select joint");
-            }
-            else
-            {
-                m_pickButton->setText("Select joints");
-            }
-
-            m_resetButton->setVisible(false);
-        }
-        else if (numJoints == 1)
-        {
-            m_pickButton->setText(m_weightedJointNames[0].first.c_str());
-            m_resetButton->setVisible(true);
-        }
-        else
-        {
-            m_pickButton->setText(QString("%1 joints").arg(numJoints));
-            m_resetButton->setVisible(true);
-        }
+        m_label->setText(QString("%1 joint%2 selected").arg(QString::number(numJoints), numJoints == 1 ? QString() : "s"));
+        m_resetButton->setVisible(numJoints > 0);
 
         // Build and set the tooltip containing all joints.
         QString tooltip;
@@ -157,7 +131,7 @@ namespace EMotionFX
                 tooltip += "\n";
             }
         }
-        m_pickButton->setToolTip(tooltip);
+        m_label->setToolTip(tooltip);
     }
 
     void ActorJointPicker::SetWeightedJointNames(const AZStd::vector<AZStd::pair<AZStd::string, float> >& weightedJointNames)
@@ -180,10 +154,9 @@ namespace EMotionFX
             QMessageBox::warning(this, "No Actor Instance", "Cannot open joint selection window. No valid actor instance selected.");
             return;
         }
-        EMotionFX::Actor* actor = actorInstance->GetActor();
 
         // Create and show the joint picker window
-        JointSelectionDialog jointSelectionWindow(m_singleSelection, m_dialogTitle.c_str(), m_dialogDescriptionLabelText.c_str(), this);
+        JointSelectionDialog jointSelectionWindow(m_singleSelection, m_dialogTitle, m_dialogDescriptionLabelText, this);
 
         for (const auto& filterPair : m_defaultFilters)
         {
@@ -203,48 +176,38 @@ namespace EMotionFX
 
     //---------------------------------------------------------------------------------------------------------------------------------------------------------
 
-    ActorJointElementWidget::ActorJointElementWidget(QWidget* parent)
-        : QLineEdit(parent)
-    {
-        setReadOnly(true);
-    }
-
-    //---------------------------------------------------------------------------------------------------------------------------------------------------------
-
-    AZ::u32 ActorJointElementHandler::GetHandlerName() const
+    template<class T>
+    AZ::u32 ActorJointElementHandlerImpl<T>::GetHandlerName() const
     {
         return AZ_CRC("ActorJointElement", 0xedc8946c);
     }
 
-    QWidget* ActorJointElementHandler::CreateGUI(QWidget* parent)
+    template<>
+    AZ::u32 ActorJointElementHandlerImpl<AZStd::pair<AZStd::string, float>>::GetHandlerName() const
     {
-        ActorJointElementWidget* widget = aznew ActorJointElementWidget(parent);
-        return widget;
+        return AZ_CRC("ActorWeightedJointElement", 0xe84566a0);
     }
 
-    void ActorJointElementHandler::ConsumeAttribute(ActorJointElementWidget* GUI, AZ::u32 attrib, AzToolsFramework::PropertyAttributeReader* attrValue, const char* debugName)
+    template<class T>
+    QWidget* ActorJointElementHandlerImpl<T>::CreateGUI(QWidget* parent)
     {
-        if (attrib == AZ::Edit::Attributes::ReadOnly)
-        {
-            bool value;
-            if (attrValue->Read<bool>(value))
-            {
-                GUI->setEnabled(!value);
-            }
-        }
+        AZ_UNUSED(parent);
+        return nullptr;
     }
 
-    void ActorJointElementHandler::WriteGUIValuesIntoProperty(size_t index, ActorJointElementWidget* GUI, property_t& instance, AzToolsFramework::InstanceDataNode* node)
+    template<class T>
+    void ActorJointElementHandlerImpl<T>::WriteGUIValuesIntoProperty(size_t index, QWidget* GUI, T& instance, AzToolsFramework::InstanceDataNode* node)
     {
-        instance = GUI->text().toUtf8().data();
     }
 
-    bool ActorJointElementHandler::ReadValuesIntoGUI(size_t index, ActorJointElementWidget* GUI, const property_t& instance, AzToolsFramework::InstanceDataNode* node)
+    template<class T>
+    bool ActorJointElementHandlerImpl<T>::ReadValuesIntoGUI(size_t index, QWidget* GUI, const T& instance, AzToolsFramework::InstanceDataNode* node)
     {
-        QSignalBlocker signalBlocker(GUI);
-        GUI->setText(instance.c_str());
         return true;
     }
+
+    template class ActorJointElementHandlerImpl<AZStd::string>;
+    template class ActorJointElementHandlerImpl<AZStd::pair<AZStd::string, float>>;
 
     //---------------------------------------------------------------------------------------------------------------------------------------------------------
 
@@ -258,9 +221,10 @@ namespace EMotionFX
         ActorJointPicker* picker = aznew ActorJointPicker(true /*singleSelection*/, "Select Joint", "Select or double-click a joint", parent);
 
         connect(picker, &ActorJointPicker::SelectionChanged, this, [picker]()
-            {
-                EBUS_EVENT(AzToolsFramework::PropertyEditorGUIMessages::Bus, RequestWrite, picker);
-            });
+        {
+            EBUS_EVENT(AzToolsFramework::PropertyEditorGUIMessages::Bus, RequestWrite, picker);
+            AzToolsFramework::PropertyEditorGUIMessages::Bus::Broadcast(&AzToolsFramework::PropertyEditorGUIMessages::Bus::Handler::OnEditingFinished, picker);
+        });
 
         return picker;
     }
@@ -301,9 +265,11 @@ namespace EMotionFX
         ActorJointPicker* picker = aznew ActorJointPicker(false /*singleSelection*/, "Select Joints", "Select one or more joints from the skeleton", parent);
 
         connect(picker, &ActorJointPicker::SelectionChanged, this, [picker]()
-            {
-                EBUS_EVENT(AzToolsFramework::PropertyEditorGUIMessages::Bus, RequestWrite, picker);
-            });
+        {
+            EBUS_EVENT(AzToolsFramework::PropertyEditorGUIMessages::Bus, RequestWrite, picker);
+            AzToolsFramework::PropertyEditorGUIMessages::Bus::Broadcast(&AzToolsFramework::PropertyEditorGUIMessages::Bus::Handler::OnEditingFinished, picker);
+            AzToolsFramework::PropertyEditorGUIMessages::Bus::Broadcast(&AzToolsFramework::PropertyEditorGUIMessages::RequestRefresh, AzToolsFramework::Refresh_EntireTree);
+        });
 
         return picker;
     }
@@ -344,9 +310,11 @@ namespace EMotionFX
         ActorJointPicker* picker = aznew ActorJointPicker(false /*singleSelection*/, "Joint Selection Dialog", "Select one or more joints from the skeleton", parent);
 
         connect(picker, &ActorJointPicker::SelectionChanged, this, [picker]()
-            {
-                EBUS_EVENT(AzToolsFramework::PropertyEditorGUIMessages::Bus, RequestWrite, picker);
-            });
+        {
+            EBUS_EVENT(AzToolsFramework::PropertyEditorGUIMessages::Bus, RequestWrite, picker);
+            AzToolsFramework::PropertyEditorGUIMessages::Bus::Broadcast(&AzToolsFramework::PropertyEditorGUIMessages::Bus::Handler::OnEditingFinished, picker);
+            AzToolsFramework::PropertyEditorGUIMessages::Bus::Broadcast(&AzToolsFramework::PropertyEditorGUIMessages::RequestRefresh, AzToolsFramework::Refresh_EntireTree);
+        });
 
         return picker;
     }

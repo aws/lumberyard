@@ -9,7 +9,6 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#ifndef AZ_UNITY_BUILD
 
 #include <GridMate/Serialize/MathMarshal.h>
 #include <GridMate/Serialize/CompressionMarshal.h>
@@ -725,5 +724,3 @@ HalfMarshaler::Unmarshal(float& f, ReadBuffer& rb) const
     data.u32Value = r;
     f = data.fValue;
 }
-
-#endif // #ifndef AZ_UNITY_BUILD

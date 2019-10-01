@@ -13,8 +13,8 @@
 #pragma once
 #include <QWidget>
 #include <QTimer>
-#include <AZCore/std/containers/stack.h>
-#include <AZCore/std/containers/vector.h>
+#include <AzCore/std/containers/stack.h>
+#include <AzCore/std/containers/vector.h>
 #include <Cry_Math.h>
 #include <VertexFormats.h>
 

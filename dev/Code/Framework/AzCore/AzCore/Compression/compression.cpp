@@ -9,7 +9,6 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#ifndef AZ_UNITY_BUILD
 
 #if !defined(AZCORE_EXCLUDE_ZLIB)
 
@@ -294,5 +293,3 @@ unsigned int ZLib::Decompress(const void* compressedData, unsigned int compresse
 //////////////////////////////////////////////////////////////////////////
 
 #endif // #if !defined(AZCORE_EXCLUDE_ZLIB)
-
-#endif // #ifndef AZ_UNITY_BUILD

@@ -43,8 +43,8 @@ namespace Visibility
         using namespace AzToolsFramework;
 
         m_vertexSelection.Create(
-            AZ::EntityComponentIdPair(GetEntityId(), GetComponentId()), g_mainManipulatorManagerId,
-            AZStd::make_unique<LineSegmentHoverSelection<AZ::Vector3>>(GetEntityId(), g_mainManipulatorManagerId),
+            GetEntityComponentIdPair(), g_mainManipulatorManagerId,
+            AZStd::make_unique<LineSegmentHoverSelection<AZ::Vector3>>(GetEntityComponentIdPair(), g_mainManipulatorManagerId),
             TranslationManipulators::Dimensions::Three,
             ConfigureTranslationManipulatorAppearance3d);
 
@@ -74,7 +74,7 @@ namespace Visibility
         if (found)
         {
             m_vertexSelection.CreateTranslationManipulator(
-                GetEntityId(), AzToolsFramework::g_mainManipulatorManagerId,
+                GetEntityComponentIdPair(), AzToolsFramework::g_mainManipulatorManagerId,
                 vertex, index);
         }
     }

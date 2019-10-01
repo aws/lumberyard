@@ -1,17 +1,39 @@
+########################################################################################
+# All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
+# its licensors.
+#
+# For complete copyright and license terms please see the LICENSE at the root of this
+# distribution (the "License"). All use of this software is governed by the License,
+# or, if provided, by the license below or the license accompanying this file. Do not
+# remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#
+########################################################################################
 def build(bld):
+    # PhysX has global pointers for referencing the PhysX SDK. These pointers need to exist in a single memory
+    # space so different Gems can get copies of them. Monolithic builds will use the static version of PhysX SDK libraries,
+    # which results in a single memory space. Non-monolithic builds will use the dynamic version of PhysX SDK libraries,
+    # which also works because different Gems will be using the shared library's memory space.
+    if bld.is_build_monolithic():
+        physx_sdk_lib = 'PHYSX_SDK'
+    else:
+        physx_sdk_lib = 'PHYSX_SDK_SHARED'
 
     bld.DefineGem(
         file_list         = ['physxdebug.waf_files'],
         defines           = ['IMGUI_ENABLED'],
         pch               = "Source/PhysXDebug_precompiled.cpp",
         use               = ['ImGui'],
-        uselib            = ['PHYSX_SDK'],
+        includes          = [bld.Path('Code/CryEngine/CryCommon')
+                            ],
+        uselib            = [physx_sdk_lib],
             editor = dict(
                 platforms         = ['win','darwin'],
                 defines           = ['PHYSXDEBUG_GEM_EDITOR', 'IMGUI_ENABLED'],
-                includes          = [bld.Path('Code/Sandbox/Plugins/EditorCommon'),
+                includes          = [bld.Path('Code/CryEngine/CryCommon'),
+                                     bld.Path('Code/Sandbox/Plugins/EditorCommon'),
                                      bld.Path('Code/Sandbox/Editor')],
                 use               = ['ImGui'],
-                uselib            = ['PHYSX_SDK']
+                uselib            = [physx_sdk_lib]
             )
     )

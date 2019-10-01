@@ -60,8 +60,6 @@ namespace ScriptCanvasEditor
 
         void OnInit() override;
 
-        void Visit(ScriptCanvas::NodeVisitor& visitor) const override { visitor.Visit(*this); }
-
         // Retrieves the asset associated with this node
         AZ::Data::Asset<ScriptCanvasAsset>& GetAsset();
         const AZ::Data::Asset<ScriptCanvasAsset>& GetAsset() const;

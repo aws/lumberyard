@@ -16,43 +16,43 @@
 
 namespace ScriptCanvas
 {
-    static const char* GetConnectionFailureReason(SlotType sourceType, SlotType targetType)
+    static const char* GetConnectionFailureReason(const SlotDescriptor& sourceDescriptor, const SlotDescriptor& targetDescriptor)
     {
-        if (SlotUtils::IsData(sourceType) != SlotUtils::IsData(targetType) || SlotUtils::IsExecution(sourceType) != SlotUtils::IsExecution(targetType))
+        if (sourceDescriptor.m_slotType != targetDescriptor.m_slotType)
         {
-            return "Cannot connect execution slots to data slots or vice-versa";
+            return "Cannot connect Execution slots to Data slots.";
         }
-        else if (SlotUtils::IsInput(sourceType) == SlotUtils::IsInput(targetType))
+        else if (sourceDescriptor.m_connectionType == targetDescriptor.m_connectionType)
         {
-            return "Cannot connect input slots to other input slots";
+            if (sourceDescriptor.IsInput())
+            {
+                return "Cannot connect Input slots to other Input slots";
+            }
+            else if (sourceDescriptor.IsOutput())
+            {
+                return "Cannot connect Output slots to other Output slots";
+            }
         }
-        else if (SlotUtils::IsOutput(sourceType) == SlotUtils::IsOutput(targetType))
-        {
-            return "Cannot connect output slots to other output slots";
-        }
-        else
-        {
-            AZ_Assert(!SlotUtils::CanConnect(sourceType, targetType), "no failure reason for connectable types");
-            return "";
-        }
+
+        AZ_Assert(false, "Unknown reason for Connection Failure");
+        return "Unknown reason for Connection Failure";
     }
 
     AZ::Outcome<void, AZStd::string> SlotTypeContract::OnEvaluate(const Slot& sourceSlot, const Slot& targetSlot) const
     {
-        const auto sourceType = sourceSlot.GetType();
-        const auto targetType = targetSlot.GetType();
+        const auto sourceDescriptor = sourceSlot.GetDescriptor();
+        const auto targetDescriptor = targetSlot.GetDescriptor();
         
-        if (SlotUtils::CanConnect(sourceType, targetType))
+        if (sourceDescriptor.CanConnectTo(targetDescriptor))
         {
             return AZ::Success();
         }
         
         return AZ::Failure(AZStd::string::format
-            ( "Connection cannot be created between source slot \"%s\" and target slot \"%s\", %s. (%s)"
-            , sourceSlot.GetName().data()
-            , targetSlot.GetName().data()
-            , GetConnectionFailureReason(sourceType, targetType)
-            , RTTI_GetTypeName()));
+            ( "(%s) - %s "            
+            , RTTI_GetTypeName()
+            , GetConnectionFailureReason(sourceDescriptor, targetDescriptor)
+            ));
     }
 
     void SlotTypeContract::Reflect(AZ::ReflectContext* reflection)

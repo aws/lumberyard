@@ -13,36 +13,8 @@
 
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/Serialization/EditContext.h>
-#include <Cry3DEngine/Environment/OceanEnvironmentBus.h>
 
 #include <Water/WaterSystemComponent.h>
-
-/**
-* toggles the water features handled by this module
-*/
-namespace Water
-{
-    struct OceanFeatureToggle
-        : public AZ::OceanFeatureToggleBus::Handler
-    {
-        void Activate()
-        {
-            AZ::OceanFeatureToggleBus::Handler::BusConnect();
-        }
-
-        void Deactivate()
-        {
-            AZ::OceanFeatureToggleBus::Handler::BusDisconnect();
-        }
-
-        bool OceanComponentEnabled() const override
-        {
-            return true;
-        }
-    };
-
-    static OceanFeatureToggle s_oceanFeatureToggle;
-}
 
 namespace Water
 {
@@ -81,14 +53,16 @@ namespace Water
 
     void WaterSystemComponent::Activate()
     {
-        s_oceanFeatureToggle.Activate();
+        WaterEffectsRequestBus::Handler::BusConnect();
+        AZ::OceanFeatureToggleBus::Handler::BusConnect();
         SurfaceData::SurfaceDataTagProviderRequestBus::Handler::BusConnect();
     }
 
     void WaterSystemComponent::Deactivate()
     {
         SurfaceData::SurfaceDataTagProviderRequestBus::Handler::BusDisconnect();
-        s_oceanFeatureToggle.Deactivate();
+        AZ::OceanFeatureToggleBus::Handler::BusDisconnect();
+        WaterEffectsRequestBus::Handler::BusDisconnect();
     }
 
     void WaterSystemComponent::GetRegisteredSurfaceTagNames(SurfaceData::SurfaceTagNameSet& names) const
@@ -97,5 +71,10 @@ namespace Water
         names.insert(Constants::s_waterTagName);
         names.insert(Constants::s_underWaterTagName);
         names.insert(Constants::s_oceanTagName);
+    }
+
+    void WaterSystemComponent::GenerateWaterRipple(const AZ::Vector3& position, const float scale, const float strength)
+    {
+        gEnv->pRenderer->EF_AddWaterSimHit(Vec3(position), scale, strength);
     }
 }

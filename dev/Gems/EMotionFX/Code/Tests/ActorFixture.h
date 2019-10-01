@@ -19,6 +19,7 @@ namespace EMotionFX
 {
     class Actor;
     class ActorInstance;
+    class SimulatedObjectSetup;
 
     class ActorFixture
         : public SystemComponentFixture
@@ -28,6 +29,8 @@ namespace EMotionFX
         void TearDown() override;
 
         AZStd::string SerializePhysicsSetup(const Actor* actor) const;
+        AZStd::string SerializeSimulatedObjectSetup(const Actor* actor) const;
+        SimulatedObjectSetup* DeserializeSimulatedObjectSetup(const AZStd::string& data) const;
         AZStd::vector<AZStd::string> GetTestJointNames() const;
 
     protected:

@@ -291,21 +291,26 @@ namespace ScriptCanvasEditor
             return keyPart;
         }
 
-        static TranslationItemType GetItemType(ScriptCanvas::SlotType slotType)
+        static TranslationItemType GetItemType(ScriptCanvas::SlotDescriptor slotDescriptor)
         {
-            switch (slotType)
+            if (slotDescriptor == ScriptCanvas::SlotDescriptors::ExecutionIn())
             {
-            case ScriptCanvas::SlotType::ExecutionIn:
                 return TranslationItemType::ExecutionInSlot;
-            case ScriptCanvas::SlotType::ExecutionOut:
-                return TranslationItemType::ExecutionOutSlot;
-            case ScriptCanvas::SlotType::DataIn:
-                return TranslationItemType::ParamDataSlot;
-            case ScriptCanvas::SlotType::DataOut:
-                return TranslationItemType::ReturnDataSlot;
-            default:
-                return TranslationItemType::Invalid;
             }
+            else if (slotDescriptor == ScriptCanvas::SlotDescriptors::ExecutionOut())
+            {
+                return TranslationItemType::ExecutionOutSlot;
+            }
+            else if (slotDescriptor == ScriptCanvas::SlotDescriptors::DataIn())
+            {
+                return TranslationItemType::ParamDataSlot;
+            }
+            else if (slotDescriptor == ScriptCanvas::SlotDescriptors::DataOut())
+            {
+                return TranslationItemType::ReturnDataSlot;
+            }
+
+            return TranslationItemType::Invalid;
         }
 
         static AZStd::string GetSafeTypeName(ScriptCanvas::Data::Type dataType)

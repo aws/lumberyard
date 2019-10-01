@@ -13,6 +13,8 @@
 #define AZSTD_RED_BLACK_TREE_H
 
 #include <AzCore/std/allocator.h>
+#include <AzCore/std/allocator_traits.h>
+#include <AzCore/std/containers/node_handle.h>
 #include <AzCore/std/createdestroy.h>
 #include <AzCore/std/typetraits/alignment_of.h>
 #include <AzCore/std/utils.h>
@@ -275,6 +277,34 @@ namespace AZStd
         }
     };
 
+    template <class Allocator, class NodeType>
+    class rbtree_node_destructor
+    {
+        using allocator_type = typename AZStd::allocator_traits<Allocator>::template rebind_alloc<NodeType>;
+        using allocator_traits = AZStd::allocator_traits<allocator_type>;
+
+    public:
+
+        explicit rbtree_node_destructor(allocator_type& allocator)
+            : m_allocator(allocator)
+        {}
+
+        void operator()(NodeType* nodePtr)
+        {
+            if (nodePtr)
+            {
+                allocator_traits::destroy(m_allocator, nodePtr);
+                allocator_traits::deallocate(m_allocator, nodePtr, sizeof(NodeType), alignof(NodeType));
+            }
+        }
+
+    private:
+        rbtree_node_destructor& operator=(const rbtree_node_destructor&) = delete;
+        rbtree_node_destructor(const rbtree_node_destructor&) = delete;
+
+        allocator_type& m_allocator;
+    };
+
     /**
      * Generic red-black tree. Based on the STLport implementation. In addition to all
      * AZStd extensions and requirements, we use compressed node which saves about ~25%
@@ -341,6 +371,8 @@ namespace AZStd
         typedef AZStd::reverse_iterator<iterator>       reverse_iterator;
         typedef AZStd::reverse_iterator<const_iterator> const_reverse_iterator;
 
+        typedef rbtree_node_destructor<allocator_type, node_type> node_deleter;
+
     public:
         AZ_FORCE_INLINE rbtree()
             : m_numElements(0)
@@ -352,13 +384,23 @@ namespace AZStd
             m_head.m_left = &m_head;
             m_head.m_right = &m_head;
         }
-        AZ_FORCE_INLINE rbtree(const key_eq& keyEq)
+        explicit rbtree(const key_eq& keyEq)
             : m_numElements(0)
             , m_keyEq(keyEq)
             , m_allocator(allocator_type())
         {
             m_head.set_color(AZSTD_RBTREE_RED); // used to distinguish header from root, in iterator.operator++
-            m_head.set_parent(0);
+            m_head.set_parent(nullptr);
+            m_head.m_left = &m_head;
+            m_head.m_right = &m_head;
+        }
+        explicit rbtree(const allocator_type& allocator)
+            : m_numElements{}
+            , m_keyEq{}
+            , m_allocator{ allocator }
+        {
+            m_head.set_color(AZSTD_RBTREE_RED); // used to distinguish header from root, in iterator.operator++
+            m_head.set_parent(nullptr);
             m_head.m_left = &m_head;
             m_head.m_right = &m_head;
         }
@@ -456,7 +498,6 @@ namespace AZStd
         AZ_FORCE_INLINE size_type size() const                  { return m_numElements; }
         AZ_FORCE_INLINE size_type max_size() const              { return m_allocator.max_size() / sizeof(node_type); }
 
-#ifdef AZ_HAS_RVALUE_REFS
         rbtree(this_type&& rhs)
             : m_numElements(0) // it will be set during swap
             , m_keyEq(AZStd::move(rhs.m_keyEq))
@@ -513,6 +554,22 @@ namespace AZStd
             return AZStd::pair<iterator, bool>(insertPos, isInserted);
         }
 
+        iterator insert_unique(const_iterator insertPos, value_type&& value)
+        {
+            // this is not efficient, pass the value for clone on success or just ignore the
+            // insertPos and do a search (which should be fine and insertPos is a hit, but in practice
+            // we expect most people will call with insertPos if the node can't be inserted)
+            node_ptr_type newNode = static_cast<node_ptr_type>(create_node(AZStd::move(value)));
+            iterator result = insert_unique_node(insertPos, newNode);
+            if (result == insertPos)
+            {
+                pointer toDestroy = &newNode->m_value;
+                Internal::destroy<pointer>::single(toDestroy);
+                deallocate_node(newNode, allocator::allow_memory_leaks());
+            }
+            return result;
+        }
+
         iterator insert_equal(value_type&& value)
         {
             return insert_equal_node(create_node(AZStd::forward<value_type>(value)));
@@ -559,7 +616,6 @@ namespace AZStd
         {
             return insert_equal_node(insertPos, create_node(AZStd::forward<InputArguments>(arguments) ...));
         }
-#endif
 
         inline void swap(this_type& rhs)
         {
@@ -604,10 +660,38 @@ namespace AZStd
             }
             else
             {
-                // Different allocators, use assign.
-                this_type temp = *this;
-                *this = rhs;
-                rhs = temp;
+                // Different allocators, move elements
+                rbtree temp(m_keyEq ,m_allocator);
+                // Move this rbtree elements to a temp rbtree
+                base_node_ptr_type parent = m_head.get_parent();
+                if (parent)
+                {
+                    temp.m_head.set_parent(temp.move(parent, &temp.m_head));
+                    temp.m_head.m_left = temp.m_head.get_parent()->minimum();
+                    temp.m_head.m_right = temp.m_head.get_parent()->maximum();
+                    temp.m_numElements = m_numElements;
+                }
+
+                // Move rhs rbtree elements to this rbtree
+                clear();
+                base_node_ptr_type rhsParent = rhs.m_head.get_parent();
+                if (rhsParent)
+                {
+                    m_head.set_parent(move(rhsParent, &m_head));
+                    m_head.m_left = m_head.get_parent()->minimum();
+                    m_head.m_right = m_head.get_parent()->maximum();
+                    m_numElements = rhs.m_numElements;
+                }
+                // Move temp rbtree elements to rhs rbtree
+                rhs.clear();
+                base_node_ptr_type tempParent = temp.m_head.get_parent();
+                if (tempParent)
+                {
+                    rhs.m_head.set_parent(rhs.move(tempParent, &rhs.m_head));
+                    rhs.m_head.m_left = rhs.m_head.get_parent()->minimum();
+                    rhs.m_head.m_right = rhs.m_head.get_parent()->maximum();
+                    rhs.m_numElements = temp.m_numElements;
+                }
             }
         }
 
@@ -675,6 +759,32 @@ namespace AZStd
                 insert_unique(*first);
             }
         }
+
+        //! Returns an insert_return_type with the members initialized as follows: if nodeHandle is empty, inserted is false, position is end(), and node is empty.
+        //! Otherwise if the insertion took place, inserted is true, position points to the inserted element, and node is empty.
+        //! If the insertion failed, inserted is false, node has the previous value of nodeHandle, and position points to an element with a key equivalent to nodeHandle.key().
+        template <class InsertReturnType, class NodeHandle>
+        InsertReturnType node_handle_insert_unique(NodeHandle&& nodeHandle);
+        template <class NodeHandle>
+        auto node_handle_insert_unique(const iterator hint, NodeHandle&& nodeHandle) -> iterator;
+
+        //! Returns an iterator pointing to the inserted element.
+        //! If the nodeHandle is empty the end() iterator is returned
+        template <class NodeHandle>
+        auto node_handle_insert_equal(NodeHandle&& nodeHandle) -> iterator;
+        template <class NodeHandle>
+        auto node_handle_insert_equal(const iterator hint, NodeHandle&& nodeHandle) -> iterator;
+
+        //! Searches for an element which matches the value of key and extracts it from the hash_table
+        //! @return A NodeHandle which can be used to insert the an element between unique and non-unique containers of the same type
+        //! i.e a NodeHandle from an unordered_map can be used to insert a node into an unordered_multimap, but not a std::map
+        template <class NodeHandle>
+        NodeHandle node_handle_extract(const key_type& key);
+        //! Finds an element within the hash_table that is represented by the supplied iterator and extracts it
+        //! @return A NodeHandle which can be used to insert the an element between unique and non-unique containers of the same type
+        template <class NodeHandle>
+        NodeHandle node_handle_extract(const_iterator it);
+
         inline iterator erase(const_iterator erasePos)
         {
 #ifdef AZSTD_HAS_CHECKED_ITERATORS
@@ -1050,7 +1160,6 @@ namespace AZStd
             return newNode;
         }
 
-#ifdef AZ_HAS_RVALUE_REFS
         template<class ... InputArguments>
         inline base_node_ptr_type create_node(InputArguments&& ... arguments)
         {
@@ -1064,11 +1173,17 @@ namespace AZStd
             newNode->m_right = 0;
             return newNode;
         }
-#endif // AZ_HAS_RVALUE_REFS
 
         AZ_FORCE_INLINE base_node_ptr_type clone_node(base_node_ptr_type node)
         {
             base_node_ptr_type tmp = create_node(static_cast<node_ptr_type>(node)->m_value);
+            tmp->set_color(node->get_color());
+            return tmp;
+        }
+
+        base_node_ptr_type move_node(base_node_ptr_type node)
+        {
+            base_node_ptr_type tmp = create_node(AZStd::move(static_cast<node_ptr_type>(node)->m_value));
             tmp->set_color(node->get_color());
             return tmp;
         }
@@ -1468,6 +1583,35 @@ namespace AZStd
             }
             return top;
         }
+
+        base_node_ptr_type move(base_node_ptr_type node, base_node_ptr_type parent)
+        {
+            // structural move.  node and parent must be non-null.
+            base_node_ptr_type top = move_node(node);
+            top->set_parent(parent);
+
+            if (node->m_right)
+            {
+                top->m_right = move(node->m_right, top);
+            }
+            parent = top;
+            node = node->m_left;
+
+            while (node)
+            {
+                base_node_ptr_type movedNode = move_node(node);
+                parent->m_left = movedNode;
+                movedNode->set_parent(parent);
+                if (node->m_right)
+                {
+                    movedNode->m_right = move(node->m_right, movedNode);
+                }
+                parent = movedNode;
+                node = node->m_left;
+            }
+            return top;
+        }
+
         void erase(base_node_ptr_type node)
         {
             // erase without rebalancing
@@ -1880,6 +2024,106 @@ namespace AZStd
 
     #undef AZSTD_RBTREE_RED
     #undef AZSTD_RBTREE_BLACK
+
+    template <class Traits>
+    template <class InsertReturnType, class NodeHandle>
+    inline InsertReturnType rbtree<Traits>::node_handle_insert_unique(NodeHandle&& nodeHandle)
+    {
+        if (nodeHandle.empty())
+        {
+            return { end(), false, NodeHandle{} };
+        }
+
+        InsertReturnType result;
+        pair<iterator, bool> insertResult = insert_unique_node(nodeHandle.m_node);
+        result.position = insertResult.first;
+        result.inserted = insertResult.second;
+        if (!result.inserted)
+        {
+            result.node = AZStd::move(nodeHandle);
+        }
+        nodeHandle.release_node();
+        
+        return result;
+    }
+
+    template <class Traits>
+    template <class NodeHandle>
+    inline auto rbtree<Traits>::node_handle_insert_unique(const iterator hint, NodeHandle&& nodeHandle) -> iterator
+    {
+        if (nodeHandle.empty())
+        {
+            return end();
+        }
+
+        iterator insertIter = find(Traits::key_from_value(nodeHandle.m_node->m_value));
+        if (insertIter == end())
+        {
+            insertIter = insert_unique_node(hint, nodeHandle.m_node);
+            nodeHandle.release_node();
+        }
+        return insertIter;
+    }
+
+    template <class Traits>
+    template <class NodeHandle>
+    inline auto rbtree<Traits>::node_handle_insert_equal(NodeHandle&& nodeHandle) -> iterator
+    {
+        if (nodeHandle.empty())
+        {
+            return end();
+        }
+
+        iterator insertIter = insert_equal_node(nodeHandle.m_node);
+        nodeHandle.release_node();
+        return insertIter;
+    }
+    template <class Traits>
+    template <class NodeHandle>
+    inline auto rbtree<Traits>::node_handle_insert_equal(const iterator hint, NodeHandle&& nodeHandle) -> iterator
+    {
+        if (nodeHandle.empty())
+        {
+            return end();
+        }
+
+        iterator insertIter = insert_equal_node(hint, nodeHandle.m_node);
+        nodeHandle.release_node();
+        return insertIter;
+    }
+
+    template <class Traits>
+    template <class NodeHandle>
+    inline NodeHandle rbtree<Traits>::node_handle_extract(const key_type& key)
+    {
+        iterator it = find(key);
+        if (it == end())
+        {
+            return {};
+        }
+        return node_handle_extract<NodeHandle>(it);
+    }
+
+    template <class Traits>
+    template <class NodeHandle>
+    inline NodeHandle rbtree<Traits>::node_handle_extract(const_iterator extractPos)
+    {
+        // Makes a non-const iterator out of a const iterator
+        node_ptr_type extractNode = extractPos.m_node;
+        iterator next(AZSTD_CHECKED_ITERATOR(iterator_impl, extractNode));
+        ++next;
+
+        // Remove the node from the tree, but don't delete it
+        node_ptr_type nodeToExtract = static_cast<node_ptr_type>(rebalance_for_erase(extractNode, m_head.m_left, m_head.m_right));
+        --m_numElements;
+        nodeToExtract->set_parent(nullptr);
+        nodeToExtract->m_left = nullptr;
+        nodeToExtract->m_right = nullptr;
+
+        return NodeHandle{ nodeToExtract, get_allocator() };
+    }
+
+    
 }
 
 #endif // AZSTD_RED_BLACK_TREE_H

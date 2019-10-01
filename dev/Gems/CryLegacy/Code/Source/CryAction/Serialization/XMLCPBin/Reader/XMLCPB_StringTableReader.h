@@ -30,7 +30,6 @@ namespace XMLCPB {
         const char* GetString(StringID stringId) const;
         int                 GetNumStrings() const { return m_stringAddrs.size(); }
 
-        void                ReadFromFile(CReader& Reader, IPlatformOS::ISaveReaderPtr pOSSaveReader, const SFileHeader::SStringTable& headerInfo);
         void                ReadFromMemory(CReader& Reader, const uint8* pData, uint32 dataSize, const SFileHeader::SStringTable& headerInfo, uint32& outReadLoc);
 
         // for debug and testing

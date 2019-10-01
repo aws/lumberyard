@@ -1,0 +1,8 @@
+{
+  "auto": {
+    "Platform/AppleTV": [
+      "CloudCanvasCommon_Traits_Platform.h", 
+      "CloudCanvasCommon_Traits_AppleTV.h"
+    ]
+  }
+}

@@ -12,7 +12,8 @@
 
 #pragma once
 
-// include the required headers
+#include <AzCore/std/containers/vector.h>
+#include <AzCore/std/string/string.h>
 #include "StandardHeaders.h"
 #include "CommandLine.h"
 
@@ -62,8 +63,8 @@ namespace MCore
          */
         virtual void OnPostExecuteCommand(CommandGroup* group, Command* command, const CommandLine& commandLine, bool wasSuccess, const AZStd::string& outResult) = 0;
 
-        virtual void OnPreUndoCommand(MCore::Command* command, const MCore::CommandLine& commandLine) {}
-        virtual void OnPostUndoCommand(MCore::Command* command, const MCore::CommandLine& commandLine) {}
+        virtual void OnPreUndoCommand(MCore::Command* command, const MCore::CommandLine& commandLine) { AZ_UNUSED(command); AZ_UNUSED(commandLine); }
+        virtual void OnPostUndoCommand(MCore::Command* command, const MCore::CommandLine& commandLine) { AZ_UNUSED(command); AZ_UNUSED(commandLine); }
 
         /**
          * This callback is executed before we are going to execute a given command group.

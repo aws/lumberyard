@@ -13,25 +13,25 @@
 import os
 
 def build(bld):
-    java_src_root = bld.path.make_node(os.path.join('Source', 'Android', 'java'))
+    java_src_root = bld.path.make_node(os.path.join('Source', 'Platform', 'Android', 'java'))
 
-    bld.DefineGem(
-        # File lists
-        android_file_list   = ['microphone_android.waf_files'],
-        # appletv_file_list   = ['microphone_appletv.waf_files'],
-        darwin_file_list    = ['microphone_darwin.waf_files'],
+    manifest_src_root = bld.path.make_node(os.path.join('Source', 'Android'))
 
-        ios_file_list       = ['microphone_ios.waf_files'],
-        # linux_file_list     = ['microphone_linux.waf_files'],
 
-        win_file_list       = ['microphone_win.waf_files'],
-
-        # Add custom build options here
-        includes            = [bld.Path('Code/CryEngine/CrySoundSystem/Common')],
+    kw_dict = dict(
+        file_list = ['microphone.waf_files'],
+        includes            = [bld.Path('Code/CryEngine/CrySoundSystem/Common'),
+                               bld.Path('Code/CryEngine/CryCommon')
+                              ],
 
         android_java_src_path = [ java_src_root.abspath() ],
+        android_manifest_path = [ manifest_src_root.abspath() ],
 
         win_features        = ['crcfix'],
         win_lib             = ['ole32', 'libsamplerate'],
+        platform_roots      = [bld.PlatformRoot('Source/Platform', export_includes=False)]
+    )
 
+    bld.DefineGem(
+        **kw_dict
     )

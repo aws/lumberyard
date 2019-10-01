@@ -169,9 +169,9 @@ struct WaterOceanComponentTester : public Water::WaterOceanComponent
         ASSERT_TRUE(m_data.GetAnimationWindSpeed() == cfg.GetAnimationWindSpeed());
         ASSERT_TRUE(m_data.GetReflectResolutionScale() == cfg.GetReflectResolutionScale());
         ASSERT_TRUE(m_data.GetReflectionAnisotropic() == cfg.GetReflectionAnisotropic());
-        ASSERT_TRUE(m_data.GetFogColorMulitplier() == cfg.GetFogColorMulitplier());
+        ASSERT_TRUE(m_data.GetFogColorMultiplier() == cfg.GetFogColorMultiplier());
         ASSERT_TRUE(m_data.GetFogColor() == cfg.GetFogColor());
-        ASSERT_TRUE(m_data.GetFogColorMulitplier() == cfg.GetFogColorMulitplier());
+        ASSERT_TRUE(m_data.GetFogColorMultiplier() == cfg.GetFogColorMultiplier());
         ASSERT_TRUE(m_data.GetFogDensity() == cfg.GetFogDensity());
         ASSERT_TRUE(m_data.GetWaterTessellationAmount() == cfg.GetWaterTessellationAmount());
         ASSERT_TRUE(m_data.GetGodRaysEnabled() == cfg.GetGodRaysEnabled());
@@ -214,7 +214,7 @@ TEST_F(WaterTestApp, Ocean_WaterOceanComponentMatchesConfiguration)
     cfg.SetAnimationWindDirection(9.0f);
     cfg.SetAnimationWindSpeed(10.0f);
     cfg.SetFogColor(AZ::Color((AZ::u8)12, (AZ::u8)13, (AZ::u8)14, (AZ::u8)15));
-    cfg.SetFogColorMulitplier(11.0f);
+    cfg.SetFogColorMultiplier(11.0f);
     cfg.SetFogDensity(12.0f);
     cfg.SetReflectResolutionScale(0.123f);
     cfg.SetReflectRenderFlag(Flags::Entities, (rand.GetRandom() % 2) == 0);
@@ -297,8 +297,8 @@ TEST_F(WaterTestApp, Ocean_ScriptingOceanEnvironmentRequestBus)
             ScriptAssert(OceanEnvironmentRequestBus.Broadcast.GetUnderwaterDistortion() == 10);
             ScriptAssert(OceanEnvironmentRequestBus.Broadcast.SetFogColor(Color(1.0,2.0,3.0)) or true);
             ScriptAssert(OceanEnvironmentRequestBus.Broadcast.GetFogColor() == Color(1.0,2.0,3.0));
-            ScriptAssert(OceanEnvironmentRequestBus.Broadcast.SetFogColorMulitplier(2.0) or true);
-            ScriptAssert(OceanEnvironmentRequestBus.Broadcast.GetFogColorMulitplier() == 2.0);
+            ScriptAssert(OceanEnvironmentRequestBus.Broadcast.SetFogColorMultiplier(2.0) or true);
+            ScriptAssert(OceanEnvironmentRequestBus.Broadcast.GetFogColorMultiplier() == 2.0);
             ScriptAssert(OceanEnvironmentRequestBus.Broadcast.GetFogColorPremultiplied() == Color(2.0,4.0,6.0,2.0));
             ScriptAssert(OceanEnvironmentRequestBus.Broadcast.SetNearFogColor(Color(1.1,2.2,3.3)) or true);
             ScriptAssert(OceanEnvironmentRequestBus.Broadcast.GetNearFogColor() == Color(1.1,2.2,3.3));

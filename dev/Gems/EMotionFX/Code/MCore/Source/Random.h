@@ -74,7 +74,7 @@ namespace MCore
         * @param maxVal The maximum value of the range.
         * @result A uniform random floating point number in range of [min..max].
         */
-        static MCORE_INLINE float RandF(float minVal, float maxVal, unsigned int seed) { return minVal + (maxVal - minVal) * rand() / (float)RAND_MAX; }
+        static MCORE_INLINE float RandF(float minVal, float maxVal, unsigned int seed) { AZ_UNUSED(seed); return minVal + (maxVal - minVal) * rand() / (float)RAND_MAX; }
 
         /**
         * Generate a uniform random float in a range of a given minimum and maximum.

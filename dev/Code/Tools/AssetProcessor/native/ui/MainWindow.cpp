@@ -337,6 +337,7 @@ void MainWindow::Activate()
     connect(m_guiApplicationManager->GetRCController(), &AssetProcessor::RCController::JobStatusChanged, m_jobsModel, &AssetProcessor::JobsModel::OnJobStatusChanged);
     connect(m_guiApplicationManager->GetAssetProcessorManager(), &AssetProcessor::AssetProcessorManager::JobRemoved, m_jobsModel, &AssetProcessor::JobsModel::OnJobRemoved);
     connect(m_guiApplicationManager->GetAssetProcessorManager(), &AssetProcessor::AssetProcessorManager::SourceDeleted, m_jobsModel, &AssetProcessor::JobsModel::OnSourceRemoved);
+    connect(m_guiApplicationManager->GetAssetProcessorManager(), &AssetProcessor::AssetProcessorManager::SourceFolderDeleted, m_jobsModel, &AssetProcessor::JobsModel::OnFolderRemoved);
 
     connect(ui->jobTreeView, &AzQtComponents::TableView::customContextMenuRequested, this, &MainWindow::ShowJobViewContextMenu);
     connect(ui->jobContextLogTableView, &AzQtComponents::TableView::customContextMenuRequested, this, &MainWindow::ShowLogLineContextMenu);
@@ -348,21 +349,22 @@ void MainWindow::Activate()
     connect(ui->fullScanButton, &QPushButton::clicked, this, &MainWindow::OnRescanButtonClicked);
 
     settings.beginGroup("Options");
-    bool fastAnalysModeFromSettings = settings.value("EnableFastAnalysis", QVariant(false)).toBool();
+    bool zeroAnalysisModeFromSettings = settings.value("EnableZeroAnalysis", QVariant(true)).toBool();
     settings.endGroup();
 
-    QObject::connect(ui->fastAnalysisCheckBox, &QCheckBox::stateChanged, this,
+    QObject::connect(ui->modtimeSkippingCheckBox, &QCheckBox::stateChanged, this, 
         [this](int newCheckState)
     {
         bool newOption = newCheckState == Qt::Checked ? true : false;
-        m_guiApplicationManager->GetAssetProcessorManager()->SetEnableAnalysisSkippingFeature(newOption);
+        m_guiApplicationManager->GetAssetProcessorManager()->SetEnableModtimeSkippingFeature(newOption);
         QSettings settingsInCallback;
         settingsInCallback.beginGroup("Options");
-        settingsInCallback.setValue("EnableFastAnalysis", QVariant(newOption));
+        settingsInCallback.setValue("EnableZeroAnalysis", QVariant(newOption));
         settingsInCallback.endGroup();
     });
 
-    ui->fastAnalysisCheckBox->setCheckState(fastAnalysModeFromSettings ? Qt::Checked : Qt::Unchecked);
+    m_guiApplicationManager->GetAssetProcessorManager()->SetEnableModtimeSkippingFeature(zeroAnalysisModeFromSettings);
+    ui->modtimeSkippingCheckBox->setCheckState(zeroAnalysisModeFromSettings ? Qt::Checked : Qt::Unchecked);
 }
 
 void MainWindow::OnRescanButtonClicked()

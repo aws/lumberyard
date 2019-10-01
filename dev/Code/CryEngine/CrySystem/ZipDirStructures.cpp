@@ -12,6 +12,7 @@
 // Original file Copyright Crytek GMBH or its affiliates, used under license.
 
 #include "StdAfx.h"
+#include <AzCore/Casting/numeric_cast.h>
 #include "MTSafeAllocator.h"
 #include "smartptr.h"
 #include "CryZlib.h"
@@ -22,7 +23,8 @@
 #include <ISystem.h>
 #include "CryPak.h"
 #include "ICrypto.h"
-
+#include <zstd.h>
+#include <lz4frame.h>
 #ifdef SUPPORT_UNBUFFERED_IO
 #include <shlwapi.h>
 LINK_SYSTEM_LIBRARY(shlwapi.lib)
@@ -136,7 +138,7 @@ static int ZlibInflateIndependentWriteCombined(z_stream* pZS) PREFAST_SUPPRESS_W
     while ((err == Z_OK) && (nOutRemoteLen > 0) && (pZS->avail_in > 0))
     {
         pZS->next_out = outputLocal;
-        pZS->avail_out = min((uInt)sizeof(outputLocal), nOutRemoteLen);
+        pZS->avail_out = min(static_cast<uInt>(sizeof(outputLocal)), nOutRemoteLen);
 
         err = inflate(pZS, Z_SYNC_FLUSH);
 
@@ -251,11 +253,11 @@ void ZlibInflateElement_Impl(const void* pCompressed, void* pUncompressed, unsig
     int err;
     z_stream stream;
 
-    Bytef* pIn = (Bytef*)pCompressed;
-    uInt nIn = (uInt)compressedSize;
+    Bytef* pIn = const_cast<Bytef*>(static_cast<const Bytef*>(pCompressed));
+    uInt nIn = static_cast<uInt>(compressedSize);
 
-    stream.next_out = (Bytef*)pUncompressed;
-    stream.avail_out = (uInt)nUnCompressedSize;
+    stream.next_out = static_cast<Bytef*>(pUncompressed);
+    stream.avail_out = static_cast<uInt>(nUnCompressedSize);
 
     stream.zalloc = CMTSafeHeap::StaticAlloc;
     stream.zfree = CMTSafeHeap::StaticFree;
@@ -405,11 +407,17 @@ bool ZipDir::CZipFile::OpenUnbuffered(const char* filename)
         return false;
     }
 
-    HANDLE unbufferedFile = CreateFileA(filename, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL | FILE_FLAG_NO_BUFFERING, NULL);
+    HANDLE unbufferedFile = CreateFileA(filename, GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL | FILE_FLAG_NO_BUFFERING, NULL);
 
     if (unbufferedFile != INVALID_HANDLE_VALUE)
     {
+        LARGE_INTEGER fileSize;
+        if (!GetFileSizeEx(unbufferedFile, &fileSize))
+        {
+            return false;
+        }
         m_unbufferedFile = unbufferedFile;
+        m_nSize = fileSize.QuadPart;
 
         return true;
     }
@@ -479,9 +487,61 @@ ZipDir::FileEntry::FileEntry(const CDRFileHeader& header, const SExtraZipFileDat
 int ZipDir::ZipRawUncompress (CMTSafeHeap* pHeap, void* pUncompressed, unsigned long* pDestSize, const void* pCompressed, unsigned long nSrcSize)
 {
     LOADING_TIME_PROFILE_SECTION(gEnv->pSystem);
-    int nReturnCode;
+    int nReturnCode = Z_OK;
 
-    ZlibInflateElement_Impl(pCompressed, pUncompressed, nSrcSize, *pDestSize, pDestSize, &nReturnCode, pHeap);
+        //check first 4 bytes to see what compression codec was used
+    if (CompressionCodec::TestForZSTDMagic(pCompressed))
+    {
+        size_t result = ZSTD_decompress(pUncompressed, *pDestSize, pCompressed, nSrcSize);
+
+        if (ZSTD_isError(result))
+        {
+            AZ_Error("ZipDirStructures", false, "Error decompressing using zstd: %s", ZSTD_getErrorName(result));
+            nReturnCode = Z_BUF_ERROR;
+        }
+        else
+        {
+            *pDestSize = result;
+        }
+        return nReturnCode;
+    }
+    else if (CompressionCodec::TestForLZ4Magic(pCompressed))
+    {
+        size_t result;
+        LZ4F_decompressionContext_t dctx;
+        result = LZ4F_createDecompressionContext(&dctx, LZ4F_VERSION);
+        if (LZ4F_isError(result))
+        {
+            AZ_Error("ZipDirStructures", false, "Error creating lz4 decompression context: %s", LZ4F_getErrorName(result));
+            return Z_BUF_ERROR;
+        }
+
+        size_t dstSize = aznumeric_caster(*pDestSize);
+        size_t srcSize = aznumeric_caster(nSrcSize);
+        result = LZ4F_decompress(dctx, pUncompressed, &dstSize, pCompressed, &srcSize, nullptr);
+        if (LZ4F_isError(result))
+        {
+            AZ_Error("ZipDirStructures", false, "Error decompressing using lz4: %s", LZ4F_getErrorName(result));
+            nReturnCode = Z_BUF_ERROR;
+        }
+        else
+        {
+            *pDestSize = aznumeric_caster(dstSize);
+        }
+
+        size_t freeCode = LZ4F_freeDecompressionContext(dctx);
+        if (LZ4F_isError(freeCode))
+        {
+            //We are not changing the return code in this case, but it is good to record that releasing the
+            //decompression context failed.
+            AZ_Error("ZipDirStructures", false, "Error releasing lz4 decompression context: %s", LZ4F_getErrorName(freeCode));
+        }
+
+        return nReturnCode;
+    }
+
+    //fallback to zlib
+    ZlibInflateElement_Impl( pCompressed, pUncompressed, nSrcSize, *pDestSize, pDestSize, &nReturnCode, pHeap);
 
     return nReturnCode;
 }
@@ -493,11 +553,12 @@ int ZipDir::ZipRawCompress (CMTSafeHeap* pHeap, const void* pUncompressed, unsig
     z_stream stream;
     int err;
 
-    stream.next_in   = (Bytef*)pUncompressed;
-    stream.avail_in  = (uInt)nSrcSize;
+    stream.next_in = const_cast<Bytef*>(static_cast<const Bytef*>(pUncompressed));
+    stream.next_out = reinterpret_cast<Bytef*>(pCompressed);
 
-    stream.next_out  = (Bytef*)pCompressed;
-    stream.avail_out = (uInt) * pDestSize;
+
+    stream.avail_in  = static_cast<uInt>(nSrcSize);
+    stream.avail_out = static_cast<uInt>(*pDestSize);
 
     stream.zalloc = CMTSafeHeap::StaticAlloc;
     stream.zfree  = CMTSafeHeap::StaticFree;
@@ -520,6 +581,43 @@ int ZipDir::ZipRawCompress (CMTSafeHeap* pHeap, const void* pUncompressed, unsig
     err = deflateEnd(&stream);
     return err;
 }
+
+int ZipDir::ZipRawCompressZSTD(CMTSafeHeap* pHeap, const void* pUncompressed, unsigned long* pDestSize, void* pCompressed, unsigned long nSrcSize, int nLevel)
+{
+    size_t result = ZSTD_compress(pCompressed, *pDestSize, pUncompressed, nSrcSize, 1);
+
+    int err = Z_OK;
+
+    if (ZSTD_isError(result))
+    {
+        AZ_Error("Error compressing using zstd:%s", false, ZSTD_getErrorName(result));
+        err = Z_BUF_ERROR;
+    }
+    else
+    {
+        *pDestSize = static_cast<unsigned long>(result);
+    }
+    return err;
+}
+
+int ZipDir::ZipRawCompressLZ4(CMTSafeHeap* pHeap, const void* pUncompressed, unsigned long* pDestSize, void* pCompressed, unsigned long nSrcSize, int nLevel)
+{
+    int returnCode = Z_OK;
+    const size_t compressedBufferMaxSize = aznumeric_caster(*pDestSize);
+    size_t lz4_code = LZ4F_compressFrame(pCompressed, compressedBufferMaxSize, pUncompressed, aznumeric_caster(nSrcSize), nullptr);
+
+    if (LZ4F_isError(lz4_code))
+    {
+        returnCode = Z_BUF_ERROR;
+    }
+    else
+    {
+        *pDestSize = aznumeric_caster(lz4_code);
+    }
+
+    return returnCode;
+}
+
 
 // finds the subdirectory entry by the name, using the names from the name pool
 // assumes: all directories are sorted in alphabetical order.

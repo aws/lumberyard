@@ -121,6 +121,8 @@ namespace MCore
             return false;
         }
 
+        static void Reflect(AZ::ReflectContext* context);
+
     private:
         static AZ::Outcome<AZStd::string> SerializeMember(const AZ::TypeId& classTypeId, const void* classPtr, const char* memberName);
 

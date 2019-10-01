@@ -25,6 +25,8 @@ class DeployContext(LmbrInstallContext):
         """
         Creates a deploy task using the old feature method
         """
+        self.process_restricted_settings(kw)
+
         if self.is_platform_and_config_valid(**kw):
             self(features='deploy_{}'.format(self.platform), group=self.group_name)
 

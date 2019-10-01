@@ -33,6 +33,7 @@
             "include/LmbrCentral/Audio/AudioProxyComponentBus.h",
             "include/LmbrCentral/Audio/AudioRtpcComponentBus.h",
             "include/LmbrCentral/Audio/AudioSwitchComponentBus.h",
+            "include/LmbrCentral/Audio/AudioSystemComponentBus.h",
             "include/LmbrCentral/Audio/AudioTriggerComponentBus.h"
         ],
         "Include/Geometry": [
@@ -140,6 +141,8 @@
             "Source/Audio/AudioRtpcComponent.cpp",
             "Source/Audio/AudioSwitchComponent.h",
             "Source/Audio/AudioSwitchComponent.cpp",
+            "Source/Audio/AudioSystemComponent.h",
+            "Source/Audio/AudioSystemComponent.cpp",
             "Source/Audio/AudioTriggerComponent.h",
             "Source/Audio/AudioTriggerComponent.cpp"
         ],

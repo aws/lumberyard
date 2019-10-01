@@ -17,9 +17,6 @@
 #include <MCore/Source/StandardHeaders.h>
 #include <MCore/Source/LogManager.h>
 
-// include OpenGL
-#include "GLInclude.h"
-
 
 namespace RenderGL
 {
@@ -64,8 +61,8 @@ namespace RenderGL
         uint32      mBufferID;      // the buffer ID
         uint32      mNumVertices;   // the number of vertices
 
-        MCORE_INLINE bool GetIsSuccess() const  { return (glGetError() == GL_NO_ERROR); }
-        MCORE_INLINE bool GetHasError() const   { return (glGetError() != GL_NO_ERROR); }
+        bool GetIsSuccess() const;
+        bool GetHasError() const;
     };
 } // namespace RenderGL
 

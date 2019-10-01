@@ -17,7 +17,8 @@ def build(bld):
     file_list = ['static_data.waf_files']
 
     bld.DefineGem(
-        includes        = [bld.Path('Code/CryEngine/CryAction'),
+        includes        = [bld.Path('Code/CryEngine/CryCommon'),
+                           bld.Path('Code/CryEngine/CryAction'),
                            'Editor',
                            '.'
         ],

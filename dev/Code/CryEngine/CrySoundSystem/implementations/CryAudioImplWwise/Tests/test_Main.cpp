@@ -56,12 +56,7 @@ namespace UnitTest
             // Create AZ::SystemAllocator
             if (!AZ::AllocatorInstance<AZ::SystemAllocator>::IsReady())
             {
-                AZ::SystemAllocator::Descriptor desc;
-                desc.m_heap.m_numFixedMemoryBlocks = 1;
-                desc.m_heap.m_fixedMemoryBlocksByteSize[0] = 8 << 20;
-                desc.m_heap.m_fixedMemoryBlocks[0] = DebugAlignAlloc(desc.m_heap.m_fixedMemoryBlocksByteSize[0], desc.m_heap.m_memoryBlockAlignment);
-
-                AZ::AllocatorInstance<AZ::SystemAllocator>::Create(desc);
+                AZ::AllocatorInstance<AZ::SystemAllocator>::Create();
             }
 
             // Setup Mocks on a stub environment

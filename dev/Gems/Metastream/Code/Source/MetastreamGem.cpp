@@ -18,12 +18,13 @@
 #include <AzCore/RTTI/BehaviorContext.h>
 #include <AzCore/Serialization/SerializeContext.h>
 #include <FlowSystem/Nodes/FlowBaseNode.h>
+#include <Metastream_Traits_Platform.h>
 
 #include "MetastreamGem.h"
 
-#if defined(AZ_PLATFORM_WINDOWS_X64)
+#if AZ_TRAIT_METASTREAM_USE_CIVET
 #include "CivetHttpServer.h"
-#endif // Windows x64
+#endif // AZ_TRAIT_METASTREAM_USE_CIVET
 
 namespace Metastream
 {
@@ -323,7 +324,7 @@ namespace Metastream
 
     bool MetastreamGem::StartHTTPServer()
     {
-#if defined(AZ_PLATFORM_WINDOWS_X64)
+#if AZ_TRAIT_METASTREAM_USE_CIVET
         // Start server if it is not started
         if (!m_server.get())
         {
@@ -345,7 +346,7 @@ namespace Metastream
             // Server already started
             return true;
         }
-#endif // Windows x64
+#endif // AZ_TRAIT_METASTREAM_USE_CIVET
 
         // Metastream only supported on PC
         return false;

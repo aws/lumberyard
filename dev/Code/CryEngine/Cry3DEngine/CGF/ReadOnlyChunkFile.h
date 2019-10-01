@@ -75,7 +75,6 @@ public:
 private:
     bool ReadChunkTableFromBuffer();
     void FreeBuffer();
-    void CloseFile();
 
 private:
     // this variable contains the last error occurred in this class
@@ -89,8 +88,6 @@ private:
     bool m_bNoWarningMode;
     bool m_bLoaded;
     bool m_bCopyFileData;
-
-    AZ::IO::HandleType m_fileHandle;
 };
 
 TYPEDEF_AUTOPTR(CReadOnlyChunkFile);

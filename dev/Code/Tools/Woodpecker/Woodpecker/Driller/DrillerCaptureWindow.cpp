@@ -124,7 +124,7 @@ namespace Driller
             AZ::SerializeContext* serialize = azrtti_cast<AZ::SerializeContext*>(context);
             if (serialize)
             {
-                serialize->Class<DrillerCaptureWindowWorkspace, AZ::UserSettings>()
+                serialize->Class<DrillerCaptureWindowWorkspace>()
                     ->Field("m_ChannelIDs", &DrillerCaptureWindowWorkspace::m_ChannelIDs)
                     ->Field("m_matchingDataFileName", &DrillerCaptureWindowWorkspace::m_matchingDataFileName)
                     ->Field("m_scrubberCurrentFrame", &DrillerCaptureWindowWorkspace::m_scrubberCurrentFrame)

@@ -10,8 +10,6 @@
 *
 */
 
-#ifndef AZ_UNITY_BUILD
-
 #include <AzCore/Math/Spline.h>
 #include <AzCore/Math/IntersectSegment.h>
 #include <AzCore/Math/Quaternion.h>
@@ -1550,5 +1548,3 @@ namespace AZ
     AZ_CLASS_ALLOCATOR_IMPL(BezierSpline::BezierData, SystemAllocator, 0)
     AZ_CLASS_ALLOCATOR_IMPL(CatmullRomSpline, SystemAllocator, 0)
 }
-
-#endif // #ifndef AZ_UNITY_BUILD

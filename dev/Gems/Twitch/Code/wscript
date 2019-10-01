@@ -17,7 +17,8 @@ def build(bld):
         file_list.append('twitch.waf_files')
     else:
         file_list.append('lmbraws_unsupported.waf_files')
-        
+
+
     bld.DefineGem(
         use         =   [   'HttpRequestor',
                             'LmbrAWS'
@@ -28,5 +29,10 @@ def build(bld):
         includes    =   [],
         
         file_list   = file_list,
+        
+        # Platform Roots
+        platform_roots = [bld.PlatformRoot('Source/Platform', export_includes=False)],
+
         win_file_list = ['twitch_win.waf_files']
     )
+

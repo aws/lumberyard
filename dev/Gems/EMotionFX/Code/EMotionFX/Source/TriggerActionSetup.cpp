@@ -12,9 +12,8 @@
 
 #include <AzCore/Serialization/EditContext.h>
 #include <AzCore/Serialization/SerializeContext.h>
-#include <EMotionFX/Source/TriggerActionSetup.h>
 #include <EMotionFX/Source/AnimGraphTriggerAction.h>
-
+#include <EMotionFX/Source/TriggerActionSetup.h>
 
 namespace EMotionFX
 {
@@ -24,11 +23,10 @@ namespace EMotionFX
     {
     }
 
-
     TriggerActionSetup::~TriggerActionSetup()
     {
+        RemoveAllActions();
     }
-
 
     AZ::Outcome<size_t> TriggerActionSetup::FindActionIndex(AnimGraphTriggerAction* action) const
     {
@@ -41,24 +39,20 @@ namespace EMotionFX
         return AZ::Outcome<size_t>(iterator - m_actions.begin());
     }
 
-
     void TriggerActionSetup::AddAction(AnimGraphTriggerAction* action)
     {
         m_actions.push_back(action);
     }
-
 
     void TriggerActionSetup::InsertAction(AnimGraphTriggerAction* action, size_t index)
     {
         m_actions.insert(m_actions.begin() + index, action);
     }
 
-
     void TriggerActionSetup::ReserveActions(size_t numAction)
     {
         m_actions.reserve(numAction);
     }
-
 
     void TriggerActionSetup::RemoveAction(size_t index, bool delFromMem)
     {
@@ -69,7 +63,6 @@ namespace EMotionFX
 
         m_actions.erase(m_actions.begin() + index);
     }
-
 
     void TriggerActionSetup::RemoveAllActions(bool delFromMem)
     {
@@ -85,7 +78,6 @@ namespace EMotionFX
         m_actions.clear();
     }
 
-
     void TriggerActionSetup::ResetActions(AnimGraphInstance* animGraphInstance)
     {
         for (AnimGraphTriggerAction* action : m_actions)
@@ -93,7 +85,6 @@ namespace EMotionFX
             action->Reset(animGraphInstance);
         }
     }
-
 
     void TriggerActionSetup::Reflect(AZ::ReflectContext* context)
     {
@@ -107,7 +98,6 @@ namespace EMotionFX
             ->Version(1)
             ->Field("actions", &TriggerActionSetup::m_actions)
         ;
-
 
         AZ::EditContext* editContext = serializeContext->GetEditContext();
         if (!editContext)

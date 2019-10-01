@@ -31,8 +31,10 @@
 #include <AzToolsFramework/ToolsComponents/TransformComponent.h>
 
 #include <QCryptographicHash>
+AZ_PUSH_DISABLE_WARNING(4251, "-Wunknown-warning-option") // 'QFileInfo::d_ptr': class 'QSharedDataPointer<QFileInfoPrivate>' needs to have dll-interface to be used by clients of class 'QFileInfo'
 #include <QDir>
 #include <QDirIterator>
+AZ_POP_DISABLE_WARNING
 #include <QFileInfo>
 #include <QMenu>
 #include <QMessageBox>
@@ -133,7 +135,7 @@ namespace AzToolsFramework
 
             if (m_loadedLayer != nullptr)
             {
-                AZ_Error("Layers", "Layer %s did not unload itself correctly.", GetEntity()->GetName().c_str());
+                AZ_Warning("Layers", false, "Layer %s did not unload itself correctly.", GetEntity()->GetName().c_str());
                 CleanupLoadedLayer();
             }
         }
@@ -394,6 +396,7 @@ namespace AzToolsFramework
                 {
                     AZ_Warning(
                         "Layers",
+                        false,
                         "Multiple entities that exist in your scene with ID %s and name %s were found. Attempting to load the last entity found in layer %s.",
                         currentEntityId.ToString().c_str(),
                         (*loadedLayerEntity)->GetName().c_str(),
@@ -415,6 +418,7 @@ namespace AzToolsFramework
                     // this is the entity most likely to have the latest changes from the content creator.
                     AZ_Warning(
                         "Layers",
+                        false,
                         "Multiple entities that exist in your scene with ID %s and name %s were found in layer %s. The last entity found has been loaded.",
                         currentEntityId.ToString().c_str(),
                         (*loadedLayerEntity)->GetName().c_str(),

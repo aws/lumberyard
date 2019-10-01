@@ -13,9 +13,8 @@
 #include "LyShine_precompiled.h"
 #include <platform_impl.h>
 
+#include "LyShineModule.h"
 #include "LyShineSystemComponent.h"
-
-#include <IGem.h>
 
 #include "UiCanvasComponent.h"
 #include "UiElementComponent.h"
@@ -57,70 +56,63 @@
 
 namespace LyShine
 {
-    class LyShineModule
-        : public CryHooksModule
+    LyShineModule::LyShineModule()
+        : CryHooksModule()
     {
-    public:
-        AZ_RTTI(LyShineModule, "{5B98FB11-A597-47DB-8BE8-74F44D957C67}", CryHooksModule);
+        // Push results of [MyComponent]::CreateDescriptor() into m_descriptors here.
+        m_descriptors.insert(m_descriptors.end(), {
+                LyShineSystemComponent::CreateDescriptor(),
+                UiCanvasAssetRefComponent::CreateDescriptor(),
+                UiCanvasProxyRefComponent::CreateDescriptor(),
+                UiCanvasOnMeshComponent::CreateDescriptor(),
+                UiCanvasComponent::CreateDescriptor(),
+                UiElementComponent::CreateDescriptor(),
+                UiTransform2dComponent::CreateDescriptor(),
+                UiImageComponent::CreateDescriptor(),
+                UiImageSequenceComponent::CreateDescriptor(),
+                UiTextComponent::CreateDescriptor(),
+                UiButtonComponent::CreateDescriptor(),
+                UiMarkupButtonComponent::CreateDescriptor(),
+                UiCheckboxComponent::CreateDescriptor(),
+                UiDraggableComponent::CreateDescriptor(),
+                UiDropTargetComponent::CreateDescriptor(),
+                UiDropdownComponent::CreateDescriptor(),
+                UiDropdownOptionComponent::CreateDescriptor(),
+                UiSliderComponent::CreateDescriptor(),
+                UiTextInputComponent::CreateDescriptor(),
+                UiScrollBoxComponent::CreateDescriptor(),
+                UiScrollBarComponent::CreateDescriptor(),
+                UiFaderComponent::CreateDescriptor(),
+                UiFlipbookAnimationComponent::CreateDescriptor(),
+                UiLayoutFitterComponent::CreateDescriptor(),
+                UiMaskComponent::CreateDescriptor(),
+                UiLayoutCellComponent::CreateDescriptor(),
+                UiLayoutColumnComponent::CreateDescriptor(),
+                UiLayoutRowComponent::CreateDescriptor(),
+                UiLayoutGridComponent::CreateDescriptor(),
+                UiTooltipComponent::CreateDescriptor(),
+                UiTooltipDisplayComponent::CreateDescriptor(),
+                UiDynamicLayoutComponent::CreateDescriptor(),
+                UiDynamicScrollBoxComponent::CreateDescriptor(),
+                UiSpawnerComponent::CreateDescriptor(),
+                UiRadioButtonComponent::CreateDescriptor(),
+                UiRadioButtonGroupComponent::CreateDescriptor(),
+                UiParticleEmitterComponent::CreateDescriptor(),
+            });
 
-        LyShineModule()
-            : CryHooksModule()
-        {
-            // Push results of [MyComponent]::CreateDescriptor() into m_descriptors here.
-            m_descriptors.insert(m_descriptors.end(), {
-                    LyShineSystemComponent::CreateDescriptor(),
-                    UiCanvasAssetRefComponent::CreateDescriptor(),
-                    UiCanvasProxyRefComponent::CreateDescriptor(),
-                    UiCanvasOnMeshComponent::CreateDescriptor(),
-                    UiCanvasComponent::CreateDescriptor(),
-                    UiElementComponent::CreateDescriptor(),
-                    UiTransform2dComponent::CreateDescriptor(),
-                    UiImageComponent::CreateDescriptor(),
-                    UiImageSequenceComponent::CreateDescriptor(),
-                    UiTextComponent::CreateDescriptor(),
-                    UiButtonComponent::CreateDescriptor(),
-                    UiMarkupButtonComponent::CreateDescriptor(),
-                    UiCheckboxComponent::CreateDescriptor(),
-                    UiDraggableComponent::CreateDescriptor(),
-                    UiDropTargetComponent::CreateDescriptor(),
-                    UiDropdownComponent::CreateDescriptor(),
-                    UiDropdownOptionComponent::CreateDescriptor(),
-                    UiSliderComponent::CreateDescriptor(),
-                    UiTextInputComponent::CreateDescriptor(),
-                    UiScrollBoxComponent::CreateDescriptor(),
-                    UiScrollBarComponent::CreateDescriptor(),
-                    UiFaderComponent::CreateDescriptor(),
-                    UiFlipbookAnimationComponent::CreateDescriptor(),
-                    UiLayoutFitterComponent::CreateDescriptor(),
-                    UiMaskComponent::CreateDescriptor(),
-                    UiLayoutCellComponent::CreateDescriptor(),
-                    UiLayoutColumnComponent::CreateDescriptor(),
-                    UiLayoutRowComponent::CreateDescriptor(),
-                    UiLayoutGridComponent::CreateDescriptor(),
-                    UiTooltipComponent::CreateDescriptor(),
-                    UiTooltipDisplayComponent::CreateDescriptor(),
-                    UiDynamicLayoutComponent::CreateDescriptor(),
-                    UiDynamicScrollBoxComponent::CreateDescriptor(),
-                    UiSpawnerComponent::CreateDescriptor(),
-                    UiRadioButtonComponent::CreateDescriptor(),
-                    UiRadioButtonGroupComponent::CreateDescriptor(),
-                    UiParticleEmitterComponent::CreateDescriptor(),
-                });
+        // This is so the metrics system knows which component LyShine is registering
+        LyShineSystemComponent::SetLyShineComponentDescriptors(&m_descriptors);
+    }
 
-            // This is so the metrics system knows which component LyShine is registering
-            LyShineSystemComponent::SetLyShineComponentDescriptors(&m_descriptors);
-        }
-
-        /**
-         * Add required SystemComponents to the SystemEntity.
-         */
-        AZ::ComponentTypeList GetRequiredSystemComponents() const override
-        {
-            return AZ::ComponentTypeList {
-                       azrtti_typeid<LyShineSystemComponent>(),
-            };
-        }
-    };
+    /**
+     * Add required SystemComponents to the SystemEntity.
+     */
+    AZ::ComponentTypeList LyShineModule::GetRequiredSystemComponents() const
+    {
+        return AZ::ComponentTypeList {
+                   azrtti_typeid<LyShineSystemComponent>(),
+        };
+    }
 }
 
 // DO NOT MODIFY THIS LINE UNLESS YOU RENAME THE GEM

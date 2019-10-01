@@ -17,9 +17,7 @@
 namespace ScriptEventsTests
 {
     ScriptEventsTests::Application* ScriptEventsTestFixture::s_application = nullptr;
-
-    AZ::Debug::DrillerManager* ScriptEventsTestFixture::s_drillerManager = nullptr;
-    const bool ScriptEventsTestFixture::s_enableMemoryLeakChecking = false;
+    UnitTest::AllocatorsBase ScriptEventsTestFixture::s_allocatorSetup = {};
 
     ScriptEventsTests::Application* ScriptEventsTestFixture::GetApplication()
     {

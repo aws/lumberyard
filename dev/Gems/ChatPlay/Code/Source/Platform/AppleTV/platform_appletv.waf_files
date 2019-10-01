@@ -1,0 +1,10 @@
+{
+    "auto":
+    {
+        "Platform/AppleTV":
+        [
+            "ChatPlay_Traits_Platform.h",
+            "ChatPlay_Traits_AppleTV.h"
+        ]
+    }
+}

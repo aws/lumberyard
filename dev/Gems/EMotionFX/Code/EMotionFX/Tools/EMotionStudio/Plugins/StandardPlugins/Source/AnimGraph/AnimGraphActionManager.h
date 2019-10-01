@@ -31,6 +31,23 @@ namespace EMStudio
 {
     class AnimGraphPlugin;
 
+    struct AnimGraphActionFilter
+    {
+        static AnimGraphActionFilter CreateDisallowAll();
+
+        bool m_createNodes = true;
+        bool m_editNodes = true;
+
+        bool m_createConnections = true;
+        bool m_editConnections = true;
+
+        bool m_copyAndPaste = true;
+        bool m_setEntryNode = true;
+        bool m_activateState = true;
+        bool m_delete = true;
+        bool m_editNodeGroups = true;
+    };
+
     class AnimGraphActionManager
         : public QObject
     {
@@ -77,7 +94,7 @@ namespace EMStudio
         // while doing the operation. We will store the list of selected items
         // and the type of operation until the users paste.
         // TODO: in a future, we should use something like QClipboard so users can
-        // copy/cut/paste through the application and across instances. 
+        // copy/cut/paste through the application and across instances.
         enum class PasteOperation
         {
             None,
@@ -89,5 +106,4 @@ namespace EMStudio
         AZStd::vector<QPersistentModelIndex> m_pasteItems;
         PasteOperation m_pasteOperation;
     };
-
 } // namespace EMStudio

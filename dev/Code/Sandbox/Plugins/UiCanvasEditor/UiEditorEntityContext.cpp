@@ -33,6 +33,7 @@
 #include <AzToolsFramework/Slice/SliceCompilation.h>
 #include <AzToolsFramework/ToolsComponents/EditorOnlyEntityComponent.h>
 
+#include <AzToolsFramework/API/EntityCompositionRequestBus.h>
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
 
 #include <LyShine/Bus/UiElementBus.h>
@@ -42,6 +43,62 @@
 
 #include "UiEditorEntityContext.h"
 
+namespace Internal
+{
+    void RemoveIncompatibleComponents(AZ::Entity* entity)
+    {
+        const AZ::Entity::ComponentArrayType components = entity->GetComponents();
+        AZ::Entity::ComponentArrayType validComponents;
+        AZ::Entity::ComponentArrayType incompatibleComponents;
+        AZ::ComponentDescriptor::DependencyArrayType incompatibleServices;
+        AZ::ComponentDescriptor::DependencyArrayType providedServices;
+        AZStd::string incompatibleNames;
+        for (auto component : components)
+        {
+            AZ::ComponentDescriptor* testComponentDesc = nullptr;
+            AZ::ComponentDescriptorBus::EventResult(testComponentDesc, azrtti_typeid(component), &AZ::ComponentDescriptorBus::Events::GetDescriptor);
+            providedServices.clear();
+            testComponentDesc->GetProvidedServices(providedServices, component);
+
+            bool isIncompatible = false;
+            for (auto validComponent : validComponents)
+            {
+                AZ::ComponentDescriptor* validComponentDesc = nullptr;
+                AZ::ComponentDescriptorBus::EventResult(validComponentDesc, azrtti_typeid(validComponent), &AZ::ComponentDescriptorBus::Events::GetDescriptor);
+
+                incompatibleServices.clear();
+                validComponentDesc->GetIncompatibleServices(incompatibleServices, validComponent);
+
+                auto foundItr = AZStd::find_first_of(incompatibleServices.begin(), incompatibleServices.end(), providedServices.begin(), providedServices.end());
+                if (foundItr != incompatibleServices.end())
+                {
+                    isIncompatible = true;
+                    break;
+                }
+            }
+
+            if (isIncompatible)
+            {
+                incompatibleComponents.push_back(component);
+
+                incompatibleNames.append(testComponentDesc->GetName());
+                incompatibleNames += '\n';
+            }
+            else
+            {
+                validComponents.push_back(component);
+            }
+        }
+
+        // Should be safe to remove components, because the entity hasn't been activated.
+        for (auto componentToRemove : incompatibleComponents)
+        {
+            entity->RemoveComponent(componentToRemove);
+        }
+
+        AZ_Error("UiCanvas", incompatibleComponents.empty(), "The following incompatible component(s) are removed from the entity %s:\n%s", entity->GetName().c_str(), incompatibleNames.c_str());
+    }
+}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 UiEditorEntityContext::UiEditorEntityContext(EditorWindow* editorWindow)
@@ -341,6 +398,27 @@ void UiEditorEntityContext::DeleteElements(AzToolsFramework::EntityIdList elemen
         QTreeWidgetItemRawPtrQList selection = hierarchy->selectedItems();
         EntityHelpers::EntityIdList selectedEntities = SelectionHelpers::GetSelectedElementIds(hierarchy, selection, false);
 
+        // Make sure elements still exist. There is a situation related to "Push to Slice" where an
+        // element to be deleted may no longer exist. This occurs if a new child slice instance is
+        // pushed to its parent slice, then "undo" is performed which brings back the child instance
+        // that was deleted during the "Push to Slice" process, and then the recovered child instance
+        // is pushed to its parent slice again
+        elements.erase(
+            AZStd::remove_if(
+                elements.begin(), elements.end(),
+                [](AZ::EntityId entityId)
+                {
+                    AZ::Entity* entity = nullptr;
+                    EBUS_EVENT_RESULT(entity, AZ::ComponentApplicationBus, FindEntity, entityId);
+                    return !entity;
+                }),
+            elements.end());
+
+        if (elements.empty())
+        {
+            return;
+        }
+
         // Use an undoable command to delete the entities
         // The way the command is implemented depends upon selecting the items first
         HierarchyHelpers::SetSelectedItems(hierarchy, &elements);
@@ -475,7 +553,7 @@ void UiEditorEntityContext::OnSlicePreInstantiate(const AZ::Data::AssetId& slice
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void UiEditorEntityContext::OnSliceInstantiated(const AZ::Data::AssetId& sliceAssetId, const AZ::SliceComponent::SliceInstanceAddress& sliceAddress)
 {
-    const AzFramework::SliceInstantiationTicket& ticket = *AzFramework::SliceInstantiationResultBus::GetCurrentBusId();
+    const AzFramework::SliceInstantiationTicket ticket = *AzFramework::SliceInstantiationResultBus::GetCurrentBusId();
 
     // If we got here by creating a new slice then we have extra work to do (deleting the old entities etc)
     AZ::Entity* insertBefore = nullptr;
@@ -620,7 +698,7 @@ void UiEditorEntityContext::OnSliceInstantiated(const AZ::Data::AssetId& sliceAs
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void UiEditorEntityContext::OnSliceInstantiationFailed(const AZ::Data::AssetId& sliceAssetId)
 {
-    const AzFramework::SliceInstantiationTicket& ticket = *AzFramework::SliceInstantiationResultBus::GetCurrentBusId();
+    const AzFramework::SliceInstantiationTicket ticket = *AzFramework::SliceInstantiationResultBus::GetCurrentBusId();
 
     AzFramework::SliceInstantiationResultBus::MultiHandler::BusDisconnect(ticket);
 
@@ -848,6 +926,14 @@ void UiEditorEntityContext::InitializeEntities(const AzFramework::EntityContext:
                     delete duplicateComponent;
                 }
             }
+
+            // This is a temporary solution to remove incompatible components so that the entity can 
+            // activate properly, otherwise all sorts of bad things will happen.
+            // 
+            // We do have formal way to handle invalid components for Editor entities (see EditorEntityActionComponent::ScrubEntities()).
+            // But it requires components being derived from EditorComponentBase. UiCanvas doesn't seem to distinguish between game-time 
+            // and editor-time components, so we can't use the existing scrubbing method.
+            Internal::RemoveIncompatibleComponents(entity);
 
             entity->Activate();
         }

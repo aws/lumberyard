@@ -87,7 +87,7 @@ struct IPickEntitesOwner
 class CRYEDIT_API CEntityObject
     : public CBaseObject
     , protected StatObjEventBus::MultiHandler
-    , protected AZ::CharacterBoundsNotificationBus::Handler
+    , protected AZ::CharacterBoundsNotificationBus::MultiHandler
     , public IEntityEventListener
 {
     Q_OBJECT

@@ -20,9 +20,6 @@ namespace ScriptCanvas
     {
         namespace Logic
         {
-            Indexer::Indexer()
-            {}
-
             void Indexer::OnInputSignal(const SlotId& slotId)
             {
                 auto findSlotOutcome = FindSlotIndex(slotId);

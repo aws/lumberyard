@@ -11,7 +11,9 @@
 */
 #pragma once
 
-typedef boost::variant<float, Vec4, AZStd::string> PostEffectGroupParam;
+#include <AzCore/std/containers/variant.h>
+
+typedef AZStd::variant<float, Vec4, AZStd::string> PostEffectGroupParam;
 
 // A prioritized group of postprocessing effect parameters.
 // These are defined in XML files and can be enabled or disabled using flow graph or Lua scripts.

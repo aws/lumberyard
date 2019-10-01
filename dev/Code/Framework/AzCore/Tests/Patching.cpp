@@ -10,11 +10,11 @@
 *
 */
 
-#include "TestTypes.h"
 #include "FileIOBaseTestTypes.h"
 
 #include <AzCore/Serialization/DataPatch.h>
 #include <AzCore/Serialization/DynamicSerializableField.h>
+#include <AzCore/UnitTest/TestTypes.h>
 
 using namespace AZ;
 
@@ -968,7 +968,7 @@ namespace UnitTest
 
             ObjectWithMultiPointers targetObj;
             targetObj.m_int = -2493;
-            targetObj.m_pointerFloat = new float(3.14);
+            targetObj.m_pointerFloat = new float(3.14f);
 
             DataPatch patch;
             patch.Create(&sourceObj, &targetObj, DataPatch::FlagsMap(), DataPatch::FlagsMap(), m_serializeContext.get());

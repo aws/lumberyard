@@ -3330,15 +3330,16 @@ bool CHWShader_D3D::mfActivateCacheItem(CShader* pSH, SShaderCacheHeaderItem* pI
     pBuf = mfBindsFromCache(pInstBinds, pItem->m_nInstBinds, pBuf);
     nSize -= (uint32)(pBuf - (byte*)pItem);
     pInst->m_eClass = (EHWShaderClass)pItem->m_Class;
-    if (gcpRendD3D->m_RP.m_crcVertexFormatLookupTable.count(pItem->m_nVertexFormat) != 0)
+
+#if !defined(_RELEASE)
+    if (pItem->m_nVertexFormat >= eVF_Max)
     {
-        pInst->m_vertexFormat = AZ::Vertex::Format(gcpRendD3D->m_RP.m_crcVertexFormatLookupTable[pItem->m_nVertexFormat]);
+        AZ_Warning("Graphics", false, "Existing vertex format with enum %d not legit (must be less than %d).  Is the shader cache out of date? Defaulting to eVF_P3S_C4B_T2S.", pItem->m_nVertexFormat, eVF_Max);
+        pItem->m_nVertexFormat = eVF_P3S_C4B_T2S;
     }
-    else
-    {
-        AZ_Warning("Graphics", false, "Existing vertex format with crc %d not found for shader cache item. Defaulting to eVF_P3S_C4B_T2S.", pItem->m_nVertexFormat);
-        pInst->m_vertexFormat = AZ::Vertex::Format(eVF_P3S_C4B_T2S);
-    }
+#endif
+    pInst->m_vertexFormat = AZ::Vertex::Format(gcpRendD3D->m_RP.m_vertexFormats[pItem->m_nVertexFormat]);
+
     pInst->m_nInstructions = pItem->m_nInstructions;
     pInst->m_VStreamMask_Decl = pItem->m_StreamMask_Decl;
     pInst->m_VStreamMask_Stream = pItem->m_StreamMask_Stream;
@@ -3460,7 +3461,7 @@ bool CHWShader_D3D::mfCreateCacheItem(SHWSInstance* pInst, std::vector<SCGBind>&
     SShaderCacheHeaderItem h;
     h.m_nInstBinds = InstBinds.size();
     h.m_nInstructions = pInst->m_nInstructions;
-    h.m_nVertexFormat = pInst->m_vertexFormat.GetCRC();
+    h.m_nVertexFormat = pInst->m_vertexFormat.GetEnum();
     h.m_Class = pData ? pInst->m_eClass : 255;
     h.m_StreamMask_Decl = pInst->m_VStreamMask_Decl;
     h.m_StreamMask_Stream = (byte)pInst->m_VStreamMask_Stream;
@@ -5008,6 +5009,7 @@ bool STexSamplerFX::Import(SShaderSerializeContext& SC, SSTexSamplerFX* pTS)
     {
         m_nTexState = CTexture::GetTexState(pTS->ST);
     }
+
     if (pTS->m_nRTIdx != -1)
     {
         SSHRenderTarget* pRT = &SC.FXTexRTs[pTS->m_nRTIdx];
@@ -5050,9 +5052,10 @@ bool SFXParam::Export(SShaderSerializeContext& SC)
     PR.m_nComps = m_ComponentCount;
     PR.m_nFlags = m_nFlags;
     PR.m_nParameters = m_RegisterCount;
-    PR.m_nRegister[0] = m_Register[0];
-    PR.m_nRegister[1] = m_Register[1];
-    PR.m_nRegister[2] = m_Register[2];
+    for ( int i=0; i<eHWSC_Num; ++i )
+    {
+        PR.m_nRegister[i] = m_Register[i];
+    }
 
     SC.FXParams.push_back(PR);
 
@@ -5072,9 +5075,10 @@ bool SFXParam::Import(SShaderSerializeContext& SC, SSFXParam* pPR)
     m_ComponentCount = pPR->m_nComps;
     m_nFlags = pPR->m_nFlags;
     m_RegisterCount = pPR->m_nParameters;
-    m_Register[0] = pPR->m_nRegister[0];
-    m_Register[1] = pPR->m_nRegister[1];
-    m_Register[2] = pPR->m_nRegister[2];
+    for ( int i=0; i<eHWSC_Num; ++i )
+    {
+        m_Register[i] = pPR->m_nRegister[i];
+    }
 
     return bRes;
 }
@@ -5092,9 +5096,10 @@ bool SFXSampler::Export(SShaderSerializeContext& SC)
     PR.m_eType = m_eType;
     PR.m_nArray = m_nArray;
     PR.m_nFlags = m_nFlags;
-    PR.m_nRegister[0] = m_Register[0];
-    PR.m_nRegister[1] = m_Register[1];
-    PR.m_nRegister[2] = m_Register[2];
+    for ( int i=0; i<eHWSC_Num; ++i )
+    {
+        PR.m_nRegister[i] = m_Register[i];
+    }
 
     SC.FXSamplers.push_back(PR);
 
@@ -5112,9 +5117,10 @@ bool SFXSampler::Import(SShaderSerializeContext& SC, SSFXSampler* pPR)
     m_eType = pPR->m_eType;
     m_nArray = pPR->m_nArray;
     m_nFlags = pPR->m_nFlags;
-    m_Register[0] = pPR->m_nRegister[0];
-    m_Register[1] = pPR->m_nRegister[1];
-    m_Register[2] = pPR->m_nRegister[2];
+    for ( int i=0; i<eHWSC_Num; ++i )
+    {
+        m_Register[i] = pPR->m_nRegister[i];
+    }
 
     return bRes;
 }
@@ -5134,9 +5140,10 @@ bool SFXTexture::Export(SShaderSerializeContext& SC)
     PR.m_eType = m_eType;
     PR.m_nArray = m_nArray;
     PR.m_nFlags = m_nFlags;
-    PR.m_nRegister[0] = m_Register[0];
-    PR.m_nRegister[1] = m_Register[1];
-    PR.m_nRegister[2] = m_Register[2];
+    for ( int i=0; i<eHWSC_Num; ++i )
+    {
+        PR.m_nRegister[i] = m_Register[i];
+    }
 
     SC.FXTextures.push_back(PR);
 
@@ -5156,9 +5163,10 @@ bool SFXTexture::Import(SShaderSerializeContext& SC, SSFXTexture* pPR)
     m_eType = pPR->m_eType;
     m_nArray = pPR->m_nArray;
     m_nFlags = pPR->m_nFlags;
-    m_Register[0] = pPR->m_nRegister[0];
-    m_Register[1] = pPR->m_nRegister[1];
-    m_Register[2] = pPR->m_nRegister[2];
+    for ( int i=0; i<eHWSC_Num; ++i )
+    {
+        m_Register[i] = pPR->m_nRegister[i];
+    }
 
     return bRes;
 }
@@ -5293,16 +5301,12 @@ CHWShader* CHWShader::Import(SShaderSerializeContext& SC, int nOffs, uint32 CRC3
     shaderHW.Import(&SC.Data[nOffs]);
     SCHWShader* pSHW = &shaderHW;
 
-    byte* pData = &SC.Data[nOffs + sizeof(SCHWShader)];
-
     const char* szName = sString(pSHW->m_nsName, SC.Strings);
     const char* szNameSource = sString(pSHW->m_nsNameSourceFX, SC.Strings);
     const char* szNameEntry = sString(pSHW->m_nsEntryFunc, SC.Strings);
 
     TArray<uint32> SHData;
     SHData.resize(pSHW->m_nTokens);
-    memcpy(&SHData[0], pData, pSHW->m_nTokens * sizeof(uint32));
-    pData += pSHW->m_nTokens * sizeof(uint32);
 
     FXShaderToken Table, * pTable = NULL;
     Table.reserve(pSHW->m_nTableEntries);
@@ -5312,9 +5316,14 @@ CHWShader* CHWShader::Import(SShaderSerializeContext& SC, int nOffs, uint32 CRC3
     //Copy string pool, TODO separate string pool for tokens!
     //TArray<char> tokenStringPool = SC.Strings;
 
-    // Token data is no longer in export data
+    // Token data is no longer in export data - See CHWShader_D3D::Export where bOutputTokens == false and disables this path
     if (0)    //CRenderer::CV_r_shadersAllowCompilation)
     {
+        byte* pData = &SC.Data[nOffs + sizeof(SCHWShader)];
+
+        memcpy(&SHData[0], pData, pSHW->m_nTokens * sizeof(uint32));
+        pData += pSHW->m_nTokens * sizeof(uint32);
+
         pTable = &Table;
         for (uint32 i = 0; i < pSHW->m_nTableEntries; i++)
         {

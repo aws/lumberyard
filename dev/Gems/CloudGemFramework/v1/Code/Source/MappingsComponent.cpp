@@ -3,9 +3,9 @@
 * its licensors.
 *
 * For complete copyright and license terms please see the LICENSE at the root of this
-* distribution(the "License").All use of this software is governed by the License,
-* or, if provided, by the license below or the license accompanying this file.Do not
-* remove or modify any license notices.This file is distributed on an "AS IS" BASIS,
+* distribution (the "License"). All use of this software is governed by the License,
+* or, if provided, by the license below or the license accompanying this file. Do not
+* remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 */
 
@@ -33,6 +33,8 @@
 #include <ISystem.h>
 
 #include <platform.h>
+
+#include <CloudGemFramework_Traits_Platform.h>
 
 namespace CloudGemFramework
 {
@@ -330,26 +332,20 @@ namespace CloudGemFramework
                 }
             }
 
-#if defined(WIN64)
+#if AZ_TRAIT_CLOUDGEMFRAMEWORK_MAPPING_PATH_FROM_ENV
             if (mappingPath.empty())
             {
+#if AZ_TRAIT_CLOUDGEMFRAMEWORK_USE_STD_GETENV
+                const char* value = std::getenv(resourceMapOverride);
+#else
                 char* value = nullptr;
                 _dupenv_s(&value, 0, resourceMapOverride);
+#endif
                 if (value)
                 {
                     mappingPath = value;
                 }
             }
-#elif defined(MAC) || defined(IOS)
-            if (mappingPath.empty())
-            {
-                const char* value = std::getenv(resourceMapOverride);
-                if (value)
-                {
-                    mappingPath = value;
-                }
-            }
-
 #endif
 
             if (mappingPath.empty())
@@ -361,7 +357,7 @@ namespace CloudGemFramework
             {
                 bool shouldApplyMapping = true;
 
-#if defined (WIN32) && defined (_DEBUG)
+#if AZ_TRAIT_CLOUDGEMFRAMEWORK_SUPPORTS_DIALOG_BOXES && defined (_DEBUG)
                 // Dialog boxes seem to be only available on windows for now :(
                 static const char* PROTECTED_MAPPING_MSG_TITLE = "AWS Mapping Is Protected";
                 static const char* PROTECTED_MAPPING_MSG_TEXT = "Warning: The AWS resource mapping file is marked as protected and shouldn't be used for normal development work. Are you sure you want to continue?";

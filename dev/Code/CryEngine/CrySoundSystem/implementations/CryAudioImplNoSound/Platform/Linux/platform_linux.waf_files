@@ -1,0 +1,10 @@
+{
+    "auto":
+    {
+        "Platform/Linux":
+        [
+            "CryAudioImplNoSound_Traits_Platform.h",
+            "CryAudioImplNoSound_Traits_Linux.h"
+        ]
+    }
+}

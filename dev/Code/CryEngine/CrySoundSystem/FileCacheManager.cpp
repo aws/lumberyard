@@ -1,4 +1,4 @@
-/*
+﻿/*
 * All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
 * its licensors.
 *
@@ -14,14 +14,19 @@
 #include "StdAfx.h"
 #include "FileCacheManager.h"
 
+#include <AzCore/IO/Streamer.h>
+#include <AzCore/IO/StreamerUtil.h>
+
 #include <IAudioSystemImplementation.h>
 #include <IRenderAuxGeom.h>
 #include <SoundCVars.h>
 #include <CustomMemoryHeap.h>
 
+#include <CrySoundSystem_Traits_Platform.h>
+
 namespace Audio
 {
-    ///////////////////////////////////////////////////////////////////////////////////////////////////
+    ///////////////////////////////////////////////////////////////////////////////////////////////
     CFileCacheManager::CFileCacheManager(TATLPreloadRequestLookup& preloadRequests)
         : m_preloadRequests(preloadRequests)
         , m_currentByteTotal(0)
@@ -29,46 +34,40 @@ namespace Audio
     {
     }
 
-    ///////////////////////////////////////////////////////////////////////////////////////////////////
+    ///////////////////////////////////////////////////////////////////////////////////////////////
     CFileCacheManager::~CFileCacheManager()
     {
-        // Empty on purpose
     }
 
-    ///////////////////////////////////////////////////////////////////////////////////////////////////
+    ///////////////////////////////////////////////////////////////////////////////////////////////
     void CFileCacheManager::Initialize()
     {
         AllocateHeap(static_cast<size_t>(g_audioCVars.m_nFileCacheManagerSize), "AudioFileCacheManager");
+
+        AudioFileCacheManagerNotficationBus::Handler::BusConnect();
     }
 
-    ///////////////////////////////////////////////////////////////////////////////////////////////////
+    ///////////////////////////////////////////////////////////////////////////////////////////////
     void CFileCacheManager::Release()
     {
+        AudioFileCacheManagerNotficationBus::Handler::BusDisconnect();
+
+        // Should we check here for any lingering files?
+        // ATL unloads everything before getting here, but a stop-gap could be safer.
     }
 
-    ///////////////////////////////////////////////////////////////////////////////////////////////////
+    ///////////////////////////////////////////////////////////////////////////////////////////////
     void CFileCacheManager::Update()
     {
-        // Not used for now as we do not queue entries!
+        AudioFileCacheManagerNotficationBus::ExecuteQueuedEvents();
     }
 
-    ///////////////////////////////////////////////////////////////////////////////////////////////////
+    ///////////////////////////////////////////////////////////////////////////////////////////////
     void CFileCacheManager::AllocateHeap(const size_t size, const char* const usage)
     {
         if (size > 0)
         {
-#if defined(AZ_RESTRICTED_PLATFORM)
-    #if defined(AZ_PLATFORM_XENIA)
-        #include "Xenia/FileCacheManager_cpp_xenia.inl"
-    #elif defined(AZ_PLATFORM_PROVO)
-        #include "Provo/FileCacheManager_cpp_provo.inl"
-    #endif
-#endif
-#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
-#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
-        #else
-            m_memoryHeap.reset(static_cast<CCustomMemoryHeap*>(gEnv->pSystem->GetIMemoryManager()->CreateCustomMemoryHeapInstance(IMemoryManager::eapCustomAlignment)));
-        #endif
+            m_memoryHeap.reset(static_cast<CCustomMemoryHeap*>(gEnv->pSystem->GetIMemoryManager()->CreateCustomMemoryHeapInstance(AZ_TRAIT_CRYSOUNDSYSTEM_FILE_CACHE_MANAGER_ALLOCATION_POLICY)));
 
             if (m_memoryHeap.get())
             {
@@ -77,7 +76,7 @@ namespace Audio
         }
     }
 
-    ///////////////////////////////////////////////////////////////////////////////////////////////////
+    ///////////////////////////////////////////////////////////////////////////////////////////////
     TAudioFileEntryID CFileCacheManager::TryAddFileCacheEntry(const XmlNodeRef fileXmlNode, const EATLDataScope dataScope, const bool autoLoad)
     {
         TAudioFileEntryID fileEntryId = INVALID_AUDIO_FILE_ENTRY_ID;
@@ -120,9 +119,7 @@ namespace Audio
                     if (fileSize > 0)
                     {
                         newAudioFileEntry->m_fileSize = fileSize;
-                        newAudioFileEntry->m_flags.AddFlags(eAFF_NOTCACHED);
                         newAudioFileEntry->m_flags.ClearFlags(eAFF_NOTFOUND);
-                        newAudioFileEntry->m_streamTaskType = eStreamTaskTypeSound;
                     }
 
                     m_audioFileEntries[fileEntryId] = newAudioFileEntry;
@@ -134,7 +131,7 @@ namespace Audio
                         // This file entry is upgraded from "manual loading" to "auto loading" but needs a reset to "manual loading" again!
                         exisitingAudioFileEntry->m_flags.AddFlags(eAFF_NEEDS_RESET_TO_MANUAL_LOADING);
                         exisitingAudioFileEntry->m_flags.ClearFlags(eAFF_USE_COUNTED);
-                        g_audioLogger.Log(eALT_ALWAYS, "Upgraded file entry from 'Manual' to 'Auto' loading: %s", exisitingAudioFileEntry->m_filePath.c_str());
+                        g_audioLogger.Log(eALT_COMMENT, "Upgraded file entry from 'Manual' to 'Auto' loading: %s", exisitingAudioFileEntry->m_filePath.c_str());
                     }
 
                     // Entry already exists, free the memory!
@@ -147,7 +144,7 @@ namespace Audio
         return fileEntryId;
     }
 
-    ///////////////////////////////////////////////////////////////////////////////////////////////////
+    ///////////////////////////////////////////////////////////////////////////////////////////////
     bool CFileCacheManager::TryRemoveFileCacheEntry(const TAudioFileEntryID audioFileID, const EATLDataScope dataScope)
     {
         bool success = false;
@@ -168,14 +165,14 @@ namespace Audio
             {
                 audioFileEntry->m_flags.AddFlags(eAFF_USE_COUNTED);
                 audioFileEntry->m_flags.ClearFlags(eAFF_NEEDS_RESET_TO_MANUAL_LOADING);
-                g_audioLogger.Log(eALT_ALWAYS, "Downgraded file entry from 'Auto' to 'Manual' loading: %s", audioFileEntry->m_filePath.c_str());
+                g_audioLogger.Log(eALT_COMMENT, "Downgraded file entry from 'Auto' to 'Manual' loading: %s", audioFileEntry->m_filePath.c_str());
             }
         }
 
         return success;
     }
 
-    ///////////////////////////////////////////////////////////////////////////////////////////////////
+    ///////////////////////////////////////////////////////////////////////////////////////////////
     void CFileCacheManager::UpdateLocalizedFileCacheEntries()
     {
         for (auto& audioFileEntryPair : m_audioFileEntries)
@@ -204,59 +201,77 @@ namespace Audio
         }
     }
 
-    ///////////////////////////////////////////////////////////////////////////////////////////////////
+    ///////////////////////////////////////////////////////////////////////////////////////////////
     EAudioRequestStatus CFileCacheManager::TryLoadRequest(const TAudioPreloadRequestID preloadRequestID, const bool loadSynchronously, const bool autoLoadOnly)
     {
         bool fullSuccess = false;
         bool fullFailure = true;
         CATLPreloadRequest* const preloadRequest = stl::find_in_map(m_preloadRequests, preloadRequestID, nullptr);
 
-        if (preloadRequest && !preloadRequest->m_cFileEntryIDs.empty() && (!autoLoadOnly || (autoLoadOnly && preloadRequest->m_bAutoLoad)))
+        if (preloadRequest)
         {
-            fullSuccess = true;
-            for (auto fileId : preloadRequest->m_cFileEntryIDs)
+            if (!preloadRequest->m_cFileEntryIDs.empty() && (!autoLoadOnly || (autoLoadOnly && preloadRequest->m_bAutoLoad)))
             {
-                CATLAudioFileEntry* const audioFileEntry = stl::find_in_map(m_audioFileEntries, fileId, nullptr);
-
-                if (audioFileEntry)
+                fullSuccess = true;
+                for (auto fileId : preloadRequest->m_cFileEntryIDs)
                 {
-                    const bool tempResult = TryCacheFileCacheEntryInternal(audioFileEntry, fileId, loadSynchronously);
-                    fullSuccess = (fullSuccess && tempResult);
-                    fullFailure = (fullFailure && !tempResult);
+                    CATLAudioFileEntry* const audioFileEntry = stl::find_in_map(m_audioFileEntries, fileId, nullptr);
+
+                    if (audioFileEntry)
+                    {
+                        const bool tempResult = TryCacheFileCacheEntryInternal(audioFileEntry, fileId, loadSynchronously);
+                        fullSuccess = (fullSuccess && tempResult);
+                        fullFailure = (fullFailure && !tempResult);
+                    }
                 }
+            }
+
+            if (fullSuccess && preloadRequest->m_allLoaded)
+            {
+                // Notify to handlers that the preload is already loaded/cached.
+                AudioPreloadNotificationBus::Event(preloadRequestID, &AudioPreloadNotificationBus::Events::OnAudioPreloadCached);
             }
         }
 
         return (fullSuccess ? eARS_SUCCESS : (fullFailure ? eARS_FAILURE : eARS_PARTIAL_SUCCESS));
     }
 
-    ///////////////////////////////////////////////////////////////////////////////////////////////////
+    ///////////////////////////////////////////////////////////////////////////////////////////////
     EAudioRequestStatus CFileCacheManager::TryUnloadRequest(const TAudioPreloadRequestID preloadRequestID)
     {
         bool fullSuccess = false;
         bool fullFailure = true;
         CATLPreloadRequest* const preloadRequest = stl::find_in_map(m_preloadRequests, preloadRequestID, nullptr);
 
-        if (preloadRequest && !preloadRequest->m_cFileEntryIDs.empty())
+        if (preloadRequest)
         {
-            fullSuccess = true;
-            for (auto fileId : preloadRequest->m_cFileEntryIDs)
+            if (!preloadRequest->m_cFileEntryIDs.empty())
             {
-                CATLAudioFileEntry* const audioFileEntry = stl::find_in_map(m_audioFileEntries, fileId, nullptr);
-
-                if (audioFileEntry)
+                fullSuccess = true;
+                for (auto fileId : preloadRequest->m_cFileEntryIDs)
                 {
-                    const bool tempResult = UncacheFileCacheEntryInternal(audioFileEntry, true);
-                    fullSuccess = (fullSuccess && tempResult);
-                    fullFailure = (fullFailure && !tempResult);
+                    CATLAudioFileEntry* const audioFileEntry = stl::find_in_map(m_audioFileEntries, fileId, nullptr);
+
+                    if (audioFileEntry)
+                    {
+                        const bool tempResult = UncacheFileCacheEntryInternal(audioFileEntry, true);
+                        fullSuccess = (fullSuccess && tempResult);
+                        fullFailure = (fullFailure && !tempResult);
+                    }
                 }
+            }
+
+            if (fullSuccess && !preloadRequest->m_allLoaded)
+            {
+                // Notify to handlers the the preload is already unloaded.
+                AudioPreloadNotificationBus::Event(preloadRequestID, &AudioPreloadNotificationBus::Events::OnAudioPreloadUncached);
             }
         }
 
         return (fullSuccess ? eARS_SUCCESS : (fullFailure ? eARS_FAILURE : eARS_PARTIAL_SUCCESS));
     }
 
-    ///////////////////////////////////////////////////////////////////////////////////////////////////
+    ///////////////////////////////////////////////////////////////////////////////////////////////
     EAudioRequestStatus CFileCacheManager::UnloadDataByScope(const EATLDataScope dataScope)
     {
         for (auto it = m_audioFileEntries.begin(); it != m_audioFileEntries.end(); )
@@ -278,7 +293,7 @@ namespace Audio
         return eARS_SUCCESS;
     }
 
-    ///////////////////////////////////////////////////////////////////////////////////////////////////
+    ///////////////////////////////////////////////////////////////////////////////////////////////
     bool CFileCacheManager::UncacheFileCacheEntryInternal(CATLAudioFileEntry* const audioFileEntry, const bool now, const bool ignoreUsedCount /* = false */)
     {
         bool success = false;
@@ -307,7 +322,7 @@ namespace Audio
             }
             else if (audioFileEntry->m_flags.AreAnyFlagsActive(eAFF_LOADING | eAFF_MEMALLOCFAIL))
             {
-                g_audioLogger.Log(eALT_ALWAYS, "Trying to remove a loading or mem-failed file cache entry '%s'", audioFileEntry->m_filePath.c_str());
+                g_audioLogger.Log(eALT_ALWAYS, "FileCacheManager - Trying to remove a loading or mem-failed file cache entry '%s'", audioFileEntry->m_filePath.c_str());
 
                 // Reset the entry in case it's still loading or was a memory allocation fail.
                 UncacheFile(audioFileEntry);
@@ -320,17 +335,8 @@ namespace Audio
         return success;
     }
 
-    ///////////////////////////////////////////////////////////////////////////////////////////////////
-    void CFileCacheManager::StreamAsyncOnComplete(IReadStream* readStream, unsigned int error)
-    {
-        // We "user abort" quite frequently so this is not something we want to assert on.
-        AZ_Assert(error == 0 || error == ERROR_USER_ABORT, "FileCacheManager StreamAsyncOnComplete - received error %d!", error);
-
-        FinishStreamInternal(readStream, error);
-    }
-
     #if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
-    ///////////////////////////////////////////////////////////////////////////////////////////////////
+    ///////////////////////////////////////////////////////////////////////////////////////////////
     void CFileCacheManager::DrawDebugInfo(IRenderAuxGeom& auxGeom, const float posX, const float posY)
     {
         if ((g_audioCVars.m_nDrawAudioDebug & eADDF_SHOW_FILECACHE_MANAGER_INFO) != 0)
@@ -380,6 +386,7 @@ namespace Audio
             bool displayGlobals = ((g_audioCVars.m_nFileCacheManagerDebugFilter & eAFCMDF_GLOBALS) != 0);
             bool displayLevels = ((g_audioCVars.m_nFileCacheManagerDebugFilter & eAFCMDF_LEVEL_SPECIFICS) != 0);
             bool displayUseCounted = ((g_audioCVars.m_nFileCacheManagerDebugFilter & eAFCMDF_USE_COUNTED) != 0);
+            bool displayLoaded = ((g_audioCVars.m_nFileCacheManagerDebugFilter & eAFCMDF_LOADED) != 0);
 
             for (auto& audioFileEntryPair : m_audioFileEntries)
             {
@@ -388,8 +395,9 @@ namespace Audio
                 bool isGlobal = (audioFileEntry->m_dataScope == eADS_GLOBAL);
                 bool isLevel = (audioFileEntry->m_dataScope == eADS_LEVEL_SPECIFIC);
                 bool isUseCounted = audioFileEntry->m_flags.AreAnyFlagsActive(eAFF_USE_COUNTED);
+                bool isLoaded = audioFileEntry->m_flags.AreAnyFlagsActive(eAFF_CACHED);
 
-                if (displayAll || (displayGlobals && isGlobal) || (displayLevels && isLevel) || (displayUseCounted && isUseCounted))
+                if (displayAll || (displayGlobals && isGlobal) || (displayLevels && isLevel) || (displayUseCounted && isUseCounted) || (displayLoaded && isLoaded))
                 {
                     if (audioFileEntry->m_flags.AreAnyFlagsActive(eAFF_LOADING))
                     {
@@ -403,7 +411,7 @@ namespace Audio
                     {
                         color = green;
                     }
-                    else if (audioFileEntry->m_flags.AreAnyFlagsActive(eAFF_NOTCACHED))
+                    else if (!audioFileEntry->m_flags.AreAnyFlagsActive(eAFF_CACHED))
                     {
                         color = darkish;
                     }
@@ -439,7 +447,7 @@ namespace Audio
                         kiloBytes = true;
                     }
 
-                    // "NameOfFile.ext (230 KiB) [2]"
+                    // Format: "relative/path/filename.ext (230 KiB) [2]"
                     displayString.Format("%s (%" PRISIZE_T " %s) [%" PRISIZE_T "]",
                         audioFileEntry->m_filePath.c_str(),
                         fileSize,
@@ -455,7 +463,7 @@ namespace Audio
     }
     #endif // INCLUDE_AUDIO_PRODUCTION_CODE
 
-    ///////////////////////////////////////////////////////////////////////////////////////////////////
+    ///////////////////////////////////////////////////////////////////////////////////////////////
     bool CFileCacheManager::DoesRequestFitInternal(const size_t requestSize)
     {
         // Make sure these unsigned values don't flip around.
@@ -499,92 +507,178 @@ namespace Audio
         return success;
     }
 
-    ///////////////////////////////////////////////////////////////////////////////////////////////////
-    bool CFileCacheManager::FinishStreamInternal(const IReadStreamPtr readStream, const unsigned int error)
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+    void CFileCacheManager::FinishAsyncStreamRequest(AsyncStreamCompletionState completionState)
+    {
+        AZ_Assert(completionState.m_request, "FileCacheManager - The request handle is invalid!");
+
+        // Find the file entry that matches the request handle...
+        auto fileEntryIter = AZStd::find_if(m_audioFileEntries.begin(), m_audioFileEntries.end(),
+            [&completionState] (const AZStd::pair<TAudioFileEntryID, CATLAudioFileEntry*>& data) -> bool
+            {
+                return (data.second->m_asyncStreamRequest == completionState.m_request);
+            }
+        );
+
+        // If found, we finish processing the async file load request...
+        if (fileEntryIter != m_audioFileEntries.end())
+        {
+            CATLAudioFileEntry* audioFileEntry = fileEntryIter->second;
+            AZ_Assert(audioFileEntry, "FileCacheManager - Audio file entry is null!");
+            AZ_Assert(completionState.m_buffer == audioFileEntry->m_memoryBlock->GetData(), "FileCacheManager - The memory buffer doesn't match the file entry memory block!");
+            FinishCachingFileInternal(audioFileEntry, completionState.m_bytes, completionState.m_requestState);
+        }
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+    bool CFileCacheManager::FinishCachingFileInternal(CATLAudioFileEntry* const audioFileEntry, AZ::IO::SizeType bytesRead, AZ::IO::Request::StateType requestState)
     {
         bool success = false;
+        
+        audioFileEntry->m_asyncStreamRequest.reset();
 
-        const TAudioFileEntryID fileEntryId = static_cast<TAudioFileEntryID>(readStream->GetUserData());
-        CATLAudioFileEntry* const audioFileEntry = stl::find_in_map(m_audioFileEntries, fileEntryId, nullptr);
-        AZ_Assert(audioFileEntry, "FileCacheManager FinishStreamInternal - Failed to find the file entry for fileID %d!", (uint32)fileEntryId);
-
-        // Must be loading in to proceed.
-        if (audioFileEntry && audioFileEntry->m_flags.AreAnyFlagsActive(eAFF_LOADING))
+        switch (requestState)
         {
-            if (error == 0)
+            case AZ::IO::Request::StateType::ST_COMPLETED:
             {
-                audioFileEntry->m_readStream = nullptr;
-                audioFileEntry->m_flags.AddFlags(eAFF_CACHED);
-                audioFileEntry->m_flags.ClearFlags(eAFF_LOADING | eAFF_NOTCACHED);
+                AZ_Assert(bytesRead == audioFileEntry->m_fileSize, "FileCacheManager - Sync Streamed Read completed, but bytes read does not match file size!");
 
-            #if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
-                audioFileEntry->m_timeCached = gEnv->pTimer->GetAsyncTime();
-            #endif // INCLUDE_AUDIO_PRODUCTION_CODE
+                if (audioFileEntry->m_flags.AreAnyFlagsActive(eAFF_LOADING))
+                {
+                    audioFileEntry->m_flags.AddFlags(eAFF_CACHED);
+                    audioFileEntry->m_flags.ClearFlags(eAFF_LOADING);
 
-                SATLAudioFileEntryInfo fileEntryInfo;
-                fileEntryInfo.nMemoryBlockAlignment = audioFileEntry->m_memoryBlockAlignment;
-                fileEntryInfo.pFileData = audioFileEntry->m_memoryBlock->GetData();
-                fileEntryInfo.nSize = audioFileEntry->m_fileSize;
-                fileEntryInfo.pImplData = audioFileEntry->m_implData;
-                fileEntryInfo.sFileName = PathUtil::GetFile(audioFileEntry->m_filePath.c_str());
+                #if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
+                    audioFileEntry->m_timeCached = gEnv->pTimer->GetAsyncTime();
+                #endif // INCLUDE_AUDIO_PRODUCTION_CODE
 
-                AudioSystemImplementationRequestBus::Broadcast(&AudioSystemImplementationRequestBus::Events::RegisterInMemoryFile, &fileEntryInfo);
-                success = true;
+                    SATLAudioFileEntryInfo fileEntryInfo;
+                    fileEntryInfo.nMemoryBlockAlignment = audioFileEntry->m_memoryBlockAlignment;
+                    fileEntryInfo.pFileData = audioFileEntry->m_memoryBlock->GetData();
+                    fileEntryInfo.nSize = audioFileEntry->m_fileSize;
+                    fileEntryInfo.pImplData = audioFileEntry->m_implData;
+                    fileEntryInfo.sFileName = PathUtil::GetFile(audioFileEntry->m_filePath.c_str());
+
+                    AudioSystemImplementationRequestBus::Broadcast(&AudioSystemImplementationRequestBus::Events::RegisterInMemoryFile, &fileEntryInfo);
+                    success = true;
+
+                g_audioLogger.Log(eALT_COMMENT, "FileCacheManager - File Cached: '%s'\n", fileEntryInfo.sFileName);
+                }
+                break;
             }
-            else if (error == ERROR_USER_ABORT)
+            case AZ::IO::Request::StateType::ST_ERROR_FAILED_TO_OPEN_FILE:
             {
-                // We abort this stream only during entry Uncache().
-                // Therefore there's no need to call Uncache() during stream abort with error code ERROR_USER_ABORT.
-                g_audioLogger.Log(eALT_ALWAYS, "AFCM: User aborted stream for file '%s' (error: %u)", audioFileEntry->m_filePath.c_str(), error);
+                AZ_Error("FileCacheManager", false, "FileCacheManager - Failed to open file stream '%s'!", audioFileEntry->m_filePath.c_str());
+                // what do we do for errors?  remove the m_memoryBlock?  not update the m_currentByteTotal?
+                break;
             }
-            else
+            case AZ::IO::Request::StateType::ST_ERROR_FAILED_IN_OPERATION:
             {
+                AZ_Error("FileCacheManager", false, "FileCacheManager - Async file stream '%s' failed during operation!", audioFileEntry->m_filePath.c_str());
                 UncacheFileCacheEntryInternal(audioFileEntry, true, true);
-                g_audioLogger.Log(eALT_ERROR, "AFCM: Failed to stream in file '%s' (error: %u)", audioFileEntry->m_filePath.c_str(), error);
+                break;
+            }
+            case AZ::IO::Request::StateType::ST_CANCELLED:
+            {
+                g_audioLogger.Log(eALT_COMMENT, "FileCacheManager - Async file stream '%s' was cancelled by user!", audioFileEntry->m_filePath.c_str());
+                UncacheFileCacheEntryInternal(audioFileEntry, true, true);
+                break;
+            }
+            default:
+            {
+                break;
             }
         }
 
         return success;
     }
 
-    ///////////////////////////////////////////////////////////////////////////////////////////////////
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+    void CFileCacheManager::UpdatePreloadRequestsStatus()
+    {
+        // Run through the list of preload requests and their fileEntryIDs.
+        // Check the fileEntries for the CACHED flags and accumulate the 'allLoaded' and 'anyLoaded' status of each preload request.
+        // If the result is different than what is stored on the preload request, update it and send a notification of
+        // either cached or uncached.
+        for (auto& preloadPair : m_preloadRequests)
+        {
+            CATLPreloadRequest* preloadRequest = preloadPair.second;
+            bool wasLoaded = preloadRequest->m_allLoaded;
+            bool allLoaded = !preloadRequest->m_cFileEntryIDs.empty();
+            bool anyLoaded = false;
+            for (auto fileId : preloadRequest->m_cFileEntryIDs)
+            {
+                bool cached = false;
+                auto iter = m_audioFileEntries.find(fileId);
+                if (iter != m_audioFileEntries.end())
+                {
+                    cached = iter->second->m_flags.AreAnyFlagsActive(eAFF_CACHED);
+                }
+                allLoaded = (allLoaded && cached);
+                anyLoaded = (anyLoaded || cached);
+            }
+
+            if (allLoaded != wasLoaded && allLoaded)
+            {
+                // Loaded now...
+                preloadRequest->m_allLoaded = allLoaded;
+                AudioPreloadNotificationBus::Event(preloadPair.first, &AudioPreloadNotificationBus::Events::OnAudioPreloadCached);
+            }
+
+            if (anyLoaded != wasLoaded && !anyLoaded)
+            {
+                // Unloaded now...
+                preloadRequest->m_allLoaded = anyLoaded;
+                AudioPreloadNotificationBus::Event(preloadPair.first, &AudioPreloadNotificationBus::Events::OnAudioPreloadUncached);
+            }
+        }
+    }
+    
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+    void CFileCacheManager::OnAsyncStreamFinished(const AZStd::shared_ptr<AZ::IO::Request>& request, AZ::IO::SizeType bytesRead, void* buffer, AZ::IO::Request::StateType requestState)
+    {
+        // This callback happens on a device thread, so queue up a notification to handle it on the Audio Thread.
+        AudioFileCacheManagerNotficationBus::QueueBroadcast(&AudioFileCacheManagerNotficationBus::Events::FinishAsyncStreamRequest, AsyncStreamCompletionState { request, bytesRead, buffer, requestState });
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////
     bool CFileCacheManager::AllocateMemoryBlockInternal(CATLAudioFileEntry* const __restrict audioFileEntry)
     {
         // Must not have valid memory yet.
-        AZ_Assert(!audioFileEntry->m_memoryBlock.get(), "FileCacheManager AllocateMemoryBlockInternal - Memory appears to be set already!");
+        AZ_Assert(!audioFileEntry->m_memoryBlock, "FileCacheManager AllocateMemoryBlockInternal - Memory appears to be set already!");
 
-        if (m_memoryHeap.get())
+        if (m_memoryHeap)
         {
             audioFileEntry->m_memoryBlock.reset(m_memoryHeap->AllocateBlock(audioFileEntry->m_fileSize, audioFileEntry->m_filePath.c_str(), audioFileEntry->m_memoryBlockAlignment));
         }
 
-        if (!audioFileEntry->m_memoryBlock.get())
+        if (!audioFileEntry->m_memoryBlock)
         {
             // Memory block is either full or too fragmented, let's try to throw everything out that can be removed and allocate again.
             TryToUncacheFiles();
 
             // And try again!
-            if (m_memoryHeap.get())
+            if (m_memoryHeap)
             {
                 audioFileEntry->m_memoryBlock.reset(m_memoryHeap->AllocateBlock(audioFileEntry->m_fileSize, audioFileEntry->m_filePath.c_str(), audioFileEntry->m_memoryBlockAlignment));
             }
         }
 
-        return audioFileEntry->m_memoryBlock.get() != nullptr;
+        return (audioFileEntry->m_memoryBlock != nullptr);
     }
 
-    ///////////////////////////////////////////////////////////////////////////////////////////////////
+    ///////////////////////////////////////////////////////////////////////////////////////////////
     void CFileCacheManager::UncacheFile(CATLAudioFileEntry* const audioFileEntry)
     {
         m_currentByteTotal -= audioFileEntry->m_fileSize;
 
-        if (audioFileEntry->m_readStream)
+        if (audioFileEntry->m_asyncStreamRequest)
         {
-            audioFileEntry->m_readStream->Abort();
-            audioFileEntry->m_readStream = nullptr;
+            AZ::IO::GetStreamer()->CancelRequest(audioFileEntry->m_asyncStreamRequest);
+            audioFileEntry->m_asyncStreamRequest.reset();
         }
 
-        if (audioFileEntry->m_memoryBlock.get() && audioFileEntry->m_memoryBlock->GetData())
+        if (audioFileEntry->m_memoryBlock && audioFileEntry->m_memoryBlock->GetData())
         {
             SATLAudioFileEntryInfo fileEntryInfo;
             fileEntryInfo.nMemoryBlockAlignment = audioFileEntry->m_memoryBlockAlignment;
@@ -594,12 +688,12 @@ namespace Audio
             fileEntryInfo.sFileName = PathUtil::GetFile(audioFileEntry->m_filePath.c_str());
 
             AudioSystemImplementationRequestBus::Broadcast(&AudioSystemImplementationRequestBus::Events::UnregisterInMemoryFile, &fileEntryInfo);
+            g_audioLogger.Log(eALT_COMMENT, "FileCacheManager - File Uncached: '%s'\n", fileEntryInfo.sFileName);
         }
 
-        audioFileEntry->m_memoryBlock = nullptr;
-        audioFileEntry->m_flags.AddFlags(eAFF_NOTCACHED);
+        audioFileEntry->m_memoryBlock.reset();
         audioFileEntry->m_flags.ClearFlags(eAFF_CACHED | eAFF_REMOVABLE);
-        AZ_Assert(audioFileEntry->m_useCount == 0, "FileCacheManager UncacheFile - Expected use count of file '%s' to be zero!", audioFileEntry->m_filePath.c_str());
+        AZ_Warning("FileCacheManager", audioFileEntry->m_useCount == 0, "Use-count of file '%s' is non-zero while uncaching it! Use Count: %d", audioFileEntry->m_filePath.c_str(), audioFileEntry->m_useCount);
         audioFileEntry->m_useCount = 0;
 
     #if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
@@ -607,7 +701,7 @@ namespace Audio
     #endif // INCLUDE_AUDIO_PRODUCTION_CODE
     }
 
-    ///////////////////////////////////////////////////////////////////////////////////////////////////
+    ///////////////////////////////////////////////////////////////////////////////////////////////
     void CFileCacheManager::TryToUncacheFiles()
     {
         for (auto& audioFileEntryPair : m_audioFileEntries)
@@ -621,7 +715,7 @@ namespace Audio
         }
     }
 
-    ///////////////////////////////////////////////////////////////////////////////////////////////////
+    ///////////////////////////////////////////////////////////////////////////////////////////////
     void CFileCacheManager::UpdateLocalizedFileEntryData(CATLAudioFileEntry* const audioFileEntry)
     {
         static SATLAudioFileEntryInfo fileEntryInfo;
@@ -645,7 +739,7 @@ namespace Audio
         AZ_Assert(audioFileEntry->m_fileSize > 0, "FileCacheManager UpdateLocalizedFileEntryData - Expected file size to be greater than zero!");
     }
 
-    ///////////////////////////////////////////////////////////////////////////////////////////////////
+    ///////////////////////////////////////////////////////////////////////////////////////////////
     bool CFileCacheManager::TryCacheFileCacheEntryInternal(
         CATLAudioFileEntry* const audioFileEntry,
         const TAudioFileEntryID fileEntryId,
@@ -655,60 +749,93 @@ namespace Audio
     {
         bool success = false;
 
-        if (!audioFileEntry->m_filePath.empty()
-            && audioFileEntry->m_flags.AreAnyFlagsActive(eAFF_NOTCACHED)
-            && !audioFileEntry->m_flags.AreAnyFlagsActive(eAFF_CACHED | eAFF_LOADING))
+        if (!audioFileEntry->m_filePath.empty() && !audioFileEntry->m_flags.AreAnyFlagsActive(eAFF_CACHED | eAFF_LOADING))
         {
             if (DoesRequestFitInternal(audioFileEntry->m_fileSize) && AllocateMemoryBlockInternal(audioFileEntry))
             {
-                StreamReadParams streamReadParams;
-                streamReadParams.nOffset = 0;
-                streamReadParams.nFlags = IStreamEngine::FLAGS_NO_SYNC_CALLBACK;
-                streamReadParams.dwUserData = static_cast<DWORD_PTR>(fileEntryId);
-                streamReadParams.nLoadTime = 0;
-                streamReadParams.nMaxLoadTime = 0;
-                streamReadParams.ePriority = estpUrgent;
-                streamReadParams.pBuffer = audioFileEntry->m_memoryBlock->GetData();
-                streamReadParams.nSize = static_cast<int unsigned>(audioFileEntry->m_fileSize);
+                AZ_Assert(AZ::IO::Streamer::IsReady(), "FileCacheManager - Streamer should be ready!");
 
                 audioFileEntry->m_flags.AddFlags(eAFF_LOADING);
-                audioFileEntry->m_readStream = gEnv->pSystem->GetStreamEngine()->StartRead(eStreamTaskTypeFSBCache, audioFileEntry->m_filePath.c_str(), this, &streamReadParams);
 
                 if (loadSynchronously)
                 {
-                    audioFileEntry->m_readStream->Wait();
-                }
+                    AZ::IO::Request::StateType ioState;
+                    AZ::IO::SizeType bytesRead = AZ::IO::GetStreamer()->Read(
+                        audioFileEntry->m_filePath,
+                        0,
+                        audioFileEntry->m_fileSize,
+                        audioFileEntry->m_memoryBlock->GetData(),
+                        //The priority is only relevant when multiple files are at risk of missing their deadline,
+                        //in which case the higher priority file is prioritized first. Since the deadline is infinite,
+                        //this request will never be late and therefore the priority will never apply.
+                        AZStd::chrono::milliseconds::max(),
+                        AZ::IO::Request::PriorityType::DR_PRIORITY_ABOVE_NORMAL, &ioState
+                        );
 
-                // Always add to the total size.
-                m_currentByteTotal += audioFileEntry->m_fileSize;
-                success = true;
+                    m_currentByteTotal += audioFileEntry->m_fileSize;
+                    success = FinishCachingFileInternal(audioFileEntry, bytesRead, ioState);
+                }
+                else
+                {
+                    //  Async loading...
+                    audioFileEntry->m_asyncStreamRequest = AZ::IO::GetStreamer()->CreateAsyncRead(
+                        audioFileEntry->m_filePath,
+                        0,
+                        audioFileEntry->m_fileSize,
+                        audioFileEntry->m_memoryBlock->GetData(),
+                        AZStd::bind(&CFileCacheManager::OnAsyncStreamFinished, this, AZStd::placeholders::_1, AZStd::placeholders::_2, AZStd::placeholders::_3, AZStd::placeholders::_4),
+                        //See note above priority.
+                        AZStd::chrono::milliseconds::max(),
+                        AZ::IO::Request::PriorityType::DR_PRIORITY_ABOVE_NORMAL
+                        );
+
+                    if (!audioFileEntry->m_asyncStreamRequest)
+                    {
+                        AZ_Error("FileCacheManager", false, "FileCacheManager - Async file stream request for '%s' returned an invalid handle.", 
+                            audioFileEntry->m_filePath.c_str());
+                        success = false;
+                    }
+                    else
+                    {
+                        if (!AZ::IO::GetStreamer()->QueueRequest(audioFileEntry->m_asyncStreamRequest))
+                        {
+                            AZ_Error("FileCacheManager", false, "FileCacheManager - Async file stream request for '%s' failed to be queued.",
+                                audioFileEntry->m_filePath.c_str());
+                            success = false;
+                        }
+                        else
+                        {
+                            // Increase total size even though async request is processing...
+                            m_currentByteTotal += audioFileEntry->m_fileSize;
+                            success = true;
+                        }
+                    }
+                }
             }
             else
             {
                 // Cannot have a valid memory block!
-                AZ_Assert(!audioFileEntry->m_memoryBlock.get() || !audioFileEntry->m_memoryBlock->GetData(),
+                AZ_Assert(!audioFileEntry->m_memoryBlock || !audioFileEntry->m_memoryBlock->GetData(),
                     "FileCacheManager TryCacheFileCacheEntryInternal - Cannot have a valid memory block after memory allocation failure!");
 
                 // This unfortunately is a total memory allocation fail.
                 audioFileEntry->m_flags.AddFlags(eAFF_MEMALLOCFAIL);
 
                 // The user should be made aware of it.
-                g_audioLogger.Log(eALT_ERROR, "AFCM: Could not cache '%s' as we are out of memory!", audioFileEntry->m_filePath.c_str());
+                g_audioLogger.Log(eALT_ERROR, "FileCacheManager: Could not cache '%s' - out of memory or fragmented memory!", audioFileEntry->m_filePath.c_str());
             }
         }
         else if (audioFileEntry->m_flags.AreAnyFlagsActive(eAFF_CACHED | eAFF_LOADING))
         {
-            // The user should be made aware of it.
-            g_audioLogger.Log(eALT_WARNING, "AFCM: Could not cache '%s' as it is either already loaded or currently loading!", audioFileEntry->m_filePath.c_str());
+            g_audioLogger.Log(eALT_COMMENT, "AFCM: Could not cache '%s' as it is either already loaded or currently loading!", audioFileEntry->m_filePath.c_str());
             success = true;
         }
         else if (audioFileEntry->m_flags.AreAnyFlagsActive(eAFF_NOTFOUND))
         {
-            // The user should be made aware of it.
-            g_audioLogger.Log(eALT_ERROR, "AFCM: Could not cache '%s' as it was not found at the target location!", audioFileEntry->m_filePath.c_str());
+            g_audioLogger.Log(eALT_ERROR, "FileCacheManager: Could not cache '%s' - file was not found at the target location!", audioFileEntry->m_filePath.c_str());
         }
 
-        // Increment the used count on GameHints.
+        // Increment the used count on manually-loaded files.
         if (audioFileEntry->m_flags.AreAnyFlagsActive(eAFF_USE_COUNTED) && audioFileEntry->m_flags.AreAnyFlagsActive(eAFF_CACHED | eAFF_LOADING))
         {
             if (overrideUseCount)
@@ -720,7 +847,7 @@ namespace Audio
                 ++audioFileEntry->m_useCount;
             }
 
-            // Make sure to handle the eAFCS_REMOVABLE flag according to the m_nUsedCount count.
+            // Make sure to handle the eAFCS_REMOVABLE flag according to the m_useCount count.
             if (audioFileEntry->m_useCount != 0)
             {
                 audioFileEntry->m_flags.ClearFlags(eAFF_REMOVABLE);

@@ -229,7 +229,6 @@ void CCloudRenderNode::Render(const SRendParams& rParams, const SRenderingPassIn
 
     pRO->m_II.m_Matrix = m_offsetedMatrix;
     SRenderObjData* pOD = pRenderer->EF_GetObjData(pRO, true, passInfo.ThreadID());
-    pOD->m_pRE = m_pREImposter;
     pOD->m_fTempVars[0] = m_fScale;
     pRO->m_fSort = 0;
     pRO->m_fDistance = rParams.fDistance;

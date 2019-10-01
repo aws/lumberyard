@@ -54,6 +54,14 @@ void CMotionBlur::OnBeginFrame()
 {
 }
 
+bool CMotionBlur::Preprocess()
+{
+    return true;
+}
+
+void CMotionBlur::Render()
+{
+}
 
 bool CSunShafts::Preprocess()
 {

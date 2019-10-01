@@ -3042,7 +3042,7 @@ public:
         for (int i = 0; i < shaderParams.size(); ++i)
         {
             SShaderParam& param = shaderParams[i];
-            if (param.m_Name == paramName)
+            if (azstricmp(param.m_Name.c_str(), paramName) == 0)
             {
                 floatValue = 0.0f;
                 switch (param.m_Type)
@@ -3079,7 +3079,7 @@ public:
         for (int i = 0; i < shaderParams.size(); ++i)
         {
             SShaderParam& param = shaderParams[i];
-            if (param.m_Name == paramName)
+            if (azstricmp(param.m_Name.c_str(), paramName) == 0)
             {
                 colorValue.Set(0, 0, 0);
                 if (param.m_Type == eType_VECTOR)
@@ -3478,7 +3478,7 @@ public:
             for (int i = 0; i < params.size(); ++i)
             {
                 SShaderParam& param = params[i];
-                if (param.m_Name == paramNameFloat.c_str())
+                if (azstricmp(param.m_Name.c_str(), paramNameFloat.c_str()) == 0)
                 {
                     float val = 0.0f;
                     switch (param.m_Type)
@@ -3500,7 +3500,7 @@ public:
                     }
                     ActivateOutput(pActInfo, EOP_Float, val);
                 }
-                if (param.m_Name == paramNameVec3.c_str()) 
+                if (azstricmp(param.m_Name.c_str(), paramNameVec3.c_str()) == 0)
                 {
                     Vec3 val (ZERO);
                     if (param.m_Type == eType_VECTOR)
@@ -3801,7 +3801,7 @@ public:
             for (int i = 0; i < params.size(); ++i)
             {
                 SShaderParam& param = params[i];
-                if (param.m_Name == paramNameFloat.c_str()) 
+                if (azstricmp(param.m_Name.c_str(), paramNameFloat.c_str()) == 0)
                 {
                     float val = 0.0f;
                     switch (param.m_Type)
@@ -3823,7 +3823,7 @@ public:
                     }
                     ActivateOutput(pActInfo, EOP_Float, val);
                 }
-                if (param.m_Name == paramNameVec3.c_str())
+                if (azstricmp(param.m_Name.c_str(), paramNameVec3.c_str()) == 0)
                 {
                     Vec3 val (ZERO);
                     if (param.m_Type == eType_VECTOR)
@@ -4044,7 +4044,7 @@ public:
             for (int i = 0; i < params.size(); ++i)
             {
                 SShaderParam& param = params[i];
-                if (param.m_Name == paramNameFloat.c_str())
+                if (azstricmp(param.m_Name.c_str(), paramNameFloat.c_str()) == 0)
                 {
                     switch (param.m_Type)
                     {
@@ -4077,7 +4077,7 @@ public:
             {
                 SShaderParam& param = params[i];
 
-                if (param.m_Name == paramNameColor.c_str())
+                if (azstricmp(param.m_Name.c_str(), paramNameColor.c_str()) == 0)
                 {
                     if (param.m_Type == eType_VECTOR)
                     {

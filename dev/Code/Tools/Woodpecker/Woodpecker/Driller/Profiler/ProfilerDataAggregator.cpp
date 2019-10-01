@@ -77,7 +77,7 @@ namespace Driller
             {
                 RegisterOfInterest::Reflect(context);
 
-                serialize->Class<ProfilerDataAggregatorSavedState, AZ::UserSettings>()
+                serialize->Class<ProfilerDataAggregatorSavedState>()
                     ->Field("m_activeViewCount", &ProfilerDataAggregatorSavedState::m_activeViewCount)
                     ->Field("m_registersOfInterest", &ProfilerDataAggregatorSavedState::m_registersOfInterest)
                     ->Field("m_roiVersion", &ProfilerDataAggregatorSavedState::m_roiVersion)
@@ -107,7 +107,7 @@ namespace Driller
             AZ::SerializeContext* serialize = azrtti_cast<AZ::SerializeContext*>(context);
             if (serialize)
             {
-                serialize->Class<ProfilerDataAggregatorWorkspace, AZ::UserSettings>()
+                serialize->Class<ProfilerDataAggregatorWorkspace>()
                     ->Field("m_activeViewCount", &ProfilerDataAggregatorWorkspace::m_activeViewCount)
                     ->Field("m_activeViewTypes", &ProfilerDataAggregatorWorkspace::m_activeViewTypes)
                     ->Version(3);

@@ -660,6 +660,8 @@ bool CTerrain::Load_T(T& f, int& nDataSize, STerrainChunkHeader* pTerrainChunkHe
             int nObjectsCount = 0;
             if (!LoadDataFromFile(&nObjectsCount, 1, f, nDataSize, eEndian))
             {
+                delete pStatObjTable;
+                pStatObjTable = nullptr;
                 return 0;
             }
 
@@ -672,6 +674,8 @@ bool CTerrain::Load_T(T& f, int& nDataSize, STerrainChunkHeader* pTerrainChunkHe
             lstFileChunks.PreAllocate(nObjectsCount, nObjectsCount);
             if (!LoadDataFromFile(lstFileChunks.GetElements(), lstFileChunks.Count(), f, nDataSize, eEndian))
             {
+                delete pStatObjTable;
+                pStatObjTable = nullptr;
                 return 0;
             }
 

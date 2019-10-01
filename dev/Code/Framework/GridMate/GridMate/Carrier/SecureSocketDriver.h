@@ -19,7 +19,6 @@
 #include <AzCore/State/HSM.h>
 
 #include <GridMate/Carrier/SocketDriver.h>
-#include <GridMate/Carrier/OpenSSLThreadSafetyHook.h>
 
 #define AZ_DebugSecureSocket(...)
 #define AZ_DebugSecureSocketConnection(window, fmt, ...)
@@ -32,7 +31,7 @@
 //    this->m_dbgLog += line;\
 //}
 
-#if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_LINUX)
+#if AZ_TRAIT_GRIDMATE_SECURE_SOCKET_DRIVER_HOOK_ENABLED
 struct ssl_st;
 struct ssl_ctx_st;
 struct dh_st;
@@ -269,7 +268,6 @@ namespace GridMate
         AZStd::unordered_map<SocketDriverAddress, Connection*, SocketDriverAddress::Hasher> m_connections;
         AZStd::unordered_map<string, int> m_ipToNumConnections;
         SecureSocketDesc m_desc;
-        OpenSSLThreadSafetyHook m_sslThreadHook;
         AZStd::chrono::system_clock::time_point m_lastTimerCheck;       ///Time last timers were checked
     };
 }

@@ -23,7 +23,9 @@
 
 #include <QtWidgets/QApplication>
 #include <QtCore/QTimer>
+AZ_PUSH_DISABLE_WARNING(4251, "-Wunknown-warning-option") // 'QFileInfo::d_ptr': class 'QSharedDataPointer<QFileInfoPrivate>' needs to have dll-interface to be used by clients of class 'QFileInfo'
 #include <QtCore/QDir>
+AZ_POP_DISABLE_WARNING
 
 #include <AzFramework/CommandLine/CommandLine.h>
 
@@ -35,8 +37,9 @@
 #include <QAction>
 #include <QMenu>
 #include <QFontDatabase>
+AZ_PUSH_DISABLE_WARNING(4251, "-Wunknown-warning-option") // 'QResource::d_ptr': class 'QScopedPointer<QResourcePrivate,QScopedPointerDeleter<T>>' needs to have dll-interface to be used by clients of class 'QResource'
 #include <QResource>
-#include <QDir>
+AZ_POP_DISABLE_WARNING
 #include <QProxyStyle>
 
 #include <AzFramework/StringFunc/StringFunc.h>
@@ -46,7 +49,7 @@ extern int __argc;
 extern char **__argv;
 #endif
 
-#ifdef AZ_PLATFORM_APPLE
+#if AZ_TRAIT_OS_PLATFORM_APPLE
 #include <mach-o/dyld.h>
 #endif
 
@@ -322,7 +325,7 @@ namespace AzToolsFramework
     void Framework::Init()
     {
         char myFileName[MAX_PATH] = {0};
-#ifdef AZ_PLATFORM_APPLE
+#if AZ_TRAIT_OS_PLATFORM_APPLE
         uint32_t bufSize = AZ_ARRAY_SIZE(myFileName);
         _NSGetExecutablePath(myFileName, &bufSize);
         if (strlen(myFileName) > 0)

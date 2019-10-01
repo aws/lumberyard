@@ -61,7 +61,7 @@
 extern CMTSafeHeap* g_pPakHeap;
 #if defined(AZ_PLATFORM_ANDROID)
 #include <AzCore/Android/Utils.h>
-#elif defined(AZ_PLATFORM_APPLE_IOS) || defined(AZ_PLATFORM_APPLE_TV)
+#elif defined(AZ_PLATFORM_IOS) || defined(AZ_PLATFORM_APPLE_TV)
 extern bool UIKitGetPrimaryPhysicalDisplayDimensions(int& o_widthPixels, int& o_heightPixels);
 extern bool UIDeviceIsTablet();
 #endif
@@ -88,7 +88,7 @@ bool CSystem::GetPrimaryPhysicalDisplayDimensions(int& o_widthPixels, int& o_hei
     return true;
 #elif defined(AZ_PLATFORM_ANDROID)
     return AZ::Android::Utils::GetWindowSize(o_widthPixels, o_heightPixels);
-#elif defined(AZ_PLATFORM_APPLE_IOS) || defined(AZ_PLATFORM_APPLE_TV)
+#elif defined(AZ_PLATFORM_IOS) || defined(AZ_PLATFORM_APPLE_TV)
     return UIKitGetPrimaryPhysicalDisplayDimensions(o_widthPixels, o_heightPixels);
 #else
     return false;
@@ -98,7 +98,7 @@ bool CSystem::GetPrimaryPhysicalDisplayDimensions(int& o_widthPixels, int& o_hei
 bool CSystem::IsTablet()
 {
 //TODO: Add support for Android tablets
-#if defined(AZ_PLATFORM_APPLE_IOS) || defined(AZ_PLATFORM_APPLE_TV)
+#if defined(AZ_PLATFORM_IOS) || defined(AZ_PLATFORM_APPLE_TV)
     return UIDeviceIsTablet();
 #else
     return false;
@@ -112,7 +112,7 @@ void CSystem::CreateRendererVars(const SSystemInitParams& startupParams)
     int iDisplayInfoDefault = 0;
     int iWidthDefault = 1280;
     int iHeightDefault = 720;
-#if defined(AZ_PLATFORM_ANDROID) || defined(AZ_PLATFORM_APPLE_IOS) || defined(AZ_PLATFORM_APPLE_TV)
+#if defined(AZ_PLATFORM_ANDROID) || defined(AZ_PLATFORM_IOS) || defined(AZ_PLATFORM_APPLE_TV)
     GetPrimaryPhysicalDisplayDimensions(iWidthDefault, iHeightDefault);
 #elif defined(WIN32) || defined(WIN64)
     iFullScreenDefault = 0;
@@ -540,7 +540,6 @@ void CSystem::SynchronousLoadingTick(const char* pFunc, int line)
 
 
 //////////////////////////////////////////////////////////////////////////
-#define CHECK_UPDATE_TIMES
 void CSystem::UpdateLoadingScreen()
 {
     // Do not update the network thread from here - it will cause context corruption - use the NetworkStallTicker thread system
@@ -550,7 +549,6 @@ void CSystem::UpdateLoadingScreen()
         return;
     }
 
-#if defined(CHECK_UPDATE_TIMES)
 #if defined(AZ_RESTRICTED_PLATFORM)
     #if defined(AZ_PLATFORM_XENIA)
         #include "Xenia/SystemRender_cpp_xenia.inl"
@@ -558,7 +556,6 @@ void CSystem::UpdateLoadingScreen()
         #include "Provo/SystemRender_cpp_provo.inl"
     #endif
 #endif
-#endif // CHECK_UPDATE_TIMES
 
 #if AZ_LOADSCREENCOMPONENT_ENABLED
     EBUS_EVENT(LoadScreenBus, UpdateAndRender);
@@ -882,6 +879,9 @@ void CSystem::RenderStats()
         // Draw 3dengine stats and get last text cursor position
         float nTextPosX = 101 - 20, nTextPosY = -2, nTextStepY = 3;
         m_env.p3DEngine->DisplayInfo(nTextPosX, nTextPosY, nTextStepY, iDisplayInfo != 1);
+
+        // Dump Lumberyard CPU and GPU memory statistics to screen
+        m_env.p3DEngine->DisplayMemoryStatistics();
 
     #if defined(ENABLE_LW_PROFILERS)
         if (m_rDisplayInfo->GetIVal() == 2)

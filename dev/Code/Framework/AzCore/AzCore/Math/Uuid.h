@@ -15,7 +15,7 @@
 #include <AzCore/base.h>
 #include <AzCore/std/hash.h>
 
-#if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_APPLE_OSX)
+#if AZ_TRAIT_UUID_SUPPORTS_GUID_CONVERSION
 struct  _GUID;
 typedef _GUID GUID;
 #endif
@@ -117,14 +117,14 @@ namespace AZ
         bool operator<=(const Uuid& rhs) const { return !(*this > rhs); }
         bool operator>=(const Uuid& rhs) const { return !(*this < rhs); }
 
-    #if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_APPLE_OSX)
+    #if AZ_TRAIT_UUID_SUPPORTS_GUID_CONVERSION
         // Add some conversion to from windows
         Uuid(const GUID& guid);
         operator GUID() const;
         AZ_MATH_FORCE_INLINE Uuid& operator=(const GUID& guid)          { *this = Uuid(guid); return *this; }
         AZ_MATH_FORCE_INLINE bool operator==(const GUID& guid) const    { return *this == Uuid(guid); }
         AZ_MATH_FORCE_INLINE bool operator!=(const GUID& guid) const    { return !(*this == guid);  }
-    #endif // AZ_PLATFORM_WINDOWS
+    #endif
 
         /// Adding two UUID generates SHA1 Uuid based on the data of both uuids
         Uuid operator+(const Uuid& rhs) const;
@@ -156,11 +156,7 @@ namespace AZ
         }
 
         // or _m128i and VMX ???
-#if defined(AZ_PLATFORM_WINDOWS) && !defined(AZ_PLATFORM_WINDOWS_X64)
-        unsigned char data[16];
-#else
         AZ_ALIGN(unsigned char data[16], 16);
-#endif
     };
 } // namespace AZ
 

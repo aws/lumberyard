@@ -51,7 +51,7 @@ namespace Driller
 
             if (serialize)
             {
-                serialize->Class<TreeModelSavedState, AZ::UserSettings>()
+                serialize->Class<TreeModelSavedState>()
                     ->Field("m_treeColumnStorage", &TreeModelSavedState::m_treeColumnStorage)
                     ->Version(1);
             }

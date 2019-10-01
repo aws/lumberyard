@@ -27,10 +27,10 @@ namespace AzToolsFramework
 {
     namespace AssetSystem
     {
-        void OnAssetSystemMessage(unsigned int /*typeId*/, const void* buffer, unsigned int bufferSize)
+        void OnAssetSystemMessage(unsigned int /*typeId*/, const void* buffer, unsigned int bufferSize, AZ::SerializeContext* context)
         {
             SourceFileNotificationMessage message;
-            if (!AZ::Utils::LoadObjectFromBufferInPlace(buffer, bufferSize, message))
+            if (!AZ::Utils::LoadObjectFromBufferInPlace(buffer, bufferSize, message, context))
             {
                 AZ_TracePrintf("AssetSystem", "Problem deserializing SourceFileNotificationMessage");
                 return;
@@ -92,14 +92,17 @@ namespace AzToolsFramework
 
         void AssetSystemComponent::Activate()
         {
+            AZ::SerializeContext* context = nullptr;
+            AZ::ComponentApplicationBus::BroadcastResult(context, &AZ::ComponentApplicationRequests::GetSerializeContext);
+
             AzFramework::SocketConnection* socketConn = AzFramework::SocketConnection::GetInstance();
             AZ_Assert(socketConn, "AzToolsFramework::AssetSystem::AssetSystemComponent requires a valid socket conection!");
             if (socketConn)
             {
                 m_cbHandle = socketConn->AddMessageHandler(AZ_CRC("AssetProcessorManager::SourceFileNotification", 0x8bfc4d1c),
-                    [](unsigned int typeId, unsigned int /*serial*/, const void* data, unsigned int dataLength)
+                    [context](unsigned int typeId, unsigned int /*serial*/, const void* data, unsigned int dataLength)
                 {
-                    OnAssetSystemMessage(typeId, data, dataLength);
+                    OnAssetSystemMessage(typeId, data, dataLength, context);
                 });
 
                 m_showAssetBrowserCBHandle = socketConn->AddMessageHandler(AssetSystem::AssetBrowserShowRequest::MessageType(),
@@ -164,6 +167,7 @@ namespace AzToolsFramework
             AssetProcessorPendingPlatformAssetsRequest::Reflect(context);
             WantAssetBrowserShowRequest::Reflect(context);
             AssetBrowserShowRequest::Reflect(context);
+            SourceAssetProductsInfoRequest::Reflect(context);
 
             // Responses
             AssetJobsInfoResponse::Reflect(context);
@@ -174,6 +178,7 @@ namespace AzToolsFramework
             AssetProcessorPlatformStatusResponse::Reflect(context);
             AssetProcessorPendingPlatformAssetsResponse::Reflect(context);
             WantAssetBrowserShowResponse::Reflect(context);
+            SourceAssetProductsInfoResponse::Reflect(context);
 
             //JobInfo
             AzToolsFramework::AssetSystem::JobInfo::Reflect(context);
@@ -387,6 +392,31 @@ namespace AzToolsFramework
                 assetInfo = response.m_assetInfo;
                 watchFolder = response.m_rootFolder;
             }
+            return response.m_found;
+        }
+
+        bool AssetSystemComponent::GetAssetsProducedBySourceUUID(const AZ::Uuid& sourceUuid, AZStd::vector<AZ::Data::AssetInfo>& productsAssetInfo)
+        {
+            AzFramework::SocketConnection* engineConnection = AzFramework::SocketConnection::GetInstance();
+            if (!engineConnection || !engineConnection->IsConnected())
+            {
+                return false;
+            }
+
+            SourceAssetProductsInfoRequest request(sourceUuid);
+            SourceAssetProductsInfoResponse response;
+
+            if (!SendRequest(request, response))
+            {
+                AZ_Error("Editor", false, "Failed to send GetAssetsProducedBySourceUUID request for uuid: %s", sourceUuid.ToString<AZ::OSString>().c_str());
+                return false;
+            }
+
+            if (response.m_found)
+            {
+                productsAssetInfo = response.m_productsAssetInfo;
+            }
+
             return response.m_found;
         }
 

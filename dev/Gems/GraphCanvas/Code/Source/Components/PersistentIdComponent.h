@@ -35,34 +35,6 @@ namespace GraphCanvas
         AZ_COMPONENT(PersistentIdComponent, "{57D546EE-C074-432E-A802-77CFC2E37AE7}", AZ::Component);
         static void Reflect(AZ::ReflectContext* reflectContext);
         
-        class PersistentIdComponentSaveData
-            : public SceneMemberComponentSaveData<PersistentIdComponentSaveData>
-        {
-            friend class PersistentIdComponent;
-        public:
-            AZ_RTTI(PersistentIdComponentSaveData, "{B1F49A35-8408-40DA-B79E-F1E3B64322CE}", ComponentSaveData);
-            AZ_CLASS_ALLOCATOR(PersistentIdComponentSaveData, AZ::SystemAllocator, 0);
-            
-            PersistentIdComponentSaveData()
-                : m_persistentId(PersistentGraphMemberId::CreateRandom())
-            {
-            }
-            
-            bool RequiresSave() const override
-            {
-                return true;
-            }
-            
-            PersistentGraphMemberId m_persistentId;
-
-        private:
-            void RemapId()
-            {
-                m_persistentId = PersistentGraphMemberId::CreateRandom();
-                SignalDirty();
-            }
-        };
-        
         PersistentIdComponent();
         ~PersistentIdComponent() = default;
         

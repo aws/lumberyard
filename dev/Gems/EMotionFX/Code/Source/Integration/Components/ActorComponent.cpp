@@ -373,7 +373,7 @@ namespace EMotionFX
         //////////////////////////////////////////////////////////////////////////
         void ActorComponent::OnTransformChanged(const AZ::Transform& local, const AZ::Transform& world)
         {
-            (void)local;
+            AZ_UNUSED(local);
 
             const AZ::EntityId* busIdPtr = AZ::TransformNotificationBus::GetCurrentBusId();
             if (!busIdPtr || *busIdPtr == GetEntityId()) // Our own entity has moved.
@@ -387,7 +387,7 @@ namespace EMotionFX
 
                     // Disable updating the scale to prevent feedback from adding up.
                     // We need to find a better way to handle this or to prevent this feedback loop.
-                    // m_actorInstance->SetLocalScale(localTransform.mScale);
+                    //m_actorInstance->SetLocalSpaceScale(localTransform.mScale);
                 }
             }
         }

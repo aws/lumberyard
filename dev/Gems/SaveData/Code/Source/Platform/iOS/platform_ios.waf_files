@@ -1,0 +1,9 @@
+{
+    "none":
+    {
+        "Source/Platform/iOS":
+        [
+            "../Common/Apple/SaveData_SystemComponent_Apple.mm"
+        ]
+    }
+}

@@ -121,6 +121,8 @@
         "FileIO": [
             "RemoteFileIO.cpp",
             "RemoteFileIO.h",
+            "RemoteStorageDrive.h",
+            "RemoteStorageDrive.cpp",
             "CryPakFileIO.cpp",
             "CryPakFileIO.h"
         ],
@@ -255,12 +257,7 @@
             "Statistics/LocalMemoryUsage.cpp"
         ],
         "PlatformOS": [
-            "PlatformOS/SaveReaderWriter_CryPak.cpp",
-            "PlatformOS/SaveReaderWriter_Memory.cpp",
-            "PlatformOS/SaveReaderWriter_CryPak.h",
-            "PlatformOS/SaveReaderWriter_Memory.h",
-            "PlatformOS/PlatformOS_Base.h",
-            "PlatformOS/PlatformOS_Base.cpp"
+            "PlatformOS/PlatformOS_Base.h"
         ],
         "CodeCoverage": [
             "CodeCoverage/CodeCheckpointMgr.cpp",
@@ -347,6 +344,10 @@
             "ViewSystem/ViewSystem.cpp",
             "ViewSystem/ViewSystem.h"
         ],
+        "ZStdDecompressor": [
+            "ZStdDecompressor.h",
+            "ZStdDecompressor.cpp"
+        ],
         "Serialization": [
             "Serialization/ArchiveHost.cpp",
             "Serialization/BinArchive.cpp",
@@ -375,10 +376,12 @@
             "StreamEngine/StreamEngine.cpp",
             "StreamEngine/StreamIOThread.cpp",
             "StreamEngine/StreamReadStream.cpp",
+            "StreamEngine/AZRequestReadStream.cpp",
             "StreamEngine/StreamAsyncFileRequest.h",
             "StreamEngine/StreamEngine.h",
             "StreamEngine/StreamIOThread.h",
-            "StreamEngine/StreamReadStream.h"
+            "StreamEngine/StreamReadStream.h",
+            "StreamEngine/AZRequestReadStream.h"
         ]
     },
     "CrySystem_Tests_uber.cpp":

@@ -4562,15 +4562,20 @@ void SMMRMGroupHeader::CullInstances(CCamera* cam, Vec3* origin, Vec3* rotationO
     mmrm_printf("alloced %#x bytes\n", vsb);
     memset(visChunks, 0, vsb);
 
-    do
+    // Only cull instances if they actually exist.  (If our instance count exceeds the memory pool,
+    // we might not have actual instance data)
+    if (samples)
     {
-        ctx.amount = nsamples;
-        ctx.samples = samples;
+        do
+        {
+            ctx.amount = nsamples;
+            ctx.samples = samples;
 
-        // Perform the actual culling
-        visibleSamples += CullInstanceList(ctx, visChunks, _origin, _rotationOrigin, zRotation);
-        j += ctx.amount;
-    } while (j < nsamples);
+            // Perform the actual culling
+            visibleSamples += CullInstanceList(ctx, visChunks, _origin, _rotationOrigin, zRotation);
+            j += ctx.amount;
+        } while (j < nsamples);
+    }
 
 
     // Blit the visible chunk data back to main memory
@@ -4986,6 +4991,7 @@ void CMergedMeshRenderNode::InitializeSamples(float fExtents, const uint8* pBuff
             SwapEndian(pSampleChunk->rot[2], eLittleEndian);
             SwapEndian(pSampleChunk->rot[3], eLittleEndian);
 
+            AZ_Assert(header->instances, "Merged mesh data has unexpectedly streamed out between streaming in and initializing.");
             SMMRMInstance& instance = header->instances[j];
 
             instance.pos_x = pSampleChunk->pos_x;
@@ -5017,6 +5023,10 @@ void CMergedMeshRenderNode::InitializeSamples(float fExtents, const uint8* pBuff
     }
 
     CalculateDensity();
+
+    // We've finished building up our instances, now mark the state as streamed in.  Note that the state is also used by
+    // other threads, so setting it earlier in this function can lead to threading issues.
+    m_State = STREAMED_IN;
 }
 
 // Initialize the spine / deformation data for a single group

@@ -14,8 +14,8 @@
 
 // include the required headers
 #include "StandardHeaders.h"
-#include "Array.h"
 #include "CommandLine.h"
+#include <AzCore/std/containers/vector.h>
 
 
 namespace MCore
@@ -44,6 +44,25 @@ namespace MCore
             PARAMTYPE_VECTOR4   = 6     /**< The parameter value is a four component vector. */
         };
 
+    private:
+        /**
+         * The parameter class, which describes details about a given parameter.
+         */
+        struct MCORE_API Parameter
+        {
+            Parameter(AZStd::string name, AZStd::string description, AZStd::string defaultValue, EParamType paramType, bool required)
+                : mName(AZStd::move(name)), mDescription(AZStd::move(description)), mDefaultValue(AZStd::move(defaultValue)), mParamType(paramType), mRequired(required)
+            {
+            }
+
+            AZStd::string      mName;          /**< The name of the parameter. */
+            AZStd::string      mDescription;   /**< The description of the parameter. */
+            AZStd::string      mDefaultValue;  /**< The default value. */
+            EParamType         mParamType;     /**< The parameter type. */
+            bool               mRequired;      /**< Is this parameter required or optional? */
+        };
+
+    public:
         /**
          * The constructor.
          * @param numParamsToReserve The amount of parameters to pre-allocate memory for. This can reduce the number of reallocs needed when registering new paramters.
@@ -126,7 +145,7 @@ namespace MCore
          * Get the number of parameters registered to this syntax.
          * @result The number of added/registered parameters.
          */
-        MCORE_INLINE uint32 GetNumParameters() const                { return mParameters.GetLength(); }
+        MCORE_INLINE uint32 GetNumParameters() const                { return static_cast<uint32>(m_parameters.size()); }
 
         /**
          * Get the parameter type string of a given parameter.
@@ -135,13 +154,14 @@ namespace MCore
          * @result The parameter type string.
          */
         const char* GetParamTypeString(uint32 index) const;
+        const char* GetParamTypeString(const Parameter& parameter) const;
 
         /**
          * Get the value type of a given parameter.
          * @param index The parameter number to get the value type from.
          * @result The type of the parameter value.
          */
-        EParamType GetParamType(uint32 index) const;
+        EParamType GetParamType(size_t index) const;
 
         /**
          * Check if a given parameter list would be valid with this syntax.
@@ -181,18 +201,6 @@ namespace MCore
         void LogSyntax();
 
     private:
-        /**
-         * The parameter class, which describes details about a given parameter.
-         */
-        struct MCORE_API Parameter
-        {
-            AZStd::string      mName;          /**< The name of the parameter. */
-            AZStd::string      mDescription;   /**< The description of the parameter. */
-            AZStd::string      mDefaultValue;  /**< The default value. */
-            EParamType         mParamType;     /**< The parameter type. */
-            bool               mRequired;      /**< Is this parameter required or optional? */
-        };
-
-        Array<Parameter>    mParameters;    /**< The array of registered parameters. */
+        AZStd::vector<Parameter> m_parameters;    /**< The array of registered parameters. */
     };
 } // namespace MCore

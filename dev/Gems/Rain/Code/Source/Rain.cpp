@@ -22,6 +22,7 @@ namespace LYGame
     DECLARE_DEFAULT_COMPONENT_FACTORY(CRain, CRain)
 
     CRain::CRain()
+        : m_bEnabled(false)
     {
     }
 

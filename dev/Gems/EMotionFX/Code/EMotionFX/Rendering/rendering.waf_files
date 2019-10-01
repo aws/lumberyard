@@ -1,6 +1,8 @@
 {
-    "auto": {
-        "EmotionFXTools/Rendering/Common": [
+    "emotionfx_rendering_common.cpp": 
+    {
+        "EmotionFXTools/Rendering/Common": 
+        [
             "Common/Camera.cpp",
             "Common/Camera.h",
             "Common/Camera.inl",
@@ -22,8 +24,12 @@
             "Common/TransformationManipulator.h",
             "Common/TranslateManipulator.cpp",
             "Common/TranslateManipulator.h"
-        ],
-        "EmotionFXTools/Rendering/OpenGL2": [
+        ]
+    },
+    "emotionfx_rendering_opengl.cpp": 
+    {
+        "EmotionFXTools/Rendering/OpenGL2": 
+        [
             "OpenGL2/Source/GBuffer.cpp",
             "OpenGL2/Source/GBuffer.h",
             "OpenGL2/Source/GLActor.cpp",

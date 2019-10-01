@@ -59,7 +59,7 @@ namespace LmbrCentral
         BoxShapeComponentRequestsBus::EventResult(
             dimensions, m_entity->GetId(), &BoxShapeComponentRequests::GetBoxDimensions);
 
-       EXPECT_EQ(dimensions, AZ::Vector3(0.37, 0.57, 0.66));
+       EXPECT_EQ(dimensions, AZ::Vector3(0.37f, 0.57f, 0.66f));
     }
 }
 

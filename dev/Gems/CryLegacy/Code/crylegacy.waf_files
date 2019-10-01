@@ -277,7 +277,6 @@
             "Source/CryAction/PlayerProfiles/PlayerProfile.h",
             "Source/CryAction/PlayerProfiles/PlayerProfileImplConsole.h",
             "Source/CryAction/PlayerProfiles/PlayerProfileImplFS.h",
-            "Source/CryAction/PlayerProfiles/PlayerProfileImplNoSave.h",
             "Source/CryAction/PlayerProfiles/PlayerProfileImplRSFHelper.h",
             "Source/CryAction/PlayerProfiles/RichSaveGameTypes.h",
             "Source/CryAction/PlayerProfiles/RichSaveGameTypes_info.h"

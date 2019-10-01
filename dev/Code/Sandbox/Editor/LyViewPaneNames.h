@@ -55,7 +55,6 @@ namespace LyViewPane
     static const char* const LandscapeCanvas = "Landscape Canvas";
     static const char* const AnimationEditor = "EMotion FX Animation Editor (PREVIEW)";
     static const char* const PhysXConfigurationEditor = "PhysX Configuration (PREVIEW)";
-    static const char* const PhysXVehiclesConfigurationEditor = "PhysX Vehicles Configuration (PREVIEW)";
 
     static const char* const LegacyAssetBrowser = "Asset Browser (LEGACY)";
     static const char* const LegacyFlowGraph = "Flow Graph (LEGACY)";

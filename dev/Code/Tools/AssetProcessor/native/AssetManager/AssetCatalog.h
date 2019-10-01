@@ -97,6 +97,7 @@ namespace AssetProcessor
         bool GetAssetSafeFolders(AZStd::vector<AZStd::string>& assetSafeFolders) override;
         bool IsAssetPlatformEnabled(const char* platform) override;
         int GetPendingAssetsForPlatform(const char* platform) override;
+        bool GetAssetsProducedBySourceUUID(const AZ::Uuid& sourceUuid, AZStd::vector<AZ::Data::AssetInfo>& productsAssetInfo) override;
         ////////////////////////////////////////////////////////////////////////////////
 
         ///////////////////////////////////////////////////////////////////////////
@@ -135,6 +136,9 @@ namespace AssetProcessor
 
         //! Checks in the currently-in-queue assets list for info on an asset (by source name)
         bool GetQueuedAssetInfoByRelativeSourceName(const char* sourceName, AZ::Data::AssetInfo& assetInfo, AZStd::string& watchFolder);
+
+        //! Gets the source info for a source that is not in the DB or APM queue
+        bool GetUncachedSourceInfoFromDatabaseNameAndWatchFolder(const char* sourceDatabasePath, const char* watchFolder, AZ::Data::AssetInfo& assetInfo);
 
         bool ConnectToDatabase();
 

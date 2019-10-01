@@ -92,7 +92,7 @@ namespace Audio
             void* const pUserData = nullptr,
             void* const pUserDataOwner = nullptr,
             const TATLEnumFlagsType nFlags = INVALID_AUDIO_ENUM_FLAG_TYPE,
-            TAudioSourceId sourceId = INVALID_AUDIO_SOURCE_ID);
+            const SATLSourceData* pSourceData = nullptr);
         EAudioRequestStatus StopTrigger(
             CATLAudioObjectBase* const pAudioObject,
             const CATLTrigger* const pTrigger);
@@ -183,7 +183,7 @@ namespace Audio
         void DrawImplMemoryPoolDebugInfo(IRenderAuxGeom& auxGeom, float fPosX, float fPosY);
 
         CATLDebugNameStore m_oDebugNameStore;
-        CryFixedStringT<MAX_AUDIO_CONTROL_NAME_LENGTH> m_sImplementationNameString;
+        AZStd::string m_implementationNameString;
 #endif // INCLUDE_AUDIO_PRODUCTION_CODE
     };
 } // namespace Audio

@@ -14,7 +14,7 @@ from waflib.TaskGen import feature, after_method
 from waflib.Configure import conf, Logs
 from waflib.Errors import ConfigurationError, WafError
 
-from waf_branch_spec import BINTEMP_FOLDER, BINTEMP_CACHE_3RD_PARTY
+from waf_branch_spec import BINTEMP_CACHE_3RD_PARTY
 
 from cry_utils import get_configuration, append_unique_kw_entry, append_to_unique_list
 from third_party_sync import P4SyncThirdPartySettings
@@ -48,7 +48,7 @@ PLATFORM_TO_3RD_PARTY_SUBPATH = {
                                     'appletv'    : 'osx/appletv-clang-703.0.31',
 
                                     # linux host platform
-                                    'linux_x64'  : 'linux/clang-3.7'}
+                                    'linux_x64'  : 'linux/clang-3.8'}
 
 CONFIGURATION_TO_3RD_PARTY_NAME = {'debug'  : 'debug',
                                    'profile': 'release',
@@ -1098,6 +1098,9 @@ def register_3rd_party_uselib(ctx, use_name, target_platform, *k, **kw):
     global REGISTERED_3RD_PARTY_USELIB
     REGISTERED_3RD_PARTY_USELIB.add(use_name)
 
+    append_to_unique_list(ctx.all_envs['']['THIRD_PARTY_USELIBS'], use_name)
+    append_to_unique_list(ctx.env['THIRD_PARTY_USELIBS'], use_name)
+
 
 @conf
 def is_third_party_uselib_configured(ctx, use_name):
@@ -1409,7 +1412,8 @@ def generate_3p_config(ctx):
             ordered_config['platform'] = OrderedDict(sorted(config_platforms.items(), key=lambda t: _get_config_key_weight(t[0])))
             for config_platform_name in ordered_config['platform']:
                 config_platform_def = ordered_config['platform'][config_platform_name]
-                ordered_config['platform'][config_platform_name] = OrderedDict(sorted(config_platform_def.items(), key=lambda t: _get_config_key_weight(t[0])))
+                if isinstance(config_platform_def, dict):
+                    ordered_config['platform'][config_platform_name] = OrderedDict(sorted(config_platform_def.items(), key=lambda t: _get_config_key_weight(t[0])))
 
         config_content = json.dumps(ordered_config, indent=4, separators=(',', ': '))
         try:
@@ -1485,7 +1489,7 @@ class ThirdPartySettings:
 
         self.content = None
 
-        available_platforms = [base_target_platform.name() for base_target_platform in self.ctx.get_enabled_target_platforms(reset_cache=True, apply_validated_platforms=False)]
+        available_platforms = [base_target_platform.name() for base_target_platform in self.ctx.get_enabled_target_platforms(reset_cache=True, apply_validated_platforms=True)]
         available_platforms_hash = calculate_string_hash(','.join(available_platforms))
 
         if not os.path.exists(self.file_path_abs):
@@ -1806,7 +1810,7 @@ class ThirdPartySettings:
 
         def _read_setup_assistant_user_pref():
 
-            setup_assistant_user_pref_filepath = os.path.join(self.ctx.path.abspath(), CONFIG_SETUP_ASSISTANT_USER_PREF)
+            setup_assistant_user_pref_filepath = os.path.join(self.ctx.engine_node.abspath(), CONFIG_SETUP_ASSISTANT_USER_PREF)
             if not os.path.exists(setup_assistant_user_pref_filepath):
                 return _get_default_third_party_root()
             try:
@@ -1996,7 +2000,7 @@ class ThirdPartyConfigEnvironmentCache:
     for each 3rd party file
     """
 
-    def __init__(self, config_file_path_abs, engine_root_abs, bootstrap_hash, lib_configurations_hash):
+    def __init__(self, config_file_path_abs, engine_root_abs, bintemp_path_abs, bootstrap_hash, lib_configurations_hash):
 
         # Capture the fingerprints for the files that affect the cache directly
         setup_assistant_config_file_path = os.path.join(engine_root_abs, CONFIG_FILE_SETUP_ASSISTANT_CONFIG)
@@ -2016,7 +2020,7 @@ class ThirdPartyConfigEnvironmentCache:
 
         # Calculate the cache file target
         config_filename = os.path.basename(config_file_path_abs)
-        cache_path = os.path.join(engine_root_abs, BINTEMP_FOLDER, BINTEMP_CACHE_3RD_PARTY)
+        cache_path = os.path.join(bintemp_path_abs, BINTEMP_CACHE_3RD_PARTY)
         if not os.path.isdir(cache_path):
             os.makedirs(cache_path)
         self.cached_config_file_path = os.path.join(cache_path, 'cache_3p.{}'.format(config_filename))
@@ -2284,6 +2288,7 @@ class CachedThirdPartyLibReader:
         
         self.cache_obj = ThirdPartyConfigEnvironmentCache(config_file_path_abs=config_file_path_node.abspath(),
                                                           engine_root_abs=ctx.engine_path,
+                                                          bintemp_path_abs=ctx.bldnode.abspath(),
                                                           bootstrap_hash=bootstrap_hash,
                                                           lib_configurations_hash=lib_configurations_hash)
 

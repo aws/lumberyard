@@ -13,7 +13,9 @@
 #include "PropertyButtonCtrl.hxx"
 #include "PropertyQTConstants.h"
 #include <QtWidgets/QPushButton>
+AZ_PUSH_DISABLE_WARNING(4251, "-Wunknown-warning-option") // 4251: 'QLayoutItem::align': class 'QFlags<Qt::AlignmentFlag>' needs to have dll-interface to be used by clients of class 'QLayoutItem'
 #include <QtWidgets/QHBoxLayout>
+AZ_POP_DISABLE_WARNING
 
 namespace AzToolsFramework
 {
@@ -80,6 +82,11 @@ namespace AzToolsFramework
     {
     }
 
+    void PropertyButtonCtrl::SetButtonToolTip(const char* description)
+    {
+        m_button->setToolTip(QString::fromUtf8(description));
+    }
+
     void PropertyButtonCtrl::SetButtonText(const char* text)
     {
         m_button->setText(QString::fromUtf8(text));
@@ -110,6 +117,15 @@ namespace AzToolsFramework
             if (!text.empty())
             {
                 GUI->SetButtonText(text.c_str());
+            }
+        }
+        if (attrib == AZ::Edit::Attributes::ButtonTooltip)
+        {
+            AZStd::string description;
+            attrValue->Read<AZStd::string>(description);
+            if (!description.empty())
+            {
+                GUI->SetButtonToolTip(description.c_str());
             }
         }
     }

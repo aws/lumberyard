@@ -26,7 +26,7 @@
 #include <AzFramework/Physics/World.h>
 #include <Physics/PhysicsTests.h>
 #include <Physics/PhysicsTests.inl>
-#include <Tests/TestTypes.h>
+#include <AzCore/UnitTest/TestTypes.h>
 #include <PhysXCharacters/SystemBus.h>
 #include <PhysX/SystemComponentBus.h>
 #include <Source/Components/CharacterControllerComponent.h>

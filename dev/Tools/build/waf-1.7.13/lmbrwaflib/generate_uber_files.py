@@ -38,6 +38,7 @@ class uber_file_generator(BuildContext):
 @extension('.rc2')
 @extension('.lib')
 @extension('.png')
+@extension('.svg')
 @extension('.manifest')
 @extension('.cfi')
 @extension('.cfx')

@@ -49,17 +49,6 @@ namespace Audio
 
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
-    class AudioSystemThreadSafeInternalRequests
-        : public AudioSystemThreadSafeRequests
-    {
-    public:
-        virtual ~AudioSystemThreadSafeInternalRequests() = default;
-        virtual void ProcessRequestThreadSafe(CAudioRequestInternal audioRequestData) = 0;
-    };
-
-    using AudioSystemThreadSafeInternalRequestBus = AZ::EBus<AudioSystemThreadSafeInternalRequests>;
-
-    ///////////////////////////////////////////////////////////////////////////////////////////////////
     class AudioSystemInternalRequests
         : public AZ::EBusTraits
     {
@@ -71,7 +60,7 @@ namespace Audio
         static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::Single;
         static const AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::Single;
         static const bool EnableEventQueue = true;
-        using MutexType = AZStd::mutex;
+        using MutexType = AZStd::recursive_mutex;
         ///////////////////////////////////////////////////////////////////////////////////////////////
 
         virtual void ProcessRequestByPriority(CAudioRequestInternal audioRequestData) = 0;
@@ -79,11 +68,9 @@ namespace Audio
 
     using AudioSystemInternalRequestBus = AZ::EBus<AudioSystemInternalRequests>;
 
-
     ///////////////////////////////////////////////////////////////////////////////////////////////////
     class CAudioSystem
         : public IAudioSystem
-        , public AudioSystemThreadSafeInternalRequestBus::Handler
         , public AudioSystemInternalRequestBus::Handler
     {
         friend class CAudioThread;
@@ -107,7 +94,6 @@ namespace Audio
         void PushRequest(const SAudioRequest& audioRequestData) override;
         void PushRequestBlocking(const SAudioRequest& audioRequestData) override;
         void PushRequestThreadSafe(const SAudioRequest& audioRequestData) override;
-        void ProcessRequestThreadSafe(CAudioRequestInternal audioRequestInternalData) override;
         void ProcessRequestByPriority(CAudioRequestInternal audioRequestInternalData) override;
 
         void ExternalUpdate() override;
@@ -142,6 +128,9 @@ namespace Audio
         const char* GetAudioSwitchStateName(const TAudioControlID switchID, const TAudioSwitchStateID stateID) const override;
 
         void OnCVarChanged(ICVar* const pCvar) override;
+
+    protected:
+        void ProcessRequestThreadSafe(CAudioRequestInternal audioRequestInternalData);
 
     private:
         using TAudioRequests = AZStd::deque<CAudioRequestInternal, Audio::AudioSystemStdAllocator>;

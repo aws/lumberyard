@@ -278,13 +278,6 @@ namespace GridMate
         VersionType                     m_version;                  ///< Carriers with mismatching version numbers are not allowed to connect to each other. Default is 1.
 
         const char*                     m_securityData;             ///< Pointer to string with security data
-#if defined(AZ_RESTRICTED_PLATFORM)
-    #if defined(AZ_PLATFORM_XENIA)
-        #include "Xenia/Carrier_h_xenia.inl"
-    #elif defined(AZ_PLATFORM_PROVO)
-        #include "Provo/Carrier_h_provo.inl"
-    #endif
-#endif
 
         bool                            m_enableDisconnectDetection; ///< Enable/Disable disconnect detection. (should be set to false ONLY for debug purpose)
         unsigned int                    m_connectionTimeoutMS;      ///< Connection timeout in milliseconds

@@ -68,6 +68,10 @@ namespace Physics
         /// @param deltaTime Elapsed time.
         /// @return The new base (foot) position.
         virtual AZ::Vector3 TryRelativeMove(const AZ::Vector3& deltaPosition, float deltaTime) = 0;
+
+        /// Check if there is a character physics component present.
+        /// Return true in the request handler implementation in order for things like the animation system to work properly.
+        virtual bool IsPresent() const { return false; }
     };
 
     using CharacterRequestBus = AZ::EBus<CharacterRequests>;

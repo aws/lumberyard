@@ -16,21 +16,11 @@
 
 #pragma once
 
-
 #if defined(AZ_RESTRICTED_PLATFORM)
-    #if defined(AZ_PLATFORM_XENIA)
-        #include "Xenia/PlatformOS_PC_h_xenia.inl"
-    #elif defined(AZ_PLATFORM_PROVO)
-        #include "Provo/PlatformOS_PC_h_provo.inl"
-    #endif
-#endif
-#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
-#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
 #else
 
 #include "IPlatformOS.h"
 #include <CryListenerSet.h>
-#include <IGameFramework.h>
 
 #include "PlatformOS_Base.h"
 
@@ -46,59 +36,17 @@ namespace ZipDir
 
 class CPlatformOS_PC
     : public PlatformOS_Base
-    , public IPlatformOS::IPlatformListener
-    , public IGameFrameworkListener
 {
 public:
 
-    CPlatformOS_PC(const uint8 createParams);
+    CPlatformOS_PC();
 
     // ~IPlatformOS
 
-    // Called each frame to update the platform listener
-    virtual void Tick(float realFrameTime);
-
-    // Local user profile functions to check/initiate user sign in:
-    // See IPlatformOS.h for documentation.
-    virtual bool                    MountSaveFile(unsigned int userIndex) { return true; }
     virtual IFileFinderPtr          GetFileFinder(unsigned int user);
     virtual void                    MountDLCContent(IDLCListener* pCallback, unsigned int user, const uint8 keyData[16]);
 
-    virtual bool                    CanRestartTitle() const;
-    virtual void                    RestartTitle(const char* pTitle);
-
-    virtual bool UsePlatformSavingAPI() const;
-    virtual bool BeginSaveLoad(unsigned int user, bool bSave);
-    virtual void EndSaveLoad(unsigned int user);
-    virtual IPlatformOS::ISaveReaderPtr SaveGetReader(const char* fileName, unsigned int user);
-    virtual IPlatformOS::ISaveWriterPtr SaveGetWriter(const char* fileName, unsigned int user);
-
-    virtual bool StringVerifyStart(const char* inString, IStringVerifyEvents* pInCallback);
-    virtual bool IsVerifyingString();
-
-    virtual void AddListener(IPlatformOS::IPlatformListener* pListener, const char* szName);
-    virtual void RemoveListener(IPlatformOS::IPlatformListener* pListener);
-    virtual void NotifyListeners(SPlatformEvent& event);
-
-    virtual ILocalizationManager::EPlatformIndependentLanguageID GetSystemLanguage();
-    virtual const char* GetSKUId();
-    virtual ILocalizationManager::TLocalizationBitfield GetSystemSupportedLanguages();
-
-    virtual IPlatformOS::EMsgBoxResult DebugMessageBox(const char* body, const char* title, unsigned int flags = 0) const;
-
-    virtual bool PostLocalizationBootChecks();
-
     virtual void GetMemoryUsage(ICrySizer* pSizer) const;
-
-    virtual bool DebugSave(SDebugDump& dump);
-
-    virtual bool ConsoleLoadGame(IConsoleCmdArgs* pArgs);
-
-    virtual void InitEncryptionKey(const char* pMagic, size_t magicLength, const uint8* pKey, size_t keyLength);
-
-    virtual void GetEncryptionKey(const DynArray<char>** pMagic = NULL, const DynArray<uint8>** pKey = NULL);
-
-    virtual EUserPIIStatus GetUserPII(unsigned int inUser, SUserPII* pOutPII);
 
     virtual IPlatformOS::ECDP_Start StartUsingCachePaks(const int user, bool* outWritesOccurred);
     virtual IPlatformOS::ECDP_End EndUsingCachePaks(const int user);
@@ -110,30 +58,9 @@ public:
 
     virtual IPlatformOS::EZipExtractFail ExtractZips(const char* path);
 
-    virtual void SetOpticalDriveIdle(bool bIdle);
-    virtual void AllowOpticalDriveUsage(bool bAllow);
-
     // ~IPlatformOS
 
-    // IPlatformOS::IPlatformListener
-    virtual void OnPlatformEvent(const IPlatformOS::SPlatformEvent& _event);
-    // ~IPlatformOS::IPlatformListener
-
-    // ISystemEventListener
-    virtual void OnSystemEvent(ESystemEvent event, UINT_PTR wparam, UINT_PTR lparam);
-    // ~ISystemEventListener
-
-    // IGameFrameworkListener
-    virtual void OnPostUpdate(float fDeltaTime) {}
-    virtual void OnSaveGame(ISaveGame* pSaveGame) {}
-    virtual void OnLoadGame(ILoadGame* pLoadGame) {}
-    virtual void OnLevelEnd(const char* nextLevel) {}
-    virtual void OnActionEvent(const SActionEvent& event);
-    // ~IGameFrameworkListener
-
 private:
-
-    void SaveDirtyFiles();
     IPlatformOS::EZipExtractFail RecurseZipContents(ZipDir::FileEntryTree* pSourceDir, const char* currentPath, ZipDir::CacheRWPtr pCache);
     bool SxmlMissingFromHDD(ZipDir::FileEntryTree* pSourceDir, const char* currentPath, ZipDir::CacheRWPtr pCache);
 
@@ -141,17 +68,8 @@ private:
     bool UseSteamReadWriter() const;
 
 private:
-    CStableFPSWatcher m_fpsWatcher;
-    CListenerSet<IPlatformOS::IPlatformListener*> m_listeners;
-    DynArray<char> m_encryptionMagic;
-    DynArray<uint8> m_encryptionKey;
-    float m_delayLevelStartIcon;
     int m_cachePakStatus;
     int m_cachePakUser;
-    bool m_bSaving;
-    bool m_bAllowMessageBox;
-    bool m_bLevelLoad;
-    bool m_bSaveDuringLevelLoad;
 };
 
 #endif

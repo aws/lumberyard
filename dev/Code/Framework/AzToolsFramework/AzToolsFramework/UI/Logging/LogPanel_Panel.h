@@ -26,7 +26,9 @@
 #include <AzToolsFramework/UI/Logging/LogLine.h>
 
 #include <QSortFilterProxyModel>
+AZ_PUSH_DISABLE_WARNING(4251, "-Wunknown-warning-option") // 4251: 'QPainter::d_ptr': class 'QScopedPointer<QPainterPrivate,QScopedPointerDeleter<T>>' needs to have dll-interface to be used by clients of class 'QPainter'
 #include <QLayout>
+AZ_POP_DISABLE_WARNING
 #include <QStyledItemDelegate>
 #include <QAbstractTableModel>
 
@@ -334,7 +336,7 @@ Q_SIGNALS:
                 AZ::SerializeContext* serialize = azrtti_cast<AZ::SerializeContext*>(context);
                 if (serialize)
                 {
-                    serialize->Class<SavedState, AZ::UserSettings>()
+                    serialize->Class<SavedState>()
                         ->Version(1)
                         ->Field("m_tabSettings", &SavedState::m_tabSettings);
 

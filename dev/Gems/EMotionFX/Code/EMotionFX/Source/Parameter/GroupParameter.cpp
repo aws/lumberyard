@@ -353,7 +353,8 @@ namespace EMotionFX
                 AZ::Outcome<size_t> relativeIndexFromChild = childGroupParameter->FindParameterIndex(parameter);
                 if (relativeIndexFromChild.IsSuccess())
                 {
-                    relativeIndex += relativeIndexFromChild.GetValue();
+                    // Add 1 for the group parameter itself.
+                    relativeIndex += relativeIndexFromChild.GetValue() + 1;
                     return AZ::Success(relativeIndex);
                 }
                 else
@@ -497,7 +498,6 @@ namespace EMotionFX
             }
             else
             {
-                const Parameter* param = *it;
                 m_childParameters.erase(it);
                 return true;
             }

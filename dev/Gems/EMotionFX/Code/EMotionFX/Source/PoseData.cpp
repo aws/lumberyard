@@ -31,11 +31,13 @@ namespace EMotionFX
 
     void PoseData::LinkToActorInstance(ActorInstance* actorInstance)
     {
+        AZ_UNUSED(actorInstance);
         m_isUsed = false;
     }
 
     void PoseData::LinkToActor(Actor* actor)
     {
+        AZ_UNUSED(actor);
         m_isUsed = false;
     }
 

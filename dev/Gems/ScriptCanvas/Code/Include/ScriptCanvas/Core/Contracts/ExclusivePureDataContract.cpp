@@ -23,29 +23,30 @@ namespace ScriptCanvas
     {
         bool isOnPureDataThread(true);
         NodeRequestBus::EventResult(isOnPureDataThread, dataInputSlot.GetNodeId(), &NodeRequests::IsOnPureDataThread, dataInputSlot.GetId());
+
         if (!isOnPureDataThread)
         {
             return AZ::Success();
         }
-        else
-        {
-            return AZ::Failure(AZStd::string("There is already a pure data input into this slot"));
-        }
+        
+        return AZ::Failure(AZStd::string("There is already a pure data input into this slot"));
     }
+
     AZ::Outcome<void, AZStd::string> ExclusivePureDataContract::OnEvaluate(const Slot& sourceSlot, const Slot& targetSlot) const
     {
-        if (sourceSlot.GetType() == SlotType::DataIn && targetSlot.GetType() == SlotType::DataOut)
+        if (sourceSlot.GetDescriptor().CanConnectTo(targetSlot.GetDescriptor()))
         {
-            return HasNoPureDataConnection(sourceSlot);
+            if (sourceSlot.GetDescriptor().IsInput())
+            {
+                return HasNoPureDataConnection(sourceSlot);
+            }
+            else if (targetSlot.GetDescriptor().IsInput())
+            {
+                return HasNoPureDataConnection(targetSlot);
+            }
         }
-        else if (targetSlot.GetType() == SlotType::DataIn && sourceSlot.GetType() == SlotType::DataOut)
-        {
-            return HasNoPureDataConnection(targetSlot);
-        }
-        else
-        {
-            return AZ::Failure(AZStd::string("invalid data connection attempted"));
-        }
+
+        return AZ::Failure(AZStd::string("invalid data connection attempted"));
     }
 
     void ExclusivePureDataContract::Reflect(AZ::ReflectContext* reflection)

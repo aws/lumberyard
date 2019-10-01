@@ -1,0 +1,7 @@
+{
+  "auto": {
+    "Platform/Windows": [
+      "DxDiagCollectingComponent_Windows.cpp"
+    ]
+  }
+}

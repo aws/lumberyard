@@ -13,8 +13,10 @@
 #define AZSTD_ORDERED_MAP_H 1
 
 #include <AzCore/std/containers/rbtree.h>
+#include <AzCore/std/containers/node_handle.h>
 #include <AzCore/std/functional_basic.h>
 #include <AzCore/std/algorithm.h>
+#include <AzCore/std/tuple.h>
 
 namespace AZStd
 {
@@ -80,9 +82,14 @@ namespace AZStd
 
         typedef typename tree_type::reverse_iterator            reverse_iterator;
         typedef typename tree_type::const_reverse_iterator      const_reverse_iterator;
+        
+        using node_type = map_node_handle<map_node_traits<key_type, mapped_type, allocator_type, typename tree_type::node_type, typename tree_type::node_deleter>>;
+        using insert_return_type = insert_return_type<iterator, node_type>;
 
         AZ_FORCE_INLINE explicit map(const Compare& comp = Compare(), const Allocator& alloc = Allocator())
             : m_tree(comp, alloc) {}
+        explicit map(const Allocator& alloc)
+            : m_tree(alloc) {}
         template <class InputIterator>
         AZ_FORCE_INLINE map(InputIterator first, InputIterator last, const Compare& comp = Compare(), const Allocator& alloc = Allocator())
             : m_tree(comp, alloc)
@@ -117,12 +124,21 @@ namespace AZStd
         AZ_FORCE_INLINE bool empty() const                  { return m_tree.empty(); }
         AZ_FORCE_INLINE size_type size() const              { return m_tree.size(); }
         AZ_FORCE_INLINE size_type max_size() const          { return m_tree.max_size(); }
-        AZ_FORCE_INLINE MappedType& operator[](const key_type& key)
+        MappedType& operator[](const key_type& key)
         {
             iterator iter = m_tree.lower_bound(key);
             if (iter == end() || key_comp()(key, (*iter).first))
             {
-                iter = insert(iter, AZStd::move(value_type(key, MappedType())));
+                iter = insert(iter, value_type(AZStd::piece_construct, AZStd::forward_as_tuple(AZStd::move(key)), AZStd::tuple<>{}));
+            }
+            return (*iter).second;
+        }
+        MappedType& operator[](key_type&& key)
+        {
+            iterator iter = m_tree.lower_bound(key);
+            if (iter == end() || key_comp()(key, (*iter).first))
+            {
+                iter = insert(iter, value_type(AZStd::piece_construct, AZStd::forward_as_tuple(AZStd::move(key)), AZStd::tuple<>{}));
             }
             return (*iter).second;
         }
@@ -138,7 +154,6 @@ namespace AZStd
         AZ_FORCE_INLINE iterator erase(const_iterator first, const_iterator last)       { return m_tree.erase(first, last); }
         AZ_FORCE_INLINE void clear() { m_tree.clear(); }
 
-#ifdef AZ_HAS_RVALUE_REFS
         map(this_type&& rhs)
             : m_tree(AZStd::move(rhs.m_tree)) {}
         /* map(this_type&& rhs, const Allocator& alloc)
@@ -170,7 +185,28 @@ namespace AZStd
         {
             return m_tree.emplace_unique(insertPos, AZStd::forward<InputArguments>(arguments) ...);
         }
-#endif
+
+        insert_return_type insert(node_type&& nodeHandle)
+        {
+            AZSTD_CONTAINER_ASSERT(nodeHandle.empty() || nodeHandle.get_allocator() == get_allocator(),
+                "node_type with incompatible allocator passed to map::insert(node_type&& nodeHandle)");
+            return m_tree.template node_handle_insert_unique<insert_return_type>(AZStd::move(nodeHandle));
+        }
+        iterator insert(const_iterator hint, node_type&& nodeHandle)
+        {
+            AZSTD_CONTAINER_ASSERT(nodeHandle.empty() || nodeHandle.get_allocator() == get_allocator(),
+                "node_type with incompatible allocator passed to map::insert(const_iterator hint, node_type&& node_handle)");
+            return m_tree.node_handle_insert_unique(hint, AZStd::move(nodeHandle));
+        }
+
+        node_type extract(const key_type& key)
+        {
+            return m_tree.template node_handle_extract<node_type>(key);
+        }
+        node_type extract(const_iterator it)
+        {
+            return m_tree.template node_handle_extract<node_type>(it);
+        }
 
         // set operations:
         AZ_FORCE_INLINE const_iterator find(const key_type& key) const          { return m_tree.find(key); }
@@ -316,9 +352,13 @@ namespace AZStd
 
         typedef typename tree_type::reverse_iterator            reverse_iterator;
         typedef typename tree_type::const_reverse_iterator      const_reverse_iterator;
+        
+        using node_type = map_node_handle<map_node_traits<key_type, mapped_type, allocator_type, typename tree_type::node_type, typename tree_type::node_deleter>>;
 
         AZ_FORCE_INLINE explicit multimap(const Compare& comp = Compare(), const Allocator& alloc = Allocator())
             : m_tree(comp, alloc) {}
+        explicit multimap(const Allocator& alloc)
+            : m_tree(alloc) {}
         template <class InputIterator>
         AZ_FORCE_INLINE multimap(InputIterator first, InputIterator last, const Compare& comp = Compare(), const Allocator& alloc = Allocator())
             : m_tree(comp, alloc)
@@ -365,7 +405,6 @@ namespace AZStd
         AZ_FORCE_INLINE iterator erase(const_iterator first, const_iterator last)       { return m_tree.erase(first, last); }
         AZ_FORCE_INLINE void clear() { m_tree.clear(); }
 
-#ifdef AZ_HAS_RVALUE_REFS
         multimap(this_type&& rhs)
             : m_tree(AZStd::move(rhs.m_tree)) {}
         multimap(this_type&& rhs, const Allocator& alloc)
@@ -399,7 +438,28 @@ namespace AZStd
         {
             return m_tree.emplace_equal(insertPos, AZStd::forward<InputArguments>(arguments) ...);
         }
-#endif
+
+        iterator insert(node_type&& nodeHandle)
+        {
+            AZSTD_CONTAINER_ASSERT(nodeHandle.empty() || nodeHandle.get_allocator() == get_allocator(),
+                "node_type with incompatible allocator passed to multimap::insert(node_type&& nodeHandle)");
+            return m_tree.node_handle_insert_equal(AZStd::move(nodeHandle));
+        }
+        iterator insert(const_iterator hint, node_type&& nodeHandle)
+        {
+            AZSTD_CONTAINER_ASSERT(nodeHandle.empty() || nodeHandle.get_allocator() == get_allocator(),
+                "node_type with incompatible allocator passed to multimap::insert(const_iterator hint, node_type&& nodeHandle)");
+            return m_tree.node_handle_insert_equal(hint, AZStd::move(nodeHandle));
+        }
+
+        node_type extract(const key_type& key)
+        {
+            return m_tree.template node_handle_extract<node_type>(key);
+        }
+        node_type extract(const_iterator it)
+        {
+            return m_tree.template node_handle_extract<node_type>(it);
+        }
 
         // set operations:
         AZ_FORCE_INLINE const_iterator find(const key_type& key) const          { return m_tree.find(key); }

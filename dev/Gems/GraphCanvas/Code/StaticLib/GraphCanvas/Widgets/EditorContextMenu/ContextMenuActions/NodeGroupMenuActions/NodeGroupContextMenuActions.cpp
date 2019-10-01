@@ -125,22 +125,6 @@ namespace GraphCanvas
         }
     }
 
-    /////////////////////////////////
-    // CreateNewNodeGroupMenuAction
-    /////////////////////////////////
-
-    CreateNewNodeGroupMenuAction::CreateNewNodeGroupMenuAction(QObject* parent)
-        : CreateNodeGroupMenuAction(parent, false)
-    {
-        setText("New group");
-        setToolTip("Creates an empty Node Group.");
-    }
-
-    void CreateNewNodeGroupMenuAction::RefreshAction(const GraphId& graphId, const AZ::EntityId& targetId)
-    {
-        setEnabled(true);
-    }
-
     ///////////////////////////////
     // UngroupNodeGroupMenuAction
     ///////////////////////////////

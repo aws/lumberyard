@@ -13,6 +13,7 @@
 #include "StdAfx.h"
 #include "AudioSystemImplCVars_NoSound.h"
 #include <IConsole.h>
+#include <CryAudioImplNoSound_Traits_Platform.h>
 
 namespace Audio
 {
@@ -31,41 +32,12 @@ namespace Audio
     {
         // ly-note: what is the justification for nosound using memory pool sizes as large as Wwise?
 
-    #if defined(AZ_PLATFORM_WINDOWS)
-        m_nPrimaryPoolSize = 128 << 10;// 128 MiB
-#define AZ_RESTRICTED_SECTION_IMPLEMENTED
-    #elif defined(AZ_PLATFORM_APPLE_OSX)
-        m_nPrimaryPoolSize = 128 << 10;// 128 MiB
-#define AZ_RESTRICTED_SECTION_IMPLEMENTED
-    #elif defined(AZ_PLATFORM_LINUX_X64)
-        m_nPrimaryPoolSize = 128 << 10;// 128 MiB
-#define AZ_RESTRICTED_SECTION_IMPLEMENTED
-    #elif defined(AZ_PLATFORM_APPLE_IOS)
-        m_nPrimaryPoolSize = 8 << 10;// 8 MiB
-#define AZ_RESTRICTED_SECTION_IMPLEMENTED
-    #elif defined(AZ_PLATFORM_APPLE_TV)
-        m_nPrimaryPoolSize = 8 << 10;// 8 MiB
-#define AZ_RESTRICTED_SECTION_IMPLEMENTED
-    #elif defined(AZ_PLATFORM_ANDROID)
-        m_nPrimaryPoolSize = 8 << 10;// 8 MiB
-#define AZ_RESTRICTED_SECTION_IMPLEMENTED
-#elif defined(AZ_RESTRICTED_PLATFORM)
-    #if defined(AZ_PLATFORM_XENIA)
-        #include "Xenia/AudioSystemImplCVars_NoSound_cpp_xenia.inl"
-    #elif defined(AZ_PLATFORM_PROVO)
-        #include "Provo/AudioSystemImplCVars_NoSound_cpp_provo.inl"
-    #endif
-#endif
-#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
-#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
-    #else
-        #error "Unsupported platform!"
-    #endif
+        m_nPrimaryPoolSize = AZ_TRAIT_CRYAUDIOIMPLNOSOUND_PRIMARY_POOL_SIZE;
 
         REGISTER_CVAR2("s_AudioImplementationPrimaryPoolSize", &m_nPrimaryPoolSize, m_nPrimaryPoolSize, VF_REQUIRE_APP_RESTART,
             "Specifies the size (in KiB) of the memory pool to be used by the Audio System Implementation."
             "Usage: s_AudioImplementationPrimaryPoolSize [0..]\n"
-            "Default Windows: 131072 (128 MiB), Xbox One: 131072 (128 MiB), PS4: 131072 (128 MiB), Mac: 131072 (128 MiB), Linux: 131072 (128 MiB), iOS: 8192 (8 MiB), Android: 8192 (8 MiB)");
+            "Default: " AZ_TRAIT_CRYAUDIOIMPLNOSOUND_PRIMARY_POOL_SIZE_DEFAULT_TEXT );
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////

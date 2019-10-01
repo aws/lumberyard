@@ -63,6 +63,7 @@ namespace Audio
                     AM_REQUEST_BLOCK(eAMRT_STOP_ALL_SOUNDS)
                     AM_REQUEST_BLOCK(eAMRT_DRAW_DEBUG_INFO)
                     AM_REQUEST_BLOCK(eAMRT_CHANGE_LANGUAGE)
+                    AM_REQUEST_BLOCK(eAMRT_SET_AUDIO_PANNING_MODE)
                     default:
                     {
                         g_audioLogger.Log(eALT_ERROR, "Unknown audio manager request type (%d)", pBase->eType);

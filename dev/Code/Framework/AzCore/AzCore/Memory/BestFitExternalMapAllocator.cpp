@@ -9,7 +9,6 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#ifndef AZ_UNITY_BUILD
 
 #include <AzCore/Memory/BestFitExternalMapAllocator.h>
 #include <AzCore/Memory/BestFitExternalMapSchema.h>
@@ -117,9 +116,9 @@ BestFitExternalMapAllocator::Allocate(size_type byteSize, size_type alignment, i
 #ifdef AZCORE_ENABLE_MEMORY_TRACKING
     if (m_records)
     {
-#if defined(AZ_HAS_VARIADIC_TEMPLATES) && defined(AZ_DEBUG_BUILD)
+#if defined(AZ_DEBUG_BUILD)
         ++suppressStackRecord; // one more for the fact the ebus is a function
-#endif // AZ_HAS_VARIADIC_TEMPLATES
+#endif // AZ_DEBUG_BUILD
         EBUS_EVENT(Debug::MemoryDrillerBus, RegisterAllocation, this, address, byteSize, alignment, name, fileName, lineNum, suppressStackRecord + 1);
     }
 #else
@@ -225,5 +224,3 @@ BestFitExternalMapAllocator::GetSubAllocator()
 {
     return m_schema->GetSubAllocator();
 }
-
-#endif // #ifndef AZ_UNITY_BUILD

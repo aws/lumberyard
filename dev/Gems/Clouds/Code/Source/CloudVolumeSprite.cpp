@@ -59,7 +59,6 @@ namespace CloudsGem
         if (renderObject)
         {
             SRenderObjData* renderObjectData = pRenderer->EF_GetObjData(renderObject, true, passInfo.ThreadID());
-            renderObjectData->SetRenderElement(m_pREImposter->GetRE());
             renderObjectData->m_fTempVars[0] = m_worldMatrix.GetColumn(0).GetLength();
             renderObject->m_II.m_Matrix = m_worldMatrix;
             renderObject->m_fSort = 0;

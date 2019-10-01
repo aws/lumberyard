@@ -72,9 +72,6 @@ namespace EMotionFX
         void OnRemoveFromRagdoll();
         void OnClearColliders();
 
-        // QDockWidget overrides
-        void OnVisibilityChanged(bool visible);
-
     private:
         bool PhysXCharactersGemAvailable() const;
 

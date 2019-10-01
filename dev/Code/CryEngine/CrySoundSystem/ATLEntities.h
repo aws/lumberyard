@@ -13,18 +13,18 @@
 
 #pragma once
 
+#include <AzCore/IO/StreamerRequest.h>
+#include <AzCore/std/containers/map.h>
+#include <AzCore/std/smart_ptr/unique_ptr.h>
+
+#include <IAudioSystem.h>
 #include <ATLCommon.h>
 #include <ATLUtils.h>
-#include <IAudioSystem.h>
-#include <IStreamEngine.h>
 #include <CryFlags.h>
 
 #if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
     #include <TimeValue.h>
 #endif // INCLUDE_AUDIO_PRODUCTION_CODE
-
-#include <AzCore/std/containers/map.h>
-#include <AzCore/std/smart_ptr/unique_ptr.h>
 
 // external forward declaration
 struct EventPhys;
@@ -67,15 +67,14 @@ namespace Audio
     ///////////////////////////////////////////////////////////////////////////////////////////////////
     enum EAudioFileFlags : TATLEnumFlagsType
     {
-        eAFF_CACHED                         = BIT(0),
-        eAFF_NOTCACHED                      = BIT(1),
-        eAFF_NOTFOUND                       = BIT(2),
-        eAFF_MEMALLOCFAIL                   = BIT(3),
-        eAFF_REMOVABLE                      = BIT(4),
-        eAFF_LOADING                        = BIT(5),
-        eAFF_USE_COUNTED                    = BIT(6),
-        eAFF_NEEDS_RESET_TO_MANUAL_LOADING  = BIT(7),
-        eAFF_LOCALIZED                      = BIT(8),
+        eAFF_NOTFOUND                       = BIT(0),
+        eAFF_CACHED                         = BIT(1),
+        eAFF_MEMALLOCFAIL                   = BIT(2),
+        eAFF_REMOVABLE                      = BIT(3),
+        eAFF_LOADING                        = BIT(4),
+        eAFF_USE_COUNTED                    = BIT(5),
+        eAFF_NEEDS_RESET_TO_MANUAL_LOADING  = BIT(6),
+        eAFF_LOCALIZED                      = BIT(7),
     };
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -390,9 +389,7 @@ namespace Audio
             , m_memoryBlockAlignment(AUDIO_MEMORY_ALIGNMENT)
             , m_flags(eAFF_NOTFOUND)
             , m_dataScope(eADS_ALL)
-            , m_streamTaskType(eStreamTaskTypeCount)
             , m_memoryBlock(nullptr)
-            , m_readStream(nullptr)
             , m_implData(implData)
         {
     #if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
@@ -408,9 +405,10 @@ namespace Audio
         size_t m_memoryBlockAlignment;
         CCryFlags<TATLEnumFlagsType> m_flags;
         EATLDataScope m_dataScope;
-        EStreamTaskType m_streamTaskType;
         AZStd::unique_ptr<ICustomMemoryBlock> m_memoryBlock;
-        IReadStreamPtr m_readStream;
+
+        AZStd::shared_ptr<AZ::IO::Request> m_asyncStreamRequest;
+
         IATLAudioFileEntryData* m_implData;
 
 #if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
@@ -433,12 +431,14 @@ namespace Audio
             : CATLEntity<TAudioPreloadRequestID>(nID, eDataScope)
             , m_bAutoLoad(bAutoLoad)
             , m_cFileEntryIDs(cFileEntryIDs)
+            , m_allLoaded(false)
         {}
 
         ~CATLPreloadRequest() override {}
 
         const bool m_bAutoLoad;
         TFileEntryIDs m_cFileEntryIDs;
+        bool m_allLoaded;
     };
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////

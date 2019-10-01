@@ -28,7 +28,6 @@ CCrySimpleJobCache::CCrySimpleJobCache(uint32_t requestIP)
 void CCrySimpleJobCache::CheckHashID(std::vector<uint8_t>& rVec, size_t Size)
 {
     m_HashID = CSTLHelper::Hash(rVec, Size);
-
     if (CCrySimpleCache::Instance().Find(m_HashID, rVec))
     {
         State(ECSJS_CACHEHIT);

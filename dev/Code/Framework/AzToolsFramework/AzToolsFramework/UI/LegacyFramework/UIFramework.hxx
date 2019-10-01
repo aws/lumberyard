@@ -22,7 +22,9 @@
 #include <QtCore/QObject>
 #include <QtWidgets/QWidget>
 #include <QtWidgets/QTableView>
+AZ_PUSH_DISABLE_WARNING(4251, "-Wunknown-warning-option") // 'QStandardItem::d_ptr': class 'QScopedPointer<QStandardItemPrivate,QScopedPointerDeleter<T>>' needs to have dll-interface to be used by clients of class 'QStandardItem'
 #include <QtGui/QStandardItemModel>
+AZ_POP_DISABLE_WARNING
 
 class QAction;
 class QUrl;
@@ -127,7 +129,7 @@ namespace AzToolsFramework
         //////////////////////////////////////////////////////////////////////////
 
     private:
-		Framework(const Framework&) = delete;
+        Framework(const Framework&) = delete;
         // utilities to make using common GUI elements across component contexts easy
         AZStd::list<MainWindowDescription> m_MainWindowList;
         int m_ApplicationCensusResults;

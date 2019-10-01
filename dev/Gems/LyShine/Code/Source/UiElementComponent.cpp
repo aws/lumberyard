@@ -674,6 +674,14 @@ AZ::EntityId UiElementComponent::FindParentInteractableSupportingDrag(AZ::Vector
         EBUS_EVENT_ID_RESULT(supportsDragOffset, parentEntity, UiInteractableBus, DoesSupportDragHandOff, point);
         if (supportsDragOffset)
         {
+            // Make sure the parent is also handling events
+            bool handlingEvents = false;
+            EBUS_EVENT_ID_RESULT(handlingEvents, parentEntity, UiInteractableBus, IsHandlingEvents);
+            supportsDragOffset = handlingEvents;
+        }
+
+        if (supportsDragOffset)
+        {
             result = parentEntity;
         }
         else

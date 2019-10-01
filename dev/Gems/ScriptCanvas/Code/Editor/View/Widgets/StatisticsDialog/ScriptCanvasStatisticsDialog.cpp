@@ -307,6 +307,7 @@ namespace ScriptCanvasEditor
             paletteConfig.m_isInContextMenu = false;
             paletteConfig.m_saveIdentifier = "ScriptCanvas_UsageStatistics";
             paletteConfig.m_clearSelectionOnSceneChange = false;
+            paletteConfig.m_allowArrowKeyNavigation = true;
 
             m_ui->nodePaletteWidget->SetupNodePalette(paletteConfig);
 

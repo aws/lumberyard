@@ -95,8 +95,10 @@ namespace EMStudio
         CreateEntry(viewMenu, "Ragdoll Colliders",      QIcon(":/EMotionFX/RagdollCollider_Orange.png"), true,      RENDER_RAGDOLL_COLLIDERS);
         CreateEntry(viewMenu, "Ragdoll Joint Limits",   QIcon(":/EMotionFX/RagdollJointLimit_Orange.png"), true,    RENDER_RAGDOLL_JOINTLIMITS);
         CreateEntry(viewMenu, "Hit Detection Colliders",QIcon(":/EMotionFX/HitDetection_Blue.png"), true,           RENDER_HITDETECTION_COLLIDERS);
-        // Note: Cloth collider editor is disabled as it is in preview
-        CreateEntry(viewMenu, "Cloth Colliders",        QIcon(":/EMotionFX/ClothCollider_Purple.png"), true,        RENDER_CLOTH_COLLIDERS, /*isVisible*/false);
+        CreateEntry(viewMenu, "Simulated Object Colliders", QIcon(":/EMotionFX/SimulatedObjectCollider.png"), true, RENDER_SIMULATEDOBJECT_COLLIDERS);
+        CreateEntry(viewMenu, "Simulated Joints",       QIcon(":/EMotionFX/SimulatedObject.png"), true, RENDER_SIMULATEJOINTS);
+        // Disable cloth - not available
+        CreateEntry(viewMenu, "Cloth Colliders",        QIcon(":/EMotionFX/ClothCollider_Purple.png"), false,        RENDER_CLOTH_COLLIDERS);
         viewMenu->addSeparator();
         CreateEntry(viewMenu, "Skeleton",               "Skeleton.png",         RENDER_SKELETON);
         CreateEntry(viewMenu, "Line Skeleton",          "SkeletonLines.png",    RENDER_LINESKELETON);
@@ -161,6 +163,8 @@ namespace EMStudio
         SetRenderFlag(RENDER_RAGDOLL_JOINTLIMITS, true);
         SetRenderFlag(RENDER_HITDETECTION_COLLIDERS, true);
         SetRenderFlag(RENDER_CLOTH_COLLIDERS, true);
+        SetRenderFlag(RENDER_SIMULATEDOBJECT_COLLIDERS, true);
+        SetRenderFlag(RENDER_SIMULATEJOINTS, true);
 
         SetRenderFlag(RENDER_SKELETON, false);
         SetRenderFlag(RENDER_LINESKELETON, false);

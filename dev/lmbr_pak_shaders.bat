@@ -78,6 +78,9 @@ SET SHADERFLAVOR=%2
 SET PLATFORM=%3
 SET SOURCESHADERLIST=%4
 
+REM Trim the trailing \ from BASE_PATH, otherwise passing "%BASE_PATH%" with a trailing '\' causes the last " to be escaped and the arg processing for -s fails
+IF %BASE_PATH:~-1%==\ SET BASE_PATH=%BASE_PATH:~0,-1%
+
 SET ARGS=%GAMENAME% %PLATFORM% %SHADERFLAVOR% "%BINFOLDER%" -e "%BASE_PATH%"
 IF NOT [%SOURCESHADERLIST%] == [] SET ARGS=%ARGS% -s %SOURCESHADERLIST%
 

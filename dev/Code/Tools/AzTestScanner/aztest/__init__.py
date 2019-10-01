@@ -48,6 +48,8 @@ def get_parser():
                         help="if set, no HTML report is generated at the end of the scan")
     p_scan.add_argument('--integ', '-i', required=False, action="store_true",
                         help="if set, runs integration tests instead of unit tests")
+    p_scan.add_argument('--suite', '-s', required=False,
+                        help="Restrict the set of tests run to only be a specific suite")
     p_scan.add_argument('--no-timestamp', required=False, action="store_true",
                         help="if set, removes timestamp from output files")
     p_scan.add_argument('--wait-for-debugger', required=False, action="store_true",

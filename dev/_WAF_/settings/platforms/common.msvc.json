@@ -76,6 +76,14 @@
         ],
         "@SET_LTCG_THREADS_FLAG@:LINKFLAGS": [
             "/CGTHREADS:@LTCG_THREADS_COUNT@"
+        ],
+        # Enable whole program optimization flags based on the 'enable_whole_program_optimization' user settings
+        "?enable_whole_program_optimization?:CFLAGS,CXXFLAGS": [
+            "/GL"       # Whole-program optimization
+        ],
+        # Enable link time optimization flags based on the 'enable_link_time_optimization' user settings
+        "?enable_link_time_optimization?:LINKFLAGS": [
+            "/LTCG"     # Link time code generation
         ]
     },
     "env/release": {
@@ -96,6 +104,14 @@
         ],
         "@SET_LTCG_THREADS_FLAG@:LINKFLAGS": [
             "/CGTHREADS:@LTCG_THREADS_COUNT@"
+        ],
+        # Enable whole program optimization flags based on the 'enable_whole_program_optimization' user settings
+        "?enable_whole_program_optimization?:CFLAGS,CXXFLAGS": [
+            "/GL"       # Whole-program optimization
+        ],
+        # Enable link time optimization flags based on the 'enable_link_time_optimization' user settings
+        "?enable_link_time_optimization?:LINKFLAGS": [
+            "/LTCG"     # Link time code generation
         ]
     }
 }

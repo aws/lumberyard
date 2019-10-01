@@ -14,8 +14,6 @@
 
 // Included directly from JobManager.h
 
-#ifdef AZCORE_JOBS_IMPL_WORK_STEALING
-
 #include <AzCore/Jobs/Internal/JobManagerBase.h>
 #include <AzCore/Jobs/JobManagerDesc.h>
 #include <AzCore/Memory/PoolAllocator.h>
@@ -80,32 +78,11 @@ namespace AZ
 
             void CollectGarbage() {}
 
-            Job* GetCurrentJob() const
-            {
-                const ThreadInfo* info = m_currentThreadInfo;
-#ifndef AZ_MONOLITHIC_BUILD
-                if (!info)
-                {
-                    //we could be in a different module where m_currentThreadInfo has not been set yet (on a worker or user thread assisting with jobs)
-                    info = FindCurrentThreadInfo();
-                }
-#endif
-                return info ? info->m_currentJob : nullptr;
-            }
+            Job* GetCurrentJob() const;
 
             AZ::u32 GetNumWorkerThreads() const { return static_cast<AZ::u32>(m_workerThreads.size()); }
 
-            AZ::u32 GetWorkerThreadId() const
-            {
-                const ThreadInfo* info = m_currentThreadInfo;
-#ifndef AZ_MONOLITHIC_BUILD
-                if (!info)
-                {
-                    info = CrossModuleFindAndSetWorkerThreadInfo();
-                }
-#endif
-                return info ? info->m_workerId : JobManagerBase::InvalidWorkerThreadId;
-            }
+            AZ::u32 GetWorkerThreadId() const;
 
         private:
 
@@ -118,6 +95,7 @@ namespace AZ
                 AZStd::thread::id m_threadId;
                 bool m_isWorker = false;
                 Job* m_currentJob = nullptr; //job which is currently processing on this thread
+                void* m_owningManager = nullptr; // pointer to the job manager that owns this thread. only used for comparisons, not to call functions.
 
                 // valid only on workers (TODO: Use some lazy initialization as we don't need that data for non worker threads)
                 AZStd::thread m_thread;
@@ -172,7 +150,6 @@ namespace AZ
         };
     }
 }
-#endif // AZCORE_JOBS_IMPL_WORK_STEALING
 
 #endif
 #pragma once

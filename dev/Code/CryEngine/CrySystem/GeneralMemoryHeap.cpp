@@ -87,7 +87,7 @@ int CGeneralMemoryHeap::Release()
 {
     int nRef = m_refCount.fetch_sub(1);
 
-    if (nRef <= 0)
+    if (nRef <= 1)
     {
         delete this;
     }

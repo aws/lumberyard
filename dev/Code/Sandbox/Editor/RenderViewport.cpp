@@ -37,6 +37,7 @@
 #include "Terrain/Heightmap.h"
 #include "IPostEffectGroup.h"
 #include <HMDBus.h>
+#include "Terrain/TerrainManager.h"
 
 #include "ViewPane.h"
 #include "ViewportTitleDlg.h"
@@ -88,7 +89,7 @@
 #include <AzFramework/Input/Devices/Mouse/InputDeviceMouse.h>
 
 #if defined(AZ_PLATFORM_WINDOWS)
-#   include <AzFramework/Input/Buses/Notifications/RawInputNotificationBus_win.h>
+#   include <AzFramework/Input/Buses/Notifications/RawInputNotificationBus_Platform.h>
 #endif // defined(AZ_PLATFORM_WINDOWS)
 
 #include <AzFramework/Input/Buses/Requests/InputChannelRequestBus.h>
@@ -96,7 +97,7 @@
 
 CRenderViewport* CRenderViewport::m_pPrimaryViewport = nullptr;
 
-#if defined(AZ_PLATFORM_APPLE)
+#if AZ_TRAIT_OS_PLATFORM_APPLE
 void StopFixedCursorMode();
 void StartFixedCursorMode(QObject *viewport);
 #endif
@@ -2640,7 +2641,7 @@ void CRenderViewport::keyPressEvent(QKeyEvent* event)
         const ushort* codeUnitsUTF16 = event->text().utf16();
         while (ushort codeUnitUTF16 = *codeUnitsUTF16)
         {
-            EBUS_EVENT(AzFramework::RawInputNotificationBusWin, OnRawInputCodeUnitUTF16Event, codeUnitUTF16);
+            AzFramework::RawInputNotificationBusWindows::Broadcast(&AzFramework::RawInputNotificationsWindows::OnRawInputCodeUnitUTF16Event, codeUnitUTF16);
             ++codeUnitsUTF16;
         }
     }
@@ -2680,11 +2681,33 @@ void CRenderViewport::SetViewTM(const Matrix34& viewTM, bool bMoveOnly)
         if ((GetIEditor()->GetDisplaySettings()->GetSettings() & SETTINGS_NOCOLLISION) == 0)
         {
             Vec3 p = camMatrix.GetTranslation();
-            float z = GetIEditor()->GetTerrainElevation(p.x, p.y);
-            if (p.z < z + 0.25)
+            bool adjustCameraElevation = true;
+
+            if (GetIEditor()->Get3DEngine())
             {
-                p.z = z + 0.25;
-                camMatrix.SetTranslation(p);
+                AZ::Aabb terrainAabb(GetIEditor()->Get3DEngine()->GetTerrainAabb());
+                if (!GetIEditor()->GetTerrainManager()->GetUseTerrain())
+                {
+                    adjustCameraElevation = false;
+                }
+                else if (!terrainAabb.Contains(LYVec3ToAZVec3(p)))
+                {
+                    adjustCameraElevation = false;
+                }
+                else if (GetIEditor()->Get3DEngine()->GetTerrainHole(p.x, p.y))
+                {
+                    adjustCameraElevation = false;
+                }
+            }
+
+            if (adjustCameraElevation)
+            {
+                float z = GetIEditor()->GetTerrainElevation(p.x, p.y);
+                if (p.z < z + 0.25)
+                {
+                    p.z = z + 0.25;
+                    camMatrix.SetTranslation(p);
+                }
             }
         }
 
@@ -4290,7 +4313,7 @@ void CRenderViewport::HideCursor()
     }
 
     qApp->setOverrideCursor(Qt::BlankCursor);
-#if defined(AZ_PLATFORM_APPLE)
+#if AZ_TRAIT_OS_PLATFORM_APPLE
     StartFixedCursorMode(this);
 #endif
     m_bCursorHidden = true;
@@ -4304,7 +4327,7 @@ void CRenderViewport::ShowCursor()
         return;
     }
 
-#if defined(AZ_PLATFORM_APPLE)
+#if AZ_TRAIT_OS_PLATFORM_APPLE
     StopFixedCursorMode();
 #endif
     qApp->restoreOverrideCursor();

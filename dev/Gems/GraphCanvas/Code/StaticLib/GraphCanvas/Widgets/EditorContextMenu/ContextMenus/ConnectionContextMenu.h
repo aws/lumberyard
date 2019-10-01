@@ -22,7 +22,7 @@ namespace GraphCanvas
         : public EditorContextMenu
     {
     public:
-        ConnectionContextMenu(QWidget* parent = nullptr);
+        ConnectionContextMenu(EditorId editorId, QWidget* parent = nullptr);
         ~ConnectionContextMenu() override = default;
         
     protected:

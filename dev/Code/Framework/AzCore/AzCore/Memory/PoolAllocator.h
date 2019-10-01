@@ -125,9 +125,9 @@ namespace AZ
 #ifdef AZCORE_ENABLE_MEMORY_TRACKING
                 if (m_records)
                 {
-#if defined(AZ_HAS_VARIADIC_TEMPLATES) && defined(AZ_DEBUG_BUILD)
+#if defined(AZ_DEBUG_BUILD)
                     ++suppressStackRecord; // one more for the fact the ebus is a function
-#endif // AZ_HAS_VARIADIC_TEMPLATES
+#endif // AZ_DEBUG_BUILD
                     EBUS_EVENT(Debug::MemoryDrillerBus, RegisterAllocation, this, address, byteSize, alignment, name, fileName, lineNum, suppressStackRecord + 1);
                 }
 #else

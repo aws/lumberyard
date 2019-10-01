@@ -105,6 +105,8 @@ public:
         IZLibDecompressor * ());
     MOCK_METHOD0(GetLZ4Decompressor,
         ILZ4Decompressor * ());
+    MOCK_METHOD0(GetZStdDecompressor,
+        IZStdDecompressor * ());
     MOCK_METHOD0(GetPerfHUD,
         ICryPerfHUD * ());
     MOCK_METHOD0(GetPlatformOS,
@@ -235,8 +237,8 @@ public:
         bool(const char* szMODName));
     MOCK_CONST_METHOD0(IsMinimalMode,
         bool());
-    MOCK_METHOD2(CreateXmlNode,
-        XmlNodeRef(const char*, bool));
+    MOCK_METHOD3(CreateXmlNode,
+        XmlNodeRef(const char*, bool, bool));
     MOCK_METHOD4(LoadXmlFromBuffer,
         XmlNodeRef(const char*, size_t, bool, bool));
     MOCK_METHOD2(LoadXmlFromFile,
@@ -366,8 +368,6 @@ public:
         ESystemGlobalState(void));
     MOCK_METHOD1(SetSystemGlobalState,
         void(ESystemGlobalState systemGlobalState));
-    MOCK_METHOD1(AddPlatformOSCreateFlag,
-        void(uint8 createFlag));
     MOCK_METHOD5(AsyncMemcpy,
         void(void* dst, const void* src, size_t size, int nFlags, volatile int* sync));
 

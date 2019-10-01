@@ -17,8 +17,8 @@ namespace GraphCanvas
     // ConnectionContextMenu
     //////////////////////////
     
-    ConnectionContextMenu::ConnectionContextMenu(QWidget* parent)
-        : EditorContextMenu(parent)
+    ConnectionContextMenu::ConnectionContextMenu(EditorId editorId, QWidget* parent)
+        : EditorContextMenu(editorId, parent)
     {
         m_editActionsGroup.PopulateMenu(this);
 

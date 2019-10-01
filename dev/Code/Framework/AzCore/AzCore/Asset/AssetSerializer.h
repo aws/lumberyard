@@ -128,8 +128,12 @@ namespace AZ {
                 return GetAssetClassId();
             }
 
-            void Reflect(SerializeContext*)
+            void Reflect(SerializeContext* serializeContext)
             {
+                if (serializeContext)
+                {
+                    serializeContext->RegisterGenericClassInfo(GetSpecializedTypeId(), this, &AZ::AnyTypeInfoConcept<ThisType>::CreateAny);
+                }
             }
 
             Factory m_factory;

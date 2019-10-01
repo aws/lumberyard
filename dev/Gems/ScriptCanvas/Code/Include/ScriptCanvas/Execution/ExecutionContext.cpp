@@ -40,6 +40,7 @@ namespace ScriptCanvas
 
         ErrorReporterBus::Handler::BusConnect(m_runtimeId);
         ExecutionRequestBus::Handler::BusConnect(m_runtimeId);
+
         return AZ::Success();
     }
 
@@ -221,9 +222,6 @@ namespace ScriptCanvas
                     ErrorIrrecoverably();
                 }
             }
-
-            ReportError(node, "Invalid ScriptCanvas stack found. Execution stack was empty when at least one node should remain");
-            ErrorIrrecoverably();
             //SC_EXECUTION_TRACE_THREAD_ENDED();
         }
     }

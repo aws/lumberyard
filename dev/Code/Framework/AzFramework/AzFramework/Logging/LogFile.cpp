@@ -3,15 +3,16 @@
 * its licensors.
 *
 * For complete copyright and license terms please see the LICENSE at the root of this
-* distribution(the "License").All use of this software is governed by the License,
-*or, if provided, by the license below or the license accompanying this file.Do not
-* remove or modify any license notices.This file is distributed on an "AS IS" BASIS,
+* distribution (the "License"). All use of this software is governed by the License,
+*or, if provided, by the license below or the license accompanying this file. Do not
+* remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
 *WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
 
+#include <AzFramework/AzFramework_Traits_Platform.h>
 #include "LogFile.h"
-#if defined(_WIN32)
+#if AZ_TRAIT_AZFRAMEWORK_USE_C11_LOCALTIME_S
 #include <direct.h>
 #include <time.h>
 #endif
@@ -67,9 +68,9 @@ namespace AzFramework
             struct tm timeinfo;
 
             time(&rawtime);
-#if defined(_WIN32)
+#if AZ_TRAIT_AZFRAMEWORK_USE_C11_LOCALTIME_S
             localtime_s(&timeinfo, &rawtime);
-#elif defined(__APPLE__)
+#elif AZ_TRAIT_AZFRAMEWORK_USE_POSIX_LOCALTIME_R
             localtime_r(&rawtime, &timeinfo);
 #endif
             // encode as ISO-8601 so that its standard... which is like YYYY-MM-DDTHH-mm-ssTZD e.g., 1997-07-16T19:20:30+01:00
@@ -294,7 +295,7 @@ namespace AzFramework
         }
     }
 
-    void LogFile::AppendLog(LogFile::SeverityLevel severity, const char* dataSource, int dataLength, const char* category, int categoryLen)
+    void LogFile::AppendLog(LogFile::SeverityLevel severity, const char* dataSource, int dataLength, const char* category, int categoryLen, uintptr_t threadId, AZ::u64 time)
     {
         AZStd::lock_guard<AZStd::recursive_mutex> locker(m_logProtector);
 
@@ -312,15 +313,10 @@ namespace AzFramework
         bool addNewLine = (dataSource[dataLength - 1] != '\n');
 
         char categorybuffer[64] = {0};
-        // format the thread-id based on platform.  On some platforms, its just a number:
-#if AZ_TRAIT_OS_USE_WINDOWS_THREADS || defined(AZ_PLATFORM_ANDROID) || defined(AZ_PLATFORM_LINUX)
-        const char* printFormatter = m_machineReadable ? "~~%u~~%s~~" : "{0x%08X}[%14s]";
-        unsigned long threadID = static_cast<unsigned long>(AZStd::this_thread::get_id().m_id);
-#else
-        // on other platforms, its a pointer of some kind.
+        // On some platforms, threadid is just a number but on other platforms it is a pointer of some kind
+        // uintptr_t will ensure that the data will always fit
+        uintptr_t threadID = threadId ? threadId : (uintptr_t)(AZStd::this_thread::get_id().m_id);
         const char* printFormatter = m_machineReadable ? "~~%p~~%s~~" : "{%p}[%14s]";
-        void* threadID = static_cast<void*>(AZStd::this_thread::get_id().m_id);
-#endif
         // while it may be tempting to check the fileio Pointer here, any emit of any warning or error would be fatal
         // since we're already logging, and we don't want to log while you log.
 
@@ -336,7 +332,7 @@ namespace AzFramework
                 // in machine-readable mode we write double delimiters before each column so
                 // ~~MS_SINCE_EPOCH~~SEVERITY~~THREADID~~WINDOW~~MESSAGE
 
-                AZ::u64 rawTime = AZStd::GetTimeUTCMilliSecond();
+                AZ::u64 rawTime = time ? time : AZStd::GetTimeUTCMilliSecond();
 
                 azsnprintf(buffer, 80, "~~%llu~~%i", rawTime, severity);
                 m_fileIO->Write(m_fileHandle, buffer, strlen(buffer));

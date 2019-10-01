@@ -47,8 +47,8 @@ namespace RenderGL
         uint32      mNumIndices;    // the number of indices
 
         // helpers
-        MCORE_INLINE bool GetIsSuccess() const  { return (glGetError() == GL_NO_ERROR); }
-        MCORE_INLINE bool GetHasError() const   { return (glGetError() != GL_NO_ERROR); }
+        bool GetIsSuccess() const;
+        bool GetHasError() const;
     };
 }
 

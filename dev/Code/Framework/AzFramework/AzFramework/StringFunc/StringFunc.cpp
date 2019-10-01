@@ -18,23 +18,15 @@
 #include <AzCore/Memory/SystemAllocator.h>
 #include <AzCore/IO/SystemFile.h> // AZ_MAX_PATH_LEN
 #include "StringFunc.h"
+#include <AzCore/AzCore_Traits_Platform.h>
+#include <AzFramework/AzFramework_Traits_Platform.h>
 
-#if !defined(AZ_PLATFORM_WINDOWS)
-#if defined(AZ_RESTRICTED_PLATFORM)
-    #if defined(AZ_PLATFORM_XENIA)
-        #include "Xenia/StringFunc_cpp_xenia.inl"
-    #elif defined(AZ_PLATFORM_PROVO)
-        #include "Provo/StringFunc_cpp_provo.inl"
-    #endif
-#endif
-#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
-#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
-#else
+#if !AZ_TRAIT_USE_WINDOWS_FILE_API
 
 //Have to declare this typedef for Android & Linux to minimise changes elsewhere in this file
-#if defined(AZ_PLATFORM_ANDROID) || defined(AZ_PLATFORM_LINUX)
+#if AZ_TRAIT_AZFRAMEWORK_USE_ERRNO_T_TYPEDEF
 typedef int errno_t;
-#endif //AZ_PLATFORM_ANDROID
+#endif
 
 void ClearToEmptyStr(char* buffer)
 {
@@ -158,7 +150,6 @@ errno_t _splitpath_s (const char* path,
 
     return 0;
 }
-#endif
 #endif
 
 // Some platforms define NAME_MAX but Windows doesn't and the AZ headers provide no equivalent
@@ -2404,7 +2395,7 @@ namespace AzFramework
                 // 
                 if ((pos = inout.find(parentDirToken)) != AZStd::string::npos)
                 {
-#if defined(AZ_TRAIT_OS_USE_WINDOWS_FILE_PATHS)
+#if AZ_TRAIT_OS_USE_WINDOWS_FILE_PATHS
                     // Attempt to get a drive letter from the path. If this is the root on a win based file system, then 
                     // a drive letter will be returned, and we wont collapse beyond this point. Otherwise, we wont collapse beyond
                     // the beginning of the path.
@@ -2415,7 +2406,7 @@ namespace AzFramework
                     // For posix-based systems, starting with a '/' will represent an absolute path. Also, 
                     size_t startingPos = inout.find_first_not_of(AZ_CORRECT_FILESYSTEM_SEPARATOR);
                     startingPos = (startingPos != AZStd::string::npos && startingPos != 0) ? startingPos - 1 : 0;
-#endif // defined(AZ_TRAIT_OS_USE_WINDOWS_FILE_PATHS)
+#endif // AZ_TRAIT_OS_USE_WINDOWS_FILE_PATHS
 
                     while ((pos != AZStd::string::npos) && (pos >= startingPos))
                     {

@@ -13,7 +13,7 @@
 #pragma once
 
 #include <AzCore/Component/Component.h>
-#include <Asset/RuntimeAssetRegistry.h>
+#include <ScriptCanvas/Asset/AssetRegistry.h>
 
 namespace ScriptCanvas
 {
@@ -39,11 +39,11 @@ namespace ScriptCanvas
         void Deactivate() override;
         ////////////////////////////////////////////////////////////////////////
 
-        RuntimeAssetRegistry& GetAssetRegistry();
+        AssetRegistry& GetAssetRegistry();
 
     private:
         RuntimeAssetSystemComponent(const RuntimeAssetSystemComponent&) = delete;
 
-        RuntimeAssetRegistry m_runtimeAssetRegistry;
+        AssetRegistry m_runtimeAssetRegistry;
     };
 }

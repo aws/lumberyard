@@ -1,0 +1,8 @@
+{
+  "auto": {
+    "Platform/Android": [
+      "Metastream_Traits_Platform.h",
+      "Metastream_Traits_Android.h"
+    ]
+  }
+}

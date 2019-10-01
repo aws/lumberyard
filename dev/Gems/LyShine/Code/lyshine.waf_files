@@ -27,6 +27,7 @@
             "Source/EditorPropertyTypes.cpp",
             "Source/EditorPropertyTypes.h",
             "Source/LyShineModule.cpp",
+            "Source/LyShineModule.h",
             "Source/LyShineSystemComponent.cpp",
             "Source/LyShineSystemComponent.h",
             "Source/RenderGraph.cpp",

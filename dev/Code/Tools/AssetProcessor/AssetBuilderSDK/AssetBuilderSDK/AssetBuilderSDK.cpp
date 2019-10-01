@@ -328,7 +328,7 @@ namespace AssetBuilderSDK
         if (AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
         {
             serializeContext->Class<JobDescriptor>()->
-                Version(3)->
+                Version(4)->
                 Field("Additional Fingerprint Info", &JobDescriptor::m_additionalFingerprintInfo)->
 #if defined(ENABLE_LEGACY_PLATFORMFLAGS_SUPPORT)
             EventHandler(&Internal::s_jobDescriptorSerializeEventHandlerInstance)->
@@ -341,7 +341,8 @@ namespace AssetBuilderSDK
                 Field("Job Parameters", &JobDescriptor::m_jobParameters)->
                 Field("Check Exclusive Lock", &JobDescriptor::m_checkExclusiveLock)->
                 Field("Fail On Error", &JobDescriptor::m_failOnError)->
-                Field("Job Dependency List", &JobDescriptor::m_jobDependencyList);
+                Field("Job Dependency List", &JobDescriptor::m_jobDependencyList)->
+                Field("Check Server", &JobDescriptor::m_checkServer);
         }
     }
 
@@ -504,6 +505,29 @@ namespace AssetBuilderSDK
                 Version(1)->
                 Field("Dependency Id", &ProductDependency::m_dependencyId)->
                 Field("Flags", &ProductDependency::m_flags);
+        }
+    }
+
+    ProductPathDependency::ProductPathDependency(AZStd::string_view dependencyPath, ProductPathDependencyType dependencyType)
+        : m_dependencyPath(dependencyPath),
+        m_dependencyType(dependencyType)
+    {
+    }
+
+    bool ProductPathDependency::operator==(const ProductPathDependency& rhs) const
+    {
+        return m_dependencyPath == rhs.m_dependencyPath
+            && m_dependencyType == rhs.m_dependencyType;
+    }
+
+    void ProductPathDependency::Reflect(AZ::ReflectContext* context)
+    {
+        if (AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
+        {
+            serializeContext->Class<ProductPathDependency>()->
+                Version(1)->
+                Field("Dependency Path", &ProductPathDependency::m_dependencyPath)->
+                Field("Dependency Type", &ProductPathDependency::m_dependencyType);
         }
     }
 
@@ -945,12 +969,13 @@ namespace AssetBuilderSDK
         if (AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
         {
             serializeContext->Class<JobProduct>()->
-                Version(3)->
+                Version(5)->
                 Field("Product File Name", &JobProduct::m_productFileName)->
                 Field("Product Asset Type", &JobProduct::m_productAssetType)->
                 Field("Product Sub Id", &JobProduct::m_productSubID)->
                 Field("Legacy Sub Ids", &JobProduct::m_legacySubIDs)->
-                Field("Dependencies", &JobProduct::m_dependencies);
+                Field("Dependencies", &JobProduct::m_dependencies)->
+                Field("Relative Path Dependencies", &JobProduct::m_pathDependencies);
         }
     }
 
@@ -1000,6 +1025,7 @@ namespace AssetBuilderSDK
         EBUS_EVENT_RESULT(serializeContext, AZ::ComponentApplicationBus, GetSerializeContext);
         AZ_Assert(serializeContext, "Unable to retrieve serialize context.");
 
+        ProductPathDependency::Reflect(serializeContext);
         SourceFileDependency::Reflect(serializeContext);
         JobDependency::Reflect(serializeContext);
         JobDescriptor::Reflect(serializeContext);
@@ -1054,9 +1080,10 @@ namespace AssetBuilderSDK
         if (AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
         {
             serializeContext->Class<SourceFileDependency>()->
-                Version(1)->
+                Version(2)->
                 Field("Source File Dependency Path", &SourceFileDependency::m_sourceFileDependencyPath)->
-                Field("Source File Dependency UUID", &SourceFileDependency::m_sourceFileDependencyUUID);
+                Field("Source File Dependency UUID", &SourceFileDependency::m_sourceFileDependencyUUID)->
+                Field("Source Dependency Type", &SourceFileDependency::m_sourceDependencyType);
         }
     }
 

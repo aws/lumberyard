@@ -14,13 +14,15 @@
 ########################################################################################
 
 def build(bld):
+    
     bld.DefineGem(
         # Add custom build options here
         use         = ['AzCore', 'AzFramework'],
 
         includes    = [ '.',
                         'Include',
-                        bld.Path('Code/CryEngine/CryAction'),
+                        bld.Path('Code/CryEngine/CryCommon'),
+                        bld.Path('Code/CryEngine/CryAction')
                       ],
 
         editor = dict(
@@ -34,7 +36,8 @@ def build(bld):
                             bld.Path('Code/Sandbox/Editor'),
                             bld.Path('Code/Sandbox/Editor/Include'),
                             bld.Path('Code/Sandbox/Plugins/EditorCommon'),
-                            bld.Path('Code/CryEngine/CryAction'),
+                            bld.Path('Code/CryEngine/CryCommon'),
+                            bld.Path('Code/CryEngine/CryAction')
                            ],
             use_required_gems    = True,
 
@@ -46,3 +49,4 @@ def build(bld):
         use_required_gems    = True,
 
     )
+

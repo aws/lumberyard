@@ -1,0 +1,10 @@
+{
+    "auto":
+    {
+        "Platform/AppleTV":
+        [
+            "CryAudioImplNoSound_Traits_Platform.h",
+            "CryAudioImplNoSound_Traits_AppleTV.h"
+        ]
+    }
+}

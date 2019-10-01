@@ -176,7 +176,7 @@
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
 #undef AZ_RESTRICTED_SECTION_IMPLEMENTED
 #elif defined(MOBILE)
-	#define CONSOLE
+    #define CONSOLE
 #endif
 
 //render thread settings, as this is accessed inside 3dengine and renderer and needs to be compile time defined, we need to do it here
@@ -232,23 +232,23 @@
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
 #undef AZ_RESTRICTED_SECTION_IMPLEMENTED
 #elif defined(LINUX) || defined(APPLE)
-	#define __STDC_FORMAT_MACROS
-	#include <inttypes.h>
-	#if defined(APPLE) || defined(LINUX64)
-	// int64 is not the same type as the operating system's int64_t
-		#undef PRIX64
-		#undef PRIx64
-		#undef PRId64
-		#undef PRIu64
-		#define PRIX64 "llX"
-		#define PRIx64 "llx"
-		#define PRId64 "lld"
-		#define PRIu64 "llu"
-	#endif
-	#define PLATFORM_I64(x) x##ll
+    #define __STDC_FORMAT_MACROS
+    #include <inttypes.h>
+    #if defined(APPLE) || defined(LINUX64)
+    // int64 is not the same type as the operating system's int64_t
+        #undef PRIX64
+        #undef PRIx64
+        #undef PRId64
+        #undef PRIu64
+        #define PRIX64 "llX"
+        #define PRIx64 "llx"
+        #define PRId64 "lld"
+        #define PRIu64 "llu"
+    #endif
+    #define PLATFORM_I64(x) x##ll
 #else
-	#include <inttypes.h>
-	#define PLATFORM_I64(x) x##i64
+    #include <inttypes.h>
+    #define PLATFORM_I64(x) x##i64
 #endif
 
 #if !defined(PRISIZE_T)
@@ -392,28 +392,25 @@ static inline void  __dmb()
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
 #undef AZ_RESTRICTED_SECTION_IMPLEMENTED
 #elif defined(LINUX) || defined(APPLE)
-	#if !defined(_DEBUG)
-		#define SIMPLE_THREAD_STACK_SIZE_KB (256)
-	#else
-		#define SIMPLE_THREAD_STACK_SIZE_KB (256 * 4)
-	#endif
+    #if !defined(_DEBUG)
+        #define SIMPLE_THREAD_STACK_SIZE_KB (256)
+    #else
+        #define SIMPLE_THREAD_STACK_SIZE_KB (256 * 4)
+    #endif
 #else
-	#define SIMPLE_THREAD_STACK_SIZE_KB (32)
+    #define SIMPLE_THREAD_STACK_SIZE_KB (32)
 #endif
 
+#include <AzCore/PlatformDef.h>
 
-#if defined(__GNUC__)
-    #define DLL_EXPORT __attribute__ ((visibility("default")))
-    #define DLL_IMPORT __attribute__ ((visibility("default")))
-#else
-    #if defined(AZ_MONOLITHIC_BUILD)
-        #define DLL_EXPORT
-        #define DLL_IMPORT
-    #else // AZ_MONOLITHIC_BUILD
-        #define DLL_EXPORT __declspec(dllexport)
-        #define DLL_IMPORT __declspec(dllimport)
-    #endif // AZ_MONOLITHIC_BUILD
-#endif
+#if defined(AZ_MONOLITHIC_BUILD)
+    #define DLL_EXPORT
+    #define DLL_IMPORT
+#else // AZ_MONOLITHIC_BUILD
+    #define DLL_EXPORT AZ_DLL_EXPORT
+    #define DLL_IMPORT AZ_DLL_IMPORT
+#endif // AZ_MONOLITHIC_BUILD
+
 
 //////////////////////////////////////////////////////////////////////////
 // Define BIT macro for use in enums and bit masks.
@@ -926,7 +923,7 @@ typedef int socklen_t;
     #elif defined(AZ_PLATFORM_PROVO)
         #include "Provo/platform_h_provo.inl"
     #endif
-	#endif
+    #endif
 #endif
 
 #define _STRINGIFY(x) #x
@@ -943,9 +940,9 @@ typedef int socklen_t;
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
 #undef AZ_RESTRICTED_SECTION_IMPLEMENTED
 #elif defined(WIN32) || defined(WIN64)
-	#define MESSAGE(msg) message(__FILE__ "(" STRINGIFY(__LINE__) "): " msg)
+    #define MESSAGE(msg) message(__FILE__ "(" STRINGIFY(__LINE__) "): " msg)
 #else
-	#define MESSAGE(msg)
+    #define MESSAGE(msg)
 #endif
 
 

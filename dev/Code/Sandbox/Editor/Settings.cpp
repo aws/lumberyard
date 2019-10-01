@@ -202,7 +202,7 @@ SEditorSettings::SEditorSettings()
     freezeReadOnly = true;
     frozenSelectable = false;
 
-#if defined(AZ_PLATFORM_APPLE)
+#if AZ_TRAIT_OS_PLATFORM_APPLE
     textEditorForScript = "TextEdit";
     textEditorForShaders = "TextEdit";
     textEditorForBspaces = "TextEdit";

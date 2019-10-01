@@ -14,82 +14,85 @@
 #include <ScriptCanvas/Libraries/Core/MethodUtility.h>
 #include <ScriptCanvas/Core/Contracts/SupportsMethodContract.h>
 
+#include <ScriptCanvas/Utils/SerializationUtils.h>
+
 namespace ScriptCanvas
 {
     namespace Nodes
     {
         namespace Operators
         {
-            void OperatorEmpty::ConfigureContracts(SourceType sourceType, AZStd::vector<ContractDescriptor>& contractDescs)
+            //////////////////
+            // OperatorEmpty
+            //////////////////
+            bool OperatorEmpty::OperatorEmptyVersionConverter(AZ::SerializeContext& context, AZ::SerializeContext::DataElementNode& classElement)
             {
-                if (sourceType == SourceType::SourceInput)
+                if (classElement.GetVersion() < 1)
                 {
-                    ContractDescriptor supportsMethodContract;
-                    supportsMethodContract.m_createFunc = [this]() -> SupportsMethodContract* { return aznew SupportsMethodContract("Size"); };
-                    contractDescs.push_back(AZStd::move(supportsMethodContract));
-                }
-            }
-
-            void OperatorEmpty::OnSourceTypeChanged()
-            {
-                m_outputSlots.insert(AddSlot("True", "The container is empty", SlotType::ExecutionOut));
-                m_outputSlots.insert(AddSlot("False", "The container is not empty", SlotType::ExecutionOut));
-                m_outputSlots.insert(AddOutputTypeSlot("Is Empty", "True if the container is empty, false if it's not.", Data::Type::Boolean(), Node::OutputStorage::Required, false));
-            }
-
-            void OperatorEmpty::InvokeOperator()
-            {
-                const SlotSet& slotSets = GetSourceSlots();
-
-                if (!slotSets.empty())
-                {
-                    SlotId sourceSlotId = (*slotSets.begin());
-
-                    if (Data::IsVectorContainerType(GetSourceAZType()) || Data::IsMapContainerType(GetSourceAZType()))
+                    // Remove OperatorBase
+                    if (!SerializationUtils::RemoveBaseClass(context, classElement))
                     {
-                        const Datum* containerDatum = GetInput(sourceSlotId);
-
-                        if (containerDatum && !containerDatum->Empty())
-                        {
-                            // Is the container empty?
-                            auto emptyOutcome = BehaviorContextMethodHelper::CallMethodOnDatum(*containerDatum, "Empty");
-                            if (!emptyOutcome)
-                            {
-                                SCRIPTCANVAS_REPORT_ERROR((*this), "Failed to call Empty on container: %s", emptyOutcome.GetError().c_str());
-                                return;
-                            }
-
-                            Datum emptyResult = emptyOutcome.TakeValue();
-                            bool isEmpty = *emptyResult.GetAs<bool>();
-
-                            PushOutput(Datum(isEmpty), *GetSlot(GetSlotId("Is Empty")));
-
-                            if (isEmpty)
-                            {
-                                SignalOutput(GetSlotId("True"));
-                            }
-                            else
-                            {
-                                SignalOutput(GetSlotId("False"));
-                            }
-                        }
-                    }
-                    else
-                    {
-                        // This should not be possible because we use a contract to verify if the Size method is available
-                        SCRIPTCANVAS_REPORT_ERROR((*this), "The Empty node only works on containers");
+                        return false;
                     }
                 }
 
-                SignalOutput(GetSlotId("Out"));
+                return true;
+            }
+
+            void OperatorEmpty::OnInit()
+            {
+                // Version Conversion away from Operator Base
+                if (HasSlots())
+                {
+                    const Slot* slot = GetSlot(OperatorEmptyProperty::GetIsEmptySlotId(this));
+                    if (slot == nullptr)
+                    {
+                        ConfigureSlots();
+                    }
+                }
+                ////
             }
 
             void OperatorEmpty::OnInputSignal(const SlotId& slotId)
             {
-                const SlotId inSlotId = OperatorBaseProperty::GetInSlotId(this);
+                const SlotId inSlotId = OperatorEmptyProperty::GetInSlotId(this);
                 if (slotId == inSlotId)
                 {
-                    InvokeOperator();
+                    SlotId sourceSlotId = OperatorEmptyProperty::GetSourceSlotId(this);
+
+                    const Datum* containerDatum = GetInput(sourceSlotId);
+
+                    if (Datum::IsValidDatum(containerDatum))
+                    {
+                        // Is the container empty?
+                        auto emptyOutcome = BehaviorContextMethodHelper::CallMethodOnDatum(*containerDatum, "Empty");
+                        if (!emptyOutcome)
+                        {
+                            SCRIPTCANVAS_REPORT_ERROR((*this), "Failed to call Empty on container: %s", emptyOutcome.GetError().c_str());
+                            return;
+                        }
+
+                        Datum emptyResult = emptyOutcome.TakeValue();
+                        bool isEmpty = *emptyResult.GetAs<bool>();
+
+                        PushOutput(Datum(isEmpty), *GetSlot(OperatorEmptyProperty::GetIsEmptySlotId(this)));
+
+                        if (isEmpty)
+                        {
+                            SignalOutput(OperatorEmptyProperty::GetTrueSlotId(this));
+                        }
+                        else
+                        {
+                            SignalOutput(OperatorEmptyProperty::GetFalseSlotId(this));
+                        }
+                    }
+                    else
+                    {
+                        PushOutput(Datum(true), *GetSlot(OperatorEmptyProperty::GetIsEmptySlotId(this)));
+                        SignalOutput(OperatorEmptyProperty::GetFalseSlotId(this));
+                    }
+
+                    SignalOutput(OperatorEmptyProperty::GetOutSlotId(this));
                 }
             }
         }

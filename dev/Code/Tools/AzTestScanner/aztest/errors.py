@@ -30,10 +30,11 @@ class RunnerReturnCodes:
 
     TESTS_SUCCEEDED = 0
     TESTS_FAILED = 1
-
+    
     INCORRECT_USAGE = 101
     FAILED_TO_LOAD_LIBRARY = 102
     SYMBOL_NOT_FOUND = 103
+    MODULE_SKIPPED = 104 # this is not an error condition but isn't the same as tests running and succeeding.
 
     MODULE_TIMEOUT = 106
 
@@ -48,6 +49,7 @@ class RunnerReturnCodes:
         INCORRECT_USAGE: "Incorrect usage of test runner",
         FAILED_TO_LOAD_LIBRARY: "Failed to load library",
         SYMBOL_NOT_FOUND: "Symbol not found",
+        MODULE_SKIPPED: "Skipped (Not an error)",
 
         MODULE_TIMEOUT: "Module timed out.",
 

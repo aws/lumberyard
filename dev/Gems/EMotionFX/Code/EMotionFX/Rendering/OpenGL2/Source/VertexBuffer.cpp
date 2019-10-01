@@ -150,4 +150,14 @@ namespace RenderGL
         glUnmapBuffer(GL_ARRAY_BUFFER);
         glBindBuffer(GL_ARRAY_BUFFER, 0);
     }
+
+    bool VertexBuffer::GetIsSuccess() const
+    {
+        return (glGetError() == GL_NO_ERROR);
+    }
+
+    bool VertexBuffer::GetHasError() const
+    {
+        return (glGetError() != GL_NO_ERROR);
+    }
 }

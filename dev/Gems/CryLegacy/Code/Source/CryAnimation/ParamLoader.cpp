@@ -21,8 +21,6 @@
 #include "FacialAnimation/FacialModel.h"
 #include "FacialAnimation/FaceEffectorLibrary.h"
 
-#include <IPlatformOS.h>
-
 // gcc only allows function attributes at the definition not the declaration
 void Warning(const char* calFileName, EValidatorSeverity severity, const char* format, ...) PRINTF_PARAMS(3, 4);
 
@@ -2529,21 +2527,6 @@ bool CParamLoader::AddIfNewAnimationAlias(SAnimListInfo& animList, const char* a
         else
         {
             Warning(animList.fileName.c_str(), VALIDATOR_WARNING, "Duplicate animation reference not supported: %s:%s", szFileName, pFoundAnimFile->m_FilePathQ);
-#if 0
-            IPlatformOS::EMsgBoxResult result;
-            IPlatformOS* pOS = gEnv->pSystem->GetPlatformOS();
-            if (pOS)
-            {
-                char errorBuf[512];
-                sprintf_s(errorBuf, 512, "Duplicate animation reference not supported: %s %s:%s", animList.fileName.c_str(), szFileName, pFoundAnimFile->m_FilePathQ);
-                result = pOS->DebugMessageBox(errorBuf, "Animation");
-
-                if (result == IPlatformOS::eMsgBox_Cancel)
-                {
-                    __debugbreak();
-                }
-            }
-#endif
         }
     }
 #endif

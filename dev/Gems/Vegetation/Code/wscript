@@ -13,8 +13,11 @@
 
 def build(bld):
     bld.DefineGem(
-        includes          = [ '.', 'Include' ],
-        win_features      = ['crcfix'],    
+        includes          = [ '.', 
+                              'Include', 
+                              bld.Path('Code/CryEngine/CryCommon')
+                            ],
+        win_features      = ['crcfix'],
         use_required_gems = True,
         debug_export_defines = ['VEG_PROFILE_ENABLED'],
         profile_export_defines = ['VEG_PROFILE_ENABLED'],
@@ -34,6 +37,7 @@ def build(bld):
                            bld.Path('Code/Sandbox/Plugins/EditorCommon'),
                            bld.Path('Code/Sandbox/Editor'),
                            bld.Path('Code/Sandbox/Editor/Include'),
+                           bld.Path('Code/CryEngine/CryCommon')
                            ],
             use         = ['EditorUI_QT',
                            'EditorCommon',

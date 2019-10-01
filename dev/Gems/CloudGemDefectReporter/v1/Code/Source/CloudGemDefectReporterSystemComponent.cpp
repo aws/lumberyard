@@ -24,8 +24,8 @@
 #include <AzFramework/IO/FileOperations.h>
 #include <AzCore/JSON/rapidjson.h>
 #include <AzCore/JSON/document.h>
-#include <AZCore/JSON/stringbuffer.h>
-#include <AZCore/JSON/writer.h>
+#include <AzCore/JSON/stringbuffer.h>
+#include <AzCore/JSON/writer.h>
 
 namespace CloudGemDefectReporter
 {
@@ -482,7 +482,7 @@ namespace CloudGemDefectReporter
         CloudGemDefectReporterUINotificationBus::ExecuteQueuedEvents();
 
         if (pendingScreenShots.size() > 0)
-		{
+        {
             ISystem* system = nullptr;
             CrySystemRequestBus::BroadcastResult(system, &CrySystemRequestBus::Events::GetCrySystem);
 

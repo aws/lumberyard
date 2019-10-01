@@ -16,7 +16,7 @@
 #include <AzCore/Component/Component.h>
 #include <LmbrCentral/Audio/AudioPreloadComponentBus.h>
 
-#include <IAudioInterfacesCommonData.h>
+#include <IAudioSystem.h>
 
 namespace LmbrCentral
 {
@@ -29,6 +29,7 @@ namespace LmbrCentral
     class AudioPreloadComponent
         : public AZ::Component
         , public AudioPreloadComponentRequestBus::Handler
+        , public Audio::AudioPreloadNotificationBus::MultiHandler
     {
     public:
         enum class LoadType : AZ::u32
@@ -56,6 +57,12 @@ namespace LmbrCentral
         void UnloadPreload(const char* preloadName) override;
         bool IsLoaded(const char* preloadName) override;
 
+        /*!
+         * Audio::AudioPreloadNotificationBus::Handler interface
+         */
+        void OnAudioPreloadCached() override;
+        void OnAudioPreloadUncached() override;
+
         static void GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided)
         {
             provided.push_back(AZ_CRC("AudioPreloadService", 0x20c917d8));
@@ -63,6 +70,11 @@ namespace LmbrCentral
 
         static void GetRequiredServices(AZ::ComponentDescriptor::DependencyArrayType& required)
         {
+        }
+
+        static void GetDependentServices(AZ::ComponentDescriptor::DependencyArrayType& dependent)
+        {
+            dependent.push_back(AZ_CRC("AudioProxyService", 0x7da4c79c));
         }
 
         static void GetIncompatibleServices(AZ::ComponentDescriptor::DependencyArrayType& incompatible)
@@ -73,8 +85,13 @@ namespace LmbrCentral
         static void Reflect(AZ::ReflectContext* context);
 
     private:
+        //! Utility functions
+        void LoadPreloadById(Audio::TAudioPreloadRequestID preloadId);
+        void UnloadPreloadById(Audio::TAudioPreloadRequestID preloadId);
+
         //! Transient data
-        AZStd::unordered_set<AZStd::string> m_loadedPreloads;
+        AZStd::unordered_set<Audio::TAudioPreloadRequestID> m_loadedPreloadIds;
+        AZStd::mutex m_loadMutex;
 
         //! Serialized data
         AZStd::string m_defaultPreloadName;

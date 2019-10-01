@@ -26,17 +26,20 @@ def build(bld):
         configurations     = ['all'],
         pch                = 'StdAfx.cpp',
         use                = ['AzCore', 'AzFramework'],
-        includes           = ['Common'],
+        includes           = ['Common',
+                              bld.Path('Code/CryEngine/CryCommon')
+                             ],
         export_includes    = ['.'],
         defines            = ['USE_CRY_NEW_AND_DELETE'],
 
+        # Platform Roots
+        platform_roots  = [bld.PlatformRoot('Platform', export_includes=False)],
 
         # Platform Specific
         win_defines        = ['CRYSOUND_EXPORTS'],
 
-        restricted_script   = 'update_restricted_parameters',
-
         # Testing
+        test_all_includes  = [bld.Path('Gems/LmbrCentral/Code/include')],
         test_all_file_list = ['crysoundsystem_test.waf_files'],
     )
 

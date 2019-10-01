@@ -31,13 +31,13 @@ namespace ScriptCanvasPhysics
         AZ_INLINE void SetDefaultsForRayCastFromEntityToDirection(ScriptCanvas::Node& node)
         {
             // Direction.
-            ScriptCanvas::Node::SetDefaultValuesByIndex<1>::_(node, AZ::Vector3(0.f, 1.f, 0.f));
+            ScriptCanvas::SetDefaultValuesByIndex<1>::_(node, AZ::Vector3(0.f, 1.f, 0.f));
 
             // Offset from origin.
-            ScriptCanvas::Node::SetDefaultValuesByIndex<2>::_(node, 0.);
+            ScriptCanvas::SetDefaultValuesByIndex<2>::_(node, 0.);
 
             // Max distance.
-            ScriptCanvas::Node::SetDefaultValuesByIndex<3>::_(node, 100.);
+            ScriptCanvas::SetDefaultValuesByIndex<3>::_(node, 100.);
         }
 
         AZ_INLINE void SetDefaultsForRayCastFromWorldSpacePositionToEntity(ScriptCanvas::Node& node)
@@ -51,10 +51,10 @@ namespace ScriptCanvasPhysics
         AZ_INLINE void SetDefaultsForRayCastFromWorldSpacePositionToWorldSpacePosition(ScriptCanvas::Node& node)
         {
             // From.
-            ScriptCanvas::Node::SetDefaultValuesByIndex<0>::_(node, AZ::Vector3::CreateZero());
+            ScriptCanvas::SetDefaultValuesByIndex<0>::_(node, AZ::Vector3::CreateZero());
             
             // To.
-            ScriptCanvas::Node::SetDefaultValuesByIndex<1>::_(node, AZ::Vector3(1.f, 0.f, 0.f));
+            ScriptCanvas::SetDefaultValuesByIndex<1>::_(node, AZ::Vector3(1.f, 0.f, 0.f));
         }
 
         using HitResult = AZStd::tuple<float /*distance from the origin of the raycast*/,

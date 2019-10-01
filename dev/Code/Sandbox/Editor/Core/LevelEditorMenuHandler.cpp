@@ -58,12 +58,12 @@ static bool CompareLayoutNames(const QString& name1, const QString& name2)
     return name1.compare(name2, Qt::CaseInsensitive) < 0;
 }
 
-static void AddOpenViewPaneAction(ActionManager::MenuWrapper& menu, const char* name)
+static void AddOpenViewPaneAction(ActionManager::MenuWrapper& menu, const char* viewPaneName, const char* menuActionText = nullptr)
 {
-    QAction* action = menu->addAction(QObject::tr(name));
-    QObject::connect(action, &QAction::triggered, action, [name]()
+    QAction* action = menu->addAction(QObject::tr(menuActionText ? menuActionText : viewPaneName));
+    QObject::connect(action, &QAction::triggered, action, [viewPaneName]()
         {
-            QtViewPaneManager::instance()->OpenPane(name);
+            QtViewPaneManager::instance()->OpenPane(viewPaneName);
         });
 }
 
@@ -141,7 +141,7 @@ LevelEditorMenuHandler::LevelEditorMenuHandler(
     , m_settings(settings)
     , m_enableLegacyCryEntities(false)
 {
-#if defined(AZ_PLATFORM_APPLE_OSX)
+#if defined(AZ_PLATFORM_MAC)
     // Hide the non-native toolbar, then setNativeMenuBar to ensure it is always visible on macOS.
     m_mainWindow->menuBar()->hide();
     m_mainWindow->menuBar()->setNativeMenuBar(true);
@@ -451,15 +451,17 @@ QMenu* LevelEditorMenuHandler::CreateFileMenu()
         connect(configureGemSubMenu, &QAction::triggered, this, &LevelEditorMenuHandler::ActivateGemConfiguration);
     }
 
-    // Deployment Tool
-    AddOpenViewPaneAction(projectSettingMenu, LyViewPane::DeploymentTool);
-
     // Project Settings Tool
     // Shortcut must be set while adding the action otherwise it doesn't work
     projectSettingMenu.Get()->addAction(
         tr(LyViewPane::ProjectSettingsTool),
         []() { QtViewPaneManager::instance()->OpenPane(LyViewPane::ProjectSettingsTool); },
         tr("Ctrl+Shift+P"));
+
+    projectSettingMenu.AddSeparator();
+
+    // Deployment Tool
+    AddOpenViewPaneAction(projectSettingMenu, LyViewPane::DeploymentTool, "Deploy to device");
 
     fileMenu.AddSeparator();
 
@@ -1035,9 +1037,10 @@ QMenu* LevelEditorMenuHandler::CreateAWSMenu()
     auto awsConsoleMenu = awsMenu.AddMenu(tr("Open AWS Console"));
     awsConsoleMenu.AddAction(ID_AWS_LAUNCH);
     awsConsoleMenu.AddAction(ID_AWS_COGNITO_CONSOLE);
+    awsConsoleMenu.AddAction(ID_AWS_DEVICEFARM_CONSOLE);
     awsConsoleMenu.AddAction(ID_AWS_DYNAMODB_CONSOLE);
-    awsConsoleMenu.AddAction(ID_AWS_S3_CONSOLE);
     awsConsoleMenu.AddAction(ID_AWS_LAMBDA_CONSOLE);
+    awsConsoleMenu.AddAction(ID_AWS_S3_CONSOLE);
 
     // Cloud Gem Portal
     awsMenu.AddSeparator();

@@ -193,9 +193,7 @@ namespace ScriptCanvasEditor
             else
             {
                 CreateEBusHandlerEventMimeEvent mimeEvent(m_busName, actionItem.m_name.toUtf8().data(), actionItem.m_eventId);
-                idPair = mimeEvent.CreateEventNode(graphCanvasGraphId, dummyPosition);
-
-                eventId = AZ::Crc32(m_busName.c_str());
+                idPair = mimeEvent.CreateEventNode(graphCanvasGraphId, dummyPosition);                
             }
 
             GraphCanvas::WrappedNodeConfiguration configuration;

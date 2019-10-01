@@ -72,7 +72,9 @@ private:
     int doLayout(const QRect& rect, bool testOnly) const;
     int smartSpacing(QStyle::PixelMetric pm) const;
 
+    AZ_PUSH_DISABLE_WARNING(4251, "-Wunknown-warning-option")
     QList<QLayoutItem*> itemList;
+    AZ_POP_DISABLE_WARNING
     int m_hSpace;
     int m_vSpace;
 };

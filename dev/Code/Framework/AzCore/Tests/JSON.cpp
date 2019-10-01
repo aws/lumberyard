@@ -10,11 +10,10 @@
 *
 */
 
-#include "TestTypes.h"
-
 #include <AzCore/JSON/rapidjson.h>
 #include <AzCore/JSON/document.h>     // rapidjson's DOM-style API
 #include <AzCore/JSON/prettywriter.h> // for stringify JSON
+#include <AzCore/UnitTest/TestTypes.h>
 
 using namespace AZ;
 using namespace rapidjson;

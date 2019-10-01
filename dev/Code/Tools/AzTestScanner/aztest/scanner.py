@@ -9,10 +9,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #
 
+import colorama
 import logging as lg
+import ntpath
 import os
 import sys
 import json
+import xml.etree.ElementTree as ET
 from aztest.common import create_output_directory, create_xml_output_filename, ModuleType, MODULE_UNIT_EXPORT_SYMBOL, \
     MODULE_INTEG_EXPORT_SYMBOL, EXECUTABLE_EXPORT_SYMBOL, ScanResult, SubprocessTimeoutException
 from aztest.filters import FileApprover, get_default_blacklist, get_default_whitelist
@@ -20,6 +23,8 @@ from aztest.log import setup_logging
 from aztest.report import HTMLReporter, XMLGenerator
 from aztest.errors import RunnerReturnCodes
 from bootstrap import BootstrapConfig
+from colorama import Fore
+from colorama import Style
 
 logger = lg.getLogger(__name__)
 
@@ -35,10 +40,17 @@ else:
 
 __no_dll__ = False
 
+TESTS_RUN_KEY = "tests_run"
+TESTS_PASSED_KEY = "tests_passed"
+TESTS_FAILED_KEY = "tests_failed"
+TESTS_ERRORED_KEY = "tests_errored"
+TESTS_SKIPPED_KEY = "tests_skipped"
+TOTAL_TIME_TAKEN_KEY = "total_time_taken"
+
 
 def add_dirs_to_path(path_dirs):
     if path_dirs:
-        os.environ['PATH'] += os.pathsep + os.pathsep.join([os.path.abspath(path_dir) for path_dir in path_dirs])
+        os.environ["PATH"] += os.pathsep + os.pathsep.join([os.path.abspath(path_dir) for path_dir in path_dirs])
 
 
 def scan_one(args, extra, type_, scanner, runner_path, bootstrap_config, file_name, output_dir):
@@ -84,6 +96,10 @@ def scan_one(args, extra, type_, scanner, runner_path, bootstrap_config, file_na
         else:
             # just run unit tests
             export_symbol = MODULE_UNIT_EXPORT_SYMBOL
+
+        if args.suite:
+            cmd_args += ["--suite"]
+            cmd_args += [args.suite]
 
         # run with bootstrapper
         ran_with_bootstrapper = False
@@ -161,7 +177,8 @@ def scan(args, extra):
     output_dir = create_output_directory(args.output_path, args.no_timestamp)
 
     # setup logging
-    setup_logging(os.path.join(output_dir, "aztest.log"), args.verbosity)
+    log_path = os.path.join(output_dir, "aztest.log")
+    setup_logging(log_path, args.verbosity)
     logger.info("AZ Test Scanner")
 
     if not args.runner_path:
@@ -189,11 +206,14 @@ def scan(args, extra):
     file_approver = FileApprover(whitelist_files, blacklist_files)
 
     module_failures = 0
+    library_module_name_list = []
+    executable_name_list = []
 
     # Dynamic Libraries / Modules
     if not __no_dll__:
         logger.info("Scanning for dynamic libraries")
-        for file_name in scanner.enumerate_modules(args.dir):
+        library_module_name_list = list(scanner.enumerate_modules(args.dir))
+        for file_name in library_module_name_list:
             try:
                 if args.limit and len(scan_results) >= args.limit:
                     continue  # reached scanning limit
@@ -209,10 +229,13 @@ def scan(args, extra):
                 if result:
                     scan_results += [result]
                     if result.return_code != RunnerReturnCodes.TESTS_SUCCEEDED:
-                        logger.error("Module FAILED: {}, with exit code: {} ({})".format(file_name, result.return_code,
+                        if result.return_code == RunnerReturnCodes.MODULE_SKIPPED:
+                            logger.info("Module SKIPPED: {}".format(file_name))
+                        else:
+                            logger.error("Module FAILED: {}, with exit code: {} ({})".format(file_name, result.return_code,
                                                                                          RunnerReturnCodes.to_string(
                                                                                              result.return_code)))
-                        module_failures += 1
+                            module_failures += 1
                     if not os.path.exists(result.xml_path):
                         XMLGenerator.create_xml_output_file(result.xml_path, result.return_code, result.error_msg)
 
@@ -225,7 +248,8 @@ def scan(args, extra):
     # Executables
     if args.exe:
         logger.info("Scanning for executables")
-        for file_name in scanner.enumerate_executables(args.dir):
+        executable_name_list = list(scanner.enumerate_executables(args.dir))
+        for file_name in executable_name_list:
 
             if args.limit and len(scan_results) >= args.limit:
                 continue  # reached scanning limit
@@ -256,9 +280,78 @@ def scan(args, extra):
     with open(json_path, 'w') as f:
         json.dump(scan_results_json, f)
 
+    print "----------------AUTOTEST SUMMARY -----------------"
+    print("Log: {}".format(log_path))
+    print("JSON results: {}".format(json_path))
+
     if not args.no_html_report:
         # Convert the set of XML files into an HTML report
-        HTMLReporter.create_html_report(scan_results, output_dir)
-        HTMLReporter.create_html_failure_report(scan_results, output_dir)
+        html_report = HTMLReporter.create_html_report(scan_results, output_dir)
+        html_failure_report = HTMLReporter.create_html_failure_report(scan_results, output_dir)
+        print("HTML report: {}".format(html_report))
+        print("HTML failure-only report: {}".format(html_failure_report))
+
+    print("Total modules found: {}".format(len(library_module_name_list)))
+    if module_failures:
+        colorama.init()
+        print(Fore.RED + "**** {} modules had failures or errors ****".format(module_failures))
+        print(Style.RESET_ALL)
+    else:
+        print("No modules had failures nor errors.")
+
+    print("If a module has 1/0 tests failed or errored, this means the library failed to load.")
+
+    test_summary_results = {
+      TESTS_RUN_KEY: 0,
+      TESTS_PASSED_KEY: 0,
+      TESTS_FAILED_KEY: 0,
+      TESTS_ERRORED_KEY: 0,
+      TESTS_SKIPPED_KEY: 0,
+      TOTAL_TIME_TAKEN_KEY: 0,
+    }
+    for file_name in library_module_name_list:
+        _print_summary_for_file_name(test_summary_results, file_name, output_dir)
+
+    for file_name in executable_name_list:
+        _print_summary_for_file_name(test_summary_results, file_name, output_dir)
+
+    print "\nTotal tests run: {0}".format(str(test_summary_results[TESTS_RUN_KEY]))
+    print "Total tests passed: {0}".format(str(test_summary_results[TESTS_PASSED_KEY]))
+    print "Total tests failed: {0}".format(str(test_summary_results[TESTS_FAILED_KEY]))
+    print "Total tests errored: {0}".format(str(test_summary_results[TESTS_ERRORED_KEY]))
+    print "Total tests skipped: {0}".format(str(test_summary_results[TESTS_SKIPPED_KEY]))
+    print "Total test time taken: {0}\n".format(str(test_summary_results[TOTAL_TIME_TAKEN_KEY]))
+
+    print "----------------AUTOTEST SUMMARY -----------------"
 
     return 1 if module_failures > 0 else 0
+
+
+def _print_summary_for_file_name(test_summary_results, file_name, output_dir):
+    try:
+        xml_file_name = create_xml_output_filename(file_name, output_dir)
+        XMLTree = ET.parse(xml_file_name)
+
+        tests = int(XMLTree.getroot().attrib['tests'])
+        failed = int(XMLTree.getroot().attrib['failures'])
+        disabled = int(XMLTree.getroot().attrib['disabled'])
+        errored = int(XMLTree.getroot().attrib['errors'])
+        time = float(XMLTree.getroot().attrib['time'])
+
+        test_summary_results[TESTS_RUN_KEY] = test_summary_results[TESTS_RUN_KEY] + tests
+        test_summary_results[TESTS_PASSED_KEY] = test_summary_results[TESTS_PASSED_KEY] + tests - failed - disabled - errored
+        test_summary_results[TESTS_FAILED_KEY] = test_summary_results[TESTS_FAILED_KEY] + failed
+        test_summary_results[TESTS_ERRORED_KEY] = test_summary_results[TESTS_ERRORED_KEY] + errored
+        test_summary_results[TESTS_SKIPPED_KEY] = test_summary_results[TESTS_SKIPPED_KEY] + disabled
+        test_summary_results[TOTAL_TIME_TAKEN_KEY] = test_summary_results[TOTAL_TIME_TAKEN_KEY] + time
+
+        bad_tests = int(failed) + int(errored)
+        message = "{}: {}/{} tests failed or errored".format(ntpath.basename(file_name),
+                                                             str(failed + errored),
+                                                             str(tests))
+        if bad_tests:
+            print(message)
+
+    except IOError:
+        # this happens when a module is found but doesn't have tests
+        pass

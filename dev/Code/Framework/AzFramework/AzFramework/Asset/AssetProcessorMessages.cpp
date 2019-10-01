@@ -1480,6 +1480,62 @@ namespace AzFramework
             }
         }
 
+
+
+
+        //---------------------------------------------------------------------
+        unsigned int FileTreeRequest::MessageType()
+        {
+            static unsigned int messageType = AZ_CRC("AssetSystem::FileTree", 0x27019bb2);
+            return messageType;
+        }
+
+        unsigned int FileTreeRequest::GetMessageType() const
+        {
+            return MessageType();
+        }
+
+        void FileTreeRequest::Reflect(AZ::ReflectContext* context)
+        {
+            auto serialize = azrtti_cast<AZ::SerializeContext*>(context);
+            if (serialize)
+            {
+                serialize->Class<FileTreeRequest, BaseAssetProcessorMessage>()
+                    ->Version(1);
+            }
+        }
+
+        //---------------------------------------------------------------------
+        FileTreeResponse::FileTreeResponse(AZ::u32 resultCode
+            , const FileList& fileList
+            , const FolderList& folderList)
+            : m_resultCode(resultCode)
+            , m_fileList(fileList)
+            , m_folderList(folderList)
+        {
+        }
+
+        unsigned int FileTreeResponse::GetMessageType() const
+        {
+            return FileTreeRequest::MessageType();
+        }
+
+        void FileTreeResponse::Reflect(AZ::ReflectContext* context)
+        {
+            auto serialize = azrtti_cast<AZ::SerializeContext*>(context);
+            if (serialize)
+            {
+                serialize->Class<FileTreeResponse, BaseAssetProcessorMessage>()
+                    ->Version(1)
+                    ->Field("ResultCode", &FileTreeResponse::m_resultCode)
+                    ->Field("Files", &FileTreeResponse::m_fileList)
+                    ->Field("Folders", &FileTreeResponse::m_folderList);
+            }
+        }
+
+
+
+
         //---------------------------------------------------------------------------
         AssetNotificationMessage::AssetNotificationMessage(const AZ::OSString& data, NotificationType type, const AZ::Data::AssetType& assetType)
             : m_data(data)

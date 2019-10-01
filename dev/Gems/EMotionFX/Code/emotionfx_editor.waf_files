@@ -9,8 +9,8 @@
         "Resources": [
             "../Assets/Editor/Layouts/Layouts.qrc",
             "../Assets/Editor/Images/Icons/Resources.qrc",
-            "../Assets/Editor/Images/Icons/ActorComponent.png",
-            "../Assets/Editor/Images/Icons/AnimGraphComponent.png"
+            "../Assets/Editor/Images/Icons/ActorComponent.svg",
+            "../Assets/Editor/Images/Icons/AnimGraphComponent.svg"
         ],
       "Source/Components": 
       [
@@ -32,20 +32,35 @@
         "Source/Editor/ColliderContainerWidget.cpp",
         "Source/Editor/ColliderHelpers.h",
         "Source/Editor/ColliderHelpers.cpp",
+        "Source/Editor/InputDialogValidatable.h",
+        "Source/Editor/InputDialogValidatable.cpp",
         "Source/Editor/JointSelectionWidget.h",
         "Source/Editor/JointSelectionWidget.cpp",
         "Source/Editor/JointSelectionDialog.h",
         "Source/Editor/JointSelectionDialog.cpp",
+        "Source/Editor/LineEditValidatable.h",
+        "Source/Editor/LineEditValidatable.cpp",
         "Source/Editor/ObjectEditor.h",
         "Source/Editor/ObjectEditor.cpp",
+        "Source/Editor/QtMetaTypes.h",
+        "Source/Editor/ReselectingTreeView.cpp",
+        "Source/Editor/ReselectingTreeView.h",
         "Source/Editor/SelectionProxyModel.h",
         "Source/Editor/SelectionProxyModel.cpp",
+        "Source/Editor/SimulatedObjectBus.h",
+        "Source/Editor/SimulatedObjectHelpers.h",
+        "Source/Editor/SimulatedObjectHelpers.cpp",
+        "Source/Editor/SimulatedObjectModel.h",
+        "Source/Editor/SimulatedObjectModel.cpp",
+        "Source/Editor/SimulatedObjectModelCallbacks.cpp",
         "Source/Editor/SkeletonModel.h",
         "Source/Editor/SkeletonModel.cpp",
         "Source/Editor/SkeletonModelJointWidget.h",
         "Source/Editor/SkeletonModelJointWidget.cpp",
         "Source/Editor/SkeletonSortFilterProxyModel.h",
         "Source/Editor/SkeletonSortFilterProxyModel.cpp",
+        "Source/Editor/TagSelector.h",
+        "Source/Editor/TagSelector.cpp",
         "Source/Editor/TypeChoiceButton.h",
         "Source/Editor/TypeChoiceButton.cpp"
       ],
@@ -79,6 +94,21 @@
         "Source/Editor/Plugins/Ragdoll/RagdollNodeWidget.h",
         "Source/Editor/Plugins/Ragdoll/RagdollNodeWidget.cpp"
       ],
+      "Source/Editor/Plugins/SimulatedObject": 
+      [
+        "Source/Editor/Plugins/SimulatedObject/SimulatedJointWidget.h",
+        "Source/Editor/Plugins/SimulatedObject/SimulatedJointWidget.cpp",
+        "Source/Editor/Plugins/SimulatedObject/SimulatedObjectActionManager.h",
+        "Source/Editor/Plugins/SimulatedObject/SimulatedObjectActionManager.cpp",
+        "Source/Editor/Plugins/SimulatedObject/SimulatedObjectWidget.h",
+        "Source/Editor/Plugins/SimulatedObject/SimulatedObjectWidget.cpp",
+        "Source/Editor/Plugins/SimulatedObject/SimulatedObjectColliderWidget.h",
+        "Source/Editor/Plugins/SimulatedObject/SimulatedObjectColliderWidget.cpp",
+        "Source/Editor/Plugins/SimulatedObject/SimulatedObjectSelectionWindow.h",
+        "Source/Editor/Plugins/SimulatedObject/SimulatedObjectSelectionWindow.cpp",
+        "Source/Editor/Plugins/SimulatedObject/SimulatedObjectSelectionWidget.h",
+        "Source/Editor/Plugins/SimulatedObject/SimulatedObjectSelectionWidget.cpp"
+      ],
       "Source/Editor/PropertyWidgets":
       [
           "Source/Editor/PropertyWidgets/AnimGraphNodeHandler.h",
@@ -91,6 +121,8 @@
           "Source/Editor/PropertyWidgets/AnimGraphParameterMaskHandler.cpp",
           "Source/Editor/PropertyWidgets/AnimGraphTagHandler.h",
           "Source/Editor/PropertyWidgets/AnimGraphTagHandler.cpp",
+          "Source/Editor/PropertyWidgets/AnimGraphTransitionHandler.h",
+          "Source/Editor/PropertyWidgets/AnimGraphTransitionHandler.cpp",
           "Source/Editor/PropertyWidgets/ActorMorphTargetHandler.h",
           "Source/Editor/PropertyWidgets/ActorMorphTargetHandler.cpp",
           "Source/Editor/PropertyWidgets/ActorJointHandler.h",
@@ -125,7 +157,13 @@
           "Source/Editor/PropertyWidgets/LODTreeSelectionWidget.cpp",
           "Source/Editor/PropertyWidgets/LODSceneGraphWidget.h",
           "Source/Editor/PropertyWidgets/LODSceneGraphWidget.cpp",
-          "Source/Editor/PropertyWidgets/LODSceneGraphWidget.ui"
+          "Source/Editor/PropertyWidgets/LODSceneGraphWidget.ui",
+          "Source/Editor/PropertyWidgets/SimulatedObjectNameHandler.h",
+          "Source/Editor/PropertyWidgets/SimulatedObjectNameHandler.cpp",
+          "Source/Editor/PropertyWidgets/SimulatedObjectSelectionHandler.h",
+          "Source/Editor/PropertyWidgets/SimulatedObjectSelectionHandler.cpp",
+          "Source/Editor/PropertyWidgets/SimulatedObjectColliderTagHandler.h",
+          "Source/Editor/PropertyWidgets/SimulatedObjectColliderTagHandler.cpp"
       ]
     }
 }

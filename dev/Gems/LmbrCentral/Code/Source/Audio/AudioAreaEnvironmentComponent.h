@@ -63,6 +63,11 @@ namespace LmbrCentral
             provided.push_back(AZ_CRC("AudioAreaEnvironmentService", 0x6ba54d6c));
         }
 
+        static void GetDependentServices(AZ::ComponentDescriptor::DependencyArrayType& dependent)
+        {
+            dependent.push_back(AZ_CRC("AudioPreloadService", 0x20c917d8));
+        }
+
         static void GetRequiredServices(AZ::ComponentDescriptor::DependencyArrayType& required)
         {
             required.push_back(AZ_CRC("ShapeService", 0xe86aa5fe));

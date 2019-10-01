@@ -116,6 +116,11 @@ private:
     {
         int actionId;
         int toolbarVersionAdded;
+
+        bool operator ==(const AmazonToolbar::ActionData& other) const
+        {
+            return actionId == other.actionId;
+        }
     };
 
     QVector<ActionData> m_actions;

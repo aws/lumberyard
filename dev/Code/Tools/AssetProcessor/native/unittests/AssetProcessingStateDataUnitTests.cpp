@@ -158,7 +158,7 @@ void AssetProcessingStateDataUnitTest::DataTest(AssetProcessor::AssetDatabaseCon
     //add a scanfolder
     scanFolder = ScanFolderDatabaseEntry("c:/lumberyard/dev", "dev", "rootportkey", "");
     UNIT_TEST_EXPECT_TRUE(stateData->SetScanFolder(scanFolder));
-    if (scanFolder.m_scanFolderID == -1)
+    if (scanFolder.m_scanFolderID == AzToolsFramework::AssetDatabase::InvalidEntryId)
     {
         Q_EMIT UnitTestFailed("AssetProcessingStateDataTest Failed - scan folder failed to add");
         return;
@@ -167,7 +167,7 @@ void AssetProcessingStateDataUnitTest::DataTest(AssetProcessor::AssetDatabaseCon
     //add the same folder again, should not add another because it already exists, so we should get the same id
     // not only that, but the path should update.
     ScanFolderDatabaseEntry dupeScanFolder = ScanFolderDatabaseEntry("c:/lumberyard/dev2", "dev", "rootportkey", "");
-    dupeScanFolder.m_scanFolderID = -1;
+    dupeScanFolder.m_scanFolderID = AzToolsFramework::AssetDatabase::InvalidEntryId;
     UNIT_TEST_EXPECT_TRUE(stateData->SetScanFolder(dupeScanFolder));
     if (!(dupeScanFolder == scanFolder))
     {
@@ -190,7 +190,7 @@ void AssetProcessingStateDataUnitTest::DataTest(AssetProcessor::AssetDatabaseCon
     //retrieve the one we just made by id
     ScanFolderDatabaseEntry retrieveScanfolderById;
     UNIT_TEST_EXPECT_TRUE(stateData->GetScanFolderByScanFolderID(scanFolder.m_scanFolderID, retrieveScanfolderById));
-    if (retrieveScanfolderById.m_scanFolderID == -1 ||
+    if (retrieveScanfolderById.m_scanFolderID == AzToolsFramework::AssetDatabase::InvalidEntryId ||
         retrieveScanfolderById.m_scanFolderID != scanFolder.m_scanFolderID)
     {
         Q_EMIT UnitTestFailed("AssetProcessingStateDataTest Failed - scan folder failed to add");
@@ -200,7 +200,7 @@ void AssetProcessingStateDataUnitTest::DataTest(AssetProcessor::AssetDatabaseCon
     //retrieve the one we just made by portable key
     ScanFolderDatabaseEntry retrieveScanfolderByScanPath;
     UNIT_TEST_EXPECT_TRUE(stateData->GetScanFolderByPortableKey("rootportkey", retrieveScanfolderByScanPath));
-    if (retrieveScanfolderByScanPath.m_scanFolderID == -1 ||
+    if (retrieveScanfolderByScanPath.m_scanFolderID == AzToolsFramework::AssetDatabase::InvalidEntryId ||
         retrieveScanfolderByScanPath.m_scanFolderID != scanFolder.m_scanFolderID)
     {
         Q_EMIT UnitTestFailed("AssetProcessingStateDataTest Failed - scan folder failed to add");
@@ -210,7 +210,7 @@ void AssetProcessingStateDataUnitTest::DataTest(AssetProcessor::AssetDatabaseCon
     //add another folder
     ScanFolderDatabaseEntry gameScanFolderEntry("c:/lumberyard/game", "game", "gameportkey", "");
     UNIT_TEST_EXPECT_TRUE(stateData->SetScanFolder(gameScanFolderEntry));
-    if (gameScanFolderEntry.m_scanFolderID == -1 ||
+    if (gameScanFolderEntry.m_scanFolderID == AzToolsFramework::AssetDatabase::InvalidEntryId ||
         gameScanFolderEntry.m_scanFolderID == scanFolder.m_scanFolderID)
     {
         Q_EMIT UnitTestFailed("AssetProcessingStateDataTest Failed - scan folder failed to add");
@@ -240,7 +240,7 @@ void AssetProcessingStateDataUnitTest::DataTest(AssetProcessor::AssetDatabaseCon
     //add another folder again
     gameScanFolderEntry = ScanFolderDatabaseEntry("c:/lumberyard/game", "game", "gameportkey2", "");
     UNIT_TEST_EXPECT_TRUE(stateData->SetScanFolder(gameScanFolderEntry));
-    if (gameScanFolderEntry.m_scanFolderID == -1 ||
+    if (gameScanFolderEntry.m_scanFolderID == AzToolsFramework::AssetDatabase::InvalidEntryId ||
         gameScanFolderEntry.m_scanFolderID == scanFolder.m_scanFolderID)
     {
         Q_EMIT UnitTestFailed("AssetProcessingStateDataTest Failed - scan folder failed to add");
@@ -329,7 +329,7 @@ void AssetProcessingStateDataUnitTest::DataTest(AssetProcessor::AssetDatabaseCon
     //setting a valid scan folder pk should allow it to be added
     source = SourceDatabaseEntry(scanFolder.m_scanFolderID, "SomeSource1.tif", validSourceGuid1, "tEsTFingerPrint_TEST");
     UNIT_TEST_EXPECT_TRUE(stateData->SetSource(source));
-    if (source.m_sourceID == -1)
+    if (source.m_sourceID == AzToolsFramework::AssetDatabase::InvalidEntryId)
     {
         Q_EMIT UnitTestFailed("AssetProcessingStateDataTest Failed - source failed to add");
         return;
@@ -346,7 +346,7 @@ void AssetProcessingStateDataUnitTest::DataTest(AssetProcessor::AssetDatabaseCon
 
     //add the same source again, should not add another because it already exists, so we should get the same id
     SourceDatabaseEntry dupeSource(source);
-    dupeSource.m_sourceID = -1;
+    dupeSource.m_sourceID = AzToolsFramework::AssetDatabase::InvalidEntryId;
     UNIT_TEST_EXPECT_TRUE(stateData->SetSource(dupeSource));
     if (dupeSource.m_sourceID != source.m_sourceID)
     {
@@ -384,7 +384,7 @@ void AssetProcessingStateDataUnitTest::DataTest(AssetProcessor::AssetDatabaseCon
     SourceDatabaseEntry dupeSource2(source);
     dupeSource2.m_scanFolderPK = scanfolder2.m_scanFolderID;
     dupeSource2.m_analysisFingerprint = "new different fingerprint";
-    dupeSource2.m_sourceID = -1;
+    dupeSource2.m_sourceID = AzToolsFramework::AssetDatabase::InvalidEntryId;
     UNIT_TEST_EXPECT_TRUE(stateData->SetSource(dupeSource2));
     if (dupeSource2.m_sourceID != source.m_sourceID)
     {
@@ -431,7 +431,7 @@ void AssetProcessingStateDataUnitTest::DataTest(AssetProcessor::AssetDatabaseCon
     //try retrieving this source by id
     SourceDatabaseEntry retrieveSourceBySourceID;
     UNIT_TEST_EXPECT_TRUE(stateData->GetSourceBySourceID(source.m_sourceID, retrieveSourceBySourceID));
-    if (retrieveSourceBySourceID.m_sourceID == -1 ||
+    if (retrieveSourceBySourceID.m_sourceID == AzToolsFramework::AssetDatabase::InvalidEntryId ||
         retrieveSourceBySourceID.m_sourceID != source.m_sourceID ||
         retrieveSourceBySourceID.m_scanFolderPK != source.m_scanFolderPK ||
         retrieveSourceBySourceID.m_sourceGuid != source.m_sourceGuid ||
@@ -444,7 +444,7 @@ void AssetProcessingStateDataUnitTest::DataTest(AssetProcessor::AssetDatabaseCon
     //try retrieving this source by guid
     SourceDatabaseEntry retrieveSourceBySourceGuid;
     UNIT_TEST_EXPECT_TRUE(stateData->GetSourceBySourceGuid(source.m_sourceGuid, retrieveSourceBySourceGuid));
-    if (retrieveSourceBySourceGuid.m_sourceID == -1 ||
+    if (retrieveSourceBySourceGuid.m_sourceID == AzToolsFramework::AssetDatabase::InvalidEntryId ||
         retrieveSourceBySourceGuid.m_sourceID != source.m_sourceID ||
         retrieveSourceBySourceGuid.m_scanFolderPK != source.m_scanFolderPK ||
         retrieveSourceBySourceGuid.m_sourceGuid != source.m_sourceGuid ||
@@ -689,7 +689,7 @@ void AssetProcessingStateDataUnitTest::DataTest(AssetProcessor::AssetDatabaseCon
     // the run key should be untouched.
     job = JobDatabaseEntry(source.m_sourceID, "jobKey1", validFingerprint1, "pc", validBuilderGuid1, statusQueued, 1);
     UNIT_TEST_EXPECT_TRUE(stateData->SetJob(job));
-    UNIT_TEST_EXPECT_TRUE(job.m_jobID != -1);
+    UNIT_TEST_EXPECT_TRUE(job.m_jobID != AzToolsFramework::AssetDatabase::InvalidEntryId);
     UNIT_TEST_EXPECT_TRUE(job.m_jobRunKey == 1);
 
     //get all jobs, there should only the one we added
@@ -706,7 +706,7 @@ void AssetProcessingStateDataUnitTest::DataTest(AssetProcessor::AssetDatabaseCon
 
     //add the same job again, should not add another because it already exists, so we should get the same id
     JobDatabaseEntry dupeJob(job);
-    dupeJob.m_jobID = -1;
+    dupeJob.m_jobID = AzToolsFramework::AssetDatabase::InvalidEntryId;
     UNIT_TEST_EXPECT_TRUE(stateData->SetJob(dupeJob));
     if (!(dupeJob == job))
     {
@@ -727,7 +727,7 @@ void AssetProcessingStateDataUnitTest::DataTest(AssetProcessor::AssetDatabaseCon
 
     //try retrieving this source by id
     UNIT_TEST_EXPECT_TRUE(stateData->GetJobByJobID(job.m_jobID, job));
-    if (job.m_jobID == -1 ||
+    if (job.m_jobID == AzToolsFramework::AssetDatabase::InvalidEntryId ||
         job.m_jobID != job.m_jobID ||
         job.m_sourcePK != job.m_sourcePK ||
         job.m_jobKey != job.m_jobKey ||
@@ -889,7 +889,7 @@ void AssetProcessingStateDataUnitTest::DataTest(AssetProcessor::AssetDatabaseCon
     }
 
     // test invalid insert for non-existant legacy product FK constraint
-    legacyEntry = LegacySubIDsEntry(-1, 9999, 3);
+    legacyEntry = LegacySubIDsEntry(AzToolsFramework::AssetDatabase::InvalidEntryId, 9999, 3);
     {
         UnitTestUtils::AssertAbsorber absorb;
         UNIT_TEST_EXPECT_FALSE(stateData->CreateOrUpdateLegacySubID(legacyEntry));
@@ -897,18 +897,18 @@ void AssetProcessingStateDataUnitTest::DataTest(AssetProcessor::AssetDatabaseCon
     }
 
     // test valid insert of another for same product
-    legacyEntry = LegacySubIDsEntry(-1, product.m_productID, 3);
+    legacyEntry = LegacySubIDsEntry(AzToolsFramework::AssetDatabase::InvalidEntryId, product.m_productID, 3);
     UNIT_TEST_EXPECT_TRUE(stateData->CreateOrUpdateLegacySubID(legacyEntry));
     AZ::s64 newPK = legacyEntry.m_subIDsEntryID;
-    UNIT_TEST_EXPECT_TRUE(newPK != -1); // it should have also updated the PK
+    UNIT_TEST_EXPECT_TRUE(newPK != AzToolsFramework::AssetDatabase::InvalidEntryId); // it should have also updated the PK
     
-    legacyEntry = LegacySubIDsEntry(-1, product.m_productID, 4);
+    legacyEntry = LegacySubIDsEntry(AzToolsFramework::AssetDatabase::InvalidEntryId, product.m_productID, 4);
     UNIT_TEST_EXPECT_TRUE(stateData->CreateOrUpdateLegacySubID(legacyEntry));
-    UNIT_TEST_EXPECT_TRUE(legacyEntry.m_subIDsEntryID != -1); // it should have also updated the PK
+    UNIT_TEST_EXPECT_TRUE(legacyEntry.m_subIDsEntryID != AzToolsFramework::AssetDatabase::InvalidEntryId); // it should have also updated the PK
     UNIT_TEST_EXPECT_TRUE(legacyEntry.m_subIDsEntryID != newPK); // pk should be unique
 
     // test valid insert of another for different product
-    legacyEntry = LegacySubIDsEntry(-1, product2.m_productID, 5);
+    legacyEntry = LegacySubIDsEntry(AzToolsFramework::AssetDatabase::InvalidEntryId, product2.m_productID, 5);
     UNIT_TEST_EXPECT_TRUE(stateData->CreateOrUpdateLegacySubID(legacyEntry));
 
     // test that the ones inserted can be retrieved.
@@ -925,7 +925,7 @@ void AssetProcessingStateDataUnitTest::DataTest(AssetProcessor::AssetDatabaseCon
     bool foundSubID4 = false;
     for (const LegacySubIDsEntry& entryFound : entriesReturned)
     {
-        UNIT_TEST_EXPECT_TRUE(entryFound.m_subIDsEntryID != -1);
+        UNIT_TEST_EXPECT_TRUE(entryFound.m_subIDsEntryID != AzToolsFramework::AssetDatabase::InvalidEntryId);
         UNIT_TEST_EXPECT_TRUE(entryFound.m_productPK == product.m_productID);
         if (entryFound.m_subID == 3)
         {
@@ -944,7 +944,7 @@ void AssetProcessingStateDataUnitTest::DataTest(AssetProcessor::AssetDatabaseCon
 
     UNIT_TEST_EXPECT_TRUE(stateData->QueryLegacySubIdsByProductID(product2.m_productID, handler));
     UNIT_TEST_EXPECT_TRUE(entriesReturned.size() == 1);
-    UNIT_TEST_EXPECT_TRUE(entriesReturned[0].m_subIDsEntryID != -1);
+    UNIT_TEST_EXPECT_TRUE(entriesReturned[0].m_subIDsEntryID != AzToolsFramework::AssetDatabase::InvalidEntryId);
     UNIT_TEST_EXPECT_TRUE(entriesReturned[0].m_productPK == product2.m_productID);
     UNIT_TEST_EXPECT_TRUE(entriesReturned[0].m_subID == 5);
 
@@ -955,7 +955,7 @@ void AssetProcessingStateDataUnitTest::DataTest(AssetProcessor::AssetDatabaseCon
     
     UNIT_TEST_EXPECT_TRUE(stateData->QueryLegacySubIdsByProductID(product2.m_productID, handler));
     UNIT_TEST_EXPECT_TRUE(entriesReturned.size() == 1);
-    UNIT_TEST_EXPECT_TRUE(entriesReturned[0].m_subIDsEntryID != -1);
+    UNIT_TEST_EXPECT_TRUE(entriesReturned[0].m_subIDsEntryID != AzToolsFramework::AssetDatabase::InvalidEntryId);
     UNIT_TEST_EXPECT_TRUE(entriesReturned[0].m_productPK == product2.m_productID);
     UNIT_TEST_EXPECT_TRUE(entriesReturned[0].m_subID == 6);
 
@@ -979,7 +979,7 @@ void AssetProcessingStateDataUnitTest::DataTest(AssetProcessor::AssetDatabaseCon
     entriesReturned.clear();
     UNIT_TEST_EXPECT_TRUE(stateData->QueryLegacySubIdsByProductID(product.m_productID, handler));
     UNIT_TEST_EXPECT_TRUE(entriesReturned.size() == 1);
-    UNIT_TEST_EXPECT_TRUE(entriesReturned[0].m_subIDsEntryID != -1);
+    UNIT_TEST_EXPECT_TRUE(entriesReturned[0].m_subIDsEntryID != AzToolsFramework::AssetDatabase::InvalidEntryId);
     UNIT_TEST_EXPECT_TRUE(entriesReturned[0].m_subIDsEntryID != toRemove);
     UNIT_TEST_EXPECT_TRUE(entriesReturned[0].m_productPK == product.m_productID);
     UNIT_TEST_EXPECT_TRUE(entriesReturned[0].m_subID != removingSubID);
@@ -1101,8 +1101,9 @@ void AssetProcessingStateDataUnitTest::DataTest(AssetProcessor::AssetDatabaseCon
     UNIT_TEST_EXPECT_FALSE(stateData->GetDirectProductDependencies(3443, products));
     UNIT_TEST_EXPECT_FALSE(stateData->GetAllProductDependencies(3443, products));
 
+    AZStd::string platform;
     //trying to add a product dependency without a valid product pk should fail
-    productDependency = ProductDependencyDatabaseEntry(234234, validSourceGuid1, 1, 0);
+    productDependency = ProductDependencyDatabaseEntry(234234, validSourceGuid1, 1, 0, platform);
     {
         UnitTestUtils::AssertAbsorber absorber;
         UNIT_TEST_EXPECT_FALSE(stateData->SetProductDependency(productDependency));
@@ -1111,9 +1112,9 @@ void AssetProcessingStateDataUnitTest::DataTest(AssetProcessor::AssetDatabaseCon
 
     //setting a valid product pk should allow it to be added
     //Product -> Product2
-    productDependency = ProductDependencyDatabaseEntry(product.m_productID, validSourceGuid2, 2, 0);
+    productDependency = ProductDependencyDatabaseEntry(product.m_productID, validSourceGuid2, 2, 0, platform);
     UNIT_TEST_EXPECT_TRUE(stateData->SetProductDependency(productDependency));
-    if (productDependency.m_productDependencyID == -1)
+    if (productDependency.m_productDependencyID == AzToolsFramework::AssetDatabase::InvalidEntryId)
     {
         Q_EMIT UnitTestFailed("AssetProcessingStateDataTest Failed - SetProductDependency failed to add");
         return;
@@ -1132,7 +1133,7 @@ void AssetProcessingStateDataUnitTest::DataTest(AssetProcessor::AssetDatabaseCon
 
     //add the same product again, should not add another because it already exists, so we should get the same id
     ProductDependencyDatabaseEntry dupeProductDependency(productDependency);
-    dupeProductDependency.m_productDependencyID = -1;
+    dupeProductDependency.m_productDependencyID = AzToolsFramework::AssetDatabase::InvalidEntryId;
     UNIT_TEST_EXPECT_TRUE(stateData->SetProductDependency(dupeProductDependency));
     if (!(dupeProductDependency == dupeProductDependency))
     {
@@ -1153,19 +1154,19 @@ void AssetProcessingStateDataUnitTest::DataTest(AssetProcessor::AssetDatabaseCon
     // Setup some more dependencies
 
     //Product2 -> Product3
-    productDependency = ProductDependencyDatabaseEntry(product2.m_productID, validSourceGuid3, 3, 0);
+    productDependency = ProductDependencyDatabaseEntry(product2.m_productID, validSourceGuid3, 3, 0, platform);
     UNIT_TEST_EXPECT_TRUE(stateData->SetProductDependency(productDependency));
 
     //Product2 -> Product4
-    productDependency = ProductDependencyDatabaseEntry(product2.m_productID, validSourceGuid4, 4, 0);
+    productDependency = ProductDependencyDatabaseEntry(product2.m_productID, validSourceGuid4, 4, 0, platform);
     UNIT_TEST_EXPECT_TRUE(stateData->SetProductDependency(productDependency));
 
     //Product3 -> Product5
-    productDependency = ProductDependencyDatabaseEntry(product3.m_productID, validSourceGuid5, 5, 0);
+    productDependency = ProductDependencyDatabaseEntry(product3.m_productID, validSourceGuid5, 5, 0, platform);
     UNIT_TEST_EXPECT_TRUE(stateData->SetProductDependency(productDependency));
 
     //Product5 -> Product6
-    productDependency = ProductDependencyDatabaseEntry(product5.m_productID, validSourceGuid6, 6, 0);
+    productDependency = ProductDependencyDatabaseEntry(product5.m_productID, validSourceGuid6, 6, 0, platform);
     UNIT_TEST_EXPECT_TRUE(stateData->SetProductDependency(productDependency));
 
     /* Dependency Tree
@@ -1257,7 +1258,7 @@ void AssetProcessingStateDataUnitTest::DataTest(AssetProcessor::AssetDatabaseCon
     UNIT_TEST_EXPECT_TRUE(products.size() == 0);
 
     //Product6 -> Product (This creates a circular dependency)
-    productDependency = ProductDependencyDatabaseEntry(product6.m_productID, validSourceGuid1, 1, 0);
+    productDependency = ProductDependencyDatabaseEntry(product6.m_productID, validSourceGuid1, 1, 0, platform);
     UNIT_TEST_EXPECT_TRUE(stateData->SetProductDependency(productDependency));
 
     /* Circular Dependency Tree
@@ -1335,18 +1336,18 @@ void AssetProcessingStateDataUnitTest::BuilderInfoTest(AssetProcessor::AssetData
 
     BuilderInfoEntryContainer newEntries;
 
-    newEntries.emplace_back(BuilderInfoEntry(-1, AZ::Uuid::CreateString("{648B7B06-27A3-42AC-897D-FA4557C28654}"), "Finger_Print"));
-    newEntries.emplace_back(BuilderInfoEntry(-1, AZ::Uuid::CreateString("{0B657D45-A5B0-485B-BF34-0E8779F9A482}"), "Finger_Print"));
+    newEntries.emplace_back(BuilderInfoEntry(AzToolsFramework::AssetDatabase::InvalidEntryId, AZ::Uuid::CreateString("{648B7B06-27A3-42AC-897D-FA4557C28654}"), "Finger_Print"));
+    newEntries.emplace_back(BuilderInfoEntry(AzToolsFramework::AssetDatabase::InvalidEntryId, AZ::Uuid::CreateString("{0B657D45-A5B0-485B-BF34-0E8779F9A482}"), "Finger_Print"));
 
     UNIT_TEST_EXPECT_TRUE(stateData->SetBuilderInfoTable(newEntries));
     // make sure each entry has a number assigned:
-    UNIT_TEST_EXPECT_TRUE(newEntries[0].m_builderInfoID != -1);
-    UNIT_TEST_EXPECT_TRUE(newEntries[1].m_builderInfoID != -1);
+    UNIT_TEST_EXPECT_TRUE(newEntries[0].m_builderInfoID != AzToolsFramework::AssetDatabase::InvalidEntryId);
+    UNIT_TEST_EXPECT_TRUE(newEntries[1].m_builderInfoID != AzToolsFramework::AssetDatabase::InvalidEntryId);
 
     UNIT_TEST_EXPECT_TRUE(stateData->QueryBuilderInfoTable(resultGatherer));
     UNIT_TEST_EXPECT_TRUE(results.size() == 2);
-    UNIT_TEST_EXPECT_TRUE(results[0].m_builderInfoID != -1);
-    UNIT_TEST_EXPECT_TRUE(results[1].m_builderInfoID != -1);
+    UNIT_TEST_EXPECT_TRUE(results[0].m_builderInfoID != AzToolsFramework::AssetDatabase::InvalidEntryId);
+    UNIT_TEST_EXPECT_TRUE(results[1].m_builderInfoID != AzToolsFramework::AssetDatabase::InvalidEntryId);
 
     // they could be in any order, so fix that first:
     bool isInCorrectOrder = (results[0].m_builderInfoID == newEntries[0].m_builderInfoID) && (results[1].m_builderInfoID == newEntries[1].m_builderInfoID);
@@ -1371,13 +1372,13 @@ void AssetProcessingStateDataUnitTest::BuilderInfoTest(AssetProcessor::AssetData
     // now REPLACE the entries with fewer and make sure it actually chops it down and also replaces the fields.
     newEntries.clear();
     results.clear();
-    newEntries.emplace_back(BuilderInfoEntry(-1, AZ::Uuid::CreateString("{8863194A-BCB2-4A4C-A7D9-4E90D68814D4}"), "Finger_Print2"));
+    newEntries.emplace_back(BuilderInfoEntry(AzToolsFramework::AssetDatabase::InvalidEntryId, AZ::Uuid::CreateString("{8863194A-BCB2-4A4C-A7D9-4E90D68814D4}"), "Finger_Print2"));
     UNIT_TEST_EXPECT_TRUE(stateData->SetBuilderInfoTable(newEntries));
     // make sure each entry has a number assigned:
-    UNIT_TEST_EXPECT_TRUE(newEntries[0].m_builderInfoID != -1);
+    UNIT_TEST_EXPECT_TRUE(newEntries[0].m_builderInfoID != AzToolsFramework::AssetDatabase::InvalidEntryId);
     UNIT_TEST_EXPECT_TRUE(stateData->QueryBuilderInfoTable(resultGatherer));
     UNIT_TEST_EXPECT_TRUE(results.size() == 1);
-    UNIT_TEST_EXPECT_TRUE(results[0].m_builderInfoID != -1);
+    UNIT_TEST_EXPECT_TRUE(results[0].m_builderInfoID != AzToolsFramework::AssetDatabase::InvalidEntryId);
     UNIT_TEST_EXPECT_TRUE(results[0].m_builderUuid == newEntries[0].m_builderUuid);
     UNIT_TEST_EXPECT_TRUE(results[0].m_builderInfoID == newEntries[0].m_builderInfoID);
     UNIT_TEST_EXPECT_TRUE(results[0].m_analysisFingerprint == newEntries[0].m_analysisFingerprint);
@@ -1391,19 +1392,19 @@ void AssetProcessingStateDataUnitTest::SourceDependencyTest(AssetProcessor::Asse
     //  A depends on B, which depends on both C and D
 
     SourceFileDependencyEntry newEntry1;  // a depends on B
-    newEntry1.m_sourceDependencyID = -1;
+    newEntry1.m_sourceDependencyID = AzToolsFramework::AssetDatabase::InvalidEntryId;
     newEntry1.m_builderGuid = AZ::Uuid::CreateRandom();
     newEntry1.m_source = "a.txt";
     newEntry1.m_dependsOnSource = "b.txt";
     
     SourceFileDependencyEntry newEntry2; // b depends on C
-    newEntry2.m_sourceDependencyID = -1;
+    newEntry2.m_sourceDependencyID = AzToolsFramework::AssetDatabase::InvalidEntryId;
     newEntry2.m_builderGuid = AZ::Uuid::CreateRandom();
     newEntry2.m_source = "b.txt";
     newEntry2.m_dependsOnSource = "c.txt";
 
     SourceFileDependencyEntry newEntry3;  // b also depends on D
-    newEntry3.m_sourceDependencyID = -1;
+    newEntry3.m_sourceDependencyID = AzToolsFramework::AssetDatabase::InvalidEntryId;
     newEntry3.m_builderGuid = AZ::Uuid::CreateRandom();
     newEntry3.m_source = "b.txt";
     newEntry3.m_dependsOnSource = "d.txt";
@@ -1470,7 +1471,7 @@ void AssetProcessingStateDataUnitTest::SourceFingerprintTest(AssetProcessor::Ass
     scanFolder.m_isRoot = false;
     scanFolder.m_portableKey = "1234";
     scanFolder.m_scanFolder = "//test//test";
-    scanFolder.m_scanFolderID = -1;
+    scanFolder.m_scanFolderID = AzToolsFramework::AssetDatabase::InvalidEntryId;
 
     UNIT_TEST_EXPECT_TRUE(stateData->SetScanFolder(scanFolder));
 

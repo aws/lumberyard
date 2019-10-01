@@ -515,7 +515,7 @@ void CPersistentDebug::Update(float frameTime)
                         if (!textLabel.empty() && textLabel[0] == '@')
                         {
                             string localizedString;
-                            gEnv->pSystem->GetLocalizationManager()->LocalizeString(textLabel, localizedString);
+                            LocalizationManagerRequestBus::Broadcast(&LocalizationManagerRequestBus::Events::LocalizeString_s, textLabel, localizedString, false);
                             draw2d->DrawText(localizedString.c_str(), AZ::Vector2(iterList->pos.x, iterList->pos.y), fontSize, clr.a, &textOptions);
                         }
                         else
@@ -626,7 +626,7 @@ void CPersistentDebug::PostUpdate(float frameTime)
             if (!textLabel.empty() && textLabel[0] == '@')
             {
                 string localizedString;
-                gEnv->pSystem->GetLocalizationManager()->LocalizeString(textLabel, localizedString);
+                LocalizationManagerRequestBus::Broadcast(&LocalizationManagerRequestBus::Events::LocalizeString_s, textLabel, localizedString, false);
 
                 textSize = draw2d->GetTextSize(localizedString.c_str(), fontSize, &textOptions);
                 draw2d->DrawText(localizedString.c_str(), textPos, fontSize, alpha, &textOptions);

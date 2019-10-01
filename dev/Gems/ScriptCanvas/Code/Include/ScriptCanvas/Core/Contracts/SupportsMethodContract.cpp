@@ -21,6 +21,21 @@
 namespace ScriptCanvas
 {
     AZ::Outcome<void, AZStd::string> SupportsMethodContract::OnEvaluate(const Slot& sourceSlot, const Slot& targetSlot) const
+    {   
+        if (targetSlot.IsDynamicSlot() && targetSlot.HasDisplayType())
+        {
+            Data::Type dataType = targetSlot.GetDataType();
+
+            return EvaluateForType(dataType);
+        }
+
+        // If the target slot is dynamic. We can assume they are a type match from the regular type matching system.
+        // So we can just return success and let the dynamic typing system handle ensuring this contract is successfully
+        // fulfiled.
+        return AZ::Success();
+    }
+
+    AZ::Outcome<void, AZStd::string> SupportsMethodContract::OnEvaluateForType(const Data::Type& dataType) const
     {
         AZ::BehaviorContext* behaviorContext(nullptr);
         AZ::ComponentApplicationBus::BroadcastResult(behaviorContext, &AZ::ComponentApplicationRequests::GetBehaviorContext);
@@ -30,17 +45,11 @@ namespace ScriptCanvas
             return AZ::Failure(AZStd::string::format("No Behavior Context"));
         }
 
-        auto dataNode = AZ::EntityUtils::FindFirstDerivedComponent<Node>(targetSlot.GetNodeId());
-        if (dataNode)
+        const AZ::TypeId azDataType = ToAZType(dataType);
+
+        const auto classIter(behaviorContext->m_typeToClassMap.find(azDataType));
+        if (classIter != behaviorContext->m_typeToClassMap.end())
         {
-            const AZ::TypeId dataType = ToAZType(dataNode->GetSlotDataType(targetSlot.GetId()));
-
-            const auto classIter(behaviorContext->m_typeToClassMap.find(dataType));
-            if (classIter == behaviorContext->m_typeToClassMap.end())
-            {
-                return AZ::Failure(AZStd::string::format("Behavior Context does not contain reflection for type provided: %s", dataType.ToString<AZStd::string>().c_str()));
-            }
-
             AZ::BehaviorClass* behaviorClass = classIter->second;
             if (behaviorClass)
             {
@@ -48,10 +57,14 @@ namespace ScriptCanvas
                 {
                     return AZ::Success();
                 }
+                else
+                {
+                    return AZ::Failure(AZStd::string::format("Behavior Context does not contain reflection for method %s on class %s", m_methodName.c_str(), azDataType.ToString<AZStd::string>().c_str()));
+                }
             }
         }
 
-        return AZ::Failure(AZStd::string::format("Type does not support the method: %s", m_methodName.c_str()));
+        return AZ::Failure(AZStd::string::format("Behavior Context does not contain reflection for type provided: %s", azDataType.ToString<AZStd::string>().c_str()));
     }
 
     void SupportsMethodContract::Reflect(AZ::ReflectContext* reflection)

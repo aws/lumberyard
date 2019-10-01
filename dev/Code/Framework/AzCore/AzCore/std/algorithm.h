@@ -12,8 +12,10 @@
 #ifndef AZSTD_ALGORITHM_H
 #define AZSTD_ALGORITHM_H 1
 
+#include <AzCore/std/createdestroy.h>
 #include <AzCore/std/iterator.h>
 #include <AzCore/std/functional_basic.h>
+#include <AzCore/std/typetraits/remove_cvref.h>
 
 namespace AZStd
 {
@@ -38,8 +40,93 @@ namespace AZStd
     template<class T>
     T   max AZ_PREVENT_MACRO_SUBSTITUTION (const T& left, const T& right) { return (left > right) ? left : right; }
 
+    template<class T, class Compare>
+    pair<T, T>   minmax AZ_PREVENT_MACRO_SUBSTITUTION (const T& left, const T& right, Compare comp) { return comp(right, left) ? AZStd::make_pair(right, left) : AZStd::make_pair(left, right); }
+
     template<class T>
-    pair<T, T>   minmax AZ_PREVENT_MACRO_SUBSTITUTION (const T& left, const T& right) { return pair<T, T>((left < right) ? left : right, (left > right) ? left : right); }
+    pair<T, T>   minmax AZ_PREVENT_MACRO_SUBSTITUTION (const T& left, const T& right) { return AZStd::minmax(left, right, AZStd::less<T>()); }
+
+    /*
+    Finds the smallest and greatest element in the range of [first, last)
+    returns a pair consisting of an iterator to the smallest element in .first and an iterator to the largest element in .second.
+    If several elements are equivalent to the smallest element it returns the first such element
+    If several elements are equivalent to the greatest element it returns the last such element
+    */
+    template<class ForwardIt, class Compare>
+    pair<ForwardIt, ForwardIt> minmax_element(ForwardIt first, ForwardIt last, Compare comp)
+    {
+        pair<ForwardIt, ForwardIt> result(first, first);
+        // Check for 0 elements in iterator range and return a pair of (first, first)
+        if (first == last)
+        {
+            return result;
+        }
+
+        while (++first != last)
+        {
+            ForwardIt next = first;
+            // 1 element left to iterate
+            if (++next == last)
+            {
+                if (comp(*first, *result.first))
+                {
+                    result.first = first;
+                }
+                else if (!comp(*first, *result.second))
+                {
+                    result.second = first;
+                }
+            }
+            // 2+ elements left to iterate
+            else
+            {
+                if (comp(*next, *first))
+                {
+                    if (comp(*next, *result.first))
+                    {
+                        result.first = next;
+                    }
+                    if (!comp(*first, *result.second))
+                    {
+                        result.second = first;
+                    }
+                }
+                else
+                {
+                    if (comp(*first, *result.first))
+                    {
+                        result.first = first;
+                    }
+                    if (!comp(*next, *result.second))
+                    {
+                        result.second = next;
+                    }
+                    
+                }
+            }
+        }
+
+        return result;
+    }
+
+    template<class ForwardIt>
+    pair<ForwardIt, ForwardIt> minmax_element(ForwardIt first, ForwardIt last)
+    {
+        return AZStd::minmax_element(first, last, AZStd::less<typename iterator_traits<ForwardIt>::value_type>());
+    }
+
+    template<class T, class Compare>
+    pair<T, T> minmax AZ_PREVENT_MACRO_SUBSTITUTION (std::initializer_list<T> ilist, Compare comp)
+    {
+        auto minMaxPair = AZStd::minmax_element(ilist.begin(), ilist.end(), comp);
+        return AZStd::make_pair(*minMaxPair.first, *minMaxPair.second);
+    }
+
+    template<class T>
+    pair<T, T> minmax AZ_PREVENT_MACRO_SUBSTITUTION (std::initializer_list<T> ilist)
+    {
+        return AZStd::minmax(ilist, AZStd::less<T>());
+    }
     
     template<class T>
     T   clamp(const T& val, const T& lower, const T& upper) { return GetMin(upper, GetMax(val, lower)); }
@@ -820,6 +907,56 @@ namespace AZStd
             ++first1;
         }
         return last1;
+    }
+
+    template <class ForwardIterator>
+    bool is_sorted(ForwardIterator first, ForwardIterator last)
+    {
+        return is_sorted(first, last, AZStd::less<AZStd::remove_cvref_t<decltype(*first)>>());
+    }
+
+    template <class ForwardIterator, class Compare>
+    bool is_sorted(ForwardIterator first, ForwardIterator last, Compare comp)
+    {
+        if (first == last)
+        {
+            return true;
+        }
+        ForwardIterator next = first;
+        while (++next != last)
+        {
+            if (comp(*next, *first))
+            {
+                return false;
+            }
+            ++first;
+        }
+        return true;
+    }
+
+    template<class ForwardIterator>
+    ForwardIterator unique(ForwardIterator first, ForwardIterator last)
+    {
+        return unique(first, last, AZStd::equal_to<AZStd::remove_cvref_t<decltype(*first)>>());
+    }
+
+    template<class ForwardIterator, class BinaryPredicate>
+    ForwardIterator unique(ForwardIterator first, ForwardIterator last, BinaryPredicate pred)
+    {
+        if (first == last)
+        {
+            return last;
+        }
+
+        ForwardIterator result = first;
+        while (++first != last)
+        {
+            if (!pred(*result, *first) && ++result != first)
+            {
+                *result = AZStd::move(*first);
+            }
+        }
+        return ++result;
     }
 
     // todo search_n

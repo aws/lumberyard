@@ -35,7 +35,7 @@ namespace ScriptCanvas
                 );
 
                 OperatorFront()
-                    : OperatorBase(DefaultContainerOperatorConfiguration())
+                    : OperatorBase(DefaultContainerInquiryOperatorConfiguration())
                 {
                 }
 

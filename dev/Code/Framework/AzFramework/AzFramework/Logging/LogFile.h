@@ -3,9 +3,9 @@
 * its licensors.
 *
 * For complete copyright and license terms please see the LICENSE at the root of this
-* distribution(the "License").All use of this software is governed by the License,
-*or, if provided, by the license below or the license accompanying this file.Do not
-* remove or modify any license notices.This file is distributed on an "AS IS" BASIS,
+* distribution (the "License"). All use of this software is governed by the License,
+*or, if provided, by the license below or the license accompanying this file. Do not
+* remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
 *WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
@@ -50,7 +50,7 @@ namespace AzFramework
 
         void AppendLog(SeverityLevel severity, const char* category, const char* datasource);
         void AppendLog(SeverityLevel severity, const char* dataSource);
-        void AppendLog(SeverityLevel severity, const char* dataSource, int dataLength, const char* category = NULL, int categoryLen = 0);
+        void AppendLog(SeverityLevel severity, const char* dataSource, int dataLength, const char* category = NULL, int categoryLen = 0, uintptr_t threadId = 0, AZ::u64 time = 0);
 
         //! Only call FlushLog in cases of emergencies such as access violation termination.  Do not call it after appending.
         void FlushLog();

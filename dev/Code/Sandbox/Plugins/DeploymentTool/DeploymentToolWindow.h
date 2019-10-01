@@ -21,13 +21,18 @@
 #include "DeploymentConfig.h"
 #include "DeployNotificationsQBridge.h"
 #include "RemoteLog.h"
-
+#include "DeviceFarmDriver.h"
+#include "DeviceFarmDevicePoolWindow.h"
 
 namespace Ui
 {
     class DeploymentToolWindow;
 }
 
+namespace DeployTool
+{
+    class IDeviceFarmClient;
+}
 class DeployWorkerBase;
 
 class QTimer;
@@ -53,25 +58,36 @@ public:
     DeploymentToolWindow();
     ~DeploymentToolWindow();
 
+private slots:
+    void OnDeployTargetsTabChanged();
 
 private:
     AZ_DISABLE_COPY_MOVE(DeploymentToolWindow);
 
     // callbacks
-    void OnDeployStatusChange(const QString& status);
+    void OnDeployStatusChanged(const QString& status);
     void OnDeployFinished(bool success);
-    void OnRemoteLogConnectionStateChange(bool isConnected);
+    void OnRemoteLogConnectionStateChanged(bool isConnected);
     void OnPlatformChanged(const QString& currentplatform);
     void OnAssetModeChanged(const QString& currentMode);
     void OnShaderCompilerUseAPToggle(int state);
     void OnDevicePollTimer();
-    void OnDeployClick();
+    void OnDeviceFarmRunsPollTimer();
+    void OnLocalDeviceDeployClick();
+    void OnDeviceFarmDeployClick();
+    void OnDeviceFarmProjectComboBoxValueChanged(int index);
+    void OnAddDeviceFarmProjectButtonClick();
+    void OnRemoveDeviceFarmProjectButtonClick();
+    void OnAddDeviceFarmDevicePoolButtonClick();
+    void OnRemoveDeviceFarmDevicePoolButtonClick();
+    void OnOpenInAwsConsoleAction(int row);
+    void OnDeleteRunAction(int row);
+    void OnDeleteAllRunsAction();
 
     void ToggleInteractiveUI(bool enabled);
     void UpdateIpAddressOptions();
 
-    void UpdateUiFromSystemConfig(const char* systemConfigFile);
-    bool PopulateDeploymentConfigFromUi();
+    bool PopulateDeploymentConfigFromUi(bool localDevice);
 
     void Run();
 
@@ -82,6 +98,11 @@ private:
     void InitializeUi();
     void SaveUiState();
 
+    void ReloadDeviceFarmProjectsList();
+    void ReloadDeviceFarmDevicePoolsList(const AZStd::string& projectArn);
+    void ReloadDeviceFarmRunsList(const AZStd::string& projectArn);
+
+    bool DeviceFarmDeployTargetTabSelected();
 
     QScopedPointer<Ui::DeploymentToolWindow> m_ui;
     QMovie m_animatedSpinningIcon;
@@ -89,10 +110,16 @@ private:
     QIcon m_connectedIcon;
     QIcon m_notConnectedIcon;
 
+    QIcon m_deviceFarmRunErrorIcon;
+    QIcon m_deviceFarmRunInProgressIcon;
+    QIcon m_deviceFarmRunSuccessIcon;
+    QIcon m_deviceFarmRunWarningIcon;
+
     QBrush m_defaultDeployOutputBrush;
     QBrush m_defaultRemoteDeviceOutputBrush;
 
     QScopedPointer<QTimer> m_devicePollTimer;
+    QScopedPointer<QTimer> m_deviceFarmRunsPollTimer;
     QScopedPointer<DeployWorkerBase> m_deployWorker;
 
     QSettings m_deploySettings;
@@ -104,4 +131,28 @@ private:
     BootstrapConfigContainer m_bootstrapConfig;
 
     QString m_lastDeployedDevice;
+
+    std::shared_ptr<DeployTool::IDeviceFarmClient> m_deviceFarmClient;
+    std::shared_ptr<DeployTool::DeviceFarmDriver> m_deviceFarmDriver;
+    std::shared_ptr<DeployTool::DeviceFarmDevicePoolWindow> m_deviceFarmDevicePoolWindow;
+
+    int deviceFarmRunsTableColumnStatus = 0;
+    int deviceFarmRunsTableColumnName = 1;
+    int deviceFarmRunsTableColumnDevicePool = 2;
+    int deviceFarmRunsTableColumnTestType = 3;
+    int deviceFarmRunsTableColumnProgress = 4;
+
+    // Reloading the runs, projects and device pools happens as the result of async
+    // operations so make sure only one at a time is updating it.
+    AZStd::mutex m_deviceFarmRunsReloadMutex;
+    AZStd::mutex m_deviceFarmProjectsReloadMutex;
+    AZStd::mutex m_deviceFarmDevicePoolsReloadMutex;
+
+    // Set a flag while we are waiting for a ListRuns response from the Device Farm
+    bool m_waitingForListRunsResponse = false;
+
+    // Shadow the checked state of "load current level", it is unchecked
+    // while Device Farm is selected.
+    bool m_loadCurrentLevelCheckBoxLastCheckedState = true;
+    bool m_interactiveUIEnabled = true;
 };

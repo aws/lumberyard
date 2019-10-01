@@ -25,6 +25,8 @@
 #include "ISaveGame.h"
 #include "ITestSystem.h"
 
+#include <AzCore/Module/DynamicModuleHandle.h>
+
 struct IFlowSystem;
 struct IGameTokenSystem;
 struct IEffectSystem;
@@ -434,7 +436,7 @@ private:
     IEntitySystem* m_pEntitySystem;
     ITimer* m_pTimer;
     ILog* m_pLog;
-    void* m_systemDll;
+    AZStd::unique_ptr<AZ::DynamicModuleHandle>  m_crySystemModule;
 
     _smart_ptr<CActionGame>       m_pGame;
 

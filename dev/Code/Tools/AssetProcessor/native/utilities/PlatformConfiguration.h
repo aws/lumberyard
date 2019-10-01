@@ -64,7 +64,7 @@ namespace AssetProcessor
     {
         AssetRecognizer() = default;
 
-        AssetRecognizer(const QString& name, bool testLockSource, int priority, bool critical, bool supportsCreateJobs, AssetBuilderSDK::FilePatternMatcher patternMatcher, const QString& version, const AZ::Data::AssetType& productAssetType)
+        AssetRecognizer(const QString& name, bool testLockSource, int priority, bool critical, bool supportsCreateJobs, AssetBuilderSDK::FilePatternMatcher patternMatcher, const QString& version, const AZ::Data::AssetType& productAssetType, bool checkServer = false)
             : m_name(name)
             , m_testLockSource(testLockSource)
             , m_priority(priority)
@@ -73,6 +73,7 @@ namespace AssetProcessor
             , m_patternMatcher(patternMatcher)
             , m_version(version)
             , m_productAssetType(productAssetType) // if specified, it allows you to assign a UUID for the type of products directly.
+            , m_checkServer(checkServer)
         {}
 
         QString m_name;
@@ -90,6 +91,7 @@ namespace AssetProcessor
         int m_priority = 0; // used in order to sort these jobs vs other jobs when no other priority is applied (such as platform connected)
         bool m_testLockSource = false;
         bool m_isCritical = false;
+        bool m_checkServer = false;
         bool m_supportsCreateJobs = false; // used to indicate a recognizer that can respond to a createJobs request
     };
     //! Dictionary of Asset Recognizers based on name
@@ -211,6 +213,9 @@ namespace AssetProcessor
 
         //! given a relative name, loop over folders and resolve it to a full path with the first existing match.
         QString FindFirstMatchingFile(QString relativeName) const;
+
+        //! given a relative name with wildcard characters (* allowed) find a set of matching files
+        QStringList FindWildcardMatches(const QString& sourceFolder, QString relativeName) const;
 
         //! given a fileName (as a full path), return the database source name which includes the output prefix.
         //!

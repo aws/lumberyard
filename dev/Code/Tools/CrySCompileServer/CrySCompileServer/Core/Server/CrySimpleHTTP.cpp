@@ -200,7 +200,7 @@ CCrySimpleHTTP::CCrySimpleHTTP()
 
 void CCrySimpleHTTP::Init()
 {
-    m_pServerSocket = new CCrySimpleSock(80, SEnviropment::Instance().m_WhitelistAddresses);   //http
+    m_pServerSocket = new CCrySimpleSock(61480, SEnviropment::Instance().m_WhitelistAddresses);   //http
     m_pServerSocket->Listen();
     HttpServerJob* serverJob = new HttpServerJob(this);
     serverJob->Start();

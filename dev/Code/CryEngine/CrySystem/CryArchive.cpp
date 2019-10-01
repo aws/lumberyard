@@ -120,7 +120,7 @@ int CryArchiveRW::RemoveAll()
 // Adds a new file to the zip or update an existing one
 // adds a directory (creates several nested directories if needed)
 // compression methods supported are 0 (store) and 8 (deflate) , compression level is 0..9 or -1 for default (like in zlib)
-int CryArchiveRW::UpdateFile (const char* szRelativePath, void* pUncompressed, unsigned nSize, unsigned nCompressionMethod, int nCompressionLevel)
+int CryArchiveRW::UpdateFile (const char* szRelativePath, void* pUncompressed, unsigned nSize, unsigned nCompressionMethod, int nCompressionLevel, CompressionCodec::Codec codec)
 {
     if (m_nFlags & FLAGS_READ_ONLY)
     {
@@ -133,7 +133,7 @@ int CryArchiveRW::UpdateFile (const char* szRelativePath, void* pUncompressed, u
     {
         return ZipDir::ZD_ERROR_INVALID_PATH;
     }
-    return m_pCache->UpdateFile(pPath, pUncompressed, nSize, nCompressionMethod, nCompressionLevel);
+    return m_pCache->UpdateFile(pPath, pUncompressed, nSize, nCompressionMethod, nCompressionLevel, codec);
 }
 
 //////////////////////////////////////////////////////////////////////////

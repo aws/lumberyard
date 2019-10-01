@@ -69,32 +69,34 @@ namespace LyShineExamples
         AZ::EntityId CreateButton(const char* name, bool atRoot, AZ::EntityId parent,
             UiTransform2dInterface::Anchors anchors, UiTransform2dInterface::Offsets offsets,
             const char* text, AZ::Color baseColor, AZ::Color selectedColor, AZ::Color pressedColor,
-            AZ::Color textColor, bool scaleToDevice);
+            AZ::Color textColor, UiTransformInterface::ScaleToDeviceMode scaleToDeviceMode);
 
         //! Creates a checkbox element
         AZ::EntityId CreateCheckbox(const char* name, bool atRoot, AZ::EntityId parent,
             UiTransform2dInterface::Anchors anchors, UiTransform2dInterface::Offsets offsets,
             const char* text, AZ::Color baseColor, AZ::Color selectedColor, AZ::Color pressedColor,
-            AZ::Color checkColor, AZ::Color textColor, bool scaleToDevice);
+            AZ::Color checkColor, AZ::Color textColor,
+            UiTransformInterface::ScaleToDeviceMode scaleToDeviceMode = UiTransformInterface::ScaleToDeviceMode::None);
 
         //! Creates a text element
         AZ::EntityId CreateText(const char* name, bool atRoot, AZ::EntityId parent,
             UiTransform2dInterface::Anchors anchors, UiTransform2dInterface::Offsets offsets,
             const char* text, AZ::Color textColor, IDraw2d::HAlign hAlign, IDraw2d::VAlign vAlign,
-            bool scaleToDevice);
+            UiTransformInterface::ScaleToDeviceMode scaleToDeviceMode = UiTransformInterface::ScaleToDeviceMode::None);
 
         //! Creates a text input element
         AZ::EntityId CreateTextInput(const char* name, bool atRoot, AZ::EntityId parent,
             UiTransform2dInterface::Anchors anchors, UiTransform2dInterface::Offsets offsets,
             const char* text, const char* placeHolderText,
             AZ::Color baseColor, AZ::Color selectedColor, AZ::Color pressedColor,
-            AZ::Color textColor, AZ::Color placeHolderColor, bool scaleToDevice);
+            AZ::Color textColor, AZ::Color placeHolderColor,
+            UiTransformInterface::ScaleToDeviceMode scaleToDeviceMode = UiTransformInterface::ScaleToDeviceMode::None);
 
         //! Creates an image element
         AZ::EntityId CreateImage(const char* name, bool atRoot, AZ::EntityId parent,
             UiTransform2dInterface::Anchors anchors, UiTransform2dInterface::Offsets offsets,
             AZStd::string spritePath, UiImageInterface::ImageType imageType, AZ::Color color,
-            bool scaleToDevice);
+            UiTransformInterface::ScaleToDeviceMode scaleToDeviceMode = UiTransformInterface::ScaleToDeviceMode::None);
 
         //! Change the health by change amount and update the health bar
         void UpdateHealth(int change);

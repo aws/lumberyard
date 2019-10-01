@@ -166,7 +166,7 @@ namespace NCryMetal
             //  similar to DX11 implementation of write-only buffers. So just don't do anything fancy on metal and it will be fine.
             m_Buffer = [device newBufferWithLength:bufferSize options:MTLCPUCacheModeWriteCombined|MTLResourceStorageModeShared ];  //Use shared memory
         }
-#if defined(AZ_PLATFORM_APPLE_OSX)
+#if defined(AZ_PLATFORM_MAC)
         else
         {
             //Use Managed memory.
@@ -246,7 +246,7 @@ namespace NCryMetal
 
         ValidateBufferUsage();
         ringBufferOffsetOut = res;
-		
+
         return (uint8*)m_Buffer.contents + res;
     }
 
@@ -879,7 +879,7 @@ encoding: NSASCIIStringEncoding]
         , m_iCurrentFrameSlot(-1)
         , m_iCurrentFrameEventSlot(-1)
         DXMETAL_TODO("Tune this parameter per project.")
-#if defined(AZ_PLATFORM_APPLE_OSX)
+#if defined(AZ_PLATFORM_MAC)
         , m_RingBufferShared(pDevice->GetMetalDevice(), 10 * 1024 * 1024, 256, MEM_SHARED_RINGBUFFER)
         , m_RingBufferManaged(pDevice->GetMetalDevice(), 50 * 1024 * 1024, 256, MEM_MANAGED_RINGBUFFER)
 #else
@@ -973,7 +973,7 @@ encoding: NSASCIIStringEncoding]
         m_iCurrentFrameEventSlot = (m_iCurrentFrameEventSlot + 1) % m_MaxFrameEventSlots;
 
         m_RingBufferShared.OnFrameStart(m_iCurrentFrameSlot, (m_iCurrentFrameSlot + 1) % m_MaxFrameQueueSlots);
-#if defined(AZ_PLATFORM_APPLE_OSX)
+#if defined(AZ_PLATFORM_MAC)
         m_RingBufferManaged.OnFrameStart(m_iCurrentFrameSlot, (m_iCurrentFrameSlot + 1) % m_MaxFrameQueueSlots);
 #endif
         m_QueryRingBuffer.OnFrameStart(m_iCurrentFrameEventSlot, (m_iCurrentFrameEventSlot + 1) % m_MaxFrameEventSlots);
@@ -1604,11 +1604,11 @@ withRange: range];
             
             //setDepthClipMode  not supported on ios.
 #if defined(AZ_COMPILER_CLANG) && AZ_COMPILER_CLANG >= 9    //@available was added in Xcode 9
-#if defined(__MAC_10_11) || defined(__IPHONE_11_0)
+#if defined(__MAC_10_11) || defined(__IPHONE_11_0) || defined(__TVOS_11_0)
             if (RenderCapabilities::SupportsDepthClipping() && kCache.m_RateriserDirty & SRasterizerCache::RS_DEPTH_CLIP_MODE_DIRTY)
             {
                 kCache.m_RateriserDirty &= ~SRasterizerCache::RS_DEPTH_CLIP_MODE_DIRTY;
-                if(@available(macOS 10.11, iOS 11.0, *))
+                if(@available(macOS 10.11, iOS 11.0, tvOS 11.0, *))
                 {
                     [m_CurrentEncoder setDepthClipMode: kCache.depthClipMode];
                 }
@@ -1953,7 +1953,7 @@ withRange: range];
                 //Since the depth and stencil buffers are combined for OSX we reconfigure the DontCare flags
                 //to enforce the correct behaviour. Ideally the driver should be doing this internally but
                 //there is no documentation on it.
-#if defined(AZ_PLATFORM_APPLE_OSX) 
+#if defined(AZ_PLATFORM_MAC) 
                 
                 //Only do this if the buffers are combined.
                 if (pTexture->m_Texture.pixelFormat == MTLPixelFormatDepth32Float_Stencil8 ||
@@ -2842,7 +2842,7 @@ threadsPerThreadgroup: threadsPerGroup];
         id<MTLDevice> mtlDevice = m_pDevice->GetMetalDevice();
         
         bool isBaseVertexInstanceEnabled = true;
-#if defined(AZ_PLATFORM_APPLE_IOS)
+#if defined(AZ_PLATFORM_IOS)
         isBaseVertexInstanceEnabled = NCryMetal::s_isIOSGPUFamily3;
 #endif
         if(isBaseVertexInstanceEnabled)
@@ -2887,7 +2887,7 @@ threadsPerThreadgroup: threadsPerGroup];
         id<MTLDevice> mtlDevice = m_pDevice->GetMetalDevice();
         
         bool isBaseInstanceEnabled = true;
-#if defined(AZ_PLATFORM_APPLE_IOS)
+#if defined(AZ_PLATFORM_IOS)
         isBaseInstanceEnabled = NCryMetal::s_isIOSGPUFamily3;
 #endif
         if (isBaseInstanceEnabled)
@@ -2934,7 +2934,7 @@ threadsPerThreadgroup: threadsPerGroup];
         if(drawable)
         {
             // presentAfterMinimumDuration only available on ios and appltv 10.3+
-#if (defined(AZ_PLATFORM_APPLE_IOS) || defined(AZ_PLATFORM_APPLE_TV)) && defined(__IPHONE_10_3)
+#if (defined(AZ_PLATFORM_IOS) || defined(AZ_PLATFORM_APPLE_TV)) && defined(__IPHONE_10_3)
             bool hasPresentAfterMinimumDuration = [drawable respondsToSelector:@selector(presentAfterMinimumDuration:)];
 
             if (hasPresentAfterMinimumDuration && syncInterval > 0.0f)
@@ -3070,7 +3070,7 @@ threadsPerThreadgroup: threadsPerGroup];
     
     void* CContext::AllocateMemoryInRingBuffer(uint32 size, MemRingBufferStorage memAllocMode, size_t& ringBufferOffsetOut)
     {
-#if defined(AZ_PLATFORM_APPLE_OSX)
+#if defined(AZ_PLATFORM_MAC)
         if (memAllocMode == MEM_SHARED_RINGBUFFER)
         {
             return m_RingBufferShared.Allocate(m_iCurrentFrameSlot, size, ringBufferOffsetOut);
@@ -3086,7 +3086,7 @@ threadsPerThreadgroup: threadsPerGroup];
 
     id <MTLBuffer> CContext::GetRingBuffer(MemRingBufferStorage memAllocMode)
     {
-#if defined(AZ_PLATFORM_APPLE_OSX)
+#if defined(AZ_PLATFORM_MAC)
         if (memAllocMode == MEM_SHARED_RINGBUFFER)
         {
             return m_RingBufferShared.m_Buffer;

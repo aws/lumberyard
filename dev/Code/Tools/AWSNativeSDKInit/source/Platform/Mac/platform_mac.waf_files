@@ -1,0 +1,7 @@
+{
+  "auto": {
+    "Platform/Mac": [
+        "../Common/Default/AWSNativeSDKInit_Default.cpp"
+    ]
+  }
+}

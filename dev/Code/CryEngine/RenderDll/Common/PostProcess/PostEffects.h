@@ -37,9 +37,7 @@ struct MotionBlurObjectParameters
 };
 
 //////////////////////////////////////////////////////////////////////////
-// Deprecated: This class is used as a placeholder for parameters, but the 
-// rendering logic now lives in MotionBlurPass.
-//
+
 class CMotionBlur
     : public CPostEffect
 {
@@ -68,23 +66,25 @@ public:
         Release();
     }
 
-    void Release()
+    virtual void Render();
+    virtual bool Preprocess();
+
+    virtual void Release()
     {
         m_Objects[0]->clear();
         m_Objects[1]->clear();
         m_Objects[2]->clear();
     }
 
-    void Reset(bool bOnSpecChange = false)
+    virtual void Reset(bool bOnSpecChange = false)
     {
         m_pDirectionalBlurVec->ResetParamVec4(Vec4(0, 0, 0, 0));
     }
 
     void RenderObjectsVelocity();
-    void Render() {}
-    bool Preprocess() { return false; }
-
+    void CopyAndScaleDoFBuffer(CTexture* pSrcTex, CTexture* pDestTex);
     void OnBeginFrame();
+    float ComputeMotionScale();
 
     static void SetupObject(CRenderObject* pObj, const SRenderingPassInfo& passInfo);
     static void GetPrevObjToWorldMat(CRenderObject* pObj, Matrix44A& res);

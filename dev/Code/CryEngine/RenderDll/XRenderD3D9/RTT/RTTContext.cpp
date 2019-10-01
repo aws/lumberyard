@@ -418,6 +418,7 @@ namespace AzRTT
 
             { &CTexture::s_ptexHDRTargetScaledTmp[0], 2 },
             { &CTexture::s_ptexHDRTargetScaledTmp[1], 4 },
+            //{ &CTexture::s_ptexHDRTargetScaledTmp[2], ? }, unused
             { &CTexture::s_ptexHDRTargetScaledTmp[3], 8 },
 
             { &CTexture::s_ptexHDRTargetScaledTempRT[0], 2 },
@@ -432,7 +433,6 @@ namespace AzRTT
             // SPostEffectsUtils used for things like lense flares
             { &CTexture::s_ptexBackBufferScaledTemp[0], 2 },
             { &CTexture::s_ptexBackBufferScaledTemp[1], 4 },
-            { &CTexture::s_ptexBackBufferScaledTemp[2], 8 },
 
             // Water volume reflections 
             { &CTexture::s_ptexWaterVolumeRefl[0], 2 },

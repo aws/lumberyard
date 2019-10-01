@@ -337,6 +337,11 @@ namespace UnitTest
             return num;
         }
 
+        static int DoubleRValueIntValue(int&& num)
+        {
+            return num * 2;
+        }
+
     public:
         static const int s_rawFuncResult;
     };
@@ -663,10 +668,13 @@ namespace UnitTest
         InvokeFunctionObjectTester<int>(testRawFuncPtr, InvokeTest::s_rawFuncResult);
         InvokeFunctionObjectTester<int>(testRawFuncRef, InvokeTest::s_rawFuncResult);
         
-        // function_template.h needs to forward the function parameters so that rvalue parameters can be bound to AZStd::functions
         AZStd::function<int(int)> testStdFunc = &RawIntFunc;
         int numResult = AZStd::invoke(testStdFunc, InvokeTest::s_rawFuncResult);
         EXPECT_EQ(InvokeTest::s_rawFuncResult, numResult);
+
+        AZStd::function<int(int&&)> testStdFuncWithRValueParam = &DoubleRValueIntValue;
+        numResult = AZStd::invoke(testStdFuncWithRValueParam, 520);
+        EXPECT_EQ(1040, numResult);
         
         InvokeTestStruct testFunctor(13);
         InvokeFunctionObjectTester<int&>(testFunctor, testFunctor.m_data);

@@ -15,23 +15,11 @@
 
 #include <StdAfx.h>
 
-#if defined(AZ_RESTRICTED_PLATFORM)
-    #if defined(AZ_PLATFORM_XENIA)
-        #include "Xenia/PlatformOS_PC_cpp_xenia.inl"
-    #elif defined(AZ_PLATFORM_PROVO)
-        #include "Provo/PlatformOS_PC_cpp_provo.inl"
-    #endif
-#endif
-#if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
-#undef AZ_RESTRICTED_SECTION_IMPLEMENTED
-#else
-
 #if defined(WIN32) || defined(WIN64)
 #define PLATFORM_WINDOWS
 #endif
 
 #include "PlatformOS_PC.h"
-#include "SaveReaderWriter_CryPak.h"
 #include "ICryPak.h"
 
 #include "../ZipDir.h"
@@ -45,69 +33,17 @@
 #include "SaveReaderWriter_Steam.h"
 #endif
 
-#include "NativeUIRequests.h"
+#include "AzCore/NativeUI/NativeUIRequests.h"
 
-IPlatformOS* IPlatformOS::Create(const uint8 createParams)
+IPlatformOS* IPlatformOS::Create()
 {
-    return new CPlatformOS_PC(createParams);
+    return new CPlatformOS_PC();
 }
 
-CPlatformOS_PC::CPlatformOS_PC(const uint8 createParams)
-    : m_listeners(4)
-    , m_fpsWatcher(15.0f, 3.0f, 7.0f)
-    , m_delayLevelStartIcon(0.0f)
-    , m_bSaving(false)
-#if defined(DEDICATED_SERVER)
-    , m_bAllowMessageBox(false)
-#else
-    , m_bAllowMessageBox((createParams & eCF_NoDialogs) == 0)
-#endif //defined(DEDICATED_SERVER)
-    , m_bLevelLoad(false)
-    , m_bSaveDuringLevelLoad(false)
+CPlatformOS_PC::CPlatformOS_PC()
 {
-    AddListener(this, "PC");
-
     m_cachePakStatus = 0;
     m_cachePakUser = -1;
-    //TODO: Handle early corruption detection (createParams & IPlatformOS::eCF_EarlyCorruptionDetected ) if necessary.
-}
-
-void CPlatformOS_PC::Tick(float realFrameTime)
-{
-    if (m_delayLevelStartIcon)
-    {
-        m_delayLevelStartIcon -= realFrameTime;
-        if (m_delayLevelStartIcon <= 0.0f)
-        {
-            m_delayLevelStartIcon = 0.0f;
-
-            IPlatformOS::SPlatformEvent event(0);
-            event.m_eEventType = IPlatformOS::SPlatformEvent::eET_FileWrite;
-            event.m_uParams.m_fileWrite.m_type = SPlatformEvent::eFWT_SaveStart;
-            NotifyListeners(event);
-
-            event.m_eEventType = IPlatformOS::SPlatformEvent::eET_FileWrite;
-            event.m_uParams.m_fileWrite.m_type = SPlatformEvent::eFWT_SaveEnd;
-            NotifyListeners(event);
-        }
-    }
-
-    SaveDirtyFiles();
-}
-
-void CPlatformOS_PC::OnPlatformEvent(const IPlatformOS::SPlatformEvent& _event)
-{
-    switch (_event.m_eEventType)
-    {
-    case SPlatformEvent::eET_FileWrite:
-    {
-        if (_event.m_uParams.m_fileWrite.m_type == SPlatformEvent::eFWT_CheckpointLevelStart)
-        {
-            m_delayLevelStartIcon = 5.0f;
-        }
-        break;
-    }
-    }
 }
 
 // func returns true if the data is correctly encrypted and signed. caller is then responsible for calling delete[] on the returned data buffer
@@ -246,33 +182,6 @@ void CPlatformOS_PC::MountDLCContent(IDLCListener* pCallback, unsigned int user,
     pCallback->OnDLCMountFinished(nDLCPacksFound);
 }
 
-bool CPlatformOS_PC::CanRestartTitle() const
-{
-    return false;
-}
-
-void CPlatformOS_PC::RestartTitle(const char* pTitle)
-{
-    CRY_ASSERT_MESSAGE(CanRestartTitle(), "Restart title not implemented (or previously needed)");
-}
-
-bool CPlatformOS_PC::UsePlatformSavingAPI() const
-{
-    // Default true if CVar doesn't exist
-    ICVar* pUseAPI = gEnv->pConsole ? gEnv->pConsole->GetCVar("sys_usePlatformSavingAPI") : NULL;
-    return !pUseAPI || pUseAPI->GetIVal() != 0;
-}
-
-bool CPlatformOS_PC::BeginSaveLoad(unsigned int user, bool bSave)
-{
-    m_bSaving = bSave;
-    return true;
-}
-
-void CPlatformOS_PC::EndSaveLoad(unsigned int user)
-{
-}
-
 bool CPlatformOS_PC::UseSteamReadWriter() const
 {
 #if USE_STEAM
@@ -291,211 +200,9 @@ bool CPlatformOS_PC::UseSteamReadWriter() const
     return false;
 }
 
-IPlatformOS::ISaveReaderPtr CPlatformOS_PC::SaveGetReader(const char* fileName, unsigned int /*user*/)
-{
-#if USE_STEAM
-    if (UseSteamReadWriter())
-    {
-        CSaveReader_SteamPtr    pSaveReader(new CSaveReader_Steam(fileName));
-
-        if (!pSaveReader || pSaveReader->LastError() != IPlatformOS::eFOC_Success)
-        {
-            return CSaveReader_SteamPtr();
-        }
-        else
-        {
-            return pSaveReader;
-        }
-    }
-    else
-#endif // USE_STEAM
-    {
-        CSaveReader_CryPakPtr   pSaveReader(new CSaveReader_CryPak(fileName));
-
-        if (!pSaveReader || pSaveReader->LastError() != IPlatformOS::eFOC_Success)
-        {
-            return CSaveReader_CryPakPtr();
-        }
-        else
-        {
-            return pSaveReader;
-        }
-    }
-}
-
-IPlatformOS::ISaveWriterPtr CPlatformOS_PC::SaveGetWriter(const char* fileName, unsigned int /*user*/)
-{
-#if USE_STEAM
-    if (UseSteamReadWriter())
-    {
-        CSaveWriter_SteamPtr    pSaveWriter(new CSaveWriter_Steam(fileName));
-
-        if (!pSaveWriter || pSaveWriter->LastError() != IPlatformOS::eFOC_Success)
-        {
-            return CSaveWriter_SteamPtr();
-        }
-        else
-        {
-            if (m_bLevelLoad)
-            {
-                m_bSaveDuringLevelLoad = true;
-            }
-
-            return pSaveWriter;
-        }
-    }
-    else
-#endif
-    {
-        CSaveWriter_CryPakPtr   pSaveWriter(new CSaveWriter_CryPak(fileName));
-
-        if (!pSaveWriter || pSaveWriter->LastError() != IPlatformOS::eFOC_Success)
-        {
-            return CSaveWriter_CryPakPtr();
-        }
-        else
-        {
-            if (m_bLevelLoad)
-            {
-                m_bSaveDuringLevelLoad = true;
-            }
-
-            return pSaveWriter;
-        }
-    }
-}
-
-
-void CPlatformOS_PC::InitEncryptionKey(const char* pMagic, size_t magicLength, const uint8* pKey, size_t keyLength)
-{
-    m_encryptionMagic.resize(magicLength);
-    memcpy(&m_encryptionMagic[0], pMagic, magicLength);
-    m_encryptionKey.resize(keyLength);
-    memcpy(&m_encryptionKey[0], pKey, keyLength);
-}
-
-void CPlatformOS_PC::GetEncryptionKey(const DynArray<char>** pMagic, const DynArray<uint8>** pKey)
-{
-    if (pMagic)
-    {
-        *pMagic = &m_encryptionMagic;
-    }
-    if (pKey)
-    {
-        *pKey = &m_encryptionKey;
-    }
-}
-
-/*
---------------------- Listener -----------------------
-*/
-
-void CPlatformOS_PC::AddListener(IPlatformOS::IPlatformListener* pListener, const char* szName)
-{
-    m_listeners.Add(pListener, szName);
-}
-
-IPlatformOS::EMsgBoxResult
-CPlatformOS_PC::DebugMessageBox(const char* body, const char* title, unsigned int flags) const
-{
-    if (!m_bAllowMessageBox)
-    {
-        return eMsgBox_OK;
-    }
-
-    ICVar* pCVar = gEnv->pConsole ? gEnv->pConsole->GetCVar("sys_no_crash_dialog") : NULL;
-    if (pCVar && pCVar->GetIVal() != 0)
-    {
-        return eMsgBox_OK;
-    }
-
-
-#if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_APPLE_OSX)
-    int winresult = CryMessageBox(body, title, MB_OKCANCEL);
-    return (winresult == IDOK) ? eMsgBox_OK : eMsgBox_Cancel;
-#else
-    EBUS_EVENT(NativeUI::NativeUIRequestBus, DisplayOkDialog, title, body, false);
-
-    return eMsgBox_OK; // [AlexMcC|30.03.10]: Ok? Cancel? Dunno! Uh-oh :( This is only used in CryPak.cpp so far, and for that use it's better to return ok
-#endif
-}
-
-bool CPlatformOS_PC::PostLocalizationBootChecks()
-{
-    //Not currently implemented
-    return true;
-}
-
-
-void CPlatformOS_PC::SetOpticalDriveIdle(bool bIdle)
-{
-    //Not currently implemented
-}
-void CPlatformOS_PC::AllowOpticalDriveUsage(bool bAllow)
-{
-    //Not currently implemented
-}
-
-void CPlatformOS_PC::RemoveListener(IPlatformOS::IPlatformListener* pListener)
-{
-    m_listeners.Remove(pListener);
-}
-
-void CPlatformOS_PC::NotifyListeners(SPlatformEvent& event)
-{
-    for (CListenerSet<IPlatformOS::IPlatformListener*>::Notifier notifier(m_listeners); notifier.IsValid(); notifier.Next())
-    {
-        notifier->OnPlatformEvent(event);
-    }
-}
-
-bool CPlatformOS_PC::StringVerifyStart(const char* inString, IStringVerifyEvents* pInCallback)
-{
-    return false;
-}
-
-bool CPlatformOS_PC::IsVerifyingString()
-{
-    return false;
-}
-
-ILocalizationManager::EPlatformIndependentLanguageID CPlatformOS_PC::GetSystemLanguage()
-{
-    //Not yet implemented
-    return ILocalizationManager::ePILID_MAX_OR_INVALID;
-}
-
-const char* CPlatformOS_PC::GetSKUId()
-{
-    //Not yet implemented
-    return NULL;
-}
-
-ILocalizationManager::TLocalizationBitfield CPlatformOS_PC::GetSystemSupportedLanguages()
-{
-    //Not yet implemented
-    return 0;
-}
-
 void CPlatformOS_PC::GetMemoryUsage(ICrySizer* pSizer) const
 {
     pSizer->Add(*this);
-    m_listeners.GetMemoryUsage(pSizer);
-}
-
-bool CPlatformOS_PC::DebugSave(SDebugDump& dump)
-{
-    return false;
-}
-
-bool CPlatformOS_PC::ConsoleLoadGame(struct IConsoleCmdArgs* pArgs)
-{
-    return false;
-}
-
-EUserPIIStatus CPlatformOS_PC::GetUserPII(unsigned int inUser, SUserPII* pOutPII)
-{
-    return k_pii_error;
 }
 
 IPlatformOS::EZipExtractFail CPlatformOS_PC::ExtractZips(const char* path)
@@ -660,75 +367,6 @@ bool CPlatformOS_PC::SxmlMissingFromHDD(ZipDir::FileEntryTree* pZipRoot, const c
     {
         //either zip doesn't have an sxml (it's not a dlc zip) or has already been correctly extracted to disk
         return false;
-    }
-}
-
-void CPlatformOS_PC::OnSystemEvent(ESystemEvent event, UINT_PTR wparam, UINT_PTR lparam)
-{
-    PlatformOS_Base::OnSystemEvent(event, wparam, lparam);
-
-    switch (event)
-    {
-    case ESYSTEM_EVENT_LEVEL_LOAD_START:
-        m_bLevelLoad = true;
-        m_bSaveDuringLevelLoad = false;
-        break;
-    }
-}
-
-void CPlatformOS_PC::OnActionEvent(const SActionEvent& event)
-{
-    switch (event.m_event)
-    {
-    case eAE_mapCmdIssued:
-        m_bLevelLoad = true;
-        m_bSaveDuringLevelLoad = false;
-        break;
-
-    case eAE_inGame:
-        m_bLevelLoad = false;
-        m_fpsWatcher.Reset();
-        break;
-    }
-}
-
-void CPlatformOS_PC::SaveDirtyFiles()
-{
-    if (m_bSaveDuringLevelLoad)
-    {
-        // Wait for level load to finish
-        if (m_bLevelLoad)
-        {
-            m_fpsWatcher.Reset();
-            return;
-        }
-
-        if (!m_fpsWatcher.HasAchievedStableFPS())
-        {
-            return;
-        }
-
-        m_bSaveDuringLevelLoad = false;
-        m_bLevelLoad = false;
-    }
-
-    if (m_bSaving)
-    {
-        if (!m_delayLevelStartIcon)
-        {
-            IPlatformOS::SPlatformEvent event(0);
-            event.m_eEventType = IPlatformOS::SPlatformEvent::eET_FileWrite;
-            event.m_uParams.m_fileWrite.m_type = SPlatformEvent::eFWT_SaveStart;
-            NotifyListeners(event);
-        }
-        if (m_bSaving && !m_delayLevelStartIcon)
-        {
-            IPlatformOS::SPlatformEvent event(0);
-            event.m_eEventType = IPlatformOS::SPlatformEvent::eET_FileWrite;
-            event.m_uParams.m_fileWrite.m_type = IPlatformOS::SPlatformEvent::eFWT_SaveEnd;
-            NotifyListeners(event);
-            m_bSaving = false;
-        }
     }
 }
 
@@ -938,5 +576,3 @@ IPlatformOS::IFileFinderPtr CPlatformOS_PC::GetFileFinder(unsigned int user)
 
     return IFileFinderPtr(new CFileFinderCryPak());
 }
-
-#endif

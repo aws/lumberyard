@@ -6,6 +6,8 @@
 //   #define IMGUI_DEFINE_MATH_OPERATORS
 // To implement maths operators for ImVec2 (disabled by default to not collide with using IM_VEC2_CLASS_EXTRA along with your own math types+operators)
 
+// Modifications Copyright Amazon.com, Inc. or its affiliates.
+
 #pragma once
 
 #ifndef IMGUI_VERSION
@@ -25,6 +27,7 @@
 #pragma clang diagnostic ignored "-Wunused-function"        // for stb_textedit.h
 #pragma clang diagnostic ignored "-Wmissing-prototypes"     // for stb_textedit.h
 #pragma clang diagnostic ignored "-Wold-style-cast"
+#pragma clang diagnostic ignored "-Wdllexport-hidden-visibility"
 #endif
 
 //-----------------------------------------------------------------------------

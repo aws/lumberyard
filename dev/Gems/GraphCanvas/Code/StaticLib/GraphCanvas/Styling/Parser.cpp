@@ -424,15 +424,15 @@ namespace
         }
     }
 
-    Styling::Curves ParseLineCurve(const QString& value)
+    Styling::ConnectionCurveType ParseLineCurve(const QString& value)
     {
         if (QString::compare(value, QLatin1String("straight"), Qt::CaseInsensitive) == 0)
         {
-            return Styling::Curves::Straight;
+            return Styling::ConnectionCurveType::Straight;
         }
         else if (QString::compare(value, QLatin1String("curved"), Qt::CaseInsensitive) == 0)
         {
-            return Styling::Curves::Curved;
+            return Styling::ConnectionCurveType::Curved;
         }
         else
         {

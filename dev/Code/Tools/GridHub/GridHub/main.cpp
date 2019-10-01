@@ -62,7 +62,7 @@
 #define GRIDHUB_IMAGE_NAME "GridHub"
 #endif
 
-#ifdef AZ_PLATFORM_APPLE
+#if AZ_TRAIT_OS_PLATFORM_APPLE
 #ifdef _DEBUG
 #include <assert.h>
 #include <stdbool.h>
@@ -364,7 +364,7 @@ public:
             DeleteFile(fullLinkName);
         }
 #endif
-#ifdef AZ_PLATFORM_APPLE
+#if AZ_TRAIT_OS_PLATFORM_APPLE
         if (isAdd)
         {
             const QString command = "tell application \"System Events\" to make login item at end with properties {path:\"%1\"}";

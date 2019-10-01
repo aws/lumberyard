@@ -125,7 +125,7 @@ namespace ScriptCanvasEditor
         PopulateEditorCreatableTypes();
 
         m_propertyHandlers.emplace_back(AzToolsFramework::RegisterGenericComboBoxHandler<ScriptCanvas::VariableId>());
-        m_propertyHandlers.emplace_back(AzToolsFramework::RegisterGenericComboBoxHandler<AZ::Crc32>());
+
         SystemRequestBus::Handler::BusConnect();
         ScriptCanvasExecutionBus::Handler::BusConnect();
         AzToolsFramework::EditorEvents::Bus::Handler::BusConnect();

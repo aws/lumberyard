@@ -9,7 +9,6 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#include "TestTypes.h"
 #include <AzCore/PlatformIncl.h>
 #include <AzCore/Memory/SystemAllocator.h>
 #include <AzCore/Memory/PoolAllocator.h>
@@ -21,6 +20,7 @@
 #include <AzCore/Memory/MemoryDriller.h>
 #include <AzCore/Memory/AllocationRecords.h>
 #include <AzCore/Debug/StackTracer.h>
+#include <AzCore/UnitTest/TestTypes.h>
 
 #include <AzCore/std/parallel/thread.h>
 #include <AzCore/std/parallel/containers/lock_free_intrusive_stamped_stack.h>
@@ -206,7 +206,7 @@ namespace UnitTest
                 // This is possible on deprecated platforms too, but we would need to load the map file manually and so on... it's tricky.
                 SymbolStorage::StackLine stackLine{ 0 };
                 SymbolStorage::DecodeFrames(ai.m_stackFrames, 1, &stackLine);
-                EXPECT_THAT((char*)stackLine, testing::HasSubstr("SystemAllocatorTest::run")); // We should have proper callstack
+                //EXPECT_THAT((char*)stackLine, testing::HasSubstr("SystemAllocatorTest::run")); // We should have proper callstack
 #       endif // AZ_PLATFORM_WINDOWS
 #   endif // defined(AZ_PLATFORM_WINDOWS)
             }
@@ -455,14 +455,6 @@ namespace UnitTest
         static const unsigned int   m_maxNumThreads = 10;
         AZStd::thread_desc          m_desc[m_maxNumThreads];
 
-#if (ATOMIC_ADDRESS_LOCK_FREE==2) && !defined(AZ_OS64)
-        struct AllocClass
-            : public AZStd::lock_free_intrusive_stack_node<AllocClass>
-        {
-            int m_data;
-        };
-        typedef AZStd::lock_free_intrusive_stamped_stack<AllocClass, AZStd::lock_free_intrusive_stack_base_hook<AllocClass> > SharedAllocStackType;
-#else
         //\todo lock free
         struct AllocClass
             : public AZStd::intrusive_slist_node<AllocClass>
@@ -471,7 +463,6 @@ namespace UnitTest
         };
         typedef AZStd::intrusive_slist<AllocClass, AZStd::slist_base_hook<AllocClass> > SharedAllocStackType;
         AZStd::mutex    m_mutex;
-#endif
 
         SharedAllocStackType    m_sharedAlloc;
 #ifdef _DEBUG
@@ -501,7 +492,7 @@ namespace UnitTest
             MemoryTrackingFixture::SetUp();
 
             m_doneSharedAlloc = false;
-#if defined(AZ_PLATFORM_WINDOWS_X64)
+#if defined(AZ_PLATFORM_WINDOWS)
             SetCriticalSectionSpinCount(m_mutex.native_handle(), 4000);
 #endif
 
@@ -569,12 +560,8 @@ namespace UnitTest
                 AZStd::size_t minSize = sizeof(AllocClass);
                 AZStd::size_t size = AZStd::GetMax((AZStd::size_t)(rand() % 256), minSize);
                 AllocClass* ac = reinterpret_cast<AllocClass*>(poolAlloc.Allocate(size, AZStd::alignment_of<AllocClass>::value, 0, "Shared Alloc", __FILE__, __LINE__));
-#if (ATOMIC_ADDRESS_LOCK_FREE==2) && !defined(AZ_OS64)
-                m_sharedAlloc.push(*ac);
-#else
                 AZStd::lock_guard<AZStd::mutex> lock(m_mutex);
                 m_sharedAlloc.push_back(*ac);
-#endif
             }
         }
 
@@ -588,22 +575,13 @@ namespace UnitTest
             int isDone = 0;
             while (isDone!=2)
             {
-#if (ATOMIC_ADDRESS_LOCK_FREE==2) && !defined(AZ_OS64)
-                while ((ac = m_sharedAlloc.pop())!=0)
+                AZStd::lock_guard<AZStd::mutex> lock(m_mutex);
+                while (!m_sharedAlloc.empty())
                 {
+                    ac = &m_sharedAlloc.front();
+                    m_sharedAlloc.pop_front();
                     poolAlloc.DeAllocate(ac);
                 }
-#else
-                {
-                    AZStd::lock_guard<AZStd::mutex> lock(m_mutex);
-                    while (!m_sharedAlloc.empty())
-                    {
-                        ac = &m_sharedAlloc.front();
-                        m_sharedAlloc.pop_front();
-                        poolAlloc.DeAllocate(ac);
-                    }
-                }
-#endif
 
                 if (m_doneSharedAlloc) // once we know we don't add more elements, make one last check and exit.
                 {
@@ -776,10 +754,10 @@ namespace UnitTest
             void* pooled1024 = AZ::AllocatorInstance<MyThreadPoolAllocator>::Get().Allocate(1024, 1024, 0);
             AZ::AllocatorInstance<MyThreadPoolAllocator>::Get().DeAllocate(pooled1024);
 
-            AZ_TEST_START_ASSERTTEST;
+            AZ_TEST_START_TRACE_SUPPRESSION;
             void* pooled2048 = AZ::AllocatorInstance<MyThreadPoolAllocator>::Get().Allocate(2048, 2048, 0);
             (void)pooled2048;
-            AZ_TEST_STOP_ASSERTTEST(1);
+            AZ_TEST_STOP_TRACE_SUPPRESSION(1);
 
             AZ::AllocatorInstance<MyThreadPoolAllocator>::Destroy();
         }
@@ -821,7 +799,7 @@ namespace UnitTest
         SystemAllocator::Descriptor sysDesc;
         sysDesc.m_heap.m_numFixedMemoryBlocks = 1;
         sysDesc.m_heap.m_fixedMemoryBlocksByteSize[0] = 5 * 1024 * 1024;
-        sysDesc.m_heap.m_fixedMemoryBlocks[0] = DebugAlignAlloc(sysDesc.m_heap.m_fixedMemoryBlocksByteSize[0], sysDesc.m_heap.m_memoryBlockAlignment);
+        sysDesc.m_heap.m_fixedMemoryBlocks[0] = AZ_OS_MALLOC(sysDesc.m_heap.m_fixedMemoryBlocksByteSize[0], sysDesc.m_heap.m_memoryBlockAlignment);
         AllocatorInstance<SystemAllocator>::Create(sysDesc);
 
         BestFitExternalMapAllocator::Descriptor desc;
@@ -1158,11 +1136,11 @@ namespace UnitTest
                 (void)fileName;
                 (void)lineNum;
                 (void)suppressStackRecord;
-                return DebugAlignAlloc(byteSize, alignment);
+                return AZ_OS_MALLOC(byteSize, alignment);
             }
             virtual void                    DeAllocate(pointer_type ptr, size_type, size_type)
             {
-                DebugAlignFree(ptr);
+                AZ_OS_FREE(ptr);
             }
             virtual pointer_type    ReAllocate(pointer_type ptr, size_type newSize, size_type newAlignment)
             {
@@ -1190,13 +1168,13 @@ namespace UnitTest
         {
             SystemAllocator::Descriptor desc;
             AllocatorInstance<SystemAllocator>::Create(desc);
-            tr = (test_record*)DebugAlignAlloc(sizeof(test_record)*N, 8);
+            tr = (test_record*)AZ_OS_MALLOC(sizeof(test_record)*N, 8);
             MAX_SIZE = 4096;
         }
         
         void TearDown() override
         {
-            DebugAlignFree(tr);
+            AZ_OS_FREE(tr);
             AllocatorInstance<SystemAllocator>::Destroy();
         }
 
@@ -1207,7 +1185,7 @@ namespace UnitTest
             for (unsigned i = iStart; i < iEnd; i++)
             {
                 size_t size = rand_size();
-                tr[i].ptr = DebugAlignAlloc(size, DefaultAlignment);
+                tr[i].ptr = AZ_OS_MALLOC(size, DefaultAlignment);
             }
         }
         void defFree(unsigned iStart, unsigned iEnd)
@@ -1215,7 +1193,7 @@ namespace UnitTest
             for (unsigned i = iStart; i < iEnd; i++)
             {
                 unsigned j = i + rand() % (iEnd - i);
-                DebugAlignFree(tr[j].ptr);
+                AZ_OS_FREE(tr[j].ptr);
                 tr[j].ptr = tr[i].ptr;
             }
         }
@@ -1224,7 +1202,7 @@ namespace UnitTest
             for (unsigned i = iStart; i < iEnd; i++)
             {
                 size_t size = rand_size();
-                tr[i].ptr = DebugAlignAlloc(size, DefaultAlignment);
+                tr[i].ptr = AZ_OS_MALLOC(size, DefaultAlignment);
                 tr[i].size = size;
             }
         }
@@ -1233,7 +1211,7 @@ namespace UnitTest
             for (unsigned i = iStart; i < iEnd; i++)
             {
                 unsigned j = i + rand() % (iEnd - i);
-                DebugAlignFree(tr[j].ptr /*, tr[j].size*/);
+                AZ_OS_FREE(tr[j].ptr /*, tr[j].size*/);
                 tr[j].ptr = tr[i].ptr;
                 tr[j].size = tr[i].size;
             }
@@ -1245,7 +1223,7 @@ namespace UnitTest
             {
                 size_t size = rand_size();
                 size_t alignment = rand_alignment();
-                tr[i].ptr = DebugAlignAlloc(size, alignment);
+                tr[i].ptr = AZ_OS_MALLOC(size, alignment);
             }
         }
         void defFreeAlignment(unsigned iStart, unsigned iEnd)
@@ -1253,7 +1231,7 @@ namespace UnitTest
             for (unsigned i = iStart; i < iEnd; i++)
             {
                 unsigned j = i + rand() % (iEnd - i);
-                DebugAlignFree(tr[j].ptr);
+                AZ_OS_FREE(tr[j].ptr);
                 tr[j].ptr = tr[i].ptr;
             }
         }
@@ -1264,7 +1242,7 @@ namespace UnitTest
             {
                 size_t size = rand_size();
                 size_t alignment = rand_alignment();
-                tr[i].ptr = DebugAlignAlloc(size, alignment);
+                tr[i].ptr = AZ_OS_MALLOC(size, alignment);
                 tr[i].size = size;
                 tr[i].alignment = alignment;
             }
@@ -1274,7 +1252,7 @@ namespace UnitTest
             for (unsigned i = iStart; i < iEnd; i++)
             {
                 unsigned j = i + rand() % (iEnd - i);
-                DebugAlignFree(tr[j].ptr /*, tr[j].size, tr[j].alignment*/);
+                AZ_OS_FREE(tr[j].ptr /*, tr[j].size, tr[j].alignment*/);
                 tr[j].ptr = tr[i].ptr;
                 tr[j].size = tr[i].size;
                 tr[j].alignment = tr[i].alignment;
@@ -2575,11 +2553,11 @@ namespace UnitTest
             {
                 HphaSchema::Descriptor hphaDesc;
                 hphaDesc.m_fixedMemoryBlockByteSize = AZ_TRAIT_OS_HPHA_MEMORYBLOCKBYTESIZE;
-                hphaDesc.m_fixedMemoryBlock = DebugAlignAlloc(hphaDesc.m_fixedMemoryBlockByteSize, hphaDesc.m_memoryBlockAlignment);
+                hphaDesc.m_fixedMemoryBlock = AZ_OS_MALLOC(hphaDesc.m_fixedMemoryBlockByteSize, hphaDesc.m_memoryBlockAlignment);
                 HeapSchema::Descriptor dlMallocDesc;
                 dlMallocDesc.m_numMemoryBlocks = 1;
                 dlMallocDesc.m_memoryBlocksByteSize[0] = hphaDesc.m_fixedMemoryBlockByteSize;
-                dlMallocDesc.m_memoryBlocks[0] = DebugAlignAlloc(dlMallocDesc.m_memoryBlocksByteSize[0], hphaDesc.m_memoryBlockAlignment);
+                dlMallocDesc.m_memoryBlocks[0] = AZ_OS_MALLOC(dlMallocDesc.m_memoryBlocksByteSize[0], hphaDesc.m_memoryBlockAlignment);
                 PoolSchema::Descriptor poolDesc;
                 poolDesc.m_pageAllocator = &da;
                 poolDesc.m_numStaticPages = 100;
@@ -2614,8 +2592,8 @@ namespace UnitTest
                     pool.Destroy();
                     threadPool.Destroy();
                 }
-                DebugAlignFree(hphaDesc.m_fixedMemoryBlock);
-                DebugAlignFree(dlMallocDesc.m_memoryBlocks[0]);
+                AZ_OS_FREE(hphaDesc.m_fixedMemoryBlock);
+                AZ_OS_FREE(dlMallocDesc.m_memoryBlocks[0]);
             }
 
             #if AZ_TRAIT_UNITTEST_NON_PREALLOCATED_HPHA_TEST

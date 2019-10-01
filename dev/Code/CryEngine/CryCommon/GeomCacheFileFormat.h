@@ -63,7 +63,8 @@ namespace GeomCacheFile
     {
         eBlockCompressionFormat_None = 0,
         eBlockCompressionFormat_Deflate = 1, // zlib
-        eBlockCompressionFormat_LZ4HC = 2 // LZ4 HC
+        eBlockCompressionFormat_LZ4HC = 2, // LZ4 HC
+        eBlockCompressionFormat_ZSTD = 3, //ZStandard
     };
 
     enum EStreams

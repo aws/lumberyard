@@ -1,0 +1,7 @@
+{
+  "auto": {
+    "Platform/Linux": [
+      "../Common/Unimplemented/DxDiagCollectingComponent_Unimplemented.cpp"
+    ]
+  }
+}

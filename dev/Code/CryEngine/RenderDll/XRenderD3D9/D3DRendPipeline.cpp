@@ -128,31 +128,35 @@ static DXGI_FORMAT AttributeTypeDXGIFormatTable[(unsigned int)AZ::Vertex::Attrib
 
 AZStd::vector<D3D11_INPUT_ELEMENT_DESC> GetD3D11Declaration(const AZ::Vertex::Format& vertexFormat)
 {
-    AZStd::vector<AZ::Vertex::Attribute> vertexAttributes = vertexFormat.GetAttributes();
     AZStd::vector<D3D11_INPUT_ELEMENT_DESC> declaration;
     uint offset = 0;
     // semanticIndices is a vector of zeros that will be incremented for each attribute that shares a usage/semantic name
-    AZStd::vector<uint> semanticIndices = AZStd::vector<uint>((uint)AZ::Vertex::AttributeUsage::NumTypes, 0);
-    for (AZ::Vertex::Attribute attribute : vertexAttributes)
+    uint semanticIndices[(uint)AZ::Vertex::AttributeUsage::NumUsages] = { 0 };
+
+    uint32 attributeCount = 0;
+    const uint8* vertexAttributes = vertexFormat.GetAttributes(attributeCount);
+    for (uint ii = 0; ii < attributeCount; ++ii)
     {
+        const uint8 attribute = vertexAttributes[ii];
+
         D3D11_INPUT_ELEMENT_DESC elementDescription;
-        uint usageIndex = (uint)attribute.GetUsage();
-        uint typeIndex = (uint)attribute.GetType();
+        AZ::Vertex::AttributeUsage attributeUsage = AZ::Vertex::Attribute::GetUsage(attribute);
+        AZ::Vertex::AttributeType attributeType = AZ::Vertex::Attribute::GetType(attribute);
         // TEXCOORD semantic name used for Tangents and BiTangents.
-        if (usageIndex == (uint)AZ::Vertex::AttributeUsage::Tangent || usageIndex == (uint)AZ::Vertex::AttributeUsage::BiTangent)
+        if (attributeUsage == AZ::Vertex::AttributeUsage::Tangent || attributeUsage == AZ::Vertex::AttributeUsage::BiTangent)
         {
-            usageIndex = (uint)AZ::Vertex::AttributeUsage::TexCoord;
+            attributeUsage = AZ::Vertex::AttributeUsage::TexCoord;
         }
-        elementDescription.SemanticName = AZ::Vertex::AttributeUsageDataTable[usageIndex].semanticName.c_str();
+        elementDescription.SemanticName = AZ::Vertex::Attribute::GetSemanticName(attribute).c_str();
 
         // Get the number of inputs with this usage up to this point, then increment that number
-        elementDescription.SemanticIndex = semanticIndices[usageIndex];
-        semanticIndices[usageIndex]++;
+        elementDescription.SemanticIndex = semanticIndices[(uint)attributeUsage];
+        semanticIndices[(uint)attributeUsage]++;
 
-        elementDescription.Format = AttributeTypeDXGIFormatTable[typeIndex];
+        elementDescription.Format = AttributeTypeDXGIFormatTable[(uint)attributeType];
 
         elementDescription.AlignedByteOffset = offset;
-        offset += attribute.GetByteLength();
+        offset += AZ::Vertex::Attribute::GetByteLength(attribute);
 
         elementDescription.InputSlot = 0;
         elementDescription.InputSlotClass = D3D11_INPUT_PER_VERTEX_DATA;
@@ -167,23 +171,16 @@ AZStd::vector<D3D11_INPUT_ELEMENT_DESC> GetD3D11Declaration(const AZ::Vertex::Fo
 void CD3D9Renderer::EF_OnDemandVertexDeclaration(SOnDemandD3DVertexDeclaration& out,
     const int nStreamMask, const AZ::Vertex::Format& vertexFormat, const bool bMorph, const bool bInstanced)
 {
-    //  iLog->Log("EF_OnDemandVertexDeclaration %d %d %d (DEBUG test - shouldn't log too often)",nStreamMask,vertexformat,bMorph?1:0);
-
-    if (m_RP.m_D3DVertexDeclarations.count(vertexFormat.GetCRC()) == 0)
-    {
-        m_RP.m_D3DVertexDeclarations[vertexFormat.GetCRC()].m_Declaration = GetD3D11Declaration(vertexFormat);
-        m_RP.m_crcVertexFormatLookupTable[vertexFormat.GetCRC()] = vertexFormat;
-        AZ_Warning("Rendering", false, "Vertex declaration cache miss. Building declaration for %s on the fly. Consider pre-baking this vertex format declaration.", vertexFormat.GetName());
-    }
-
     uint32 j;
+
+    AZStd::vector<D3D11_INPUT_ELEMENT_DESC>& declarationElements = m_RP.m_D3DVertexDeclarations[vertexFormat.GetEnum()].m_Declaration;
 
     if (bInstanced)
     {
         // Create instanced vertex declaration
-        for (j = 0; j < m_RP.m_D3DVertexDeclarations[vertexFormat.GetCRC()].m_Declaration.size(); j++)
+        for (j = 0; j <declarationElements.size(); j++)
         {
-            D3D11_INPUT_ELEMENT_DESC elem = m_RP.m_D3DVertexDeclarations[vertexFormat.GetCRC()].m_Declaration[j];
+            D3D11_INPUT_ELEMENT_DESC elem = declarationElements[j];
             elem.InputSlotClass = D3D11_INPUT_PER_INSTANCE_DATA;
             elem.InstanceDataStepRate = 1;
             out.m_Declaration.push_back(elem);
@@ -191,9 +188,9 @@ void CD3D9Renderer::EF_OnDemandVertexDeclaration(SOnDemandD3DVertexDeclaration& 
     }
     else
     {
-        for (j = 0; j < m_RP.m_D3DVertexDeclarations[vertexFormat.GetCRC()].m_Declaration.size(); j++)
+        for (j = 0; j < declarationElements.size(); j++)
         {
-            out.m_Declaration.push_back(m_RP.m_D3DVertexDeclarations[vertexFormat.GetCRC()].m_Declaration[j]);
+            out.m_Declaration.push_back(declarationElements[j]);
         }
     }
 
@@ -226,29 +223,15 @@ void CD3D9Renderer::EF_OnDemandVertexDeclaration(SOnDemandD3DVertexDeclaration& 
     }
 }
 
-void CD3D9Renderer::AddVertexFormatToRenderPipeline(const AZ::Vertex::Format& vertexFormat)
-{
-    // Keep the vertex declaration and a copy of the vertex format object that can be retreived via the crc
-    m_RP.m_D3DVertexDeclarations[vertexFormat.GetCRC()].m_Declaration = GetD3D11Declaration(vertexFormat);
-    m_RP.m_crcVertexFormatLookupTable[vertexFormat.GetCRC()] = vertexFormat;
-}
 
 void CD3D9Renderer::EF_InitD3DVertexDeclarations()
 {
     for (int nFormat = 1; nFormat < eVF_Max; ++nFormat)
     {
         AZ::Vertex::Format vertexFormat = AZ::Vertex::Format((EVertexFormat)nFormat);
-        AddVertexFormatToRenderPipeline(vertexFormat);
+        m_RP.m_D3DVertexDeclarations[nFormat].m_Declaration = GetD3D11Declaration(vertexFormat);
+        m_RP.m_vertexFormats[nFormat] = vertexFormat;
     }
-
-    // Custom vertex format for multiple uv sets
-    AZ::Vertex::Format vertexFormat = AZ::Vertex::Format({
-                AZ::Vertex::Attribute(AZ::Vertex::AttributeUsage::Position, AZ::Vertex::AttributeType::Float32_3),
-                AZ::Vertex::Attribute(AZ::Vertex::AttributeUsage::Color, AZ::Vertex::AttributeType::Byte_4),
-                AZ::Vertex::Attribute(AZ::Vertex::AttributeUsage::TexCoord, AZ::Vertex::AttributeType::Float32_2),
-                AZ::Vertex::Attribute(AZ::Vertex::AttributeUsage::TexCoord, AZ::Vertex::AttributeType::Float32_2)
-            });
-    AddVertexFormatToRenderPipeline(vertexFormat);
 
     //=============================================================================
     // Additional streams declarations:
@@ -611,11 +594,10 @@ void CD3D9Renderer::FX_PipelineShutdown(bool bFastShutdown)
     m_RP.m_SysVertexPool[1].Free();
     m_RP.m_SysIndexPool[1].Free();
 #endif
-    for (auto& crcVertexFormatPair : m_RP.m_D3DVertexDeclarations)
+    for (int index=0; index<eVF_Max; ++index)
     {
-        crcVertexFormatPair.second.m_Declaration.clear();
+        m_RP.m_D3DVertexDeclarations[index].m_Declaration.clear();
     }
-    m_RP.m_D3DVertexDeclarations.clear();
 
     // Loop through the 2D array of hash maps
     for (auto& stream : m_RP.m_D3DVertexDeclarationCache)
@@ -1812,7 +1794,7 @@ void CD3D9Renderer::FX_GmemTransition(const EGmemTransitions transition)
                 //Linear depth is set to be cleared to 1.0f. x (linear depth) = 1, y(stencil id) = 0.
                 FX_SetColorDontCareActions(depthStencilRT, false, false);
                 FX_ClearTarget(CTexture::s_ptexGmemStenLinDepth, ColorF(1.000f, 0.000f, 0.000f));
-				
+
                 if (velocityRT > 0)
                 {
                     // Clear out the velocity buffer to half2(1.0, 1.0)
@@ -4272,11 +4254,6 @@ bool CRenderer::FX_TryToMerge(CRenderObject* pObjN, CRenderObject* pObjO, IRende
     }
 
     if (pObjN->m_nTextureID != pObjO->m_nTextureID)
-    {
-        return false;
-    }
-
-    if (pObjN->m_bHasShadowCasters || pObjO->m_bHasShadowCasters)
     {
         return false;
     }
@@ -6760,51 +6737,6 @@ void CD3D9Renderer::EnablePipelineProfiler(bool bEnable)
     if (m_pPipelineProfiler)
     {
         m_pPipelineProfiler->SetEnabled(bEnable);
-    }
-#endif
-}
-
-void CD3D9Renderer::LogShaderImportMiss(const CShader* pShader)
-{
-#if defined(SHADERS_SERIALIZING)
-    stack_string requestLineStr;
-
-    if (!CRenderer::CV_r_shaderssubmitrequestline || !CRenderer::CV_r_shadersremotecompiler)
-    {
-        return;
-    }
-
-    gRenDev->m_cEF.CreateShaderExportRequestLine(pShader, requestLineStr);
-
-    AZStd::string shaderList = GetShaderListFilename();
-
-#ifdef SHADER_ASYNC_COMPILATION
-    if (CRenderer::CV_r_shadersasynccompiling)
-    {
-        // Lazy init?
-        if (!SShaderAsyncInfo::PendingList().m_Next)
-        {
-            SShaderAsyncInfo::PendingList().m_Next = &SShaderAsyncInfo::PendingList();
-            SShaderAsyncInfo::PendingList().m_Prev = &SShaderAsyncInfo::PendingList();
-            SShaderAsyncInfo::PendingListT().m_Next = &SShaderAsyncInfo::PendingListT();
-            SShaderAsyncInfo::PendingListT().m_Prev = &SShaderAsyncInfo::PendingListT();
-        }
-
-        SShaderAsyncInfo* pAsyncRequest = new SShaderAsyncInfo;
-
-        if (pAsyncRequest)
-        {
-            pAsyncRequest->m_RequestLine = requestLineStr.c_str();
-            pAsyncRequest->m_shaderList = shaderList.c_str();
-            pAsyncRequest->m_Text = "";
-            pAsyncRequest->m_bDeleteAfterRequest = true;
-            CAsyncShaderTask::InsertPendingShader(pAsyncRequest);
-        }
-    }
-    else
-#endif
-    {
-        NRemoteCompiler::CShaderSrv::Instance().RequestLine(shaderList.c_str(), requestLineStr.c_str());
     }
 #endif
 }

@@ -31,30 +31,44 @@ ZipDir::FileEntry* ZipDir::FileEntryTree::Add(char* szPath)
     {
         continue; // find the next slash
     }
-    if (*pSlash)
+
+    char* dir;
+    char* filename;
+    if (*pSlash != '\0')
     {
-        FileEntryTree* pSubdir;
-        // we have a subdirectory here - create the file in it
-        {
-            char* dir = szPath;
-            *pSlash = '\0';
-
-            SubdirMap::iterator it = m_mapDirs.find (dir);
-            if (it == m_mapDirs.end())
-            {
-                m_mapDirs.insert (SubdirMap::value_type(dir, pSubdir = new FileEntryTree));
-            }
-            else
-            {
-                pSubdir = it->second;
-            }
-        }
-
-        return pSubdir->Add(pSlash + 1);
+        filename = pSlash + 1;
+        // Check that the directory is not empty
+        // The level pak file can have directories with empty names
+        // that has the same set of files as a current directory
+        dir = (pSlash != szPath) ? szPath : nullptr;
+        *pSlash = '\0';
     }
     else
     {
-        return &m_mapFiles[szPath];
+        dir = nullptr;
+        filename = szPath;
+    }
+
+    if (dir)
+    {
+        FileEntryTree* pSubdir;
+        // we have a subdirectory here - create the file in it
+        SubdirMap::iterator it = m_mapDirs.find(dir);
+        if (it == m_mapDirs.end())
+        {
+            pSubdir = new FileEntryTree;
+            m_mapDirs.insert(SubdirMap::value_type(dir, pSubdir));
+        }
+        else
+        {
+            pSubdir = it->second;
+        }
+
+        return pSubdir->Add(filename);
+    }
+    else
+    {
+        return &m_mapFiles[filename];
     }
 }
 

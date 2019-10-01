@@ -39,6 +39,8 @@
 #include <AzCore/std/parallel/lock.h>
 #include <AzCore/std/smart_ptr/unique_ptr.h>
 
+#include <AzCore/IO/CompressionBus.h>
+
 class CCryPak;
 
 // this is the header in the cache of the file data
@@ -164,7 +166,7 @@ struct CZipPseudoFile
     char* FGets(char* pBuf, int n);
     int Getc();
     int Ungetc(int c);
-
+     
     uint64 GetModificationTime() { return m_pFileData->GetFileEntry()->GetModificationTime(); }
     const char* GetArchivePath() { return m_pFileData->GetZip()->GetFilePath(); }
 
@@ -232,15 +234,18 @@ TYPEDEF_AUTOPTR(CCryPakFindData);
 class CCryPak
     : public ICryPak
     , public ISystemEventListener
+    , public AZ::IO::CompressionBus::Handler
 {
     friend class CReadStream;
     friend struct CCachedFileData;
+
+    static const uint32_t s_compressionTag = static_cast<uint32_t>('Z') << 24 | static_cast<uint32_t>('C') << 16 | static_cast<uint32_t>('R') << 8 | static_cast<uint32_t>('Y');
 
     // the array of pseudo-files : emulated files in the virtual zip file system
     // the handle to the file is its index inside this array.
     // some of the entries can be free. The entries need to be destructed manually
     CryReadModifyLock m_csOpenFiles;
-    typedef std::vector<CZipPseudoFile> ZipPseudoFileArray;
+    typedef std::vector<CZipPseudoFile*> ZipPseudoFileArray;
     ZipPseudoFileArray m_arrOpenFiles;
 
     // the array of file datas; they are relatively self-contained and can
@@ -355,6 +360,7 @@ private:
     threadID                                                                                            m_renderThreadId;
 
     CryFixedStringT<128>                                  m_sLocalizationFolder;
+    CryFixedStringT<128>                                  m_sLocalizationRoot;
 
     //////////////////////////////////////////////////////////////////////////
 
@@ -363,6 +369,17 @@ private:
     bool InitPack(const char* szBasePath, unsigned nFlags = FLAGS_PATH_REAL);
 
     const char* AdjustFileNameInternal(const char* src, char* dst, size_t dstSize, unsigned nFlags);
+
+    /**
+     * Currently access to PseudoFile operations are not thread safe, as we touch variable like m_nCurSeek
+     * without any synchronization. There is also the assumption that only one thread at a time will open/read/close
+     * a single file in a PAK, multiple threads can open different files in a PAK. If requirements change (or turns out this is a bug in CryPAK)
+     * we can add readwrite lock inside the CZipPseudoFile and we can pass a second argument lockForOperation where we can lock
+     * the file specific lock while getting a handle. This way you can safely execute the operation. This is no done by default
+     * because the API implies that this is not the intended use case. e.g. FSeek and FRead are separate operations, if you have multiple threads
+     * reading data, they can both execute FSeek/FRead and unless we lock the operation set, this will not work.
+     */
+    CZipPseudoFile* GetPseudoFile(AZ::IO::HandleType fileHandle) const;
 
 public:
 
@@ -405,6 +422,10 @@ public: // ---------------------------------------------------------------------
     virtual void OnSystemEvent(ESystemEvent event, UINT_PTR wparam, UINT_PTR lparam);
     //////////////////////////////////////////////////////////////////////////
 
+    //@{ CompressionBus Handler implementation.
+    void FindCompressionInfo(bool& found, AZ::IO::CompressionInfo& info, const AZStd::string_view filename) override;
+    //@}
+
     ICryPak::PakInfo* GetPakInfo();
     void FreePakInfo (PakInfo*);
 
@@ -430,6 +451,7 @@ public: // ---------------------------------------------------------------------
     // Set the localization folder
     virtual void SetLocalizationFolder(const char* sLocalizationFolder);
     virtual const char* GetLocalizationFolder() const { return m_sLocalizationFolder.c_str(); }
+    virtual const char* GetLocalizationRoot() const { return m_sLocalizationRoot.c_str(); }
 
     // Only returns useful results on a dedicated server at present - and only if the pak is already opened
     void GetCachedPakCDROffsetSize(const char* szName, uint32& offset, uint32& size);

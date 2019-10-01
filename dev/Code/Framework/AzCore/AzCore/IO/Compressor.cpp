@@ -9,8 +9,8 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#ifndef AZ_UNITY_BUILD
 
+#include <AzCore/std/algorithm.h>
 #include <AzCore/IO/Compressor.h>
 #include <AzCore/IO/CompressorStream.h>
 
@@ -31,10 +31,8 @@ namespace AZ
             header.SetAZCS();
             header.m_compressorId = GetTypeId();
             header.m_uncompressedSize = compressorStream->GetCompressorData()->m_uncompressedSize;
-#ifndef AZ_BIG_ENDIAN
             AZStd::endian_swap(header.m_compressorId);
             AZStd::endian_swap(header.m_uncompressedSize);
-#endif // not big endian
             GenericStream* baseStream = compressorStream->GetWrappedStream();
             if (baseStream->WriteAtOffset(sizeof(CompressorHeader), &header, 0U) == sizeof(CompressorHeader))
             {
@@ -45,5 +43,3 @@ namespace AZ
         }
     } // namespace IO
 } // namespace AZ
-
-#endif // AZ_UNITY_BUILD

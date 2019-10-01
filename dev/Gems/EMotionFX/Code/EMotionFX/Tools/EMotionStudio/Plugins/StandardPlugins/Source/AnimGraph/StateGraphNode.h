@@ -13,6 +13,7 @@
 #pragma once
 
 #include <EMotionStudio/Plugins/StandardPlugins/Source/StandardPluginsConfig.h>
+#include <EMotionStudio/Plugins/StandardPlugins/Source/AnimGraph/AnimGraphModel.h>
 #include <EMotionStudio/Plugins/StandardPlugins/Source/AnimGraph/AnimGraphVisualNode.h>
 #include <EMotionStudio/Plugins/StandardPlugins/Source/AnimGraph/NodeConnection.h>
 
@@ -26,6 +27,16 @@ namespace EMotionFX
 namespace EMStudio
 {
     class AnimGraphPlugin;
+
+    class StateMachineColors
+    {
+    public:
+        static const QColor s_transitionColor;
+        static const QColor s_interruptedColor;
+        static const QColor s_activeColor;
+        static const QColor s_interruptionCandidateColor;
+        static const QColor s_selectedColor;
+    };
 
     class StateConnection
         : public NodeConnection
@@ -53,10 +64,17 @@ namespace EMStudio
 
         bool GetIsWildcardTransition() const override       { return mIsWildcardConnection; }
 
+        static void RenderTransition(QPainter& painter, QBrush& brush, QPen& pen,
+            QPoint start, QPoint end,
+            const QColor& color, const QColor& activeColor,
+            bool isSelected, bool isDashed, bool isActive, float weight, bool highlightHead, bool gradientActiveIndicator);
+
+        static void RenderInterruptedTransitions(QPainter& painter, EMStudio::AnimGraphModel& animGraphModel, EMStudio::NodeGraph& nodeGraph);
+
     private:
         void RenderConditionsAndActions(EMotionFX::AnimGraphInstance* animGraphInstance, QPainter* painter, QPen* pen, QBrush* brush, QPoint& start, QPoint& end);
 
-        bool                                    mIsWildcardConnection;
+        bool mIsWildcardConnection;
     };
 
 

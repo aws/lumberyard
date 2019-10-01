@@ -28,6 +28,7 @@ namespace AzFramework
         , m_state(inputChannel.GetState())
         , m_value(inputChannel.GetValue())
         , m_delta(inputChannel.GetDelta())
+        , m_localUserId(inputChannel.GetInputDevice().GetAssignedLocalUserId())
     {
     }
 
@@ -40,6 +41,7 @@ namespace AzFramework
         , m_state(state)
         , m_value((state == State::Began || state == State::Updated) ? 1.0f : 0.0f)
         , m_delta((state == State::Began) ? 1.0f : ((state == State::Ended) ? -1.0f : 0.0f))
+        , m_localUserId(0)
     {
     }
 
@@ -54,6 +56,7 @@ namespace AzFramework
         , m_state(state)
         , m_value(value)
         , m_delta(delta)
+        , m_localUserId(0)
     {
     }
 
@@ -154,6 +157,7 @@ namespace AzFramework
                 ->Property("channelName", [](InputChannel* thisPtr) { return thisPtr->GetInputChannelId().GetName(); }, nullptr)
                 ->Property("deviceName", [](InputChannel* thisPtr) { return thisPtr->GetInputDevice().GetInputDeviceId().GetName(); }, nullptr)
                 ->Property("deviceIndex", [](InputChannel* thisPtr) { return thisPtr->GetInputDevice().GetInputDeviceId().GetIndex(); }, nullptr)
+                ->Property("localUserId", [](InputChannel* thisPtr) { return thisPtr->GetInputDevice().GetAssignedLocalUserId(); }, nullptr)
                 ->Property("state", [](InputChannel* thisPtr) { return thisPtr->GetState(); }, nullptr)
                 ->Property("value", [](InputChannel* thisPtr) { return thisPtr->GetValue(); }, nullptr)
                 ->Property("delta", [](InputChannel* thisPtr) { return thisPtr->GetDelta(); }, nullptr)

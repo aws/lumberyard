@@ -18,6 +18,7 @@
 #include <EMotionFX/Source/ActorInstance.h>
 #include <EMotionFX/Source/Importer/Importer.h>
 #include <EMotionFX/Source/EMotionFXManager.h>
+#include <EMotionFX/Source/SimulatedObjectSetup.h>
 #include <AzFramework/Physics/Utils.h>
 
 
@@ -83,6 +84,34 @@ namespace EMotionFX
 
         return MCore::ReflectionSerializer::Serialize(actor->GetPhysicsSetup().get()).GetValue();
     }
+
+    AZStd::string ActorFixture::SerializeSimulatedObjectSetup(const Actor* actor) const
+    {
+        if (!actor)
+        {
+            return AZStd::string();
+        }
+
+        return MCore::ReflectionSerializer::Serialize(actor->GetSimulatedObjectSetup().get()).GetValue();
+    }
+
+
+    SimulatedObjectSetup* ActorFixture::DeserializeSimulatedObjectSetup(const AZStd::string& data) const
+    {
+        AZ::SerializeContext* serializeContext = nullptr;
+        AZ::ComponentApplicationBus::BroadcastResult(serializeContext, &AZ::ComponentApplicationBus::Events::GetSerializeContext);
+        if (!serializeContext)
+        {
+            AZ_Error("EMotionFX", false, "Can't get serialize context from component application.");
+            return nullptr;
+        }
+
+        AZ::ObjectStream::FilterDescriptor loadFilter(nullptr, AZ::ObjectStream::FILTERFLAG_IGNORE_UNKNOWN_CLASSES);
+        SimulatedObjectSetup* setup = AZ::Utils::LoadObjectFromBuffer<EMotionFX::SimulatedObjectSetup>(data.data(), data.size(), serializeContext, loadFilter);
+        setup->InitAfterLoad(m_actor);
+        return setup;
+    }
+
 
     AZStd::vector<AZStd::string> ActorFixture::GetTestJointNames() const
     {

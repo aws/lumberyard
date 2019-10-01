@@ -307,6 +307,10 @@ namespace AzToolsFramework
         // The left margin of the header should be pushed in to the right a bit, by design.
         static const int s_messageHeaderLeftMargin = 24;
         static const int s_messageHheaderMargins = 3;
+
+        // role used to store icons in the QTreeWidgetItem data so correct icon can be restored
+        // e.g. when conflict is resolved.
+        static const int s_iconStorageRole = Qt::UserRole;
     };
 
 } // namespace AzToolsFramework

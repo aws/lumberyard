@@ -106,32 +106,6 @@ namespace Input
         }
 
     protected:
-        AZ::u8 RequestDeviceIndexMapping(const Input::ProfileId& profileId) override
-        {
-            if (m_profileIdToDeviceIndex.find(profileId) == m_profileIdToDeviceIndex.end())
-            {
-                AZ_Error("Input", m_nextValidDeviceIndex < std::numeric_limits<AZ::u8>::max(), "Attempting to request more devices than are supported");
-                AZ_WarningOnce("Input", m_nextValidDeviceIndex < std::numeric_limits<AZ::u8>::digits, "You are requesting a high volume of devices, is this intended?");
-                m_profileIdToDeviceIndex[profileId] = m_nextValidDeviceIndex++;
-            }
-            return m_profileIdToDeviceIndex[profileId];
-        }
-
-        AZ::u8 GetMappedDeviceIndex(const Input::ProfileId& profileId) override
-        {
-            if (m_profileIdToDeviceIndex.find(profileId) == m_profileIdToDeviceIndex.end())
-            {
-                AZ_Warning("Input", false, "Trying to get the device index for a profile that hasn't been mapped.");
-                return 0;
-            }
-            return m_profileIdToDeviceIndex[profileId];
-        }
-
-        void ClearAllDeviceMappings()
-        {
-            m_nextValidDeviceIndex = 0;
-            m_profileIdToDeviceIndex.clear();
-        }
 
         void PushContext(const AZStd::string& context) override
         {
@@ -176,9 +150,7 @@ namespace Input
 
     private:
         AzFramework::GenericAssetHandler<Input::InputEventBindingsAsset>* m_inputEventBindingsAssetHandler = nullptr;
-        AZStd::unordered_map<Input::ProfileId, AZ::u8> m_profileIdToDeviceIndex;
         AZStd::vector<AZStd::string> m_contexts;
-        AZ::u8 m_nextValidDeviceIndex = 0;
     };
 
     class InputManagementFrameworkModule
@@ -224,7 +196,6 @@ namespace Input
                 case ESYSTEM_EVENT_LEVEL_LOAD_START:
                 case ESYSTEM_EVENT_GAME_MODE_SWITCH_START:
                 {
-                    AZ::InputRequestBus::Broadcast(&AZ::InputRequests::ClearAllDeviceMappings);
                     AZ::InputRequestBus::Broadcast(&AZ::InputRequests::PopAllContexts);
                 }
                 break;

@@ -13,6 +13,7 @@
 #define AZCORE_IO_GENERICSTREAMS_H
 
 #include <AzCore/base.h>
+#include <AzCore/std/string/string.h>
 
 namespace AZ
 {
@@ -57,17 +58,23 @@ namespace AZ
             SizeType ComputeSeekPosition(OffsetType bytes, SeekMode mode);
         };
 
-        class VirtualStream;
         /*
          * Wraps around a disc manager stream
+         *
+         * WARNING!
+         * StreamerStream will not cause file operations to become asynchronous or go faster. Because it needs to act as a stream
+         * calling StreamerStream will cause the thread to still be blocked and in order to unlock the thread as quickly as possible
+         * the file will always be processed as a panic read by AZ::IO::Streamer, which is disruptive to it's scheduling. As there's
+         * also the overhead of calling into a multi-threaded system and because streams in general encourage micro-reads it's
+         * generally not advised to use StreamerStream. Instead prefer to use alternative ways such as FileIOStream to read the entire
+         * file to a temporary buffer and use MemoryStream to continue processing as a stream.
          */
         class StreamerStream
             : public GenericStream
         {
         public:
             StreamerStream(const char* filename, OpenMode flags, SizeType baseOffset = 0, SizeType fakeLen = static_cast<SizeType>(-1));
-            StreamerStream(VirtualStream* stream, bool ownStream, SizeType baseOffset = 0, SizeType fakeLen = static_cast<SizeType>(-1));
-            virtual ~StreamerStream();
+            ~StreamerStream() override = default;
 
             virtual bool        IsOpen() const;
             virtual bool        CanSeek() const                             { return true; }
@@ -80,11 +87,18 @@ namespace AZ
             virtual SizeType    GetLength() const;
 
         protected:
-            VirtualStream*     m_stream;
+            enum class Availability
+            {
+                NotChecked,
+                FileExists,
+                FileMissing
+            };
+
+            AZStd::string m_filename;
             SizeType    m_baseOffset;
             SizeType    m_curPos;
-            SizeType    m_fakeLen;
-            bool        m_isStreamOwner;
+            mutable SizeType m_fakeLen;
+            mutable Availability m_exists = Availability::NotChecked;
         };
 
         /*

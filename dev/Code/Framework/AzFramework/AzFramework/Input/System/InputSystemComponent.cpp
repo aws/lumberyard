@@ -112,7 +112,7 @@ namespace AzFramework
                     ->DataElement(AZ::Edit::UIHandlers::SpinBox, &InputSystemComponent::m_gamepadsEnabled,
                         "Gamepads", "The number of game-pads enabled.")
                         ->Attribute(AZ::Edit::Attributes::Min, 0)
-                        ->Attribute(AZ::Edit::Attributes::Max, 4)
+                        ->Attribute(AZ::Edit::Attributes::Max, 8)
                     ->DataElement(AZ::Edit::UIHandlers::CheckBox, &InputSystemComponent::m_keyboardEnabled,
                         "Keyboard", "Is keyboard input enabled?")
                     ->DataElement(AZ::Edit::UIHandlers::CheckBox, &InputSystemComponent::m_motionEnabled,
@@ -260,6 +260,9 @@ namespace AzFramework
     ////////////////////////////////////////////////////////////////////////////////////////////////
     void InputSystemComponent::CreateEnabledInputDevices()
     {
+        const AZ::u32 maxSupportedGamepads = InputDeviceGamepad::GetMaxSupportedGamepads();
+        m_gamepadsEnabled = AZStd::clamp<AZ::u32>(m_gamepadsEnabled, 0, maxSupportedGamepads);
+
         DestroyEnabledInputDevices();
 
         m_gamepads.resize(m_gamepadsEnabled);

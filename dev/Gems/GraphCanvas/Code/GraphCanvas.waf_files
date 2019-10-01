@@ -79,13 +79,12 @@
         [
             "Source/Components/NodePropertyDisplays/BooleanNodePropertyDisplay.cpp",
             "Source/Components/NodePropertyDisplays/BooleanNodePropertyDisplay.h",
+            "Source/Components/NodePropertyDisplays/ComboBoxNodePropertyDisplay.cpp",
+            "Source/Components/NodePropertyDisplays/ComboBoxNodePropertyDisplay.h",
             "Source/Components/NodePropertyDisplays/NumericNodePropertyDisplay.cpp",
             "Source/Components/NodePropertyDisplays/NumericNodePropertyDisplay.h",
             "Source/Components/NodePropertyDisplays/EntityIdNodePropertyDisplay.cpp",
             "Source/Components/NodePropertyDisplays/EntityIdNodePropertyDisplay.h",
-            "Source/Components/NodePropertyDisplays/ItemModelInspectionDialog.ui",
-            "Source/Components/NodePropertyDisplays/ItemModelNodePropertyDisplay.cpp",
-            "Source/Components/NodePropertyDisplays/ItemModelNodePropertyDisplay.h",            
             "Source/Components/NodePropertyDisplays/ReadOnlyNodePropertyDisplay.cpp",
             "Source/Components/NodePropertyDisplays/ReadOnlyNodePropertyDisplay.h",
             "Source/Components/NodePropertyDisplays/StringNodePropertyDisplay.cpp",
@@ -175,6 +174,15 @@
             "Source/Components/Slots/Execution/ExecutionSlotLayoutComponent.cpp",
             "Source/Components/Slots/Execution/ExecutionSlotLayoutComponent.h"
         ],
+        "Source/Components/Slots/Extender":
+        [
+            "Source/Components/Slots/Extender/ExtenderSlotComponent.cpp",
+            "Source/Components/Slots/Extender/ExtenderSlotComponent.h",
+            "Source/Components/Slots/Extender/ExtenderSlotConnectionPin.cpp",
+            "Source/Components/Slots/Extender/ExtenderSlotConnectionPin.h",
+            "Source/Components/Slots/Extender/ExtenderSlotLayoutComponent.cpp",
+            "Source/Components/Slots/Extender/ExtenderSlotLayoutComponent.h"
+        ],
         "Source/Components/Slots/Property":
         [
             "Source/Components/Slots/Property/PropertySlotComponent.cpp",
@@ -182,14 +190,12 @@
             "Source/Components/Slots/Property/PropertySlotLayoutComponent.cpp",
             "Source/Components/Slots/Property/PropertySlotLayoutComponent.h"
         ],
-        "Source/Utils":
-        [
-            "Source/Utils/ConversionUtils.h"
-        ],
         "Source/Widgets":
         [
             "Source/Widgets/GraphCanvasCheckBox.cpp",
             "Source/Widgets/GraphCanvasCheckBox.h",
+            "Source/Widgets/GraphCanvasComboBox.cpp",
+            "Source/Widgets/GraphCanvasComboBox.h",
             "Source/Widgets/GraphCanvasLabel.cpp",
             "Source/Widgets/GraphCanvasLabel.h",            
             "Source/Widgets/NodePropertyDisplayWidget.cpp",

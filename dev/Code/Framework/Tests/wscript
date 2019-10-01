@@ -26,10 +26,14 @@ def build(bld):
         configurations      = ['all'],
         test_only           = True,
         use                 = ['AzTest', 'AzToolsFramework'],
-        uselib              = [ 'QT5CORE',
-                                'QT5GUI',
-                                'QT5WIDGETS'],
+        uselib              = ['QT5CORE',
+                               'QT5GUI',
+                               'QT5WIDGETS'],
+        # Platform Roots
+        platform_roots      = [bld.PlatformRoot('Platform', export_includes=False)],
+        
+        # Platform Specific
         msvc_cxxflags       = ['/W4'],
     )
-    
+
     bld.recurse(SUBFOLDERS)

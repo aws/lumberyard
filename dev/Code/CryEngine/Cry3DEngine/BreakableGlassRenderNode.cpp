@@ -817,7 +817,8 @@ void CBreakableGlassRenderNode::SetMaterial(_smart_ptr<IMaterial> pMaterial)
             {
                 if (SShaderParam* sp = &shaderParams[i])
                 {
-                    if ((sp->m_Name == GLASS_TINT_COLOUR_PARAM) || (sp->m_Name == GLASS_TINT_CLOUDINESS_PARAM))
+                    if (azstricmp(sp->m_Name.c_str(), GLASS_TINT_COLOUR_PARAM) == 0
+                        || azstricmp(sp->m_Name.c_str(), GLASS_TINT_CLOUDINESS_PARAM) == 0)
                     {
                         switch (sp->m_Type)
                         {

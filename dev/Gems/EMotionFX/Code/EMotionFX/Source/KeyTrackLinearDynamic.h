@@ -13,8 +13,9 @@
 #pragma once
 
 // include required headers
+#include <AzCore/RTTI/TypeInfo.h>
+#include <AzCore/std/containers/vector.h>
 #include <MCore/Source/StandardHeaders.h>
-#include <MCore/Source/Array.h>
 #include <MCore/Source/Compare.h>
 
 #include "EMotionFXConfig.h"
@@ -22,6 +23,11 @@
 #include "CompressedKeyFrames.h"
 #include "KeyFrameFinder.h"
 
+
+namespace AZ
+{
+    class ReflectContext;
+}
 
 namespace EMotionFX
 {
@@ -31,12 +37,14 @@ namespace EMotionFX
      * For that reason the dynamic version is more efficient for adding and removing keys dynamically.
      * This is a class holding a set of keyframes.
      */
-    template <class ReturnType, class StorageType>
+    template <class ReturnType, class StorageType = ReturnType>
     class KeyTrackLinearDynamic
     {
         MCORE_MEMORYOBJECTCATEGORY(KeyTrackLinearDynamic, EMFX_DEFAULT_ALIGNMENT, EMFX_MEMCATEGORY_MOTIONS_KEYTRACKS);
 
     public:
+        AZ_TYPE_INFO(EMotionFX::KeyTrackLinear, "{8C6EB52A-9720-467B-9D96-B4B967A113D1}", StorageType)
+
         /**
          * Default constructor.
          */
@@ -52,6 +60,8 @@ namespace EMotionFX
          * Destructor.
          */
         ~KeyTrackLinearDynamic();
+
+        static void Reflect(AZ::ReflectContext* context);
 
         /**
          * Reserve space for a given number of keys. This pre-allocates data, so that adding keys doesn't always do a reallocation.
@@ -133,9 +143,10 @@ namespace EMotionFX
          *                  interpolate between using the keyframe finder. If this value is nullptr (default), this cached key is ignored.
          *                  The cached value will also be overwritten with the new cached key in case of a cache miss.
          * @param outWasCacheHit This output value will contain 0 when this method had an internal cache miss and a value of 1 in case it was a cache hit.
+         * @param interpolate Should we interpolate between the keyframes?
          * @result Returns the value at the specified time.
          */
-        ReturnType GetValueAtTime(float currentTime, uint32* cachedKey = nullptr, uint8* outWasCacheHit = nullptr) const;
+        ReturnType GetValueAtTime(float currentTime, uint32* cachedKey = nullptr, uint8* outWasCacheHit = nullptr, bool interpolate = true) const;
 
         /**
          * Get a given keyframe.
@@ -259,7 +270,7 @@ namespace EMotionFX
         MCORE_INLINE void SetStorageTypeKey(uint32 keyNr, float time, const StorageType& value);
 
     protected:
-        MCore::Array< KeyFrame<ReturnType, StorageType> >   mKeys;          /**< The collection of keys which form the track. */
+        AZStd::vector< KeyFrame<ReturnType, StorageType> > mKeys;          /**< The collection of keys which form the track. */
     };
 
 

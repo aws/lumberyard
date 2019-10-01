@@ -29,7 +29,7 @@
 #include "CloudGemSpeechRecognition_precompiled.h"
 
 
-#include "AWS/ServiceAPI/CloudGemSpeechRecognitionClientComponent.h"
+#include "AWS/ServiceApi/CloudGemSpeechRecognitionClientComponent.h"
 
 namespace CloudGemSpeechRecognition {
 namespace ServiceAPI {

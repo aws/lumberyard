@@ -18,8 +18,7 @@
 namespace ScriptCanvasEditor
 {
     class EBusSenderNodeDescriptorComponent
-        : public NodeDescriptorComponent
-        , public GraphCanvas::NodeNotificationBus::Handler
+        : public NodeDescriptorComponent        
     {
     public:
         AZ_COMPONENT(EBusSenderNodeDescriptorComponent, "{6B646A3A-CB7F-49C4-8146-D848F418E0B1}", NodeDescriptorComponent);
@@ -28,13 +27,7 @@ namespace ScriptCanvasEditor
         EBusSenderNodeDescriptorComponent();
         ~EBusSenderNodeDescriptorComponent() = default;
 
-        // Component
-        void Activate() override;
-        void Deactivate() override;
-        ////
-
-        // NodeNotificationBus::Handler
-        void OnAddedToScene(const AZ::EntityId& sceneId) override;
-        ////
+    protected:
+        void OnAddedToGraphCanvasGraph(const GraphCanvas::GraphId& graphId, const AZ::EntityId& scriptCanvasNodeId) override;
     };
 }

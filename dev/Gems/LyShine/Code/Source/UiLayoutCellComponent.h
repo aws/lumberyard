@@ -38,6 +38,10 @@ public: // member functions
     void SetTargetWidth(float width) override;
     float GetTargetHeight() override;
     void SetTargetHeight(float height) override;
+    float GetMaxWidth() override;
+    void SetMaxWidth(float width) override;
+    float GetMaxHeight() override;
+    void SetMaxHeight(float height) override;
     float GetExtraWidthRatio() override;
     void SetExtraWidthRatio(float width) override;
     float GetExtraHeightRatio() override;
@@ -101,6 +105,18 @@ protected: // data
 
     //! The target height
     float m_targetHeight;
+
+    //! Whether the max width has been overridden
+    bool m_maxWidthOverridden;
+
+    //! The max width
+    float m_maxWidth;
+
+    //! Whether the max height has been overridden
+    bool m_maxHeightOverridden;
+
+    //! The max height
+    float m_maxHeight;
 
     //! Whether the extra width ratio has been overridden
     bool m_extraWidthRatioOverridden;

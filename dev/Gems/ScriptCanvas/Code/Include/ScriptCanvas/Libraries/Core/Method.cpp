@@ -14,6 +14,7 @@
 
 #include <AzCore/RTTI/BehaviorContext.h>
 #include <Libraries/Core/MethodUtility.h>
+#include <Core/SlotConfigurationDefaults.h>
 
 namespace MethodCPP
 {
@@ -99,7 +100,7 @@ namespace ScriptCanvas
 
                     // all input should have been pushed into this node already
                     int argIndex(0);
-                    for (VariableDatumBase& varDatum : m_varDatums)
+                    for (const VariableDatumBase& varDatum : GetVarDatums())
                     {
                         auto behaviorParameter = m_method->GetArgument(argIndex);
                         AZ::Outcome<AZ::BehaviorValueParameter, AZStd::string> inputParameter = varDatum.GetData().ToBehaviorValueParameter(*behaviorParameter);
@@ -132,11 +133,96 @@ namespace ScriptCanvas
                 }
             }
 
-            void Method::InitializeMethod(AZ::BehaviorMethod& method, const AZStd::string* inputNameOverride)
+            void Method::InitializeMethod(const MethodConfiguration& config)
             {
-                auto isExposableOutcome = IsExposable(method);
+                m_namespaces = config.m_namespaces ? *config.m_namespaces : m_namespaces;
+                m_className = config.m_className ? *config.m_className : m_className;
+                m_classNamePretty = m_className;
+                m_methodType = config.m_methodType;
+                m_lookupName = config.m_lookupName ? *config.m_lookupName : config.m_method.m_name;
+
+                auto isExposableOutcome = IsExposable(config.m_method);
                 AZ_Warning("ScriptCanvas", isExposableOutcome.IsSuccess(), "BehaviorContext Method %s is no longer exposable to ScriptCanvas: %s", isExposableOutcome.GetError().data());
-                ConfigureMethod(method);
+                ConfigureMethod(config.m_method);
+                InitializeInput(config);
+                AddSlot(CommonSlots::GeneralInSlot());
+                InitializeOutput(config);
+            }
+
+            SlotId Method::AddMethodInputSlot(AZStd::string_view argName, AZStd::string_view toolTip, const AZ::BehaviorParameter& argument)
+            {
+                DataSlotConfiguration slotConfiguration;
+                slotConfiguration.m_name = argName;
+                slotConfiguration.m_toolTip = toolTip;
+                slotConfiguration.SetConnectionType(ConnectionType::Input);
+
+                // Create a slot with a default value
+                if (argument.m_typeId == azrtti_typeid<AZ::EntityId>())
+                {
+                    slotConfiguration.ConfigureDatum(Datum(Data::Type::EntityID(), Datum::eOriginality::Copy, &ScriptCanvas::GraphOwnerId, AZ::Uuid::CreateNull()));
+                }
+                else
+                {
+                    Data::Type scType = !AZ::BehaviorContextHelper::IsStringParameter((argument)) ? Data::FromAZType(argument.m_typeId) : Data::Type::String();
+                    slotConfiguration.ConfigureDatum(Datum(scType, Datum::eOriginality::Copy, nullptr, AZ::Uuid::CreateNull()));
+                }
+
+                return AddSlot(slotConfiguration);
+            }
+
+            AZStd::string Method::GetArgumentName(size_t argIndex, const AZ::BehaviorMethod& method, const AZ::BehaviorClass* bcClass, AZStd::string_view replaceTypeName)
+            {
+                if (const AZ::BehaviorParameter* argument = method.GetArgument(argIndex))
+                {
+                    const AZStd::string argumentTypeName = replaceTypeName.empty()
+                        ? AZ::BehaviorContextHelper::IsStringParameter(*argument)
+                            ? Data::GetName(Data::Type::String())
+                            : Data::GetName(Data::FromAZType(argument->m_typeId))
+                        : AZStd::string(replaceTypeName);
+
+                    const AZStd::string* argumentNamePtr = method.GetArgumentName(argIndex);
+
+                    return argumentNamePtr && !argumentNamePtr->empty()
+                        ? *argumentNamePtr
+                        : (AZStd::string::format("%s:%2d", argumentTypeName.data(), argIndex));
+                }
+
+                return {};
+            }
+
+            void Method::InitializeInput(const MethodConfiguration& config)
+            {
+                for (size_t argIndex(0), sentinel(config.m_method.GetNumArguments()); argIndex != sentinel; ++argIndex)
+                {
+                    if (const AZ::BehaviorParameter* argument = config.m_method.GetArgument(argIndex))
+                    {
+                        const AZStd::string argName = GetArgumentName(argIndex, config.m_method, config.m_class, "");
+
+                        const AZStd::string* argumentTooltipPtr = config.m_method.GetArgumentToolTip(argIndex);
+                        const AZStd::string_view argumentTooltip = argumentTooltipPtr ? argumentTooltipPtr->c_str() : AZStd::string_view();
+
+                        SlotId addedSlot = AddMethodInputSlot(argName, argumentTooltip, *argument);
+
+                        if (addedSlot.IsValid())
+                        {
+                            if (const auto defaultValue = config.m_method.GetDefaultValue(argIndex))
+                            {
+                                Datum* input = ModInput(*this, addedSlot);
+
+                                if (input && Data::IsValueType(input->GetType()))
+                                {
+                                    *input = Datum(defaultValue->m_value);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            void Method::InitializeOutput(const MethodConfiguration& config)
+            {
+                const AZ::BehaviorMethod& method = config.m_method;
+                const AZ::BehaviorClass* bcClass = config.m_class;
 
                 bool useOutcomeExecutionSlots = false;
 
@@ -150,13 +236,13 @@ namespace ScriptCanvas
 
                             for (const auto& tupleIndexGetMethodPair : m_tupleGetMethods)
                             {
-                                if (AZ::BehaviorMethod* tupleGetMethod = tupleIndexGetMethodPair.second)
+                                if (const AZ::BehaviorMethod* tupleGetMethod = tupleIndexGetMethodPair.second)
                                 {
                                     if (const AZ::BehaviorParameter* tupleGetResult = tupleGetMethod->GetResult())
                                     {
                                         Data::Type outputType(AZ::BehaviorContextHelper::IsStringParameter(*tupleGetResult) ? Data::Type::String() : Data::FromAZType(tupleGetResult->m_typeId));
                                         AZStd::string_view outcomeName = tupleGetMethod->m_name;
-                                       
+
                                         if (tupleGetMethod->m_name.find("Error") != AZStd::string::npos)
                                         {
                                             outcomeName = "Error";
@@ -167,7 +253,13 @@ namespace ScriptCanvas
                                         }
 
                                         const AZStd::string resultSlotName(AZStd::string::format("%s: %s", outcomeName.data(), Data::GetName(outputType).data()));
-                                        m_resultSlotIDs.emplace_back(AddOutputTypeSlot(resultSlotName.c_str(), "", AZStd::move(outputType), OutputStorage::Required));
+                                        {
+                                            DataSlotConfiguration slotConfiguration;
+                                            slotConfiguration.m_name = resultSlotName.c_str();
+                                            slotConfiguration.SetType(outputType);
+                                            slotConfiguration.SetConnectionType(ConnectionType::Output);
+                                            m_resultSlotIDs.emplace_back(AddSlot(slotConfiguration));
+                                        }
                                     }
                                 }
                             }
@@ -176,68 +268,44 @@ namespace ScriptCanvas
                         {
                             Data::Type outputType(AZ::BehaviorContextHelper::IsStringParameter(*result) ? Data::Type::String() : Data::FromAZType(result->m_typeId));
                             const AZStd::string resultSlotName(AZStd::string::format("Result: %s", Data::GetName(outputType).data()));
-                            m_resultSlotIDs.emplace_back(AddOutputTypeSlot(resultSlotName.c_str(), "", AZStd::move(outputType), OutputStorage::Required));
-                        }
-                    }
-                }
-
-                // input slots
-                for (size_t argIndex(0), sentinel(method.GetNumArguments()); argIndex != sentinel; ++argIndex)
-                {
-                    if (const AZ::BehaviorParameter* argument = method.GetArgument(argIndex))
-                    {
-                        AZStd::string argumentTypeName = AZ::BehaviorContextHelper::IsStringParameter(*argument) ? Data::GetName(Data::Type::String()) : Data::GetName(Data::FromAZType(argument->m_typeId));
-                        const AZStd::string* argumentNamePtr = method.GetArgumentName(argIndex);
-                        const AZStd::string argName = argumentNamePtr && !argumentNamePtr->empty()
-                            ? *argumentNamePtr
-                            : (AZStd::string::format("%s:%2d", argumentTypeName.data(), argIndex));
-
-                        const AZStd::string* argumentTooltipPtr = method.GetArgumentToolTip(argIndex);
-                        const AZStd::string_view argumentTooltip = argumentTooltipPtr ? argumentTooltipPtr->c_str() : AZStd::string_view();
-
-                        // Create a slot with a default value
-                        if (argument->m_typeId == azrtti_typeid<AZ::EntityId>())
-                        {
-                            AddInputDatumSlot(argName, argumentTooltip, Datum::eOriginality::Copy, ScriptCanvas::SelfReferenceId, false);
-                        }
-                        else
-                        {
-                            SlotId addedSlot = AddInputDatumSlot(argName, argumentTooltip, *argument, Datum::eOriginality::Copy, false);
-
-                            if (auto defaultValue = method.GetDefaultValue(argIndex))
                             {
-                                Datum* input = ModInput(*this, addedSlot);
-
-                                if (input && Data::IsValueType(input->GetType()))
-                                {
-                                    *input = Datum(defaultValue->m_value);
-                                }
+                                DataSlotConfiguration slotConfiguration;
+                                slotConfiguration.m_name = resultSlotName.c_str();
+                                slotConfiguration.SetType(outputType);
+                                slotConfiguration.SetConnectionType(ConnectionType::Output);
+                                m_resultSlotIDs.emplace_back(AddSlot(slotConfiguration));
                             }
                         }
                     }
                 }
 
-                AddSlot("In", "", SlotType::ExecutionIn);
-
                 if (useOutcomeExecutionSlots)
                 {
-                    AZStd::string successName{"Success"};
+                    AZStd::string successName{ "Success" };
                     if (auto successOverridePtr = AZ::FindAttribute(AZ::ScriptCanvasAttributes::AutoUnpackOutputOutcomeSuccessSlotName, method.m_attributes))
                     {
                         AZ::AttributeReader(nullptr, successOverridePtr).Read<AZStd::string>(successName);
                     }
-                    AddSlot(successName.data(), "", SlotType::ExecutionOut);
-                                        
-                    AZStd::string failureName{"Failure"};
+                    
+                    {
+                        ExecutionSlotConfiguration slotConfiguration(successName, ConnectionType::Output);
+                        AddSlot(slotConfiguration);
+                    }
+
+                    AZStd::string failureName{ "Failure" };
                     if (auto failureOverridePtr = AZ::FindAttribute(AZ::ScriptCanvasAttributes::AutoUnpackOutputOutcomeFailureSlotName, method.m_attributes))
                     {
                         AZ::AttributeReader(nullptr, failureOverridePtr).Read<AZStd::string>(failureName);
                     }
-                    AddSlot(failureName.data(), "", SlotType::ExecutionOut);
+                    
+                    {
+                        ExecutionSlotConfiguration slotConfiguration(failureName, ConnectionType::Output);
+                        AddSlot(slotConfiguration);
+                    }
                 }
                 else
                 {
-                    AddSlot("Out", "", SlotType::ExecutionOut);
+                    AddSlot(CommonSlots::GeneralOutSlot());
                 }
 
                 if (m_resultSlotIDs.empty())
@@ -273,11 +341,16 @@ namespace ScriptCanvas
             {
                 AZStd::lock_guard<AZStd::recursive_mutex> lock(m_mutex);
 
-                AZ::BehaviorMethod* method{};
-                if (FindClass(method, namespaces, className, methodName))
+                const AZ::BehaviorMethod* method{};
+                const AZ::BehaviorClass* bcClass{};
+                if (FindClass(method, bcClass, namespaces, className, methodName))
                 {
-                    InitializeMethod(*method);
-                    InitializeLookUp(namespaces, className, methodName, MethodType::Member);
+                    MethodConfiguration config(*method, MethodType::Member);
+                    config.m_class = bcClass;
+                    config.m_namespaces = &m_namespaces;
+                    config.m_className = &className;
+                    config.m_lookupName = &methodName;
+                    InitializeMethod(config);
                 }
             }
 
@@ -285,11 +358,14 @@ namespace ScriptCanvas
             {
                 AZStd::lock_guard<AZStd::recursive_mutex> lock(m_mutex);
 
-                AZ::BehaviorMethod* method{};
+                const AZ::BehaviorMethod* method{};
                 if (FindEvent(method, namespaces, ebusName, eventName))
                 {
-                    InitializeMethod(*method, &eventName);
-                    InitializeLookUp(namespaces, ebusName, eventName, MethodType::Event, &eventName);
+                    MethodConfiguration config(*method, MethodType::Event);
+                    config.m_namespaces = &m_namespaces;
+                    config.m_className = &ebusName;
+                    config.m_lookupName = &eventName;
+                    InitializeMethod(config);
                 }
             }
 
@@ -297,25 +373,27 @@ namespace ScriptCanvas
             {
                 AZStd::lock_guard<AZStd::recursive_mutex> lock(m_mutex);
 
-                AZ::BehaviorMethod* method{};
+                const AZ::BehaviorMethod* method{};
                 if (FindFree(method, namespaces, methodName))
                 {
-                    InitializeMethod(*method);
-                    InitializeLookUp(namespaces, m_className, methodName, MethodType::Free);
+                    MethodConfiguration config(*method, MethodType::Free);
+                    config.m_namespaces = &m_namespaces;
+                    config.m_lookupName = &methodName;
+                    InitializeMethod(config);
                 }
             }
 
-            void Method::InitializeLookUp(const Namespaces& namespaces, const AZStd::string& className, const AZStd::string& methodName, const MethodType methodType, const AZStd::string* nameOverride)
+            const AZ::BehaviorMethod* Method::GetMethod() const
             {
-                m_namespaces = namespaces;
-                m_className = className;
-                m_classNamePretty = className;
-                m_methodName = methodName;
-                m_methodType = methodType;
-                m_name = nameOverride ? *nameOverride : m_methodName;
+                return m_method;
             }
 
-            void Method::ConfigureMethod(AZ::BehaviorMethod& method)
+            void Method::SetMethodUnchecked(const AZ::BehaviorMethod* method)
+            {
+                m_method = method;
+            }
+
+            void Method::ConfigureMethod(const AZ::BehaviorMethod& method)
             {
                 if (IsConfigured())
                 {
@@ -339,7 +417,7 @@ namespace ScriptCanvas
                 }
             }
 
-            bool Method::FindClass(AZ::BehaviorMethod*& outMethod, const Namespaces& namespaces, AZStd::string_view className, AZStd::string_view methodName)
+            bool Method::FindClass(const AZ::BehaviorMethod*& outMethod, const AZ::BehaviorClass*& outClass, const Namespaces& namespaces, AZStd::string_view className, AZStd::string_view methodName)
             {
                 AZ::BehaviorContext* behaviorContext(nullptr);
                 AZ::ComponentApplicationBus::BroadcastResult(behaviorContext, &AZ::ComponentApplicationRequests::GetBehaviorContext);
@@ -356,9 +434,9 @@ namespace ScriptCanvas
                     return false;
                 }
 
-                AZ::BehaviorClass* behaviorClass(classIter->second);
+                const AZ::BehaviorClass* behaviorClass(classIter->second);
                 AZ_Assert(behaviorClass, "BehaviorContext Class entry %s has no class pointer", className.data());
-
+                
                 const auto methodIter(behaviorClass->m_methods.find(methodName.data()));
                 if (methodIter == behaviorClass->m_methods.end())
                 {
@@ -382,11 +460,12 @@ namespace ScriptCanvas
                     AZ::AttributeReader(nullptr, prettyNameAttribute).Read<AZStd::string>(m_classNamePretty, *behaviorContext);
                 }
 
+                outClass = behaviorClass;
                 outMethod = method;
                 return true;
             }
 
-            bool Method::FindEvent(AZ::BehaviorMethod*& outMethod, const Namespaces& namespaces, AZStd::string_view ebusName, AZStd::string_view eventName)
+            bool Method::FindEvent(const AZ::BehaviorMethod*& outMethod, const Namespaces& namespaces, AZStd::string_view ebusName, AZStd::string_view eventName)
             {
                 AZ::BehaviorContext* behaviorContext = nullptr;
                 AZ::ComponentApplicationBus::BroadcastResult(behaviorContext, &AZ::ComponentApplicationRequests::GetBehaviorContext);
@@ -434,7 +513,7 @@ namespace ScriptCanvas
                 return true;
             }
 
-            bool Method::FindFree(AZ::BehaviorMethod*& outMethod, const Namespaces& namespaces, AZStd::string_view methodName)
+            bool Method::FindFree(const AZ::BehaviorMethod*& outMethod, const Namespaces& namespaces, AZStd::string_view methodName)
             {
                 AZ::BehaviorContext* behaviorContext(nullptr);
                 AZ::ComponentApplicationBus::BroadcastResult(behaviorContext, &AZ::ComponentApplicationRequests::GetBehaviorContext);
@@ -499,12 +578,12 @@ namespace ScriptCanvas
             {
                 AZStd::lock_guard<AZStd::recursive_mutex> lock(m_mutex);
 
-                AZ::BehaviorMethod* method{};
+                const AZ::BehaviorMethod* method{};
                 switch (m_methodType)
                 {
                 case MethodType::Event:
                 {
-                    if (FindEvent(method, m_namespaces, m_className, m_methodName))
+                    if (FindEvent(method, m_namespaces, m_className, m_lookupName))
                     {
                         ConfigureMethod(*method);
                     }
@@ -512,7 +591,7 @@ namespace ScriptCanvas
                 }
                 case MethodType::Free:
                 {
-                    if (FindFree(method, m_namespaces, m_methodName))
+                    if (FindFree(method, m_namespaces, m_lookupName))
                     {
                         ConfigureMethod(*method);
                     }
@@ -520,7 +599,8 @@ namespace ScriptCanvas
                 }
                 case MethodType::Member:
                 {
-                    if (FindClass(method, m_namespaces, m_className, m_methodName))
+                    const AZ::BehaviorClass* bcClass{};
+                    if (FindClass(method, bcClass, m_namespaces, m_className, m_lookupName))
                     {
                         ConfigureMethod(*method);
                     }
@@ -547,7 +627,7 @@ namespace ScriptCanvas
                         ->Version(MethodCPP::eVersion::Current, &MethodCPP::MethodVersionConverter)
                         ->EventHandler<SerializeContextEventHandlerDefault<Method>>()
                         ->Field("methodType", &Method::m_methodType)
-                        ->Field("methodName", &Method::m_methodName)
+                        ->Field("methodName", &Method::m_lookupName)
                         ->Field("className", &Method::m_className)
                         ->Field("namespaces", &Method::m_namespaces)
                         ->Field("resultSlotIDs", &Method::m_resultSlotIDs)

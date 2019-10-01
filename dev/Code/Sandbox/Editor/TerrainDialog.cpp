@@ -245,35 +245,8 @@ void CTerrainDialog::OnTerrainLoad()
     if (dlg.exec())
     {
         QString fileName = dlg.selectedFiles().constFirst();
-        QFileInfo info(fileName);
-        const QString ext = info.completeSuffix().toLower();
-
         QWaitCursor wait;
-
-        if (ext == "asc")
-        {
-            // Treat 32-bit formats special to make sure we preserve full data precision
-            m_pHeightmap->LoadASC(fileName);
-        }
-        else if (ext == "bt")
-        {
-            // Treat 32-bit formats special to make sure we preserve full data precision
-            m_pHeightmap->LoadBT(fileName);
-        }
-        else if (ext == "tif")
-        {
-            // Treat 32-bit formats special to make sure we preserve full data precision
-            m_pHeightmap->LoadTIF(fileName);
-        }
-        else if (ext == "raw" || ext == "r16")
-        {
-            m_pHeightmap->LoadRAW(fileName);
-        }
-        else
-        {
-            // Assumes the input format is in 8-bit or 16-bit height values.  Not recommended, but supported.
-            m_pHeightmap->LoadImage(fileName);
-        }
+        m_pHeightmap->ImportHeightmap(fileName);
 
         InvalidateTerrain();
 
@@ -394,34 +367,7 @@ void CTerrainDialog::OnExportHeightmap()
         CLogFile::WriteLine("Exporting heightmap...");
 
         QString fileName = dlg.selectedFiles().first();
-        QFileInfo info(fileName);
-        const QString ext = info.completeSuffix().toLower();
-
-        if (ext == "asc")
-        {
-            m_pHeightmap->SaveASC(fileName);
-        }
-        else if (ext == "bt")
-        {
-            m_pHeightmap->SaveBT(fileName);
-        }
-        else if (ext == "tif")
-        {
-            m_pHeightmap->SaveTIF(fileName);
-        }
-        else if (ext == "pgm")
-        {
-            m_pHeightmap->SaveImage16Bit(fileName);
-        }
-        else if (ext == "raw" || ext == "r16")
-        {
-            m_pHeightmap->SaveRAW(fileName);
-        }
-        else
-        {
-            // BMP or others
-            m_pHeightmap->SaveImage(fileName.toUtf8().data());
-        }
+        m_pHeightmap->ExportHeightmap(fileName);
     }
 }
 

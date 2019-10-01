@@ -11,8 +11,12 @@
 */
 #pragma once
 
+#include <AzCore/PlatformDef.h>
+
 #include <QString>
+AZ_PUSH_DISABLE_WARNING(4251, "-Wunknown-warning-option") // 4251: 'QTreeWidgetItemIterator::d_ptr': class 'QScopedPointer<QTreeWidgetItemIteratorPrivate,QScopedPointerDeleter<T>>' needs to have dll-interface to be used by clients of class 'QTreeWidgetItemIterator'
 #include <QTreeWidgetItem>
+AZ_POP_DISABLE_WARNING
 #include <AzCore/base.h>
 #include <AzCore/RTTI/RTTI.h>
 #include <AzCore/Memory/SystemAllocator.h>

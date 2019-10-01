@@ -15,6 +15,7 @@
 #include <AzCore/std/algorithm.h>
 #include <AzFramework/Viewport/CameraState.h>
 #include <AzFramework/Viewport/ViewportColors.h>
+#include <AzToolsFramework/Entity/EditorEntityTransformBus.h>
 #include <AzToolsFramework/Commands/EntityManipulatorCommand.h>
 #include <AzToolsFramework/Commands/SelectionCommand.h>
 #include <AzToolsFramework/Manipulators/ManipulatorManager.h>
@@ -732,7 +733,8 @@ namespace AzToolsFramework
         if (action.m_modifiers.Ctrl())
         {
             // moving with ctrl - setting override
-            pivotOverrideFrame.m_translationOverride = entityIdManipulators.m_manipulators->GetPosition();
+            pivotOverrideFrame.m_translationOverride =
+                entityIdManipulators.m_manipulators->GetLocalTransform().GetTranslation();
             InitializeTranslationLookup(entityIdManipulators, -action.LocalPositionOffset());
         }
         else
@@ -809,15 +811,13 @@ namespace AzToolsFramework
                         entityItLookupIt->second.m_initial.GetTranslation() +
                         action.LocalPositionOffset());
                 }
-
-                ToolsApplicationNotificationBus::Broadcast(
-                    &ToolsApplicationNotificationBus::Events::InvalidatePropertyDisplay, Refresh_Values);
             }
 
             // if transform pivot override has been set, make sure to update it when we move it
             if (pivotOverrideFrame.m_translationOverride)
             {
-                pivotOverrideFrame.m_translationOverride = entityIdManipulators.m_manipulators->GetPosition();
+                pivotOverrideFrame.m_translationOverride =
+                    entityIdManipulators.m_manipulators->GetLocalTransform().GetTranslation();
             }
         }
 
@@ -921,6 +921,31 @@ namespace AzToolsFramework
         }
 
         return false;
+    }
+
+    static AZ::ComponentId GetTransformComponentId(const AZ::EntityId entityId)
+    {
+        if (const AZ::Entity* entity = GetEntityById(entityId))
+        {
+            if (const AZ::Component* component = entity->FindComponent<Components::TransformComponent>())
+            {
+                return component->GetId();
+            }
+        }
+
+        return AZ::InvalidComponentId;
+    }
+
+    // must be called after a property is changed on an entity component property
+    // note: it is not required if the property was modified directly by a manipulator as this logic
+    // is handled internally - this call is often required after an action/shortcut of some kind
+    static void RefreshUiAfterChange(const EntityIdList& entitiyIds)
+    {
+        EditorTransformChangeNotificationBus::Broadcast(
+            &EditorTransformChangeNotifications::OnEntityTransformChanged, entitiyIds);
+
+        ToolsApplicationNotificationBus::Broadcast(
+            &ToolsApplicationNotificationBus::Events::InvalidatePropertyDisplay, Refresh_Values);
     }
 
     EditorTransformComponentSelection::EditorTransformComponentSelection(
@@ -1321,9 +1346,6 @@ namespace AzToolsFramework
 
             // [ref 1.]
             BeginRecordManipulatorCommand();
-
-            ToolsApplicationNotificationBus::Broadcast(
-                &ToolsApplicationNotificationBus::Events::InvalidatePropertyDisplay, Refresh_Values);
         });
 
         ViewportInteraction::KeyboardModifiers prevModifiers{};
@@ -1428,9 +1450,6 @@ namespace AzToolsFramework
                             transformInPivotSpace);
                     }
                 }
-
-                ToolsApplicationNotificationBus::Broadcast(
-                    &ToolsApplicationNotificationBus::Events::InvalidatePropertyDisplay, Refresh_Values);
             }
 
             prevModifiers = action.m_modifiers;
@@ -1504,9 +1523,6 @@ namespace AzToolsFramework
             m_axisPreview.m_translation = m_entityIdManipulators.m_manipulators->GetLocalTransform().GetTranslation();
             m_axisPreview.m_orientation =
                 QuaternionFromTransformNoScaling(m_entityIdManipulators.m_manipulators->GetLocalTransform());
-
-            ToolsApplicationNotificationBus::Broadcast(
-                &ToolsApplicationNotificationBus::Events::InvalidatePropertyDisplay, Refresh_Values);
         });
 
         scaleManipulators->InstallAxisLeftMouseUpCallback(
@@ -1565,9 +1581,6 @@ namespace AzToolsFramework
                         pivotTransform * scaleTransform * transformInPivotSpace);
                 }
             }
-
-            ToolsApplicationNotificationBus::Broadcast(
-                &ToolsApplicationNotificationBus::Events::InvalidatePropertyDisplay, Refresh_Values);
         });
 
         scaleManipulators->InstallUniformLeftMouseDownCallback(
@@ -1646,9 +1659,6 @@ namespace AzToolsFramework
                         pivotTransform * scaleTransform * transformInPivotSpace);
                 }
             }
-
-            ToolsApplicationNotificationBus::Broadcast(
-                &ToolsApplicationNotificationBus::Events::InvalidatePropertyDisplay, Refresh_Values);
         });
 
         // transfer ownership
@@ -1669,8 +1679,13 @@ namespace AzToolsFramework
                 {
                     if (IsSelectableInViewport(entityId))
                     {
-                        manipulators.AddEntityId(entityId);
-                        m_entityIdManipulators.m_lookups.insert_key(entityId);
+                        const AZ::ComponentId  transformComponentId = GetTransformComponentId(entityId);
+                        if (transformComponentId != AZ::InvalidComponentId)
+                        {
+                            manipulators.AddEntityComponentIdPair(
+                                AZ::EntityComponentIdPair(entityId, transformComponentId));
+                            m_entityIdManipulators.m_lookups.insert_key(entityId);
+                        }
                     }
                 }
             }
@@ -1682,8 +1697,13 @@ namespace AzToolsFramework
             {
                 if (IsSelectableInViewport(entityId))
                 {
-                    manipulators.AddEntityId(entityId);
-                    m_entityIdManipulators.m_lookups.insert_key(entityId);
+                    const AZ::ComponentId  transformComponentId = GetTransformComponentId(entityId);
+                    if (transformComponentId != AZ::InvalidComponentId)
+                    {
+                        manipulators.AddEntityComponentIdPair(
+                            AZ::EntityComponentIdPair(entityId, transformComponentId));
+                        m_entityIdManipulators.m_lookups.insert_key(entityId);
+                    }
                 }
             }
         }
@@ -1975,10 +1995,10 @@ namespace AzToolsFramework
                         switch (m_mode)
                         {
                         case Mode::Rotation:
-                            OverrideOrientation(QuaternionFromTransformNoScaling(worldFromLocal));
+                            OverrideManipulatorOrientation(QuaternionFromTransformNoScaling(worldFromLocal));
                             break;
                         case Mode::Translation:
-                            OverrideTranslation(worldFromLocal.GetTranslation());
+                            OverrideManipulatorTranslation(worldFromLocal.GetTranslation());
                             break;
                         case Mode::Scale:
                             // do nothing
@@ -2379,9 +2399,6 @@ namespace AzToolsFramework
                 ResetTranslationForSelectedEntitiesLocal();
                 break;
             }
-
-            ToolsApplicationNotificationBus::Broadcast(
-                &ToolsApplicationNotificationBus::Events::InvalidatePropertyDisplay, Refresh_Values);
         });
 
         AddAction(
@@ -2408,9 +2425,6 @@ namespace AzToolsFramework
                 // do nothing
                 break;
             }
-
-            ToolsApplicationNotificationBus::Broadcast(
-                &ToolsApplicationNotificationBus::Events::InvalidatePropertyDisplay, Refresh_Values);
         });
 
         AddAction(
@@ -2434,9 +2448,6 @@ namespace AzToolsFramework
             case Mode::Translation:
                 break;
             }
-
-            ToolsApplicationNotificationBus::Broadcast(
-                &ToolsApplicationNotificationBus::Events::InvalidatePropertyDisplay, Refresh_Values);
         });
 
         EditorMenuRequestBus::Broadcast(&EditorMenuRequests::RestoreEditMenuToDefault);
@@ -2534,7 +2545,8 @@ namespace AzToolsFramework
 
         if (m_pivotOverrideFrame.m_translationOverride && m_entityIdManipulators.m_manipulators)
         {
-            m_pivotOverrideFrame.m_translationOverride = m_entityIdManipulators.m_manipulators->GetPosition();
+            m_pivotOverrideFrame.m_translationOverride =
+                m_entityIdManipulators.m_manipulators->GetLocalTransform().GetTranslation();
         }
 
         m_mode = mode;
@@ -2606,7 +2618,6 @@ namespace AzToolsFramework
             if (!m_entityIdManipulators.m_manipulators->PerformingAction())
             {
                 AZ::Transform transform;
-
                 switch (refreshType)
                 {
                 case RefreshType::All:
@@ -2617,7 +2628,7 @@ namespace AzToolsFramework
                     transform = AZ::Transform::CreateFromQuaternionAndTranslation(
                         RecalculateAverageManipulatorOrientation(
                             m_entityIdManipulators.m_lookups, m_pivotOverrideFrame, m_referenceFrame),
-                        m_entityIdManipulators.m_manipulators->GetPosition());
+                        m_entityIdManipulators.m_manipulators->GetLocalTransform().GetTranslation());
                     break;
                 case RefreshType::Translation:
                     transform = AZ::Transform::CreateFromQuaternionAndTranslation(
@@ -2639,7 +2650,7 @@ namespace AzToolsFramework
         }
     }
 
-    void EditorTransformComponentSelection::OverrideOrientation(const AZ::Quaternion& orientation)
+    void EditorTransformComponentSelection::OverrideManipulatorOrientation(const AZ::Quaternion& orientation)
     {
         AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
 
@@ -2649,13 +2660,13 @@ namespace AzToolsFramework
         {
             m_entityIdManipulators.m_manipulators->SetLocalTransform(
                 AZ::Transform::CreateFromQuaternionAndTranslation(
-                    orientation, m_entityIdManipulators.m_manipulators->GetPosition()));
+                    orientation, m_entityIdManipulators.m_manipulators->GetLocalTransform().GetTranslation()));
 
             m_entityIdManipulators.m_manipulators->SetBoundsDirty();
         }
     }
 
-    void EditorTransformComponentSelection::OverrideTranslation(const AZ::Vector3& translation)
+    void EditorTransformComponentSelection::OverrideManipulatorTranslation(const AZ::Vector3& translation)
     {
         AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
 
@@ -2771,7 +2782,8 @@ namespace AzToolsFramework
             ScopedUndoBatch undoBatch(s_dittoTranslationGroupUndoRedoDesc);
 
             // store previous translation manipulator position
-            const AZ::Vector3 previousPivotTranslation = m_entityIdManipulators.m_manipulators->GetPosition();
+            const AZ::Vector3 previousPivotTranslation =
+                m_entityIdManipulators.m_manipulators->GetLocalTransform().GetTranslation();
 
             auto manipulatorCommand = AZStd::make_unique<EntityManipulatorCommand>(
                 CreateManipulatorCommandStateFromSelf(), s_manipulatorUndoRedoName);
@@ -2779,7 +2791,7 @@ namespace AzToolsFramework
             // refresh the transform pivot override if it's set
             if (m_pivotOverrideFrame.m_translationOverride)
             {
-                OverrideTranslation(translation);
+                OverrideManipulatorTranslation(translation);
             }
 
             manipulatorCommand->SetManipulatorAfter(
@@ -2815,8 +2827,7 @@ namespace AzToolsFramework
 
             RefreshManipulators(RefreshType::Translation);
 
-            ToolsApplicationNotificationBus::Broadcast(
-                &ToolsApplicationNotificationBus::Events::InvalidatePropertyDisplay, Refresh_Values);
+            RefreshUiAfterChange(manipulatorEntityIds.m_entityIds);
         }
     }
 
@@ -2839,7 +2850,7 @@ namespace AzToolsFramework
             // refresh the transform pivot override if it's set
             if (m_pivotOverrideFrame.m_translationOverride)
             {
-                OverrideTranslation(translation);
+                OverrideManipulatorTranslation(translation);
             }
 
             manipulatorCommand->SetManipulatorAfter(
@@ -2866,8 +2877,7 @@ namespace AzToolsFramework
 
             RefreshManipulators(RefreshType::Translation);
 
-            ToolsApplicationNotificationBus::Broadcast(
-                &ToolsApplicationNotificationBus::Events::InvalidatePropertyDisplay, Refresh_Values);
+            RefreshUiAfterChange(manipulatorEntityIds.m_entityIds);
         }
     }
 
@@ -2902,8 +2912,7 @@ namespace AzToolsFramework
             }
         }
 
-        ToolsApplicationNotificationBus::Broadcast(
-            &ToolsApplicationNotificationBus::Events::InvalidatePropertyDisplay, Refresh_Values);
+        RefreshUiAfterChange(manipulatorEntityIds.m_entityIds);
     }
 
     void EditorTransformComponentSelection::CopyScaleToSelectedEntitiesIndividualLocal(const AZ::Vector3& scale)
@@ -2923,8 +2932,7 @@ namespace AzToolsFramework
                 entityId, &AZ::TransformBus::Events::SetLocalScale, scale);
         }
 
-        ToolsApplicationNotificationBus::Broadcast(
-            &ToolsApplicationNotificationBus::Events::InvalidatePropertyDisplay, Refresh_Values);
+        RefreshUiAfterChange(manipulatorEntityIds.m_entityIds);
     }
 
     void EditorTransformComponentSelection::CopyOrientationToSelectedEntitiesIndividual(
@@ -2963,15 +2971,14 @@ namespace AzToolsFramework
                 }
             }
 
-            OverrideOrientation(orientation);
+            OverrideManipulatorOrientation(orientation);
 
             manipulatorCommand->SetManipulatorAfter(CreateManipulatorCommandStateFromSelf());
 
             manipulatorCommand->SetParent(undoBatch.GetUndoBatch());
             manipulatorCommand.release();
 
-            ToolsApplicationNotificationBus::Broadcast(
-                &ToolsApplicationNotificationBus::Events::InvalidatePropertyDisplay, Refresh_Values);
+            RefreshUiAfterChange(manipulatorEntityIds.m_entityIds);
         }
     }
 
@@ -3016,15 +3023,14 @@ namespace AzToolsFramework
                 }
             }
 
-            OverrideOrientation(orientation);
+            OverrideManipulatorOrientation(orientation);
 
             manipulatorCommand->SetManipulatorAfter(CreateManipulatorCommandStateFromSelf());
 
             manipulatorCommand->SetParent(undoBatch.GetUndoBatch());
             manipulatorCommand.release();
 
-            ToolsApplicationNotificationBus::Broadcast(
-                &ToolsApplicationNotificationBus::Events::InvalidatePropertyDisplay, Refresh_Values);
+            RefreshUiAfterChange(manipulatorEntityIds.m_entityIds);
         }
     }
 
@@ -3040,6 +3046,11 @@ namespace AzToolsFramework
                 entityIdLookup.first, &AZ::TransformBus::Events::SetLocalRotation,
                 AZ::Vector3::CreateZero());
         }
+
+        ManipulatorEntityIds manipulatorEntityIds;
+        BuildSortedEntityIdVectorFromEntityIdMap(m_entityIdManipulators.m_lookups, manipulatorEntityIds.m_entityIds);
+
+        RefreshUiAfterChange(manipulatorEntityIds.m_entityIds);
 
         ClearManipulatorOrientationOverride();
     }
@@ -3070,6 +3081,8 @@ namespace AzToolsFramework
                         AZ::Vector3::CreateZero());
                 }
             }
+
+            RefreshUiAfterChange(manipulatorEntityIds.m_entityIds);
 
             ClearManipulatorTranslationOverride();
         }
@@ -3456,5 +3469,15 @@ namespace AzToolsFramework
             manipulatorCommand->SetParent(undoBatch.GetUndoBatch());
             manipulatorCommand.release();
         }
+    }
+
+    AZStd::optional<AZ::Transform> EditorTransformComponentSelection::GetManipulatorTransform()
+    {
+        if (m_entityIdManipulators.m_manipulators)
+        {
+            return { m_entityIdManipulators.m_manipulators->GetLocalTransform() };
+        }
+
+        return {};
     }
 } // namespace AzToolsFramework

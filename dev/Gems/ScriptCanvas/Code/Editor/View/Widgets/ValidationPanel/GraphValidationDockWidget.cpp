@@ -637,8 +637,23 @@ namespace ScriptCanvasEditor
     {
         ui->statusTableView->clearSelection();
     }
+
+    void GraphValidationDockWidget::OnToastInteraction()
+    {
+        UIRequestBus::Broadcast(&UIRequests::OpenValidationPanel);
+    }
+
+    void GraphValidationDockWidget::OnToastDismissed()
+    {
+        const GraphCanvas::ToastId* toastId = GraphCanvas::ToastNotificationBus::GetCurrentBusId();
+
+        if (toastId)
+        {
+            GraphCanvas::ToastNotificationBus::MultiHandler::BusDisconnect((*toastId));
+        }
+    }
     
-    void GraphValidationDockWidget::OnRunValidator()
+    void GraphValidationDockWidget::OnRunValidator(bool displayAsNotification)
     {
         ui->statusTableView->clearSelection();
 
@@ -647,7 +662,42 @@ namespace ScriptCanvasEditor
 
         UpdateText();
 
-        ui->statusTableView->selectAll();
+        if (!displayAsNotification)
+        {
+            ui->statusTableView->selectAll();
+        }
+        else if (m_model->GetValidationResults().HasErrors()
+                 || m_model->GetValidationResults().HasWarnings())
+        {
+            GraphCanvas::ViewId viewId;
+            GraphCanvas::SceneRequestBus::EventResult(viewId, m_graphCanvasGraphId, &GraphCanvas::SceneRequests::GetViewId);            
+
+            GraphCanvas::ToastType toastType;
+            AZStd::string titleLabel = "Validation Issue";
+            AZStd::string description = "";
+
+            if (m_model->GetValidationResults().HasErrors())
+            {
+                toastType = GraphCanvas::ToastType::Error;
+                description = AZStd::string::format("%i validation error(s) were found.", m_model->GetValidationResults().ErrorCount());
+            }
+            else
+            {
+                toastType = GraphCanvas::ToastType::Warning;
+                description = AZStd::string::format("%i validation warning(s) were found.", m_model->GetValidationResults().WarningCount());
+            }
+
+            GraphCanvas::ToastConfiguration toastConfiguration(toastType, titleLabel, description);
+
+            toastConfiguration.SetCloseOnClick(true);
+            toastConfiguration.SetDuration(AZStd::chrono::milliseconds(5000));
+
+            GraphCanvas::ToastId validationToastId;
+
+            GraphCanvas::ViewRequestBus::EventResult(validationToastId, viewId, &GraphCanvas::ViewRequests::ShowToastNotification, toastConfiguration);
+
+            GraphCanvas::ToastNotificationBus::MultiHandler::BusConnect(validationToastId);
+        }
     }
     
     void GraphValidationDockWidget::OnShowErrors()
@@ -683,7 +733,7 @@ namespace ScriptCanvasEditor
                     QModelIndex sourceIndex = m_proxyModel->mapToSource(modelIndex);
                     const ScriptCanvas::ValidationEvent* validationEvent = m_model->FindItemForIndex(sourceIndex);
 
-                    if (validationEvent->CanAutoFix())
+                    if (validationEvent && validationEvent->CanAutoFix())
                     {
                         ui->fixSelected->setEnabled(true);
                     }

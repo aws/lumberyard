@@ -28,7 +28,7 @@ namespace AZ
     {
         //
         static const int MEXP = 19937;
-        static const int N    = MEXP / (128 + 1);
+        static const int N    = (MEXP / 128 + 1);
 
 #if AZ_TRAIT_HARDWARE_HAS_M128I
         union W128_T

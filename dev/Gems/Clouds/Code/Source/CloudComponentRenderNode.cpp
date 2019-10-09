@@ -202,7 +202,6 @@ namespace CloudsGem
     {
         SetWorldTransform(entityTransform);
         Update();
-        Refresh();
     }
 
     void CloudComponentRenderNode::Update()

@@ -174,6 +174,7 @@ namespace AzToolsFramework
         bool UpdateTrust();
         bool IsTrustKeyValid() const;
         void TestConnectionTrust(bool attemptResolve);
+        void VerifyP4PortIsSet();
 
         bool IsConnectionValid() const;
         bool CacheClientConfig() const;

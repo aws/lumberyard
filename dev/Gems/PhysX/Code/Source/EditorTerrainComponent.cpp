@@ -61,13 +61,10 @@ namespace PhysX
             AzToolsFramework::EditorRequests::Bus::BroadcastResult(editor, &AzToolsFramework::EditorRequests::GetEditor);
             if (editor)
             {
-                
-                char projectPath[AZ_MAX_PATH_LEN];
-                AZ::IO::FileIOBase::GetInstance()->ResolvePath("@devassets@", projectPath, AZ_MAX_PATH_LEN);
-                AZStd::string absoluteFolderPath = editor->Get3DEngine()->GetLevelFilePath("");
-
-                AZStd::string levelFolder = GetRelativePath(absoluteFolderPath, projectPath);
-                return levelFolder;
+				const AZStd::string fullPath = editor->GetLevelFolder().toStdString().c_str(); //Fix proposed by "m9" on the lumberyard Discord server on 2019-10-25 @ 11h33 in the animation-and-physics channel
+				AZStd::string relativePath;
+				EBUS_EVENT(AzToolsFramework::AssetSystemRequestBus, GetRelativeProductPathFromFullSourceOrProductPath, fullPath, relativePath);
+				return relativePath;
             }
             else
             {

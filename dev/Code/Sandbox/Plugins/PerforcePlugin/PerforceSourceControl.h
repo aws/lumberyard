@@ -19,6 +19,7 @@
 #include "Include/IEditorClassFactory.h"
 
 #include "p4/clientapi.h"
+#include "p4/enviro.h"
 #include "p4/errornum.h"
 #include "Include/ISourceControl.h"
 
@@ -115,4 +116,6 @@ private:
 
     bool m_lastWorkOfflineResult;
     bool m_lastWorkOfflineBecauseOfConnectionLossResult;
+
+    bool m_clientInitialized;
 };

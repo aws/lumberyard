@@ -827,7 +827,7 @@ namespace AzToolsFramework
         return true;
     }
 
-    void PerforceComponent::TestConnectionTrust(bool attemptResolve)
+    void PerforceComponent::VerifyP4PortIsSet()
     {
         AZ_Assert(m_ProcessThreadID != AZStd::thread::id(), "The perforce worker thread has not started.");
         AZ_Assert(AZStd::this_thread::get_id() == m_ProcessThreadID, "You may only call this function from the perforce worker thread.");
@@ -836,6 +836,30 @@ namespace AzToolsFramework
         {
             s_perforceConn = aznew PerforceConnection();
         }
+
+        if (m_testConnection)
+        {
+            bool p4PortSet = false;
+            if (ExecuteAndParseSet(nullptr, nullptr))
+            {
+                p4PortSet = !s_perforceConn->m_command.GetOutputValue("P4PORT").empty();
+            }
+
+            if (!p4PortSet)
+            {
+                // Disable any further connection status testing
+                AZ_WarningOnce(SCC_WINDOW, false, "Perforce - P4PORT (server address) is not set, Perforce not available!\n");
+                m_testTrust = false;
+                m_testConnection = false;
+                m_validConnection = false;
+            }
+        }
+    }
+
+    void PerforceComponent::TestConnectionTrust(bool attemptResolve)
+    {
+        AZ_Assert(m_ProcessThreadID != AZStd::thread::id(), "The perforce worker thread has not started.");
+        AZ_Assert(AZStd::this_thread::get_id() == m_ProcessThreadID, "You may only call this function from the perforce worker thread.");
 
         m_trustedKey = IsTrustKeyValid();
         if (!m_trustedKey && attemptResolve)
@@ -1119,6 +1143,9 @@ namespace AzToolsFramework
             {
                 break; // abandon ship!
             }
+
+            // Verify P4PORT is set before running any commands
+            VerifyP4PortIsSet();
 
             // wait for trust issues to be resolved
             if (!UpdateTrust())
